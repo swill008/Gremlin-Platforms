@@ -8,6 +8,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.Device
+import Gremlin.Menus
 import Gremlin.Style
 
 import "confirm.js" as Confirm
@@ -73,12 +74,47 @@ Item {
         })
     }
 
+    // Delete: the shared question (01 S140, D-09-OSC-FAULTS).
+    function askDelete(uid, address) {
+        return Confirm.ask(_root, {
+            title: "Delete OSC input?",
+            text: "The OSC input " + address + " goes, with its actions.",
+            undoable: true,
+            note: "You can restore it from Tools › History.",
+            action: "Delete",
+            onAccept: function() {
+                if (!editorLocked) {
+                    _inputList.model.deleteInput(uid)
+                }
+            }
+        })
+    }
+
+    // Change address: the model checks it; its error shows on the message line.
+    function changeAddress(uid, value) {
+        var err = _inputList.model.changeName(uid, value)
+        if (err && String(err).length) {
+            _message.show(String(err), true)
+            return false
+        }
+        _message.clear()
+        return true
+    }
+
+    function editSettings(uid) {
+        if (editorLocked) {
+            return
+        }
+        _addDialog.openForEdit(uid, _inputList.model.inputSettings(uid))
+    }
+
     OscImportDialog {
         id: _importDialog
 
         onAccepted: (text) => {
             if (!editorLocked) {
-                _inputList.model.importInputs(text)
+                var result = _inputList.model.importInputs(text)
+                _message.show(result ? String(result) : "", false)
             }
         }
     }
@@ -88,9 +124,9 @@ Item {
 
         deviceModel: _inputList.model
 
-        onAccepted: (cmd, mode) => {
+        onAccepted: (settings) => {
             if (!editorLocked) {
-                _inputList.model.createMappedInput(mode, cmd)
+                _inputList.model.createConfiguredInput(settings)
             }
         }
     }
@@ -142,14 +178,29 @@ Item {
                     enabled: !editorLocked
 
                     onClicked: () => {
-                        if (editorLocked) {
-                            return
+                        if (!editorLocked) {
+                            _rowMenu.popup()
                         }
-                        _textInput.text = label
-                        _textInput.callback = (value) => {
-                            _inputList.model.changeName(label, value)
+                    }
+
+                    ThemedMenu {
+                        id: _rowMenu
+                        objectName: "oscRowMenu"
+
+                        ThemedMenuItem {
+                            text: "Change Address…"
+                            onTriggered: {
+                                _textInput.text = label
+                                _textInput.callback = (value) => {
+                                    _root.changeAddress(model.uid, value)
+                                }
+                                _textInput.visible = true
+                            }
                         }
-                        _textInput.visible = true
+                        ThemedMenuItem {
+                            text: "Edit Settings…"
+                            onTriggered: _root.editSettings(model.uid)
+                        }
                     }
                 }
 
@@ -161,7 +212,7 @@ Item {
 
                     onClicked: () => {
                         if (!editorLocked) {
-                            _inputList.model.deleteInput(label)
+                            _root.askDelete(model.uid, label)
                         }
                     }
                 }
@@ -187,6 +238,13 @@ Item {
             function onListenBound(index) {
                 _root.selectOscInput(index)
             }
+        }
+
+        MessageLine {
+            id: _message
+            Layout.fillWidth: true
+            Layout.leftMargin: Style.dp(10)
+            Layout.rightMargin: Style.dp(10)
         }
 
         RowLayout {

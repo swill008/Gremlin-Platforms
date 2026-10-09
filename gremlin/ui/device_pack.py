@@ -24,7 +24,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from gremlin.ui.live_debug import trace
 from gremlin.modules import module_file, store
@@ -121,6 +121,10 @@ def _control_lines(doc: dict) -> list[str]:
     return lines
 
 
+# OSC friendly names: "osc:<uid>" (module_model.osc_friendly_key).
+_OSC_NAME = "osc:"
+
+
 def _name_lines(doc: dict) -> list[str]:
     names = _friendly(doc)
     lines: list[str] = []
@@ -135,6 +139,16 @@ def _name_lines(doc: dict) -> list[str]:
             label = str(names.get(f"{kind}:{number}") or "").strip()
             if label:
                 lines.append(f"{_KIND_WORD[kind]} {number} — {label}")
+    # OSC's names are kept by each input's permanent id (D-09-OSC-FILE 2).
+    addresses = {
+        str(row.get("uid")): str(row.get("label") or "")
+        for row in doc.get("inputs") or []
+        if isinstance(row, dict)
+    }
+    for key, label in names.items():
+        if str(key).startswith(_OSC_NAME) and str(label or "").strip():
+            uid = str(key)[len(_OSC_NAME):]
+            lines.append(f"{addresses.get(uid) or uid} — {str(label).strip()}")
     return lines
 
 
@@ -294,6 +308,25 @@ def _logical_lines(doc: dict) -> list[str]:
     return lines
 
 
+# OSC's inputs and server settings in its module file (D-09-OSC-FILE).
+_OSC_KEYS = ("inputs", "server")
+
+
+def _osc_lines(doc: dict) -> list[str]:
+    inputs = doc.get("inputs")
+    server = doc.get("server")
+    if not isinstance(inputs, list) and not isinstance(server, dict):
+        return []
+    lines = ["OSC's addresses and server settings."]
+    for row in inputs if isinstance(inputs, list) else []:
+        if isinstance(row, dict):
+            kind = str(row.get("type") or "").capitalize()
+            lines.append(f"{kind} {row.get('id')} — {row.get('label') or ''}")
+    if isinstance(server, dict):
+        lines.append(f"Server: port {server.get('port', '')}")
+    return lines
+
+
 def _clip(lines: list[str], limit: int = 40) -> str:
     if len(lines) <= limit:
         return "\n".join(lines)
@@ -336,6 +369,9 @@ def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
         items.append(
             _item(prefix + "logical", "Logical Device layout", _clip(logical))
         )
+    osc = _osc_lines(doc)
+    if osc:
+        items.append(_item(prefix + "osc", "OSC addresses and server", _clip(osc)))
     chips = _chip_lines(doc)
     needs = [row["id"] for row in pictures if row.get("onMap")]
     if chips:
@@ -644,12 +680,19 @@ def _collect_wires(
         action_xml = _with_logical_uids(action_xml)
     except Exception:
         pass
-    return {
+    out = {
         "modes": list(modes.values()),
         "actions": action_xml,
         "outputs": outputs,
         "tree": _mode_tree(profile, list(modes)),
     }
+    try:
+        osc = _with_osc_uids(out["modes"])
+    except Exception:
+        osc = []
+    if osc:
+        out["osc"] = osc
+    return out
 
 
 def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]]) -> tuple[dict, list[dict]] | None:
@@ -833,6 +876,7 @@ def plan_pack(
             "modes": wires["modes"],
             "actions": wires["actions"],
             "tree": wires["tree"],
+            **({"osc": wires["osc"]} if wires.get("osc") else {}),
         } if wires["modes"] else None,
         "outputs": outputs,
         "files": files,
@@ -1217,6 +1261,13 @@ def _copy_names_onto_nodes(nodes: list, names: dict) -> None:
                 member["friendly"] = label
 
 
+def _is_osc_device(guid: str) -> bool:
+    """Only OSC's own file takes its addresses and server, by its id."""
+    from gremlin.modules import device_class
+
+    return bool(guid) and device_class.device_kind(guid) == "osc"
+
+
 def _is_logical_device(guid: str) -> bool:
     """Only the Logical Device's own file takes a layout, by its id."""
     from gremlin.modules import device_class
@@ -1296,6 +1347,12 @@ def _merge_module(
                     continue
                 claim["friendly"][f"{kind}:{number}"] = label
                 written += 1
+        if _is_osc_device(guid):
+            # By permanent id, not by number (the uid travels with the row).
+            for key, label in incoming_names.items():
+                if str(key).startswith(_OSC_NAME):
+                    claim["friendly"][str(key)] = label
+                    written += 1
         if skipped:
             notes.append("Names for controls that are not checked were left out.")
         if written == 0 and skipped:
@@ -1406,6 +1463,12 @@ def _merge_module(
         # In the same write as the other parts: one History entry, and the
         # store reloads the Logical Device (D-04-LD-FILE).
         base[_LOGICAL_KEY] = json.loads(json.dumps(incoming[_LOGICAL_KEY]))
+    if prefix + "osc" in chosen and _is_osc_device(guid):
+        # Addresses and server in the same write as the rest: one History
+        # entry, and the store reloads OSC (D-09-OSC-FILE 1).
+        for key in _OSC_KEYS:
+            if key in incoming:
+                base[key] = json.loads(json.dumps(incoming[key]))
     photo = Path(str(incoming.get("image") or "")).name
     if photo and ("pic:" + photo) in chosen:
         base["image"] = photo
@@ -1627,6 +1690,181 @@ def _with_logical_uids(action_xml: list[str]) -> list[str]:
     return out
 
 
+def _is_osc_block(node: ElementTree.Element) -> bool:
+    from gremlin.modules.ids import guid_key
+    from gremlin.osc import OSC_DEVICE_UUID
+
+    if node.find("osc-uid") is not None:
+        return True
+    return guid_key(str(node.findtext("device-id") or "")) == guid_key(
+        str(OSC_DEVICE_UUID)
+    )
+
+
+def _osc_uid_of_block(node: ElementTree.Element) -> str | None:
+    text = str(node.findtext("osc-uid") or "").strip().lower()
+    return text or None
+
+
+def _set_osc_ref(node: ElementTree.Element, kind: object, number: int, uid: str) -> None:
+    """The block's OSC input: type, number and <osc-uid> after <input-id>."""
+    from gremlin.types import InputType
+
+    type_node = node.find("input-type")
+    if type_node is not None:
+        type_node.text = InputType.to_string(kind)  # type: ignore[arg-type]
+    id_node = node.find("input-id")
+    if id_node is not None:
+        id_node.text = str(int(number))
+    uid_node = node.find("osc-uid")
+    if uid_node is None:
+        uid_node = ElementTree.Element("osc-uid")
+        children = list(node)
+        at = children.index(id_node) + 1 if id_node is not None else len(children)
+        node.insert(at, uid_node)
+    uid_node.text = uid
+
+
+def _with_osc_uids(modes: list[dict]) -> list[dict]:
+    """Each OSC input block with its permanent id (<osc-uid>), and the OSC
+    rows they are on (OSC's file form), so an import finds them by id or
+    creates them (D-09-OSC-FILE 2)."""
+    from gremlin.osc_persist import osc_rows, resolve_osc_reference
+    from gremlin.util import read_subelement
+
+    wanted: list[str] = []
+    for mode in modes:
+        blocks = mode.get("inputs") or []
+        for index, block in enumerate(blocks):
+            node = ElementTree.fromstring(str(block))
+            if not _is_osc_block(node):
+                continue
+            try:
+                kind = read_subelement(node, "input-type")
+                number = int(read_subelement(node, "input-id"))
+            except Exception:
+                continue
+            ident, uid = resolve_osc_reference(_osc_uid_of_block(node), kind, number)
+            if uid is None:
+                continue
+            if ident is not None:
+                kind, number = ident.type, int(ident.id)
+            _set_osc_ref(node, kind, number, uid)
+            blocks[index] = ElementTree.tostring(node, encoding="unicode")
+            if uid not in wanted:
+                wanted.append(uid)
+    every = osc_rows().to_dict()["inputs"]
+    return [row for uid in wanted for row in every if row.get("uid") == uid]
+
+
+def _osc_rows_of(profile: object) -> object:
+    """The OSC rows a saved older profile that isn't open still carries
+    (pending_osc_rows, in a temporary OscRows; the shared file is not
+    changed by reading it). None: OSC's module file, which every other
+    profile uses (D-09-OSC-FILE 3)."""
+    from gremlin import shared_state
+
+    if profile is None or profile is shared_state.current_profile:
+        return None
+    pending = getattr(profile, "pending_osc_rows", None)
+    if not pending:
+        return None
+    if isinstance(pending, dict):
+        from gremlin.osc_rows import OscRows
+
+        rows = OscRows()
+        rows.load_dict(pending)
+        return rows
+    return pending
+
+
+def _resolve_osc(
+    rows: object, uid: str | None, kind: object, number: int
+) -> tuple[Any, str | None]:
+    """resolve_osc_reference, first against a saved older profile's own
+    rows (_osc_rows_of) when it has them, then OSC's file."""
+    from gremlin.osc_persist import resolve_osc_reference
+
+    if rows is not None:
+        if uid:
+            ident = rows.identifier_of_uid(uid)  # type: ignore[attr-defined]
+        else:
+            row = rows.by_number(kind, number)  # type: ignore[attr-defined]
+            ident, uid = (row.identifier, row.uid) if row is not None else (None, None)
+        if ident is not None:
+            return ident, uid
+    return resolve_osc_reference(uid, kind, number)  # type: ignore[arg-type]
+
+
+def _missing_osc(
+    inputs: list[str], pack_rows: list | None, rows: object = None
+) -> list[dict]:
+    """The OSC rows these input blocks are on that OSC's file lacks, as the
+    pack carries them (to be created). Without a row in the pack there is
+    no address, so it can't be created (label "")."""
+    from gremlin.util import read_subelement
+
+    by_uid = {
+        str(row.get("uid")): row
+        for row in pack_rows or []
+        if isinstance(row, dict) and row.get("uid")
+    }
+    missing: list[dict] = []
+    for block in inputs:
+        node = ElementTree.fromstring(str(block))
+        if not _is_osc_block(node):
+            continue
+        uid = _osc_uid_of_block(node)
+        try:
+            kind = read_subelement(node, "input-type")
+            number = int(read_subelement(node, "input-id"))
+        except Exception:
+            continue
+        ident, _found = _resolve_osc(rows, uid, kind, number)
+        if ident is not None:
+            continue
+        row = by_uid.get(uid or "") or {
+            "uid": uid,
+            "type": str(node.findtext("input-type") or ""),
+            "id": number,
+            "label": "",
+        }
+        if row not in missing:
+            missing.append(row)
+    return missing
+
+
+def _resolve_osc_inputs(
+    inputs: list[str], rows: object = None
+) -> tuple[list[str], list[str]]:
+    """The OSC input blocks on their inputs' current type and number (by
+    permanent id); ones OSC's file doesn't have are left out (named)."""
+    from gremlin.util import read_subelement
+
+    out: list[str] = []
+    left: list[str] = []
+    for block in inputs:
+        node = ElementTree.fromstring(str(block))
+        if not _is_osc_block(node):
+            out.append(block)
+            continue
+        uid = _osc_uid_of_block(node)
+        try:
+            kind = read_subelement(node, "input-type")
+            number = int(read_subelement(node, "input-id"))
+        except Exception:
+            out.append(block)
+            continue
+        ident, found = _resolve_osc(rows, uid, kind, number)
+        if ident is None or found is None:
+            word = str(node.findtext("input-type") or "").capitalize()
+            left.append(f"{word} {number}")
+            continue
+        _set_osc_ref(node, ident.type, int(ident.id), found)
+        out.append(ElementTree.tostring(node, encoding="unicode"))
+    return out, left
+
+
 def _rows_of(profile: object) -> object:
     """The Logical Device rows a profile that isn't open still carries: a
     saved version 14 profile read without opening it keeps its own rows
@@ -1743,11 +1981,14 @@ def _plan_wires(
     chosen: set[str],
     limits: dict[str, set[int]] | None,
     rows: object = None,
+    osc_rows: object = None,
 ) -> dict:
     """What importing the ticked modes would write, before anything changes:
     their inputs (less the controls the device doesn't have) and only the
     actions those inputs use. rows: a saved version 14 profile's own
-    Logical Device rows (_rows_of; None: the Logical Device's module file)."""
+    Logical Device rows (_rows_of; None: the Logical Device's module file).
+    osc_rows: a saved older profile's own OSC rows (_osc_rows_of; None:
+    OSC's module file)."""
     from gremlin.types import InputType
     from gremlin.util import read_subelement
 
@@ -1799,6 +2040,8 @@ def _plan_wires(
         "actions": actions,
         "leftOut": left_out,
         "missingLogical": _missing_logical(actions, rows),
+        "missingOsc": _missing_osc(inputs, wires.get("osc"), osc_rows),
+        "oscRows": osc_rows,
     }
 
 
@@ -1942,6 +2185,29 @@ def _apply_wires(
                     )
                     + "."
                 )
+            created_osc: list[str] = []
+            for row in plan.get("missingOsc") or []:
+                made = _create_osc_row(row)
+                if made is not None:
+                    created_osc.append(made.uid)  # type: ignore[attr-defined]
+            if created_osc:
+                notes.append(
+                    "Added to OSC: "
+                    + ", ".join(
+                        str(r.get("label") or r.get("uid"))
+                        for r in plan["missingOsc"]
+                        if r.get("uid") in created_osc
+                    )
+                    + "."
+                )
+            osc_inputs, osc_left = _resolve_osc_inputs(
+                plan["inputs"], plan.get("oscRows")
+            )
+            if osc_left:
+                notes.append(
+                    "These wires are on OSC inputs that aren't here, so they "
+                    "were left out: " + ", ".join(osc_left) + "."
+                )
             created_modes = _ensure_modes(profile, plan["modes"], tree, notes)
             # Each ticked mode: everything the device had there goes. Undo
             # Import puts each back from its snapshot.
@@ -1952,7 +2218,7 @@ def _apply_wires(
             ]
             restore = [_input_back(profile, item) for item in removed]
             profile.drop_inputs(uid, removed)
-            added = profile.add_inputs(uid, plan["inputs"], action_xml)
+            added = profile.add_inputs(uid, osc_inputs, action_xml)
             if uid not in profile.device_database.devices:
                 profile.remember_device(uid, target_name)
     except Exception as exc:
@@ -1987,6 +2253,8 @@ def _apply_wires(
         except OSError as exc:
             notes.append(f"The Logical Device file could not be saved: {exc}")
         signal.logicalDeviceModified.emit()
+    if created_osc:
+        _save_osc(notes)
     undo = {
         "profile": profile,
         "uid": uid,
@@ -1995,8 +2263,61 @@ def _apply_wires(
         "added": added,
         "modes": created_modes,
         "logical": created_logical,
+        "osc": created_osc,
     }
     return notes, undo
+
+
+def _create_osc_row(row: dict) -> object:
+    """An OSC input from the pack's row, into OSC's file (shared by every
+    profile), under the pack's id; its number when free. None: it can't be
+    made (no address, or the address is taken)."""
+    from gremlin.error import GremlinError
+    from gremlin.osc_persist import osc_rows
+    from gremlin.osc_rows import SETTING_KEYS
+    from gremlin.types import InputType
+
+    try:
+        kind = InputType.to_enum(str(row.get("type") or "button"))
+        settings = {k: row[k] for k in SETTING_KEYS if k in row}
+        return osc_rows().create(
+            kind,
+            str(row.get("label") or ""),
+            uid=str(row.get("uid") or "") or None,
+            input_id=int(row["id"]) if row.get("id") is not None else None,
+            **settings,
+        )
+    except (GremlinError, KeyError, TypeError, ValueError):
+        return None
+
+
+def _save_osc(notes: list[str]) -> None:
+    """OSC's file after the Device Pack changed its rows; the pages are told."""
+    from gremlin import osc_device_file
+    from gremlin.signal import signal
+
+    try:
+        osc_device_file.save(who="Device Pack")
+    except OSError as exc:
+        notes.append(f"OSC's file could not be saved: {exc}")
+    changed = getattr(signal, "oscDeviceModified", None)
+    if changed is not None:
+        changed.emit()
+
+
+def _osc_has_actions(profile: Profile, ident: object) -> bool:
+    """Whether the profile has actions on this OSC input (Undo Import keeps
+    it then, as for the Logical Device, 08 Q21)."""
+    from gremlin.osc import OSC_DEVICE_UUID
+
+    for item in profile.inputs.get(OSC_DEVICE_UUID, []) or []:
+        try:
+            same = item.input_type == ident.type and int(item.input_id) == int(ident.id)  # type: ignore[attr-defined]
+        except (TypeError, ValueError):
+            continue
+        if same and item.action_sequences:
+            return True
+    return False
 
 
 def _input_back(profile: Profile, item: object) -> dict:
@@ -2143,6 +2464,7 @@ def undo_import(force: bool = False) -> dict:
             notes.append(f"{path.name} could not be put back.")
     wires = record.get("wires")
     logical_changed = False
+    osc_changed = False
     if wires:
         from gremlin.logical_device import LogicalDevice
         from gremlin.shared_state import current_profile
@@ -2184,12 +2506,32 @@ def undo_import(force: bool = False) -> dict:
                     continue
                 LogicalDevice().delete(ident)
                 logical_changed = True
+            from gremlin.osc_persist import osc_rows
+
+            osc_kept = []
+            for made_uid in wires.get("osc") or []:
+                row = osc_rows().by_uid(made_uid)
+                if row is None:
+                    continue
+                if _osc_has_actions(profile, row.identifier):
+                    osc_kept.append(row.label)
+                    continue
+                osc_rows().delete(made_uid)
+                osc_changed = True
+            if osc_kept:
+                notes.append(
+                    "Kept on OSC, because they have actions now: "
+                    + ", ".join(osc_kept)
+                    + "."
+                )
             if kept:
                 notes.append(
                     "Kept on the Logical Device, because they have actions now: "
                     + ", ".join(kept)
                     + "."
                 )
+    if osc_changed:
+        _save_osc(notes)
     if logical_changed:
         # Out of the module file too (08 S80).
         from gremlin import logical_device_file
@@ -2238,7 +2580,7 @@ def _write_module(
 
 _INPUT_KEYS = {
     "in.checks", "in.names", "in.calibration", "in.view", "in.catalog",
-    "in.layout", "in.mapview", "in.print", "in.logical",
+    "in.layout", "in.mapview", "in.print", "in.logical", "in.osc",
 }
 
 
@@ -2495,7 +2837,9 @@ def apply_zip(
         notes.append(f"Saved {dest.name} for {out_name}.")
         notes.extend(merged_notes)
     # The profile they go into says which Logical Device inputs it lacks.
-    plan = _plan_wires(loaded["wires"], chosen, limits, _rows_of(profile))
+    plan = _plan_wires(
+        loaded["wires"], chosen, limits, _rows_of(profile), _osc_rows_of(profile)
+    )
     wire_notes, wires_undo = _apply_wires(
         plan,
         loaded["wires"].get("tree") or {},

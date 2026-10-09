@@ -82,7 +82,7 @@ def test_the_guide_builds_with_every_part(qapp: QtCore.QCoreApplication) -> None
     for title in (
         "What the Device Library is",
         "Saved setups",
-        "Built-in inputs",  # 10 S6
+        "Internal inputs",  # 10 S6, D-10-INTERNAL-NAME
         "When autosaves are kept",
         "Copy a setup to another stick",
         "Swap two sticks",
@@ -275,7 +275,7 @@ def test_every_bold_label_is_on_screen() -> None:
         "F2",
         "Ctrl+F",
         "View Full Help",  # the Help window's button (01 S128)
-        "BUILT-IN INPUTS",
+        "INTERNAL INPUTS",
         "Keep the newest … autosaves per stick",
     }
     bold = set(re.findall(r"<b>([^<]+)</b>", _guide_source()))
@@ -402,7 +402,7 @@ def test_the_new_library_features_are_in_the_chapter(
     assert '"Last change: "' in _WINDOW and '"Undone: "' in _WINDOW
     assert "Show in History" in _body("See a device's changes in History")
     delete = _body("Delete or remove from the Device Library")
-    assert "<b>Delete</b> key" in delete and "built-in input" in delete
+    assert "<b>Delete</b> key" in delete and "internal input" in delete
     assert "one entry in <b>Tools › History</b>" in delete
     assert "from the Device Library" in delete
-    assert "BUILT-IN INPUTS" in _body("Built-in inputs")
+    assert "INTERNAL INPUTS" in _body("Internal inputs")

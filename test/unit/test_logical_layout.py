@@ -155,9 +155,9 @@ def test_old_profile_label_becomes_user_name(tmp_path: Path, modules: Path) -> N
     path = tmp_path / "old.xml"
     Profile(bind=False).to_xml(path)
     text = path.read_text(encoding="utf-8-sig")
-    assert 'version="15"' in text
+    assert 'version="16"' in text
     path.write_text(
-        text.replace('version="15"', 'version="14"', 1).replace(
+        text.replace('version="16"', 'version="14"', 1).replace(
             "</profile>",
             "<logical-device><input><input-type>button</input-type>"
             "<input-id>1</input-id><label>Trigger</label></input>"

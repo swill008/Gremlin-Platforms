@@ -607,9 +607,21 @@ class CodeRunner:
         sys.path = system_paths
 
     def _setup_profile(self) -> int:
-        item_list = sum(self._profile.inputs.values(), [])
-        action_sequences = sum([e.action_sequences for e in item_list], [])
         syslog = logging.getLogger("system")
+        # OSC bindings follow their input's uid; one whose input is gone
+        # never runs, not even on an input that took its number since
+        # (D-09-OSC-FILE decision 2).
+        if self._profile is not None:
+            self._profile.refresh_osc_items()
+        item_list: list[profile.InputItem] = sum(self._profile.inputs.values(), [])
+        missing = [e for e in item_list if e.osc_missing]
+        if missing:
+            syslog.warning(
+                "%d OSC binding(s) not run: their OSC input no longer exists",
+                len(missing),
+            )
+            item_list = [e for e in item_list if e not in missing]
+        action_sequences = sum([e.action_sequences for e in item_list], [])
 
         for action in action_sequences:
             event = event_handler.Event(

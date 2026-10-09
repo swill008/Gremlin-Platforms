@@ -74,7 +74,7 @@ def test_runs_without_errors_or_warnings(run: dict) -> None:
 def test_heading_sits_between_the_sticks_and_the_built_ins(run: dict) -> None:
     got = run["list"]
     assert got["keys"][-2:] == _BUILT_INS
-    assert [h["text"] for h in got["headings"]] == ["BUILT-IN INPUTS"]
+    assert [h["text"] for h in got["headings"]] == ["INTERNAL INPUTS"]
     heading = got["headings"][0]["y"]
     assert got["lastStick"] < heading < got["keyboard"] < got["osc"]
 

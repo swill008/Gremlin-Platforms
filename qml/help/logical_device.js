@@ -47,7 +47,7 @@ function topics() {
                 + "<ul>"
                 + "<li><b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>) also saves the Logical Device when it changed. The <b>*</b> in the title and the question before New, Load or quit count its changes too; <b>Discard</b> there also throws away the Logical Device's unsaved changes.</li>"
                 + "<li>Each control keeps its own id for good. Actions that send to a control follow it, even when you rename it or its number changes.</li>"
-                + "<li>To keep other layouts, use the " + _link("device-library-built-in", "Device Library") + ": it lists the Logical Device under <b>Built-in inputs</b>, with <b>Save to Device Library…</b>, <b>Restore…</b> and <b>Export…</b>. A Logical Device pack from someone else comes in with <b>File › Import Device Pack…</b> there, then <b>Restore…</b>.</li>"
+                + "<li>To keep other layouts, use the " + _link("device-library-built-in", "Device Library") + ": it lists the Logical Device under <b>Internal inputs</b>, with <b>Save to Device Library…</b>, <b>Restore…</b> and <b>Export…</b>. A Logical Device pack from someone else comes in with <b>File › Import Device Pack…</b> there, then <b>Restore…</b>.</li>"
                 + "<li>Every save is kept in <a href=\"topic:tools-history\">History</a>, and the Logical Device can be restored there on its own.</li>"
                 + "</ul>"
                 + _good([

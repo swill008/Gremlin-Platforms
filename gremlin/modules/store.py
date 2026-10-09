@@ -516,6 +516,38 @@ def _reload_logical_device(path: Path) -> None:
     signal.logicalDeviceModified.emit()
 
 
+def _reload_osc(path: Path) -> None:
+    """After OSC's module file was replaced (Restore, Import, Undo, History
+    Restore), OSC's rows and server settings are read from it again
+    (D-09-OSC-FILE). Its own saves don't come here."""
+    from gremlin import osc_device_file
+
+    try:
+        if Path(path).resolve() != osc_device_file.path().resolve():
+            return
+    except OSError:
+        return
+    try:
+        osc_device_file.load()
+    except Exception:  # noqa: BLE001 - the file is written; say it, go on
+        syslog.exception("OSC: reload after %s failed", path)
+        return
+    from gremlin.signal import signal
+
+    # Screens drop their Undo steps and redraw; the server applies the
+    # settings at once.
+    for name in ("oscDeviceReloaded", "oscDeviceModified", "oscServerSettingsChanged"):
+        sig = getattr(signal, name, None)
+        if sig is not None:
+            sig.emit()
+
+
+def _reload_internal(path: Path) -> None:
+    """The internal devices kept in their own module file read it again."""
+    _reload_logical_device(path)
+    _reload_osc(path)
+
+
 def replace(path: Path, data: bytes, who: str = "", *, force: bool = False) -> None:
     """Writes a whole file (import, Device Pack, Undo, History Restore, and
     the backups they keep). A damaged module file is not written over
@@ -532,7 +564,7 @@ def replace(path: Path, data: bytes, who: str = "", *, force: bool = False) -> N
         registry.trace("SAVE", who or "Module files", "replace", path, "error")
         raise
     registry.trace("SAVE", who or "Module files", "replace", path, "ok")
-    _reload_logical_device(path)
+    _reload_internal(path)
 
 
 def write_json(path: Path, doc: dict, who: str = "") -> None:
@@ -547,7 +579,7 @@ def write_text(path: Path, text: str, who: str = "") -> None:
     """write_json for text as it is (History Restore)."""
     _write(Path(path), module_file.encode(text), text.replace("\r\n", "\n"))
     registry.trace("SAVE", who or "Module files", "write", path, "ok")
-    _reload_logical_device(path)
+    _reload_internal(path)
 
 
 # --- pictures ------------------------------------------------------------------
@@ -1223,6 +1255,10 @@ def _filter_friendly(
     out = {}
     for key, value in friendly.items():
         kind, _, raw = str(key).partition(":")
+        if kind == "osc" and re.fullmatch(r"[0-9a-f]{32}", raw):
+            # OSC's names are kept by input uid (D-09-OSC-FILE).
+            out[str(key)] = value
+            continue
         try:
             hid = int(raw)
         except ValueError:

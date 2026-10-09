@@ -540,9 +540,11 @@ def test_map_to_mouse_moves_the_pointer_with_the_axis_in_its_direction() -> None
 @pytest.fixture
 def assign(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
     """The Logical page model, with one stick, the Keyboard and OSC saved as
-    input modules (stand-in files) and a vJoy device used as output."""
+    input modules (stand-in files), two OSC addresses in OSC's shared list
+    and a vJoy device used as output."""
     from gremlin import device_initialization
     from gremlin.modules.claim import key_id
+    from gremlin.osc import OscDevice
     from gremlin.ui import logical_layout
     from gremlin.ui.module_model import KEYBOARD_GUID, OSC_GUID
 
@@ -556,6 +558,7 @@ def assign(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
             "direction": "source",
             "claim": {"keys": [key_id(key_a.scan_code, key_a.is_extended)]},
         },
+        # An old claim in OSC's file is not what Assign Hardware lists.
         "OSC": {"direction": "source", "claim": {"buttons": [7]}},
         "vJoy 1": {"direction": "dest", "claim": {"buttons": [1]}},
     }
@@ -582,6 +585,9 @@ def assign(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
     logical = LogicalDevice()
     logical.create(InputType.JoystickButton)
     logical.create(InputType.JoystickAxis)
+    OscDevice().rows.load_dict({"inputs": []})
+    OscDevice().create(InputType.JoystickButton, label="/fire")
+    OscDevice().create(InputType.JoystickAxis, label="/throttle")
     model = logical_layout.LogicalLayoutModel()
     yield SimpleNamespace(
         model=model,
@@ -593,23 +599,27 @@ def assign(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
     )
     model.deleteLater()
     LogicalDevice().reset()
+    OscDevice().rows.load_dict({"inputs": []})
+    OscDevice().rows.mark_saved()
 
 
 def _listed(rows: list) -> dict[str, list[str]]:
     return {row["name"]: [c["label"] for c in row["controls"]] for row in rows}
 
 
-def test_assign_hardware_lists_claimed_controls_of_the_same_type(
+def test_assign_hardware_lists_claimed_controls_and_osc_inputs_of_the_same_type(
     assign: SimpleNamespace,
 ) -> None:
     buttons = _listed(assign.model.hardware("parent:button:1", ""))
     assert buttons["Stick"] == ["Button 3"]
     assert buttons["Keyboard"] == [assign.key_a.name]  # keys for buttons
-    assert buttons["OSC"] == ["Button 7"]  # OSC too
+    # OSC: its addresses from its own list (D-09-OSC-FILE), not claims.
+    assert buttons["OSC"] == ["/fire"]
     assert "vJoy 1" not in buttons  # a vJoy used as output is no source
     axes = _listed(assign.model.hardware("parent:axis:1", ""))
     assert axes["Stick"] == ["Axis 1"]
     assert "Keyboard" not in axes  # no keys for an axis
+    assert axes["OSC"] == ["/throttle"]
 
 
 def _links(profile: Profile, mode: str) -> list[tuple]:

@@ -280,10 +280,19 @@ def test_the_tray_icon_follows_the_platform_qt_started_on(
 
 @pytest.fixture
 def profile() -> Iterator[Profile]:
+    # The bindings below include OSC Button 1: OSC's file must have it
+    # (D-09-OSC-FILE), or the rule check flags PROFILE-OSC-MISSING.
+    from gremlin.osc import OscDevice
+
+    rows = OscDevice().rows
+    saved = rows.to_dict()
+    if rows.by_number(InputType.JoystickButton, 1) is None:
+        rows.create(InputType.JoystickButton, "/swap/test", input_id=1)
     p = Profile()
     shared_state.current_profile = p
     yield p
     shared_state.current_profile = None
+    rows.load_dict(saved)
 
 
 def test_swap_devices_lists_only_sticks(profile: Profile) -> None:

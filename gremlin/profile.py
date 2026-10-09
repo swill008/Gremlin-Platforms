@@ -32,7 +32,7 @@ from gremlin import (
 )
 from gremlin.edits import EditNoted, edit_count, note_edit
 from gremlin.logical_device import LogicalDevice
-from gremlin.osc import OscDevice
+from gremlin.osc import OSC_DEVICE_UUID, OscDevice
 from gremlin.tree import TreeNode
 from gremlin.types import (
     ActionProperty,
@@ -78,6 +78,27 @@ def _note_signals() -> None:
 
 
 _note_signals()
+
+
+def _refresh_open_osc() -> None:
+    """OSC's rows changed: the open profile's OSC bindings take their uids'
+    numbers again; one whose uid is gone is missing (never runs), one whose
+    uid came back works again (D-09-OSC-FILE decision 2)."""
+    from gremlin import shared_state
+
+    profile = getattr(shared_state, "current_profile", None)
+    if isinstance(profile, Profile):
+        profile.refresh_osc_items()
+
+
+def _osc_signals() -> None:
+    from gremlin.signal import signal
+
+    signal.oscDeviceModified.connect(_refresh_open_osc)
+    signal.oscDeviceReloaded.connect(_refresh_open_osc)
+
+
+_osc_signals()
 
 
 class AbstractVirtualButton(EditNoted, metaclass=ABCMeta):
@@ -1101,6 +1122,10 @@ class Library:
         shown = LogicalDevice()
         logical = shown.to_dict()
         logical_dirty = shown.dirty
+        # OSC's rows too (their own file, D-09-OSC-FILE).
+        osc_rows = OscDevice().rows
+        osc = osc_rows.to_dict()
+        osc_dirty = osc_rows.dirty
         devices = dict(profile.device_database.devices)
         try:
             yield self
@@ -1118,6 +1143,9 @@ class Library:
             if logical_dirty:
                 # load_dict counts as saved; the edits before it weren't.
                 shown._changed()
+            osc_rows.load_dict(osc)
+            if osc_dirty:
+                osc_rows._changed()
             profile.device_database.devices = devices
             note_edit()
             raise
@@ -1464,10 +1492,11 @@ class DeviceDatabase:
 class Profile:
     """Stores the contents and an entire configuration profile."""
 
-    current_version = 15
+    current_version = 16
     # Versions read: 14 (its Logical Device rows move to the module file,
-    # D-04-LD-FILE) and 15 (04 S25).
-    readable_versions = (14, 15)
+    # D-04-LD-FILE), 14 and 15 (their OSC rows move to OSC's module file,
+    # D-09-OSC-FILE) and 16.
+    readable_versions = (14, 15, 16)
 
     def __init__(self, bind: bool = True) -> None:
         self.inputs: dict[uuid.UUID, list[InputItem]] = {}
@@ -1483,11 +1512,8 @@ class Profile:
         self._saved_snapshot: str | None = None
         # The last unsaved answer and the edit count it was worked out at.
         self._unsaved_seen: tuple[int, bool] | None = None
-        # The OSC rows saved with this profile (04 S2). Owned here, so
-        # another Profile object no longer wipes them (GL-074). The Logical
-        # Device is one shared layout in its own module file (04 S2, R3).
-        self._osc_inputs: dict[str, OscDevice.Input] = {}
-        self._osc_by_id: dict[tuple[InputType, int], str] = {}
+        # OSC and the Logical Device are each one shared list in their own
+        # module file (04 S2, R3; D-09-OSC-FILE): nothing per profile.
         # A new profile is the one shown until another is bound; one read
         # without opening it (bind=False, the Device Library, 10 S33) never is.
         self._bind = bind
@@ -1502,17 +1528,23 @@ class Profile:
         # added to the file only when this profile is saved (lead ruling
         # 2026-10-09: browsing the Library adds no controls).
         self.pending_logical_rows: dict | None = None
+        # The same for the OSC rows of a version 14 or 15 profile
+        # (D-09-OSC-FILE decision 3): addresses added to OSC's file (the
+        # one-time note), the old file and its version (backed up on the
+        # first save over it), the rows a bind=False read keeps for a save
+        # (OscRows.to_dict form) and the duplicate addresses skipped.
+        self.osc_migration_note: list[str] = []
+        self._osc_old_source: tuple[Path, int] | None = None
+        self.pending_osc_rows: dict | None = None
+        self._pending_osc_version: int | None = None
+        self._osc_skipped: list[str] = []
         if bind:
             self.bind_devices()
 
     def bind_devices(self) -> None:
-        """OscDevice() shows this profile's rows (the open profile; the
-        Backend binds it whenever the open profile changes). The Logical
-        Device is the same for every profile (its module file)."""
-        osc = OscDevice()
-        # Shared, not copied: edits through OscDevice() land in this profile.
-        osc._inputs = self._osc_inputs
-        osc._by_id = self._osc_by_id
+        """Nothing to bind any more: OSC and the Logical Device are the same
+        for every profile (their module files, D-09-OSC-FILE). Kept for the
+        Backend, which calls it whenever the open profile changes."""
 
     def from_xml(self, fpath: Path) -> None:
         """Reads the content of an XML file and initializes the profile.
@@ -1542,15 +1574,17 @@ class Profile:
                 f"{readable} can be read."
             )
 
-        from gremlin import logical_device_file
+        from gremlin import logical_device_file, osc_device_file
 
-        migrated = self._migrate_logical_device(root, fpath, version)
         try:
+            migrated = self._migrate_logical_device(root, fpath, version)
+            osc_moved = self._migrate_osc_device(root, fpath, version)
             self._read_root(root, fpath)
         finally:
             logical_device_file.current_uid_map = None
-        if migrated:
-            # Changed: the next Save writes version 15 without the rows.
+            osc_device_file.current_uid_map = None
+        if migrated or osc_moved:
+            # Changed: the next Save writes version 16 without the rows.
             self._saved_snapshot = None
             self._unsaved_seen = None
 
@@ -1637,6 +1671,144 @@ class Profile:
         self.logical_migration_note = list(result.added)
         self.pending_logical_rows = None
 
+    def _migrate_osc_device(
+        self, root: ElementTree.Element, fpath: Path, version: int
+    ) -> bool:
+        """A version 14 or 15 profile's OSC rows go to OSC's module file
+        (matched by type, number and address, else added with a new number)
+        and its bindings follow them while it loads (current_uid_map); the
+        original file is backed up on the first save over it (D-09-OSC-FILE
+        decision 3). Read without opening it (bind=False), nothing changes:
+        the rows wait in pending_osc_rows for a save. A duplicate address is
+        skipped with a load warning, never refusing the profile. True when
+        the profile has rows to move."""
+        from gremlin import osc_device_file
+
+        self.osc_migration_note = []
+        self.pending_osc_rows = None
+        self._pending_osc_version = None
+        self._osc_old_source = None
+        self._osc_skipped = []
+        osc_device_file.current_uid_map = None
+        if version >= 16:
+            return False
+        section = root.find("osc-device")
+        if section is None:
+            return False
+        rows, self._osc_skipped = self._osc_rows_dict(section)
+        if not rows["inputs"]:
+            return False
+        if not self._bind:
+            result = osc_device_file.merge_profile_rows(rows, dry_run=True)
+            for entry in rows["inputs"]:
+                uid = result.uid_map.get((entry["type"], entry["id"]))
+                if uid:
+                    entry["uid"] = uid
+            self.pending_osc_rows = rows
+            self._pending_osc_version = version
+            osc_device_file.current_uid_map = dict(result.uid_map)
+            return True
+        result = osc_device_file.merge_profile_rows(rows)
+        osc_device_file.current_uid_map = dict(result.uid_map)
+        self._osc_old_source = (Path(fpath), version)
+        self.osc_migration_note = list(result.added)
+        return True
+
+    @staticmethod
+    def _osc_rows_dict(section: ElementTree.Element) -> tuple[dict, list[str]]:
+        """An old <osc-device> section as OSC's dict (OscRows.to_dict,
+        without uids) and the addresses skipped (a duplicate, or not an
+        axis or button). Old axis rows read -1..1 so they behave as before."""
+        inputs: list[dict] = []
+        skipped: list[str] = []
+        seen: set[str] = set()
+        for node in section.findall("./input"):
+            try:
+                kind = read_subelement(node, "input-type")
+                input_id = int(read_subelement(node, "input-id"))
+                label = str(read_subelement(node, "label")).strip().casefold()
+            except Exception:  # noqa: BLE001 - a damaged row is skipped
+                skipped.append("(unreadable row)")
+                continue
+            if (
+                kind not in (InputType.JoystickAxis, InputType.JoystickButton)
+                or not label
+                or label in seen
+            ):
+                skipped.append(label or "(no address)")
+                continue
+            seen.add(label)
+            axis = kind == InputType.JoystickAxis
+            inputs.append(
+                {
+                    "type": InputType.to_string(kind),
+                    "id": input_id,
+                    "label": label,
+                    "mode": "axis" if axis else "button",
+                    "cmd_mode": "message",
+                    "data": [],
+                    "source": 0,
+                    "range_min": -1.0 if axis else 0.0,
+                    "range_max": 1.0,
+                    "trigger": None,
+                    "delay_ms": None,
+                }
+            )
+        return {"inputs": inputs}, skipped
+
+    def _back_up_old_osc_before_writing(self, fpath: Path) -> None:
+        """The first save over the version 14 or 15 file this profile was
+        opened from keeps that file as <name>.xml.v<version>.bak."""
+        source = self._osc_old_source
+        if source is None:
+            return
+        try:
+            same = source[0].resolve() == fpath.resolve()
+        except OSError:
+            same = False
+        if same:
+            from gremlin import osc_device_file
+
+            osc_device_file.backup_old(fpath, source[1])
+            self._osc_old_source = None
+
+    def refresh_osc_items(self) -> None:
+        """Every OSC input item takes its uid's current number (or is
+        flagged missing): after OSC's rows change, and before a Run."""
+        for items in self.inputs.values():
+            for item in items:
+                item.refresh_osc()
+
+    def commit_pending_osc_rows(self, fpath: Path) -> None:
+        """Before a profile read with bind=False is saved over its version
+        14 or 15 file: back the file up and add its OSC rows to OSC's file
+        for real, with the uids its bindings were given; the bindings then
+        take the rows' numbers. Nothing to do otherwise."""
+        rows = self.pending_osc_rows
+        if rows is None:
+            return
+        from gremlin import osc_device_file
+
+        osc_device_file.backup_old(Path(fpath), self._pending_osc_version or 15)
+        result = osc_device_file.merge_profile_rows(rows)
+        provisional = {
+            (e["type"], e["id"]): e["uid"] for e in rows["inputs"] if "uid" in e
+        }
+        moved = {
+            key: uid
+            for key, uid in result.uid_map.items()
+            if provisional.get(key, uid) != uid
+        }
+        if moved:
+            logging.getLogger("system").warning(
+                "OSC inputs matched differently on save than when the "
+                f"profile was read: {sorted(moved)}"
+            )
+        self.osc_migration_note = list(result.added)
+        self.pending_osc_rows = None
+        self._pending_osc_version = None
+        self.refresh_osc_items()
+
     @staticmethod
     def _logical_rows_dict(section: ElementTree.Element) -> dict:
         """A version 14 <logical-device> section as the Logical Device's
@@ -1682,9 +1854,15 @@ class Profile:
         # Create library entries and modes.
         self.fpath = fpath
         self.settings.from_xml(root)
-        self._osc_devices_from_xml(root)
         self.library.from_xml(root)
         self.load_warnings = []
+        if self._osc_skipped:
+            self.load_warnings.append(
+                "Some OSC inputs in this profile were left out (an address "
+                "listed twice, or not an axis or button): "
+                + ", ".join(self._osc_skipped)
+                + "."
+            )
         if self.library.unknown_types:
             self.load_warnings.append(
                 "This profile has actions of a type this program doesn't have: "
@@ -1701,6 +1879,7 @@ class Profile:
         for node in root.findall("./inputs/input"):
             self._process_input(node)
         self._warn_unlisted_modes()
+        self._warn_missing_osc()
 
         self._set_saved(self._xml_text())
 
@@ -1716,6 +1895,26 @@ class Profile:
             "Last Active is used instead."
         )
         self.settings.startup_mode = "Last Active"
+
+    def _warn_missing_osc(self) -> None:
+        """Bindings on OSC inputs OSC's file doesn't have are kept (they
+        point at their uid, never re-targeted) and named in a load warning
+        (D-09-OSC-FILE decision 2)."""
+        if self.pending_osc_rows is not None:
+            # Read without opening: its rows are added only when saved.
+            return
+        count = sum(
+            1
+            for items in self.inputs.values()
+            for item in items
+            if item.osc_missing and item.action_sequences
+        )
+        if count:
+            self.load_warnings.append(
+                f"{count} binding{'' if count == 1 else 's'} in this profile "
+                f"{'is' if count == 1 else 'are'} on OSC inputs that no longer "
+                "exist; they are kept but do nothing."
+            )
 
     def _warn_unlisted_modes(self) -> None:
         """Inputs saved in a mode the mode list doesn't have never show and
@@ -1753,7 +1952,9 @@ class Profile:
         # (GL-153, 04 Q18, R14).
         self.device_database.update_for_uuids(self.inputs)
         self.commit_pending_logical_rows(Path(fpath))
+        self.commit_pending_osc_rows(Path(fpath))
         self._back_up_v14_before_writing(Path(fpath))
+        self._back_up_old_osc_before_writing(Path(fpath))
         text = self._xml_text()
         # Safely (a temporary file, then a swap), as module files are: a
         # crash mid-save leaves the old profile whole.
@@ -1761,11 +1962,12 @@ class Profile:
 
         module_file.write_text(Path(fpath), text, encoding="utf-8-sig", newline="")
         if self._bind:
-            # Save also saves the Logical Device's file when it changed
-            # (D-04-LD-FILE decision 2).
-            from gremlin import logical_device_file
+            # Save also saves the Logical Device's and OSC's files when they
+            # changed (D-04-LD-FILE decision 2, D-09-OSC-FILE decision 1).
+            from gremlin import logical_device_file, osc_device_file
 
             logical_device_file.save_if_dirty()
+            osc_device_file.save_if_dirty()
         before = self._saved_snapshot
         self._set_saved(text)
         if before != text:
@@ -1793,7 +1995,6 @@ class Profile:
 
         # Managed content.
         root.append(self.settings.to_xml())
-        root.append(self._osc_devices_to_xml())
         # Only what an input uses: what was deleted or replaced (kept in
         # memory for Undo) and editor drafts stay out of the file.
         root.append(self.library.to_xml(self.actions_in_use()))
@@ -2047,9 +2248,12 @@ class Profile:
         return self.has_unsaved_changes()
 
     def _logical_unsaved(self) -> bool:
-        """The Logical Device's file has changes its Save writes (the open
-        profile's "*" covers them, D-04-LD-FILE decision 2)."""
-        return self._bind and bool(LogicalDevice().dirty)
+        """The Logical Device's or OSC's file has changes its Save writes
+        (the open profile's "*" covers them, D-04-LD-FILE decision 2,
+        D-09-OSC-FILE decision 1)."""
+        return self._bind and (
+            bool(LogicalDevice().dirty) or bool(OscDevice().rows.dirty)
+        )
 
     def note_edit(self) -> None:
         """Something this profile saves changed where no hook sees it."""
@@ -2078,37 +2282,6 @@ class Profile:
             self.inputs[item.device_id] = []
         self.inputs[item.device_id].append(item)
 
-    def _osc_devices_from_xml(self, root_node: ElementTree.Element) -> None:
-        # Into this profile's own rows (cleared in place: OscDevice() may be
-        # showing them), with the checks OscDevice.create makes.
-        note_edit()
-        self._osc_inputs.clear()
-        self._osc_by_id.clear()
-        for node in root_node.findall("./osc-device/input"):
-            kind = read_subelement(node, "input-type")
-            if kind not in (InputType.JoystickAxis, InputType.JoystickButton):
-                raise error.GremlinError(
-                    f"OSC inputs must be axis or button, got {kind}"
-                )
-            input_id = int(read_subelement(node, "input-id"))
-            label = str(read_subelement(node, "label")).casefold()
-            if label in self._osc_inputs:
-                raise error.GremlinError(f"OSC address '{label}' already exists")
-            self._osc_inputs[label] = OscDevice.Input(label, input_id, kind)
-            self._osc_by_id[(kind, input_id)] = label
-
-    def _osc_devices_to_xml(self) -> ElementTree.Element:
-        node = ElementTree.Element("osc-device")
-        for item in sorted(
-            self._osc_inputs.values(), key=lambda x: (x.type.name, x.id)
-        ):
-            input_node = ElementTree.Element("input")
-            input_node.append(create_subelement_node("input-type", item.type))
-            input_node.append(create_subelement_node("input-id", item.id))
-            input_node.append(create_subelement_node("label", item.label))
-            node.append(input_node)
-        return node
-
 
 class InputItem(EditNoted):
     """Represents the configuration of a single input in a particular mode."""
@@ -2129,12 +2302,21 @@ class InputItem(EditNoted):
         self.is_active = True
         # The user's name for this input (05 Q15), saved as <action-name>.
         self.action_name: str = ""
+        # An OSC input's permanent id (D-09-OSC-FILE decision 2), saved as
+        # <osc-uid>; osc_missing: OSC's file has no input with it.
+        self.osc_uid: str | None = None
+        self.osc_missing = False
 
     def from_xml(self, node: ElementTree.Element) -> None:
         self.device_id = read_subelement(node, "device-id")
         self.input_type = read_subelement(node, "input-type")
         self.input_id = read_subelement(node, "input-id")
         self.mode = read_subelement(node, "mode")
+        if self.device_id == OSC_DEVICE_UUID:
+            uid_node = node.find("osc-uid")
+            uid = (uid_node.text or "").strip() if uid_node is not None else ""
+            self.osc_uid = uid or None
+            self.refresh_osc()
 
         # If the input is from a keyboard convert the input id into
         # the scan code and extended input flag
@@ -2165,6 +2347,12 @@ class InputItem(EditNoted):
             assert isinstance(self.input_id, tuple) and len(self.input_id) == 2
             input_id = self.input_id[1] << 8 | self.input_id[0]
         node.append(create_subelement_node("input-id", input_id))
+        if self.device_id == OSC_DEVICE_UUID:
+            uid = self.osc_uid
+            if not uid and isinstance(input_id, int):
+                uid = OscDevice().rows.uid_of(self.input_type, input_id)
+            if uid:
+                ElementTree.SubElement(node, "osc-uid").text = uid
 
         # Action configurations
         for entry in self.action_sequences:
@@ -2174,6 +2362,22 @@ class InputItem(EditNoted):
             ElementTree.SubElement(node, "action-name").text = self.action_name
 
         return node
+
+    def refresh_osc(self) -> None:
+        """An OSC input item takes the current number of its uid (from its
+        <osc-uid>, else an old profile's load map, else type+number); a uid
+        OSC's file doesn't have leaves it as it was, flagged missing."""
+        if self.device_id != OSC_DEVICE_UUID:
+            return
+        from gremlin.osc_persist import resolve_osc_reference
+
+        number = self.input_id if isinstance(self.input_id, int) else None
+        ident, uid = resolve_osc_reference(self.osc_uid, self.input_type, number)
+        self.osc_uid = uid
+        self.osc_missing = ident is None
+        if ident is not None:
+            # osc_rows.Identifier: (type, id).
+            self.input_type, self.input_id = ident[0], int(ident[1])
 
     def descriptor(self) -> str:
         """Returns a string representation describing the input item.

@@ -57,6 +57,13 @@ OSC_GUID = str(ids.OSC).upper()
 XBOX_GUID = str(ids.XBOX).upper()
 LOGICAL_GUID = str(ids.LOGICAL_DEVICE).upper()
 
+
+def osc_friendly_key(uid: str) -> str:
+    """Where an OSC input's friendly name is kept in OSC's claim: by its
+    permanent uid (D-09-OSC-FILE point 2)."""
+    return f"osc:{uid}"
+
+
 # The window Module Setup's imports (and their Undo) belong to.
 _IMPORT_WINDOW = "Configure Module"
 
@@ -2085,29 +2092,28 @@ class DriverInputModel(QtCore.QAbstractListModel):
         return guid_key(self._guid) == guid_key(OSC_GUID)
 
     def _load_osc(self, claim: dict) -> None:
+        """OSC's inputs from the one shared list (OSC's own file,
+        D-09-OSC-FILE); friendly names are kept by the input's uid."""
         from gremlin.osc import OscDevice
         from gremlin.types import InputType
 
-        osc = OscDevice()
         claimed_btn = {int(x) for x in (claim.get("buttons") or [])}
         claimed_axis = {int(x) for x in (claim.get("axes") or [])}
         friendly = claim.get("friendly") or {}
         rows: list[dict] = []
-        for label in osc.labels_of_type():
-            item = osc.find_address(label)
-            if item is None:
-                continue
-            if item.type == InputType.JoystickAxis:
-                kind, claimed = "axis", item.id in claimed_axis
+        for item in OscDevice().rows.rows():
+            if item.input_type == InputType.JoystickAxis:
+                kind, claimed = "axis", item.input_id in claimed_axis
             else:
-                kind, claimed = "button", item.id in claimed_btn
+                kind, claimed = "button", item.input_id in claimed_btn
             rows.append(
                 {
                     "kind": kind,
-                    "hwId": int(item.id),
+                    "hwId": int(item.input_id),
+                    "uid": item.uid,
                     "label": item.label,
                     "claimed": claimed if (claimed_btn or claimed_axis) else True,
-                    "friendly": friendly.get(f"{kind}:{int(item.id)}", ""),
+                    "friendly": str(friendly.get(osc_friendly_key(item.uid)) or ""),
                     "lit": False,
                 }
             )
@@ -2116,6 +2122,12 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._forget_steps()
         self.endResetModel()
         self.changed.emit()
+
+    @QtCore.Property(bool, notify=changed)
+    def isOsc(self) -> bool:
+        """The loaded device is OSC (its Module Setup shows the Server
+        section)."""
+        return self._is_osc()
 
     def _load_keyboard(self, claim: dict) -> None:
         saved = {int(k) for k in (claim.get("keys") or [])}
@@ -2407,7 +2419,13 @@ class DriverInputModel(QtCore.QAbstractListModel):
         friendly = {}
         for r in self._rows:
             if r["claimed"] and r.get("friendly"):
-                friendly[f"{r['kind']}:{int(r['hwId'])}"] = str(r["friendly"])
+                # OSC's inputs by their uid: the number is only a name.
+                key = (
+                    osc_friendly_key(r["uid"])
+                    if r.get("uid")
+                    else f"{r['kind']}:{int(r['hwId'])}"
+                )
+                friendly[key] = str(r["friendly"])
 
         def change(doc: dict) -> None:
             doc["kind"] = "control.hardware"

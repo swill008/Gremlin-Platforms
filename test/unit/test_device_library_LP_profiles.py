@@ -148,7 +148,7 @@ def test_read_profile_reasons_and_shared_logical_device_kept(folders: dict) -> N
         # A version 14 profile with rows of its own: read, not merged.
         old = profiles / "old.xml"
         text = (profiles / "good.xml").read_text(encoding="utf-8-sig")
-        text = text.replace('version="15"', 'version="14"', 1).replace(
+        text = text.replace('version="16"', 'version="14"', 1).replace(
             "</profile>",
             "<logical-device><input><input-type>button</input-type>"
             "<input-id>5</input-id><label>Old</label></input></logical-device>"

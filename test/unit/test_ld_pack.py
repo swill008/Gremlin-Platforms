@@ -167,5 +167,5 @@ def test_saving_a_saved_v14_profile_keeps_its_logical_rows(
     labels = [c["label"] for c in logical_device_file.read_layout()["controls"]]
     assert sorted(labels) == ["Button 1", "Other"]
     assert path.with_name(path.name + ".v14.bak").is_file()
-    assert ElementTree.parse(path).getroot().get("version") == "15"
+    assert ElementTree.parse(path).getroot().get("version") == "16"
 

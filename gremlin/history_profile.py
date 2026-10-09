@@ -29,11 +29,10 @@ from gremlin import history
 _UUID = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
-# The Logical Device is not here: it has its own module file, whose
-# History records it (08 S4, S46).
+# The Logical Device and OSC are not here: each has its own module file,
+# whose History records it (08 S4, S46; D-09-OSC-FILE).
 SECTIONS = {
     "settings": "Profile Settings",
-    "osc-device": "the OSC inputs",
     "modes": "the modes",
     "scripts": "the scripts",
 }

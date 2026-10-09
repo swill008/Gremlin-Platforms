@@ -142,16 +142,9 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ]),
     ]),
     ("OSC", [
-        ("Connection", [
-            ("osc", "connection", "enabled"),
-            ("osc", "connection", "input-host"),
-            ("osc", "connection", "output-address"),
-        ]),
-        ("Messages", [
-            ("osc", "connection", "autorelease-no-arg"),
-            ("osc", "connection", "delay-presets"),
-            ("osc", "connection", "pad-args"),
-        ]),
+        # OSC's settings are in its own file, edited in OSC › Module Setup
+        # (D-09-OSC-FILE point 4); Options only points there.
+        ("", [("osc", "connection", "module-setup")]),
     ]),
     ("Folders", [
         # Each folder its own untitled card, the page showing between them.

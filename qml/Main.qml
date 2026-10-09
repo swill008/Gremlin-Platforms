@@ -1389,9 +1389,12 @@ ApplicationWindow {
         }
         onDiscardChosen: {
             var action = takeAction()
-            // The Logical Device's edits are discarded with the profile's.
-            if (backend)
+            // The Logical Device's and OSC's edits are discarded with the
+            // profile's (D-04-LD-FILE, D-09-OSC-FILE).
+            if (backend) {
                 backend.discardLogicalDevice()
+                backend.discardOscDevice()
+            }
             if (action)
                 action()
         }
@@ -2091,6 +2094,14 @@ ApplicationWindow {
             _notificationDialog.title = title
             _notificationDialog.text = message
             _notificationDialog.open()
+        }
+
+        // Options' OSC line: OSC's Module Setup, as its card opens it
+        // (D-09-OSC-FILE).
+        function onOpenOscModuleSetup() {
+            var card = _cardForGuid(uiState ? uiState.oscDeviceGuid : "")
+            if (card && card.slug)
+                _root.openConfigureModule("source", card)
         }
     }
 

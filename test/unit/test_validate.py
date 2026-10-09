@@ -250,9 +250,12 @@ def test_the_logical_check_makes_no_logical_device(
 ) -> None:
     # Report only: with no Logical Device yet the check skips, makes none.
     _bind(profile, 1, name="Map to Logical Device")
-    monkeypatch.delitem(SingletonMetaclass._instances, LogicalDevice, raising=False)
-    assert validate.profile(profile) == []
-    assert LogicalDevice not in SingletonMetaclass._instances
+    # Put the shared one back before the fixtures tidy up: undone at the end
+    # of the test, the Logical Device keeper would tidy a stand-in instead.
+    with monkeypatch.context() as patch:
+        patch.delitem(SingletonMetaclass._instances, LogicalDevice, raising=False)
+        assert validate.profile(profile) == []
+        assert LogicalDevice not in SingletonMetaclass._instances
 
 
 def test_the_profile_check_never_raises() -> None:

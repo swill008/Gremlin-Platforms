@@ -24,7 +24,7 @@ function topics() {
                 + "<li><b>Actions</b>: the <b>Add Action Menu</b> (which actions it offers and their order), then Macro, Change Mode, Double Tap, Smart Toggle, Tempo, Axis Delta, Play Sound and Text to Speech.</li>"
                 + "<li><b>Profiles</b>: <b>Auto-load</b>: Load profiles automatically when a chosen program comes to the front, the programs and their profiles, and Keep running when the program loses focus. See <a href=\"topic:options-profile-auto-load\">Load a profile automatically for a game</a>.</li>"
                 + "<li><b>Home</b>: <b>Cards</b>: Compact view, Show devices without a module, Keep last value after release, and <b>Reset All Card Sizes</b>.</li>"
-                + "<li><b>OSC</b>: <b>Connection</b> (Enabled, Input host and port, Output address) and <b>Messages</b> (auto-release of address-only messages, the delay presets, and treating address-only messages as 1.0). See <a href=\"topic:options-profile-osc\">OSC options</a>.</li>"
+                + "<li><b>OSC</b>: <b>Server</b>: one line with a button, <b>OSC settings are in OSC › Module Setup</b>; the server settings themselves are in the Server section of OSC's Module Setup. See <a href=\"topic:options-profile-osc\">Set up OSC</a>.</li>"
                 + "<li><b>Folders</b>: the data folder, and the profiles, modules, scripts, export, logs, history and plugins folders. See <a href=\"topic:options-profile-folders\">Change where files are kept</a>.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
@@ -169,16 +169,34 @@ function topics() {
         {
             id: "options-profile-osc",
             section: "Options",
-            title: "OSC options",
-            body: "<p>The <b>OSC</b> section of Options sets where the program listens for OSC messages and where it sends them.</p>"
+            title: "Set up OSC",
+            body: "<p>OSC lets a network sender, such as a Stream Deck through Bitfocus Companion or a phone app, press buttons and move axes in the program. OSC is an internal input, like the Keyboard and the Logical Device: one list of OSC inputs, kept in OSC's own module file and used by every profile.</p>"
+                + "<h4>Server settings</h4>"
+                + "<p>Open the <b>OSC</b> card's menu and choose <b>Module Setup…</b>. Its <b>Server</b> section holds:</p>"
                 + "<ul>"
                 + "<li><b>Enabled</b>: turns OSC on.</li>"
-                + "<li><b>Input host</b> <a href=\"show:option/Input host\">Show me ›</a> and <b>Port</b>: the address the program listens on. The list offers this PC's IPv4 addresses, 127.0.0.1 and 0.0.0.0, and you can type another. The ↻ button scans this PC's addresses again.</li>"
-                + "<li>Output address <a href=\"show:option/Output address\">Show me ›</a>: where the program sends OSC messages.</li>"
-                + "<li><b>Messages</b>: auto-release of address-only messages, the delay presets, and treating address-only messages as 1.0.</li>"
+                + "<li><b>Host</b>: leave it blank to listen on every address of this PC, or type an IP address or a name. The program checks it before saving.</li>"
+                + "<li><b>Port</b>: the port your OSC sender sends to (8001 unless you change it).</li>"
+                + "<li><b>Output host</b> and <b>Output port</b> (127.0.0.1 and 8000): used once OSC output is built.</li>"
+                + "<li>Auto-release of address-only messages and its delay (250 ms unless you change it).</li>"
                 + "</ul>"
+                + "<p>Changes take effect at once, also while the profile runs. The settings travel with OSC's module file: Save to Device Library, Restore, Export and Device Pack carry them.</p>"
+                + "<h4>Add an OSC input</h4>"
+                + "<ol>"
+                + "<li>On the <b>OSC</b> page, choose <b>Add</b>.</li>"
+                + "<li>Type the address (it starts with \"/\"), or choose <b>Listen</b> and send one message from your sender. Listen ends when that message arrives; <b>Stop</b> in the Listening box stops listening. With <b>Bulk capture</b> ticked, each new address becomes an input until you untick it.</li>"
+                + "<li>Choose the mode: <b>Button</b>, <b>Axis</b> or <b>Change</b> (presses when the value changes). For an axis, <b>Min:</b> and <b>Max:</b> set the range of values that maps to the whole axis (0 to 1 unless you change them).</li>"
+                + "<li>Choose <b>Message only</b>, or <b>Message + data</b> to match the values in <b>Data:</b> too. <b>Source value:</b> chooses which value to read (P1, P2 …).</li>"
+                + "<li>Tick <b>Trigger on message</b> to press and release on any message, after the delay next to it.</li>"
+                + "<li>Choose <b>OK</b>.</li>"
+                + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
+                + "<li>To change an input later, click its pencil: <b>Change Address…</b> edits the address (it starts with \"/\"; a duplicate is refused with the reason), and <b>Edit Settings…</b> opens <b>OSC Input Settings</b> with the same choices as Add. The input keeps its actions either way. An input that has actions can't switch between Axis and the other modes: remove this input's actions first.</li>"
+                + "<li><b>Import</b> takes one address per line. Add a suffix after a space or a comma: A axis, B button, BNP button with Trigger on message, C change. E (encoder) is not supported yet and makes a button. The result line says \"Added N, skipped M\".</li>"
+                + "<li>Several inputs can share an address when their data or value differ.</li>"
+                + "<li>Deleting an input asks first; you can restore it from Tools › History.</li>"
+                + "<li>Profiles from older versions keep working: their OSC inputs are added to OSC's list the first time you open them, and a copy of the old file is kept beside it when you first save.</li>"
                 + "<li>If the port can't be opened, for example because another program uses it, Run still runs the rest of the profile and shows one error: \"Could not bind OSC on host:port.\", with the host and port.</li>"
                 + "</ul>",
             related: ["options-profile-options"]

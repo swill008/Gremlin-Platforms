@@ -4,8 +4,9 @@
 """Profiles and the Logical Device's own module file (D-04-LD-FILE, 04 S2,
 S25, R3): version 14 profiles have their rows moved into the file (match by
 type, number and label, else added), references repointed by uid, a backup
-kept, and are saved as version 15 without a <logical-device> section; a
-profile only read (bind=False) changes nothing until it is saved."""
+kept, and are saved as version 16 (15 before D-09-OSC-FILE) without a
+<logical-device> section; a profile only read (bind=False) changes nothing
+until it is saved."""
 
 from __future__ import annotations
 
@@ -111,7 +112,7 @@ def test_v14_rows_added_to_file_refs_repointed_backup_saved_as_15(
 
     profile.to_xml(path)
     root = ElementTree.parse(path).getroot()
-    assert root.get("version") == "15"
+    assert root.get("version") == "16"
     assert root.find("logical-device") is None
     action = _map_action(path)
     assert _prop(action, "logical-input-uid") == added
@@ -119,7 +120,7 @@ def test_v14_rows_added_to_file_refs_repointed_backup_saved_as_15(
     assert backup.read_bytes() == original
     assert not profile.has_unsaved_changes()
 
-    # Read again as version 15: the reference still finds the added control.
+    # Read again as version 16: the reference still finds the added control.
     again = Profile()
     again.from_xml(path)
     assert again.logical_migration_note == []
@@ -161,7 +162,7 @@ def test_v14_read_without_opening_changes_nothing_until_saved(
     assert added
     assert any(c["uid"] == added for c in ldf.read_layout()["controls"])
     assert _prop(_map_action(path), "logical-input-uid") == added
-    assert ElementTree.parse(path).getroot().get("version") == "15"
+    assert ElementTree.parse(path).getroot().get("version") == "16"
 
 
 def test_other_versions_refused(modules: Path, tmp_path: Path) -> None:

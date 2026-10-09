@@ -2,11 +2,11 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Options › OSC (01 S44, D-01-OSC-HOST-CLOSE): a host or port typed into
-the OSC boxes is saved when Options closes with the cursor still in the
-box, like every other Options text box. It was lost: only Tab or Enter
-saved it. The page runs off-screen in its own process
-(handson_F8_osc_close_smoke.py)."""
+"""OSC's server settings (01 S44, D-01-OSC-HOST-CLOSE; since D-09-OSC-FILE
+in OSC's Module Setup "Server" section, saved to OSC's file): a host, port
+or delay typed into a box is saved when the window closes with the cursor
+still in the box. It was lost once: only Tab or Enter saved it. The section
+runs off-screen in its own process (handson_F8_osc_close_smoke.py)."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def _run(tmp_path: pathlib.Path) -> dict[str, str]:
     lines = result.stdout.splitlines()
     assert "done" in lines, result.stdout[-2000:] + result.stderr[-2000:]
     assert [line for line in lines if line.startswith("ERROR")] == []
-    ours = ("OptionOscInputHost.qml", "OptionOscOutputHost.qml")
+    ours = ("OscServerSection.qml",)
     warned = [
         line for line in lines
         if line.startswith("WARN") and any(f in line for f in ours)
@@ -49,12 +49,18 @@ def _run(tmp_path: pathlib.Path) -> dict[str, str]:
     }
 
 
-def test_osc_host_and_port_save_when_options_closes(tmp_path: pathlib.Path) -> None:
+def test_osc_server_boxes_save_to_the_file_when_module_setup_closes(
+    tmp_path: pathlib.Path,
+) -> None:
     got = _run(tmp_path)
-    for page in ("input", "output"):
-        assert got[f"{page}-focus"] == "True", got
-        assert got[f"{page}-port-focus"] == "True", got
-        assert got[f"{page}-host-before"] != "127.0.0.5", got
-        assert got[f"{page}-host-after"] == "127.0.0.5", got
-        assert got[f"{page}-port-before"] != "9123", got
-        assert got[f"{page}-port-after"] == "9123", got
+    typed = {
+        "host": "studio-pc",
+        "port": "9123",
+        "output_host": "127.0.0.5",
+        "output_port": "9124",
+        "autorelease_delay_ms": "400",
+    }
+    for key, text in typed.items():
+        assert got[f"{key}-focus"] == "True", got
+        assert got[f"{key}-before"] != text, got
+        assert got[f"{key}-after"] == text, got

@@ -65,6 +65,12 @@ def _assign_input_modules() -> list[dict]:
         key = guid_key(guid) or name.lower()
         if key in seen or key == logical:
             return
+        if bus == "osc":
+            # OSC's inputs are the rows in its file (D-09-OSC-FILE), never a
+            # claim.
+            seen.add(key)
+            rows.append({"name": name, "guid": guid, "bus": bus, "claim": {}})
+            return
         # By name and id (twin sticks each have their own file, 03 S77).
         if not store.exists(name, guid):
             return
@@ -94,6 +100,35 @@ def _assign_input_modules() -> list[dict]:
         add(f"vJoy {vdev.vjoy_id}", str(vdev.device_guid.uuid), "vjoy-input")
     rows.sort(key=lambda row: row["name"].lower())
     return rows
+
+
+def _is_osc(guid: object) -> bool:
+    return guid_key(str(guid)) == guid_key(OSC_GUID)
+
+
+def _osc_ref(
+    record: dict, src_type: InputType, src_id: object
+) -> tuple[InputType, Any, str | None] | None:
+    """An Assign Hardware link from an OSC input, by its permanent id
+    ("osc_uid"; D-09-OSC-FILE 2): its current type and number. None: OSC's
+    file doesn't have it (never re-targeted by number)."""
+    from gremlin.osc_persist import resolve_osc_reference
+
+    ident, uid = resolve_osc_reference(
+        record.get("osc_uid") or None, src_type, int(src_id)  # type: ignore[arg-type]
+    )
+    if ident is None:
+        return None
+    return ident.type, int(ident.id), uid
+
+
+def _osc_uid_of(src_type: InputType, src_id: object) -> str | None:
+    from gremlin.osc_persist import osc_rows
+
+    try:
+        return osc_rows().uid_of(src_type, int(src_id))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
 
 
 def _kind_word(kind: InputType) -> str:
@@ -436,6 +471,10 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
             "scale": float(getattr(action, "axis_scaling", 1.0) or 1.0),
             "invert": bool(getattr(action, "button_inverted", False)),
         }
+        if _is_osc(item.device_id):
+            record["osc_uid"] = getattr(item, "osc_uid", None) or _osc_uid_of(
+                item.input_type, item.input_id
+            )
         # Where the link sits: Undo puts it back into that binding, with its
         # behaviour (a button-behaviour link on an axis stays one).
         if (
@@ -490,11 +529,19 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         src_id = record["src_id"]
         if isinstance(src_id, list):
             src_id = tuple(src_id)
+        osc_uid = None
+        if _is_osc(guid):
+            found = _osc_ref(record, src_type, src_id)
+            if found is None:
+                return None
+            src_type, src_id, osc_uid = found
         item = profile.get_input_item(
             guid, src_type, src_id, str(record["mode"]), create_if_missing=True
         )
         if item is None:
             return None
+        if osc_uid:
+            item.osc_uid = osc_uid  # type: ignore[attr-defined]
         logical_type = record["logical_type"]
         logical_id = int(record["logical_id"])
         for _item, _binding, action in self._links_for(logical_type, logical_id):
@@ -570,8 +617,14 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
         src_id = record["src_id"]
         if isinstance(src_id, list):
             src_id = tuple(src_id)
+        src_type = record["src_type"]
+        if _is_osc(guid):
+            found = _osc_ref(record, src_type, src_id)
+            if found is None:
+                return False
+            src_type, src_id, _uid = found
         item = profile.get_input_item(
-            guid, record["src_type"], src_id, str(record["mode"]), create_if_missing=False
+            guid, src_type, src_id, str(record["mode"]), create_if_missing=False
         )
         if item is None:
             return False
@@ -1253,6 +1306,27 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                         }
                     )
                 controls.sort(key=lambda row: row["label"].lower())
+            elif module["bus"] == "osc":
+                from gremlin.osc_persist import osc_rows
+
+                guid = module["guid"]
+                guid_obj = uuid.UUID(str(guid))
+                for row in sorted(osc_rows().rows(), key=lambda r: r.input_id):
+                    if row.input_type != logical_kind:
+                        continue
+                    label = row.label
+                    if needle and needle not in (label + " " + module["name"]).lower():
+                        continue
+                    controls.append(
+                        {
+                            "key": self._control_key(str(guid), word, row.input_id, 0),
+                            "label": label,
+                            "on": self._linked_now(
+                                logical_kind, logical_id, guid_obj,
+                                row.input_type, row.input_id,
+                            ),
+                        }
+                    )
             else:
                 src_type = logical_kind
                 for number in claim_ids(claim, word):
@@ -1300,6 +1374,8 @@ class LogicalLayoutModel(QtCore.QAbstractListModel):
                     "scale": 1.0,
                     "invert": False,
                 }
+                if _is_osc(guid):
+                    record["osc_uid"] = _osc_uid_of(src_type, src_id)
                 linked = self._linked_now(
                     logical_kind,
                     logical_id,

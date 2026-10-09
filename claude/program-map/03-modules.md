@@ -222,7 +222,7 @@ Every device has a module file that says which of its controls the program may u
 | Settings (`config.Configuration`) | Home keys, binding store, legacy calibration | `configChanged` drives reloads |
 | Live debug log (`ui/live_debug.trace`) | `registry.trace` on every module read and save | — |
 | Options | — | `CardSizes.resetAll`, `show-stubs`, `compact-view`, deleted devices folder |
-| OSC (parked) | `DriverInputModel._load_osc` lists OSC addresses; runtime always passes OSC | — |
+| OSC (09) | `DriverInputModel._load_osc` lists OSC's inputs from its module file (friendly names by uid) and edits the Server section (S53a); runtime always passes OSC | — |
 
 ## 6. Threads and timers
 
@@ -325,6 +325,7 @@ Every device has a module file that says which of its controls the program may u
 - S51. Its History button should show only this device's own file (twins share a name). [tracker: AU-107]
 - S52. Import Image… should set the device picture. [help: Module files and Device Pack]
 - S53. With no controls reported it should say "Press a key to add it." (Keyboard) or point to Windows' game controller settings (stick). [user confirmed 2026-10-06; was code only: DialogConfigureModule.qml:362-364]
+- S53a. OSC's Module Setup should have a **Server** section with OSC's server and behaviour settings: Enabled, host (blank = every address on this PC; a typed host must be an IP address or a name, checked before saving), port (8001), output host and port (127.0.0.1, 8000; shown as "used once OSC output is built"), auto-release address-only messages (on), auto-release delay (250 ms) and pad args. They are kept in OSC's module file (`server`), take effect at once, also while running, and travel with Device Library Save/Restore/Export and Device Pack. Its address rows show friendly names by each input's permanent id. (09 S2-S4, S6, S9, S43, S44a) [changed 2026-10-09, user: D-09-OSC-FILE] [changed 2026-10-09, user: D-09-OSC-FAULTS]
 
 ### F. Module File dialog: import, Undo Import, Delete File
 - S54. It should show the current file name, "(not saved yet)" when it is missing, and a note when the stick still opens a file of another name. [help: Module files and Device Pack] [code: DialogConfigureModule.qml:49-76]
@@ -464,6 +465,7 @@ Every device has a module file that says which of its controls the program may u
 20. `output.py` thread state and `registry._cache` have no lock (7.13, 7.14). SUSPECTED.
 21. Keyboard Module Setup may tick keys typed into a name box (Q16). SUSPECTED.
 22. OSC (parked, mapped only): Module Setup lists OSC addresses with claim boxes (module_model.py:1900-1931), but Run passes every OSC event without a claim (runtime.py:22-27), so OSC claims do nothing at Run.
+    Since 2026-10-09 (D-09-OSC-FILE) OSC's Module Setup also holds the Server section (S53a); the claim boxes question (09 Q4) is unchanged.
 23. `calibration._source_modules` skips a second stick on the same file (calibration.py:72-73); only matters for twins from before twin naming.
 24. Home `_reload` writes settings while reading (card order at module_model.py:1710-1711, kept stubs at :183); each write is a settings change. It settles after one pass; noted for the Stage 1 rule checks.
 25. Calibration's "Raw" value box accepts typing but saves nothing; it should be read-only (to-do 49). `DialogCalibration.qml` ~353.
@@ -537,6 +539,7 @@ All [code only] statements in section 8 confirmed; S36 now says "at once" (page 
 | S102 | 2026-10-07 (D-03-S102-PERAXIS): one Calibration capture at a time per axis |
 | S71, S90a, S90b | 2026-10-09 (D-04-LD-FILE): the Logical Device card always shows; the Logical Device is built in, always present, and a Device Library built-in |
 | S88 | 2026-10-09 (D-03-LD-IMAGE): the Logical Device card menu has Add Image… / Change Image… and Remove Image (its card photo, kept with its module file) |
+| S53a | 2026-10-09 (D-09-OSC-FILE, D-09-OSC-FAULTS): OSC's Module Setup has a Server section; the settings live in OSC's module file and travel with it |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

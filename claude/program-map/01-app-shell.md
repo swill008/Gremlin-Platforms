@@ -112,7 +112,7 @@ Settings keys this subsystem registers or uses (others register their own; see G
 - devices/display: `vjoy-tabs`, `extra-tabs` (which device tabs show). Help's list width is kept with the tool window state (`help-list`, `window_placement`).
 - action/general: `action-priorities` (Add Action Menu order and choice).
 - profile/automation: `enable-auto-loading`, `remain-active-on-focus-loss`, `entries-auto-loading`.
-- devices/display: `aliases`; osc/connection: the OSC keys (OSC parked: mapped, not judged).
+- devices/display: `aliases`; osc/connection: the old OSC keys, read once and copied into OSC's module file (D-09-OSC-FILE, 2026-10-09; OSC's settings now live there, 09 S44).
 - Who else changes settings: every subsystem through `Configuration().set` (mode manager, window placement, HidHide, Home cards, Button Map options, OSC, Live Log Reader, update model), and History Restore.
 
 ## 4. Entry points
@@ -296,6 +296,7 @@ Duplicated logic
 ### Options window
 - S39 Tools → Options and the toolbar's Options button should open one Options window. Only one can be open. [help: Options] [changed 2026-10-07 to follow decision 07 Q17 (the Button Map has its own Options pane), which wins over the earlier wording "also when opened from the Button Map"] [tracker: N5, N16]
 - S40 The sidebar should show General, Interface, Actions, Profiles, Home, OSC and Folders. Each group is a card of rows (name, description, control on the right). [test-plan: OPTIONS-LOOK] [help: Options]
+- S40a Options › OSC should hold one line with a button, "OSC settings are in OSC › Module Setup", that opens OSC's Module Setup; the OSC host, port, output, Enabled and auto-release rows are no longer in Options (they are OSC's Server section, 03 S53a). [changed 2026-10-09, user: D-09-OSC-FILE] (was: the OSC connection and message rows in Options)
 - S41 Every registered setting should show exactly once. One that isn't placed shows under "Other" in its section. `action-priorities` never shows. The Button Map's settings are only in Button Map Options. [glossary: Button Map Options] [test: test_options_layout.py::test_every_setting_shows_once_and_button_map_is_apart]
 - S42 General should hold Startup and Tray, Devices, Diagnostics (Diagnostic logs, Log When Not Responding) and History. Actions should hold the Add Action Menu, Macro, Change Mode, Double Tap, Smart Toggle, Tempo, Axis Delta, Play Sound and Text to Speech. [tracker: AU-71, AU-102] [test: test_options_layout.py::test_history_settings_have_their_own_group, test_audit2_options_text.py::test_action_settings_have_their_own_group]
 - S43 Search should find settings by name, description or group title in every section; the word "Other" matches nothing. [test-plan: OPTIONS-LOOK, AUDIT3-TRACE W7]
@@ -463,6 +464,7 @@ Code differs from the spec or a rule (the 6 Oct list; status 9 Oct from claude/g
 - K18 Time not through `gremlin.clock` in `watchdog.py`, `config.py` and `joystick_gremlin.py`. CONFIRMED (low). **Done (GL-002/GL-265: `gremlin.clock` has a monotonic time).**
 - K19 The Live Log Reader's 400 ms refresh calls `logs_dir()` (reads settings and runs `mkdir`). When any file changed under All logs, it reads up to 4 × 512 KB on the main thread. [code only], not measured. **Done (GL-118, batch 2).**
 - K20 `Configuration.register` logs a Warning at every start when the PC's IP list changed (the OSC host choices: `joystick_gremlin.py:775-789`, `config.py:300-305`). OSC parked: mapped only. **Open, OSC parked (GL-282).**
+  2026-10-09: with D-09-OSC-FILE the OSC host is kept in OSC's module file (blank = every address), so the old IP-list option is only read once at migration (09 S3).
 
 Open tracker items for this subsystem
 - AU-56 (open, on hold): at 200% UI scale on a small screen, contents are cut off, including Options search and the main toolbar.
@@ -513,6 +515,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | Q | Decision |
 |---|---|
 | All | As recommended in section 9 |
+| S40a | 2026-10-09 (D-09-OSC-FILE): Options' OSC rows replaced by one line and a button to OSC's Module Setup |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

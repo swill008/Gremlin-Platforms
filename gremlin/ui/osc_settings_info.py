@@ -6,38 +6,29 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin.config import Configuration
-from gremlin.osc import (
-    DEFAULT_HOST,
-    DEFAULT_OUTPUT_PORT,
-    DEFAULT_PORT,
-    default_bind_host,
-    osc_option,
-    parse_port,
-)
+from gremlin import osc_device_file
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
 
+ALL_ADDRESSES = "All addresses on this PC"
+
 
 @ta.QmlElement
 class OscSettingsInfo(QtCore.QObject):
+    """The Listening box's text: the server settings in OSC's file
+    (D-09-OSC-FILE point 4), not the configuration."""
+
     @QtCore.Slot(result=str)
     def summary(self) -> str:
-        cfg = Configuration()
-        enabled = osc_option(cfg, "enabled")
-        if enabled is None:
-            enabled = True
-        host = str(osc_option(cfg, "host") or default_bind_host())
-        port = parse_port(osc_option(cfg, "port"), DEFAULT_PORT)
-        out_host = str(osc_option(cfg, "output-host") or DEFAULT_HOST)
-        out_port = parse_port(osc_option(cfg, "output-port"), DEFAULT_OUTPUT_PORT)
+        server = osc_device_file.read_server()
+        host = str(server.get("host") or "").strip() or ALL_ADDRESSES
         return (
-            f"OSC enabled: {'Yes' if enabled else 'No'}\n"
+            f"OSC enabled: {'Yes' if server.get('enabled') else 'No'}\n"
             f"Input host: {host}\n"
-            f"Input port: {port}\n"
-            f"Output host: {out_host}\n"
-            f"Output port: {out_port}\n\n"
+            f"Input port: {server.get('port')}\n"
+            f"Output host: {server.get('output_host')}\n"
+            f"Output port: {server.get('output_port')}\n\n"
             "Send the OSC packet to the input host and port."
         )

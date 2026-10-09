@@ -76,7 +76,7 @@ def read_claim(doc: dict | None) -> dict:
 
 
 def kind_of(input_type: object) -> str:
-    """"button", "axis", "hat" or "key" for an InputType or its name; "" otherwise."""
+    """ "button", "axis", "hat" or "key" for an InputType or its name; "" otherwise."""
     if input_type in _KIND_OF_TYPE:
         return _KIND_OF_TYPE[input_type]
     text = str(getattr(input_type, "name", input_type) or "").lower()
@@ -113,13 +113,33 @@ def claim_allows(claim: dict | None, kind: str, hid: object) -> bool:
     return want in claim_ids(claim, kind)
 
 
+OSC_PREFIX = "osc:"
+
+
+def _osc_uid(kind: str, number: int) -> str:
+    """The OSC input's permanent uid for its current type and number."""
+    try:
+        from gremlin.osc import OscDevice
+
+        return str(OscDevice().rows.uid_of(type_of(kind), number) or "")
+    except Exception:  # noqa: BLE001 - no OSC rows: no uid name
+        return ""
+
+
 def claim_friendly(claim: dict | None, kind: str, hid: object) -> str:
-    """The user's name for a claimed input, or "" when none."""
+    """The user's name for a claimed input, or "" when none. OSC's claim
+    keeps names by input uid ("osc:<uid>", D-09-OSC-FILE); a file not yet
+    converted still has "button:N" keys, used when no uid name is found."""
     try:
         number = int(hid)
     except (TypeError, ValueError):
         return ""
     names = (claim or {}).get("friendly") or {}
+    if any(str(key).startswith(OSC_PREFIX) for key in names):
+        uid = _osc_uid(kind, number)
+        name = str(names.get(f"{OSC_PREFIX}{uid}") or "").strip() if uid else ""
+        if name:
+            return name
     return str(names.get(f"{kind}:{number}") or "").strip()
 
 

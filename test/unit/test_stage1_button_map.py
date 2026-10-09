@@ -75,7 +75,12 @@ def _run(part: str, home: pathlib.Path) -> dict:
     # (raises=AssertionError) never takes it for the known gap.
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     if not lines:
-        raise RuntimeError(done.stdout[-2000:] + done.stderr[-2000:])
+        # A stall report starts with its headline (blocked or idle) and
+        # lists every thread: keep it whole, not only its tail.
+        err = done.stderr
+        at = err.find("=== STALLED")
+        err = err[at:at + 12000] if at >= 0 else err[-2000:]
+        raise RuntimeError(done.stdout[-2000:] + err)
     out = json.loads(lines[-1][len("RESULT "):])
     if "error" in out:
         raise RuntimeError(out.get("traceback") or out["error"])

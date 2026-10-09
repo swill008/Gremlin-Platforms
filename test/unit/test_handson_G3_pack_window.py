@@ -42,8 +42,12 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
 
 
 def test_s106_opens_on_the_first_device_that_can_be_exported(run: dict) -> None:
-    assert run["open-on"] == "pJoy Pro"
-    assert run["open-shown"] == "pJoy Pro"
+    # The first row whose file can be read. OSC's module file exists from
+    # the first start (D-09-OSC-FILE) and can be exported, so it may come
+    # before pJoy Pro.
+    first = next(lb for lb in run["labels"] if not lb.endswith("(file damaged)"))
+    assert run["open-on"] == first
+    assert run["open-shown"] == first
     assert run["open-status"] == ""
     assert run["labels"][0] == "Alpha Stick (file damaged)"
     assert "pJoy Pro" in run["labels"]

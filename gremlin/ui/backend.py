@@ -105,6 +105,11 @@ class UIState(QtCore.QObject):
         """The Logical Device's id, for QML (it was typed out in two files)."""
         return str(LogicalDevice.device_guid)
 
+    @QtCore.Property(str, constant=True)
+    def oscDeviceGuid(self) -> str:
+        """OSC's device id, for QML (its Module Setup opens from Options)."""
+        return str(OSC_DEVICE_UUID)
+
     @QtCore.Slot(str)
     def setCurrentDevice(self, device_name: str) -> None:
         raw = str(device_name or "").replace("{", "").replace("}", "").strip()
@@ -248,6 +253,61 @@ def logical_migration_text(added: list[str] | None) -> str:
     return "Logical Device moved to its own file: added " + ", ".join(names) + "."
 
 
+def _load_osc_device() -> None:
+    """Fills OscDevice() and its server settings from OSC's module file;
+    the first time, the settings are copied from the configuration
+    (D-09-OSC-FILE)."""
+    from gremlin import osc_device_file
+
+    log = logging.getLogger("system")
+    try:
+        osc_device_file.migrate_settings_from_config()
+    except Exception:
+        log.exception("Could not copy the OSC settings to OSC's file")
+    try:
+        osc_device_file.load()
+    except Exception:
+        log.exception("Could not read OSC's file")
+
+
+def _osc_unsaved() -> bool:
+    """OSC's address list has edits its file doesn't have yet."""
+    from gremlin.osc import OscDevice
+
+    rows = getattr(OscDevice(), "rows", None)
+    return bool(getattr(rows, "dirty", False))
+
+
+def _internal_unsaved() -> bool:
+    """The shared internal devices (Logical Device, OSC) have edits that
+    Save writes too."""
+    return _logical_unsaved() or _osc_unsaved()
+
+
+def osc_migration_text(added: list[str] | None) -> str:
+    """The one-time note after an older profile's OSC rows moved to OSC's
+    file; "" when nothing was added."""
+    names = [str(name) for name in (added or []) if str(name)]
+    if not names:
+        return ""
+    return "OSC addresses moved to OSC's own file: added " + ", ".join(names) + "."
+
+
+def migration_notes(new_profile: object) -> tuple[str, str]:
+    """(title, text) of the one note said after opening an older profile
+    whose Logical Device and/or OSC rows moved to their own files; text ""
+    when there is nothing to say."""
+    logical = logical_migration_text(
+        getattr(new_profile, "logical_migration_note", None)
+    )
+    osc = osc_migration_text(getattr(new_profile, "osc_migration_note", None))
+    if logical and osc:
+        return "Open Profile", logical + " " + osc
+    if osc:
+        return "OSC", osc
+    return "Logical Device", logical
+
+
 @common.SingletonDecorator
 class Backend(QtCore.QObject):
     windowTitleChanged = QtCore.Signal()
@@ -281,6 +341,8 @@ class Backend(QtCore.QObject):
         # One Logical Device for every profile, read from its module file
         # once, before any profile (D-04-LD-FILE, 04 S2).
         _load_logical_device()
+        # OSC's address list and server settings likewise (D-09-OSC-FILE).
+        _load_osc_device()
         self.profile = profile.Profile()
         self.profile.mark_clean()
         shared_state.current_profile = self.profile
@@ -316,6 +378,8 @@ class Backend(QtCore.QObject):
         signal.uiScaleChanged.connect(self.uiScaleChanged)
         # A Logical page edit changes the "*" (04 S2: Save writes it).
         signal.logicalDeviceModified.connect(self.unsavedChanged)
+        # So does an OSC page edit (D-09-OSC-FILE).
+        signal.oscDeviceModified.connect(self.unsavedChanged)
         # Recovery copies of unsaved edits, kept about every minute (04 S94).
         self._recovery = profile_recovery.ProfileRecovery()
         self._recovery_offer: dict | None = None
@@ -367,10 +431,9 @@ class Backend(QtCore.QObject):
         # The open profile is set first: the start mode is worked out from
         # it, not from the profile open before (04 S52, GL-053).
         shared_state.current_profile = self.profile
-        # The screens and the runtime show this profile's OSC rows (GL-074).
-        # The Logical Device stays as it is: one layout from its own file,
-        # loaded at start, for every profile (D-04-LD-FILE).
-        self.profile.bind_devices()
+        # The Logical Device and OSC stay as they are: each one list from
+        # its own file, loaded at start, for every profile (D-04-LD-FILE,
+        # D-09-OSC-FILE).
         user_script.forget_other_scripts(self.profile.scripts.scripts)
         mm = mode_manager.ModeManager()
         mm.reset()
@@ -689,6 +752,17 @@ class Backend(QtCore.QObject):
         signal.logicalDeviceReloaded.emit()
         signal.logicalDeviceModified.emit()
 
+    @QtCore.Slot()
+    def discardOscDevice(self) -> None:
+        """Discard on the save-changes question: OSC's address edits go
+        with the profile's, read again from OSC's file (D-09-OSC-FILE)."""
+        if not _osc_unsaved():
+            return
+        _load_osc_device()
+        # Its OSC page Undo steps would play the discarded edits again.
+        signal.oscDeviceReloaded.emit()
+        signal.oscDeviceModified.emit()
+
     @QtCore.Slot(str)
     def discardRecovery(self, fpath: str) -> None:
         """Discard: the recovery copy of fpath ("" for Untitled) goes."""
@@ -833,8 +907,9 @@ class Backend(QtCore.QObject):
     @QtCore.Property(bool, notify=propertyChanged)
     def profileContainsUnsavedChanges(self) -> bool:
         """Exact: what the Save / Discard / Cancel questions ask about.
-        Edits to the Logical Device count: Save writes them too (04 S2)."""
-        return self.profile.has_unsaved_changes() or _logical_unsaved()
+        Edits to the Logical Device and OSC count: Save writes them too
+        (04 S2, D-09-OSC-FILE)."""
+        return self.profile.has_unsaved_changes() or _internal_unsaved()
 
     @QtCore.Property(bool, notify=propertyChanged)
     def profileLooksUnsaved(self) -> bool:
@@ -842,7 +917,7 @@ class Backend(QtCore.QObject):
         while no edit was noted, so a large profile isn't rebuilt each time
         (04 Q19). An edit no hook sees makes the "*" late, never a question
         skipped: those use profileContainsUnsavedChanges."""
-        return self.profile.looks_unsaved() or _logical_unsaved()
+        return self.profile.looks_unsaved() or _internal_unsaved()
 
     @QtCore.Property(type=ScriptListModel, notify=profileChanged)
     def scriptListModel(self) -> ScriptListModel:
@@ -898,13 +973,13 @@ class Backend(QtCore.QObject):
         for warning in getattr(new_profile, "load_warnings", []) or []:
             logging.getLogger("system").warning(warning)
             signal.showNotification.emit("Open Profile", warning)
-        # A version 14 profile's Logical Device moved to the shared file:
-        # said once, the first time it opens (04 S25, D-04-LD-FILE).
-        moved = getattr(new_profile, "logical_migration_note", None)
-        note = logical_migration_text(moved)
+        # An older profile's Logical Device / OSC rows moved to their own
+        # files: said once, in one note, the first time it opens (04 S25,
+        # D-04-LD-FILE, D-09-OSC-FILE).
+        title, note = migration_notes(new_profile)
         if note:
             logging.getLogger("system").info(note)
-            signal.showNotification.emit("Logical Device", note)
+            signal.showNotification.emit(title, note)
 
     def _load_profile(self, fpath: str, report: bool = True) -> bool:
         """Opens a profile; False if it couldn't. report=False: the reason is

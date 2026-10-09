@@ -2,10 +2,11 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Options › OSC off-screen: the Input and Output host and port boxes edited
-with the cursor still in them, then the page goes (Options closes). Prints
-RESULT lines with what the settings hold afterwards. test_handson_F8_osc.py
-runs it in its own process with a fresh user folder.
+"""OSC's Module Setup "Server" section off-screen (D-09-OSC-FILE point 4;
+it replaced the Options OSC pages): each text box edited with the cursor
+still in it, then the window closes. Prints RESULT lines with what OSC's
+file holds afterwards. test_handson_F8_osc.py runs it in its own process
+with a fresh user folder.
 
     python test/unit/handson_F8_osc_close_smoke.py
 """
@@ -20,9 +21,13 @@ import unittest.mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-_PAGES = {
-    "input": ("OptionOscInputHost.qml", "host", "port"),
-    "output": ("OptionOscOutputHost.qml", "output-host", "output-port"),
+# Box objectName -> (key in OSC's file, text typed).
+_FIELDS = {
+    "oscServerHost": ("host", "studio-pc"),
+    "oscServerPort": ("port", "9123"),
+    "oscServerOutputHost": ("output_host", "127.0.0.5"),
+    "oscServerOutputPort": ("output_port", "9124"),
+    "oscServerDelay": ("autorelease_delay_ms", "400"),
 }
 
 
@@ -59,7 +64,7 @@ def _walk(item: object) -> list:
 
 def main() -> None:
     _boot()
-    from PySide6 import QtCore, QtGui, QtQml, QtTest
+    from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: F401
 
     app = QtGui.QGuiApplication(sys.argv[:1])
     QtQml.qmlRegisterSingletonType(
@@ -69,18 +74,16 @@ def main() -> None:
     import gremlin.ui.osc_option  # noqa: F401  (Gremlin.Config types)
     import joystick_gremlin
 
-    joystick_gremlin.register_config_options()
-    from gremlin.config import Configuration
-    from gremlin.osc import OSC_GROUP, OSC_SECTION
+    joystick_gremlin.register_config_options()  # History reads its options
+    from gremlin import osc_device_file
 
-    cfg = Configuration()
     engine = QtQml.QQmlApplicationEngine()
     engine.addImportPath(str(ROOT / "theme"))
     warnings: list[str] = []
     engine.warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
 
-    # Like Options (helpers.js createComponent): a window made with no
-    # parent, destroyed when it closes.
+    # Like Module Setup: a window made with no parent, destroyed when it
+    # closes, the Server section in a Loader.
     engine.loadData(
         b"""
 import QtQuick
@@ -91,7 +94,7 @@ Item {
         id: _page
         Window {
             property url page
-            width: 700; height: 200; visible: true
+            width: 700; height: 400; visible: true
             onClosing: () => { destroy() }
             Loader { anchors.fill: parent; source: page }
         }
@@ -106,27 +109,24 @@ Item {
         QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "Root.qml")),
     )
     host = engine.rootObjects()[0]
+    section = QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "OscServerSection.qml"))
 
-    def open_page(page: str) -> tuple:
-        url = QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / page)).toString()
-        expr = QtQml.QQmlExpression(QtQml.qmlContext(host), host, f'open("{url}")')
+    def open_section(name: str) -> tuple:
+        expr = QtQml.QQmlExpression(
+            QtQml.qmlContext(host), host, f'open("{section.toString()}")'
+        )
         win = expr.evaluate()[0]
         if expr.hasError():
             raise RuntimeError(expr.error().toString())
         win.requestActivate()
-        items: list = []
-        _wait_until(
-            app,
-            lambda: (items.clear(), items.extend(_walk(win.contentItem())))
-            and any(i.inherits("QQuickComboBox") for i in items),
-            f"{page} shown",
-        )
-        combo = next(i for i in items if i.inherits("QQuickComboBox"))
-        port = next(
-            i for i in items
-            if i.inherits("QQuickTextField") and i.parentItem() is not combo
-        )
-        return win, combo, port
+        found: list = []
+
+        def shown() -> bool:
+            found[:] = [i for i in _walk(win.contentItem()) if i.objectName() == name]
+            return bool(found)
+
+        _wait_until(app, shown, f"{name} shown")
+        return win, found[0]
 
     def close(win: object) -> None:
         gone: list = []
@@ -141,32 +141,17 @@ Item {
         for char in text:
             QtTest.QTest.keyClick(win, char)
 
-    for name, (page, host_key, port_key) in _PAGES.items():
-        before_host = cfg.value(OSC_SECTION, OSC_GROUP, host_key)
-        before_port = cfg.value(OSC_SECTION, OSC_GROUP, port_key)
-
-        # Typed into the host box, the cursor still there: no Tab, no Enter.
-        win, combo, _port = open_page(page)
-        field = combo.property("contentItem")
-        type_into(win, field, "127.0.0.5")
-        _wait_until(
-            app, lambda: combo.property("editText") == "127.0.0.5", "typed host"
-        )
-        print(f"RESULT {name}-focus {field.property('activeFocus')}", flush=True)
-        print(f"RESULT {name}-host-before {before_host}", flush=True)
+    for name, (key, text) in _FIELDS.items():
+        before = osc_device_file.read_server()[key]
+        # Typed into the box, the cursor still there: no Tab, no Enter.
+        win, field = open_section(name)
+        type_into(win, field, text)
+        _wait_until(app, lambda: field.property("text") == text, f"typed {name}")
+        print(f"RESULT {key}-focus {field.property('activeFocus')}", flush=True)
+        print(f"RESULT {key}-before {before}", flush=True)
         close(win)
-        after = cfg.value(OSC_SECTION, OSC_GROUP, host_key)
-        print(f"RESULT {name}-host-after {after}", flush=True)
-
-        # The port box the same way.
-        win, _combo, port = open_page(page)
-        type_into(win, port, "9123")
-        _wait_until(app, lambda: port.property("text") == "9123", "typed port")
-        print(f"RESULT {name}-port-focus {port.property('activeFocus')}", flush=True)
-        print(f"RESULT {name}-port-before {before_port}", flush=True)
-        close(win)
-        after = cfg.value(OSC_SECTION, OSC_GROUP, port_key)
-        print(f"RESULT {name}-port-after {after}", flush=True)
+        after = osc_device_file.read_server()[key]
+        print(f"RESULT {key}-after {after}", flush=True)
 
     for warning in warnings:
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)

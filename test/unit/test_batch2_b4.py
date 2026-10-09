@@ -227,23 +227,29 @@ def test_an_unknown_startup_mode_loads_as_last_active(
 # --- GL-074: the Logical Device and OSC rows belong to the profile ----------
 
 
-def test_a_new_profile_object_leaves_the_shared_logical_device_rows_alone(
+def test_a_new_profile_object_leaves_the_shared_logical_device_and_osc_rows_alone(
     profile: Profile,
 ) -> None:
-    """GL-074, now with one Logical Device for every profile (D-04-LD-FILE):
-    a throwaway Profile neither wipes the shared rows nor the open
-    profile's OSC rows; the Logical Device isn't in any profile file."""
+    """GL-074, now with one Logical Device and one OSC address list for
+    every profile (D-04-LD-FILE, D-09-OSC-FILE): a throwaway Profile wipes
+    neither shared list, and neither is in any profile file."""
     LogicalDevice().create(InputType.JoystickButton, label="Fire")
     OscDevice().create(InputType.JoystickButton, label="/osc/fire")
-    other = Profile()  # a throwaway one used to wipe them
-    assert LogicalDevice().exists("Fire")  # one layout, still there
-    text = profile._xml_text()
-    assert "/osc/fire" in text
-    assert "<logical-device" not in text
-    assert "<logical-device" not in other._xml_text()
-    profile.bind_devices()
-    assert LogicalDevice().exists("Fire")
-    assert OscDevice().find_address("/osc/fire") is not None
+    try:
+        other = Profile()  # a throwaway one used to wipe them
+        assert LogicalDevice().exists("Fire")  # one layout, still there
+        assert OscDevice().find_address("/osc/fire") is not None
+        text = profile._xml_text()
+        assert "/osc/fire" not in text and "<osc-device" not in text
+        assert "<logical-device" not in text
+        assert "<logical-device" not in other._xml_text()
+        profile.bind_devices()
+        assert LogicalDevice().exists("Fire")
+        assert OscDevice().find_address("/osc/fire") is not None
+    finally:
+        # Empty and saved, like the Logical Device in the fixture.
+        OscDevice().rows.load_dict({"inputs": []})
+        OscDevice().rows.mark_saved()
 
 
 # --- GL-119: the vJoy Behavior switch never touches a Run -------------------

@@ -14,7 +14,7 @@ function topics() {
         t("device-library-about", "Getting started", "What the Device Library is",
             "<p>The <b>Device Library</b> keeps every device the program has known, with copies of their settings and bindings. Use it to put an old stick's setup on a new stick, let two sticks trade places, or change which vJoy a stick sends to, and to go back afterwards.</p>"
             + "<ul>"
-            + "<li><b>Devices</b>: sticks plugged in now, sticks set up here but unplugged, deleted sticks, sticks from someone else's Device Pack, and the program's built-in inputs.</li>"
+            + "<li><b>Devices</b>: sticks plugged in now, sticks set up here but unplugged, deleted sticks, sticks from someone else's Device Pack, and the program's internal inputs.</li>"
             + "<li><b>Saved setups</b>: stored copies of a device's settings and bindings, each with a name and a description. You keep your own; the program keeps <b>autosaves</b> by itself before anything replaces or removes a stick's settings.</li>"
             + "</ul>"
             + "<p>Copying never changes the saved setup or the stick it came from.</p>",
@@ -37,7 +37,7 @@ function topics() {
             + "<ul>"
             + "<li><b>Filters</b> at the top: <b>Connected</b>, <b>Not connected</b>, <b>Deleted</b> and <b>Autosaves</b>. A ticked filter shows that kind; select one to hide it.</li>"
             + "<li>The <b>search box</b> under them finds devices and saved setups as you type. See <a href=\"topic:device-library-search\">Search the Device Library</a>.</li>"
-            + "<li>The <b>list</b>: one row per device, with its saved setups under it. The built-in inputs come last, under their own heading.</li>"
+            + "<li>The <b>list</b>: one row per device, with its saved setups under it. The internal inputs come last, under their own heading.</li>"
             + "<li>The <b>details</b>: the name, the description, what it holds, and buttons for what you can do with it.</li>"
             + "<li>The message line above the status bar says how the last change went and lists anything to check: plain when it worked, red when it failed. After a delete it ends with an <b>Undo</b> link. A message stays until the next one.</li>"
             + "<li>The <b>status bar</b> shows how many devices and saved setups there are, how many autosaves are kept per stick, the library's size on disk (for example \"Library: 48 MB\"), the <b>Undo</b> and <b>Redo</b> buttons with the last change beside them (see <a href=\"topic:device-library-undo\">Undo and redo a change</a>) and the library folder.</li>"
@@ -70,7 +70,7 @@ function topics() {
             + "<li>The delete items, by its state: <b>Remove from Library…</b> when it isn't connected; <b>Clear Setup…</b> and <b>Delete Saved Setups…</b> when it is.</li>"
             + "</ul>"
             + "<p>A saved setup's menu: <b>Copy to Another Stick…</b>, <b>Restore to This Stick…</b> (when its stick is plugged in), <b>Export…</b>, <b>Rename…</b>, <b>Edit Description</b>, <b>Show in History</b> (its device's changes), <b>Keep This Autosave</b> (autosaves only) and <b>Delete…</b>.</p>"
-            + "<p>A built-in input's menu: <b>Save to Device Library…</b>, <b>Restore…</b>, <b>Export…</b>, <b>Rename…</b> and <b>Edit Description</b>. See <a href=\"topic:device-library-built-in\">Built-in inputs</a>.</p>"
+            + "<p>An internal input's menu: <b>Save to Device Library…</b>, <b>Restore…</b>, <b>Export…</b>, <b>Rename…</b> and <b>Edit Description</b>. See <a href=\"topic:device-library-built-in\">Internal inputs</a>.</p>"
             + "<p>The empty space's menu: <b>Import Device Pack…</b>, <b>Expand All</b>, <b>Collapse All</b> and <b>Device Library Settings…</b>.</p>"
             + "<h4>Good to know</h4>"
             + "<ul>"
@@ -92,8 +92,8 @@ function topics() {
             + "<p>Select a device to see its name, description and state, its inputs (for example \"32 buttons, 6 axes, 1 hat\") and when it was last seen. The buttons under its details are <b>Save to Device Library…</b>, <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, and the red <b>Remove from Library…</b> (not connected) or <b>Delete Saved Setups…</b> (connected).</p>"
             + "<p>Select the caret beside a device, or double-click the device, to show or hide its saved setups.</p>",
             ["device-library-saved-setups", "device-library-built-in", "device-library-twins"]),
-        t("device-library-built-in", "Devices and saved setups", "Built-in inputs",
-            "<p>The program's built-in inputs, Keyboard, OSC and the Logical Device, are listed last, under the <b>BUILT-IN INPUTS</b> heading. They are part of the program, so they are never plugged in, unplugged or removed.</p>"
+        t("device-library-built-in", "Devices and saved setups", "Internal inputs",
+            "<p>The program's internal inputs, Keyboard, OSC and the Logical Device, are listed last, under the <b>INTERNAL INPUTS</b> heading. They are part of the program, so they are never plugged in, unplugged or removed. OSC's saved setups hold its inputs, with their settings, and its server settings.</p>"
             + "<ul>"
             + "<li>Their menu and buttons have only <b>Save to Device Library…</b>, <b>Restore…</b> (puts back their newest saved setup), <b>Export…</b>, <b>Rename…</b> and <b>Edit Description</b>.</li>"
             + "<li>They need nothing plugged in, so Restore always works. It brings back the saved setup: its settings in the profiles it came from, and for the Logical Device its layout and picture too. An autosave is kept first, and <b>Edit › Undo</b> takes the whole Restore back in one step.</li>"
@@ -236,7 +236,7 @@ function topics() {
             + "<li>It works as Copy does, with every part the saved setup holds (Calibration too, as it is the same stick), into the profiles it came from that are still there, in every mode it has.</li>"
             + "<li>An autosave of the stick is kept first (\"Autosave: before Restore of DCS F-16\"), and <b>Edit › Undo</b> puts it back.</li>"
             + "<li>To choose the parts, profiles and modes, or to put it on another stick, use <a href=\"topic:device-library-copy\">Copy a setup to another stick</a>.</li>"
-            + "<li>On a built-in input (Keyboard, OSC, the Logical Device), <b>Restore…</b> puts back its newest saved setup with nothing plugged in, the Logical Device's layout and picture too. See <a href=\"topic:device-library-built-in\">Built-in inputs</a>.</li>"
+            + "<li>On an internal input (Keyboard, OSC, the Logical Device), <b>Restore…</b> puts back its newest saved setup with nothing plugged in, the Logical Device's layout and picture and OSC's inputs and server settings too. See <a href=\"topic:device-library-built-in\">Internal inputs</a>.</li>"
             + "</ul>",
             ["device-library-copy", "device-library-undo"]),
         t("device-library-swap", "Changing sticks", "Swap two sticks",
@@ -347,7 +347,7 @@ function topics() {
             + "<ul>"
             + "<li>Each ticked filter shows that kind, so you can, for example, hide deleted sticks and autosaves. The View menu has the same four.</li>"
             + "<li><b>View › Expand All</b> shows every device's saved setups; <b>Collapse All</b> hides them.</li>"
-            + "<li>The filters never hide the built-in inputs.</li>"
+            + "<li>The filters never hide the internal inputs.</li>"
             + "</ul>",
             ["device-library-search", "device-library-window"]),
         t("device-library-select", "Finding things", "Select several rows",
@@ -428,7 +428,7 @@ function topics() {
             + "<p>The question's title names what goes, for example \"Remove Old Warthog stick and its 4 saved setups from the Library?\", and its last line is \"You can restore it from Tools › History.\" Its red button is named for the action: <b>Delete Saved Setup</b>, <b>Delete Saved Setups</b>, <b>Remove from Library</b> or <b>Clear Setup</b>. <b>Cancel</b> has the focus, and <b>Enter</b> and <b>Esc</b> both cancel, so only a click on the red button goes ahead.</p>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>The <b>Delete</b> key asks the same question: Delete… on a saved setup, Remove from Library… on a device that isn't connected. It does nothing on a connected stick or a built-in input, or while you type in a box.</li>"
+            + "<li>The <b>Delete</b> key asks the same question: Delete… on a saved setup, Remove from Library… on a device that isn't connected. It does nothing on a connected stick or an internal input, or while you type in a box.</li>"
             + "<li>On a device, the red button and <b>Edit › Delete…</b> run Remove from Library… or Delete Saved Setups… by its state. Clear Setup… is only in the device's right-click menu.</li>"
             + "<li>Each delete is one entry in <b>Tools › History</b>, however many files it touched, for example \"Removed Old Warthog stick from the Device Library\". Right after, the <b>Undo</b> link in the message line (or <b>Edit › Undo</b>) puts it all back.</li>"
             + "<li>Clear Setup… also keeps an autosave under the stick, ready for <b>Restore to This Stick…</b>.</li>"

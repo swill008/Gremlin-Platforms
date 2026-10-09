@@ -838,9 +838,13 @@ def register_config_options() -> None:
         "devices", "display", "aliases", PropertyType.List, [],
         "Friendly display names for devices and inputs.", {}, False,
     )
+    # OSC's settings are in OSC's own file now (D-09-OSC-FILE point 4),
+    # edited in OSC's Module Setup. These stay registered, unshown, so
+    # osc_device_file.migrate_settings_from_config can read old values
+    # (and purge_unused keeps them).
     cfg.register(
         osc_sec, osc_grp, "enabled", PropertyType.Bool, True,
-        "Listen for OSC packets while a profile is active.", {}, True,
+        "Listen for OSC packets while a profile is active.", {}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "host", PropertyType.Selection,
@@ -866,12 +870,12 @@ def register_config_options() -> None:
     cfg.register(
         osc_sec, osc_grp, "pad-args", PropertyType.Bool, False,
         "Pad zero argument commands. Treat an address-only packet as value 1.0.",
-        {}, True,
+        {}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "autorelease-no-arg", PropertyType.Bool, True,
         "Autorelease on no arg messages. Press then release after the delay.",
-        {}, True,
+        {}, False,
     )
     cfg.register(
         osc_sec, osc_grp, "autorelease-delay", PropertyType.String, "250",

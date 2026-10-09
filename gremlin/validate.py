@@ -131,6 +131,9 @@ def profile(p: Profile) -> list[str]:
       Logical Device file (LogicalDevice(), 04 R3) doesn't have: a saved
       permanent id it doesn't know, or, with no id, a type+number it
       doesn't have (D-04-LD-FILE decision 4).
+    - PROFILE-OSC-MISSING: a binding on an OSC input (or an Assign Hardware
+      link from one) whose saved permanent id OSC's file doesn't have, or,
+      with no id, a type+number it doesn't have (D-09-OSC-FILE 2).
     """
     out: list[str] = []
     modes: set[str] = set()
@@ -143,6 +146,7 @@ def profile(p: Profile) -> list[str]:
     out += _guarded(
         "profile logical", lambda found: _check_logical(p, found, used)
     )
+    out += _guarded("profile osc", lambda found: _check_osc(p, found))
     return out
 
 
@@ -326,6 +330,37 @@ def _check_logical(p: Profile, out: list[str], used: dict[uuid.UUID, Any]) -> No
                     f"PROFILE-LOGICAL-MISSING: {_name(action)} names Logical "
                     f"Device input {input_type} {input_id}, which doesn't exist"
                 )
+
+
+def _check_osc(p: Profile, out: list[str]) -> None:
+    from gremlin.osc import OSC_DEVICE_UUID, OscDevice
+
+    items = list((p.inputs or {}).get(OSC_DEVICE_UUID, []) or [])
+    if not items:
+        return
+    # Report only: with no OSC device yet the check skips, makes none.
+    if _singleton(OscDevice) is None:
+        return
+    from gremlin.osc_persist import resolve_osc_reference
+
+    seen: set[tuple[Any, Any, Any]] = set()
+    for item in items:
+        uid = _uid_of_ref(item, "osc_uid")
+        key = (uid, item.input_type, item.input_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        number = item.input_id if isinstance(item.input_id, int) else None
+        ident, _ = resolve_osc_reference(uid, item.input_type, number)
+        if ident is not None:
+            continue
+        kind = getattr(item.input_type, "name", item.input_type)
+        out.append(
+            f"PROFILE-OSC-MISSING: a binding in mode '{item.mode}' is on OSC "
+            f"input {kind} {item.input_id}"
+            + (f" (id {uid})" if uid else "")
+            + ", which OSC's file doesn't have"
+        )
 
 
 # --- module files -------------------------------------------------------------

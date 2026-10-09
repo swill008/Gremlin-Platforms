@@ -514,6 +514,17 @@ ApplicationWindow {
             }
         }
 
+        // OSC's server settings (its own file, D-09-OSC-FILE point 4);
+        // saved as they are changed, not by Save Module.
+        Loader {
+            id: _oscServer
+            objectName: "oscServerLoader"
+            Layout.fillWidth: true
+            active: _driver.isOsc
+            visible: active
+            source: "OscServerSection.qml"
+        }
+
         RowLayout {
             Layout.fillWidth: true
             Button {

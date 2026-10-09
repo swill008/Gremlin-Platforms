@@ -249,13 +249,14 @@ def test_s1_s62_profile_settings_stay_in_memory_until_saved(
     assert not profile.has_unsaved_changes()
 
 
-def test_s2_osc_rows_and_device_names_in_the_profile_logical_device_in_its_file(
+def test_s2_device_names_in_the_profile_osc_and_logical_device_in_their_files(
     profile: Profile, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """S2: the OSC rows and the device names list are saved in the profile
-    file and come back with it; the Logical Device has its own module file
-    (D-04-LD-FILE), which the profile's Save writes when it changed."""
-    from gremlin import logical_device_file
+    """S2: the device names list is saved in the profile file and comes back
+    with it; the OSC address list and the Logical Device have their own
+    module files (D-09-OSC-FILE, D-04-LD-FILE), which the profile's Save
+    writes when they changed."""
+    from gremlin import logical_device_file, osc_device_file
     from gremlin.modules import store
 
     modules = tmp_path / "modules"
@@ -270,20 +271,24 @@ def test_s2_osc_rows_and_device_names_in_the_profile_logical_device_in_its_file(
     path = tmp_path / "rows.xml"
     profile.to_xml(path)
     text = path.read_text(encoding="utf-8-sig")
-    assert "/osc/fire" in text
-    assert "<logical-device" not in text and "Fire" not in text.replace("/osc/fire", "")
+    assert "/osc/fire" not in text and "<osc-device" not in text
+    assert "<logical-device" not in text and "Fire" not in text
     assert (modules / "logical_device.json").exists()
+    assert [r["label"] for r in osc_device_file.read_inputs()] == ["/osc/fire"]
 
     LogicalDevice().load_dict({"controls": [], "groups": []})
     OscDevice().reset()
     back = Profile()
     back.from_xml(path)
     back.bind_devices()
-    assert OscDevice().find_address("/osc/fire") is not None
     assert back.device_database.devices[_STICK].name == "Test Stick"
-    # The Logical Device comes back from its own file, not the profile.
+    # OSC and the Logical Device come back from their own files, not the
+    # profile.
+    assert OscDevice().find_address("/osc/fire") is None
     assert not LogicalDevice().exists("Fire")
+    osc_device_file.load()
     logical_device_file.load()
+    assert OscDevice().find_address("/osc/fire") is not None
     assert LogicalDevice().exists("Fire")
     LogicalDevice().load_dict({"controls": [], "groups": []})
 

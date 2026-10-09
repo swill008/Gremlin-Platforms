@@ -155,7 +155,7 @@ function topics() {
                 + "<li>A module file, with its pictures, and settings are saved at once, and the restore is a new change in the History at once.</li>"
                 + "<li>A Device Library change: \"Restoring puts back the Device Library's list and its saved setups together.\"</li>"
                 + "<li>A whole profile (on its save's entry) is written as a copy next to the profile, to open with <b>File › Load Profile…</b>. It stays next to the profile until you delete it, and is not a change in the History.</li>"
-                + "<li>A part of a profile (modes, OSC, Profile Settings, scripts) can't be restored on its own: \"Put this back with Restore on the profile's save, below it in the list.\"</li>"
+                + "<li>A part of a profile (modes, Profile Settings, scripts) can't be restored on its own: \"Put this back with Restore on the profile's save, below it in the list.\" The Logical Device and OSC have their own module files, so their entries can be restored on their own.</li>"
                 + "<li>The Logical Device has its own file, so it is restored on its own, as a module file is.</li>"
                 + "<li>A \"Created\" change can't be restored to Before, nor a \"Deleted\" one to After, and a version no longer kept can't be restored: those buttons are off.</li>"
                 + "</ul>",

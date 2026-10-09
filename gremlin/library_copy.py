@@ -45,6 +45,9 @@ _MAP_SETTINGS = ("in.mapview", "in.print")
 # The Logical Device's layout in its module file (10 S6a); only its own
 # packs have it.
 _LOGICAL_ITEM = "in.logical"
+# OSC's addresses and server settings in its module file (D-09-OSC-FILE);
+# only OSC's own packs have them.
+_OSC_ITEM = "in.osc"
 _MODULE_PARTS = {"setup", "button_map", "appearance", "calibration"}
 _KIND_WORD = {2: "axis", 3: "button", 4: "hat"}
 # A part LS marks as a damaged module file kept as is (S20a).
@@ -185,8 +188,10 @@ def _module_items(
         if everything:
             wanted.update(_MAP_SETTINGS)
     if everything:
-        # A put-back takes the Logical Device's layout too (D-04-LD-FILE).
+        # A put-back takes the Logical Device's layout and OSC's addresses
+        # and server too (D-04-LD-FILE, D-09-OSC-FILE).
         wanted.add(_LOGICAL_ITEM)
+        wanted.add(_OSC_ITEM)
     return [i for i in ids if i in wanted]
 
 
@@ -409,7 +414,11 @@ def _plan_copy(
         wires = _wire_items(pack_modes, parts, modes)
         items.extend(w for w in wires if w not in items)
         plan = device_pack._plan_wires(
-            each["wires"], set(wires), limits, device_pack._rows_of(into)
+            each["wires"],
+            set(wires),
+            limits,
+            device_pack._rows_of(into),
+            device_pack._osc_rows_of(into),
         )
         left_out.extend(x for x in plan["leftOut"] if x not in left_out)
         for mode in plan["modes"]:

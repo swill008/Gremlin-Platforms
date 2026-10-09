@@ -1,27 +1,31 @@
 # OSC, sound and speech, tray, look and help (and the leftovers)
 
-Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 11 brought up to date 9 Oct. Line numbers drift; re-check them before a step starts. **OSC is parked** (todo.md, 2 Oct): this page maps it and lists its open items, it does not judge them. Sound and speech are mapped here only at the system level (the player and the speech engine); the Play Sound and Text to Speech editors belong to the Actions page. The last part of section 2 lists every file in `gremlin/` and `qml/` that no other page names, so nothing is unmapped.
+Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 11 brought up to date 9 Oct. Line numbers drift; re-check them before a step starts. **OSC was parked** (todo.md, 2 Oct) and was picked up 2026-10-09: decisions D-09-OSC-FILE (OSC's own module file, permanent ids, server settings in OSC's Module Setup), D-09-OSC-INPUT (per-input settings) and D-09-OSC-FAULTS (small faults) change the OSC statements below; the batch is being built 2026-10-09. Sound and speech are mapped here only at the system level (the player and the speech engine); the Play Sound and Text to Speech editors belong to the Actions page. The last part of section 2 lists every file in `gremlin/` and `qml/` that no other page names, so nothing is unmapped.
 
 ## 1. Purpose
 
-- **OSC**: lets a network sender (Stream Deck through Bitfocus Companion, a phone app) press buttons and move axes in the program. Each OSC address the user adds becomes an input on the OSC page; while the profile runs, a packet to that address fires the input's actions like a stick input would.
+- **OSC**: lets a network sender (Stream Deck through Bitfocus Companion, a phone app) press buttons and move axes in the program. OSC is an internal input (03 S90b), like the Keyboard and the Logical Device: one list of OSC inputs, kept in OSC's own module file and shared by every profile; each input has its own settings (mode, message or data, value source, range, trigger). While the profile runs, a packet that matches an input fires its actions like a stick input would.
 - **Sound and speech**: the Play Sound and Text to Speech actions play a file or speak text while the profile runs; Options sets how sounds overlap and which voice speaks.
 - **Tray, look and help**: the tray icon lets the program run hidden and shows Running/Stopped; dark/light mode, UI scale and Windows scaling set how every window looks; the User Guide (F1) and the glossary set what the screens say.
 
 ## 2. Files
 
-**OSC (about 2,030 lines, parked)**
-- `gremlin/osc.py` (516): `OscDevice` singleton (the list of OSC inputs: address, id, type, last value); `OscListener` (UDP server from python-osc); `OscRuntime` (start/stop, Listen, packet -> event, auto-release); parse helpers (`parse_port`, `parse_delay_ms`, `is_pressed`, `axis_value`, `guess_input_type`); `local_ipv4_addresses`, `default_bind_host`; a hook that patches `Configuration.set` (265-286).
+**OSC (about 2,800 lines; picked up 2026-10-09)**
+- `gremlin/osc.py` (516, being changed 2026-10-09): `OscDevice` singleton, keeping its public name, now delegates to one shared `OscRows` (`OscDevice().rows`); `OscListener` (UDP server from python-osc); `OscRuntime` (start/stop, Listen, packet -> event, per-input auto-release timers); parse helpers (`parse_port`, `parse_delay_ms`, `is_pressed`, `axis_value`, `guess_input_type`); `local_ipv4_addresses`, `default_bind_host`; a hook that patches `Configuration.set` (265-286; the server settings move to OSC's file, D-09-OSC-FILE).
+- `gremlin/osc_rows.py` (345, new 2026-10-09, D-09-OSC-FILE / D-09-OSC-INPUT): the OSC input list, pure (no IO, no Qt). `OscRow` (uid, input type, number, address label, mode, cmd_mode, data, source, range_min/max, trigger, delay_ms); `OscRows` (create, delete, set_label, update, by_uid, by_number, uid_of, identifier_of_uid, `matches(address, args)`, rows, to_dict/load_dict, dirty/mark_saved); `check_address`, `check_settings`, `type_of_mode`; `MODES` (button, axis, change), `CMD_MODES` (message, data).
+- `gremlin/osc_device_file.py` (398, new 2026-10-09, D-09-OSC-FILE): OSC's own module file (`store.path_of("osc")`, `osc.json`: `inputs` and `server`, other keys kept; writes through `gremlin.modules.store`, so module-file History records them). `path`, `load`, `save`, `save_if_dirty`, `read_server` / `write_server` / `clean_server`, `merge_profile_rows` (older profiles' rows into the file; `MergeResult` uid map, `current_uid_map` while such a profile loads), `backup_old` (`<name>.xml.v15.bak` / `.v14.bak`), `migrate_settings_from_config` (old `osc/connection/*` copied once).
 - `gremlin/osc_bulk.py` (73): Bulk capture in the Add dialog. Replaces three methods of `OscDeviceManagementModel` at import (20-22, 62-64); `OscBulkCapture` QML element.
-- `gremlin/osc_persist.py` (48): replaces `InputIdentifier.label` and `linear_index` for every identifier so OSC inputs show as "OSC - <address>" (116-121). The docstring says the OSC rows are saved by `Profile.to_xml`/`from_xml`.
+- `gremlin/osc_persist.py` (48+): replaces `InputIdentifier.label` and `linear_index` for every identifier so OSC inputs show as "OSC - <address>" (116-121). References to OSC inputs are stored by the input's uid (D-09-OSC-FILE): `resolve_osc_reference`, `osc_label`, `osc_linear_index`, `osc_rows`. Other uid users: `gremlin/validate.py` (rule check PROFILE-OSC-MISSING: a reference to an id OSC's file doesn't have), `gremlin/ui/device_pack.py` (the `in.osc` item, `missingOsc`, wires carry `<osc-uid>`), `gremlin/library_copy.py` (`_OSC_ITEM`), `gremlin/ui/logical_layout.py` (Assign Hardware lists OSC addresses).
 - `gremlin/ui/osc_device_model.py` (343): `OscDeviceManagementModel` (the OSC page's list: add, import, Listen, rename address, delete, clear, sort, mode, row data); `OscInputIdentifier`; `_parse_import_line`.
-- `gremlin/ui/osc_option.py` (212): Options rows: `OscInputHostModel`, `OscOutputHostModel` (IP list with rescan + port), `OscAutoreleaseModel` (delay and presets); registers them in `MetaConfigOption`.
+- `gremlin/ui/osc_option.py` (212): the OSC host/port/auto-release editors; with D-09-OSC-FILE they edit OSC's file (`server`) from OSC's Module Setup (03 S53a), and Options keeps one line with a button to it (01 S40a).
 - `gremlin/ui/osc_settings_info.py` (43): `OscSettingsInfo.summary()`, the text in the "Listening for OSC" box.
 - `qml/OscDevice.qml` (227): the OSC page (list of inputs, Clear / Sort / Add / Import, rename and delete per row, locked while running). Clear is a red `DangerButton` that asks the shared question (`askClear`, `Confirm.ask`, red Clear OSC Inputs).
 - `qml/OscAddDialog.qml` (277): "OSC Input Mapper": Cmd, Change/Button/Axis, Message only / Message + data, Trigger on message + delay, Listen, Bulk capture.
 - `qml/OscImportDialog.qml` (84): paste addresses, one per line, with type suffixes.
-- `qml/OptionOscInputHost.qml` (76), `qml/OptionOscOutputHost.qml` (64), `qml/OptionOscAutorelease.qml` (71): the Options rows.
-- Elsewhere, OSC parts: `joystick_gremlin.py` 570-809 (registers the seven `osc/connection/*` settings), `gremlin/profile.py` 860, 892, 948, 1306-1324 (`<osc-device>` in the profile), `gremlin/code_runner.py` 390/428 (start/stop at Run/Stop), `gremlin/modules/runtime.py` 22-27 (OSC always forwarded, no claims), `gremlin/event_handler.py` 104 (display name), `gremlin/ui/backend.py` 277 (no highlighting for OSC), `gremlin/action_label.py` 166 (patches the model's `data`), `gremlin/ui/module_model.py` 1654, 1896-1925 (OSC card and its Module Setup rows), `gremlin/history_profile.py` 35 (History names "the OSC inputs"), `gremlin/swap_devices.py` 21 (OSC left out), `qml/DeviceList.qml` 221-255 (the OSC tab), `qml/Main.qml` 1285, 1844-1856 (page loader, mode).
+- `qml/OscServerSection.qml` (157, new 2026-10-09, D-09-OSC-FILE): the **Server** section of OSC's Module Setup (Enabled, host, port, output host/port, auto-release and its delay, pad args); each change is checked and written to OSC's file at once (03 S53a).
+- `qml/OptionOscModuleSetup.qml` (41, new 2026-10-09, D-09-OSC-FILE): the one Options row, "OSC settings are in OSC › Module Setup", with its button (01 S40a).
+- `qml/OptionOscInputHost.qml`, `OptionOscOutputHost.qml`, `OptionOscAutorelease.qml`: removed 2026-10-09 (D-09-OSC-FILE); the server rows are `qml/OscServerSection.qml` in OSC's Module Setup, and Options' OSC section (group Server, key `osc/connection/module-setup`) is one line, `qml/OptionOscModuleSetup.qml`.
+- Elsewhere, OSC parts: `joystick_gremlin.py` 570-809 (registers the seven old `osc/connection/*` settings, read once by `migrate_settings_from_config`), `gremlin/profile.py` (version 16: reads `<osc-device>` of version 14/15 profiles into OSC's file, writes none), `gremlin/modules/store.py` (reloads OSC after a write of its file, like `_reload_logical_device`), `gremlin/code_runner.py` 390/428 (start/stop at Run/Stop), `gremlin/modules/runtime.py` 22-27 (OSC always forwarded, no claims), `gremlin/event_handler.py` 104 (display name), `gremlin/ui/backend.py` 277 (no highlighting for OSC; Save, `*` and Discard cover OSC's file), `gremlin/action_label.py` 166 (patches the model's `data`), `gremlin/ui/module_model.py` 1654, 1896-1925 (OSC card and its Module Setup rows, friendly names by uid, Server section), `gremlin/history_profile.py` 35, `gremlin/swap_devices.py` 21 (OSC left out), `gremlin/ui/device_pack.py`, `gremlin/library_copy.py`, `gremlin/ui/logical_layout.py`, `gremlin/validate.py` (references by uid), `qml/DeviceList.qml` 221-255 (the OSC tab), `qml/Main.qml` 1285, 1844-1856 (page loader, mode).
 - `tools_osc/` (outside `gremlin/`): the standalone tester used before the OSC page existed (`osc_listener.py`, `osc_send_test.py`, README, PATH_B.md, WIRE.md, a patch). Its README still says "Tools → Options → osc … port 9000" and "Activate the profile".
 
 **Sound and speech (system level)**
@@ -66,11 +70,12 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 
 | Data / state | Where | Who else changes it |
 |---|---|---|
-| OSC inputs (address, id, type) | `OscDevice._inputs`, `_by_id` (osc.py 142-148), in memory | `OscDeviceManagementModel` (add, import, Listen, rename, delete, clear); `Profile.from_xml`/`reset` (profile.py 860, 1306); `osc_bulk.model_on_learned` |
+| OSC inputs (uid, type, number, address, per-input settings) | one shared `OscRows` (`gremlin/osc_rows.py`), reached through `OscDevice().rows`; kept in OSC's module file (D-09-OSC-FILE) | `OscDeviceManagementModel` (add, import, Listen, rename, delete, clear); `osc_bulk.model_on_learned`; `osc_device_file.load` / `merge_profile_rows`; Device Library Restore, Device Pack Import, History restore (through `store`) |
 | OSC input last value | `OscDevice.Input.value` | `OscRuntime._emit_button`, `_on_main` |
-| OSC inputs on disk | profile XML `<osc-device><input>` (input-type, input-id, label) | `Profile.to_xml` (948, 1316-1324); History records the section as "the OSC inputs" |
+| OSC inputs on disk | OSC's module file `osc.json` key `inputs` (`osc_device_file.save`); version 14/15 profiles' `<osc-device>` is read once and merged | `osc_device_file`; module-file History records it (D-09-OSC-FILE) |
 | Actions on OSC inputs | profile `inputs[OSC GUID]` | Configuration panel (Actions page); `_drop_profile_mappings` on delete/clear (osc_device_model.py 234-246) |
-| OSC connection settings | `configuration.json` `osc/connection/`: `enabled` (True), `host` (this PC's LAN IP at first start), `port` ("8001"), `output-host` ("127.0.0.1"), `output-port` ("8000"), `pad-args` (False), `autorelease-no-arg` (True), `autorelease-delay` ("250"); old keys under `global/osc/*` still read as a fallback (osc.py 70-75) | Options OSC page; `OscRuntime` reads them at start and per packet |
+| OSC server settings | OSC's module file key `server`: `enabled` (true), `host` ("" = every address on this PC), `port` (8001), `output_host` ("127.0.0.1"), `output_port` (8000), `autorelease_no_arg` (true), `autorelease_delay_ms` (250), `pad_args`; copied once from `configuration.json` `osc/connection/*` (D-09-OSC-FILE) | OSC's Module Setup Server section; `OscRuntime` reads them at start and when they change (`oscServerSettingsChanged`) |
+| OSC settings copy at first start | Only `osc/connection/*` values that differ from the defaults are copied into OSC's file (`migrate_settings_from_config`); with none, nothing is written and a fresh install has no OSC file until the first real save (keeps Home's first selected card on the stick). [2026-10-09, D-09-OSC-FILE (4)] |
 | Listener and Listen state | `OscRuntime._listener`, `_learn`, `_hold_learn`, cached behaviour flags, output host/port | `CodeRunner.start/stop`, Add dialog (Listen, Bulk), the patched `Configuration.set` (`sync_bind`) |
 | Page-only OSC state | `OscDeviceManagementModel._mode`, `_capture_only`, `_sort_alpha`, `_bulk*` | Main.qml (mode); lost when the page unloads |
 | Sound queue | `AudioPlayer._play_list`, `_currently_playing`, `_is_ready`, `_playback_mode` | Play Sound functors (enqueue, event thread); playback thread (pop); `stop` |
@@ -105,14 +110,15 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 | Add → Listen again / Cancel / close / untick Bulk | OscAddDialog 225-227, 249-253, 271-276 | `cancelListen()` → `OscRuntime.cancel_listen()` (stops listening mode, not the UDP socket) |
 | Add dialog opens Listen | OscAddDialog 72-82 | `backend.pauseInputHighlighting("osc-add")` / resume on close |
 | Import → OK | OscImportDialog 72-76 → OscDevice.qml 76-79 | `importInputs(text)`: one address per line, must start with "/"; suffix A, C, E → Axis, anything else → Button; existing addresses skipped |
-| Options → OSC → Input host/port, Output host/port, Rescan | `OptionOscInputHost/OutputHost.qml` | `OscAddressModel.setHost`, `setPort`, `refresh` → `Configuration.set` → patched hook → `OscRuntime.sync_bind()` (for enabled/host/port only) |
-| Options → OSC → Enabled, Auto-release, Treat as 1.0, Delay presets | Options rows; `OptionOscAutorelease.qml` | `Configuration.set`; delay via `OscAutoreleaseModel.setPreset/_set_delay` (0-10000 ms) |
+| OSC Module Setup → Server: host, port, output host/port, Enabled, auto-release, delay | Server section (03 S53a; D-09-OSC-FILE) | `osc_device_file.write_server` → `oscServerSettingsChanged` → `OscRuntime` rebinds, starts or stops at once |
+| Options → OSC | one line + button "OSC settings are in OSC › Module Setup" (01 S40a) | opens OSC's Module Setup |
 | Run | `CodeRunner.start` (code_runner.py 390) | `OscRuntime.start()`: reads settings, binds UDP, or shows an error |
 | Stop / quit | `CodeRunner.stop` 428; `shutdown_cleanup` (joystick_gremlin.py 284) | `OscRuntime.stop()` |
 | UDP packet arrives | python-osc thread → `OscListener._on_message` → `_from_thread` | `incoming` signal (queued to main) → `_on_main`: Listen capture; matched address → `EventListener.joystick_event` |
 | Address-only button packet (auto-release on) | `_on_main` 495-501 | `QTimer.singleShot(delay)` → `_release_button` with the mode at press time |
-| Profile load / New profile | `Profile.from_xml` / `__init__` | `OscDevice.reset()`, `_osc_devices_from_xml`; page model resets on `profileChanged` |
-| Save | `Profile.to_xml` | `_osc_devices_to_xml` |
+| Profile load / New profile | `Profile.from_xml` / `__init__` | OSC inputs stay (one shared list); a version 14/15 profile's `<osc-device>` → `osc_device_file.merge_profile_rows` (one-time note, references follow the uid map) |
+| Save | File › Save Profile | `osc_device_file.save_if_dirty` (OSC's file when changed); the profile (version 16) has no `<osc-device>` |
+| Device Library Save/Restore/Export, Device Pack Import, History restore of OSC's file | `store.replace` / `write_text` | one write, one History entry; OSC reloads (`oscDeviceReloaded`) |
 | Mode change | Main.qml 1285 | `setMode(mode)`: rows show that mode's actions |
 
 **Sound and speech**
@@ -163,12 +169,12 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 | Run lifecycle (`code_runner`) | — | `OscRuntime.start/stop`, `AudioPlayer.start/stop`, `TTSManager.start/stop` |
 | Input pipeline (`EventListener`, `InputModuleRuntime`) | OSC emits `joystick_event` with the OSC GUID; passes the input-module gate unfiltered (`always_forwarded`) | — |
 | Mode manager | `ModeManager().current.name` per OSC packet; TTS `${current_mode}` | — |
-| Profile | `OscDevice` reset/load/save; `drop_inputs` on delete/clear; `get_input_item` for row data | `Profile.from_xml/to_xml/reset` |
+| Profile | `drop_inputs` on delete/clear; `get_input_item` for row data; older profiles' rows merged into OSC's file | `Profile.from_xml` (version 14/15 `<osc-device>`) |
 | Configuration (settings) | reads `osc/*`, `action/play-sound/*`, `action/text-to-speech/voice`, tray and UI keys; OSC patches `Configuration.set` | Options pages through the models above |
 | Configuration panel / Actions | `uiState.setCurrentInput` with an OSC identifier | Play Sound and TTS functors call `enqueue`; `action_label.py` patches the OSC model's `data` |
 | Backend / UI state | `pauseInputHighlighting`, `toggleActiveState`, `quitRequested`, `requestRestart`, `uiScale`, `useDarkMode`, `gremlinActive` | `activityChanged` → tray icon; `uiScaleChanged` |
-| Modules (Home card, Module Setup) | — | `module_model._load_osc` reads `OscDevice` for the OSC card's Module Setup rows |
-| History | — | `history_profile` diffs the `<osc-device>` section |
+| Modules (Home card, Module Setup, store) | writes OSC's file through `gremlin.modules.store` | `module_model._load_osc` reads the rows and friendly names by uid; Server section edits `server` |
+| History | OSC's file is recorded as a module file (OSC) | Restore of OSC's file reloads it |
 | Logical Device | — | Assign Hardware lists OSC inputs (`logical_layout.py` 89) |
 | Swap Devices, Calibration, Auto Mapper, Device Information | — | OSC left out (`swap_devices.py` 21, `calibration.py` 19, AU-68) |
 | Error / notification UI | `signal.showError` (bind failed, python-osc missing, cannot start), `signal.showNotification` ("Bound OSC input …") | — |
@@ -181,7 +187,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 |---|---|---|---|
 | "OSC listener" (`serve_forever`) | `OscListener.start` via `gremlin.threads.start` (osc.py 243) | `OscListener.stop` → `shutdown()` + `server_close()`; also listed for `threads.shutdown` | `shutdown()` waits for the server's next poll (0.5 s at most). Called on the main thread. |
 | One thread per UDP packet | python-osc `ThreadingOSCUDPServer` (osc.py 241) | ends by itself | Not made through `gremlin.threads`; not listed (AU-67). Only emits a Qt signal, handled on the main thread. |
-| OSC auto-release | `QTimer.singleShot(delay)` on the main thread (osc.py 496) | not cancelled at Stop or on a new press | Fires a release event with the mode from press time. |
+| OSC auto-release | one timer per input on the main thread | a new press restarts it; Stop cancels all (D-09-OSC-INPUT) | Fires a release event with the mode from press time. |
 | Bulk debounce | `time.monotonic()` (osc_bulk.py 46) | — | Not `gremlin.clock` (OSC parked; the rest moved to `gremlin.clock`, GL-265). |
 | "audio player" | `AudioPlayer.start` via `gremlin.threads.start` | `_ask_to_stop` (flag, clear queue, cancel samples); `stop` joins 2 s | Loop sleeps 10 ms with `clock.sleep` (208); queue under a lock (GL-278); Sequential waits in 0.5 s steps re-checking the flag (68-70). |
 | miniaudio playback | `miniaudio.PlaybackDevice.start` | sample generator ends or `cancel` | Native thread inside miniaudio. |
@@ -212,35 +218,35 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 
 ## 8. Behaviour spec
 
-### OSC connection (parked)
+### OSC connection (server settings in OSC's Module Setup)
 - **S1** It should listen for OSC only while the profile runs (and during Add → Listen), and stop listening at Stop and at quit. [user confirmed 2026-10-06; was code only] [test-plan: TB-02 lists only the toolbar; system-maps: map 3 rows B, C, R]
-- **S2** It should be possible to turn OSC off in Options → OSC → Connection → Enabled; off means no socket is opened at Run. [help: Options] [user confirmed 2026-10-06; was code only]
-- **S3** It should listen on the Input host and port set in Options; the host list offers this PC's IPv4 addresses (plus 127.0.0.1 and 0.0.0.0) and a rescan button, and accepts a typed address. [help: Options] [test-plan: OPT-O01..O06]
-- **S4** Changing Enabled, Input host or Input port while running should rebind or stop the listener at once, without a new Run. [user confirmed 2026-10-06; was code only]
+- **S2** It should be possible to turn OSC off in OSC's Module Setup → Server → Enabled; off means no socket is opened at Run. [help: OSC] [changed 2026-10-09, user: D-09-OSC-FILE] (was: Options → OSC → Connection → Enabled)
+- **S3** It should listen on the host and port set in OSC's Module Setup → Server. A blank host (the default) means every address on this PC (binds 0.0.0.0), so a LAN address that changes (DHCP) never breaks it; a typed host must be an IP address or a name and is checked before it is saved. The settings are kept in OSC's module file and travel with Device Library, Export and Device Pack. [help: OSC] [changed 2026-10-09, user: D-09-OSC-FILE] [changed 2026-10-09, user: D-09-OSC-FAULTS] (was: Options; the saved LAN address of this PC)
+- **S4** Changing any server setting should take effect at once, also while running: turning Enabled on starts the listener, host or port rebinds it, off stops it; a failed bind is tried again when the settings change. [changed 2026-10-09, user: D-09-OSC-FILE] (was: Enabled, host and port only; turning Enabled on while running did nothing, G-OSC11)
 - **S5** A port that is blank, not a number or outside 1-65535 should fall back to the default. [user confirmed 2026-10-06; was code only]
-- **S6** The default input port and the default output port should be different and shown the same everywhere (Options, the Listening box, the listener). [tracker: B15] [todo: B15 suggests input 8000, output 9000]
+- **S6** The default input port should be 8001 (intended; the user can change it) and the default output port 8000, one value each, shown the same everywhere (Module Setup, the Listening box, the listener); a blank or bad input port falls back to 8001. [changed 2026-10-09, user: D-09-OSC-FAULTS] (was: an open question; B15 suggested 8000 and 9000)
 - **S7** If the port cannot be opened (in use, address gone), Run should still run the rest of the profile and show one error "Could not bind OSC on host:port." [user confirmed 2026-10-06; was code only] [tracker: D16 titled "Error"]
-- **S8** OSC on by default bound to the LAN address should not cause a firewall prompt or a bind error on every Run when the profile has no OSC inputs. [tracker: APP5 (open)]
-- **S9** The Output address should be where OSC feedback goes. [help: Options names "Output address"] [user confirmed 2026-10-06; was code only: nothing sends today, see G-OSC2]
+- **S8** OSC on by default should not give a bind error on every Run: the default host is every address on this PC, not a saved LAN address. [changed 2026-10-09, user: D-09-OSC-FILE] (was: also not bound to the LAN address; opening only when there are OSC inputs (Q5) is not part of this decision, see G-OSC7)
+- **S9** The output host and port (127.0.0.1:8000) should be where OSC feedback goes; nothing sends yet, so Module Setup shows them as "used once OSC output is built". [changed 2026-10-09, user: D-09-OSC-FILE] (was: Q3 hide until something sends)
 
-### OSC inputs (the OSC page, parked)
-- **S10** The OSC page should list every OSC input of the loaded profile as "Button n - /address" or "Axis n - /address", with its action count for the current mode. [user confirmed 2026-10-06; was code only]
+### OSC inputs (the OSC page)
+- **S10** The OSC page should list every OSC input (one list shared by every profile, kept in OSC's module file) as "Button n - /address" or "Axis n - /address", with its action count for the current mode. [changed 2026-10-09, user: D-09-OSC-FILE] (was: the loaded profile's OSC inputs)
 - **S11** It should be locked (greyed, no clicks) while the profile runs. [user confirmed 2026-10-06; was code only] [test-plan: system-maps editorLocked list]
-- **S12** Add should create an input with the typed address and the chosen type (Button or Axis), select it, and open its actions on the right. [user confirmed 2026-10-06; was code only]
-- **S13** After Add, the new input should be the one selected, also for an Axis. [tracker: APP4 (open)]
-- **S14** Adding an address that already exists should select the existing input, not make a second one. [user confirmed 2026-10-06; was code only]
+- **S12** Add should create an input with the typed address and the chosen mode (Button, Axis or Change) and settings (S16), select it, and open its actions on the right; Axis mode makes an axis input, the others a button input. The new input gets a permanent id and the lowest free number. [changed 2026-10-09, user: D-09-OSC-INPUT] (was: Button or Axis only)
+- **S13** After Add or Import, the row added should be the one selected, also for an Axis and after Sort. [tracker: APP4] [changed 2026-10-09, user: D-09-OSC-FAULTS]
+- **S14** Adding an input that already exists (same address, and in Message + data the same values) should select the existing input, not make a second one; several inputs may share an address when their data or value source differ. [changed 2026-10-09, user: D-09-OSC-INPUT] (was: one input per address)
 - **S15** Addresses should match without regard to case (`/Deck/1` = `/deck/1`) and are stored in lower case. [user confirmed 2026-10-06; was code only]
-- **S16** "Change" should be its own type, not saved as Axis; "Message only / Message + data" and "Trigger on message" with its delay should either work per input or not be shown. [tracker: B16 (planned)] [todo: B16]
-- **S17** Listen should fill the address from the next packet that arrives and bind it with the chosen type, closing the dialog. [user confirmed 2026-10-06; was code only]
+- **S16** Each input should keep its own settings, set in the Add window and saved in OSC's file: mode (Button, Axis, Change; Encoder reserved, not offered), Message only / Message + data (with the values captured or typed), value source (P1..Pn, P1 first), axis range (default 0 to 1), Trigger on message and its delay (left blank = the server default). They work at run time as S38-S39d say. [changed 2026-10-09, user: D-09-OSC-INPUT] (was: work per input or be hidden; Q2)
+- **S17** Listen (single capture) should fill the address from the next message that arrives, offer its values as sources (P1..Pn), bind it with the window's settings and close the dialog; it ends on that message by design. [changed 2026-10-09, user: D-09-OSC-INPUT] [changed 2026-10-09, user: D-09-OSC-FAULTS]
 - **S18** Listen should tell the user if OSC is off or the port can't be opened ("Could not start OSC listener."). [user confirmed 2026-10-06; was code only]
-- **S19** Bulk capture should add one input per new address until the user stops listening; the same address twice within 0.3 s counts once. [user confirmed 2026-10-06; was code only] [OscAddDialog tip: "intended for simple devices such as the Stream Deck"]
-- **S20** Cancel, closing the Add dialog, or unticking Bulk should end listening, and when no profile runs, close the port too. [tracker: APP13 (open)]
-- **S21** The "Listening for OSC" box should have a Stop button. [tracker: APP17 note: left out, OSC parked]
-- **S22** Import should add one input per line that starts with "/", skip lines that don't and addresses that exist, and select the last one added. [user confirmed 2026-10-06; was code only]
-- **S23** Import suffixes should give the types the dialog promises (A axis, B button with value, BNP button without value, C change, E encoder). [tracker: B17 (planned)]
-- **S24** Editing an address should keep the input's actions (same id). [user confirmed 2026-10-06; was code only]
-- **S25** An address should never be blank and should start with "/" and be unique; a duplicate rename should say why it was refused. [tracker: APP11 (open)] [user confirmed 2026-10-06; was code only: duplicate refused silently]
-- **S26** Delete should remove the input and its actions in every mode. [user confirmed 2026-10-06; was code only] [tracker: G-LIBLEAK note: OSC Delete leak closed]
+- **S19** Bulk capture should add one input per new address, each with the window's settings, until Bulk capture is unticked; the same address twice within 0.3 s counts once. [OscAddDialog tip: "intended for simple devices such as the Stream Deck"] [changed 2026-10-09, user: D-09-OSC-INPUT]
+- **S20** Cancel, closing the Add dialog, Stop in the Listening box, unticking Bulk capture, or a single capture ending should end listening and, when no profile runs, close the port. [tracker: APP13] [changed 2026-10-09, user: D-09-OSC-FAULTS]
+- **S21** The "Listening for OSC" box's button should be Stop, and it stops listening (not only hides the box). [tracker: APP17] [changed 2026-10-09, user: D-09-OSC-FAULTS]
+- **S22** Import should add one input per line that starts with "/", skip lines that don't and inputs that exist, select the row it added (also after Sort), and say how many were added and skipped. [changed 2026-10-09, user: D-09-OSC-INPUT] [changed 2026-10-09, user: D-09-OSC-FAULTS]
+- **S23** Import suffixes, after a space or a comma (`/a B`, `/a, B`): A axis, B button, BNP button with Trigger on message, C change, E a button with the note "encoder not supported yet"; an unknown suffix gives a button and a note naming the line. [tracker: B17] [changed 2026-10-09, user: D-09-OSC-INPUT] (was: E encoder)
+- **S24** Editing an address should keep the input's actions, friendly name and every reference (same permanent id). [changed 2026-10-09, user: D-09-OSC-FILE]
+- **S25** An address should never be blank, should start with "/" and be unique (with its data and source, S14); a refused edit says why in the shared message line. [tracker: APP11] [changed 2026-10-09, user: D-09-OSC-FAULTS] (was: duplicate refused silently)
+- **S26** Delete should ask the shared question (Confirm, "You can restore it from Tools › History.") and then remove the input and its actions in every mode. [tracker: G-LIBLEAK note: OSC Delete leak closed] [changed 2026-10-09, user: D-09-OSC-FAULTS] (was: no question; Q6 Undo)
 - **S27** Clear should ask first ("This will remove every OSC input in the current profile.") and then remove all inputs and their actions. [user confirmed 2026-10-06; was code only]
 - **S28** Sort should order the list A-Z by address. [user confirmed 2026-10-06; was code only]
 - **S29** OSC inputs should be listed in Logical Device → Assign Hardware for a button. [help: Assign hardware and actions]
@@ -251,22 +257,27 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 - **S34** The OSC page's empty state should talk about OSC, not sticks. [tracker: AU-58 (left: OSC parked)]
 - **S35** OSC dialogs should say "OK" (not "Ok") and put Cancel where other dialogs do. [glossary: Title Case] [tracker: E1 (left: OSC parked)]
 
-### OSC at run time (parked)
+### OSC at run time
 - **S36** A packet whose address matches an OSC input should fire that input's actions in the current mode, like a stick input. [user confirmed 2026-10-06; was code only] [test: test_input_module_gate.py::test_osc_passthrough]
 - **S37** A packet whose address matches nothing should be ignored (logged at debug); `/noop` is always ignored. [user confirmed 2026-10-06; was code only]
-- **S38** Button: first value not 0 = press, 0 = release; a text value counts as pressed unless it reads as a number 0. [user confirmed 2026-10-06; was code only]
-- **S39** Button with no value: with "Treat address-only messages as 1.0" it presses; with "Auto-release address-only messages" on, it releases after the Auto-release delay (default 250 ms, 0-10000). [help: Options (Messages, press timing)] [user confirmed 2026-10-06; was code only]
+- **S38** Button: the value at the input's source (P1 by default) not 0 = press, 0 = release; a text value counts as pressed unless it reads as a number 0. [changed 2026-10-09, user: D-09-OSC-INPUT] (was: the first value)
+- **S39** Button with no value at its source: press, then release after the delay when Trigger on message is on for the input (or, left blank, the server's "auto-release address-only messages", on by default); the delay is the input's or the server's (250 ms, 0-10000). With Trigger on message on, any message presses then releases after the delay. Pad args works as before. [changed 2026-10-09, user: D-09-OSC-INPUT]
+- **S39a** Change: when the value at the source differs from this input's last value (the first message counts), press, then release after the delay. [changed 2026-10-09, user: D-09-OSC-INPUT]
+- **S39b** Each input should have its own auto-release timer: a new press restarts it (a release from an earlier press never lands during a later hold), and Stop cancels all of them. [changed 2026-10-09, user: D-09-OSC-INPUT] [changed 2026-10-09, user: D-09-OSC-FAULTS]
+- **S39c** Message + data: a message whose address and values equal the input's data (numbers compared as numbers, else as text) presses, then releases after the delay. [changed 2026-10-09, user: D-09-OSC-INPUT]
+- **S39d** A message should go to every input that matches it (address in any case; data and source as above). [changed 2026-10-09, user: D-09-OSC-INPUT]
 - **S40** The auto-release should release in the mode the press happened in. [user confirmed 2026-10-06; was code only]
-- **S41** Axis: the first value, limited to -1.0 … 1.0; no value or text gives 0.0. [user confirmed 2026-10-06; was code only] [OscAddDialog help text]
-- **S42** Listen should guess the type from the first packet: no value, 0, 1 or beyond ±1 → Button; anything else → Axis. [user confirmed 2026-10-06; was code only]
-- **S43** Settings changed in Options should apply to the next packet without a new Run (behaviour flags are read per packet). [user confirmed 2026-10-06; was code only] [tracker: AU-67 lists per-packet reads as a cost]
+- **S41** Axis: the number at the input's source, scaled from its range (default 0 to 1; axes from older profiles -1 to 1, so they behave as before) to -1.0 … 1.0 and limited to it; no value or text is ignored. [changed 2026-10-09, user: D-09-OSC-INPUT] (was: the first value limited to -1..1; no value gives 0.0)
+- **S42** Listen may suggest a type from the first message (no value, 0, 1 or beyond ±1 → Button; anything else → Axis); the mode chosen in the window is what is saved. [changed 2026-10-09, user: D-09-OSC-INPUT]
+- **S43** Server settings changed in OSC's Module Setup should apply at once, also while running, without a new Run (S4). [changed 2026-10-09, user: D-09-OSC-FILE] (was: Options, read per packet)
 
-### OSC saving
-- **S44** OSC inputs should be saved in the profile (`<osc-device>`), not in program settings; OSC connection settings are program settings. [history-notes: what is saved where] [user confirmed 2026-10-06; was code only]
-- **S45** Loading another profile or New Profile should replace the OSC inputs with that profile's (none for New). [user confirmed 2026-10-06; was code only]
-- **S46** Adding, renaming, deleting or clearing OSC inputs should mark the profile unsaved (the saved-file comparison sees the `<osc-device>` section). [user confirmed 2026-10-06; was code only]
-- **S47** Saving should record OSC changes in History as "the OSC inputs". [user confirmed 2026-10-06; was code only] [tracker: G-HISTORY]
-- **S48** A damaged `<osc-device>` (two inputs with one address) should not stop the profile from opening. [user confirmed 2026-10-06; was code only: today `create` raises; unverified]
+### OSC saving (OSC's own module file)
+- **S44** OSC inputs and the server settings should be saved in OSC's own module file (`store.path_of("osc")`, keys `inputs` and `server`), one list shared by every profile, as the Keyboard's and the Logical Device's are; profiles hold no OSC rows. [changed 2026-10-09, user: D-09-OSC-FILE] (was: OSC inputs in the profile `<osc-device>`, connection settings in program settings)
+- **S44a** Every OSC input should have a permanent random id (32 hex characters), given once and never changed; the number is a display name only (lowest free). Bindings, Assign Hardware links, friendly names and Device Pack wires store the id; a reference to an id OSC's file doesn't have is flagged as missing and never moved to another input. [changed 2026-10-09, user: D-09-OSC-FILE]
+- **S45** Loading another profile or New Profile should keep the OSC inputs (one shared list). [changed 2026-10-09, user: D-09-OSC-FILE] (was: replaced by that profile's, none for New)
+- **S46** Adding, editing, deleting or clearing OSC inputs should show `*` in the title; File › Save Profile (Ctrl+S) saves OSC's file when it changed, and Discard throws the OSC edits away (the file is read again). [changed 2026-10-09, user: D-09-OSC-FILE] (was: the profile's `<osc-device>` section)
+- **S47** History should record OSC's file as a module file (OSC); Device Library Save, Restore and Export and Device Pack carry it, and Restore or Import is one write, one History entry, and reloads OSC. [changed 2026-10-09, user: D-09-OSC-FILE] (was: History "the OSC inputs" of the profile)
+- **S48** Profiles are version 16 (reads 14, 15 and 16). An older profile's OSC rows are added to OSC's file on its first load: the same type, number and address reuses that input; any other gets the next free number and a new id, and the profile's references follow. A one-time note says what was added; the first save over the original keeps it as `<name>.xml.v15.bak` (or `.v14.bak`); opening alone (or a read that doesn't bind) changes nothing. A duplicate address in an old profile is skipped with a load warning and never stops the profile from opening. [changed 2026-10-09, user: D-09-OSC-FILE] (was: a damaged `<osc-device>` should not stop the profile opening)
 
 ### Sound (system level)
 - **S49** Sounds should play only while the profile runs; Stop should cut off playing sounds and drop queued ones. [user confirmed 2026-10-06; was code only] [test: test_bounded_waits.py::test_a_sound_is_not_waited_for_once_the_player_stops]
@@ -323,12 +334,12 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 
 ## 9. Questions for the user
 
-- **Q1 (OSC, parked: answer when OSC is picked up)** Input and output default ports (B15): input 8000 and output 9000 as todo.md suggests? Recommendation: yes, one constant each, used by the listener, Options and the Listening box.
-- **Q2 (OSC)** Add dialog's Change, Message + data, Trigger on message and delay (B16) and import suffixes C/E/B/BNP (B17): build per-input behaviour, or hide the controls and fix the import text? Recommendation: hide/fix text first (small, honest), build later only if you use Change or encoders.
-- **Q3 (OSC)** Output address: nothing in the program sends OSC (no feedback to Companion). Keep the setting for a future feature, or hide it? Recommendation: hide it until something sends.
+- **Q1 (OSC)** Input and output default ports (B15). **Decided 2026-10-09 (D-09-OSC-FAULTS): input 8001 (intended, adjustable), output 8000** (S6).
+- **Q2 (OSC)** Add dialog's Change, Message + data, Trigger on message and delay (B16) and import suffixes (B17). **Decided 2026-10-09 (D-09-OSC-INPUT): built per input** (S16, S23, S38-S41); supersedes the 2026-10-06 recommendation to hide them.
+- **Q3 (OSC)** Output address: nothing sends OSC. **Decided 2026-10-09 (D-09-OSC-FILE): kept, shown as "used once OSC output is built"** (S9); supersedes "hide it".
 - **Q4 (OSC)** OSC has no input module and passes the input gate unfiltered, yet the OSC card offers Module Setup with claims that the gate ignores. Which is right: OSC stays outside the module system (remove claims from its Module Setup), or OSC inputs get claimed like any device? Recommendation: keep OSC outside, show only friendly names in its Module Setup.
 - **Q5 (OSC)** Should the listener open only when the profile has OSC inputs, bound to 127.0.0.1 by default (APP5)? Recommendation: yes; it removes firewall prompts and bind errors for people who don't use OSC.
-- **Q6 (OSC)** Delete on an OSC row removes the input and all its actions with no question and no Undo, while Clear asks. Should Delete ask, or get Undo? Recommendation: Undo (as on the Logical Device page) when OSC is picked up.
+- **Q6 (OSC)** Delete on an OSC row removes the input with no question. **Decided 2026-10-09 (D-09-OSC-FAULTS): the shared question, restorable from Tools › History** (S26); supersedes the Undo recommendation.
 - **Q7 (OSC)** Sort is one-way (A-Z until the page reloads) and is not remembered. Toggle and remember it, or drop the button? Recommendation: toggle A-Z / by type and number, remembered per program.
 - **Q8 (OSC)** Each OSC row has two names: the address (pencil) and a friendly name (rename). Is the friendly name wanted for OSC? [code only] Recommendation: keep; it shows on chips and in History.
 - **Q9 (OSC)** The error "OSC requires python-osc. In the repo folder run: poetry add python-osc" is developer text shown to users. Recommendation: say "OSC is not available in this build" and log the detail.
@@ -346,25 +357,26 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 
 ## 10. Known gaps
 
-**Code differs from spec or rule (OSC, parked: listed, not judged)**
-- **G-OSC1** Three input-port defaults (8000 / 8001 / 8000 for blank) and input = output 8000 when unset. (S6, R5) [tracker: B15]
-- **G-OSC2** Output host/port are stored and logged but no code sends OSC. (S9, Q3)
-- **G-OSC3** Add → OK after an Axis selects the wrong row: `listenBound.emit(rowCount() - 1)` (osc_device_model.py 137) while the list sorts Axis before Button (checked: `['/a', '/b']`); also wrong after Sort. Actions then go to another input. (S13) [tracker: APP4]
-- **G-OSC4** Rename accepts a blank address (checked: `set_label('/b', '')` → `''`) and one without "/"; the dialog lacks `allowBlank: false` (OscDevice.qml 40-55); a duplicate is refused silently. (S25) [tracker: APP11]
-- **G-OSC5** Cancel/close after Listen leaves the UDP port open until the next Run/Stop (`cancel_listen` 336-342 does not stop the listener). (S20) [tracker: APP13]
-- **G-OSC6** "Listening for OSC" box has only OK, which hides the box but keeps listening. (S21) [tracker: APP17 note]
-- **G-OSC7** OSC starts on every Run (enabled by default, LAN IP), with an error each time the bind fails. (S8) [tracker: APP5]
-- **G-OSC8** Change saved as Axis; Message + data, Trigger on message and delay never passed on (OscAddDialog.qml 65-70, 88-91/260). (S16) [tracker: B16]
-- **G-OSC9** Import: C and E become plain axes, BNP and B both plain buttons (checked). (S23) [tracker: B17]
+**Code differs from spec or rule (OSC; picked up 2026-10-09)**
+- **G-OSC1** Three input-port defaults (8000 / 8001 / 8000 for blank) and input = output 8000 when unset. (S6, R5) [tracker: B15] Fixed by D-09-OSC-FAULTS (being built 2026-10-09).
+- **G-OSC2** Output host/port are stored and logged but no code sends OSC. (S9, Q3) Fixed by D-09-OSC-FILE (shown as "used once OSC output is built"; sending is still not built) (being built 2026-10-09).
+- **G-OSC3** Add → OK after an Axis selects the wrong row: `listenBound.emit(rowCount() - 1)` (osc_device_model.py 137) while the list sorts Axis before Button (checked: `['/a', '/b']`); also wrong after Sort. Actions then go to another input. (S13) [tracker: APP4] Fixed by D-09-OSC-FAULTS (being built 2026-10-09).
+- **G-OSC4** Rename accepts a blank address (checked: `set_label('/b', '')` → `''`) and one without "/"; the dialog lacks `allowBlank: false` (OscDevice.qml 40-55); a duplicate is refused silently. (S25) [tracker: APP11] Fixed by D-09-OSC-FAULTS (being built 2026-10-09).
+- **G-OSC5** Cancel/close after Listen leaves the UDP port open until the next Run/Stop (`cancel_listen` 336-342 does not stop the listener). (S20) [tracker: APP13] Fixed by D-09-OSC-FAULTS (being built 2026-10-09).
+- **G-OSC6** "Listening for OSC" box has only OK, which hides the box but keeps listening. (S21) [tracker: APP17 note] Fixed by D-09-OSC-FAULTS (being built 2026-10-09).
+- **G-OSC7** OSC starts on every Run (enabled by default, LAN IP), with an error each time the bind fails. (S8) [tracker: APP5] Fixed by D-09-OSC-FILE in part (blank host, no saved LAN address); opening only when there are OSC inputs (Q5) stays open (being built 2026-10-09). Rest built 2026-10-09 (Q5 answer): at Run the port opens only when the profile has OSC inputs (`osc.profile_uses_osc()`); Listen/Bulk open it on demand and close it after.
+- **G-OSC8** Change saved as Axis; Message + data, Trigger on message and delay never passed on (OscAddDialog.qml 65-70, 88-91/260). (S16) [tracker: B16] Fixed by D-09-OSC-INPUT (being built 2026-10-09).
+- **G-OSC9** Import: C and E become plain axes, BNP and B both plain buttons (checked). (S23) [tracker: B17] Fixed by D-09-OSC-INPUT (being built 2026-10-09).
 - **G-OSC10** One raw thread per packet; settings read per packet. (R7, S43) [tracker: AU-67]
-- **G-OSC11** Turning Enabled on while running does not start the listener (`sync_bind` returns early when no listener, osc.py 432); only host/port/enabled are watched, other keys are read per packet.
-- **G-OSC12** Auto-release timers are not cancelled at Stop or by a new press: a release from an earlier press can land during a later hold. (S39)
+- **G-OSC11** Turning Enabled on while running does not start the listener (`sync_bind` returns early when no listener, osc.py 432); only host/port/enabled are watched, other keys are read per packet. Fixed by D-09-OSC-FILE (being built 2026-10-09).
+- **G-OSC12** Auto-release timers are not cancelled at Stop or by a new press: a release from an earlier press can land during a later hold. (S39) Fixed by D-09-OSC-INPUT (being built 2026-10-09).
 - **G-OSC13** OSC empty-state text talks about sticks. [tracker: AU-58 (in progress, OSC part left)]
-- **G-OSC14** "Ok" before "Cancel" in both OSC dialogs (OscAddDialog.qml 257, OscImportDialog.qml 72). [tracker: E1 note]
+- **G-OSC14** "Ok" before "Cancel" in both OSC dialogs (OscAddDialog.qml 257, OscImportDialog.qml 72). [tracker: E1 note] Fixed by D-09-OSC-FAULTS (being built 2026-10-09).
 - **G-OSC15** OSC model `dataChanged` ranges: `createIndex(self.rowCount(), 0)` one past the end (osc_device_model.py 134, 228, 257). [tracker: AU-65 note: "left with OSC"]
-- **G-OSC16** No Undo for OSC add/rename/delete/clear (Undo exists on Logical Device, Module Setup, Calibration, Configuration). (Q6)
+- **G-OSC16** No Undo for OSC add/rename/delete/clear (Undo exists on Logical Device, Module Setup, Calibration, Configuration). (Q6) Fixed by D-09-OSC-FILE / D-09-OSC-FAULTS in part (Delete asks; OSC's file is restorable from History); no page Undo (being built 2026-10-09).
 - **G-OSC17** `tools_osc/README.md` describes the old flow (lower-case "osc" section, port 9000, "Activate the profile").
 - **G-OSC18** OSC Module Setup claims are read for the card but ignored at run time. (R1, Q4)
+- **G-OSC19** OSC inputs were kept in each profile and the server settings in program settings, with references by number. (S44, S44a, S48) Fixed by D-09-OSC-FILE (being built 2026-10-09).
 
 **Sound, speech, tray, look** (status 9 Oct, from claude/gap-list.md)
 - **G1** Text to Speech engine may be called off the main thread when a timer-run action speaks. (R10) Done (GL-042, batch 2).
@@ -378,9 +390,9 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 - **G9** The User Guide has no OSC topic. Partly done: Help has search (01 S137) and an "OSC options" topic; there is still no topic for the OSC page itself (OSC parked).
 
 **Open tracker items for this page**
-- B15 (planned): OSC input port clashes with output port when unset.
-- B16 (planned): OSC Add: Change saved as Axis; message/trigger/delay do nothing.
-- B17 (planned): OSC import: C and E become plain axes.
+- B15: OSC input port clashes with output port when unset. Resolved 2026-10-09 (D-09-OSC-FAULTS: 8001 / 8000).
+- B16: OSC Add: Change saved as Axis; message/trigger/delay do nothing. Resolved 2026-10-09 (D-09-OSC-INPUT).
+- B17: OSC import: C and E become plain axes. Resolved 2026-10-09 (D-09-OSC-INPUT).
 - APP4 (open): OSC Add selects the wrong input after adding an Axis.
 - APP5 (open): OSC listener opens a LAN port on every Run, even with no OSC inputs.
 - APP11 (open): OSC rename accepts a blank or slash-less address.
@@ -401,7 +413,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 
 | Part | Files / lines (rough) | Tests that cover it | Obvious untested paths |
 |---|---|---|---|
-| OSC | 12 files, about 2,030 lines (+ `tools_osc/`) | None of its own. `test_input_module_gate.py::test_osc_passthrough` (gate only); `test_audit3_run_stop.py`, `test_action_fixes.py`, `test_audit2_coverage.py` replace `OscRuntime` with a stand-in; `test_program_imports.py` (import order); `test_startup_settings_kept.py` (OSC tab setting); `test_main_shared_pieces.py::test_osc_clear_is_red_and_asks` (Clear asks the shared question) | Everything else: packet → event, auto-release, pad-args, Listen, Bulk, import parsing, rename/delete/clear, profile save/load of `<osc-device>`, port parsing, rebind on settings change |
+| OSC | 13 files, about 2,900 lines (+ `tools_osc/`) | the 2026-10-09 batch's `test_osc_rows.py` (10), `test_osc_file.py` (16), `test_osc_run.py` (18), `test_osc_profile.py`, `test_osc_refs.py`, `test_osc_uimodel.py` (10), `test_osc_qml.py`, `test_osc_options.py` (4), `test_osc_backend.py` (9) (more to come: end to end, carry, older tests); `test_input_module_gate.py::test_osc_passthrough` (gate only); `test_audit3_run_stop.py`, `test_action_fixes.py`, `test_audit2_coverage.py` replace `OscRuntime` with a stand-in; `test_program_imports.py` (import order); `test_startup_settings_kept.py` (OSC tab setting); `test_main_shared_pieces.py::test_osc_clear_is_red_and_asks` | Output sending (not built); encoder mode (reserved) |
 | Sound | `audio_player.py` 222 | `test_program_fixes.py` (3 sound tests), `test_bounded_waits.py::test_a_sound_is_not_waited_for_once_the_player_stops`, `test_threads.py::test_the_audio_player_stopped_right_after_starting_ends`, `test_play_sound_missing_file.py` (5) | Interrupt and Overlap modes, mode change while running, Stop during Sequential with a long queue |
 | Speech | `tts.py` 224 | `test_action_tts.py` (8: the action's data and feedback only) | `TTSManager` queue modes, Stop, voice missing, WinRT missing, off-main-thread call |
 | Tray | `system_tray.py` 344, `tray_memory.py` 77 | `test_tray_memory.py` (3), `test_audit3_startup.py::test_the_tray_icon_uses_the_shared_check`, `::test_the_app_built_off_screen_installs_no_hook_hidhide_or_tray`, `test_audit2_startup_devices.py::test_the_tray_icon_follows_the_platform_qt_started_on`; TRAY-ONE checked off-screen by hand | Tray menu commands, close-to-tray event filter, one-time balloon, Explorer restart, `--start-minimized` |
@@ -420,6 +432,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | All | As recommended in section 9 |
 | S51 | 2026-10-07 (D-09-S51-NEXTSOUND): a playback mode change applies from the next sound the player starts |
 | Q19 | 2026-10-07 (D-09-Q19-SUPERSEDED): fsm.py is used and stays |
+| S2-S4, S6, S8-S10, S12-S14, S16, S17, S19-S26, S38-S48, Q1-Q3, Q6 | 2026-10-09 (D-09-OSC-FILE, D-09-OSC-INPUT, D-09-OSC-FAULTS): OSC's own module file shared by every profile, permanent ids, server settings in OSC's Module Setup, per-input settings, small faults fixed |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

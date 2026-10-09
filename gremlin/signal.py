@@ -43,12 +43,20 @@ class Signal(QtCore.QObject):
     # Import, History Restore): its Undo steps no longer apply (D-04-LD-FILE).
     logicalDeviceReloaded = QtCore.Signal()
 
+    # OSC's address list (its own file) changed in memory (D-09-OSC-FILE).
+    oscDeviceModified = QtCore.Signal()
+    # OSC's file was read again (Discard, Restore, Import, History Restore).
+    oscDeviceReloaded = QtCore.Signal()
+    # OSC's server settings (its file's "server" part) changed.
+    oscServerSettingsChanged = QtCore.Signal()
+    # Options' "OSC settings are in OSC › Module Setup" button: the main
+    # window opens OSC's Module Setup, as its card does.
+    openOscModuleSetup = QtCore.Signal()
+
     # An input's actions changed where inputItemChanged isn't sent (the
     # Logical Device's action editor): summaries of the profile's actions,
     # such as a card's Driven by, check again.
     actionsChanged = QtCore.Signal()
-
-    oscDeviceModified = QtCore.Signal()
 
     configChanged = QtCore.Signal()
 

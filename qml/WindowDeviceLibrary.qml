@@ -871,7 +871,7 @@ ApplicationWindow {
                             boundsBehavior: Flickable.StopAtBounds
                             ScrollBar.vertical: ScrollBar {}
 
-                            // S6: the built-in inputs' heading, under a thin
+                            // S6: the internal inputs' heading (D-10-INTERNAL-NAME), under a thin
                             // divider after the last device; not clickable.
                             section.property: "section"
                             section.delegate: Item {
@@ -891,7 +891,7 @@ ApplicationWindow {
                                     anchors.leftMargin: Style.dp(10)
                                     anchors.bottom: parent.bottom
                                     anchors.bottomMargin: Style.dp(5)
-                                    text: "BUILT-IN INPUTS"
+                                    text: "INTERNAL INPUTS"
                                     font.pixelSize: Style.dp(11)
                                     font.letterSpacing: Style.dp(1)
                                     color: Style.fgMuted

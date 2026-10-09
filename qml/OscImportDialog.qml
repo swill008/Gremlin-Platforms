@@ -42,6 +42,7 @@ Popup {
 
         TextArea {
             id: _messages
+            objectName: "oscImportText"
             Layout.fillWidth: true
             Layout.preferredHeight: Style.dp(90)
             wrapMode: TextEdit.NoWrap
@@ -60,16 +61,25 @@ Popup {
                 anchors.margins: Style.dp(8)
                 wrapMode: Text.WordWrap
                 color: Style.noteText
-                text: "Enter new OSC messages one per line.\n" +
-                      "Messages must start with a forward slash (/).\n" +
-                      "Entries may be given a suffix to set the type automatically. The default is a button. If you are importing an axis message, add the suffix A after the message such as /osc_msg A or /osc_msg, A Valid suffixes are A for axis, BNP for a no parameter (auto-release) button, B for a parameter button (0 = released, not 0 = pressed), C for change, E for encoder. Existing entries will be ignored."
+                objectName: "oscImportHelp"
+                text: "Enter new OSC messages one per line.
+" +
+                      "Messages must start with a forward slash (/).
+" +
+                      "Add a suffix after a space or a comma to set the type, such as /osc_msg A or /osc_msg, A. " +
+                      "A: axis. B: button (0 = released, not 0 = pressed). BNP: button that presses on each message and releases after the delay. " +
+                      "C: change (presses when the value changes). E: encoder, not supported yet, added as a button. " +
+                      "No suffix: button. An unknown suffix is added as a button and named in the result.
+" +
+                      "Messages already in the list are skipped."
             }
         }
 
         RowLayout {
             Layout.alignment: Qt.AlignRight
             Button {
-                text: "Ok"
+                objectName: "oscImportOk"
+                text: "OK"
                 onClicked: {
                     _root.accepted(_messages.text)
                     _root.close()
