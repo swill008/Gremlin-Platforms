@@ -24,3 +24,4 @@ a time to the user.
 | 2026-10-09 | Help side of links + link-resolve test (SM-help) | feature | ~30 min | 6 min | 09:09–09:15 |
 | 2026-10-09 | Help writers 3-5 (home, tools, config) | docs | ~35-40 min | ~6 min each | 09:09–09:15 |
 | 2026-10-09 | Full run + lint (fourth today) | test | ~5 min | 4 min | 09:18–09:22, all green |
+| 2026-10-09 | CI run on a push | ci | ~10 min | 12 min | 09:23–09:35, green |
