@@ -211,3 +211,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | Final full runs + 2 small fixes (lead) | test | ~13 min | 20 min | 16:42–17:02 |
 | 2026-10-09 | Fix your QML warnings (binding, _targetForm) + guard test (lead) | fix | ~10 min | 20 min | 17:05–17:25 |
 | 2026-10-09 | Window size warnings traced: old tool-window restore gap (GEOM) | review | ~12 min | 1 min | 17:04–17:05 |
+| 2026-10-09 | Tool windows: frame-aware restore, best screen (WPY) | fix | ~20 min | 2 min | 17:13–17:15 |
+| 2026-10-09 | Tool windows: size set once (WQML) | fix | ~15 min | 5 min | 17:13–17:18 |
+| 2026-10-09 | Tool window fit: 2 full runs (1 load stall) (lead) | test | ~6 min | 14 min | 17:18–17:32 |

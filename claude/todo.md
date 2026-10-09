@@ -240,6 +240,8 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     Sighting 2026-10-09 (CI run 37979393055, seed 759318): stage1_button_map_smoke 'outside' part blocked in
     QMetaObject.invokeMethod(root, "buttonMapWindow") (smoke line 153), no Python frame above; passes locally (39 in 42 s).
     test_stage1_button_map._run now keeps the whole stall report. Next if it repeats: faulthandler C-level dump.
+    Sighting 2026-10-09 17:25 (local full run, unit-2): test_final_01::test_s12 child app stalled past 120 s
+    under full load; passes alone in 1.5 s. Same blocked-while-loading class.
 
 53. QUEUED (user 2026-10-09: do all 3 passes, before the 1.0.30 release): Help gap fill from the
     08:53 audit (all 10 spec pages vs qml/help). Pass 1: fix 6 wrong items (mode bar not "on the
