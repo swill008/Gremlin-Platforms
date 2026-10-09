@@ -113,6 +113,15 @@ out['toolbarHasMode'] = run('(function() { var inside = ' + INSIDE + '; '
                             'return inside(_modeLabel, _toolbarFlick) '
                             '|| inside(_modeSelector, _toolbarFlick) '
                             '|| inside(_manageModesButton, _toolbarFlick) })()')
+# The toolbar buttons sit on the left, one row-spacing apart (not spread out).
+GAPS = ('(function() { var b = [_homeButton, _toggleButton, _vjoyViewerButton, '
+        '_xboxViewerButton, _buttonMapButton, _logicalButton, _optionsButton]; '
+        'var g = []; for (var i = 1; i < b.length; i++) '
+        'g.push(Math.round(b[i].x - (b[i-1].x + b[i-1].width))); '
+        'var end = _optionsButton.x + _optionsButton.width; '
+        'return {gaps: g, spacing: Math.round(_toolbarRow.spacing), '
+        'room: Math.round(_toolbarFlick.width - end)} })()')
+out['toolbarGaps'] = run(GAPS)
 out['modeLabel'] = run('_modeLabel.text')
 out['manageModes'] = run('_manageModesButton.text')
 out['home'] = bar_state()
@@ -212,6 +221,12 @@ def normal(tmp_path_factory: pytest.TempPathFactory) -> dict:
 @pytest.fixture(scope="module")
 def large(tmp_path_factory: pytest.TempPathFactory) -> dict:
     return _run(tmp_path_factory.mktemp("mode_bar_175"), 175)
+
+
+def test_the_toolbar_buttons_sit_on_the_left(normal: dict) -> None:
+    got = normal["toolbarGaps"]
+    assert got["gaps"] == [got["spacing"]] * len(got["gaps"]), got
+    assert got["room"] > got["spacing"], got  # spare room is on the right
 
 
 def test_the_toolbar_has_no_mode(normal: dict) -> None:

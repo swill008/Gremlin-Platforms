@@ -1414,7 +1414,9 @@ ApplicationWindow {
                 RowLayout {
                     id: _toolbarRow
                     x: _homeButton.rightPadding + spacing + _toggleButton.sideSlack
-                    width: _toolbarFlick.contentWidth - x
+                    // As wide as its buttons: they stay on the left with their
+                    // usual gap (a full-width row would spread them out).
+                    width: implicitWidth
                     height: implicitHeight
                     spacing: Style.dp(8)
 
