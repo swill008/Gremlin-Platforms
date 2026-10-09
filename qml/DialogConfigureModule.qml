@@ -99,9 +99,10 @@ ApplicationWindow {
     property bool leaveTextOnEscape: false
     Shortcut { sequence: "Esc"; onActivated: {} }
     // Undo and Redo for the checks and names (a name being typed keeps its
-    // own Ctrl+Z).
+    // own Ctrl+Z). On Windows StandardKey.Redo is Ctrl+Y and Ctrl+Shift+Z;
+    // listing either again makes that key ambiguous and it never fires.
     Shortcut { sequences: [StandardKey.Undo]; onActivated: _win.undoEdit() }
-    Shortcut { sequences: [StandardKey.Redo, "Ctrl+Y"]; onActivated: _win.redoEdit() }
+    Shortcut { sequences: [StandardKey.Redo]; onActivated: _win.redoEdit() }
     Shortcut { sequence: "Return"; onActivated: {} }
     Shortcut { sequence: "Enter"; onActivated: {} }
 

@@ -51,7 +51,7 @@ Item {
     }
     Shortcut {
         enabled: _root.visible && !_root.isOutput && !_root.editorLocked && _catalog.canRedo
-        sequences: [StandardKey.Redo, "Ctrl+Shift+Z"]
+        sequences: [StandardKey.Redo]
         onActivated: _catalog.redo()
     }
     readonly property bool runtimeActive: _lock.locked

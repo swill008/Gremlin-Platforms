@@ -122,10 +122,11 @@ Item {
         sequences: [StandardKey.Undo]
         onActivated: _layout.undo()
     }
-    // On Windows StandardKey.Redo is Ctrl+Y; Ctrl+Shift+Z is added so both work.
+    // On Windows StandardKey.Redo is Ctrl+Y and Ctrl+Shift+Z; listing either
+    // again makes that key ambiguous and it never fires.
     Shortcut {
         enabled: _root._undoKeys && _layout.canRedo
-        sequences: [StandardKey.Redo, "Ctrl+Shift+Z"]
+        sequences: [StandardKey.Redo]
         onActivated: _layout.redo()
     }
 

@@ -48,7 +48,9 @@ ApplicationWindow {
 
     // A value being typed keeps its own Ctrl+Z.
     Shortcut { sequences: [StandardKey.Undo]; onActivated: _calibrationDialog.undoEdit() }
-    Shortcut { sequences: [StandardKey.Redo, "Ctrl+Y"]; onActivated: _calibrationDialog.redoEdit() }
+    // On Windows StandardKey.Redo is Ctrl+Y and Ctrl+Shift+Z; listing either
+    // again makes that key ambiguous and it never fires.
+    Shortcut { sequences: [StandardKey.Redo]; onActivated: _calibrationDialog.redoEdit() }
     Connections {
         target: _calib
         function onDataChanged() { _calibrationDialog.refreshUnsaved() }

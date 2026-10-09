@@ -798,6 +798,9 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 self._redo.append(step)
             else:
                 self._undo.append(step)  # kept, not lost
+            # After the step has moved: _play's own signal came too early,
+            # and Redo's button and keys stayed off.
+            self.undoChanged.emit()
 
     @QtCore.Slot()
     def redo(self) -> None:
@@ -807,6 +810,7 @@ class BindingCatalogModel(QtCore.QAbstractListModel):
                 self._undo.append(step)
             else:
                 self._redo.append(step)
+            self.undoChanged.emit()
 
     def _can_undo(self) -> bool:
         return bool(self._undo) and self._pane_shadow is None
