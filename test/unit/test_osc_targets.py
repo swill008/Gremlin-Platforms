@@ -2,11 +2,12 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""OSC output settings in OSC's Module Setup "Server" section
-(D-09-OSC-OUTPUT, D-09-OSC-DISCOVERY): the new server keys and their
-defaults, targets (the old output host and port become "Default"), feedback
-rows in OSC's file, OSC output and Reply to sender, the targets list (add,
-edit, remove with the shared question), this PC's addresses with Copy, and
+"""OSC output settings in OSC's Module Setup tabs (Server, Output and
+Discovery since D-09-OSC-TABS; D-09-OSC-OUTPUT, D-09-OSC-DISCOVERY): the new
+server keys and their defaults, targets (the old output host and port
+become "Default"), feedback rows in OSC's file, OSC output and Reply to
+sender, the targets list (add, edit, remove with the shared question),
+this PC's addresses with Copy, and
 the discovery switches with the found list's "Add as Target". The whole
 program runs off-screen in its own process with a fresh user folder; a
 stand-in discovery module (no network) gives one found device."""
@@ -105,6 +106,8 @@ def show_item(item):
         parent = parent.parentItem()
 
 def click(window, item):
+    # A message line that just showed moves the tabs: let the layout settle.
+    wait_for(lambda: False, 60)
     show_item(item)
     centre = item.mapToScene(QtCore.QPointF(item.width() / 2, item.height() / 2))
     QtTest.QTest.mouseClick(window, QtCore.Qt.MouseButton.LeftButton,
@@ -152,12 +155,15 @@ if setup is not None:
     setup.requestActivate()
     wait_for(lambda: setup.isActive(), 2000)
     w = setup
-    out["first-target"] = [text_of(w, "oscTargetName0"),
-                           text_of(w, "oscTargetAddress0")]
-    out["old-output-fields"] = named(w, "oscServerOutputHost") is not None
+    # Server tab (open first): this PC's addresses with Copy.
     out["pc-address"] = text_of(w, "oscPcAddress0")
     click(w, named(w, "oscCopyAddress0"))
     out["clipboard"] = QtGui.QGuiApplication.clipboard().text()
+    # Output tab: switches and targets.
+    click(w, named(w, "oscTabOutput"))
+    out["first-target"] = [text_of(w, "oscTargetName0"),
+                           text_of(w, "oscTargetAddress0")]
+    out["old-output-fields"] = named(w, "oscServerOutputHost") is not None
 
     click(w, named(w, "oscOutputEnabled"))
     click(w, named(w, "oscReplyToSender"))
@@ -203,6 +209,7 @@ if setup is not None:
     out["after-remove"] = [t["name"] for t in f.read_targets()]
 
     # Discovery: both off at first; switching them on saves and applies.
+    click(w, named(w, "oscTabDiscovery"))
     out["discovery-defaults"] = [named(w, "oscAnnounce").property("checked"),
                                  named(w, "oscFindDevices").property("checked")]
     out["found-hidden"] = named(w, "oscFoundAdd0") is None

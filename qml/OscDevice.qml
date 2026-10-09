@@ -63,8 +63,8 @@ Item {
         var n = _inputList.count
         return Confirm.ask(_root, {
             title: "Clear OSC inputs?",
-            text: n === 1 ? "The one OSC input in this profile goes, with its actions."
-                : "All " + n + " OSC inputs in this profile go, with their actions.",
+            text: n === 1 ? "The one OSC input goes from OSC's list, which every profile uses, with its actions in this profile."
+                : "All " + n + " OSC inputs go from OSC's list, which every profile uses, with their actions in this profile.",
             undoable: false,
             action: "Clear OSC Inputs",
             onAccept: function() {
@@ -119,6 +119,28 @@ Item {
         return true
     }
 
+    // OSC's Module Setup (D-09-OSC-TABS), as Options' OSC line opens it.
+    function openSetup() {
+        if (typeof signal !== "undefined" && signal && signal.openOscModuleSetup) {
+            signal.openOscModuleSetup()
+            return true
+        }
+        return false
+    }
+
+    // Copy for Companion (D-09-OSC-COMPANION): Generic OSC settings and the
+    // key actions for one input, on the clipboard.
+    function copyForCompanion(uid) {
+        var m = _inputList.model
+        var text = m && m.companionText ? String(m.companionText(uid)) : ""
+        if (text.length && m.copyText(text)) {
+            _message.show("Copied. Paste it where you set up Companion.", false)
+            return true
+        }
+        _message.show("Nothing to copy.", true)
+        return false
+    }
+
     // Tools › OSC Monitor (D-09-OSC-MONITOR); one window, shared with the menu.
     function openMonitor() {
         return Helpers.createComponent("WindowOscMonitor.qml")
@@ -151,6 +173,27 @@ Item {
         id: _content
 
         anchors.fill: parent
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: Style.dp(10)
+            Layout.rightMargin: Style.dp(10)
+            Layout.topMargin: Style.dp(4)
+            spacing: Style.dp(6)
+
+            Label {
+                Layout.fillWidth: true
+                text: "Server, targets and feedback"
+                font.pixelSize: Style.dp(12)
+                color: Style.fgMuted
+                elide: Text.ElideRight
+            }
+            Button {
+                objectName: "oscSetup"
+                text: "OSC Setup…"
+                onClicked: _root.openSetup()
+            }
+        }
 
         JGListView {
             id: _inputList
@@ -216,6 +259,11 @@ Item {
                         ThemedMenuItem {
                             text: "Edit Settings…"
                             onTriggered: _root.editSettings(model.uid)
+                        }
+                        ThemedMenuItem {
+                            objectName: "oscCopyCompanion"
+                            text: "Copy for Companion"
+                            onTriggered: _root.copyForCompanion(model.uid)
                         }
                     }
                 }

@@ -74,7 +74,23 @@ def type_into(window, field, text):
     QtTest.QTest.keyClick(window, QtCore.Qt.Key.Key_Tab)
     app.processEvents()
 
+def show_item(item):
+    # Scrolls the item into view in the tab that holds it.
+    parent = item.parentItem()
+    while parent is not None:
+        if parent.inherits("QQuickFlickable"):
+            content = parent.property("contentItem")
+            y = item.mapToItem(content, QtCore.QPointF(0, 0)).y()
+            top = parent.property("contentY")
+            if y < top or y + item.height() > top + parent.height():
+                parent.setProperty("contentY", max(0.0, y - 40))
+                app.processEvents()
+        parent = parent.parentItem()
+
 def click(window, item):
+    # A message line that just showed moves the tabs: let the layout settle.
+    wait_for(lambda: False, 60)
+    show_item(item)
     centre = item.mapToScene(QtCore.QPointF(item.width() / 2, item.height() / 2))
     QtTest.QTest.mouseClick(window, QtCore.Qt.MouseButton.LeftButton,
                             QtCore.Qt.KeyboardModifier.NoModifier, centre.toPoint())

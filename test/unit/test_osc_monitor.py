@@ -208,6 +208,19 @@ def test_add_settings_for_no_input_rows_only(monkeypatch) -> None:  # noqa: ANN0
         osc_traffic.clear()
 
 
+def test_hover_text_has_the_whole_row() -> None:
+    from gremlin.ui import osc_monitor_model as mm
+
+    address = "/custom-variable/gremlin_mode_with_a_long_name/value"
+    out = mm.hover_text({"direction": "out", "address": address,
+                         "args": ["Flight"], "peer": "127.0.0.1:12321"})
+    assert out.splitlines() == [address, "Values: Flight", "To: 127.0.0.1:12321"]
+    got = mm.hover_text({"direction": "in", "address": "/x", "args": [3],
+                         "peer": "10.0.0.9:8000", "matched": []})
+    assert got.splitlines() == ["/x", "Values: 3", "From: 10.0.0.9:8000",
+                                f"Input: {mm.NO_INPUT}"]
+
+
 # -- the windows, off-screen in a child process ----------------------------
 
 
@@ -417,6 +430,34 @@ def _smoke() -> None:
     last = [c for c in calls if c[0] == "createConfiguredInput"]
     report("monitor-add-call", last[-1][1] if last else None)
 
+    # 2b. Column heads keep to their own widths; hovering a row shows the
+    # whole message, the long address in full.
+    heads = [find(mq, f"oscMonitorHead{i}") for i in range(6)]
+    report("head-geometry", [
+        None if h is None else [h.mapToScene(QtCore.QPointF(0, 0)).x(), h.width(),
+                                h.property("implicitWidth")]
+        for h in heads
+    ])
+    long_address = "/custom-variable/gremlin_mode_with_a_long_name/value"
+    osc_traffic.note("out", long_address, ["Flight"], ("127.0.0.1", 12321), None)
+    QtTest.QTest.qWait(300)
+    count = lst.property("count") if lst else 0
+    cell = find(mq, f"oscMonitorAddress{count - 1}")
+    tip_texts: list[str] = []
+    if cell is not None:
+        point = cell.mapToScene(QtCore.QPointF(cell.width() / 2, cell.height() / 2))
+        QtTest.QTest.mouseMove(mq, point.toPoint())
+        QtTest.QTest.qWait(50)
+        QtTest.QTest.mouseMove(mq, point.toPoint() + QtCore.QPoint(2, 0))
+        QtTest.QTest.qWait(1500)
+        for item in items(mq):
+            text = item.property("text")
+            if (item.isVisible() and isinstance(text, str) and long_address in text
+                    and "\n" in text):
+                tip_texts.append(text)
+    report("hover-text", tip_texts)
+    report("long-address", long_address)
+
     # 3. Close releases the port.
     mq.close()
     QtTest.QTest.qWait(200)
@@ -488,6 +529,16 @@ def test_monitor_window_and_osc_page_add_as_input(tmp_path: pathlib.Path) -> Non
     assert isinstance(added, dict)
     assert added["address"] == "/fader/3" and added["mode"] == "axis"
     assert got["release-on-close"] == ["hold", "release"]
+    heads = got["head-geometry"]
+    assert isinstance(heads, list) and None not in heads, heads
+    for x, width, implicit in heads:
+        assert implicit <= width + 0.5, heads  # whole heading fits its column
+    for (x, width, _), (nx, _, _) in zip(heads, heads[1:]):
+        assert x + width <= nx + 0.5, heads  # never runs into the next
+    tips = got["hover-text"]
+    assert tips, "no hover text showing the full address"
+    assert any(t.splitlines()[0] == got["long-address"] and "To: 127.0.0.1:12321" in t
+               and "Values: Flight" in t for t in tips), tips
     assert got["monitor-button"] is True
     assert got["page-prefill-returned"] is True
     assert got["page-add-address"] == "/knob/1"

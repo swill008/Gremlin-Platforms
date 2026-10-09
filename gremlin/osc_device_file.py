@@ -64,6 +64,12 @@ REPLY = "reply"
 DEFAULT_TARGET = "Default"
 SOURCE_KINDS = ("mode", "vjoy_button", "vjoy_axis", "logical", "osc_input")
 VALUE_TYPES = ("auto", "int", "float", "bool", "text")
+# Feedback row templates (D-09-OSC-COMPANION).
+TEMPLATES = ("companion_variable", "companion_text", "companion_colour")
+# Companion's OSC API (Settings > OSC > OSC Listener).
+COMPANION_TARGET = "Companion"
+COMPANION_HOST = "127.0.0.1"
+COMPANION_PORT = 12321
 _BOOL_KEYS = (
     "output_enabled",
     "reply_to_sender",
@@ -288,8 +294,58 @@ def clean_feedback(raw: object) -> list[dict]:
         row["max"] = _float(row.get("max"), 1.0)
         kind = str(row.get("type") or "auto").strip().lower()
         row["type"] = kind if kind in VALUE_TYPES else "auto"
+        # Off/on values and template: kept only when set (rows without them
+        # stay as they were written).
+        for key in ("off_value", "on_value"):
+            value = _off_on(row.pop(key, None))
+            if value is not None:
+                row[key] = value
+        template = row.pop("template", None)
+        if template in TEMPLATES:
+            row["template"] = template
         out.append(row)
     return out
+
+
+def _off_on(value: object) -> str | int | float | None:
+    """An off/on value: None (not set: Min/Max are sent), a number, or
+    text such as "#2a7a46"."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    text = str(value).strip()
+    return text or None
+
+
+def find_companion_target(targets: list[dict] | None = None) -> dict | None:
+    """The target named "Companion", else one at 127.0.0.1:12321."""
+    targets = read_targets() if targets is None else targets
+    for target in targets:
+        if str(target.get("name") or "").casefold() == COMPANION_TARGET.casefold():
+            return target
+    for target in targets:
+        here = (target.get("host"), target.get("port"))
+        if here == (COMPANION_HOST, COMPANION_PORT):
+            return target
+    return None
+
+
+def ensure_companion_target(who: str = "") -> dict:
+    """The Companion target, added (127.0.0.1:12321) when there is none.
+    Raises OSError when the write failed."""
+    targets = read_targets()
+    found = find_companion_target(targets)
+    if found is not None:
+        return found
+    target = {
+        "id": new_id(),
+        "name": COMPANION_TARGET,
+        "host": COMPANION_HOST,
+        "port": COMPANION_PORT,
+    }
+    write_targets([*targets, target], who)
+    return find_companion_target() or target
 
 
 def read_inputs() -> list[dict]:

@@ -63,7 +63,7 @@ def _one(obj: QtCore.QObject, name: str) -> dict | None:
 def test_every_chapter_loads(qapp: QtCore.QCoreApplication) -> None:
     obj = _load()
     chapters = _value(obj, "chapters")
-    assert len(chapters) == 9
+    assert len(chapters) == 10
     for chapter in chapters:
         assert help_book.chapter_topics(chapter["id"]), chapter["id"]
 

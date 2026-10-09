@@ -12,7 +12,10 @@ EventListener carries it so no hardware, hooks or vJoy are touched.
 Part 2 adds a phone stand-in (a UDP socket on 127.0.0.1, registered as a
 target) for Send OSC, reply, the output switch, feedback (change, rate
 limit, mode change, sync), the encoder and the Monitor's traffic/hold_open.
-Exit code 0 only when every check passes."""
+Part 3 sends packets exactly as Companion's Generic OSC module builds them
+(integer, float, string, no-argument, T/F booleans, several values); part 4
+sends to a stand-in Companion API (custom variable, key text, key colour).
+Exit code 0 only when no check fails (skipped checks are listed)."""
 
 from __future__ import annotations
 
@@ -99,7 +102,7 @@ from gremlin.ui.osc_device_model import OscDeviceManagementModel  # noqa: E402
 AXIS = InputType.JoystickAxis
 BUTTON = InputType.JoystickButton
 HOST = "127.0.0.1"
-OVERALL_S = 90.0
+OVERALL_S = 150.0
 _T0 = time.monotonic()
 
 # -- helpers ------------------------------------------------------------------
@@ -880,12 +883,333 @@ def run_checks2() -> None:
             phone2.close()
 
 
+# -- part 3: Companion-style incoming (D-09-OSC-COMPANION) ---------------------
+#
+# Packets built exactly as Companion's Generic OSC module sends them: "Send
+# integer" (,i), "Send float" (,f), "Send string" (,s), "Send message" with
+# no arguments (,), "Send boolean" (,T / ,F: no data bytes) and "Send message"
+# with several arguments ('1 "go" 2.5' -> ,isf).
+
+
+def companion_packet(address: str, *typed: tuple[Any, str]) -> bytes:  # noqa: ANN401
+    """A raw OSC packet with explicit type tags, as Generic OSC builds it."""
+    builder = OscMessageBuilder(address=address)
+    for value, tag in typed:
+        builder.add_arg(value, arg_type=tag)
+    return builder.build().dgram
+
+
+def run_checks3() -> None:
+    port = free_port()
+    odf.write_server({
+        "enabled": True, "host": HOST, "port": port,
+        "autorelease_no_arg": True, "autorelease_delay_ms": 300,
+    })
+    rows = OscDevice().rows
+    rows.load_dict({"inputs": []})
+    fire = rows.create(BUTTON, "/sd/fire")
+    fader = rows.create(AXIS, "/sd/fader", range_min=0.0, range_max=1.0)
+    scene = rows.create(BUTTON, "/sd/scene", cmd_mode="data", data=["intro"],
+                        delay_ms=100)
+    go = rows.create(BUTTON, "/sd/go", trigger=True, delay_ms=150)
+    flag = rows.create(BUTTON, "/sd/flag")
+    multi_b = rows.create(BUTTON, "/sd/multi", source=0)
+    multi_a = rows.create(AXIS, "/sd/multi", source=2, range_min=0.0, range_max=5.0)
+    odf.save()
+    shared_state.current_profile = profile_with(
+        [fire, fader, scene, go, flag, multi_b, multi_a])
+
+    runtime = OscRuntime()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((HOST, 0))
+
+    def send(data: bytes) -> None:
+        sock.sendto(data, (HOST, port))
+
+    def send_wait(data: bytes, count: int, timeout: float = 1.5) -> list[tuple]:
+        k = len(events)
+        send(data)
+        wait_for(lambda: len(events) >= k + count, timeout)
+        pump(0.05)
+        return short(take(k))
+
+    try:
+        runtime.start()
+
+        # Send integer: press 1 / release 0.
+        pkt1 = companion_packet("/sd/fire", (1, "i"))
+        got = send_wait(pkt1, 1)
+        got += send_wait(companion_packet("/sd/fire", (0, "i")), 1)
+        check("Companion Send integer 1/0 -> button press/release",
+              [("B", fire.input_id, True), ("B", fire.input_id, False)], got)
+
+        # Send float -> axis.
+        got = send_wait(companion_packet("/sd/fader", (0.75, "f")), 1)
+        check("Companion Send float 0.75 -> axis 0.5",
+              [("A", fader.input_id, 0.5)], got)
+
+        # Send string -> data-mode input ("intro" fires, "outro" does not).
+        k = len(events)
+        send(companion_packet("/sd/scene", ("outro", "s")))
+        pump(0.3)
+        other = short(take(k))
+        got = send_wait(companion_packet("/sd/scene", ("intro", "s")), 2)
+        check("Companion Send string: other text ignored by data input", [], other)
+        check("Companion Send string 'intro' -> data input press/release",
+              [("B", scene.input_id, True), ("B", scene.input_id, False)], got)
+
+        # Send message without arguments -> Trigger input press + auto-release.
+        noarg = companion_packet("/sd/go")
+        check("no-argument packet is address + ',' only",
+              b"/sd/go\x00\x00,\x00\x00\x00", noarg)
+        k = len(events)
+        send(noarg)
+        wait_for(lambda: len(events) >= k + 2, 1.5)
+        evs = take(k)
+        gap = round((evs[1]["t"] - evs[0]["t"]) * 1000) if len(evs) >= 2 else None
+        check("Companion no-argument -> Trigger press + auto-release",
+              [("B", go.input_id, True), ("B", go.input_id, False)], short(evs))
+        check("Trigger auto-release after its 150 ms", "130..400 ms", f"{gap} ms",
+              gap is not None and 130 <= gap <= 400)
+
+        # Send boolean: T / F with no data bytes.
+        pkt_t = companion_packet("/sd/flag", (True, "T"))
+        pkt_f = companion_packet("/sd/flag", (False, "F"))
+        check("boolean packets: tags ,T / ,F and no data bytes",
+              (b",T\x00\x00", b",F\x00\x00", 16, 16),
+              (pkt_t[-4:], pkt_f[-4:], len(pkt_t), len(pkt_f)))
+        got = send_wait(pkt_t, 1)
+        got += send_wait(pkt_f, 1)
+        check("Companion Send boolean T/F -> button press/release",
+              [("B", flag.input_id, True), ("B", flag.input_id, False)], got)
+
+        # Several values: '1 "go" 2.5' -> ,isf; P1 button, P3 axis.
+        pkt = companion_packet("/sd/multi", (1, "i"), ("go", "s"), (2.5, "f"))
+        got = send_wait(pkt, 2)
+        check("Companion '1 \"go\" 2.5': P1 button pressed, P3 axis 2.5/5 -> 0.0",
+              sorted([("B", multi_b.input_id, True), ("A", multi_a.input_id, 0.0)]),
+              sorted(got))
+        pkt = companion_packet("/sd/multi", (0, "i"), ("go", "s"), (5.0, "f"))
+        got = send_wait(pkt, 2)
+        check("Companion '0 \"go\" 5.0': P1 released, P3 axis 1.0",
+              sorted([("B", multi_b.input_id, False), ("A", multi_a.input_id, 1.0)]),
+              sorted(got))
+    finally:
+        try:
+            runtime.stop()
+        finally:
+            sock.close()
+
+
+# -- part 4: outgoing to a stand-in Companion API (D-09-OSC-COMPANION) ----------
+
+
+def _onoff_built() -> bool:
+    """CFB's off/on values on feedback rows (gremlin/osc_feedback.py)."""
+    from gremlin import osc_feedback
+
+    source = Path(osc_feedback.__file__).read_text(encoding="utf-8")
+    return "off_value" in source and "on_value" in source
+
+
+def skip(name: str, why: str = "not built yet") -> None:
+    results.append({"check": name, "expected": "-", "got": f"skipped ({why})",
+                    "result": "SKIP"})
+
+
+def run_checks4() -> None:
+    from action_plugins.send_osc import SendOscData, SendOscFunctor
+    from gremlin import osc_feedback, osc_output, run_scope
+    from gremlin.base_classes import Value
+    from gremlin.event_handler import Event
+    from gremlin.mode_manager import Mode, ModeManager
+
+    port = free_port()
+    odf.write_server({
+        "enabled": True, "host": HOST, "port": port,
+        "autorelease_no_arg": True, "autorelease_delay_ms": 300,
+        "output_enabled": True, "reply_to_sender": True,
+        "feedback_enabled": True, "resend_run": True, "resend_mode": True,
+        "resend_profile": True, "sync_enabled": False, "feedback_rate": 20,
+    })
+    rows = OscDevice().rows
+    rows.load_dict({"inputs": []})
+    gear = rows.create(BUTTON, "/sd/gear")
+    odf.save()
+
+    companion = Phone()  # stands in for Companion's OSC Listener (API port)
+    comp_id = odf.new_id()
+    odf.write_targets([{"id": comp_id, "name": "Companion", "host": HOST,
+                        "port": companion.port}])
+    var_addr = "/custom-variable/gremlin_mode/value"
+    text_addr = "/location/1/0/3/style/text"
+    colour_addr = "/location/1/0/3/style/bgcolor"
+    hex_addr = "/location/1/0/4/style/bgcolor"
+    onoff = _onoff_built()
+    feedback: list[dict] = []
+    if onoff:
+        feedback += [
+            {"id": "ctext", "source": {"kind": "osc_input", "input": gear.uid},
+             "target": comp_id, "address": text_addr, "type": "text",
+             "off_value": "GEAR UP", "on_value": "GEAR DN"},
+            {"id": "ccol", "source": {"kind": "osc_input", "input": gear.uid},
+             "target": comp_id, "address": colour_addr, "type": "auto",
+             "off_value": "51 51 51", "on_value": "42 122 70"},
+        ]
+    odf.write_feedback(feedback)
+    from gremlin.ui import osc_feedback_model
+
+    model_cls = osc_feedback_model.OscFeedbackModel
+    templates = onoff and hasattr(model_cls, "addTemplateRow")
+    if templates:
+        # The real Module Setup path: Companion templates on the model.
+        model = model_cls()
+        model.addTemplateRow("companion_variable", {"name": "gremlin_mode"})
+        model.addTemplateRow("companion_colour", {"page": 1, "row": 0, "column": 4,
+                                                  "off": "#333333", "on": "#2A7A46"})
+        rows_now = odf.read_feedback()
+        made = {r.get("template"): r for r in rows_now if r.get("template")}
+        var_row = made.get("companion_variable", {})
+        hex_row = made.get("companion_colour", {})
+        check("templates: variable + colour rows on the Companion target",
+              [(var_addr, "text", comp_id),
+               (hex_addr, "#333333", "#2a7a46", comp_id), 1],
+              [(var_row.get("address"), var_row.get("type"), var_row.get("target")),
+               (hex_row.get("address"), hex_row.get("off_value"),
+                hex_row.get("on_value"), hex_row.get("target")),
+               len(odf.read_targets())])
+        # The colour template follows a vJoy button; point it at the OSC input
+        # (no vJoy here).
+        for r in rows_now:
+            if r.get("template") == "companion_colour":
+                r["source"] = {"kind": "osc_input", "input": gear.uid}
+        odf.write_feedback(rows_now)
+    else:
+        skip("templates: variable + colour rows on the Companion target")
+        odf.write_feedback(feedback + [
+            {"id": "cvar", "source": {"kind": "mode"}, "target": comp_id,
+             "address": var_addr, "type": "text"}])
+    feedback = odf.read_feedback()
+    check("Companion target + feedback rows written",
+          ("Companion", 4 if templates else len(feedback)),
+          (odf.read_targets()[0]["name"], len(feedback)))
+
+    profile = profile_with([gear])
+    profile.modes.add_mode("Flight")
+    first = profile.modes.first_mode
+    shared_state.current_profile = profile
+
+    runtime = OscRuntime()
+    client = Client(port)
+    osc_output.reset()
+    event = Event(BUTTON, 1, OSC_DEVICE_UUID, first, is_pressed=True)
+
+    def send_osc(address: str, values: list[dict]) -> SendOscFunctor:
+        data = SendOscData(BUTTON)
+        data.target, data.address, data.values = comp_id, address, values
+        return SendOscFunctor(data)
+
+    running = False
+    try:
+        n = len(companion.got)
+        run_scope.begin()
+        running = True
+        run_scope.on_stop(run_scope.Stage.CUT_INPUT, "OSC feedback",
+                          lambda: osc_feedback.stop())
+        run_scope.on_stop(run_scope.Stage.CANCEL, "OSC", lambda: runtime.stop())
+        ModeManager().start_run(first)
+        runtime.start()
+        osc_feedback.start(None)
+        got = companion.wait(n, 1, var_addr)
+        check("run start: custom variable gets the mode (s)",
+              [(var_addr, [first], "s")], msgs(got))
+
+        # Mode change -> /custom-variable/gremlin_mode/value "Flight" (s).
+        pump(0.1)
+        n = len(companion.got)
+        ModeManager().switch_to(Mode("Flight", first))
+        got = companion.wait(n, 1, var_addr)
+        check("feedback: /custom-variable/gremlin_mode/value \"Flight\" (s)",
+              [(var_addr, ["Flight"], "s")], msgs(got)[:1])
+
+        # Send OSC to the Companion target: the same variable and key text.
+        n = len(companion.got)
+        send_osc(var_addr, [{"source": "fixed", "value": "Flight", "type": "text"}])(
+            event, Value(True))
+        check("Send OSC: /custom-variable/gremlin_mode/value \"Flight\" (s)",
+              [(var_addr, ["Flight"], "s")], msgs(companion.wait(n, 1, var_addr)))
+        n = len(companion.got)
+        send_osc(text_addr, [{"source": "fixed", "value": "GEAR DN", "type": "text"}])(
+            event, Value(True))
+        check("Send OSC: /location/1/0/3/style/text \"GEAR DN\" (s)",
+              [(text_addr, ["GEAR DN"], "s")], msgs(companion.wait(n, 1, text_addr)))
+        n = len(companion.got)
+        send_osc(colour_addr, [{"source": "fixed", "value": v, "type": "int"}
+                               for v in ("42", "122", "70")])(event, Value(True))
+        check("Send OSC: /location/1/0/3/style/bgcolor 42 122 70 (iii)",
+              [(colour_addr, [42, 122, 70], "iii")],
+              msgs(companion.wait(n, 1, colour_addr)))
+
+        # Feedback with off/on values: key text and key colour follow the input.
+        names = ("feedback off/on: style/text on press -> \"GEAR DN\" (s)",
+                 "feedback off/on: style/bgcolor on press -> 42 122 70 (iii)",
+                 "feedback off/on: release -> \"GEAR UP\" + 51 51 51")
+        if not onoff:
+            for name in names:
+                skip(name)
+        else:
+            pump(0.1)
+            n = len(companion.got)
+            client.send_args("/sd/gear", 1)
+            text_on = companion.wait(n, 1, text_addr)
+            col_on = companion.wait(n, 1, colour_addr)
+            check(names[0], [(text_addr, ["GEAR DN"], "s")], msgs(text_on)[-1:])
+            check(names[1], [(colour_addr, [42, 122, 70], "iii")], msgs(col_on)[-1:])
+            pump(0.1)
+            n = len(companion.got)
+            client.send_args("/sd/gear", 0)
+            text_off = companion.wait(n, 1, text_addr)
+            col_off = companion.wait(n, 1, colour_addr)
+            check(names[2],
+                  [(text_addr, ["GEAR UP"], "s"), (colour_addr, [51, 51, 51], "iii")],
+                  msgs(text_off)[-1:] + msgs(col_off)[-1:])
+        hex_name = "colour template #333333/#2a7a46: release, press -> r g b (iii)"
+        if not templates:
+            skip(hex_name)
+        else:
+            # Released above: the last sent is off; press sends on.
+            off_now = companion.since(0, hex_addr)
+            n = len(companion.got)
+            client.send_args("/sd/gear", 1)
+            on_now = companion.wait(n, 1, hex_addr)
+            check(hex_name,
+                  [(hex_addr, [51, 51, 51], "iii"), (hex_addr, [42, 122, 70], "iii")],
+                  msgs(off_now)[-1:] + msgs(on_now)[-1:])
+            n = len(companion.got)
+            client.send_args("/sd/gear", 0)
+            companion.wait(n, 1, hex_addr)
+
+        run_scope.stop()
+        running = False
+        ModeManager().end_run()
+    finally:
+        try:
+            if running:
+                run_scope.stop()
+            runtime.stop()
+            osc_feedback.stop()
+            osc_output.reset()
+        finally:
+            client.close()
+            companion.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", help="write the results as JSON here")
     args = parser.parse_args()
     start = time.strftime("%H:%M:%S")
-    for part in (run_checks, run_checks2):
+    for part in (run_checks, run_checks2, run_checks3, run_checks4):
         try:
             part()
         except Exception as exc:  # noqa: BLE001 - reported as a failed check
@@ -904,11 +1228,14 @@ def main() -> int:
     for r in results:
         print(f"{r['check']:<{w1}} | {r['expected']:<{w2}} | "
               f"{r['got']} | {r['result']}")
-    failed = [r for r in results if r["result"] != "PASS"]
-    print(f"\n{len(results) - len(failed)}/{len(results)} passed")
+    failed = [r for r in results if r["result"] == "FAIL"]
+    skipped = [r for r in results if r["result"] == "SKIP"]
+    ran = len(results) - len(skipped)
+    print(f"\n{ran - len(failed)}/{ran} passed, {len(skipped)} skipped")
     if args.json:
         Path(args.json).write_text(json.dumps(
-            {"start": start, "end": end, "passed": not failed, "results": results},
+            {"start": start, "end": end, "passed": not failed,
+             "skipped": len(skipped), "results": results},
             indent=2), encoding="utf-8")
     import shutil
 

@@ -69,13 +69,22 @@ def named(window, name):
             return item
     return None
 
+def by_text(window, text):
+    root = window.contentItem()
+    while root.parentItem() is not None:
+        root = root.parentItem()
+    for item in walk(root):
+        if item.isVisible() and item.property("text") == text \
+                and "MenuItem" in type(item).__name__ + item.metaObject().className():
+            return item
+    return None
+
 def show(window, item):
-    # Scrolls OSC's sections so item is in the window.
-    scroll = named(window, "oscSectionsScroll")
-    if scroll is None:
+    # Scrolls the Feedback tab's page so item is in the window.
+    flick = named(window, "oscFeedbackPage")
+    if flick is None:
         return
     app.processEvents()
-    flick = scroll.property("contentItem")
     inner = flick.property("contentItem")
     y = item.mapToItem(inner, QtCore.QPointF(0, 0)).y()
     flick.setProperty("contentY", max(0.0, y - 40))
@@ -128,11 +137,16 @@ if kb is not None:
     app.processEvents()
 
 out["before"] = osc_device_file.read_server()
-setup = open_setup(str(ids.OSC).upper(), "oscFeedbackSection")
-out["section"] = setup is not None
+# OSC Setup's tabs: the Feedback tab shows the section.
+setup = open_setup(str(ids.OSC).upper(), "oscTabFeedback")
 if setup is not None:
     setup.requestActivate()
     wait_for(lambda: setup.isActive(), 2000)
+    click(setup, named(setup, "oscTabFeedback"))
+    if named(setup, "oscFeedbackSection") is None:
+        setup = None
+out["section"] = setup is not None
+if setup is not None:
     for name in ("oscFeedbackEnabled", "oscFeedbackResendRun",
                  "oscFeedbackResendMode", "oscFeedbackResendProfile"):
         click(setup, named(setup, name))
@@ -146,6 +160,9 @@ if setup is not None:
 
     out["rows-before"] = osc_device_file.read_feedback()
     click(setup, named(setup, "oscFeedbackAddRow"))
+    wait_for(lambda: named(setup, "oscAddBlankRow") is not None, 2000)
+    click(setup, named(setup, "oscAddBlankRow"))
+    wait_for(lambda: len(osc_device_file.read_feedback()) == 1, 2000)
     out["rows-added"] = osc_device_file.read_feedback()
     wait_for(lambda: named(setup, "oscFeedbackRowAddress") is not None, 2000)
     type_into(setup, named(setup, "oscFeedbackRowAddress"), "/fire")
@@ -175,6 +192,26 @@ if setup is not None:
         click(setup, action)
     wait_for(lambda: not osc_device_file.read_feedback(), 2000)
     out["rows-removed"] = osc_device_file.read_feedback()
+
+    # Add Row > Companion > Key color (off/on)...: its dialog, then a row.
+    click(setup, named(setup, "oscFeedbackAddRow"))
+    wait_for(lambda: by_text(setup, "Companion") is not None, 2000)
+    click(setup, by_text(setup, "Companion"))
+    wait_for(lambda: named(setup, "oscAddCompanionColour") is not None, 2000)
+    click(setup, named(setup, "oscAddCompanionColour"))
+    wait_for(lambda: named(setup, "oscTemplateAdd") is not None, 2000)
+    out["template-dialog"] = named(setup, "oscTemplateAdd") is not None
+    if out["template-dialog"]:
+        type_into(setup, named(setup, "oscTemplatePage"), "3")
+        type_into(setup, named(setup, "oscTemplateColumn"), "4")
+        click(setup, named(setup, "oscTemplateAdd"))
+    wait_for(lambda: len(osc_device_file.read_feedback()) == 1, 2000)
+    out["template-rows"] = osc_device_file.read_feedback()
+    out["template-targets"] = osc_device_file.read_targets()
+    out["template-message"] = named(setup, "oscFeedbackMessage").property("text")
+    wait_for(lambda: named(setup, "oscFeedbackRowOn") is not None, 2000)
+    on_field = named(setup, "oscFeedbackRowOn")
+    out["on-field"] = on_field.property("text") if on_field is not None else None
     setup.close()
     app.processEvents()
 
@@ -236,3 +273,15 @@ def test_feedback_rows_save_to_osc_file(result: dict) -> None:
     assert result["row-fits"] is True
     assert result["confirm"] is True
     assert result["rows-removed"] == []
+
+
+def test_companion_key_colour_template_from_the_menu(result: dict) -> None:
+    assert result["template-dialog"] is True, result
+    (row,) = result["template-rows"]
+    assert row["address"] == "/location/3/0/4/style/bgcolor"
+    assert (row["off_value"], row["on_value"]) == ("#333333", "#2a7a46")
+    companion = [t for t in result["template-targets"] if t["name"] == "Companion"]
+    assert [(t["host"], t["port"]) for t in companion] == [("127.0.0.1", 12321)]
+    assert row["target"] == companion[0]["id"]
+    assert "OSC Listener" in result["template-message"]
+    assert result["on-field"] == "#2a7a46"

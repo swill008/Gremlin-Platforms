@@ -25,6 +25,7 @@ NO_INPUT = "no input"
 
 _ROLES = (
     "time", "direction", "address", "values", "peer", "matched", "noInput",
+    "hoverText",
 )
 
 
@@ -55,6 +56,21 @@ def values_text(args: list[Any]) -> str:
 def time_text(stamp: float) -> str:
     whole = time.localtime(stamp)
     return time.strftime("%H:%M:%S", whole) + f".{int((stamp % 1) * 1000):03d}"
+
+
+def hover_text(entry: dict[str, Any]) -> str:
+    """A row's hover text: everything the columns may cut short, in full."""
+    outgoing = entry.get("direction") == "out"
+    lines = [str(entry.get("address", ""))]
+    values = values_text(list(entry.get("args") or []))
+    if values:
+        lines.append(f"Values: {values}")
+    peer = str(entry.get("peer", ""))
+    if peer:
+        lines.append(f"{'To' if outgoing else 'From'}: {peer}")
+    if not outgoing:
+        lines.append(f"Input: {', '.join(entry.get('matched') or []) or NO_INPUT}")
+    return "\n".join(lines)
 
 
 def add_settings(entry: dict[str, Any]) -> dict[str, Any]:
@@ -147,6 +163,8 @@ class OscMonitorModel(QtCore.QAbstractListModel):
             return entry.get("peer", "")
         if name == "noInput":
             return entry.get("direction") == "in" and not entry.get("matched")
+        if name == "hoverText":
+            return hover_text(entry)
         if name == "matched":
             if entry.get("direction") != "in":
                 return ""

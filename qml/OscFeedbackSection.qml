@@ -6,16 +6,21 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Config
+import Gremlin.Menus
 import Gremlin.Style
 
 import "confirm.js" as Confirm
 
 // OSC's Module Setup "Feedback" section (D-09-OSC-FEEDBACK): what Gremlin
 // sends back to OSC devices. Each change is checked and written to OSC's
-// file at once.
-Frame {
+// file at once. It is the Feedback tab's body in OSC Setup (OscSetupTabs).
+// It sits straight on its tab's card, as the other tabs do (osc_style.md):
+// no card of its own inside it.
+Item {
     id: _root
     objectName: "oscFeedbackSection"
+    implicitWidth: _column.implicitWidth
+    implicitHeight: _column.implicitHeight
 
     property alias model: _model
 
@@ -74,13 +79,151 @@ Frame {
         onActivated: _model.setRowValue(rowIndex, key, currentValue)
     }
 
+    // Asks a Companion template's few fields, then adds its row.
+    Dialog {
+        id: _template
+        objectName: "oscFeedbackTemplateDialog"
+        property string kind: ""
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        title: kind === "companion_variable" ? "Companion custom variable"
+             : kind === "companion_text" ? "Companion key text"
+             : "Companion key color"
+
+        function ask(which) {
+            kind = which
+            _varName.text = "gremlin_mode"
+            _page.text = "1"
+            _keyRow.text = "0"
+            _keyColumn.text = "0"
+            _offColour.text = _model.defaultOffColor
+            _onColour.text = _model.defaultOnColor
+            open()
+        }
+
+        function add() {
+            var params = kind === "companion_variable"
+                ? { name: _varName.text }
+                : { page: _page.text, row: _keyRow.text, column: _keyColumn.text,
+                    off: _offColour.text, on: _onColour.text }
+            var said = _model.addTemplateRow(kind, params)
+            if (_model.message.length)
+                return   // refused: the message line says why; the dialog stays
+            close()
+            if (said.length)
+                _message.show(said, false)
+        }
+
+        ColumnLayout {
+            spacing: Style.dp(10)
+
+            RowLayout {
+                visible: _template.kind === "companion_variable"
+                spacing: Style.dp(6)
+                Label { text: "Variable name"; color: Style.fgSoft }
+                JGTextField {
+                    id: _varName
+                    objectName: "oscTemplateVariable"
+                    selectByMouse: true
+                    Layout.preferredWidth: Style.dp(180)
+                }
+            }
+            Label {
+                visible: _template.kind === "companion_variable"
+                text: "Create the custom variable in Companion first."
+                font.pixelSize: Style.dp(11)
+                color: Style.fgMuted
+            }
+            RowLayout {
+                visible: _template.kind !== "companion_variable"
+                spacing: Style.dp(6)
+                Label { text: "Page"; color: Style.fgSoft }
+                JGTextField {
+                    id: _page
+                    objectName: "oscTemplatePage"
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    Layout.preferredWidth: Style.dp(60)
+                }
+                Label { text: "Row"; color: Style.fgSoft }
+                JGTextField {
+                    id: _keyRow
+                    objectName: "oscTemplateRow"
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    Layout.preferredWidth: Style.dp(60)
+                }
+                Label { text: "Column"; color: Style.fgSoft }
+                JGTextField {
+                    id: _keyColumn
+                    objectName: "oscTemplateColumn"
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    Layout.preferredWidth: Style.dp(60)
+                }
+            }
+            RowLayout {
+                visible: _template.kind === "companion_colour"
+                spacing: Style.dp(6)
+                Label { text: "Off color"; color: Style.fgSoft }
+                Rectangle {
+                    implicitWidth: Style.dp(22)
+                    implicitHeight: Style.dp(22)
+                    radius: Style.dp(3)
+                    border.color: Style.lineStrong
+                    color: /^#[0-9a-fA-F]{6}$/.test(_offColour.text) ? _offColour.text : Style.clear
+                }
+                JGTextField {
+                    id: _offColour
+                    objectName: "oscTemplateOff"
+                    Layout.preferredWidth: Style.dp(90)
+                }
+                Label { text: "On color"; color: Style.fgSoft }
+                Rectangle {
+                    implicitWidth: Style.dp(22)
+                    implicitHeight: Style.dp(22)
+                    radius: Style.dp(3)
+                    border.color: Style.lineStrong
+                    color: /^#[0-9a-fA-F]{6}$/.test(_onColour.text) ? _onColour.text : Style.clear
+                }
+                JGTextField {
+                    id: _onColour
+                    objectName: "oscTemplateOn"
+                    Layout.preferredWidth: Style.dp(90)
+                }
+            }
+            Label {
+                visible: _template.kind !== "companion_variable"
+                text: "Pages count from 1, rows and columns from 0. Turn on Companion\u2019s OSC Listener (Settings \u203a OSC)."
+                font.pixelSize: Style.dp(11)
+                color: Style.fgMuted
+                wrapMode: Text.WordWrap
+                Layout.maximumWidth: Style.dp(380)
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.dp(8)
+                Item { Layout.fillWidth: true }
+                Button {
+                    objectName: "oscTemplateAdd"
+                    text: "Add Row"
+                    highlighted: true
+                    onClicked: _template.add()
+                }
+                Button {
+                    text: "Cancel"
+                    onClicked: _template.close()
+                }
+            }
+        }
+    }
+
     ColumnLayout {
-        anchors.fill: parent
+        id: _column
+        anchors { left: parent.left; right: parent.right; top: parent.top }
         spacing: Style.dp(6)
 
-        Label {
+        SectionHeading {
             text: "Feedback"
-            font.bold: true
+            Layout.fillWidth: true
         }
 
         CheckBox {
@@ -170,15 +313,21 @@ Frame {
                     id: _rows
                     model: _model.rows
 
-                    delegate: Frame {
+                    delegate: Rectangle {
                         id: _row
                         objectName: "oscFeedbackRow"
                         required property var modelData
                         required property int index
                         Layout.fillWidth: true
+                        implicitHeight: _rowColumn.implicitHeight + Style.dp(12)
+                        color: Style.bgRaised
+                        border.color: Style.line
+                        border.width: 1
+                        radius: Style.dp(4)
 
                         ColumnLayout {
-                            anchors.fill: parent
+                            id: _rowColumn
+                            anchors { left: parent.left; right: parent.right; top: parent.top; margins: Style.dp(6) }
                             spacing: Style.dp(4)
 
                             RowLayout {
@@ -246,7 +395,7 @@ Frame {
                                     Layout.preferredWidth: Style.dp(180)
                                 }
                                 Item { Layout.fillWidth: true }
-                                Button {
+                                DangerButton {
                                     objectName: "oscFeedbackRowRemove"
                                     text: "Remove"
                                     onClicked: {
@@ -318,6 +467,39 @@ Frame {
                                     Layout.preferredWidth: Style.dp(60)
                                 }
                             }
+
+                            // Off/On: when set, an on/off source sends these
+                            // instead of Min/Max (e.g. the two template colors).
+                            RowLayout {
+                                spacing: Style.dp(6)
+                                Layout.fillWidth: true
+
+                                Label { text: "Off:" }
+                                RowField {
+                                    objectName: "oscFeedbackRowOff"
+                                    rowIndex: _row.index
+                                    key: "off_value"
+                                    saved: _row.modelData.offValue
+                                    placeholderText: "Min"
+                                    Layout.preferredWidth: Style.dp(110)
+                                }
+                                Label { text: "On:" }
+                                RowField {
+                                    objectName: "oscFeedbackRowOn"
+                                    rowIndex: _row.index
+                                    key: "on_value"
+                                    saved: _row.modelData.onValue
+                                    placeholderText: "Max"
+                                    Layout.preferredWidth: Style.dp(110)
+                                }
+                                Label {
+                                    text: "Sent instead of Min/Max for an on/off source; a color (#rrggbb) to a key color goes as r g b."
+                                    font.pixelSize: Style.dp(11)
+                                    color: Style.fgMuted
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                }
+                            }
                         }
                     }
                 }
@@ -326,8 +508,37 @@ Frame {
 
         Button {
             objectName: "oscFeedbackAddRow"
-            text: "Add Row"
-            onClicked: _model.addRow()
+            text: "Add Row \u25be"
+            onClicked: _addMenu.popup(0, height)
+
+            ThemedMenu {
+                id: _addMenu
+                objectName: "oscFeedbackAddMenu"
+                ThemedMenuItem {
+                    objectName: "oscAddBlankRow"
+                    text: "Blank row"
+                    onTriggered: _model.addTemplateRow("blank", {})
+                }
+                ThemedMenu {
+                    objectName: "oscAddCompanionMenu"
+                    title: "Companion"
+                    ThemedMenuItem {
+                        objectName: "oscAddCompanionVariable"
+                        text: "Custom variable\u2026"
+                        onTriggered: _template.ask("companion_variable")
+                    }
+                    ThemedMenuItem {
+                        objectName: "oscAddCompanionText"
+                        text: "Key text\u2026"
+                        onTriggered: _template.ask("companion_text")
+                    }
+                    ThemedMenuItem {
+                        objectName: "oscAddCompanionColour"
+                        text: "Key color (off/on)\u2026"
+                        onTriggered: _template.ask("companion_colour")
+                    }
+                }
+            }
         }
 
         MessageLine {

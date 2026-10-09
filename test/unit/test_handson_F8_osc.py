@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """OSC's server settings (01 S44, D-01-OSC-HOST-CLOSE; since D-09-OSC-FILE
-in OSC's Module Setup "Server" section, saved to OSC's file): a host, port
+in OSC's Module Setup "Server" tab, saved to OSC's file): a host, port
 or delay typed into a box is saved when the window closes with the cursor
 still in the box. It was lost once: only Tab or Enter saved it. The section
 runs off-screen in its own process (handson_F8_osc_close_smoke.py)."""
@@ -36,7 +36,7 @@ def _run(tmp_path: pathlib.Path) -> dict[str, str]:
     lines = result.stdout.splitlines()
     assert "done" in lines, result.stdout[-2000:] + result.stderr[-2000:]
     assert [line for line in lines if line.startswith("ERROR")] == []
-    ours = ("OscServerSection.qml",)
+    ours = ("OscSetupTabs.qml", "OscServerTab.qml")
     warned = [
         line for line in lines
         if line.startswith("WARN") and any(f in line for f in ours)

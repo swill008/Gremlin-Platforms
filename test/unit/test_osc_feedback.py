@@ -213,7 +213,12 @@ def test_osc_input_echo_follows_the_runtime(
         _poll()
         runtime._on_main("/in", (0.0,))
         _poll()
-        QtTest.QTest.qWait(20)  # within the 1 ms rate gap: the timer sends it
+        # The release waits out the rate gap, then the timer sends it; under
+        # a loaded full run that can take longer than a few ms.
+        for _ in range(200):  # up to 2 s
+            if len(fb.out.sent) >= 2:
+                break
+            QtTest.QTest.qWait(10)
         assert fb.out.sent == [
             ("t1", "/echo", [1.0], None),
             ("t1", "/echo", [0.0], None),

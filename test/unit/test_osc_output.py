@@ -239,3 +239,12 @@ def test_the_editor_loads_and_edits_the_action(editor_run: dict) -> None:
     assert step(editor_run, "typed-address") == "/fire"
     assert step(editor_run, "values-after-add") == 2
     assert "Reply to sender" in step(editor_run, "targets")
+
+
+def test_text_values_go_the_short_way_like_feedback() -> None:
+    # One rule for Text (HELP-CHECK 2026-10-09): 1.0 goes as "1", 0.5 as "0.5".
+    from gremlin import osc_output
+
+    assert osc_output.convert(1.0, "text") == "1"
+    assert osc_output.convert(0.5, "text") == "0.5"
+    assert osc_output.convert("go", "text") == "go"

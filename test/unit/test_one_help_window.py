@@ -45,8 +45,8 @@ def _whole_book(state: dict) -> None:
     assert state["windows"] == 1, "not one Help window"
     assert state["chapter"] == ""
     assert state["count"] == state["full"] > 0
-    assert len(state["chapters"]) == 9
-    assert len(state["heads"]) == 9
+    assert len(state["chapters"]) == 10
+    assert len(state["heads"]) == 10
     assert state["title"] == "Help"
 
 

@@ -89,7 +89,7 @@ def test_whole_book_opens_with_only_the_open_topics_chapter_unfolded(run: dict) 
     opened = _part(run, "folding")["opened"]
     current = opened["current"]
     assert current
-    assert len(opened["chapters"]) == 9
+    assert len(opened["chapters"]) == 10
     assert {c for c, f in opened["folded"].items() if not f} == {current}
     assert _shown_chapters(opened) == {current}
 
@@ -101,13 +101,13 @@ def test_expand_all_and_collapse_all(run: dict) -> None:
     assert len(res["expanded"]["topics"]) == run["book"]
     assert all(res["collapsed"]["folded"].values())
     assert res["collapsed"]["topics"] == []
-    assert len(res["collapsed"]["chapters"]) == 9
+    assert len(res["collapsed"]["chapters"]) == 10
     assert res["buttons_area"] == [False, False]
 
 
 def test_clicking_a_chapter_heading_toggles_it(run: dict) -> None:
     res = _part(run, "folding")
-    assert res["heads"] == 9
+    assert res["heads"] == 10
     cid = res["clicked_chapter"]
     assert res["toggled_open"]["folded"][cid] is False
     assert _shown_chapters(res["toggled_open"]) == {cid}

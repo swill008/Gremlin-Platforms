@@ -57,5 +57,5 @@ Keep a topic to one screen where possible; split long topics.
 
 - Each subject is written **once**, in its chapter. Elsewhere, link to it.
 - Chapters: Getting started · Home and devices · Configuration and actions ·
-  Logical Device · Modes · Button Map · Device Library · Tools · Options and
+  Logical Device · OSC · Modes · Button Map · Device Library · Tools · Options and
   profile.

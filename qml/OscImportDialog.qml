@@ -20,11 +20,12 @@ Popup {
     padding: Style.dp(16)
     width: Style.dp(460)
 
+    // A Button Map card (osc_style.md): card fill, strong line, round corners.
     background: Rectangle {
-        color: Style.background
-        border.color: Style.accent
-        border.width: Style.dp(1)
-        radius: Style.dp(4)
+        color: Style.bgCard
+        border.color: Style.lineStrong
+        border.width: 1
+        radius: Style.dp(8)
     }
 
     function resetFields() {
@@ -38,6 +39,7 @@ Popup {
             text: "New OSC messages:"
             font.bold: true
             font.pixelSize: Style.dp(16)
+            color: Style.fgStrong
         }
 
         TextArea {
@@ -54,6 +56,7 @@ Popup {
             implicitHeight: _help.implicitHeight + Style.dp(16)
             color: Style.noteFill
             border.color: Style.noteLine
+            radius: Style.dp(4)
 
             Label {
                 id: _help
@@ -80,6 +83,7 @@ Popup {
             Button {
                 objectName: "oscImportOk"
                 text: "OK"
+                highlighted: true
                 onClicked: {
                     _root.accepted(_messages.text)
                     _root.close()

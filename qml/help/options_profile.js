@@ -24,7 +24,7 @@ function topics() {
                 + "<li><b>Actions</b>: the <b>Add Action Menu</b> (which actions it offers and their order), then Macro, Change Mode, Double Tap, Smart Toggle, Tempo, Axis Delta, Play Sound and Text to Speech.</li>"
                 + "<li><b>Profiles</b>: <b>Auto-load</b>: Load profiles automatically when a chosen program comes to the front, the programs and their profiles, and Keep running when the program loses focus. See <a href=\"topic:options-profile-auto-load\">Load a profile automatically for a game</a>.</li>"
                 + "<li><b>Home</b>: <b>Cards</b>: Compact view, Show devices without a module, Keep last value after release, and <b>Reset All Card Sizes</b>.</li>"
-                + "<li><b>OSC</b>: <b>Server</b>: one line with a button, <b>OSC settings are in OSC › Module Setup</b>; the server settings themselves are in the Server section of OSC's Module Setup. See <a href=\"topic:options-profile-osc\">Set up OSC</a>.</li>"
+                + "<li><b>OSC</b>: one line, <b>OSC settings are in OSC › Module Setup.</b>, with the button <b>Open OSC Module Setup</b>, which opens OSC's Module Setup window. All of OSC is in the <a href=\"topic:osc-about\">OSC</a> chapter.</li>"
                 + "<li><b>Folders</b>: the data folder, and the profiles, modules, scripts, export, logs, history and plugins folders. See <a href=\"topic:options-profile-folders\">Change where files are kept</a>.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
@@ -165,57 +165,6 @@ function topics() {
                 + "<li>Clicking into this program's own window doesn't count as another program.</li>"
                 + "</ul>",
             related: ["options-profile-profile-settings", "getting-started-profiles"]
-        },
-        {
-            id: "options-profile-osc",
-            section: "Options",
-            title: "Set up OSC",
-            body: "<p>OSC lets a network sender, such as a Stream Deck through Bitfocus Companion or a phone app, press buttons and move axes in the program. OSC is an internal input, like the Keyboard and the Logical Device: one list of OSC inputs, kept in OSC's own module file and used by every profile.</p>"
-                + "<h4>Server settings</h4>"
-                + "<p>Open the <b>OSC</b> card's menu and choose <b>Module Setup…</b>. Its <b>Server</b> section holds:</p>"
-                + "<ul>"
-                + "<li><b>Enabled</b>: turns OSC on.</li>"
-                + "<li><b>Host</b>: leave it blank to listen on every address of this PC, or type an IP address or a name. The program checks it before saving.</li>"
-                + "<li><b>Port</b>: the port your OSC sender sends to (8001 unless you change it).</li>"
-                + "<li><b>OSC output</b>: the master switch for everything OSC sends (Send OSC and Feedback). On unless you turn it off.</li>"
-                + "<li><b>Reply to sender</b>: lets a Send OSC action or Feedback row send back to whoever sent the last message. On unless you turn it off.</li>"
-                + "<li><b>Targets</b>: the places OSC sends to, each with a name, a host and a port. The first, <b>Default</b>, is 127.0.0.1 port 8000 unless you change it. Renaming a target keeps the actions and rows that use it.</li>"
-                + "<li>This PC's addresses and the port, each with <b>Copy</b>, to type into your sender.</li>"
-                + "<li><b>Announce this PC</b> lets senders on the network find the program; <b>Find OSC devices</b> lists the OSC devices it finds, each with <b>Add as Target</b>. Both are off unless you turn them on.</li>"
-                + "<li>Auto-release of address-only messages and its delay (250 ms unless you change it).</li>"
-                + "</ul>"
-                + "<p>Changes take effect at once, also while the profile runs. The settings travel with OSC's module file: Save to Device Library, Restore, Export and Device Pack carry them, with the targets and the Feedback rows.</p>"
-                + "<h4>See what a sender sends</h4>"
-                + "<p>Choose <b>Monitor</b> on the OSC page, or <b>Tools › OSC Monitor</b>. The <b>OSC Monitor</b> lists the last 200 messages: time, <b>In</b> or <b>Out</b>, address, values, <b>From</b> or <b>To</b>, and the <b>Input</b> each matched, or <b>no input</b>. Use <b>Pause</b>, <b>Clear</b>, the filter and <b>Show outgoing</b>. On a <b>no input</b> row, <b>Add as Input…</b> opens Add with the address and values filled in. While the Monitor is open, the port stays open, also when the profile isn't running.</p>"
-                + "<h4>Send state back: Feedback</h4>"
-                + "<p>The <b>Feedback</b> section of OSC's Module Setup (switch <b>Send feedback to OSC devices</b>; <b>Add Row</b> adds a row) sends values to your OSC device so its buttons and faders can show the program's state. Each row has a source (the current mode's name, a vJoy button or axis, a Logical Device control, or an OSC input's own value), a target, an address, <b>Min:</b> and <b>Max:</b>, and a type.</p>"
-                + "<ul>"
-                + "<li>While the profile runs, a row sends when its source changes, at most 50 messages a second per address unless you change it.</li>"
-                + "<li>Every row is sent again at Run start, at a mode change and at a profile switch: tick them under <b>Send everything again at:</b>.</li>"
-                + "<li><b>Sync address</b> (\"/gremlin/sync\" unless you change it): a message there sends every row again, to the device that asked when the row's target is Reply to sender. It never reaches an input.</li>"
-                + "</ul>"
-                + "<p>To send a message from an input, add the <a href=\"topic:configuration-actions-send-osc\">Send OSC</a> action.</p>"
-                + "<h4>Add an OSC input</h4>"
-                + "<ol>"
-                + "<li>On the <b>OSC</b> page, choose <b>Add</b>.</li>"
-                + "<li>Type the address (it starts with \"/\"), or choose <b>Listen</b> and send one message from your sender. Listen ends when that message arrives; <b>Stop</b> in the Listening box stops listening. With <b>Bulk capture</b> ticked, each new address becomes an input until you untick it.</li>"
-                + "<li>Choose the mode: <b>Button</b>, <b>Axis</b>, <b>Change</b> (presses when the value changes) or <b>Encoder</b> (a knob that turns). For an axis, <b>Min:</b> and <b>Max:</b> set the range of values that maps to the whole axis (0 to 1 unless you change them).</li>"
-                + "<li>Choose <b>Message only</b>, or <b>Message + data</b> to match the values in <b>Data:</b> too. <b>Source value:</b> chooses which value to read (P1, P2 …).</li>"
-                + "<li>Tick <b>Trigger on message</b> to press and release on any message, after the delay next to it.</li>"
-                + "<li>Choose <b>OK</b>.</li>"
-                + "</ol>"
-                + "<h4>Good to know</h4>"
-                + "<ul>"
-                + "<li>To change an input later, click its pencil: <b>Change Address…</b> edits the address (it starts with \"/\"; a duplicate is refused with the reason), and <b>Edit Settings…</b> opens <b>OSC Input Settings</b> with the same choices as Add. The input keeps its actions either way. An input that has actions can't switch between Axis and the button modes (Button, Change, Message + data): remove this input's actions first, since an axis and a button use different actions. Switching among the button modes is fine.</li>"
-                + "<li><b>Import</b> takes one address per line. Add a suffix after a space or a comma: A axis, B button, BNP button with Trigger on message, C change, E encoder (an axis, format Auto). The result line says \"Added N, skipped M\".</li>"
-                + "<li>Several inputs can share an address when their data or value differ.</li>"
-                + "<li>An <b>Encoder</b> reads which way a knob turned. <b>Format</b> <b>Auto</b> works it out: 1 and 0 mean clockwise and counter-clockwise, and any other value, such as a negative, means +n and −n. Choose <b>1 = clockwise, 0 = counter-clockwise</b> or <b>+n and −n</b> to set it yourself. <b>Output</b> <b>Axis</b> moves an axis by the <b>Step size</b> (0.05) each tick; <b>Pulses clockwise</b> or <b>Pulses counter-clockwise</b> make a button that presses, and releases after <b>Release after … ms</b>, once for each tick that way.</li>"
-                + "<li>At <b>Stop</b>, any OSC button still held is released before the profile stops.</li>"
-                + "<li>Deleting an input asks first; you can restore it from Tools › History.</li>"
-                + "<li>Profiles from older versions keep working: their OSC inputs are added to OSC's list the first time you open them, and a copy of the old file is kept beside it when you first save.</li>"
-                + "<li>If the port can't be opened, for example because another program uses it, Run still runs the rest of the profile and shows one error: \"Could not bind OSC on host:port.\", with the host and port.</li>"
-                + "</ul>",
-            related: ["options-profile-options", "configuration-actions-send-osc"]
         },
         {
             id: "options-profile-folders",

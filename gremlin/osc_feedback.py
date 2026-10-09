@@ -98,7 +98,53 @@ def _convert(number: float, kind: str) -> Any:  # noqa: ANN401
     return float(number)
 
 
-def _send_types(row: dict, value: Any) -> list[str] | None:  # noqa: ANN401
+def _colour_address(address: object) -> bool:
+    """Companion's key colours: /location/<p>/<r>/<c>/style/bgcolor or
+    .../style/color."""
+    return str(address or "").rstrip("/").endswith(("/style/bgcolor", "/style/color"))
+
+
+def _colour(value: object) -> list[int] | None:
+    """"#rrggbb" or "r g b" text as three ints 0-255; None when value isn't
+    a colour."""
+    text = str(value).strip()
+    if text.startswith("#") and len(text) == 7:
+        try:
+            return [int(text[i : i + 2], 16) for i in (1, 3, 5)]
+        except ValueError:
+            return None
+    parts = text.replace(",", " ").split()
+    if len(parts) == 3:
+        try:
+            numbers = [int(part) for part in parts]
+        except ValueError:
+            return None
+        if all(0 <= n <= 255 for n in numbers):
+            return numbers
+    return None
+
+
+def _shape(row: dict, value: object) -> list:
+    """The values an off/on value sends: a colour to a colour address goes
+    as three ints r g b (Companion v3+ takes that); a number is converted
+    like Min/Max; other text goes as it is."""
+    if isinstance(value, str) and _colour_address(row.get("address")):
+        rgb = _colour(value)
+        if rgb is not None:
+            return rgb
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return [_convert(float(value), row.get("type", "auto"))]
+    return [value]
+
+
+def _send_types(row: dict, values: list) -> list[str] | None:
+    if (
+        len(values) == 3
+        and all(isinstance(v, int) and not isinstance(v, bool) for v in values)
+        and _colour_address(row.get("address"))
+    ):
+        return ["int", "int", "int"]
+    value = values[0] if values else None
     kind = row.get("type", "auto")
     if kind == "auto":
         # Auto: osc_output picks the type last received on the address;
@@ -194,7 +240,7 @@ class OscFeedback(QtCore.QObject):
         for row in self._active_rows():
             values = self.value_of(row)
             if values is not None:
-                self._last[row["id"]] = (values, _send_types(row, values[0]))
+                self._last[row["id"]] = (values, _send_types(row, values))
 
     def stop(self) -> None:
         self._running = False
@@ -309,6 +355,10 @@ class OscFeedback(QtCore.QObject):
         if raw is None:
             return None
         if isinstance(raw, bool):
+            # Off/on values, when set, go instead of Min/Max.
+            chosen = row.get("on_value" if raw else "off_value")
+            if chosen is not None:
+                return _shape(row, chosen)
             number = high if raw else low
         elif isinstance(raw, (int, float)):
             # Axes are -1..1.
@@ -353,7 +403,7 @@ class OscFeedback(QtCore.QObject):
             values = self.value_of(row)
             if values is None:
                 continue
-            types = _send_types(row, values[0])
+            types = _send_types(row, values)
             if self._last.get(row["id"]) == (values, types):
                 continue
             self._last[row["id"]] = (values, types)
@@ -379,7 +429,7 @@ class OscFeedback(QtCore.QObject):
             values = self.value_of(row)
             if values is None:
                 continue
-            types = _send_types(row, values[0])
+            types = _send_types(row, values)
             self._last[row["id"]] = (values, types)
             self._send(row, values, types)
             count += 1
@@ -447,7 +497,9 @@ def handle_incoming(address: str, args: Any, peer: tuple | None) -> bool:  # noq
     if not s.get("sync_enabled", True):
         return False
     sync = str(s.get("sync_address") or "").strip()
-    if not sync or str(address) != sync:
+    # OSC addresses match without regard to case (incoming ones come
+    # casefolded), so a mixed-case sync address matches too.
+    if not sync or str(address).strip().casefold() != sync.casefold():
         return False
     if running and _feedback is not None:
         _feedback.request_sync(peer)

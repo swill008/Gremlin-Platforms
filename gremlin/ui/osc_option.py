@@ -25,6 +25,11 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 syslog = logging.getLogger("system")
 
+# Bitfocus Companion's OSC listener on this PC (name, host, port), and what
+# to turn on there (D-09-OSC-COMPANION).
+COMPANION_TARGET = ("Companion", "127.0.0.1", 12321)
+COMPANION_HINT = "In Companion: Settings › OSC › turn on OSC Listener."
+
 # One part of a host name: letters, digits and inner hyphens (RFC 1123).
 _LABEL = re.compile(r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)$")
 
@@ -130,6 +135,7 @@ class OscServerModel(QtCore.QObject):
         self._targets: list[dict] = []
         self._found: list[dict] = []
         self._message = ""
+        self._failed = False
         self.reload()
         self.refreshFound()
         from gremlin.signal import signal
@@ -155,9 +161,11 @@ class OscServerModel(QtCore.QObject):
 
         return guid_key(guid) == guid_key(str(ids.OSC))
 
-    def _say(self, text: str) -> None:
-        if text != self._message:
+    def _say(self, text: str, failed: bool = True) -> None:
+        """Shows text on the message line; failed shows it as an error."""
+        if text != self._message or failed != self._failed:
             self._message = text
+            self._failed = failed
             self.messageChanged.emit()
 
     @QtCore.Slot(str, "QVariant", result=bool)
@@ -256,7 +264,7 @@ class OscServerModel(QtCore.QObject):
         target["id"] = osc_device_file.new_id()
         if not self._write_targets(self._targets + [target]):
             return False
-        self._say(f"Added target {target['name']}.")
+        self._say(f"Added target {target['name']}.", failed=False)
         return True
 
     @QtCore.Slot(str, str, str, "QVariant", result=bool)
@@ -275,7 +283,7 @@ class OscServerModel(QtCore.QObject):
         ]
         if not self._write_targets(targets):
             return False
-        self._say(f"Changed target {target['name']}.")
+        self._say(f"Changed target {target['name']}.", failed=False)
         return True
 
     @QtCore.Slot(str, result=bool)
@@ -286,8 +294,34 @@ class OscServerModel(QtCore.QObject):
         targets = [dict(t) for t in self._targets if t["id"] != target_id]
         if not self._write_targets(targets):
             return False
-        self._say(f"Removed target {gone['name'] or gone['host']}.")
+        self._say(f"Removed target {gone['name'] or gone['host']}.", failed=False)
         return True
+
+    @QtCore.Slot(result=str)
+    def addCompanionTarget(self) -> str:
+        """Adds the target "Companion" (Bitfocus Companion on this PC), or
+        points the one already named so back at it (D-09-OSC-COMPANION).
+        Returns the message shown."""
+        name, host, port = COMPANION_TARGET
+        own = next(
+            (t for t in self._targets
+             if str(t.get("name", "")).casefold() == name.casefold()),
+            None,
+        )
+        if own is None:
+            done = self.addTarget(name, host, port)
+            said = "Added target Companion"
+        elif (own["name"], own.get("host"), own.get("port")) == COMPANION_TARGET:
+            done = True
+            said = "Target Companion is ready"
+        else:
+            done = self.editTarget(own["id"], name, host, port)
+            said = "Changed target Companion"
+        if not done:
+            return self._message
+        text = f"{said} ({host}:{port}). {COMPANION_HINT}"
+        self._say(text, failed=False)
+        return text
 
     # Discovery (D-09-OSC-DISCOVERY).
 
@@ -339,7 +373,10 @@ class OscServerModel(QtCore.QObject):
 
     @QtCore.Property(list, notify=changed)
     def pcAddresses(self) -> list[str]:
-        own = [ip for ip in local_ipv4_addresses() if ip != "127.0.0.1"]
+        # 0.0.0.0 means "all addresses": an app can't send to it.
+        own = [
+            ip for ip in local_ipv4_addresses() if ip not in ("127.0.0.1", "0.0.0.0")
+        ]
         return own or ["127.0.0.1"]
 
     @QtCore.Slot(str, result=bool)
@@ -348,7 +385,7 @@ class OscServerModel(QtCore.QObject):
         if not isinstance(app, QtGui.QGuiApplication):
             return False
         app.clipboard().setText(str(text))
-        self._say(f"Copied {text}.")
+        self._say(f"Copied {text}.", failed=False)
         return True
 
     def _get(self, key: str) -> object:
@@ -406,10 +443,17 @@ class OscServerModel(QtCore.QObject):
     def message(self) -> str:
         return self._message
 
+    @QtCore.Property(bool, notify=messageChanged)
+    def messageFailed(self) -> bool:
+        """True when the message is an error (a refused change)."""
+        return self._failed
+
     @QtCore.Slot(result=str)
     def localAddresses(self) -> str:
         """This PC's addresses, for the Host field's tip."""
-        return ", ".join(ip for ip in local_ipv4_addresses() if ip != "127.0.0.1")
+        return ", ".join(
+            ip for ip in local_ipv4_addresses() if ip not in ("127.0.0.1", "0.0.0.0")
+        )
 
 
 @ta.QmlElement

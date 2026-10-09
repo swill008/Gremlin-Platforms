@@ -43,7 +43,7 @@ TYPE_LABELS = {
     "auto": "Auto",
     "int": "Int",
     "float": "Float",
-    "bool": "True/false",
+    "bool": "Bool",
     "text": "Text",
 }
 
@@ -87,6 +87,73 @@ def new_row() -> dict:
             }
         ]
     )[0]
+
+
+# Companion templates (D-09-OSC-COMPANION): defaults the Add Row dialogs show.
+COMPANION_VARIABLE = "gremlin_mode"
+COLOUR_OFF = "#333333"
+COLOUR_ON = "#2a7a46"
+VARIABLE_NOTE = "Create the custom variable in Companion first."
+KEY_NOTE = "Turn on Companion's OSC Listener (Settings › OSC) first."
+
+
+def _off_on(value: object) -> str | int | float | None:
+    """What an Off/On box holds: blank is not set, a number is a number,
+    anything else is text."""
+    text = str(value if value is not None else "").strip()
+    if not text:
+        return None
+    number = _number(text)
+    if number is not None and not text.startswith("#"):
+        return int(number) if number.is_integer() else number
+    return text
+
+
+def template_row(kind: str, params: dict, target_id: str) -> dict | str:
+    """The row a Companion template builds, or why it can't (text).
+
+    kind: companion_variable (params name), companion_text and
+    companion_colour (params page, row, column; colour also off, on).
+    """
+    row = new_row()
+    row["target"] = target_id
+    row["template"] = kind
+    if kind == "companion_variable":
+        name = str(params.get("name") or "").strip()
+        if not name or any(c in name for c in " /$():"):
+            return "A variable name has no spaces, e.g. gremlin_mode."
+        row["address"] = f"/custom-variable/{name}/value"
+        row["type"] = "text"
+        return row
+    page = _whole(params.get("page", 1))
+    key_row = _whole(params.get("row", 0))
+    column = _whole(params.get("column", 0))
+    if page is None or page < 1:
+        return "Page is a whole number, 1 or more."
+    if key_row is None or key_row < 0 or column is None or column < 0:
+        return "Row and column are whole numbers, 0 or more."
+    where = f"/location/{page}/{key_row}/{column}/style"
+    if kind == "companion_text":
+        row["address"] = f"{where}/text"
+        row["type"] = "text"
+        return row
+    if kind == "companion_colour":
+        colours = []
+        for key, default in (("off", COLOUR_OFF), ("on", COLOUR_ON)):
+            text = str(params.get(key) or default).strip()
+            if not text.startswith("#"):
+                text = "#" + text
+            digits = text[1:]
+            hex_digits = "0123456789abcdefABCDEF"
+            if len(digits) != 6 or any(c not in hex_digits for c in digits):
+                return "A color is #rrggbb, e.g. #2a7a46."
+            colours.append(text.lower())
+        row["address"] = f"{where}/bgcolor"
+        row["type"] = "auto"
+        row["source"] = {"kind": "vjoy_button", "device": _vjoy_ids()[0], "input": 1}
+        row["off_value"], row["on_value"] = colours
+        return row
+    return "Unknown template."
 
 
 @ta.QmlElement
@@ -163,6 +230,16 @@ class OscFeedbackModel(QtCore.QObject):
 
     def _get(self, key: str) -> object:
         return self._server.get(key, osc_device_file.SERVER_DEFAULTS[key])
+
+    @QtCore.Property(str, constant=True)
+    def defaultOffColor(self) -> str:
+        """The Key color template's default off color (data, not a theme color)."""
+        return COLOUR_OFF
+
+    @QtCore.Property(str, constant=True)
+    def defaultOnColor(self) -> str:
+        """The Key color template's default on color."""
+        return COLOUR_ON
 
     @QtCore.Property(bool, notify=changed)
     def feedbackEnabled(self) -> bool:
@@ -246,7 +323,8 @@ class OscFeedbackModel(QtCore.QObject):
     @QtCore.Property(list, notify=changed)
     def rows(self) -> list:
         """Each row flattened for QML: id, enabled, kind, device, input,
-        target, address, min, max, type (numbers as text)."""
+        target, address, min, max, type, offValue, onValue, template
+        (numbers as text; off/on "" when not set)."""
         out = []
         for row in self._rows:
             source = row["source"]
@@ -262,6 +340,9 @@ class OscFeedbackModel(QtCore.QObject):
                     "min": _show(row["min"]),
                     "max": _show(row["max"]),
                     "type": row["type"],
+                    "offValue": _show_off_on(row.get("off_value")),
+                    "onValue": _show_off_on(row.get("on_value")),
+                    "template": row.get("template") or "",
                 }
             )
         return out
@@ -280,6 +361,41 @@ class OscFeedbackModel(QtCore.QObject):
     @QtCore.Slot(result=bool)
     def addRow(self) -> bool:
         return self._write([dict(r) for r in self._rows] + [new_row()])
+
+    def _companion_target(self) -> str:
+        """The Companion target's id; added (127.0.0.1:12321) when missing."""
+        found = osc_device_file.find_companion_target(self._targets)
+        if found is None:
+            # Same target as Module Setup's Add Companion (Output tab).
+            found = osc_device_file.ensure_companion_target(WHO)
+        return found["id"]
+
+    @QtCore.Slot(str, "QVariantMap", result=str)
+    def addTemplateRow(self, kind: str, params: dict) -> str:
+        """Adds a row from a template ("blank" or companion_variable /
+        companion_text / companion_colour); the text to show (a note, or
+        why nothing was added)."""
+        if kind == "blank":
+            return "" if self.addRow() else self._message
+        params = dict(params or {})
+        if kind not in osc_device_file.TEMPLATES:
+            return "Unknown template."
+        # Check the fields before a target is added.
+        why = template_row(kind, params, osc_device_file.REPLY)
+        if isinstance(why, str):
+            self._say(why)
+            return why
+        try:
+            target = self._companion_target()
+        except OSError as exc:
+            syslog.error("OSC: Companion target not written: %s", exc)
+            self._say("Not written. The OSC file could not be saved.")
+            return self._message
+        row = template_row(kind, params, target)
+        assert isinstance(row, dict)
+        if not self._write([dict(r) for r in self._rows] + [row]):
+            return self._message
+        return VARIABLE_NOTE if kind == "companion_variable" else KEY_NOTE
 
     @QtCore.Slot(int, result=bool)
     def removeRow(self, index: int) -> bool:
@@ -336,6 +452,8 @@ class OscFeedbackModel(QtCore.QObject):
                 self._say("Min and Max are numbers, e.g. 0 or 1.5.")
                 return False
             row[key] = number
+        elif key in ("off_value", "on_value"):
+            row[key] = _off_on(value)
         elif key == "type":
             if value not in osc_device_file.VALUE_TYPES:
                 return False
@@ -364,3 +482,11 @@ def _vjoy_ids() -> list[int]:
 
 def _show(number: float) -> str:
     return str(int(number)) if float(number).is_integer() else str(number)
+
+
+def _show_off_on(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return _show(float(value))
+    return str(value)

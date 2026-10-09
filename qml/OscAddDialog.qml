@@ -54,11 +54,12 @@ Popup {
     OscSettingsInfo { id: _oscInfo }
     OscBulkCapture { id: _bulk }
 
+    // A Button Map card (osc_style.md): card fill, strong line, round corners.
     background: Rectangle {
-        color: Style.background
-        border.color: Style.accent
-        border.width: Style.dp(1)
-        radius: Style.dp(4)
+        color: Style.bgCard
+        border.color: Style.lineStrong
+        border.width: 1
+        radius: Style.dp(8)
     }
 
     function _splitValues(text) {
@@ -176,8 +177,8 @@ Popup {
         if (!_modeEncoder.checked)
             return ""
         var v = Number(_encStep.text)
-        if (!_encStep.text.trim().length || isNaN(v) || v <= 0)
-            return "The step size must be a number above 0."
+        if (!_encStep.text.trim().length || isNaN(v) || v <= 0 || v > 2)
+            return "The step size must be a number above 0 and at most 2."
         return ""
     }
 
@@ -366,12 +367,13 @@ Popup {
             text: _root.editing ? "OSC Input Settings" : "OSC Input Mapper"
             font.bold: true
             font.pixelSize: Style.dp(16)
+            color: Style.fgStrong
         }
 
         Label { text: "OSC message:" }
 
         RowLayout {
-            Label { text: "Cmd:"; Layout.preferredWidth: Style.dp(70) }
+            Label { text: "Address:"; Layout.preferredWidth: Style.dp(70) }
             TextField {
                 id: _cmd
                 objectName: "oscCmd"
@@ -607,6 +609,7 @@ Popup {
                 anchors.fill: parent
                 color: Style.noteFill
                 border.color: Style.noteLine
+                radius: Style.dp(4)
 
                 Label {
                     id: _help
@@ -654,6 +657,7 @@ Popup {
             Button {
                 objectName: "oscOk"
                 text: "OK"
+                highlighted: true
                 enabled: _cmd.text.trim().length > 0
                          && _root.rangeError() === "" && _root.stepError() === ""
                          && _root.delayError() === ""

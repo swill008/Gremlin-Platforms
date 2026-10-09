@@ -64,13 +64,20 @@ def note_received_type(address: str, args: Any) -> None:  # noqa: ANN401
     """Remembers the value types last received on address (for Auto)."""
     if not address:
         return
-    _received[str(address)] = [_type_of(v) for v in tuple(args or ())]
+    _received[_type_key(address)] = [_type_of(v) for v in tuple(args or ())]
+
+
+def _type_key(address: object) -> str:
+    """Received types are kept by the address casefolded: incoming addresses
+    are matched without regard to case, so a Send OSC address typed in
+    another case finds them."""
+    return str(address).strip().casefold()
 
 
 def received_type(address: str, index: int) -> str | None:
     """The type last received on address at value index (the last value's
     type past the end); None when nothing came there."""
-    types = _received.get(str(address))
+    types = _received.get(_type_key(address))
     if not types:
         return None
     return types[min(index, len(types) - 1)]
@@ -146,7 +153,14 @@ def convert(value: object, kind: str, address: str = "", index: int = 0) -> obje
                 return float(text) != 0
             return bool(value)
     except (TypeError, ValueError):
-        return str(value)
+        return _text(value)
+    return _text(value)
+
+
+def _text(value: object) -> str:
+    """Text the short way, as Feedback sends it: 1 rather than 1.0."""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
     return str(value)
 
 

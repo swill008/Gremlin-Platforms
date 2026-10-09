@@ -107,7 +107,7 @@ Item {
         QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "Root.qml")),
     )
     host = engine.rootObjects()[0]
-    section = QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "OscServerSection.qml"))
+    section = QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "OscSetupTabs.qml"))
 
     def open_section(name: str) -> tuple:
         expr = QtQml.QQmlExpression(

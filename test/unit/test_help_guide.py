@@ -18,7 +18,7 @@ from test.unit.help_book import ROOT as _ROOT
 
 _CHAPTERS = [
     "getting-started", "home-devices", "configuration-actions",
-    "logical-device", "modes", "button-map", "device-library", "tools",
+    "logical-device", "osc", "modes", "button-map", "device-library", "tools",
     "options-profile",
 ]
 # Every window whose menus the book names.

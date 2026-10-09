@@ -177,6 +177,16 @@ Item {
         confirmText: "OK"
     }
 
+    // The OSC page with no input selected (D-09-OSC-COMPANION); other
+    // pages are unchanged.
+    EmptyState {
+        objectName: "oscNoInput"
+        anchors.fill: parent
+        visible: !_root.inlineMode && !_root.isOutput && !_root.holdModel
+                 && !!uiState && uiState.currentTab === "osc" && !_root.inputItemModel
+        text: "Select an input to see its actions"
+    }
+
     ColumnLayout {
         id: _content
 

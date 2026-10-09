@@ -181,6 +181,83 @@ def _emit_modified() -> None:
         sig.emit()
 
 
+# Copy for Companion (D-09-OSC-COMPANION): Companion's Generic OSC module
+# (2.8.2 and 3.0.0) sends from this source port; never the program's port.
+COMPANION_SOURCE_PORT = 9001
+
+
+def _companion_host(bound: str) -> str:
+    """The address Companion sends to: the server's own address when it
+    is bound to one, else this PC's first non-loopback IPv4, else
+    127.0.0.1."""
+    from gremlin.osc import local_ipv4_addresses
+
+    if bound and bound not in ("0.0.0.0", "localhost"):
+        return bound
+    for ip in local_ipv4_addresses():
+        if ip not in ("127.0.0.1", "0.0.0.0"):
+            return ip
+    return "127.0.0.1"
+
+
+def _fmt(value: float) -> str:
+    return f"{value:g}"
+
+
+def companion_actions(row: OscRow) -> list[str]:
+    """Generic OSC key actions that drive this input."""
+    addr = row.label
+    if row.cmd_mode == "data":
+        data = " ".join(str(item) for item in row.data) or "<values>"
+        return [
+            f"Press: Send message with multiple arguments {addr} {data}",
+        ]
+    if row.mode == "axis":
+        span = f"{_fmt(row.range_min)}..{_fmt(row.range_max)}"
+        return [f"Press: Send float {addr} <value {span}>"]
+    if row.mode == "encoder":
+        if row.enc_format == "signed":
+            right, left = "1", "-1"
+        else:
+            right, left = "1", "0"
+        return [
+            f"Rotate right: Send integer {addr} {right}",
+            f"Rotate left: Send integer {addr} {left}",
+        ]
+    if row.trigger is True:
+        return [f"Press: Send message without arguments {addr}"]
+    if row.mode == "change":
+        return [
+            f"Press: Send integer {addr} <a value>"
+            " (fires each time the value differs from the last)",
+        ]
+    return [
+        f"Press: Send integer {addr} 1",
+        f"Release: Send integer {addr} 0",
+    ]
+
+
+def companion_text(row: OscRow) -> str:
+    """Plain text to set up Companion for one input."""
+    from gremlin import osc_device_file
+
+    server = osc_device_file.read_server()
+    lines = [
+        f"Companion: Generic OSC connection for {row.label}",
+        "Target Hostname or IP: "
+        f"{_companion_host(str(server.get('host') or ''))}"
+        " (127.0.0.1 if Companion runs on this PC)",
+        f"Target Port: {server.get('port')}",
+        "Protocol: UDP",
+        "Listen for Feedback: on",
+        f"Source Port: {COMPANION_SOURCE_PORT}",
+        "",
+        "Key actions:",
+        *companion_actions(row),
+    ]
+    return "\n".join(lines)
+
+
 @ta.QmlElement
 class OscDeviceManagementModel(QtCore.QAbstractListModel):
     listenChanged = QtCore.Signal()
@@ -455,6 +532,22 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         return OscRuntime().is_listening()
 
     # -- editing --------------------------------------------------------
+
+    @QtCore.Slot(str, result=str)
+    def companionText(self, uid: str) -> str:
+        """Copy for Companion: the connection settings and key actions."""
+        row = _rows().by_uid(uid)
+        return companion_text(row) if row is not None else ""
+
+    @QtCore.Slot(str, result=bool)
+    def copyText(self, text: str) -> bool:
+        from PySide6 import QtGui
+
+        app = QtGui.QGuiApplication.instance()
+        if not isinstance(app, QtGui.QGuiApplication) or not text:
+            return False
+        app.clipboard().setText(str(text))
+        return True
 
     @QtCore.Slot(str, result="QVariantMap")
     def inputSettings(self, uid: str) -> dict[str, Any]:
