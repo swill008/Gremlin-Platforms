@@ -1207,6 +1207,11 @@ class AxisCalibration(QtCore.QAbstractListModel):
             row["low"], row["centerLow"], row["centerHigh"], row["high"],
             row["withCenter"],
         ))
+        if problem == "range" and row["low"] > row["high"]:
+            return (
+                "Not saved. The lowest value is above the highest. "
+                "Calibrate the full range again, then save."
+            )
         if problem == "range":
             # Saved without moving the axis: it would never move again.
             return (

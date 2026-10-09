@@ -495,6 +495,15 @@ def _device_connected(guid: str) -> bool:
         return False
 
 
+def _unplugged_reason(device_name: str) -> str:
+    """Why Module Setup's Save is refused while the device is unplugged,
+    whether it was unplugged before or after the setup opened (03 S46)."""
+    return (
+        f"Plug in {device_name or 'the device'} to change its setup. "
+        "Nothing was saved."
+    )
+
+
 def _typing_in_a_text_box() -> bool:
     """True while a text box of this program has the keyboard focus (a
     friendly name being typed): those keys are text, not presses for
@@ -1896,10 +1905,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             else:
                 self.loadDevice(self._guid, self._device_name)
         elif not self._not_connected:
-            self._not_connected = (
-                f"Plug in {self._device_name or 'the device'} to save its setup. "
-                "Nothing was saved."
-            )
+            self._not_connected = _unplugged_reason(self._device_name)
 
     @QtCore.Slot(str, str)
     def loadDevice(self, guid: str, device_name: str) -> None:
@@ -1947,10 +1953,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         # A device that isn't plugged in shows no controls: saving would
         # erase its claims and names, so Save is refused until it is back.
         if guid and not _device_connected(guid):
-            self._not_connected = (
-                f"Plug in {device_name or 'the device'} to change its setup. "
-                "Nothing was saved."
-            )
+            self._not_connected = _unplugged_reason(device_name)
         if info is not None:
             self._read_from_device = True
             for i in range(info.axis_count):
