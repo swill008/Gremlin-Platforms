@@ -275,6 +275,8 @@ def test_library_entries_match_show_in_history_for_their_device_only(
         path.unlink()
     monkeypatch.setattr(library, "_connected", lambda: [])
     monkeypatch.setattr(library, "_set_up", lambda: [])
+    # Keyboard and OSC (built-ins) may be loaded by an earlier test.
+    monkeypatch.setattr(library, "_modules", lambda: [])
     removed = new_entry(lambda: library.remove_device(saved["device"]))
     for entry in (second, deleted, removed):
         assert history_model._matches(entry, mine), entry["title"]

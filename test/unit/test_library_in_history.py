@@ -107,6 +107,8 @@ def _not_set_up(monkeypatch: pytest.MonkeyPatch, lib: dict) -> None:
     for path in lib["modules"].glob("*.json"):
         path.unlink()
     monkeypatch.setattr(library, "_set_up", lambda: [])
+    # Keyboard and OSC (built-ins) may be loaded by an earlier test.
+    monkeypatch.setattr(library, "_modules", lambda: [])
     lib["plugged"].clear()
 
 
