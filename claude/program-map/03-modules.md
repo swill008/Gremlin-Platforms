@@ -36,7 +36,7 @@ Every device has a module file that says which of its controls the program may u
 - `gremlin/ui/live_input.py`: `DeviceLiveState`, live values for the Output View (reads vJoy through `output.vjoy_state`).
 
 **QML / JS**
-- `qml/StatusPage.qml` (1178): Home page: card flow, drag, Shift-select, stacks, empty-space menu, Hidden Cards, Delete Device (3 steps; step 2 is the shared question `Confirm.ask`, S140) and Start Fresh dialogs.
+- `qml/StatusPage.qml` (1178): Home page: card flow, drag, Shift-select, stacks, empty-space menu, Hidden Cards, Delete Device (3 steps; step 2 is the shared question `Confirm.ask`, S140) and Start Fresh dialogs. Home's page bar is Compact view and Layout only (the Device Library button moved to the toolbar, 01 S58a, 2026-10-09).
 - `qml/StatusCard.qml`: one card: photo, name, status, counts, Driven by, last line, Output View button, resize grips, right-click menu.
 - `qml/DialogConfigureModule.qml` (739): Module Setup window (control list, Import Image, Module File dialog with Import / Browse / Open Modules Folder / Delete File, Undo/Redo, History, Save). Undo / Redo is the shared `UndoBar` (named steps); import results and their Undo link are on a `MessageLine` (`showFileMessage`, `undoImport`, `_dropImportUndo`); Delete File is a `DangerButton` that asks the shared question; Import Image / Browse for File are `FilePicker` kinds "picture" / "module-file".
 - `qml/DialogCalibration.qml` (679): Calibration window. Undo / Redo is the shared `UndoBar` (`noteChange`, `_step`); Saved / Save Failed go on a `MessageLine` (`report`, no popup); an empty list shows `EmptyState`.

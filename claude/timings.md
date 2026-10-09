@@ -52,3 +52,5 @@ a time to the user.
 | 2026-10-09 | Journey j05 + layers golden (J-map) | test | ~15 min | 2 min | 10:27–10:29 |
 | 2026-10-09 | Final full run + lint for the batch | test | ~5 min | 5 min | 10:29–10:34, all green |
 | 2026-10-09 | Full run (chipRows + View Full Help) | test | ~5 min | 6 min | 10:49–10:55, all green |
+| 2026-10-09 | Device Library toolbar button (DL-tool) | feature | ~10-15 min | 4 min | 10:58–11:02 |
+| 2026-10-09 | Full run (titles + toolbar), after fixing the title test crash | test | ~5 min | 5 min | 11:12–11:17, all green |

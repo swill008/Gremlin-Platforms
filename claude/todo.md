@@ -213,6 +213,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     CI-only stall 2026-10-09 (run 37926996958, seed 134804): test_stage1_modules::
     test_module_setup_cancel_puts_the_old_picture_back stalled 10 s waiting on the event
     handler thread (passes locally in 1.5 s). Watch; dig in if it repeats.
+    Also (2026-10-09, DL-tool): test_final_01::test_s44_a_switch_is_saved_and_announced_when_changed fails after test_device_library_DD_menus in one process (GremlinError: no parameter ('global','general','log-when-not-responding'), gremlin/watchdog.py); passes alone. Predates today.
 48. vJoy loopback stand-in for the integration tests (VG idea, user 2026-10-08: to-do).
     Today test/integration (219 tests) skips unless run_tests.py --real-vjoy, and on CI it
     always skipped (no vJoy there). A stand-in vJoy that records what the program writes

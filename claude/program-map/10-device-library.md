@@ -72,7 +72,7 @@ profile owner, and module files only through `modules/store.py`.
 
 | Where | What |
 |---|---|
-| Home: **Device Library…** button; Tools › Device Setup › **Device Library…** (`tools.deviceLibrary`) | `Main.qml openDeviceLibrary` → `device_library_open.js` opens the window or brings it to the front. |
+| Toolbar **Device Library** button (`Main.qml _deviceLibraryButton`, every page; tests `test_device_library_DD_menus.py::test_the_toolbar_has_the_device_library_button_not_home`, `test_mode_bar.py::test_the_toolbar_device_library_button_opens_the_window`); Tools › Device Setup › **Device Library…** (`tools.deviceLibrary`) | `Main.qml openDeviceLibrary` → `device_library_open.js` opens the window or brings it to the front. |
 | Card menu: **Copy Setup to Another Stick…**, **Swap with Another Stick…**, **Change vJoy Output…** (`StatusCard.qml` 493-497) | Open the window on that card's device and the matching dialog (`openOn(name, guid, action)`). |
 | Window menus, right-click menus, double-click (S40), shortcuts | `DeviceLibraryModel` slots: `copy`, `swap`, `changeOutput`, `restoreToStick`, `saveToLibrary`, `rename`, `describe`, `keep`, `deleteItem` / `deleteMany`, `beginRemove` / `removeDevice` / `endRemove`, `beginClearSetup`, `deleteSavedSetups`, `importPack`, `exportSetup` / `exportCurrent`, `tidyPreview` / `tidy`, `setSettings`, `undo` / `redo`. |
 | Row menu: Delete Device, Module Setup, Button Map, Show on Home | `device_library_open.js toMain` → `Main.qml libraryAction`. |
@@ -118,7 +118,7 @@ works on files and the profile through their owners.
 ### A. The window
 
 - **S1** The Device Library should be a separate window, like the Button Map, with its own menu bar: **File** (Import Device Pack…, Export Saved Setup…, Open Library Folder, Close), **Edit** (Undo, Rename… (F2), Delete…, Tidy Library…; the description is edited in place), **Device** (Save to Device Library…, Copy to Another Stick…, Swap with Another Stick…, Change vJoy Output…), **View** (Connected, Not Connected, Deleted, Autosaves, Expand All, Collapse All, Search…), **Settings** (Device Library Settings…), **Help** (Device Library Guide, F1; S42). Menus follow 01 S66 (only what can be used now). [user decision: D-10-WINDOW]
-- **S2** It should open from a Device Library… button on Home and from Tools › Device Setup › Device Library…; the card menu items (03 S88) open it on that card's device. [D-10-WINDOW]
+- **S2** It should open from the **Device Library** toolbar button (every page; was a Device Library… button on Home until 2026-10-09) and from Tools › Device Setup › Device Library…; the card menu items (03 S88) open it on that card's device. [D-10-WINDOW]
 - **S3** The left side should hold filter chips (Connected, Not connected, Deleted, Autosaves; several at once, each an outline with a tick when on), a search box and the device list; the right side the details of what is selected; a divider between them can be dragged. [D-10-WINDOW, D-10-PROTO]
 - **S4** The status bar should show the number of devices and saved setups, the autosave limit, the library's size on disk (e.g. "Library: 48 MB") and the library folder. [D-10-TIDY]
 - **S5** Search should match device names and descriptions, saved setup names and descriptions, what a saved setup holds (Setup, Button Map, Appearance, Calibration, Bindings), profile names, mode names, vJoy numbers and autosave reasons; Ctrl+F goes to the box, Esc clears it. [D-10-SEARCH]
