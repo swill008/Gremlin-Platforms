@@ -92,7 +92,7 @@ Rectangle {
                     elide: Text.ElideRight
                 }
 
-                // A number: type it and press Enter.
+                // A number: type it and press Enter (or leave the box).
                 TextField {
                     id: _num
                     visible: _row.field.kind === "number"
@@ -108,10 +108,12 @@ Rectangle {
                         top: _row.field.max !== undefined ? _row.field.max : 1e9
                         notation: DoubleValidator.StandardNotation
                     }
-                    onAccepted: {
+                    // Enter, Esc or a click outside (01 S134) all end here; a
+                    // box left unchanged (or already applied by Enter) sets nothing.
+                    onEditingFinished: {
                         var key = _row.field.key
                         var v = Number(text)
-                        if (v === v)
+                        if (v === v && v !== Number(_row.field.value))
                             _panel.ed.setProp(key, v)
                     }
                 }

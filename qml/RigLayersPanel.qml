@@ -519,16 +519,24 @@ Rectangle {
                                     text: _row.row.name
                                     selectByMouse: true
                                     onVisibleChanged: if (visible) { forceActiveFocus(); selectAll() }
-                                    onAccepted: {
+                                    // Enter, or leaving the box (a click outside, 01 S134),
+                                    // saves; Esc cancels first, so the focus loss after it
+                                    // finds no rename running and saves nothing.
+                                    function commit() {
+                                        if (_panel.renameId !== _row.row.id)
+                                            return
                                         // Renaming rebuilds the rows, this one included: finish first.
                                         var panel = _panel
                                         var id = _row.row.id
                                         var name = text
+                                        var changed = name !== _row.row.name
                                         panel.renameId = ""
-                                        panel.ed.renameLayer(id, name)
+                                        if (changed)
+                                            panel.ed.renameLayer(id, name)
                                     }
+                                    onAccepted: commit()
                                     Keys.onEscapePressed: _panel.renameId = ""
-                                    onActiveFocusChanged: if (!activeFocus && visible) _panel.renameId = ""
+                                    onActiveFocusChanged: if (!activeFocus) commit()
                                 }
                             }
                             // Delete (trash), left of the eye so the eye and lock keep

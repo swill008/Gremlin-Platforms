@@ -42,11 +42,12 @@ function topics() {
         topic("Getting Started", "Menus and the command palette",
             "<p>Every menu in the program works the same way, in light and dark mode:</p>"
             + "<ul>"
-            + "<li><b>Only what you can use.</b> Menus leave out what does not apply right now (View → <b>Home</b> while you are on Home, File → <b>Recent</b> before you have opened a profile). Nothing is greyed out.</li>"
+            + "<li><b>Only what you can use.</b> Menus leave out what does not apply right now (View → <b>Home</b> while you are on Home, File → <b>Recent</b> before you have opened a profile). Nothing is greyed out, except now and then an item whose tooltip says why it can't be used yet. Rest the pointer on an item to see what it does when it has a tooltip.</li>"
             + "<li><b>Right-click menus</b> start with the name of what you clicked and its most used commands, then <b>sections</b> (▸) that open one at a time. The section you opened last opens again next time. Some show <b>Undo</b> and <b>Redo</b> beside the name.</li>"
             + "<li><b>Keys</b>: Up and Down move, Right and Left open or close a section or step a row of choices, Enter runs, Esc closes.</li>"
             + "<li><b>Dropdown lists</b> of ten or more entries have a search box: type part of a name, Up and Down move, Enter picks.</li>"
             + "<li><b>Command Palette</b>: Ctrl+K (or View → <b>Command Palette…</b>) lists every menu command you can use now. Type part of a name and press Enter. Shortcuts show beside the commands.</li>"
+            + "<li><b>Text boxes</b>: to leave a box you are typing in, press Esc or click anywhere outside it. What you typed is kept. (In Module Setup, Esc does nothing, as sticks can send it; click away instead.)</li>"
             + "<li><b>Shortcuts</b>: Ctrl+N new profile, Ctrl+O load, Ctrl+S save, Ctrl+Shift+S save as, Ctrl+K command palette, F1 this guide.</li>"
             + "</ul>"),
         topic("Getting Started", "Profiles",
@@ -624,7 +625,7 @@ function deviceLibraryTopics() {
             "<p>Every device and every saved setup can be renamed and given a description.</p>"
             + "<ul>"
             + "<li><b>Rename…</b> (Edit menu, <b>F2</b>, or the pencil beside the name): type the new name and press Enter; Esc keeps the old one.</li>"
-            + "<li>The <b>description</b> is edited where it shows, in the box under the name (\"Add a description\" when it is empty). It is kept when you click elsewhere.</li>"
+            + "<li>The <b>description</b> is edited where it shows, in the box under the name (\"Add a description\" when it is empty). It is kept when you click elsewhere or press Esc.</li>"
             + "</ul>"
             + "<p>A stick set up here has one name: renaming it in the Device Library renames its card on Home, and the other way round.</p>"
             + "<p>Renaming or describing an autosave makes it yours: the autosave limit never removes it.</p>"),

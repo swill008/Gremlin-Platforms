@@ -279,6 +279,11 @@ def main() -> None:
     out["6-esc"] = js("[_layersPanel.searchText, _layersPanel.describe().length,"
                       " _layersPanel.countText]")
     out["6-still-open"] = js("_layersPanel.visible")
+    # 01 S134: Esc also leaves the box; go back in to type again.
+    focused = win.activeFocusItem()
+    in_box = focused is not None and focused.inherits("QQuickTextInput")
+    out["6-left-box"] = not in_box
+    ev("_layersPanel.focusSearch()")
     type_text("zzz")
     settle()
     out["7-none"] = js("_layersPanel.countText")

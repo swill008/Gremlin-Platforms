@@ -1096,6 +1096,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.setFont(font)
         if QtGui.QFontDatabase.addApplicationFont(":/BootstrapIcons") < 0:
             self.syslog.error("Failed to load BootstrapIcons")
+        # A text box is left by Esc or a click outside it (01 S134).
+        from gremlin.ui import leave_text
+
+        self.leave_text = leave_text.install(self)
 
         self.engine = QtQml.QQmlApplicationEngine(parent=self)
         self.engine.addImportPath(gremlin.util.resource_path("theme"))

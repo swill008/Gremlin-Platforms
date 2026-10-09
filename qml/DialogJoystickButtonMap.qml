@@ -2565,7 +2565,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         visible: _templatesDlg.renaming === modelData.name
                         text: modelData.name
-                        onAccepted: {
+                        // Enter, Esc or a click away (01 S134) saves the
+                        // rename once; hiding the box ends the edit.
+                        onEditingFinished: {
+                            if (_templatesDlg.renaming !== modelData.name)
+                                return
                             var from = modelData.name
                             var to = text.trim()
                             _templatesDlg.renaming = ""

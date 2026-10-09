@@ -62,7 +62,11 @@ Item {
                     visible: _library.renaming === parent.key
                     Layout.fillWidth: true
                     text: modelData.name
-                    onAccepted: {
+                    // Enter, Esc or a click away (01 S134) saves the rename
+                    // once; hiding the box ends the edit.
+                    onEditingFinished: {
+                        if (_library.renaming !== parent.key)
+                            return
                         _library.renaming = ""
                         _opts.renameStyle(modelData.name, modelData.kind, text)
                     }
@@ -115,7 +119,10 @@ Item {
                     visible: _library.renaming === parent.key
                     Layout.fillWidth: true
                     text: modelData.name
-                    onAccepted: {
+                    // As the style rename: saved once, however it is left.
+                    onEditingFinished: {
+                        if (_library.renaming !== parent.key)
+                            return
                         _library.renaming = ""
                         var to = text.trim()
                         if (to.length && to !== modelData.name && !_hw.renameTemplate(modelData.name, to)) {

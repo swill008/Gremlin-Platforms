@@ -95,6 +95,8 @@ ApplicationWindow {
     modality: Qt.NonModal
 
     // Stick HID often synthesizes Esc/Return. Do not let those click Cancel/Save.
+    // Esc in a text box does nothing here either (01 S134).
+    property bool leaveTextOnEscape: false
     Shortcut { sequence: "Esc"; onActivated: {} }
     // Undo and Redo for the checks and names (a name being typed keeps its
     // own Ctrl+Z).

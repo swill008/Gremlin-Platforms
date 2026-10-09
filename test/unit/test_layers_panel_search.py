@@ -108,6 +108,7 @@ def test_typing_filters_any_case(run: dict) -> None:
 def test_esc_and_x_clear_the_search(run: dict) -> None:
     assert run["6-esc"] == ["", len(_ALL), ""]
     assert run["6-still-open"] is True
+    assert run["6-left-box"] is True  # 01 S134: Esc clears and leaves the box
     assert run["7-none"] == "No layers match"
     assert run["8-cleared"] == ["", ""]
 
