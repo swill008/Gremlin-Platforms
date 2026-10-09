@@ -169,6 +169,38 @@ if setup is not None:
         out["after-readd"] = [
             [t["name"], t["host"], t["port"]] for t in f.read_targets()]
         out["rows"] = [text_of(w, "oscTargetName%d" % i) for i in range(4)]
+
+        # Edit the first target, then Remove it and say yes: the form, which
+        # was editing it, empties (the question's callback reaches the form).
+        edit = named(w, "oscTargetEdit0")
+        out["edit-found"] = edit is not None and shown(edit)
+        if edit is not None:
+            page = named(w, "oscOutputTab")
+            if page is not None and page.inherits("QQuickFlickable"):
+                page.setProperty("contentY", 0)
+                app.processEvents()
+            click(w, edit)
+            wait_for(lambda: bool(text_of(w, "oscTargetNameField")), 1000)
+            out["editing-name"] = text_of(w, "oscTargetNameField")
+            click(w, named(w, "oscTargetRemove0"))
+            yes = {}
+
+            def find_yes():
+                for cw in app.topLevelWindows():
+                    item = named(cw, "confirmAction") if isinstance(
+                        cw, QtQuick.QQuickWindow) else None
+                    if item is not None and shown(item):
+                        yes["w"], yes["item"] = cw, item
+                        return True
+                for it in walk(w.contentItem()):
+                    if it.objectName() == "confirmAction" and shown(it):
+                        yes["w"], yes["item"] = w, it
+                        return True
+                return False
+            if wait_for(find_yes, 2000):
+                click(yes["w"], yes["item"])
+                wait_for(lambda: False, 300)
+            out["form-after-remove"] = text_of(w, "oscTargetNameField")
     setup.close()
     app.processEvents()
 
@@ -186,6 +218,7 @@ def result(tmp_path_factory: pytest.TempPathFactory) -> dict:
     env = dict(
         os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
         GREMLIN_OFFLINE="1",
+        QT_LOGGING_RULES="qt.qml.binding.removal.info=true",
     )
     done = subprocess.run(
         [sys.executable, str(script)], cwd=_ROOT, env=env,
@@ -193,7 +226,28 @@ def result(tmp_path_factory: pytest.TempPathFactory) -> dict:
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, done.stdout[-2000:] + done.stderr[-3000:]
-    return json.loads(lines[-1][len("RESULT "):])
+    found = json.loads(lines[-1][len("RESULT "):])
+    # Qt's own messages go to logs/qt.log (gremlin.qt_log), not this pipe.
+    qt_log = home / "Gremlin Platforms" / "logs" / "qt.log"
+    logged = qt_log.read_text("utf-8", "replace") if qt_log.is_file() else ""
+    found["stderr"] = done.stdout + done.stderr + logged
+    return found
+
+
+def test_no_qml_warnings_from_the_osc_setup(result: dict) -> None:
+    """Opening the tabs, editing and removing a target: no binding
+    overwrites and no script errors in the OSC files (user's run 2026-10-09)."""
+    bad = [
+        ln for ln in result["stderr"].splitlines()
+        if "/qml/Osc" in ln
+        and ("Overwriting binding" in ln or "Error" in ln)
+    ]
+    assert bad == [], "\n".join(bad)
+
+
+def test_removing_the_target_being_edited_empties_the_form(result: dict) -> None:
+    assert result.get("editing-name"), result
+    assert result.get("form-after-remove") == "", result
 
 
 def test_each_tab_opens_by_a_click(result: dict) -> None:

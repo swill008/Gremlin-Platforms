@@ -180,6 +180,9 @@ Flickable {
                                 implicitHeight: Style.dp(28)
                                 onClicked: {
                                     var target = _row.modelData
+                                    // The callback runs from the question's
+                                    // context: take the form along.
+                                    var form = _targetForm
                                     Confirm.ask(_root, {
                                         title: "Remove target " + target.name + "?",
                                         text: "Send OSC actions and feedback rows that "
@@ -188,8 +191,8 @@ Flickable {
                                         action: "Remove",
                                         onAccept: function() {
                                             _root.server.removeTarget(target.id)
-                                            if (_targetForm.editId === target.id)
-                                                _targetForm.reset()
+                                            if (form.editId === target.id)
+                                                form.reset()
                                         }
                                     })
                                 }

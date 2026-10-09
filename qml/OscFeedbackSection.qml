@@ -45,7 +45,8 @@ Item {
         id: _field
         property string key: ""
         property string saved: ""
-        text: saved
+        // Set in code, not bound: typing would break a binding anyway.
+        Component.onCompleted: text = saved
         selectByMouse: true
         function save() {
             if (text !== saved)
