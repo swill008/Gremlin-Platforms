@@ -592,25 +592,12 @@ def delete_module_file(device_name: str, guid: str) -> str:
     return store.delete(name, guid, pictures=False, who="Configure Module")
 
 
-def _device_stays_listed(device_name: str) -> bool:
-    wanted = " ".join(str(device_name or "").split()).lower()
-    if wanted in {"keyboard", "osc", "xbox 360 controller", "logical device"}:
-        return True
-    if wanted.startswith("vjoy "):
-        return True
-    try:
-        from gremlin import device_initialization
+def _device_stays_listed(device_name: str, guid: str) -> bool:
+    """Plugged in (or built in) now, so its card stays (03 S90a, S96): by its
+    id in the live device list, never by its name."""
+    from gremlin.modules import hardware
 
-        for dev in list(device_initialization.physical_devices() or []):
-            if str(getattr(dev, "name", "") or "").strip().lower() == wanted:
-                return True
-        for dev in list(device_initialization.vjoy_devices() or []):
-            label = f"vjoy {getattr(dev, 'vjoy_id', '')}".strip().lower()
-            if label == wanted:
-                return True
-    except Exception:
-        return False
-    return False
+    return hardware.plugged_in(guid, device_name)
 
 
 _STOP_FIRST = (
@@ -630,7 +617,7 @@ def delete_preview(device_name: str, guid: str) -> str:
         "canPack": path.is_file(),
         "shared": store.is_shared(name, guid),
         "foreign": bool(store.foreign_file(name, guid)),
-        "listed": _device_stays_listed(name),
+        "listed": _device_stays_listed(name, guid),
         "keepModule": is_output_name(name),
     })
 
@@ -722,7 +709,7 @@ def delete_device(device_name: str, guid: str) -> str:
             ),
             "autosaved": True,
         })
-    listed = _device_stays_listed(name)
+    listed = _device_stays_listed(name, guid)
     return json.dumps({
         "ok": True,
         "name": name,

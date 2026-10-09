@@ -619,8 +619,9 @@ def _remove_own(source: Path) -> None:
 
 
 def _connected() -> list[tuple[str, str]]:
-    """(name, guid) of each stick plugged in now (vJoy left out)."""
-    from gremlin.modules import store
+    """(name, guid) of each stick plugged in now (vJoy left out): its id in
+    the live device list decides, never its name (03 S90a)."""
+    from gremlin.modules import hardware, store
 
     found = []
     try:
@@ -629,7 +630,7 @@ def _connected() -> list[tuple[str, str]]:
         for dev in device_initialization.physical_devices() or []:
             name = _clean(getattr(dev, "name", ""))
             guid = store.guid_text(getattr(dev, "device_guid", ""))
-            if name:
+            if guid and hardware.plugged_in(guid, name):
                 found.append((name, guid))
     except Exception:  # noqa: BLE001 - no device list yet
         pass
@@ -837,7 +838,13 @@ def _view(doc: dict) -> list[dict]:
         row["builtIn"] = row["builtIn"] or built
         row["state"] = "builtin" if row["builtIn"] else row["state"] or "not_connected"
     for name, guid in _connected():
-        row = row_for(_match(records, name, guid), name, guid)
+        # By id only (03 S90a): a record with no id, or another id (a
+        # twin, another PC's pack), is never this stick.
+        want = stored_guid_key(guid)
+        row = next(
+            (rows[k] for k in order if stored_guid_key(rows[k]["guid"]) == want),
+            None,
+        ) or row_for(_match(records, "", guid), name, guid)
         if not row["module"]:
             row["ownName"] = name
             row["name"] = _alias(guid, name)

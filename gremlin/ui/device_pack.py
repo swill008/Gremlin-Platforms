@@ -710,6 +710,37 @@ def pack_devices() -> list[dict]:
     return rows
 
 
+_TWINS = (
+    "More than one device is called {name}: export it from the Device "
+    "Library, where each has its own id."
+)
+
+
+def _ids_named(name: str, profile: Profile | None = None) -> dict[str, str]:
+    """{id key: id} of every device called name: plugged in now, or in the
+    profile's device list (the open one when profile is None)."""
+    want = " ".join(str(name or "").split()).casefold()
+    found: dict[str, str] = {}
+
+    def add(label: object, guid: object) -> None:
+        text = store.guid_text(guid) if guid else ""
+        key = store.stored_guid_key(text)
+        if key and " ".join(str(label or "").split()).casefold() == want:
+            found.setdefault(key, text)
+
+    for dev in store.live_devices():
+        add(getattr(dev, "name", ""), getattr(dev, "device_guid", ""))
+    if profile is None:
+        try:
+            from gremlin.shared_state import current_profile as profile
+        except Exception:  # noqa: BLE001 - no profile yet
+            profile = None
+    if profile is not None:
+        for uid, info in profile.device_database.devices.items():
+            add(info.name, uid)
+    return found
+
+
 def plan_pack(
     device_name: str,
     resolve: Callable[[str], Path | None],
@@ -726,6 +757,13 @@ def plan_pack(
     name = " ".join(str(device_name or "").split())
     if not name:
         return "Choose a device."
+    if not guid:
+        # No id given: the name stands for one device only when exactly one
+        # has it; twins share a name, so it would pick the wrong one (03 S90a).
+        ids = _ids_named(name, profile)
+        if len(ids) > 1:
+            return _TWINS.format(name=name)
+        guid = next(iter(ids.values()), "")
     # With its id, its own file (twins share a name).
     path = _device_path(name, guid)
     refused = export_refusal(path)
@@ -734,16 +772,6 @@ def plan_pack(
     doc = _read_doc(path)
     if not doc:
         return _NO_FILE
-    if not guid:
-        match = _match_pack_device(name)
-        guid = str(match["guid"]) if match and match.get("guid") else ""
-    if not guid and profile is not None:
-        # A stick not plugged in: its id from the profile's device list.
-        want = " ".join(name.split()).casefold()
-        for uid, info in profile.device_database.devices.items():
-            if " ".join(str(info.name or "").split()).casefold() == want:
-                guid = str(uid)
-                break
     used: set[str] = set()
     files: list[tuple[Path, str]] = []
     packed, pictures = _rewrite_images(doc, resolve, used, files)

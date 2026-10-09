@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import itertools
+import uuid
 from typing import Any, Self
 
 import dill
@@ -20,7 +21,7 @@ from gremlin import (
     shared_state,
     types,
 )
-from gremlin.modules import auto_map, output
+from gremlin.modules import auto_map, output, store
 from gremlin.modules.claim import claim_ids
 
 
@@ -242,18 +243,30 @@ class AutoMapper:
             for (name, kind, reason), ids in sorted(self._skipped.items())
         ]
 
-    def _source_uuid(self, source: dict):
+    def _source_uuid(self, source: dict) -> uuid.UUID | None:
+        """The input module's device by id, never by its name: twins share a
+        name (03 S90a). Its bound id; else the one plugged-in device whose
+        file (chosen for its id, S6) is this module's. None when there is
+        no such id, or more than one device uses the file."""
         text = str(source.get("guid") or "").strip()
         if text:
             try:
                 return dill.GUID.from_str(text).uuid
-            except Exception:
-                pass
-        want = str(source.get("boundName") or source.get("name") or "").strip().lower()
-        for device in device_initialization.physical_devices() or []:
-            if str(getattr(device, "name", "") or "").strip().lower() == want:
-                return device.device_guid.uuid
-        return None
+            except Exception:  # noqa: BLE001 - an id that can't be read is none
+                return None
+        slug = str(source.get("slug") or "")
+        if not slug:
+            return None
+        users = [
+            device.device_guid.uuid
+            for device in device_initialization.physical_devices() or []
+            if store.slug_for(
+                str(getattr(device, "name", "") or ""),
+                store.guid_text(device.device_guid),
+            )
+            == slug
+        ]
+        return users[0] if len(users) == 1 else None
 
     def _vjoy_limits(self, vjoy_id: int) -> dict | None:
         """What the vJoy device has; empty when it isn't there. None: it is

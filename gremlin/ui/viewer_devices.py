@@ -12,7 +12,6 @@ import gremlin.ui.type_aliases as ta
 from gremlin.ui import input_pairing as pairing
 from gremlin.modules.ids import guid_key
 from gremlin.modules import ids
-from gremlin.modules.registry import is_output_name
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -46,13 +45,6 @@ def _connected_keys() -> set[str]:
     ):
         keys.add(guid_key(guid))
     return keys
-
-
-def _physical_devices() -> list:
-    try:
-        return list(device_initialization.physical_devices() or [])
-    except Exception:
-        return []
 
 
 def _pair_label(items: list) -> str:
@@ -169,30 +161,12 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=bool)
     def available(self, guid: str, name: str) -> bool:
-        """Whether this device's Button Map can show now: outputs (vJoy,
-        Xbox), Keyboard, Logical Device and OSC always; a stick only while
-        it is connected (by its id, or by its name when no id is known)."""
-        if is_output_name(name):
-            return True
-        key = guid_key(guid) if guid else ""
-        always = {
-            guid_key(g) for g in (dill.UUID_Keyboard, dill.UUID_LogicalDevice, OSC_GUID)
-        }
-        if key and key in always:
-            return True
-        if key:
-            return key in _connected_keys()
-        wanted = str(name or "").strip().lower()
-        if not wanted:
-            return False
-        if wanted in {"keyboard", "logical device", "osc"}:
-            return True
-        return any(
-            str(row.get("name") or "").strip().lower() == wanted for row in self._rows
-        ) or any(
-            str(getattr(device, "name", "") or "").strip().lower() == wanted
-            for device in _physical_devices()
-        )
+        """Whether this device's Button Map can show now: built-ins (vJoy,
+        Xbox, Keyboard, Logical Device, OSC) always; a stick only while its
+        id is in the live device list, never by its name (03 S90a)."""
+        from gremlin.modules import hardware
+
+        return hardware.plugged_in(guid, name)
 
     @QtCore.Slot(str, result=str)
     def guidForDeviceName(self, wanted: str) -> str:

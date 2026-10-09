@@ -486,13 +486,11 @@ def _module_damage(device_name: str, guid: str = "") -> str:
     return store.damage(device_name, guid)
 
 
-def _device_connected(guid: str) -> bool:
-    """True when the joystick driver sees a device with this GUID."""
-    try:
-        return hardware.device_connected(guid)
-    except Exception:
-        # A GUID the driver can't read is not one of its devices.
-        return False
+def _device_connected(guid: str, name: str = "") -> bool:
+    """Whether the device is plugged in now: one rule for the whole program
+    (hardware.plugged_in, 03 S90a), by its id, never by its name; the name
+    only marks a vJoy or Xbox output, which is always there."""
+    return hardware.plugged_in(guid, name)
 
 
 def _unplugged_reason(device_name: str) -> str:
@@ -1952,7 +1950,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
             return
         # A device that isn't plugged in shows no controls: saving would
         # erase its claims and names, so Save is refused until it is back.
-        if guid and not _device_connected(guid):
+        # A stick with no id is not plugged in (03 S90a).
+        if (guid or device_name) and not _device_connected(guid, device_name):
             self._not_connected = _unplugged_reason(device_name)
         if info is not None:
             self._read_from_device = True
@@ -2334,7 +2333,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             doc["device"] = name
             if is_output_name(name):
                 doc["direction"] = "dest"
-            elif self._guid and _device_connected(self._guid):
+            elif self._guid and _device_connected(self._guid, name):
                 # A physical stick is an input (a file the old Output menu
                 # marked "dest" blocked every input; saving here repairs it).
                 doc["direction"] = "source"

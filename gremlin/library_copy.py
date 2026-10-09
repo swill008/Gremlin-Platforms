@@ -109,16 +109,19 @@ def _autosave(
 
 
 def _connected(guid: str) -> bool:
-    """A stick plugged in now (never a vJoy device)."""
-    want = str(guid or "").strip().lower()
-    if not want:
+    """A stick plugged in now: its id in the live device list (03 S90a),
+    never a vJoy device or a built-in input."""
+    from gremlin.modules import hardware
+
+    want = store.guid_text(guid).strip("{}").lower()
+    if not want or library.is_built_in_guid(guid):
         return False
     for dev in store.live_devices():
-        if getattr(dev, "is_virtual", False):
-            continue
-        if store.guid_text(getattr(dev, "device_guid", "")).lower() == want:
-            return True
-    return False
+        if getattr(dev, "is_virtual", False) and (
+            store.guid_text(getattr(dev, "device_guid", "")).strip("{}").lower() == want
+        ):
+            return False
+    return hardware.plugged_in(guid)
 
 
 def _uid(guid: str) -> uuid.UUID | None:

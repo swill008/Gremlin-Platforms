@@ -136,7 +136,7 @@ def test_delete_device_with_a_never_saved_profile_autosaves_its_bindings(
     monkeypatch.setattr(store, "set_bindings", lambda data: None)
     monkeypatch.setattr(registry, "guid_for_name", lambda name: "")
     monkeypatch.setattr(hardware_profile, "_profile_running", lambda: False)
-    monkeypatch.setattr(hardware_profile, "_device_stays_listed", lambda name: False)
+    monkeypatch.setattr(hardware_profile, "_device_stays_listed", lambda *_a: False)
     monkeypatch.setattr(shared_state, "current_profile", Profile())
     assert json.loads(hardware_profile.delete_device("Stick R", ""))["ok"]
     assert fake.calls[0][2:] == (
