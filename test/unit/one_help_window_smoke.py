@@ -185,6 +185,19 @@ try:
     press_f1(lib)
     out["library_f1"] = state()
     help_win = help_windows()[0]
+    # S128: View Full Help starts the scope row, under the search box and
+    # before Search all of Help.
+    def _box(name: str) -> list | None:
+        it = find_item(help_win.contentItem(), name)
+        if it is None:
+            return None
+        p = it.mapToScene(QtCore.QPointF(0, 0))
+        return [p.x(), p.y(), it.width(), it.height()]
+    out["place"] = {
+        "full": _box("viewFullHelp"),
+        "field": _box("searchField"),
+        "all": _box("helpSearchAll"),
+    }
     out["full_clicked"] = click_object(help_win, "viewFullHelp")
     out["library_full"] = state()
     out["back_clicked"] = click_object(help_win, "viewChapterOnly")

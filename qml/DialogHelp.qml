@@ -524,21 +524,27 @@ ApplicationWindow {
                 onResultsChanged: (results) => _win._applyResults(results)
                 onNext: _win.step(1)
                 onPrevious: _win.step(-1)
-            }
-
-            Button {
-                objectName: "viewFullHelp"
-                Layout.alignment: Qt.AlignTop
-                visible: _win.chapter.length > 0
-                text: qsTr("View Full Help")
-                onClicked: _win.viewFullHelp()
-            }
-            Button {
-                objectName: "viewChapterOnly"
-                Layout.alignment: Qt.AlignTop
-                visible: !_win.chapter.length && _win._backChapter.length > 0
-                text: qsTr("Only %1").arg(_win._chapterTitle(_win._backChapter))
-                onClicked: _win.viewChapterOnly()
+                // View Full Help / Only <chapter> start the scope row, before
+                // Search all of Help, where they are seen (S128).
+                scopeButton: Component {
+                    RowLayout {
+                        spacing: 0
+                        Button {
+                            id: _full
+                            objectName: "viewFullHelp"
+                            visible: _win.chapter.length > 0
+                            text: qsTr("View Full Help")
+                            onClicked: _win.viewFullHelp()
+                        }
+                        Button {
+                            id: _only
+                            objectName: "viewChapterOnly"
+                            visible: !_win.chapter.length && _win._backChapter.length > 0
+                            text: qsTr("Only %1").arg(_win._chapterTitle(_win._backChapter))
+                            onClicked: _win.viewChapterOnly()
+                        }
+                    }
+                }
             }
         }
 

@@ -82,6 +82,12 @@ def test_links_and_related_topics_open_topics(run: dict) -> None:
 def test_library_f1_shows_its_chapter_and_view_full_help_widens(run: dict) -> None:
     _only(run["library_f1"], "device-library", "Device Library")
     assert run["full_clicked"], "no View Full Help button"
+    # S128: on the scope row, below the search box, before Search all of Help.
+    full, field, every = (run["place"][k] for k in ("full", "field", "all"))
+    assert full and field and every, run["place"]
+    assert full[1] >= field[1] + field[3]
+    assert full[0] + full[2] <= every[0]
+    assert abs((full[1] + full[3] / 2) - (every[1] + every[3] / 2)) < 12
     _whole_book(run["library_full"])
     assert run["back_clicked"], "no way back to the chapter"
     _only(run["library_back"], "device-library", "Device Library")

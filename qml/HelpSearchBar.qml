@@ -26,6 +26,9 @@ Item {
     property string scopedChapter: ""
     property alias text: _field.text
     property bool allOfHelp: false
+    // Shown first on the scope row, before Search all of Help (S128):
+    // DialogHelp's View Full Help / Only <chapter>.
+    property Component scopeButton: null
     // The current match (0-based) and the number of matches; set by the window.
     property int current: -1
     property int total: 0
@@ -169,6 +172,17 @@ Item {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.dp(12)
+
+            // No visible bindings on item.visible here: an item's visible
+            // follows its parent's, which would loop.
+            Loader {
+                id: _scopeLoader
+                sourceComponent: _bar.scopeButton
+            }
+
         CheckBox {
             id: _allBox
             objectName: "helpSearchAll"
@@ -179,6 +193,9 @@ Item {
             onToggled: _bar.allOfHelp = checked
             ToolTip.visible: hovered
             ToolTip.text: "Also list matching topics from the other chapters, under their chapter's name"
+        }
+
+            Item { Layout.fillWidth: true }
         }
     }
 }
