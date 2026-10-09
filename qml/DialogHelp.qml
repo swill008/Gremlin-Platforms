@@ -12,6 +12,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 
 import Gremlin.Style
+import Gremlin.UI
 import "help/index.js" as Book
 import "help_search.js" as HelpSearch
 
@@ -54,11 +55,109 @@ ApplicationWindow {
 
     // Search state: [{topic, count, bodyTotal}] in list order, scoped
     // chapter first, then (Search all of Help) the other chapters.
-    property var _results: []
+    // Set in Component.onCompleted: a [] here is a binding, and assigning
+    // later would overwrite it (qt.qml.binding.removal).
+    property var _results: null
     readonly property bool _searching: HelpSearch.words(_search.text).length > 0
     property int _match: 0
 
-    readonly property var _rows: _buildRows(_searching ? _results : _topics, _searching)
+    readonly property var _rows: _buildRows(_searching ? (_results || []) : _topics,
+                                             _searching, _folded || {}, !chapter.length)
+
+    // The list's width (S138): dragged with the handle, one width for all
+    // of Help, kept for next time. Set in Component.onCompleted.
+    property int listWidth: 0
+    readonly property int _listMin: Style.dp(180)
+
+    // Folded chapters (S138), {chapterId: true}, kept while Help is open.
+    property var _folded: null
+
+    WindowPlacement { id: _place }
+
+    function _defaultListWidth() {
+        return Style.dp(290)
+    }
+
+    function _listMax() {
+        return Math.max(_listMin, Math.floor(width / 2))
+    }
+
+    function _applyListWidth(w) {
+        listWidth = Math.round(Math.max(_listMin, Math.min(_listMax(), w)))
+    }
+
+    function _saveListWidth() {
+        var state = {}
+        try {
+            state = JSON.parse(_place.toolRowState("help-list")) || {}
+        } catch (e) {
+            state = {}
+        }
+        state.listWidth = listWidth
+        _place.saveToolRowState("help-list", JSON.stringify(state))
+    }
+
+    function setListWidth(w) {
+        _applyListWidth(w)
+        _saveListWidth()
+    }
+
+    function resetListWidth() {
+        setListWidth(_defaultListWidth())
+    }
+
+    function _restoreListWidth() {
+        var saved = 0
+        try {
+            saved = Number((JSON.parse(_place.toolRowState("help-list")) || {}).listWidth) || 0
+        } catch (e) {
+            saved = 0
+        }
+        listWidth = Math.round(Math.max(_listMin, saved > 0 ? saved : _defaultListWidth()))
+    }
+
+    function isFolded(id) {
+        return !!(_folded && _folded[id])
+    }
+
+    function toggleChapter(id) {
+        var m = Object.assign({}, _folded || {})
+        if (m[id])
+            delete m[id]
+        else
+            m[id] = true
+        _folded = m
+        _scrollListToCurrent()
+    }
+
+    function _unfold(id) {
+        if (!isFolded(id))
+            return
+        var m = Object.assign({}, _folded)
+        delete m[id]
+        _folded = m
+    }
+
+    function expandAll() {
+        _folded = {}
+        _scrollListToCurrent()
+    }
+
+    function collapseAll() {
+        var m = {}
+        var all = Book.chapters()
+        for (var i = 0; i < all.length; ++i)
+            m[all[i].id] = true
+        _folded = m
+    }
+
+    // The whole book opens with only the open topic's chapter unfolded.
+    function _foldAllButCurrent() {
+        collapseAll()
+        if (_current)
+            _unfold(_current.chapterId)
+        _scrollListToCurrent()
+    }
 
     onChapterChanged: {
         if (!_widening)
@@ -67,14 +166,21 @@ ApplicationWindow {
         var list = Book.topics(chapter)
         if (!_current || (chapter.length && _current.chapterId !== chapter && !_searching))
             _currentId = list.length ? list[0].id : ""
+        if (!chapter.length)
+            _foldAllButCurrent()
     }
     onTopicIdChanged: if (topicId.length) showTopic(topicId)
 
     Component.onCompleted: {
+        _results = []
+        _folded = {}
+        _restoreListWidth()
         if (topicId.length && Book.find(topicId))
             _currentId = topicId
         else if (_topics.length)
             _currentId = _topics[0].id
+        if (!chapter.length)
+            _foldAllButCurrent()
     }
 
     function _chapterTitle(id) {
@@ -111,27 +217,36 @@ ApplicationWindow {
         if (!t)
             return
         _currentId = t.id
+        _unfold(t.chapterId)
         _match = 0
         _scrollListToCurrent()
         _scrollBodyToMatch()
     }
 
     // The list rows: a heading per chapter, then per section, then topics.
-    function _buildRows(items, searching) {
+    // A folded chapter (S138) shows only its heading; while searching every
+    // chapter with a match shows unfolded. canFold: the whole book is shown.
+    function _buildRows(items, searching, folded, canFold) {
         var rows = []
         var lastChapter = null, lastSection = null
         for (var i = 0; i < items.length; ++i) {
             var t = searching ? items[i].topic : items[i]
+            var shut = canFold && !searching && !!folded[t.chapterId]
             if (t.chapterId !== lastChapter) {
-                rows.push({ kind: "chapter", text: t.chapter, id: "", count: 0 })
+                rows.push({ kind: "chapter", text: t.chapter, id: "", count: 0,
+                            chapterId: t.chapterId, folded: shut,
+                            canFold: canFold && !searching })
                 lastChapter = t.chapterId
                 lastSection = null
             }
+            if (shut)
+                continue
             if (t.section !== lastSection) {
-                rows.push({ kind: "section", text: t.section, id: "", count: 0 })
+                rows.push({ kind: "section", text: t.section, id: "", count: 0,
+                            chapterId: t.chapterId, first: lastSection === null })
                 lastSection = t.section
             }
-            rows.push({ kind: "topic", text: t.title, id: t.id,
+            rows.push({ kind: "topic", text: t.title, id: t.id, chapterId: t.chapterId,
                         count: searching ? items[i].count : 0 })
         }
         return rows
@@ -165,9 +280,16 @@ ApplicationWindow {
     // The bar's results (S137): [{index into the book, count, chapterId,
     // inScope}] in book order; [] = no search, every topic shows.
     function _applyResults(results) {
-        if (!_searching || !results || !results.length) {
+        // Read the text, not _searching: the bar sends its results from its
+        // own textChanged, before that binding has caught up (a pasted word
+        // showed an empty list).
+        var searching = HelpSearch.words(_search.text).length > 0
+        if (!searching || !results || !results.length) {
             _results = []
             _match = 0
+            // Back to the folds as they were, with the open topic showing.
+            if (!searching && _current)
+                _unfold(_current.chapterId)
             return
         }
         var res = []
@@ -356,75 +478,230 @@ ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: Style.dp(12)
+            spacing: 0
 
-            // The contents: chapters, their sections, their topics.
-            Rectangle {
-                Layout.preferredWidth: Style.dp(290)
+            // The contents: chapters, their sections, their topics (S138:
+            // resizable, chapters fold).
+            ColumnLayout {
+                id: _listPane
+                objectName: "helpListPane"
+                Layout.preferredWidth: _win.listWidth
+                Layout.maximumWidth: _win.listWidth
                 Layout.fillHeight: true
-                color: Style.bgPage
-                border.color: Style.line
-                radius: Style.dp(3)
+                spacing: Style.dp(4)
 
-                ListView {
-                    id: _list
-                    objectName: "helpContents"
-                    anchors.fill: parent
-                    anchors.margins: Style.dp(6)
-                    clip: true
-                    model: _win._rows
-                    boundsBehavior: Flickable.StopAtBounds
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: !_win.chapter.length && !_win._searching
+                    spacing: Style.dp(4)
+                    Button {
+                        objectName: "expandAll"
+                        flat: true
+                        text: qsTr("Expand all")
+                        font.pixelSize: Style.dp(12)
+                        onClicked: _win.expandAll()
+                    }
+                    Button {
+                        objectName: "collapseAll"
+                        flat: true
+                        text: qsTr("Collapse all")
+                        font.pixelSize: Style.dp(12)
+                        onClicked: _win.collapseAll()
+                    }
+                    Item { Layout.fillWidth: true }
+                }
 
-                    delegate: Item {
-                        id: _row
-                        required property var modelData
-                        required property int index
-                        readonly property bool isTopic: modelData.kind === "topic"
-                        width: _list.width
-                        height: isTopic ? _topicRow.implicitHeight : _heading.implicitHeight
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: Style.bgPage
+                    border.color: Style.line
+                    radius: Style.dp(3)
 
-                        Label {
-                            id: _heading
-                            visible: !_row.isTopic
-                            width: parent.width
-                            text: _row.modelData.text
-                            elide: Text.ElideRight
-                            color: _row.modelData.kind === "chapter" ? Style.fgStrong : Style.fgMuted
-                            font.pixelSize: _row.modelData.kind === "chapter" ? Style.dp(17) : Style.dp(12)
-                            font.bold: true
-                            font.capitalization: _row.modelData.kind === "section" ? Font.AllUppercase : Font.MixedCase
-                            font.letterSpacing: _row.modelData.kind === "section" ? Style.dp(0.5) : 0
-                            leftPadding: Style.dp(8)
-                            topPadding: _row.modelData.kind === "chapter" ? (_row.index === 0 ? Style.dp(4) : Style.dp(18)) : Style.dp(10)
-                            bottomPadding: Style.dp(4)
-                        }
+                    ListView {
+                        id: _list
+                        objectName: "helpContents"
+                        anchors.fill: parent
+                        anchors.margins: Style.dp(6)
+                        clip: true
+                        model: _win._rows
+                        boundsBehavior: Flickable.StopAtBounds
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-                        ItemDelegate {
-                            id: _topicRow
-                            visible: _row.isTopic
-                            width: parent.width
-                            highlighted: _row.isTopic && _row.modelData.id === _win._currentId
-                            leftPadding: Style.dp(16)
-                            onClicked: _win.showTopic(_row.modelData.id)
-                            contentItem: RowLayout {
-                                spacing: Style.dp(6)
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: _row.modelData.text
-                                    elide: Text.ElideRight
-                                    color: Style.fg
-                                    font.pixelSize: Style.dp(13)
+                        delegate: Item {
+                            id: _row
+                            required property var modelData
+                            required property int index
+                            readonly property string kind: modelData.kind
+                            width: _list.width
+                            height: kind === "topic" ? _topicRow.height
+                                  : kind === "chapter" ? _chapterRow.height
+                                  : _sectionRow.height
+
+                            // Chapter: a shaded band with an accent bar; a
+                            // click folds or unfolds it.
+                            Item {
+                                id: _chapterRow
+                                objectName: "helpChapterRow"
+                                visible: _row.kind === "chapter"
+                                width: parent.width
+                                height: _band.height + (_row.index === 0 ? 0 : Style.dp(8))
+                                Rectangle {
+                                    id: _band
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.bottom: parent.bottom
+                                    height: _chapterLabel.implicitHeight + Style.dp(12)
+                                    color: _chapterMouse.containsMouse && _row.modelData.canFold
+                                           ? Style.bgHover : Style.bgRaised
+                                    radius: Style.dp(2)
+                                    Rectangle {
+                                        width: Style.dp(3)
+                                        height: parent.height
+                                        color: Style.accent
+                                    }
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: Style.dp(10)
+                                        anchors.rightMargin: Style.dp(8)
+                                        spacing: Style.dp(6)
+                                        Label {
+                                            visible: !!_row.modelData.canFold
+                                            text: _row.modelData.folded ? "▸" : "▾"
+                                            color: Style.fgMuted
+                                            font.pixelSize: Style.dp(13)
+                                        }
+                                        Label {
+                                            id: _chapterLabel
+                                            Layout.fillWidth: true
+                                            text: _row.modelData.text
+                                            elide: Text.ElideRight
+                                            color: Style.fgStrong
+                                            font.pixelSize: Style.dp(16)
+                                            font.bold: true
+                                        }
+                                    }
+                                    MouseArea {
+                                        id: _chapterMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        enabled: !!_row.modelData.canFold
+                                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                        onClicked: _win.toggleChapter(_row.modelData.chapterId)
+                                    }
+                                }
+                            }
+
+                            // Section: small capitals in the accent colour,
+                            // a thin line above (not under the chapter band).
+                            Item {
+                                id: _sectionRow
+                                visible: _row.kind === "section"
+                                width: parent.width
+                                height: _sectionLabel.implicitHeight + Style.dp(10)
+                                Rectangle {
+                                    visible: !_row.modelData.first
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.leftMargin: Style.dp(10)
+                                    anchors.top: parent.top
+                                    anchors.topMargin: Style.dp(3)
+                                    height: 1
+                                    color: Style.line
                                 }
                                 Label {
-                                    visible: _row.modelData.count > 0
-                                    text: String(_row.modelData.count)
-                                    color: Style.fgMuted
-                                    font.pixelSize: Style.dp(12)
+                                    id: _sectionLabel
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.bottom: parent.bottom
+                                    leftPadding: Style.dp(10)
+                                    bottomPadding: Style.dp(2)
+                                    text: _row.modelData.text
+                                    elide: Text.ElideRight
+                                    color: Style.accent
+                                    font.pixelSize: Style.dp(11)
+                                    font.bold: true
+                                    font.capitalization: Font.AllUppercase
+                                    font.letterSpacing: Style.dp(0.6)
+                                }
+                            }
+
+                            // Topic: a single-spaced row.
+                            Rectangle {
+                                id: _topicRow
+                                objectName: "helpTopicRow"
+                                visible: _row.kind === "topic"
+                                readonly property bool current: _row.kind === "topic"
+                                                                && _row.modelData.id === _win._currentId
+                                width: parent.width
+                                height: _topicLabel.implicitHeight + Style.dp(6)
+                                radius: Style.dp(2)
+                                color: current ? Style.accent
+                                     : _topicMouse.containsMouse ? Style.bgHover : Style.clear
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Style.dp(18)
+                                    anchors.rightMargin: Style.dp(8)
+                                    spacing: Style.dp(6)
+                                    Label {
+                                        id: _topicLabel
+                                        Layout.fillWidth: true
+                                        text: _row.modelData.text
+                                        elide: Text.ElideRight
+                                        color: _topicRow.current ? Style.onColor : Style.fg
+                                        font.pixelSize: Style.dp(13)
+                                    }
+                                    Label {
+                                        visible: _row.modelData.count > 0
+                                        text: String(_row.modelData.count)
+                                        color: _topicRow.current ? Style.onColor : Style.fgMuted
+                                        font.pixelSize: Style.dp(12)
+                                    }
+                                }
+                                MouseArea {
+                                    id: _topicMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: _win.showTopic(_row.modelData.id)
                                 }
                             }
                         }
                     }
+                }
+            }
+
+            // The handle between the list and the topic (S138): drag to
+            // resize, double-click for the default width.
+            Item {
+                id: _handle
+                objectName: "helpListHandle"
+                Layout.preferredWidth: Style.dp(12)
+                Layout.fillHeight: true
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: Style.dp(2)
+                    height: Style.dp(36)
+                    radius: Style.dp(1)
+                    color: _handleMouse.containsMouse || _handleMouse.pressed ? Style.accent : Style.lineStrong
+                }
+                MouseArea {
+                    id: _handleMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.SplitHCursor
+                    property real _startX: 0
+                    property int _startWidth: 0
+                    onPressed: (mouse) => {
+                        _startX = mapToItem(null, mouse.x, 0).x
+                        _startWidth = _win.listWidth
+                    }
+                    onPositionChanged: (mouse) => {
+                        if (pressed)
+                            _win._applyListWidth(_startWidth + mapToItem(null, mouse.x, 0).x - _startX)
+                    }
+                    onReleased: _win._saveListWidth()
+                    onDoubleClicked: _win.resetListWidth()
                 }
             }
 
