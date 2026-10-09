@@ -272,10 +272,19 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 58. Button Map Undo bar has no "Last change:" text: the editor's history steps carry no names (B-map
     2026-10-09). Name the steps where they are recorded (rig editor), then bind UndoBar.lastChange.
 
-59. PLAN NEXT (user 2026-10-09: yes, plan separately): the Logical Device in the Device Library's
+59. DONE 2026-10-09 (D-04-LD-FILE; the Logical Device stands alone: own module file shared by all profiles, permanent ids, profile version 15). Open question (user 2026-10-09: decide after using it): should every built-in row (Keyboard, OSC, Logical Device) get the same Library menu, including Import? Original item: the Logical Device in the Device Library's
     Built-in inputs section, beside Keyboard and OSC: Save to Device Library, Restore, Export of its
     controls, names, groups and actions. Needs the Library's save/restore/export to handle the
     Logical Device's data (~30-40 min). Spec 10 S6 and the class table's library_builtin change.
+
+60. FUTURE REDESIGN (user 2026-10-09: to-do for now, a full future redesign): "the pack is the new
+    profile". Every device, internal and external, is a modular item with its own files: input/setup,
+    actions, and wiring as separate items. A pack (manifest) picks the items plus the glue (modes,
+    startup mode, game/auto-load, scripts) and replaces the profile. Import and export of items and
+    packs are the in/out path. Open questions: modes owned by the pack (missing-mode fix), shared item
+    vs copy ("used by N packs"), clashes on the same input, History/Undo per item and pack, lossless
+    migration of existing profiles. Staged: A Logical Device own file (DONE 2026-10-09 with to-do 59), B device actions as
+    items, C wiring as items, D pack manifest + migration. Several days.
 
 ## On hold / parked (user's choice)
 

@@ -4,6 +4,21 @@ Measured times, so estimates match reality. Add a row when a step finishes:
 start and end from the clock, not a guess. Use the medians here when quoting
 a time to the user.
 
+## Rules of thumb (from the rows below, 2026-10-09, 69 rows)
+
+| Kind | Rows | Took vs estimate | Quote |
+|---|---|---|---|
+| Agent fix / feature / docs | 36 | about 1/4 to 1/3 | 3-8 min per agent; a batch of parallel agents ~10 min |
+| Refactor | 12 | about 1/2 | 5-10 min per agent |
+| Review / read-only study | 3 | about 1/10 | 5-10 min with parallel agents |
+| Full test run + lint | 14 | on target | 5-6 min |
+| CI on a push | 3 | on target | ~10 min |
+
+End to end, a batch is: agents (~10 min) + lead checks and map (~5 min) +
+full run (~5 min) + commit/push (~2 min) + CI (~10 min, in the background).
+Not yet timed: the lead's own steps (planning, applying results, tracker and
+progress updates). Log those from now on so whole-batch quotes are measured.
+
 | Date | Task | Kind | Estimated | Took | Notes |
 |---|---|---|---|---|---|
 | 2026-10-09 | Full run `run_tests.py --random-order` + lint | test | ~5 min | 6 min | 6 parts ~4 min, lint ~1.5 min; part 6 stalled once under load (to-do 47) |
@@ -74,3 +89,32 @@ a time to the user.
 | 2026-10-09 | Class table tidy-up + vJoy by id (CT-table) | refactor | ~10 min | 4 min | 12:13–12:17 |
 | 2026-10-09 | Class table: Copy/Swap one rule (CT-callers) | refactor | ~10 min | 3 min | 12:13–12:16 |
 | 2026-10-09 | Full run (class-table tidy-up) | test | ~5 min | 5 min | 12:16–12:21, green except the 2 import test errors fixed after |
+| 2026-10-09 | Tracker review AU items (TR-au) | review | ~35 min | 3 min | 12:24–12:27 |
+| 2026-10-09 | Tracker review older groups (TR-review) | review | ~35 min | ~3 min | 12:24–12:27 |
+| 2026-10-09 | Tracker new items since 7 Oct (TR-new) | review | ~35 min | 5 min | 12:24–12:29, 89 items |
+| 2026-10-09 | Timing check and rules of thumb (lead) | docs | ~3 min | 3 min | lead alone |
+| 2026-10-09 | LD design study: LIB-pattern (read-only agent) | review | ~5 min | 1 min | 12:46–12:47 (36 s) |
+| 2026-10-09 | LD design study: LD-trace (read-only agent) | review | ~5 min | 1 min | 12:46–12:47 (58 s) |
+| 2026-10-09 | LD design study: PACK-fit (read-only agent) | review | ~5 min | 1 min | 12:46–12:47 (51 s) |
+| 2026-10-09 | Timing rule in CLAUDE.md + memory + progress page (lead) | docs | ~3 min | 3 min | 12:46–12:49 |
+| 2026-10-09 | LD study review page + progress (lead) | docs | ~5 min | 4 min | 12:48–12:52; whole study 12:46–12:52 = 6 min vs my first quote of 25 |
+| 2026-10-09 | LD stand-alone: permanent ids (LD-model) | feature | ~15 min | 3 min | 12:57–13:00 |
+| 2026-10-09 | LD stand-alone: module file IO (LD-store) | feature | ~15 min | 3 min | 12:57–13:00 |
+| 2026-10-09 | LD stand-alone: action + condition refs (LD-refs-a) | feature | ~15 min | 4 min | 12:58–13:02 |
+| 2026-10-09 | LD stand-alone: macro/script/validate refs (LD-refs-b) | feature | ~15 min | 3 min | 12:58–13:01 |
+| 2026-10-09 | LD stand-alone: Device Pack + Library copy (LD-pack) | feature | ~20 min | 5 min | 12:58–13:03 |
+| 2026-10-09 | LD stand-alone: spec, map, Help (LD-map) | docs | ~15 min | 4 min | 12:58–13:02 |
+| 2026-10-09 | LD stand-alone: profile v15 + migration (LD-profile) | feature | ~20 min | 5 min | 12:58–13:03 |
+| 2026-10-09 | LD stand-alone: Library, class table, Home card (LD-lib) | feature | ~15 min | 4 min | 12:58–13:02 |
+| 2026-10-09 | LD stand-alone: module file header keys (LD-store follow-up) | fix | ~5 min | 1 min | 13:03–13:04 |
+| 2026-10-09 | LD stand-alone: macro action + script page refs (LD-refs-c) | feature | ~10 min | 3 min | 13:01–13:04 |
+| 2026-10-09 | LD stand-alone: map/spec follow-ups (LD-map) | docs | ~6 min | 1 min | 13:03–13:04 |
+| 2026-10-09 | LD stand-alone: stored uid + one resolver (LD-refs-b follow-up) | fix | ~8 min | 3 min | 13:01–13:04 |
+| 2026-10-09 | LD stand-alone: page, Save/*, Undo, note (LD-ui) | feature | ~20 min | 6 min | 12:58–13:04 |
+| 2026-10-09 | LD stand-alone: Library save keeps v14 rows (LD-pack follow-up) | fix | ~5 min | 2 min | 13:03–13:05 |
+| 2026-10-09 | LD stand-alone: Discard reloads the file (LD-ui follow-up) | fix | ~5 min | 2 min | 13:05–13:07 |
+| 2026-10-09 | LD stand-alone: merge saves when file differs (LD-store follow-up) | fix | ~5 min | 1 min | 13:06 |
+| 2026-10-09 | LD stand-alone: 11 old-behaviour tests moved to new spec (LD-tests) | test | ~10 min | 4 min | 13:03–13:07 |
+| 2026-10-09 | LD stand-alone: reload signal + Undo drop on restore (lead) | fix | ~5 min | 2 min | 13:06–13:08 |
+| 2026-10-09 | LD: 4 full-run failures fixed + profile copies check (lead) | fix | ~10 min | 6 min | 13:14–13:20 |
+| 2026-10-09 | LD: backup moved to first save + full run #3 (lead) | fix | ~8 min | 9 min | 13:21–13:30 |

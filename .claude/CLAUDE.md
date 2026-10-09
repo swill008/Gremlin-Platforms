@@ -109,3 +109,15 @@ Every piece of work, not only big batches:
    - When an agent's fix is proven, check in: stop extra proof runs, move it
      to the final full run and its report.
    - Tell the user about any agent step over 5 min when it starts, not after.
+7. **Timing table (user, 2026-10-09).** `claude/timings.md` is the source
+   for every time quoted to the user.
+   - Before quoting a time, read its "Rules of thumb" and the rows for that
+     kind of work; quote from them, never from a guess.
+   - Note the clock (`date +%H:%M`) when each step starts; when it ends, add
+     a row (date, task, kind, estimate, took, clock times). This covers agent
+     jobs, test runs, CI, and the lead's own steps (planning, applying
+     results, tracker/progress updates, commits).
+   - Every agent reports its start and end time in its final report; the
+     lead logs the rows.
+   - After each batch, re-check the rules of thumb against the new rows and
+     update them when the ratio has moved.
