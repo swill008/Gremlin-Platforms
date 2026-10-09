@@ -29,6 +29,7 @@ from gremlin import (
     mode_manager,
     process_monitor,
     profile,
+    profile_recovery,
     shared_state,
     user_script,
     util,
@@ -241,6 +242,8 @@ class Backend(QtCore.QObject):
     recentProfileFailed = QtCore.Signal(str, str)
     uiScaleChanged = QtCore.Signal()
     restartRequested = QtCore.Signal()
+    # A recovery copy waits to be offered (takeRecoveryOffer, 04 S94).
+    recoveryOfferChanged = QtCore.Signal()
 
     def __init__(
         self, engine: QtQml.QQmlApplicationEngine, parent: ta.OQO = None
@@ -281,6 +284,19 @@ class Backend(QtCore.QObject):
         event_handler.EventListener().device_change_event.connect(self._device_change)
         event_handler.EventListener().joystick_event.connect(self._highlight_input)
         signal.uiScaleChanged.connect(self.uiScaleChanged)
+        # Recovery copies of unsaved edits, kept about every minute (04 S94).
+        self._recovery = profile_recovery.ProfileRecovery()
+        self._recovery_offer: dict | None = None
+        self._recovery_timer = QtCore.QTimer(self)
+        self._recovery_timer.setInterval(
+            int(profile_recovery.INTERVAL_SECONDS * 1000)
+        )
+        self._recovery_timer.timeout.connect(self._keep_recovery_copy)
+        self._recovery_timer.start()
+        app = QtCore.QCoreApplication.instance()
+        if app is not None:
+            # A clean close: this session's copies go.
+            app.aboutToQuit.connect(self._recovery.forget_session)
         self.profileChanged.emit()
 
     def _highlight_input(self, event: event_handler.Event) -> None:
@@ -580,11 +596,69 @@ class Backend(QtCore.QObject):
     def recentProfiles(self) -> list[str]:
         return self.config.value("global", "internal", "recent-profiles")
 
+    def _keep_recovery_copy(self) -> None:
+        try:
+            self._recovery.tick(self.profile)
+        except Exception:
+            logging.getLogger("system").exception("Keeping the recovery copy")
+
+    def _set_recovery_offer(self, offer: dict | None) -> None:
+        self._recovery_offer = offer
+        self.recoveryOfferChanged.emit()
+
+    @QtCore.Slot(result="QVariantMap")
+    def takeRecoveryOffer(self) -> dict:
+        """The recovery copy to offer for the open profile ({path, name,
+        savedAt}), once; {} when none."""
+        offer = self._recovery_offer
+        self._recovery_offer = None
+        return dict(offer) if offer else {}
+
+    @QtCore.Slot(str, result=bool)
+    def restoreRecovery(self, fpath: str) -> bool:
+        """Restore: the open profile (fpath, "" for Untitled) becomes its
+        recovery copy, unsaved."""
+        path = fpath or None
+        current = self.profile.fpath
+        # Only the open profile's copy; an Untitled one (offered at start
+        # with the last profile open) replaces a profile with no edits.
+        key = profile_recovery.profile_key
+        if key(current) != key(path) and (
+            path is not None or self.profile.has_unsaved_changes()
+        ):
+            return False
+        restored = self._recovery.restore(path, self.profile)
+        if restored is None:
+            signal.showNotification.emit(
+                "Unsaved Edits Found", "The unsaved edits could not be read."
+            )
+            return False
+        self.activate_gremlin(False)
+        self.profile = restored
+        if path:
+            folder = os.path.dirname(str(path))
+            if folder not in sys.path:
+                sys.path.insert(0, folder)
+        self.profileChanged.emit()
+        self.windowTitleChanged.emit()
+        self.propertyChanged.emit()
+        signal.reloadCurrentInputItem.emit()
+        return True
+
+    @QtCore.Slot(str)
+    def discardRecovery(self, fpath: str) -> None:
+        """Discard: the recovery copy of fpath ("" for Untitled) goes."""
+        self._recovery.discard(fpath or None)
+
     @QtCore.Slot()
     def newProfile(self) -> None:
         self.activate_gremlin(False)
+        # The open profile's edits were saved or discarded (or there were
+        # none): this session's recovery copies go.
+        self._recovery.forget_session()
         self.profile = profile.Profile()
         self.profile.mark_clean()
+        self._set_recovery_offer(self._recovery.offer_for(None))
         self.profileChanged.emit()
         self.windowTitleChanged.emit()
         signal.reloadCurrentInputItem.emit()
@@ -613,6 +687,7 @@ class Backend(QtCore.QObject):
                 persist_log(f"Persist profile save failed path={path!r} reason='file missing after write'")
                 return False
             self._record_profile_use(path)
+            self._recovery.saved(path)
             self.windowTitleChanged.emit()
             persist_log(f"Persist profile save ok path={path}")
             return True
@@ -657,6 +732,7 @@ class Backend(QtCore.QObject):
         local_path = to_local_path(fpath)
         if self._load_profile(str(local_path), report=False):
             self._record_profile_use(local_path)
+            self._opened_by_user(local_path)
         else:
             self.recentProfileFailed.emit(str(local_path), self._load_problem)
         self.profileChanged.emit()
@@ -667,8 +743,16 @@ class Backend(QtCore.QObject):
         local_path = to_local_path(fpath)
         if self._load_profile(str(local_path)):
             self._record_profile_use(local_path)
+            self._opened_by_user(local_path)
         self.profileChanged.emit()
         signal.reloadCurrentInputItem.emit()
+
+    def _opened_by_user(self, path: Path) -> None:
+        """A profile opened after Save / Discard: the copies this session
+        kept of the one before go, and this one's copy (a crash's) is
+        offered."""
+        self._recovery.forget_session()
+        self._set_recovery_offer(self._recovery.offer_for(path))
 
     def openLastProfile(self, fpath: str) -> None:
         """At start: open the profile used last. If it won't open, say why
@@ -677,6 +761,11 @@ class Backend(QtCore.QObject):
         local_path = to_local_path(fpath)
         if self._load_profile(str(local_path), report=False):
             self._record_profile_use(local_path)
+            # At start: this profile's copy, else an Untitled one (offered
+            # by newProfile before it).
+            offer = self._recovery.offer_for(local_path)
+            if offer is not None:
+                self._set_recovery_offer(offer)
         else:
             self.lastProfileFailed.emit(str(local_path), self._load_problem)
         self.profileChanged.emit()

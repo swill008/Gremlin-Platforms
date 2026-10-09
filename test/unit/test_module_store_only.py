@@ -58,6 +58,9 @@ _ALLOWED = {
     # The Device Library's own list and saved-setup packs (10), not module
     # files: module files it puts back go through the store (store.replace).
     ("gremlin/device_library.py", "writes with module_file directly"),
+    # Profile recovery copies (04 S94) live in the data folder's recovery
+    # folder, not the modules folder; they are not module files.
+    ("gremlin/profile_recovery.py", "builds a path in the modules folder from a name"),
     # Saved profiles that aren't open, changed by Copy / Swap (10 S33).
     ("gremlin/library_profiles.py", "writes with module_file directly"),
 }

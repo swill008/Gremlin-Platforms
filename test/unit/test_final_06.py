@@ -257,6 +257,9 @@ def _backend_stub(order: list[str], running: bool = True) -> Any:  # noqa: ANN40
         newProfile=lambda: order.append("new"),
         profileChanged=mock.MagicMock(),
         windowTitleChanged=mock.MagicMock(),
+        # The recovery copy (04 S94): New and Open drop / offer copies.
+        _recovery=mock.MagicMock(),
+        _set_recovery_offer=lambda offer: None,
     )
     return stub
 
