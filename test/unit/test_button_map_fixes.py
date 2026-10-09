@@ -63,7 +63,9 @@ def test_hide_selected_is_one_step(results: dict) -> None:
 
 def test_nudges_in_a_row_are_one_step(results: dict) -> None:
     assert results["nudge-steps"] == 1
-    # Undo right after more nudges takes back exactly those.
+    # Undo right after more nudges (their run still waiting) takes back
+    # exactly those.
+    assert results["nudge-run-waiting"] is True
     assert results["undo-after-nudges"] == 0.05
 
 

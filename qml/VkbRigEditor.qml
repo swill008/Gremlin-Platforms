@@ -279,6 +279,9 @@ Item {
     property string unboundText: "Name"
     property var actionLabels: ({})
     property bool _restoring: false
+    // The state after the latest edit of a run still waiting for its pause
+    // (nudges, live edits): that run's undo step (S55).
+    property string _runSnap: ""
     readonly property bool canUndo: histAt > 0
     readonly property bool canRedo: histAt >= 0 && hist && histAt < hist.length - 1
 
@@ -883,6 +886,7 @@ Item {
     function replaceHistTop() {
         if (_restoring || !interactive)
             return
+        flushPendingStep()
         var cur = hist || []
         if (histAt < 0 || histAt >= cur.length) {
             seedHist()
@@ -910,7 +914,13 @@ Item {
     function pushHist() {
         if (_restoring || !interactive)
             return
-        var s = snapJson()
+        // A run still waiting for its pause is its own step, before this
+        // command's: Undo then takes back the command alone (S55).
+        flushPendingStep()
+        _pushSnap(snapJson())
+    }
+
+    function _pushSnap(s) {
         var cur = hist || []
         if (histAt >= 0 && histAt < cur.length && cur[histAt] === s)
             return
@@ -972,22 +982,34 @@ Item {
     readonly property bool stepWaiting: _photoHist.running
 
     function notePhotoChange() {
-        _photoHist.restart()
+        noteLiveEdit()
     }
 
     // A run of live edits (the color picker) makes one undo step when it
-    // pauses, like the photo controls.
+    // pauses, like the photo controls. Its step is the state after its
+    // latest edit, kept now: a command may change the map before the run's
+    // step goes in.
     function noteLiveEdit() {
+        if (_restoring || !interactive)
+            return
+        _runSnap = snapJson()
         _photoHist.restart()
     }
 
     // A step still waiting for a pause (nudges, live edits) goes into the
     // history first, so Undo takes back exactly it.
     function flushPendingStep() {
-        if (_photoHist.running) {
-            _photoHist.stop()
-            pushHist()
-        }
+        if (!_photoHist.running)
+            return
+        _photoHist.stop()
+        _landRun()
+    }
+
+    function _landRun() {
+        var s = _runSnap
+        _runSnap = ""
+        if (!_restoring && interactive && s)
+            _pushSnap(s)
     }
 
     // The map takes the keys again (arrow nudges) after a click elsewhere,
@@ -1631,7 +1653,8 @@ Item {
         id: _photoHist
         interval: 400
         repeat: false
-        onTriggered: _ed.pushHist()
+        // The pause: the run's step goes in.
+        onTriggered: _ed._landRun()
     }
 
     Timer {

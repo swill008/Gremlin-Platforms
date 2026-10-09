@@ -155,6 +155,10 @@ function addCalloutFor(chipId) {
     if (x + w > s.x + s.w)
         x = b.x - uiPx(60) - w
     var y = b.y - uiPx(60)
+    // One undo step for the box and its pointer (S55); a waiting run of
+    // nudges keeps its own step before it.
+    flushPendingStep()
+    var at = histAt
     addDrawFree("text", x, y, x + w, y + h)
     var n = nodeAt(selectedId)
     if (isText(n)) {
@@ -162,5 +166,6 @@ function addCalloutFor(chipId) {
         n.text = isGroup(chip) ? "Callout" : (chipText(chip, null) || "Callout")
         n.tail = { to: chip.id }
         bump()
+        squashHistSince(at)
     }
 }

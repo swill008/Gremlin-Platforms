@@ -87,15 +87,21 @@ def main() -> None:
     s.set_prop("selectedId", rect)
     start = s.node(rect)["fx"]
     before = s.state()["histAt"]
+    # Runs stay open until end_run(): however slow the PC, the nudges are
+    # one run and the Undo below comes within its pause.
+    s.hold_runs()
     for _ in range(5):
         s.call("nudge", 0.01, 0)
     # The run's step goes into the history when the nudges pause.
-    _until(lambda: s.state()["histAt"] > before)
+    s.end_run()
     out["nudge-steps"] = s.state()["histAt"] - before
     for _ in range(3):
         s.call("nudge", 0.01, 0)
+    out["nudge-run-waiting"] = s.call_prop("stepWaiting")
     s.call("undo")  # within the pause
     out["undo-after-nudges"] = round(s.node(rect)["fx"] - start, 3)
+    # The normal pause again for the rest.
+    s.set_prop("stepPauseMs", 400)
 
     # BM10: Layers > Delete on a group that is open for editing removes
     # the whole group.

@@ -190,13 +190,17 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     canvas keeps placing it over the chip (chipScreenRect, rotation, font size). Text boxes and
     table cells too (user to decide). Also the Layers panel rename (kept on its own box; its empty
     name resets to the default, like chips). Add a "click on another control saves once" check.
-46. test_rig_editor_golden flakes on CI only (histAt one short: callout, photo_look; runs
+46. DONE 2026-10-08 (RG flake fix 4c9ee389; UD one undo step per command, S55): test_rig_editor_golden flakes on CI only (histAt one short: callout, photo_look; runs
     37861168239, 37863448848). Fixed 2026-10-08 (RG): the harness ends undo runs on the
     condition (stepPauseMs/stepWaiting), no fixed waits. Next (user go 2026-10-08, S55 gaps):
     (a) a waiting nudge/photo/colour run merges into the next command's undo step if it
     comes within 400 ms: push the run's own step first (session_r, callout goldens change);
     (b) Add callout makes two undo steps (rig_callout.js addCalloutFor: addDrawFree + bump);
     (c) button_map_fixes_smoke.py nudge test depends on 5 nudges within 400 ms.
+47. Test race (found 2026-10-08, full run seed 124841; passed on rerun): test_stall_detection.py's
+    inner pytest runs failed at collection with FileNotFoundError on a %TEMP%\gremlin-pack-*
+    folder another test removed meanwhile; test_final_01.py::test_s44 failed in the same run
+    (cause not logged). Make the inner runs collect only their own folder; find s44's cause.
 
 ## On hold / parked (user's choice)
 
