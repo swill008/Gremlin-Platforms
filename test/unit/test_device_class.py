@@ -4,9 +4,10 @@
 
 """Every device is external, an internal input or an internal output, decided
 in one place (03 S90b, D-03-DEVICE-CLASSES), and what it can do comes from
-one table there. Behaviour is unchanged: each CAN answer is checked against a
-copy of the rule the program used before the table (the "today" oracles
-below), over every kind of device."""
+one table there. Each CAN answer is checked against a copy of the rule the
+program used before the table (the "today" oracles below), over every kind of
+device; copy, swap, calibrate and a Device Library device row are for
+external devices only (S90b, user 2026-10-09)."""
 
 from __future__ import annotations
 
@@ -201,8 +202,10 @@ def test_by_id_rules_unchanged(guid: object, name: str) -> None:
     # Copy / Library built-in rows / Swap / Run forwarding went by id only.
     if not guid:
         return
-    assert dc.can("copy", guid) is not _today_is_built_in_guid(guid)
+    assert dc.can("copy", guid) is not dc.is_internal(guid)
     assert dc.can("library_builtin", guid) is _today_is_built_in_guid(guid)
+    assert dc.can("swap", guid) is not dc.is_internal(guid)
+    # Swap by id refuses what it refused before (callers pass the id only).
     assert dc.can("swap", guid) is not _today_swap_refused(guid)
     assert dc.can("no_claim_needed", guid) is _today_forwarded(guid)
 
@@ -214,7 +217,19 @@ def test_calibration_skip_unchanged(slug: str) -> None:
     if registry.is_output_name(slug):
         return
     assert dc.can("calibrate", name=slug, module=None) is not (
-        _today_calibration_skips(slug))
+        dc.is_internal(name=slug))
+    # calibration._source_modules' test: Keyboard / OSC files still skipped.
+    skipped = dc.is_internal_input(name=slug) and not dc.can("calibrate", name=slug)
+    if slug != "logical_device":
+        assert skipped is _today_calibration_skips(slug)
+
+
+@pytest.mark.parametrize("slug", ["xbox_360_controller", "xbox", "vjoy_1"])
+def test_calibration_keeps_pad_with_output_slug(slug: str) -> None:
+    # A real pad whose file slug reads as an output name stays calibratable:
+    # calibration skips only internal-input slugs.
+    assert not (
+        dc.is_internal_input(name=slug) and not dc.can("calibrate", name=slug))
 
 
 @pytest.mark.parametrize("module", MODULES, ids=[f"{m.slug}|{m.name}" for m in MODULES])
@@ -227,8 +242,36 @@ def test_library_device_rows_unchanged(module: registry.Module) -> None:
     # A Device Library device row: an input module file that isn't built in.
     if module.is_output:
         return
-    assert dc.can("library_device", module=module) is not (
-        _today_is_built_in_input(module))
+    assert dc.can("library_device", module=module) is not dc.is_internal(
+        module=module)
+
+
+INTERNAL_DEVICES: list[tuple[object, str]] = [
+    (ids.KEYBOARD, "Keyboard"),
+    (None, "Keyboard"),
+    (ids.OSC, "OSC"),
+    (None, "OSC"),
+    (ids.LOGICAL_DEVICE, "Logical Device"),
+    (None, "Logical Device"),
+    (VJOY_ID, "vJoy 1"),
+    (None, "vJoy 3"),
+    (ids.XBOX, "Xbox 360 Controller"),
+    (None, "Xbox 360 Controller"),
+]
+
+
+@pytest.mark.parametrize(("guid", "name"), INTERNAL_DEVICES, ids=_ids(INTERNAL_DEVICES))
+@pytest.mark.parametrize("action", ["copy", "swap", "calibrate", "library_device"])
+def test_internal_devices_refused(action: str, guid: object, name: str) -> None:
+    # Copy, swap, calibrate and a Library device row: external only (S90b).
+    assert not dc.can(action, guid, name)
+
+
+@pytest.mark.parametrize("action", ["copy", "swap", "calibrate", "library_device"])
+def test_external_devices_allowed(action: str) -> None:
+    assert dc.can(action, STICK, "VKBSim NXT  SEM THQ FSM.GA")
+    assert dc.can(action, STICK_KB, "Keyboard")
+    assert dc.can(action, None, "Stick B")
 
 
 @pytest.mark.parametrize(("guid", "name"), DEVICES, ids=_ids(DEVICES))
@@ -242,3 +285,39 @@ def test_delete_device_keeps_output_files(guid: object, name: str) -> None:
 @pytest.mark.parametrize(("guid", "name"), DEVICES, ids=_ids(DEVICES))
 def test_button_map_any_device(guid: object, name: str) -> None:
     assert dc.can("button_map", guid, name)
+
+
+# --- a live vJoy device is known by its id ----------------------------------
+
+def _live_devices(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from gremlin.modules import store
+
+    monkeypatch.setattr(store, "live_devices", lambda: [
+        SimpleNamespace(name="vJoy Device", device_guid=VJOY_ID, is_virtual=True),
+        SimpleNamespace(name="Stick A", device_guid=STICK, is_virtual=False),
+    ])
+
+
+def test_live_vjoy_id_is_internal_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    _live_devices(monkeypatch)
+    for guid in (VJOY_ID, VJOY_ID.lower().strip("{}")):
+        assert dc.device_kind(guid) == "vjoy"
+        assert dc.device_class(guid) is DeviceClass.INTERNAL_OUTPUT
+        for action in ("copy", "swap", "calibrate", "library_device"):
+            assert not dc.can(action, guid)
+    # An ordinary stick's id is still external.
+    assert dc.device_class(STICK) is DeviceClass.EXTERNAL
+    assert dc.can("swap", STICK)
+    assert dc.device_class(UNPLUGGED) is DeviceClass.EXTERNAL
+
+
+def test_no_device_list_means_not_vjoy(monkeypatch: pytest.MonkeyPatch) -> None:
+    from gremlin.modules import store
+
+    def broken() -> list:
+        raise RuntimeError("no devices yet")
+
+    monkeypatch.setattr(store, "live_devices", broken)
+    assert dc.device_class(VJOY_ID) is DeviceClass.EXTERNAL

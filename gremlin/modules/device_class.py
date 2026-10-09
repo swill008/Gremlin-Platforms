@@ -67,6 +67,21 @@ def _output_kind(name: str) -> str:
     return "xbox" if is_gremlin_xbox_name(name) else VJOY
 
 
+def _is_vjoy_id(key: str) -> bool:
+    """Whether this id is a live vJoy device (the driver's devices are the
+    virtual ones). vJoy has no fixed id; no device list means not vJoy."""
+    try:
+        from gremlin.modules import store
+
+        return any(
+            getattr(dev, "is_virtual", False)
+            and ids.guid_key(getattr(dev, "device_guid", "")) == key
+            for dev in store.live_devices()
+        )
+    except Exception:  # noqa: BLE001 - no device list yet
+        return False
+
+
 def _input_kind(names: list[str], module: Module | None) -> str:
     """The internal input with one of these fixed names. A module file's
     name and slug also count in file-name form ("logical_device")."""
@@ -91,7 +106,8 @@ def device_kind(
 
     A built-in id decides; a vJoy / Xbox output name is that output whatever
     its id; any other id is external (a stick named "Keyboard" with its own
-    id is external). With no id, Keyboard / OSC / Logical Device are known by
+    id is external), except a live vJoy device's id (the driver's, found in
+    the live device list). With no id, Keyboard / OSC / Logical Device are known by
     their fixed names (spaces collapsed, case ignored)."""
     if module is not None:
         guid = guid or module.bound_guid
@@ -101,6 +117,8 @@ def device_kind(
     key = ids.guid_key(guid)
     if key in _KIND_BY_KEY:
         return _KIND_BY_KEY[key]
+    if key and _is_vjoy_id(key):
+        return VJOY
     if not key:
         kind = _input_kind(names, module)
         if kind:
@@ -166,18 +184,19 @@ _EXT = DeviceClass.EXTERNAL
 _IN = DeviceClass.INTERNAL_INPUT
 _OUT = DeviceClass.INTERNAL_OUTPUT
 
-# What each device can do, as the program behaves today: a class, or one
-# built-in device by its kind where today's rule is narrower than its class.
+# What each device can do: a class, or one built-in device by its kind where
+# the rule is narrower than its class.
 CAN: dict[str, frozenset] = {
     # Delete Device removes its module file; vJoy / Xbox keep theirs.
     "delete_device": frozenset({_EXT, _IN}),
     # A device row in the Device Library (input module files only).
-    "library_device": frozenset({_EXT, "logical_device"}),
+    "library_device": frozenset({_EXT}),
     # The Library's Built-in inputs section (10 S6).
     "library_builtin": frozenset({"keyboard", "osc"}),
-    "copy": frozenset({_EXT, "logical_device", "xbox", VJOY}),
-    "swap": frozenset({_EXT, VJOY}),
-    "calibrate": frozenset({_EXT, "logical_device"}),
+    # Copy, swap and calibrate are for external devices only (S90b).
+    "copy": frozenset({_EXT}),
+    "swap": frozenset({_EXT}),
+    "calibrate": frozenset({_EXT}),
     "always_present": frozenset({_IN, _OUT}),
     # Inputs that run without an input-module claim.
     "no_claim_needed": frozenset({"osc", "logical_device"}),

@@ -109,19 +109,24 @@ def _autosave(
 
 
 def _connected(guid: str) -> bool:
-    """A stick plugged in now: its id in the live device list (03 S90a),
-    never a vJoy device or a built-in input."""
-    from gremlin.modules import hardware
+    """A stick Copy can go to, plugged in now: an external device by its id
+    (03 S90b; never vJoy, the Xbox pad or a built-in input) whose id is in
+    the live device list (03 S90a)."""
+    from gremlin.modules import device_class, hardware, ids
 
-    want = store.guid_text(guid).strip("{}").lower()
-    if not want or library.is_built_in_guid(guid):
-        return False
-    for dev in store.live_devices():
-        if getattr(dev, "is_virtual", False) and (
-            store.guid_text(getattr(dev, "device_guid", "")).strip("{}").lower() == want
-        ):
-            return False
-    return hardware.plugged_in(guid)
+    return (
+        bool(ids.guid_key(guid))
+        and device_class.can("copy", guid)
+        and hardware.plugged_in(guid)
+    )
+
+
+def _copyable(guid: str) -> bool:
+    """Copy and Change vJoy Output are for external devices only (03 S90b);
+    a device with no id is left to the "no device id" refusal."""
+    from gremlin.modules import device_class, ids
+
+    return not ids.guid_key(guid) or device_class.can("copy", guid)
 
 
 def _uid(guid: str) -> uuid.UUID | None:
@@ -805,7 +810,7 @@ def plan_output(
     """What Change vJoy Output would do (S30-S31): a row per vJoy the stick
     sends to ("changes" or "stays"), the other sticks on the target vJoys,
     and warnings."""
-    if library.is_built_in_guid(guid):
+    if not _copyable(guid):
         return _fail(library.built_in_refusal(device_name, "Change vJoy Output"))
     uid = _uid(guid)
     if uid is None:
@@ -921,7 +926,7 @@ def change_output(
     """Changes which vJoy the stick's Map to vJoy actions send to (S30-S32),
     and with swap_other the other sticks on the target vJoys the other way.
     Each stick that changes is autosaved first."""
-    if library.is_built_in_guid(guid):
+    if not _copyable(guid):
         return _fail(library.built_in_refusal(device_name, "Change vJoy Output"))
     uid = _uid(guid)
     if uid is None:

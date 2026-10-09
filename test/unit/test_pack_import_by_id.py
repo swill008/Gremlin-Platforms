@@ -32,8 +32,12 @@ folder = test_stage1_modules.folder
 
 def _twins() -> list[SimpleNamespace]:
     return [
+        # A real device summary's fields: a Home model still alive from an
+        # earlier test reads them when the device list changes (seen on CI).
         SimpleNamespace(
-            name=TWIN, device_guid=SimpleNamespace(uuid=uid), button_count=8
+            name=TWIN, device_guid=SimpleNamespace(uuid=uid), button_count=8,
+            axis_count=0, hat_count=0, vendor_id=0x1234, product_id=0x5678,
+            is_virtual=False,
         )
         for uid in (FIRST, SECOND)
     ]

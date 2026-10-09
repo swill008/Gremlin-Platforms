@@ -32,12 +32,13 @@ _APPEARANCE_KEYS = ("view", "catalog")
 
 def _refused_word(ident: uuid.UUID) -> str:
     """What the refusal calls a device that isn't a stick (S26, S29): "the
-    Keyboard", "the Logical Device", "OSC", "the Xbox controller". By id
-    only (03 S90b)."""
-    if device_class.is_internal_output(ident):
+    Keyboard", "the Logical Device", "OSC", "the Xbox controller", "vJoy".
+    By id only (03 S90b)."""
+    kind = device_class.device_kind(ident)
+    if kind == "xbox":
         return "the Xbox controller"
-    name = device_class.display_name(device_class.device_kind(ident))
-    return name if name.isupper() else f"the {name}"
+    name = device_class.display_name(kind)
+    return name if kind == device_class.VJOY or name.isupper() else f"the {name}"
 
 
 def _result(ok: bool = True, error: str = "", **extra: object) -> dict:
