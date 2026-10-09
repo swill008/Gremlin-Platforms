@@ -42,6 +42,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import time
 from collections.abc import Callable
@@ -116,6 +117,9 @@ def guid_filter(device_name: str, guid: str) -> str:
     return str(guid)
 
 
+# Not a device class (03 S90b): a slug-PREFIX rule for which module files
+# may be looked up by name only without a note ("keyboard_stick" and
+# "xbox_wireless_controller" count too).
 _NAME_ONLY_OK = ("vjoy", "keyboard", "osc", "logical_device", "xbox")
 _told_name_only: set[str] = set()
 
@@ -914,24 +918,68 @@ def direction_for(device_name: str, guid: str = "") -> str:
     return "source"
 
 
+_TWIN_NUMBER = re.compile(r" \((\d+)\)$")
+
+
 def _collapsed(value: str) -> str:
     return " ".join(str(value or "").split()).lower()
 
 
+def _twin_names() -> dict[str, str]:
+    """{id key: twin name} kept for second identical sticks (02 S11-S16)."""
+    try:
+        from gremlin import device_initialization
+
+        stored = device_initialization.stored_twins()
+    except Exception:  # noqa: BLE001 - no settings yet
+        return {}
+    return {stored_guid_key(key): str(name) for key, name in stored.items()}
+
+
+def _home_label(name: str, guid: str, twins: dict[str, str]) -> str:
+    """The name Home's card shows for this device: the user's alias, else
+    its twin name ("<name> (2)", only while its base name still matches,
+    02 S16), else name."""
+    shown = name
+    twin = twins.get(stored_guid_key(guid), "")
+    if twin and _collapsed(_TWIN_NUMBER.sub("", twin)) == _collapsed(name):
+        shown = twin
+    try:
+        from gremlin import device_aliases
+
+        return device_aliases.display_name(guid, shown)
+    except Exception:  # noqa: BLE001 - no settings yet
+        return shown
+
+
 def known_devices() -> list[dict]:
     """Connected devices, devices the open profile has seen, and saved module
-    files, by name: [{name, guid, connected, hasFile, fileName}]."""
+    files: one row per device (08 S106a), by its id when it has one (vJoy and
+    Xbox outputs share one file: by name), else by name (files only):
+    [{name, guid, connected, hasFile, fileName, label}]; label is the name
+    Home shows (alias, twin name "<name> (2)"), else name."""
     rows: dict[str, dict] = {}
+
+    def by_name(key: str) -> list[dict]:
+        return [row for row in rows.values() if row["name"].lower() == key]
 
     def touch(name: str, guid: str = "", connected: bool = False) -> None:
         label = " ".join(str(name or "").split())
         key = label.lower()
         if not key:
             return
+        id_key = "" if registry.is_output_name(label) else stored_guid_key(guid)
         path = path_for(label, guid)
-        row = rows.get(key)
+        row = rows.get("id:" + id_key) if id_key else None
+        if row is None and not id_key:
+            same = by_name(key)
+            # A name with no id (a file only) is the device of that name;
+            # with several of that name (twins) it is none of them.
+            if len(same) > 1:
+                return
+            row = same[0] if same else None
         if row is None:
-            rows[key] = {
+            rows["id:" + id_key if id_key else "name:" + key] = {
                 "name": label,
                 "guid": guid,
                 "connected": bool(connected),
@@ -965,7 +1013,12 @@ def known_devices() -> list[dict]:
         if not doc or doc.get("kind") != "control.hardware":
             continue
         touch(str(doc.get("device") or "").strip() or path.stem, "", False)
-    return sorted(rows.values(), key=lambda row: row["name"].lower())
+    twins = _twin_names()
+    for row in rows.values():
+        row["label"] = (
+            _home_label(row["name"], row["guid"], twins) if row["guid"] else row["name"]
+        )
+    return sorted(rows.values(), key=lambda row: (row["label"].lower(), row["guid"]))
 
 
 def match_known_device(name: str, guid: str = "") -> dict | None:

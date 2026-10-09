@@ -6,13 +6,17 @@
 
 A pack is made from the open profile, then imported back over a changed
 setup: the warning, Replace, Undo Import, the export choices, and the list
-kept in its own area. Prints RESULT {json}."""
+kept in its own area. With GREMLIN_PACK_PART=twins: two identical sticks,
+one row each, Export of the second sends its id, and Import onto the
+"(2)" row sends that id and changes only its module file (08 S106a). Prints
+RESULT {json}."""
 
 from __future__ import annotations
 
 import json
 import os
 import pathlib
+import re
 import sys
 import uuid
 from collections.abc import Iterator
@@ -23,7 +27,14 @@ import importlib.util
 spec = importlib.util.spec_from_file_location("fake_hardware", "test/fake_hardware.py")
 fake_hardware = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fake_hardware)
-fake_hardware.install()
+fake = fake_hardware.install()
+TWINS = os.environ.get("GREMLIN_PACK_PART") == "twins"
+if TWINS:
+    # A second, identical stick: same name, its own id.
+    twin = fake_hardware.raw_device(is_virtual=False)
+    twin.device_guid.Data1 += 5
+    twin.joystick_id = 2
+    fake.devices.append(twin)
 
 import gremlin.ui.update_model as um  # noqa: E402
 
@@ -162,6 +173,158 @@ def pv(code: str) -> object:
     assert not expr.hasError(), expr.error().toString()
     return value
 
+
+def _key(guid: object) -> str:
+    return str(guid or "").strip("{}").lower()
+
+
+def import_on_second(url: str, sticks: list, second: int) -> None:
+    """Import the pack with "Put this pack on" set to the "(2)" row (picked
+    with the keyboard): the selection carries that row's id, and only the
+    second stick's module file gets the pack (08 S106a)."""
+    folder = util.modules_dir()
+    files = [folder / "pjoy_pro.json", folder / "pjoy_pro_2.json"]
+    # Different checked controls on each: the pack's are added to the target.
+    for path, button in zip(files, (8, 9)):
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc["claim"]["buttons"] = [button]
+        module_file.write_json(path, doc)
+    first_before = files[0].read_text(encoding="utf-8")
+    pv("_pages.currentIndex = 1")
+    pv(f'zipUrl = "{url}"')
+    pv("loadPack(JSON.parse(_hw.peekPackZip(zipUrl)))")
+    # As Choose Zip... does: the suggested name picks its first row.
+    pv('_saveAs.text = "pJoy Pro"; importGuid = ""; '
+       '_importDevice.currentIndex = importRowOf("pJoy Pro")')
+    QtTest.QTest.qWait(200)
+    combo = child(pack_win, "packImportDevice")
+    combo.forceActiveFocus()
+    for _ in range(int(pv("_deviceModel.count"))):
+        at = int(pv("_importDevice.currentIndex"))
+        if at == second:
+            break
+        key = QtCore.Qt.Key.Key_Down if at < second else QtCore.Qt.Key.Key_Up
+        QtTest.QTest.keyClick(pack_win, key)
+        QtTest.QTest.qWait(50)
+    out["twin-import-shown"] = str(pv("_importDevice.displayText"))
+    pv('for (var k in checks) checks[k] = false; checks["in.checks"] = true; '
+       "tickRev = tickRev + 1")
+    out["twin-selection"] = json.loads(pv("selectionJson()"))
+    pv("askImport()")
+    QtTest.QTest.qWait(300)
+    replace = popup_item(pack_win, "packReplace")
+    if replace is not None and replace.isVisible():
+        QtTest.QTest.mouseClick(
+            pack_win,
+            QtCore.Qt.MouseButton.LeftButton,
+            QtCore.Qt.KeyboardModifier.NoModifier,
+            replace.mapToScene(
+                QtCore.QPointF(replace.width() / 2, replace.height() / 2)
+            ).toPoint(),
+        )
+        QtTest.QTest.qWait(400)
+    out["twin-import-status"] = str(pv("status"))
+    out["twin-first-unchanged"] = files[0].read_text(encoding="utf-8") == first_before
+    second_doc = json.loads(files[1].read_text(encoding="utf-8"))
+    out["twin-second-buttons"] = sorted(second_doc.get("claim", {}).get("buttons", []))
+
+
+def run_twins() -> None:
+    """Two pJoy Pro sticks, each with its own module file: two rows named as
+    on Home, and Export of the second sends (and packs) its id."""
+    import zipfile
+
+    # The second one is named "pJoy Pro (2)" by the program (twin naming).
+    sticks = [
+        d
+        for d in device_initialization.physical_devices()
+        if d.name.startswith("pJoy Pro")
+    ]
+    out["twin-names"] = [d.name for d in sticks]
+    # Both by the name Windows gives them: only the id tells them apart, and
+    # the "(2)" is the row's label (as on Home), not its name.
+    sticks[-1].name = sticks[0].name
+    ids = [str(d.device_guid.uuid) for d in sticks]
+    out["twin-ids"] = ids
+    for i, guid in enumerate(ids):
+        slug = "pjoy_pro" if i == 0 else "pjoy_pro_2"
+        module_file.write_json(
+            util.modules_dir() / f"{slug}.json",
+            {
+                "kind": "control.hardware",
+                "device": sticks[i].name,
+                "boundGuidLocal": "{" + guid.upper() + "}",
+                "claim": {"buttons": [1], "axes": [], "hats": [], "keys": []},
+                "nodes": [],
+            },
+        )
+    # Only the second stick has wires in "Twin": its preview lists that mode,
+    # the first one's doesn't.
+    twin_uid = sticks[-1].device_guid.uuid
+    profile.device_database.devices[twin_uid] = DeviceInfo(twin_uid, sticks[-1].name)
+    profile.modes.add_mode("Twin")
+    profile.modes.set_parent("Twin", "Default")
+    add_map(profile, twin_uid, 4, "Twin", 1, 4)
+    pv("reloadDevices()")
+    QtTest.QTest.qWait(200)
+    rows = json.loads(
+        pv(
+            "(function(){var r=[];for(var i=0;i<_deviceModel.count;++i){"
+            "var d=_deviceModel.get(i);r.push({name:d.name,label:d.label,"
+            "guid:String(d.guid||'')})}return JSON.stringify(r)})()"
+        )
+    )
+    out["all-rows"] = rows
+    out["twin-rows"] = [r for r in rows if r["name"].startswith("pJoy Pro")]
+    shown = []
+    for i in range(int(pv("_exportDevice.count"))):
+        shown.append(str(pv(f"_exportDevice.textAt({i})")))
+    out["twin-shown"] = shown
+    # The row named "(2)" as on Home; else (no such row) the second twin's.
+    second = next(
+        (
+            i
+            for i, r in enumerate(rows)
+            if r["label"] == "pJoy Pro (2)" and r["guid"]
+        ),
+        next(
+            (
+                i
+                for i, r in enumerate(rows)
+                if _key(r["guid"]) == _key(ids[-1])
+            ),
+            -1,
+        ),
+    )
+    out["twin-second-guid"] = rows[second]["guid"] if second >= 0 else ""
+    out["twin-second-index"] = second
+    if second >= 0:
+        pv(f"_exportDevice.currentIndex = {second}")
+        QtTest.QTest.qWait(200)
+        out["twin-options"] = json.loads(pv("exportOptions()"))
+        out["twin-preview-modes"] = json.loads(pv("JSON.stringify(exportModes)"))
+        # The chosen row is kept when the list is read again.
+        pv("reloadDevices()")
+        out["twin-kept"] = int(pv("_exportDevice.currentIndex")) == second
+        zip_path = os.path.join(util.userprofile_path(), "twin.zip")
+        url = QtCore.QUrl.fromLocalFile(zip_path).toString()
+        got = json.loads(
+            pv(f'_hw.exportPack(exportDeviceName(), "{url}", exportOptions())')
+        )
+        out["twin-export"] = got
+        if got.get("ok"):
+            with zipfile.ZipFile(zip_path) as zf:
+                doc = json.loads(zf.read("map.json"))
+            # The pack's label names the device it was made from.
+            found = re.findall(r'"exportedGuid":\s*"([^"]*)"', json.dumps(doc))
+            out["twin-pack-guid"] = found[0] if found else ""
+            import_on_second(url, sticks, second)
+    print("RESULT " + json.dumps(out), flush=True)
+    os._exit(0)
+
+
+if TWINS:
+    run_twins()
 
 # --- Export: the device's modes, ticked; options carry them and the notes ----
 pv(f'_exportDevice.currentIndex = _exportDevice.find("{name}")')

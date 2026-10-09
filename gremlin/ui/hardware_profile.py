@@ -554,17 +554,26 @@ def _autosave(name: str, guid: str, trigger: str, reason: str,
     return error
 
 
-def _autosave_before_pack(zip_path: Path, target_name: str) -> str:
+def _autosave_before_pack(
+    zip_path: Path, target_name: str, target_guid: str = ""
+) -> str:
     """Device Pack import onto a stick: a "before Device Pack <pack>"
     autosave first (10 S16-S17), named after the pack's file. Why it could
-    not be kept, or "". An output device has none (S16: of a stick)."""
+    not be kept, or "". An output device has none (S16: of a stick).
+    target_guid: the chosen row's id (twins share a name, 08 S106a)."""
     from gremlin.ui import device_pack
 
     name = " ".join(str(target_name or "").split())
     if not name:
         return ""  # apply_zip refuses it
-    match = device_pack._match_pack_device(name)
-    guid = str(match["guid"]) if match and match.get("guid") else ""
+    target_guid = str(target_guid or "").strip()
+    if target_guid:
+        match = device_pack._match_pack_device(name, target_guid)
+        name = str(match.get("name") or name) if match else name
+        guid = str(match.get("guid") or target_guid) if match else target_guid
+    else:
+        match = device_pack._match_pack_device(name)
+        guid = str(match["guid"]) if match and match.get("guid") else ""
     if store.direction_for(name, guid) != "source":
         return ""
     return _autosave(
@@ -1387,18 +1396,27 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def peekPackDevice(self, device_name: str) -> str:
+        """Device Pack's export preview by name (no id): see peekPackDeviceById."""
+        return self.peekPackDeviceById(device_name, "")
+
+    @QtCore.Slot(str, str, result=str)
+    def peekPackDeviceById(self, device_name: str, device_guid: str) -> str:
         """Device Pack's export preview: the device, its photo, its modes and
         about how large the pack will be. The size is estimated from the
         files' sizes; the zip is built only by Export (08 S49, GL-196: this
-        runs at every device change, on the UI thread)."""
+        runs at every device change, on the UI thread). With the row's id the
+        chosen twin's own file is previewed (08 S106a)."""
         from gremlin.ui.device_pack import export_refusal, pack_modes, size_text
 
         name = " ".join(str(device_name or "").split())
         if not name:
             return json.dumps({"ok": False, "error": "Choose a device.", "device": device_name})
-        # The file the pack takes (device_pack.assemble's rule).
-        match = _match_pack_device(name)
-        guid = str(match["guid"]) if match and match.get("guid") else ""
+        # The file the pack takes (device_pack.assemble's rule): by the row's
+        # id when it has one, else by name.
+        guid = str(device_guid or "")
+        if not guid:
+            match = _match_pack_device(name)
+            guid = str(match["guid"]) if match and match.get("guid") else ""
         path = store.path_for(name, guid)
         # None yet, or damaged (08 S51, Q19).
         refused = export_refusal(path)
@@ -1468,8 +1486,9 @@ class HardwareProfile(QtCore.QObject):
         return dest
 
     @staticmethod
-    def _pack_options(options: str) -> tuple[list[str] | None, dict]:
-        """options: {"modes": [...] (or absent: all), "author", "note"}."""
+    def _pack_options(options: str) -> tuple[list[str] | None, dict, str]:
+        """options: {"modes": [...] (or absent: all), "author", "note",
+        "guid": the chosen row's id (08 S106a; "" or absent: by name)}."""
         try:
             chosen = json.loads(options) if str(options or "").strip() else {}
         except json.JSONDecodeError:
@@ -1477,20 +1496,25 @@ class HardwareProfile(QtCore.QObject):
         if not isinstance(chosen, dict):
             chosen = {}
         modes = chosen.get("modes")
+        guid = chosen.get("guid")
         return (
             [str(m) for m in modes] if isinstance(modes, list) else None,
             {"author": chosen.get("author"), "note": chosen.get("note")},
+            str(guid).strip() if isinstance(guid, str) else "",
         )
 
     @QtCore.Slot(str, str, str, result=str)
     def exportPack(self, device_name: str, dest_url: str, options: str) -> str:
         """Export on the calling thread (scripts and tests); the window uses
         exportPackAsync. options: {"modes": [...] (or absent: all),
-        "author", "note"}."""
+        "author", "note", "guid"}: with a guid, that device by its id
+        (twins, 08 S106a); without, by name (refused for twins)."""
         from gremlin.ui.device_pack import assemble, save_pack
 
-        modes, notes = self._pack_options(options)
-        built = assemble(device_name, self._resolve_existing, modes, notes)
+        modes, notes, guid = self._pack_options(options)
+        built = assemble(
+            device_name, self._resolve_existing, modes, notes, guid=guid
+        )
         if isinstance(built, str):
             return json.dumps({"ok": False, "error": built})
         data, info = built
@@ -1517,8 +1541,10 @@ class HardwareProfile(QtCore.QObject):
                 "busy": True,
                 "error": "An export is still being written.",
             })
-        modes, notes = self._pack_options(options)
-        plan = plan_pack(device_name, self._resolve_existing, modes, notes)
+        modes, notes, guid = self._pack_options(options)
+        plan = plan_pack(
+            device_name, self._resolve_existing, modes, notes, guid=guid
+        )
         if isinstance(plan, str):
             return json.dumps({"ok": False, "error": plan})
         dest = self._pack_dest(dest_url)
@@ -1588,10 +1614,13 @@ class HardwareProfile(QtCore.QObject):
                         continue
                     items.append(item["id"])
             chosen = {"items": items, "outputs": outputs}
-        failed = _autosave_before_pack(Path(src), target_name)
+        chosen = chosen if isinstance(chosen, dict) else {}
+        # The "Put this pack on" row's id (08 S106a); "" goes by the name.
+        target_guid = str(chosen.get("targetGuid") or "").strip()
+        failed = _autosave_before_pack(Path(src), target_name, target_guid)
         if failed:
             return json.dumps({"ok": False, "error": f"Nothing was imported. {failed}"})
-        result = apply_zip(Path(src), target_name, chosen if isinstance(chosen, dict) else {})
+        result = apply_zip(Path(src), target_name, chosen, target_guid=target_guid)
         return json.dumps(result)
 
     @QtCore.Slot(str, str, str, result=str)
@@ -1608,7 +1637,10 @@ class HardwareProfile(QtCore.QObject):
         if not src or not src.is_file():
             return json.dumps({"ok": False, "error": "File not found."})
         chosen = chosen if isinstance(chosen, dict) else {}
-        return json.dumps(preview_import(Path(src), target_name, chosen))
+        target_guid = str(chosen.get("targetGuid") or "").strip()
+        return json.dumps(
+            preview_import(Path(src), target_name, chosen, target_guid=target_guid)
+        )
 
     @QtCore.Slot(result=str)
     @QtCore.Slot(bool, result=str)

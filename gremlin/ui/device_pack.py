@@ -706,7 +706,9 @@ def pack_devices() -> list[dict]:
             damaged = bool(store.damage_of(path))
         row["damaged"] = damaged
         row["canExport"] = bool(row.get("hasFile")) and not damaged
-        row["label"] = f"{name} (file damaged)" if damaged else name
+        # The row's own label: Home's name for that id (twins, 08 S106a).
+        base = str(row.get("label") or name)
+        row["label"] = f"{base} (file damaged)" if damaged else base
     return rows
 
 
@@ -1367,6 +1369,15 @@ def _merge_module(
             base["photo"] = json.loads(json.dumps(incoming["photo"]))
     base.pop("pack", None)
     return base, notes
+
+
+def _target_guid(selection: dict | None, target_guid: str = "") -> str:
+    """The chosen "Put this pack on" row's id: the argument, else the
+    selection's "targetGuid" (08 S106a); "" goes by the name."""
+    given = str(target_guid or "").strip()
+    if given or not isinstance(selection, dict):
+        return given
+    return str(selection.get("targetGuid") or "").strip()
 
 
 def _selected(selection: dict | None) -> set[str]:
@@ -2145,9 +2156,14 @@ def _titles(path: Path, chosen: set[str]) -> list[str]:
     return out
 
 
-def preview_import(path: Path, target_name: str, selection: dict | None) -> dict:
-    """What Import would replace, for the warning before it."""
+def preview_import(
+    path: Path, target_name: str, selection: dict | None, *, target_guid: str = ""
+) -> dict:
+    """What Import would replace, for the warning before it. target_guid
+    (or the selection's "targetGuid"): the chosen row's id, which decides
+    the device when twins share a name (08 S106a)."""
     target = " ".join(str(target_name or "").split())
+    target_guid = _target_guid(selection, target_guid)
     loaded = _read_zip(path)
     if isinstance(loaded, str):
         return {"ok": False, "error": loaded}
@@ -2155,7 +2171,13 @@ def preview_import(path: Path, target_name: str, selection: dict | None) -> dict
     if newer:
         return {"ok": False, "error": newer}
     chosen = _selected(selection)
-    match = _match_pack_device(target)
+    if target_guid:
+        match = _match_pack_device(target, target_guid) or {
+            "name": target, "guid": target_guid, "connected": False
+        }
+        target = str(match.get("name") or target)
+    else:
+        match = _match_pack_device(target)
     guid = str(match["guid"]) if match and match.get("guid") else ""
     limits = _device_limits(guid)
     plan = _plan_wires(loaded["wires"], chosen, limits)
@@ -2210,7 +2232,11 @@ def preview_import(path: Path, target_name: str, selection: dict | None) -> dict
             }
             for name in plan["modes"]
         ],
-        "hasModuleFile": _device_path(target).is_file() if target else False,
+        "hasModuleFile": (
+            _device_path(target, guid if target_guid else "").is_file()
+            if target
+            else False
+        ),
         "profileOpen": profile_open,
         "missingLogical": [f"{k.capitalize()} {n}" for k, n in plan["missingLogical"]],
         "leftOut": left_out,
@@ -2239,6 +2265,7 @@ def apply_zip(
     target_guid (twins share a name) decides which device it is."""
     global _last_import
     target = " ".join(str(target_name or "").split())
+    target_guid = _target_guid(selection, target_guid)
     if not target:
         return {"ok": False, "error": "Choose the device this pack is for."}
     loaded = _read_zip(path)

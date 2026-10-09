@@ -78,6 +78,12 @@ def _stored_twins() -> dict[str, str]:
         return {}
 
 
+def stored_twins() -> dict[str, str]:
+    """The twin names kept for identical sticks (02 S16), {id key: name}:
+    for lists that name an unplugged twin as Home does (08 S106a)."""
+    return dict(_stored_twins())
+
+
 def _save_twins(stored: dict[str, str]) -> None:
     """Settings are written on the main thread only: from the hot-plug
     timer thread the write is handed to it."""

@@ -46,6 +46,9 @@ ApplicationWindow {
     property var sections: []
     property var checks: ({})
     property var targets: ({})
+    // The "Put this pack on" row's id when a row was chosen; "" when the
+    // target was typed or suggested by name (08 S106a).
+    property string importGuid: ""
     property int tickRev: 0
     property int openRev: 0
     property var folded: ({})
@@ -94,35 +97,62 @@ ApplicationWindow {
         }
     }
 
+    // A row's key: its Windows id, else its name (twins share a name, 08 S106a).
+    function rowKey(row) {
+        if (!row)
+            return ""
+        return String(row.guid || "").length ? "id:" + row.guid : "name:" + (row.name || "")
+    }
+
     function reloadDevices() {
+        // The chosen device stays chosen, found by its key.
+        var i0 = _exportDevice.currentIndex
+        var kept = (i0 >= 0 && i0 < _deviceModel.count) ? rowKey(_deviceModel.get(i0)) : ""
         var info = _parse(_hw.packDevices())
         var rows = (info && info.devices) ? info.devices : []
         _deviceModel.clear()
         for (var i = 0; i < rows.length; ++i)
             _deviceModel.append(rows[i])
-        if (_exportDevice.count > 0 && _exportDevice.currentIndex < 0) {
+        var pick = -1
+        for (var k = 0; kept.length && k < rows.length; ++k) {
+            if (rowKey(rows[k]) === kept) {
+                pick = k
+                break
+            }
+        }
+        if (pick < 0 && rows.length > 0) {
             // The first device that can be exported: one without a module
             // file, or with a damaged one, has nothing to pack (08 S106).
-            var first = 0
+            pick = 0
             for (var j = 0; j < rows.length; ++j) {
                 if (rows[j].canExport) {
-                    first = j
+                    pick = j
                     break
                 }
             }
-            _exportDevice.currentIndex = first
         }
+        if (_exportDevice.currentIndex !== pick)
+            _exportDevice.currentIndex = pick
         refreshExport()
     }
 
     // The chosen device's name, from the list's row: currentText is the
-    // label ("(file damaged)") and, when the choice is set from code, still
-    // the one before while currentIndexChanged runs.
+    // label ("(2)", "(file damaged)") and, when the choice is set from code,
+    // still the one before while currentIndexChanged runs.
     function exportDeviceName() {
         var i = _exportDevice.currentIndex
         if (i < 0 || i >= _deviceModel.count)
             return ""
         return _deviceModel.get(i).name || ""
+    }
+
+    // The chosen device's Windows id ("" when it has none): Export exports
+    // that device, not the first of its name (08 S106a).
+    function exportDeviceGuid() {
+        var i = _exportDevice.currentIndex
+        if (i < 0 || i >= _deviceModel.count)
+            return ""
+        return String(_deviceModel.get(i).guid || "")
     }
 
     // Export in the background (08 S107): the window stays usable, Export is
@@ -153,7 +183,8 @@ ApplicationWindow {
             say("Choose a device.", false)
             return
         }
-        var info = _parse(_hw.peekPackDevice(name))
+        // By the row's id: a twin's own file, not the first one's (08 S106a).
+        var info = _parse(_hw.peekPackDeviceById(name, exportDeviceGuid()))
         if (!info.ok) {
             say(info.error || "This device has no module file yet.", false)
             return
@@ -179,8 +210,18 @@ ApplicationWindow {
         return JSON.stringify({
             modes: modes,
             author: _author.text,
-            note: _note.text
+            note: _note.text,
+            guid: exportDeviceGuid()
         })
+    }
+
+    // The first row with this device name (the list shows labels).
+    function importRowOf(name) {
+        for (var i = 0; i < _deviceModel.count; ++i) {
+            if ((_deviceModel.get(i).name || "") === name)
+                return i
+        }
+        return -1
     }
 
     function loadPack(info) {
@@ -307,7 +348,7 @@ ApplicationWindow {
                     items.push(rows[i].id)
             }
         }
-        return JSON.stringify({ items: items, outputs: outputs })
+        return JSON.stringify({ items: items, outputs: outputs, targetGuid: importGuid })
     }
 
     function runImport() {
@@ -446,14 +487,8 @@ ApplicationWindow {
             loadPack(info)
             var suggested = info.suggestedName || ""
             _saveAs.text = suggested
-            if (suggested.length) {
-                for (var i = 0; i < _importDevice.count; i++) {
-                    if (_importDevice.textAt(i) === suggested) {
-                        _importDevice.currentIndex = i
-                        break
-                    }
-                }
-            }
+            importGuid = ""
+            _importDevice.currentIndex = suggested.length ? importRowOf(suggested) : -1
         }
     }
 
@@ -805,18 +840,28 @@ ApplicationWindow {
                     // typing a name picks that device (or none, if it is new).
                     ComboBox {
                         id: _importDevice
+                        objectName: "packImportDevice"
                         Layout.fillWidth: true
                         model: _deviceModel
-                        textRole: "name"
+                        // Named as on Home (twins "(2)", 08 S106a); the name
+                        // below is the device's own name.
+                        textRole: "label"
                         displayText: currentIndex < 0 ? "(the name typed below)" : currentText
-                        onActivated: _saveAs.text = currentText
+                        onActivated: (index) => {
+                            var row = _deviceModel.get(index)
+                            _saveAs.text = row.name || ""
+                            _win.importGuid = String(row.guid || "")
+                        }
                     }
                 }
                 TextField {
                     id: _saveAs
                     Layout.fillWidth: true
                     placeholderText: "Device name on this machine (or pick one above)"
-                    onTextEdited: _importDevice.currentIndex = _importDevice.find(text.trim())
+                    onTextEdited: {
+                        _win.importGuid = ""
+                        _importDevice.currentIndex = _win.importRowOf(text.trim())
+                    }
                 }
                 RowLayout {
                     Layout.fillWidth: true
