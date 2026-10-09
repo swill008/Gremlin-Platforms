@@ -87,9 +87,13 @@ def test_s23_the_open_profile_is_offered_ticked(run: dict) -> None:
 
 
 def test_s53_undo_names_the_copy(run: dict) -> None:
-    assert run["fm-copy-twin-go"]["undo"] == (
-        "Undo Copied Autosave: stick deleted to Right stick"
-    )
+    """S53/S53a: Edit says plain "Undo"; the copy's name is its tooltip and
+    the status bar's Last change."""
+    got = run["fm-copy-twin-go"]
+    copied = "Copied Autosave: stick deleted to Right stick"
+    assert got["undo"] == "Undo"
+    assert got["title"] == copied
+    assert got["last"] == "Last change: " + copied
 
 
 def test_s30_only_the_vjoys_that_exist(run: dict) -> None:

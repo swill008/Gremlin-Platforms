@@ -84,15 +84,31 @@ ApplicationWindow {
     // link: this session's Library changes, newest first.
     readonly property string undoText: lib && lib.undoText ? lib.undoText : ""
     readonly property string redoText: lib && lib.redoText ? lib.redoText : ""
+    // D-10-STATUS-LAST: the change's own name, without "Undo "/"Redo ".
+    readonly property string undoTitle: _stepTitle(undoText, "Undo")
+    readonly property string redoTitle: _stepTitle(redoText, "Redo")
+    // The newest step was an Undo: the status bar says what Redo puts back.
+    property bool justUndid: false
+    // S53a: the status bar's last change (nothing before any change).
+    readonly property string lastChangeText: justUndid && redoTitle.length
+        ? "Undone: " + redoTitle
+        : (undoTitle.length ? "Last change: " + undoTitle : "")
+    function _stepTitle(text, word) {
+        return text.indexOf(word + " ") === 0 ? text.slice(word.length + 1)
+            : (text === word ? "" : text)
+    }
     function undo() {
         if (lib && !busy && undoText.length) {
             messageUndo = false
+            justUndid = true
             lib.undo()
         }
     }
     function redo() {
-        if (lib && !busy && redoText.length)
+        if (lib && !busy && redoText.length) {
+            justUndid = false
             lib.redo()
+        }
     }
     function _undoHeader() {
         return [
@@ -578,7 +594,12 @@ ApplicationWindow {
             _rowMenu.close()
     }
     onUndoTextChanged: Qt.callLater(_refreshRowMenu)
-    onRedoTextChanged: Qt.callLater(_refreshRowMenu)
+    onRedoTextChanged: {
+        // A new change clears Redo: the status bar shows it again.
+        if (!redoText.length)
+            justUndid = false
+        Qt.callLater(_refreshRowMenu)
+    }
     onBusyChanged: if (!busy) Qt.callLater(_refreshRowMenu)
     Connections {
         target: _lib.lib
@@ -663,19 +684,28 @@ ApplicationWindow {
             ThemedMenu {
                 id: _editMenu
                 title: "Edit"
+                // D-10-STATUS-LAST: plain Undo / Redo, the change in the tooltip.
                 ThemedMenuItem {
+                    id: _undoItem
                     objectName: "libraryUndoItem"
-                    text: _lib.undoText.length ? _lib.undoText : "Undo"
+                    text: "Undo"
                     hint: "Ctrl+Z"
+                    shown: _lib.undoText.length > 0
                     enabled: !_lib.busy && _lib.undoText.length > 0
                     onTriggered: _lib.undo()
+                    ToolTip.visible: hovered && _lib.undoTitle.length > 0
+                    ToolTip.text: _lib.undoTitle
                 }
                 ThemedMenuItem {
+                    id: _redoItem
                     objectName: "libraryRedoItem"
-                    text: _lib.redoText.length ? _lib.redoText : "Redo"
+                    text: "Redo"
                     hint: "Ctrl+Y"
+                    shown: _lib.redoText.length > 0
                     enabled: !_lib.busy && _lib.redoText.length > 0
                     onTriggered: _lib.redo()
+                    ToolTip.visible: hovered && _lib.redoTitle.length > 0
+                    ToolTip.text: _lib.redoTitle
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem { text: "Rename…"; hint: "F2"; enabled: _lib.hasSel && !_lib.busy && !_lib.several; onTriggered: _lib.startRename() }
@@ -1333,6 +1363,20 @@ ApplicationWindow {
                     text: (_lib.busy ? "Working…     " : "") + (_lib.lib ? _lib.lib.statusText : "")
                     font.pixelSize: Style.dp(12)
                     color: Style.fgSoft
+                }
+                // S53a: the last change, or what was just undone.
+                Label {
+                    id: _lastChange
+                    objectName: "libraryLastChange"
+                    visible: text.length > 0
+                    text: _lib.lastChangeText
+                    Layout.maximumWidth: _lib.width / 3
+                    elide: Text.ElideRight
+                    font.pixelSize: Style.dp(12)
+                    color: Style.fgSoft
+                    HoverHandler { id: _lastChangeHover }
+                    ToolTip.visible: _lastChangeHover.hovered
+                    ToolTip.text: text
                 }
                 Item { Layout.fillWidth: true }
                 Label {

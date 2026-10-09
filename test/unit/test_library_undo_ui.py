@@ -4,12 +4,12 @@
 
 """10 S53-S55, D-10-UNDO-REDO: the real Device Library window, off-screen in
 its own process (library_undo_ui_smoke.py), with the model's Undo/Redo steps
-standing in: Edit shows "Undo <change>" (Ctrl+Z) and "Redo <change>" (Ctrl+Y)
-only when there is one; the keys run them, but not while typing; Undo / Redo
-buttons sit beside the right-click menu's title; after Remove the message
-line ends with an Undo link; the Delete key asks to delete a saved setup or
-remove a device not plugged in, and does nothing on a plugged-in stick, a
-built-in input or while typing."""
+standing in: Edit shows "Undo" (Ctrl+Z) and "Redo" (Ctrl+Y), named for the
+change in their tooltip (S53a), only when there is one; the keys run them,
+but not while typing; Undo / Redo buttons sit beside the right-click menu's
+title; after Remove the message line ends with an Undo link; the Delete key
+asks to delete a saved setup or remove a device not plugged in, and does
+nothing on a plugged-in stick, a built-in input or while typing."""
 
 from __future__ import annotations
 
@@ -22,8 +22,6 @@ import sys
 import pytest
 
 _HERE = pathlib.Path(__file__).parent
-_UNDO = "Undo Remove HID Remapper ACHB"
-_REDO = "Redo Copy to Another Stick"
 
 
 @pytest.fixture(scope="module")
@@ -68,12 +66,13 @@ def test_runs_without_errors_or_warnings(run: dict) -> None:
 
 
 def test_edit_shows_undo_and_redo_only_when_there_is_one(run: dict) -> None:
-    """S53 and 01 S66: named items, hidden when there is nothing to do."""
+    """S53 and 01 S66: plain items (the name is in their tooltip, S53a),
+    hidden when there is nothing to do."""
     assert not any(i.startswith(("Undo", "Redo")) for i in run["edit-none"])
-    assert f"{_UNDO} (Ctrl+Z)" in run["edit-undo"]
+    assert "Undo (Ctrl+Z)" in run["edit-undo"]
     assert not any(i.startswith("Redo") for i in run["edit-undo"])
     both = run["edit-both"]
-    assert both.index(f"{_UNDO} (Ctrl+Z)") + 1 == both.index(f"{_REDO} (Ctrl+Y)")
+    assert both.index("Undo (Ctrl+Z)") + 1 == both.index("Redo (Ctrl+Y)")
 
 
 def test_ctrl_z_and_ctrl_y_run_them_but_not_while_typing(run: dict) -> None:

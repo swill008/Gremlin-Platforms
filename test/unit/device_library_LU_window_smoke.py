@@ -319,7 +319,7 @@ FM_STEPS: list[tuple[str, str, str, str]] = [
         "_copyDlg.accept()",
         "!deviceLibrary.busy && _lib.message.length > 0",
         "JSON.stringify({message: _lib.message, undo: _h.findMenuItem(_editMenu,"
-        " 'libraryUndoItem').text})",
+        " 'libraryUndoItem').text, title: _lib.undoTitle, last: _lib.lastChangeText})",
     ),
     (
         "fm-output-vjoys",

@@ -577,7 +577,7 @@ function deviceLibraryTopics() {
             + "<p>The menus:</p>"
             + "<ul>"
             + "<li><b>File</b>: <b>Import Device Pack…</b>, <b>Export Saved Setup…</b>, <b>Open Library Folder</b>, <b>Close</b>.</li>"
-            + "<li><b>Edit</b>: <b>Undo</b> (Ctrl+Z) and <b>Redo</b> (Ctrl+Y), each named for the change (see Undo and Redo), <b>Rename…</b> (F2), <b>Delete…</b>, <b>Tidy Library…</b>.</li>"
+            + "<li><b>Edit</b>: <b>Undo</b> (Ctrl+Z) and <b>Redo</b> (Ctrl+Y), the change they act on in their tooltip and the status bar (see Undo and Redo), <b>Rename…</b> (F2), <b>Delete…</b>, <b>Tidy Library…</b>.</li>"
             + "<li><b>Device</b>: <b>Save to Device Library…</b>, <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>.</li>"
             + "<li><b>View</b>: <b>Connected</b>, <b>Not Connected</b>, <b>Deleted</b> and <b>Autosaves</b> (the same as the filters), <b>Expand All</b>, <b>Collapse All</b>, <b>Search…</b> (Ctrl+F).</li>"
             + "<li><b>Settings</b>: <b>Device Library Settings…</b>.</li>"
@@ -724,7 +724,8 @@ function deviceLibraryTopics() {
         topic("Undo and Redo", "Undo and Redo",
             "<p>Edit › <b>Undo</b> (Ctrl+Z) puts the last change made in the Device Library back; Edit › <b>Redo</b> (Ctrl+Y) makes it again. They work on every Library change: Copy, Swap, Change vJoy Output, Restore, Save, Remove from Library, Delete, Clear Setup, Rename and the others.</p>"
             + "<ul>"
-            + "<li>Each item names the change, for example \"Undo Remove HID Remapper ACHB\" or \"Redo Copy to Another Stick\". An item shows only when there is something to undo or redo.</li>"
+            + "<li>The items read just <b>Undo</b> and <b>Redo</b>; rest the pointer on one to see the change it acts on, for example \"Remove HID Remapper ACHB\". An item shows only when there is something to undo or redo.</li>"
+            + "<li>The status bar, after the Library size, shows <b>Last change:</b> and the change Undo would take back, or, right after an Undo, <b>Undone:</b> and the change Redo would put back. It shows nothing until you make a change. A long name is cut short with …; rest the pointer on it to read it all.</li>"
             + "<li>Undo again to go further back through this session's Library changes, newest first; Redo goes forward again. A new change clears Redo.</li>"
             + "<li>The same <b>Undo</b> and <b>Redo</b> sit beside the title of every right-click menu.</li>"
             + "<li>After Remove from Library…, Delete… or Clear Setup… the message line ends with an <b>Undo</b> link that does the same.</li>"

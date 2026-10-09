@@ -186,7 +186,66 @@ menus.STEPS = [
         "_bridge.item('libraryMessageUndo').visible",
     ),
 ]
-menus.SHOTS = {"header": "undo_header", "remove-link": "undo_link"}
+# S53a (D-10-STATUS-LAST): Edit's tooltips and the status bar's last change.
+_TIPS = (
+    "JSON.stringify({items: (function() { _editMenu.open();"
+    " var d = _editMenu.describe(); _editMenu.close(); return d })(),"
+    " undo: _undoItem.ToolTip.text, redo: _redoItem.ToolTip.text})"
+)
+_LAST = (
+    "JSON.stringify({text: _lastChange.text, shown: _lastChange.visible,"
+    " cut: _lastChange.truncated, width: _lastChange.width,"
+    " full: _lastChange.implicitWidth, tip: _lastChange.ToolTip.text,"
+    " tipShown: _lastChange.ToolTip.toolTip.visible"
+    " && _lastChange.ToolTip.toolTip.text === _lastChange.text})"
+)
+_Z = "_list.forceActiveFocus(); _bridge.key('ctrl+z'); "
+_Y = "_list.forceActiveFocus(); _bridge.key('ctrl+y'); "
+_LONG = "Copy to Another Stick" + " with a very long name" * 12
+menus.STEPS += [
+    ("edit-tips", f"deviceLibrary.setSteps('{_UNDO}', '{_REDO}')", _IDLE, _TIPS),
+    ("status-none", "deviceLibrary.setSteps('', '')", _IDLE, _LAST),
+    ("status-change", f"deviceLibrary.setSteps('{_UNDO}', '')", _IDLE, _LAST),
+    (
+        "status-undone",
+        _Z + "deviceLibrary.setSteps('Undo Rename Left throttle',"
+        " 'Redo Remove HID Remapper ACHB')",
+        _IDLE,
+        _LAST,
+    ),
+    (
+        "status-undone-older",
+        _Z + "deviceLibrary.setSteps('', 'Redo Rename Left throttle')",
+        _IDLE,
+        _LAST,
+    ),
+    (
+        "status-redone",
+        _Y + "deviceLibrary.setSteps('Undo Rename Left throttle',"
+        " 'Redo Remove HID Remapper ACHB')",
+        _IDLE,
+        _LAST,
+    ),
+    (
+        "status-new-after-undo",
+        _Z + "deviceLibrary.setSteps('', 'Redo Rename Left throttle');"
+        " deviceLibrary.setSteps('Undo Rename Right stick', '')",
+        _IDLE,
+        _LAST,
+    ),
+    (
+        "status-long",
+        f"deviceLibrary.setSteps('Undo {_LONG}', '');"
+        " _bridge.hover('libraryLastChange')",
+        "_lastChange.ToolTip.toolTip.visible",
+        _LAST,
+    ),
+]
+menus.SHOTS = {
+    "header": "undo_header",
+    "remove-link": "undo_link",
+    "status-long": "status_last_long",
+}
 
 if __name__ == "__main__":
     sys.argv = sys.argv[:2]
