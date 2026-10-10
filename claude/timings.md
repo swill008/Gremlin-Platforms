@@ -306,3 +306,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Full run + lint, loop guard batch (lead) | test | 6–7 min + lint (table) | 7 min | 09:20–09:27; 1 failure (test_logical_layout new action on OK), 5 pyright new |
 | 2026-10-10 | LD-PICK fix: picker refresh reported as edit (regression) + 5 pyright | fix | 3–8 min (table) | 3 min | 09:28–09:30 |
 | 2026-10-10 | Full run + lint after LD-PICK fix (lead) | test | 6–7 min + lint (table) | 7 min | 09:31–09:38; all green, 4,543 passed + 75 + 42 |
+| 2026-10-10 | Lead: report/tracker audit (R16 study + matrix banners, DILL2-HANDS-ON, CI-B4CDACC7, progress to-do) | docs | ~5 min (no table row for lead audits) | 6 min | 09:40–09:46 |
