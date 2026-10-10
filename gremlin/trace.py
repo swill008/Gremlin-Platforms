@@ -10,8 +10,9 @@ STEP lines. Lines go to an in-memory ring for the tab and to trace.log.
 Tracing is always off at start and is never saved on; the ticks are saved.
 Off, every tap costs one bool check and no file is opened. Nothing here
 raises into the caller. Axis lines are rate limited like the Input Monitor:
-at most one per AXIS_INTERVAL, the latest value in between kept and written
-when the stick goes still."""
+at most one per axis_interval() (Axis lines: 1 to 10 per second), the latest
+value in between kept and written when the stick goes still (AXIS_INTERVAL
+without a change)."""
 
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ import collections
 import json
 import logging
 import logging.handlers
+import math
 import pathlib
 import threading
 import time
@@ -39,8 +41,15 @@ OUT_OF_STEP = "OUT OF STEP"
 
 MAX_LINES = 5000
 AXIS_INTERVAL = 0.1
+# The Axis lines choices, lines per second per axis (the first is the default).
+AXIS_RATE_CHOICES = (10, 8, 6, 4, 3, 2, 1)
+# What may be typed instead: lines per second, decimals too.
+AXIS_RATE_RANGE = (0.1, 50.0)
 FILE_NAME = "trace.log"
-FILE_MAX_BYTES = 5 * 1024 * 1024
+# The Max size choices for trace.log, in MB (the first is the default).
+MAX_MB_CHOICES = (5, 10, 25, 50, 100, 250)
+# What may be typed instead: whole MB.
+MAX_MB_RANGE = (1, 1000)
 FILE_BACKUPS = 1
 
 KINDS = ("axis", "button", "hat")
@@ -50,6 +59,8 @@ _CFG_GROUP = "trace"
 _CFG_TICKS = "ticks"
 _CFG_OOS = "out-of-step"
 _CFG_HIDHIDE = "hidhide"
+_CFG_MAX_MB = "max-mb"
+_CFG_AXIS_RATE = "axis-rate"
 
 _LOCK = threading.RLock()
 _enabled = False
@@ -96,6 +107,7 @@ def set_enabled(on: bool) -> None:
         if on == _enabled:
             return
         if on:
+            axis_rate()
             _open_file()
             _since = clock.now()
             _enabled = True
@@ -146,22 +158,24 @@ def _ensure_options() -> None:
     from gremlin.types import PropertyType
 
     cfg = config.Configuration()
-    for name, initial, text in (
-        (_CFG_TICKS, "{}", "Trace: ticked controls per device."),
-        (_CFG_OOS, "[]", "Trace: devices with the out-of-step check."),
-        (_CFG_HIDHIDE, "", "Trace: HidHide row ticked (on or empty)."),
+    for name, kind, initial, text, props in (
+        (_CFG_TICKS, PropertyType.String, "{}",
+         "Trace: ticked controls per device.", {}),
+        (_CFG_OOS, PropertyType.String, "[]",
+         "Trace: devices with the out-of-step check.", {}),
+        (_CFG_HIDHIDE, PropertyType.String, "",
+         "Trace: HidHide row ticked (on or empty).", {}),
+        (_CFG_MAX_MB, PropertyType.Int, MAX_MB_CHOICES[0],
+         "Trace: trace.log max size in MB.",
+         {"min": MAX_MB_RANGE[0], "max": MAX_MB_RANGE[1]}),
+        (_CFG_AXIS_RATE, PropertyType.Float, float(AXIS_RATE_CHOICES[0]),
+         "Trace: axis lines per second.",
+         {"min": AXIS_RATE_RANGE[0], "max": AXIS_RATE_RANGE[1]}),
     ):
         # Always registered, a saved value too: purge_unused at start drops
         # what isn't registered (the ticks would not survive a restart).
         cfg.register(
-            _CFG_SECTION,
-            _CFG_GROUP,
-            name,
-            PropertyType.String,
-            initial,
-            text,
-            {},
-            False,
+            _CFG_SECTION, _CFG_GROUP, name, kind, initial, text, props, False
         )
 
 
@@ -318,11 +332,15 @@ def ticked_devices() -> list[uuid.UUID]:
 def _reset_for_tests() -> None:
     """Turns tracing off (hooks run) and forgets the tick cache, lines and
     file (tests only). on_change hooks are kept."""
-    global _ticks, _enabled, _since, _notice, _version, _logger, _handler
+    global _ticks, _enabled, _since, _notice, _version, _logger, _handler, _max_mb
+    global _axis_rate, _axis_interval
     set_enabled(False)
     with _LOCK:
         _cancel_flush()
         _ticks = None
+        _max_mb = None
+        _axis_rate = None
+        _axis_interval = AXIS_INTERVAL
         _oos.clear()
         _enabled = False
         _since = None
@@ -399,7 +417,7 @@ def raw(
         detail = _value_text(kind, value, raw_value)
         with _LOCK:
             if kind == "axis":
-                if now - _axis_last.get(key, 0.0) < AXIS_INTERVAL:
+                if now - _axis_last.get(key, 0.0) < _axis_interval:
                     count = _axis_pending[key][4] + 1 if key in _axis_pending else 1
                     _axis_pending[key] = (control, detail, _stamp(), now, count)
                     _schedule_flush()
@@ -458,7 +476,7 @@ def _flush_pending(still: bool) -> None:
         quiet = still or now - arrived >= AXIS_INTERVAL
         if quiet:
             text = detail + "  (last value; stick still)"
-        elif now - _axis_last.get(key, 0.0) >= AXIS_INTERVAL:
+        elif now - _axis_last.get(key, 0.0) >= _axis_interval:
             text = detail
         else:
             continue
@@ -633,6 +651,137 @@ def file_size() -> int:
         return 0
 
 
+_max_mb: int | None = None
+_axis_rate: float | None = None
+_axis_interval = AXIS_INTERVAL
+
+MAX_MB_TEXT = "Max size is 1 to 1000 MB"
+AXIS_RATE_TEXT = "Axis lines is 0.1 to 50 per second"
+
+
+def _number(text: object) -> float | None:
+    try:
+        value = float(str(text).strip())
+    except (TypeError, ValueError):
+        return None
+    return value if math.isfinite(value) else None
+
+
+def _saved(name: str) -> object:
+    try:
+        from gremlin import config
+
+        _ensure_options()
+        return config.Configuration().value(_CFG_SECTION, _CFG_GROUP, name)
+    except Exception:
+        return None
+
+
+def _save_value(name: str, value: object) -> None:
+    try:
+        from gremlin import config
+
+        _ensure_options()
+        config.Configuration().set(_CFG_SECTION, _CFG_GROUP, name, value)
+    except Exception:
+        logging.getLogger("system").exception("Could not save the trace %s", name)
+
+
+def axis_rate() -> float:
+    """Axis lines per second per axis (AXIS_RATE_RANGE), read once."""
+    global _axis_rate, _axis_interval
+    if _axis_rate is None:
+        value = _number(_saved(_CFG_AXIS_RATE))
+        low, high = AXIS_RATE_RANGE
+        if value is None or not low <= value <= high:
+            value = float(AXIS_RATE_CHOICES[0])
+        _axis_rate = value
+        _axis_interval = 1.0 / value
+    return _axis_rate
+
+
+def set_axis_rate(rate: object) -> str:
+    """Saves the Axis lines rate (0.1 to 50 per second, decimals too) and
+    applies it at once. Returns "" or why it was refused (nothing changes)."""
+    global _axis_rate, _axis_interval
+    value = _number(rate)
+    low, high = AXIS_RATE_RANGE
+    if value is None or not low <= value <= high:
+        return AXIS_RATE_TEXT
+    value = round(value, 3)
+    _save_value(_CFG_AXIS_RATE, value)
+    with _LOCK:
+        _axis_rate = value
+        _axis_interval = 1.0 / value
+    return ""
+
+
+def max_mb() -> int:
+    """trace.log's max size in MB (MAX_MB_RANGE), read once."""
+    global _max_mb
+    if _max_mb is None:
+        value = _number(_saved(_CFG_MAX_MB))
+        low, high = MAX_MB_RANGE
+        if value is None or value != int(value) or not low <= value <= high:
+            value = MAX_MB_CHOICES[0]
+        _max_mb = int(value)
+    return _max_mb
+
+
+def set_max_mb(mb: object) -> str:
+    """Saves the max size (1 to 1000 MB, whole numbers) and applies it at
+    once, also while tracing is on (a file already over it rolls over at the
+    next line). Returns "" or why it was refused (nothing changes)."""
+    global _max_mb
+    value = _number(mb)
+    low, high = MAX_MB_RANGE
+    if value is None or value != int(value) or not low <= value <= high:
+        return MAX_MB_TEXT
+    _save_value(_CFG_MAX_MB, int(value))
+    with _LOCK:
+        _max_mb = int(value)
+        if _handler is not None:
+            _handler.maxBytes = _max_mb * 1024 * 1024
+    return ""
+
+
+def clear_file() -> str:
+    """Empties trace.log, deletes trace.log.1 and clears the view. Returns ""
+    when done, else the file and the reason (nothing else changes then).
+    Works while tracing is on: the handler's stream is closed first so the
+    next line starts at the top of the empty file."""
+    path = file_path()
+    older = path.with_name(FILE_NAME + ".1")
+    with _LOCK:
+        handler = _handler
+        if handler is not None:
+            handler.acquire()
+        try:
+            if handler is not None and handler.stream is not None:
+                try:
+                    handler.stream.close()
+                except OSError:
+                    pass
+                # FileHandler reopens (append) on the next line.
+                handler.stream = None  # type: ignore[assignment]
+            try:
+                if path.exists():
+                    with open(path, "w", encoding="utf-8"):
+                        pass
+            except OSError as error:
+                return f"{path}: {error.strerror or error}"
+            try:
+                older.unlink(missing_ok=True)
+            except OSError as error:
+                return f"{older}: {error.strerror or error}"
+        finally:
+            if handler is not None:
+                handler.release()
+        clear_view()
+    event("Trace file cleared")
+    return ""
+
+
 def _open_file() -> None:
     """Opens trace.log on the first turn-on."""
     global _logger, _handler
@@ -642,7 +791,10 @@ def _open_file() -> None:
         path = file_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         handler = logging.handlers.RotatingFileHandler(
-            path, maxBytes=FILE_MAX_BYTES, backupCount=FILE_BACKUPS, encoding="utf-8"
+            path,
+            maxBytes=max_mb() * 1024 * 1024,
+            backupCount=FILE_BACKUPS,
+            encoding="utf-8",
         )
         handler.setFormatter(logging.Formatter("%(message)s"))
         logger = logging.getLogger("trace")

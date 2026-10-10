@@ -10,6 +10,8 @@ import Gremlin.Menus
 import Gremlin.Style
 import Gremlin.UI
 
+import "confirm.js" as Confirm
+
 // Live Log Reader › Trace (D-01-TRACE): tick the controls to follow, turn
 // Tracing on, and each ticked control's RAW, WIRING and OUTPUT lines show
 // here (and in trace.log). Tracing keeps running when the window closes;
@@ -21,6 +23,25 @@ ColumnLayout {
     required property TraceView view
     // Keeps to the newest line while scrolled to the end.
     property bool follow: true
+    // The open Clear Trace File question (01 S140), for tests.
+    property var _question: null
+
+    // Asks once (01 S140); the file is emptied only on the red button.
+    function _askClearFile() {
+        _question = Confirm.ask(_root, {
+            title: "Clear Trace File",
+            text: "Empty the trace file? trace.log and its older copy "
+                + "trace.log.1 are deleted.",
+            undoable: false,
+            action: "Clear Trace File",
+            onAccept: function() {
+                _root._question = null
+                _root.follow = true
+                _root.view.clearFile()
+            },
+            onCancel: function() { _root._question = null }
+        })
+    }
 
     spacing: Style.dp(8)
 
@@ -66,6 +87,57 @@ ColumnLayout {
             anchors.margins: -Style.dp(3)
             cursorShape: Qt.PointingHandCursor
             onClicked: _tick.clicked()
+        }
+    }
+
+    // A choice from the list or a typed number: Enter, a pick or leaving the
+    // field applies it; a refused one goes back to the current value and
+    // the reason shows beside it.
+    component TypedChoice: ColumnLayout {
+        id: _choice
+
+        property var choices: []
+        property string current: ""
+        property string error: ""
+        property string unit: ""
+        signal apply(string text)
+
+        spacing: Style.dp(4)
+
+        function _put(text) {
+            if (text.trim().length === 0 || text === current) {
+                _box.editText = current
+                return
+            }
+            _choice.apply(text)
+            _box.editText = _choice.current
+        }
+        onCurrentChanged: _box.editText = current
+
+        RowLayout {
+            spacing: Style.dp(6)
+            ComboBox {
+                id: _box
+                objectName: _choice.objectName + "Box"
+                editable: true
+                Layout.preferredWidth: Style.dp(90)
+                model: _choice.choices
+                currentIndex: _choice.choices.indexOf(_choice.current)
+                Component.onCompleted: editText = _choice.current
+                onActivated: function(index) { _choice._put(_choice.choices[index]) }
+                onAccepted: _choice._put(editText)
+                onActiveFocusChanged: if (!activeFocus) _choice._put(editText)
+            }
+            Label {
+                text: _choice.unit
+                color: Style.fg
+            }
+        }
+        Label {
+            objectName: _choice.objectName + "Error"
+            visible: _choice.error.length > 0
+            text: _choice.error
+            color: Style.dangerTextSoft
         }
     }
 
@@ -173,6 +245,95 @@ ColumnLayout {
         Button {
             text: qsTr("Show Trace File")
             onClicked: _root.view.showFile()
+        }
+        Button {
+            id: _optionsButton
+            objectName: "traceOptions"
+            text: qsTr("Options ▾")
+            onClicked: _options.opened ? _options.close() : _options.open()
+
+            // Trace options: the Axis lines rate, the Max size and Clear
+            // Trace File…. Escape or a click outside closes it.
+            Popup {
+                id: _options
+                objectName: "traceOptionsPanel"
+                y: _optionsButton.height + Style.dp(4)
+                x: _optionsButton.width - width
+                padding: Style.dp(14)
+                closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+                background: Rectangle {
+                    color: Style.bgRaised
+                    border.color: Style.lineStrong
+                    radius: Style.dp(6)
+                }
+
+                contentItem: ColumnLayout {
+                    spacing: Style.dp(8)
+
+                    Label {
+                        text: "Trace options"
+                        color: Style.fgStrong
+                        font.bold: true
+                    }
+
+                    Label { text: "Axis lines"; font.bold: true; color: Style.fg }
+                    TypedChoice {
+                        objectName: "traceAxisRate"
+                        unit: "per second"
+                        choices: _root.view.axisRateChoices
+                        current: _root.view.axisRateText
+                        error: _root.view.axisRateError
+                        onApply: function(text) { _root.view.setAxisRate(text) }
+                    }
+                    Label {
+                        Layout.preferredWidth: Style.dp(320)
+                        text: "Pick 10, 8, 6, 4, 3, 2, 1 or type 0.1–50 (0.5 = a line "
+                            + "every 2 s). Lower it if the file fills too fast."
+                        color: Style.fgMuted
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Label { text: "Max size"; font.bold: true; color: Style.fg }
+                    TypedChoice {
+                        objectName: "traceMaxSize"
+                        unit: "MB"
+                        choices: _root.view.maxMbChoices
+                        current: _root.view.maxMbText
+                        error: _root.view.maxMbError
+                        onApply: function(text) { _root.view.setMaxMb(text) }
+                    }
+                    Label {
+                        objectName: "traceMaxSizeKept"
+                        text: "Up to " + (_root.view.maxMb * 2)
+                            + " MB kept: trace.log plus one older copy"
+                        color: Style.fgMuted
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 1
+                        color: Style.line
+                    }
+
+                    RowLayout {
+                        spacing: Style.dp(10)
+                        Label { text: "Trace file"; font.bold: true; color: Style.fg }
+                        Label {
+                            objectName: "traceFileDetail"
+                            text: _root.view.fileDetail
+                            color: Style.fgMuted
+                        }
+                    }
+                    DangerButton {
+                        objectName: "traceClearFile"
+                        text: qsTr("Clear Trace File…")
+                        enabled: _root.view.hasFile
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Delete trace.log and its older copy (asks first)"
+                        onClicked: _root._askClearFile()
+                    }
+                }
+            }
         }
     }
 
@@ -329,6 +490,34 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: Style.dp(8)
+
+            Rectangle {
+                objectName: "traceClearError"
+                visible: _root.view.clearError.length > 0
+                Layout.fillWidth: true
+                implicitHeight: _clearErrorRow.implicitHeight + Style.dp(14)
+                radius: Style.dp(3)
+                color: Style.dangerFill
+                border.color: Style.danger
+
+                RowLayout {
+                    id: _clearErrorRow
+                    anchors.fill: parent
+                    anchors.margins: Style.dp(7)
+                    spacing: Style.dp(10)
+                    Label {
+                        Layout.fillWidth: true
+                        text: "Couldn't clear the trace file: " + _root.view.clearError
+                        color: Style.dangerTextSoft
+                        wrapMode: Text.WordWrap
+                    }
+                    Button {
+                        text: "✕"
+                        flat: true
+                        onClicked: _root.view.dismissClearError()
+                    }
+                }
+            }
 
             Rectangle {
                 objectName: "traceNotice"

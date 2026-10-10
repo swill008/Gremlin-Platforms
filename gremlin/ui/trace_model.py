@@ -409,6 +409,13 @@ class TraceView(QtCore.QObject):
         self._since = ""
         self._notice = ""
         self._file = ""
+        self._has_file = False
+        self._file_detail = ""
+        self._clear_error = ""
+        self._max_mb = trace.max_mb()
+        self._max_mb_error = ""
+        self._axis_rate = trace.axis_rate()
+        self._axis_rate_error = ""
         signals().changed.connect(self._switched)
         self._tree.rebuild()
 
@@ -467,6 +474,49 @@ class TraceView(QtCore.QObject):
     def fileText(self) -> str:  # noqa: N802 - QML name
         return self._file
 
+    @QtCore.Property(str, notify=changed)
+    def fileDetail(self) -> str:  # noqa: N802 - QML name
+        """For Trace options: both files' sizes ("—" when one isn't there)."""
+        return self._file_detail
+
+    @QtCore.Property(bool, notify=changed)
+    def hasFile(self) -> bool:  # noqa: N802 - QML name
+        """trace.log or its older copy is there (Clear Trace File… is on)."""
+        return self._has_file
+
+    @QtCore.Property(str, notify=changed)
+    def clearError(self) -> str:  # noqa: N802 - QML name
+        """Why the last Clear Trace File failed ("" when it didn't)."""
+        return self._clear_error
+
+    @QtCore.Property(list, constant=True)
+    def maxMbChoices(self) -> list:  # noqa: N802 - QML name
+        return [str(mb) for mb in trace.MAX_MB_CHOICES]
+
+    @QtCore.Property(str, notify=changed)
+    def maxMbText(self) -> str:  # noqa: N802 - QML name
+        return str(self._max_mb)
+
+    @QtCore.Property(int, notify=changed)
+    def maxMb(self) -> int:  # noqa: N802 - QML name
+        return self._max_mb
+
+    @QtCore.Property(str, notify=changed)
+    def maxMbError(self) -> str:  # noqa: N802 - QML name
+        return self._max_mb_error
+
+    @QtCore.Property(list, constant=True)
+    def axisRateChoices(self) -> list:  # noqa: N802 - QML name
+        return [str(rate) for rate in trace.AXIS_RATE_CHOICES]
+
+    @QtCore.Property(str, notify=changed)
+    def axisRateText(self) -> str:  # noqa: N802 - QML name
+        return f"{self._axis_rate:g}"
+
+    @QtCore.Property(str, notify=changed)
+    def axisRateError(self) -> str:  # noqa: N802 - QML name
+        return self._axis_rate_error
+
     @QtCore.Property(list, constant=True)
     def pointNames(self) -> list:  # noqa: N802 - QML name
         return list(POINTS)
@@ -520,13 +570,27 @@ class TraceView(QtCore.QObject):
         since = since_text()
         notice = trace.notice()
         size = trace.file_size()
-        older = trace.file_path().with_name(trace.FILE_NAME + ".1").is_file()
+        older_path = trace.file_path().with_name(trace.FILE_NAME + ".1")
+        older = older_path.is_file()
         file_text = (
-            f"{trace.FILE_NAME} {_size_text(size)} of "
-            f"{trace.FILE_MAX_BYTES // (1024 * 1024)} MB"
+            f"{trace.FILE_NAME} {_size_text(size)} of {trace.max_mb()} MB"
             + (" (one older copy kept)" if older else "")
         )
-        fresh = (("_since", since), ("_notice", notice), ("_file", file_text))
+        has_file = older or trace.file_path().is_file()
+        try:
+            older_size = _size_text(older_path.stat().st_size) if older else "—"
+        except OSError:
+            older_size = "—"
+        detail = (
+            f"{trace.FILE_NAME} {_size_text(size) if has_file else '—'} · "
+            f"{trace.FILE_NAME}.1 {older_size}"
+        )
+        fresh = (
+            ("_since", since), ("_notice", notice), ("_file", file_text),
+            ("_file_detail", detail),
+            ("_has_file", has_file), ("_max_mb", trace.max_mb()),
+            ("_axis_rate", trace.axis_rate()),
+        )
         for name, value in fresh:
             if getattr(self, name) != value:
                 setattr(self, name, value)
@@ -602,6 +666,42 @@ class TraceView(QtCore.QObject):
         """The view only; trace.log keeps every line."""
         trace.clear_view()
         self.refresh()
+
+    @QtCore.Slot()
+    def clearFile(self) -> None:  # noqa: N802 - QML name
+        """Empties trace.log, deletes trace.log.1 and clears the view (asked
+        first in the tab). A failure shows in the tab; nothing else changes."""
+        self._clear_error = trace.clear_file()
+        self._version = -1
+        self.refresh()
+        self.changed.emit()
+
+    @QtCore.Slot()
+    def dismissClearError(self) -> None:  # noqa: N802 - QML name
+        self._clear_error = ""
+        self.changed.emit()
+
+    @staticmethod
+    def _typed(text: str, unit: str) -> str:
+        """"25 MB" or "2 per second" picked from the list: the number."""
+        text = str(text).strip()
+        return text[: -len(unit)].strip() if text.endswith(unit) else text
+
+    @QtCore.Slot(str)
+    def setMaxMb(self, text: str) -> None:  # noqa: N802 - QML name
+        """Picked or typed (1 to 1000 MB); refused: the reason shows and the
+        value stays."""
+        self._max_mb_error = trace.set_max_mb(self._typed(text, "MB"))
+        self.refresh()
+        self.changed.emit()
+
+    @QtCore.Slot(str)
+    def setAxisRate(self, text: str) -> None:  # noqa: N802 - QML name
+        """Picked or typed (0.1 to 50 per second); refused: the reason shows
+        and the value stays."""
+        self._axis_rate_error = trace.set_axis_rate(self._typed(text, "per second"))
+        self.refresh()
+        self.changed.emit()
 
     @QtCore.Slot()
     def showFile(self) -> None:  # noqa: N802 - QML name

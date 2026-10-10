@@ -263,7 +263,7 @@ function topics() {
                 + "<li><b>HIDHIDE</b>: what the program asked HidHide and the answer, and changes to HidHide made outside the program.</li>"
                 + "<li><b>OUT OF STEP</b>: the check below found a stick or a vJoy output that doesn't match.</li>"
                 + "</ul>"
-                + "<p>An axis writes at most 10 lines a second; its last value is always written when you let go of it.</p>"
+                + "<p>An axis writes at most 10 lines a second; its last value is always written when you let go of it. <b>Axis lines</b> in <b>Options ▾</b> (Trace options, at the right end of the tab bar) sets that (10 by default): pick from the list or type 0.1 to 50 (0.5 is a line every 2 seconds), then press Enter; lower it if the file fills too fast.</p>"
                 + "<h4>Out-of-step check</h4>"
                 + "<ul>"
                 + "<li>Every second it reads the stick directly and compares with the last value the program got. If they stay different for over a second, the program is not getting that stick's moves.</li>"
@@ -279,8 +279,9 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Tracing is always off when the program starts. Your ticks are kept.</li>"
-                + "<li>The lines go to <b>trace.log</b> in the Logs folder (up to 5 MB, then one older copy, trace.log.1). <b>Show Trace File</b> opens it, and <b>Save Diagnostics…</b> includes it.</li>"
+                + "<li>The lines go to <b>trace.log</b> in the Logs folder (up to its <b>Max size</b>, then one older copy, trace.log.1). The status bar shows how big it is and its limit; <b>Max size</b> in <b>Options ▾</b> sets that limit (5 MB by default): pick a size or type one from 1 to 1000 MB; with the older copy, up to twice that is kept on disk. <b>Show Trace File</b> opens it, and <b>Save Diagnostics…</b> includes it.</li>"
                 + "<li><b>Find</b>, <b>Show</b> (<b>All</b> or <b>Warnings</b>) and <b>Points</b> narrow the view; <b>Clear View</b> empties the view, never the file. The tab keeps the last 5000 lines.</li>"
+                + "<li><b>Clear Trace File…</b>, also in <b>Options ▾</b>, empties the file itself: it asks first, then deletes trace.log and trace.log.1 and clears the view; it works while tracing is on.</li>"
                 + "<li>With tracing off, nothing is written and it costs nothing.</li>"
                 + "</ul>",
             related: ["tools-input-monitor", "tools-hidhide", "tools-red-debug-mode", "getting-started-save-diagnostics"]
