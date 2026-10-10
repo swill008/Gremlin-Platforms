@@ -269,8 +269,10 @@ def test_a_new_result_is_a_signal_and_a_trace_line(setup: SimpleNamespace) -> No
     ) in _hidhide_lines()
     link.poll_once()  # unchanged: nothing more
     assert seen == [1]
-    os.utime(result, (1, 2))
     result.write_text(json.dumps({"verdict": "pass", "summary": ""}), "utf-8")
+    # A clearly different time: a rewrite in the same clock tick keeps the
+    # old one, which the watch rightly sees as "unchanged" (CI 6a55f094).
+    os.utime(result, (1, 2))
     link.poll_once()
     assert ("Input Tester: Pass", False) in _hidhide_lines()
 
