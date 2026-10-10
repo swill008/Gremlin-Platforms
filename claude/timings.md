@@ -410,4 +410,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Lead: Keyboard row options wired + store test to per-page | fix | 3–8 min (table: agent fix) | 1 min | 13:35–13:36 |
 | 2026-10-10 | MAP-C touch-up: AP-PANEL names, counts, glossary | docs | 3–8 min (table) | 1 min | 13:35–13:36 |
 | 2026-10-10 | Batch C full run + lint (lead) | test | 6–7 min + lint (table) | 5.5 min | 13:36–13:42; run 5:15; 11 fails = removed action images (AS1) + 2 stale Help labels |
-| 2026-10-10 | Lead: removed action image provider/generator + its look tests (AS1), Help labels, lint baseline | fix | 3–8 min (table: agent fix) | 5 min | 13:42–13:47 |
+| 2026-10-10 | Lead: removed action image provider/generator + its look tests (AS1), Help labels, lint baseline | fix | 3–8 min (table: agent fix) | 2 min | 13:42–13:44 |
+| 2026-10-10 | Lead: PS1 impact analysis (compare page functions/menus across 4 pages) | review | 5–10 min (table: read-only study) | 2 min | 13:45–13:47 |
+| 2026-10-10 | Lead: to-do 91 (shared page base plan + notes) + tracker | docs | no timing data yet; rough guess 5 min | 4 min | 13:48–13:52 |
+| 2026-10-10 | DRIFT-FIX: OSC Appearance menu row, Keyboard requestCloseDisplay, alike test | fix | 3–8 min (table) | 1 min | 13:51–13:52 |

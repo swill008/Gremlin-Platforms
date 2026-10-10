@@ -155,10 +155,12 @@ Item {
     // Hiding asks about unsaved display options, like the panel's close.
     function toggleAppearance() {
         if (displayOpen)
-            _appear.requestClose()
+            requestCloseDisplay()
         else
             displayOpen = true
     }
+
+    function requestCloseDisplay() { _appear.requestClose() }
 
     RowLayout {
         anchors.fill: parent
@@ -400,7 +402,7 @@ Item {
         return keys.filter(function(k) { return _layout.canDelete(k) })
     }
 
-    function _menuModel() {
+    function _layoutMenuModel() {
         var locked = editorLocked
         var onRow = _menuOnRow && !locked
         var onGroup = _menuOnGroup && !locked
@@ -474,7 +476,7 @@ Item {
 
     ContextMenu {
         id: _pageMenu
-        build: _root._menuModel
+        build: _root._layoutMenuModel
     }
 
     ContextMenu {

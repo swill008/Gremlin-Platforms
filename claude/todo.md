@@ -429,6 +429,55 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 89. (LD2, 2026-10-10, found by LD-GUARD): the Logical Device loop guard only catches a macro step re-triggering its own control when the cycle is under 0.1 s; a slower macro self-loop isn't stopped, and mashing a button that runs such a macro faster than 10/s for 8 presses could be stopped by mistake. A full fix carries the chain on each event (event path). Not started.
 90. (LD1, 2026-10-10, found by LD-PICK): a Map to Logical Device loaded from a profile that already targets its own control keeps that target (defaults never change loaded data, S92) but its picker shows nothing selected; the loop guard stops it at Run. Not started.
+91. (PS1 (a), 2026-10-10, user: "log this (a) as a future todo"; tracker PAGE-SHELL-DUP): **one shared
+    page base for the four list pages** (Configuration, Logical Device, Keyboard, OSC). Not started; the
+    user chose PS1 (b) for now (the two drift bugs fixed: OSC's missing "Appearance…" menu row, Keyboard's
+    own panel-close; guard test `test/unit/test_list_pages_alike.py`).
+    - **Why.** The pages already share the model base (`gremlin/ui/control_layout.py` ControlLayoutModel)
+      and the QML pieces (`qml/ControlTree.qml`, `ControlFindBar.qml`, `ActionPane.qml`,
+      `ListAppearancePanel.qml`), but each page file still repeats the same glue. Checked 2026-10-10
+      (function bodies compared): `requestLeave`, `closePaneNow`, `savePane`, `hasUnsaved`,
+      `paneHasChanges`, `closeActionPane` are word-for-word identical on all four; `toggleAppearance` /
+      `requestCloseDisplay` and the 10-line `pageBar` are the same; the menu skeleton (Undo/Redo header,
+      Add Action, Rename, History, Appearance…, the Group / Groups / Order sections) is the same apart
+      from the "sort by system name" wording. Drift already caused two bugs (fixed in PS1 (b)). Page files
+      then: ConfigurationPage 752, LogicalPage 783, KeyboardPage 579, OscPage 1175 lines; estimated
+      100-150 lines each would move into the base (not measured).
+    - **What goes in the base** (new `qml/ControlPage.qml`, the page's root item): the `layout` model
+      property; the six pane/leave functions and `leaveResolved` / `_leavingPage`; `displayOpen`,
+      `toggleAppearance`, `requestCloseDisplay`, the `ListAppearancePanel` with a required `pageKey`, and the
+      tree bindings to it (incl. parentAlign/parentWidthPct/childAlign/childWidthPct/groupSpacing); the
+      `pageBar` component (Appearance… / Hide Appearance); the `ActionPane`; the menu skeleton built with
+      MenuModel/ContextMenu (header Undo/Redo; quick rows Add Action, Rename, History, Appearance…;
+      sections Group, Groups, Order) with **hooks** for page items.
+    - **What stays per page** (passed to the base): the model type; extra quick rows and extra sections
+      (Configuration: Module Setup…, Delete actions…; Logical: Assign Hardware, Clear Name, Add Inputs;
+      Keyboard: Clear Name, Add Key…; OSC: Add Feedback, Change Address…, Copy for Companion, Send Test,
+      Companion feedback, Add/Import/TouchOSC/Listen/Clear…, the feedback-row menu); the "sort by system
+      name" label (By System Name / By Key Name / By Address); Find placeholder and filter ticks; row
+      extras (Configuration live lights/bars + jump to pressed input; Logical writer rows; OSC Invert,
+      live value, feedback rows, docked Monitor); page-only dialogs.
+    - **Plan (as proposed 2026-10-10).** Effort then: about 40–50 min + CI 10 min.
+      1. One refactor agent builds `ControlPage.qml` from LogicalPage (the reference page), with the hook
+         API written to a contract file first (5–10 min, timings.md: refactor).
+      2. Four page agents in parallel, one per page file, move their page onto the base (today's page
+         agents took 10–17 min each).
+      3. Test-only agent: extend `test_list_pages_alike.py` to check the pages use the base; update tests
+         that read page source text (e.g. `test_batch2_b5a.py`, `test_config_pages_shared_pieces.py`,
+         `test_list_appearance.py`, `test_cleanup_batch_a.py`, `test_colour_tokens.py`).
+      4. Proof: before/after off-screen screenshots of all four pages (page, menu, pane, Appearance open)
+         must be pixel-identical (method: scratchpad scripts `bq_shots.py` / `cfa_shots.py` pattern via
+         the journey harness, temp USERPROFILE, fake hardware); page tests and journeys pass; full run.
+      5. Map/spec agent: page 05/06/09 section 2 counts, new file, "owns" rows. No spec statement changes
+         (no behaviour change).
+    - **Watch-outs found 2026-10-10.** (1) PySide crashes (access violation) when QML builds a type whose
+      Property notify is a base-class signal: give each model its own signal (see hardware_layout.py
+      `paneChanged`, keyboard_layout.py `keyGroupsChanged`); the same care for any Python base used from
+      QML. (2) QML base/page name clashes and property-initialisation order: keep page hooks as
+      properties/functions with distinct names; test each page loading off-screen. (3) Main.qml calls
+      the page functions by name (`_leavePages()`, `_actionPanes()`, `configurationPane()`,
+      `keyboardPane()`, `oscPane()`, `currentPageBar`) — keep those names. (4) Text-reading tests pin
+      exact lines. (5) OSC feedback rows stay editable while running (`ActionPane.lockExempt`).
 32. **N22** – Inconsistent controls in action editors (on hold).
 33. **OSC** (parked 2026-10-02; **picked up 2026-10-09**: decisions D-09-OSC-FILE, D-09-OSC-INPUT, D-09-OSC-FAULTS, spec 09; being built in this batch):
     - **B15 – SUPERSEDED 2026-10-09 (D-09-OSC-FAULTS): input 8001 (intended, adjustable), output 8000, one value each (09 S6).** Default ports clash and disagree. The program listens on

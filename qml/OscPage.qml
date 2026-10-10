@@ -985,6 +985,7 @@ Item {
             quick.push(MenuModel.action("Rename Group", _renameGroup))
         if (!_menuOnRow && !_menuOnGroup)
             quick.push(MenuModel.action("Feedback settings…", function() { openFeedbackSettings() }))
+        quick.push(MenuModel.action("Appearance…", function() { displayOpen = true }))
 
         var moveTo = []
         if (onRow) {
