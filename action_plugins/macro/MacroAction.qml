@@ -230,6 +230,7 @@ Item {
                     {value: "logical-device", text: "Logical Device"},
                     {value: "mouse-button", text: "Mouse Button"},
                     {value: "mouse-motion", text: "Mouse Motion"},
+                    {value: "osc", text: "OSC"},
                     {value: "pause", text: "Pause"},
                     {value: "vjoy", text: "vJoy"}
                 ]
@@ -450,6 +451,72 @@ Item {
 
                         onActivated: () => {
                             modelData.hatDirection = currentValue
+                        }
+                    }
+                }
+            }
+        }
+
+        // OSC input (09 S159): picked by its address, kept by its id.
+        DelegateChoice {
+            roleValue: "osc"
+
+            DraggableAction {
+                icon: bsi.icons.icon_joystick
+                label: "OSC"
+
+                actionItem: RowLayout {
+                    Label {
+                        visible: modelData.needsInput
+                        text: "Add an OSC input first."
+                    }
+
+                    Label {
+                        visible: modelData.isMissing
+                        text: "This OSC input is gone."
+                    }
+
+                    Compact.ComboBox {
+                        visible: !modelData.needsInput
+                        Layout.preferredWidth: Style.dp(220)
+
+                        textRole: "text"
+                        valueRole: "value"
+                        model: modelData.inputChoices
+
+                        currentIndex: indexOfValue(modelData.inputUid)
+                        Component.onCompleted: () => {
+                            currentIndex = Qt.binding(
+                                () => {return indexOfValue(modelData.inputUid)}
+                            )
+                        }
+
+                        onActivated: () => {
+                            modelData.inputUid = currentValue
+                        }
+                    }
+
+                    LayoutHorizontalSpacer {}
+
+                    Compact.ButtonStateSelector {
+                        visible: modelData.inputType === "button"
+
+                        isPressed: modelData.isPressed
+                        onStateModified: (isPressed) => {
+                            modelData.isPressed = isPressed
+                        }
+                    }
+
+                    Compact.FloatSpinBox {
+                        visible: modelData.inputType === "axis"
+
+                        minValue: -1.0
+                        maxValue: 1.0
+                        decimals: Style.decimalsPrecise
+                        value: modelData.axisValue
+
+                        onValueModified: (newValue) => {
+                            modelData.axisValue = newValue
                         }
                     }
                 }

@@ -251,6 +251,49 @@ class LogicalDeviceModel(AbstractVariableModel):
 
 
 @ta.QmlElement
+class OscInputVariableModel(AbstractVariableModel):
+    """An OSC input variable: picked from OSC's inputs by address, stored
+    by the input's permanent id (09 S163)."""
+
+    changed = QtCore.Signal()
+
+    def __init__(
+        self, variable: user_script.OscInputVariable, parent: ta.OQO = None
+    ) -> None:
+        super().__init__(variable, parent)
+        self._uids: list[str] = []
+
+    @QtCore.Property(list, notify=changed)
+    def options(self) -> list[str]:
+        """The addresses to pick from; a missing input shows last."""
+        variable = cast(user_script.OscInputVariable, self._variable)
+        rows = variable.choices()
+        self._uids = [row.uid for row in rows]
+        labels = [row.label for row in rows]
+        if variable.is_missing():
+            self._uids.append(cast(str, variable.uid))
+            labels.append("(missing OSC input)")
+        return labels
+
+    @QtCore.Property(int, notify=changed)
+    def currentIndex(self) -> int:
+        self.options  # noqa: B018 - refreshes the uid list
+        uid = cast(user_script.OscInputVariable, self._variable).uid
+        return self._uids.index(uid) if uid in self._uids else -1
+
+    @QtCore.Slot(int)
+    def select(self, index: int) -> None:
+        if not 0 <= index < len(self._uids):
+            return
+        variable = cast(user_script.OscInputVariable, self._variable)
+        if variable.uid == self._uids[index]:
+            return
+        variable.uid = self._uids[index]
+        self.changed.emit()
+        self.validityChanged.emit()
+
+
+@ta.QmlElement
 class ModeVariableModel(AbstractVariableModel):
     changed = QtCore.Signal()
 
@@ -429,6 +472,7 @@ class ScriptListModel(QtCore.QAbstractListModel):
         user_script.IntegerVariable: IntegerVariableModel,
         user_script.KeyboardVariable: KeyboardVariableModel,
         user_script.LogicalDeviceVariable: LogicalDeviceModel,
+        user_script.OscInputVariable: OscInputVariableModel,
         user_script.ModeVariable: ModeVariableModel,
         user_script.SelectionVariable: SelectionVariableModel,
         user_script.StringVariable: StringVariableModel,

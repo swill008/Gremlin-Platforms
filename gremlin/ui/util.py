@@ -36,6 +36,7 @@ from gremlin.macro import (
     JoystickAction,
     KeyAction,
     MouseButtonAction,
+    OscAction,
     PauseAction,
 )
 from gremlin.types import (
@@ -370,9 +371,12 @@ class MacroRecorder:
         self._last_event_time: int = 0
         self._last_recordings: dict[event_handler.Event, int] = {}
         self._axis_recordings: dict[
-            event_handler.Event, device_helpers.AxisChangeSignificanceTracker
+            event_handler.Event | tuple[str, str],
+            device_helpers.AxisChangeSignificanceTracker,
         ] = {}
         self._is_recording: bool = False
+        # Registered with the OSC runtime while recording (09 S159).
+        self._osc_recording: bool = False
         self._config = Configuration()
         # Its name in the input highlighting holds (03 S114, 09 S33).
         self._highlight_holder = f"record-{next(_holder_ids)}"
@@ -414,6 +418,18 @@ class MacroRecorder:
             )
         ):
             el.joystick_event.connect(self._queue_event_recording)
+            self._start_osc()
+
+    def _start_osc(self) -> None:
+        """OSC inputs are recorded from the OSC runtime, which holds the port
+        open while a recorder is registered, with or without a Run (09
+        S159). Only when there are OSC inputs to match."""
+        from gremlin.osc import OscDevice, OscRuntime
+
+        if not OscDevice().rows.rows():
+            return
+        OscRuntime().add_recorder(self._queue_osc_recording)
+        self._osc_recording = True
 
     def stop(self) -> None:
         if not self._is_recording:
@@ -431,6 +447,11 @@ class MacroRecorder:
                 pass
         if InputType.Mouse in self._valid_event_types:
             windows_event_hook.MouseHook().release()
+        if self._osc_recording:
+            from gremlin.osc import OscRuntime
+
+            OscRuntime().remove_recorder(self._queue_osc_recording)
+            self._osc_recording = False
         shared_state.release_input_highlighting(self._highlight_holder)
         self._is_recording = False
 
@@ -445,8 +466,15 @@ class MacroRecorder:
         if not self._is_recording or event.event_type not in self._valid_event_types:
             return
 
-        # Ignore events from non-physical devices.
-        if event.device_guid in (dill.UUID_LogicalDevice, dill.UUID_Virtual):
+        # Ignore events from non-physical devices; OSC inputs come from the
+        # OSC runtime's recorder hook instead (09 S159).
+        from gremlin.osc import OSC_DEVICE_UUID
+
+        if event.device_guid in (
+            dill.UUID_LogicalDevice,
+            dill.UUID_Virtual,
+            OSC_DEVICE_UUID,
+        ):
             return
 
         # Check if the event corressponds to an axis that has a significant
@@ -491,6 +519,46 @@ class MacroRecorder:
             case _:
                 return
 
+        self._append_recorded(action)
+
+    def _queue_osc_recording(self, uid: str, kind: str, value: object) -> None:
+        QtCore.QTimer.singleShot(0, lambda: self._record_osc(uid, kind, value))
+
+    def _record_osc(self, uid: str, kind: str, value: object) -> None:
+        """One matched OSC input event as an OSC step: a button's press or
+        release, an axis's -1..1 value (significant changes only)."""
+        if not self._is_recording:
+            return
+        if kind == "axis":
+            if InputType.JoystickAxis not in self._valid_event_types:
+                return
+            number = float(value)  # type: ignore[arg-type]
+            key = ("osc", uid)
+            tracker = self._axis_recordings.get(key)
+            if tracker is not None:
+                if not tracker.is_significant_change(number):
+                    return
+            else:
+                self._axis_recordings[key] = (
+                    device_helpers.AxisChangeSignificanceTracker(
+                        number,
+                        self._config.value(
+                            "action", "macro", "axis-minimum-change-amount"
+                        ),
+                        self._config.value(
+                            "action", "macro", "axis-minimum-time-interval"
+                        ),
+                        True,
+                    )
+                )
+            action = OscAction(uid, InputType.JoystickAxis, number)
+        else:
+            if InputType.JoystickButton not in self._valid_event_types:
+                return
+            action = OscAction(uid, InputType.JoystickButton, bool(value))
+        self._append_recorded(action)
+
+    def _append_recorded(self, action: AbstractAction) -> None:
         time_now = time.monotonic_ns()
         if self._record_timings and self._last_event_time > 0:
             self._append_action_callback(

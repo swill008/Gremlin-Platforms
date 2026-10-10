@@ -8,6 +8,7 @@ their permanent uid."""
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from typing import Any, cast
@@ -43,14 +44,23 @@ MODES = ("button", "axis", "change", "encoder")
 SETTING_KEYS = (
     "mode", "cmd_mode", "data", "source",
     "range_min", "range_max", "trigger", "delay_ms",
-    "enc_format", "enc_step", "enc_output",
+    "enc_format", "enc_step", "enc_output", "enc_accel",
 )
+# Axis shaping (S161): shown and applied for axis inputs only.
+SHAPING_KEYS = ("invert", "deadzone_low", "deadzone_high")
 # Encoder settings (D-09-OSC-ENCODER).
 ENC_FORMATS = ("auto", "direction", "signed")
 ENC_OUTPUTS = ("axis", "pulse_cw", "pulse_ccw")
 ENC_DEFAULTS: dict[str, Any] = {
     "enc_format": "auto", "enc_step": 0.05, "enc_output": "axis",
+    "enc_accel": "off",
 }
+# Encoder acceleration presets (S164), as the dropdowns show them.
+ENC_ACCELS = ("off", "low", "medium", "high")
+ENC_ACCEL_CHOICES = [
+    {"value": value, "text": value.capitalize()} for value in ENC_ACCELS
+]
+DEADZONE_LIMIT = 0.99
 
 _IMPORT_LINE = re.compile(r"^(?P<addr>/[^\s,]+)\s*(?:[,\s]\s*(?P<rest>.*))?$")
 
@@ -138,7 +148,43 @@ def normalize_settings(raw: object) -> dict[str, Any]:
     if "enc_output" in src:
         output = str(src["enc_output"] or "").strip().lower()
         out["enc_output"] = output if output in ENC_OUTPUTS else "axis"
+    if "enc_accel" in src:
+        accel = str(src["enc_accel"] or "").strip().lower()
+        out["enc_accel"] = accel if accel in ENC_ACCELS else "off"
+    if "invert" in src:
+        out["invert"] = bool(src["invert"])
+    for name in ("deadzone_low", "deadzone_high"):
+        if name in src:
+            out[name] = _opt_float(src[name], 0.0)
     return out
+
+
+def deadzone_error(low: float, high: float) -> str:
+    """ "" or why a centre deadzone (low..high) is refused."""
+    if not -DEADZONE_LIMIT <= low <= 0.0:
+        return f"Deadzone low must be from -{DEADZONE_LIMIT:g} to 0."
+    if not 0.0 <= high <= DEADZONE_LIMIT:
+        return f"Deadzone high must be from 0 to {DEADZONE_LIMIT:g}."
+    return ""
+
+
+def row_fields(fields: dict[str, Any], current: tuple[float, float]) -> dict[str, Any]:
+    """normalize_settings output as OscRow fields: deadzone_low/high merged
+    with the input's current deadzone into "deadzone"."""
+    split = ("deadzone_low", "deadzone_high")
+    out = {k: v for k, v in fields.items() if k not in split}
+    if "deadzone_low" in fields or "deadzone_high" in fields:
+        out["deadzone"] = (
+            float(fields.get("deadzone_low", current[0])),
+            float(fields.get("deadzone_high", current[1])),
+        )
+    return out
+
+
+def is_axis_input(mode: str, enc_output: str) -> bool:
+    """Axis inputs (Invert and deadzone apply, S161): Axis, and an Encoder
+    driving an axis."""
+    return mode == "axis" or (mode == "encoder" and enc_output == "axis")
 
 
 def _type_for_mode(mode: str, enc_output: str = "axis") -> InputType:
@@ -224,7 +270,10 @@ def settings_of(row: OscRow) -> dict[str, Any]:
         "range_max": row.range_max,
         "trigger": row.trigger,
         "delay_ms": row.delay_ms,
-        **{key: getattr(row, key, value) for key, value in ENC_DEFAULTS.items()},
+        **{key: getattr(row, key) for key in ENC_DEFAULTS},
+        "invert": row.invert,
+        "deadzone_low": row.deadzone[0],
+        "deadzone_high": row.deadzone[1],
     }
 
 
@@ -253,6 +302,14 @@ def add_input(settings: dict[str, Any]) -> tuple[OscRow | None, str]:
     existing = find_duplicate(address, fields)
     if existing is not None:
         return existing, f"{address} is already in the list."
+    fields = row_fields(fields, (0.0, 0.0))
+    if not is_axis_input(fields["mode"], fields.get("enc_output", "axis")):
+        fields.pop("invert", None)
+        fields.pop("deadzone", None)
+    elif "deadzone" in fields:
+        error = deadzone_error(*fields["deadzone"])
+        if error:
+            return None, error
     try:
         input_type = _type_for_mode(fields["mode"], fields.get("enc_output", "axis"))
         row = _rows().create(input_type, address, **fields)
@@ -286,6 +343,94 @@ def import_text(text: str) -> tuple[list[OscRow], str]:
     return added, "\n".join([f"Added {len(added)}, skipped {skipped}"] + notes)
 
 
+_KIND_TEXT = {
+    "axis": "Axis", "button": "Button", "change": "Change", "encoder": "Encoder",
+}
+
+
+def local_path(path_or_url: str) -> str:
+    """A plain path from a path or a file:/// URL (FileDialog gives URLs)."""
+    text = str(path_or_url or "").strip()
+    if text.lower().startswith("file:"):
+        return QtCore.QUrl(text).toLocalFile()
+    return text
+
+
+# A typed-messages file for Import (S22); bigger is refused.
+IMPORT_TEXT_MAX = 1024 * 1024
+
+
+def read_import_text(path_or_url: str) -> dict[str, str]:
+    """{"text", "error"} for a .txt file picked in Import (S22, S162)."""
+    path = local_path(path_or_url)
+    try:
+        size = os.path.getsize(path)
+        if size > IMPORT_TEXT_MAX:
+            return {"text": "", "error": "The file is too big to import (over 1 MB)."}
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            return {"text": handle.read(), "error": ""}
+    except OSError as err:
+        return {"text": "", "error": f"The file can't be read: {err.strerror or err}"}
+
+
+def touchosc_rows(path_or_url: str) -> tuple[list[dict[str, Any]], list[str], str]:
+    """(rows, skipped notes, error) for a TouchOSC layout file (S162)."""
+    from gremlin import osc_tosc
+
+    try:
+        rows, skipped = osc_tosc.parse(local_path(path_or_url))
+    except GremlinError as err:
+        return [], [], str(err)
+    return rows, skipped, ""
+
+
+def touchosc_preview(path_or_url: str) -> dict[str, Any]:
+    """The preview list shown before adding: each row ticked unless an
+    input already answers it."""
+    rows, skipped, error = touchosc_rows(path_or_url)
+    shown = []
+    for index, row in enumerate(rows):
+        fields = normalize_settings(row)
+        exists = find_duplicate(str(row.get("address", "")), fields) is not None
+        mode = str(fields.get("mode", "button"))
+        shown.append({
+            "index": index,
+            "address": str(row.get("address", "")),
+            "label": str(row.get("label", "")),
+            "mode": mode,
+            "kindText": _KIND_TEXT.get(mode, mode.capitalize()),
+            "exists": exists,
+            "ticked": not exists,
+        })
+    return {
+        "error": error, "rows": shown, "skipped": list(skipped), "count": len(shown),
+    }
+
+
+def import_touchosc(
+    path_or_url: str, chosen: list[int]
+) -> tuple[list[OscRow], str]:
+    """Adds the chosen preview rows through the Import path (add_input):
+    existing ones skipped; "Added N, skipped M" plus notes."""
+    rows, skipped_notes, error = touchosc_rows(path_or_url)
+    if error:
+        return [], error
+    wanted = sorted({int(i) for i in chosen if 0 <= int(i) < len(rows)})
+    added: list[OscRow] = []
+    skipped = 0
+    notes: list[str] = []
+    for index in wanted:
+        settings = {k: v for k, v in rows[index].items() if k != "label"}
+        row, why = add_input(settings)
+        if row is None or why:
+            skipped += 1
+            notes.append(f"{rows[index].get('label', '')}: {why}")
+            continue
+        added.append(row)
+    lines = [f"Added {len(added)}, skipped {skipped}", *notes, *skipped_notes]
+    return added, "\n".join(lines)
+
+
 def update_settings(uid: str, src: dict[str, Any]) -> str:
     """Apply the given settings (and "address", when given) to one input;
     keys left out stay as they are. "" or the error."""
@@ -304,6 +449,15 @@ def update_settings(uid: str, src: dict[str, Any]) -> str:
         return TYPE_LOCKED
     if find_duplicate(address, merged, skip_uid=uid) is not None:
         return f"{address} is already in the list."
+    fields = row_fields(fields, row.deadzone)
+    if not is_axis_input(merged["mode"], merged["enc_output"]):
+        # Shaping is for axis inputs only (S161).
+        fields.pop("invert", None)
+        fields.pop("deadzone", None)
+    elif "deadzone" in fields:
+        error = deadzone_error(*fields["deadzone"])
+        if error:
+            return error
     try:
         if address != row.label:
             rows.set_label(uid, address)
@@ -584,6 +738,35 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
             count = len(added)
             label = (
                 f"Import {added[0].label}" if count == 1 else f"Import {count} inputs"
+            )
+            self._changed(added[-1].uid, label)
+        return result
+
+    @QtCore.Slot(result="QVariantList")
+    def encAccelChoices(self) -> list[dict]:
+        """The encoder acceleration presets (S164) for a dropdown."""
+        return [dict(c) for c in ENC_ACCEL_CHOICES]
+
+    @QtCore.Slot(str, result="QVariantMap")
+    def readImportText(self, path: str) -> dict[str, str]:
+        """Import's Choose File… for a .txt file: its text, or why not."""
+        return read_import_text(path)
+
+    @QtCore.Slot(str, result="QVariantMap")
+    def previewTouchOsc(self, path: str) -> dict[str, Any]:
+        """From TouchOSC Layout…: the rows the file would add, ticked, plus
+        what it skips (S162)."""
+        return touchosc_preview(path)
+
+    @QtCore.Slot(str, "QVariantList", result=str)
+    def importTouchOsc(self, path: str, chosen: list) -> str:
+        """Adds the ticked preview rows as Import does; one page Undo step;
+        selects the last one added."""
+        added, result = import_touchosc(path, [int(i) for i in chosen or []])
+        if added:
+            count = len(added)
+            label = (
+                f"Import {added[0].label}" if count == 1 else "Import TouchOSC Layout"
             )
             self._changed(added[-1].uid, label)
         return result

@@ -112,6 +112,8 @@ def settings_line(row: OscRow) -> str:
             parts.append(f"Step size: {_num(row.enc_step)}")
         elif row.delay_ms is not None:
             parts.append(f"Release after: {row.delay_ms} ms")
+        if row.enc_accel != "off":
+            parts.append(f"Acceleration: {row.enc_accel.capitalize()}")
     else:
         if row.cmd_mode == "data":
             data = ", ".join(row.data)
@@ -122,6 +124,13 @@ def settings_line(row: OscRow) -> str:
             parts.append("Trigger on message")
             if row.delay_ms is not None:
                 parts.append(f"{row.delay_ms} ms")
+    if osc_device_model.is_axis_input(row.mode, row.enc_output):
+        # Shaping (S161).
+        if row.invert:
+            parts.append("Inverted")
+        low, high = row.deadzone
+        if low or high:
+            parts.append(f"Deadzone: {_num(low)}..{_num(high)}")
     return " · ".join(parts)
 
 
@@ -734,6 +743,9 @@ class OscLayoutModel(ControlLayoutModel):
             "address": row.label,
             "inputMode": row.mode,
             "isPattern": row.is_pattern,
+            # The parent row's Invert check box, axis inputs only (S161).
+            "canInvert": osc_device_model.is_axis_input(row.mode, row.enc_output),
+            "inverted": row.invert,
             **live_fields(row.uid),
         }
 
@@ -1088,7 +1100,13 @@ class OscLayoutModel(ControlLayoutModel):
             "mixed": [],
         }
         settings = [osc_device_model.settings_of(r) for r in rows]
-        for name in SETTING_KEYS:
+        # The Shaping section (S161): only when every input is an axis input.
+        shaping = bool(rows) and all(
+            osc_device_model.is_axis_input(r.mode, r.enc_output) for r in rows
+        )
+        out["shaping"] = shaping
+        names = SETTING_KEYS + (osc_device_model.SHAPING_KEYS if shaping else ())
+        for name in names:
             values = [entry[name] for entry in settings]
             if values and all(value == values[0] for value in values):
                 out[name] = values[0]
@@ -1126,6 +1144,31 @@ class OscLayoutModel(ControlLayoutModel):
         if not self._apply(fn, label):
             return "The profile is running."
         return "\n".join(refused)
+
+    @QtCore.Slot(str, bool, result=bool)
+    def setInverted(self, key: str, on: bool) -> bool:
+        """The parent row's Invert check box (S161): one Undo step."""
+        row = self._row_of_key(key)
+        if row is None or not osc_device_model.is_axis_input(row.mode, row.enc_output):
+            return False
+        if row.invert == bool(on):
+            return True
+        uid, address = row.uid, row.label
+        error: list[str] = []
+
+        def fn() -> list[dict]:
+            error.append(osc_device_model.update_settings(uid, {"invert": bool(on)}))
+            return []
+
+        state = "On" if on else "Off"
+        if not self._apply(fn, f"Turn Invert {state} · {address}"):
+            return False
+        return not (error and error[0])
+
+    @QtCore.Slot(result="QVariantList")
+    def encAccelChoices(self) -> list[dict]:
+        """The encoder acceleration presets (S164) for a dropdown."""
+        return [dict(c) for c in osc_device_model.ENC_ACCEL_CHOICES]
 
     @QtCore.Slot(str, result=str)
     def copyForCompanion(self, key: str) -> str:

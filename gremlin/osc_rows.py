@@ -26,6 +26,8 @@ MODES = ("button", "axis", "change", "encoder")
 ENC_FORMATS = ("auto", "direction", "signed")
 ENC_OUTPUTS = ("axis", "pulse_cw", "pulse_ccw")
 MAX_ENC_STEP = 2.0
+# Encoder acceleration presets (S164): turning fast multiplies the step.
+ENC_ACCELS = ("off", "low", "medium", "high")
 CMD_MODES = ("message", "data")
 MAX_DELAY_MS = 10000
 
@@ -43,6 +45,10 @@ _DEFAULTS: dict[str, Any] = {
     "enc_format": "auto",
     "enc_step": 0.05,
     "enc_output": "axis",
+    # Axis shaping (S161): Invert, and a centre deadzone (low <= 0 <= high).
+    "invert": False,
+    "deadzone": (0.0, 0.0),
+    "enc_accel": "off",
 }
 SETTING_KEYS = tuple(_DEFAULTS)
 
@@ -64,6 +70,9 @@ class OscRow:
     enc_format: str = "auto"
     enc_step: float = 0.05
     enc_output: str = "axis"
+    invert: bool = False
+    deadzone: tuple[float, float] = (0.0, 0.0)
+    enc_accel: str = "off"
 
     @property
     def identifier(self) -> Identifier:
@@ -175,8 +184,38 @@ def check_settings(settings: dict[str, object]) -> dict[str, Any]:
                 raise GremlinError(f"Invalid OSC encoder step: {value!r}") from None
             if not (math.isfinite(value) and 0.0 < value <= MAX_ENC_STEP):
                 raise GremlinError(f"Invalid OSC encoder step: {value!r}")
+        elif key == "invert":
+            if not isinstance(value, bool):
+                raise GremlinError(f"Invalid OSC invert: {value!r}")
+        elif key == "deadzone":
+            value = _deadzone(value)
+        elif key == "enc_accel":
+            if value not in ENC_ACCELS:
+                raise GremlinError(f"Invalid OSC encoder acceleration: {value!r}")
         out[key] = value
     return out
+
+
+def _deadzone(value: object) -> tuple[float, float]:
+    """(low, high) with -1 < low <= 0 <= high < 1."""
+
+    def bad() -> GremlinError:
+        # Made only when refused: GremlinError logs when it is created.
+        return GremlinError(f"Invalid OSC deadzone: {value!r}")
+
+    if isinstance(value, (str, bytes)) or not isinstance(value, (list, tuple)):
+        raise bad()
+    if len(value) != 2 or any(isinstance(v, bool) for v in value):
+        raise bad()
+    try:
+        low, high = float(value[0]), float(value[1])
+    except (TypeError, ValueError):
+        raise bad() from None
+    if not (math.isfinite(low) and math.isfinite(high)):
+        raise bad()
+    if not (-1.0 < low <= 0.0 <= high < 1.0):
+        raise bad()
+    return (low, high)
 
 
 class OscRows:
@@ -442,6 +481,9 @@ class OscRows:
                     "enc_format": row.enc_format,
                     "enc_step": row.enc_step,
                     "enc_output": row.enc_output,
+                    "invert": row.invert,
+                    "deadzone": list(row.deadzone),
+                    "enc_accel": row.enc_accel,
                 }
                 for row in self._rows
             ]

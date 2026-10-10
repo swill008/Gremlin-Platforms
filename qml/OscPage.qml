@@ -198,6 +198,15 @@ Item {
         return true
     }
 
+    // Add Inputs > From TouchOSC Layout… (S162): the Import window, choosing
+    // a .tosc file straight away.
+    function openTouchOsc() {
+        if (!openImport())
+            return false
+        _importDialog.chooseFile()
+        return true
+    }
+
     // OSC's Module Setup (D-09-OSC-TABS), as Options' OSC line opens it.
     function openSetup() {
         if (typeof signal !== "undefined" && signal && signal.openOscModuleSetup) {
@@ -662,15 +671,48 @@ Item {
         onTriggered: _root._tick++
     }
 
-    // Right end of a row: the live value on an input, the on/off box on a
-    // feedback row (S153; usable while running, S155).
+    // Right end of a row: the live value and, on an axis input, Invert
+    // (S161, Logical's writer-row Invert); the on/off box on a feedback row
+    // (S153; usable while running, S155).
     Component {
         id: _rowExtras
         Loader {
             readonly property var rowModel: parent ? parent.rowModel : null
             readonly property bool feedback: !!rowModel && rowModel.rowKind === "feedback"
             readonly property bool wanted: !!item && item.wanted === true
-            sourceComponent: feedback ? _feedbackOn : _liveValue
+            sourceComponent: feedback ? _feedbackOn : _inputExtras
+        }
+    }
+
+    Component {
+        id: _inputExtras
+        RowLayout {
+            id: _inputRow
+            readonly property var rowModel: parent ? parent.rowModel : null
+            readonly property bool canInvert: !!rowModel && rowModel.rowKind === "parent"
+                                              && rowModel.canInvert === true
+            readonly property bool wanted: canInvert || (!!_live.item && _live.item.wanted === true)
+            spacing: Style.dp(10)
+            Loader {
+                id: _live
+                readonly property var rowModel: _inputRow.rowModel
+                visible: !!item && item.wanted === true
+                Layout.alignment: Qt.AlignVCenter
+                sourceComponent: _liveValue
+            }
+            CheckBox {
+                property bool ownsPress: true
+                objectName: "oscRowInvert"
+                visible: _inputRow.canInvert
+                enabled: !_root.editorLocked
+                Layout.alignment: Qt.AlignVCenter
+                text: "Invert"
+                checked: !!_inputRow.rowModel && _inputRow.rowModel.inverted === true
+                onClicked: {
+                    if (_inputRow.rowModel)
+                        _layout.setInverted(_inputRow.rowModel.key, checked)
+                }
+            }
         }
     }
 
@@ -870,6 +912,7 @@ Item {
             locked ? null : MenuModel.section("add", "Add Inputs", [
                 MenuModel.action("Add…", function() { openAdd() }),
                 MenuModel.action("Import…", function() { openImport() }),
+                MenuModel.action("From TouchOSC Layout…", function() { openTouchOsc() }),
                 MenuModel.action("Listen", function() { listen() }),
                 MenuModel.action("Clear…", function() { askClear() }, _devices.rowCount() > 0,
                                  { danger: true })
@@ -986,12 +1029,32 @@ Item {
 
     OscImportDialog {
         id: _importDialog
+        deviceModel: _devices
         onAccepted: (text) => {
             if (!_root.editorLocked) {
                 var result = _devices.importInputs(text)
                 _message.show(result ? String(result) : "", false)
             }
         }
+        onChooseFileRequested: _importPicker.open()
+        // A TouchOSC layout's ticked controls (S162): the same add path.
+        onTouchOscAccepted: (path, chosen) => {
+            if (!_root.editorLocked) {
+                var result = _devices.importTouchOsc(path, chosen)
+                _message.show(result ? String(result) : "", false)
+            }
+        }
+    }
+
+    // Import's file: a .txt fills the box, a .tosc shows the preview (S162).
+    FilePicker {
+        id: _importPicker
+        kind: "other"
+        mode: "open"
+        title: "Import OSC Inputs"
+        nameFilters: ["OSC messages or TouchOSC layouts (*.txt *.tosc)",
+                      "TouchOSC layouts (*.tosc)", "Text files (*.txt)", "All files (*)"]
+        onPicked: (selected) => _importDialog.loadFile(selected.toString())
     }
 
     OscAddDialog {

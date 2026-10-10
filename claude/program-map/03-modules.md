@@ -209,7 +209,7 @@ Every device has a module file that says which of its controls the program may u
 | vJoy / ViGEm drivers | only via `modules/output.py` (`VJoyProxy`, `XboxProxy`, `vjoy.vjoy`, `vigem.ids`) | — |
 | Run lifecycle (`code_runner`) | — | `output.refresh`, `output.reset_drivers`, `InputModuleRuntime().event/key_event` connected at Run |
 | Actions (Map to vJoy, Map to Xbox, Merge Axis, Dual Axis Deadzone, Condition, macro) | — | `output.write_vjoy`, `write_xbox`, `vjoy_value`; `inputs.axis_value` etc. |
-| Scripts (`user_script.py`) | — | `output.ScriptVJoy`, `inputs.ScriptJoystick`, `ScriptKeyboard` |
+| Scripts (`user_script.py`) | — | `output.ScriptVJoy`, `inputs.ScriptJoystick`, `ScriptKeyboard`; from 2026-10-10 OSC (`OscInputVariable`, `ScriptOsc` through `osc_output`, 09 S163) |
 | Wiring (`modules/wiring.py`, Configuration page labels, Button Map chips) | — | `output.vjoy_module_name`, `vjoy_allows`, `vjoy_claim`, `xbox_module` |
 | Button Map (`hardware_profile.HardwareProfile`) | Module Setup uses `copyImage`, `keepPhoto`, `profilePhotoUrl`, `setDeviceGuid`; cards use `profilePhotoUrl`; the Logical Device card's `setCardImage` uses `copyImage` (also files the picture in the Device Library, like Button Map Choose Photo) (S88) | Button Map uses `resolve_module_slug`, `module_file`, claims for chips |
 | Logical Device card image (S88, D-03-LD-IMAGE) | `StatusPage` -> `ModuleListModel.setCardImage` / `removeCardImage` and the shared `FilePicker`; `module_model` -> `HardwareProfile.copyImage`, `store.update_path`, `store.remove_picture_files`, `logical_device_file`; `cardMap` gains `hasPhoto` | `signal.logicalDeviceReloaded` -> `ModuleListModel._logical_reloaded` (card photo redraws after a History or Device Library restore) |

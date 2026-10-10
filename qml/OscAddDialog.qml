@@ -64,6 +64,31 @@ Popup {
     width: Style.dp(860)
 
     OscSettingsInfo { id: _oscInfo }
+
+    // Acceleration (09 S164): turning fast multiplies the step or the pulses.
+    component AccelBox: RowLayout {
+        spacing: Style.dp(8)
+        property alias box: _accelBox
+        property var labels: []
+        property int chosen: 0
+        signal picked(int index)
+        Label {
+            text: "Acceleration:"
+            Layout.leftMargin: Style.dp(12)
+        }
+        ComboBox {
+            id: _accelBox
+            model: parent.labels
+            currentIndex: parent.chosen
+            displayText: currentIndex < 0 ? "Differs" : currentText
+            implicitWidth: Style.dp(120)
+            onActivated: (index) => parent.picked(index)
+            PointerTip {
+                text: "Turning fast multiplies the step size or the pulses, up to 8 times. Off: every turn counts once."
+                show: parent.hovered
+            }
+        }
+    }
     OscBulkCapture { id: _bulk }
 
     // A Button Map card (osc_style.md): card fill, strong line, round corners.
@@ -105,6 +130,10 @@ Popup {
         _encStep.text = "0.05"
         _encOutAxis.checked = true
         _encDelay.text = "100"
+        accelIndex = 0
+        _dzLow.text = "0"
+        _dzHigh.text = "0"
+        _shapingAll = false
         _message.clear()
     }
 
@@ -168,6 +197,14 @@ Popup {
             _encStep.text = ""
         if (diff.enc_output)
             _encOutAxis.checked = _encOutCw.checked = _encOutCcw.checked = false
+        if (diff.enc_accel)
+            accelIndex = -1
+        if (diff.deadzone_low)
+            _dzLow.text = ""
+        if (diff.deadzone_high)
+            _dzHigh.text = ""
+        // Shaping shows only when every chosen input is an axis input.
+        _shapingAll = st.shaping === true
         differs = diff
         editKeys = keys.slice()
         _startSettings = settings()
@@ -202,6 +239,12 @@ Popup {
             _encFormatSigned.checked = true
         if (st.enc_step !== undefined && st.enc_step !== null)
             _encStep.text = String(st.enc_step)
+        var accel = encAccelValues.indexOf(String(st.enc_accel || "off"))
+        accelIndex = accel >= 0 ? accel : 0
+        if (st.deadzone_low !== undefined && st.deadzone_low !== null && st.deadzone_low !== "")
+            _dzLow.text = String(st.deadzone_low)
+        if (st.deadzone_high !== undefined && st.deadzone_high !== null && st.deadzone_high !== "")
+            _dzHigh.text = String(st.deadzone_high)
         if (st.enc_output === "pulse_cw")
             _encOutCw.checked = true
         else if (st.enc_output === "pulse_ccw")
@@ -260,6 +303,52 @@ Popup {
         if (_encOutAxis.checked || !editingMany)
             return "axis"
         return ""
+    }
+
+    // Encoder acceleration presets (09 S164): stored value, shown text.
+    readonly property var encAccelValues: ["off", "low", "medium", "high"]
+    readonly property var encAccelLabels: ["Off", "Low", "Medium", "High"]
+
+    // The chosen preset (-1: differs on several inputs, none chosen). Shown
+    // next to Step size (axis output) or Release after (pulses).
+    property int accelIndex: 0
+
+    function encoderAccel() {
+        if (accelIndex >= 0)
+            return encAccelValues[accelIndex]
+        return editingMany ? "" : "off"
+    }
+
+    // Axis shaping (09 S161): the centre deadzone shows for an axis and an
+    // encoder's axis output; on several inputs only when all are axis inputs.
+    property bool _shapingAll: false
+    readonly property bool shapingShown: editKeys.length > 0 ? _shapingAll
+        : (_modeAxis.checked || (_modeEncoder.checked && _encOutAxis.checked))
+
+    function _dzError(text, low) {
+        var t = String(text).trim()
+        if (!t.length)
+            return ""
+        var v = Number(t)
+        if (low && (isNaN(v) || v < -0.99 || v > 0))
+            return "Deadzone low must be from -0.99 to 0."
+        if (!low && (isNaN(v) || v < 0 || v > 0.99))
+            return "Deadzone high must be from 0 to 0.99."
+        return ""
+    }
+
+    // A blank value is 0, or on several inputs keeps each input's own.
+    function deadzoneError() {
+        if (!shapingShown)
+            return ""
+        return _dzError(_dzLow.text, true) || _dzError(_dzHigh.text, false)
+    }
+
+    function _dzValue(text) {
+        var t = String(text).trim()
+        if (!t.length || isNaN(Number(t)))
+            return editingMany ? "" : 0
+        return Number(t)
     }
 
     readonly property bool encoderPulses: _modeEncoder.checked && (_encOutCw.checked || _encOutCcw.checked)
@@ -344,7 +433,10 @@ Popup {
             "delay_ms": delay,
             "enc_format": encoderFormat(),
             "enc_step": stepError() === "" ? Number(_encStep.text) : 0.05,
-            "enc_output": encoderOutput()
+            "enc_output": encoderOutput(),
+            "enc_accel": encoderAccel(),
+            "deadzone_low": _dzValue(_dzLow.text),
+            "deadzone_high": _dzValue(_dzHigh.text)
         }
     }
 
@@ -395,7 +487,7 @@ Popup {
 
     // OK: adds the input, or saves the edited input's settings.
     function accept() {
-        var err = rangeError() || stepError() || delayError()
+        var err = rangeError() || stepError() || delayError() || deadzoneError()
         if (err.length) {
             _message.show(err, true)
             return false
@@ -712,6 +804,12 @@ Popup {
                 text: "0.05"
                 implicitWidth: Style.dp(80)
             }
+            AccelBox {
+                box.objectName: "oscEncAccel"
+                labels: _root.encAccelLabels
+                chosen: _root.accelIndex
+                onPicked: (index) => _root.accelIndex = index
+            }
             Label {
                 text: _root.stepError()
                 color: Style.dangerText
@@ -741,9 +839,61 @@ Popup {
                     onClicked: _encDelay.text = modelData.ms
                 }
             }
+            AccelBox {
+                box.objectName: "oscEncAccelPulses"
+                labels: _root.encAccelLabels
+                chosen: _root.accelIndex
+                onPicked: (index) => _root.accelIndex = index
+            }
             Label {
                 text: _root.delayError()
                 color: Style.dangerText
+            }
+        }
+
+        // Shaping (09 S161): a centre deadzone, applied before any action.
+        // Invert is the check box on the input's row.
+        ColumnLayout {
+            objectName: "oscShapingSection"
+            visible: _root.shapingShown
+            Layout.fillWidth: true
+            spacing: Style.dp(6)
+            SectionHeading {
+                text: "Shaping"
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                objectName: "oscDeadzoneRow"
+                spacing: Style.dp(8)
+                Label { text: "Deadzone low:" }
+                TextField {
+                    id: _dzLow
+                    objectName: "oscDeadzoneLow"
+                    text: "0"
+                    implicitWidth: Style.dp(80)
+                    placeholderText: _root.differs.deadzone_low ? "Differs" : "0"
+                }
+                Label { text: "high:" }
+                TextField {
+                    id: _dzHigh
+                    objectName: "oscDeadzoneHigh"
+                    text: "0"
+                    implicitWidth: Style.dp(80)
+                    placeholderText: _root.differs.deadzone_high ? "Differs" : "0"
+                }
+                Label {
+                    objectName: "oscDeadzoneError"
+                    text: _root.deadzoneError()
+                    color: Style.dangerText
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+            }
+            Label {
+                visible: _root.deadzoneError() === ""
+                text: "Values from low to high (around the center) give 0. For example -0.1 and 0.1."
+                color: Style.fgMuted
+                font.pixelSize: Style.dp(11)
             }
         }
 
@@ -756,7 +906,7 @@ Popup {
                 visible: false
                 width: parent.width - Style.dp(16)
                 wrapMode: Text.WordWrap
-                text: _root.buttonHelpText
+                text: _root.helpText()
             }
 
             Rectangle {
@@ -822,7 +972,7 @@ Popup {
                 highlighted: true
                 enabled: (_root.editingMany || _cmd.text.trim().length > 0)
                          && _root.rangeError() === "" && _root.stepError() === ""
-                         && _root.delayError() === ""
+                         && _root.delayError() === "" && _root.deadzoneError() === ""
                 onClicked: _root.accept()
             }
             Button {

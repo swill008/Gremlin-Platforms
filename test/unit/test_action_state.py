@@ -209,16 +209,18 @@ def test_stateful_actions_lists_every_toggle_and_tempo() -> None:
 
 
 def test_no_action_plugin_imports_osc() -> None:
-    """Actions report state; OSC reads it (S157). Never the other way."""
+    """Actions report state; OSC Feedback reads it (S157), never the other
+    way: no action imports OSC Feedback, and the stateful actions (Smart
+    Toggle, Tempo) import nothing of OSC. Conditions, macros and Send OSC
+    may read OSC inputs (S159, S149)."""
     import ast
 
-    # Send OSC is an OSC output action by design; every other action must
-    # not know about OSC.
     root = pathlib.Path(__file__).resolve().parents[2] / "action_plugins"
-    files = [p for p in root.rglob("*.py") if p.parent.name != "send_osc"]
+    files = list(root.rglob("*.py"))
     assert len(files) > 20, root
     bad = []
     for path in files:
+        stateful = path.parent.name in ("smart_toggle", "tempo")
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             names: list[str] = []
@@ -228,6 +230,9 @@ def test_no_action_plugin_imports_osc() -> None:
                 names = [node.module or ""] + [
                     f"{node.module}.{a.name}" for a in node.names
                 ]
-            if any(part.startswith("osc") for n in names for part in n.split(".")):
+            parts = [part for n in names for part in n.split(".")]
+            if any(part.startswith("osc_feedback") for part in parts) or (
+                stateful and any(part.startswith("osc") for part in parts)
+            ):
                 bad.append(f"{path}:{node.lineno}")
     assert bad == []

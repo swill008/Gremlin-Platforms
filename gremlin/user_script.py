@@ -40,14 +40,19 @@ from gremlin import (
     clock,
     error,
     event_handler,
+    osc_output,
+    osc_pattern,
     run_scope,
     shared_state,
     threads,
     util,
 )
 from gremlin.edits import EditNoted, note_edit
+from gremlin.log_once import log_once
 from gremlin.logical_device import LogicalDevice, resolve_logical_reference
 from gremlin.modules import inputs, output
+from gremlin.osc import OSC_DEVICE_UUID, OscDevice
+from gremlin.osc_rows import OscRow
 from gremlin.types import (
     HatDirection,
     InputType,
@@ -224,7 +229,7 @@ class PeriodicRegistry:
         """Main execution loop run in a separate thread (run: its Run's
         number, loop: this start's own token)."""
         # Setup plugins to use
-        self._plugins = [JoystickPlugin(), VJoyPlugin(), KeyboardPlugin()]
+        self._plugins = [JoystickPlugin(), VJoyPlugin(), KeyboardPlugin(), OscPlugin()]
         callback_interval = {}
 
         # Populate the queue, adding an index to each callback to tie break
@@ -407,6 +412,85 @@ class KeyboardPlugin:
             callback with the plugin parameter bound
         """
         return partial_fn(callback, keyboard=KeyboardPlugin.keyboard)
+
+
+class ScriptOsc:
+    """Scripts' OSC output (09 S163): to a named target only, through
+    osc_output, so the OSC output switch applies and the Monitor shows the
+    message as Out. No raw host and port, no reply to the sender."""
+
+    def send(
+        self,
+        target_name: str,
+        address: str,
+        *values: object,
+        types: list[str] | tuple[str, ...] | None = None,
+    ) -> bool:
+        """Sends address with values to the target named target_name.
+
+        types gives each value's type (auto/int/float/bool/text). Returns
+        True when the message went out: False with OSC output off, no Run,
+        an unknown target or an address that isn't a plain OSC address.
+        """
+        reason = osc_pattern.check(address, allow_pattern=False)
+        if reason:
+            log_once(
+                "user",
+                ("script-osc-address", str(address)),
+                logging.WARNING,
+                f"Script OSC send to '{address}' refused: {reason}",
+            )
+            return False
+        target_id = self._target_id(target_name)
+        if target_id is None:
+            log_once(
+                "user",
+                ("script-osc-target", str(target_name)),
+                logging.WARNING,
+                f"Script OSC send refused: no OSC target named '{target_name}'.",
+            )
+            return False
+        return osc_output.send(target_id, address, values, types)
+
+    @staticmethod
+    def _target_id(target_name: str) -> str | None:
+        """The id of the target with this name (any case), or None."""
+        name = str(target_name or "").strip().casefold()
+        if not name:
+            return None
+        _, targets = osc_output._settings()  # noqa: SLF001 - the one reader
+        for target in targets:
+            if str(target.get("name") or "").strip().casefold() == name:
+                target_id = target.get("id")
+                return str(target_id) if target_id else None
+        return None
+
+
+# The object scripts use: the "osc" callback parameter, or import it.
+osc = ScriptOsc()
+
+
+class OscPlugin:
+    """Plugin giving scripts OSC output (09 S163).
+
+    For a function to use this plugin it requires one of its parameters
+    to be named "osc".
+    """
+
+    def __init__(self) -> None:
+        self.keyword = "osc"
+
+    def install(self, callback: Callable, partial_fn: Callable) -> Callable:
+        """Binds the script OSC object to the callback's "osc" parameter.
+
+        Args:
+            callback: the callback to decorate
+            partial_fn: function to create the partial function / method
+
+        Returns:
+            callback with the plugin parameter bound
+        """
+        return partial_fn(callback, osc=osc)
 
 
 class ScriptVariableRegistry:
@@ -865,6 +949,7 @@ class Script(EditNoted):
             "int": IntegerVariable,
             "keyboard": KeyboardVariable,
             "logical-device": LogicalDeviceVariable,
+            "osc-input": OscInputVariable,
             "mode": ModeVariable,
             "physical-input": PhysicalInputVariable,
             "selection": SelectionVariable,
@@ -1365,6 +1450,102 @@ class LogicalDeviceVariable(AbstractVariable):
 
     def _assign_value_from(self, other: LogicalDeviceVariable) -> None:
         self._identifier = other._identifier
+        self._uid = other._uid
+
+
+class OscInputVariable(AbstractVariable):
+    """An OSC input, named by its permanent id (09 S163). Its decorator
+    puts the callback on the normal event path for that input."""
+
+    xml_tag = "osc-input"
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        is_optional: bool,
+        valid_types: list[InputType] | None = None,
+    ) -> None:
+        super().__init__(name, description, is_optional)
+
+        self._valid_types = valid_types or [
+            InputType.JoystickAxis,
+            InputType.JoystickButton,
+        ]
+        # Nothing is chosen until the user picks an address.
+        self._uid: str | None = None
+        self._initialize_from_registry()
+
+    @property
+    def uid(self) -> str | None:
+        """Permanent id of the chosen OSC input (None: none chosen)."""
+        return self._uid
+
+    @uid.setter
+    def uid(self, value: str | None) -> None:
+        self._uid = value or None
+
+    @property
+    def value(self) -> OscRow | None:
+        """The chosen OSC input, None when none is chosen or it is gone."""
+        if self._uid is None:
+            return None
+        return OscDevice().rows.by_uid(self._uid)
+
+    @value.setter
+    def value(self, value: OscRow | str | None) -> None:
+        self.uid = value.uid if isinstance(value, OscRow) else value
+
+    @property
+    def valid_types(self) -> list[InputType]:
+        return self._valid_types
+
+    def choices(self) -> list[OscRow]:
+        """The OSC inputs this variable can name, by address."""
+        return sorted(
+            (r for r in OscDevice().rows.rows() if r.input_type in self._valid_types),
+            key=lambda r: r.label.casefold(),
+        )
+
+    def is_missing(self) -> bool:
+        """The stored uid names an OSC input that no longer exists."""
+        return self._uid is not None and self.value is None
+
+    def is_valid(self) -> bool:
+        row = self.value
+        return row is not None and row.input_type in self._valid_types
+
+    def create_decorator(self, mode: str) -> JoystickDecorator:
+        return JoystickDecorator("OSC", str(OSC_DEVICE_UUID), mode)
+
+    def decorator(self, mode: ModeVariable) -> Callable:
+        row = self.value
+        if row is None or not self.is_valid():
+            # Return a no-op decorator.
+            return lambda f: f
+        dec = self.create_decorator(mode.value)
+        if row.input_type == InputType.JoystickAxis:
+            return dec.axis(row.input_id)
+        return dec.button(row.input_id)
+
+    def to_xml(self) -> None | ElementTree.Element:
+        # A missing input is kept on save, never dropped.
+        if not self.is_missing():
+            return super().to_xml()
+        node = ElementTree.Element("variable")
+        node.set("type", self.xml_tag)
+        util.append_property_nodes(node, [["name", self.name, PropertyType.String]])
+        self._to_xml(node)
+        return node
+
+    def _from_xml(self, node: ElementTree.Element) -> None:
+        self._uid = node.get("uid") or None
+
+    def _to_xml(self, node: ElementTree.Element) -> None:
+        if self._uid:
+            node.set("uid", self._uid)
+
+    def _assign_value_from(self, other: OscInputVariable) -> None:
         self._uid = other._uid
 
 

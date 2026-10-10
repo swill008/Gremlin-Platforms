@@ -350,6 +350,7 @@ class CodeRunner:
         self.event_handler.add_plugin(user_script.JoystickPlugin())
         self.event_handler.add_plugin(user_script.VJoyPlugin())
         self.event_handler.add_plugin(user_script.KeyboardPlugin())
+        self.event_handler.add_plugin(user_script.OscPlugin())
 
         self._profile = None
         self._running = False

@@ -211,6 +211,23 @@ Item {
                         eventTypes: ["axis", "button", "hat"]
                     }
 
+                    // OSC's inputs by address, as in the Assign Hardware
+                    // list (09 S159); kept by permanent id.
+                    ComboBox {
+                        id: _oscPicker
+                        objectName: "conditionOscPicker"
+                        visible: modelData.oscInputs.length > 0
+                        model: modelData.oscInputs
+                        textRole: "text"
+                        valueRole: "uid"
+                        currentIndex: -1
+                        displayText: "OSC input…"
+                        implicitContentWidthPolicy: ComboBox.WidestText
+                        onActivated: (index) => {
+                            modelData.setOscInput(currentValue)
+                        }
+                    }
+
                     Comparator {
                         comparator: modelData.comparator
                     }

@@ -165,6 +165,34 @@ JGListView {
         }
 
         DelegateChoice {
+            roleValue: "osc-input"
+
+            RowLayout {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: Style.dp(10)
+
+                DescriptiveText {
+                    text: modelData.name
+                    description: modelData.description
+                    isValid: modelData.isValid
+                }
+
+                TooltipComboBox {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignRight
+
+                    model: modelData.options
+                    currentIndex: modelData.currentIndex
+                    displayText: currentIndex < 0 ? qsTr("Choose an OSC input")
+                                                  : currentText
+
+                    onActivated: (index) => { modelData.select(index) }
+                }
+            }
+        }
+
+        DelegateChoice {
             roleValue: "mode"
 
             RowLayout {

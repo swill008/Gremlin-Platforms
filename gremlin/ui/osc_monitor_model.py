@@ -24,11 +24,29 @@ assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
 
 NO_INPUT = "no input"
+# What the runtime notes as the matched input of a message from a sender
+# not on the allow-list (gremlin.osc.BLOCKED, S160).
+BLOCKED = "blocked"
 
 _ROLES = (
     "time", "direction", "address", "values", "peer", "matched", "noInput",
-    "hoverText",
+    "hoverText", "blocked", "senderHost",
 )
+
+
+def is_blocked(entry: dict[str, Any]) -> bool:
+    """An incoming message refused by the sender allow-list (S160)."""
+    return entry.get("direction") == "in" and list(entry.get("matched") or []) == [
+        BLOCKED
+    ]
+
+
+def peer_host(entry: dict[str, Any]) -> str:
+    """The sender's host from the peer text "host:port" ("" for outgoing)."""
+    if entry.get("direction") == "out":
+        return ""
+    peer = str(entry.get("peer") or "")
+    return peer.rsplit(":", 1)[0] if ":" in peer else peer
 
 
 def _runtime() -> object | None:
@@ -165,6 +183,10 @@ class OscMonitorModel(QtCore.QAbstractListModel):
             return entry.get("peer", "")
         if name == "noInput":
             return entry.get("direction") == "in" and not entry.get("matched")
+        if name == "blocked":
+            return is_blocked(entry)
+        if name == "senderHost":
+            return peer_host(entry)
         if name == "hoverText":
             return hover_text(entry)
         if name == "matched":
@@ -297,3 +319,15 @@ class OscMonitorModel(QtCore.QAbstractListModel):
         if not self._role(entry, "noInput"):
             return {}
         return add_settings(entry)
+
+    @QtCore.Slot(str, result=str)
+    def allowSender(self, host: str) -> str:
+        """The row menu's "Allow this sender" (S160): adds the host to the
+        server's allow-list; "" when added or already there, else why."""
+        from gremlin.ui import osc_option  # noqa: PLC0415  lazy: keeps imports light
+
+        try:
+            ok, why = osc_option.add_sender(host)
+        except OSError:
+            return "Not written. The OSC file could not be saved."
+        return "" if ok else why

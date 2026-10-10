@@ -41,6 +41,7 @@ from gremlin.error import (
 from gremlin.logical_device import LogicalDevice
 from gremlin.macro_raw import RawMacroStep
 from gremlin.modules import output
+from gremlin.osc import OscDevice
 from gremlin.profile import Library
 from gremlin.signal import signal
 from gremlin.types import (
@@ -363,6 +364,100 @@ class LogicalDeviceActionModel(AbstractActionModel):
 
     hatDirection = QtCore.Property(
         str, fget=_get_hat_direction, fset=_set_hat_direction, notify=changed
+    )
+
+
+class OscActionModel(AbstractActionModel):
+    """An OSC step: the input picked by its address, stored by its
+    permanent id (09 S159)."""
+
+    changed = QtCore.Signal()
+
+    def __init__(self, action: macro.OscAction, parent: ta.OQO = None) -> None:
+        super().__init__(action, parent)
+
+    def _action_type(self) -> str:
+        return "osc"
+
+    def _step(self) -> macro.OscAction:
+        return cast(macro.OscAction, self._action)
+
+    def _get_input_choices(self) -> list[dict[str, str]]:
+        """Every OSC input as {value: uid, text: address, type}."""
+        return [
+            {
+                "value": row.uid,
+                "text": row.label,
+                "type": InputType.to_string(row.input_type),
+            }
+            for row in OscDevice().rows.rows()
+            if row.input_type in (InputType.JoystickButton, InputType.JoystickAxis)
+        ]
+
+    def _get_input_uid(self) -> str:
+        return self._step().uid or ""
+
+    def _set_input_uid(self, uid: str) -> None:
+        step = self._step()
+        row = OscDevice().rows.by_uid(uid) if uid else None
+        if row is None or uid == step.uid:
+            return
+        step.uid = row.uid
+        if row.input_type != step.input_type:
+            step.input_type = row.input_type
+            # A button step presses (05 S116); an axis step starts centred.
+            step.value = 0.0 if row.input_type == InputType.JoystickAxis else True
+        self.changed.emit()
+
+    def _get_input_type(self) -> str:
+        row = self._step().row()
+        input_type = row.input_type if row is not None else self._step().input_type
+        return InputType.to_string(input_type)
+
+    def _get_needs_input(self) -> bool:
+        return self._step().uid is None
+
+    def _get_is_missing(self) -> bool:
+        return self._step().is_missing()
+
+    def _get_is_pressed(self) -> bool:
+        return bool(self._step().value) if self._get_input_type() == "button" else False
+
+    def _set_is_pressed(self, value: bool) -> None:
+        if self._get_input_type() != "button" or value == self._step().value:
+            return
+        self._step().value = value
+        self.changed.emit()
+
+    def _get_axis_value(self) -> float:
+        if self._get_input_type() == "axis":
+            return float(self._step().value)
+        return 0.0
+
+    def _set_axis_value(self, value: float) -> None:
+        if self._get_input_type() != "axis" or value == self._step().value:
+            return
+        self._step().value = value
+        self.changed.emit()
+
+    inputChoices = QtCore.Property(list, fget=_get_input_choices, notify=changed)
+
+    inputUid = QtCore.Property(
+        str, fget=_get_input_uid, fset=_set_input_uid, notify=changed
+    )
+
+    inputType = QtCore.Property(str, fget=_get_input_type, notify=changed)
+
+    needsInput = QtCore.Property(bool, fget=_get_needs_input, notify=changed)
+
+    isMissing = QtCore.Property(bool, fget=_get_is_missing, notify=changed)
+
+    isPressed = QtCore.Property(
+        bool, fget=_get_is_pressed, fset=_set_is_pressed, notify=changed
+    )
+
+    axisValue = QtCore.Property(
+        float, fget=_get_axis_value, fset=_set_axis_value, notify=changed
     )
 
 
@@ -801,6 +896,7 @@ class MacroModel(ActionModel):
         "key": KeyActionModel,
         "mouse-button": MouseButtonActionModel,
         "mouse-motion": MouseMotionActionModel,
+        "osc": OscActionModel,
         "pause": PauseActionModel,
         "vjoy": VJoyActionModel,
         RawMacroStep.tag: RawStepModel,
@@ -847,6 +943,8 @@ class MacroModel(ActionModel):
             signal.showNotification.emit(
                 "Macro", "Add a Logical Device control first."
             )
+        if isinstance(step, macro.OscAction) and step.uid is None:
+            signal.showNotification.emit("Macro", "Add an OSC input first.")
         if no_claim:
             # Added all the same, like a Logical Device step (05 S113).
             signal.showNotification.emit(

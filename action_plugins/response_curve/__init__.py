@@ -23,6 +23,7 @@ from gremlin import (
     spline,
     util,
 )
+from gremlin.axis_shaping import deadzone
 from gremlin.base_classes import (
     AbstractActionData,
     AbstractFunctor,
@@ -62,35 +63,6 @@ class DeadzoneIndex(enum.Enum):
     CENTER_LOW = 1
     CENTER_HIGH = 2
     HIGH = 3
-
-
-def deadzone(
-    value: float, low: float, low_center: float, high_center: float, high: float
-) -> float:
-    """Returns the mapped value taking the provided deadzone into
-    account.
-
-    The following relationship between the limits has to hold.
-    -1 <= low < low_center <= 0 <= high_center < high <= 1
-
-    Args:
-        value: the raw input value
-        low: low deadzone limit
-        low_center: lower center deadzone limit
-        high_center: upper center deadzone limit
-        high: high deadzone limit
-
-    Returns:
-        Corrected value
-    """
-    if value >= 0:
-        return min(
-            1.0, max(0.0, (value - high_center) / max(0.01, abs(high - high_center)))
-        )
-    else:
-        return max(
-            -1.0, min(0.0, (value - low_center) / max(0.01, abs(low - low_center)))
-        )
 
 
 class ResponseCurveFunctor(AbstractFunctor):

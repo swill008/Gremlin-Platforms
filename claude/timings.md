@@ -368,3 +368,22 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | MAP2: batch 2 map lines, decisions as wording, glossary | docs | 3–8 min (table) | 5 min | 12:27–12:32 |
 | 2026-10-10 | Batch 2 full run + lint (lead), after speed fixes | test | 6–7 min + lint (table) | 5.5 min | 12:33–12:39; run 5:18 (was 7–9 min); 1 fail = stale Help labels |
 | 2026-10-10 | Lead: Key color spelling, Help labels for removed Feedback tab editing, test line wraps | fix | 3–8 min (table: agent fix) | 1 min | 12:39–12:40 |
+| 2026-10-10 | Lead: batch 2 commit + push (36bbcdb7) + tracker | commit | ~2 min (table: end-to-end batch row) | 2 min | 12:40–12:42 |
+| 2026-10-10 | B3-TOSC: TouchOSC .tosc parser | feature | 3–8 min (table) | 2 min | 12:42–12:44 |
+| 2026-10-10 | B3-COND: OSC inputs in conditions/scripts (OscState by uid, picker) | feature | 3–8 min (table) | 4 min | 12:42–12:46 |
+| 2026-10-10 | B3-SCRIPT: OscInputVariable, osc.send to named targets, editor choice | feature | 3–8 min (table) | 5 min | 12:42–12:47 |
+| 2026-10-10 | Lead: OscPlugin registered at Run + guard test narrowed to the feedback direction | fix | 3–8 min (table: agent fix) | 1 min | 12:47–12:48 |
+| 2026-10-10 | RT3: allow-list, invert/deadzone, encoder accel, condition values, recorder hook | feature | 3–8 min (table) | 6 min | 12:42–12:48 |
+| 2026-10-10 | Lead: Response Curve uses shared axis_shaping.deadzone; rows key list | fix | 3–8 min (table: agent fix) | 1 min | 12:48–12:49 |
+| 2026-10-10 | B3-MACRO: OSC macro step + Record captures OSC | feature | 3–8 min (table) | 7 min | 12:42–12:49 |
+| 2026-10-10 | B3-MODEL: Invert/deadzone/accel model, TouchOSC preview/import, allow-list + Allow this sender | feature | 3–8 min (table) | 6 min | 12:43–12:49 |
+| 2026-10-10 | TOSC-RESEARCH: .tosc format checked against Hexler docs + tosclib | review | 5–10 min (table) | 3 min | 12:46–12:49 |
+| 2026-10-10 | Lead: TS2 sample download (2,487 bytes, MIT) + TC1-TC4 brief | other | no timing data yet; rough guess 2 min | 1 min | 12:50–12:51 |
+| 2026-10-10 | OSC-PLAY: OscRuntime.play for macro playback (synthetic, no re-shape, not recorded) | fix | 3–8 min (table) | 2 min | 12:50–12:52 |
+| 2026-10-10 | B3-TEST: batch 3 e2e (7) + carry (11) | test | 3–8 min + wait (table) | 10 min | 12:43–12:53 |
+| 2026-10-10 | TOSC-FIX: TouchOSC parser per Hexler docs (grid container, index, radar, pager, encoder axis) + real sample test | fix | 3–8 min (table) | 3 min | 12:50–12:53 |
+| 2026-10-10 | Lead: deadzone error built only when refused (spurious ERROR log) + test | fix | 3–8 min (table: agent fix) | 1 min | 12:53–12:54 |
+| 2026-10-10 | B3-QML: Invert box, Shaping/Acceleration, TouchOSC preview, Allowed senders, Monitor menu | feature | 3–8 min (table) | 11 min | 12:43–12:54 |
+| 2026-10-10 | Lead: readImportText slot for Import's Choose File (.txt) + test | fix | 3–8 min (table: agent fix) | 1 min | 12:54–12:55 |
+| 2026-10-10 | MAP3: batch 3 map, decisions as wording, glossary | docs | 3–8 min (table) | 4 min | 12:53–12:57 |
+| 2026-10-10 | Batch 3 full run + lint (lead) | test | 6–7 min + lint (table) | 4.7 min | 12:58–13:03; run 4:41, parts balanced ~255 s; 7 fails = temp-folder race in one test's inner pytest (passes alone); 2 pyright fixed |

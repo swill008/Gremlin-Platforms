@@ -42,6 +42,7 @@ from gremlin.keyboard import (
 )
 from gremlin.logical_device import LogicalDevice, resolve_logical_reference
 from gremlin.modules import output
+from gremlin.osc import OscDevice, OscRow, OscRuntime
 from gremlin.types import (
     AxisMode,
     InputType,
@@ -945,6 +946,98 @@ class LogicalDeviceAction(AbstractAction):
         return self.input_id is not None and not self.is_missing()
 
 
+class OscAction(AbstractAction):
+    """OSC input step: plays an OSC input, named by its permanent id, as if
+    it had received a message (09 S159). It goes through the OSC runtime,
+    so the input's own actions run and nothing skips a layer."""
+
+    tag = "osc"
+
+    def __init__(
+        self,
+        uid: str | None,
+        input_type: InputType,
+        value: bool | float,
+    ) -> None:
+        """Creates a new OscAction.
+
+        Args:
+            uid: permanent id of the OSC input (None: none chosen yet)
+            input_type: the input's type when the step was made (kept so a
+                step whose input is gone still reads and saves its value)
+            value: pressed (button) or -1..1 (axis)
+        """
+        self.uid = uid or None
+        self.input_type = input_type
+        self.value = value
+
+    @classmethod
+    def create(cls) -> OscAction:
+        """A step on the first OSC input; with none, a step with no input
+        the editor asks to fill in."""
+        rows = OscDevice().rows.rows()
+        if not rows:
+            return OscAction(None, InputType.JoystickButton, True)
+        first = rows[0]
+        # A button step presses (05 S116); an axis step starts centred.
+        if first.input_type == InputType.JoystickAxis:
+            return OscAction(first.uid, first.input_type, 0.0)
+        return OscAction(first.uid, InputType.JoystickButton, True)
+
+    def row(self) -> OscRow | None:
+        return None if self.uid is None else OscDevice().rows.by_uid(self.uid)
+
+    def is_missing(self) -> bool:
+        """The stored uid names an OSC input that isn't there."""
+        return self.uid is not None and self.row() is None
+
+    def __call__(self) -> None:
+        row = self.row()
+        if row is None:
+            return  # no input chosen, or one OSC doesn't have
+        # The recorded value is already shaped: played as is, marked
+        # synthetic, not recorded again; the runtime hops to its thread.
+        if row.input_type == InputType.JoystickAxis:
+            OscRuntime().play(row.uid, "axis", max(-1.0, min(1.0, float(self.value))))
+        else:
+            OscRuntime().play(row.uid, "button", bool(self.value))
+
+    def to_xml(self) -> ElementTree.Element:
+        node = self._create_node(self.tag)
+        row = self.row()
+        if row is not None:
+            self.input_type = row.input_type
+        if self.uid:
+            node.set("uid", self.uid)
+        node.append(
+            util.create_property_node(
+                "input-type", self.input_type, PropertyType.InputType
+            )
+        )
+        if self.input_type == InputType.JoystickAxis:
+            node.append(
+                util.create_property_node("value", self.value, PropertyType.Float)
+            )
+        else:
+            node.append(
+                util.create_property_node("value", self.value, PropertyType.Bool)
+            )
+        return node
+
+    def from_xml(self, node: ElementTree.Element) -> None:
+        self.uid = node.get("uid") or None
+        self.input_type = util.read_property(node, "input-type", PropertyType.InputType)
+        if self.input_type == InputType.JoystickAxis:
+            self.value = util.read_property(node, "value", PropertyType.Float)
+        else:
+            self.value = util.read_property(node, "value", PropertyType.Bool)
+
+    def is_valid(self) -> bool:
+        # A step whose input is gone is kept, like a Logical Device step
+        # whose control is missing (05 S117).
+        return self.uid is not None
+
+
 class MouseButtonAction(AbstractAction):
     """Mouse button action."""
 
@@ -1191,6 +1284,7 @@ STEP_TYPES: dict[str, type[AbstractAction]] = {
         LogicalDeviceAction,
         MouseButtonAction,
         MouseMotionAction,
+        OscAction,
         PauseAction,
         VJoyAction,
     )

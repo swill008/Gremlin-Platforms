@@ -17,6 +17,7 @@ Main thread only.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import os
 import shutil
@@ -58,6 +59,9 @@ SERVER_DEFAULTS: dict[str, Any] = {
     "sync_enabled": True,
     "sync_address": "/gremlin/sync",
     "feedback_rate": 50,
+    # Senders OSC accepts (S160): IP addresses and CIDR ranges; empty =
+    # everyone.
+    "allow_senders": [],
 }
 
 TARGETS_KEY = "targets"
@@ -210,6 +214,35 @@ def clean_server(raw: object) -> dict:
     address = str(given.get("sync_address") or "").strip()
     out["sync_address"] = address if address.startswith("/") else d["sync_address"]
     out["feedback_rate"] = _rate(given.get("feedback_rate"), d["feedback_rate"])
+    out["allow_senders"] = clean_senders(given.get("allow_senders"))
+    return out
+
+
+def sender_entry(text: object) -> str | None:
+    """An allow-list entry in its usual form ("192.168.1.5",
+    "192.168.1.0/24"), or None when it is neither an IP address nor a CIDR
+    range. Host bits of a range are dropped (192.168.1.7/24 is the /24)."""
+    raw = str(text if text is not None else "").strip()
+    if not raw:
+        return None
+    try:
+        if "/" in raw:
+            return str(ipaddress.ip_network(raw, strict=False))
+        return str(ipaddress.ip_address(raw))
+    except ValueError:
+        return None
+
+
+def clean_senders(raw: object) -> list[str]:
+    """The allow-list: entries in their usual form, bad ones dropped, each
+    once, in the order given."""
+    if isinstance(raw, (str, bytes)) or not isinstance(raw, (list, tuple)):
+        return []
+    out: list[str] = []
+    for item in raw:
+        entry = sender_entry(item)
+        if entry is not None and entry not in out:
+            out.append(entry)
     return out
 
 

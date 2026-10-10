@@ -44,7 +44,7 @@ from gremlin.input_cache import (
 )
 from gremlin.keyboard import key_from_code
 from gremlin.logical_device import LogicalDevice
-from gremlin.modules import inputs, output
+from gremlin.modules import ids, inputs, output
 from gremlin.types import (
     ConditionType,
     HatDirection,
@@ -538,13 +538,41 @@ class JoystickCondition(AbstractCondition):
 
     class State(AbstractState):
         def __init__(
-            self, device_uuid: uuid.UUID, input_type: InputType, input_id: int
+            self,
+            device_uuid: uuid.UUID,
+            input_type: InputType,
+            input_id: int,
+            osc_uid: str | None = None,
         ) -> None:
             self.device_uuid: uuid.UUID
             self.input_type = input_type
             self.input_id = input_id
+            # An OSC input is kept by its permanent id (09 S159); type and
+            # number are its current ones.
+            self.osc_uid: str | None = None
+            if device_uuid == ids.OSC:
+                from gremlin.osc_persist import resolve_osc_reference
+
+                ident, self.osc_uid = resolve_osc_reference(
+                    osc_uid or None, input_type, input_id
+                )
+                if ident is not None:
+                    self.input_type, self.input_id = ident[0], int(ident[1])
             self.joystick = None
             self.initialize_for_uuid(device_uuid)
+
+        def _refresh_osc(self) -> bool:
+            """An OSC input's current type and number from its uid; False
+            when OSC's file no longer has it."""
+            if self.device_uuid != ids.OSC or not self.osc_uid:
+                return self.device_uuid != ids.OSC
+            from gremlin.osc_persist import osc_rows
+
+            ident = osc_rows().identifier_of_uid(self.osc_uid)
+            if ident is None:
+                return False
+            self.input_type, self.input_id = ident[0], int(ident[1])
+            return True
 
         def initialize_for_uuid(self, device_uuid: uuid.UUID) -> None:
             # Cleared first: a new device that isn't connected otherwise
@@ -577,6 +605,10 @@ class JoystickCondition(AbstractCondition):
                     f"ConditionAction: Joystick with UUID {self.device_uuid} "
                     "not present."
                 )
+            if not self._refresh_osc():
+                raise error.GremlinError(
+                    f"ConditionAction: OSC input {self.osc_uid} not present."
+                )
             # Through the input modules: an unclaimed input reads as neutral.
             guid, ident = self.device_uuid, self.input_id
             match self.input_type:
@@ -594,6 +626,11 @@ class JoystickCondition(AbstractCondition):
 
         def display_name(self) -> str:
             self._find_joystick()
+            if self.device_uuid == ids.OSC:
+                from gremlin.osc_persist import osc_rows
+
+                row = osc_rows().by_uid(self.osc_uid) if self.osc_uid else None
+                return f"OSC - {row.label if row else 'Missing input'}"
             input_name = common.input_to_ui_string(self.input_type, self.input_id)
             if self.device_lookup:
                 input_name = self.device_lookup.input_name(
@@ -623,6 +660,8 @@ class JoystickCondition(AbstractCondition):
                     util.read_property(entry, "device-guid", PropertyType.UUID),
                     util.read_property(entry, "input-type", PropertyType.InputType),
                     util.read_property(entry, "input-id", PropertyType.Int),
+                    util.read_property(entry, "osc-uid", PropertyType.String, "")
+                    or None,
                 )
             )
 
@@ -634,16 +673,15 @@ class JoystickCondition(AbstractCondition):
         """
         node = self._create_condition_node()
         for state in self._states:
-            node.append(
-                util.create_node_from_data(
-                    "input",
-                    [
-                        ("device-guid", state.device_uuid, PropertyType.UUID),
-                        ("input-type", state.input_type, PropertyType.InputType),
-                        ("input-id", state.input_id, PropertyType.Int),
-                    ],
-                )
-            )
+            properties = [
+                ("device-guid", state.device_uuid, PropertyType.UUID),
+                ("input-type", state.input_type, PropertyType.InputType),
+                ("input-id", state.input_id, PropertyType.Int),
+            ]
+            osc_uid = getattr(state, "osc_uid", None)
+            if osc_uid:
+                properties.append(("osc-uid", osc_uid, PropertyType.String))
+            node.append(util.create_node_from_data("input", properties))
         return node
 
     @QtCore.Slot(list)
@@ -680,6 +718,36 @@ class JoystickCondition(AbstractCondition):
         # No need to change the comparator as we don't rely on the input's
         # type for condition checks.
         pass
+
+    @QtCore.Property(list, constant=True)
+    def oscInputs(self) -> list[dict[str, str]]:
+        """OSC's axis and button inputs for the picker, by address (as in
+        the Assign Hardware list)."""
+        from gremlin.osc_persist import osc_rows
+
+        rows = sorted(
+            (
+                r
+                for r in osc_rows().rows()
+                if r.input_type in (InputType.JoystickAxis, InputType.JoystickButton)
+            ),
+            key=lambda r: r.label.casefold(),
+        )
+        kind = {InputType.JoystickAxis: "Axis", InputType.JoystickButton: "Button"}
+        return [
+            {"uid": r.uid, "text": f"{r.label} ({kind[r.input_type]})"} for r in rows
+        ]
+
+    @QtCore.Slot(str)
+    def setOscInput(self, uid: str) -> None:
+        """Picks one OSC input by its permanent id."""
+        from gremlin.osc_persist import osc_rows
+
+        ident = osc_rows().identifier_of_uid(uid)
+        if ident is None:
+            return
+        self._create_comparator(ident[0])
+        self._update_states([self.State(ids.OSC, ident[0], int(ident[1]), uid)])
 
     @override
     def swap_uuid(self, old_uuid: uuid.UUID, new_uuid: uuid.UUID) -> bool:

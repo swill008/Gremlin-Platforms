@@ -4,9 +4,12 @@
 
 from __future__ import annotations
 
+import collections
 import ctypes
 import errno
+import functools
 import importlib
+import ipaddress
 import logging
 import math
 import os
@@ -19,7 +22,7 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin import clock, threads
+from gremlin import axis_shaping, clock, threads
 from gremlin.common import SingletonDecorator, SingletonMetaclass
 from gremlin.error import GremlinError
 from gremlin.log_once import log_once
@@ -46,6 +49,15 @@ MessageCallback = Callable[[str, tuple[Any, ...], "tuple[str, int] | None"], Non
 MAX_ENC_TICKS = 32
 # Fastest liveChanged per input (OX1): 10 a second.
 LIVE_INTERVAL_S = 0.1
+# Encoder acceleration (S164): ticks inside this window speed the turn up,
+# multiplier = 1 + factor * (ticks in the window - 1), at most ENC_ACCEL_MAX.
+ENC_ACCEL_WINDOW_S = 0.1
+ENC_ACCEL_MAX = 8.0
+ENC_ACCEL_FACTORS = {"off": 0.0, "low": 0.5, "medium": 1.0, "high": 2.0}
+# The hold_open token recorders keep the port open with.
+RECORDER_TOKEN = "osc-recorder"
+# Monitor's Input column for a message from a sender not on the allow-list.
+BLOCKED = "blocked"
 
 # Run-time state of one input at one address: (uid, address key). A
 # pattern input keeps its state per address it receives (OX7, S147); an
@@ -89,6 +101,43 @@ def osc_option(cfg: Any, name: str) -> Any:
     if cfg.exists("global", "osc", name):
         return cfg.value("global", "osc", name)
     return None
+
+
+@functools.lru_cache(maxsize=64)
+def _networks(entries: tuple[str, ...]) -> tuple[Any, ...]:
+    out = []
+    for entry in entries:
+        try:
+            out.append(ipaddress.ip_network(str(entry).strip(), strict=False))
+        except ValueError:
+            log.warning("OSC: allow-list entry %r is not an IP or range", entry)
+    return tuple(out)
+
+
+def sender_allowed(
+    host: object, allow: list[str] | tuple[str, ...] | None = None
+) -> bool:
+    """True when OSC accepts a message from host (S160): the allow-list is
+    empty (everyone), or host is one of its addresses or inside one of its
+    CIDR ranges. allow defaults to OSC's saved server settings."""
+    if allow is None:
+        allow = server_settings().get("allow_senders") or []
+    if not allow:
+        return True
+    try:
+        address = ipaddress.ip_address(str(host).split("%", 1)[0].strip())
+    except ValueError:
+        return False
+    candidates = [address]
+    mapped = getattr(address, "ipv4_mapped", None)
+    if mapped is not None:
+        candidates.append(mapped)
+    return any(
+        ip in net
+        for net in _networks(tuple(allow))
+        for ip in candidates
+        if ip.version == net.version
+    )
 
 
 def is_pressed(args: tuple[Any, ...]) -> bool:
@@ -389,6 +438,7 @@ SERVER_DEFAULTS: dict[str, Any] = {
     "autorelease_no_arg": True,
     "autorelease_delay_ms": DEFAULT_AUTORELEASE_MS,
     "pad_args": False,
+    "allow_senders": [],
 }
 
 
@@ -486,6 +536,25 @@ def state_key(row: OscRow, address: str) -> StateKey:
     return (row.uid, "")
 
 
+def shape_axis(row: OscRow, value: float) -> float:
+    """An axis input's value after its deadzone and Invert (S161)."""
+    low, high = row.deadzone
+    return axis_shaping.shape(value, row.invert, low, high)
+
+
+def _osc_state(method: str, *args: Any) -> None:  # noqa: ANN401
+    """Writes OSC's last values for conditions, scripts and macros (S159)
+    through input_cache.osc_state(); nothing while input_cache has none."""
+    state = _call_hook("input_cache", "osc_state")
+    func = getattr(state, method, None) if state is not None else None
+    if not callable(func):
+        return
+    try:
+        func(*args)
+    except Exception:
+        log.exception("OSC state %s failed", method)
+
+
 def encoder_turn(fmt: str, value: float) -> float:
     """Steps turned (+ clockwise, - counter-clockwise) for a format:
     "direction" is 1 = cw, 0 = ccw; "signed" is +n / -n."""
@@ -518,6 +587,8 @@ class OscRuntime(QtCore.QObject):
     # An input's live value changed (OX1): its uid; at most every
     # LIVE_INTERVAL_S per input, and the latest value always follows.
     liveChanged = QtCore.Signal(str)
+    # play() from another thread: carried to the runtime's thread.
+    _playRequested = QtCore.Signal(str, str, object)
 
     def __init__(self) -> None:
         super().__init__()
@@ -552,7 +623,14 @@ class OscRuntime(QtCore.QObject):
         self._enc_format: dict[StateKey, str] = {}
         self._enc_value: dict[StateKey, float] = {}
         self._enc_pending: dict[StateKey, int] = {}
+        # Encoder acceleration (S164): uid -> (clock.monotonic(), ticks) of
+        # the turns inside the window.
+        self._enc_ticks: dict[str, collections.deque] = {}
+        # Macro Record and others (S159): called with (uid, kind, value) for
+        # every input event, with or without a Run, while registered.
+        self._recorders: list[Callable[[str, str, Any], None]] = []
         self.incoming.connect(self._on_main)
+        self._playRequested.connect(self._play_main)
         from gremlin.signal import signal as ui_signal
 
         changed = getattr(ui_signal, "oscServerSettingsChanged", None)
@@ -623,6 +701,48 @@ class OscRuntime(QtCore.QObject):
     def is_open(self) -> bool:
         return self._listener is not None
 
+    # -- recorders (S159) ------------------------------------------------------
+
+    def add_recorder(self, callback: Callable[[str, str, Any], None]) -> bool:
+        """callback gets (uid, kind, value) for every OSC input event, kind
+        "button" (value pressed) or "axis" (value -1..1, after shaping), with
+        or without a Run; the port is held open while any recorder is
+        registered. False when the port can't open."""
+        if callback not in self._recorders:
+            self._recorders.append(callback)
+        return self.hold_open(RECORDER_TOKEN)
+
+    def remove_recorder(self, callback: Callable[[str, str, Any], None]) -> None:
+        if callback in self._recorders:
+            self._recorders.remove(callback)
+        if self._recorders:
+            return
+        if not self._running:
+            # What recording alone started (pulses, held buttons) ends quietly.
+            self._reset_state()
+        self.release_open(RECORDER_TOKEN)
+
+    def recording(self) -> bool:
+        return bool(self._recorders)
+
+    def _record(self, uid: str, kind: str, value: Any) -> None:  # noqa: ANN401
+        for callback in list(self._recorders):
+            try:
+                callback(uid, kind, value)
+            except Exception:
+                log.exception("OSC recorder failed")
+
+    def _reset_state(self) -> None:
+        """Run-time input state dropped without any event."""
+        self._enc_pending.clear()
+        for key in list(self._timers):
+            self._cancel_release(key)
+        self._held.clear()
+        self._last.clear()
+        self._enc_format.clear()
+        self._enc_value.clear()
+        self._enc_ticks.clear()
+
     def _needs_port(self) -> bool:
         return (
             self._learn
@@ -690,6 +810,9 @@ class OscRuntime(QtCore.QObject):
     def start(self) -> None:
         """A profile starts running: listen until stop() when it uses OSC
         inputs (09 Q5)."""
+        if not self._running:
+            # State a recording made without a Run doesn't carry into it.
+            self._reset_state()
         self._running = True
         self._uses_osc = profile_uses_osc()
         if self._needs_port():
@@ -717,12 +840,15 @@ class OscRuntime(QtCore.QObject):
 
     def stop(self) -> None:
         """The profile stopped: held buttons released, port closed."""
+        # Released while still running: _emit_* only reach the profile then.
+        self.release_held()
         self._running = False
         self._uses_osc = False
-        self.release_held()
         self._last.clear()
         self._enc_format.clear()
         self._enc_value.clear()
+        self._enc_ticks.clear()
+        _osc_state("clear")
         self._hold_learn = False
         self._learn = False
         self.listenChanged.emit()
@@ -753,8 +879,22 @@ class OscRuntime(QtCore.QObject):
     def _emit_button(
         self, row: OscRow, pressed: bool, mode: str, address: str | None
     ) -> None:
+        self._record(row.uid, "button", pressed)
+        if not self._running:
+            return
+        self._send_button(row, pressed, mode, address, synthetic=False)
+
+    def _send_button(
+        self,
+        row: OscRow,
+        pressed: bool,
+        mode: str,
+        address: str | None,
+        synthetic: bool,
+    ) -> None:
         from gremlin.event_handler import Event, EventListener
 
+        _osc_state("set_button", row.uid, pressed)
         EventListener().joystick_event.emit(
             Event(
                 event_type=InputType.JoystickButton,
@@ -762,6 +902,7 @@ class OscRuntime(QtCore.QObject):
                 device_guid=OSC_DEVICE_UUID,
                 mode=mode,
                 is_pressed=pressed,
+                synthetic=synthetic,
                 osc_address=address,
             )
         )
@@ -782,8 +923,22 @@ class OscRuntime(QtCore.QObject):
         self._emit_button(row, pressed, mode, address)
 
     def _emit_axis(self, row: OscRow, value: float, mode: str, address: str) -> None:
+        self._record(row.uid, "axis", value)
+        if not self._running:
+            return
+        self._send_axis(row, value, mode, address, synthetic=False)
+
+    def _send_axis(
+        self,
+        row: OscRow,
+        value: float,
+        mode: str,
+        address: str | None,
+        synthetic: bool,
+    ) -> None:
         from gremlin.event_handler import Event, EventListener
 
+        _osc_state("set_axis", row.uid, value)
         EventListener().joystick_event.emit(
             Event(
                 event_type=InputType.JoystickAxis,
@@ -792,6 +947,7 @@ class OscRuntime(QtCore.QObject):
                 mode=mode,
                 value=value,
                 raw_value=value,
+                synthetic=synthetic,
                 osc_address=address,
             )
         )
@@ -853,11 +1009,12 @@ class OscRuntime(QtCore.QObject):
         turn = encoder_turn(fmt, number)
         if turn == 0.0:
             return
+        turn *= self._accel(row, abs(turn))
         if row.enc_output == "axis":
             current = self._enc_value.get(key, 0.0) + row.enc_step * turn
             current = max(-1.0, min(1.0, current))
             self._enc_value[key] = current
-            self._emit_axis(row, current, mode, address)
+            self._emit_axis(row, shape_axis(row, current), mode, address)
             return
         if (turn > 0) != (row.enc_output == "pulse_cw"):
             return
@@ -869,6 +1026,21 @@ class OscRuntime(QtCore.QObject):
             return
         self._enc_pending[key] = ticks - 1
         self._pulse(row, key, address, mode)
+
+    def _accel(self, row: OscRow, ticks: float) -> float:
+        """The encoder's acceleration multiplier for a turn of ticks (S164):
+        1 + factor * max(0, ticks in the last ENC_ACCEL_WINDOW_S - 1), at most
+        ENC_ACCEL_MAX; 1 with acceleration off. Timed per input."""
+        factor = ENC_ACCEL_FACTORS.get(row.enc_accel, 0.0)
+        if factor <= 0.0:
+            return 1.0
+        now = clock.monotonic()
+        recent = self._enc_ticks.setdefault(row.uid, collections.deque())
+        while recent and now - recent[0][0] > ENC_ACCEL_WINDOW_S:
+            recent.popleft()
+        recent.append((now, ticks))
+        in_window = sum(t for _, t in recent)
+        return min(ENC_ACCEL_MAX, 1.0 + factor * max(0.0, in_window - 1.0))
 
     def _apply(
         self, row: OscRow, args: tuple[Any, ...], mode: str, address: str
@@ -885,7 +1057,7 @@ class OscRuntime(QtCore.QObject):
             number = _number(value)
             if number is not None:
                 scaled = scale_axis(number, row.range_min, row.range_max)
-                self._emit_axis(row, scaled, mode, address)
+                self._emit_axis(row, shape_axis(row, scaled), mode, address)
             return
         if row.cmd_mode == "data" or row.trigger is True:
             self._pulse(row, key, address, mode)
@@ -918,6 +1090,13 @@ class OscRuntime(QtCore.QObject):
         peer: tuple[str, int] | None = None,
     ) -> None:
         payload = tuple(args) if isinstance(args, (tuple, list)) else ()
+        # The sender allow-list comes first (S160): a blocked message reaches
+        # nothing (sync, Listen, inputs) and shows in the Monitor as blocked.
+        if peer is not None and not sender_allowed(
+            peer[0], self._settings.get("allow_senders") or ()
+        ):
+            _call_hook("osc_traffic", "note", "in", address, payload, peer, [BLOCKED])
+            return
         # Feedback's sync address is answered there and reaches no input.
         if _call_hook("osc_feedback", "handle_incoming", address, payload, peer):
             # The Monitor still shows it (all incoming messages, D-09-OSC-MONITOR).
@@ -959,7 +1138,7 @@ class OscRuntime(QtCore.QObject):
         for row in rows:
             self._last_address[row.uid] = address
             self._note_live(row, payload, synthetic=False)
-        if not self._running:
+        if not self._running and not self._recorders:
             return rows
         if not rows:
             log.debug("OSC ignored unmatched address %s %s", address, payload)
@@ -1053,6 +1232,49 @@ class OscRuntime(QtCore.QObject):
                 wait = min(wait, LIVE_INTERVAL_S - gone)
         if self._live_pending:
             self._live_timer.start(max(1, math.ceil(wait * 1000)))
+
+    # -- macro playback (S159) -------------------------------------------------
+
+    def play(self, uid: str, kind: str, value: object) -> None:
+        """A macro step plays the input (S159): kind "button" (value pressed)
+        or "axis" (value -1..1, already shaped, as recorded). The event goes
+        out marked synthetic (02 S44) the same way as a message's, without
+        shaping it again and without recording it; only while a profile
+        runs. Safe from any thread: it is carried to the runtime's thread."""
+        self._playRequested.emit(str(uid), str(kind), value)
+
+    def _play_main(self, uid: str, kind: str, value: object) -> None:
+        from gremlin.mode_manager import ModeManager
+
+        if not self._running:
+            return
+        row = OscDevice().rows.by_uid(uid)
+        if row is None:
+            return
+        mode = ModeManager().current.name
+        address = self._last_address.get(row.uid) or row.label
+        if kind == "axis" and row.input_type == InputType.JoystickAxis:
+            number = _number(value)
+            if number is None:
+                return
+            axis = max(-1.0, min(1.0, number))
+            self._note_played(row.uid, axis=axis, pressed=None)
+            self._send_axis(row, axis, mode, address, synthetic=True)
+        elif kind == "button" and row.input_type == InputType.JoystickButton:
+            pressed = bool(value)
+            self._note_played(row.uid, axis=None, pressed=pressed)
+            self._send_button(row, pressed, mode, address, synthetic=True)
+
+    def _note_played(self, uid: str, axis: float | None, pressed: bool | None) -> None:
+        """The live value of a played step (no message: no source value)."""
+        self._live[uid] = {
+            "value": None,
+            "axis": axis,
+            "pressed": pressed,
+            "last_seen": clock.now(),
+            "synthetic": True,
+        }
+        self._live_changed(uid)
 
     # -- test inject (OX5) ----------------------------------------------------
 

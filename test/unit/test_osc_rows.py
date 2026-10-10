@@ -148,6 +148,9 @@ def test_dict_round_trip_keeps_uids_numbers_and_settings() -> None:
         "enc_format",
         "enc_step",
         "enc_output",
+        "invert",
+        "deadzone",
+        "enc_accel",
     }
     assert data["inputs"][1]["type"] == "axis" and data["inputs"][2]["id"] == 7
     other = OscRows()

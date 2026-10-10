@@ -111,6 +111,37 @@ def check_target(
     return {"name": name, "host": host, "port": number}, ""
 
 
+SENDER_HINT = "Type an IP address (192.168.1.5) or a range (192.168.1.0/24)."
+
+
+def add_sender(text: str) -> tuple[bool, str]:
+    """Adds an IP address or CIDR range to the server's allow-list (S160),
+    written at once. (True, "") when added or already there; (False, why)
+    when refused. Raises OSError when the file can't be written."""
+    entry = osc_device_file.sender_entry(text)
+    if entry is None:
+        return False, SENDER_HINT
+    server = osc_device_file.read_server()
+    senders = list(server.get("allow_senders") or [])
+    if entry in senders:
+        return True, f"{entry} is already in the list."
+    server["allow_senders"] = [*senders, entry]
+    osc_device_file.write_server(server, "OSC Module Setup")
+    return True, ""
+
+
+def remove_sender(entry: str) -> bool:
+    """Removes one allow-list entry; False when it isn't there."""
+    server = osc_device_file.read_server()
+    senders = list(server.get("allow_senders") or [])
+    wanted = osc_device_file.sender_entry(entry) or str(entry or "").strip()
+    if wanted not in senders:
+        return False
+    server["allow_senders"] = [s for s in senders if s != wanted]
+    osc_device_file.write_server(server, "OSC Module Setup")
+    return True
+
+
 def _discovery() -> types.ModuleType | None:
     """gremlin.osc_discovery when it's there (None otherwise)."""
     try:
@@ -171,7 +202,8 @@ class OscServerModel(QtCore.QObject):
     @QtCore.Slot(str, "QVariant", result=bool)
     def setValue(self, key: str, value: object) -> bool:
         """Checks and saves one setting; False (with message) when refused."""
-        if key not in osc_device_file.SERVER_DEFAULTS:
+        if key not in osc_device_file.SERVER_DEFAULTS or key == "allow_senders":
+            # The allow-list changes through addSender / removeSender.
             return False
         if key == "host":
             why = check_host(str(value or ""))
@@ -237,6 +269,40 @@ class OscServerModel(QtCore.QObject):
                 self.refreshFound()
         except Exception:  # noqa: BLE001 - discovery trouble never stops a save
             syslog.exception("OSC: discovery switch not applied")
+
+    # Allowed senders (S160): empty = OSC from every sender is accepted.
+
+    @QtCore.Property(list, notify=changed)
+    def allowSenders(self) -> list[str]:
+        return [str(s) for s in self._get("allow_senders") or []]  # type: ignore[union-attr]
+
+    @QtCore.Slot(str, result=bool)
+    def addSender(self, text: str) -> bool:
+        """Adds an IP address or range; False (with message) when refused
+        or already in the list."""
+        try:
+            ok, why = add_sender(text)
+        except OSError as exc:
+            syslog.error("OSC: allowed senders not written: %s", exc)
+            self._say("Not written. The OSC file could not be saved.")
+            return False
+        self.reload()
+        if why:
+            self._say(why)
+            return False
+        self._say("")
+        return ok
+
+    @QtCore.Slot(str, result=bool)
+    def removeSender(self, entry: str) -> bool:
+        try:
+            done = remove_sender(entry)
+        except OSError as exc:
+            syslog.error("OSC: allowed senders not written: %s", exc)
+            self._say("Not written. The OSC file could not be saved.")
+            return False
+        self.reload()
+        return done
 
     # Targets (D-09-OSC-OUTPUT): where Send OSC and feedback send.
 

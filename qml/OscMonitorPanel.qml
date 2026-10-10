@@ -6,6 +6,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Device
+import Gremlin.Menus
 import Gremlin.Style
 
 // The OSC Monitor (D-09-OSC-MONITOR): the last 200 OSC messages in and out.
@@ -58,6 +59,49 @@ Rectangle {
             return false
         addAsInputRequested(s)
         return true
+    }
+
+    // Allow this sender (09 S160): the blocked row's host goes on the
+    // allow-list; a refusal shows on the note line.
+    property string note: ""
+    property string _menuHost: ""
+    property int _menuRow: -1
+    property bool _menuBlocked: false
+    property bool _menuNoInput: false
+    readonly property alias rowMenu: _rowMenu
+
+    function allowSender(host) {
+        var res = String(_model.allowSender(String(host || "")) || "")
+        note = res.length ? res : qsTr("Allowed: ") + host
+        return res.length === 0
+    }
+
+    function openRowMenu(item, x, y, row, host, blocked, noInput) {
+        _menuRow = row
+        _menuHost = host
+        _menuBlocked = blocked
+        _menuNoInput = noInput
+        if (!blocked && !(noInput && !editorLocked))
+            return false
+        _rowMenu.openAt(item, x, y)
+        return true
+    }
+
+    ContextMenu {
+        id: _rowMenu
+        menuWidth: Style.dp(220)
+        build: function() {
+            var items = []
+            if (_root._menuBlocked)
+                items.push(MenuModel.action(qsTr("Allow this sender"), function() {
+                    _root.allowSender(_root._menuHost)
+                }, _root._menuHost.length > 0))
+            if (_root._menuNoInput && !_root.editorLocked)
+                items.push(MenuModel.action(qsTr("Add as Input…"), function() {
+                    _root.addAsInput(_root._menuRow)
+                }))
+            return MenuModel.menu("osc-monitor-row", _root._menuHost || qsTr("OSC message"), items)
+        }
     }
 
     // Columns (D-09-OSC-LOOK, the Button Map's table look): Time and In / Out
@@ -144,6 +188,16 @@ Rectangle {
             Item {
                 visible: _root.folded
                 Layout.fillWidth: true
+            }
+
+            Label {
+                objectName: "oscMonitorNote"
+                visible: !_root.folded && _root.note.length > 0
+                text: _root.note
+                color: Style.fgMuted
+                font.pixelSize: Style.dp(12)
+                elide: Text.ElideRight
+                Layout.maximumWidth: Style.dp(320)
             }
 
             Button {
@@ -285,6 +339,8 @@ Rectangle {
                         required property string matched
                         required property bool noInput
                         required property string hoverText
+                        required property bool blocked
+                        required property string senderHost
 
                         width: ListView.view.width
                         height: Style.dp(26)
@@ -292,6 +348,15 @@ Rectangle {
 
                         HoverHandler {
                             id: _hover
+                        }
+
+                        // Right-click: Allow this sender on a blocked row (S160),
+                        // Add as Input… on a row with no input.
+                        TapHandler {
+                            acceptedButtons: Qt.RightButton
+                            onTapped: (point) => _root.openRowMenu(
+                                _row, point.position.x, point.position.y,
+                                _row.index, _row.senderHost, _row.blocked, _row.noInput)
                         }
 
                         // The full row (address, values, from / to, input) on hover.
@@ -350,13 +415,16 @@ Rectangle {
                                 color: Style.fgMuted
                             }
                             Label {
+                                objectName: "oscMonitorInput" + _row.index
                                 Layout.preferredWidth: _root._widths[5]
                                 Layout.maximumWidth: _root._widths[5]
+                                // "blocked": the sender isn't on the allow-list (S160).
                                 text: _row.matched
                                 elide: Text.ElideRight
                                 font.pixelSize: _root._rowPx
-                                color: _row.noInput ? Style.fgMuted : Style.fg
-                                font.italic: _row.noInput
+                                color: _row.blocked ? Style.dangerText
+                                       : (_row.noInput ? Style.fgMuted : Style.fg)
+                                font.italic: _row.noInput || _row.blocked
                             }
                             Item {
                                 Layout.preferredWidth: _root._addWidth

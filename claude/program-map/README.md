@@ -29,7 +29,7 @@ spec change. See "The plan" in `claude/system-maps.md`.
 | [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device, loop guard, output trace | 94 | 19 | 27 | reviewed 2026-10-06 (all as recommended) |
 | [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 103 | 19 | 23 | reviewed 2026-10-06 (all as recommended) |
 | [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 114 | 21 | 30 | reviewed 2026-10-06 (all as recommended) |
-| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (picked up 2026-10-09: own module file, per-input settings; Monitor, output and Send OSC, Feedback, encoder, discovery; 2026-10-10 rewrite on the Logical Device page's shared base, S129-S164 in three batches, batches 1 and 2 built), sound, speech, tray, theme; shared widgets and foundations | 171 | 20 | 72 | reviewed 2026-10-06 (all as recommended) |
+| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (picked up 2026-10-09: own module file, per-input settings; Monitor, output and Send OSC, Feedback, encoder, discovery; 2026-10-10 rewrite on the Logical Device page's shared base, S129-S164 in three batches, all built 2026-10-10), sound, speech, tray, theme; shared widgets and foundations | 171 | 20 | 72 | reviewed 2026-10-06 (all as recommended) |
 | [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 59 | 1 | S1-S56 (+S20a, S53a) built; S6a (D-04-LD-FILE) built (000e35d0); open items: to-dos 47, 50, 51, 52 | approved 2026-10-08 |
 | **Total** | | **1203** | **175** | **302** (+ page 10) | |
 

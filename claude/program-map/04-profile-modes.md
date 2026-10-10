@@ -18,8 +18,8 @@ Python
 - `gremlin/swap_devices.py` (265; `not_swappable` -> `device_class.can('swap', uid)` replaces the old `NOT_SWAPPABLE` list, 03 S90b, Q20): moves every binding, action reference and script variable from one device id to another (with limits); called by the Device Library (`library_swap.py`, `library_copy.py`, page 10).
 - `gremlin/profile_recovery.py` (200, new 2026-10-09, to-do 55): recovery copies of unsaved profile edits (S94, Q14). `ProfileRecovery.tick` keeps a copy about every minute while there are unsaved changes, in `<data folder>/recovery/profile-<stem>-<sha1>.json` (Untitled: `profile-untitled.json`); `restore`, `discard`, `forget_session` (Save, Discard, clean close remove this session's copies; Not now keeps it).
 - `gremlin/edits.py` (52): the edit count (Q19, D-04-Q19): `note_edit`, `EditNoted`, `edit_count`; the title `*` reuses its last answer while the count hasn't moved.
-- `gremlin/user_script.py` (1776; from 2026-10-10 `KeyboardVariable.decorator` calls back for exactly the chosen `Key`, S95): `Script` (loads the .py, its variables, load errors), variable types, callback and periodic registries, decorators, plugins giving scripts `joy` / `vjoy` / `keyboard`.
-- `gremlin/ui/script.py` (505): `ScriptListModel` (add, remove, rename) and one QML model per variable type.
+- `gremlin/user_script.py` (1957; from 2026-10-10 `KeyboardVariable.decorator` calls back for exactly the chosen `Key`, S95; from 2026-10-10 (09 S163, batch 3) `OscInputVariable` (`osc-input`, an OSC input by permanent id, starts unchosen, `.decorator(mode)` like a stick input), `ScriptOsc` / `osc` (`send(target_name, address, *values)` to a named target through `osc_output.send`; a refused send returns False and logs once) and `OscPlugin` (keyword `osc`)): `Script` (loads the .py, its variables, load errors), variable types, callback and periodic registries, decorators, plugins giving scripts `joy` / `vjoy` / `keyboard` / `osc`.
+- `gremlin/ui/script.py` (549): `ScriptListModel` (add, remove, rename) and one QML model per variable type (from 2026-10-10 `OscInputVariableModel`, 09 S163).
 - `gremlin/config.py` (`get_profile`, `get_profile_with_regex` 516-551): auto-load program-to-profile matching.
 - `gremlin/process_monitor.py` (135): the thread that reports the focused program (feeds auto-load).
 - `joystick_gremlin.py` (`process_cmd_args` 978-1001; settings registered 594-598, 750): `--profile` or last profile at start.
@@ -30,7 +30,7 @@ QML / JS
 - `qml/main_commands.js`: menu/shortcut entries (file.new/load/save/saveAs/exit, tools.swapDevices, Manage Modes).
 - `qml/DialogManageModes.qml` (288): add, rename, Inherits from, delete (asks the shared question, `confirmDelete` :46: mode name, binding count, "You can restore it from Tools › History."), Undo Delete Mode is the shared `UndoBar` (:180, tooltip Undo Delete Mode; S46a).
 - `qml/ProfileSettings.qml` (258): Startup Mode, Macro Default Delay, vJoy Behavior, vJoy Initial Values.
-- `qml/ScriptManager.qml` (252), `qml/ScriptConfiguration.qml` (370): Scripts page and a script's variables. Add Script is a `FilePicker` kind "script"; Remove asks the shared question (S85, S140).
+- `qml/ScriptManager.qml` (252), `qml/ScriptConfiguration.qml` (398): Scripts page and a script's variables (from 2026-10-10 the osc-input picker, "Choose an OSC input", 09 S163). Add Script is a `FilePicker` kind "script"; Remove asks the shared question (S85, S140).
 - ~~`qml/DialogSwapDevices.qml` (164): Swap Devices window.~~ Removed 2026-10-08 (D-10-SWAP); the Device Library replaces it (10).
 - `qml/OptionProfileAutoLoading.qml` (276): Options › Profiles › Auto-load list. Select Profile / Browse Executable are `FilePicker` "profile" / "other"; remove is a `DangerButton` that asks the shared question (`askRemove`).
 - Help (Help book on page 01, `qml/help/`): topics Profiles, What is saved where, Run and status, Modes, Change Mode, Load Profile, Profile Settings, Scripts, History (Swap Devices replaced by the Device Library topic, 2026-10-08).
@@ -377,7 +377,7 @@ Covered well
 - Saving: `test_profile_save_safe.py`, `test_profile_unused_actions.py`, `test_profile_unsaved.py`, `test_library_invalid_children.py`, `test_audit*_saving.py`.
 - Load failures: `test_load_and_rename_safety.py`, `test_profile_missing_child_action.py`, `test_startup_messages.py`.
 - Auto-load and the Load Profile action: `test_autoload_and_mode_prompts.py`, `test_audit_saving.py`, `test_audit2_saving.py`, `test_audit2_coverage.py` (all with a fake Backend).
-- Scripts: `test_user_script.py` (21, plus the 2026-10-10 Keyboard variable tests for S95), `test_user_script_load_errors.py` (5), `integration/test_e2e_user_script.py`.
+- Scripts: `test_user_script.py` (21, plus the 2026-10-10 Keyboard variable tests for S95), `test_osc_scripts.py` (9; OSC input variable, `osc.send`, 09 S163), `test_user_script_load_errors.py` (5), `integration/test_e2e_user_script.py`.
 - Settings: `test_profile_settings.py` (6), `test_write_less.py` (last mode).
 - Undo Delete Mode: `test_undo_delete_mode.py`; Manage Modes delete question and Undo bar: `test_tools2_shared_pieces.py`. Recovery copy: `test_profile_recovery.py`, `profile_recovery_smoke.py`.
 - Shared pieces here: `test_main_shared_pieces.py::test_profile_choosers_remember_the_folder`, `::test_remove_script_asks_the_shared_question`; auto-load remove and choosers: `test_options_shared_pieces.py`.

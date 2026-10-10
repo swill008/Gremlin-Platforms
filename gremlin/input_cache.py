@@ -27,6 +27,7 @@ from gremlin import (
     util,
 )
 from gremlin.config import Configuration
+from gremlin.modules import ids
 
 _device_database_schema = {
     "type": "object",
@@ -529,6 +530,74 @@ class JoystickWrapper:
         return hats
 
 
+class OscState:
+    """OSC's inputs as conditions, scripts and macros read them (09 S159,
+    02 S41): the last value of each input, kept by its permanent id so a
+    renumbered input keeps it. The OSC runtime writes it."""
+
+    name = "OSC"
+    device_guid = ids.OSC
+
+    class Axis:
+        def __init__(self, value: float) -> None:
+            self.value = value
+
+    class Button:
+        def __init__(self, is_pressed: bool) -> None:
+            self.is_pressed = is_pressed
+
+    def __init__(self) -> None:
+        self._axes: dict[str, float] = {}
+        self._buttons: dict[str, bool] = {}
+
+    @staticmethod
+    def _check(uid: object) -> str:
+        if not isinstance(uid, str):
+            raise TypeError(f"OSC state is keyed by the input's uid, got {uid!r}")
+        return uid
+
+    def set_button(self, uid: str, pressed: bool) -> None:
+        self._buttons[self._check(uid)] = bool(pressed)
+
+    def set_axis(self, uid: str, value: float) -> None:
+        self._axes[self._check(uid)] = float(value)
+
+    def clear(self) -> None:
+        self._axes.clear()
+        self._buttons.clear()
+
+    def axis_by_uid(self, uid: str) -> float:
+        return self._axes.get(uid, 0.0)
+
+    def button_by_uid(self, uid: str) -> bool:
+        return self._buttons.get(uid, False)
+
+    @staticmethod
+    def _uid(input_type: types.InputType, number: int) -> str | None:
+        from gremlin.osc_persist import osc_rows
+
+        return osc_rows().uid_of(input_type, int(number))
+
+    def axis(self, number: int) -> OscState.Axis:
+        uid = self._uid(types.InputType.JoystickAxis, number)
+        return OscState.Axis(self.axis_by_uid(uid) if uid else 0.0)
+
+    def button(self, number: int) -> OscState.Button:
+        uid = self._uid(types.InputType.JoystickButton, number)
+        return OscState.Button(self.button_by_uid(uid) if uid else False)
+
+    def hat(self, number: int) -> Any:  # noqa: ANN401
+        raise error.GremlinError("OSC has no hats")
+
+
+_osc_state = OscState()
+
+
+def osc_state() -> OscState:
+    """The one OscState (Joystick()[OSC] returns it too)."""
+    return _osc_state
+
+
 class Joystick(metaclass=common.SingletonMetaclass):
     """Allows read access to joystick state information."""
 
@@ -537,7 +606,7 @@ class Joystick(metaclass=common.SingletonMetaclass):
 
     def __getitem__(
         self, device_guid: uuid.UUID
-    ) -> logical_device.LogicalDevice | JoystickWrapper:
+    ) -> logical_device.LogicalDevice | JoystickWrapper | OscState:
         """Returns the requested joystick instance.
 
         If the joystick instance exists it is returned directly, otherwise
@@ -549,6 +618,8 @@ class Joystick(metaclass=common.SingletonMetaclass):
         Returns:
             The corresponding joystick device.
         """
+        if device_guid == ids.OSC:
+            return _osc_state
         if device_guid not in self.devices:
             # Handle the intermediate output device first
             if device_guid == UUID_LogicalDevice:
