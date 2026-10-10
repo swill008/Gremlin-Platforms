@@ -339,6 +339,8 @@ def modifier_keys() -> list[Key]:
         g_name_to_key["rightshift2"],
         g_name_to_key["rightcontrol"],
         g_name_to_key["rightalt"],
+        g_name_to_key["leftwin"],
+        g_name_to_key["rightwin"],
     ]
 
 

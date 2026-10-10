@@ -143,7 +143,8 @@ class InputListenerModel(QtCore.QObject):
         """Stops listening and emits the recorded inputs."""
         self._cancel_abort()
         self._disconnect_listeners()
-        self.listeningTerminated.emit(list(set(self._inputs)))
+        # Press order, each input once (05 S119).
+        self.listeningTerminated.emit(list(dict.fromkeys(self._inputs)))
 
     def _abort_listening(self) -> None:
         """Stops all listening activities."""

@@ -533,3 +533,39 @@ class TestPeriodicRegistry:
         # Three registrations firing independently would run about three
         # times as often.
         assert len(script.module.call_log) <= ran_for / 0.01 + 2
+
+
+# --- Keyboard variable: the callback is for exactly the chosen key (04 S95) ---
+
+
+def _registered_keys(var: user_script.KeyboardVariable) -> list[tuple[int, bool]]:
+    import types as _types
+
+    import dill
+
+    user_script.callback_registry.clear()
+    try:
+        var.decorator(_types.SimpleNamespace(value="Default"))(lambda: None)
+        by_mode = user_script.callback_registry.registry[dill.UUID_Keyboard]
+        return [event.identifier for event in by_mode["Default"]]
+    finally:
+        user_script.callback_registry.clear()
+
+
+def test_keyboard_variable_registers_numpad_5_itself() -> None:
+    """04 S95: Numpad 5 registers as (0x4C, not extended)."""
+    from gremlin import keyboard
+
+    var = user_script.KeyboardVariable("Key", "", False)
+    var.value = keyboard.key_from_code(0x4C, False)
+    assert _registered_keys(var) == [(0x4C, False)]
+
+
+def test_keyboard_variable_registers_every_named_key_itself() -> None:
+    """04 S95: every named key, numpad and extended included, registers its own code."""
+    from gremlin import keyboard
+
+    var = user_script.KeyboardVariable("Key", "", False)
+    for name, key in list(keyboard.g_name_to_key.items()):
+        var.value = key
+        assert _registered_keys(var) == [(key.scan_code, key.is_extended)], name

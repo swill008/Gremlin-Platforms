@@ -1238,7 +1238,8 @@ class KeyboardVariable(AbstractVariable):
             return lambda f: f
         else:
             assert isinstance(self._value, gremlin.keyboard.Key)
-            return keyboard(self._value.name, mode.value)
+            # The Key itself: names don't round-trip (Numpad 5, extended keys).
+            return keyboard(self._value, mode.value)
 
 
 class LogicalDeviceVariable(AbstractVariable):
