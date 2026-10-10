@@ -365,6 +365,18 @@ def shutdown_cleanup() -> None:
     except Exception:
         log.exception("Shutdown: OSC discovery")
     try:
+        # Windows speech: an engine left alive keeps the process for ~5 s
+        # after it ends (to-do 81). Only one that was made.
+        tts = sys.modules.get("gremlin.tts")
+        if tts is not None:
+            from gremlin.common import SingletonMetaclass
+
+            manager = SingletonMetaclass._instances.get(tts.TTSManager)
+            if manager is not None:
+                manager.close()
+    except Exception:
+        log.exception("Shutdown: text to speech")
+    try:
         from gremlin.modules import output
 
         # The last word: no vJoy device held, no Xbox pad plugged in (S17).

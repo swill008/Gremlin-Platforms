@@ -129,6 +129,24 @@ class TTSManager(metaclass=SingletonMetaclass):
         if self._engine is not None:
             self._engine.stop()
 
+    def close(self) -> None:
+        """Release the engine at program exit: a Windows speech engine left
+        alive holds the process for about 5 s after it ends (to-do 81).
+        Main thread only; safe to call twice or with no engine."""
+        self.stop()
+        engine, self._engine = self._engine, None
+        if engine is None:
+            return
+        try:
+            engine.stateChanged.disconnect(self._on_state_changed)
+        except (RuntimeError, TypeError):
+            pass
+        engine.deleteLater()
+        # Delete it now: after the event loop ends nothing else will.
+        QtCore.QCoreApplication.sendPostedEvents(
+            None, QtCore.QEvent.Type.DeferredDelete
+        )
+
     def enqueue(self, request: TTSRequest, mode: TTSQueueMode) -> None:
         """Add *request* to the queue according to *mode* and start speaking
         if the engine is currently idle.

@@ -11,7 +11,7 @@ This is the frame around everything else. It starts the program (and stops a sec
 ## 2. Files
 
 Python
-- `joystick_gremlin.py` (1257 lines): start-up (`main`, `JoystickGremlinApp`), the Windows-scaling check before Qt loads, second-copy check and `gremlin.lock`, the "could not start" box, `running_offscreen()`, registration of about 60 settings (`register_config_options`), loggers, `--profile/--enable/--start-minimized`, `shutdown_cleanup`, restart and install-on-exit.
+- `joystick_gremlin.py` (1310 lines): start-up (`main`, `JoystickGremlinApp`), the Windows-scaling check before Qt loads, second-copy check and `gremlin.lock`, the "could not start" box, `running_offscreen()`, registration of about 60 settings (`register_config_options`), loggers, `--profile/--enable/--start-minimized`, `shutdown_cleanup`, restart and install-on-exit.
 - `gremlin/config.py` (673): `Configuration` singleton: loads, checks, saves `configuration.json`, handles a damaged file, settings version, removes unused settings, History records for settings, and auto-load profile lookup (`get_profile`, `get_profile_with_regex`).
 - `gremlin/deferred_write.py` (121): "write once, a second after the last change" for settings and the activity log; flushes on quit and atexit.
 - `gremlin/threads.py` (193): the only way to start threads and timers. Each one is named and listed, and has a stop request. `shutdown()` stops them all, and `main_timer` runs a timer's function on the main thread (main timers are kept in `_main_timers` too).
@@ -190,7 +190,7 @@ Settings keys this subsystem registers or uses (others register their own; see G
 | `updater.installRequested` (download verified) | `Main.qml:1340` | `quitGremlin(false, true)` |
 | Update window buttons | `DialogUpdate.qml:104-151` | `download`, `openReleasePage`, `skipVersion`, `install`, `cancel`, `check(true)`, `retryUpdate`; closing mid-download → `cancel` |
 | `backend.restartRequested` | `Main.qml:1325` | `quitGremlin(true)` |
-| App `aboutToQuit` | `joystick_gremlin.py:920,971,973`, `deferred_write.py:64` | `shutdown_cleanup`, tray `release_resources`, `deferred_write.flush_all` |
+| App `aboutToQuit` | `joystick_gremlin.py:920,971,973`, `deferred_write.py:64` | `shutdown_cleanup` (from 2026-10-10 also `TTSManager.close()` before `reset_drivers`, to-do 81), tray `release_resources`, `deferred_write.flush_all` |
 | After `app.exec()` | `main()` `:1095-1134` | `shutdown_cleanup` (again), `threads.shutdown`, `flush_all`, `history.close`, `flush_all`, unlock, `start_pending_install` or restart via `QProcess.startDetached`, `os._exit(0)` |
 | Python exit | `atexit` `deferred_write.py:121` | `flush_all` |
 | Unhandled error (main thread) | `sys.excepthook = exception_hook` `:896` | system.log + error dialog + console |

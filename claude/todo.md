@@ -400,11 +400,9 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     (the folder the program was started from) before its own folder, and `import dill` runs before
     joystick_gremlin.py changes folder (82 vs 101) - a planted dill.dll there would be loaded. Load only from
     the program folder. Not started.
-81. Exit takes ~5 s: CAUSE FOUND 2026-10-10 (CARRY, measured off-screen): the Text to Speech engine
-    (QTextToSpeech, WinRT) is created at every Run start (gremlin/tts.py:79-90) and never released; once it
-    exists, the process takes 5.0 s to end after os._exit (0.02 s without it, 0.02 s if stopped and deleted
-    first). Proposed fix (awaiting the user): TTSManager.close() (stop, deleteLater, None) called from
-    joystick_gremlin.shutdown_cleanup() before output.reset_drivers(), plus one test.
+81. DONE 2026-10-10 (to-do 81; Spec: none, no behaviour change): exit took ~5 s because the Text to Speech engine
+    (QTextToSpeech, WinRT) was never released. TTSManager.close() now stops and releases it in shutdown_cleanup()
+    before reset_drivers(); measured os._exit to process end 0.016 s (was 5.0 s). Test: test_tts_release.py.
 82. DONE 2026-10-10 (387e25e7; D-02-RESET-DEVICES addendum S5, 02 S137): Reset Devices left its
     gremlin_reset_* temp folders behind (found 2026-10-10, RFIX). They are now deleted after the results are
     read (best effort; a leftover Administrators-owned file from before is ignored).

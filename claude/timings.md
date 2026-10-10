@@ -249,3 +249,28 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | dill upgrade impact study (DILLUP) | review | ~15 min | 9 min | 04:22–04:31 |
 | 2026-10-10 | Upstream R16 dill check (R16DILL) | review | ~12 min | 3 min | 04:41–04:44 |
 | 2026-10-10 | Test-order leak fix (ORDER) | fix | ~15 min | 1 min | 04:37–04:38 |
+| 2026-10-10 | dill2 Route A full run + lint (lead) | test | ~6 min | ~6 min | ended 06:35, 4,839 passed; start not logged |
+| 2026-10-10 | Commit/push 4951df66 + tracker/progress (lead) | docs | — | 2 min | 06:45–06:47 |
+| 2026-10-10 | R16 integration study IS1–IS5 (5 read-only agents) | review | ~15 min | 2–4 min each | 06:43–06:47 |
+| 2026-10-10 | R16 integration study IS6 small items | review | ~8 min | 3 min | 06:47–06:50 |
+| 2026-10-10 | R16 study report page (lead) | docs | — | ~5 min | 06:48–06:53, approx: not clocked |
+| 2026-10-10 | Rebuild Input Tester with dill2 (lead) | build | — | <1 min | 07:03 |
+| 2026-10-10 | dill2 hands-on log reads incl. layout-switch finding (lead) | review | — | ~9 min | 07:04–07:13 |
+| 2026-10-10 | Batch "R16 + findings": KEYS (R1, R4, G-b) | fix | ~15 min | 2 min | 07:24–07:26 |
+| 2026-10-10 | Batch: SMALL (R2, R3, R5, R11d) | fix | ~15 min | 2 min | 07:24–07:26 |
+| 2026-10-10 | Batch: MERGE (R7 Maximum Deflection) | feature | ~15 min | 4 min | 07:25–07:29 |
+| 2026-10-10 | Batch: MACROLOAD (R11a, R11c, R6 macro) | feature | ~20 min | 5 min | 07:25–07:30 |
+| 2026-10-10 | Batch: DOCS (spec, decisions, glossary, Help, to-do) | docs | ~20 min | 4 min | 07:26–07:30 |
+| 2026-10-10 | Batch: DEVLAYOUT (D2G1–D2G3, TX1) | fix | ~20 min | 5 min | 07:25–07:30 |
+| 2026-10-10 | Batch: RESETWIN (live list, Xbox unticked) | feature | ~20 min | 6 min | 07:25–07:31 |
+| 2026-10-10 | Batch: MOUSE (R9 rework, G-c) | refactor | ~30 min | 8 min | 07:25–07:33 |
+| 2026-10-10 | Batch: DEFAULTS (R6, R8, R11b, G-a) | feature | ~20 min | 8 min | 07:25–07:33 |
+| 2026-10-10 | Batch: 9 agents start to last report (wall clock) | batch | quoted 15–30 min | 10 min | 07:23–07:33; the rules of thumb said ~10 min |
+| 2026-10-10 | Lead: hidhide.py follow-up + tests, lint + 3 type fixes | fix | — | ~5 min | 07:31–07:36 |
+| 2026-10-10 | Batch: CARRY (carry-through tests, G-d and to-do 81 checks) | test | ~25 min (padded) | 10 min | 07:26–07:36; table said 3–8 min per agent |
+| 2026-10-10 | Batch: DOCS follow-up (map counts, wording, gaps) | docs | 3–8 min (table) | 4 min | 07:34–07:38 |
+| 2026-10-10 | Timing rule strengthened in CLAUDE.md + memory (lead) | docs | 1–2 min | 1 min | 07:40 |
+| 2026-10-10 | Full run + lint, batch "R16 + findings" (lead) | test | 5–6 min (table) | 6 min | 07:38–07:44; 3 failures, all tests pinning old internals/defaults |
+| 2026-10-10 | Fix 3 full-run failures (test fakes, explicit "released") (lead) | fix | — | 1 min | 07:44–07:45 |
+| 2026-10-10 | Commit batch in 9 group commits (lead) | docs | ~2 min (table) | 2 min | 07:46–07:48 |
+| 2026-10-10 | TTS81: release Text to Speech at exit (to-do 81) | fix | 3–8 min (table) | 1.5 min | 07:46–07:47 (91 s by the agent's run time) |
