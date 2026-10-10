@@ -273,6 +273,7 @@ Item {
                 locked: _root.editorLocked
                 paneOpen: _root.actionOpen
                 onChanged: _root._applyFind()
+                onCleared: _root._resetActionFilters()
                 // The action Type and Output boxes (S124).
                 buttons: [
                     ComboBox {
@@ -438,11 +439,16 @@ Item {
         _layout.setActionFilters(typeKey, dest)
     }
 
+    // Clear and Clear Filters reset every Find filter (S124); the bar's
+    // cleared() brings its Clear here too.
     function _clearFind() {
+        _find.clear()
+    }
+
+    function _resetActionFilters() {
         _actionType.currentIndex = 0
         _output.currentIndex = 0
         _applyActionFilters()
-        _find.clear()
     }
 
     // +---------------------------------------------------------------------

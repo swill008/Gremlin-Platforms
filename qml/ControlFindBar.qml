@@ -49,6 +49,9 @@ ColumnLayout {
     }
 
     signal changed()
+    // Sent by clear() before changed(), so a page resets its own Find
+    // boxes (the Configuration page's Type and Output, S124) too.
+    signal cleared()
 
     function isChecked(name) {
         for (var i = 0; i < _ticks.count; i++) {
@@ -68,6 +71,7 @@ ColumnLayout {
                 box.checked = false
         }
         _tickRev++
+        cleared()
         changed()
     }
 

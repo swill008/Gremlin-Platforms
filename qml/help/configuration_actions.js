@@ -92,14 +92,13 @@ function topics() {
                 + "<ul>"
                 + "<li>Type a system name, your name or a group (<b>Ctrl+F</b> goes to the box). A line under it says how many are found; <b>×</b> or <b>Esc</b> clears the typing.</li>"
                 + "<li>The first box shows all inputs, or only buttons, axes or hats.</li>"
-                + "<li><b>Clear</b> empties the search and resets the first box and the ticks under the bar.</li>"
+                + "<li><b>Clear</b> resets every Find filter: it empties the search and sets the first box, the ticks under the bar and the <b>Type</b> and <b>Output</b> boxes back to show everything.</li>"
                 + "<li>The action box <b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode. To find inputs with none, use <b>No actions in this mode</b>.</li>"
                 + "<li>The <b>Output</b> box shows inputs that send to one place. It lists only the places in use.</li>"
                 + "<li>Under the bar, <b>Ungrouped</b> and <b>No actions in this mode</b> narrow the list further.</li>"
                 + "</ul>"
                 + _good([
-                    "<b>Clear</b> leaves the Type and Output boxes as they are: set them back to their first entry.",
-                    "When nothing matches, the page says \"Nothing matches the Find filters.\" Choose <b>Clear Filters</b> to reset everything, the Type and Output boxes included."
+                    "When nothing matches, the page says \"Nothing matches the Find filters.\" Choose <b>Clear Filters</b>, or <b>Clear</b> on the bar, to reset everything."
                 ]),
             related: ["configuration-actions-configuration-page", "configuration-actions-add-action"]
         },

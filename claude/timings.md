@@ -531,3 +531,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | FLK-OSCBACKEND: test_fix_X3 left a held keyboard layout; try/finally discard | test fix | 3–8 min (table) | 9 min | 16:32–16:41 |
 | 2026-10-10 | Lead: module_model lambda -> bound method (card lists freed), conftest drops held layouts after each test; tests first | lead fix | no timing data yet | ~2 min | 16:40–16:42 |
 | 2026-10-10 | Full run 4 (seed 179731, new split): 1 order-dependent (logger mock); fixed | test run | ~5 min (table) | 5:12 | 16:42–16:48 |
+| 2026-10-10 | Lead: ST1 and FC1 decisions recorded; 02 S108 updated for Allow mode | spec | no timing data yet | 2 min | 16:50–16:52 |
+| 2026-10-10 | FC1-CLEAR: Find Clear resets Type and Output (cleared signal) + Help + spec | fix | 3–8 min (table) | 2 min | 16:51–16:53 |
+| 2026-10-10 | Full run 5 (random): all passed (5249 unit + 75 + 47) | test run | ~5 min (table) | 4:58 | 16:53–16:58 |
