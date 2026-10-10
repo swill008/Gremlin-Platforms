@@ -874,10 +874,14 @@ def vjoy_driver_problem() -> tuple[str, str]:
 def reset_vjoy() -> None:
     """Release every vJoy device Gremlin holds."""
     _stop_keep_alive()
+    held = held_vjoy_ids()
     try:
         _vjoy_proxy().reset()
     except Exception:
         syslog.exception("vJoy reset failed")
+    # Released at rest (06 S17): the rest counts as written for the
+    # out-of-step watch (S86-S87), else Stop reads as OUT OF STEP.
+    trace.rested(held)
 
 
 def reset_drivers() -> None:

@@ -582,6 +582,21 @@ def last_written(vjoy_id: int, kind: str, index: int) -> tuple[float, float] | N
     return _last_written.get((int(vjoy_id), kind, int(index)))
 
 
+def rested(vjoy_ids: object) -> None:
+    """These vJoy devices were put at rest when released (06 S17: Stop, a
+    restart, a device re-read): rest is what was last written (S86), so the
+    out-of-step watch compares with it, not the profile's last value."""
+    try:
+        ids = {int(i) for i in vjoy_ids}  # type: ignore[union-attr]
+        now = clock.now()
+        with _LOCK:
+            for key in list(_last_written):
+                if key[0] in ids:
+                    _last_written[key] = (0.0, now)
+    except Exception:
+        pass
+
+
 def last_raw(device_uuid: object, kind: str, index: int) -> tuple[float, float] | None:
     return _last_raw.get((_key(device_uuid), kind, int(index)))
 
