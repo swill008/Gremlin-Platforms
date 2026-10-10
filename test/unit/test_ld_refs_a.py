@@ -164,7 +164,8 @@ def test_condition_on_a_deleted_control_whose_number_is_reused_is_false() -> Non
     logical = LogicalDevice()
     old = logical.create(B, label="Fire")
     cond = ca.LogicalDeviceCondition()
-    cond._comparator.is_pressed = False  # asks "released" (new ones ask Pressed, 05 S116)
+    # Asks "released" (new conditions ask Pressed, 05 S116).
+    cond._comparator.is_pressed = False
     node = cond.to_xml()
     assert util.read_property(node, "uid", PropertyType.String) == old.uid
 
@@ -186,7 +187,8 @@ def test_condition_follows_its_control_by_uid() -> None:
     logical = LogicalDevice()
     fire = logical.create(B, label="Fire")
     cond = ca.LogicalDeviceCondition()
-    cond._comparator.is_pressed = False  # asks "released" (new ones ask Pressed, 05 S116)
+    # Asks "released" (new conditions ask Pressed, 05 S116).
+    cond._comparator.is_pressed = False
     node = cond.to_xml()
     logical.delete(fire.identifier)
     logical.create(B, label="Other")

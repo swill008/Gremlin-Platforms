@@ -274,3 +274,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Fix 3 full-run failures (test fakes, explicit "released") (lead) | fix | — | 1 min | 07:44–07:45 |
 | 2026-10-10 | Commit batch in 9 group commits (lead) | docs | ~2 min (table) | 2 min | 07:46–07:48 |
 | 2026-10-10 | TTS81: release Text to Speech at exit (to-do 81) | fix | 3–8 min (table) | 1.5 min | 07:46–07:47 (91 s by the agent's run time) |
+| 2026-10-10 | Final full run + lint (lead) | test | 5–6 min + lint (table) | 6 min | 07:48–07:54; all green, 4,262 passed; 2 new ruff long lines fixed after |
