@@ -26,13 +26,13 @@ import sys
 import uuid
 from collections import Counter
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from gremlin.profile import Profile
 
 # Codes that may be expected (not a broken rule by themselves).
-WARNINGS = frozenset({"PROFILE-UNUSED-ACTION"})
+WARNINGS = frozenset({"PROFILE-UNUSED-ACTION", "PROFILE-MACRO-STEP-UNREADABLE"})
 
 # The threads (gremlin.threads names, without the prefix) a Run starts and
 # Stop ends.
@@ -134,6 +134,9 @@ def profile(p: Profile) -> list[str]:
     - PROFILE-OSC-MISSING: a binding on an OSC input (or an Assign Hardware
       link from one) whose saved permanent id OSC's file doesn't have, or,
       with no id, a type+number it doesn't have (D-09-OSC-FILE 2).
+    - PROFILE-MACRO-STEP-UNREADABLE (warning): a used macro holds a step it
+      can't read or of an unknown type, kept as saved and doing nothing
+      at Run (05 S117).
     """
     out: list[str] = []
     modes: set[str] = set()
@@ -147,7 +150,19 @@ def profile(p: Profile) -> list[str]:
         "profile logical", lambda found: _check_logical(p, found, used)
     )
     out += _guarded("profile osc", lambda found: _check_osc(p, found))
+    out += _guarded("profile macros", lambda found: _check_macros(found, used))
     return out
+
+
+def _check_macros(out: list[str], used: dict[uuid.UUID, Any]) -> None:
+    for action in used.values():
+        steps = getattr(action, "unreadable_steps", None)
+        if not callable(steps):
+            continue
+        for step in cast("list[Any]", steps()):
+            out.append(
+                f"PROFILE-MACRO-STEP-UNREADABLE: {_name(action)}: {step.problem}"
+            )
 
 
 def _check_modes(p: Profile, out: list[str], names_out: set[str]) -> None:

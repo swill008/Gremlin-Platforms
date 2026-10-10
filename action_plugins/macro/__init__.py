@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import enum
+import logging
 import uuid
 from typing import (
     TYPE_CHECKING,
@@ -36,9 +37,10 @@ from gremlin.edits import EditNoted, note_edit
 from gremlin.error import (
     GremlinError,
     MissingImplementationError,
-    ProfileError,
 )
 from gremlin.logical_device import LogicalDevice
+from gremlin.macro_raw import RawMacroStep
+from gremlin.modules import output
 from gremlin.profile import Library
 from gremlin.signal import signal
 from gremlin.types import (
@@ -200,7 +202,7 @@ class KeyActionModel(AbstractActionModel):
         Args:
             data: list of mouse button presses to store
         """
-        # Sort keys such that modifiers are first
+        # A key step holds one key: the first one recorded.
         self._action.key = (
             None if not data else keyboard.key_from_code(*data[0].identifier)
         )
@@ -572,6 +574,20 @@ class VJoyActionModel(AbstractActionModel):
     )
 
 
+class RawStepModel(AbstractActionModel):
+    """A step kept as it was saved: shows why it does nothing (05 S117)."""
+
+    def __init__(self, action: RawMacroStep, parent: ta.OQO = None) -> None:
+        super().__init__(action, parent)
+
+    def _action_type(self) -> str:
+        return RawMacroStep.tag
+
+    @QtCore.Property(str, constant=True)
+    def problem(self) -> str:
+        return cast(RawMacroStep, self._action).problem
+
+
 class MacroRepeatModes(enum.Enum):
     Single = 1
     Count = 2
@@ -607,6 +623,8 @@ class MacroFunctor(AbstractFunctor):
 
         self.macro = macro.Macro()
         for action in self.data.actions:
+            if isinstance(action, RawMacroStep):
+                continue  # kept as saved, does nothing at Run (05 S117)
             self.macro.add_action(action)
         self.macro.is_exclusive = self.data.is_exclusive
         self.macro.is_preempting = self.data.is_preemptive
@@ -750,6 +768,26 @@ class ActionListModel(QtCore.QAbstractListModel):
         return MacroModel.model_lookup[action.tag](action, self)
 
 
+def _start_on_claimed(step: macro.VJoyAction) -> bool:
+    """Points a new vJoy step at the first output a vJoy output module
+    claims (05 S113); False when none is claimed."""
+    first = output.first_claimed_output(
+        [InputType.JoystickButton, InputType.JoystickAxis, InputType.JoystickHat]
+    )
+    if first is None:
+        return False
+    vjoy_id, input_type, input_id = first
+    if input_type != step.input_type:
+        step.input_type = input_type
+        if input_type == InputType.JoystickAxis:
+            step.value = 0.0
+        elif input_type == InputType.JoystickHat:
+            step.value = HatDirection.Center
+    step.vjoy_id = vjoy_id
+    step.input_id = input_id
+    return True
+
+
 class MacroModel(ActionModel):
     # Signal emitted when the description variable's content changes
     changed = QtCore.Signal()
@@ -765,6 +803,7 @@ class MacroModel(ActionModel):
         "mouse-motion": MouseMotionActionModel,
         "pause": PauseActionModel,
         "vjoy": VJoyActionModel,
+        RawMacroStep.tag: RawStepModel,
     }
 
     def __init__(
@@ -800,6 +839,7 @@ class MacroModel(ActionModel):
     @QtCore.Slot(str)
     def addAction(self, name: str) -> None:
         step = self.action_lookup[name]()
+        no_claim = isinstance(step, macro.VJoyAction) and not _start_on_claimed(step)
         self._action_list_model.append(step)
         self.changed.emit()
         if isinstance(step, macro.LogicalDeviceAction) and step.input_id is None:
@@ -807,9 +847,14 @@ class MacroModel(ActionModel):
             signal.showNotification.emit(
                 "Macro", "Add a Logical Device control first."
             )
+        if no_claim:
+            # Added all the same, like a Logical Device step (05 S113).
+            signal.showNotification.emit(
+                "Macro", "Claim an output on a vJoy output module first."
+            )
 
     @QtCore.Slot(int)
-    def removeAction(self, index: int) -> None:
+    def removeStep(self, index: int) -> None:
         self._action_list_model.remove(index)
         self.changed.emit()
 
@@ -1034,18 +1079,23 @@ class MacroData(AbstractActionData):
             node, "repeat-delay", PropertyType.Float
         )
 
+        # A step that can't be read, or of an unknown type, is kept as it
+        # was and doesn't stop the profile opening (05 S117).
         for entry in node.iter("macro-action"):
             action_type = entry.get("type")
-            action_obj = None
-            if action_type in macro.STEP_TYPES:
-                action_obj = macro.STEP_TYPES[action_type].create()
-                action_obj.from_xml(entry)
-                self.actions.append(action_obj)
+            if action_type not in macro.STEP_TYPES:
+                step: macro.AbstractAction = RawMacroStep.unknown_type(entry)
             else:
-                raise ProfileError(
-                    f"Unknown action type {action_type} in Macro action with "
-                    + f"id {self._id}"
+                try:
+                    step = macro.STEP_TYPES[action_type].create()
+                    step.from_xml(entry)
+                except Exception as err:  # noqa: BLE001 - any bad data
+                    step = RawMacroStep.unreadable(entry, err)
+            if isinstance(step, RawMacroStep):
+                logging.getLogger("system").warning(
+                    f"Macro {self._id}: {step.problem}"
                 )
+            self.actions.append(step)
 
     @override
     def _to_xml(self) -> ElementTree.Element:
@@ -1061,12 +1111,23 @@ class MacroData(AbstractActionData):
             ],
         )
         for entry in self.actions:
-            if entry.is_valid():
+            if not _never_filled_in(entry):
                 node.append(entry.to_xml())
         return node
 
+    def unreadable_steps(self) -> list[RawMacroStep]:
+        """Steps kept as saved because they can't be read (05 S117)."""
+        return [step for step in self.actions if isinstance(step, RawMacroStep)]
+
     @override
     def user_feedback(self) -> List[UserFeedback]:
+        raw = self.unreadable_steps()
+        if raw:
+            # A warning: the steps are kept and saved back (05 S117).
+            return [
+                UserFeedback(UserFeedback.FeedbackType.Warning, step.problem)
+                for step in raw
+            ]
         if not self.actions:
             # A warning, not an error, so a save keeps the macro.
             return [
@@ -1098,6 +1159,15 @@ class MacroData(AbstractActionData):
             if action.swap_uuid(old_uuid, new_uuid):
                 performed_swap = True
         return performed_swap
+
+
+def _never_filled_in(step: macro.AbstractAction) -> bool:
+    """A step added but never filled in, left out on Save. A Logical Device
+    step whose control is missing is kept (05 S117)."""
+    if isinstance(step, macro.LogicalDeviceAction):
+        return step.input_id is None
+    is_valid = getattr(step, "is_valid", None)
+    return callable(is_valid) and not is_valid()
 
 
 create = MacroData

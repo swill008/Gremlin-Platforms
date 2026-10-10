@@ -657,6 +657,25 @@ Item {
                 }
             }
         }
+
+        // A step kept as it was saved: it can't be read (05 S117).
+        DelegateChoice {
+            roleValue: "unreadable"
+
+            DraggableAction {
+                icon: bsi.icons.warning
+                label: "Unreadable step"
+
+                actionItem: RowLayout {
+                    Label {
+                        Layout.fillWidth: true
+
+                        text: modelData.problem
+                        wrapMode: Text.Wrap
+                    }
+                }
+            }
+        }
     }
 
     // Predefined button that removes a given action.
@@ -664,7 +683,7 @@ Item {
         text: bsi.icons.remove
         font.pixelSize: Style.dp(16)
 
-        onClicked: () => { _root.action.removeAction(index) }
+        onClicked: () => { _root.action.removeStep(index) }
     }
 
     // Displays an icon and also acts as the drag handle for the drag&drop
