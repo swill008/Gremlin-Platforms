@@ -109,12 +109,28 @@ def new_instance(model: ActionModel, data_cls: type) -> Any | None:  # noqa: ANN
     )
     if action is None:
         return None
-    taken = {getattr(a, "label", "") for a in model.library.actions_by_type(data_cls)}
+    action.label = next_label(model.library, data_cls)
+    return action
+
+
+def next_label(library: Any, data_cls: type) -> str:  # noqa: ANN401
+    """The first free "<action name> N" in the library ("Merge Axis 1")."""
+    taken = {getattr(a, "label", "") for a in library.actions_by_type(data_cls)}
     number = 1
     while f"{data_cls.name} {number}" in taken:
         number += 1
-    action.label = f"{data_cls.name} {number}"
-    return action
+    return f"{data_cls.name} {number}"
+
+
+def start_new(action: Any, profile: Any, item: Any) -> None:  # noqa: ANN401
+    """Added with Add Action: starts on its own instance, named as "+" names
+    one (05 S120). A shared one handed back (Merge Axis Reuse) keeps its
+    name; never on load."""
+    if getattr(action, "label", ""):
+        return
+    library = getattr(item, "library", None) or getattr(profile, "library", None)
+    if library is not None:
+        action.label = next_label(library, type(action))
 
 
 def switch_instance(model: ActionModel, uuid_str: str, axes: tuple[str, str]) -> None:

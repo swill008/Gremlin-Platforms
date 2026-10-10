@@ -467,6 +467,111 @@ def test_add_and_fields(matrix: Any, tag: str, kind: str, surface: str) -> None:
     assert not bad, bad
 
 
+# The instance drop-down of each editor: (value property, list property).
+_PICK = {
+    "merge-axis": ("mergeAction", "mergeActionList"),
+    "dual-axis-deadzone": ("deadzone", "deadzoneActionList"),
+}
+_AXES = {
+    "merge-axis": ("axis_in1", "axis_in2"),
+    "dual-axis-deadzone": ("axis1", "axis2"),
+}
+_PAIR_CASES = [c for c in CASES if c[0] in _PICK]
+
+
+def _shown(case: Case) -> str:
+    """The text the instance drop-down shows: the pick list's label for the
+    editor's value."""
+    value_name, list_name = _PICK[case.tag]
+    model = case.model()
+    value = getattr(model, value_name)
+    picks = getattr(model, list_name)
+    labels = dict(zip(picks._values, picks._labels, strict=True))  # noqa: SLF001
+    return labels.get(value, "")
+
+
+@pytest.mark.parametrize(("tag", "kind", "surface"), _PAIR_CASES, ids=_cid(_PAIR_CASES))
+def test_add_starts_on_a_named_instance(
+    matrix: Any,  # noqa: ANN401
+    tag: str,
+    kind: str,
+    surface: str,
+) -> None:
+    """05 S120: right after Add Action the drop-down shows a new instance,
+    named as "+" would name it."""
+    case = matrix.open(tag, kind, surface)
+    want = f"{case.cls.name} 1"
+    shown = _shown(case)
+    record(tag, surface, kind, "add names the instance (S120)", shown == want, shown)
+    assert case.action.label == want
+    assert shown == want
+
+
+def test_second_add_numbering(matrix: Any) -> None:  # noqa: ANN401
+    """05 S120: a second Dual Axis Deadzone is the next number; a second
+    Merge Axis is the in-use one (Reuse by default), its name kept."""
+    dual = matrix.open("dual-axis-deadzone", "axis", Surface.CONFIG_PAGE)
+    dual.root_model().appendAction(dual.cls.name, "children")
+    settle()
+    labels = sorted(a.label for a in dual.profile.library.actions_by_type(dual.cls))
+    assert labels == ["Dual Axis Deadzone 1", "Dual Axis Deadzone 2"]
+
+    merge = matrix.open("merge-axis", "axis", Surface.CONFIG_PAGE)
+    merge.root_model().appendAction(merge.cls.name, "children")
+    settle()
+    found = list(merge.profile.library.actions_by_type(merge.cls))
+    assert [a.label for a in found] == ["Merge Axis 1"]
+
+
+@pytest.mark.parametrize("tag", list(_PICK))
+def test_load_keeps_the_saved_instance(
+    tmp_path: pathlib.Path,
+    tag: str,
+) -> None:
+    """05 S120: only Add Action names one; a loaded action keeps its saved
+    instance (an unnamed one stays unnamed, nothing is added)."""
+    from action_plugins.axis_pair import AxisRef
+    from gremlin import shared_state
+    from gremlin.profile import Profile
+    from test.unit.action_matrix.harness import (  # pyright: ignore[reportMissingImports]
+        MODE,
+        plugin,
+    )
+
+    cls = plugin(tag)
+    kept = shared_state.current_profile
+    try:
+        profile = Profile()
+        shared_state.current_profile = profile
+        item = profile.get_input_item(
+            _stick_guid(), _kind_axis(), 1, MODE, create_if_missing=True
+        )
+        assert item is not None
+        item.add_item_binding()
+        root = item.action_sequences[0].root_action
+        for label in ("", "Saved name"):
+            action = profile.library.create(cls.name, _kind_axis(), reuse=False)
+            action.label = label
+            # Finished (both axes), so Save keeps it.
+            for i, name in enumerate(_AXES[tag]):
+                setattr(action, name, AxisRef(_stick_guid(), _kind_axis(), i + 1))
+            root.insert_action(action, "children")
+        path = tmp_path / "saved.xml"
+        profile.to_xml(path)
+        back = Profile()
+        back.from_xml(path)
+    finally:
+        shared_state.current_profile = kept
+    labels = sorted(a.label for a in back.library.actions_by_type(cls))
+    assert labels == ["", "Saved name"]
+
+
+def _kind_axis() -> Any:  # noqa: ANN401
+    from gremlin.types import InputType
+
+    return InputType.JoystickAxis
+
+
 @pytest.mark.parametrize(("tag", "kind", "surface"), CASES, ids=_cid(CASES))
 def test_save_reload(matrix: Any, tag: str, kind: str, surface: str) -> None:  # noqa: ANN401
     from gremlin.profile import Profile

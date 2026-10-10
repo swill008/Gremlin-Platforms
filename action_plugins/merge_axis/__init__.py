@@ -359,6 +359,10 @@ class MergeAxisData(AbstractActionData):
         )
         return node
 
+    def start_new(self, profile: object, item: object) -> None:
+        """Added with Add Action: a new, named instance (05 S120)."""
+        axis_pair.start_new(self, profile, item)
+
     @override
     def user_feedback(self) -> List[UserFeedback]:
         messages = []
