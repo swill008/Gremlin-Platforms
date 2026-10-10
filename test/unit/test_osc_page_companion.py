@@ -7,10 +7,15 @@ companionText(uid) gives Companion's Generic OSC connection settings
 (this PC's address, the listening port, UDP, Listen for Feedback on, a
 source port that isn't the program's) and the key actions for the input's
 mode, worded as Generic OSC 2.8.2 and 3.0.0 name them. In the real program
-off-screen (osc_page_companion_smoke.py): "OSC Setup…" opens OSC's Module
-Setup, the row menu's "Copy for Companion" puts that text on the
-clipboard, and the right side says "Select an input to see its actions"
-while no input is selected."""
+off-screen (osc_page_companion_smoke.py), on the OSC page (qml/OscPage.qml,
+09 S129-S137): the empty list says how to add inputs and no action pane is
+open; the page bar's "OSC Setup…" opens OSC's Module Setup; the
+right-click menu's "Copy for Companion" puts that text on the clipboard,
+"Edit Settings…" opens the Add window on the input, "Change Address…"
+shows the model's error, Row › "Delete…" asks first and page Undo puts the
+input back, Add Inputs › "Import…" shows its result; the page bar's
+"Monitor" unfolds the docked Monitor, whose "Add as Input…" opens the Add
+window filled in."""
 
 from __future__ import annotations
 
@@ -122,7 +127,7 @@ def test_companion_host_without_another_address_is_loopback(
     assert osc_device_model._companion_host("192.168.5.5") == "192.168.5.5"
 
 
-def test_osc_page_setup_copy_and_empty_side_in_the_program(
+def test_osc_page_bar_menu_and_monitor_in_the_program(
     tmp_path: pathlib.Path,
 ) -> None:
     result = subprocess.run(
@@ -147,13 +152,38 @@ def test_osc_page_setup_copy_and_empty_side_in_the_program(
         x.split(" ", 2)[1]: json.loads(x.split(" ", 2)[2])
         for x in lines if x.startswith("RESULT ")
     }
-    assert got["empty-text"] == "Select an input to see its actions"
+    assert got["page"] is True
+    assert got["empty-text"] == "No OSC inputs yet. Right-click here to add some."
+    assert got["pane-closed"] is True
+    assert got["rows"] == [True, True]
     assert got["setup-button"] is True
     assert got["setup-signal"] is True
     assert got["setup-window"] is True
-    assert got["copy-item"] is True
+    menu = got["menu"]
+    for row in ("Change Address…", "Edit Settings…", "Copy for Companion",
+                "Send Test Press", "Add Action", "History"):
+        assert row in menu, (row, menu)
     clip = got["clipboard"]
     assert "Target Hostname or IP: 192.168.1.20" in clip
     assert "Target Port: 8123" in clip
-    assert "Send integer /sd/fire 1" in clip or "Send float /fader/1" in clip
+    assert "Send integer /sd/fire 1" in clip
     assert str(got["message"]).startswith("Copied")
+    assert got["edit-address"] == "/fader/1"
+    assert got["edit-axis"] is True
+    assert got["address-dialog"] is True
+    assert got["rename-error"] == "An OSC address starts with /."
+    assert got["rename-kept"] == "/fader/1"
+    assert got["delete-before-confirm"] is True
+    assert got["confirm-open"] is True
+    assert got["confirm-undoable"] is True
+    assert got["delete-after-confirm"] is True
+    assert got["can-undo"] is True
+    assert got["undo-restores"] is True
+    assert str(got["import-result"]).startswith("Added 2, skipped 0")
+    assert got["imported"] == ["/a", "/b"]
+    assert got["monitor-button"] is True
+    assert got["monitor-folded"] is True
+    assert got["monitor-unfolded"] is True
+    assert got["monitor-add-row"] is True
+    assert got["page-add-address"] == "/knob/1"
+    assert got["page-add-axis"] is True

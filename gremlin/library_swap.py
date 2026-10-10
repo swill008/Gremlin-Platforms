@@ -27,7 +27,7 @@ _BUCKET = {"button": "buttons", "axis": "axes", "hat": "hats"}
 # The Button Map's keys in a module file: the map, the photo, its view and
 # print settings.
 _MAP_KEYS = ("nodes", "image", "photo", "ui")
-_APPEARANCE_KEYS = ("view", "catalog")
+_APPEARANCE_KEYS = ("view",)
 
 
 def _refused_word(ident: uuid.UUID) -> str:
@@ -345,6 +345,8 @@ def _swapped_docs(
     files: list[tuple[Path, bytes]] = []
     if "setup" in parts:
         _exchange_setup(doc_a, doc_b, shared)
+        # The Configuration layout (groups, order) goes with the names (CF-Q1).
+        _exchange_keys(doc_a, doc_b, ("layout",))
     if "calibration" in parts:
         _exchange_calibration(doc_a, doc_b, shared)
     if "appearance" in parts:

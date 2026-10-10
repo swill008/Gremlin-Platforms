@@ -2,11 +2,16 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The OSC Monitor (D-09-OSC-MONITOR): gremlin.osc_traffic keeps the last 200
-messages and hands each to listeners on the main thread; OscMonitorModel
-shows them with Pause, Clear, a filter and Show outgoing, holds OSC's port
-open while active; "Add as input…" on a "no input" row opens the OSC Add
-window filled in, from the monitor window and from the OSC page.
+"""The OSC Monitor (D-09-OSC-MONITOR, D-09-OSC-DOCK): gremlin.osc_traffic
+keeps the last 200 messages and hands each to listeners on the main thread;
+OscMonitorModel shows them with Pause, Clear, a filter and Show outgoing,
+holds OSC's port open while shown; "Add as Input…" on a "no input" row
+opens the OSC Add window filled in.
+
+This file drives the panel in its Pop out window (qml/WindowOscMonitor.qml,
+09 S138). The docked panel is test_osc_monitor_panel.py; the real OSC
+page's Monitor button and its docked "Add as Input…" (09 S136, S137) are
+driven in osc_page_companion_smoke.py (test_osc_page_companion.py).
 
 The window part runs the real QML off-screen in a child process (this file
 run as a script), with the real model and traffic module, printing
@@ -23,33 +28,6 @@ import threading
 import time
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
-
-_HARNESS = r"""
-import QtQuick
-import QtQuick.Controls
-import Gremlin.Style
-
-ApplicationWindow {
-    id: _win
-    width: 1200
-    height: 900
-    visible: true
-
-    QtObject {
-        id: bsi
-        property var icons: ({"edit": "E", "remove": "X"})
-    }
-
-    OscDevice {
-        id: _osc
-        objectName: "oscPage"
-        anchors.fill: parent
-    }
-
-    function prefill(s) { return _osc.openAddWith(s) }
-}
-"""
-
 
 class FakeRuntime:
     def __init__(self) -> None:
@@ -463,28 +441,6 @@ def _smoke() -> None:
     QtTest.QTest.qWait(200)
     report("release-on-close", [c[0] for c in runtime.calls])
 
-    # 4. The OSC page: openAddWith fills its Add window; Monitor button exists.
-    engine.loadData(
-        _HARNESS.encode("utf-8"),
-        QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "OscMonitorHarness.qml")),
-    )
-    page = engine.rootObjects()[-1]
-    pq = as_quick(page)
-    QtTest.QTest.qWait(300)
-    report("monitor-button", find(pq, "oscMonitor") is not None)
-    ok = QtCore.QMetaObject.invokeMethod(
-        page, "prefill", QtCore.Qt.ConnectionType.DirectConnection,
-        QtCore.Q_RETURN_ARG("QVariant"),
-        QtCore.Q_ARG("QVariant", mm.add_settings(
-            {"address": "/knob/1", "args": [0.4]}
-        )),
-    )
-    QtTest.QTest.qWait(200)
-    report("page-prefill-returned", _plain(ok))
-    cmd = find(pq, "oscCmd")
-    report("page-add-address", cmd.property("text") if cmd else None)
-    axis = find(pq, "oscModeAxis")
-    report("page-add-axis", bool(axis and axis.property("checked")))
     finish()
 
 
@@ -517,7 +473,7 @@ def _run(tmp_path: pathlib.Path) -> tuple[dict[str, object], list[str]]:
     return got, errors + warns
 
 
-def test_monitor_window_and_osc_page_add_as_input(tmp_path: pathlib.Path) -> None:
+def test_monitor_pop_out_window_lists_filters_and_adds(tmp_path: pathlib.Path) -> None:
     got, problems = _run(tmp_path)
     assert problems == [], problems
     assert got["hold-on-open"] == ["hold"]
@@ -539,10 +495,6 @@ def test_monitor_window_and_osc_page_add_as_input(tmp_path: pathlib.Path) -> Non
     assert tips, "no hover text showing the full address"
     assert any(t.splitlines()[0] == got["long-address"] and "To: 127.0.0.1:12321" in t
                and "Values: Flight" in t for t in tips), tips
-    assert got["monitor-button"] is True
-    assert got["page-prefill-returned"] is True
-    assert got["page-add-address"] == "/knob/1"
-    assert got["page-add-axis"] is True
 
 
 if __name__ == "__main__":

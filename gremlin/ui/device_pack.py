@@ -277,14 +277,37 @@ def _print_lines(doc: dict) -> list[str]:
     return lines
 
 
-def _catalog_lines(doc: dict) -> list[str]:
-    catalog = doc.get("catalog")
-    if not isinstance(catalog, dict) or not catalog:
+def _groups_lines(doc: dict) -> list[str]:
+    """The Configuration layout (CF-Q1): its groups and their inputs."""
+    from gremlin.modules import store
+
+    raw = doc.get(store.LAYOUT_KEY)
+    if not isinstance(raw, dict):
         return []
-    return [
-        "How the Configuration page looks: rows, colors and sizes.",
-        f"Settings: {len(catalog)}",
-    ]
+    layout = store.normalize_layout(raw)
+    if layout == store.empty_layout():
+        return []
+    names = _friendly(doc)
+    lines = ["The Configuration page's groups and the order of its inputs."]
+    for group in layout["groups"]:
+        members = [
+            _layout_input(key, names)
+            for key in layout["order"] + sorted(layout["group_of"])
+            if layout["group_of"].get(key) == group
+        ]
+        members = list(dict.fromkeys(members))
+        lines.append(f"{group}: " + (", ".join(members) if members else "empty"))
+    if layout["order"]:
+        lines.append(f"Inputs in order: {len(layout['order'])}")
+    return lines
+
+
+def _layout_input(key: str, names: dict) -> str:
+    kind, _, raw = str(key).partition(":")
+    try:
+        return _control_name(_FRIENDLY_KIND.get(kind, kind), int(raw), names)
+    except ValueError:
+        return str(key)
 
 
 # The Logical Device's layout in its module file (D-04-LD-FILE, 10 S6a).
@@ -359,11 +382,9 @@ def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
     view = _view_lines(doc)
     if view:
         items.append(_item(prefix + "view", "Output View Appearance", _clip(view)))
-    catalog = _catalog_lines(doc)
-    if catalog:
-        items.append(
-            _item(prefix + "catalog", "Configuration Appearance", _clip(catalog))
-        )
+    groups = _groups_lines(doc)
+    if groups:
+        items.append(_item(prefix + "groups", "Configuration layout", _clip(groups)))
     logical = _logical_lines(doc)
     if logical:
         items.append(
@@ -407,8 +428,8 @@ def module_text(doc: dict, parts: list[str] | None = None) -> str:
         sections.append(("Calibration", _calibration_lines(doc)))
     if "view" in wanted:
         sections.append(("Output View Appearance", _view_lines(doc)))
-    if "catalog" in wanted:
-        sections.append(("Configuration Appearance", _catalog_lines(doc)))
+    if "layout" in wanted:
+        sections.append(("Configuration layout", _groups_lines(doc)))
     if "nodes" in wanted:
         sections.append(("Map", _chip_lines(doc)))
     if wanted & {"photo", "image"}:
@@ -416,7 +437,7 @@ def module_text(doc: dict, parts: list[str] | None = None) -> str:
         sections.append(("Photo", [Path(photo).name] if photo else []))
     if "ui" in wanted:
         sections.append(("Map view", _map_view_lines(doc) + _print_lines(doc)))
-    shown = {"claim", "calibration", "view", "catalog", "nodes", "photo", "image", "ui"}
+    shown = {"claim", "calibration", "view", "layout", "nodes", "photo", "image", "ui"}
     other = [
         f"{key}: {doc[key]}" if isinstance(doc[key], (str, int, float)) else key
         for key in sorted(wanted - shown)
@@ -1189,7 +1210,7 @@ def _split_sections(
     placed = _place_pictures(doc, pictures, prefix)
     module_ids = {
         prefix + "checks", prefix + "names", prefix + "calibration",
-        prefix + "view", prefix + "catalog",
+        prefix + "view", prefix + "groups",
     }
     setting_ids = {prefix + "mapview", prefix + "print"}
     return (
@@ -1406,8 +1427,11 @@ def _merge_module(
                 + ", ".join(unique)
                 + f", and {noun} not checked."
             )
-    if prefix + "catalog" in chosen and isinstance(incoming.get("catalog"), dict):
-        base["catalog"] = json.loads(json.dumps(incoming["catalog"]))
+    if prefix + "groups" in chosen and isinstance(incoming.get("layout"), dict):
+        # The Configuration layout (CF-Q1) replaces the target's.
+        from gremlin.modules import store
+
+        base["layout"] = store.normalize_layout(incoming["layout"])
     nodes = [node for node in (base.get("nodes") or []) if isinstance(node, dict)]
     if prefix + "layout" in chosen:
         incoming_nodes = [json.loads(json.dumps(node)) for node in (incoming.get("nodes") or []) if isinstance(node, dict)]
@@ -2579,7 +2603,7 @@ def _write_module(
 
 
 _INPUT_KEYS = {
-    "in.checks", "in.names", "in.calibration", "in.view", "in.catalog",
+    "in.checks", "in.names", "in.calibration", "in.view", "in.groups",
     "in.layout", "in.mapview", "in.print", "in.logical", "in.osc",
 }
 

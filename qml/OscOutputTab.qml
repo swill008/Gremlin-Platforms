@@ -6,19 +6,23 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Config
+import Gremlin.Device
 import Gremlin.Style
 
 import "confirm.js" as Confirm
 
 // OSC Module Setup's "Output" tab (D-09-OSC-OUTPUT, D-09-OSC-TABS,
 // D-09-OSC-COMPANION): OSC output, Reply to sender and the targets Send OSC
-// and feedback send to, with Add Companion. Each change is written to OSC's
-// file at once.
+// and feedback send to, with Add Companion and the Companion setup check
+// (09 S144). Each change is written to OSC's file at once.
 Flickable {
     id: _root
     objectName: "oscOutputTab"
 
     required property OscServerModel server
+
+    // Companion setup check (09 S144): only reads and reports.
+    OscCompanionCheck { id: _check }
 
     clip: true
     contentWidth: width
@@ -123,6 +127,48 @@ Flickable {
                             text: "Adds the target \"Companion\" (127.0.0.1:12321), "
                                   + "Bitfocus Companion on this PC."
                             show: parent.hovered
+                        }
+                    }
+                    SmallButton {
+                        objectName: "oscCheckCompanion"
+                        text: "Check Companion setup"
+                        onClicked: _check.run()
+                        PointerTip {
+                            text: "Checks, line by line, what Companion needs "
+                                  + "from OSC here. Changes nothing."
+                            show: parent.hovered
+                        }
+                    }
+                }
+
+                // The check's result: one line each, OK or what to change.
+                Repeater {
+                    model: _check.lines
+                    delegate: RowLayout {
+                        id: _checkRow
+                        required property var modelData
+                        required property int index
+                        objectName: "oscCheckLine" + index
+                        Layout.fillWidth: true
+                        spacing: Style.dp(6)
+                        Label {
+                            objectName: "oscCheckMark" + _checkRow.index
+                            text: !_checkRow.modelData.ok ? "Fix"
+                                  : _checkRow.modelData.warn ? "Check" : "OK"
+                            font.bold: true
+                            color: !_checkRow.modelData.ok ? Style.dangerText
+                                   : _checkRow.modelData.warn ? Style.warn : Style.okText
+                            Layout.preferredWidth: Style.dp(44)
+                            Layout.alignment: Qt.AlignTop
+                        }
+                        Label {
+                            objectName: "oscCheckText" + _checkRow.index
+                            text: _checkRow.modelData.fix
+                                  ? _checkRow.modelData.label + " " + _checkRow.modelData.fix
+                                  : _checkRow.modelData.label
+                            color: Style.fg
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
                         }
                     }
                 }

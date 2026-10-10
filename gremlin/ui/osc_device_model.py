@@ -181,6 +181,142 @@ def _emit_modified() -> None:
         sig.emit()
 
 
+# The last edit made through the Add / Import / Listen windows: the OSC
+# page (gremlin.ui.osc_layout) turns it into a page Undo step (S131).
+_EDIT: dict[str, Any] = {"serial": 0, "label": ""}
+
+
+def note_edit(label: str) -> None:
+    """Names the edit the next oscDeviceModified announces."""
+    _EDIT["serial"] = int(_EDIT["serial"]) + 1
+    _EDIT["label"] = str(label or "")
+
+
+def last_edit() -> tuple[int, str]:
+    return int(_EDIT["serial"]), str(_EDIT["label"])
+
+
+# -- the edits both the management model and the OSC page make -------------
+
+
+def find_duplicate(
+    address: str, settings: dict[str, Any], skip_uid: str = ""
+) -> OscRow | None:
+    """The row that would answer the same messages (OscRow.match_key)."""
+    probe = OscRow(
+        uid="", input_type=InputType.JoystickButton, input_id=0,
+        label=address,
+        cmd_mode=settings.get("cmd_mode", "message"),
+        data=list(settings.get("data", [])),
+        source=int(settings.get("source", 0)),
+    )
+    key = probe.match_key()
+    for row in _rows().rows():
+        if row.uid != skip_uid and row.match_key() == key:
+            return row
+    return None
+
+
+def settings_of(row: OscRow) -> dict[str, Any]:
+    return {
+        "mode": row.mode,
+        "cmd_mode": row.cmd_mode,
+        "data": list(row.data),
+        "source": row.source,
+        "range_min": row.range_min,
+        "range_max": row.range_max,
+        "trigger": row.trigger,
+        "delay_ms": row.delay_ms,
+        **{key: getattr(row, key, value) for key, value in ENC_DEFAULTS.items()},
+    }
+
+
+def has_actions(row: OscRow) -> bool:
+    """True when the open profile has actions on this input in any mode
+    (its type can't change then: axis and button actions differ)."""
+    profile = shared_state.current_profile
+    if profile is None:
+        return False
+    return any(
+        item.input_type == row.input_type
+        and item.input_id == row.input_id
+        and item.action_sequences
+        for item in profile.inputs.get(OSC_DEVICE_UUID, [])
+    )
+
+
+def add_input(settings: dict[str, Any]) -> tuple[OscRow | None, str]:
+    """Add one row; return (row, "") or (existing row or None, error)."""
+    address = str(settings.get("address") or "").strip()
+    fields = normalize_settings(settings)
+    fields.setdefault("mode", "button")
+    error = _address_error(address)
+    if error:
+        return None, error
+    existing = find_duplicate(address, fields)
+    if existing is not None:
+        return existing, f"{address} is already in the list."
+    try:
+        input_type = _type_for_mode(fields["mode"], fields.get("enc_output", "axis"))
+        row = _rows().create(input_type, address, **fields)
+    except GremlinError as err:
+        return None, str(err)
+    return row, ""
+
+
+def import_text(text: str) -> tuple[list[OscRow], str]:
+    """Add one input per line; returns the rows added and "Added N,
+    skipped M" plus notes."""
+    added: list[OscRow] = []
+    skipped = 0
+    notes: list[str] = []
+    for raw in (text or "").splitlines():
+        if not raw.strip():
+            continue
+        parsed = parse_import_line(raw)
+        if parsed is None:
+            skipped += 1
+            notes.append(f"'{raw.strip()}': not an OSC address, skipped")
+            continue
+        address, settings, note = parsed
+        row, error = add_input({"address": address, **settings})
+        if row is None or error:
+            skipped += 1
+            continue
+        added.append(row)
+        if note:
+            notes.append(f"'{raw.strip()}': {note}")
+    return added, "\n".join([f"Added {len(added)}, skipped {skipped}"] + notes)
+
+
+def update_settings(uid: str, src: dict[str, Any]) -> str:
+    """Apply the given settings (and "address", when given) to one input;
+    keys left out stay as they are. "" or the error."""
+    rows = _rows()
+    row = rows.by_uid(uid)
+    if row is None:
+        return "That input no longer exists."
+    fields = normalize_settings(src)
+    address = str(src.get("address", row.label) or "").strip()
+    error = _address_error(address)
+    if error:
+        return error
+    merged = {**settings_of(row), **fields}
+    new_type = _type_for_mode(merged["mode"], merged["enc_output"])
+    if new_type != row.input_type and has_actions(row):
+        return TYPE_LOCKED
+    if find_duplicate(address, merged, skip_uid=uid) is not None:
+        return f"{address} is already in the list."
+    try:
+        if address != row.label:
+            rows.set_label(uid, address)
+        if fields:
+            rows.update(uid, **fields)
+    except GremlinError as err:
+        return str(err)
+    return ""
+
+
 # Copy for Companion (D-09-OSC-COMPANION): Companion's Generic OSC module
 # (2.8.2 and 3.0.0) sends from this source port; never the program's port.
 COMPANION_SOURCE_PORT = 9001
@@ -258,11 +394,24 @@ def companion_text(row: OscRow) -> str:
     return "\n".join(lines)
 
 
+def copy_text(text: str) -> bool:
+    """Puts text on the clipboard; False with no GUI or no text."""
+    from PySide6 import QtGui
+
+    app = QtGui.QGuiApplication.instance()
+    if not isinstance(app, QtGui.QGuiApplication) or not text:
+        return False
+    app.clipboard().setText(str(text))
+    return True
+
+
 @ta.QmlElement
 class OscDeviceManagementModel(QtCore.QAbstractListModel):
     listenChanged = QtCore.Signal()
     listenBound = QtCore.Signal(int)
     commandCaptured = QtCore.Signal(str, str)
+    # An input was added (Add, Listen, Import): the OSC page selects it.
+    inputAdded = QtCore.Signal(str)
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
@@ -321,50 +470,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         hits = [r for r in rows.rows() if r.label.casefold() == (key or "").casefold()]
         return hits[0] if len(hits) == 1 else None
 
-    def _duplicate(
-        self, address: str, settings: dict[str, Any], skip_uid: str = ""
-    ) -> OscRow | None:
-        """The row that would answer the same messages (OscRow.match_key)."""
-        probe = OscRow(
-            uid="", input_type=InputType.JoystickButton, input_id=0,
-            label=address,
-            cmd_mode=settings.get("cmd_mode", "message"),
-            data=list(settings.get("data", [])),
-            source=int(settings.get("source", 0)),
-        )
-        key = probe.match_key()
-        for row in _rows().rows():
-            if row.uid != skip_uid and row.match_key() == key:
-                return row
-        return None
-
-    def _settings_of(self, row: OscRow) -> dict[str, Any]:
-        return {
-            "mode": row.mode,
-            "cmd_mode": row.cmd_mode,
-            "data": list(row.data),
-            "source": row.source,
-            "range_min": row.range_min,
-            "range_max": row.range_max,
-            "trigger": row.trigger,
-            "delay_ms": row.delay_ms,
-            **{key: getattr(row, key, value) for key, value in ENC_DEFAULTS.items()},
-        }
-
-    @staticmethod
-    def _has_actions(row: OscRow) -> bool:
-        """True when the open profile has actions on this input in any mode
-        (its type can't change then: axis and button actions differ)."""
-        profile = shared_state.current_profile
-        if profile is None:
-            return False
-        return any(
-            item.input_type == row.input_type
-            and item.input_id == row.input_id
-            and item.action_sequences
-            for item in profile.inputs.get(OSC_DEVICE_UUID, [])
-        )
-
     def _drop_profile_mappings(self, uid: str) -> None:
         """Remove the open profile's bindings on the input with this uid."""
         profile = shared_state.current_profile
@@ -382,40 +487,22 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
             ],
         )
 
-    def _changed(self, select_uid: str = "") -> None:
+    def _changed(self, select_uid: str = "", label: str = "") -> None:
         self.beginResetModel()
         self.endResetModel()
+        note_edit(label)
         _emit_modified()
         if select_uid:
             self.listenBound.emit(self._row_of_uid(select_uid))
+            self.inputAdded.emit(select_uid)
 
     # -- adding ---------------------------------------------------------
-
-    def _add(self, settings: dict[str, Any]) -> tuple[OscRow | None, str]:
-        """Add one row; return (row, "") or (existing row or None, error)."""
-        address = str(settings.get("address") or "").strip()
-        fields = normalize_settings(settings)
-        fields.setdefault("mode", "button")
-        error = _address_error(address)
-        if error:
-            return None, error
-        existing = self._duplicate(address, fields)
-        if existing is not None:
-            return existing, f"{address} is already in the list."
-        try:
-            input_type = _type_for_mode(
-                fields["mode"], fields.get("enc_output", "axis")
-            )
-            row = _rows().create(input_type, address, **fields)
-        except GremlinError as err:
-            return None, str(err)
-        return row, ""
 
     @QtCore.Slot("QVariantMap", result=bool)
     def createConfiguredInput(self, settings: object) -> bool:
         """Add an input with the Add window's settings; selects it (or the
         existing one with the same address and data)."""
-        row, error = self._add(normalize_raw(settings))
+        row, error = add_input(normalize_raw(settings))
         if row is None:
             if error:
                 signal.showError.emit("Could not add the OSC input.", error)
@@ -423,7 +510,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         if error:
             self.listenBound.emit(self._row_of_uid(row.uid))
             return False
-        self._changed(row.uid)
+        self._changed(row.uid, f"Add {row.label}")
         return True
 
     @QtCore.Slot(str)
@@ -451,28 +538,14 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, result=str)
     def importInputs(self, text: str) -> str:
         """Add one input per line; returns "Added N, skipped M" plus notes."""
-        added: list[OscRow] = []
-        skipped = 0
-        notes: list[str] = []
-        for raw in (text or "").splitlines():
-            if not raw.strip():
-                continue
-            parsed = parse_import_line(raw)
-            if parsed is None:
-                skipped += 1
-                notes.append(f"'{raw.strip()}': not an OSC address, skipped")
-                continue
-            address, settings, note = parsed
-            row, error = self._add({"address": address, **settings})
-            if row is None or error:
-                skipped += 1
-                continue
-            added.append(row)
-            if note:
-                notes.append(f"'{raw.strip()}': {note}")
+        added, result = import_text(text)
         if added:
-            self._changed(added[-1].uid)
-        return "\n".join([f"Added {len(added)}, skipped {skipped}"] + notes)
+            count = len(added)
+            label = (
+                f"Import {added[0].label}" if count == 1 else f"Import {count} inputs"
+            )
+            self._changed(added[-1].uid, label)
+        return result
 
     # -- capture --------------------------------------------------------
 
@@ -545,13 +618,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, result=bool)
     def copyText(self, text: str) -> bool:
-        from PySide6 import QtGui
-
-        app = QtGui.QGuiApplication.instance()
-        if not isinstance(app, QtGui.QGuiApplication) or not text:
-            return False
-        app.clipboard().setText(str(text))
-        return True
+        return copy_text(text)
 
     @QtCore.Slot(str, result="QVariantMap")
     def inputSettings(self, uid: str) -> dict[str, Any]:
@@ -561,37 +628,19 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         return {
             "uid": row.uid,
             "address": row.label,
-            "locked": self._has_actions(row),
-            **self._settings_of(row),
+            "locked": has_actions(row),
+            **settings_of(row),
         }
 
     @QtCore.Slot(str, "QVariantMap", result=str)
     def updateInputSettings(self, uid: str, settings: object) -> str:
         """Apply edited settings (and address) to one input; "" or the error."""
-        rows = _rows()
-        row = rows.by_uid(uid)
-        if row is None:
-            return "That input no longer exists."
-        src = normalize_raw(settings)
-        fields = normalize_settings(src)
-        address = str(src.get("address", row.label) or "").strip()
-        error = _address_error(address)
+        row = _rows().by_uid(uid)
+        before = row.label if row is not None else ""
+        error = update_settings(uid, normalize_raw(settings))
         if error:
             return error
-        merged = {**self._settings_of(row), **fields}
-        new_type = _type_for_mode(merged["mode"], merged["enc_output"])
-        if new_type != row.input_type and self._has_actions(row):
-            return TYPE_LOCKED
-        if self._duplicate(address, merged, skip_uid=uid) is not None:
-            return f"{address} is already in the list."
-        try:
-            if address != row.label:
-                rows.set_label(uid, address)
-            if fields:
-                rows.update(uid, **fields)
-        except GremlinError as err:
-            return str(err)
-        self._changed()
+        self._changed(label=f"Edit Settings of {before}")
         return ""
 
     @QtCore.Slot(str, str, result=str)

@@ -142,7 +142,7 @@ module_file.write_json(
             "keys": [],
             "friendly": {"button:1": "Trigger"},
         },
-        "catalog": {"rowHeight": 40},
+        "layout": {"groups": ["G40"]},
         "ui": {"viewPct": 80, "printArea": {"fx": 0, "fy": 0, "fw": 1, "fh": 1}},
         "nodes": [],
     },
@@ -383,10 +383,10 @@ out["import-below-list"] = (
 if shot:
     pack_win.grabWindow().save(shot + "-import.png")
 pv("setAll(false)")
-# Tick: Default wires, Configuration Appearance, the checked controls.
+# Tick: Default wires, Configuration layout, the checked controls.
 pv(
     'for (var k in checks) checks[k] = false; checks["wire:Default"] = true; '
-    'checks["in.catalog"] = true; checks["in.checks"] = true; tickRev = tickRev + 1'
+    'checks["in.groups"] = true; checks["in.checks"] = true; tickRev = tickRev + 1'
 )
 pv("askImport()")
 QtTest.QTest.qWait(300)

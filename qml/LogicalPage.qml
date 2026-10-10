@@ -19,13 +19,14 @@ Item {
     id: _root
 
     property string mode: "Default"
-    // Action pane width at 100%. It is saved in these units.
-    property int paneUnits: 560
-    readonly property int paneWidth: Style.dp(paneUnits)
-    property bool actionOpen: false
-    property string paneKey: ""
-    property string paneTitle: ""
-    property bool closeAfterOk: false
+    // The action pane's state (ActionPane.qml saves its width and
+    // "Close pane after OK").
+    property alias paneUnits: _pane.paneUnits
+    readonly property int paneWidth: _pane.paneWidth
+    readonly property bool actionOpen: _pane.open
+    readonly property string paneKey: _pane.paneKey
+    readonly property string paneTitle: _pane.paneTitle
+    property alias closeAfterOk: _pane.closeAfterOk
     property int parentHeight: 44
     property int childHeight: 32
     property bool displayOpen: false
@@ -108,9 +109,10 @@ Item {
     property bool openText: false
     property bool openSelection: false
     property bool _ready: false
-    property var _opened: ({})
-    property var _collapsed: ({})
-    property var _picked: ([])
+    // The list's open parents, folded groups and selection (ControlTree.qml).
+    property alias _opened: _tree.opened
+    property alias _collapsed: _tree.collapsed
+    property alias _picked: _tree.picked
 
     // The one edit lock (06 S13, S82): nothing is edited while the profile runs.
     EditLock { id: _lock }
@@ -142,7 +144,7 @@ Item {
     // An open action pane with edits counts as unsaved work when leaving the page.
     property bool _leavingPage: false
 
-    function hasUnsaved() { return actionOpen && _layout.paneDirty() }
+    function hasUnsaved() { return _pane.hasUnsaved() }
 
     // Main.closeActionPanes() asks these before a tool changes bindings
     // behind the pane (05 Q8) or Run starts (06 Q6).
@@ -151,7 +153,7 @@ Item {
     function closeActionPane() { closePaneNow() }
 
     // OK for Run's "Save" (06 Q6): false when nothing could be written.
-    function savePane() { return !hasUnsaved() || _layout.commitPane() >= 0 }
+    function savePane() { return _pane.save() }
 
     function requestLeave() {
         if (!hasUnsaved()) {
@@ -159,7 +161,7 @@ Item {
             return
         }
         _leavingPage = true
-        _leave.ask("The action editor has changes that are not saved.")
+        _pane.askLeave("The action editor has changes that are not saved.")
     }
 
     function _finishLeave(resolved) {
@@ -172,103 +174,28 @@ Item {
             leaveCancelled()
     }
 
-    function _saveDock() {
-        if (!_ready)
-            return
-        _place.setActionPaneWidth(paneUnits)
-        _place.setClosePaneAfterOk(closeAfterOk)
-    }
-
     function _saveDisplayOpen() {
         if (!_ready)
             return
         _place.setDisplayPanelOpen("logical", "page", displayOpen)
     }
 
-    function _toggleOpen(key) {
-        var next = Object.assign({}, _opened)
-        next[key] = !next[key]
-        _opened = next
-    }
+    function _toggleOpen(key) { _tree.toggleOpen(key) }
 
-    function _toggleGroup(key) {
-        var next = Object.assign({}, _collapsed)
-        next[key] = !next[key]
-        _collapsed = next
-    }
+    function _toggleGroup(key) { _tree.toggleGroup(key) }
 
-    function _hasList(kind, childCount, extraWriters) {
-        if (kind === "group")
-            return childCount > 0
-        if (kind !== "parent" || !showChildren)
-            return false
-        if (childCount > 0)
-            return true
-        return showSummary && extraWriters > 0
-    }
+    function _select(key, shift) { _tree.select(key, shift) }
 
-    function _rowVisible(kind, groupKey, parentKey) {
-        if (kind !== "group" && _collapsed[groupKey])
-            return false
-        if (kind === "writer" && !showSummary)
-            return false
-        if (kind === "writer" || kind === "child")
-            return showChildren && !!_opened[parentKey]
-        return true
-    }
+    function _openPane(key, seq, title) { _pane.openAt(key, seq, title) }
 
-    function _select(key, shift) {
-        var next = _picked.slice()
-        if (!shift) {
-            next = [key]
-        } else {
-            var at = next.indexOf(key)
-            if (at < 0)
-                next.push(key)
-            else
-                next.splice(at, 1)
-        }
-        _picked = next
-        _layout.setSelection(next)
-    }
+    function _openNewPane(key, title) { _pane.openNew(key, title) }
 
-    function _openPane(key, seq, title) {
-        if (editorLocked)
-            return
-        _layout.beginPane(key, seq)
-        paneKey = key
-        paneTitle = title
-        actionOpen = true
-    }
-
-    function _openNewPane(key, title) {
-        if (editorLocked)
-            return
-        _layout.beginNewAction(key)
-        paneKey = key
-        paneTitle = title
-        actionOpen = true
-    }
-
-    function _closePane() {
-        if (_layout.paneDirty()) {
-            _leave.ask("The action editor has changes that are not saved.")
-            return
-        }
-        _finishClose()
-    }
+    function _closePane() { _pane.requestClose() }
 
     // After a profile change the pane belongs to a profile that is gone.
-    function closePaneNow() {
-        if (actionOpen)
-            _finishClose()
-    }
+    function closePaneNow() { _pane.closeNow() }
 
-    function _finishClose() {
-        _layout.endPane()
-        actionOpen = false
-        paneKey = ""
-    }
+    function _finishClose() { _pane.finishClose() }
 
     LogicalLayoutModel { id: _layout }
     // Its mode was deleted (the model said so and closed the draft).
@@ -279,16 +206,12 @@ Item {
     WindowPlacement { id: _place }
 
     Component.onCompleted: {
-        paneUnits = _place.actionPaneWidth()
-        closeAfterOk = _place.closePaneAfterOk()
         reloadDisplay()
         displayOpen = _place.displayPanelOpen("logical", "page")
         _layout.setMode(mode)
         _ready = true
     }
 
-    // The pane width is saved when the grip is let go, not per pixel.
-    onCloseAfterOkChanged: _saveDock()
     onDisplayOpenChanged: _saveDisplayOpen()
     onModeChanged: _layout.setMode(mode)
 
@@ -302,579 +225,132 @@ Item {
             Layout.minimumWidth: Style.dp(360)
             spacing: Style.dp(6)
 
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: Style.dp(8)
-                Layout.rightMargin: Style.dp(8)
-                Layout.topMargin: Style.dp(8)
-                spacing: Style.dp(8)
-                Label {
-                    text: "Find"
-                    color: Style.fgMuted
-                    Layout.alignment: Qt.AlignTop
-                    Layout.topMargin: Style.dp(5)
-                }
-                // The shared search box (01 S141): Ctrl+F, ×, Esc, "N found".
-                SearchBox {
-                    id: _findText
-                    objectName: "logicalFind"
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: Style.dp(160)
-                    Layout.alignment: Qt.AlignTop
-                    placeholder: "System name, your name, or group"
-                    count: _layout.parentCount
-                    onTextChanged: _root._applyFind()
-                }
-                ComboBox {
-                    id: _findType
-                    Layout.alignment: Qt.AlignTop
-                    model: ["All types", "Buttons", "Axes", "Hats"]
-                    onActivated: _root._applyFind()
-                }
-                Button {
-                    text: "Clear"
-                    Layout.alignment: Qt.AlignTop
-                    onClicked: _root._clearFind()
-                }
-                Button {
-                    Layout.alignment: Qt.AlignTop
-                    text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
-                    // Hiding asks about unsaved display options, like the panel's close.
-                    onClicked: {
-                        if (_root.displayOpen)
-                            _root.requestCloseDisplay()
-                        else
-                            _root.displayOpen = true
+            ControlFindBar {
+                id: _find
+                layout: _layout
+                namePrefix: "logical"
+                placeholder: "System name, your name, or group"
+                filters: [
+                    { label: "Ungrouped", name: "ungrouped" },
+                    { label: "No hardware writer", name: "noWriter" },
+                    { label: "No actions in this mode", name: "noAction" }
+                ]
+                locked: _root.editorLocked
+                paneOpen: _root.actionOpen
+                onChanged: _root._applyFind()
+                buttons: [
+                    Button {
+                        Layout.alignment: Qt.AlignTop
+                        text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
+                        // Hiding asks about unsaved display options, like the panel's close.
+                        onClicked: {
+                            if (_root.displayOpen)
+                                _root.requestCloseDisplay()
+                            else
+                                _root.displayOpen = true
+                        }
                     }
-                }
-                Label {
-                    // Why nothing here can be changed, and how to change it.
-                    text: _root.editorLocked ? "Profile running: stop it to edit" : ""
-                    color: Style.fgMuted
-                }
-            }
-            // The filters, on a line of their own: they wrap when the page is
-            // narrow instead of running under the Appearance panel.
-            Flow {
-                Layout.fillWidth: true
-                Layout.leftMargin: Style.dp(8)
-                Layout.rightMargin: Style.dp(8)
-                spacing: Style.dp(8)
-                CheckBox { id: _findUngrouped; text: "Ungrouped"; onClicked: _root._applyFind() }
-                CheckBox { id: _findNoWriter; text: "No hardware writer"; onClicked: _root._applyFind() }
-                CheckBox { id: _findNoAction; text: "No actions in this mode"; onClicked: _root._applyFind() }
+                ]
             }
 
-            // The page's own Undo / Redo with the last change (01 S143);
-            // the same rules as the menu items and Ctrl+Z / Ctrl+Y.
-            UndoBar {
-                objectName: "logicalUndoBar"
-                Layout.fillWidth: true
-                Layout.leftMargin: Style.dp(8)
-                Layout.rightMargin: Style.dp(8)
-                canUndo: _layout.canUndo && !_root.editorLocked && !_root.actionOpen
-                canRedo: _layout.canRedo && !_root.editorLocked && !_root.actionOpen
-                undoTip: _layout.undoTip
-                redoTip: _layout.redoTip
-                lastChange: _layout.lastChange
-                undone: _layout.undone
-                onUndo: _layout.undo()
-                onRedo: _layout.redo()
-            }
-
-            RowLayout {
+            ControlTree {
+                id: _tree
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 0
+                layout: _layout
+                locked: _root.editorLocked
+                namePrefix: "logical"
+                dragMime: "application/x-gremlin-logical"
+                dragLayer: _root
+                emptyText: "No buttons, axes or hats yet. Right-click here to add some."
+                filtering: _find.filtering
+                rowExtras: _writerControls
+                parentHeight: _root.parentHeight
+                childHeight: _root.childHeight
+                rowSpacing: _root.rowSpacing
+                groupInside: _root.groupInside
+                listPadShape: _root.listPadShape
+                listPad: _root.listPad
+                listPadTop: _root.listPadTop
+                listPadRight: _root.listPadRight
+                listPadBottom: _root.listPadBottom
+                listPadLeft: _root.listPadLeft
+                groupPadShape: _root.groupPadShape
+                groupPad: _root.groupPad
+                groupPadTop: _root.groupPadTop
+                groupPadRight: _root.groupPadRight
+                groupPadBottom: _root.groupPadBottom
+                groupPadLeft: _root.groupPadLeft
+                groupRadius: _root.groupRadius
+                colorGroup: _root.colorGroup
+                parentPadShape: _root.parentPadShape
+                parentPad: _root.parentPad
+                parentPadTop: _root.parentPadTop
+                parentPadRight: _root.parentPadRight
+                parentPadBottom: _root.parentPadBottom
+                parentPadLeft: _root.parentPadLeft
+                parentRadius: _root.parentRadius
+                colorParent: _root.colorParent
+                parentIndent: _root.parentIndent
+                childIndent: _root.childIndent
+                childPadShape: _root.childPadShape
+                childPad: _root.childPad
+                childPadTop: _root.childPadTop
+                childPadRight: _root.childPadRight
+                childPadBottom: _root.childPadBottom
+                childPadLeft: _root.childPadLeft
+                childRadius: _root.childRadius
+                colorChild: _root.colorChild
+                showChildren: _root.showChildren
+                showSummary: _root.showSummary
+                summaryFont: _root.summaryFont
+                parentFont: _root.parentFont
+                groupFont: _root.groupFont
+                childFont: _root.childFont
+                targetFont: _root.targetFont
+                colorActionTarget: _root.colorActionTarget
+                parentBold: _root.parentBold
+                colorText: _root.colorText
+                colorMuted: _root.colorMuted
+                colorSelected: _root.colorSelected
+                colorSelectBorder: _root.colorSelectBorder
+                colorBorder: _root.colorBorder
+                caretSize: _root.caretSize
+                colorCaret: _root.colorCaret
+                gripWidth: _root.gripWidth
+                gripHeight: _root.gripHeight
+                gripRadius: _root.gripRadius
+                colorGrip: _root.colorGrip
 
-                ListView {
-                    id: _list
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.leftMargin: _root.padPx(_root.listPadShape, _root.listPad, _root.listPadLeft)
-                    Layout.rightMargin: _root.padPx(_root.listPadShape, _root.listPad, _root.listPadRight)
-                    Layout.topMargin: _root.padPx(_root.listPadShape, _root.listPad, _root.listPadTop)
-                    Layout.bottomMargin: _root.padPx(_root.listPadShape, _root.listPad, _root.listPadBottom)
-                    clip: true
-                    spacing: 0
-                    model: _layout
-                    boundsBehavior: Flickable.StopAtBounds
-                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
-
-                    MouseArea {
-                        z: -1
-                        anchors.fill: parent
-                        acceptedButtons: Qt.RightButton
-                        onClicked: (mouse) => _root._openLayoutMenu(false, false, _list, mouse.x, mouse.y)
-                    }
-
-                    // Nothing listed: say why, and how to start (01 S143).
-                    EmptyState {
-                        objectName: "logicalEmpty"
-                        readonly property bool filtering: _findText.text.length > 0
-                            || _findType.currentIndex > 0 || _findUngrouped.checked
-                            || _findNoWriter.checked || _findNoAction.checked
-                        anchors.centerIn: parent
-                        width: Math.min(parent.width - Style.dp(32), Style.dp(360))
-                        visible: _list.count === 0
-                        text: filtering
-                            ? "Nothing matches the Find filters."
-                            : "No buttons, axes or hats yet. Right-click here to add some."
-                        actionText: filtering ? "Clear Filters" : ""
-                        onAction: _root._clearFind()
-                    }
-
-                    delegate: Rectangle {
-                        id: _row
-                        required property int index
-                        required property string rowKind
-                        required property string key
-                        required property string title
-                        required property string subtitle
-                        required property string parentKey
-                        required property string groupKey
-                        required property string groupName
-                        required property string systemName
-                        required property string userName
-                        required property string writerId
-                        required property string axisMode
-                        required property double axisScale
-                        required property bool inverted
-                        required property int sequenceIndex
-                        required property int indent
-                        required property bool canInvert
-                        required property int childCount
-                        required property int extraWriters
-
-                        readonly property bool shown: _root._rowVisible(rowKind, groupKey, parentKey)
-                        width: _list.width - Style.dp(16)
-                        readonly property int rowGap: rowKind === "group" ? 0 : Style.dp(_root.groupInside)
-                        readonly property int rowMin: Style.dp(rowKind === "group" ? 40 : (rowKind === "parent" ? _root.parentHeight : _root.childHeight))
-                        readonly property int rowPadY: _root.rowTop(rowKind) + _root.rowBottom(rowKind)
-                        readonly property int rowNeed: _line.implicitHeight + rowPadY
-                        readonly property int rowBody: Math.max(rowMin, rowNeed)
-                        height: shown ? implicitHeight : 0
-                        visible: shown
-                        clip: true
-                        implicitHeight: shown ? (rowBody + rowGap + Style.dp(_root.rowSpacing)) : 0
-                        color: "transparent"
-                        border.width: 0
-
-                        Rectangle {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.leftMargin: _root.rowIndent(rowKind)
-                            height: _row.rowBody
-                            color: _root._picked.indexOf(key) >= 0 ? _root.colorSelected : (rowKind === "group" ? _root.colorGroup : (rowKind === "parent" ? _root.colorParent : _root.colorChild))
-                            border.color: _root._picked.indexOf(key) >= 0 ? _root.colorSelectBorder : _root.colorBorder
-                            border.width: Style.dp(1)
-                            radius: Style.dp(rowKind === "group" ? _root.groupRadius : (rowKind === "parent" ? _root.parentRadius : _root.childRadius))
-                        }
-
-                        RowLayout {
-                            id: _line
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.leftMargin: _root.rowIndent(rowKind) + _root.rowLeft(rowKind)
-                            anchors.rightMargin: _root.rowRight(rowKind)
-                            anchors.topMargin: _root.rowTop(rowKind)
-                            height: Math.max(implicitHeight, _row.rowMin - _row.rowPadY)
-                            spacing: Style.dp(6)
-
-                            Label {
-                                id: _caret
-                                visible: _root._hasList(rowKind, childCount, extraWriters)
-                                text: (rowKind === "group" ? _root._collapsed[groupKey] : !_root._opened[key]) ? "▸" : "▾"
-                                color: _root.colorCaret
-                                font.pixelSize: Style.dp(_root.caretSize)
-                                Layout.alignment: Qt.AlignVCenter
-                                Layout.preferredWidth: visible ? implicitWidth : 0
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: {
-                                        if (rowKind === "group")
-                                            _root._toggleGroup(groupKey)
-                                        else
-                                            _root._toggleOpen(key)
-                                    }
-                                }
-                            }
-                            Rectangle {
-                                visible: rowKind === "parent" || rowKind === "group"
-                                implicitWidth: visible ? Style.dp(_root.gripWidth) : 0
-                                implicitHeight: visible ? Style.dp(_root.gripHeight) : 0
-                                Layout.preferredWidth: visible ? Style.dp(_root.gripWidth) : 0
-                                Layout.preferredHeight: visible ? Style.dp(_root.gripHeight) : 0
-                                Layout.alignment: Qt.AlignVCenter
-                                radius: Style.dp(_root.gripRadius)
-                                color: _root.colorGrip
-                                MouseArea {
-                                    id: _grip
-                                    anchors.fill: parent
-                                    anchors.margins: -Style.dp(6)
-                                    enabled: !_root.editorLocked
-                                    cursorShape: rowKind === "parent" ? Qt.OpenHandCursor : Qt.SizeAllCursor
-                                    preventStealing: true
-                                    onPressed: (mouse) => {
-                                        if (rowKind !== "parent") {
-                                            _root._dragFrom = key
-                                            return
-                                        }
-                                        // The ghost is held where the row was pressed.
-                                        var inRow = mapToItem(_row, mouse.x, mouse.y)
-                                        _payload.Drag.hotSpot.x = inRow.x
-                                        _payload.Drag.hotSpot.y = inRow.y
-                                        _payload.pressAt = mapToItem(_root, mouse.x, mouse.y)
-                                        _row.grabToImage(function(result) {
-                                            _payload.ghost = result.url
-                                        }, Qt.size(_row.width, _row.height))
-                                    }
-                                    // In-app drag: it starts while the button is held, never
-                                    // after release, so it cannot swallow the next click.
-                                    onPositionChanged: (mouse) => {
-                                        if (rowKind !== "parent")
-                                            return
-                                        var pos = mapToItem(_root, mouse.x, mouse.y)
-                                        if (!_payload.Drag.active
-                                                && Math.abs(pos.x - _payload.pressAt.x) + Math.abs(pos.y - _payload.pressAt.y) < Style.dp(4))
-                                            return
-                                        _payload.x = pos.x - _payload.Drag.hotSpot.x
-                                        _payload.y = pos.y - _payload.Drag.hotSpot.y
-                                        _payload.Drag.active = true
-                                    }
-                                    onReleased: (mouse) => {
-                                        if (rowKind === "parent") {
-                                            if (_payload.Drag.active)
-                                                _payload.Drag.drop()
-                                            return
-                                        }
-                                        var pos = mapToItem(_list.contentItem, mouse.x, mouse.y)
-                                        var hit = _list.indexAt(pos.x, pos.y)
-                                        var from = _root._dragFrom
-                                        _root._dragFrom = ""
-                                        if (hit >= 0)
-                                            _root.moveLater("row", from, _layout.keyAt(hit), "")
-                                    }
-                                    onCanceled: {
-                                        if (_payload.Drag.active)
-                                            _payload.Drag.cancel()
-                                        _root._dragFrom = ""
-                                    }
-                                }
-                            }
-                            Item {
-                                visible: rowKind === "parent"
-                                Layout.preferredWidth: visible ? Style.dp(16) : 0
-                                Layout.preferredHeight: Style.dp(16)
-                                Layout.alignment: Qt.AlignVCenter
-
-                                Rectangle {
-                                    visible: key.indexOf(":button:") >= 0
-                                    anchors.centerIn: parent
-                                    width: Style.dp(14)
-                                    height: Style.dp(14)
-                                    radius: Style.dp(7)
-                                    color: "transparent"
-                                    border.color: _root.colorText
-                                    border.width: Style.dp(2)
-                                    Rectangle {
-                                        anchors.centerIn: parent
-                                        width: Style.dp(6)
-                                        height: Style.dp(6)
-                                        radius: Style.dp(3)
-                                        color: _root.colorText
-                                    }
-                                }
-                                Item {
-                                    visible: key.indexOf(":axis:") >= 0
-                                    anchors.fill: parent
-                                    Rectangle {
-                                        anchors.centerIn: parent
-                                        width: Style.dp(2)
-                                        height: Style.dp(14)
-                                        color: _root.colorText
-                                    }
-                                    Rectangle {
-                                        anchors.centerIn: parent
-                                        width: Style.dp(8)
-                                        height: Style.dp(6)
-                                        radius: Style.dp(2)
-                                        color: _root.colorText
-                                    }
-                                }
-                                Item {
-                                    visible: key.indexOf(":hat:") >= 0
-                                    anchors.fill: parent
-                                    Rectangle { width: Style.dp(4); height: Style.dp(4); radius: Style.dp(1); color: _root.colorText; anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top }
-                                    Rectangle { width: Style.dp(4); height: Style.dp(4); radius: Style.dp(1); color: _root.colorText; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom }
-                                    Rectangle { width: Style.dp(4); height: Style.dp(4); radius: Style.dp(1); color: _root.colorText; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left }
-                                    Rectangle { width: Style.dp(4); height: Style.dp(4); radius: Style.dp(1); color: _root.colorText; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right }
-                                }
-                            }
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                Layout.alignment: Qt.AlignVCenter
-                                spacing: Style.dp(2)
-                                Label {
-                                    text: title
-                                    color: _root.colorText
-                                    font.bold: rowKind === "child" ? false : _root.parentBold
-                                    font.pixelSize: Style.dp(rowKind === "group" ? _root.groupFont : (rowKind === "parent" ? _root.parentFont : _root.childFont))
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                    HoverHandler { id: _nameHover }
-                                    ToolTip {
-                                        visible: _nameHover.hovered && rowKind === "parent" && userName.length > 0
-                                        text: systemName
-                                        x: _nameHover.point.position.x - width / 2
-                                        y: _nameHover.point.position.y - height - Style.dp(8)
-                                    }
-                                }
-                                Label {
-                                    visible: _root.showSummary && subtitle.length > 0 && rowKind !== "writer"
-                                    text: subtitle
-                                    color: rowKind === "child" ? _root.colorActionTarget : _root.colorMuted
-                                    font.pixelSize: Style.dp(rowKind === "child" ? _root.targetFont : _root.summaryFont)
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                    Layout.bottomMargin: visible ? Style.dp(4) : 0
-                                }
-                            }
-                            ComboBox {
-                                property bool ownsPress: true
-                                visible: writerId.length > 0 && axisMode.length > 0
-                                enabled: !_root.editorLocked
-                                Layout.alignment: Qt.AlignVCenter
-                                model: ["absolute", "relative"]
-                                currentIndex: axisMode === "relative" ? 1 : 0
-                                Layout.preferredWidth: Style.dp(110)
-                                onActivated: _layout.setAxisMode(writerId, currentText)
-                            }
-                            SpinBox {
-                                property bool ownsPress: true
-                                visible: writerId.length > 0 && axisMode.length > 0
-                                enabled: !_root.editorLocked
-                                Layout.alignment: Qt.AlignVCenter
-                                from: -500
-                                to: 500
-                                stepSize: 10
-                                value: Math.round(axisScale * 100)
-                                editable: true
-                                Layout.preferredWidth: Style.dp(90)
-                                onValueModified: _layout.setAxisScale(writerId, value / 100.0)
-                            }
-                            CheckBox {
-                                property bool ownsPress: true
-                                visible: writerId.length > 0 && canInvert
-                                enabled: !_root.editorLocked
-                                Layout.alignment: Qt.AlignVCenter
-                                text: "Invert"
-                                checked: inverted
-                                onClicked: _layout.setInverted(writerId, checked)
-                            }
-                        }
-
-                        DropArea {
-                            id: _drop
-                            anchors.fill: parent
-                            anchors.bottomMargin: _row.rowGap
-                            z: 4
-                            enabled: !_root.editorLocked && (rowKind === "parent" || rowKind === "group")
-                            keys: ["application/x-gremlin-logical"]
-                            property bool placeBefore: true
-                            onPositionChanged: (drag) => {
-                                var source = drag.source && drag.source.dragKey ? drag.source.dragKey : ""
-                                if (!source || source === key || source.indexOf("parent:") !== 0) {
-                                    _insertLine.visible = false
-                                    return
-                                }
-                                if (rowKind === "group") {
-                                    placeBefore = false
-                                    _insertLine.y = Math.max(0, height - 2)
-                                } else {
-                                    placeBefore = drag.y < height / 2
-                                    _insertLine.y = placeBefore ? 0 : Math.max(0, height - 2)
-                                }
-                                _insertLine.visible = true
-                            }
-                            onExited: _insertLine.visible = false
-                            onDropped: (drop) => {
-                                _insertLine.visible = false
-                                var source = drop.source && drop.source.dragKey ? drop.source.dragKey : ""
-                                if (!source || source === key)
-                                    return
-                                drop.accept(Qt.MoveAction)
-                                _root.moveLater("parent", source, key,
-                                                rowKind === "group" ? "into" : (placeBefore ? "before" : "after"))
-                            }
-                            Rectangle {
-                                id: _insertLine
-                                visible: false
-                                z: 6
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: Style.dp(2)
-                                color: Style.info
-                            }
-                        }
-
-                        Item {
-                            id: _payload
-                            // On the page, not the row, so the list never clips it.
-                            parent: _root
-                            z: 100
-                            width: Style.dp(1)
-                            height: Style.dp(1)
-                            property string dragKey: key
-                            property url ghost
-                            property point pressAt
-                            Drag.dragType: Drag.Internal
-                            Drag.keys: ["application/x-gremlin-logical"]
-                            Drag.supportedActions: Qt.MoveAction
-                            Drag.proposedAction: Qt.MoveAction
-                            Image {
-                                visible: _payload.Drag.active
-                                source: _payload.ghost
-                                width: _row.width
-                                height: _row.height
-                                opacity: 0.85
-                            }
-                        }
-
-                        MouseArea {
-                            z: 1
-                            anchors.fill: parent
-                            anchors.bottomMargin: _row.rowGap
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            propagateComposedEvents: true
-                            onPressed: (mouse) => {
-                                // Leave presses on the caret, the grip and the axis controls to them.
-                                if (mouse.button !== Qt.LeftButton)
-                                    return
-                                var at = mapToItem(_line, mouse.x, mouse.y)
-                                var hit = _line.childAt(at.x, at.y)
-                                if (hit && (hit === _caret || hit === _grip.parent || hit.ownsPress))
-                                    mouse.accepted = false
-                            }
-                            onClicked: (mouse) => {
-                                if (mouse.button === Qt.RightButton) {
-                                    if (rowKind === "parent") {
-                                        _root._menuKey = key
-                                        _root._menuTitle = title
-                                        _root._menuUser = userName
-                                        _root._menuGroup = groupName
-                                        if (_root._picked.indexOf(key) < 0)
-                                            _root._select(key, false)
-                                        _root._openLayoutMenu(true, false, _row, mouse.x, mouse.y)
-                                    } else if (rowKind === "group" && groupName.length > 0) {
-                                        _root._groupName = groupName
-                                        _root._openLayoutMenu(false, true, _row, mouse.x, mouse.y)
-                                    } else if (rowKind === "child" && !_root.editorLocked) {
-                                        _root._actionParent = parentKey
-                                        _root._actionSeq = sequenceIndex
-                                        _root._actionTitle = title
-                                        _actionMenu.openAt(_row, mouse.x, mouse.y)
-                                    } else {
-                                        _root._openLayoutMenu(false, false, _row, mouse.x, mouse.y)
-                                    }
-                                    return
-                                }
-                                if (rowKind === "parent")
-                                    _root._select(key, mouse.modifiers & Qt.ShiftModifier)
-                                else if (rowKind === "child")
-                                    _root._openPane(parentKey, sequenceIndex, title)
-                                else if (rowKind === "group")
-                                    _root._toggleGroup(groupKey)
-                            }
-                        }
-                    }
+                onClearFilters: _root._clearFind()
+                onPageMenu: (item, x, y) => _root._openLayoutMenu(false, false, item, x, y)
+                onParentMenu: (key, title, userName, groupName, item, x, y) => {
+                    _root._menuKey = key
+                    _root._menuTitle = title
+                    _root._menuUser = userName
+                    _root._menuGroup = groupName
+                    _root._openLayoutMenu(true, false, item, x, y)
                 }
+                onGroupMenu: (groupName, item, x, y) => {
+                    _root._groupName = groupName
+                    _root._openLayoutMenu(false, true, item, x, y)
+                }
+                onActionMenu: (parentKey, seq, title, item, x, y) => {
+                    _root._actionParent = parentKey
+                    _root._actionSeq = seq
+                    _root._actionTitle = title
+                    _actionMenu.openAt(item, x, y)
+                }
+                onActionClicked: (parentKey, seq, title) => _root._openPane(parentKey, seq, title)
             }
         }
 
-        Rectangle {
-            visible: _root.actionOpen
-            Layout.preferredWidth: Style.dp(6)
-            Layout.fillHeight: true
-            color: _actGrip.containsMouse ? Style.info : Style.line
-            MouseArea {
-                id: _actGrip
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.SplitHCursor
-                property int originW: 560
-                property real originX: 0
-                onPressed: (mouse) => {
-                    originW = _root.paneWidth
-                    originX = mapToItem(_root, mouse.x, mouse.y).x
-                }
-                onPositionChanged: (mouse) => {
-                    if (!pressed)
-                        return
-                    var x = mapToItem(_root, mouse.x, mouse.y).x
-                    _root.paneUnits = Math.round(Math.max(Style.dp(420), Math.min(Style.dp(1600), originW - (x - originX))) * 100 / Style.uiScale)
-                }
-                onReleased: _root._saveDock()
-            }
-        }
-
-        Rectangle {
-            visible: _root.actionOpen
-            Layout.preferredWidth: _root.paneWidth
-            Layout.minimumWidth: visible ? Style.dp(420) : 0
-            Layout.fillHeight: true
-            color: Style.bgCard
-            border.color: Style.line
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: Style.dp(10)
-                RowLayout {
-                    Label {
-                        text: _root.paneTitle.length ? _root.paneTitle : "Action Editor"
-                        color: Style.fg
-                        font.bold: true
-                        font.pixelSize: Style.dp(16)
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                    }
-                    Button { text: "×"; implicitWidth: Style.dp(28); onClicked: _root._closePane() }
-                }
-                InputConfiguration {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    holdModel: true
-                    inputItemModel: _layout.paneModel
-                }
-                // A pane open when Run starts turns read-only: no OK (06 Q6, 05 Q11).
-                Label {
-                    objectName: "logicalPaneLocked"
-                    visible: _root.editorLocked
-                    text: "Profile running: stop it to edit"
-                    color: Style.fgMuted
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
-                }
-                RowLayout {
-                    visible: !_root.editorLocked
-                    CheckBox {
-                        text: "Close pane after OK"
-                        checked: _root.closeAfterOk
-                        onClicked: _root.closeAfterOk = checked
-                    }
-                    Item { Layout.fillWidth: true }
-                    Button {
-                        text: "OK"
-                        highlighted: true
-                        onClicked: {
-                            _layout.commitPane()
-                            if (_root.closeAfterOk)
-                                _root._finishClose()
-                        }
-                    }
-                }
-            }
+        ActionPane {
+            id: _pane
+            layout: _layout
+            locked: _root.editorLocked
+            namePrefix: "logical"
+            onLeaveDone: (resolved) => _root._finishLeave(resolved)
         }
 
         Rectangle {
@@ -1157,22 +633,55 @@ Item {
 
     }
 
-
-    property string _dragFrom: ""
-
-    // Moves run after the mouse and drop handlers finish: the move rebuilds the
-    // rows, and a handler still running in a destroyed row loses its names.
-    function moveLater(kind, from, to, where) {
-        if (!from || !to)
-            return
-        var layout = _layout
-        Qt.callLater(function() {
-            if (kind === "row")
-                layout.moveRow(from, to)
-            else
-                layout.moveParent(from, to, where)
-        })
+    // A hardware writer row's axis mode, scale and Invert, at the right of
+    // the row (ControlTree's rowExtras; the Loader gives rowModel).
+    Component {
+        id: _writerControls
+        RowLayout {
+            id: _writer
+            readonly property var row: parent ? parent.rowModel : null
+            readonly property string writerId: row && row.writerId ? row.writerId : ""
+            readonly property string axisMode: row && row.axisMode ? row.axisMode : ""
+            readonly property bool canInvert: !!row && row.canInvert === true
+            readonly property bool wanted: writerId.length > 0 && (axisMode.length > 0 || canInvert)
+            spacing: Style.dp(6)
+            ComboBox {
+                property bool ownsPress: true
+                visible: _writer.writerId.length > 0 && _writer.axisMode.length > 0
+                enabled: !_root.editorLocked
+                Layout.alignment: Qt.AlignVCenter
+                model: ["absolute", "relative"]
+                currentIndex: _writer.axisMode === "relative" ? 1 : 0
+                Layout.preferredWidth: Style.dp(110)
+                onActivated: _layout.setAxisMode(_writer.writerId, currentText)
+            }
+            SpinBox {
+                property bool ownsPress: true
+                visible: _writer.writerId.length > 0 && _writer.axisMode.length > 0
+                enabled: !_root.editorLocked
+                Layout.alignment: Qt.AlignVCenter
+                from: -500
+                to: 500
+                stepSize: 10
+                value: Math.round((_writer.row ? _writer.row.axisScale : 1) * 100)
+                editable: true
+                Layout.preferredWidth: Style.dp(90)
+                onValueModified: _layout.setAxisScale(_writer.writerId, value / 100.0)
+            }
+            CheckBox {
+                property bool ownsPress: true
+                visible: _writer.writerId.length > 0 && _writer.canInvert
+                enabled: !_root.editorLocked
+                Layout.alignment: Qt.AlignVCenter
+                text: "Invert"
+                checked: !!_writer.row && _writer.row.inverted === true
+                onClicked: _layout.setInverted(_writer.writerId, checked)
+            }
+        }
     }
+
+
+
     property string _menuKey: ""
     property string _menuTitle: ""
     property string _menuUser: ""
@@ -1188,12 +697,7 @@ Item {
     property bool _menuOnGroup: false
 
     function _clearFind() {
-        _findText.clear()
-        _findType.currentIndex = 0
-        _findUngrouped.checked = false
-        _findNoWriter.checked = false
-        _findNoAction.checked = false
-        _applyFind()
+        _find.clear()
     }
 
     // 01 S140: deleting rows asks first (the page's Undo puts them back).
@@ -1230,13 +734,12 @@ Item {
     }
 
     function _applyFind() {
-        var types = ["all", "button", "axis", "hat"]
         _layout.setFilter(
-            _findText.text,
-            types[_findType.currentIndex],
-            _findUngrouped.checked,
-            _findNoWriter.checked,
-            _findNoAction.checked
+            _find.text,
+            _find.typeValue,
+            _find.isChecked("ungrouped"),
+            _find.isChecked("noWriter"),
+            _find.isChecked("noAction")
         )
     }
 
@@ -1608,22 +1111,6 @@ Item {
         })
     }
 
-    DismissibleDialog {
-        id: _leave
-        onSaveChosen: {
-            _layout.commitPane()
-            _finishClose()
-            _root._finishLeave(true)
-        }
-        onDiscardChosen: {
-            _layout.discardPane()
-            _finishClose()
-            _root._finishLeave(true)
-        }
-        onCancelled: _root._finishLeave(false)
-    }
-
-
     component FoldSection: ColumnLayout {
         id: fold
         property string title: ""
@@ -1769,57 +1256,6 @@ Item {
             text: "Default"
             onClicked: _root[setName] = ""
         }
-    }
-
-    function padEdge(shape, size, side) {
-        return shape === "box" ? size : side
-    }
-
-    function padPx(shape, size, side) {
-        return Style.dp(padEdge(shape, size, side))
-    }
-
-    // How far a row's box starts from the list's left edge.
-    function rowIndent(kind) {
-        if (kind === "group")
-            return 0
-        if (kind === "parent")
-            return Style.dp(parentIndent)
-        return Style.dp(parentIndent + childIndent)
-    }
-
-    // Text inset inside the row's box. Action text lines up with its parent's text.
-    function rowLeft(kind) {
-        if (kind === "group")
-            return padPx(groupPadShape, groupPad, groupPadLeft)
-        var parentLeft = padPx(parentPadShape, parentPad, parentPadLeft)
-        if (kind === "parent")
-            return parentLeft
-        return parentLeft + padPx(childPadShape, childPad, childPadLeft)
-    }
-
-    function rowRight(kind) {
-        if (kind === "group")
-            return padPx(groupPadShape, groupPad, groupPadRight)
-        if (kind === "parent")
-            return padPx(parentPadShape, parentPad, parentPadRight)
-        return padPx(childPadShape, childPad, childPadRight)
-    }
-
-    function rowTop(kind) {
-        if (kind === "group")
-            return padPx(groupPadShape, groupPad, groupPadTop)
-        if (kind === "parent")
-            return padPx(parentPadShape, parentPad, parentPadTop)
-        return padPx(childPadShape, childPad, childPadTop)
-    }
-
-    function rowBottom(kind) {
-        if (kind === "group")
-            return padPx(groupPadShape, groupPad, groupPadBottom)
-        if (kind === "parent")
-            return padPx(parentPadShape, parentPad, parentPadBottom)
-        return padPx(childPadShape, childPad, childPadBottom)
     }
 
     function numVal(v, d) {

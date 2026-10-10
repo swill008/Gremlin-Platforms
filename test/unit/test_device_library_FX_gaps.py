@@ -135,7 +135,7 @@ def test_copy_onto_a_renamed_stick(lib: dict, monkeypatch: pytest.MonkeyPatch) -
     )
     assert result["ok"], result
     doc = json.loads(_own_path(name).read_text(encoding="utf-8"))
-    assert doc["catalog"] == {"rowHeight": 40}
+    assert doc["view"] == {"rowHeight": 40}
     assert not stray.exists()
     assert (
         library.last_change()["label"]
@@ -176,7 +176,10 @@ def test_swap_of_renamed_sticks_changes_their_own_files(
     )
     assert result["ok"], result
     left = json.loads(store.path_of("left").read_text(encoding="utf-8"))
-    assert left["catalog"] == {"rows": 2} and "view" not in left
+    # Appearance only: the Output View moves; the layout stays (setup).
+    assert "view" not in left and "layout" not in left
+    right = json.loads(store.path_of("right").read_text(encoding="utf-8"))
+    assert right["view"] == {"layout": "left view"}
     assert not store.path_of("my-left").exists()
     assert not store.path_of("my-right").exists()
     assert result["label"] == "Swap My Left with My Right"
@@ -442,12 +445,12 @@ def test_apply_zip_onto_the_second_twin_writes_its_own_file(
     result = device_pack.apply_zip(
         lib["pack"],
         "pJoy Pro",
-        {"items": ["in.catalog"]},
+        {"items": ["in.view"]},
         record_undo=False,
         target_guid=second,
     )
     assert result["ok"], result
-    assert _twin_doc("pjoy_pro_2")["catalog"] == {"rowHeight": 40}
+    assert _twin_doc("pjoy_pro_2")["view"] == {"rowHeight": 40}
     assert _own_path(lib["name"]).read_bytes() == first
 
 
@@ -458,5 +461,5 @@ def test_copy_onto_the_second_twin_writes_its_own_file(lib: dict, twins: list) -
         lib["setup"]["key"], "pJoy Pro", second, ["appearance"], [], []
     )
     assert result["ok"], result
-    assert _twin_doc("pjoy_pro_2")["catalog"] == {"rowHeight": 40}
+    assert _twin_doc("pjoy_pro_2")["view"] == {"rowHeight": 40}
     assert _own_path(lib["name"]).read_bytes() == first

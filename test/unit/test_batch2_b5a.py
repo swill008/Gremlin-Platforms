@@ -198,11 +198,12 @@ def test_the_catalog_pane_has_no_ok_while_running() -> None:
 
 
 def test_a_logical_pane_has_no_ok_while_running() -> None:
-    text = _read("LogicalPage.qml")
-    pane = text[text.index("inputItemModel: _layout.paneModel"):]
+    text = _read("ActionPane.qml")
+    pane = text[text.index("inputItemModel: _pane.layout.paneModel"):]
     pane = pane[: pane.index('text: "OK"')]
     assert 'text: "Profile running: stop it to edit"' in pane
-    assert "visible: !_root.editorLocked" in pane
+    assert "visible: !_pane.locked" in pane
+    assert "locked: _root.editorLocked" in _read("LogicalPage.qml")
 
 
 # --- Main.closeActionPanes() contract (GL-098, GL-169) -----------------------

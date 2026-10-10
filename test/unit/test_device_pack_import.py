@@ -10,7 +10,7 @@ profile's action list instead (every other device lost its actions at the
 next save and load), skip controls that already had actions, keep wires on
 the exported vJoy when the output was put on another, create modes without
 their parent, and leave the replaced actions in the file. Also: Map
-settings in two rows, Configuration Appearance, the photo's placement, a
+settings in two rows, Configuration layout, the photo's placement, a
 newer pack refused, and Undo Import.
 
 A pack is exported from one profile and imported into another, as on a
@@ -152,7 +152,7 @@ def _pack(tmp_path: Path, name: str, uid: uuid.UUID, modules: Path) -> Iterator[
                 "keys": [],
                 "friendly": {},
             },
-            "catalog": {"rowHeight": 40},
+            "layout": {"groups": ["G40"]},
             "photo": {"x": 0.1, "y": 0.2, "scale": 1.5},
             "ui": {
                 "viewPct": 80,
@@ -284,7 +284,7 @@ def test_undo_import_puts_everything_back(pack: dict) -> None:
     path = _own_path(name)
     before_file = path.read_bytes()
     before_actions = set(profile.library._actions)
-    _import(pack, ["wire:Default", "wire:Combat", "in.catalog", "in.mapview"])
+    _import(pack, ["wire:Default", "wire:Combat", "in.groups", "in.mapview"])
     assert device_pack.can_undo_import()
     result = device_pack.undo_import()
     assert result["ok"], result
@@ -298,7 +298,7 @@ def test_undo_import_puts_everything_back(pack: dict) -> None:
 def test_a_failed_import_leaves_the_last_one_undoable(
     pack: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _import(pack, ["in.catalog"])
+    _import(pack, ["in.groups"])
     last = device_pack._last_import
     assert last is not None
 
@@ -306,7 +306,7 @@ def test_a_failed_import_leaves_the_last_one_undoable(
         raise OSError("disk full")
 
     monkeypatch.setattr(device_pack, "_write_module", refuse)
-    result = _import(pack, ["in.catalog"])
+    result = _import(pack, ["in.groups"])
     assert not result["ok"]
     assert device_pack._last_import is last
     assert device_pack.undo_import()["ok"]
@@ -329,8 +329,8 @@ def test_map_settings_rows_import_separately(pack: dict) -> None:
 
 def test_configuration_appearance_comes_with_the_pack(pack: dict) -> None:
     path = _own_path(pack['name'])
-    _import(pack, ["in.catalog"])
-    assert json.loads(path.read_text(encoding="utf-8"))["catalog"] == {"rowHeight": 40}
+    _import(pack, ["in.groups"])
+    assert json.loads(path.read_text(encoding="utf-8"))["layout"]["groups"] == ["G40"]
 
 
 def test_the_photo_keeps_its_placement() -> None:
@@ -352,7 +352,7 @@ def test_the_rows_and_notes(pack: dict) -> None:
         section["title"]: [item["title"] for item in section["items"]]
         for section in described["sections"]
     }
-    assert "Configuration Appearance" in titles["Input module"]
+    assert "Configuration layout" in titles["Input module"]
     assert titles["Map settings"] == ["Map view", "Print area and print settings"]
     assert "Combat (under Default)" in titles["Wires"]
     settings = next(s for s in described["sections"] if s["title"] == "Map settings")
@@ -495,7 +495,7 @@ def test_a_picture_that_cannot_be_written_puts_everything_back(
     pack: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Audit 2: it stopped the import with an error and left what it wrote.
-    _import(pack, ["in.catalog"])
+    _import(pack, ["in.groups"])
     last = device_pack._last_import
     path = _own_path(pack['name'])
     before = path.read_bytes()
@@ -510,7 +510,7 @@ def test_a_picture_that_cannot_be_written_puts_everything_back(
         raise OSError("disk full")
 
     monkeypatch.setattr(device_pack, "_write_pictures", half_written)
-    result = _import(pack, ["in.catalog"])
+    result = _import(pack, ["in.groups"])
     assert not result["ok"]
     assert "pictures" in result["error"]
     assert path.read_bytes() == before
@@ -537,7 +537,7 @@ def test_an_output_picture_that_cannot_be_written_is_reported(
         raise OSError("disk full")
 
     monkeypatch.setattr(device_pack, "_write_pictures", output_fails)
-    result = _import(pack, ["in.catalog", "out:vjoy_2.claim"])
+    result = _import(pack, ["in.groups", "out:vjoy_2.claim"])
     assert result["ok"], result
     assert "pictures for vJoy 1 could not be written" in result["report"]
     assert written and not written[0].exists()
@@ -545,7 +545,7 @@ def test_an_output_picture_that_cannot_be_written_is_reported(
 
 
 def test_an_import_that_matches_nothing_keeps_the_last_undo(pack: dict) -> None:
-    _import(pack, ["in.catalog"])
+    _import(pack, ["in.groups"])
     last = device_pack._last_import
     result = _import(pack, ["wire:No Such Mode"])
     assert not result["ok"]
@@ -577,7 +577,7 @@ def test_an_import_onto_a_damaged_module_file_is_refused(pack: dict) -> None:
     profile, uid = pack["profile"], pack["uid"]
     wires = _targets(profile, uid, "Default")
     last = device_pack._last_import
-    result = _import(pack, ["in.catalog", "wire:Default"])
+    result = _import(pack, ["in.groups", "wire:Default"])
     assert not result["ok"]
     assert "Start Fresh" in result["error"]
     assert path.read_bytes() == before
@@ -590,7 +590,7 @@ def test_a_damaged_output_module_file_is_left_alone(pack: dict) -> None:
     out.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
     before = out.read_bytes()
     try:
-        result = _import(pack, ["in.catalog", "out:vjoy_2.claim"])
+        result = _import(pack, ["in.groups", "out:vjoy_2.claim"])
         assert result["ok"], result
         assert "vJoy 1 was skipped" in result["report"]
         assert "Start Fresh" in result["report"]

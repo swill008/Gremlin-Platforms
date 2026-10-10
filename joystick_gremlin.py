@@ -149,6 +149,7 @@ if _startup_failure is None:
         import gremlin.ui.osc_device_model  # noqa: F401
         import gremlin.ui.osc_feedback_model  # noqa: F401
         import gremlin.ui.osc_monitor_model  # noqa: F401
+        import gremlin.osc_companion_check  # noqa: F401
         import gremlin.ui.device_names  # noqa: F401
         import gremlin.ui.highlight_option  # loaded by device_names
         import gremlin.ui.hidhide  # noqa: F401
@@ -169,6 +170,7 @@ if _startup_failure is None:
         import gremlin.ui.history_model  # noqa: F401
         import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
         import gremlin.ui.logical_layout  # noqa: F401
+        import gremlin.ui.osc_layout  # noqa: F401
         import gremlin.ui.module_pairing  # noqa: F401
         import gremlin.ui.module_calibration  # noqa: F401
         import gremlin.ui.shell_option  # noqa: F401

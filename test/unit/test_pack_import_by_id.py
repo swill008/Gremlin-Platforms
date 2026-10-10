@@ -93,7 +93,7 @@ def _pack(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     with zipfile.ZipFile(pack) as zf:
         doc = json.loads(zf.read("map.json"))
         rest = {n: zf.read(n) for n in zf.namelist() if n != "map.json"}
-    doc["catalog"] = {"rowHeight": 44}
+    doc["layout"] = {"groups": ["G44"]}
     with zipfile.ZipFile(pack, "w") as zf:
         zf.writestr("map.json", json.dumps(doc))
         for name, data in rest.items():
@@ -135,7 +135,7 @@ def test_import_with_the_second_twins_id_changes_the_second(
     first_before = paths["first"].read_bytes()
     target = _profile(monkeypatch)
     selection = {
-        "items": ["in.catalog", "wire:Default"],
+        "items": ["in.groups", "wire:Default"],
         "targetGuid": str(SECOND),
     }
     hw = hardware_profile.HardwareProfile()
@@ -143,7 +143,7 @@ def test_import_with_the_second_twins_id_changes_the_second(
     assert done["ok"], done
     second = _doc(paths["second"])
     assert second["twinMarker"] == "second"
-    assert second.get("catalog", {}).get("rowHeight") == 44
+    assert second.get("layout", {}).get("groups") == ["G44"]
     assert paths["first"].read_bytes() == first_before
     assert mapped(target, SECOND) == {("Default", 1)}
     assert mapped(target, FIRST) == set()
@@ -176,11 +176,11 @@ def test_import_without_an_id_goes_by_the_name_as_before(
     """No "targetGuid" (or ""): the same as apply_zip by the name alone."""
     paths = _write_own_files()
     pack = _pack(monkeypatch, tmp_path)
-    selection: dict = {"items": ["in.catalog"]}
+    selection: dict = {"items": ["in.groups"]}
 
     def changed() -> dict[str, bool]:
         return {
-            k: _doc(p).get("catalog", {}).get("rowHeight") == 44
+            k: _doc(p).get("layout", {}).get("groups") == ["G44"]
             for k, p in paths.items()
         }
 

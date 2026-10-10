@@ -122,69 +122,22 @@ Item {
         function onModeChanged() { _root.showKey(false) }
     }
 
+    // The model comes from the page (holdModel: the action panes, the
+    // catalog) or, on the Keyboard page, from its own draft. The OSC page's
+    // old live path went with the OSC page rewrite (OP10, 09 S129).
     Component.onCompleted: {
-        if (keyboardDraft) {
+        if (keyboardDraft)
             showKey(true)
-            return
-        }
-        if (holdModel || !backend || !uiState)
-            return
-        _root.inputItemModel = backend.getInputItem(
-            uiState.currentInput,
-            uiState.currentInputIndex
-        )
     }
 
     Connections {
         target: uiState
-
-        function onInputChanged() {
-            if (_root.keyboardDraft) {
-                _root.showKey(false)
-                return
-            }
-            if (_root.holdModel || !backend || !uiState)
-                return
-            _root.inputItemModel = backend.getInputItem(
-                uiState.currentInput,
-                uiState.currentInputIndex
-            )
-        }
+        function onInputChanged() { _root.showKey(false) }
     }
 
     Connections {
         target: signal
-
-        function onReloadCurrentInputItem() {
-            if (_root.keyboardDraft) {
-                _root.showKey(false)
-                return
-            }
-            if (_root.holdModel || !backend || !uiState)
-                return
-            _root.inputItemModel = backend.getInputItem(
-                uiState.currentInput,
-                uiState.currentInputIndex
-            )
-        }
-    }
-
-    DismissibleDialog {
-        id: _selectInputDialog
-
-        titleText: "Select an Input"
-        messageText: "Select an input first, then add an action."
-        confirmText: "OK"
-    }
-
-    // The OSC page with no input selected (D-09-OSC-COMPANION); other
-    // pages are unchanged.
-    EmptyState {
-        objectName: "oscNoInput"
-        anchors.fill: parent
-        visible: !_root.inlineMode && !_root.isOutput && !_root.holdModel
-                 && !!uiState && uiState.currentTab === "osc" && !_root.inputItemModel
-        text: "Select an input to see its actions"
+        function onReloadCurrentInputItem() { _root.showKey(false) }
     }
 
     ColumnLayout {

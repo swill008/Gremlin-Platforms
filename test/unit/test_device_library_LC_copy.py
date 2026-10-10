@@ -232,7 +232,7 @@ def _module(name: str, buttons: list[int], row_height: int) -> dict:
             "keys": [],
             "friendly": {},
         },
-        "catalog": {"rowHeight": row_height},
+        "view": {"rowHeight": row_height},
         "nodes": [],
     }
 
@@ -293,7 +293,7 @@ def test_copy_puts_the_setup_on_the_stick_and_leaves_the_source(lib: dict) -> No
     assert _targets(profile, _OTHER, "Default") == {1: (2, 5)}
     # Module file: checks added, appearance replaced.
     doc = _doc(name)
-    assert doc["catalog"] == {"rowHeight": 40}
+    assert doc["view"] == {"rowHeight": 40}
     assert set(doc["claim"]["buttons"]) >= {1, 2, 3}
     # The source never changes; history and the last change are kept.
     assert lib["pack"].read_bytes() == source_bytes
@@ -375,7 +375,7 @@ def test_undo_puts_the_copy_back(lib: dict) -> None:
     assert _targets(profile, uid, "Combat") == {}
     after = _doc(name)
     assert after["claim"]["buttons"] == before["claim"]["buttons"]
-    assert after["catalog"] == before["catalog"]
+    assert after["view"] == before["view"]
     fake = lib["fake"]
     assert fake.autosaves[-1][2] == "Autosave: before Undo"
     assert fake.last["op"] == "copy" and fake.last["undone"] is True
@@ -472,7 +472,7 @@ def test_pack_import_goes_into_a_given_profile_without_undo_import(lib: dict) ->
 def test_pack_item_ids_match_the_window(lib: dict) -> None:
     ids = device_pack.pack_item_ids(lib["pack"])
     assert not isinstance(ids, str)
-    assert "in.checks" in ids["input"] and "in.catalog" in ids["input"]
+    assert "in.checks" in ids["input"] and "in.view" in ids["input"]
     assert ids["modes"] == ["Combat", "Default"] or set(ids["modes"]) == {
         "Combat",
         "Default",
@@ -521,7 +521,7 @@ def test_copy_and_undo_with_the_real_library(
     assert undone["ok"], undone
     assert _targets(profile, uid, "Default") == {3: (1, 3)}
     assert _targets(profile, uid, "Combat") == {}
-    assert _doc(name)["catalog"] == before["catalog"]
+    assert _doc(name)["view"] == before["view"]
     assert library.last_change()["undone"] is True
 
 

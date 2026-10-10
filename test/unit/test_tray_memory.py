@@ -100,9 +100,13 @@ def test_pages_load_only_while_needed() -> None:
     home = r"active: !_root.trayed[\s\S]{0,200}sourceComponent: StatusPage"
     assert re.search(home, main)
     # Configuration's panels, one per tab, and none in the tray unless unsaved.
-    for panel in ("BindingCatalog", "OscDevice", "XboxDevice", "KeyboardInputList",
+    for panel in ("BindingCatalog", "XboxDevice", "KeyboardInputList",
                   "InputConfiguration"):
         assert f"sourceComponent: {panel} {{" in main, panel
-    assert main.count("&& _root._configLive") == 3
+    # The OSC page (09 S129) has a loader of its own, also gone in the tray.
+    osc = main[main.index("id: _oscPageLoader"):]
+    osc = osc[: osc.index('source: "OscPage.qml"')]
+    assert "&& _root._configLive" in osc
+    assert main.count("&& _root._configLive") == 4
     tray = (_ROOT / "gremlin" / "ui" / "system_tray.py").read_text(encoding="utf-8")
     assert "tray_memory.enter_tray" in tray and "tray_memory.leave_tray" in tray

@@ -93,7 +93,7 @@ def check_address(label: object) -> str:
     if not text:
         raise GremlinError("An OSC address can't be blank")
     if not text.startswith("/"):
-        raise GremlinError(f"An OSC address must start with \"/\": {text}")
+        raise GremlinError(f'An OSC address must start with "/": {text}')
     return text
 
 
@@ -181,6 +181,14 @@ class OscRows:
         self._rows: list[OscRow] = []
         self._dirty = False
         self.load_warnings: list[str] = []
+        # The OSC page's groups and order (the file's "layout", "osc:<uid>"
+        # keys) and your names ("osc:<uid>" -> name; "" = remove it from the
+        # file). Kept with the inputs so one Save writes them all and Discard
+        # drops them (D-09-OSC-FILE).
+        self.layout: dict = {}
+        self.names: dict[str, str] = {}
+        # The names as OSC's file held them (osc_device_file.load/save).
+        self.names_loaded: dict[str, str] = {}
 
     # -- state ---------------------------------------------------------------
 
@@ -195,10 +203,25 @@ class OscRows:
     def _changed(self) -> None:
         self._dirty = True
 
+    def mark_dirty(self) -> None:
+        """Something Save writes changed outside the rows' own edits."""
+        self._changed()
+
+    def set_layout(self, layout: dict, names: dict[str, str]) -> None:
+        """The page's groups, order and names; a change is an edit to save."""
+        if layout == self.layout and names == self.names:
+            return
+        self.layout = dict(layout)
+        self.names = dict(names)
+        self._changed()
+
     def reset(self) -> None:
-        if self._rows:
+        if self._rows or self.layout or self.names:
             self._changed()
         self._rows = []
+        self.layout = {}
+        self.names = {}
+        self.names_loaded = {}
 
     # -- lookups -------------------------------------------------------------
 
@@ -294,8 +317,13 @@ class OscRows:
             raise GremlinError(f"OSC input id {uid} already exists")
         if input_id is None or self.by_number(input_type, input_id) is not None:
             input_id = self._lowest_free(input_type)
-        row = OscRow(uid=uid or uuid.uuid4().hex, input_type=input_type,
-                     input_id=int(input_id), label=address, **values)
+        row = OscRow(
+            uid=uid or uuid.uuid4().hex,
+            input_type=input_type,
+            input_id=int(input_id),
+            label=address,
+            **values,
+        )
         self._check_unique(row)
         self._rows.append(row)
         self._changed()

@@ -19,6 +19,9 @@ Callers pass a device's name and id and never build module paths:
 - import:   import_file, can_undo_file_import, undo_file_import,
             drop_file_import_undo (Module Setup's "Import from", its Undo
             tied to the device and window that made it)
+- Configuration layout: read_layout, write_layout, friendly_name,
+            set_friendly_name (the "layout" key: groups, order; names are
+            the claim's friendly names, CF-Q1, CF-Q8)
 
 Rules kept here:
 - one lookup rule (registry.resolve_module_slug), a stale id filtered out
@@ -585,6 +588,128 @@ def write_text(path: Path, text: str, who: str = "") -> None:
     _write(Path(path), module_file.encode(text), text.replace("\r\n", "\n"))
     registry.trace("SAVE", who or "Module files", "write", path, "ok")
     _reload_internal(path)
+
+
+# --- Configuration layout (CF-Q1, CF-Q8) ------------------------------------------
+
+# A hardware input module file's Configuration layout, shared by every
+# profile: {"groups": [group names in order], "order": [input keys in order],
+# "group_of": {input key: group name}}. An input key is "<kind>:<number>"
+# ("button:5", "axis:1", "hat:1", "key:<id>"), the same key as the claim's
+# friendly names. Names are not kept here: Rename writes the friendly name
+# Module Setup edits (03 S121).
+LAYOUT_KEY = "layout"
+
+
+def input_key(kind: str, number: int) -> str:
+    """The layout and friendly-name key of an input: "button:5"."""
+    return f"{kind}:{int(number)}"
+
+
+def empty_layout() -> dict:
+    return {"groups": [], "order": [], "group_of": {}}
+
+
+def normalize_layout(raw: object) -> dict:
+    """A layout with only what it may hold: group names unique and not blank,
+    input keys unique, each group_of naming a listed group."""
+    raw = raw if isinstance(raw, dict) else {}
+    groups: list[str] = []
+    for name in raw.get("groups") or []:
+        text = str(name or "").strip()
+        if text and text not in groups:
+            groups.append(text)
+    order: list[str] = []
+    for key in raw.get("order") or []:
+        text = str(key or "").strip()
+        if text and text not in order:
+            order.append(text)
+    group_of: dict[str, str] = {}
+    found = raw.get("group_of")
+    for key, name in (found.items() if isinstance(found, dict) else ()):
+        text = str(name or "").strip()
+        if str(key).strip() and text in groups:
+            group_of[str(key).strip()] = text
+    return {"groups": groups, "order": order, "group_of": group_of}
+
+
+def _layout_path(guid: str, device_name: str = "") -> Path | None:
+    """The module file of the device: by its id (path_for_id with a name)."""
+    if device_name:
+        return path_for_id(device_name, guid)
+    return file_of_guid(guid)
+
+
+def read_layout(guid: str, device_name: str = "") -> dict:
+    """The device's Configuration layout (normalized); empty when it has no
+    module file, a damaged one, or no layout yet."""
+    path = _layout_path(guid, device_name)
+    if path is None:
+        return empty_layout()
+    return normalize_layout(read_path(path).get(LAYOUT_KEY))
+
+
+def _set_names(doc: dict, names: dict[str, str]) -> None:
+    claim = doc.get("claim")
+    if not isinstance(claim, dict):
+        claim = doc["claim"] = {}
+    friendly = claim.get("friendly")
+    if not isinstance(friendly, dict):
+        friendly = claim["friendly"] = {}
+    for key, name in names.items():
+        text = str(name or "").strip()
+        if text:
+            friendly[str(key)] = text
+        else:
+            friendly.pop(str(key), None)
+
+
+def write_layout(
+    guid: str,
+    layout: dict | None,
+    device_name: str = "",
+    who: str = "Configuration",
+    names: dict[str, str] | None = None,
+) -> bool:
+    """Saves the device's Configuration layout (and, names given, friendly
+    names in the same write: one History entry). An empty layout removes the
+    key. layout None leaves the layout as it is (names only). False when the
+    device has no module file or it is damaged (said in the error dialog);
+    raises OSError when the write failed."""
+    path = _layout_path(guid, device_name)
+    if path is None or not path.is_file():
+        return False
+    clean = None if layout is None else normalize_layout(layout)
+
+    def change(doc: dict) -> bool:
+        before = json.dumps(doc, sort_keys=True)
+        if clean is not None:
+            if clean == empty_layout():
+                doc.pop(LAYOUT_KEY, None)
+            else:
+                doc[LAYOUT_KEY] = clean
+        if names:
+            _set_names(doc, names)
+        return json.dumps(doc, sort_keys=True) != before
+
+    return update_path(path, change, who)
+
+
+def friendly_name(guid: str, key: str, device_name: str = "") -> str:
+    """An input's friendly name ("" when none): the one Module Setup edits."""
+    path = _layout_path(guid, device_name)
+    if path is None:
+        return ""
+    claim = read_path(path).get("claim")
+    names = claim.get("friendly") if isinstance(claim, dict) else None
+    return str((names or {}).get(str(key)) or "").strip()
+
+
+def set_friendly_name(
+    guid: str, key: str, name: str, device_name: str = "", who: str = "Configuration"
+) -> bool:
+    """Rename (CF-Q8): writes the input's friendly name; blank removes it."""
+    return write_layout(guid, None, device_name, who, names={str(key): name})
 
 
 # --- pictures ------------------------------------------------------------------

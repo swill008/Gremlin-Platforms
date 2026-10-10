@@ -17,6 +17,7 @@ import threading
 from typing import Any
 
 from gremlin import run_scope
+from gremlin.log_once import log_once
 
 log = logging.getLogger("system")
 
@@ -237,7 +238,10 @@ def send(
     try:
         _client(*peer).send_message(address, args)
     except (OSError, ValueError) as error:
-        log.warning(f"OSC: could not send {address} to {peer[0]}:{peer[1]}: {error}")
+        text = f"OSC: could not send {address} to {peer[0]}:{peer[1]}: {error}"
+        log.warning(text)
+        # The user log too (OX3), once per address and target while it lasts.
+        log_once("user", ("osc-send", address, peer), logging.WARNING, text)
         return False
     _note_out(address, args, peer)
     return True

@@ -70,7 +70,7 @@ Every device has a module file that says which of its controls the program may u
 ## 3. What it owns
 
 **Files (data folder)**
-- `modules\<slug>.json`: one module file per device. Keys this subsystem writes: `kind`, `device`, `direction` (`source`/`dest`), `boundName`, `boundGuidLocal`, `claim`, `image`, `calibration` (per axis id: low, centerLow, centerHigh, high, withCenter), `view` (Output View Appearance), `catalog` (Configuration Appearance), and defaults `space`, `pageW`, `pageH`, `photoWell`, `nodes`. The Button Map also writes this file (`nodes`, `ui`, `image`).
+- `modules\<slug>.json`: one module file per device. Keys this subsystem writes: `kind`, `device`, `direction` (`source`/`dest`), `boundName`, `boundGuidLocal`, `claim`, `image`, `calibration` (per axis id: low, centerLow, centerHigh, high, withCenter), `view` (Output View Appearance), `catalog` (Configuration Appearance; goes with D-05-CFG-PAGE CF-Q4, batch C: one shared Appearance in program settings, 05 S125), and defaults `space`, `pageW`, `pageH`, `photoWell`, `nodes`. The Button Map also writes this file (`nodes`, `ui`, `image`).
   - Writers in this subsystem: `saveClaim` (module_model.py:2238), `saveViewConfig` (:765), `saveCatalogConfig` (:865), `calibration.write_axes` (calibration.py:145), `auto_map.merge_claim_into_output` (auto_map.py:97), `import_module_file` / `undo_last_import` (hardware_profile.py:691 / :661), `copyImage` via Module Setup's Import Image and Save (hardware_profile.py:2429).
   - Other writers (other subsystems): Button Map save / saveUi / restorePhoto, Device Pack, History Restore.
 - `modules\<slug>\photo.*`: the device picture. `modules\library\`: every picture ever chosen (copied by `copyImage`).
@@ -420,7 +420,7 @@ Every device has a module file that says which of its controls the program may u
 - S120. "Also claim the matching outputs" should add the needed claims to the output module, reading the file fresh first and refusing a damaged one. [help: Auto Mapper] [test-plan: MODULE-FILE-DAMAGE] [test: test_auto_mapper_claims]
 
 ### O. Other readers of claims
-- S121. The Configuration page's list should show only claimed controls the device has, named by their friendly names. [help: Input modules] [code: module_inputs.py:143-171]
+- S121. The Configuration page's list should show only claimed controls the device has, named by their friendly names; from batch C, Rename on the Configuration page writes that friendly name (05 S129) [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q8), batch C]. [help: Input modules] [code: module_inputs.py:143-171]
 - S122. The vJoy Viewer should list devices whose module has vJoy wires and mark an unclaimed destination "(not claimed)". [help: Viewers] [code: module_pairing.py:73-116]
 
 ## 9. Questions for the user

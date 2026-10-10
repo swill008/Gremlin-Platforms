@@ -35,9 +35,9 @@ if TYPE_CHECKING:
 
 # The pack pieces each part of a saved setup is (10 S11).
 _PART_ITEMS = {
-    "setup": ("in.checks", "in.names"),
+    "setup": ("in.checks", "in.names", "in.groups"),
     "button_map": ("in.layout",),
-    "appearance": ("in.view", "in.catalog"),
+    "appearance": ("in.view",),
     "calibration": ("in.calibration",),
 }
 # Put back by Undo too (a Copy leaves them unticked, as the pack window does).

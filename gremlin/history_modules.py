@@ -42,9 +42,9 @@ MAP_KEYS = {
 }
 _WORDS = {
     "claim": "checked controls and names",
+    "layout": "Configuration layout",
     "calibration": "calibration",
     "view": "Output View Appearance",
-    "catalog": "Configuration Appearance",
     "nodes": "Button Map",
     "photo": "Button Map photo",
     "image": "Button Map photo",

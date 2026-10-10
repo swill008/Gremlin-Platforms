@@ -29,6 +29,8 @@ class FakeRows:
         self.inputs = inputs or []
         self.dirty = False
         self.saved = 0
+        self.layout: dict = {}
+        self.names: dict[str, str] = {}
 
     def to_dict(self) -> dict:
         return json.loads(json.dumps({"inputs": self.inputs}))

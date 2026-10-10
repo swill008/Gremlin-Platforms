@@ -4,8 +4,10 @@
 """The OSC Monitor's list (D-09-OSC-MONITOR): the last 200 OSC messages in
 and out, newest last, with Pause, Clear, a filter and Show outgoing.
 
-While active (the window is open) it holds OSC's port open through
-OscRuntime().hold_open(token), even with no Run, and releases it after."""
+While active it holds OSC's port open through OscRuntime().hold_open(token),
+even with no Run, and releases it after. qml/OscMonitorPanel.qml sets active
+while the panel is shown, unfolded and its page (or the Pop out window) is
+open (OSC rewrite OP8)."""
 
 from __future__ import annotations
 

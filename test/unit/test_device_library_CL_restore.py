@@ -37,7 +37,7 @@ def _module(name: str, buttons: list[int], row_height: int, cal: list) -> dict:
             "keys": [],
             "friendly": {},
         },
-        "catalog": {"rowHeight": row_height},
+        "view": {"rowHeight": row_height},
         "calibration": {"1": cal},
         "nodes": [],
     }
@@ -79,7 +79,7 @@ def test_restore_puts_the_saved_setup_back_on_its_own_stick(real: dict) -> None:
     out = library_copy.restore_to_stick(setup["key"])
     assert out["ok"], out
     doc = _doc(name)
-    assert doc["catalog"] == {"rowHeight": 20}
+    assert doc["view"] == {"rowHeight": 20}
     assert doc["calibration"] == {"1": [0, 100, 200, 300, True]}  # same stick: included
     assert _targets(profile, uid, "Default") == {3: (1, 3)}
     # Autosave first, named for the Restore; Undo is the last change.
@@ -94,7 +94,7 @@ def test_restore_puts_the_saved_setup_back_on_its_own_stick(real: dict) -> None:
     # Undo puts the stick back as it was before the Restore.
     undone = library_copy.undo_last()
     assert undone["ok"], undone
-    assert _doc(name)["catalog"] == {"rowHeight": 77}
+    assert _doc(name)["view"] == {"rowHeight": 77}
 
 
 def test_restore_refuses_a_stick_that_is_not_plugged_in(

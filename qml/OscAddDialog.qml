@@ -4,7 +4,10 @@
 // The OSC Add window (D-09-OSC-INPUT): one OSC input with its settings.
 // Typed, Listen and Bulk capture all use the settings chosen here. Encoder
 // mode (D-09-OSC-ENCODER) adds format, output and step size / pulse delay. Opened
-// with openForEdit() it changes an existing input's settings instead.
+// with openForEdit() it changes an existing input's settings instead. The
+// OSC page opens it with openForKeys() on one or several inputs (OX6, 09
+// S146): a setting they don't share starts blank, and OK sends only the
+// settings changed here, through the page's applySettings (one Undo step).
 
 import QtQuick
 import QtQuick.Controls
@@ -22,7 +25,16 @@ Popup {
     property bool closeOnCapture: true
     // "" adds a new input; a uid edits that input's settings.
     property string editUid: ""
-    readonly property bool editing: editUid.length > 0
+    // The page's inputs edited (openForKeys): their row keys, and
+    // function(keys, changed) -> "" or the error (OscLayoutModel.applySettings).
+    property var editKeys: []
+    property var applySettings: null
+    // settings() as the window opened on keys; OK sends what differs from it.
+    property var _startSettings: null
+    // The settings the inputs don't share (shown blank): {key: true}.
+    property var differs: ({})
+    readonly property bool editingMany: editKeys.length > 1
+    readonly property bool editing: editUid.length > 0 || editKeys.length > 0
     // The values of the last captured message (P1..Pn).
     readonly property var capturedValues: _splitValues(lastParameters)
     // Source choices: the captured values, or as many as the edited input needs.
@@ -71,6 +83,9 @@ Popup {
 
     function resetFields() {
         editUid = ""
+        editKeys = []
+        _startSettings = null
+        differs = ({})
         _cmd.text = ""
         lastParameters = ""
         lastSource = ""
@@ -97,7 +112,86 @@ Popup {
     function openForEdit(uid, s) {
         resetFields()
         editUid = uid
-        var st = s || {}
+        _fill(s || {})
+        open()
+    }
+
+    function _same(a, b) {
+        return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b)
+    }
+
+    // The page's inputs (OX6, 09 S146): keys and their shared settings
+    // (OscLayoutModel.editSettingsFor: a setting that differs is "" and
+    // named in "mixed"; "locked": any of them has actions).
+    function openForKeys(keys, shared) {
+        resetFields()
+        if (!keys || keys.length === 0)
+            return false
+        var st = Object.assign({}, shared || {})
+        var diff = {}
+        var mixed = st.mixed || []
+        for (var i = 0; i < mixed.length; i++)
+            diff[mixed[i]] = true
+        var locked = !!st.locked
+        st.locked = false
+        _fill(st)
+        // An input with actions keeps its kind (S16a); inputs of both kinds
+        // (or of a kind not known here) keep their modes.
+        if (locked) {
+            var encAxis = st.mode === "encoder" && st.enc_output === "axis"
+            if (diff.mode || (st.mode === "encoder" && diff.enc_output))
+                lockedKind = "mixed"
+            else
+                lockedKind = (st.mode === "axis" || encAxis) ? "axis" : "button"
+        }
+        if (diff.mode)
+            _modeChange.checked = _modeButton.checked = _modeAxis.checked = _modeEncoder.checked = false
+        if (diff.cmd_mode)
+            _messageOnly.checked = _messageData.checked = false
+        if (diff.data)
+            _data.text = ""
+        if (diff.source)
+            sourceIndex = -1
+        if (diff.range_min)
+            _rangeMin.text = ""
+        if (diff.range_max)
+            _rangeMax.text = ""
+        if (diff.trigger)
+            _triggerOn.checked = false
+        if (diff.delay_ms) {
+            _delay.text = ""
+            _encDelay.text = ""
+        }
+        if (diff.enc_format)
+            _encFormatAuto.checked = _encFormatDirection.checked = _encFormatSigned.checked = false
+        if (diff.enc_step)
+            _encStep.text = ""
+        if (diff.enc_output)
+            _encOutAxis.checked = _encOutCw.checked = _encOutCcw.checked = false
+        differs = diff
+        editKeys = keys.slice()
+        _startSettings = settings()
+        open()
+        return true
+    }
+
+    // What OK sends for the page's inputs: only the settings changed since
+    // the window opened (the address is changed with Change Address…).
+    function changedSettings() {
+        var now = settings()
+        var out = {}
+        if (!_startSettings)
+            return out
+        for (var key in now) {
+            if (key === "address")
+                continue
+            if (!_same(now[key], _startSettings[key]))
+                out[key] = now[key]
+        }
+        return out
+    }
+
+    function _fill(st) {
         _cmd.text = st.address || ""
         var encAxis = st.mode === "encoder" && (st.enc_output || "axis") === "axis"
         if (st.locked)
@@ -134,7 +228,6 @@ Popup {
         _triggerOn.checked = st.trigger === true
         if (st.delay_ms !== undefined && st.delay_ms !== null)
             _delay.text = String(st.delay_ms)
-        open()
     }
 
     function selectedMode() {
@@ -144,7 +237,9 @@ Popup {
             return "change"
         if (_modeEncoder.checked)
             return "encoder"
-        return "button"
+        if (_modeButton.checked || !editingMany)
+            return "button"
+        return ""
     }
 
     function encoderFormat() {
@@ -152,7 +247,9 @@ Popup {
             return "direction"
         if (_encFormatSigned.checked)
             return "signed"
-        return "auto"
+        if (_encFormatAuto.checked || !editingMany)
+            return "auto"
+        return ""
     }
 
     function encoderOutput() {
@@ -160,13 +257,17 @@ Popup {
             return "pulse_cw"
         if (_encOutCcw.checked)
             return "pulse_ccw"
-        return "axis"
+        if (_encOutAxis.checked || !editingMany)
+            return "axis"
+        return ""
     }
 
-    readonly property bool encoderPulses: _modeEncoder.checked && !_encOutAxis.checked
+    readonly property bool encoderPulses: _modeEncoder.checked && (_encOutCw.checked || _encOutCcw.checked)
 
     // An encoder on a locked input keeps its kind: axis output, or pulses.
     function fitEncoderOutput() {
+        if (lockedKind === "mixed")
+            return
         if (lockedKind === "axis")
             _encOutAxis.checked = true
         else if (lockedKind === "button" && _encOutAxis.checked)
@@ -175,6 +276,8 @@ Popup {
 
     function stepError() {
         if (!_modeEncoder.checked)
+            return ""
+        if (editingMany && !_encStep.text.trim().length)
             return ""
         var v = Number(_encStep.text)
         if (!_encStep.text.trim().length || isNaN(v) || v <= 0 || v > 2)
@@ -185,6 +288,13 @@ Popup {
     function rangeError() {
         if (!_modeAxis.checked)
             return ""
+        // Several inputs: a blank Min or Max keeps each input's own.
+        if (editingMany && (!_rangeMin.text.trim().length || !_rangeMax.text.trim().length)) {
+            if ((_rangeMin.text.trim().length && isNaN(Number(_rangeMin.text)))
+                    || (_rangeMax.text.trim().length && isNaN(Number(_rangeMax.text))))
+                return "Min and Max must be numbers."
+            return ""
+        }
         var lo = Number(_rangeMin.text)
         var hi = Number(_rangeMax.text)
         if (!_rangeMin.text.trim().length || !_rangeMax.text.trim().length
@@ -197,6 +307,8 @@ Popup {
 
     function delayError() {
         if (encoderPulses) {
+            if (editingMany && !_encDelay.text.trim().length)
+                return ""
             if (!/^\d+$/.test(_encDelay.text.trim()))
                 return "The delay must be a whole number of milliseconds."
             return ""
@@ -204,6 +316,8 @@ Popup {
         if (!_triggerOn.checked || !_modeButton.checked)
             return ""
         var t = _delay.text.trim()
+        if (editingMany && !t.length)
+            return ""
         if (!/^\d+$/.test(t))
             return "The delay must be a whole number of milliseconds."
         return ""
@@ -215,13 +329,13 @@ Popup {
         var dataMode = _messageData.checked
         var delay = null
         if (encoderPulses)
-            delay = delayError() === "" ? parseInt(_encDelay.text.trim()) : null
-        else if (_triggerOn.checked && delayError() === "")
+            delay = delayError() === "" && _encDelay.text.trim().length ? parseInt(_encDelay.text.trim()) : null
+        else if (_triggerOn.checked && delayError() === "" && _delay.text.trim().length)
             delay = parseInt(_delay.text.trim())
         return {
             "address": _cmd.text.trim(),
             "mode": selectedMode(),
-            "cmd_mode": dataMode ? "data" : "message",
+            "cmd_mode": dataMode ? "data" : (_messageOnly.checked || !editingMany ? "message" : ""),
             "data": dataMode ? _splitValues(_data.text) : [],
             "source": sourceIndex,
             "range_min": Number(_rangeMin.text) || 0.0,
@@ -286,6 +400,8 @@ Popup {
             _message.show(err, true)
             return false
         }
+        if (editKeys.length > 0)
+            return _acceptKeys()
         var s = settings()
         if (!s.address.length)
             return false
@@ -299,6 +415,21 @@ Popup {
             return true
         }
         _root.accepted(s)
+        close()
+        return true
+    }
+
+    // OK on the page's inputs: the changed settings, one Undo step; a
+    // refusal (naming each input and why) stays on the message line.
+    function _acceptKeys() {
+        var changed = changedSettings()
+        if (Object.keys(changed).length > 0 && typeof applySettings === "function") {
+            var res = applySettings(editKeys, changed)
+            if (res && String(res).length) {
+                _message.show(String(res), true)
+                return false
+            }
+        }
         close()
         return true
     }
@@ -364,7 +495,8 @@ Popup {
         spacing: Style.dp(10)
 
         Label {
-            text: _root.editing ? "OSC Input Settings" : "OSC Input Mapper"
+            text: _root.editingMany ? "OSC Input Settings (" + _root.editKeys.length + " inputs)"
+                  : (_root.editing ? "OSC Input Settings" : "OSC Input Mapper")
             font.bold: true
             font.pixelSize: Style.dp(16)
             color: Style.fgStrong
@@ -378,13 +510,21 @@ Popup {
                 id: _cmd
                 objectName: "oscCmd"
                 Layout.fillWidth: true
-                placeholderText: "/button/1"
+                placeholderText: _root.editingMany ? _root.editKeys.length + " inputs, each keeps its address" : "/button/1"
                 readOnly: _root.editing
             }
         }
 
-        Label { text: "Parameters:  " + (_root.lastParameters || "") }
-        Label { text: "Source:  " + (_root.lastSource || "") }
+        Label { visible: !_root.editingMany; text: "Parameters:  " + (_root.lastParameters || "") }
+        Label { visible: !_root.editingMany; text: "Source:  " + (_root.lastSource || "") }
+        Label {
+            objectName: "oscManyNote"
+            visible: _root.editingMany
+            text: "Settings the inputs don't share are blank. Only what you change here is applied to each input."
+            color: Style.fgMuted
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
 
         RowLayout {
             spacing: Style.dp(16)
@@ -394,25 +534,26 @@ Popup {
                 id: _modeChange
                 objectName: "oscModeChange"
                 text: "Change"
-                enabled: _root.lockedKind !== "axis"
+                enabled: _root.lockedKind !== "axis" && _root.lockedKind !== "mixed"
             }
             RadioButton {
                 id: _modeButton
                 objectName: "oscModeButton"
                 text: "Button"
                 checked: true
-                enabled: _root.lockedKind !== "axis"
+                enabled: _root.lockedKind !== "axis" && _root.lockedKind !== "mixed"
             }
             RadioButton {
                 id: _modeAxis
                 objectName: "oscModeAxis"
                 text: "Axis"
-                enabled: _root.lockedKind !== "button"
+                enabled: _root.lockedKind !== "button" && _root.lockedKind !== "mixed"
             }
             RadioButton {
                 id: _modeEncoder
                 objectName: "oscModeEncoder"
                 text: "Encoder"
+                enabled: _root.lockedKind !== "mixed"
                 onCheckedChanged: if (checked) _root.fitEncoderOutput()
             }
             Item { Layout.fillWidth: true }
@@ -430,7 +571,7 @@ Popup {
                 id: _data
                 objectName: "oscData"
                 Layout.fillWidth: true
-                placeholderText: "1, 0.5"
+                placeholderText: _root.differs.data ? "Differs: leave blank to keep each" : "1, 0.5"
             }
         }
 
@@ -530,19 +671,19 @@ Popup {
                 objectName: "oscEncOutAxis"
                 text: "Axis"
                 checked: true
-                enabled: _root.lockedKind !== "button"
+                enabled: _root.lockedKind !== "button" && _root.lockedKind !== "mixed"
             }
             RadioButton {
                 id: _encOutCw
                 objectName: "oscEncOutCw"
                 text: "Pulses clockwise"
-                enabled: _root.lockedKind !== "axis"
+                enabled: _root.lockedKind !== "axis" && _root.lockedKind !== "mixed"
             }
             RadioButton {
                 id: _encOutCcw
                 objectName: "oscEncOutCcw"
                 text: "Pulses counter-clockwise"
-                enabled: _root.lockedKind !== "axis"
+                enabled: _root.lockedKind !== "axis" && _root.lockedKind !== "mixed"
             }
         }
         ButtonGroup { buttons: [_encOutAxis, _encOutCw, _encOutCcw] }
@@ -658,7 +799,7 @@ Popup {
                 objectName: "oscOk"
                 text: "OK"
                 highlighted: true
-                enabled: _cmd.text.trim().length > 0
+                enabled: (_root.editingMany || _cmd.text.trim().length > 0)
                          && _root.rangeError() === "" && _root.stepError() === ""
                          && _root.delayError() === ""
                 onClicked: _root.accept()

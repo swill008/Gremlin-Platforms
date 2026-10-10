@@ -90,7 +90,11 @@ def sticks(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> dict:
             "hats": [],
             "friendly": {"button:3": "Trigger", "button:6": "Pinkie"},
         },
-        "catalog": {"rows": 2},
+        "layout": {
+            "groups": ["Right"],
+            "order": ["button:3"],
+            "group_of": {"button:3": "Right"},
+        },
         "nodes": [{"id": "n1", "kind": "image", "src": "right/map.png"}],
     }
     store.path_of("left").write_text(json.dumps(left), encoding="utf-8")
@@ -235,9 +239,18 @@ def test_swap_exchanges_parts_and_bindings(
     # Calibration: axis 1 moves, axis 3 stays.
     assert left["calibration"] == {"3": [10, 20, 30]}
     assert right["calibration"] == {"1": [0, 500, 1000]}
-    # Appearance and Button Map trade places, pictures with them.
-    assert left["catalog"] == {"rows": 2} and "view" not in left
-    assert right["view"] == {"layout": "left view"} and "catalog" not in right
+    # The Configuration layout goes with the setup (CF-Q1); Appearance
+    # (Output View) and Button Map trade places, pictures with them.
+    assert (
+        left["layout"]
+        == {
+            "groups": ["Right"],
+            "order": ["button:3"],
+            "group_of": {"button:3": "Right"},
+        }
+        and "view" not in left
+    )
+    assert right["view"] == {"layout": "left view"} and "layout" not in right
     assert right["image"] == "right/photo.jpg"
     assert (sticks["modules"] / "right" / "photo.jpg").read_bytes() == b"left photo"
     assert left["nodes"][0]["src"] == "left/map.png"

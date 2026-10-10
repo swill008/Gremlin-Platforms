@@ -34,6 +34,8 @@ SLUG = "osc"
 KEY = "inputs"
 SERVER_KEY = "server"
 WHO = "OSC"
+# Your names for OSC's inputs are the claim's friendly names under this.
+NAME_PREFIX = "osc:"
 
 SERVER_DEFAULTS: dict[str, Any] = {
     "enabled": True,
@@ -417,9 +419,58 @@ def load(rows: OscRows | None = None) -> dict:
     doc = store.read_path(path())
     target = _rows(rows)
     target.load_dict({KEY: _clean(doc.get(KEY))})
+    if convert_friendly_keys(target):
+        doc = store.read_path(path())
+    target.layout = store.normalize_layout(doc.get(store.LAYOUT_KEY))
+    target.names = _read_names(doc)
+    # What the file held: a save writes only the names the page changed,
+    # so names written another way (Module Setup, Device Pack) are kept.
+    target.names_loaded = dict(target.names)
     target.mark_saved()
-    convert_friendly_keys(target)
     return clean_server(doc.get(SERVER_KEY))
+
+
+def _read_names(doc: dict) -> dict[str, str]:
+    """Your names for OSC's inputs: the claim's "osc:<uid>" friendly names."""
+    claim = doc.get("claim")
+    friendly = claim.get("friendly") if isinstance(claim, dict) else None
+    names: dict[str, str] = {}
+    for key, value in (friendly or {}).items():
+        key_text, text = str(key), str(value or "").strip()
+        if key_text.startswith(NAME_PREFIX) and key_text != NAME_PREFIX and text:
+            names[key_text] = text
+    return names
+
+
+def _put_layout(
+    doc: dict, layout: dict, names: dict[str, str], loaded: dict[str, str]
+) -> None:
+    """The page's groups, order and names into the file's "layout" key and
+    the claim's "osc:<uid>" friendly names. Only names the page changed
+    since it read the file are written or removed; others are kept."""
+    if not layout or layout == store.empty_layout():
+        doc.pop(store.LAYOUT_KEY, None)
+    else:
+        doc[store.LAYOUT_KEY] = layout
+    claim = doc.get("claim")
+    if not isinstance(claim, dict):
+        claim = doc["claim"] = {}
+    friendly = claim.get("friendly")
+    if not isinstance(friendly, dict):
+        friendly = {}
+    friendly = dict(friendly)
+    for key in loaded:
+        if key not in names:
+            friendly.pop(key, None)
+    for key, name in names.items():
+        if name and loaded.get(key) != name:
+            friendly[key] = name
+    if friendly:
+        claim["friendly"] = friendly
+    else:
+        claim.pop("friendly", None)
+    if not claim:
+        doc.pop("claim", None)
 
 
 def _uid_key(rows: OscRows, key: str) -> str:
@@ -476,13 +527,18 @@ def save(rows: OscRows | None = None, who: str = "") -> bool:
     error dialog); raises OSError when the write failed."""
     source = _rows(rows)
     inputs = _clean(source.to_dict())
+    layout = store.normalize_layout(source.layout)
+    names = dict(source.names)
+    loaded = dict(getattr(source, "names_loaded", {}) or {})
 
     def change(doc: dict) -> None:
         _put_identity(doc)
         doc[KEY] = inputs
+        _put_layout(doc, layout, names, loaded)
 
     if not store.update_path(path(), change, who or WHO):
         return False
+    source.names_loaded = names
     source.mark_saved()
     return True
 

@@ -81,11 +81,14 @@ def test_remove_script_asks_the_shared_question(run: dict) -> None:
 
 
 def test_osc_clear_is_red_and_asks(run: dict) -> None:
-    assert run["osc_clear_class"].startswith("DangerButton")
+    # 09 S135, S136: no footer; Clear… is a red row in the right-click menu.
+    assert run["osc_footer_clear"] is False
+    assert run["osc_clear_row"] == {"text": "Clear…", "danger": True, "enabled": True}
     q = run["osc_question"]
     assert q["title"] == "Clear OSC inputs?"
     assert q["action"] == "Clear OSC Inputs"
     assert run["osc_esc_closed"]
+    assert run["osc_rows_after_esc"] == 1, "Esc cleared the OSC inputs"
 
 
 def test_screen_background_uses_the_picture_chooser(run: dict) -> None:

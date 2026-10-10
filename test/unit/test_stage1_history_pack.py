@@ -490,7 +490,7 @@ def _pack_map(**extra: object) -> dict:
         "device": "pJoy Pro",
         "direction": "source",
         "claim": {"buttons": [5], "axes": [], "hats": [], "keys": [], "friendly": {}},
-        "catalog": {"rowHeight": 44},
+        "layout": {"groups": ["G44"]},
         "pack": {"exportedName": "pJoy Pro", "format": 2},
         **extra,
     }
@@ -608,7 +608,7 @@ def test_a_wire_import_that_fails_partway_puts_everything_back(
 def test_undo_import_keeps_a_later_save(folder: Path, tmp_path: Path) -> None:
     path = write_module(folder, "pjoy_pro", stick_doc())
     pack = _write_zip(tmp_path / "p.zip", {"map.json": _pack_map()})
-    assert device_pack.apply_zip(pack, "pJoy Pro", {"items": ["in.catalog"]})["ok"]
+    assert device_pack.apply_zip(pack, "pJoy Pro", {"items": ["in.groups"]})["ok"]
     later = json.loads(path.read_text(encoding="utf-8"))
     later["calibration"] = {"1": [-30000, -50, 50, 30000, True]}
     module_file.write_json(path, later)  # a later Module Setup or Calibration save
@@ -627,7 +627,7 @@ def test_undo_import_with_another_profile_open_puts_back_only_the_files(
     target = new_profile(monkeypatch)
     map_button(target, stick_uid(), 3, 3)
     result = device_pack.apply_zip(
-        pack, "pJoy Pro", {"items": ["in.catalog", "wire:Default"]}
+        pack, "pJoy Pro", {"items": ["in.groups", "wire:Default"]}
     )
     assert result["ok"], result
     imported = mapped(target, stick_uid())

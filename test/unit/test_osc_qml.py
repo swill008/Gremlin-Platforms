@@ -2,13 +2,21 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The OSC page and its Add / Import windows (D-09-OSC-INPUT, D-09-OSC-FAULTS):
+"""The OSC page's Add / Import windows (D-09-OSC-INPUT, D-09-OSC-FAULTS):
 the Add window sends all its settings (mode, Message only / + data, source
 P1..Pn, axis range, trigger + delay) to createConfiguredInput; Listen and
 Bulk capture pass the same settings; the Listening box's button is "Stop";
-Delete asks the shared question first; Edit Settings… opens an input again;
-a changed address that fails shows the model's error on the message line;
-Import shows the model's result and its help names the suffixes.
+Edit Settings… opens an input again, its type locked while it has actions;
+Import's help names the suffixes and its text reaches the model.
+
+The windows are hosted as qml/OscPage.qml hosts them (09 S129, S135: Add…,
+Import… and Edit Settings… are right-click menu rows now, no footer or
+pencil menu): openAdd() is resetFields() + open(), Edit Settings… is
+openForEdit(uid, inputSettings(uid)), OK goes to createConfiguredInput and
+Import's OK to importInputs. The page's own parts (Delete asks first,
+Change Address… shows the model's error, Import's result on the message
+line) are driven on the real page, from its right-click menu, in
+osc_page_companion_smoke.py (test_osc_page_companion.py).
 
 The real QML runs off-screen in a child process (this file run as a script)
 against a stand-in model that records every call, printing "RESULT name value".
@@ -27,6 +35,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _HARNESS = r"""
 import QtQuick
 import QtQuick.Controls
+import Gremlin.Device
 import Gremlin.Style
 
 ApplicationWindow {
@@ -40,10 +49,36 @@ ApplicationWindow {
         property var icons: ({"edit": "E", "remove": "X"})
     }
 
-    OscDevice {
-        id: _osc
-        objectName: "oscPage"
-        anchors.fill: parent
+    OscDeviceManagementModel { id: _devices }
+
+    // As OscPage.qml hosts and opens them.
+    OscAddDialog {
+        id: _addDialog
+        objectName: "oscAdd"
+        deviceModel: _devices
+        onAccepted: (settings) => _devices.createConfiguredInput(settings)
+    }
+
+    OscImportDialog {
+        id: _importDialog
+        onAccepted: (text) => _devices.importInputs(text)
+    }
+
+    function openAdd() {
+        _addDialog.resetFields()
+        _addDialog.open()
+        return true
+    }
+
+    function editSettings(uid) {
+        _addDialog.openForEdit(uid, _devices.inputSettings(uid))
+        return true
+    }
+
+    function openImport() {
+        _importDialog.resetFields()
+        _importDialog.open()
+        return true
     }
 }
 """
@@ -336,8 +371,17 @@ def _smoke() -> None:
     def visible(name: str) -> bool:
         return find(name) is not None
 
-    # 1. Typed Add, Axis with a range: the whole map reaches the model.
-    click_text("Add")
+    def call(fn: str, *args: object) -> None:
+        # The page's own function behind the menu row (OscPage.qml).
+        QtCore.QMetaObject.invokeMethod(
+            win, fn, QtCore.Qt.ConnectionType.DirectConnection,
+            QtCore.Q_RETURN_ARG("QVariant"),
+            *[QtCore.Q_ARG("QVariant", a) for a in args],
+        )
+        QtTest.QTest.qWait(150)
+
+    # 1. Add Inputs › Add…, typed, Axis with a range: the whole map reaches the model.
+    call("openAdd")
     set_text("oscCmd", "/fader/2")
     click("oscModeAxis")
     report("range-shown", visible("oscRangeRow"))
@@ -354,7 +398,7 @@ def _smoke() -> None:
 
     # 2. Listen: same settings go to the model; the box's button is Stop and stops.
     calls.clear()
-    click_text("Add")
+    call("openAdd")
     click("oscMessageData")
     click("oscListen")
     report("listen-settings", last("listenForCommand"))
@@ -373,7 +417,7 @@ def _smoke() -> None:
 
     # 3. Bulk capture: the window's settings, P1..Pn from the values.
     calls.clear()
-    click_text("Add")
+    call("openAdd")
     click("oscModeButton")
     click("oscBulk")
     click("oscListen")
@@ -389,22 +433,9 @@ def _smoke() -> None:
     click("oscOk")
     report("trigger-add", last("createConfiguredInput"))
 
-    # 4. Delete asks the shared question first.
+    # 4. Edit Settings… (right-click menu): opens with the input's settings.
     calls.clear()
-    deletes = [i for i in items() if i.isVisible() and i.property("text") == "X"]
-    click_item(deletes[0] if deletes else None, "delete button")
-    report("delete-before-confirm", last("deleteInput"))
-    dialog = win.findChild(QtCore.QObject, "confirmDialog")
-    report("confirm-open", dialog is not None)
-    report("confirm-undoable", bool(dialog and dialog.property("undoable")))
-    click_text("Delete")
-    report("delete-after-confirm", last("deleteInput"))
-
-    # 5. Edit Settings… on the pencil menu: opens with the input's settings.
-    calls.clear()
-    edits = [i for i in items() if i.isVisible() and i.property("text") == "E"]
-    click_item(edits[0] if edits else None, "edit button")
-    click_text("Edit Settings…")
+    call("editSettings", "u1")
     report("edit-asked", last("inputSettings"))
     report("edit-range-shown", visible("oscRangeRow"))
     report("edit-locked", [
@@ -415,38 +446,13 @@ def _smoke() -> None:
     click("oscOk")
     report("edit-saved", last("updateInputSettings"))
 
-    # Change Address… with a bad address: the model's error on the message line.
-    click_item(edits[0] if edits else None, "edit button")
-    click_text("Change Address…")
-    QtTest.QTest.qWait(150)
-    text_dialog = None
-    for obj in win.findChildren(QtCore.QObject):
-        if obj.metaObject().indexOfProperty("allowBlank") >= 0:
-            text_dialog = obj
-    if text_dialog is not None:
-        expr = QtQml.QQmlExpression(
-            QtQml.qmlContext(text_dialog), text_dialog, 'accepted("fader")'
-        )
-        expr.evaluate()
-        QtTest.QTest.qWait(150)
-    report("rename-call", last("changeName"))
-    message = next(
-        (i for i in items() if i.objectName() == "messageText"
-         and i.parentItem() and i.parentItem().parentItem()
-         and i.parentItem().parentItem().objectName() == "messageLine"
-         and "Osc" not in str(i.parentItem().parentItem().parentItem())),
-        None,
-    )
-    report("rename-error", message.property("text") if message else None)
-
-    # 6. Import: help names the suffixes; the result shows on the message line.
-    click_text("Import")
+    # 5. Add Inputs › Import…: help names the suffixes; the text reaches the model.
+    call("openImport")
     help_item = find("oscImportHelp")
     report("import-help", help_item.property("text") if help_item else None)
     set_text("oscImportText", "/a A\n/b, BNP")
     click("oscImportOk")
     report("import-call", last("importInputs"))
-    report("import-result", message.property("text") if message else None)
     finish()
 
 
@@ -479,7 +485,7 @@ def _run(tmp_path: pathlib.Path) -> tuple[dict[str, object], list[str]]:
     return got, errors + warns
 
 
-def test_osc_add_import_and_rows_reach_the_model(tmp_path: pathlib.Path) -> None:
+def test_osc_add_listen_edit_and_import_reach_the_model(tmp_path: pathlib.Path) -> None:
     got, problems = _run(tmp_path)
     assert problems == [], problems
 
@@ -513,14 +519,8 @@ def test_osc_add_import_and_rows_reach_the_model(tmp_path: pathlib.Path) -> None
     assert trig["source"] == 2
     assert trig["trigger"] is True and trig["delay_ms"] == 500
 
-    assert got["delete-before-confirm"] is None
-    assert got["confirm-open"] is True
-    assert got["confirm-undoable"] is True
-    (deleted,) = got["delete-after-confirm"]
-    assert deleted in ("u1", "u2")
-
     (asked,) = got["edit-asked"]
-    assert asked in ("u1", "u2")
+    assert asked == "u1"
     assert got["edit-range-shown"] is True
     # An axis with actions stays an axis: Change and Button are greyed.
     assert got["edit-locked"] == [False, False, True]
@@ -529,16 +529,12 @@ def test_osc_add_import_and_rows_reach_the_model(tmp_path: pathlib.Path) -> None
     assert edited["mode"] == "axis" and edited["range_max"] == 4
     assert edited["range_min"] == -1 and edited["source"] == 1
 
-    assert got["rename-call"] == [asked, "fader"]
-    assert got["rename-error"] == "An OSC address must start with /."
-
     help_text = got["import-help"]
     for piece in ("A: axis", "BNP", "C: change",
                   "E: encoder, added as an encoder axis",
                   "unknown suffix", "space or a comma"):
         assert piece in help_text, piece
     assert got["import-call"] == ["/a A\n/b, BNP"]
-    assert got["import-result"] == "Added 2, skipped 1."
 
 
 if __name__ == "__main__":

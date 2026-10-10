@@ -100,10 +100,11 @@ function commandList() {
           run: function() { openTool("DialogAutoMapper.qml") } },
         { id: "tools.manageModes", text: "Manage Modes", group: "Tools › Mapping",
           run: function() { openTool("DialogManageModes.qml") } },
-        // The OSC Monitor (D-09-OSC-MONITOR): OSC messages in and out.
+        // The OSC Monitor (D-09-OSC-MONITOR, 09 S138): the OSC page with
+        // its Monitor shown.
         { id: "tools.oscMonitor", text: "OSC Monitor", group: "Tools",
           keywords: "osc messages traffic network incoming outgoing",
-          run: function() { openTool("WindowOscMonitor.qml") } },
+          run: function() { openOscMonitor() } },
         { id: "tools.history", text: "History", group: "Tools",
           keywords: "undo restore versions changes saved",
           run: function() { openToolWith("DialogHistory.qml", { filter: "" }) } },

@@ -74,8 +74,8 @@ def test_s22_copy_a_devices_current_settings(lib: dict, scratch: Path) -> None:
     assert _targets(profile, uid, "Default") == {1: (2, 5)}
     assert _targets(profile, uid, "Landing") == {4: (1, 4)}
     # Its module file too; the source keeps everything (S22).
-    assert _doc(name)["catalog"] == {"rowHeight": 30}
-    assert _doc("Other Stick")["catalog"] == {"rowHeight": 30}
+    assert _doc(name)["view"] == {"rowHeight": 30}
+    assert _doc("Other Stick")["view"] == {"rowHeight": 30}
     assert _targets(profile, _OTHER, "Default") == {1: (2, 5)}
     # Only the target's autosave is kept; nothing else in the Library and no
     # files left behind.

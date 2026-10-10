@@ -41,7 +41,7 @@ def test_save_keeps_calibration_and_other_keys(maps: pathlib.Path) -> None:
                 "device": "Stick R",
                 "claim": {"buttons": [1], "axes": [1], "hats": []},
                 "calibration": {"1": [-32768, -10, 10, 32767, True]},
-                "catalog": {"rowHeight": 40},
+                "layout": {"groups": ["G40"]},
                 "laterKey": {"kept": True},
                 "nodes": [{"id": "old"}],
             }
@@ -59,7 +59,7 @@ def test_save_keeps_calibration_and_other_keys(maps: pathlib.Path) -> None:
     assert hardware_profile.HardwareProfile().save("Stick R", json.dumps(payload))
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["calibration"] == {"1": [-32768, -10, 10, 32767, True]}
-    assert saved["catalog"] == {"rowHeight": 40}
+    assert saved["layout"]["groups"] == ["G40"]
     assert saved["laterKey"] == {"kept": True}
     assert saved["claim"]["axes"] == [1]
     # What the Button Map writes is its own.

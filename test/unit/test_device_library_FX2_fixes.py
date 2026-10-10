@@ -261,12 +261,12 @@ def test_apply_zip_onto_an_unplugged_twin_writes_its_own_file(
     result = device_pack.apply_zip(
         lib["pack"],
         "pJoy Pro",
-        {"items": ["in.catalog"]},
+        {"items": ["in.view"]},
         record_undo=False,
         target_guid=second,
     )
     assert result["ok"], result
-    assert _twin_doc("pjoy_pro_2")["catalog"] == {"rowHeight": 40}
+    assert _twin_doc("pjoy_pro_2")["view"] == {"rowHeight": 40}
     assert _own_path(lib["name"]).read_bytes() == first
 
 
@@ -283,7 +283,7 @@ def test_undo_on_an_unplugged_twin_never_writes_the_other_twin(
         imported["setup"]["key"], "pJoy Pro (2)", second, ["appearance"], [], []
     )
     assert done["ok"], done
-    assert _twin_doc("pjoy_pro_2")["catalog"] == {"rowHeight": 40}
+    assert _twin_doc("pjoy_pro_2")["view"] == {"rowHeight": 40}
     _unplug_twin(twins)
     first = _own_path(lib["name"]).read_bytes()
     undone = library_copy.undo_last()

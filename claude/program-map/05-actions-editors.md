@@ -32,7 +32,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | `gremlin/modules/output.py` (896; `first_claimed_output`, `vjoy_driver_ids`, `driver_claim`, new 2026-10-10; owned by page 03/06) | `first_claimed_output(kinds, exclude)` → (vJoy id, kind, input id) or None: the first output a vJoy output module claims (vJoy number order, kinds in the order given, ids ascending; only output vJoy devices; only ids the driver has). Used by new Condition vJoy checks, Map to vJoy and the macro editor's new vJoy step (S113, S115). |
 | `joystick_gremlin.py` (663-666, 840-862, 924-926) | Registers `action-priorities`; `update_action_priorities` at start; plugin manager start. |
 | `qml/BindingCatalog.qml` (2225) | Configuration page: filters, Undo/Redo (the shared `UndoBar` `catalogUndoBar`: "Last change" / "Undone", named steps), rows, Delete (red `DangerButton` `catalogDelete`, asks the shared question "Delete Action")/History/Add Action buttons, picture chooser `FilePicker` kind "picture", pane (title, X, OK, "Close pane after OK", width grip), leave/discard prompts, Appearance panel (owned by the Configuration Appearance page). |
-| `qml/InputConfiguration.qml` (311) | Shows an `InputItemModel`: list of `InputItemBinding` (pane, Keyboard page) or inline mode. |
+| `qml/InputConfiguration.qml` (264) | Shows an `InputItemModel`: list of `InputItemBinding` for the panes, the binding catalog and the Keyboard page only. From 2026-10-10 the OSC page's live inline path is gone (`OscDevice.qml` removed; the OSC page uses the shared `ActionPane.qml`, 09 S129). |
 | `qml/InputItemBinding.qml` (121), `qml/InputItemBindingConfigurationHeader.qml` (269) | One binding: Note field (root action label), ActionSelector, warnings icon, Remove binding (shared question, red Remove Binding), axis/hat-as-button settings, "Activate on". |
 | `qml/InputBehavior.qml` (92) | "Treat as" Button/Axis/Hat (asks the shared question when actions would go: "Change and Remove", "This can't be undone."). |
 | `qml/ActionSelector.qml` (61) | Combo of `compatibleActions` + **Add Action** button. |
@@ -268,7 +268,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | RB13 | Duplicated logic | `macro/__init__.py:710` and `:976` | the macro step type table is written twice (model and `_from_xml`) | CONFIRMED |
 | RB14 | Duplicated logic | `merge_axis` 206-302 vs `dual_axis_deadzone` 133-195 | pick list, "+", switch-instance code copied; they already differ (numbered names vs fixed "Dual Axis Deadzone") | CONFIRMED |
 | RB15 | Duplicated logic | `map_to_vjoy` 51-193 vs `map_to_logical_device` 52-208 | two copies of the relative-axis loop | CONFIRMED |
-| RB16 | Duplicated logic | `binding_catalog.py` pane vs `logical_layout.py` `_begin_pane`/`_replace_sequences`/`_snapshot` | two pane/draft/Undo implementations | CONFIRMED (map 2) |
+| RB16 | Duplicated logic | `binding_catalog.py` pane vs `control_layout.py` `_begin_pane`/`_replace_sequences`/`_snapshot` (moved from `logical_layout.py` 2026-10-10; now shared by the Logical Device and OSC pages, so two implementations remain, not three) | two pane/draft/Undo implementations | CONFIRMED (map 2) |
 | RB17 | Duplicated logic | `qml/action_kinds.js` | kinds per action name kept in JS, apart from the plugins | CONFIRMED (small) |
 | RB18 | Memory / ownership of models | `backend.py:465`, `ui/profile.py:760-765` | `getInputItem` makes a new `InputItemModel` parented to Backend on every selection (never freed); `InputItemModel.data` makes a new `InputItemBindingModel` on each call, each connected to the global `inputItemChanged` | CONFIRMED in code; growth SUSPECTED (not measured) |
 | RB19 | Run uses unfinished actions | `code_runner.py:205`, `base_classes.py:577`, `reference/__init__.py:141` | Run builds functors from the in-memory profile, unfinished actions included; a Reference has `functor = None`, so an input whose OK'd draft still holds a Reference placeholder makes `AbstractFunctor.__init__` raise and Run fail | CONFIRMED `functor = None` and no filter; failure SUSPECTED (not run) |
@@ -296,15 +296,15 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S12** It should list the claimed inputs of one device, each with its actions, in the mode shown on the toolbar. [help: Adding actions] [glossary: Claim]
 - **S13** With no claimed inputs it should say so and point to Module Setup; when filters hide everything it should say "No inputs match the current filters." with Clear Filters. [user confirmed 2026-10-06; was code only]
 - **S14** An input with no actions should show **No actions**. [glossary] [test-plan: GLOSSARY-2]
-- **S15** "Move inputs with no actions to the end" should list them together under a **No actions** heading. [help: Adding actions] (today the heading reads "Unmapped": G5)
+- **S15** "Move inputs with no actions to the end" should list them together under a **No actions** heading. [help: Adding actions] (today the heading reads "Unmapped": G5) [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q2: removed; the "No actions in this mode" filter and the Order menu replace it, S123), batch C]
 - **S16** Each child row should name the action type and where it goes (vJoy output label, keys, mouse button or "Motion", profile/program/sound file name, mode). [tracker: B5/B6 via BUGS-1] [test: test_catalog_actions.py::test_summarize_covers_every_plugin_tag]
 - **S17** Containers (Chain, Tempo, Condition, Double Tap, Smart Toggle, Description, Reference) should show the actions inside them; an empty container shows as an empty sequence. [test: test_catalog_actions.py::test_wrapper_with_child_shows_the_child] [test: test_catalog_actions.py::test_wrapper_without_child_is_an_empty_sequence]
-- **S18** The Type filter should offer All, Map to vJoy, keyboard, mouse, Xbox, Macro, Change Mode, Other, No actions; the Output filter lists the destinations in use. [test-plan: IC-01]
-- **S19** Rows should show live LEDs/bars when Appearance turns them on, but never while editing is locked. [user confirmed 2026-10-06; was code only]
+- **S18** The Type filter should offer All, Map to vJoy, keyboard, mouse, Xbox, Macro, Change Mode, Other, No actions; the Output filter lists the destinations in use. [test-plan: IC-01] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q3: the Type and Output filters are boxes inside the shared Find bar, S124), batch C]
+- **S19** Rows should show live LEDs/bars when Appearance turns them on, but never while editing is locked. [user confirmed 2026-10-06; was code only] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q10: live lights/bars and jump-to-pressed-input stay on Configuration as an optional decoration of the shared tree, off on Logical and OSC, S131), batch C]
 
 ### C. The action pane (draft, OK, Cancel)
 
-- **S20** Clicking a parent row, a child row or Add Action should open the action editor beside the list; a parent opens all the input's actions, a child only that one. [help: Adding actions] [test-plan: IC-03..05]
+- **S20** Clicking a parent row, a child row or Add Action should open the action editor beside the list; a parent opens all the input's actions, a child only that one. [help: Adding actions] [test-plan: IC-03..05] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q5: a row click opens the pane; the right-click menu holds Add Action, History, Delete, Rename, S126), batch C] (was: Add Action and Delete buttons on the row)
 - **S21** Edits in the pane should not change the input until OK. [test: test_pane_draft.py::test_draft_does_not_change_the_parent_until_ok]
 - **S22** OK should write the pane's actions onto the input, keep the profile unsaved until File > Save, and keep the pane open on a fresh copy unless "Close pane after OK" is ticked. [help: Adding actions] [test-plan: IC-11]
 - **S23** "Close pane after OK" and the pane width should be remembered between sessions. [test-plan: IC-09..13]
@@ -315,16 +315,16 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S28** Changing the toolbar Mode should close a pane with no changes; a pane with changes stays and OK writes to its own input and mode, named "(in <mode>)". [tracker: AU-12] [test: test_audit_editing.py::test_ok_after_a_mode_change_stays_on_its_input_and_undoes]
 - **S29** Renaming the pane's mode should keep the pane on the renamed mode; deleting it should close the pane and say "The mode X was deleted, so its action editor closed." [test-plan: AUDIT2-C-MODES] [test: test_audit_editing.py::test_steps_follow_a_mode_rename_and_go_with_a_deleted_mode]
 - **S30** Loading another profile should close an open pane. [test-plan: F-05]
-- **S31** The list's Delete should be hidden and refused for the input open in the pane. [tracker: AU-28, AU-29] [test: test_audit_editing.py::test_the_list_delete_waits_while_the_pane_edits_that_input]
+- **S31** The list's Delete should be hidden and refused for the input open in the pane. [tracker: AU-28, AU-29] [test: test_audit_editing.py::test_the_list_delete_waits_while_the_pane_edits_that_input] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q5: Delete is in the right-click menu, S126), batch C]
 - **S32** While the profile runs, editing should be locked (pane contents greyed, Undo/Redo off). [help: Adding actions] [user confirmed 2026-10-06; was code only for the pane opening at all: Q11]
 - **S33** A draft should never make the profile look unsaved. [tracker: G-LIBLEAK] [test: test_profile_unused_actions.py::test_an_open_draft_is_not_unsaved_work]
 - **S34** Saving with the pane open should leave the draft untouched and write only actions inputs use. [user decision: map 2 verification list] (not tested: G9)
 
 ### D. Undo and Redo (Configuration page)
 
-- **S35** Undo/Redo should step back and forward through each OK and each Delete, 50 steps. [help: Adding actions] [test: test_catalog_undo.py::test_ok_undoes_and_redoes] [test: test_catalog_undo.py::test_a_delete_undoes_and_redoes]
+- **S35** Undo/Redo should step back and forward through each OK and each Delete, 50 steps. [help: Adding actions] [test: test_catalog_undo.py::test_ok_undoes_and_redoes] [test: test_catalog_undo.py::test_a_delete_undoes_and_redoes] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q6: one Undo for OK, Delete and layout changes (groups, order, names), S127), batch C]
 - **S36** Undo/Redo should wait while an action is open in the pane, and while the profile runs. [help: Adding actions] [test-plan: UNDO-CONFIGURATION]
-- **S37** Opening another device or profile should start with no steps. [help: Adding actions] [test: test_catalog_undo.py::test_another_profile_starts_without_steps]
+- **S37** Opening another device or profile should start with no steps. [help: Adding actions] [test: test_catalog_undo.py::test_another_profile_starts_without_steps] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q6: layout steps survive a profile load (as 06 S83); switching device clears all steps, S127), batch C] (was: every step dropped on another profile)
 - **S38** A step whose mode was renamed should follow the rename; a step for a deleted mode should be dropped. [tracker: AU-13, AU-79]
 - **S39** A step that can't be played should stay and say "That change couldn't be put back." [test: test_audit2_undo.py::test_configuration_undo_that_cant_be_played_keeps_its_step]
 - **S40** Undo should never make the profile unloadable; an unfinished Merge Axis, Deadzone or Reference placeholder is left out of the step. [test-plan: AUDIT2-B-UNDO] [test: test_audit2_undo.py::test_a_snapshot_of_an_unfinished_merge_axis_works]
@@ -372,12 +372,12 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 
 ### H. Keyboard page
 
-- **S72** It should list each added key once, with the actions of the mode shown. [tracker: AU-32] [test: test_mode_refresh_and_add_key.py::test_a_key_in_two_modes_is_listed_once_with_the_shown_modes_actions]
-- **S73** Add Key should add the pressed key to the mode being viewed and select it. [test: test_mode_refresh_and_add_key.py::test_add_key_goes_into_the_given_mode]
-- **S74** A selected key should show its actions in the editor, where actions can be added. [user confirmed 2026-10-06; was code only] (see Q4: a new key has no binding to add to)
-- **S75** Delete should ask, remove only this mode's actions for that key, and show only on keys that have actions in this mode (or none in any mode). [tracker: AU-31, AU-90, AU-100] [test: test_audit2_keyboard_calibration.py::test_a_key_only_in_another_mode_is_not_in_this_one]
-- **S76** Deleting the last key should let the editor go of it. [test: test_audit2_keyboard_calibration.py::test_deleting_the_last_key_lets_the_editor_go_of_it]
-- **S77** Rename should give the key an input name saved in the profile. [user confirmed 2026-10-06; was code only]
+- **S72** It should list each added key once, with the actions of the mode shown. [tracker: AU-32] [test: test_mode_refresh_and_add_key.py::test_a_key_in_two_modes_is_listed_once_with_the_shown_modes_actions] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q7: the Keyboard page moves onto the same shared layout, S128), batch C]
+- **S73** Add Key should add the pressed key to the mode being viewed and select it. [test: test_mode_refresh_and_add_key.py::test_add_key_goes_into_the_given_mode] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q7: the Keyboard page moves onto the same shared layout, S128), batch C]
+- **S74** A selected key should show its actions in the editor, where actions can be added. [user confirmed 2026-10-06; was code only] (see Q4: a new key has no binding to add to) [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q7: the Keyboard page moves onto the same shared layout, S128), batch C]
+- **S75** Delete should ask, remove only this mode's actions for that key, and show only on keys that have actions in this mode (or none in any mode). [tracker: AU-31, AU-90, AU-100] [test: test_audit2_keyboard_calibration.py::test_a_key_only_in_another_mode_is_not_in_this_one] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q7: the Keyboard page moves onto the same shared layout, S128), batch C]
+- **S76** Deleting the last key should let the editor go of it. [test: test_audit2_keyboard_calibration.py::test_deleting_the_last_key_lets_the_editor_go_of_it] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q7: the Keyboard page moves onto the same shared layout, S128), batch C]
+- **S77** Rename should give the key an input name saved in the profile. [user confirmed 2026-10-06; was code only] [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q7: the Keyboard page moves onto the same shared layout, S128), batch C]
 - **S78** Keyboard page edits should take effect at once (no OK, no Undo). [user confirmed 2026-10-06; was code only] (doubtful: Q5)
 - **S79** Only keys the Keyboard module claims should fire; once a keyboard choice is saved, unclaimed keys do nothing. [help: A key binding does not fire] [tracker: AU-23]
 
@@ -431,6 +431,19 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 - **S120** A new Merge Axis or Dual Axis Deadzone added with Add Action should start with an instance chosen: a new one, named as "+" would name it (for example "Merge Axis 1"). A loaded action keeps its saved instance. [user decision 2026-10-10: action editor matrix AX1]
 - R11a and R11d: no behaviour change. [user decision 2026-10-10: D-05-R16]
 
+### M. Configuration page on the shared base (D-05-CFG-PAGE, 2026-10-10, batch C, not built yet)
+- **S121** The Configuration page should be built in the style of the Logical Device page, on the shared pieces (`control_layout.py`, `ActionPane.qml`, `ControlTree.qml`, `ControlFindBar.qml`; 09 S129), streamlined: one action pane and one draft/Undo implementation for both pages (closes RB16); its header controls move into the page's own controls on the bar under the toolbar (01 S58a). Starts after OSC batch 1 lands. [changed 2026-10-10, user: D-05-CFG-PAGE]
+- **S122** Groups, order and input names on the Configuration page should be kept in the device's input module file, shared by every profile (like the Logical Device, D-04-LD-FILE). [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q1)]
+- **S123** "Move inputs with no actions to the end" is removed; a **No actions in this mode** filter and the **Order** menu replace it. [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q2)] (was: S15)
+- **S124** The Type and Output filters (S18) stay, as boxes inside the shared Find bar. [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q3)]
+- **S125** One shared Appearance for the Configuration, Logical Device and OSC pages, kept in program settings; the module file's `catalog` key and "Copy Appearance from another module" go (03 section 2). [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q4)] [open: 09 S30 / D-09-OSC-PAGE OP5 say the OSC page has no Appearance panel now; question CF-1 in section 9]
+- **S126** Rows work as on the Logical Device page: clicking a row opens the pane; the right-click menu holds **Add Action**, **History**, **Delete** and **Rename**. [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q5)] (was: S20, S31 row buttons)
+- **S127** One Undo covers OK, Delete and layout changes (groups, order, names); layout steps survive a profile load (as 06 S83); switching device clears all steps. [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q6)] (was: S35-S37)
+- **S128** The Keyboard page moves onto the same shared layout in the same batch (S72-S79 hold on it unless this section says otherwise). [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q7)]
+- **S129** Rename should write the module's friendly name, the one Module Setup edits (03 S121). [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q8)]
+- **S130** Both device selectors (the tab strip and previous/next) stay for now; a single selector is a later, separate change. [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q9 b)]
+- **S131** Live lights/bars and jump-to-pressed-input stay on the Configuration page as an optional decoration of the shared tree, off on the Logical Device and OSC pages. [changed 2026-10-10, user: D-05-CFG-PAGE (CF-Q10)] (was: S19)
+
 ### K. Send OSC
 
 - **S109** Send OSC should be offered on buttons, keys and axes. [changed 2026-10-09, user: D-09-OSC-OUTPUT]
@@ -458,6 +471,7 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 - **Q17** A macro "Joystick" step emits a made-up event as if from a stick. Does it go through the input module's claims (it's sent where raw events are)? *Recommend:* send it through the input module like a real event, so an unclaimed control does nothing, as everywhere else.
 - **Q18** Unused code: catalog quick editor (`openSequence`, `editingHid`, `quickHid`; test-plan S-03), `addSequence` (writes with no Undo step), `vjoyDevices`, `InputItemModel.newActionSequence` (C9), `ActionPriorityListModel`, `device._description_from_item` for keys. *Recommend:* remove in one clean-up commit.
 - **Q19** `time.time()` remains in Chain and in the binding-warning rate limit (AU-62 left older uses). *Recommend:* Chain moves to `gremlin.clock` (it is runtime and tests would like to step it); leave the UI rate limit.
+- **CF-1** (2026-10-10, Configuration rewrite) D-05-CFG-PAGE CF-Q4 says one shared Appearance for the Configuration, Logical Device and OSC pages, while 09 S30 / D-09-OSC-PAGE (OP5, same day) say the OSC page has no Appearance panel now, and CF-Q10 keeps live lights off on Logical and OSC. Which wins for the OSC page? *Recommend:* the shared Appearance setting covers all three, but the OSC page shows no Appearance panel until asked (OP5 stands). Open for the lead/user.
 - **Q20** Test plan IC-06 says catalog Delete has no confirmation; WORKFLOW-3 (C8) says it asks, and the code asks. *Recommend:* mark IC-06 superseded.
 
 ## 10. Known gaps
@@ -475,7 +489,7 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 | G7 | Tempo/Double Tap/Smart Toggle timers outlive Stop (AU-116, S91) | `tempo:174`, `double_tap:191`, `smart_toggle:84` |
 | G8 | Macro stuck-driver key held; relative-axis loop may survive a quick Stop/Run (AU-117) | `macro.py`, `map_to_vjoy:139`, `map_to_logical_device:144` |
 | G9 | Save with the pane open: `drop_invalid_actions` edits every library action, drafts included (map 2; not tested) | `profile.py:702, 914` |
-| G10 | Keyboard page: possibly no way to add an action to a new key (Q4) | `InputConfiguration.qml`, `KeyboardManagerModel.addKey` |
+| G10 | Keyboard page: possibly no way to add an action to a new key (Q4). Closed 2026-10-10 (GAP-OP2): `KeyboardPaneModel` already shows one empty binding; `test_first_action_empty_input.py` | `InputConfiguration.qml`, `KeyboardManagerModel.addKey` |
 | G11 | Keyboard page has no draft, no Undo, and action Remove doesn't ask (Q5) | Main `InputConfiguration`, `ActionNode.qml:246` |
 | G12 | Pane OK can overwrite changes made by History Restore / Auto Mapper / Device Pack while it was open (Q8) | `binding_catalog.py:1187-1217` |
 | G13 | `getInputItem` creates an empty input for every key or input viewed, and a model per selection that is never freed (RB18) | `backend.py:458-465` |
@@ -498,6 +512,17 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 | AX1 | A Merge Axis or Dual Axis Deadzone added with Add Action started with no instance chosen (S120). Fixed 2026-10-10 | `action_plugins/axis_pair.py`, `merge_axis`, `dual_axis_deadzone` |
 | AX2 | Dual Axis Deadzone editor: its Add Action buttons were cut off ("Add A"). Fixed 2026-10-10 (no behaviour change) | `DualAxisDeadzoneAction.qml` |
 | O2 | Send OSC editor ran under the pane's scrollbar. Fixed 2026-10-10 (no behaviour change) | `SendOscAction.qml` |
+| CF-G1 | (batch C, not built yet) S121: the Configuration page has its own list and pane (RB16); header controls sit above the list | `binding_catalog.py`, `BindingCatalog.qml` |
+| CF-G2 | (batch C, not built yet) S122: no groups, order or names on the Configuration page, nothing in the input module file | `binding_catalog.py`, module file |
+| CF-G3 | (batch C, not built yet) S123: "Move inputs with no actions to the end" still there; no "No actions in this mode" filter | `BindingCatalog.qml` |
+| CF-G4 | (batch C, not built yet) S124: Type/Output filters are separate boxes, not in the Find bar | `BindingCatalog.qml` |
+| CF-G5 | (batch C, not built yet) S125: Appearance per module file (`catalog` key); Copy Appearance from another module | `module_model` `catalogConfigJson` / `saveCatalogConfig` |
+| CF-G6 | (batch C, not built yet) S126: row buttons instead of row click + right-click menu | `BindingCatalog.qml` |
+| CF-G7 | (batch C, not built yet) S127: Undo covers only OK and Delete, dropped on a profile load | `binding_catalog.py` |
+| CF-G8 | (batch C, not built yet) S128: the Keyboard page has its own layout | `KeyboardManagerModel`, Keyboard QML |
+| CF-G9 | (batch C, not built yet) S129: Rename doesn't write the module's friendly name | `action_label.py`, module file |
+| CF-G10 | (batch C, not built yet) S130: nothing to change (both selectors kept); check after the move | `BindingCatalog.qml` |
+| CF-G11 | (batch C, not built yet) S131: live lights/bars and jump-to-pressed are not an optional decoration of the shared tree | `ControlTree.qml` |
 | SA1 | Split Axis editor overflows the pane: its label row hides the Add Action selector (matrix screenshot `split-axis_axis.png`). Fixed 2026-10-10 (89bb0bbb, no behaviour change; to-do 87). Note: `qml/LabelValueComboBox.qml`'s 250 dp minimum width forces the wrapping | `split_axis/SplitAxisAction.qml`, `qml/LabelValueComboBox.qml` |
 
 **Open tracker items for this part**
@@ -532,6 +557,7 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 - Per action at Run (`test/action_interaction/`, 2,300 lines): axis delta, auto-release, chain, condition, double tap, tempo, hat to buttons, macro, map to keyboard, merge axis, modes, pause/resume, smart toggle, split axis, treat as button.
 - Configuration page: `test_binding_catalog`, `test_catalog_actions`, `test_catalog_display`, `test_catalog_undo`, `test_undo_bar_labels` (catalog step labels), `test_config_pages_shared_pieces` (Keyboard Delete Key asks the shared question), `test_pane_draft`, `test_audit_editing`, `test_audit2_undo`, `test_audit3_actions_undo`, `test_profile_unused_actions`, `test_library_invalid_children`, `test_profile_missing_child_action`.
 - Editing models: `test_input_item_binding_model` (Treat as), `test_vjoy_selector_loads`.
+- First action on an empty input (2026-10-10, GAP-OP2): `test_first_action_empty_input.py` (12 cases: an empty input gets its first action through `Library.draft` on any device; G10 closed, 09 G-OSC29 stays open on the old OSC live path).
 - Keyboard page: `test_mode_refresh_and_add_key`, `test_audit2_keyboard_calibration`, `test_keyboard_gate`.
 - R16 fixes and findings (S60a, S85, S97, S112-S119; 2026-10-10): `test_splines` (3 new: control points), `test_action_merge` (round trip, stored name), `action_interaction/test_merge_axis.py::test_maximum_deflection` (its fixture's axis 1 / axis 2 swap fixed), `test_action_editor_fixes` (operation names and list), `test_action_run_command` (2 new), `test_map_to_keyboard_recording.py` (new: S85, S119), `test_core_plugins_paths.py` (new, 42 lines), `test_audit3_actions_undo` (2 new: Reference never offers Root), `test_macro_raw_steps.py` (new, 388 lines: S117, S113 macro part), `test_new_action_defaults.py` (new, 18: S113 condition part, S115, S116, S118).
 - Action editor matrix (2026-10-10, commit aa8b142a; `test/unit/action_matrix/`: `harness.py` 772, `conftest.py` 56, `_editor_child.py` 120, `test_harness_smoke.py` 113, `test_matrix_outputs.py` 535, `test_matrix_axis.py` 662, `test_matrix_flow.py` 512, `test_matrix_misc.py` 301): every action on the Configuration page and the Button Map, Logical Device and Keyboard panes: add, editor QML, fields, save/reload, Undo/Redo, run on fakes (Load Profile, Play Sound and Text to Speech with stand-ins). Pinned: `test_matrix_flow.py::test_flow_action[reference-key-pane_keyboard]` (S60, AE-reference-1), `test_root_action_qml_is_used` (R1), `test_matrix_axis.py` `test_add_starts_on_a_named_instance`, `test_second_add_numbering`, `test_load_keeps_the_saved_instance` (S120).
@@ -545,7 +571,7 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 - Run with an unfinished action in an input (Reference placeholder, Merge Axis with one axis) (RB19).
 - Add Action -> Merge Axis (Reuse) in the pane, edit, Cancel (RB2).
 - Save with the pane open (G9).
-- Keyboard page: add a key, then add its first action (G10); any Keyboard edit through the UI.
+- Keyboard page: any Keyboard edit through the UI (adding a key's first action covered 2026-10-10, G10).
 - History Restore / Auto Mapper / Device Pack while the pane is open (G12).
 - Map to Mouse motion from a hat; Map to Logical Device relative loop. (Load Profile action end to end and Play Sound / TTS at Run: covered 2026-10-10 by `action_matrix/test_matrix_misc.py` with stand-ins.)
 - Right-click menu quick adds and drag-and-drop of actions and bindings (QML only, no test).
@@ -581,6 +607,7 @@ are replaced by Q5 and Q10 below. Every question answered as recommended:
 | S43 | 2026-10-07 (D-05-S43-BOTHROWS): the Note shows on the Configuration list's input row and the Keyboard page's key row |
 | S60a, S112-S119, S85 and S97 changed | 2026-10-10 (D-05-R16; user approved R1-R11 and G-a, G-b): R16 fixes and findings (section 8 L) |
 | S120 | 2026-10-10 (D-05-AX1; user approved, action editor matrix AX1): a new Merge Axis or Dual Axis Deadzone from Add Action starts on its own named instance; a loaded one keeps its saved instance (section 8 L) |
+| S15, S18-S20, S31, S35, S37, S72-S77, S121-S131 | 2026-10-10 (D-05-CFG-PAGE; user: "go with your recommendations, approved, go ahead"; design rule: the Configuration page "in the same style of the Logical Device page ... keep the same theme and streamline as much as possible"; batch C, not built yet): Configuration and Keyboard pages on the shared base; layout in the input module file; filters in the Find bar; one shared Appearance in program settings (CF-1 open for OSC); row click + right-click; one Undo; Rename writes the friendly name; both device selectors kept; live lights optional |
 | S109-S111 | 2026-10-09 (D-09-OSC-OUTPUT; user: "go with your recommendations, approved, go ahead"): the Send OSC action |
 
 The section 8 statements (with the replacements above) are now the

@@ -112,8 +112,8 @@ ApplicationWindow {
     // The open page's item and its own controls for the bar (a page may
     // declare `property Component pageBar`; none means an empty bar).
     readonly property Item currentPageItem: {
-        var loaders = [_statusLoader, _outputLoader, _logicalLoader, _configSplitLoader,
-                       _scriptLoader, _settingsLoader]
+        var loaders = [_statusLoader, _outputLoader, _logicalLoader, _oscPageLoader,
+                       _configSplitLoader, _scriptLoader, _settingsLoader]
         for (var i = 0; i < loaders.length; i++)
             if (loaders[i].visible && loaders[i].item)
                 return loaders[i].item
@@ -600,6 +600,28 @@ ApplicationWindow {
         return _logicalLoader.item
     }
 
+    // The OSC page (09 S129): the Logical Device page's pane rules.
+    function oscPane() {
+        return _oscPageLoader.item
+    }
+
+    // Tools > OSC Monitor (09 S138): the OSC page with its Monitor shown.
+    property bool _oscMonitorWanted: false
+
+    function openOscMonitor() {
+        if (!uiState)
+            return
+        var card = _cardForGuid(uiState.oscDeviceGuid) || _moduleModel.cardMap("osc")
+        var page = oscPane()
+        if (page && uiState.currentRoom === "configuration" && uiState.currentTab === "osc") {
+            page.showMonitor()
+            return
+        }
+        _oscMonitorWanted = true
+        if (card)
+            openConfigurationForCard(card)
+    }
+
     function continueDisplayLeave() {
         var quitText = _quitPending ? "Appearance changes are not saved. Quit and they will be lost." : ""
         var catalog = catalogPane()
@@ -621,6 +643,11 @@ ApplicationWindow {
             logical.requestLeave()
             return
         }
+        var osc = oscPane()
+        if (osc && osc.hasUnsaved && osc.hasUnsaved()) {
+            osc.requestLeave()
+            return
+        }
         // The Keyboard page's draft (it has no leave prompt of its own).
         var keyboard = keyboardPane()
         if (keyboard && _paneChanged(keyboard)) {
@@ -633,8 +660,8 @@ ApplicationWindow {
             next()
     }
 
-    // The open action panes (the catalog's pane, the Keyboard page's draft
-    // and the Logical Device pane). Tools that change bindings behind a pane (Auto Mapper Create,
+    // The open action panes (the catalog's pane, the Keyboard page's draft,
+    // the Logical Device pane and the OSC page's pane). Tools that change bindings behind a pane (Auto Mapper Create,
     // History Restore, Device Pack import) close them first, or a later OK
     // would write the pane's old copy back (05 Q8, D-05-DRAFT-OUTDATED).
     function _actionPanes() {
@@ -649,6 +676,9 @@ ApplicationWindow {
         var logical = logicalPane()
         if (logical)
             panes.push(logical)
+        var osc = oscPane()
+        if (osc)
+            panes.push(osc)
         return panes
     }
 
@@ -741,6 +771,7 @@ ApplicationWindow {
 
     function cancelDisplayLeave() {
         _afterDisplayLeave = null
+        _oscMonitorWanted = false
         if (_quitPending) {
             _quitPending = false
             if (backend)
@@ -755,12 +786,12 @@ ApplicationWindow {
         return split ? split.inputConfig : null
     }
 
-    // Unsaved display options or an edited Logical or Keyboard action pane.
+    // Unsaved display options or an edited Logical, OSC or Keyboard action pane.
     function displayUnsaved() {
         var catalog = catalogPane()
         if (catalog && catalog.needsLeave && catalog.needsLeave())
             return true
-        var panes = [outputPane(), logicalPane()]
+        var panes = [outputPane(), logicalPane(), oscPane()]
         for (var i = 0; i < panes.length; ++i) {
             var pane = panes[i]
             if (pane && pane.hasUnsaved && pane.hasUnsaved())
@@ -2030,9 +2061,9 @@ ApplicationWindow {
             var logi = logicalPane()
             if (logi)
                 logi.setMode(uiState.currentMode)
-            var split = _configSplitLoader.item
-            if (split && split.oscList && split.oscList.device)
-                split.oscList.device.setMode(uiState.currentMode)
+            var osc = oscPane()
+            if (osc)
+                osc.setMode(uiState.currentMode)
             _modeSelector.currentIndex = _modeSelector.find(uiState.currentMode)
         }
         function onTabChanged() {
@@ -2073,6 +2104,9 @@ ApplicationWindow {
             var logical = _root.logicalPane()
             if (logical && logical.closePaneNow)
                 logical.closePaneNow()
+            var osc = _root.oscPane()
+            if (osc && osc.closePaneNow)
+                osc.closePaneNow()
         }
 
         function onQuitRequested() {
@@ -2346,6 +2380,7 @@ ApplicationWindow {
                 }
                 CheckBox {
                     visible: configDirection !== "dest" && configDirection !== "logical"
+                             && !(uiState && uiState.currentTab === "osc")
                     text: "Move inputs with no actions to the end"
                     checked: _root.parkEmptyInUnmapped
                     onToggled: {
@@ -2533,13 +2568,41 @@ ApplicationWindow {
             }
         }
 
+        // The OSC page (09 S129): built like the Logical Device page.
+        Loader {
+            id: _oscPageLoader
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            active: uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "osc"
+                    && _root.configDirection !== "dest"
+                    && _root._configLive
+            visible: active
+            source: "OscPage.qml"
+            onLoaded: {
+                if (uiState)
+                    item.setMode(uiState.currentMode)
+                if (_root._oscMonitorWanted) {
+                    _root._oscMonitorWanted = false
+                    item.showMonitor()
+                }
+            }
+
+            Connections {
+                target: _oscPageLoader.item
+                ignoreUnknownSignals: true
+                function onLeaveResolved() { _root.continueDisplayLeave() }
+                function onLeaveCancelled() { _root.cancelDisplayLeave() }
+            }
+        }
+
         Loader {
             id: _configSplitLoader
 
             Layout.fillHeight: true
             Layout.fillWidth: true
             active: uiState && uiState.currentRoom === "configuration"
-                    && uiState.currentTab !== "logical"
+                    && uiState.currentTab !== "logical" && uiState.currentTab !== "osc"
                     && !(_root.configDirection === "dest" && uiState.currentTab !== "xbox")
                     && _root._configLive
             visible: active
@@ -2583,7 +2646,6 @@ ApplicationWindow {
 
             // Each panel loads only for its own tab.
             readonly property var catalog: _catalogLoader.item
-            readonly property var oscList: _oscLoader.item
             readonly property var inputConfig: _inputConfigLoader.item
 
             clip: true
@@ -2616,22 +2678,6 @@ ApplicationWindow {
             }
 
             Loader {
-                id: _oscLoader
-                active: uiState && uiState.currentTab === "osc"
-                visible: active
-                SplitView.minimumWidth: Style.dp(400)
-                // It follows the mode from when it loads.
-                onLoaded: if (uiState && item.device) item.device.setMode(uiState.currentMode)
-                sourceComponent: OscDevice {
-                    onInputIdentifierChanged: () => {
-                        if (uiState) {
-                            uiState.setCurrentInput(inputIdentifier, inputIndex)
-                        }
-                    }
-                }
-            }
-
-            Loader {
                 id: _xboxLoader
                 active: uiState && uiState.currentTab === "xbox"
                 visible: active
@@ -2655,17 +2701,9 @@ ApplicationWindow {
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
                 SplitView.minimumWidth: Style.dp(900)
+                // The Keyboard page's action draft (InputConfiguration's own).
                 sourceComponent: InputConfiguration {
                     isOutput: _root.configDirection === "dest"
-
-                    Component.onCompleted: () => {
-                        if (backend && uiState) {
-                            inputItemModel = backend.getInputItem(
-                                uiState.currentInput,
-                                uiState.currentInputIndex
-                            )
-                        }
-                    }
                 }
             }
         }

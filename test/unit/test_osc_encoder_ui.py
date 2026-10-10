@@ -404,8 +404,7 @@ def test_encoder_kind_change_is_refused_when_locked(
     assert model.createConfiguredInput(
         {"address": "/knob", "mode": "encoder", "enc_output": "axis"}) is True
     [row] = _rows()
-    monkeypatch.setattr(odm.OscDeviceManagementModel, "_has_actions",
-                        staticmethod(lambda r: True))
+    monkeypatch.setattr(odm, "has_actions", lambda r: True)
     # Encoder axis -> plain axis keeps the kind; -> pulses changes it.
     assert model.updateInputSettings(row.uid, {"enc_output": "pulse_ccw"}) == \
         odm.TYPE_LOCKED

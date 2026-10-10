@@ -33,6 +33,9 @@ KEY_LOGICAL = "logical-layout"
 # Each window's tool row: its tools' order, and which are open, pinned and
 # locked (by row name).
 KEY_TOOL_ROWS = "tool-rows"
+# One Appearance for the Configuration, Logical and OSC pages' lists (CF-Q4):
+# a JSON object of the page's look settings; each page merges its defaults.
+KEY_LIST_APPEARANCE = "list-appearance"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
@@ -57,6 +60,7 @@ def _ensure() -> Configuration:
         (KEY_SPLITS, PropertyType.String, "{}"),
         (KEY_LOGICAL, PropertyType.String, "{}"),
         (KEY_TOOL_ROWS, PropertyType.String, "{}"),
+        (KEY_LIST_APPEARANCE, PropertyType.String, "{}"),
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
@@ -413,11 +417,48 @@ def save_tool(window: QtGui.QWindow, name: str) -> None:
     cfg.set(SECTION, GROUP, KEY_TOOLS, json.dumps(saved, sort_keys=True))
 
 
+def list_appearance() -> dict:
+    """The shared list Appearance ({} when never set)."""
+    cfg = _ensure()
+    try:
+        data = json.loads(str(cfg.value(SECTION, GROUP, KEY_LIST_APPEARANCE) or "{}"))
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def set_list_appearance(values: dict) -> None:
+    """Saves the shared list Appearance; {} resets it to the pages' defaults."""
+    cfg = _ensure()
+    text = json.dumps(dict(values), sort_keys=True)
+    cfg.set(SECTION, GROUP, KEY_LIST_APPEARANCE, text)
+
+
 @ta.QmlElement
 class WindowPlacement(QtCore.QObject):
+    # The shared list Appearance was saved (by this object).
+    listAppearanceChanged = QtCore.Signal()
+
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         _ensure()
+
+    @QtCore.Slot(result=str)
+    def listAppearance(self) -> str:
+        """The shared Appearance of the Configuration, Logical and OSC lists
+        as a JSON object ("{}" when never set)."""
+        return json.dumps(list_appearance(), sort_keys=True)
+
+    @QtCore.Slot(str)
+    def setListAppearance(self, json_text: str) -> None:
+        try:
+            values = json.loads(json_text)
+        except (json.JSONDecodeError, TypeError):
+            return
+        if not isinstance(values, dict):
+            return
+        set_list_appearance(values)
+        self.listAppearanceChanged.emit()
 
     @QtCore.Slot(QtCore.QObject)
     def restore(self, window: QtCore.QObject) -> None:

@@ -1125,11 +1125,11 @@ def _contents(pack: dict) -> tuple[list[str], list[str], int, dict[str, int]]:
     """What a pack holds: parts, modes, inputs with bindings, inputs per vJoy."""
     doc = pack["map"]
     held = set()
-    if doc.get("claim"):
+    if doc.get("claim") or doc.get("layout"):
         held.add("setup")
     if doc.get("nodes") or doc.get("image"):
         held.add("button_map")
-    if doc.get("view") or doc.get("catalog"):
+    if doc.get("view"):
         held.add("appearance")
     if doc.get("calibration"):
         held.add("calibration")

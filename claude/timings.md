@@ -313,3 +313,33 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | MAPCHECK: full pre-release map check | docs | 3–8 min (table) | 4 min | 10:10–10:14; 75 line counts, stale notes, README recount |
 | 2026-10-10 | FLAKE: OSC Listen reached every model (real bug) + CI order leak | fix | 3–8 min (table) | 6 min | 10:10–10:16 |
 | 2026-10-10 | Release full run + lint (lead) | test | 6–7 min + lint (table) | 7 min | 10:16–10:23; all green |
+| 2026-10-10 | HELP-B: Help vs spec 04-06 audit | review | 5–10 min (table) | 2 min | 10:24–10:26 |
+| 2026-10-10 | HELP-A: Help vs spec 01-03 audit | review | 5–10 min (table) | 2 min | 10:24–10:26 |
+| 2026-10-10 | HELP-C: Help vs spec 07-10 audit | review | 5–10 min (table) | 1 min | 10:25–10:26 |
+| 2026-10-10 | Release 1.0.31 build + publish (GitHub workflow) | release | rough guess 15–20 min (no row) | 4 min | 10:39–10:43; first timed release build |
+| 2026-10-10 | OSCPANE: OSC page vs Logical Device page study + plan | review | 5–10 min (table) | ~4 min | 10:43–10:47 (widened twice while running) |
+| 2026-10-10 | MOCKUP: OSC page pictures (4 today + 9 proposed) | review | rough guess 10–15 min (no row) | 11 min | 10:47–10:58; off-screen journey harness |
+| 2026-10-10 | DS-FEED: OSC feedback rows on page + action state study | review | 5–10 min (table) | 1 min | 10:55–10:56 |
+| 2026-10-10 | DS-MATCH: OSC address wildcards study | review | 5–10 min (table) | 2 min | 10:55–10:57 |
+| 2026-10-10 | DS-MORE: OSC other ideas study (OX9 62/63/64/66/67/69) | review | 5–10 min (table) | 3 min | 10:55–10:58 |
+| 2026-10-10 | CFG-STUDY: Configuration page in Logical Device style | review | 5–10 min (table) | 3 min | 10:58–11:01 |
+| 2026-10-10 | CFG-SHOTS: Configuration page today pictures | review | rough guess 10–15 min (no row) | 3 min | 10:58–11:01 |
+| 2026-10-10 | Lead: OSC batch 1 brief, contract, rules file, 7 agent briefs | planning | no timing data yet; rough guess 5 min | 3 min | 11:02–11:05 |
+| 2026-10-10 | MONITOR: docked OSC Monitor panel (OP6-OP8, OP13) | feature | 3–8 min (table) | 3 min | 11:03–11:06 |
+| 2026-10-10 | GAP-OP2: first action on empty input (guard test; closes via the new page) | fix | 3–8 min (table) | 4 min | 11:03–11:07 |
+| 2026-10-10 | OSC-RT: OX1 live value, OX2 port holder, OX3 logging, OX5 send test | feature | 3–8 min (table) | 5 min | 11:03–11:08 |
+| 2026-10-10 | E2E-TEST: OSC page end-to-end tests (xfail until wave 2) | feature | 3–8 min (table) | 6 min | 11:04–11:10 |
+| 2026-10-10 | SPEC-MAP: OSC spec S129–S164 + Configuration spec batch C + map/glossary | docs | 3–8 min (table) | 7 min | 11:04–11:11 |
+| 2026-10-10 | BASE-QML: ActionPane/ControlTree/ControlFindBar out of LogicalPage (pixel-identical) | refactor | 5–10 min (table) | 8 min | 11:03–11:11 |
+| 2026-10-10 | BASE-PY: ControlLayoutModel out of LogicalLayoutModel (411 Logical tests pass) | refactor | 5–10 min (table) | 11 min | 11:03–11:14; incl. a 4.5 min test run |
+| 2026-10-10 | CFG-STORE: module layout key, friendly-name rename, carry-through, shared Appearance setting | feature | 3–8 min (table) | 8 min | 11:07–11:15 |
+| 2026-10-10 | OSC-SETUP: OX4 Companion setup check | feature | 3–8 min (table) | 4 min | 11:13–11:17 |
+| 2026-10-10 | OSC-MODEL: OscLayoutModel + osc.json layout store, OX1/OX5/OX6 model | feature | 3–8 min (table) | 10 min | 11:13–11:23 |
+| 2026-10-10 | OSC-PAGE: OscPage.qml, docked Monitor, multi-input Edit Settings, Main/Tools wiring, OscDevice.qml removed | feature | 3–8 min (table) | 15 min | 11:13–11:28; Main wiring + multi edit pushed it over |
+| 2026-10-10 | OSC-SAVE: OSC page layout saved at File Save (D-09-OSC-FILE) | fix | 3–8 min (table) | 6 min | 11:24–11:30 |
+| 2026-10-10 | MAP-APPLY: batch 1 map lines, recounts, gaps | docs | 3–8 min (table) | 6 min | 11:31–11:37 |
+| 2026-10-10 | Lead: G-OSC36 Monitor height remembered (test first) + map | fix | 3–8 min (table: agent fix) | 4 min | 11:38–11:42 |
+| 2026-10-10 | TEST-PIN: tests pinning old OSC page moved to the new page; found empty-list bug | test | 3–8 min + wait (table) | 30 min | 11:13–11:43; waited for page/model, slow real-app smokes |
+| 2026-10-10 | Batch 1 full run + lint (lead) | test | 6–7 min + lint (table) | 7 min | 11:42–11:49; 1 fail (OSC names wiped on save), 3 lint |
+| 2026-10-10 | Lead: OSC names kept on save (only page-changed names written) + test, lint fixes | fix | 3–8 min (table: agent fix) | 4 min | 11:49–11:53 |
+| 2026-10-10 | Batch 1 full run + lint rerun (lead) | test | 6–7 min + lint (table) | 9 min | 11:53–12:02; 1 fail = child timeout under load (passes alone in 2.6 s) |

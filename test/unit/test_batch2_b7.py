@@ -73,9 +73,9 @@ def test_undo_import_asks_before_losing_a_later_save(pack: dict) -> None:  # noq
     """GL-031 (08 Q5): a file saved again since the import is asked about."""
     path = _own_path(pack["name"])
     before = path.read_bytes()
-    assert _import(pack, ["in.catalog"])["ok"]
+    assert _import(pack, ["in.groups"])["ok"]
     doc = json.loads(path.read_text(encoding="utf-8"))
-    doc["catalog"] = {"rowHeight": 55}
+    doc["layout"] = {"groups": ["G55"]}
     module_file.write_json(path, doc)
     later = path.read_bytes()
     asked = device_pack.undo_import()
@@ -91,7 +91,7 @@ def test_undo_import_asks_before_losing_a_later_save(pack: dict) -> None:  # noq
 def test_undo_import_without_later_saves_does_not_ask(pack: dict) -> None:  # noqa: F811
     path = _own_path(pack["name"])
     before = path.read_bytes()
-    assert _import(pack, ["in.catalog"])["ok"]
+    assert _import(pack, ["in.groups"])["ok"]
     done = device_pack.undo_import()
     assert done["ok"], done
     assert path.read_bytes() == before

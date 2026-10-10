@@ -4,10 +4,10 @@
 """Starts the program off-screen (stand-in hardware) and drives the main
 window's pages on the shared pieces (01 S140, S143): Save As / Open profile
 choosers remember the profile folder, Home's Delete Device, the Scripts
-page's Remove and the OSC page's Clear ask the shared question (Enter and
-Esc cancel), the Output View's Screen Background picks a picture. Prints the
-findings as JSON. test_main_shared_pieces.py runs it in its own process with
-a fresh user folder.
+page's Remove and the OSC page's Clear… (its right-click menu) ask the
+shared question (Enter and Esc cancel), the Output View's Screen Background
+picks a picture. Prints the findings as JSON. test_main_shared_pieces.py runs
+it in its own process with a fresh user folder.
 """
 
 from __future__ import annotations
@@ -234,23 +234,81 @@ def scripts() -> None:
 
 
 def osc() -> None:
+    # The OSC page (09 S129, S135, S136): no footer; Clear… is a red row in
+    # the right-click menu's Add Inputs section and asks the shared question.
+    from PySide6 import QtQuick
+
+    from gremlin import osc_device_file
+    from gremlin.osc import OscDevice
+    from gremlin.signal import signal
+    from gremlin.types import InputType
+
+    def walk(item: QtQuick.QQuickItem) -> list:
+        found = [item]
+        for child in item.childItems():
+            found.extend(walk(child))
+        return found
+
+    def osc_page() -> QtQuick.QQuickItem | None:
+        for item in walk(win.contentItem()):
+            if item.metaObject().className().startswith("OscPage") and item.isVisible():
+                return item
+        return None
+
+    def click_at(x: float, y: float, button: QtCore.Qt.MouseButton) -> None:
+        QtTest.QTest.mouseClick(
+            win, button, QtCore.Qt.KeyboardModifier.NoModifier,
+            QtCore.QPoint(int(x), int(y)),
+        )
+        wait_until(lambda: False, 200)
+
+    def menu_click(scope: QtCore.QObject, text: str) -> None:
+        wait_until(lambda: False, 150)  # the menu lays its rows out first
+        rect = ev(scope, f"_pageMenu.rowRect(_pageMenu.rowIndexOf({json.dumps(text)}))")
+        assert isinstance(rect, dict), (text, ev(scope, "_pageMenu.describe()"))
+        click_at(rect["x"] + rect["w"] / 2, rect["y"] + rect["h"] / 2,
+                 QtCore.Qt.MouseButton.LeftButton)
+
+    # Save As (profiles) leaves its "Saved" note open over the window.
+    ev(win, "_saveResultDialog.close(); true")
+    wait_until(lambda: not ev(win, "_saveResultDialog.opened"), 2000)
+    OscDevice().create(InputType.JoystickButton, label="/clear/me")
+    osc_device_file.save(who="test")
+    signal.oscDeviceModified.emit()
     ev(win, "uiState.setCurrentRoom('configuration');"
             " uiState.setCurrentTab('osc'); true")
-    split = "_configSplitLoader.item"
-    wait_until(lambda: bool(ev(win, f"!!({split} && {split}.oscList)")), 5000)
-    page = ev(win, "_configSplitLoader.item.oscList")
+    wait_until(lambda: osc_page() is not None, 5000)
+    page = osc_page()
     assert page is not None, "no OSC page"
-    clear = [
-        o for o in page.findChildren(quick_item()) if o.objectName() == "oscClear"
-    ]
-    assert clear, "no Clear button"
-    out["osc_clear_class"] = clear[0].metaObject().className()
-    out["osc_clear_text"] = clear[0].property("text")
-    QtCore.QMetaObject.invokeMethod(clear[0], "clicked")
+    # Main.qml loads OscPage.qml by source: its ids are in the page's scope.
+    scope = page if ev(page, "typeof _pageMenu") == "object" else inner(page)
+    out["osc_footer_clear"] = any(
+        o.objectName() == "oscClear" for o in walk(page)
+    )
+    row = None
+    wait_until(lambda: any(i.property("rowKind") == "parent" for i in walk(page)), 3000)
+    for item in walk(page):
+        if item.isVisible() and item.property("rowKind") == "parent":
+            row = item
+            break
+    assert row is not None, "no OSC input row"
+    centre = row.mapToScene(QtCore.QPointF(row.width() / 2, row.height() / 2))
+    click_at(centre.x(), centre.y(), QtCore.Qt.MouseButton.RightButton)
+    wait_until(lambda: bool(ev(scope, "_pageMenu.opened")), 3000)
+    menu_click(scope, "Add Inputs")
+    found = ev(scope, (
+        "(function(){var i=_pageMenu.rowIndexOf('Clear…');"
+        "if(i<0)return null;var it=_pageMenu.rows[i].item;"
+        "return {text: it.text, danger: it.danger, enabled: it.enabled}})()"
+    ))
+    out["osc_clear_row"] = found
+    assert isinstance(found, dict), ("no Clear…", ev(scope, "_pageMenu.describe()"))
+    menu_click(scope, "Clear…")
     wait_until(lambda: question(win) is not None, 3000)
     out["osc_question"] = describe(question(win))
     key(win, QtCore.Qt.Key.Key_Escape)
     out["osc_esc_closed"] = question(win) is None
+    out["osc_rows_after_esc"] = len(OscDevice().rows.rows())
 
 
 def output_view() -> None:
@@ -294,7 +352,8 @@ out["qml_errors"] = [
         for k in ("Error", "is not a function", "is not defined", "TypeError")
     )
     and any(f in m for f in ("Main.qml", "StatusPage.qml", "ScriptManager.qml",
-                             "OscDevice.qml", "OutputModuleView.qml", "confirm"))
+                             "OscPage.qml", "ControlTree.qml", "OutputModuleView.qml",
+                             "confirm"))
 ][:8]
 print("RESULT " + json.dumps(out), flush=True)
 os._exit(0)

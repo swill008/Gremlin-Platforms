@@ -4,9 +4,12 @@
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import importlib
 import logging
 import math
+import os
 import socket
 import sys
 import threading
@@ -16,14 +19,16 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin import threads
+from gremlin import clock, threads
 from gremlin.common import SingletonDecorator, SingletonMetaclass
 from gremlin.error import GremlinError
+from gremlin.log_once import log_once
 from gremlin.modules import ids
 from gremlin.osc_rows import OscRow, OscRows
 from gremlin.types import InputType
 
 log = logging.getLogger("system")
+user_log = logging.getLogger("user")
 
 OSC_DEVICE_UUID = ids.OSC
 
@@ -39,6 +44,8 @@ DEFAULT_AUTORELEASE_MS = 250
 MessageCallback = Callable[[str, tuple[Any, ...], "tuple[str, int] | None"], None]
 # Most pulses one encoder message can queue (a wild value can't flood).
 MAX_ENC_TICKS = 32
+# Fastest liveChanged per input (OX1): 10 a second.
+LIVE_INTERVAL_S = 0.1
 
 
 def local_ipv4_addresses() -> list[str]:
@@ -199,17 +206,20 @@ class OscListener:
     def start(self) -> None:
         if self._server is not None:
             return
-        from pythonosc.dispatcher import Dispatcher
-        from pythonosc.osc_server import ThreadingOSCUDPServer
-
-        dispatcher = Dispatcher()
+        dispatcher = _dispatcher_class()()
         dispatcher.set_default_handler(self._on_message, needs_reply_address=True)
-        self._server = ThreadingOSCUDPServer((self.host, self.port), dispatcher)
+        self._server = _server_class()((self.host, self.port), dispatcher)
         # Stopping waits for the server's next poll (0.5 s at most).
         self._thread = threads.start(
             "OSC listener", self._server.serve_forever, stop=self._server.shutdown
         )
         log.info("OSC listening on %s:%s", self.host, self.port)
+
+    def bound_port(self) -> int:
+        """The port actually open (the one the OS picked for port 0)."""
+        if self._server is None:
+            return 0
+        return int(self._server.server_address[1])
 
     def stop(self) -> None:
         if self._server is None:
@@ -231,6 +241,138 @@ class OscListener:
             peer = (str(client[0]), int(client[1]))
         if self.callback is not None:
             self.callback(address, args, peer)
+
+
+def report_malformed(client: object, reason: str) -> None:
+    """A packet that isn't OSC (OX3): once per sender into the user log and
+    the program log (called on the listener's thread)."""
+    host = client[0] if isinstance(client, (tuple, list)) and client else "?"
+    text = f"OSC: a malformed packet from {host} was ignored ({reason})"
+    log_once("user", ("osc-malformed", host), logging.WARNING, text)
+    log_once("system", ("osc-malformed", host), logging.WARNING, text)
+
+
+_CLASSES: dict[str, type] = {}
+
+
+def _dispatcher_class() -> type:
+    """python-osc's Dispatcher, reporting packets it can't parse (it drops
+    them silently)."""
+    if "dispatcher" not in _CLASSES:
+        from pythonosc import osc_packet
+        from pythonosc.dispatcher import Dispatcher
+
+        class _Dispatcher(Dispatcher):
+            def call_handlers_for_packet(
+                self, data: bytes, client_address: tuple[str, int]
+            ) -> list:
+                try:
+                    osc_packet.OscPacket(data)
+                except osc_packet.ParseError as exc:
+                    report_malformed(client_address, str(exc) or "cannot be read")
+                    return []
+                return super().call_handlers_for_packet(data, client_address)
+
+        _CLASSES["dispatcher"] = _Dispatcher
+    return _CLASSES["dispatcher"]
+
+
+def _server_class() -> type:
+    """python-osc's threading UDP server, reporting datagrams it refuses
+    (not a message or bundle)."""
+    if "server" not in _CLASSES:
+        from pythonosc.osc_server import ThreadingOSCUDPServer
+
+        class _Server(ThreadingOSCUDPServer):
+            def verify_request(
+                self, request: Any, client_address: Any  # noqa: ANN401
+            ) -> bool:
+                ok = super().verify_request(request, client_address)
+                if not ok:
+                    report_malformed(client_address, "not an OSC message")
+                return ok
+
+        _CLASSES["server"] = _Server
+    return _CLASSES["server"]
+
+
+# -- who holds a port (OX2) ---------------------------------------------------
+
+_AF_INET6 = 23
+_UDP_TABLE_OWNER_PID = 1
+_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_ADDR_IN_USE = {errno.EADDRINUSE, 10048}
+
+
+def _udp_owner_pids(port: int) -> list[int]:
+    """PIDs with a UDP socket on port (IPv4, then IPv6), from Windows'
+    GetExtendedUdpTable."""
+    iphlpapi = ctypes.WinDLL("iphlpapi")  # type: ignore[attr-defined]
+    found: list[int] = []
+    # Row words: IPv4 addr, port, pid; IPv6 addr[4], scope, port, pid.
+    for family, words in ((socket.AF_INET, 3), (_AF_INET6, 7)):
+        size = ctypes.c_ulong(0)
+        iphlpapi.GetExtendedUdpTable(
+            None, ctypes.byref(size), False, family, _UDP_TABLE_OWNER_PID, 0
+        )
+        if size.value == 0:
+            continue
+        buf = ctypes.create_string_buffer(size.value)
+        if iphlpapi.GetExtendedUdpTable(
+            buf, ctypes.byref(size), False, family, _UDP_TABLE_OWNER_PID, 0
+        ):
+            continue
+        count = ctypes.c_ulong.from_buffer(buf).value
+        table = (ctypes.c_ulong * (1 + count * words)).from_buffer(buf)
+        for i in range(count):
+            row = 1 + i * words
+            if socket.ntohs(table[row + words - 2] & 0xFFFF) == port:
+                found.append(int(table[row + words - 1]))
+    return found
+
+
+def _process_name(pid: int) -> str:
+    kernel32 = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined]
+    handle = kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        return ""
+    try:
+        size = ctypes.c_ulong(1024)
+        buf = ctypes.create_unicode_buffer(size.value)
+        if not kernel32.QueryFullProcessImageNameW(
+            handle, 0, buf, ctypes.byref(size)
+        ):
+            return ""
+        return os.path.basename(buf.value)
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def port_holder(port: int, host: str = "") -> tuple[str, int] | None:
+    """(process name, PID) of a program with a UDP socket on port, or None
+    when it can't be told (not Windows, nobody found, the lookup failed)."""
+    if sys.platform != "win32":
+        return None
+    try:
+        for pid in _udp_owner_pids(int(port)):
+            return (_process_name(pid) or "a program", pid)
+    except (OSError, ValueError, AttributeError):
+        log.debug("OSC: could not look up who holds port %s", port, exc_info=True)
+    return None
+
+
+def bind_error_detail(host: str, port: int, exc: OSError) -> str:
+    """The text under "Could not bind OSC on host:port.": the OS error and,
+    for a port in use, the program holding it (OX2)."""
+    detail = str(exc)
+    in_use = exc.errno in _ADDR_IN_USE or getattr(exc, "winerror", None) == 10048
+    if in_use:
+        holder = port_holder(port, host)
+        if holder is None:
+            detail += f" Port {port} is in use by another program."
+        else:
+            detail += f" Port {port} is in use by {holder[0]} (PID {holder[1]})."
+    return detail
 
 
 SERVER_DEFAULTS: dict[str, Any] = {
@@ -352,9 +494,19 @@ class OscRuntime(QtCore.QObject):
     incoming = QtCore.Signal(str, object, object)
     learned = QtCore.Signal(str, object)
     listenChanged = QtCore.Signal()
+    # An input's live value changed (OX1): its uid; at most every
+    # LIVE_INTERVAL_S per input, and the latest value always follows.
+    liveChanged = QtCore.Signal(str)
 
     def __init__(self) -> None:
         super().__init__()
+        # uid -> {value, axis, pressed, last_seen, synthetic} (OX1).
+        self._live: dict[str, dict[str, Any]] = {}
+        self._live_sent: dict[str, float] = {}
+        self._live_pending: set[str] = set()
+        self._live_timer = QtCore.QTimer(self)
+        self._live_timer.setSingleShot(True)
+        self._live_timer.timeout.connect(self._flush_live)
         self._listener: OscListener | None = None
         # A profile runs (start() until stop()); the port opens for it only
         # when it uses OSC inputs (09 Q5). A Listen keeps the port open only
@@ -492,12 +644,18 @@ class OscRuntime(QtCore.QObject):
                 self._settings.get("output_port"),
             )
         except ImportError:
+            log.error("OSC: python-osc is not installed")
             ui_signal.showError.emit(
                 "OSC requires python-osc.",
                 "In the repo folder run: poetry add python-osc",
             )
         except OSError as exc:
-            ui_signal.showError.emit(f"Could not bind OSC on {host}:{port}.", str(exc))
+            title = f"Could not bind OSC on {host}:{port}."
+            detail = bind_error_detail(host, port, exc)
+            # Logged as well as shown (OX3): the user log and the program log.
+            user_log.error("OSC: %s %s", title, detail)
+            log.error("OSC: %s %s", title, detail)
+            ui_signal.showError.emit(title, detail)
 
     def _unbind(self) -> None:
         if self._listener is None:
@@ -747,6 +905,8 @@ class OscRuntime(QtCore.QObject):
             # the port closes.
             self._close_if_idle()
         rows = OscDevice().rows.matches(address, payload)
+        for row in rows:
+            self._note_live(row, payload, synthetic=False)
         if not self._running:
             return rows
         if not rows:
@@ -765,3 +925,108 @@ class OscRuntime(QtCore.QObject):
             )
             self._apply(row, payload, mode)
         return rows
+
+    # -- live value and last seen (OX1) ---------------------------------------
+
+    def live(self, uid: str) -> dict[str, Any] | None:
+        """The input's last value, or None before any: "value" (at its
+        source; None for no value), "axis" (-1..1 for an axis input, else
+        None), "pressed" (for a button input, else None), "last_seen"
+        (clock.now() when it came) and "synthetic" (True from send_test).
+        Recorded for every matching message, with or without a Run."""
+        entry = self._live.get(str(uid))
+        return None if entry is None else dict(entry)
+
+    def live_all(self) -> dict[str, dict[str, Any]]:
+        return {uid: dict(entry) for uid, entry in self._live.items()}
+
+    def reset_live(self) -> None:
+        self._live.clear()
+        self._live_sent.clear()
+        self._live_pending.clear()
+        self._live_timer.stop()
+
+    def _note_live(
+        self, row: OscRow, payload: tuple[Any, ...], synthetic: bool
+    ) -> None:
+        value = _value_at(payload, row.source)
+        axis = None
+        pressed = None
+        if row.input_type == InputType.JoystickAxis:
+            number = _number(value)
+            if number is not None and row.mode != "encoder":
+                axis = scale_axis(number, row.range_min, row.range_max)
+        else:
+            pressed = True if value is None else is_pressed((value,))
+        self._live[row.uid] = {
+            "value": value,
+            "axis": axis,
+            "pressed": pressed,
+            "last_seen": clock.now(),
+            "synthetic": synthetic,
+        }
+        self._live_changed(row.uid)
+
+    def _live_changed(self, uid: str) -> None:
+        now = clock.monotonic()
+        last = self._live_sent.get(uid)
+        if last is None or now - last >= LIVE_INTERVAL_S:
+            self._live_sent[uid] = now
+            self._live_pending.discard(uid)
+            self.liveChanged.emit(uid)
+            return
+        self._live_pending.add(uid)
+        if not self._live_timer.isActive():
+            wait = LIVE_INTERVAL_S - (now - last)
+            self._live_timer.start(max(1, math.ceil(wait * 1000)))
+
+    def _flush_live(self) -> None:
+        """The throttle's wait is over: each waiting input whose interval
+        has passed gets its signal; the rest wait again."""
+        now = clock.monotonic()
+        wait = LIVE_INTERVAL_S
+        for uid in list(self._live_pending):
+            gone = now - self._live_sent.get(uid, 0.0)
+            if gone >= LIVE_INTERVAL_S:
+                self._live_pending.discard(uid)
+                self._live_sent[uid] = now
+                self.liveChanged.emit(uid)
+            else:
+                wait = min(wait, LIVE_INTERVAL_S - gone)
+        if self._live_pending:
+            self._live_timer.start(max(1, math.ceil(wait * 1000)))
+
+    # -- test inject (OX5) ----------------------------------------------------
+
+    def send_test(self, uid: str, kind: str, value: object = None) -> bool:
+        """As if the input received a message (Send Test Press / Send Test
+        Value): kind "press", "release" or "value" (with value). The live
+        value updates, marked synthetic, with or without a Run; the input
+        fires its actions, through the same _apply as a message, only while
+        a profile runs. True when it reached the running input."""
+        from gremlin.mode_manager import ModeManager
+
+        row = OscDevice().rows.by_uid(str(uid))
+        if row is None or kind not in ("press", "release", "value"):
+            return False
+        if kind == "press":
+            value = 1.0
+        elif kind == "release":
+            value = 0.0
+        payload = tuple(value for _ in range(max(0, row.source) + 1))
+        self._note_live(row, payload, synthetic=True)
+        if not self._running:
+            return False
+        mode = ModeManager().current.name
+        if (
+            kind == "release"
+            and row.input_type == InputType.JoystickButton
+            and (row.cmd_mode == "data" or row.trigger is True or row.mode != "button")
+        ):
+            # A pulsing input: a release only ends a held or pending press.
+            self._cancel_release(row.uid)
+            if row.uid in self._held:
+                self._emit_button(row, False, mode)
+            return True
+        self._apply(row, payload, mode)
+        return True
