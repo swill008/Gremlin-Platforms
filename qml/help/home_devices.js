@@ -223,7 +223,21 @@ function topics() {
                 + "<li>Save is refused while the stick is unplugged (see <a href=\"topic:home-devices-unplugged\">When a device is unplugged</a>).</li>"
                 + "<li>Calibration for a stick is stored in its input module (see <a href=\"topic:tools-calibration\">Calibrate axes</a>).</li>"
                 + "</ul>",
-            related: ["home-devices-vjoy-output", "home-devices-module-files", "tools-calibration", "getting-started-key-does-not-fire"]
+            related: ["home-devices-vjoy-output", "home-devices-module-files", "tools-calibration", "getting-started-key-does-not-fire", "home-devices-xbox-input"]
+        },
+        {
+            id: "home-devices-xbox-input",
+            section: "Modules",
+            title: "Use an Xbox pad as an input",
+            body: "<p>A real Xbox pad plugged into this PC is an input device like a stick, with its own card and input module. Its controls have these numbers:</p>"
+                + "<ul>"
+                + "<li><b>Axes</b>: 1 left stick left/right, 2 left stick up/down, 4 right stick left/right, 5 right stick up/down, 7 left trigger, 8 right trigger. Each trigger is its own axis.</li>"
+                + "<li><b>Buttons</b>: 1 A, 2 B, 3 X, 4 Y, 5 LB, 6 RB, 7 View, 8 Menu, 9 left stick click, 10 right stick click.</li>"
+                + "<li><b>Hat</b> 1: the D-pad.</li>"
+                + "</ul>"
+                + "<p>The <b>Xbox</b> button and the <b>Share</b> button aren't available: the program doesn't receive them.</p>"
+                + "<p>This is about a pad you hold. The program's own Xbox controller is an output; see <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>.</p>",
+            related: ["home-devices-input-modules", "home-devices-xbox-output"]
         },
         {
             id: "home-devices-vjoy-output",

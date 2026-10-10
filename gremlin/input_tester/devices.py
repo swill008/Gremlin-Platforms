@@ -147,12 +147,11 @@ def directinput_devices() -> list[SeenDevice]:
 
 
 # Button N is DILL index N (1-based), as in DILL's own events, which the
-# main program uses as the button number. The bundled dill.dll (v1.3) keeps
-# 128 buttons and 4 hats from index 0 but stores them from index 1, and
-# rejects index >= 128 / >= 4 with an error line in dill_debug.log; so
-# button 128 and hat 4 can't be read and are never asked for.
-DILL_MAX_BUTTON = 127
-DILL_MAX_HAT = 3
+# main program uses as the button number. The bundled reader is upstream
+# R16's dill2 (DILL v2.0, 02 S139): it accepts buttons 1-128 and hats 1-4
+# (v1.3 rejected 128 / 4 and flooded dill_debug.log).
+DILL_MAX_BUTTON = 128
+DILL_MAX_HAT = 4
 
 
 def directinput_values(device: SeenDevice) -> LiveValues:

@@ -147,7 +147,7 @@ function topics() {
                 + "<li>\"left out: not a game device\": a keyboard, mouse or other device the tester doesn't show. Other \"left out\" lines give the reason.</li>"
                 + "</ul>"
                 + "<p>Save Diagnostics includes the tester log and the tester's last result.</p>"
-                + "<p>Button 128 and hat 4 always show as off and centered: the DirectInput reader this program uses can't read them, in the tester or in the program.</p>"
+                + "<p>The tester shows buttons 1-128 and hats 1-4, as the program reads them.</p>"
                 + "<h4>What each row says</h4>"
                 + "<ul>"
                 + "<li><b>Hidden from programs</b>: a hidden stick the tester can't see, as it should be (shown greyed).</li>"

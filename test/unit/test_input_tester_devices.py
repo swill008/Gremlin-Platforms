@@ -20,10 +20,11 @@ GUID = "{03357CA0-0000-0000-0000-000000000001}"
 
 
 class _FakeDill:
-    """dill.DILL stand-in with the bundled v1.3 index checks.
+    """dill.DILL stand-in with the bundled reader's index checks.
 
-    Values are stored 1-based (button N at index N) but index >= 128
-    (buttons) / >= 4 (hats) is rejected, as in dill.cpp v1.3.
+    The bundled reader is upstream R16's dill2 (DILL v2.0, D-02-DILL2):
+    values are 1-based and buttons 1-128 / hats 1-4 are accepted, as
+    v1.5's source sizes them (129 / 5); anything else is rejected.
     """
 
     def __init__(self, pressed: set[int], hats: dict[int, int]) -> None:
@@ -40,14 +41,14 @@ class _FakeDill:
 
     def get_button(self, _guid, index: int) -> bool:  # noqa: ANN001
         self.button_calls.append(index)
-        if index < 0 or index >= 128:
+        if index < 1 or index > 128:
             self.invalid.append(f"Requested invalid button index {index}")
             return False
         return index in self.pressed
 
     def get_hat(self, _guid, index: int) -> int:  # noqa: ANN001
         self.hat_calls.append(index)
-        if index < 0 or index >= 4:
+        if index < 1 or index > 4:
             self.invalid.append(f"Requested invalid hat index {index}")
             return -1
         return self.hat_values.get(index, -1)
@@ -70,19 +71,19 @@ def _device(buttons: int, hats: int) -> devices.SeenDevice:
 def test_directinput_indexes_in_range_and_button_n_is_dinput_n(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    fake = _FakeDill(pressed={1, 5, 127}, hats={1: 9000, 3: 18000})
+    fake = _FakeDill(pressed={1, 5, 128}, hats={1: 9000, 4: 18000})
     monkeypatch.setattr(devices.dill, "DILL", fake)
 
     values = devices.directinput_values(_device(buttons=128, hats=4))
 
     assert fake.invalid == []  # no "invalid index" line in dill_debug.log
-    assert max(fake.button_calls) == 127 and min(fake.button_calls) == 1
-    assert max(fake.hat_calls) == 3 and min(fake.hat_calls) == 1
+    assert max(fake.button_calls) == 128 and min(fake.button_calls) == 1
+    assert max(fake.hat_calls) == 4 and min(fake.hat_calls) == 1
     assert len(values.buttons) == 128 and len(values.hats) == 4
     # On-screen button N (list index N-1) is DirectInput button N.
     shown = {i + 1 for i, on in enumerate(values.buttons) if on}
-    assert shown == {1, 5, 127}
-    assert values.hats == [90, -1, 180, -1]
+    assert shown == {1, 5, 128}
+    assert values.hats == [90, -1, -1, 180]
 
 
 def test_directinput_read_noted_for_log(monkeypatch: pytest.MonkeyPatch) -> None:

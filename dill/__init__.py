@@ -280,27 +280,45 @@ class DeviceSummary:
 C_EVENT_CALLBACK = ctypes.CFUNCTYPE(None, _JoystickInputData)
 C_DEVICE_CHANGE_CALLBACK = ctypes.CFUNCTYPE(None, _DeviceSummary, ctypes.c_uint8)
 
-_dll_path = os.path.join(os.path.dirname(__file__), "dill.dll")
-if "_MEIPASS" in sys.__dict__:
-    _dll_path = os.path.join(sys._MEIPASS, "dill.dll")
-_di_listener_dll = ctypes.cdll.LoadLibrary(_dll_path)
+DLL_NAME = "dill.dll"
 
-_di_listener_dll.get_device_information_by_index.argtypes = [ctypes.c_uint]
-_di_listener_dll.get_device_information_by_index.restype = _DeviceSummary
+# Where Windows may look for what dill.dll itself needs: its own folder,
+# System32 and the program's folder. Never the working folder or PATH.
+_LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
+_LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
+
+
+def dll_path(meipass: str | None = None, package_dir: str | None = None) -> str:
+    """Where the reader is: the frozen program's folder, else next to this
+    file. Never the working folder (the program imports this before it
+    changes to its install folder)."""
+    if meipass is None:
+        meipass = getattr(sys, "_MEIPASS", None)
+    if meipass is not None:
+        return os.path.abspath(os.path.join(meipass, DLL_NAME))
+    return os.path.abspath(
+        os.path.join(package_dir or os.path.dirname(__file__), DLL_NAME)
+    )
+
+
+def _load_dll(path: str) -> ctypes.CDLL:
+    """Loads dill.dll from its absolute path, once."""
+    if not os.path.isfile(path):
+        raise DILLError(f"Unable to locate {DLL_NAME} library at {path}")
+    return ctypes.CDLL(
+        path,
+        winmode=_LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | _LOAD_LIBRARY_SEARCH_DEFAULT_DIRS,
+    )
+
+
+_dll_path = dll_path()
+_di_listener_dll = _load_dll(_dll_path)
 
 
 class DILL:
-    _dev_path = os.path.join(os.path.dirname(__file__), "dill.dll")
-    if os.path.isfile("dill.dll"):
-        _dll_path = "dill.dll"
-    elif "_MEIPASS" in sys.__dict__:
-        _dll_path = os.path.join(sys._MEIPASS, "dill.dll")
-    elif os.path.isfile(_dev_path):
-        _dll_path = _dev_path
-    else:
-        raise DILLError("Unable to locate dill.dll library")
-
-    _dll = ctypes.cdll.LoadLibrary(_dll_path)
+    _dll_path = _dll_path
+    # The one load above; tests swap in a fake by setting DILL._dll.
+    _dll = _di_listener_dll
     _dill_initialized = False
     device_change_callback_fn = None
     input_event_callback_fn = None

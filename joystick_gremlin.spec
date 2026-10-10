@@ -14,7 +14,9 @@ datas = [
     ("qml", "qml"),
     ("theme", "theme"),
     ("device_db.json", "."),
-    ("version.json", ".")
+    ("version.json", "."),
+    # Third-party licence notices (dill, spdlog, Qt, ...).
+    ("licenses", "licenses"),
 ]
 datas.extend(action_plugins_files)
 binaries = [
@@ -97,6 +99,8 @@ tester_datas = [
     # icon font from gfx, so the whole qml and gfx folders go with it.
     ("qml", "qml"),
     ("gfx", "gfx"),
+    # It ships dill.dll, so its licence notices go with it.
+    ("licenses", "licenses"),
 ]
 tester_binaries = [
     ("dill/dill.dll", "."),
