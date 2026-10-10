@@ -50,20 +50,24 @@ Every piece of work, not only big batches:
 
 1. **Status line.** Start every message to the user with the one-line status,
    e.g. `[History deltas ▓▓░░░░░░░░ 20% · H1 + H2 building · next: screenshots]`.
-2. **Progress page.** Keep https://claude.ai/artifact/NQJw6xzumYopoJn5NXJxqR
-   current with the Artifact tool (its data is the ArtifactData document
-   `progress/now`): what is happening now, what is next, the steps of the
-   current work, every agent and its state, the last test result and a short
-   log. Update it at every step (agents started/finished, test runs, commits,
-   pushes, CI). Show results the user should look at (screenshots, reports)
-   as artifacts too.
-   **Issue tracker (user, 2026-10-09).** Keep
-   https://claude.ai/artifact/QTmzBoHqL8rDerX41Wa9EN (ArtifactData collection
-   `issues`) a running copy: at every commit, add an item for each new fix,
-   feature or gap (ref, title, group, severity, status, evidence: commit and
-   spec line) and set the status of items it fixes. The progress page links to
-   it and shows its counts. It was left un-updated 2026-10-06 to 10-09; never
-   again.
+2. **One tracker, nothing else (user, 2026-10-10: "remove all the trackers
+   and only keep one consolidated tracker. You keep generating multiple and
+   then leaving them stale.").** The ONLY artifact is the Gremlin-Platforms
+   Tracker, https://claude.ai/artifact/QTmzBoHqL8rDerX41Wa9EN. Never publish
+   another artifact (no progress pages, reports, studies, mockups or result
+   pages); every other page made before 2026-10-10 is archived to a pointer.
+   - Its "Now" panel (ArtifactData document `tracker/now`): what is happening
+     now, what is next, every agent and its state, the last test result, CI,
+     the latest release and a short log. Update it at every step (agents
+     started/finished, test runs, commits, pushes, CI, releases).
+   - Its issue list (ArtifactData collection `issues`) is a running copy: at
+     every commit add an item for each new fix, feature, gap or to-do (ref,
+     title, group, severity, status, evidence: commit and spec line) and set
+     the status of items it fixes. A to-do item in claude/todo.md is an issue
+     here too.
+   - Reports, studies, plans and mockups go to the user in the chat (text,
+     tables, pictures sent with SendUserFile) and, when worth keeping, as an
+     issue in the tracker with the facts in its detail. Never as a page.
 3. **Live output.** Every agent pipes every shell command through
    `tools/agent_log.py <AGENT>`, with `PYTHONUNBUFFERED=1` in front and
    pytest `-v`:

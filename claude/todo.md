@@ -498,6 +498,6 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 ## Working standard (pointer)
 
-Status line, progress page (https://claude.ai/artifact/NQJw6xzumYopoJn5NXJxqR),
+Status line, the one tracker (https://claude.ai/artifact/QTmzBoHqL8rDerX41Wa9EN),
 live agent logs (`tools/agent_log.py`, `.agent-logs/all.log`) and several
 agents where work splits: see `.claude/CLAUDE.md` "Working standard".
