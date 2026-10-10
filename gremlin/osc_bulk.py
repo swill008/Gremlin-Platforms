@@ -58,10 +58,12 @@ def start_bulk(model: object, settings: object) -> None:
         setattr(model, "_bulk_mode", str(settings or "") or "Button")
     setattr(model, "_last_bulk_addr", "")
     setattr(model, "_last_bulk_time", 0.0)
-    OscRuntime().listen_bulk()
+    OscRuntime().listen_bulk(owner=model)
 
 
 def model_cancel_listen(self: OscDeviceManagementModel) -> None:
+    if not OscRuntime().listens_for(self):
+        return  # another window's Listen keeps going
     setattr(self, "_bulk", False)
     _orig_cancel_model(self)
 
@@ -79,6 +81,8 @@ def _create_captured(model: object, address: str, payload: tuple) -> None:
 
 
 def model_on_learned(self: object, address: str, args: object) -> None:
+    if not OscRuntime().listens_for(self):
+        return  # another model's Listen (the OSC Monitor has its own)
     if getattr(self, "_bulk", False):
         payload = args if isinstance(args, tuple) else ()
         now = time.monotonic()

@@ -487,7 +487,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     @QtCore.Slot()
     def listenForInput(self) -> None:
         self._capture_only = False
-        OscRuntime().listen_once()
+        OscRuntime().listen_once(owner=self)
 
     @QtCore.Slot()
     @QtCore.Slot("QVariantMap")
@@ -495,12 +495,14 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         if settings is not None:
             self.setCaptureSettings(settings)
         self._capture_only = True
-        OscRuntime().listen_once()
+        OscRuntime().listen_once(owner=self)
 
     @QtCore.Slot()
     def cancelListen(self) -> None:
+        if not OscRuntime().listens_for(self):
+            return  # another window's Listen
         self._capture_only = False
-        OscRuntime().cancel_listen()
+        OscRuntime().cancel_listen(owner=self)
 
     def learned_settings(self, address: str, args: tuple) -> dict[str, Any]:
         """The capture settings applied to a captured message."""
@@ -516,6 +518,8 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         return settings
 
     def _on_learned(self, address: str, args: object) -> None:
+        if not OscRuntime().listens_for(self):
+            return  # another model's Listen (the OSC Monitor has its own)
         payload = args if isinstance(args, tuple) else ()
         if self._capture_only:
             self._capture_only = False

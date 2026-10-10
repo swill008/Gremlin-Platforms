@@ -174,6 +174,40 @@ def test_listen_and_bulk_capture_settings_reach_oscs_file(env: Path) -> None:
     assert {label: r.uid for label, r in after.items()} == uids
 
 
+def test_listen_reaches_only_the_model_that_started_it(env: Path) -> None:
+    """09 S17/S19: Listen binds with the listening window's settings only.
+    The OSC page and the OSC Monitor each have their own page model; a
+    message captured for one must not also add an input through the other
+    (it did: every model connected to OscRuntime.learned added one)."""
+    page = OscDeviceManagementModel()
+    monitor = OscDeviceManagementModel()
+    monitor.setCaptureSettings({"mode": "axis", "cmd_mode": "data", "source": 1})
+    captured: list[tuple[str, str]] = []
+    other: list[tuple[str, str]] = []
+    page.commandCaptured.connect(lambda a, p: captured.append((a, p)))
+    monitor.commandCaptured.connect(lambda a, p: other.append((a, p)))
+    runtime = OscRuntime()
+
+    page.listenForCommand({"mode": "button", "cmd_mode": "data", "source": 0})
+    runtime._on_main("/scene", (2,))
+    assert captured == [("/scene", "2")]
+    assert other == []
+    assert _by_label() == {}  # the Add window binds it, nothing else
+
+    page.listenForInput()
+    runtime._on_main("/fader/1", (0.25,))
+    assert [r.label for r in OscDevice().rows.rows()] == ["/fader/1"]
+
+    osc_bulk.start_bulk(page, {"mode": "change", "cmd_mode": "message"})
+    monitor.cancelListen()  # the other window closing doesn't stop it
+    assert runtime.is_listening()
+    runtime._on_main("/enc/a", (0, 5))
+    page.cancelListen()
+    assert not runtime.is_listening()
+    assert sorted(r.label for r in OscDevice().rows.rows()) == ["/enc/a", "/fader/1"]
+    assert other == []
+
+
 # -- (2) a profile bound to those inputs runs ---------------------------------
 
 

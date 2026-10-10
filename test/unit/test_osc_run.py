@@ -375,7 +375,9 @@ def test_bulk_capture_passes_window_settings_to_each_new_input(
 ) -> None:
     from gremlin import osc_bulk
 
-    monkeypatch.setattr(osc_bulk.OscRuntime(), "listen_bulk", lambda: True)
+    runtime = osc_bulk.OscRuntime()
+    monkeypatch.setattr(runtime, "listen_bulk", lambda owner=None: True)
+    monkeypatch.setattr(runtime, "_learn_owner", None)  # nobody else's Listen
 
     class Model(QtCore.QObject):
         commandCaptured = QtCore.Signal(str, str)

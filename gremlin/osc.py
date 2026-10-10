@@ -10,6 +10,7 @@ import math
 import socket
 import sys
 import threading
+import weakref
 from collections.abc import Callable
 from typing import Any
 
@@ -362,6 +363,8 @@ class OscRuntime(QtCore.QObject):
         self._uses_osc = False
         self._learn = False
         self._hold_learn = False
+        # Who started the Listen (a page model); only it handles the capture.
+        self._learn_owner: weakref.ref | None = None
         self._settings: dict[str, Any] = dict(SERVER_DEFAULTS)
         self._timers: dict[str, QtCore.QTimer] = {}
         self._last: dict[str, Any] = {}
@@ -383,14 +386,24 @@ class OscRuntime(QtCore.QObject):
     def is_listening(self) -> bool:
         return self._learn
 
-    def listen_once(self, hold: bool = False) -> bool:
+    def listens_for(self, owner: object) -> bool:
+        """True when owner started the current Listen (or nobody did, or
+        the one who did is gone)."""
+        held = None if self._learn_owner is None else self._learn_owner()
+        return held is None or held is owner
+
+    def listen_once(self, hold: bool = False, owner: object = None) -> bool:
+        """Listen for the next message (every message with hold). owner, the
+        page model asking, is the only one that handles the capture."""
         from gremlin.signal import signal as ui_signal
 
         self._hold_learn = hold
+        self._learn_owner = None if owner is None else weakref.ref(owner)
         self._bind()
         if self._listener is None:
             self._learn = False
             self._hold_learn = False
+            self._learn_owner = None
             self.listenChanged.emit()
             ui_signal.showError.emit(
                 "Could not start OSC listener.",
@@ -402,10 +415,15 @@ class OscRuntime(QtCore.QObject):
         log.info("OSC listen-once waiting for next packet hold=%s", hold)
         return True
 
-    def listen_bulk(self) -> bool:
-        return self.listen_once(hold=True)
+    def listen_bulk(self, owner: object = None) -> bool:
+        return self.listen_once(hold=True, owner=owner)
 
-    def cancel_listen(self) -> None:
+    def cancel_listen(self, owner: object = None) -> None:
+        """Stop listening. With owner, only a Listen it started (or one
+        nobody owns) stops: another window's Cancel leaves it running."""
+        if owner is not None and not self.listens_for(owner):
+            return
+        self._learn_owner = None
         self._hold_learn = False
         was = self._learn
         self._learn = False
@@ -716,11 +734,15 @@ class OscRuntime(QtCore.QObject):
         from gremlin.mode_manager import ModeManager
 
         if self._learn:
+            owner = self._learn_owner
             if not self._hold_learn:
                 self._learn = False
                 self.listenChanged.emit()
             log.info("OSC listen captured %s %s", address, payload)
             self.learned.emit(address, payload)
+            # A single Listen is over (unless a handler started a new one).
+            if not self._learn and self._learn_owner is owner:
+                self._learn_owner = None
             # A single Listen ends on its message; with no profile running
             # the port closes.
             self._close_if_idle()
