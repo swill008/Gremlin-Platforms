@@ -22,6 +22,7 @@ import re
 import subprocess
 import time
 
+import child_env  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -98,7 +99,7 @@ def runs(tmp_path_factory: pytest.TempPathFactory) -> dict[str, tuple[int, str, 
                "--confcutdir", str(folder)]
         env = dict(
             os.environ,
-            PYTHONPATH=os.pathsep.join([str(_ROOT / "test"), str(_ROOT)]),
+            PYTHONPATH=child_env.python_path(_ROOT / "test", _ROOT),
             GREMLIN_TEST_STALL_AFTER="1",
             GREMLIN_TEST_HANG_LIMIT="",  # this pytest watches its own tests
             USERPROFILE=str(folder),

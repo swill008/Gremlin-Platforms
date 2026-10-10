@@ -62,6 +62,17 @@ class _HeldVJoy:
         self.vjoy_id = None
 
 
+@pytest.fixture(autouse=True)
+def _in_a_run() -> object:
+    """Writes are sent only during a Run (06 S4, Q19)."""
+    from gremlin import run_scope
+
+    run_scope.begin()
+    yield
+    run_scope.stop()
+    run_scope._reset_for_tests()
+
+
 @pytest.fixture
 def held(monkeypatch: pytest.MonkeyPatch) -> Iterator[_HeldVJoy]:
     trace._reset_for_tests()

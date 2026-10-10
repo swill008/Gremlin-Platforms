@@ -10,6 +10,7 @@ set_runner(); the real one refuses to run under pytest."""
 
 from __future__ import annotations
 
+import ctypes
 import ntpath
 import os
 import shutil
@@ -131,13 +132,21 @@ def list_devices(
     hidden_ids: Iterable[str],
     profile_device_names: Iterable[str] = (),
     gremlin_names: dict[str, str] | None = None,
+    hid_groups: list[dict] | None = None,
 ) -> list[ResetDevice]:
     """Plugged-in physical USB game controllers, one per USB device (a
-    device that isn't plugged in is never listed, 02 S144)."""
+    device that isn't plugged in is never listed, 02 S144). hid_groups:
+    rows a list_hid_devices walk already read (either filter), so a caller
+    that has them doesn't walk again; a set_enumerator fake still wins."""
     hidden = {h.upper() for h in hidden_ids if h}
     profile = {n.casefold() for n in profile_device_names if n}
     aliases = {k.upper(): v for k, v in (gremlin_names or {}).items() if v}
-    rows = (_enumerator or _real_enumerate)()
+    if _enumerator is not None:
+        rows = _enumerator()
+    elif hid_groups is not None:
+        rows = _rows_from_groups(hid_groups)
+    else:
+        rows = _real_enumerate()
     by_usb: dict[str, ResetDevice] = {}
     for row in rows:
         usb = str(row.get("usb_id") or "")
@@ -175,8 +184,17 @@ def _real_enumerate() -> list[dict]:
         return []
     from gremlin import hidhide_driver as hh
 
+    return _rows_from_groups(hh.list_hid_devices(True))
+
+
+def _rows_from_groups(groups: list[dict]) -> list[dict]:
+    """Raw rows (one per HID collection) from list_hid_devices rows."""
+    if os.name != "nt":
+        return []
+    from gremlin import hidhide_driver as hh
+
     rows: list[dict] = []
-    for group in hh.list_hid_devices(True):
+    for group in hh.gaming_only_rows(groups):
         for hid in group.get("instanceIds") or []:
             usb = hh._parent_instance(hid)
             if not usb:
@@ -354,11 +372,7 @@ def _real_runner(ids: list[str]) -> dict[str, int]:
     return _run_batch(ids, _elevated_launch)
 
 
-def _elevated_launch(script: str, folder: str) -> None:
-    """Runs script in one elevated cmd.exe and waits for it."""
-    if _under_test():
-        raise RealRunnerBlocked("device_reset elevated launch called from a test")
-    import ctypes
+if os.name == "nt":
     from ctypes import wintypes
 
     class SHELLEXECUTEINFOW(ctypes.Structure):
@@ -380,6 +394,11 @@ def _elevated_launch(script: str, folder: str) -> None:
             ("hProcess", wintypes.HANDLE),
         ]
 
+
+def _elevated_launch(script: str, folder: str) -> None:
+    """Runs script in one elevated cmd.exe and waits for it."""
+    if _under_test():
+        raise RealRunnerBlocked("device_reset elevated launch called from a test")
     SEE_MASK_NOCLOSEPROCESS = 0x00000040
     SEE_MASK_NO_CONSOLE = 0x00008000
     SW_HIDE = 0

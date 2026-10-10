@@ -21,6 +21,8 @@ import traceback
 from collections.abc import Callable
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 _HOME = Path(os.environ.get("USERPROFILE", "")).resolve()
 _REAL_HOME = (
     Path(os.environ.get("SystemDrive", "C:") + "/Users")
@@ -148,7 +150,7 @@ def main() -> None:
     except Exception:  # noqa: BLE001
         print("ERROR " + traceback.format_exc().replace("\n", " | "), flush=True)
     print("done", flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 def starred(root: QtCore.QObject) -> str:

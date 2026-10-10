@@ -14,7 +14,6 @@ import types
 import uuid
 
 import pytest
-from PySide6 import QtCore
 
 import joystick_gremlin as jg
 from gremlin import audio_player, config, run_scope, user_script
@@ -413,31 +412,6 @@ def test_an_action_with_no_node_is_logged_not_printed(
         assert AbstractActionData.to_xml(fake) is None
     assert capsys.readouterr().out == ""
     assert "gave no node to save" in caplog.text
-
-
-# --- GL-254: the Configuration pane's models are freed ---------------------
-
-
-def test_only_the_newest_editor_models_are_kept(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from gremlin.ui.profile import InputItemModel
-
-    freed: list[int] = []
-    monkeypatch.setattr(
-        InputItemModel, "deleteLater", lambda self: freed.append(self.enumeration_index)
-    )
-    owner = QtCore.QObject()
-    owner._editor_models = []  # type: ignore[attr-defined]
-    owner._KEPT_EDITOR_MODELS = _BACKEND._KEPT_EDITOR_MODELS  # type: ignore[attr-defined]
-    item = types.SimpleNamespace()
-    for index in range(20):
-        _BACKEND._editor_model(owner, item, index)
-    kept = _BACKEND._KEPT_EDITOR_MODELS
-    assert freed == list(range(20 - kept))
-    assert [m.enumeration_index for m in owner._editor_models] == list(
-        range(20 - kept, 20)
-    )
 
 
 # --- GL-244 (backend part): program-made events don't highlight ------------

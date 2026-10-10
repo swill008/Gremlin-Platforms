@@ -114,6 +114,7 @@ class Event:
         raw_value: float | bool | HatDirection | None = None,
         synthetic: bool = False,
         osc_address: str | None = None,
+        ld_chain: tuple = (),
     ) -> None:
         """Creates a new Event object.
 
@@ -130,6 +131,8 @@ class Event:
                 hardware does (Listen, highlighting, Module Setup) ignore it
             osc_address: the address an OSC input received (for a pattern
                 input, which of its addresses sent it); None otherwise
+            ld_chain: the Logical Device controls this event came through
+                (gremlin.logical_loop, 06 S94a); empty for a new input
         """
         self.event_type = event_type
         self.identifier = identifier
@@ -140,6 +143,7 @@ class Event:
         self.raw_value = raw_value
         self.synthetic = synthetic
         self.osc_address = osc_address
+        self.ld_chain = ld_chain
 
     def display_name(self) -> str:
         """Returns the display representation of this event.
@@ -184,6 +188,7 @@ class Event:
             self.raw_value,
             self.synthetic,
             self.osc_address,
+            self.ld_chain,
         )
 
     def __eq__(self, other: object) -> bool:
@@ -287,6 +292,8 @@ class EventListener(QtCore.QObject):
 
         self._running = True
         self._stop_event = threading.Event()
+        # Bumped by restart(): a listener thread from before it ends.
+        self._generation = 0
         self.gremlin_active = False
 
         self._init_joysticks()
@@ -295,7 +302,9 @@ class EventListener(QtCore.QObject):
         self._start_thread()
 
     def _start_thread(self) -> None:
-        threads.start("event listener", self._run, stop=self._ask_to_stop)
+        threads.start(
+            "event listener", self._run, self._generation, stop=self._ask_to_stop
+        )
 
     def _ask_to_stop(self) -> None:
         self._running = False
@@ -325,6 +334,7 @@ class EventListener(QtCore.QObject):
     def restart(self) -> None:
         """Restarts the event listener."""
         if not self._running:
+            self._generation += 1
             self._running = True
             self.keyboard_hook.start()
             self._stop_event.clear()
@@ -339,13 +349,16 @@ class EventListener(QtCore.QObject):
             *values_for_device(device_guid.uuid, axis_index)
         )
 
-    def _run(self) -> None:
+    def _run(self, generation: int) -> None:
         """Starts the event loop."""
+        if generation != self._generation:
+            return
         dill.DILL.set_device_change_callback(self._joystick_device_handler)
         dill.DILL.set_input_event_callback(self._joystick_event_handler)
-        while self._running:
-            # Keep this thread alive until we are done
-            self._stop_event.wait()
+        # Keep this thread alive until stopped or replaced by restart();
+        # the timeout re-checks both.
+        while self._running and generation == self._generation:
+            self._stop_event.wait(1.0)
 
     def _joystick_event_handler(self, data: dill.InputEvent) -> None:
         """Callback for joystick events.

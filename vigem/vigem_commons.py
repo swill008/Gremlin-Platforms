@@ -8,11 +8,6 @@ from ctypes import Structure, c_short, c_ubyte, c_ushort
 from enum import IntEnum, IntFlag
 
 
-class VIGEM_TARGET_TYPE(IntFlag):
-    Xbox360Wired = 0
-    DualShock4Wired = 2
-
-
 class XUSB_BUTTON(IntFlag):
     XUSB_GAMEPAD_DPAD_UP = 0x0001
     XUSB_GAMEPAD_DPAD_DOWN = 0x0002

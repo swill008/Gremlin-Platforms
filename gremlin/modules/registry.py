@@ -279,27 +279,6 @@ def resolve_module_slug(device_name: str, guid: str = "") -> str:
     return own
 
 
-def device_has_name(guid: str, device_name: str) -> bool:
-    """True when a connected device (stick or vJoy) with this id has this
-    name. (Twin sticks share a name: the first one's id isn't the only one.)"""
-    want = guid_key(guid)
-    wanted = (device_name or "").strip().lower()
-    if not want or not wanted:
-        return False
-    try:
-        from gremlin import device_initialization
-
-        devices = list(device_initialization.physical_devices() or [])
-        devices.extend(device_initialization.vjoy_devices() or [])
-    except Exception:
-        return False
-    return any(
-        guid_key(getattr(dev, "device_guid", "")) == want
-        and str(getattr(dev, "name", "") or "").strip().lower() == wanted
-        for dev in devices
-    )
-
-
 # path -> ((mtime_ns, size), Module | None)
 _cache: dict[Path, tuple[tuple[int, int], Module | None]] = {}
 # modules() runs on the main thread and on action threads (output claims):
@@ -317,13 +296,21 @@ def _folder() -> Path:
 def read_doc(path: Path) -> dict | None:
     """A module (or other JSON) file's content, or None when it is missing,
     can't be read or isn't a JSON object. A damaged file (bad text, or not
-    UTF-8) is skipped and named in the log: readers that caught only bad
-    JSON stopped on a file that wasn't UTF-8."""
+    UTF-8, or nested absurdly deep) is skipped and named in the log:
+    readers that caught only bad JSON stopped on a file that wasn't UTF-8."""
     try:
-        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+        return _load_doc(path)
     except OSError:
         return None
-    except ValueError as exc:
+
+
+def _load_doc(path: Path) -> dict | None:
+    """read_doc, except a file that can't be read raises OSError, so the
+    module cache can tell a passing failure (retry) from a damaged file."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (ValueError, RecursionError) as exc:
+        # RecursionError: absurdly deep nesting, damaged like bad text.
         import logging
 
         logging.getLogger("system").warning(f"Skipped damaged file {path}: {exc}")
@@ -332,7 +319,8 @@ def read_doc(path: Path) -> dict | None:
 
 
 def _read(path: Path) -> Module | None:
-    doc = read_doc(path)
+    """The module in this file; raises OSError when it can't be read."""
+    doc = _load_doc(path)
     if doc is None:
         return None
     slug = path.stem.lower()
@@ -369,7 +357,13 @@ def modules() -> list[Module]:
             stamp = (stat.st_mtime_ns, stat.st_size)
             cached = cache.get(path)
             if cached is None or cached[0] != stamp:
-                cached = (stamp, _read(path))
+                try:
+                    cached = (stamp, _read(path))
+                except OSError:
+                    # Locked for a moment (antivirus, backup): not cached,
+                    # so the next call reads it again (AUD-RUN-06).
+                    cache.pop(path, None)
+                    continue
                 cache[path] = cached
             if cached[1] is not None:
                 out.append(cached[1])

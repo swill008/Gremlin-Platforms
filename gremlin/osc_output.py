@@ -95,20 +95,7 @@ def reset() -> None:
 def _settings() -> tuple[dict, list[dict]]:
     from gremlin import osc_device_file
 
-    server = osc_device_file.read_server()
-    reader = getattr(osc_device_file, "read_targets", None)
-    if reader is not None:
-        targets = reader()
-    else:
-        targets = [
-            {
-                "id": "default",
-                "name": "Default",
-                "host": server.get("output_host", "127.0.0.1"),
-                "port": server.get("output_port", 8000),
-            }
-        ]
-    return server, targets
+    return osc_device_file.read_server(), osc_device_file.read_targets()
 
 
 def resolve_target(target_id: str) -> tuple[str, int] | None:

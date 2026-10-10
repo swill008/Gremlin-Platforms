@@ -494,22 +494,6 @@ class WindowPlacement(QtCore.QObject):
             return
         save_tool(window, name)
 
-    @QtCore.Slot(result=int)
-    def buttonMapMenuWidth(self) -> int:
-        cfg = _ensure()
-        return int(cfg.value(SECTION, GROUP, KEY_MENU_W) or DEFAULT_MENU_W)
-
-    @QtCore.Slot(result=int)
-    def buttonMapMenuHeight(self) -> int:
-        cfg = _ensure()
-        return int(cfg.value(SECTION, GROUP, KEY_MENU_H) or DEFAULT_MENU_H)
-
-    @QtCore.Slot(int, int)
-    def saveButtonMapMenuSize(self, width: int, height: int) -> None:
-        cfg = _ensure()
-        cfg.set(SECTION, GROUP, KEY_MENU_W, max(180, min(900, int(width))))
-        cfg.set(SECTION, GROUP, KEY_MENU_H, max(160, min(1000, int(height))))
-
     @QtCore.Slot(str, result=str)
     def toolRowState(self, name: str) -> str:
         """A tool row's saved state as JSON ("{}" when none)."""
@@ -561,41 +545,3 @@ class WindowPlacement(QtCore.QObject):
             data = {}
         return data if isinstance(data, dict) else {}
 
-    def _save_logical(self, data: dict) -> None:
-        cfg = _ensure()
-        cfg.set(SECTION, GROUP, KEY_LOGICAL, json.dumps(data, sort_keys=True))
-
-    @QtCore.Slot(result=str)
-    def logicalDock(self) -> str:
-        dock = str(self._logical().get("dock", "float") or "float")
-        return dock if dock in ("float", "left", "right") else "float"
-
-    @QtCore.Slot(str)
-    def setLogicalDock(self, dock: str) -> None:
-        data = self._logical()
-        data["dock"] = dock if dock in ("float", "left", "right") else "float"
-        self._save_logical(data)
-
-    @QtCore.Slot(result=bool)
-    def logicalOpen(self) -> bool:
-        return bool(self._logical().get("open", False))
-
-    @QtCore.Slot(bool)
-    def setLogicalOpen(self, open_editor: bool) -> None:
-        data = self._logical()
-        data["open"] = bool(open_editor)
-        self._save_logical(data)
-
-    @QtCore.Slot(result=int)
-    def logicalWidth(self) -> int:
-        try:
-            width = int(self._logical().get("width", 420))
-        except (TypeError, ValueError):
-            width = 420
-        return max(280, min(900, width))
-
-    @QtCore.Slot(int)
-    def setLogicalWidth(self, width: int) -> None:
-        data = self._logical()
-        data["width"] = max(280, min(900, int(width)))
-        self._save_logical(data)

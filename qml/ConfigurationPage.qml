@@ -78,9 +78,15 @@ Item {
     }
 
     // Another device (S127: switching device clears every Undo step).
+    // Both values at once: one rebuild, never the new id with the old name.
     function setDevice(nextGuid, nextName) {
+        var was = _ready
+        _ready = false
         guid = String(nextGuid || "")
         deviceName = String(nextName || "")
+        _ready = was
+        if (was)
+            _applyDevice()
     }
 
     // Jump to pressed input (S131): the input with this device index is

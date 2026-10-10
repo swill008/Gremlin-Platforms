@@ -28,6 +28,9 @@ from typing import Any
 from gremlin.error import GremlinError
 
 MAX_BYTES = 10 * 1024 * 1024
+# Containers inside containers; a real layout is a few levels deep. Deeper
+# is refused (the walk would otherwise hit Python's recursion limit).
+MAX_DEPTH = 100
 
 # Control kind -> (input mode, display name); kinds left out are skipped.
 # An encoder sends its absolute 0..1 position, so it is an axis (TC4).
@@ -77,6 +80,10 @@ def _parse_xml(data: bytes) -> ET.Element:
         root = ET.fromstring(data)
     except ET.ParseError as err:
         raise GremlinError(f"The TouchOSC layout is not valid XML: {err}") from None
+    except RecursionError:
+        raise GremlinError(
+            f"The TouchOSC layout is nested too deeply (over {MAX_DEPTH} levels)."
+        ) from None
     if root.tag != "lexml":
         raise GremlinError("Not a TouchOSC layout (.tosc) file.")
     return root
@@ -207,7 +214,13 @@ def _rows_for(
     return [row], None
 
 
-def _walk(node: _Node, rows: list[dict[str, Any]], skipped: list[str]) -> None:
+def _walk(
+    node: _Node, rows: list[dict[str, Any]], skipped: list[str], depth: int = 0
+) -> None:
+    if depth > MAX_DEPTH:
+        raise GremlinError(
+            f"The TouchOSC layout is nested too deeply (over {MAX_DEPTH} levels)."
+        )
     title = node.name or node.kind.lower()
     if node.kind in _KINDS:
         sends = [
@@ -235,7 +248,7 @@ def _walk(node: _Node, rows: list[dict[str, Any]], skipped: list[str]) -> None:
         skipped.append(f"{title} ({node.kind or '?'}): unknown control, skipped")
     # Pager pages are GROUP children, walked like any container's.
     for index, child in enumerate(node.elem.findall("./children/node"), start=1):
-        _walk(_Node(child, node, index), rows, skipped)
+        _walk(_Node(child, node, index), rows, skipped, depth + 1)
 
 
 def parse(path: str | os.PathLike[str]) -> tuple[list[dict[str, Any]], list[str]]:

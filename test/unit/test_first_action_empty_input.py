@@ -17,7 +17,7 @@ import pytest
 sys.path.append(".")
 
 import dill
-from gremlin import osc_device_file, shared_state
+from gremlin import shared_state
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice
 from gremlin.profile import Profile
 from gremlin.types import InputType
@@ -43,7 +43,6 @@ def profile() -> Iterator[Profile]:
     shared_state.current_profile = profile
     yield profile
     shared_state.current_profile = old
-    osc_device_file.current_uid_map = None
     rows.load_dict(saved)
 
 

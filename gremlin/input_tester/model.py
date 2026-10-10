@@ -205,6 +205,8 @@ class InputTesterModel(QtCore.QObject):
         self._seen: list[devices.SeenDevice] = []
         self._hid: list[devices.HidDevice] = []
         self._expected: dict | None = None
+        # Why expected.json can't be used ("" when read or missing).
+        self._expected_problem = ""
         self._expected_mtime: float | None = None
         self._verdict = cmp.Verdict("none", "", [])
         self._last_result: dict | None = None
@@ -258,12 +260,21 @@ class InputTesterModel(QtCore.QObject):
 
     def _read_expected(self) -> None:
         path = self._expected_file()
-        self._expected = cmp.load_expected(path) if path else None
+        self._expected, self._expected_problem = (
+            cmp.read_expected(path) if path else (None, "")
+        )
         try:
             self._expected_mtime = path.stat().st_mtime if path else None
         except OSError:
             self._expected_mtime = None
         self._check_stale()
+
+    def _expected_differs(self, before: dict | None, problem: str) -> bool:
+        """The file read now differs from before (an unreadable file is
+        named once, not at every poll)."""
+        return _content(before) != _content(self._expected) or (
+            problem != self._expected_problem
+        )
 
     def _check_stale(self) -> None:
         stale = cmp.stale_since(self._expected, self._started_at)
@@ -288,7 +299,13 @@ class InputTesterModel(QtCore.QObject):
         if not self._gremlin_dir:
             return
         if self._expected is None:
-            self._log.warn("Gremlin's expected devices (expected.json) not found")
+            if self._expected_problem:
+                self._log.warn(
+                    "Gremlin's expected devices (expected.json) can't be read "
+                    f"({self._expected_problem}); shown without a verdict"
+                )
+            else:
+                self._log.warn("Gremlin's expected devices (expected.json) not found")
             return
         written = str(self._expected.get("written", ""))
         try:
@@ -373,10 +390,10 @@ class InputTesterModel(QtCore.QObject):
             self._hid, self._hid_skips = list(kept), list(skipped)
         except Exception:  # noqa: BLE001
             self._hid, self._hid_skips = [], []
-        before = self._expected
+        before = self._expected, self._expected_problem
         self._read_expected()
         # Refresh re-reads the file; it says "changed" only when it did.
-        if self._first_refresh or _content(before) != _content(self._expected):
+        if self._first_refresh or self._expected_differs(*before):
             self._log_expected(self._first_refresh)
         self._first_refresh = False
         self._recompare()
@@ -398,10 +415,10 @@ class InputTesterModel(QtCore.QObject):
         # and the rows and the axes read follow it (02 S146).
         devices_changed = seen != self._seen
         if file_changed:
-            before = self._expected
+            before = self._expected, self._expected_problem
             self._read_expected()
             # Rewritten with the same devices and settings: not a change.
-            file_changed = _content(before) != _content(self._expected)
+            file_changed = self._expected_differs(*before)
             if file_changed:
                 self._log_expected(False)
         if devices_changed:

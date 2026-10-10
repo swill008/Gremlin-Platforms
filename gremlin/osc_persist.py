@@ -34,29 +34,14 @@ def resolve_osc_reference(
     """Current (type, number) and uid of a saved OSC reference.
 
     A uid wins; one OSC's file doesn't have is missing (None), never
-    re-targeted by number (D-09-OSC-FILE 2). No uid (old data): the old
-    profile's load map (osc_device_file.current_uid_map, keyed by the XML
-    type name or the enum name), then type+number. (None, None): nothing
-    matches.
+    re-targeted by number (D-09-OSC-FILE 2). No uid: type+number.
+    (None, None): nothing matches.
     """
     rows = osc_rows()
     if uid:
         return rows.identifier_of_uid(uid), uid
     if input_type is None or input_id is None:
         return None, None
-    try:
-        from gremlin import osc_device_file
-
-        remap = getattr(osc_device_file, "current_uid_map", None) or {}
-    except ImportError:
-        remap = {}
-    for key in (
-        (InputType.to_string(input_type), int(input_id)),
-        (input_type.name, int(input_id)),
-    ):
-        mapped = remap.get(key)
-        if mapped:
-            return rows.identifier_of_uid(mapped), mapped
     row = rows.by_number(input_type, int(input_id))
     if row is None:
         return None, None

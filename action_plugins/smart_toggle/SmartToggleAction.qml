@@ -11,6 +11,7 @@ import QtQuick.Controls.Universal as U
 import Gremlin.ActionPlugins
 import Gremlin.Base
 import Gremlin.Profile
+import Gremlin.Style
 import "../../qml"
 
 
@@ -28,22 +29,26 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
 
-        RowLayout {
-            Label {
-                text: "Hold time (sec)"
-            }
-            FloatSpinBox {
-                minValue: 0
-                maxValue: 10
-                value: _root.action.delay
-                stepSize: 0.05
+        // Wraps onto two lines when the pane is narrow.
+        Flow {
+            Layout.fillWidth: true
+            spacing: Style.dp(10)
 
-                onValueModified: (newValue) => {
-                    _root.action.delay = newValue
+            RowLayout {
+                Label {
+                    text: "Hold time (sec)"
+                }
+                FloatSpinBox {
+                    minValue: 0
+                    maxValue: 10
+                    value: _root.action.delay
+                    stepSize: 0.05
+
+                    onValueModified: (newValue) => {
+                        _root.action.delay = newValue
+                    }
                 }
             }
-
-            LayoutHorizontalSpacer {}
 
             ActionSelector {
                 actionNode: _root.action

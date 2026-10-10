@@ -129,10 +129,16 @@ def _clean(value: str) -> str:
     return " ".join(str(value or "").split())
 
 
+# The longest folder or file name the Library makes from a name (a pack's
+# exported name can be any length; Windows paths can't).
+_NAME_MAX = 80
+
+
 def _file_name(text: str) -> str:
     from gremlin.modules import store
 
-    return store.pack_file_name(text)
+    name = store.pack_file_name(text)
+    return name[:_NAME_MAX].rstrip(" .") or "device"
 
 
 # --- where -------------------------------------------------------------------------
@@ -193,7 +199,7 @@ def _load() -> dict:
         return _empty()
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, RecursionError) as exc:
         raise LibraryDamaged(f"{path.name} could not be read: {exc}") from exc
     if not isinstance(doc, dict) or not isinstance(doc.get("devices", []), list):
         raise LibraryDamaged(f"{path.name} is not a library list.")
@@ -339,7 +345,7 @@ def _finish(act: dict) -> None:
 def _records(text: str | None) -> list[dict]:
     try:
         doc = json.loads(text) if text else None
-    except ValueError:
+    except (ValueError, RecursionError):
         return []
     found = doc.get("devices") if isinstance(doc, dict) else None
     return [r for r in found or [] if isinstance(r, dict)]
@@ -385,7 +391,7 @@ def history_text(side: dict | None) -> str:
         text = side.get("text")
         try:
             doc = json.loads(text) if text is not None else None
-        except ValueError:
+        except (ValueError, RecursionError):
             doc = None
         if text is None:
             lines.append("No Device Library list.")
@@ -773,6 +779,33 @@ def _match(records: list[dict], name: str, guid: str) -> dict | None:
     return None
 
 
+def _readable_setup(setup: object) -> bool:
+    """A saved setup row of library.json that the list can show."""
+    if not isinstance(setup, dict):
+        return False
+    lists = ("holds", "profiles", "history", "covers")
+    return (
+        isinstance(setup.get("key"), str)
+        and bool(setup["key"])
+        and isinstance(setup.get("file", ""), str)
+        and all(isinstance(setup.get(k) or [], list) for k in lists)
+        and isinstance(setup.get("vjoys") or {}, dict)
+    )
+
+
+def _readable_record(rec: object) -> bool:
+    """A device row of library.json that the list can show."""
+    return (
+        isinstance(rec, dict)
+        and isinstance(rec.get("key"), str)
+        and bool(rec["key"])
+        and all(
+            isinstance(rec.get(k) or "", str)
+            for k in ("name", "ownName", "guid", "description", "seen", "kind")
+        )
+    )
+
+
 def _setup_out(rec: dict, setup: dict) -> dict:
     out = {
         "key": setup["key"],
@@ -798,7 +831,17 @@ def _setup_out(rec: dict, setup: dict) -> dict:
 def _view(doc: dict) -> list[dict]:
     """Every device: the list's records joined with the sticks set up here
     and the ones plugged in now."""
-    records = [rec for rec in doc.get("devices") or [] if isinstance(rec, dict)]
+    # A row that can't be read is left out (and left in the file as it is),
+    # never the whole list (SHAKE-DAMAGE-03).
+    records = []
+    for index, rec in enumerate(doc.get("devices") or []):
+        if _readable_record(rec):
+            records.append(rec)
+        else:
+            syslog.warning(
+                f"Device Library: device row {index + 1} of {LIST_NAME} "
+                "can't be read and is left out."
+            )
     rows: dict[str, dict] = {}
     order: list[str] = []
 
@@ -868,7 +911,23 @@ def _view(doc: dict) -> list[dict]:
         noted = str(seen.get(stored_guid_key(row["guid"]), "")) if row["guid"] else ""
         if row["seen"] != "now" and noted > str(row["seen"] or ""):
             row["seen"] = noted
-        setups = list((rec or {}).get("setups") or [])
+        setups = []
+        held = (rec or {}).get("setups") or []
+        if not isinstance(held, list):
+            syslog.warning(
+                f"Device Library: the saved setups of {row['name']} can't be "
+                "read and are left out."
+            )
+            held = []
+        for setup in held:
+            if _readable_setup(setup):
+                setups.append(setup)
+            else:
+                label = setup.get("key") if isinstance(setup, dict) else ""
+                syslog.warning(
+                    f"Device Library: saved setup {label or '(no key)'} of "
+                    f"{row['name']} can't be read and is left out."
+                )
         setups = _newest_first(setups)
         row["setups"] = [_setup_out(row, s) for s in setups]
         out.append(row)
@@ -1101,24 +1160,43 @@ def _build(
 
 
 def _read_pack(data: bytes | Path) -> dict | str:
-    """The pack's map.json and wires.json, or why it can't be read."""
+    """The pack's map.json and wires.json, or why it can't be read: the
+    same checks as the Device Pack window (size, wires.json, outputs)."""
+    from gremlin.ui import device_pack
+
     try:
         source = io.BytesIO(data) if isinstance(data, bytes) else Path(data)
         with zipfile.ZipFile(source, "r") as zf:
+            big = device_pack.too_big(zf)
+            if big:
+                return big
             names = zf.namelist()
             if "map.json" not in names:
                 return "It has no map.json."
-            doc = json.loads(zf.read("map.json").decode("utf-8"))
-            wires = {}
+            doc = _json_part(zf, "map.json")
+            wires: object = {}
             if "wires.json" in names:
-                wires = json.loads(zf.read("wires.json").decode("utf-8"))
+                wires = _json_part(zf, "wires.json")
+                problem = device_pack.wires_problem(wires)
+                if problem:
+                    return problem
+            problem = device_pack.outputs_problem(zf)
+            if problem:
+                return problem
             if zf.testzip() is not None:
                 return "It is damaged."
-    except (OSError, ValueError, zipfile.BadZipFile, KeyError) as exc:
+    except (OSError, ValueError, RecursionError, zipfile.BadZipFile, KeyError) as exc:
         return f"It could not be read ({exc})."
     if not isinstance(doc, dict):
         return "Its map.json is not a document."
     return {"map": doc, "wires": wires if isinstance(wires, dict) else {}}
+
+
+def _json_part(zf: zipfile.ZipFile, name: str) -> object:
+    try:
+        return json.loads(zf.read(name).decode("utf-8"))
+    except (ValueError, RecursionError) as exc:
+        raise ValueError(f"its {name}: {exc}") from exc
 
 
 def _contents(pack: dict) -> tuple[list[str], list[str], int, dict[str, int]]:
@@ -1553,7 +1631,7 @@ def photo(setup_key: str) -> str:
             dest = _photo_cache() / f"{tag}{Path(arc).suffix.lower()}"
             if not dest.is_file():
                 module_file.write_bytes(dest, zf.read(arc))
-    except (OSError, ValueError, KeyError, zipfile.BadZipFile) as exc:
+    except (OSError, ValueError, RecursionError, KeyError, zipfile.BadZipFile) as exc:
         syslog.warning(f"Device Library: photo of {setup_key} not shown ({exc})")
         return ""
     return str(dest)
@@ -1996,7 +2074,7 @@ def _own_dirs(doc: dict) -> set[str]:
 def _list_of(base: Path) -> dict:
     try:
         doc = json.loads((base / LIST_NAME).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return {}
     return doc if isinstance(doc, dict) else {}
 

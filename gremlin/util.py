@@ -3,14 +3,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 import ctypes
-import importlib
 import json
 import logging
-import math
 import os
 import re
 import sys
-import types
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -20,7 +17,6 @@ from typing import (
 )
 from xml.etree import ElementTree
 
-from dill import DeviceSummary
 from gremlin import error
 from gremlin.types import (
     ActionActivationMode,
@@ -35,26 +31,6 @@ from gremlin.types import (
 
 # Table storing which modules have been imported already
 g_loaded_modules = {}
-
-
-def read_bool(node: ElementTree.Element, key: str, default_value: bool = False) -> bool:
-    """Attempts to read a boolean value.
-
-    If there is an error when reading the given field from the node
-    the default value is returned instead.
-
-    Args:
-        node: the node from which to read the value
-        key: the attribute key to read from the node
-        default_value: the default value to return in case of errors
-
-    Returns:
-         Boolean representation of the attribute value
-    """
-    try:
-        return parse_bool(node.get(key), default_value)
-    except error.ProfileError:
-        return default_value
 
 
 def parse_id_or_uuid(value: str) -> int | uuid.UUID:
@@ -675,32 +651,6 @@ def determine_value_type(
     return value_type, is_valid
 
 
-def all_properties_present(keys: list[str], properties: dict[str, Any]) -> bool:
-    """Checks if all listed keys are present in the properties dictionary.
-
-    Args:
-        keys: list of dictionary keys that have to exist
-        properties: dictionary with properties
-
-    Returns:
-        True if all provided keys exist in the properties dictionary, False
-        otherwise
-    """
-    for key in keys:
-        if key not in properties:
-            return False
-    return True
-
-
-def is_user_admin() -> bool:
-    """Returns if the user has admin privileges.
-
-    Returns:
-        True if user has admin rights, False otherwise
-    """
-    return ctypes.windll.shell32.IsUserAnAdmin() == 1
-
-
 def with_center_calibration(
     value: int, low: int, centerLow: int, centerHigh: int, high: int
 ) -> float:
@@ -1040,32 +990,6 @@ def log(msg: str) -> None:
     logging.getLogger("user").debug(str(msg))
 
 
-def format_name(name: str) -> str:
-    """Returns the name formatted as valid python variable name.
-
-    Args:
-        name: the name to format
-
-    Returns:
-        name formatted to be suitable as a python variable name
-    """
-    return re.sub("[^A-Za-z]", "", name.lower()[0]) + re.sub(
-        "[^A-Za-z0-9]", "", name.lower()[1:]
-    )
-
-
-def valid_python_identifier(name: str) -> bool:
-    """Returns whether a given name is a valid python identifier.
-
-    Args:
-        name: the name to check for validity
-
-    Returns:
-        True if the name is a valid identifier, False otherwise
-    """
-    return re.match(r"^[^\d\W]\w*\Z", name) is not None
-
-
 def clamp(value: float, min_val: float, max_val: float) -> float:
     """Returns the value clamped to the provided range.
 
@@ -1131,44 +1055,6 @@ def dill_hat_lookup(value: int) -> HatDirection:
     return _dill_hat_lookup.get(value, HatDirection.Center)
 
 
-def load_module(name: str) -> types.ModuleType:
-    """Imports  the given module.
-
-    :param name the name of the module
-    :return the loaded module
-    """
-    global g_loaded_modules
-    if name in g_loaded_modules:
-        importlib.reload(g_loaded_modules[name])
-    else:
-        g_loaded_modules[name] = importlib.import_module(name)
-    return g_loaded_modules[name]
-
-
-def deg2rad(angle: float) -> float:
-    """Returns radian value of the provided angle in degree.
-
-    Args:
-        angle: angle in degrees
-
-    Returns:
-        angle in radian
-    """
-    return angle * (math.pi / 180.0)
-
-
-def rad2deg(angle: float) -> float:
-    """Returns degree value of the provided angle in radian.
-
-    Args:
-        angle: angle in radian
-
-    Returns:
-        angle in degree
-    """
-    return angle * (180.0 / math.pi)
-
-
 def file_exists_and_is_accessible(filename: str) -> bool:
     """Returns true when a provided filename exists and can be read."""
 
@@ -1226,49 +1112,6 @@ def get_code_version() -> str:
         return json.load(open(version_file))["version"]
     except json.decoder.JSONDecodeError:
         return "0.0.0"
-
-
-def get_code_release() -> str:
-    """Returns the release string derived from the semantic version number,
-
-    Returns:
-        Gremlin's release number.
-    """
-    version = [int(v) for v in get_code_version().split(".")]
-    if version[1] == 0:
-        return f"R{version[0]}"
-    else:
-        return f"R{version[0]}.{version[1]}"
-
-
-def first_available_input(
-    devices: list[DeviceSummary], input_types: list[InputType]
-) -> tuple[DeviceSummary, InputType, int] | None:
-    """Returns the first available input of the given type.
-
-    Args:
-        devices: list of devices to check for the input
-        input_type: type of input to find
-
-    Returns:
-        Tuple containing the device, input type and input id of the first
-        available input of the given type, or None if no such input is found
-    """
-    input_counts = {
-        InputType.JoystickAxis: lambda x: x.axis_count,
-        InputType.JoystickButton: lambda x: x.button_count,
-        InputType.JoystickHat: lambda x: x.hat_count,
-    }
-    for device in devices:
-        for input_type in input_types:
-            if input_type not in input_counts:
-                continue
-            if input_counts[input_type](device) > 0:
-                if input_type == InputType.JoystickAxis:
-                    return (device, input_type, device.axis_map[0].axis_index)
-                else:
-                    return (device, input_type, 1)
-    return None
 
 
 def file_version(path: str) -> str:

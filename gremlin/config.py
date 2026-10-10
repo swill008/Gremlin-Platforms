@@ -209,8 +209,9 @@ class Configuration(metaclass=common.SingletonMetaclass):
                 if not isinstance(json_data, dict):
                     raise ValueError("not a settings file")
                 result = "ok"
-            except (OSError, ValueError) as e:
-                # Unreadable as a whole: kept aside, defaults are used.
+            except (OSError, ValueError, RecursionError) as e:
+                # Unreadable as a whole (RecursionError: absurdly deep
+                # nesting): kept aside, defaults are used.
                 json_data = {}
                 result = "damaged"
                 _keep_damaged_file(str(e))

@@ -27,6 +27,8 @@ import tempfile
 import unittest.mock
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ.setdefault(
     "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
@@ -177,7 +179,7 @@ def main() -> None:
     for w in warnings:
         print(f"WARN {w}", flush=True)
     print("done", flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

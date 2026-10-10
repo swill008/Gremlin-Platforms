@@ -17,11 +17,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import sys
 import time
 import traceback
 from pathlib import Path
+
+from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -243,5 +244,5 @@ except BaseException:
     traceback.print_exc()
     sys.stdout.flush()
     sys.stderr.flush()
-    os._exit(1)
-os._exit(0)
+    smoke_exit(1)
+smoke_exit(0)

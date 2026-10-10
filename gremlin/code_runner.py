@@ -6,7 +6,6 @@ from __future__ import annotations
 import logging
 import os
 import sys
-import time
 from abc import (
     ABCMeta,
     abstractmethod,
@@ -214,11 +213,8 @@ class CallbackObject:
         return any(values)
 
     def __call__(self, event: event_handler.Event) -> None:
-        values = self._generate_values(event)
-        for i, value in enumerate(values):
+        for value in self._generate_values(event):
             self._functor(event, value)
-            if i < len(values) - 1:
-                time.sleep(0.01)
 
     def _physical_event_setup(self) -> None:
         root = self._binding.root_action

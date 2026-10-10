@@ -54,7 +54,6 @@ def rows() -> Iterator[object]:
     saved = shared.to_dict()
     shared.load_dict({"inputs": []})
     yield shared
-    osc_device_file.current_uid_map = None
     shared.load_dict(saved)
 
 
@@ -89,12 +88,9 @@ def test_the_uid_wins_over_the_number(rows: object) -> None:
     assert (ident.type, ident.id, uid) == (_B, 5, second.uid)
     # An unknown id is missing, even when its old number is taken.
     assert resolve_osc_reference(_UNKNOWN, _B, 1) == (None, _UNKNOWN)
-    # No id (old data): the load map first, then type+number.
+    # No id: type+number.
     ident, uid = resolve_osc_reference(None, _B, 1)
     assert (ident.id, uid) == (1, first.uid)
-    osc_device_file.current_uid_map = {("button", 9): second.uid}
-    ident, uid = resolve_osc_reference(None, _B, 9)
-    assert (ident.id, uid) == (5, second.uid)
     assert resolve_osc_reference(None, _B, 7) == (None, None)
 
 
@@ -304,32 +300,3 @@ def test_osc_friendly_names_travel_by_uid(osc_pack: dict) -> None:
     assert result["ok"], result
     doc = json.loads(osc_device_file.path().read_text("utf-8"))
     assert doc["claim"]["friendly"].get(f"osc:{osc_pack['fire']}") == "Fire"
-
-
-def test_a_saved_older_profile_s_own_osc_rows_count_and_are_not_merged(
-    osc_pack: dict, rows: object
-) -> None:
-    """A saved older profile read without opening it keeps its OSC rows in
-    pending_osc_rows: wires on /fire land on its row, nothing is added to
-    OSC's file from here (D-09-OSC-FILE 3)."""
-    from gremlin.ui import device_pack
-
-    into = Profile()
-    into.pending_osc_rows = {  # type: ignore[attr-defined]
-        "inputs": [
-            {"uid": osc_pack["fire"], "type": "button", "id": 4, "label": "/fire"}
-        ]
-    }
-    loaded = device_pack._read_zip(osc_pack["zip"])
-    plan = device_pack._plan_wires(
-        loaded["wires"], {"wire:Default"}, None,
-        device_pack._rows_of(into), device_pack._osc_rows_of(into),
-    )
-    assert plan["missingOsc"] == []
-    result = device_pack.apply_zip(
-        osc_pack["zip"], "OSC", {"items": ["wire:Default"]}, into,
-        target_guid=str(OSC_DEVICE_UUID),
-    )
-    assert result["ok"], result
-    assert rows.by_uid(osc_pack["fire"]) is None  # type: ignore[attr-defined]
-    assert _vjoy_targets(into) == {4: 7}

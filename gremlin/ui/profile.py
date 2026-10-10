@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import logging
-import time
 import uuid
 from typing import (
     TYPE_CHECKING,
@@ -20,6 +19,7 @@ import gremlin.profile
 import gremlin.ui.type_aliases as ta
 from gremlin import (
     action_analysis,
+    clock,
     common,
     event_handler,
     shared_state,
@@ -567,8 +567,9 @@ class InputItemBindingModel(QtCore.QObject):
             return
 
         # Rate limit updates on user feedback.
-        if time.time() - self._last_feedback_check > 0.1:
-            self._last_feedback_check = time.time()
+        now = clock.monotonic()
+        if now - self._last_feedback_check > 0.1:
+            self._last_feedback_check = now
             self.userFeedbackChanged.emit()
 
     @property
@@ -671,8 +672,6 @@ class InputItemModel(QtCore.QAbstractListModel):
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"fake"),
     }
-
-    bindingsChanged = QtCore.Signal()
 
     def __init__(
         self,

@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The screens' side of OSC's own file (D-09-OSC-FILE), as the Logical
-Device's (test_ld_ui.py): read from its file at start (server settings
-copied there the first time) and kept across profile loads, its edits count
-for the "*" and the save-changes question, Discard reads the file again, and
-one note after an older profile's rows moved (with the Logical Device's)."""
+Device's (test_ld_ui.py): read from its file at start and kept across
+profile loads, its edits count for the "*" and the save-changes question,
+Discard reads the file again; an older profile's OSC rows are not read, so
+only the Logical Device's move is said (AD7)."""
 
 from __future__ import annotations
 
@@ -87,20 +87,8 @@ def test_start_reads_osc_from_its_file(modules: Path) -> None:
     assert not OscDevice().rows.dirty
 
 
-def test_start_copies_changed_server_settings_into_osc_file(
-    modules: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    # Settings that differ from the defaults are copied at start (D-09-OSC-FILE).
-    monkeypatch.setattr(odf, "_config_values", lambda: {"port": 9100})
-    _backend()
-    assert store.read_path(odf.path())[odf.SERVER_KEY]["port"] == 9100
-
-
-def test_start_with_default_settings_makes_no_osc_file(
-    modules: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_start_with_default_settings_makes_no_osc_file(modules: Path) -> None:
     # A fresh install gets no OSC file, so Home still selects the stick first.
-    monkeypatch.setattr(odf, "_config_values", lambda: {})
     _backend()
     assert not odf.path().exists()
 
@@ -160,11 +148,9 @@ def _read_with_notes(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     logical: list[str],
-    osc: list[str],
 ) -> list[tuple[str, str]]:
     def from_xml(self: profile.Profile, _fpath: Path) -> None:
         self.logical_migration_note = list(logical)
-        self.osc_migration_note = list(osc)
 
     monkeypatch.setattr(profile.Profile, "from_xml", from_xml)
     made = _backend()
@@ -181,29 +167,20 @@ def _read_with_notes(
     return notes
 
 
-def test_an_older_profile_says_what_osc_moved(
-    modules: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    notes = _read_with_notes(monkeypatch, tmp_path, [], ["Button 1 (/gear)"])
-    assert notes == [
-        ("OSC", "OSC addresses moved to OSC's own file: added Button 1 (/gear).")
-    ]
-
-
-def test_both_moves_are_said_in_one_note(
-    modules: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    notes = _read_with_notes(monkeypatch, tmp_path, ["Axis 1"], ["Button 1 (/gear)"])
-    assert len(notes) == 1
-    text = notes[0][1]
-    assert "Logical Device moved to its own file: added Axis 1." in text
-    assert "OSC addresses moved to OSC's own file: added Button 1 (/gear)." in text
-
-
 def test_nothing_moved_says_nothing(
     modules: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    assert _read_with_notes(monkeypatch, tmp_path, [], []) == []
+    assert _read_with_notes(monkeypatch, tmp_path, []) == []
+
+
+def test_only_the_logical_device_move_is_said(
+    modules: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # An older profile's OSC rows are not read (AD7): no OSC note.
+    notes = _read_with_notes(monkeypatch, tmp_path, ["Axis 1"])
+    assert notes == [
+        ("Logical Device", "Logical Device moved to its own file: added Axis 1.")
+    ]
 
 
 _SMOKE = Path(__file__).resolve().parent / "osc_module_setup_smoke.py"

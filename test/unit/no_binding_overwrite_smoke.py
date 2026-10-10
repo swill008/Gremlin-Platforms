@@ -8,9 +8,10 @@ check none says "Overwriting binding" (a property set over its own binding).
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
+
+from smoke_exit import smoke_exit
 
 SMOKE = Path(__file__).resolve().parent / "one_help_window_smoke.py"
 source = SMOKE.read_text(encoding="utf-8")
@@ -41,4 +42,4 @@ wait_until(lambda: False, 1500)
 for text in g["messages"]:
     print("MSG " + text.replace("\n", " "), flush=True)
 print("done", flush=True)
-os._exit(0)
+smoke_exit(0)

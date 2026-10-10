@@ -40,8 +40,9 @@ OSC_GROUP = "connection"
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8001
-DEFAULT_OUTPUT_PORT = 8000
 DEFAULT_AUTORELEASE_MS = 250
+# How often the listener thread checks for a stop request while idle.
+RECEIVE_POLL_S = 0.05
 
 # address, args, peer (host, port) or None.
 MessageCallback = Callable[[str, tuple[Any, ...], "tuple[str, int] | None"], None]
@@ -86,21 +87,6 @@ def local_ipv4_addresses() -> list[str]:
     add("127.0.0.1")
     add("0.0.0.0")
     return found
-
-
-def default_bind_host() -> str:
-    for ip in local_ipv4_addresses():
-        if ip not in ("127.0.0.1", "0.0.0.0"):
-            return ip
-    return DEFAULT_HOST
-
-
-def osc_option(cfg: Any, name: str) -> Any:
-    if cfg.exists(OSC_SECTION, OSC_GROUP, name):
-        return cfg.value(OSC_SECTION, OSC_GROUP, name)
-    if cfg.exists("global", "osc", name):
-        return cfg.value("global", "osc", name)
-    return None
 
 
 @functools.lru_cache(maxsize=64)
@@ -240,9 +226,6 @@ class OscDevice(metaclass=SingletonMetaclass):
                 return row
         return None
 
-    def find_by_id(self, input_type: InputType, input_id: int) -> OscRow | None:
-        return self.rows.by_number(input_type, input_id)
-
 
 class OscListener:
     def __init__(
@@ -255,6 +238,7 @@ class OscListener:
         self.port = port
         self.callback = callback
         self._server = None
+        self._stopping: threading.Event | None = None
         self._thread: threading.Thread | None = None
 
     def start(self) -> None:
@@ -262,10 +246,17 @@ class OscListener:
             return
         dispatcher = _dispatcher_class()()
         dispatcher.set_default_handler(self._on_message, needs_reply_address=True)
-        self._server = _server_class()((self.host, self.port), dispatcher)
-        # Stopping waits for the server's next poll (0.5 s at most).
+        server = _server_class()((self.host, self.port), dispatcher)
+        server.timeout = RECEIVE_POLL_S
+        stopping = threading.Event()
+        self._server = server
+        self._stopping = stopping
         self._thread = threads.start(
-            "OSC listener", self._server.serve_forever, stop=self._server.shutdown
+            "OSC listener",
+            _receive_loop,
+            server,
+            stopping,
+            stop=functools.partial(_stop_server, server, stopping),
         )
         log.info("OSC listening on %s:%s", self.host, self.port)
 
@@ -278,9 +269,10 @@ class OscListener:
     def stop(self) -> None:
         if self._server is None:
             return
-        self._server.shutdown()
-        self._server.server_close()
+        # Only asks: the port closes now, the thread ends by itself.
+        _stop_server(self._server, self._stopping)
         self._server = None
+        self._stopping = None
         self._thread = None
         log.info("OSC listener stopped")
 
@@ -331,13 +323,34 @@ def _dispatcher_class() -> type:
     return _CLASSES["dispatcher"]
 
 
-def _server_class() -> type:
-    """python-osc's threading UDP server, reporting datagrams it refuses
-    (not a message or bundle)."""
-    if "server" not in _CLASSES:
-        from pythonosc.osc_server import ThreadingOSCUDPServer
+def _receive_loop(server: Any, stopping: threading.Event) -> None:  # noqa: ANN401
+    """The listener thread: handles packets one by one on this thread (no
+    thread per packet) until asked to stop."""
+    while not stopping.is_set():
+        try:
+            server.handle_request()
+        except (OSError, ValueError):
+            # The socket was closed by a stop request.
+            if stopping.is_set():
+                break
+            log.exception("OSC listener failed; it has stopped")
+            break
 
-        class _Server(ThreadingOSCUDPServer):
+
+def _stop_server(server: Any, stopping: threading.Event | None) -> None:  # noqa: ANN401
+    """Asks the listener thread to end and frees the port at once."""
+    if stopping is not None:
+        stopping.set()
+    server.server_close()
+
+
+def _server_class() -> type:
+    """python-osc's blocking UDP server (packets handled on the listener's
+    own thread), reporting datagrams it refuses (not a message or bundle)."""
+    if "server" not in _CLASSES:
+        from pythonosc.osc_server import BlockingOSCUDPServer
+
+        class _Server(BlockingOSCUDPServer):
             def verify_request(
                 self, request: Any, client_address: Any  # noqa: ANN401
             ) -> bool:
@@ -433,8 +446,6 @@ SERVER_DEFAULTS: dict[str, Any] = {
     "enabled": True,
     "host": "",
     "port": DEFAULT_PORT,
-    "output_host": DEFAULT_HOST,
-    "output_port": DEFAULT_OUTPUT_PORT,
     "autorelease_no_arg": True,
     "autorelease_delay_ms": DEFAULT_AUTORELEASE_MS,
     "pad_args": False,
@@ -782,11 +793,6 @@ class OscRuntime(QtCore.QObject):
             listener = OscListener(host, port, self._from_thread)
             listener.start()
             self._listener = listener
-            log.info(
-                "OSC output target %s:%s",
-                self._settings.get("output_host"),
-                self._settings.get("output_port"),
-            )
         except ImportError:
             log.error("OSC: python-osc is not installed")
             ui_signal.showError.emit(
@@ -1167,9 +1173,6 @@ class OscRuntime(QtCore.QObject):
         Recorded for every matching message, with or without a Run."""
         entry = self._live.get(str(uid))
         return None if entry is None else dict(entry)
-
-    def live_all(self) -> dict[str, dict[str, Any]]:
-        return {uid: dict(entry) for uid, entry in self._live.items()}
 
     def last_address(self, uid: str) -> str | None:
         """The address the input last received (a pattern input: which of

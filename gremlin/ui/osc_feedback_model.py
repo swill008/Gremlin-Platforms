@@ -322,16 +322,6 @@ class OscFeedbackModel(QtCore.QObject):
     def _get(self, key: str) -> object:
         return self._server.get(key, osc_device_file.SERVER_DEFAULTS[key])
 
-    @QtCore.Property(str, constant=True)
-    def defaultOffColor(self) -> str:
-        """The Key color template's default off color (data, not a theme color)."""
-        return COLOUR_OFF
-
-    @QtCore.Property(str, constant=True)
-    def defaultOnColor(self) -> str:
-        """The Key color template's default on color."""
-        return COLOUR_ON
-
     @QtCore.Property(bool, notify=changed)
     def feedbackEnabled(self) -> bool:
         return bool(self._get("feedback_enabled"))
@@ -431,15 +421,6 @@ class OscFeedbackModel(QtCore.QObject):
         action, target, address, min, max, type, offValue, onValue,
         template, showUnder (numbers as text; off/on "" when not set)."""
         return [_entry(row) for row in self._rows]
-
-    @QtCore.Property(list, notify=changed)
-    def rowsForPage(self) -> list:
-        """rows plus placement: the OSC input uid ("" for the group
-        "Feedback not tied to an input")."""
-        out = rows_for_page(self._rows)
-        for entry in out:
-            entry["placement"] = entry["placement"] or ""
-        return out
 
     def _index_of(self, row_id: str) -> int:
         for index, row in enumerate(self._rows):

@@ -46,6 +46,7 @@ Item {
             }
             ComboBox {
                 id: _logicalOperatorSelector
+                implicitContentWidthPolicy: ComboBox.WidestText
                 model: _root.action.logicalOperators
 
                 textRole: "text"
@@ -60,8 +61,15 @@ Item {
                 }
             }
             Label {
+                Layout.fillWidth: true
                 text: "of the following conditions are met"
+                wrapMode: Text.WordWrap
             }
+        }
+
+        // Add Condition on its own line so the row fits a narrow pane.
+        RowLayout {
+            Layout.fillWidth: true
 
             LayoutHorizontalSpacer {}
 
@@ -96,11 +104,13 @@ Item {
         RowLayout {
             id: _trueHeader
 
-            Label {
-                text: "When the condition is <b>TRUE</b> then"
-            }
+            Layout.fillWidth: true
 
-            LayoutHorizontalSpacer {}
+            Label {
+                Layout.fillWidth: true
+                text: "When the condition is <b>TRUE</b> then"
+                wrapMode: Text.WordWrap
+            }
 
             ActionSelector {
                 actionNode: _root.action
@@ -136,11 +146,13 @@ Item {
         RowLayout {
             id: _falseHeader
 
-            Label {
-                text: "When the condition is <b>FALSE</b> then"
-            }
+            Layout.fillWidth: true
 
-            LayoutHorizontalSpacer {}
+            Label {
+                Layout.fillWidth: true
+                text: "When the condition is <b>FALSE</b> then"
+                wrapMode: Text.WordWrap
+            }
 
             ActionSelector {
                 actionNode: _root.action

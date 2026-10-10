@@ -256,9 +256,12 @@ def test_steps_and_rows_follow_another_profile(page: KeyboardLayoutModel) -> Non
     page.addGroup("Flight")
     shared_state.current_profile = Profile()
     signal.profileChanged.emit()
-    assert _keys(page) == []
-    # The add went with the old profile; the group step stays (S127).
-    assert [e["label"] for e in page._undo] == ["New Group Flight"]
+    # The key list is the Keyboard module file's (AD4), shared by every
+    # profile: the key stays listed, and the add's list part stays as a
+    # layout step (S127); its profile part went with the old profile.
+    assert _keys(page) == [key_row(A)]
+    assert [e["label"] for e in page._undo] == ["Add Key A", "New Group Flight"]
+    assert all(not e["links"] for e in page._undo)
 
 
 _QML_BUILD = """
@@ -318,3 +321,75 @@ def test_key_names_do_not_depend_on_which_lookup_ran_first(
     assert keyboard.key_from_code(*A).name == "A"
     assert keyboard.key_from_code(*S).name == "S"
     assert keyboard.key_from_name("s") is keyboard.key_from_code(*S)
+
+
+# -- AD4 (SHAKE-JOURNEYS SJ-01): a key with no actions is kept --------------
+
+
+def _save_and_reopen(path: Path) -> KeyboardLayoutModel:
+    """File > Save (the profile, then the held layouts), then the profile
+    opened again on a fresh page."""
+    from gremlin.modules import store
+
+    _profile().to_xml(path)
+    store.save_pending()
+    reopened = Profile()
+    reopened.from_xml(path)
+    shared_state.current_profile = reopened
+    keyboard_store().load()
+    return KeyboardLayoutModel()
+
+
+def _keyboard_file(modules: Path) -> Path:
+    path = modules / "keyboard.json"
+    path.write_text(json.dumps({"name": "Keyboard"}), encoding="utf-8")
+    return path
+
+
+def test_a_key_with_no_actions_is_kept_at_save_and_reopen(
+    page: KeyboardLayoutModel, modules: Path, tmp_path: Path
+) -> None:
+    _keyboard_file(modules)
+    _add(page, A)
+    assert _items(A)[0].action_sequences == []
+    again = _save_and_reopen(tmp_path / "p.xml")
+    try:
+        assert _keys(again) == [key_row(A)]
+        assert again.canDelete(key_row(A))
+        # Delete takes it off the list; Save and reopen: gone.
+        again.deleteParents([key_row(A)])
+        assert _keys(again) == []
+        again.undo()
+        assert _keys(again) == [key_row(A)]
+        again.redo()
+        assert _keys(again) == []
+        third = _save_and_reopen(tmp_path / "p.xml")
+        try:
+            assert _keys(third) == []
+        finally:
+            third.deleteLater()
+    finally:
+        again.deleteLater()
+
+
+def test_discard_drops_an_unsaved_added_key(
+    page: KeyboardLayoutModel, modules: Path, tmp_path: Path
+) -> None:
+    from gremlin.modules import store
+
+    _keyboard_file(modules)
+    path = tmp_path / "p.xml"
+    _profile().to_xml(path)
+    _add(page, A)
+    assert store.has_pending()
+    # Discard on the save-changes question: the held layout and the
+    # profile's edits both go (the saved profile is opened again).
+    store.discard_pending("")
+    reopened = Profile()
+    reopened.from_xml(path)
+    shared_state.current_profile = reopened
+    again = KeyboardLayoutModel()
+    try:
+        assert _keys(again) == []
+    finally:
+        again.deleteLater()

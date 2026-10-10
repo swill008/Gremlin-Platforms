@@ -36,7 +36,7 @@ On disk:
 
 Code (built 2026-10-08/09):
 
-- `gremlin/device_library.py` (2249 lines): the library owner (`is_built_in_guid` -> `device_class.can('library_builtin', guid)`, by id only, 03 S90b; connected = `_connected`: a device with an id and `hardware.plugged_in`, 03 S90a; `_view` joins a plugged-in stick to the row / record with the same id only, never by name), the one writer of `library.json` and the packs: folder, devices, save_setup, autosave (S16-S21) and its limit, rename/describe/delete, import_pack/export_setup, tidy, size, search, settings, last change, History text and Restore for Library entries (S51).
+- `gremlin/device_library.py` (2327 lines; from 2026-10-10 (F1, SHAKE-DAMAGE-03) one unreadable `library.json` row is left out and the rest listed (`_readable_setup`, `_readable_record`), a list nested too deep (RecursionError) reads as damaged, and pack parts are read through `_json_part`): the library owner (`is_built_in_guid` -> `device_class.can('library_builtin', guid)`, by id only, 03 S90b; connected = `_connected`: a device with an id and `hardware.plugged_in`, 03 S90a; `_view` joins a plugged-in stick to the row / record with the same id only, never by name), the one writer of `library.json` and the packs: folder, devices, save_setup, autosave (S16-S21) and its limit, rename/describe/delete, import_pack/export_setup, tidy, size, search, settings, last change, History text and Restore for Library entries (S51).
 - `gremlin/library_copy.py` (1401): `_connected` -> `hardware.plugged_in` (by live id). `_copy_checks` / `plan_output` / `change_output` use `is_built_in_guid`; `_special` uses `device_class.is_internal_input` (03 S90b), so a stick named "Keyboard" is a normal device. Copy to Another Stick, Restore to This Stick, Change vJoy Output (renumbers Map to vJoy, nested actions too) and undo_change/undo_last (S22-S25, S30-S33, S48). Copy targets: `_connected` -> `device_class.can("copy")` + `hardware.plugged_in` (external devices only, by live id; 03 S90a/S90b); `plan_output` / `change_output` refuse via `_copyable` -> `can("copy")`. Test `test_library_copy_targets.py` (4). Restore of a built-in (2026-10-09, S6/S6a): `restore_to_stick` sends a `library_builtin` device (Keyboard, OSC, Logical Device) to `_restore_built_in` (no stick checks): autosave "Autosave: before Restore of …", the setup back into the profiles it came from, one Undo step "Restore X to Y", one History entry.
 - `gremlin/library_swap.py` (530): Swap with Another Stick (S26-S29; `_refusal` -> `device_class.can('swap', id)`, `_refused_word` from `display_name`, the Xbox text kept "the Xbox controller", 03 S90b): module-file parts through `modules/store.py`, bindings through `swap_devices` per ticked profile; autosave of both sticks first. `_refused_word` by `device_kind`: the Xbox pad "the Xbox controller", vJoy "vJoy", the others from `display_name`.
 - `gremlin/library_profiles.py` (503): profiles that aren't open (S33-S34): profiles_using, read_profile, Batch (one change across several profiles; the open one changed in memory), responsive()/background() (section 6).
@@ -220,6 +220,7 @@ works on files and the profile through their owners.
 - **S54** After Remove, Delete or Clear Setup the message line ends with an **Undo** link that does the same as Edit › Undo. [D-10-UNDO-REDO]
 - **S55** The Delete key on a selected row runs Delete… (a saved setup) or Remove from Library… (a device not plugged in), asking first as always; nothing for a built-in input. [D-10-UNDO-REDO]
 - **S56** A row's right-click menu has **Show in History**: Tools › History filtered to that device (08 S32-S33). [D-10-UNDO-REDO]
+- **S57** An unreadable `library.json` row is left out of the list with a log warning and kept in the file; folder and file names the Library builds are cut to 80 characters (the device keeps its full name in the list); a Device Pack the Library reads follows the same limits as the Device Pack window (08 S110). [changed 2026-10-10, user: D-08-PACK-LIMITS] (built: test_library_pack_robust.py)
 
 ## 9. Questions for the user
 
@@ -238,19 +239,20 @@ Built 2026-10-08/09 (S1-S56). Swap Devices (04 S77-S83), Delete Device's
 - To-do 51 (ideas, not in the spec): drag a saved setup onto a stick row to
   start Copy; sort the list (name, last seen, saved setups); highlight the
   search match.
+- Closed 2026-10-10 (F1, SHAKE-DAMAGE-03): one bad Library entry no longer hides the whole list; a deeply nested list reads as damaged (`test_library_pack_robust.py`).
 - Tests (to-do 47, 50): `test_device_library_FX2_fixes::test_a_twins_pack_lands_under_that_twin`
   fails only after some other tests (order); one full run died silently at
   `test_device_library_GC_guide.py` (passes alone).
 
 ## 11. Size and test coverage
 
-Code: about 6,600 lines of Python (device_library 2247, device_library_model
+Code: about 6,700 lines of Python (device_library 2327, device_library_model
 1584, library_copy 1329, library_swap 529, library_profiles 496,
 library_undo 176, device_aliases 134, device_forget 133) and 2,688 of QML/JS
 (WindowDeviceLibrary 1515, five dialogs 1146, device_library_open.js 27).
 
 Tests: 38 files in `test/unit` (`test_device_library_*.py`, `test_library_*.py`,
-`test_rename_library.py`, `test_device_forget.py`), 316 tests, plus off-screen
+`test_rename_library.py`, `test_device_forget.py`), 316 tests (counted 2026-10-09; from 2026-10-10 also `test_library_pack_robust.py` (15: a bad `library.json` row left out and the rest listed, a deeply nested list reads as damaged, and the Device Pack checks of page 08), `test_builtin_layout_carry.py` (16: Keyboard and OSC layouts and names through Library Restore, Export, Device Pack, History; Keyboard names fixed 2026-10-10, page 05 KB-NAMES)), plus off-screen
 window smokes (`device_library_*_smoke.py`, `library_*_smoke.py`,
 `rename_library_smoke.py`). They drive the real path: the store (list,
 autosave limit, renamed autosave kept, damaged pack: LS, CL, FD), Copy / Swap /
@@ -312,3 +314,4 @@ Approved by the user, 2026-10-08 (wording as drafted; Q1 dropped).
 | D-10-NO-DELETED-FOLDER | The deleted devices folder and its setting go; Delete File autosaves into the Library; nothing carried over (beta) |
 | D-04-LD-FILE (2026-10-09) | The Logical Device is a built-in input (Save, Restore, Export, Rename, Edit Description; packs come in by Import Device Pack… then Restore); built-ins without hardware skip the plugged-in check, by class (S6, S6a) |
 | D-09-OSC-FILE, D-10-INTERNAL-NAME (2026-10-09) | Section heading INTERNAL INPUTS; OSC's setups carry its inputs and server settings (S6) |
+| D-08-PACK-LIMITS (2026-10-10) | S57: an unreadable `library.json` row is left out and kept; built names cut to 80 characters; pack limits as 08 S110 |

@@ -45,6 +45,15 @@ def _natural_key(text: str) -> tuple[tuple[str | int, ...], str]:
     return key, text
 
 
+def _short(entry: object) -> str:
+    """A control as text for a warning, cut short."""
+    try:
+        text = repr(entry)
+    except RecursionError:
+        text = "nested too deeply"
+    return text if len(text) <= 80 else text[:77] + "..."
+
+
 class _RowData:
     """The rows themselves; a LogicalRows and the LogicalDevice showing it
     share one of these."""
@@ -56,6 +65,11 @@ class _RowData:
         self.order: list = []
         # Changed since the Logical Device file was last saved or loaded.
         self.dirty: bool = False
+        # Controls the last load couldn't read, with their place in the
+        # file's list: Save writes them back as they were (AD1).
+        self.unreadable: list[tuple[int, object]] = []
+        # One line per skipped control, for the user (AD1).
+        self.load_warnings: list[str] = []
 
     def changed(self) -> None:
         self.dirty = True
@@ -337,25 +351,92 @@ class LogicalRows:
             "groups": list(self._groups),
         }
 
-    def load_dict(self, data: dict) -> None:
-        """Replaces the rows with a to_dict() layout, then counts as saved."""
+    @property
+    def unreadable(self) -> list[tuple[int, object]]:
+        """Controls the last load couldn't read, with their place in the
+        list it read; kept for the file's Save (AD1)."""
+        return self._data.unreadable
+
+    @property
+    def load_warnings(self) -> list[str]:
+        """One line per control the last load skipped."""
+        return self._data.load_warnings
+
+    def load_dict(self, data: dict, *, keep_unreadable: bool = False) -> None:
+        """Replaces the rows with a to_dict() layout, then counts as saved.
+        A control that can't be read is skipped, named in load_warnings and
+        kept in unreadable, so the rows after it still load and Save writes
+        it back (AD1). keep_unreadable: the ones already held stay (the same
+        file's rows read again), else they are this layout's."""
+        held = list(self._data.unreadable)
         self.reset()
-        self.set_groups(list(data.get("groups", [])))
-        for entry in data.get("controls", []):
-            kind = entry["type"]
-            if isinstance(kind, str):
-                kind = InputType.to_enum(kind)
-            made = self.create(
-                kind,
-                int(entry["id"]),
-                entry.get("label") or None,
-                user_label=entry.get("user-label", "") or "",
-                group=entry.get("group", "") or "",
-                uid=entry.get("uid") or None,
-            )
-            hidden = bool(entry.get("hide-system", False))
-            made.hide_system = hidden and bool(made.second_name)
+        if not isinstance(data, dict):
+            data = {}
+        groups = data.get("groups")
+        if not isinstance(groups, list):
+            groups = []
+        self.set_groups([g for g in groups if isinstance(g, str)])
+        controls = data.get("controls")
+        if not isinstance(controls, list):
+            controls = []
+        skipped: list[tuple[int, object]] = []
+        warnings: list[str] = []
+        for index, entry in enumerate(controls):
+            try:
+                self._load_entry(entry)
+            except (GremlinError, ValueError) as error:
+                skipped.append((index, entry))
+                warnings.append(
+                    f"Logical Device control {index + 1} skipped ({_short(entry)}): "
+                    f"{error}. It is kept in the file as it is."
+                )
+        self._data.unreadable = held if keep_unreadable else skipped
+        self._data.load_warnings = warnings
         self.mark_saved()
+
+    def _load_entry(self, entry: object) -> None:
+        """One to_dict() control; ValueError or GremlinError, with nothing
+        changed, when it can't be read."""
+        if not isinstance(entry, dict):
+            raise ValueError("not a control")
+        kind = entry.get("type")
+        if isinstance(kind, str):
+            kind = InputType.to_enum(kind)
+        if kind not in (
+            InputType.JoystickAxis,
+            InputType.JoystickButton,
+            InputType.JoystickHat,
+        ):
+            raise ValueError("unknown control type")
+        number = entry.get("id")
+        if isinstance(number, bool) or not isinstance(number, (int, float, str)):
+            raise ValueError("no control number")
+        try:
+            value = float(number)
+        except ValueError:
+            raise ValueError("the control number isn't a number") from None
+        if value != value or value in (float("inf"), float("-inf")):
+            raise ValueError("the control number isn't a number")
+        if value != int(value) or value < 1:
+            raise ValueError("the control number isn't a whole number from 1")
+        texts = {}
+        for key in ("label", "user-label", "group", "uid"):
+            text = entry.get(key)
+            if text is not None and not isinstance(text, str):
+                raise ValueError(f"{key} isn't text")
+            texts[key] = text or ""
+        if texts["uid"] and self.by_uid(texts["uid"]) is not None:
+            raise ValueError("a control with the same uid is already there")
+        made = self.create(
+            kind,
+            int(value),
+            texts["label"] or None,
+            user_label=texts["user-label"],
+            group=texts["group"],
+            uid=texts["uid"] or None,
+        )
+        hidden = bool(entry.get("hide-system", False))
+        made.hide_system = hidden and bool(made.second_name)
 
     def __getitem__(self, identifier_or_label: Input.Identifier | str) -> Input:
         return self._inputs[self._resolve_to_identifier(identifier_or_label)]
@@ -519,27 +600,6 @@ class LogicalRows:
             )
             if e.type in type_list
         ]
-
-    def input_by_offset(self, type: InputType, offset: int) -> Input:
-        """Returns an input item based on the input type and the offset.
-
-        The offset is the index an input instance has based on a linear internal
-        index-based ordering of the inputs of the specified type.
-
-        Args:
-            type: the InputType to perform the lookup over
-            offset: linear offset into the ordered list of inputs
-
-        Returns:
-            Input instance of the correct type with the specified offset
-        """
-        inputs = self.inputs_of_type([type])
-        if len(inputs) <= offset:
-            raise GremlinError(
-                "Attempting to access an input item of type "
-                + f"{InputType.to_string(type)} with invalid offset {offset}"
-            )
-        return inputs[offset]
 
     @property
     def axis_count(self) -> int:

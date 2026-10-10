@@ -71,7 +71,6 @@ def rows(modules: Path) -> Iterator[object]:
     saved = shared.to_dict()
     shared.load_dict({"inputs": []})
     yield shared
-    osc_device_file.current_uid_map = None
     shared.load_dict(saved)
     OscRuntime()._settings = osc_device_file.clean_server({})
 

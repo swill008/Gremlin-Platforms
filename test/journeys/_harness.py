@@ -16,8 +16,15 @@ child process) and the pytest tests (in the pytest process).
 Nothing reaches the PC: the fake joystick driver and vJoy queries
 (test/fake_hardware.py), key and mouse output kept in the process
 (test/fake_input.py), and a fake vJoy driver behind the output module
-(FakeVJoy below). Waits poll for a result with a generous limit; they never
-sleep a fixed time.
+(FakeVJoy below), and no HID device walk (Hardware Hide and Device Reset see
+no PC devices unless a script fakes its own). Waits poll for a result with a
+generous limit; they never sleep a fixed time.
+
+Waits run the events the way the program's own loop does and let go of the
+Python lock between rounds: QTest.qWait holds it, so the program's worker
+threads (OSC listener, device list updates, History, macros) barely run
+during it (SHAKE-STRESS-01). Every wait and settle() also runs deleteLater()s
+(there is no exec() loop in a journey, SHAKE-STRESS-10).
 """
 
 from __future__ import annotations
@@ -109,6 +116,37 @@ def step(out: dict, key: str) -> Any:  # noqa: ANN401
 # | Script side (the child process)
 
 
+def pump(ms: int = 0) -> None:
+    """Runs posted events and deleteLater()s for about ms milliseconds,
+    sleeping 5 ms between rounds so worker threads get the Python lock."""
+    from PySide6 import QtCore
+
+    app = QtCore.QCoreApplication
+    deferred = QtCore.QEvent.Type.DeferredDelete.value
+    end = time.monotonic() + ms / 1000.0
+    while True:
+        app.processEvents()
+        app.sendPostedEvents(None, 0)
+        app.sendPostedEvents(None, deferred)
+        left = end - time.monotonic()
+        if left <= 0:
+            return
+        time.sleep(min(0.005, left))
+
+
+class _QTest:
+    """QTest for stories: qWait is pump(); everything else is QTest's own."""
+
+    @staticmethod
+    def qWait(ms: int) -> None:  # noqa: N802 (QTest's name)
+        pump(ms)
+
+    def __getattr__(self, name: str) -> Any:  # noqa: ANN401
+        from PySide6 import QtTest
+
+        return getattr(QtTest.QTest, name)
+
+
 def _load(name: str) -> Any:  # noqa: ANN401
     spec = importlib.util.spec_from_file_location(name, ROOT / "test" / f"{name}.py")
     assert spec is not None and spec.loader is not None
@@ -116,6 +154,18 @@ def _load(name: str) -> Any:  # noqa: ANN401
     sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _smoke_exit(code: int) -> None:
+    """test/unit/smoke_exit.py: releases Qt, then os._exit(code)."""
+    spec = importlib.util.spec_from_file_location(
+        "smoke_exit", ROOT / "test" / "unit" / "smoke_exit.py"
+    )
+    if spec is None or spec.loader is None:
+        os._exit(code)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.smoke_exit(code)
 
 
 class FakeVJoyControl:
@@ -265,6 +315,15 @@ class Journey:
         self.fake_input = _load("fake_input")
         # Keys and mouse output stay in this process.
         self.fake_input.install()
+        # No walk of the PC's HID devices (SHAKE-STRESS-07): every caller
+        # (Hardware Hide, Device Reset, the device watch, Input Tester link)
+        # goes through this one function. Scripts that need rows fake their
+        # own on top (device_reset.set_enumerator, gremlin.ui.hidhide).
+        from gremlin import hidhide_driver
+
+        hidhide_driver._list_hidhide_class_enum = (  # type: ignore[assignment]
+            lambda gaming_only: []
+        )
 
         import gremlin.ui.update_model as update_model
 
@@ -308,9 +367,7 @@ class Journey:
 
         if Configuration().exists(osc.OSC_SECTION, osc.OSC_GROUP, "enabled"):
             Configuration().set(osc.OSC_SECTION, osc.OSC_GROUP, "enabled", False)
-        from PySide6 import QtTest
-
-        self.QTest = QtTest.QTest
+        self.QTest = _QTest()
 
     # --- running the story ---------------------------------------------------
 
@@ -332,7 +389,9 @@ class Journey:
         self.out["_messages"] = [str(m) for m in self.messages]
         print("RESULT " + json.dumps(self.out, default=str), flush=True)
         sys.stdout.flush()
-        os._exit(0)
+        # Qt let go first: a bare os._exit can crash in Qt's DLL unload
+        # (AUD-THREADS-01).
+        _smoke_exit(0)
 
     def wait_until(
         self, check: Callable[[], object], what: str, timeout: float = 15.0
@@ -345,7 +404,7 @@ class Journey:
                 return value
             if time.monotonic() > deadline:
                 raise TimeoutError(f"Waited {timeout:.0f} s for: {what}")
-            self.QTest.qWait(20)
+            pump(20)
 
     def await_value(
         self,
@@ -360,15 +419,12 @@ class Journey:
             value = read()
             if value == expected or time.monotonic() > deadline:
                 return value
-            self.QTest.qWait(20)
+            pump(20)
 
     def settle(self) -> None:
         """Lets queued events run (posted slots, deleteLater)."""
-        from PySide6 import QtCore
-
         for _ in range(3):
-            QtCore.QCoreApplication.processEvents()
-            QtCore.QCoreApplication.sendPostedEvents(None, 0)
+            pump()
 
     # --- the program -----------------------------------------------------------
 

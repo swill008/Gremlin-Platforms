@@ -16,6 +16,8 @@ import os
 import sys
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 import rig_editor_harness as h  # noqa: E402
@@ -119,7 +121,7 @@ def main() -> None:
 
     out["warnings"] = s.warnings
     print("RESULT " + json.dumps(out), flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

@@ -22,6 +22,7 @@ import sys
 import time
 from types import ModuleType
 
+import child_env  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -141,7 +142,7 @@ def test_the_conftest_deadman_ends_a_process_stuck_after_its_session(
     sample = _sample(tmp_path, 120)
     env = dict(
         os.environ,
-        PYTHONPATH=os.pathsep.join([str(_ROOT / "test"), str(_ROOT)]),
+        PYTHONPATH=child_env.python_path(_ROOT / "test", _ROOT),
         GREMLIN_TEST_EXIT_DEADMAN="2",
         GREMLIN_TEST_HANG_LIMIT="",
         USERPROFILE=str(tmp_path),

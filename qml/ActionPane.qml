@@ -26,6 +26,10 @@ RowLayout {
     // after OK", for every page that has the pane.
     property int paneUnits: 560
     readonly property int paneWidth: Style.dp(paneUnits)
+    // The width shown: the saved width while it fits beside the page's
+    // other columns, less when the window is too narrow for it (never below
+    // the pane's minimum). The saved width is not changed (05 S23).
+    readonly property int shownWidth: Math.max(Style.dp(420), Math.min(paneWidth, _room()))
     property bool closeAfterOk: false
     property bool _ready: false
 
@@ -44,6 +48,27 @@ RowLayout {
     // After the unsaved-changes question: true when the pane was saved or
     // dropped (and closed), false when the user stayed.
     signal leaveDone(bool resolved)
+
+    // Width left for the pane: the row's width less each other visible
+    // column's least width (its minimum when it stretches, else its width).
+    function _room() {
+        var row = _pane.parent
+        if (!row)
+            return paneWidth
+        var used = Style.dp(6)
+        for (var i = 0; i < row.children.length; ++i) {
+            var c = row.children[i]
+            if (c === _pane || !c.visible)
+                continue
+            var lay = c.Layout
+            if (lay.fillWidth)
+                used += Math.max(0, lay.minimumWidth)
+            else
+                used += lay.preferredWidth >= 0 ? lay.preferredWidth : c.implicitWidth
+            used += row.spacing || 0
+        }
+        return row.width - used
+    }
 
     function _dirty() { return dirtyFn ? !!dirtyFn() : layout.paneDirty() }
 
@@ -217,7 +242,7 @@ RowLayout {
             property int originW: 560
             property real originX: 0
             onPressed: (mouse) => {
-                originW = _pane.paneWidth
+                originW = _pane.shownWidth
                 originX = mapToItem(_pane, mouse.x, mouse.y).x
             }
             onPositionChanged: (mouse) => {
@@ -231,7 +256,7 @@ RowLayout {
     }
 
     Rectangle {
-        Layout.preferredWidth: _pane.paneWidth
+        Layout.preferredWidth: _pane.shownWidth
         Layout.minimumWidth: Style.dp(420)
         Layout.fillHeight: true
         color: Style.bgCard

@@ -13,8 +13,8 @@ Every device has a module file that says which of its controls the program may u
 - `gremlin/modules/device_class.py` (218, S90b): the one place that says what class a device is: **external** (Windows lists it with its own id), **internal input** (Keyboard, OSC, Logical Device, `INTERNAL_INPUTS`), **internal output** (vJoy N, the Xbox pad); `device_class`, `device_kind`, `is_internal_input`, `display_name`, and `can(action, guid, name)` from the one table `CAN` (`delete_device`, `library_device`, `library_builtin`, `copy`, `swap`, `calibrate`, `always_present`, `no_claim_needed`, `button_map`). Built-in ids and names live only here, in `ids.py` and in `registry.py` (guard `test_no_builtin_lists.py`).
 - `gremlin/modules/ids.py`: built-in device ids (Keyboard, OSC, Xbox, Logical Device), read through `device_class.py`, and `guid_key` / `stored_guid_key`, the two ways ids are compared and stored.
 - `gremlin/modules/claim.py`: what a claim is (`buttons`, `axes`, `hats`, `keys`, `friendly`, `keysChosen`), reading it clean, and the "is this control claimed" checks, including the Keyboard rules.
-- `gremlin/modules/registry.py`: reads every `modules\*.json` once (re-read when its time or size changes), classifies input/output, and holds THE file rule `resolve_module_slug`; `is_built_in_input` -> `device_class.can('library_builtin')`; also `for_device`, vJoy id rules, `_binding_store` (reads the `module-file-bindings` setting).
-- `gremlin/modules/store.py` (1952; batch 1, GL-067; from 2026-10-10 the Configuration layout API `read_layout`, `write_layout`, `friendly_name`, `set_friendly_name` (key `layout`: groups and order; names are the claim's friendly names, 03 S121, 05 S122, S129), and the unsaved Configuration and Keyboard layouts held until File › Save (05 S122a, CS1): `set_pending_layout`, `set_pending_name`, `pending_layout`, `layout_for`, `friendly_name_for`, `has_pending`, `save_pending` (called by `Profile.to_xml`), `discard_pending` (called by `Backend.discardConfigurationLayouts`), `add_pending_listener` / `remove_pending_listener`): the module file store, the one owner of which module file a device uses and of every change to module files, their pictures and the file choices (`slug_for`, `path_for`, `pictures_dir`, `card_key`, `read`, `damage`, `update`, ...). Callers pass a device's name and id and never build module paths. `known_devices` gives one row per device id (label = the Home name, file-only devices by name; 08 S106a). `_NAME_ONLY_OK` (slug-prefix rule) is the one built-in name list the guard allows outside device_class (possible cleanup). Shared with the Device Library (10) and History / Device Pack (08). `_reload_logical_device(path)` (D-04-LD-FILE): called from `replace()` and `write_text()`, so Restore, Import, Undo and a History restore of the Logical Device's file reload `LogicalDevice()`.
+- `gremlin/modules/registry.py` (434): reads every `modules\*.json` once (re-read when its time or size changes; from 2026-10-10 (F2-REGISTRY, AUD-RUN-06) a read that fails with `OSError` is not cached and is tried again on the next call, while a damaged file stays cached by its stamp (`_load_doc`)), classifies input/output, and holds THE file rule `resolve_module_slug`; `is_built_in_input` -> `device_class.can('library_builtin')`; also `for_device`, vJoy id rules, `_binding_store` (reads the `module-file-bindings` setting).
+- `gremlin/modules/store.py` (2082; batch 1, GL-067; from 2026-10-10 the Configuration layout API `read_layout`, `write_layout`, `friendly_name`, `set_friendly_name` (key `layout`: groups and order; names are the claim's friendly names, 03 S121, 05 S122, S129), and the unsaved Configuration and Keyboard layouts held until File › Save (05 S122a, CS1): `set_pending_layout`, `set_pending_name`, `pending_layout`, `layout_for`, `friendly_name_for`, `has_pending`, `save_pending` (called by `Profile.to_xml`), `discard_pending` (called by `Backend.discardConfigurationLayouts`), `add_pending_listener` / `remove_pending_listener`; from 2026-10-10 (F1, AD2, 05 S122a) a write by any other writer (History Restore, Device Library, Device Pack, Module Setup) to a device's file while its layout is held drops the held change (`_drop_replaced`), tells the pages with the listener event "replaced" and shows "The layout changed elsewhere; your unsaved changes for <device> were dropped."; deleting the device's file drops its held change, and a file gone at Save is said, not silent (AUD-MOD-04); `_set_names` writes a name only for a claimed control (03 S42, AUD-MOD-02)): the module file store, the one owner of which module file a device uses and of every change to module files, their pictures and the file choices (`slug_for`, `path_for`, `pictures_dir`, `card_key`, `read`, `damage`, `update`, ...). Callers pass a device's name and id and never build module paths. `known_devices` gives one row per device id (label = the Home name, file-only devices by name; 08 S106a). `_NAME_ONLY_OK` (slug-prefix rule) is the one built-in name list the guard allows outside device_class (possible cleanup). Shared with the Device Library (10) and History / Device Pack (08). `_reload_logical_device(path)` (D-04-LD-FILE): called from `replace()` and `write_text()`, so Restore, Import, Undo and a History restore of the Logical Device's file reload `LogicalDevice()`.
 - `gremlin/modules/module_file.py`: safe write (temp file then swap, History hook), `load_for_update` (refuses a damaged file), `start_fresh` (moves a damaged file aside), refused-save message.
 - `gremlin/modules/gate.py`: `should_forward`, the one rule for whether a hardware event may enter the wire; helpers for the card "last:" line.
 - `gremlin/modules/runtime.py`: `InputModuleRuntime` singleton: takes raw stick and key events, passes only claimed ones on (`event`, `key_event`); reloads claims on config, profile and device changes. `always_forwarded` -> `device_class.can('no_claim_needed')` (S90b).
@@ -30,7 +30,7 @@ Every device has a module file that says which of its controls the program may u
 - `gremlin/ui/module_model.py`: `ModuleListModel` (Home cards: rows, status, counts, last line, Driven by, focus, hide, order, stacks, sizes, compact, split; Output View Appearance load/save (the Configuration `catalog` Appearance, `_DEFAULT_CATALOG`, `catalogConfigJson`, `saveCatalogConfig` and `otherSourceCatalogs` removed 2026-10-10, batch C, 05 S125); Delete Device, Start Fresh, import wrappers), `DriverInputModel` (Module Setup's control list, press-to-claim, Undo/Redo, `saveClaim`), `CardSizes` (Options reset). Plugged-in checks: `_device_connected` -> `hardware.plugged_in`; `loadDevice` ~1954 (a card with no id is not plugged in, so Save is refused, S46), `saveClaim` ~2336; `_reload` / `_card_status` read the live list by id (S73). The Logical Device card is always listed (S71, ~:1801, D-04-LD-FILE). Slots `setCardImage(slug, fileUrl)` / `removeCardImage(slug)`: the Logical Device card's picture (S88, D-03-LD-IMAGE; slug "logical" only), through the store.
 - `gremlin/ui/viewer_devices.py` (198; mapped on page 02): `available` -> `hardware.plugged_in` (S90a; the stale `_connected_keys` copy and name matching are gone), used by the Button Map cover (07 S5-S8).
 - `gremlin/auto_mapper.py` `_source_uuid` and `gremlin/ui/device_pack.py` `plan_pack` / `_ids_named` (mapped on page 08): by id, never the name (S90a).
-- `gremlin/ui/hardware_profile.py` (2440; lines ~456-760 only, the rest is the Button Map): `_maps_dir`, module file choices and binding (`module_file_choices`, `foreign_module_file`, `bind_module_file`), `delete_module_file`, `delete_preview`, `delete_device` (going through `store`; both pass the guid, and `_device_stays_listed(name, guid)` -> `hardware.plugged_in` decides the text and whether the card stays, S90a), autosave before a pack, deleted devices folder. Also `copyImage` / `keepPhoto` / `profilePhotoUrl` used by Module Setup and the cards.
+- `gremlin/ui/hardware_profile.py` (2416; lines ~456-760 only, the rest is the Button Map): `_maps_dir`, module file choices and binding (`module_file_choices`, `bind_module_file`; `foreign_module_file` removed 2026-10-10, F4-DEAD), `delete_module_file`, `delete_preview`, `delete_device` (going through `store`; both pass the guid, and `_device_stays_listed(name, guid)` -> `hardware.plugged_in` decides the text and whether the card stays, S90a), autosave before a pack, deleted devices folder. Also `copyImage` / `keepPhoto` / `profilePhotoUrl` used by Module Setup and the cards.
 - `gremlin/ui/module_inputs.py` (251): `ModuleClaimedInputModel`, claimed controls only; used by the Output View (from 2026-10-10 the Configuration page reads claims through `gremlin/ui/hardware_layout.py`, page 05; the `actionSequenceDescriptor` / `actionSequenceDisplayMode` roles went with AS1).
 - `gremlin/ui/module_pairing.py`: vJoy Viewer pair models (source modules with vJoy wires, per-axis/button rows).
 - `gremlin/ui/module_calibration.py`: `CalibrationModuleModel`, the Calibration window's device drop-down.
@@ -52,7 +52,7 @@ Every device has a module file that says which of its controls the program may u
 - Help book (`qml/help/home_devices.js`, page 01): topics "Home", "Input modules", "vJoy output modules", "Xbox output module", "Module files and Device Pack", "Hidden cards", "Calibration", "What is saved where".
 
 **Tests (main ones)**
-- `test/unit/test_module_claim.py`, `test_module_ids.py`, `test_module_registry.py`, `test_modules_layer.py`, `test_one_copy_of_each_rule.py`: claim/id/registry basics and layer guards.
+- `test/unit/test_module_claim.py`, `test_module_ids.py`, `test_module_registry.py`, `test_registry_failed_read.py` (2: an `OSError` read is tried again, a damaged file stays cached; AUD-RUN-06), `test_modules_layer.py`, `test_one_copy_of_each_rule.py`: claim/id/registry basics and layer guards.
 - `test_input_module_gate.py`, `test_keyboard_gate.py`, `test_logical_events_pass_gate.py`, `test_raw_input_listeners.py`: the input gate.
 - `test_output_layer.py`, `test_vjoy_writers_use_firewall.py`, `test_vjoy_viewer_reads_output_module.py`, `test_xbox_output_module.py`, `test_xbox_pads_told_apart.py`: output modules.
 - `test_module_lookup_device_first.py`, `test_twin_devices.py`, `test_audit_devices.py`, `test_audit3_module_files.py`: the file rule, renamed sticks, twins, card order, delete.
@@ -63,7 +63,7 @@ Every device has a module file that says which of its controls the program may u
 - `test_main_shared_pieces.py::test_delete_device_asks_the_shared_question`, `::test_screen_background_uses_the_picture_chooser`; journey `test/journeys/test_j09_delete_device_and_back.py`: Delete Device and Output View on the shared pieces.
 - `test_bound_cards.py`, `test_driven_by_follows_edits.py`, `test_status_claim_cache.py`, `test_card_sizes_follow.py`: Home cards.
 - `test_output_view_pads.py`, `test_catalog_display.py` (the `catalog` key tests removed with batch C), `test_dest_live_guid.py`: Output View / Appearance.
-- Configuration layout store: `test_cfg_layout_store.py` (read/write layout, friendly names), `test_cfg_layout_save.py` (4: pending layouts held until File › Save, CS1); carried through Library, Export, Restore, History and Device Pack: `test_cfg_page_carry.py` (9).
+- Configuration layout store: `test_cfg_layout_store.py` (read/write layout, friendly names), `test_cfg_layout_save.py` (4: pending layouts held until File › Save, CS1), `test_cfg_layout_held.py` (11, F1: another writer changes the file while a layout is held, the newer file wins and the page is told (AD2); no name for an unclaimed control (S42); device delete and a missing file at Save (AUD-MOD-04)), `test_module_setup_names.py` (5, F1: Module Setup Save writes only the names changed in the window, AD3); carried through Library, Export, Restore, History and Device Pack: `test_cfg_page_carry.py` (9).
 - `test_auto_mapper_claims.py`: Auto Mapper claim merge.
 - Device classes (S90b): `test_device_class.py` (the classes and the `CAN` table), `test_no_builtin_lists.py` (guard: no built-in id or name list outside `device_class.py` / `ids.py` / `registry.py`; allows `store._NAME_ONLY_OK`), `test_library_device_class.py` (page 10 and 04 callers), `test_module_store_only.py` (allows `device_class.py`).
 - Plugged in by id (S90a): `test_plugged_in.py` (18: `plugged_in` itself, `test_delete_text_*`, `test_delete_result_*`), `test_plugged_in_pages.py` (7: Button Map cover, Module Setup Save refused for a no-id card and the unplugged twin, Home cards from the live list by id), `test_id_not_name_lookups.py` (5: Auto Mapper source id, Device Pack export by id / shared name refused), `test_library_plugged_in.py` (4, page 10).
@@ -214,10 +214,11 @@ Every device has a module file that says which of its controls the program may u
 | Wiring (`modules/wiring.py`, Configuration page labels, Button Map chips) | — | `output.vjoy_module_name`, `vjoy_allows`, `vjoy_claim`, `xbox_module` |
 | Button Map (`hardware_profile.HardwareProfile`) | Module Setup uses `copyImage`, `keepPhoto`, `profilePhotoUrl`, `setDeviceGuid`; cards use `profilePhotoUrl`; the Logical Device card's `setCardImage` uses `copyImage` (also files the picture in the Device Library, like Button Map Choose Photo) (S88) | Button Map uses `resolve_module_slug`, `module_file`, claims for chips |
 | Logical Device card image (S88, D-03-LD-IMAGE) | `StatusPage` -> `ModuleListModel.setCardImage` / `removeCardImage` and the shared `FilePicker`; `module_model` -> `HardwareProfile.copyImage`, `store.update_path`, `store.remove_picture_files`, `logical_device_file`; `cardMap` gains `hasPhoto` | `signal.logicalDeviceReloaded` -> `ModuleListModel._logical_reloaded` (card photo redraws after a History or Device Library restore) |
-| Device Pack (`device_pack.py`) | Delete Device calls `device_pack.assemble` | Device Pack uses `module_json_path`, bindings, `_replace_file` |
-| History (`history_modules`, `history_model`) | `module_file.write_text` and `_replace_file` call `note_write`; deletes use `deleting` | Restore writes module files; History windows filtered by `moduleFileFor` |
+| Device Pack (`device_pack.py`) | Delete Device calls `device_pack.assemble` | Device Pack uses `module_json_path`, bindings, `store.replace` (`_replace_file` removed 2026-10-10, F4-DEAD) |
+| History (`history_modules`, `history_model`) | `module_file.write_text` and `store.replace` call `note_write`; deletes use `deleting` | Restore writes module files; History windows filtered by `moduleFileFor` |
 | Configuration and Keyboard pages (`hardware_layout`, `keyboard_layout`, page 05) | — | `store.layout_for`, `friendly_name_for`, `pending_layout`, `set_pending_layout`, `set_pending_name`, pending listeners; `claim.read_claim`, `claim_ids`, `claim_friendly`, `key_id` |
-| Profile save / Backend (CS1) | — | `store.save_pending` (`Profile.to_xml`), `has_pending` (unsaved check), `discard_pending` (`Backend.discardConfigurationLayouts`) |
+| Profile save / Backend (CS1) | — | `store.save_pending` (`Profile._save_other_files`, after the profile is written; a failure raises `SaveIncomplete`, page 04), `has_pending` (unsaved check), `discard_pending` (`Backend.discardConfigurationLayouts`) |
+| Configuration and Keyboard pages (`hardware_layout.py`, `keyboard_layout.py`, page 05) | `add_pending_listener` events "changed", "saved", "discarded", "replaced" (AD2: the page re-reads and drops that device's layout Undo steps) | `set_pending_layout`, `set_pending_name`, `pending_layout` |
 | Viewers (`pair_live`, `xbox_viewer`, `live_input`, `module_pairing`) | — | `InputModuleRuntime().event`, `output.vjoy_state`, `xbox_state`, pairing models |
 | Auto Mapper (`auto_mapper.py`, `DialogAutoMapper.qml`) | — | `auto_map.input_modules`, `output_modules`, `merge_claim_into_output` |
 | Profile (`shared_state.current_profile`) | Driven by reads `profile.inputs`; Delete Device drops inputs and calls `profile.to_xml`; `vjoy_as_input` setting | — |
@@ -238,6 +239,8 @@ Every device has a module file that says which of its controls the program may u
 
 ## 7. Rule breaks
 
+Line numbers in 7.1-7.12 are from the 6 Oct mapping and have moved since (audit AUD-MOD-05, 2026-10-10); find the code by the function names given.
+
 **Layer rule**
 1. CONFIRMED, allowed by decision: Module Setup (`module_model.py:1757-1763`) and Calibration (`device.py:1106-1108`) listen to raw hardware, skipping the input module. Decision in test-plan Phase 3 ("Configure Input Module, calibration and the axis graph keep raw hardware access"); guarded by `test_raw_input_listeners::test_raw_hardware_listeners_are_only_the_allowed_ones`.
 2. SUSPECTED: UI files read the device list directly instead of through `modules/hardware.py`: `module_model.py:1583, 1658, 2078`; `module_pairing.py:150, 155`; `hardware_profile.py:835-836, 979-985`; `calibration.py:14` (core, fine). Whether `device_initialization` counts as "the input side" is undecided.
@@ -250,19 +253,19 @@ Every device has a module file that says which of its controls the program may u
 7. CONFIRMED: the card key is `_slug(device name)` (`module_model.py:1432, 1585, 1660`) while the file is `resolve_module_slug`; nothing names this as a separate key (system-maps decision F2).
 
 **Duplicated logic**
-8. CONFIRMED: `_clear_device_binding` (`hardware_profile.py:802-814`) and `_clear_device_binding_keys` (`:1060-1072`) are the same function.
+8. FIXED (audit 2026-10-10: one alias of `store.unbind`, `hardware_profile.py:474`), was CONFIRMED: `_clear_device_binding` (`hardware_profile.py:802-814`) and `_clear_device_binding_keys` (`:1060-1072`) are the same function.
 9. CONFIRMED: vJoy number from a card name by joining every digit (`module_model.py:265-267, 280-281`), not `registry.vjoy_id_from_name` (first run of digits). "vJoy 1 (2)" reads as 12 here; P1c fixed exactly this elsewhere. Harmless today because vJoy cards are named "vJoy N".
 10. CONFIRMED: Xbox output found by `"xbox" in name.lower()` in Driven by (`module_model.py:262, 277`), not `registry.is_gremlin_xbox_name`. Only dest rows are checked, so a real Xbox pad is not affected today.
 11. CONFIRMED: Home's last line re-checks the claim (`module_model.py:1489-1491`) after `InputModuleRuntime` already gated the event, with a different empty-claim rule (empty passes here, nothing passes at the gate).
 12. CONFIRMED: `DriverInputModel._is_keyboard` / `_is_osc` decide by the name "keyboard" / "osc" as well as the id (`module_model.py:1892-1898`); a physical device named "Keyboard" would be treated as the Keyboard module.
 
 **Thread / time rules**
-13. SUSPECTED: `output.py` module state `_blocked`, `_vjoy_failed_at`, `_told_busy` (`output.py:35-40, 120-131, 150-177`) is changed from several threads with no lock. Worst case: a message logged twice.
-14. SUSPECTED: `registry._cache` (`registry.py:293, 346-360`) is changed by `modules()` on the main thread and on action threads (via `output._refresh_claims`, which holds `output._lock`, not a registry lock). A "dictionary changed size during iteration" at `registry.py:359` is possible.
+13. FIXED (`output._lock` throughout, `output.py:38`; audit 2026-10-10), was SUSPECTED: `output.py` module state `_blocked`, `_vjoy_failed_at`, `_told_busy` (`output.py:35-40, 120-131, 150-177`) is changed from several threads with no lock. Worst case: a message logged twice.
+14. FIXED (`registry._cache_lock`, `registry.py:307`; audit 2026-10-10), was SUSPECTED: `registry._cache` (`registry.py:293, 346-360`) is changed by `modules()` on the main thread and on action threads (via `output._refresh_claims`, which holds `output._lock`, not a registry lock). A "dictionary changed size during iteration" at `registry.py:359` is possible.
 15. SUSPECTED (minor): time read with `time.monotonic` directly (`output.py:48, 71, 151, 158`; `module_model.py:1500`; `device.py:1242`) instead of `gremlin.clock`.
 
 **Other**
-16. CONFIRMED: dead code: `DriverInputModel._load_xbox_dest` (`module_model.py:2030-2068`) shows claim boxes for the Xbox output, but Main.qml:396 never opens Module Setup for Xbox. If it were reached it would break "Xbox output has no claims". `registry.find` (`registry.py:372`) has no caller outside tests.
+16. FIXED (removed; `test_batch3_C3a.py:137-145`), was CONFIRMED: dead code: `DriverInputModel._load_xbox_dest` (`module_model.py:2030-2068`) shows claim boxes for the Xbox output, but Main.qml:396 never opens Module Setup for Xbox. If it were reached it would break "Xbox output has no claims". `registry.find` (`registry.py:372`) has no caller outside tests.
 
 ## 8. Behaviour spec
 
@@ -332,6 +335,9 @@ Every device has a module file that says which of its controls the program may u
 - S53b. OSC's Module Setup should have a **Feedback** section under Server (`qml/OscFeedbackSection.qml`, `gremlin/ui/osc_feedback_model.py`): master switch (on), rows (on/off, source, target, address, Min, Max, type), resend at Run start / mode change / profile switch (each on), sync address (on, "/gremlin/sync") and the rate (50 a second per address). Edits are written to OSC's file and mark it changed. (09 S102-S107) [changed 2026-10-09, user: D-09-OSC-FEEDBACK]
 - S53d. OSC's Module Setup should show its OSC settings in tabs **Server** · **Output** · **Feedback** · **Discovery** (`qml/OscSetupTabs.qml`; tab bodies `OscServerTab.qml`, `OscOutputTab.qml`, `OscFeedbackSection.qml`, `OscDiscoveryTab.qml`), so no tab needs a long scroll: Server = Enabled, host, port, auto-release and delay, pad args; Output = OSC output, Reply to sender, Targets with **Add Companion**, this PC's addresses and port with **Copy** (0.0.0.0 is never listed); Feedback = S53b with Companion templates and off/on values (09 S119-S121); Discovery = Announce this PC, Find OSC devices with Add as Target. The OSC page's **OSC Setup…** button opens this window. The tabs follow the Button Map's look (09 S127); nothing is left behind the bottom buttons. (09 S116-S118) [changed 2026-10-09, user: D-09-OSC-TABS] [changed 2026-10-09, user: D-09-OSC-LOOK]
 - S53c. The Home OSC card's last-pressed line should name the input by its friendly name, else its address (e.g. "/fire"), else "Button N" (`module_model._osc_address`). (09 S115) [changed 2026-10-09, user: D-09-OSC-ADDRESSES]
+- S123. The store's held (unsaved) Configuration and Keyboard layouts and names for a device are dropped when that device's module file is replaced or changed by another writer (History Restore; the Device Library's restore, copy, swap or Undo; Device Pack import or Undo Import; Module Setup's save or import): the newer file wins and the page that held them is told (05 S122b). [changed 2026-10-10, user: AD2]
+- S124. Module Setup's Save should write only the friendly names changed in that window (the names as opened against the names now); a name it read at open and didn't change is left as the file has it, so a name changed elsewhere meanwhile is not written back. [changed 2026-10-10, user: AD3]
+- S125. The Keyboard module file's layout holds the keys added on the Keyboard page, those with no actions too, in the layout's order as "key:<id>", so every profile shares them (05 S133). [changed 2026-10-10, user: D-03-KEYS-SHARED] (built: test_keyboard_layout.py)
 
 ### F. Module File dialog: import, Undo Import, Delete File
 - S54. It should show the current file name, "(not saved yet)" when it is missing, and a note when the stick still opens a file of another name. [help: Module files and Device Pack] [code: DialogConfigureModule.qml:49-76]
@@ -452,38 +458,42 @@ Every device has a module file that says which of its controls the program may u
 1. A stale id is not filtered in `saveClaim`, `startFresh`, `_load_module_doc`, `_module_damage`, `_source_claim` (module_model.py:2245, 1451, 379, 491, 1505), but is filtered for Delete, Device Pack and Output View (`guid_for_module`, hardware_profile.py:956). Save and Start Fresh can reach a different file from Delete. [S9; system-maps map 1]
 2. Name-only lookups: `module_exists`, `_refresh_inplace`, `claimedCount`, module_pairing, module_inputs (see 7.6). Twin naming makes a wrong file unlikely; SUSPECTED, no test. [S6, S77] (2026-10-09: the plugged-in check itself now goes by id everywhere through `hardware.plugged_in`, S90a; these file lookups are still by name.)
 3. Import writes the own-name file, not the bound file (hardware_profile.py:700-701). [Q13]
-4. Start Fresh leaves no History entry (module_file.py:107-113, module_model.py:1456). [S69, Q17]
-5. Running note says "next time it starts" but changes are live. [Q1]
+4. ~~Start Fresh leaves no History entry.~~ Fixed: `module_file.start_fresh` -> `store.move_aside_path` "with a History entry" (`module_file.py:140-144`). [S69, Q17]
+5. ~~Running note says "next time it starts" but changes are live.~~ Fixed: "The profile is running. Saved changes work at once." (`RunningNote.qml:28`). [Q1]
 6. Module Setup Import Image writes at once; Cancel does not put the picture back. [Q2]
-7. Save Module grows `modules\library` by one picture per save and writes the module file twice. [Q3]
+7. ~~Save Module grows `modules\library` by one picture per save and writes the module file twice.~~ Fixed (GL-089): `copyImage` of the same photo makes no library copy and no write (`hardware_profile.py:2195`). [Q3]
 8. `_refresh_inplace` (every settings change): sets vJoy status back to "Virtual" over "In use by another program" (module_model.py:1352-1353); does not refresh the damaged flag (a file fixed by History Restore keeps its red status until the next full reload; SUSPECTED); counts differ from `_reload` (Q8).
 9. Stacks drop cards not on screen (module_model.py:981-985, 1151-1157). [Q10]
-10. Logical Device card menu offers Module Setup (always refused), Calibration, Auto Mapper, Device Information, Swap Device (StatusCard.qml:451-486). [Q7]
-11. Delete Device writes the whole profile, skips the unfinished-actions check, no Run check (hardware_profile.py:1033-1057). [Q4, Q6]
+10. ~~Logical Device card menu offers Module Setup, Calibration, Auto Mapper, Device Information, Swap Device.~~ Fixed: none of them on the Logical Device card (`StatusCard.qml:465-487`). [Q7]
+11. Delete Device writes the whole profile and skips the unfinished-actions check (not re-checked 2026-10-10). Run check fixed: refused while running, said up front (`hardware_profile.py:613-625`). [Q4, Q6]
 12. Delete Device without a pack keeps no copy of the module file (hardware_profile.py:1150-1151). [Q5]
-13. Delete File leaves the picture folder (hardware_profile.py:865-899). [Q14]
-14. Duplicate `_clear_device_binding` / `_clear_device_binding_keys` (hardware_profile.py:802, 1060).
+13. ~~Delete File leaves the picture folder without saying so.~~ Fixed: the question says "The device's pictures are kept." (`DialogConfigureModule.qml:686`). [Q14]
+14. ~~Duplicate `_clear_device_binding` / `_clear_device_binding_keys`.~~ Fixed: one name left, an alias of `store.unbind` (`hardware_profile.py:474`).
 15. Auto Mapper merge carries on after a refused or failed write (auto_map.py:130-141). [Q15]
-16. Dead code: `_load_xbox_dest` (module_model.py:2030) would show Xbox claim boxes if reached; `registry.find` unused outside tests.
-17. `copyImage` deletes the old `photo.*` files before it checks whether the module file is damaged (hardware_profile.py:2442-2465): on a damaged file the picture changes but the file does not.
+16. ~~Dead code: `_load_xbox_dest`, `registry.find`.~~ Removed (`test_batch3_C3a.py:137-145`).
+17. ~~`copyImage` deletes the old `photo.*` files before it checks whether the module file is damaged.~~ Fixed: the damage check comes first (`hardware_profile.py` `copyImage`, audit AUD-MOD-05).
 18. Driven by reads a vJoy number by joining all digits (module_model.py:265, 280), a second copy of the vJoy-number rule (7.9).
-19. Options text for show-stubs is "Show stub cards for detected hardware with no saved module." (module_model.py:103), against glossary D13 ("device without a module"). SUSPECTED that Options shows this text.
-20. `output.py` thread state and `registry._cache` have no lock (7.13, 7.14). SUSPECTED.
+19. ~~Options text for show-stubs.~~ Fixed: "Show a card for each device without a module." (`module_model.py:107`, glossary D13).
+20. ~~`output.py` thread state and `registry._cache` have no lock (7.13, 7.14).~~ Fixed: `output._lock` throughout (`output.py:38`), `registry._cache_lock` (`registry.py:307`).
 21. Keyboard Module Setup may tick keys typed into a name box (Q16). SUSPECTED.
 22. OSC (parked, mapped only): Module Setup lists OSC addresses with claim boxes (module_model.py:1900-1931), but Run passes every OSC event without a claim (runtime.py:22-27), so OSC claims do nothing at Run.
     Since 2026-10-09 (D-09-OSC-FILE) OSC's Module Setup also holds the Server section (S53a); the claim boxes question (09 Q4) is unchanged.
 23. `calibration._source_modules` skips a second stick on the same file (calibration.py:72-73); only matters for twins from before twin naming.
 24. Home `_reload` writes settings while reading (card order at module_model.py:1710-1711, kept stubs at :183); each write is a settings change. It settles after one pass; noted for the Stage 1 rule checks.
 25. Calibration's "Raw" value box accepts typing but saves nothing; it should be read-only (to-do 49). `DialogCalibration.qml` ~353.
-26. Module Setup Save on a stick unplugged after opening says "...to save its setup...", not S46's "Plug in <device> to change its setup. Nothing was saved." (to-do 56). `module_model.py` ~1900, ~1951.
-27. A calibration with lowest above highest gets "...lowest and highest values are the same" (S103; to-do 56).
-28. (batch C, 2026-10-10, NOT VERIFIED) A module file changed by another window (Module Setup, History Restore, Device Pack) while the Configuration or Keyboard page holds an unsaved layout: File › Save writes the held layout and names over it (`store.save_pending`). [05 S122a, CS1]
+26. ~~Module Setup Save on an unplugged stick has the wrong words.~~ Fixed: S46's "Plug in <device> to change its setup." (`module_model.py:462`).
+27. ~~A calibration with lowest above highest gets "...the same".~~ Fixed: "Not saved. The lowest value is above the highest." (`device.py:960`). (S103)
+28. ~~A module file changed by another window while the Configuration or Keyboard page holds an unsaved layout: File › Save writes the held layout and names over it.~~ Fixed 2026-10-10 (batch F1, AD2, S123, 05 S122a/S122b): the newer file wins; `store._drop_replaced` drops the held change, the pages get "replaced" and a note is shown. [test: test_cfg_layout_held.py]
+29. ~~Module Setup's Save writes every name it read at open (AUD-FILES-01).~~ Fixed 2026-10-10 (batch F1, AD3, S124): it writes only the names changed in that window (`module_model.py` `_names_loaded`). [test: test_module_setup_names.py]
+30. ~~A held name for a control no longer claimed was written (AUD-MOD-02).~~ Fixed 2026-10-10 (F1): `store._set_names` skips a name for an unclaimed control (S42). [test: test_cfg_layout_held.py]
+32. ~~A module file read that failed with `OSError` (antivirus, backup) was cached as missing until the file changed (AUD-RUN-06).~~ Fixed 2026-10-10 (F2-REGISTRY, S47). [test: test_registry_failed_read.py]
+31. ~~A held layout was not dropped when the device's file was deleted, and a file missing at Save was silent (AUD-MOD-04).~~ Fixed 2026-10-10 (F1). [test: test_cfg_layout_held.py]
 
 **Open tracker items for this subsystem**
 - AU-64 (open): what is left: only the Device Pack export file name still goes by the device's own name (photo folders follow the module file); device list cleared and refilled while read (device update runs on a timer thread, event_handler.py:388-419, while Home reads `physical_devices` on the main thread); a failed output-claims refresh blocks vJoy outputs for 1 s. Unverified.
 - AU-58 (in progress): only the OSC empty-state text in Module Setup is left (OSC parked).
 - AU-56 (on hold): at 200% on a small screen, Save Module and Save All are cut off.
-- AU-116 / AU-117 (open, Run lifecycle map): timers and loops that write to vJoy after Stop go around `output.reset_drivers`.
+- AU-117 (open, Run lifecycle map): loops that write to vJoy after Stop go around `output.reset_drivers`. (AU-116, the timers, is fixed in code: GL-047.)
 - System-maps map 1 (Module files): not approved; decisions F1-F4 open.
 
 **Things nothing owns**
@@ -496,8 +506,8 @@ Every device has a module file that says which of its controls the program may u
 ## 11. Size and test coverage
 
 **Size (lines, roughly)**
-- Core `gremlin/modules/*`: about 4,350 (store.py 1,604, output.py 804, registry.py 439, device_class.py 194, calibration.py 205, runtime.py 204).
-- UI models: module_model.py 2,406; module-file part of hardware_profile.py about 300; modules/hardware.py 65; device.py calibration part about 570; module_inputs 264; module_pairing 323; output_modules 302; live_input 446; module_calibration 80; auto_map_modules 80. About 4,800.
+- Core `gremlin/modules/*`: about 4,950 (store.py 2,082, output.py 921, registry.py 434, module_file.py 161, device_class.py 194, calibration.py 205, runtime.py 204).
+- UI models: module_model.py 2,420; module-file part of hardware_profile.py about 300; modules/hardware.py 65; device.py calibration part about 570; module_inputs 264; module_pairing 323; output_modules 302; live_input 446; module_calibration 80; auto_map_modules 80. About 4,800.
 - QML: StatusPage 1,178; OutputModuleView 1,286; DialogConfigureModule 739; DialogCalibration 679; StatusCard 510; HatView 75; RunningNote 30. About 4,500.
 - Total about 13,400 lines in about 27 files.
 
@@ -509,7 +519,7 @@ Every device has a module file that says which of its controls the program may u
 - `_refresh_inplace` status and counts (vJoy "In use" overwrite, damaged flag, count fallback).
 - Module Setup Import Image + Cancel; `keepPhoto` on Save (library growth).
 - Delete Device without "Save a copy", for a vJoy card, for an unplugged device, while running, and with other unsaved profile edits.
-- Start Fresh History entry; Start Fresh through the QML confirm.
+- Start Fresh through the QML confirm.
 - Import refusals (vJoy onto stick, not connected, damaged current file) and import into a renamed stick.
 - Logical Device card: Module Setup, Calibration, Auto Mapper from its menu.
 - Keyboard Module Setup with typing in a friendly-name box.
@@ -549,6 +559,10 @@ All [code only] statements in section 8 confirmed; S36 now says "at once" (page 
 | S53a | 2026-10-09 (D-09-OSC-FILE, D-09-OSC-FAULTS): OSC's Module Setup has a Server section; the settings live in OSC's module file and travel with it |
 | S53a-S53c | 2026-10-09 (D-09-OSC-OUTPUT, D-09-OSC-FEEDBACK, D-09-OSC-DISCOVERY, D-09-OSC-ADDRESSES; user: "go with your recommendations, approved, go ahead"): output, targets and discovery in Server; a Feedback section; the OSC card's last-pressed line shows the address |
 | S53d | 2026-10-09 (D-09-OSC-TABS, D-09-OSC-COMPANION, D-09-OSC-LOOK; user: "B with tabs"; "go with your recommendations, approved, go ahead"): OSC Module Setup in tabs Server · Output · Feedback · Discovery, Add Companion in Output, Button Map look |
+| S123 | 2026-10-10 (AD2; user approved AD1-AD10, "all recommendations", 2026-10-10, audit batch F1): held Configuration/Keyboard layouts for a device are dropped when another writer changes its module file (newer file wins) |
+| S124 | 2026-10-10 (AD3; user approved AD1-AD10, "all recommendations", 2026-10-10, audit batch F1): Module Setup's Save writes only the names changed in that window |
+| S123 | 2026-10-10 (D-05-HELD-REPLACED; user: "Go with your recommendations", 2026-10-10, audit S1): narrowed: a held layout is dropped only when the write changes the layout or claim or removes the file (05 S122a) |
+| S125 | 2026-10-10 (D-03-KEYS-SHARED; user: "Go with your recommendations", 2026-10-10, audit K1): Keyboard keys with no actions are kept in the Keyboard module file as "key:<id>" |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import enum
 import logging
 import threading
@@ -215,6 +216,25 @@ class XboxPad:
         except Exception:
             pass
         self._devicep = 0
+
+    def user_index(self) -> int | None:
+        """The 0-based XInput user index ViGEm gave this pad (the player LED,
+        XInput's dwUserIndex), or None when it has none yet or the driver
+        refused. Never raises."""
+        if self._lib is None or not self._devicep:
+            return None
+        index = ctypes.c_ulong(0)
+        try:
+            err = self._lib.vigem_target_x360_get_user_index(
+                self._busp, self._devicep, ctypes.byref(index)
+            )
+        except Exception as exc:
+            _LOG.debug("Xbox pad %s user index failed: %s", self.pad_id, exc)
+            return None
+        if err != VIGEM_OK:
+            _LOG.debug("Xbox pad %s has no user index (%#x)", self.pad_id, err)
+            return None
+        return int(index.value)
 
     def update(self) -> None:
         if self._lib is None or not self._devicep:

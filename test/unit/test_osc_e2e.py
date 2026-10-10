@@ -4,8 +4,8 @@
 
 """OSC end to end (D-09-OSC-FILE, D-09-OSC-INPUT, D-09-OSC-FAULTS): the
 page model's Listen / Bulk capture / Import put inputs with their settings
-into OSC's file, a profile bound to them runs through the real binding
-path, and an old version 15 profile moves its rows into the file.
+into OSC's file and a profile bound to them runs through the real binding
+path.
 
 No network: the UDP listener is a stand-in and messages go straight into
 the runtime's main-thread handler. Module files live in a temp folder."""
@@ -15,7 +15,6 @@ from __future__ import annotations
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
-from xml.etree import ElementTree
 
 import pytest
 from PySide6 import QtCore, QtQml, QtTest
@@ -28,7 +27,6 @@ from gremlin.modules import store
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime
 from gremlin.profile import InputItem, Profile
 from gremlin.types import InputType
-from gremlin.ui import backend
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
 
 AXIS = InputType.JoystickAxis
@@ -333,93 +331,6 @@ def test_run_bound_profile_with_per_input_settings(
     finally:
         EventListener().joystick_event.disconnect(runner.event_handler.process_event)
         runtime.stop()
-
-
-# -- (3) an old version 15 profile --------------------------------------------
-
-
-def _v15_profile(path: Path) -> None:
-    """A version 15 profile with two OSC rows in <osc-device> and a binding
-    on each, no <osc-uid> (as version 15 wrote them)."""
-    made = Profile(bind=False)
-    items = []
-    for kind, number in ((BUTTON, 1), (AXIS, 1)):
-        item = InputItem(made.library)
-        item.device_id = OSC_DEVICE_UUID
-        item.input_type = kind
-        item.input_id = number
-        item.mode = made.modes.first_mode
-        item.add_item_binding()
-        items.append(item)
-    made.inputs[OSC_DEVICE_UUID] = items
-    root = ElementTree.fromstring(made._xml_text())
-    root.set("version", "15")
-    for node in root.findall("osc-device"):
-        root.remove(node)
-    for parent in root.iter():
-        for node in parent.findall("osc-uid"):
-            parent.remove(node)
-    section = ElementTree.SubElement(root, "osc-device")
-    for kind, number, address in (("button", 1, "/jump"), ("axis", 1, "/throttle")):
-        node = ElementTree.SubElement(section, "input")
-        ElementTree.SubElement(node, "input-type").text = kind
-        ElementTree.SubElement(node, "input-id").text = str(number)
-        ElementTree.SubElement(node, "label").text = address
-    path.write_text(ElementTree.tostring(root, encoding="unicode"), encoding="utf-8")
-
-
-def test_v15_profile_file_moves_rows_and_saves_as_16(env: Path) -> None:
-    # OSC's file already has Button 1 at another address.
-    OscDevice().rows.create(BUTTON, "/fire")
-    odf.save()
-    fire = _by_label()["/fire"].uid
-    path = env.parent / "old.xml"
-    _v15_profile(path)
-    original = path.read_bytes()
-
-    profile = Profile()
-    profile.from_xml(path)
-
-    # Rows are in OSC's file (not only in memory).
-    in_file = {e["label"]: e for e in odf.read_inputs()}
-    assert set(in_file) == {"/fire", "/jump", "/throttle"}
-    assert in_file["/fire"]["uid"] == fire
-    assert (in_file["/jump"]["type"], in_file["/jump"]["id"]) == ("button", 2)
-    assert (in_file["/throttle"]["range_min"], in_file["/throttle"]["range_max"]) == (
-        -1.0, 1.0,
-    )
-    title, text = backend.migration_notes(profile)
-    assert title == "OSC"
-    assert text.startswith("OSC addresses moved to OSC's own file: added ")
-    assert "/jump" in text and "/throttle" in text
-
-    by_type = {i.input_type: i for i in profile.inputs[OSC_DEVICE_UUID]}
-    assert by_type[BUTTON].input_id == 2
-    assert by_type[BUTTON].osc_uid == in_file["/jump"]["uid"]
-
-    backup = path.with_name(path.name + ".v15.bak")
-    assert not backup.exists()
-    profile.to_xml(path)
-    assert backup.read_bytes() == original
-    root = ElementTree.parse(path).getroot()
-    assert root.get("version") == "16"
-    assert root.find("osc-device") is None
-    saved = {
-        n.findtext("osc-uid"): n.findtext("input-type")
-        for n in root.findall("inputs/input")
-        if str(OSC_DEVICE_UUID).lower()
-        in (n.findtext("device-id") or "").lower()
-    }
-    assert saved == {
-        in_file["/jump"]["uid"]: "button",
-        in_file["/throttle"]["uid"]: "axis",
-    }
-
-    # Opened again: nothing moves, no note.
-    again = Profile()
-    again.from_xml(path)
-    assert backend.migration_notes(again)[1] == ""
-    assert len(odf.read_inputs()) == 3
 
 
 # -- (4) Import ---------------------------------------------------------------

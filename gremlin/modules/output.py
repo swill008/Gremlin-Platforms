@@ -408,6 +408,15 @@ def _has(dev: Any, kind: str, input_id: int) -> bool:  # noqa: ANN401
     return False
 
 
+def _sending() -> bool:
+    """True during a Run and while Stop runs its steps (releases, neutral
+    values); nothing is sent while stopped (06 S4, Q19)."""
+    if run_scope.running() or run_scope.stopping():
+        return True
+    syslog.debug("Output not sent: no profile is running.")
+    return False
+
+
 def _passes(vjoy_id: int, kind: str, input_id: int) -> bool:
     if vjoy_allows(vjoy_id, kind, input_id):
         return True
@@ -434,6 +443,8 @@ def write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> bool:  # n
 
 def _write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> str:  # noqa: ANN401
     """write_vjoy's work; the result as the trace says it."""
+    if not _sending():
+        return "blocked (not running)"
     if not _passes(vjoy_id, kind, input_id):
         return f"blocked (not claimed by the vJoy {vjoy_id} module)"
     dev = _open_vjoy(vjoy_id)
@@ -460,11 +471,24 @@ def _write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> str:  # n
 
 
 def write_vjoy_axis_linear(vjoy_id: int, linear_index: int, value: float) -> bool:
-    """Write an axis given by its position in the axis list (1 = first axis)."""
-    dev = _open_vjoy(vjoy_id)
-    if dev is None or not dev.is_axis_valid(linear_index=int(linear_index)):
+    """Write an axis given by its position in the axis list (1 = first axis).
+
+    A device is opened only for a claimed axis (S49, S51)."""
+    axis_id = _linear_axis_id(vjoy_id, int(linear_index))
+    if axis_id is None:
         return False
-    return write_vjoy(vjoy_id, "axis", dev.axis_id(int(linear_index)), value)
+    return write_vjoy(vjoy_id, "axis", axis_id, value)
+
+
+def _linear_axis_id(vjoy_id: int, linear_index: int) -> int | None:
+    """The axis id at this place in the axis list; None when there is none
+    or no axis of the device is claimed (the device then stays closed)."""
+    if not claim_ids(vjoy_claim(vjoy_id), "axis"):
+        return None
+    dev = _open_vjoy(vjoy_id)
+    if dev is None or not dev.is_axis_valid(linear_index=linear_index):
+        return None
+    return int(dev.axis_id(linear_index))
 
 
 def release_vjoy_button(vjoy_id: int, button_id: int) -> bool:
@@ -708,9 +732,7 @@ class _ScriptDevice:
         self, axis_id: int | None = None, linear_index: int | None = None
     ) -> _ScriptAxis:
         if axis_id is None and linear_index is not None:
-            dev = _open_vjoy(self.vjoy_id)
-            valid = dev is not None and dev.is_axis_valid(linear_index=linear_index)
-            axis_id = dev.axis_id(linear_index) if valid else 0
+            axis_id = _linear_axis_id(self.vjoy_id, int(linear_index)) or 0
         return _ScriptAxis(self.vjoy_id, int(axis_id or 0))
 
     def button(self, index: int) -> _ScriptButton:
@@ -748,8 +770,11 @@ def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
     """Send a value to an Xbox control. False when the driver refused it.
 
     The Xbox output module is a straight pass-through to ViGEm: every control
-    on the pad is available, nothing is claimed (as in GremlinEx).
+    on the pad is available, nothing is claimed (as in GremlinEx). Nothing
+    is sent while stopped, so no pad is plugged in outside a Run (06 Q19).
     """
+    if not _sending():
+        return False
     try:
         from vigem.xbox import XboxProxy
 
@@ -802,6 +827,30 @@ def plugged_xbox_pads() -> list[int]:
     except Exception:
         return []
 
+
+
+def xbox_slot(pad: int) -> int | None:
+    """The XInput slot (1-4) that Gremlin's Xbox pad `pad` got, or None when
+    the pad isn't plugged in or ViGEm has no slot for it yet. Never plugs a
+    pad in or starts the ViGEm client, and never raises (02 S105, S106)."""
+    import sys
+
+    xbox = sys.modules.get("vigem.xbox")
+    if xbox is None:
+        return None
+    try:
+        from gremlin.common import SingletonMetaclass
+
+        proxy = SingletonMetaclass._instances.get(xbox.XboxProxy)
+        found = (getattr(proxy, "_pads", None) or {}).get(int(pad))
+        index = found.user_index() if found is not None else None
+    except Exception as exc:
+        syslog.debug("Xbox pad %s slot: %s", pad, exc)
+        return None
+    # ViGEm's user index is XInput's 0-based dwUserIndex; slots are 1-4.
+    if index is None or not 0 <= index <= 3:
+        return None
+    return index + 1
 
 def xbox_available() -> bool:
     """True when ViGEmBus and ViGEmClient.dll can be used."""

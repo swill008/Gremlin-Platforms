@@ -34,7 +34,10 @@ class Tools(QtCore.QObject):
         claim_outputs: bool = False,
         toolbar_mode: str = "",
     ) -> str:
-        mapper = auto_mapper.AutoMapper(shared_state.current_profile)
+        profile = shared_state.current_profile
+        if profile is None:
+            return "No profile is open."
+        mapper = auto_mapper.AutoMapper(profile)
         feedback_string = mapper.generate_module_mappings(
             [slug for (slug, chosen) in source_modules.items() if chosen],
             [slug for (slug, chosen) in dest_modules.items() if chosen],

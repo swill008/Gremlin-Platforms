@@ -20,6 +20,8 @@ import os
 import sys
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 spec = importlib.util.spec_from_file_location(
@@ -373,7 +375,7 @@ def main() -> None:
     QtTest.QTest.qWait(1200)
     out["shown-after-reopening"] = print_export_shown()
     print("RESULT " + json.dumps(out), flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":
@@ -385,4 +387,4 @@ if __name__ == "__main__":
         traceback.print_exc()
         sys.stdout.flush()
         sys.stderr.flush()
-        os._exit(1)
+        smoke_exit(1)

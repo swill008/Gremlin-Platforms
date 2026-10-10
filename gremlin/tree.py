@@ -44,16 +44,6 @@ class TreeNode:
         other.parent = self
         self.children.append(other)
 
-    def insert_child(self, other: TreeNode, index: int) -> None:
-        """Inserts a new child at the given position.
-
-        Args:
-            other: the node to add as a child
-            index: the index at which to insert the new child
-        """
-        other.parent = self
-        self.children.insert(index, other)
-
     def append_sibling(self, other: TreeNode) -> None:
         """Adds a sibling node to the tree at the end of the list of siblings.
 
@@ -171,28 +161,6 @@ class TreeNode:
             count += 1
 
         return count
-
-    def node_at_index(self, index: int) -> TreeNode:
-        """Returns the node with the specified index.
-
-        Args:
-            index: the index of the node to return
-
-        Returns:
-            Node corresponding to the provided index
-        """
-        stack = [self.get_root()]
-        node_index = 0
-
-        while len(stack) > 0:
-            node = stack.pop()
-            if node_index == index:
-                return node
-
-            node_index += 1
-            stack.extend(node.children[::-1])
-
-        raise error.GremlinError(f"No node with index {index} exists.")
 
     def nodes_matching(self, predicate: Callable[[TreeNode], bool]) -> list[TreeNode]:
         """Returns the list of nodes for which the predicate is true.

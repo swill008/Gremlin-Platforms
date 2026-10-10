@@ -54,9 +54,16 @@ def _alpha_stats(image: object) -> dict:
 
 
 def story(j: Journey) -> None:
-
-
     out = j.out
+    # The theme as Options sets it (dark mode is on by default, so "light"
+    # has to be set too): the setting, then configChanged (SHAKE-JOURNEYS-07).
+    from gremlin.config import Configuration
+    from gremlin.signal import signal
+
+    dark = THEME == "dark"
+    Configuration().set("ui", "general", "dark-mode", dark)
+    signal.configChanged.emit()
+    out["isDarkMode"] = j.await_value(lambda: j.ev("Style.isDarkMode"), dark)
     j.win.setProperty("visible", True)
     j.win.setWidth(1600)
     j.win.setHeight(1000)

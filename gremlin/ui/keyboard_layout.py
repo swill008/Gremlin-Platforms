@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """The Keyboard page on the shared control layout (05 S128, CF-Q7).
 
-Rows are the profile's keys, each listed once with the shown mode's actions
-(S72). Add Key and Delete are page Undo steps (S73, S75, S127). Groups, order
-and Rename live in the Keyboard's input module file (S122; Rename is the
-claim's friendly name, S129), held unsaved until File > Save (CS1, the
-store's pending layouts). The pane is the shared draft pane (05 Q5).
+Rows are the profile's keys and the keys on the Keyboard module file's list,
+each listed once with the shown mode's actions (S72). Add Key and Delete are
+page Undo steps (S73, S75, S127). The key list (the layout's order: a key
+with no actions isn't in the profile file, AD4), groups and Rename live in
+the Keyboard's input module file (S122; Rename is the claim's friendly name,
+S129), held unsaved until File > Save (CS1, the store's pending layouts).
+The pane is the shared draft pane (05 Q5).
 """
 
 from __future__ import annotations
@@ -58,6 +60,11 @@ def key_row(code: tuple) -> str:
     return parent_key(InputType.Keyboard, key_id(code[0], bool(code[1])))
 
 
+def key_code(ident: int) -> tuple:
+    """The profile's key ((scan code, extended)) of a key id."""
+    return (ident & 0xFFFF, bool(ident & 0x10000))
+
+
 def _natural_key(text: str) -> list:
     return [int(p) if p.isdigit() else p.casefold() for p in re.split(r"(\d+)", text)]
 
@@ -105,9 +112,10 @@ class KeyItem:
 
 class KeyboardLayoutStore:
     """Groups, order and friendly names of the Keyboard's keys (the
-    duck-typed store of control_layout). The keys are the profile's; the
-    layout and names are the Keyboard's module file's, held unsaved in the
-    store until File > Save."""
+    duck-typed store of control_layout). The keys are the profile's plus
+    the order list's (every key in order is listed: Add Key puts it there,
+    Delete takes it off, AD4); the layout and names are the Keyboard's
+    module file's, held unsaved in the store until File > Save."""
 
     def __init__(self) -> None:
         self._groups: list[str] = []
@@ -200,6 +208,13 @@ class KeyboardLayoutStore:
                 codes.setdefault(ident, code)
         return codes
 
+    def _all_codes(self) -> dict[int, tuple]:
+        """The page's keys: the profile's and the list's."""
+        codes = self._codes()
+        for ident in self._order:
+            codes.setdefault(ident, key_code(ident))
+        return codes
+
     def group_names(self) -> list[str]:
         return list(self._groups)
 
@@ -222,14 +237,14 @@ class KeyboardLayoutStore:
         return out + rest
 
     def ordered(self) -> list[KeyItem]:
-        codes = self._codes()
+        codes = self._all_codes()
         return [self._item(i, codes[i]) for i in self._idents(codes)]
 
     def exists(self, identifier: object) -> bool:
-        return identifier in self._codes()
+        return identifier in self._all_codes()
 
     def __getitem__(self, identifier: object) -> KeyItem:
-        codes = self._codes()
+        codes = self._all_codes()
         if identifier not in codes:
             raise KeyError(identifier)
         return self._item(int(identifier), codes[int(identifier)])  # type: ignore[arg-type]
@@ -283,7 +298,7 @@ class KeyboardLayoutStore:
             self._group_of[ident] = folder
         else:
             self._group_of.pop(ident, None)
-        order = [i for i in self._idents(self._codes()) if i != ident]
+        order = [i for i in self._idents(self._all_codes()) if i != ident]
         if before is not None and before in order and before != ident:
             order.insert(order.index(before), ident)  # type: ignore[arg-type]
         else:
@@ -323,16 +338,33 @@ class KeyboardLayoutStore:
     def set_user_label(self, identifier: object, text: str) -> None:
         ident = int(identifier)  # type: ignore[call-overload]
         cleaned = (text or "").strip()
-        codes = self._codes()
+        codes = self._all_codes()
         if ident in codes and cleaned == key_name(codes[ident]):
             cleaned = ""
         self._names[ident] = cleaned
         self._save()
 
     def delete(self, identifier: object) -> None:
-        # The key's place, group and name stay: they are the module file's,
-        # and the key comes back to them (Undo, Add Key).
+        # The key's name stays: it is the claim's, and the key comes back
+        # to it (Add Key). Undo puts the place and group back.
         return None
+
+    def listed(self, ident: int) -> bool:
+        """The key is on the module file's list (AD4)."""
+        return ident in self._order
+
+    def add_key(self, ident: int) -> None:
+        """Lists the key (Add Key, AD4): kept at Save with no actions."""
+        if ident not in self._order:
+            self._order.append(ident)
+            self._save()
+
+    def remove_key(self, ident: int) -> None:
+        """Takes the key off the list (Delete, AD4)."""
+        if ident in self._order or ident in self._group_of:
+            self._order = [i for i in self._order if i != ident]
+            self._group_of.pop(ident, None)
+            self._save()
 
 
 _STORE = KeyboardLayoutStore()
@@ -343,7 +375,8 @@ def keyboard_store() -> KeyboardLayoutStore:
 
 
 def _on_pending(what: str, guid: str) -> None:
-    if what == "discarded" and (not guid or ids.guid_key(guid) == ids.guid_key(GUID)):
+    ours = not guid or ids.guid_key(guid) == ids.guid_key(GUID)
+    if what in ("discarded", "replaced") and ours:
         _STORE.load()
 
 
@@ -408,7 +441,9 @@ class KeyboardLayoutModel(ControlLayoutModel):
         or a key with no actions in any mode."""
         mine = self._mode_item(item)
         if mine is None:
-            return False
+            # Only on the list (AD4): Delete takes it off. A key another
+            # mode has isn't this mode's to delete.
+            return not self._key_items(item)
         if mine.action_sequences:
             return True
         return not any(i.action_sequences for i in self._key_items(item))
@@ -416,14 +451,20 @@ class KeyboardLayoutModel(ControlLayoutModel):
     def _delete_parent(self, item: LayoutItem) -> list[dict]:
         profile = self._profile()
         mine = self._mode_item(item)
-        if profile is None or mine is None:
-            return []
-        snap = self._snapshot(mine)
-        key = self._input_key(mine)
-        profile.drop_inputs(GUID, [mine])
-        if snap is not None:
-            return [{"op": "input", "key": key, "before": snap, "after": None}]
-        return [{"op": "key", "key": key, "before": True, "after": False}]
+        links: list[dict] = []
+        if profile is not None and mine is not None:
+            snap = self._snapshot(mine)
+            key = self._input_key(mine)
+            profile.drop_inputs(GUID, [mine])
+            if snap is not None:
+                links = [{"op": "input", "key": key, "before": snap, "after": None}]
+            else:
+                links = [{"op": "key", "key": key, "before": True, "after": False}]
+        # The row goes when nothing is left of the key (S75): off the list
+        # too, in the same Undo step (AD4).
+        if not self._key_items(item):
+            _STORE.remove_key(cast(KeyItem, item).identifier)
+        return links
 
     def _play_link(self, entry: dict, forward: bool) -> None:
         if entry.get("op") != "key":
@@ -501,7 +542,7 @@ class KeyboardLayoutModel(ControlLayoutModel):
         return rows
 
     def _pending_changed(self, what: str, guid: str) -> None:
-        if what != "discarded":
+        if what not in ("discarded", "replaced"):
             return
         if guid and ids.guid_key(guid) != ids.guid_key(GUID):
             return
@@ -521,9 +562,17 @@ class KeyboardLayoutModel(ControlLayoutModel):
         if profile is None or len(code) < 2:
             return ""
         mode = str(mode or self._mode)
-        if profile.get_input_item(GUID, InputType.Keyboard, code, mode, False) is None:
+        ident = key_id(code[0], bool(code[1]))
+        missing = (
+            profile.get_input_item(GUID, InputType.Keyboard, code, mode, False) is None
+        )
+        if missing or not _STORE.listed(ident):
 
             def fn() -> list[dict]:
+                # On the module file's list: kept at Save with no actions.
+                _STORE.add_key(ident)
+                if not missing:
+                    return []
                 profile.get_input_item(GUID, InputType.Keyboard, code, mode, True)
                 return [
                     {
@@ -542,11 +591,6 @@ class KeyboardLayoutModel(ControlLayoutModel):
     def canDelete(self, key: str) -> bool:
         item = self._item_for(key)
         return item is not None and self._can_remove(item)
-
-    @QtCore.Slot(str, result=str)
-    def userNameOf(self, key: str) -> str:
-        item = self._item_for(key)
-        return item.second_name if item is not None else ""
 
     @QtCore.Property(list, notify=keyGroupsChanged)
     def groups(self) -> list:

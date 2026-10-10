@@ -208,7 +208,8 @@ class PiecewiseLinear(AbstractCurve):
         Returns:
             linearly interpolated value for the provided position
         """
-        x = util.clamp(x, -1.0, 1.0)
+        # NaN reads as the centre so the curve always gives a value.
+        x = 0.0 if math.isnan(x) else util.clamp(x, -1.0, 1.0)
 
         if x <= self.points[0].x:
             return self.points[0].y
@@ -220,6 +221,7 @@ class PiecewiseLinear(AbstractCurve):
                 b = self.points[i + 1]
                 if a.x <= x < b.x:
                     return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
+            return self.points[-1].y
 
 
 class CubicSpline(AbstractCurve):
@@ -327,7 +329,8 @@ class CubicSpline(AbstractCurve):
         Returns:
             function value at the provided position
         """
-        x = util.clamp(x, -1.0, 1.0)
+        # NaN reads as the centre so the curve always gives a value.
+        x = 0.0 if math.isnan(x) else util.clamp(x, -1.0, 1.0)
 
         n = len(self.points)
         i = 0
@@ -511,8 +514,8 @@ class CubicBezierSpline(AbstractCurve):
         Returns:
             Function value at the provided position
         """
-        # Ensure we have a valid value for x
-        x = util.clamp(x, -1.0, 1.0)
+        # Ensure we have a valid value for x; NaN reads as the centre.
+        x = 0.0 if math.isnan(x) else util.clamp(x, -1.0, 1.0)
 
         # Determine spline group to use
         index = 0

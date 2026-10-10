@@ -23,6 +23,8 @@ import sys
 import time
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -211,7 +213,7 @@ def main() -> None:
     if library is None:
         result("library", False)
         print("done", flush=True)
-        os._exit(0)
+        smoke_exit(0)
     QtCore.QMetaObject.invokeMethod(library, "refreshTemplates")
     QtTest.QTest.qWait(200)
     heading = next(
@@ -280,7 +282,7 @@ def main() -> None:
     if note is None:
         result("dialog", False)
         print("done", flush=True)
-        os._exit(0)
+        smoke_exit(0)
     dlg_blank = centre(note)
     scope = win.contentItem()
 
@@ -306,7 +308,7 @@ def main() -> None:
         QtTest.QTest.qWait(100)
 
     print("done", flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":
@@ -314,4 +316,4 @@ if __name__ == "__main__":
         main()
     except Exception as error:  # noqa: BLE001
         print(f"ERROR {error!r}", flush=True)
-    os._exit(1)
+    smoke_exit(1)

@@ -19,6 +19,7 @@ import time
 import uuid
 from typing import TYPE_CHECKING, Any
 
+from gremlin import clock
 from gremlin.types import InputType
 
 if TYPE_CHECKING:
@@ -72,7 +73,7 @@ def entries() -> list[tuple[str, str]]:
         if _axis_pending:
             for key, entry in _axis_pending.items():
                 _entries.append(entry)
-                _axis_last[key] = time.monotonic()
+                _axis_last[key] = clock.monotonic()
             _axis_pending.clear()
             _version += 1
         return list(_entries)
@@ -85,7 +86,7 @@ def record(event: Event, callbacks: list[object], paused: bool = False) -> None:
         entry = _entry(event, callbacks, paused)
     except Exception:  # a capture problem must never affect the profile
         return
-    now = time.monotonic()
+    now = clock.monotonic()
     with _LOCK:
         if event.event_type == InputType.JoystickAxis:
             key = (event.device_guid, event.identifier)

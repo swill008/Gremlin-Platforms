@@ -101,7 +101,8 @@ def test_type_names_are_the_plugins_names() -> None:
 
     plugins = PluginManager().tag_map
     names = type_filter_names()
-    assert names[0] == "All types" and names[-2:] == ["Other", "No actions"]
+    assert names[0] == "All types" and names[-1] == "Other"
+    assert "No actions" not in names  # 05 S18 (AD9)
     for tag in ("map-to-vjoy", "map-to-keyboard", "map-to-mouse", "map-to-xbox",
                 "macro", "change-mode"):
         assert plugins[tag].name in names

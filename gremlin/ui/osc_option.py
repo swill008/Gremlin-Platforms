@@ -185,13 +185,6 @@ class OscServerModel(QtCore.QObject):
         self._targets = osc_device_file.read_targets()
         self.changed.emit()
 
-    @QtCore.Slot(str, result=bool)
-    def isOscDevice(self, guid: str) -> bool:
-        from gremlin.modules import ids
-        from gremlin.modules.ids import guid_key
-
-        return guid_key(guid) == guid_key(str(ids.OSC))
-
     def _say(self, text: str, failed: bool = True) -> None:
         """Shows text on the message line; failed shows it as an error."""
         if text != self._message or failed != self._failed:
@@ -211,14 +204,8 @@ class OscServerModel(QtCore.QObject):
                 self._say(why)
                 return False
             value = str(value or "").strip()
-        elif key in ("port", "output_port"):
+        elif key == "port":
             value, why = _check_port(value)
-            if why:
-                self._say(why)
-                return False
-        elif key == "output_host":
-            value = str(value or "").strip()
-            why = check_host(value) if value else "Type the computer to send to."
             if why:
                 self._say(why)
                 return False
@@ -469,14 +456,6 @@ class OscServerModel(QtCore.QObject):
     def port(self) -> str:
         return str(self._get("port"))
 
-    @QtCore.Property(str, notify=changed)
-    def outputHost(self) -> str:
-        return str(self._get("output_host") or "")
-
-    @QtCore.Property(str, notify=changed)
-    def outputPort(self) -> str:
-        return str(self._get("output_port"))
-
     @QtCore.Property(bool, notify=changed)
     def autoreleaseNoArg(self) -> bool:
         return bool(self._get("autorelease_no_arg"))
@@ -513,13 +492,6 @@ class OscServerModel(QtCore.QObject):
     def messageFailed(self) -> bool:
         """True when the message is an error (a refused change)."""
         return self._failed
-
-    @QtCore.Slot(result=str)
-    def localAddresses(self) -> str:
-        """This PC's addresses, for the Host field's tip."""
-        return ", ".join(
-            ip for ip in local_ipv4_addresses() if ip not in ("127.0.0.1", "0.0.0.0")
-        )
 
 
 @ta.QmlElement

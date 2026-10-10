@@ -24,7 +24,6 @@ from gremlin import (
     config,
     device_helpers,
     device_initialization,
-    error,
     event_handler,
     mode_manager,
     process_monitor,
@@ -42,11 +41,9 @@ from gremlin.signal import (
 )
 from gremlin.ui.device import InputIdentifier
 from gremlin.ui.hardware_profile import persist_log
-from gremlin.ui.profile import InputItemModel
 from gremlin.ui.script import ScriptListModel
 from gremlin.ui import ui_scale_option
 from gremlin.ui.util import (
-    save_image_as_pdf,
     to_local_path,
     updated_recent_profiles,
 )
@@ -65,8 +62,6 @@ class UIState(QtCore.QObject):
     modeChanged = QtCore.Signal()
     tabChanged = QtCore.Signal()
     roomChanged = QtCore.Signal()
-    themeRevisionChanged = QtCore.Signal()
-    selectIndex = QtCore.Signal(int)
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -75,7 +70,6 @@ class UIState(QtCore.QObject):
         self._current_mode = "Default"
         self._current_tab = "physical"
         self._current_room = "status"
-        self._theme_revision = 0
         event_handler.EventListener().device_change_event.connect(self._device_change)
         signal.profileChanged.connect(self._device_change)
         # Keys are the profile's own: the old profile's key, kept as the
@@ -160,11 +154,6 @@ class UIState(QtCore.QObject):
             self._current_room = name
             self.roomChanged.emit()
 
-    @QtCore.Slot()
-    def bumpThemeRevision(self) -> None:
-        self._theme_revision += 1
-        self.themeRevisionChanged.emit()
-
     @QtCore.Property(str, notify=deviceChanged)
     def currentDevice(self) -> str:
         return str(self._current_device).upper()
@@ -188,10 +177,6 @@ class UIState(QtCore.QObject):
     @QtCore.Property(str, notify=roomChanged)
     def currentRoom(self) -> str:
         return self._current_room
-
-    @QtCore.Property(int, notify=themeRevisionChanged)
-    def themeRevision(self) -> int:
-        return self._theme_revision
 
     def __str__(self) -> str:
         cur_input = self._current_input.get(
@@ -229,14 +214,32 @@ def _sync_run_highlight_hold(runner: code_runner.CodeRunner) -> None:
         shared_state.release_input_highlighting("run")
 
 
-def _load_logical_device() -> None:
-    """Fills LogicalDevice() from its module file (D-04-LD-FILE)."""
+def _load_logical_device() -> list[str]:
+    """Fills LogicalDevice() from its module file (D-04-LD-FILE). Gives a
+    warning for the user per control that couldn't be read (AD1)."""
     from gremlin import logical_device_file
 
     try:
-        logical_device_file.load()
+        return list(logical_device_file.load() or [])
     except Exception:
         logging.getLogger("system").exception("Could not read the Logical Device file")
+        return []
+
+
+def _tell_load_warnings(notes: list[tuple[str, str]]) -> None:
+    """The module files' load warnings, one note per file (AD1)."""
+    for title, text in notes:
+        signal.showNotification.emit(title, text)
+
+
+def _load_notes(logical: list[str], osc: list[str]) -> list[tuple[str, str]]:
+    """(title, text) per file with warnings: one note each."""
+    notes = []
+    if logical:
+        notes.append(("Logical Device", "\n".join(logical)))
+    if osc:
+        notes.append(("OSC", "\n".join(osc)))
+    return notes
 
 
 def _logical_unsaved() -> bool:
@@ -253,21 +256,19 @@ def logical_migration_text(added: list[str] | None) -> str:
     return "Logical Device moved to its own file: added " + ", ".join(names) + "."
 
 
-def _load_osc_device() -> None:
-    """Fills OscDevice() and its server settings from OSC's module file;
-    the first time, the settings are copied from the configuration
-    (D-09-OSC-FILE)."""
+def _load_osc_device() -> list[str]:
+    """Fills OscDevice() and its server settings from OSC's module file
+    (D-09-OSC-FILE). Gives a warning for the user per input that couldn't
+    be read (AD1)."""
     from gremlin import osc_device_file
 
-    log = logging.getLogger("system")
-    try:
-        osc_device_file.migrate_settings_from_config()
-    except Exception:
-        log.exception("Could not copy the OSC settings to OSC's file")
     try:
         osc_device_file.load()
     except Exception:
-        log.exception("Could not read OSC's file")
+        logging.getLogger("system").exception("Could not read OSC's file")
+        return []
+    rows = osc_device_file._rows(None)
+    return list(getattr(rows, "load_warnings", []) or [])
 
 
 def _osc_unsaved() -> bool:
@@ -284,28 +285,13 @@ def _internal_unsaved() -> bool:
     return _logical_unsaved() or _osc_unsaved()
 
 
-def osc_migration_text(added: list[str] | None) -> str:
-    """The one-time note after an older profile's OSC rows moved to OSC's
-    file; "" when nothing was added."""
-    names = [str(name) for name in (added or []) if str(name)]
-    if not names:
-        return ""
-    return "OSC addresses moved to OSC's own file: added " + ", ".join(names) + "."
-
-
 def migration_notes(new_profile: object) -> tuple[str, str]:
     """(title, text) of the one note said after opening an older profile
-    whose Logical Device and/or OSC rows moved to their own files; text ""
-    when there is nothing to say."""
-    logical = logical_migration_text(
+    whose Logical Device rows moved to their own file; text "" when there
+    is nothing to say. (An older profile's OSC rows are not read, AD7.)"""
+    return "Logical Device", logical_migration_text(
         getattr(new_profile, "logical_migration_note", None)
     )
-    osc = osc_migration_text(getattr(new_profile, "osc_migration_note", None))
-    if logical and osc:
-        return "Open Profile", logical + " " + osc
-    if osc:
-        return "OSC", osc
-    return "Logical Device", logical
 
 
 @common.SingletonDecorator
@@ -313,7 +299,6 @@ class Backend(QtCore.QObject):
     windowTitleChanged = QtCore.Signal()
     profileChanged = QtCore.Signal()
     recentProfilesChanged = QtCore.Signal()
-    inputConfigurationChanged = QtCore.Signal()
     activityChanged = QtCore.Signal()
     propertyChanged = QtCore.Signal()
     uiChanged = QtCore.Signal()
@@ -340,9 +325,15 @@ class Backend(QtCore.QObject):
         self.config = config.Configuration()
         # One Logical Device for every profile, read from its module file
         # once, before any profile (D-04-LD-FILE, 04 S2).
-        _load_logical_device()
+        logical_warnings = _load_logical_device()
         # OSC's address list and server settings likewise (D-09-OSC-FILE).
-        _load_osc_device()
+        osc_warnings = _load_osc_device()
+        # Rows those files couldn't read are said once the main window is
+        # up: the timer fires when the event loop starts, after QML has
+        # connected to showNotification (AD1).
+        notes = _load_notes(logical_warnings, osc_warnings)
+        if notes:
+            QtCore.QTimer.singleShot(0, lambda: _tell_load_warnings(notes))
         self.profile = profile.Profile()
         self.profile.mark_clean()
         shared_state.current_profile = self.profile
@@ -363,8 +354,6 @@ class Backend(QtCore.QObject):
         # It runs only while auto-load is on (02 Q19).
         self._sync_process_monitor()
         signal.configChanged.connect(self._sync_process_monitor)
-        # The Configuration pane's models: the newest few are kept (05 RB18).
-        self._editor_models: list[InputItemModel] = []
         self.joystick_change_monitor = device_helpers.JoystickInputSignificant()
         mm = mode_manager.ModeManager()
         mm.mode_changed.connect(self._on_mode_changed)
@@ -439,7 +428,6 @@ class Backend(QtCore.QObject):
         mm.reset()
         self.ui_state.setCurrentMode(mm.current.name)
         self.windowTitleChanged.emit()
-        signal.reloadUi.emit()
         signal.profileChanged.emit()
 
     def _device_change(self) -> None:
@@ -610,58 +598,6 @@ class Backend(QtCore.QObject):
         root_window = self.engine.rootObjects()[0]
         root_window.setVisibility(QtGui.QWindow.Visibility.Minimized)
 
-    @QtCore.Slot(InputIdentifier, result=int)
-    def getActionCount(self, identifier: InputIdentifier) -> int:
-        if identifier is None:
-            return 0
-        try:
-            item = self.profile.get_input_item(
-                identifier.device_guid,
-                identifier.input_type,
-                identifier.input_id,
-                self.ui_state.currentMode,
-                False,
-            )
-            return len(item.action_sequences)
-        except error.ProfileError:
-            return 0
-
-    @QtCore.Slot(InputIdentifier, int, result=InputItemModel)
-    def getInputItem(
-        self, identifier: InputIdentifier, enumeration_index: int
-    ) -> InputItemModel | None:
-        # No input selected (a deleted key, a new profile): nothing to show.
-        if identifier is None or not identifier.isValid:
-            return None
-        try:
-            item = self.profile.get_input_item(
-                identifier.device_guid,
-                identifier.input_type,
-                identifier.input_id,
-                self.ui_state.currentMode,
-                True,
-            )
-        except error.ProfileError:
-            return None
-        if item is None:
-            return None
-        return self._editor_model(item, enumeration_index)
-
-    # The one pane that asks for these shows the newest; it asks twice when
-    # it opens. Older ones were kept for the whole session (05 RB18).
-    _KEPT_EDITOR_MODELS = 4
-
-    def _editor_model(
-        self, item: profile.InputItem, enumeration_index: int
-    ) -> InputItemModel:
-        """A new model for the Configuration pane; the oldest beyond the
-        newest few is freed."""
-        model = InputItemModel(item, enumeration_index, self)
-        self._editor_models.append(model)
-        while len(self._editor_models) > self._KEPT_EDITOR_MODELS:
-            self._editor_models.pop(0).deleteLater()
-        return model
-
     @QtCore.Slot(str)
     def pauseInputHighlighting(self, holder: str) -> None:
         """Pauses input highlighting until every holder has resumed it
@@ -747,7 +683,7 @@ class Backend(QtCore.QObject):
         go with the profile's, read again from its file (D-04-LD-FILE)."""
         if not _logical_unsaved():
             return
-        _load_logical_device()
+        _tell_load_warnings(_load_notes(_load_logical_device(), []))
         # Its Undo steps would play the discarded edits again.
         signal.logicalDeviceReloaded.emit()
         signal.logicalDeviceModified.emit()
@@ -758,7 +694,7 @@ class Backend(QtCore.QObject):
         with the profile's, read again from OSC's file (D-09-OSC-FILE)."""
         if not _osc_unsaved():
             return
-        _load_osc_device()
+        _tell_load_warnings(_load_notes([], _load_osc_device()))
         # Its OSC page Undo steps would play the discarded edits again.
         signal.oscDeviceReloaded.emit()
         signal.oscDeviceModified.emit()
@@ -789,7 +725,6 @@ class Backend(QtCore.QObject):
         self.profileChanged.emit()
         self.windowTitleChanged.emit()
         signal.reloadCurrentInputItem.emit()
-        signal.reloadUi.emit()
 
     @QtCore.Slot(result=list)
     def unfinishedActions(self) -> list[str]:
@@ -803,12 +738,21 @@ class Backend(QtCore.QObject):
 
     @QtCore.Slot(str, result=bool)
     def saveProfile(self, qml_url: str) -> bool:
+        """File > Save / Save As. False when anything was not written; when
+        the profile was but another file its Save writes was not, the
+        profile still counts as saved at path (title, Recent, recovery) and
+        the message naming that file is shown and kept in saveProblem."""
+        self._save_problem = ""
         try:
             path = to_local_path(qml_url)
             if str(path) in ("", "."):
                 return False
             # Written first: a save that fails leaves the profile on its file.
-            self.profile.to_xml(path)
+            incomplete: profile.SaveIncomplete | None = None
+            try:
+                self.profile.to_xml(path)
+            except profile.SaveIncomplete as error:
+                incomplete = error
             self.profile.fpath = path
             if not os.path.isfile(str(self.profile.fpath)):
                 persist_log(f"Persist profile save failed path={path!r} reason='file missing after write'")
@@ -816,6 +760,14 @@ class Backend(QtCore.QObject):
             self._record_profile_use(path)
             self._recovery.saved(path)
             self.windowTitleChanged.emit()
+            if incomplete is not None:
+                self._save_problem = str(incomplete)
+                persist_log(
+                    f"Persist profile save incomplete path={path} "
+                    f"failed={incomplete.failed!r}"
+                )
+                signal.showNotification.emit("Save", self._save_problem)
+                return False
             persist_log(f"Persist profile save ok path={path}")
             return True
         except Exception:
@@ -823,19 +775,16 @@ class Backend(QtCore.QObject):
             logging.getLogger("system").exception("Failed to save profile")
             return False
 
+    @QtCore.Slot(result=str)
+    def saveProblem(self) -> str:
+        """Why the last saveProfile returned False although the profile was
+        written ("" otherwise): the file it could not write, for the save
+        result's message."""
+        return str(getattr(self, "_save_problem", "") or "")
+
     @QtCore.Slot(str)
     def noteSave(self, text: str) -> None:
         self.saveNoted.emit(str(text or ""))
-
-    @QtCore.Slot(QtGui.QImage, "QVariant", result=bool)
-    def saveImageAsPdf(self, image: QtGui.QImage, url: QtCore.QUrl | str) -> bool:
-        path = to_local_path(url)
-        if save_image_as_pdf(image, path):
-            return True
-        signal.showNotification.emit(
-            "Export PDF", f"Could not write {path}."
-        )
-        return False
 
     @QtCore.Slot(result=str)
     def profilesFolderUrl(self) -> str:
@@ -982,9 +931,8 @@ class Backend(QtCore.QObject):
         for warning in getattr(new_profile, "load_warnings", []) or []:
             logging.getLogger("system").warning(warning)
             signal.showNotification.emit("Open Profile", warning)
-        # An older profile's Logical Device / OSC rows moved to their own
-        # files: said once, in one note, the first time it opens (04 S25,
-        # D-04-LD-FILE, D-09-OSC-FILE).
+        # An older profile's Logical Device rows moved to their own file:
+        # said once, the first time it opens (04 S25, D-04-LD-FILE).
         title, note = migration_notes(new_profile)
         if note:
             logging.getLogger("system").info(note)

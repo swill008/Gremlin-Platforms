@@ -48,7 +48,7 @@ function topics() {
             title: "Filter the inputs",
             body: "<p>The filters above the list show only the inputs you want to see.</p>"
                 + "<ul>"
-                + "<li><b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode, or those with <b>No actions</b>.</li>"
+                + "<li><b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode. To find inputs with none, use <b>No actions in this mode</b>.</li>"
                 + "<li><b>Output</b> shows inputs that send to one place. It lists only the places in use.</li>"
                 + "</ul>"
                 + _good([

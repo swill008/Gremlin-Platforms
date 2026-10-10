@@ -157,23 +157,35 @@ class ControlPoint(QtCore.QObject):
         center: Optional[QtCore.QPointF] = None,
         handle_left: Optional[QtCore.QPointF] = None,
         handle_right: Optional[QtCore.QPointF] = None,
-        parent: Optional[QtCore.QPointF] = None,
+        parent: Optional[QtCore.QObject] = None,
     ) -> None:
         super().__init__(parent)
         self._center = center
         self._handle_left = handle_left
         self._handle_right = handle_right
 
+    def set_points(
+        self,
+        center: Optional[QtCore.QPointF],
+        handle_left: Optional[QtCore.QPointF] = None,
+        handle_right: Optional[QtCore.QPointF] = None,
+    ) -> None:
+        """Moves the point and its handles; changed only when they differ."""
+        new = (center, handle_left, handle_right)
+        if new != (self._center, self._handle_left, self._handle_right):
+            self._center, self._handle_left, self._handle_right = new
+            self.changed.emit()
+
     @QtCore.Property(QtCore.QPointF, notify=changed)
     def center(self) -> QtCore.QPointF:
         return self._center
 
     @QtCore.Property(QtCore.QPointF, notify=changed)
-    def handleLeft(self) -> QtCore.QPointF:
+    def handleLeft(self) -> QtCore.QPointF | None:
         return self._handle_left
 
     @QtCore.Property(QtCore.QPointF, notify=changed)
-    def handleRight(self) -> QtCore.QPointF:
+    def handleRight(self) -> QtCore.QPointF | None:
         return self._handle_right
 
     @QtCore.Property(bool, notify=changed)
@@ -222,6 +234,12 @@ def converted_curve(
     new.is_symmetric = curve.is_symmetric
     return new
 
+# (center, left handle, right handle) of one control point.
+_PointValues = tuple[
+    QtCore.QPointF, Optional[QtCore.QPointF], Optional[QtCore.QPointF]
+]
+
+
 class ResponseCurveModel(ActionModel):
     changed = QtCore.Signal()
     deadzoneChanged = QtCore.Signal()
@@ -241,6 +259,15 @@ class ResponseCurveModel(ActionModel):
 
         self.widget_size = 400
         self._selected_point = 0
+        # Reused on every read of controlPoints / deadzone (QML reads them
+        # often); new objects each time piled up until the model went away.
+        self._control_points: List[ControlPoint] = []
+        self._points_shown = 0
+        self._points_stale = True
+        self._deadzone: Optional[Deadzone] = None
+        # Connected first, so QML re-reading on the same signal gets fresh
+        # values. Between signals (a drag) reads return the same points.
+        self.controlPointChanged.connect(self._mark_points_stale)
         # TODO: Find a better way, likely have the data class store symmetry
         #   mode information.
         # self._set_is_symmetric(True)
@@ -260,7 +287,9 @@ class ResponseCurveModel(ActionModel):
 
     @QtCore.Property(Deadzone, notify=deadzoneChanged)
     def deadzone(self) -> Deadzone:
-        return Deadzone(self._data, self)
+        if self._deadzone is None:
+            self._deadzone = Deadzone(self._data, self)
+        return self._deadzone
 
     @QtCore.Property(QtCore.QPointF, notify=selectedPointChanged)
     def selectedPointCoord(self) -> QtCore.QPointF:
@@ -404,14 +433,15 @@ class ResponseCurveModel(ActionModel):
             )
         return points
 
-    def _get_control_points(self) -> List[ControlPoint]:
+    def _curve_point_values(self) -> list[_PointValues]:
+        """(center, left handle, right handle) of each point of the curve."""
         if type(self._data.curve) in [spline.PiecewiseLinear, spline.CubicSpline]:
             return [
-                ControlPoint(center=QtCore.QPointF(p.x, p.y), parent=self)
+                (QtCore.QPointF(p.x, p.y), None, None)
                 for p in self._data.curve.control_points()
             ]
         elif isinstance(self._data.curve, spline.CubicBezierSpline):
-            points = []
+            values = []
             for p in self._data.curve.control_points():
                 center = QtCore.QPointF(p.center.x, p.center.y)
                 left = None
@@ -420,12 +450,30 @@ class ResponseCurveModel(ActionModel):
                 right = None
                 if p.handle_right is not None:
                     right = QtCore.QPointF(p.handle_right.x, p.handle_right.y)
-                points.append(ControlPoint(center, left, right, self))
-            return points
+                values.append((center, left, right))
+            return values
         else:
             raise GremlinError(
                 f"Invalid curve type encountered {str(type(self._data.curve))}"
             )
+
+    def _mark_points_stale(self) -> None:
+        self._points_stale = True
+
+    def _get_control_points(self) -> List[ControlPoint]:
+        # The same objects, moved to the curve's values when controlPointChanged
+        # said they changed; more are made only when the curve has more points
+        # than ever before. Spare ones stay (owned by this model) rather than
+        # being deleted under a QML delegate that may still show them.
+        if self._points_stale:
+            values = self._curve_point_values()
+            while len(self._control_points) < len(values):
+                self._control_points.append(ControlPoint(parent=self))
+            for point, (center, left, right) in zip(self._control_points, values):
+                point.set_points(center, left, right)
+            self._points_shown = len(values)
+            self._points_stale = False
+        return self._control_points[: self._points_shown]
 
     def _get_is_symmetric(self) -> bool:
         return self._data.curve.is_symmetric

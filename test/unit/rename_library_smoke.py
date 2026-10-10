@@ -16,11 +16,11 @@ library rename calls) and "done". test_rename_library.py runs it.
 from __future__ import annotations
 
 import json
-import os
 import sys
 
 import leave_text_windows_smoke as lt  # fake hardware, app helpers
 from PySide6 import QtCore, QtGui, QtQuick, QtTest  # noqa: E402
+from smoke_exit import smoke_exit
 
 import joystick_gremlin  # noqa: E402
 
@@ -175,7 +175,7 @@ def main() -> None:
     except Exception as e:  # noqa: BLE001
         print(f"ERROR device_library: {e!r}", flush=True)
     print("done", flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

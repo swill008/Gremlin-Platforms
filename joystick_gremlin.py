@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import gc
 import json
 import logging
 import logging.handlers
@@ -30,7 +31,8 @@ def _windows_scaling_disabled() -> bool:
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
         raw = data["ui"]["general"]["disable-windows-scaling"]["value"]
-    except (OSError, json.JSONDecodeError, KeyError, TypeError):
+    except (OSError, ValueError, RecursionError, KeyError, TypeError):
+        # A damaged file: config.load moves it aside a moment later.
         return False
     return str(raw).strip().lower() in ("1", "true", "yes")
 
@@ -560,7 +562,7 @@ def _lock_owner_pid() -> int | None:
         os.path.join(gremlin.util.data_folder(), "gremlin.lock")
     )
     try:
-        owner_pid, _host, _app = lock.lockInfo()
+        owner_pid, _host, _app = lock.getLockInfo()
         if owner_pid:
             return int(owner_pid)
     except Exception:
@@ -658,9 +660,6 @@ def acquire_instance_lock() -> QtCore.QLockFile | None:
 
 def register_config_options() -> None:
     cfg = gremlin.config.Configuration()
-    osc_ips = gremlin.osc.local_ipv4_addresses()
-    osc_sec = gremlin.osc.OSC_SECTION
-    osc_grp = gremlin.osc.OSC_GROUP
 
     cfg.register(
         "global", "internal", "last-mode", PropertyType.String, "Default",
@@ -865,50 +864,6 @@ def register_config_options() -> None:
         "devices", "display", "aliases", PropertyType.List, [],
         "Friendly display names for devices and inputs.", {}, False,
     )
-    # OSC's settings are in OSC's own file now (D-09-OSC-FILE point 4),
-    # edited in OSC's Module Setup. These stay registered, unshown, so
-    # osc_device_file.migrate_settings_from_config can read old values
-    # (and purge_unused keeps them).
-    cfg.register(
-        osc_sec, osc_grp, "enabled", PropertyType.Bool, True,
-        "Listen for OSC packets while a profile is active.", {}, False,
-    )
-    cfg.register(
-        osc_sec, osc_grp, "host", PropertyType.Selection,
-        gremlin.osc.default_bind_host(),
-        "Input IP the program listens on.",
-        {"valid_options": osc_ips}, False,
-    )
-    cfg.register(
-        osc_sec, osc_grp, "port", PropertyType.String, "8001",
-        "Input port the program listens on. Must match Companion Target Port.",
-        {}, False,
-    )
-    cfg.register(
-        osc_sec, osc_grp, "output-host", PropertyType.Selection, "127.0.0.1",
-        "Output IP for OSC feedback to Companion.",
-        {"valid_options": osc_ips}, False,
-    )
-    cfg.register(
-        osc_sec, osc_grp, "output-port", PropertyType.String, "8000",
-        "Output port for OSC feedback.",
-        {}, False,
-    )
-    cfg.register(
-        osc_sec, osc_grp, "pad-args", PropertyType.Bool, False,
-        "Pad zero argument commands. Treat an address-only packet as value 1.0.",
-        {}, False,
-    )
-    cfg.register(
-        osc_sec, osc_grp, "autorelease-no-arg", PropertyType.Bool, True,
-        "Autorelease on no arg messages. Press then release after the delay.",
-        {}, False,
-    )
-    cfg.register(
-        osc_sec, osc_grp, "autorelease-delay", PropertyType.String, "250",
-        "Default Autorelease Delay in milliseconds.",
-        {}, False,
-    )
     # Status layout and the chosen module file must be registered before
     # purge_unused() or the next launch deletes them.
     gremlin.ui.module_model._ensure_display_options()
@@ -1061,25 +1016,6 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.main_window = self.engine.rootObjects()[0]
         # Red debug mode: a frame on every window while debugging.
         gremlin.ui.debug_mode.install(self)
-        self.color_information_object = self.main_window.findChild(
-            QtCore.QObject, "colorInformation"
-        )
-        if self.color_information_object is None:
-            raise gremlin.error.GremlinError(
-                "Failed to find color information object in QML."
-            )
-        gremlin.ui.util.ColorInformation().update_colors(self.color_information_object)
-        self._theme_refresh_timer = QtCore.QTimer()
-        self._theme_refresh_timer.setSingleShot(True)
-        self._theme_refresh_timer.setInterval(0)
-        self._theme_refresh_timer.timeout.connect(self._on_theme_colors_changed)
-        for changed in (
-            self.color_information_object.foregroundChanged,
-            self.color_information_object.backgroundChanged,
-            self.color_information_object.accentChanged,
-        ):
-            changed.connect(self._theme_refresh_timer.start)
-
         self.tray_icon = None
         # No real tray icon during off-screen runs.
         if not running_offscreen():
@@ -1087,10 +1023,6 @@ class JoystickGremlinApp(QtWidgets.QApplication):
             self.aboutToQuit.connect(self.tray_icon.release_resources)
         self.syslog.info("Gremlin UI launching")
         self.aboutToQuit.connect(shutdown_cleanup)
-
-    def _on_theme_colors_changed(self) -> None:
-        gremlin.ui.util.ColorInformation().update_colors(self.color_information_object)
-        self.backend.ui_state.bumpThemeRevision()
 
     def process_cmd_args(self, args: argparse.Namespace) -> None:
         profile = None
@@ -1296,8 +1228,49 @@ def main() -> int:
             os.environ["QT_ENABLE_HIGHDPI_SCALING"] = _LAUNCH_HIGHDPI_SCALING
         logging.getLogger("system").info(f"Restarting: {program} {args}")
         QtCore.QProcess.startDetached(program, args, install_path)
+    release_qt(app)
     # A thread that didn't stop (logged above) must not keep the program
     # open.
+    os._exit(0)
+
+
+# Longest the Qt tear-down may take before the process ends anyway (S154).
+_RELEASE_LIMIT_S = 3.0
+
+
+def release_qt(app: QtGui.QGuiApplication, limit: float = _RELEASE_LIMIT_S) -> None:
+    """Closes the windows, deletes the QML engine and lets the application
+    go (01 S154, D-01-QUIT-CLOSE), so Qt's clean-up at DLL unload never runs
+    on objects still alive (the Qt6Gui.dll exit crash, AUD-THREADS-01).
+    Bounded: a stuck step ends the process after limit seconds."""
+    log = logging.getLogger("system")
+    guard = gremlin.threads.timer("quit-guard", limit, _release_timed_out)
+    try:
+        for window in QtGui.QGuiApplication.topLevelWindows():
+            window.hide()
+            window.destroy()
+        engine = getattr(app, "engine", None)
+        if engine is not None:
+            engine.deleteLater()
+        # The event loop has ended: deleteLater is done here.
+        QtCore.QCoreApplication.sendPostedEvents(
+            None, QtCore.QEvent.Type.DeferredDelete
+        )
+        gc.collect()
+        # Windows made in QML without a parent go with the engine; any left
+        # (made from Python) are deleted with the application.
+        app.shutdown()
+    except Exception:
+        log.exception("Shutdown: releasing Qt")
+    finally:
+        guard.cancel()
+
+
+def _release_timed_out() -> None:
+    logging.getLogger("system").warning(
+        f"Releasing Qt took over {_RELEASE_LIMIT_S:.0f} s; ending anyway"
+    )
+    logging.shutdown()
     os._exit(0)
 
 

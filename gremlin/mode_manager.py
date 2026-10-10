@@ -413,12 +413,6 @@ class ModeManager(QtCore.QObject):
         mode.is_temporary = True
         self.switch_to(mode)
 
-    def leave_temporary(self, mode: Mode) -> None:
-        mode.is_temporary = True
-        if self._mode_stack[-1] == mode:
-            self.unwind()
-        self._mode_stack = [m for m in self._mode_stack if m != mode]
-
 
 Configuration().register(
     "action",

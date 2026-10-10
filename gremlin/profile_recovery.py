@@ -140,7 +140,7 @@ class ProfileRecovery:
     def _read(self, path: str | Path | None) -> dict | None:
         try:
             doc = json.loads(self.file_for(path).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+        except (OSError, ValueError, RecursionError):
             return None
         if not isinstance(doc, dict) or not isinstance(doc.get("xml"), str):
             return None

@@ -155,22 +155,6 @@ class VJoyStatus(QtCore.QObject):
     def isExtraPinned(self, name: str) -> bool:
         return str(name).strip().lower() in self._extra
 
-    @QtCore.Slot(str, bool)
-    def setExtraPinned(self, name: str, pinned: bool) -> None:
-        key = str(name).strip().lower()
-        if key not in EXTRA_ALLOWED:
-            return
-        if pinned:
-            self._extra.add(key)
-        else:
-            self._extra.discard(key)
-        _save_extra(self._extra)
-        HUB.changed.emit()
-
-    @QtCore.Slot(result=bool)
-    def xboxAvailable(self) -> bool:
-        return output.xbox_available()
-
     def _count(self) -> int:
         return sum(1 for item in self._active if item)
 

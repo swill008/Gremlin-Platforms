@@ -164,35 +164,3 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
 
         return hardware.plugged_in(guid, name)
 
-    @QtCore.Slot(str, result=str)
-    def guidForDeviceName(self, wanted: str) -> str:
-        """Return device-id for a DILL name. Exact match first, then EVO R."""
-        wanted = str(wanted or "").strip()
-
-        def _is_target(name: object) -> bool:
-            text = str(name or "").strip()
-            low = text.lower()
-            if not text:
-                return False
-            if wanted and text == wanted:
-                return True
-            if "evo l" in low or "ot l" in low:
-                return False
-            return "gladiator" in low and ("evo r" in low or "ot r" in low)
-
-        for row in self._rows:
-            if _is_target(row.get("name")):
-                return str(row.get("guid") or "")
-        try:
-            devices = device_initialization.physical_devices()
-        except Exception:
-            devices = []
-        for device in devices or []:
-            name = str(getattr(device, "name", "") or "")
-            if not _is_target(name):
-                continue
-            guid = getattr(device, "device_guid", "")
-            if hasattr(guid, "uuid"):
-                guid = guid.uuid
-            return str(guid or "")
-        return ""

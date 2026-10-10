@@ -129,6 +129,19 @@ ApplicationWindow {
                 var entryId = selected
                 var put = function() {
                     var result = JSON.parse(_model.restore(entryId, which))
+                    // 08 S45a (AD6): a profile copy outside the usual
+                    // folders is asked about first; nothing is written yet.
+                    if (result.ask === true) {
+                        Qt.callLater(function() {
+                            _gate.confirmThen("Restore?", result.message, "Write Here",
+                                function() {
+                                    var done = JSON.parse(_model.restoreOutside(entryId, which))
+                                    _model.reload()
+                                    message = done.message || ""
+                                }, null, true)
+                        })
+                        return
+                    }
                     _model.reload()
                     message = result.message || ""
                 }

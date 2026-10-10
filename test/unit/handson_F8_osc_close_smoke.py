@@ -19,6 +19,8 @@ import sys
 import tempfile
 import unittest.mock
 
+from smoke_exit import smoke_exit
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 # Box objectName -> (key in OSC's file, text typed).
@@ -155,7 +157,7 @@ Item {
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
     print("done", flush=True)
     # os._exit skips Qt's teardown, which can hang off-screen.
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":
@@ -167,4 +169,4 @@ if __name__ == "__main__":
 
         traceback.print_exc()
         print(f"ERROR {failed!r}", flush=True)
-        os._exit(1)
+        smoke_exit(1)

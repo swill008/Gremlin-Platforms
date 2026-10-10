@@ -177,6 +177,8 @@ def test_s3_s78_s81_restart_after_the_usual_quit_order_with_the_launch_scaling(
         jg.gremlin.deferred_write, "flush_all", lambda: order.append("flush")
     )
     monkeypatch.setattr(jg.gremlin.history, "close", lambda: order.append("history"))
+    # S154: Qt is let go last, after the restart is started.
+    monkeypatch.setattr(jg, "release_qt", lambda app: order.append("release"))
     # Started without the variable; this copy turned Windows scaling off.
     monkeypatch.setattr(jg, "_LAUNCH_HIGHDPI_SCALING", None)
     monkeypatch.setenv("QT_ENABLE_HIGHDPI_SCALING", "0")
@@ -202,7 +204,8 @@ def test_s3_s78_s81_restart_after_the_usual_quit_order_with_the_launch_scaling(
     # S78: every thread asked to stop, waiting writes written, History
     # closed, then the lock given up.
     assert order == [
-        "exec", "cleanup", "threads", "flush", "history", "flush", "unlock"
+        "exec", "cleanup", "threads", "flush", "history", "flush", "unlock",
+        "release",
     ]
     # S81: started again with the same arguments; S3: the new copy reads
     # the scaling setting afresh.

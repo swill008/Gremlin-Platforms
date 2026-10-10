@@ -102,7 +102,6 @@ class ActionModel(QtCore.QObject):
     """QML model representing a single action instance."""
 
     actionChanged = QtCore.Signal()
-    actionLabelChanged = QtCore.Signal()
 
     def __init__(
         self,
@@ -176,10 +175,6 @@ class ActionModel(QtCore.QObject):
     @QtCore.Property(type=InputType, notify=actionChanged)
     def inputType(self) -> InputType:
         return self._binding_model.behavior_type
-
-    @QtCore.Property(type="QVariant", notify=actionChanged)
-    def actionData(self) -> AbstractActionData:
-        return self._data
 
     @QtCore.Property(type=str, notify=actionChanged)
     def name(self) -> str:
@@ -364,10 +359,6 @@ class ActionModel(QtCore.QObject):
     def sequence_index(self) -> SequenceIndex:
         return self._sequence_index
 
-    @property
-    def parent_sequence_index(self) -> SequenceIndex:
-        return self._parent_sequence_index
-
     def _action_behavior(self) -> str:
         raise MissingImplementationError(
             "ActionModel._action_behavior not implemented in subclass"
@@ -455,7 +446,8 @@ class ActionModel(QtCore.QObject):
             else:
                 self._binding_model.move_action(source_sidx, target_sidx, container)
         except GremlinError:
-            signal.reloadUi.emit()
+            # A move the tree refuses leaves it as it was.
+            pass
 
     sharedWith = QtCore.Property(str, fget=_shared_with, notify=actionChanged)
 

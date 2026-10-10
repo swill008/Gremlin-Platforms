@@ -29,6 +29,8 @@ import traceback
 from collections.abc import Callable
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
@@ -549,7 +551,7 @@ def main() -> None:
     step("forgotten", forgotten)
 
     print("RESULT " + json.dumps(out), flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":
@@ -558,4 +560,4 @@ if __name__ == "__main__":
     except Exception as error:
         print("RESULT " + json.dumps(
             {"error": repr(error), "traceback": traceback.format_exc()}), flush=True)
-        os._exit(1)
+        smoke_exit(1)

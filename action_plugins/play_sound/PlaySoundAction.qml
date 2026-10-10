@@ -35,7 +35,18 @@ Item {
             Layout.fillWidth: true
 
             text: action.soundFilename
-            placeholderText: "Input the name of the audio file to play."
+            // Short enough to show in a narrow box; the full hint on hover.
+            placeholderText: "File to play"
+            // The hint's width plus the field's side padding (20 px in this style).
+            Layout.minimumWidth: Math.ceil(_hint.advanceWidth) + Style.dp(24)
+            ToolTip.visible: hovered && text.length === 0
+            ToolTip.text: "The audio file to play (.wav, .mp3 or .ogg)."
+
+            TextMetrics {
+                id: _hint
+                font: _soundFilename.font
+                text: _soundFilename.placeholderText
+            }
 
             selectByMouse: true
 

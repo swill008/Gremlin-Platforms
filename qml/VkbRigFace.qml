@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
-import QtQuick.Layouts
 import Gremlin.Style
 
 Item {
@@ -49,23 +48,6 @@ Item {
     function editorX(vx) { return (vx - panX - _world.width / 2) / zoom + _world.width / 2 }
     function editorY(vy) { return (vy - panY - _world.height / 2) / zoom + _world.height / 2 }
 
-    readonly property real _pw: _img.paintedWidth
-    readonly property real _ph: _img.paintedHeight
-    readonly property real _ox: (_img.width - _pw) * 0.5
-    readonly property real _oy: (_img.height - _ph) * 0.5
-    readonly property real _layoutTok: _pw + _ph + _ox + _oy + width + height
-
-    function photoPt(nx, ny) {
-        return _img.mapToItem(_world, _ox + nx * _pw, _oy + ny * _ph)
-    }
-
-    function toPhoto(mx, my) {
-        var p = _img.mapFromItem(_world, mx, my)
-        if (_pw < 1 || _ph < 1) {
-            return Qt.point(0, 0)
-        }
-        return Qt.point((p.x - _ox) / _pw, (p.y - _oy) / _ph)
-    }
 
     function resetView() {
         zoom = zoomFit
@@ -214,26 +196,6 @@ Item {
     function hwAxis(id) { return host && host.hwAxis ? host.hwAxis(id) : 0 }
     function hwHat(id) { return host && host.hwHat ? host.hwHat(id) : 0 }
 
-    function shortDest(s) {
-        var t = String(s || "—")
-        t = t.replace(/vJoy Device /g, "")
-        t = t.replace(/vJoy /g, "")
-        t = t.replace(/vJ\d+\s*/g, "")
-        t = t.replace(/^\d+\s+/, "")
-        t = t.replace(/Xbox 360 Controller /g, "")
-        t = t.replace(/Xbox /g, "")
-        t = t.replace(/X360 \d+\s*/g, "")
-        t = t.replace(/Right Trigger/g, "RT")
-        t = t.replace(/Left Trigger/g, "LT")
-        t = t.replace(/Right Stick /g, "RS ")
-        t = t.replace(/Left Stick /g, "LS ")
-        t = t.replace(/Button /g, "B")
-        t = t.replace(/ \+ /g, "+")
-        t = t.replace(/ +/g, " ")
-        t = t.trim()
-        return t.length ? t : "—"
-    }
-
     function labelBtn(id) {
         destTick
         var m = destBtn
@@ -250,152 +212,6 @@ Item {
         return (m && m[id]) ? m[id] : "—"
     }
 
-    function pin(item, side) {
-        if (!item) {
-            return Qt.point(0, 0)
-        }
-        var x = side === "right" ? item.width : (side === "left" ? 0 : item.width * 0.5)
-        var y = side === "top" ? 0 : item.height * 0.5
-        return item.mapToItem(_world, x, y)
-    }
-
-    // Place a chip column at the photo's ny so the leader stays near-horizontal.
-    function followY(pane, ny, h) {
-        if (!pane || _ph < 8) {
-            return 0
-        }
-        var p = photoPt(0.5, ny)
-        var loc = pane.mapFromItem(_world, 0, p.y)
-        var y = loc.y - h * 0.5
-        if (y < 0) {
-            y = 0
-        }
-        if (y + h > pane.height) {
-            y = Math.max(0, pane.height - h)
-        }
-        return y
-    }
-
-    function below(item, gap, pane, ny, h) {
-        var y = followY(pane, ny, h)
-        if (item) {
-            y = Math.max(y, item.y + item.height + gap)
-        }
-        if (pane && y + h > pane.height) {
-            y = Math.max(0, pane.height - h)
-        }
-        return y
-    }
-
-    Repeater {
-        model: _face.buttons
-        Item {
-            required property int identifier
-            required property string vjoyLabel
-            function bump() {
-                var m = _face.destBtn
-                m[identifier] = vjoyLabel
-                _face.destBtn = m
-                _face.destTick++
-            }
-            Component.onCompleted: bump()
-            onVjoyLabelChanged: bump()
-        }
-    }
-    Repeater {
-        model: _face.axes
-        Item {
-            required property int identifier
-            required property string vjoyLabel
-            function bump() {
-                var m = _face.destAxis
-                m[identifier] = vjoyLabel
-                _face.destAxis = m
-                _face.destTick++
-            }
-            Component.onCompleted: bump()
-            onVjoyLabelChanged: bump()
-        }
-    }
-    Repeater {
-        model: _face.hats
-        Item {
-            required property int identifier
-            required property string vjoyLabel
-            function bump() {
-                var m = _face.destHat
-                m[identifier] = vjoyLabel
-                _face.destHat = m
-                _face.destTick++
-            }
-            Component.onCompleted: bump()
-            onVjoyLabelChanged: bump()
-        }
-    }
-
-    component Tag: Rectangle {
-        property int hwId: 0
-        property string kind: "btn"
-        property string prefix: ""
-
-        readonly property string _dest: kind === "axis" ? _face.labelAxis(hwId)
-                                      : kind === "hat" ? _face.labelHat(hwId)
-                                      : _face.labelBtn(hwId)
-        readonly property bool lit: {
-            _face.liveStamp
-            if (kind === "axis") {
-                return Math.abs(_face.hwAxis(hwId)) > 0.12
-            }
-            if (kind === "hat") {
-                return _face.hwHat(hwId) > 0.5
-            }
-            return _face.hwButton(hwId) > 0.5
-        }
-
-        implicitWidth: _lab.implicitWidth + Style.dp(10)
-        implicitHeight: Style.dp(20)
-        radius: Style.dp(4)
-        color: lit ? "#14532D" : "#18181B"
-        border.color: lit ? "#22C55E" : "#3F3F46"
-        Text {
-            id: _lab
-            anchors.centerIn: parent
-            color: lit ? "#BBF7D0" : "#E4E4E7"
-            font.pixelSize: Style.dp(10)
-            text: prefix + hwId + " → " + _dest
-        }
-    }
-
-    component HatPlus: Item {
-        property int up: 0
-        property int down: 0
-        property int leftId: 0
-        property int rightId: 0
-        property int center: 0
-
-        implicitWidth: _g.implicitWidth
-        implicitHeight: _g.implicitHeight
-        width: implicitWidth
-        height: implicitHeight
-
-        Grid {
-            id: _g
-            columns: 3
-            rows: 3
-            spacing: Style.dp(3)
-            horizontalItemAlignment: Grid.AlignHCenter
-            verticalItemAlignment: Grid.AlignVCenter
-            Item { width: Style.dp(8); height: Style.dp(8) }
-            Tag { hwId: up }
-            Item { width: Style.dp(8); height: Style.dp(8) }
-            Tag { hwId: leftId }
-            Tag { hwId: center }
-            Tag { hwId: rightId }
-            Item { width: Style.dp(8); height: Style.dp(8) }
-            Tag { hwId: down }
-            Item { width: Style.dp(8); height: Style.dp(8) }
-        }
-    }
 
     function pingEditor() {
         if (typeof _editorLoader === "undefined" || !_editorLoader)
@@ -406,8 +222,7 @@ Item {
         ed.bump()
     }
 
-    // Photo keeps gutter panes so chipFx/chipFy match the JSON window fractions.
-    // Live chips and leaders come from qml/maps/vkb_evo_r.json via VkbRigEditor.
+    // Live chips and leaders are drawn by VkbRigEditor.
     Item {
         id: _viewport
         anchors.fill: parent
@@ -422,188 +237,25 @@ Item {
             transformOrigin: Item.Center
             scale: _face.zoom
 
-    ColumnLayout {
+    // The photo, hidden (the editor draws its own): its load and size
+    // tell the view to recover and the editor to redraw.
+    Image {
+        id: _img
         anchors.fill: parent
-        anchors.margins: Style.dp(8)
-        spacing: Style.dp(4)
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: Style.dp(6)
-
-            Item {
-                id: _leftPane
-                Layout.preferredWidth: Style.dp(280)
-                Layout.maximumWidth: Style.dp(280)
-                Layout.fillHeight: true
-                clip: true
-                opacity: _editorLoader.item ? 0 : 1
-                enabled: !_editorLoader.item
-
-                Column {
-                    id: _leftHead
-                    anchors.right: parent.right
-                    anchors.rightMargin: Style.dp(2)
-                    spacing: Style.dp(6)
-                    y: {
-                        _face._layoutTok
-                        return _face.followY(_leftPane, 0.210, height)
-                    }
-                    onYChanged: _lines.requestPaint()
-                    onHeightChanged: _lines.requestPaint()
-
-                    Tag { id: _h1; kind: "hat"; hwId: 1; prefix: "H"; anchors.right: parent.right }
-                    HatPlus { id: _p1115; up: 11; down: 13; leftId: 14; rightId: 12; center: 15; anchors.right: parent.right }
-                    HatPlus { id: _p610; up: 6; down: 8; leftId: 9; rightId: 7; center: 10; anchors.right: parent.right }
-                    Tag { id: _b3; hwId: 3; anchors.right: parent.right }
-                }
-
-                HatPlus {
-                    id: _p1620
-                    anchors.right: parent.right
-                    anchors.rightMargin: Style.dp(2)
-                    up: 16; down: 18; leftId: 19; rightId: 17; center: 20
-                    y: {
-                        _face._layoutTok
-                        _leftHead.y
-                        _leftHead.height
-                        return _face.below(_leftHead, 10, _leftPane, 0.370, height)
-                    }
-                    onYChanged: _lines.requestPaint()
-                }
-
-                Column {
-                    id: _axes
-                    anchors.right: parent.right
-                    anchors.rightMargin: Style.dp(2)
-                    spacing: Style.dp(3)
-                    y: {
-                        _face._layoutTok
-                        _p1620.y
-                        _p1620.height
-                        return _face.below(_p1620, 10, _leftPane, 0.575, height)
-                    }
-                    onYChanged: _lines.requestPaint()
-                    Tag { kind: "axis"; hwId: 1; prefix: "A"; anchors.right: parent.right }
-                    Tag { kind: "axis"; hwId: 2; prefix: "A"; anchors.right: parent.right }
-                    Tag { kind: "axis"; hwId: 3; prefix: "A"; anchors.right: parent.right }
-                }
-            }
-
-            Item {
-                id: _stage
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-
-                Image {
-                    id: _img
-                    anchors.fill: parent
-                    // No photo chosen shows none (not the Gladiator).
-                    source: _face.photoOverride.length ? _face.photoOverride : ""
-                    fillMode: Image.PreserveAspectFit
-                    visible: !_editorLoader.item
-                    asynchronous: true
-                    cache: true
-                    onStatusChanged: {
-                        _lines.requestPaint()
-                        if (status === Image.Ready)
-                            Qt.callLater(_face.recoverView)
-                        else
-                            _face.pingEditor()
-                    }
-                    onPaintedWidthChanged: {
-                        _lines.requestPaint()
-                        _face.pingEditor()
-                    }
-                    onPaintedHeightChanged: {
-                        _lines.requestPaint()
-                        _face.pingEditor()
-                    }
-                }
-            }
-
-            Item {
-                id: _rightPane
-                Layout.preferredWidth: Style.dp(160)
-                Layout.maximumWidth: Style.dp(160)
-                Layout.fillHeight: true
-                clip: true
-                opacity: _editorLoader.item ? 0 : 1
-                enabled: !_editorLoader.item
-
-                Column {
-                    id: _rightGrip
-                    anchors.left: parent.left
-                    anchors.leftMargin: Style.dp(2)
-                    spacing: Style.dp(6)
-                    y: {
-                        _face._layoutTok
-                        return _face.followY(_rightPane, 0.276, height)
-                    }
-                    onYChanged: _lines.requestPaint()
-                    onHeightChanged: _lines.requestPaint()
-
-                    Tag { id: _b4; hwId: 4 }
-                    Column {
-                        id: _p2122
-                        spacing: Style.dp(3)
-                        Tag { hwId: 21 }
-                        Tag { hwId: 22 }
-                    }
-                    Column {
-                        id: _p12
-                        spacing: Style.dp(3)
-                        Tag { hwId: 1 }
-                        Tag { hwId: 2 }
-                    }
-                }
-
-                Tag {
-                    id: _b5
-                    hwId: 5
-                    anchors.left: parent.left
-                    anchors.leftMargin: Style.dp(2)
-                    y: {
-                        _face._layoutTok
-                        _rightGrip.y
-                        _rightGrip.height
-                        return _face.below(_rightGrip, 10, _rightPane, 0.420, height)
-                    }
-                    onYChanged: _lines.requestPaint()
-                }
-            }
+        visible: false
+        // No photo chosen shows none (not the Gladiator).
+        source: _face.photoOverride.length ? _face.photoOverride : ""
+        fillMode: Image.PreserveAspectFit
+        asynchronous: true
+        cache: true
+        onStatusChanged: {
+            if (status === Image.Ready)
+                Qt.callLater(_face.recoverView)
+            else
+                _face.pingEditor()
         }
-
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: Style.dp(48)
-            opacity: _editorLoader.item ? 0 : 1
-            enabled: !_editorLoader.item
-
-            Row {
-                id: _bottom
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: Style.dp(14)
-
-                Tag { id: _b28; hwId: 28; anchors.verticalCenter: parent.verticalCenter }
-                Tag { id: _b27; hwId: 27; anchors.verticalCenter: parent.verticalCenter }
-                Tag { id: _b29; hwId: 29; anchors.verticalCenter: parent.verticalCenter }
-                Column {
-                    id: _p2526
-                    spacing: Style.dp(3)
-                    Tag { hwId: 25 }
-                    Tag { hwId: 26 }
-                }
-                Tag { id: _a4; kind: "axis"; hwId: 4; prefix: "A"; anchors.verticalCenter: parent.verticalCenter }
-                Column {
-                    id: _p2324
-                    spacing: Style.dp(3)
-                    Tag { hwId: 23 }
-                    Tag { hwId: 24 }
-                }
-            }
-        }
+        onPaintedWidthChanged: _face.pingEditor()
+        onPaintedHeightChanged: _face.pingEditor()
     }
 
     Loader {
@@ -615,7 +267,8 @@ Item {
         source: "VkbRigEditor.qml"
         onStatusChanged: {
             if (status === Loader.Error)
-                console.warn("VkbRigEditor failed to load")
+                console.warn("The Button Map editor could not load: "
+                             + Qt.createComponent(source).errorString())
         }
     }
 
@@ -771,52 +424,6 @@ Item {
         }
     }
 
-    Canvas {
-        id: _lines
-        anchors.fill: parent
-        z: 1
-        visible: !_editorLoader.item
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            ctx.strokeStyle = "#A1A1AA"
-            ctx.lineWidth = 1.1
-
-            function stroke(item, nx, ny, side) {
-                if (!item) {
-                    return
-                }
-                var a = _face.pin(item, side)
-                var b = _face.photoPt(nx, ny)
-                ctx.beginPath()
-                ctx.moveTo(a.x, a.y)
-                ctx.lineTo(b.x, b.y)
-                ctx.stroke()
-                ctx.beginPath()
-                ctx.arc(b.x, b.y, 3.5, 0, 6.3)
-                ctx.fillStyle = "#F4F4F5"
-                ctx.fill()
-            }
-
-            // Pixels from qml/vkb_evo_r_face_map.md on JPEG 899x920.
-            stroke(_h1, 0.345, 0.180, "right")
-            stroke(_p1115, 0.418, 0.175, "right")
-            stroke(_p610, 0.412, 0.228, "right")
-            stroke(_b3, 0.346, 0.254, "right")
-            stroke(_p1620, 0.400, 0.370, "right")
-            stroke(_axes, 0.429, 0.575, "right")
-            stroke(_b4, 0.613, 0.247, "left")
-            stroke(_p2122, 0.656, 0.280, "left")
-            stroke(_p12, 0.617, 0.301, "left")
-            stroke(_b5, 0.605, 0.420, "left")
-            stroke(_b28, 0.574, 0.711, "top")
-            stroke(_b27, 0.621, 0.709, "top")
-            stroke(_b29, 0.654, 0.700, "top")
-            stroke(_p2526, 0.623, 0.798, "top")
-            stroke(_a4, 0.665, 0.798, "top")
-            stroke(_p2324, 0.739, 0.798, "top")
-        }
-    }
 
         } // _world
 
@@ -856,31 +463,13 @@ Item {
         }
     } // _viewport
 
-    Timer {
-        interval: 50
-        running: true
-        repeat: false
-        onTriggered: _lines.requestPaint()
-    }
 
     Connections {
         target: _face
-        function onWidthChanged() {
-            Qt.callLater(_face.recoverView)
-            _lines.requestPaint()
-        }
-        function onHeightChanged() {
-            Qt.callLater(_face.recoverView)
-            _lines.requestPaint()
-        }
-        function onLiveStampChanged() {
-            _lines.requestPaint()
-            _face.pingEditor()
-        }
-        function onDestTickChanged() {
-            _lines.requestPaint()
-            _face.pingEditor()
-        }
+        function onWidthChanged() { Qt.callLater(_face.recoverView) }
+        function onHeightChanged() { Qt.callLater(_face.recoverView) }
+        function onLiveStampChanged() { _face.pingEditor() }
+        function onDestTickChanged() { _face.pingEditor() }
     }
 
     // The rulers on the view's top and left edges, outside the zoomed map
@@ -909,5 +498,17 @@ Item {
         width: _face.rulerSize
         height: _face.rulerSize
         color: Style.bgCard
+    }
+
+    // 07 S104: a failed editor load shows a plain error, no device layout;
+    // outside the zoomed map so it stays readable.
+    Text {
+        objectName: "editorLoadError"
+        anchors.centerIn: parent
+        z: 6
+        visible: _editorLoader.status === Loader.Error
+        color: Style.fg
+        font.pixelSize: Style.dp(14)
+        text: "The Button Map editor could not load."
     }
 }

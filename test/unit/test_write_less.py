@@ -196,7 +196,11 @@ def test_calibration_save_all_writes_once(
     assert saves == [path]
     # ... to a temporary file that then replaces the real one, so a crash
     # can't leave half a file.
-    assert disk == [path.with_name(path.name + ".tmp")]
+    # One write, to the writer's own temporary name beside the file.
+    assert len(disk) == 1
+    assert disk[0].parent == path.parent
+    assert disk[0].name.startswith(path.name + ".")
+    assert disk[0].suffix == ".tmp"
     saved = json.loads(path.read_text(encoding="utf-8"))["calibration"]
     assert saved == {"0": [0, 10, 20, 30, True], "1": [1, 2, 3, 4, False]}
 

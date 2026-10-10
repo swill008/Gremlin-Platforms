@@ -47,8 +47,18 @@ def cfg(
     cfg = config.Configuration()
     # One shared object: its entries go back afterwards.
     monkeypatch.setattr(cfg, "_data", {k: dict(v) for k, v in cfg._data.items()})
-    system = logging.getLogger("system")
-    old_level, old_disabled = system.level, system.disabled
+    # History's view of the settings matches this copy from the start. An
+    # earlier test that changed settings on a copy of its own (HidHide's,
+    # say) left the view at its values: the save below then recorded those
+    # as a change, an older entry in this test's History
+    # (FLAKY-LOGLEVEL-HISTORY).
+    monkeypatch.setattr(cfg, "_history_view", cfg._settings_view(), raising=False)
+    # Every logger apply_log_level sets, and its handlers, go back afterwards.
+    loggers = [logging.getLogger(name) for name in log_option.LOGGER_NAMES]
+    saved = [
+        (lg, lg.level, lg.disabled, [(h, h.level) for h in lg.handlers])
+        for lg in loggers
+    ]
     # The program's own registration, as at start.
     joystick_gremlin.register_config_options()
     cfg.set("global", "general", "log-level", "Warning")
@@ -61,9 +71,11 @@ def cfg(
         # The settings save the change scheduled goes now, into this test's
         # files, not a later test's history.
         deferred_write.flush("configuration")
-        log_option.apply_log_level("Warning")
-        system.setLevel(old_level)
-        system.disabled = old_disabled
+        for lg, level, disabled, handlers in saved:
+            lg.setLevel(level)
+            lg.disabled = disabled
+            for handler, handler_level in handlers:
+                handler.setLevel(handler_level)
 
 
 def test_diagnostic_logs_from_options_is_recorded_and_restored(
@@ -71,9 +83,10 @@ def test_diagnostic_logs_from_options_is_recorded_and_restored(
 ) -> None:
     log_option.LogLevelModel().setLevel("Error")
     cfg.save_now()
+    # Newest first: this change is the newest settings entry.
     entries = [e for e in _settle() if e["area"] == "settings"]
     assert entries, "no History entry for the Diagnostic logs level"
-    entry = entries[-1]
+    entry = entries[0]
     assert entry["before"] == {_KEY: "Warning"}
     assert entry["after"] == {_KEY: "Error"}
     assert logging.getLogger("system").level == logging.ERROR

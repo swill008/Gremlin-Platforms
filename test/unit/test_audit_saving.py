@@ -43,9 +43,13 @@ def test_a_failed_safe_write_leaves_the_file_whole(
     assert not (tmp_path / "x.json.tmp").exists()
 
 
-def test_a_refused_swap_still_writes_the_file(
+def test_a_refused_swap_never_writes_the_file_in_place(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # 03 S68: a swap Windows keeps refusing is an error; the real file is
+    # never written in place, so a crash can't leave half a file.
+    from gremlin import clock
+
     path = tmp_path / "x.json"
     path.write_text('{"old": 1}', encoding="utf-8")
 
@@ -53,8 +57,10 @@ def test_a_refused_swap_still_writes_the_file(
         raise PermissionError("in use")
 
     monkeypatch.setattr(module_file.os, "replace", busy)
-    module_file.write_text(path, '{"new": 2}')
-    assert path.read_text(encoding="utf-8") == '{"new": 2}'
+    monkeypatch.setattr(clock, "sleep", lambda _s: None)
+    with pytest.raises(OSError):
+        module_file.write_text(path, '{"new": 2}')
+    assert path.read_text(encoding="utf-8") == '{"old": 1}'
 
 
 @pytest.fixture

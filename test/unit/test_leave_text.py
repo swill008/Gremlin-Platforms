@@ -318,6 +318,8 @@ def _child() -> None:
 @pytest.fixture(scope="module")
 def found(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str]:
     tmp_path = tmp_path_factory.mktemp("leave_text")
+    import child_env  # pyright: ignore[reportMissingImports]  (test/)
+
     run = subprocess.run(
         [sys.executable, str(pathlib.Path(__file__)), "child", str(tmp_path)],
         capture_output=True,
@@ -330,7 +332,9 @@ def found(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str]:
             "QT_QUICK_CONTROLS_STYLE": "Basic",
             "GREMLIN_OFFLINE": "1",
             "USERPROFILE": str(tmp_path),
-            "PYTHONPATH": str(_ROOT),
+            # Kept, not replaced: it carries test/hang_trace (the child's
+            # dill/vJoy guards and its stack dump if it stalls).
+            "PYTHONPATH": child_env.python_path(_ROOT),
         },
     )
     lines = run.stdout.splitlines()
@@ -409,4 +413,8 @@ def test_modal_dialog_press_on_a_popup_above_keeps_the_box(
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "child":
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
+    import fake_hardware  # pyright: ignore[reportMissingImports]
+
+    fake_hardware.install()  # never the PC's own devices or vJoy
     _child()

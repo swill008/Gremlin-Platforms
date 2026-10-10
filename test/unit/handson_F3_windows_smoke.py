@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import sys
 from pathlib import Path
+
+from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -178,4 +179,4 @@ try:
 except Exception as exc:  # noqa: BLE001
     out["error"] = repr(exc)
 print("RESULT " + json.dumps(out), flush=True)
-os._exit(0)  # threads started by the app would keep it alive
+smoke_exit(0)  # threads started by the app would keep it alive

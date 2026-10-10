@@ -21,6 +21,8 @@ import threading
 import uuid
 from collections.abc import Callable, Iterator
 
+from smoke_exit import smoke_exit
+
 sys.path.insert(0, ".")
 
 spec = importlib.util.spec_from_file_location("fake_hardware", "test/fake_hardware.py")
@@ -234,4 +236,4 @@ try:
 except Exception as exc:  # noqa: BLE001 - reported, the checks fail
     out["error"] = repr(exc)
 print("RESULT " + json.dumps(out), flush=True)
-os._exit(0)  # threads started by the app would keep it alive
+smoke_exit(0)  # threads started by the app would keep it alive

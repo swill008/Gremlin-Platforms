@@ -350,7 +350,7 @@ def _template_stem(name: str) -> str:
 def _read_template(path: Path) -> dict | None:
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return None
     if not isinstance(doc, dict) or not isinstance(doc.get("nodes"), list):
         return None
@@ -493,21 +493,10 @@ _active_module_path = store.path_for
 _own_file_shared = store.is_shared
 
 
-def _replace_file(path: Path, data: bytes) -> None:
-    """Writes a whole file through the store (History for a module file).
-    Raises OSError. New code calls store.replace."""
-    store.replace(Path(path), data, force=True)
-
-
 def module_file_choices(device_name: str, guid: str = "") -> list[str]:
     """Files in the import folder. Live module files are not listed."""
     del device_name, guid
     return store.import_choices()
-
-
-def foreign_module_file(device_name: str, guid: str = "") -> str:
-    """The file the device uses when it isn't the one named after it."""
-    return store.foreign_file(device_name, guid)
 
 
 def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
@@ -775,24 +764,6 @@ def _picture_folder() -> Path:
     return Path.home()
 
 
-def _collapsed_name(value: str) -> str:
-    return " ".join(str(value or "").split()).lower()
-
-
-def _claim_summary(doc: dict) -> dict:
-    claim = doc.get("claim") if isinstance(doc.get("claim"), dict) else {}
-    nodes = [node for node in (doc.get("nodes") or []) if isinstance(node, dict)]
-    image = str(doc.get("image") or "").strip()
-    return {
-        "buttons": len(claim_ids(claim, "button")),
-        "axes": len(claim_ids(claim, "axis")),
-        "hats": len(claim_ids(claim, "hat")),
-        "nodes": len(nodes),
-        "hasPhoto": bool(image),
-        "hasMap": bool(nodes),
-    }
-
-
 def _export_dir() -> Path:
     from gremlin.util import export_dir
 
@@ -983,7 +954,6 @@ class HardwareProfile(QtCore.QObject):
 
     documentChanged = QtCore.Signal()
     pathChanged = QtCore.Signal()
-    imageChanged = QtCore.Signal()
     clipboardChanged = QtCore.Signal()
     recentColoursChanged = QtCore.Signal()
     # The profile's actions or modes changed: chip action labels are stale.
@@ -1319,7 +1289,6 @@ class HardwareProfile(QtCore.QObject):
             store.into_library(dest)
         except OSError:
             return ""
-        self.imageChanged.emit()
         return store.picture_ref(folder.name, dest.name)
 
     def _module_slug(self, device_name: str) -> str:
@@ -1336,9 +1305,6 @@ class HardwareProfile(QtCore.QObject):
         path = store.pictures_dir_of(self._module_slug(device_name))
         path.mkdir(parents=True, exist_ok=True)
         return path
-
-    def _into_library(self, src: Path) -> Path:
-        return store.into_library(src)
 
     def _resolve_existing(self, stored: str) -> Path | None:
         """The file of a stored picture: in the modules folder (only where
@@ -1608,14 +1574,24 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, str, result=str)
     def importPack(self, zip_url: str, target_name: str, selection: str) -> str:
-        from gremlin.ui.device_pack import apply_zip, describe_zip
-
         try:
             src = to_local_path(zip_url)
         except Exception:
             return json.dumps({"ok": False, "error": "Cannot read that file."})
         if not src or not src.is_file():
             return json.dumps({"ok": False, "error": "File not found."})
+        # Nothing unexpected reaches QML: a pack that breaks the reader or
+        # the import is an error the window shows, and the log has why.
+        try:
+            return self._import_pack(Path(src), target_name, selection)
+        except Exception as exc:
+            syslog.exception(f"Device Pack import of {src} failed")
+            error = f"This pack can't be read ({exc})."
+            return json.dumps({"ok": False, "error": error})
+
+    def _import_pack(self, src: Path, target_name: str, selection: str) -> str:
+        from gremlin.ui.device_pack import apply_zip, describe_zip
+
         chosen: dict | None
         if str(selection or "").strip():
             try:
@@ -1623,7 +1599,7 @@ class HardwareProfile(QtCore.QObject):
             except json.JSONDecodeError:
                 return json.dumps({"ok": False, "error": "The selection could not be read."})
         else:
-            described = describe_zip(Path(src))
+            described = describe_zip(src)
             if isinstance(described, str):
                 return json.dumps({"ok": False, "error": described})
             items = []
@@ -1640,10 +1616,10 @@ class HardwareProfile(QtCore.QObject):
         chosen = chosen if isinstance(chosen, dict) else {}
         # The "Put this pack on" row's id (08 S106a); "" goes by the name.
         target_guid = str(chosen.get("targetGuid") or "").strip()
-        failed = _autosave_before_pack(Path(src), target_name, target_guid)
+        failed = _autosave_before_pack(src, target_name, target_guid)
         if failed:
             return json.dumps({"ok": False, "error": f"Nothing was imported. {failed}"})
-        result = apply_zip(Path(src), target_name, chosen, target_guid=target_guid)
+        result = apply_zip(src, target_name, chosen, target_guid=target_guid)
         return json.dumps(result)
 
     @QtCore.Slot(str, str, str, result=str)
@@ -1746,12 +1722,16 @@ class HardwareProfile(QtCore.QObject):
         ).hexdigest()[:16]
         folder = store.folder() / "cache"
         target = folder / f"photo-{key}.png"
-        if not target.is_file():
-            try:
-                folder.mkdir(parents=True, exist_ok=True)
-            except OSError:
+        # A copy cut short (a crash while it was written) is made again.
+        if not target.is_file() or QtGui.QImage(str(target)).isNull():
+            data = QtCore.QByteArray()
+            buffer = QtCore.QBuffer(data)
+            buffer.open(QtCore.QIODevice.OpenModeFlag.WriteOnly)
+            if not adjust_photo(image, bright, contrast, grey).save(buffer, "PNG"):
                 return ""
-            if not adjust_photo(image, bright, contrast, grey).save(str(target), "PNG"):
+            try:
+                module_file.write_bytes(target, bytes(data.data()))
+            except OSError:
                 return ""
             # Only the latest few are kept.
             old = sorted(folder.glob("photo-*.png"), key=lambda f: f.stat().st_mtime)
@@ -1841,8 +1821,7 @@ class HardwareProfile(QtCore.QObject):
             "nodes": nodes,
         }
         try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+            module_file.write_bytes(path, json.dumps(doc, indent=1).encode("utf-8"))
         except OSError:
             return False
         return True
@@ -1928,7 +1907,7 @@ class HardwareProfile(QtCore.QObject):
             return False
         doc["name"] = new_name.strip()
         try:
-            target.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+            module_file.write_bytes(target, json.dumps(doc, indent=1).encode("utf-8"))
         except OSError:
             self._template_error = export_failure(
                 target, lead, fallback=_TEMPLATE_FILE_PROBLEM
@@ -1958,7 +1937,10 @@ class HardwareProfile(QtCore.QObject):
             return False
         out = Path(to_local_path(url))
         try:
-            shutil.copyfile(path, out)
+            # The user's chosen folder must exist; the writer would make it.
+            if not out.parent.is_dir():
+                raise FileNotFoundError(str(out.parent))
+            module_file.write_bytes(out, path.read_bytes())
         except OSError:
             self._template_error = export_failure(
                 out, lead, fallback=_TEMPLATE_FILE_PROBLEM
@@ -1984,8 +1966,7 @@ class HardwareProfile(QtCore.QObject):
         if path is None:
             return ""
         try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+            module_file.write_bytes(path, json.dumps(doc, indent=1).encode("utf-8"))
         except OSError:
             return ""
         return name
@@ -2027,7 +2008,7 @@ class HardwareProfile(QtCore.QObject):
         try:
             text = path.read_text(encoding="utf-8")
             doc = json.loads(text)
-        except (OSError, ValueError):
+        except (OSError, ValueError, RecursionError):
             return ""
         if not isinstance(doc, dict) or not isinstance(doc.get("nodes"), list):
             return ""
@@ -2105,7 +2086,6 @@ class HardwareProfile(QtCore.QObject):
             f"claimAxes={len(kept.get('axes') or [])}"
         )
         self._after_save(path)
-        self.imageChanged.emit()
         return True
 
     @QtCore.Slot(str, str, result=bool)
@@ -2150,7 +2130,6 @@ class HardwareProfile(QtCore.QObject):
             self._put(src, dest)
         except OSError:
             return ""
-        self.imageChanged.emit()
         return store.picture_ref(folder.name, dest.name)
 
     def _local_image(self, source_url: str) -> Path | None:
@@ -2222,7 +2201,6 @@ class HardwareProfile(QtCore.QObject):
         self._path = str(path)
         self.pathChanged.emit()
         self.documentChanged.emit()
-        self.imageChanged.emit()
         return rel
 
     @QtCore.Slot(str, result=str)
@@ -2249,7 +2227,6 @@ class HardwareProfile(QtCore.QObject):
         name = device_name or self._device_name
         if not store.remove_pictures(name, self._device_guid):
             return False
-        self.imageChanged.emit()
         return True
 
     @QtCore.Slot(str, result=int)
@@ -2344,7 +2321,6 @@ class HardwareProfile(QtCore.QObject):
             return False
         shutil.rmtree(stash, ignore_errors=True)
         trace("SAVE", "Button Map", "restorePhoto", slug, "ok")
-        self.imageChanged.emit()
         return True
 
     @QtCore.Slot(str, result=bool)

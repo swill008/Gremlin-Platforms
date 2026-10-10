@@ -29,6 +29,8 @@ import os
 import sys
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ.setdefault(
     "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
@@ -209,7 +211,7 @@ def main() -> None:  # noqa: C901, PLR0915
         for w in warnings:
             print(f"WARN {w}", flush=True)
         print("done", flush=True)
-        os._exit(0)
+        smoke_exit(0)
     scope = inner(page)
 
     # 1. No inputs yet: the list says how to add them; no action pane open.
@@ -344,7 +346,7 @@ def main() -> None:  # noqa: C901, PLR0915
         if any(name in w for name in ours):
             print(f"WARN {w}", flush=True)
     print("done", flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":
@@ -355,4 +357,4 @@ if __name__ == "__main__":
 
         print("ERROR " + " | ".join(traceback.format_exc().splitlines()), flush=True)
         print("done", flush=True)
-        os._exit(1)
+        smoke_exit(1)

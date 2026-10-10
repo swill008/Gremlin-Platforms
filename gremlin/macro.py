@@ -50,7 +50,10 @@ from gremlin.types import (
     PropertyType,
 )
 
-MacroEntry = collections.namedtuple("MacroEntry", ["macro", "state"])
+# chain: the Logical Device chain of the event that queued it (06 S94a).
+MacroEntry = collections.namedtuple(
+    "MacroEntry", ["macro", "state", "chain"], defaults=((),)
+)
 
 # How long a step waits for another macro's step to finish sending.
 _STEP_LOCK_TIMEOUT = 2.0
@@ -146,11 +149,13 @@ class MacroManager(metaclass=SingletonMetaclass):
         if self._step_lock.acquire(timeout=1.0):
             self._step_lock.release()
 
-    def queue_macro(self, macro: Macro) -> None:
+    def queue_macro(self, macro: Macro, chain: tuple = ()) -> None:
         """Queues a macro in the schedule taking the repeat type into account.
 
         Args:
             macro: the macro to add to the scheduler
+            chain: the Logical Device chain of the event that started it;
+                its Logical Device steps continue it (06 S94a)
         """
         if isinstance(macro.repeat, ToggleRepeat) and macro.id in self._scheduled_macro:
             self.terminate_macro(macro)
@@ -158,7 +163,7 @@ class MacroManager(metaclass=SingletonMetaclass):
             # Preprocess macro to contain pauses as necessary.
             self._preprocess_macro(macro)
             with self._queued_macros_lock:
-                self._queued_macros.append(MacroEntry(macro, True))
+                self._queued_macros.append(MacroEntry(macro, True, chain))
             self._schedule_event.set()
 
     def terminate_macro(self, macro: Macro) -> None:
@@ -174,8 +179,10 @@ class MacroManager(metaclass=SingletonMetaclass):
     def _run_scheduler(self) -> None:
         """Dispatches macros as required."""
         while self._is_running:
-            # Wake up when the event triggers to proces the macro list.
-            self._schedule_event.wait()
+            # Wake up when the event triggers to process the macro list; the
+            # timeout re-checks _is_running.
+            if not self._schedule_event.wait(1.0):
+                continue
             self._schedule_event.clear()
 
             # Run scheduled macros and ensure exclusive ones run separately from all
@@ -214,17 +221,17 @@ class MacroManager(metaclass=SingletonMetaclass):
                             if not self._is_executing_preemptive:
                                 self._is_executing_preemptive = True
                                 self._is_executing_exclusive = True
-                                self._dispatch_macro(entry.macro)
+                                self._dispatch_macro(entry.macro, entry.chain)
                                 entries_to_remove.append(entry)
                         # Non-preemptive exclusive macros wait for currently running
                         # macros to finish before being dispatched.
                         elif len(self._scheduled_macro) == 0:
                             self._is_executing_exclusive = True
-                            self._dispatch_macro(entry.macro)
+                            self._dispatch_macro(entry.macro, entry.chain)
                             entries_to_remove.append(entry)
                     # When no exclusive macro is running dispatch all queued up macros.
                     elif not has_exclusive and not self._is_executing_exclusive:
-                        self._dispatch_macro(entry.macro)
+                        self._dispatch_macro(entry.macro, entry.chain)
                         entries_to_remove.append(entry)
 
                 # Remove all entries we've processed.
@@ -232,11 +239,12 @@ class MacroManager(metaclass=SingletonMetaclass):
                     if entry in self._queued_macros:
                         self._queued_macros.remove(entry)
 
-    def _dispatch_macro(self, macro: Macro) -> None:
+    def _dispatch_macro(self, macro: Macro, chain: tuple = ()) -> None:
         """Dispatches a single macro to be run.
 
         Args:
             macro: the macro to dispatch
+            chain: the Logical Device chain its steps continue
         """
         if macro.id not in self._scheduled_macro:
             self._scheduled_macro[macro.id] = macro
@@ -250,6 +258,7 @@ class MacroManager(metaclass=SingletonMetaclass):
                 self._execute_macro,
                 macro,
                 run_scope.number(),
+                chain,
                 stop=functools.partial(self._ask_macro_to_stop, macro),
             )
         else:
@@ -322,7 +331,7 @@ class MacroManager(metaclass=SingletonMetaclass):
                 self._step_lock.release()
         return True
 
-    def _execute_macro(self, macro: Macro, run: int) -> None:
+    def _execute_macro(self, macro: Macro, run: int, chain: tuple = ()) -> None:
         """Executes a given macro in a separate thread.
 
         This method will run all provided actions and once they all have been executed
@@ -331,11 +340,15 @@ class MacroManager(metaclass=SingletonMetaclass):
 
         Args:
             macro: the macro object to be executed
+            chain: the Logical Device chain of the event that started it
         """
+        from gremlin import logical_loop
+
         finished = False
         try:
-            # What its steps press belongs to this macro (run_scope).
-            with run_scope.owning(macro):
+            # What its steps press belongs to this macro (run_scope); its
+            # Logical Device steps continue the starting event's chain.
+            with run_scope.owning(macro), logical_loop.continuing(chain):
                 finished = self._run_steps(macro, run)
         except Exception:
             # A failing step ends this macro only; the clean-up below lets
@@ -864,23 +877,27 @@ class LogicalDeviceAction(AbstractAction):
             ld.is_pressed if ident.type == InputType.JoystickButton else None
         )
 
-        event = event_handler.Event(
-            event_type=ident.type,
-            identifier=ident.id,
-            device_guid=LogicalDevice.device_guid,
-            mode=self._mode_manager.current.name,
-            value=value,
-            is_pressed=is_pressed,
-            raw_value=value,
-        )
+        mode = self._mode_manager.current.name
         # A step that drives its own control's macro again is a loop the
-        # guard stops (06 S94).
+        # guard stops: the step continues the chain of the event that
+        # started the macro (its thread's, 06 S94a).
         from gremlin import logical_loop
 
         logical_loop.guarded(
             (ident.type, ident.id),
             ld.choice_label,
-            lambda: self._event_listener.joystick_event.emit(event),
+            lambda path: self._event_listener.joystick_event.emit(
+                event_handler.Event(
+                    event_type=ident.type,
+                    identifier=ident.id,
+                    device_guid=LogicalDevice.device_guid,
+                    mode=mode,
+                    value=value,
+                    is_pressed=is_pressed,
+                    raw_value=value,
+                    ld_chain=path,
+                )
+            ),
         )
 
     def to_xml(self) -> ElementTree.Element:

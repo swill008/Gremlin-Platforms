@@ -197,12 +197,12 @@ def test_unknown_device_is_not_a_fail() -> None:
     assert v.verdict == "pass"
 
 
-def test_xbox_pad_matched_by_number() -> None:
+def test_xbox_pad_matched_by_xinput_slot() -> None:
     v = cmp.compare(
         expected(
             xbox=[
-                {"pad": 1, "on": True, "expect": "visible"},
-                {"pad": 2, "on": True, "expect": "visible"},
+                {"pad": 1, "xinput": 1, "on": True, "expect": "visible"},
+                {"pad": 2, "xinput": 2, "on": True, "expect": "visible"},
             ]
         ),
         [pad(1)],
@@ -349,7 +349,7 @@ def test_fail_summary_combines_kinds_and_problems() -> None:
     v = cmp.compare(
         expected(
             [stick("hidden"), left],
-            xbox=[{"pad": 1, "on": True, "expect": "hidden"}],
+            xbox=[{"pad": 1, "xinput": 1, "on": True, "expect": "hidden"}],
             vjoy=[{"id": 2, "guid": VJOY_GUID, "used": True, "expect": "visible"}],
         ),
         seen,
@@ -503,7 +503,7 @@ def test_selected_detail_and_should_be(qapp, no_xinput, tmp_path) -> None:  # no
         json.dumps(
             expected(
                 [stick("hidden", guid="{55555555-0000-0000-0000-000000000000}")],
-                xbox=[{"pad": 3, "on": True, "expect": "visible"}],
+                xbox=[{"pad": 3, "xinput": 3, "on": True, "expect": "visible"}],
             )
         ),
         encoding="utf-8",

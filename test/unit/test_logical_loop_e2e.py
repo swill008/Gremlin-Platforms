@@ -48,6 +48,8 @@ CASES = (
     "self_hat",
     "a_b_a",
     "macro_self",
+    "macro_self_slow",
+    "macro_fast_presses",
     "relative_self_xml",
     "chain_ok",
 )
@@ -167,6 +169,27 @@ def test_a_macro_step_driving_its_own_control_stops(
     assert data["late_events"] == 0, f"still looping after 2 s: {data}"
 
 
+def test_a_slow_macro_step_driving_its_own_control_stops(
+    results: dict[str, dict],
+) -> None:
+    """06 S94a: a Macro on Button 1 that waits 0.3 s, then presses Button 1:
+    the chain is carried through each macro run, however slow."""
+    data = _case(results, "macro_self_slow")
+    _check_stopped(data, ["A"])
+    assert data["events"].get("A", 0) == 1 + MAX_HOPS, data
+    assert data["late_events"] == 0, f"still looping: {data}"
+
+
+def test_fast_presses_of_a_button_not_in_a_loop_are_never_stopped(
+    results: dict[str, dict],
+) -> None:
+    """06 S94a: 20 presses at 50 a second of a button whose Macro presses
+    Button 2 (which drives nothing): every press reaches Button 2."""
+    data = _case(results, "macro_fast_presses")
+    assert data["warnings"] == [] and data["notices"] == [], data
+    assert data["delivered"] == 20, data
+
+
 def test_a_relative_axis_driving_itself_stops(results: dict[str, dict]) -> None:
     """06 S93/S94: a Relative self-target the picker can't offer, set in the
     profile file: the loop stops instead of running away."""
@@ -248,13 +271,18 @@ class _Child:
         self._bind(src, action)
         return action
 
-    def macro_on(self, src: Any, step_target: Any) -> None:  # noqa: ANN401
+    def macro_on(
+        self,
+        src: Any,  # noqa: ANN401
+        step_target: Any,  # noqa: ANN401
+        pause: float = 0.0,
+    ) -> None:
         from gremlin import macro, plugin_manager
 
         action = plugin_manager.PluginManager().create_instance("Macro", src.type)
-        action.actions = [
-            macro.LogicalDeviceAction(step_target.type, step_target.id, True)
-        ]
+        steps: list[Any] = [macro.PauseAction(pause)] if pause else []
+        steps.append(macro.LogicalDeviceAction(step_target.type, step_target.id, True))
+        action.actions = steps
         self._bind(src, action)
 
     def _bind(self, src: Any, action: Any) -> None:  # noqa: ANN401
@@ -412,6 +440,33 @@ class _Child:
                 out["late_events"] = len(self.timeline) - mark
             finally:
                 self._stop(run)
+        elif case == "macro_self_slow":
+            a = self.control("A", button)
+            self.macro_on(a, a, pause=0.3)
+            run = self._start(self.profile)
+            try:
+                # 8 hops of over 0.3 s each.
+                step = self.send(a, True, wait=4.5)
+                out["inputs"].append(step)
+                mark = len(self.timeline)
+                _settle(1.0)
+                out["late_events"] = len(self.timeline) - mark
+            finally:
+                self._stop(run)
+        elif case == "macro_fast_presses":
+            p, b = self.control("P", button), self.control("B", button)
+            self.macro_on(p, b)
+            run = self._start(self.profile)
+            try:
+                for _ in range(20):  # 50 presses a second
+                    out["inputs"].append(self.send(p, True, wait=0.01))
+                    out["inputs"].append(self.send(p, False, wait=0.01))
+                _settle(1.5)
+            finally:
+                self._stop(run)
+            out["delivered"] = len(
+                [v for _t, n, v in self.timeline if n == "B" and v]
+            )
         elif case == "relative_self_xml":
             out.update(self._relative_from_file(axis))
         elif case == "chain_ok":

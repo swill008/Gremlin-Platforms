@@ -317,6 +317,7 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
         super().__init__(parent)
         self._scope = ""
         self._main_sections: list[tuple[str, list | None]] | None = None
+        self._group_models: dict[int, ConfigGroupModel] = {}
 
     def _get_scope(self) -> str:
         return self._scope
@@ -325,6 +326,7 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
         if value != self._scope:
             self.beginResetModel()
             self._scope = value
+            self._group_models = {}
             self.endResetModel()
             self.scopeChanged.emit()
 
@@ -346,9 +348,13 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
             case "name":
                 return title
             case "groupModel":
-                if groups is None:
-                    return ConfigGroupModel(self._scope)
-                return ConfigGroupModel(self._scope, groups=groups)
+                # One per row, owned by this model: Qt asks again and again,
+                # and a parentless model handed to QML is never freed.
+                model = self._group_models.get(index.row())
+                if model is None:
+                    model = ConfigGroupModel(self._scope, self, groups=groups)
+                    self._group_models[index.row()] = model
+                return model
         return None
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
@@ -447,6 +453,7 @@ class ConfigGroupModel(QtCore.QAbstractListModel):
         self._option = MetaConfigOption()
         self._section_name = section
         self._groups = groups
+        self._entry_models: dict[tuple, ConfigEntryModel] = {}
 
     @QtCore.Property(str, notify=changed)
     def sectionName(self) -> str:
@@ -465,7 +472,16 @@ class ConfigGroupModel(QtCore.QAbstractListModel):
         title, keys, stored = groups[index.row()]
         match cast(str, self.roles[role]):
             case "entryModel":
-                return ConfigEntryModel(self._section_name, stored, keys=keys)
+                # One per group, owned by this model (see groupModel).
+                # Untitled groups (Folders) differ only by their keys.
+                cache_key = (title, stored, tuple(keys) if keys else None)
+                model = self._entry_models.get(cache_key)
+                if model is None:
+                    model = ConfigEntryModel(
+                        self._section_name, stored, self, keys=keys
+                    )
+                    self._entry_models[cache_key] = model
+                return model
             case "groupName":
                 return title
             case _:

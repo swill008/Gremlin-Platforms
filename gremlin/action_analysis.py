@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-import time
 import uuid
 from collections.abc import Callable
 
+from gremlin import clock
 from gremlin.base_classes import (
     AbstractActionData,
     UserFeedback,
@@ -40,7 +40,7 @@ def action_sequence_feedback(binding: InputItemBinding) -> list[UserFeedback]:
     cache_key = binding.root_action.id if binding.root_action else uuid.UUID(int=0)
     if cache_key in _feedback_cache:
         cache_time, cached_feedback = _feedback_cache[cache_key]
-        if time.time() - cache_time < _CACHE_TTL:
+        if clock.monotonic() - cache_time < _CACHE_TTL:
             return cached_feedback
 
     feedback = []
@@ -49,7 +49,7 @@ def action_sequence_feedback(binding: InputItemBinding) -> list[UserFeedback]:
         for fn in analysis_functions:
             feedback.extend(fn(paths, binding.behavior))
     feedback = list(set(feedback))
-    _feedback_cache[cache_key] = (time.time(), feedback)
+    _feedback_cache[cache_key] = (clock.monotonic(), feedback)
     return feedback
 
 

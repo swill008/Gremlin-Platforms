@@ -14,10 +14,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import sys
 import time
 from pathlib import Path
+
+from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -159,4 +160,4 @@ for side, button_name in (
 if SHOT:
     hist.grabWindow().save(SHOT)
 print("RESULT " + json.dumps(out), flush=True)
-os._exit(0)  # threads started by the app would keep it alive
+smoke_exit(0)  # threads started by the app would keep it alive

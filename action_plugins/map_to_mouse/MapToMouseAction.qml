@@ -209,11 +209,11 @@ Item {
                 }
             }
 
-            RowLayout {
+            // Label and box pairs, one per line, so they fit a narrow pane.
+            GridLayout {
+                columns: 2
 
                 Label {
-                    Layout.rightMargin: Style.dp(10)
-
                     text: "Minimum speed (px/s)"
                 }
 
@@ -233,9 +233,6 @@ Item {
                 }
 
                 Label {
-                    Layout.leftMargin: Style.dp(50)
-                    Layout.rightMargin: Style.dp(10)
-
                     text: "Maximum speed (px/s)"
                 }
 
@@ -260,18 +257,17 @@ Item {
         GridLayout {
             visible: _mode_motion.checked && inputBinding && inputBinding.behavior === "hat"
 
-            columns: 4
+            // Label and box pairs, one per line; labels keep their text width.
+            columns: 2
 
             Label {
-                Layout.fillWidth: true
-
                 text: "Minimum speed (px/s)"
             }
 
             Loader {
                 id: _min_speed_hat
 
-                Layout.fillWidth: true
+                Layout.preferredWidth: Style.dp(150)
 
                 sourceComponent: _root.useCompact ? _compactSpinBox : _baseSpinBox
 
@@ -284,15 +280,13 @@ Item {
             }
 
             Label {
-                Layout.fillWidth: true
-
                 text: "Maximum speed (px/s)"
             }
 
             Loader {
                 id: _max_speed_hat
 
-                Layout.fillWidth: true
+                Layout.preferredWidth: Style.dp(150)
 
                 sourceComponent: _root.useCompact ? _compactSpinBox : _baseSpinBox
 

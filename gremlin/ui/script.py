@@ -456,8 +456,6 @@ class VirtualInputVariableModel(AbstractVariableModel):
 class ScriptListModel(QtCore.QAbstractListModel):
     """List of all loaded scripts."""
 
-    instancesChanged = QtCore.Signal()
-
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray("path".encode()),
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray("name".encode()),

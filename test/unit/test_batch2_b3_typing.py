@@ -8,7 +8,10 @@ ignores key presses while a text box of the program has the focus.
 
 Needs a QGuiApplication with a real (off-screen) window, which can't share a
 process with the unit tests' QCoreApplication, so the check runs in a child
-process (this file run as a script).
+process (this file run as a script). The child gets the same guards as the
+tests (fake dill.dll and vJoy, no Windows keyboard hook, hang tracing): it
+starts the event listener, which once loaded the real dill.dll and hooked
+the PC's keyboard here, and timed out under a full run (FLAKY-B3-TYPING).
 """
 
 from __future__ import annotations
@@ -26,6 +29,14 @@ def _child() -> None:
     from unittest import mock
 
     from PySide6 import QtCore, QtGui, QtQuick
+
+    sys.path.insert(0, str(_ROOT / "test"))
+    import fake_hardware  # pyright: ignore[reportMissingImports]
+
+    fake = fake_hardware.install()
+    import gremlin.windows_event_hook
+
+    gremlin.windows_event_hook.enabled = False
 
     app = QtGui.QGuiApplication(sys.argv)
     import gremlin.util
@@ -63,6 +74,9 @@ def _child() -> None:
     setup._on_key(types.SimpleNamespace(is_pressed=True, identifier=(0x7F, True)))
     added = setup.rowCount() == before + 1 and setup._rows[-1]["claimed"]
     print("RESULT pressed", added)
+    import dill
+
+    print("RESULT fake_dill", dill.DILL._dll is fake)
     print("done")
     sys.stdout.flush()
     os._exit(0)
@@ -85,7 +99,11 @@ def test_keys_typed_into_a_text_box_are_not_ticked(tmp_path: pathlib.Path) -> No
             "QT_QPA_PLATFORM": "offscreen",
             "GREMLIN_OFFLINE": "1",
             "USERPROFILE": str(tmp_path),
-            "PYTHONPATH": str(_ROOT),
+            # Kept, not replaced: it carries test/hang_trace (the child's
+            # dill/vJoy guards and its stack dump if it stalls).
+            "PYTHONPATH": os.pathsep.join(
+                p for p in (str(_ROOT), os.environ.get("PYTHONPATH", "")) if p
+            ),
         },
     )
     lines = result.stdout.splitlines()
@@ -97,6 +115,7 @@ def test_keys_typed_into_a_text_box_are_not_ticked(tmp_path: pathlib.Path) -> No
     assert found["typing"] == "True", found
     assert found["after"] == "False", found
     assert found["pressed"] == "True", found
+    assert found["fake_dill"] == "True", found
 
 
 if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "child":

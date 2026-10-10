@@ -263,7 +263,10 @@ def build_expected() -> dict[str, Any]:
         plugged = set()
     for pad in sorted(plugged | set(getattr(output, "_xbox_modules", {}) or {})):
         on = pad in plugged
-        xbox.append({"pad": pad, "on": on, "expect": "visible" if on else ""})
+        xbox.append({
+            "pad": pad, "on": on, "expect": "visible" if on else "",
+            "xinput": output.xbox_slot(pad) if on else None,
+        })
 
     return {
         "version": 1,
@@ -336,7 +339,7 @@ def last_result() -> dict | None:
     """The tester's last result.json; None when there is none (or unreadable)."""
     try:
         data = json.loads(result_file().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return None
     return data if isinstance(data, dict) else None
 
@@ -380,6 +383,9 @@ _timer: threading.Timer | None = None
 _result_stamp: float | None = None
 _setup_stamp: str | None = None
 _connected = False
+# Guards _connected: start_watch (main thread) and the watch timer's
+# stop_watch (timer thread) may hook or unhook at the same moment.
+_hook_lock = threading.Lock()
 
 
 def set_starter(starter: Callable[[str, list[str]], Any] | None) -> None:
@@ -544,19 +550,25 @@ def hidhide_changed(what: str = "settings") -> None:
 
 
 def _connect(on: bool) -> None:
+    """Hooks or unhooks the device change signal; the flag's check and set
+    are one step under _hook_lock."""
     global _connected
-    try:
-        from gremlin import event_handler
+    with _hook_lock:
+        if on == _connected:
+            # Nothing to do; unhooking never makes the listener (it would
+            # be made on the timer thread).
+            return
+        try:
+            from gremlin import event_handler
 
-        signal = event_handler.EventListener().device_change_event
-        if on and not _connected:
-            signal.connect(device_changed)
-            _connected = True
-        elif not on and _connected:
-            signal.disconnect(device_changed)
-            _connected = False
-    except Exception:
-        syslog.debug("Input Tester: device change hook failed", exc_info=True)
+            signal = event_handler.EventListener().device_change_event
+            if on:
+                signal.connect(device_changed)
+            else:
+                signal.disconnect(device_changed)
+            _connected = on
+        except Exception:
+            syslog.debug("Input Tester: device change hook failed", exc_info=True)
 
 
 def _reset_for_tests() -> None:
@@ -589,10 +601,6 @@ class InputTesterLink(QtCore.QObject):
     @QtCore.Property(bool, notify=resultChanged)
     def built(self) -> bool:
         return tester_path() is not None
-
-    @QtCore.Property(str, notify=resultChanged)
-    def lastResultText(self) -> str:  # noqa: N802 - QML name
-        return result_text(last_result())[0]
 
 
 __all__ = [

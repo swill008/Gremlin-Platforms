@@ -432,6 +432,7 @@ def _write(path: Path, data: bytes, text: str | None = None) -> None:
     if is_module:
         # The pictures it names now, before anything replaces them (GL-082).
         history_modules.before_change(path)
+    held = _held_parts_of(path) if is_module else {}
     module_file.write_bytes(path, data)
     if not is_module:
         return
@@ -440,6 +441,8 @@ def _write(path: Path, data: bytes, text: str | None = None) -> None:
     if text is not None:
         history_modules.note_write(path, text, old)
     _saved()
+    if held:
+        _drop_replaced(held, _parts_of_text(text))
 
 
 def write_file(path: Path, data: bytes) -> None:
@@ -510,12 +513,16 @@ def _reload_logical_device(path: Path) -> None:
     except OSError:
         return
     try:
-        logical_device_file.load()
+        warnings = logical_device_file.load()
     except Exception:  # noqa: BLE001 - the file is written; say it, go on
         syslog.exception("Logical Device: reload after %s failed", path)
         return
     # Screens: the Logical page drops its Undo steps and redraws.
     from gremlin.signal import signal
+
+    if warnings:
+        # AD1: the controls that couldn't be read are said, as at open.
+        signal.showNotification.emit("Logical Device", "\n".join(warnings))
 
     signal.logicalDeviceReloaded.emit()
     signal.logicalDeviceModified.emit()
@@ -534,10 +541,15 @@ def _reload_osc(path: Path) -> None:
         return
     try:
         osc_device_file.load()
+        warnings = list(getattr(osc_device_file._rows(None), "load_warnings", []) or [])
     except Exception:  # noqa: BLE001 - the file is written; say it, go on
         syslog.exception("OSC: reload after %s failed", path)
         return
     from gremlin.signal import signal
+
+    if warnings:
+        # The inputs that couldn't be read are said, as at open.
+        signal.showNotification.emit("OSC", "\n".join(warnings))
 
     # Screens drop their Undo steps and redraw; the server applies the
     # settings at once.
@@ -651,6 +663,22 @@ def read_layout(guid: str, device_name: str = "") -> dict:
     return normalize_layout(read_path(path).get(LAYOUT_KEY))
 
 
+_CLAIM_BUCKETS = {"button": "buttons", "axis": "axes", "hat": "hats"}
+
+
+def _is_claimed(claim: dict, key: str) -> bool:
+    """Whether the claim holds a button, axis or hat key ("button:5"); other
+    keys (a keyboard's "key:<id>") have no claim list and always count."""
+    kind, _, number = key.partition(":")
+    bucket = _CLAIM_BUCKETS.get(kind)
+    if bucket is None:
+        return True
+    values = claim.get(bucket)
+    if not isinstance(values, list):
+        return False
+    return number in {str(value) for value in values}
+
+
 def _set_names(doc: dict, names: dict[str, str]) -> None:
     claim = doc.get("claim")
     if not isinstance(claim, dict):
@@ -660,6 +688,8 @@ def _set_names(doc: dict, names: dict[str, str]) -> None:
         friendly = claim["friendly"] = {}
     for key, name in names.items():
         text = str(name or "").strip()
+        if text and not _is_claimed(claim, str(key)):
+            continue  # 03 S42: a name only for a claimed control
         if text:
             friendly[str(key)] = text
         else:
@@ -726,7 +756,9 @@ _pending_listeners: list[Callable[[str, str], None]] = []
 
 def add_pending_listener(callback: Callable[[str, str], None]) -> None:
     """callback(what, guid) after each change to the unsaved layouts: what is
-    "changed", "saved" or "discarded" (guid "" for every device)."""
+    "changed", "saved", "discarded" (guid "" for every device) or
+    "replaced" (another writer changed or deleted the device's file and its
+    held change was dropped: re-read and drop its Undo steps)."""
     if callback not in _pending_listeners:
         _pending_listeners.append(callback)
 
@@ -833,9 +865,22 @@ def save_pending(who: str = "Configuration") -> int:
     A device whose file is gone or damaged (said in the error dialog) is
     dropped; a failed write stays held and its OSError is raised after the
     others were tried."""
+    global _saving_pending
     written = 0
     failed: OSError | None = None
     for key, entry in list(_pending.items()):
+        path = _layout_path(entry["guid"], entry["device_name"])
+        if path is None or not path.is_file():
+            _pending.pop(key, None)
+            from gremlin import signal as gremlin_signal
+
+            gremlin_signal.display_error(
+                f"The layout of {_device_label(entry)} could not be saved: "
+                "its module file is gone.",
+                str(path or ""),
+            )
+            continue
+        _saving_pending = True
         try:
             if write_layout(
                 entry["guid"],
@@ -848,6 +893,8 @@ def save_pending(who: str = "Configuration") -> int:
         except OSError as error:
             failed = failed or error
             continue
+        finally:
+            _saving_pending = False
         _pending.pop(key, None)
     _tell_pending("saved", "")
     if failed is not None:
@@ -862,6 +909,85 @@ def discard_pending(guid: str = "") -> None:
     else:
         _pending.clear()
     _tell_pending("discarded", str(guid))
+
+
+# The newer file wins (05 S122a, AD2): a module file written by anything but
+# save_pending (History Restore, Device Pack, Device Library, Module Setup)
+# drops the held change of the device using it when the write changed its
+# layout or claim (names); deleting the file drops it too. Pages re-read on
+# "replaced". A write that leaves both alone (a picture, the view) keeps it.
+_saving_pending = False
+
+
+def _parts(doc: object) -> tuple[str, str]:
+    """The keys a held change sits on: the layout and the claim (names)."""
+    if not isinstance(doc, dict):
+        return ("", "")
+    return (
+        json.dumps(doc.get(LAYOUT_KEY), sort_keys=True),
+        json.dumps(doc.get("claim"), sort_keys=True),
+    )
+
+
+def _parts_of_text(text: str | None) -> tuple[str, str] | None:
+    if text is None:
+        return None
+    try:
+        return _parts(json.loads(text))
+    except (ValueError, RecursionError):
+        return None
+
+
+def _held_parts_of(path: Path) -> dict[str, tuple[str, str]]:
+    """{held key: the file's layout and claim now} for each held change of
+    the device using path (none while save_pending writes)."""
+    if _saving_pending or not _pending:
+        return {}
+    try:
+        target = Path(path).resolve()
+    except OSError:
+        return {}
+    held: dict[str, tuple[str, str]] = {}
+    parts: tuple[str, str] | None = None
+    for key, entry in _pending.items():
+        own = _layout_path(entry["guid"], entry["device_name"])
+        try:
+            if own is None or Path(own).resolve() != target:
+                continue
+        except OSError:
+            continue
+        if parts is None:
+            parts = _parts(read_path(target))
+        held[key] = parts
+    return held
+
+
+def _device_label(entry: dict) -> str:
+    return str(entry.get("device_name") or entry.get("guid") or "the device")
+
+
+def _drop_replaced(
+    held: dict[str, tuple[str, str]], after: tuple[str, str] | None
+) -> None:
+    """Drops each held change whose file changed under it (after None: the
+    file is gone or unreadable), tells the pages ("replaced") and says so."""
+    for key, before in held.items():
+        if after is not None and after == before:
+            continue
+        entry = _pending.pop(key, None)
+        if entry is None:
+            continue
+        _tell_pending("replaced", str(entry["guid"]))
+        try:
+            from gremlin.signal import signal
+
+            signal.showNotification.emit(
+                "Unsaved layout",
+                "The layout changed elsewhere; your unsaved changes for "
+                f"{_device_label(entry)} were dropped.",
+            )
+        except Exception:  # noqa: BLE001 - a note never stops a write
+            syslog.exception("The dropped-layout note could not be shown")
 
 
 # --- pictures ------------------------------------------------------------------
@@ -982,9 +1108,11 @@ def delete_path(path: Path, who: str = "") -> None:
     if not path.exists():
         return
     if _is_module_file(path):
+        held = _held_parts_of(path)
         with history_modules.deleting(path):
             path.unlink()
         _saved()
+        _drop_replaced(held, None)
     else:
         path.unlink()
     registry.trace("SAVE", who or "Module files", "delete", path, "removed")
@@ -1060,10 +1188,12 @@ def move_aside_path(path: Path) -> Path:
 
     path = Path(path)
     copy = path.with_name(f"{path.name}.bad-{time.strftime('%Y%m%d-%H%M%S')}")
+    held = _held_parts_of(path)
     with history_modules.deleting(path, moved_to=copy):
         os.replace(path, copy)
     registry.trace("SAVE", "Home", "startFresh", copy, "ok")
     _saved()
+    _drop_replaced(held, None)
     return copy
 
 
@@ -1881,7 +2011,7 @@ def import_file(
         try:
             previous_bytes = dest.read_bytes()
             previous = json.loads(previous_bytes.decode("utf-8"))
-        except (OSError, UnicodeError, ValueError):
+        except (OSError, UnicodeError, ValueError, RecursionError):
             registry.trace("READ", window, "import_file", dest, "error")
             return "The current file could not be read, so it was not replaced."
         if not isinstance(previous, dict):

@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import re
+import zlib
 from datetime import datetime
 from pathlib import Path
 from xml.etree import ElementTree
@@ -48,8 +49,22 @@ CLEARED_NOTE = (
 def _when(at: float) -> str:
     try:
         return datetime.fromtimestamp(float(at)).strftime("%Y-%m-%d %H:%M")
-    except (TypeError, ValueError, OSError):
+    except (TypeError, ValueError, OSError, OverflowError):
         return ""
+
+
+def _side(value: object) -> dict | None:
+    """A side the window reads as an object; any other type (a hand-edited
+    or damaged line) reads as not there (08 S21)."""
+    return value if isinstance(value, dict) else None
+
+
+def _unpacked(side: object) -> str | None:
+    """A profile side's packed text; None when it can't be unpacked."""
+    try:
+        return history_profile.unpack_text((_side(side) or {}).get("packed"))
+    except (ValueError, TypeError, zlib.error):
+        return None
 
 
 def _norm(value: object) -> str:
@@ -146,9 +161,11 @@ def _action_lines(
     return lines
 
 
-def _input_text(doc: dict | None) -> str:
+def _input_text(doc: object) -> str:
     if not doc:
         return "No actions."
+    if not isinstance(doc, dict) or not isinstance(doc.get("actions") or [], list):
+        return "Can't be read."
     try:
         node = ElementTree.fromstring(doc["input"])
         actions = {}
@@ -165,12 +182,13 @@ def _input_text(doc: dict | None) -> str:
     return "\n".join(lines) or "No actions."
 
 
-def _module_text(side: dict | None, parts: list[str]) -> str:
+def _module_text(side: object, parts: list[str]) -> str:
+    side = _side(side)
     if not side or side.get("text") is None:
         return "No file."
     try:
-        doc = json.loads(side["text"])
-    except ValueError:
+        doc = json.loads(str(side["text"]))
+    except (ValueError, RecursionError):
         return "Can't be read."
     if not isinstance(doc, dict):
         return "Can't be read."
@@ -181,7 +199,8 @@ def _module_text(side: dict | None, parts: list[str]) -> str:
     return module_text(doc, shown) or "Not set."
 
 
-def _settings_text(side: dict | None) -> str:
+def _settings_text(side: object) -> str:
+    side = _side(side)
     if not side:
         return ""
     from gremlin.ui.option import shown_choice
@@ -283,10 +302,7 @@ def describe(entry: dict) -> dict:
         can = (False, False)
         note = "Put this back with Restore on the profile's save, below it in the list."
     elif area == "profile":
-        size = [
-            len(history_profile.unpack_text((side or {}).get("packed")) or "")
-            for side in (before, after)
-        ]
+        size = [len(_unpacked(side) or "") for side in (before, after)]
         texts = tuple(
             f"The whole profile ({round(n / 1024)} KB)." if n else "Not kept."
             for n in size
@@ -297,12 +313,13 @@ def describe(entry: dict) -> dict:
         )
     elif area == "settings":
         texts = (_settings_text(before), _settings_text(after))
-        can = (bool(before), bool(after))
+        can = (bool(_side(before)), bool(_side(after)))
         note = "Saved at once."
     elif kind == "library":
         # The Device Library's list and saved setups (10 S51, 08 S12a).
         from gremlin import device_library
 
+        before, after = _side(before), _side(after)
         texts = (
             device_library.history_text(before),
             device_library.history_text(after),
@@ -310,7 +327,9 @@ def describe(entry: dict) -> dict:
         can = (before is not None, after is not None)
         note = LIBRARY_NOTE
     else:
-        parts = list((entry.get("subject") or {}).get("parts") or [])
+        named = (entry.get("subject") or {}).get("parts")
+        parts = [str(p) for p in named] if isinstance(named, list) else []
+        before, after = _side(before), _side(after)
         texts = (_module_text(before, parts), _module_text(after, parts))
         can = (
             bool(before and before.get("text") is not None),
@@ -353,7 +372,6 @@ def _changed_everywhere() -> None:
 
     signal.configChanged.emit()
     signal.profileChanged.emit()
-    signal.reloadUi.emit()
 
 
 def _restore_input(entry: dict, side: dict | None) -> tuple[bool, str]:
@@ -380,10 +398,10 @@ def _restore_input(entry: dict, side: dict | None) -> tuple[bool, str]:
 def _restore_profile(entry: dict, side: dict | None, which: str) -> tuple[bool, str]:
     from gremlin.modules import module_file
 
-    text = history_profile.unpack_text((side or {}).get("packed"))
+    text = _unpacked(side)
     if not text:
         return False, "That version of the profile isn't kept any more."
-    original = Path(str((entry.get("subject") or {}).get("profile") or "profile.xml"))
+    original = _profile_path(entry)
     stamp = datetime.fromtimestamp(float(entry.get("at") or 0)).strftime(
         "%Y-%m-%d %H.%M.%S"
     )
@@ -404,6 +422,38 @@ def _restore_profile(entry: dict, side: dict | None, which: str) -> tuple[bool, 
     )
 
 
+def _profile_path(entry: dict) -> Path:
+    return Path(str((entry.get("subject") or {}).get("profile") or "profile.xml"))
+
+
+def _inside(path: Path, folder: Path) -> bool:
+    """path is folder or in it (case and spelling of the path don't matter)."""
+    try:
+        path, folder = path.resolve(), folder.resolve()
+    except OSError:
+        return False
+    return Path(os.path.normcase(path)).is_relative_to(os.path.normcase(folder))
+
+
+def _outside_folders(entry: dict) -> list[Path]:
+    """AD6: the folders a profile Restore of this entry (or its parts) would
+    write into that are neither the profiles folder nor the folder the
+    profile is still in. An entry's path is only what its line says."""
+    from gremlin import util
+
+    found: list[Path] = []
+    for item in _parts(entry) if entry.get("kind") == history.GROUP_KIND else [entry]:
+        if item.get("area") != "profile" or item.get("kind") == "input":
+            continue
+        original = _profile_path(item)
+        folder = original.parent
+        if original.is_file() or _inside(folder, util.profiles_dir()):
+            continue
+        if folder not in found:
+            found.append(folder)
+    return found
+
+
 def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
     from gremlin.modules import store
 
@@ -415,14 +465,22 @@ def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
     path = store.path_of(Path(name).stem)
     text = str(side["text"])
     missing = []
+    # What each picture was, to put back when the module file can't be
+    # written: its pictures then still match it (AUD-FILES-05).
+    was: dict[Path, bytes | None] = {}
     for picture in side.get("pictures") or []:
+        if not isinstance(picture, dict):
+            continue
         ref = str(picture.get("ref") or "")
         # "qml/maps/..." is in the modules folder, as the Button Map finds it.
         kept = history.kept_file(str(picture.get("keptFile") or ""))
         try:
             if kept is None:
                 raise FileNotFoundError(ref)
-            store.put_picture_at(store.picture_path(ref), kept)
+            dest = store.picture_path(ref)
+            if dest not in was:
+                was[dest] = dest.read_bytes() if dest.is_file() else None
+            store.put_picture_at(dest, kept)
         except OSError:
             missing.append(ref)
     try:
@@ -430,6 +488,7 @@ def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
         # it); History keeps the restore as a new entry.
         store.write_text(path, text, "History")
     except OSError as exc:
+        _put_pictures_back(was)
         return False, f"{path.name} could not be put back. {exc}"
     _bind_restored(path, text)
     _changed_everywhere()
@@ -441,6 +500,23 @@ def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
     return True, f"Put back {path.name}."
 
 
+def _put_pictures_back(was: dict[Path, bytes | None]) -> None:
+    """The pictures as they were before a Restore that failed (no History:
+    nothing was changed in the end)."""
+    from gremlin.modules import module_file
+
+    for dest, data in was.items():
+        try:
+            if data is None:
+                dest.unlink(missing_ok=True)
+            else:
+                module_file.write_bytes(dest, data)
+        except OSError:
+            logging.getLogger("system").exception(
+                "History: %s could not be put back as it was", dest
+            )
+
+
 def _bind_restored(path: Path, text: str) -> None:
     """The device the restored file is for uses it again (08 Q14): a Delete
     File, a rename or another file chosen since may have moved it to another
@@ -449,7 +525,7 @@ def _bind_restored(path: Path, text: str) -> None:
 
     try:
         doc = json.loads(text)
-    except ValueError:
+    except (ValueError, RecursionError):
         return
     if not isinstance(doc, dict):
         return
@@ -529,6 +605,8 @@ def _parts(entry: dict) -> list[dict]:
     afters = entry.get("after") or []
     parts = []
     for first, second in zip(befores, afters, strict=False):
+        if not isinstance(first, dict) or not isinstance(second, dict):
+            continue  # history._sound keeps these out; a part never raises
         parts.append({
             "id": entry.get("id"),
             "at": entry.get("at"),
@@ -582,8 +660,11 @@ def _restore_one(entry: dict, which: str) -> tuple[bool, str]:
     return _restore_module(entry, side)
 
 
-def restore(entry_id: str, which: str) -> dict:
-    """Puts back the "before" or "after" version of an entry."""
+def restore(entry_id: str, which: str, outside_ok: bool = False) -> dict:
+    """Puts back the "before" or "after" version of an entry. A profile copy
+    for a folder outside the profiles folder, where the profile isn't any
+    more, is asked about first (AD6): {"ok": False, "ask": True, "message"}
+    and nothing is written; outside_ok is the user's yes."""
     entry = history.entry(entry_id)
     if entry is None:
         return {"ok": False, "message": "That change isn't in the history any more."}
@@ -591,6 +672,17 @@ def restore(entry_id: str, which: str) -> dict:
         "canRestoreBefore" if which == "before" else "canRestoreAfter"
     ]:
         return {"ok": False, "message": "That version can't be put back."}
+    outside = [] if outside_ok else _outside_folders(entry)
+    if outside:
+        where = ", ".join(str(f) for f in outside)
+        return {
+            "ok": False,
+            "ask": True,
+            "message": (
+                f"Write the restored profile to {where}? It is outside your "
+                "profiles folder and the profile's own folder."
+            ),
+        }
     try:
         ok, message = _restore_one(entry, which)
     except Exception as exc:
@@ -672,7 +764,7 @@ class HistoryModel(QtCore.QAbstractListModel):
         "mode", "ofDevice"}, each optional."""
         try:
             wanted = json.loads(text) if text else {}
-        except ValueError:
+        except (ValueError, RecursionError):
             wanted = {}
         self._filter = wanted if isinstance(wanted, dict) else {}
         self._apply()
@@ -695,8 +787,16 @@ class HistoryModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=str)
     def restore(self, entry_id: str, which: str) -> str:
+        """{"ok", "message"}; with "ask": true nothing was written and the
+        message is the question for restoreOutside (AD6)."""
         result = restore(entry_id, which)
         return json.dumps(result)
+
+    @QtCore.Slot(str, str, result=str)
+    def restoreOutside(self, entry_id: str, which: str) -> str:
+        """restore() after the user said yes to writing a profile copy
+        outside the profiles folder (AD6)."""
+        return json.dumps(restore(entry_id, which, outside_ok=True))
 
     @QtCore.Slot(result=str)
     def summary(self) -> str:

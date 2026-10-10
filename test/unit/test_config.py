@@ -8,6 +8,7 @@ import sys
 
 sys.path.append(".")
 
+import os
 import tempfile
 from collections.abc import Iterator
 from unittest import mock
@@ -30,7 +31,11 @@ def cfg() -> Iterator[gremlin.config.Configuration]:
     # restored when the fixutre is torn down.
     original_path = gremlin.config._config_file_path
     SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
-    with mock.patch.object(gremlin.config, "_config_file_path", tempfile.mkstemp()[1]):
+    # mkstemp leaves its file open; an open file can't be swapped over on
+    # Windows (the safe writer refuses rather than writing in place).
+    handle, temp_path = tempfile.mkstemp()
+    os.close(handle)
+    with mock.patch.object(gremlin.config, "_config_file_path", temp_path):
         try:
             yield gremlin.config.Configuration()
         finally:

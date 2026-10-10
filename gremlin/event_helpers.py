@@ -189,6 +189,7 @@ class ButtonReleaseActions(QtCore.QObject):
 
         new_list = []
         for entry in self._registry.get(key, []):
+            triggered = event.is_pressed == (entry.release_mode == ReleaseMode.OnPress)
             run_callback = True
             match entry.mode_match:
                 case ModeMatch.IgnoreMode:
@@ -198,13 +199,19 @@ class ButtonReleaseActions(QtCore.QObject):
                 case ModeMatch.MatchMode:
                     run_callback = self._current_mode == entry.registration_mode
 
-            if run_callback and event.is_pressed == (
-                entry.release_mode == ReleaseMode.OnPress
-            ):
+            if triggered and run_callback:
                 entry.callback(event)
+            elif triggered and entry.mode_match == ModeMatch.DifferentMode:
+                # Released in the mode it was pressed in: the action let go
+                # itself, so the entry is spent (else they pile up all Run
+                # and fire together at a later mode change).
+                pass
             else:
                 new_list.append(entry)
-        self._registry[key] = new_list
+        if new_list:
+            self._registry[key] = new_list
+        else:
+            del self._registry[key]
 
     def _release_vjoy_callback_prototype(self, vjoy_input: tuple[int, int]) -> None:
         """Prototype of a button release callback, used with lambdas.

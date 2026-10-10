@@ -25,6 +25,8 @@ import tempfile
 import unittest.mock
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ["QT_QUICK_CONTROLS_STYLE"] = "GremlinStyle"
 os.environ["QT_FILE_SELECTORS"] = "Universal"
@@ -585,7 +587,7 @@ def main() -> None:
     for w in warnings:
         print(f"WARN {w}", flush=True)
     print("done", flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

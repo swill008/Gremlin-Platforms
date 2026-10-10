@@ -121,7 +121,7 @@ def text_of(window, name):
 def message(window):
     return text_of(window, "oscServerMessage")
 
-# The file API on a file that only has old output settings.
+# The file API on a file that only has the old output keys (not read, AD7).
 store.write_file(f.path(), json.dumps({"server": {
     "output_host": "10.0.0.7", "output_port": 7001}}).encode("utf-8"))
 out["server"] = f.read_server()
@@ -263,12 +263,13 @@ def test_new_server_keys_have_their_defaults(result: dict) -> None:
     assert server["feedback_rate"] == 50
 
 
-def test_old_output_settings_become_the_default_target(result: dict) -> None:
+def test_default_target_is_127_0_0_1_port_8000(result: dict) -> None:
     targets = result["targets-old-file"]
     assert len(targets) == 1
     assert targets[0]["name"] == "Default"
-    assert (targets[0]["host"], targets[0]["port"]) == ("10.0.0.7", 7001)
+    assert (targets[0]["host"], targets[0]["port"]) == ("127.0.0.1", 8000)
     assert targets[0]["id"]
+    assert "output_host" not in result["server"]
 
 
 def test_feedback_rows_are_kept_in_the_file(result: dict) -> None:
@@ -287,7 +288,7 @@ def test_feedback_rows_are_kept_in_the_file(result: dict) -> None:
 
 def test_section_shows_targets_and_this_pcs_addresses(result: dict) -> None:
     assert result["section"], result
-    assert result["first-target"] == ["Default", "10.0.0.7:7001"]
+    assert result["first-target"] == ["Default", "127.0.0.1:8000"]
     assert result["old-output-fields"] is False
     assert result["pc-address"].endswith(":8001")
     assert result["clipboard"] == result["pc-address"]
@@ -300,12 +301,12 @@ def test_output_and_reply_switches_save(result: dict) -> None:
 def test_targets_add_edit_remove(result: dict) -> None:
     assert "not an IP address" in result["bad-host"][0]
     assert result["bad-host"][1] == 1
-    assert result["added"] == [["Default", "10.0.0.7", 7001],
+    assert result["added"] == [["Default", "127.0.0.1", 8000],
                                ["Mixer", "192.168.1.20", 9001]]
     assert "already a target" in result["dup-name"][0]
     assert result["dup-name"][1] == 2
     assert result["edit-filled"] == "Mixer"
-    assert result["edited"] == [["Default", 7001], ["Mixer", 9555]]
+    assert result["edited"] == [["Default", 8000], ["Mixer", 9555]]
     assert result["question"] == "Remove target Mixer?"
     assert result["after-cancel"] == 2
     assert result["after-remove"] == ["Default"]

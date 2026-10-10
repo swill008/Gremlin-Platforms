@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import sys
 from pathlib import Path
+
+from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -195,7 +196,7 @@ def main() -> None:
     print("DEVICE-PACK-DONE", file=sys.stderr, flush=True)
 
     print("RESULT " + json.dumps(out), flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":
@@ -206,4 +207,4 @@ if __name__ == "__main__":
 
         traceback.print_exc()
         sys.stdout.flush()
-        os._exit(1)  # Qt teardown can hang off-screen
+        smoke_exit(1)  # Qt teardown can hang off-screen

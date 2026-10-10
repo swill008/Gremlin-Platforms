@@ -23,6 +23,8 @@ import time
 import types
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -243,7 +245,7 @@ def main() -> None:
     result("open", win is not None)
     if win is None:
         print("done", flush=True)
-        os._exit(0)
+        smoke_exit(0)
 
     # On open: the PTU copy and the old tester entry are named.
     result("open-state", {
@@ -345,7 +347,7 @@ def main() -> None:
     wait_until(lambda: "Pass" in "".join(shown(win, "hidHideTesterResult")), 8)
     result("fresh", shown(win, "hidHideTesterResult"))
     print("done", flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

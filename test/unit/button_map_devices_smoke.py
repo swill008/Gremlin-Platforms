@@ -24,6 +24,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
+from smoke_exit import smoke_exit
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 spec = importlib.util.spec_from_file_location(
@@ -242,7 +244,7 @@ def main() -> None:
     call(win, "discardEdit")
 
     print("RESULT " + json.dumps(out), flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

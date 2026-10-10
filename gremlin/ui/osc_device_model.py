@@ -700,10 +700,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         self._changed(row.uid, f"Add {row.label}")
         return True
 
-    @QtCore.Slot(str)
-    def createInput(self, type_str: str) -> None:
-        self.createMappedInput(type_str, "")
-
     @QtCore.Slot(str, str)
     def createMappedInput(self, type_str: str, label: str) -> None:
         input_type = InputType.to_enum(type_str)

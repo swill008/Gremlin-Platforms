@@ -684,11 +684,13 @@ def _result_line(
     return text + (STALE_RESULT if stale else ""), verdict == "fail"
 
 
-def _reset_available() -> bool:
+def _reset_available(rows: list[dict]) -> bool:
+    """rows: this window's list_hid_devices rows, so opening it walks the
+    device list once."""
     try:
         from gremlin import device_reset
 
-        return bool(device_reset.list_devices([]))
+        return bool(device_reset.list_devices([], hid_groups=rows))
     except Exception:
         logging.getLogger("system").exception("Reset Devices: device list failed")
         return False
@@ -764,6 +766,8 @@ class HidHideModel(QtCore.QObject):
         except Exception:
             logging.getLogger("system").exception("HidHide device list failed")
             rows = []
+        # Before _enrich_devices changes names: Reset Devices reads them raw.
+        self._reset_available = _reset_available(rows)
         # Only from the full list: Gaming only leaves plugged-in devices out.
         if rows and not self._gaming_only:
             _forget_unlisted_photos(rows)
@@ -778,7 +782,6 @@ class HidHideModel(QtCore.QObject):
             built.append(item)
         self._devices = _sorted_devices(built)
         self._games = _load_games()
-        self._reset_available = _reset_available()
         self._generation += 1
         _hh_log(
             f"reload present={self._present} version={self._version} cloak={self._active} "

@@ -44,12 +44,6 @@ def suspend_input_highlighting() -> bool:
     return bool(_highlight_holders)
 
 
-def input_highlighting_holders() -> set[str]:
-    """Who holds input highlighting off right now."""
-    with _highlight_lock:
-        return set(_highlight_holders)
-
-
 def _cancel_release(holder: str) -> None:
     timer = _release_timers.pop(holder, None)
     if timer is not None:

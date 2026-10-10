@@ -470,7 +470,7 @@ class OscLayoutStore:
     def restore(self, memo: dict) -> None:
         rows = self.rows
         if rows.to_dict()["inputs"] != memo["rows"]:
-            rows.load_dict({"inputs": memo["rows"]})
+            rows.load_dict({"inputs": memo["rows"]}, keep_unreadable=True)
             # load_dict counts as saved; this is an edit to save.
             rows.mark_dirty()
         if _stored_feedback() != memo["feedback"]:
@@ -1021,11 +1021,6 @@ class OscLayoutModel(ControlLayoutModel):
     def keyOfUid(self, uid: str) -> str:
         row = OscDevice().rows.by_uid(uid)
         return parent_key(row.input_type, row.input_id) if row is not None else ""
-
-    @QtCore.Slot(str, result=str)
-    def uidOf(self, key: str) -> str:
-        row = self._row_of_key(key)
-        return row.uid if row is not None else ""
 
     @QtCore.Slot(str, result=str)
     def addressOf(self, key: str) -> str:

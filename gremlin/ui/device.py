@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import logging
 import math
-import time
 import uuid
 from typing import cast
 
@@ -212,15 +211,6 @@ class DeviceListModel(QtCore.QAbstractListModel):
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
-
-    @QtCore.Slot(int, result=str)
-    def uuidAtIndex(self, index: int) -> str:
-        if len(self._devices) == 0:
-            return str(dill.UUID_Invalid)
-        if not (0 <= index < len(self._devices)):
-            raise GremlinError("Provided index out of range")
-
-        return str(self._devices[index].device_guid.uuid)
 
     def _reload_devices(self) -> None:
         self.beginResetModel()
@@ -619,7 +609,7 @@ class DeviceAxisSeries(QtCore.QObject):
             index = self._identifier_map.get(event.identifier)
             if index is None:
                 return
-            self._state[index]["timeSeries"].append((time.time(), event.value))
+            self._state[index]["timeSeries"].append((clock.monotonic(), event.value))
 
     @QtCore.Property(int, notify=axisCountChanged)
     def axisCount(self) -> int:
@@ -638,7 +628,7 @@ class DeviceAxisSeries(QtCore.QObject):
             )
             return
 
-        now = time.time()
+        now = clock.monotonic()
         try:
             while now - data[0][0] > self._window_size:
                 data.pop(0)

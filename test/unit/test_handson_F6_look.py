@@ -48,6 +48,12 @@ def _get(out: dict, key: str) -> Any:  # noqa: ANN401
     return out[key]
 
 
+@pytest.mark.parametrize("look", _LOOKS)
+def test_each_look_runs_in_its_own_theme(runs: dict, look: tuple) -> None:
+    """The dark looks run in dark mode, the light ones in light mode."""
+    assert _get(runs[look], "isDarkMode") is (look[1] == "dark")
+
+
 def test_a_card_with_no_module_file_shows_the_devices_own_counts(runs: dict) -> None:
     cards = _get(runs[(100, "light")], "cards")
     stick = next(c for c in cards.values() if c["tab"] == "physical" and c["isStub"])

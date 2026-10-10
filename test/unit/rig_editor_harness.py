@@ -20,6 +20,8 @@ import os
 import sys
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 # The offscreen platform finds no fonts by itself; text would draw as boxes.
 os.environ.setdefault(
@@ -2239,7 +2241,7 @@ def main() -> None:
     session.hold_runs()
     SCENARIOS[name](session)
     session.finish()
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

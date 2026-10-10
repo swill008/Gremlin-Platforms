@@ -21,6 +21,8 @@ import sys
 import uuid
 from collections.abc import Iterator
 
+from smoke_exit import smoke_exit
+
 sys.path.insert(0, ".")
 import importlib.util
 
@@ -320,7 +322,7 @@ def run_twins() -> None:
             out["twin-pack-guid"] = found[0] if found else ""
             import_on_second(url, sticks, second)
     print("RESULT " + json.dumps(out), flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if TWINS:
@@ -473,4 +475,4 @@ QtTest.QTest.qWait(200)
 out["remembered"] = str(pv("String(_save.prepare().currentFolder)"))
 out["remembered-want"] = QtCore.QUrl.fromLocalFile(str(chosen)).toString()
 print("RESULT " + json.dumps(out), flush=True)
-os._exit(0)  # threads started by the app would keep it alive
+smoke_exit(0)  # threads started by the app would keep it alive

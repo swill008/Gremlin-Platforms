@@ -78,7 +78,7 @@ def _doc(text: str | None) -> dict | None:
         return None
     try:
         doc = json.loads(text)
-    except ValueError:
+    except (ValueError, RecursionError):
         return None
     return doc if isinstance(doc, dict) else None
 

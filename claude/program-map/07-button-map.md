@@ -9,26 +9,25 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 ## 2. Files
 
 **Python**
-- `gremlin/ui/hardware_profile.py` (2440 lines). Button Map part, `HardwareProfile` (962-2385): `load` / `save` / `saveUi`, photo (`copyImage`, `keepPhoto`, `clearImage`, `stashPhoto`, `restorePhoto`, `hasPhotoStash`, `dropPhotoStash`, `profilePhotoUrl`, `imageUrl`, `adjustedPhotoUrl`), pictures (`copyOverlay`, `importPictureFiles`, `pasteClipboardPictures`, `savePastedImage`, `imageAspect`, `_pack_assets`), recovery copies (`saveRecovery` / `loadRecovery` / `clearRecovery`), templates, copy layout (`savedLayouts`, `layoutNodes`), labels (`actionLabels`, `profileModes`, `profileLabelsChanged`), colours (`recentColours`, `noteColour`, `colorAt`), print and export (`saveArea`, `printImage`, module functions `exact_page`, `save_area`, `print_image`, `adjust_photo`), pool rows (`chips` -> `chips_for_guid`).
+- `gremlin/ui/hardware_profile.py` (2416 lines, 2026-10-10). Button Map part, `HardwareProfile` (962-2385): `load` / `save` / `saveUi`, photo (`copyImage`, `keepPhoto`, `clearImage`, `stashPhoto`, `restorePhoto`, `hasPhotoStash`, `dropPhotoStash`, `profilePhotoUrl`, `imageUrl`, `adjustedPhotoUrl`), pictures (`copyOverlay`, `importPictureFiles`, `pasteClipboardPictures`, `savePastedImage`, `imageAspect`, `_pack_assets`), recovery copies (`saveRecovery` / `loadRecovery` / `clearRecovery`), templates, copy layout (`savedLayouts`, `layoutNodes`), labels (`actionLabels`, `profileModes`, `profileLabelsChanged`), colours (`recentColours`, `noteColour`, `colorAt`), print and export (`saveArea`, `printImage`, module functions `exact_page`, `save_area`, `print_image`, `adjust_photo`), pool rows (`chips` -> `chips_for_guid`).
 - `gremlin/ui/button_map_labels.py` (179): `action_labels` (what each control does in a mode, with parent-mode inheritance), `mode_order`.
 - OSC addresses on chips (D-09-OSC-ADDRESSES, 2026-10-09; S103): `gremlin/ui/hardware_profile.py` OSC rows carry an optional `hwName` (the address) and `chips_key` includes the addresses; `qml/rig_chips.js` `hardwareLabel` uses `hwName` (new `genericLabel` / `inputNames`; `isUserFriendly` treats the plain name and the address as no user name); addresses come from `gremlin/osc_persist.py` `osc_address` / `osc_addresses`.
 - `gremlin/ui/button_map_options.py` (391): Button Map Options (config section `button-map`), saved styles, `ButtonMapOptions` QML object.
 - `gremlin/ui/pair_live.py` (`PairLiveThrottle`), `gremlin/ui/input_pairing.py` (`MappedButtonModel` etc.): the live press feed and wire labels the map shows (shared with the viewers; mapped there).
 - `gremlin/ui/viewer_devices.py` (198; mapped on page 02): `available` -> `gremlin/modules/hardware.py plugged_in` decides whether a stick is plugged in by its id in the live list, never its name (03 S90a); drives the unplugged cover (S5-S8).
 - `gremlin/history_modules.py`: files Button Map saves under History area "Button Map"; skips view-only (`ui`) changes.
-- `gremlin/util.py` `copy_legacy_modules` (939): copies the old `qml/maps` folder into the modules folder at start (the folder is not in the repo any more).
+- ~~`gremlin/util.py` `copy_legacy_modules`~~: removed with the stock photos (G17; audit AUD-BMH-03, 2026-10-10).
 
 **QML window and editor**
 - `qml/DialogJoystickButtonMap.qml` (4428): the window. Device choice, Edit / Save / Cancel, dirty check, recovery offer, photo menu and Adjust Photo popup, print setup (`printSetup`, `printArea`, `exportPixels`), export and print jobs, copy layout, templates dialogs, saved-style dialog, labels mode, tool rows (`_tools`), command palette, colour picker, menus and shortcuts. Built on the shared pieces: results go on a `MessageLine` (window `say(text, failed)`; the Templates window's `templatesMessage`), no Saved / Save Failed boxes; an `UndoBar` above the top tool row while editing; Reset Layout (`askResetLayout`) and Delete Template ask the shared question (`confirm.js`) with red `DangerButton`s; seven `FilePicker`s (picture ×2: Choose Photo, Import Picture; export ×3: PDF / PNG / JPG; template ×2: import, export). The `QtQuick.Dialogs` import is gone.
 - `qml/JoystickButtonMapCard.qml` (110): one device's live feed (`PairLiveThrottle`, mapped models) and pool rows (`_inventory.chips`), wraps `VkbRigFace`.
-- `qml/VkbRigFace.qml` (913): photo, zoom and pan, rulers, wire labels (`labelBtn/Axis/Hat`), loads the editor.
+- `qml/VkbRigFace.qml` (514 from 2026-10-10, F4-AD8): photo watcher, zoom and pan, rulers, wire labels (`labelBtn/Axis/Hat`), loads the editor; a failed editor load shows the plain error "The Button Map editor could not load." (the reason to the log, `console.warn`), no built-in EVO R layout (S104, AD8). Dead `shortDest()` left (F4-DEAD).
 - `qml/VkbRigEditor.qml` (1703): the editor item. All node data (`nodes`), selection, undo history (`hist`, `pushHist`, `undo`, `redo`, `seedHist`, `replaceHistTop`), timers; one-line forwarders into the `rig_*.js` files. Also a hard-coded EVO R name list `physNames` (1006-1040).
 - `qml/rig_*.js` (29 files, about 9,800 lines): `rig_coords` (page fractions to pixels), `rig_chips` (chip text, pool catalog, `addChiplet`, rename), `rig_groups` (groups, 5-way formats, `_uid`), `rig_selection` (delete, copy/paste, duplicate, nudge, return to pool), `rig_menu` (right-click menu model), `rig_leaders`, `rig_hotspot`, `rig_draw`, `rig_shapes`, `rig_path`, `rig_transform`, `rig_text`, `rig_tables`, `rig_callout`, `rig_overlays` (pictures), `rig_photo`, `rig_layers`, `rig_props`, `rig_align`, `rig_grouprot`, `rig_mirror`, `rig_find` (press to find), `rig_snap`, `rig_rulers`, `rig_print_area`, `rig_style`, `rig_styles` (saved styles), `rig_hit`, `rig_pointer`.
 - `qml/Rig*.qml` (16 files): `RigChipItem`, `RigChipLabel`, `RigMiniChip`, `RigGroupItem`, `RigDrawItem`, `RigLeaderLayer`, `RigPhotoLayer`, `RigGrid`, `RigGuides`, `RigSelRing`, `RigPointerArea`, `RigPrintArea`, `RigLayersPanel`, `RigPropsPanel`, `RigOptionsPanel`, `RigRenderer` (hidden copy that draws every print, export and preview). `RigLayersPanel.qml` (675): the Layers search is the shared `SearchBox` (`layersSearch`, ×, Esc; its own Ctrl+F is off, the window's Ctrl+F opens Layers first); its own "12 of 148" / "No layers match" line is kept.
 - `qml/ToolDock.qml` (468), `qml/ToolRow.qml` (474), `qml/ToolPane.qml` (551): the window's tool rows (used only by the Button Map). ToolDock holds each tool's state and which row (top, bottom, left, right) its tab is on: open/hide, pinned, locked, dragged tabs, kept sizes (Reset Tool Rows forgets them). ToolRow draws one row's tabs; ToolPane is a tool's panel joined to its tab, resizable on its free edges when unlocked.
 - `qml/PrintExportWindow.qml` (544): Print & Export window (paper, orientation, margins, background, scale, Freeform, preview, buttons).
 - The Button Map Guide is now the Button Map chapter of the one Help book (`qml/help/button_map.js`; page 01 owns the book). `qml/OptionButtonMapLibrary.qml` (183, styles and templates library: `SectionHeading`, `EmptyState`, red `DangerButton` Delete Style / Delete Template asking the shared question `Confirm.ask`).
-- `qml/vkb_evo_l_face_map.md`, `qml/vkb_evo_r_face_map.md`: pixel notes for the EVO photos.
 - Callers: `qml/Main.qml` 556-650 (open, open blank, quit check), 484-493 (Delete Device closes it); `qml/main_commands.js:92`.
 - Other users of `HardwareProfile`: `DialogConfigureModule.qml` (Module Setup photo), `DialogDevicePack.qml`, `Xbox360Face.qml`, `gremlin/ui/hidhide.py:493`.
 
@@ -46,7 +45,7 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 | `ui` block: grid, snap, grid size, zoom, pan, guides, print area, print setup | same module file; `saveUi` (2367) via window `persistUi` (1691) | nobody else |
 | Photo files `modules/<slug>/photo.<ext>` (and `photo_<name>.<ext>` fallback, legacy `<slug>_photo.<ext>`) | `copyImage` (2429), `clearImage` (2475), `restorePhoto` (2545), `_pack_assets` (1826) | Module Setup (`keepPhoto` / `copyImage`), Device Pack import, Delete Device, History Restore |
 | Picture files `modules/<slug>/<name>`, `pasted*.png` | `copyOverlay`, `savePastedImage`, `_pack_assets` | Device Pack, Delete Device |
-| Picture library `modules/library/` (a copy of every photo and picture ever chosen) | `_into_library` (1782) | nobody; never cleaned |
+| Picture library `modules/library/` (a copy of every photo and picture ever chosen) | (`_into_library` removed 2026-10-10, F4-DEAD; nothing writes it now) | nobody; never cleaned |
 | Photo safety copy `modules/cache/photo-stash/<slug>/` (+ `manifest.json`) | `stashPhoto` / `restorePhoto` / `dropPhotoStash` | nobody |
 | Adjusted-photo cache `modules/cache/photo-<hash>.png` (latest 12) | `adjustedPhotoUrl` (2041) | nobody |
 | Recovery copies `modules/recovery/<slug>.json` | `saveRecovery` / `clearRecovery` | nobody (Delete Device leaves them) |
@@ -124,7 +123,7 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 |---|---|---|
 | calls out | Module files (registry, `module_file`) | `resolve_module_slug`, `module_file.load_for_update`, `write_json`, `report_refused`, `read_doc`; private `registry._binding_store`, `_guid_for_name`, `_name_key` |
 | calls out | History | indirectly: every `write_json` goes to `history_modules.note_write` (Button Map area) |
-| calls out | Devices / input side | `gremlin.modules.hardware.device_info` (pool rows), `ViewerDeviceModel`, `DeviceNames` (display names), `device_has_name` |
+| calls out | Devices / input side | `gremlin.modules.hardware.device_info` (pool rows), `ViewerDeviceModel`, `DeviceNames` (display names) |
 | calls out | Live feed (input module runtime) | `PairLiveThrottle` (`InputModuleRuntime().event`), `MappedButtonModel/AxisModel/HatModel` (wire labels) |
 | calls out | Output modules | `output.vjoy_state` via `PairLiveThrottle._poll_vjoy` (shown values of wired vJoy outputs) |
 | calls out | Profile / actions | `shared_state.current_profile`; `input_pairing._items_for_guid`, `_dest_labels_for_item`, `_walk_actions`, `_device_name` (private); `button_map_labels.action_labels` |
@@ -165,10 +164,10 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 | RB5 | Duplicated logic: control labels | `hardware_profile.py:1429-1477` (`_output_labels`, `_label_for`: every mode joined) vs `button_map_labels.action_labels` (one mode, inherited) | Two producers of "what this control does"; the pool search uses the first, chips the second | CONFIRMED |
 | RB6 | Duplicated logic: mode inheritance | `button_map_labels.py:70-82,167-178` vs runtime `EventHandler.build_event_lookup` | Labels re-implement parent-mode inheritance on their own | CONFIRMED that it is separate; whether results can differ SUSPECTED |
 | RB7 | One door per module (private helpers used from outside) | `hardware_profile.py:26-34` (`registry._binding_store`, `_guid_for_name`, `_name_key`), 1429-1510 (`input_pairing._items_for_guid`, `_dest_labels_for_item`, `_walk_actions`, `_device_name`; `module_model._load_module_doc`), `button_map_labels.py:22` (`_walk_actions`) | Reaches into other modules' private functions | CONFIRMED |
-| RB8 | Main thread kept light | `JoystickButtonMapCard.qml:54-59` → `hardware_profile.chips_for_guid` (1480) | Every live press (stamp change) re-reads and parses the module file, asks the device driver and walks the profile, on the main thread | CONFIRMED in code; slowness SUSPECTED (not measured) |
-| RB9 | Single owner: one file, one job | `hardware_profile.py` (2656 lines) | Button Map document, photos, pictures, print, templates, recovery, Device Pack export/import, module-file import, Delete Device in one file and one QML type | CONFIRMED |
-| RB10 | Device-specific data used for every device | `VkbRigEditor.qml:1006-1040` `physNames`, used by `rig_chips.isUserFriendly` (`rig_chips.js:63-65,92-94`) | A user's chip name that equals an EVO R part name for that number (e.g. "White cap" on Button 4) is treated as no name on any device | CONFIRMED in code; seen by a user SUSPECTED |
-| RB11 | Program writes outside the user's data folder | `hardware_profile.py:2596-2600` `imagesFolderUrl` | Creates `qml/images` under the install folder (Program Files when installed) to start the file dialogs there | CONFIRMED; failure when installed SUSPECTED |
+| RB8 | Main thread kept light | `JoystickButtonMapCard.qml:54-59` → `hardware_profile.chips_for_guid` (1480) | Every live press (stamp change) re-reads and parses the module file, asks the device driver and walks the profile, on the main thread | FIXED: `chipsKey` gate (`JoystickButtonMapCard.qml:67`; AUD-BMH-03) |
+| RB9 | Single owner: one file, one job | `hardware_profile.py` (2416 lines) | Button Map document, photos, pictures, print, templates, recovery, Device Pack export/import, module-file import, Delete Device in one file and one QML type | CONFIRMED |
+| RB10 | Device-specific data used for every device | `VkbRigEditor.qml:1006-1040` `physNames`, used by `rig_chips.isUserFriendly` (`rig_chips.js:63-65,92-94`) | A user's chip name that equals an EVO R part name for that number (e.g. "White cap" on Button 4) is treated as no name on any device | FIXED: `physNames` removed; a typed name is always the user's (`rig_chips.js:116`; AUD-BMH-03) |
+| RB11 | Program writes outside the user's data folder | `hardware_profile.py:2596-2600` `imagesFolderUrl` | Creates `qml/images` under the install folder (Program Files when installed) to start the file dialogs there | FIXED: `imagesFolderUrl` makes no folder (07 Q13; AUD-BMH-03) |
 | RB12 | Layer rule | live feed `pair_live.py` (input module runtime), pool rows `hardware.device_info` | Both go through the approved doors; no Button Map code touches dill, vJoy or ViGEm directly | checked: no break found |
 | RB13 | Thread rules | whole subsystem | No threads started; no unbounded waits | checked: no break found |
 
@@ -296,6 +295,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **S101** An export (PDF, PNG, JPG) should be written in the background: the window stays responsive while a large picture is encoded and shows that it is busy; when it is done, a failure is reported as in Q19 (file, folder, reason) and a success as before. Only one export runs at a time. [user decision 2026-10-07: D-07-EXPORT-BG]
 - **S102** The Layers panel should have a **Search layers…** box, full width under its header, and below it one toggle per kind of row (**All · Chips · Groups · Hotspots · Leaders · Shapes · Lines · Pictures · Text · Tables · Photo**), replacing the old single-choice kind buttons. Any number of kinds can be on; none on means every row shows and lights **All**; **All** turns them all off again. The search filters the rows of the kinds that are on, as you type (any case, matching anywhere), on four things: the row's name, the control (Button 12, Hat 1, X Axis, even when the chip has a friendly name), what the chip shows (its action or description text), and the kind of row. A matching hotspot, leader or group member shows under its chip or group, which shows dimmed as a heading when it doesn't match itself. While a filter is on, a line says how many rows match ("12 of 148") or "No layers match". Ctrl+F (and View › Search layers…) while editing goes to the box (opening Layers if it is closed); outside Edit it does nothing, as the Layers pane is shown only in Edit, Esc in the box clears it, Enter selects every match on the map and brings the first into view, and the box's × clears it. Eye, lock, rename, drag and delete work on the shown rows; a group's member rows (shown only as search results) can be selected but their eye and lock are greyed out and they can't be deleted — hide, lock or delete the whole group from its row. The kinds and the search stay while the Button Map is open (also when another device's map is shown) and go back to none and empty when the Button Map closes or the program restarts. [user decision 2026-10-07: D-07-LAYERS-SEARCH]
 - **S103** An OSC input's chip and rig label should show its address (e.g. "/fire") instead of "OSC Button 1"; a friendly name the user gave still wins. (09 S115) [changed 2026-10-09, user: D-09-OSC-ADDRESSES] [test: test_osc_addresses_shown.py]
+- **S104** When the Button Map editor can't load, the editor area should show a plain error, "The Button Map editor could not load." (the reason goes to the log), not a built-in device layout; no device's layout (such as the old EVO R tag layout and its leader lines) is kept in the window. [changed 2026-10-10, user: AD8] (not built yet: batch F4)
 
 ## 9. Questions for the user
 
@@ -322,24 +322,24 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 ## 10. Known gaps
 
 **Code against spec or rules**
-- **G1** Print area, guides, grid and view are written during an edit and not taken back by Cancel; help says only Save writes (RB3, Q1). `DialogJoystickButtonMap.qml:1691-1716, 3026-3031, 1505-1513`.
-- **G2** Choose Photo writes `image` into the module file at once; History records an entry for an unsaved photo, and another when Cancel puts it back (RB3, Q2). `hardware_profile.py:2455-2466` → `module_file.write_json` → `history_modules._record`.
-- **G3** Save copies the photo and pictures into the device folder (`_pack_assets`, `hardware_profile.py:2333`) before it checks for a damaged module file (2335); a refused Save still changes files. CONFIRMED in code.
-- **G4** `save` assumes the text is a JSON object; a list or number raises at `payload["kind"]` (`hardware_profile.py:2325`) instead of returning False. QML always sends an object, so SUSPECTED harmless.
-- **G5** `saveUi` on a device with no module file calls the full `save` (2376): in an edit, a print area or guide change creates the module file with the saved (old) map and copies the photo. CONFIRMED.
+- **G1** Fixed (audit AUD-BMH-03, 2026-10-10): `persistUi` holds `editUiKeys` (print area, print, guides) back while editing (`DialogJoystickButtonMap.qml:1851`, `:1904-1905`). Was: print area, guides, grid and view are written during an edit and not taken back by Cancel; help says only Save writes (RB3, Q1). `DialogJoystickButtonMap.qml:1691-1716, 3026-3031, 1505-1513`.
+- **G2** Fixed (audit AUD-BMH-03): `copyImage` no longer writes `image`. Was: Choose Photo writes `image` into the module file at once; History records an entry for an unsaved photo, and another when Cancel puts it back (RB3, Q2). `hardware_profile.py:2455-2466` → `module_file.write_json` → `history_modules._record`.
+- **G3** Fixed (GL-079): `_pack_assets` runs inside the change, after the damage check (`hardware_profile.py` `save`). Was: Save copied the photo and pictures before it checked for a damaged module file.
+- **G4** Fixed: `save` returns False unless the text is a JSON object (`isinstance(payload, dict)`, `hardware_profile.py` `save`).
+- **G5** Fixed: `saveUi` returns False when there is no module file (`hardware_profile.py` `saveUi`).
 - **G6** No reload when another part of the program changes the module file; an edit's Save writes over it (RB2, Q6).
 - **G7** Delete Device during an edit asks Save, which would recreate the deleted file (Q7). `Main.qml:489-492`.
 - **G8** Three writers of the device photo: Button Map, Module Setup, Device Pack (RB1, Q5).
-- **G9** Undo does not cover Choose / Clear Photo, print area, guides (Q3).
-- **G10** Chip names equal to EVO R part names are dropped on every device (RB10, Q10).
-- **G11** Every live press re-reads the module file and the profile on the main thread to rebuild the pool rows (RB8). `JoystickButtonMapCard.qml:54-59`.
+- **G9** Photo part fixed: Undo covers Choose / Clear Photo through `photoCopyUrl` (07 Q3; `DialogJoystickButtonMap.qml:754`, `:2023`). Print area and guides not re-checked.
+- **G10** Fixed: `physNames` is gone; "A typed name is always the user's" (`rig_chips.js:116`, Q10).
+- **G11** Fixed: the `chipsKey` gate rebuilds the pool rows only when the key changes (`JoystickButtonMapCard.qml:67`; `hardware_profile.py` `chipsKey`).
 - **G12** Two producers of control labels and a second copy of mode inheritance (RB5, RB6).
 - **G13** Page size in four places, never read on load (RB4, Q14).
 - **G14** `hardware_profile.py` reaches into private helpers of `registry`, `input_pairing` and `module_model` (RB7).
-- **G15** `imagesFolderUrl` creates a folder in the install folder (RB11, Q13).
-- **G16** `profilePhotoUrl` calls `self.load()` (2621), so asking for a photo also changes that object's `path` / `text` and emits `documentChanged`. Only Module Setup, HidHide and Xbox objects call it, not the Button Map's own; SUSPECTED harmless.
-- **G17** Stock-photo code and the legacy `qml/maps` copy point to files not in the repo (Q12).
-- **G18** `_resolve_existing` (1791-1824) falls back to any file of the same name in `modules/`, `overlays/` or `library/`; a stored picture that is missing can be replaced by another device's picture with the same name. SUSPECTED.
+- **G15** Fixed: `imagesFolderUrl` opens the last picture folder or the Pictures folder and makes no folder (Q13).
+- **G16** Fixed (audit AUD-BMH-03): `profilePhotoUrl` only reads. Was: `profilePhotoUrl` called `self.load()`, so asking for a photo also changes that object's `path` / `text` and emits `documentChanged`. Only Module Setup, HidHide and Xbox objects call it, not the Button Map's own; SUSPECTED harmless.
+- **G17** Fixed: `copy_legacy_modules` and the stock photos are gone (Q12).
+- **G18** Fixed (GL-085): `store.find_picture` has no fallback by name; a missing picture is missing (07 S11). SUSPECTED.
 
 **Things nothing owns**
 - **G19** Unused pictures in `modules/<slug>/` after Cancel or delete of a picture; `modules/library/` grows with every photo and picture ever chosen; recovery copies and photo safety copies of deleted devices (Q11).
@@ -349,6 +349,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 **Stale notes**
 - **G22** Tracker AU-64's note says Button Map photo folders still use the device's own name; the code now uses the module-file rule for the photo, pictures, recovery and safety copy (`_module_slug`, 1755). Only the stock-photo choice (2629-2642) and the Device Pack export file name (1864) go by name.
 - **G23** Test plan rows BM-F07..08 / S-24 (Clear image can't be undone, fixed by A3), S-22 / BM-X1 (map pack export, removed), BMAP2-4 (Export modes, removed by BM37), BMAP2-12 and BMAP2-15 (Options → Export → Light page / Print light, replaced by Print & Export Background) describe things that are no longer there.
+- **G24** (fixed 2026-10-10, batch F4, AD8, S104 built; [test: test_editor_load_error.py]) Was (AUD-BMH-04): `VkbRigFace.qml` shows a hard-coded EVO R tag layout with leader lines (about lines 430-605, 774-818) when `VkbRigEditor.qml` fails to load; the face-map notes `qml/vkb_evo_l_face_map.md` and `vkb_evo_r_face_map.md` describe photos that aren't in the repo.
 
 **From the to-do list**
 - **To-do 45** (parked, D-01-CANVAS-EXEMPT): the canvas chip editor and the Layers panel rename keep their own boxes, not the shared Rename box.
@@ -374,7 +375,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 **Thin or untested paths:**
 - Golden tests drive the editor alone, not the window: Save, Cancel, the leave prompts, recovery offer, copy layout and templates through the window are covered only by a few smokes.
 - Nothing tests that print area, guides or grid changes during an edit are or are not taken back by Cancel (G1).
-- Nothing tests History entries from Choose Photo / Clear Photo / Cancel (G2).
+- Covered from 2026-10-10 (F4-AD8): `test_editor_load_error.py` (4: a failed load shows the plain error, no device layout, the reason goes to the log, no EVO layout left in the face; S104); `test_import_pack_raises.py` (2: a Device Pack import that raises comes back as an error, page 08).
 - Nothing tests the Button Map open while History Restore, Device Pack import or Module Setup changes the same file (G6), or Delete Device during an edit (G7).
 - Apply Template / Copy from Device onto a device with different controls (G21); mirrored copy undo count (AU-27).
 - `clearImage` failure path (file locked), `imagesFolderUrl` when the install folder is read-only, `colorAt` beyond one test, `profilePhotoUrl` stock branches.
@@ -390,6 +391,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 |---|---|
 | All | As recommended in section 9 |
 | S103 | 2026-10-09 (D-09-OSC-ADDRESSES; user: "go with your recommendations, approved, go ahead"): OSC chips and rig labels show the address |
+| S104 | 2026-10-10 (AD8; user approved AD1-AD10, "all recommendations", 2026-10-10, audit batch F4): a failed editor load shows a plain error, no hard-coded EVO R layout |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

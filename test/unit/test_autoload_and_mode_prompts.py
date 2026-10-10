@@ -14,6 +14,7 @@ sys.path.append(".")
 import types
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -23,7 +24,7 @@ from gremlin.ui import backend
 
 _KEY = ("profile", "automation", "entries-auto-loading")
 # Backend is a singleton wrapper; the method lives on the class inside it.
-_AUTOLOAD = backend.Backend.klass._active_process_changed_cb
+_AUTOLOAD: Any = backend.Backend.klass._active_process_changed_cb
 
 
 @pytest.fixture
@@ -81,6 +82,7 @@ def test_auto_load_waits_for_unsaved_edits(
     game.write_text("<profile/>")
     monkeypatch.setattr(config, "get_profile_with_regex", lambda path: str(game))
     notes: list = []
+
     def note(*args: str) -> None:
         notes.append(args)
 
@@ -97,6 +99,38 @@ def test_auto_load_waits_for_unsaved_edits(
     saved = _fake(unsaved=False)
     _AUTOLOAD(saved, "C:/x/game.exe")
     assert ("load", str(game)) in saved.calls
+
+
+def test_same_program_in_front_again_keeps_the_open_profile_running(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """04 S34 (AUD-SHELL-06): the program whose profile is already open comes
+    to the front again: no reload, no restart of the Run, however the open
+    profile's path is written (a Path, other slashes and case)."""
+    game = tmp_path / "Game.xml"
+    game.write_text("<profile/>")
+    typed = str(game).replace("\\", "/")
+    if sys.platform == "win32":
+        typed = typed.upper()
+    monkeypatch.setattr(config, "get_profile_with_regex", lambda path: typed)
+    fake = _fake(unsaved=False)
+    fake.profile.fpath = game  # a Path, as Profile keeps it
+    fake.gremlinActive = True
+    for _ in range(2):
+        _AUTOLOAD(fake, "C:/x/game.exe")
+    assert fake.calls == []
+    # Not running yet (stopped by hand): it starts once, nothing is loaded.
+    stopped = _fake(unsaved=False)
+    stopped.profile.fpath = game
+
+    def activate(on: bool) -> None:
+        stopped.calls.append(("active", on))
+        stopped.gremlinActive = on
+
+    stopped.activate_gremlin = activate
+    for _ in range(2):
+        _AUTOLOAD(stopped, "C:/x/game.exe")
+    assert stopped.calls == [("active", True)]
 
 
 class _Item:

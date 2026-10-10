@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast
+
+from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -217,7 +218,7 @@ def main() -> None:
     out["filter-after-reopen"] = ev(win, FILTER)
 
     print("RESULT " + json.dumps(out), flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":
@@ -226,4 +227,4 @@ if __name__ == "__main__":
     finally:
         # The program's threads would keep it running after a failed check.
         sys.stdout.flush()
-        os._exit(1)
+        smoke_exit(1)

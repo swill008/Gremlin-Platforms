@@ -401,6 +401,24 @@ def _history_written_before_the_test() -> None:
     history.flush()
 
 
+@pytest.fixture(autouse=True)
+def _settings_history_view_from_now(monkeypatch: pytest.MonkeyPatch) -> None:
+    """History's view of the settings (Configuration._history_view, the
+    last saved values a save compares against) starts at today's values.
+    An earlier test that changed settings on a copy of its own left the view
+    at its values, so this test's first save recorded them as a change
+    (FLAKY-LOGLEVEL-HISTORY). Only an existing Configuration: making one
+    here would read the settings file before the test points it elsewhere."""
+    config = sys.modules.get("gremlin.config")
+    if config is None:
+        return
+    from gremlin import common
+
+    cfg = common.SingletonMetaclass._instances.get(config.Configuration)
+    if cfg is not None:
+        monkeypatch.setattr(cfg, "_history_view", cfg._settings_view(), raising=False)
+
+
 # | Rule checks (gremlin/validate.py): after each test the open profile is
 # | checked, and after a test that ran or stopped a CodeRunner, what a Run
 # | leaves behind. A problem that isn't a warning (validate.WARNINGS) fails

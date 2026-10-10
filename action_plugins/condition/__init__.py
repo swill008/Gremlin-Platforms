@@ -18,7 +18,6 @@ from PySide6 import QtCore
 from gremlin import (
     error,
     event_handler,
-    plugin_manager,
     util,
 )
 from gremlin.base_classes import (
@@ -32,7 +31,6 @@ from gremlin.logical_device import LogicalDevice
 from gremlin.modules import output
 from gremlin.profile import Library
 from gremlin.signal import signal
-from gremlin.tree import TreeNode
 from gremlin.types import (
     ActionProperty,
     ConditionType,
@@ -178,35 +176,6 @@ class ConditionModel(ActionModel):
             self._data.conditions.append(cond)
             note_edit()
         self.conditionsChanged.emit()
-
-    @QtCore.Slot(str, str)
-    def addAction(self, action_name: str, branch: str) -> None:
-        """Adds a new action to one of the two condition branches.
-
-        Args:
-            action_name: name of the action to add
-            branch: which of the two branches to add the action two, valid
-                options are [if, else]
-        """
-        action = plugin_manager.PluginManager().get_class(action_name)(
-            self._action_tree
-        )
-
-        def predicate(node: TreeNode) -> bool:
-            return True if node.value and node.value.id == self.id else False
-
-        nodes = self._action_tree.root.nodes_matching(predicate)
-        if len(nodes) != 1:
-            raise error.GremlinError(f"Node with ID {self.id} has invalid state")
-        nodes[0].add_child(TreeNode(action))
-        if branch == "if":
-            self._true_action_ids.append(action.id)
-        elif branch == "else":
-            self._false_action_ids.append(action.id)
-        else:
-            raise error.GremlinError(f"Invalid branch specification: {branch}")
-
-        self.actionsChanged.emit()
 
     @QtCore.Slot(int)
     def removeCondition(self, index: int) -> None:

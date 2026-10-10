@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import logging
-import time
 from typing import TYPE_CHECKING
 
-from gremlin import common
+from gremlin import clock, common
 from gremlin.types import (
     HatDirection,
     InputType,
@@ -50,17 +49,6 @@ class JoystickInputSignificant(metaclass=common.SingletonMetaclass):
                 logging.getLogger("system").warning("Event with unknown type received")
                 return False
 
-    def last_event(self, event: event_handler.Event) -> event_handler.Event:
-        """Returns the most recent event of this type.
-
-        Args:
-            event: the type of event for which to return the most recent one
-
-        Returns:
-            Latest event instance corresponding to the specified event
-        """
-        return self._mre_registry[event]
-
     def reset(self) -> None:
         """Resets the detector to a clean state for subsequent uses."""
         self._event_registry = {}
@@ -78,22 +66,22 @@ class JoystickInputSignificant(metaclass=common.SingletonMetaclass):
         """
         if event in self._event_registry:
             # Reset everything if we have no recent data.
-            if self._time_registry[event] + 5.0 < time.time():
+            if self._time_registry[event] + 5.0 < clock.monotonic():
                 self._event_registry[event] = event
-                self._time_registry[event] = time.time()
+                self._time_registry[event] = clock.monotonic()
                 return False
             # Update state.
             else:
-                self._time_registry[event] = time.time()
+                self._time_registry[event] = clock.monotonic()
                 if abs(self._event_registry[event].value - event.value) > 0.33:
                     self._event_registry[event] = event
-                    self._time_registry[event] = time.time()
+                    self._time_registry[event] = clock.monotonic()
                     return True
                 else:
                     return False
         else:
             self._event_registry[event] = event
-            self._time_registry[event] = time.time()
+            self._time_registry[event] = clock.monotonic()
             return False
 
     def _process_button(self, event: event_handler.Event) -> bool:
@@ -127,14 +115,14 @@ class AxisChangeSignificanceTracker:
         minimum_time_interval: float,
         record_crossings: bool,
     ) -> None:
-        self._last_time = time.monotonic_ns()
+        self._last_time = clock.monotonic()
         self._last_value = initial_value
         self._minimum_change = minimum_change
-        self._minimum_time_interval = minimum_time_interval * 1e9
+        self._minimum_time_interval = minimum_time_interval
         self._record_crossings = record_crossings
 
     def is_significant_change(self, new_value: float) -> bool:
-        time_now = time.monotonic_ns()
+        time_now = clock.monotonic()
         # Precompute values used to determine if a significant change is present.
         time_delta = time_now - self._last_time
         value_delta = abs(new_value - self._last_value)

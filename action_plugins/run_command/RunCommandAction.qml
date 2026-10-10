@@ -70,10 +70,23 @@ Item {
             }
 
             JGTextField {
+                id: _arguments
+
                 Layout.fillWidth: true
+                // The hint's width plus the field's side padding (20 px in this style).
+                Layout.minimumWidth: Math.ceil(_argumentsHint.advanceWidth) + Style.dp(24)
 
                 text: null !== _root.action ? _root.action.arguments : ""
-                placeholderText: "Arguments split on spaces; quote values containing spaces."
+                // Short enough to show in a narrow box; the full hint on hover.
+                placeholderText: "Quote values with spaces"
+                ToolTip.visible: hovered && text.length === 0
+                ToolTip.text: "Arguments split on spaces; quote values containing spaces."
+
+                TextMetrics {
+                    id: _argumentsHint
+                    font: _arguments.font
+                    text: _arguments.placeholderText
+                }
 
                 selectByMouse: true
 

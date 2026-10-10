@@ -4,11 +4,11 @@
 from __future__ import annotations
 
 import logging
-import time
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
+from gremlin import clock
 from gremlin.osc import OscDevice, OscRuntime
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
@@ -105,7 +105,7 @@ def model_on_learned(self: object, address: str, args: object) -> None:
         return  # another model's Listen (the OSC Monitor has its own)
     if getattr(self, "_bulk", False):
         payload = args if isinstance(args, tuple) else ()
-        now = time.monotonic()
+        now = clock.monotonic()
         key = ((address or "").casefold(), payload)
         if key == getattr(self, "_last_bulk_addr", "") and (
             now - getattr(self, "_last_bulk_time", 0.0) < _DEBOUNCE_S

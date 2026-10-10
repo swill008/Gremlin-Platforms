@@ -18,6 +18,7 @@ import pathlib
 import subprocess
 import sys
 
+import child_env  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -100,20 +101,28 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> tuple[int, str, str]:
     folder = tmp_path_factory.mktemp("rules")
     sample = folder / "test_sample.py"
     sample.write_text(_SAMPLE, encoding="utf-8")
+    (folder / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
     report = folder / "report.txt"
     env = dict(
         os.environ,
-        PYTHONPATH=os.pathsep.join([str(_ROOT / "test"), str(_ROOT)]),
+        PYTHONPATH=child_env.python_path(_ROOT / "test", _ROOT),
         GREMLIN_VALIDATE_REPORT=str(report),
         GREMLIN_TEST_HANG_LIMIT="",
         USERPROFILE=str(folder),
     )
     # To a file, not a pipe (a full pipe would block the run).
     log = folder / "out.txt"
+    # The sample's own folder, ini and rootdir (as test_exit_hang): without
+    # them the rootdir is the repository and the collection tree runs from
+    # the drive root down through the temp folder, listing everything in it
+    # while other test parts delete their temporary folders there
+    # (FLAKY-RULES-COLLECT).
     with log.open("w", encoding="utf-8") as out:
         process = subprocess.run(
             [sys.executable, "-m", "pytest", "-p", "conftest", "-v", "-rA",
-             "-p", "no:cacheprovider", "-p", "no:randomly", str(sample)],
+             "-p", "no:cacheprovider", "-p", "no:randomly",
+             "-c", str(folder / "pytest.ini"), "--rootdir", str(folder),
+             "--confcutdir", str(folder), str(sample)],
             cwd=_ROOT, env=env, stdout=out, stderr=subprocess.STDOUT,
             timeout=120, check=False,
         )

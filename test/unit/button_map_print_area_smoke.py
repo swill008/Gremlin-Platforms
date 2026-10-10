@@ -19,6 +19,8 @@ import os
 import sys
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 spec = importlib.util.spec_from_file_location(
@@ -202,7 +204,7 @@ def main() -> None:
     QtTest.QTest.qWait(800)
     out["frame-edit-again"] = ev("_ed().printAreaShown")
     print("RESULT " + json.dumps(out), flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":
@@ -214,4 +216,4 @@ if __name__ == "__main__":
         traceback.print_exc()
         sys.stdout.flush()
         sys.stderr.flush()
-        os._exit(1)
+        smoke_exit(1)

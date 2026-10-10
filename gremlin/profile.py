@@ -1140,11 +1140,12 @@ class Library:
                 for binding in sequences:
                     binding.input_item = item
             profile.modes.from_xml(modes)
-            shown.load_dict(logical)
+            # The file's unreadable rows stay held for its Save (AD1).
+            shown.load_dict(logical, keep_unreadable=True)
             if logical_dirty:
                 # load_dict counts as saved; the edits before it weren't.
                 shown._changed()
-            osc_rows.load_dict(osc)
+            osc_rows.load_dict(osc, keep_unreadable=True)
             if osc_dirty:
                 osc_rows._changed()
             profile.device_database.devices = devices
@@ -1372,13 +1373,6 @@ class Library:
                         action.remove_action(i, selector)
                         changed = True
 
-    def actions_in_use_by_type(self, action_type: type) -> list[AbstractActionData]:
-        """Actions of that type that an input of this profile uses (the
-        library also holds deleted and replaced ones until the next save,
-        which Reuse and the pick lists must not hand back)."""
-        used = self.in_use()
-        return [a for a in self.actions_by_type(action_type) if a.id in used]
-
     def to_xml(self, used: set[uuid.UUID] | None = None) -> ElementTree.Element:
         """Returns an XML node encoding the content of this library.
 
@@ -1490,6 +1484,32 @@ class DeviceDatabase:
         return node
 
 
+def _failed_file(label: str, where: object, error: Exception) -> str:
+    """'<label> (<file name>): <reason>' for the save message."""
+    name = getattr(error, "filename", None)
+    if not name and callable(where):
+        with contextlib.suppress(Exception):
+            name = where()
+    reason = getattr(error, "strerror", None) or str(error) or type(error).__name__
+    if not name:
+        return f"{label}: {reason}"
+    return f"{label} ({Path(str(name)).name}): {reason}"
+
+
+class SaveIncomplete(Exception):
+    """The profile was written (and counted saved), but some of the files
+    its Save also writes were not. str() is the message for the user."""
+
+    def __init__(self, fpath: Path, failed: list[str]) -> None:
+        self.fpath = Path(fpath)
+        self.failed = list(failed)
+        listed = "; ".join(self.failed)
+        super().__init__(
+            f"The profile was saved to {self.fpath.name}, but this was not "
+            f"written: {listed}. Its changes are kept; save again to try once more."
+        )
+
+
 class Profile:
     """Stores the contents and an entire configuration profile."""
 
@@ -1529,16 +1549,6 @@ class Profile:
         # added to the file only when this profile is saved (lead ruling
         # 2026-10-09: browsing the Library adds no controls).
         self.pending_logical_rows: dict | None = None
-        # The same for the OSC rows of a version 14 or 15 profile
-        # (D-09-OSC-FILE decision 3): addresses added to OSC's file (the
-        # one-time note), the old file and its version (backed up on the
-        # first save over it), the rows a bind=False read keeps for a save
-        # (OscRows.to_dict form) and the duplicate addresses skipped.
-        self.osc_migration_note: list[str] = []
-        self._osc_old_source: tuple[Path, int] | None = None
-        self.pending_osc_rows: dict | None = None
-        self._pending_osc_version: int | None = None
-        self._osc_skipped: list[str] = []
         if bind:
             self.bind_devices()
 
@@ -1575,16 +1585,15 @@ class Profile:
                 f"{readable} can be read."
             )
 
-        from gremlin import logical_device_file, osc_device_file
+        from gremlin import logical_device_file
 
+        # An older profile's <osc-device> is not read (AD7, 09 S48).
         try:
             migrated = self._migrate_logical_device(root, fpath, version)
-            osc_moved = self._migrate_osc_device(root, fpath, version)
             self._read_root(root, fpath)
         finally:
             logical_device_file.current_uid_map = None
-            osc_device_file.current_uid_map = None
-        if migrated or osc_moved:
+        if migrated:
             # Changed: the next Save writes version 16 without the rows.
             self._saved_snapshot = None
             self._unsaved_seen = None
@@ -1672,143 +1681,12 @@ class Profile:
         self.logical_migration_note = list(result.added)
         self.pending_logical_rows = None
 
-    def _migrate_osc_device(
-        self, root: ElementTree.Element, fpath: Path, version: int
-    ) -> bool:
-        """A version 14 or 15 profile's OSC rows go to OSC's module file
-        (matched by type, number and address, else added with a new number)
-        and its bindings follow them while it loads (current_uid_map); the
-        original file is backed up on the first save over it (D-09-OSC-FILE
-        decision 3). Read without opening it (bind=False), nothing changes:
-        the rows wait in pending_osc_rows for a save. A duplicate address is
-        skipped with a load warning, never refusing the profile. True when
-        the profile has rows to move."""
-        from gremlin import osc_device_file
-
-        self.osc_migration_note = []
-        self.pending_osc_rows = None
-        self._pending_osc_version = None
-        self._osc_old_source = None
-        self._osc_skipped = []
-        osc_device_file.current_uid_map = None
-        if version >= 16:
-            return False
-        section = root.find("osc-device")
-        if section is None:
-            return False
-        rows, self._osc_skipped = self._osc_rows_dict(section)
-        if not rows["inputs"]:
-            return False
-        if not self._bind:
-            result = osc_device_file.merge_profile_rows(rows, dry_run=True)
-            for entry in rows["inputs"]:
-                uid = result.uid_map.get((entry["type"], entry["id"]))
-                if uid:
-                    entry["uid"] = uid
-            self.pending_osc_rows = rows
-            self._pending_osc_version = version
-            osc_device_file.current_uid_map = dict(result.uid_map)
-            return True
-        result = osc_device_file.merge_profile_rows(rows)
-        osc_device_file.current_uid_map = dict(result.uid_map)
-        self._osc_old_source = (Path(fpath), version)
-        self.osc_migration_note = list(result.added)
-        return True
-
-    @staticmethod
-    def _osc_rows_dict(section: ElementTree.Element) -> tuple[dict, list[str]]:
-        """An old <osc-device> section as OSC's dict (OscRows.to_dict,
-        without uids) and the addresses skipped (a duplicate, or not an
-        axis or button). Old axis rows read -1..1 so they behave as before."""
-        inputs: list[dict] = []
-        skipped: list[str] = []
-        seen: set[str] = set()
-        for node in section.findall("./input"):
-            try:
-                kind = read_subelement(node, "input-type")
-                input_id = int(read_subelement(node, "input-id"))
-                label = str(read_subelement(node, "label")).strip().casefold()
-            except Exception:  # noqa: BLE001 - a damaged row is skipped
-                skipped.append("(unreadable row)")
-                continue
-            if (
-                kind not in (InputType.JoystickAxis, InputType.JoystickButton)
-                or not label
-                or label in seen
-            ):
-                skipped.append(label or "(no address)")
-                continue
-            seen.add(label)
-            axis = kind == InputType.JoystickAxis
-            inputs.append(
-                {
-                    "type": InputType.to_string(kind),
-                    "id": input_id,
-                    "label": label,
-                    "mode": "axis" if axis else "button",
-                    "cmd_mode": "message",
-                    "data": [],
-                    "source": 0,
-                    "range_min": -1.0 if axis else 0.0,
-                    "range_max": 1.0,
-                    "trigger": None,
-                    "delay_ms": None,
-                }
-            )
-        return {"inputs": inputs}, skipped
-
-    def _back_up_old_osc_before_writing(self, fpath: Path) -> None:
-        """The first save over the version 14 or 15 file this profile was
-        opened from keeps that file as <name>.xml.v<version>.bak."""
-        source = self._osc_old_source
-        if source is None:
-            return
-        try:
-            same = source[0].resolve() == fpath.resolve()
-        except OSError:
-            same = False
-        if same:
-            from gremlin import osc_device_file
-
-            osc_device_file.backup_old(fpath, source[1])
-            self._osc_old_source = None
-
     def refresh_osc_items(self) -> None:
         """Every OSC input item takes its uid's current number (or is
         flagged missing): after OSC's rows change, and before a Run."""
         for items in self.inputs.values():
             for item in items:
                 item.refresh_osc()
-
-    def commit_pending_osc_rows(self, fpath: Path) -> None:
-        """Before a profile read with bind=False is saved over its version
-        14 or 15 file: back the file up and add its OSC rows to OSC's file
-        for real, with the uids its bindings were given; the bindings then
-        take the rows' numbers. Nothing to do otherwise."""
-        rows = self.pending_osc_rows
-        if rows is None:
-            return
-        from gremlin import osc_device_file
-
-        osc_device_file.backup_old(Path(fpath), self._pending_osc_version or 15)
-        result = osc_device_file.merge_profile_rows(rows)
-        provisional = {
-            (e["type"], e["id"]): e["uid"] for e in rows["inputs"] if "uid" in e
-        }
-        moved = {
-            key: uid
-            for key, uid in result.uid_map.items()
-            if provisional.get(key, uid) != uid
-        }
-        if moved:
-            logging.getLogger("system").warning(
-                "OSC inputs matched differently on save than when the "
-                f"profile was read: {sorted(moved)}"
-            )
-        self.osc_migration_note = list(result.added)
-        self.pending_osc_rows = None
-        self._pending_osc_version = None
-        self.refresh_osc_items()
 
     @staticmethod
     def _logical_rows_dict(section: ElementTree.Element) -> dict:
@@ -1857,13 +1735,6 @@ class Profile:
         self.settings.from_xml(root)
         self.library.from_xml(root)
         self.load_warnings = []
-        if self._osc_skipped:
-            self.load_warnings.append(
-                "Some OSC inputs in this profile were left out (an address "
-                "listed twice, or not an axis or button): "
-                + ", ".join(self._osc_skipped)
-                + "."
-            )
         if self.library.unknown_types:
             self.load_warnings.append(
                 "This profile has actions of a type this program doesn't have: "
@@ -1901,9 +1772,6 @@ class Profile:
         """Bindings on OSC inputs OSC's file doesn't have are kept (they
         point at their uid, never re-targeted) and named in a load warning
         (D-09-OSC-FILE decision 2)."""
-        if self.pending_osc_rows is not None:
-            # Read without opening: its rows are added only when saved.
-            return
         count = sum(
             1
             for items in self.inputs.values()
@@ -1953,26 +1821,15 @@ class Profile:
         # (GL-153, 04 Q18, R14).
         self.device_database.update_for_uuids(self.inputs)
         self.commit_pending_logical_rows(Path(fpath))
-        self.commit_pending_osc_rows(Path(fpath))
         self._back_up_v14_before_writing(Path(fpath))
-        self._back_up_old_osc_before_writing(Path(fpath))
         text = self._xml_text()
         # Safely (a temporary file, then a swap), as module files are: a
         # crash mid-save leaves the old profile whole.
         from gremlin.modules import module_file
 
         module_file.write_text(Path(fpath), text, encoding="utf-8-sig", newline="")
-        if self._bind:
-            # Save also saves the Logical Device's and OSC's files when they
-            # changed (D-04-LD-FILE decision 2, D-09-OSC-FILE decision 1).
-            from gremlin import logical_device_file, osc_device_file
-
-            logical_device_file.save_if_dirty()
-            osc_device_file.save_if_dirty()
-            # The Configuration page's groups, order and names too (CS1).
-            from gremlin.modules import store as module_store
-
-            module_store.save_pending()
+        # The profile is saved from here on, whatever happens to the other
+        # files below (AUD-MOD-03): its History entry, then those files.
         before = self._saved_snapshot
         self._set_saved(text)
         if before != text:
@@ -1982,6 +1839,35 @@ class Profile:
             history_profile.record_save(Path(fpath), before, text)
         from gremlin.ui.live_debug import trace
         trace("SAVE", "Profile", "to_xml", fpath, "ok")
+        if self._bind:
+            self._save_other_files(Path(fpath))
+
+    def _save_other_files(self, fpath: Path) -> None:
+        """Save also saves the Logical Device's and OSC's files when they
+        changed (D-04-LD-FILE decision 2, D-09-OSC-FILE decision 1) and the
+        Configuration page's held groups, order and names (CS1). Each is
+        tried; one that fails stays unsaved (the "*") and SaveIncomplete
+        names it."""
+        from gremlin import logical_device_file, osc_device_file
+        from gremlin.modules import store as module_store
+
+        logical = logical_device_file
+        steps = (
+            ("the Logical Device's file", logical.path, logical.save_if_dirty),
+            ("OSC's file", osc_device_file.path, osc_device_file.save_if_dirty),
+            ("a Configuration layout's module file", None, module_store.save_pending),
+        )
+        failed: list[str] = []
+        for label, where, save in steps:
+            try:
+                save()
+            except Exception as error:
+                logging.getLogger("system").exception("Save: %s not written", label)
+                failed.append(_failed_file(label, where, error))
+        if failed:
+            from gremlin.ui.live_debug import trace
+            trace("SAVE", "Profile", "to_xml", fpath, "incomplete")
+            raise SaveIncomplete(fpath, failed)
 
     def _xml_text(self) -> str:
         """The profile as pretty XML text, exactly as to_xml writes it."""
@@ -2010,38 +1896,6 @@ class Profile:
         # Serialize XML document.
         ugly_xml = ElementTree.tostring(root, encoding="utf-8")
         return minidom.parseString(ugly_xml).toprettyxml(indent="    ")
-
-    def get_input_count(
-        self,
-        device_guid: uuid.UUID,
-        input_type: InputType,
-        input_id: int | ScanCode,
-        mode: str,
-    ) -> int:
-        """Returns the number of InputItem instances corresponding to the
-        provided information.
-
-        Args:
-            device_guid: GUID of the device
-            input_type: type of the input
-            input_id: id of the input
-            mode: name of the mode
-
-        Returns:
-            Number of InputItem instances linked with the given information
-        """
-        if device_guid not in self.inputs:
-            return 0
-
-        for item in self.inputs[device_guid]:
-            if (
-                item.input_type == input_type
-                and item.input_id == input_id
-                and item.mode == mode
-            ):
-                return len(item.action_sequences)
-
-        return 0
 
     def get_input_item(
         self,
@@ -2398,7 +2252,7 @@ class InputItem(EditNoted):
 
     def refresh_osc(self) -> None:
         """An OSC input item takes the current number of its uid (from its
-        <osc-uid>, else an old profile's load map, else type+number); a uid
+        <osc-uid>, else type+number); a uid
         OSC's file doesn't have leaves it as it was, flagged missing."""
         if self.device_id != OSC_DEVICE_UUID:
             return

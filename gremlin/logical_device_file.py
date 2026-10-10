@@ -71,34 +71,91 @@ def _rows(rows: LogicalRows | None) -> LogicalRows:
     return LogicalDevice()
 
 
-def _clean(layout: object) -> dict:
-    """A layout with a controls list and a groups list, whatever was read."""
+def _clean(layout: object, *, every_control: bool = False) -> dict:
+    """A layout with a controls list and a groups list, whatever was read.
+    every_control keeps controls that aren't objects too (for loading: the
+    rows skip and keep them, AD1)."""
     if not isinstance(layout, dict):
         layout = {}
-    controls = [c for c in layout.get("controls") or [] if isinstance(c, dict)]
-    groups = [str(g) for g in layout.get("groups") or [] if str(g or "").strip()]
+    controls = layout.get("controls")
+    if not isinstance(controls, list):
+        controls = []
+    if not every_control:
+        controls = [c for c in controls if isinstance(c, dict)]
+    groups = layout.get("groups")
+    if not isinstance(groups, list):
+        groups = []
+    groups = [str(g) for g in groups if str(g or "").strip()]
     return {"controls": controls, "groups": groups}
+
+
+class _TooDeep(Exception):
+    """The file exists but can't be read (bad text, not UTF-8 or nested too
+    deeply); the reason is the exception's text."""
+
+
+def _read_raw() -> dict:
+    """The file's layout as it is; raises _TooDeep when it can't be read
+    for its nesting."""
+    reason = store.damage_of(path())
+    if reason:
+        raise _TooDeep(reason)
+    try:
+        return _clean(store.read_path(path()).get(KEY), every_control=True)
+    except RecursionError:
+        raise _TooDeep("it is nested too deeply") from None
 
 
 def read_layout() -> dict:
     """The file's layout; empty when the file is missing or damaged."""
-    return _clean(store.read_path(path()).get(KEY))
+    try:
+        return _clean(_read_raw())
+    except _TooDeep:
+        return _clean({})
 
 
-def load(rows: LogicalRows | None = None) -> None:
+def _with_unreadable(layout: dict, rows: object) -> dict:
+    """layout with the controls the rows couldn't read put back in their
+    places (AD1), so a Save never drops a row of the file."""
+    kept = getattr(rows, "unreadable", None) or []
+    controls = list(layout["controls"])
+    for index, entry in sorted(kept, key=lambda pair: pair[0]):
+        controls.insert(min(index, len(controls)), entry)
+    return {**layout, "controls": controls}
+
+
+def load(rows: LogicalRows | None = None) -> list[str]:
     """Fills the Logical Device (or rows) from the file. A missing file is an
-    empty layout; the file is made on the first save."""
+    empty layout; the file is made on the first save. A control that can't
+    be read is skipped and kept for Save (AD1). Returns a warning for the
+    user per skipped control (also in the log); [] when all were read."""
     target = _rows(rows)
-    target.load_dict(read_layout())
+    try:
+        layout = _read_raw()
+    except _TooDeep as damaged:
+        target.load_dict(_clean({}))
+        target.mark_saved()
+        warning = (
+            f"The Logical Device file can't be read ({damaged}): "
+            f"{path()}. It was left as it is and won't be saved over."
+        )
+        syslog.warning(warning)
+        return [warning]
+    target.load_dict(layout)
     target.mark_saved()
+    warnings = list(getattr(target, "load_warnings", []) or [])
+    for warning in warnings:
+        syslog.warning(warning)
+    return warnings
 
 
 def save(rows: LogicalRows | None = None, who: str = "") -> bool:
-    """Writes the layout into the file, keeping its other keys. False when a
-    damaged file was refused (said in the error dialog); raises OSError when
-    the write failed."""
+    """Writes the layout into the file, keeping its other keys and the
+    controls the last load couldn't read (AD1). False when a damaged file
+    was refused (said in the error dialog) or can't be read for its nesting
+    (logged; nothing written); raises OSError when the write failed."""
     source = _rows(rows)
-    layout = _clean(source.to_dict())
+    layout = _with_unreadable(_clean(source.to_dict()), source)
 
     def change(doc: dict) -> None:
         # What makes it the Logical Device's module file for the Library
@@ -108,7 +165,16 @@ def save(rows: LogicalRows | None = None, who: str = "") -> bool:
                 doc[key] = value
         doc[KEY] = layout
 
-    if not store.update_path(path(), change, who or WHO):
+    try:
+        written = store.update_path(path(), change, who or WHO)
+    except RecursionError:
+        syslog.warning(
+            "Nothing was saved: the Logical Device file is nested too deeply "
+            "to read: %s",
+            path(),
+        )
+        return False
+    if not written:
         return False
     source.mark_saved()
     return True
@@ -219,9 +285,17 @@ def merge_profile_rows(
     if dry_run:
         return result
     if result.added:
-        target.load_dict(merged)
+        if getattr(target, "unreadable", None):
+            # The file's unreadable controls stay held for its Save (AD1).
+            target.load_dict(merged, keep_unreadable=True)
+        else:
+            target.load_dict(merged)
     # A matching row only in memory (not saved yet) still reaches the file.
-    if _clean(target.to_dict()) != read_layout():
+    try:
+        on_file = _read_raw()
+    except _TooDeep:
+        on_file = None
+    if _with_unreadable(_clean(target.to_dict()), target) != on_file:
         save(target, WHO)
     return result
 

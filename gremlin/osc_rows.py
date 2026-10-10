@@ -218,6 +218,15 @@ def _deadzone(value: object) -> tuple[float, float]:
     return (low, high)
 
 
+def _short(entry: object) -> str:
+    """An entry as text for a warning, cut short."""
+    try:
+        text = repr(entry)
+    except RecursionError:
+        text = "nested too deeply"
+    return text if len(text) <= 80 else text[:77] + "..."
+
+
 class OscRows:
     """The OSC inputs; OscDevice() shows one shared instance."""
 
@@ -225,6 +234,9 @@ class OscRows:
         self._rows: list[OscRow] = []
         self._dirty = False
         self.load_warnings: list[str] = []
+        # The file's entries load_dict couldn't read, as (place, entry):
+        # kept for Save, which writes them back in their places (AD1).
+        self.unreadable: list[tuple[int, object]] = []
         # The OSC page's groups and order (the file's "layout", "osc:<uid>"
         # keys) and your names ("osc:<uid>" -> name; "" = remove it from the
         # file). Kept with the inputs so one Save writes them all and Discard
@@ -489,13 +501,19 @@ class OscRows:
             ]
         }
 
-    def load_dict(self, data: dict) -> None:
+    def load_dict(self, data: dict, *, keep_unreadable: bool = False) -> None:
         """Replaces the rows with a to_dict() layout, then counts as saved.
-        Entries that can't be read are skipped and named in load_warnings."""
+        An entry that can't be read is skipped, named in load_warnings and
+        kept in unreadable, so the rows after it still load and Save writes
+        it back (AD1). keep_unreadable: the ones already held stay (the same
+        file's rows read again), else they are this layout's."""
+        held = list(self.unreadable)
         self._rows = []
         self._reindex()
-        self.load_warnings = []
-        for entry in (data or {}).get("inputs", []) or []:
+        skipped: list[tuple[int, object]] = []
+        warnings: list[str] = []
+        entries = (data or {}).get("inputs", []) or []
+        for index, entry in enumerate(entries if isinstance(entries, list) else []):
             try:
                 kind = entry.get("type", "button")
                 if isinstance(kind, str):
@@ -516,6 +534,12 @@ class OscRows:
                     **settings,
                 )
             except (GremlinError, AttributeError, TypeError, ValueError) as error:
-                self.load_warnings.append(f"OSC input skipped ({entry!r}): {error}")
+                skipped.append((index, entry))
+                warnings.append(
+                    f"OSC input {index + 1} skipped ({_short(entry)}): {error}. "
+                    "It is kept in the file as it is."
+                )
+        self.unreadable = held if keep_unreadable else skipped
+        self.load_warnings = warnings
         self._reindex()
         self.mark_saved()

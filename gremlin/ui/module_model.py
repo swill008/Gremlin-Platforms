@@ -650,10 +650,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 21: QtCore.QByteArray(b"damaged"),
     }
 
-    modelResetNeeded = QtCore.Signal()
     lastChanged = QtCore.Signal()
     focusChanged = QtCore.Signal()
-    hiddenChanged = QtCore.Signal()
     panesChanged = QtCore.Signal()
     claimsChanged = QtCore.Signal()
     # A card's "Driven by" changed (an action added, removed or retargeted).
@@ -887,7 +885,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if self._focus == slug:
             self._focus = ""
         self._reload()
-        self.hiddenChanged.emit()
 
     @QtCore.Slot(str)
     def unignoreSlug(self, slug: str) -> None:
@@ -895,7 +892,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         hidden.discard(slug)
         _set_hidden(hidden)
         self._reload()
-        self.hiddenChanged.emit()
 
     @QtCore.Slot()
     def unignoreAll(self) -> None:
@@ -904,7 +900,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return
         _set_hidden(set())
         self._reload()
-        self.hiddenChanged.emit()
 
     @QtCore.Slot(result=list)
     def hiddenList(self) -> list[str]:
@@ -1831,6 +1826,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._not_connected = ""
         self._device_name = ""
         self._rows: list[dict] = []
+        # The names as read at load (by friendly key), to tell which ones the
+        # user changed in this window.
+        self._names_loaded: dict[str, str] = {}
         # The device's controls were read (it was plugged in at load).
         self._read_from_device = False
         self._lit_index = -1
@@ -1916,7 +1914,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
         if info is None and guid_key(guid) == guid_key(XBOX_GUID):
             self.beginResetModel()
             self._rows = []
-            self._forget_steps()
+            self._loaded_now()
             self.endResetModel()
             self.changed.emit()
             return
@@ -1963,7 +1961,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 )
         self.beginResetModel()
         self._rows = rows
-        self._forget_steps()
+        self._loaded_now()
         self.endResetModel()
         self.changed.emit()
 
@@ -2003,7 +2001,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             )
         self.beginResetModel()
         self._rows = rows
-        self._forget_steps()
+        self._loaded_now()
         self.endResetModel()
         self.changed.emit()
 
@@ -2067,7 +2065,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 )
         self.beginResetModel()
         self._rows = rows
-        self._forget_steps()
+        self._loaded_now()
         self.endResetModel()
         self.changed.emit()
 
@@ -2187,6 +2185,22 @@ class DriverInputModel(QtCore.QAbstractListModel):
         self._redo.clear()
         self.undoChanged.emit()
 
+    @staticmethod
+    def _name_key(row: dict) -> str:
+        # OSC's inputs by their uid: the number is only a name.
+        if row.get("uid"):
+            return osc_friendly_key(row["uid"])
+        return f"{row['kind']}:{int(row['hwId'])}"
+
+    def _row_names(self) -> dict[str, str]:
+        return {self._name_key(r): str(r.get("friendly") or "") for r in self._rows}
+
+    def _loaded_now(self) -> None:
+        """A device was loaded: no Undo steps, and its names as read, so Save
+        writes only the names changed here (AD3, like OSC's names_loaded)."""
+        self._names_loaded = self._row_names()
+        self._forget_steps()
+
     def _forget_steps(self) -> None:
         if self._undo or self._redo:
             self._undo.clear()
@@ -2300,18 +2314,30 @@ class DriverInputModel(QtCore.QAbstractListModel):
         axes = [int(r["hwId"]) for r in self._rows if r["kind"] == "axis" and r["claimed"]]
         hats = [int(r["hwId"]) for r in self._rows if r["kind"] == "hat" and r["claimed"]]
         keys = [int(r["hwId"]) for r in self._rows if r["kind"] == "key" and r["claimed"]]
-        friendly = {}
-        for r in self._rows:
-            if r["claimed"] and r.get("friendly"):
-                # OSC's inputs by their uid: the number is only a name.
-                key = (
-                    osc_friendly_key(r["uid"])
-                    if r.get("uid")
-                    else f"{r['kind']}:{int(r['hwId'])}"
-                )
-                friendly[key] = str(r["friendly"])
+        # The window is non-modal: only the names changed here are written;
+        # a name saved elsewhere since it opened stays (AD3, AUD-FILES-01).
+        edited = {
+            key: name
+            for key, name in self._row_names().items()
+            if name != self._names_loaded.get(key, "")
+        }
+        # A name is kept only for a claimed control (03 S42).
+        claimed_keys = {self._name_key(r) for r in self._rows if r["claimed"]}
+        friendly: dict[str, str] = {}
 
         def change(doc: dict) -> None:
+            old = doc.get("claim")
+            names = old.get("friendly") if isinstance(old, dict) else None
+            if not isinstance(names, dict):
+                names = {}
+            merged = {str(k): str(v) for k, v in names.items() if v}
+            for key, text in edited.items():
+                if text:
+                    merged[key] = text
+                else:
+                    merged.pop(key, None)
+            friendly.clear()
+            friendly.update({k: v for k, v in merged.items() if k in claimed_keys})
             doc["kind"] = "control.hardware"
             doc["device"] = name
             if is_output_name(name):
@@ -2357,7 +2383,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             buttons=buttons,
             axes=axes,
             hats=hats,
-            friendly=list(friendly),
+            names_edited=list(edited),
         )
         try:
             if not store.update_path(path, change, "Configure Module"):

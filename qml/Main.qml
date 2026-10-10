@@ -479,6 +479,9 @@ ApplicationWindow {
         uiState.setCurrentRoom("configuration")
         applyDisplayPanel()
         refreshSourceModuleCount()
+        // The page shows the new device at once, not after the deferred
+        // sync (SHAKE-STRESS-09); the later call then changes nothing.
+        syncConfigurationPage()
     }
 
     // The device under the open Configuration page can change without a card
@@ -1316,9 +1319,13 @@ ApplicationWindow {
             if (backend)
                 backend.noteSave(where.length ? ("Saved the profile to " + where) : "Saved the profile.")
         } else {
-            _saveResultDialog.announce(false, "Not written. It is still only on this screen.")
+            // The profile was written but a file its Save also writes was
+            // not (04 S13): that message names the file.
+            var problem = backend ? backend.saveProblem() : ""
+            _saveResultDialog.announce(false, problem !== ""
+                ? problem : "Not written. It is still only on this screen.")
             if (backend)
-                backend.noteSave("The profile was not written.")
+                backend.noteSave(problem !== "" ? problem : "The profile was not written.")
         }
     }
 
@@ -1340,10 +1347,6 @@ ApplicationWindow {
             _notificationDialog.text = message
             _notificationDialog.open()
         }
-    }
-
-    ColorInformation {
-        id: colorInformation
     }
 
     ErrorDialog {

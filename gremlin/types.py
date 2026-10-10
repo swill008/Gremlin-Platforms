@@ -18,17 +18,6 @@ import gremlin.error
 type ScanCode = tuple[int, bool]
 
 
-class ActivationRule(enum.Enum):
-    """Activation rules for collections of conditions.
-
-    All requires all the conditions in a collection to evaluate to True while
-    Any only requires a single condition to be True.
-    """
-
-    All = 1
-    Any = 2
-
-
 class InputType(enum.Enum):
     """Enumeration of possible input types."""
 

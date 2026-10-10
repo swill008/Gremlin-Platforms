@@ -297,6 +297,7 @@ class LogicalDeviceActionModel(AbstractActionModel):
     def _get_is_pressed(self) -> bool:
         if self._action.input_type == InputType.JoystickButton:
             return self._action.value
+        return False
 
     def _set_is_pressed(self, value: bool) -> None:
         if self._action.input_type != InputType.JoystickButton:
@@ -741,7 +742,12 @@ class MacroFunctor(AbstractFunctor):
         properties: list[ActionProperty] = [],
     ) -> None:
         if self._should_execute(value):
-            macro.MacroManager().queue_macro(self.macro)
+            from gremlin import logical_loop
+
+            # Its Logical Device steps continue this event's chain (06 S94a).
+            macro.MacroManager().queue_macro(
+                self.macro, logical_loop.chain_of(getattr(event, "ld_chain", ()))
+            )
             if self.data.repeat_mode == MacroRepeatModes.Hold:
                 event_helpers.ButtonReleaseActions().register_callback(
                     lambda _event: macro.MacroManager().terminate_macro(self.macro),

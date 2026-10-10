@@ -22,6 +22,8 @@ import sys
 import time
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -392,7 +394,7 @@ def main() -> None:
         except Exception as e:  # noqa: BLE001
             print(f"ERROR {step.__name__}: {e!r}", flush=True)
     print("done", flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

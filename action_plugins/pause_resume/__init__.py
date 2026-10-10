@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import enum
+import logging
 from typing import (
     TYPE_CHECKING,
     List,
@@ -54,6 +55,11 @@ class PauseResumeType(enum.Enum):
                 return PauseResumeType.Resume
             case "Toggle":
                 return PauseResumeType.Toggle
+            case _:
+                logging.getLogger("system").warning(
+                    f"Pause and Resume: unknown operation {value!r}, using Pause"
+                )
+                return PauseResumeType.Pause
 
 
 class PauseResumeFunctor(AbstractFunctor):

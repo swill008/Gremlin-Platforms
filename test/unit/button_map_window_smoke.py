@@ -20,6 +20,8 @@ import tempfile
 import unittest.mock
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ.setdefault(
     "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
@@ -387,7 +389,7 @@ def main() -> None:
         print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
     print("done", flush=True)
     # os._exit skips Qt's teardown, which can hang off-screen.
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":
@@ -399,4 +401,4 @@ if __name__ == "__main__":
         traceback.print_exc()
         sys.stdout.flush()
         sys.stderr.flush()
-        os._exit(1)
+        smoke_exit(1)

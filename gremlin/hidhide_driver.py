@@ -10,11 +10,13 @@ install the driver.
 
 from __future__ import annotations
 
+import ctypes
 import logging
 import os
 import sys
 import threading
 from collections.abc import Callable
+from ctypes import wintypes
 from pathlib import Path
 
 from gremlin import util
@@ -99,9 +101,6 @@ def _vid_pid(instance: str) -> tuple[int | None, int | None]:
 def _gremlin_exe() -> str:
     # HidHide matches the process image, not the script. Ask Windows for this process.
     if os.name == "nt":
-        import ctypes
-        from ctypes import wintypes
-
         k32 = ctypes.WinDLL("kernel32", use_last_error=True)
         k32.GetModuleFileNameW.argtypes = [
             wintypes.HMODULE,
@@ -117,8 +116,6 @@ def _gremlin_exe() -> str:
 
 def _nt_image_path(path: str) -> str:
     """Same NT path HidHide stores: GetFinalPathNameByHandleW(VOLUME_NAME_NT)."""
-    import ctypes
-    from ctypes import wintypes
 
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
     k32.CreateFileW.argtypes = [
@@ -170,8 +167,6 @@ def _full_image_name(path: str) -> str:
     if image:
         _hh_log(f"image {text} -> {image}")
         return image
-    import ctypes
-    from ctypes import wintypes
 
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
     k32.GetVolumePathNameW.argtypes = [
@@ -250,8 +245,6 @@ def _opened(handle: int | None, err: int) -> int | None:
 def _open_control() -> int | None:
     if os.name != "nt":
         return _opened(None, ERROR_FILE_NOT_FOUND)
-    import ctypes
-    from ctypes import wintypes
 
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
     k32.CreateFileW.restype = ctypes.c_void_p
@@ -294,8 +287,6 @@ _ioctl_error = ""
 def _ioctl(
     handle: int, code: int, inn: bytes | None = None, out_size: int = 0
 ) -> tuple[bool, bytes]:
-    import ctypes
-    from ctypes import wintypes
 
     global _ioctl_error
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -634,11 +625,89 @@ def read_state() -> dict | None:
     return state
 
 
+# Windows structures, made once: ctypes keeps every structure class it has
+# made a pointer type for, so classes made per call were never freed
+# (SHAKE-STRESS-05).
+class GUID(ctypes.Structure):
+    _fields_ = [
+        ("Data1", wintypes.DWORD),
+        ("Data2", wintypes.WORD),
+        ("Data3", wintypes.WORD),
+        ("Data4", ctypes.c_ubyte * 8),
+    ]
+
+
+class SP_DEVINFO_DATA(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("ClassGuid", GUID),
+        ("DevInst", wintypes.DWORD),
+        ("Reserved", ctypes.c_void_p),
+    ]
+
+
+class SP_DEVICE_INTERFACE_DATA(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("InterfaceClassGuid", GUID),
+        ("Flags", wintypes.DWORD),
+        ("Reserved", ctypes.c_void_p),
+    ]
+
+
+class HIDD_ATTRIBUTES(ctypes.Structure):
+    _fields_ = [
+        ("Size", wintypes.ULONG),
+        ("VendorID", wintypes.USHORT),
+        ("ProductID", wintypes.USHORT),
+        ("VersionNumber", wintypes.USHORT),
+    ]
+
+
+class HIDP_CAPS(ctypes.Structure):
+    _fields_ = [
+        ("Usage", wintypes.USHORT),
+        ("UsagePage", wintypes.USHORT),
+        ("InputReportByteLength", wintypes.USHORT),
+        ("OutputReportByteLength", wintypes.USHORT),
+        ("FeatureReportByteLength", wintypes.USHORT),
+        ("Reserved", wintypes.USHORT * 17),
+        ("NumberLinkCollectionNodes", wintypes.USHORT),
+        ("NumberInputButtonCaps", wintypes.USHORT),
+        ("NumberInputValueCaps", wintypes.USHORT),
+        ("NumberInputDataIndices", wintypes.USHORT),
+        ("NumberOutputButtonCaps", wintypes.USHORT),
+        ("NumberOutputValueCaps", wintypes.USHORT),
+        ("NumberOutputDataIndices", wintypes.USHORT),
+        ("NumberFeatureButtonCaps", wintypes.USHORT),
+        ("NumberFeatureValueCaps", wintypes.USHORT),
+        ("NumberFeatureDataIndices", wintypes.USHORT),
+    ]
+
+
+class DEVPROPKEY(ctypes.Structure):
+    _fields_ = [("fmtid", ctypes.c_ubyte * 16), ("pid", wintypes.ULONG)]
+
+
 def list_hid_devices(gaming_only: bool) -> list[dict]:
     """HidHide HidDevices(). Tools → Hardware Hide only."""
     if os.name != "nt":
         return []
     return _list_hidhide_class_enum(gaming_only)
+
+
+def gaming_only_rows(rows: list[dict]) -> list[dict]:
+    """The collections list_hid_devices(True) would give, from the rows of
+    either walk: each row keeps its gaming (or unreadable) collections; a
+    row left with none goes. Rows without "gamingIds" are kept as they are."""
+    out = []
+    for row in rows:
+        ids = row.get("gamingIds")
+        if ids is None:
+            out.append(row)
+        elif ids:
+            out.append({**row, "instanceIds": list(ids), "instanceId": ids[0]})
+    return out
 
 
 def _is_gaming(vid: int, pid: int, usage_page: int, usage: int) -> bool:
@@ -653,8 +722,6 @@ def _is_gaming(vid: int, pid: int, usage_page: int, usage: int) -> bool:
 
 def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
     """HidHide HidDevices: GUID_DEVCLASS_HIDCLASS list + HID symbolic link."""
-    import ctypes
-    from ctypes import wintypes
 
     setup = ctypes.WinDLL("setupapi", use_last_error=True)
     hid = ctypes.WinDLL("hid", use_last_error=True)
@@ -674,58 +741,6 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
         wintypes.ULONG,
     ]
     cfg.CM_Get_Device_ID_ListW.restype = wintypes.DWORD
-
-    class GUID(ctypes.Structure):
-        _fields_ = [
-            ("Data1", wintypes.DWORD),
-            ("Data2", wintypes.WORD),
-            ("Data3", wintypes.WORD),
-            ("Data4", ctypes.c_ubyte * 8),
-        ]
-
-    class SP_DEVINFO_DATA(ctypes.Structure):
-        _fields_ = [
-            ("cbSize", wintypes.DWORD),
-            ("ClassGuid", GUID),
-            ("DevInst", wintypes.DWORD),
-            ("Reserved", ctypes.c_void_p),
-        ]
-
-    class SP_DEVICE_INTERFACE_DATA(ctypes.Structure):
-        _fields_ = [
-            ("cbSize", wintypes.DWORD),
-            ("InterfaceClassGuid", GUID),
-            ("Flags", wintypes.DWORD),
-            ("Reserved", ctypes.c_void_p),
-        ]
-
-    class HIDD_ATTRIBUTES(ctypes.Structure):
-        _fields_ = [
-            ("Size", wintypes.ULONG),
-            ("VendorID", wintypes.USHORT),
-            ("ProductID", wintypes.USHORT),
-            ("VersionNumber", wintypes.USHORT),
-        ]
-
-    class HIDP_CAPS(ctypes.Structure):
-        _fields_ = [
-            ("Usage", wintypes.USHORT),
-            ("UsagePage", wintypes.USHORT),
-            ("InputReportByteLength", wintypes.USHORT),
-            ("OutputReportByteLength", wintypes.USHORT),
-            ("FeatureReportByteLength", wintypes.USHORT),
-            ("Reserved", wintypes.USHORT * 17),
-            ("NumberLinkCollectionNodes", wintypes.USHORT),
-            ("NumberInputButtonCaps", wintypes.USHORT),
-            ("NumberInputValueCaps", wintypes.USHORT),
-            ("NumberInputDataIndices", wintypes.USHORT),
-            ("NumberOutputButtonCaps", wintypes.USHORT),
-            ("NumberOutputValueCaps", wintypes.USHORT),
-            ("NumberOutputDataIndices", wintypes.USHORT),
-            ("NumberFeatureButtonCaps", wintypes.USHORT),
-            ("NumberFeatureValueCaps", wintypes.USHORT),
-            ("NumberFeatureDataIndices", wintypes.USHORT),
-        ]
 
     setup.SetupDiGetClassDevsW.restype = ctypes.c_void_p
     setup.SetupDiGetClassDevsW.argtypes = [
@@ -840,17 +855,13 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             )
             if needed.value < 8:
                 continue
-            path_chars = max(2, needed.value // 2)
-
-            class DETAIL(ctypes.Structure):
-                _fields_ = [
-                    ("cbSize", wintypes.DWORD),
-                    ("DevicePath", ctypes.c_wchar * path_chars),
-                ]
-
-            detail = DETAIL()
+            # SP_DEVICE_INTERFACE_DETAIL_DATA_W: a DWORD cbSize, then the
+            # path (WCHARs) from byte 4. A plain buffer, not a class per size.
+            detail = ctypes.create_string_buffer(max(8, int(needed.value)) + 2)
             # sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W) is 8 on x64, 6 on x86
-            detail.cbSize = 8 if ctypes.sizeof(ctypes.c_void_p) == 8 else 6
+            wintypes.DWORD.from_buffer(detail).value = (
+                8 if ctypes.sizeof(ctypes.c_void_p) == 8 else 6
+            )
             if not setup.SetupDiGetDeviceInterfaceDetailW(
                 devs,
                 ctypes.byref(iface),
@@ -860,7 +871,7 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
                 None,
             ):
                 continue
-            link = detail.DevicePath or ""
+            link = ctypes.wstring_at(ctypes.addressof(detail) + 4) or ""
         finally:
             setup.SetupDiDestroyDeviceInfoList(devs)
         if not link or not link.startswith("\\"):
@@ -927,6 +938,8 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
             {
                 "instanceId": instance,
                 "instanceIds": [],
+                # The collections a gaming-only walk keeps (gaming_only_rows).
+                "gamingIds": [],
                 "name": label,
                 "canHide": True,
                 "photo": "",
@@ -937,6 +950,8 @@ def _list_hidhide_class_enum(gaming_only: bool) -> list[dict]:
         )
         if instance not in group["instanceIds"]:
             group["instanceIds"].append(instance)
+        if (gaming or denied) and instance not in group["gamingIds"]:
+            group["gamingIds"].append(instance)
         group["gaming"] = group["gaming"] or gaming
         if opened:
             group["sawOpen"] = True
@@ -988,15 +1003,10 @@ def _device_description(instance: str) -> str:
     CM_Get_DevNode_PropertyW."""
     if not instance or os.name != "nt":
         return ""
-    import ctypes
-    from ctypes import wintypes
 
     cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
     CR_SUCCESS = 0
     DEVPROP_TYPE_STRING = 0x00000012
-
-    class DEVPROPKEY(ctypes.Structure):
-        _fields_ = [("fmtid", ctypes.c_ubyte * 16), ("pid", wintypes.ULONG)]
 
     key = DEVPROPKEY()
     raw = _guid_le("A45C254E-DF1C-4EFD-8020-67D146A850E0")
@@ -1030,8 +1040,6 @@ def _parent_instance(instance: str) -> str:
 
     if not instance or os.name != "nt":
         return ""
-    import ctypes
-    from ctypes import wintypes
 
     cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
     CR_SUCCESS = 0
@@ -1054,16 +1062,11 @@ def _container_id(instance: str) -> str:
     """DEVPKEY_Device_ContainerId as GUID text. HidHide BaseContainerId."""
     if not instance or os.name != "nt":
         return GUID_NULL
-    import ctypes
-    from ctypes import wintypes
 
     cfg = ctypes.WinDLL("cfgmgr32", use_last_error=True)
     CR_SUCCESS = 0
     CR_NO_SUCH_VALUE = 37
     DEVPROP_TYPE_GUID = 0x0000000D
-
-    class DEVPROPKEY(ctypes.Structure):
-        _fields_ = [("fmtid", ctypes.c_ubyte * 16), ("pid", wintypes.ULONG)]
 
     key = DEVPROPKEY()
     raw = _guid_le("8C7ED206-3F8A-4827-B3AB-AE9E1FAEFC6C")

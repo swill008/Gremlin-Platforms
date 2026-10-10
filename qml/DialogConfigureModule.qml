@@ -213,8 +213,12 @@ ApplicationWindow {
         }
         if (direction === "dest" && profilePath !== "") {
             if (!backend.saveProfile(profilePath)) {
-                _saveGate.announce(false, "Saved to the module file. The profile was not written.")
-                backend.noteSave("Saved the module file to " + _driver.lastSavedPath() + ". The profile was not written.")
+                // The profile may be written with another of its files not
+                // (04 S13): then that message names the file.
+                var problem = backend.saveProblem()
+                var notWritten = problem !== "" ? problem : "The profile was not written."
+                _saveGate.announce(false, "Saved to the module file. " + notWritten)
+                backend.noteSave("Saved the module file to " + _driver.lastSavedPath() + ". " + notWritten)
                 return false
             }
         }

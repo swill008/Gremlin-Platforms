@@ -121,12 +121,89 @@ class Verdict:
 
 def load_expected(path: str | os.PathLike) -> dict | None:
     """expected.json, or None when it is missing or not readable."""
+    return read_expected(path)[0]
+
+
+def read_expected(path: str | os.PathLike) -> tuple[dict | None, str]:
+    """(expected.json, "") or (None, why it can't be used); (None, "") when
+    there is no file. The file is checked here, so compare() never meets a
+    value of the wrong type (a hand edit or a damaged write)."""
     try:
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
-    except (OSError, ValueError):
-        return None
-    return data if isinstance(data, dict) else None
+    except FileNotFoundError:
+        return None, ""
+    except (OSError, ValueError, RecursionError) as err:
+        # RecursionError: absurdly deep nesting.
+        return None, (str(err) or type(err).__name__)[:200]
+    problem = _shape_problem(data)
+    return (None, problem) if problem else (data, "")
+
+
+# Fields compare() reads, by the type it needs ("int" allows a number in text).
+_STR = (str,)
+_LIST_OF_STR = "list of text"
+_FIELDS: dict[str, dict[str, object]] = {
+    "sticks": {
+        "expect": _STR,
+        "windows_name": _STR,
+        "name": _STR,
+        "guid": _STR,
+        "vid": "int",
+        "pid": "int",
+        "instance_ids": _LIST_OF_STR,
+        "feeds": _LIST_OF_STR,
+    },
+    "vjoy": {"expect": _STR, "guid": _STR, "fed_by": _LIST_OF_STR},
+    # xinput: the real XInput slot (1-4) ViGEm gave the pad; null = not known.
+    "xbox": {"expect": _STR, "pad": "int", "xinput": "int"},
+}
+
+
+def _bad_value(value: object, kind: object) -> bool:
+    if value is None:
+        return False
+    if kind == "int":
+        try:
+            int(value)  # type: ignore[call-overload]
+        except (TypeError, ValueError):
+            return True
+        return isinstance(value, bool)
+    if kind == _LIST_OF_STR:
+        return not isinstance(value, list) or not all(
+            isinstance(item, str) for item in value
+        )
+    return not isinstance(value, kind)  # type: ignore[arg-type]
+
+
+def _shape_problem(data: object) -> str:
+    """Why the parsed file can't be compared with, or ""."""
+    if not isinstance(data, dict):
+        return "not a JSON object"
+    hidhide = data.get("hidhide")
+    if hidhide is not None:
+        if not isinstance(hidhide, dict):
+            return "hidhide is not an object"
+        if _bad_value(hidhide.get("apps"), _LIST_OF_STR):
+            return "hidhide.apps is not a list of text"
+        if _bad_value(hidhide.get("mode"), _STR):
+            return "hidhide.mode is not text"
+    for section, fields in _FIELDS.items():
+        entries = data.get(section)
+        if entries is None:
+            continue
+        if not isinstance(entries, list):
+            return f"{section} is not a list"
+        for n, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                return f"{section}[{n}] is not an object"
+            for key, kind in fields.items():
+                if _bad_value(entry.get(key), kind):
+                    return f"{section}[{n}].{key} has the wrong type"
+            # A missing pad number falls back to its position; null doesn't.
+            if section == "xbox" and "pad" in entry and entry["pad"] is None:
+                return f"{section}[{n}].pad has the wrong type"
+    return ""
 
 
 def _norm_name(name: str) -> str:
@@ -370,8 +447,12 @@ def compare(expected: dict | None, seen: list[SeenDevice], steam: bool) -> Verdi
 
     for n, pad in enumerate(expected.get("xbox") or []):
         number = int(pad.get("pad", n + 1))
-        expect = pad.get("expect", "visible")
-        device = pads.pop(number, None)
+        # Matched by the real XInput slot, never by Gremlin's pad number: a
+        # real pad in another slot must not pass for this one. No slot known
+        # yet: no verdict (S122).
+        xinput = pad.get("xinput")
+        expect = pad.get("expect", "visible") if xinput is not None else ""
+        device = pads.pop(int(xinput), None) if xinput is not None else None
         rows.append(
             Row(
                 "xbox",
@@ -382,7 +463,9 @@ def compare(expected: dict | None, seen: list[SeenDevice], steam: bool) -> Verdi
                 key=device.key if device else f"exp:xbox:{n}",
                 section=SECTION_XBOX,
                 in_gremlin="Gremlin's Xbox output (ViGEm)",
-                ids=f"XInput pad {number}",
+                ids=f"XInput pad {xinput}"
+                if xinput is not None
+                else "XInput pad not known yet",
                 device=device,
             )
         )

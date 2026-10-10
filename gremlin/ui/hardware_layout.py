@@ -539,8 +539,6 @@ class HardwareLayoutModel(ControlLayoutModel):
 
     def _leaf_ok(self, tag: str, dest: str) -> bool:
         kind = self._action_type
-        if kind == "unmapped":
-            return False
         if kind not in ("all", ""):
             allowed = _NAMED_FILTERS.get(kind)
             if allowed is not None and tag not in allowed:
@@ -622,10 +620,7 @@ class HardwareLayoutModel(ControlLayoutModel):
             return False
         if self._no_actions and count:
             return False
-        if self._action_type == "unmapped":
-            if count:
-                return False
-        elif self._action_filtering() and not action_count:
+        if self._action_filtering() and not action_count:
             return False
         return self._matches(item, self._search, self._type_filter)
 
@@ -654,8 +649,9 @@ class HardwareLayoutModel(ControlLayoutModel):
         if guid and guid_key(guid) != guid_key(self._store.guid):
             return
         self._store.load()
-        if what == "discarded":
-            # Steps would replay the discarded edits.
+        if what in ("discarded", "replaced"):
+            # Steps would replay the dropped edits (replaced: AD2, the
+            # newer file won; the store said so).
             self._on_reloaded()
         else:
             self._rebuild()
@@ -761,10 +757,6 @@ class HardwareLayoutModel(ControlLayoutModel):
     @QtCore.Property(str, notify=filtersChanged)
     def actionType(self) -> str:
         return self._action_type
-
-    @QtCore.Property(str, notify=filtersChanged)
-    def destFilter(self) -> str:
-        return self._dest_filter
 
     @QtCore.Property(list, constant=True)
     def typeFilterNames(self) -> list[str]:

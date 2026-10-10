@@ -449,3 +449,56 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Lead: main test process refuses the real dill too (test/conftest.py) | fix | 3–8 min (table: agent fix) | 1 min | 14:51–14:52 |
 | 2026-10-10 | SHAKE-STRESS: 6 stress scenarios (clean core; release-entry leak, Options/viewer leaks, harness qWait starves threads) | test | rough guess 15–25 min (no row) | 25 min | 14:34–14:59 |
 | 2026-10-10 | Full run with dill guard (DL1 c) | test | 6–7 min + lint (table) | 5 min | 14:59–15:05; run 4:51; 0 tests reach the real dill; 1 order-dependent History test |
+| 2026-10-10 | F1-SAVE: profile saved even if a side file fails; SaveIncomplete names the file | fix | 3–8 min (table) | 3 min | 15:16–15:19 |
+| 2026-10-10 | F1-LD: AD1 bad Logical Device rows skipped with warning, kept at Save | fix | 3–8 min (table) | 3 min | 15:16–15:19 |
+| 2026-10-10 | F1-KEY: AD4 keys with no actions kept in the Keyboard module layout | fix | 3–8 min (table) | 5 min | 15:16–15:21 |
+| 2026-10-10 | F1-WRITE: no in-place fallback writes; templates + photo cache safe | fix | 3–8 min (table) | 3 min | 15:17–15:20 |
+| 2026-10-10 | F1-PARSE: tester expected types + deep nesting in 9 readers | fix | 3–8 min (table) | 3 min | 15:17–15:20 |
+| 2026-10-10 | F1-SETUP: AD3 Module Setup saves only changed names | fix | 3–8 min (table) | 4 min | 15:16–15:20 |
+| 2026-10-10 | Lead: RecursionError gaps (module_file, hardware_profile), test_audit_saving update, routing | fix | 3–8 min (table: agent fix) | 3 min | 15:19–15:22 |
+| 2026-10-10 | F1-SPEC: AD1-AD10 into spec, decisions, glossary | docs | 3–8 min (table) | 4 min | 15:17–15:21 |
+| 2026-10-10 | F2-SAVEMSG: save message names the failed file; core plugin import failure stops start-up | fix | 3–8 min (table) | 2 min | 15:20–15:22 |
+| 2026-10-10 | F1-STORE: held layout yields to a newer file (AD2), unclaimed names, device delete, LD/OSC reload warnings | fix | 5–10 min (table) | 6 min | 15:16–15:22 |
+| 2026-10-10 | F2-OSCINFO: Listening box shows Targets + output switch | fix | 3–8 min (table) | 1 min | 15:21–15:22 |
+| 2026-10-10 | F2-LDPICK: AD10 picker shows loaded self-target; loop notice arrow | fix | 3–8 min (table) | 1 min | 15:22–15:23 |
+| 2026-10-10 | F2-SMALL: five small crash fixes (pause, spline NaN, macro, Auto Mapper, condition dead slot) | fix | 3–8 min (table) | ~10 min (start stamp late) | ~15:13–15:23 |
+| 2026-10-10 | F1-LIBPACK: damaged library.json rows and Device Packs refused safely; 64 MB cap; names cut to 80 | fix | 5–10 min (table) | 7 min | 15:17–15:24 |
+| 2026-10-10 | F3-OSCSRV: one OSC receive thread, stop returns at once | refactor | 5–10 min (table) | 2 min | 15:22–15:24 |
+| 2026-10-10 | F2-TESTER: to-do 84 study (stopped: needs spec decision) | study | 3–8 min (table) | <1 min | 15:25–15:25 |
+| 2026-10-10 | F3-TESTERRACE: tester link hook flag under a lock | fix | 3–8 min (table) | <1 min | 15:25–15:25 |
+| 2026-10-10 | F4-AD9: Type box loses No actions; Help line; lead removed dead unmapped branches | fix | 3–8 min (table) | 1 min (+1 lead) | 15:25–15:27 |
+| 2026-10-10 | F1-LDHOOK: LD/OSC load warnings shown at start; rollback and OSC keep unreadable rows | fix | 5–10 min (table) | ~7 min (end stamp doubtful) | 15:20–15:27 |
+| 2026-10-10 | F2-VJOY: hat error attr, no output writes outside a Run, claim checked before open; 6 test files + baseline | fix | 5–10 min (table) | 7 min | 15:21–15:28 |
+| 2026-10-10 | Lead: LD file reports any damage (not only deep nesting); OSC Undo keeps unreadable rows; LD tests 208 pass | lead fix | no timing data yet | ~3 min | 15:25–15:28 |
+| 2026-10-10 | F1-HIST: History lines checked, kept copies whole, pictures put back on failure, AD6 ask, RecursionError | fix | 5–10 min (table) | 12 min | 15:17–15:29 |
+| 2026-10-10 | Lead: DialogHistory asks before writing outside (AD6, glossary wording "Write Here"); History tests 67 pass | lead fix | no timing data yet | 1 min | 15:29–15:30 |
+| 2026-10-10 | F-OSCUNDO: test that OSC Undo keeps unreadable rows | test | 3–8 min (table) | 1 min | 15:29–15:30 |
+| 2026-10-10 | F2-REGISTRY: a module file that failed to open is read again next call | fix | 3–8 min (table) | 1 min | 15:29–15:30 |
+| 2026-10-10 | F3-WAITS: bounded listener/macro waits, restart retires old thread, dead sleep, gremlin.clock | fix | 3–8 min (table) | 5 min | 15:25–15:30 |
+| 2026-10-10 | F4-AD8: Button Map editor load failure shows plain error, EVO layout removed; importPack never raises | fix | 3–8 min (table) | 5 min (+2:41 golden run) | 15:25–15:30 |
+| 2026-10-10 | F3-HISTORDER: History writer keeps queue order at quit | fix | 3–8 min (table) | 2 min | 15:30–15:32 |
+| 2026-10-10 | F3-CLOCK: five files use gremlin.clock for timing | fix | 3–8 min (table) | 2 min | 15:31–15:33 |
+| 2026-10-10 | F-HISTASK: off-screen test of the History Write Here question | test | 3–8 min (table) | 2 min | 15:30–15:32 |
+| 2026-10-10 | F4-FLAKY: three flaky tests fixed (child guards path, rules collect root, log-level History entry) | test fix | 5–10 min (table) | 7 min | 15:26–15:33 |
+| 2026-10-10 | F3-HIDHIDE: ctypes classes made once (STRESS-05); STRESS-06 study (stopped: visible change) | fix | 3–8 min (table) | 3 min | 15:31–15:34 |
+| 2026-10-10 | F3-EXIT: AD5 quit releases Qt before exit (release_qt, 3 s guard) | refactor | 5–10 min (table) | 4 min | 15:31–15:35 |
+| 2026-10-10 | Lead: second-copy check reads the lock owner (getLockInfo), test first | lead fix | no timing data yet | ~2 min | 15:33–15:35 |
+| 2026-10-10 | F4-TESTGAPS: S34 guard, Keyboard/OSC carry (16), random list-page journey (5 seeds); found Keyboard names bug | test | 5–10 min (table) | 9 min | 15:26–15:35 |
+| 2026-10-10 | F2-KEYNAMES: Keyboard key names travel in Device Pack / Library Restore / Import | fix | 3–8 min (table) | 1 min | 15:36–15:37 |
+| 2026-10-10 | F2-PAGEROWS: list pages change rows in place (no reset, SJ-02); stale-rows cause found; lead applied Main/ConfigurationPage fix | fix | 3–8 min (table) | 4 min (+2 lead) | 15:33–15:39 |
+| 2026-10-10 | F4-DEAD: 63 dead definitions + 11 dead signals removed; deferred list | refactor | 5–10 min (table) | 5 min | 15:33–15:38 |
+| 2026-10-10 | F3-LEAKS: release entries spent at release (S38 bug), Options models owned, curve objects reused; Input Viewer is PySide | refactor | 5–10 min (table) | 13 min | 15:25–15:38 |
+| 2026-10-10 | F4-PYPATH: child processes keep test guards (6 tests), child_env helper, guard test, settings snapshot fixture | test fix | 3–8 min (table) | 6 min | 15:34–15:40 |
+| 2026-10-10 | F-SMOKEEXIT: 58 smoke scripts release Qt before exit (smoke_exit helper) | test fix | 3–8 min (table) | 5 min (+1:50 run) | 15:36–15:41 |
+| 2026-10-10 | F4-DILLPROBE: dill loading test proves the path with a recorder, never loads dill.dll | test fix | 3–8 min (table) | 2 min | 15:41–15:43 |
+| 2026-10-10 | T1-MATCH: tester matches Xbox pads by xinput slot | fix | 3–8 min (table) | 3 min | 15:40–15:43 |
+| 2026-10-10 | T1-SLOT: ViGEm user index -> output.xbox_slot -> expected.json xinput | fix | 3–8 min (table) | 3 min | 15:40–15:43 |
+| 2026-10-10 | F4-MAP: all 10 map pages refreshed + 7 approved decisions written into §8/§12 | map catch-up | 5–7 min (table: map catch-up) | 16 min | 15:27–15:43 |
+| 2026-10-10 | F4-AD7: OSC legacy converters removed (osc.py, osc_device_file, profile, backend, pack, options) + tests | refactor | 3–8 min (table: agent fix) | 15 min (spread to more callers) | 15:32–15:47 |
+| 2026-10-10 | F4-HARNESS: harness pump wait, deferred deletes, no real HID list, F6 theme, smoke_exit; journeys 93 s -> 55 s | test fix | 5–10 min (table) | 10 min | 15:38–15:48 |
+| 2026-10-10 | F3-HIDRESET: Hardware Hide one device walk per open; SHELLEXECUTEINFOW once | fix | 3–8 min (table) | 14 min (~10 queued behind other test runs) | 15:34–15:48 |
+| 2026-10-10 | Lead: 09 S48 + 04 S25/§2/§3 rewritten for AD7 | map | no timing data yet | 3 min | 15:45–15:48 |
+| 2026-10-10 | F2-EDITORS: editor cut-offs at 100/150/200 % (picker, Condition, Xbox, Mouse, TTS, Tempo, Double Tap, Smart Toggle, placeholders, pane width) | fix | 15 min (brief check-in) | 28 min | 15:21–15:49 |
+| 2026-10-10 | L1-CHAIN: loop guard follows each event's chain (Event.ld_chain, macro chain), 0.1 s window gone | fix | rough guess 15–25 min (no data) | 9 min | 15:40–15:49 |
+| 2026-10-10 | F4-COLORINFO: dead ColorInformation chain + destFilter removed | fix | 3–8 min (table) | 3 min | 15:46–15:49 |
+| 2026-10-10 | F4-MAP2: map lines for T1, AD7, harness, HidHide, editors, L1, colour chain; to-dos 84/89/90/91 done | map catch-up | 5–7 min (table) | 4 min | 15:49–15:53 |

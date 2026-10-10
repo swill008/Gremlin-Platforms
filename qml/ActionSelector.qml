@@ -17,7 +17,10 @@ Item {
     property var callback: null
 
     implicitHeight: _content.implicitHeight
-    implicitWidth: Style.dp(200)
+    // Sized from the text: the widest action name is the preferred width,
+    // the chosen name plus Add Action the least it squeezes to.
+    implicitWidth: _content.implicitWidth
+    Layout.minimumWidth: _combobox.Layout.minimumWidth + _content.spacing + _button.implicitWidth
 
     Connections {
         target: actionNode
@@ -41,8 +44,16 @@ Item {
             id: _combobox
 
             Layout.fillWidth: true
-            Layout.minimumWidth: Style.dp(72)
+            Layout.minimumWidth: Math.ceil(_current.advanceWidth) + leftPadding + rightPadding
+                + (contentItem ? contentItem.leftPadding + contentItem.rightPadding : 0) + Style.dp(2)
+            implicitContentWidthPolicy: ComboBox.WidestText
             popup.width: Math.max(width, Style.dp(240))
+
+            TextMetrics {
+                id: _current
+                font: _combobox.font
+                text: _combobox.currentText
+            }
         }
 
         Button {

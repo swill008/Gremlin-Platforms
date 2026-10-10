@@ -65,16 +65,6 @@ class FiniteStateMachine:
         with self._lock:
             self.current_state = self.start_state
 
-    def set_state(self, state: str) -> None:
-        """Sets the current state without performing a transition.
-
-        Args:
-            state: the state to put the FSM into
-        """
-        with self._lock:
-            if state in self.states:
-                self.current_state = state
-
     def try_perform(self, action: str, *args: Any) -> list[Any] | None:  # noqa: ANN401
         """Attempts a state transition, returning None if invalid instead
         of raising.

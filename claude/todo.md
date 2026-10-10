@@ -412,8 +412,8 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     process_event only via InputModuleRuntime._on_key, runtime.py:185-196, claim_allows_key). As for profile
     keys, with no Keyboard claim saved every key passes (claim.py:173-174). Not verified in a live Run.
     Checking in this batch.
-84. (TWIN, 2026-10-10; 02 gap TW-XBOX-SLOT): the Input Tester's Xbox rows compare Gremlin's Xbox output pad
-    number with the Windows XInput slot number, which are numbered differently; match them properly. Not started.
+84. DONE 2026-10-10 (this batch; 02 S105, S106, T1) (TWIN, 2026-10-10; 02 gap TW-XBOX-SLOT): the Input Tester's Xbox rows compare Gremlin's Xbox output pad
+    number with the Windows XInput slot number, which are numbered differently; match them properly. Done 2026-10-10 (this batch).
 85. (TWIN, 2026-10-10): not verified whether HidHide can hide an Xbox pad from XInput (a program reading XInput
     may still see a hidden pad). Verify read-only and say so in Help. Not started.
 86. (RW5, 2026-10-10): the Reset Devices Xbox note shows "can t" on screen (apostrophe missing; the text in the
@@ -427,9 +427,9 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 ## On hold / parked (user's choice)
 
-89. (LD2, 2026-10-10, found by LD-GUARD): the Logical Device loop guard only catches a macro step re-triggering its own control when the cycle is under 0.1 s; a slower macro self-loop isn't stopped, and mashing a button that runs such a macro faster than 10/s for 8 presses could be stopped by mistake. A full fix carries the chain on each event (event path). Not started.
-90. (LD1, 2026-10-10, found by LD-PICK): a Map to Logical Device loaded from a profile that already targets its own control keeps that target (defaults never change loaded data, S92) but its picker shows nothing selected; the loop guard stops it at Run. Not started.
-91. IN PROGRESS 2026-10-10 14:05 (user: "go ahead and get it done now"; approved **Method B: shared building
+89. DONE 2026-10-10 (this batch; 06 S94a, L1) (LD2, 2026-10-10, found by LD-GUARD): the Logical Device loop guard only catches a macro step re-triggering its own control when the cycle is under 0.1 s; a slower macro self-loop isn't stopped, and mashing a button that runs such a macro faster than 10/s for 8 presses could be stopped by mistake. A full fix carries the chain on each event (event path). Done 2026-10-10 (this batch).
+90. DONE 2026-10-10 (this batch; 06 S94, S96, AD10, F2-LDPICK) (LD1, 2026-10-10, found by LD-PICK): a Map to Logical Device loaded from a profile that already targets its own control keeps that target (defaults never change loaded data, S92) but its picker shows nothing selected; the loop guard stops it at Run. Done 2026-10-10 (this batch).
+91. DONE 2026-10-10 (e2267c9b; 05 S132) (started 14:05; user: "go ahead and get it done now"; approved **Method B: shared building
     blocks**, not Method A below; PB1 Logical's version, PB2 Clear Name on Configuration, PB3 pixel-identical
     proof; brief scratchpad sb_brief.md). Method B: each page stays its own file; the repeated glue becomes
     three shared parts the pages use (pane/leave handling in ActionPane, a PageAppearance part, a
@@ -505,6 +505,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
       C and E suffixes into plain axes (`gremlin/ui/osc_device_model.py`
       `_parse_import_line`), while `qml/OscImportDialog.qml` says otherwise.
       Goes with B16: real types, or fix the text.
+92. (H1, 2026-10-10, F3-HIDHIDE, SHAKE-STRESS-06) Hardware Hide opening blocks the window ~0.5 s (after the read-once fix, about half). Moving the device read onto a gremlin.threads worker would need a "Loading…" state in DialogHardwareHide.qml (list opens empty, fills in), late ticks after setCloak/setInverse/setDeviceHidden/setGremlinControl/setGamingOnly/setDevicePhoto (needs a generation guard for quick clicks), a spec statement, and test waits on deviceCount. User chose to record it only (2026-10-10). Not started.
 
 ## Notes kept for reference
 

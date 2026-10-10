@@ -20,13 +20,9 @@ def display_error(message: str, details: str = "") -> None:
 
 @common.SingletonDecorator
 class Signal(QtCore.QObject):
-    reloadUi = QtCore.Signal()
-
     reloadCurrentInputItem = QtCore.Signal()
 
     inputItemChanged = QtCore.Signal(int)
-
-    advancedEditorChanged = QtCore.Signal(bool)
 
     setInputIndex = QtCore.Signal(int)
 
@@ -61,9 +57,6 @@ class Signal(QtCore.QObject):
     # OSC's feedback rows (its file's "feedback" part) changed
     # (D-09-OSC-FEEDBACK).
     oscFeedbackChanged = QtCore.Signal()
-    # An OSC message went in or out (D-09-OSC-MONITOR); the Monitor reads
-    # osc_traffic.recent().
-    oscTraffic = QtCore.Signal()
     # "Find OSC devices" found or lost a device (D-09-OSC-DISCOVERY).
     oscDevicesFound = QtCore.Signal()
 

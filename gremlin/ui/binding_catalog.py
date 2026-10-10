@@ -31,7 +31,8 @@ _WRAPPERS = {
 
 
 # The Type box, in order: (filter key, the action tag it picks). Its names
-# are the plugins' action names (05 Q6, RB12).
+# are the plugins' action names (05 Q6, RB12). Inputs with no actions are
+# found with the No actions in this mode filter, not here (05 S18, S123).
 _TYPE_FILTERS = [
     ("all", ""),
     ("vjoy", "map-to-vjoy"),
@@ -41,9 +42,8 @@ _TYPE_FILTERS = [
     ("macro", "macro"),
     ("mode", "change-mode"),
     ("other", ""),
-    ("unmapped", ""),
 ]
-_TYPE_FILTER_TEXT = {"all": "All types", "other": "Other", "unmapped": "No actions"}
+_TYPE_FILTER_TEXT = {"all": "All types", "other": "Other"}
 
 _NAMED_FILTERS = {key: {tag} for key, tag in _TYPE_FILTERS if tag}
 

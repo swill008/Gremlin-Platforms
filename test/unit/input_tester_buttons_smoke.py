@@ -22,6 +22,8 @@ import runpy
 import sys
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ.setdefault(
     "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts")
@@ -191,7 +193,7 @@ def main() -> None:
         runpy.run_path(str(ROOT / "input_tester.py"), run_name="__main__")
     except SystemExit:
         pass
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

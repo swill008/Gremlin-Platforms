@@ -29,46 +29,52 @@ Item {
         // +-------------------------------------------------------------------
         // | Behavior configuration
         // +-------------------------------------------------------------------
-        RowLayout {
-            Label {
-                id: _label
+        // Wraps onto two lines when the pane is narrow.
+        Flow {
+            Layout.fillWidth: true
+            spacing: Style.dp(10)
 
-                text: "Long-press threshold (sec)"
-            }
-            FloatSpinBox {
-                minValue: 0
-                maxValue: 100
-                value: _root.action.threshold
-                stepSize: 0.05
+            RowLayout {
+                Label {
+                    id: _label
 
-                onValueModified: (newValue) => {
-                    _root.action.threshold = newValue
+                    text: "Long-press threshold (sec)"
+                }
+                FloatSpinBox {
+                    minValue: 0
+                    maxValue: 100
+                    value: _root.action.threshold
+                    stepSize: 0.05
+
+                    onValueModified: (newValue) => {
+                        _root.action.threshold = newValue
+                    }
                 }
             }
 
-            LayoutHorizontalSpacer {}
-
-            Label {
-                text: "Activate on"
-            }
-            RadioButton {
-                autoExclusive: false
-                checkable: false
-                text: "press"
-                checked: _root.action.activateOn == "press"
-
-                onClicked: {
-                    _root.action.activateOn = "press"
+            RowLayout {
+                Label {
+                    text: "Activate on"
                 }
-            }
-            RadioButton {
-                autoExclusive: false
-                checkable: false
-                text: "release"
-                checked: _root.action.activateOn == "release"
+                RadioButton {
+                    autoExclusive: false
+                    checkable: false
+                    text: "press"
+                    checked: _root.action.activateOn == "press"
 
-                onClicked: {
-                    _root.action.activateOn = "release"
+                    onClicked: {
+                        _root.action.activateOn = "press"
+                    }
+                }
+                RadioButton {
+                    autoExclusive: false
+                    checkable: false
+                    text: "release"
+                    checked: _root.action.activateOn == "release"
+
+                    onClicked: {
+                        _root.action.activateOn = "release"
+                    }
                 }
             }
         }
@@ -77,6 +83,8 @@ Item {
         // | Short press actions
         // +-------------------------------------------------------------------
         RowLayout {
+            Layout.fillWidth: true
+
             Label {
                 text: "Short press"
             }
@@ -114,6 +122,8 @@ Item {
         // | Long press actions
         // +-------------------------------------------------------------------
         RowLayout {
+            Layout.fillWidth: true
+
             Label {
                 text: "Long press"
             }

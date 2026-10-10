@@ -305,9 +305,7 @@ def _run() -> None:
     global _writer
     _prune_once()
     while True:
-        try:
-            entry = _queue.get(timeout=0.05 if _stop.is_set() else _IDLE)
-        except queue.Empty:
+        if not _wait_for_item(0.05 if _stop.is_set() else _IDLE):
             # Nothing more came: end. Decided under the same lock record()
             # starts a writer with, so an entry queued now isn't left behind.
             with _start_lock:
@@ -315,10 +313,25 @@ def _run() -> None:
                     _writer = None
                     return
             continue
-        try:
-            _handle(entry)
-        finally:
-            _queue.task_done()
+        # Taken only under the handle lock, as flush() does: an item is never
+        # held here while flush() writes later ones first (AUD-THREADS-06).
+        with _handle_lock:
+            try:
+                entry = _queue.get_nowait()
+            except queue.Empty:
+                continue  # flush() wrote it
+            try:
+                _handle(entry)
+            finally:
+                _queue.task_done()
+
+
+def _wait_for_item(timeout: float) -> bool:
+    """True once something is queued (left there), False after timeout."""
+    with _queue.not_empty:
+        if not _queue.queue:
+            _queue.not_empty.wait(timeout)
+        return bool(_queue.queue)
 
 
 def flush() -> None:
@@ -488,7 +501,7 @@ def _lines(area: str, fresh: bool = False) -> list[dict]:
         whole = data.rfind(b"\n") + 1
         found.extend(_parse(data[:whole].decode("utf-8", errors="replace")))
         offset = start + whole
-        tail = data[max(0, whole - _TAIL):whole]
+        tail = data[max(0, whole - _TAIL) : whole]
         if start and known is not None and len(tail) < _TAIL:
             tail = known["tail"] + tail
         _read[key] = {
@@ -509,11 +522,62 @@ def _parse(text: str) -> list[dict]:
             continue
         try:
             entry = json.loads(raw)
-        except ValueError:
+        except (ValueError, RecursionError):
             continue  # a damaged line is skipped, the rest still read
-        if isinstance(entry, dict) and "id" in entry:
+        if _sound(entry):
             entries.append(entry)
     return entries
+
+
+# Times a line may hold: a finite number a date can be made from (08 S21).
+_LATEST = 1e11
+# How deep a line may nest: far more than any entry; a deeper one would stop
+# the readers and the clean-up that walk it (RecursionError).
+_DEEPEST = 64
+
+
+def _shallow(value: object) -> bool:
+    stack = [(value, 0)]
+    while stack:
+        item, depth = stack.pop()
+        if depth > _DEEPEST:
+            return False
+        if isinstance(item, dict):
+            stack.extend((v, depth + 1) for v in item.values())
+        elif isinstance(item, list):
+            stack.extend((v, depth + 1) for v in item)
+    return True
+
+
+def _sound(entry: object) -> bool:
+    """An entry whose fields have the types the window reads: one with a
+    bad field is a damaged line too (08 S21, SHAKE-DAMAGE-02)."""
+    if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
+        return False
+    if not _shallow(entry):
+        return False
+    at = entry.get("at")
+    if at is not None and (
+        isinstance(at, bool)
+        or not isinstance(at, (int, float))
+        or not -_LATEST < at < _LATEST  # also NaN and the infinities
+    ):
+        return False
+    if not isinstance(entry.get("subject"), (dict, type(None))):
+        return False
+    if entry.get("kind") == GROUP_KIND:
+        for side in ("before", "after"):
+            parts = entry.get(side)
+            if parts is None:
+                continue
+            if not isinstance(parts, list):
+                return False
+            for part in parts:
+                if not isinstance(part, dict) or not isinstance(
+                    part.get("subject"), (dict, type(None))
+                ):
+                    return False
+    return True
 
 
 def entries(area: str | None = None) -> list[dict]:
@@ -546,17 +610,40 @@ def keep_file(path: Path) -> str:
     name = hashlib.sha1(data).hexdigest() + Path(path).suffix.lower()
     try:
         dest = files_folder() / name
-        if not dest.is_file():
-            dest.write_bytes(data)
+        # A copy cut short by a crash is written again (AUD-FILES-04);
+        # the safe writer leaves no half file under the name.
+        if not _whole(dest):
+            from gremlin.modules import module_file
+
+            module_file.write_bytes(dest, data)
     except OSError:
         return ""
     _kept_now.add(name)
     return name
 
 
+_HASH_NAME = re.compile(r"^[0-9a-f]{40}$")
+
+
+def _whole(path: Path) -> bool:
+    """The kept copy is there and is the content its name (the SHA-1 of it)
+    says: a short or changed one is not."""
+    if not path.is_file():
+        return False
+    stem = path.name.split(".", 1)[0]
+    if not _HASH_NAME.match(stem):
+        return True  # not named by its content: nothing to check
+    try:
+        return hashlib.sha1(path.read_bytes()).hexdigest() == stem
+    except OSError:
+        return False
+
+
 def kept_file(name: str) -> Path | None:
+    """The kept copy; None when it is gone or not whole (a short copy is
+    never put back)."""
     path = files_folder() / Path(str(name)).name
-    return path if path.is_file() else None
+    return path if _whole(path) else None
 
 
 def restore_file(name: str, dest: Path) -> bool:
@@ -620,8 +707,9 @@ def prune() -> None:
             text = "".join(lines)
             if text != _text(path):
                 module_file.write_text(path, text, newline="")
-            for line in lines:
-                needed.update(_file_refs(json.loads(line)))
+            for index, item in enumerate(kept):
+                if index not in dropped:
+                    needed.update(_file_refs(item))
         files = folder() / "files"
         if files.is_dir():
             for path in files.iterdir():
@@ -646,17 +734,19 @@ def _trim_snapshots(kept: list[dict]) -> None:
 
 
 def _file_refs(value: Any) -> set[str]:  # noqa: ANN401
-    """Kept file names an entry points at ({"keptFile": name} anywhere)."""
+    """Kept file names an entry points at ({"keptFile": name} anywhere).
+    Walked without recursion: no depth of nesting can stop it."""
     found: set[str] = set()
-    if isinstance(value, dict):
-        name = value.get("keptFile")
-        if isinstance(name, str):
-            found.add(name)
-        for item in value.values():
-            found |= _file_refs(item)
-    elif isinstance(value, list):
-        for item in value:
-            found |= _file_refs(item)
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, dict):
+            name = item.get("keptFile")
+            if isinstance(name, str) and name:
+                found.add(name)
+            stack.extend(item.values())
+        elif isinstance(item, list):
+            stack.extend(item)
     return found
 
 
@@ -677,11 +767,6 @@ def add_cleared_listener(listener: Callable[[], None]) -> None:
     """listener() runs after every clearing of History."""
     if listener not in _cleared_listeners:
         _cleared_listeners.append(listener)
-
-
-def remove_cleared_listener(listener: Callable[[], None]) -> None:
-    if listener in _cleared_listeners:
-        _cleared_listeners.remove(listener)
 
 
 def _kept_files() -> list[Path]:

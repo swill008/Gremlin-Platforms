@@ -21,6 +21,8 @@ import sys
 import time
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -275,7 +277,7 @@ def main() -> None:
     result("page", page is not None)
     if page is None:
         print("done", flush=True)
-        os._exit(0)
+        smoke_exit(0)
     result("page-button", {
         "header": texts(page, "hidHideResetDevices"),
         "enabled": [i.isEnabled() for i in named(page, "hidHideResetDevices")],
@@ -287,7 +289,7 @@ def main() -> None:
     result("open", win is not None)
     if win is None:
         print("done", flush=True)
-        os._exit(0)
+        smoke_exit(0)
     win.resize(900, 520)
     QtTest.QTest.qWait(300)
     result("first", state(win))
@@ -333,7 +335,7 @@ def main() -> None:
     result("second-open", win is not None)
     if win is None:
         print("done", flush=True)
-        os._exit(0)
+        smoke_exit(0)
     QtTest.QTest.qWait(300)
     result("second", state(win))
     SHOT.parent.mkdir(parents=True, exist_ok=True)
@@ -346,7 +348,7 @@ def main() -> None:
     win.grabWindow().save(str(SHOT.with_name(SHOT.stem + "_after.png")))
     result("warnings", WARNINGS)
     print("done", flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

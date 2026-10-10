@@ -14,6 +14,7 @@ from __future__ import annotations
 import atexit
 import io
 import json
+import logging
 import os
 import re
 import shutil
@@ -24,7 +25,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from gremlin.ui.live_debug import trace
 from gremlin.modules import module_file, store
@@ -50,6 +51,9 @@ _UUID_RE = re.compile(
 _KIND_WORD = {"btn": "Button", "button": "Button", "axis": "Axis", "hat": "Hat"}
 # The pack format this program writes and reads. A newer pack is refused.
 PACK_FORMAT = 2
+# The most a pack may unpack to (all its files together); a bigger one is
+# refused before anything in it is read.
+MAX_UNPACKED = 64 * 1024 * 1024
 # The Button Map's view settings (module file "ui"), in two rows.
 _MAP_VIEW_KEYS = (
     "gridOn", "snapOn", "snapEntOn", "gridSize", "viewPct", "panX", "panY",
@@ -123,6 +127,18 @@ def _control_lines(doc: dict) -> list[str]:
 
 # OSC friendly names: "osc:<uid>" (module_model.osc_friendly_key).
 _OSC_NAME = "osc:"
+# Keyboard friendly names: "key:<key id>" (keyboard_layout.KEY_PREFIX).
+_KEY_NAME = "key:"
+
+
+def _key_label(ident: str) -> str:
+    """A Keyboard key's name ("A", "Left Shift") from its key id."""
+    try:
+        from gremlin.ui import keyboard_layout
+
+        return keyboard_layout.key_name(keyboard_layout.key_code(int(ident)))
+    except Exception:  # noqa: BLE001 - an unknown id still lists
+        return f"Key {ident}"
 
 
 def _name_lines(doc: dict) -> list[str]:
@@ -149,6 +165,11 @@ def _name_lines(doc: dict) -> list[str]:
         if str(key).startswith(_OSC_NAME) and str(label or "").strip():
             uid = str(key)[len(_OSC_NAME):]
             lines.append(f"{addresses.get(uid) or uid} — {str(label).strip()}")
+    # The Keyboard's names are kept by key id (S129).
+    for key, label in names.items():
+        if str(key).startswith(_KEY_NAME) and str(label or "").strip():
+            ident = str(key)[len(_KEY_NAME):]
+            lines.append(f"{_key_label(ident)} — {str(label).strip()}")
     return lines
 
 
@@ -1006,9 +1027,97 @@ def assemble(
     return build_pack(plan)
 
 
+def too_big(zf: zipfile.ZipFile) -> str:
+    """Why the pack is too big to unpack ("" when it isn't)."""
+    total = sum(max(0, info.file_size) for info in zf.infolist())
+    if total <= MAX_UNPACKED:
+        return ""
+    mb = 1024 * 1024
+    return (
+        f"This pack is too big to read: it unpacks to {total // mb} MB "
+        f"and the most is {MAX_UNPACKED // mb} MB."
+    )
+
+
+def _is_block(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        ElementTree.fromstring(value)
+    except ElementTree.ParseError:
+        return False
+    return True
+
+
+def wires_problem(wires: object) -> str:
+    """What is wrong with a pack's wires.json ("" when nothing is): every
+    reader trusts its shape once this passes."""
+    if not isinstance(wires, dict):
+        return "Its wires.json is not a document."
+    modes = wires.get("modes")
+    if modes is not None and not isinstance(modes, list):
+        return "Its wires.json has modes that are not a list."
+    for mode in modes or []:
+        if not isinstance(mode, dict):
+            return "Its wires.json has a mode that is not a document."
+        name = mode.get("name")
+        if name is not None and not isinstance(name, str):
+            return "Its wires.json has a mode whose name is not text."
+        label = f'mode "{name or "Default"}"'
+        lines = mode.get("lines")
+        if lines is not None and not (
+            isinstance(lines, list) and all(isinstance(x, str) for x in lines)
+        ):
+            return f"Its wires.json has lines in {label} that are not a list of text."
+        inputs = mode.get("inputs")
+        if inputs is not None and not (
+            isinstance(inputs, list) and all(_is_block(x) for x in inputs)
+        ):
+            return f"Its wires.json has inputs in {label} that can't be read."
+    actions = wires.get("actions")
+    if actions is not None and not (
+        isinstance(actions, list) and all(_is_block(x) for x in actions)
+    ):
+        return "Its wires.json has actions that can't be read."
+    tree = wires.get("tree")
+    if tree is not None and not (
+        isinstance(tree, dict)
+        and all(isinstance(v, str) or v is None for v in tree.values())
+    ):
+        return "Its wires.json has a mode tree that is not a document."
+    osc = wires.get("osc")
+    if osc is not None and not isinstance(osc, list):
+        return "Its wires.json has OSC rows that are not a list."
+    return ""
+
+
+def _json_part(zf: zipfile.ZipFile, name: str) -> object:
+    """A JSON file in the pack; ValueError naming it when it can't be read."""
+    try:
+        return json.loads(zf.read(name).decode("utf-8"))
+    except (ValueError, RecursionError) as exc:
+        raise ValueError(f"Its {name} could not be read ({exc}).") from exc
+
+
+def outputs_problem(zf: zipfile.ZipFile) -> str:
+    """What is wrong with the pack's outputs/*.json ("" when nothing is)."""
+    for name in zf.namelist():
+        if name.startswith("outputs/") and name.lower().endswith(".json"):
+            try:
+                payload = _json_part(zf, name)
+            except ValueError as exc:
+                return str(exc)
+            if not isinstance(payload, dict):
+                return f"Its {name} is not a document."
+    return ""
+
+
 def _read_zip(path: Path) -> dict | str:
     try:
         with zipfile.ZipFile(path, "r") as zf:
+            big = too_big(zf)
+            if big:
+                return big
             names = zf.namelist()
             json_name = "map.json" if "map.json" in names else ""
             if not json_name:
@@ -1018,17 +1127,21 @@ def _read_zip(path: Path) -> dict | str:
                         break
             if not json_name:
                 return "No map.json in this zip."
-            doc = json.loads(zf.read(json_name).decode("utf-8"))
-            wires = {}
+            doc = _json_part(zf, json_name)
+            wires: object = {}
             if "wires.json" in names:
-                wires = json.loads(zf.read("wires.json").decode("utf-8"))
+                wires = _json_part(zf, "wires.json")
+                problem = wires_problem(wires)
+                if problem:
+                    return f"This pack can't be read. {problem}"
+            problem = outputs_problem(zf)
+            if problem:
+                return f"This pack can't be read. {problem}"
             outputs = []
             blobs = {}
             for name in names:
                 if name.startswith("outputs/") and name.lower().endswith(".json"):
-                    payload = json.loads(zf.read(name).decode("utf-8"))
-                    if isinstance(payload, dict):
-                        outputs.append(payload)
+                    outputs.append(_json_part(zf, name))
                 base = Path(name).name
                 if base and Path(base).suffix.lower() in _IMAGE_EXT and not name.endswith("/"):
                     blobs[base] = zf.read(name)
@@ -1036,7 +1149,7 @@ def _read_zip(path: Path) -> dict | str:
     except zipfile.BadZipFile:
         return "Not a valid zip."
     except Exception as exc:
-        return str(exc)
+        return f"This pack can't be read. {exc}"
     if not isinstance(doc, dict):
         return "No map.json in this zip."
     return {"doc": doc, "wires": wires if isinstance(wires, dict) else {}, "outputs": outputs, "files": blobs}
@@ -1095,6 +1208,19 @@ def _too_new(doc: dict) -> str:
 
 
 def describe_zip(path: Path) -> dict | str:
+    """What the Device Pack window lists for the pack, or why it can't be
+    read. Read only, so anything unexpected in the pack is a refusal, never
+    an error out of the window's slot."""
+    try:
+        return _describe(path)
+    except Exception as exc:  # noqa: BLE001 - a pack is outside data
+        logging.getLogger("system").warning(
+            f"Device Pack: {path} could not be described: {exc!r}"
+        )
+        return f"This pack can't be read ({exc})."
+
+
+def _describe(path: Path) -> dict | str:
     loaded = _read_zip(path)
     if isinstance(loaded, str):
         return loaded
@@ -1374,6 +1500,11 @@ def _merge_module(
                 if str(key).startswith(_OSC_NAME):
                     claim["friendly"][str(key)] = label
                     written += 1
+        # The Keyboard's names, by key id (S129); keys aren't checked controls.
+        for key, label in incoming_names.items():
+            if str(key).startswith(_KEY_NAME):
+                claim["friendly"][str(key)] = label
+                written += 1
         if skipped:
             notes.append("Names for controls that are not checked were left out.")
         if written == 0 and skipped:
@@ -1781,51 +1912,11 @@ def _with_osc_uids(modes: list[dict]) -> list[dict]:
     return [row for uid in wanted for row in every if row.get("uid") == uid]
 
 
-def _osc_rows_of(profile: object) -> object:
-    """The OSC rows a saved older profile that isn't open still carries
-    (pending_osc_rows, in a temporary OscRows; the shared file is not
-    changed by reading it). None: OSC's module file, which every other
-    profile uses (D-09-OSC-FILE 3)."""
-    from gremlin import shared_state
-
-    if profile is None or profile is shared_state.current_profile:
-        return None
-    pending = getattr(profile, "pending_osc_rows", None)
-    if not pending:
-        return None
-    if isinstance(pending, dict):
-        from gremlin.osc_rows import OscRows
-
-        rows = OscRows()
-        rows.load_dict(pending)
-        return rows
-    return pending
-
-
-def _resolve_osc(
-    rows: object, uid: str | None, kind: object, number: int
-) -> tuple[Any, str | None]:
-    """resolve_osc_reference, first against a saved older profile's own
-    rows (_osc_rows_of) when it has them, then OSC's file."""
-    from gremlin.osc_persist import resolve_osc_reference
-
-    if rows is not None:
-        if uid:
-            ident = rows.identifier_of_uid(uid)  # type: ignore[attr-defined]
-        else:
-            row = rows.by_number(kind, number)  # type: ignore[attr-defined]
-            ident, uid = (row.identifier, row.uid) if row is not None else (None, None)
-        if ident is not None:
-            return ident, uid
-    return resolve_osc_reference(uid, kind, number)  # type: ignore[arg-type]
-
-
-def _missing_osc(
-    inputs: list[str], pack_rows: list | None, rows: object = None
-) -> list[dict]:
+def _missing_osc(inputs: list[str], pack_rows: list | None) -> list[dict]:
     """The OSC rows these input blocks are on that OSC's file lacks, as the
     pack carries them (to be created). Without a row in the pack there is
     no address, so it can't be created (label "")."""
+    from gremlin.osc_persist import resolve_osc_reference
     from gremlin.util import read_subelement
 
     by_uid = {
@@ -1844,7 +1935,7 @@ def _missing_osc(
             number = int(read_subelement(node, "input-id"))
         except Exception:
             continue
-        ident, _found = _resolve_osc(rows, uid, kind, number)
+        ident, _found = resolve_osc_reference(uid, kind, number)
         if ident is not None:
             continue
         row = by_uid.get(uid or "") or {
@@ -1858,11 +1949,10 @@ def _missing_osc(
     return missing
 
 
-def _resolve_osc_inputs(
-    inputs: list[str], rows: object = None
-) -> tuple[list[str], list[str]]:
+def _resolve_osc_inputs(inputs: list[str]) -> tuple[list[str], list[str]]:
     """The OSC input blocks on their inputs' current type and number (by
     permanent id); ones OSC's file doesn't have are left out (named)."""
+    from gremlin.osc_persist import resolve_osc_reference
     from gremlin.util import read_subelement
 
     out: list[str] = []
@@ -1879,7 +1969,7 @@ def _resolve_osc_inputs(
         except Exception:
             out.append(block)
             continue
-        ident, found = _resolve_osc(rows, uid, kind, number)
+        ident, found = resolve_osc_reference(uid, kind, number)
         if ident is None or found is None:
             word = str(node.findtext("input-type") or "").capitalize()
             left.append(f"{word} {number}")
@@ -2005,14 +2095,11 @@ def _plan_wires(
     chosen: set[str],
     limits: dict[str, set[int]] | None,
     rows: object = None,
-    osc_rows: object = None,
 ) -> dict:
     """What importing the ticked modes would write, before anything changes:
     their inputs (less the controls the device doesn't have) and only the
     actions those inputs use. rows: a saved version 14 profile's own
-    Logical Device rows (_rows_of; None: the Logical Device's module file).
-    osc_rows: a saved older profile's own OSC rows (_osc_rows_of; None:
-    OSC's module file)."""
+    Logical Device rows (_rows_of; None: the Logical Device's module file)."""
     from gremlin.types import InputType
     from gremlin.util import read_subelement
 
@@ -2064,8 +2151,7 @@ def _plan_wires(
         "actions": actions,
         "leftOut": left_out,
         "missingLogical": _missing_logical(actions, rows),
-        "missingOsc": _missing_osc(inputs, wires.get("osc"), osc_rows),
-        "oscRows": osc_rows,
+        "missingOsc": _missing_osc(inputs, wires.get("osc")),
     }
 
 
@@ -2307,7 +2393,7 @@ def _apply_wires(
                     + "."
                 )
             osc_inputs, osc_left = _resolve_osc_inputs(
-                _swap_ids(plan["inputs"], id_moves or {}), plan.get("oscRows")
+                _swap_ids(plan["inputs"], id_moves or {})
             )
             if osc_left:
                 notes.append(
@@ -2653,7 +2739,6 @@ def undo_import(force: bool = False) -> dict:
             signal.logicalDeviceModified.emit()
         signal.configChanged.emit()
         signal.profileChanged.emit()
-        signal.reloadUi.emit()
     except Exception:
         pass
     return {"ok": True, "report": "\n".join(["Undid the import."] + notes)}
@@ -2952,9 +3037,7 @@ def apply_zip(
         notes.append(f"Saved {dest.name} for {out_name}.")
         notes.extend(merged_notes)
     # The profile they go into says which Logical Device inputs it lacks.
-    plan = _plan_wires(
-        loaded["wires"], chosen, limits, _rows_of(profile), _osc_rows_of(profile)
-    )
+    plan = _plan_wires(loaded["wires"], chosen, limits, _rows_of(profile))
     wire_notes, wires_undo = _apply_wires(
         plan,
         loaded["wires"].get("tree") or {},
@@ -2981,7 +3064,6 @@ def apply_zip(
         from gremlin.signal import signal
         signal.configChanged.emit()
         signal.profileChanged.emit()
-        signal.reloadUi.emit()
     except Exception:
         pass
     return {"ok": True, "device": target, "report": "\n".join(notes), "canUndo": record_undo}

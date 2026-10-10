@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -59,9 +60,9 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         self._logical = LogicalDevice()
         self._event_listener = event_handler.EventListener()
         self._init_relative()
-        # The Logical Device control whose event started the relative loop:
-        # its sends join that chain (06 S94).
-        self._relative_source: tuple[InputType, int] | None = None
+        # The chain of the event that started the relative loop: its sends
+        # continue it (06 S94a).
+        self._relative_chain: tuple = ()
         # Drives the control the uid names, by its current number; a missing
         # one does nothing (D-04-LD-FILE).
         self._identifier, _ = resolve_logical_reference(
@@ -82,13 +83,8 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         if self._identifier is None or not self._logical.exists(self._identifier):
             return
         input = self._logical[self._identifier]
-        # Sent from a Logical Device control's actions: the guard follows
-        # that chain, across threads too (06 S94).
-        source: tuple[InputType, int] | None = None
-        if event.device_guid == self._logical.device_guid and isinstance(
-            event.identifier, int
-        ):
-            source = (event.event_type, event.identifier)
+        # The guard follows the chain the event came through (06 S94a).
+        chain = getattr(event, "ld_chain", ())
 
         # Determine correct event values and update the logical device's
         # internal state.
@@ -99,7 +95,7 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
                 input_value = value.current
                 input.update(input_value)
             else:
-                self._relative_source = source
+                self._relative_chain = chain
                 self._relative_input(
                     event.value, value.current, self.data.axis_scaling
                 )
@@ -123,33 +119,37 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         # Emit an event with the LogicalDevice guid and the rest of the
         # system will then take care of executing it; a loop between
         # controls is stopped by the guard (06 S94).
+        mode = mode_manager.ModeManager().current.name
         self._guarded_emit(
             input,
-            event_handler.Event(
+            lambda path: event_handler.Event(
                 event_type=input.type,
                 identifier=input.id,
                 device_guid=self._logical.device_guid,
-                mode=mode_manager.ModeManager().current.name,
+                mode=mode,
                 value=input_value,
                 is_pressed=is_pressed,
                 raw_value=value.raw,
+                ld_chain=path,
             ),
-            source,
+            chain,
         )
 
     def _guarded_emit(
         self,
         input: LogicalDevice.Input,
-        event: event_handler.Event,
-        source: tuple[InputType, int] | None,
+        make_event: Callable[[tuple], event_handler.Event],
+        chain: tuple,
     ) -> bool:
+        """Sends the event make_event(path) builds for the chain with this
+        control added, unless the loop guard stops it."""
         from gremlin import logical_loop
 
         return logical_loop.guarded(
             (input.type, input.id),
             input.choice_label,
-            lambda: self._event_listener.joystick_event.emit(event),
-            source=source,
+            lambda path: self._event_listener.joystick_event.emit(make_event(path)),
+            chain,
         )
 
     def _relative_axis(self) -> LogicalDevice.Input:
@@ -163,17 +163,19 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         input = self._relative_axis()
         input.update(value)
         # A loop the guard stopped ends this relative loop too (06 S94).
+        mode = mode_manager.ModeManager().current.name
         return self._guarded_emit(
             input,
-            event_handler.Event(
+            lambda path: event_handler.Event(
                 event_type=input.type,
                 identifier=input.id,
                 device_guid=self._logical.device_guid,
-                mode=mode_manager.ModeManager().current.name,
+                mode=mode,
                 value=value,
                 raw_value=value,
+                ld_chain=path,
             ),
-            self._relative_source,
+            self._relative_chain,
         )
 
 
@@ -315,9 +317,13 @@ class MapToLogicalDeviceModel(ActionModel):
 
 class ControlPicker(QtCore.QObject):
     """The editor's control list: the controls of the action's type, never
-    the one it sits on (06 S93). Follows controls added, removed or renamed."""
+    the one it sits on as a new choice (06 S93). An action loaded with its
+    own control as the target shows it selected and marked (S96). Follows
+    controls added, removed or renamed."""
 
     changed = QtCore.Signal()
+
+    SELF_MARK = " (this control: blocked by the loop guard)"
 
     def __init__(self, owner: MapToLogicalDeviceModel) -> None:
         super().__init__(owner)
@@ -328,21 +334,25 @@ class ControlPicker(QtCore.QObject):
     def refresh(self) -> None:
         self.changed.emit()
 
-    def _choices(self) -> list[LogicalDevice.Input]:
+    def _choices(self) -> list[tuple[LogicalDevice.Input, str]]:
+        """(control, row text): the own control only while it's the target."""
         own = self._owner.own_control()
-        kind = self._owner.map_data().logical_input_type
-        return [
-            entry
-            for entry in LogicalDevice().inputs_of_type([kind])
-            if (entry.type, entry.id) != own
-        ]
+        data = self._owner.map_data()
+        kind = data.logical_input_type
+        rows = []
+        for entry in LogicalDevice().inputs_of_type([kind]):
+            if (entry.type, entry.id) != own:
+                rows.append((entry, entry.choice_label))
+            elif entry.id == data.logical_input_id:
+                rows.append((entry, entry.choice_label + self.SELF_MARK))
+        return rows
 
     def _get_choices(self) -> list[str]:
-        return [entry.choice_label for entry in self._choices()]
+        return [label for _, label in self._choices()]
 
     def _get_index(self) -> int:
         current = self._owner.map_data().logical_input_id
-        for index, entry in enumerate(self._choices()):
+        for index, (entry, _) in enumerate(self._choices()):
             if entry.id == current:
                 return index
         return -1
@@ -353,7 +363,7 @@ class ControlPicker(QtCore.QObject):
         choices = self._choices()
         if not 0 <= index < len(choices):
             return
-        entry = choices[index]
+        entry = choices[index][0]
         self._owner.set_target(entry.type, entry.id)
 
     choices = QtCore.Property(list, fget=_get_choices, notify=changed)

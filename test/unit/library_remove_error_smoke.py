@@ -17,6 +17,8 @@ import os
 import sys
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
@@ -178,4 +180,4 @@ out["bad"] = bool(ev(lib, "_lib.messageBad"))
 out["qml"] = messages[:10]
 print("RESULT " + json.dumps(out), flush=True)
 sys.stdout.flush()
-os._exit(0)
+smoke_exit(0)

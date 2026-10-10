@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from pathlib import Path
 
+from gremlin import clock
 from gremlin.error import GremlinError
 
 
@@ -41,7 +43,7 @@ def damage_reason(path: Path) -> str:
         return f"it can't be read ({e})"
     try:
         doc = json.loads(text)
-    except ValueError as e:
+    except (ValueError, RecursionError) as e:
         return f"it is not valid JSON ({e})"
     if not isinstance(doc, dict):
         return "it is not a module file"
@@ -62,34 +64,43 @@ def load_for_update(path: Path) -> dict:
 
 def write_bytes(path: Path, data: bytes) -> None:
     """Writes the whole file safely: a temporary file, then a swap. A crash
-    mid-write leaves the old file whole. No History here: module files are
-    written through gremlin.modules.store, the one place History is hooked."""
+    mid-write leaves the old file whole; a swap refused every time raises
+    OSError with the old file untouched (never written in place). No
+    History here: module files are written through gremlin.modules.store,
+    the one place History is hooked."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
+    # A name of its own, so two writes of the same file never share one.
+    temporary = path.with_name(f"{path.name}.{uuid.uuid4().hex[:8]}.tmp")
     try:
         temporary.write_bytes(data)
-    except OSError:
-        # The new data couldn't be written (a full disk): the file stays as
-        # it was. Writing it directly would only cut it short.
+        _swap(temporary, path)
+    except BaseException:
+        # The new data couldn't be written (a full disk) or the swap was
+        # refused every time: the file stays as it was. Writing it directly
+        # would only risk cutting it short.
         try:
             temporary.unlink()
         except OSError:
             pass
         raise
-    try:
-        os.replace(temporary, path)
-    except OSError:
-        # Windows refuses the swap while another program (antivirus, an
-        # indexer) has the file open: write it directly instead. The
-        # temporary copy goes too.
+
+
+# Waits between swap attempts (seconds): about 0.75 s in all.
+_SWAP_WAITS = (0.05, 0.1, 0.2, 0.4)
+
+
+def _swap(temporary: Path, path: Path) -> None:
+    """Windows refuses the swap while another program (antivirus, an
+    indexer) has the file open for a moment: tried again after a short wait,
+    then the last refusal is raised."""
+    for wait in _SWAP_WAITS:
         try:
-            path.write_bytes(data)
-        finally:
-            try:
-                temporary.unlink()
-            except OSError:
-                pass
+            os.replace(temporary, path)
+            return
+        except OSError:
+            clock.sleep(wait)
+    os.replace(temporary, path)
 
 
 def encode(text: str, encoding: str = "utf-8", newline: str | None = None) -> bytes:

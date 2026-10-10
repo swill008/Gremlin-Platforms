@@ -418,7 +418,6 @@ def _plan_copy(
             set(wires),
             limits,
             device_pack._rows_of(into),
-            device_pack._osc_rows_of(into),
         )
         left_out.extend(x for x in plan["leftOut"] if x not in left_out)
         for mode in plan["modes"]:

@@ -30,46 +30,52 @@ Item {
         // +-------------------------------------------------------------------
         // | Behavior configuration
         // +-------------------------------------------------------------------
-        RowLayout {
-            Label {
-                id: _label
+        // Wraps onto two lines when the pane is narrow.
+        Flow {
+            Layout.fillWidth: true
+            spacing: Style.dp(10)
 
-                text: "Double-tap threshold (sec)"
-            }
-            FloatSpinBox {
-                minValue: 0
-                maxValue: 100
-                value: _root.action.threshold
-                stepSize: 0.05
+            RowLayout {
+                Label {
+                    id: _label
 
-                onValueModified: (newValue) => {
-                    _root.action.threshold = newValue
+                    text: "Double-tap threshold (sec)"
+                }
+                FloatSpinBox {
+                    minValue: 0
+                    maxValue: 100
+                    value: _root.action.threshold
+                    stepSize: 0.05
+
+                    onValueModified: (newValue) => {
+                        _root.action.threshold = newValue
+                    }
                 }
             }
 
-            LayoutHorizontalSpacer {}
-
-            Label {
-                text: "Single/Double tap:"
-            }
-            RadioButton {
-                autoExclusive: false
-                checkable: false
-                text: "exclusive"
-                checked: _root.action.activateOn == "exclusive"
-
-                onClicked: {
-                    _root.action.activateOn = "exclusive"
+            RowLayout {
+                Label {
+                    text: "Single/Double tap:"
                 }
-            }
-            RadioButton {
-                autoExclusive: false
-                checkable: false
-                text: "combined"
-                checked: _root.action.activateOn == "combined"
+                RadioButton {
+                    autoExclusive: false
+                    checkable: false
+                    text: "exclusive"
+                    checked: _root.action.activateOn == "exclusive"
 
-                onClicked: {
-                    _root.action.activateOn = "combined"
+                    onClicked: {
+                        _root.action.activateOn = "exclusive"
+                    }
+                }
+                RadioButton {
+                    autoExclusive: false
+                    checkable: false
+                    text: "combined"
+                    checked: _root.action.activateOn == "combined"
+
+                    onClicked: {
+                        _root.action.activateOn = "combined"
+                    }
                 }
             }
         }
@@ -78,6 +84,8 @@ Item {
         // | Short press actions
         // +-------------------------------------------------------------------
         RowLayout {
+            Layout.fillWidth: true
+
             Label {
                 text: "Single Tap"
             }
@@ -115,6 +123,8 @@ Item {
         // | Long press actions
         // +-------------------------------------------------------------------
         RowLayout {
+            Layout.fillWidth: true
+
             Label {
                 text: "Double Tap"
             }

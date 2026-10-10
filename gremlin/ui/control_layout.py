@@ -629,7 +629,6 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         return buttons, axes, hats
 
     def _rebuild(self) -> None:
-        self.beginResetModel()
         rows: list[dict] = []
         folders = [""] + self._layout.group_names()
         filtering = self._filtering()
@@ -690,13 +689,49 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                     rows.extend(children)
                     rows.extend(self._rows_after_actions(item, extra))
         rows.extend(self._rows_at_end())
-        self._rows = rows
+        self._publish(rows)
         alive = {row["key"] for row in rows}
         self._selected = [key for key in self._selected if key in alive]
-        self.endResetModel()
         self.revisionChanged.emit()
         self.groupsChanged.emit()
         self.selectionChanged.emit()
+
+    def _publish(self, rows: list[dict]) -> None:
+        """Shows rows with the smallest change: the rows that differ are
+        changed, removed or inserted, never a full reset. A reset while
+        the list view still builds its rows logged "DelegateModel::cancel:
+        index out range" (SHAKE-JOURNEYS-02); an unchanged list changes
+        nothing."""
+        old = self._rows
+        if rows == old:
+            return
+        start = 0
+        limit = min(len(old), len(rows))
+        while start < limit and old[start] == rows[start]:
+            start += 1
+        tail = 0
+        while (
+            tail < limit - start
+            and old[len(old) - 1 - tail] == rows[len(rows) - 1 - tail]
+        ):
+            tail += 1
+        old_end = len(old) - tail
+        new_end = len(rows) - tail
+        common = min(old_end, new_end) - start
+        root = QtCore.QModelIndex()
+        if common > 0:
+            old[start : start + common] = rows[start : start + common]
+            self.dataChanged.emit(
+                self.index(start, 0), self.index(start + common - 1, 0)
+            )
+        if old_end > new_end:
+            self.beginRemoveRows(root, start + common, old_end - 1)
+            del old[start + common : old_end]
+            self.endRemoveRows()
+        elif new_end > old_end:
+            self.beginInsertRows(root, start + common, new_end - 1)
+            old[start + common : start + common] = rows[start + common : new_end]
+            self.endInsertRows()
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._rows)

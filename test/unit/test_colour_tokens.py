@@ -39,7 +39,6 @@ _REMAINING = {
     "qml/rig_style.js": 8,
     "qml/rig_tables.js": 11,
     "qml/rig_text.js": 11,
-    "qml/VkbRigFace.qml": 8,
     "qml/Xbox360Face.qml": 44,
 }
 

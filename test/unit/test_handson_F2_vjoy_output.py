@@ -36,6 +36,17 @@ def _harness() -> Any:  # noqa: ANN401
     return module
 
 
+@pytest.fixture(autouse=True)
+def _in_a_run() -> object:
+    """Writes are sent only during a Run (06 S4, Q19)."""
+    from gremlin import run_scope
+
+    run_scope.begin()
+    yield
+    run_scope.stop()
+    run_scope._reset_for_tests()
+
+
 @pytest.fixture
 def fake_vjoy(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     """The output module on the fake vJoy driver, every output claimed,

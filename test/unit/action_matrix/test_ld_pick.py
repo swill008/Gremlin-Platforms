@@ -74,6 +74,40 @@ def test_picker_leaves_out_the_own_control(
     assert _control(*_target(case)).choice_label == choices[-1]
 
 
+@pytest.mark.parametrize("kind", sorted(KINDS))
+def test_loaded_self_target_shows_selected_and_marked(
+    matrix: Any,  # noqa: ANN401
+    kind: str,
+) -> None:
+    """06 S96 (AD10): an action loaded with its own control as the target
+    shows that control selected, marked as blocked by the loop guard; once
+    another control is picked, its own control isn't offered again (S93)."""
+    logical = LogicalDevice()
+    case = matrix.open(TAG, kind, Surface.PANE_LOGICAL)
+    own = _control(case.key[1], case.key[2])
+    # As loaded from a file (from_xml keeps a self-target, see below).
+    case.model().map_data().logical_input_id = own.id
+    picker = case.model().controlPicker
+    picker.refresh()
+    settle()
+    choices = picker.choices
+    marked = f"{own.choice_label} (this control: blocked by the loop guard)"
+    assert picker.index >= 0
+    assert choices[picker.index] == marked
+    assert len(choices) == len(logical.inputs_of_type([KINDS[kind]]))
+    # Choosing the marked row changes nothing.
+    picker.pick(picker.index)
+    settle()
+    assert _target(case) == (own.type, own.id)
+    # Picking another control drops the own row from the list.
+    other = next(i for i, text in enumerate(choices) if text != marked)
+    picker.pick(other)
+    settle()
+    assert _target(case) != (own.type, own.id)
+    assert marked not in picker.choices
+    assert own.choice_label not in picker.choices
+
+
 def test_a_logical_device_change_is_not_an_action_edit(
     matrix: Any,  # noqa: ANN401
 ) -> None:
@@ -168,14 +202,14 @@ def test_loading_keeps_a_saved_self_target() -> None:
 def guard() -> Iterator[list]:
     """A stand-in gremlin.logical_loop recording calls; allow[0] decides."""
     calls: list = []
-    sources: list = []
+    chains: list = []
     allow = [True]
 
-    def guarded(key: tuple, label: str, send: Any, source: Any = None) -> bool:  # noqa: ANN401
+    def guarded(key: tuple, label: str, send: Any, chain: Any = ()) -> bool:  # noqa: ANN401
         calls.append((key, label))
-        sources.append(source)
+        chains.append(chain)
         if allow[0]:
-            send()
+            send(tuple(chain) + ((key, label),))
         return allow[0]
 
     fake = types.ModuleType("gremlin.logical_loop")
@@ -188,7 +222,7 @@ def guard() -> Iterator[list]:
         mock.patch.object(gremlin, "logical_loop", fake, create=True),
     ):
         LogicalDevice().reset()
-        yield [calls, allow, sources]
+        yield [calls, allow, chains]
         LogicalDevice().reset()
 
 
@@ -215,17 +249,24 @@ def _functor(kind: InputType, mode: AxisMode = AxisMode.Absolute) -> Any:  # noq
     ],
 )
 def test_emit_goes_through_the_guard(guard: list, kind: InputType, value: Any) -> None:  # noqa: ANN401
-    calls, allow, sources = guard
+    calls, allow, chains = guard
     functor, control = _functor(kind)
     emit = functor._event_listener.joystick_event.emit  # noqa: SLF001
     # No auto-release registered: it would outlive the test.
     no_release = [ActionProperty.DisableAutoRelease]
+    came = (((kind, 1), "Earlier"),)
     with mock.patch("action_plugins.map_to_logical_device.mode_manager.ModeManager"):
-        event = Event(kind, 1, LogicalDevice().device_guid, "Default", value=value)
+        event = Event(
+            kind, 1, LogicalDevice().device_guid, "Default", value=value,
+            ld_chain=came,
+        )
         functor(event, Value(value), no_release)
-        assert calls == [((control.type, control.id), control.choice_label)]
-        # Sent from a Logical Device control: the guard follows its chain.
-        assert sources == [(kind, 1)]
+        own = ((control.type, control.id), control.choice_label)
+        assert calls == [own]
+        # The guard continues the event's chain; the sent event carries it
+        # with this control added (06 S94a).
+        assert chains == [came]
+        assert emit.call_args.args[0].ld_chain == came + (own,)
         assert emit.call_count == 1
         allow[0] = False
         functor(event, Value(value), no_release)
@@ -233,13 +274,14 @@ def test_emit_goes_through_the_guard(guard: list, kind: InputType, value: Any) -
 
 
 def test_relative_write_goes_through_the_guard(guard: list) -> None:
-    calls, allow, sources = guard
+    calls, allow, chains = guard
     functor, control = _functor(InputType.JoystickAxis, AxisMode.Relative)
     emit = functor._event_listener.joystick_event.emit  # noqa: SLF001
+    came = (((InputType.JoystickButton, 3), "Button 3"),)
     with mock.patch("action_plugins.map_to_logical_device.mode_manager.ModeManager"):
-        functor._relative_source = (InputType.JoystickButton, 3)  # noqa: SLF001
+        functor._relative_chain = came  # noqa: SLF001
         functor._relative_write(0.25)  # noqa: SLF001
-        assert sources == [(InputType.JoystickButton, 3)]
+        assert chains == [came]
         assert calls == [((control.type, control.id), control.choice_label)]
         assert emit.call_count == 1
         allow[0] = False

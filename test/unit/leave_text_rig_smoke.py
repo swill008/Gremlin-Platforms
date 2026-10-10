@@ -18,6 +18,8 @@ import os
 import sys
 from pathlib import Path
 
+from smoke_exit import smoke_exit
+
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -188,7 +190,7 @@ def main() -> None:
     _result("warnings", sorted(set(s.warnings)))
     print("done")
     sys.stdout.flush()
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

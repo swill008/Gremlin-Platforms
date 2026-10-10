@@ -11,14 +11,13 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import uuid
-from typing import Any, Self
+from typing import Any
 
 import dill
 from action_plugins import map_to_vjoy
 from gremlin import (
     device_initialization,
     profile,
-    shared_state,
     types,
 )
 from gremlin.modules import auto_map, output, store
@@ -77,10 +76,6 @@ class AutoMapper:
         # Overwrite removed actions, even where none could be made after.
         self._removed_actions = False
         self._skipped: dict[tuple[str, str, str], list[int]] = {}
-
-    @classmethod
-    def from_current_profile(cls) -> Self:
-        return cls(shared_state.current_profile)
 
     def generate_module_mappings(
         self,

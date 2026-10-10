@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import sys
 import time
 import zipfile
 from pathlib import Path
+
+from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -125,7 +126,7 @@ def main() -> None:
         wait_until(lambda: "not saved" in str(ev(win, "_result.text")))
         out["failure"] = ev(win, "_result.text")
     print("RESULT " + json.dumps(out), flush=True)
-    os._exit(0)
+    smoke_exit(0)
 
 
 if __name__ == "__main__":

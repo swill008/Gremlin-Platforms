@@ -116,18 +116,6 @@ class PluginManager(metaclass=SingletonMetaclass):
             raise error.GremlinError(f"No action with name '{name}' exists")
         return self._name_to_type_map[name]
 
-    def plugins_requiring_parameter(self, param_name: str) -> PluginList:
-        """Returns the list of plugins requiring a certain parameter.
-
-        Args:
-            param_name: Name of the parameter required by all action classes
-                returned.
-
-        Returns:
-            List of actions requiring a certain parameter in the callback.
-        """
-        return self._parameter_requirements.get(param_name, [])
-
     def create_instance(
         self, name: str, input_type: InputType
     ) -> AbstractActionData | None:
@@ -198,6 +186,10 @@ class PluginManager(metaclass=SingletonMetaclass):
                         f"Failed to load plugin '{plugin_module_name}' "
                         f"with error: '{e}."
                     )
+                    # A built-in plugin that can't import is a bug and
+                    # stops start-up (05 S1); a user plugin is skipped.
+                    if is_core:
+                        raise
                     continue
 
                 # A built-in action is always registered, so profiles using

@@ -64,22 +64,6 @@ class HatType(enum.Enum):
     Continuous = 1
 
 
-def device_available(vjoy_id: int) -> bool:
-    """Returns whether a device is available, i.e. can be acquired.
-
-    Args:
-        vjoy_id: id of the vjoy device to check
-
-    Returns:
-        True if the device is available, False otherwise
-    """
-    dev_free = VJoyInterface.GetVJDStatus(vjoy_id) == VJoyState.Free.value
-    dev_acquire = VJoyInterface.AcquireVJD(vjoy_id)
-    VJoyInterface.RelinquishVJD(vjoy_id)
-
-    return dev_free & dev_acquire
-
-
 def held_by_another_program(vjoy_id: int) -> bool:
     """Whether another program holds the vJoy device (Gremlin can't use it)."""
     return (
@@ -418,7 +402,7 @@ class Hat:
         else:
             raise VJoyError(
                 "Invalid hat type specified - {}".format(
-                    _error_string(self.vjoy_id, self.axis_id, self.direction)
+                    _error_string(self.vjoy_id, self.hat_id, self._direction)
                 )
             )
         self.vjoy_dev.used()
@@ -432,7 +416,7 @@ class Hat:
         if direction not in Hat.to_discrete_direction:
             raise VJoyError(
                 "Invalid direction specified - {}".format(
-                    _error_string(self.vjoy_id, self.axis_id, self._direction)
+                    _error_string(self.vjoy_id, self.hat_id, direction)
                 )
             )
 
@@ -443,7 +427,7 @@ class Hat:
         ):
             raise VJoyError(
                 "Failed to set hat direction - {}".format(
-                    _error_string(self.vjoy_id, self.axis_id, self._direction)
+                    _error_string(self.vjoy_id, self.hat_id, self._direction)
                 )
             )
 
@@ -612,43 +596,6 @@ class VJoy:
             number of hats on this device
         """
         return len(self._hat)
-
-    def axis_name(
-        self, axis_id: int | None = None, linear_index: int | None = None
-    ) -> str:
-        """Returns the textual name of the requested axis.
-
-        As there are two ways to refer to an axis, absolute in terms of the
-        AxisName enum and relative, i.e. number based on the total number of
-        axes present. This method deals with both methods and the user
-        needs to request the correct one.
-
-        Args:
-            axis_id: absolute index of the axis whose name to return
-            linear_index: relative index of the axis whose name to return
-
-        Returns:
-            name of the provided axis
-        """
-        if axis_id is not None:
-            axis_id = VJoy.axis_equivalence.get(axis_id, axis_id)
-            if not self.is_axis_valid(axis_id=axis_id):
-                raise VJoyError(
-                    "Invalid axis index requested - {}".format(
-                        _error_string(self.vjoy_id, axis_id, "")
-                    )
-                )
-            return self._axis_names[axis_id]
-        elif linear_index is not None:
-            if not self.is_axis_valid(linear_index=linear_index):
-                raise VJoyError(
-                    "Invalid linear index for axis lookup provided - {}".format(
-                        _error_string(self.vjoy_id, linear_index, "")
-                    )
-                )
-            return self._axis_names[self._axis_lookup[linear_index]]
-        else:
-            raise VJoyError("No vjoy_id or linear_index provided")
 
     def axis_id(self, linear_index: int) -> int:
         """Returns the absolute axis id corresponding to the relative one.

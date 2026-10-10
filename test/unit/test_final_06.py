@@ -367,8 +367,19 @@ def vigem(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[_FakeVigem, Any]]:
     fresh.reset()
 
 
+@pytest.fixture
+def in_a_run() -> object:
+    """Writes are sent only during a Run (06 S4, Q19)."""
+    from gremlin import run_scope
+
+    run_scope.begin()
+    yield
+    run_scope.stop()
+    run_scope._reset_for_tests()
+
+
 def test_a_viewer_never_plugs_in_an_xbox_pad(
-    vigem: tuple[_FakeVigem, Any],
+    vigem: tuple[_FakeVigem, Any], in_a_run: None
 ) -> None:
     from gremlin.modules import output
     from vigem.xbox import XboxTarget
@@ -384,7 +395,7 @@ def test_a_viewer_never_plugs_in_an_xbox_pad(
 
 
 def test_a_failed_xbox_write_is_logged_once_and_goes_on(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, in_a_run: None
 ) -> None:
     from gremlin.modules import output
     from vigem import xbox

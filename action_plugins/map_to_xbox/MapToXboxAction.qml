@@ -30,7 +30,9 @@ Item {
             // Xbox output modules (one pad for now).
             ComboBox {
                 id: _pad
-                Layout.minimumWidth: Style.dp(120)
+                // As wide as its widest pad name, never squeezed below it.
+                implicitContentWidthPolicy: ComboBox.WidestText
+                Layout.minimumWidth: implicitWidth
                 textRole: "label"
                 valueRole: "value"
                 model: _root.action.padChoices
@@ -62,9 +64,16 @@ Item {
                     _root.action.xboxTarget = currentValue
                 }
             }
+        }
+
+        // The target's options on their own line, so the row fits a narrow pane.
+        RowLayout {
+            visible: _root.action.xboxTargetKind === "trigger" || _root.action.xboxTargetKind === "button"
+            spacing: Style.dp(8)
 
             ComboBox {
                 visible: _root.action.xboxTargetKind === "trigger"
+                implicitContentWidthPolicy: ComboBox.WidestText
                 textRole: "label"
                 valueRole: "value"
                 model: [

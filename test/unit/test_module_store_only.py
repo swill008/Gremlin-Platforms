@@ -66,6 +66,9 @@ _ALLOWED = {
     ("gremlin/modules/device_class.py", "builds a module file name from a device name"),
     # Saved profiles that aren't open, changed by Copy / Swap (10 S33).
     ("gremlin/library_profiles.py", "writes with module_file directly"),
+    # Button Map templates, their exports and the photo cache (07): not
+    # module files, but written safely with the shared atomic writer.
+    ("gremlin/ui/hardware_profile.py", "writes with module_file directly"),
 }
 
 
