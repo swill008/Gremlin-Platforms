@@ -122,13 +122,27 @@ Item {
             }
         }
 
-        RowLayout {
+        // One line when it fits; too narrow for the name box at a readable
+        // width beside Activation, Activation goes onto a second line under
+        // the name.
+        GridLayout {
             id: _header
 
+            // The column's width, not the grid's own (which grows to its least
+            // width when that is wider).
+            readonly property bool wide: !_activation.shown || _content.width >=
+                _foldButton.implicitWidth - Style.dp(10) + _headerIcon.implicitWidth
+                + Style.dp(120) + _activation.implicitWidth
+                + (_feedbackIcon.visible ? _feedbackIcon.implicitWidth + columnSpacing : 0)
+                + (_removeButton.visible ? _removeButton.implicitWidth + columnSpacing : 0)
+                + 3 * columnSpacing
+
             Layout.fillWidth: true
-            Layout.preferredHeight: _foldButton.height
+            Layout.preferredHeight: wide ? _foldButton.height : -1
             Layout.bottomMargin: Style.dp(10)
-            spacing: Style.dp(10)
+            columns: 6
+            columnSpacing: Style.dp(10)
+            rowSpacing: Style.dp(4)
 
             IconButton {
                 id: _foldButton
@@ -140,6 +154,8 @@ Item {
                 )
                 text: checked ? bsi.icons.folded : bsi.icons.unfolded
 
+                Layout.row: 0
+                Layout.column: 0
                 Layout.alignment: Qt.AlignVCenter
                 Layout.leftMargin: -Style.dp(10)
 
@@ -157,6 +173,9 @@ Item {
             Label {
                 id: _headerIcon
 
+                Layout.row: 0
+                Layout.column: 1
+
                 font.family: Style.iconFont
                 font.pixelSize: Style.dp(24)
 
@@ -166,6 +185,8 @@ Item {
             JGTextField {
                 id: _headerLabel
 
+                Layout.row: 0
+                Layout.column: 2
                 Layout.minimumWidth: Style.dp(72)
                 Layout.fillWidth: true
 
@@ -178,42 +199,62 @@ Item {
                 }
             }
 
-            TriggerMode {
-                visible: _root.action && _root.action.actionBehavior === "button" &&
-                    _root.action.canChangeActivation
+            // Activation and its "off" note: beside the name, or under it.
+            RowLayout {
+                id: _activation
 
-                Layout.alignment: Qt.AlignVCenter
-
-                pressChecked: _root.action && _root.action.activateOnPress
-                releaseChecked: _root.action && _root.action.activateOnRelease
-
-                onPressCheckedChanged: function() {
-                    if (_root.action) {
-                        _root.action.activateOnPress = pressChecked
-                    }
-                }
-                onReleaseCheckedChanged: function() {
-                    if (_root.action) {
-                        _root.action.activateOnRelease = releaseChecked
-                    }
-                }
-            }
-
-            // Both off is allowed (it pauses the action), but say so.
-            Label {
-                visible: _root.action && _root.action.actionBehavior === "button"
+                readonly property bool shown: _root.action
+                    && _root.action.actionBehavior === "button"
                     && _root.action.canChangeActivation
-                    && !_root.action.activateOnPress && !_root.action.activateOnRelease
+
+                visible: shown
+                Layout.row: _header.wide ? 0 : 1
+                Layout.column: _header.wide ? 3 : 2
+                Layout.columnSpan: _header.wide ? 1 : 4
                 Layout.alignment: Qt.AlignVCenter
-                text: "Off: never runs"
-                color: Style.warn
-                font.pixelSize: Style.dp(12)
+                spacing: Style.dp(10)
+
+                TriggerMode {
+                    visible: _root.action && _root.action.actionBehavior === "button" &&
+                        _root.action.canChangeActivation
+
+                    Layout.alignment: Qt.AlignVCenter
+
+                    pressChecked: _root.action && _root.action.activateOnPress
+                    releaseChecked: _root.action && _root.action.activateOnRelease
+
+                    onPressCheckedChanged: function() {
+                        if (_root.action) {
+                            _root.action.activateOnPress = pressChecked
+                        }
+                    }
+                    onReleaseCheckedChanged: function() {
+                        if (_root.action) {
+                            _root.action.activateOnRelease = releaseChecked
+                        }
+                    }
+                }
+
+                // Both off is allowed (it pauses the action), but say so.
+                Label {
+                    visible: _root.action && _root.action.actionBehavior === "button"
+                        && _root.action.canChangeActivation
+                        && !_root.action.activateOnPress && !_root.action.activateOnRelease
+                    Layout.alignment: Qt.AlignVCenter
+                    text: "Off: never runs"
+                    color: Style.warn
+                    font.pixelSize: Style.dp(12)
+                }
             }
 
             // Errors and warnings alike, by their own icon and colour (the
             // binding header does the same).
             Label {
+                id: _feedbackIcon
+
                 visible: _root.action && _root.action.userFeedback.length > 0
+                Layout.row: 0
+                Layout.column: 4
 
                 font.family: Style.iconFont
                 font.pixelSize: Style.dp(24)
@@ -238,6 +279,8 @@ Item {
             IconButton {
                 id: _removeButton
                 visible: !_root.compactMode
+                Layout.row: 0
+                Layout.column: 5
 
                 text: bsi.icons.remove
 

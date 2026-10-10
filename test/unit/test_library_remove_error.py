@@ -12,8 +12,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "library_remove_error_smoke.py"
@@ -57,11 +58,10 @@ def _run(
     args = [sys.executable, str(_SMOKE), _NAME, str(module)]
     if bindings is not None:
         args.append(json.dumps(bindings))
-    result = subprocess.run(
+    result = proc_tree.run(
         args,
         cwd=_ROOT,
         env=env,
-        capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",

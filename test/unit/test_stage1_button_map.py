@@ -43,6 +43,7 @@ import types
 import uuid
 from collections.abc import Iterator
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 from gremlin.modules import store
@@ -52,7 +53,7 @@ from gremlin.ui import hardware_profile, input_pairing
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "stage1_button_map_smoke.py"
 # A started part: its process and its user folder (which holds its output).
-_Smoke = tuple[subprocess.Popen[bytes], pathlib.Path]
+_Smoke = tuple[proc_tree.Tree, pathlib.Path]
 
 
 def _start(part: str, home: pathlib.Path) -> _Smoke:
@@ -76,21 +77,21 @@ def _start(part: str, home: pathlib.Path) -> _Smoke:
     with (home / "stdout.txt").open("w", encoding="utf-8") as out, (
         home / "stderr.txt"
     ).open("w", encoding="utf-8") as err:
-        proc = subprocess.Popen(
+        tree = proc_tree.popen(
             [sys.executable, str(_SMOKE), part],
             cwd=_ROOT, env=env, stdout=out, stderr=err,
         )
-    return proc, home
+    return tree, home
 
 
 def _result(smoke: _Smoke) -> dict:
     """The started part's result (its RESULT line)."""
-    proc, home = smoke
+    tree, home = smoke
     try:
-        proc.wait(timeout=240)
+        tree.process.wait(timeout=240)
     except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
+        tree.kill()
+        tree.process.wait()
     stdout, stderr = (
         (home / name).read_text(encoding="utf-8", errors="replace")
         for name in ("stdout.txt", "stderr.txt")
@@ -125,10 +126,9 @@ def _smokes(
         for part in ("flows", "outside")
     }
     yield smokes
-    for proc, _home in smokes.values():
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait()
+    for tree, _home in smokes.values():
+        tree.close()
+        tree.process.wait()
 
 
 @pytest.fixture(scope="module")

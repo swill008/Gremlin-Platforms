@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import os
 import pathlib
-import subprocess
 
 from gremlin.config import Configuration
 from gremlin.ui import hardware_profile
@@ -73,9 +74,8 @@ os._exit(0)
 
 def test_eyedropper_reads_the_window() -> None:
     root = pathlib.Path(__file__).parents[2]
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", _EYEDROPPER],
-        capture_output=True,
         text=True,
         cwd=root,
         timeout=60,

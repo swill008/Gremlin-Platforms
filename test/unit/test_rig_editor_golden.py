@@ -19,9 +19,9 @@ import os
 import pathlib
 import re
 import shutil
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 from PySide6 import QtGui
 
@@ -178,9 +178,8 @@ def _expand(doc: dict) -> dict:
 
 
 def _run(scenario: str, out_dir: pathlib.Path) -> dict:
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(_HARNESS), scenario, str(out_dir)],
-        capture_output=True,
         text=True,
         timeout=240,
     )

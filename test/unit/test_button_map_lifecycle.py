@@ -11,16 +11,16 @@ from __future__ import annotations
 
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
 
 def test_button_map_leaves_nothing_behind() -> None:
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(_HERE / "button_map_lifecycle_smoke.py")],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=180,

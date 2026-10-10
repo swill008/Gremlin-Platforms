@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 import threading
 import time
@@ -249,15 +248,6 @@ def _smoke() -> None:
     class FakeSignal(QtCore.QObject):
         inputItemChanged = QtCore.Signal(int)
 
-    class ActionNames(QtCore.QObject):
-        @QtCore.Slot("QVariant", int, str)
-        def setOnModel(self, model: object, index: int, name: str) -> None:
-            pass
-
-        @QtCore.Slot("QVariant", int, result=str)
-        def getOnModel(self, model: object, index: int) -> str:
-            return ""
-
     class OscSettingsInfo(QtCore.QObject):
         @QtCore.Slot(result=str)
         def summary(self) -> str:
@@ -279,7 +269,6 @@ def _smoke() -> None:
 
     class OscDeviceManagementModel(QtCore.QAbstractListModel):
         listenChanged = QtCore.Signal()
-        listenBound = QtCore.Signal(int)
         commandCaptured = QtCore.Signal(str, str)
 
         def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
@@ -309,7 +298,7 @@ def _smoke() -> None:
         QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "Style.qml")),
         "Gremlin.Style", 1, 0, "Style",
     )
-    stand_ins = (OscDeviceManagementModel, OscSettingsInfo, OscBulkCapture, ActionNames)
+    stand_ins = (OscDeviceManagementModel, OscSettingsInfo, OscBulkCapture)
     for cls in stand_ins:
         QtQml.qmlRegisterType(cls, "Gremlin.Device", 1, 0, cls.__name__)
     QtQml.qmlRegisterType(WindowPlacement, "Gremlin.UI", 1, 0, "WindowPlacement")
@@ -445,9 +434,9 @@ def _smoke() -> None:
 
 
 def _run(tmp_path: pathlib.Path) -> tuple[dict[str, object], list[str]]:
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, __file__],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

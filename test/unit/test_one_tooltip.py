@@ -18,7 +18,6 @@ from __future__ import annotations
 import os
 import pathlib
 import re
-import subprocess
 import sys
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -181,9 +180,9 @@ def _smoke() -> None:
 def test_plain_tooltip_waits_and_wraps(tmp_path: pathlib.Path) -> None:
     """A tooltip with no delay set appears after Style.tooltipDelayMs while the
     pointer rests on the item and wraps long text at Style.tooltipMaxWidth."""
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve()), "--smoke"],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

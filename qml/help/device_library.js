@@ -116,7 +116,7 @@ function topics() {
             + "<p>Select one to see its name and description, when and why it was kept, exactly what it holds under <b>Holds</b> (for example \"Bindings from DCS.xml · modes Default, Landing · 212 actions\" and \"Sends to vJoy 1 (38 inputs)\"), a preview of its Button Map photo, and its <b>Activity</b>: when it was saved, when its description was edited, and which sticks it was copied to. The buttons under the details are <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, <b>Export…</b> and <b>Delete…</b>.</p>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>Activity covers only that saved setup; <b>Tools › History</b> keeps every saved change in the program.</li>"
+            + "<li>Activity covers only that saved setup; <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> keeps every saved change in the program.</li>"
             + "<li>A stick whose module file was damaged can still be kept: its saved setup holds <b>Setup (damaged file, kept as is)</b>. That file is never put on another stick; only its bindings can be copied.</li>"
             + "</ul>",
             ["device-library-save", "device-library-autosaves", "device-library-copy"]),
@@ -274,7 +274,7 @@ function topics() {
         t("device-library-profiles", "Changing sticks", "Profiles that aren't open",
             "<p>Copy, Swap and Change vJoy Output change the profiles you tick, open or not.</p>"
             + "<ul>"
-            + "<li>The <b>open profile</b> is changed in memory. To keep the change, save it with <b>File › Save Profile</b> in the main window.</li>"
+            + "<li>The <b>open profile</b> is changed in memory. To keep the change, save it with <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> in the main window.</li>"
             + "<li>A ticked profile that isn't open is changed and saved on disk straight away. History keeps each save, so the whole file can be restored from <b>Tools › History</b>.</li>"
             + "<li>A profile that can't be read or written is named in the message and left as it was; the others still change.</li>"
             + "</ul>"
@@ -305,12 +305,12 @@ function topics() {
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>While you type in a box, <b>Ctrl+Z</b> and <b>Ctrl+Y</b> undo the typing instead.</li>"
-            + "<li>Clear History in Tools › History also empties Undo and Redo here: nothing from before it can be undone.</li>"
+            + "<li>Clear History in <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> also empties Undo and Redo here: nothing from before it can be undone.</li>"
             + "<li>Each change is one entry in <b>Tools › History</b>, so older changes, and those from before the program started, can be put back there. See <a href=\"topic:device-library-history\">See a device's changes in History</a>.</li>"
             + "</ul>",
             ["device-library-history", "device-library-delete", "device-library-qa-go-back"]),
         t("device-library-history", "Undo and Redo", "See a device's changes in History",
-            "<p><b>Tools › History</b> keeps every Library change, also from earlier sessions, and can put any of them back.</p>"
+            "<p><b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> keeps every Library change, also from earlier sessions, and can put any of them back.</p>"
             + "<ol>"
             + "<li>Right-click a device or one of its saved setups.</li>"
             + "<li>Choose <b>Show in History</b>. History opens in the main window, showing only that device's changes.</li>"

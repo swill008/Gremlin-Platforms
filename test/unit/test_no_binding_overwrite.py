@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _SMOKE = pathlib.Path(__file__).resolve().parent / "no_binding_overwrite_smoke.py"
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -29,8 +30,8 @@ def test_no_binding_is_overwritten_opening_the_button_map(
         QT_LOGGING_RULES="qt.qml.binding.removal.info=true",
         PYTHONIOENCODING="utf-8",
     )
-    done = subprocess.run(
-        [sys.executable, str(_SMOKE)], cwd=_ROOT, env=env, capture_output=True,
+    done = proc_tree.run(
+        [sys.executable, str(_SMOKE)], cwd=_ROOT, env=env,
         text=True, encoding="utf-8", errors="replace", timeout=120,
     )
     out = done.stdout + done.stderr

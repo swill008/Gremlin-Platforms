@@ -11,7 +11,6 @@ import json
 import os
 import pathlib
 import re
-import subprocess
 import sys
 import threading
 import time
@@ -21,6 +20,7 @@ from types import SimpleNamespace
 from typing import Any
 from unittest import mock
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 from PySide6 import QtCore, QtGui
 
@@ -526,10 +526,10 @@ def _looks() -> list[dict[str, str]]:
     env = dict(
         os.environ, QT_QPA_PLATFORM="offscreen", QT_QUICK_CONTROLS_STYLE="GremlinStyle"
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", _LOOK_SCRIPT, str(_ROOT / "qml" / "Style.qml"),
          str(_ROOT / "theme")],
-        capture_output=True, text=True, timeout=60, env=env,
+        text=True, timeout=60, env=env,
     )
     assert result.returncode == 0, result.stderr
     return [json.loads(line) for line in result.stdout.split()]

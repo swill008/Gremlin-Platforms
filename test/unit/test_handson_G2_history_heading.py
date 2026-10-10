@@ -19,9 +19,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -42,8 +42,8 @@ def run(
     args = [sys.executable, "test/unit/handson_G2_history_smoke.py", str(request.param)]
     if os.environ.get("GREMLIN_SHOT"):
         args.append(os.environ["GREMLIN_SHOT"].replace(".png", f"-{request.param}.png"))
-    result = subprocess.run(
-        args, cwd=_ROOT, env=env, capture_output=True, text=True, timeout=120
+    result = proc_tree.run(
+        args, cwd=_ROOT, env=env, text=True, timeout=120
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-2000:] + result.stderr[-2000:]

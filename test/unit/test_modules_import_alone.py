@@ -17,6 +17,8 @@ import subprocess
 import sys
 from collections import deque
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 _ROOT = pathlib.Path(__file__).parents[2]
 
 
@@ -35,8 +37,8 @@ def test_each_gremlin_module_loads_on_its_own(tmp_path: pathlib.Path) -> None:
     env["USERPROFILE"] = str(tmp_path)
     env["QT_QPA_PLATFORM"] = "offscreen"
 
-    def start(name: str) -> tuple[str, subprocess.Popen]:
-        return name, subprocess.Popen(
+    def start(name: str) -> tuple[str, proc_tree.Tree]:
+        return name, proc_tree.popen(
             [sys.executable, "-c", f"import {name}"],
             cwd=_ROOT,
             env=env,
@@ -45,23 +47,26 @@ def test_each_gremlin_module_loads_on_its_own(tmp_path: pathlib.Path) -> None:
             text=True,
         )
 
-    def finish(name: str, proc: subprocess.Popen) -> str | None:
+    def finish(name: str, tree: proc_tree.Tree) -> str | None:
         # Waited for here, on the main thread: the test's hang watch counts
         # waiting on a program as progress (waiting on a thread pool looked
         # like a stall on CI's slower 4-core machine).
+        proc = tree.process
         try:
             _, err = proc.communicate(timeout=120)
         except subprocess.TimeoutExpired:
-            proc.kill()
+            tree.kill()
             proc.communicate()
             return f"{name}: did not load within 120 s"
+        finally:
+            tree.close()
         if proc.returncode == 0:
             return None
         lines = [line for line in err.splitlines() if line.strip()]
         return f"{name}: {' / '.join(lines[-2:])}"
 
     at_once = max(2, (os.cpu_count() or 4) // 2)
-    running: deque[tuple[str, subprocess.Popen]] = deque()
+    running: deque[tuple[str, proc_tree.Tree]] = deque()
     failures = []
     for name in _modules():
         if len(running) >= at_once:

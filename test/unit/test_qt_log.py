@@ -13,6 +13,8 @@ import re
 import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 _ROOT = pathlib.Path(__file__).parents[2]
 
 _SCRIPT = r"""
@@ -37,9 +39,9 @@ print("LEFT", left, flush=True)
 def _run(
     folder: pathlib.Path, cap: int = 5_000_000, filler: int = 0
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    return proc_tree.run(
         [sys.executable, "-c", _SCRIPT, str(folder), str(cap), str(filler)],
-        cwd=_ROOT, capture_output=True, text=True, timeout=60,
+        cwd=_ROOT, text=True, timeout=60,
     )
 
 

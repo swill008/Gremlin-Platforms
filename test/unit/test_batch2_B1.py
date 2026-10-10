@@ -22,12 +22,12 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 import threading
 from collections.abc import Iterator
 from pathlib import Path
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 import gremlin.config
@@ -373,9 +373,9 @@ def test_a_failure_while_the_modules_load_is_shown_and_logged(tmp_path: Path) ->
         os.environ, USERPROFILE=str(tmp_path), QT_QPA_PLATFORM="offscreen",
         GREMLIN_OFFLINE="1",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=120,
+        text=True, timeout=120,
     )
     assert result.returncode == 1, result.stderr[-1500:]
     log = tmp_path / "Gremlin Platforms" / "logs" / "system.log"
@@ -522,9 +522,9 @@ def test_main_window_shell(tmp_path: Path) -> None:
         os.environ, USERPROFILE=str(tmp_path), QT_QPA_PLATFORM="offscreen",
         GREMLIN_OFFLINE="1",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=180,
+        text=True, timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-1500:] + result.stderr[-3000:]

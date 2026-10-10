@@ -18,12 +18,13 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import json
 import os
 import pathlib
-import subprocess
 
 import pytest
 
@@ -186,11 +187,10 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         GREMLIN_OFFLINE="1",
         HTTPS_PROXY="http://127.0.0.1:9",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script)],
         cwd=_ROOT,
         env=env,
-        capture_output=True,
         text=True,
         timeout=120,
     )

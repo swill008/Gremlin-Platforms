@@ -20,7 +20,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
 import pytest
@@ -148,11 +147,11 @@ def _smoke() -> None:
 
 @pytest.fixture(scope="module")
 def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
     out = tmp_path_factory.mktemp("dl_menu_refresh")
     home = tmp_path_factory.mktemp("home")
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve()), str(out)],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

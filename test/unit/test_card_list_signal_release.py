@@ -20,4 +20,6 @@ def test_a_deleted_card_list_drops_its_input_item_connection(qtbot) -> None:  # 
     del model
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     gc.collect()
-    assert signal.receivers(_SIGNAL) == before
+    # Other lists made by earlier tests may be freed meanwhile: never more
+    # than before (a leak would leave this list's connection behind).
+    assert signal.receivers(_SIGNAL) <= before

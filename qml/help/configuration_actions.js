@@ -159,14 +159,15 @@ function topics() {
             id: "configuration-actions-treat-as",
             section: page,
             title: "Treat an axis or hat as a button",
-            body: "<p><b>Treat as</b> in a binding's header lets an axis or a hat fire button actions.</p>"
+            body: "<p><b>Treat as</b> in a binding's header lets an axis or a hat fire button actions. A button or a key has no Treat as.</p>"
                 + "<ol>"
-                + "<li>Choose <b>Treat as</b> <b>Button</b>.</li>"
-                + "<li>For an axis, set <b>Activate between</b> and <b>when entered from</b>. Entering the range presses; leaving it releases.</li>"
+                + "<li>Choose <b>Treat as</b> <b>Button</b>. The binding now offers the button actions in <b>Add Action</b>.</li>"
+                + "<li>For an axis, set <b>Activate between</b> and <b>when entered from</b> (<b>Anywhere</b>, <b>Above</b> or <b>Below</b>). Entering the range presses; leaving it releases.</li>"
                 + "<li>For a hat, pick the directions under <b>Activate on</b>. Any of them presses the button.</li>"
                 + "</ol>"
                 + _good([
-                    "Changing Treat as on a binding that has actions asks first (\"Treat as Button?\"). The red <b>Change and Remove</b> changes it and removes those actions. This can't be undone.",
+                    "To go back, choose <b>Treat as</b> <b>Axis</b> or <b>Hat</b>.",
+                    "Changing Treat as either way on a binding that has actions asks first (\"Treat as Button?\", \"Treat as Axis?\" or \"Treat as Hat?\") and says how many actions the change removes. The red <b>Change and Remove</b> changes it and removes those actions. This can't be undone.",
                     "An axis already inside the range when you choose <b>Run</b> gives no press until it leaves and comes back."
                 ]),
             related: ["configuration-actions-bindings", "configuration-actions-choose-action"]
@@ -178,14 +179,14 @@ function topics() {
             body: "<p>An action with a problem shows a warning or error icon on its row. Point at the icon to see why.</p>"
                 + "<ul>"
                 + "<li>A warning still runs. An error means the action is not finished.</li>"
-                + "<li>Before saving, the program lists the unfinished actions with their first error. Choose <b>Save without them</b> to leave them out, or <b>Cancel</b> to go back and finish them.</li>"
+                + "<li>Before saving, \"Unfinished Actions\" lists them, each with its first error, and says they will be left out of the saved profile. Choose <b>Save without them</b> to save the rest, or <b>Cancel</b> to go back and finish them.</li>"
                 + "<li><b>Run</b> skips unfinished actions.</li>"
                 + "</ul>"
                 + "<h4>Unsaved edits after the program closed unexpectedly</h4>"
-                + "<p>While a profile has unsaved changes, the program keeps a recovery copy of them about every minute, in the recovery folder inside the data folder. Saving, <b>Discard</b> and closing the program normally remove it.</p>"
+                + "<p>While a profile has unsaved changes, the program keeps a recovery copy of them about every minute, in the recovery folder inside the data folder (<b>File › Open Data Folder</b> <a href=\"show:menu/File/Open Data Folder\">Show me ›</a>). A profile that was never saved gets one too. Saving, <b>Discard</b> and closing the program normally remove it.</p>"
                 + "<p>If the program closed with unsaved changes, the next time that profile opens (or when the program starts again), \"Unsaved Edits Found\" says \"The profile <i>name</i> has edits from <i>date</i> at <i>time</i> that were never saved, probably because the program closed unexpectedly.\"</p>"
                 + "<ul>"
-                + "<li><b>Restore</b> opens the edits. Save the profile to keep them.</li>"
+                + "<li><b>Restore</b> opens the edits. Save the profile to keep them (<b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a>).</li>"
                 + "<li><b>Discard</b> deletes them.</li>"
                 + "<li><b>Not now</b> keeps them to be offered again later.</li>"
                 + "</ul>"
@@ -228,7 +229,7 @@ function topics() {
                     "Opening another device clears every step. Loading another profile keeps the steps for groups, order and names.",
                     "Undo and Redo wait while an action is open in the editor.",
                     "If a step can't be played, it stays in the list and a notice says \"That change couldn't be put back.\"",
-                    "Saved changes are also kept in the <a href=\"topic:tools-history\">History</a> (<b>Tools › History</b>)."
+                    "Saved changes are also kept in the <a href=\"topic:tools-history\">History</a> (<b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a>)."
                 ]),
             related: ["configuration-actions-add-action", "configuration-actions-delete-action", "tools-history"]
         },
@@ -317,7 +318,7 @@ function topics() {
                 + "</ol>"
                 + _good([
                     "A Relative axis stops when the input rests for 1 second, or when something else moves that vJoy axis.",
-                    "Only outputs claimed by the vJoy output module are sent. An output that isn't claimed shows <b>Output not claimed</b>; claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a>.",
+                    "Only outputs claimed by the vJoy output module are sent. An output that isn't claimed shows <b>Output not claimed</b>; claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).",
                     "A new Map to vJoy starts on the first claimed output this mode doesn't use yet. When every claimed output is used, it starts on the first one.",
                     "The output list offers only claimed outputs the vJoy device really has."
                 ]),
@@ -338,7 +339,7 @@ function topics() {
                 + _good([
                     "A button, key or hat on a trigger pulls it fully while pressed and lets go on release. A hat on a stick moves it in the hat's direction.",
                     "A target saved earlier that no longer fits stays in the list and still works.",
-                    "Map to Xbox needs the <b>ViGEmBus</b> driver; see <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>.",
+                    "Map to Xbox needs the <b>ViGEmBus</b> driver; see <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>. Without it the action shows a warning (\"ViGEmBus / ViGEmClient.dll not available.\") and stays in the profile.",
                     "To send a Logical Device control to Xbox, see " + "<a href=\"topic:logical-device-send-to-xbox-vjoy\">Send a control to Xbox or vJoy</a>" + "."
                 ]),
             related: ["configuration-actions-map-to-vjoy", "logical-device-send-to-xbox-vjoy", "home-devices-xbox-output"]
@@ -354,7 +355,7 @@ function topics() {
                 + "<li>For a button, tick <b>Invert activation</b> if you need it.</li>"
                 + "</ol>"
                 + _good([
-                    "<b>Assign Hardware</b> on the Logical Device creates these actions for you.",
+                    "<b>Assign Hardware</b> on the Logical Device (<b>Tools › Mapping › Logical Device</b> <a href=\"show:menu/Tools/Mapping/Logical Device\">Show me ›</a>) creates these actions for you.",
                     "On a Logical Device control, the list never offers that same control, and a new action never starts on it. If it is the only control of its type, a new one is made for the action.",
                     "A saved action that sends a control to itself shows that control selected, marked \"(this control: blocked by the loop guard)\". It does nothing when the profile runs; pick another control.",
                     "A loop between controls is stopped; see " + "<a href=\"topic:logical-device-q-loop\">Why was a loop between controls stopped?</a>" + "."
@@ -410,7 +411,7 @@ function topics() {
                     "A new vJoy step starts on the first output a vJoy output module claims. If none is claimed, the step is added with the notice \"Claim an output on a vJoy output module first.\"",
                     "A step the program can't read shows as <b>Unreadable step</b>, for example \"Unknown step type 'X': kept as it was, does nothing.\" It does nothing when the macro plays, and saving keeps it unchanged. You can remove it.",
                     "Mouse buttons can be recorded as steps, but a mouse button is never an input of its own; see " + _link("map-to-mouse", "Map to Mouse") + ".",
-                    "The pause between steps is set by <b>Macro Default Delay</b> in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>."
+                    "Where there is no Pause step, the macro waits between steps for <b>Macro Default Delay</b> in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a> (<b>View › Profile Settings</b> <a href=\"show:menu/View/Profile Settings\">Show me ›</a>). Unless the profile sets its own, that is <b>Default delay</b> <a href=\"show:option/Default delay\">Show me ›</a> in Options."
                 ]),
             related: ["configuration-actions-map-to-keyboard", "configuration-actions-map-to-mouse", "options-profile-profile-settings"]
         },
@@ -480,7 +481,10 @@ function topics() {
             id: "configuration-actions-axis-delta",
             section: actions,
             title: "Axis Delta",
-            body: "<p>Turns axis movement into button presses. Each time the axis moves by <b>Change threshold</b>, it pulses the actions under <b>Positive change</b> or <b>Negative change</b>.</p>",
+            body: "<p>Turns axis movement into button presses. Each time the axis moves by <b>Change threshold</b>, it pulses the actions under <b>Positive change</b> or <b>Negative change</b>.</p>"
+                + _good([
+                    "A new Axis Delta starts with the <b>Threshold</b> <a href=\"show:option/Threshold\">Show me ›</a> set in Options under <b>Axis Delta</b>."
+                ]),
             related: ["configuration-actions-split-axis"]
         },
         {
@@ -520,7 +524,10 @@ function topics() {
                 + "<ul>"
                 + "<li><b>exclusive</b> waits to see if a second tap comes.</li>"
                 + "<li><b>combined</b> runs the single-tap actions on every press.</li>"
-                + "</ul>",
+                + "</ul>"
+                + _good([
+                    "A new Double Tap starts with the <b>Duration</b> <a href=\"show:option/Double Tap duration\">Show me ›</a> set in Options under <b>Double Tap</b>."
+                ]),
             related: ["configuration-actions-tempo", "configuration-actions-chain"]
         },
         {
@@ -528,14 +535,20 @@ function topics() {
             section: actions,
             title: "Tempo",
             body: "<p>Gives a <b>Short press</b> and a <b>Long press</b> their own actions. A press longer than <b>Long-press threshold (sec)</b> is a long press.</p>"
-                + "<ul><li><b>Activate on</b> sets whether the actions run on press or on release.</li></ul>",
+                + "<ul><li><b>Activate on</b> sets whether the actions run on press or on release.</li></ul>"
+                + _good([
+                    "A new Tempo starts with the <b>Duration</b> <a href=\"show:option/Tempo duration\">Show me ›</a> set in Options under <b>Tempo</b>."
+                ]),
             related: ["configuration-actions-double-tap", "configuration-actions-smart-toggle"]
         },
         {
             id: "configuration-actions-smart-toggle",
             section: actions,
             title: "Smart Toggle",
-            body: "<p>A quick press, released within <b>Hold time (sec)</b>, latches its actions on until the next press. A longer hold acts only while held.</p>",
+            body: "<p>A quick press, released within <b>Hold time (sec)</b>, latches its actions on until the next press. A longer hold acts only while held.</p>"
+                + _good([
+                    "A new Smart Toggle starts with the <b>Duration</b> <a href=\"show:option/Smart Toggle duration\">Show me ›</a> set in Options under <b>Smart Toggle</b>."
+                ]),
             related: ["configuration-actions-tempo"]
         },
         {
@@ -562,7 +575,7 @@ function topics() {
                 + "</ul>"
                 + _good([
                     "Cycle's first press moves to the mode after the current one, or to the first in the list if the current mode isn't in it. Deleted modes are skipped.",
-                    "Renaming a mode updates the Change Mode actions that name it.",
+                    "Modes are added, renamed and deleted in <b>Manage Modes</b> <a href=\"show:modebar/Manage Modes\">Show me ›</a>. Renaming a mode updates the Change Mode actions that name it.",
                     "<b>Mode cycle resolution</b> <a href=\"show:option/Mode cycle resolution\">Show me ›</a> decides where a loop back to an earlier mode lands."
                 ]),
             related: ["configuration-actions-load-profile", "modes-modes", "modes-manage"]
@@ -636,7 +649,7 @@ function topics() {
                 + _good([
                     "It sends only while the profile runs, and only while <b>OSC output (Send OSC actions and feedback)</b> is on in OSC's Module Setup (<b>Output</b> tab).",
                     "A target that was removed shows as <b>Missing target</b>: pick another one. An address that doesn't start with \"/\" shows \"An OSC address starts with /.\"",
-                    "Every message it sends shows in the OSC Monitor as <b>Out</b>.",
+                    "Every message it sends shows in the OSC Monitor (<b>Tools › OSC Monitor</b> <a href=\"show:menu/Tools/OSC Monitor\">Show me ›</a>) as <b>Out</b>.",
                     "Targets are set on the <b>Output</b> tab of <b>OSC Setup…</b>; see <a href=\"topic:osc-output-tab\">Output tab</a>.",
                     "Value types and the exact type codes sent: <a href=\"topic:osc-value-types\">OSC value types</a> and <a href=\"topic:osc-tech-out\">OSC values the program sends</a>."
                 ]),
@@ -689,14 +702,14 @@ function topics() {
             id: "configuration-actions-q-action-missing",
             section: questions,
             title: "Why is an action missing from the Add Action list?",
-            body: "<p>The list shows only the actions that suit the input type, and <a href=\"topic:options-profile-options\">Options</a> › Actions › Add Action Menu › <b>Actions offered</b> can hide actions.</p>",
+            body: "<p>The list shows only the actions that suit the input type, and <a href=\"topic:options-profile-options\">Options</a> › Actions › Add Action Menu › <b>Actions offered</b> <a href=\"show:option/Actions offered\">Show me ›</a> can hide actions.</p>",
             related: ["configuration-actions-choose-action"]
         },
         {
             id: "configuration-actions-q-not-kept",
             section: questions,
             title: "Why did my action not stay after I closed the program?",
-            body: "<p><b>OK</b> keeps the action in the open profile only. Choose <b>File › Save Profile</b> (<b>Ctrl+S</b>) to write it to disk.</p>",
+            body: "<p><b>OK</b> keeps the action in the open profile only. Choose <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>) to write it to disk. If the program closed unexpectedly before you saved, the edits may be offered back; see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>.</p>",
             related: ["configuration-actions-add-action"]
         },
         {
@@ -710,7 +723,7 @@ function topics() {
             id: "configuration-actions-q-vjoy-not-claimed",
             section: questions,
             title: "Why does Map to vJoy say Output not claimed?",
-            body: "<p>The vJoy output module doesn't claim that output, so nothing is sent to it. Claim the output in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a>.</p>",
+            body: "<p>The vJoy output module doesn't claim that output, so nothing is sent to it. Claim the output in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).</p>",
             related: ["configuration-actions-map-to-vjoy"]
         },
         {

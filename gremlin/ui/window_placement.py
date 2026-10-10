@@ -21,15 +21,12 @@ KEY_Y = "window-y"
 KEY_W = "window-width"
 KEY_H = "window-height"
 KEY_MAX = "window-maximized"
-KEY_MENU_W = "button-map-menu-width"
-KEY_MENU_H = "button-map-menu-height"
 KEY_DISPLAY_PANELS = "display-panels"
 KEY_CLOSE_PANE = "close-pane-after-ok"
 KEY_PANE_W = "action-pane-width"
 KEY_TOOLS = "tool-windows"
 # Where each window's pane dividers sit, by pane name: a share 0..1.
 KEY_SPLITS = "pane-splits"
-KEY_LOGICAL = "logical-layout"
 # Each window's tool row: its tools' order, and which are open, pinned and
 # locked (by row name).
 KEY_TOOL_ROWS = "tool-rows"
@@ -40,8 +37,6 @@ KEY_LIST_APPEARANCE = "list-appearance"
 
 DEFAULT_W = 1400
 DEFAULT_H = 900
-DEFAULT_MENU_W = 240
-DEFAULT_MENU_H = 560
 
 
 def _ensure() -> Configuration:
@@ -52,14 +47,11 @@ def _ensure() -> Configuration:
         (KEY_W, PropertyType.Int, DEFAULT_W),
         (KEY_H, PropertyType.Int, DEFAULT_H),
         (KEY_MAX, PropertyType.Bool, False),
-        (KEY_MENU_W, PropertyType.Int, DEFAULT_MENU_W),
-        (KEY_MENU_H, PropertyType.Int, DEFAULT_MENU_H),
         (KEY_DISPLAY_PANELS, PropertyType.String, "{}"),
         (KEY_CLOSE_PANE, PropertyType.Bool, False),
         (KEY_PANE_W, PropertyType.Int, 560),
         (KEY_TOOLS, PropertyType.String, "{}"),
         (KEY_SPLITS, PropertyType.String, "{}"),
-        (KEY_LOGICAL, PropertyType.String, "{}"),
         (KEY_TOOL_ROWS, PropertyType.String, "{}"),
         (KEY_LIST_APPEARANCE, PropertyType.String, "{}"),
     )
@@ -535,13 +527,3 @@ class WindowPlacement(QtCore.QObject):
     @QtCore.Slot(str, str, bool)
     def setDisplayPanelOpen(self, kind: str, device_id: str, open_panel: bool) -> None:
         set_display_panel_open(kind, device_id, open_panel)
-
-    def _logical(self) -> dict:
-        cfg = _ensure()
-        raw = cfg.value(SECTION, GROUP, KEY_LOGICAL) or "{}"
-        try:
-            data = json.loads(str(raw))
-        except json.JSONDecodeError:
-            data = {}
-        return data if isinstance(data, dict) else {}
-

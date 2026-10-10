@@ -13,9 +13,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -34,8 +34,8 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     args = [sys.executable, "test/unit/history_window_smoke.py"]
     if os.environ.get("GREMLIN_SHOT"):
         args.append(os.environ["GREMLIN_SHOT"])
-    result = subprocess.run(
-        args, cwd=_ROOT, env=env, capture_output=True, text=True, timeout=120
+    result = proc_tree.run(
+        args, cwd=_ROOT, env=env, text=True, timeout=120
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-2000:] + result.stderr[-2000:]

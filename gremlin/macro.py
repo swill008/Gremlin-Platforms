@@ -1011,7 +1011,17 @@ class OscAction(AbstractAction):
     def __call__(self) -> None:
         row = self.row()
         if row is None:
-            return  # no input chosen, or one OSC doesn't have
+            # No input chosen, or one OSC doesn't have (D-09-OSC-TRACE).
+            from gremlin import trace
+
+            trace.osc(
+                "inputs",
+                f"macro OSC step: input {self.uid or '(none chosen)'} is missing "
+                "(not played)",
+                blocked=True,
+                key=f"macro {self.uid}",
+            )
+            return
         # The recorded value is already shaped: played as is, marked
         # synthetic, not recorded again; the runtime hops to its thread.
         if row.input_type == InputType.JoystickAxis:

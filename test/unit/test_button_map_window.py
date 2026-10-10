@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -18,9 +19,8 @@ _IGNORED = ("vkb_gladiator_rig.jpg",)
 
 
 def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(_HERE / "button_map_window_smoke.py"), str(tmp_path)],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",

@@ -22,16 +22,21 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin import axis_shaping, clock, threads
+from gremlin import axis_shaping, clock, osc_pattern, threads, trace
 from gremlin.common import SingletonDecorator, SingletonMetaclass
 from gremlin.error import GremlinError
-from gremlin.log_once import log_once
 from gremlin.modules import ids
 from gremlin.osc_rows import OscRow, OscRows
 from gremlin.types import InputType
 
 log = logging.getLogger("system")
 user_log = logging.getLogger("user")
+
+# Trace areas (D-09-OSC-TRACE). Every tap checks trace.osc_on(area) first,
+# so tracing off costs one check and no formatting.
+RECEIVE = "receive"
+INPUTS = "inputs"
+SETUP = "setup"
 
 OSC_DEVICE_UUID = ids.OSC
 
@@ -124,6 +129,53 @@ def sender_allowed(
         for ip in candidates
         if ip.version == net.version
     )
+
+
+def peer_text(peer: object) -> str:
+    """host:port of a sender, "?" when unknown."""
+    if isinstance(peer, (tuple, list)) and len(peer) >= 2:
+        return f"{peer[0]}:{peer[1]}"
+    return "?"
+
+
+def _value_text(value: object) -> str:
+    if isinstance(value, float):
+        return format(value, "g")
+    if isinstance(value, (bytes, bytearray)):
+        return f"<{len(value)} bytes>"
+    if isinstance(value, str):
+        return repr(value if len(value) <= 40 else value[:40] + "…")
+    return str(value)
+
+
+def _tag(value: object) -> str:
+    if value is True:
+        return "T"
+    if value is False:
+        return "F"
+    if value is None:
+        return "N"
+    if isinstance(value, int):
+        return "i"
+    if isinstance(value, float):
+        return "f"
+    if isinstance(value, str):
+        return "s"
+    if isinstance(value, (bytes, bytearray)):
+        return "b"
+    return "?"
+
+
+def args_text(args: object) -> str:
+    """A message's values as sent: OSC type tags, then the values, e.g.
+    ",fi 0.5 3"; "(no values)" for none. True, False and None (T, F, N)
+    show by their tag only."""
+    values = tuple(args) if isinstance(args, (tuple, list)) else ()
+    if not values:
+        return "(no values)"
+    tags = "".join(_tag(v) for v in values)
+    shown = [_value_text(v) for v in values if _tag(v) not in "TFN"]
+    return " ".join(["," + tags, *shown])
 
 
 def is_pressed(args: tuple[Any, ...]) -> bool:
@@ -280,22 +332,39 @@ class OscListener:
         self, client: Any, address: str, *args: Any  # noqa: ANN401
     ) -> None:
         address = (address or "").casefold()
-        if address == "/noop":
-            return
         peer = None
         if isinstance(client, (tuple, list)) and len(client) >= 2:
             peer = (str(client[0]), int(client[1]))
+        if address == "/noop":
+            # Listener thread: format only when the area is ticked.
+            if trace.osc_on(RECEIVE):
+                trace.osc(
+                    RECEIVE,
+                    f"/noop from {peer_text(peer)} (keep-alive, ignored)",
+                    rate=True,
+                    key="/noop",
+                )
+            return
         if self.callback is not None:
             self.callback(address, args, peer)
 
 
 def report_malformed(client: object, reason: str) -> None:
-    """A packet that isn't OSC (OX3): once per sender into the user log and
-    the program log (called on the listener's thread)."""
+    """A packet that isn't OSC (OX3): at most 10 times per sender per Run
+    into the user log and the program log (D-09-OSC-TRACE), and a Receive
+    trace line (called on the listener's thread)."""
     host = client[0] if isinstance(client, (tuple, list)) and client else "?"
     text = f"OSC: a malformed packet from {host} was ignored ({reason})"
-    log_once("user", ("osc-malformed", host), logging.WARNING, text)
-    log_once("system", ("osc-malformed", host), logging.WARNING, text)
+    key = f"osc-malformed {host}"
+    trace.log_limited("user", key, logging.WARNING, text)
+    trace.log_limited("system", key, logging.WARNING, text)
+    if trace.osc_on(RECEIVE):
+        trace.osc(
+            RECEIVE,
+            f"malformed packet from {host} ({reason})",
+            blocked=True,
+            key=key,
+        )
 
 
 _CLASSES: dict[str, type] = {}
@@ -684,6 +753,9 @@ class OscRuntime(QtCore.QObject):
         self._learn = True
         self.listenChanged.emit()
         log.info("OSC listen-once waiting for next packet hold=%s", hold)
+        if trace.osc_on(SETUP):
+            what = "Bulk capture" if hold else "one message"
+            trace.osc(SETUP, f"Listen started ({what})")
         return True
 
     def listen_bulk(self, owner: object = None) -> bool:
@@ -693,6 +765,13 @@ class OscRuntime(QtCore.QObject):
         """Stop listening. With owner, only a Listen it started (or one
         nobody owns) stops: another window's Cancel leaves it running."""
         if owner is not None and not self.listens_for(owner):
+            if trace.osc_on(SETUP):
+                trace.osc(
+                    SETUP,
+                    "Listen Cancel from another window ignored (it didn't start it)",
+                    blocked=True,
+                    key="listen-cancel",
+                )
             return
         self._learn_owner = None
         self._hold_learn = False
@@ -702,16 +781,30 @@ class OscRuntime(QtCore.QObject):
         if was:
             self.listenChanged.emit()
             log.info("OSC listen-once cancelled")
+            if trace.osc_on(SETUP):
+                trace.osc(SETUP, "Listen cancelled")
 
     def hold_open(self, token: str) -> bool:
         """Keeps the port open for token (the OSC Monitor) until
         release_open(token), with or without a Run; False when it can't bind."""
         self._holders.add(str(token))
         self._bind()
+        if trace.osc_on(SETUP):
+            if self._listener is not None:
+                trace.osc(SETUP, f"{_holder_name(token)} holds the port")
+            else:
+                trace.osc(
+                    SETUP,
+                    f"{_holder_name(token)} could not open the port",
+                    blocked=True,
+                    key=f"hold {token}",
+                )
         return self._listener is not None
 
     def release_open(self, token: str) -> None:
         """token no longer needs the port; it closes when nothing else does."""
+        if str(token) in self._holders and trace.osc_on(SETUP):
+            trace.osc(SETUP, f"{_holder_name(token)} released the port")
         self._holders.discard(str(token))
         self._close_if_idle()
 
@@ -743,6 +836,13 @@ class OscRuntime(QtCore.QObject):
         return bool(self._recorders)
 
     def _record(self, uid: str, kind: str, value: Any) -> None:  # noqa: ANN401
+        if self._recorders and trace.osc_on(INPUTS):
+            trace.osc(
+                INPUTS,
+                f"recorded {_uid_name(uid)} {kind} {_value_text(value)}",
+                rate=True,
+                key=f"{uid} record",
+            )
         for callback in list(self._recorders):
             try:
                 callback(uid, kind, value)
@@ -789,6 +889,13 @@ class OscRuntime(QtCore.QObject):
         if not enabled:
             self._unbind()
             log.info("OSC listener off in OSC's settings")
+            if trace.osc_on(RECEIVE):
+                trace.osc(
+                    RECEIVE,
+                    f"port not opened: OSC is Off in OSC Setup ({self._who()})",
+                    blocked=True,
+                    key="off",
+                )
             return None
         if (
             self._listener is not None
@@ -801,6 +908,11 @@ class OscRuntime(QtCore.QObject):
             listener = OscListener(host, port, self._from_thread)
             listener.start()
             self._listener = listener
+            if trace.osc_on(RECEIVE):
+                trace.osc(
+                    RECEIVE,
+                    f"port {host}:{listener.bound_port()} open ({self._who()})",
+                )
             return None
         except ImportError:
             log.error("OSC: python-osc is not installed")
@@ -816,6 +928,13 @@ class OscRuntime(QtCore.QObject):
             # Logged as well as shown (OX3): the user log and the program log.
             user_log.error("OSC: %s %s", *failure)
             log.error("OSC: %s %s", *failure)
+        if trace.osc_on(RECEIVE):
+            trace.osc(
+                RECEIVE,
+                f"{failure[0]} {failure[1]} ({self._who()})",
+                warning=True,
+                key=f"bind {host}:{port}",
+            )
         if report:
             ui_signal.showError.emit(*failure)
         return failure
@@ -825,6 +944,18 @@ class OscRuntime(QtCore.QObject):
             return
         self._listener.stop()
         self._listener = None
+        if trace.osc_on(RECEIVE):
+            trace.osc(RECEIVE, "port closed")
+
+    def _who(self) -> str:
+        """Who needs the port now: Run, Listen, Monitor, recording."""
+        who = []
+        if self._running and self._uses_osc:
+            who.append("Run")
+        if self._learn:
+            who.append("Listen")
+        who.extend(sorted({_holder_name(t) for t in self._holders}))
+        return ", ".join(who) or "nobody"
 
     def start(self) -> None:
         """A profile starts running: listen until stop() when it uses OSC
@@ -834,6 +965,13 @@ class OscRuntime(QtCore.QObject):
             self._reset_state()
         self._running = True
         self._uses_osc = profile_uses_osc()
+        if trace.osc_on(SETUP):
+            trace.osc(
+                SETUP,
+                "Run: the profile uses OSC inputs"
+                if self._uses_osc
+                else "Run: the profile has no OSC inputs (port not opened for it)",
+            )
         if self._needs_port():
             self._bind()
         else:
@@ -859,6 +997,9 @@ class OscRuntime(QtCore.QObject):
 
     def stop(self) -> None:
         """The profile stopped: held buttons released, port closed."""
+        if trace.osc_on(SETUP):
+            held = len({k[0] for k in self._held})
+            trace.osc(SETUP, f"Stop: {held} held inputs released")
         # Released while still running: _emit_* only reach the profile then.
         self.release_held()
         self._running = False
@@ -900,6 +1041,7 @@ class OscRuntime(QtCore.QObject):
     ) -> None:
         self._record(row.uid, "button", pressed)
         if not self._running:
+            _not_running(row)
             return
         self._send_button(row, pressed, mode, address, synthetic=False)
 
@@ -914,6 +1056,14 @@ class OscRuntime(QtCore.QObject):
         from gremlin.event_handler import Event, EventListener
 
         _osc_state("set_button", row.uid, pressed)
+        if trace.osc_on(INPUTS):
+            trace.osc(
+                INPUTS,
+                f"event {input_name(row)} {'pressed' if pressed else 'released'}"
+                + (" (played)" if synthetic else ""),
+                rate=True,
+                key=f"{row.uid} event",
+            )
         EventListener().joystick_event.emit(
             Event(
                 event_type=InputType.JoystickButton,
@@ -938,12 +1088,22 @@ class OscRuntime(QtCore.QObject):
         else:
             self._held.pop(key, None)
         if others:
+            if trace.osc_on(INPUTS):
+                state = "pressed" if pressed else "released"
+                trace.osc(
+                    INPUTS,
+                    f"{input_name(row)}: {address} {state}, another address "
+                    "still holds it (no event)",
+                    rate=True,
+                    key=f"{row.uid} hold",
+                )
             return
         self._emit_button(row, pressed, mode, address)
 
     def _emit_axis(self, row: OscRow, value: float, mode: str, address: str) -> None:
         self._record(row.uid, "axis", value)
         if not self._running:
+            _not_running(row)
             return
         self._send_axis(row, value, mode, address, synthetic=False)
 
@@ -958,6 +1118,14 @@ class OscRuntime(QtCore.QObject):
         from gremlin.event_handler import Event, EventListener
 
         _osc_state("set_axis", row.uid, value)
+        if trace.osc_on(INPUTS):
+            trace.osc(
+                INPUTS,
+                f"event {input_name(row)} value {_value_text(value)}"
+                + (" (played)" if synthetic else ""),
+                rate=True,
+                key=f"{row.uid} event",
+            )
         EventListener().joystick_event.emit(
             Event(
                 event_type=InputType.JoystickAxis,
@@ -1018,6 +1186,7 @@ class OscRuntime(QtCore.QObject):
         way, after the input's delay."""
         number = _number(value)
         if number is None:
+            _not_a_number(row)
             return
         fmt = row.enc_format
         if fmt == "auto":
@@ -1026,23 +1195,60 @@ class OscRuntime(QtCore.QObject):
                 fmt = "signed"
             self._enc_format[key] = fmt
         turn = encoder_turn(fmt, number)
+        on = trace.osc_on(INPUTS)
         if turn == 0.0:
+            if on:
+                trace.osc(
+                    INPUTS,
+                    f"{input_name(row)}: no turn ({fmt} {_value_text(number)})",
+                    rate=True,
+                    key=f"{row.uid} enc",
+                )
             return
-        turn *= self._accel(row, abs(turn))
+        accel = self._accel(row, abs(turn))
+        if on:
+            trace.osc(
+                INPUTS,
+                f"{input_name(row)}: {_value_text(turn)} ticks "
+                f"×{_value_text(accel)} ({fmt})",
+                rate=True,
+                key=f"{row.uid} enc",
+            )
+        turn *= accel
         if row.enc_output == "axis":
-            current = self._enc_value.get(key, 0.0) + row.enc_step * turn
-            current = max(-1.0, min(1.0, current))
+            moved = self._enc_value.get(key, 0.0) + row.enc_step * turn
+            current = max(-1.0, min(1.0, moved))
             self._enc_value[key] = current
+            if on and current != moved:
+                trace.osc(
+                    INPUTS,
+                    f"{input_name(row)}: axis stops at {_value_text(current)} "
+                    "(its end)",
+                    rate=True,
+                    key=f"{row.uid} clamp",
+                )
             self._emit_axis(row, shape_axis(row, current), mode, address)
             return
         if (turn > 0) != (row.enc_output == "pulse_cw"):
+            if on:
+                trace.osc(
+                    INPUTS,
+                    f"{input_name(row)}: turned the other way (no pulse)",
+                    rate=True,
+                    key=f"{row.uid} dir",
+                )
             return
-        ticks = min(MAX_ENC_TICKS, max(1, round(abs(turn))))
+        wanted = max(1, round(abs(turn)))
+        ticks = min(MAX_ENC_TICKS, wanted)
         if key in self._timers:
             # A pulse is under way: these follow it.
-            pending = self._enc_pending.get(key, 0) + ticks
-            self._enc_pending[key] = min(MAX_ENC_TICKS, pending)
+            before = self._enc_pending.get(key, 0)
+            self._enc_pending[key] = min(MAX_ENC_TICKS, before + ticks)
+            if on:
+                _ticks_dropped(row, wanted - (self._enc_pending[key] - before))
             return
+        if on:
+            _ticks_dropped(row, wanted - ticks)
         self._enc_pending[key] = ticks - 1
         self._pulse(row, key, address, mode)
 
@@ -1074,9 +1280,20 @@ class OscRuntime(QtCore.QObject):
             return
         if row.input_type == InputType.JoystickAxis:
             number = _number(value)
-            if number is not None:
-                scaled = scale_axis(number, row.range_min, row.range_max)
-                self._emit_axis(row, shape_axis(row, scaled), mode, address)
+            if number is None:
+                _not_a_number(row)
+                return
+            scaled = scale_axis(number, row.range_min, row.range_max)
+            shaped = shape_axis(row, scaled)
+            if trace.osc_on(INPUTS):
+                trace.osc(
+                    INPUTS,
+                    f"{input_name(row)}: {_value_text(number)} → "
+                    f"{_value_text(scaled)} → {_value_text(shaped)}",
+                    rate=True,
+                    key=f"{row.uid} shape",
+                )
+            self._emit_axis(row, shaped, mode, address)
             return
         if row.cmd_mode == "data" or row.trigger is True:
             self._pulse(row, key, address, mode)
@@ -1088,6 +1305,13 @@ class OscRuntime(QtCore.QObject):
             self._last[key] = current
             if last is _UNSET or last != current:
                 self._pulse(row, key, address, mode)
+            elif trace.osc_on(INPUTS):
+                trace.osc(
+                    INPUTS,
+                    f"{input_name(row)}: {_value_text(current)} unchanged (no press)",
+                    rate=True,
+                    key=f"{row.uid} change",
+                )
             return
         if value is None:
             trigger = row.trigger
@@ -1109,22 +1333,46 @@ class OscRuntime(QtCore.QObject):
         peer: tuple[str, int] | None = None,
     ) -> None:
         payload = tuple(args) if isinstance(args, (tuple, list)) else ()
+        on = trace.osc_on(RECEIVE)
+        if on:
+            trace.osc(
+                RECEIVE,
+                f"in {peer_text(peer)} {address} {args_text(payload)}",
+                rate=True,
+                key=address,
+            )
         # The sender allow-list comes first (S160): a blocked message reaches
         # nothing (sync, Listen, inputs) and shows in the Monitor as blocked.
         if peer is not None and not sender_allowed(
             peer[0], self._settings.get("allow_senders") or ()
         ):
+            if on:
+                trace.osc(
+                    RECEIVE,
+                    f"sender {peer[0]} not on Allowed senders",
+                    blocked=True,
+                    key=f"sender {peer[0]}",
+                )
             _call_hook("osc_traffic", "note", "in", address, payload, peer, [BLOCKED])
             return
         # Feedback's sync address is answered there and reaches no input.
         if _call_hook("osc_feedback", "handle_incoming", address, payload, peer):
+            if on:
+                trace.osc(
+                    RECEIVE,
+                    f"sync {address} → resend"
+                    if self._running
+                    else f"sync {address} (not running: no resend)",
+                    rate=True,
+                    key=f"sync {address}",
+                )
             # The Monitor still shows it (all incoming messages, D-09-OSC-MONITOR).
             _call_hook("osc_traffic", "note", "in", address, payload, peer, ["Sync"])
             return
         if peer is not None:
             _call_hook("osc_output", "note_sender", peer[0], peer[1])
         _call_hook("osc_output", "note_received_type", address, payload)
-        matched = self._handle(address, payload)
+        matched = self._handle(address, payload, peer)
         _call_hook(
             "osc_traffic",
             "note",
@@ -1135,7 +1383,12 @@ class OscRuntime(QtCore.QObject):
             [match_name(row) for row in matched],
         )
 
-    def _handle(self, address: str, payload: tuple[Any, ...]) -> list[OscRow]:
+    def _handle(
+        self,
+        address: str,
+        payload: tuple[Any, ...],
+        peer: tuple[str, int] | None = None,
+    ) -> list[OscRow]:
         """Listen, then the inputs while a profile runs; returns the inputs
         matched (also with no Run, for the Monitor)."""
         from gremlin.mode_manager import ModeManager
@@ -1145,7 +1398,15 @@ class OscRuntime(QtCore.QObject):
             if not self._hold_learn:
                 self._learn = False
                 self.listenChanged.emit()
-            log.info("OSC listen captured %s %s", address, payload)
+            # Trace only (E6): Bulk capture filled the log otherwise.
+            if trace.osc_on(SETUP):
+                trace.osc(
+                    SETUP,
+                    f"Listen captured {address} {args_text(payload)}"
+                    + (" (Bulk capture)" if self._hold_learn else ""),
+                    rate=True,
+                    key=f"listen {address}",
+                )
             self.learned.emit(address, payload)
             # A single Listen is over (unless a handler started a new one).
             if not self._learn and self._learn_owner is owner:
@@ -1153,26 +1414,47 @@ class OscRuntime(QtCore.QObject):
             # A single Listen ends on its message; with no profile running
             # the port closes.
             self._close_if_idle()
+        if osc_pattern.is_pattern(address):
+            why = osc_pattern.check(address)
+            if why:
+                _bad_pattern(address, why, peer)
+                return []
         rows = OscDevice().rows.matches(address, payload)
         for row in rows:
             self._last_address[row.uid] = address
             self._note_live(row, payload, synthetic=False)
+        # The Receive refusal says why; no Inputs line repeats it.
+        refused = False
+        if not rows and osc_pattern.is_pattern(address) and trace.osc_on(RECEIVE):
+            # A good incoming pattern reaches exact inputs only (S148).
+            refused = True
+            host = peer[0] if peer is not None else "?"
+            trace.osc(
+                RECEIVE,
+                f"wildcard address {address} from {host} "
+                "(inputs need exact addresses)",
+                blocked=True,
+                key=f"wildcard {host}",
+            )
+        if not refused and trace.osc_on(INPUTS):
+            _trace_match(address, rows)
         if not self._running and not self._recorders:
+            for row in rows:
+                _not_running(row)
             return rows
         if not rows:
-            log.debug("OSC ignored unmatched address %s %s", address, payload)
             return rows
         if not payload and self._settings.get("pad_args"):
             payload = (1.0,)
+            if trace.osc_on(INPUTS):
+                trace.osc(
+                    INPUTS,
+                    f"{address}: no values; Pad arguments adds 1.0",
+                    rate=True,
+                    key=f"{address} pad",
+                )
         mode = ModeManager().current.name
         for row in rows:
-            log.debug(
-                "OSC %s %s -> %s %s",
-                address,
-                payload,
-                row.input_type.name,
-                row.input_id,
-            )
             self._apply(row, payload, mode, address)
         return rows
 
@@ -1263,15 +1545,21 @@ class OscRuntime(QtCore.QObject):
         from gremlin.mode_manager import ModeManager
 
         if not self._running:
+            _refused(f"macro step on {_uid_name(uid)}: not running", uid)
             return
         row = OscDevice().rows.by_uid(uid)
         if row is None:
+            _refused(f"macro step: no OSC input {uid}", uid)
             return
         mode = ModeManager().current.name
         address = self._last_address.get(row.uid) or row.label
         if kind == "axis" and row.input_type == InputType.JoystickAxis:
             number = _number(value)
             if number is None:
+                _refused(
+                    f"macro step on {input_name(row)}: value is not a number",
+                    uid,
+                )
                 return
             axis = max(-1.0, min(1.0, number))
             self._note_played(row.uid, axis=axis, pressed=None)
@@ -1280,6 +1568,11 @@ class OscRuntime(QtCore.QObject):
             pressed = bool(value)
             self._note_played(row.uid, axis=None, pressed=pressed)
             self._send_button(row, pressed, mode, address, synthetic=True)
+        else:
+            _refused(
+                f"macro step on {input_name(row)}: a {kind} step doesn't fit it",
+                uid,
+            )
 
     def _note_played(self, uid: str, axis: float | None, pressed: bool | None) -> None:
         """The live value of a played step (no message: no source value)."""
@@ -1304,6 +1597,7 @@ class OscRuntime(QtCore.QObject):
 
         row = OscDevice().rows.by_uid(str(uid))
         if row is None or kind not in ("press", "release", "value"):
+            _refused(f"Send Test {kind} on {_uid_name(uid)}: can't be tested", uid)
             return False
         if kind == "press":
             value = 1.0
@@ -1312,7 +1606,18 @@ class OscRuntime(QtCore.QObject):
         payload = tuple(value for _ in range(max(0, row.source) + 1))
         self._note_live(row, payload, synthetic=True)
         if not self._running:
+            _refused(
+                f"Send Test on {input_name(row)}: not running (live value only)",
+                uid,
+            )
             return False
+        if trace.osc_on(INPUTS):
+            trace.osc(
+                INPUTS,
+                f"Send Test {kind} on {input_name(row)} {args_text(payload)}",
+                rate=True,
+                key=f"{row.uid} test",
+            )
         mode = ModeManager().current.name
         # A pattern input is tested at the address it last received.
         address = self._last_address.get(row.uid) or row.label
@@ -1329,3 +1634,119 @@ class OscRuntime(QtCore.QObject):
             return True
         self._apply(row, payload, mode, address)
         return True
+
+
+# -- trace helpers (D-09-OSC-TRACE) ------------------------------------------
+
+
+def _holder_name(token: object) -> str:
+    """A hold_open token as the trace names it."""
+    return "recording" if str(token) == RECORDER_TOKEN else "Monitor"
+
+
+def _uid_name(uid: object) -> str:
+    row = OscDevice().rows.by_uid(str(uid))
+    return input_name(row) if row is not None else f"input {uid}"
+
+
+def _refused(text: str, uid: object) -> None:
+    """An Inputs refusal (play, Send Test), bounded per input."""
+    if trace.osc_on(INPUTS):
+        trace.osc(INPUTS, text, blocked=True, key=str(uid))
+
+
+def _not_running(row: OscRow) -> None:
+    if trace.osc_on(INPUTS):
+        trace.osc(
+            INPUTS, f"{input_name(row)}: not running (no event)",
+            blocked=True, key=row.uid,
+        )
+
+
+def _not_a_number(row: OscRow) -> None:
+    if trace.osc_on(INPUTS):
+        trace.osc(
+            INPUTS,
+            f"{input_name(row)}: value is not a number",
+            blocked=True,
+            key=row.uid,
+        )
+
+
+def _ticks_dropped(row: OscRow, dropped: int) -> None:
+    if dropped > 0:
+        trace.osc(
+            INPUTS,
+            f"{input_name(row)}: ticks dropped (most is {MAX_ENC_TICKS})",
+            blocked=True,
+            key=row.uid,
+        )
+
+
+def _bad_pattern(address: str, why: str, peer: tuple[str, int] | None) -> None:
+    """An incoming address that is a bad pattern reaches nothing, quietly
+    (E3): no error, at most 10 log lines per sender per Run, one Receive
+    line. A good incoming pattern reaches exact inputs (S148)."""
+    host = peer[0] if peer is not None else "?"
+    trace.log_limited(
+        "system",
+        f"osc-wildcard {host}",
+        logging.WARNING,
+        f"OSC: a message from {host} with the address {address} was ignored "
+        f"({why})",
+    )
+    if trace.osc_on(RECEIVE):
+        trace.osc(
+            RECEIVE,
+            f"wildcard address {address} from {host} ({why})",
+            blocked=True,
+            key=f"wildcard {host}",
+        )
+
+
+def _trace_match(address: str, rows: list[OscRow]) -> None:
+    """Inputs trace for one message (Inputs ticked): the inputs it reaches
+    and how, or why none does."""
+    if rows:
+        incoming_pattern = osc_pattern.is_pattern(address)
+        for row in rows:
+            kind = "axis" if row.input_type == InputType.JoystickAxis else "button"
+            if row.mode == "encoder":
+                kind = f"encoder, {kind}"
+            if incoming_pattern:
+                how = " from an incoming pattern"
+            elif row.is_pattern:
+                how = f" by pattern {row.label}"
+            else:
+                how = ""
+            trace.osc(
+                INPUTS,
+                f"{address} → {input_name(row)} ({kind}){how}",
+                rate=True,
+                key=f"{row.uid} {address}",
+            )
+        if not incoming_pattern and not rows[0].is_pattern:
+            hidden = [r for r in OscDevice().rows.answered_by(address) if r.is_pattern]
+            if hidden:
+                names = ", ".join(match_name(r) for r in hidden)
+                trace.osc(
+                    INPUTS,
+                    f"{address}: the exact input wins; not sent to {names}",
+                    rate=True,
+                    key=f"{address} hidden",
+                )
+        return
+    answering = OscDevice().rows.answered_by(address)
+    if answering:
+        wants = ", ".join(
+            f"{input_name(r)} wants {' '.join(str(v) for v in r.data)}"
+            for r in answering
+        )
+        trace.osc(
+            INPUTS,
+            f"{address}: data doesn't match ({wants})",
+            blocked=True,
+            key=address,
+        )
+        return
+    trace.osc(INPUTS, f"{address}: no input answers", blocked=True, key=address)

@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
 import pytest
@@ -29,6 +28,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 @pytest.fixture(scope="module")
 def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
     home = tmp_path_factory.mktemp("home")
     (home / "Gremlin Platforms").mkdir(parents=True)
     env = dict(
@@ -36,9 +36,9 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         GREMLIN_OFFLINE="1", PYTHONIOENCODING="utf-8",
         TEMP=str(home), TMP=str(home),
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve())],
-        cwd=_ROOT, env=env, capture_output=True, text=True,
+        cwd=_ROOT, env=env, text=True,
         encoding="utf-8", errors="replace", timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]

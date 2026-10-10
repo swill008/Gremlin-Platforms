@@ -14,9 +14,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _HERE = pathlib.Path(__file__).parent
@@ -31,14 +31,13 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     gremlin_dir = home / "Gremlin Platforms"
     gremlin_dir.mkdir(parents=True)
     shot = (_SHOTS if str(_SHOTS) not in ("", ".") else tmp) / "tester_buttons.png"
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [
             sys.executable,
             str(_HERE / "input_tester_buttons_smoke.py"),
             str(gremlin_dir),
             str(shot),
         ],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=90,

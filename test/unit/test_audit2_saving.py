@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import os
 import pathlib
-import subprocess
 import sys
 import time
 import types
 from collections.abc import Iterator
 from pathlib import Path
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -245,10 +246,9 @@ print("LEFT", left, flush=True)
 
 
 def test_error_reports_keep_non_english_text(tmp_path: Path) -> None:
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, "-c", _STDERR_SCRIPT, str(tmp_path)],
         cwd=_ROOT,
-        capture_output=True,
         timeout=60,
         env={**os.environ, "PYTHONIOENCODING": "utf-8"},
     )

@@ -15,8 +15,9 @@ from __future__ import annotations
 import os
 import pathlib
 import re
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin.ui import tray_memory
 
@@ -67,9 +68,8 @@ os._exit(0)
 
 
 def test_hidden_window_unloads_and_reloads() -> None:
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", _SCRIPT, str(_ROOT)],
-        capture_output=True,
         text=True,
         timeout=60,
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},

@@ -13,9 +13,9 @@ import json
 import os
 import pathlib
 import re
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 from PySide6 import QtCore
 
@@ -61,13 +61,13 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     )
     fonts = os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     env.setdefault("QT_QPA_FONTDIR", fonts)
-    done = subprocess.run(
+    done = proc_tree.run(
         [
             sys.executable,
             str(_ROOT / "test" / "unit" / "handson_D11_diagnostics_smoke.py"),
             str(out / "diag.zip"),
         ],
-        cwd=_ROOT, env=env, capture_output=True, text=True, timeout=120,
+        cwd=_ROOT, env=env, text=True, timeout=120,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, done.stdout[-1500:] + done.stderr[-1500:]

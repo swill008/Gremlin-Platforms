@@ -8,6 +8,7 @@ their permanent uid."""
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass
@@ -17,8 +18,8 @@ from PySide6 import QtCore
 
 import gremlin.osc_persist  # noqa: F401  OSC labels on InputIdentifier
 import gremlin.ui.type_aliases as ta
-from gremlin import osc_pattern, shared_state
-from gremlin.error import GremlinError
+from gremlin import osc_pattern, shared_state, trace
+from gremlin.error import GremlinError, quiet
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime, guess_input_type
 from gremlin.osc_rows import OscRow, OscRows
 from gremlin.profile import InputItem
@@ -309,9 +310,14 @@ def add_input(settings: dict[str, Any]) -> tuple[OscRow | None, str]:
         if error:
             return None, error
     try:
-        input_type = _type_for_mode(fields["mode"], fields.get("enc_output", "axis"))
-        row = _rows().create(input_type, address, **fields)
+        # The reason is returned to the window; no error traceback for it.
+        with quiet():
+            input_type = _type_for_mode(
+                fields["mode"], fields.get("enc_output", "axis")
+            )
+            row = _rows().create(input_type, address, **fields)
     except GremlinError as err:
+        trace.osc("setup", f"{address} not added: {err.value}", blocked=True)
         return None, str(err)
     return row, ""
 
@@ -375,10 +381,19 @@ def touchosc_rows(path_or_url: str) -> tuple[list[dict[str, Any]], list[str], st
     """(rows, skipped notes, error) for a TouchOSC layout file (S162)."""
     from gremlin import osc_tosc
 
+    path = local_path(path_or_url)
     try:
-        rows, skipped = osc_tosc.parse(local_path(path_or_url))
+        rows, skipped = osc_tosc.parse(path)
     except GremlinError as err:
-        return [], [], str(err)
+        # Shown in the window; one log line, no traceback (E7).
+        why = str(err)
+        logging.getLogger("system").warning("TouchOSC file %s refused: %s", path, why)
+        trace.osc("setup", f"TouchOSC {path} refused: {why}", blocked=True)
+        return [], [], why
+    for note in skipped:
+        text = note[: -len(", skipped")] if note.endswith(", skipped") else note
+        trace.osc("setup", f"TouchOSC skipped {text}")
+    trace.osc("setup", f"TouchOSC {path}: {len(rows)} inputs, {len(skipped)} skipped")
     return rows, skipped, ""
 
 
@@ -600,7 +615,6 @@ def copy_text(text: str) -> bool:
 @ta.QmlElement
 class OscDeviceManagementModel(QtCore.QAbstractListModel):
     listenChanged = QtCore.Signal()
-    listenBound = QtCore.Signal(int)
     commandCaptured = QtCore.Signal(str, str)
     # An input was added (Add, Listen, Import): the OSC page selects it.
     inputAdded = QtCore.Signal(str)
@@ -642,12 +656,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
             return sorted(rows, key=lambda r: (r.label.casefold(), r.input_id))
         return sorted(rows, key=lambda r: (r.input_type.name, r.input_id))
 
-    def _row_of_uid(self, uid: str) -> int:
-        for index, row in enumerate(self._ordered()):
-            if row.uid == uid:
-                return index
-        return -1
-
     def _find_row(self, key: str) -> OscRow | None:
         """A row by uid, else by address when only one row has it."""
         rows = _rows()
@@ -680,7 +688,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         note_edit(label)
         _emit_modified()
         if select_uid:
-            self.listenBound.emit(self._row_of_uid(select_uid))
             self.inputAdded.emit(select_uid)
 
     # -- adding ---------------------------------------------------------
@@ -695,7 +702,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
                 signal.showError.emit("Could not add the OSC input.", error)
             return False
         if error:
-            self.listenBound.emit(self._row_of_uid(row.uid))
+            self.inputAdded.emit(row.uid)  # S14: select the one already there
             return False
         self._changed(row.uid, f"Add {row.label}")
         return True
@@ -804,7 +811,14 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
 
     def _on_learned(self, address: str, args: object) -> None:
         if not OscRuntime().listens_for(self):
-            return  # another model's Listen (the OSC Monitor has its own)
+            # another model's Listen (the OSC Monitor has its own)
+            trace.osc(
+                "setup",
+                f"Listen: {address} not taken (another window listens)",
+                rate=True,
+                key="listen-owner",
+            )
+            return
         payload = args if isinstance(args, tuple) else ()
         if self._capture_only:
             self._capture_only = False

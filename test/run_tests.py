@@ -48,6 +48,9 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+import proc_tree  # noqa: E402  (test/)
+
 FOLDERS = ["test/unit", "test/action_interaction", "test/integration", "test/journeys"]
 # 8 cores: 6 unit parts and the other folders. Full runs, 2026-10-10: about
 # 3 min with 6 parts, the longest unit parts held up by two files split over
@@ -96,6 +99,8 @@ class Part:
     folder: str
     targets: list[str]
     process: subprocess.Popen | None = None
+    # The part's process tree (proc_tree): ended with the part (ORPHAN-PROCS).
+    tree: proc_tree.Tree | None = None
     began: float = 0.0
     done: int = 0
     total: int = 0
@@ -342,10 +347,15 @@ def _start(
     ]
     if quick:
         command.insert(4, "-x")
-    part.process = subprocess.Popen(
-        command, cwd=_ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    options: dict[str, Any] = dict(
+        cwd=_ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", errors="replace", env=_child_env(part),
     )
+    if part.real_vjoy:  # never ended from here (to-do 44)
+        part.process = subprocess.Popen(command, **options)
+    else:
+        part.tree = proc_tree.popen(command, **options)
+        part.process = part.tree.process
     part.began = part.last_output = part.last_result = time.monotonic()
 
     def read() -> None:
@@ -400,12 +410,15 @@ def _saves_times(targets: list[str], args: argparse.Namespace) -> bool:
     )
 
 
-def _end(process: subprocess.Popen) -> None:
-    """Ends pytest and anything it started."""
-    subprocess.run(
-        ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-        capture_output=True, check=False,
-    )
+def _end(part: Part) -> None:
+    """Ends pytest and anything it started, even what outlived pytest."""
+    if part.tree is not None:
+        part.tree.kill()
+    elif part.process is not None:
+        subprocess.run(
+            ["taskkill", "/PID", str(part.process.pid), "/T", "/F"],
+            capture_output=True, check=False,
+        )
 
 
 def run(  # noqa: PLR0913
@@ -439,11 +452,15 @@ def run(  # noqa: PLR0913
             if p.finished:
                 continue
             assert p.process is not None
-            if p.exit_hang:
+            if p.tree is not None and p.process.poll() is not None:
+                # pytest ended but something it started still holds its
+                # output open: end that too, so the part can finish.
+                p.tree.kill()
+            elif p.exit_hang:
                 # Its stacks had their time (test/conftest.py's deadman).
                 if not p.real_vjoy and now - p.exit_hang_at > stacks_s:
                     say(p, "!!! EXIT HANG: ending it")
-                    _end(p.process)
+                    _end(p)
                     p.exit_hang_at = float("inf")  # ended: not again
             elif p.summary_at and now - p.summary_at > exit_hang_s:
                 exit_hang(p, f"still running {exit_hang_s:.0f} s after pytest's "
@@ -454,7 +471,7 @@ def run(  # noqa: PLR0913
             elif now - p.began > LIMIT_S:
                 if not p.real_vjoy:
                     say(p, f"!!! over {LIMIT_S // 60} min, stopping it")
-                    _end(p.process)
+                    _end(p)
                     p.summary = f"STOPPED after {LIMIT_S // 60} min"
                 elif now - p.last_note > QUIET_S:
                     p.last_note = now
@@ -466,52 +483,58 @@ def run(  # noqa: PLR0913
                          else f"in {p.current or 'start-up'}")
                 say(p, f"... still {where} ({int(now - p.last_output)} s)")
 
-    slow: list[tuple[float, str]] = []
-    poll = min(1.0, exit_hang_s / 4, stacks_s / 4)
-    checked = 0.0
-    while not all(p.finished for p in parts):
-        try:
-            part, line = lines.get(timeout=poll)
-        except queue.Empty:
-            part, line = None, ""
-        now = time.monotonic()
-        if now - checked >= poll:  # also while a part streams its stacks
-            checked = now
-            check(now)
-        if part is None:
-            continue
-        if line is None:
-            assert part.process is not None
-            part.process.wait()
-            part.finished = True
-            ended = time.monotonic()
-            if part.summary_at:  # the time after the summary is no test's
-                part.took = part.summary_at - part.began
-                if not part.exit_hang and ended - part.summary_at > exit_hang_s:
-                    exit_hang(part, f"ended {ended - part.summary_at:.0f} s after "
-                                    "pytest's summary")
-            else:
-                part.took = ended - part.began
-            hung = " + EXIT HANG" if part.exit_hang else ""
-            say(part, f"=== {part.summary}{hung} ({part.took:.0f} s)")
-            continue
-        part.last_output = time.monotonic()
-        if _COLLECTED.match(line):
-            part.last_result = part.last_output
-        if m := _COUNT.search(line):
-            part.done, part.total = int(m.group(1)), int(m.group(2))
-        if m := _RESULT.match(line):
-            node, outcome = m.group(1), m.group(2)
-            part.current = node
-            _add_time(part, node.split("::")[0])
-            if outcome in ("FAILED", "ERROR") and node not in part.failed:
-                part.failed.append(node)
-        if m := _SUMMARY.search(line):
-            part.summary = m.group(1)
-            part.summary_at = part.last_output
-        if m := _SLOW.match(line):
-            slow.append((float(m.group(1)), f"{m.group(2):<8} {m.group(3)}"))
-        say(part, line)
+    try:
+        slow: list[tuple[float, str]] = []
+        poll = min(1.0, exit_hang_s / 4, stacks_s / 4)
+        checked = 0.0
+        while not all(p.finished for p in parts):
+            try:
+                part, line = lines.get(timeout=poll)
+            except queue.Empty:
+                part, line = None, ""
+            now = time.monotonic()
+            if now - checked >= poll:  # also while a part streams its stacks
+                checked = now
+                check(now)
+            if part is None:
+                continue
+            if line is None:
+                assert part.process is not None
+                part.process.wait()
+                part.finished = True
+                ended = time.monotonic()
+                if part.summary_at:  # the time after the summary is no test's
+                    part.took = part.summary_at - part.began
+                    if not part.exit_hang and ended - part.summary_at > exit_hang_s:
+                        exit_hang(part, f"ended {ended - part.summary_at:.0f} s after "
+                                        "pytest's summary")
+                else:
+                    part.took = ended - part.began
+                hung = " + EXIT HANG" if part.exit_hang else ""
+                say(part, f"=== {part.summary}{hung} ({part.took:.0f} s)")
+                continue
+            part.last_output = time.monotonic()
+            if _COLLECTED.match(line):
+                part.last_result = part.last_output
+            if m := _COUNT.search(line):
+                part.done, part.total = int(m.group(1)), int(m.group(2))
+            if m := _RESULT.match(line):
+                node, outcome = m.group(1), m.group(2)
+                part.current = node
+                _add_time(part, node.split("::")[0])
+                if outcome in ("FAILED", "ERROR") and node not in part.failed:
+                    part.failed.append(node)
+            if m := _SUMMARY.search(line):
+                part.summary = m.group(1)
+                part.summary_at = part.last_output
+            if m := _SLOW.match(line):
+                slow.append((float(m.group(1)), f"{m.group(2):<8} {m.group(3)}"))
+            say(part, line)
+    finally:
+        # Normal end, a hang or Ctrl+C: no part leaves a process behind.
+        for p in parts:
+            if p.tree is not None:
+                p.tree.close()
     return slow, time.monotonic() - start
 
 

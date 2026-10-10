@@ -27,7 +27,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -128,15 +127,6 @@ def _smoke() -> None:
     class InputIdentifier(QtCore.QObject):
         pass
 
-    class ActionNames(QtCore.QObject):
-        @QtCore.Slot("QVariant", int, str)
-        def setOnModel(self, model: object, index: int, name: str) -> None:
-            pass
-
-        @QtCore.Slot("QVariant", int, result=str)
-        def getOnModel(self, model: object, index: int) -> str:
-            return ""
-
     class OscSettingsInfo(QtCore.QObject):
         @QtCore.Slot(result=str)
         def summary(self) -> str:
@@ -168,7 +158,6 @@ def _smoke() -> None:
 
     class OscDeviceManagementModel(QtCore.QAbstractListModel):
         listenChanged = QtCore.Signal()
-        listenBound = QtCore.Signal(int)
         commandCaptured = QtCore.Signal(str, str)
 
         def __init__(self, parent: QtCore.QObject | None = None) -> None:
@@ -268,7 +257,7 @@ def _smoke() -> None:
     )
     for cls in (
         OscDeviceManagementModel, OscSettingsInfo, OscBulkCapture,
-        ActionNames, InputIdentifier,
+        InputIdentifier,
     ):
         QtQml.qmlRegisterType(cls, "Gremlin.Device", 1, 0, cls.__name__)
     engine = QtQml.QQmlApplicationEngine()
@@ -455,9 +444,9 @@ def _smoke() -> None:
 
 
 def _run(tmp_path: pathlib.Path) -> tuple[dict[str, object], list[str]]:
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, __file__],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

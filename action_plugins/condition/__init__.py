@@ -75,6 +75,8 @@ class ConditionFunctor(AbstractFunctor):
                 if self._condition_truth_state(value)
                 else self.functors["false"]
             )
+        except ca.MissingOscInput:
+            return  # logged (bounded) and traced where it was found
         except error.GremlinError as e:
             logging.getLogger("system").error(
                 f"ConditionAction: Error executing condition - {e}"

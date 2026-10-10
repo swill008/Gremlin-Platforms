@@ -36,7 +36,12 @@ class FakeOutput(types.ModuleType):
         self.senders: list[tuple] = []
 
     def send(
-        self, target_id: str, address: str, values: list, types: list | None = None
+        self,
+        target_id: str,
+        address: str,
+        values: list,
+        types: list | None = None,
+        **_kw: object,
     ) -> bool:
         self.sent.append((target_id, address, list(values), types))
         return True
@@ -358,7 +363,7 @@ def test_a_value_refused_while_output_is_off_goes_out_when_it_is_back_on(
     refused = {"on": True}
     real_send = fb.out.send
 
-    def send(target_id, address, values, types=None):  # noqa: ANN001, ANN202
+    def send(target_id, address, values, types=None, **_kw):  # noqa: ANN001, ANN003, ANN202
         if refused["on"]:
             return False
         return real_send(target_id, address, values, types)

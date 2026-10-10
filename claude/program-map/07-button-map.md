@@ -353,7 +353,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 
 **From the to-do list**
 - **To-do 45** (parked, D-01-CANVAS-EXEMPT): the canvas chip editor and the Layers panel rename keep their own boxes, not the shared Rename box.
-- **To-do 56**: on a refused save into a damaged file the status line says only "Not written..." (S12); check the dialog's wording against the spec.
+- ~~**To-do 56**~~ fixed in a3f448d2 (2026-10-09): the status line says "Not written..." and the error dialog names the damaged file and Start Fresh (S12). [test: test_spec_wording_56.py::test_button_map_refusal_names_the_damaged_module_file]
 - **To-do 46** (done 2026-10-08): one undo step per command (S55); golden runs end on the condition, not on timing.
 
 **Open tracker items for this subsystem**

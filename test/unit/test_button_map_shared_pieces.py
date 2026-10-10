@@ -11,9 +11,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _HERE = pathlib.Path(__file__).parent
@@ -22,10 +22,9 @@ _HERE = pathlib.Path(__file__).parent
 @pytest.fixture(scope="module")
 def seen(tmp_path_factory: pytest.TempPathFactory) -> dict:
     home = tmp_path_factory.mktemp("bmap_pieces")
-    run = subprocess.run(
+    run = proc_tree.run(
         [sys.executable, str(_HERE / "button_map_shared_pieces_smoke.py"),
          str(home / "out")],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",

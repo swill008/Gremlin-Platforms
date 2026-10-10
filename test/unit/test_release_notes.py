@@ -13,6 +13,7 @@ from functools import cache
 from pathlib import Path
 from types import ModuleType
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -31,9 +32,8 @@ def _helper() -> ModuleType:
 
 
 def _run(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    return proc_tree.run(
         [sys.executable, str(_HELPER), *args],
-        capture_output=True,
         text=True,
         timeout=30,
     )

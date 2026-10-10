@@ -182,6 +182,38 @@ def _home_models_quiet() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _backends_stop_ticking() -> Iterator[None]:
+    """A Backend a test makes (Backend.klass, not the shared instance) stays
+    alive after it, and its 60 s recovery timer (04 S94) then serialised a
+    stale profile inside whichever test came next. A full run died with an
+    access violation in processEvents exactly when such Backends were due
+    their first tick (seed 869523, unit-4, CRASH-G2). The timer stops when
+    the test that made it ends."""
+    from gremlin.ui import backend
+
+    cls = backend.Backend.klass
+    made: list[object] = []
+    real_init = cls.__init__
+
+    def init(self: object, *args: object, **kwargs: object) -> None:
+        made.append(self)
+        real_init(self, *args, **kwargs)  # type: ignore[arg-type]
+
+    cls.__init__ = init  # type: ignore[method-assign]
+    try:
+        yield
+    finally:
+        cls.__init__ = real_init  # type: ignore[method-assign]
+        for be in made:
+            timer = getattr(be, "_recovery_timer", None)
+            try:
+                if timer is not None:
+                    timer.stop()
+            except RuntimeError:  # deleted by the test
+                pass
+
+
+@pytest.fixture(autouse=True)
 def _no_settings_notice_left() -> Iterator[None]:
     """A test that reads a damaged settings file must not leave the
     'Settings Reset' notice for a later test that builds the app."""

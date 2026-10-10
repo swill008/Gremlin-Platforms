@@ -22,6 +22,7 @@ from gremlin import (
     event_handler,
     osc_output,
     osc_pattern,
+    trace,
     util,
 )
 from gremlin.base_classes import (
@@ -108,12 +109,36 @@ class SendOscFunctor(AbstractFunctor):
         value: Value,
         properties: List[ActionProperty] = [],
     ) -> None:
+        address = self._osc.address
         if isinstance(value.current, bool):
             if not self._should_execute(value):
+                if trace.osc_on("output"):
+                    trace.osc(
+                        "output",
+                        f"Send OSC {address}: not this press or release (no send)",
+                        rate=True,
+                        key=f"send-osc skip {address}",
+                    )
                 return
         elif self.data.activation_mode == ActionActivationMode.Deactivated:
+            if trace.osc_on("output"):
+                trace.osc(
+                    "output",
+                    f"Send OSC {address}: action is Deactivated (no send)",
+                    blocked=True,
+                    key=f"send-osc {address}",
+                )
             return
-        if address_error(self._osc.address):
+        why = address_error(address)
+        if why:
+            # E9: the refusal is traced, never silent.
+            if trace.osc_on("output"):
+                trace.osc(
+                    "output",
+                    f"Send OSC refused: {address!r}: {why}",
+                    blocked=True,
+                    key=f"send-osc {address}",
+                )
             return
         values = []
         types = []
@@ -123,7 +148,8 @@ class SendOscFunctor(AbstractFunctor):
             else:
                 values.append(entry["value"])
             types.append(entry["type"])
-        osc_output.send(self._osc.target, self._osc.address, values, types)
+        # A refused or failed send is traced (and logged) by osc_output.
+        osc_output.send(self._osc.target, address, values, types, source="Send OSC")
 
 
 class SendOscModel(ActionModel):

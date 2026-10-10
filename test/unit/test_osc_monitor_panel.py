@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -221,9 +220,9 @@ def _smoke() -> None:
 
 
 def _run(tmp_path: pathlib.Path) -> tuple[dict[str, object], list[str]]:
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, __file__],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

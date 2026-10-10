@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import collections
@@ -252,11 +254,10 @@ def test_s4_a_failed_first_scan_shows_the_failure_window_not_the_main_one(
         GREMLIN_OFFLINE="1",
         HTTPS_PROXY="http://127.0.0.1:9",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", code],
         cwd=_ROOT,
         env=env,
-        capture_output=True,
         text=True,
         timeout=120,
     )

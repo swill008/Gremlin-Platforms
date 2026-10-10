@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import json
@@ -57,9 +59,9 @@ def _entry(data_type: str, value: object) -> dict:
 
 def _fresh_process(home: pathlib.Path, code: str) -> subprocess.CompletedProcess:
     env = dict(os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen")
-    return subprocess.run(
+    return proc_tree.run(
         [sys.executable, "-c", code], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=60,
+        text=True, timeout=60,
     )
 
 

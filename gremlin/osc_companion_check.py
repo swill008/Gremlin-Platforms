@@ -146,4 +146,26 @@ class OscCompanionCheck(QtCore.QObject):
     @QtCore.Slot()
     def run(self) -> None:
         self._lines = check()
+        _trace(self._lines)
         self.linesChanged.emit()
+
+
+def _trace(lines: list[Line]) -> None:
+    """The check's results as Setup lines in Trace (D-09-OSC-TRACE)."""
+    from gremlin import trace  # noqa: PLC0415  lazy: keeps imports light
+
+    if not trace.osc_on("setup"):
+        return
+    faults = sum(1 for line in lines if not line["ok"])
+    trace.osc("setup", f"Companion check: {faults} to fix of {len(lines)}")
+    for line in lines:
+        if line["ok"] and not line["warn"]:
+            trace.osc("setup", f"Companion check OK: {line['label']}")
+        else:
+            word = "to fix" if not line["ok"] else "worth a look"
+            trace.osc(
+                "setup",
+                f"Companion check {word}: {line['label']} {line['fix']}".rstrip(),
+                warning=not line["ok"],
+                key="companion-check",
+            )

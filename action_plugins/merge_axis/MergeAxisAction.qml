@@ -219,19 +219,11 @@ Item {
         // +-------------------------------------------------------------------
         // | Child action selection
         // +-------------------------------------------------------------------
-        RowLayout {
-            Label {
-                text: "Actions"
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback:  (x) => { _root.action.appendAction(x, "children") }
-            }
+        ActionSelector {
+            Layout.fillWidth: true
+            label: "Actions"
+            actionNode: _root.action
+            callback:  (x) => { _root.action.appendAction(x, "children") }
         }
 
         Rectangle {

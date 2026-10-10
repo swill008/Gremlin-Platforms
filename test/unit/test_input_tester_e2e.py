@@ -26,6 +26,7 @@ import uuid
 from collections.abc import Iterator
 from types import SimpleNamespace
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _REPO = pathlib.Path(__file__).resolve().parents[2]
@@ -233,7 +234,7 @@ class _Tester:
             PYTHONUNBUFFERED="1",
         )
         env.pop("GREMLIN_REAL_VJOY", None)
-        self.proc = subprocess.Popen(
+        self.tree = proc_tree.popen(
             [sys.executable, str(script), str(_REPO), str(_TEST_DIR), str(control)],
             cwd=str(control),
             env=env,
@@ -242,6 +243,7 @@ class _Tester:
             text=True,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
+        self.proc = self.tree.process
         self.output = ""
 
     def wait_result(self, verdict: str, timeout: float = 30.0) -> dict:
@@ -268,9 +270,11 @@ class _Tester:
         try:
             self.output, _ = self.proc.communicate(timeout=20)
         except subprocess.TimeoutExpired:
-            self.proc.kill()
+            self.tree.kill()
             self.output, _ = self.proc.communicate()
             pytest.fail(f"The tester didn't end:\n{self.output}")
+        finally:
+            self.tree.close()
         for line in self.output.splitlines():
             if line.startswith("MODULES "):
                 return json.loads(line[len("MODULES ") :])

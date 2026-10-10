@@ -27,7 +27,7 @@ def _item(profile: Profile) -> InputItem:
 
 
 def test_the_input_name_is_part_of_input_item_not_patched_in() -> None:
-    import gremlin.action_label  # noqa: F401  (used to patch InputItem)
+    import gremlin.ui.device_names  # noqa: F401  (imported by the app at start)
 
     for name in ("__init__", "from_xml", "to_xml"):
         assert getattr(InputItem, name).__module__ == "gremlin.profile", name

@@ -15,9 +15,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -220,9 +220,9 @@ def result(tmp_path_factory: pytest.TempPathFactory) -> dict:
         GREMLIN_OFFLINE="1",
         QT_LOGGING_RULES="qt.qml.binding.removal.info=true",
     )
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, str(script)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=150,
+        text=True, timeout=150,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, done.stdout[-2000:] + done.stderr[-3000:]

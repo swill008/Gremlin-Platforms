@@ -16,12 +16,12 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 import uuid
 from collections.abc import Iterator
 from types import SimpleNamespace
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 from gremlin import hidhide_watch, trace
@@ -383,9 +383,9 @@ def menu(tmp_path_factory: pytest.TempPathFactory) -> dict:
         os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
         GREMLIN_OFFLINE="1", TESTER_EXE=str(exe),
     )
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, str(script)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=150,
+        text=True, timeout=150,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, done.stdout[-2000:] + done.stderr[-3000:]

@@ -128,10 +128,10 @@ def _smoke(capture: bool) -> None:
 
 
 def _run(tmp_path: pathlib.Path) -> dict:
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve()), "--smoke"],
         cwd=str(_ROOT),
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

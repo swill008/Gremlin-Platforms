@@ -14,9 +14,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 from test import child_env
@@ -85,11 +85,10 @@ def _run(tmp_path: pathlib.Path, meipass: pathlib.Path | None = None) -> dict:
     env.pop("PROBE_MEIPASS", None)
     if meipass is not None:
         env["PROBE_MEIPASS"] = str(meipass)
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, "-c", _PROBE],
         cwd=start,
         env=env,
-        capture_output=True,
         text=True,
         timeout=60,
     )

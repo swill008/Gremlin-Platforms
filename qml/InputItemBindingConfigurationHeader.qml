@@ -74,13 +74,30 @@ Item {
             }
         }
 
-        RowLayout {
+        // Note, the action picker, then the hint and remove buttons on one
+        // line when they fit; in a narrow pane the picker goes onto a second
+        // line under the note.
+        GridLayout {
             id: _generalHeader
 
+            // The column's width, not the grid's own (which grows to its least
+            // width when that is wider).
+            readonly property bool wide: _layout.width >=
+                (_rowGrip.visible ? _rowGrip.implicitWidth + columnSpacing : 0)
+                + _description.Layout.minimumWidth + columnSpacing
+                + _rootSelector.Layout.minimumWidth
+                + (_rootHint.visible ? _rootHint.implicitWidth + columnSpacing : 0)
+                + (_rootRemove.visible ? _rootRemove.implicitWidth + columnSpacing : 0)
+
             Layout.fillWidth: true
+            columns: 5
 
             IconButton {
+                id: _rowGrip
+
                 visible: !_root.catalogSequence && !_root.showTreat
+                Layout.row: 0
+                Layout.column: 0
                 Layout.preferredWidth: visible ? implicitWidth : 0
                 Layout.maximumWidth: visible ? implicitWidth : 0
 
@@ -110,6 +127,8 @@ Item {
             JGTextField {
                 id: _description
 
+                Layout.row: 0
+                Layout.column: 1
                 Layout.preferredWidth: Style.dp(160)
                 Layout.minimumWidth: Style.dp(110)
                 Layout.maximumWidth: Style.dp(200)
@@ -125,15 +144,23 @@ Item {
             }
 
             ActionSelector {
+                id: _rootSelector
+
+                Layout.row: _generalHeader.wide ? 0 : 1
+                Layout.column: _generalHeader.wide ? 2 : 1
+                Layout.columnSpan: _generalHeader.wide ? 1 : 4
                 Layout.fillWidth: true
-                Layout.minimumWidth: Style.dp(180)
 
                 actionNode: _root.inputBinding.rootAction
                 callback: (x) => { actionNode.appendAction(x, "children") }
             }
 
             Label {
+                id: _rootHint
+
                 visible: _root.inputBinding.userFeedback.length > 0
+                Layout.row: 0
+                Layout.column: 3
 
                 font.family: Style.iconFont
                 font.pixelSize: Style.dp(24)
@@ -153,7 +180,12 @@ Item {
             }
 
             IconButton {
+                id: _rootRemove
+
                 visible: !_root.catalogSequence
+                Layout.row: 0
+                Layout.column: 4
+                Layout.alignment: Qt.AlignRight
                 text: bsi.icons.remove
                 font.pixelSize: Style.dp(24)
 

@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import os
 import pathlib
-import subprocess
 import sys
 import textwrap
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GUARD = ROOT / "test" / "vjoy_guard.py"
@@ -100,10 +101,10 @@ def _run(tmp_path: pathlib.Path, real: bool) -> str:
     }
     if real:
         env["GREMLIN_REAL_VJOY"] = "1"
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "-rA", "-q",
          "-c", str(folder / "pytest.ini"), "--rootdir", str(folder), str(folder)],
-        cwd=folder, env=env, capture_output=True, text=True, timeout=120,
+        cwd=folder, env=env, text=True, timeout=120,
     )
     return result.stdout + result.stderr
 

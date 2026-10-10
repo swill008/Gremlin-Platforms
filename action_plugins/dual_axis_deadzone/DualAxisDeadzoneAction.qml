@@ -71,7 +71,8 @@ Item {
         // +-------------------------------------------------------------------
         // | Deadzone instance selection and management
         // +-------------------------------------------------------------------
-        // Wraps the picker onto a second line in a narrow pane.
+        // Wraps the picker (and its buttons) onto the next line in a narrow
+        // pane.
         Flow {
             Layout.fillWidth: true
 
@@ -85,22 +86,27 @@ Item {
                 text: "Deadzone instance"
             }
 
-            RowLayout {
+            LabelValueComboBox {
                 id: _instanceRow
 
-                LabelValueComboBox {
-                    model: _root.deadzoneListModel
+                model: _root.deadzoneListModel
 
-                    Component.onCompleted: () => {
-                        _root.deadzoneListModel.currentValue = _root.action.deadzone
-                    }
-
-                    onSelectionChanged: () => {
-                        _root.action.deadzone = _root.deadzoneListModel.currentValue
-                    }
+                Component.onCompleted: () => {
+                    _root.deadzoneListModel.currentValue = _root.action.deadzone
                 }
 
+                onSelectionChanged: () => {
+                    _root.action.deadzone = _root.deadzoneListModel.currentValue
+                }
+            }
+
+            // New and Rename follow the list, or go onto the next line.
+            Row {
+                height: _instanceRow.height
+                spacing: Style.dp(5)
+
                 IconButton {
+                    anchors.verticalCenter: parent.verticalCenter
                     text: bsi.icons.add_new
                     font.pixelSize: Style.dp(24)
 
@@ -108,6 +114,7 @@ Item {
                 }
 
                 IconButton {
+                    anchors.verticalCenter: parent.verticalCenter
                     text: bsi.icons.rename
                     font.pixelSize: Style.dp(24)
 
@@ -220,19 +227,11 @@ Item {
         // +-------------------------------------------------------------------
         // | First axis actions
         // +-------------------------------------------------------------------
-        RowLayout {
-            Label {
-                text: "First axis"
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: (x) => { _root.action.appendAction(x, "first") }
-            }
+        ActionSelector {
+            Layout.fillWidth: true
+            label: "First axis"
+            actionNode: _root.action
+            callback: (x) => { _root.action.appendAction(x, "first") }
         }
 
         Rectangle {
@@ -257,19 +256,11 @@ Item {
         // +-------------------------------------------------------------------
         // | Second axis actions
         // +-------------------------------------------------------------------
-        RowLayout {
-            Label {
-                text: "Second axis"
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: (x) => { _root.action.appendAction(x, "second") }
-            }
+        ActionSelector {
+            Layout.fillWidth: true
+            label: "Second axis"
+            actionNode: _root.action
+            callback: (x) => { _root.action.appendAction(x, "second") }
         }
 
         Rectangle {

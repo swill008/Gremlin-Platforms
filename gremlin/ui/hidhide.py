@@ -855,10 +855,6 @@ class HidHideModel(QtCore.QObject):
 
         window_placement.save_split("hardwareHide", max(150, min(850, int(ratio))) / 1000)
 
-    @QtCore.Property(str, constant=True)
-    def downloadUrl(self) -> str:
-        return _DOWNLOAD
-
     @QtCore.Property(bool, notify=changed)
     def cloakOn(self) -> bool:
         return self._active

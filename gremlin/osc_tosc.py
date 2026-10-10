@@ -54,38 +54,50 @@ _NOT_INPUTS = ("LABEL", "TEXT", "BOX")
 _UNSAFE = re.compile(rb"<!\s*(DOCTYPE|ENTITY)", re.IGNORECASE)
 
 
+class ToscRefused(GremlinError):
+    """A refused .tosc file. Not logged when made: the caller shows the
+    reason and logs one line (E7, D-09-OSC-TRACE)."""
+
+    def __init__(self, value: str) -> None:
+        Exception.__init__(self, value)
+        self.value = value
+
+    def __str__(self) -> str:
+        return self.value
+
+
 def _read(path: str | os.PathLike[str]) -> bytes:
     try:
         with open(path, "rb") as handle:
             raw = handle.read(MAX_BYTES + 1)
     except OSError as err:
-        raise GremlinError(f"Can't read the TouchOSC file: {err}") from None
+        raise ToscRefused(f"Can't read the TouchOSC file: {err}") from None
     if len(raw) > MAX_BYTES:
-        raise GremlinError("The TouchOSC file is too big (over 10 MB).")
+        raise ToscRefused("The TouchOSC file is too big (over 10 MB).")
     inflate = zlib.decompressobj()
     try:
         data = inflate.decompress(raw, MAX_BYTES + 1)
     except zlib.error:
-        raise GremlinError("Not a TouchOSC layout (.tosc) file.") from None
+        raise ToscRefused("Not a TouchOSC layout (.tosc) file.") from None
     if len(data) > MAX_BYTES or inflate.unconsumed_tail:
-        raise GremlinError("The TouchOSC layout is too big (over 10 MB unpacked).")
+        raise ToscRefused("The TouchOSC layout is too big (over 10 MB unpacked).")
     return data
 
 
 def _parse_xml(data: bytes) -> ET.Element:
     # No DTD means no entity expansion (billion laughs, external entities).
     if _UNSAFE.search(data):
-        raise GremlinError("The TouchOSC layout holds a DOCTYPE or ENTITY; refused.")
+        raise ToscRefused("The TouchOSC layout holds a DOCTYPE or ENTITY; refused.")
     try:
         root = ET.fromstring(data)
     except ET.ParseError as err:
-        raise GremlinError(f"The TouchOSC layout is not valid XML: {err}") from None
+        raise ToscRefused(f"The TouchOSC layout is not valid XML: {err}") from None
     except RecursionError:
-        raise GremlinError(
+        raise ToscRefused(
             f"The TouchOSC layout is nested too deeply (over {MAX_DEPTH} levels)."
         ) from None
     if root.tag != "lexml":
-        raise GremlinError("Not a TouchOSC layout (.tosc) file.")
+        raise ToscRefused("Not a TouchOSC layout (.tosc) file.")
     return root
 
 
@@ -218,7 +230,7 @@ def _walk(
     node: _Node, rows: list[dict[str, Any]], skipped: list[str], depth: int = 0
 ) -> None:
     if depth > MAX_DEPTH:
-        raise GremlinError(
+        raise ToscRefused(
             f"The TouchOSC layout is nested too deeply (over {MAX_DEPTH} levels)."
         )
     title = node.name or node.kind.lower()
@@ -253,7 +265,7 @@ def _walk(
 
 def parse(path: str | os.PathLike[str]) -> tuple[list[dict[str, Any]], list[str]]:
     """Rows (add_input settings plus "label") and skipped notes for one
-    .tosc file; GremlinError when the file is refused."""
+    .tosc file; ToscRefused (a GremlinError) when the file is refused."""
     root = _parse_xml(_read(path))
     rows: list[dict[str, Any]] = []
     skipped: list[str] = []

@@ -72,6 +72,9 @@ def osc(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[dic
         from gremlin.modules import registry
 
         registry._cache.pop(file, None)  # read again at once
+        # Written behind the program's back: say the file changed, as its
+        # writers do (osc_output holds the settings, E1).
+        osc_output.invalidate()
 
     write(doc)
     monkeypatch.setattr(osc_device_file, "path", lambda: file)

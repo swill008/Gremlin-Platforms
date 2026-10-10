@@ -101,21 +101,16 @@ Item {
         // +-------------------------------------------------------------------
         // | True actions
         // +-------------------------------------------------------------------
-        RowLayout {
+        // The label wraps beside Add Action; in a narrow pane the picker
+        // moves onto the line below.
+        ActionSelector {
             id: _trueHeader
 
             Layout.fillWidth: true
-
-            Label {
-                Layout.fillWidth: true
-                text: "When the condition is <b>TRUE</b> then"
-                wrapMode: Text.WordWrap
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: (x) => { _root.action.appendAction(x, "true"); }
-            }
+            labelMinimumWidth: Style.dp(100)
+            label: "When the condition is <b>TRUE</b> then"
+            actionNode: _root.action
+            callback: (x) => { _root.action.appendAction(x, "true"); }
         }
 
         HorizontalDivider {
@@ -143,21 +138,16 @@ Item {
         // +-------------------------------------------------------------------
         // | False actions
         // +-------------------------------------------------------------------
-        RowLayout {
+        // The label wraps beside Add Action; in a narrow pane the picker
+        // moves onto the line below.
+        ActionSelector {
             id: _falseHeader
 
             Layout.fillWidth: true
-
-            Label {
-                Layout.fillWidth: true
-                text: "When the condition is <b>FALSE</b> then"
-                wrapMode: Text.WordWrap
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: (x) => { _root.action.appendAction(x, "false"); }
-            }
+            labelMinimumWidth: Style.dp(100)
+            label: "When the condition is <b>FALSE</b> then"
+            actionNode: _root.action
+            callback: (x) => { _root.action.appendAction(x, "false"); }
         }
 
         HorizontalDivider {

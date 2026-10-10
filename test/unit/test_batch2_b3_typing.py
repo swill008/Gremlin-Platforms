@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import os
 import pathlib
-import subprocess
 import sys
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -83,14 +82,14 @@ def _child() -> None:
 
 
 def test_keys_typed_into_a_text_box_are_not_ticked(tmp_path: pathlib.Path) -> None:
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
     qml = tmp_path / "box.qml"
     qml.write_text(
         "import QtQuick\nTextInput { width: 200; height: 30; focus: true }\n",
         encoding="utf-8",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), "child", str(tmp_path), str(qml)],
-        capture_output=True,
         text=True,
         timeout=120,
         cwd=str(_ROOT),

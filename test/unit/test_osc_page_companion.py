@@ -22,11 +22,11 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 from collections.abc import Iterator
 from typing import Any
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 from PySide6 import QtCore, QtQml
 
@@ -130,9 +130,8 @@ def test_companion_host_without_another_address_is_loopback(
 def test_osc_page_bar_menu_and_monitor_in_the_program(
     tmp_path: pathlib.Path,
 ) -> None:
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(_SMOKE)],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=180,

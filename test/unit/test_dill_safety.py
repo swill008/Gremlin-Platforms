@@ -18,6 +18,8 @@ import subprocess
 import sys
 from typing import Any
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 REPO = pathlib.Path(__file__).resolve().parents[2]
 
 # Records every ctypes load; imports dill the way the program does.
@@ -61,11 +63,10 @@ def _child(code: str, *args: str, guarded: bool) -> subprocess.CompletedProcess:
     env["PYTHONPATH"] = os.pathsep.join(paths)
     env["QT_QPA_PLATFORM"] = "offscreen"
     env["PYTHONUNBUFFERED"] = "1"
-    return subprocess.run(
+    return proc_tree.run(
         [sys.executable, "-c", code, *args],
         cwd=REPO,
         env=env,
-        capture_output=True,
         text=True,
         timeout=60,
     )

@@ -19,7 +19,7 @@ function topics() {
                 + "<ul>"
                 + "<li><b>vJoy Viewer</b> <a href=\"open:tools.vjoyViewer\">Open ›</a>: each physical device beside the vJoy device it drives. The physical side shows claimed inputs; the vJoy side shows what the vJoy output module sent (claimed outputs, while the profile runs).</li>"
                 + "<li><b>Xbox Viewer</b> <a href=\"open:tools.xboxViewer\">Open ›</a>: the Xbox 360 Controller with every control, and which inputs drive it. The ViGEmBus check is at its top.</li>"
-                + "<li><b>Input Tester…</b>: a separate program that shows which controllers other programs (your games) can see through HidHide. See <a href=\"topic:tools-input-tester\">Check what a game sees (Input Tester)</a>.</li>"
+                + "<li><b>Input Tester…</b> <a href=\"show:menu/Tools/Viewers/Input Tester…\">Show me ›</a>: a separate program that shows which controllers other programs (your games) can see through HidHide. See <a href=\"topic:tools-input-tester\">Check what a game sees (Input Tester)</a>.</li>"
                 + "</ul>",
             related: ["home-devices-xbox-output", "home-devices-vjoy-output", "tools-input-monitor"]
         },
@@ -49,7 +49,11 @@ function topics() {
             id: "tools-device-information",
             section: "Devices",
             title: "Device Information",
-            body: "<p><b>Tools › Device Setup › Device Information</b> <a href=\"open:tools.deviceInfo\">Open ›</a> lists every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID and Device ID. Use it to tell identical devices apart.</p>",
+            body: "<p><b>Tools › Device Setup › Device Information</b> <a href=\"open:tools.deviceInfo\">Open ›</a> lists every device Windows reports: Name, Axes, Buttons, Hats, VID, PID, Joystick ID and Device ID. Use it to tell identical devices apart.</p>"
+                + "<ul>"
+                + "<li>A vJoy device the program leaves out is listed too, marked \"left out (see message)\".</li>"
+                + "<li>The program's own Xbox pads are marked \"this program's Xbox pad\".</li>"
+                + "</ul>",
             related: ["home-devices-home"]
         },
         {
@@ -81,7 +85,7 @@ function topics() {
             id: "tools-hidhide",
             section: "Devices",
             title: "Hide controllers from games with HidHide",
-            body: "<p>HidHide hides physical controllers from games so they only see vJoy or Xbox. Gremlin-Platforms always sees them. The HidHide driver is a separate install (<b>Get HidHide</b>).</p>"
+            body: "<p>HidHide hides physical controllers from games so they only see vJoy or Xbox. Gremlin-Platforms always sees them. The HidHide driver is a separate install: without it the page says \"HidHide is not installed\", and <b>Get HidHide</b> opens HidHide's download page.</p>"
                 + "<ol>"
                 + "<li>Choose <b>Tools › Device Setup › HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a>.</li>"
                 + "<li>Turn on <b>Gremlin-Platforms controls HidHide</b> to let this program write HidHide's settings, and <b>HidHide Enabled</b> to turn hiding on.</li>"
@@ -133,7 +137,7 @@ function topics() {
                 + "<h4>Check a game</h4>"
                 + "<ol>"
                 + "<li>Choose <b>Tools › Device Setup › HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a>. With <b>Gremlin-Platforms controls HidHide</b> on, choose <b>Add Input Tester to the list</b> (shown while it isn't on the list). It goes on the same program list as your game.</li>"
-                + "<li>Choose <b>Input Tester</b> on that page, or <b>Tools › Viewers › Input Tester…</b>. The tester opens and compares what it sees with what this program expects.</li>"
+                + "<li>Choose <b>Input Tester</b> on that page, or <b>Tools › Viewers › Input Tester…</b> <a href=\"show:menu/Tools/Viewers/Input Tester…\">Show me ›</a>. The tester opens and compares what it sees with what this program expects.</li>"
                 + "<li>Read the top line: <b>✓ Pass: programs see only what they should</b> means a game on the same list sees what it should; <b>✗ Problem:</b> says in plain words what is wrong, such as \"programs can see 1 stick that should be hidden\". The blue line under it says what HidHide's list means for this window, for example that it's on the Block list, so your hidden sticks should not show up here.</li>"
                 + "<li>Move a stick to see its values: axes, buttons and hats move, and the row's <b>activity dot</b> blinks. <b>All devices</b> shows every device at once. With <b>Follow input</b> on (the switch above the list), the device you move is chosen for you; it waits 1 s before jumping to another device, and does nothing while <b>All devices</b> is shown.</li>"
                 + "</ol>"
@@ -172,7 +176,7 @@ function topics() {
                 + "<li>The tester matches each device it sees to the one this program expects by its Windows device path first, then by its Device ID, then by VID/PID and name, so two identical sticks are told apart.</li>"
                 + "<li>An Xbox pad of this program's is matched by the Xbox (XInput) slot it really got; a pad that has no slot yet gets no verdict.</li>"
                 + "<li>When a device is read again or changes layout, the tester shows the axes, buttons and hats it has now.</li>"
-                + "<li>Opened on its own, the tester shows what it sees without ✓ Pass or ✗ Problem; a device it can't see reads \"This window can't see it.\"</li>"
+                + "<li>Opened on its own, the tester shows what it sees without ✓ Pass or ✗ Problem, with the line \"Open it from Gremlin (Tools › Viewers › Input Tester…) to compare against what Gremlin expects.\"; a device it can't see reads \"This window can't see it.\"</li>"
                 + "<li>The tester must be its own program, <b>Gremlin Input Tester.exe</b>, installed next to this program. Run from the source code instead, HidHide would see <code>python.exe</code>, not the tester.</li>"
                 + "</ul>"
                 + "<p>How HidHide decides what the tester sees: <a href=\"topic:tools-tech-hidhide\">How HidHide decides</a>.</p>",
@@ -183,7 +187,7 @@ function topics() {
             id: "tools-history",
             section: "History",
             title: "See saved changes in History",
-            body: "<p><b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> lists every saved change, newest first.</p>"
+            body: "<p><b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> lists every saved change, newest first, each with its title, its date and time, and its area.</p>"
                 + "<ul>"
                 + "<li>Profile saves: each input whose actions changed, and other parts such as modes and scripts.</li>"
                 + "<li>Module files: checked controls and names, calibration, Appearance, the Button Map, and the Logical Device.</li>"
@@ -191,12 +195,14 @@ function topics() {
                 + "<li>The settings you choose in Options, HidHide and OSC.</li>"
                 + "</ul>"
                 + "<ol>"
-                + "<li>Pick a change to see it <b>Before</b> and <b>After</b>. See <a href=\"topic:tools-history-compare\">Compare Before and After</a>.</li>"
+                + "<li>Pick a change to see it <b>Before</b> and <b>After</b> (until you do, the right side says \"Pick a change to see it before and after.\"). See <a href=\"topic:tools-history-compare\">Compare Before and After</a>.</li>"
                 + "<li>To narrow the list to one kind, use <b>Show</b>: <b>All</b>, <b>Profile</b>, <b>Module files</b>, <b>Button Map</b> or <b>Settings</b>. To find a device, input or file, type in <b>Search</b> (<b>Ctrl+F</b>); it looks in each change's title and in what it is about. A line under it says \"N found\" or \"Nothing matches\"; <b>×</b> or <b>Esc</b> clears it.</li>"
                 + "</ol>"
-                + "<p><b>History</b> in an editor opens it for only what that editor shows: on the Configuration page (the selected input), on a Logical Device control's menu, in Module Setup, in the Button Map's File menu, and in Options. <b>Show All</b> widens it again.</p>"
+                + "<p><b>History</b> in an editor opens it for only what that editor shows: on the Configuration page (the selected input), on a Logical Device control's menu, in Module Setup, in the Button Map's File menu, and in Options. <b>Show All</b> widens it again. <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> from the menu always opens on every change.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
+                + "<li>New changes appear when the window comes back to the front, or when you choose <b>Refresh</b>.</li>"
+                + "<li>With nothing to show, the list says \"No saved changes to show.\"</li>"
                 + "<li>Window sizes and places, and the Button Map's zoom, guides and print area, aren't kept.</li>"
                 + "<li><b>Days to keep changes</b> <a href=\"show:option/Days to keep changes\">Show me ›</a> (90) and <b>Largest history file (MB)</b> <a href=\"show:option/Largest history file (MB)\">Show me ›</a> (20) in Options set how long changes are kept and how big each history file may grow; the oldest go first. Both are checked when the program starts.</li>"
                 + "<li>The history is kept in the history folder, set on the <b>Folders</b> page of Options <a href=\"show:option/History folder\">Show me ›</a>. After you move it, the changes saved before stay in the old folder, and the window shows only the new one.</li>"
@@ -213,7 +219,7 @@ function topics() {
             body: "<p>When you pick a change in History, <b>Before</b> and <b>After</b> show it side by side, lined up row for row.</p>"
                 + "<ul>"
                 + "<li>A changed line has a soft tint and a thin bar on its left edge: red on Before, green on After. Inside it, the words that changed have a stronger tint. Unchanged lines stay plain.</li>"
-                + "<li><b>Previous Change</b> and <b>Next Change</b> move both sides together to the previous or next changed line.</li>"
+                + "<li><b>Previous Change</b> and <b>Next Change</b> move both sides together to the previous or next changed line. Each is off when there is no change that way.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
@@ -236,7 +242,7 @@ function topics() {
                 + "<li>An input's actions go back into the open profile, unsaved: open that profile first, and save it to keep them. The restore shows in the History at that Save Profile.</li>"
                 + "<li>A module file, with its pictures, and settings are saved at once, and the restore is a new change in the History at once.</li>"
                 + "<li>A Device Library change: \"Restoring puts back the Device Library's list and its saved setups together.\"</li>"
-                + "<li>A whole profile (on its save's entry) is written as a copy next to the profile, to open with <b>File › Load Profile…</b>. It stays next to the profile until you delete it, and is not a change in the History.</li>"
+                + "<li>A whole profile (on its save's entry) is written as a copy next to the profile, to open with <b>File › Load Profile…</b> <a href=\"show:menu/File/Load Profile\">Show me ›</a>. It stays next to the profile until you delete it, and is not a change in the History.</li>"
                 + "<li>When that copy would go into a folder outside your profiles folder where the profile isn't any more, it asks first (\"Write the restored profile to <i>folder</i>?\"); only the red <b>Write Here</b> writes it there.</li>"
                 + "<li>A part of a profile (modes, Profile Settings, scripts) can't be restored on its own: \"Put this back with Restore on the profile's save, below it in the list.\" The Logical Device and OSC have their own module files, so their entries can be restored on their own.</li>"
                 + "<li>The Logical Device has its own file, so it is restored on its own, as a module file is.</li>"
@@ -250,15 +256,16 @@ function topics() {
             title: "Clear History",
             body: "<p><b>Clear History…</b>, the red button in History, deletes every saved change and the kept copies used to restore them.</p>"
                 + "<ol>"
-                + "<li>Stop the profile. While it runs, the button is off.</li>"
+                + "<li>Stop the profile. While it runs, the button is off; rest the pointer on it to read \"Stop the profile to clear History\".</li>"
                 + "<li>Open <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> and choose <b>Clear History…</b>.</li>"
                 + "<li>The question \"Clear History?\" says how many changes and how many MB of kept copies go. Choose the red <b>Clear History</b> to go ahead. <b>Cancel</b> has the focus: <b>Enter</b> and <b>Esc</b> both cancel.</li>"
+                + "<li>The message line says \"History cleared.\"</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Your profiles, module files and Device Library stay as they are. Only History goes, with the Device Library's Undo steps for this session.</li>"
                 + "<li>No earlier change can be restored or undone afterwards. This can't be undone.</li>"
-                + "<li>History keeps a red \"History cleared\" entry with the date and what was deleted. It has no Restore, and History's own clean-up never removes it. Each later clearing adds another.</li>"
+                + "<li>History keeps a red \"History cleared\" entry with the date and what was deleted. Selected, it says \"Everything in History before this point was deleted. Nothing before it can be restored or undone.\" It has no Restore and no <b>Previous Change</b> or <b>Next Change</b>. History's own clean-up never removes it, and each later clearing adds another.</li>"
                 + "</ul>",
             related: ["tools-history", "device-library-undo"]
         },
@@ -326,13 +333,13 @@ function topics() {
             id: "tools-trace",
             section: "Live Log Reader",
             title: "Follow your controls with Trace",
-            body: "<p>The <b>Trace</b> tab follows the controls you tick, step by step, from the stick to vJoy. Use it when a control stops working or does something odd in a game: the trace shows where the input stopped.</p>"
+            body: "<p>The <b>Trace</b> tab follows the controls you tick, step by step, from the stick to vJoy, and OSC messages from the moment they arrive to what is sent back. Use it when a control stops working or does something odd in a game: the trace shows where the input stopped.</p>"
                 + "<h4>Use it while gaming</h4>"
                 + "<ol>"
                 + "<li>Open <b>Debug › Live Log Reader</b> <a href=\"open:debug.liveLog\">Open ›</a> and choose the <b>Trace</b> tab.</li>"
                 + "<li>Tick the sticks you want to follow. Ticking a stick ticks all its axes, buttons and hats; expand it to tick only some. Keys on the keyboard aren't traced. Each control shows where it goes in the open profile, such as \"→ vJoy 3 X\".</li>"
-                + "<li>Tick <b>Out-of-step check</b> on a stick to have the program check it every second (see below). Tick <b>HidHide</b> to follow HidHide too.</li>"
-                + "<li>Turn <b>Tracing</b> on (the switch in the tab, or <b>Tracing</b> in the <b>Debug</b> menu) before you start the game. You can close the Live Log Reader: tracing keeps running, and the red frame shows it is on.</li>"
+                + "<li>Tick <b>Out-of-step check</b> on a stick to have the program check it every second (see below). Tick <b>HidHide</b> to follow HidHide too, and <b>OSC</b> to follow OSC (see below).</li>"
+                + "<li>Turn <b>Tracing</b> on (the switch in the tab, or <b>Debug › Tracing</b> <a href=\"show:menu/Debug/Tracing\">Show me ›</a>) before you start the game. You can close the Live Log Reader: tracing keeps running, and the red frame shows it is on.</li>"
                 + "<li>Play as usual. If a control misbehaves, open the Trace tab (or the trace file) and look at the lines around that moment.</li>"
                 + "<li>When everything works, turn <b>Tracing</b> off.</li>"
                 + "</ol>"
@@ -345,6 +352,7 @@ function topics() {
                 + "<li><b>EVENT</b>: tracing on or off, Run and Stop, a device plugged in or unplugged, a device that <b>changed layout</b> (its axes and buttons before and after), a mode change while the profile runs.</li>"
                 + "<li><b>HIDHIDE</b>: what the program asked HidHide and the answer, and changes to HidHide made outside the program.</li>"
                 + "<li><b>OUT OF STEP</b>: the check below found a stick or a vJoy output that doesn't match.</li>"
+                + "<li><b>OSC</b>: a step of an OSC message, from the OSC row (below). An OSC drop or refusal is <b>BLOCKED</b>, with its reason.</li>"
                 + "</ul>"
                 + "<p>An axis writes at most 10 lines a second; its last value is always written when you let go of it. <b>Axis lines</b> in <b>Options ▾</b> (Trace options, at the right end of the tab bar) sets that (10 by default): pick from the list or type 0.1 to 50 (0.5 is a line every 2 seconds), then press Enter; lower it if the file fills too fast.</p>"
                 + "<h4>Out-of-step check</h4>"
@@ -360,6 +368,16 @@ function topics() {
                 + "<li>Each ticked stick is checked to be on HidHide's hidden list. If it is not, the game can see the stick as well as vJoy, and the trace says so.</li>"
                 + "<li>While HidHide's own window is open, HidHide is <i>in use by another program</i> and the program can't read or change it; the trace says so once.</li>"
                 + "</ul>"
+                + "<h4>The OSC row</h4>"
+                + "<p>The <b>OSC</b> row (after HidHide) has five ticks, one per area; ticking <b>OSC</b> ticks all five. Each line's control reads \"OSC\" and the area, such as \"OSC Receive\".</p>"
+                + "<ul>"
+                + "<li><b>Receive</b>: each message that arrives, with the sender, the address and its values (\"in 192.168.1.20:9000 /fader1 ,f 0.5\"); a sender not on <b>Allowed senders</b>, a broken packet or a wildcard address is BLOCKED with the reason; the port opening and closing, and what holds it when it can't open.</li>"
+                + "<li><b>Inputs</b>: which input an address reaches (\"/fader1 → OSC Axis 1 (axis)\"), or that no input answers; a value that isn't a number; the value before and after shaping; encoder ticks; the event sent, or none when the profile isn't running.</li>"
+                + "<li><b>Output</b>: each message sent, with the target, address, values and what sent it (Send OSC, a script, Send Test or a Feedback row). A refused send is BLOCKED with one of these reasons: \"OSC output is Off\", \"the profile isn't running\", \"no target named …\", \"target … has no host or port\", \"Reply to sender is Off\", \"no reply address yet\", or \"… is not an OSC address\".</li>"
+                + "<li><b>Feedback</b>: each Feedback row sent, rows not sent because nothing changed, rows held back by the rate, refused rows with the reason, and resends.</li>"
+                + "<li><b>Setup and files</b>: OSC's file loaded or saved, a setting put back to its default, a row that can't be read, TouchOSC controls skipped, Listen and Bulk capture, the Monitor taking the port, Run and Stop.</li>"
+                + "</ul>"
+                + "<p>OSC lines go only to the Trace tab and trace.log, never to Live. A busy address writes at most <b>Axis lines</b> lines a second, adding \"(N messages between)\". The same failure is written at most 10 times, then once more with \"(repeated; further lines not shown until the next Run)\" added. The counts start again when the profile runs or tracing is turned on.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Tracing is always off when the program starts. Your ticks are kept.</li>"
@@ -368,7 +386,7 @@ function topics() {
                 + "<li><b>Clear Trace File…</b>, also in <b>Options ▾</b>, empties the file itself: it asks first, then deletes trace.log and trace.log.1 and clears the view; it works while tracing is on.</li>"
                 + "<li>With tracing off, nothing is written and it costs nothing.</li>"
                 + "</ul>",
-            related: ["tools-input-monitor", "tools-hidhide", "tools-red-debug-mode", "getting-started-save-diagnostics"]
+            related: ["tools-input-monitor", "tools-hidhide", "tools-red-debug-mode", "getting-started-save-diagnostics", "osc-troubleshooting"]
         },
         {
             id: "tools-red-debug-mode",
@@ -398,7 +416,7 @@ function topics() {
                 + "<tr><td>Commands</td><td>Read and set the program list, the hidden devices, <b>HidHide Enabled</b> and Allow/Block. There is no command to check running programs again.</td></tr>"
                 + "<tr><td>Making it check again</td><td>Restart the program, use <b>Reset Devices…</b>, or unplug and replug the stick (Windows closes every program's connection to it). Not while flying.</td></tr>"
                 + "<tr><td><b>Reset Devices…</b></td><td>Runs <code>pnputil /restart-device</code> on each ticked stick's USB device (the parent of its HID devices), all in one process with administrator rights, so Windows asks at most once; this program itself never runs as administrator. A stick is back after about 2-3 seconds with the same Windows ids, so HidHide's hidden list still matches it. Results: 3010 is <b>needs a Windows restart, or unplug it and plug it back in</b> (Windows answered 3010 for an Xbox One controller); the temporary folder is deleted afterwards; a declined prompt (1223) touches nothing.</td></tr>"
-                + "<tr><td>While a stick restarts</td><td>This program sees it unplugged and plugged in again: it releases the stick's buttons and centers its hats, keeps its axes at their last value, then reads its devices again. A running profile follows <b>Device change behavior</b> in Options.</td></tr>"
+                + "<tr><td>While a stick restarts</td><td>This program sees it unplugged and plugged in again: it releases the stick's buttons and centers its hats, keeps its axes at their last value, then reads its devices again. A running profile follows <b>Device change behavior</b> <a href=\"show:option/Device change behavior\">Show me ›</a> in Options.</td></tr>"
                 + "<tr><td>HidHide's own window</td><td>While HidHide Configuration Client is open, other programs can't talk to HidHide.</td></tr>"
                 + "<tr><td>A refused open</td><td>The program gets \"access denied (5)\". The Input Tester's <b>Logs</b> tab shows it: HidHide is working.</td></tr>"
                 + "</table>"
@@ -414,7 +432,7 @@ function topics() {
             id: "tools-q-identical-sticks",
             section: "Common questions",
             title: "How do I tell two identical sticks apart?",
-            body: "<p>Compare their Joystick ID and Device ID in <b>Tools › Device Setup › Device Information</b>. See <a href=\"topic:tools-device-information\">Device Information</a>.</p>",
+            body: "<p>Compare their Joystick ID and Device ID in <b>Tools › Device Setup › Device Information</b> <a href=\"show:menu/Tools/Device Setup/Device Information\">Show me ›</a>. See <a href=\"topic:tools-device-information\">Device Information</a>.</p>",
             related: ["tools-device-information"]
         },
         {
@@ -437,7 +455,7 @@ function topics() {
             id: "tools-q-older-version",
             section: "Common questions",
             title: "How do I get back an earlier version of a setting or binding?",
-            body: "<p>Open <b>Tools › History</b>, pick the change and restore it. See <a href=\"topic:tools-history-restore\">Restore an earlier version</a>.</p>",
+            body: "<p>Open <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a>, pick the change and restore it. See <a href=\"topic:tools-history-restore\">Restore an earlier version</a>.</p>",
             related: ["tools-history-restore", "tools-history"]
         },
         {
@@ -451,7 +469,7 @@ function topics() {
             id: "tools-q-clear-history",
             section: "Common questions",
             title: "How do I delete everything in History?",
-            body: "<p>Stop the profile, then choose <b>Clear History…</b> in <b>Tools › History</b>. It can't be undone. See <a href=\"topic:tools-history-clear\">Clear History</a>.</p>",
+            body: "<p>Stop the profile, then choose <b>Clear History…</b> in <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a>. It can't be undone. See <a href=\"topic:tools-history-clear\">Clear History</a>.</p>",
             related: ["tools-history-clear"]
         },
         {

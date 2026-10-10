@@ -11,10 +11,11 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 import textwrap
 from collections.abc import Callable, Sequence
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -691,11 +692,10 @@ def test_tester_never_imports_gremlin_config(tmp_path: pathlib.Path) -> None:
         """
     )
     env = dict(os.environ, USERPROFILE=str(tmp_path), QT_QPA_PLATFORM="offscreen")
-    out = subprocess.run(
+    out = proc_tree.run(
         [sys.executable, "-c", code, str(REPO)],
         cwd=tmp_path,
         env=env,
-        capture_output=True,
         text=True,
         timeout=60,
     )

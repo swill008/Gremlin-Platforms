@@ -45,6 +45,7 @@ from gremlin import (
     run_scope,
     shared_state,
     threads,
+    trace,
     util,
 )
 from gremlin.edits import EditNoted, note_edit
@@ -434,6 +435,12 @@ class ScriptOsc:
         """
         reason = osc_pattern.check(address, allow_pattern=False)
         if reason:
+            trace.osc(
+                "inputs",
+                f"script send to {address} refused: {reason}",
+                blocked=True,
+                key=f"script-address {address}",
+            )
             log_once(
                 "user",
                 ("script-osc-address", str(address)),
@@ -443,6 +450,12 @@ class ScriptOsc:
             return False
         target_id = self._target_id(target_name)
         if target_id is None:
+            trace.osc(
+                "inputs",
+                f"script send to {address} refused: no target named {target_name}",
+                blocked=True,
+                key=f"script-target {target_name}",
+            )
             log_once(
                 "user",
                 ("script-osc-target", str(target_name)),
@@ -450,7 +463,7 @@ class ScriptOsc:
                 f"Script OSC send refused: no OSC target named '{target_name}'.",
             )
             return False
-        return osc_output.send(target_id, address, values, types)
+        return osc_output.send(target_id, address, values, types, source="script")
 
     @staticmethod
     def _target_id(target_name: str) -> str | None:
@@ -1521,6 +1534,17 @@ class OscInputVariable(AbstractVariable):
     def decorator(self, mode: ModeVariable) -> Callable:
         row = self.value
         if row is None or not self.is_valid():
+            why = (
+                "none chosen"
+                if self._uid is None
+                else ("is missing" if row is None else "has the wrong type")
+            )
+            trace.osc(
+                "inputs",
+                f"script variable {self.name}: OSC input {self._uid or ''} {why} "
+                "(callback not bound)".replace("  ", " "),
+                blocked=True,
+            )
             # Return a no-op decorator.
             return lambda f: f
         dec = self.create_decorator(mode.value)

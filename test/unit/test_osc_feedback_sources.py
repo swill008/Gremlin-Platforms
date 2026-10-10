@@ -30,7 +30,12 @@ class FakeOutput(types.ModuleType):
         self.sent: list[tuple] = []
 
     def send(
-        self, target_id: str, address: str, values: list, types: list | None = None
+        self,
+        target_id: str,
+        address: str,
+        values: list,
+        types: list | None = None,
+        **_kw: object,
     ) -> bool:
         self.sent.append((target_id, address, list(values), types))
         return True

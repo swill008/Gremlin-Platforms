@@ -23,6 +23,7 @@ import time
 from types import ModuleType
 
 import child_env  # pyright: ignore[reportMissingImports]  (test/)
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -150,16 +151,19 @@ def test_the_conftest_deadman_ends_a_process_stuck_after_its_session(
     out_file = tmp_path / "out.txt"
     start = time.monotonic()
     with out_file.open("w", encoding="utf-8") as out:
-        process = subprocess.Popen(
+        tree = proc_tree.popen(
             [sys.executable, "-m", "pytest", "-p", "conftest", "-q",
              "-p", "no:cacheprovider", *_own_folder(tmp_path), str(sample)],
             cwd=_ROOT, env=env, stdout=out, stderr=subprocess.STDOUT,
         )
+        process = tree.process
         try:
             process.wait(timeout=60)
         except subprocess.TimeoutExpired:
-            process.kill()
+            tree.kill()
             process.wait()
+        finally:
+            tree.close()
     took = time.monotonic() - start
     out = out_file.read_text(encoding="utf-8", errors="replace")
     assert "1 passed" in out, out[-3000:]

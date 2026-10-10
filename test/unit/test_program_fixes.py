@@ -21,13 +21,14 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import argparse
 import json
 import os
 import pathlib
-import subprocess
 import threading
 from types import SimpleNamespace
 from unittest import mock
@@ -450,9 +451,9 @@ print(json.dumps({
 def test_live_adds_rows_without_drawing_the_view_again() -> None:
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
     env.setdefault("QT_QPA_FONTDIR", r"C:\Windows\Fonts")
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, "-c", _LIVE], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=60,
+        text=True, timeout=60,
     )
     assert done.returncode == 0, done.stderr[-2000:]
     out = json.loads(done.stdout.strip().splitlines()[-1])

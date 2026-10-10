@@ -19,6 +19,7 @@ import subprocess
 import sys
 
 import child_env  # pyright: ignore[reportMissingImports]  (test/)
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -118,14 +119,19 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> tuple[int, str, str]:
     # while other test parts delete their temporary folders there
     # (FLAKY-RULES-COLLECT).
     with log.open("w", encoding="utf-8") as out:
-        process = subprocess.run(
+        tree = proc_tree.popen(
             [sys.executable, "-m", "pytest", "-p", "conftest", "-v", "-rA",
              "-p", "no:cacheprovider", "-p", "no:randomly",
              "-c", str(folder / "pytest.ini"), "--rootdir", str(folder),
              "--confcutdir", str(folder), str(sample)],
             cwd=_ROOT, env=env, stdout=out, stderr=subprocess.STDOUT,
-            timeout=120, check=False,
         )
+        process = tree.process
+        try:
+            # As subprocess.run(timeout=120): the tree ends, TimeoutExpired.
+            process.wait(timeout=120)
+        finally:
+            tree.close()
     text = log.read_text(encoding="utf-8", errors="replace")
     return process.returncode, text, report.read_text(encoding="utf-8")
 

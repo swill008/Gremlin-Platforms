@@ -14,7 +14,6 @@ import logging
 import logging.handlers
 import os
 import pathlib
-import subprocess
 import sys
 import threading
 import time
@@ -22,6 +21,7 @@ from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest import mock
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 from PySide6 import QtCore, QtNetwork
 
@@ -556,9 +556,10 @@ def _run_app(tmp_path: pathlib.Path, script: str) -> dict:
     env.setdefault(
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
-    result = subprocess.run(
-        [sys.executable, str(path)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=180,
+    # proc_tree: the app (and the interpreter the venv launcher starts for
+    # it) always ends with the test, also on a timeout (ORPHAN-PROCS).
+    result = proc_tree.run(
+        [sys.executable, str(path)], cwd=_ROOT, env=env, text=True, timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-2000:] + result.stderr[-4000:]
@@ -922,9 +923,8 @@ def test_s16_a_user_folder_that_cannot_be_made_is_told_with_the_box(
         os.environ, USERPROFILE=str(tmp_path), QT_QPA_PLATFORM="offscreen",
         GREMLIN_OFFLINE="1",
     )
-    result = subprocess.run(
-        [sys.executable, str(script)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=120,
+    result = proc_tree.run(
+        [sys.executable, str(script)], cwd=_ROOT, env=env, text=True, timeout=120,
     )
     assert result.returncode == 1, result.stderr[-1500:]
     # No logs folder can be made either: the failure and the box (logged

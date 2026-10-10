@@ -18,9 +18,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -38,11 +38,10 @@ def _smoke(home: pathlib.Path, part: str = "") -> dict:
     args = [sys.executable, "test/unit/device_pack_window_smoke.py"]
     if os.environ.get("GREMLIN_SHOT"):
         args.append(os.environ["GREMLIN_SHOT"] + part)
-    result = subprocess.run(
+    result = proc_tree.run(
         args,
         cwd=_ROOT,
         env=env,
-        capture_output=True,
         text=True,
         timeout=120,
     )

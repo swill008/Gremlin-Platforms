@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import pathlib
@@ -115,13 +117,11 @@ os._exit(0)
 
 def test_print_draws_the_page(tmp_path: pathlib.Path) -> None:
     import os
-    import subprocess
 
     target = tmp_path / "printed.pdf"
     root = pathlib.Path(__file__).parents[2]
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", _PRINT, str(target)],
-        capture_output=True,
         text=True,
         cwd=root,
         timeout=60,

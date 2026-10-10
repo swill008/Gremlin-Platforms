@@ -534,3 +534,34 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Lead: ST1 and FC1 decisions recorded; 02 S108 updated for Allow mode | spec | no timing data yet | 2 min | 16:50–16:52 |
 | 2026-10-10 | FC1-CLEAR: Find Clear resets Type and Output (cleared signal) + Help + spec | fix | 3–8 min (table) | 2 min | 16:51–16:53 |
 | 2026-10-10 | Full run 5 (random): all passed (5249 unit + 75 + 47) | test run | ~5 min (table) | 4:58 | 16:53–16:58 |
+| 2026-10-10 | Lead: lint, commit 3702e630, push, tracker | lead commit | no timing data yet | 1 min | 16:58–16:59 |
+| 2026-10-10 | Q15-TEST: History Configuration-row profile filter test (Q16) | test | 3–8 min (table) | 2 min | 17:10–17:12 |
+| 2026-10-10 | T86-APOS: 'can t' not reproduced (real dialog draws can't) | study | 3–8 min (table) | 3 min | 17:10–17:13 |
+| 2026-10-10 | ORPHAN: runner ends each part's process tree (Job Object), test_final_01 children via proc_tree | test fix | 3–8 min (table) | 3 min | 17:10–17:13 |
+| 2026-10-10 | H2-OSC: osc.js gap fill (Find, Appearance, card, History, Bulk, encoder) + 11 Show me links | help | rough guess 15–25 min (no data) | 3 min (agent's clock; looks short) | 17:12–17:15 |
+| 2026-10-10 | H2-TOOLS: tools/device_library/button_map gap fill + 15 Show me links | help | rough guess 15–25 min (no data) | 4 min | 17:12–17:16 |
+| 2026-10-10 | H2-CFG: configuration_actions.js gap fill (Treat as, unfinished actions, recovery, macro delay) + 18 Show me links | help | rough guess 15–25 min (no data) | 3 min (agent's clock; looks short) | 17:12–17:15 |
+| 2026-10-10 | H2-PROFILE: options/modes/LD Help gap fill (auto-load, mode rules topic, Undo) + ~20 Show me links | help | rough guess 15–25 min (no data) | 4 min | 17:12–17:16 |
+| 2026-10-10 | DEAD-LEFT: 4 dead items removed (action_label.py, settings, signals); existing OSC input now selected (S14 gap) | fix | 3–8 min (table) | 5 min | 17:11–17:16 |
+| 2026-10-10 | H2-HOME: home_devices/getting_started gap fill (cards, delete, Module Setup, pack refusals, Help window, command line) + ~15 links | help | rough guess 15–25 min (no data) | 4 min (agent's clock; doubtful) | 17:12–17:16 |
+| 2026-10-10 | EW-1: 12 of 17 editors fit at pane minimum; ActionSelector label row; 5 left (ActionNode header) | refactor | 5–10 min (table) | 11 min | 17:11–17:22 |
+| 2026-10-10 | EW-1 pass 2: title row, Root row, Map to Mouse button wrap; all editors fit at pane minimum | refactor | 5–10 min (table) | 7 min (whole job 19) | 17:23–17:30 |
+| 2026-10-10 | MAP4: map lines for dead code, EW-1, ORPHAN, Help notes; action_label.py off the map | map catch-up | 5–7 min (table) | 2 min | 17:31–17:33 |
+| 2026-10-10 | Full run 6 (seed 869523): unit-4 access violation in test_handson_G2_options_labels setup (no summary, 204 s); 1 order-dependent card-list count | test run | ~5 min (table) | 5:10 | 17:31–17:36 |
+| 2026-10-10 | Q15-BM: Button Map History filter test (6), map gap 14 closed | test | 3–8 min (table) | 3 min | 17:50–17:53 |
+| 2026-10-10 | T56: to-do 56 items already fixed (a3f448d2); S59 test restored | study+test | 3–8 min (table) | 1 min | 17:51–17:52 |
+| 2026-10-10 | Lead: removed parked to-dos 58, 60, 70, 71, 74, 75, N22 (user); marked 62-69 done | lead | no timing data yet | 1 min | 17:52–17:53 |
+| 2026-10-10 | Lead: to-do 92 won't fix (todo, map, tracker) | lead | no timing data yet | 1 min | 17:56–17:57 |
+| 2026-10-10 | TR-FRAME: Trace framework study for OSC trace | study | rough guess 5–10 min (no data) | 2 min | 17:55–17:57 |
+| 2026-10-10 | PROC-2: 159 test files start children via proc_tree; guard test | test fix | 3–8 min (table) | 11 min (159 files) | 17:51–18:02 |
+| 2026-10-10 | Lead: OSC trace plan (studies + plan, no code) | plan | no timing data yet | ~8 min | 17:55–18:03 |
+| 2026-10-10 | CRASH-G2: leaked test Backends' 60 s recovery timers likely crashed unit-4; conftest stops them (not reproduced) | crash hunt | rough guess 10–20 min (no data) | 32 min | 17:37–18:09 |
+| 2026-10-10 | TR-DOCS: spec 01 S146/S148/S149 + 09 S166-S172, glossary, Help for OSC trace | docs | rough guess 10–15 min (no data) | 2 min | 18:07–18:09 |
+| 2026-10-10 | TR-CORE: OSC trace API, row + 5 area ticks, rate limit, 10-then-quiet, log_limited | fix | rough guess 10–15 min (no data) | 4 min | 18:07–18:11 |
+| 2026-10-10 | TR-RX: Receive/Inputs/Run trace taps, E3 (no traceback for bad incoming pattern), malformed bounded | fix | rough guess 15–20 min (no data) | 9 min | 18:07–18:16 |
+| 2026-10-10 | TR-OUT: Output/Feedback trace, settings in memory (E1, E2), bounded failures (E4), Send OSC refusals (E9) | fix | rough guess 15–20 min (no data) | 12 min | 18:07–18:19 |
+| 2026-10-10 | TR-SETUP: Setup/files/scripts/conditions trace; E5-E8, E10 fixed (quiet errors, bounded logs) | fix | rough guess 15–20 min (no data) | 12 min | 18:08–18:20 |
+| 2026-10-10 | TR-E2E: end-to-end OSC trace test (13) over loopback; failed 8/13 before, passes now | test | rough guess 15–25 min (no data) | 12 min | 18:08–18:20 |
+| 2026-10-10 | TR-POLISH: feedback names input, wildcard no double line, settings read under Setup | fix | 3–8 min (table) | 2 min | 18:21–18:23 |
+| 2026-10-10 | Full run 7 (seed 382285): all passed (5566 unit + 75 + 47) | test run | ~5 min (table) | 5:15 | 18:23–18:29 |
+| 2026-10-10 | MAP5: OSC trace map lines, spec built marks, Help/glossary wording matched to code | map catch-up | 5–7 min (table) | 9 min | 18:20–18:29 |

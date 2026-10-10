@@ -22,46 +22,55 @@ Item {
         anchors.right: parent.right
         spacing: Style.dp(4)
 
-        RowLayout {
+        // Xbox and Target; Target goes onto the next line in a narrow pane.
+        Flow {
             Layout.fillWidth: true
             spacing: Style.dp(8)
 
-            Label { text: "Xbox" }
-            // Xbox output modules (one pad for now).
-            ComboBox {
-                id: _pad
-                // As wide as its widest pad name, never squeezed below it.
-                implicitContentWidthPolicy: ComboBox.WidestText
-                Layout.minimumWidth: implicitWidth
-                textRole: "label"
-                valueRole: "value"
-                model: _root.action.padChoices
-                onModelChanged: Qt.callLater(() => {
-                    currentIndex = Math.max(0, indexOfValue(_root.action.xboxDeviceId))
-                })
-                Component.onCompleted: {
-                    currentIndex = Math.max(0, indexOfValue(_root.action.xboxDeviceId))
+            RowLayout {
+                spacing: Style.dp(8)
+
+                Label { text: "Xbox" }
+                // Xbox output modules (one pad for now).
+                ComboBox {
+                    id: _pad
+                    // As wide as its widest pad name, never squeezed below it.
+                    implicitContentWidthPolicy: ComboBox.WidestText
+                    Layout.minimumWidth: implicitWidth
+                    textRole: "label"
+                    valueRole: "value"
+                    model: _root.action.padChoices
+                    onModelChanged: Qt.callLater(() => {
+                        currentIndex = Math.max(0, indexOfValue(_root.action.xboxDeviceId))
+                    })
+                    Component.onCompleted: {
+                        currentIndex = Math.max(0, indexOfValue(_root.action.xboxDeviceId))
+                    }
+                    onActivated: _root.action.xboxDeviceId = currentValue
                 }
-                onActivated: _root.action.xboxDeviceId = currentValue
             }
 
-            Label { text: "Target" }
-            ComboBox {
-                id: _target
-                Layout.fillWidth: true
-                Layout.minimumWidth: Style.dp(60)
-                textRole: "label"
-                valueRole: "value"
-                model: _root.action.targetChoices
-                // Re-select the saved control whenever the list is rebuilt.
-                onModelChanged: Qt.callLater(() => {
-                    currentIndex = Math.max(0, indexOfValue(_root.action.xboxTarget))
-                })
-                Component.onCompleted: {
-                    currentIndex = Math.max(0, indexOfValue(_root.action.xboxTarget))
-                }
-                onActivated: {
-                    _root.action.xboxTarget = currentValue
+            RowLayout {
+                spacing: Style.dp(8)
+
+                Label { text: "Target" }
+                ComboBox {
+                    id: _target
+                    // As wide as its widest control name.
+                    implicitContentWidthPolicy: ComboBox.WidestText
+                    textRole: "label"
+                    valueRole: "value"
+                    model: _root.action.targetChoices
+                    // Re-select the saved control whenever the list is rebuilt.
+                    onModelChanged: Qt.callLater(() => {
+                        currentIndex = Math.max(0, indexOfValue(_root.action.xboxTarget))
+                    })
+                    Component.onCompleted: {
+                        currentIndex = Math.max(0, indexOfValue(_root.action.xboxTarget))
+                    }
+                    onActivated: {
+                        _root.action.xboxTarget = currentValue
+                    }
                 }
             }
         }

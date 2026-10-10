@@ -15,7 +15,7 @@ function topics() {
             title: "Options",
             body: "<p>Options holds the program's settings, which are not stored in the profile. The profile's own settings are in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>.</p>"
                 + "<ol>"
-                + "<li>Choose <b>Tools › Options</b> <a href=\"open:tools.options\">Open ›</a> (or <b>Options</b> on the toolbar).</li>"
+                + "<li>Choose <b>Tools › Options</b> <a href=\"open:tools.options\">Open ›</a> (or <b>Options</b> on the toolbar <a href=\"show:toolbar/Options\">Show me ›</a>).</li>"
                 + "<li>Pick a section on the left, or type in <b>Search options</b> (<b>Ctrl+F</b>) to find a setting in any section. The line under the box says \"N found\" or \"Nothing matches\".</li>"
                 + "</ol>"
                 + "<ul>"
@@ -41,10 +41,10 @@ function topics() {
             title: "General options",
             body: "<p>The <b>General</b> section of Options covers startup, devices, diagnostics and History.</p>"
                 + "<ul>"
-                + "<li><b>Startup and Tray</b>: <b>Check for updates</b>; <b>Minimize to tray</b> <a href=\"show:option/Minimize to tray\">Show me ›</a>, where minimizing or closing the window keeps the program running in the tray (see <a href=\"topic:options-profile-tray\">Keep the program running in the tray</a>); and <b>HidHide</b>, a pointer: to turn HidHide on each time the program starts, use <b>Automatically Start</b> in <b>Tools › Device Setup › HidHide</b>.</li>"
-                + "<li><b>Devices</b>: <b>Device change behavior</b> <a href=\"show:option/Device change behavior\">Show me ›</a> (Stop, Ignore, or Reload); <b>Refresh axes when Run starts</b> and on mode change. An axis not moved since the program started is sent as center until it moves.</li>"
+                + "<li><b>Startup and Tray</b>: <b>Check for updates</b> <a href=\"show:option/Check for updates\">Show me ›</a>; <b>Minimize to tray</b> <a href=\"show:option/Minimize to tray\">Show me ›</a>, where minimizing or closing the window keeps the program running in the tray (see <a href=\"topic:options-profile-tray\">Keep the program running in the tray</a>); and <b>HidHide</b>, a pointer: to turn HidHide on each time the program starts, use <b>Automatically Start</b> in <b>Tools › Device Setup › HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a>.</li>"
+                + "<li><b>Devices</b>: <b>Device change behavior</b> <a href=\"show:option/Device change behavior\">Show me ›</a> (Stop, Ignore, or Reload); <b>Refresh axes when Run starts</b> <a href=\"show:option/Refresh axes when Run starts\">Show me ›</a> and <b>Refresh axis on mode change</b> <a href=\"show:option/Refresh axis on mode change\">Show me ›</a>, which send each axis's current position again. An axis not moved since the program started is sent as center until it moves.</li>"
                 + "<li><b>Diagnostics</b>: <b>Diagnostic logs</b> and <b>Log When Not Responding</b>. See <a href=\"topic:options-profile-diagnostics\">Diagnostic logs</a>.</li>"
-                + "<li><b>History</b>: <b>Days to keep changes</b> and <b>Largest history file (MB)</b>.</li>"
+                + "<li><b>History</b>: <b>Days to keep changes</b> <a href=\"show:option/Days to keep changes\">Show me ›</a> and <b>Largest history file (MB)</b> <a href=\"show:option/Largest history file (MB)\">Show me ›</a>.</li>"
                 + "</ul>",
             related: ["options-profile-options", "options-profile-tray", "tools-hidhide", "tools-history"]
         },
@@ -66,7 +66,7 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>The first time the window's X hides it, a tray notice says \"Gremlin-Platforms is still running\". It shows only once.</li>"
-                + "<li>To quit, choose <b>File › Exit</b> or <b>Exit Gremlin-Platforms</b> in the tray menu. Exit from the tray brings the window back first, so you can answer any question about unsaved changes.</li>"
+                + "<li>To quit, choose <b>File › Exit</b> <a href=\"show:menu/File/Exit\">Show me ›</a> or <b>Exit Gremlin-Platforms</b> in the tray menu. Exit from the tray brings the window back first, so you can answer any question about unsaved changes.</li>"
                 + "<li>While the window is in the tray, the program closes its pages to give memory back to Windows, and opens them again when you show the window. The profile keeps running the whole time. The Configuration page stays open while it has unsaved display edits.</li>"
                 + "<li>The tray icon comes back by itself if Windows Explorer restarts.</li>"
                 + "<li>To start the program straight into the tray, use the --start-minimized option with Minimize to tray on. See <a href=\"topic:getting-started-command-line\">Start the program from a command line</a>.</li>"
@@ -82,7 +82,7 @@ function topics() {
                 + "<li><b>Dark mode</b> <a href=\"show:option/Dark mode\">Show me ›</a>: applies at once in every window.</li>"
                 + "<li><b>UI scale</b> and <b>Ignore Windows display scaling</b>: the size of the program. See <a href=\"topic:options-profile-ui-scale\">Change the size of the program</a>.</li>"
                 + "<li><b>Input names</b> <a href=\"show:option/Input names\">Show me ›</a>: <b>Numerical</b> (\"Axis 3\"), <b>Label</b> (the name the program knows for that control on your device model), or <b>Numerical and Label</b> (both, the usual choice). A control with no known label always shows its number name.</li>"
-                + "<li><b>Input highlighting</b>: using a control on a device selects its input on screen, when that device's page is the one you have open.</li>"
+                + "<li><b>Input highlighting</b> <a href=\"show:option/Input highlighting\">Show me ›</a>: using a control on a device selects its input on screen, when that device's page is the one you have open.</li>"
                 + "</ul>",
             related: ["options-profile-ui-scale", "options-profile-options"]
         },
@@ -147,7 +147,7 @@ function topics() {
                 + "<ol>"
                 + "<li>Choose <b>Tools › Options</b>, then <b>Profiles</b>.</li>"
                 + "<li>Turn on <b>Load profiles automatically</b> <a href=\"show:option/Load profiles automatically\">Show me ›</a>.</li>"
-                + "<li>Under <b>Programs and their profiles</b>, choose <b>New Entry</b>.</li>"
+                + "<li>Under <b>Programs and their profiles</b> <a href=\"show:option/Programs and their profiles\">Show me ›</a>, choose <b>New Entry</b>.</li>"
                 + "<li>Choose <b>Select Executable</b> to pick a running program, or <b>Browse Executable</b> to pick its file.</li>"
                 + "<li>Choose <b>Select Profile</b> and pick the profile.</li>"
                 + "<li>Make sure the row's switch shows <b>On</b>.</li>"
@@ -155,12 +155,12 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Rows are saved as you change them.</li>"
-                + "<li>The trash button on a row with a program or a profile asks first, for example \"Remove auto-load entry?\" with \"Profile X will no longer load for Y.\" Choose the red <b>Remove Entry</b> to remove it; <b>Cancel</b>, <b>Enter</b> or <b>Esc</b> keeps it. You can restore it from Tools › History. An empty row goes without asking.</li>"
+                + "<li>The trash button on a row with a program or a profile asks first, for example \"Remove auto-load entry?\" with \"Profile X will no longer load for Y.\" Choose the red <b>Remove Entry</b> to remove it; <b>Cancel</b>, <b>Enter</b> or <b>Esc</b> keeps it. You can restore it from <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a>. An empty row goes without asking.</li>"
                 + "<li>A full program path matches that program first. Otherwise a row's text is a pattern matched against the program's path, capitals ignored. Blank or invalid patterns match nothing, and rows turned off are skipped.</li>"
-                + "<li>When the program comes back to the front and its profile is already open, the profile is not loaded again.</li>"
-                + "<li>Auto-load never switches over unsaved changes: it shows \"Auto-load Waited\" once for that profile. Save or discard the changes, and it switches next time.</li>"
-                + "<li>When the chosen profile file is missing, it says so once and stops the running profile.</li>"
-                + "<li>When a program with no profile comes to the front, the running profile stops. Turn on <b>Keep running when the program loses focus</b> <a href=\"show:option/Keep running when the program loses focus\">Show me ›</a> to keep it running in both cases.</li>"
+                + "<li>When the program comes back to the front and its profile is already open, the profile is not loaded again; if it was stopped, it runs.</li>"
+                + "<li>Auto-load never switches over unsaved changes: it shows \"Auto-load Waited\" once for that profile and stops the running profile, which isn't that program's. Save or discard the changes, and it switches the next time the program comes to the front. Unsaved changes are not lost meanwhile; see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>.</li>"
+                + "<li>When the chosen profile file is missing, it says so once (\"<i>name</i> was not loaded: the file is missing.\") and stops the running profile.</li>"
+                + "<li>When a program with no profile comes to the front, the running profile stops. Turn on <b>Keep running when the program loses focus</b> <a href=\"show:option/Keep running when the program loses focus\">Show me ›</a> to keep it running in these cases.</li>"
                 + "<li>Clicking into this program's own window doesn't count as another program.</li>"
                 + "</ul>",
             related: ["options-profile-profile-settings", "getting-started-profiles"]
@@ -190,8 +190,8 @@ function topics() {
                 + "<ul>"
                 + "<li><b>Startup Mode</b>: the mode the profile is in when it is loaded, including when a program auto-loads it. <b>Last Active</b> (the usual choice) opens the mode the profile last ran in; a profile with no last mode yet (new, moved, renamed or never run) opens in the top mode of the Manage Modes list. A mode by name always opens that mode.</li>"
                 + "<li><b>Macro Default Delay</b>: the pause between macro steps. While <b>Use the Options default (Options → Actions → Macro)</b> is ticked, the profile uses <b>Default delay</b> <a href=\"show:option/Default delay\">Show me ›</a> from Options, and the box is greyed and shows that value. Clear the tick to give the profile its own delay, starting from the value shown.</li>"
-                + "<li><b>vJoy Behavior</b>: treat each vJoy device as an output (default) or as an input.</li>"
-                + "<li><b>vJoy Initial Values</b>: axis values set when the profile starts.</li>"
+                + "<li><b>vJoy Behavior</b>: treat each vJoy device as an output (default) or as an input. A vJoy device set to input is listed with your physical devices and is not offered in vJoy Initial Values.</li>"
+                + "<li><b>vJoy Initial Values</b>: axis values set each time the profile starts. Moving a physical axis mapped to that vJoy axis then takes over.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li><b>Run</b> starts in the mode shown in the <b>Mode</b> box, so change it there to start somewhere else (see <a href=\"topic:modes-mode-box\">Choose the mode you edit and run</a>).</li></ul>",

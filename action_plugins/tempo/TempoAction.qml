@@ -82,21 +82,11 @@ Item {
         // +-------------------------------------------------------------------
         // | Short press actions
         // +-------------------------------------------------------------------
-        RowLayout {
+        ActionSelector {
             Layout.fillWidth: true
-
-            Label {
-                text: "Short press"
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: function(x) { _root.action.appendAction(x, "short"); }
-            }
+            label: "Short press"
+            actionNode: _root.action
+            callback: function(x) { _root.action.appendAction(x, "short"); }
         }
 
         Rectangle {
@@ -121,21 +111,11 @@ Item {
         // +-------------------------------------------------------------------
         // | Long press actions
         // +-------------------------------------------------------------------
-        RowLayout {
+        ActionSelector {
             Layout.fillWidth: true
-
-            Label {
-                text: "Long press"
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: function(x) { _root.action.appendAction(x, "long"); }
-            }
+            label: "Long press"
+            actionNode: _root.action
+            callback: function(x) { _root.action.appendAction(x, "long"); }
         }
 
         Rectangle {

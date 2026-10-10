@@ -29,9 +29,9 @@ function topics() {
                 + "</ul>"
                 + _good([
                     "A profile always has at least one mode.",
-                    "When Change Mode goes back to a mode already in the list of modes you came through, <b>Mode cycle resolution</b> <a href=\"show:option/Mode cycle resolution\">Show me ›</a> decides where you land: <b>Oldest</b> or <b>Newest</b>."
+                    "How modes switch while the profile runs, and where a loop back to an earlier mode lands, is in <a href=\"topic:modes-while-running\">How modes change while the profile runs</a>."
                 ]),
-            related: ["modes-manage", "modes-mode-box", "configuration-actions-change-mode", "options-profile-profile-settings"]
+            related: ["modes-manage", "modes-mode-box", "modes-while-running", "configuration-actions-change-mode"]
         },
         {
             id: "modes-manage",
@@ -65,6 +65,7 @@ function topics() {
                 + _good([
                     "Modes under it move up one level and keep their bindings.",
                     "If the <b>Startup Mode</b> named it, Startup Mode goes back to <b>Last Active</b>.",
+                    "If the profile is running in that mode, it moves to another mode at once.",
                     "An action editor open in that mode closes, with a notice.",
                     "The last mode can't be deleted.",
                     "<b>Cancel</b> has the focus: <b>Enter</b> and <b>Esc</b> both cancel, so only a click on <b>Delete Mode</b> deletes.",
@@ -102,18 +103,40 @@ function topics() {
                 + "<li>Actions you add belong to the mode shown in the Mode box.</li>"
                 + "</ul>"
                 + _good([
-                    "The mode a profile opens in when it is loaded is its <b>Startup Mode</b> (see <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>).",
+                    "The mode a profile opens in when it is loaded is its <b>Startup Mode</b>, in <b>View › Profile Settings</b> <a href=\"open:view.settings\">Open ›</a> (see <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>).",
                     "An action editor with changes stays open when you pick another mode; its title says which mode it edits."
                 ]),
-            related: ["modes-modes", "getting-started-run", "options-profile-profile-settings"]
+            related: ["modes-modes", "modes-while-running", "getting-started-run", "options-profile-profile-settings"]
+        },
+
+        {
+            id: "modes-while-running",
+            section: "Modes",
+            title: "How modes change while the profile runs",
+            body: "<p>While the profile runs, one mode is active at a time. The <b>Mode</b> box <a href=\"show:modebar\">Show me ›</a> and <b>Change Mode</b> actions move between modes.</p>"
+                + "<ul>"
+                + "<li><b>Run</b> starts in the mode shown in the Mode box, with no mode history from an earlier Run. If that mode is no longer in the profile, Run starts in the mode <b>Startup Mode</b> picks.</li>"
+                + "<li>An input with no actions in the running mode uses its parent's actions, through any number of levels.</li>"
+                + "<li><b>Switch</b> goes to a mode, <b>Previous</b> swaps back to the mode before, <b>Unwind</b> steps back one, <b>Cycle</b> goes to the next mode in its list, and <b>Temporary</b> stays in a mode only while the input is held. See <a href=\"topic:configuration-actions-change-mode\">Change Mode</a>.</li>"
+                + "<li>A switch to a mode the profile doesn't have is ignored: the mode stays, and one warning goes to the log.</li>"
+                + "<li>When a change goes back to a mode already in the list of modes you came through, <b>Mode cycle resolution</b> <a href=\"show:option/Mode cycle resolution\">Show me ›</a> decides where you land: <b>Oldest</b> (the default) or <b>Newest</b>. This includes loops made by Temporary.</li>"
+                + "</ul>"
+                + _good([
+                    "A vJoy or Logical Device button pressed in one mode is released when you let go of the physical button, even after the mode changed.",
+                    "Map to Mouse motion stops on a mode change, unless the input uses the same binding in the new mode.",
+                    "With <b>Refresh axis on mode change</b> <a href=\"show:option/Refresh axis on mode change\">Show me ›</a> on, each axis's current position is sent again after a mode change.",
+                    "At <b>Stop</b>, a Temporary mode ends and the mode under it stays shown.",
+                    "The mode the profile last ran in is kept for <b>Last Active</b> (see <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>). Picking a mode in the Mode box while the profile is stopped doesn't count."
+                ]),
+            related: ["modes-modes", "modes-mode-box", "configuration-actions-change-mode", "getting-started-what-stop-releases"]
         },
 
         {
             id: "modes-q-button-does-nothing",
             section: "Common questions",
             title: "Why does a button do nothing in one mode?",
-            body: "<p>Only the running mode's actions, and its parents', run. Check the mode in the <b>Mode</b> box and its parent. See <a href=\"topic:modes-modes\">Modes</a>.</p>",
-            related: ["modes-modes", "getting-started-nothing-reaches-vjoy"]
+            body: "<p>Only the running mode's actions, and its parents', run. Check the mode in the <b>Mode</b> box <a href=\"show:modebar\">Show me ›</a> and its parent. See <a href=\"topic:modes-while-running\">How modes change while the profile runs</a>.</p>",
+            related: ["modes-modes", "modes-while-running", "getting-started-nothing-reaches-vjoy"]
         },
         {
             id: "modes-q-undo-delete",
@@ -133,7 +156,7 @@ function topics() {
             id: "modes-q-start-mode",
             section: "Common questions",
             title: "How do I choose the mode a profile starts in?",
-            body: "<p><b>Run</b> starts in the mode shown in the <b>Mode</b> box; loading a profile uses its <b>Startup Mode</b>. See <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>.</p>",
+            body: "<p><b>Run</b> starts in the mode shown in the <b>Mode</b> box; loading a profile uses its <b>Startup Mode</b>, in <b>View › Profile Settings</b> <a href=\"open:view.settings\">Open ›</a>. See <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>.</p>",
             related: ["modes-mode-box", "options-profile-profile-settings"]
         }
     ]

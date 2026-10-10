@@ -10,8 +10,9 @@ from __future__ import annotations
 import os
 import pathlib
 import re
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 _ROOT = _HERE.parents[1]
@@ -91,9 +92,8 @@ def test_style_dropdowns_use_the_shared_popup() -> None:
 
 
 def test_shared_menus_work(tmp_path: pathlib.Path) -> None:
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(_HERE / "menus_smoke.py"), str(tmp_path)],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

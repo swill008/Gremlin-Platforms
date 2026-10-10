@@ -53,10 +53,16 @@ Item {
                 }
             }
 
+            // The choices go on the next line when the label and both
+            // don't fit.
+            Label {
+                height: _tapChoice.height
+                verticalAlignment: Text.AlignVCenter
+                text: "Single/Double tap:"
+            }
             RowLayout {
-                Label {
-                    text: "Single/Double tap:"
-                }
+                id: _tapChoice
+
                 RadioButton {
                     autoExclusive: false
                     checkable: false
@@ -83,21 +89,11 @@ Item {
         // +-------------------------------------------------------------------
         // | Short press actions
         // +-------------------------------------------------------------------
-        RowLayout {
+        ActionSelector {
             Layout.fillWidth: true
-
-            Label {
-                text: "Single Tap"
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: function(x) { _root.action.appendAction(x, "single"); }
-            }
+            label: "Single Tap"
+            actionNode: _root.action
+            callback: function(x) { _root.action.appendAction(x, "single"); }
         }
 
         Rectangle {
@@ -122,21 +118,11 @@ Item {
         // +-------------------------------------------------------------------
         // | Long press actions
         // +-------------------------------------------------------------------
-        RowLayout {
+        ActionSelector {
             Layout.fillWidth: true
-
-            Label {
-                text: "Double Tap"
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: function(x) { _root.action.appendAction(x, "double"); }
-            }
+            label: "Double Tap"
+            actionNode: _root.action
+            callback: function(x) { _root.action.appendAction(x, "double"); }
         }
 
         Rectangle {

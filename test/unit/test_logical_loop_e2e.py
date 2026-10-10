@@ -31,6 +31,7 @@ import sys
 import time
 from typing import Any
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -80,7 +81,7 @@ def results(tmp_path_factory: pytest.TempPathFactory) -> dict[str, dict]:
         env.pop("GREMLIN_VALIDATE_REPORT", None)
         # To a file, not a pipe (a full pipe would block the child).
         handle = log.open("w", encoding="utf-8")
-        process = subprocess.Popen(
+        tree = proc_tree.popen(
             [
                 sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
                 "-p", "no:randomly",
@@ -88,17 +89,20 @@ def results(tmp_path_factory: pytest.TempPathFactory) -> dict[str, dict]:
             ],
             cwd=ROOT, env=env, stdout=handle, stderr=subprocess.STDOUT,
         )
-        started[case] = (process, out, log, handle)
+        started[case] = (tree, out, log, handle)
     got: dict[str, dict] = {}
     deadline = time.monotonic() + CHILD_TIMEOUT
-    for case, (process, out, log, handle) in started.items():
+    for case, (tree, out, log, handle) in started.items():
+        process = tree.process
         try:
             code = process.wait(timeout=max(1.0, deadline - time.monotonic()))
             timed_out = False
         except subprocess.TimeoutExpired:
-            process.kill()
+            tree.kill()
             code = process.wait(timeout=30)
             timed_out = True
+        finally:
+            tree.close()
         handle.close()
         text = log.read_text(encoding="utf-8", errors="replace")
         data: dict = {}

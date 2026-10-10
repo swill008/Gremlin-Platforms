@@ -26,14 +26,15 @@ function topics() {
         t("button-map-open", "Getting started", "Open the Button Map",
             "<p>The Button Map opens in its own window, on one device.</p>"
             + "<ol>"
-            + "<li>Open it from a device card's right-click menu, the toolbar, or <b>Tools › Mapping › Button Map</b> <a href=\"open:tools.buttonMap\">Open ›</a>.</li>"
-            + "<li>To show another device, choose it from <b>File › Device</b>. The device shown has a tick.</li>"
+            + "<li>Open it from a device card's right-click menu, <b>Button Map</b> on the toolbar <a href=\"show:toolbar/Button Map\">Show me ›</a>, or <b>Tools › Mapping › Button Map</b> <a href=\"show:menu/Tools/Mapping/Button Map\">Show me ›</a> <a href=\"open:tools.buttonMap\">Open ›</a>.</li>"
+            + "<li>To show another device, choose it from <b>File › Device</b>. The device shown has a tick. Opened from the toolbar or the Tools menu, the window starts with no device and says \"Choose a device from the File menu.\"</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>Switching device while you have unsaved edits asks to save first; <b>Cancel</b> stays on the current device.</li>"
             + "<li><b>File › Device</b> doesn't list vJoy or Xbox outputs; their cards still open their Button Map.</li>"
-            + "<li>The Button Map closes when its device is deleted.</li>"
+            + "<li>There is one Button Map window: opening it for another device reuses it.</li>"
+                + "<li>The Button Map closes when its device is deleted.</li>"
             + "<li>Before you edit, the map is live: rest the pointer on a chip to see which control it is, and drag with the left or middle button to pan.</li>"
             + "<li>The menus show only what you can use right now, with shortcuts beside their commands. <b>View › Command Palette</b> (<b>Ctrl+K</b>) lists every menu command you can use now: type part of a name and press <b>Enter</b>.</li>"
             + "</ul>",
@@ -121,12 +122,13 @@ function topics() {
             + "<li>For an unplugged stick the map is covered with \"Connect &lt;name&gt; to see its Button Map.\" It loads by itself when the stick connects.</li>"
             + "<li>An unplugged stick's map still exports from <b>Print &amp; Export…</b>.</li>"
             + "<li>Outputs (vJoy, Xbox), Keyboard, Logical Device and OSC need no stick and always show.</li>"
+                + "<li>A device with no photo shows none; it never borrows another device's photo.</li>"
             + "<li>Unplugging a stick while you edit keeps the edit on screen: \"&lt;name&gt; is disconnected. You can still save or cancel this edit.\"</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>When the device's module file is damaged, the map shows empty and Save is refused with the reason; Cancel leaves the damaged file as it is. To set the device up again, choose <b>Start Fresh…</b> on its card; the damaged file is kept as a copy.</li>"
-            + "<li>If the Button Map editor itself fails to start, the map shows \"The Button Map editor could not load.\" The reason is written to qt.log (<b>Debug › Live Log Reader</b>, <b>Debug</b> tab, <b>Qt</b>).</li>"
+            + "<li>If the Button Map editor itself fails to start, the map shows \"The Button Map editor could not load.\" The reason is written to qt.log (<b>Debug › Live Log Reader</b> <a href=\"show:menu/Debug/Live Log Reader\">Show me ›</a>, <b>Debug</b> tab, <b>Qt</b>).</li>"
             + "</ul>",
             ["button-map-open", "button-map-edit", "button-map-print"]),
 

@@ -32,7 +32,6 @@ import sys
 sys.path.append(".")
 
 import pathlib
-import subprocess
 import tempfile
 import unittest.mock
 from collections.abc import Iterator
@@ -43,9 +42,9 @@ _ROOT = _HERE.parents[1]
 
 def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     """Runs one screen part; its RESULT lines by name."""
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), part, str(tmp_path)],
-        capture_output=True,
         text=True,
         timeout=180,
         cwd=str(_ROOT),
@@ -609,7 +608,6 @@ def _keyboard(out: pathlib.Path) -> None:
 
     app, engine, warnings = _engine(out)  # noqa: F841
     import dill
-    import gremlin.action_label  # noqa: F401
     import gremlin.ui.device  # noqa: F401
     import gremlin.ui.keyboard_layout  # noqa: F401
     import gremlin.ui.util  # noqa: F401

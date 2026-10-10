@@ -15,9 +15,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _HERE = pathlib.Path(__file__).parent
@@ -27,9 +27,9 @@ pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows fonts")
 
 @pytest.fixture(scope="module")
 def results() -> dict:
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, str(_HERE / "rig_undo_steps_smoke.py")],
-        capture_output=True, text=True, timeout=120,
+        text=True, timeout=120,
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]

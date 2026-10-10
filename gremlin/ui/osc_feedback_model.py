@@ -13,7 +13,7 @@ from typing import Any
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import osc_device_file
+from gremlin import osc_device_file, trace
 
 QML_IMPORT_NAME = "Gremlin.Config"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -314,6 +314,12 @@ class OscFeedbackModel(QtCore.QObject):
             osc_device_file.write_server(settings, WHO)
         except OSError as exc:
             syslog.error("OSC: feedback settings not written: %s", exc)
+            trace.osc(
+                "setup",
+                f"feedback settings not written: {exc}",
+                warning=True,
+                key="write",
+            )
             self._say("Not written. The OSC file could not be saved.")
             return False
         self.reload()
@@ -503,6 +509,9 @@ class OscFeedbackModel(QtCore.QObject):
             osc_device_file.write_feedback(rows, WHO)
         except OSError as exc:
             syslog.error("OSC: feedback rows not written: %s", exc)
+            trace.osc(
+                "setup", f"feedback rows not written: {exc}", warning=True, key="write"
+            )
             self._say("Not written. The OSC file could not be saved.")
             return False
         self._say("")
@@ -540,6 +549,12 @@ class OscFeedbackModel(QtCore.QObject):
             target = self._companion_target()
         except OSError as exc:
             syslog.error("OSC: Companion target not written: %s", exc)
+            trace.osc(
+                "setup",
+                f"Companion target not written: {exc}",
+                warning=True,
+                key="write",
+            )
             self._say("Not written. The OSC file could not be saved.")
             return self._message
         row = template_row(kind, params, target)

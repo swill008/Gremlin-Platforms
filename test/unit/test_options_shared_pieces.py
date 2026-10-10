@@ -13,12 +13,13 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import json
 import os
 import pathlib
-import subprocess
 
 import pytest
 
@@ -186,9 +187,9 @@ def opts(tmp_path_factory: pytest.TempPathFactory) -> dict:
     env.setdefault(
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(path), str(picked)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=180,
+        text=True, timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-2000:] + result.stderr[-4000:]

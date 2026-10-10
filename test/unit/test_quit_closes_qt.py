@@ -16,9 +16,10 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 import time
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -106,9 +107,9 @@ def test_quit_closes_windows_engine_and_app_before_the_process_ends(
         TEMP=str(home), TMP=str(home),
     )
     start = time.monotonic()
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", _CHILD, str(_ROOT)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        text=True, encoding="utf-8", errors="replace",
         timeout=120,
     )
     took = time.monotonic() - start

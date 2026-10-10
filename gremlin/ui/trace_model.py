@@ -30,6 +30,7 @@ POINTS = {
     "Output": (trace.OUTPUT, trace.BLOCKED),
     "Event": (trace.EVENT,),
     "HidHide": (trace.HIDHIDE,),
+    "OSC": (trace.OSC,),
     "Out of step": (trace.OUT_OF_STEP,),
 }
 
@@ -157,7 +158,8 @@ def _check(n: int, total: int) -> int:
 
 class TraceTree(QtCore.QAbstractListModel):
     """The left list: device rows, their Out-of-step check, and when opened
-    their axes, buttons and hats; the HidHide row at the end. Changes are
+    their axes, buttons and hats; the HidHide row, then the OSC row and its
+    five areas (D-09-OSC-TRACE) at the end. Changes are
     told row by row so the list keeps its place."""
 
     Kind = QtCore.Qt.ItemDataRole.UserRole + 1
@@ -279,6 +281,19 @@ class TraceTree(QtCore.QAbstractListModel):
             kind="hidhide", text="HidHide (calls, changes, sticks not hidden)",
             check=2 if trace.hidhide_ticked() else 0,
         ))
+        areas = trace.osc_ticked()
+        total = len(trace.OSC_AREAS)
+        rows.append(row(
+            kind="osc", text="OSC", check=_check(len(areas), total),
+            count=f"{len(areas)} of {total}",
+        ))
+        rows.extend(
+            row(
+                kind="osc-area", control=area, text=trace.OSC_AREA_NAMES[area],
+                check=2 if area in areas else 0,
+            )
+            for area in trace.OSC_AREAS
+        )
         self.devices, self.controls = devices, controls
         return rows
 
@@ -634,6 +649,16 @@ class TraceView(QtCore.QObject):
     @QtCore.Slot(bool)
     def setHidhide(self, on: bool) -> None:  # noqa: N802 - QML name
         trace.set_hidhide(on)
+        self.reloadTree()
+
+    @QtCore.Slot(str, bool)
+    def setOsc(self, area: str, on: bool) -> None:  # noqa: N802 - QML name
+        trace.set_osc(area, on)
+        self.reloadTree()
+
+    @QtCore.Slot(bool)
+    def setOscAll(self, on: bool) -> None:  # noqa: N802 - QML name
+        trace.set_osc_all(on)
         self.reloadTree()
 
     @QtCore.Slot(str, bool)

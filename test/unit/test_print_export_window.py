@@ -32,6 +32,7 @@ import subprocess
 import sys
 import time
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 from PySide6 import QtCore, QtGui
 
@@ -40,7 +41,7 @@ _SCALES = ("1", "1.5")
 _SMOKE = _ROOT / "test" / "unit" / "print_export_window_smoke.py"
 
 
-def _start(folder: pathlib.Path, home: pathlib.Path, scale: str) -> subprocess.Popen:
+def _start(folder: pathlib.Path, home: pathlib.Path, scale: str) -> proc_tree.Tree:
     (home / "Gremlin Platforms").mkdir(parents=True)
     env = dict(
         os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
@@ -51,19 +52,19 @@ def _start(folder: pathlib.Path, home: pathlib.Path, scale: str) -> subprocess.P
     # Output to files, not pipes: a full pipe would stall a process while
     # the other one is being waited for.
     with (home / "stdout.txt").open("w") as out, (home / "stderr.txt").open("w") as err:
-        return subprocess.Popen(
+        return proc_tree.popen(
             [sys.executable, str(_SMOKE), str(folder)],
             cwd=_ROOT, env=env, stdout=out, stderr=err,
         )
 
 
-def _result(proc: subprocess.Popen, home: pathlib.Path, deadline: float) -> dict:
+def _result(tree: proc_tree.Tree, home: pathlib.Path, deadline: float) -> dict:
     """The smoke's RESULT; 150 s from its own start, as before."""
     try:
-        proc.wait(timeout=max(0.0, deadline - time.monotonic()))
+        tree.process.wait(timeout=max(0.0, deadline - time.monotonic()))
     except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
+        tree.kill()
+        tree.process.wait()
         raise
     stdout = (home / "stdout.txt").read_text(errors="replace")
     stderr = (home / "stderr.txt").read_text(errors="replace")
@@ -87,10 +88,9 @@ def runs(tmp_path_factory: pytest.TempPathFactory) -> dict:
             for scale, (proc, folder, home, deadline) in started.items()
         }
     finally:
-        for proc, *_rest in started.values():
-            if proc.poll() is None:
-                proc.kill()
-                proc.wait()
+        for tree, *_rest in started.values():
+            tree.close()
+            tree.process.wait()
 
 
 @pytest.fixture(scope="module")

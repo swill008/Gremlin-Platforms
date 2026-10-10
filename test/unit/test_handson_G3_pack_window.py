@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -28,11 +28,10 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         QT_QPA_PLATFORM="offscreen",
         HTTPS_PROXY="http://127.0.0.1:9",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "test/unit/handson_G3_pack_smoke.py"],
         cwd=_ROOT,
         env=env,
-        capture_output=True,
         text=True,
         timeout=120,
     )

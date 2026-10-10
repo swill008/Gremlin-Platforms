@@ -13,7 +13,6 @@ a renamed mode's new name, and the Button Map's Labels mode follows.
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 import textwrap
 import types
@@ -21,6 +20,8 @@ import uuid
 from collections.abc import Iterator
 from pathlib import Path
 from xml.etree import ElementTree
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -318,9 +319,8 @@ _LABEL_MODE = textwrap.dedent(
 def test_button_map_labels_mode_follows_a_rename(tmp_path: Path) -> None:
     script = tmp_path / "label_mode.py"
     script.write_text(_LABEL_MODE, encoding="utf-8")
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script), str(_ROOT)],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=180,

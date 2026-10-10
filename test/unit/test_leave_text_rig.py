@@ -17,9 +17,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _HERE = pathlib.Path(__file__).parent
@@ -29,9 +29,8 @@ pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows fonts")
 
 @pytest.fixture(scope="module")
 def run() -> dict:
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, str(_HERE / "leave_text_rig_smoke.py")],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

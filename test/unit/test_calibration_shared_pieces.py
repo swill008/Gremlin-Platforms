@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -23,12 +22,13 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 def test_calibration_uses_the_message_line_and_undo_bar(
     tmp_path: pathlib.Path,
 ) -> None:
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
     home = tmp_path / "home"
     (home / "Gremlin Platforms").mkdir(parents=True)
     env = dict(os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen")
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve())],
-        cwd=_ROOT, env=env, capture_output=True, text=True, timeout=180,
+        cwd=_ROOT, env=env, text=True, timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-1500:] + result.stderr[-1500:]

@@ -13,6 +13,10 @@ latest value wins). A full resend goes out at Run start, on a mode change,
 on a profile switch (each behind its own switch) and when a message arrives
 on the sync address. Every send happens on the main thread, through
 osc_output.send.
+
+The server settings are held in memory and read again only when OSC's file
+changes (E2: no file read per incoming message). Every step, skip and
+refusal is a Feedback line in Trace (D-09-OSC-TRACE).
 """
 
 from __future__ import annotations
@@ -23,7 +27,7 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin import clock
+from gremlin import clock, trace
 
 log = logging.getLogger("system")
 
@@ -42,7 +46,39 @@ _DEFAULTS: dict[str, Any] = {
 
 _lock = threading.Lock()
 # Server settings as last read; handle_incoming may run on the OSC thread.
+# None: read again (OSC's file changed).
 _settings: dict[str, Any] | None = None
+_hooked = False
+
+
+def _tr(text: str, **kw: Any) -> None:  # noqa: ANN401
+    """A Feedback line in Trace (callers check trace.osc_on first when the
+    text costs anything to build)."""
+    trace.osc("feedback", text, **kw)
+
+
+def _invalidate() -> None:
+    global _settings
+    with _lock:
+        _settings = None
+
+
+def _hook() -> None:
+    """Once: the signals OSC's file writers give drop the held settings,
+    Run or not (handle_incoming reads them for every message)."""
+    global _hooked
+    if _hooked:
+        return
+    _hooked = True
+    try:
+        from gremlin.signal import signal
+
+        for name in ("oscServerSettingsChanged", "oscDeviceReloaded"):
+            sig = getattr(signal, name, None)
+            if sig is not None:
+                sig.connect(_invalidate)
+    except Exception:  # noqa: BLE001 - no signals (bare tests)
+        log.debug("OSC feedback: settings signals not connected", exc_info=True)
 
 
 def _read_server() -> dict[str, Any]:
@@ -51,8 +87,13 @@ def _read_server() -> dict[str, Any]:
         from gremlin import osc_device_file
 
         settings.update(osc_device_file.read_server() or {})
-    except Exception:
-        log.exception("OSC feedback: settings could not be read")
+    except Exception as error:  # noqa: BLE001 - defaults then; say it
+        trace.log_limited(
+            "system",
+            "osc-feedback-settings",
+            logging.ERROR,
+            f"OSC feedback: settings could not be read: {error!r}",
+        )
     return settings
 
 
@@ -62,17 +103,27 @@ def _read_rows() -> list[dict]:
 
         reader = getattr(osc_device_file, "read_feedback", None)
         return list(reader() or []) if reader is not None else []
-    except Exception:
-        log.exception("OSC feedback: rows could not be read")
+    except Exception as error:  # noqa: BLE001 - no rows then; say it
+        trace.log_limited(
+            "system",
+            "osc-feedback-rows",
+            logging.ERROR,
+            f"OSC feedback: rows could not be read: {error!r}",
+        )
         return []
 
 
 def settings() -> dict[str, Any]:
+    """The server settings, read once and held until OSC's file changes."""
     global _settings
+    _hook()
     with _lock:
-        if _settings is None:
-            _settings = _read_server()
-        return dict(_settings)
+        held = _settings
+    if held is None:
+        held = _read_server()
+        with _lock:
+            _settings = held
+    return dict(held)
 
 
 def _reload_settings() -> None:
@@ -132,6 +183,13 @@ def _shape(row: dict, value: object) -> list:
     if isinstance(value, str) and _color_address(row.get("address")):
         rgb = _color(value)
         if rgb is not None:
+            if trace.osc_on("feedback"):
+                _tr(
+                    f"{row.get('address')}: colour {value} → "
+                    f"{rgb[0]} {rgb[1]} {rgb[2]} (Companion)",
+                    rate=True,
+                    key=f"colour {row.get('address')}",
+                )
             return rgb
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return [_convert(float(value), row.get("type", "auto"))]
@@ -198,8 +256,13 @@ def _action_state(source: dict) -> bool | None:
 
     try:
         value = action_state.read(str(action))
-    except Exception:
-        log.exception("OSC feedback: action state of %s could not be read", action)
+    except Exception as error:  # noqa: BLE001 - nothing sent; say it
+        trace.log_limited(
+            "system",
+            f"osc-feedback-action {action}",
+            logging.ERROR,
+            f"OSC feedback: action state of {action} could not be read: {error!r}",
+        )
         return None
     return None if value is None else bool(value)
 
@@ -211,6 +274,50 @@ def _paused() -> bool | None:
 
     paused = action_state.paused_state()
     return None if paused is None else not paused
+
+
+def _osc_row(key: object) -> Any:  # noqa: ANN401
+    """The OSC input a feedback source names (by id, else by address), or
+    None when it's gone."""
+    from gremlin.osc import OscDevice
+
+    if key is None:
+        return None
+    rows = OscDevice().rows
+    row = rows.by_uid(str(key))
+    if row is None:
+        found = rows.matches(str(key))
+        row = found[0] if found else None
+    return row
+
+
+def source_text(source: dict) -> str:
+    """A row's source in Trace words."""
+    kind = source.get("kind")
+    if kind == "mode":
+        return "mode"
+    if kind in ("vjoy_button", "vjoy_axis"):
+        what = "button" if kind == "vjoy_button" else "axis"
+        return f"vJoy {source.get('device')} {what} {source.get('input')}"
+    if kind == "logical":
+        return f"Logical Device {source.get('input')}"
+    if kind == "osc_input":
+        # Named like the match and event lines; the id only once it's gone.
+        row = _osc_row(source.get("input"))
+        if row is None:
+            return f"OSC input {source.get('input')}"
+        from gremlin.osc import input_name
+
+        return input_name(row)
+    if kind == "action_state":
+        return f"action {source.get('action')}"
+    if kind == "paused":
+        return "Running / Paused"
+    return f"unknown source {kind}"
+
+
+def _values_text(values: list) -> str:
+    return " ".join(repr(v) if isinstance(v, str) else str(v) for v in values)
 
 
 class OscFeedback(QtCore.QObject):
@@ -233,6 +340,8 @@ class OscFeedback(QtCore.QObject):
         # OSC inputs' state from their events: (type value, input id) -> value.
         self._osc_state: dict[tuple[int, int], Any] = {}
         self._profile_path: str | None = None
+        # row id -> its number on the Feedback tab (1 first), for Trace.
+        self._numbers: dict[str, int] = {}
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(POLL_MS)
         self._timer.timeout.connect(self.poll)
@@ -255,6 +364,10 @@ class OscFeedback(QtCore.QObject):
         self._pending.clear()
         self._connect(True)
         self.reload()
+        if trace.osc_on("feedback"):
+            on = self._settings.get("feedback_enabled", True)
+            off = "" if on else "; Feedback is Off"
+            _tr(f"start ({len(self._active_rows())} of {len(self._rows)} rows on{off})")
         s = self._settings
         if s.get("resend_run") or (switched and s.get("resend_profile")):
             self.resend_all("profile switch" if switched else "run start")
@@ -269,11 +382,14 @@ class OscFeedback(QtCore.QObject):
                 self._last[row["id"]] = (values, _send_types(row, values))
 
     def stop(self) -> None:
+        was = self._running
         self._running = False
         self._timer.stop()
         self._connect(False)
         self._pending.clear()
         self._last.clear()
+        if was:
+            _tr("stop")
 
     def is_running(self) -> bool:
         return self._running
@@ -312,6 +428,9 @@ class OscFeedback(QtCore.QObject):
         _reload_settings()
         self._settings = settings()
         self._rows = _read_rows()
+        self._numbers = {row["id"]: i + 1 for i, row in enumerate(self._rows)}
+        if self._running and trace.osc_on("feedback"):
+            _tr(f"rows read ({len(self._rows)})")
         live = {row["id"] for row in self._rows}
         self._last = {k: v for k, v in self._last.items() if k in live}
         self._pending.clear()
@@ -340,17 +459,9 @@ class OscFeedback(QtCore.QObject):
         self._osc_state[(int(event.event_type.value), int(event.identifier))] = value
 
     def _osc_input(self, source: dict) -> Any:  # noqa: ANN401
-        from gremlin.osc import OscDevice
         from gremlin.types import InputType
 
-        key = source.get("input")
-        if key is None:
-            return None
-        rows = OscDevice().rows
-        row = rows.by_uid(str(key))
-        if row is None:
-            found = rows.matches(str(key))
-            row = found[0] if found else None
+        row = _osc_row(source.get("input"))
         if row is None:
             return None
         value = self._osc_state.get((int(row.input_type.value), int(row.input_id)))
@@ -407,34 +518,77 @@ class OscFeedback(QtCore.QObject):
             rate = 0.0
         return 1.0 / rate if rate > 0 else 0.0
 
+    def _number(self, row: dict) -> int:
+        return self._numbers.get(str(row.get("id")), 0)
+
     def _send(self, row: dict, values: list, types: list | None) -> None:
         try:
             from gremlin import osc_output
         except ImportError:
             return
         address = row["address"]
+        target = row.get("target") or "reply"
+        n = self._number(row)
         self._sent_at[address] = clock.monotonic()
         self._pending.pop(address, None)
+        if trace.osc_on("feedback"):
+            source = source_text(row.get("source") or {})
+            _tr(
+                f"row {n} {source} → {address} {_values_text(values)}",
+                rate=True,
+                key=f"row {n}",
+            )
         try:
-            sent = osc_output.send(row.get("target") or "reply", address, values, types)
-        except Exception:
-            log.exception("OSC feedback: sending %s failed", address)
+            sent = osc_output.send(
+                target, address, values, types, source=f"feedback row {n}"
+            )
+        except Exception as error:  # noqa: BLE001 - one row never stops the rest
+            text = f"OSC feedback: sending {address} failed: {error!r}"
+            trace.log_limited(
+                "system", f"osc-feedback-send {address}", logging.ERROR, text
+            )
+            if trace.osc_on("feedback"):
+                _tr(
+                    f"row {n}: sending failed ({type(error).__name__})",
+                    warning=True,
+                    key=f"row {n}",
+                )
             sent = False
         if sent is False:
             # Refused (output off, no reply address yet): forget it, so the
             # value goes out once sending works again (no stale controller).
             self._last.pop(row["id"], None)
+            if trace.osc_on("feedback"):
+                why = getattr(osc_output, "refusal", None)
+                reason = (why(target, address) if why is not None else "") or "not sent"
+                _tr(
+                    f"row {n} refused: {reason} (sent again when sending works)",
+                    blocked=True,
+                    key=f"row {n}",
+                )
 
     def poll(self) -> None:
         """Reads every source; changed values send, within the rate limit."""
         if not self._running:
             return
+        traced = trace.osc_on("feedback")
         for row in self._active_rows():
             values = self.value_of(row)
             if values is None:
+                if traced:
+                    n = self._number(row)
+                    source = source_text(row.get("source") or {})
+                    _tr(
+                        f"row {n} {source} has no value (not sent)",
+                        rate=True,
+                        key=f"row {n} none",
+                    )
                 continue
             types = _send_types(row, values)
             if self._last.get(row["id"]) == (values, types):
+                if traced:
+                    n = self._number(row)
+                    _tr(f"row {n} unchanged (not sent)", rate=True, key=f"row {n} same")
                 continue
             self._last[row["id"]] = (values, types)
             self._pending[row["address"]] = (row, values, types)
@@ -449,15 +603,28 @@ class OscFeedback(QtCore.QObject):
             last = self._sent_at.get(address)
             if last is None or now - last >= gap:
                 self._send(row, values, types)
+            elif trace.osc_on("feedback"):
+                n = self._number(row)
+                rate = self._settings.get("feedback_rate")
+                _tr(
+                    f"row {n} held back (rate {rate}/s)",
+                    rate=True,
+                    key=f"row {n} held",
+                )
 
     def resend_all(self, reason: str = "") -> int:
         """Sends every row's current value now. The number sent."""
         if not self._running:
+            _tr(f"resend skipped ({reason}): not running")
             return 0
         count = 0
         for row in self._active_rows():
             values = self.value_of(row)
             if values is None:
+                if trace.osc_on("feedback"):
+                    n = self._number(row)
+                    source = source_text(row.get("source") or {})
+                    _tr(f"row {n} {source} has no value (not resent)")
                 continue
             types = _send_types(row, values)
             self._last[row["id"]] = (values, types)
@@ -465,11 +632,16 @@ class OscFeedback(QtCore.QObject):
             count += 1
         if count:
             log.debug("OSC feedback: resent %s rows (%s)", count, reason)
+        _tr(f"resent {count} rows ({reason})")
         return count
 
     def _on_mode_changed(self, _name: str) -> None:
-        if self._running and self._settings.get("resend_mode", True):
+        if not self._running:
+            return
+        if self._settings.get("resend_mode", True):
             self.resend_all("mode change")
+        else:
+            _tr("mode change: no resend (Resend on mode change is Off)")
 
     def _on_sync(self, host: str, port: int) -> None:
         if host and port >= 0:
@@ -477,9 +649,14 @@ class OscFeedback(QtCore.QObject):
                 from gremlin import osc_output
 
                 osc_output.note_sender(host, port)
-            except Exception:
-                pass
-        self.resend_all("sync")
+            except Exception as error:  # noqa: BLE001 - resend anyway
+                _tr(
+                    f"sync: reply address not noted ({type(error).__name__})",
+                    warning=True,
+                    key="sync",
+                )
+        who = f"{host}:{port}" if host and port >= 0 else "an unknown sender"
+        self.resend_all(f"sync from {who}")
 
     def request_sync(self, peer: tuple | None) -> None:
         """Any thread: a resend on the main thread (to peer for reply rows)."""
@@ -522,8 +699,8 @@ def handle_incoming(address: str, args: Any, peer: tuple | None) -> bool:  # noq
     is the sync address: the message is consumed (never reaches inputs) and
     every row is sent again while a profile runs."""
     running = _feedback is not None and _feedback.is_running()
-    # Cached while a Run keeps it current; read fresh otherwise.
-    s = settings() if running else _read_server()
+    # Held in memory, read again when OSC's file changes (E2).
+    s = settings()
     if not s.get("sync_enabled", True):
         return False
     sync = str(s.get("sync_address") or "").strip()
@@ -532,5 +709,8 @@ def handle_incoming(address: str, args: Any, peer: tuple | None) -> bool:  # noq
     if not sync or str(address).strip().casefold() != sync.casefold():
         return False
     if running and _feedback is not None:
+        _tr(f"sync {address}: resend asked", key="sync")
         _feedback.request_sync(peer)
+    else:
+        _tr(f"sync {address}: not running (no resend)", blocked=True, key="sync")
     return True

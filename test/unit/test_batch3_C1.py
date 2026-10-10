@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 from PySide6 import QtCore
 
@@ -351,9 +351,8 @@ os._exit(0)
 
 
 def _run_harness() -> dict[str, str]:
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", _HARNESS, str(_ROOT)],
-        capture_output=True,
         text=True,
         timeout=60,
         env={

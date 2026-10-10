@@ -16,6 +16,14 @@ function _link(id, title) {
     return "<a href=\"topic:" + id + "\">" + title + "</a>"
 }
 
+// A "Show me ›" link to a menu item, toolbar button or setting.
+function _show(target) {
+    return " <a href=\"show:" + target + "\">Show me ›</a>"
+}
+
+// Options finds the OSC line by its setting's name, "Module setup".
+var _oscOption = "Module setup"
+
 function _list(items) {
     return "<ul><li>" + items.join("</li><li>") + "</li></ul>"
 }
@@ -78,12 +86,12 @@ function topics() {
                     "In your app, set the OSC destination (host or IP) to that address and the port to that port. If the app runs on this PC, use 127.0.0.1.",
                     "On the OSC page, right-click the list and choose <b>Add Inputs</b> › <b>Listen</b>, and press the button or move the control in your app once. The address it sent fills in. Choose the mode (<b>Button</b>, <b>Axis</b>, <b>Change</b> or <b>Encoder</b>), then <b>OK</b>.",
                     "The new input is selected and opens in the action pane: choose <b>Add Action</b> and add actions as on any device, for example Map to vJoy.",
-                    "Choose <b>Run</b>. Messages now press and move your actions."
+                    "Choose <b>Run</b>" + _show("toolbar/Run") + ". Messages now press and move your actions."
                 ])
                 + _good([
                     "Nothing arriving? Open the <b>OSC Monitor</b> (" + _link("osc-monitor", "Watch messages with the OSC Monitor") + ") and see " + _link("osc-troubleshooting", "When OSC doesn't work") + ".",
                     "To show the program's state on the device too, see " + _link("osc-feedback-tab", "Feedback tab") + ".",
-                    "Options shows one line for OSC, <b>OSC settings are in OSC › Module Setup.</b>, with the button <b>Open OSC Module Setup</b>, which opens this window."
+                    "Options shows one line for OSC, <b>OSC settings are in OSC › Module Setup.</b>" + _show("option/" + _oscOption) + ", with the button <b>Open OSC Module Setup</b>, which opens this window."
                 ]),
             related: ["osc-about", "osc-server-tab", "osc-add-input", "osc-checklist"]
         },
@@ -97,13 +105,13 @@ function topics() {
                 + _list([
                     "On the OSC page, choose <b>OSC Setup…</b>.",
                     "Or open the <b>OSC</b> card's menu on Home and choose <b>Module Setup…</b>.",
-                    "Or, in Options, choose <b>Open OSC Module Setup</b> beside <b>OSC settings are in OSC › Module Setup.</b>"
+                    "Or, in Options, choose <b>Open OSC Module Setup</b> beside <b>OSC settings are in OSC › Module Setup.</b>" + _show("option/" + _oscOption)
                 ])
                 + "<p>The tabs: " + _link("osc-server-tab", "Server") + " (where the program listens), " + _link("osc-output-tab", "Output") + " (where it sends), " + _link("osc-feedback-tab", "Feedback") + " (state sent to devices) and " + _link("osc-discovery-tab", "Discovery") + " (finding devices on the network).</p>"
                 + _good([
                     "Changes take effect at once, also while the profile runs.",
                     "The settings, targets and Feedback rows are kept in OSC's module file. Save to Device Library, Restore, Export and Device Pack carry them, and <a href=\"topic:tools-history\">History</a> keeps every save.",
-                    "A change here or on the OSC page marks the profile changed (<b>*</b> in the title): <b>File › Save Profile</b> (Ctrl+S) saves OSC's file too, and <b>Discard</b> throws the OSC changes away."
+                    "A change here or on the OSC page marks the profile changed (<b>*</b> in the title): <b>File › Save Profile</b>" + _show("menu/File/Save Profile") + " (Ctrl+S) saves OSC's file too, and <b>Discard</b> throws the OSC changes away."
                 ]),
             related: ["osc-server-tab", "osc-output-tab", "osc-feedback-tab", "osc-discovery-tab"]
         },
@@ -196,14 +204,15 @@ function topics() {
                     "Each row shows the input's live value (a button pressed or not, an axis's value) and when a message last reached it (\"last seen 3 s ago\", or \"never\"), also with no Run while the port is open. On an axis input, <b>Invert</b> turns it the other way.",
                     "The input's actions for the current mode are its child rows, then its Feedback rows. Click a row to open it in the action pane; a new input shows <b>No actions</b> and <b>Add Action</b>.",
                     "Right-click for the menu: the input's own rows (" + _link("osc-edit-inputs", "Change, order or delete OSC inputs") + "), <b>Add Feedback</b> and <b>Companion feedback</b>, the <b>Row</b>, <b>Group</b> and <b>Groups</b> sections, <b>Add Inputs</b> (<b>Add…</b>, <b>Import…</b>, <b>From TouchOSC Layout…</b>, <b>Listen</b>, <b>Clear…</b>) and <b>Order</b>.",
-                    "The page bar: <b>OSC Setup…</b> opens OSC's Module Setup, <b>Monitor</b> shows the " + _link("osc-monitor", "OSC Monitor") + " at the bottom of the page. Find searches the address, your name or the group, and filters <b>All</b>, <b>Buttons</b> or <b>Axes</b>.",
+                    "The page bar: <b>OSC Setup…</b> opens OSC's Module Setup, <b>Monitor</b> shows the " + _link("osc-monitor", "OSC Monitor") + " at the bottom of the page, and <b>Appearance…</b> sets how this page looks (its own look, apart from the Logical Device page's).",
+                    "Find searches the address, your name or the group. Its type box shows <b>All types</b>, <b>Buttons</b> or <b>Axes</b>, and its filters show only <b>Ungrouped</b> inputs, inputs with <b>No actions in this mode</b>, or <b>Patterns</b>.",
                     "Groups may hold buttons and axes together. Drag rows to set your own order.",
                     "The page has its own Undo and Redo for every change made on it (adding, importing, addresses, settings, names, groups, order, deleting, clearing, actions and Feedback rows)."
                 ])
                 + _good([
                     "The page is locked while the profile runs, except Feedback rows: those can be changed while it runs, and a change takes effect at once.",
                     "The page has no <b>Hide system name</b>: the address is the input and always shows.",
-                    "The Button Map shows an OSC input by its address, for example /fire, not by a number."
+                    "The Button Map and the OSC card on Home show an OSC input by its address, for example /fire, not by a number."
                 ]),
             related: ["osc-add-input", "osc-edit-inputs", "osc-feedback-rows", "osc-monitor"]
         },
@@ -222,7 +231,7 @@ function topics() {
                     "Choose <b>OK</b>. The new input is selected and opens in the action pane; add its actions."
                 ])
                 + _good([
-                    "Adding an input that already exists (the same address, and in Message + data the same values) selects the one already there and says \"<i>/address</i> is already in the list.\"; it doesn't make a second one.",
+                    "Adding an input that already exists (the same address, and in Message + data the same values) selects the one already there; it doesn't make a second one.",
                     "Several inputs can share an address when their data or source value differ, for example /pad with P1 and /pad with P2.",
                     "The address may be a pattern such as <code>/deck/*</code>: one input answers every matching address. See " + _link("osc-patterns", "OSC address patterns") + ".",
                     "Listen opens the port for that one message, also when the profile isn't running, and closes it again afterwards. A Listen belongs to the window that started it: only that window takes the message, and cancelling or closing another window leaves it running.",
@@ -237,7 +246,7 @@ function topics() {
             section: inputs,
             title: "Capture or import many addresses",
             body: "<h4>Bulk capture</h4>"
-                + "<p>In the Add window (<b>OSC Input Mapper</b>), tick <b>Bulk capture</b>. Every new address that arrives becomes an input with the window's settings, until you untick it. Use it to press every key of a Stream Deck once. An address an input already answers (exactly or through a pattern) is skipped, and the window says how many: \"Skipped <i>n</i> already answered\". In Message + data, only an input with the same values counts.</p>"
+                + "<p>In the Add window (<b>OSC Input Mapper</b>), tick <b>Bulk capture</b>. Every new address that arrives becomes an input with the window's settings, until you untick it. Use it to press every key of a Stream Deck once. The same address twice within 0.3 seconds counts once. An address an input already answers (exactly or through a pattern) is skipped, and the window says how many: \"Skipped <i>n</i> already answered\". In Message + data, only an input with the same values counts.</p>"
                 + "<h4>Import</h4>"
                 + _steps([
                     "On the OSC page, right-click the list and choose <b>Add Inputs</b> › <b>Import…</b>.",
@@ -278,7 +287,8 @@ function topics() {
                     "<b>Edit Settings…</b>: opens the same choices as Add, in the <b>OSC Input Settings</b> window. The input keeps its actions. With several inputs selected it reads \"Edit Settings of 3 Inputs…\" (with their number): a setting they don't share shows blank, and only what you change is applied to each. An input that can't change mode (below) is named and left as it is. One Undo step.",
                     "<b>Copy for Companion</b>: copies, as text, the settings for Companion's Generic OSC connection (Target Hostname or IP, Target Port, Protocol UDP, Listen for Feedback on, Source Port 9001) and the key actions for this input, to follow while you set up Companion. See " + _link("osc-companion", "Use with Companion") + ".",
                     "<b>Send Test Press</b> (a button input) or <b>Send Test Value</b> (an axis input: type a value from −1 to 1, then <b>Send</b>): gives the input a message as if it came from the network, so you can try its actions without the app. It fires actions only while the profile runs, shows in the live value, and is not listed in the OSC Monitor. On a pattern input it uses the last address that input received.",
-                    "<b>Delete…</b>: asks first (<b>Delete Input</b>), then removes the input and its actions in every mode. Undo puts it back, and you can restore it from Tools › History.",
+                    "<b>Delete…</b>: asks first (<b>Delete Input</b>), then removes the input and its actions in every mode. Undo puts it back, and you can restore it from <b>Tools › History</b>" + _show("menu/Tools/History") + ".",
+                    "<b>History</b>: opens History with only this input's saved changes.",
                     "<b>Order</b> › <b>By Address</b>: orders the inputs A to Z by address within each group. Dragging rows sets your own order; the order is kept in OSC's file.",
                     "<b>Add Inputs</b> › <b>Clear…</b>: removes every OSC input and its actions from OSC's list, which every profile uses, after asking (<b>Clear OSC Inputs</b>). One Undo step."
                 ])
@@ -349,7 +359,7 @@ function topics() {
             title: "OSC encoders",
             body: "<p>An <b>Encoder</b> input reads a knob that turns without end, such as a Stream Deck+ dial.</p>"
                 + _list([
-                    "<b>Format:</b> <b>Auto</b> works it out from what arrives: only 1 and 0 mean clockwise and counter-clockwise; once a negative or any other value arrives, it reads +n and −n from then on. Choose <b>1 = clockwise, 0 = counter-clockwise</b> or <b>+n and −n</b> to set it yourself.",
+                    "<b>Format:</b> <b>Auto</b> works it out from what arrives: only 1 and 0 mean clockwise and counter-clockwise; once a negative or any other value arrives, it reads +n and −n until the profile runs again. Choose <b>1 = clockwise, 0 = counter-clockwise</b> or <b>+n and −n</b> to set it yourself.",
                     "<b>+n and −n</b>: the value is how many steps it turned, + clockwise and − counter-clockwise. <code>/knob 3</code> is 3 steps clockwise; <code>/knob -1</code> one step back.",
                     "<b>Output:</b> <b>Axis</b> moves an axis by the <b>Step size:</b> (0.05 unless you change it, up to 2) for each step, and stops at the ends.",
                     "<b>Output:</b> <b>Pulses clockwise</b> or <b>Pulses counter-clockwise</b> makes a button that presses, and releases after <b>Release after:</b> (100 ms unless you change it), once for each step that way. Turn the knob fast and the pulses queue (up to 32).",
@@ -448,7 +458,7 @@ function topics() {
             section: sending,
             title: "Watch messages with the OSC Monitor",
             body: "<p>The <b>OSC Monitor</b> lists the last 200 OSC messages in and out. Use it to see what an app really sends.</p>"
-                + "<p>It is a panel at the bottom of the OSC page, folded unless you unfold it: choose <b>Monitor</b> in the page bar, or click the panel's heading. <b>Tools › OSC Monitor</b> opens the OSC page with the panel unfolded. Drag its grip to set its height (remembered); <b>×</b> hides it until you choose Monitor again. <b>Pop out</b> shows it in a window of its own; closing that window puts it back in the page.</p>"
+                + "<p>It is a panel at the bottom of the OSC page, folded unless you unfold it: choose <b>Monitor</b> in the page bar, or click the panel's heading. <b>Tools › OSC Monitor</b>" + _show("menu/Tools/OSC Monitor") + " opens the OSC page with the panel unfolded. Drag its grip to set its height (remembered); <b>×</b> hides it until you choose Monitor again. <b>Pop out</b> shows it in a window of its own; closing that window puts it back in the page.</p>"
                 + _list([
                     "Columns: <b>Time</b>, <b>In / Out</b>, <b>Address</b>, <b>Values</b>, <b>From / To</b> (the other side's address and port) and <b>Input</b> (the inputs it matched, or no input). Point at a cut-off address to see it whole.",
                     "<b>Pause</b> stops adding new messages; <b>Resume</b> shows them again. <b>Clear</b> empties the list. Type in the filter (address, value, from / to or input) to show only matching rows.",
@@ -609,7 +619,7 @@ function topics() {
                 + _list([
                     "The Monitor's <b>Input</b> says no input: the address (or data) doesn't match an input. Use <b>Add as Input…</b>.",
                     "To try an input's actions without the app, right-click it › <b>Send Test Press</b> or <b>Send Test Value</b> while the profile runs.",
-                    "The profile isn't running, or the open profile gives the OSC inputs no actions: with no OSC inputs in use, Run doesn't open the port.",
+                    "The profile isn't running (<b>Run</b>" + _show("toolbar/Run") + "), or the open profile gives the OSC inputs no actions: with no OSC inputs in use, Run doesn't open the port.",
                     "A Button that never releases: the app sends only on press. Tick <b>Trigger on message</b>."
                 ])
                 + "<h4>Companion doesn't update</h4>"
@@ -618,8 +628,15 @@ function topics() {
                     "The Feedback row sends to <b>Reply to sender</b> but Companion's Generic OSC connection has <i>Listen for Feedback</i> off: send to the Companion target (port 12321) instead.",
                     "<b>OSC output (Send OSC actions and feedback)</b> or <b>Send feedback to OSC devices</b> is off, or the profile isn't running.",
                     "<b>Check Companion setup</b> on the Output tab goes through these line by line."
+                ])
+                + "<h4>Trace OSC step by step</h4>"
+                + _list([
+                    "Open <b>Debug › Live Log Reader</b>, choose the <b>Trace</b> tab and tick the <b>OSC</b> row, or only the areas you need: <b>Receive</b>, <b>Inputs</b>, <b>Output</b>, <b>Feedback</b>, <b>Setup and files</b>.",
+                    "Turn <b>Tracing</b> on" + _show("menu/Debug/Tracing") + ", then send from the app or run the profile.",
+                    "Each step writes a line; a <b>BLOCKED</b> line says what stopped the message and why, for example \"send refused: OSC output is Off\" or \"/fader1: no input answers\".",
+                    "See " + _link("tools-trace", "Follow your controls with Trace") + " for every area and the limits."
                 ]),
-            related: ["osc-checklist", "osc-monitor", "osc-companion", "osc-tech-network"]
+            related: ["osc-checklist", "osc-monitor", "osc-companion", "osc-tech-network", "tools-trace"]
         },
 
         // ---- Technical reference ----
@@ -687,7 +704,7 @@ function topics() {
                     "Button: the value at the source; 0 (or False, or empty text) releases, anything else presses. No value: press, then release after the delay (250 ms unless you change it), or press and hold when auto-release is off.",
                     "Axis: (value − Min) ÷ (Max − Min) × 2 − 1, so Min gives −1 and Max gives +1; outside the range it stays at −1 or +1. Not a number: ignored. Min must be less than Max.",
                     "Change: compares with this input's last value, numbers as numbers, else as text; the first message counts as a change.",
-                    "Encoder 1 = clockwise, 0 = counter-clockwise: 0 turns back, anything else turns forward one step. +n and −n: the number is the steps. Auto starts as 1/0 and switches for good to +n/−n when a value other than 0 or 1 arrives.",
+                    "Encoder 1 = clockwise, 0 = counter-clockwise: 0 turns back, anything else turns forward one step. +n and −n: the number is the steps. Auto starts as 1/0 and switches to +n/−n when a value other than 0 or 1 arrives, until the next Run.",
                     "Pad address-only messages: a message with no value reads as 1.0."
                 ]),
             related: ["osc-modes", "osc-encoder", "osc-tech-out", "osc-value-types"]
@@ -775,10 +792,10 @@ function topics() {
             body: _list([
                     "At <b>Stop</b>, any OSC button still held is released before the profile stops.",
                     "OSC's inputs and settings are kept only in OSC's module file; a profile keeps only the actions it gives them. Profiles from older versions open, but OSC inputs or settings stored in them are not read.",
-                    "Any change to OSC marks the profile changed (<b>*</b>): Save Profile saves OSC's file too, and Discard throws the OSC changes away.",
+                    "Any change to OSC marks the profile changed (<b>*</b>): <b>File › Save Profile</b>" + _show("menu/File/Save Profile") + " saves OSC's file too, and Discard throws the OSC changes away.",
                     "OSC's inputs, settings, targets and Feedback rows travel with Save to Device Library, Restore, Export and Device Pack, and every save is in History.",
                     "The port opens only when something needs it, and closes again after.",
-                    "Deleting an input asks first; you can restore it from Tools › History."
+                    "Deleting an input asks first; you can restore it from <b>Tools › History</b>" + _show("menu/Tools/History") + "."
                 ]),
             related: ["osc-about", "osc-tech-network", "device-library-built-in", "tools-history"]
         },
@@ -788,7 +805,7 @@ function topics() {
             id: "osc-q-nothing",
             section: questions,
             title: "Why does nothing happen when my app sends OSC?",
-            body: "<p>Open the <b>OSC Monitor</b>. If nothing shows, check the address, port and firewall; if the Input column says no input, add an input for that address. See " + _link("osc-troubleshooting", "When OSC doesn't work") + ".</p>",
+            body: "<p>Open the <b>OSC Monitor</b>" + _show("menu/Tools/OSC Monitor") + ". If nothing shows, check the address, port and firewall; if the Input column says no input, add an input for that address. See " + _link("osc-troubleshooting", "When OSC doesn't work") + ".</p>",
             related: ["osc-troubleshooting", "osc-monitor"]
         },
         {
@@ -809,7 +826,7 @@ function topics() {
             id: "osc-q-axis",
             section: questions,
             title: "Why can't I change an OSC input to Axis?",
-            body: "<p>It has actions made for a button. Remove its actions first, then change the mode. See " + _link("osc-edit-inputs", "Change, sort or delete OSC inputs") + ".</p>",
+            body: "<p>It has actions made for a button. Remove its actions first, then change the mode. See " + _link("osc-edit-inputs", "Change, order or delete OSC inputs") + ".</p>",
             related: ["osc-edit-inputs"]
         }
     ]

@@ -3,12 +3,10 @@
 
 from __future__ import annotations
 
-import logging
-
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import clock
+from gremlin import clock, trace
 from gremlin.osc import OscDevice, OscRuntime
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
@@ -17,8 +15,6 @@ assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
 
 _DEBOUNCE_S = 0.3
-
-log = logging.getLogger("system")
 
 _orig_learned = OscDeviceManagementModel._on_learned
 _orig_cancel_model = OscDeviceManagementModel.cancelListen
@@ -102,7 +98,14 @@ def _create_captured(model: object, address: str, payload: tuple) -> None:
 
 def model_on_learned(self: object, address: str, args: object) -> None:
     if not OscRuntime().listens_for(self):
-        return  # another model's Listen (the OSC Monitor has its own)
+        # another model's Listen (the OSC Monitor has its own)
+        trace.osc(
+            "setup",
+            f"Listen: {address} not taken (another window listens)",
+            rate=True,
+            key="listen-owner",
+        )
+        return
     if getattr(self, "_bulk", False):
         payload = args if isinstance(args, tuple) else ()
         now = clock.monotonic()
@@ -110,12 +113,24 @@ def model_on_learned(self: object, address: str, args: object) -> None:
         if key == getattr(self, "_last_bulk_addr", "") and (
             now - getattr(self, "_last_bulk_time", 0.0) < _DEBOUNCE_S
         ):
+            trace.osc(
+                "setup",
+                f"Bulk skipped {address} (repeat within {_DEBOUNCE_S:g} s)",
+                rate=True,
+                key=f"bulk-repeat {address}",
+            )
             return
         setattr(self, "_last_bulk_addr", key)
         setattr(self, "_last_bulk_time", now)
         if _answered(self, address, payload):
             setattr(self, "_bulk_skipped", bulk_skipped(self) + 1)
-            log.info("OSC Bulk capture skipped %s: an input answers it", address)
+            # Trace only (E6): one line per skip filled the system log.
+            trace.osc(
+                "setup",
+                f"Bulk skipped {address} (already answered)",
+                rate=True,
+                key=f"bulk-answered {address}",
+            )
             return
         shown = ", ".join(str(item) for item in payload)
         getattr(self, "commandCaptured").emit(address, shown)

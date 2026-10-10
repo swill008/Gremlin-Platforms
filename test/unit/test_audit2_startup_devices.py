@@ -21,13 +21,14 @@ import inspect
 import json
 import os
 import pathlib
-import subprocess
 import sys
 import textwrap
 import uuid
 from collections.abc import Iterator
 from typing import Any
 from xml.etree import ElementTree
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -264,11 +265,10 @@ def test_the_tray_icon_follows_the_platform_qt_started_on(
         print("PLATFORM", app.platformName(), flush=True)
     """)
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen:configfile=screen.json")
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", code],
         cwd=tmp_path,
         env=env,
-        capture_output=True,
         text=True,
         timeout=60,
     )

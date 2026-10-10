@@ -14,9 +14,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _HERE = pathlib.Path(__file__).parent
@@ -34,9 +34,8 @@ _FIVE = [
 def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     out = tmp_path_factory.mktemp("dl_builtin")
     home = tmp_path_factory.mktemp("home")
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [sys.executable, str(_HERE / "library_builtin_section_smoke.py"), str(out)],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

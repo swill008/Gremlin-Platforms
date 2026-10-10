@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import json
 import os
 import pathlib
-import subprocess
 import uuid
 from collections.abc import Iterator
 from typing import Any
@@ -287,9 +288,9 @@ def test_the_button_in_manage_modes_brings_the_mode_back(
     script = home / "undo_delete.py"
     script.write_text(_WINDOW, encoding="utf-8")
     env = dict(os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen")
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=120,
+        text=True, timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-1500:] + result.stderr[-1500:]

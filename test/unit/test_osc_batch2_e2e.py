@@ -113,7 +113,9 @@ def _record_sends() -> None:
     """Nothing leaves the PC: OSC output is recorded instead of sent."""
     from gremlin import osc_output
 
-    def send(target: Any, address: str, values: Any, types: Any = None) -> bool:  # noqa: ANN401
+    def send(
+        target: Any, address: str, values: Any, types: Any = None, **_kw: Any  # noqa: ANN401
+    ) -> bool:
         _SENT.append((str(target), str(address), list(values or [])))
         return True
 

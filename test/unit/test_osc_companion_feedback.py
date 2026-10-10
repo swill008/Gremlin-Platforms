@@ -131,7 +131,12 @@ class FakeOutput(types.ModuleType):
         self.sent: list[tuple] = []
 
     def send(
-        self, target_id: str, address: str, values: list, types: list | None = None
+        self,
+        target_id: str,
+        address: str,
+        values: list,
+        types: list | None = None,
+        **_kw: object,
     ) -> bool:
         self.sent.append((target_id, address, list(values), types))
         return True
@@ -243,6 +248,7 @@ def test_mixed_case_sync_address_matches(monkeypatch: pytest.MonkeyPatch) -> Non
         lambda: {"sync_enabled": True, "sync_address": "/Gremlin/Sync"},
     )
     osc_feedback.stop()
+    osc_feedback._settings = None  # held settings: read the patched ones
     # Incoming addresses arrive casefolded.
     assert osc_feedback.handle_incoming("/gremlin/sync", (), None) is True
     assert osc_feedback.handle_incoming("/gremlin/other", (), None) is False

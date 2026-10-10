@@ -14,8 +14,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "device_library_main_smoke.py"
@@ -28,9 +29,9 @@ def test_home_and_tools_open_the_device_library(tmp_path: pathlib.Path) -> None:
         os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
         GREMLIN_OFFLINE="1", PYTHONIOENCODING="utf-8",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(_SMOKE)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        text=True, encoding="utf-8", errors="replace",
         timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]

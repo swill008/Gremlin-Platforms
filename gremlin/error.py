@@ -4,7 +4,24 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
+import threading
+from collections.abc import Iterator
+
+_quiet = threading.local()
+
+
+@contextlib.contextmanager
+def quiet() -> Iterator[None]:
+    """GremlinErrors made on this thread inside the block aren't logged:
+    for callers that catch them and say why themselves (D-09-OSC-TRACE)."""
+    depth = getattr(_quiet, "depth", 0)
+    _quiet.depth = depth + 1
+    try:
+        yield
+    finally:
+        _quiet.depth = depth
 
 
 class GremlinError(Exception):
@@ -15,7 +32,8 @@ class GremlinError(Exception):
     """
 
     def __init__(self, value: str) -> None:
-        logging.getLogger("system").exception(value)
+        if not getattr(_quiet, "depth", 0):
+            logging.getLogger("system").exception(value)
         self.value = value
 
     def __str__(self) -> str:

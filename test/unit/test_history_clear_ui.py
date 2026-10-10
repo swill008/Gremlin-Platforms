@@ -13,9 +13,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -32,11 +32,10 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         GREMLIN_OFFLINE="1",
         HTTPS_PROXY="http://127.0.0.1:9",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "test/unit/history_clear_ui_smoke.py"],
         cwd=_ROOT,
         env=env,
-        capture_output=True,
         text=True,
         timeout=120,
     )

@@ -14,9 +14,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -112,6 +112,36 @@ if out["opened"]:
     uid = next(iter(trace.ticked_devices()), None)
     out["ticked"] = uid is not None and trace.ticked(uid, "axis", 1)
     out["status-ticked"] = named(w, "traceStatusTicked").property("text")
+    # The OSC row and its five areas (D-09-OSC-TRACE), at the end of the list.
+    def osc_rows():
+        tree = named(w, "traceTree")
+        QtCore.QMetaObject.invokeMethod(tree, "positionViewAtEnd")
+        app.processEvents()
+        return named(w, "traceTick_osc_OSC") is not None
+    out["osc-rows"] = wait_for(osc_rows, 2000) and all(
+        named(w, "traceRow_osc-area_" + n) is not None
+        for n in ("Receive", "Inputs", "Output", "Feedback", "Setup and files"))
+    def osc_count():
+        row = named(w, "traceRow_osc_OSC")
+        return row.property("countText") if row is not None else None
+    area = named(w, "traceTick_osc-area_Receive")
+    if area is not None:
+        click(w, area)
+        wait_for(lambda: trace.osc_ticked() == ["receive"], 1000)
+    out["osc-area-click"] = trace.osc_ticked()
+    out["osc-count-one"] = osc_count()
+    out["osc-parent-partly"] = named(w, "traceTick_osc_OSC").property("tickState")
+    click(w, named(w, "traceTick_osc_OSC"))
+    wait_for(lambda: len(trace.osc_ticked()) == 5, 1000)
+    out["osc-all"] = trace.osc_ticked()
+    out["osc-count-all"] = osc_count()
+    click(w, named(w, "traceTick_osc_OSC"))
+    wait_for(lambda: trace.osc_ticked() == [], 1000)
+    out["osc-none"] = trace.osc_ticked()
+    from gremlin.ui import trace_model
+    out["osc-point"] = list(trace_model.POINTS.get("OSC", ()))
+    QtCore.QMetaObject.invokeMethod(named(w, "traceTree"), "positionViewAtBeginning")
+    app.processEvents()
     # The device opens to its controls by a click on its name.
     row = named(w, "traceRow_device_", prefix=True)
     if row is not None:
@@ -197,9 +227,9 @@ def result(tmp_path_factory: pytest.TempPathFactory) -> dict:
         GREMLIN_OFFLINE="1",
         QT_LOGGING_RULES="qt.qml.binding.removal.info=true",
     )
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, str(script)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=150,
+        text=True, timeout=150,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, done.stdout[-2000:] + done.stderr[-3000:]
@@ -221,6 +251,19 @@ def test_trace_tab_opens_and_a_device_is_ticked_by_a_click(result: dict) -> None
     assert result["ticked"] is True, result
     assert result["status-ticked"].startswith("<b>1</b> device"), result
     assert result["control-row"] is True, result
+
+
+def test_osc_row_and_areas_tick_by_click(result: dict) -> None:
+    assert result["osc-rows"] is True, result
+    assert result["osc-area-click"] == ["receive"], result
+    assert result["osc-count-one"] == "1 of 5", result
+    assert result["osc-parent-partly"] == 1, result
+    assert result["osc-all"] == [
+        "receive", "inputs", "output", "feedback", "setup"
+    ], result
+    assert result["osc-count-all"] == "5 of 5", result
+    assert result["osc-none"] == [], result
+    assert result["osc-point"] == ["OSC"], result
 
 
 def test_switch_turns_on_tracing_red_debug_mode_and_menu_check(result: dict) -> None:

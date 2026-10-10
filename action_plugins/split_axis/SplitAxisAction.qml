@@ -47,26 +47,17 @@ Item {
         // +-------------------------------------------------------------------
         // | Lower split actions
         // +-------------------------------------------------------------------
-        RowLayout {
+        // The label wraps beside Add Action; in a narrow pane the picker
+        // moves onto the line below.
+        ActionSelector {
             id: _lowerHeader
 
             Layout.fillWidth: true
-
-            // Takes the room left beside Add Action and wraps in a narrow
-            // pane rather than pushing the selector past the right edge.
-            Label {
-                Layout.fillWidth: true
-                Layout.minimumWidth: Style.dp(100)
-
-                wrapMode: Text.Wrap
-                text: "Actions for the <b>lower / left</b> part of the split. "
-                    + "Reversed: full at the lower end, at rest at the split point."
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: (x) => { _root.action.appendAction(x, "lower"); }
-            }
+            labelMinimumWidth: Style.dp(100)
+            label: "Actions for the <b>lower / left</b> part of the split. "
+                + "Reversed: full at the lower end, at rest at the split point."
+            actionNode: _root.action
+            callback: (x) => { _root.action.appendAction(x, "lower"); }
         }
 
         HorizontalDivider {
@@ -94,25 +85,16 @@ Item {
         // +-------------------------------------------------------------------
         // | Upper split actions
         // +-------------------------------------------------------------------
-        RowLayout {
+        // The label wraps beside Add Action; in a narrow pane the picker
+        // moves onto the line below.
+        ActionSelector {
             id: _upperHeader
 
             Layout.fillWidth: true
-
-            // Takes the room left beside Add Action and wraps in a narrow
-            // pane rather than pushing the selector past the right edge.
-            Label {
-                Layout.fillWidth: true
-                Layout.minimumWidth: Style.dp(100)
-
-                wrapMode: Text.Wrap
-                text: "Actions for the <b>upper / right</b> part of the split."
-            }
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: (x) => { _root.action.appendAction(x, "upper"); }
-            }
+            labelMinimumWidth: Style.dp(100)
+            label: "Actions for the <b>upper / right</b> part of the split."
+            actionNode: _root.action
+            callback: (x) => { _root.action.appendAction(x, "upper"); }
         }
 
         HorizontalDivider {

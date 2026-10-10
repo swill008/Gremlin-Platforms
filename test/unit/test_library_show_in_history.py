@@ -13,8 +13,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "library_show_in_history_smoke.py"
@@ -30,11 +31,10 @@ def test_show_in_history_opens_history_on_the_device(tmp_path: pathlib.Path) -> 
         GREMLIN_OFFLINE="1",
         PYTHONIOENCODING="utf-8",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(_SMOKE)],
         cwd=_ROOT,
         env=env,
-        capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",

@@ -9,6 +9,7 @@ Listeners get each entry on the main thread, through a queued signal."""
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections import deque
@@ -16,6 +17,8 @@ from collections.abc import Callable
 from typing import Any
 
 from PySide6 import QtCore
+
+from gremlin import trace
 
 LIMIT = 200
 
@@ -67,8 +70,8 @@ def _call_listeners(entry: Entry) -> None:
     for listener in listeners:
         try:
             listener(entry)
-        except Exception:  # noqa: BLE001  a bad listener mustn't stop the rest
-            pass
+        except Exception as err:  # noqa: BLE001  a bad listener mustn't stop the rest
+            _failed("Monitor listener failed", err)
 
 
 def _peer_text(peer: object) -> str:
@@ -115,6 +118,23 @@ def note(
             _call_listeners(entry)
         else:
             relay.noted.emit(entry)
+    except Exception as err:  # noqa: BLE001  never break the OSC thread
+        _failed("Monitor: a message was not noted", err, f" ({address})")
+
+
+def _failed(what: str, err: Exception, where: str = "") -> None:
+    """A swallowed error: a bounded debug line and a trace line (E10).
+    The trace text holds no changing values (the repeat limit keys on it).
+    Never raises."""
+    try:
+        kind = type(err).__name__
+        trace.log_limited(
+            "system",
+            f"osc-traffic {what}",
+            logging.DEBUG,
+            f"OSC {what}{where}: {kind}: {err}",
+        )
+        trace.osc("setup", f"{what}: {kind}: {err}", warning=True, key="traffic")
     except Exception:  # noqa: BLE001  never break the OSC thread
         pass
 

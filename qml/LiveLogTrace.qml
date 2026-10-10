@@ -415,7 +415,8 @@ ColumnLayout {
                             visible: _row.rowKind !== "sep" && _row.rowKind !== "header"
                             anchors.fill: parent
                             anchors.leftMargin: _row.rowKind === "control" ? Style.dp(46)
-                                : _row.rowKind === "oos" ? Style.dp(30) : Style.dp(8)
+                                : (_row.rowKind === "oos" || _row.rowKind === "osc-area")
+                                    ? Style.dp(30) : Style.dp(8)
                             anchors.rightMargin: Style.dp(10)
                             spacing: Style.dp(7)
 
@@ -443,6 +444,10 @@ ColumnLayout {
                                         _root.view.setOutOfStep(_row.device, on)
                                     else if (_row.rowKind === "hidhide")
                                         _root.view.setHidhide(on)
+                                    else if (_row.rowKind === "osc")
+                                        _root.view.setOscAll(on)
+                                    else if (_row.rowKind === "osc-area")
+                                        _root.view.setOsc(_row.controlKind, on)
                                     else
                                         _root.view.setTick(_row.device, _row.controlKind,
                                                            _row.controlIndex, on)
@@ -452,9 +457,10 @@ ColumnLayout {
                                 Layout.fillWidth: true
                                 text: _row.rowText
                                 elide: Text.ElideRight
-                                font.bold: _row.rowKind === "device"
+                                font.bold: _row.rowKind === "device" || _row.rowKind === "osc"
                                 font.pixelSize: _row.rowKind === "oos" ? Style.dp(12) : Style.fontSize
-                                color: _row.rowKind === "device" ? Style.fgStrong : Style.fg
+                                color: (_row.rowKind === "device" || _row.rowKind === "osc")
+                                    ? Style.fgStrong : Style.fg
                                 MouseArea {
                                     anchors.fill: parent
                                     enabled: _row.rowKind === "device" && _row.countText !== ""

@@ -18,8 +18,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -199,9 +200,9 @@ def _run(tmp_path: pathlib.Path) -> dict:
     script.write_text(_CODE, encoding="utf-8")
     env = dict(os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
                PYTHONIOENCODING="utf-8")
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, encoding="utf-8", timeout=180,
+        text=True, encoding="utf-8", timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-2000:] + result.stderr[-2000:]

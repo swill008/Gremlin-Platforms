@@ -469,7 +469,7 @@ def test_input_item_model_reuses_one_binding_model_per_sequence(
 
 
 def test_input_lists_give_the_input_name_without_patches() -> None:
-    import gremlin.action_label  # noqa: F401  (imported by the app at start)
+    import gremlin.ui.device_names  # noqa: F401  (imported by the app at start)
     from gremlin.ui import device
 
     # The Keyboard page lists its keys with KeyboardLayoutModel (05 S128).
@@ -481,11 +481,13 @@ def test_input_lists_give_the_input_name_without_patches() -> None:
 
 
 def test_the_unused_logical_device_editing_model_is_gone() -> None:
-    import gremlin.action_label as action_label
+    import importlib.util
+
     from gremlin.ui import device
 
     assert not hasattr(device, "LogicalDeviceManagementModel")
-    assert "LogicalDeviceManagementModel" not in vars(action_label)
+    # The input-name patches module is gone too (Q15).
+    assert importlib.util.find_spec("gremlin.action_label") is None
 
 
 # --- GL-124 follow-up: one shown name for a device --------------------------------

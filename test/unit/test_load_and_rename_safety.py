@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import os
 import pathlib
-import subprocess
 import types
 
 import pytest
@@ -132,9 +133,8 @@ os._exit(0)
 
 
 def test_rename_dialog_rejects_seeded_and_blank_names() -> None:
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", _DIALOG, str(_ROOT)],
-        capture_output=True,
         text=True,
         timeout=60,
         env={

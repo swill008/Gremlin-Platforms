@@ -69,20 +69,12 @@ Item {
     component ButtonContainer : ColumnLayout {
         Layout.fillWidth: true
 
-        RowLayout {
+        ActionSelector {
             Layout.fillWidth: true
-
-            Label {
-                text: _root.action.buttonName(index)
-            }
-
-            LayoutHorizontalSpacer {}
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: function(x) {
-                    _root.action.appendAction(x, _root.action.buttonName(index));
-                }
+            label: _root.action.buttonName(index)
+            actionNode: _root.action
+            callback: function(x) {
+                _root.action.appendAction(x, _root.action.buttonName(index));
             }
         }
 

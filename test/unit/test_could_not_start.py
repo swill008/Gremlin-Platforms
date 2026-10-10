@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import os
 import pathlib
-import subprocess
 from unittest import mock
 
 import pytest
@@ -102,9 +103,9 @@ def test_broken_main_window_raises_with_the_qml_errors(tmp_path: pathlib.Path) -
     script = tmp_path / "start_broken.py"
     script.write_text(code, encoding="utf-8")
     env = dict(os.environ, USERPROFILE=str(tmp_path), QT_QPA_PLATFORM="offscreen")
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=120,
+        text=True, timeout=120,
     )
     assert "STARTUP ERROR: The main window could not be loaded." in result.stdout, (
         result.stdout + result.stderr[-1500:]

@@ -21,12 +21,13 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import json
 import os
 import pathlib
-import subprocess
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -89,9 +90,9 @@ def _window(tmp_path: pathlib.Path, scale: int, widths: str) -> dict:
     (tmp_path / "Gremlin Platforms").mkdir(exist_ok=True)
     # The off-screen platform's screen is 800 x 600.
     env = dict(os.environ, USERPROFILE=str(tmp_path), QT_QPA_PLATFORM="offscreen")
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script), str(scale), widths], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=120,
+        text=True, timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-1500:] + result.stderr[-1500:]

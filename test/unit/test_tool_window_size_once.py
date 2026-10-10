@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import json
 import os
 import pathlib
-import subprocess
 
 import pytest
 
@@ -125,9 +126,9 @@ def result(tmp_path_factory: pytest.TempPathFactory) -> tuple[dict, str]:
     # the platform's options): relative to the folder it runs in.
     env = dict(os.environ, USERPROFILE=str(home),
                QT_QPA_PLATFORM="offscreen:configfile=screens.json")
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [sys.executable, str(script), str(_ROOT), ",".join(_WINDOWS)], cwd=home,
-        env=env, capture_output=True, text=True, timeout=120,
+        env=env, text=True, timeout=120,
     )
     lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, proc.stdout[-1500:] + proc.stderr[-1500:]

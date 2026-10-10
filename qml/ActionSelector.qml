@@ -15,12 +15,35 @@ Item {
 
     property ActionModel actionNode
     property var callback: null
+    // Text shown before the picker (e.g. "Short press"). The picker sits at
+    // the right; when the row is too narrow for both, the label wraps down
+    // to labelMinimumWidth, then the picker moves onto the line below.
+    property string label: ""
+    property real labelMinimumWidth: _label.implicitWidth
 
-    implicitHeight: _content.implicitHeight
-    // Sized from the text: the widest action name is the preferred width,
-    // the chosen name plus Add Action the least it squeezes to.
-    implicitWidth: _content.implicitWidth
-    Layout.minimumWidth: _combobox.Layout.minimumWidth + _content.spacing + _button.implicitWidth
+    readonly property int _gap: Style.dp(10)
+    readonly property bool _hasLabel: label !== ""
+    // The least the picker squeezes to: the chosen name plus Add Action.
+    readonly property real _pickMin: _combobox.Layout.minimumWidth + _content.spacing + _button.implicitWidth
+    readonly property bool _stacked: _hasLabel && width < labelMinimumWidth + _gap + _pickMin
+
+    // Sized from the text: the widest action name is the preferred width.
+    implicitWidth: (_hasLabel ? _label.implicitWidth + _gap : 0) + _content.implicitWidth
+    implicitHeight: _stacked
+        ? _label.height + Style.dp(4) + _content.implicitHeight
+        : Math.max(_hasLabel ? _label.height : 0, _content.implicitHeight)
+    Layout.minimumWidth: _pickMin
+
+    Label {
+        id: _label
+
+        visible: _root._hasLabel
+        text: _root.label
+        wrapMode: Text.WordWrap
+        width: _root._stacked ? _root.width
+            : Math.max(0, _root.width - _root._gap - _content.width)
+        y: _root._stacked ? 0 : Math.max(0, (_content.height - height) / 2)
+    }
 
     Connections {
         target: actionNode
@@ -37,7 +60,15 @@ Item {
     RowLayout {
         id: _content
 
-        anchors.fill: parent
+        x: _root._hasLabel && !_root._stacked ? _root.width - width : 0
+        y: !_root._hasLabel ? 0
+            : _root._stacked ? _label.height + Style.dp(4)
+            : Math.max(0, (_label.height - height) / 2)
+        width: !_root._hasLabel ? _root.width
+            : _root._stacked ? Math.max(_root._pickMin, Math.min(implicitWidth, _root.width))
+            : Math.max(_root._pickMin, Math.min(implicitWidth,
+                _root.width - _root._gap - _label.implicitWidth))
+        height: !_root._hasLabel ? _root.height : implicitHeight
 
         // Pick the action, then add it (reads left to right).
         ComboBox {

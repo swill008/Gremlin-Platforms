@@ -22,7 +22,6 @@ import datetime
 import json
 import os
 import pathlib
-import subprocess
 import sys
 import zipfile
 from collections.abc import Iterator
@@ -221,12 +220,13 @@ def test_save_diagnostics_takes_the_tester_files(
 
 @pytest.fixture(scope="module")
 def run(tmp_path_factory: pytest.TempPathFactory) -> Iterator[dict]:
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
     home_dir = tmp_path_factory.mktemp("hh_restart_home")
     (home_dir / "Gremlin Platforms").mkdir()
     work = tmp_path_factory.mktemp("hh_restart_work")
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), str(work)],
-        capture_output=True, text=True, encoding="utf-8", timeout=150,
+        text=True, encoding="utf-8", timeout=150,
         cwd=str(_HERE.parents[1]),
         env={
             **os.environ, "USERPROFILE": str(home_dir),

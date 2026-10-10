@@ -181,7 +181,6 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
 
 class MapToLogicalDeviceModel(ActionModel):
     logicalInputIdentifierChanged = QtCore.Signal()
-    logicalInputTypeChanged = QtCore.Signal()
     axisModeChanged = QtCore.Signal()
     axisScalingChanged = QtCore.Signal()
     buttonInvertedChanged = QtCore.Signal()

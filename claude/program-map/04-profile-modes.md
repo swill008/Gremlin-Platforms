@@ -380,6 +380,7 @@ Covered well
 - Scripts: `test_user_script.py` (21, plus the 2026-10-10 Keyboard variable tests for S95), `test_osc_scripts.py` (9; OSC input variable, `osc.send`, 09 S163), `test_user_script_load_errors.py` (5), `integration/test_e2e_user_script.py`.
 - Settings: `test_profile_settings.py` (6), `test_write_less.py` (last mode).
 - Undo Delete Mode: `test_undo_delete_mode.py`; Manage Modes delete question and Undo bar: `test_tools2_shared_pieces.py`. Recovery copy: `test_profile_recovery.py`, `profile_recovery_smoke.py`.
+- Backend recovery timer: `test_backend_timer_released.py` (a test-made Backend's S94 recovery timer stops when the test ends; CRASH-G2, 2026-10-10). Follow-up: `test_stage1_app_profile`'s real_backend should release its Backends too.
 - Shared pieces here: `test_main_shared_pieces.py::test_profile_choosers_remember_the_folder`, `::test_remove_script_asks_the_shared_question`; auto-load remove and choosers: `test_options_shared_pieces.py`.
 
 Thin or untested

@@ -33,7 +33,6 @@ import importlib.util
 import json
 import os
 import pathlib
-import subprocess
 import sys
 import time
 import traceback
@@ -70,12 +69,15 @@ def run_journey(script: str | pathlib.Path, home: pathlib.Path, *args: str) -> d
         ),
         PYTHONIOENCODING="utf-8",
     )
+    # Here, not at the top: the journey's own child imports this file
+    # without test/ on its path.
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
     started = time.monotonic()
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script), *args],
         cwd=ROOT,
         env=env,
-        capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",

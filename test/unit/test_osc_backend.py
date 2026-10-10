@@ -14,6 +14,8 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import pytest
@@ -154,7 +156,6 @@ def _plain(guid: str) -> str:
 def test_options_osc_button_opens_osc_module_setup(tmp_path: Path) -> None:
     import json
     import os
-    import subprocess
 
     home = tmp_path / "home"
     home.mkdir()
@@ -165,11 +166,10 @@ def test_options_osc_button_opens_osc_module_setup(tmp_path: Path) -> None:
         GREMLIN_OFFLINE="1",
         PYTHONIOENCODING="utf-8",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(_SMOKE)],
         cwd=Path(__file__).resolve().parents[2],
         env=env,
-        capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",

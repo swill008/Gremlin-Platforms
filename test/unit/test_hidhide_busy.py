@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 from collections.abc import Iterator
 
@@ -85,11 +84,12 @@ def test_not_installed_is_not_busy(
 
 @pytest.fixture(scope="module")
 def page(tmp_path_factory: pytest.TempPathFactory) -> Iterator[dict]:
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
     home_dir = tmp_path_factory.mktemp("hh_busy_home")
     (home_dir / "Gremlin Platforms").mkdir()
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__))],
-        capture_output=True, text=True, encoding="utf-8", timeout=150,
+        text=True, encoding="utf-8", timeout=150,
         cwd=str(_HERE.parents[1]),
         env={
             **os.environ, "USERPROFILE": str(home_dir),

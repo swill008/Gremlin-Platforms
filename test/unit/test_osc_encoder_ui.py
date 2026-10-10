@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
@@ -276,9 +275,9 @@ def _smoke() -> None:
 
 
 def _run(tmp_path: pathlib.Path) -> tuple[dict[str, Any], list[str]]:
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, __file__],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

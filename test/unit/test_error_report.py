@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import os
 import pathlib
-import subprocess
 import threading
 
 import pytest
@@ -95,8 +96,8 @@ def test_the_crash_log_is_turned_on_in_the_logs_folder(tmp_path: pathlib.Path) -
         "print('PATH', path, faulthandler.is_enabled())\n"
         "print('AGAIN', error_report.enable_crash_log(pathlib.Path('.')))\n"
     )
-    result = subprocess.run(
-        [sys.executable, "-c", code], cwd=_ROOT, capture_output=True, text=True,
+    result = proc_tree.run(
+        [sys.executable, "-c", code], cwd=_ROOT, text=True,
         timeout=60, env=dict(os.environ),
     )
     assert f"PATH {tmp_path / 'crash.log'} True" in result.stdout, result.stderr

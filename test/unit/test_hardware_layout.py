@@ -19,6 +19,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 from PySide6 import QtCore
 
@@ -357,15 +358,13 @@ def test_qml_builds_the_model_and_sets_a_device() -> None:
     # QML crash (access violation) building the model; in a child process
     # so a crash fails this test instead of the run.
     import os
-    import subprocess
     import sys
 
     env = {**os.environ, "QT_QPA_PLATFORM": "offscreen"}
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, "-c", _QML_BUILD],
         cwd=str(Path(__file__).resolve().parents[2]),
         env=env,
-        capture_output=True,
         text=True,
         timeout=60,
     )

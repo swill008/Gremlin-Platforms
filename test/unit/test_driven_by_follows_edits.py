@@ -20,12 +20,13 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import json
 import os
 import pathlib
-import subprocess
 
 import pytest
 
@@ -120,9 +121,8 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     script.write_text(_CODE, encoding="utf-8")
     env = dict(os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
                HTTPS_PROXY="http://127.0.0.1:9")
-    result = subprocess.run(
-        [sys.executable, str(script)], cwd=_ROOT, env=env, capture_output=True,
-        text=True, timeout=120,
+    result = proc_tree.run(
+        [sys.executable, str(script)], cwd=_ROOT, env=env, text=True, timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-1500:] + result.stderr[-1500:]

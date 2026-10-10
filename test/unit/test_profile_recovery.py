@@ -13,10 +13,10 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 from pathlib import Path
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 from gremlin import profile_recovery
@@ -169,9 +169,8 @@ def test_not_now_keeps_the_copy_and_discard_deletes_it(
 def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     home = tmp_path_factory.mktemp("profile_recovery_home")
     (home / "Gremlin Platforms").mkdir()
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [sys.executable, str(_HERE / "profile_recovery_smoke.py")],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=150,

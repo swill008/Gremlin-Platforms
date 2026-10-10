@@ -45,10 +45,9 @@ def check(text: object, *, allow_pattern: bool = True) -> str:
     if is_pattern(address):
         if not allow_pattern:
             return NO_PATTERN
-        try:
-            _translate(address.lower())
-        except GremlinError as error:
-            return str(error)
+        # No GremlinError on this path: it logs a traceback when made, and an
+        # incoming message's address comes here (E3, D-09-OSC-TRACE).
+        return _parse(address.lower())[1]
     return ""
 
 
@@ -65,7 +64,24 @@ def matches(pattern: str, address: str) -> bool:
 
 @functools.lru_cache(maxsize=512)
 def _compiled(lowered: str) -> re.Pattern[str]:
-    return re.compile(_translate(lowered))
+    regex, why = _parse(lowered)
+    if why:
+        raise GremlinError(why)
+    return re.compile(regex)
+
+
+class _Bad(Exception):
+    """A pattern refused while parsing; becomes the reason text."""
+
+
+@functools.lru_cache(maxsize=512)
+def _parse(text: str) -> tuple[str, str]:
+    """(regex, "") for a good pattern, ("", why) for a bad one. Never makes
+    a GremlinError."""
+    try:
+        return _translate(text), ""
+    except _Bad as error:
+        return "", str(error)
 
 
 def _translate(text: str) -> str:
@@ -81,27 +97,27 @@ def _translate(text: str) -> str:
         elif ch == "[":
             close = text.find("]", i + 1)
             if close < 0:
-                raise GremlinError(f'"[" at position {i + 1} is never closed.')
+                raise _Bad(f'"[" at position {i + 1} is never closed.')
             out.append(_bracket(text[i + 1 : close]))
             i = close
         elif ch == "{":
             close = text.find("}", i + 1)
             if close < 0:
-                raise GremlinError(f'"{{" at position {i + 1} is never closed.')
+                raise _Bad(f'"{{" at position {i + 1} is never closed.')
             body = text[i + 1 : close]
             if "{" in body:
-                raise GremlinError("A {..} can't hold another {.")
+                raise _Bad("A {..} can't hold another {.")
             if "/" in body:
-                raise GremlinError('A {..} can\'t hold a "/".')
+                raise _Bad('A {..} can\'t hold a "/".')
             if body == "":
-                raise GremlinError("A {..} can't be empty.")
+                raise _Bad("A {..} can't be empty.")
             words = body.split(",")
             out.append("(?:" + "|".join(re.escape(w) for w in words) + ")")
             i = close
         elif ch == "]":
-            raise GremlinError(f'"]" at position {i + 1} has no "[" before it.')
+            raise _Bad(f'"]" at position {i + 1} has no "[" before it.')
         elif ch == "}":
-            raise GremlinError(f'"}}" at position {i + 1} has no "{{" before it.')
+            raise _Bad(f'"}}" at position {i + 1} has no "{{" before it.')
         else:
             out.append(re.escape(ch))
         i += 1
@@ -114,9 +130,9 @@ def _bracket(body: str) -> str:
     if negate:
         body = body[1:]
     if body == "":
-        raise GremlinError("A [..] can't be empty.")
+        raise _Bad("A [..] can't be empty.")
     if "/" in body:
-        raise GremlinError('A [..] can\'t hold a "/".')
+        raise _Bad('A [..] can\'t hold a "/".')
     parts: list[str] = []
     j = 0
     while j < len(body):
@@ -124,7 +140,7 @@ def _bracket(body: str) -> str:
         if j + 2 < len(body) and body[j + 1] == "-":
             low, high = body[j], body[j + 2]
             if low > high:
-                raise GremlinError(f'The range "{low}-{high}" runs backwards.')
+                raise _Bad(f'The range "{low}-{high}" runs backwards.')
             parts.append(f"{re.escape(low)}-{re.escape(high)}")
             j += 3
         else:

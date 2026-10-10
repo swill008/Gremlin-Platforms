@@ -15,9 +15,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _HERE = pathlib.Path(__file__).parent
@@ -26,14 +26,13 @@ _HERE = pathlib.Path(__file__).parent
 @pytest.fixture(scope="module")
 def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     out = tmp_path_factory.mktemp("dl_fm_window")
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [
             sys.executable,
             str(_HERE / "device_library_LU_window_smoke.py"),
             str(out),
             "fm-",
         ],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

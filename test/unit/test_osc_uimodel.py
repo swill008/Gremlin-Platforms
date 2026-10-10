@@ -134,15 +134,58 @@ def test_add_after_sort_selects_the_added_row(model: OscDeviceManagementModel) -
     model.createMappedInput("Button", "/zz")
     model.createMappedInput("Button", "/mm")
     model.sortInputs()
-    picked: list[int] = []
-    model.listenBound.connect(picked.append)
+    picked: list[str] = []
+    model.inputAdded.connect(picked.append)
     model.createMappedInput("Button", "/aa")
-    index = model.index(picked[-1], 0)
-    assert model.data(index, QtCore.Qt.ItemDataRole.UserRole + 2) == "/aa"
+    assert OscDevice().rows.by_uid(picked[-1]).label == "/aa"
     picked.clear()
     model.importInputs("/bb B")
-    index = model.index(picked[-1], 0)
-    assert model.data(index, QtCore.Qt.ItemDataRole.UserRole + 2) == "/bb"
+    assert OscDevice().rows.by_uid(picked[-1]).label == "/bb"
+
+
+def test_adding_an_existing_input_selects_it(model: OscDeviceManagementModel) -> None:
+    """09 S14: adding an input that already exists selects the one there
+    (OscPage selects on inputAdded), and makes no second one."""
+    model.createMappedInput("Button", "/dup")
+    [first] = _rows()
+    picked: list[str] = []
+    model.inputAdded.connect(picked.append)
+    ok = _qml(model, 'm.createConfiguredInput({address: "/dup", mode: "button"})')
+    assert ok is False
+    assert [r.uid for r in _rows()] == [first.uid]
+    assert picked == [first.uid]
+
+
+def test_osc_row_description_is_the_input_name(
+    model: OscDeviceManagementModel,
+) -> None:
+    """Q15: the description role is the model's own (no import-time patch)
+    and shows the input name; an input with no item shows nothing."""
+    import gremlin.ui.device_names  # noqa: F401  (imported by the app at start)
+    from gremlin.osc import OSC_DEVICE_UUID
+    from gremlin.profile import Profile
+
+    assert OscDeviceManagementModel.data.__module__ == "gremlin.ui.osc_device_model"
+    profile = Profile()
+    shared_state.current_profile = profile
+    model.createMappedInput("Button", "/named")
+    model.createMappedInput("Button", "/bare")
+    role = next(
+        k for k, v in model.roles.items() if bytes(v.data()) == b"description"
+    )
+    by_label = {
+        model.data(model.index(i, 0), QtCore.Qt.ItemDataRole.UserRole + 2): i
+        for i in range(model.rowCount())
+    }
+    row = OscDevice().rows.by_uid(
+        next(r.uid for r in _rows() if r.label == "/named")
+    )
+    item = profile.get_input_item(
+        OSC_DEVICE_UUID, row.input_type, row.input_id, "Default", True
+    )
+    item.action_name = "Fire"
+    assert model.data(model.index(by_label["/named"], 0), role) == "Fire"
+    assert model.data(model.index(by_label["/bare"], 0), role) == ""
 
 
 def test_delete_by_uid(model: OscDeviceManagementModel) -> None:

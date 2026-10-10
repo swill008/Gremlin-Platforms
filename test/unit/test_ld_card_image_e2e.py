@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -262,11 +261,11 @@ def _child() -> None:
 
 
 def _run(tmp_path: Path) -> dict[str, object]:
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
     profile = tmp_path / "profile"
     profile.mkdir()
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [sys.executable, str(Path(__file__).resolve()), str(tmp_path / "out")],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=120,

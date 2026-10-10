@@ -24,7 +24,6 @@ import importlib.util
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
 sys.path.append(".")
@@ -43,9 +42,9 @@ def _screens():  # noqa: ANN202
 
 
 def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), part, str(tmp_path)],
-        capture_output=True,
         text=True,
         timeout=180,
         cwd=str(_ROOT),
@@ -99,8 +98,8 @@ def test_the_logical_page_panel_uses_its_own_setting(tmp_path: pathlib.Path) -> 
     assert r["toast"] == "Saved for this page."
     # The live keys ride along, so a save here never drops Configuration's.
     assert saved["showLiveBars"] is True and saved["showLeds"] is True
-    # Nothing goes to the old Logical-only "display" value.
-    assert r["old"] == ""
+    # The old Logical-only "logical-layout" setting is gone.
+    assert r["old"] == "False"
     assert r["tree"] == "60"
     # The live rows of the panel are Configuration's only.
     assert r["liveRows"] == "false"
@@ -161,7 +160,7 @@ def _logical(s, out: pathlib.Path) -> None:  # noqa: ANN001
     from PySide6 import QtCore
 
     app, engine, warnings = s._engine(out)  # noqa: F841
-    import gremlin.action_label  # noqa: F401
+    import gremlin.config
     import gremlin.ui.logical_layout  # noqa: F401
     import gremlin.ui.profile  # noqa: F401
     from gremlin import plugin_manager, shared_state
@@ -221,7 +220,12 @@ Window {
     s._Out.result("other", json.dumps(other))
     s._Out.result("toast", js("panel().toastText"))
     s._Out.result(
-        "old", str(window_placement.WindowPlacement()._logical().get("display", ""))
+        "old",
+        str(
+            gremlin.config.Configuration().exists(
+                "global", "internal", "logical-layout"
+            )
+        ),
     )
     s._Out.result("tree", js("String(tree().parentHeight)"))
     s._Out.result("liveRows", js("String(panel().liveOptions)"))

@@ -16,15 +16,18 @@ SAVED = {
     ("global", "internal", "window-width"): ("int", 1600),
     ("global", "internal", "window-height"): ("int", 1000),
     ("global", "internal", "window-maximized"): ("bool", True),
-    ("global", "internal", "button-map-menu-width"): ("int", 300),
-    ("global", "internal", "button-map-menu-height"): ("int", 600),
     ("global", "internal", "display-panels"): ("string", '{"a": true}'),
     ("global", "internal", "close-pane-after-ok"): ("bool", True),
     ("global", "internal", "action-pane-width"): ("int", 700),
     ("global", "internal", "tool-windows"): ("string", '{"options": [1, 2, 3, 4]}'),
-    ("global", "internal", "logical-layout"): ("string", '{"k": 1}'),
     ("devices", "display", "vjoy-tabs"): ("list", [1, 3]),
     ("devices", "display", "extra-tabs"): ("list", ["osc"]),
+}
+# Settings no part of the program reads any more.
+GONE = {
+    ("global", "internal", "button-map-menu-width"): ("int", 300),
+    ("global", "internal", "button-map-menu-height"): ("int", 600),
+    ("global", "internal", "logical-layout"): ("string", '{"k": 1}'),
 }
 
 
@@ -32,7 +35,7 @@ SAVED = {
 def saved_cfg() -> Iterator[gremlin.config.Configuration]:
     """A configuration file from an earlier session, holding every saved value."""
     data: dict = {}
-    for (section, group, name), (kind, value) in SAVED.items():
+    for (section, group, name), (kind, value) in (SAVED | GONE).items():
         data.setdefault(section, {}).setdefault(group, {})[name] = {
             "data_type": kind,
             "description": "",
@@ -75,3 +78,18 @@ def test_startup_registration_keeps_them(
 
     for (section, group, name), (_, value) in SAVED.items():
         assert saved_cfg.value(section, group, name) == value, name
+
+
+def test_unused_placement_settings_are_dropped(
+    saved_cfg: gremlin.config.Configuration,
+) -> None:
+    """Button Map menu size and the old Logical-only layout value are read by
+    nothing, so start-up drops them."""
+    import joystick_gremlin
+
+    for (section, group, name), (_, value) in GONE.items():
+        assert saved_cfg.value(section, group, name) == value, name
+    joystick_gremlin.register_config_options()
+    saved_cfg.purge_unused()
+    for section, group, name in GONE:
+        assert not saved_cfg.exists(section, group, name), name

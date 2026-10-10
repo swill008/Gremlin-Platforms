@@ -11,13 +11,14 @@ open (OSC rewrite OP8)."""
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import osc_traffic
+from gremlin import osc_traffic, trace
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
@@ -55,7 +56,10 @@ def _runtime() -> object | None:
         from gremlin.osc import OscRuntime  # noqa: PLC0415  lazy: keeps imports light
 
         return OscRuntime()
-    except Exception:  # noqa: BLE001
+    except Exception as err:  # noqa: BLE001
+        text = f"Monitor: OSC not loaded ({type(err).__name__}: {err})"
+        trace.log_limited("system", "osc-monitor-runtime", logging.DEBUG, text)
+        trace.osc("setup", text, warning=True, key="monitor-runtime")
         return None
 
 
@@ -217,6 +221,12 @@ class OscMonitorModel(QtCore.QAbstractListModel):
 
     def _on_note(self, entry: dict[str, Any]) -> None:
         if self._paused:
+            trace.osc(
+                "setup",
+                f"Monitor paused: {entry.get('address', '')} not shown",
+                rate=True,
+                key="monitor-paused",
+            )
             return
         self._all.append(entry)
         dropped = len(self._all) > osc_traffic.LIMIT
@@ -251,11 +261,13 @@ class OscMonitorModel(QtCore.QAbstractListModel):
             hold = getattr(runtime, "hold_open", None)
             if callable(hold):
                 hold(self._token)
+                trace.osc("setup", "Monitor holds the port")
         else:
             osc_traffic.remove_listener(self._on_note)
             release = getattr(runtime, "release_open", None)
             if callable(release):
                 release(self._token)
+                trace.osc("setup", "Monitor released the port")
         self.activeChanged.emit()
 
     active = QtCore.Property(bool, _get_active, _set_active, notify=activeChanged)

@@ -24,25 +24,29 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
 
-        RowLayout {
-            Label {
-                id: _label
+        // Wraps Add Chain Sequence onto a second line in a narrow pane.
+        Flow {
+            Layout.fillWidth: true
+            spacing: Style.dp(10)
 
-                text: "Timeout (sec, 0 = never)"
-            }
+            RowLayout {
+                Label {
+                    id: _label
 
-            FloatSpinBox {
-                minValue: 0
-                maxValue: 3600
-                value: _root.action.timeout
-                stepSize: 0.1
+                    text: "Timeout (sec, 0 = never)"
+                }
 
-                onValueModified: (newValue) => {
-                    _root.action.timeout = newValue
+                FloatSpinBox {
+                    minValue: 0
+                    maxValue: 3600
+                    value: _root.action.timeout
+                    stepSize: 0.1
+
+                    onValueModified: (newValue) => {
+                        _root.action.timeout = newValue
+                    }
                 }
             }
-
-            LayoutHorizontalSpacer {}
 
             Button {
                 text: "Add Chain Sequence"
@@ -66,13 +70,9 @@ Item {
         RowLayout {
             Layout.fillWidth: true
 
-            Label {
-                text: "Sequence " + (index + 1)
-            }
-
-            LayoutHorizontalSpacer {}
-
             ActionSelector {
+                Layout.fillWidth: true
+                label: "Sequence " + (index + 1)
                 actionNode: _root.action
                 callback: function(x) {
                     _root.action.appendAction(x, index.toString());

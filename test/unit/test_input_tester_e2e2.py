@@ -30,6 +30,7 @@ from collections.abc import Iterator
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _REPO = pathlib.Path(__file__).resolve().parents[2]
@@ -233,7 +234,7 @@ class _Tester:
         if temp is not None:
             env.update(TEMP=str(temp), TMP=str(temp))
         env.pop("GREMLIN_REAL_VJOY", None)
-        self.proc = subprocess.Popen(
+        self.tree = proc_tree.popen(
             [sys.executable, str(script), str(_REPO), str(_TEST_DIR), str(control)],
             cwd=str(control),
             env=env,
@@ -242,6 +243,7 @@ class _Tester:
             text=True,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
+        self.proc = self.tree.process
         self.output = ""
 
     def state(self, until=lambda s: True, timeout: float = 30.0) -> dict:  # noqa: ANN001
@@ -278,9 +280,11 @@ class _Tester:
         try:
             self.output, _ = self.proc.communicate(timeout=20)
         except subprocess.TimeoutExpired:
-            self.proc.kill()
+            self.tree.kill()
             self.output, _ = self.proc.communicate()
             pytest.fail(f"The tester didn't end:\n{self.output}")
+        finally:
+            self.tree.close()
 
 
 @pytest.fixture

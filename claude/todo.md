@@ -259,14 +259,14 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 54. PLANNING (user 2026-10-09): "Show me" links in Help that open or point at the thing a topic
     names (a menu, a window, a setting). Discussion in progress; no code.
 
-55. AFTER THE 1.0.30 RELEASE (user 2026-10-09: build it after the release). GAP (found 2026-10-09 by HW-config): 04 S94 profile recovery copy (Q14, approved 2026-10-06:
+55. DONE 2026-10-09 (built: gremlin/profile_recovery.py, 04 S94; Help checked in the 2026-10-10 Help pass 2). Was: AFTER THE 1.0.30 RELEASE (user 2026-10-09: build it after the release). GAP (found 2026-10-09 by HW-config): 04 S94 profile recovery copy (Q14, approved 2026-10-06:
     copy of unsaved profile edits about every minute, Restore / Discard / Not now on next open or
     after a crash, removed on Save / Discard / clean close) is not in the program. Not in Help until
     built. (09 S61 reworded to buttons and keys, user approved 2026-10-09.)
     UDM edge case: a deleted mode's own Change Mode action naming a mode renamed since comes back
     with the old name (not covered).
 
-56. Spec vs program, found by the Help writers 2026-10-09 (small; not fixed): 03 S46 Module Setup Save
+56. DONE (a3f448d2, 2026-10-09; S59 test restored 2026-10-10 by T56). Spec vs program, found by the Help writers 2026-10-09: 03 S46 Module Setup Save
     while unplugged says "...to save its setup..." when the stick is unplugged after opening (spec:
     "Plug in <device> to change its setup. Nothing was saved."; gremlin/ui/module_model.py ~1900,
     ~1951); 03 S103 a calibration with lowest above highest gets "...lowest and highest values are the
@@ -277,22 +277,10 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 57. DONE 2026-10-09 (with the shared-pieces batch) (user 2026-10-09): show the program version in the main
     window title bar, e.g. "test profile.xml - Gremlin-Platforms R1 1.0.30" (spec 01 S57 to update).
 
-58. Button Map Undo bar has no "Last change:" text: the editor's history steps carry no names (B-map
-    2026-10-09). Name the steps where they are recorded (rig editor), then bind UndoBar.lastChange.
-
 59. DONE 2026-10-09 (D-04-LD-FILE; the Logical Device stands alone: own module file shared by all profiles, permanent ids, profile version 15). Open question (user 2026-10-09: decide after using it): should every built-in row (Keyboard, OSC, Logical Device) get the same Library menu, including Import? Original item: the Logical Device in the Device Library's
     Built-in inputs section, beside Keyboard and OSC: Save to Device Library, Restore, Export of its
     controls, names, groups and actions. Needs the Library's save/restore/export to handle the
     Logical Device's data (~30-40 min). Spec 10 S6 and the class table's library_builtin change.
-
-60. FUTURE REDESIGN (user 2026-10-09: to-do for now, a full future redesign): "the pack is the new
-    profile". Every device, internal and external, is a modular item with its own files: input/setup,
-    actions, and wiring as separate items. A pack (manifest) picks the items plus the glue (modes,
-    startup mode, game/auto-load, scripts) and replaces the profile. Import and export of items and
-    packs are the in/out path. Open questions: modes owned by the pack (missing-mode fix), shared item
-    vs copy ("used by N packs"), clashes on the same input, History/Undo per item and pack, lossless
-    migration of existing profiles. Staged: A Logical Device own file (DONE 2026-10-09 with to-do 59), B device actions as
-    items, C wiring as items, D pack manifest + migration. Several days.
 
 61. QUESTION (user 2026-10-09: to-do for now, new feature, decide later): should the Device Library
     always list the built-ins (Keyboard, OSC, Logical Device), even with no module file and no saved
@@ -304,29 +292,20 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     display only, nothing created on disk. Spec addition to 10 S6. ~10-15 min + full run (agents:
     Library rows py, empty line QML, spec/Help, one test). Found by LIB-audit; tracker T-lib-builtin-no-file-row.
 
-62. OSC idea (user 2026-10-09: to-do): OSC in conditions and macros. Today an OSC condition always reads
+62. DONE 2026-10-10 (OSC batches 52a8c2f0/36bbcdb7/6a55f094, 09 S147-S164). OSC idea (user 2026-10-09: to-do): OSC in conditions and macros. Today an OSC condition always reads
     "not present" (input_cache has no OSC device); macros can't capture OSC. ~20 min.
-63. OSC idea (to-do): sender allow-list. Accept OSC only from chosen IP addresses (shared networks).
+63. DONE 2026-10-10 (OSC batches 52a8c2f0/36bbcdb7/6a55f094, 09 S147-S164). OSC idea (to-do): sender allow-list. Accept OSC only from chosen IP addresses (shared networks).
     Setting in OSC's Module Setup Server section; travels with packs. Small.
-64. OSC idea (to-do): per-input axis shaping on the OSC input itself: invert, deadzone, curve, before
+64. DONE 2026-10-10 (OSC batches 52a8c2f0/36bbcdb7/6a55f094, 09 S147-S164). OSC idea (to-do): per-input axis shaping on the OSC input itself: invert, deadzone, curve, before
     any action.
-65. OSC idea (to-do): address patterns. OSC wildcards (`/fader/*`, `?`, `[..]`, `{a,b}`) so one input
+65. DONE 2026-10-10 (OSC batches 52a8c2f0/36bbcdb7/6a55f094, 09 S147-S164). OSC idea (to-do): address patterns. OSC wildcards (`/fader/*`, `?`, `[..]`, `{a,b}`) so one input
     covers several controls.
-66. OSC idea (to-do): import a TouchOSC layout (.tosc) to create all its controls as inputs with the right
+66. DONE 2026-10-10 (OSC batches 52a8c2f0/36bbcdb7/6a55f094, 09 S147-S164). OSC idea (to-do): import a TouchOSC layout (.tosc) to create all its controls as inputs with the right
     modes.
-67. OSC idea (to-do): OSC from user scripts. Scripts can send and receive OSC (script API).
+67. DONE 2026-10-10 (OSC batches 52a8c2f0/36bbcdb7/6a55f094, 09 S147-S164). OSC idea (to-do): OSC from user scripts. Scripts can send and receive OSC (script API).
 
-68. OSC (to-do, user 2026-10-09): feedback from action states (e.g. a toggle action's on/off) as a feedback source.
-69. OSC (to-do): encoder acceleration (bigger steps when the knob turns fast).
-70. OSC (to-do): OSC inputs in the live Input Viewer, like stick inputs.
-
-71. OSC (to-do, 2026-10-09): Export Companion Page. Not built: Companion v5.0.7's page import doesn't
-    validate buttons or actions (a wrong option shape imports silently with empty values; format version
-    12 vs wrapped options {value,isExpression}; undocumented). Safest known shape recorded in the CEXP
-    report (version 12, type page, button steps with action_sets down/up send_int, options wrapped,
-    one generic-osc instance). Needs a manual import test in a real Companion v5 before shipping.
-    Copy for Companion is the supported route meanwhile.
-
+68. DONE 2026-10-10 (OSC batches 52a8c2f0/36bbcdb7/6a55f094, 09 S147-S164). OSC (to-do, user 2026-10-09): feedback from action states (e.g. a toggle action's on/off) as a feedback source.
+69. DONE 2026-10-10 (OSC batches 52a8c2f0/36bbcdb7/6a55f094, 09 S147-S164). OSC (to-do): encoder acceleration (bigger steps when the knob turns fast).
 72. QUESTION (found 2026-10-09 by PAGE): on a device page (OSC, maybe Keyboard) an input that is
     selected but has no actions shows a blank right side with no way to add a first action there.
     Decide the text (e.g. "No actions on this input yet") and how a first action is added. Not built.
@@ -340,14 +319,6 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     Needs a new 01 spec statement ("tool windows reopen with their whole frame inside the work area of
     the screen they land on") - your OK first.
 
-74. Trace the keyboard (user 2026-10-09: keys left out of the first Trace build, D-01-TRACE / 01 S146).
-    Keys aren't axis/button/hat; needs a key kind and index in gremlin/trace.py, the tap in
-    event_handler.trace_kind, and a Keyboard row in the Trace tab. Not started.
-75. Ideas from the 9 Oct uncommanded-inputs analysis (https://claude.ai/artifact/KWdt2wvTc2aoQmDR3UPWU3),
-    not started, each needs a spec OK: (a) fix "HidHide not installed" while the HidHide window is open
-    (HH-INUSE-1, 02 S67) and keep the switches usable; (b) Change vJoy Output warns that games bound to
-    those vJoy devices now get the other stick (10 S30-S31); (c) a HidHide guard for tests like the vJoy
-    one (offered as a separate task); (d) whether Delete Device should clean profiles that aren't open.
 76. DONE 2026-10-10 (68096ab2, 02 S124-S133, D-02-RESET-DEVICES; hands-on of the Windows
     permission prompt left as gap RESET-HANDS-ON). Reset devices (user 2026-10-10): a button on the HidHide page that disables and
     re-enables the hidden sticks so every program (Gremlin, games, the Input Tester) opens them again
@@ -416,7 +387,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     number with the Windows XInput slot number, which are numbered differently; match them properly. Done 2026-10-10 (this batch).
 85. (TWIN, 2026-10-10): not verified whether HidHide can hide an Xbox pad from XInput (a program reading XInput
     may still see a hidden pad). Verify read-only and say so in Help. Not started.
-86. (RW5, 2026-10-10): the Reset Devices Xbox note shows "can t" on screen (apostrophe missing; the text in the
+86. NOT REPRODUCED 2026-10-10 (T86-APOS: the real dialog off-screen draws "can't"; waiting for the user's full-size screenshot and UI/Windows scale). (RW5, 2026-10-10): the Reset Devices Xbox note shows "can t" on screen (apostrophe missing; the text in the
     code has it). Check the off-screen render. Not started.
 87. DONE 2026-10-10 (SA1, 2026-10-10; 05 gap SA1, found by the action editor matrix): the Split Axis editor overflows the pane: its
     label row hides the Add Action selector (matrix screenshot split-axis_axis.png). qml/LabelValueComboBox.qml's
@@ -486,7 +457,6 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
       the page functions by name (`_leavePages()`, `_actionPanes()`, `configurationPane()`,
       `keyboardPane()`, `oscPane()`, `currentPageBar`) — keep those names. (4) Text-reading tests pin
       exact lines. (5) OSC feedback rows stay editable while running (`ActionPane.lockExempt`).
-32. **N22** – Inconsistent controls in action editors (on hold).
 33. **OSC** (parked 2026-10-02; **picked up 2026-10-09**: decisions D-09-OSC-FILE, D-09-OSC-INPUT, D-09-OSC-FAULTS, spec 09; being built in this batch):
     - **B15 – SUPERSEDED 2026-10-09 (D-09-OSC-FAULTS): input 8001 (intended, adjustable), output 8000, one value each (09 S6).** Default ports clash and disagree. The program listens on
       8000 when nothing is set (`gremlin/osc.py` `DEFAULT_PORT`), Options
@@ -505,7 +475,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
       C and E suffixes into plain axes (`gremlin/ui/osc_device_model.py`
       `_parse_import_line`), while `qml/OscImportDialog.qml` says otherwise.
       Goes with B16: real types, or fix the text.
-92. (H1, 2026-10-10, F3-HIDHIDE, SHAKE-STRESS-06) Hardware Hide opening blocks the window ~0.5 s (after the read-once fix, about half). Moving the device read onto a gremlin.threads worker would need a "Loading…" state in DialogHardwareHide.qml (list opens empty, fills in), late ticks after setCloak/setInverse/setDeviceHidden/setGremlinControl/setGamingOnly/setDevicePhoto (needs a generation guard for quick clicks), a spec statement, and test waits on deviceCount. User chose to record it only (2026-10-10). Not started.
+92. WON'T FIX (user 2026-10-10). (H1, 2026-10-10, F3-HIDHIDE, SHAKE-STRESS-06) Hardware Hide opening blocks the window ~0.5 s (after the read-once fix, about half). Moving the device read onto a gremlin.threads worker would need a "Loading…" state in DialogHardwareHide.qml (list opens empty, fills in), late ticks after setCloak/setInverse/setDeviceHidden/setGremlinControl/setGamingOnly/setDevicePhoto (needs a generation guard for quick clicks), a spec statement, and test waits on deviceCount. User chose to record it only (2026-10-10). Not started.
 
 ## Notes kept for reference
 

@@ -16,7 +16,7 @@ from typing import Any
 from PySide6 import QtCore, QtGui
 
 import gremlin.ui.type_aliases as ta
-from gremlin import osc_device_file
+from gremlin import osc_device_file, trace
 from gremlin.osc import OSC_GROUP, OSC_SECTION, local_ipv4_addresses
 from gremlin.ui.option import BaseMetaConfigOptionWidget, MetaConfigOption
 
@@ -235,6 +235,12 @@ class OscServerModel(QtCore.QObject):
             osc_device_file.write_server(settings, "OSC Module Setup")
         except OSError as exc:
             syslog.error("OSC: server settings not written: %s", exc)
+            trace.osc(
+                "setup",
+                f"server settings not written: {exc}",
+                warning=True,
+                key="write",
+            )
             self._say("Not written. The OSC file could not be saved.")
             return False
         self.reload()
@@ -256,6 +262,9 @@ class OscServerModel(QtCore.QObject):
                 self.refreshFound()
         except Exception:  # noqa: BLE001 - discovery trouble never stops a save
             syslog.exception("OSC: discovery switch not applied")
+            trace.osc(
+                "setup", "discovery switch not applied", warning=True, key="option"
+            )
 
     # Allowed senders (S160): empty = OSC from every sender is accepted.
 
@@ -271,6 +280,12 @@ class OscServerModel(QtCore.QObject):
             ok, why = add_sender(text)
         except OSError as exc:
             syslog.error("OSC: allowed senders not written: %s", exc)
+            trace.osc(
+                "setup",
+                f"allowed senders not written: {exc}",
+                warning=True,
+                key="write",
+            )
             self._say("Not written. The OSC file could not be saved.")
             return False
         self.reload()
@@ -286,6 +301,12 @@ class OscServerModel(QtCore.QObject):
             done = remove_sender(entry)
         except OSError as exc:
             syslog.error("OSC: allowed senders not written: %s", exc)
+            trace.osc(
+                "setup",
+                f"allowed senders not written: {exc}",
+                warning=True,
+                key="write",
+            )
             self._say("Not written. The OSC file could not be saved.")
             return False
         self.reload()
@@ -302,6 +323,12 @@ class OscServerModel(QtCore.QObject):
             osc_device_file.write_targets(targets, "OSC Module Setup")
         except OSError as exc:
             syslog.error("OSC: targets not written: %s", exc)
+            trace.osc(
+                "setup",
+                f"targets not written: {exc}",
+                warning=True,
+                key="write",
+            )
             self._say("Not written. The OSC file could not be saved.")
             return False
         self.reload()
@@ -395,6 +422,7 @@ class OscServerModel(QtCore.QObject):
                     )
         except Exception:  # noqa: BLE001 - a broken list shows as empty
             syslog.exception("OSC: found devices not read")
+            trace.osc("setup", "found devices not read", warning=True, key="option")
         if devices != self._found:
             self._found = devices
             self.foundChanged.emit()

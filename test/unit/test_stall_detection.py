@@ -23,6 +23,7 @@ import subprocess
 import time
 
 import child_env  # pyright: ignore[reportMissingImports]  (test/)
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -108,19 +109,22 @@ def runs(tmp_path_factory: pytest.TempPathFactory) -> dict[str, tuple[int, str, 
         # the run writing its stall report.
         log = folder / "out.txt"
         with log.open("w", encoding="utf-8") as out:
-            process = subprocess.Popen(
+            tree = proc_tree.popen(
                 [sys.executable, "-m", "pytest", "-p", "conftest", "-q",
                  "-p", "no:cacheprovider", *own, "-s", str(sample)],
                 cwd=_ROOT, env=env, stdout=out, stderr=subprocess.STDOUT,
             )
-        started[name] = (process, log, time.monotonic())
+        started[name] = (tree, log, time.monotonic())
     results = {}
-    for name, (process, log, start) in started.items():
+    for name, (tree, log, start) in started.items():
+        process = tree.process
         try:
             process.wait(timeout=90)
         except subprocess.TimeoutExpired:
-            process.kill()
+            tree.kill()
             process.wait()
+        finally:
+            tree.close()
         took = time.monotonic() - start
         out = log.read_text(encoding="utf-8", errors="replace")
         results[name] = (process.returncode, out, took)

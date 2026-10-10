@@ -19,6 +19,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, cast
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 import dill
@@ -286,14 +287,12 @@ def test_qml_builds_the_model() -> None:
     # this test instead of the run.
     import os
     import pathlib
-    import subprocess
     import sys
 
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, "-c", _QML_BUILD],
         cwd=str(pathlib.Path(__file__).resolve().parents[2]),
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
-        capture_output=True,
         text=True,
         timeout=60,
     )

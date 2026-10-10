@@ -17,7 +17,6 @@ from __future__ import annotations
 import os
 import pathlib
 import shutil
-import subprocess
 import sys
 
 import pytest
@@ -83,12 +82,12 @@ def _child() -> None:
 
 @pytest.fixture(scope="module")
 def found(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str]:
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
     tmp_path = tmp_path_factory.mktemp("editor_load_error")
     import child_env  # pyright: ignore[reportMissingImports]  (test/)
 
-    run = subprocess.run(
+    run = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), "child", str(tmp_path)],
-        capture_output=True,
         text=True,
         timeout=120,
         cwd=str(_ROOT),

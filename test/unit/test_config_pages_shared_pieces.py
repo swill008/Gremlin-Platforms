@@ -19,7 +19,6 @@ from __future__ import annotations
 import importlib.util
 import os
 import pathlib
-import subprocess
 import sys
 
 sys.path.append(".")
@@ -38,9 +37,9 @@ def _screens():  # noqa: ANN202
 
 
 def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), part, str(tmp_path)],
-        capture_output=True,
         text=True,
         timeout=180,
         cwd=str(_ROOT),
@@ -139,7 +138,6 @@ def _keyboard(s, out: pathlib.Path) -> None:  # noqa: ANN001
 
     app, engine, warnings = s._engine(out)  # noqa: F841
     import dill
-    import gremlin.action_label  # noqa: F401
     import gremlin.ui.device  # noqa: F401
     import gremlin.ui.keyboard_layout  # noqa: F401
     import gremlin.ui.util  # noqa: F401
@@ -211,7 +209,6 @@ def _logical(s, out: pathlib.Path) -> None:  # noqa: ANN001
     from PySide6 import QtCore
 
     app, engine, warnings = s._engine(out)  # noqa: F841
-    import gremlin.action_label  # noqa: F401
     import gremlin.ui.logical_layout  # noqa: F401
     import gremlin.ui.profile  # noqa: F401
     from gremlin import plugin_manager, shared_state

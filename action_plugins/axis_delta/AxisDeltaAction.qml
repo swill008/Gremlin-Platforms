@@ -52,17 +52,11 @@ Item {
         // +-------------------------------------------------------------------
         // | Positive change actions
         // +-------------------------------------------------------------------
-        RowLayout {
-            Label {
-                text: "Positive change"
-            }
-
-            LayoutHorizontalSpacer {}
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: function(x) { _root.action.appendAction(x, "positive"); }
-            }
+        ActionSelector {
+            Layout.fillWidth: true
+            label: "Positive change"
+            actionNode: _root.action
+            callback: function(x) { _root.action.appendAction(x, "positive"); }
         }
 
         HorizontalDivider {
@@ -90,17 +84,11 @@ Item {
         // +-------------------------------------------------------------------
         // | Negative change actions
         // +-------------------------------------------------------------------
-        RowLayout {
-            Label {
-                text: "Negative change"
-            }
-
-            LayoutHorizontalSpacer {}
-
-            ActionSelector {
-                actionNode: _root.action
-                callback: function(x) { _root.action.appendAction(x, "negative"); }
-            }
+        ActionSelector {
+            Layout.fillWidth: true
+            label: "Negative change"
+            actionNode: _root.action
+            callback: function(x) { _root.action.appendAction(x, "negative"); }
         }
 
         HorizontalDivider {

@@ -4,8 +4,9 @@
 """Action editors fit the Configuration pane (no behaviour change).
 
 Action editors are shown in the off-screen program's Configuration pane at
-UI scales 100, 150 and 200 % (window 1600 x 950), and the first three also
-in a narrower window. Every visible control stays inside the editor's
+UI scales 100, 150 and 200 % (window 1600 x 950), with the pane at its
+default width and at its minimum (420 units, EW-1), and the first three
+also in a narrower window. Every visible control stays inside the editor's
 width (the pane's content width less the standard right margin the binding
 gives every editor), every button is at least as wide as its text, and no
 text is cut: combo box text, labels and placeholder text fit their boxes
@@ -45,10 +46,13 @@ EDITORS = [
     ("map-to-xbox", "Map to Xbox", "MapToXboxAction", "button"),
     ("map-to-mouse-axis", "Map to Mouse", "MapToMouseAction", "axis"),
     ("map-to-mouse-hat", "Map to Mouse", "MapToMouseAction", "hat"),
+    ("map-to-mouse-button", "Map to Mouse", "MapToMouseAction", "button"),
     ("text-to-speech", "Text to Speech", "TextToSpeechAction", "button"),
     ("play-sound", "Play Sound", "PlaySoundAction", "button"),
     ("run-command", "Run Command", "RunCommandAction", "button"),
 ]
+# A choice clicked before measuring (Motion shows the speed boxes).
+CLICK = {"map-to-mouse-button": "Motion"}
 SCALES = [100, 150, 200]
 # The window at each scale: 1600 x 950 at 100 %, the same size in UI units
 # at 150 and 200 %, so the pane has its default width.
@@ -58,12 +62,16 @@ NARROW = (1280, ("dual-axis-deadzone", "send-osc", "split-axis"))
 # Windows too narrow for the pane's saved width at 200 % (SJ-05): only the
 # OK check runs there.
 TIGHT = [("condition", 200, 1600), ("text-to-speech", 200, 1920)]
+# Every editor also with the pane at its minimum width (grip + 420 units,
+# EW-1), in the default window at each scale.
+MIN = "min"
+MIN_UNITS = 420
 
 
-def _widths(tag: str, scale: int) -> list[int]:
+def _widths(tag: str, scale: int) -> list[int | str]:
     narrow = [NARROW[0]] if scale == 100 and tag in NARROW[1] else []
     tight = [w for t, sc, w in TIGHT if t == tag and sc == scale]
-    return [WINDOW[scale], *narrow, *tight]
+    return [WINDOW[scale], *narrow, *tight, MIN]
 
 
 CONTROLS = (
@@ -146,10 +154,16 @@ def _story(j) -> None:  # noqa: ANN001
     j.out["results"] = results
     j.out["uiScale"] = j.ev("Style.uiScale")
     for job in spec["jobs"]:
-        j.win.setWidth(job["width"])
+        at_min = job["width"] == MIN
+        j.win.setWidth(WINDOW[spec["scale"]] if at_min else job["width"])
         j.win.setHeight(round(950 * spec["scale"] / 100))
         j.settle()
         catalog = j.open_configuration("pjoy_pro")
+        # The pane's width in UI units: its minimum, else the default.
+        for it in j.walk(j.win.contentItem()):
+            if it.metaObject().className().startswith("ActionPane_QML"):
+                it.setProperty("paneUnits", MIN_UNITS if at_min else 560)
+        j.settle()
         j.open_input(catalog, job["kind"], 1)
         root = j.wait_until(lambda: j.pane_actions(catalog)[0], "the root action")
         root.appendAction(job["name"], "children")
@@ -162,6 +176,13 @@ def _story(j) -> None:  # noqa: ANN001
             return None
 
         item = j.wait_until(editor, f"the {stem} editor", timeout=10)
+        if job.get("click"):
+            for it in j.walk(item):
+                if (
+                    it.metaObject().className().startswith("RadioButton")
+                    and it.property("text") == job["click"]
+                ):
+                    QtCore.QMetaObject.invokeMethod(it, "clicked")
         j.QTest.qWait(400)
 
         def left(it) -> float:  # noqa: ANN001
@@ -203,6 +224,30 @@ def _story(j) -> None:  # noqa: ANN001
         clip = item.parentItem()
         while clip is not None and not clip.clip():
             clip = clip.parentItem()
+        # The binding's Root row above the editors (Note, Add Action).
+        root_row = []
+        for head in j.walk(j.win.contentItem()):
+            if (
+                not head.metaObject()
+                .className()
+                .startswith("InputItemBindingConfigurationHeader")
+                or not head.isVisible()
+            ):
+                continue
+            for it in j.walk(head):
+                kind = it.metaObject().className().split("_")[0]
+                if kind not in CONTROLS or it.width() <= 0 or not it.isVisible():
+                    continue
+                has_text = it.metaObject().indexOfProperty("text") >= 0
+                root_row.append(
+                    {
+                        "kind": kind,
+                        "text": str((it.property("text") if has_text else "") or ""),
+                        "right": left(it) + it.width(),
+                        "width": it.width(),
+                        "implicit": it.implicitWidth(),
+                    }
+                )
         results.append(
             {
                 "tag": job["tag"],
@@ -210,9 +255,16 @@ def _story(j) -> None:  # noqa: ANN001
                 "editor_right": left(item) + item.width(),
                 "clip_right": left(clip) + clip.width() if clip is not None else None,
                 "controls": controls,
+                "root_row": root_row,
                 "cut": _cut_text(j, item),
                 "ok_right": ok_right,
                 "window": j.win.contentItem().width(),
+                "pane": [
+                    it.property("shownWidth")
+                    for it in j.walk(j.win.contentItem())
+                    if it.metaObject().className().startswith("ActionPane_QML")
+                    and it.isVisible()
+                ],
             }
         )
         if job.get("shot"):
@@ -251,6 +303,8 @@ def measured(tmp_path_factory: pytest.TempPathFactory) -> dict:
     tmp = tmp_path_factory.mktemp("editor-widths")
     shots = pathlib.Path(os.environ.get(SHOTS_ENV) or tmp)
     found: dict = {}
+    # While working on one editor: EDITOR_WIDTH_ONLY=tag,tag measures those.
+    only = [t for t in os.environ.get("EDITOR_WIDTH_ONLY", "").split(",") if t]
     for scale in SCALES:
         jobs = [
             {
@@ -260,9 +314,11 @@ def measured(tmp_path_factory: pytest.TempPathFactory) -> dict:
                 "kind": kind,
                 "width": width,
                 "shot": str(shots / f"{tag}_{scale}_{width}.png"),
+                "click": CLICK.get(tag, ""),
             }
             for tag, name, stem, kind in EDITORS
             for width in _widths(tag, scale)
+            if not only or tag in only
         ]
         spec = tmp / f"jobs_{scale}.json"
         spec.write_text(json.dumps({"scale": scale, "jobs": jobs}), encoding="utf-8")
@@ -292,8 +348,16 @@ def test_editor_fits_the_pane(measured: dict, tag: str, scale: int, width: int) 
     scrollbar; SA1: Split Axis's "Actions for the lower / left part" label
     pushed its Add Action selector out of the pane; SJ-03..06: Condition's
     Add Condition row, Map to Mouse's speed rows and Text to Speech's Rate
-    ran past the pane. Each editor lays out inside its own width."""
+    ran past the pane; EW-1: Chain's Add Chain Sequence and Send OSC ran
+    past the pane at its minimum width. Each editor lays out inside its own
+    width, at the pane's default and minimum widths."""
     got = measured[(tag, scale, width)]
+    if width == MIN:
+        least = MIN_UNITS * scale / 100
+        assert got["pane"], "no open pane"
+        assert all(abs(w - least) <= 1 for w in got["pane"]), (
+            f"pane not at its minimum: {got['pane']} != {least:.0f}"
+        )
     edge = got["editor_right"]
     assert got["clip_right"] is None or edge <= got["clip_right"] + 0.5
     assert got["controls"], "no controls measured"
@@ -311,6 +375,31 @@ def test_editor_fits_the_pane(measured: dict, tag: str, scale: int, width: int) 
     assert not squeezed, (
         f"{tag} at {scale}% {width}: narrower than their text: {squeezed}"
     )
+
+
+@pytest.mark.parametrize(("tag", "scale", "width"), CASES)
+def test_root_row_fits_the_pane(
+    measured: dict, tag: str, scale: int, width: int
+) -> None:
+    """Spec: none (no behaviour change). EW-1: the Root row's Add Action
+    picker kept a fixed least width and ran under the pane's edge ("Add
+    Acti") at the pane's minimum width. The row stays inside the pane and
+    Add Action is as wide as its text."""
+    got = measured[(tag, scale, width)]
+    assert got["root_row"], "no Root row measured"
+    edge = got["clip_right"]
+    over = [
+        f"{c['kind']} {c['text']!r} right {c['right']:.0f} > {edge:.0f}"
+        for c in got["root_row"]
+        if edge is not None and c["right"] > edge + 0.5
+    ]
+    assert not over, f"{tag} at {scale}% {width}: Root row past the pane: {over}"
+    squeezed = [
+        f"{c['kind']} {c['text']!r} {c['width']:.0f} < {c['implicit']:.0f}"
+        for c in got["root_row"]
+        if c["kind"] == "Button" and c["width"] + 0.5 < c["implicit"]
+    ]
+    assert not squeezed, f"{tag} at {scale}% {width}: Root row squeezed: {squeezed}"
 
 
 @pytest.mark.parametrize(("tag", "scale", "width"), CASES)

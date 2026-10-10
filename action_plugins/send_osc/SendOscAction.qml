@@ -174,55 +174,49 @@ Item {
             }
         }
 
-        RowLayout {
+        // Add Value, then the input range (Min, Max); each wraps onto the
+        // next line in a narrow pane.
+        Flow {
             Layout.fillWidth: true
+            spacing: Style.dp(10)
 
             Button {
                 objectName: "sendOscAddValue"
                 text: "Add Value"
-
                 onClicked: () => { _root.action.addValue() }
             }
 
-            LayoutHorizontalSpacer {}
+            RowLayout {
+                Label {
+                    text: "Min:"
+                }
 
-            Label {
-                text: "Min:"
-            }
+                FloatSpinBox {
+                    minValue: -100000
+                    maxValue: 100000
+                    stepSize: 0.1
+                    value: _root.action ? _root.action.inputMin : 0
 
-            FloatSpinBox {
-                // Full size when there is room; shrinks to fit a narrow pane.
-                Layout.fillWidth: true
-                Layout.minimumWidth: Style.dp(100)
-                Layout.maximumWidth: implicitWidth
-
-                minValue: -100000
-                maxValue: 100000
-                stepSize: 0.1
-                value: _root.action ? _root.action.inputMin : 0
-
-                onValueModified: (newValue) => {
-                    _root.action.inputMin = newValue
+                    onValueModified: (newValue) => {
+                        _root.action.inputMin = newValue
+                    }
                 }
             }
 
-            Label {
-                text: "Max:"
-            }
+            RowLayout {
+                Label {
+                    text: "Max:"
+                }
 
-            FloatSpinBox {
-                // Full size when there is room; shrinks to fit a narrow pane.
-                Layout.fillWidth: true
-                Layout.minimumWidth: Style.dp(100)
-                Layout.maximumWidth: implicitWidth
+                FloatSpinBox {
+                    minValue: -100000
+                    maxValue: 100000
+                    stepSize: 0.1
+                    value: _root.action ? _root.action.inputMax : 1
 
-                minValue: -100000
-                maxValue: 100000
-                stepSize: 0.1
-                value: _root.action ? _root.action.inputMax : 1
-
-                onValueModified: (newValue) => {
-                    _root.action.inputMax = newValue
+                    onValueModified: (newValue) => {
+                        _root.action.inputMax = newValue
+                    }
                 }
             }
         }

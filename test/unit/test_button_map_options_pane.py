@@ -19,9 +19,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
@@ -38,9 +38,9 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     fonts = os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     env.setdefault("QT_QPA_FONTDIR", fonts)
     script = _ROOT / "test" / "unit" / "button_map_options_pane_smoke.py"
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, str(script)],
-        cwd=_ROOT, env=env, capture_output=True, text=True, timeout=120,
+        cwd=_ROOT, env=env, text=True, timeout=120,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, done.stdout[-1500:] + done.stderr[-1500:]

@@ -15,10 +15,13 @@ from __future__ import annotations
 
 import ipaddress
 import logging
+import re
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from gremlin import trace
+from gremlin.error import quiet
 from gremlin.modules import store
 
 if TYPE_CHECKING:
@@ -96,6 +99,36 @@ _BOOL_KEYS = (
 
 def path() -> Path:
     return store.path_of(SLUG)
+
+
+def _trace(text: str, **kwargs: object) -> None:
+    """A "Setup and files" trace line (D-09-OSC-TRACE)."""
+    trace.osc("setup", text, **kwargs)  # type: ignore[arg-type]
+
+
+_WHY = re.compile(r"\): (.*?)\.? It is kept in the file")
+
+
+def _note_cleaned(raw: object) -> None:
+    """Trace each server value the file had that clean_server changed to
+    its default ("port abc cleaned to 8001")."""
+    if not trace.osc_on("setup") or not isinstance(raw, dict):
+        return
+    cleaned = clean_server(raw)
+    for key, default in SERVER_DEFAULTS.items():
+        if key not in raw or key == "allow_senders":
+            continue
+        given = raw[key]
+        if (
+            cleaned[key] == default
+            and str(given).strip().lower() != str(default).lower()
+            and not (isinstance(given, bool) and given == default)
+        ):
+            _trace(f"{key} {given} cleaned to {default}")
+    senders = raw.get("allow_senders")
+    for item in senders if isinstance(senders, list) else []:
+        if sender_entry(item) is None:
+            _trace(f"allow_senders {item} dropped (not an IP address or range)")
 
 
 def _identity() -> dict:
@@ -419,17 +452,32 @@ def read_feedback() -> list[dict]:
 
 
 def _write_key(key: str, value: object, who: str, signal_name: str) -> bool:
+    same: list[bool] = []
+
     def change(doc: dict) -> bool:
         if doc.get(key) == value:
+            same.append(True)
             return False
         _put_identity(doc)
         doc[key] = value
         return True
 
+    count = len(value) if isinstance(value, list) else 0
+    what = f"{count} {_KEY_TEXT.get(key, key)}"
     if not store.update_path(path(), change, who or WHO):
+        _trace(
+            f"osc.json not written ({what} unchanged)"
+            if same
+            else "osc.json not saved: the file is damaged (refused)",
+            warning=not same,
+        )
         return False
+    _trace(f"osc.json saved ({what})")
     _emit(signal_name)
     return True
+
+
+_KEY_TEXT = {TARGETS_KEY: "targets", FEEDBACK_KEY: "feedback rows"}
 
 
 def write_targets(targets: list[dict], who: str = "") -> bool:
@@ -453,11 +501,30 @@ def load(rows: OscRows | None = None) -> dict:
     settings. A missing file is an empty list; the file is made on the
     first save. An entry that can't be read is skipped (named in the rows'
     load_warnings, also logged) and kept for Save (AD1)."""
-    doc = store.read_path(path())
+    file = path()
+    doc = store.read_path(file)
+    if not file.exists():
+        _trace("osc.json missing: defaults used (made on the first save)")
     target = _rows(rows)
-    target.load_dict({KEY: _raw(doc.get(KEY))})
-    for warning in getattr(target, "load_warnings", []) or []:
+    # Each unreadable row is said once, below; no error traceback per row.
+    with quiet():
+        target.load_dict({KEY: _raw(doc.get(KEY))})
+    warnings = list(getattr(target, "load_warnings", []) or [])
+    places = [i for i, _ in getattr(target, "unreadable", None) or []]
+    for n, warning in enumerate(warnings):
         logging.getLogger("system").warning(warning)
+        found = _WHY.search(warning)
+        place = places[n] + 1 if n < len(places) else n + 1
+        why = found.group(1) if found else warning
+        _trace(f"row {place} unreadable: {why} (kept in the file)", warning=True)
+    _note_cleaned(doc.get(SERVER_KEY))
+    if trace.osc_on("setup"):
+        targets = doc.get(TARGETS_KEY) if TARGETS_KEY in doc else [default_target()]
+        skipped = f", {len(places)} unreadable" if places else ""
+        _trace(
+            f"osc.json loaded ({len(_raw(doc.get(KEY))) - len(places)} inputs, "
+            f"{len(clean_targets(targets))} targets{skipped})"
+        )
     target.layout = store.normalize_layout(doc.get(store.LAYOUT_KEY))
     target.names = _read_names(doc)
     # What the file held: a save writes only the names the page changed,
@@ -535,7 +602,9 @@ def save(rows: OscRows | None = None, who: str = "") -> bool:
         _put_layout(doc, layout, names, loaded)
 
     if not store.update_path(path(), change, who or WHO):
+        _trace("osc.json not saved: the file is damaged (refused)", warning=True)
         return False
+    _trace(f"osc.json saved ({len(inputs)} inputs)")
     source.names_loaded = names
     source.mark_saved()
     return True
@@ -564,14 +633,24 @@ def write_server(settings: dict, who: str = "") -> bool:
     oscServerSettingsChanged so the server applies them at once."""
     server = clean_server(settings)
 
+    same: list[bool] = []
+
     def change(doc: dict) -> bool:
         if doc.get(SERVER_KEY) == server:
+            same.append(True)
             return False
         _put_identity(doc)
         doc[SERVER_KEY] = server
         return True
 
     if not store.update_path(path(), change, who or WHO):
+        _trace(
+            "osc.json not written (server settings unchanged)"
+            if same
+            else "osc.json not saved: the file is damaged (refused)",
+            warning=not same,
+        )
         return False
+    _trace("osc.json saved (server settings)")
     _emit("oscServerSettingsChanged")
     return True

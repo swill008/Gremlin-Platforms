@@ -15,7 +15,6 @@ from __future__ import annotations
 import importlib.util
 import os
 import pathlib
-import subprocess
 import sys
 
 sys.path.append(".")
@@ -34,9 +33,9 @@ def _screens():  # noqa: ANN202
 
 
 def test_the_keyboard_page_edits_a_draft(tmp_path: pathlib.Path) -> None:
-    result = subprocess.run(
+    import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), str(tmp_path)],
-        capture_output=True,
         text=True,
         timeout=180,
         cwd=str(_ROOT),
@@ -78,7 +77,6 @@ def _run(out: pathlib.Path) -> None:
     s = _screens()
     app, engine, warnings = s._engine(out)  # noqa: F841
     import dill
-    import gremlin.action_label  # noqa: F401
     import gremlin.ui.device  # noqa: F401
     import gremlin.ui.profile  # noqa: F401
     import gremlin.ui.util  # noqa: F401

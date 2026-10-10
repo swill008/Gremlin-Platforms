@@ -14,8 +14,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -80,9 +81,9 @@ def test_startup_mode_box_lists_last_active_and_the_modes(
         os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
         HTTPS_PROXY="http://127.0.0.1:9",
     )
-    done = subprocess.run(
+    done = proc_tree.run(
         [sys.executable, "-c", _CODE, str(_ROOT)],
-        cwd=_ROOT, env=env, capture_output=True, text=True, timeout=120,
+        cwd=_ROOT, env=env, text=True, timeout=120,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("OUT ")]
     assert lines, done.stdout[-1500:] + done.stderr[-1500:]

@@ -12,17 +12,17 @@ from __future__ import annotations
 
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "handson_F8_osc_close_smoke.py"
 
 
 def _run(tmp_path: pathlib.Path) -> dict[str, str]:
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(_SMOKE)],
-        capture_output=True,
         text=True,
         timeout=120,
         cwd=str(_ROOT),

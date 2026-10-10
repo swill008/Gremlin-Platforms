@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from abc import (
     ABCMeta,
@@ -34,6 +35,7 @@ from gremlin import (
     common,
     error,
     event_handler,
+    trace,
     util,
 )
 from gremlin.base_classes import Value
@@ -529,6 +531,15 @@ class KeyboardCondition(AbstractCondition):
         pass
 
 
+class MissingOscInput(error.GremlinError):
+    """A condition's OSC input is gone. Not logged when made: get() logs
+    it, at most 10 times per input per Run (E8, D-09-OSC-TRACE)."""
+
+    def __init__(self, value: str) -> None:
+        Exception.__init__(self, value)
+        self.value = value
+
+
 @ta.QmlElement
 class JoystickCondition(AbstractCondition):
     """Joystick input state based condition.
@@ -606,9 +617,22 @@ class JoystickCondition(AbstractCondition):
                     "not present."
                 )
             if not self._refresh_osc():
-                raise error.GremlinError(
-                    f"ConditionAction: OSC input {self.osc_uid} not present."
+                # Bounded log and a trace line; no traceback per press (E8).
+                uid = self.osc_uid
+                trace.log_limited(
+                    "system",
+                    f"condition-osc {uid}",
+                    logging.WARNING,
+                    f"Condition: OSC input {uid} is missing; the condition "
+                    "runs neither branch.",
                 )
+                trace.osc(
+                    "inputs",
+                    f"condition: OSC input {uid} is missing (no branch runs)",
+                    blocked=True,
+                    key=f"condition {uid}",
+                )
+                raise MissingOscInput(f"ConditionAction: OSC input {uid} not present.")
             # Through the input modules: an unclaimed input reads as neutral.
             guid, ident = self.device_uuid, self.input_id
             match self.input_type:

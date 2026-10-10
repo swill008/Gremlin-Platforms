@@ -12,9 +12,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 RESTART_TEXT = "needs a Windows restart, or unplug it and plug it back in"
@@ -42,9 +42,8 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     (home / "Gremlin Platforms").mkdir()
     work = tmp_path_factory.mktemp("reset_ui_work")
     shot = os.environ.get("GREMLIN_RESET_SHOT") or str(work / "reset.png")
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [sys.executable, str(_HERE / "device_reset_ui_smoke.py"), str(work), shot],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=150,

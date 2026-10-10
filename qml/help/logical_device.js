@@ -31,7 +31,7 @@ function topics() {
                 + "</ul>"
                 + _good([
                     "Editing is locked while the profile runs (\"Profile running: stop it to edit\").",
-                    "Its values go back to neutral at Stop and at the start of each Run: axes at 0, buttons up, hats centred.",
+                    "Its values go back to neutral at Stop and at the start of each Run: axes at 0, buttons up, hats centred. See <a href=\"topic:getting-started-what-stop-releases\">What Stop lets go of</a>.",
                     "Its card always shows on <a href=\"topic:home-devices-home\">Home</a>.",
                     "To give its card a picture, right-click the Logical Device card and choose <b>Add Image…</b> (under <b>Device</b>); later, <b>Change Image…</b> or <b>Remove Image</b>.",
                     "Every profile uses the same Logical Device; see " + _link("logical-device-saved", "Where the Logical Device is saved") + "."
@@ -47,8 +47,8 @@ function topics() {
                 + "<ul>"
                 + "<li><b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>) also saves the Logical Device when it changed. The <b>*</b> in the title and the question before New, Load or quit count its changes too; <b>Discard</b> there also throws away the Logical Device's unsaved changes.</li>"
                 + "<li>Each control keeps its own id for good. Actions that send to a control follow it, even when you rename it or its number changes.</li>"
-                + "<li>To keep other layouts, use the " + _link("device-library-built-in", "Device Library") + ": it lists the Logical Device under <b>Internal inputs</b>, with <b>Save to Device Library…</b>, <b>Restore…</b> and <b>Export…</b>. A Logical Device pack from someone else comes in with <b>File › Import Device Pack…</b> there, then <b>Restore…</b>.</li>"
-                + "<li>Every save is kept in <a href=\"topic:tools-history\">History</a>, and the Logical Device can be restored there on its own.</li>"
+                + "<li>To keep other layouts, use the " + _link("device-library-built-in", "Device Library") + " <a href=\"show:toolbar/Device Library\">Show me ›</a>: it lists the Logical Device under <b>Internal inputs</b>, with <b>Save to Device Library…</b>, <b>Restore…</b> and <b>Export…</b>. A Logical Device pack from someone else comes in with <b>File › Import Device Pack…</b> there, then <b>Restore…</b>.</li>"
+                + "<li>Every save is kept in <a href=\"topic:tools-history\">History</a> (<b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a>), and the Logical Device can be restored there on its own.</li>"
                 + "</ul>"
                 + _good([
                     "An action that names a control the Logical Device doesn't have is flagged, with an offer to add the control. It is never removed or moved to another control. A macro's Logical Device step whose control is missing is kept when you save, too.",
@@ -136,7 +136,7 @@ function topics() {
             id: "logical-device-undo",
             section: main,
             title: "Undo a change on the Logical Device",
-            body: "<p><b>Undo</b> and <b>Redo</b> step back and forward through changes to the controls and groups.</p>"
+            body: "<p><b>Undo</b> and <b>Redo</b> step back and forward through changes to the controls and groups. Up to 50 steps are kept.</p>"
                 + "<ul>"
                 + "<li>Choose <b>Undo</b> or <b>Redo</b> under the Find filters, or beside the right-click menu's title.</li>"
                 + "<li>Beside them, \"Last change: <i>change</i>\" names the newest change, or \"Undone: <i>change</i>\" after an Undo.</li>"
@@ -144,7 +144,8 @@ function topics() {
                 + "</ul>"
                 + _good([
                     "To see a control's saved changes, right-click it and choose <b>History</b>; see <a href=\"topic:tools-history\">History</a>.",
-                    "Undo steps stay when you load another profile; deleting a mode removes them."
+                    "Undo steps stay when you load another profile, except steps that changed the old profile's actions or hardware links.",
+                    "All Undo steps go when a mode is deleted, when you choose <b>Discard</b> for unsaved changes, and when the Logical Device's file is read again (a Device Library <b>Restore…</b>, a Device Pack import, or a History restore)."
                 ]),
             related: ["logical-device-menus"]
         },
@@ -190,7 +191,7 @@ function topics() {
                 + "<ol>"
                 + "<li>Right-click the control (for example Hat 1) and choose <b>Add Action</b>.</li>"
                 + "<li>Choose <b>Map to Xbox</b> or <b>Map to vJoy</b>.</li>"
-                + "<li>Pick the <b>Target</b> (a hat can drive the D-pad, a button or a stick), then choose <b>OK</b>.</li>"
+                + "<li>Pick the <b>Target</b>, then choose <b>OK</b>. The list offers only the Xbox controls that fit the control: a hat can drive the D-pad, a button or a stick.</li>"
                 + "</ol>"
                 + "<p>The whole path: physical control › Assign Hardware › Logical Device control › Map to Xbox › Xbox 360 Controller.</p>"
                 + _good([
@@ -243,7 +244,7 @@ function topics() {
             id: "logical-device-q-locked",
             section: questions,
             title: "Why can't I change the Logical Device?",
-            body: "<p>The profile is running. Editing is locked while it runs (\"Profile running: stop it to edit\"). Choose <b>Stop</b>, then edit; see <a href=\"topic:getting-started-run\">Run and Stop</a>.</p>",
+            body: "<p>The profile is running. Editing is locked while it runs (\"Profile running: stop it to edit\"). Choose <b>Stop</b> <a href=\"show:toolbar/Stop\">Show me ›</a>, then edit; see <a href=\"topic:getting-started-run\">Run and Stop</a>.</p>",
             related: ["logical-device-about"]
         },
         {

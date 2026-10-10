@@ -20,12 +20,13 @@ import contextlib
 import ctypes
 import os
 import pathlib
-import subprocess
 import sys
 import textwrap
 import uuid
 from collections.abc import Iterator
 from typing import NoReturn
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -252,11 +253,10 @@ def test_the_app_built_off_screen_installs_no_hook_hidhide_or_tray(
         GREMLIN_OFFLINE="1",
         HTTPS_PROXY="http://127.0.0.1:9",
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", code],
         cwd=_ROOT,
         env=env,
-        capture_output=True,
         text=True,
         timeout=120,
     )

@@ -96,10 +96,17 @@ Item {
         GridLayout {
             visible: _mode_motion.checked && inputBinding && inputBinding.behavior === "button"
 
-            columns: 5
+            // Label and box pairs: two pairs a line when they fit, else one,
+            // else each box under its label.
+            readonly property real _pair: Math.max(_btnMinLabel.implicitWidth,
+                _btnMaxLabel.implicitWidth, _btnTimeLabel.implicitWidth,
+                _btnDirLabel.implicitWidth) + Style.dp(150) + columnSpacing
+
+            columns: _content.width >= 2 * _pair + columnSpacing ? 4
+                : _content.width >= _pair ? 2 : 1
 
             Label {
-                Layout.fillWidth: true
+                id: _btnMinLabel
 
                 text: "Minimum speed (px/s)"
             }
@@ -107,7 +114,7 @@ Item {
             Loader {
                 id: _min_speed_button
 
-                Layout.fillWidth: true
+                Layout.preferredWidth: Style.dp(150)
 
                 sourceComponent: _root.useCompact ? _compactSpinBox : _baseSpinBox
 
@@ -119,13 +126,8 @@ Item {
                 }
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.horizontalStretchFactor: 1
-            }
-
             Label {
-                Layout.fillWidth: true
+                id: _btnMaxLabel
 
                 text: "Maximum speed (px/s)"
             }
@@ -133,7 +135,7 @@ Item {
             Loader {
                 id: _max_speed_button
 
-                Layout.fillWidth: true
+                Layout.preferredWidth: Style.dp(150)
 
                 sourceComponent: _root.useCompact ? _compactSpinBox : _baseSpinBox
 
@@ -146,10 +148,14 @@ Item {
             }
 
             Label {
+                id: _btnTimeLabel
+
                 text: "Time to maximum speed (sec)"
             }
 
             Loader {
+                Layout.preferredWidth: Style.dp(150)
+
                 sourceComponent: _root.useCompact ? _compactFloatSpinBox : _baseFloatSpinBox
 
                 onLoaded: {
@@ -162,13 +168,15 @@ Item {
                 }
             }
 
-            Rectangle {}
-
             Label {
+                id: _btnDirLabel
+
                 text: "Direction (degrees)"
             }
 
             Loader {
+                Layout.preferredWidth: Style.dp(150)
+
                 sourceComponent: _root.useCompact ? _compactSpinBox : _baseSpinBox
 
                 onLoaded: {
@@ -258,7 +266,10 @@ Item {
             visible: _mode_motion.checked && inputBinding && inputBinding.behavior === "hat"
 
             // Label and box pairs, one per line; labels keep their text width.
-            columns: 2
+            // Too narrow for a label beside its box, each box goes under its
+            // label.
+            columns: _content.width >= _hatTimeLabel.implicitWidth + Style.dp(150)
+                + columnSpacing ? 2 : 1
 
             Label {
                 text: "Minimum speed (px/s)"
@@ -299,6 +310,8 @@ Item {
             }
 
             Label {
+                id: _hatTimeLabel
+
                 text: "Time to maximum speed (sec)"
             }
 

@@ -6,6 +6,10 @@
 each ticked control is followed from the driver (RAW) through the wiring
 (WIRING) to the vJoy write (OUTPUT/BLOCKED), with EVENT, HIDHIDE and OUT OF
 STEP lines. Lines go to an in-memory ring for the tab and to trace.log.
+OSC is traced by area (D-09-OSC-TRACE): osc() writes OSC/BLOCKED lines for
+the ticked areas; per-message lines are rate limited like axis lines and
+repeated drops stop after 10 until osc_reset() (Run start, tracing on).
+log_limited() bounds repeated system/user log lines the same way.
 
 Tracing is always off at start and is never saved on; the ticks are saved.
 Off, every tap costs one bool check and no file is opened. Nothing here
@@ -37,6 +41,7 @@ OUTPUT = "OUTPUT"
 BLOCKED = "BLOCKED"
 EVENT = "EVENT"
 HIDHIDE = "HIDHIDE"
+OSC = "OSC"
 OUT_OF_STEP = "OUT OF STEP"
 
 MAX_LINES = 5000
@@ -54,11 +59,29 @@ FILE_BACKUPS = 1
 
 KINDS = ("axis", "button", "hat")
 
+# OSC areas (D-09-OSC-TRACE) and their Trace tab names.
+OSC_AREAS = ("receive", "inputs", "output", "feedback", "setup")
+OSC_AREA_NAMES = {
+    "receive": "Receive",
+    "inputs": "Inputs",
+    "output": "Output",
+    "feedback": "Feedback",
+    "setup": "Setup and files",
+}
+# The same drop/refusal (or log line) is written at most this many times
+# per Run, then one note and nothing more until osc_reset().
+REPEAT_LIMIT = 10
+OSC_REPEAT_NOTE = "(repeated; further lines not shown until the next Run)"
+LOG_REPEAT_NOTE = "(further lines like this not logged until the next Run)"
+# Counter tables are cleared when they reach this size (memory bound).
+_MAX_KEYS = 4096
+
 _CFG_SECTION = "debug"
 _CFG_GROUP = "trace"
 _CFG_TICKS = "ticks"
 _CFG_OOS = "out-of-step"
 _CFG_HIDHIDE = "hidhide"
+_CFG_OSC = "osc"
 _CFG_MAX_MB = "max-mb"
 _CFG_AXIS_RATE = "axis-rate"
 
@@ -76,6 +99,15 @@ _hooks: list[Callable[[], None]] = []
 _ticks: dict[uuid.UUID, dict[str, Any]] | None = None
 _oos: set[uuid.UUID] = set()
 _hidhide_on = False
+_osc_areas: frozenset[str] = frozenset()
+
+# OSC rate limit: (area, key) -> time last written; pending
+# (control, point, detail, arrival, count). Repeat counts per
+# (area, key, text); log_limited counts per (logger, key).
+_osc_last: dict[tuple[str, str], float] = {}
+_osc_pending: dict[tuple[str, str], tuple[str, str, str, float, int]] = {}
+_osc_repeat: dict[tuple[str, str, str], int] = {}
+_log_counts: dict[tuple[str, str], int] = {}
 
 # Axis rate limit: key -> time last written; pending (line, arrival, count).
 _axis_last: dict[tuple[Any, ...], float] = {}
@@ -109,6 +141,7 @@ def set_enabled(on: bool) -> None:
         if on:
             axis_rate()
             _open_file()
+            osc_reset()
             _since = clock.now()
             _enabled = True
             _add(EVENT, "", "Tracing on")
@@ -165,6 +198,8 @@ def _ensure_options() -> None:
          "Trace: devices with the out-of-step check.", {}),
         (_CFG_HIDHIDE, PropertyType.String, "",
          "Trace: HidHide row ticked (on or empty).", {}),
+        (_CFG_OSC, PropertyType.String, "[]",
+         "Trace: ticked OSC areas.", {}),
         (_CFG_MAX_MB, PropertyType.Int, MAX_MB_CHOICES[0],
          "Trace: trace.log max size in MB.",
          {"min": MAX_MB_RANGE[0], "max": MAX_MB_RANGE[1]}),
@@ -181,12 +216,13 @@ def _ensure_options() -> None:
 
 def _load() -> dict[uuid.UUID, dict[str, Any]]:
     """The tick cache, read from the config once."""
-    global _ticks, _hidhide_on
+    global _ticks, _hidhide_on, _osc_areas
     if _ticks is not None:
         return _ticks
     ticks: dict[uuid.UUID, dict[str, Any]] = {}
     oos: set[uuid.UUID] = set()
     hh = False
+    areas: frozenset[str] = frozenset()
     try:
         from gremlin import config
 
@@ -211,12 +247,18 @@ def _load() -> dict[uuid.UUID, dict[str, Any]]:
         if isinstance(rows, list):
             oos = {u for r in rows if (u := _key(r)) is not None}
         hh = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_HIDHIDE) or "") == "on"
+        osc_rows = json.loads(
+            str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_OSC) or "[]")
+        )
+        if isinstance(osc_rows, list):
+            areas = frozenset(a for a in osc_rows if a in OSC_AREAS)
     except Exception:
         logging.getLogger("system").exception("Could not read the trace ticks")
     _ticks = ticks
     _oos.clear()
     _oos.update(oos)
     _hidhide_on = hh
+    _osc_areas = areas
     return ticks
 
 
@@ -239,6 +281,10 @@ def _save() -> None:
             _CFG_SECTION, _CFG_GROUP, _CFG_OOS, json.dumps(sorted(str(u) for u in _oos))
         )
         cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_HIDHIDE, "on" if _hidhide_on else "")
+        cfg.set(
+            _CFG_SECTION, _CFG_GROUP, _CFG_OSC,
+            json.dumps([a for a in OSC_AREAS if a in _osc_areas]),
+        )
     except Exception:
         logging.getLogger("system").exception("Could not save the trace ticks")
 
@@ -320,6 +366,42 @@ def set_hidhide(on: bool) -> None:
         _save()
 
 
+def osc_ticked() -> list[str]:
+    """The ticked OSC areas, in OSC_AREAS order."""
+    _load()
+    return [a for a in OSC_AREAS if a in _osc_areas]
+
+
+def set_osc(area: str, on: bool) -> None:
+    global _osc_areas
+    if area not in OSC_AREAS:
+        return
+    with _LOCK:
+        _load()
+        _osc_areas = _osc_areas | {area} if on else _osc_areas - {area}
+        _save()
+
+
+def set_osc_all(on: bool) -> None:
+    """The OSC row's tick: every area on, or all off."""
+    global _osc_areas
+    with _LOCK:
+        _load()
+        _osc_areas = frozenset(OSC_AREAS) if on else frozenset()
+        _save()
+
+
+def osc_on(area: str) -> bool:
+    """Tracing is on and the OSC area is ticked (cheap; any thread)."""
+    if not _enabled:
+        return False
+    try:
+        _load()
+        return area in _osc_areas
+    except Exception:
+        return False
+
+
 def ticked_devices() -> list[uuid.UUID]:
     with _LOCK:
         return [
@@ -333,11 +415,13 @@ def _reset_for_tests() -> None:
     """Turns tracing off (hooks run) and forgets the tick cache, lines and
     file (tests only). on_change hooks are kept."""
     global _ticks, _enabled, _since, _notice, _version, _logger, _handler, _max_mb
-    global _axis_rate, _axis_interval
+    global _axis_rate, _axis_interval, _osc_areas
     set_enabled(False)
     with _LOCK:
         _cancel_flush()
         _ticks = None
+        _osc_areas = frozenset()
+        osc_reset()
         _max_mb = None
         _axis_rate = None
         _axis_interval = AXIS_INTERVAL
@@ -458,9 +542,10 @@ def _on_flush() -> None:
             _flush_timer = None
             if not _enabled:
                 _axis_pending.clear()
+                _osc_pending.clear()
                 return
             _flush_pending(still=False)
-            if _axis_pending:
+            if _axis_pending or _osc_pending:
                 _schedule_flush()
     except Exception:
         pass
@@ -485,6 +570,16 @@ def _flush_pending(still: bool) -> None:
         del _axis_pending[key]
         _axis_last[key] = now
         _add(RAW, control, text)
+    for okey, (control, point, detail, _arrived, count) in list(
+        _osc_pending.items()
+    ):
+        if not (still or now - _osc_last.get(okey, 0.0) >= _axis_interval):
+            continue
+        if count > 1:
+            detail += f"  {_between(count - 1)}"
+        del _osc_pending[okey]
+        _osc_last[okey] = now
+        _add(point, control, detail)
 
 
 def wiring(
@@ -618,6 +713,101 @@ def hidhide(text: str, warning: bool = False) -> None:
         _add(HIDHIDE, "HidHide", str(text), warning)
         if warning:
             _notice = f"HidHide: {text}"
+    except Exception:
+        pass
+
+
+def _between(n: int) -> str:
+    return f"({n} message between)" if n == 1 else f"({n} messages between)"
+
+
+def osc_reset() -> None:
+    """Clears the OSC rate, repeat and log_limited counts (Run start, and
+    when tracing is switched on)."""
+    with _LOCK:
+        _osc_last.clear()
+        _osc_pending.clear()
+        _osc_repeat.clear()
+        _log_counts.clear()
+
+
+def osc(
+    area: str,
+    text: str,
+    *,
+    blocked: bool = False,
+    warning: bool = False,
+    key: str | None = None,
+    rate: bool = False,
+) -> None:
+    """One OSC line for area (D-09-OSC-TRACE); nothing unless osc_on(area).
+    rate: a per-message line, limited per key to axis_rate() lines a second
+    with "(N messages between)". blocked/warning with a key: the same
+    (area, key, text) at most REPEAT_LIMIT times, then one note. Never
+    raises."""
+    global _notice
+    if not _enabled:
+        return
+    try:
+        if not osc_on(area):
+            return
+        point = BLOCKED if blocked else OSC
+        control = f"OSC {OSC_AREA_NAMES.get(area, area)}"
+        detail = str(text)
+        with _LOCK:
+            if (blocked or warning) and key is not None:
+                rkey = (area, str(key), detail)
+                if len(_osc_repeat) >= _MAX_KEYS and rkey not in _osc_repeat:
+                    _osc_repeat.clear()
+                count = _osc_repeat.get(rkey, 0) + 1
+                if count > REPEAT_LIMIT + 1:
+                    return
+                _osc_repeat[rkey] = count
+                if count == REPEAT_LIMIT + 1:
+                    _add(point, control, f"{detail}  {OSC_REPEAT_NOTE}", warning)
+                    return
+            elif rate:
+                okey = (area, "" if key is None else str(key))
+                now = clock.monotonic()
+                if now - _osc_last.get(okey, -math.inf) < _axis_interval:
+                    pending = _osc_pending.get(okey)
+                    if pending is None and len(_osc_pending) >= _MAX_KEYS:
+                        return
+                    count = pending[4] + 1 if pending is not None else 1
+                    _osc_pending[okey] = (control, point, detail, now, count)
+                    _schedule_flush()
+                    return
+                pending = _osc_pending.pop(okey, None)
+                if len(_osc_last) >= _MAX_KEYS and okey not in _osc_last:
+                    _osc_last.clear()
+                _osc_last[okey] = now
+                if pending is not None:
+                    detail += f"  {_between(pending[4])}"
+            _add(point, control, detail, warning)
+            if warning:
+                _notice = f"{control}: {text}"
+    except Exception:
+        pass
+
+
+def log_limited(logger_name: str, key: str, level: int, text: str) -> None:
+    """Logs text to logger_name at most REPEAT_LIMIT times per (logger, key)
+    per Run, then one "further lines ... not logged" line; the counts are
+    cleared by osc_reset(). Never raises."""
+    try:
+        ckey = (str(logger_name), str(key))
+        with _LOCK:
+            if len(_log_counts) >= _MAX_KEYS and ckey not in _log_counts:
+                _log_counts.clear()
+            count = _log_counts.get(ckey, 0) + 1
+            if count > REPEAT_LIMIT + 1:
+                return
+            _log_counts[ckey] = count
+        logger = logging.getLogger(str(logger_name))
+        if count == REPEAT_LIMIT + 1:
+            logger.log(level, "%s  %s", text, LOG_REPEAT_NOTE)
+        else:
+            logger.log(level, "%s", text)
     except Exception:
         pass
 

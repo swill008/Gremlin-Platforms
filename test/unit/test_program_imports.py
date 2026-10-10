@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import os
 import pathlib
-import subprocess
 import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -23,11 +24,10 @@ def test_program_loads_in_a_fresh_process(tmp_path: pathlib.Path) -> None:
     env = dict(os.environ)
     env["USERPROFILE"] = str(tmp_path)
     env["QT_QPA_PLATFORM"] = "offscreen"
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", "import joystick_gremlin"],
         cwd=_ROOT,
         env=env,
-        capture_output=True,
         text=True,
         timeout=120,
     )

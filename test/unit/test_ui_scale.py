@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 from gremlin.ui import ui_scale_option
@@ -128,10 +128,10 @@ def test_style_follows_backend_live() -> None:
     env = dict(
         os.environ, QT_QPA_PLATFORM="offscreen", QT_QUICK_CONTROLS_STYLE="GremlinStyle"
     )
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, "-c", _STYLE_SCRIPT, str(QML_DIR / "Style.qml"),
          str(QML_DIR.parent / "theme")],
-        capture_output=True, text=True, timeout=60, env=env,
+        text=True, timeout=60, env=env,
     )
     assert result.returncode == 0, result.stderr
     # Style values, inherited fonts, Button background height, CheckBox box.

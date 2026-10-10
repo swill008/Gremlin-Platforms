@@ -13,9 +13,9 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import subprocess
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 from gremlin import process_paths
@@ -74,9 +74,8 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     home = tmp_path_factory.mktemp("hh_tester_home")
     (home / "Gremlin Platforms").mkdir()
     work = tmp_path_factory.mktemp("hh_tester_work")
-    proc = subprocess.run(
+    proc = proc_tree.run(
         [sys.executable, str(_HERE / "hidhide_tester_page_smoke.py"), str(work)],
-        capture_output=True,
         text=True,
         encoding="utf-8",
         timeout=150,

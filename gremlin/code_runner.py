@@ -428,6 +428,7 @@ class CodeRunner:
         from gremlin import log_once
 
         log_once.reset()
+        trace.osc_reset()  # OSC trace and log limits count anew (D-09-OSC-TRACE)
         # A Logical Device loop is followed and told anew (06 S94).
         logical_loop.reset()
 

@@ -30,8 +30,8 @@ function topics() {
             body: "<p>Use these steps to go from a plugged-in stick to a running profile.</p>"
                 + "<ol>"
                 + "<li>Install <b>vJoy</b> and configure its devices. For an Xbox controller, install <b>ViGEmBus</b>. Neither driver ships with this program.</li>"
-                + "<li>On <b>Home</b>, right-click each physical device and choose <b>Module</b> › <b>Module Setup…</b>. Press the controls you will use, or tick them, then choose <b>Save Module</b>.</li>"
-                + "<li>Right-click each vJoy device and choose <b>Module</b> › <b>Module Setup…</b>. Tick the outputs you will use, then choose <b>Save Module</b>. The Xbox controller needs no setup.</li>"
+                + "<li>On <b>Home</b>, right-click each physical device and choose <b>Module</b> › <b>Module Setup…</b> (or choose <b>Tools › Device Setup › Input Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Input Module Setup\">Show me ›</a>). Press the controls you will use, or tick them, then choose <b>Save Module</b>.</li>"
+                + "<li>Right-click each vJoy device and choose <b>Module</b> › <b>Module Setup…</b> (or <b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>). Tick the outputs you will use, then choose <b>Save Module</b>. The Xbox controller needs no setup.</li>"
                 + "<li>Double-click a physical device to open <b>Configuration</b>. Choose <b>Add Action</b> on an input, for example <b>Map to vJoy</b>, then <b>OK</b>.</li>"
                 + "<li>Choose <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>).</li>"
                 + "<li>Choose <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> on the toolbar. Use the <b>vJoy Viewer</b> <a href=\"open:tools.vjoyViewer\">Open ›</a> or <b>Xbox Viewer</b> <a href=\"open:tools.xboxViewer\">Open ›</a> to watch the result.</li>"
@@ -47,7 +47,7 @@ function topics() {
             body: "<p>The main window shows one page at a time (Home, Configuration and others) under a toolbar and a mode bar.</p>"
                 + "<ul>"
                 + "<li>Title bar: the program's name and version first, then the profile's name, for example \"Gremlin-Platforms R1 1.0.30 - Flight.xml\". A <b>*</b> before the profile's name means there are unsaved changes; a profile not saved yet is called \"Untitled\". Other windows show their own name after the program's, for example \"Gremlin-Platforms R1 1.0.30 - Device Library\".</li>"
-                + "<li>Toolbar, left to right: <b>Home</b>, <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> (reads <b>Stop</b> while the profile runs), <b>vJoy Viewer</b> and <b>Xbox Viewer</b> (each opens its viewer, or closes it when it is open), <b>Button Map</b> (a blank Button Map), <b>Device Library</b> <a href=\"show:toolbar/Device Library\">Show me ›</a> (every device and its saved setups), <b>Logical Device</b> and <b>Options</b> <a href=\"show:toolbar/Options\">Show me ›</a>. In a narrow window the buttons show icons only; rest the pointer on one to see its name.</li>"
+                + "<li>Toolbar, left to right: <b>Home</b> <a href=\"show:toolbar/Home\">Show me ›</a>, <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> (reads <b>Stop</b> while the profile runs), <b>vJoy Viewer</b> <a href=\"show:toolbar/vJoy Viewer\">Show me ›</a> and <b>Xbox Viewer</b> <a href=\"show:toolbar/Xbox Viewer\">Show me ›</a> (each opens its viewer, or closes it when it is open), <b>Button Map</b> <a href=\"show:toolbar/Button Map\">Show me ›</a> (a blank Button Map), <b>Device Library</b> <a href=\"show:toolbar/Device Library\">Show me ›</a> (every device and its saved setups), <b>Logical Device</b> <a href=\"show:toolbar/Logical Device\">Show me ›</a> and <b>Options</b> <a href=\"show:toolbar/Options\">Show me ›</a>. In a narrow window the buttons show icons only; rest the pointer on one to see its name.</li>"
                 + "<li>Mode bar, under the toolbar on every page: <b>Mode</b> <a href=\"show:modebar\">Show me ›</a>, its list and <b>Manage Modes</b> <a href=\"show:modebar/Manage Modes\">Show me ›</a> always on the left, then the open page's own controls (on Home: <b>Compact view</b> and <b>Layout</b>). When the window is narrow, the page's controls scroll sideways; Mode and Manage Modes stay put.</li>"
                 + "<li>Bottom bar: the status (Running or Stopped) and what the last save wrote.</li>"
                 + "</ul>"
@@ -98,7 +98,7 @@ function topics() {
                 + "<li>If Run fails partway, the program stops by itself, shows one error, and the status reads Stopped.</li>"
                 + "<li>While the profile runs, the action editors are locked (\"Profile running: stop it to edit\").</li>"
                 + "<li>The program knows where an axis is only after that axis has moved. Until then it treats the axis as centered, so a control resting away from the middle is sent as center at first.</li>"
-                + "<li>Running does not hide controllers from games; use HidHide for that.</li>"
+                + "<li>Running does not hide controllers from games; use <b>HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a> for that.</li>"
                 + "<li>A controller plugged in or removed while running is handled by <b>Device change behavior</b> <a href=\"show:option/Device change behavior\">Show me ›</a> in <b>Options</b>: Stop, Ignore, or Reload.</li>"
                 + "</ul>",
             related: ["getting-started-what-stop-releases", "modes-mode-box", "tools-hidhide", "getting-started-nothing-reaches-vjoy"]
@@ -151,15 +151,15 @@ function topics() {
             title: "Work with profiles",
             body: "<p>A profile holds the modes, the actions on every input, the profile settings, and the list of scripts.</p>"
                 + "<ul>"
-                + "<li><b>File › New Profile</b> (<b>Ctrl+N</b>) starts an empty profile, \"Untitled\", with one mode, \"Default\".</li>"
+                + "<li><b>File › New Profile</b> <a href=\"show:menu/File/New Profile\">Show me ›</a> (<b>Ctrl+N</b>) starts an empty profile, \"Untitled\", with one mode, \"Default\".</li>"
                 + "<li><b>File › Load Profile…</b> <a href=\"show:menu/File/Load Profile\">Show me ›</a> (<b>Ctrl+O</b>) opens one; <b>File › Recent</b> lists the last 5 you opened or saved. The chooser opens in the folder you last used for a profile.</li>"
-                + "<li><b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>) writes it to disk. The first save of a new profile opens <b>Save Profile As…</b> (<b>Ctrl+Shift+S</b>) in the folder you last used for a profile, or the profiles folder the first time.</li>"
+                + "<li><b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>) writes it to disk. The first save of a new profile opens <b>File › Save Profile As…</b> <a href=\"show:menu/File/Save Profile As\">Show me ›</a> (<b>Ctrl+Shift+S</b>) in the folder you last used for a profile, or the profiles folder the first time.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>New, Load, Recent and closing the program ask <b>Save</b>, <b>Discard</b> or <b>Cancel</b> only when there are unsaved changes. Open Appearance panels with changes ask first.</li>"
                 + "<li>A save that would leave out unfinished actions asks first (see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
-                + "<li>While there are unsaved changes, the program keeps a recovery copy of them about every minute. If it closes unexpectedly, the next time you open that profile it offers them back (\"Unsaved Edits Found\": <b>Restore</b>, <b>Discard</b> or <b>Not now</b>). Save, Discard and a normal close remove the copy.</li>"
+                + "<li>While there are unsaved changes, the program keeps a recovery copy of them about every minute. If it closes unexpectedly, the next time you open that profile (or start the program, for a profile not saved yet) it offers them back (\"Unsaved Edits Found\": <b>Restore</b>, <b>Discard</b> or <b>Not now</b>). Save, Discard and a normal close remove the copy.</li>"
                 + "<li>A profile that won't load (damaged or from an unknown version) shows why, and the profile that was open stays open. A Recent file that won't open offers <b>Forget It</b> (off Recent and start-up; the file stays) or <b>Keep</b>.</li>"
                 + "<li>With <b>Load profiles automatically</b> <a href=\"show:option/Load profiles automatically\">Show me ›</a> on in <b>Options</b>, the profile chosen for a program loads and runs when that program comes to the front.</li>"
                 + "</ul>",
@@ -189,6 +189,11 @@ function topics() {
                 + "<li><code>--profile &lt;file&gt;</code> opens that profile. A path that isn't full is read from the folder the program was started in. If the file doesn't exist, it says \"Profile not found.\" and opens the last profile instead (or a new one when there is none).</li>"
                 + "<li><code>--enable</code> runs the profile once it is loaded.</li>"
                 + "<li><code>--start-minimized</code> starts minimized, or in the tray when <b>Minimize to tray</b> <a href=\"show:option/Minimize to tray\">Show me ›</a> is on.</li>"
+                + "</ul>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li>Without <code>--profile</code>, the program opens the profile you used last (see <a href=\"topic:getting-started-start-up\">What opens when the program starts</a>).</li>"
+                + "<li>In a shortcut, put the options after the program's path in the shortcut's <b>Target</b> box.</li>"
                 + "</ul>",
             related: ["getting-started-start-up", "getting-started-run", "options-profile-tray"]
         },
@@ -206,7 +211,8 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li><b>Cancel</b> at any step keeps the program open, and calls off a restart or update that was waiting.</li>"
-                + "<li>With <b>Minimize to tray</b> <a href=\"show:option/Minimize to tray\">Show me ›</a> on, the X hides the window to the tray and the profile keeps running. With it off, the X closes the program.</li>"
+                + "<li><b>File › Exit</b> <a href=\"show:menu/File/Exit\">Show me ›</a> always closes the program.</li>"
+                + "<li>With <b>Minimize to tray</b> <a href=\"show:option/Minimize to tray\">Show me ›</a> on, the X hides the window to the tray and the profile keeps running; while it is there, the program gives memory back to Windows (see <a href=\"topic:options-profile-tray\">Keep the program running in the tray</a>). With it off, the X closes the program.</li>"
                 + "<li>The main window's place and size are kept for next time.</li>"
                 + "</ul>",
             related: ["getting-started-profiles", "options-profile-tray", "getting-started-what-stop-releases"]
@@ -217,7 +223,7 @@ function topics() {
             title: "What is saved where",
             body: "<p>The program keeps three separate stores. Saving one does not save the others, except where noted.</p>"
                 + "<ul>"
-                + "<li>Profile (<b>File › Save Profile</b>): modes, actions, profile settings, scripts.</li>"
+                + "<li>Profile (<b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a>): modes, actions, profile settings, scripts.</li>"
                 + "<li>Logical Device: its own module file, shared by every profile. <b>File › Save Profile</b> saves it too when it changed. See <a href=\"topic:logical-device-saved\">Where the Logical Device is saved</a>.</li>"
                 + "<li>Module file, one per device: claims, friendly names, the device picture, the Button Map layout, the Appearance of its Configuration page or Output View, and its calibration. Input and Output Module Setup, the Button Map, Calibration and the Appearance panels write it. Saving an output module also saves the profile when the profile already has a file.</li>"
                 + "<li>Program settings: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device's Appearance. They are kept in configuration.json in your Gremlin Platforms folder (%USERPROFILE%\\Gremlin Platforms), even when you move the data folder.</li>"
@@ -236,10 +242,11 @@ function topics() {
             title: "Use Help",
             body: "<p>Help is one book in chapters. <b>F1</b> or <b>Help › Help</b> <a href=\"show:menu/Help/Help\">Show me ›</a> in the main window opens the whole book; in the Button Map or the Device Library it opens that chapter only, and <b>View Full Help</b> shows the whole book.</p>"
                 + "<ul>"
-                + "<li>Search: type in <b>Search Help…</b> (<b>Ctrl+F</b>). The list keeps the topics that hold all your words, each with its count, and says \"N topics match\". In the open topic, <b>Enter</b> or <b>F3</b> goes to the next match and <b>Shift+F3</b> to the previous one. × in the box or <b>Esc</b> clears the search.</li>"
+                + "<li>Search: type in <b>Search Help…</b> (<b>Ctrl+F</b>). The list keeps the topics that hold all your words, in any order, each with its count, and says \"N topics match\" (\"No topic mentions '…'\" when none does). The open topic marks every match. <b>Enter</b> or <b>F3</b> goes to the next match and <b>Shift+F3</b> to the previous one, on into the next topic; \"k of n\" shows where you are. × in the box or <b>Esc</b> clears the search and keeps the topic you were on.</li>"
                 + "<li>When Help shows one chapter, <b>Search all of Help</b> adds matching topics from the other chapters.</li>"
-                + "<li>Click a chapter heading to fold or unfold it; <b>Expand all</b> and <b>Collapse all</b> do every chapter. Drag the handle beside the list to widen it; double-click the handle for the default width.</li>"
-                + "<li>An \"Open ›\" link opens that window or Options page. A \"Show me ›\" link points at a menu item, toolbar button or setting without choosing it. A greyed link can't be used now; rest the pointer on it to see why.</li>"
+                + "<li>Click a chapter heading to fold or unfold it; <b>Expand all</b> and <b>Collapse all</b> do every chapter. In the whole book only the open topic's chapter starts unfolded; opening a topic unfolds its chapter, and a search unfolds every chapter with a match until you clear it.</li>"
+                + "<li>Drag the handle beside the list to change its width, up to half the window. Help keeps that width for next time; double-click the handle for the default width.</li>"
+                + "<li>An \"Open ›\" link opens that window or Options page. A \"Show me ›\" link points at a menu item, a toolbar or mode bar button, or a setting without choosing it; Help stays open beside it. A greyed link can't be used now; rest the pointer on it to see why.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li><b>Help › About</b> <a href=\"open:help.about\">Open ›</a> shows the version and the program's GitHub page.</li></ul>",
@@ -255,9 +262,9 @@ function topics() {
                 + "<li>Is vJoy installed? The message \"vJoy is not installed or not running\" means install vJoy, then restart the program.</li>"
                 + "<li>Is the profile running? The toolbar button should read <b>Stop</b> <a href=\"show:toolbar/Run\">Show me ›</a> and the bottom bar Running.</li>"
                 + "<li>Is the input claimed in its input module? Inputs that are not claimed are ignored.</li>"
-                + "<li>Does the wire show <b>(not claimed)</b>? Claim that output in <b>Output Module Setup</b>.</li>"
+                + "<li>Does the wire show <b>(not claimed)</b>? Claim that output in <b>Output Module Setup</b> <a href=\"open:tools.configureOutput\">Open ›</a>.</li>"
                 + "<li>Is the action in the running mode (the <b>Mode</b> box <a href=\"show:modebar\">Show me ›</a> under the toolbar)? Only that mode's actions, and its parents', run.</li>"
-                + "<li>system.log in the logs folder (see the folders in <b>Options</b>) notes each blocked output once.</li>"
+                + "<li>system.log in the logs folder (<b>Logs folder</b> <a href=\"show:option/Logs folder\">Show me ›</a> in <b>Options</b>) notes each blocked output once.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li>\"vJoy N is in use by another program.\" means another program holds that vJoy device. The program tries again every 3 seconds and carries on by itself once the device is free.</li></ul>",
@@ -288,7 +295,7 @@ function topics() {
             title: "A device is missing or seen twice",
             body: "<ul>"
                 + "<li>Not on Home: right-click empty space on Home and check <b>Hidden Cards</b>.</li>"
-                + "<li>A game sees both the physical stick and vJoy: hide the physical stick with HidHide.</li>"
+                + "<li>A game sees both the physical stick and vJoy: hide the physical stick with <b>HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a>.</li>"
                 + "<li>Bindings belong to a device that was replaced: open the <b>Device Library</b> <a href=\"open:tools.deviceLibrary\">Open ›</a> and use <b>Copy to Another Stick…</b> from the old stick (or <b>Swap with Another Stick…</b> when both are plugged in).</li>"
                 + "</ul>",
             related: ["home-devices-hidden-cards", "tools-hidhide", "home-devices-backups"]
@@ -340,7 +347,7 @@ function topics() {
             title: "Save diagnostics for a problem report",
             body: "<p>Save Diagnostics puts everything needed for a problem report in one zip: the program's logs (with trace.log when you have used Tracing), its settings, the device list (names, ids, kinds, connected) and the program and Windows versions. When you have used the <b>Input Tester</b>, its files are added too: tester.log and its older copy, and its expected.json and result.json.</p>"
                 + "<ol>"
-                + "<li>Choose <b>Help › Save Diagnostics…</b> <a href=\"show:menu/Help/Save Diagnostics\">Show me ›</a> (or <b>Save Diagnostics…</b> on the Live Log Reader's <b>Debug</b> tab).</li>"
+                + "<li>Choose <b>Help › Save Diagnostics…</b> <a href=\"show:menu/Help/Save Diagnostics\">Show me ›</a> (or <b>Save Diagnostics…</b> on the <b>Debug</b> tab of the <b>Live Log Reader</b> <a href=\"open:debug.liveLog\">Open ›</a>).</li>"
                 + "<li>To add the open profile, tick <b>Include the open profile</b>.</li>"
                 + "<li>Choose <b>Save…</b> and pick where. It opens in the folder you last saved diagnostics to, or on the Desktop the first time.</li>"
                 + "</ol>"

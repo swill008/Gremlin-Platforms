@@ -17,62 +17,83 @@ Item {
 
     implicitHeight: _content.height
 
-    RowLayout {
+    // The file row, then Volume beside it or on the next line in a narrow
+    // pane.
+    Flow {
         id: _content
 
         anchors.left: parent.left
         anchors.right: parent.right
+        spacing: Style.dp(10)
 
-        Label {
-            Layout.preferredWidth: Style.dp(110)
+        RowLayout {
+            id: _fileRow
 
-            text: "Audio filename"
-        }
+            // The least the file row takes: label, the hint and Select File.
+            readonly property real least: Style.dp(110) + _soundFilename.Layout.minimumWidth
+                + _selectFile.implicitWidth + 2 * spacing
+            readonly property real beside: _content.width - _volumeRow.implicitWidth - _content.spacing
 
-        JGTextField {
-            id: _soundFilename
+            width: beside >= least ? beside : _content.width
 
-            Layout.fillWidth: true
+            Label {
+                Layout.preferredWidth: Style.dp(110)
+                Layout.minimumWidth: Style.dp(110)
 
-            text: action.soundFilename
-            // Short enough to show in a narrow box; the full hint on hover.
-            placeholderText: "File to play"
-            // The hint's width plus the field's side padding (20 px in this style).
-            Layout.minimumWidth: Math.ceil(_hint.advanceWidth) + Style.dp(24)
-            ToolTip.visible: hovered && text.length === 0
-            ToolTip.text: "The audio file to play (.wav, .mp3 or .ogg)."
-
-            TextMetrics {
-                id: _hint
-                font: _soundFilename.font
-                text: _soundFilename.placeholderText
+                text: "Audio filename"
             }
 
-            selectByMouse: true
+            JGTextField {
+                id: _soundFilename
 
-            onTextChanged: () => { action.soundFilename = text }
+                Layout.fillWidth: true
+
+                text: action.soundFilename
+                // Short enough to show in a narrow box; the full hint on hover.
+                placeholderText: "File to play"
+                // The hint's width plus the field's side padding (20 px in this style).
+                Layout.minimumWidth: Math.ceil(_hint.advanceWidth) + Style.dp(24)
+                ToolTip.visible: hovered && text.length === 0
+                ToolTip.text: "The audio file to play (.wav, .mp3 or .ogg)."
+
+                TextMetrics {
+                    id: _hint
+                    font: _soundFilename.font
+                    text: _soundFilename.placeholderText
+                }
+
+                selectByMouse: true
+
+                onTextChanged: () => { action.soundFilename = text }
+            }
+
+            Button {
+                id: _selectFile
+
+                text: "Select File"
+
+                onClicked: () => { _fileDialog.open() }
+            }
         }
 
-        Button {
-            text: "Select File"
+        RowLayout {
+            id: _volumeRow
 
-            onClicked: () => { _fileDialog.open() }
+            Label {
+                text: "Volume"
+            }
+
+            JGSpinBox {
+                Layout.preferredWidth: Style.dp(100)
+
+                value: action.soundVolume
+                from: 0
+                to: 100
+
+                onValueModified: () => { action.soundVolume = value }
+            }
         }
-
-        Label {
-            text: "Volume"
-        }
-
-        JGSpinBox {
-            Layout.preferredWidth: Style.dp(100)
-
-            value: action.soundVolume
-            from: 0
-            to: 100
-
-            onValueModified: () => { action.soundVolume = value }
-        }
-   }
+    }
 
    FileDialog {
         id: _fileDialog

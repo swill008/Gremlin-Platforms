@@ -18,12 +18,13 @@ from __future__ import annotations
 
 import sys
 
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
 sys.path.append(".")
 
 import json
 import os
 import pathlib
-import subprocess
 
 import pytest
 
@@ -85,9 +86,9 @@ def sizes(tmp_path_factory: pytest.TempPathFactory) -> dict[str, list[int]]:
     script = home / "fits.py"
     script.write_text(_CODE, encoding="utf-8")
     env = dict(os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen")
-    result = subprocess.run(
+    result = proc_tree.run(
         [sys.executable, str(script), ",".join(_WINDOWS)], cwd=_ROOT, env=env,
-        capture_output=True, text=True, timeout=120,
+        text=True, timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-1500:] + result.stderr[-1500:]
