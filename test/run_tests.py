@@ -280,7 +280,7 @@ def plan(targets: list[str], parts: int) -> list[Part]:
             if chosen == [folder]:
                 files = sorted(
                     p.relative_to(_ROOT).as_posix()
-                    for p in (_ROOT / folder).glob("test_*.py")
+                    for p in (_ROOT / folder).rglob("test_*.py")
                 )
             else:
                 # Chosen files and --failed tests are spread the same way.

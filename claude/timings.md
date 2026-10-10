@@ -281,3 +281,12 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | DOCS2: map, decisions, to-do for TWIN + TESTBTN | docs | 3–8 min (table) | 2 min | 08:18–08:20 |
 | 2026-10-10 | OOS1: out-of-step false alarm after Stop (rest counted as written) | fix | 3–8 min (table) | 2 min | 08:18–08:20 |
 | 2026-10-10 | DOCS2: OOS1 map pass (01, 06) | docs | 3–8 min (table) | 1 min | 08:21–08:22 |
+| 2026-10-10 | Full run + lint after testing fixes (lead) | test | 5–6 min + lint (table) | 8 min | 08:22–08:30; 12 F6 look tests timed out under load from the AEH agent, pass alone (12 in 6 s) |
+| 2026-10-10 | Lint fix, 4 commits, push, tester rebuild (lead) | docs | ~2 min (table) | 2 min | 08:30–08:32 |
+| 2026-10-10 | AEH: action matrix harness | feature | 3–8 min (table) | 8 min | 08:23–08:31 |
+| 2026-10-10 | AE-MISC: matrix for 7 actions | test | ~10 min (table) | 6 min | 08:32–08:38; 0 defects |
+| 2026-10-10 | AE-AXIS: matrix for 6 axis actions | test | ~10 min (table) | 7 min | 08:32–08:39; 0 defects, 2 screenshot notes |
+| 2026-10-10 | AE-OUT: matrix for 6 output actions | test | ~10 min (table) | 8 min | 08:32–08:40; 0 defects, 3 observations |
+| 2026-10-10 | AE-FLOW: matrix for 8 flow actions | test | ~10 min (table) | 9 min | 08:32–08:41; 1 defect (AE-reference-1) |
+| 2026-10-10 | AE-REPORT: matrix report page | docs | 3–8 min (table) | 2 min | 08:46–08:48 |
+| 2026-10-10 | Full run + lint with the action matrix (lead) | test | 6–7 min (table + matrix) | 7 min | 08:46–08:53; all green, 4,694 passed; slowest part 7 min |
