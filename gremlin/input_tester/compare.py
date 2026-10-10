@@ -393,3 +393,33 @@ def result_text(verdict: Verdict, context: str | None = None) -> str:
         ids = f" ({row.ids})" if row.ids else ""
         lines.append(f"  {mark} {row.name}{tag}{ids}")
     return "\n".join(lines) + "\n"
+
+
+STALE_WHATS = ("program list", "cloak", "hidden devices", "mode")
+
+
+def stale_since(
+    expected: dict | None, started_at: datetime.datetime
+) -> tuple[str, str] | None:
+    """(what, "HH:MM:SS") when Gremlin changed HidHide after this tester
+    started (addendum 2026-10-10 item 3), else None. HidHide checks a device
+    only when it's opened, so what this process sees may be out of date."""
+    if not expected:
+        return None
+    raw = expected.get("hidhide_changed_at")
+    if not raw:
+        return None
+    try:
+        changed = datetime.datetime.fromisoformat(str(raw))
+    except ValueError:
+        return None
+    if changed.tzinfo is not None:
+        changed = changed.astimezone().replace(tzinfo=None)
+    if started_at.tzinfo is not None:
+        started_at = started_at.astimezone().replace(tzinfo=None)
+    if changed <= started_at:
+        return None
+    what = str(expected.get("hidhide_change") or "")
+    if what not in STALE_WHATS:
+        what = "settings"
+    return what, changed.strftime("%H:%M:%S")

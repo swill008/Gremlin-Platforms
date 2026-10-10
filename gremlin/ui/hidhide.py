@@ -629,13 +629,14 @@ def _link():  # noqa: ANN202
     return input_tester_link
 
 
-def _tell_link_hidhide_changed() -> None:
-    """A running Input Tester gets a new expected.json after a page edit."""
+def _tell_link_hidhide_changed(what: str = "settings") -> None:
+    """Notes the change (what: program list, cloak, hidden devices, mode,
+    settings); a running Input Tester gets a new expected.json."""
     link = _link()
     if link is None:
         return
     try:
-        link.hidhide_changed()
+        link.hidhide_changed(what)
     except Exception:
         logging.getLogger("system").exception("Input Tester expected list not updated")
 
@@ -710,6 +711,9 @@ class HidHideModel(QtCore.QObject):
         self._tester_message = ""
         self._game_problems: list[str] = []
         self._tester_problem = ""
+        # Listed programs started before the last HidHide change.
+        self._stale_games: list[str] = []
+        self._stale_tester = ""
         self._result_text, self._result_failed = _result_line(None)
         self._path_timer = QtCore.QTimer(self)
         self._path_timer.setInterval(5000)
@@ -838,7 +842,7 @@ class HidHideModel(QtCore.QObject):
         self._last_error = ""
         self._sync_whitelist()
         self.reload()
-        _tell_link_hidhide_changed()
+        _tell_link_hidhide_changed("mode")
         return True
 
     @QtCore.Property(bool, notify=changed)
@@ -894,7 +898,7 @@ class HidHideModel(QtCore.QObject):
         else:
             _clear_managed()
         self.reload()
-        _tell_link_hidhide_changed()
+        _tell_link_hidhide_changed("settings")
         return True
 
     @QtCore.Property(bool, notify=changed)
@@ -920,7 +924,7 @@ class HidHideModel(QtCore.QObject):
         self._last_error = ""
         _save_cloak(bool(on))
         self.reload()
-        _tell_link_hidhide_changed()
+        _tell_link_hidhide_changed("cloak")
         return True
 
     @QtCore.Slot(str, bool, result=bool)
@@ -955,7 +959,7 @@ class HidHideModel(QtCore.QObject):
         _save_hidden(kept)
         self._last_error = ""
         self.reload()
-        _tell_link_hidhide_changed()
+        _tell_link_hidhide_changed("hidden devices")
         return True
 
     @QtCore.Slot(str, str, result=bool)
@@ -971,7 +975,7 @@ class HidHideModel(QtCore.QObject):
         self._games = rows
         self._sync_whitelist()
         self.changed.emit()
-        _tell_link_hidhide_changed()
+        _tell_link_hidhide_changed("program list")
         return True
 
     @QtCore.Slot(str, result=bool)
@@ -981,7 +985,7 @@ class HidHideModel(QtCore.QObject):
         self._games = rows
         self._sync_whitelist()
         self.changed.emit()
-        _tell_link_hidhide_changed()
+        _tell_link_hidhide_changed("program list")
         return True
 
     @QtCore.Slot(str, str, result=bool)
@@ -1059,14 +1063,55 @@ class HidHideModel(QtCore.QObject):
         tester = process_paths.tester_path_problem(
             [r["path"] for r in self._games], _tester_path()
         )
-        if games != self._game_problems or tester != self._tester_problem:
+        stale_games, stale_tester = self._stale_programs()
+        if (
+            games != self._game_problems or tester != self._tester_problem
+            or stale_games != self._stale_games or stale_tester != self._stale_tester
+        ):
             for line in games:
                 if line not in self._game_problems:
                     _hh_log(f"game path: {line}", logging.WARNING)
+            for line in [*stale_games, stale_tester]:
+                if line and line not in [*self._stale_games, self._stale_tester]:
+                    _hh_log(f"started before change: {line}", logging.WARNING)
             self._game_problems = games
             self._tester_problem = tester
+            self._stale_games = stale_games
+            self._stale_tester = stale_tester
             self.changed.emit()
         self._read_result()
+
+    def _stale_programs(self) -> tuple[list[str], str]:
+        """Warnings for programs on the list (games, the Input Tester)
+        running since before Gremlin's last HidHide change; none when no
+        change is known."""
+        link = _link()
+        change = None
+        if link is not None:
+            try:
+                change = link.last_hidhide_change()
+            except Exception:
+                logging.getLogger("system").exception("HidHide change not read")
+        if change is None:
+            return [], ""
+        tester = _tester_path()
+        listed = [str(r["path"]) for r in self._games if r.get("path")]
+        if not listed:
+            return [], ""
+        try:
+            programs = process_paths.running_programs(listed)
+        except Exception:
+            logging.getLogger("system").exception("Process list failed")
+            programs = []
+        games: list[str] = []
+        tester_text = ""
+        for path, start in process_paths.started_before(programs, listed, change[0]):
+            text = process_paths.stale_text(path, start, change[0])
+            if tester and _same_path(path, tester):
+                tester_text = tester_text or text
+            else:
+                games.append(text)
+        return games, tester_text
 
     @QtCore.Slot(bool)
     def setPageOpen(self, open_: bool) -> None:
@@ -1092,6 +1137,20 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Property(str, notify=changed)
     def testerPathProblem(self) -> str:
         return self._tester_problem
+
+    @QtCore.Property(list, notify=changed)
+    def staleGameWarnings(self) -> list:  # noqa: N802 - QML name
+        return list(self._stale_games)
+
+    @QtCore.Property(str, notify=changed)
+    def staleTesterWarning(self) -> str:  # noqa: N802 - QML name
+        return self._stale_tester
+
+    @QtCore.Slot(result=str)
+    def restartInputTester(self) -> str:  # noqa: N802 - QML name
+        """Starts a fresh Input Tester; the old one is never closed from
+        here (its own banner and the warning say to close it)."""
+        return self.openInputTester()
 
     @QtCore.Property(str, notify=changed)
     def testerPath(self) -> str:
@@ -1164,6 +1223,7 @@ def apply_on_start() -> None:
     _mark_managed()
     _save_cloak(True)
     apply_saved_list()
+    _tell_link_hidhide_changed("settings")
 
 
 def apply_saved_list() -> None:
@@ -1209,3 +1269,10 @@ def apply_saved_list() -> None:
     _apply_saved_hidden()
     cloak = _apply_saved_cloak()
     _hh_log(f"cloak={cloak}", logging.INFO)
+    # Programs started before this need a restart (D-02 addendum item 4).
+    link = _link()
+    if link is not None:
+        try:
+            link.record_hidhide_change("settings")
+        except Exception:
+            logging.getLogger("system").exception("HidHide change not noted")

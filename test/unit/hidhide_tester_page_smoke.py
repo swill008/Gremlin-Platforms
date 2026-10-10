@@ -133,7 +133,7 @@ link.tester_path = lambda: Path(TESTER)  # type: ignore[attr-defined]
 link.tester_dir = lambda: RESULT_DIR  # type: ignore[attr-defined]
 link.launch = _launch  # type: ignore[attr-defined]
 link.running = lambda: False  # type: ignore[attr-defined]
-link.hidhide_changed = lambda: None  # type: ignore[attr-defined]
+link.hidhide_changed = lambda *a: None  # type: ignore[attr-defined]
 if not hasattr(link, "last_result"):
     link.last_result = _last_result  # type: ignore[attr-defined]
 if not hasattr(link, "watcher"):

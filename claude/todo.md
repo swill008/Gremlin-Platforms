@@ -348,6 +348,48 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     (HH-INUSE-1, 02 S67) and keep the switches usable; (b) Change vJoy Output warns that games bound to
     those vJoy devices now get the other stick (10 S30-S31); (c) a HidHide guard for tests like the vJoy
     one (offered as a separate task); (d) whether Delete Device should clean profiles that aren't open.
+76. Reset devices (user 2026-10-10, not started): a button on the HidHide page that disables and
+    re-enables the hidden sticks so every program (Gremlin, games, the Input Tester) opens them again
+    and HidHide checks them anew. Why: HidHide only checks when a device is opened (verified, HidHide
+    v1.4.181 Logic.c 160-207, scratchpad hhverify/upstream.md); it has no command to recheck open
+    handles. Before building, VERIFY: needs administrator rights (Windows asks each time); Gremlin and
+    any running game lose the sticks for about a second; that DirectInput programs reopen cleanly
+    afterwards (standard Windows behaviour, not yet checked here). Spec change on page 02.
+    PLANNING started 2026-10-10 (user: "lets plan the reset now").
+    Design approved 2026-10-10 (RD1-RD10; mockup https://claude.ai/artifact/HVkxGiqVyniY9qGJfnrZdk).
+    LIVE CHECK 2026-10-10 04:46 (user present, approved): pnputil /restart-device on the left stick's USB
+    device USB\VID_231D&PID_3201\9&1d65ffe4&0&3 run with Start-Process -Verb RunAs: exit 0, returned in
+    0.3 s. No UAC prompt on THIS PC: ConsentPromptBehaviorAdmin = 0 (elevate without prompting); other
+    PCs will show the prompt. Gremlin's Trace: unplugged 04:46:50.189 -> plugged in 04:46:52.556 (~2.4 s),
+    'Initializing joystick devices' twice in system.log; same instance ids came back (HID\...&39cb7826,
+    USB\...\9&1d65ffe4); first RAW after return +0.022 (centred). Input Tester (on the Block list):
+    '2 hidden' while gone, '3 hidden' after -> stayed hidden. Restarting the USB device is enough.
+77. Upgrade the DirectInput reader dill.dll 1.3 -> 1.5 (user 2026-10-10: on the to-do for now; impact
+    research requested). Verified: v1.3 DeviceState sizes button(128)/hat(4) but indexes from 1, so
+    every poll of a 128-button / 4-hat device reads and writes one slot past the end (dill.cpp
+    c96571404b lines 53-57, 362-390). On this PC all three VKB sticks report 128 buttons and vJoy 1
+    reports 128 buttons + 4 hats. Upstream v1.5 sizes button(129)/hat(5). Effect of the overrun: not
+    verified. Gap DIRECTINPUT-128 (02). Impact study done 2026-10-10 (DILLUP, scratchpad dill_upgrade/impact.md):
+    interface is a drop-in (same 10 functions and structs; 1.5 adds shutdown()); NO published 1.5 build
+    (source only, master eb66aea) - we'd build it (CMake + MSVC x64); upstream Joystick Gremlin still ships
+    1.3; behaviour changes: one thread + lock, 1 ms polling for non-buffered devices, init waits for the
+    first scan, plug/unplug releases devices, unplugged lookups return empty summaries (input_cache.py
+    188/452, device_initialization.py 176), axis detection by DirectInput (axis maps may change ->
+    vJoy matching device_initialization.py 307). Plan: user go + spec, build + checksum, swap + small
+    wrapper/tester changes, new tests, hands-on with the 3 VKB sticks and vJoy 1, rollback = git file.
+    UPDATE 2026-10-10 (user pointed at upstream R16; R16DILL, scratchpad r16dill/findings.md): upstream
+    Joystick Gremlin Release_16 (2026-09-26) ships a second library dill/dill2.dll "DILL v2.0" (SHA-256
+    afa5373d...4948, 353792 bytes, exports shutdown) and loads it by default, keeping dill.dll (= ours) as a
+    fallback behind a setting use-legacy-dill (commit a4bf778b0d). Strings: all v1.5 messages + XInput
+    reading. Data layouts and the 10 C functions match our wrapper (+ shutdown) - should load with only
+    the file name changed (not run). NOT verified: that v2.0 includes the button 128 / hat 4 fix; v2.0
+    source not public. Option now: take R16's dill2.dll (prebuilt, used by upstream) instead of building 1.5.
+78. Licence notice for dill (found 2026-10-10, DILLUP): dill.dll is BSD-2-Clause (not GPL); the BSD
+    licence asks binary redistributions to carry its notice, and licenses/ has no dill (or spdlog)
+    notice today. Add licenses/dill.txt (+ spdlog) and check the installer copies licenses/. Not started.
+79. SHELVED (user 2026-10-10: "keep things as they are for now"): how the Input Tester ships and a
+    --self-test of the built exe (in tools/build_input_tester.py and the release workflow). Today: the
+    release build makes both exes and the installer copies them; the dev script is for source runs.
 
 ## On hold / parked (user's choice)
 

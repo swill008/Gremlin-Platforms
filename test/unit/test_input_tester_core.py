@@ -524,7 +524,8 @@ def test_full_dir_without_expected_writes_only_result(
     files = [
         p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file()
     ]
-    assert files == ["tester/result.json"]
+    # Addendum 2026-10-10 item 2: tester.log is the one other file.
+    assert sorted(files) == ["tester/result.json", "tester/tester.log"]
     assert (
         json.loads((tmp_path / "tester" / "result.json").read_text("utf-8"))["verdict"]
         == "none"

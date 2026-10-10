@@ -34,6 +34,8 @@ USER_IN_NAMES = "(user)"
 # A log bigger than this goes in as its last part only.
 MAX_LOG_BYTES = 8 * 1024 * 1024
 FAILURE_LEAD = "Diagnostics not saved."
+# The Input Tester's files in <data>\tester (D-02-INPUT-TESTER addendum item 5).
+TESTER_FILES = ("tester.log", "tester.log.1", "expected.json", "result.json")
 _FALLBACK = "the zip could not be written there"
 
 
@@ -179,6 +181,9 @@ class Plan:
     profile_name: str = ""
     # The open profile as XML, or None when it is left out.
     profile_text: str | None = None
+    # The Input Tester's folder (tester.log, tester.log.1, expected.json,
+    # result.json); None leaves it out.
+    tester: Path | None = None
     names: list[str] = field(default_factory=user_names)
     made: str = ""
 
@@ -213,6 +218,12 @@ def collect(include_profile: bool) -> Plan:
         settings: Path | None = Path(util.userprofile_path()) / "configuration.json"
     except Exception:
         settings = None
+    try:
+        from gremlin import input_tester_link
+
+        tester: Path | None = input_tester_link.tester_dir()
+    except Exception:
+        tester = None
     name, text = _profile() if include_profile else ("", None)
     return Plan(
         logs=logs,
@@ -222,6 +233,7 @@ def collect(include_profile: bool) -> Plan:
         profile_name=name,
         profile_text=text,
         made=datetime.fromtimestamp(clock.now()).isoformat(timespec="seconds"),
+        tester=tester,
     )
 
 
@@ -279,6 +291,18 @@ def write_zip(plan: Plan, dest: Path) -> None:
                 add(f"logs/{path.name}", _read_text(path))
             except OSError as exc:
                 add(f"logs/{path.name}.not-read.txt", f"{path}: {exc.strerror or exc}")
+    if plan.tester is not None:
+        for file_name in TESTER_FILES:
+            path = plan.tester / file_name
+            if not path.is_file():
+                continue
+            try:
+                add(f"tester/{file_name}", _read_text(path))
+            except OSError as exc:
+                add(
+                    f"tester/{file_name}.not-read.txt",
+                    f"{path}: {exc.strerror or exc}",
+                )
     if plan.profile_text is not None:
         add(f"profile/{plan.profile_name or 'profile.xml'}", plan.profile_text)
     entries.insert(0, ("README.txt", _readme(plan, [n for n, _t in entries])))

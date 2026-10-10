@@ -22,7 +22,7 @@ spec change. See "The plan" in `claude/system-maps.md`.
 | Page | Subsystem | S | Q | Gaps | Review |
 |---|---|---|---|---|---|
 | [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads, Help, shared pieces, control tracing, the build (two exes) | 153 | 16 | 20 | reviewed 2026-10-06 (all as recommended) |
-| [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide, trace taps, Gremlin Input Tester | 114 | 19 | 26 | reviewed 2026-10-06 (all as recommended) |
+| [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide, trace taps, Gremlin Input Tester | 123 | 19 | 28 | reviewed 2026-10-06 (all as recommended) |
 | [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 125 | 18 | 37 | reviewed 2026-10-06 (all as recommended) |
 | [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 95 | 21 | 29 | reviewed 2026-10-06 (all as recommended) |
 | [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page | 111 | 20 | 23 | reviewed 2026-10-06 (all as recommended) |
@@ -31,7 +31,7 @@ spec change. See "The plan" in `claude/system-maps.md`.
 | [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 113 | 21 | 30 | reviewed 2026-10-06 (all as recommended) |
 | [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (picked up 2026-10-09: own module file, per-input settings; Monitor, output and Send OSC, Feedback, encoder, discovery), sound, speech, tray, theme; shared widgets and foundations | 122 | 20 | 34 | reviewed 2026-10-06 (all as recommended) |
 | [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 59 | 1 | S1-S56 (+S20a, S53a) built; S6a (D-04-LD-FILE) building; open items: to-dos 47, 50, 51, 52 | approved 2026-10-08 |
-| **Total** | | **1072** | **174** | **239** (+ page 10) | |
+| **Total** | | **1081** | **174** | **241** (+ page 10) | |
 
 ## Most serious findings (to confirm first)
 

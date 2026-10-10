@@ -25,6 +25,8 @@ Window {
 
     // "All devices" compact view instead of one device.
     property bool showAll: false
+    // Tab shown: "devices" or "logs".
+    property string tab: "devices"
     // The compact view's copy of tester.allDevices, refreshed ~20 a second.
     property var compactDevices: []
 
@@ -32,7 +34,37 @@ Window {
     readonly property var sel: tester.selected
     readonly property int buttonCount: tester.buttons.length
 
-    Component.onCompleted: Style.isDarkMode = true
+    Component.onCompleted: {
+        Style.isDarkMode = true
+        tester.allDevicesShown = _win.showAll
+    }
+    // Follow input never switches away from the All devices view.
+    onShowAllChanged: tester.allDevicesShown = _win.showAll
+
+    // Follow input picked a row: bring it into view in the list.
+    Connections {
+        target: tester
+        function onInputFollowed(key) {
+            const row = _win.findRow(key)
+            if (!row)
+                return
+            const top = row.mapToItem(_listCol, 0, 0).y
+            if (top < _list.contentY)
+                _list.contentY = top
+            else if (top + row.height > _list.contentY + _list.height)
+                _list.contentY = Math.min(top + row.height - _list.height,
+                    Math.max(0, _list.contentHeight - _list.height))
+        }
+    }
+
+    function findRow(key) {
+        for (let i = 0; i < _rowRepeater.count; ++i) {
+            const entry = _rowRepeater.itemAt(i)
+            if (entry && entry.modelData.key === key)
+                return entry
+        }
+        return null
+    }
 
     Timer {
         interval: 50
@@ -180,10 +212,128 @@ Window {
             }
         }
 
+        // HidHide changed after this tester started: restart it.
+        Rectangle {
+            objectName: "staleBanner"
+            Layout.fillWidth: true
+            Layout.preferredHeight: _staleRow.implicitHeight + Style.dp(20)
+            visible: tester.staleBanner !== ""
+            color: Style.alpha(Style.warn, 0.18)
+
+            RowLayout {
+                id: _staleRow
+                anchors.fill: parent
+                anchors.leftMargin: Style.dp(14)
+                anchors.rightMargin: Style.dp(14)
+                spacing: Style.dp(12)
+
+                Text {
+                    objectName: "staleText"
+                    Layout.fillWidth: true
+                    text: "⚠ " + tester.staleBanner
+                    wrapMode: Text.Wrap
+                    font.family: Style.uiFont
+                    font.pixelSize: Style.dp(13)
+                    color: Style.warn
+                }
+                TesterButton {
+                    objectName: "restartTesterButton"
+                    text: "Restart tester"
+                    checked: true
+                    onClicked: tester.restartTester()
+                }
+            }
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: Style.warn
+            }
+        }
+
+        // Tabs: Devices | Logs.
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: _tabRow.implicitHeight + Style.dp(8)
+            color: Style.bgCard
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: Style.line
+            }
+            Row {
+                id: _tabRow
+                x: Style.dp(12)
+                anchors.bottom: parent.bottom
+                spacing: Style.dp(2)
+                Repeater {
+                    model: [{id: "devices", label: "Devices"}, {id: "logs", label: "Logs"}]
+                    delegate: Rectangle {
+                        id: _tab
+                        required property var modelData
+                        readonly property bool on: _win.tab === modelData.id
+                        objectName: "tab_" + modelData.id
+                        width: _tabText.implicitWidth + Style.dp(32)
+                        height: _tabText.implicitHeight + Style.dp(12)
+                        radius: Style.dp(6)
+                        color: on ? Style.bgPage
+                            : _tabArea.containsMouse ? Style.alpha(Style.bgHover, 0.5) : Style.clear
+                        border.color: on ? Style.line : Style.clear
+                        Accessible.role: Accessible.PageTab
+                        Accessible.name: modelData.label
+                        // Square off the bottom so the tab joins the page below.
+                        Rectangle {
+                            visible: _tab.on
+                            x: 1
+                            width: parent.width - 2
+                            y: parent.height - Style.dp(6)
+                            height: Style.dp(7)
+                            color: Style.bgPage
+                        }
+                        Text {
+                            id: _tabText
+                            anchors.centerIn: parent
+                            text: _tab.modelData.label
+                            font.family: Style.uiFont
+                            font.pixelSize: Style.dp(13)
+                            font.bold: _tab.on
+                            color: _tab.on ? Style.fgStrong : Style.fgMuted
+                        }
+                        MouseArea {
+                            id: _tabArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: _win.tab = _tab.modelData.id
+                        }
+                    }
+                }
+            }
+            TesterSwitch {
+                objectName: "followInputSwitch"
+                anchors.right: parent.right
+                anchors.rightMargin: Style.dp(14)
+                anchors.verticalCenter: parent.verticalCenter
+                visible: _win.tab === "devices"
+                text: "Follow input"
+                checked: tester.followInput
+                onToggled: on => tester.followInput = on
+            }
+        }
+
+        LogsView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: _win.tab === "logs"
+        }
+
         // Body: device list | device view.
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: _win.tab === "devices"
             spacing: 0
 
             Rectangle {
@@ -225,6 +375,7 @@ Window {
                             }
 
                             Repeater {
+                                id: _rowRepeater
                                 model: _win.rows
                                 delegate: Column {
                                     id: _entry
@@ -261,7 +412,7 @@ Window {
 
                             // HID game devices: a list only (path and ids).
                             Text {
-                                visible: tester.hidDevices.length > 0
+                                visible: tester.hidDevices.length > 0 || tester.hidSkipped.length > 0
                                 width: parent.width
                                 leftPadding: Style.dp(14)
                                 topPadding: Style.dp(10)
@@ -297,6 +448,48 @@ Window {
                                         font.family: Style.monoFont
                                         font.pixelSize: Style.dp(10.5)
                                         color: Style.fgMuted
+                                    }
+                                }
+                            }
+                            // HID paths left out, dimmed, with the reason.
+                            Repeater {
+                                model: tester.hidSkipped
+                                delegate: Column {
+                                    required property var modelData
+                                    objectName: "hidSkipped"
+                                    width: _listCol.width
+                                    opacity: 0.65
+                                    leftPadding: Style.dp(40)
+                                    rightPadding: Style.dp(14)
+                                    topPadding: Style.dp(4)
+                                    bottomPadding: Style.dp(4)
+                                    Text {
+                                        width: parent.width - parent.leftPadding - parent.rightPadding
+                                        text: (modelData.name || "HID device")
+                                            + (modelData.vid ? "  ·  VID " + modelData.vid
+                                               + " · PID " + modelData.pid : "")
+                                        elide: Text.ElideRight
+                                        font.family: Style.uiFont
+                                        font.pixelSize: Style.dp(12.5)
+                                        color: Style.fgMuted
+                                    }
+                                    Text {
+                                        objectName: "hidSkippedLabel"
+                                        width: parent.width - parent.leftPadding - parent.rightPadding
+                                        text: modelData.label || ("left out: " + (modelData.reason || ""))
+                                        elide: Text.ElideRight
+                                        font.family: Style.uiFont
+                                        font.pixelSize: Style.dp(11.5)
+                                        font.italic: true
+                                        color: modelData.denied ? Style.dangerTextSoft : Style.fgMuted
+                                    }
+                                    Text {
+                                        width: parent.width - parent.leftPadding - parent.rightPadding
+                                        text: modelData.path || ""
+                                        elide: Text.ElideMiddle
+                                        font.family: Style.monoFont
+                                        font.pixelSize: Style.dp(10.5)
+                                        color: Style.fgDisabled
                                     }
                                 }
                             }
@@ -576,6 +769,7 @@ Window {
 
         // Status bar.
         Rectangle {
+            visible: _win.tab === "devices"
             Layout.fillWidth: true
             Layout.preferredHeight: _status.implicitHeight + Style.dp(14)
             color: Style.bgCard

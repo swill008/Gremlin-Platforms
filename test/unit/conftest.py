@@ -99,6 +99,18 @@ def _osc_rows_kept() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _no_real_clipboard(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
+    """The Input Tester's Copy buttons never reach the real clipboard in a
+    test: it is the user's, and under a full run it crashed the part
+    (access violation in setText, twice on 2026-10-10)."""
+    from gremlin.input_tester import model
+
+    copied: list[str] = []
+    monkeypatch.setattr(model, "_set_clipboard", copied.append)
+    yield copied
+
+
+@pytest.fixture(autouse=True)
 def _trace_off_after() -> Iterator[None]:
     """Tracing is program-wide (D-01-TRACE): a test that turns it on must not
     leave it on, its ticks or its notice for the next test. The change hooks

@@ -7,9 +7,11 @@
 Finds and starts the tester (Tools › Input Tester…), writes what Gremlin
 expects it to see to <data>\\tester\\expected.json, and while a tester it
 started runs: writes the file again on a device or HidHide change and
-watches result.json (resultChanged). HidHide is only read here, never
-written; the driver is read only while Gremlin control is on, otherwise the
-watch's last read or the saved setup is used.
+watches result.json (resultChanged). Gremlin's last HidHide change (time and
+what) is kept here and written to expected.json (hidhide_changed_at,
+hidhide_change) so a tester started before it can say to restart. HidHide is
+only read here, never written; the driver is read only while Gremlin
+control is on, otherwise the watch's last read or the saved setup is used.
 """
 
 from __future__ import annotations
@@ -277,6 +279,7 @@ def build_expected() -> dict[str, Any]:
         "sticks": sticks,
         "vjoy": vjoy,
         "xbox": xbox,
+        **_change_fields(),
     }
 
 
@@ -295,6 +298,35 @@ def write_expected() -> bool:
     except Exception:
         syslog.warning("Input Tester: expected.json not written", exc_info=True)
         return False
+
+
+# --- the last HidHide change ------------------------------------------------------
+
+CHANGE_WHATS = ("program list", "cloak", "hidden devices", "mode", "settings")
+# (local time, what): Gremlin's last HidHide change made or seen; None until one.
+_last_change: tuple[datetime, str] | None = None
+
+
+def record_hidhide_change(what: str = "settings", when: datetime | None = None) -> None:
+    """Notes a HidHide change Gremlin made or saw (what: CHANGE_WHATS)."""
+    global _last_change
+    what = what if what in CHANGE_WHATS else "settings"
+    _last_change = ((when or datetime.now()).replace(microsecond=0), what)
+
+
+def last_hidhide_change() -> tuple[datetime, str] | None:
+    """(time, what) of the last HidHide change; None when none is known."""
+    return _last_change
+
+
+def _change_fields() -> dict[str, str]:
+    change = _last_change
+    if change is None:
+        return {}
+    return {
+        "hidhide_changed_at": change[0].isoformat(timespec="seconds"),
+        "hidhide_change": change[1],
+    }
 
 
 # --- result.json ------------------------------------------------------------------
@@ -503,9 +535,11 @@ def device_changed(*_args: object) -> None:
         write_expected()
 
 
-def hidhide_changed() -> None:
-    """HidHide changed (the program's own edit or seen by the watch)."""
-    if running():
+def hidhide_changed(what: str = "settings") -> None:
+    """HidHide changed (the program's own edit or seen by the watch): noted,
+    and expected.json written again when a tester runs or has run."""
+    record_hidhide_change(what)
+    if running() or expected_file().is_file():
         write_expected()
 
 
@@ -526,8 +560,9 @@ def _connect(on: bool) -> None:
 
 
 def _reset_for_tests() -> None:
-    global _process, _result_stamp, _setup_stamp
+    global _process, _result_stamp, _setup_stamp, _last_change
     stop_watch()
+    _last_change = None
     _process = None
     _result_stamp = None
     _setup_stamp = None
@@ -562,6 +597,7 @@ class InputTesterLink(QtCore.QObject):
 
 __all__ = [
     "InputTesterLink", "NOT_BUILT", "build_expected", "expect_hidden",
-    "hidhide_changed", "last_result", "launch", "running", "set_starter",
-    "tester_dir", "tester_path", "watcher", "write_expected",
+    "hidhide_changed", "last_hidhide_change", "last_result", "launch",
+    "record_hidhide_change", "running", "set_starter", "tester_dir",
+    "tester_path", "watcher", "write_expected",
 ]

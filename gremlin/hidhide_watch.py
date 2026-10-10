@@ -46,6 +46,9 @@ _standing: dict[str, str] = {}
 _rows: list[dict] | None = None
 # Game paths already warned about this watch run (D-02-INPUT-TESTER 9d).
 _said_paths: set[str] = set()
+# Programs (path, start) already warned as started before the last HidHide
+# change this watch run (addendum 2026-10-10 item 4).
+_said_stale: set[tuple[str, str]] = set()
 
 
 # --- start / stop --------------------------------------------------------------
@@ -61,6 +64,7 @@ def _reset() -> None:
     _rows = None
     _standing.clear()
     _said_paths.clear()
+    _said_stale.clear()
 
 
 def last_state() -> dict | None:
@@ -187,11 +191,53 @@ def _check_game_paths() -> None:
             _warn(text)
 
 
-def _tell_tester() -> None:
+def _check_stale_programs() -> None:
+    """A program on the list (a game, the Input Tester) started before
+    Gremlin's last HidHide change: one warning per process. Processes are
+    only looked at when a change is known and something is listed, and only
+    those with a listed exe name."""
+    from gremlin import input_tester_link, process_paths
+    from gremlin.ui import hidhide as hh
+
+    change = input_tester_link.last_hidhide_change()
+    if change is None:
+        return
+    listed = [str(g["path"]) for g in hh._load_games() if g.get("path")]
+    if not listed:
+        return
+    stale = process_paths.started_before(
+        process_paths.running_programs(listed), listed, change[0]
+    )
+    for path, start in stale:
+        key = (path.casefold(), start.isoformat())
+        if key not in _said_stale:
+            _said_stale.add(key)
+            _warn(process_paths.stale_text(path, start, change[0]))
+
+
+def _what_changed(old: dict, new: dict) -> str:
+    """"program list", "cloak", "hidden devices", "mode", or "settings" when
+    more than one changed."""
+    names = {
+        "apps": "program list", "cloak": "cloak",
+        "devices": "hidden devices", "inverse": "mode",
+    }
+    changed = [
+        name for key, name in names.items()
+        if old.get(key) is not None and new.get(key) is not None
+        and (
+            _upper(old[key]) != _upper(new[key]) if key in ("apps", "devices")
+            else old[key] != new[key]
+        )
+    ]
+    return changed[0] if len(changed) == 1 else "settings"
+
+
+def _tell_tester(what: str = "settings") -> None:
     try:
         from gremlin import input_tester_link
 
-        input_tester_link.hidhide_changed()
+        input_tester_link.hidhide_changed(what)
     except Exception:
         syslog.debug("HidHide watch: Input Tester not told", exc_info=True)
 
@@ -416,9 +462,14 @@ def check() -> None:
         else:
             _compare_changes(_last, state, marks)
         changed = _last is not None and _last != state
+        what = _what_changed(_last, state) if changed and _last is not None else ""
         _last = state
         if changed:
-            _tell_tester()
+            _tell_tester(what)
+        try:
+            _check_stale_programs()
+        except Exception:
+            syslog.debug("HidHide watch: start time check failed", exc_info=True)
         standing = _saved_differences(state)
         standing.update(_not_hidden(state["devices"]))
         _stand(standing)

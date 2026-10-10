@@ -398,7 +398,11 @@ def test_the_tester_writes_only_result_json_and_never_loads_gremlin_config(
     after = _snapshot(home)
     changed = sorted(k for k in after if before.get(k) != after[k])
     gone = sorted(k for k in before if k not in after)
-    assert changed == [str(pathlib.Path("Gremlin Platforms", "tester", "result.json"))]
+    # Addendum 2026-10-10 item 2: result.json and tester.log only.
+    assert changed == [
+        str(pathlib.Path("Gremlin Platforms", "tester", "result.json")),
+        str(pathlib.Path("Gremlin Platforms", "tester", "tester.log")),
+    ]
     assert gone == []
     assert modules, f"the tester didn't report its modules:\n{tester.output}"
     assert "gremlin.input_tester" in modules

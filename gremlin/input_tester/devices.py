@@ -78,9 +78,46 @@ def _hat_degrees(raw: int) -> int:
 # DirectInput ---------------------------------------------------------------
 
 
+@dataclass
+class OpenResult:
+    """How opening (HID) or reading (DirectInput) one device went, for the log."""
+
+    kind: str  # "hid" | "directinput"
+    name: str
+    instance: str  # HID path, or DirectInput GUID "{...}"
+    ok: bool
+    code: int = 0  # Win32 error of a failed HID open
+    text: str = ""  # "ok", "listed", "values read ok", "access denied (5)", ...
+    left_out: str = ""  # HID: why an opened path was left out ("" when kept)
+
+
+_open_results: dict[str, OpenResult] = {}  # key: kind + instance
+
+
+def last_open_results() -> list[OpenResult]:
+    """HID opens of the last scan, then DirectInput devices of the last list."""
+    return [
+        OpenResult(**vars(r))
+        for r in sorted(_open_results.values(), key=lambda r: r.kind != "hid")
+    ]
+
+
+def _note_open(result: OpenResult) -> None:
+    _open_results[f"{result.kind}:{result.instance}"] = result
+
+
+def _note_di_read(device: SeenDevice, ok: bool, text: str) -> None:
+    prev = _open_results.get(f"directinput:{device.guid}")
+    if prev is not None and prev.text == text:
+        return  # only the first read (or a change) is worth a line
+    _note_open(OpenResult("directinput", device.name, device.guid, ok, text=text))
+
+
 def directinput_devices() -> list[SeenDevice]:
     """Every DirectInput game controller dill lists."""
     dill.DILL.init()
+    for key in [k for k in _open_results if k.startswith("directinput:")]:
+        del _open_results[key]
     seen: list[SeenDevice] = []
     for index in range(int(dill.DILL.get_device_count())):
         info = dill.DILL.get_device_information_by_index(index)
@@ -105,23 +142,44 @@ def directinput_devices() -> list[SeenDevice]:
                 handle=info.device_guid,
             )
         )
+        _note_open(OpenResult("directinput", seen[-1].name, guid, True, text="listed"))
     return seen
+
+
+# Button N is DILL index N (1-based), as in DILL's own events, which the
+# main program uses as the button number. The bundled dill.dll (v1.3) keeps
+# 128 buttons and 4 hats from index 0 but stores them from index 1, and
+# rejects index >= 128 / >= 4 with an error line in dill_debug.log; so
+# button 128 and hat 4 can't be read and are never asked for.
+DILL_MAX_BUTTON = 127
+DILL_MAX_HAT = 3
 
 
 def directinput_values(device: SeenDevice) -> LiveValues:
     guid = device.handle
     if not isinstance(guid, dill.GUID):
         guid = device.handle = dill.GUID.from_str(device.guid.strip("{}"))
-    return LiveValues(
-        axes=[_axis_value(int(dill.DILL.get_axis(guid, i))) for i in device.axis_ids],
-        buttons=[
-            bool(dill.DILL.get_button(guid, i + 1)) for i in range(device.buttons)
-        ],
-        hats=[
-            _hat_degrees(int(dill.DILL.get_hat(guid, i + 1)))
-            for i in range(device.hats)
-        ],
-    )
+    try:
+        values = LiveValues(
+            axes=[
+                _axis_value(int(dill.DILL.get_axis(guid, i))) for i in device.axis_ids
+            ],
+            buttons=[
+                bool(dill.DILL.get_button(guid, n)) if n <= DILL_MAX_BUTTON else False
+                for n in range(1, device.buttons + 1)
+            ],
+            hats=[
+                _hat_degrees(int(dill.DILL.get_hat(guid, n)))
+                if n <= DILL_MAX_HAT
+                else -1
+                for n in range(1, device.hats + 1)
+            ],
+        )
+    except OSError as err:
+        _note_di_read(device, ok=False, text=f"values not read: {err}")
+        raise
+    _note_di_read(device, ok=True, text="values read ok")
+    return values
 
 
 # XInput --------------------------------------------------------------------
@@ -241,18 +299,68 @@ def _hid_vid_pid(path: str) -> tuple[int, int]:
     return int(match.group(1), 16), int(match.group(2), 16)
 
 
+ACCESS_DENIED = 5
+
+
+@dataclass
+class HidSkip:
+    """One HID path left out of the list, and why."""
+
+    path: str
+    name: str = ""
+    vid: int = 0
+    pid: int = 0
+    reason: str = ""
+    code: int = 0  # Win32 error of the failed step; 0 for "not a game device"
+    usage_page: int = 0
+    usage: int = 0
+
+    @property
+    def denied(self) -> bool:
+        """Refused at open: HidHide hides it from this process."""
+        return self.code == ACCESS_DENIED
+
+
+def describe_open_error(code: int) -> str:
+    if code == ACCESS_DENIED:
+        return f"access denied ({ACCESS_DENIED})"
+    text = ""
+    format_error = getattr(ctypes, "FormatError", None)
+    if format_error is not None:
+        text = format_error(code).strip()
+    return f"error {code}: {text or os.strerror(code)}"
+
+
+_hid_skips: list[HidSkip] = []
+
+
+def last_hid_skips() -> list[HidSkip]:
+    """Paths the last HID scan left out."""
+    return list(_hid_skips)
+
+
 def hid_devices() -> list[HidDevice]:
     """HID game devices (joystick, gamepad, game controls usage page).
 
     Each interface is opened with no access rights (query only) to read its
-    usage; one this process can't open (e.g. hidden by HidHide) is left out.
+    usage; one this process can't open (e.g. hidden by HidHide) is left out,
+    with the reason kept in last_hid_skips().
     """
-    if os.name != "nt":
-        return []
-    try:
-        return _hid_enumerate()
-    except OSError:
-        return []
+    return hid_scan()[0]
+
+
+def hid_scan() -> tuple[list[HidDevice], list[HidSkip]]:
+    """One HID scan: (kept game devices, left-out paths with reasons)."""
+    global _hid_skips
+    kept: list[HidDevice] = []
+    skipped: list[HidSkip] = []
+    if os.name == "nt":
+        try:
+            kept, skipped = _hid_enumerate()
+        except OSError:
+            kept, skipped = [], []
+    _hid_skips = list(skipped)
+    return kept, skipped
 
 
 class _GUID(ctypes.Structure):
@@ -294,7 +402,8 @@ def _is_game_usage(page: int, usage: int) -> bool:
     return page == 0x05 or (page == 0x01 and usage in (0x04, 0x05))
 
 
-def _hid_enumerate() -> list[HidDevice]:
+def _hid_libs():  # noqa: ANN202
+    """setupapi, hid and kernel32 with their argument types set."""
     setup = ctypes.WinDLL("setupapi", use_last_error=True)
     hid = ctypes.WinDLL("hid", use_last_error=True)
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -351,13 +460,18 @@ def _hid_enumerate() -> list[HidDevice]:
         wintypes.ULONG,
     ]
 
+    return setup, hid, k32
+
+
+def _hid_paths(setup, hid) -> list[str]:  # noqa: ANN001
+    """Device paths of every present HID interface."""
     hid_guid = _GUID()
     hid.HidD_GetHidGuid(ctypes.byref(hid_guid))
     digcf = 0x02 | 0x10  # DIGCF_PRESENT | DIGCF_DEVICEINTERFACE
     info = setup.SetupDiGetClassDevsW(ctypes.byref(hid_guid), None, None, digcf)
     if not info or info == ctypes.c_void_p(-1).value:
         return []
-    found: list[HidDevice] = []
+    paths: list[str] = []
     try:
         index = 0
         while True:
@@ -383,31 +497,48 @@ def _hid_enumerate() -> list[HidDevice]:
                 info, ctypes.byref(iface), buf, size, None, None
             ):
                 continue
-            path = ctypes.wstring_at(ctypes.addressof(buf) + 4)
-            entry = _hid_query(k32, hid, path)
-            if entry is not None:
-                found.append(entry)
+            paths.append(ctypes.wstring_at(ctypes.addressof(buf) + 4))
     finally:
         setup.SetupDiDestroyDeviceInfoList(info)
-    return found
+    return paths
 
 
-def _hid_query(k32, hid, path: str) -> HidDevice | None:  # noqa: ANN001
+def _hid_enumerate() -> tuple[list[HidDevice], list[HidSkip]]:
+    setup, hid, k32 = _hid_libs()
+    for key in [k for k in _open_results if k.startswith("hid:")]:
+        del _open_results[key]
+    kept: list[HidDevice] = []
+    skipped: list[HidSkip] = []
+    for path in _hid_paths(setup, hid):
+        entry = _hid_query(k32, hid, path)
+        if isinstance(entry, HidSkip):
+            skipped.append(entry)
+            opened = entry.code == 0 or entry.reason.startswith("no preparsed")
+            _note_open(
+                OpenResult(
+                    "hid",
+                    entry.name,
+                    path,
+                    ok=opened,
+                    code=0 if opened else entry.code,
+                    text="ok" if opened else entry.reason,
+                    left_out=entry.reason if opened else "",
+                )
+            )
+        else:
+            kept.append(entry)
+            _note_open(OpenResult("hid", entry.name, path, ok=True, text="ok"))
+    return kept, skipped
+
+
+def _hid_query(k32, hid, path: str) -> HidDevice | HidSkip:  # noqa: ANN001
     share = 0x1 | 0x2  # FILE_SHARE_READ | FILE_SHARE_WRITE
     handle = k32.CreateFileW(path, 0, share, None, 3, 0, None)  # OPEN_EXISTING
     if not handle or handle == ctypes.c_void_p(-1).value:
-        return None
+        code = int(ctypes.get_last_error())
+        vid, pid = _hid_vid_pid(path)
+        return HidSkip(path, "", vid, pid, describe_open_error(code), code)
     try:
-        preparsed = ctypes.c_void_p()
-        if not hid.HidD_GetPreparsedData(handle, ctypes.byref(preparsed)):
-            return None
-        caps = _HIDP_CAPS()
-        try:
-            hid.HidP_GetCaps(preparsed, ctypes.byref(caps))
-        finally:
-            hid.HidD_FreePreparsedData(preparsed)
-        if not _is_game_usage(caps.UsagePage, caps.Usage):
-            return None
         attrs = _HIDD_ATTRIBUTES()
         attrs.Size = ctypes.sizeof(attrs)
         if hid.HidD_GetAttributes(handle, ctypes.byref(attrs)):
@@ -418,6 +549,20 @@ def _hid_query(k32, hid, path: str) -> HidDevice | None:  # noqa: ANN001
         name = ""
         if hid.HidD_GetProductString(handle, name_buf, ctypes.sizeof(name_buf)):
             name = name_buf.value.strip()
+        preparsed = ctypes.c_void_p()
+        if not hid.HidD_GetPreparsedData(handle, ctypes.byref(preparsed)):
+            code = int(ctypes.get_last_error())
+            reason = f"no preparsed data (error {code})"
+            return HidSkip(path, name, vid, pid, reason, code)
+        caps = _HIDP_CAPS()
+        try:
+            hid.HidP_GetCaps(preparsed, ctypes.byref(caps))
+        finally:
+            hid.HidD_FreePreparsedData(preparsed)
+        page, usage = int(caps.UsagePage), int(caps.Usage)
+        if not _is_game_usage(page, usage):
+            reason = f"not a game device (usage page 0x{page:04X}, usage 0x{usage:04X})"
+            return HidSkip(path, name, vid, pid, reason, 0, page, usage)
         return HidDevice(path=path, vid=vid, pid=pid, name=name)
     finally:
         k32.CloseHandle(handle)

@@ -234,13 +234,16 @@ def test_keys_the_program_sends_carry_the_mark(
     assert [args[3] for args in sent] == [windows_event_hook.OWN_KEY_MARK] * 2
 
 
-def _key_events(listener: event_handler.EventListener) -> list[tuple]:
+def _key_events(listener: event_handler.EventListener) -> tuple[list[tuple], Any]:
+    """(what the listener sends, the slot to disconnect after): only that
+    slot, so the input-module gate's own stays connected."""
     seen: list[tuple] = []
-    listener.keyboard_event.connect(
-        lambda e: seen.append((e.identifier, e.is_pressed)),
-        QtCore.Qt.ConnectionType.DirectConnection,
-    )
-    return seen
+
+    def heard(e: Any) -> None:  # noqa: ANN401
+        seen.append((e.identifier, e.is_pressed))
+
+    listener.keyboard_event.connect(heard, QtCore.Qt.ConnectionType.DirectConnection)
+    return seen, heard
 
 
 def _release_all(listener: event_handler.EventListener, scan: int) -> None:
@@ -253,7 +256,7 @@ def test_own_keys_are_ignored_while_a_run_is_on(
     from gremlin import run_scope
 
     listener = event_handler.EventListener()
-    seen = _key_events(listener)
+    seen, heard = _key_events(listener)
     own = windows_event_hook.KeyEvent(0x30, False, True, True, True)
     own_up = windows_event_hook.KeyEvent(0x30, False, False, True, True)
     try:
@@ -266,7 +269,7 @@ def test_own_keys_are_ignored_while_a_run_is_on(
         listener._keyboard_handler(own_up)
         assert seen == [((0x30, False), True), ((0x30, False), False)]
     finally:
-        listener.keyboard_event.disconnect()
+        listener.keyboard_event.disconnect(heard)
         _release_all(listener, 0x30)
 
 
@@ -285,7 +288,7 @@ def test_a_press_after_a_lost_release_is_a_new_press(
     monkeypatch.setattr(
         keyboard, "is_down_in_windows", lambda key: down_in_windows[0]
     )
-    seen = _key_events(listener)
+    seen, heard = _key_events(listener)
     press = windows_event_hook.KeyEvent(0x2F, False, True, False)
     try:
         listener._keyboard_handler(press)
@@ -306,7 +309,7 @@ def test_a_press_after_a_lost_release_is_a_new_press(
         listener._keyboard_handler(press)
         assert len(seen) == 2
     finally:
-        listener.keyboard_event.disconnect()
+        listener.keyboard_event.disconnect(heard)
         _release_all(listener, 0x2F)
 
 
@@ -576,6 +579,11 @@ def test_a_stick_back_with_more_buttons_reports_them(
     monkeypatch.setattr(device_initialization, "joystick_devices", lambda: listed[0])
     monkeypatch.setattr(listener, "device_change_event",
                         types.SimpleNamespace(emit=lambda: None))
+    seen: list[tuple] = []
+
+    def heard(e: Any) -> None:  # noqa: ANN401
+        seen.append((e.identifier, e.is_pressed))
+
     try:
         listener._run_device_list_update()  # unplugged
         assert wrapper.button(2) is held  # kept while it is away
@@ -583,17 +591,17 @@ def test_a_stick_back_with_more_buttons_reports_them(
                             lambda guid: bigger)
         after_scan[0] = [stick]
         listener._run_device_list_update()  # back, with 80 buttons
-        seen: list[tuple] = []
         listener.joystick_event.connect(
-            lambda e: seen.append((e.identifier, e.is_pressed)),
-            QtCore.Qt.ConnectionType.DirectConnection,
+            heard, QtCore.Qt.ConnectionType.DirectConnection
         )
         listener._joystick_event_handler(_input(2, 70, 1))
         assert seen == [(70, True)]
         assert wrapper.button(70).is_pressed
         assert wrapper.button(2) is held  # the inputs it had are the same objects
     finally:
-        listener.joystick_event.disconnect()
+        # Only our own slot: a bare disconnect() also cut the input-module
+        # gate (InputModuleRuntime._on_hid) off the shared listener.
+        listener.joystick_event.disconnect(heard)
         monkeypatch.setattr(fake, "get_device_information_by_guid", original_info)
         input_cache.Joystick().reconnected(_STICK)  # back to 64 buttons
 

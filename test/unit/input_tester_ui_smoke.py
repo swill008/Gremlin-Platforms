@@ -48,6 +48,17 @@ from gremlin.input_tester import devices, steam  # noqa: E402
 
 devices.xinput_devices = lambda: []  # type: ignore[assignment]
 devices.hid_devices = lambda: []  # type: ignore[assignment]
+# One HID path HidHide hides from this process (open -> access denied).
+DENIED = devices.HidSkip(
+    path="\\\\?\\hid#vid_231d&pid_0200#a&6b6f223&0&0000#{4d1e55b2}",
+    name="VKBsim Gladiator EVO R",
+    vid=0x231D,
+    pid=0x0200,
+    reason="access denied (5)",
+    code=5,
+)
+devices.hid_scan = lambda: ([], [DENIED])  # type: ignore[assignment]
+devices.last_hid_skips = lambda: [DENIED]  # type: ignore[assignment]
 steam.steam_running = lambda: False  # type: ignore[assignment]
 
 from PySide6 import QtCore, QtGui, QtQuick, QtTest  # noqa: E402
@@ -114,6 +125,9 @@ def write_expected() -> None:
 
 
 qt_log: list[str] = []
+# Restart tester: what the injected starter was asked to start, and quits.
+started: list[object] = []
+quits: list[bool] = []
 
 
 def _qt_message(mode, context, message) -> None:  # noqa: ANN001
@@ -176,6 +190,18 @@ def checks(app: QtGui.QGuiApplication) -> None:
             label = next(i for i in items_under(row) if i.objectName() == "rowName")
             rows[label.property("text")] = row
     result("row_names", sorted(rows))
+    result(
+        "hid_skipped",
+        [
+            {
+                "label": i.property("text"),
+                "visible": bool(i.isVisible()),
+                "opacity": round(float(i.parentItem().property("opacity")), 2),
+            }
+            for i in items(window)
+            if i.objectName() == "hidSkippedLabel"
+        ],
+    )
     stick_row = rows.get("Left stick")
     vjoy_row = next((r for n, r in rows.items() if n.startswith("vJoy Device")), None)
     result(
@@ -231,9 +257,173 @@ def checks(app: QtGui.QGuiApplication) -> None:
     window.grabWindow().save(str(SHOT))
     result("shot", SHOT.is_file())
 
+    if CASE == "pass":
+        follow_checks(window, rows, stick_row, vjoy_row)
+        logs_checks(window)
+        stale_checks(window)
+
+
+def visible_named(window: QtQuick.QQuickWindow, name: str) -> list[QtQuick.QQuickItem]:
+    return [i for i in items(window) if i.objectName() == name and i.isVisible()]
+
+
+def follow_checks(window, rows, stick_row, vjoy_row) -> None:  # noqa: ANN001
+    """Item 7: moving a fake axis on another device selects and shows it;
+    jitter doesn't; the All devices view never switches."""
+    stick_key = stick_row.objectName().removeprefix("deviceRow_")
+    vjoy_key = vjoy_row.objectName().removeprefix("deviceRow_")
+    switch = item(window, "followInputSwitch")
+    QtTest.QTest.qWait(1200)  # past the 1 s hold after any earlier switch
+    axes[(STICK_RAW, 2)] = 600  # jitter, under 0.05
+    QtTest.QTest.qWait(300)
+    jitter = item(window, "detailName").property("text")
+    axes[(STICK_RAW, 2)] = 20000
+    QtTest.QTest.qWait(300)
+    moved = {
+        "detail": item(window, "detailName").property("text"),
+        "row_selected": bool(stick_row.property("selected")),
+        "vjoy_selected": bool(vjoy_row.property("selected")),
+    }
+    # All devices: moving the vJoy axis changes nothing.
+    QtTest.QTest.qWait(1200)
+    click(window, item(window, "allDevicesRow"))
+    QtTest.QTest.qWait(200)
+    axes[(VJOY_RAW, 2)] = -20000
+    QtTest.QTest.qWait(400)
+    all_view = {
+        "compact_visible": bool(item(window, "compactView").isVisible()),
+        "vjoy_selected": bool(vjoy_row.property("selected")),
+        "detail_visible": bool(item(window, "deviceView").isVisible()),
+    }
+    result(
+        "follow",
+        {
+            "switch_visible": bool(switch.isVisible()) if switch else None,
+            "switch_on": bool(switch.property("checked")) if switch else None,
+            "jitter_detail": jitter,
+            "moved": moved,
+            "all_view": all_view,
+            "keys_differ": stick_key != vjoy_key,
+        },
+    )
+    click(window, vjoy_row)  # back to one device for the shots
+    QtTest.QTest.qWait(200)
+
+
+def logs_checks(window: QtQuick.QQuickWindow) -> None:
+    """Logs tab by a real click: pick Tester log, Find filters, Follow on."""
+    out: dict = {}
+    click(window, item(window, "tab_logs"))
+    QtTest.QTest.qWait(300)
+    view = item(window, "logsView")
+    out["logs_visible"] = bool(view and view.isVisible())
+    out["devices_hidden"] = not item(window, "deviceList").isVisible()
+    picker = item(window, "logPicker")
+    click(window, picker)
+    QtTest.QTest.qWait(150)
+    choices = {
+        i.objectName(): i
+        for i in items_under(picker)
+        if i.objectName().startswith("comboChoice_") and i.isVisible()
+    }
+    out["choices"] = len(choices)
+    if "comboChoice_0" in choices:
+        click(window, choices["comboChoice_0"])
+    QtTest.QTest.qWait(700)
+    shown = item(window, "logPickerText")
+    out["picked"] = shown.property("text") if shown else None
+    lines = visible_named(window, "logLine")
+    out["lines"] = len(lines)
+    out["texts"] = [str(i.property("lineText")) for i in lines][:20]
+    out["status"] = item(window, "logStatus").property("text")
+    QtTest.QTest.qWait(200)
+    window.grabWindow().save(str(SHOT.parent / "logs.png"))
+
+    # Follow off by a click, then on again.
+    follow = item(window, "logFollow")
+    click(window, follow)
+    QtTest.QTest.qWait(150)
+    out["follow_after_off"] = bool(follow.property("checked"))
+    click(window, follow)
+    QtTest.QTest.qWait(150)
+    out["follow_after_on"] = bool(follow.property("checked"))
+    out["at_end"] = bool(item(window, "logLines").property("atYEnd"))
+
+    # Find: type into the box; only matching lines are marked.
+    find = item(window, "logFind")
+    click(window, find)
+    for ch in "Started":
+        QtTest.QTest.keyClick(window, ch)
+    QtTest.QTest.qWait(400)
+    shown = visible_named(window, "logLine")
+    out["find_count"] = item(window, "logFindCount").property("text")
+    out["find_matches"] = [
+        str(i.property("lineText")) for i in shown if i.property("match")
+    ]
+    out["find_others"] = len([i for i in shown if not i.property("match")])
+    # Show: Warnings only.
+    QtTest.QTest.keyClick(window, QtCore.Qt.Key.Key_Escape)
+    show = item(window, "logShow")
+    click(window, show)
+    QtTest.QTest.qWait(150)
+    warn = next(
+        i
+        for i in items_under(show)
+        if i.objectName() == "comboChoice_1" and i.isVisible()
+    )
+    click(window, warn)
+    QtTest.QTest.qWait(400)
+    out["warnings_only_all_warn"] = all(
+        bool(i.property("warn")) for i in visible_named(window, "logLine")
+    )
+    click(window, show)
+    QtTest.QTest.qWait(150)
+    choice = next(i for i in items_under(show) if i.objectName() == "comboChoice_0")
+    click(window, choice)
+    QtTest.QTest.qWait(200)
+    result("logs", out)
+    click(window, item(window, "tab_devices"))
+    QtTest.QTest.qWait(200)
+
+
+def stale_checks(window: QtQuick.QQuickWindow) -> None:
+    """Gremlin changes HidHide after the tester started: yellow banner;
+    Restart tester calls the (injected) starter."""
+    from datetime import datetime, timedelta
+
+    banner = item(window, "staleBanner")
+    before = bool(banner.isVisible())
+    path = GREMLIN_DIR / "tester" / "expected.json"
+    data = json.loads(path.read_text("utf-8"))
+    data["hidhide_changed_at"] = (datetime.now() + timedelta(seconds=1)).isoformat(
+        timespec="seconds"
+    )
+    data["hidhide_change"] = "program list"
+    path.write_text(json.dumps(data), "utf-8")
+    QtTest.QTest.qWait(2500)
+    after = bool(banner.isVisible())
+    text = item(window, "staleText").property("text")
+    window.grabWindow().save(str(SHOT.parent / "banner.png"))
+    click(window, item(window, "restartTesterButton"))
+    QtTest.QTest.qWait(200)
+    result(
+        "stale",
+        {
+            "before": before,
+            "after": after,
+            "text": text,
+            "started": started,
+            "quits": len(quits),
+        },
+    )
+
 
 def main() -> None:
     write_expected()
+    from gremlin.input_tester import model as tester_model
+
+    tester_model.set_starter(lambda args: started.append(list(args)))
+    tester_model.set_quitter(lambda: quits.append(True))
     QtCore.qInstallMessageHandler(_qt_message)
 
     def exec_with_checks(*_args) -> int:  # noqa: ANN002

@@ -245,3 +245,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | HidHide page tester buttons, path checks (HHPAGE) | feature | ~20 min | 8 min | 03:15–03:23 |
 | 2026-10-10 | Input Tester end-to-end tests, 10 (TE2E) | test | ~20 min | 6 min | 03:16–03:22 |
 | 2026-10-10 | Input Tester spec 02 S99-S114, 01 S152, Help (TDOC) | docs | ~18 min | 6 min | 03:16–03:22 |
+| 2026-10-10 | Reset Devices live check: one stick restarted, logs read (lead) | review | ~5 min | 2 min | 04:46–04:48 |
+| 2026-10-10 | dill upgrade impact study (DILLUP) | review | ~15 min | 9 min | 04:22–04:31 |
+| 2026-10-10 | Upstream R16 dill check (R16DILL) | review | ~12 min | 3 min | 04:41–04:44 |
+| 2026-10-10 | Test-order leak fix (ORDER) | fix | ~15 min | 1 min | 04:37–04:38 |

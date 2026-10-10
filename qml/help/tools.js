@@ -95,8 +95,19 @@ function topics() {
                 + "<li>The devices are listed under the <b>Devices</b> heading.</li>"
                 + "<li><b>Automatically Start</b> applies both switches each time the program starts. All switches start off on a new install.</li>"
                 + "<li>To see what a listed game sees, use the <b>Input Tester</b> button: see <a href=\"topic:tools-input-tester\">Check what a game sees (Input Tester)</a>. The page also shows the <b>Last Input Tester result</b>, and warns when a listed game is running from another folder.</li>"
-                + "</ul>",
-            related: ["tools-input-tester", "home-devices-hidden-cards", "getting-started-device-missing", "tools-q-game-sees-both"]
+                + "</ul>"
+                + "<h4>Set HidHide up first, then start the game</h4>"
+                + "<ul>"
+                + "<li>HidHide checks a program only when the program opens a device. A game that already has a stick open keeps it after any change: hidden devices, the program list, <b>HidHide Enabled</b> or Allow/Block. So set HidHide up first, then start the game. After a change, restart the game (and the Input Tester).</li>"
+                + "<li>Changing HidHide while it is on is fine: programs started afterwards get the new setting.</li>"
+                + "<li>HidHide has no \"check again\" command. To make it check a running program again, restart that program, or unplug the stick and plug it back in (Windows then closes every program's connection to it, and this program reads its devices again). Not while flying.</li>"
+                + "<li>The page warns when a listed program that is running was started before the last HidHide change: restart it so the change applies. For the Input Tester it offers <b>Restart Input Tester</b>.</li>"
+                + "<li>A program is listed by its full path: the same folder and file name (capital letters don't matter; spaces are fine). A copy of the game in another folder, such as a test build (PTU) beside the main one (LIVE), is a different program: list each copy.</li>"
+                + "<li>A hidden device is known by its Windows device path. Plugged into another USB port, a stick can get a new path that isn't hidden. The Input Tester and the Trace tab's HidHide row show this.</li>"
+                + "<li>While HidHide's own window (HidHide Configuration Client) is open, other programs can't talk to HidHide: only one at a time. This program may then show HidHide as not installed or not available. Close HidHide's window.</li>"
+                + "</ul>"
+                + "<p>The exact rules are in <a href=\"topic:tools-tech-hidhide\">How HidHide decides</a>.</p>",
+            related: ["tools-input-tester", "tools-tech-hidhide", "home-devices-hidden-cards", "getting-started-device-missing", "tools-q-game-sees-both"]
         },
         {
             id: "tools-input-tester",
@@ -108,8 +119,24 @@ function topics() {
                 + "<li>Choose <b>Tools › Device Setup › HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a>. With <b>Gremlin-Platforms controls HidHide</b> on, choose <b>Add Input Tester to the list</b> (shown while it isn't on the list). It goes on the same program list as your game.</li>"
                 + "<li>Choose <b>Input Tester</b> on that page, or <b>Tools › Viewers › Input Tester…</b>. The tester opens and compares what it sees with what this program expects.</li>"
                 + "<li>Read the top line: <b>✓ Pass</b> means the game sees what it should; <b>✗ Fail</b> means at least one row is marked ✗.</li>"
-                + "<li>Move a stick to see its values: axes, buttons and hats move, and the row's <b>activity dot</b> blinks. <b>All devices</b> shows every device at once.</li>"
+                + "<li>Move a stick to see its values: axes, buttons and hats move, and the row's <b>activity dot</b> blinks. <b>All devices</b> shows every device at once. With <b>Follow input</b> on (the switch above the list), the device you move is chosen for you; it waits 1 s before jumping to another device, and does nothing while <b>All devices</b> is shown.</li>"
                 + "</ol>"
+                + "<h4>Start it again after a HidHide change</h4>"
+                + "<p>HidHide checks a program only when the program opens a device. A tester (or a game) that was already running keeps the devices it opened, so after you change HidHide it can go on seeing a stick that is now hidden. Start the tester after the change, and restart a game that was running.</p>"
+                + "<ul>"
+                + "<li>When HidHide changed after the tester started, the tester shows a yellow line \"HidHide changed after this tester started …\" with <b>Restart tester</b>. Choose it: a fresh tester opens and the old one closes.</li>"
+                + "<li>The HidHide page warns \"… was started (HH:MM) before the last HidHide change (HH:MM): restart it so the change applies.\" for each listed program that is running, games too. For the tester it offers <b>Restart Input Tester</b>, which opens a fresh tester; close the old window yourself. This program never closes another program.</li>"
+                + "</ul>"
+                + "<h4>The Logs tab</h4>"
+                + "<p>The tester has two tabs, <b>Devices</b> and <b>Logs</b>. On <b>Logs</b>, choose a log under <b>Log</b>: <b>Tester log (tester.log)</b>, this program's <b>trace.log</b> and <b>system.log</b>, or <b>DirectInput reader (dill_debug.log)</b>. <b>Follow</b> keeps the view at the end while lines are added; <b>Find</b> searches; <b>Show</b> set to <b>Warnings</b> shows only warnings; <b>Copy</b> copies the lines shown; <b>Open folder</b> opens the log's folder. Big files show their last 512 KB. Opened on its own, the tester keeps its log in the window only.</p>"
+                + "<p>The tester log lists each device the tester tried to open and what happened:</p>"
+                + "<ul>"
+                + "<li><b>open → ok</b>: the tester can see the device, so a game on the same list can see it too.</li>"
+                + "<li><b>access denied (5)</b>: HidHide is hiding the device from the tester. For a stick you hide, that's what you want. On the Devices tab such a device shows as a dimmed row \"left out: access denied (hidden from this program)\".</li>"
+                + "<li>\"left out: not a game device\": a keyboard, mouse or other device the tester doesn't show. Other \"left out\" lines give the reason.</li>"
+                + "</ul>"
+                + "<p>Save Diagnostics includes the tester log and the tester's last result.</p>"
+                + "<p>Button 128 and hat 4 always show as off and centered: the DirectInput reader this program uses can't read them, in the tester or in the program.</p>"
                 + "<h4>What each row says</h4>"
                 + "<ul>"
                 + "<li><b>✓ hidden</b>: a hidden stick the tester can't see, as it should be (shown greyed).</li>"
@@ -126,8 +153,10 @@ function topics() {
                 + "<li>HidHide goes by a game's full path. If a listed game is running from another folder (a test build such as PTU, for example), the HidHide page warns \"… is running from …, which isn't on the list\". Add that copy to the list too.</li>"
                 + "<li>If the list has an older copy of the tester (after the program moved), the HidHide page says so; <b>Update path</b> puts the current one on the list.</li>"
                 + "<li>Opened on its own, the tester shows what it sees without ✓ or ✗.</li>"
-                + "</ul>",
-            related: ["tools-hidhide", "tools-trace", "tools-q-game-sees-both"]
+                + "<li>The tester must be its own program, <b>Gremlin Input Tester.exe</b>, installed next to this program. Run from the source code instead, HidHide would see <code>python.exe</code>, not the tester.</li>"
+                + "</ul>"
+                + "<p>How HidHide decides what the tester sees: <a href=\"topic:tools-tech-hidhide\">How HidHide decides</a>.</p>",
+            related: ["tools-hidhide", "tools-tech-hidhide", "tools-trace", "tools-q-game-sees-both"]
         },
 
         {
@@ -330,6 +359,32 @@ function topics() {
             related: ["tools-live", "tools-live-log", "tools-trace"]
         },
 
+        // ---- Technical reference ----
+        {
+            id: "tools-tech-hidhide",
+            section: "Technical reference",
+            title: "How HidHide decides",
+            body: "<p>Exact facts about the HidHide driver (version 1.4.181), for finding out why a program does or doesn't see a device.</p>"
+                + "<table><tr><th>Item</th><th>What HidHide does</th></tr>"
+                + "<tr><td>When it checks</td><td>Only when a program opens a device. A program that already has the device open keeps it after any change (hidden devices, program list, <b>HidHide Enabled</b>, Allow/Block).</td></tr>"
+                + "<tr><td><b>Allow list</b></td><td>Only the listed programs (and this program) can open hidden devices; every other program is refused.</td></tr>"
+                + "<tr><td><b>Block list</b></td><td>The listed programs are refused; every program not on the list can open hidden devices.</td></tr>"
+                + "<tr><td>Which program it judges</td><td>The program that opens the device. Windows' own system processes are never refused.</td></tr>"
+                + "<tr><td>How a program is matched</td><td>By its full exe path: same folder and file name, capital letters ignored, spaces fine. A copy in another folder is another program.</td></tr>"
+                + "<tr><td>How a device is matched</td><td>By its Windows device path. Another USB port can give the stick a new path.</td></tr>"
+                + "<tr><td>Commands</td><td>Read and set the program list, the hidden devices, <b>HidHide Enabled</b> and Allow/Block. There is no command to check running programs again.</td></tr>"
+                + "<tr><td>Making it check again</td><td>Restart the program, or unplug and replug the stick (Windows closes every program's connection to it). Not while flying.</td></tr>"
+                + "<tr><td>HidHide's own window</td><td>While HidHide Configuration Client is open, other programs can't talk to HidHide.</td></tr>"
+                + "<tr><td>A refused open</td><td>The program gets \"access denied (5)\". The Input Tester's <b>Logs</b> tab shows it: HidHide is working.</td></tr>"
+                + "</table>"
+                + "<h4>What this means</h4>"
+                + "<ul>"
+                + "<li>Set HidHide up first, then start the game. After any change, restart the game and the Input Tester.</li>"
+                + "<li>Another program that can see the stick may pass it on. Steam does this through Steam Input when it isn't blocked; whether a game gets the stick depends on that game's Steam Input setting. That's why the Input Tester shows its Steam line.</li>"
+                + "</ul>",
+            related: ["tools-hidhide", "tools-input-tester", "tools-q-game-sees-both"]
+        },
+
         {
             id: "tools-q-identical-sticks",
             section: "Common questions",
@@ -341,8 +396,17 @@ function topics() {
             id: "tools-q-game-sees-both",
             section: "Common questions",
             title: "Why does my game see my stick and vJoy?",
-            body: "<p>Running the profile does not hide controllers. Hide the physical stick with HidHide. See <a href=\"topic:tools-hidhide\">Hide controllers from games with HidHide</a>. To see what the game sees, use the Input Tester: see <a href=\"topic:tools-input-tester\">Check what a game sees (Input Tester)</a>.</p>",
-            related: ["tools-hidhide", "tools-input-tester"]
+            body: "<p>Running the profile does not hide controllers. Hide the physical stick with HidHide. See <a href=\"topic:tools-hidhide\">Hide controllers from games with HidHide</a>. To see what the game sees, use the Input Tester: see <a href=\"topic:tools-input-tester\">Check what a game sees (Input Tester)</a>.</p>"
+                + "<p>If the stick is hidden and the game still sees it, check:</p>"
+                + "<ul>"
+                + "<li>The game was started after the last HidHide change. HidHide checks only when the game opens the stick; restart the game after any change.</li>"
+                + "<li>The stick is ticked on the HidHide page and <b>HidHide Enabled</b> is on.</li>"
+                + "<li>With <b>Allow list</b>, the game is not on the list; with <b>Block list</b>, it is on the list, with the exact path it runs from (a PTU copy is a different program).</li>"
+                + "<li>The stick is in the USB port it was hidden in. Another port can give it a new path that isn't hidden.</li>"
+                + "<li>Steam: another program that can see the stick may pass it on. With <b>Block list</b>, put Steam on the list or turn Steam Input off for the game.</li>"
+                + "</ul>"
+                + "<p>The Input Tester checks all of these at once.</p>",
+            related: ["tools-hidhide", "tools-input-tester", "tools-tech-hidhide"]
         },
         {
             id: "tools-q-older-version",

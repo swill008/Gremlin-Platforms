@@ -88,6 +88,11 @@ def hidhide(
     monkeypatch.setattr(device_initialization, "physical_devices", lambda: [])
     monkeypatch.setattr(hh, "_hidhide_managed", lambda: False)
     monkeypatch.setattr(hh, "_load_links", lambda: {})
+    # No real running program is ever compared with a HidHide change.
+    from gremlin import input_tester_link, process_paths
+
+    monkeypatch.setattr(process_paths, "running_programs", lambda *_a: [])
+    monkeypatch.setattr(input_tester_link, "_last_change", None)
     trace._reset_for_tests()
     if hidhide_watch._on_change in trace._hooks:  # installed by an earlier test
         trace._hooks.remove(hidhide_watch._on_change)

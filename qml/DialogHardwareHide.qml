@@ -197,6 +197,7 @@ ApplicationWindow {
                     }
                     Switch {
                         id: cloakSwitch
+                        objectName: "hidHideCloakSwitch"
                         enabled: _hh.installed && _hh.gremlinControl
                         property bool shown: _hh.cloakOn
                         onShownChanged: if (!pressed) checked = shown
@@ -225,6 +226,8 @@ ApplicationWindow {
                 spacing: Style.dp(4)
                 visible: _hh.testerMessage.length > 0 || _hh.testerPathProblem.length > 0
                          || _hh.gamePathProblems.length > 0
+                         || _hh.staleGameWarnings.length > 0
+                         || _hh.staleTesterWarning.length > 0
 
                 Label {
                     objectName: "hidHideTesterMessage"
@@ -266,6 +269,40 @@ ApplicationWindow {
                         color: Style.warn
                         font.pixelSize: Style.dp(12)
                         text: modelData
+                    }
+                }
+
+                // Started before the last HidHide change (D-02 addendum
+                // item 4): HidHide only checks devices when they're opened.
+                Repeater {
+                    model: _hh.staleGameWarnings
+                    delegate: Label {
+                        required property string modelData
+                        objectName: "hidHideStaleGame"
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: Style.warn
+                        font.pixelSize: Style.dp(12)
+                        text: "⚠ " + modelData
+                    }
+                }
+
+                RowLayout {
+                    visible: _hh.staleTesterWarning.length > 0
+                    Layout.fillWidth: true
+                    spacing: Style.dp(8)
+                    Label {
+                        objectName: "hidHideStaleTester"
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: Style.warn
+                        font.pixelSize: Style.dp(12)
+                        text: "⚠ " + _hh.staleTesterWarning
+                    }
+                    Button {
+                        objectName: "hidHideRestartTester"
+                        text: "Restart Input Tester"
+                        onClicked: _hh.restartInputTester()
                     }
                 }
             }

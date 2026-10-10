@@ -111,6 +111,67 @@ def test_click_selects_row_and_shows_axes(
 
 
 @pytest.mark.parametrize("which", ["fail_run", "pass_run"])
+def test_left_out_hid_row_dimmed(which: str, request: pytest.FixtureRequest) -> None:
+    """Item 6c: a HID path HidHide hides from the tester shows as a dimmed
+    "left out" row."""
+    skipped = request.getfixturevalue(which)["hid_skipped"]
+    assert skipped == [
+        {
+            "label": "left out: access denied (hidden from this program)",
+            "visible": True,
+            "opacity": 0.65,
+        }
+    ]
+
+
+def test_follow_input_selects_moved_device(pass_run: dict) -> None:
+    """Item 7: an axis moved on another device selects and shows it;
+    jitter under 0.05 doesn't; the All devices view never switches."""
+    follow = pass_run["follow"]
+    assert follow["switch_visible"] is True
+    assert follow["switch_on"] is True
+    assert follow["jitter_detail"] == "vJoy Device 1"
+    assert follow["moved"] == {
+        "detail": "Left stick",
+        "row_selected": True,
+        "vjoy_selected": False,
+    }
+    assert follow["all_view"] == {
+        "compact_visible": True,
+        "vjoy_selected": False,
+        "detail_visible": False,
+    }
+
+
+def test_logs_tab_pick_find_follow(pass_run: dict) -> None:
+    logs = pass_run["logs"]
+    assert logs["logs_visible"] is True
+    assert logs["devices_hidden"] is True
+    assert logs["choices"] >= 2  # tester log + dill_debug.log at least
+    assert logs["picked"] == "Tester log (tester.log)"
+    assert logs["lines"] > 0
+    assert any(t.startswith("Started") for t in logs["texts"]), logs["texts"]
+    assert "tester.log" in logs["status"]
+    assert logs["follow_after_off"] is False
+    assert logs["follow_after_on"] is True
+    assert logs["at_end"] is True
+    assert logs["find_matches"] and all(
+        "started" in t.lower() for t in logs["find_matches"]
+    )
+    assert logs["find_count"] != "none"
+    assert logs["warnings_only_all_warn"] is True
+
+
+def test_stale_banner_and_restart(pass_run: dict) -> None:
+    stale = pass_run["stale"]
+    assert stale["before"] is False
+    assert stale["after"] is True
+    assert "HidHide changed after this tester started (program list" in stale["text"]
+    assert len(stale["started"]) == 1
+    assert stale["quits"] == 1
+
+
+@pytest.mark.parametrize("which", ["fail_run", "pass_run"])
 def test_fake_button_press_lights_cell(
     which: str, request: pytest.FixtureRequest
 ) -> None:
