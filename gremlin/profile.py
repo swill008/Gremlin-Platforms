@@ -41,6 +41,7 @@ from gremlin.types import (
     HatDirection,
     InputType,
     ScanCode,
+    VjoyInput,
 )
 from gremlin.user_script import Script, rename_mode_settings
 from gremlin.util import (
@@ -2092,6 +2093,30 @@ class Profile:
             return item
         else:
             return None
+
+    def vjoy_outputs_used(self, mode: str) -> list[VjoyInput]:
+        """The vJoy outputs inputs already send to in this mode: every input
+        of the profile (sticks not plugged in, the Logical Device), and Map
+        to vJoy actions inside others (Condition, Chain, Tempo...) too
+        (08 Q7, GL-189). A binding without a root action has none (GL-190).
+        The one "used" rule for Auto Mapper and a new Map to vJoy (05 S115)."""
+        from action_plugins.map_to_vjoy import MapToVjoyData
+
+        used: list[VjoyInput] = []
+        for items in self.inputs.values():
+            for item in items:
+                if item.mode != mode:
+                    continue
+                for action in reachable(Profile.roots_of([item])):
+                    if isinstance(action, MapToVjoyData):
+                        used.append(
+                            VjoyInput(
+                                action.vjoy_device_id,
+                                action.vjoy_input_type,
+                                action.vjoy_input_id,
+                            )
+                        )
+        return used
 
     @staticmethod
     def roots_of(items: Iterable[InputItem]) -> list[AbstractActionData]:

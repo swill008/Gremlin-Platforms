@@ -5,9 +5,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
+    cast,
     override,
 )
 from xml.etree import ElementTree
@@ -256,6 +258,15 @@ class MapToVjoyModel(ActionModel):
     )
 
 
+# The vJoy kind a new Map to vJoy sends, by its input's kind.
+_KIND_OF_BEHAVIOR = {
+    InputType.JoystickAxis: InputType.JoystickAxis,
+    InputType.JoystickButton: InputType.JoystickButton,
+    InputType.JoystickHat: InputType.JoystickHat,
+    InputType.Keyboard: InputType.JoystickButton,
+}
+
+
 class MapToVjoyData(AbstractActionData):
     """Action feeding a vJoy device."""
 
@@ -301,6 +312,25 @@ class MapToVjoyData(AbstractActionData):
     @override
     def can_create(cls) -> bool:
         return len(device_initialization.output_vjoy_devices()) > 0
+
+    def start_new(self, profile: object, item: object) -> None:
+        """Added by the user (Add Action): start on the first claimed output
+        not used in the input's mode; all used, the first claimed; none
+        claimed, as made (05 S115; "used" as Auto Mapper, S94/S109)."""
+        kinds = [_KIND_OF_BEHAVIOR.get(self.vjoy_input_type, InputType.JoystickButton)]
+        used_of = getattr(profile, "vjoy_outputs_used", None)
+        mode = getattr(item, "mode", None)
+        used: set[tuple[int, InputType, int]] = (
+            set(cast("Iterable[tuple[int, InputType, int]]", used_of(mode)))
+            if callable(used_of) and mode
+            else set()
+        )
+        start = output.first_claimed_output(kinds, exclude=used)
+        if start is None and used:
+            start = output.first_claimed_output(kinds)
+        if start is None:
+            return
+        self.vjoy_device_id, self.vjoy_input_type, self.vjoy_input_id = start
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

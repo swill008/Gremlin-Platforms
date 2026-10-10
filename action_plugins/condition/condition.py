@@ -345,6 +345,11 @@ class VJoyCondition(AbstractCondition):
         self._condition_type = ConditionType.VJoy
         self._create_comparator(self._states[0].input_type)
 
+    def start_on(self, vjoy_id: int, input_type: InputType, input_id: int) -> None:
+        """A new condition starts on this output (05 S113)."""
+        self._create_comparator(input_type)
+        self._states = [self.State(int(vjoy_id), input_type, int(input_id))]
+
     def from_xml(self, node: ElementTree.Element) -> None:
         self._comparator_from_xml(node)
         self._states = [

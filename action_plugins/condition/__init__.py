@@ -29,6 +29,7 @@ from gremlin.base_classes import (
 )
 from gremlin.edits import note_edit
 from gremlin.logical_device import LogicalDevice
+from gremlin.modules import output
 from gremlin.profile import Library
 from gremlin.signal import signal
 from gremlin.tree import TreeNode
@@ -47,6 +48,9 @@ if TYPE_CHECKING:
     from gremlin.ui.action_model import SequenceIndex
     from gremlin.ui.profile import InputItemBindingModel
 
+
+# The kinds a new vJoy condition can start on, in the order looked at.
+_VJOY_KINDS = [InputType.JoystickButton, InputType.JoystickAxis, InputType.JoystickHat]
 
 QML_IMPORT_NAME = "Gremlin.ActionPlugins"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -154,8 +158,20 @@ class ConditionModel(ActionModel):
                 "Condition", "Add a Logical Device control first."
             )
             return
+        start = None
+        if condition_type == ConditionType.VJoy:
+            # Starts on the first output a vJoy output module claims; with
+            # none there is nothing to check (05 S113).
+            start = output.first_claimed_output(_VJOY_KINDS)
+            if start is None:
+                signal.showNotification.emit(
+                    "Condition", "Claim an output on a vJoy output module first."
+                )
+                return
         if condition_type in condition_lookup:
             cond = condition_lookup[condition_type](self)
+            if start is not None and isinstance(cond, ca.VJoyCondition):
+                cond.start_on(*start)
             # If the condition is a CurrentInput one set the input type
             if condition_type == ConditionType.CurrentInput:
                 cond.set_input_type(self._data.behavior_type)

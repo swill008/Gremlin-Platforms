@@ -21,7 +21,8 @@ from PySide6 import QtCore
 
 from gremlin import clock, run_scope, trace
 from gremlin.modules import registry
-from gremlin.modules.claim import claim_allows, claim_ids
+from gremlin.modules.claim import claim_allows, claim_ids, kind_of
+from gremlin.types import InputType
 
 # Action plugins reach the Xbox output through this module, not the driver
 # package (05 Q16).
@@ -578,6 +579,84 @@ def vjoy_exists(vjoy_id: int) -> bool:
         return bool(vjoy.device_exists(int(vjoy_id)))
     except Exception:
         return False
+
+
+def vjoy_driver_ids(vjoy_id: int) -> dict[str, set[int]]:
+    """The axis, button and hat ids the vJoy driver gives this device
+    ({"axes", "buttons", "hats"}); all empty when the program doesn't list
+    it. The one check for "the driver has it" (Auto Mapper, the output
+    picker and new actions, 05 S118). Axes by id: the driver can leave gaps."""
+    from gremlin import device_initialization
+
+    empty: dict[str, set[int]] = {"axes": set(), "buttons": set(), "hats": set()}
+    for device in device_initialization.vjoy_devices() or []:
+        if int(device.vjoy_id) != int(vjoy_id):
+            continue
+        # Its sizes through the driver (08 R7, GL-275).
+        try:
+            axis_count, button_count, hat_count = vjoy_layout(int(vjoy_id))
+        except Exception:  # noqa: BLE001 - the driver can't be read
+            axis_count = button_count = hat_count = 0
+        axes = vjoy_axis_ids(int(vjoy_id))
+        if not (axes or axis_count or button_count or hat_count):
+            # The driver can't be read: the device list's sizes.
+            axes = {int(axis.axis_index) for axis in device.axis_map}
+            button_count = int(device.button_count)
+            hat_count = int(device.hat_count)
+        return {
+            "axes": set(axes),
+            "buttons": set(range(1, int(button_count) + 1)),
+            "hats": set(range(1, int(hat_count) + 1)),
+        }
+    return empty
+
+
+_DRIVER_BUCKET = {"axis": "axes", "button": "buttons", "hat": "hats"}
+
+
+def driver_claim(vjoy_id: int, claim: dict | None) -> dict:
+    """The claim cut to the ids the vJoy driver has (05 S118)."""
+    have = vjoy_driver_ids(vjoy_id)
+    out = dict(claim or {})
+    for kind, bucket in _DRIVER_BUCKET.items():
+        out[bucket] = [i for i in claim_ids(claim, kind) if i in have[bucket]]
+    return out
+
+
+def first_claimed_output(
+    kinds: list[InputType],
+    exclude: set[tuple[int, InputType, int]] | None = None,
+) -> tuple[int, InputType, int] | None:
+    """(vjoy_id, kind, input_id) of the first output a vJoy output module
+    claims: modules by vJoy number, kinds in the order given, ids ascending.
+    Only vJoy devices used as outputs and only ids the driver has; any in
+    `exclude` are passed over. None when there is none (05 S113, S115)."""
+    from gremlin import device_initialization
+
+    skip = {(int(v), t, int(i)) for v, t, i in (exclude or set())}
+    try:
+        outputs = {
+            int(device.vjoy_id)
+            for device in device_initialization.output_vjoy_devices()
+        }
+    except Exception:  # noqa: BLE001 - no device list: nothing to offer
+        return None
+    for vjoy_id, module in vjoy_modules():
+        if int(vjoy_id) not in outputs:
+            continue
+        have = vjoy_driver_ids(vjoy_id)
+        for input_type in kinds:
+            kind = kind_of(input_type)
+            bucket = _DRIVER_BUCKET.get(kind)
+            if bucket is None:
+                continue
+            for input_id in claim_ids(module.claim, kind):
+                if input_id not in have[bucket]:
+                    continue
+                if (int(vjoy_id), input_type, input_id) in skip:
+                    continue
+                return (int(vjoy_id), input_type, input_id)
+    return None
 
 
 class _ScriptAxis:

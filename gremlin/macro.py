@@ -583,7 +583,8 @@ class JoystickAction(AbstractAction):
 
     @classmethod
     def create(cls) -> JoystickAction:
-        return JoystickAction(dill.UUID_Invalid, InputType.JoystickButton, 0, False)
+        # A new step presses (05 S116); a loaded one reads its own value.
+        return JoystickAction(dill.UUID_Invalid, InputType.JoystickButton, 0, True)
 
     def __call__(self) -> None:
         """Emits an Event instance through the EventListener system.
@@ -696,7 +697,7 @@ class KeyAction(AbstractAction):
 
     @classmethod
     def create(cls) -> KeyAction:
-        return KeyAction(None, False)
+        return KeyAction(None, True)  # presses (05 S116)
 
     def __call__(self) -> None:
         if self.key is None:
@@ -828,9 +829,13 @@ class LogicalDeviceAction(AbstractAction):
         to fill in. It never creates a control itself (06 Q15)."""
         inputs = LogicalDevice().inputs_of_type()
         if not inputs:
-            return LogicalDeviceAction(InputType.JoystickButton, None, False)
+            return LogicalDeviceAction(InputType.JoystickButton, None, True)
         first_input = inputs[0]
-        return LogicalDeviceAction(first_input.type, first_input.id, first_input._value)
+        # A button step presses (05 S116); others start on the current value.
+        value = (
+            True if first_input.type == InputType.JoystickButton else first_input._value
+        )
+        return LogicalDeviceAction(first_input.type, first_input.id, value)
 
     def __call__(self) -> None:
         ident = self.current_identifier()
@@ -953,7 +958,7 @@ class MouseButtonAction(AbstractAction):
 
     @classmethod
     def create(cls) -> MouseButtonAction:
-        return MouseButtonAction(MouseButton.Left, False)
+        return MouseButtonAction(MouseButton.Left, True)  # presses (05 S116)
 
     def __call__(self) -> None:
         if self.button == MouseButton.WheelDown:
@@ -1093,8 +1098,10 @@ class VJoyAction(AbstractAction):
 
     @classmethod
     def create(cls) -> VJoyAction:
-        # FIXME: Implement a function returning a valid vJoy input
-        return VJoyAction(1, InputType.JoystickButton, 1, False)
+        # Load-safe: a loaded step reads its own output. The macro editor
+        # starts a new step on the first claimed output (05 S113); a new
+        # button step presses (05 S116).
+        return VJoyAction(1, InputType.JoystickButton, 1, True)
 
     def __call__(self) -> None:
         try:

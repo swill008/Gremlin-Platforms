@@ -164,6 +164,7 @@ def test_condition_on_a_deleted_control_whose_number_is_reused_is_false() -> Non
     logical = LogicalDevice()
     old = logical.create(B, label="Fire")
     cond = ca.LogicalDeviceCondition()
+    cond._comparator.is_pressed = False  # asks "released" (new ones ask Pressed, 05 S116)
     node = cond.to_xml()
     assert util.read_property(node, "uid", PropertyType.String) == old.uid
 
@@ -172,7 +173,7 @@ def test_condition_on_a_deleted_control_whose_number_is_reused_is_false() -> Non
 
     loaded = ca.LogicalDeviceCondition()
     loaded.from_xml(node)
-    # The default asks for "released": it used to read "Brake" (same number), true.
+    # It asks for "released": it used to read "Brake" (same number), true.
     assert loaded(Value(True)) is False
     assert loaded._states[0].display_name() == "(missing)"
     again = loaded.to_xml()
@@ -184,7 +185,9 @@ def test_condition_follows_its_control_by_uid() -> None:
 
     logical = LogicalDevice()
     fire = logical.create(B, label="Fire")
-    node = ca.LogicalDeviceCondition().to_xml()
+    cond = ca.LogicalDeviceCondition()
+    cond._comparator.is_pressed = False  # asks "released" (new ones ask Pressed, 05 S116)
+    node = cond.to_xml()
     logical.delete(fire.identifier)
     logical.create(B, label="Other")
     logical.create(B, input_id=5, label="Fire", uid=fire.uid)

@@ -11,6 +11,7 @@ from PySide6 import QtCore
 
 import dill
 import gremlin.ui.type_aliases as ta
+from gremlin import shared_state
 from gremlin.config import Configuration
 from gremlin.error import (
     GremlinError,
@@ -299,12 +300,16 @@ class ActionModel(QtCore.QObject):
         """
         # Into the edited input's library; Merge Axis reuses one an input
         # uses, which the pane then edits as a copy until OK (A4).
+        item = self._binding_model.input_item_binding.input_item
         action = self.library.create(
-            action_name,
-            InputType.to_enum(self._action_behavior()),
-            item=self._binding_model.input_item_binding.input_item,
+            action_name, InputType.to_enum(self._action_behavior()), item=item
         )
         if action:
+            # A new action may pick its own start (Map to vJoy, 05 S115);
+            # never on load or for Auto Mapper's own actions.
+            start_new = getattr(action, "start_new", None)
+            if callable(start_new):
+                start_new(shared_state.current_profile, item)
             self._data.insert_action(action, selector)
             self._binding_model.sync_data()
             _emit_input_item_changed_later(

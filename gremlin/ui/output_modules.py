@@ -7,12 +7,12 @@ from dataclasses import dataclass
 
 from PySide6 import QtCore
 
-from gremlin import common, event_handler
-from gremlin.signal import signal
-from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
+from gremlin import common, event_handler
 from gremlin.modules import output
 from gremlin.modules.claim import claim_friendly, claim_ids, kind_of
+from gremlin.signal import signal
+from gremlin.types import InputType
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -30,9 +30,15 @@ _AXIS_WORDS = {
 
 
 def _dest_modules() -> list[dict]:
-    """vJoy output modules, one per vJoy device, by vJoy number."""
+    """vJoy output modules, one per vJoy device, by vJoy number; each claim
+    cut to the ids the vJoy device has (05 S118, the Auto Mapper check). A
+    saved wire to one it lacks is kept and flagged, not re-pointed."""
     return [
-        {"name": module.name, "vjoy_id": vjoy_id, "claim": module.claim}
+        {
+            "name": module.name,
+            "vjoy_id": vjoy_id,
+            "claim": output.driver_claim(vjoy_id, module.claim),
+        }
         for vjoy_id, module in output.vjoy_modules()
     ]
 
@@ -296,7 +302,9 @@ class OutputModuleDevices(QtCore.QObject):
         fset=_set_valid_types,
         notify=validTypesChanged,
     )
-    hasValidVJoyDevices = QtCore.Property(bool, fget=_get_has_valid, notify=choicesChanged)
+    hasValidVJoyDevices = QtCore.Property(
+        bool, fget=_get_has_valid, notify=choicesChanged
+    )
     currentUnclaimed = QtCore.Property(
         bool, fget=_get_current_unclaimed, notify=choicesChanged
     )

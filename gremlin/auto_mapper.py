@@ -162,7 +162,9 @@ class AutoMapper:
                     )
                     target = types.VjoyInput(vjoy_id, input_type, int(hid))
                     if options.overwrite_used_inputs:
-                        roots = self._profile.roots_of([item] if item is not None else [])
+                        roots = self._profile.roots_of(
+                            [item] if item is not None else []
+                        )
                         if item is not None and item.action_sequences:
                             self._removed_actions = True
                         item.action_sequences.clear()
@@ -271,57 +273,24 @@ class AutoMapper:
     def _vjoy_limits(self, vjoy_id: int) -> dict | None:
         """What the vJoy device has; empty when it isn't there. None: it is
         read back as an input, so it is no output (GL-313)."""
-        empty: dict = {"axes": set(), "buttons": set(), "hats": set()}
         outputs = {
             int(device.vjoy_id)
             for device in device_initialization.output_vjoy_devices()
         }
-        for device in device_initialization.vjoy_devices() or []:
-            if int(device.vjoy_id) != int(vjoy_id):
-                continue
-            if int(vjoy_id) not in outputs:
-                return None
-            # Its sizes through the output module (08 R7, GL-275); axes by
-            # id, as the driver can leave gaps (1, 2, 6).
-            try:
-                axis_count, button_count, hat_count = output.vjoy_layout(int(vjoy_id))
-            except Exception:  # noqa: BLE001 - the driver can't be read
-                axis_count = button_count = hat_count = 0
-            axes = output.vjoy_axis_ids(int(vjoy_id))
-            if not (axes or axis_count or button_count or hat_count):
-                # The driver can't be read: the device list's sizes, as
-                # before (no control skipped for that).
-                axes = {int(axis.axis_index) for axis in device.axis_map}
-                button_count = int(device.button_count)
-                hat_count = int(device.hat_count)
-            return {
-                "axes": axes,
-                "buttons": set(range(1, int(button_count) + 1)),
-                "hats": set(range(1, int(hat_count) + 1)),
-            }
-        return empty
+        listed = {
+            int(device.vjoy_id) for device in device_initialization.vjoy_devices() or []
+        }
+        if int(vjoy_id) in listed and int(vjoy_id) not in outputs:
+            return None
+        # The one "driver has it" check (05 S118).
+        return output.vjoy_driver_ids(int(vjoy_id))
 
     def _get_used_vjoy_inputs(self, mode: str) -> list[types.VjoyInput]:
         """The vJoy outputs inputs already send to in this mode: every input
         of the profile (sticks not plugged in, the Logical Device), and Map
         to vJoy actions inside others (Condition, Chain, Tempo...) too
         (08 Q7, GL-189). A binding without a root action has none (GL-190)."""
-        used_vjoy_inputs = []
-        for input_items in self._profile.inputs.values():
-            for input_item in input_items:
-                if input_item.mode != mode:
-                    continue
-                roots = profile.Profile.roots_of([input_item])
-                for action in profile.reachable(roots):
-                    if isinstance(action, map_to_vjoy.MapToVjoyData):
-                        used_vjoy_inputs.append(
-                            types.VjoyInput(
-                                action.vjoy_device_id,
-                                action.vjoy_input_type,
-                                action.vjoy_input_id,
-                            )
-                        )
-        return used_vjoy_inputs
+        return self._profile.vjoy_outputs_used(mode)
 
     def _create_new_mapping(
         self, physical_input: profile.InputItem, vjoy_input: types.VjoyInput

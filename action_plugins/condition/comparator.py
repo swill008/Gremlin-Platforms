@@ -222,8 +222,9 @@ class PressedComparator(AbstractComparator):
 
     model = PressedComparatorModel
 
-    def __init__(self, is_pressed: bool = False) -> None:
-        """Creates a new comparator instance.
+    def __init__(self, is_pressed: bool = True) -> None:
+        """Creates a new comparator instance; a new one checks Pressed
+        (05 S116), a loaded one reads its own state.
 
         Args:
             is_pressed: state in which the button should be in
