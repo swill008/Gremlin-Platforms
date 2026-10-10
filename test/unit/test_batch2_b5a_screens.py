@@ -167,10 +167,11 @@ Window {
     )
     root = pane._pane_shadow.action_sequences[0].root_action
     root.insert_action(action, "children")
-    s._Out.result("before-ok", f"{js('String(_page.paneHasChanges())')} {written()}")
+    dirty = js("String(_page.actionPane.paneHasChanges())")
+    s._Out.result("before-ok", f"{dirty} {written()}")
     js("findText(_page, 'OK').clicked(); 1")
     s._wait(200)
-    dirty = js("String(_page.paneHasChanges())")
+    dirty = js("String(_page.actionPane.paneHasChanges())")
     undo = js("String(_page.layoutModel.canUndo)")
     s._Out.result("after-ok", f"{dirty} {written()} {undo}")
     js("findName(findName(_page, 'keyboardUndoBar'), 'undoBarUndo').clicked(); 1")

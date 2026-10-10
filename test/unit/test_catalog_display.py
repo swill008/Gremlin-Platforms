@@ -10,6 +10,8 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 _PAGE = _ROOT / "qml/ConfigurationPage.qml"
 _PANEL = _ROOT / "qml/ListAppearancePanel.qml"
+_PART = _ROOT / "qml/PageAppearance.qml"
+_MENU = _ROOT / "qml/control_menu.js"
 _PANE = _ROOT / "qml/ActionPane.qml"
 _TREE = _ROOT / "qml/ControlTree.qml"
 _MAIN = _ROOT / "qml/Main.qml"
@@ -30,13 +32,21 @@ def test_main_has_catalog_display_button() -> None:
     # The Configuration page's button is on its own bar under the toolbar
     # (01 S58a); its open state is the page's, one for every device (S125).
     assert "catalogPanel" not in text
+    # The bar and the open state come from the shared PageAppearance part
+    # (to-do 91); the page gives its key and button name.
     page = _PAGE.read_text(encoding="utf-8")
-    bar = page[page.index("property Component pageBar"):]
+    use = page[page.index("PageAppearance {"):]
+    use = use[: use.index("}")]
+    assert 'buttonName: "configurationAppearanceButton"' in use
+    assert 'pageKey: "configuration"' in use
+    assert "readonly property Component pageBar: _appear.pageBar" in page
+    part = _PART.read_text(encoding="utf-8")
+    bar = part[part.index("property Component pageBar"):]
     bar = bar[: bar.index("onClicked")]
-    assert 'objectName: "configurationAppearanceButton"' in bar
-    assert 'text: _root.displayOpen ? "Hide Appearance" : "Appearance…"' in bar
-    assert '_place.setDisplayPanelOpen("configuration", "page", displayOpen)' in page
-    assert 'displayOpen = _place.displayPanelOpen("configuration", "page")' in page
+    assert "objectName: _part.buttonName" in bar
+    assert 'text: _part.displayOpen ? "Hide Appearance" : "Appearance…"' in bar
+    assert '_openPlace.setDisplayPanelOpen(pageKey, "page", displayOpen)' in part
+    assert 'displayOpen = _openPlace.displayPanelOpen(pageKey, "page")' in part
 
 
 def test_assignment_summary_counts_destinations() -> None:
@@ -67,7 +77,8 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "function openAction(key, seq, title)" in qml
     main = _MAIN.read_text(encoding="utf-8")
     assert "DialogActionEditor.qml" not in main
-    assert 'MenuModel.action("Add Action"' in qml
+    assert "addAction: function() { addAction(_menuKey, _menuTitle) }" in qml
+    assert 'M.action("Add Action"' in _MENU.read_text(encoding="utf-8")
     assert "_hold_reload" not in py
     assert "setHoldReload" not in qml
     assert "signal.inputItemChanged.connect(self.reload)" not in py
@@ -125,7 +136,7 @@ def test_save_writes_catalog_not_view() -> None:
     assert "_place.setListAppearance(pageKey," in save
     assert "required property string pageKey" in text
     page = _PAGE.read_text(encoding="utf-8")
-    panel = page[page.index("ListAppearancePanel {"):]
+    panel = page[page.index("PageAppearance {"):]
     assert 'pageKey: "configuration"' in panel[: panel.index("}")]
     assert "saveViewConfig" not in save and "saveCatalogConfig" not in save
     mm = _MM.read_text(encoding="utf-8")
@@ -221,7 +232,8 @@ def test_inline_editor_colors_are_properties() -> None:
     assert "color: editorFill" in text
     qml = _PAGE.read_text(encoding="utf-8")
     assert "function openAction(key, seq, title)" in qml
-    assert 'MenuModel.action("Add Action"' in qml
+    assert "addAction: function() { addAction(_menuKey, _menuTitle) }" in qml
+    assert 'M.action("Add Action"' in _MENU.read_text(encoding="utf-8")
     assert 'text: "Close pane after OK"' in _PANE.read_text(encoding="utf-8")
 
 

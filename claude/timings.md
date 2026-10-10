@@ -414,4 +414,19 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Lead: PS1 impact analysis (compare page functions/menus across 4 pages) | review | 5–10 min (table: read-only study) | 2 min | 13:45–13:47 |
 | 2026-10-10 | Lead: to-do 91 (shared page base plan + notes) + tracker | docs | no timing data yet; rough guess 5 min | 4 min | 13:48–13:52 |
 | 2026-10-10 | DRIFT-FIX: OSC Appearance menu row, Keyboard requestCloseDisplay, alike test | fix | 3–8 min (table) | 1 min | 13:51–13:52 |
-| 2026-10-10 | Lead: CI 6a55f094 failure (test_input_tester_link write/mtime order) found + fixed | fix | 3–8 min (table: agent fix) | 4 min | 13:53–13:57 |
+| 2026-10-10 | Lead: CI 6a55f094 failure (test_input_tester_link write/mtime order) found + fixed | fix | 3–8 min (table: agent fix) | 2 min | 13:52–13:54 |
+| 2026-10-10 | Lead: Method B brief, contract, to-do 91 rewrite, wave 1 briefs | planning | no timing data yet; rough guess 5 min | 3 min | 14:04–14:07 |
+| 2026-10-10 | SB-APPEAR: PageAppearance.qml shared part + test | refactor | 5–10 min (table) | 2 min | 14:06–14:08 |
+| 2026-10-10 | SB-PANE: leave functions into ActionPane + Main _paneOf | refactor | 5–10 min (table) | 4 min | 14:05–14:09 |
+| 2026-10-10 | SB-SHOTS part 1: 24 before screenshots, two runs identical | test | rough guess 8–12 min (no row) | 6 min | 14:05–14:11 |
+| 2026-10-10 | Lead: wave 2 page brief + 6 briefs | planning | no timing data yet; rough guess 3 min | 2 min | 14:11–14:13 |
+| 2026-10-10 | SB-MENU: control_menu.js standard menu + menus-unchanged proof | refactor | 5–10 min (table) | 6 min | 14:06–14:12 |
+| 2026-10-10 | SB-LOG: Logical page on shared parts (783 -> 651 lines) | refactor | 10–17 min (today's page rows) | 2 min | 14:11–14:13 |
+| 2026-10-10 | SB-CFG: Configuration page on shared parts + Clear Name (752 -> 644 lines) | refactor | 10–17 min (today's page rows) | 2 min | 14:11–14:13 |
+| 2026-10-10 | SB-OSC: OSC page on shared parts (1176 -> 1069 lines) | refactor | 10–17 min (today's page rows) | 2 min | 14:12–14:14 |
+| 2026-10-10 | SB-TESTS: tests retargeted to shared parts + PB2 check | test | 3–8 min (table) | 3 min | 14:12–14:15 |
+| 2026-10-10 | SB-KEY: Keyboard page on shared parts (581 -> 472 lines) | refactor | 10–17 min (today's page rows) | 4 min | 14:11–14:15 |
+| 2026-10-10 | SB-SHOTS part 2: after vs before, 23/24 identical, 1 = PB2 Clear Name | test | rough guess 3–5 min (no row) | 3 min | 14:15–14:17 |
+| 2026-10-10 | SB-MAP: map, S132 (PB2), D-05-PAGE-PARTS, glossary | docs | 3–8 min (table) | 5 min | 14:12–14:17 |
+| 2026-10-10 | Shared parts full run + lint (lead) | test | 6–7 min + lint (table) | 5.5 min | 14:17–14:23; run 5:14; 1 fail = key title 'a' vs 'A' (order-dependent) |
+| 2026-10-10 | KEYNAME: key names depended on lookup order ('a' vs 'A') — fixed in keyboard.py + test | fix | 3–8 min (table) | 2 min | 14:23–14:25 |

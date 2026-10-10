@@ -124,7 +124,9 @@ def _keyboard_pane(j: Journey) -> object:
     editor = layout.paneModel
     root = editor.data(editor.index(0, 0), 0x0100 + 1).rootAction
     root.appendAction("Map to vJoy", "children")
-    j.wait_until(lambda: j.ev("hasUnsaved()", page), "the pane's unsaved edit")
+    j.wait_until(
+        lambda: j.ev("actionPane.hasUnsaved()", page), "the pane's unsaved edit"
+    )
     pane = next(
         i for i in j.walk(page) if i.metaObject().className().startswith("ActionPane")
     )

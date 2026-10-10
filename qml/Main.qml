@@ -602,7 +602,17 @@ ApplicationWindow {
     // Each open page with unsaved edits asks in turn (Save / Discard /
     // Cancel); its leaveResolved() comes back here for the next one.
     function _leavePages() {
-        return [outputPane(), configurationPane(), keyboardPane(), logicalPane(), oscPane()]
+        var pages = [outputPane(), configurationPane(), keyboardPane(), logicalPane(), oscPane()]
+        var out = []
+        for (var i = 0; i < pages.length; ++i)
+            out.push(_paneOf(pages[i]))
+        return out
+    }
+
+    // What answers the leave / pane calls for a page: its shared ActionPane
+    // (`property alias actionPane`), or the page itself (Output View).
+    function _paneOf(page) {
+        return page ? (page.actionPane || page) : null
     }
 
     function continueDisplayLeave() {
@@ -633,7 +643,7 @@ ApplicationWindow {
         var all = [configurationPane(), keyboardPane(), logicalPane(), oscPane()]
         for (var i = 0; i < all.length; ++i)
             if (all[i])
-                panes.push(all[i])
+                panes.push(_paneOf(all[i]))
         return panes
     }
 
@@ -2024,9 +2034,11 @@ ApplicationWindow {
         function onProfileChanged() {
             var pages = [_root.configurationPane(), _root.keyboardPane(),
                          _root.logicalPane(), _root.oscPane()]
-            for (var i = 0; i < pages.length; ++i)
-                if (pages[i] && pages[i].closePaneNow)
-                    pages[i].closePaneNow()
+            for (var i = 0; i < pages.length; ++i) {
+                var pane = _root._paneOf(pages[i])
+                if (pane && pane.closePaneNow)
+                    pane.closePaneNow()
+            }
         }
 
         function onQuitRequested() {
@@ -2467,7 +2479,7 @@ ApplicationWindow {
             }
 
             Connections {
-                target: _logicalLoader.item
+                target: _root._paneOf(_logicalLoader.item)
                 ignoreUnknownSignals: true
                 function onLeaveResolved() { _root.continueDisplayLeave() }
                 function onLeaveCancelled() { _root.cancelDisplayLeave() }
@@ -2495,7 +2507,7 @@ ApplicationWindow {
             }
 
             Connections {
-                target: _oscPageLoader.item
+                target: _root._paneOf(_oscPageLoader.item)
                 ignoreUnknownSignals: true
                 function onLeaveResolved() { _root.continueDisplayLeave() }
                 function onLeaveCancelled() { _root.cancelDisplayLeave() }
@@ -2517,7 +2529,7 @@ ApplicationWindow {
             onLoaded: _root.syncConfigurationPage()
 
             Connections {
-                target: _configPageLoader.item
+                target: _root._paneOf(_configPageLoader.item)
                 ignoreUnknownSignals: true
                 function onLeaveResolved() { _root.continueDisplayLeave() }
                 function onLeaveCancelled() { _root.cancelDisplayLeave() }
@@ -2537,7 +2549,7 @@ ApplicationWindow {
             source: "KeyboardPage.qml"
 
             Connections {
-                target: _keyboardPageLoader.item
+                target: _root._paneOf(_keyboardPageLoader.item)
                 ignoreUnknownSignals: true
                 function onLeaveResolved() { _root.continueDisplayLeave() }
                 function onLeaveCancelled() { _root.cancelDisplayLeave() }

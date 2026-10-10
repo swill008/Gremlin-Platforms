@@ -11,6 +11,7 @@ import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
+import "control_menu.js" as ControlMenu
 import Gremlin.UI
 
 // The OSC page (09 S129-S140): the Logical Device page on the shared base
@@ -31,9 +32,13 @@ Item {
     readonly property alias monitorPanel: _monitor
     readonly property alias addWindow: _addDialog
     readonly property alias deviceModel: _devices
-    // This page's own list Appearance panel (05 S125, AP2), shown or hidden.
-    property bool displayOpen: false
-    property bool _displayReady: false
+    // The page's Appearance part (PageAppearance.qml, to-do 91).
+    property alias displayOpen: _appear.displayOpen
+    readonly property Component pageBar: _appear.pageBar
+    function toggleAppearance() { _appear.toggleAppearance() }
+    function requestCloseDisplay() { _appear.requestCloseDisplay() }
+    // The leave / unsaved-changes functions live in the pane (to-do 91).
+    property alias actionPane: _pane
     // The list's open parents, folded groups and selection (ControlTree.qml).
     property alias _picked: _tree.picked
 
@@ -53,47 +58,11 @@ Item {
         onActivated: _layout.redo()
     }
 
-    signal leaveResolved()
-    signal leaveCancelled()
-
     function setMode(next) {
         mode = next || "Default"
         _layout.setMode(mode)
         _devices.setMode(mode)
     }
-
-    property bool _leavingPage: false
-
-    function hasUnsaved() { return _pane.hasUnsaved() }
-
-    // Main.closeActionPanes() asks these before a tool changes bindings
-    // behind the pane (05 Q8) or Run starts (06 Q6).
-    function paneHasChanges() { return hasUnsaved() }
-
-    function closeActionPane() { closePaneNow() }
-
-    function savePane() { return _pane.save() }
-
-    function requestLeave() {
-        if (!hasUnsaved()) {
-            leaveResolved()
-            return
-        }
-        _leavingPage = true
-        _pane.askLeave("The action editor has changes that are not saved.")
-    }
-
-    function _finishLeave(resolved) {
-        if (!_leavingPage)
-            return
-        _leavingPage = false
-        if (resolved)
-            leaveResolved()
-        else
-            leaveCancelled()
-    }
-
-    function closePaneNow() { _pane.closeNow() }
 
     function _openPane(key, seq, title) { _pane.openAt(key, seq, title) }
 
@@ -211,31 +180,6 @@ Item {
     }
 
     // OSC's Module Setup (D-09-OSC-TABS), as Options' OSC line opens it.
-    // The Appearance panel; hiding asks about unsaved changes, like its ×.
-    function toggleAppearance() {
-        if (displayOpen)
-            requestCloseDisplay()
-        else
-            displayOpen = true
-    }
-
-    function requestCloseDisplay() { _appear.requestClose() }
-
-    onDisplayOpenChanged: if (_displayReady) _monitorPlace.setDisplayPanelOpen("osc", "page", displayOpen)
-
-    // The page's own controls on the bar under the toolbar (01 S58a).
-    property Component pageBar: Component {
-        RowLayout {
-            Layout.fillWidth: true
-            Item { Layout.fillWidth: true }
-            Button {
-                objectName: "oscAppearanceButton"
-                text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
-                onClicked: _root.toggleAppearance()
-            }
-        }
-    }
-
     function openSetup() {
         if (typeof signal !== "undefined" && signal && signal.openOscModuleSetup) {
             signal.openOscModuleSetup()
@@ -486,7 +430,7 @@ Item {
     OscLayoutModel { id: _layout }
     Connections {
         target: _layout
-        function onPaneLost() { _root.closePaneNow() }
+        function onPaneLost() { _pane.closeNow() }
         // A feedback row that is gone (deleted, Undo) closes its editor.
         function onFeedbackEditorChanged() {
             if (_pane.open && _layout.isFeedbackKey(_pane.paneKey) && !(_layout.feedbackEditor || {}).key)
@@ -511,9 +455,6 @@ Item {
     }
 
     Component.onCompleted: {
-        _appear.load()
-        displayOpen = _monitorPlace.displayPanelOpen("osc", "page")
-        _displayReady = true
         _layout.setMode(mode)
         _devices.setMode(mode)
         _loadMonitorHeight()
@@ -692,21 +633,16 @@ Item {
                     _root._pendingOpen = null
                     if (next && resolved)
                         _root.openFeedback(next.key, next.title)
-                    _root._finishLeave(resolved)
                 }
             }
 
             // This page's own list Appearance (05 S125, AP2).
-            ListAppearancePanel {
+            PageAppearance {
                 id: _appear
                 objectName: "oscAppearance"
                 pageKey: "osc"
-                visible: _root.displayOpen
+                buttonName: "oscAppearanceButton"
                 title: "OSC — Appearance"
-                Layout.preferredWidth: Style.dp(360)
-                Layout.maximumWidth: Style.dp(360)
-                Layout.fillHeight: true
-                onClosed: _root.displayOpen = false
             }
         }
 
@@ -949,94 +885,56 @@ Item {
     }
 
     function _layoutMenuModel() {
-        var locked = editorLocked
-        var onRow = _menuOnRow && !locked
-        var onGroup = _menuOnGroup && !locked
-        var many = _picked.length > 1
-        var kind = onRow ? "osc-row" : (onGroup ? "osc-group" : "osc")
-        var title = onRow ? (many ? _picked.length + " inputs" : _menuTitle)
-                          : (onGroup ? _groupName : "OSC")
-        var header = locked ? [] : [
-            { label: "Undo", enabled: _layout.canUndo && !actionOpen, run: function() { _layout.undo() } },
-            { label: "Redo", enabled: _layout.canRedo && !actionOpen, run: function() { _layout.redo() } }
-        ]
-        var quick = []
-        if (onRow) {
-            if (!many) {
-                quick.push(MenuModel.action("Add Action", function() { _openNewPane(_menuKey, _menuTitle) }))
-                quick.push(MenuModel.action("Add Feedback", function() { addFeedback(_menuKey) }))
-                quick.push(MenuModel.action("Rename", _renameRow))
-                quick.push(MenuModel.action("Change Address…", function() { _askChangeAddress(_menuKey) }))
-            }
-            quick.push(MenuModel.action(many ? "Edit Settings of " + _picked.length + " Inputs…" : "Edit Settings…",
+        return ControlMenu.standardMenu(_root, {
+            layout: _layout, kind: "osc", pageTitle: "OSC", manyNoun: "inputs", rowSingleOnly: true,
+            addAction: function() { _openNewPane(_menuKey, _menuTitle) },
+            quickAfterAdd: function(st) {
+                return st.many ? [] : [MenuModel.action("Add Feedback", function() { addFeedback(_menuKey) })]
+            },
+            quickBeforeHistory: function(st) {
+                var q = []
+                if (!st.many)
+                    q.push(MenuModel.action("Change Address…", function() { _askChangeAddress(_menuKey) }))
+                q.push(MenuModel.action(st.many ? "Edit Settings of " + st.count + " Inputs…" : "Edit Settings…",
                                         function() { editSettings(_selectedKeys()) }))
-            if (!many) {
-                quick.push(MenuModel.action("Copy for Companion", function() { copyForCompanion(_menuKey) }))
-                if (_menuKey.indexOf(":axis:") >= 0)
-                    quick.push(MenuModel.number("Send Test Value", 0.5, -1, 1, "", function(v) {
-                        sendTestValue(_menuKey, v)
-                    }, true, { step: 0.1, go: "Send" }))
-                else
-                    quick.push(MenuModel.action("Send Test Press", function() { sendTestPress(_menuKey) }))
-                quick.push(MenuModel.action("History", _openHistory))
-            }
-        }
-        if (onGroup)
-            quick.push(MenuModel.action("Rename Group", _renameGroup))
-        if (!_menuOnRow && !_menuOnGroup)
-            quick.push(MenuModel.action("Feedback settings…", function() { openFeedbackSettings() }))
-        quick.push(MenuModel.action("Appearance…", function() { displayOpen = true }))
-
-        var moveTo = []
-        if (onRow) {
-            var groups = _layout.groups || []
-            for (var i = 0; i < groups.length; i++) {
-                (function(g) {
-                    moveTo.push(MenuModel.action("Move to " + g.title, function() {
-                        Qt.callLater(function() { _layout.moveSelected(g.name) })
-                    }))
-                })(groups[i])
-            }
-        }
-        return MenuModel.menu(kind, title, quick, [
-            onRow && !many ? MenuModel.section("companion", "Companion feedback", [
-                MenuModel.action("Key text", function() { addCompanionFeedback(_menuKey, "text") }),
-                MenuModel.action("Key color", function() { addCompanionFeedback(_menuKey, "colour") })
-            ]) : null,
-            onRow ? MenuModel.section("row", "Row", [
-                MenuModel.action("Clear Name", function() {
-                    _askClearName(_menuKey, _menuTitle, _menuUser)
-                }, _menuUser.length > 0 && !many),
-                MenuModel.action(many ? "Delete " + _picked.length + " inputs…" : "Delete…", function() {
+                if (!st.many) {
+                    q.push(MenuModel.action("Copy for Companion", function() { copyForCompanion(_menuKey) }))
+                    if (_menuKey.indexOf(":axis:") >= 0)
+                        q.push(MenuModel.number("Send Test Value", 0.5, -1, 1, "", function(v) {
+                            sendTestValue(_menuKey, v)
+                        }, true, { step: 0.1, go: "Send" }))
+                    else
+                        q.push(MenuModel.action("Send Test Press", function() { sendTestPress(_menuKey) }))
+                }
+                return q
+            },
+            quickEnd: function(st) {
+                return st.onEmpty ? [MenuModel.action("Feedback settings…", function() { openFeedbackSettings() })] : []
+            },
+            clearNameEnabled: function(st) { return _menuUser.length > 0 && !st.many },
+            rowItems: function(st) {
+                return [MenuModel.action(st.many ? "Delete " + st.count + " inputs…" : "Delete…", function() {
                     _askDeleteRows(_selectedKeys(), _menuTitle)
-                }, true, { danger: true })
-            ]) : null,
-            onRow ? MenuModel.section("group", "Group", [
-                MenuModel.entry("Group as", function(name) { _groupAs(name) }, true,
-                                { placeholder: "Name, then Enter" })
-            ].concat(moveTo)) : null,
-            locked ? null : MenuModel.section("add", "Add Inputs", [
-                MenuModel.action("Add…", function() { openAdd() }),
-                MenuModel.action("Import…", function() { openImport() }),
-                MenuModel.action("From TouchOSC Layout…", function() { openTouchOsc() }),
-                MenuModel.action("Listen", function() { listen() }),
-                MenuModel.action("Clear…", function() { askClear() }, _devices.rowCount() > 0,
-                                 { danger: true })
-            ]),
-            locked ? null : MenuModel.section("groups", "Groups", [
-                MenuModel.entry("New Group", function(name) { _layout.addGroup(name) }, true,
-                                { placeholder: "Name, then Enter", keepOpen: true }),
-                onGroup ? MenuModel.action("Move Group Up", function() { _layout.moveGroupUp(_groupName) }) : null,
-                onGroup ? MenuModel.action("Move Group Down", function() { _layout.moveGroupDown(_groupName) }) : null,
-                onGroup ? MenuModel.action("Delete Group", function() { _askDeleteGroup(_groupName) }, true,
-                                           { danger: true }) : null
-            ]),
-            locked ? null : MenuModel.section("order", "Order", [
-                MenuModel.action("By Address", function() { _layout.sortBySystem() }),
-                MenuModel.action("By Your Name", function() { _layout.sortByName() }),
-                MenuModel.action("Group Names A to Z", function() { _layout.sortGroupNames() })
-            ])
-        ], header)
+                }, true, { danger: true })]
+            },
+            sortSystemLabel: "By Address",
+            extraSections: function(st) {
+                return [
+                    { at: "start", section: st.onRow && !st.many ? MenuModel.section("companion", "Companion feedback", [
+                        MenuModel.action("Key text", function() { addCompanionFeedback(_menuKey, "text") }),
+                        MenuModel.action("Key color", function() { addCompanionFeedback(_menuKey, "colour") })
+                    ]) : null },
+                    { at: "afterGroup", section: st.locked ? null : MenuModel.section("add", "Add Inputs", [
+                        MenuModel.action("Add…", function() { openAdd() }),
+                        MenuModel.action("Import…", function() { openImport() }),
+                        MenuModel.action("From TouchOSC Layout…", function() { openTouchOsc() }),
+                        MenuModel.action("Listen", function() { listen() }),
+                        MenuModel.action("Clear…", function() { askClear() }, _devices.rowCount() > 0,
+                                         { danger: true })
+                    ]) }
+                ]
+            }
+        })
     }
 
     ContextMenu {
@@ -1048,14 +946,9 @@ Item {
         id: _actionMenu
         menuWidth: Style.dp(220)
         build: function() {
-            return MenuModel.menu("osc-action", _root._actionTitle, [
-                MenuModel.action("Open", function() {
-                    _root._openPane(_root._actionParent, _root._actionSeq, _root._actionTitle)
-                }),
-                MenuModel.action("Delete", function() {
-                    _root.deleteActionAsked(_root._actionParent, _root._actionSeq, _root._actionTitle)
-                }, true, { danger: true })
-            ])
+            return ControlMenu.actionMenu({ kind: "osc", title: _root._actionTitle,
+                open: function() { _root._openPane(_root._actionParent, _root._actionSeq, _root._actionTitle) },
+                remove: function() { _root.deleteActionAsked(_root._actionParent, _root._actionSeq, _root._actionTitle) } })
         }
     }
 

@@ -296,3 +296,25 @@ def test_qml_builds_the_model() -> None:
     )
     assert done.returncode == 0, done.stderr[-2000:]
     assert "BUILT" in done.stdout, done.stdout + done.stderr[-2000:]
+
+
+def test_key_names_do_not_depend_on_which_lookup_ran_first(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A letter looked up by its character first ("a") still shows by its
+    key name ("A"), as a lookup by code gives it (seed 707209 order bug)."""
+    from gremlin import keyboard
+
+    monkeypatch.setattr(
+        keyboard, "g_scan_code_to_key", dict(keyboard.g_scan_code_to_key)
+    )
+    monkeypatch.setattr(keyboard, "g_name_to_key", dict(keyboard.g_name_to_key))
+    for code in (A, S):
+        keyboard.g_scan_code_to_key.pop(code, None)
+    for name in ("a", "s"):
+        keyboard.g_name_to_key.pop(name, None)
+
+    assert keyboard.key_from_name("a").name == "A"
+    assert keyboard.key_from_code(*A).name == "A"
+    assert keyboard.key_from_code(*S).name == "S"
+    assert keyboard.key_from_name("s") is keyboard.key_from_code(*S)

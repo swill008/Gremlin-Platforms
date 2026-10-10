@@ -16,6 +16,7 @@ import Gremlin.Style
 import Gremlin.Util
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
+import "control_menu.js" as ControlMenu
 import Gremlin.UI
 
 Item {
@@ -28,9 +29,15 @@ Item {
     readonly property string paneKey: _pane.paneKey
     readonly property string paneTitle: _pane.paneTitle
     property alias closeAfterOk: _pane.closeAfterOk
-    property bool displayOpen: false
-    property bool _ready: false
     readonly property var layoutModel: _layout
+    // Leave / unsaved questions go to the pane (ActionPane.qml, to-do 91).
+    property alias actionPane: _pane
+
+    // The page's Appearance part (PageAppearance.qml, to-do 91).
+    property alias displayOpen: _appear.displayOpen
+    readonly property Component pageBar: _appear.pageBar
+    function toggleAppearance() { _appear.toggleAppearance() }
+    function requestCloseDisplay() { _appear.requestCloseDisplay() }
 
     // The one edit lock (06 S13): nothing is edited while the profile runs.
     EditLock { id: _lock }
@@ -48,39 +55,8 @@ Item {
         onActivated: _layout.redo()
     }
 
-    signal leaveResolved()
-    signal leaveCancelled()
-
     function setMode(next) {
         mode = next || "Default"
-    }
-
-    // Main asks these before a tool changes bindings behind the pane
-    // (05 Q8), Run starts (06 Q6) or the page is left.
-    function hasUnsaved() { return _pane.hasUnsaved() }
-    function paneHasChanges() { return hasUnsaved() }
-    function closeActionPane() { closePaneNow() }
-    function savePane() { return _pane.save() }
-    function closePaneNow() { _pane.closeNow() }
-
-    property bool _leavingPage: false
-    function requestLeave() {
-        if (!hasUnsaved()) {
-            leaveResolved()
-            return
-        }
-        _leavingPage = true
-        _pane.askLeave("The action editor has changes that are not saved.")
-    }
-
-    function _finishLeave(resolved) {
-        if (!_leavingPage)
-            return
-        _leavingPage = false
-        if (resolved)
-            leaveResolved()
-        else
-            leaveCancelled()
     }
 
     function openInput(key, title) { _pane.openAt(key, -1, title) }
@@ -106,7 +82,7 @@ Item {
     KeyboardLayoutModel { id: _layout }
     Connections {
         target: _layout
-        function onPaneLost() { _root.closePaneNow() }
+        function onPaneLost() { _pane.closeNow() }
     }
     // A row's click opens the pane on all its actions (S126).
     Connections {
@@ -122,45 +98,14 @@ Item {
         ignoreUnknownSignals: true
         function onModeChanged() { _root.setMode(uiState.currentMode) }
     }
-    WindowPlacement { id: _place }
 
     Component.onCompleted: {
         if (typeof uiState !== "undefined" && uiState)
             mode = uiState.currentMode
-        _appear.load()
-        displayOpen = _place.displayPanelOpen("keyboard", "page")
         _layout.setMode(mode)
-        _ready = true
     }
 
-    onDisplayOpenChanged: {
-        if (_ready)
-            _place.setDisplayPanelOpen("keyboard", "page", displayOpen)
-    }
     onModeChanged: _layout.setMode(mode)
-
-    // The page's own controls on the bar under the toolbar (01 S58a).
-    property Component pageBar: Component {
-        RowLayout {
-            Layout.fillWidth: true
-            Item { Layout.fillWidth: true }
-            Button {
-                objectName: "keyboardAppearanceButton"
-                text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
-                onClicked: _root.toggleAppearance()
-            }
-        }
-    }
-
-    // Hiding asks about unsaved display options, like the panel's close.
-    function toggleAppearance() {
-        if (displayOpen)
-            requestCloseDisplay()
-        else
-            displayOpen = true
-    }
-
-    function requestCloseDisplay() { _appear.requestClose() }
 
     RowLayout {
         anchors.fill: parent
@@ -297,20 +242,15 @@ Item {
             layout: _layout
             locked: _root.editorLocked
             namePrefix: "keyboard"
-            onLeaveDone: (resolved) => _root._finishLeave(resolved)
         }
 
         // The list Appearance (05 S125), this page's own (AP2).
-        ListAppearancePanel {
+        PageAppearance {
             id: _appear
             objectName: "keyboardAppearance"
             pageKey: "keyboard"
-            visible: _root.displayOpen
+            buttonName: "keyboardAppearanceButton"
             title: "Keyboard — Appearance"
-            Layout.preferredWidth: Style.dp(360)
-            Layout.maximumWidth: Style.dp(360)
-            Layout.fillHeight: true
-            onClosed: _root.displayOpen = false
         }
     }
 
@@ -403,75 +343,31 @@ Item {
     }
 
     function _layoutMenuModel() {
-        var locked = editorLocked
-        var onRow = _menuOnRow && !locked
-        var onGroup = _menuOnGroup && !locked
-        var many = _tree.picked.length > 1
-        var kind = onRow ? "keyboard-row" : (onGroup ? "keyboard-group" : "keyboard")
-        var title = onRow ? (many ? _tree.picked.length + " keys" : _menuTitle)
-                          : (onGroup ? _groupName : "Keyboard")
-        var header = locked ? [] : [
-            { label: "Undo", enabled: _layout.canUndo && !actionOpen, run: function() { _layout.undo() } },
-            { label: "Redo", enabled: _layout.canRedo && !actionOpen, run: function() { _layout.redo() } }
-        ]
-        var quick = []
-        if (onRow) {
-            quick.push(MenuModel.action("Add Action", function() { addAction(_menuKey, _menuTitle) }))
-            quick.push(MenuModel.action("Rename", _renameRow))
-            if (!many)
-                quick.push(MenuModel.action("History", _openHistory))
-        }
-        if (onGroup)
-            quick.push(MenuModel.action("Rename Group", function() {
+        return ControlMenu.standardMenu(_root, {
+            layout: _layout, kind: "keyboard", pageTitle: "Keyboard", manyNoun: "keys",
+            picked: _tree.picked,
+            addAction: function() { addAction(_menuKey, _menuTitle) },
+            renameGroup: function() {
                 _groupDialog.text = _groupName
                 _groupDialog.visible = true
-            }))
-        quick.push(MenuModel.action("Appearance…", function() { displayOpen = true }))
-
-        var moveTo = []
-        if (onRow) {
-            var groups = _layout.groups || []
-            for (var i = 0; i < groups.length; i++) {
-                (function(g) {
-                    moveTo.push(MenuModel.action("Move to " + g.title, function() {
-                        Qt.callLater(function() { _layout.moveSelected(g.name) })
-                    }))
-                })(groups[i])
-            }
-        }
-        var doomed = onRow ? _deletable() : []
-        return MenuModel.menu(kind, title, quick, [
-            onRow ? MenuModel.section("row", "Key", [
-                MenuModel.action("Clear Name", function() { _layout.setUserName(_menuKey, "") },
-                                 _menuUser.length > 0),
+            },
+            clearName: function() { _layout.setUserName(_menuKey, "") },
+            rowTitle: "Key", sortSystemLabel: "By Key Name",
+            rowItems: function(st) {
                 // Only where it does something (S75): this mode's actions,
                 // or a key with none in any mode.
-                MenuModel.action(doomed.length > 1 ? "Delete " + doomed.length + " keys" : "Delete",
-                                 function() { _askDelete(doomed, _menuTitle) },
-                                 doomed.length > 0, { danger: true })
-            ]) : null,
-            onRow ? MenuModel.section("group", "Group", [
-                MenuModel.entry("Group as", function(name) { _groupAs(name) }, true,
-                                { placeholder: "Name, then Enter" })
-            ].concat(moveTo)) : null,
-            MenuModel.section("add", "Add Inputs", [
-                MenuModel.action("Add Key… (press the key)", function() { Qt.callLater(_root.addKey) },
-                                 !locked)
-            ]),
-            locked ? null : MenuModel.section("groups", "Groups", [
-                MenuModel.entry("New Group", function(name) { _layout.addGroup(name) }, true,
-                                { placeholder: "Name, then Enter", keepOpen: true }),
-                onGroup ? MenuModel.action("Move Group Up", function() { _layout.moveGroupUp(_groupName) }) : null,
-                onGroup ? MenuModel.action("Move Group Down", function() { _layout.moveGroupDown(_groupName) }) : null,
-                onGroup ? MenuModel.action("Delete Group", function() { _askDeleteGroup(_groupName) }, true,
-                                           { danger: true }) : null
-            ]),
-            locked ? null : MenuModel.section("order", "Order", [
-                MenuModel.action("By Key Name", function() { _layout.sortBySystem() }),
-                MenuModel.action("By Your Name", function() { _layout.sortByName() }),
-                MenuModel.action("Group Names A to Z", function() { _layout.sortGroupNames() })
-            ])
-        ], header)
+                var doomed = _deletable()
+                return [MenuModel.action(doomed.length > 1 ? "Delete " + doomed.length + " keys" : "Delete",
+                                         function() { _askDelete(doomed, _menuTitle) },
+                                         doomed.length > 0, { danger: true })]
+            },
+            extraSections: function(st) {
+                return [{ at: "afterGroup", section: MenuModel.section("add", "Add Inputs", [
+                    MenuModel.action("Add Key… (press the key)", function() { Qt.callLater(_root.addKey) },
+                                     !st.locked)
+                ]) }]
+            }
+        })
     }
 
     ContextMenu {
@@ -483,14 +379,9 @@ Item {
         id: _actionMenu
         menuWidth: Style.dp(220)
         build: function() {
-            return MenuModel.menu("keyboard-action", _root._actionTitle, [
-                MenuModel.action("Open", function() {
-                    _root.openAction(_root._actionParent, _root._actionSeq, _root._actionTitle)
-                }),
-                MenuModel.action("Delete", function() {
-                    _root._askDeleteAction(_root._actionParent, _root._actionSeq, _root._actionTitle)
-                }, true, { danger: true })
-            ])
+            return ControlMenu.actionMenu({ kind: "keyboard", title: _root._actionTitle,
+                open: function() { _root.openAction(_root._actionParent, _root._actionSeq, _root._actionTitle) },
+                remove: function() { _root._askDeleteAction(_root._actionParent, _root._actionSeq, _root._actionTitle) } })
         }
     }
 

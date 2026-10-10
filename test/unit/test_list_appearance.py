@@ -148,10 +148,12 @@ def test_row_alignment_width_and_group_space_apply_to_the_tree(
 def test_the_logical_page_leaves_the_live_decoration_off() -> None:
     page = (_ROOT / "qml" / "LogicalPage.qml").read_text(encoding="utf-8")
     assert "liveDecoration" not in page
-    assert "ListAppearancePanel {" in page
+    # Its panel is the shared PageAppearance part (to-do 91).
+    assert "PageAppearance {" in page
     assert 'pageKey: "logical"' in page
     # Appearance... is on the page bar (01 S58a), as on the other pages.
-    assert "property Component pageBar" in page and "logicalAppearanceButton" in page
+    assert "readonly property Component pageBar: _appear.pageBar" in page
+    assert 'buttonName: "logicalAppearanceButton"' in page
     assert "setLogicalValue" not in page and "logicalValue(" not in page
 
 

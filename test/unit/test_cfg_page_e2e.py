@@ -471,7 +471,7 @@ def _part_keyboard(j: Journey) -> None:
     out["7:pane-opened-on-it"] = str(view.property("paneKey") or "")
     # The pane the Add Key opened, as the screen shows it.
     if view.property("actionOpen"):
-        j.ev("closeActionPane(); true", view)
+        j.ev("actionPane.closeActionPane(); true", view)
         j.settle()
     page.beginNewAction(key)
     page._pane_shadow.action_sequences[0].root_action.insert_action(

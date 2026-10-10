@@ -279,16 +279,16 @@ def key_from_name(name: str) -> Key:
     if key is not None:
         return key
 
-    # Attempt to create the key to store and return if successful
+    # Find the key the character is on, then name it as a lookup by code
+    # would ("a" -> "A"), so the name never depends on which lookup ran first.
     key = _unicode_to_key(name)
     if key is None:
         msg = f"Invalid key name specified: {name}."
         logging.getLogger("system").warning(msg)
         raise KeyboardError(msg)
-    else:
-        g_scan_code_to_key[(key.scan_code, key.is_extended)] = key
-        g_name_to_key[key_name] = key
-        return key
+    key = key_from_code(key.scan_code, key.is_extended)
+    g_name_to_key[key_name] = key
+    return key
 
 
 def key_from_code(scan_code: int, is_extended: bool) -> Key:

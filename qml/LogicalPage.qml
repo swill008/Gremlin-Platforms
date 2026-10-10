@@ -13,6 +13,7 @@ import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
+import "control_menu.js" as ControlMenu
 import Gremlin.UI
 
 Item {
@@ -27,8 +28,13 @@ Item {
     readonly property string paneKey: _pane.paneKey
     readonly property string paneTitle: _pane.paneTitle
     property alias closeAfterOk: _pane.closeAfterOk
-    property bool displayOpen: false
-    property bool _ready: false
+    // Leaving the page and Run ask the pane (ActionPane.qml, to-do 91).
+    property alias actionPane: _pane
+    // The page's Appearance part (PageAppearance.qml, to-do 91).
+    property alias displayOpen: _appear.displayOpen
+    readonly property Component pageBar: _appear.pageBar
+    function toggleAppearance() { _appear.toggleAppearance() }
+    function requestCloseDisplay() { _appear.requestCloseDisplay() }
     // The list's open parents, folded groups and selection (ControlTree.qml).
     property alias _opened: _tree.opened
     property alias _collapsed: _tree.collapsed
@@ -53,74 +59,9 @@ Item {
         onActivated: _layout.redo()
     }
 
-    signal leaveResolved()
-    signal leaveCancelled()
-
     function setMode(next) {
         mode = next || "Default"
         _layout.setMode(mode)
-    }
-
-    // An open action pane with edits counts as unsaved work when leaving the page.
-    property bool _leavingPage: false
-
-    function hasUnsaved() { return _pane.hasUnsaved() }
-
-    // Main.closeActionPanes() asks these before a tool changes bindings
-    // behind the pane (05 Q8) or Run starts (06 Q6).
-    function paneHasChanges() { return hasUnsaved() }
-
-    function closeActionPane() { closePaneNow() }
-
-    // OK for Run's "Save" (06 Q6): false when nothing could be written.
-    function savePane() { return _pane.save() }
-
-    function requestLeave() {
-        if (!hasUnsaved()) {
-            leaveResolved()
-            return
-        }
-        _leavingPage = true
-        _pane.askLeave("The action editor has changes that are not saved.")
-    }
-
-    function _finishLeave(resolved) {
-        if (!_leavingPage)
-            return
-        _leavingPage = false
-        if (resolved)
-            leaveResolved()
-        else
-            leaveCancelled()
-    }
-
-    function _saveDisplayOpen() {
-        if (!_ready)
-            return
-        _place.setDisplayPanelOpen("logical", "page", displayOpen)
-    }
-
-    // The Appearance panel; hiding asks about unsaved changes, like its ×.
-    function toggleAppearance() {
-        if (displayOpen)
-            requestCloseDisplay()
-        else
-            displayOpen = true
-    }
-
-    function requestCloseDisplay() { _appear.requestClose() }
-
-    // The page's own controls on the bar under the toolbar (01 S58a).
-    property Component pageBar: Component {
-        RowLayout {
-            Layout.fillWidth: true
-            Item { Layout.fillWidth: true }
-            Button {
-                objectName: "logicalAppearanceButton"
-                text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
-                onClicked: _root.toggleAppearance()
-            }
-        }
     }
 
     function _toggleOpen(key) { _tree.toggleOpen(key) }
@@ -135,27 +76,17 @@ Item {
 
     function _closePane() { _pane.requestClose() }
 
-    // After a profile change the pane belongs to a profile that is gone.
-    function closePaneNow() { _pane.closeNow() }
-
     function _finishClose() { _pane.finishClose() }
 
     LogicalLayoutModel { id: _layout }
     // Its mode was deleted (the model said so and closed the draft).
     Connections {
         target: _layout
-        function onPaneLost() { _root.closePaneNow() }
-    }
-    WindowPlacement { id: _place }
-
-    Component.onCompleted: {
-        _appear.load()
-        displayOpen = _place.displayPanelOpen("logical", "page")
-        _layout.setMode(mode)
-        _ready = true
+        function onPaneLost() { _pane.closeNow() }
     }
 
-    onDisplayOpenChanged: _saveDisplayOpen()
+    Component.onCompleted: _layout.setMode(mode)
+
     onModeChanged: _layout.setMode(mode)
 
     RowLayout {
@@ -285,19 +216,14 @@ Item {
             layout: _layout
             locked: _root.editorLocked
             namePrefix: "logical"
-            onLeaveDone: (resolved) => _root._finishLeave(resolved)
         }
 
         // This page's own list Appearance (05 S125, AP2).
-        ListAppearancePanel {
+        PageAppearance {
             id: _appear
             pageKey: "logical"
-            visible: _root.displayOpen
+            buttonName: "logicalAppearanceButton"
             title: "Logical Device — Appearance"
-            Layout.preferredWidth: Style.dp(360)
-            Layout.maximumWidth: Style.dp(360)
-            Layout.fillHeight: true
-            onClosed: _root.displayOpen = false
         }
 
     }
@@ -486,78 +412,25 @@ Item {
     }
 
     function _layoutMenuModel() {
-        var locked = editorLocked
-        var onRow = _menuOnRow && !locked
-        var onGroup = _menuOnGroup && !locked
-        var many = _picked.length > 1
-        var kind = onRow ? "logical-row" : (onGroup ? "logical-group" : "logical")
-        var title = onRow ? (many ? _picked.length + " rows" : _menuTitle)
-                          : (onGroup ? _groupName : "Logical Device")
-        var header = locked ? [] : [
-            { label: "Undo", enabled: _layout.canUndo && !actionOpen, run: function() { _layout.undo() } },
-            { label: "Redo", enabled: _layout.canRedo && !actionOpen, run: function() { _layout.redo() } }
-        ]
-        var quick = []
-        if (onRow) {
-            quick.push(MenuModel.action("Add Action", function() { _openNewPane(_menuKey, _menuTitle) }))
-            quick.push(MenuModel.action("Rename", _renameRow))
-            quick.push(MenuModel.action("Assign Hardware", _assignHardware))
-            if (!many)
-                quick.push(MenuModel.action("History", _openHistory))
-        }
-        if (onGroup)
-            quick.push(MenuModel.action("Rename Group", _renameGroup))
-        quick.push(MenuModel.action("Appearance…", function() { displayOpen = true }))
-
-        var moveTo = []
-        if (onRow) {
-            var groups = _layout.groups || []
-            for (var i = 0; i < groups.length; i++) {
-                (function(g) {
-                    moveTo.push(MenuModel.action("Move to " + g.title, function() {
-                        // After the menu has closed; the move rebuilds the list.
-                        Qt.callLater(function() { _layout.moveSelected(g.name) })
-                    }))
-                })(groups[i])
-            }
-        }
-        var add = function(label, what) {
-            return MenuModel.number(label, 1, 1, 180, "", function(n) { _addCounted(what, n) }, !locked,
-                                    { step: 1, go: "Add", integer: true })
-        }
-        return MenuModel.menu(kind, title, quick, [
-            onRow ? MenuModel.section("row", "Row", [
-                MenuModel.action("Clear Name", function() {
-                    _askClearName(_menuKey, _menuTitle, _menuUser)
-                }, _menuUser.length > 0),
+        return ControlMenu.standardMenu(_root, {
+            layout: _layout, kind: "logical", pageTitle: "Logical Device", manyNoun: "rows",
+            addAction: function() { _openNewPane(_menuKey, _menuTitle) },
+            quickBeforeHistory: function(st) { return [MenuModel.action("Assign Hardware", _assignHardware)] },
+            rowItems: function(st) {
                 // Acts on the selection, like Group as and Move to.
-                MenuModel.action(many ? "Delete " + _picked.length + " rows" : "Delete", function() {
+                return [MenuModel.action(st.many ? "Delete " + st.count + " rows" : "Delete", function() {
                     _askDeleteRows(_picked.length > 0 ? _picked.slice() : [_menuKey], _menuTitle)
-                }, true, { danger: true })
-            ]) : null,
-            onRow ? MenuModel.section("group", "Group", [
-                MenuModel.entry("Group as", function(name) { _groupAs(name) }, true,
-                                { placeholder: "Name, then Enter" })
-            ].concat(moveTo)) : null,
-            MenuModel.section("add", "Add Inputs", [
-                add("Buttons", "button"),
-                add("Axes", "axis"),
-                add("Hats", "hat")
-            ]),
-            locked ? null : MenuModel.section("groups", "Groups", [
-                MenuModel.entry("New Group", function(name) { _layout.addGroup(name) }, true,
-                                { placeholder: "Name, then Enter", keepOpen: true }),
-                onGroup ? MenuModel.action("Move Group Up", function() { _layout.moveGroupUp(_groupName) }) : null,
-                onGroup ? MenuModel.action("Move Group Down", function() { _layout.moveGroupDown(_groupName) }) : null,
-                onGroup ? MenuModel.action("Delete Group", function() { _askDeleteGroup(_groupName) }, true,
-                                           { danger: true }) : null
-            ]),
-            locked ? null : MenuModel.section("order", "Order", [
-                MenuModel.action("By System Name", function() { _layout.sortBySystem() }),
-                MenuModel.action("By Your Name", function() { _layout.sortByName() }),
-                MenuModel.action("Group Names A to Z", function() { _layout.sortGroupNames() })
-            ])
-        ], header)
+                }, true, { danger: true })]
+            },
+            extraSections: function(st) {
+                var add = function(label, what) {
+                    return MenuModel.number(label, 1, 1, 180, "", function(n) { _addCounted(what, n) }, !st.locked,
+                                            { step: 1, go: "Add", integer: true })
+                }
+                return [{ at: "afterGroup", section: MenuModel.section("add", "Add Inputs",
+                          [add("Buttons", "button"), add("Axes", "axis"), add("Hats", "hat")]) }]
+            }
+        })
     }
 
     ContextMenu {
@@ -570,14 +443,9 @@ Item {
         id: _actionMenu
         menuWidth: Style.dp(220)
         build: function() {
-            return MenuModel.menu("logical-action", _root._actionTitle, [
-                MenuModel.action("Open", function() {
-                    _root._openPane(_root._actionParent, _root._actionSeq, _root._actionTitle)
-                }),
-                MenuModel.action("Delete", function() {
-                    _root.deleteActionAsked(_root._actionParent, _root._actionSeq, _root._actionTitle)
-                }, true, { danger: true })
-            ])
+            return ControlMenu.actionMenu({ kind: "logical", title: _root._actionTitle,
+                open: function() { _root._openPane(_root._actionParent, _root._actionSeq, _root._actionTitle) },
+                remove: function() { _root.deleteActionAsked(_root._actionParent, _root._actionSeq, _root._actionTitle) } })
         }
     }
 

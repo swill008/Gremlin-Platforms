@@ -11,6 +11,7 @@ import Gremlin.Menus
 import Gremlin.Style
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
+import "control_menu.js" as ControlMenu
 import Gremlin.UI
 
 // The Configuration page of a joystick (05 S121-S131): the Logical Device
@@ -38,8 +39,14 @@ Item {
     property alias _collapsed: _tree.collapsed
     property alias _picked: _tree.picked
 
-    // This page's own Appearance (05 S125, AP2) is held by the panel (ListAppearancePanel).
-    property bool displayOpen: false
+    // The pane and its leave/save functions (ActionPane.qml, to-do 91).
+    property alias actionPane: _pane
+
+    // The page's Appearance part (PageAppearance.qml, to-do 91).
+    property alias displayOpen: _appear.displayOpen
+    readonly property Component pageBar: _appear.pageBar
+    function toggleAppearance() { _appear.toggleAppearance() }
+    function requestCloseDisplay() { _appear.requestCloseDisplay() }
     readonly property alias appearance: _appear
 
     property bool _ready: false
@@ -63,9 +70,6 @@ Item {
         onActivated: _layout.redo()
     }
 
-    signal leaveResolved()
-    signal leaveCancelled()
-
     // +---------------------------------------------------------------------
     // | Main's hooks (same names as the Logical Device and OSC pages)
 
@@ -78,41 +82,6 @@ Item {
         guid = String(nextGuid || "")
         deviceName = String(nextName || "")
     }
-
-    property bool _leavingPage: false
-
-    function hasUnsaved() { return _pane.hasUnsaved() }
-
-    // Main.closeActionPanes() asks these before a tool changes bindings
-    // behind the pane (05 Q8) or Run starts (06 Q6).
-    function paneHasChanges() { return hasUnsaved() }
-
-    function closeActionPane() { closePaneNow() }
-
-    // OK for Run's "Save" (06 Q6): false when nothing could be written.
-    function savePane() { return _pane.save() }
-
-    function requestLeave() {
-        if (!hasUnsaved()) {
-            leaveResolved()
-            return
-        }
-        _leavingPage = true
-        _pane.askLeave("The action editor has changes that are not saved.")
-    }
-
-    function _finishLeave(resolved) {
-        if (!_leavingPage)
-            return
-        _leavingPage = false
-        if (resolved)
-            leaveResolved()
-        else
-            leaveCancelled()
-    }
-
-    // After a profile change the pane belongs to a profile that is gone.
-    function closePaneNow() { _pane.closeNow() }
 
     // Jump to pressed input (S131): the input with this device index is
     // unfolded, scrolled to and flashed. False when it isn't listed.
@@ -132,16 +101,6 @@ Item {
 
     function addAction(key, title) { _pane.openNew(key, title) }
 
-    // The Appearance panel; hiding asks about unsaved changes, like its ×.
-    function toggleAppearance() {
-        if (displayOpen)
-            requestCloseDisplay()
-        else
-            displayOpen = true
-    }
-
-    function requestCloseDisplay() { _appear.requestClose() }
-
     // The page menu's "Module Setup…": this device's Module Setup, as its
     // Home card opens it (claims belong there, 03).
     signal moduleSetupRequested(string guid)
@@ -160,19 +119,6 @@ Item {
         return false
     }
 
-    // The page's own controls on the bar under the toolbar (01 S58a).
-    property Component pageBar: Component {
-        RowLayout {
-            Layout.fillWidth: true
-            Item { Layout.fillWidth: true }
-            Button {
-                objectName: "configurationAppearanceButton"
-                text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
-                onClicked: _root.toggleAppearance()
-            }
-        }
-    }
-
     // +---------------------------------------------------------------------
     // | Models
 
@@ -180,7 +126,7 @@ Item {
     Connections {
         target: _layout
         // Its mode was deleted, or the device changed (the model closed the draft).
-        function onPaneLost() { _root.closePaneNow() }
+        function onPaneLost() { _pane.closeNow() }
     }
 
     DeviceLiveState {
@@ -190,8 +136,6 @@ Item {
         locked: _root.editorLocked
         liveWhileActive: false
     }
-
-    WindowPlacement { id: _place }
 
     // The device's inputs by index: the program's current input (uiState)
     // follows the selected row, as the highlight of a pressed input needs
@@ -259,18 +203,12 @@ Item {
     onGuidChanged: if (_ready) _applyDevice()
     onDeviceNameChanged: if (_ready) _applyDevice()
     onModeChanged: if (_ready) _layout.setMode(mode)
-    onDisplayOpenChanged: {
-        if (_ready)
-            _place.setDisplayPanelOpen("configuration", "page", displayOpen)
-    }
 
     Component.onCompleted: {
         if (uiState)
             mode = uiState.currentMode || mode
-        _appear.load()
         _layout.setMode(mode)
         _applyDevice()
-        displayOpen = _place.displayPanelOpen("configuration", "page")
         _ready = true
     }
 
@@ -458,20 +396,16 @@ Item {
             layout: _layout
             locked: _root.editorLocked
             namePrefix: "configuration"
-            onLeaveDone: (resolved) => _root._finishLeave(resolved)
         }
 
-        ListAppearancePanel {
+        // This page's own list Appearance (05 S125, AP2).
+        PageAppearance {
             id: _appear
             objectName: "configurationAppearance"
             pageKey: "configuration"
-            visible: _root.displayOpen
+            buttonName: "configurationAppearanceButton"
             title: "Configuration — Appearance"
             liveOptions: true
-            Layout.preferredWidth: Style.dp(360)
-            Layout.maximumWidth: Style.dp(360)
-            Layout.fillHeight: true
-            onClosed: _root.displayOpen = false
         }
     }
 
@@ -627,71 +561,34 @@ Item {
         })
     }
 
-    // The page's right-click menu (Gremlin.Menus): on a row, a group or the
-    // empty list. Quick rows first, then sections; Undo and Redo by the
-    // title. No Add Inputs: claims come from Module Setup.
-    function _layoutMenuModel() {
-        var locked = editorLocked
-        var onRow = _menuOnRow && !locked
-        var onGroup = _menuOnGroup && !locked
-        var many = _picked.length > 1
-        var kind = onRow ? "configuration-row" : (onGroup ? "configuration-group" : "configuration")
-        var title = onRow ? (many ? _picked.length + " inputs" : _menuTitle)
-                          : (onGroup ? _groupName : (deviceName.length ? deviceName : "Configuration"))
-        var header = locked ? [] : [
-            { label: "Undo", enabled: _layout.canUndo && !actionOpen, run: function() { _layout.undo() } },
-            { label: "Redo", enabled: _layout.canRedo && !actionOpen, run: function() { _layout.redo() } }
-        ]
-        var quick = []
-        if (onRow) {
-            quick.push(MenuModel.action("Add Action", function() { addAction(_menuKey, _menuTitle) }))
-            quick.push(MenuModel.action("Rename", _renameRow))
-            if (!many)
-                quick.push(MenuModel.action("History", _openHistory))
-        }
-        if (onGroup)
-            quick.push(MenuModel.action("Rename Group", _renameGroup))
-        quick.push(MenuModel.action("Module Setup…", function() { openModuleSetup() }))
-        quick.push(MenuModel.action("Appearance…", function() { displayOpen = true }))
+    // Clear Name (PB2, like the Logical Device page): the module's friendly
+    // name goes (S129); Undo puts it back.
+    function _askClearName(key, title, user) {
+        Confirm.ask(_root, {
+            title: "Clear the name of " + title + "?",
+            text: "Your name \u201c" + user + "\u201d goes; the system name stays.",
+            undoable: true,
+            action: "Clear Name",
+            onAccept: function() { _layout.setUserName(key, "") }
+        })
+    }
 
-        var moveTo = []
-        if (onRow) {
-            var groups = _layout.groups || []
-            for (var i = 0; i < groups.length; i++) {
-                (function(g) {
-                    moveTo.push(MenuModel.action("Move to " + g.title, function() {
-                        // After the menu has closed; the move rebuilds the list.
-                        Qt.callLater(function() { _layout.moveSelected(g.name) })
-                    }))
-                })(groups[i])
+    // The page's right-click menu (control_menu.js): on a row, a group or the
+    // empty list. No Add Inputs: claims come from Module Setup.
+    function _layoutMenuModel() {
+        return ControlMenu.standardMenu(_root, {
+            layout: _layout, kind: "configuration",
+            pageTitle: deviceName.length ? deviceName : "Configuration", manyNoun: "inputs",
+            addAction: function() { addAction(_menuKey, _menuTitle) },
+            quickEnd: function(st) { return [MenuModel.action("Module Setup…", function() { openModuleSetup() })] },
+            // S31: not for the input open in the pane (OK would bring it back).
+            rowItems: function(st) {
+                return [!st.many && _layout.canDelete(_menuKey)
+                    ? MenuModel.action("Delete actions…", function() { _askDeleteActions(_menuKey, _menuTitle) },
+                                       true, { danger: true })
+                    : null]
             }
-        }
-        // S31: not for the input open in the pane (OK would bring it back).
-        var canDelete = onRow && !many && _layout.canDelete(_menuKey)
-        return MenuModel.menu(kind, title, quick, [
-            canDelete ? MenuModel.section("row", "Row", [
-                MenuModel.action("Delete actions…", function() {
-                    _askDeleteActions(_menuKey, _menuTitle)
-                }, true, { danger: true })
-            ]) : null,
-            onRow ? MenuModel.section("group", "Group", [
-                MenuModel.entry("Group as", function(name) { _groupAs(name) }, true,
-                                { placeholder: "Name, then Enter" })
-            ].concat(moveTo)) : null,
-            locked ? null : MenuModel.section("groups", "Groups", [
-                MenuModel.entry("New Group", function(name) { _layout.addGroup(name) }, true,
-                                { placeholder: "Name, then Enter", keepOpen: true }),
-                onGroup ? MenuModel.action("Move Group Up", function() { _layout.moveGroupUp(_groupName) }) : null,
-                onGroup ? MenuModel.action("Move Group Down", function() { _layout.moveGroupDown(_groupName) }) : null,
-                onGroup ? MenuModel.action("Delete Group", function() { _askDeleteGroup(_groupName) }, true,
-                                           { danger: true }) : null
-            ]),
-            locked ? null : MenuModel.section("order", "Order", [
-                MenuModel.action("By System Name", function() { _layout.sortBySystem() }),
-                MenuModel.action("By Your Name", function() { _layout.sortByName() }),
-                MenuModel.action("Group Names A to Z", function() { _layout.sortGroupNames() })
-            ])
-        ], header)
+        })
     }
 
     ContextMenu {
@@ -704,14 +601,9 @@ Item {
         id: _actionMenu
         menuWidth: Style.dp(220)
         build: function() {
-            return MenuModel.menu("configuration-action", _root._actionTitle, [
-                MenuModel.action("Open", function() {
-                    _root.openAction(_root._actionParent, _root._actionSeq, _root._actionTitle)
-                }),
-                MenuModel.action("Delete", function() {
-                    _root.deleteActionAsked(_root._actionParent, _root._actionSeq, _root._actionTitle)
-                }, true, { danger: true })
-            ])
+            return ControlMenu.actionMenu({ kind: "configuration", title: _root._actionTitle,
+                open: function() { _root.openAction(_root._actionParent, _root._actionSeq, _root._actionTitle) },
+                remove: function() { _root.deleteActionAsked(_root._actionParent, _root._actionSeq, _root._actionTitle) } })
         }
     }
 

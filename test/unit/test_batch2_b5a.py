@@ -8,8 +8,9 @@
   reads it through EditLock instead of its own backend.gremlinActive rule.
 - The Configuration pane while running is read-only with no OK (05 Q11, GL-160);
   a Logical pane open when Run starts turns read-only too (06 Q6, GL-169).
-- The panes answer Main.closeActionPanes(): paneHasChanges(),
-  closeActionPane(), savePane() (05 Q8, GL-098; 06 Q6, GL-169).
+- The panes answer Main.closeActionPanes(): each page exposes its pane as
+  actionPane, whose ActionPane.qml has paneHasChanges(), closeActionPane(),
+  savePane() (05 Q8, GL-098; 06 Q6, GL-169; to-do 91).
 - The Keyboard page edits a draft with OK, Undo and Redo (05 Q5, GL-106),
   in the shared pane of its KeyboardLayoutModel (05 S128); a new key shows
   one empty binding to fill in (05 Q4, GL-164); its remove icon now removes
@@ -221,9 +222,11 @@ def test_a_logical_pane_has_no_ok_while_running() -> None:
     "name", ["ConfigurationPage.qml", "KeyboardPage.qml", "LogicalPage.qml"]
 )
 def test_each_pane_answers_close_action_panes(name: str) -> None:
-    text = _read(name)
+    # Main reaches the pane through page.actionPane (to-do 91).
+    assert "property alias actionPane: _pane" in _read(name)
+    pane = _read("ActionPane.qml")
     for fn in ("paneHasChanges", "closeActionPane", "savePane"):
-        assert f"function {fn}()" in text, fn
+        assert f"function {fn}()" in pane, fn
 
 
 # --- the Keyboard page's draft (GL-106, GL-164, GL-044) ----------------------
@@ -351,7 +354,11 @@ def test_a_rows_history_is_the_open_profiles() -> None:
     assert "backend.profilePath()" in fn and "w.profile = path" in fn
     assert "mode: mode" in fn
     assert "var filter = historyFilter(_menuKey)" in text
-    assert 'MenuModel.action("History", _openHistory)' in text
+    # History comes from the shared menu (control_menu.js, to-do 91).
+    assert "ControlMenu.standardMenu(_root," in text
+    assert 'M.action("History", function() { page._openHistory() })' in _read(
+        "control_menu.js"
+    )
 
 
 def test_the_history_filter_matches_by_profile() -> None:

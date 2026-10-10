@@ -70,6 +70,50 @@ RowLayout {
     // OK for Run's "Save" (06 Q6): false when nothing could be written.
     function save() { return !hasUnsaved() || _commit() }
 
+    // Leaving the page (Main.continueDisplayLeave): an open pane with edits
+    // asks Save / Discard / Cancel; leaveResolved() lets Main go on to the
+    // next page, leaveCancelled() stops the leave. A page exposes this pane
+    // as `property alias actionPane: <pane id>` and Main calls these on it.
+    signal leaveResolved()
+    signal leaveCancelled()
+
+    property bool _leavingPage: false
+
+    function requestLeave() {
+        if (!hasUnsaved()) {
+            leaveResolved()
+            return
+        }
+        _leavingPage = true
+        askLeave("The action editor has changes that are not saved.")
+    }
+
+    function _finishLeave(resolved) {
+        if (!_leavingPage)
+            return
+        _leavingPage = false
+        if (resolved)
+            leaveResolved()
+        else
+            leaveCancelled()
+    }
+
+    // Main.closeActionPanes() asks these before a tool changes bindings
+    // behind the pane (05 Q8) or Run starts (06 Q6).
+    function paneHasChanges() { return hasUnsaved() }
+
+    function closeActionPane() { closeNow() }
+
+    function savePane() { return save() }
+
+    // After a profile change the pane belongs to a profile that is gone.
+    function closePaneNow() { closeNow() }
+
+    Connections {
+        target: _pane
+        function onLeaveDone(resolved) { _pane._finishLeave(resolved) }
+    }
+
     function openAt(key, seq, title) {
         if (locked)
             return

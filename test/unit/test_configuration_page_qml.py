@@ -19,9 +19,10 @@ user would:
 2. A click on a parent row opens the shared pane on that input (S126);
    it shows the input's actions; Close pane after OK is there.
 3. The row's right-click menu: Undo/Redo header; Add Action, Rename,
-   History, Module Setup…; sections Row (Delete actions…), Group, Groups,
-   Order (By System Name, By Your Name, Group Names A to Z); no Add Inputs
-   (claims come from Module Setup). An action row's menu: Open, Delete.
+   History, Module Setup…; sections Row (Clear Name (PB2), Delete
+   actions…), Group, Groups, Order (By System Name, By Your Name, Group
+   Names A to Z); no Add Inputs (claims come from Module Setup). An action
+   row's menu: Open, Delete.
 4. The page bar (01 S58a): Appearance… opens the shared Appearance panel
    with the live rows (S125, S131).
 5. Jump to pressed input (S131): a stick button pressed on the fake driver
@@ -231,7 +232,7 @@ def story(j: Journey) -> None:
         j.out["deleteWhileOpen"] = '"Delete actions…"' in str(
             j.ev("JSON.stringify(_layoutMenuModel())", page)
         )
-        j.ev("closePaneNow(); true", page)
+        j.ev("actionPane.closePaneNow(); true", page)
         j.QTest.qWait(300)
         _click(j, _row_item(j, page, B2), right=True)
         j.QTest.qWait(500)
@@ -239,6 +240,12 @@ def story(j: Journey) -> None:
         j.QTest.keyClick(win, QtCore.Qt.Key.Key_Escape)
         flat = str(j.ev("JSON.stringify(_layoutMenuModel())", page))
         j.out["menuRaw"] = flat[:3000]
+        j.out["rowSection"] = [
+            r.get("text")
+            for s in json.loads(flat)["sections"]
+            if s["key"] == "row"
+            for r in s["items"]
+        ]
         j.out["menuHas"] = {
             w: (f'"{w}"' in flat)
             for w in (
@@ -248,6 +255,7 @@ def story(j: Journey) -> None:
                 "Rename",
                 "History",
                 "Module Setup…",
+                "Clear Name",
                 "Delete actions…",
                 "Group as",
                 "New Group",
@@ -302,7 +310,7 @@ def story(j: Journey) -> None:
         j.out["panelClosed"] = not page.property("displayOpen")
 
     with _Part(j, "jump"):
-        j.ev("closePaneNow(); true", page)
+        j.ev("actionPane.closePaneNow(); true", page)
         stick = j.stick(STICK)
         j.press(stick, 5, True)
         tree = next(
@@ -379,6 +387,7 @@ def test_the_row_menu_matches_the_logical_style(result: dict) -> None:
         "Rename",
         "History",
         "Module Setup…",
+        "Clear Name",
         "Delete actions…",
         "Group as",
         "New Group",
@@ -388,6 +397,8 @@ def test_the_row_menu_matches_the_logical_style(result: dict) -> None:
     ):
         assert has[word], (word, result["menuRaw"])
     assert not has["Add Inputs"] and not has["Assign Hardware"], result["menuRaw"]
+    # PB2: the Row section is Clear Name, then Delete actions…, as on Logical.
+    assert result["rowSection"] == ["Clear Name", "Delete actions…"], result["menuRaw"]
     assert result["actionMenuHas"] == {"Open": True, "Delete": True}
 
 

@@ -429,7 +429,15 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 89. (LD2, 2026-10-10, found by LD-GUARD): the Logical Device loop guard only catches a macro step re-triggering its own control when the cycle is under 0.1 s; a slower macro self-loop isn't stopped, and mashing a button that runs such a macro faster than 10/s for 8 presses could be stopped by mistake. A full fix carries the chain on each event (event path). Not started.
 90. (LD1, 2026-10-10, found by LD-PICK): a Map to Logical Device loaded from a profile that already targets its own control keeps that target (defaults never change loaded data, S92) but its picker shows nothing selected; the loop guard stops it at Run. Not started.
-91. (PS1 (a), 2026-10-10, user: "log this (a) as a future todo"; tracker PAGE-SHELL-DUP): **one shared
+91. IN PROGRESS 2026-10-10 14:05 (user: "go ahead and get it done now"; approved **Method B: shared building
+    blocks**, not Method A below; PB1 Logical's version, PB2 Clear Name on Configuration, PB3 pixel-identical
+    proof; brief scratchpad sb_brief.md). Method B: each page stays its own file; the repeated glue becomes
+    three shared parts the pages use (pane/leave handling in ActionPane, a PageAppearance part, a
+    standard-menu helper); page-only features stay in each page; a page that needs different behaviour
+    passes an option or doesn't use that part. Method A (a base page every page inherits) was considered
+    and NOT recommended: QML inheritance needs a hook for every page difference, start-up order traps,
+    and it gets rigid as pages grow. Original entry (Method A) kept below for the record.
+    (PS1 (a), 2026-10-10, user: "log this (a) as a future todo"; tracker PAGE-SHELL-DUP): **one shared
     page base for the four list pages** (Configuration, Logical Device, Keyboard, OSC). Not started; the
     user chose PS1 (b) for now (the two drift bugs fixed: OSC's missing "Appearance…" menu row, Keyboard's
     own panel-close; guard test `test/unit/test_list_pages_alike.py`).
