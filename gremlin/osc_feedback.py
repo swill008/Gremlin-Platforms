@@ -4,7 +4,8 @@
 
 """OSC feedback (D-09-OSC-FEEDBACK): while a profile runs, OSC's feedback
 rows send the state of the current mode, vJoy buttons and axes, Logical
-Device controls and OSC inputs to their target.
+Device controls, OSC inputs, actions (action_state) and Running / Paused
+to their target.
 
 Sources are read on the main thread on a short timer and a row sends when
 its value changes, at most feedback_rate messages a second per address (the
@@ -187,6 +188,31 @@ def _logical(source: dict) -> Any:  # noqa: ANN401
     return None
 
 
+def _action_state(source: dict) -> bool | None:
+    """An action's on/off from the action state registry (S157); None when
+    the action isn't in the running profile (S158: nothing is sent)."""
+    action = source.get("action")
+    if not action:
+        return None
+    from gremlin import action_state
+
+    try:
+        value = action_state.read(str(action))
+    except Exception:
+        log.exception("OSC feedback: action state of %s could not be read", action)
+        return None
+    return None if value is None else bool(value)
+
+
+def _paused() -> bool | None:
+    """The Running / Paused source: on while the profile runs, off while
+    it is paused (RP1); None when no profile runs."""
+    from gremlin import action_state
+
+    paused = action_state.paused_state()
+    return None if paused is None else not paused
+
+
 class OscFeedback(QtCore.QObject):
     """The running feedback; lives on the main thread."""
 
@@ -350,6 +376,10 @@ class OscFeedback(QtCore.QObject):
             raw = _logical(source)
         elif kind == "osc_input":
             raw = self._osc_input(source)
+        elif kind == "action_state":
+            raw = _action_state(source)
+        elif kind == "paused":
+            raw = _paused()
         else:
             return None
         if raw is None:

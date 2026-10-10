@@ -2160,6 +2160,25 @@ ApplicationWindow {
             if (card && card.slug)
                 _root.openConfigureModule("source", card)
         }
+
+        // The OSC page's "Feedback settings…": OSC's Module Setup on that
+        // tab (09 S154).
+        function onOpenOscModuleSetupAt(tab) {
+            onOpenOscModuleSetup()
+            if (configureWin && configureWin.oscTab !== undefined) {
+                configureWin.oscTab = ""
+                configureWin.oscTab = String(tab || "")
+            }
+        }
+
+        // OSC Setup's Feedback tab "Edit on the OSC page" (09 S154).
+        function onOpenOscPage() {
+            if (!uiState)
+                return
+            var card = _cardForGuid(uiState.oscDeviceGuid) || _moduleModel.cardMap("osc")
+            if (card)
+                _root.openConfigurationForCard(card)
+        }
     }
 
     onClosing: (close) => {

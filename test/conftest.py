@@ -324,6 +324,27 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):  # noqa
         outcome.get_result().sections.append(("stall report", report))
 
 
+def _stop_history_writer(deadline: float) -> None:
+    """The History writer idles a second after its last item before ending,
+    and its stop callback doesn't wake a get() in progress. Let it write what
+    is queued (bounded), then stop it and wake it with a no-op so it ends
+    now; the join below still checks that it did."""
+    history = sys.modules.get("gremlin.history")
+    if history is None or history._writer is None:
+        return
+    with history._queue.all_tasks_done:
+        while history._queue.unfinished_tasks:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                break
+            history._queue.all_tasks_done.wait(left)
+    # Under the lock the writer ends with, so the no-op never outlives it.
+    with history._start_lock:
+        if history._writer is not None:
+            history._stop.set()
+            history._queue.put(lambda: None)
+
+
 @pytest.fixture(autouse=True)
 def _no_threads_left_running() -> Iterator[None]:
     """A test may not leave threads running (a program thread left behind
@@ -336,6 +357,7 @@ def _no_threads_left_running() -> Iterator[None]:
     if watch is not None:
         watch.watch(None)  # a short wait on purpose, not a stall
     deadline = time.monotonic() + 2.0
+    _stop_history_writer(deadline)
     for thread in new:
         try:
             thread.join(max(0.0, deadline - time.monotonic()))

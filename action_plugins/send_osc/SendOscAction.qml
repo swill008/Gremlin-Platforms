@@ -92,6 +92,19 @@ Item {
             }
         }
 
+        // Why the address can't be sent to (S149: never a pattern).
+        Label {
+            objectName: "sendOscAddressError"
+
+            Layout.fillWidth: true
+            Layout.leftMargin: Style.dp(80)
+
+            visible: text !== "" && _address.text !== ""
+            text: _root.action ? _root.action.addressError : ""
+            color: Style.warn
+            wrapMode: Text.WordWrap
+        }
+
         Label {
             text: "Values"
         }

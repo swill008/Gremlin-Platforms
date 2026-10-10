@@ -113,6 +113,7 @@ class Event:
         is_pressed: bool | None = None,
         raw_value: float | bool | HatDirection | None = None,
         synthetic: bool = False,
+        osc_address: str | None = None,
     ) -> None:
         """Creates a new Event object.
 
@@ -127,6 +128,8 @@ class Event:
             synthetic: made by the program (macro step, refresh axes, Hat
                 as Buttons), not by the hardware; screens that show what the
                 hardware does (Listen, highlighting, Module Setup) ignore it
+            osc_address: the address an OSC input received (for a pattern
+                input, which of its addresses sent it); None otherwise
         """
         self.event_type = event_type
         self.identifier = identifier
@@ -136,6 +139,7 @@ class Event:
         self.value = value
         self.raw_value = raw_value
         self.synthetic = synthetic
+        self.osc_address = osc_address
 
     def display_name(self) -> str:
         """Returns the display representation of this event.
@@ -179,6 +183,7 @@ class Event:
             self.is_pressed,
             self.raw_value,
             self.synthetic,
+            self.osc_address,
         )
 
     def __eq__(self, other: object) -> bool:

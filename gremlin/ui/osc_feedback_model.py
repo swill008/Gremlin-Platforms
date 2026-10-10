@@ -37,6 +37,8 @@ KIND_LABELS = {
     "vjoy_axis": "vJoy axis",
     "logical": "Logical Device control",
     "osc_input": "OSC input",
+    "action_state": "Action state",
+    "paused": "Running / Paused",
 }
 
 TYPE_LABELS = {
@@ -64,12 +66,101 @@ def _whole(text: object) -> int | None:
     return int(number)
 
 
+ACTION_MISSING = "This action is not in the current profile"
+
+
 def check_address(text: object) -> str:
-    """Why text can't be an OSC address ("" when it can)."""
+    """Why text can't be an outgoing OSC address ("" when it can)."""
     address = str(text or "").strip()
     if not address.startswith("/") or " " in address:
         return "An OSC address starts with / and has no spaces, e.g. /fire."
-    return ""
+    from gremlin import osc_pattern
+
+    # Outgoing addresses are exact (S149).
+    return osc_pattern.check(address, allow_pattern=False)
+
+
+def action_inputs(profile: object) -> dict[str, str]:
+    """Action id -> uid of the OSC input it sits on (any mode, nested
+    actions too); the first input found wins."""
+    from gremlin.osc import OSC_DEVICE_UUID, OscDevice
+
+    out: dict[str, str] = {}
+    inputs = getattr(profile, "inputs", None) or {}
+    rows = OscDevice().rows
+    for item in inputs.get(OSC_DEVICE_UUID, []):
+        uid = rows.uid_of(item.input_type, item.input_id)
+        if not uid:
+            continue
+        stack = [b.root_action for b in item.action_sequences if b.root_action]
+        seen: set[int] = set()
+        while stack:
+            action = stack.pop()
+            if id(action) in seen:
+                continue
+            seen.add(id(action))
+            out.setdefault(str(action.id), str(uid))
+            try:
+                stack.extend(action.get_actions()[0])
+            except Exception:
+                pass
+    return out
+
+
+def placement(row: dict, actions: dict[str, str]) -> str | None:
+    """The OSC input uid a row shows under (S153); None: the group
+    "Feedback not tied to an input"."""
+    if row.get("input"):
+        return str(row["input"])
+    source = row.get("source") or {}
+    kind = source.get("kind")
+    if kind == "osc_input" and source.get("input") not in (None, ""):
+        return str(source["input"])
+    if kind == "action_state" and source.get("action"):
+        return actions.get(str(source["action"]))
+    return None
+
+
+def _current_profile() -> Any:  # noqa: ANN401
+    from gremlin import shared_state
+
+    return shared_state.current_profile
+
+
+def _entry(row: dict) -> dict:
+    """A row flattened for QML (numbers as text; off/on "" when not set)."""
+    source = row["source"]
+    return {
+        "id": row["id"],
+        "enabled": row["enabled"],
+        "kind": source["kind"],
+        "device": "" if source["device"] is None else source["device"],
+        "input": "" if source["input"] is None else source["input"],
+        "action": source.get("action") or "",
+        "target": row["target"],
+        "address": row["address"],
+        "min": _show(row["min"]),
+        "max": _show(row["max"]),
+        "type": row["type"],
+        "offValue": _show_off_on(row.get("off_value")),
+        "onValue": _show_off_on(row.get("on_value")),
+        "template": row.get("template") or "",
+        "showUnder": row.get("input") or "",
+    }
+
+
+def rows_for_page(rows: list[dict] | None = None, profile: object = None) -> list[dict]:
+    """Each feedback row for the OSC page with its placement (an OSC input
+    uid, or None for "Feedback not tied to an input")."""
+    rows = osc_device_file.read_feedback() if rows is None else rows
+    profile = _current_profile() if profile is None else profile
+    actions = action_inputs(profile) if profile is not None else {}
+    out = []
+    for row in rows:
+        entry = _entry(row)
+        entry["placement"] = placement(row, actions)
+        out.append(entry)
+    return out
 
 
 def new_row() -> dict:
@@ -318,34 +409,113 @@ class OscFeedbackModel(QtCore.QObject):
                 out.append({"value": uid, "text": str(row.get("label") or uid)})
         return out
 
+    @QtCore.Property(list, notify=changed)
+    def actionChoices(self) -> list:
+        """Smart Toggles and Tempos of the current profile, for the
+        action_state source picker: [{value: action id, text: label}]."""
+        from gremlin import action_state
+
+        profile = _current_profile()
+        if profile is None:
+            return []
+        return [
+            {"value": str(aid), "text": label}
+            for aid, label in action_state.stateful_actions(profile)
+        ]
+
     # -- rows ----------------------------------------------------------------
 
     @QtCore.Property(list, notify=changed)
     def rows(self) -> list:
         """Each row flattened for QML: id, enabled, kind, device, input,
-        target, address, min, max, type, offValue, onValue, template
-        (numbers as text; off/on "" when not set)."""
-        out = []
-        for row in self._rows:
-            source = row["source"]
-            out.append(
-                {
-                    "id": row["id"],
-                    "enabled": row["enabled"],
-                    "kind": source["kind"],
-                    "device": "" if source["device"] is None else source["device"],
-                    "input": "" if source["input"] is None else source["input"],
-                    "target": row["target"],
-                    "address": row["address"],
-                    "min": _show(row["min"]),
-                    "max": _show(row["max"]),
-                    "type": row["type"],
-                    "offValue": _show_off_on(row.get("off_value")),
-                    "onValue": _show_off_on(row.get("on_value")),
-                    "template": row.get("template") or "",
-                }
-            )
+        action, target, address, min, max, type, offValue, onValue,
+        template, showUnder (numbers as text; off/on "" when not set)."""
+        return [_entry(row) for row in self._rows]
+
+    @QtCore.Property(list, notify=changed)
+    def rowsForPage(self) -> list:
+        """rows plus placement: the OSC input uid ("" for the group
+        "Feedback not tied to an input")."""
+        out = rows_for_page(self._rows)
+        for entry in out:
+            entry["placement"] = entry["placement"] or ""
         return out
+
+    def _index_of(self, row_id: str) -> int:
+        for index, row in enumerate(self._rows):
+            if row["id"] == str(row_id):
+                return index
+        return -1
+
+    @QtCore.Slot(str, result="QVariantMap")
+    def rowById(self, row_id: str) -> dict:
+        for entry in rows_for_page(self._rows):
+            if entry["id"] == str(row_id):
+                entry["placement"] = entry["placement"] or ""
+                return entry
+        return {}
+
+    @QtCore.Slot(str, bool, result=bool)
+    def setRowEnabled(self, row_id: str, on: bool) -> bool:
+        return self.setRowValue(self._index_of(row_id), "enabled", bool(on))
+
+    @QtCore.Slot(str, str, "QVariant", result=bool)
+    def setRowValueById(self, row_id: str, key: str, value: object) -> bool:
+        return self.setRowValue(self._index_of(row_id), key, value)
+
+    @QtCore.Slot(str, result=bool)
+    def removeRowById(self, row_id: str) -> bool:
+        return self.removeRow(self._index_of(row_id))
+
+    @QtCore.Slot(str, result=str)
+    def duplicateRow(self, row_id: str) -> str:
+        """Copies a row (new id) right after it; the new id, "" when the
+        row isn't there."""
+        index = self._index_of(row_id)
+        if index < 0:
+            return ""
+        copy = dict(self._rows[index])
+        copy["source"] = dict(copy["source"])
+        copy["id"] = osc_device_file.new_id()
+        rows = [dict(r) for r in self._rows]
+        rows.insert(index + 1, copy)
+        return copy["id"] if self._write(rows) else ""
+
+    @QtCore.Slot("QVariantMap", result=str)
+    def addRowFor(self, fields: dict) -> str:
+        """A new row from new_row() with the given stored-row keys; the
+        new id, "" (with message) when refused."""
+        row = new_row()
+        given = dict(fields or {})
+        if "source" in given:
+            given["source"] = dict(given["source"] or {})
+        row.update(given)
+        row["id"] = osc_device_file.new_id()
+        why = check_address(row.get("address"))
+        if why:
+            self._say(why)
+            return ""
+        cleaned = osc_device_file.clean_feedback([row])[0]
+        rows = [dict(r) for r in self._rows] + [cleaned]
+        return cleaned["id"] if self._write(rows) else ""
+
+    @QtCore.Slot(str, result=bool)
+    def actionMissing(self, row_id: str) -> bool:
+        """An action_state row whose action isn't in the current profile
+        (S158)."""
+        index = self._index_of(row_id)
+        if index < 0:
+            return False
+        source = self._rows[index]["source"]
+        if source["kind"] != "action_state":
+            return False
+        action = source.get("action")
+        profile = _current_profile()
+        if not action or profile is None:
+            return True
+        return str(action) not in action_inputs(profile) and not _in_library(
+            profile, str(action)
+        )
 
     def _write(self, rows: list[dict]) -> bool:
         try:
@@ -438,6 +608,18 @@ class OscFeedbackModel(QtCore.QObject):
                 source["input"] = number
             else:
                 source["input"] = str(value or "") or None
+        elif key == "action":
+            text = str(value or "").strip()
+            if text:
+                source["action"] = text
+            else:
+                source.pop("action", None)
+        elif key in ("showUnder", "show_under"):
+            text = str(value or "").strip()
+            if text:
+                row["input"] = text
+            else:
+                row.pop("input", None)
         elif key == "target":
             row["target"] = str(value or "") or osc_device_file.REPLY
         elif key == "address":
@@ -467,6 +649,15 @@ class OscFeedbackModel(QtCore.QObject):
         rows = [dict(r) for r in self._rows]
         rows[index] = row
         return self._write(rows)
+
+
+def _in_library(profile: object, action_id: str) -> bool:
+    """action_id is used by an input of profile (any device)."""
+    try:
+        used = profile.library.in_use()  # type: ignore[attr-defined]
+    except Exception:
+        return False
+    return action_id in {str(a) for a in used}
 
 
 def _vjoy_ids() -> list[int]:

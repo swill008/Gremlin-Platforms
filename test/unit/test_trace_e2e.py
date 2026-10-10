@@ -180,9 +180,22 @@ def story(j: Journey) -> None:  # noqa: PLR0915
     except TimeoutError:
         pass
     out["lines-on"] = _lines(trace)
-    j.QTest.qWait(150)
-    out["file-text"] = trace.file_path().read_text(encoding="utf-8") \
-        if trace.file_path().exists() else None
+
+    def file_text() -> str | None:
+        path = trace.file_path()
+        return path.read_text(encoding="utf-8") if path.exists() else None
+
+    def file_has_all() -> bool:
+        text = file_text() or ""
+        return all(
+            f"  {p}  " in text for p in ("RAW", "WIRING", "OUTPUT", "BLOCKED")
+        )
+
+    try:
+        j.wait_until(file_has_all, "the traced lines in trace.log", timeout=2)
+    except TimeoutError:
+        pass
+    out["file-text"] = file_text()
 
     # The vJoy read-back agrees with what was written (before the check).
     written = trace.last_written(1, "axis", 1)
@@ -299,12 +312,34 @@ def story(j: Journey) -> None:  # noqa: PLR0915
     trace.set_tick(uid, "button", 1, True)
     trace.set_enabled(True)
     # Settings are written about a second after the last change (and on
-    # quit, which os._exit skips here).
-    j.QTest.qWait(2000)
-    out["file-size-at-exit"] = trace.file_size()
+    # quit, which os._exit skips here): wait until no write is waiting and
+    # the file has these ticks.
+    import json
+
     from gremlin import config as gconfig
 
     saved = pathlib.Path(gconfig._config_file_path)
+    ticks_now = gconfig.Configuration().value(
+        trace._CFG_SECTION, trace._CFG_GROUP, trace._CFG_TICKS
+    )
+
+    from gremlin import deferred_write
+
+    def ticks_saved() -> bool:
+        if deferred_write.pending("configuration"):
+            return False
+        try:
+            data = json.loads(saved.read_text(encoding="utf-8"))
+            group = data[trace._CFG_SECTION][trace._CFG_GROUP]
+            return group[trace._CFG_TICKS]["value"] == ticks_now
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+
+    try:
+        j.wait_until(ticks_saved, "the ticks written to the settings", timeout=4)
+    except TimeoutError:
+        pass
+    out["file-size-at-exit"] = trace.file_size()
     out["saved-ticks"] = '"trace"' in saved.read_text(encoding="utf-8") \
         if saved.exists() else None
     out["uid"] = str(uid)

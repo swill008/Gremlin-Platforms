@@ -247,6 +247,45 @@ def settle(seconds: float = 0.0) -> None:
         time.sleep(0.01)
 
 
+# settle_outputs: how long the recorded outputs must stay the same before
+# Run counts them as done.
+QUIET = 0.08
+# Set to 1 to check every quiet settle against the full wait: a run that
+# would have recorded more by then fails (proof that QUIET cut nothing).
+SETTLE_CHECK_ENV = "AE_MATRIX_SETTLE_CHECK"
+
+
+def settle_outputs(
+    collected: Callable[[], list[tuple]], wait: float, quiet: float = QUIET
+) -> None:
+    """Settles until the recorded outputs stop changing for quiet seconds,
+    at most wait. Nothing recorded yet: the full wait, so a check that
+    nothing is sent (or an output a timer sends late) still gets the old
+    time to show up."""
+    end = time.monotonic() + wait
+    last = len(collected())
+    still_since = time.monotonic()
+    while True:
+        settle()
+        now = time.monotonic()
+        if now >= end:
+            break
+        count = len(collected())
+        if count != last:
+            last, still_since = count, now
+        elif count and now - still_since >= quiet:
+            break
+        time.sleep(0.01)
+    if os.environ.get(SETTLE_CHECK_ENV) == "1":
+        early = list(collected())
+        settle(max(0.0, end - time.monotonic()))
+        late = collected()
+        assert late == early, (
+            f"settle_outputs stopped early: {len(early)} outputs, "
+            f"{len(late)} by the full wait {wait} s: {late[len(early) :]}"
+        )
+
+
 def _stick_guid() -> uuid.UUID:
     import dill
     from test import fake_hardware  # pyright: ignore[reportAttributeAccessIssue]
@@ -582,7 +621,9 @@ class Case:
         event each, in order). Returns what reached the outputs:
         ("write_vjoy", vjoy, kind, id, value), ("release_vjoy_button", ...),
         ("write_xbox", ...), ("key", scan, extended, pressed),
-        ("input", count) for mouse, and any watch()ed call."""
+        ("input", count) for mouse, and any watch()ed call. wait: the most
+        it waits after the last event (settle_outputs: less once the
+        outputs have stopped changing; the whole wait when none came)."""
         if not self.commit():
             raise AssertionError("OK wrote nothing (commitPane -1)")
         kind = event_kind or self.input_type
@@ -594,7 +635,7 @@ class Case:
             for one in values:
                 handler.process_event(self._event(kind, one))
                 settle(0.02)
-            settle(wait)
+            settle_outputs(collected, wait)
             return collected()
 
     def _event(self, word: str, value: Any) -> Any:  # noqa: ANN401

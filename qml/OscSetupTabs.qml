@@ -20,6 +20,13 @@ ColumnLayout {
     property alias model: _model
     property alias current: _strip.current
 
+    // Shows the tab of that name ("Feedback"); unknown names are ignored.
+    function showTab(name) {
+        var at = _strip.names.indexOf(String(name))
+        if (at >= 0)
+            _strip.current = at
+    }
+
     // A box still being typed in when the window closes is saved too.
     function commit() {
         _server.commit()

@@ -49,9 +49,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 FOLDERS = ["test/unit", "test/action_interaction", "test/integration", "test/journeys"]
-# 8 cores: 6 unit parts and the two other folders. Measured full runs:
-# 4 parts 1:10, 5 parts 0:59, 6 parts 0:54 (then action_interaction is the
-# longest part).
+# 8 cores: 6 unit parts and the other folders. Full runs, 2026-10-10: about
+# 3 min with 6 parts, the longest unit parts held up by two files split over
+# every part (each part rebuilt their 35 s module fixture). Since a file's
+# setup is booked once and only its test time decides a split, expected
+# shorter: NOT VERIFIED until the next full run.
 UNIT_PARTS = 6
 # A part still running after this is stopped (a hang the per-test stall
 # watch missed). GREMLIN_TEST_PART_LIMIT (seconds) raises it on a slower
@@ -106,7 +108,10 @@ class Part:
     failed: list[str] = field(default_factory=list)
     # When the last test result came: the time since then is the next one's.
     last_result: float = 0.0
-    file_times: dict[str, float] = field(default_factory=dict)
+    # Per file: the time to its first result here (its module fixtures'
+    # setup included), then each later result's.
+    first_times: dict[str, float] = field(default_factory=dict)
+    rest_times: dict[str, list[float]] = field(default_factory=dict)
     # When pytest's summary line came, and when the part was found hung after it.
     summary_at: float = 0.0
     exit_hang_at: float = 0.0
@@ -208,6 +213,12 @@ def _known_times() -> dict[str, float]:
     return {**seed, **_load("file-times.json", {})}
 
 
+def _known_setup() -> dict[str, float]:
+    """Each file's one-off setup (its module fixtures) from this PC's last
+    full run: a part that runs any of its tests pays it again."""
+    return _load("file-setup.json", {})
+
+
 def _failed_file() -> str:
     """Each checkout keeps its own list of what failed last."""
     import hashlib
@@ -245,19 +256,23 @@ def _tests_in(test_file: str) -> list[str]:
     return [line for line in result.stdout.splitlines() if "::" in line]
 
 
-def _units(files: list[str], parts: int, times: dict[str, float]) -> tuple[
-    list[str], dict[str, float]
-]:
-    """What to spread over the parts: files, except that a file heavier than
-    half a part's share is spread test by test (one file could otherwise
-    keep its part running long after the others are done)."""
+def _units(
+    files: list[str], parts: int, times: dict[str, float],
+    setup: dict[str, float] | None = None,
+) -> tuple[list[str], dict[str, float]]:
+    """What to spread over the parts: files, except that a file whose tests
+    take over half a part's share is spread test by test (one file could
+    otherwise keep its part running long after the others are done). Its
+    setup doesn't count: every part it goes to would build it again."""
+    setup = setup or {}
     share = sum(times.get(f, 1.0) for f in files) / parts
     units: list[str] = []
     weights: dict[str, float] = {}
     for f in files:
         took = times.get(f, 1.0)
+        calls = max(0.0, took - setup.get(f, 0.0))
         # A single test (from --failed) is never split further.
-        tests = _tests_in(f) if took > share / 2 and "::" not in f else []
+        tests = _tests_in(f) if calls > share / 2 and "::" not in f else []
         if len(tests) > 1:
             for test in tests:
                 units.append(test)
@@ -285,7 +300,7 @@ def plan(targets: list[str], parts: int) -> list[Part]:
             else:
                 # Chosen files and --failed tests are spread the same way.
                 files = sorted({t.replace("\\", "/") for t in chosen})
-            units, weights = _units(files, parts, times)
+            units, weights = _units(files, parts, times, _known_setup())
             split = _split(units, min(parts, len(units)), weights)
             if len(split) == 1:
                 jobs.append(Part("unit", folder, split[0]))
@@ -347,7 +362,42 @@ def _add_time(part: Part, test_file: str) -> None:
     module fixture's too) was this test's, so its file's."""
     now = time.monotonic()
     took, part.last_result = now - part.last_result, now
-    part.file_times[test_file] = part.file_times.get(test_file, 0.0) + took
+    _book(part, test_file, took)
+
+
+def _book(part: Part, test_file: str, took: float) -> None:
+    if test_file in part.first_times:
+        part.rest_times.setdefault(test_file, []).append(took)
+    else:
+        part.first_times[test_file] = took
+
+
+def _measured(parts: list[Part]) -> tuple[dict[str, float], dict[str, float]]:
+    """Each file's time and setup from this run. A part's first result of a
+    file carries the file's setup; the rest are its tests alone. A file
+    spread over parts built its setup in each: it is booked once (the
+    largest), so the file doesn't look heavier the more it is split."""
+    total: dict[str, float] = {}
+    setup: dict[str, float] = {}
+    for f in {f for p in parts for f in p.first_times}:
+        firsts = [p.first_times[f] for p in parts if f in p.first_times]
+        rest = [t for p in parts for t in p.rest_times.get(f, [])]
+        per_test = sum(rest) / len(rest) if rest else 0.0
+        setups = [max(0.0, first - per_test) for first in firsts]
+        calls = sum(rest) + sum(first - s for first, s in zip(firsts, setups))
+        setup[f] = max(setups)
+        total[f] = setup[f] + calls
+    return total, setup
+
+
+def _saves_times(targets: list[str], args: argparse.Namespace) -> bool:
+    """Only a run of whole folders measures whole files: a run of chosen
+    files, --changed, --failed or --quick (stops at a failure) would save
+    times that aren't the full run's."""
+    return (
+        not (args.failed or args.changed or args.quick or args.real_vjoy)
+        and all(t.replace("\\", "/").rstrip("/") in FOLDERS for t in targets)
+    )
 
 
 def _end(process: subprocess.Popen) -> None:
@@ -567,16 +617,10 @@ def _run_and_report(targets: list[str], args: argparse.Namespace) -> int:
         failed = [node for p in parts for node in p.failed]
         if not args.failed or not failed:
             _save(_failed_file(), failed)
-        times = dict(_load("file-times.json", {}))
-        measured: dict[str, float] = {}
-        for p in parts:  # a file spread over parts: add its shares up
-            for test_file, seconds in p.file_times.items():
-                measured[test_file] = measured.get(test_file, 0.0) + seconds
-        # Only some of a file's tests ran (--failed, file::test): its time
-        # is not the file's, and would leave a heavy file unsplit next time.
-        partial = {t.replace("\\", "/").split("::")[0] for t in targets if "::" in t}
-        times.update({f: t for f, t in measured.items() if f not in partial})
-        _save("file-times.json", times)
+        if _saves_times(targets, args):
+            measured, setup = _measured(parts)
+            _save("file-times.json", _load("file-times.json", {}) | measured)
+            _save("file-setup.json", _known_setup() | setup)
         out = ["", f"=== All done in {int(took) // 60:02d}:{int(took) % 60:02d}"]
         out += [f"  {p.name:<11} {p.summary} ({p.took:.0f} s)" for p in parts]
         if failed:

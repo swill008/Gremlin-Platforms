@@ -96,6 +96,10 @@ Item {
     signal actionMenu(string parentKey, int seq, string title, var item, real x, real y)
     signal pageMenu(var item, real x, real y)
     signal actionClicked(string parentKey, int seq, string title)
+    // Rows of kind "feedback" (OSC, 09 S153): offered while locked too,
+    // since feedback stays editable while a profile runs (S155).
+    signal feedbackMenu(string key, string title, bool enabled, var item, real x, real y)
+    signal feedbackClicked(string key, string title)
     signal clearFilters()
 
     function toggleOpen(key) {
@@ -142,6 +146,10 @@ Item {
             return false
         if (kind === "writer" || kind === "child")
             return showChildren && !!opened[parentKey]
+        // Feedback rows sit under an input (opened with it) or in a group
+        // of their own (shown while the group is unfolded).
+        if (kind === "feedback")
+            return parentKey === groupKey || (showChildren && !!opened[parentKey])
         return true
     }
 
@@ -257,6 +265,8 @@ Item {
             required property int sequenceIndex
             required property int childCount
             readonly property int extraWriters: model.extraWriters || 0
+            // A group the page keeps in place: no drag, nothing dropped into it.
+            readonly property bool fixedGroup: !!model.fixedGroup
 
             readonly property bool shown: _tree._rowVisible(rowKind, groupKey, parentKey)
             width: _list.width - Style.dp(16)
@@ -314,7 +324,7 @@ Item {
                     }
                 }
                 Rectangle {
-                    visible: rowKind === "parent" || rowKind === "group"
+                    visible: (rowKind === "parent" || rowKind === "group") && !_row.fixedGroup
                     implicitWidth: visible ? Style.dp(_tree.gripWidth) : 0
                     implicitHeight: visible ? Style.dp(_tree.gripHeight) : 0
                     Layout.preferredWidth: visible ? Style.dp(_tree.gripWidth) : 0
@@ -432,7 +442,7 @@ Item {
                     Label {
                         text: title
                         color: _tree.colorText
-                        font.bold: rowKind === "child" ? false : _tree.parentBold
+                        font.bold: (rowKind === "child" || rowKind === "feedback") ? false : _tree.parentBold
                         font.pixelSize: Style.dp(rowKind === "group" ? _tree.groupFont : (rowKind === "parent" ? _tree.parentFont : _tree.childFont))
                         elide: Text.ElideRight
                         Layout.fillWidth: true
@@ -471,7 +481,7 @@ Item {
                 anchors.fill: parent
                 anchors.bottomMargin: _row.rowGap
                 z: 4
-                enabled: !_tree.locked && (rowKind === "parent" || rowKind === "group")
+                enabled: !_tree.locked && (rowKind === "parent" || rowKind === "group") && !_row.fixedGroup
                 keys: [_tree.dragMime]
                 property bool placeBefore: true
                 onPositionChanged: (drag) => {
@@ -555,6 +565,8 @@ Item {
                             _tree.parentMenu(key, title, userName, groupName, _row, mouse.x, mouse.y)
                         } else if (rowKind === "group" && groupName.length > 0) {
                             _tree.groupMenu(groupName, _row, mouse.x, mouse.y)
+                        } else if (rowKind === "feedback") {
+                            _tree.feedbackMenu(key, title, !!_row.model.enabled, _row, mouse.x, mouse.y)
                         } else if (rowKind === "child" && !_tree.locked) {
                             _tree.actionMenu(parentKey, sequenceIndex, title, _row, mouse.x, mouse.y)
                         } else {
@@ -566,6 +578,8 @@ Item {
                         _tree.select(key, mouse.modifiers & Qt.ShiftModifier)
                     else if (rowKind === "child")
                         _tree.actionClicked(parentKey, sequenceIndex, title)
+                    else if (rowKind === "feedback")
+                        _tree.feedbackClicked(key, title)
                     else if (rowKind === "group")
                         _tree.toggleGroup(groupKey)
                 }

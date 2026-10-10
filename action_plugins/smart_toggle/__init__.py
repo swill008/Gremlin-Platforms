@@ -75,6 +75,10 @@ class SmartToggleFunctor(AbstractFunctor):
 
         return fsm.FiniteStateMachine("wait", states, actions, transitions)
 
+    def feedback_state(self) -> bool:
+        """On while the children are held (09 S157)."""
+        return self.fsm.current_state != "wait"
+
     def _timeout(self) -> None:
         self.fsm.perform("timeout", None, None, None)
 

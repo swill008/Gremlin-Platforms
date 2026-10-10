@@ -21,7 +21,7 @@ from typing import Any
 
 import pytest
 
-from gremlin import osc_device_file, plugin_manager, shared_state
+from gremlin import osc_device_file, osc_pattern, plugin_manager, shared_state
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime
 from gremlin.profile import Profile
 from gremlin.types import InputType
@@ -398,3 +398,77 @@ def test_copy_for_companion(page: OscLayoutModel, copied: list[str]) -> None:
     text = page.copyForCompanion(_key("/sd/fire"))
     assert "Send integer /sd/fire 1" in text
     assert copied == [text]
+
+
+# Address patterns on the page (batch 2, OX7; spec 09 S147-S152).
+
+
+@pytest.fixture
+def traffic() -> Iterator[None]:
+    from gremlin import osc_traffic
+
+    osc_traffic.clear()
+    yield
+    osc_traffic.clear()
+
+
+def _seen(*addresses: str) -> None:
+    from gremlin import osc_traffic
+
+    for address in addresses:
+        osc_traffic.note("in", address, (0.5,))
+
+
+def test_a_pattern_input_says_how_many_addresses_it_matched(
+    page: OscLayoutModel, traffic: None
+) -> None:
+    _seen("/fader/1", "/fader/2", "/fader/1", "/knob/1")
+    _add("/fader/*", mode="axis")
+    _add("/deck/1")
+    row = _parent(page, "/fader/*")
+    assert row["isPattern"] is True
+    assert row["subtitle"].startswith("Pattern · 2 addresses seen · Axis")
+    assert not _parent(page, "/deck/1")["subtitle"].startswith("Pattern")
+    assert page.matchesSeen("/fader/*") == 2
+    assert page.matchesSeen("/knob/1") == 1
+    assert page.matchesSeen("/fader/[") == 0
+    assert page.addressError("/fader/[") == osc_pattern.check("/fader/[") != ""
+    assert page.addressError("/fader/*") == ""
+    # Find's Patterns tick shows only pattern inputs.
+    page.setPatternsOnly(True)
+    keys = [r["key"] for r in _rows(page) if r["rowKind"] == "parent"]
+    assert keys == [_key("/fader/*")]
+    page.setPatternsOnly(False)
+    assert len([r for r in _rows(page) if r["rowKind"] == "parent"]) == 2
+
+
+def test_change_address_gives_the_pattern_error(page: OscLayoutModel) -> None:
+    _add("/deck/1")
+    error = page.changeAddress(_key("/deck/1"), "/deck/{a,b")
+    assert error == osc_pattern.check("/deck/{a,b") != ""
+
+
+def test_copy_for_companion_on_a_pattern_uses_a_seen_address(
+    page: OscLayoutModel, copied: list[str], traffic: None
+) -> None:
+    _add("/sd/*")
+    text = page.copyForCompanion(_key("/sd/*"))
+    assert "Send integer <an address matching /sd/*> 1" in text
+    assert osc_device_model.PATTERN_COMPANION_NOTE in text
+    _seen("/sd/fire")
+    text = page.copyForCompanion(_key("/sd/*"))
+    assert "Send integer /sd/fire 1" in text
+    assert "Companion sends exact addresses; set one per button." in text
+
+
+def test_the_add_window_shows_bulk_captures_skipped_count(qapp: object) -> None:
+    model = OscDeviceManagementModel()
+    told: list[int] = []
+    model.bulkSkippedChanged.connect(lambda: told.append(model.bulkSkipped))
+    assert model.bulkSkipped == 0
+    # osc_bulk counts on the model this way (S151).
+    model._bulk_skipped = model._bulk_skipped + 1
+    model._bulk_skipped = model._bulk_skipped + 1
+    assert model.bulkSkipped == 2 and told == [1, 2]
+    model._bulk_skipped = 0
+    assert told == [1, 2, 0]

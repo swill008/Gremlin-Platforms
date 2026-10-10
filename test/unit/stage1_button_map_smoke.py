@@ -227,10 +227,13 @@ class Window:
     def opened(self, dialog: str) -> bool:
         return bool(self.ev(f"{dialog}.opened"))
 
-    def ok_if_open(self, dialog: str) -> None:
-        if self.opened(dialog):
-            self.press(dialog, "OK")
-            wait_for(lambda: not self.opened(dialog))
+    def take_theirs(self) -> None:
+        """Take Theirs in Save's changed-elsewhere question: the edit ends."""
+        if not self.press("_saveGate", "Take Theirs"):
+            raise RuntimeError("no Take Theirs button in Save's question")
+        if not wait_for(lambda: not self.opened("_saveGate")
+                        and not self.ev("_buttonMap.editing")):
+            raise RuntimeError("Take Theirs did not close the question and Edit")
 
     def nodes(self) -> list[dict]:
         value = self.js("(_ed() && _ed().nodes) ? _ed().nodes : []")
@@ -704,8 +707,7 @@ def part_outside(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
         "setup-image": setup_ref,
         "said": w.ev("_saveGate.messageText"),
     }
-    w.ok_if_open("_saveGate")
-    w.leave_edit()
+    w.take_theirs()
 
     # A Device Pack import onto this stick while editing, then Save.
     w.enter_edit()
@@ -730,8 +732,7 @@ def part_outside(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
         "pack-ids": pack_ids,
         "said": w.ev("_saveGate.messageText"),
     }
-    w.ok_if_open("_saveGate")
-    w.leave_edit()
+    w.take_theirs()
 
     # Delete Device while its map is being edited (S13, 07 Q7, GL-176).
     w.enter_edit()

@@ -146,7 +146,7 @@ def test_encoder_axis_auto_direction_accumulates_and_clamps(run: tuple) -> None:
     for value in (1, 1, 0, 1, 1, 1):
         runtime._on_main("/enc", (value,))
     assert [e[2] for e in events] == [0.4, 0.8, 0.4, 0.8, 1.0, 1.0]
-    assert runtime._enc_format[rows.rows()[0].uid] == "direction"
+    assert runtime._enc_format[(rows.rows()[0].uid, "")] == "direction"
 
 
 def test_encoder_axis_auto_switches_to_signed_on_a_negative(run: tuple) -> None:

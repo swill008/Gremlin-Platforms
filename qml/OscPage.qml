@@ -17,7 +17,9 @@ import Gremlin.UI
 // (ControlFindBar, ControlTree, ActionPane) with OSC's own pieces: the
 // address is the input's identity, the Add window, Import and Listen, OSC
 // Setup, and the OSC Monitor docked at the bottom. No footer and no
-// Appearance panel.
+// Appearance panel. Feedback rows (09 S153-S156) sit under their input,
+// after its actions, or in "Feedback not tied to an input"; they open in
+// the same pane (OscFeedbackEditor) and stay editable while a profile runs.
 Item {
     id: _root
 
@@ -205,6 +207,114 @@ Item {
         return false
     }
 
+    // Page menu "Feedback settings…": OSC Setup on its Feedback tab.
+    function openFeedbackSettings() {
+        if (typeof signal !== "undefined" && signal && signal.openOscModuleSetupAt) {
+            signal.openOscModuleSetupAt("Feedback")
+            return true
+        }
+        return openSetup()
+    }
+
+    // +---------------------------------------------------------------------
+    // | Feedback rows (09 S153-S156)
+
+    property string _fbKey: ""
+    property string _fbTitle: ""
+    property bool _fbEnabled: false
+    // A feedback row waiting for the open action editor's unsaved question.
+    property var _pendingOpen: null
+
+    function _showFeedbackMessage() {
+        var text = String(_layout.feedbackMessage || "")
+        if (text.length)
+            _message.show(text, false)
+    }
+
+    function _openParent(parentKey) {
+        var next = Object.assign({}, _tree.opened)
+        next[parentKey] = true
+        _tree.opened = next
+    }
+
+    // The row's editor in the shared pane (S155: also while running).
+    function openFeedback(key, title) {
+        if (_pane.open && _pane.paneKey === key)
+            return true
+        if (_pane.hasUnsaved()) {
+            _pendingOpen = { key: key, title: title }
+            _pane.askLeave("The action editor has changes that are not saved.")
+            return false
+        }
+        if (_pane.open)
+            _pane.closeNow()
+        var draft = _layout.beginFeedback(key)
+        if (!draft || !draft.key)
+            return false
+        _pane.openCustom(key, title, _feedbackEditor, {
+            dirty: function() { return _layout.feedbackDirty() },
+            commit: function() { return _layout.commitFeedback() },
+            discard: function() { _layout.discardFeedback() },
+            end: function() { _layout.endFeedback() },
+            lockExempt: true
+        })
+        return true
+    }
+
+    function addFeedback(parentKey) {
+        var key = String(_layout.addFeedback(parentKey) || "")
+        if (!key.length) {
+            _message.show(String(_layout.feedbackMessage || "Feedback could not be added."), true)
+            return ""
+        }
+        _openParent(parentKey)
+        return key
+    }
+
+    function addCompanionFeedback(parentKey, kind) {
+        var key = String(_layout.addCompanionFeedback(parentKey, kind) || "")
+        if (!key.length) {
+            _message.show(String(_layout.feedbackMessage || "Feedback could not be added."), true)
+            return ""
+        }
+        _openParent(parentKey)
+        _showFeedbackMessage()
+        return key
+    }
+
+    // Deleting a feedback row asks first (01 S140); Undo puts it back.
+    function deleteFeedbackAsked(key, title) {
+        Confirm.ask(_root, {
+            title: "Delete this feedback?",
+            text: title + ". Nothing more is sent for it.",
+            undoable: true,
+            action: "Delete Feedback",
+            onAccept: function() {
+                if (_pane.open && _pane.paneKey === key)
+                    _pane.finishClose()
+                _layout.deleteFeedback(key)
+            }
+        })
+    }
+
+    // An address with OSC pattern characters (S147).
+    function isPattern(text) {
+        return /[*?\[\]{}]/.test(String(text || ""))
+    }
+
+    // Change Address…'s live lines (S152): why the address is refused, and
+    // how many of the Monitor's recent addresses a pattern matches.
+    function _checkAddress(value) {
+        var text = String(value || "").trim()
+        _addressDialog.errorText = text.length ? String(_layout.addressError(text) || "") : ""
+        if (!text.length || _addressDialog.errorText.length || !isPattern(text)) {
+            _addressDialog.hintText = ""
+            return
+        }
+        var n = Number(_layout.matchesSeen(text) || 0)
+        _addressDialog.hintText = "Matches " + n + " of the addresses seen"
+    }
+
     // Change Address… (one Undo step); the model's error shows on the message line.
     function changeAddress(key, value) {
         var err = _layout.changeAddress(key, value)
@@ -217,6 +327,8 @@ Item {
     }
 
     function _askChangeAddress(key) {
+        _addressDialog.errorText = ""
+        _addressDialog.hintText = ""
         _addressDialog.key = key
         _addressDialog.text = String(_layout.addressOf(key) || "")
         _addressDialog.visible = true
@@ -331,12 +443,18 @@ Item {
             false,
             _find.isChecked("noAction")
         )
+        _layout.setPatternsOnly(_find.isChecked("patterns"))
     }
 
     OscLayoutModel { id: _layout }
     Connections {
         target: _layout
         function onPaneLost() { _root.closePaneNow() }
+        // A feedback row that is gone (deleted, Undo) closes its editor.
+        function onFeedbackEditorChanged() {
+            if (_pane.open && _layout.isFeedbackKey(_pane.paneKey) && !(_layout.feedbackEditor || {}).key)
+                _pane.closeNow()
+        }
     }
 
     // The Add window, Import, Listen and the input's settings work on OSC's
@@ -390,7 +508,8 @@ Item {
                     ]
                     filters: [
                         { label: "Ungrouped", name: "ungrouped" },
-                        { label: "No actions in this mode", name: "noAction" }
+                        { label: "No actions in this mode", name: "noAction" },
+                        { label: "Patterns", name: "patterns" }
                     ]
                     locked: _root.editorLocked
                     paneOpen: _root.actionOpen
@@ -423,7 +542,7 @@ Item {
                     dragLayer: _root
                     emptyText: "No OSC inputs yet. Right-click here to add some."
                     filtering: _find.filtering
-                    rowExtras: _liveValue
+                    rowExtras: _rowExtras
 
                     onClearFilters: _find.clear()
                     onPageMenu: (item, x, y) => _root._openLayoutMenu(false, false, item, x, y)
@@ -445,6 +564,13 @@ Item {
                         _actionMenu.openAt(item, x, y)
                     }
                     onActionClicked: (parentKey, seq, title) => _root._openPane(parentKey, seq, title)
+                    onFeedbackClicked: (key, title) => _root.openFeedback(key, title)
+                    onFeedbackMenu: (key, title, enabled, item, x, y) => {
+                        _root._fbKey = key
+                        _root._fbTitle = title
+                        _root._fbEnabled = enabled
+                        _feedbackMenu.openAt(item, x, y)
+                    }
                 }
 
                 MessageLine {
@@ -460,7 +586,13 @@ Item {
                 layout: _layout
                 locked: _root.editorLocked
                 namePrefix: "osc"
-                onLeaveDone: (resolved) => _root._finishLeave(resolved)
+                onLeaveDone: (resolved) => {
+                    var next = _root._pendingOpen
+                    _root._pendingOpen = null
+                    if (next && resolved)
+                        _root.openFeedback(next.key, next.title)
+                    _root._finishLeave(resolved)
+                }
             }
         }
 
@@ -528,6 +660,44 @@ Item {
         repeat: true
         running: _root.visible
         onTriggered: _root._tick++
+    }
+
+    // Right end of a row: the live value on an input, the on/off box on a
+    // feedback row (S153; usable while running, S155).
+    Component {
+        id: _rowExtras
+        Loader {
+            readonly property var rowModel: parent ? parent.rowModel : null
+            readonly property bool feedback: !!rowModel && rowModel.rowKind === "feedback"
+            readonly property bool wanted: !!item && item.wanted === true
+            sourceComponent: feedback ? _feedbackOn : _liveValue
+        }
+    }
+
+    Component {
+        id: _feedbackOn
+        CheckBox {
+            objectName: "oscFeedbackRowOn"
+            readonly property var row: parent ? parent.rowModel : null
+            readonly property bool wanted: true
+            checked: !!row && !!row.enabled
+            padding: 0
+            onClicked: {
+                if (row)
+                    _layout.setFeedbackEnabled(row.key, checked)
+            }
+            PointerTip {
+                text: "Send this feedback"
+                show: parent.hovered
+            }
+        }
+    }
+
+    Component {
+        id: _feedbackEditor
+        OscFeedbackEditor {
+            layout: _layout
+        }
     }
 
     Component {
@@ -647,6 +817,7 @@ Item {
         if (onRow) {
             if (!many) {
                 quick.push(MenuModel.action("Add Action", function() { _openNewPane(_menuKey, _menuTitle) }))
+                quick.push(MenuModel.action("Add Feedback", function() { addFeedback(_menuKey) }))
                 quick.push(MenuModel.action("Rename", _renameRow))
                 quick.push(MenuModel.action("Change Address…", function() { _askChangeAddress(_menuKey) }))
             }
@@ -665,6 +836,8 @@ Item {
         }
         if (onGroup)
             quick.push(MenuModel.action("Rename Group", _renameGroup))
+        if (!_menuOnRow && !_menuOnGroup)
+            quick.push(MenuModel.action("Feedback settings…", function() { openFeedbackSettings() }))
 
         var moveTo = []
         if (onRow) {
@@ -678,6 +851,10 @@ Item {
             }
         }
         return MenuModel.menu(kind, title, quick, [
+            onRow && !many ? MenuModel.section("companion", "Companion feedback", [
+                MenuModel.action("Key text", function() { addCompanionFeedback(_menuKey, "text") }),
+                MenuModel.action("Key color", function() { addCompanionFeedback(_menuKey, "colour") })
+            ]) : null,
             onRow ? MenuModel.section("row", "Row", [
                 MenuModel.action("Clear Name", function() {
                     _askClearName(_menuKey, _menuTitle, _menuUser)
@@ -733,6 +910,25 @@ Item {
         }
     }
 
+    // A feedback row's menu: offered while running too (S155).
+    ContextMenu {
+        id: _feedbackMenu
+        menuWidth: Style.dp(220)
+        build: function() {
+            var key = _root._fbKey
+            return MenuModel.menu("osc-feedback", _root._fbTitle, [
+                MenuModel.action("Open", function() { _root.openFeedback(key, _root._fbTitle) }),
+                MenuModel.action(_root._fbEnabled ? "Turn Off" : "Turn On", function() {
+                    _layout.setFeedbackEnabled(key, !_root._fbEnabled)
+                }),
+                MenuModel.action("Duplicate", function() { _layout.duplicateFeedback(key) }),
+                MenuModel.action("Delete…", function() {
+                    _root.deleteFeedbackAsked(key, _root._fbTitle)
+                }, true, { danger: true })
+            ])
+        }
+    }
+
     // +---------------------------------------------------------------------
     // | Windows
 
@@ -770,6 +966,7 @@ Item {
         clearOnClick: false
         heading: "OSC address"
         validator: function(value) { return value.trim().length > 0 }
+        onEdited: (value) => _root._checkAddress(value)
         onAccepted: (value) => {
             if (!_root.editorLocked)
                 _root.changeAddress(key, value.trim())

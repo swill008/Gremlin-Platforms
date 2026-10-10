@@ -30,15 +30,17 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
 
 import pytest
 from PySide6 import QtCore, QtGui
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SCALES = ("1", "1.5")
+_SMOKE = _ROOT / "test" / "unit" / "print_export_window_smoke.py"
 
 
-def _smoke(folder: pathlib.Path, home: pathlib.Path, scale: str) -> dict:
+def _start(folder: pathlib.Path, home: pathlib.Path, scale: str) -> subprocess.Popen:
     (home / "Gremlin Platforms").mkdir(parents=True)
     env = dict(
         os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
@@ -46,23 +48,49 @@ def _smoke(folder: pathlib.Path, home: pathlib.Path, scale: str) -> dict:
     )
     fonts = os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     env.setdefault("QT_QPA_FONTDIR", fonts)
-    done = subprocess.run(
-        [sys.executable, str(_ROOT / "test" / "unit" / "print_export_window_smoke.py"),
-         str(folder)],
-        cwd=_ROOT, env=env, capture_output=True, text=True, timeout=150,
-    )
-    lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, done.stdout[-1500:] + done.stderr[-1500:]
+    # Output to files, not pipes: a full pipe would stall a process while
+    # the other one is being waited for.
+    with (home / "stdout.txt").open("w") as out, (home / "stderr.txt").open("w") as err:
+        return subprocess.Popen(
+            [sys.executable, str(_SMOKE), str(folder)],
+            cwd=_ROOT, env=env, stdout=out, stderr=err,
+        )
+
+
+def _result(proc: subprocess.Popen, home: pathlib.Path, deadline: float) -> dict:
+    """The smoke's RESULT; 150 s from its own start, as before."""
+    try:
+        proc.wait(timeout=max(0.0, deadline - time.monotonic()))
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        raise
+    stdout = (home / "stdout.txt").read_text(errors="replace")
+    stderr = (home / "stderr.txt").read_text(errors="replace")
+    lines = [ln for ln in stdout.splitlines() if ln.startswith("RESULT ")]
+    assert lines, stdout[-1500:] + stderr[-1500:]
     return json.loads(lines[0][len("RESULT "):])
 
 
 @pytest.fixture(scope="module")
 def runs(tmp_path_factory: pytest.TempPathFactory) -> dict:
-    out = {}
+    # Both scales at once, each in its own process and user folder.
+    started = {}
     for scale in _SCALES:
         folder = tmp_path_factory.mktemp("out")
-        out[scale] = (_smoke(folder, tmp_path_factory.mktemp("home"), scale), folder)
-    return out
+        home = tmp_path_factory.mktemp("home")
+        deadline = time.monotonic() + 150
+        started[scale] = (_start(folder, home, scale), folder, home, deadline)
+    try:
+        return {
+            scale: (_result(proc, home, deadline), folder)
+            for scale, (proc, folder, home, deadline) in started.items()
+        }
+    finally:
+        for proc, *_rest in started.values():
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
 
 
 @pytest.fixture(scope="module")

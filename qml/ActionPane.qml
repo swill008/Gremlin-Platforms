@@ -29,18 +29,53 @@ RowLayout {
     property bool closeAfterOk: false
     property bool _ready: false
 
+    // A page's own editor in place of the action editor (OSC's Feedback
+    // editor, 09 S153). Set through openCustom; null shows the action
+    // editor. The hooks replace the model's pane draft calls: dirtyFn() ->
+    // bool, commitFn() -> bool, discardFn(), endFn().
+    property Component editor: null
+    property var dirtyFn: null
+    property var commitFn: null
+    property var discardFn: null
+    property var endFn: null
+    // The editor stays editable while a profile runs (OSC feedback, S155).
+    property bool lockExempt: false
+
     // After the unsaved-changes question: true when the pane was saved or
     // dropped (and closed), false when the user stayed.
     signal leaveDone(bool resolved)
 
-    function hasUnsaved() { return open && layout.paneDirty() }
+    function _dirty() { return dirtyFn ? !!dirtyFn() : layout.paneDirty() }
+
+    function _commit() { return commitFn ? !!commitFn() : layout.commitPane() >= 0 }
+
+    function _discard() {
+        if (discardFn)
+            discardFn()
+        else
+            layout.discardPane()
+    }
+
+    function _useActionEditor() {
+        editor = null
+        dirtyFn = null
+        commitFn = null
+        discardFn = null
+        endFn = null
+        lockExempt = false
+    }
+
+    function hasUnsaved() { return open && _dirty() }
 
     // OK for Run's "Save" (06 Q6): false when nothing could be written.
-    function save() { return !hasUnsaved() || layout.commitPane() >= 0 }
+    function save() { return !hasUnsaved() || _commit() }
 
     function openAt(key, seq, title) {
         if (locked)
             return
+        if (open && editor)
+            finishClose()
+        _useActionEditor()
         layout.beginPane(key, seq)
         paneKey = key
         paneTitle = title
@@ -50,7 +85,26 @@ RowLayout {
     function openNew(key, title) {
         if (locked)
             return
+        if (open && editor)
+            finishClose()
+        _useActionEditor()
         layout.beginNewAction(key)
+        paneKey = key
+        paneTitle = title
+        open = true
+    }
+
+    // The page's own editor; hooks: {dirty, commit, discard, end, lockExempt}.
+    // The page has opened its draft already.
+    function openCustom(key, title, component, hooks) {
+        if (open && !editor)
+            layout.endPane()
+        editor = component
+        dirtyFn = hooks.dirty || null
+        commitFn = hooks.commit || null
+        discardFn = hooks.discard || null
+        endFn = hooks.end || null
+        lockExempt = !!hooks.lockExempt
         paneKey = key
         paneTitle = title
         open = true
@@ -61,7 +115,7 @@ RowLayout {
     }
 
     function requestClose() {
-        if (layout.paneDirty()) {
+        if (_dirty()) {
             askLeave("The action editor has changes that are not saved.")
             return
         }
@@ -75,9 +129,13 @@ RowLayout {
     }
 
     function finishClose() {
-        layout.endPane()
+        if (endFn)
+            endFn()
+        else
+            layout.endPane()
         open = false
         paneKey = ""
+        _useActionEditor()
     }
 
     function _saveDock() {
@@ -149,22 +207,35 @@ RowLayout {
                 Button { text: "×"; implicitWidth: Style.dp(28); onClicked: _pane.requestClose() }
             }
             InputConfiguration {
+                visible: !_pane.editor
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 holdModel: true
                 inputItemModel: _pane.layout.paneModel
             }
+            ScrollView {
+                visible: !!_pane.editor
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                contentWidth: availableWidth
+                clip: true
+                Loader {
+                    width: parent ? parent.width : 0
+                    active: !!_pane.editor
+                    sourceComponent: _pane.editor
+                }
+            }
             // A pane open when Run starts turns read-only: no OK (06 Q6, 05 Q11).
             Label {
                 objectName: _pane.namePrefix + "PaneLocked"
-                visible: _pane.locked
+                visible: _pane.locked && !_pane.lockExempt
                 text: "Profile running: stop it to edit"
                 color: Style.fgMuted
                 Layout.fillWidth: true
                 elide: Text.ElideRight
             }
             RowLayout {
-                visible: !_pane.locked
+                visible: !_pane.locked || _pane.lockExempt
                 CheckBox {
                     text: "Close pane after OK"
                     checked: _pane.closeAfterOk
@@ -175,7 +246,9 @@ RowLayout {
                     text: "OK"
                     highlighted: true
                     onClicked: {
-                        _pane.layout.commitPane()
+                        // A page editor's refused draft stays open (its error line says why).
+                        if (!_pane._commit() && _pane.commitFn)
+                            return
                         if (_pane.closeAfterOk)
                             _pane.finishClose()
                     }
@@ -187,12 +260,15 @@ RowLayout {
     DismissibleDialog {
         id: _leave
         onSaveChosen: {
-            _pane.layout.commitPane()
+            if (!_pane._commit() && _pane.commitFn) {
+                _pane.leaveDone(false)
+                return
+            }
             _pane.finishClose()
             _pane.leaveDone(true)
         }
         onDiscardChosen: {
-            _pane.layout.discardPane()
+            _pane._discard()
             _pane.finishClose()
             _pane.leaveDone(true)
         }

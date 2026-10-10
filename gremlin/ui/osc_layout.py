@@ -7,18 +7,27 @@ OscLayoutModel is ControlLayoutModel for OSC: one parent per OSC input
 kept in OSC's module file (osc.json: key "layout", input keys "osc:<uid>",
 names in the claim's friendly names), the settings line under each title
 (S134), live value and last seen (S141), Send Test (S145), Change Address,
-Edit Settings on several inputs (S146) and Copy for Companion (S122)."""
+Edit Settings on several inputs (S146) and Copy for Companion (S122).
+
+Batch 2: address patterns on the page (S147-S152: subtitle, Patterns
+filter, seen-address hint, pattern errors) and Feedback rows (S153-S158):
+child rows of kind "feedback" after an input's actions, the rest in the
+fixed group "Feedback not tied to an input" at the bottom, edited in the
+pane while a profile runs too, each edit a page Undo step."""
 
 from __future__ import annotations
 
+import contextlib
+import copy
 import uuid
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import clock, osc_device_file
+from gremlin import clock, osc_device_file, osc_pattern
 from gremlin.error import GremlinError
 from gremlin.logical_device import _natural_key, _same_group
 from gremlin.modules import store
@@ -26,14 +35,18 @@ from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime
 from gremlin.osc_rows import OscRow, OscRows
 from gremlin.signal import signal
 from gremlin.types import InputType
-from gremlin.ui import osc_device_model
+from gremlin.ui import osc_device_model, osc_feedback_model
 from gremlin.ui.control_layout import (
     ROW_DEFAULTS,
     ControlLayoutModel,
     LayoutItem,
+    group_key,
     parent_key,
     parse_parent,
 )
+
+if TYPE_CHECKING:
+    from gremlin.profile import Profile
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -53,6 +66,12 @@ EXTRA_DEFAULTS: dict[str, Any] = {
     "lastSeenAt": 0.0,
     "lastSeen": "",
     "liveSynthetic": False,
+    "isPattern": False,
+    # Feedback rows (S153): the inline check box and the stored row id.
+    "enabled": False,
+    "feedbackId": "",
+    # The bottom group "Feedback not tied to an input": not a user group.
+    "fixedGroup": False,
 }
 LIVE_ROLES = (
     "liveValue",
@@ -150,6 +169,189 @@ def live_fields(uid: str) -> dict[str, Any]:
     }
 
 
+def pattern_line(count: int) -> str:
+    """The start of a pattern input's subtitle (S147)."""
+    word = "address" if count == 1 else "addresses"
+    return f"Pattern · {count} {word} seen"
+
+
+# -- Feedback rows (S153-S158) -------------------------------------------
+
+FEEDBACK_PREFIX = "feedback:"
+FEEDBACK_GROUP = "feedbackgroup"
+FEEDBACK_GROUP_TITLE = "Feedback not tied to an input"
+FEEDBACK_WHO = "OSC page"
+SHOW_UNDER_NONE = "By its source"
+# Editor field names (QML) -> stored row keys.
+_STORED = {"offValue": "off_value", "onValue": "on_value", "showUnder": "input"}
+
+
+def feedback_key(row_id: str) -> str:
+    return FEEDBACK_PREFIX + str(row_id)
+
+
+def feedback_id(key: str) -> str:
+    text = str(key or "")
+    return text[len(FEEDBACK_PREFIX) :] if text.startswith(FEEDBACK_PREFIX) else ""
+
+
+def _target_text(target: str, targets: list[dict]) -> str:
+    if target == osc_device_file.REPLY:
+        return "the sender"
+    for entry in targets:
+        if entry["id"] == target:
+            return entry["name"] or f"{entry['host']}:{entry['port']}"
+    return "a target that no longer exists"
+
+
+def feedback_what(
+    row: dict, under: str | None, actions: dict[str, str], logical: dict[str, str]
+) -> str:
+    """What a feedback row sends, in words ("this input's value")."""
+    source = row["source"]
+    kind = source["kind"]
+    device, number = source.get("device"), source.get("input")
+    if kind == "mode":
+        return "the mode"
+    if kind == "vjoy_button":
+        return f"vJoy {device} button {number}"
+    if kind == "vjoy_axis":
+        return f"vJoy {device} axis {number}"
+    if kind == "logical":
+        return logical.get(str(number), "a Logical Device control")
+    if kind == "osc_input":
+        if under and str(number) == under:
+            return "this input's value"
+        other = OscDevice().rows.by_uid(str(number)) if number else None
+        return f"{other.label}'s value" if other else "an OSC input's value"
+    if kind == "action_state":
+        label = actions.get(str(source.get("action") or ""))
+        return f"{label}'s state" if label else "an action's state"
+    if kind == "paused":
+        return "Running / Paused"
+    return kind
+
+
+def feedback_title(
+    row: dict,
+    under: str | None,
+    actions: dict[str, str],
+    logical: dict[str, str],
+    targets: list[dict],
+) -> str:
+    """ "Sends <what> to <target> · <address>" (S153)."""
+    what = feedback_what(row, under, actions, logical)
+    return f"Sends {what} to {_target_text(row['target'], targets)} · {row['address']}"
+
+
+def action_missing(row: dict, actions: dict[str, str]) -> bool:
+    """An Action state row whose action isn't in the current profile (S158)."""
+    source = row["source"]
+    return source["kind"] == "action_state" and (
+        str(source.get("action") or "") not in actions
+    )
+
+
+def stateful_labels(profile: Profile | None) -> dict[str, str]:
+    """Action id -> label of every Smart Toggle and Tempo in profile."""
+    if profile is None:
+        return {}
+    from gremlin import action_state
+
+    out: dict[str, str] = {}
+    for aid, label in action_state.stateful_actions(profile):
+        out.setdefault(str(aid), label)
+    return out
+
+
+def _logical_names() -> dict[str, str]:
+    from gremlin import logical_device_file
+
+    out = {}
+    for control in logical_device_file.read_layout()["controls"]:
+        uid = str(control.get("uid") or "")
+        if uid:
+            out[uid] = str(control.get("user-label") or control.get("label") or uid)
+    return out
+
+
+def set_field(row: dict, name: str, value: object) -> str:
+    """Puts one editor field into a stored feedback row (in place); "" or
+    why it was refused. The same checks as Module Setup's rows."""
+    fb = osc_feedback_model
+    source = dict(row["source"])
+    if name == "enabled":
+        row["enabled"] = bool(value)
+    elif name == "kind":
+        kind = str(value)
+        if kind not in osc_device_file.SOURCE_KINDS:
+            return "Pick a source."
+        if kind != source["kind"]:
+            source = {"kind": kind, "device": None, "input": None}
+            if kind in ("vjoy_button", "vjoy_axis"):
+                source["device"] = fb._vjoy_ids()[0]
+                source["input"] = 1
+    elif name == "device":
+        number = fb._whole(value)
+        if number is None or not 1 <= number <= 16:
+            return "Pick a vJoy device."
+        source["device"] = number
+    elif name == "input":
+        if source["kind"] in ("vjoy_button", "vjoy_axis"):
+            number = fb._whole(value)
+            if number is None or number < 1:
+                return "The number is a whole number, 1 or more."
+            source["input"] = number
+        else:
+            source["input"] = str(value or "") or None
+    elif name == "action":
+        text = str(value or "").strip()
+        if text:
+            source["action"] = text
+        else:
+            source.pop("action", None)
+    elif name == "showUnder":
+        text = str(value or "").strip()
+        if text:
+            row["input"] = text
+        else:
+            row.pop("input", None)
+    elif name == "target":
+        row["target"] = str(value or "") or osc_device_file.REPLY
+    elif name == "address":
+        # Outgoing addresses are exact (S149).
+        why = fb.check_address(value)
+        if why:
+            return why
+        row["address"] = str(value).strip()
+    elif name in ("min", "max"):
+        number = fb._number(value)
+        if number is None:
+            return "Min and Max are numbers, e.g. 0 or 1.5."
+        row[name] = number
+    elif name in ("offValue", "onValue"):
+        stored = _STORED[name]
+        given = fb._off_on(value)
+        if given is None:
+            row.pop(stored, None)
+        else:
+            row[stored] = given
+    elif name == "type":
+        if value not in osc_device_file.VALUE_TYPES:
+            return "Pick a value type."
+        row["type"] = str(value)
+    else:
+        return f"Unknown field {name}."
+    row["source"] = source
+    return ""
+
+
+def _stored_feedback() -> list:
+    """The feedback rows as stored (uncleaned, so two reads compare equal)."""
+    raw = store.read_path(osc_device_file.path()).get(osc_device_file.FEEDBACK_KEY)
+    return copy.deepcopy(raw) if isinstance(raw, list) else []
+
+
 @dataclass(frozen=True)
 class OscLayoutItem:
     """One OSC input as the shared base reads it (LayoutItem)."""
@@ -245,7 +447,10 @@ class OscLayoutStore:
     # -- Undo --------------------------------------------------------------
 
     def memento(self) -> dict:
+        # Feedback rows ride along (written at once, not at Save): a
+        # feedback edit is a page Undo step too (S156).
         return {
+            "feedback": _stored_feedback(),
             "rows": self.rows.to_dict()["inputs"],
             "groups": list(self._groups),
             "order": list(self._order),
@@ -259,6 +464,8 @@ class OscLayoutStore:
             rows.load_dict({"inputs": memo["rows"]})
             # load_dict counts as saved; this is an edit to save.
             rows.mark_dirty()
+        if _stored_feedback() != memo["feedback"]:
+            osc_device_file.write_feedback(memo["feedback"], FEEDBACK_WHO)
         self._groups = list(memo["groups"])
         self._order = list(memo["order"])
         self._group_of = dict(memo["group_of"])
@@ -452,11 +659,33 @@ class OscLayoutModel(ControlLayoutModel):
     }
     _ROLE_OF = {bytes(v.data()).decode(): k for k, v in roles.items()}
 
+    feedbackMessageChanged = QtCore.Signal()
+    feedbackEditorChanged = QtCore.Signal()
+
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._baseline: dict | None = None
         self._seen_edit = osc_device_model.last_edit()[0]
         self._store: OscLayoutStore
+        self._patterns_only = False
+        self._seen: list[str] = []
+        # Feedback rows of this rebuild: input uid -> page entries; the
+        # entries tied to no input go to the bottom group.
+        self._fb_under: dict[str, list[dict]] = {}
+        self._fb_loose: list[dict] = []
+        self._fb_actions: dict[str, str] = {}
+        self._fb_unlocked = False
+        self._fb_writing = False
+        self._fb_message = ""
+        # The pane's feedback editor: the stored row and its draft.
+        self._fb_id = ""
+        self._fb_saved: dict | None = None
+        self._fb_draft: dict | None = None
+        self._fb_error = ""
+        self._fb_choices: osc_feedback_model.OscFeedbackModel | None = None
+        changed = getattr(signal, "oscFeedbackChanged", None)
+        if changed is not None:
+            changed.connect(self._on_feedback_changed)
         modified = getattr(signal, "oscDeviceModified", None)
         if modified is not None:
             modified.connect(self._on_external)
@@ -487,7 +716,14 @@ class OscLayoutModel(ControlLayoutModel):
 
     def _parent_subtitle(self, item: LayoutItem, extra: list[dict]) -> str:
         row = self._osc_row(item)
-        return settings_line(row) if row is not None else ""
+        return self._subtitle_of(row) if row is not None else ""
+
+    def _subtitle_of(self, row: OscRow) -> str:
+        line = settings_line(row)
+        if not row.is_pattern:
+            return line
+        seen = osc_device_model.seen_matching(row.label, self._seen)
+        return f"{pattern_line(len(seen))} · {line}"
 
     def _parent_fields(self, item: LayoutItem, extra: list[dict]) -> dict:
         row = self._osc_row(item)
@@ -497,6 +733,7 @@ class OscLayoutModel(ControlLayoutModel):
             "uid": row.uid,
             "address": row.label,
             "inputMode": row.mode,
+            "isPattern": row.is_pattern,
             **live_fields(row.uid),
         }
 
@@ -504,13 +741,209 @@ class OscLayoutModel(ControlLayoutModel):
         return "Sort by Address"
 
     def _row(self, **fields: object) -> dict:
-        return {**ROW_DEFAULTS, **EXTRA_DEFAULTS, **fields}
+        row = {**ROW_DEFAULTS, **EXTRA_DEFAULTS, **fields}
+        if row["rowKind"] == "parent" and row["uid"]:
+            # Feedback rows count as children: an input with only feedback
+            # rows still gets a caret.
+            row["childCount"] += len(self._fb_under.get(row["uid"], ()))
+        return row
+
+    def _rows_after_actions(self, item: LayoutItem, extra: list[dict]) -> list[dict]:
+        # Actions first, then feedback rows (S156).
+        key = parent_key(item.type, item.id)
+        return [
+            self._feedback_row(entry, key, group_key(item.group), item.group or "")
+            for entry in self._fb_under.get(str(item.identifier), [])
+        ]
+
+    def _filtering(self) -> bool:
+        return self._patterns_only or super()._filtering()
+
+    def _visible_parent(
+        self, item: LayoutItem, extra: list[dict], action_count: int
+    ) -> bool:
+        if self._patterns_only:
+            row = self._osc_row(item)
+            if row is None or not row.is_pattern:
+                return False
+        return super()._visible_parent(item, extra, action_count)
+
+    def _refused(self) -> bool:
+        # Feedback edits go on while a profile runs (S155).
+        return False if self._fb_unlocked else super()._refused()
 
     # Undo for edits made in the Add / Import / Listen windows (S131).
 
     def _rebuild(self) -> None:
+        self._seen = osc_device_model.seen_addresses()
+        self._place_feedback()
         super()._rebuild()
         self._baseline = self._layout.memento()
+        self._refresh_editor()
+
+    def _rows_at_end(self) -> list[dict]:
+        # The bottom group goes last, after every group.
+        return self._loose_rows()
+
+    # Feedback rows (S153-S158).
+
+    def _place_feedback(self) -> None:
+        profile = self._profile()
+        rows = osc_device_file.read_feedback()
+        self._fb_actions = stateful_labels(profile)
+        logical = (
+            _logical_names()
+            if any(row["source"]["kind"] == "logical" for row in rows)
+            else {}
+        )
+        targets = osc_device_file.read_targets()
+        known = {row.uid for row in OscDevice().rows.rows()}
+        self._fb_under = {}
+        self._fb_loose = []
+        entries = osc_feedback_model.rows_for_page(rows, profile)
+        for row, entry in zip(rows, entries, strict=True):
+            under = entry["placement"] if entry["placement"] in known else None
+            entry["title"] = feedback_title(
+                row, under, self._fb_actions, logical, targets
+            )
+            entry["note"] = (
+                osc_feedback_model.ACTION_MISSING
+                if action_missing(row, self._fb_actions)
+                else ""
+            )
+            if under:
+                self._fb_under.setdefault(under, []).append(entry)
+            else:
+                self._fb_loose.append(entry)
+
+    def _feedback_row(
+        self, entry: dict, parent: str, group: str, group_name: str
+    ) -> dict:
+        return self._row(
+            rowKind="feedback",
+            key=feedback_key(entry["id"]),
+            title=entry["title"],
+            subtitle=entry["note"],
+            parentKey=parent,
+            groupKey=group,
+            groupName=group_name,
+            indent=1,
+            enabled=bool(entry["enabled"]),
+            feedbackId=entry["id"],
+        )
+
+    def _loose_rows(self) -> list[dict]:
+        """The bottom group "Feedback not tied to an input" and its rows."""
+        entries = self._fb_loose
+        if self._filtering():
+            if (
+                self._patterns_only
+                or self._type_filter not in ("", "all")
+                or self._ungrouped_only
+                or self._no_writer
+                or self._no_actions
+            ):
+                return []
+            text = self._search.lower()
+            entries = [e for e in entries if text in e["title"].lower()]
+        if not entries:
+            return []
+        count = len(entries)
+        out = [
+            self._row(
+                rowKind="group",
+                key=FEEDBACK_GROUP,
+                title=FEEDBACK_GROUP_TITLE,
+                subtitle=f"{count} feedback row" + ("" if count == 1 else "s"),
+                groupKey=FEEDBACK_GROUP,
+                childCount=count,
+                fixedGroup=True,
+            )
+        ]
+        out += [
+            self._feedback_row(entry, FEEDBACK_GROUP, FEEDBACK_GROUP, "")
+            for entry in entries
+        ]
+        return out
+
+    def _on_feedback_changed(self) -> None:
+        if self._writing or self._fb_writing:
+            return
+        self._rebuild()
+
+    @contextlib.contextmanager
+    def _feedback_step(self) -> Iterator[None]:
+        """Lets one feedback edit (or its Undo) through while running."""
+        self._fb_unlocked = True
+        self._fb_writing = True
+        try:
+            yield
+        finally:
+            self._fb_unlocked = False
+            self._fb_writing = False
+
+    def _apply_feedback(self, change: Callable[[list[dict]], str], label: str) -> str:
+        """change(rows) edits the stored rows in place and returns what to
+        hand back ("": nothing to write). One page Undo step, also while a
+        profile runs."""
+        result: list[str] = []
+        top = self._undo[-1] if self._undo else None
+
+        def fn() -> list[dict]:
+            rows = osc_device_file.read_feedback()
+            out = change(rows)
+            if out:
+                osc_device_file.write_feedback(rows, FEEDBACK_WHO)
+            result.append(out)
+            return []
+
+        try:
+            with self._feedback_step():
+                self._apply(fn, label)
+        except OSError as exc:
+            self._say(f"Not written. The OSC file could not be saved. ({exc})")
+            self._rebuild()
+            return ""
+        if self._undo and self._undo[-1] is not top:
+            self._undo[-1]["feedbackOnly"] = True
+        return result[0] if result else ""
+
+    def _say(self, text: str) -> None:
+        if text != self._fb_message:
+            self._fb_message = text
+            self.feedbackMessageChanged.emit()
+
+    @staticmethod
+    def _index_of(rows: list[dict], row_id: str) -> int:
+        for index, row in enumerate(rows):
+            if row["id"] == row_id:
+                return index
+        return -1
+
+    def _stored_row(self, row_id: str) -> dict | None:
+        rows = osc_device_file.read_feedback()
+        index = self._index_of(rows, row_id)
+        return rows[index] if index >= 0 else None
+
+    # Undo / Redo of a feedback step work while running too (S155, S156).
+
+    @QtCore.Slot()
+    def undo(self) -> None:
+        top = self._undo[-1] if self._undo else None
+        if top is not None and top.get("feedbackOnly"):
+            with self._feedback_step():
+                super().undo()
+            return
+        super().undo()
+
+    @QtCore.Slot()
+    def redo(self) -> None:
+        top = self._redo[-1] if self._redo else None
+        if top is not None and top.get("feedbackOnly"):
+            with self._feedback_step():
+                super().redo()
+            return
+        super().redo()
 
     def _on_external(self) -> None:
         if self._writing:
@@ -545,8 +978,15 @@ class OscLayoutModel(ControlLayoutModel):
             if row.get("rowKind") != "parent" or row.get("uid") != uid:
                 continue
             row.update(live_fields(uid))
+            names: list[str] = list(LIVE_ROLES)
+            osc_row = OscDevice().rows.by_uid(uid)
+            if osc_row is not None and osc_row.is_pattern:
+                # A new address may have been seen: "Pattern · N addresses seen".
+                self._seen = osc_device_model.seen_addresses()
+                row["subtitle"] = self._subtitle_of(osc_row)
+                names.append("subtitle")
             at = self.index(index, 0)
-            self.dataChanged.emit(at, at, [self._ROLE_OF[name] for name in LIVE_ROLES])
+            self.dataChanged.emit(at, at, [self._ROLE_OF[name] for name in names])
             return
 
     # Helpers.
@@ -712,3 +1152,296 @@ class OscLayoutModel(ControlLayoutModel):
             return links
 
         self._apply(fn, "Clear all inputs")
+
+    # Address patterns on the page (S147-S152).
+
+    @QtCore.Slot(bool)
+    def setPatternsOnly(self, on: bool) -> None:
+        """Find's "Patterns" tick: only pattern inputs."""
+        self._patterns_only = bool(on)
+        self._rebuild()
+
+    @QtCore.Slot(str, result=int)
+    def matchesSeen(self, address: str) -> int:
+        """How many addresses seen in the OSC Monitor this address answers
+        ("Matches N of the addresses seen")."""
+        return len(osc_device_model.seen_matching(address))
+
+    @QtCore.Slot(str, result=str)
+    def addressError(self, address: str) -> str:
+        """Why an input address is refused ("" when it's fine), for the
+        Change Address… error line (S152)."""
+        return osc_pattern.check(str(address or "").strip())
+
+    # Feedback rows (S153-S156): each edit is a page Undo step and works
+    # while a profile runs.
+
+    @QtCore.Property(str, notify=feedbackMessageChanged)
+    def feedbackMessage(self) -> str:
+        return self._fb_message
+
+    @QtCore.Slot(str, result=bool)
+    def isFeedbackKey(self, key: str) -> bool:
+        return bool(feedback_id(key))
+
+    def _add_row(self, row: dict, label: str) -> str:
+        cleaned = osc_device_file.clean_feedback([row])[0]
+        cleaned["id"] = osc_device_file.new_id()
+
+        def change(rows: list[dict]) -> str:
+            rows.append(cleaned)
+            return cleaned["id"]
+
+        new_id = self._apply_feedback(change, label)
+        return feedback_key(new_id) if new_id else ""
+
+    @QtCore.Slot(str, result=str)
+    def addFeedback(self, parent: str) -> str:
+        """Add Feedback on an input: its value back to the sender, at its
+        own address (a pattern input: /gremlin/feedback, S149). The new
+        row's key, "" when refused."""
+        osc_row = self._row_of_key(parent)
+        if osc_row is None:
+            return ""
+        row = osc_feedback_model.new_row()
+        row["source"] = {"kind": "osc_input", "device": None, "input": osc_row.uid}
+        row["target"] = osc_device_file.REPLY
+        row["address"] = "/gremlin/feedback" if osc_row.is_pattern else osc_row.label
+        self._say("")
+        return self._add_row(row, f"Add Feedback to {osc_row.label}")
+
+    @QtCore.Slot(str, str, result=str)
+    def addCompanionFeedback(self, parent: str, kind: str) -> str:
+        """Companion Key text ("text") or Key color ("colour") for an
+        input: its value drives the key. The new row's key or ""."""
+        osc_row = self._row_of_key(parent)
+        template = {"text": "companion_text", "colour": "companion_colour"}.get(kind)
+        if osc_row is None or template is None:
+            return ""
+        try:
+            found = osc_device_file.find_companion_target()
+            if found is None:
+                found = osc_device_file.ensure_companion_target(FEEDBACK_WHO)
+        except OSError as exc:
+            self._say(f"Not written. The OSC file could not be saved. ({exc})")
+            return ""
+        row = osc_feedback_model.template_row(template, {}, found["id"])
+        if isinstance(row, str):
+            self._say(row)
+            return ""
+        row["source"] = {"kind": "osc_input", "device": None, "input": osc_row.uid}
+        word = "Key text" if kind == "text" else "Key color"
+        key = self._add_row(row, f"Add Companion {word} to {osc_row.label}")
+        if key:
+            self._say(osc_feedback_model.KEY_NOTE)
+        return key
+
+    def _edit_row(
+        self, key: str, edit: Callable[[list[dict], int], str], label: str
+    ) -> str:
+        row_id = feedback_id(key)
+        stored = self._stored_row(row_id) if row_id else None
+        if stored is None:
+            return ""
+
+        def change(rows: list[dict]) -> str:
+            index = self._index_of(rows, row_id)
+            return edit(rows, index) if index >= 0 else ""
+
+        return self._apply_feedback(change, f"{label} · {stored['address']}")
+
+    @QtCore.Slot(str, bool, result=bool)
+    def setFeedbackEnabled(self, key: str, on: bool) -> bool:
+        def edit(rows: list[dict], index: int) -> str:
+            if rows[index]["enabled"] == bool(on):
+                return ""
+            rows[index]["enabled"] = bool(on)
+            return "done"
+
+        word = "On" if on else "Off"
+        self._edit_row(key, edit, f"Turn Feedback {word}")
+        stored = self._stored_row(feedback_id(key))
+        return stored is not None and stored["enabled"] == bool(on)
+
+    @QtCore.Slot(str, result=str)
+    def duplicateFeedback(self, key: str) -> str:
+        """A copy (new id) right after the row; its key or ""."""
+
+        def edit(rows: list[dict], index: int) -> str:
+            twin = copy.deepcopy(rows[index])
+            twin["id"] = osc_device_file.new_id()
+            rows.insert(index + 1, twin)
+            return twin["id"]
+
+        new_id = self._edit_row(key, edit, "Duplicate Feedback")
+        return feedback_key(new_id) if new_id else ""
+
+    @QtCore.Slot(str, result=bool)
+    def deleteFeedback(self, key: str) -> bool:
+        def edit(rows: list[dict], index: int) -> str:
+            del rows[index]
+            return "done"
+
+        if feedback_id(key) and feedback_id(key) == self._fb_id:
+            self.endFeedback()
+        return bool(self._edit_row(key, edit, "Delete Feedback"))
+
+    # The pane's Feedback editor.
+
+    def _choices(self) -> dict:
+        if self._fb_choices is None:
+            self._fb_choices = osc_feedback_model.OscFeedbackModel(self)
+        fb = self._fb_choices
+
+        def get(name: str) -> list:
+            return list(cast("list", getattr(fb, name)))
+
+        osc = get("oscChoices")
+        return {
+            "kinds": get("kindChoices"),
+            "targets": get("targetChoices"),
+            "types": get("typeChoices"),
+            "vjoy": get("vjoyChoices"),
+            "logical": get("logicalChoices"),
+            "osc": osc,
+            "actions": get("actionChoices"),
+            "showUnder": [{"value": "", "text": SHOW_UNDER_NONE}, *osc],
+        }
+
+    def _editor(self) -> dict:
+        draft = self._fb_draft
+        if draft is None:
+            return {}
+        entry = osc_feedback_model._entry(draft)
+        return {
+            "key": feedback_key(self._fb_id),
+            "id": self._fb_id,
+            **{
+                name: entry[name]
+                for name in (
+                    "kind",
+                    "device",
+                    "input",
+                    "action",
+                    "target",
+                    "address",
+                    "min",
+                    "max",
+                    "type",
+                    "offValue",
+                    "onValue",
+                    "showUnder",
+                    "enabled",
+                )
+            },
+            "dirty": draft != self._fb_saved,
+            "error": self._fb_error,
+            "note": (
+                osc_feedback_model.ACTION_MISSING
+                if action_missing(draft, self._fb_actions)
+                else ""
+            ),
+            "choices": self._choices(),
+        }
+
+    @QtCore.Property(dict, notify=feedbackEditorChanged)
+    def feedbackEditor(self) -> dict:
+        return self._editor()
+
+    def _refresh_editor(self) -> None:
+        """After a write (Undo, another window): an unchanged draft follows
+        the stored row; a deleted row closes the editor."""
+        if not self._fb_id:
+            return
+        stored = self._stored_row(self._fb_id)
+        if stored is None:
+            self.endFeedback()
+            return
+        if stored != self._fb_saved:
+            if self._fb_draft == self._fb_saved:
+                self._fb_draft = copy.deepcopy(stored)
+            self._fb_saved = stored
+        self.feedbackEditorChanged.emit()
+
+    @QtCore.Slot(str, result="QVariantMap")
+    def beginFeedback(self, key: str) -> dict:
+        """Opens the editor on a feedback row; {} when it is gone."""
+        row_id = feedback_id(key)
+        stored = self._stored_row(row_id) if row_id else None
+        if stored is None:
+            self.endFeedback()
+            return {}
+        self._fb_id = row_id
+        self._fb_saved = stored
+        self._fb_draft = copy.deepcopy(stored)
+        self._fb_error = ""
+        self._fb_actions = stateful_labels(self._profile())
+        self.feedbackEditorChanged.emit()
+        return self._editor()
+
+    @QtCore.Slot(str, "QVariant", result=str)
+    def setFeedbackField(self, name: str, value: object) -> str:
+        """Changes one field of the draft; "" or why it was refused."""
+        if self._fb_draft is None:
+            return "No feedback row is open."
+        draft = copy.deepcopy(self._fb_draft)
+        why = set_field(draft, str(name), value)
+        if not why:
+            self._fb_draft = draft
+        self._fb_error = why
+        self.feedbackEditorChanged.emit()
+        return why
+
+    @QtCore.Slot(result=bool)
+    def feedbackDirty(self) -> bool:
+        return self._fb_draft is not None and self._fb_draft != self._fb_saved
+
+    @QtCore.Slot(result=bool)
+    def commitFeedback(self) -> bool:
+        """Writes the draft as one Undo step; True when written or when
+        nothing changed."""
+        draft = self._fb_draft
+        if draft is None:
+            return False
+        if draft == self._fb_saved:
+            return True
+        why = osc_feedback_model.check_address(draft["address"])
+        if why:
+            self._fb_error = why
+            self.feedbackEditorChanged.emit()
+            return False
+        new = copy.deepcopy(draft)
+
+        def edit(rows: list[dict], index: int) -> str:
+            rows[index] = new
+            return "done"
+
+        if not self._edit_row(feedback_key(self._fb_id), edit, "Edit Feedback"):
+            if self._stored_row(self._fb_id) is None:
+                self._say("That feedback row no longer exists.")
+                self.endFeedback()
+            return False
+        stored = self._stored_row(self._fb_id)
+        self._fb_saved = stored
+        self._fb_draft = copy.deepcopy(stored)
+        self._fb_error = ""
+        self.feedbackEditorChanged.emit()
+        return True
+
+    @QtCore.Slot()
+    def discardFeedback(self) -> None:
+        if self._fb_saved is None:
+            return
+        self._fb_draft = copy.deepcopy(self._fb_saved)
+        self._fb_error = ""
+        self.feedbackEditorChanged.emit()
+
+    @QtCore.Slot()
+    def endFeedback(self) -> None:
+        if not self._fb_id and self._fb_draft is None:
+            return
+        self._fb_id = ""
+        self._fb_saved = None
+        self._fb_draft = None
+        self._fb_error = ""
+        self.feedbackEditorChanged.emit()

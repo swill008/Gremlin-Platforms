@@ -343,3 +343,28 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Batch 1 full run + lint (lead) | test | 6–7 min + lint (table) | 7 min | 11:42–11:49; 1 fail (OSC names wiped on save), 3 lint |
 | 2026-10-10 | Lead: OSC names kept on save (only page-changed names written) + test, lint fixes | fix | 3–8 min (table: agent fix) | 4 min | 11:49–11:53 |
 | 2026-10-10 | Batch 1 full run + lint rerun (lead) | test | 6–7 min + lint (table) | 9 min | 11:53–12:02; 1 fail = child timeout under load (passes alone in 2.6 s) |
+| 2026-10-10 | SPEED-STUDY: area A, top files, runner split multiplies 2 slow files | review | 5–10 min (table) | 3 min | 12:00–12:03 |
+| 2026-10-10 | Lead: batch 1 commit + push (52a8c2f0) | commit | ~2 min (table: end-to-end batch row) | 1 min | 12:02–12:03 |
+| 2026-10-10 | SPEED-APP: whole-app setup cost study | review | 5–10 min (table) | 2 min | 12:01–12:03 |
+| 2026-10-10 | F1-RUNNER: setup counted once, split by test time, full runs only save times | fix | 3–8 min (table) | 2 min | 12:08–12:10 |
+| 2026-10-10 | F2-PRINT: print export smokes run in parallel (36 s → 18.5 s) | fix | 3–8 min (table) | 2 min | 12:08–12:10 |
+| 2026-10-10 | P-CORE: osc_pattern.py + OscRows pattern index (OX7) | feature | 3–8 min (table) | 3 min | 12:08–12:11 |
+| 2026-10-10 | F3-BMAP: button map smokes in parallel + Take Theirs fix (42 s → 7.4 s) | fix | 3–8 min (table) | 3 min | 12:08–12:11 |
+| 2026-10-10 | FB-REG: action_state registry, Smart Toggle/Tempo feedback_state (OX9F) | feature | 3–8 min (table) | 3 min | 12:09–12:12 |
+| 2026-10-10 | Lead: shared address check in osc_device_model + stronger stage1 save asserts | fix | 3–8 min (table: agent fix) | 2 min | 12:11–12:13 |
+| 2026-10-10 | SPEED-WAITS: waits/timeouts study (History writer 1 s idle per test) | review | 5–10 min (table) | 11 min | 12:01–12:12 |
+| 2026-10-10 | P-RUN: OSC wildcards at run time (per-address state, osc_address, Bulk skip) | feature | 3–8 min (table) | 5 min | 12:09–12:14 |
+| 2026-10-10 | FB-RT: feedback sources action_state/paused, input key, outgoing pattern refusal, page placement API | feature | 3–8 min (table) | 5 min | 12:09–12:14 |
+| 2026-10-10 | W3-TESTER: tester mtime sleeps -> os.utime (26.5 -> 24.6 s) | fix | 3–8 min (table) | 2 min | 12:13–12:15 |
+| 2026-10-10 | W4-TRACE: trace e2e condition waits (28.8 -> 28.2 s) | fix | 3–8 min (table) | 3 min | 12:13–12:16 |
+| 2026-10-10 | Lead: RP1 Running/Paused on = Running (test first) + guard test real path | fix | 3–8 min (table: agent fix) | 2 min | 12:14–12:16 |
+| 2026-10-10 | W1-CONFTEST: stop History writer at teardown (matrix outputs 65 -> 34 s, LS store 21 -> 2.2 s) | fix | 3–8 min (table) | 6 min | 12:13–12:19 |
+| 2026-10-10 | OSC-W2-TEST: batch 2 e2e (4) + carry (11) tests | test | 3–8 min + wait (table) | 8 min | 12:14–12:22 |
+| 2026-10-10 | W2-MATRIX: settle until outputs quiet (172 matrix tests 52.6 -> 34.0 s) | refactor | 5–10 min (table) | 10 min | 12:13–12:23; incl. an unannounced 4 min run |
+| 2026-10-10 | OSC-W2-MODEL: feedback rows/editor/Undo + pattern subtitle/filter/hint, bulkSkipped | feature | 3–8 min (table) | 9 min | 12:14–12:23 |
+| 2026-10-10 | Lead: base hook _rows_at_end replaces endResetModel override | refactor | 5–10 min (table) | 1 min | 12:23–12:24 |
+| 2026-10-10 | FB-REMAP: pack feedback rows follow remapped action ids | fix | 3–8 min (table) | 3 min | 12:23–12:26 |
+| 2026-10-10 | OSC-W2-QML: feedback rows/editor, Companion feedback menu, pattern error/hint, Feedback tab read-only, Setup tab opening | feature | 3–8 min (table) | 17 min | 12:14–12:31; also shared ControlTree/ActionPane hooks + tests |
+| 2026-10-10 | MAP2: batch 2 map lines, decisions as wording, glossary | docs | 3–8 min (table) | 5 min | 12:27–12:32 |
+| 2026-10-10 | Batch 2 full run + lint (lead), after speed fixes | test | 6–7 min + lint (table) | 5.5 min | 12:33–12:39; run 5:18 (was 7–9 min); 1 fail = stale Help labels |
+| 2026-10-10 | Lead: Key color spelling, Help labels for removed Feedback tab editing, test line wraps | fix | 3–8 min (table: agent fix) | 1 min | 12:39–12:40 |

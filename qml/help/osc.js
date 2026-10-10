@@ -153,7 +153,7 @@ function topics() {
                     "<b>Send everything again at:</b> <b>Run start</b>, <b>Mode change</b>, <b>Profile switch</b>: sends every row's value again at those moments, so the device shows the right state. All ticked unless you untick them.",
                     "<b>Send everything again when a message comes to</b> (the sync address, \"/gremlin/sync\" unless you change it): a device can ask for every row again by sending this address. Ticked unless you untick it. Capitals don't matter.",
                     "<b>At most</b> … <b>messages per second per address</b>: 50 unless you change it; a whole number, 1 or more.",
-                    "<b>Add Row</b> › <b>Blank row</b> adds a row that sends the current mode to <b>Reply to sender</b> at <code>/gremlin/mode</code>; change it to suit. <b>Add Row</b> › <b>Companion</b> adds a ready-made one (below). <b>Remove</b> removes a row after asking (<b>Remove Row</b>); you can restore it from Tools › History. Untick <b>Send this row</b> to stop a row without removing it. With no rows, the tab says \"No feedback rows. Add a row to send a value to an OSC device when it changes.\""
+                    "Feedback rows are added and edited on the OSC page: right-click an input › <b>Add Feedback</b>, or its <b>Companion feedback</b> section (<b>Key text</b>, <b>Key color</b>). Each row shows under its input, with a box to turn it off; click it to edit it in the pane. This tab lists the rows (read-only): <b>Edit on the OSC page</b> takes you there. <b>Companion custom variable…</b> adds a row that sends the current mode to a Companion custom variable."
                 ])
                 + "<h4>Each row</h4>"
                 + _list([
@@ -165,11 +165,11 @@ function topics() {
                     "<b>Type</b>: <b>Auto</b>, <b>Int</b>, <b>Float</b>, <b>Bool</b> (true/false) or <b>Text</b>; see " + _link("osc-value-types", "OSC value types") + "."
                 ])
                 + "<h4>Companion templates</h4>"
-                + "<p>Choose <b>Add Row</b> › <b>Companion</b>, then one of these. A short window asks for the few details; <b>Add Row</b> adds the row with its address, target (the Companion target, added when missing) and type:</p>"
+                + "<p>Custom variable: on the Feedback tab, <b>Companion custom variable…</b>. Key text and Key color: on the OSC page, right-click an input › <b>Companion feedback</b>. Each adds the row with its address, target (the Companion target, added when missing) and type:</p>"
                 + _list([
                     "<b>Custom variable…</b>: asks the <b>Variable name</b> (gremlin_mode unless you change it; no spaces) and sends the current mode to <code>/custom-variable/</code><i>name</i><code>/value</code> as text. Create the custom variable in Companion first.",
                     "<b>Key text…</b>: asks the <b>Page</b>, <b>Row</b> and <b>Column</b> (1, 0 and 0 unless you change them; pages count from 1, rows and columns from 0) and sends the current mode to <code>/location/</code><i>page</i>/<i>row</i>/<i>column</i><code>/style/text</code> as text.",
-                    "<b>Key color (off/on)…</b>: asks the key and an <b>Off color</b> and <b>On color</b> (#333333 and #2a7a46 unless you change them; #rrggbb), and sends to <code>/location/</code><i>page</i>/<i>row</i>/<i>column</i><code>/style/bgcolor</code>. Its source starts as vJoy button 1 of the first vJoy device: change it to the button you want shown."
+                    "<b>Key color</b>: asks the key and sends an off and an on color (#333333 and #2a7a46 unless you change them in the row's <b>Off:</b> and <b>On:</b>; #rrggbb) to <code>/location/</code><i>page</i>/<i>row</i>/<i>column</i><code>/style/bgcolor</code>. Its source starts as vJoy button 1 of the first vJoy device: change it to the button you want shown."
                 ])
                 + _good([
                     "How rows send, step by step: " + _link("osc-feedback-how", "How Feedback sends") + ".",
@@ -388,7 +388,7 @@ function topics() {
                     "In Companion: <i>Settings › OSC</i>, turn on the <i>OSC Listener</i> (off unless you turn it on; port 12321).",
                     "In Companion, create a custom variable, for example gremlin_mode.",
                     "In the program, <b>OSC Setup…</b> › <b>Output</b>: <b>Add Companion</b>.",
-                    "On the <b>Feedback</b> tab, choose <b>Add Row</b> › <b>Companion</b> › <b>Custom variable…</b> and keep gremlin_mode. The row sends <b>Current mode</b> to the Companion target at <code>/custom-variable/gremlin_mode/value</code> as <b>Text</b>.",
+                    "On the <b>Feedback</b> tab, choose <b>Companion custom variable…</b> and keep gremlin_mode. The row sends <b>Current mode</b> to the Companion target at <code>/custom-variable/gremlin_mode/value</code> as <b>Text</b>.",
                     "In Companion, put <code>$(custom:gremlin_mode)</code> in a key's text, or use it in an expression feedback to color the key.",
                     "Run the profile. The key shows the mode name."
                 ])

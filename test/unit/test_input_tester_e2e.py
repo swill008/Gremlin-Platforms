@@ -125,6 +125,12 @@ def _write_json(path: pathlib.Path, data: dict) -> None:
     os.replace(tmp, path)
 
 
+def _newer_mtime(path: pathlib.Path, than: float) -> None:
+    """Sets path's mtime 2 s past `than`, so the tester's poll sees a change
+    without the test waiting for the clock."""
+    os.utime(path, (than + 2, than + 2))
+
+
 # The tester's own process: fake dill (the sticks the test says this
 # process sees), no Steam unless asked, no XInput pads or HID list of this PC.
 # It quits when the control file says so (or after 60 s).
@@ -328,8 +334,9 @@ def test_cloak_turned_off_while_the_tester_runs_flips_it_to_pass(
     _write_json(expected, _expected())
     tester = _Tester(home, tmp_path / "ctl", _seen(_LEFT, _RIGHT, _PEDALS))
     tester.wait_result("fail")
-    time.sleep(1.1)  # a newer mtime than the first file
+    first = expected.stat().st_mtime
     _write_json(expected, _expected(cloak=False))
+    _newer_mtime(expected, first)
     result = tester.wait_result("pass", timeout=15)
     tester.stop()
     assert _row(result, "Right stick")["expect"] == "visible"
@@ -636,9 +643,11 @@ def test_cloak_turned_off_in_hidhide_while_the_tester_runs_turns_it_to_pass(
     assert input_tester_link.launch() == ""
     (tester,) = gremlin_side.testers
     tester.wait_result("fail")
-    time.sleep(1.1)  # expected.json's next write gets a newer mtime
+    path = home / "Gremlin Platforms" / "tester" / "expected.json"
+    first = path.stat().st_mtime
     gremlin_side.hidhide.cloak = False  # turned off in the HidHide window
     hidhide_watch.check()  # the 5 s watch sees it
+    _newer_mtime(path, first)
     expected = _read_expected(home)
     assert expected["hidhide"]["cloak"] is False
     assert {s["expect"] for s in expected["sticks"]} == {"visible"}

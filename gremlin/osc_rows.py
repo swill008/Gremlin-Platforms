@@ -16,6 +16,7 @@ import math
 import uuid
 from typing import Any
 
+from gremlin import osc_pattern
 from gremlin.error import GremlinError
 from gremlin.types import InputType
 
@@ -72,6 +73,11 @@ class OscRow:
     def address(self) -> str:
         return self.label
 
+    @property
+    def is_pattern(self) -> bool:
+        """True when the address is an OSC pattern (S147)."""
+        return osc_pattern.is_pattern(self.label)
+
     def match_key(self) -> tuple:
         """Two rows with the same key would answer the same messages."""
         data: tuple = ()
@@ -88,12 +94,11 @@ def type_of_mode(mode: str, enc_output: str = "axis") -> InputType:
 
 
 def check_address(label: object) -> str:
-    """The address, trimmed; refuses blank ones and ones without a leading "/"."""
+    """The address, trimmed; refuses what osc_pattern.check refuses."""
     text = str(label if label is not None else "").strip()
-    if not text:
-        raise GremlinError("An OSC address can't be blank")
-    if not text.startswith("/"):
-        raise GremlinError(f'An OSC address must start with "/": {text}')
+    why = osc_pattern.check(text)
+    if why:
+        raise GremlinError(why if not text else f"{why} ({text})")
     return text
 
 
@@ -189,6 +194,14 @@ class OscRows:
         self.names: dict[str, str] = {}
         # The names as OSC's file held them (osc_device_file.load/save).
         self.names_loaded: dict[str, str] = {}
+        # Lookup for matches(): exact address (casefold) -> rows, and the
+        # pattern rows with their compiled patterns. Rebuilt by every edit
+        # and swapped in one assignment, so the OSC thread reads either the
+        # old or the new one.
+        self._index: tuple[dict[str, list[OscRow]], list[tuple[Any, OscRow]]] = (
+            {},
+            [],
+        )
 
     # -- state ---------------------------------------------------------------
 
@@ -202,6 +215,16 @@ class OscRows:
 
     def _changed(self) -> None:
         self._dirty = True
+
+    def _reindex(self) -> None:
+        exact: dict[str, list[OscRow]] = {}
+        patterns: list[tuple[Any, OscRow]] = []
+        for row in self._rows:
+            if row.is_pattern:
+                patterns.append((osc_pattern.compile(row.label), row))
+            else:
+                exact.setdefault(row.label.casefold(), []).append(row)
+        self._index = (exact, patterns)
 
     def mark_dirty(self) -> None:
         """Something Save writes changed outside the rows' own edits."""
@@ -222,6 +245,7 @@ class OscRows:
         self.layout = {}
         self.names = {}
         self.names_loaded = {}
+        self._reindex()
 
     # -- lookups -------------------------------------------------------------
 
@@ -253,18 +277,47 @@ class OscRows:
         return row.identifier if row is not None else None
 
     def matches(self, address: str, args: tuple | list = ()) -> list[OscRow]:
-        """Rows answering this message: same address (any case); a "data"
-        row also needs the message's values to equal its data."""
-        key = str(address or "").strip().casefold()
+        """Rows answering this message (S147, S148). A "data" row also needs
+        the message's values to equal its data. Exact-address rows win; only
+        when none answers do pattern rows (all that match) get it. An
+        incoming address that is itself a pattern reaches exact rows only."""
+        text = str(address or "").strip()
         values = [_norm_value(v) for v in (args or ())]
-        found = []
-        for row in self._rows:
-            if row.label.casefold() != key:
-                continue
-            if row.cmd_mode == "data" and [_norm_value(v) for v in row.data] != values:
-                continue
-            found.append(row)
-        return found
+
+        def wanted(row: OscRow) -> bool:
+            return (
+                row.cmd_mode != "data" or [_norm_value(v) for v in row.data] == values
+            )
+
+        exact, patterns = self._index
+        if osc_pattern.is_pattern(text):
+            if osc_pattern.check(text):
+                return []
+            regex = osc_pattern.compile(text)
+            return [
+                row
+                for key, group in exact.items()
+                if regex.fullmatch(key.lower())
+                for row in group
+                if wanted(row)
+            ]
+        found = [row for row in exact.get(text.casefold(), ()) if wanted(row)]
+        if found:
+            return found
+        lowered = text.lower()
+        return [
+            row for regex, row in patterns if regex.fullmatch(lowered) and wanted(row)
+        ]
+
+    def answered_by(self, address: str) -> list[OscRow]:
+        """Rows (exact or pattern) whose address answers this one, whatever
+        the data; Bulk capture skips these (S151)."""
+        text = str(address or "").strip()
+        exact, patterns = self._index
+        lowered = text.lower()
+        return list(exact.get(text.casefold(), ())) + [
+            row for regex, row in patterns if regex.fullmatch(lowered)
+        ]
 
     # -- edits ---------------------------------------------------------------
 
@@ -326,11 +379,13 @@ class OscRows:
         )
         self._check_unique(row)
         self._rows.append(row)
+        self._reindex()
         self._changed()
         return row
 
     def delete(self, uid: str) -> None:
         self._rows.remove(self._get(uid))
+        self._reindex()
         self._changed()
 
     def set_label(self, uid: str, label: str) -> None:
@@ -340,6 +395,7 @@ class OscRows:
             return
         self._check_unique(dataclasses.replace(row, label=address), skip=row)
         row.label = address
+        self._reindex()
         self._changed()
 
     def update(self, uid: str, **settings: object) -> OscRow:
@@ -360,6 +416,7 @@ class OscRows:
             return row
         for field in dataclasses.fields(OscRow):
             setattr(row, field.name, getattr(new, field.name))
+        self._reindex()
         self._changed()
         return row
 
@@ -394,6 +451,7 @@ class OscRows:
         """Replaces the rows with a to_dict() layout, then counts as saved.
         Entries that can't be read are skipped and named in load_warnings."""
         self._rows = []
+        self._reindex()
         self.load_warnings = []
         for entry in (data or {}).get("inputs", []) or []:
             try:
@@ -417,4 +475,5 @@ class OscRows:
                 )
             except (GremlinError, AttributeError, TypeError, ValueError) as error:
                 self.load_warnings.append(f"OSC input skipped ({entry!r}): {error}")
+        self._reindex()
         self.mark_saved()

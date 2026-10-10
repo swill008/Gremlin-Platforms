@@ -19,6 +19,8 @@ Popup {
     padding: Style.dp(10)
     width: Style.dp(320)
     height: (heading.length > 0 ? Style.dp(86) : Style.dp(56)) + (showOption ? Style.dp(28) : 0)
+            + (errorText.length > 0 ? _error.implicitHeight + Style.dp(6) : 0)
+            + (hintText.length > 0 ? _hint.implicitHeight + Style.dp(6) : 0)
 
     signal accepted(string value)
     property string text : "New text"
@@ -36,6 +38,15 @@ Popup {
     property bool showOption: false
     property string optionText: ""
     property bool optionChecked: false
+    // Optional error line under the field (OSC Change Address: why the
+    // address is refused). OK stays off while it says something. The page
+    // sets it from the typed text through `edited`.
+    property string errorText: ""
+    // Optional muted line under the field (e.g. "Matches 3 of the
+    // addresses seen").
+    property string hintText: ""
+    // The field's text as it is typed, for pages that check it live.
+    signal edited(string value)
 
     // OK is only offered for a usable value: passing the validator, and
     // not blank unless allowBlank. Checked whenever the text or the rule changes, not only
@@ -43,6 +54,7 @@ Popup {
     function _check() {
         var value = _input.text
         var ok = (_root.allowBlank || value.trim().length > 0) && !!_root.validator(value)
+            && _root.errorText.length === 0
         _input.outlineOverride = ok ? null : Style.error
         _button.enabled = ok
         return ok
@@ -58,6 +70,7 @@ Popup {
     }
 
     onValidatorChanged: if (opened) _check()
+    onErrorTextChanged: if (opened) _check()
 
     function seedText() {
         if (_root.text && _root.text.length > 0) {
@@ -78,6 +91,7 @@ Popup {
         _clearedOnClick = false
         _input.text = seedText()
         _option.checked = optionChecked
+        _root.edited(_input.text)
         _input.forceActiveFocus()
         if (!clearOnClick) {
             _input.selectAll()
@@ -124,7 +138,12 @@ Popup {
                 Keys.onReturnPressed: _root._accept()
                 Keys.onEnterPressed: _root._accept()
 
-                onTextChanged: if (_root.opened) _root._check()
+                onTextChanged: {
+                    if (_root.opened) {
+                        _root.edited(_input.text)
+                        _root._check()
+                    }
+                }
             }
 
             Button {
@@ -134,6 +153,26 @@ Popup {
 
                 onClicked: _root._accept()
             }
+        }
+
+        Label {
+            id: _error
+            objectName: "textInputError"
+            visible: _root.errorText.length > 0
+            text: _root.errorText
+            color: Style.dangerText
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+
+        Label {
+            id: _hint
+            objectName: "textInputHint"
+            visible: _root.hintText.length > 0
+            text: _root.hintText
+            color: Style.fgMuted
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
 
         CheckBox {

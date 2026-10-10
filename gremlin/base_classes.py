@@ -634,6 +634,11 @@ class AbstractFunctor(Generic[T], ABC):
                 note_left_out(action)
                 continue
             self.functors[selector].append(action.functor(action))
+        # Actions with an on/off state report it for Feedback (09 S157).
+        if hasattr(self, "feedback_state"):
+            from gremlin import action_state
+
+            action_state.register(self)
 
     @abstractmethod
     def __call__(

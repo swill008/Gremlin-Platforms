@@ -107,3 +107,56 @@ def test_the_kept_times_cover_the_unit_files() -> None:
                   for p in (_ROOT / "test" / "unit").glob("test_*.py"))
     # New files take 1 s until the times are written again; most must be known.
     assert sum(f in times for f in unit) >= len(unit) * 0.8
+
+
+# A module fixture is built once in every part a file runs in: a file split
+# over 6 parts was booked 6 setups and stayed "heavy" for ever (35 s app
+# start-up: test_stage1_button_map 47 s became 252 s).
+_FILES = [f"test/unit/test_{n}.py" for n in "abcd"]
+
+
+def _times_with(run_tests, total: float, setup: float) -> dict[str, float]:  # noqa: ANN001
+    run_tests._save("file-times.json", dict.fromkeys(_FILES, 1.0)
+                    | {"test/unit/test_a.py": total})
+    run_tests._save("file-setup.json", {"test/unit/test_a.py": setup})
+    return run_tests._known_times()
+
+
+def test_a_file_heavy_only_by_its_setup_is_not_split(run_tests) -> None:  # noqa: ANN001
+    # 47 s of which 35 s is one fixture: splitting can't share those 35 s.
+    times = _times_with(run_tests, 47.0, 35.0)
+    units, _ = run_tests._units(_FILES, 2, times, run_tests._known_setup())
+    assert "test/unit/test_a.py" in units
+
+
+def test_a_file_heavy_by_its_tests_is_split(run_tests) -> None:  # noqa: ANN001
+    times = _times_with(run_tests, 47.0, 5.0)
+    units, _ = run_tests._units(_FILES, 2, times, run_tests._known_setup())
+    assert "test/unit/test_a.py::a" in units and "test/unit/test_a.py" not in units
+
+
+def test_a_split_file_books_its_setup_once(run_tests) -> None:  # noqa: ANN001
+    one, two = run_tests.Part("unit-1", "test/unit", []), run_tests.Part(
+        "unit-2", "test/unit", [])
+    f = "test/unit/test_a.py"
+    for part, gaps in ((one, [36.0, 1.0, 1.0]), (two, [36.0, 1.0])):
+        for took in gaps:  # the first result of a part carries the setup
+            run_tests._book(part, f, took)
+    total, setup = run_tests._measured([one, two])
+    assert setup[f] == 35.0
+    assert total[f] == 40.0, "35 s setup once + 5 tests of 1 s"
+
+
+def test_only_a_full_run_saves_the_times(run_tests) -> None:  # noqa: ANN001
+    import argparse
+
+    def args(**kw: bool) -> argparse.Namespace:
+        return argparse.Namespace(**({"failed": False, "changed": False,
+                                      "quick": False, "real_vjoy": False} | kw))
+
+    assert run_tests._saves_times(run_tests.FOLDERS, args())
+    assert run_tests._saves_times(["test/unit"], args())
+    assert not run_tests._saves_times(["test/unit/test_a.py"], args())
+    assert not run_tests._saves_times(["test/unit"], args(quick=True))
+    assert not run_tests._saves_times(["test/unit/test_a.py"], args(changed=True))
+    assert not run_tests._saves_times(["test/unit/test_a.py::t"], args(failed=True))

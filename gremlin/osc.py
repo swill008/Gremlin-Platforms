@@ -47,6 +47,11 @@ MAX_ENC_TICKS = 32
 # Fastest liveChanged per input (OX1): 10 a second.
 LIVE_INTERVAL_S = 0.1
 
+# Run-time state of one input at one address: (uid, address key). A
+# pattern input keeps its state per address it receives (OX7, S147); an
+# exact input has one state (address key "").
+StateKey = tuple[str, str]
+
 
 def local_ipv4_addresses() -> list[str]:
     found: list[str] = []
@@ -465,6 +470,22 @@ def input_name(row: OscRow) -> str:
     return f"OSC {kind} {row.input_id}"
 
 
+def match_name(row: OscRow) -> str:
+    """The Monitor's name for a match: a pattern input names its pattern,
+    e.g. "OSC Axis 3 (/fader/*)"."""
+    if row.is_pattern:
+        return f"{input_name(row)} ({row.label})"
+    return input_name(row)
+
+
+def state_key(row: OscRow, address: str) -> StateKey:
+    """Where a message's state is kept: per address for a pattern input
+    (any case), once for an exact input."""
+    if row.is_pattern:
+        return (row.uid, str(address or "").strip().casefold())
+    return (row.uid, "")
+
+
 def encoder_turn(fmt: str, value: float) -> float:
     """Steps turned (+ clockwise, - counter-clockwise) for a format:
     "direction" is 1 = cw, 0 = ccw; "signed" is +n / -n."""
@@ -518,16 +539,19 @@ class OscRuntime(QtCore.QObject):
         # Who started the Listen (a page model); only it handles the capture.
         self._learn_owner: weakref.ref | None = None
         self._settings: dict[str, Any] = dict(SERVER_DEFAULTS)
-        self._timers: dict[str, QtCore.QTimer] = {}
-        self._last: dict[str, Any] = {}
-        # Buttons pressed and not yet released: uid -> the mode pressed in.
-        self._held: dict[str, str] = {}
+        self._timers: dict[StateKey, QtCore.QTimer] = {}
+        self._last: dict[StateKey, Any] = {}
+        # Buttons pressed and not yet released: state key -> the mode pressed
+        # in. A pattern input is pressed while any of its addresses is (OR).
+        self._held: dict[StateKey, str] = {}
+        # The address each input last received (OX7 Q5).
+        self._last_address: dict[str, str] = {}
         # Who holds the port open without a Run (the OSC Monitor).
         self._holders: set[str] = set()
-        # Encoder state per input uid (D-09-OSC-ENCODER).
-        self._enc_format: dict[str, str] = {}
-        self._enc_value: dict[str, float] = {}
-        self._enc_pending: dict[str, int] = {}
+        # Encoder state per state key (D-09-OSC-ENCODER; per address, OX7).
+        self._enc_format: dict[StateKey, str] = {}
+        self._enc_value: dict[StateKey, float] = {}
+        self._enc_pending: dict[StateKey, int] = {}
         self.incoming.connect(self._on_main)
         from gremlin.signal import signal as ui_signal
 
@@ -679,13 +703,17 @@ class OscRuntime(QtCore.QObject):
         (a press not yet released, or waiting on its auto-release) gets one
         release; pending auto-releases are cancelled."""
         self._enc_pending.clear()
-        for uid in list(self._timers):
-            self._cancel_release(uid)
+        for key in list(self._timers):
+            self._cancel_release(key)
         held, self._held = self._held, {}
-        for uid, mode in held.items():
+        released: set[str] = set()
+        for (uid, _address), mode in held.items():
+            if uid in released:
+                continue  # one release per input, however many addresses
+            released.add(uid)
             row = OscDevice().rows.by_uid(uid)
             if row is not None:
-                self._emit_button(row, False, mode)
+                self._emit_button(row, False, mode, self._last_address.get(uid))
 
     def stop(self) -> None:
         """The profile stopped: held buttons released, port closed."""
@@ -722,13 +750,11 @@ class OscRuntime(QtCore.QObject):
 
     # -- inputs (D-09-OSC-INPUT) ----------------------------------------------
 
-    def _emit_button(self, row: OscRow, pressed: bool, mode: str) -> None:
+    def _emit_button(
+        self, row: OscRow, pressed: bool, mode: str, address: str | None
+    ) -> None:
         from gremlin.event_handler import Event, EventListener
 
-        if pressed:
-            self._held[row.uid] = mode
-        else:
-            self._held.pop(row.uid, None)
         EventListener().joystick_event.emit(
             Event(
                 event_type=InputType.JoystickButton,
@@ -736,10 +762,26 @@ class OscRuntime(QtCore.QObject):
                 device_guid=OSC_DEVICE_UUID,
                 mode=mode,
                 is_pressed=pressed,
+                osc_address=address,
             )
         )
 
-    def _emit_axis(self, row: OscRow, value: float, mode: str) -> None:
+    def _button(
+        self, row: OscRow, key: StateKey, address: str, pressed: bool, mode: str
+    ) -> None:
+        """One address presses or releases the input. A pattern input is
+        pressed while any of its addresses is (OR, S147): another address's
+        press or release changes nothing while one still holds it."""
+        others = any(k[0] == row.uid and k != key for k in self._held)
+        if pressed:
+            self._held[key] = mode
+        else:
+            self._held.pop(key, None)
+        if others:
+            return
+        self._emit_button(row, pressed, mode, address)
+
+    def _emit_axis(self, row: OscRow, value: float, mode: str, address: str) -> None:
         from gremlin.event_handler import Event, EventListener
 
         EventListener().joystick_event.emit(
@@ -750,6 +792,7 @@ class OscRuntime(QtCore.QObject):
                 mode=mode,
                 value=value,
                 raw_value=value,
+                osc_address=address,
             )
         )
 
@@ -758,39 +801,41 @@ class OscRuntime(QtCore.QObject):
             return parse_delay_ms(row.delay_ms)
         return parse_delay_ms(self._settings.get("autorelease_delay_ms"))
 
-    def _cancel_release(self, uid: str) -> None:
-        timer = self._timers.pop(uid, None)
+    def _cancel_release(self, key: StateKey) -> None:
+        timer = self._timers.pop(key, None)
         if timer is not None:
             timer.stop()
             timer.deleteLater()
 
-    def _pulse(self, row: OscRow, mode: str) -> None:
+    def _pulse(self, row: OscRow, key: StateKey, address: str, mode: str) -> None:
         """Press, then release after the input's delay; a new press restarts
         the wait."""
-        self._emit_button(row, True, mode)
-        self._cancel_release(row.uid)
+        self._button(row, key, address, True, mode)
+        self._cancel_release(key)
         timer = QtCore.QTimer(self)
         timer.setSingleShot(True)
         timer.setInterval(self._delay_of(row))
         uid = row.uid
-        timer.timeout.connect(lambda: self._release(uid, mode))
-        self._timers[uid] = timer
+        timer.timeout.connect(lambda: self._release(uid, key, address, mode))
+        self._timers[key] = timer
         timer.start()
 
-    def _release(self, uid: str, mode: str) -> None:
-        self._cancel_release(uid)
+    def _release(self, uid: str, key: StateKey, address: str, mode: str) -> None:
+        self._cancel_release(key)
         row = OscDevice().rows.by_uid(uid)
         if row is not None:
-            self._emit_button(row, False, mode)
+            self._button(row, key, address, False, mode)
             # An encoder's queued ticks: one more press + release each.
-            pending = self._enc_pending.get(uid, 0)
+            pending = self._enc_pending.get(key, 0)
             if pending > 0:
-                self._enc_pending[uid] = pending - 1
-                self._pulse(row, mode)
+                self._enc_pending[key] = pending - 1
+                self._pulse(row, key, address, mode)
             else:
-                self._enc_pending.pop(uid, None)
+                self._enc_pending.pop(key, None)
 
-    def _encoder(self, row: OscRow, value: object, mode: str) -> None:
+    def _encoder(
+        self, row: OscRow, key: StateKey, address: str, value: object, mode: str
+    ) -> None:
         """One encoder message (D-09-OSC-ENCODER). Auto picks the format from
         what the input has sent: a negative or a value other than 0/1 means
         signed (from then on), else direction. The axis moves by step per
@@ -801,64 +846,70 @@ class OscRuntime(QtCore.QObject):
             return
         fmt = row.enc_format
         if fmt == "auto":
-            fmt = self._enc_format.get(row.uid, "direction")
+            fmt = self._enc_format.get(key, "direction")
             if number not in (0.0, 1.0):
                 fmt = "signed"
-            self._enc_format[row.uid] = fmt
+            self._enc_format[key] = fmt
         turn = encoder_turn(fmt, number)
         if turn == 0.0:
             return
         if row.enc_output == "axis":
-            current = self._enc_value.get(row.uid, 0.0) + row.enc_step * turn
+            current = self._enc_value.get(key, 0.0) + row.enc_step * turn
             current = max(-1.0, min(1.0, current))
-            self._enc_value[row.uid] = current
-            self._emit_axis(row, current, mode)
+            self._enc_value[key] = current
+            self._emit_axis(row, current, mode, address)
             return
         if (turn > 0) != (row.enc_output == "pulse_cw"):
             return
         ticks = min(MAX_ENC_TICKS, max(1, round(abs(turn))))
-        if row.uid in self._timers:
+        if key in self._timers:
             # A pulse is under way: these follow it.
-            pending = self._enc_pending.get(row.uid, 0) + ticks
-            self._enc_pending[row.uid] = min(MAX_ENC_TICKS, pending)
+            pending = self._enc_pending.get(key, 0) + ticks
+            self._enc_pending[key] = min(MAX_ENC_TICKS, pending)
             return
-        self._enc_pending[row.uid] = ticks - 1
-        self._pulse(row, mode)
+        self._enc_pending[key] = ticks - 1
+        self._pulse(row, key, address, mode)
 
-    def _apply(self, row: OscRow, args: tuple[Any, ...], mode: str) -> None:
+    def _apply(
+        self, row: OscRow, args: tuple[Any, ...], mode: str, address: str
+    ) -> None:
+        """One message (received at address) on one input. A pattern input
+        keeps button, Change and encoder state per address; an axis takes
+        the last value whichever address sent it (S147)."""
+        key = state_key(row, address)
         value = _value_at(args, row.source)
         if row.mode == "encoder":
-            self._encoder(row, value, mode)
+            self._encoder(row, key, address, value, mode)
             return
         if row.input_type == InputType.JoystickAxis:
             number = _number(value)
             if number is not None:
                 scaled = scale_axis(number, row.range_min, row.range_max)
-                self._emit_axis(row, scaled, mode)
+                self._emit_axis(row, scaled, mode, address)
             return
         if row.cmd_mode == "data" or row.trigger is True:
-            self._pulse(row, mode)
+            self._pulse(row, key, address, mode)
             return
         if row.mode == "change":
             number = _number(value)
             current = number if number is not None else value
-            last = self._last.get(row.uid, _UNSET)
-            self._last[row.uid] = current
+            last = self._last.get(key, _UNSET)
+            self._last[key] = current
             if last is _UNSET or last != current:
-                self._pulse(row, mode)
+                self._pulse(row, key, address, mode)
             return
         if value is None:
             trigger = row.trigger
             if trigger is None:
                 trigger = bool(self._settings.get("autorelease_no_arg", True))
             if trigger:
-                self._pulse(row, mode)
+                self._pulse(row, key, address, mode)
             else:
-                self._cancel_release(row.uid)
-                self._emit_button(row, True, mode)
+                self._cancel_release(key)
+                self._button(row, key, address, True, mode)
             return
-        self._cancel_release(row.uid)
-        self._emit_button(row, is_pressed((value,)), mode)
+        self._cancel_release(key)
+        self._button(row, key, address, is_pressed((value,)), mode)
 
     def _on_main(
         self,
@@ -883,7 +934,7 @@ class OscRuntime(QtCore.QObject):
             address,
             payload,
             peer,
-            [input_name(row) for row in matched],
+            [match_name(row) for row in matched],
         )
 
     def _handle(self, address: str, payload: tuple[Any, ...]) -> list[OscRow]:
@@ -906,6 +957,7 @@ class OscRuntime(QtCore.QObject):
             self._close_if_idle()
         rows = OscDevice().rows.matches(address, payload)
         for row in rows:
+            self._last_address[row.uid] = address
             self._note_live(row, payload, synthetic=False)
         if not self._running:
             return rows
@@ -923,7 +975,7 @@ class OscRuntime(QtCore.QObject):
                 row.input_type.name,
                 row.input_id,
             )
-            self._apply(row, payload, mode)
+            self._apply(row, payload, mode, address)
         return rows
 
     # -- live value and last seen (OX1) ---------------------------------------
@@ -940,7 +992,13 @@ class OscRuntime(QtCore.QObject):
     def live_all(self) -> dict[str, dict[str, Any]]:
         return {uid: dict(entry) for uid, entry in self._live.items()}
 
+    def last_address(self, uid: str) -> str | None:
+        """The address the input last received (a pattern input: which of
+        its addresses), with or without a Run; None before any (OX7 Q5)."""
+        return self._last_address.get(str(uid))
+
     def reset_live(self) -> None:
+        self._last_address.clear()
         self._live.clear()
         self._live_sent.clear()
         self._live_pending.clear()
@@ -1018,15 +1076,18 @@ class OscRuntime(QtCore.QObject):
         if not self._running:
             return False
         mode = ModeManager().current.name
+        # A pattern input is tested at the address it last received.
+        address = self._last_address.get(row.uid) or row.label
+        key = state_key(row, address)
         if (
             kind == "release"
             and row.input_type == InputType.JoystickButton
             and (row.cmd_mode == "data" or row.trigger is True or row.mode != "button")
         ):
             # A pulsing input: a release only ends a held or pending press.
-            self._cancel_release(row.uid)
-            if row.uid in self._held:
-                self._emit_button(row, False, mode)
+            self._cancel_release(key)
+            if key in self._held:
+                self._button(row, key, address, False, mode)
             return True
-        self._apply(row, payload, mode)
+        self._apply(row, payload, mode, address)
         return True

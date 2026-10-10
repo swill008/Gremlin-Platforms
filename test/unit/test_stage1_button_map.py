@@ -41,6 +41,7 @@ import subprocess
 import sys
 import types
 import uuid
+from collections.abc import Iterator
 
 import pytest
 
@@ -50,10 +51,16 @@ from gremlin.ui import hardware_profile, input_pairing
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "stage1_button_map_smoke.py"
+# A started part: its process and its user folder (which holds its output).
+_Smoke = tuple[subprocess.Popen[bytes], pathlib.Path]
 
 
-def _run(part: str, home: pathlib.Path) -> dict:
-    """One part of the window smoke, in its own process and user folder."""
+def _start(part: str, home: pathlib.Path) -> _Smoke:
+    """One part of the window smoke, started in its own process and user folder.
+
+    Its output goes to files in that folder: a pipe nobody reads yet (the
+    other part is being waited on) could fill and stall it.
+    """
     (home / "Gremlin Platforms").mkdir(parents=True, exist_ok=True)
     env = dict(
         os.environ,
@@ -66,35 +73,72 @@ def _run(part: str, home: pathlib.Path) -> dict:
         ),
         PYTHONIOENCODING="utf-8",
     )
-    done = subprocess.run(
-        [sys.executable, str(_SMOKE), part],
-        cwd=_ROOT, env=env, capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=240,
+    with (home / "stdout.txt").open("w", encoding="utf-8") as out, (
+        home / "stderr.txt"
+    ).open("w", encoding="utf-8") as err:
+        proc = subprocess.Popen(
+            [sys.executable, str(_SMOKE), part],
+            cwd=_ROOT, env=env, stdout=out, stderr=err,
+        )
+    return proc, home
+
+
+def _result(smoke: _Smoke) -> dict:
+    """The started part's result (its RESULT line)."""
+    proc, home = smoke
+    try:
+        proc.wait(timeout=240)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+    stdout, stderr = (
+        (home / name).read_text(encoding="utf-8", errors="replace")
+        for name in ("stdout.txt", "stderr.txt")
     )
     # The smoke not getting through is RuntimeError, so a strict xfail
     # (raises=AssertionError) never takes it for the known gap.
-    lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
+    lines = [ln for ln in stdout.splitlines() if ln.startswith("RESULT ")]
     if not lines:
         # A stall report starts with its headline (blocked or idle) and
         # lists every thread: keep it whole, not only its tail.
-        err = done.stderr
-        at = err.find("=== STALLED")
-        err = err[at:at + 12000] if at >= 0 else err[-2000:]
-        raise RuntimeError(done.stdout[-2000:] + err)
+        at = stderr.find("=== STALLED")
+        err = stderr[at:at + 12000] if at >= 0 else stderr[-2000:]
+        raise RuntimeError(stdout[-2000:] + err)
     out = json.loads(lines[-1][len("RESULT "):])
     if "error" in out:
         raise RuntimeError(out.get("traceback") or out["error"])
     return out
 
 
-@pytest.fixture(scope="module")
-def flows(tmp_path_factory: pytest.TempPathFactory) -> dict:
-    return _run("flows", tmp_path_factory.mktemp("bm_flows"))
+def _run(part: str, home: pathlib.Path) -> dict:
+    """One part of the window smoke, run to its end (test_stage1_modules)."""
+    return _result(_start(part, home))
 
 
 @pytest.fixture(scope="module")
-def outside(tmp_path_factory: pytest.TempPathFactory) -> dict:
-    return _run("outside", tmp_path_factory.mktemp("bm_outside"))
+def _smokes(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Iterator[dict[str, _Smoke]]:
+    """Both parts started at once; each fixture below takes its own result."""
+    smokes = {
+        part: _start(part, tmp_path_factory.mktemp(f"bm_{part}"))
+        for part in ("flows", "outside")
+    }
+    yield smokes
+    for proc, _home in smokes.values():
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+
+
+@pytest.fixture(scope="module")
+def flows(_smokes: dict[str, _Smoke]) -> dict:
+    return _result(_smokes["flows"])
+
+
+@pytest.fixture(scope="module")
+def outside(_smokes: dict[str, _Smoke]) -> dict:
+    return _result(_smokes["outside"])
 
 
 # +-------------------------------------------------------------------------
@@ -339,6 +383,10 @@ def test_save_does_not_write_over_module_setup_photo(outside: dict) -> None:
     # written over the change until the user chooses.
     saved = outside["setup-photo-save"]
     assert saved["file-image"] == saved["setup-image"]
+    # The changed-elsewhere question really appeared.
+    assert str(saved["said"]).startswith(
+        "The module file changed since you started editing"
+    ), saved["said"]
 
 
 def test_pack_import_reaches_the_file(outside: dict) -> None:
@@ -350,6 +398,10 @@ def test_pack_import_reaches_the_file(outside: dict) -> None:
 def test_save_does_not_write_over_a_pack_import(outside: dict) -> None:
     saved = outside["pack-save"]
     assert saved["file-ids"] == saved["pack-ids"]
+    # The changed-elsewhere question really appeared.
+    assert str(saved["said"]).startswith(
+        "The module file changed since you started editing"
+    ), saved["said"]
 
 
 def test_delete_device_removes_the_module_file(outside: dict) -> None:

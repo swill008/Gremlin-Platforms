@@ -57,7 +57,16 @@ class TempoFunctor(AbstractFunctor):
         self.timer = None
         self.value_press: Value = Value(None)
         self.event_press: event_handler.Event | None = None
+        # The last press, "short" or "long" ("" before any), for Feedback.
+        self.last_press = ""
         self.fsm = self._create_fsm()
+
+    def feedback_state(self) -> bool:
+        """On when the last press was long (09 S157)."""
+        return self.last_press == "long"
+
+    def feedback_text(self) -> str:
+        return self.last_press
 
     @override
     def __call__(
@@ -127,11 +136,14 @@ class TempoFunctor(AbstractFunctor):
         def short_release(
             e: event_handler.Event, v: Value, p: List[ActionProperty]
         ) -> None:
+            if self.fsm.current_state == "short":
+                self.last_press = "short"
             self._process_event(self.functors["short"], e, v, p)
 
         def long_press(
             _e: event_handler.Event, _v: Value, p: List[ActionProperty]
         ) -> None:
+            self.last_press = "long"
             self._process_event(
                 self.functors["long"], self.event_press, self.value_press, p
             )
@@ -176,6 +188,7 @@ class TempoFunctor(AbstractFunctor):
         )
 
     def _short_pulse(self, properties: List[ActionProperty]) -> None:
+        self.last_press = "short"
         if self.timer:
             self.timer.cancel()
         self._pulse_event(

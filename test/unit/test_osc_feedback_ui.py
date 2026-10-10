@@ -3,9 +3,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """OSC's Module Setup "Feedback" section (D-09-OSC-FEEDBACK): it shows for
-OSC only; its switches and rows are edited with real key and mouse events
-and saved to OSC's file at once. The whole program runs off-screen in its
-own process with a fresh user folder."""
+OSC only; its switches are edited with real key and mouse events and saved
+to OSC's file at once. Since batch 2 (09 S154) the rows are added and
+edited on the OSC page: the tab lists them read-only, keeps the Custom
+variable template (S120) and has "Edit on the OSC page". The whole program
+runs off-screen in its own process with a fresh user folder."""
 
 from __future__ import annotations
 
@@ -159,59 +161,41 @@ if setup is not None:
     out["server"] = osc_device_file.read_server()
 
     out["rows-before"] = osc_device_file.read_feedback()
-    click(setup, named(setup, "oscFeedbackAddRow"))
-    wait_for(lambda: named(setup, "oscAddBlankRow") is not None, 2000)
-    click(setup, named(setup, "oscAddBlankRow"))
-    wait_for(lambda: len(osc_device_file.read_feedback()) == 1, 2000)
-    out["rows-added"] = osc_device_file.read_feedback()
-    wait_for(lambda: named(setup, "oscFeedbackRowAddress") is not None, 2000)
-    type_into(setup, named(setup, "oscFeedbackRowAddress"), "/fire")
-    type_into(setup, named(setup, "oscFeedbackRowMin"), "-1")
-    type_into(setup, named(setup, "oscFeedbackRowMax"), "2.5")
-    # Source: one down from Current mode is vJoy button.
-    key(setup, named(setup, "oscFeedbackRowKind"), QtCore.Qt.Key.Key_Down)
-    wait_for(lambda: named(setup, "oscFeedbackRowNumber") is not None, 2000)
-    type_into(setup, named(setup, "oscFeedbackRowNumber"), "5")
-    # Target: up from "Reply to sender" is the Default target.
-    key(setup, named(setup, "oscFeedbackRowTarget"), QtCore.Qt.Key.Key_Up)
-    # Type: Auto -> Int.
-    key(setup, named(setup, "oscFeedbackRowType"), QtCore.Qt.Key.Key_Down)
-    click(setup, named(setup, "oscFeedbackRowEnabled"))
-    out["rows-edited"] = osc_device_file.read_feedback()
-    out["targets"] = osc_device_file.read_targets()
+    # S154: the rows are edited only on the OSC page; the tab lists them.
+    out["no-add-row"] = named(setup, "oscFeedbackAddRow") is None
+    out["none-text"] = named(setup, "oscFeedbackNone").property("text")
 
-    remove = named(setup, "oscFeedbackRowRemove")
-    show(setup, remove)
-    right = remove.mapToScene(QtCore.QPointF(remove.width(), 0)).x()
-    out["row-fits"] = right <= setup.width()
-    click(setup, remove)
-    wait_for(lambda: named(setup, "confirmAction") is not None, 2000)
-    action = named(setup, "confirmAction")
-    out["confirm"] = action is not None
-    if action is not None:
-        click(setup, action)
-    wait_for(lambda: not osc_device_file.read_feedback(), 2000)
-    out["rows-removed"] = osc_device_file.read_feedback()
-
-    # Add Row > Companion > Key color (off/on)...: its dialog, then a row.
-    click(setup, named(setup, "oscFeedbackAddRow"))
-    wait_for(lambda: by_text(setup, "Companion") is not None, 2000)
-    click(setup, by_text(setup, "Companion"))
-    wait_for(lambda: named(setup, "oscAddCompanionColour") is not None, 2000)
-    click(setup, named(setup, "oscAddCompanionColour"))
+    # S120: the Custom variable template stays on the tab.
+    click(setup, named(setup, "oscAddCompanionVariable"))
     wait_for(lambda: named(setup, "oscTemplateAdd") is not None, 2000)
     out["template-dialog"] = named(setup, "oscTemplateAdd") is not None
     if out["template-dialog"]:
-        type_into(setup, named(setup, "oscTemplatePage"), "3")
-        type_into(setup, named(setup, "oscTemplateColumn"), "4")
+        type_into(setup, named(setup, "oscTemplateVariable"), "my_mode")
         click(setup, named(setup, "oscTemplateAdd"))
     wait_for(lambda: len(osc_device_file.read_feedback()) == 1, 2000)
     out["template-rows"] = osc_device_file.read_feedback()
     out["template-targets"] = osc_device_file.read_targets()
-    out["template-message"] = named(setup, "oscFeedbackMessage").property("text")
-    wait_for(lambda: named(setup, "oscFeedbackRowOn") is not None, 2000)
-    on_field = named(setup, "oscFeedbackRowOn")
-    out["on-field"] = on_field.property("text") if on_field is not None else None
+
+    # The read-only list: one line per row, no fields to edit.
+    wait_for(lambda: named(setup, "oscFeedbackRow") is not None, 2000)
+    line = named(setup, "oscFeedbackRow")
+    out["list-texts"] = [
+        str(i.property("text")) for i in walk(line) if i.property("text") is not None
+    ] if line is not None else []
+    out["no-row-fields"] = all(
+        named(setup, n) is None
+        for n in ("oscFeedbackRowAddress", "oscFeedbackRowKind", "oscFeedbackRowRemove",
+                  "oscFeedbackRowEnabled", "oscFeedbackRowMin", "oscFeedbackRowMax")
+    )
+
+    # "Edit on the OSC page": the main window shows the OSC page.
+    def tab():
+        value = run("uiState.currentRoom + '/' + uiState.currentTab")
+        return value[0] if isinstance(value, (tuple, list)) else value
+    out["tab-before"] = tab()
+    click(setup, named(setup, "oscFeedbackEditOnPage"))
+    wait_for(lambda: tab() == "configuration/osc", 3000)
+    out["tab-after"] = tab()
     setup.close()
     app.processEvents()
 
@@ -256,32 +240,27 @@ def test_feedback_switches_save_to_osc_file(result: dict) -> None:
     assert server["feedback_rate"] == 20
 
 
-def test_feedback_rows_save_to_osc_file(result: dict) -> None:
+def test_feedback_tab_lists_rows_read_only(result: dict) -> None:
+    """S154: no Add Row and no row fields on the tab; each row is one line."""
     assert result["rows-before"] == []
-    assert len(result["rows-added"]) == 1
-    (row,) = result["rows-edited"]
-    assert row["address"] == "/fire"
-    assert row["min"] == -1.0
-    assert row["max"] == 2.5
-    assert row["source"]["kind"] == "vjoy_button"
-    assert isinstance(row["source"]["device"], int)
-    assert row["source"]["input"] == 5
-    assert row["target"] == result["targets"][0]["id"]
-    assert row["type"] == "int"
-    assert row["enabled"] is False
-    # The row's controls fit in the window (Remove is not cut off).
-    assert result["row-fits"] is True
-    assert result["confirm"] is True
-    assert result["rows-removed"] == []
+    assert result["no-add-row"] is True
+    assert "OSC page" in result["none-text"]
+    assert result["no-row-fields"] is True
+    texts = result["list-texts"]
+    assert "On" in texts
+    assert "/custom-variable/my_mode/value" in texts
 
 
-def test_companion_key_colour_template_from_the_menu(result: dict) -> None:
+def test_custom_variable_template_stays_on_the_tab(result: dict) -> None:
+    """S120: Custom variable is the one template left on the Feedback tab."""
     assert result["template-dialog"] is True, result
     (row,) = result["template-rows"]
-    assert row["address"] == "/location/3/0/4/style/bgcolor"
-    assert (row["off_value"], row["on_value"]) == ("#333333", "#2a7a46")
+    assert row["address"] == "/custom-variable/my_mode/value"
+    assert row["source"]["kind"] == "mode"
     companion = [t for t in result["template-targets"] if t["name"] == "Companion"]
-    assert [(t["host"], t["port"]) for t in companion] == [("127.0.0.1", 12321)]
     assert row["target"] == companion[0]["id"]
-    assert "OSC Listener" in result["template-message"]
-    assert result["on-field"] == "#2a7a46"
+
+
+def test_edit_on_the_osc_page_opens_the_osc_page(result: dict) -> None:
+    assert result["tab-before"] != "configuration/osc"
+    assert result["tab-after"] == "configuration/osc"

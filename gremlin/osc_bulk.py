@@ -3,12 +3,13 @@
 
 from __future__ import annotations
 
+import logging
 import time
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin.osc import OscRuntime
+from gremlin.osc import OscDevice, OscRuntime
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
 
@@ -16,6 +17,8 @@ assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
 
 _DEBOUNCE_S = 0.3
+
+log = logging.getLogger("system")
 
 _orig_learned = OscDeviceManagementModel._on_learned
 _orig_cancel_model = OscDeviceManagementModel.cancelListen
@@ -58,7 +61,24 @@ def start_bulk(model: object, settings: object) -> None:
         setattr(model, "_bulk_mode", str(settings or "") or "Button")
     setattr(model, "_last_bulk_addr", "")
     setattr(model, "_last_bulk_time", 0.0)
+    setattr(model, "_bulk_skipped", 0)
     OscRuntime().listen_bulk(owner=model)
+
+
+def bulk_skipped(model: object) -> int:
+    """Addresses this Bulk capture skipped: an input already answers them."""
+    return int(getattr(model, "_bulk_skipped", 0))
+
+
+def _answered(model: object, address: str, payload: tuple) -> bool:
+    """An existing input (exact or pattern) already answers this address
+    (S151). A data-mode capture adds one input per value, so there only an
+    input answering these values counts."""
+    rows = OscDevice().rows
+    settings = getattr(model, "_bulk_settings", None) or {}
+    if settings.get("cmd_mode") == "data":
+        return bool(rows.matches(address, payload))
+    return bool(rows.answered_by(address))
 
 
 def model_cancel_listen(self: OscDeviceManagementModel) -> None:
@@ -93,6 +113,10 @@ def model_on_learned(self: object, address: str, args: object) -> None:
             return
         setattr(self, "_last_bulk_addr", key)
         setattr(self, "_last_bulk_time", now)
+        if _answered(self, address, payload):
+            setattr(self, "_bulk_skipped", bulk_skipped(self) + 1)
+            log.info("OSC Bulk capture skipped %s: an input answers it", address)
+            return
         shown = ", ".join(str(item) for item in payload)
         getattr(self, "commandCaptured").emit(address, shown)
         _create_captured(self, address, payload)

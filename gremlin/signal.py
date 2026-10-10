@@ -52,6 +52,12 @@ class Signal(QtCore.QObject):
     # Options' "OSC settings are in OSC › Module Setup" button: the main
     # window opens OSC's Module Setup, as its card does.
     openOscModuleSetup = QtCore.Signal()
+    # The OSC page's "Feedback settings…": OSC's Module Setup on the named
+    # tab ("Feedback") (09 S154).
+    openOscModuleSetupAt = QtCore.Signal(str)
+    # OSC Setup's Feedback tab "Edit on the OSC page": the main window shows
+    # the OSC page (09 S154).
+    openOscPage = QtCore.Signal()
     # OSC's feedback rows (its file's "feedback" part) changed
     # (D-09-OSC-FEEDBACK).
     oscFeedbackChanged = QtCore.Signal()

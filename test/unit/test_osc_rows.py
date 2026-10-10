@@ -133,9 +133,21 @@ def test_dict_round_trip_keeps_uids_numbers_and_settings() -> None:
     data = rows.to_dict()
     assert set(data) == {"inputs"}
     assert set(data["inputs"][0]) == {
-        "uid", "type", "id", "label", "mode", "cmd_mode", "data", "source",
-        "range_min", "range_max", "trigger", "delay_ms",
-        "enc_format", "enc_step", "enc_output",
+        "uid",
+        "type",
+        "id",
+        "label",
+        "mode",
+        "cmd_mode",
+        "data",
+        "source",
+        "range_min",
+        "range_max",
+        "trigger",
+        "delay_ms",
+        "enc_format",
+        "enc_step",
+        "enc_output",
     }
     assert data["inputs"][1]["type"] == "axis" and data["inputs"][2]["id"] == 7
     other = OscRows()
@@ -147,13 +159,18 @@ def test_dict_round_trip_keeps_uids_numbers_and_settings() -> None:
 
 def test_load_dict_fills_defaults_and_skips_bad_entries() -> None:
     rows = OscRows()
-    rows.load_dict({"inputs": [
-        {"uid": "u1", "type": "button", "id": 1, "label": "/a"},
-        {"uid": "u2", "type": "button", "id": 2, "label": "no-slash"},
-        {"uid": "u3", "type": "button", "id": 3, "label": "/a"},
-        {"uid": "u1", "type": "button", "id": 4, "label": "/b"},
-        {"uid": "u5", "type": "axis", "id": 1, "label": "/x", "mode": "spin"},
-    ], "server": {"port": 9}})
+    rows.load_dict(
+        {
+            "inputs": [
+                {"uid": "u1", "type": "button", "id": 1, "label": "/a"},
+                {"uid": "u2", "type": "button", "id": 2, "label": "no-slash"},
+                {"uid": "u3", "type": "button", "id": 3, "label": "/a"},
+                {"uid": "u1", "type": "button", "id": 4, "label": "/b"},
+                {"uid": "u5", "type": "axis", "id": 1, "label": "/x", "mode": "spin"},
+            ],
+            "server": {"port": 9},
+        }
+    )
     assert [r.uid for r in rows.rows()] == ["u1"]
     assert rows.rows()[0].cmd_mode == "message"
     assert len(rows.load_warnings) == 4
@@ -171,3 +188,107 @@ def test_dirty_tracks_edits_and_mark_saved_clears_it() -> None:
     assert not rows.dirty
     rows.delete(row.uid)
     assert rows.dirty
+
+
+# -- address patterns (D-09-OSC-PATTERNS, S147-S148) ----------------------
+
+
+def test_pattern_rows_answer_every_matching_address() -> None:
+    rows = OscRows()
+    fader = rows.create(AXIS, "/fader/*")
+    assert fader.is_pattern and not rows.create(BUTTON, "/go").is_pattern
+    assert rows.matches("/FADER/3", (0.5,)) == [fader]
+    assert rows.matches("/fader/3/x", (0.5,)) == []
+
+
+def test_exact_input_wins_over_patterns_and_overlapping_patterns_all_fire() -> None:
+    rows = OscRows()
+    star = rows.create(AXIS, "/fader/*")
+    one = rows.create(AXIS, "/fader/?")
+    exact = rows.create(AXIS, "/fader/1")
+    assert rows.matches("/fader/1", (0.1,)) == [exact]
+    assert rows.matches("/fader/2", (0.1,)) == [star, one]
+    assert rows.matches("/fader/22", (0.1,)) == [star]
+
+
+def test_exact_data_row_that_does_not_match_leaves_it_to_patterns() -> None:
+    rows = OscRows()
+    exact = rows.create(BUTTON, "/scene", cmd_mode="data", data=["1"])
+    star = rows.create(BUTTON, "/sc*")
+    assert rows.matches("/scene", (1,)) == [exact]
+    assert rows.matches("/scene", (2,)) == [star]
+
+
+def test_an_incoming_pattern_reaches_exact_inputs_only() -> None:
+    rows = OscRows()
+    a = rows.create(BUTTON, "/btn/a")
+    b = rows.create(BUTTON, "/btn/b")
+    rows.create(BUTTON, "/btn/*")
+    rows.create(BUTTON, "/other")
+    assert rows.matches("/btn/[ab]") == [a, b]
+    assert rows.matches("/BTN/?") == [a, b]
+    assert rows.matches("/nothing/*") == []
+    assert rows.matches("/btn/[") == []
+
+
+def test_answered_by_ignores_data_and_covers_patterns() -> None:
+    rows = OscRows()
+    data = rows.create(BUTTON, "/scene", cmd_mode="data", data=["1"])
+    star = rows.create(AXIS, "/fader/*")
+    assert rows.answered_by("/Scene") == [data]
+    assert rows.answered_by("/fader/9") == [star]
+    assert rows.answered_by("/new") == []
+
+
+def test_index_follows_rename_delete_load_and_reset() -> None:
+    rows = OscRows()
+    row = rows.create(BUTTON, "/a")
+    rows.set_label(row.uid, "/b/*")
+    assert rows.matches("/a") == [] and rows.matches("/b/x") == [row]
+    rows.set_label(row.uid, "/c")
+    assert rows.matches("/b/x") == [] and rows.matches("/c") == [row]
+    rows.delete(row.uid)
+    assert rows.matches("/c") == []
+    other = OscRows()
+    other.create(BUTTON, "/p/*")
+    rows.load_dict(other.to_dict())
+    assert [r.label for r in rows.matches("/p/q")] == ["/p/*"]
+    rows.reset()
+    assert rows.matches("/p/q") == []
+
+
+def test_patterns_compile_once_not_per_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gremlin import osc_pattern
+
+    rows = OscRows()
+    rows.create(AXIS, "/fader/*")
+    calls = []
+    real = osc_pattern.compile
+    monkeypatch.setattr(
+        osc_pattern, "compile", lambda text: calls.append(text) or real(text)
+    )
+    for _ in range(5):
+        rows.matches("/fader/1", (0.5,))
+    assert calls == []
+
+
+def test_bad_patterns_are_refused_with_the_reason() -> None:
+    rows = OscRows()
+    with pytest.raises(GremlinError, match="never closed"):
+        rows.create(BUTTON, "/a[b")
+    row = rows.create(BUTTON, "/ok")
+    with pytest.raises(GremlinError, match="backwards"):
+        rows.set_label(row.uid, "/x[z-a]")
+    with pytest.raises(GremlinError, match="space"):
+        rows.create(BUTTON, "/a b")
+
+
+def test_duplicate_rule_stays_literal_for_patterns() -> None:
+    rows = OscRows()
+    rows.create(AXIS, "/fader/*")
+    rows.create(AXIS, "/fader/1")
+    rows.create(AXIS, "/fader/?")
+    with pytest.raises(GremlinError):
+        rows.create(AXIS, "/FADER/*")

@@ -15,6 +15,7 @@ from typing import Any
 
 import dill
 from gremlin import (
+    action_state,
     audio_player,
     base_classes,
     common,
@@ -380,6 +381,8 @@ class CodeRunner:
         finally:
             self._restarting = False
         run_scope.begin()
+        # This Run's actions report their state afresh (09 S157).
+        action_state.clear()
         # Registered before anything starts: a start that fails partway is
         # undone by the same Stop.
         self._register_stop()
@@ -510,6 +513,7 @@ class CodeRunner:
         # OSC buttons held at Stop are released first, while the profile's
         # callbacks still see them (like the Logical Device's neutral, R1).
         on(stage.CUT_INPUT, "OSC feedback", lambda: osc_feedback.stop())
+        on(stage.CUT_INPUT, "action state", action_state.clear)
         on(stage.CUT_INPUT, "OSC releases", lambda: OscRuntime().release_held())
         on(stage.CUT_INPUT, "input off", self._cut_input)
         # Mouse motion goes with the input (06 S89); its thread ends later.

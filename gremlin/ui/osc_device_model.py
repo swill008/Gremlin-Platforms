@@ -16,7 +16,7 @@ from PySide6 import QtCore
 
 import gremlin.osc_persist  # noqa: F401  OSC labels on InputIdentifier
 import gremlin.ui.type_aliases as ta
-from gremlin import shared_state
+from gremlin import osc_pattern, shared_state
 from gremlin.config import Configuration
 from gremlin.error import GremlinError
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime, guess_input_type
@@ -149,11 +149,8 @@ def _type_for_mode(mode: str, enc_output: str = "axis") -> InputType:
 
 
 def _address_error(address: str) -> str:
-    if not address:
-        return "Enter an address."
-    if not address.startswith("/"):
-        return "An OSC address starts with /."
-    return ""
+    # One owner of address checks (09 S148): patterns are checked too.
+    return osc_pattern.check(address)
 
 
 @dataclass
@@ -340,9 +337,44 @@ def _fmt(value: float) -> str:
     return f"{value:g}"
 
 
-def companion_actions(row: OscRow) -> list[str]:
-    """Generic OSC key actions that drive this input."""
-    addr = row.label
+def seen_addresses() -> list[str]:
+    """Incoming addresses in the OSC Monitor's recent traffic, newest
+    first, each once (casefolded duplicates dropped)."""
+    from gremlin import osc_traffic
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for entry in reversed(osc_traffic.recent()):
+        if entry.get("direction") != "in":
+            continue
+        address = str(entry.get("address") or "")
+        folded = address.casefold()
+        if address and folded not in seen:
+            seen.add(folded)
+            out.append(address)
+    return out
+
+
+def seen_matching(address: str, seen: list[str] | None = None) -> list[str]:
+    """The seen addresses an input address answers: those a pattern
+    matches, or the one equal to an exact address (any case). [] for a
+    blank or bad address."""
+    text = str(address or "").strip()
+    if not text or osc_pattern.check(text):
+        return []
+    seen = seen_addresses() if seen is None else seen
+    if osc_pattern.is_pattern(text):
+        return [a for a in seen if osc_pattern.matches(text, a)]
+    return [a for a in seen if a.casefold() == text.casefold()]
+
+
+PATTERN_COMPANION_NOTE = "Companion sends exact addresses; set one per button."
+
+
+def companion_actions(row: OscRow, address: str | None = None) -> list[str]:
+    """Generic OSC key actions that drive this input (address: the one to
+    send, for a pattern input)."""
+    addr = address or row.label
     if row.cmd_mode == "data":
         data = " ".join(str(item) for item in row.data) or "<values>"
         return [
@@ -378,6 +410,13 @@ def companion_text(row: OscRow) -> str:
     from gremlin import osc_device_file
 
     server = osc_device_file.read_server()
+    address = None
+    note: list[str] = []
+    if row.is_pattern:
+        # Companion sends one exact address per button (S147).
+        found = seen_matching(row.label)
+        address = found[0] if found else f"<an address matching {row.label}>"
+        note = ["", PATTERN_COMPANION_NOTE]
     lines = [
         f"Companion: Generic OSC connection for {row.label}",
         "Target Hostname or IP: "
@@ -389,7 +428,8 @@ def companion_text(row: OscRow) -> str:
         f"Source Port: {COMPANION_SOURCE_PORT}",
         "",
         "Key actions:",
-        *companion_actions(row),
+        *companion_actions(row, address),
+        *note,
     ]
     return "\n".join(lines)
 
@@ -412,6 +452,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     commandCaptured = QtCore.Signal(str, str)
     # An input was added (Add, Listen, Import): the OSC page selects it.
     inputAdded = QtCore.Signal(str)
+    bulkSkippedChanged = QtCore.Signal()
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
@@ -608,6 +649,27 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     def _get_listening(self) -> bool:
         return OscRuntime().is_listening()
 
+    # Bulk capture's skipped count (S151): osc_bulk sets _bulk_skipped (0
+    # at each start, +1 per address an input already answers).
+    @property
+    def _bulk_skipped(self) -> int:
+        return int(self.__dict__.get("_bulk_skipped_n", 0))
+
+    @_bulk_skipped.setter
+    def _bulk_skipped(self, value: int) -> None:
+        if int(value) != self._bulk_skipped:
+            self.__dict__["_bulk_skipped_n"] = int(value)
+            self.bulkSkippedChanged.emit()
+
+    def _get_bulk_skipped(self) -> int:
+        return self._bulk_skipped
+
+    @QtCore.Slot(str, result=int)
+    def matchesSeen(self, address: str) -> int:
+        """How many addresses seen in the OSC Monitor this address answers
+        (the Add window's hint)."""
+        return len(seen_matching(address))
+
     # -- editing --------------------------------------------------------
 
     @QtCore.Slot(str, result=str)
@@ -767,3 +829,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
 
     guid = QtCore.Property(str, fget=_get_guid)
     listening = QtCore.Property(bool, fget=_get_listening, notify=listenChanged)
+    bulkSkipped = QtCore.Property(
+        int, fget=_get_bulk_skipped, notify=bulkSkippedChanged
+    )

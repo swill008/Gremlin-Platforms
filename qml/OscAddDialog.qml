@@ -515,6 +515,19 @@ Popup {
             }
         }
 
+        // A pattern address (09 S147): how many of the Monitor's recent
+        // addresses it matches.
+        Label {
+            objectName: "oscPatternHint"
+            readonly property string address: _cmd.text.trim()
+            visible: !_root.editingMany && /[*?\[\]{}]/.test(address)
+            text: visible && deviceModel && deviceModel.matchesSeen
+                  ? "Matches " + deviceModel.matchesSeen(address) + " of the addresses seen" : ""
+            color: Style.fgMuted
+            font.pixelSize: Style.dp(11)
+            Layout.leftMargin: Style.dp(76)
+        }
+
         Label { visible: !_root.editingMany; text: "Parameters:  " + (_root.lastParameters || "") }
         Label { visible: !_root.editingMany; text: "Source:  " + (_root.lastSource || "") }
         Label {
@@ -793,6 +806,14 @@ Popup {
                     if (!checked && deviceModel && deviceModel.listening)
                         deviceModel.cancelListen()
                 }
+            }
+            // Bulk capture leaves out addresses an input already answers (09 S151).
+            Label {
+                objectName: "oscBulkSkipped"
+                readonly property int skipped: deviceModel && deviceModel.bulkSkipped ? deviceModel.bulkSkipped : 0
+                visible: !_root.editing && skipped > 0
+                text: "Skipped " + skipped + " already answered"
+                color: Style.fgMuted
             }
             Item { Layout.fillWidth: true }
             Button {

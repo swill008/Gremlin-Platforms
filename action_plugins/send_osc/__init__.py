@@ -21,6 +21,7 @@ from PySide6 import QtCore
 from gremlin import (
     event_handler,
     osc_output,
+    osc_pattern,
     util,
 )
 from gremlin.base_classes import (
@@ -67,6 +68,12 @@ def clean_values(raw: object) -> list[dict]:
     return out
 
 
+def address_error(address: str) -> str:
+    """Why address can't be sent to ("" when it can); outgoing addresses
+    are exact, never patterns (S149)."""
+    return osc_pattern.check(str(address or "").strip(), allow_pattern=False)
+
+
 def _first_target() -> str:
     try:
         from gremlin import osc_device_file
@@ -105,6 +112,8 @@ class SendOscFunctor(AbstractFunctor):
             if not self._should_execute(value):
                 return
         elif self.data.activation_mode == ActionActivationMode.Deactivated:
+            return
+        if address_error(self._osc.address):
             return
         values = []
         types = []
@@ -186,6 +195,9 @@ class SendOscModel(ActionModel):
             self._osc.address = str(value)
             self.addressChanged.emit()
 
+    def _get_address_error(self) -> str:
+        return address_error(self._osc.address)
+
     def _get_values(self) -> list:
         return [dict(v) for v in self._osc.values]
 
@@ -237,6 +249,7 @@ class SendOscModel(ActionModel):
     address = QtCore.Property(
         str, fget=_get_address, fset=_set_address, notify=addressChanged
     )
+    addressError = QtCore.Property(str, fget=_get_address_error, notify=addressChanged)
     values = QtCore.Property(list, fget=_get_values, notify=valuesChanged)
     inputMin = QtCore.Property(
         float, fget=_get_input_min, fset=_set_input_min, notify=inputMinChanged
@@ -312,13 +325,9 @@ class SendOscData(AbstractActionData):
 
     @override
     def user_feedback(self) -> List[UserFeedback]:
-        if not self.address.strip().startswith("/"):
-            return [
-                UserFeedback(
-                    UserFeedback.FeedbackType.Error,
-                    "An OSC address starts with /.",
-                )
-            ]
+        why = address_error(self.address)
+        if why:
+            return [UserFeedback(UserFeedback.FeedbackType.Error, why)]
         return []
 
     @override

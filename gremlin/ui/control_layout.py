@@ -334,6 +334,10 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
     def _rows_after_actions(self, item: LayoutItem, extra: list[dict]) -> list[dict]:
         return []
 
+    def _rows_at_end(self) -> list[dict]:
+        """Rows after every group (OSC: feedback not tied to an input)."""
+        return []
+
     def _matches(self, item: LayoutItem, search: str, type_filter: str) -> bool:
         if type_filter not in ("", "all") and kind_word(item.type) != type_filter:
             return False
@@ -680,6 +684,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                     rows.extend(self._rows_before_actions(item, extra))
                     rows.extend(children)
                     rows.extend(self._rows_after_actions(item, extra))
+        rows.extend(self._rows_at_end())
         self._rows = rows
         alive = {row["key"] for row in rows}
         self._selected = [key for key in self._selected if key in alive]

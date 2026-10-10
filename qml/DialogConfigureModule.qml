@@ -36,6 +36,10 @@ ApplicationWindow {
     property string moduleFileNotice: ""
     property bool claimDirty: false
     property bool allowClose: false
+    // OSC Setup's tab to show ("Feedback"; the OSC page's "Feedback
+    // settings…", 09 S154).
+    property string oscTab: ""
+    onOscTabChanged: if (_oscTabs.item && oscTab.length) _oscTabs.item.showTab(oscTab)
 
     // For the main window's quit: unsaved edits this window would ask about.
     function hasUnsavedWork() {
@@ -528,6 +532,7 @@ ApplicationWindow {
             active: _driver.isOsc
             visible: active
             source: "OscSetupTabs.qml"
+            onLoaded: if (_win.oscTab.length) item.showTab(_win.oscTab)
         }
 
         RowLayout {

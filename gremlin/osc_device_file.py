@@ -64,7 +64,17 @@ TARGETS_KEY = "targets"
 FEEDBACK_KEY = "feedback"
 REPLY = "reply"
 DEFAULT_TARGET = "Default"
-SOURCE_KINDS = ("mode", "vjoy_button", "vjoy_axis", "logical", "osc_input")
+# action_state: an action's on/off by action id (S157); paused: the
+# profile's Running / Paused, on while paused.
+SOURCE_KINDS = (
+    "mode",
+    "vjoy_button",
+    "vjoy_axis",
+    "logical",
+    "osc_input",
+    "action_state",
+    "paused",
+)
 VALUE_TYPES = ("auto", "int", "float", "bool", "text")
 # Feedback row templates (D-09-OSC-COMPANION).
 TEMPLATES = ("companion_variable", "companion_text", "companion_colour")
@@ -267,11 +277,16 @@ def _source(raw: object) -> dict:
             return value
         return str(value)
 
-    return {
+    out: dict = {
         "kind": kind,
         "device": part(given.get("device")),
         "input": part(given.get("input")),
     }
+    # action_state's action id; kept only when set.
+    action = str(given.get("action") or "").strip()
+    if action:
+        out["action"] = action
+    return out
 
 
 def clean_feedback(raw: object) -> list[dict]:
@@ -305,6 +320,10 @@ def clean_feedback(raw: object) -> list[dict]:
         template = row.pop("template", None)
         if template in TEMPLATES:
             row["template"] = template
+        # Show under this input (S153): an OSC input uid, kept only when set.
+        under = str(row.pop("input", None) or "").strip()
+        if under:
+            row["input"] = under
         out.append(row)
     return out
 

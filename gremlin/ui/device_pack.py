@@ -2115,6 +2115,84 @@ def _match_modes(profile: Profile, plan: dict, tree: dict) -> tuple[dict, dict]:
     return matched, new_tree
 
 
+def _action_id_moves(
+    plan: dict, tree: dict, target_guid: str, into: Profile | None = None
+) -> dict[str, str]:
+    """The pack's action ids the profile still holds once the ticked modes'
+    wires are gone (Library.release's rule), each with the new id the import
+    gives it (as profile.remap_action_ids would). Decided once, before the
+    module file is written, so the pack's feedback rows follow the same ids
+    (D-09-OSC-ACTSTATE). {}: nothing clashes."""
+    if not plan["modes"] or not target_guid:
+        return {}
+    try:
+        from gremlin.profile import Profile, reachable
+        from gremlin.shared_state import current_profile
+    except Exception:
+        return {}
+    profile = into if into is not None else current_profile
+    uid = parse_guid(target_guid)
+    if profile is None or uid is None:
+        return {}
+    plan, _tree = _match_modes(profile, plan, tree)
+    removed = [
+        item
+        for item in profile.inputs.get(uid, []) or []
+        if str(item.mode or "Default") in plan["modes"]
+    ]
+    dropped = {id(item) for item in removed}
+    kept = [
+        item
+        for items in profile.inputs.values()
+        for item in items
+        if id(item) not in dropped
+    ]
+    keep = {a.id for a in reachable(Profile.roots_of(kept))}
+    keep |= profile.library.draft_held()
+    gone = {a.id for a in reachable(Profile.roots_of(removed))} - keep
+    moves: dict[str, str] = {}
+    for block in plan["actions"]:
+        for found in _UUID_RE.findall(str(block)):
+            key = found.lower()
+            if key in moves:
+                continue
+            try:
+                aid = uuid.UUID(found)
+            except ValueError:
+                continue
+            if profile.library.has_action(aid) and aid not in gone:
+                moves[key] = str(uuid.uuid4())
+    return moves
+
+
+def _swap_ids(blocks: list[str], moves: dict[str, str]) -> list[str]:
+    """These XML blocks with each moved action id replaced."""
+    if not moves:
+        return blocks
+    return [
+        _UUID_RE.sub(lambda m: moves.get(m.group(0).lower(), m.group(0)), str(b))
+        for b in blocks
+    ]
+
+
+def _feedback_moved(doc: dict, moves: dict[str, str]) -> dict:
+    """The pack's module file with its action_state feedback rows naming the
+    moved ids (only rows that come in this pack; the target's own rows are
+    never changed)."""
+    if not moves or not isinstance(doc.get("feedback"), list):
+        return doc
+    out = dict(doc)
+    out["feedback"] = json.loads(json.dumps(doc["feedback"]))
+    for row in out["feedback"]:
+        source = row.get("source") if isinstance(row, dict) else None
+        if not isinstance(source, dict) or source.get("kind") != "action_state":
+            continue
+        new = moves.get(str(source.get("action") or "").lower())
+        if new:
+            source["action"] = new
+    return out
+
+
 def _ensure_modes(
     profile: Profile, names: list[str], tree: dict, notes: list[str]
 ) -> list[str]:
@@ -2156,10 +2234,12 @@ def _apply_wires(
     moves: dict[int, int],
     create_logical: bool,
     into: Profile | None = None,
+    id_moves: dict[str, str] | None = None,
 ) -> tuple[list[str], dict | None]:
     """Replaces the device's wires and actions in each ticked mode with the
     pack's. Returns the notes and what Undo Import needs. into: the profile
-    to change (None: the open one)."""
+    to change (None: the open one). id_moves: the action ids already given
+    new ones (_action_id_moves)."""
     if not plan["modes"]:
         return [], None
     if not target_guid:
@@ -2183,7 +2263,9 @@ def _apply_wires(
         # Library puts back the inputs, actions, modes, Logical Device
         # inputs and device list as they were (map 2, GL-099, GL-109).
         with profile.library.change():
-            action_xml = _retarget_vjoy(plan["actions"], moves)
+            action_xml = _swap_ids(
+                _retarget_vjoy(plan["actions"], moves), id_moves or {}
+            )
             created_logical: list[str] = []
             made_names: list[str] = []
             missing = plan["missingLogical"]
@@ -2225,7 +2307,7 @@ def _apply_wires(
                     + "."
                 )
             osc_inputs, osc_left = _resolve_osc_inputs(
-                plan["inputs"], plan.get("oscRows")
+                _swap_ids(plan["inputs"], id_moves or {}), plan.get("oscRows")
             )
             if osc_left:
                 notes.append(
@@ -2778,6 +2860,14 @@ def apply_zip(
         target = str(match.get("name") or target)
     guid = str(match["guid"]) if match and match.get("guid") else ""
     limits = _device_limits(guid)
+    # Action ids that clash get new ones now, so the pack's feedback rows
+    # (written below) and its wires (after) name the same ids.
+    id_moves = _action_id_moves(
+        _plan_wires(loaded["wires"], chosen, limits),
+        loaded["wires"].get("tree") or {},
+        guid,
+        profile,
+    )
     notes: list[str] = []
     files: list[tuple[Path, bytes | None]] = []
     # Picture ids are pic:<archive name>, including output photos that share the zip root.
@@ -2792,8 +2882,9 @@ def apply_zip(
             # nothing is changed (the wires neither).
             return {"ok": False, "error": _damaged_text(dest, damaged)}
         existing = None if fresh else _read_doc(dest)
+        incoming = _feedback_moved(doc, id_moves)
         merged, merged_notes = _merge_module(
-            existing, doc, chosen, "in.", target, guid, limits
+            existing, incoming, chosen, "in.", target, guid, limits
         )
         try:
             _write_pictures(_slug_for_path(dest), loaded["files"], chosen, merged, files)
@@ -2872,6 +2963,7 @@ def apply_zip(
         _vjoy_moves(loaded["outputs"], targets),
         bool((selection or {}).get("createLogical")),
         profile,
+        id_moves,
     )
     notes.extend(wire_notes)
     if not notes:
