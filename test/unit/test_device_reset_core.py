@@ -5,7 +5,10 @@ The real runner (pnputil through an elevated cmd.exe) is never reached."""
 
 from __future__ import annotations
 
+import os
+import subprocess
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
@@ -208,6 +211,44 @@ def test_batch_and_result_parsing() -> None:
     assert '>>"C:\\t\\result.txt" echo 1^|%errorlevel%' in text
     parsed = device_reset._parse_results("0|0\r\n1|3010\r\njunk\r\n", ids)
     assert parsed == {STICK_USB: 0, ids[1]: 3010}
+
+
+@pytest.mark.skipif(os.name != "nt", reason="cmd.exe batch")
+def test_batch_runs_and_codes_come_back(tmp_path: Path) -> None:
+    """The real reset.cmd and result reading, run by a plain cmd.exe with a
+    stand-in for pnputil (no elevation). The result file must already exist,
+    owned by this process, before the batch runs: an elevated cmd that makes
+    it leaves a file this process can't read (log: "failed: no result")."""
+    fake = tmp_path / "fake restart.cmd"
+    fake.write_text(
+        '@set "a=%~1"\r\n'
+        '@if not "%a:0003=%"=="%a%" exit /b 3010\r\n'
+        '@if not "%a:0BAD=%"=="%a%" exit /b 5\r\n'
+        "@exit /b 0\r\n",
+        encoding="mbcs",
+    )
+    ids = [
+        "USB\\VID_231D&PID_0200\\9&AAC4F3F&0&2",
+        "USB\\VID_0003&PID_0001\\5&1&0&1",
+        "USB\\VID_0BAD&PID_0001\\5&2&0&1",
+    ]
+    seen: dict[str, bool] = {}
+
+    def launch(script: str, folder: str) -> None:
+        result = os.path.join(folder, "result.txt")
+        seen["result made first"] = os.path.isfile(result)
+        subprocess.run(
+            f'cmd.exe /d /c ""{script}""', cwd=folder, check=True, timeout=30
+        )
+
+    codes = device_reset._run_batch(ids, launch, command=f'call "{fake}"')
+    assert seen == {"result made first": True}
+    assert codes == {ids[0]: 0, ids[1]: 3010, ids[2]: 5}
+
+
+def test_elevated_launch_is_blocked_under_tests() -> None:
+    with pytest.raises(device_reset.RealRunnerBlocked):
+        device_reset._elevated_launch("x.cmd", ".")
 
 
 def test_real_runner_is_blocked_under_tests() -> None:

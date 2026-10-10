@@ -303,13 +303,16 @@ def _under_test() -> bool:
     return bool(os.environ.get("PYTEST_CURRENT_TEST")) or "pytest" in sys.modules
 
 
-def _batch_text(ids: list[str], result_path: str) -> str:
+_RESTART = "pnputil /restart-device"
+
+
+def _batch_text(ids: list[str], result_path: str, command: str = _RESTART) -> str:
     """One pnputil line per device, then `<index>|<exit code>` to the result
     file (indexes, so ids with & need no escaping in echo)."""
     lines = ["@echo off"]
     for n, usb in enumerate(ids):
         safe = usb.replace("%", "%%").replace('"', "")
-        lines.append(f'pnputil /restart-device "{safe}" >nul 2>&1')
+        lines.append(f'{command} "{safe}" >nul 2>&1')
         lines.append(f'>>"{result_path}" echo {n}^|%errorlevel%')
     return "\r\n".join(lines) + "\r\n"
 
@@ -325,19 +328,45 @@ def _parse_results(text: str, ids: list[str]) -> dict[str, int]:
     return out
 
 
+def _run_batch(
+    ids: list[str],
+    launch: Callable[[str, str], None],
+    command: str = _RESTART,
+) -> dict[str, int]:
+    """Writes reset.cmd, has launch(script, folder) run it to the end, then
+    reads the exit codes back."""
+    folder = tempfile.mkdtemp(prefix="gremlin_reset_")
+    script = ntpath.join(folder, "reset.cmd")
+    result_path = ntpath.join(folder, "result.txt")
+    with open(script, "w", encoding="mbcs", newline="") as fh:
+        fh.write(_batch_text(ids, result_path, command))
+    # mkdtemp's folder only lets SYSTEM, Administrators and the file's owner
+    # in. A result file made by the elevated cmd is owned by Administrators,
+    # which this (unelevated) process can't read, so make it here first and
+    # let the batch append to it.
+    open(result_path, "w", encoding="mbcs").close()
+    launch(script, folder)
+    try:
+        with open(result_path, encoding="mbcs", errors="replace") as fh:
+            return _parse_results(fh.read(), ids)
+    except OSError:
+        return {}
+
+
 def _real_runner(ids: list[str]) -> dict[str, int]:
     if _under_test():
         raise RealRunnerBlocked("device_reset real runner called from a test")
     if os.name != "nt":
         raise OSError("device reset needs Windows")
+    return _run_batch(ids, _elevated_launch)
+
+
+def _elevated_launch(script: str, folder: str) -> None:
+    """Runs script in one elevated cmd.exe and waits for it."""
+    if _under_test():
+        raise RealRunnerBlocked("device_reset elevated launch called from a test")
     import ctypes
     from ctypes import wintypes
-
-    folder = tempfile.mkdtemp(prefix="gremlin_reset_")
-    script = ntpath.join(folder, "reset.cmd")
-    result_path = ntpath.join(folder, "result.txt")
-    with open(script, "w", encoding="mbcs", newline="") as fh:
-        fh.write(_batch_text(ids, result_path))
 
     class SHELLEXECUTEINFOW(ctypes.Structure):
         _fields_ = [
@@ -391,11 +420,6 @@ def _real_runner(ids: list[str]) -> dict[str, int]:
     finally:
         if info.hProcess:
             k32.CloseHandle(info.hProcess)
-    try:
-        with open(result_path, encoding="mbcs", errors="replace") as fh:
-            return _parse_results(fh.read(), ids)
-    except OSError:
-        return {}
 
 
 # Running games ------------------------------------------------------------

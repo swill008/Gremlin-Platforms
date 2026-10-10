@@ -348,7 +348,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     (HH-INUSE-1, 02 S67) and keep the switches usable; (b) Change vJoy Output warns that games bound to
     those vJoy devices now get the other stick (10 S30-S31); (c) a HidHide guard for tests like the vJoy
     one (offered as a separate task); (d) whether Delete Device should clean profiles that aren't open.
-76. DONE 2026-10-10 (<commit pending>, 02 S124-S133, D-02-RESET-DEVICES; hands-on of the Windows
+76. DONE 2026-10-10 (68096ab2, 02 S124-S133, D-02-RESET-DEVICES; hands-on of the Windows
     permission prompt left as gap RESET-HANDS-ON). Reset devices (user 2026-10-10): a button on the HidHide page that disables and
     re-enables the hidden sticks so every program (Gremlin, games, the Input Tester) opens them again
     and HidHide checks them anew. Why: HidHide only checks when a device is opened (verified, HidHide
@@ -402,6 +402,8 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     the program folder. Not started.
 81. Exit takes ~5 s in a full off-screen run (either dill), from something else the program loads (D2APP
     2026-10-10). Not investigated.
+82. Reset Devices leaves its gremlin_reset_* temp folders behind (found 2026-10-10, RFIX). Delete them after
+    the results are read (the result file is the user's own since the fix). Not started.
 
 ## On hold / parked (user's choice)
 
