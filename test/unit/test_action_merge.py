@@ -11,6 +11,8 @@ sys.path.append(".")
 import pathlib
 import uuid
 
+import pytest
+
 import action_plugins.merge_axis as merge_axis
 import gremlin.types as types
 from action_plugins.description import DescriptionData
@@ -97,3 +99,31 @@ def test_swap_second_uuid(xml_dir: pathlib.Path) -> None:
     a.swap_uuid(_DEVICE_GUID_2, new_device_uuid)
     assert a.axis_in1.device_guid == _DEVICE_GUID_1
     assert a.axis_in2.device_guid == new_device_uuid
+
+
+# 05 S114 (R7): every operation's stored name survives a save and a load.
+@pytest.mark.parametrize("operation", list(merge_axis.MergeOperation))
+def test_operation_names_round_trip(operation: merge_axis.MergeOperation) -> None:
+    from gremlin.profile import Library
+
+    stored = merge_axis.MergeOperation.to_string(operation)
+    assert merge_axis.MergeOperation.to_enum(stored) == operation
+
+    a = merge_axis.MergeAxisData(types.InputType.JoystickAxis)
+    a.operation = operation
+    for ref, guid in ((a.axis_in1, _DEVICE_GUID_1), (a.axis_in2, _DEVICE_GUID_2)):
+        ref.device_guid = guid
+        ref.input_type = types.InputType.JoystickAxis
+        ref.input_id = 1
+    node = a._to_xml()
+    assert node.find("./property/name[.='operation']/../value").text == stored
+    b = merge_axis.MergeAxisData(types.InputType.JoystickAxis)
+    b._from_xml(node, Library())
+    assert b.operation == operation
+
+
+def test_maximum_deflection_is_stored_with_its_own_name() -> None:
+    """05 S114: stored "maximum-deflection"; "prefercenter" keeps its name."""
+    op = merge_axis.MergeOperation
+    assert op.to_string(op.MaximumDeflection) == "maximum-deflection"
+    assert op.to_string(op.Prefercenter) == "prefercenter"

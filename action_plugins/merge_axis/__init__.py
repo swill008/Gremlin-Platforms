@@ -55,39 +55,43 @@ class MergeOperation(Enum):
     Sum = 3
     Bidirectional = 4
     Prefercenter = 5
+    MaximumDeflection = 6
 
     @classmethod
     def to_string(cls, value: MergeOperation) -> str:
-        lookup = {
-            MergeOperation.Average: "average",
-            MergeOperation.Minimum: "minimum",
-            MergeOperation.Maximum: "maximum",
-            MergeOperation.Sum: "sum",
-            MergeOperation.Bidirectional: "bidirectional",
-            MergeOperation.Prefercenter: "prefercenter",
-        }
-
-        res = lookup.get(value, None)
+        """The name profiles store (also the drop-down's value)."""
+        res = _NAMES.get(value, None)
         if res is None:
             raise GremlinError(f"MergeOperation: invalid value in lookup '{value}'")
-        return res
+        return res[0]
 
     @classmethod
     def to_enum(cls, value: str) -> MergeOperation:
-        lookup = {
-            "average": MergeOperation.Average,
-            "minimum": MergeOperation.Minimum,
-            "maximum": MergeOperation.Maximum,
-            "sum": MergeOperation.Sum,
-            "bidirectional": MergeOperation.Bidirectional,
-            "prefercenter": MergeOperation.Prefercenter,
-        }
-        res = lookup.get(value.lower(), None)
+        for operation, (stored, _) in _NAMES.items():
+            if stored == value.lower():
+                return operation
+        raise GremlinError(f"MergeOperation: invalid value in lookup '{value.lower()}'")
+
+    @classmethod
+    def to_display(cls, value: MergeOperation) -> str:
+        """The name shown in the editor."""
+        res = _NAMES.get(value, None)
         if res is None:
-            raise GremlinError(
-                f"MergeOperation: invalid value in lookup '{value.lower()}'"
-            )
-        return res
+            raise GremlinError(f"MergeOperation: invalid value in lookup '{value}'")
+        return res[1]
+
+
+# Each operation: stored name -> shown name. One table, so the drop-down's
+# values are exactly what profiles store and the editor's getter returns.
+_NAMES: dict[MergeOperation, tuple[str, str]] = {
+    MergeOperation.Average: ("average", "Average"),
+    MergeOperation.Minimum: ("minimum", "Minimum"),
+    MergeOperation.Maximum: ("maximum", "Maximum"),
+    MergeOperation.Sum: ("sum", "Sum"),
+    MergeOperation.Bidirectional: ("bidirectional", "Bidirectional"),
+    MergeOperation.Prefercenter: ("prefercenter", "Prefer Center"),
+    MergeOperation.MaximumDeflection: ("maximum-deflection", "Maximum Deflection"),
+}
 
 
 class MergeAxisFunctor(AbstractFunctor):
@@ -145,6 +149,11 @@ class MergeAxisFunctor(AbstractFunctor):
         """Use the axis closest to center."""
         return value1 if abs(value1) < abs(value2) else value2
 
+    @staticmethod
+    def _maximum_deflection(value1: float, value2: float) -> float:
+        """Use the axis furthest from center; a tie goes to the 2nd axis."""
+        return value1 if abs(value1) > abs(value2) else value2
+
     actions = {
         MergeOperation.Average: _average,
         MergeOperation.Minimum: _minimum,
@@ -152,6 +161,7 @@ class MergeAxisFunctor(AbstractFunctor):
         MergeOperation.Sum: _sum,
         MergeOperation.Bidirectional: _bidirectional,
         MergeOperation.Prefercenter: _prefercenter,
+        MergeOperation.MaximumDeflection: _maximum_deflection,
     }
 
 
@@ -187,16 +197,11 @@ class MergeAxisModel(ActionModel):
         Returns:
             List of valid operation names
         """
-        operations = sorted(
-            [
-                e.name.capitalize()
-                for e in MergeOperation
-                if not e.name.startswith("_MergeOperation")
-            ]
-        )
-        # Shown as words; the value stays what profiles store.
-        labels = ["Prefer Center" if o == "Prefercenter" else o for o in operations]
-        return LabelValueSelectionModel(labels, operations, parent=self)
+        # Shown as words, in alphabetical order; the values are the stored names.
+        operations = sorted(MergeOperation, key=MergeOperation.to_display)
+        labels = [MergeOperation.to_display(o) for o in operations]
+        values = [MergeOperation.to_string(o) for o in operations]
+        return LabelValueSelectionModel(labels, values, parent=self)
 
     @QtCore.Property(LabelValueSelectionModel, notify=modelChanged)
     def mergeActionList(self) -> LabelValueSelectionModel:
@@ -235,7 +240,7 @@ class MergeAxisModel(ActionModel):
             self.modelChanged.emit()
 
     def _get_operation(self) -> str:
-        return MergeOperation.to_string(self._data.operation).capitalize()
+        return MergeOperation.to_string(self._data.operation)
 
     def _set_operation(self, value: str) -> None:
         operation = MergeOperation.to_enum(value)

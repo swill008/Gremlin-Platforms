@@ -30,6 +30,7 @@ import pytest
 from PySide6 import QtCore
 
 from action_plugins.description import DescriptionData
+from action_plugins.merge_axis import MergeOperation
 from action_plugins.root import RootData
 from gremlin.profile import InputItem, InputItemBinding, Profile
 from gremlin.types import InputType
@@ -117,14 +118,42 @@ def test_merge_axis_error_names_the_value() -> None:
         MergeOperation.to_enum("nonsense")
 
 
-def test_merge_operations_read_as_words() -> None:
+def _operation_list() -> tuple[list[str], list[str]]:
     from action_plugins.merge_axis import MergeAxisModel
 
     with mock.patch("action_plugins.merge_axis.LabelValueSelectionModel") as made:
         MergeAxisModel.operationList.fget(SimpleNamespace())
     labels, values = made.call_args.args[:2]
-    assert "Prefer Center" in labels and "Prefercenter" not in labels
-    assert "Prefercenter" in values  # what profiles store
+    return list(labels), list(values)
+
+
+def test_merge_operations_read_as_words() -> None:
+    """05 S114: shown as words; the drop-down values are the stored names."""
+
+    labels, values = _operation_list()
+    assert "Prefer Center" in labels and "Maximum Deflection" in labels
+    assert sorted(values) == sorted(MergeOperation.to_string(o) for o in MergeOperation)
+    assert labels[values.index("prefercenter")] == "Prefer Center"
+    assert labels[values.index("maximum-deflection")] == "Maximum Deflection"
+
+
+@pytest.mark.parametrize("name", [o.name for o in MergeOperation])
+def test_the_current_operation_is_one_of_the_list(name: str) -> None:
+    """05 S114: the editor's current value matches a drop-down value, and
+    picking that value sets the operation back (else the selection vanishes)."""
+    from action_plugins.merge_axis import MergeAxisModel
+
+    _, values = _operation_list()
+    fake = SimpleNamespace(
+        _data=SimpleNamespace(operation=MergeOperation[name]),
+        modelChanged=SimpleNamespace(emit=lambda: None),
+    )
+    current = MergeAxisModel._get_operation(fake)
+    assert current in values
+    other = MergeOperation.Sum if name == "Average" else MergeOperation.Average
+    fake._data.operation = other
+    MergeAxisModel._set_operation(fake, current)
+    assert fake._data.operation == MergeOperation[name]
 
 
 def test_a_new_merge_axis_gets_the_next_free_name() -> None:
@@ -297,7 +326,7 @@ def test_picking_a_shared_merge_axis_then_cancel_changes_nothing(
     shared_merge.model.sync_data()
     picked = _models(shared_merge.model, "merge-axis")[0]
     assert picked.action_data is not shared_merge.merge
-    picked.operation = "Maximum"
+    picked.operation = "maximum"
     shared_merge.library.discard(shared_merge.draft)
     from action_plugins.merge_axis import MergeOperation
 
