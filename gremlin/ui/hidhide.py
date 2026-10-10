@@ -35,6 +35,7 @@ from gremlin.hidhide_driver import (
     set_whitelist,
 )
 from gremlin.types import PropertyType
+from gremlin.ui import device_reset_model  # noqa: F401 - registers ResetDevicesModel
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -673,6 +674,16 @@ def _result_line(result: dict | None) -> tuple[str, bool]:
     return (f"{head} · {summary}" if summary else head), verdict == "fail"
 
 
+def _reset_available() -> bool:
+    try:
+        from gremlin import device_reset
+
+        return any(d.plugged for d in device_reset.list_devices([]))
+    except Exception:
+        logging.getLogger("system").exception("Reset Devices: device list failed")
+        return False
+
+
 def _same_path(a: str, b: str) -> bool:
     return os.path.normcase(os.path.normpath(a)) == os.path.normcase(os.path.normpath(b))
 
@@ -703,6 +714,7 @@ class HidHideModel(QtCore.QObject):
         _settings_error = ""
         self._inverse = False
         self._version = ""
+        self._reset_available = False
         _ensure_options()
         self.reload()
         # A stick plugged in or out shows (or leaves) the list while open.
@@ -756,6 +768,7 @@ class HidHideModel(QtCore.QObject):
             built.append(item)
         self._devices = _sorted_devices(built)
         self._games = _load_games()
+        self._reset_available = _reset_available()
         self._generation += 1
         _hh_log(
             f"reload present={self._present} version={self._version} cloak={self._active} "
@@ -1145,6 +1158,43 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Property(str, notify=changed)
     def staleTesterWarning(self) -> str:  # noqa: N802 - QML name
         return self._stale_tester
+
+    # Reset Devices (D-02-RESET-DEVICES) -------------------------------------
+
+    @QtCore.Property(bool, notify=changed)
+    def resetAvailable(self) -> bool:  # noqa: N802 - QML name
+        """A physical USB game controller is plugged in."""
+        return self._reset_available
+
+    @QtCore.Slot(result="QVariant")
+    def resetContext(self) -> dict:  # noqa: N802 - QML name
+        """What the Reset Devices window needs from HidHide: the hidden
+        ids, the program list, Gremlin names and the hidden devices that
+        aren't plugged in."""
+        hidden = [str(i) for i in get_blacklist()] if self._present else []
+        saved = _saved_hidden() or []
+        links = _load_links()
+        known = []
+        seen: set[tuple[int, int]] = set()
+        for instance in [*hidden, *saved]:
+            vid, pid = _vid_pid(instance)
+            if vid is None or pid is None or (vid, pid) in seen:
+                continue
+            seen.add((vid, pid))
+            known.append({
+                "usb_id": instance,
+                "name": links.get(instance) or links.get(instance.upper())
+                or "HID-compliant game controller",
+                "vid": vid,
+                "pid": pid,
+            })
+        return {
+            # HidHide's hidden list; without the driver, the saved one.
+            "hiddenIds": hidden if self._present else saved,
+            "games": [g["path"] for g in self._games],
+            "names": {k: v for k, v in links.items() if v},
+            "known": known,
+        }
 
     @QtCore.Slot(result=str)
     def restartInputTester(self) -> str:  # noqa: N802 - QML name

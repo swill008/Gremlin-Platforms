@@ -348,7 +348,8 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     (HH-INUSE-1, 02 S67) and keep the switches usable; (b) Change vJoy Output warns that games bound to
     those vJoy devices now get the other stick (10 S30-S31); (c) a HidHide guard for tests like the vJoy
     one (offered as a separate task); (d) whether Delete Device should clean profiles that aren't open.
-76. Reset devices (user 2026-10-10, not started): a button on the HidHide page that disables and
+76. DONE 2026-10-10 (<commit pending>, 02 S124-S133, D-02-RESET-DEVICES; hands-on of the Windows
+    permission prompt left as gap RESET-HANDS-ON). Reset devices (user 2026-10-10): a button on the HidHide page that disables and
     re-enables the hidden sticks so every program (Gremlin, games, the Input Tester) opens them again
     and HidHide checks them anew. Why: HidHide only checks when a device is opened (verified, HidHide
     v1.4.181 Logic.c 160-207, scratchpad hhverify/upstream.md); it has no command to recheck open
@@ -384,12 +385,23 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     reading. Data layouts and the 10 C functions match our wrapper (+ shutdown) - should load with only
     the file name changed (not run). NOT verified: that v2.0 includes the button 128 / hat 4 fix; v2.0
     source not public. Option now: take R16's dill2.dll (prebuilt, used by upstream) instead of building 1.5.
+    FEASIBILITY 2026-10-10 (D2CODE/D2LIVE/D2APP, page https://claude.ai/artifact): dill2 loads through our
+    wrapper with only the file name changed; same 7 devices, counts, axis maps, readings; whole program off-screen
+    identical; button 128 / hat 4 accepted (1,701 'invalid index' lines in ~6 s with 1.3, none with dill2);
+    shutdown() works. Not yet: pressing button 128/hat 4, plug/unplug, Xbox pads via XInput, real vJoy matching.
+    Draft patch scratchpad dill2_study/patch.diff (not applied).
 78. Licence notice for dill (found 2026-10-10, DILLUP): dill.dll is BSD-2-Clause (not GPL); the BSD
     licence asks binary redistributions to carry its notice, and licenses/ has no dill (or spdlog)
     notice today. Add licenses/dill.txt (+ spdlog) and check the installer copies licenses/. Not started.
 79. SHELVED (user 2026-10-10: "keep things as they are for now"): how the Input Tester ships and a
     --self-test of the built exe (in tools/build_input_tester.py and the release workflow). Today: the
     release build makes both exes and the installer copies them; the dev script is for source runs.
+80. SECURITY (found 2026-10-10, D2CODE): dill/__init__.py 292-303 looks for dill.dll in the working folder
+    (the folder the program was started from) before its own folder, and `import dill` runs before
+    joystick_gremlin.py changes folder (82 vs 101) - a planted dill.dll there would be loaded. Load only from
+    the program folder. Not started.
+81. Exit takes ~5 s in a full off-screen run (either dill), from something else the program loads (D2APP
+    2026-10-10). Not investigated.
 
 ## On hold / parked (user's choice)
 

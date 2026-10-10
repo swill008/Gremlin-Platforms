@@ -51,6 +51,16 @@ ApplicationWindow {
         return n
     }
 
+    // Reset Devices (D-02-RESET-DEVICES), opened by the red buttons.
+    DialogResetDevices {
+        id: _resetDevices
+        transientParent: _win
+    }
+
+    function openResetDevices() {
+        _resetDevices.openWith(_hh.resetContext())
+    }
+
     // The open Remove question (01 S140), for tests.
     property var _question: null
 
@@ -288,6 +298,18 @@ ApplicationWindow {
                 }
 
                 RowLayout {
+                    visible: _hh.staleGameWarnings.length > 0
+                    Layout.fillWidth: true
+                    Item { Layout.fillWidth: true }
+                    DangerButton {
+                        objectName: "hidHideResetDevicesStale"
+                        text: "Reset Devices…"
+                        enabled: _hh.resetAvailable
+                        onClicked: _win.openResetDevices()
+                    }
+                }
+
+                RowLayout {
                     visible: _hh.staleTesterWarning.length > 0
                     Layout.fillWidth: true
                     spacing: Style.dp(8)
@@ -398,9 +420,23 @@ ApplicationWindow {
                     SplitView.minimumHeight: Style.dp(96)
                     spacing: Style.dp(6)
 
-                    SectionHeading {
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: "Devices"
+                        spacing: Style.dp(10)
+                        SectionHeading {
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignBottom
+                            text: "Devices"
+                        }
+                        // D-02-RESET-DEVICES: HidHide checks a device only when a
+                        // program opens it; a restart makes every program open it again.
+                        DangerButton {
+                            objectName: "hidHideResetDevices"
+                            text: "Reset Devices…"
+                            enabled: _hh.resetAvailable
+                            implicitHeight: Style.dp(28)
+                            onClicked: _win.openResetDevices()
+                        }
                     }
 
                     Label {
