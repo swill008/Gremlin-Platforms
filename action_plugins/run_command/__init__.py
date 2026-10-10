@@ -25,6 +25,7 @@ from gremlin.base_classes import (
     Value,
 )
 from gremlin.error import GremlinError
+from gremlin.log_once import log_once
 from gremlin.profile import Library
 from gremlin.types import (
     ActionProperty,
@@ -60,11 +61,16 @@ class RunCommandFunctor(AbstractFunctor):
             return
 
         arguments = QtCore.QProcess.splitCommand(self.data.arguments)
+        executable = self.data.executable
         try:
-            QtCore.QProcess.startDetached(self.data.executable, arguments)
-        except Exception as exception:
-            logging.getLogger("system").error(
-                f"Failed to run command '{self.data.executable}': {exception}"
+            started = QtCore.QProcess.startDetached(executable, arguments)[0]
+        except Exception:
+            started = False
+        if not started:
+            # 05 S97: reported once in the user log; nothing else happens.
+            log_once(
+                "user", ("run-command-failed", executable), logging.WARNING,
+                f"Run Command: could not start '{executable}'",
             )
 
 

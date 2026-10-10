@@ -777,3 +777,43 @@ def test_run_leaves_out_unfinished_actions_with_a_line_each(
     lines = [r.getMessage() for r in caplog.records if "not finished" in r.getMessage()]
     assert len(lines) == 2
     assert all("on Stick Axis 1 (Default)" in line for line in lines)
+
+
+# --- 05 S60a (R5): the Reference list never offers an input's Root ----------
+
+
+def _reference_with_other_root(profile: Profile) -> tuple[Any, Any, Any]:  # noqa: ANN401
+    """Stick axis 1 holds a Reference; stick axis 2 has its own Root."""
+    item = _get(profile,
+        _STICK, InputType.JoystickAxis, 1, "Default", create_if_missing=True
+    )
+    reference = _create("Reference")
+    item.add_item_binding().root_action.insert_action(reference, "children")
+    other = _get(profile,
+        _STICK, InputType.JoystickAxis, 2, "Default", create_if_missing=True
+    )
+    other_root = other.add_item_binding().root_action
+    other_root.insert_action(_vjoy(2), "children")
+    return item, reference, other_root
+
+
+def test_reference_live_list_leaves_out_another_inputs_root(
+    profile: Profile,
+) -> None:
+    item, reference, other_root = _reference_with_other_root(profile)
+    values = _values(_live_editor(item, reference).actions)
+    assert values  # the Map to vJoy on axis 2 is still offered
+    assert str(other_root.id) not in values
+
+
+def test_reference_pane_list_leaves_out_another_inputs_root(
+    profile: Profile,
+) -> None:
+    _item, _reference, other_root = _reference_with_other_root(profile)
+    model = _catalog(profile)
+    model.beginPane(0, 0)
+    values = _values(_action_model(model, _kids(model._pane_shadow)[0]).actions)
+    assert values
+    assert str(other_root.id) not in values
+    model.endPane()
+    model.deleteLater()

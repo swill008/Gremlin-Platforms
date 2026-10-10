@@ -335,7 +335,7 @@ class CubicSpline(AbstractCurve):
             if self.points[i].x <= x <= self.points[i + 1].x:
                 break
 
-        h = self.points[i + 1].x - self.points[i].x + 0.00001
+        h = max(self.points[i + 1].x - self.points[i].x, self._MIN_SEGMENT_WIDTH)
         tmp = (self.z[i] / 2.0) + (x - self.points[i].x) * (
             self.z[i + 1] - self.z[i]
         ) / (6 * h)

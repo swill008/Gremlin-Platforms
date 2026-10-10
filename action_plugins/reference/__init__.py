@@ -91,10 +91,10 @@ class ReferenceModel(ActionModel):
         # list. Excludes all actions that:
         # - result in circular inclusions
         # - are of an incompatible input type
-        # - are a reference action
+        # - are a reference action or an input's root (05 S60a)
         def selector(action: AbstractActionData) -> bool:
             # Only consider actions that are of a valid type
-            if action.tag in ["reference"]:
+            if action.tag in ["reference", "root"]:
                 return False
             if action.behavior_type != self.input_type:
                 return False

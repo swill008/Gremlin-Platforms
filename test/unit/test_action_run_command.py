@@ -8,17 +8,20 @@ import sys
 
 sys.path.append(".")
 
+import logging
 import pathlib
 import uuid
 from unittest import mock
 from xml.etree import ElementTree
 
+import pytest
 from PySide6 import QtCore
 
 from action_plugins.run_command import (
     RunCommandData,
     RunCommandFunctor,
 )
+from gremlin import log_once
 from gremlin.base_classes import Value
 from gremlin.profile import Library
 from gremlin.types import InputType
@@ -162,3 +165,50 @@ def test_functor_skips_when_not_pressed() -> None:
         functor(mock.MagicMock(), Value(False))
 
     launch.assert_not_called()
+
+
+# 05 S97 (R2): a program that can't be started is reported once in the
+# user log; nothing else happens.
+def _user_warnings(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [
+        r.getMessage() for r in caplog.records
+        if r.name == "user" and r.levelno == logging.WARNING
+    ]
+
+
+def test_functor_failed_start_logged_once(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    log_once.reset()
+    action = RunCommandData(InputType.JoystickButton)
+    action.executable = "C:/missing/nothing.exe"
+    functor = RunCommandFunctor(action)
+
+    with caplog.at_level(logging.WARNING, logger="user"), mock.patch.object(
+        QtCore.QProcess, "startDetached", return_value=(False, -1)
+    ):
+        functor(mock.MagicMock(), Value(True))
+        functor(mock.MagicMock(), Value(True))
+
+    warnings = _user_warnings(caplog)
+    assert len(warnings) == 1
+    assert "Run Command: could not start 'C:/missing/nothing.exe'" in warnings[0]
+
+
+def test_functor_raising_start_logged_once(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    log_once.reset()
+    action = RunCommandData(InputType.JoystickButton)
+    action.executable = "C:/broken/app.exe"
+    functor = RunCommandFunctor(action)
+
+    with caplog.at_level(logging.WARNING, logger="user"), mock.patch.object(
+        QtCore.QProcess, "startDetached", side_effect=RuntimeError("boom")
+    ):
+        functor(mock.MagicMock(), Value(True))
+        functor(mock.MagicMock(), Value(True))
+
+    warnings = _user_warnings(caplog)
+    assert len(warnings) == 1
+    assert "Run Command: could not start 'C:/broken/app.exe'" in warnings[0]

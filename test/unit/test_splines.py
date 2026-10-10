@@ -82,3 +82,30 @@ def test_cubic_spline_three_points_passes_through_them() -> None:
     for x, y in points:
         assert curve(x) == pytest.approx(y, abs=1e-4)
     assert -1.0 < curve(-0.5) < 0.5
+
+
+# 05 S112 (R3): a Cubic Spline passes through its control points.
+def test_cubic_spline_default_is_identity() -> None:
+    curve = CubicSpline()
+    for i in range(-20, 21):
+        x = i / 20.0
+        assert curve(x) == pytest.approx(x, abs=1e-12)
+
+
+def test_cubic_spline_passes_through_control_points() -> None:
+    points = [(-1.0, -1.0), (-0.4, -0.1), (0.0, 0.0), (0.3, 0.6), (1.0, 1.0)]
+    curve = CubicSpline(points)
+    for x, y in points:
+        assert curve(x) == pytest.approx(y, abs=1e-12)
+
+
+def test_cubic_spline_stacked_points_stay_finite() -> None:
+    import math
+
+    points = [(-1.0, -1.0), (0.2, 0.1), (0.2, 0.5), (0.2, 0.3), (1.0, 1.0)]
+    curve = CubicSpline(points)
+    curve.fit()
+    for i in range(-50, 51):
+        value = curve(i / 50.0)
+        assert math.isfinite(value)
+        assert -1.0 <= value <= 1.0
