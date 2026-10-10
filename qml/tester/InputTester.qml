@@ -706,13 +706,14 @@ Window {
                             }
                         }
 
-                        // Buttons: 16 a row, two rows shown, scroll for more.
+                        // Buttons: 16 a row; every row that fits in the pane's free
+                        // height is shown, scroll for more (02 S147).
                         Text {
                             id: _buttonsLabel
                             visible: _win.buttonCount > 0
                             readonly property int firstShown: Math.floor(_btnFlick.contentY / _btnFlick.rowH) * 16 + 1
-                            readonly property int lastShown: Math.min(_win.buttonCount, firstShown + 31)
-                            text: _win.buttonCount > 32
+                            readonly property int lastShown: Math.min(_win.buttonCount, firstShown + _btnFlick.shownRows * 16 - 1)
+                            text: _btnFlick.interactive
                                 ? "BUTTONS (" + firstShown + "–" + lastShown + " OF " + _win.buttonCount + ")"
                                 : "BUTTONS (" + _win.buttonCount + ")"
                             font.family: Style.uiFont
@@ -725,13 +726,50 @@ Window {
                             objectName: "buttonsView"
                             readonly property real rowH: Style.dp(29)
                             readonly property int rowCount: Math.ceil(_win.buttonCount / 16)
+                            // Height left for buttons: the pane less what is above
+                            // them, the hats below them and the margins.
+                            readonly property real freeHeight: _detail.height - _detailCol.y - y
+                                - (_hatsLabel.visible ? 2 * _detailCol.spacing + _hatsLabel.implicitHeight + _hatsRow.implicitHeight : 0)
+                                - Style.dp(14)
+                            readonly property int shownRows: Math.min(rowCount,
+                                Math.max(2, Math.floor(freeHeight / rowH)))
                             Layout.fillWidth: true
-                            Layout.preferredHeight: Math.min(rowCount, 2) * rowH
+                            Layout.preferredHeight: shownRows * rowH
                             visible: _win.buttonCount > 0
                             clip: true
                             contentHeight: rowCount * rowH
                             boundsBehavior: Flickable.StopAtBounds
-                            interactive: rowCount > 2
+                            interactive: rowCount > shownRows
+
+                            // Brings button `index` (0-based) into view.
+                            function showButton(index) {
+                                const top = Math.floor(index / 16) * rowH
+                                if (top < contentY)
+                                    contentY = top
+                                else if (top + rowH > contentY + height)
+                                    contentY = Math.min(top + rowH - height,
+                                        Math.max(0, contentHeight - height))
+                            }
+
+                            // Follow input on: a newly pressed button outside the
+                            // shown rows scrolls into view; off, the view stays (02 S148).
+                            property var lastButtons: []
+                            Connections {
+                                target: tester
+                                function onLiveChanged() {
+                                    const now = tester.buttons
+                                    const before = _btnFlick.lastButtons
+                                    _btnFlick.lastButtons = now
+                                    if (!tester.followInput || !_btnFlick.interactive)
+                                        return
+                                    for (let i = 0; i < now.length; ++i) {
+                                        if (now[i] && !before[i]) {
+                                            _btnFlick.showButton(i)
+                                            return
+                                        }
+                                    }
+                                }
+                            }
 
                             Grid {
                                 id: _btnGrid
@@ -761,7 +799,7 @@ Window {
                                     }
                                 }
                             }
-                            // Scroll bar, when there are more than two rows.
+                            // Scroll bar, when there are more rows than fit.
                             Rectangle {
                                 visible: _btnFlick.interactive
                                 x: _btnFlick.width - Style.dp(6)
@@ -775,6 +813,7 @@ Window {
 
                         // Hats.
                         Text {
+                            id: _hatsLabel
                             visible: tester.hats.length > 0
                             text: "HATS"
                             font.family: Style.uiFont
@@ -783,6 +822,7 @@ Window {
                             color: Style.fgMuted
                         }
                         Row {
+                            id: _hatsRow
                             visible: tester.hats.length > 0
                             spacing: Style.dp(22)
                             bottomPadding: Style.dp(16)
