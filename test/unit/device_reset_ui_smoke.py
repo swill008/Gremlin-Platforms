@@ -78,6 +78,11 @@ ROWS = [
      "bus_desc": "Virtual Gamepad Emulation Bus", "name": "Xbox 360 Controller",
      "windows_name": "Xbox 360 Controller for Windows", "vid": 0x045E, "pid": 0x028E},
 ]
+# A real (USB) Xbox pad, plugged in while the window is open.
+X_USB = r"USB\VID_045E&PID_0B12\8&6666&0&5"
+XPAD = {"hid_id": r"HID\VID_045E&PID_0B12&IG_00\E&6666&0&0000", "usb_id": X_USB,
+        "bus_id": "", "bus_desc": "", "name": "Xbox Wireless Controller",
+        "windows_name": "Xbox Wireless Controller", "vid": 0x045E, "pid": 0x0B12}
 device_reset.set_enumerator(lambda: [dict(r) for r in ROWS])
 device_reset.set_presence(lambda _instance: True)
 
@@ -248,6 +253,7 @@ def state(win: QtQuick.QQuickWindow) -> dict:
         "ticked": [bool(i.property("checked")) for i in ticks],
         "enabled": [bool(i.isEnabled()) for i in ticks],
         "results": texts(win, "resetDevicesResult"),
+        "notes": [t for t in texts(win, "resetDevicesNote") if t],
         "warning": texts(win, "resetDevicesWarning"),
         "games": texts(win, "resetDevicesGame"),
         "permission": texts(win, "resetDevicesPermission"),
@@ -289,6 +295,27 @@ def main() -> None:
     result("untick", state(win))
     click_item(win, named(win, "resetDevicesTick")[0])
     result("tick", state(win))
+
+    # 02 S144: the open window follows the program's device-change signal.
+    from gremlin import event_handler
+
+    pedals = [r for r in ROWS if r["usb_id"] == P_USB]
+    ROWS[:] = [r for r in ROWS if r["usb_id"] != P_USB]
+    event_handler.EventListener().device_change_event.emit()
+    QtTest.QTest.qWait(200)
+    result("unplugged", state(win))
+    ROWS.extend(pedals)
+    event_handler.EventListener().device_change_event.emit()
+    QtTest.QTest.qWait(200)
+    result("replugged", state(win))
+    # A real Xbox pad plugged in (02 S145): listed unticked, with its note.
+    ROWS.append(XPAD)
+    event_handler.EventListener().device_change_event.emit()
+    QtTest.QTest.qWait(200)
+    result("xbox", state(win))
+    ROWS.remove(XPAD)
+    event_handler.EventListener().device_change_event.emit()
+    QtTest.QTest.qWait(200)
 
     # Reset, Windows permission declined: no device touched.
     ANSWER[0] = device_reset.Cancelled()

@@ -12,8 +12,9 @@ import Gremlin.Style
 
 // Reset Devices (D-02-RESET-DEVICES): restarts the ticked USB game
 // controllers so every program opens them again and HidHide checks them.
-// The hidden ones are ticked each time it opens; vJoy and Gremlin's Xbox
-// pad are never listed. Opened from the HidHide page.
+// The hidden ones are ticked each time it opens (Xbox pads never are);
+// vJoy and Gremlin's Xbox pad are never listed. While open, the list
+// follows plug/unplug. Opened from the HidHide page.
 ApplicationWindow {
     id: _win
     objectName: "resetDevicesWindow"
@@ -41,6 +42,9 @@ ApplicationWindow {
         raise()
         requestActivate()
     }
+
+    // Stop following device changes once the window is closed.
+    onVisibleChanged: if (!visible) _m.detach()
 
     EscapeCloses { host: _win }
 
@@ -194,14 +198,13 @@ ApplicationWindow {
                             anchors.leftMargin: Style.dp(12)
                             anchors.rightMargin: Style.dp(12)
                             spacing: Style.dp(10)
-                            opacity: row.plugged ? 1 : 0.45
 
                             CheckBox {
                                 objectName: "resetDevicesTick"
                                 Layout.preferredWidth: Style.dp(30)
                                 padding: 0
                                 checked: !!row.ticked
-                                enabled: !!row.plugged && !_m.running && !_m.done
+                                enabled: !_m.running && !_m.done
                                 onToggled: _m.setTicked(index, checked)
                             }
                             ColumnLayout {
@@ -220,17 +223,11 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     spacing: Style.dp(4)
                                     Label {
-                                        visible: !!row.plugged && !!row.windowsName
+                                        visible: !!row.windowsName
                                                  && row.windowsName !== row.name
                                         color: Style.fgMuted
                                         font.pixelSize: Style.dp(12)
                                         text: row.windowsName || ""
-                                    }
-                                    Label {
-                                        visible: !row.plugged
-                                        color: Style.fgMuted
-                                        font.pixelSize: Style.dp(12)
-                                        text: "not plugged in"
                                     }
                                     Repeater {
                                         model: [[!!row.hidden, "hidden", Style.infoFill, Style.infoText],
@@ -255,6 +252,15 @@ ApplicationWindow {
                                         }
                                     }
                                 }
+                                Label {
+                                    objectName: "resetDevicesNote"
+                                    Layout.fillWidth: true
+                                    visible: !!row.note
+                                    wrapMode: Text.WordWrap
+                                    color: Style.warn
+                                    font.pixelSize: Style.dp(12)
+                                    text: row.note || ""
+                                }
                             }
                             Label {
                                 Layout.fillWidth: true
@@ -273,8 +279,8 @@ ApplicationWindow {
                                 font.family: Style.monoFont
                                 font.pixelSize: Style.dp(12)
                                 color: Style.fgMuted
-                                text: row.plugged ? usbId : "—"
-                                ToolTip.visible: _usbHover.hovered && row.plugged
+                                text: usbId
+                                ToolTip.visible: _usbHover.hovered
                                 ToolTip.text: usbId
                                 HoverHandler { id: _usbHover }
                             }

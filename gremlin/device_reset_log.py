@@ -76,3 +76,15 @@ def report(results: Iterable[Any], devices: Iterable[Any] | None = None) -> None
             input_tester_link.write_expected()
     except Exception:
         syslog.warning("Reset Devices: expected.json not updated", exc_info=True)
+
+
+BACK = "back ✓ (plugged back in)"
+
+
+def report_back(device: Any) -> None:  # noqa: ANN401
+    """One system.log line when a device whose reset left it not back (or
+    needing a restart) is plugged back in while the window is open
+    (02 S144 RW3)."""
+    usb_id = str(getattr(device, "usb_id", ""))
+    name = _names([device]).get(usb_id) or usb_id
+    syslog.info(f"Reset Devices: {name} ({usb_id}) → {BACK}")

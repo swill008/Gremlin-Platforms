@@ -678,7 +678,7 @@ def _reset_available() -> bool:
     try:
         from gremlin import device_reset
 
-        return any(d.plugged for d in device_reset.list_devices([]))
+        return bool(device_reset.list_devices([]))
     except Exception:
         logging.getLogger("system").exception("Reset Devices: device list failed")
         return False
@@ -1169,31 +1169,16 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Slot(result="QVariant")
     def resetContext(self) -> dict:  # noqa: N802 - QML name
         """What the Reset Devices window needs from HidHide: the hidden
-        ids, the program list, Gremlin names and the hidden devices that
-        aren't plugged in."""
+        ids, the program list and Gremlin names (devices that aren't
+        plugged in are never listed, 02 S144)."""
         hidden = [str(i) for i in get_blacklist()] if self._present else []
         saved = _saved_hidden() or []
         links = _load_links()
-        known = []
-        seen: set[tuple[int, int]] = set()
-        for instance in [*hidden, *saved]:
-            vid, pid = _vid_pid(instance)
-            if vid is None or pid is None or (vid, pid) in seen:
-                continue
-            seen.add((vid, pid))
-            known.append({
-                "usb_id": instance,
-                "name": links.get(instance) or links.get(instance.upper())
-                or "HID-compliant game controller",
-                "vid": vid,
-                "pid": pid,
-            })
         return {
             # HidHide's hidden list; without the driver, the saved one.
             "hiddenIds": hidden if self._present else saved,
             "games": [g["path"] for g in self._games],
             "names": {k: v for k, v in links.items() if v},
-            "known": known,
         }
 
     @QtCore.Slot(result=str)

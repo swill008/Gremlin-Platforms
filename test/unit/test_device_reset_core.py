@@ -118,16 +118,10 @@ def test_hidden_preselection_and_in_profile() -> None:
     assert ticked == [STICK_USB]
 
 
-def test_known_but_unplugged_rows() -> None:
-    devs = device_reset.list_devices(
-        [],
-        known=[
-            {"usb_id": "USB\\VID_1111&PID_2222\\1", "name": "Old Throttle"},
-            {"usb_id": STICK_USB, "name": "dup"},
-        ],
-    )
-    assert [d.plugged for d in devs] == [True, True, False]
-    assert devs[-1].name == "Old Throttle"
+def test_known_but_unplugged_devices_are_not_listed() -> None:
+    """02 S144 RW1a: only plugged-in devices are listed."""
+    devs = device_reset.list_devices([STICK_HID])
+    assert [d.usb_id for d in devs] == [PEDAL_USB, STICK_USB]
 
 
 @pytest.mark.parametrize(

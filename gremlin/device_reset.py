@@ -130,11 +130,10 @@ def _lookup(names: dict[str, str], keys: Iterable[str]) -> str:
 def list_devices(
     hidden_ids: Iterable[str],
     profile_device_names: Iterable[str] = (),
-    known: Iterable[dict] = (),
     gremlin_names: dict[str, str] | None = None,
 ) -> list[ResetDevice]:
-    """Plugged-in physical USB game controllers, one per USB device, plus the
-    known ones that aren't plugged in (plugged=False)."""
+    """Plugged-in physical USB game controllers, one per USB device (a
+    device that isn't plugged in is never listed, 02 S144)."""
     hidden = {h.upper() for h in hidden_ids if h}
     profile = {n.casefold() for n in profile_device_names if n}
     aliases = {k.upper(): v for k, v in (gremlin_names or {}).items() if v}
@@ -163,23 +162,11 @@ def list_devices(
     for dev in out:
         dev.hidden = any(h.upper() in hidden for h in dev.hid_ids)
         dev.name = _lookup(aliases, [dev.usb_id, *dev.hid_ids]) or dev.name
-    for item in known:
-        usb = str(item.get("usb_id") or "")
-        if not usb or usb.upper() in by_usb:
-            continue
-        by_usb[usb.upper()] = dev = ResetDevice(
-            usb_id=usb,
-            name=_lookup(aliases, [usb]) or str(item.get("name") or ""),
-            vid=int(item.get("vid") or 0),
-            pid=int(item.get("pid") or 0),
-            plugged=False,
-        )
-        out.append(dev)
     for dev in out:
         dev.in_profile = bool(
             profile and {dev.name.casefold(), dev.windows_name.casefold()} & profile
         )
-    out.sort(key=lambda d: (not d.plugged, (d.name or d.usb_id).casefold()))
+    out.sort(key=lambda d: (d.name or d.usb_id).casefold())
     return out
 
 

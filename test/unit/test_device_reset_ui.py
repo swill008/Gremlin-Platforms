@@ -23,6 +23,7 @@ _HERE = pathlib.Path(__file__).parent
 R_USB = r"USB\VID_231D&PID_0200\9&AAC4F3F&0&2"
 L_USB = r"USB\VID_231D&PID_3201\9&1D65FFE4&0&3"
 P_USB = r"USB\VID_16D0&PID_0A38\7&11111111&0&1"
+X_USB = r"USB\VID_045E&PID_0B12\8&6666&0&5"
 WARNING = (
     "The ticked USB devices will be reset. Center your sticks before you "
     "press Reset: while a device restarts, the program keeps its axes where they "
@@ -72,21 +73,43 @@ def test_the_page_has_a_red_reset_devices_button(run: dict) -> None:
 
 def test_hidden_devices_are_ticked_and_virtual_pads_are_not_listed(run: dict) -> None:
     first = run["first"]
-    # Plugged in first; no vJoy, no ViGEm pad; the hidden stick that isn't
-    # plugged in last.
-    assert sorted(first["usb"][:3]) == sorted([P_USB, L_USB, R_USB])
-    assert len(first["usb"]) == 4
+    # Only plugged-in devices (02 S144 RW1a: the hidden stick that isn't
+    # plugged in is not listed); no vJoy, no ViGEm pad.
+    assert sorted(first["usb"]) == sorted([P_USB, L_USB, R_USB])
     assert by_usb(first, "names") == {
         P_USB: "Example pedals", L_USB: "VKBsim Gladiator EVO OT L",
-        R_USB: "Right stick", first["usb"][3]: "HID-compliant game controller",
+        R_USB: "Right stick",
     }
-    assert by_usb(first, "ticked") == {
-        P_USB: False, L_USB: True, R_USB: True, first["usb"][3]: False,
-    }
-    assert first["enabled"] == [True, True, True, False]  # greyed, not tickable
-    assert first["results"][3] == "not plugged in"
+    assert by_usb(first, "ticked") == {P_USB: False, L_USB: True, R_USB: True}
+    assert first["enabled"] == [True, True, True]
+    assert "not plugged in" not in first["results"]
+    assert first["notes"] == []
     assert first["count"] == ["2 of 3 plugged-in devices ticked"]
     assert first["reset"] == ["Reset 2 Devices"]
+
+
+def test_the_open_window_follows_unplug_and_plug_in(run: dict) -> None:
+    """02 S144: the device-change signal drops and adds rows live; ticks,
+    footer and Reset follow."""
+    gone = run["unplugged"]
+    assert sorted(gone["usb"]) == sorted([L_USB, R_USB])
+    assert gone["count"] == ["2 of 2 plugged-in devices ticked"]
+    back = run["replugged"]
+    assert sorted(back["usb"]) == sorted([P_USB, L_USB, R_USB])
+    # The pedals aren't hidden: back unticked.
+    assert by_usb(back, "ticked") == {P_USB: False, L_USB: True, R_USB: True}
+    assert back["reset"] == ["Reset 2 Devices"]
+
+
+def test_an_xbox_pad_plugged_in_is_unticked_with_its_note(run: dict) -> None:
+    """02 S145."""
+    pad = run["xbox"]
+    assert X_USB in pad["usb"]
+    assert by_usb(pad, "ticked")[X_USB] is False
+    assert pad["notes"] == [
+        "Xbox pads can't be restarted live: unplug and plug back in"
+    ]
+    assert pad["count"] == ["2 of 4 plugged-in devices ticked"]
 
 
 def test_the_warning_running_game_and_permission_lines(run: dict) -> None:
@@ -114,7 +137,7 @@ def test_declined_permission_touches_nothing(run: dict) -> None:
     assert len(res["calls"]) == 1 and sorted(res["calls"][0]) == sorted([L_USB, R_USB])
     assert by_usb(res, "results") == {
         P_USB: "—", L_USB: "permission declined",
-        R_USB: "permission declined", res["usb"][3]: "not plugged in",
+        R_USB: "permission declined",
     }
     assert res["close"] == ["Close"] and res["reset"] == []
     assert run["closed"] is True
@@ -126,10 +149,10 @@ def test_ticked_again_on_each_open_and_reset_shows_results(run: dict) -> None:
     assert len(res["calls"]) == 1 and sorted(res["calls"][0]) == sorted([L_USB, R_USB])
     assert by_usb(res, "results") == {
         P_USB: "—", L_USB: RESTART_TEXT,
-        R_USB: "reset ✓ · back after 0.0 s", res["usb"][3]: "not plugged in",
+        R_USB: "reset ✓ · back after 0.0 s",
     }
     assert res["close"] == ["Close"] and res["reset"] == []
-    assert res["enabled"] == [False, False, False, False]
+    assert res["enabled"] == [False, False, False]
     assert pathlib.Path(run["shot"]).is_file()
 
 
