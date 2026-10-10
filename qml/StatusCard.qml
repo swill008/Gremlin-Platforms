@@ -380,6 +380,8 @@ Rectangle {
         anchors.right: parent.right
         anchors.bottomMargin: Style.dp(16)
         cursorShape: Qt.SizeHorCursor
+        // Keep the drag: Home's scroll area would take it and scroll.
+        preventStealing: true
         onPressed: function() { _card._beginResize() }
         onCanceled: function() { _card.resizing = false }
         onPositionChanged: function(mouse) {
@@ -397,6 +399,8 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.rightMargin: Style.dp(16)
         cursorShape: Qt.SizeVerCursor
+        // Keep the drag: Home's scroll area would take it and scroll.
+        preventStealing: true
         onPressed: function() { _card._beginResize() }
         onCanceled: function() { _card.resizing = false }
         onPositionChanged: function(mouse) {
@@ -413,6 +417,8 @@ Rectangle {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         cursorShape: Qt.SizeFDiagCursor
+        // Keep the drag: Home's scroll area would take it and scroll.
+        preventStealing: true
         onPressed: function() { _card._beginResize() }
         onCanceled: function() { _card.resizing = false }
         onPositionChanged: function(mouse) {

@@ -965,6 +965,13 @@ Item {
                                         else
                                             _pile.thawSlot()
                                     }
+                                    // Resizing holds the page still, like a move does.
+                                    onResizingChanged: {
+                                        if (resizing)
+                                            _pile.freezeSlot()
+                                        else
+                                            _pile.thawSlot()
+                                    }
                                     onImplicitHeightChanged: {
                                         if (index === 0)
                                             _pile.leadH = implicitHeight
