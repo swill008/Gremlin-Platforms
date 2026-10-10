@@ -601,14 +601,16 @@ ApplicationWindow {
                             text: "Input Tester"
                             onClicked: _hh.openInputTester()
                         }
-                        Label {
-                            objectName: "hidHideTesterResult"
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                            color: _hh.lastTesterFailed ? Style.dangerTextSoft : Style.fgMuted
-                            font.pixelSize: Style.dp(12)
-                            text: "Last Input Tester result: " + _hh.lastTesterResult
-                        }
+                    }
+
+                    // 02 S112: its own row, full width, wrapped (never cut off).
+                    Label {
+                        objectName: "hidHideTesterResult"
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        color: _hh.lastTesterFailed ? Style.dangerTextSoft : Style.fgMuted
+                        font.pixelSize: Style.dp(12)
+                        text: "Last Status: " + _hh.lastTesterResult
                     }
 
                     RowLayout {

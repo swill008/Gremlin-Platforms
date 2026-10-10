@@ -168,7 +168,8 @@ def wait_until(check, timeout: float = 10.0):  # noqa: ANN001, ANN201
 
 
 def ev(win: QtCore.QObject, code: str) -> object:
-    expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, code)
+    context = QtQml.qmlContext(win) or QtQml.qmlEngine(win).rootContext()
+    expr = QtQml.QQmlExpression(context, win, code)
     value = expr.evaluate()
     if expr.hasError():
         return "error: " + expr.error().toString()
@@ -189,6 +190,10 @@ def named(win: QtQuick.QQuickWindow, name: str) -> list:
 
 def shown(win: QtQuick.QQuickWindow, name: str) -> list[str]:
     return [str(i.property("text")) for i in named(win, name) if i.isVisible()]
+
+
+def last_status(win: QtQuick.QQuickWindow) -> list[str]:
+    return shown(win, "hidHideTesterResult")
 
 
 def click(win: QtQuick.QQuickWindow, name: str) -> bool:
@@ -283,7 +288,7 @@ def main() -> None:
 
     # A result written by the tester shows on the page.
     (RESULT_DIR / "result.json").write_text(json.dumps({
-        "version": 1, "written": "2026-10-10T03:14:22", "verdict": "fail",
+        "version": 1, "written": "2000-01-01T03:14:22", "verdict": "fail",
         "summary": "1 stick visible that should be hidden", "rows": [],
         "steam": {"running": False, "on_list": False},
     }), encoding="utf-8")
@@ -291,8 +296,54 @@ def main() -> None:
         link.watcher().resultChanged.emit()
     except Exception:  # noqa: BLE001
         pass  # the 5 s re-read picks it up
-    wait_until(lambda: "Fail" in "".join(shown(win, "hidHideTesterResult")), 8)
+    wait_until(lambda: "Problem" in "".join(shown(win, "hidHideTesterResult")), 8)
     result("result", shown(win, "hidHideTesterResult"))
+    shots = os.environ.get("HH_TESTER_SHOTS", "")
+
+    # 02 S112 (HS2): the line wraps on its own row; at a narrow window the
+    # whole text is there, over more lines, never cut off.
+    for name, width in (("wide", 1200), ("narrow", 520)):
+        win.resize(width, 900)
+        QtTest.QTest.qWait(300)
+        label = next(iter(named(win, "hidHideTesterResult")), None)
+        button = next(iter(named(win, "hidHideOpenTester")), None)
+        if label is None or button is None:
+            result(f"layout-{name}", None)
+            continue
+        lp = label.mapToScene(QtCore.QPointF(0, 0))
+        bp = button.mapToScene(QtCore.QPointF(0, 0))
+        result(f"layout-{name}", {
+            "wrapMode": ev(label, "wrapMode === Text.NoWrap ? 'none' : 'wrap'"),
+            "elide": ev(label, "elide === Text.ElideNone ? 'none' : 'elide'"),
+            "truncated": bool(label.property("truncated")),
+            "lineCount": int(label.property("lineCount")),
+            "height": label.height(),
+            "below": lp.y() >= bp.y() + button.height(),
+            "width": label.width(),
+        })
+        if shots:
+            top = int(bp.y()) - 50
+            image = win.grabWindow().copy(0, max(0, top), width, 200)
+            image.save(str(Path(shots) / f"{name}.png"))
+    win.resize(900, 900)
+    QtTest.QTest.qWait(200)
+
+    # 02 S112 (HS4): a HidHide change after the result was written adds the
+    # suffix; a result written after the change doesn't have it. (The
+    # result above is from 2000; this one from 2099, after any change.)
+    record = getattr(link, "record_hidhide_change", None)
+    if record is not None:
+        record("program list")
+    link.watcher().resultChanged.emit()
+    wait_until(lambda: "HidHide change" in "".join(last_status(win)), 8)
+    result("stale", last_status(win))
+    (RESULT_DIR / "result.json").write_text(json.dumps({
+        "version": 1, "written": "2099-01-01T06:30:00", "verdict": "pass",
+        "summary": "", "rows": [], "steam": {"running": False, "on_list": False},
+    }), encoding="utf-8")
+    link.watcher().resultChanged.emit()
+    wait_until(lambda: "Pass" in "".join(shown(win, "hidHideTesterResult")), 8)
+    result("fresh", shown(win, "hidHideTesterResult"))
     print("done", flush=True)
     os._exit(0)
 

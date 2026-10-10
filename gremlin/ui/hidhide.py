@@ -654,16 +654,25 @@ def _tester_path() -> str:
     return str(path) if path else ""
 
 
-def _result_line(result: dict | None) -> tuple[str, bool]:
-    """'Last Input Tester result' text and whether it is a Fail."""
+STALE_RESULT = " (before the last HidHide change: run the Input Tester again)"
+
+
+def _result_line(
+    result: dict | None, changed_at: datetime.datetime | None = None
+) -> tuple[str, bool]:
+    """'Last Status' text and whether it is a Fail; a result written before
+    the last HidHide change (changed_at) says so (02 S112)."""
     if not result:
         return "never run", False
     verdict = str(result.get("verdict") or "")
     written = str(result.get("written") or "")
     clock_text = ""
+    stale = False
     try:
-        clock_text = datetime.datetime.fromisoformat(written).strftime("%H:%M")
-    except ValueError:
+        when = datetime.datetime.fromisoformat(written)
+        clock_text = when.strftime("%H:%M")
+        stale = changed_at is not None and when < changed_at
+    except (ValueError, TypeError):
         pass
     head = {"pass": "✓ Pass", "fail": "✗ Problem"}.get(
         verdict, "Nothing to compare"
@@ -671,7 +680,8 @@ def _result_line(result: dict | None) -> tuple[str, bool]:
     if clock_text:
         head += f", {clock_text}"
     summary = str(result.get("summary") or "").strip()
-    return (f"{head} · {summary}" if summary else head), verdict == "fail"
+    text = f"{head} · {summary}" if summary else head
+    return text + (STALE_RESULT if stale else ""), verdict == "fail"
 
 
 def _reset_available() -> bool:
@@ -1054,12 +1064,14 @@ class HidHideModel(QtCore.QObject):
     def _read_result(self) -> None:
         link = _link()
         result = None
+        change = None
         if link is not None:
             try:
                 result = link.last_result()
+                change = link.last_hidhide_change()
             except Exception:
                 logging.getLogger("system").exception("Input Tester result not read")
-        line = _result_line(result)
+        line = _result_line(result, change[0] if change else None)
         if line != (self._result_text, self._result_failed):
             self._result_text, self._result_failed = line
             self.changed.emit()

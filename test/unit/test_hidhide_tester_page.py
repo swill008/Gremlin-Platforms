@@ -86,6 +86,10 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
             "USERPROFILE": str(home),
             "QT_QPA_PLATFORM": "offscreen",
             "PYTHONUNBUFFERED": "1",
+            # Without fonts no text is laid out (the wrap checks).
+            "QT_QPA_FONTDIR": os.path.join(
+                os.environ.get("WINDIR", "C:/Windows"), "Fonts"
+            ),
         },
     )
     results: dict = {"work": str(work)}
@@ -110,7 +114,7 @@ def test_page_names_the_ptu_copy_and_the_old_tester(run: dict) -> None:
     assert len(state["tester"]) == 1 and _tester(run) in state["tester"][0]
     assert "old copy" in state["tester"][0]
     assert state["update"] is True and state["add"] is False
-    assert state["last"] == ["Last Input Tester result: never run"]
+    assert state["last"] == ["Last Status: never run"]
 
 
 def test_update_path_replaces_the_old_entry(run: dict) -> None:
@@ -138,7 +142,51 @@ def test_input_tester_button_calls_the_launcher_and_shows_its_message(
 
 
 def test_last_result_line_comes_from_result_json(run: dict) -> None:
-    assert run["result"] == [
-        "Last Input Tester result: \u2717 Problem, 03:14 \u00b7 "
+    """02 S112 (HS1, HS3): "Last Status:", the result's ✗ and summary (the
+    suffix depends on HidHide changes made earlier in the run)."""
+    assert len(run["result"]) == 1
+    assert run["result"][0].startswith(
+        "Last Status: ✗ Problem, 03:14 · "
         "1 stick visible that should be hidden"
+    )
+
+
+@pytest.mark.parametrize("size", ["wide", "narrow"])
+def test_last_status_has_its_own_row_and_wraps(run: dict, size: str) -> None:
+    """02 S112 (HS2): under the buttons, full width, wrapped, never cut off;
+    at a narrow window the whole text shows over more lines."""
+    res = run[f"layout-{size}"]
+    assert res is not None
+    assert res["wrapMode"] == "wrap" and res["elide"] == "none"
+    assert res["truncated"] is False
+    assert res["below"] is True
+    if size == "narrow":
+        assert res["lineCount"] > 1
+        assert res["height"] > run["layout-wide"]["height"]
+
+
+def test_a_result_older_than_the_last_hidhide_change_says_so(run: dict) -> None:
+    """02 S112 (HS4): written before the last HidHide change: the suffix;
+    written after it: none."""
+    assert run["stale"] == [
+        "Last Status: ✗ Problem, 03:14 · "
+        "1 stick visible that should be hidden"
+        " (before the last HidHide change: run the Input Tester again)"
     ]
+    assert run["fresh"] == ["Last Status: ✓ Pass, 06:30"]
+
+
+def test_result_line_suffix_only_when_written_before_the_change() -> None:
+    """02 S112 (HS4) on the line builder itself."""
+    import datetime
+
+    from gremlin.ui import hidhide
+
+    res = {"written": "2026-10-10T08:06:00", "verdict": "fail", "summary": "x"}
+    line = "✗ Problem, 08:06 · x"
+    later = datetime.datetime(2026, 10, 10, 8, 30)
+    earlier = datetime.datetime(2026, 10, 10, 8, 0)
+    assert hidhide._result_line(res, later) == (line + hidhide.STALE_RESULT, True)
+    assert hidhide._result_line(res, earlier) == (line, True)
+    assert hidhide._result_line(res, None) == (line, True)
+    assert hidhide._result_line(None, later) == ("never run", False)
