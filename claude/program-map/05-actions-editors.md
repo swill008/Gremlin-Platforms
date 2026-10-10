@@ -28,15 +28,15 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | `gremlin/macro_raw.py` (68; new 2026-10-10, D-05-R16) | `RawMacroStep` (`unknown_type`, `unreadable`): a macro step that can't be read or is of an unknown type. Keeps the original XML element; `to_xml()` returns a copy of it unchanged; does nothing at Run; `problem` text for the editor ("Unknown step type 'X': kept as it was, does nothing.", "This key step can't be read (…): kept as it was, does nothing.") and the rule checks (S117). |
 | `gremlin/validate.py` (568; owned by page 01) | from 2026-10-10 `_check_macros`: PROFILE-MACRO-STEP-UNREADABLE, a warning per unreadable macro step (S117). |
 | `gremlin/ui/output_modules.py` (310; owned by page 03) | Map to vJoy output picker; from 2026-10-10 offers only claimed ids the vJoy device really has (S118, same check as the Auto Mapper). |
-| `gremlin/macro.py` (1333; owned by page 06) | Macro steps; from 2026-10-10 new button steps start on Pressed and a new vJoy step on `first_claimed_output` (S113, S116); `create()` stays load-safe. |
-| `gremlin/modules/output.py` (892; `first_claimed_output`, `vjoy_driver_ids`, `driver_claim`, new 2026-10-10; owned by page 03/06) | `first_claimed_output(kinds, exclude)` → (vJoy id, kind, input id) or None: the first output a vJoy output module claims (vJoy number order, kinds in the order given, ids ascending; only output vJoy devices; only ids the driver has). Used by new Condition vJoy checks, Map to vJoy and the macro editor's new vJoy step (S113, S115). |
+| `gremlin/macro.py` (1340; owned by page 06) | Macro steps; from 2026-10-10 new button steps start on Pressed and a new vJoy step on `first_claimed_output` (S113, S116); `create()` stays load-safe. |
+| `gremlin/modules/output.py` (896; `first_claimed_output`, `vjoy_driver_ids`, `driver_claim`, new 2026-10-10; owned by page 03/06) | `first_claimed_output(kinds, exclude)` → (vJoy id, kind, input id) or None: the first output a vJoy output module claims (vJoy number order, kinds in the order given, ids ascending; only output vJoy devices; only ids the driver has). Used by new Condition vJoy checks, Map to vJoy and the macro editor's new vJoy step (S113, S115). |
 | `joystick_gremlin.py` (663-666, 840-862, 924-926) | Registers `action-priorities`; `update_action_priorities` at start; plugin manager start. |
 | `qml/BindingCatalog.qml` (2225) | Configuration page: filters, Undo/Redo (the shared `UndoBar` `catalogUndoBar`: "Last change" / "Undone", named steps), rows, Delete (red `DangerButton` `catalogDelete`, asks the shared question "Delete Action")/History/Add Action buttons, picture chooser `FilePicker` kind "picture", pane (title, X, OK, "Close pane after OK", width grip), leave/discard prompts, Appearance panel (owned by the Configuration Appearance page). |
-| `qml/InputConfiguration.qml` (301) | Shows an `InputItemModel`: list of `InputItemBinding` (pane, Keyboard page) or inline mode. |
-| `qml/InputItemBinding.qml` (120), `qml/InputItemBindingConfigurationHeader.qml` (269) | One binding: Note field (root action label), ActionSelector, warnings icon, Remove binding (shared question, red Remove Binding), axis/hat-as-button settings, "Activate on". |
+| `qml/InputConfiguration.qml` (311) | Shows an `InputItemModel`: list of `InputItemBinding` (pane, Keyboard page) or inline mode. |
+| `qml/InputItemBinding.qml` (121), `qml/InputItemBindingConfigurationHeader.qml` (269) | One binding: Note field (root action label), ActionSelector, warnings icon, Remove binding (shared question, red Remove Binding), axis/hat-as-button settings, "Activate on". |
 | `qml/InputBehavior.qml` (92) | "Treat as" Button/Axis/Hat (asks the shared question when actions would go: "Change and Remove", "This can't be undone."). |
-| `qml/ActionSelector.qml` (60) | Combo of `compatibleActions` + **Add Action** button. |
-| `qml/ActionNode.qml` (387), `qml/RootActionNode.qml` (60), `qml/ActionDragDropArea.qml` (10), `qml/TriggerMode.qml` | One action: fold, icon, label field, press/release, "Off: never runs", warnings, Remove, right-click menu (quick adds, Add by kind, Delete), drag and drop; loads the plugin's editor QML. |
+| `qml/ActionSelector.qml` (61) | Combo of `compatibleActions` + **Add Action** button. |
+| `qml/ActionNode.qml` (387), `qml/RootActionNode.qml` (60), `qml/ActionDragDropArea.qml` (11), `qml/TriggerMode.qml` | One action: fold, icon, label field, press/release, "Off: never runs", warnings, Remove, right-click menu (quick adds, Add by kind, Delete), drag and drop; loads the plugin's editor QML. |
 | `qml/action_kinds.js` (28) | Kinds for the right-click Add sections and Options list (map / axis / logic / other). |
 | `qml/OptionActionSequenceOrdering.qml` (224) | Options list of actions by kind, drag to reorder, tick to show. |
 | `qml/KeyboardInputList.qml` (223) | Keyboard page list: rows, Rename, Delete Key (asks the shared question, red Delete Key), Add Key (Listen). |
@@ -489,16 +489,16 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 | G21 | Help says Merge Axis operation "Prefercenter"; the editor shows "Prefer Center". Fixed: the Help book says "Prefer Center" | `help_topics.js:143`, `merge_axis:198` |
 | G22 | Binding warnings use `time.time()` (RB11, Q19); Chain no longer does | `ui/profile.py:570` |
 | G23 | "Reuse" (S59) never appears on screen (to-do 56) | `merge_axis`, `MergeAxisAction.qml` |
-| R11c | Save drops a macro Logical Device step whose control is missing; a step that can't be read stops the profile opening (S117). Fixed 2026-10-10 (this batch). Not verified: a device swap doesn't update a raw Joystick step | `gremlin/macro.py`, `gremlin/macro_raw.py`, `action_plugins/macro/` |
-| R5 | The Reference list offers an input's Root (S60a). Fixed 2026-10-10 (this batch) | `action_plugins/reference/` |
-| G-a | The vJoy output picker offers claimed ids the vJoy device doesn't have (S118). Fixed 2026-10-10 (this batch) | `gremlin/ui/output_modules.py`, `gremlin/modules/output.py` |
-| G-b | A recorded key combination loses the order the keys were pressed in (S119). Fixed 2026-10-10 (this batch) | `gremlin/ui/util.py`, `gremlin/keyboard.py` |
+| R11c | Save drops a macro Logical Device step whose control is missing; a step that can't be read stops the profile opening (S117). Fixed 2026-10-10 (R16 + findings batch, 8941bea0). Not verified: a device swap doesn't update a raw Joystick step | `gremlin/macro.py`, `gremlin/macro_raw.py`, `action_plugins/macro/` |
+| R5 | The Reference list offers an input's Root (S60a). Fixed 2026-10-10 (R16 + findings batch, df6ba0a1) | `action_plugins/reference/` |
+| G-a | The vJoy output picker offers claimed ids the vJoy device doesn't have (S118). Fixed 2026-10-10 (R16 + findings batch, 7a9de506) | `gremlin/ui/output_modules.py`, `gremlin/modules/output.py` |
+| G-b | A recorded key combination loses the order the keys were pressed in (S119). Fixed 2026-10-10 (R16 + findings batch, 0b707a05) | `gremlin/ui/util.py`, `gremlin/keyboard.py` |
 | AE-reference-1 | Reference on a key offered no button actions (S60). Fixed 2026-10-10 (found by the action editor matrix) | `action_plugins/reference/__init__.py` |
 | R1 | `RootAction.qml` was never loaded (the root is shown by `RootActionNode.qml`). Removed 2026-10-10 | `action_plugins/root/` |
 | AX1 | A Merge Axis or Dual Axis Deadzone added with Add Action started with no instance chosen (S120). Fixed 2026-10-10 | `action_plugins/axis_pair.py`, `merge_axis`, `dual_axis_deadzone` |
 | AX2 | Dual Axis Deadzone editor: its Add Action buttons were cut off ("Add A"). Fixed 2026-10-10 (no behaviour change) | `DualAxisDeadzoneAction.qml` |
 | O2 | Send OSC editor ran under the pane's scrollbar. Fixed 2026-10-10 (no behaviour change) | `SendOscAction.qml` |
-| SA1 | Split Axis editor overflows the pane: its label row hides the Add Action selector (matrix screenshot `split-axis_axis.png`). Open, awaiting the user (to-do 87). Note: `qml/LabelValueComboBox.qml`'s 250 dp minimum width forces the wrapping | `split_axis/SplitAxisAction.qml`, `qml/LabelValueComboBox.qml` |
+| SA1 | Split Axis editor overflows the pane: its label row hides the Add Action selector (matrix screenshot `split-axis_axis.png`). Fixed 2026-10-10 (89bb0bbb, no behaviour change; to-do 87). Note: `qml/LabelValueComboBox.qml`'s 250 dp minimum width forces the wrapping | `split_axis/SplitAxisAction.qml`, `qml/LabelValueComboBox.qml` |
 
 **Open tracker items for this part**
 

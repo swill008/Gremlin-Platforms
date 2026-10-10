@@ -420,10 +420,10 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     code has it). Check the off-screen render. Not started.
 87. DONE 2026-10-10 (SA1, 2026-10-10; 05 gap SA1, found by the action editor matrix): the Split Axis editor overflows the pane: its
     label row hides the Add Action selector (matrix screenshot split-axis_axis.png). qml/LabelValueComboBox.qml's
-    250 dp minimum width forces the wrapping. In progress 2026-10-10.
-88. (O1, 2026-10-10): Logical Device self-target / loop guard. User approved P1+P2+P3 (D-06-LD-LOOP; 06 S92-S94):
+    250 dp minimum width forces the wrapping. Done 2026-10-10 (89bb0bbb).
+88. DONE 2026-10-10 (e71023a1; 06 S92-S94) (O1, 2026-10-10): Logical Device self-target / loop guard. User approved P1+P2+P3 (D-06-LD-LOOP; 06 S92-S94):
     a new Map to Logical Device never starts on its own control, the picker never offers it, loops stop after 8
-    hops with one user-log warning and one notice per Run. In progress 2026-10-10.
+    hops with one user-log warning and one notice per Run. Done 2026-10-10.
 
 ## On hold / parked (user's choice)
 

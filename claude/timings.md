@@ -309,3 +309,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Lead: report/tracker audit (R16 study + matrix banners, DILL2-HANDS-ON, CI-B4CDACC7, progress to-do) | docs | ~5 min (no table row for lead audits) | 6 min | 09:40–09:46 |
 | 2026-10-10 | HHSTAT: HidHide 'Last Status' line (HS1-HS4) | fix | 3–8 min (table) | 12 min | 09:46–09:58 (stopped 09:55 by mistake, resumed) |
 | 2026-10-10 | Full run + lint, HidHide 'Last Status' (lead) | test | 6–7 min + lint (table) | 7 min | 09:58–10:05; all green |
+| 2026-10-10 | NOTES: version 1.0.31 + release notes | docs | 3–8 min (table) | 1 min | 10:10–10:11 |
+| 2026-10-10 | MAPCHECK: full pre-release map check | docs | 3–8 min (table) | 4 min | 10:10–10:14; 75 line counts, stale notes, README recount |
+| 2026-10-10 | FLAKE: OSC Listen reached every model (real bug) + CI order leak | fix | 3–8 min (table) | 6 min | 10:10–10:16 |
+| 2026-10-10 | Release full run + lint (lead) | test | 6–7 min + lint (table) | 7 min | 10:16–10:23; all green |
