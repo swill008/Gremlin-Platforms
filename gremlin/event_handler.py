@@ -486,21 +486,26 @@ class EventListener(QtCore.QObject):
             logging.getLogger("system").error(f"Device update failed: {e}")
             from gremlin import signal as gremlin_signal
 
-            gremlin_signal.display_error("The device list could not be updated.", str(e))
+            gremlin_signal.display_error(
+                "The device list could not be updated.", str(e)
+            )
             return
         self._init_joysticks()
         after = {
             dev.device_guid.uuid
             for dev in device_initialization.joystick_devices()
         }
+        # A device that changed layout under the same id (an Xbox pad
+        # switched XInput <-> DirectInput) is an unplug + plug-in (02 S143).
+        relaid = device_initialization.layout_changed()
         # A stick unplugged with a button held (or a hat pushed) would keep
         # it held on the outputs until it came back: it is let go now.
-        for device_guid in before - after:
+        for device_guid in (before - after) | relaid:
             self._let_go(device_guid)
         # A stick that comes back may have another layout under the same
         # id: its cached inputs follow the new one (an unplugged stick keeps
         # its last values for scripts and conditions).
-        for device_guid in after - before:
+        for device_guid in (after - before) | (relaid & after):
             self._joystick.reconnected(device_guid)
         # HID already ignores ViGEm pads; do not fire Reload if the
         # filtered list did not change.
@@ -508,8 +513,9 @@ class EventListener(QtCore.QObject):
             trace.event(
                 f"Devices re-read: {len(after)} connected, "
                 f"{len(after - before)} new, {len(before - after)} gone"
+                + (f", {len(relaid)} changed layout" if relaid else "")
             )
-        if before != after:
+        if before != after or relaid:
             self.device_change_event.emit()
 
     def _let_go(self, device_guid: uuid.UUID) -> None:
@@ -787,6 +793,18 @@ class EventHandler(QtCore.QObject):
                         for event, callbacks in mode_cb.items():
                             if event not in device_cb[child]:
                                 device_cb[child][event] = callbacks
+
+    def is_same_binding(self, event: Event, old_mode: str, new_mode: str) -> bool:
+        """Whether both modes route event to the same binding (06 S88).
+
+        build_event_lookup gives an inheriting child mode the parent's very
+        list, so list identity is the test. No binding in either mode is not
+        the same binding.
+        """
+        device_cb = self.callbacks.get(event.device_guid, {})
+        old = device_cb.get(old_mode, {}).get(event)
+        new = device_cb.get(new_mode, {}).get(event)
+        return old is not None and old is new
 
     def resume(self) -> None:
         """Resumes the processing of callbacks."""

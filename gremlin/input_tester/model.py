@@ -383,7 +383,10 @@ class InputTesterModel(QtCore.QObject):
                 mtime = None
         seen = self._safe_snapshot()
         file_changed = mtime != self._expected_mtime
-        devices_changed = [d.key for d in seen] != [d.key for d in self._seen]
+        # The whole entry, not only the id: a device can come back under the
+        # same id with another layout (an Xbox pad switched to DirectInput),
+        # and the rows and the axes read follow it (02 S146).
+        devices_changed = seen != self._seen
         if file_changed:
             self._read_expected()
             self._log_expected(False)

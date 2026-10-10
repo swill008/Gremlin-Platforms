@@ -4,9 +4,11 @@
 
 from __future__ import annotations
 
+import logging
+
 from gremlin import (
     device_initialization,
-    input_cache,
+    log_once,
     macro,
 )
 from gremlin.types import InputType
@@ -20,24 +22,34 @@ class RefreshPhysicalInputs:
     def refresh_axes(cls) -> None:
         """Refreshes input axes using cached values. An axis not moved since
         the program started is read from the driver first (decision D-02-Q7),
-        through the input side (EventListener.axis_value)."""
+        through the input side (EventListener.axis_value). The axes are the
+        ones the reader reports now. An axis that can't be read is skipped
+        and logged once: one control never stops the start (06 S91)."""
         from gremlin.event_handler import EventListener
 
         listener = EventListener()
-        cache = input_cache.Joystick()
         devices = device_initialization.input_devices()
         macro_manager = macro.MacroManager()
         for dev in devices:
-            joy = cache[dev.device_guid.uuid]
-            for index in range(joy.axis_count):
+            guid = dev.device_guid.uuid
+            for index in range(dev.axis_count):
                 axis_id = dev.axis_map[index].axis_index
+                try:
+                    value = listener.axis_value(guid, axis_id)
+                except Exception as e:  # noqa: BLE001 - any read problem
+                    name = device_initialization.device_name(guid) or dev.name
+                    log_once.log_once(
+                        "system",
+                        ("refresh-axis", guid, axis_id),
+                        logging.WARNING,
+                        f"Start: {name} Axis {axis_id} could not be read, "
+                        f"skipped: {e}",
+                    )
+                    continue
                 action = macro.Macro()
                 action.add_action(
                     macro.JoystickAction(
-                        dev.device_guid.uuid,
-                        InputType.JoystickAxis,
-                        axis_id,
-                        listener.axis_value(dev.device_guid.uuid, axis_id),
+                        guid, InputType.JoystickAxis, axis_id, value
                     )
                 )
                 macro_manager.queue_macro(action)

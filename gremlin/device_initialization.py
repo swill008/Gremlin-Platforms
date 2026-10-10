@@ -29,6 +29,8 @@ _window_up = False
 # Gremlin's own Xbox pads seen by the last scan (never devices of the list).
 _own_pads: list[dill.DeviceSummary] = []
 _joystick_init_lock = threading.Lock()
+# Ids the last scan found with another layout than before (02 S143).
+_layout_changed: set[uuid.UUID] = set()
 SCAN_WAIT_S = 10.0
 
 
@@ -234,12 +236,53 @@ def joystick_devices_initialization() -> None:
         )
     try:
         _initialize_devices()
+        # Every re-read: the stored copies (input cache) follow the layouts
+        # just read, so a changed layout never leaves a stale copy (02 S142).
+        from gremlin import input_cache
+
+        input_cache.Joystick().follow_layouts(list(_joystick_devices.values()))
     finally:
         _joystick_init_lock.release()
 
 
+def layout_changed() -> set[uuid.UUID]:
+    """Ids of the devices the last scan found under the same id with another
+    layout (02 S143): to be treated like unplug + plug-in."""
+    return set(_layout_changed)
+
+
+def _describe(layout: tuple[tuple[int, ...], int, int]) -> str:
+    axes, buttons, hats = layout
+    return f"{len(axes)} axes, {buttons} buttons, {hats} hats"
+
+
+def _note_layout_changes(devices: list[dill.DeviceSummary]) -> set[uuid.UUID]:
+    """Devices still listed whose layout differs from the last scan's
+    (an Xbox pad the reader switched from XInput to DirectInput): a
+    system.log line and a Trace EVENT line each (02 S143)."""
+    from gremlin import input_cache, trace
+
+    changed: set[uuid.UUID] = set()
+    for dev in devices:
+        old_dev = _joystick_devices.get(dev.device_guid.uuid)
+        if old_dev is None:
+            continue
+        old, new = input_cache.layout_of(old_dev), input_cache.layout_of(dev)
+        if old == new:
+            continue
+        changed.add(dev.device_guid.uuid)
+        text = (
+            f"{dev.name} changed layout: {_describe(old)} → {_describe(new)}, "
+            f"axes {', '.join(map(str, old[0]))} → {', '.join(map(str, new[0]))}, "
+            f"buttons {old[1]} → {new[1]}"
+        )
+        logging.getLogger("system").info(text)
+        trace.event(text)
+    return changed
+
+
 def _initialize_devices() -> None:
-    global _joystick_devices, _own_pads
+    global _joystick_devices, _own_pads, _layout_changed
 
     syslog = logging.getLogger("system")
     syslog.info("Initializing joystick devices")
@@ -285,8 +328,12 @@ def _initialize_devices() -> None:
             device_removed = True
             syslog.debug(f"Removed: name={old_dev.name} guid={old_dev.device_guid}")
 
+    # A device under the same id with another layout counts as a change
+    # too (unplug + plug-in, 02 S143): the list used to keep its old copy.
+    _layout_changed = _note_layout_changes(devices)
+
     # Terminate if no change occurred.
-    if not device_added and not device_removed:
+    if not device_added and not device_removed and not _layout_changed:
         return
     vjoy_before = {
         uid for uid, dev in _joystick_devices.items() if dev.is_virtual

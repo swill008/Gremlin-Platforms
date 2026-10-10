@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections.abc import Iterable
 from typing import Any, cast
 
 import jsonschema
@@ -208,6 +209,19 @@ class DeviceDatabase(metaclass=common.SingletonMetaclass):
                     return None
                 return DeviceMapping(self._device_db["mapping"][dev["mapping"]])
         return None
+
+
+# (axis ids in reader order, button count, hat count)
+Layout = tuple[tuple[int, ...], int, int]
+
+
+def layout_of(info: DeviceSummary) -> Layout:
+    """A device's layout as the reader reports it: what a layout change
+    under the same id is told by (02 S143)."""
+    axes = tuple(
+        int(info.axis_map[i].axis_index) for i in range(int(info.axis_count))
+    )
+    return axes, int(info.button_count), int(info.hat_count)
 
 
 class JoystickWrapper:
@@ -445,11 +459,19 @@ class JoystickWrapper:
             axes[aid] = JoystickWrapper.Axis(self._device_guid, aid)
         return axes
 
-    def reload(self) -> None:
-        """Reads the layout again (the stick came back). Inputs it still
-        has keep their objects and values (scripts and conditions hold
-        them); new ones start empty, gone ones are dropped."""
-        info = DILL.get_device_information_by_guid(self._dill_guid)
+    @property
+    def layout(self) -> Layout:
+        """The layout this copy was built from (layout_of)."""
+        return layout_of(self._info)
+
+    def reload(self, info: DeviceSummary | None = None) -> None:
+        """Reads the layout again (the stick came back, or the reader gave
+        it another layout: 02 S142, S143), from info or else the driver.
+        Inputs it still has keep their objects and values (scripts and
+        conditions hold them); new ones start empty, gone ones are
+        dropped."""
+        if info is None:
+            info = DILL.get_device_information_by_guid(self._dill_guid)
         old_axes, old_buttons, old_hats = self._axis, self._buttons, self._hats
         self._info = info
         axes = self._init_axes()
@@ -549,6 +571,18 @@ class Joystick(metaclass=common.SingletonMetaclass):
         wrapper = self.devices.get(device_guid)
         if isinstance(wrapper, JoystickWrapper):
             wrapper.reload()
+
+    def follow_layouts(self, devices: Iterable[DeviceSummary]) -> None:
+        """Devices were re-read: every cached copy whose layout differs
+        from the one just read is rebuilt from it (02 S142). Copies of
+        devices not in the list keep their last values."""
+        for info in devices:
+            wrapper = self.devices.get(info.device_guid.uuid)
+            if (
+                isinstance(wrapper, JoystickWrapper)
+                and wrapper.layout != layout_of(info)
+            ):
+                wrapper.reload(info)
 
 
 class Keyboard(metaclass=common.SingletonMetaclass):
