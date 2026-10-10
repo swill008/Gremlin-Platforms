@@ -563,6 +563,21 @@ def output(vjoy_id: int, kind: str, index: int, value: object, result: str) -> N
         pass
 
 
+def mouse(text: str) -> None:
+    """A Map to Mouse output (06 S86, G-c): one line per change (motion set
+    or stopped, a button pressed or released), never per motion tick; logged
+    only for a ticked current input, like a vJoy write."""
+    if not _enabled:
+        return
+    try:
+        cur = current_input()
+        if cur is None or not ticked(cur[0], cur[1], cur[2]):
+            return
+        _add(OUTPUT, control_label(cur[0], cur[1], cur[2]), str(text))
+    except Exception:
+        pass
+
+
 def last_written(vjoy_id: int, kind: str, index: int) -> tuple[float, float] | None:
     return _last_written.get((int(vjoy_id), kind, int(index)))
 

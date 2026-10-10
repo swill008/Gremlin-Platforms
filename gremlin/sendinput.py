@@ -4,16 +4,16 @@
 
 from __future__ import annotations
 
+import abc
 import ctypes
 import ctypes.wintypes
-import enum
 import functools
 import math
 import threading
-import time
+import uuid
 from typing import TYPE_CHECKING
 
-from gremlin import run_scope, threads
+from gremlin import clock, run_scope, threads, trace
 from gremlin.common import SingletonDecorator
 from gremlin.types import MouseButton
 
@@ -70,13 +70,22 @@ class Vector2:
         angle_rad = math.radians(angle)
         return Vector2(math.cos(angle_rad), math.sin(angle_rad))
 
+    @classmethod
+    def from_compass_direction(cls, degree: float) -> Vector2:
+        """A screen direction (y grows downwards) from a compass heading in
+        degree: 0 up, 90 right."""
+        return cls.from_angle(degree - 90.0)
+
+    def magnitude(self) -> float:
+        return math.sqrt(self.x**2 + self.y**2)
+
     def normalize(self) -> Vector2:
         """Returns a unit vector representation of the instance's direction.
 
         Returns:
             Unit length vector with the same direction
         """
-        magnitude = math.sqrt(self.x**2 + self.y**2)
+        magnitude = self.magnitude()
         if magnitude < 0.00001:
             return Vector2(0, 0)
         return Vector2(self.x / magnitude, self.y / magnitude)
@@ -87,115 +96,59 @@ class Vector2:
     def __sub__(self, other: Vector2) -> Vector2:
         return Vector2(self.x - other.x, self.y - other.y)
 
+    def __mul__(self, scalar: float) -> Vector2:
+        return Vector2(self.x * scalar, self.y * scalar)
+
     def __str__(self) -> str:
         return f"[{self.x}, {self.y}]"
 
 
-class MotionType(enum.Enum):
-    """Mouse motion types available."""
+# Motion is sent at a fixed 100 Hz (R9c: no option).
+TICK_INTERVAL = 0.01
 
-    Fixed = 1
-    Accelerated = 2
+# A late tick catches up on at most this many ticks: a stall doesn't make the
+# cursor jump.
+_MAX_TICKS_BEHIND = 5
 
+# How long an idle loop waits before it looks at its stop flag again.
+_IDLE_WAIT = 0.5
 
-class MouseMotion:
-    """Base class of all mouse motion behaviors."""
-
-    # Time step between calls
-    delta_t = 0.01
-
-    def __init__(self, dx: float = 0, dy: float = 0) -> None:
-        """Creates a new instance.
-
-        Args:
-            dx: motion along the x-axis in pixels per second
-            dy: motion along the y-axis in pixels per second
-        """
-        self.dx = dx
-        self.dy = dy
-
-        self._tick_dx_value, self._tick_dx_time = self._compute_values(self.dx)
-        self._tick_dy_value, self._tick_dy_time = self._compute_values(self.dy)
-
-        self._dx_timestamp = 0
-        self._dy_timestamp = 0
-
-    def __call__(self) -> tuple[int, int]:
-        """Returns the change in x and y for this point in time.
-
-        Returns:
-            The change in (dx, dy) for this time point
-        """
-        if self._tick_dx_value == 0 and self._tick_dy_value == 0:
-            return 0, 0
-
-        delta_x = 0
-        delta_y = 0
-
-        cur_time = time.time()
-        if self._dx_timestamp < cur_time:
-            delta_x = self._tick_dx_value
-            self._dx_timestamp = cur_time + self._tick_dx_time
-        if self._dy_timestamp < cur_time:
-            delta_y = self._tick_dy_value
-            self._dy_timestamp = cur_time + self._tick_dy_time
-
-        return delta_x, delta_y
-
-    def _compute_values(self, delta: float) -> tuple[int, float]:
-        """Computes discretization values to send integer motions.
-
-        Args:
-            delta: the amount of change in pixels per second to discretize for
-
-        Returns:
-            Discretization information in terms of cursor movement amount
-            and movement interval
-        """
-        delta = 0.0 if abs(delta) < 1e-6 else delta
-        tick_value = math.ceil(abs(delta) / 100.0)
-        if tick_value == 0:
-            tick_time = MouseMotion.delta_t
-        else:
-            tick_time = 1.0 / (abs(delta) / tick_value)
-            tick_value = int(math.copysign(tick_value, delta))
-
-        return tick_value, tick_time
+# One motion piece: the Map to Mouse action's id and the input driving it.
+type MotionKey = tuple[uuid.UUID, Event]
 
 
-class FixedMouseMotion(MouseMotion):
-    """Motion generation with fixed speed."""
+class MotionSource(abc.ABC):
+    """One input's share of the cursor motion."""
 
-    def __init__(self, dx: float, dy: float) -> None:
-        """Creates a new instance.
+    @abc.abstractmethod
+    def velocity(self, delta_t: float) -> Vector2:
+        """The velocity (px/s) for the next delta_t seconds; advances any
+        ramp by delta_t."""
 
-        Args:
-            dx: motion along the x-axis in pixels per second
-            dy: motion along the y-axis in pixels per second
-        """
-        super().__init__(dx, dy)
-
-    def set_dx(self, value: float) -> None:
-        """Updates the x velocity.
-
-        Args:
-            value: speed in pixels per second along the x-axis
-        """
-        self.dx = value
-        self._tick_dx_value, self._tick_dx_time = self._compute_values(self.dx)
-
-    def set_dy(self, value: float) -> None:
-        """Updates the y velocity.
-
-        Args:
-            value speed in pixels per second along the y-axis
-        """
-        self.dy = value
-        self._tick_dy_value, self._tick_dy_time = self._compute_values(self.dy)
+    @abc.abstractmethod
+    def describe(self) -> str:
+        """Trace text for this piece."""
 
 
-class AcceleratedMouseMotion(MouseMotion):
-    """Motion generation with acceleration over time."""
+class ConstantVelocity(MotionSource):
+    """A velocity the input sets directly (an axis)."""
+
+    def __init__(self, velocity: Vector2) -> None:
+        self.current = velocity
+
+    def velocity(self, delta_t: float) -> Vector2:
+        return self.current
+
+    def describe(self) -> str:
+        return (
+            f"Mouse motion {self.current.magnitude():.0f} px/s"
+            f" heading {_heading(self.current)}°"
+        )
+
+
+class IncreasingVelocity(MotionSource):
+    """A speed ramping from min_speed to max_speed along a direction (a
+    button or hat; each has its own ramp)."""
 
     def __init__(
         self,
@@ -204,184 +157,221 @@ class AcceleratedMouseMotion(MouseMotion):
         max_speed: float,
         time_to_max_speed: float,
     ) -> None:
-        """Creates a new instance.
-
-        Args:
-            direction: the direction of motion as a 2d vector
-            min_speed: minimum speed in pixels per second
-            max_speed: maximum speed in pixels per second
-            time_to_max_speed: time to reach max_speed
-        """
-        super().__init__()
-
         self.direction = direction
-        self.min_velocity = min_speed
-        self.max_velocity = max_speed
-
-        # Make sure we don't get numerical issues with acceleration computation
-        if time_to_max_speed < 0.001:
+        if max_speed < min_speed:
+            min_speed, max_speed = max_speed, min_speed
+        self.min_speed = min_speed
+        self.max_speed = max_speed
+        self.time_to_max_speed = time_to_max_speed
+        self.speed = min_speed
+        # A tiny ramp time would divide by almost nothing.
+        if time_to_max_speed < 0.01:
             self.acceleration = 1e6
         else:
             self.acceleration = (max_speed - min_speed) / time_to_max_speed
 
-        self.current_velocity = self.min_velocity
-        self.dx = self.direction.x * self.current_velocity
-        self.dy = self.direction.y * self.current_velocity
-        self._tick_dx_value, self._tick_dx_time = self._compute_values(self.dx)
-        self._tick_dy_value, self._tick_dy_time = self._compute_values(self.dy)
+    def velocity(self, delta_t: float) -> Vector2:
+        # This step at the speed reached so far, then ramp up.
+        current = self.direction * self.speed
+        self.speed = min(self.max_speed, self.speed + self.acceleration * delta_t)
+        return current
 
-    def set_direction(self, direction: Vector2) -> None:
-        """Sets the direction for which to emit position changes.
+    def describe(self) -> str:
+        if self.min_speed == self.max_speed:
+            speed = f"{self.max_speed:.0f} px/s"
+        else:
+            speed = (
+                f"{self.min_speed:.0f} to {self.max_speed:.0f} px/s"
+                f" over {self.time_to_max_speed:g} s"
+            )
+        return f"Mouse motion {speed} heading {_heading(self.direction)}°"
 
-        Args:
-            direction: new direction of travel
-        """
-        self.direction = direction
-        self.dx = self.direction.x * self.current_velocity
-        self.dy = self.direction.y * self.current_velocity
-        self._tick_dx_value, self._tick_dx_time = self._compute_values(self.dx)
-        self._tick_dy_value, self._tick_dy_time = self._compute_values(self.dy)
 
-    def __call__(self) -> tuple[float, float]:
-        """Returns the change in x and y for this point in time.
+def _heading(vector: Vector2) -> int:
+    """Compass heading of a screen vector: 0 up, 90 right."""
+    return round(math.degrees(math.atan2(vector.x, -vector.y))) % 360
 
-        Returns:
-            The change in (dx, dy) for this time point
-        """
-        # Get values to return using current integration step values
-        dx, dy = super().__call__()
 
-        # Apply acceleration to obtain next integration step values
-        self.current_velocity = min(
-            self.max_velocity,
-            self.current_velocity + self.acceleration * MouseMotion.delta_t,
-        )
-        self.dx = self.direction.x * self.current_velocity
-        self.dy = self.direction.y * self.current_velocity
-        self._tick_dx_value, self._tick_dx_time = self._compute_values(self.dx)
-        self._tick_dy_value, self._tick_dy_time = self._compute_values(self.dy)
+def _integration_step(
+    now: float, last_time: float, next_tick: float, interval: float
+) -> tuple[float, float]:
+    """The time to move for this tick and when the next tick is due.
 
-        # Return cached values
-        return dx, dy
+    A late tick catches up on at most _MAX_TICKS_BEHIND ticks, and the next
+    tick is never scheduled in the past.
+    """
+    delta_t = min(now - last_time, _MAX_TICKS_BEHIND * interval)
+    return delta_t, max(next_tick + interval, now)
 
 
 @SingletonDecorator
-class MouseController:
-    """Centralizes sending mouse events in an organized manner."""
+class MouseMotionManager:
+    """Adds up every input's motion piece into one cursor motion.
+
+    Pieces are keyed by (action id, input); the loop sends their vector sum
+    at 100 Hz, carrying the part of a pixel left over to the next tick. The
+    lock covers the bookkeeping only, never SendInput.
+    """
 
     def __init__(self) -> None:
-        """Creates a new instance."""
-        self._motion_type = MotionType.Fixed
-        self._delta_generator = FixedMouseMotion(0, 0)
-        self._motion_commands = {}
-
+        self._lock = threading.Lock()
+        self._sources: dict[MotionKey, MotionSource] = {}
+        self._residual = Vector2(0.0, 0.0)
+        self._has_sources = threading.Event()
+        # Clear while a move is being sent: reset() waits for it.
+        self._send_done = threading.Event()
+        self._send_done.set()
         self._is_running = False
         self._thread: threading.Thread | None = None
 
-    def set_absolute_motion(self, dx: int | None = None, dy: int | None = None) -> None:
-        """Configures a motion using absolute velocities.
+    def set_velocity(self, key: MotionKey, velocity: Vector2) -> None:
+        """Sets the piece of key to a constant velocity (px/s); zero removes it."""
+        if velocity.magnitude() < 1e-6:
+            self.clear(key)
+            return
+        with self._lock:
+            old = self._sources.get(key)
+            if isinstance(old, ConstantVelocity) and _same(old.current, velocity):
+                return
+            source = ConstantVelocity(velocity)
+            self._sources[key] = source
+            self._has_sources.set()
+        _trace(source.describe())
 
-        If dx / dy are set to None their values will not be updated.
-
-        Args:
-            dx: velocity along the x-axis in pixels per second
-            dy: velocity along the y-axis in pixels per second
-        """
-        if self._motion_type == MotionType.Fixed:
-            if dx is not None:
-                self._delta_generator.set_dx(dx)
-            if dy is not None:
-                self._delta_generator.set_dy(dy)
-        else:
-            self._motion_type = MotionType.Fixed
-            self._delta_generator = FixedMouseMotion(
-                dx if dx is not None else 0, dy if dy is not None else 0
-            )
-
-    def add_accelerated_motion(
+    def set_accelerated_motion(
         self,
-        direction: int,
-        min_speed: int,
-        max_speed: int,
+        key: MotionKey,
+        direction: Vector2,
+        min_speed: float,
+        max_speed: float,
         time_to_max_speed: float,
-        event: Event,
     ) -> None:
-        """Configures a motion using acceleration.
-
-        Args:
-            direction: the direction of motion in degree
-            min_speed: minimum speed in pixels per second
-            max_speed: maximum speed in pixels per second
-            time_to_max_speed: time to reach max_speed
-            event: the source event of the given accelerated motion
-        """
-        # Rotate by 90 deggree to line up with X, Y coordinates
-        direction -= 90
-        if self._motion_type == MotionType.Accelerated:
-            self._motion_commands[event] = Vector2.from_angle(direction)
-            self._delta_generator.set_direction(self._compute_direction())
-        else:
-            self._motion_type = MotionType.Accelerated
-            self._motion_commands = {event: Vector2.from_angle(direction)}
-            self._delta_generator = AcceleratedMouseMotion(
-                self._compute_direction(), min_speed, max_speed, time_to_max_speed
-            )
-
-    def remove_accelerated_motion(self, event: Event) -> None:
-        """Removes the motion information associated with a given event.
-
-        Args:
-            event: Event identifying the direction to remove
-        """
-        if event in self._motion_commands:
-            del self._motion_commands[event]
-            if len(self._motion_commands) == 0:
-                self.set_absolute_motion(0, 0)
+        """Starts a ramping piece for key; one that exists keeps the speed it
+        reached and only changes direction."""
+        with self._lock:
+            source = self._sources.get(key)
+            if isinstance(source, IncreasingVelocity):
+                if _same(source.direction, direction):
+                    return
+                source.direction = direction
             else:
-                self._delta_generator.set_direction(self._compute_direction())
+                source = IncreasingVelocity(
+                    direction, min_speed, max_speed, time_to_max_speed
+                )
+                self._sources[key] = source
+            self._has_sources.set()
+            text = source.describe()
+        _trace(text)
+
+    def clear(self, key: MotionKey) -> None:
+        """Removes the piece of key (other pieces keep moving)."""
+        with self._lock:
+            if self._sources.pop(key, None) is None:
+                return
+            if not self._sources:
+                self._go_idle()
+        _trace("Mouse motion stopped")
+
+    def reset(self) -> None:
+        """Drops every piece; no move is sent after this returns."""
+        with self._lock:
+            self._sources.clear()
+            self._go_idle()
+        # A move worked out just before is let finish (bounded).
+        if threading.current_thread() is not self._thread:
+            self._send_done.wait(0.2)
 
     def start(self) -> None:
-        """Starts the thread that will send motions when required."""
-        if not self._is_running:
-            # Set here, not in the thread: a stop() right after start() must
-            # not be undone when the thread starts.
-            self._is_running = True
-            self._thread = threads.start(
-                "mouse controller", self._control_loop, stop=self._ask_to_stop
-            )
+        """Starts the loop that sends the motion."""
+        if self._thread is not None and self._thread.is_alive():
+            return
+        self.reset()
+        # Set here, not in the thread: a stop() right after start() must not
+        # be undone when the thread starts.
+        self._is_running = True
+        self._thread = threads.start(
+            "mouse motion", self._control_loop, stop=self._ask_to_stop
+        )
 
     def _ask_to_stop(self) -> None:
         self._is_running = False
+        self._has_sources.set()  # wakes an idle loop
 
     def stop(self) -> None:
-        """Stops the thread that sends motion events."""
-        self._is_running = False
-        if self._thread is not None and self._thread.is_alive():
-            self._thread.join(timeout=2.0)
-        # No motion left for the next Run: it used to move the cursor at
-        # the speed an axis or button had at Stop as soon as it started.
-        self._motion_type = MotionType.Fixed
-        self._delta_generator = FixedMouseMotion(0, 0)
-        self._motion_commands = {}
+        """Ends the loop (bounded) and drops all motion."""
+        self._ask_to_stop()
+        thread = self._thread
+        if thread is not None and thread.is_alive():
+            if thread is not threading.current_thread():
+                thread.join(timeout=2.0)
+        self._thread = None
+        self.reset()
+
+    def _go_idle(self) -> None:
+        """No motion: the loop waits; the carried part of a pixel goes.
+        The caller holds the lock."""
+        self._residual = Vector2(0.0, 0.0)
+        self._has_sources.clear()
+
+    def _step(self, delta_t: float) -> tuple[int, int]:
+        """Whole pixels to move for delta_t seconds of every piece's motion."""
+        with self._lock:
+            return self._step_locked(delta_t)
+
+    def _step_locked(self, delta_t: float) -> tuple[int, int]:
+        total = Vector2(0.0, 0.0)
+        for source in self._sources.values():
+            total += source.velocity(delta_t)
+        self._residual += total * delta_t
+        pixels_x = _whole(self._residual.x)
+        pixels_y = _whole(self._residual.y)
+        # The part of a pixel left over moves with the next tick.
+        self._residual = Vector2(
+            self._residual.x - pixels_x, self._residual.y - pixels_y
+        )
+        return pixels_x, pixels_y
 
     def _control_loop(self) -> None:
-        """Loop responsible for creating and sending mouse motion events."""
+        last_time = next_tick = clock.monotonic()
         while self._is_running:
-            dx, dy = self._delta_generator()
-            if dx != 0 or dy != 0:
-                mouse_relative_motion(int(dx), int(dy))
-            time.sleep(0.01)
+            if not self._has_sources.is_set():
+                self._has_sources.wait(_IDLE_WAIT)
+                last_time = next_tick = clock.monotonic()
+                continue
+            now = clock.monotonic()
+            delta_t, next_tick = _integration_step(
+                now, last_time, next_tick, TICK_INTERVAL
+            )
+            last_time = now
+            with self._lock:
+                if not self._is_running or not self._sources:
+                    continue
+                delta_x, delta_y = self._step_locked(delta_t)
+                moving = bool(delta_x or delta_y)
+                if moving:
+                    self._send_done.clear()
+            if moving:
+                try:
+                    mouse_relative_motion(delta_x, delta_y)
+                finally:
+                    self._send_done.set()
+            clock.sleep(max(0.0, next_tick - clock.monotonic()))
 
-    def _compute_direction(self) -> Vector2:
-        """Computes the average direction of all the motion commands.
 
-        Returns:
-            Average motion vector derived from the list of directions
-        """
-        sum_vec = Vector2(0, 0)
-        for v in self._motion_commands.values():
-            sum_vec += v
-        return sum_vec.normalize()
+def _whole(value: float) -> int:
+    """Whole pixels in value, towards zero; 2.9999999 (a float sum's error)
+    counts as 3."""
+    return math.trunc(value + math.copysign(1e-9, value))
+
+
+def _same(a: Vector2, b: Vector2) -> bool:
+    return abs(a.x - b.x) < 1e-6 and abs(a.y - b.y) < 1e-6
+
+
+def _trace(text: str) -> None:
+    """A Trace OUTPUT line for the input being handled (G-c)."""
+    if trace.enabled():
+        trace.mouse(text)
 
 
 class _MOUSEINPUT(ctypes.Structure):
@@ -454,6 +444,7 @@ def _note_button(button: MouseButton, is_pressed: bool) -> None:
 
 def mouse_press(button: MouseButton) -> None:
     _note_button(button, True)
+    _trace(f"Mouse {button.name} = pressed")
     if button == MouseButton.Left:
         _send_input(_mouse_input(MOUSEEVENTF_LEFTDOWN))
     elif button == MouseButton.Right:
@@ -468,6 +459,7 @@ def mouse_press(button: MouseButton) -> None:
 
 def mouse_release(button: MouseButton) -> None:
     _note_button(button, False)
+    _trace(f"Mouse {button.name} = released")
     if button == MouseButton.Left:
         _send_input(_mouse_input(MOUSEEVENTF_LEFTUP))
     elif button == MouseButton.Right:
@@ -481,6 +473,7 @@ def mouse_release(button: MouseButton) -> None:
 
 
 def mouse_wheel(motion: int) -> None:
+    _trace(f"Mouse wheel {'down' if motion > 0 else 'up'}")
     _send_input(_mouse_input(MOUSEEVENTF_WHEEL, data=-motion * WHEEL_DELTA))
 
 

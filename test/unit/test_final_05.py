@@ -496,7 +496,7 @@ def test_s86_the_mouse_wheel_turns_once_per_press(
     from gremlin.types import MouseButton
 
     turns: list[int] = []
-    monkeypatch.setattr(sendinput, "MouseController", lambda: SimpleNamespace())
+    monkeypatch.setattr(sendinput, "MouseMotionManager", lambda: SimpleNamespace())
     monkeypatch.setattr(sendinput, "mouse_wheel", turns.append)
     monkeypatch.setattr(sendinput, "mouse_press", lambda *_a: pytest.fail("press"))
     monkeypatch.setattr(sendinput, "mouse_release", lambda *_a: pytest.fail("release"))

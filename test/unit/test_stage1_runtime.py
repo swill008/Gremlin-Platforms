@@ -293,7 +293,7 @@ def test_start_reads_outputs_then_connects_then_runs(
         "mode_manager.ModeManager.start_run",  # the toolbar mode, fresh stack
         "event_handler.resume",  # every Run starts un-paused (S37)
         "shared_state.set_runtime_active",
-        "sendinput.MouseController.start",
+        "sendinput.MouseMotionManager.start",
         "refresh_axes",
     ]
     positions = [_index(names, n) for n in order]
@@ -324,7 +324,7 @@ def test_stop_disconnects_first_and_releases_the_drivers_last(
         "base_classes.flush_pulses",  # S24: before the drivers go
         # END_WORK
         "macro.MacroManager.stop",  # S20: macros end
-        "sendinput.MouseController.stop",  # S22/S23
+        "sendinput.MouseMotionManager.stop",  # S22/S23
         # NEUTRAL
         "mode_manager.ModeManager.end_run",  # R3: temporary modes end
         "audio_player.AudioPlayer.stop",  # S28

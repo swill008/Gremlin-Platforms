@@ -286,6 +286,7 @@ def test_stop_disconnects_after_a_failed_run() -> None:
         _connected=True,  # start() connected, then failed before running
         _running=False,
         _listen_to_mode_changes=lambda on: None,
+        _listen_to_pause=lambda on: None,
         _listen_to_config=lambda on: None,
         event_handler=SimpleNamespace(process_event="handler", clear=lambda: None),
     )

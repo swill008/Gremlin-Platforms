@@ -216,8 +216,10 @@ def test_mouse_motion_of_the_last_run_stops_with_it(
     runner: code_runner.CodeRunner, mouse: list[tuple]
 ) -> None:
     runner.start(Profile(), "Default")
-    controller = sendinput.MouseController()
-    controller.set_absolute_motion(500, 0)  # an axis held over at Stop
+    motion = sendinput.MouseMotionManager()
+    # An axis held over at Stop.
+    axis = Event(InputType.JoystickAxis, 1, _GUID, "Default")
+    motion.set_velocity((uuid.uuid4(), axis), sendinput.Vector2(500.0, 0.0))
     assert _wait_for(lambda: any(m[0] == "move" for m in mouse))
     runner.stop()
     mouse.clear()

@@ -885,6 +885,9 @@ def test_key_tables() -> None:
     modifiers = keyboard.modifier_keys()
     assert keyboard.key_from_name("rightshift") in modifiers
     assert keyboard.key_from_name("rightalt") in modifiers
+    # 05 S85: Win keys are modifiers too, pressed first.
+    assert keyboard.key_from_name("leftwin") in modifiers
+    assert keyboard.key_from_name("rightwin") in modifiers
     # Every named key is found again from its code.
     for name, key in keyboard.g_name_to_key.items():
         assert keyboard.key_from_code(key.scan_code, key.is_extended) == key, name
@@ -1375,7 +1378,7 @@ def test_a_new_key_can_get_its_first_action(profile: Profile) -> None:
 
 @pytest.fixture
 def mouse_controller() -> Iterator[Any]:
-    controller = sendinput.MouseController()
+    controller = sendinput.MouseMotionManager()
     controller.stop()  # no motion left from before (no thread runs)
     yield controller
     controller.stop()
@@ -1398,12 +1401,11 @@ def test_map_to_mouse_from_a_hat_moves_and_stops(
         functor(event, Value(direction))
 
     hat(HatDirection.North)
-    moving = mouse_controller._delta_generator
-    assert abs(moving.direction.x) < 1e-6 and moving.direction.y == pytest.approx(-1)
-    assert any(moving() != (0, 0) for _ in range(200))
+    steps = [mouse_controller._step(0.01) for _ in range(200)]
+    assert all(dx == 0 and dy <= 0 for dx, dy in steps)  # up
+    assert sum(dy for _, dy in steps) < 0
     hat(HatDirection.Center)
-    stopped = mouse_controller._delta_generator
-    assert all(stopped() == (0, 0) for _ in range(50))
+    assert all(mouse_controller._step(0.01) == (0, 0) for _ in range(50))
 
 
 def test_load_profile_action_end_to_end(

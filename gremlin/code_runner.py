@@ -352,6 +352,9 @@ class CodeRunner:
         self._profile = None
         self._running = False
         self._mode_listening = False
+        self._pause_listening = False
+        # The running mode, for mode change callbacks (old -> new).
+        self._run_mode = ""
         self._restarting = False
         self._connected = False
         self._config_listening = False
@@ -468,15 +471,20 @@ class CodeRunner:
 
         # The toolbar mode, on a fresh mode stack (06 Q3, decision R3).
         mode_manager.ModeManager().start_run(start_mode)
+        self._run_mode = mode_manager.ModeManager().current.name
+        # Nothing registered before the Run's own mode counts in it.
+        event_helpers.ModeChangeActions().reset()
         # Mode changes refresh the axes from here on (after the other
         # listeners, connected when they were made). The start itself is not
         # one: the axes are sent once, after the Initial Values (06 S8).
         self._listen_to_mode_changes(True)
         self.event_handler.resume()
+        # Pause stops mouse motion (06 S90); connected after the resume above.
+        self._listen_to_pause(True)
         self._running = True
         shared_state.set_runtime_active(True)
 
-        sendinput.MouseController().start()
+        sendinput.MouseMotionManager().start()
         OscRuntime().start()
         self._refresh_axes()
         # After the Initial Values: the first resend shows them (D-09-OSC-FEEDBACK).
@@ -501,12 +509,18 @@ class CodeRunner:
         on(stage.CUT_INPUT, "OSC feedback", lambda: osc_feedback.stop())
         on(stage.CUT_INPUT, "OSC releases", lambda: OscRuntime().release_held())
         on(stage.CUT_INPUT, "input off", self._cut_input)
+        # Mouse motion goes with the input (06 S89); its thread ends later.
+        on(stage.CUT_INPUT, "mouse motion",
+           lambda: sendinput.MouseMotionManager().reset())
         on(stage.CANCEL, "release actions", self._drop_release_actions)
+        on(stage.CANCEL, "mode change actions",
+           lambda: event_helpers.ModeChangeActions().reset())
         on(stage.CANCEL, "script state", self._end_scripts)
         on(stage.CANCEL, "OSC", lambda: OscRuntime().stop())
         on(stage.FIRE_PENDING, "pulse releases", self._flush_pulses)
         on(stage.END_WORK, "macros", lambda: macro.MacroManager().stop())
-        on(stage.END_WORK, "mouse motion", lambda: sendinput.MouseController().stop())
+        on(stage.END_WORK, "mouse motion",
+           lambda: sendinput.MouseMotionManager().stop())
         on(stage.NEUTRAL, "Logical Device", self._logical_device_neutral)
         on(stage.NEUTRAL, "modes", lambda: mode_manager.ModeManager().end_run())
         on(stage.NEUTRAL, "sound", lambda: audio_player.AudioPlayer().stop())
@@ -515,6 +529,7 @@ class CodeRunner:
 
     def _cut_input(self) -> None:
         self._listen_to_mode_changes(False)
+        self._listen_to_pause(False)
         self._listen_to_config(False)
         if self._connected:
             evt_lst = event_handler.EventListener()
@@ -569,6 +584,7 @@ class CodeRunner:
         self.event_handler._previous_mode = self._profile.modes.first_mode
         user_script.callback_registry.clear()
         event_helpers.ButtonReleaseActions().reset()
+        event_helpers.ModeChangeActions().reset()
 
     def _listen_to_mode_changes(self, on: bool) -> None:
         if on == self._mode_listening:
@@ -579,6 +595,24 @@ class CodeRunner:
         else:
             mm.mode_changed.disconnect(self._refresh_on_mode_change)
         self._mode_listening = on
+
+    def _listen_to_pause(self, on: bool) -> None:
+        if on == self._pause_listening:
+            return
+        if on:
+            self.event_handler.is_active.connect(self._on_active_changed)
+        else:
+            try:
+                self.event_handler.is_active.disconnect(self._on_active_changed)
+            except (TypeError, RuntimeError):
+                pass
+        self._pause_listening = on
+
+    def _on_active_changed(self, active: bool) -> None:
+        # Paused: no mouse motion goes on (06 S90). After Resume an input
+        # starts it again.
+        if not active:
+            sendinput.MouseMotionManager().reset()
 
     def _listen_to_config(self, on: bool) -> None:
         if on == self._config_listening:
@@ -599,6 +633,11 @@ class CodeRunner:
 
     def _refresh_on_mode_change(self, _mode: str) -> None:
         trace.event(f"Mode changed to {_mode}")
+        old_mode, self._run_mode = self._run_mode, _mode
+        # Before the axes are re-sent: motion the new mode doesn't route to
+        # the same binding stops (06 S88); the re-sent axes start the new
+        # mode's own.
+        event_helpers.ModeChangeActions().fire(old_mode, _mode)
         if Configuration().value("global", "general", "refresh-axis-on-mode-change"):
             RefreshPhysicalInputs.refresh_axes()
 

@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 import enum
+import functools
 import math
 from typing import (
     TYPE_CHECKING,
     List,
+    cast,
     override,
 )
 from xml.etree import ElementTree
@@ -17,6 +19,8 @@ from PySide6 import QtCore
 
 from gremlin import (
     event_handler,
+    event_helpers,
+    mode_manager,
     sendinput,
     util,
 )
@@ -60,12 +64,19 @@ class MapToMouseMode(enum.Enum):
 
 
 class MapToMouseFunctor(AbstractFunctor):
-    """Implements the function implementing MapToMouse behavior at runtime."""
+    """Implements the function implementing MapToMouse behavior at runtime.
+
+    Motion is one piece per input, keyed (action id, input), in the shared
+    MouseMotionManager: pieces add up and each button/hat ramps on its own
+    (06 S72). A piece is stopped by a mode change the new mode doesn't route
+    to this binding (06 S88).
+    """
 
     def __init__(self, action: MapToMouseData) -> None:
         super().__init__(action)
 
-        self.mouse_controller = sendinput.MouseController()
+        self._motion = sendinput.MouseMotionManager()
+        self._mode_changes = event_helpers.ModeChangeActions()
 
     @override
     def __call__(
@@ -105,6 +116,39 @@ class MapToMouseFunctor(AbstractFunctor):
             else:
                 sendinput.mouse_release(self.data.button)
 
+    def _motion_key(self, event: event_handler.Event) -> sendinput.MotionKey:
+        """This action's piece for this input."""
+        return (self.data.id, event)
+
+    def _start_piece(
+        self, key: sendinput.MotionKey, event: event_handler.Event
+    ) -> None:
+        """Watches mode changes for a piece that is moving."""
+        mode = event.mode or mode_manager.ModeManager().current.name
+        self._mode_changes.register(
+            key, functools.partial(self._on_mode_change, key, event, mode)
+        )
+
+    def _stop_piece(self, key: sendinput.MotionKey) -> None:
+        self._motion.clear(key)
+        self._mode_changes.unregister(key)
+
+    def _on_mode_change(
+        self,
+        key: sendinput.MotionKey,
+        event: event_handler.Event,
+        started_in: str,
+        _old_mode: str,
+        new_mode: str,
+    ) -> bool:
+        """Stops the piece unless new_mode routes the input to the same
+        binding as the mode it started in (an inherited child mode does).
+        True when stopped (the callback is done)."""
+        if event_handler.EventHandler().is_same_binding(event, started_in, new_mode):
+            return False
+        self._motion.clear(key)
+        return True
+
     def _perform_axis_motion(self, event: event_handler.Event, value: Value) -> None:
         """Processes axis-controlled motion.
 
@@ -112,15 +156,25 @@ class MapToMouseFunctor(AbstractFunctor):
             event: input event to process
             value: potentially modified input value
         """
-        delta_motion = self.data.min_speed + abs(value.current) * (
+        speed = self.data.min_speed + abs(value.current) * (
             self.data.max_speed - self.data.min_speed
         )
-        delta_motion = math.copysign(delta_motion, value.current)
-        delta_motion = 0.0 if abs(value.current) < 1e-3 else delta_motion
+        speed = math.copysign(speed, value.current)
+        speed = 0.0 if abs(value.current) < 1e-3 else speed
 
-        dx = delta_motion if self.data.direction == 90 else None
-        dy = delta_motion if self.data.direction == 0 else None
-        self.mouse_controller.set_absolute_motion(dx, dy)
+        key = self._motion_key(event)
+        if speed == 0.0:
+            self._stop_piece(key)
+            return
+        # Direction 0 is up/down (positive moves down), 90 left/right
+        # (positive moves right).
+        heading = 180.0 if float(self.data.direction) == 0.0 else float(
+            self.data.direction
+        )
+        self._motion.set_velocity(
+            key, sendinput.Vector2.from_compass_direction(heading) * speed
+        )
+        self._start_piece(key, event)
 
     def _perform_button_motion(self, event: event_handler.Event, value: Value) -> None:
         """Processes button-controlled motion.
@@ -129,16 +183,18 @@ class MapToMouseFunctor(AbstractFunctor):
             event: input event to process
             value: potentially modified input value
         """
+        key = self._motion_key(event)
         if event.is_pressed:
-            self.mouse_controller.add_accelerated_motion(
-                self.data.direction,
+            self._motion.set_accelerated_motion(
+                key,
+                sendinput.Vector2.from_compass_direction(self.data.direction),
                 self.data.min_speed,
                 self.data.max_speed,
                 self.data.time_to_max_speed,
-                event,
             )
+            self._start_piece(key, event)
         else:
-            self.mouse_controller.remove_accelerated_motion(event)
+            self._stop_piece(key)
 
     def _perform_hat_motion(self, event: event_handler.Event, value: Value) -> None:
         """Processes hat-controlled motion.
@@ -147,27 +203,21 @@ class MapToMouseFunctor(AbstractFunctor):
             event: input event to process
             value: potentially modified input value
         """
-        direction_lut = {
-            HatDirection.North: 0.0,
-            HatDirection.NorthEast: 45.0,
-            HatDirection.East: 90.0,
-            HatDirection.SouthEast: 135.0,
-            HatDirection.South: 180.0,
-            HatDirection.SouthWest: 225.0,
-            HatDirection.West: 270.0,
-            HatDirection.NorthWest: 315.0,
-        }
-
+        key = self._motion_key(event)
         if value.current == HatDirection.Center:
-            self.mouse_controller.set_absolute_motion(0, 0)
-        else:
-            self.mouse_controller.add_accelerated_motion(
-                direction_lut[value.current],
-                self.data.min_speed,
-                self.data.max_speed,
-                self.data.time_to_max_speed,
-                event,
-            )
+            # Only the hat's own piece: a held button keeps moving.
+            self._stop_piece(key)
+            return
+        # Hat directions are cartesian with y up; the screen's y grows down.
+        hat_x, hat_y = cast(HatDirection, value.current).value
+        self._motion.set_accelerated_motion(
+            key,
+            sendinput.Vector2(hat_x, -hat_y).normalize(),
+            self.data.min_speed,
+            self.data.max_speed,
+            self.data.time_to_max_speed,
+        )
+        self._start_piece(key, event)
 
 
 class MapToMouseModel(ActionModel):

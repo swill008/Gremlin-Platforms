@@ -515,8 +515,15 @@ def test_map_to_mouse_moves_the_pointer_with_the_axis_in_its_direction() -> None
     data.direction = 90  # left / right
     functor = MapToMouseFunctor(data)
     moves: list[tuple] = []
-    functor.mouse_controller = cast(
-        Any, SimpleNamespace(set_absolute_motion=lambda dx, dy: moves.append((dx, dy)))
+
+    def set_velocity(_key: object, v: Any) -> None:  # noqa: ANN401
+        moves.append((round(v.x, 6) + 0.0, round(v.y, 6) + 0.0))
+
+    functor._motion = cast(
+        Any,
+        SimpleNamespace(
+            set_velocity=set_velocity, clear=lambda _key: moves.append((0.0, 0.0))
+        ),
     )
 
     def axis(value: float) -> None:
@@ -528,10 +535,10 @@ def test_map_to_mouse_moves_the_pointer_with_the_axis_in_its_direction() -> None
     axis(0.5)
     axis(-1.0)
     axis(0.0)
-    assert moves == [(60.0, None), (-110.0, None), (0.0, None)]
-    data.direction = 0  # up / down
+    assert moves == [(60.0, 0.0), (-110.0, 0.0), (0.0, 0.0)]  # 0: stopped
+    data.direction = 0  # up / down (positive moves down)
     axis(1.0)
-    assert moves[-1] == (None, 110.0)
+    assert moves[-1] == (0.0, 110.0)
 
 
 # --- S80 / S81: Logical Device Assign Hardware --------------------------------

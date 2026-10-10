@@ -148,6 +148,7 @@ def test_device_change_and_run_events(
     runner = object.__new__(code_runner.CodeRunner)
     runner._running = True
     runner._restarting = False
+    runner._run_mode = "Default"
     monkeypatch.setattr(code_runner.Configuration, "value", lambda *a: False)
     runner._refresh_on_mode_change("Combat")
     monkeypatch.setattr(code_runner.run_scope, "stop", lambda: None)

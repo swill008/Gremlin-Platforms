@@ -127,10 +127,10 @@ def test_the_audio_player_stopped_right_after_starting_ends() -> None:
             assert threads.running() == []
 
 
-def test_the_mouse_controller_stopped_right_after_starting_ends() -> None:
-    from gremlin.sendinput import MouseController
+def test_the_mouse_motion_thread_stopped_right_after_starting_ends() -> None:
+    from gremlin.sendinput import MouseMotionManager
 
-    controller = MouseController()
+    controller = MouseMotionManager()
     with _put_back(controller._is_running, controller.start):
         controller.stop()
         for _ in range(20):
