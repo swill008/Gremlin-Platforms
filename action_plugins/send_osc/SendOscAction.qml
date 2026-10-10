@@ -178,6 +178,11 @@ Item {
             }
 
             FloatSpinBox {
+                // Full size when there is room; shrinks to fit a narrow pane.
+                Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(100)
+                Layout.maximumWidth: implicitWidth
+
                 minValue: -100000
                 maxValue: 100000
                 stepSize: 0.1
@@ -193,6 +198,11 @@ Item {
             }
 
             FloatSpinBox {
+                // Full size when there is room; shrinks to fit a narrow pane.
+                Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(100)
+                Layout.maximumWidth: implicitWidth
+
                 minValue: -100000
                 maxValue: 100000
                 stepSize: 0.1

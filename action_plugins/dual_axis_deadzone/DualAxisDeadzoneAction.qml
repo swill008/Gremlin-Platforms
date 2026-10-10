@@ -71,82 +71,104 @@ Item {
         // +-------------------------------------------------------------------
         // | Deadzone instance selection and management
         // +-------------------------------------------------------------------
-        RowLayout {
+        // Wraps the picker onto a second line in a narrow pane.
+        Flow {
+            Layout.fillWidth: true
+
+            spacing: Style.dp(5)
+
             Label {
-                Layout.preferredWidth: Style.dp(150)
+                width: Style.dp(150)
+                height: _instanceRow.height
+                verticalAlignment: Text.AlignVCenter
 
                 text: "Deadzone instance"
             }
 
-            LabelValueComboBox {
-                model: _root.deadzoneListModel
+            RowLayout {
+                id: _instanceRow
 
-                Component.onCompleted: () => {
-                    _root.deadzoneListModel.currentValue = _root.action.deadzone
+                LabelValueComboBox {
+                    model: _root.deadzoneListModel
+
+                    Component.onCompleted: () => {
+                        _root.deadzoneListModel.currentValue = _root.action.deadzone
+                    }
+
+                    onSelectionChanged: () => {
+                        _root.action.deadzone = _root.deadzoneListModel.currentValue
+                    }
                 }
 
-                onSelectionChanged: () => {
-                    _root.action.deadzone = _root.deadzoneListModel.currentValue
+                IconButton {
+                    text: bsi.icons.add_new
+                    font.pixelSize: Style.dp(24)
+
+                    onClicked: () => { _root.action.newDeadzone() }
                 }
-            }
 
-            IconButton {
-                text: bsi.icons.add_new
-                font.pixelSize: Style.dp(24)
+                IconButton {
+                    text: bsi.icons.rename
+                    font.pixelSize: Style.dp(24)
 
-                onClicked: () => { _root.action.newDeadzone() }
-            }
-
-            IconButton {
-                text: bsi.icons.rename
-                font.pixelSize: Style.dp(24)
-
-                onClicked: () => { _dialog.open() }
+                    onClicked: () => { _dialog.open() }
+                }
             }
         }
 
-        // Deadzone configuration
-        RowLayout {
+        // Deadzone configuration: wraps onto a second line in a narrow pane
+        // rather than running past its right edge.
+        Flow {
+            Layout.fillWidth: true
+
+            spacing: Style.dp(5)
+
             Label {
-                Layout.preferredWidth: Style.dp(150)
+                width: Style.dp(150)
+                height: _innerValue.height
+                verticalAlignment: Text.AlignVCenter
 
                 text: "Deadzone limits"
             }
 
-            Label {
-                text: "Inner"
-            }
+            RowLayout {
+                Label {
+                    text: "Inner"
+                }
 
-            FloatSpinBox {
-                id: _innerValue
+                FloatSpinBox {
+                    id: _innerValue
 
-                minValue: 0.0
-                maxValue: 1.0
-                decimals: Style.decimalsPrecise
-                value: _root.action.innerDeadzone
+                    minValue: 0.0
+                    maxValue: 1.0
+                    decimals: Style.decimalsPrecise
+                    value: _root.action.innerDeadzone
 
-                onValueModified: (newValue) => {
-                    _root.action.innerDeadzone = newValue
+                    onValueModified: (newValue) => {
+                        _root.action.innerDeadzone = newValue
+                    }
                 }
             }
 
-            Label {
-                Layout.leftMargin: Style.dp(20)
+            RowLayout {
+                Label {
+                    Layout.leftMargin: Style.dp(15)
 
-                text: "Outer"
-            }
+                    text: "Outer"
+                }
 
-            FloatSpinBox {
-                id: _outerValue
+                FloatSpinBox {
+                    id: _outerValue
 
-                minValue: 0.0
-                maxValue: 1.0
-                decimals: Style.decimalsPrecise
-                value: _root.action.outerDeadzone
+                    minValue: 0.0
+                    maxValue: 1.0
+                    decimals: Style.decimalsPrecise
+                    value: _root.action.outerDeadzone
 
-                onValueModified: (newValue) => {
-                    _root.action.outerDeadzone = newValue
+                    onValueModified: (newValue) => {
+                        _root.action.outerDeadzone = newValue
 
+                    }
                 }
             }
         }
@@ -154,40 +176,44 @@ Item {
         // +-------------------------------------------------------------------
         // | Axis assignments
         // +-------------------------------------------------------------------
-        RowLayout {
+        // Wraps the second axis onto its own line in a narrow pane.
+        Flow {
+            Layout.fillWidth: true
+
+            spacing: Style.dp(50)
+
             // First axis selection
-            Label {
-                text: "First axis: "
-                font.family: Style.uiFont
-                font.weight: 600
-            }
-            Label {
-                text: _root.action.axis1.label
-            }
-            IconButton {
-                text: bsi.icons.replace
+            RowLayout {
+                Label {
+                    text: "First axis: "
+                    font.family: Style.uiFont
+                    font.weight: 600
+                }
+                Label {
+                    text: _root.action.axis1.label
+                }
+                IconButton {
+                    text: bsi.icons.replace
 
-                onClicked: () => { _root.action.axis1 = uiState.currentInput }
-            }
-
-            LayoutHorizontalSpacer {
-                Layout.fillWidth: false
-                Layout.preferredWidth: Style.dp(50)
+                    onClicked: () => { _root.action.axis1 = uiState.currentInput }
+                }
             }
 
             // Second axis selection
-            Label {
-                text: "Second axis: "
-                font.family: Style.uiFont
-                font.weight: 600
-            }
-            Label {
-                text: _root.action.axis2.label
-            }
-            IconButton {
-                text: bsi.icons.replace
+            RowLayout {
+                Label {
+                    text: "Second axis: "
+                    font.family: Style.uiFont
+                    font.weight: 600
+                }
+                Label {
+                    text: _root.action.axis2.label
+                }
+                IconButton {
+                    text: bsi.icons.replace
 
-                onClicked: () => { _root.action.axis2 = uiState.currentInput }
+                    onClicked: () => { _root.action.axis2 = uiState.currentInput }
+                }
             }
         }
 
