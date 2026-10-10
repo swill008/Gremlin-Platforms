@@ -165,6 +165,7 @@ if _startup_failure is None:
         import gremlin.ui.live_debug  # noqa: F401
         import gremlin.ui.diagnostics  # noqa: F401
         import gremlin.ui.trace_model  # noqa: F401
+        import gremlin.input_tester_link  # noqa: F401  # Tools › Input Tester…
         import gremlin.ui.history_model  # noqa: F401
         import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
         import gremlin.ui.logical_layout  # noqa: F401

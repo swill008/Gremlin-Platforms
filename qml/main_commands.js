@@ -69,6 +69,10 @@ function commandList() {
           run: function() { openTool("DialogInputViewer.qml") } },
         { id: "tools.xboxViewer", text: "Xbox Viewer", group: "Tools › Viewers",
           run: function() { openTool("DialogXboxViewer.qml") } },
+        // The Input Tester (D-02-INPUT-TESTER): what a game sees through HidHide.
+        { id: "tools.inputTester", text: "Input Tester…", group: "Tools › Viewers",
+          keywords: "hidhide game sees hidden visible check test devices",
+          run: function() { openInputTester() } },
         { id: "tools.calibration", text: "Calibration", group: "Tools › Device Setup",
           run: function() { openTool("DialogCalibration.qml") } },
         { id: "tools.hidhide", text: "HidHide", group: "Tools › Device Setup", keywords: "hide devices",

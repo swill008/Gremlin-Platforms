@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 from gremlin import common
+from gremlin.axis_names import AXIS_SHORT
 from gremlin.modules import output
 from gremlin.modules.claim import claim_friendly, kind_of
 from gremlin.types import InputType
@@ -24,7 +25,6 @@ from gremlin.types import InputType
 NOT_CLAIMED = "(not claimed)"
 NO_MODULE = "(no output module)"
 
-AXIS_SHORT = {1: "X", 2: "Y", 3: "Z", 4: "Rx", 5: "Ry", 6: "Rz", 7: "S1", 8: "S2"}
 
 XBOX_SHORT = {
     "left_stick_x": "LSX",

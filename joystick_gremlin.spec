@@ -85,21 +85,38 @@ exclude_imports = [
     "pywin.dialogs",
 ]
 
-a = Analysis(
-    ["joystick_gremlin.py"],
-    pathex=[],
-    binaries=binaries,
-    datas=datas,
-    hiddenimports=hidden_imports,
-    excludes=exclude_imports,
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=["packaging/pyi_rth_native_dlls.py"],
-    noarchive=False,
-    optimize=0,
-)
+# Gremlin Input Tester: a second, read-only exe in the same folder, so HidHide
+# can list it like a game (D-02-INPUT-TESTER). It shares _internal with the
+# main program; only its own small PYZ is extra.
+# GREMLIN_TESTER_ONLY=1 (tools/build_input_tester.py) builds just the tester
+# into dist/Gremlin Input Tester for running from source.
+tester_only = os.environ.get("GREMLIN_TESTER_ONLY") == "1"
+tester_name = "Gremlin Input Tester"
+tester_datas = [
+    # Its window is qml/tester/InputTester.qml; it uses Style.qml and the
+    # icon font from gfx, so the whole qml and gfx folders go with it.
+    ("qml", "qml"),
+    ("gfx", "gfx"),
+]
+tester_binaries = [
+    ("dill/dill.dll", "."),
+    ("dill/dill.dll", "dill"),
+]
+tester_hidden_imports = [
+    "dill",
+    "gremlin.input_tester",
+    "gremlin.input_tester.compare",
+    "gremlin.input_tester.devices",
+    "gremlin.input_tester.model",
+    "gremlin.input_tester.result",
+    "gremlin.input_tester.steam",
+    "PySide6.QtQml",
+    "PySide6.QtQuick",
+]
+# Not excluded here: gremlin.config etc. are kept out by the tester's own
+# import guard test, so a frozen build never differs from running from source.
+tester_excludes = list(exclude_imports)
 
-to_keep = []
 to_exclude = [
     "opengl32sw.dll",
     "Qt6DataVisualization.dll",
@@ -179,42 +196,47 @@ directory_excludes = [
     "PySide6\\translations",
 ]
 
-for (dest, source, kind) in a.binaries:
-    skip_file = False
-    for directory in directory_excludes:
-        if dest.startswith(directory):
-            skip_file = True
-    if not skip_file and os.path.split(dest)[1] not in to_exclude:
-        to_keep.append((dest, source, kind))
-a.binaries = to_keep
 
-datas_to_keep = []
-for (dest, source, kind) in a.datas:
-    skip_file = False
-    for directory in directory_excludes:
-        if dest.startswith(directory):
-            skip_file = True
-    if not skip_file:
-        datas_to_keep.append((dest, source, kind))
-a.datas = datas_to_keep
 
-pyz = PYZ(a.pure)
+def trim(analysis):
+    """Drops the Qt parts and runtimes the program doesn't use."""
+    analysis.binaries = [
+        (dest, source, kind)
+        for (dest, source, kind) in analysis.binaries
+        if not any(dest.startswith(d) for d in directory_excludes)
+        and os.path.split(dest)[1] not in to_exclude
+    ]
+    analysis.datas = [
+        (dest, source, kind)
+        for (dest, source, kind) in analysis.datas
+        if not any(dest.startswith(d) for d in directory_excludes)
+    ]
 
-single_folder = True
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
+t = Analysis(
+    ["input_tester.py"],
+    pathex=[],
+    binaries=tester_binaries,
+    datas=tester_datas,
+    hiddenimports=tester_hidden_imports,
+    excludes=tester_excludes,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=["packaging/pyi_rth_native_dlls.py"],
+    noarchive=False,
+    optimize=0,
+)
+trim(t)
+tester_exe = EXE(
+    PYZ(t.pure),
+    t.scripts,
     [],
-    name="gremlin_platforms",
+    name=tester_name,
     debug=False,
     bootloader_ignore_signals=False,
-    exclude_binaries=single_folder,
+    exclude_binaries=True,
     strip=False,
     upx=False,
-    upx_exclude=["dill.dll", "vJoyInterface.dll"],
     runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
@@ -224,11 +246,60 @@ exe = EXE(
     entitlements_file=None,
     icon="gfx\\icon.ico",
 )
-if single_folder:
-    coll = COLLECT(
+
+if tester_only:
+    COLLECT(
+        tester_exe,
+        t.binaries,
+        t.datas,
+        strip=False,
+        upx=False,
+        name=tester_name,
+    )
+else:
+    a = Analysis(
+        ["joystick_gremlin.py"],
+        pathex=[],
+        binaries=binaries,
+        datas=datas,
+        hiddenimports=hidden_imports,
+        excludes=exclude_imports,
+        hookspath=[],
+        hooksconfig={},
+        runtime_hooks=["packaging/pyi_rth_native_dlls.py"],
+        noarchive=False,
+        optimize=0,
+    )
+    trim(a)
+
+    exe = EXE(
+        PYZ(a.pure),
+        a.scripts,
+        [],
+        name="gremlin_platforms",
+        debug=False,
+        bootloader_ignore_signals=False,
+        exclude_binaries=True,
+        strip=False,
+        upx=False,
+        upx_exclude=["dill.dll", "vJoyInterface.dll"],
+        runtime_tmpdir=None,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon="gfx\\icon.ico",
+    )
+    # One folder, both exes: COLLECT keeps one copy of each shared file.
+    COLLECT(
         exe,
         a.binaries,
         a.datas,
+        tester_exe,
+        t.binaries,
+        t.datas,
         strip=False,
         upx=False,
         upx_exclude=["dill.dll", "vJoyInterface.dll"],

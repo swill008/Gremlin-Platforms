@@ -25,7 +25,7 @@ def _sources() -> dict[str, str]:
 
 def test_one_axis_name_table() -> None:
     tables = [rel for rel, text in _sources().items() if '1: "X",' in text]
-    assert tables == ["gremlin/modules/wiring.py"]
+    assert tables == ["gremlin/axis_names.py"]
 
 
 def test_only_the_output_layer_lists_vjoy_output_modules() -> None:

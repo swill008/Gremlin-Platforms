@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // Help chapter: Tools (viewers, calibration, device information, History,
-// Auto Mapper, HidHide, Live Log Reader). Button Map and Device Library
+// Auto Mapper, HidHide, Input Tester, Live Log Reader). Button Map and Device Library
 // have chapters of their own.
 
 .pragma library
@@ -94,8 +94,40 @@ function topics() {
                 + "<li>Removing a program from the list asks first: \"Remove <i>program</i> from the program list?\" The red <b>Remove Program</b> removes it; <b>Add Program</b> can put it back.</li>"
                 + "<li>The devices are listed under the <b>Devices</b> heading.</li>"
                 + "<li><b>Automatically Start</b> applies both switches each time the program starts. All switches start off on a new install.</li>"
+                + "<li>To see what a listed game sees, use the <b>Input Tester</b> button: see <a href=\"topic:tools-input-tester\">Check what a game sees (Input Tester)</a>. The page also shows the <b>Last Input Tester result</b>, and warns when a listed game is running from another folder.</li>"
                 + "</ul>",
-            related: ["home-devices-hidden-cards", "getting-started-device-missing", "tools-q-game-sees-both"]
+            related: ["tools-input-tester", "home-devices-hidden-cards", "getting-started-device-missing", "tools-q-game-sees-both"]
+        },
+        {
+            id: "tools-input-tester",
+            section: "Devices",
+            title: "Check what a game sees (Input Tester)",
+            body: "<p>HidHide never hides anything from this program, so this program can't show what a game sees. The <b>Gremlin Input Tester</b> is a small separate program that HidHide treats like a game: put it on HidHide's list the same way as your game, and it shows exactly which controllers that game can see. It only reads; it changes nothing.</p>"
+                + "<h4>Check a game</h4>"
+                + "<ol>"
+                + "<li>Choose <b>Tools › Device Setup › HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a>. With <b>Gremlin-Platforms controls HidHide</b> on, choose <b>Add Input Tester to the list</b> (shown while it isn't on the list). It goes on the same program list as your game.</li>"
+                + "<li>Choose <b>Input Tester</b> on that page, or <b>Tools › Viewers › Input Tester…</b>. The tester opens and compares what it sees with what this program expects.</li>"
+                + "<li>Read the top line: <b>✓ Pass</b> means the game sees what it should; <b>✗ Fail</b> means at least one row is marked ✗.</li>"
+                + "<li>Move a stick to see its values: axes, buttons and hats move, and the row's <b>activity dot</b> blinks. <b>All devices</b> shows every device at once.</li>"
+                + "</ol>"
+                + "<h4>What each row says</h4>"
+                + "<ul>"
+                + "<li><b>✓ hidden</b>: a hidden stick the tester can't see, as it should be (shown greyed).</li>"
+                + "<li><b>✗ VISIBLE · should be hidden</b>: the game can see this stick as well as vJoy. Check that the stick is ticked on the HidHide page, <b>HidHide Enabled</b> is on and the game is on the list.</li>"
+                + "<li><b>✓ visible</b>: a device the game should see, such as a vJoy device or the Xbox pad.</li>"
+                + "<li><b>✗ missing</b>: a device the game should see but can't, such as a vJoy device hidden by mistake.</li>"
+                + "<li><b>? not known to Gremlin</b>: a device this program doesn't use. It is not a fail.</li>"
+                + "</ul>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li>If Steam is running and isn't on the Block list, a yellow line says \"Steam is running and can see your sticks: Steam Input may pass them to games.\" It is not a fail, but Steam Input can hand a hidden stick to a game. Add Steam to the list, or turn Steam Input off for that game.</li>"
+                + "<li><b>Copy result</b> copies the verdict and every row as text, ready to paste into a message.</li>"
+                + "<li>The result comes back to this program: the HidHide page shows the <b>Last Input Tester result</b>, and while tracing with the HidHide row ticked, the trace writes it as a HIDHIDE line.</li>"
+                + "<li>HidHide goes by a game's full path. If a listed game is running from another folder (a test build such as PTU, for example), the HidHide page warns \"… is running from …, which isn't on the list\". Add that copy to the list too.</li>"
+                + "<li>If the list has an older copy of the tester (after the program moved), the HidHide page says so; <b>Update path</b> puts the current one on the list.</li>"
+                + "<li>Opened on its own, the tester shows what it sees without ✓ or ✗.</li>"
+                + "</ul>",
+            related: ["tools-hidhide", "tools-trace", "tools-q-game-sees-both"]
         },
 
         {
@@ -309,8 +341,8 @@ function topics() {
             id: "tools-q-game-sees-both",
             section: "Common questions",
             title: "Why does my game see my stick and vJoy?",
-            body: "<p>Running the profile does not hide controllers. Hide the physical stick with HidHide. See <a href=\"topic:tools-hidhide\">Hide controllers from games with HidHide</a>.</p>",
-            related: ["tools-hidhide"]
+            body: "<p>Running the profile does not hide controllers. Hide the physical stick with HidHide. See <a href=\"topic:tools-hidhide\">Hide controllers from games with HidHide</a>. To see what the game sees, use the Input Tester: see <a href=\"topic:tools-input-tester\">Check what a game sees (Input Tester)</a>.</p>",
+            related: ["tools-hidhide", "tools-input-tester"]
         },
         {
             id: "tools-q-older-version",

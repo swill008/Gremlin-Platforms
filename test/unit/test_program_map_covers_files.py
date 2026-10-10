@@ -78,6 +78,9 @@ def _program_units() -> list[tuple[str, list[str]]]:
         file_unit(path)
     for path in sorted((qml / "help").glob("*.js")):
         file_unit(path, "qml/help/")
+    # The Input Tester's window (D-02-INPUT-TESTER).
+    for path in sorted((qml / "tester").glob("*.qml")):
+        file_unit(path, "qml/tester/")
 
     for path in sorted((_ROOT / "gremlin").rglob("*.py")):
         if "__pycache__" in path.parts:
@@ -98,6 +101,7 @@ def _program_units() -> list[tuple[str, list[str]]]:
         units.append((name, [name, name + "__init__.py"]))
 
     units.append(("joystick_gremlin.py", ["joystick_gremlin.py"]))
+    units.append(("input_tester.py", ["input_tester.py"]))
     units.append(("dill/", ["dill/"]))
     units.append(("vigem/", ["vigem/"]))
     return units

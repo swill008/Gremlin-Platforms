@@ -45,7 +45,8 @@ def sanitize_path(path):
     :param path path to sanitize
     :return sanitized file path
     """
-    return path.replace("\\", "__").replace("-", "_")
+    # WiX ids allow no spaces ("Gremlin Input Tester.exe").
+    return path.replace("\\", "__").replace("-", "_").replace(" ", "_")
 
 
 def create_data_for_file(path):
@@ -411,7 +412,7 @@ def create_shortcuts(doc, root, product_node):
     product = doc.find("Product")
     product.append(create_node(
         "Icon",
-        {"Id": "icon.ico", "SourceFile": "joystick_gremlin\gfx\icon.ico"}
+        {"Id": "icon.ico", "SourceFile": r"joystick_gremlin\gfx\icon.ico"}
     ))
 
     # Create shortcut folder
@@ -445,7 +446,7 @@ def create_shortcuts(doc, root, product_node):
         "RegistryValue",
         {
             "Root": "HKCU",
-            "Key": "Software\H2IK\JoystickGremlin",
+            "Key": r"Software\H2IK\JoystickGremlin",
             "Name": "installed",
             "Type": "integer",
             "Value": "1",

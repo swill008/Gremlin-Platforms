@@ -234,3 +234,14 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | Trace: end-to-end tests, 12 (E2E; found 3 real gaps) | test | ~18 min | 8 min | 20:54–21:02 |
 | 2026-10-09 | Trace: Trace tab, menu, red mode + 8 tests (UI) | feature | ~18 min | 8 min | 20:54–21:02 |
 | 2026-10-09 | Trace: lead fixes (watch start, import, ticks kept at restart) | fix | ~5 min | 8 min | 20:55–21:03 |
+| 2026-10-10 | Trace: Clear Trace File, Max size, Axis lines, typed numbers, Options panel (CLR) | feature | ~10 min (+3 requests) | 11 min | 02:49–03:00 |
+| 2026-10-10 | Trace options spec, 4 revisions (DOC2) | docs | ~6 min | 8 min | 02:49–02:57 |
+| 2026-10-10 | Full run + lint (1 settings-history flake, passed alone) (lead) | test | ~6 min | 6 min | 03:00–03:06 |
+| 2026-10-10 | Input Tester: contract + 7 agents briefed (lead) | plan | ~5 min | 3 min | 03:12–03:15 |
+| 2026-10-10 | Input Tester core, model, entry (TCORE) + 2 fixes | feature | ~20 min | 9 min | 03:15–03:24 |
+| 2026-10-10 | Input Tester window (TUI) | feature | ~20 min | 8 min | 03:15–03:23 |
+| 2026-10-10 | Second exe build, installer, dev build ~1 min (PACK) | feature | ~20 min | 5 min | 03:15–03:20 |
+| 2026-10-10 | expected.json, launch, result watch, Tools menu (LINK) | feature | ~20 min | 6 min | 03:15–03:21 |
+| 2026-10-10 | HidHide page tester buttons, path checks (HHPAGE) | feature | ~20 min | 8 min | 03:15–03:23 |
+| 2026-10-10 | Input Tester end-to-end tests, 10 (TE2E) | test | ~20 min | 6 min | 03:16–03:22 |
+| 2026-10-10 | Input Tester spec 02 S99-S114, 01 S152, Help (TDOC) | docs | ~18 min | 6 min | 03:16–03:22 |

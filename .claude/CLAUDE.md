@@ -23,7 +23,8 @@ section 12; where they disagree, the decision wins). The plan is
    at the shared owner, tests that drive the real path and fail on the old
    code, independent re-trace, build in a batch then test.
 5. Every commit that touches program code (`gremlin/`, `qml/`,
-   `action_plugins/`, `dill/`, `vigem/`, `joystick_gremlin.py`) has a line
+   `action_plugins/`, `dill/`, `vigem/`, `joystick_gremlin.py`,
+   `input_tester.py`) has a line
    `Spec: <page> <S/Q refs>` naming what it implements, or
    `Spec: none (no behaviour change)`. `test/unit/test_spec_line.py` fails
    otherwise.

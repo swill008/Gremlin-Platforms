@@ -39,6 +39,10 @@ ApplicationWindow {
         _split.saveRatio()
     }
 
+    // Path checks run on open and every 5 s while the page is shown.
+    onVisibleChanged: _hh.setPageOpen(visible)
+    Component.onCompleted: _hh.setPageOpen(visible)
+
     function titleOf(row) {
         var n = (row && row.name) ? String(row.name) : ""
         var u = n.toUpperCase()
@@ -209,6 +213,59 @@ ApplicationWindow {
                         Component.onCompleted: checked = shown
                         text: "Automatically Start"
                         onClicked: _hh.setStartOn(checked)
+                    }
+                }
+            }
+
+            // Input Tester (D-02-INPUT-TESTER): its message, an old tester
+            // entry and games running from a folder that isn't listed.
+            ColumnLayout {
+                objectName: "hidHideTesterWarnings"
+                Layout.fillWidth: true
+                spacing: Style.dp(4)
+                visible: _hh.testerMessage.length > 0 || _hh.testerPathProblem.length > 0
+                         || _hh.gamePathProblems.length > 0
+
+                Label {
+                    objectName: "hidHideTesterMessage"
+                    visible: _hh.testerMessage.length > 0
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Style.warn
+                    font.pixelSize: Style.dp(12)
+                    text: _hh.testerMessage
+                }
+
+                RowLayout {
+                    visible: _hh.testerPathProblem.length > 0
+                    Layout.fillWidth: true
+                    spacing: Style.dp(8)
+                    Label {
+                        objectName: "hidHideTesterPathProblem"
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: Style.warn
+                        font.pixelSize: Style.dp(12)
+                        text: _hh.testerPathProblem
+                    }
+                    Button {
+                        objectName: "hidHideUpdateTesterPath"
+                        text: "Update path"
+                        enabled: _hh.installed && _hh.gremlinControl
+                        onClicked: _hh.updateTesterPath()
+                    }
+                }
+
+                Repeater {
+                    model: _hh.gamePathProblems
+                    delegate: Label {
+                        required property string modelData
+                        objectName: "hidHideGamePathProblem"
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: Style.warn
+                        font.pixelSize: Style.dp(12)
+                        text: modelData
                     }
                 }
             }
@@ -450,10 +507,35 @@ ApplicationWindow {
                         text: "Programs"
                     }
 
-                    Button {
-                        text: "Add Program"
-                        enabled: _hh.installed
-                        onClicked: _pickExe.open()
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Style.dp(8)
+                        Button {
+                            text: "Add Program"
+                            enabled: _hh.installed
+                            onClicked: _pickExe.open()
+                        }
+                        Button {
+                            objectName: "hidHideAddTester"
+                            text: "Add Input Tester to the list"
+                            visible: _hh.testerPath.length > 0 && !_hh.testerOnList
+                                     && _hh.testerPathProblem.length === 0
+                            enabled: _hh.installed && _hh.gremlinControl
+                            onClicked: _hh.addInputTesterToList()
+                        }
+                        Button {
+                            objectName: "hidHideOpenTester"
+                            text: "Input Tester"
+                            onClicked: _hh.openInputTester()
+                        }
+                        Label {
+                            objectName: "hidHideTesterResult"
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            color: _hh.lastTesterFailed ? Style.dangerTextSoft : Style.fgMuted
+                            font.pixelSize: Style.dp(12)
+                            text: "Last Input Tester result: " + _hh.lastTesterResult
+                        }
                     }
 
                     RowLayout {

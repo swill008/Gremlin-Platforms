@@ -1336,6 +1336,21 @@ ApplicationWindow {
         id: _tracing
     }
 
+    // Tools › Input Tester… (main_commands.js, D-02-INPUT-TESTER): starts
+    // the separate tester program; a message when it can't.
+    InputTesterLink {
+        id: _inputTesterLink
+    }
+
+    function openInputTester() {
+        var message = _inputTesterLink.launch()
+        if (message.length) {
+            _notificationDialog.title = "Input Tester"
+            _notificationDialog.text = message
+            _notificationDialog.open()
+        }
+    }
+
     ColorInformation {
         id: colorInformation
     }
@@ -1608,6 +1623,7 @@ ApplicationWindow {
                 title: qsTr("Viewers")
                 ThemedMenuItem { command: "tools.vjoyViewer" }
                 ThemedMenuItem { command: "tools.xboxViewer" }
+                ThemedMenuItem { command: "tools.inputTester" }
             }
             ThemedMenu {
                 title: qsTr("Device Setup")

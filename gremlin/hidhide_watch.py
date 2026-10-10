@@ -44,6 +44,8 @@ _last: dict | None = None
 _standing: dict[str, str] = {}
 # HidHide device rows (list_hid_devices), read again after a device change.
 _rows: list[dict] | None = None
+# Game paths already warned about this watch run (D-02-INPUT-TESTER 9d).
+_said_paths: set[str] = set()
 
 
 # --- start / stop --------------------------------------------------------------
@@ -58,6 +60,13 @@ def _reset() -> None:
     _last = None
     _rows = None
     _standing.clear()
+    _said_paths.clear()
+
+
+def last_state() -> dict | None:
+    """The state the watch read last (None before its first read)."""
+    state = _last
+    return dict(state) if state is not None else None
 
 
 def start() -> None:
@@ -146,6 +155,45 @@ def _safe_check() -> None:
         check()
     except Exception:
         syslog.debug("HidHide watch failed", exc_info=True)
+
+
+# --- Input Tester (D-02-INPUT-TESTER 9c, 9d) -------------------------------------
+
+
+def tester_result(result: dict | None) -> None:
+    """A new Input Tester result: one HIDHIDE line while tracing with the
+    HidHide row (a warning on Fail)."""
+    if not result or not trace.enabled() or not trace.hidhide_ticked():
+        return
+    from gremlin import input_tester_link
+
+    text, fail = input_tester_link.result_text(result)
+    if text:
+        trace.hidhide(text, warning=fail)
+
+
+def _check_game_paths() -> None:
+    """A listed game's exe running from another folder: one warning per path."""
+    from gremlin import process_paths
+    from gremlin.ui import hidhide as hh
+
+    games = hh._load_games()
+    if not games:
+        return
+    for text in process_paths.game_path_problems(games, process_paths.running_images()):
+        key = text.casefold()
+        if key not in _said_paths:
+            _said_paths.add(key)
+            _warn(text)
+
+
+def _tell_tester() -> None:
+    try:
+        from gremlin import input_tester_link
+
+        input_tester_link.hidhide_changed()
+    except Exception:
+        syslog.debug("HidHide watch: Input Tester not told", exc_info=True)
 
 
 # --- the check -----------------------------------------------------------------
@@ -348,6 +396,10 @@ def check() -> None:
     if not _check_lock.acquire(timeout=INTERVAL):
         return
     try:
+        try:
+            _check_game_paths()
+        except Exception:
+            syslog.debug("HidHide watch: game path check failed", exc_info=True)
         state = hidhide_driver.read_state()
         if state is None:
             if hidhide_driver.last_open_error() == hidhide_driver.ERROR_ACCESS_DENIED:
@@ -363,7 +415,10 @@ def check() -> None:
             trace.hidhide(_summary(state))
         else:
             _compare_changes(_last, state, marks)
+        changed = _last is not None and _last != state
         _last = state
+        if changed:
+            _tell_tester()
         standing = _saved_differences(state)
         standing.update(_not_hidden(state["devices"]))
         _stand(standing)

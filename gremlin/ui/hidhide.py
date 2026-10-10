@@ -6,6 +6,7 @@ The driver client and the device list are in gremlin.hidhide_driver."""
 
 from __future__ import annotations
 
+import datetime
 import json
 import logging
 import os
@@ -14,7 +15,8 @@ from pathlib import Path
 
 from PySide6 import QtCore, QtGui
 
-from gremlin import config, event_handler, hidhide_driver
+import gremlin.ui.type_aliases as ta
+from gremlin import config, event_handler, hidhide_driver, process_paths
 from gremlin.hidhide_driver import (
     _display_name,
     _full_image_name,
@@ -33,7 +35,6 @@ from gremlin.hidhide_driver import (
     set_whitelist,
 )
 from gremlin.types import PropertyType
-import gremlin.ui.type_aliases as ta
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -619,6 +620,62 @@ def _sorted_devices(rows: list[dict]) -> list[dict]:
     return sorted(rows, key=key)
 
 
+def _link():  # noqa: ANN202
+    """gremlin.input_tester_link, or None when it isn't there."""
+    try:
+        from gremlin import input_tester_link
+    except ImportError:
+        return None
+    return input_tester_link
+
+
+def _tell_link_hidhide_changed() -> None:
+    """A running Input Tester gets a new expected.json after a page edit."""
+    link = _link()
+    if link is None:
+        return
+    try:
+        link.hidhide_changed()
+    except Exception:
+        logging.getLogger("system").exception("Input Tester expected list not updated")
+
+
+def _tester_path() -> str:
+    link = _link()
+    if link is None:
+        return ""
+    try:
+        path = link.tester_path()
+    except Exception:
+        logging.getLogger("system").exception("Input Tester path failed")
+        return ""
+    return str(path) if path else ""
+
+
+def _result_line(result: dict | None) -> tuple[str, bool]:
+    """'Last Input Tester result' text and whether it is a Fail."""
+    if not result:
+        return "never run", False
+    verdict = str(result.get("verdict") or "")
+    written = str(result.get("written") or "")
+    clock_text = ""
+    try:
+        clock_text = datetime.datetime.fromisoformat(written).strftime("%H:%M")
+    except ValueError:
+        pass
+    head = {"pass": "✓ Pass", "fail": "✗ Fail"}.get(
+        verdict, "Nothing to compare"
+    )
+    if clock_text:
+        head += f", {clock_text}"
+    summary = str(result.get("summary") or "").strip()
+    return (f"{head} · {summary}" if summary else head), verdict == "fail"
+
+
+def _same_path(a: str, b: str) -> bool:
+    return os.path.normcase(os.path.normpath(a)) == os.path.normcase(os.path.normpath(b))
+
+
 def _looks_vjoy(row: dict) -> bool:
     name = str(row.get("name") or "").lower()
     instance = str(row.get("instanceId") or "").upper()
@@ -649,6 +706,21 @@ class HidHideModel(QtCore.QObject):
         self.reload()
         # A stick plugged in or out shows (or leaves) the list while open.
         event_handler.EventListener().device_change_event.connect(self.reload)
+        # Input Tester (02 D-02-INPUT-TESTER): last result, path checks.
+        self._tester_message = ""
+        self._game_problems: list[str] = []
+        self._tester_problem = ""
+        self._result_text, self._result_failed = _result_line(None)
+        self._path_timer = QtCore.QTimer(self)
+        self._path_timer.setInterval(5000)
+        self._path_timer.timeout.connect(self._check_paths)
+        self._read_result()
+        link = _link()
+        if link is not None:
+            try:
+                link.watcher().resultChanged.connect(self._read_result)
+            except Exception:
+                logging.getLogger("system").exception("Input Tester watcher not connected")
 
     def reload(self) -> None:
         self._present = driver_present()
@@ -766,6 +838,7 @@ class HidHideModel(QtCore.QObject):
         self._last_error = ""
         self._sync_whitelist()
         self.reload()
+        _tell_link_hidhide_changed()
         return True
 
     @QtCore.Property(bool, notify=changed)
@@ -821,6 +894,7 @@ class HidHideModel(QtCore.QObject):
         else:
             _clear_managed()
         self.reload()
+        _tell_link_hidhide_changed()
         return True
 
     @QtCore.Property(bool, notify=changed)
@@ -846,6 +920,7 @@ class HidHideModel(QtCore.QObject):
         self._last_error = ""
         _save_cloak(bool(on))
         self.reload()
+        _tell_link_hidhide_changed()
         return True
 
     @QtCore.Slot(str, bool, result=bool)
@@ -880,6 +955,7 @@ class HidHideModel(QtCore.QObject):
         _save_hidden(kept)
         self._last_error = ""
         self.reload()
+        _tell_link_hidhide_changed()
         return True
 
     @QtCore.Slot(str, str, result=bool)
@@ -895,6 +971,7 @@ class HidHideModel(QtCore.QObject):
         self._games = rows
         self._sync_whitelist()
         self.changed.emit()
+        _tell_link_hidhide_changed()
         return True
 
     @QtCore.Slot(str, result=bool)
@@ -904,6 +981,7 @@ class HidHideModel(QtCore.QObject):
         self._games = rows
         self._sync_whitelist()
         self.changed.emit()
+        _tell_link_hidhide_changed()
         return True
 
     @QtCore.Slot(str, str, result=bool)
@@ -953,6 +1031,124 @@ class HidHideModel(QtCore.QObject):
         if not self._present:
             return
         apply_saved_list()
+
+    # Input Tester ---------------------------------------------------------
+
+    def _read_result(self) -> None:
+        link = _link()
+        result = None
+        if link is not None:
+            try:
+                result = link.last_result()
+            except Exception:
+                logging.getLogger("system").exception("Input Tester result not read")
+        line = _result_line(result)
+        if line != (self._result_text, self._result_failed):
+            self._result_text, self._result_failed = line
+            self.changed.emit()
+
+    def _check_paths(self) -> None:
+        """Wrong game copies running, old tester entry; and the result again
+        in case its watch was missed."""
+        try:
+            images = process_paths.running_images()
+        except Exception:
+            logging.getLogger("system").exception("Process list failed")
+            images = []
+        games = process_paths.game_path_problems(self._games, images)
+        tester = process_paths.tester_path_problem(
+            [r["path"] for r in self._games], _tester_path()
+        )
+        if games != self._game_problems or tester != self._tester_problem:
+            for line in games:
+                if line not in self._game_problems:
+                    _hh_log(f"game path: {line}", logging.WARNING)
+            self._game_problems = games
+            self._tester_problem = tester
+            self.changed.emit()
+        self._read_result()
+
+    @QtCore.Slot(bool)
+    def setPageOpen(self, open_: bool) -> None:
+        """The page checks paths when shown and every 5 s while shown."""
+        if open_:
+            self._check_paths()
+            self._path_timer.start()
+        else:
+            self._path_timer.stop()
+
+    @QtCore.Property(str, notify=changed)
+    def lastTesterResult(self) -> str:
+        return self._result_text
+
+    @QtCore.Property(bool, notify=changed)
+    def lastTesterFailed(self) -> bool:
+        return self._result_failed
+
+    @QtCore.Property(list, notify=changed)
+    def gamePathProblems(self) -> list:
+        return list(self._game_problems)
+
+    @QtCore.Property(str, notify=changed)
+    def testerPathProblem(self) -> str:
+        return self._tester_problem
+
+    @QtCore.Property(str, notify=changed)
+    def testerPath(self) -> str:
+        return _tester_path()
+
+    @QtCore.Property(bool, notify=changed)
+    def testerOnList(self) -> bool:
+        current = _tester_path()
+        return bool(current) and any(_same_path(r["path"], current) for r in self._games)
+
+    @QtCore.Property(str, notify=changed)
+    def testerMessage(self) -> str:
+        return self._tester_message
+
+    @QtCore.Slot(result=str)
+    def openInputTester(self) -> str:
+        link = _link()
+        if link is None:
+            message = (
+                "The Input Tester isn't built. From the program folder run: "
+                "python tools/build_input_tester.py"
+            )
+        else:
+            try:
+                message = link.launch() or ""
+            except Exception as exc:
+                logging.getLogger("system").exception("Input Tester launch failed")
+                message = f"The Input Tester didn't start: {exc}"
+        self._tester_message = message
+        self.changed.emit()
+        return message
+
+    @QtCore.Slot(result=bool)
+    def addInputTesterToList(self) -> bool:
+        current = _tester_path()
+        if not self._present or not _hidhide_managed() or not current:
+            return False
+        if not self.addGame("Gremlin Input Tester", current):
+            return False
+        self._check_paths()
+        return True
+
+    @QtCore.Slot(result=bool)
+    def updateTesterPath(self) -> bool:
+        current = _tester_path()
+        if not self._present or not _hidhide_managed() or not current:
+            return False
+        old = process_paths.old_tester_entry([r["path"] for r in self._games], current)
+        if not old:
+            return False
+        name = next((r["name"] for r in self._games if r["path"] == old), "")
+        self._games = [r for r in self._games if r["path"] != old]
+        if not self.addGame(name or "Gremlin Input Tester", current):
+            return False
+        _hh_log(f"tester path updated {old} -> {current}", logging.INFO)
+        self._check_paths()
+        return True
 
 
 def apply_on_start() -> None:
