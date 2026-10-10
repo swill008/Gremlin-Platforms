@@ -1,6 +1,6 @@
 # Actions and their editors
 
-Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them before a step starts. The ownership side (drafts, removal rules, Undo snapshots, shared actions) is in `claude/system-maps.md` map 2; this page points to it rather than repeating it.
+Mapped against code at 4f6bdfa4 (6 Oct). S60a, S112-S119 (D-05-R16, Joystick Gremlin R16 fixes and findings) and S85, S97 changed added 10 Oct, with sections 2-5, 10 and 11 from the program agents' notes. Line numbers drift; re-check them before a step starts. The ownership side (drafts, removal rules, Undo snapshots, shared actions) is in `claude/system-maps.md` map 2; this page points to it rather than repeating it.
 
 ## 1. Purpose
 
@@ -12,8 +12,8 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 |---|---|
 | `gremlin/plugin_manager.py` (320) | `PluginManager` (singleton): finds plugins in `action_plugins/` and the user plugin folder, checks them (`_check_plugin`), registers each model as a QML type in `Gremlin.ActionPlugins`, lookup tables by name, tag and input type; `create_instance` (the one "new action" call, adds to `current_profile.library`). |
 | `gremlin/base_classes.py` (737) | `AbstractActionData` (id, label, press/release mode, `from_xml`/`to_xml`, `is_valid` from `user_feedback`, containers, `clone`, `copy_unfinished`), `AbstractFunctor` (builds child functors, `_process_event`, `_pulse_event` 50 ms pulses, `_should_execute`), `flush_pulses` (Stop). |
-| `gremlin/profile.py` (2722; `Library` 337-771, `InputItem` 1328, `InputItemBinding` 1415, `Profile` 844-1326) | The library of action objects, `clone_action` (drafts), `pick_list`, `remove_unused`, `drop_unused_actions`, `input_snapshot`/`put_input` (Undo), `drop_invalid_actions`/`unfinished_actions` (Save). Owned by the Profile page; map 2 covers it. |
-| `gremlin/ui/action_model.py` (473) | `ActionModel` (QML base for every action editor: label, press/release, `compatibleActions`, `appendAction`, `removeAction`, `dropAction`), `SequenceIndex`, unused `ActionPriorityListModel`. |
+| `gremlin/profile.py` (3063 from 2026-10-10, was 2722; `vjoy_outputs_used(mode)`, the "used" rule for S115 and 08 S94/S109; `Library` 337-771, `InputItem` 1328, `InputItemBinding` 1415, `Profile` 844-1326) | The library of action objects, `clone_action` (drafts), `pick_list`, `remove_unused`, `drop_unused_actions`, `input_snapshot`/`put_input` (Undo), `drop_invalid_actions`/`unfinished_actions` (Save). Owned by the Profile page; map 2 covers it. |
+| `gremlin/ui/action_model.py` (478) | `ActionModel` (QML base for every action editor: label, press/release, `compatibleActions`, `appendAction` (from 2026-10-10 calls the new action's `start_new` for its starting output, S115), `removeAction`, `dropAction`), `SequenceIndex`, unused `ActionPriorityListModel`. |
 | `gremlin/ui/profile.py` (lines 55-770) | `VirtualButtonModel` (axis/hat used as a button), `HatDirectionModel`, `InputItemBindingModel` (one binding: action tree models, move/remove/append, Treat as), `InputItemModel` (an input's bindings; delete, reorder). |
 | `gremlin/ui/binding_catalog.py` (1208) | `BindingCatalogModel`: Configuration page rows (parent per input, child per binding), Type/Output filters, the action pane draft (`beginPane`, `paneDirty`, `commitPane`, `discardPane`, `endPane`), list Delete (`removeSequence`), Undo/Redo (50 steps; each step carries a label, read by the Undo bar through `lastChange`, `undone`, `undoTip`, `redoTip`, signal `undoChanged`). Row text helpers `summarize_action`, `collect_leaves`, `_TYPE_LABELS`. |
 | `gremlin/ui/device.py` (lines 48-97, 773-958) | `KeyboardManagerModel` (Keyboard page list: keys once, this mode's actions, Add Key, Delete), row icon text `_generate_action_sequence_descriptor`. |
@@ -23,7 +23,13 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | `gremlin/ui/backend.py` (451-487) | `getInputItem` (editor model for the selected input, used by the Keyboard page), action fold state `isActionExpanded`/`setIsActionExpanded`. |
 | `gremlin/ui/option.py` (504-620) | `ActionSequenceOrdering`: Options > Actions > Add Action Menu (order and shown/hidden). |
 | `gremlin/ui/window_placement.py` (27-28, 435-450) | Pane settings `close-pane-after-ok`, `action-pane-width`. |
-| `gremlin/ui/util.py` (294-435) | `MacroRecorder` (Macro editor Record). |
+| `gremlin/ui/util.py` (715 lines in all; 294-435) | `MacroRecorder` (Macro editor Record); from 2026-10-10 the `InputListenerModel` recorder keeps a key combination's press order, modifiers first (S119). |
+| `gremlin/keyboard.py` (441; owned by page 02) | `modifier_keys()` includes the Win keys from 2026-10-10 (S85). |
+| `gremlin/macro_raw.py` (68; new 2026-10-10, D-05-R16) | `RawMacroStep` (`unknown_type`, `unreadable`): a macro step that can't be read or is of an unknown type. Keeps the original XML element; `to_xml()` returns a copy of it unchanged; does nothing at Run; `problem` text for the editor ("Unknown step type 'X': kept as it was, does nothing.", "This key step can't be read (…): kept as it was, does nothing.") and the rule checks (S117). |
+| `gremlin/validate.py` (568; owned by page 01) | from 2026-10-10 `_check_macros`: PROFILE-MACRO-STEP-UNREADABLE, a warning per unreadable macro step (S117). |
+| `gremlin/ui/output_modules.py` (310; owned by page 03) | Map to vJoy output picker; from 2026-10-10 offers only claimed ids the vJoy device really has (S118, same check as the Auto Mapper). |
+| `gremlin/macro.py` (1333; owned by page 06) | Macro steps; from 2026-10-10 new button steps start on Pressed and a new vJoy step on `first_claimed_output` (S113, S116); `create()` stays load-safe. |
+| `gremlin/modules/output.py` (892; `first_claimed_output`, `vjoy_driver_ids`, `driver_claim`, new 2026-10-10; owned by page 03/06) | `first_claimed_output(kinds, exclude)` → (vJoy id, kind, input id) or None: the first output a vJoy output module claims (vJoy number order, kinds in the order given, ids ascending; only output vJoy devices; only ids the driver has). Used by new Condition vJoy checks, Map to vJoy and the macro editor's new vJoy step (S113, S115). |
 | `joystick_gremlin.py` (663-666, 840-862, 924-926) | Registers `action-priorities`; `update_action_priorities` at start; plugin manager start. |
 | `qml/BindingCatalog.qml` (2225) | Configuration page: filters, Undo/Redo (the shared `UndoBar` `catalogUndoBar`: "Last change" / "Undone", named steps), rows, Delete (red `DangerButton` `catalogDelete`, asks the shared question "Delete Action")/History/Add Action buttons, picture chooser `FilePicker` kind "picture", pane (title, X, OK, "Close pane after OK", width grip), leave/discard prompts, Appearance panel (owned by the Configuration Appearance page). |
 | `qml/InputConfiguration.qml` (301) | Shows an `InputItemModel`: list of `InputItemBinding` (pane, Keyboard page) or inline mode. |
@@ -40,38 +46,38 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | `action_plugins/common.py` (160) | Shared helpers: `joystick_label`, `RelativeAxisLoop` (the Relative axis loop of Map to vJoy and Map to Logical Device, registered with `run_scope`). |
 | `action_plugins/axis_pair.py` (143) | What Merge Axis and Dual Axis Deadzone share: the two axes kept as plain values (RB7) and the editor's instance pick list, "+" and switching (RB14). |
 | `gremlin/unknown_action.py` (149), `qml/UnknownAction.qml` (28) | An action of a type this program doesn't have (user plugin removed or failed): kept as the file had it, saved back, does nothing at Run (04 Q7). |
-| `gremlin/spline.py` (559) | Curve maths for Response Curve: piecewise linear, cubic spline, cubic Bezier. |
+| `gremlin/spline.py` (559) | Curve maths for Response Curve: piecewise linear, cubic spline, cubic Bezier. From 2026-10-10 a Cubic Spline passes through its control points (S112). |
 | `qml/ButtonStateSelector.qml` (14), `qml/NumericalRangeSlider.qml` (149) | Shared editor pieces: press/release picker (Macro, Condition); two-handle range slider (Response Curve deadzone, binding header). |
 | `action_plugins/<name>/__init__.py` + `<Name>Action.qml` | 26 plugin folders (25 actions + Root), listed below and in section 3 table B. |
 | `qml/help/configuration_actions.js` | Help chapter: adding actions, choosing an action, one topic per action (the Help book is on page 01). |
 | Tests | see section 11. |
 
 **Plugin folders** (lines: Python + QML/JS)
-- `action_plugins/map_to_vjoy/` (499): send an axis, button or hat to a vJoy output; Relative axis mode.
+- `action_plugins/map_to_vjoy/` (499; `__init__.py` 407 from 2026-10-10): send an axis, button or hat to a vJoy output; Relative axis mode. A new one starts on the first claimed output not used in this mode (S115).
 - `action_plugins/map_to_xbox/` (477): send to a button, trigger, stick or D-pad of an Xbox 360 output.
 - `action_plugins/map_to_logical_device/` (467): send to a Logical Device input; Relative axis mode.
 - `action_plugins/map_to_keyboard/` (252): press keys while the input is held.
-- `action_plugins/map_to_mouse/` (693): mouse button, wheel or motion.
+- `action_plugins/map_to_mouse/` (693; `__init__.py` 418 from 2026-10-10): mouse button, wheel or motion; motion through `MouseMotionManager` (page 06, S72, S88-S90).
 - `action_plugins/response_curve/` (1259): reshape an axis with a curve and deadzones (curve editor, handle and point controls).
 - `action_plugins/split_axis/` (339): send each half of an axis to its own action list.
-- `action_plugins/merge_axis/` (671): combine two axes into one (shared, Reuse by default).
+- `action_plugins/merge_axis/` (671; `__init__.py` 411 from 2026-10-10, `MergeAxisAction.qml` unchanged): combine two axes into one (shared, Reuse by default). The `_NAMES` table is the one source of stored and shown operation names (`MergeOperation.to_display`); Maximum Deflection added (S114).
 - `action_plugins/dual_axis_deadzone/` (652): round inner / square outer deadzone over two axes.
 - `action_plugins/axis_delta/` (358): run Positive or Negative actions each time an axis moves by a step.
 - `action_plugins/hat_buttons/` (443): each hat direction runs its own action list (4 or 8 way).
-- `action_plugins/condition/` (1963): run the TRUE or FALSE list by the state of inputs, keys, vJoy or Logical Device.
+- `action_plugins/condition/` (1963; from 2026-10-10 `__init__.py` 388, `comparator.py` 287, `condition.py` 845; new button/key checks start on Pressed, a new vJoy check on `first_claimed_output` via `ConditionModel.addCondition`, S113, S116): run the TRUE or FALSE list by the state of inputs, keys, vJoy or Logical Device.
 - `action_plugins/chain/` (337): each press runs the next sequence; timeout back to the first.
-- `action_plugins/double_tap/` (514): single tap and double tap run different lists.
+- `action_plugins/double_tap/` (514; `__init__.py` 347 from 2026-10-10): single tap and double tap run different lists.
 - `action_plugins/tempo/` (506): short press and long press run different lists.
 - `action_plugins/smart_toggle/` (293): quick press latches, hold acts while held.
-- `action_plugins/macro/` (1948): play a recorded or built sequence of keys, buttons, axes, mouse and pauses.
+- `action_plugins/macro/` (1948; from 2026-10-10 `__init__.py` 1218, `MacroAction.qml` 855: "Unreadable step" rows, `MacroData.unreadable_steps()`, `MacroModel.removeStep`, S113, S117): play a recorded or built sequence of keys, buttons, axes, mouse and pauses.
 - `action_plugins/change_mode/` (563): switch, cycle, go back or hold a mode.
-- `action_plugins/reference/` (267): placeholder that picks an existing action to share or duplicate; never runs or saves.
+- `action_plugins/reference/` (267; `__init__.py` 209 from 2026-10-10): placeholder that picks an existing action to share or duplicate; never runs or saves; never offers an input's Root (S60a).
 - `action_plugins/load_profile/` (261): open another profile and run it.
 - `action_plugins/pause_resume/` (239): pause, resume or toggle the running profile.
 - `action_plugins/play_sound/` (287): play a sound file.
 - `action_plugins/text_to_speech/` (383): speak a text.
 - `action_plugins/send_osc/` (new 2026-10-09, D-09-OSC-OUTPUT): Send OSC, send one OSC message to a target (09 S98-S101); the functor calls `gremlin/osc_output.send`. Spec here: S109-S111.
-- `action_plugins/run_command/` (295): start a program with arguments.
+- `action_plugins/run_command/` (295; `__init__.py` 202 from 2026-10-10): start a program with arguments; a program that can't be started is reported once in the user log through `gremlin.log_once` (S97).
 - `action_plugins/description/` (202): a note; does nothing.
 - `action_plugins/root/` (175): internal top of every binding; runs its children in order.
 
@@ -208,6 +214,9 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | Device list (`device_initialization.output_vjoy_devices`) | calls out | Map to vJoy `can_create` and default device; catalog `vjoyDevices` (unused) |
 | Logical Device (`gremlin/logical_device`, `ui/logical_layout.py`) | both | Map to Logical Device writes it; Logical page reuses `InputConfiguration`, `InputItemModel`, `clone_action` drafts with its own copy of the pane code |
 | Macro engine (`gremlin/macro.py`) | calls out | Macro, Map to Keyboard |
+| Output layer (`gremlin/modules/output.py`) | calls out | `first_claimed_output` (macro plugin, Condition, Map to vJoy, S113, S115); the picker's driver-id check (S118) |
+| Unreadable macro steps (`gremlin/macro_raw.py`) | calls out | the macro plugin imports it; `validate._check_macros` reports them (S117) |
+| Logging (`gremlin.log_once`) | calls out | Run Command's "can't be started" line, once, in the user log (no longer the system log) (S97) |
 | Windows input (`gremlin/sendinput.py`, `keyboard.py`) | calls out | Map to Mouse; macro key/mouse steps; no output module in between |
 | Event system (`event_handler`) | both | Macro Joystick step and Map to Logical Device emit events; Pause and Resume; macro recording listens raw |
 | Mode manager | calls out | Change Mode, TTS `${current_mode}`, Logical events stamped with mode |
@@ -342,6 +351,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S57** The Merge Axis and Deadzone lists should offer the one being edited, the new one from "+", and those an input uses; never deleted or replaced ones; a pane copy hides its original. [tracker: AU-110] [test: test_audit3_actions_undo.py::test_merge_axis_list_shows_the_one_being_edited] [test: test_audit3_actions_undo.py::test_reference_list_offers_the_pane_copy_not_the_original]
 - **S58** "+" should make a new instance, select it, and leave a shared one finished. [test: test_audit3_actions_undo.py::test_new_merge_axis_leaves_a_shared_one_finished] [test: test_action_editor_fixes.py::test_a_new_merge_axis_gets_the_next_free_name]
 - **S59** Merge Axis (and Deadzone): choosing an existing one to share it should keep the shared action's own name. [reworded 2026-10-09, user approved: "Reuse" never appears on screen] [tracker: ACT18] [test: test_action_editor_fixes.py::test_reuse_keeps_the_shared_actions_name]
+- **S60a** The Reference list should never offer an input's Root (the hidden action that holds an input's actions). [user decision 2026-10-10: D-05-R16 (R5)]
 - **S60** Reference should let you share an existing action of the same input type (both inputs use the same action) or Duplicate it (an independent copy of it and everything inside). [help: Reference] [test: test_audit3_actions_undo.py::test_reference_duplicate_copies_every_nested_action]
 - **S61** Reference picked then Cancel should keep the profile loadable; picked then OK replaces the placeholder. [tracker: AU-110] [test: test_audit3_actions_undo.py::test_reference_picked_in_the_pane_then_ok_replaces_the_placeholder]
 - **S62** OK on an action two inputs share should change it for both. [user decision: pending A1, recommended] (today it splits them: AU-118, `test_audit3_actions_undo.py:478-498` asserts the split)
@@ -376,7 +386,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S82** Map to vJoy should write only claimed outputs; an unclaimed one is blocked and logged once per Run. [test-plan: P2b] [help: Map to vJoy]
 - **S83** Map to vJoy Relative should move the axis while the input is off-centre, at Speed; it stops when someone else changes that axis or the input rests for 1 s. [help: Map to vJoy] [user confirmed 2026-10-06; was code only for the stop rules]
 - **S84** Map to Xbox: buttons/keys/hats on a trigger give full when pressed and 0 when released; a hat moves a stick in its direction. [tracker: DEV7]
-- **S85** Map to Keyboard should hold the keys while the input is held, modifiers first, and release them on release. [help: Map to Keyboard] [test: action_interaction/test_map_to_keyboard.py]
+- **S85** Map to Keyboard should hold the keys while the input is held and release them on release; modifiers (Shift, Ctrl, Alt, Win) are pressed first, then the other keys. [help: Map to Keyboard] [test: action_interaction/test_map_to_keyboard.py] [changed 2026-10-10, user: D-05-R16 (R4): the Win key counts as a modifier]
 - **S86** Map to Mouse wheel should send once per press. [help: Map to Mouse]
 - **S87** Merge Axis and Dual Axis Deadzone should read their axes through the input modules; an unclaimed axis reads centred. [test-plan: P3c]
 - **S88** Split Axis should send the side it leaves its rest value (-1) and work at any split value, 1.0 included. [tracker: ACT4, ACT5]
@@ -388,7 +398,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S94** Load Profile should not load over unsaved changes, and should say why. [tracker: AU-15]
 - **S95** Pause should stop all actions except Pause and Resume itself (it always runs). [help: Pause and Resume] [user confirmed 2026-10-06; was code only for "itself"]
 - **S96** Play Sound should queue the file and play it at the volume; overlapping sounds follow Options > Actions > Play Sound. [help: Play Sound] [tracker: APP6]
-- **S97** Run Command should start the program with your own permissions; arguments split on spaces with quotes kept together. [help: Run Command]
+- **S97** Run Command should start the program with your own permissions; arguments split on spaces with quotes kept together. A program that can't be started is reported once in the user log; nothing else happens. [help: Run Command] [changed 2026-10-10, user: D-05-R16 (R2): the failure is reported once, nothing else happens]
 - **S98** Description should do nothing when the input fires. [help: Description]
 - **S99** Run should not run unfinished actions. [user confirmed 2026-10-06; was code only: today it does, RB19, Q3]
 - **S100** Keys and buttons held by Map to Keyboard, Map to Mouse and macros should be released at Stop. [tracker: AU-111] (macro stuck-driver case still open: AU-117)
@@ -403,6 +413,20 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S106** Renamed / twin: actions are keyed by device id, so a renamed or second identical stick keeps its own actions. [test-plan: TWIN-DEVICES]
 - **S107** Damaged: a profile with a broken action reference opens; a Undo step that can't be read is kept and reported. [tracker: ACT1] [test-plan: AUDIT2-B-UNDO]
 - **S108** Crash: OK'd edits not saved are lost on a crash (no recovery copy for profiles). [user confirmed 2026-10-06; was code only]
+
+### L. Joystick Gremlin R16 fixes and findings (D-05-R16, 2026-10-10)
+
+Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of this batch (G-a, G-b).
+
+- **S112** A Cubic Spline curve should pass through its control points. [user decision 2026-10-10: D-05-R16 (R3)]
+- **S113** A new vJoy macro step or a new vJoy condition should start on the first output a vJoy output module claims (`first_claimed_output`). With none claimed, each editor keeps its own way: the macro editor adds the step with a notice; the condition editor refuses with a notice. [user decision 2026-10-10: D-05-R16 (R6)]
+- **S114** Merge Axis should have a **Maximum Deflection** operation: the axis furthest from centre wins; a tie goes to axis 2. "Prefer Center" keeps its name. Stored name `maximum-deflection`; existing stored names (`prefercenter` etc.) are unchanged. [user decision 2026-10-10: D-05-R16 (R7)] [glossary: Maximum Deflection]
+- **S115** A new Map to vJoy should start on the first claimed output not used in this mode (the same "used" rule as the Auto Mapper, 08 S94, S109); when all are used, the first claimed output; with none claimed, the default doesn't change. [user decision 2026-10-10: D-05-R16 (R8)]
+- **S116** New Condition button and key checks, and new macro Joystick, Keyboard, Logical Device, Mouse Button and vJoy button steps, should start on **Pressed**. [user decision 2026-10-10: D-05-R16 (R11b)]
+- **S117** A macro step that can't be read, or is of an unknown type, should not stop the profile opening: it is kept unchanged (saved back as it was), does nothing at Run, and the macro editor and the rule checks say so. Save should keep a Logical Device step whose control is missing; only steps that were never filled in are dropped. [user decision 2026-10-10: D-05-R16 (R11c)]
+- **S118** The vJoy output picker should only offer claimed ids the vJoy device really has (the same check as the Auto Mapper). [user decision 2026-10-10: D-05-R16 (G-a)]
+- **S119** A recorded key combination should keep the order the keys were pressed in, with modifiers still first (S85). [user decision 2026-10-10: D-05-R16 (G-b)]
+- R11a and R11d: no behaviour change. [user decision 2026-10-10: D-05-R16]
 
 ### K. Send OSC
 
@@ -462,6 +486,10 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | G21 | Help says Merge Axis operation "Prefercenter"; the editor shows "Prefer Center". Fixed: the Help book says "Prefer Center" | `help_topics.js:143`, `merge_axis:198` |
 | G22 | Binding warnings use `time.time()` (RB11, Q19); Chain no longer does | `ui/profile.py:570` |
 | G23 | "Reuse" (S59) never appears on screen (to-do 56) | `merge_axis`, `MergeAxisAction.qml` |
+| R11c | Save drops a macro Logical Device step whose control is missing; a step that can't be read stops the profile opening (S117). Fixed 2026-10-10 (this batch). Not verified: a device swap doesn't update a raw Joystick step | `gremlin/macro.py`, `gremlin/macro_raw.py`, `action_plugins/macro/` |
+| R5 | The Reference list offers an input's Root (S60a). Fixed 2026-10-10 (this batch) | `action_plugins/reference/` |
+| G-a | The vJoy output picker offers claimed ids the vJoy device doesn't have (S118). Fixed 2026-10-10 (this batch) | `gremlin/ui/output_modules.py`, `gremlin/modules/output.py` |
+| G-b | A recorded key combination loses the order the keys were pressed in (S119). Fixed 2026-10-10 (this batch) | `gremlin/ui/util.py`, `gremlin/keyboard.py` |
 
 **Open tracker items for this part**
 
@@ -496,6 +524,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - Configuration page: `test_binding_catalog`, `test_catalog_actions`, `test_catalog_display`, `test_catalog_undo`, `test_undo_bar_labels` (catalog step labels), `test_config_pages_shared_pieces` (Keyboard Delete Key asks the shared question), `test_pane_draft`, `test_audit_editing`, `test_audit2_undo`, `test_audit3_actions_undo`, `test_profile_unused_actions`, `test_library_invalid_children`, `test_profile_missing_child_action`.
 - Editing models: `test_input_item_binding_model` (Treat as), `test_vjoy_selector_loads`.
 - Keyboard page: `test_mode_refresh_and_add_key`, `test_audit2_keyboard_calibration`, `test_keyboard_gate`.
+- R16 fixes and findings (S60a, S85, S97, S112-S119; 2026-10-10): `test_splines` (3 new: control points), `test_action_merge` (round trip, stored name), `action_interaction/test_merge_axis.py::test_maximum_deflection` (its fixture's axis 1 / axis 2 swap fixed), `test_action_editor_fixes` (operation names and list), `test_action_run_command` (2 new), `test_map_to_keyboard_recording.py` (new: S85, S119), `test_core_plugins_paths.py` (new, 42 lines), `test_audit3_actions_undo` (2 new: Reference never offers Root), `test_macro_raw_steps.py` (new, 388 lines: S117, S113 macro part), `test_new_action_defaults.py` (new, 18: S113 condition part, S115, S116, S118).
 - Unknown action type kept: `test_data_safety`; curves: `test_splines`; Merge Axis fit: `test_handson_G2_merge_axis_fit`.
 - Options list: `test_option_list_saving`, `test_options_layout`; text: `test_glossary_words`, `test_help_guide`.
 
@@ -539,6 +568,7 @@ are replaced by Q5 and Q10 below. Every question answered as recommended:
 | Q19 | Chain moves to gremlin.clock; the UI rate limit stays |
 | Q20 | Catalog Delete asks (as the code does); test-plan IC-06 marked superseded |
 | S43 | 2026-10-07 (D-05-S43-BOTHROWS): the Note shows on the Configuration list's input row and the Keyboard page's key row |
+| S60a, S112-S119, S85 and S97 changed | 2026-10-10 (D-05-R16; user approved R1-R11 and G-a, G-b): R16 fixes and findings (section 8 L) |
 | S109-S111 | 2026-10-09 (D-09-OSC-OUTPUT; user: "go with your recommendations, approved, go ahead"): the Send OSC action |
 
 The section 8 statements (with the replacements above) are now the

@@ -1,6 +1,6 @@
 # Run time and outputs
 
-Mapped read-only against the code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them before a step starts. Lifecycle parts follow `claude/system-maps.md` map 3 (rows A-R there); this page adds the outputs, the Logical Device, sound and speech, the Run/Stop UI and the gaps around them.
+Mapped read-only against the code at 4f6bdfa4 (6 Oct). S88-S91 (D-06-MOUSE, D-06-START-SKIP) and S72, S86 changed added 10 Oct, with sections 2-5, 10 and 11 from the program agents' notes. Line numbers drift; re-check them before a step starts. Lifecycle parts follow `claude/system-maps.md` map 3 (rows A-R there); this page adds the outputs, the Logical Device, sound and speech, the Run/Stop UI and the gaps around them.
 
 ## 1. Purpose
 
@@ -10,10 +10,10 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 
 **Run lifecycle**
 - `gremlin/run_scope.py` (438): what one Run holds and the Stop that lets go of it (map 3, GL-046, batch 1 d68f4d88). The one Run number (`number`, `alive`), `begin` / `stop`, Run timers (`timer`, cancelled at Stop or fired with at_stop="fire"), loops (`loop`), held keys and mouse buttons (`hold`, `let_go`, `release_owner`, `owning`), `on_stop` steps in Stop stages (CUT_INPUT, CANCEL, FIRE_PENDING, END_WORK, RELEASE_HELD, NEUTRAL, ...). Only `CodeRunner` calls `begin` / `stop`; `test_run_scope_only.py` guards that.
-- `gremlin/code_runner.py` (634 lines): `CodeRunner.start/stop`, the Run number (`run_number`), `CallbackObject` (one per action sequence), `VirtualAxisButton` / `VirtualHatButton` / `VirtualButtonFunctor` (an axis range or hat directions used as a button), `_refresh_axes` (vJoy Initial Values, refresh on Run and on mode change).
-- `gremlin/event_helpers.py` (239): `ButtonReleaseActions` singleton (release callbacks run after the other callbacks of an event; auto-release of vJoy and Logical Device buttons when the mode changed in between).
-- `gremlin/event_handler.py` (754), part: `EventHandler` (callback table per device, mode and event; `process_event`; `pause/resume/toggle_active`; `build_event_lookup` copies parent-mode callbacks into child modes).
-- `gremlin/user_script.py` (1426), part: `callback_registry`, `PeriodicRegistry` (script timers, its own thread), `VJoyPlugin` (scripts' `vjoy` object).
+- `gremlin/code_runner.py` (716 lines; from 2026-10-10 `_refresh_on_mode_change` fires `ModeChangeActions` and `_on_active_changed` stops mouse motion on Pause, S88, S90): `CodeRunner.start/stop`, the Run number (`run_number`), `CallbackObject` (one per action sequence), `VirtualAxisButton` / `VirtualHatButton` / `VirtualButtonFunctor` (an axis range or hat directions used as a button), `_refresh_axes` (vJoy Initial Values, refresh on Run and on mode change).
+- `gremlin/event_helpers.py` (294; from 2026-10-10 `ModeChangeActions`, the mode-change callbacks during a Run, S88): `ButtonReleaseActions` singleton (release callbacks run after the other callbacks of an event; auto-release of vJoy and Logical Device buttons when the mode changed in between).
+- `gremlin/event_handler.py` (944), part (from 2026-10-10 `is_same_binding`, used by Map to Mouse at a mode change; restarts a Run and lets go of / reconnects a relaid device on a layout change, 02 S143): `EventHandler` (callback table per device, mode and event; `process_event`; `pause/resume/toggle_active`; `build_event_lookup` copies parent-mode callbacks into child modes).
+- `gremlin/user_script.py` (1776), part: `callback_registry`, `PeriodicRegistry` (script timers, its own thread), `VJoyPlugin` (scripts' `vjoy` object).
 - `gremlin/base_classes.py` (682), part: `_pending_pulses` / `flush_pulses` / `_pulse_event` (short pulses, released at Stop).
 - `gremlin/shared_state.py`: `runtime_active` flag (set at Run and Stop).
 - `gremlin/mode_manager.py` (368), part: `switch_to` at Run, `flush_last_modes` at Stop (Last Active startup mode).
@@ -21,13 +21,13 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 - `joystick_gremlin.py`, `shutdown_cleanup` 240-285: Stop when the program quits.
 
 **Outputs**
-- `gremlin/modules/output.py` (804): the output layer. vJoy firewall (`write_vjoy`, `vjoy_value`, `vjoy_state`, claims cache with 1 s TTL, open/retry of busy devices, blocked-output log once per Run), script vJoy (`ScriptVJoy`), Xbox pass-through (`write_xbox`, `xbox_state`), driver checks and wording, `reset_drivers`.
+- `gremlin/modules/output.py` (892; from 2026-10-10 `first_claimed_output`, `vjoy_driver_ids`, `driver_claim`, page 05 S113, S115, S118): the output layer. vJoy firewall (`write_vjoy`, `vjoy_value`, `vjoy_state`, claims cache with 1 s TTL, open/retry of busy devices, blocked-output log once per Run), script vJoy (`ScriptVJoy`), Xbox pass-through (`write_xbox`, `xbox_state`), driver checks and wording, `reset_drivers`.
 - `gremlin/trace_watch.py` (new 2026-10-09, D-01-TRACE): the out-of-step watch (S87, 01 S150): every 1 s while tracing, polls each ticked axis of devices ticked for the Out-of-step check and compares with the last RAW value; reads each written vJoy axis back (the DILL device Windows sees for that vJoy, else `output.vjoy_value`) and compares with the last written value; the 4 s "no input" info line; started and stopped by `trace.on_change`. `gremlin/modules/output.py` also calls `trace.output` at every `write_vjoy` result (S86).
 - `vjoy/vjoy.py` (982), `vjoy/vjoy_interface.py` (115): vJoy driver wrapper; `VJoyProxy` (opened devices, class-level dict); the keep-alive is in `gremlin/modules/output.py` since batch 3 (GL-267).
 - `vigem/xbox.py` (375): `XboxProxy` (pads 1-4, plugged in on first write, lock), `XboxPad.apply`, `snapshot`, `reset`. `vigem/own_pads.py` (125): remembers which Xbox devices are Gremlin's own pads. `vigem/ids.py`, `vigem/vigem_client.py`, `vigem/vigem_commons.py`: ids, DLL loading, driver checks.
-- `gremlin/macro.py` (1257): `MacroManager` (scheduler thread, one thread per running macro, exclusive/pre-emptive, Run counter `_run`, `_held_keys`), macro steps (Joystick, Key, Logical Device, Mouse Button, Mouse Motion, Pause, vJoy), repeat modes.
-- `gremlin/sendinput.py` (512): Windows `SendInput` for the mouse; `MouseController` (motion thread); `_held_buttons` and `release_held_buttons`.
-- `gremlin/keyboard.py` (414), part: `send_key_down/up` 217-237 (keys sent, not tracked).
+- `gremlin/macro.py` (1333): `MacroManager` (scheduler thread, one thread per running macro, exclusive/pre-emptive, Run counter `_run`, `_held_keys`), macro steps (Joystick, Key, Logical Device, Mouse Button, Mouse Motion, Pause, vJoy), repeat modes.
+- `gremlin/sendinput.py` (492 after the 2026-10-10 rework): Windows `SendInput` for the mouse; `MouseMotionManager` (owns every Map to Mouse motion piece and the "mouse motion" thread); `_held_buttons` and `release_held_buttons`. From 2026-10-10 (D-06-MOUSE) motion from several inputs adds up, each button/hat ramps on its own, speeds are delivered as set at a fixed 100 Hz; motion stops on a mode change that doesn't route to the same binding, at the first Stop stage and on Pause; a Trace OUTPUT line per change (S72, S86, S88-S90).
+- `gremlin/keyboard.py` (441), part: `send_key_down/up` 217-237 (keys sent, not tracked).
 - `gremlin/audio_player.py` (204): `AudioPlayer` (playback thread; Sequential / Interrupt / Overlap).
 - `gremlin/tts.py` (122): `TTSManager` (Qt WinRT text-to-speech, queue).
 - Action plugins that write outputs (mapped with the Actions page, listed here for the calls): `action_plugins/map_to_vjoy` (442, relative-axis thread), `map_to_xbox` (386), `map_to_logical_device` (429, relative-axis thread), `map_to_mouse`, `map_to_keyboard`, `macro`, `play_sound`, `text_to_speech`, `pause_resume`, `tempo` / `double_tap` / `smart_toggle` (timers), `condition` (reads vJoy, Logical Device, keyboard and joystick state).
@@ -76,7 +76,8 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Pending pulse releases | `base_classes._pending_pulses` | `_pulse_event`; flushed at Stop |
 | Held keys (macros) | `macro._held_keys` | `KeyAction`; released by `MacroManager.stop` |
 | Held mouse buttons | `sendinput._held_buttons` | `mouse_press/release`; released by `MacroManager.stop` |
-| Mouse motion | `MouseController` motion state | Map to Mouse; cleared at Stop |
+| Mouse motion (every input's motion, ramps, the 100 Hz "mouse motion" thread) | `sendinput.MouseMotionManager` | Map to Mouse; stopped on a mode change not routed to the same binding, at Stop's first stage and on Pause (S72, S88-S90) |
+| Mode-change callbacks during a Run | `event_helpers.ModeChangeActions` | registered by actions at Run; fired by `CodeRunner._refresh_on_mode_change` |
 | Macro queue and running set | `MacroManager._queued_macros`, `_scheduled_macro`, `_executing_macro` | Macro action, `RefreshPhysicalInputs`; cleared at Run and Stop |
 | vJoy claims cache | `output._vjoy_claims`, `_vjoy_names`, `_vjoy_modules`, `_xbox_modules`, `_claims_at` | re-read from module files every 1 s, forced at Run (`refresh`) and by `vjoy_modules()` |
 | vJoy open/busy state | `output._vjoy_failed_at`, `_told_busy`, `_blocked` | write path; cleared at Run (`clear_blocked_log`) and in `reset_drivers` |
@@ -98,6 +99,9 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 |---|---|---|
 | Toolbar Run / Stop button | `Main.qml:1059` | `backend.toggleActiveState` -> `activate_gremlin(not running)` -> `CodeRunner.start(profile, ui_state.currentMode)` or `stop()` |
 | Tray menu "Run Profile" / "Stop Profile" | `system_tray._handle_context_menu_cb` 271 | `backend.toggleActiveState` |
+| Mode change while running (2026-10-10) | `CodeRunner._refresh_on_mode_change` | `ModeChangeActions.fire` (Map to Mouse stops motion the new mode doesn't route to the same binding, S88) |
+| Pause / Resume (2026-10-10) | `CodeRunner._on_active_changed` | Pause stops mouse motion (S90) |
+| Map to Mouse change while tracing (2026-10-10) | `sendinput` | `trace.mouse`: one OUTPUT line per change (S86) |
 | Quit (File > Exit, tray Exit, window close) while running | `Main.qml:deactivateThenQuit` 647 | `toggleActiveState`, then `Qt.quit`; then `joystick_gremlin.shutdown_cleanup` (Stop again, `reset_drivers` again, audio, TTS, OSC again) |
 | Open / load a profile, New Profile | `backend._load_profile` 670, `newProfile` 503 | `activate_gremlin(False)` first |
 | Load Profile action while running | `action_plugins/load_profile` -> backend load | Stop, load, Run again (`test_audit2_coverage::test_load_profile_loads_and_restarts_the_run`) |
@@ -168,6 +172,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | History / saving | The Logical Device is saved in its own module file (History records it as a module file, 08 S4, S46); its links (Map to Logical Device) are saved with the profile | - |
 | Live Log Reader / input monitor | `input_monitor.record` in `process_event` | reads `gremlin_active` |
 | Process monitor (auto-load) | - | `process_changed` -> Stop/Run |
+| Map to Mouse and Windows mouse (`action_plugins/map_to_mouse`, `sendinput.py`) | `sendinput` calls `trace.mouse`, `gremlin.threads`, `gremlin.clock` | `map_to_mouse` calls `sendinput`, `event_helpers.ModeChangeActions`, `EventHandler.is_same_binding` |
 | Run scope (`run_scope.py`) | `begin` / `stop`; actions, macros, scripts, keyboard, mouse and output register timers, loops, held keys and Stop steps | - |
 | Threads (`gremlin.threads`) | every loop and timer here (macro scheduler, macros, mouse, audio, script timers, relative-axis loops, keep-alive) | `threads.shutdown` at quit |
 
@@ -232,6 +237,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S6. It should save the running mode at Stop so "Last Active" can use it. [help: Profile Settings] [user confirmed 2026-10-06; was code only for "at Stop"]
 - S7. It should use the profile's own Macro Default Delay, or the Options value when the profile sets none. [tracker: B27] [test: test_profile_settings.py::test_macro_delay_follows_options_unless_set]
 - S8. It should set the vJoy Initial Values of axes when the profile starts, always, through the output module; moving a physical axis then overrides them (Q7). [help: Profile Settings] [user confirmed 2026-10-06; was code only] [changed 2026-10-07: "today" note removed, fixed in batch 1]
+- S91. A profile start should not fail because one device's control can't be read: that control is skipped and logged once, and the rest of the profile runs. [user decision 2026-10-10: D-06-START-SKIP (DX2, D2G2)]
 - S9. It should re-send the current physical axis values at Run and at a mode change when those Options are on; an axis not moved since the program started is sent as centre (documented in help; D-02-AXIS-START). [help: Options] [test: test_mode_refresh_and_add_key.py::test_runner_refreshes_axes_on_mode_change_only_while_listening]
 - S10. It should skip a script that fails to load (retrying it once at Run) and log why, and still run the rest. [user confirmed 2026-10-06; was code only]
 - S11. It should skip a broken user plugin instead of failing the Run. [tracker: AU-86] [test: test_audit_runtime.py::test_a_broken_user_plugin_is_skipped]
@@ -285,7 +291,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S53. It should pick up an output module saved while running at once, the same as an input module (Q12). [user confirmed 2026-10-06; was code only] [changed 2026-10-07: "today" note removed, fixed in batch 1]
 - S54. It should keep an idle vJoy device alive (re-send after 60 s of no writes) while held, and arm no new keep-alive after release. [user confirmed 2026-10-06; was code only] [test: test_batch3_C3a.py keep-alive tests]
 - S55. It should say "vJoy is not installed or not running" / "Install vJoy, then restart the program." wherever the vJoy driver is checked. [user confirmed 2026-10-06; was code only] [changed 2026-10-07 to follow decision D-02-Q17 (glossary), which wins over the earlier wording "restart Gremlin-Platforms"]
-- S86. While Tracing is on (01 S147), every vJoy write caused by a ticked control should write an OUTPUT line `vJoy N <axis X|Button n|Hat n> = value · written | blocked (not claimed by the vJoy N module) | failed: <why> | missing (vJoy N has no …)`; blocked and missing show as BLOCKED. Writes no ticked control caused write nothing. Each written value is kept for the out-of-step check. Run, restart, Stop and a failed start write EVENT lines, and so does a mode change while a profile runs (`CodeRunner._refresh_on_mode_change`). [user decision: D-01-TRACE]
+- S86. While Tracing is on (01 S147), every vJoy write caused by a ticked control should write an OUTPUT line `vJoy N <axis X|Button n|Hat n> = value · written | blocked (not claimed by the vJoy N module) | failed: <why> | missing (vJoy N has no …)`; blocked and missing show as BLOCKED. Writes no ticked control caused write nothing. Each written value is kept for the out-of-step check. Run, restart, Stop and a failed start write EVENT lines, and so does a mode change while a profile runs (`CodeRunner._refresh_on_mode_change`). OUTPUT lines also cover Map to Mouse: one line per change (motion speed or direction change, button press or release), never one per motion tick. [user decision: D-01-TRACE] [changed 2026-10-10, user: D-06-MOUSE (G-c): Map to Mouse in Trace OUTPUT]
 - S87. The out-of-step watch (every 1 s while tracing, devices ticked for the Out-of-step check) should warn OUT OF STEP when a ticked axis polled from the driver differs from its last RAW value by more than 0.05 for over 1 s, or when a vJoy axis read back (as Windows sees that vJoy device when it can be found, else the program's own value) differs from its last written value by more than 0.02 for over 1 s; one warning per episode, again only after it was back in step; one EVENT "no input from this stick for 4.0 s while plugged in (info only: a still stick is normal)" per quiet spell. Full wording in 01 S150. [user decision: D-01-TRACE]
 
 ### Xbox output
@@ -307,7 +313,10 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S69. It should end only the failing macro when a step fails, and a step stuck in a driver should end the macros waiting behind it after 2 s. [tracker: AU-17] [test: test_audit_runtime.py::test_a_failing_macro_step_blocks_nothing] [test: test_audit3_run_stop.py::test_a_step_stuck_in_a_driver_ends_the_other_macros]
 - S70. It should release a key held by a macro that ended early. [tracker: AU-117] [changed 2026-10-07: open-gap note removed, fixed in batch 1]
 - S71. It should, with Map to Keyboard, hold the keys while the input is held (modifiers first) and release them on release. [help: Map to Keyboard]
-- S72. It should, with Map to Mouse, click a button (wheel once per press) or move the pointer with the set speeds and direction. [help: Map to Mouse]
+- S72. It should, with Map to Mouse, click a button (wheel once per press) or move the pointer with the set speeds and direction. Motion from several inputs adds up; each button or hat ramps on its own; speeds are delivered as set. The update rate is fixed at 100 Hz (no option). [help: Map to Mouse] [changed 2026-10-10, user: D-06-MOUSE (R9, R9c): motion adds up, per-input ramps, speeds as set, no update-rate option]
+- S88. A mode change should stop Map to Mouse motion that the new mode doesn't route to the same binding. [user decision 2026-10-10: D-06-MOUSE (R9)]
+- S89. Stop should drop Map to Mouse motion at the first Stop stage (when input is cut). [user decision 2026-10-10: D-06-MOUSE (R9)]
+- S90. Pause should stop Map to Mouse motion. [user decision 2026-10-10: D-06-MOUSE (R9b)]
 
 ### Sound and speech
 - S73. It should play WAV, MP3 or OGG at the set volume, overlapping sounds as Options says (Sequential, Interrupt, Overlap). [help: Play Sound] [user confirmed 2026-10-06; was code only for the three names]
@@ -370,6 +379,9 @@ Code against spec or rule:
 - G17. `TTSManager.stop` leaves the engine and its signal connection alive across Runs (by design today; no `start` on a dead engine is possible).
 - G19. Logical Device stand-alone (D-04-LD-FILE, 2026-10-09): own module file, permanent ids, Save covers it, Undo kept across profile loads (S78, S83; 04 S2-S2b, S25). Being built 2026-10-09 (`logical_device_file.py` new). [to-do 60 stage A]
 - G18. Help "Run and status" wording matches the glossary, but the test plan rows TB-02 and W-06..09 still say "Toggle", "Active / Not Running", "Activate/Deactivate" (test-plan text only; no such words found on screen).
+- D2G2. (fixed 2026-10-10, this batch: `input_refresh` skips and logs once; no other per-control reads at start in `code_runner`) A profile start aborts when one device's control can't be read (S91). [user decision: D-06-START-SKIP]
+- G-c. (fixed 2026-10-10, this batch: `trace.mouse`) Map to Mouse writes no Trace OUTPUT lines (S86). [user decision: D-06-MOUSE]
+- R9. (fixed 2026-10-10, this batch: `MouseMotionManager`, `ModeChangeActions`) Map to Mouse motion from several inputs overwrites instead of adding up; motion survives a mode change, Stop's first stage and Pause (S72, S88-S90). [user decision: D-06-MOUSE]
 - G20. (new 2026-10-09, D-01-TRACE) Nothing showed where an input stopped between the driver and vJoy (9 Oct Star Citizen right stick, nothing in the logs). Tracing (S86-S87, 01 S146-S151) is being built 2026-10-09.
 
 From the to-do list:
@@ -393,6 +405,8 @@ Things nothing owns:
 ## 11. Size and test coverage
 
 Size (lines, roughly, 2026-10-09): run_scope 438, code_runner 634, event_helpers 239, macro 1257, sendinput 512, output 804, Xbox page and viewer about 1,180 (Python 654, QML 549), vjoy_status 187, audio_player 204, tts 122, logical_device 618, logical_layout 1580, LogicalPage.qml 2134, system_tray 332; vjoy 1100, vigem 720; parts of backend (~120), event_handler (~200), user_script (~200), base_classes (~120), joystick_gremlin (~45), Main.qml (~40). About 11,000 lines in all, half of it the Logical page.
+
+Added 2026-10-10: `test_mouse_motion.py` (20: Map to Mouse adding up, ramps, mode change, Stop, Pause and Trace lines, S72, S86, S88-S90); `test_device_relaid_update.py` (a relaid device during a Run, 02 S143); `test_device_layout_change.py` (4, page 02; a start with one unreadable control, S91).
 
 Covered well: Stop releasing held keys, mouse buttons and motion (`test_audit3_run_stop.py`); macros at Stop and stale macros (`test_audit2_macros.py`, `test_action_fixes.py`); the vJoy firewall (`test_output_layer.py`, `test_vjoy_writers_use_firewall.py`); vJoy busy (`test_device_fixes.py`); Xbox pass-through (`test_xbox_output_module.py`, `test_map_to_xbox.py`); thread start/stop (`test_threads.py`, `test_bounded_waits.py`); Logical Device data (`test_logical_device.py`) and its Undo (`test_audit_editing.py`, `test_audit3_actions_undo.py`, step labels `test_undo_bar_labels.py`); Logical page shared pieces (Find, delete questions, Undo bar: `test_config_pages_shared_pieces.py`); sound loading (`test_program_fixes.py`, `test_play_sound_missing_file.py`). The four files run off-screen today: 28 passed.
 
@@ -428,6 +442,8 @@ and Q12 as written there). Every question answered as recommended:
 | Q8 | Sound and speech ignored when no Run is on |
 | Q9 | Keyboard and mouse output going straight to Windows is an accepted, written exception to the layer rule; held keys and buttons tracked in one place |
 | S86-S87 | 2026-10-09 (D-01-TRACE; user: "go with your recommendations, approved, go ahead"): OUTPUT trace tap and the out-of-step watch |
+| S72 and S86 changed, S88-S90 | 2026-10-10 (D-06-MOUSE; user approved R9, R9b, R9c "no option", G-c): Map to Mouse motion adds up, per-input ramps, stops on mode change, Stop and Pause, fixed 100 Hz; Trace OUTPUT covers it |
+| S91 | 2026-10-10 (D-06-START-SKIP; user approved DX2 / D2G2): a profile start skips and logs a control it can't read |
 | Q10 | The auto-pause on a vJoy error inside an action is removed |
 | Q11 | Paused shows "Running (Paused)"; Stop then Run starts un-paused (kept) |
 | Q12 | Output module changes saved while running apply at once |

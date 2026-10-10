@@ -265,7 +265,9 @@ function topics() {
                 + "</ol>"
                 + _good([
                     "A Relative axis stops when the input rests for 1 second, or when something else moves that vJoy axis.",
-                    "Only outputs claimed by the vJoy output module are sent. An output that isn't claimed shows <b>Output not claimed</b>; claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a>."
+                    "Only outputs claimed by the vJoy output module are sent. An output that isn't claimed shows <b>Output not claimed</b>; claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a>.",
+                    "A new Map to vJoy starts on the first claimed output this mode doesn't use yet. When every claimed output is used, it starts on the first one.",
+                    "The output list offers only claimed outputs the vJoy device really has."
                 ]),
             related: ["configuration-actions-map-to-xbox", "configuration-actions-map-to-logical-device",
                       "home-devices-vjoy-output"]
@@ -313,7 +315,9 @@ function topics() {
                 + "<li>Choose <b>Record Keys</b>.</li>"
                 + "<li>Press the keys for the <b>Key Combination</b>.</li>"
                 + "</ol>"
-                + _good(["Modifiers are pressed first."]),
+                + _good([
+                    "Modifiers (Shift, Ctrl, Alt and Win) are pressed first, then the other keys in the order you pressed them when recording."
+                ]),
             related: ["configuration-actions-macro", "configuration-actions-keyboard-page"]
         },
         {
@@ -326,6 +330,10 @@ function topics() {
                 + "<li><b>Motion</b> moves the pointer. On a button, set <b>Minimum speed</b>, <b>Maximum speed</b>, <b>Time to maximum speed</b> and <b>Direction</b>. On an axis, set <b>Control motion of</b> to X Axis or Y Axis.</li>"
                 + "</ul>"
                 + _good([
+                    "Motion from several inputs adds up: two buttons pushing right move the pointer faster, and left and right cancel out.",
+                    "Each button or hat speeds up on its own, from its <b>Minimum speed</b> to its <b>Maximum speed</b>.",
+                    "A mode change, <b>Pause</b> and <b>Stop</b> all stop the pointer. After a mode change it moves on only if the new mode moves the mouse with the same input.",
+                    "With Tracing on, the Trace tab shows one line per change, such as \"Mouse motion 400 px/s heading 90°\", \"Mouse motion stopped\", \"Mouse Left = pressed\" or \"Mouse wheel up\".",
                     "Mouse buttons are for sending only. They can be recorded here and in a macro, but a running profile never reads the mouse, so a mouse button can't fire actions."
                 ]),
             related: ["configuration-actions-macro"]
@@ -343,6 +351,9 @@ function topics() {
                 + "</ul>"
                 + _good([
                     "A Joystick step acts like the stick itself: it only does something for controls the stick's input module claims.",
+                    "New Joystick, Keyboard, Logical Device, Mouse Button and vJoy button steps start on <b>Pressed</b>.",
+                    "A new vJoy step starts on the first output a vJoy output module claims. If none is claimed, the step is added with the notice \"Claim an output on a vJoy output module first.\"",
+                    "A step the program can't read shows as <b>Unreadable step</b>, for example \"Unknown step type 'X': kept as it was, does nothing.\" It does nothing when the macro plays, and saving keeps it unchanged. You can remove it.",
                     "Mouse buttons can be recorded as steps, but a mouse button is never an input of its own; see " + _link("map-to-mouse", "Map to Mouse") + ".",
                     "The pause between steps is set by <b>Macro Default Delay</b> in <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>."
                 ]),
@@ -380,12 +391,13 @@ function topics() {
                 + "<ol>"
                 + "<li>Pick or create a <b>Merge axis instance</b>.</li>"
                 + "<li>Pick the <b>First axis</b> and <b>Second axis</b>.</li>"
-                + "<li>Choose the <b>Merge operation</b>: Average, Minimum, Maximum, Sum, Bidirectional or Prefer Center.</li>"
+                + "<li>Choose the <b>Merge operation</b>: Average, Minimum, Maximum, Sum, Bidirectional, Prefer Center or Maximum Deflection.</li>"
                 + "</ol>"
                 + _good([
                     "The <b>+</b> button beside the list makes a new merge axis instance and selects it. The pencil renames it.",
                     "The list offers the one you are editing, a new one, and those other inputs use; never deleted ones.",
-                    "Picking one another input uses shares it: it keeps its own name."
+                    "Picking one another input uses shares it: it keeps its own name.",
+                    "<b>Maximum Deflection</b> uses whichever axis is furthest from center; when both are equally far, the second axis wins."
                 ]),
             related: ["configuration-actions-split-axis", "configuration-actions-dual-axis-deadzone"]
         },
@@ -425,7 +437,9 @@ function topics() {
                 + "</ol>"
                 + _good([
                     "A condition reads inputs through their input module: an input the module doesn't claim reads as at rest.",
-                    "A condition on a stick plugged in later works once it is connected."
+                    "A condition on a stick plugged in later works once it is connected.",
+                    "New button and key conditions start on <b>Pressed</b>.",
+                    "A new vJoy condition starts on the first output a vJoy output module claims. If none is claimed, it isn't added and the notice says \"Claim an output on a vJoy output module first.\""
                 ]),
             related: ["configuration-actions-chain", "configuration-actions-tempo"]
         },
@@ -576,7 +590,8 @@ function topics() {
             body: "<p>Starts a program. Set the <b>Executable</b> and its <b>Arguments</b>.</p>"
                 + _good([
                     "Arguments are split on spaces; put quotes around values that contain spaces.",
-                    "The program runs with your own permissions."
+                    "The program runs with your own permissions.",
+                    "If the program can't be started, the log says so once and nothing else happens."
                 ]),
             related: ["configuration-actions-load-profile"]
         },
@@ -597,6 +612,7 @@ function topics() {
                 + "<li>Share it, so both inputs use the same action, or duplicate it, to get an independent copy.</li>"
                 + "</ol>"
                 + _good([
+                    "The list offers only actions you added. The hidden action that holds an input's actions is never listed.",
                     "A shared action's editor says <b>Shared with …</b> and names the other inputs. <b>OK</b> changes it for every input that uses it, and <b>Undo</b> puts it back for all of them."
                 ]),
             related: ["configuration-actions-choose-action", "configuration-actions-undo"]

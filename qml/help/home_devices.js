@@ -236,6 +236,7 @@ function topics() {
                 + "<li><b>Hat</b> 1: the D-pad.</li>"
                 + "</ul>"
                 + "<p>The <b>Xbox</b> button and the <b>Share</b> button aren't available: the program doesn't receive them.</p>"
+                + "<p>When a pad's Xbox connection stops answering, the pad can fall back to an older layout, with other axis and button numbers. The program follows it: it treats the change like unplugging the pad and plugging it back in, and the system log and the Trace tab say the pad <b>changed layout</b>, with its axes and buttons before and after. A running profile then does what <b>Device change behavior</b> in Options says.</p>"
                 + "<p>This is about a pad you hold. The program's own Xbox controller is an output; see <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>.</p>",
             related: ["home-devices-input-modules", "home-devices-xbox-output"]
         },

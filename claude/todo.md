@@ -365,7 +365,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     'Initializing joystick devices' twice in system.log; same instance ids came back (HID\...&39cb7826,
     USB\...\9&1d65ffe4); first RAW after return +0.022 (centred). Input Tester (on the Block list):
     '2 hidden' while gone, '3 hidden' after -> stayed hidden. Restarting the USB device is enough.
-77. Upgrade the DirectInput reader dill.dll 1.3 -> 1.5 (user 2026-10-10: on the to-do for now; impact
+77. DONE 2026-10-10 (4951df66, D-02-DILL2, 02 S139-S142): R16's dill2.dll ships as dill.dll for both programs. Upgrade the DirectInput reader dill.dll 1.3 -> 1.5 (user 2026-10-10: on the to-do for now; impact
     research requested). Verified: v1.3 DeviceState sizes button(128)/hat(4) but indexes from 1, so
     every poll of a 128-button / 4-hat device reads and writes one slot past the end (dill.cpp
     c96571404b lines 53-57, 362-390). On this PC all three VKB sticks report 128 buttons and vJoy 1
@@ -390,21 +390,30 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     identical; button 128 / hat 4 accepted (1,701 'invalid index' lines in ~6 s with 1.3, none with dill2);
     shutdown() works. Not yet: pressing button 128/hat 4, plug/unplug, Xbox pads via XInput, real vJoy matching.
     Draft patch scratchpad dill2_study/patch.diff (not applied).
-78. Licence notice for dill (found 2026-10-10, DILLUP): dill.dll is BSD-2-Clause (not GPL); the BSD
+78. DONE 2026-10-10 (4951df66, D-01-LICENCES, 01 S153): licences/ shipped. Licence notice for dill (found 2026-10-10, DILLUP): dill.dll is BSD-2-Clause (not GPL); the BSD
     licence asks binary redistributions to carry its notice, and licenses/ has no dill (or spdlog)
     notice today. Add licenses/dill.txt (+ spdlog) and check the installer copies licenses/. Not started.
-79. SHELVED (user 2026-10-10: "keep things as they are for now"): how the Input Tester ships and a
+79. CLOSED (user 2026-10-10: ship with everything included (Input Tester ships with the program); no self-test). Was SHELVED (user 2026-10-10: "keep things as they are for now"): how the Input Tester ships and a
     --self-test of the built exe (in tools/build_input_tester.py and the release workflow). Today: the
     release build makes both exes and the installer copies them; the dev script is for source runs.
-80. SECURITY (found 2026-10-10, D2CODE): dill/__init__.py 292-303 looks for dill.dll in the working folder
+80. DONE 2026-10-10 (4951df66, D-02-DILL-FOLDER, 02 S138): the reader loads only from the program folder. SECURITY (found 2026-10-10, D2CODE): dill/__init__.py 292-303 looks for dill.dll in the working folder
     (the folder the program was started from) before its own folder, and `import dill` runs before
     joystick_gremlin.py changes folder (82 vs 101) - a planted dill.dll there would be loaded. Load only from
     the program folder. Not started.
-81. Exit takes ~5 s in a full off-screen run (either dill), from something else the program loads (D2APP
-    2026-10-10). Not investigated.
+81. Exit takes ~5 s: CAUSE FOUND 2026-10-10 (CARRY, measured off-screen): the Text to Speech engine
+    (QTextToSpeech, WinRT) is created at every Run start (gremlin/tts.py:79-90) and never released; once it
+    exists, the process takes 5.0 s to end after os._exit (0.02 s without it, 0.02 s if stopped and deleted
+    first). Proposed fix (awaiting the user): TTSManager.close() (stop, deleteLater, None) called from
+    joystick_gremlin.shutdown_cleanup() before output.reset_drivers(), plus one test.
 82. DONE 2026-10-10 (387e25e7; D-02-RESET-DEVICES addendum S5, 02 S137): Reset Devices left its
     gremlin_reset_* temp folders behind (found 2026-10-10, RFIX). They are now deleted after the results are
     read (best effort; a leftover Administrators-owned file from before is ignored).
+
+83. DONE 2026-10-10 (G-d, answered by the CARRY check, no change needed): a script's keyboard callbacks DO go
+    through the input-module claims check (user_script.py:1698-1718 -> code_runner.py:437-441; keys reach
+    process_event only via InputModuleRuntime._on_key, runtime.py:185-196, claim_allows_key). As for profile
+    keys, with no Keyboard claim saved every key passes (claim.py:173-174). Not verified in a live Run.
+    Checking in this batch.
 
 ## On hold / parked (user's choice)
 

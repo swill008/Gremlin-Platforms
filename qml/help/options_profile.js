@@ -215,6 +215,7 @@ function topics() {
                 + "<li>A script runs only when the variables it requires are set. It is loaded fresh each time you choose <b>Run</b>.</li>"
                 + "<li>A script inside the scripts folder is saved by its place in that folder; others keep their full path.</li>"
                 + "<li>A script's vjoy object can only use outputs the vJoy output modules claim.</li>"
+                + "<li>A Keyboard variable fires for exactly the key you chose. Numpad keys are their own keys: Numpad 1 is not End, and Numpad Enter is not Enter.</li>"
                 + "</ul>",
             related: ["options-profile-scripts-cant-load", "getting-started-profiles", "home-devices-vjoy-output"]
         },

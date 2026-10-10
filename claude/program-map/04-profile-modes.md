@@ -18,7 +18,7 @@ Python
 - `gremlin/swap_devices.py` (265; `not_swappable` -> `device_class.can('swap', uid)` replaces the old `NOT_SWAPPABLE` list, 03 S90b, Q20): moves every binding, action reference and script variable from one device id to another (with limits); called by the Device Library (`library_swap.py`, `library_copy.py`, page 10).
 - `gremlin/profile_recovery.py` (200, new 2026-10-09, to-do 55): recovery copies of unsaved profile edits (S94, Q14). `ProfileRecovery.tick` keeps a copy about every minute while there are unsaved changes, in `<data folder>/recovery/profile-<stem>-<sha1>.json` (Untitled: `profile-untitled.json`); `restore`, `discard`, `forget_session` (Save, Discard, clean close remove this session's copies; Not now keeps it).
 - `gremlin/edits.py` (52): the edit count (Q19, D-04-Q19): `note_edit`, `EditNoted`, `edit_count`; the title `*` reuses its last answer while the count hasn't moved.
-- `gremlin/user_script.py` (1725): `Script` (loads the .py, its variables, load errors), variable types, callback and periodic registries, decorators, plugins giving scripts `joy` / `vjoy` / `keyboard`.
+- `gremlin/user_script.py` (1776; from 2026-10-10 `KeyboardVariable.decorator` calls back for exactly the chosen `Key`, S95): `Script` (loads the .py, its variables, load errors), variable types, callback and periodic registries, decorators, plugins giving scripts `joy` / `vjoy` / `keyboard`.
 - `gremlin/ui/script.py` (467): `ScriptListModel` (add, remove, rename) and one QML model per variable type.
 - `gremlin/config.py` (`get_profile`, `get_profile_with_regex` 516-551): auto-load program-to-profile matching.
 - `gremlin/process_monitor.py` (135): the thread that reports the focused program (feeds auto-load).
@@ -294,6 +294,7 @@ Who else changes profile data (not single-owner)
 - S89. It should give scripts `joy`, `keyboard` and `vjoy` only through the input and output modules: a script's vJoy can use only claimed outputs; unclaimed inputs read neutral. [help: Scripts] [test-plan: P2b, P3c]
 - S90. It should run periodic callbacks no faster than every 0.01 s, log a failing callback without stopping the others, and stop them all at Stop. [tracker: AU-34] [test: test_user_script.py::test_periodic_callback_exception_is_logged_and_does_not_stop_other_callbacks]
 - S91. It should let script callbacks run while paused without raising, so Resume still works. [tracker: ACT10]
+- S95. A script's Keyboard variable should call its callback for exactly the key chosen, numpad and extended keys included (Numpad 1 is not End, Numpad Enter is not Enter). [user decision 2026-10-10: D-05-R16 (R1); the brief called it 04 S94, but S94 is the recovery copy, so it is S95]
 
 ### Undo and History (where they meet the profile)
 
@@ -375,7 +376,7 @@ Covered well
 - Saving: `test_profile_save_safe.py`, `test_profile_unused_actions.py`, `test_profile_unsaved.py`, `test_library_invalid_children.py`, `test_audit*_saving.py`.
 - Load failures: `test_load_and_rename_safety.py`, `test_profile_missing_child_action.py`, `test_startup_messages.py`.
 - Auto-load and the Load Profile action: `test_autoload_and_mode_prompts.py`, `test_audit_saving.py`, `test_audit2_saving.py`, `test_audit2_coverage.py` (all with a fake Backend).
-- Scripts: `test_user_script.py` (21), `test_user_script_load_errors.py` (5), `integration/test_e2e_user_script.py`.
+- Scripts: `test_user_script.py` (21, plus the 2026-10-10 Keyboard variable tests for S95), `test_user_script_load_errors.py` (5), `integration/test_e2e_user_script.py`.
 - Settings: `test_profile_settings.py` (6), `test_write_less.py` (last mode).
 - Undo Delete Mode: `test_undo_delete_mode.py`; Manage Modes delete question and Undo bar: `test_tools2_shared_pieces.py`. Recovery copy: `test_profile_recovery.py`, `profile_recovery_smoke.py`.
 - Shared pieces here: `test_main_shared_pieces.py::test_profile_choosers_remember_the_folder`, `::test_remove_script_asks_the_shared_question`; auto-load remove and choosers: `test_options_shared_pieces.py`.
@@ -402,6 +403,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | S41, S52 | 2026-10-07: D-04-ALPHA-CASEFOLD (alphabetical ignores capitals) |
 | S86 | 2026-10-07: D-04-S86-RELATIVE |
 | S2, S2a, S2b, S25, R3 | 2026-10-09: D-04-LD-FILE (Logical Device in its own module file shared by every profile, permanent ids, Save covers it, version 14 rows merged once with a backup) |
+| S95 | 2026-10-10: D-05-R16 (R1): a script Keyboard variable fires for exactly the chosen key, numpad and extended included |
 | S2, S25, R3 | 2026-10-09: D-09-OSC-FILE (OSC's inputs and server settings in its own module file shared by every profile; profiles version 16 without `<osc-device>`; older profiles' OSC rows merged, backup `.v15.bak` / `.v14.bak`) |
 
 The section 8 statements (with the changes above) are now the definition

@@ -156,3 +156,17 @@ Every piece of work, not only big batches:
      lead logs the rows.
    - After each batch, re-check the rules of thumb against the new rows and
      update them when the ratio has moved.
+   - **Why it matters (user, 2026-10-10: "I decide what to put into the
+     program based on the effort it requires. You are providing me with
+     false and uninformed information.")** Effort figures drive the user's
+     choices, so a padded or guessed time is false information.
+     - Every option, recommendation, offer or plan shown to the user carries
+       its effort, quoted from the table and naming the kind it came from,
+       e.g. "Effort: 3-8 min (timings.md: agent fix)". End-to-end figures add
+       up the table's steps (agents + lead checks + full run + commit + CI).
+     - When the table has no matching kind, say so: "no timing data yet;
+       rough guess N min", never a bare number.
+     - An agent's brief gets the table's estimate, not a padded budget; a
+       separate hard limit may be added only if labelled as a limit.
+     - Log each row in the same turn the step ends (agents, test runs, CI,
+       the lead's own steps), never as a later catch-up.
