@@ -418,6 +418,11 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     may still see a hidden pad). Verify read-only and say so in Help. Not started.
 86. (RW5, 2026-10-10): the Reset Devices Xbox note shows "can t" on screen (apostrophe missing; the text in the
     code has it). Check the off-screen render. Not started.
+87. (SA1, 2026-10-10; 05 gap SA1, found by the action editor matrix): the Split Axis editor overflows the pane: its
+    label row hides the Add Action selector (matrix screenshot split-axis_axis.png). qml/LabelValueComboBox.qml's
+    250 dp minimum width forces the wrapping. Awaiting the user. Not started.
+88. (O1, 2026-10-10): Logical Device self-target / loop guard. Plan given to the user 2026-10-10; awaiting the
+    user's answers O1-Q1..Q4. Not started.
 
 ## On hold / parked (user's choice)
 

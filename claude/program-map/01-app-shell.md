@@ -505,7 +505,7 @@ Open to-do items (claude/todo.md) for this page
 - 45 (parked, D-01-CANVAS-EXEMPT): the Button Map canvas editor (chip names, text boxes, table cells) and the Layers panel rename are not yet the shared Rename box (S135).
 - 52 (being built 9 Oct): the shared pieces of S140-S143 are made; moving every delete/clear question, search box, message line, heading, empty state, file chooser and Undo bar onto them is in progress.
 - 53, 54: Help gap fill and Show me links: built (384891fb, ec5a042b); keep `test_help_guide.py` and `test_help_links_resolve.py` passing as the program changes.
-- Test housekeeping owned by `gremlin.threads` / the test runner: 42 (test teardown hang after atexit, Home models left alive), 43 (exit-hang check: built, a warning until 42 is fixed), 44 (tests never load the real vJoy driver: `test/vjoy_guard.py`), 47 (order-dependent failures: a test leaves `log-when-not-responding` unregistered), 50 (silent test-process death in unit-3).
+- Test housekeeping owned by `gremlin.threads` / the test runner: 42 (test teardown hang after atexit, Home models left alive), 43 (exit-hang check: built, a warning until 42 is fixed), 44 (tests never load the real vJoy driver: `test/vjoy_guard.py`), 47 (order-dependent failures: a test leaves `log-when-not-responding` unregistered), 50 (silent test-process death in unit-3). From 2026-10-10 (aa8b142a) `test/run_tests.py` collects unit tests in subfolders too (`rglob`, e.g. `test/unit/action_matrix/`).
 
 Things nothing owns
 - What `signal.configChanged` means: it is used for "any setting changed" and as a general reload trigger (Q12).

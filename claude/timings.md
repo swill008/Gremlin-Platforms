@@ -290,3 +290,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | AE-FLOW: matrix for 8 flow actions | test | ~10 min (table) | 9 min | 08:32–08:41; 1 defect (AE-reference-1) |
 | 2026-10-10 | AE-REPORT: matrix report page | docs | 3–8 min (table) | 2 min | 08:46–08:48 |
 | 2026-10-10 | Full run + lint with the action matrix (lead) | test | 6–7 min (table + matrix) | 7 min | 08:46–08:53; all green, 4,694 passed; slowest part 7 min |
+| 2026-10-10 | O1PLAN: Logical Device self-target study | review | 5–10 min (table) | 3 min | 08:56–08:59 |
+| 2026-10-10 | REFR1: Reference on keys, remove RootAction.qml | fix | 3–8 min (table) | 3 min | 08:56–08:59 |
+| 2026-10-10 | LAYOUT: Dual Axis Deadzone + Send OSC editor widths | fix | 3–8 min (table) | 4 min | 08:56–09:00 |
+| 2026-10-10 | AX1: name first Merge Axis / Dual Axis Deadzone instance (S120) | fix | 3–8 min (table) | 5 min | 08:56–09:01 |
+| 2026-10-10 | DOCS3: map, decisions, to-do, Help for matrix fixes | docs | 3–8 min (table) | 3 min | 09:01–09:04 |
+| 2026-10-10 | Full run + lint, matrix fixes (lead) | test | 6–7 min + lint (table) | 6 min | 09:05–09:11; all green, 4,708 passed |

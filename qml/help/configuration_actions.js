@@ -394,6 +394,7 @@ function topics() {
                 + "<li>Choose the <b>Merge operation</b>: Average, Minimum, Maximum, Sum, Bidirectional, Prefer Center or Maximum Deflection.</li>"
                 + "</ol>"
                 + _good([
+                    "A new Merge Axis starts on its own instance, named \"Merge Axis 1\" (or the next free number).",
                     "The <b>+</b> button beside the list makes a new merge axis instance and selects it. The pencil renames it.",
                     "The list offers the one you are editing, a new one, and those other inputs use; never deleted ones.",
                     "Picking one another input uses shares it: it keeps its own name.",
@@ -412,6 +413,7 @@ function topics() {
                 + "<li>Add the actions for each axis's result to its own action list.</li>"
                 + "</ol>"
                 + _good([
+                    "A new Dual Axis Deadzone starts on its own instance, named \"Dual Axis Deadzone 1\" (or the next free number).",
                     "The <b>+</b> button beside the list makes a new deadzone instance and selects it. The pencil renames it.",
                     "The list offers the one you are editing, a new one, and those other inputs use; never deleted ones.",
                     "Picking one another input uses shares it: it keeps its own name."

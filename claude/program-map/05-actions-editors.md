@@ -1,6 +1,6 @@
 # Actions and their editors
 
-Mapped against code at 4f6bdfa4 (6 Oct). S60a, S112-S119 (D-05-R16, Joystick Gremlin R16 fixes and findings) and S85, S97 changed added 10 Oct, with sections 2-5, 10 and 11 from the program agents' notes. Line numbers drift; re-check them before a step starts. The ownership side (drafts, removal rules, Undo snapshots, shared actions) is in `claude/system-maps.md` map 2; this page points to it rather than repeating it.
+Mapped against code at 4f6bdfa4 (6 Oct). S60a, S112-S119 (D-05-R16, Joystick Gremlin R16 fixes and findings) and S85, S97 changed added 10 Oct, with sections 2-5, 10 and 11 from the program agents' notes; S120 (AX1), the action editor matrix tests and the editor layout fixes (AX2, O2) added later on 10 Oct. Line numbers drift; re-check them before a step starts. The ownership side (drafts, removal rules, Undo snapshots, shared actions) is in `claude/system-maps.md` map 2; this page points to it rather than repeating it.
 
 ## 1. Purpose
 
@@ -44,9 +44,10 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | `qml/VJoySelector.qml`, `qml/HatDirectionSelector*.qml`, `qml/LogicalDeviceSelector.qml` | Shared pickers used by editors ("Output not claimed" note). |
 | `action_plugins/AGENTS.md` | How a plugin is built (data class, model class, functor). |
 | `action_plugins/common.py` (160) | Shared helpers: `joystick_label`, `RelativeAxisLoop` (the Relative axis loop of Map to vJoy and Map to Logical Device, registered with `run_scope`). |
-| `action_plugins/axis_pair.py` (143) | What Merge Axis and Dual Axis Deadzone share: the two axes kept as plain values (RB7) and the editor's instance pick list, "+" and switching (RB14). |
+| `action_plugins/axis_pair.py` (159 from 2026-10-10) | What Merge Axis and Dual Axis Deadzone share: the two axes kept as plain values (RB7) and the editor's instance pick list, "+" and switching (RB14); instance naming `next_label` (used by "+" and Add Action) and `start_new` (a new one from Add Action starts on its own named instance, S120). |
 | `gremlin/unknown_action.py` (149), `qml/UnknownAction.qml` (28) | An action of a type this program doesn't have (user plugin removed or failed): kept as the file had it, saved back, does nothing at Run (04 Q7). |
 | `gremlin/spline.py` (559) | Curve maths for Response Curve: piecewise linear, cubic spline, cubic Bezier. From 2026-10-10 a Cubic Spline passes through its control points (S112). |
+| `qml/LabelValueComboBox.qml` | Shared label + value combo used by editors; its 250 dp minimum width forces rows to wrap in a narrow pane (note for gap SA1). |
 | `qml/ButtonStateSelector.qml` (14), `qml/NumericalRangeSlider.qml` (149) | Shared editor pieces: press/release picker (Macro, Condition); two-handle range slider (Response Curve deadzone, binding header). |
 | `action_plugins/<name>/__init__.py` + `<Name>Action.qml` | 26 plugin folders (25 actions + Root), listed below and in section 3 table B. |
 | `qml/help/configuration_actions.js` | Help chapter: adding actions, choosing an action, one topic per action (the Help book is on page 01). |
@@ -60,8 +61,8 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - `action_plugins/map_to_mouse/` (693; `__init__.py` 418 from 2026-10-10): mouse button, wheel or motion; motion through `MouseMotionManager` (page 06, S72, S88-S90).
 - `action_plugins/response_curve/` (1259): reshape an axis with a curve and deadzones (curve editor, handle and point controls).
 - `action_plugins/split_axis/` (339): send each half of an axis to its own action list.
-- `action_plugins/merge_axis/` (671; `__init__.py` 411 from 2026-10-10, `MergeAxisAction.qml` unchanged): combine two axes into one (shared, Reuse by default). The `_NAMES` table is the one source of stored and shown operation names (`MergeOperation.to_display`); Maximum Deflection added (S114).
-- `action_plugins/dual_axis_deadzone/` (652): round inner / square outer deadzone over two axes.
+- `action_plugins/merge_axis/` (680; `__init__.py` 415 from 2026-10-10, `MergeAxisAction.qml` unchanged): combine two axes into one (shared, Reuse by default); a new one from Add Action starts on "Merge Axis N" (`start_new`, S120). The `_NAMES` table is the one source of stored and shown operation names (`MergeOperation.to_display`); Maximum Deflection added (S114).
+- `action_plugins/dual_axis_deadzone/` (682; from 2026-10-10 `__init__.py` 372, `DualAxisDeadzoneAction.qml` 310): round inner / square outer deadzone over two axes; a new one from Add Action starts on "Dual Axis Deadzone N" (`start_new`, S120); the editor's Add Action buttons fit the pane (AX2).
 - `action_plugins/axis_delta/` (358): run Positive or Negative actions each time an axis moves by a step.
 - `action_plugins/hat_buttons/` (443): each hat direction runs its own action list (4 or 8 way).
 - `action_plugins/condition/` (1963; from 2026-10-10 `__init__.py` 388, `comparator.py` 287, `condition.py` 845; new button/key checks start on Pressed, a new vJoy check on `first_claimed_output` via `ConditionModel.addCondition`, S113, S116): run the TRUE or FALSE list by the state of inputs, keys, vJoy or Logical Device.
@@ -71,15 +72,15 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - `action_plugins/smart_toggle/` (293): quick press latches, hold acts while held.
 - `action_plugins/macro/` (1948; from 2026-10-10 `__init__.py` 1218, `MacroAction.qml` 855: "Unreadable step" rows, `MacroData.unreadable_steps()`, `MacroModel.removeStep`, S113, S117): play a recorded or built sequence of keys, buttons, axes, mouse and pauses.
 - `action_plugins/change_mode/` (563): switch, cycle, go back or hold a mode.
-- `action_plugins/reference/` (267; `__init__.py` 209 from 2026-10-10): placeholder that picks an existing action to share or duplicate; never runs or saves; never offers an input's Root (S60a).
+- `action_plugins/reference/` (271; `__init__.py` 213 from 2026-10-10): placeholder that picks an existing action to share or duplicate; never runs or saves; never offers an input's Root (S60a); on a key it offers button actions (S60, AE-reference-1).
 - `action_plugins/load_profile/` (261): open another profile and run it.
 - `action_plugins/pause_resume/` (239): pause, resume or toggle the running profile.
 - `action_plugins/play_sound/` (287): play a sound file.
 - `action_plugins/text_to_speech/` (383): speak a text.
-- `action_plugins/send_osc/` (new 2026-10-09, D-09-OSC-OUTPUT): Send OSC, send one OSC message to a target (09 S98-S101); the functor calls `gremlin/osc_output.send`. Spec here: S109-S111.
+- `action_plugins/send_osc/` (556; `SendOscAction.qml` 217 from 2026-10-10; new 2026-10-09, D-09-OSC-OUTPUT): Send OSC (the editor stays clear of the pane's scrollbar, O2), send one OSC message to a target (09 S98-S101); the functor calls `gremlin/osc_output.send`. Spec here: S109-S111.
 - `action_plugins/run_command/` (295; `__init__.py` 202 from 2026-10-10): start a program with arguments; a program that can't be started is reported once in the user log through `gremlin.log_once` (S97).
 - `action_plugins/description/` (202): a note; does nothing.
-- `action_plugins/root/` (175): internal top of every binding; runs its children in order.
+- `action_plugins/root/` (137; `__init__.py` only: `RootAction.qml` removed 2026-10-10, R1, never loaded; the root is shown by `qml/RootActionNode.qml`): internal top of every binding; runs its children in order.
 
 ## 3. What it owns
 
@@ -97,6 +98,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | Input names (`InputItem.action_name`, saved as `<action-name>`) | `action_label.py` patches | `apply_action_name` (Rename) | Undo snapshots carry it (via patched `to_xml`) |
 | Running state of each functor (Chain step, Tempo/Double Tap/Smart Toggle FSM and timer, Split side, Axis Delta last value, relative-axis loops, Macro object) | functor instances | Run only (`CallbackObject`) | Stop (Run lifecycle map) |
 | Pending pulse releases `_pending_pulses` | `base_classes.py:546` | `_pulse_event` | `flush_pulses` at Stop |
+| Instance names of new Merge Axis / Dual Axis Deadzone ("<name> N", next free number) | `action_plugins/axis_pair.py` `next_label` | "+" (`newMergeAxis`, `newDeadzone`) and Add Action (`start_new`, S120) | Nobody; a loaded or reused one keeps its saved name |
 
 **Settings keys**
 
@@ -130,8 +132,8 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 |---|---|---|---|---|---|
 | Response Curve | axis | applies deadzone then curve to the value; later actions see the new value | curve type (points kept on change), points, X/Y, Invert, Symmetric, 4 deadzone values | `ResponseCurveAction.qml` (+ `HandleControl`, `PointControl`, `render_helpers.js`, grid images) | curve type, points, symmetric, deadzone |
 | Split Axis | axis | sends the rescaled value to the lower or upper list; on crossing, the side left gets -1 | split value, two lists | `SplitAxisAction.qml` | split value, two child lists |
-| Merge Axis (Reuse by default) | axis | reads both axes through `inputs.axis_value` (unclaimed = centre), combines (Average, Min, Max, Sum, Bidirectional, Prefer Center), runs children | instance (pick list, "+" new "Merge Axis N", rename), first/second axis, operation | `MergeAxisAction.qml` | label, both axes, operation, children |
-| Dual Axis Deadzone | axis | reads both axes through input modules, inner circle/outer square, sends X to first list, Y to second | instance (pick list, "+" new), axes, inner/outer | `DualAxisDeadzoneAction.qml` | label, axes, inner, outer, two lists |
+| Merge Axis (Reuse by default) | axis | reads both axes through `inputs.axis_value` (unclaimed = centre), combines (Average, Min, Max, Sum, Bidirectional, Prefer Center), runs children | instance (pick list, "+" new "Merge Axis N", rename; a new one from Add Action is named "Merge Axis N", S120), first/second axis, operation | `MergeAxisAction.qml` | label, both axes, operation, children |
+| Dual Axis Deadzone | axis | reads both axes through input modules, inner circle/outer square, sends X to first list, Y to second | instance (pick list, "+" new; a new one from Add Action is named "Dual Axis Deadzone N", S120), axes, inner/outer | `DualAxisDeadzoneAction.qml` | label, axes, inner, outer, two lists |
 | Axis Delta | axis | pulses Positive/Negative lists each time the axis moved by the threshold | threshold, two lists | `AxisDeltaAction.qml` | threshold, two lists |
 | Hat as Buttons | hat | each direction button runs its list | 4 way / 8 way (asks before dropping a direction with actions), lists | `HatButtonsAction.qml` | count, one list per direction |
 
@@ -158,7 +160,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | Text to Speech | button (key in practice, see Q7) | `TTSManager().enqueue` with `${current_mode}` | text, queue mode, volume, rate, pitch | `TextToSpeechAction.qml` | text, queue mode, volume, rate, pitch |
 | Run Command | button, key | `QProcess.startDetached` | executable, arguments | `RunCommandAction.qml` | executable, arguments |
 | Description | all four | nothing | text | `DescriptionAction.qml` | text |
-| Root (internal) | all four | runs its children in order | none (top of every binding) | `RootAction.qml` | child ids |
+| Root (internal) | all four | runs its children in order | none (top of every binding) | none (shown by `qml/RootActionNode.qml`; RootAction.qml removed 2026-10-10, R1) | child ids |
 
 ## 4. Entry points
 
@@ -169,7 +171,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 | Toolbar Mode changes | `BindingCatalog.qml:246` | closes a clean pane; `setMode` -> `_rebuild` |
 | Type / Output filter, "Clear Filters" | `BindingCatalog.qml:1263-1284, 1634` | `_set_type_filter`, `_set_dest_filter` -> `_rebuild` |
 | Click a parent row, child row, or **Add Action** on a row | `requestPane(hid, seq)` (`BindingCatalog.qml:954`) | asks if the open pane is dirty (`_paneLeave`), then `startPane` -> `beginPane` (`binding_catalog.py:1138`): `_clone_binding` -> `Library.clone_action(draft=True)`; new `InputItemModel(shadow)` |
-| Pick an action and **Add Action** in the pane (ActionSelector) | `InputItemBindingConfigurationHeader.qml:131` | `ActionModel.appendAction` -> `PluginManager.create_instance` (Merge Axis: Reuse returns an in-use one) -> `insert_action` -> `sync_data`; `inputItemChanged` later |
+| Pick an action and **Add Action** in the pane (ActionSelector) | `InputItemBindingConfigurationHeader.qml:131` | `ActionModel.appendAction` -> `Library.create` (Merge Axis: Reuse returns an in-use one, keeping its name) -> the new action's `start_new` (Merge Axis / Dual Axis Deadzone: `axis_pair.start_new` names the instance "<name> N", S120; Map to vJoy: first free claimed output, S115) -> `insert_action` -> `sync_data`; `inputItemChanged` later |
 | Right-click an action header: quick add / Add by kind / Delete | `ActionNode.qml:291-317` | `appendAction`, `removeAction` / `deleteActionSequnce` |
 | Remove action (trash icon) | `ActionNode.qml:246` | `InputItemBindingModel.remove_action` -> `Library.remove_unused` (no confirm) |
 | Remove binding (header trash, asks if it has actions) | `InputItemBindingConfigurationHeader.qml` -> `Confirm.ask` (red Remove Binding) | `InputItemModel.deleteActionSequnce` -> `Profile.drop_unused_actions` |
@@ -426,6 +428,7 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 - **S117** A macro step that can't be read, or is of an unknown type, should not stop the profile opening: it is kept unchanged (saved back as it was), does nothing at Run, and the macro editor and the rule checks say so. Save should keep a Logical Device step whose control is missing; only steps that were never filled in are dropped. [user decision 2026-10-10: D-05-R16 (R11c)]
 - **S118** The vJoy output picker should only offer claimed ids the vJoy device really has (the same check as the Auto Mapper). [user decision 2026-10-10: D-05-R16 (G-a)]
 - **S119** A recorded key combination should keep the order the keys were pressed in, with modifiers still first (S85). [user decision 2026-10-10: D-05-R16 (G-b)]
+- **S120** A new Merge Axis or Dual Axis Deadzone added with Add Action should start with an instance chosen: a new one, named as "+" would name it (for example "Merge Axis 1"). A loaded action keeps its saved instance. [user decision 2026-10-10: action editor matrix AX1]
 - R11a and R11d: no behaviour change. [user decision 2026-10-10: D-05-R16]
 
 ### K. Send OSC
@@ -490,6 +493,12 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 | R5 | The Reference list offers an input's Root (S60a). Fixed 2026-10-10 (this batch) | `action_plugins/reference/` |
 | G-a | The vJoy output picker offers claimed ids the vJoy device doesn't have (S118). Fixed 2026-10-10 (this batch) | `gremlin/ui/output_modules.py`, `gremlin/modules/output.py` |
 | G-b | A recorded key combination loses the order the keys were pressed in (S119). Fixed 2026-10-10 (this batch) | `gremlin/ui/util.py`, `gremlin/keyboard.py` |
+| AE-reference-1 | Reference on a key offered no button actions (S60). Fixed 2026-10-10 (found by the action editor matrix) | `action_plugins/reference/__init__.py` |
+| R1 | `RootAction.qml` was never loaded (the root is shown by `RootActionNode.qml`). Removed 2026-10-10 | `action_plugins/root/` |
+| AX1 | A Merge Axis or Dual Axis Deadzone added with Add Action started with no instance chosen (S120). Fixed 2026-10-10 | `action_plugins/axis_pair.py`, `merge_axis`, `dual_axis_deadzone` |
+| AX2 | Dual Axis Deadzone editor: its Add Action buttons were cut off ("Add A"). Fixed 2026-10-10 (no behaviour change) | `DualAxisDeadzoneAction.qml` |
+| O2 | Send OSC editor ran under the pane's scrollbar. Fixed 2026-10-10 (no behaviour change) | `SendOscAction.qml` |
+| SA1 | Split Axis editor overflows the pane: its label row hides the Add Action selector (matrix screenshot `split-axis_axis.png`). Open, awaiting the user (to-do 87). Note: `qml/LabelValueComboBox.qml`'s 250 dp minimum width forces the wrapping | `split_axis/SplitAxisAction.qml`, `qml/LabelValueComboBox.qml` |
 
 **Open tracker items for this part**
 
@@ -513,7 +522,7 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 
 ## 11. Size and test coverage
 
-**Size** (lines, roughly): plugins about 14,600 Python + QML/JS in 26 folders plus `common.py` 160 and `axis_pair.py` 143 (largest: Condition 1,963, Macro 1,948, Response Curve 1,259); core of this part about 6,300 (`binding_catalog.py` 1,208, `BindingCatalog.qml` 2,225, `action_model.py` 473, `plugin_manager.py` 320, `ui/profile.py` binding/item models 490, `KeyboardManagerModel` 190, `action_label.py` 119, editor QML about 1,100). Shares `Library` (435) and `Profile` snapshot code with map 2.
+**Size** (lines, roughly): plugins about 14,600 Python + QML/JS in 26 folders plus `common.py` 160 and `axis_pair.py` 159 (largest: Condition 1,963, Macro 1,948, Response Curve 1,259); core of this part about 6,300 (`binding_catalog.py` 1,208, `BindingCatalog.qml` 2,225, `action_model.py` 473, `plugin_manager.py` 320, `ui/profile.py` binding/item models 490, `KeyboardManagerModel` 190, `action_label.py` 119, editor QML about 1,100). Shares `Library` (435) and `Profile` snapshot code with map 2.
 
 **Tests that cover it**
 
@@ -525,6 +534,8 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 - Editing models: `test_input_item_binding_model` (Treat as), `test_vjoy_selector_loads`.
 - Keyboard page: `test_mode_refresh_and_add_key`, `test_audit2_keyboard_calibration`, `test_keyboard_gate`.
 - R16 fixes and findings (S60a, S85, S97, S112-S119; 2026-10-10): `test_splines` (3 new: control points), `test_action_merge` (round trip, stored name), `action_interaction/test_merge_axis.py::test_maximum_deflection` (its fixture's axis 1 / axis 2 swap fixed), `test_action_editor_fixes` (operation names and list), `test_action_run_command` (2 new), `test_map_to_keyboard_recording.py` (new: S85, S119), `test_core_plugins_paths.py` (new, 42 lines), `test_audit3_actions_undo` (2 new: Reference never offers Root), `test_macro_raw_steps.py` (new, 388 lines: S117, S113 macro part), `test_new_action_defaults.py` (new, 18: S113 condition part, S115, S116, S118).
+- Action editor matrix (2026-10-10, commit aa8b142a; `test/unit/action_matrix/`: `harness.py` 772, `conftest.py` 56, `_editor_child.py` 120, `test_harness_smoke.py` 113, `test_matrix_outputs.py` 535, `test_matrix_axis.py` 662, `test_matrix_flow.py` 512, `test_matrix_misc.py` 301): every action on the Configuration page and the Button Map, Logical Device and Keyboard panes: add, editor QML, fields, save/reload, Undo/Redo, run on fakes (Load Profile, Play Sound and Text to Speech with stand-ins). Pinned: `test_matrix_flow.py::test_flow_action[reference-key-pane_keyboard]` (S60, AE-reference-1), `test_root_action_qml_is_used` (R1), `test_matrix_axis.py` `test_add_starts_on_a_named_instance`, `test_second_add_numbering`, `test_load_keeps_the_saved_instance` (S120).
+- Editor layout: `test_editor_widths.py` (196, 2026-10-10): the Dual Axis Deadzone and Send OSC editors stay inside the pane at 1600 and 1280 (AX2, O2).
 - Unknown action type kept: `test_data_safety`; curves: `test_splines`; Merge Axis fit: `test_handson_G2_merge_axis_fit`.
 - Options list: `test_option_list_saving`, `test_options_layout`; text: `test_glossary_words`, `test_help_guide`.
 
@@ -536,9 +547,9 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 - Save with the pane open (G9).
 - Keyboard page: add a key, then add its first action (G10); any Keyboard edit through the UI.
 - History Restore / Auto Mapper / Device Pack while the pane is open (G12).
-- Map to Mouse motion from a hat; Map to Logical Device relative loop; Load Profile action end to end; Play Sound / TTS at Run (only unit-level).
+- Map to Mouse motion from a hat; Map to Logical Device relative loop. (Load Profile action end to end and Play Sound / TTS at Run: covered 2026-10-10 by `action_matrix/test_matrix_misc.py` with stand-ins.)
 - Right-click menu quick adds and drag-and-drop of actions and bindings (QML only, no test).
-- Every editor QML opening without warnings is checked by hand only (test-plan AE-BTN/AE-AXIS), not by a test.
+- Every editor QML opening without warnings: covered from 2026-10-10 by the action editor matrix (`test/unit/action_matrix/`).
 
 ## 12. Review (user, 2026-10-06)
 
@@ -569,6 +580,7 @@ are replaced by Q5 and Q10 below. Every question answered as recommended:
 | Q20 | Catalog Delete asks (as the code does); test-plan IC-06 marked superseded |
 | S43 | 2026-10-07 (D-05-S43-BOTHROWS): the Note shows on the Configuration list's input row and the Keyboard page's key row |
 | S60a, S112-S119, S85 and S97 changed | 2026-10-10 (D-05-R16; user approved R1-R11 and G-a, G-b): R16 fixes and findings (section 8 L) |
+| S120 | 2026-10-10 (D-05-AX1; user approved, action editor matrix AX1): a new Merge Axis or Dual Axis Deadzone from Add Action starts on its own named instance; a loaded one keeps its saved instance (section 8 L) |
 | S109-S111 | 2026-10-09 (D-09-OSC-OUTPUT; user: "go with your recommendations, approved, go ahead"): the Send OSC action |
 
 The section 8 statements (with the replacements above) are now the
