@@ -24,6 +24,7 @@ from gremlin import (
     event_helpers,
     fsm,
     logical_device,
+    logical_loop,
     macro,
     mode_manager,
     osc_feedback,
@@ -427,6 +428,8 @@ class CodeRunner:
         from gremlin import log_once
 
         log_once.reset()
+        # A Logical Device loop is followed and told anew (06 S94).
+        logical_loop.reset()
 
         self._setup_user_scripts()
 
@@ -517,6 +520,7 @@ class CodeRunner:
            lambda: event_helpers.ModeChangeActions().reset())
         on(stage.CANCEL, "script state", self._end_scripts)
         on(stage.CANCEL, "OSC", lambda: OscRuntime().stop())
+        on(stage.CANCEL, "Logical Device loops", lambda: logical_loop.reset())
         on(stage.FIRE_PENDING, "pulse releases", self._flush_pulses)
         on(stage.END_WORK, "macros", lambda: macro.MacroManager().stop())
         on(stage.END_WORK, "mouse motion",

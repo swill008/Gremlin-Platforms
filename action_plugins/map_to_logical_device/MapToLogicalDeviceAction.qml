@@ -9,6 +9,7 @@ import QtQuick.Layouts
 import Gremlin.ActionPlugins
 import Gremlin.Base
 import Gremlin.Profile
+import Gremlin.Style
 import "../../qml"
 
 
@@ -25,15 +26,17 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
 
-        LogicalDeviceSelector {
-            // The ordering is important, swapping it will result in the
-            // wrong item being displayed.
-            validTypes: [action.actionBehavior]
-            logicalInputType: inputBinding ? inputBinding.behavior : ""
-            logicalInputIdentifier: _root.action.logicalInputIdentifier
+        // The controls of the action's type, never the one it sits on
+        // (06 S93).
+        TooltipComboBox {
+            Layout.minimumWidth: Style.dp(200)
+            Layout.fillWidth: true
 
-            onLogicalInputIdentifierChanged: {
-                _root.action.logicalInputIdentifier = logicalInputIdentifier
+            model: _root.action.controlPicker.choices
+            currentIndex: _root.action.controlPicker.index
+
+            onActivated: (index) => {
+                _root.action.controlPicker.pick(index)
             }
         }
 

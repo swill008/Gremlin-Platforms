@@ -863,16 +863,23 @@ class LogicalDeviceAction(AbstractAction):
             ld.is_pressed if ident.type == InputType.JoystickButton else None
         )
 
-        self._event_listener.joystick_event.emit(
-            event_handler.Event(
-                event_type=ident.type,
-                identifier=ident.id,
-                device_guid=LogicalDevice.device_guid,
-                mode=self._mode_manager.current.name,
-                value=value,
-                is_pressed=is_pressed,
-                raw_value=value,
-            )
+        event = event_handler.Event(
+            event_type=ident.type,
+            identifier=ident.id,
+            device_guid=LogicalDevice.device_guid,
+            mode=self._mode_manager.current.name,
+            value=value,
+            is_pressed=is_pressed,
+            raw_value=value,
+        )
+        # A step that drives its own control's macro again is a loop the
+        # guard stops (06 S94).
+        from gremlin import logical_loop
+
+        logical_loop.guarded(
+            (ident.type, ident.id),
+            ld.choice_label,
+            lambda: self._event_listener.joystick_event.emit(event),
         )
 
     def to_xml(self) -> ElementTree.Element:

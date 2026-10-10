@@ -435,17 +435,19 @@ def test_output_action(matrix: Any, tag: str, kind: str, surface: str) -> None: 
     record(tag, surface, kind, "add", ok, case.action.tag)
     assert ok
     if tag == "map-to-logical-device":
-        # Observed only (no spec statement): the control a new action drives.
+        # 06 S92: a new action never drives the control it sits on.
         target = _get(case, "logicalInputIdentifier")
         own = (case.key[1], case.key[2]) if surface == Surface.PANE_LOGICAL else None
+        ok = target != own
         record(
             tag,
             surface,
             kind,
             "default_target",
-            None,
+            ok,
             {"target": str(target), "is_the_edited_input": target == own},
         )
+        assert ok, f"default target is the edited input {own}"
 
     # (3) every field changed and read back
     ok, details = _check_fields(case)

@@ -33,6 +33,7 @@ from gremlin.logical_device import (
     resolve_logical_reference,
 )
 from gremlin.profile import Library
+from gremlin.signal import signal
 from gremlin.types import (
     ActionProperty,
     AxisMode,
@@ -58,6 +59,9 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         self._logical = LogicalDevice()
         self._event_listener = event_handler.EventListener()
         self._init_relative()
+        # The Logical Device control whose event started the relative loop:
+        # its sends join that chain (06 S94).
+        self._relative_source: tuple[InputType, int] | None = None
         # Drives the control the uid names, by its current number; a missing
         # one does nothing (D-04-LD-FILE).
         self._identifier, _ = resolve_logical_reference(
@@ -78,6 +82,13 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
         if self._identifier is None or not self._logical.exists(self._identifier):
             return
         input = self._logical[self._identifier]
+        # Sent from a Logical Device control's actions: the guard follows
+        # that chain, across threads too (06 S94).
+        source: tuple[InputType, int] | None = None
+        if event.device_guid == self._logical.device_guid and isinstance(
+            event.identifier, int
+        ):
+            source = (event.event_type, event.identifier)
 
         # Determine correct event values and update the logical device's
         # internal state.
@@ -88,6 +99,7 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
                 input_value = value.current
                 input.update(input_value)
             else:
+                self._relative_source = source
                 self._relative_input(
                     event.value, value.current, self.data.axis_scaling
                 )
@@ -109,8 +121,10 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
             input.update(input_value)
 
         # Emit an event with the LogicalDevice guid and the rest of the
-        # system will then take care of executing it.
-        self._event_listener.joystick_event.emit(
+        # system will then take care of executing it; a loop between
+        # controls is stopped by the guard (06 S94).
+        self._guarded_emit(
+            input,
             event_handler.Event(
                 event_type=input.type,
                 identifier=input.id,
@@ -119,7 +133,23 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
                 value=input_value,
                 is_pressed=is_pressed,
                 raw_value=value.raw,
-            )
+            ),
+            source,
+        )
+
+    def _guarded_emit(
+        self,
+        input: LogicalDevice.Input,
+        event: event_handler.Event,
+        source: tuple[InputType, int] | None,
+    ) -> bool:
+        from gremlin import logical_loop
+
+        return logical_loop.guarded(
+            (input.type, input.id),
+            input.choice_label,
+            lambda: self._event_listener.joystick_event.emit(event),
+            source=source,
         )
 
     def _relative_axis(self) -> LogicalDevice.Input:
@@ -132,7 +162,9 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
     def _relative_write(self, value: float) -> bool:
         input = self._relative_axis()
         input.update(value)
-        self._event_listener.joystick_event.emit(
+        # A loop the guard stopped ends this relative loop too (06 S94).
+        return self._guarded_emit(
+            input,
             event_handler.Event(
                 event_type=input.type,
                 identifier=input.id,
@@ -140,9 +172,9 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
                 mode=mode_manager.ModeManager().current.name,
                 value=value,
                 raw_value=value,
-            )
+            ),
+            self._relative_source,
         )
-        return True
 
 
 class MapToLogicalDeviceModel(ActionModel):
@@ -163,6 +195,10 @@ class MapToLogicalDeviceModel(ActionModel):
         # Opening an editor changes nothing on the Logical Device: no
         # logicalDeviceModified here (each one rebuilt the Logical page, 05 RB21).
         super().__init__(data, binding_model, action_index, parent_index, parent)
+        # Its own object: a list refresh is not an edit of the action
+        # (ActionModel reports every property notify as one).
+        self._picker = ControlPicker(self)
+        self.logicalInputIdentifierChanged.connect(self._picker.refresh)
 
     def _qml_path_impl(self) -> str:
         return (
@@ -250,6 +286,79 @@ class MapToLogicalDeviceModel(ActionModel):
         notify=buttonInvertedChanged,
     )
 
+    def _get_control_picker(self) -> ControlPicker:
+        return self._picker
+
+    controlPicker = QtCore.Property(
+        QtCore.QObject, fget=_get_control_picker, constant=True
+    )
+
+    def own_control(self) -> tuple[InputType, int] | None:
+        """The Logical Device control this action sits on (None: another
+        device's input)."""
+        item = self._binding_model.input_item_binding.input_item
+        if item is None or item.device_id != LogicalDevice().device_guid:
+            return None
+        if item.input_type is None or not isinstance(item.input_id, int):
+            return None
+        return (item.input_type, item.input_id)
+
+    def set_target(self, input_type: InputType, input_id: int) -> None:
+        """Drive that Logical Device control (as the picker's choice)."""
+        self._set_logical_input_identifier(
+            InputIdentifier(LogicalDevice().device_guid, input_type, input_id)
+        )
+
+    def map_data(self) -> MapToLogicalDeviceData:
+        return cast(MapToLogicalDeviceData, self._data)
+
+
+class ControlPicker(QtCore.QObject):
+    """The editor's control list: the controls of the action's type, never
+    the one it sits on (06 S93). Follows controls added, removed or renamed."""
+
+    changed = QtCore.Signal()
+
+    def __init__(self, owner: MapToLogicalDeviceModel) -> None:
+        super().__init__(owner)
+        self._owner = owner
+        signal.logicalDeviceModified.connect(self.refresh)
+
+    @QtCore.Slot()
+    def refresh(self) -> None:
+        self.changed.emit()
+
+    def _choices(self) -> list[LogicalDevice.Input]:
+        own = self._owner.own_control()
+        kind = self._owner.map_data().logical_input_type
+        return [
+            entry
+            for entry in LogicalDevice().inputs_of_type([kind])
+            if (entry.type, entry.id) != own
+        ]
+
+    def _get_choices(self) -> list[str]:
+        return [entry.choice_label for entry in self._choices()]
+
+    def _get_index(self) -> int:
+        current = self._owner.map_data().logical_input_id
+        for index, entry in enumerate(self._choices()):
+            if entry.id == current:
+                return index
+        return -1
+
+    @QtCore.Slot(int)
+    def pick(self, index: int) -> None:
+        """The row chosen: the action drives that control."""
+        choices = self._choices()
+        if not 0 <= index < len(choices):
+            return
+        entry = choices[index]
+        self._owner.set_target(entry.type, entry.id)
+
+    choices = QtCore.Property(list, fget=_get_choices, notify=changed)
+    index = QtCore.Property(int, fget=_get_index, notify=changed)
+
 
 class MapToLogicalDeviceData(AbstractActionData):
     """Action propagating data to the logical device inputs."""
@@ -309,6 +418,24 @@ class MapToLogicalDeviceData(AbstractActionData):
             if not logical.inputs_of_type([input_type]):
                 logical.create(input_type)
         return super().create(mode, behavior_type)
+
+    def start_new(self, profile: object, item: object) -> None:
+        """A new action added on a Logical Device control never drives that
+        control: the first other one of its type, else a new one (06 S92).
+        Called by Add Action only, never on load."""
+        logical = LogicalDevice()
+        if getattr(item, "device_id", None) != logical.device_guid:
+            return
+        own = (getattr(item, "input_type", None), getattr(item, "input_id", None))
+        if (self.logical_input_type, self.logical_input_id) != own:
+            return
+        others = [
+            entry
+            for entry in logical.inputs_of_type([self.logical_input_type])
+            if entry.id != self.logical_input_id
+        ]
+        target = others[0] if others else logical.create(self.logical_input_type)
+        self.logical_input_id = target.id
 
     @property
     def logical_input_type(self) -> InputType:
