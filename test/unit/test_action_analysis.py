@@ -14,7 +14,9 @@ import pytest
 
 from gremlin import shared_state
 from gremlin.action_analysis import _extract_sequences
+from gremlin.logical_device import LogicalDevice
 from gremlin.profile import Profile
+from gremlin.types import InputType
 
 _PROFILE_FOR_ANALYSIS = "profile_for_analysis.xml"
 
@@ -28,6 +30,13 @@ def test_extract_sequences(
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
 ) -> None:
+    # The Logical Device Button 1 its Map to Logical Device sends to: in the
+    # Logical Device's own module file, not the profile (D-04-LD-NOLEGACY).
+    logical = LogicalDevice()
+    kept = logical.to_dict()
+    request.addfinalizer(lambda: logical.load_dict(kept))
+    logical.load_dict({"controls": [], "groups": []})
+    logical.create(InputType.JoystickButton, 1, "Button 1")
     before = shared_state.current_profile
     p = Profile()
     monkeypatch.setattr(shared_state, "current_profile", p)

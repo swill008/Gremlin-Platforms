@@ -50,7 +50,7 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 | Adjusted-photo cache `modules/cache/photo-<hash>.png` (latest 12) | `adjustedPhotoUrl` (2041) | nobody |
 | Recovery copies `modules/recovery/<slug>.json` | `saveRecovery` / `clearRecovery` | nobody (Delete Device leaves them) |
 | Templates `modules/templates/<name>.json` | `saveTemplate`, `renameTemplate`, `deleteTemplate`, `importTemplate` | Options Library (`OptionButtonMapLibrary.qml`) renames and deletes |
-| Button Map Options `button-map/<group>/<NN-key>` (chip-text, description-first, several-actions, unbound, undo-steps 80, rotate-snap 15, press-to-find, find-axes, mirror-pictures, chip-only, autosave, autosave-seconds 60, zoom-speed 100, rulers, recent-colours 10, print-area-color) | `button_map_options.py` | Options pane only |
+| Button Map Options `button-map/<group>/<NN-key>` (chip-text, description-first, several-actions, unbound, undo-steps 80, rotate-snap 15, press-to-find, find-axes, mirror-pictures, chip-only, recovery-copies, recovery-seconds 60 (D-07-RECOVERY-COPIES, 2026-10-10; were autosave, autosave-seconds), zoom-speed 100, rulers, recent-colours 10, print-area-color) | `button_map_options.py` | Options pane only |
 | Saved styles `button-map/internal/styles` | `button_map_options.save_style` etc. | Options Library |
 | Recent colours `global/internal/button-map-recent-colours` | `noteColour` | nobody |
 | Options pane last group `global/internal/button-map-options-group`; tool rows `tool-rows`; window places (`ToolWindowMemory` "button-map", "print-export") | `button_map_options.py:268`, `window_placement.py` | nobody |
@@ -73,7 +73,7 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 | Program quit | `Main.offerButtonMapLeaveThenQuit` (636), `Main` onClosing (1384) | `requestLeaveForAppQuit` (716) |
 | Save / Discard / Cancel prompt | `_saveGate` (912) | `confirmLeaveSave` (729) / `confirmLeaveDiscard` (751) |
 | Recovery prompt Restore / Discard / Not now | `_recoverGate` (893) | `restoreRecovery` (640) / `clearRecovery` + `putPhotoBack` (617) / `putOffRecovery` (626) |
-| Autosave timer (every N s while editing) | `_autosaveTimer` (669) | `autosaveNow` (558) → `_hw.saveRecovery` / `clearRecovery` |
+| Recovery copies timer (every N s while editing) | `_recoveryTimer` (~769) | `recoveryNow` (~652) → `_hw.saveRecovery` / `clearRecovery` |
 | File → History | menu (2493) | `DialogHistory.qml` for this device |
 | File → Reset Layout | `askResetLayout` → `Confirm.ask` (red Reset Layout) | `resetLayout` → `pushHist`, `clearLayout` |
 | File → Fit to Photo Frame | menu (2506) | `fitToPhotoFrame` (1666) → `sceneShiftList` (259) |
@@ -143,7 +143,7 @@ Button Map is a picture of one device with a chip on each control, a hotspot on 
 No Python threads in this subsystem: every slot runs on the main (GUI) thread, including file writes, PDF writing, photo adjustment (`adjust_photo` on the full photo) and `QPrintDialog.exec()` (a nested event loop). History writes go to History's own writer thread (not here).
 
 Timers (all Qt timers on the main thread):
-- `_autosaveTimer` (window 669): every `autosave-seconds` (default 60, never under 10) while editing and Autosave is on.
+- `_recoveryTimer` (window ~769): every `recovery-seconds` (default 60, never under 10) while editing and Keep recovery copies is on (D-07-RECOVERY-COPIES, 2026-10-10; was `_autosaveTimer` / Autosave).
 - `_lookTimer` (window 1240): 150 ms after a look slider rests, makes the adjusted photo.
 - Editor: `_seedTimer` 80 ms after `nodes` changes (tidies the map; replaces the top undo step), `_photoHist` 400 ms (one undo step for a run of nudges, photo or colour changes), `_findMsgTimer` 3 s, `_hotPulseTimer` 30 ms while a press pulse runs, `_spineHold` 450 ms (hold right button to delete a spine).
 - `VkbRigFace` one-shot 50 ms repaint at start.
@@ -211,7 +211,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **S31** It should leave nothing behind when the window closes (no leaked objects, commands removed from the shared palette). [test: test_button_map_lifecycle.py::test_button_map_leaves_nothing_behind] [user confirmed 2026-10-06; was code only: `Commands.removeOwner("buttonmap")`]
 
 **Recovery copies**
-- **S32** It should keep a recovery copy of unsaved edits (photo, pose, map) every "Seconds between recovery copies" while editing, and remove it when everything is undone. [help: Button Map Options] [test-plan: BMAP2-1]
+- **S32** While **Keep recovery copies** (Button Map Options, group **Recovery copies**) is on, it should keep a recovery copy of unsaved edits (photo, pose, map) every "Seconds between recovery copies" while editing, and remove it when everything is undone. "Autosave" is only the Device Library's word (10); profiles and the Button Map make **recovery copies** (built 2026-10-10, D8). [help: Button Map Options] [test-plan: BMAP2-1] [changed 2026-10-10, user: D-07-RECOVERY-COPIES] (was: the option was named Autosave)
 - **S33** It should never write recovery copies more often than every 10 seconds, whatever the option says. [user confirmed 2026-10-06; was code only: `DialogJoystickButtonMap.qml:671`]
 - **S34** It should offer Restore, Discard or Not now when the device opens or Edit starts and a copy exists; Restore opens the edits unsaved; Discard deletes the copy and puts the saved photo back; Not now keeps both and offers them next time. [help: Button Map Options] [tracker: AU-115] [tracker: AU-78] [test: test_audit3_screens.py::test_button_map_recovery_offer_and_device_switch]
 - **S35** It should put an open offer off (never apply it to another device) when another device is shown. [tracker: AU-115]
@@ -376,6 +376,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - Golden tests drive the editor alone, not the window: Save, Cancel, the leave prompts, recovery offer, copy layout and templates through the window are covered only by a few smokes.
 - Nothing tests that print area, guides or grid changes during an edit are or are not taken back by Cancel (G1).
 - Covered from 2026-10-10 (F4-AD8): `test_editor_load_error.py` (4: a failed load shows the plain error, no device layout, the reason goes to the log, no EVO layout left in the face; S104); `test_import_pack_raises.py` (2: a Device Pack import that raises comes back as an error, page 08).
+- Covered from 2026-10-10 (D8, D-07-RECOVERY-COPIES): `test_button_map_recovery_words.py` (3: the option reads Keep recovery copies in the Recovery copies group; no Button Map text says Autosave).
 - Nothing tests the Button Map open while History Restore, Device Pack import or Module Setup changes the same file (G6), or Delete Device during an edit (G7).
 - Apply Template / Copy from Device onto a device with different controls (G21); mirrored copy undo count (AU-27).
 - `clearImage` failure path (file locked), `imagesFolderUrl` when the install folder is read-only, `colorAt` beyond one test, `profilePhotoUrl` stock branches.
@@ -392,6 +393,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | All | As recommended in section 9 |
 | S103 | 2026-10-09 (D-09-OSC-ADDRESSES; user: "go with your recommendations, approved, go ahead"): OSC chips and rig labels show the address |
 | S104 | 2026-10-10 (AD8; user approved AD1-AD10, "all recommendations", 2026-10-10, audit batch F4): a failed editor load shows a plain error, no hard-coded EVO R layout |
+| S32 | 2026-10-10 (D-07-RECOVERY-COPIES; user: "Go with your recommendations", 2026-10-10, Help questions D8): the Button Map option is **Keep recovery copies** in a **Recovery copies** group; "Autosave" is only the Device Library's; built 2026-10-10 (D8) |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

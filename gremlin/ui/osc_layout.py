@@ -1250,10 +1250,10 @@ class OscLayoutModel(ControlLayoutModel):
 
     @QtCore.Slot(str, str, result=str)
     def addCompanionFeedback(self, parent: str, kind: str) -> str:
-        """Companion Key text ("text") or Key color ("colour") for an
+        """Companion Key text ("text") or Key color ("color") for an
         input: its value drives the key. The new row's key or ""."""
         osc_row = self._row_of_key(parent)
-        template = {"text": "companion_text", "colour": "companion_colour"}.get(kind)
+        template = {"text": "companion_text", "color": "companion_color"}.get(kind)
         if osc_row is None or template is None:
             return ""
         try:

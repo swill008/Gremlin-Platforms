@@ -62,7 +62,10 @@ _ENTRY_TITLES = {
     "pad-args": "Treat address-only messages as 1.0",
     "delay-presets": "Auto-release delay presets",
     "plugin-directory": "Plugins folder",
-    "autosave-seconds": "Seconds between recovery copies",
+    # Button Map Options; "Autosave" is only the Device Library's word
+    # (D-07-RECOVERY-COPIES).
+    "recovery-copies": "Keep recovery copies",
+    "recovery-seconds": "Seconds between recovery copies",
     "remain-active-on-focus-loss": "Keep running when the program loses focus",
     "enable-auto-loading": "Load profiles automatically",
     "auto-loading": "Programs and their profiles",
@@ -236,6 +239,7 @@ def main_layout() -> list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]
 # Headings for groups whose stored key is spelled differently (glossary: US).
 _GROUP_TITLES = {
     "colours": "colors",
+    "recovery": "recovery copies",
 }
 
 
@@ -281,7 +285,7 @@ def group_title(name: str) -> str:
 _GROUP_ORDER = {
     "general": 0, "files": 1, "input-names": 2,
     # Button Map (gremlin/ui/button_map_options.py)
-    "labels": 10, "editing": 11, "autosave": 12, "view": 13, "export": 14,
+    "labels": 10, "editing": 11, "recovery": 12, "view": 13, "export": 14,
     "colours": 15, "library": 16,
 }
 

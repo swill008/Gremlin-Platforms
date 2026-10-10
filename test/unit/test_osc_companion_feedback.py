@@ -73,14 +73,14 @@ def test_key_text_template_uses_location_api(qapp: object, osc_file: Path) -> No
     assert row["target"] == _companion()["id"]
 
 
-def test_key_colour_template_has_off_on_colours(qapp: object, osc_file: Path) -> None:
+def test_key_color_template_has_off_on_colors(qapp: object, osc_file: Path) -> None:
     model = OscFeedbackModel()
-    model.addTemplateRow("companion_colour", {"page": 1, "row": 0, "column": 0})
+    model.addTemplateRow("companion_color", {"page": 1, "row": 0, "column": 0})
     [row] = odf.read_feedback()
     assert row["address"] == "/location/1/0/0/style/bgcolor"
     assert (row["off_value"], row["on_value"]) == ("#333333", "#2a7a46")
     assert row["source"] == {"kind": "vjoy_button", "device": 2, "input": 1}
-    assert row["template"] == "companion_colour"
+    assert row["template"] == "companion_color"
     shown = model.rows[0]
     assert (shown["offValue"], shown["onValue"]) == ("#333333", "#2a7a46")
 
@@ -90,7 +90,7 @@ def test_bad_template_fields_add_nothing(qapp: object, osc_file: Path) -> None:
     assert "no spaces" in model.addTemplateRow("companion_variable", {"name": "a b"})
     assert "1 or more" in model.addTemplateRow("companion_text", {"page": "0"})
     assert "#rrggbb" in model.addTemplateRow(
-        "companion_colour", {"page": 1, "row": 0, "column": 0, "on": "green"}
+        "companion_color", {"page": 1, "row": 0, "column": 0, "on": "green"}
     )
     assert odf.read_feedback() == []
     assert not [t for t in odf.read_targets() if t["name"] == "Companion"]
@@ -110,12 +110,12 @@ def test_blank_row_and_off_on_fields(qapp: object, osc_file: Path) -> None:
 
 def test_clean_feedback_keeps_off_on_and_template() -> None:
     [row] = odf.clean_feedback(
-        [{"off_value": " #333333 ", "on_value": 2, "template": "companion_colour"}]
+        [{"off_value": " #333333 ", "on_value": 2, "template": "companion_color"}]
     )
     assert (row["off_value"], row["on_value"], row["template"]) == (
         "#333333",
         2,
-        "companion_colour",
+        "companion_color",
     )
     [row] = odf.clean_feedback([{"off_value": "", "template": "bank"}])
     # Not set: the keys stay out (rows without them are written as before).
@@ -195,7 +195,7 @@ def _press(fb: SimpleNamespace, button: int, on: bool) -> list[tuple]:
     return list(fb.out.sent)
 
 
-def test_colour_off_on_goes_as_three_ints(fb: SimpleNamespace) -> None:
+def test_color_off_on_goes_as_three_ints(fb: SimpleNamespace) -> None:
     fb.rows.append(
         _row("c", "/location/1/0/0/style/bgcolor", 1,
              off_value="#333333", on_value="#2a7a46")

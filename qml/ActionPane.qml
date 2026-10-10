@@ -136,31 +136,65 @@ RowLayout {
 
     Connections {
         target: _pane
-        function onLeaveDone(resolved) { _pane._finishLeave(resolved) }
+        function onLeaveDone(resolved) {
+            _pane._finishLeave(resolved)
+            _pane._finishOpen(resolved)
+        }
     }
 
-    function openAt(key, seq, title) {
+    // The page's ControlTree, when a row click selects before it opens the
+    // pane: Cancel puts the selection back on the pane's input.
+    property var tree: null
+
+    property int _paneSeq: -1
+    property bool _paneNew: false
+    // Another input asked to open while the pane had unsaved edits (05 S26).
+    property var _pendingOpen: null
+
+    function openAt(key, seq, title) { _open(key, seq, title, false) }
+
+    function openNew(key, title) { _open(key, -1, title, true) }
+
+    // Opening another input with unsaved edits asks Save / Discard / Cancel
+    // first (05 S26); the open goes on after Save or Discard.
+    function _open(key, seq, title, isNew) {
         if (locked)
             return
+        if (hasUnsaved()) {
+            // The row being edited clicked again: keep editing.
+            if (!editor && !isNew && !_paneNew && key === paneKey && seq === _paneSeq)
+                return
+            _pendingOpen = { key: key, seq: seq, title: title, isNew: isNew }
+            askLeave("The action editor has changes that are not saved.")
+            return
+        }
         if (open && editor)
             finishClose()
         _useActionEditor()
-        layout.beginPane(key, seq)
+        if (isNew)
+            layout.beginNewAction(key)
+        else
+            layout.beginPane(key, seq)
         paneKey = key
         paneTitle = title
+        _paneSeq = seq
+        _paneNew = isNew
         open = true
     }
 
-    function openNew(key, title) {
-        if (locked)
+    function _finishOpen(resolved) {
+        var next = _pendingOpen
+        _pendingOpen = null
+        if (!next)
             return
-        if (open && editor)
-            finishClose()
-        _useActionEditor()
-        layout.beginNewAction(key)
-        paneKey = key
-        paneTitle = title
-        open = true
+        if (resolved) {
+            _open(next.key, next.seq, next.title, next.isNew)
+            return
+        }
+        // Cancel: the pane stays on its input; so does the selection.
+        if (tree && open && paneKey.length && next.key !== paneKey
+                && tree.picked.length === 1 && tree.picked[0] === next.key)
+            tree.select(paneKey, false)
     }
 
     // The page's own editor; hooks: {dirty, commit, discard, end, lockExempt}.
@@ -227,6 +261,9 @@ RowLayout {
 
     visible: open
     Layout.fillWidth: false
+    // Grip plus the pane's least width; the Appearance panel reads it
+    // (D-05-APPEARANCE-NARROW).
+    Layout.minimumWidth: Style.dp(6) + Style.dp(420)
     Layout.fillHeight: true
     spacing: 0
 

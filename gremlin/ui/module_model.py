@@ -697,7 +697,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_timer.start()
         signal.profileChanged.connect(self._schedule_reload)
         signal.configChanged.connect(self._schedule_refresh)
-        signal.inputItemChanged.connect(lambda _index: self._targets_timer.start())
+        signal.inputItemChanged.connect(self._input_item_changed)
         signal.logicalDeviceModified.connect(self._targets_timer.start)
         # A restored Logical Device file (History, Library) may bring its
         # picture back or take it away: the card shows it at once.
@@ -1370,6 +1370,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
         )
 
     @QtCore.Slot()
+    def _input_item_changed(self, _index: int) -> None:
+        # A bound method, not a lambda: Qt drops it when the list is deleted.
+        self._targets_timer.start()
+
     def _schedule_reload(self) -> None:
         self._reload_timer.start()
 

@@ -51,8 +51,11 @@ function topics() {
                 + "<li>Every save is kept in <a href=\"topic:tools-history\">History</a>, and the Logical Device can be restored there on its own.</li>"
                 + "</ul>"
                 + _good([
-                    "An action that names a control the Logical Device doesn't have is flagged, with an offer to add the control. It is never removed or moved to another control.",
-                    "Profiles from older versions kept their own Logical Device. The first time one opens, its controls are added to the shared Logical Device (nothing is removed), a note says which were added, and when you save the profile, the original file is kept beside it as <i>name</i>.xml.v14.bak."
+                    "An action that names a control the Logical Device doesn't have is flagged, with an offer to add the control. It is never removed or moved to another control. A macro's Logical Device step whose control is missing is kept when you save, too.",
+                    "A control in the Logical Device's file that can't be read is skipped and the rest load. When the program starts, a <b>Logical Device</b> notice names it, for example \"Logical Device control 3 skipped (…): … It is kept in the file as it is.\" The next save writes it back unchanged; no other control is dropped because of it.",
+                    "When the whole file can't be read, the notice says \"The Logical Device file can't be read (…)\" with its path; the file is left as it is and won't be saved over.",
+                    "When the profile is saved but the Logical Device's file can't be written, the message names that file (\"The profile was saved to <i>name</i>.xml, but this was not written: the Logical Device's file (logical_device.json): …\"). Its changes stay unsaved (the <b>*</b>); save again to try once more.",
+                    "Profiles from older versions still open, but a version 14 profile's own Logical Device rows are not read. Its actions find their controls in the shared Logical Device by each control's id, else by type and number; see " + _link("logical-device-q-older-profile", "Why doesn't an older profile bring its Logical Device controls?") + "."
                 ]),
             related: ["logical-device-about", "logical-device-undo", "device-library-built-in", "tools-history"]
         },
@@ -254,11 +257,12 @@ function topics() {
             id: "logical-device-q-loop",
             section: questions,
             title: "Why was a loop between controls stopped?",
-            body: "<p>A control's actions sent back to itself, directly or through other controls (for example Axis 1 › Axis 2 › Axis 1). The program stops a loop after 8 hops (one hop is one control sending to the next) so it can't freeze the program.</p>"
+            body: "<p>A control's actions sent back to itself, directly or through other controls (for example Axis 1 › Axis 2 › Axis 1), or a macro's Logical Device step drove the control the macro sits on. The program stops a loop after 8 hops (one hop is one control sending to the next) so it can't freeze the program.</p>"
                 + _good([
+                    "Each event follows the chain of controls it came through, so a loop is stopped after 8 hops however slowly it goes, even through a macro. Presses of a button that isn't in a loop are never stopped, however fast you press.",
                     "The notice names the loop, for example \"Logical Device: a loop between controls was stopped (Axis 1 → Axis 1)\". It shows once per Run, and one warning is written to <b>user.log</b>.",
                     "To fix it, open the controls named in the notice and change the Map to Logical Device or macro step that sends back along the loop.",
-                    "Map to Logical Device never offers the control it sits on; see " + _link("configuration-actions-map-to-logical-device", "Map to Logical Device") + "."
+                    "Map to Logical Device never offers the control it sits on; see " + _link("configuration-actions-map-to-logical-device", "Map to Logical Device") + ". One loaded from a file that already targets its own control shows it selected, marked \"(this control: blocked by the loop guard)\"; pick another control to fix it."
                 ]),
             related: ["configuration-actions-map-to-logical-device", "logical-device-add-action"]
         },
@@ -277,11 +281,11 @@ function topics() {
             related: ["logical-device-add-controls", "configuration-actions-macro", "configuration-actions-condition"]
         },
         {
-            id: "logical-device-q-controls-added",
+            id: "logical-device-q-older-profile",
             section: questions,
-            title: "Why did an older profile add controls to the Logical Device?",
-            body: "<p>Profiles from older versions kept their own Logical Device. Now every profile shares one, so the first time an older profile opens, its controls are added to the shared one (nothing is removed) and a note lists them. When you save the profile, the original file is kept beside it as <i>name</i>.xml.v14.bak.</p>",
-            related: ["logical-device-saved"]
+            title: "Why doesn't an older profile bring its Logical Device controls?",
+            body: "<p>Every profile shares one Logical Device, kept in its own file. A version 14 profile kept its own Logical Device inside the profile; those rows are not read, and nothing is added to the shared Logical Device. The profile's actions find their controls in the shared one by each control's id, else by type and number. An action whose control isn't there is flagged, with an offer to add it; see " + _link("logical-device-add-controls", "Add buttons, axes and hats") + ".</p>",
+            related: ["logical-device-saved", "logical-device-add-controls"]
         }
     ]
 }

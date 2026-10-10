@@ -118,9 +118,11 @@ def test_history_names_settings_as_options_does(
 
 
 def test_numbered_setting_loses_its_number_in_history() -> None:
-    # Button Map's "01-autosave" read "Changed 01 autosave".
-    text = history_model._settings_text({"button-map/autosave/01-autosave": "true"})
-    assert text == "Autosave: true"
+    # Button Map's "01-recovery-copies" once read "Changed 01 ...".
+    text = history_model._settings_text(
+        {"button-map/recovery/01-recovery-copies": "true"}
+    )
+    assert text == "Keep recovery copies: true"
 
 
 def test_card_order_keeps_an_unplugged_stick_in_its_place() -> None:

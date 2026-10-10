@@ -37,7 +37,7 @@ function topics() {
             + "<ul>"
             + "<li><b>Filters</b> at the top: <b>Connected</b>, <b>Not connected</b>, <b>Deleted</b> and <b>Autosaves</b>. A ticked filter shows that kind; select one to hide it.</li>"
             + "<li>The <b>search box</b> under them finds devices and saved setups as you type. See <a href=\"topic:device-library-search\">Search the Device Library</a>.</li>"
-            + "<li>The <b>list</b>: one row per device, with its saved setups under it. The internal inputs come last, under their own heading.</li>"
+            + "<li>The <b>list</b>: one row per device, with its saved setups under it. The internal inputs come last, under their own heading. A row of the library's own list that can't be read is left out of the list, with a warning in the system log, and kept in the file as it is.</li>"
             + "<li>The <b>details</b>: the name, the description, what it holds, and buttons for what you can do with it.</li>"
             + "<li>The message line above the status bar says how the last change went and lists anything to check: plain when it worked, red when it failed. After a delete it ends with an <b>Undo</b> link. A message stays until the next one.</li>"
             + "<li>The <b>status bar</b> shows how many devices and saved setups there are, how many autosaves are kept per stick, the library's size on disk (for example \"Library: 48 MB\"), the <b>Undo</b> and <b>Redo</b> buttons with the last change beside them (see <a href=\"topic:device-library-undo\">Undo and redo a change</a>) and the library folder.</li>"
@@ -96,7 +96,7 @@ function topics() {
             "<p>The program's internal inputs, Keyboard, OSC and the Logical Device, are listed last, under the <b>INTERNAL INPUTS</b> heading. They are part of the program, so they are never plugged in, unplugged or removed. OSC's saved setups hold its inputs, with their settings, and its server settings.</p>"
             + "<ul>"
             + "<li>Their menu and buttons have only <b>Save to Device Library…</b>, <b>Restore…</b> (puts back their newest saved setup), <b>Export…</b>, <b>Rename…</b> and <b>Edit Description</b>.</li>"
-            + "<li>They need nothing plugged in, so Restore always works. It brings back the saved setup: its settings in the profiles it came from, and for the Logical Device its layout and picture too. An autosave is kept first, and <b>Edit › Undo</b> takes the whole Restore back in one step.</li>"
+            + "<li>They need nothing plugged in, so Restore always works. It brings back the saved setup: its settings in the profiles it came from, the Keyboard's keys and their names, and for the Logical Device its layout and picture too. An autosave is kept first, and <b>Edit › Undo</b> takes the whole Restore back in one step.</li>"
             + "<li>Every profile uses the one Logical Device, so keep its other layouts here as saved setups. To bring in a Logical Device pack, choose <b>File › Import Device Pack…</b> (it is filed under the Logical Device), then <b>Restore…</b>.</li>"
             + "<li>They can't be copied, swapped, cleared or removed, and they have no state badge.</li>"
             + "<li>The filters never hide them; a search that matches none of them does.</li>"
@@ -146,7 +146,7 @@ function topics() {
             + "<ul>"
             + "<li>It keeps the stick's module file as it is now, and you get one saved setup per ticked profile, named after the profile. Rename it and add a description afterwards.</li>"
             + "<li>When no profile has bindings for the stick, only the module file is kept.</li>"
-            + "<li>The device needs settings to save: a stick set up here or plugged in now, or a built-in input.</li>"
+            + "<li>The device needs settings to save: a stick set up here or plugged in now, or an internal input.</li>"
             + "</ul>",
             ["device-library-saved-setups", "device-library-rename", "device-library-export"]),
 
@@ -305,6 +305,7 @@ function topics() {
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>While you type in a box, <b>Ctrl+Z</b> and <b>Ctrl+Y</b> undo the typing instead.</li>"
+            + "<li>Clear History in Tools › History also empties Undo and Redo here: nothing from before it can be undone.</li>"
             + "<li>Each change is one entry in <b>Tools › History</b>, so older changes, and those from before the program started, can be put back there. See <a href=\"topic:device-library-history\">See a device's changes in History</a>.</li>"
             + "</ul>",
             ["device-library-history", "device-library-delete", "device-library-qa-go-back"]),
@@ -389,6 +390,8 @@ function topics() {
             + "<ul>"
             + "<li>It goes under the device it was made from when that device is in the Device Library; otherwise under a new <b>Not connected</b> device named after the pack.</li>"
             + "<li>The saved setup says where it came from (\"From Sam's pack\") and takes the pack's note as its description.</li>"
+            + "<li>A pack that can't be read is refused, and the message says why. That includes a pack that unpacks to more than 64 MB (\"This pack is too big to read: it unpacks to N MB and the most is 64 MB.\") and a pack whose outputs file (outputs/*.json) is damaged.</li>"
+            + "<li>A very long device name is cut to 80 characters in the Library's folder and file names; the list shows the full name.</li>"
             + "</ul>",
             ["device-library-export", "device-library-copy", "home-devices-device-pack"]),
 
@@ -450,7 +453,7 @@ function topics() {
             + "<p>See <a href=\"topic:device-library-export\">Export a saved setup</a>.</p>",
             ["device-library-export", "device-library-import"]),
         t("device-library-qa-cant-copy", "Common questions", "Why can't I copy to this stick?",
-            "<p>Copy and Swap work only onto sticks plugged in now, so the To list shows nothing else. Plug the stick in and open the dialog again. A device that came from someone's pack has never been plugged in here: you can copy from it, not to it. Built-in inputs can't be copied to.</p>"
+            "<p>Copy and Swap work only onto sticks plugged in now, so the To list shows nothing else. Plug the stick in and open the dialog again. A device that came from someone's pack has never been plugged in here: you can copy from it, not to it. Internal inputs can't be copied to.</p>"
             + "<p>See <a href=\"topic:device-library-copy\">Copy a setup to another stick</a>.</p>",
             ["device-library-copy", "device-library-devices"]),
         t("device-library-qa-where", "Common questions", "Where did my old setup go?",

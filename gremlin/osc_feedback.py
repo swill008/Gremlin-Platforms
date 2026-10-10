@@ -99,13 +99,13 @@ def _convert(number: float, kind: str) -> Any:  # noqa: ANN401
     return float(number)
 
 
-def _colour_address(address: object) -> bool:
+def _color_address(address: object) -> bool:
     """Companion's key colours: /location/<p>/<r>/<c>/style/bgcolor or
     .../style/color."""
     return str(address or "").rstrip("/").endswith(("/style/bgcolor", "/style/color"))
 
 
-def _colour(value: object) -> list[int] | None:
+def _color(value: object) -> list[int] | None:
     """"#rrggbb" or "r g b" text as three ints 0-255; None when value isn't
     a colour."""
     text = str(value).strip()
@@ -129,8 +129,8 @@ def _shape(row: dict, value: object) -> list:
     """The values an off/on value sends: a colour to a colour address goes
     as three ints r g b (Companion v3+ takes that); a number is converted
     like Min/Max; other text goes as it is."""
-    if isinstance(value, str) and _colour_address(row.get("address")):
-        rgb = _colour(value)
+    if isinstance(value, str) and _color_address(row.get("address")):
+        rgb = _color(value)
         if rgb is not None:
             return rgb
     if isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -142,7 +142,7 @@ def _send_types(row: dict, values: list) -> list[str] | None:
     if (
         len(values) == 3
         and all(isinstance(v, int) and not isinstance(v, bool) for v in values)
-        and _colour_address(row.get("address"))
+        and _color_address(row.get("address"))
     ):
         return ["int", "int", "int"]
     value = values[0] if values else None

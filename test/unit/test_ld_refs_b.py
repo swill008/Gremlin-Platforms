@@ -9,7 +9,7 @@ reads the one Logical Device and flags an id it doesn't know (decision 4).
 A saved reference writes `uid` beside its type and number. On load the uid
 wins (the control may have a new number); an unknown uid is missing:
 nothing runs, it is kept on save and never re-targeted by number. Data
-saved before ids falls back to the v14 load map, then type+number.
+saved before ids falls back to type+number (D-04-LD-NOLEGACY).
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ sys.path.append(".")
 import pytest
 from PySide6 import QtCore
 
-from gremlin import logical_device_file, macro, user_script, validate
+from gremlin import macro, user_script, validate
 from gremlin.logical_device import LogicalDevice
 from gremlin.types import InputType
 
@@ -50,7 +50,6 @@ def ld() -> Iterator[LogicalDevice]:
     saved = device.to_dict()
     device.load_dict({"controls": [], "groups": []})
     yield device
-    logical_device_file.current_uid_map = None
     device.load_dict(saved)
 
 
@@ -118,15 +117,8 @@ def test_an_unknown_uid_is_missing_and_never_retargeted(ld: LogicalDevice) -> No
     assert step.to_xml().get("uid") == _UNKNOWN
 
 
-def test_old_macro_data_uses_the_v14_map_then_the_number(ld: LogicalDevice) -> None:
+def test_old_macro_data_without_a_uid_uses_the_number(ld: LogicalDevice) -> None:
     first = ld.create(InputType.JoystickButton, 1)
-    moved = ld.create(InputType.JoystickButton, 4)
-    # v14 load: the profile's button 2 was added to the file as button 4.
-    logical_device_file.current_uid_map = {("button", 2): moved.uid}
-    step = _load_step(_step_xml(2, None))
-    assert step.input_id == 4
-    assert step.to_xml().get("uid") == moved.uid
-    logical_device_file.current_uid_map = None
     step = _load_step(_step_xml(1, None))
     assert step.input_id == 1
     assert step.to_xml().get("uid") == first.uid
@@ -303,17 +295,6 @@ def test_one_resolver_for_every_reference() -> None:
     assert macro.resolve_logical_reference is logical_device.resolve_logical_reference
     assert user_script.resolve_logical_reference is (
         logical_device.resolve_logical_reference
-    )
-
-
-def test_the_v14_map_accepts_the_enum_name(ld: LogicalDevice) -> None:
-    from gremlin.logical_device import resolve_logical_reference
-
-    made = ld.create(InputType.JoystickButton, 6)
-    logical_device_file.current_uid_map = {("JoystickButton", 2): made.uid}
-    assert resolve_logical_reference(None, InputType.JoystickButton, 2) == (
-        _ident(InputType.JoystickButton, 6),
-        made.uid,
     )
 
 

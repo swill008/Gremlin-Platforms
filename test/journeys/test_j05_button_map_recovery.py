@@ -6,7 +6,7 @@
 
 First run of the program: the user opens the pJoy Pro's Button Map, saves
 it with a blue photo, then edits again: draws a rectangle and chooses a
-red photo. A recovery copy is written (as the autosave timer does), and
+red photo. A recovery copy is written (as the recovery timer does), and
 the program ends without closing anything (a crash).
 
 Second run, same data folder: the Button Map offers the unsaved edits.
@@ -116,7 +116,7 @@ def crash(j: Journey) -> None:
     )
     _choose_photo(j, window, "#993366")
     out["dirty"] = j.ev("isDirty()", window)
-    j.ev("autosaveNow()", window)
+    j.ev("recoveryNow()", window)
     out["before-crash"] = _state(j, window)
     out["saved-nodes-before-crash"] = j.ev(
         "JSON.parse(_hw.load(targetName)).nodes.length", window

@@ -1979,36 +1979,11 @@ def _resolve_osc_inputs(inputs: list[str]) -> tuple[list[str], list[str]]:
     return out, left
 
 
-def _rows_of(profile: object) -> object:
-    """The Logical Device rows a profile that isn't open still carries: a
-    saved version 14 profile read without opening it keeps its own rows
-    until it is saved (pending_logical_rows; the shared file is not
-    changed by reading it). None: the Logical Device's module file, which
-    every other profile uses (D-04-LD-FILE)."""
-    from gremlin import shared_state
-
-    if profile is None or profile is shared_state.current_profile:
-        return None
-    pending = getattr(profile, "pending_logical_rows", None)
-    if not pending:
-        return None
-    if isinstance(pending, dict):
-        from gremlin.logical_device import LogicalRows
-
-        rows = LogicalRows()
-        rows.load_dict(pending)
-        return rows
-    return pending
-
-
-def _missing_logical(
-    action_xml: list[str], rows: object = None
-) -> list[tuple[str, int, str]]:
+def _missing_logical(action_xml: list[str]) -> list[tuple[str, int, str]]:
     """The Logical Device inputs these actions send to that the Logical
     Device's module file lacks (one layout for every profile, D-04-LD-FILE).
     A target with an id is found by its id (decision 4); one without (an
-    older pack) by type and number. rows: a saved version 14 profile's own
-    rows (_rows_of), checked by type and number as well."""
+    older pack) by type and number."""
     from gremlin.logical_device import LogicalDevice
     from gremlin.types import InputType
 
@@ -2021,10 +1996,7 @@ def _missing_logical(
             ident = LogicalDevice.Input.Identifier(InputType.to_enum(kind), number)
         except Exception:
             continue
-        if rows is not None:
-            if rows.exists(ident):  # type: ignore[attr-defined]
-                continue
-        elif not uid and shared.exists(ident):
+        if not uid and shared.exists(ident):
             continue
         missing.append((kind, number, uid))
     return missing
@@ -2094,12 +2066,10 @@ def _plan_wires(
     wires: dict,
     chosen: set[str],
     limits: dict[str, set[int]] | None,
-    rows: object = None,
 ) -> dict:
     """What importing the ticked modes would write, before anything changes:
     their inputs (less the controls the device doesn't have) and only the
-    actions those inputs use. rows: a saved version 14 profile's own
-    Logical Device rows (_rows_of; None: the Logical Device's module file)."""
+    actions those inputs use."""
     from gremlin.types import InputType
     from gremlin.util import read_subelement
 
@@ -2150,7 +2120,7 @@ def _plan_wires(
         "inputs": inputs,
         "actions": actions,
         "leftOut": left_out,
-        "missingLogical": _missing_logical(actions, rows),
+        "missingLogical": _missing_logical(actions),
         "missingOsc": _missing_osc(inputs, wires.get("osc")),
     }
 
@@ -3036,8 +3006,7 @@ def apply_zip(
             continue
         notes.append(f"Saved {dest.name} for {out_name}.")
         notes.extend(merged_notes)
-    # The profile they go into says which Logical Device inputs it lacks.
-    plan = _plan_wires(loaded["wires"], chosen, limits, _rows_of(profile))
+    plan = _plan_wires(loaded["wires"], chosen, limits)
     wire_notes, wires_undo = _apply_wires(
         plan,
         loaded["wires"].get("tree") or {},

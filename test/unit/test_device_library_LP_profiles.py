@@ -145,7 +145,8 @@ def test_read_profile_reasons_and_shared_logical_device_kept(folders: dict) -> N
         good = library_profiles.read_profile(_saved(profiles / "good.xml", _STICK, 2))
         assert isinstance(good, Profile)
         assert len(good.inputs[_STICK]) == 2
-        # A version 14 profile with rows of its own: read, not merged.
+        # A version 14 profile with rows of its own: read; the rows are not
+        # (D-04-LD-NOLEGACY).
         old = profiles / "old.xml"
         text = (profiles / "good.xml").read_text(encoding="utf-8-sig")
         text = text.replace('version="16"', 'version="14"', 1).replace(
@@ -157,7 +158,7 @@ def test_read_profile_reasons_and_shared_logical_device_kept(folders: dict) -> N
         old.write_text(text, encoding="utf-8")
         older = library_profiles.read_profile(old)
         assert isinstance(older, Profile), older
-        assert older.pending_logical_rows is not None
+        assert getattr(older, "pending_logical_rows", None) is None
         assert not old.with_name("old.xml.v14.bak").exists()
         # Reading other profiles doesn't change the shared Logical Device
         # (one layout in its own module file, D-04-LD-FILE).

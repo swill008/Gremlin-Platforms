@@ -105,7 +105,7 @@ def main() -> None:
                      and tab_at.x() + tab.width() <= pane_at.x() + pane.width() + 0.5)
     out["narrower"] = pane.width() < win.width() - 40
     out["groups"] = [
-        g for g in ("labels", "editing", "autosave", "view", "colours", "library")
+        g for g in ("labels", "editing", "recovery", "view", "colours", "library")
         if child("optionsGroup:" + g) is not None
     ]
 

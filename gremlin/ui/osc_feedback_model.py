@@ -182,8 +182,8 @@ def new_row() -> dict:
 
 # Companion templates (D-09-OSC-COMPANION): defaults the Add Row dialogs show.
 COMPANION_VARIABLE = "gremlin_mode"
-COLOUR_OFF = "#333333"
-COLOUR_ON = "#2a7a46"
+COLOR_OFF = "#333333"
+COLOR_ON = "#2a7a46"
 VARIABLE_NOTE = "Create the custom variable in Companion first."
 KEY_NOTE = "Turn on Companion's OSC Listener (Settings › OSC) first."
 
@@ -204,7 +204,7 @@ def template_row(kind: str, params: dict, target_id: str) -> dict | str:
     """The row a Companion template builds, or why it can't (text).
 
     kind: companion_variable (params name), companion_text and
-    companion_colour (params page, row, column; colour also off, on).
+    companion_color (params page, row, column; color also off, on).
     """
     row = new_row()
     row["target"] = target_id
@@ -228,9 +228,9 @@ def template_row(kind: str, params: dict, target_id: str) -> dict | str:
         row["address"] = f"{where}/text"
         row["type"] = "text"
         return row
-    if kind == "companion_colour":
-        colours = []
-        for key, default in (("off", COLOUR_OFF), ("on", COLOUR_ON)):
+    if kind == "companion_color":
+        colors = []
+        for key, default in (("off", COLOR_OFF), ("on", COLOR_ON)):
             text = str(params.get(key) or default).strip()
             if not text.startswith("#"):
                 text = "#" + text
@@ -238,11 +238,11 @@ def template_row(kind: str, params: dict, target_id: str) -> dict | str:
             hex_digits = "0123456789abcdefABCDEF"
             if len(digits) != 6 or any(c not in hex_digits for c in digits):
                 return "A color is #rrggbb, e.g. #2a7a46."
-            colours.append(text.lower())
+            colors.append(text.lower())
         row["address"] = f"{where}/bgcolor"
         row["type"] = "auto"
         row["source"] = {"kind": "vjoy_button", "device": _vjoy_ids()[0], "input": 1}
-        row["off_value"], row["on_value"] = colours
+        row["off_value"], row["on_value"] = colors
         return row
     return "Unknown template."
 
@@ -524,7 +524,7 @@ class OscFeedbackModel(QtCore.QObject):
     @QtCore.Slot(str, "QVariantMap", result=str)
     def addTemplateRow(self, kind: str, params: dict) -> str:
         """Adds a row from a template ("blank" or companion_variable /
-        companion_text / companion_colour); the text to show (a note, or
+        companion_text / companion_color); the text to show (a note, or
         why nothing was added)."""
         if kind == "blank":
             return "" if self.addRow() else self._message

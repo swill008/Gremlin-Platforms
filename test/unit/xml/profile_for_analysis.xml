@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" ?>
-<profile version="14">
+<profile version="16">
     <inputs>
         <input>
             <device-id>06fea9f0-1fe9-11f1-8007-444553540000</device-id>
@@ -26,13 +26,6 @@
         <startup-mode>Use Heuristic</startup-mode>
         <macro-default-delay>0.05</macro-default-delay>
     </settings>
-    <logical-device>
-        <input>
-            <input-type>button</input-type>
-            <input-id>1</input-id>
-            <label>Button 1</label>
-        </input>
-    </logical-device>
     <library>
         <action id="f43a0d14-277b-407e-a29e-b803622198ca" type="response-curve">
             <deadzone>

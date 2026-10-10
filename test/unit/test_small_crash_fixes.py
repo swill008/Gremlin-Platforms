@@ -40,10 +40,15 @@ def test_pause_resume_unknown_operation_loads_and_saves() -> None:
     node.append(util.create_property_node("operation", "Bogus", PropertyType.String))
 
     data = PauseResumeData()
-    with mock.patch("logging.Logger.warning") as warn:
+    # The plugin's own getLogger: a test earlier in the run may have swapped
+    # the "system" logger's class, so Logger.warning alone isn't reliable.
+    logger = mock.Mock()
+    with mock.patch(
+        "action_plugins.pause_resume.logging.getLogger", return_value=logger
+    ):
         data._from_xml(node, None)  # type: ignore[arg-type]
     assert data.operation is PauseResumeType.Pause
-    assert warn.called
+    assert logger.warning.called
     saved = data._to_xml()
     assert "Pause" in ElementTree.tostring(saved, encoding="unicode")
 

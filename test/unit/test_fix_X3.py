@@ -137,26 +137,32 @@ def test_the_configuration_input_row_carries_the_note(
 def test_the_keyboard_key_row_carries_the_note(profile: Profile) -> None:
     # The Keyboard page's model (KeyboardLayoutModel, 05 S128): the key's
     # parent row shows the Note under its name, as the Configuration page.
+    from gremlin.modules import store
     from gremlin.ui.keyboard_layout import KeyboardLayoutModel
 
     model = KeyboardLayoutModel()
     _KEEP.append(model)
     key = (0x21, False)
     event = Event(InputType.Keyboard, key, dill.UUID_Keyboard, "Default")
+    # addKey holds the new key in the Keyboard layout until Save (AD4):
+    # dropped after, or a later test's "*" sees it.
     row_key = model.addKey([event], "Default")
-    item = profile.get_input_item(
-        dill.UUID_Keyboard, InputType.Keyboard, key, "Default"
-    )
+    try:
+        item = profile.get_input_item(
+            dill.UUID_Keyboard, InputType.Keyboard, key, "Default"
+        )
 
-    def subtitle() -> str:
-        model._rebuild()
-        rows = [r for r in model._rows if r["key"] == row_key]
-        assert rows, row_key
-        return rows[0]["subtitle"]
+        def subtitle() -> str:
+            model._rebuild()
+            rows = [r for r in model._rows if r["key"] == row_key]
+            assert rows, row_key
+            return rows[0]["subtitle"]
 
-    assert subtitle() == ""
-    _bind(item, 1, "Gear lever")
-    assert subtitle() == "Gear lever"
+        assert subtitle() == ""
+        _bind(item, 1, "Gear lever")
+        assert subtitle() == "Gear lever"
+    finally:
+        store.discard_pending(str(dill.UUID_Keyboard))
 
 
 # --- 04 S41: alphabetical whatever the capitals ---------------------------------

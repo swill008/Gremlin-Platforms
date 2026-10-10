@@ -481,11 +481,11 @@ def _button_map(out: pathlib.Path) -> None:
     _wait(300)
     _Out.result("not-now", _js(win, state_a) + " photo:" + photo_colour())
     # Edit after Not now: the edits are offered again, not a new session
-    # (its autosave wrote over the copy and its Cancel deleted copy and
+    # (its recovery copy wrote over the copy and its Cancel deleted copy and
     # photo).
     edit = _js(win, "_buttonMap.enterEdit();"
                     " 'gate:' + _recoverGate.opened + ' editing:' + _buttonMap.editing")
-    _js(win, "_recoverGate.close(); _buttonMap.autosaveNow();"
+    _js(win, "_recoverGate.close(); _buttonMap.recoveryNow();"
              " _buttonMap.discardEdit(); 1")
     _wait(300)
     _Out.result("edit-offers",

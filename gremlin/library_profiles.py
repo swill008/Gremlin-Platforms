@@ -307,9 +307,8 @@ def _read_here(path: Path) -> Profile | str:
     """read_profile on this thread (a file only: safe on a program thread)."""
     if not path.is_file():
         return f"{path.name}: the file isn't there."
-    # Read without binding: the Logical Device's module file is not changed
-    # (an old profile keeps its rows in pending_logical_rows until it is
-    # saved, D-04-LD-FILE); OSC's inputs are the ones in OSC's file.
+    # Read without binding: the Logical Device's and OSC's inputs are the
+    # ones in their module files (D-04-LD-FILE, D-09-OSC-FILE).
     made = Profile(bind=False)
     try:
         made.from_xml(path)
@@ -322,11 +321,7 @@ def _read_here(path: Path) -> Profile | str:
 def save_profile(profile: Profile, path: Path) -> None:
     """Saves a profile that isn't open, as Profile.to_xml does (written
     safely, a History entry), with its file written through background():
-    the device names are read here on the main thread first. A saved
-    version 14 profile's Logical Device rows go into their module file
-    first (backup kept, as to_xml does), so none are dropped
-    (D-04-LD-FILE)."""
-    profile.commit_pending_logical_rows(Path(path))
+    the device names are read here on the main thread first."""
     profile.library.prune_for_save()
     profile.device_database.update_for_uuids(profile.inputs)
 

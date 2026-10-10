@@ -127,6 +127,61 @@ def _trace_off_after() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _home_models_quiet() -> Iterator[None]:
+    """A Home card list a test makes stays connected to the program-wide
+    signals (its lambda on inputItemChanged keeps it alive), so a later
+    profileChanged ran its 200 ms reload inside whichever test came next:
+    one that stands in for the device list failed on a stand-in without a
+    vendor id (seed 179731, unit-2). Models made by a module-scoped fixture
+    are set up before this and kept."""
+    import warnings
+
+    from PySide6 import QtCore
+
+    from gremlin import event_handler, signal
+    from gremlin.modules.runtime import InputModuleRuntime
+    from gremlin.ui import module_model
+
+    cls = module_model.ModuleListModel
+    made: list[module_model.ModuleListModel] = []
+    real_init = cls.__init__
+
+    def init(
+        self: module_model.ModuleListModel, *args: object, **kwargs: object
+    ) -> None:
+        real_init(self, *args, **kwargs)
+        made.append(self)
+
+    cls.__init__ = init  # type: ignore[method-assign]
+    try:
+        yield
+    finally:
+        cls.__init__ = real_init  # type: ignore[method-assign]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)  # already disconnected
+            for model in made:
+                try:
+                    for timer in model.findChildren(QtCore.QTimer):
+                        timer.stop()
+                        timer.timeout.disconnect()
+                    listener = event_handler.EventListener()
+                    for sig, slot in (
+                        (listener.device_change_event, model._schedule_reload),
+                        (InputModuleRuntime().event, model._on_joy),
+                        (signal.signal.profileChanged, model._schedule_reload),
+                        (signal.signal.configChanged, model._schedule_refresh),
+                        (signal.signal.configChanged, model._follow_card_sizes),
+                        (signal.signal.logicalDeviceReloaded, model._logical_reloaded),
+                    ):
+                        try:
+                            sig.disconnect(slot)
+                        except (RuntimeError, TypeError):
+                            pass
+                except RuntimeError:  # deleted by the test
+                    pass
+
+
+@pytest.fixture(autouse=True)
 def _no_settings_notice_left() -> Iterator[None]:
     """A test that reads a damaged settings file must not leave the
     'Settings Reset' notice for a later test that builds the app."""
@@ -175,3 +230,14 @@ def xml_dir(unit_test_dir: pathlib.Path, tmp_path: pathlib.Path) -> pathlib.Path
     copy = tmp_path / "xml"
     shutil.copytree(unit_test_dir / "xml", copy)
     return copy
+
+
+@pytest.fixture(autouse=True)
+def _no_held_layouts_left() -> Iterator[None]:
+    """A layout held for File › Save (CS1, AD4: a new key is one) must not
+    reach the next test, where it would make the profile look unsaved."""
+    yield
+    from gremlin.modules import store
+
+    if store.has_pending():
+        store.discard_pending()

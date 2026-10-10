@@ -58,7 +58,7 @@ def test_the_menu_opens_the_pane_under_the_top_row(run: dict) -> None:
 
 def test_groups_and_their_settings(run: dict) -> None:
     assert run["groups"] == [
-        "labels", "editing", "autosave", "view", "colours", "library"]
+        "labels", "editing", "recovery", "view", "colours", "library"]
     assert run["labels-rows"] == [
         "chip-text", "description-first", "several-actions", "unbound"]
     assert len(run["editing-rows"]) == 6

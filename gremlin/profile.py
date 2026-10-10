@@ -1514,9 +1514,8 @@ class Profile:
     """Stores the contents and an entire configuration profile."""
 
     current_version = 16
-    # Versions read: 14 (its Logical Device rows move to the module file,
-    # D-04-LD-FILE), 14 and 15 (their OSC rows move to OSC's module file,
-    # D-09-OSC-FILE) and 16.
+    # Versions read: 14, 15 and 16. An older profile's own Logical Device
+    # and OSC rows are not read (D-04-LD-NOLEGACY, AD7).
     readable_versions = (14, 15, 16)
 
     def __init__(self, bind: bool = True) -> None:
@@ -1538,17 +1537,6 @@ class Profile:
         # A new profile is the one shown until another is bound; one read
         # without opening it (bind=False, the Device Library, 10 S33) never is.
         self._bind = bind
-        # Labels a version 14 load added to the Logical Device file, for the
-        # one-time note (D-04-LD-FILE decision 3); empty otherwise.
-        self.logical_migration_note: list[str] = []
-        # The version 14 file this profile was opened from: backed up just
-        # before the first save writes over it (D-04-LD-FILE decision 3).
-        self._v14_source: Path | None = None
-        # A version 14 profile read without opening it (bind=False): its
-        # Logical Device rows (LogicalRows.to_dict form, provisional uids),
-        # added to the file only when this profile is saved (lead ruling
-        # 2026-10-09: browsing the Library adds no controls).
-        self.pending_logical_rows: dict | None = None
         if bind:
             self.bind_devices()
 
@@ -1585,101 +1573,10 @@ class Profile:
                 f"{readable} can be read."
             )
 
-        from gremlin import logical_device_file
-
-        # An older profile's <osc-device> is not read (AD7, 09 S48).
-        try:
-            migrated = self._migrate_logical_device(root, fpath, version)
-            self._read_root(root, fpath)
-        finally:
-            logical_device_file.current_uid_map = None
-        if migrated:
-            # Changed: the next Save writes version 16 without the rows.
-            self._saved_snapshot = None
-            self._unsaved_seen = None
-
-    def _migrate_logical_device(
-        self, root: ElementTree.Element, fpath: Path, version: int
-    ) -> bool:
-        """A version 14 profile's Logical Device rows go to the module file
-        (nothing removed; matched by type, number and label, else added
-        with a new number) and its references are repointed while it
-        loads; the original file is kept as a backup (D-04-LD-FILE
-        decision 3). Read without opening it (bind=False), nothing is
-        changed: the rows wait in pending_logical_rows for a save. True
-        when the profile has rows to move."""
-        from gremlin import logical_device_file
-
-        self.logical_migration_note = []
-        self.pending_logical_rows = None
-        self._v14_source = None
-        logical_device_file.current_uid_map = None
-        section = root.find("logical-device")
-        if version != 14 or section is None:
-            return False
-        rows = self._logical_rows_dict(section)
-        if not rows["controls"] and not rows["groups"]:
-            return False
-        if not self._bind:
-            result = logical_device_file.merge_profile_rows(rows, dry_run=True)
-            for control in rows["controls"]:
-                uid = result.uid_map.get((control["type"], control["id"]))
-                if uid:
-                    control["uid"] = uid
-            self.pending_logical_rows = rows
-            logical_device_file.current_uid_map = dict(result.uid_map)
-            return True
-        result = logical_device_file.merge_profile_rows(rows)
-        logical_device_file.current_uid_map = dict(result.uid_map)
-        # Opening changes nothing on disk; the save that writes over the
-        # version 14 file backs it up first (to_xml).
-        self._v14_source = Path(fpath)
-        self.logical_migration_note = list(result.added)
-        return True
-
-    def _back_up_v14_before_writing(self, fpath: Path) -> None:
-        """The first save over the version 14 file this profile was opened
-        from keeps that file as <name>.xml.v14.bak."""
-        source = self._v14_source
-        if source is None:
-            return
-        try:
-            same = source.resolve() == fpath.resolve()
-        except OSError:
-            same = False
-        if same:
-            from gremlin import logical_device_file
-
-            logical_device_file.backup_v14(fpath)
-            self._v14_source = None
-
-    def commit_pending_logical_rows(self, fpath: Path) -> None:
-        """Before a profile read with bind=False is saved over its version
-        14 file: back the file up and add its Logical Device rows to the
-        module file for real (merge_profile_rows writes it), with the uids
-        its references were given. Nothing to do otherwise."""
-        rows = self.pending_logical_rows
-        if rows is None:
-            return
-        from gremlin import logical_device_file
-
-        logical_device_file.backup_v14(Path(fpath))
-        result = logical_device_file.merge_profile_rows(rows)
-        provisional = {
-            (c["type"], c["id"]): c["uid"] for c in rows["controls"] if "uid" in c
-        }
-        moved = {
-            key: uid
-            for key, uid in result.uid_map.items()
-            if provisional.get(key, uid) != uid
-        }
-        if moved:
-            logging.getLogger("system").warning(
-                "Logical Device controls matched differently on save than "
-                f"when the profile was read: {sorted(moved)}"
-            )
-        self.logical_migration_note = list(result.added)
-        self.pending_logical_rows = None
+        # An older profile's <logical-device> and <osc-device> are not read
+        # (D-04-LD-NOLEGACY, AD7): its references find their rows by uid,
+        # else by type and number.
+        self._read_root(root, fpath)
 
     def refresh_osc_items(self) -> None:
         """Every OSC input item takes its uid's current number (or is
@@ -1688,48 +1585,9 @@ class Profile:
             for item in items:
                 item.refresh_osc()
 
-    @staticmethod
-    def _logical_rows_dict(section: ElementTree.Element) -> dict:
-        """A version 14 <logical-device> section as the Logical Device's
-        dict (logical_device.LogicalRows.to_dict, without uids)."""
-        groups: list[str] = []
-        for node in section.findall("./groups/group"):
-            name = (node.text or "").strip()
-            if name and name not in groups:
-                groups.append(name)
-        controls = []
-        for node in section.findall("./input"):
-            kind = read_subelement(node, "input-type")
-            input_id = read_subelement(node, "input-id")
-            label = read_subelement(node, "label")
-            user_node = node.find("user-label")
-            group_node = node.find("group")
-            hide_node = node.find("hide-system")
-            user_label = (user_node.text or "").strip() if user_node is not None else ""
-            group = (group_node.text or "").strip() if group_node is not None else ""
-            hide_system = (
-                hide_node is not None
-                and (hide_node.text or "").strip().lower() in ("1", "true", "yes")
-            )
-            # Older files kept a renamed control's name in the label.
-            system = f"{InputType.to_string(kind).capitalize()} {input_id}"
-            if not user_label and label != system:
-                user_label = label
-            controls.append(
-                {
-                    "type": InputType.to_string(kind),
-                    "id": int(input_id),
-                    "label": label,
-                    "user-label": user_label,
-                    "group": group,
-                    "hide-system": hide_system,
-                }
-            )
-        return {"controls": controls, "groups": groups}
-
     def _read_root(self, root: ElementTree.Element, fpath: Path) -> None:
         """Fills the profile from a parsed file (from_xml, after the version
-        check and the Logical Device migration)."""
+        check)."""
         # Create library entries and modes.
         self.fpath = fpath
         self.settings.from_xml(root)
@@ -1820,8 +1678,6 @@ class Profile:
         # (every 1.5 s) changed the profile when a stick was plugged in
         # (GL-153, 04 Q18, R14).
         self.device_database.update_for_uuids(self.inputs)
-        self.commit_pending_logical_rows(Path(fpath))
-        self._back_up_v14_before_writing(Path(fpath))
         text = self._xml_text()
         # Safely (a temporary file, then a swap), as module files are: a
         # crash mid-save leaves the old profile whole.

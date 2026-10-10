@@ -25,34 +25,81 @@ function topics() {
             id: "configuration-actions-configuration-page",
             section: page,
             title: "The Configuration page",
-            body: "<p>The Configuration page lists the claimed inputs of one device and the actions on each.</p>"
+            body: "<p>The Configuration page lists the claimed inputs of one device and the actions on each. It works like the <a href=\"topic:logical-device-about\">Logical Device</a> page: the same Find bar, list, right-click menus and action editor.</p>"
                 + "<ul>"
                 + "<li>To open it, double-click a card on <a href=\"topic:home-devices-home\">Home</a>, or choose <b>View › Configuration</b> <a href=\"show:menu/View/Configuration\">Show me ›</a>.</li>"
                 + "<li>The arrows beside the title step to the previous or next device.</li>"
                 + "<li>Actions belong to the mode in the <b>Mode</b> box <a href=\"show:modebar\">Show me ›</a>, on the mode bar under the toolbar; see <a href=\"topic:modes-mode-box\">Choose the mode you edit and run</a>.</li>"
                 + "<li>Each input's row shows its <b>Note</b>. The rows under it name each action and where it goes: the vJoy output, the keys, the mode or the file.</li>"
-                + "<li><b>Move inputs with no actions to the end</b> lists those inputs together under a <b>No actions</b> heading.</li>"
+                + "<li>Click an input's row to open all its actions in the editor beside the list, or an action's row to open only that action.</li>"
+                + "<li>Inputs come from the claims in <b>Module Setup</b>, so they can't be added or removed here. With no claimed inputs, the page says \"No inputs are claimed for this device.\": right-click it and choose <b>Module Setup…</b>.</li>"
                 + "</ul>"
                 + _good([
                     "<b>OK</b> keeps an action in the profile; <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> writes it to disk.",
-                    "With no claimed inputs, the page says so and points to <b>Module Setup…</b> on the card's menu.",
+                    "Groups, order and your names are kept in the device's <a href=\"topic:home-devices-module-files\">module file</a>, shared by every profile; see " + _link("layout", "Group, order and name inputs") + ".",
+                    "With <b>Show LED dots</b> and <b>Show live bars</b> on in <b>Appearance…</b>, a pressed input lights its row and the list jumps to it.",
                     "The <b>Keyboard</b> card opens its own page; see " + _link("keyboard-page", "Set up keyboard keys") + ".",
                     "An output device opens its <b>Output View</b> instead; see " + _link("output-view", "Output View") + "."
                 ]),
-            related: ["configuration-actions-add-action", "configuration-actions-filter", "modes-modes",
-                      "configuration-actions-appearance"]
+            related: ["configuration-actions-add-action", "configuration-actions-filter", "configuration-actions-layout",
+                      "configuration-actions-menus", "modes-modes", "configuration-actions-appearance"]
+        },
+        {
+            id: "configuration-actions-layout",
+            section: page,
+            title: "Group, order and name inputs",
+            body: "<p>Groups, order and names keep a long list of inputs easy to find. They work as on the <a href=\"topic:logical-device-group-controls\">Logical Device</a> page.</p>"
+                + "<ul>"
+                + "<li>Rename: right-click the input and choose <b>Rename</b>. This is the input's name in Module Setup too.</li>"
+                + "<li>Remove your name: right-click and choose <b>Row</b> › <b>Clear Name</b>. It asks first (\"Clear the name of <i>input</i>?\"); the system name stays.</li>"
+                + "<li>Put inputs in a group: select them, right-click, open <b>Group</b>, then type a name in <b>Group as</b> or choose <b>Move to</b> a group. New groups, moving and deleting groups are under <b>Groups</b>; deleting a group keeps its inputs, in Ungrouped.</li>"
+                + "<li>Drag an input by its handle, or a group by its header, to move it.</li>"
+                + "<li>Sort: right-click, open <b>Order</b>, then choose <b>By System Name</b>, <b>By Your Name</b> or <b>Group Names A to Z</b>.</li>"
+                + "</ul>"
+                + "<h4>When they are saved</h4>"
+                + "<p>Group, order and name changes are kept for <b>File › Save Profile</b> (<b>Ctrl+S</b>), as on the Logical Device and OSC pages. Until then the title shows <b>*</b>, and <b>Discard</b> on the save-changes question drops them.</p>"
+                + _good([
+                    "They are saved in the device's module file, so every profile shows the same groups, order and names.",
+                    "If something else changes that device's layout or claims before you save (History Restore, the Device Library, a Device Pack import, or Module Setup), the newer file wins: your unsaved changes for it are dropped with the note \"The layout changed elsewhere; your unsaved changes for <i>device</i> were dropped.\" A change to only a picture or the Button Map view keeps them.",
+                    "<b>Undo</b> takes these changes back too; see " + _link("undo", "Undo a change on the Configuration page") + "."
+                ]),
+            related: ["configuration-actions-configuration-page", "configuration-actions-menus",
+                      "configuration-actions-undo", "logical-device-group-controls"]
+        },
+        {
+            id: "configuration-actions-menus",
+            section: page,
+            title: "Configuration page menus",
+            body: "<p>What each right-click menu on the Configuration page holds. The Logical Device, Keyboard and OSC pages share the same menus.</p>"
+                + "<ul>"
+                + "<li>Empty space: <b>Module Setup…</b> and <b>Appearance…</b>, then <b>Groups</b> (<b>New Group</b>) and <b>Order</b>. <b>Undo</b> and <b>Redo</b> sit beside the menu's title.</li>"
+                + "<li>An input: <b>Add Action</b>, <b>Rename</b> and <b>History</b>, then <b>Row</b> (<b>Clear Name</b>, <b>Delete actions…</b>) and <b>Group</b> (<b>Group as</b>, and <b>Move to</b> each group).</li>"
+                + "<li>A group header: <b>Rename Group</b>, then <b>Groups</b> › <b>Move Group Up</b>, <b>Move Group Down</b> or <b>Delete Group</b>.</li>"
+                + "<li>An action row: <b>Open</b> and <b>Delete</b>.</li>"
+                + "</ul>"
+                + _good([
+                    "<b>Delete actions…</b> asks first (\"Delete the actions of <i>input</i>?\"): every action of the input in this mode goes, and the input stays. It isn't offered for the input open in the editor.",
+                    "With several inputs selected, the menu's title counts them and <b>Add Action</b>, <b>Rename</b> and <b>History</b> are left out.",
+                    "<b>History</b> opens <a href=\"topic:tools-history\">History</a> showing only that input in this mode."
+                ]),
+            related: ["configuration-actions-layout", "configuration-actions-delete-action", "logical-device-menus"]
         },
         {
             id: "configuration-actions-filter",
             section: page,
             title: "Filter the inputs",
-            body: "<p>The filters above the list show only the inputs you want to see.</p>"
+            body: "<p>The <b>Find</b> bar above the list shows only the inputs you want to see.</p>"
                 + "<ul>"
-                + "<li><b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode. To find inputs with none, use <b>No actions in this mode</b>.</li>"
-                + "<li><b>Output</b> shows inputs that send to one place. It lists only the places in use.</li>"
+                + "<li>Type a system name, your name or a group (<b>Ctrl+F</b> goes to the box). A line under it says how many are found; <b>×</b> or <b>Esc</b> clears the typing.</li>"
+                + "<li>The first box shows all inputs, or only buttons, axes or hats.</li>"
+                + "<li><b>Clear</b> empties the search and resets the first box and the ticks under the bar.</li>"
+                + "<li>The action box <b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode. To find inputs with none, use <b>No actions in this mode</b>.</li>"
+                + "<li>The <b>Output</b> box shows inputs that send to one place. It lists only the places in use.</li>"
+                + "<li>Under the bar, <b>Ungrouped</b> and <b>No actions in this mode</b> narrow the list further.</li>"
                 + "</ul>"
                 + _good([
-                    "When nothing matches, the page says \"No inputs match the current filters.\" Choose <b>Clear Filters</b> to see every input again."
+                    "<b>Clear</b> leaves the Type and Output boxes as they are: set them back to their first entry.",
+                    "When nothing matches, the page says \"Nothing matches the Find filters.\" Choose <b>Clear Filters</b> to reset everything, the Type and Output boxes included."
                 ]),
             related: ["configuration-actions-configuration-page", "configuration-actions-add-action"]
         },
@@ -63,16 +110,16 @@ function topics() {
             body: "<p>An action says what an input does when it fires.</p>"
                 + "<ol>"
                 + "<li>Open the device's Configuration page.</li>"
-                + "<li>On the input's row, choose <b>Add Action</b>. The action editor opens beside it.</li>"
+                + "<li>Right-click the input's row and choose <b>Add Action</b>. The action editor opens beside the list.</li>"
                 + "<li>Choose the action and set it up.</li>"
                 + "<li>Choose <b>OK</b>.</li>"
                 + "<li>To keep it on disk, choose <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>).</li>"
                 + "</ol>"
                 + _good([
                     "Clicking an input's row opens all its actions in the editor; clicking a row under it opens only that action.",
-                    "<b>Close pane after OK</b> closes the editor when OK succeeds.",
-                    "Leaving an input with changes in the editor that are not saved asks first.",
-                    "If you pick another mode while the editor has changes, it stays open and its title adds \"(in <i>mode</i>)\": OK still writes to that mode. If that mode is deleted, the editor closes with a notice.",
+                    "<b>Close pane after OK</b> closes the editor when OK succeeds. Drag the editor's left edge to make it wider.",
+                    "Opening another input or action (a row click, <b>Open</b> or <b>Add Action</b>) while the editor has changes that are not saved asks first (\"The action editor has changes that are not saved.\"): <b>Save</b> keeps them, <b>Discard</b> drops them, and <b>Cancel</b> keeps the editor on its input with the selection put back. Leaving the page asks the same.",
+                    "If you pick another mode while the editor is open, it stays on the mode it was opened in: OK still writes there. If that mode is deleted, the editor closes with the notice \"The mode <i>name</i> was deleted, so its action editor closed.\"",
                     "While the profile runs, the actions are locked (\"Profile running: stop it to edit\"). <b>Run</b> asks first about an action editor with changes."
                 ]),
             related: ["configuration-actions-choose-action", "configuration-actions-right-click",
@@ -156,28 +203,30 @@ function topics() {
             title: "Delete an action",
             body: "<p>Deleting an action takes it off the input in the current mode.</p>"
                 + "<ol>"
-                + "<li>Open the device's Configuration page and select the input.</li>"
-                + "<li>Choose <b>Delete</b> on the action's row.</li>"
-                + "<li>The question \"Delete action <i>type</i> → <i>output</i>?\" says which input it goes from in this mode. Choose the red <b>Delete Action</b>.</li>"
+                + "<li>Open the device's Configuration page.</li>"
+                + "<li>Right-click the action's row and choose <b>Delete</b>.</li>"
+                + "<li>The question \"Delete action <i>action</i>?\" says it goes from this input in this mode. Choose the red <b>Delete Action</b>.</li>"
                 + "</ol>"
                 + _good([
                     "<b>Cancel</b> has the focus: <b>Enter</b> and <b>Esc</b> both cancel.",
+                    "If the editor is open on that input with changes that are not saved, the question says so: deleting closes the editor and drops those changes.",
+                    "To delete every action of an input in this mode, right-click the input and choose <b>Row</b> › <b>Delete actions…</b>.",
                     "To take the delete back, choose <b>Undo</b> (<b>Ctrl+Z</b>). Saved deletes can also be put back from History.",
                     "The profile on disk changes only when you save it."
                 ]),
-            related: ["configuration-actions-undo", "configuration-actions-add-action"]
+            related: ["configuration-actions-undo", "configuration-actions-add-action", "configuration-actions-menus"]
         },
         {
             id: "configuration-actions-undo",
             section: page,
             title: "Undo a change on the Configuration page",
-            body: "<p><b>Undo</b> and <b>Redo</b> step back and forward through what <b>OK</b> and <b>Delete</b> changed.</p>"
+            body: "<p><b>Undo</b> and <b>Redo</b> step back and forward through what <b>OK</b> and <b>Delete</b> changed, and through changes to groups, order and names.</p>"
                 + "<ul>"
-                + "<li>Choose <b>Undo</b> or <b>Redo</b> above the list of actions, or press <b>Ctrl+Z</b> or <b>Ctrl+Y</b>.</li>"
+                + "<li>Choose <b>Undo</b> or <b>Redo</b> under the Find bar, or beside the right-click menu's title. Or press <b>Ctrl+Z</b>, and <b>Ctrl+Y</b> or <b>Ctrl+Shift+Z</b>.</li>"
                 + "<li>Beside them, \"Last change: <i>change</i>\" names the newest change, or \"Undone: <i>change</i>\" after an Undo. Pointing at a button names the change it takes back or does again.</li>"
                 + "</ul>"
                 + _good([
-                    "The steps are kept until you open another device or profile.",
+                    "Opening another device clears every step. Loading another profile keeps the steps for groups, order and names.",
                     "Undo and Redo wait while an action is open in the editor.",
                     "If a step can't be played, it stays in the list and a notice says \"That change couldn't be put back.\"",
                     "Saved changes are also kept in the <a href=\"topic:tools-history\">History</a> (<b>Tools › History</b>)."
@@ -188,27 +237,29 @@ function topics() {
             id: "configuration-actions-keyboard-page",
             section: page,
             title: "Set up keyboard keys",
-            body: "<p>The <b>Keyboard</b> page lists the keys you added and the actions on each.</p>"
+            body: "<p>The <b>Keyboard</b> page lists the keys you added and the actions on each. It works like the Configuration page: the same Find bar, list, right-click menus, action editor and Undo.</p>"
                 + "<ol>"
                 + "<li>Double-click the <b>Keyboard</b> card on Home.</li>"
-                + "<li>Choose <b>Add Key</b> and pick the key.</li>"
-                + "<li>Select the key. The editor below the list is a draft of it.</li>"
-                + "<li>Choose <b>OK</b> to write the draft, or <b>Cancel</b> to put it back.</li>"
+                + "<li>Choose <b>Add Key…</b> on the Find bar (or right-click and choose <b>Add Inputs</b> › <b>Add Key… (press the key)</b>), then press the key. Hold <b>Esc</b> to stop.</li>"
+                + "<li>Click the key's row to open its actions in the editor beside the list, or right-click it and choose <b>Add Action</b>.</li>"
+                + "<li>Choose <b>OK</b>.</li>"
                 + "</ol>"
                 + _good([
-                    "<b>Undo</b> and <b>Redo</b> step back through each OK, asking first when the draft has changes.",
-                    "Choosing another key, or deleting one, while the draft has changes asks first.",
-                    "<b>Delete</b> on a key asks first (\"Delete key A?\", \"Its actions in this mode go with it.\"); the red <b>Delete Key</b> removes only its actions in this mode. This can't be undone. It shows only on keys with actions in this mode, or with none in any mode.",
-                    "To give a key a name of your own, double-click it. The name is saved in the profile. The key's <b>Note</b> shows on its row.",
+                    "The keys you add are kept in the Keyboard's module file, so every profile lists them, with or without actions. The key list, groups, order and names are saved at <b>File › Save Profile</b>.",
+                    "Right-click a key and choose <b>Key</b> › <b>Delete</b>. It asks first (\"Delete key A?\", \"Its actions in this mode go with it.\"); the red <b>Delete Key</b> removes only its actions in this mode, and a key left with no actions in any mode leaves the list. <b>Undo</b> puts it back. Delete is offered only on keys with actions in this mode, or with none in any mode.",
+                    "To give a key a name of your own, right-click it and choose <b>Rename</b>; <b>Key</b> › <b>Clear Name</b> removes it. This is the key's name in the Keyboard's Module Setup too. The key's <b>Note</b> shows on its row.",
+                    "<b>Undo</b> and <b>Redo</b> step through OK, Delete, Add Key and changes to groups, order and names, as on the Configuration page.",
+                    "Groups and <b>Order</b> (<b>By Key Name</b>, <b>By Your Name</b>, <b>Group Names A to Z</b>) work as on the Configuration page; see " + _link("layout", "Group, order and name inputs") + ".",
                     "A key binding fires only for keys the Keyboard <a href=\"topic:home-devices-input-modules\">input module</a> claims."
                 ]),
-            related: ["configuration-actions-add-action", "configuration-actions-map-to-keyboard"]
+            related: ["configuration-actions-add-action", "configuration-actions-map-to-keyboard",
+                      "configuration-actions-layout", "configuration-actions-menus"]
         },
         {
             id: "configuration-actions-output-view",
             section: page,
             title: "Output View",
-            body: "<p>An output device (vJoy or the Xbox controller) opens its <b>Output View</b> in place of a Configuration page: a live view of what its output module sends.</p>"
+            body: "<p>A vJoy output device opens its <b>Output View</b> in place of a Configuration page: a live view of what its output module sends. The Xbox controller's <b>Output View</b> button opens the Xbox page instead: the driver check and, for each Xbox control, what sends to it.</p>"
                 + "<p>It is labelled \"View only — shows what the input modules' actions send.\"</p>"
                 + _good([
                     "A wire to an output the output module doesn't claim is shown as <b>(not claimed)</b> and sends nothing."
@@ -220,18 +271,20 @@ function topics() {
             id: "configuration-actions-appearance",
             section: page,
             title: "Change how a page looks",
-            body: "<p>Appearance changes how a Configuration page or Output View looks, never what it does. The look is saved in that device's <a href=\"topic:home-devices-module-files\">module file</a>.</p>"
+            body: "<p>Appearance changes how a page looks, never what it does.</p>"
                 + "<ol>"
-                + "<li>On the page, choose <b>Appearance…</b>. Changes show at once.</li>"
+                + "<li>On the page, choose <b>Appearance…</b> (on a list page it is on the bar under the toolbar and in the right-click menu). Changes show at once.</li>"
                 + "<li>Change the sections you want. <b>Open All</b> and <b>Close All</b> expand or fold them.</li>"
                 + "<li>Choose <b>Save Appearance</b> to keep the changes.</li>"
                 + "</ol>"
-                + "<p>Each list page keeps its own Appearance. Sections: <b>Shown</b>, <b>Live</b> (Configuration page), <b>Handles</b>, <b>List</b>, <b>Rows</b> (alignment and width of input and action rows, space between groups), <b>Group</b>, <b>Parent Row</b> and <b>Action Row</b> (row size, padding, colors), <b>Text</b> and <b>Selection</b>.</p>"
-                + "<p>Output View sections: <b>Screen</b>, <b>Layout</b>, <b>Pads</b>, <b>Meters</b>, <b>Buttons</b> and <b>Colors</b>.</p>"
+                + "<h4>List pages</h4>"
+                + "<p>The Configuration, Logical Device, Keyboard and OSC pages each keep their own Appearance, saved for that page in the program settings (\"Saved for this page.\"), so every device's Configuration page looks the same. Sections: <b>Shown</b>, <b>Live</b> (Configuration page), <b>Handles</b>, <b>List</b>, <b>Rows</b> (alignment and width of input and action rows, space between groups), <b>Group</b>, <b>Parent Row</b> and <b>Action Row</b> (row size, padding, colors), <b>Text</b> and <b>Selection</b>.</p>"
+                + "<h4>Output View</h4>"
+                + "<p>An Output View's look is saved in that device's <a href=\"topic:home-devices-module-files\">module file</a>. Sections: <b>Screen</b>, <b>Layout</b>, <b>Pads</b>, <b>Meters</b>, <b>Buttons</b> and <b>Colors</b>.</p>"
                 + _good([
-                    "<b>Reset Appearance</b> (red) restores the built-in look; <b>Copy Appearance from…</b> copies another device's look. Both still need Save Appearance.",
-                    "Closing the panel with changes that are not saved asks first.",
-                    "The Xbox, Keyboard and OSC pages have no Appearance. The Logical Device has its own Appearance, kept in the program settings."
+                    "<b>Reset Appearance</b> (red) puts back the look the program starts with. On an Output View, <b>Copy Appearance from…</b> copies another output device's look. Both still need Save Appearance.",
+                    "When the window is too narrow for the list, the action editor and the Appearance panel side by side, the Appearance panel closes. Choose <b>Appearance…</b> to open it again.",
+                    "Closing the panel with changes that are not saved asks first (\"Appearance changes are not saved.\")."
                 ]),
             related: ["configuration-actions-configuration-page", "configuration-actions-output-view",
                       "logical-device-appearance"]
@@ -304,6 +357,7 @@ function topics() {
                 + _good([
                     "<b>Assign Hardware</b> on the Logical Device creates these actions for you.",
                     "On a Logical Device control, the list never offers that same control, and a new action never starts on it. If it is the only control of its type, a new one is made for the action.",
+                    "A saved action that sends a control to itself shows that control selected, marked \"(this control: blocked by the loop guard)\". It does nothing when the profile runs; pick another control.",
                     "A loop between controls is stopped; see " + "<a href=\"topic:logical-device-q-loop\">Why was a loop between controls stopped?</a>" + "."
                 ]),
             related: ["logical-device-assign-hardware", "logical-device-about", "logical-device-q-loop"]
@@ -372,6 +426,7 @@ function topics() {
                 + "<li>Set the <b>Deadzone</b>.</li>"
                 + "</ol>"
                 + _good([
+                    "The curve passes through every point you set. On a <b>Cubic Bezier Spline</b>, each point's handles bend the curve between the points.",
                     "<b>Invert Curve</b> flips the curve.",
                     "<b>Symmetric</b> mirrors your edits around the center."
                 ]),
@@ -533,7 +588,8 @@ function topics() {
                 + _good([
                     "While paused, the status reads Running (Paused).",
                     "Pause and Resume actions keep working while paused, so you can resume.",
-                    "Each <b>Run</b> starts un-paused."
+                    "Each <b>Run</b> starts un-paused.",
+                    "A saved Pause and Resume action whose choice the program can't read loads as <b>Pause</b>; the system log says so."
                 ]),
             related: ["configuration-actions-change-mode"]
         },
@@ -541,7 +597,7 @@ function topics() {
             id: "configuration-actions-play-sound",
             section: actions,
             title: "Play Sound",
-            body: "<p>Plays a WAV, MP3 or OGG file at the chosen <b>Volume</b>.</p>"
+            body: "<p>Plays a WAV, MP3 or OGG file at the chosen <b>Volume</b>. Type the file's path in the box that says \"File to play\", or pick the file.</p>"
                 + _good([
                     "<b>Playback mode</b> <a href=\"show:option/Playback mode\">Show me ›</a> sets what happens when sounds overlap: <b>Sequential</b> plays them one after another, <b>Interrupt</b> stops the one playing, <b>Overlap</b> plays them together.",
                     "Sounds play only while the profile runs. <b>Stop</b> cuts them off.",
@@ -593,7 +649,7 @@ function topics() {
             title: "Run Command",
             body: "<p>Starts a program. Set the <b>Executable</b> and its <b>Arguments</b>.</p>"
                 + _good([
-                    "Arguments are split on spaces; put quotes around values that contain spaces.",
+                    "Arguments are split on spaces; put quotes around values that contain spaces. The empty box says \"Quote values with spaces\"; point at it for the full hint.",
                     "The program runs with your own permissions.",
                     "If the program can't be started, the log says so once and nothing else happens."
                 ]),

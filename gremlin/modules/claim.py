@@ -128,8 +128,8 @@ def _osc_uid(kind: str, number: int) -> str:
 
 def claim_friendly(claim: dict | None, kind: str, hid: object) -> str:
     """The user's name for a claimed input, or "" when none. OSC's claim
-    keeps names by input uid ("osc:<uid>", D-09-OSC-FILE); a file not yet
-    converted still has "button:N" keys, used when no uid name is found."""
+    keeps names only by input uid ("osc:<uid>", D-09-OSC-FILE,
+    D-09-OSC-NAMEKEYS); its "button:N" keys are not read."""
     try:
         number = int(hid)
     except (TypeError, ValueError):
@@ -137,9 +137,7 @@ def claim_friendly(claim: dict | None, kind: str, hid: object) -> str:
     names = (claim or {}).get("friendly") or {}
     if any(str(key).startswith(OSC_PREFIX) for key in names):
         uid = _osc_uid(kind, number)
-        name = str(names.get(f"{OSC_PREFIX}{uid}") or "").strip() if uid else ""
-        if name:
-            return name
+        return str(names.get(f"{OSC_PREFIX}{uid}") or "").strip() if uid else ""
     return str(names.get(f"{kind}:{number}") or "").strip()
 
 

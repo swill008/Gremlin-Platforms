@@ -151,14 +151,16 @@ ApplicationWindow {
                         height: Style.dp(8)
                         radius: Style.dp(4)
                         Layout.alignment: Qt.AlignVCenter
-                        color: _hh.installed ? Style.ok : Style.fgMuted
+                        color: _hh.installed ? Style.ok : _hh.inUse ? Style.warn : Style.fgMuted
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 0
                         Label {
                             color: Style.fg
-                            text: _hh.installed ? "HidHide driver found" : "HidHide is not installed"
+                            text: _hh.installed ? "HidHide driver found"
+                                : _hh.inUse ? "HidHide is in use by another program (its window is open)."
+                                : "HidHide is not installed"
                         }
                         Label {
                             visible: _hh.driverVersion.length > 0
@@ -354,7 +356,7 @@ ApplicationWindow {
             }
 
             Label {
-                visible: !_hh.installed
+                visible: !_hh.installed && !_hh.inUse
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
                 color: Style.fgMuted

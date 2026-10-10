@@ -502,3 +502,32 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | L1-CHAIN: loop guard follows each event's chain (Event.ld_chain, macro chain), 0.1 s window gone | fix | rough guess 15–25 min (no data) | 9 min | 15:40–15:49 |
 | 2026-10-10 | F4-COLORINFO: dead ColorInformation chain + destFilter removed | fix | 3–8 min (table) | 3 min | 15:46–15:49 |
 | 2026-10-10 | F4-MAP2: map lines for T1, AD7, harness, HidHide, editors, L1, colour chain; to-dos 84/89/90/91 done | map catch-up | 5–7 min (table) | 4 min | 15:49–15:53 |
+| 2026-10-10 | Full run (random order, seed 110884): 4 failed (stale test pins: open mkstemp file, colour count, CI times, temp name) | test run | ~5 min (table) | 5:21 | 15:49–15:54 |
+| 2026-10-10 | Lead: fix 4 test pins, refresh test_times.json, lint 0 new, commit e414d0b3 + push | lead commit | no timing data yet | 2 min | 15:54–15:56 |
+| 2026-10-10 | O1-NAMEKEYS: old OSC name-key converter + find_target removed; claim_friendly reads osc:<uid> only | fix | 3–8 min (table) | 3 min | 15:56–15:59 |
+| 2026-10-10 | A1-NARROW: Appearance panel closes when list + pane + panel don't fit | fix | 3–8 min (table) | 4 min | 15:56–16:00 |
+| 2026-10-10 | HELP-Q: facts for 8 Help decisions (read-only study) | study | rough guess 3–5 min (no data) | 2 min | 16:00–16:02 |
+| 2026-10-10 | LD14: version 14 Logical Device converters removed (logical_device_file, profile, backend, pack, library) | fix | 3–8 min (table) | 7 min | 15:58–16:05 |
+| 2026-10-10 | D6-COLOR: key color internal ids colour -> color | fix | 3–8 min (table) | 1 min | 16:06–16:07 |
+| 2026-10-10 | D8-RECOVERY: Button Map Autosave -> Recovery copies (options, window, option titles) | fix | 3–8 min (table) | 1 min | 16:06–16:07 |
+| 2026-10-10 | D7-BUSY: Hardware Hide shows 'in use by another program' on err 5 | fix | 3–8 min (table) | 2 min | 16:06–16:08 |
+| 2026-10-10 | H-HOME: getting_started.js install/diagnostics/start warnings/second copy | help | rough guess 10–15 min (no data) | 3 min | 16:06–16:09 |
+| 2026-10-10 | H-TOOLS: tools/device_library/button_map Help (D7, D8, AD6, AD8, Auto Mapper, pack limits) | help | rough guess 10–15 min (no data) | 3 min | 16:06–16:09 |
+| 2026-10-10 | H-PROFILE: logical_device.js + options_profile.js Help (AD1, L1, AD10, LD14, save names file, script OSC) | help | rough guess 10–15 min (no data) | 4 min | 16:06–16:10 |
+| 2026-10-10 | SPEC: 12 decisions written into map + glossary; O1/A1/LD14/D6/D7/D8 map lines | map catch-up | 5–7 min (table) | 5 min | 16:06–16:11 |
+| 2026-10-10 | H-TOOLS second pass: tester details, viewers, reset rows, out-of-step, internal input | help | 3–5 min (brief) | 2 min | 16:09–16:11 |
+| 2026-10-10 | H-CFG: configuration_actions.js Help (pages, menus, Find, held layouts, K1, A1, A2, AD9, AD10, S4, HB1) | help | rough guess 10–15 min (no data) | 6 min | 16:06–16:12 |
+| 2026-10-10 | F-FINDCLEAR: Find Clear studied (FC1 question), Xbox Output View Help sentence fixed | study+help | 3–8 min (table) | 1 min | 16:12–16:13 |
+| 2026-10-10 | F-PANELEAVE: opening another input asks before dropping unsaved editor changes (S26 gap) | fix | 3–8 min (table) | 3 min | 16:12–16:15 |
+| 2026-10-10 | H-OSC: osc.js Help rewritten (feedback rows, Companion, HC1-HC11, patterns, allow-list, scripts, TouchOSC, shaping, encoder) | help | rough guess 10–15 min (no data) | 10 min | 16:06–16:16 |
+| 2026-10-10 | Full run 2 (random): action_interaction 83 failed (LD14 fixtures), 2 more (LD fixture, Help Cancel) | test run | ~5 min (table) | 5:07 | 16:16–16:21 |
+| 2026-10-10 | H-CFG follow-up: Help says opening another input asks Save/Discard/Cancel | help | 3–5 min (brief) | 1 min | 16:22–16:23 |
+| 2026-10-10 | LD14 follow-up: 20 fixture profiles to v16 + Logical Device set up through its API | test fix | 3–8 min (table) | 3 min | 16:22–16:25 |
+| 2026-10-10 | F-LISTENPORT: Listen failure names the port holder in one message (S18 gap) | fix | 3–8 min (table) | 2 min | 16:23–16:25 |
+| 2026-10-10 | MAP3: map lines for pane-leave, Listen port holder, fixtures | map catch-up | 5–7 min (table) | 1 min | 16:26–16:27 |
+| 2026-10-10 | Full run 3 (seed 179731): 3 order-dependent failures (pass alone); action_interaction 75 pass | test run | ~5 min (table) | 5:26 | 16:26–16:31 |
+| 2026-10-10 | FLK-OSCLAYOUT: test_osc_scripts left OscRuntime._running True; monkeypatch | test fix | 3–8 min (table) | 2 min | 16:31–16:33 |
+| 2026-10-10 | FLK-SWAP: leaked Home card lists reloaded during swap test; conftest quiets them | test fix | 3–8 min (table) | 9 min | 16:32–16:41 |
+| 2026-10-10 | FLK-OSCBACKEND: test_fix_X3 left a held keyboard layout; try/finally discard | test fix | 3–8 min (table) | 9 min | 16:32–16:41 |
+| 2026-10-10 | Lead: module_model lambda -> bound method (card lists freed), conftest drops held layouts after each test; tests first | lead fix | no timing data yet | ~2 min | 16:40–16:42 |
+| 2026-10-10 | Full run 4 (seed 179731, new split): 1 order-dependent (logger mock); fixed | test run | ~5 min (table) | 5:12 | 16:42–16:48 |

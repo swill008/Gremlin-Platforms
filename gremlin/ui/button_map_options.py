@@ -37,7 +37,7 @@ SECTION = "button-map"
 OptionValue = bool | int | float | str | list
 
 # Groups in the order Options shows them.
-GROUPS = ("labels", "editing", "autosave", "view", "colours", "library")
+GROUPS = ("labels", "editing", "recovery", "view", "colours", "library")
 
 # (group, name, type, default, description, properties). A name's number only
 # orders the entries inside their group.
@@ -102,13 +102,13 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         {},
     ),
     (
-        "autosave", "01-autosave", PropertyType.Bool, True,
+        "recovery", "01-recovery-copies", PropertyType.Bool, True,
         "While you edit a map, keep a recovery copy of unsaved changes. After a "
         "crash, opening the device offers to restore them.",
         {},
     ),
     (
-        "autosave", "02-autosave-seconds", PropertyType.Int, 60,
+        "recovery", "02-recovery-seconds", PropertyType.Int, 60,
         "Seconds between recovery copies.",
         {"min": 10, "max": 600},
     ),

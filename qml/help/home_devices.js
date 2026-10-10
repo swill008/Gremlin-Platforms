@@ -370,6 +370,7 @@ function topics() {
                 + "<ul>"
                 + "<li>Missing modes are created under their parent, or under Default when the parent isn't here. Tick <b>Create the missing Logical Device inputs</b> to add the ones its wires need.</li>"
                 + "<li>Refused: a stick pack onto a vJoy or the other way round, a damaged module file (use <b>Start Fresh…</b> first), and a pack from a newer version.</li>"
+                + "<li>A pack that can't be read shows \"This pack can't be read (…).\" with the reason; the log has the details.</li>"
                 + "<li>If it fails partway, everything it did is undone and it says so.</li>"
                 + "<li><b>Undo Import</b> (the button or the link) puts back the files, pictures and wires, and removes the modes and Logical Device inputs it created. It lasts until you import again, open another pack, or close the window. With another profile open, only the files go back.</li>"
                 + "</ul>",

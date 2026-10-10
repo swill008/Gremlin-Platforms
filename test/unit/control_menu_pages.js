@@ -95,7 +95,7 @@
                 return [
                     { at: "start", section: st.onRow && !st.many ? MenuModel.section("companion", "Companion feedback", [
                         MenuModel.action("Key text", function() { addCompanionFeedback(_menuKey, "text") }),
-                        MenuModel.action("Key color", function() { addCompanionFeedback(_menuKey, "colour") })]) : null },
+                        MenuModel.action("Key color", function() { addCompanionFeedback(_menuKey, "color") })]) : null },
                     { at: "afterGroup", section: st.locked ? null : MenuModel.section("add", "Add Inputs", [
                         MenuModel.action("Add…", function() { openAdd() }),
                         MenuModel.action("Import…", function() { openImport() }),

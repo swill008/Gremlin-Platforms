@@ -19,7 +19,7 @@ sys.path.append(".")
 import pytest
 from PySide6 import QtCore
 
-from gremlin import history_modules, profile, shared_state
+from gremlin import history_modules, shared_state
 from gremlin import osc_device_file as odf
 from gremlin.logical_device import LogicalDevice
 from gremlin.modules import store
@@ -142,45 +142,6 @@ def test_main_window_discard_drops_the_osc_edits() -> None:
     dialog = main[main.index("id: _saveBeforeContinueDialog") :]
     discard = dialog[dialog.index("onDiscardChosen") : dialog.index("onCancelled")]
     assert "backend.discardOscDevice()" in discard
-
-
-def _read_with_notes(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-    logical: list[str],
-) -> list[tuple[str, str]]:
-    def from_xml(self: profile.Profile, _fpath: Path) -> None:
-        self.logical_migration_note = list(logical)
-
-    monkeypatch.setattr(profile.Profile, "from_xml", from_xml)
-    made = _backend()
-    notes: list[tuple[str, str]] = []
-
-    def note(title: str, message: str) -> None:
-        notes.append((title, message))
-
-    signal.showNotification.connect(note)
-    try:
-        made._read_profile(str(tmp_path / "old.xml"))
-    finally:
-        signal.showNotification.disconnect(note)
-    return notes
-
-
-def test_nothing_moved_says_nothing(
-    modules: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    assert _read_with_notes(monkeypatch, tmp_path, []) == []
-
-
-def test_only_the_logical_device_move_is_said(
-    modules: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    # An older profile's OSC rows are not read (AD7): no OSC note.
-    notes = _read_with_notes(monkeypatch, tmp_path, ["Axis 1"])
-    assert notes == [
-        ("Logical Device", "Logical Device moved to its own file: added Axis 1.")
-    ]
 
 
 _SMOKE = Path(__file__).resolve().parent / "osc_module_setup_smoke.py"

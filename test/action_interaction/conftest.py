@@ -60,6 +60,22 @@ def _own_process() -> None:
 LDIdentifier = LogicalDevice.Input.Identifier
 
 
+def set_up_logical_device(device: LogicalDevice) -> None:
+    """The Logical Device every profile here uses: axes, buttons and hats
+    1-4 ("Input ...") and 11-14 ("Output ..."). It lives in its own module
+    file, not in the profiles (D-04-LD-FILE, D-04-LD-NOLEGACY)."""
+    device.reset()
+    for kind, word in (
+        (InputType.JoystickAxis, "Axis"),
+        (InputType.JoystickButton, "Button"),
+        (InputType.JoystickHat, "Hat"),
+    ):
+        for number in range(1, 5):
+            device.create(kind, number, f"Input {word} {number}")
+        for number in range(1, 5):
+            device.create(kind, 10 + number, f"Output {word} {number}")
+
+
 class EventSpec:
     """Encapsulates information about an expected event and supports
     comparison with an actual Event instance."""
@@ -220,7 +236,7 @@ class JoystickGremlinBot:
         Args:
             profile_path: The path to the profile XML file to load.
         """
-        self._logical_device.reset()
+        set_up_logical_device(self._logical_device)
         self._profile = gremlin.profile.Profile()
         self._profile.from_xml(str(profile_path))
         self.start()

@@ -76,7 +76,7 @@ SOURCE_KINDS = (
 )
 VALUE_TYPES = ("auto", "int", "float", "bool", "text")
 # Feedback row templates (D-09-OSC-COMPANION).
-TEMPLATES = ("companion_variable", "companion_text", "companion_colour")
+TEMPLATES = ("companion_variable", "companion_text", "companion_color")
 # Companion's OSC API (Settings > OSC > OSC Listener).
 COMPANION_TARGET = "Companion"
 COMPANION_HOST = "127.0.0.1"
@@ -418,13 +418,6 @@ def read_feedback() -> list[dict]:
     return clean_feedback(store.read_path(path()).get(FEEDBACK_KEY))
 
 
-def find_target(target_id: str) -> dict | None:
-    for target in read_targets():
-        if target["id"] == target_id:
-            return target
-    return None
-
-
 def _write_key(key: str, value: object, who: str, signal_name: str) -> bool:
     def change(doc: dict) -> bool:
         if doc.get(key) == value:
@@ -465,8 +458,6 @@ def load(rows: OscRows | None = None) -> dict:
     target.load_dict({KEY: _raw(doc.get(KEY))})
     for warning in getattr(target, "load_warnings", []) or []:
         logging.getLogger("system").warning(warning)
-    if convert_friendly_keys(target):
-        doc = store.read_path(path())
     target.layout = store.normalize_layout(doc.get(store.LAYOUT_KEY))
     target.names = _read_names(doc)
     # What the file held: a save writes only the names the page changed,
@@ -517,46 +508,6 @@ def _put_layout(
         claim.pop("friendly", None)
     if not claim:
         doc.pop("claim", None)
-
-
-def _uid_key(rows: OscRows, key: str) -> str:
-    """ "osc:<uid>" for an old "button:N"/"axis:N" friendly key whose input
-    the rows have; "" otherwise."""
-    from gremlin.modules.claim import type_of
-
-    kind, _, raw = str(key).partition(":")
-    number = _number(raw)
-    if kind not in ("button", "axis") or number is None:
-        return ""
-    uid_of = getattr(rows, "uid_of", None)
-    uid = uid_of(type_of(kind), number) if uid_of is not None else None
-    return f"osc:{uid}" if uid else ""
-
-
-def convert_friendly_keys(rows: OscRows | None = None) -> bool:
-    """Moves the file's old "button:N"/"axis:N" friendly names to
-    "osc:<uid>" keys, by the rows read from the same file. Keys with no row
-    are left as they are. True when the file was written."""
-    target = _rows(rows)
-
-    def change(doc: dict) -> bool:
-        claim = doc.get("claim")
-        names = claim.get("friendly") if isinstance(claim, dict) else None
-        if not isinstance(claim, dict) or not isinstance(names, dict):
-            return False
-        moved = {}
-        for key in names:
-            new_key = _uid_key(target, key)
-            if new_key and not names.get(new_key):
-                moved[key] = new_key
-        if not moved:
-            return False
-        claim["friendly"] = {moved.get(k, k): v for k, v in names.items()}
-        return True
-
-    if not path().is_file():
-        return False
-    return store.update_path(path(), change, WHO, report=False)
 
 
 def _put_identity(doc: dict) -> None:
@@ -624,4 +575,3 @@ def write_server(settings: dict, who: str = "") -> bool:
         return False
     _emit("oscServerSettingsChanged")
     return True
-

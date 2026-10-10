@@ -714,6 +714,7 @@ class HidHideModel(QtCore.QObject):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._present = False
+        self._in_use = False
         self._active = False
         self._driver_active = False
         self._devices: list[dict] = []
@@ -752,6 +753,11 @@ class HidHideModel(QtCore.QObject):
 
     def reload(self) -> None:
         self._present = driver_present()
+        # 02 S67 (D-02-HIDHIDE-BUSY): access denied is HidHide's window open.
+        self._in_use = (
+            not self._present
+            and hidhide_driver.last_open_error() == hidhide_driver.ERROR_ACCESS_DENIED
+        )
         self._driver_active = get_active() if self._present else False
         saved_cloak = _saved_cloak()
         self._active = bool(saved_cloak) if saved_cloak is not None else False
@@ -784,7 +790,8 @@ class HidHideModel(QtCore.QObject):
         self._games = _load_games()
         self._generation += 1
         _hh_log(
-            f"reload present={self._present} version={self._version} cloak={self._active} "
+            f"reload present={self._present} in_use={self._in_use} "
+            f"version={self._version} cloak={self._active} "
             f"driver={self._driver_active} inverse={self._inverse} "
             f"client={len(driver_ids)} rows={len(self._devices)}"
         )
@@ -793,6 +800,11 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Property(bool, notify=changed)
     def installed(self) -> bool:
         return self._present
+
+    @QtCore.Property(bool, notify=changed)
+    def inUse(self) -> bool:
+        """HidHide is there but another program (its own window) holds it."""
+        return self._in_use
 
     @QtCore.Property(str, notify=changed)
     def driverVersion(self) -> str:

@@ -104,7 +104,7 @@ function topics() {
             + "<ul>"
             + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>No actions</b>. See <a href=\"topic:button-map-action-labels\">Show actions on chips</a>.</li>"
             + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror Layout and Copy Button Map from Device also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back (80 at first); <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b>.</li>"
-            + "<li><b>Autosave</b>: keeps a recovery copy of unsaved edits every <b>Seconds between recovery copies</b> while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy.</li>"
+            + "<li><b>Recovery copies</b>: with <b>Keep recovery copies</b> on (the default), a recovery copy of unsaved edits is kept every <b>Seconds between recovery copies</b> (60 at first) while you edit. If the program closes before you save, opening the device again offers <b>Restore</b> (the edits open for editing; save to keep them), <b>Discard</b>, or <b>Not now</b>. Save and Discard remove the copy.</li>"
             + "<li><b>View</b>: <b>Zoom speed</b>, how fast the mouse wheel zooms; <b>Rulers</b>, shown or not (also <b>View › Rulers</b>).</li>"
             + "<li><b>Colors</b>: <b>Recent colors</b>, how many the color picker keeps.</li>"
             + "<li><b>Library</b>: the saved styles and layout templates, to rename or delete. Deleting a style asks first (\"Delete saved style “Name”?\", \"Items that use it keep their look.\"); the red <b>Delete Style</b> deletes it.</li>"
@@ -126,6 +126,7 @@ function topics() {
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>When the device's module file is damaged, the map shows empty and Save is refused with the reason; Cancel leaves the damaged file as it is. To set the device up again, choose <b>Start Fresh…</b> on its card; the damaged file is kept as a copy.</li>"
+            + "<li>If the Button Map editor itself fails to start, the map shows \"The Button Map editor could not load.\" The reason is written to qt.log (<b>Debug › Live Log Reader</b>, <b>Debug</b> tab, <b>Qt</b>).</li>"
             + "</ul>",
             ["button-map-open", "button-map-edit", "button-map-print"]),
 
@@ -598,7 +599,7 @@ function topics() {
             "<p>Open the other stick, choose <b>Edit Mapping</b>, then <b>Edit › Copy Button Map from Device</b> with <b>Mirror left to right</b> ticked. See <a href=\"topic:button-map-copy-from-device\">Copy a Button Map from another device</a>.</p>",
             ["button-map-copy-from-device", "button-map-mirror"]),
         t("button-map-qa-lost-edits", "Common questions", "The program closed before I saved: are my edits gone?",
-            "<p>Not when <b>Autosave</b> is on in Button Map Options: open the device again and choose <b>Restore</b>, then save. See <a href=\"topic:button-map-options\">Button Map Options</a>.</p>",
+            "<p>Not when <b>Keep recovery copies</b> is on in Button Map Options (<b>Recovery copies</b>; on by default): open the device again and choose <b>Restore</b>, then save. See <a href=\"topic:button-map-options\">Button Map Options</a>.</p>",
             ["button-map-options", "button-map-edit"]),
         t("button-map-qa-connect", "Common questions", "Why does the Button Map say \"Connect\" instead of showing the map?",
             "<p>The stick is unplugged. Plug it in and the map loads by itself. See <a href=\"topic:button-map-unplugged\">Unplugged sticks and damaged module files</a>.</p>",

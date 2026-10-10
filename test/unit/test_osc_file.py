@@ -225,7 +225,7 @@ def _real_rows() -> tuple[object, str, str]:
     return rows, a.uid, x.uid
 
 
-def test_claim_friendly_finds_an_osc_name_by_uid_else_the_old_key(
+def test_claim_friendly_reads_osc_names_only_by_uid(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import gremlin.osc
@@ -235,7 +235,8 @@ def test_claim_friendly_finds_an_osc_name_by_uid_else_the_old_key(
     monkeypatch.setattr(gremlin.osc, "OscDevice", lambda: SimpleNamespace(rows=rows))
     claim = {"friendly": {f"osc:{a_uid}": "Fire", "button:1": "Old"}}
     assert claim_friendly(claim, "button", 3) == "Fire"
-    assert claim_friendly(claim, "button", 1) == "Old"  # not converted yet
+    # D-09-OSC-NAMEKEYS: an old "button:N" key is not an OSC name.
+    assert claim_friendly(claim, "button", 1) == ""
     assert claim_friendly(claim, "axis", 1) == ""
     # Another device's claim is read as before.
     assert claim_friendly({"friendly": {"button:3": "Trigger"}}, "button", 3) == (
@@ -254,26 +255,25 @@ def test_a_device_copy_keeps_osc_uid_names() -> None:
     assert kept == {"osc:" + "a" * 32: "Fire", "button:2": "B"}
 
 
-def test_loading_the_file_converts_old_friendly_keys_to_uids(
+def test_loading_the_file_does_not_read_or_convert_old_friendly_keys(
     modules: Path, writes: list
 ) -> None:
-    rows, a_uid, x_uid = _real_rows()
+    """D-09-OSC-NAMEKEYS: OSC names are read only as "osc:<uid>"; an old
+    "button:N" key is not taken as a name and the file is not rewritten."""
+    rows, a_uid, _ = _real_rows()
     doc = rows.to_dict()
     doc["claim"] = {
         "buttons": [3],
-        "axes": [1],
-        "friendly": {"button:3": "Fire", "axis:1": "Throttle", "button:7": "Gone"},
+        "friendly": {f"osc:{a_uid}": "Fire", "axis:1": "Throttle"},
     }
     (modules / "osc.json").write_text(json.dumps(doc), encoding="utf-8")
     from gremlin.osc_rows import OscRows
 
     fresh = OscRows()
     odf.load(fresh)
+    assert fresh.names == {f"osc:{a_uid}": "Fire"}
     assert _doc(modules)["claim"]["friendly"] == {
         f"osc:{a_uid}": "Fire",
-        f"osc:{x_uid}": "Throttle",
-        "button:7": "Gone",
+        "axis:1": "Throttle",
     }
-    assert len(writes) == 1
-    odf.load(fresh)
-    assert len(writes) == 1  # nothing left to convert
+    assert writes == []

@@ -241,6 +241,7 @@ Item {
             id: _pane
             layout: _layout
             locked: _root.editorLocked
+            tree: _tree
             namePrefix: "keyboard"
         }
 

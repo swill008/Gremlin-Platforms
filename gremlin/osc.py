@@ -431,7 +431,9 @@ def port_holder(port: int, host: str = "") -> tuple[str, int] | None:
 def bind_error_detail(host: str, port: int, exc: OSError) -> str:
     """The text under "Could not bind OSC on host:port.": the OS error and,
     for a port in use, the program holding it (OX2)."""
-    detail = str(exc)
+    detail = str(exc).rstrip()
+    if detail and not detail.endswith("."):
+        detail += "."
     in_use = exc.errno in _ADDR_IN_USE or getattr(exc, "winerror", None) == 10048
     if in_use:
         holder = port_holder(port, host)
@@ -664,15 +666,19 @@ class OscRuntime(QtCore.QObject):
 
         self._hold_learn = hold
         self._learn_owner = None if owner is None else weakref.ref(owner)
-        self._bind()
+        failure = self._bind(report=False)
         if self._listener is None:
             self._learn = False
             self._hold_learn = False
             self._learn_owner = None
             self.listenChanged.emit()
+            # One message (S18): the bind failure (holder named, S142; already
+            # logged, S143) or, with OSC off, where to turn it on.
             ui_signal.showError.emit(
                 "Could not start OSC listener.",
-                "Turn OSC on and check its host and port in OSC › Module Setup.",
+                " ".join(failure)
+                if failure
+                else "Turn OSC on and check its host and port in OSC › Module Setup.",
             )
             return False
         self._learn = True
@@ -773,39 +779,46 @@ class OscRuntime(QtCore.QObject):
             parse_port(self._settings.get("port")),
         )
 
-    def _bind(self) -> None:
-        """Opens the port with the current settings (rebinds when they differ)."""
+    def _bind(self, report: bool = True) -> tuple[str, str] | None:
+        """Opens the port with the current settings (rebinds when they differ).
+        A failure is logged and returned as (title, detail); shown only with
+        report (Listen shows it under its own title)."""
         from gremlin.signal import signal as ui_signal
 
         enabled, host, port = self._read_options()
         if not enabled:
             self._unbind()
             log.info("OSC listener off in OSC's settings")
-            return
+            return None
         if (
             self._listener is not None
             and self._listener.host == host
             and self._listener.port == port
         ):
-            return
+            return None
         self._unbind()
         try:
             listener = OscListener(host, port, self._from_thread)
             listener.start()
             self._listener = listener
+            return None
         except ImportError:
             log.error("OSC: python-osc is not installed")
-            ui_signal.showError.emit(
+            failure = (
                 "OSC requires python-osc.",
                 "In the repo folder run: poetry add python-osc",
             )
         except OSError as exc:
-            title = f"Could not bind OSC on {host}:{port}."
-            detail = bind_error_detail(host, port, exc)
+            failure = (
+                f"Could not bind OSC on {host}:{port}.",
+                bind_error_detail(host, port, exc),
+            )
             # Logged as well as shown (OX3): the user log and the program log.
-            user_log.error("OSC: %s %s", title, detail)
-            log.error("OSC: %s %s", title, detail)
-            ui_signal.showError.emit(title, detail)
+            user_log.error("OSC: %s %s", *failure)
+            log.error("OSC: %s %s", *failure)
+        if report:
+            ui_signal.showError.emit(*failure)
+        return failure
 
     def _unbind(self) -> None:
         if self._listener is None:

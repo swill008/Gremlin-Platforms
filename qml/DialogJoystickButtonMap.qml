@@ -634,7 +634,7 @@ ApplicationWindow {
         }
     }
 
-    // --- recovery copies (Options → Button Map → Autosave) -------------------
+    // --- recovery copies (Options → Button Map → Recovery copies) -----------
 
     property string _lastRecovery: ""
     property var _pendingRecovery: null
@@ -649,7 +649,7 @@ ApplicationWindow {
 
     // Writes a recovery copy when there are unsaved changes; with none left
     // (everything undone), removes it.
-    function autosaveNow() {
+    function recoveryNow() {
         if (!editing || !targetName.length)
             return
         if (!isDirty()) {
@@ -766,11 +766,11 @@ ApplicationWindow {
     }
 
     Timer {
-        id: _autosaveTimer
-        interval: Math.max(10, Number(_opts.values["autosave-seconds"]) || 60) * 1000
+        id: _recoveryTimer
+        interval: Math.max(10, Number(_opts.values["recovery-seconds"]) || 60) * 1000
         repeat: true
-        running: _buttonMap.editing && _opts.values["autosave"] !== false
-        onTriggered: _buttonMap.autosaveNow()
+        running: _buttonMap.editing && _opts.values["recovery-copies"] !== false
+        onTriggered: _buttonMap.recoveryNow()
     }
 
     function discardEdit() {

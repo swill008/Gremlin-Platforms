@@ -15,6 +15,12 @@ import Gremlin.UI
 // Appearance… / Hide Appearance (01 S58a). The page puts it where the panel
 // goes, binds its ControlTree's appearance properties to this item's
 // properties of the same names and re-exposes pageBar.
+//
+// Too narrow (D-05-APPEARANCE-NARROW): when the row's other columns at
+// their least width (the list's 360, the open pane's 420 plus grip) leave
+// this panel less than its 360, it closes; Appearance… reopens it. A reopen
+// while still too narrow stays until the next change of room (a resize,
+// the pane opening): the user's click isn't undone.
 ListAppearancePanel {
     id: _part
 
@@ -37,6 +43,33 @@ ListAppearancePanel {
     }
 
     function requestCloseDisplay() { requestClose() }
+
+    // Room the row leaves this panel: its width less each other shown
+    // column's least width (Layout.minimumWidth, else its implicit width).
+    readonly property real _room: {
+        var row = parent
+        if (!row)
+            return 0
+        var used = 0
+        for (var i = 0; i < row.children.length; ++i) {
+            var c = row.children[i]
+            if (c === _part || !c.visible)
+                continue
+            var least = c.Layout.minimumWidth
+            used += (least > 0 ? least : c.implicitWidth) + (row.spacing || 0)
+        }
+        return row.width - used
+    }
+
+    function _closeIfNarrow() {
+        var row = parent
+        if (!_openReady || !displayOpen || !row || !row.visible || row.width <= 0)
+            return
+        if (_room < Style.dp(360))
+            displayOpen = false
+    }
+
+    on_RoomChanged: _closeIfNarrow()
 
     // The page's own controls on the bar under the toolbar (01 S58a).
     property Component pageBar: Component {

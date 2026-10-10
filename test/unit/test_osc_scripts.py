@@ -54,7 +54,7 @@ def _handler_with_script_callbacks() -> event_handler.EventHandler:
 
 
 def test_osc_input_variable_callback_runs_from_an_osc_event(
-    fresh_registry: None,
+    fresh_registry: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     rows = OscDevice().rows
     row = rows.create(InputType.JoystickButton, "/script/press")
@@ -74,7 +74,8 @@ def test_osc_input_variable_callback_runs_from_an_osc_event(
     listener.joystick_event.connect(handler.process_event)
     try:
         runtime = OscRuntime()
-        runtime._running = True  # noqa: SLF001 - a Run is on
+        # A Run is on for this test only: the runtime is one per process.
+        monkeypatch.setattr(runtime, "_running", True)
         runtime._emit_button(row, True, MODE, "/script/press")  # noqa: SLF001
         runtime._emit_button(row, False, MODE, "/script/press")  # noqa: SLF001
     finally:

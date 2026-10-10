@@ -228,3 +228,16 @@ def test_an_action_state_row_whose_action_is_missing_says_so(
     assert editor["note"] == osc_feedback_model.ACTION_MISSING
     assert page.setFeedbackField("kind", "paused") == ""
     assert page.feedbackEditor["note"] == ""
+
+
+def test_key_color_kind_id_is_color(page: OscLayoutModel) -> None:
+    """D-09-COLOR-SPELLING: the Key color menu's kind id is "color" and its
+    row's template "companion_color"; the old "colour" id is not known."""
+    _add("/deck/1")
+    assert page.addCompanionFeedback(_key("/deck/1"), "colour") == ""
+    assert osc_device_file.read_feedback() == []
+    key = page.addCompanionFeedback(_key("/deck/1"), "color")
+    [row] = osc_device_file.read_feedback()
+    assert key == f"feedback:{row['id']}"
+    assert row["template"] == "companion_color"
+    assert "companion_color" in osc_device_file.TEMPLATES

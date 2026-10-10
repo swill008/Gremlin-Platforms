@@ -247,15 +247,6 @@ def _logical_unsaved() -> bool:
     return bool(getattr(LogicalDevice(), "dirty", False))
 
 
-def logical_migration_text(added: list[str] | None) -> str:
-    """The one-time note after a version 14 profile's Logical Device moved
-    to the shared file; "" when nothing was added."""
-    names = [str(name) for name in (added or []) if str(name)]
-    if not names:
-        return ""
-    return "Logical Device moved to its own file: added " + ", ".join(names) + "."
-
-
 def _load_osc_device() -> list[str]:
     """Fills OscDevice() and its server settings from OSC's module file
     (D-09-OSC-FILE). Gives a warning for the user per input that couldn't
@@ -283,15 +274,6 @@ def _internal_unsaved() -> bool:
     """The shared internal devices (Logical Device, OSC) have edits that
     Save writes too."""
     return _logical_unsaved() or _osc_unsaved()
-
-
-def migration_notes(new_profile: object) -> tuple[str, str]:
-    """(title, text) of the one note said after opening an older profile
-    whose Logical Device rows moved to their own file; text "" when there
-    is nothing to say. (An older profile's OSC rows are not read, AD7.)"""
-    return "Logical Device", logical_migration_text(
-        getattr(new_profile, "logical_migration_note", None)
-    )
 
 
 @common.SingletonDecorator
@@ -931,12 +913,6 @@ class Backend(QtCore.QObject):
         for warning in getattr(new_profile, "load_warnings", []) or []:
             logging.getLogger("system").warning(warning)
             signal.showNotification.emit("Open Profile", warning)
-        # An older profile's Logical Device rows moved to their own file:
-        # said once, the first time it opens (04 S25, D-04-LD-FILE).
-        title, note = migration_notes(new_profile)
-        if note:
-            logging.getLogger("system").info(note)
-            signal.showNotification.emit(title, note)
 
     def _load_profile(self, fpath: str, report: bool = True) -> bool:
         """Opens a profile; False if it couldn't. report=False: the reason is

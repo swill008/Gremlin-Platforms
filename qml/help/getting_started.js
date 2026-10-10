@@ -64,6 +64,7 @@ function topics() {
                 + "<li>Gremlin-Platforms-R1-X.Y.Z-Setup.exe, the installer. It installs for your Windows user only and needs no administrator rights. The suggested folder is %LOCALAPPDATA%\\Programs\\Gremlin-Platforms; you can choose another folder you can write to. It adds a Start menu entry, an optional desktop shortcut, and an uninstaller in Windows Settings › Apps.</li>"
                 + "<li>Gremlin-Platforms-R1-X.Y.Z.zip, the portable copy. Unzip it anywhere outside Program Files and run gremlin_platforms.exe.</li>"
                 + "</ul>"
+                + "<p>The program folder holds two programs: gremlin_platforms.exe, the program itself, and Gremlin Input Tester.exe, the <b>Input Tester</b>, which shows what other programs see through HidHide (open it with <b>Tools › Viewers › Input Tester…</b>; it has no Start menu entry). The installer also puts the license notices of the third-party parts the program includes in a licenses folder inside the program folder. An update replaces both programs and the notices.</p>"
                 + "<p>To check for a newer version:</p>"
                 + "<ol>"
                 + "<li>Choose <b>Help › Check for Updates</b> <a href=\"show:menu/Help/Check for Updates\">Show me ›</a>. It asks GitHub for the latest release and shows what's new in it.</li>"
@@ -174,6 +175,7 @@ function topics() {
                 + "<li>If the last profile won't open, a new, empty profile is open instead and the program says why. Choose <b>Forget It</b> to take that profile off the start-up and <b>Recent</b> lists (the file itself stays), or <b>Keep</b> to try it again next time.</li>"
                 + "<li>If the program closed unexpectedly with unsaved changes, opening the profile offers them back: \"Unsaved Edits Found\" (see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
                 + "<li>The update check, a \"Settings Reset\" notice and the vJoy setup message each come at most once, after the main window is up.</li>"
+                + "<li>The Logical Device and OSC are read from their own files before the profile. An entry in one of them that can't be read is skipped and the rest load; once the main window is up, a note titled <b>Logical Device</b> or <b>OSC</b> names each skipped entry. The skipped entry is kept in the file as it is when you save, so nothing is lost.</li>"
                 + "</ul>",
             related: ["getting-started-profiles", "getting-started-command-line", "getting-started-wont-start"]
         },
@@ -311,6 +313,11 @@ function topics() {
                 + "<li><b>Yes</b>: close the other copies and start this one. Changes not saved in the other copies are lost.</li>"
                 + "<li><b>No</b>: start this copy anyway. vJoy may not respond, and the History may miss some entries.</li>"
                 + "<li><b>Cancel</b>: don't start this copy.</li>"
+                + "</ul>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li>The question lists the other copies' process IDs and open windows. A copy running with no visible window may be hung; <b>Yes</b> closes it too.</li>"
+                + "<li>If the other copy can't be closed, the question starts \"The other copy could not be closed.\" and asks again.</li>"
                 + "</ul>",
             related: ["getting-started-wont-start", "tools-history"]
         },
@@ -331,7 +338,7 @@ function topics() {
             id: "getting-started-save-diagnostics",
             section: "Troubleshooting",
             title: "Save diagnostics for a problem report",
-            body: "<p>Save Diagnostics puts everything needed for a problem report in one zip: the program's logs, its settings, the device list (names, ids, kinds, connected) and the program and Windows versions.</p>"
+            body: "<p>Save Diagnostics puts everything needed for a problem report in one zip: the program's logs (with trace.log when you have used Tracing), its settings, the device list (names, ids, kinds, connected) and the program and Windows versions. When you have used the <b>Input Tester</b>, its files are added too: tester.log and its older copy, and its expected.json and result.json.</p>"
                 + "<ol>"
                 + "<li>Choose <b>Help › Save Diagnostics…</b> <a href=\"show:menu/Help/Save Diagnostics\">Show me ›</a> (or <b>Save Diagnostics…</b> on the Live Log Reader's <b>Debug</b> tab).</li>"
                 + "<li>To add the open profile, tick <b>Include the open profile</b>.</li>"
@@ -339,6 +346,7 @@ function topics() {
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
+                + "<li>The open profile is left out unless you tick the box.</li>"
                 + "<li>Your user name in folder paths is replaced by &lt;user&gt;.</li>"
                 + "<li>When it is done it says where the zip went; if it can't be written it says which file, which folder and why.</li>"
                 + "</ul>",

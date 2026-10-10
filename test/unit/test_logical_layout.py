@@ -148,37 +148,6 @@ def test_move_group_up_and_down() -> None:
     assert logical.group_names() == ["B", "A", "C"]
 
 
-def test_old_profile_label_becomes_user_name(tmp_path: Path, modules: Path) -> None:
-    """A version 14 profile's rows move into the Logical Device's file
-    (D-04-LD-FILE decision 3); a renamed control's name, kept in the label
-    by older files, becomes its user name there."""
-    path = tmp_path / "old.xml"
-    Profile(bind=False).to_xml(path)
-    text = path.read_text(encoding="utf-8-sig")
-    assert 'version="16"' in text
-    path.write_text(
-        text.replace('version="16"', 'version="14"', 1).replace(
-            "</profile>",
-            "<logical-device><input><input-type>button</input-type>"
-            "<input-id>1</input-id><label>Trigger</label></input>"
-            "</logical-device></profile>",
-        ),
-        encoding="utf-8",
-    )
-    Profile().from_xml(path)
-    button = LogicalDevice().button(1)
-    assert button.system_name == "Button 1"
-    assert button.second_name == "Trigger"
-    assert button.group == ""
-    # Read back from the file the same.
-    from gremlin import logical_device_file
-
-    logical_device_file.save()
-    LogicalDevice().load_dict({"controls": [], "groups": []})
-    logical_device_file.load()
-    assert LogicalDevice().button(1).second_name == "Trigger"
-
-
 def test_claimed_ids_are_sorted_and_unique() -> None:
     from gremlin.modules.claim import claim_ids
 

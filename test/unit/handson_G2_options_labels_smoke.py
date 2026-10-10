@@ -103,7 +103,7 @@ def main() -> None:
         lambda: (p := child("optionsPane")) is not None and p.isVisible() and p,
         "the Options pane",
     )
-    groups = ["labels", "editing", "autosave", "view", "colours"]
+    groups = ["labels", "editing", "recovery", "view", "colours"]
     labels: list = []
     for group in groups:
         ev(f"_opts.paneGroup = '{group}'")

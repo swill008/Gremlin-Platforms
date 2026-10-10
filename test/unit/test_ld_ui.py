@@ -31,7 +31,7 @@ from gremlin.ui import backend
 _APPS: list[QtCore.QCoreApplication] = []
 _KEEP: list[Any] = []
 
-# A real version 14 profile with its own Logical Device rows.
+# A real profile, made version 14 with its own rows by as_v14.
 _V14 = (
     Path(__file__).resolve().parents[1]
     / "action_interaction"
@@ -126,9 +126,12 @@ def test_main_window_discard_drops_the_logical_device_edits() -> None:
     assert "backend.discardLogicalDevice()" in discard
 
 
-def test_a_version_14_profile_says_once_what_moved(
+def test_a_version_14_profile_gives_no_logical_device_note(
     modules: Path, tmp_path: Path
 ) -> None:
+    """Its own rows are not read, so there is nothing to say
+    (D-04-LD-NOLEGACY)."""
+    _file_with_gear()
     made = _backend()
     notes: list[tuple[str, str]] = []
 
@@ -136,24 +139,15 @@ def test_a_version_14_profile_says_once_what_moved(
         notes.append((title, message))
 
     signal.showNotification.connect(note)
-    old = tmp_path / "old.xml"
-    old.write_text(_V14.read_text(encoding="utf-8"), encoding="utf-8")
-    made._read_profile(str(old))
-    moved = [m for t, m in notes if t == "Logical Device"]
-    assert len(moved) == 1
-    assert moved[0].startswith("Logical Device moved to its own file: added ")
-    assert "Input Axis 1" in moved[0]
-    notes.clear()
-    made._read_profile(str(old))
-    signal.showNotification.disconnect(note)
+    from test.unit.test_ld_nolegacy import as_v14
+
+    old = as_v14(_V14, tmp_path / "old.xml")
+    try:
+        made._read_profile(str(old))
+    finally:
+        signal.showNotification.disconnect(note)
     assert not [m for t, m in notes if t == "Logical Device"]
-
-
-def test_migration_note_text() -> None:
-    assert backend.logical_migration_text([]) == ""
-    assert backend.logical_migration_text(["Button 9 (Gear)", "Axis 3"]) == (
-        "Logical Device moved to its own file: added Button 9 (Gear), Axis 3."
-    )
+    assert [i.label for i in LogicalDevice().ordered()] == ["Gear"]
 
 
 @pytest.fixture

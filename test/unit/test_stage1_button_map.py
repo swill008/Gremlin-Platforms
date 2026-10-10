@@ -323,7 +323,7 @@ def test_copy_says_how_many_chips_the_device_lacks(flows: dict) -> None:
 
 
 def test_recovery_copies_never_more_often_than_every_10_seconds(flows: dict) -> None:
-    assert flows["autosave-interval-at-1s"] == 10000  # S33
+    assert flows["recovery-interval-at-1s"] == 10000  # S33
 
 
 def test_recovery_copy_written_removed_when_undone_and_on_cancel(flows: dict) -> None:

@@ -215,6 +215,7 @@ function topics() {
                 + "<li>A script inside the scripts folder is saved by its place in that folder; others keep their full path.</li>"
                 + "<li>A script's vjoy object can only use outputs the vJoy output modules claim.</li>"
                 + "<li>A Keyboard variable fires for exactly the key you chose. Numpad keys are their own keys: Numpad 1 is not End, and Numpad Enter is not Enter.</li>"
+                + "<li>A script can use OSC inputs, as it uses stick inputs; a new OSC input variable starts with no input chosen. Its <code>osc.send</code> sends only to an OSC target by its name, never to a typed host and port. It sends nothing and returns False with OSC output off, while the profile isn't running, with no target of that name (capitals ignored) or with an address that isn't a plain OSC address; the last two also write one warning to <b>user.log</b>.</li>"
                 + "</ul>",
             related: ["options-profile-scripts-cant-load", "getting-started-profiles", "home-devices-vjoy-output"]
         },

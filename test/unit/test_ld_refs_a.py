@@ -115,12 +115,12 @@ def test_a_missing_uid_is_kept_flagged_and_does_nothing() -> None:
     ) == util.read_property(node, "logical-input-uid", PropertyType.String)
 
 
-def test_old_data_without_a_uid_resolves_by_remap_then_number() -> None:
+def test_old_data_without_a_uid_resolves_by_number() -> None:
     from action_plugins.map_to_logical_device import MapToLogicalDeviceData
 
     logical = LogicalDevice()
     first = logical.create(B, label="One")
-    second = logical.create(B, label="Two")
+    logical.create(B, label="Two")
     data = MapToLogicalDeviceData(B)
     data.logical_input_id = first.id
     node = data.to_xml()
@@ -131,19 +131,6 @@ def test_old_data_without_a_uid_resolves_by_remap_then_number() -> None:
     loaded = MapToLogicalDeviceData(B)
     loaded.from_xml(node, mock.MagicMock())
     assert loaded.logical_input_uid == first.uid  # by number
-
-    import gremlin.logical_device_file as ldf
-
-    with mock.patch.object(
-        ldf,
-        "current_uid_map",
-        {(InputType.to_string(B), first.id): second.uid},
-        create=True,
-    ):
-        remapped = MapToLogicalDeviceData(B)
-        remapped.from_xml(node, mock.MagicMock())
-    assert remapped.logical_input_uid == second.uid
-    assert remapped.logical_input_id == second.id
 
 
 def test_the_editor_choice_writes_the_chosen_control_s_uid() -> None:

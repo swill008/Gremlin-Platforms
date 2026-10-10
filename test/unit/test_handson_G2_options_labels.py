@@ -67,11 +67,11 @@ def test_the_window_is_800_wide(run: dict) -> None:
 
 def test_every_group_has_settings(run: dict) -> None:
     groups = {label["group"] for label in run["labels"]}
-    assert groups == {"labels", "editing", "autosave", "view", "colours"}
+    assert groups == {"labels", "editing", "recovery", "view", "colours"}
 
 
 def test_the_recovery_copies_label_is_whole(run: dict) -> None:
-    label = next(lb for lb in run["labels"] if lb["key"] == "autosave-seconds")
+    label = next(lb for lb in run["labels"] if lb["key"] == "recovery-seconds")
     assert label["text"] == "Seconds between recovery copies"
     assert not label["truncated"], label
     assert label["content"] <= label["width"] + 0.5, label
