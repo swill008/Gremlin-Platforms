@@ -77,7 +77,7 @@ def story(j: Journey) -> None:
             stem = pathlib.Path(url.toLocalFile() or model.qmlPath).stem
             if job["tag"] == "root":
                 # The pane shows a binding's root through RootActionNode
-                # (InputItemBinding.qml), not the plugin's RootAction.qml.
+                # (InputItemBinding.qml), RootAction.qml no longer exists (R1).
                 stem = "RootActionNode"
             got["qml"] = stem
 

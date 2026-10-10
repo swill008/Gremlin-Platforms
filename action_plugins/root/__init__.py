@@ -62,7 +62,9 @@ class RootModel(ActionModel):
         super().__init__(data, binding_model, action_index, parent_index, parent)
 
     def _qml_path_impl(self) -> str:
-        return "file:///" + QtCore.QFile("core_plugins:root/RootAction.qml").fileName()
+        # No editor of its own: the pane shows a binding's root through
+        # qml/RootActionNode.qml, and only children load a qmlPath.
+        return ""
 
     def _action_behavior(self) -> str:
         return self._binding_model.behavior

@@ -326,16 +326,9 @@ def _undo_edit(case: Any) -> str:  # noqa: ANN401
     return f"{slot} child vjoyInputId -> {UNDO_ID}"
 
 
-# Real defects found (kept as strict xfails until fixed).
-XFAILS: dict[tuple[str, str, str], str] = {
-    ("reference", "key", Surface.PANE_KEYBOARD): (
-        "AE-reference-1: a Reference on a keyboard key offers nothing. Its "
-        "list keeps actions whose behavior_type equals the binding's "
-        "(InputType.Keyboard), but every action on a key is made with button "
-        "behaviour (InputItemBindingModel._get_behavior maps Keyboard to "
-        "JoystickButton), so no action ever matches (05 S60)."
-    ),
-}
+# Real defects found (kept as strict xfails until fixed). AE-reference-1
+# (a Reference on a keyboard key offered nothing, 05 S60) is fixed.
+XFAILS: dict[tuple[str, str, str], str] = {}
 
 
 def _params() -> list[Any]:
@@ -502,17 +495,18 @@ def test_flow_editors_qml(tmp_path: pathlib.Path) -> None:
 
 
 def test_root_action_qml_is_used() -> None:
-    """Root's own editor file: the pane shows a binding's root through
-    qml/RootActionNode.qml (InputItemBinding.qml); only ActionNode loads an
-    action's qmlPath, and only for children, which a Root never is."""
+    """Root has no editor file of its own (R1, removed): the pane shows a
+    binding's root through qml/RootActionNode.qml (InputItemBinding.qml);
+    only ActionNode loads an action's qmlPath, and only for children, which a
+    Root never is. RootAction.qml is gone and nothing names it."""
     root = harness.ROOT
+    gone = not (root / "action_plugins" / "root" / "RootAction.qml").exists()
     uses = [
         p.relative_to(root).as_posix()
         for folder in ("qml", "action_plugins", "gremlin")
         for p in (root / folder).rglob("*")
         if p.suffix in (".qml", ".py")
-        and p.name != "RootAction.qml"
         and "RootAction.qml" in p.read_text(encoding="utf-8", errors="ignore")
     ]
-    record("root", "editor_qml", "-", "RootAction.qml used", None, uses)
-    assert uses == ["action_plugins/root/__init__.py"], uses
+    record("root", "editor_qml", "-", "RootAction.qml gone", None, uses)
+    assert gone and uses == [], uses

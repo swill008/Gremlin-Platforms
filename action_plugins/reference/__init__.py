@@ -92,11 +92,15 @@ class ReferenceModel(ActionModel):
         # - result in circular inclusions
         # - are of an incompatible input type
         # - are a reference action or an input's root (05 S60a)
+        # Actions here are made with this behaviour (a key's are button
+        # actions, 05 S60), so the list matches on the same one.
+        behavior = InputType.to_enum(self._action_behavior())
+
         def selector(action: AbstractActionData) -> bool:
             # Only consider actions that are of a valid type
             if action.tag in ["reference", "root"]:
                 return False
-            if action.behavior_type != self.input_type:
+            if action.behavior_type != behavior:
                 return False
 
             # Reject all actions that would result in a loop
