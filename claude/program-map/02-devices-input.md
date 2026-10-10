@@ -24,6 +24,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | `gremlin/modules/runtime.py` (first ~140 lines) | `InputModuleRuntime`: the only consumer allowed to turn raw events into profile events (claims gate). Owned by the Input modules page; listed here as the first stop after raw input. |
 | `gremlin/hidhide_driver.py` (980) | HidHide driver client, split out of the screen (D-02-Q10): control device calls (IOCTLs on `\\.\HidHide`: `get/set_active`, `get/set_inverse`, black and white lists, `driver_version`, `driver_present`), the HID device list (SetupAPI, cfgmgr32, hid.dll: `list_hid_devices`, gaming-only filter, names, container grouping), program image paths, `last_error`. Does not ship or install the driver. |
 | `gremlin/ui/hidhide.py` (1015) | The HidHide screen side: saved HidHide choices (games, photos, module links, hidden devices), `HidHideModel` (QML), `apply_on_start`, `apply_saved_list`. |
+| `gremlin/hidhide_watch.py` (new 2026-10-09, D-01-TRACE) | The HidHide trace's watch (S97-S98): every 5 s while tracing with the HidHide row ticked, reads HidHide's real state (cloak, inverse, app list, device list) and compares it with the last read and the saved setup; checks each ticked stick is hidden under its current Windows instance path (at tracing on, on device change, with the watch); writes HIDHIDE lines through `gremlin/trace.py` (page 01). |
 | `gremlin/ui/util.py` (lines 50-292, 294-435) | `InputListenerModel` ("Listen for input", Esc-hold abort), `MacroRecorder` (records raw key/mouse/stick events), `ProcessListModel` (running programs for auto-load). |
 | `gremlin/ui/device.py` (lines 182-298) | `DeviceListModel` (Device Information table, device pickers). Also `DeviceAxisSeries` and `AxisCalibration` (raw axis readers, Calibration page). |
 | `gremlin/device_aliases.py` (134) | The names the user gives devices (Home card name, 10 S7), kept in the setting `devices/display/aliases`; not UI. The Device Library reads and renames through it. |
@@ -64,6 +65,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | Callback table `EventHandler.callbacks[device][mode][event]`, `known_modes`, `process_callbacks` | `event_handler.py:564-568` | Run (`code_runner.start` via `add_callback`, `build_event_lookup`), Stop (`clear`), mode rename/delete (`mode_manager.py:250,264`), Pause action | Pause and Resume action plugin |
 | Foreground program `_current_path`, `_current_pid` | `ProcessMonitor` | its thread | Nobody |
 | HidHide model state (`_present`, `_devices`, `_games`, `_last_error`) and module-level `_ioctl_error`, `_settings_error` | `ui/hidhide.py` | `HidHideModel`, driver calls | Nobody |
+| HidHide trace state: last HidHide state read, "in use" (err 5) quiet flag, changes the program itself made (so they are named as such) | `hidhide_watch.py`, `hidhide_driver.py` call tap | the 5 s watch, the driver calls | Nobody; cleared when Tracing turns off |
 
 **Files and settings** (all in `configuration.json`, written about 1 s after a change)
 
@@ -89,7 +91,9 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | Main window up | `joystick_gremlin.py:943` | `announce_vjoy_problems` -> `display_error` once | main |
 | First `EventListener()` (Backend/CodeRunner) | `EventListener.__init__` | registers hooks, `_init_joysticks`, starts keyboard hook, starts "event listener" thread which sets the two DLL callbacks | main -> threads |
 | Stick moved / pressed | DLL callback `_joystick_event_handler` | calibrate axis, update `Joystick` cache, emit `joystick_event(Event)` | DLL thread |
+| Stick moved / pressed, while Tracing is on and the control is ticked | `event_handler._trace_raw` from `_joystick_event_handler` (before calibration); the claim gate `InputModuleRuntime._on_hid` → `runtime._trace_dropped`; `EventHandler.process_event` → `_run_callbacks` / `_trace_wiring` (helpers `trace_kind`, `trace_ticked`) | `trace.raw` (rate-limited), `trace.wiring` (claimed / "not claimed, dropped", mode, actions ran), `trace.begin_input/end_input` around the callbacks (S95) | DLL thread / main |
 | Stick plugged in or out | DLL callback `_joystick_device_handler` | ignore own Xbox pads; restart 0.2 s timer -> `_run_device_list_update` -> scan, `_init_joysticks`, `_let_go` for gone sticks, emit `device_change_event` if the list changed | DLL thread -> timer thread |
+| Tracing on with the HidHide row ticked | `trace.on_change` | `hidhide_watch` start: per-stick hidden check, then the 5 s watch thread; every HidHide driver call writes `trace.hidhide` (S96-S98) | watch thread |
 | Key pressed / released anywhere in Windows | `process_keyboard_event` (hook) -> `_keyboard_handler` | drop AltGr's fake Ctrl, drop auto-repeat, update `Keyboard` cache, emit `keyboard_event` | keyboard hook thread |
 | Mouse button / wheel (only while hook started) | `process_mouse_event` -> `_mouse_handler` | emit `mouse_event` | mouse hook thread |
 | Run | `code_runner.start` | `EventHandler.add_callback` x N, `build_event_lookup`, connect `InputModuleRuntime.event/key_event` and `virtual_event` to `process_event`, `resume`, `refresh_axes` | main |
@@ -121,6 +125,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | Other subsystem | Direction | How |
 |---|---|---|
 | Input modules (`modules/runtime.py`, `gate.py`) | called by | `InputModuleRuntime` listens to `joystick_event`, `keyboard_event`, `device_change_event`; reads `physical_devices()` |
+| Tracing (`gremlin/trace.py`, page 01) | calls out | RAW and WIRING lines (`event_handler._trace_raw/_trace_wiring`, `runtime._trace_dropped`), device plug/unplug/re-init EVENT lines, HIDHIDE lines; `trace.ticked`, `trace.hidhide_ticked`; `hidhide_watch` is started/stopped through `trace.on_change` |
 | Output modules (`modules/output.py`) | calls out | scan asks `vjoy_ids`, `vjoy_layout`, `vjoy_hats_continuous`, `reset_vjoy` (layer rule kept) |
 | Xbox output (`vigem/ids.py`, `own_pads.py`) | calls out | `is_vigem_xbox_summary` to skip own pads; vigem in turn reads `DILL` directly |
 | Module files (`modules/registry.py`, `calibration.py`, `util.modules_dir`) | calls out | `_file_bound_guid` reads a module file; `values_for_device` for calibration |
@@ -143,6 +148,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | dill.dll internal thread | `DILL.init` (native, not via `gremlin.threads`) | input and device-change callbacks into Python | never; callbacks swapped to no-ops at `terminate` |
 | "event listener" | `threads.start` (`event_handler.py:267`) | sets the two DLL callbacks, then waits on `_stop_event` | `_ask_to_stop` / `terminate` |
 | "device list update" timer, 0.2 s, restarted per device event | `threads.timer` (`event_handler.py:414`) | scan, settings write, module file read, `reset_vjoy`, let-go events, `device_change_event` | cancelled by a newer event, `terminate`, `shutdown_cleanup` |
+| "hidhide watch" (new 2026-10-09, D-01-TRACE) | `threads.start` from `trace.on_change` when Tracing turns on with the HidHide row ticked | reads HidHide's state every 5 s (clock wait on its stop event), the per-stick hidden check | Tracing off, HidHide untick, quit (`threads.shutdown`); bounded waits |
 | "keyboard hook" | `threads.start` (`windows_event_hook.py:317`), at listener creation | message loop; every key in Windows passes through Python | WM_QUIT, `stop()` waits up to 2 s |
 | "mouse hook" | only while Listen or macro Record wants mouse | message loop | when the last user stops it (start/stop count, `windows_event_hook.py` 442-473; GL-120) |
 | "process monitor" | `threads.start`, from `Backend.__init__` (always, even with auto-load off) | `GetForegroundWindow` every 1 s (`_stop.wait(1.0)`) | `stop()` joins 2 s |
@@ -256,6 +262,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 - **S58** A Change Mode to a mode the running profile does not have should be ignored and logged once. [test: test_audit2_modes.py::test_the_running_mode_list_follows]
 - **S59** Renaming a mode while running should move its actions to the new name; deleting a mode should drop its actions. [tracker: AU-99 group] [user confirmed 2026-10-06; was code only for the running case]
 - **S60** Stop should remove every registered action and the running mode list. [user confirmed 2026-10-06; was code only]
+- **S95** While Tracing is on (01 S147), each event from a ticked joystick control (keys aren't traced) should write a **RAW** line as the program gets it from the device driver, before the claim gate (axis raw and calibrated, button pressed or released, hat direction; axes at most 10 a second, the last value always), and a **WIRING** line: claimed or "not claimed, dropped", the mode, and the actions that ran by name or "no actions". A device plugged, unplugged or set up again writes an EVENT line. Off, this costs one check per event. [user decision: D-01-TRACE]
 
 ### I. Listen for input
 
@@ -285,6 +292,9 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 - **S81** Saved programs should load sorted by name; devices sorted by name then id. [test: test_hidhide_group.py::test_saved_programs_load_sorted]
 - **S82** A device picture is used where it was picked (not copied); if moved or deleted the card shows no picture until another is picked. [user confirmed 2026-10-06; was code only] [tracker: B19]
 - **S83** HidHide choices are program settings (saved ~1 s after a change) and appear in History, but window size, split and automatic picture links do not. [help: What is saved where] [tracker: AU-54]
+- **S96** While Tracing is on with the **HidHide** row ticked (01 S146), every HidHide call the program makes should write a HIDHIDE line: read or write, what was sent (cloak, mode, app list, device list) and the result: ok / in use by another program (the HidHide window is open, err 5) / failed: <why> / not installed. "In use" is written once, then nothing more until a call works again. [user decision: D-01-TRACE]
+- **S97** While tracing with HidHide ticked, a watch should read HidHide's real state every 5 s (cloak, inverse, app list, device list) and compare it with the last state read and with the program's saved setup; a change is a HIDHIDE warning ("Cloak turned off (not by Gremlin-Platforms)", "StarCitizen.exe no longer on the list", "mode changed to Allow"); changes the program itself made are named as such. When HidHide is in use by another program at watch time it writes one line "HidHide in use by another program" and reads the state again once it is free. [user decision: D-01-TRACE]
+- **S98** For each ticked stick, the trace should check it is on HidHide's hidden list under its current Windows instance path; if not, a HIDHIDE warning "<stick> is NOT hidden: it is HID\…, which isn't on the list". Checked when tracing turns on, on every device change and with the 5 s watch. A warning raises the Trace tab's notice (01 S150). [user decision: D-01-TRACE]
 
 ### K. Foreground program and auto-load
 
@@ -355,6 +365,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | G22 | Listen does not ignore vJoy or Xbox echo events (only Logical/virtual), so while a profile runs it may catch the output of the press instead of the stick | `ui/util.py:158-166` | done GL-131 |
 | G23 | Two switches for one HidHide setting (Q16) | `ui/option.py:83`, `DialogHardwareHide.qml:185` | done GL-135 |
 | G24 | Glossary: "Device GUID" in Device Information, "restart Gremlin-Platforms" in a sentence (Q12, Q17) | `DialogDeviceInformation.qml`, `device_initialization.py:309` | done GL-206, GL-209 |
+| HH-INUSE-1 | While the HidHide configuration window is open, HidHide's control device answers err 5 and the program shows "HidHide is not installed" instead of "in use by another program" (S67 wording is for a missing driver). Still a gap (2026-10-09); the trace now reports it as "in use by another program" (S96-S97) | `hidhide_driver.py` (`_open_control` error handling), `ui/hidhide.py` | open |
 
 **Open tracker items for this subsystem**
 
@@ -389,6 +400,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 - Catch-up batch 2 fixes (hook keeps passing keys on, hook put back, own keys marked and ignored, lost release, Numpad Enter, missing `device_db.json`, Esc-hold Listen on the main thread, mouse hook count, Listen ignores vJoy/own pads, stick back with more buttons, unknown input logged, shown name in the cache): `test_batch2_b2a_input_events.py` (21), `test_batch2_b2b.py`, `test_batch2_b4.py`, `test_stage1_app_profile.py`.
 - Viewers: `test_viewer_pair_label.py`, `test_vjoy_viewer_reads_output_module.py`, `test_xbox_viewer_driver_check.py`. Highlight holders (Listen, Record): `test_handson_T36_highlight_holders.py`.
 - HidHide window shared pieces (Remove program question, SectionHeading, EmptyState, choosers): `test_tools2_shared_pieces.py`; it fits: `test_pages_fit.py`.
+- Tracing taps and HidHide trace (S95-S98, D-01-TRACE): `test_trace_taps_in.py` (6) and other `test_trace_*.py` (RAW and WIRING lines, dropped by the claim gate, HidHide calls and err 5 once, the 5 s watch, a ticked stick not hidden).
 
 **Obvious untested paths**
 
@@ -410,6 +422,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | Q | Decision |
 |---|---|
 | All | As recommended in section 9 |
+| S95-S98 | 2026-10-09 (D-01-TRACE; user: "go with your recommendations, approved, go ahead"): trace taps and the HidHide trace |
 | Q8 | Superseded 2026-10-07 (D-02-S40-HANDLED): an event runs in the mode current when the main thread handles it |
 | Q6 | Wording 2026-10-07 (D-02-Q6-WORDING): "this program's Xbox pad" |
 

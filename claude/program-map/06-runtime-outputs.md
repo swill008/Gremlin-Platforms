@@ -22,6 +22,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 
 **Outputs**
 - `gremlin/modules/output.py` (804): the output layer. vJoy firewall (`write_vjoy`, `vjoy_value`, `vjoy_state`, claims cache with 1 s TTL, open/retry of busy devices, blocked-output log once per Run), script vJoy (`ScriptVJoy`), Xbox pass-through (`write_xbox`, `xbox_state`), driver checks and wording, `reset_drivers`.
+- `gremlin/trace_watch.py` (new 2026-10-09, D-01-TRACE): the out-of-step watch (S87, 01 S150): every 1 s while tracing, polls each ticked axis of devices ticked for the Out-of-step check and compares with the last RAW value; reads each written vJoy axis back (the DILL device Windows sees for that vJoy, else `output.vjoy_value`) and compares with the last written value; the 4 s "no input" info line; started and stopped by `trace.on_change`. `gremlin/modules/output.py` also calls `trace.output` at every `write_vjoy` result (S86).
 - `vjoy/vjoy.py` (982), `vjoy/vjoy_interface.py` (115): vJoy driver wrapper; `VJoyProxy` (opened devices, class-level dict); the keep-alive is in `gremlin/modules/output.py` since batch 3 (GL-267).
 - `vigem/xbox.py` (375): `XboxProxy` (pads 1-4, plugged in on first write, lock), `XboxPad.apply`, `snapshot`, `reset`. `vigem/own_pads.py` (125): remembers which Xbox devices are Gremlin's own pads. `vigem/ids.py`, `vigem/vigem_client.py`, `vigem/vigem_commons.py`: ids, DLL loading, driver checks.
 - `gremlin/macro.py` (1257): `MacroManager` (scheduler thread, one thread per running macro, exclusive/pre-emptive, Run counter `_run`, `_held_keys`), macro steps (Joystick, Key, Logical Device, Mouse Button, Mouse Motion, Pause, vJoy), repeat modes.
@@ -55,6 +56,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 - `test/unit/test_audit3_run_stop.py` (9 tests: held keys, buttons, motion, Logical loop, stuck macro step), `test_audit2_macros.py` (4), `test_audit_runtime.py` (9), `test_action_fixes.py` (Run/Stop items), `test_audit2_coverage.py` (Run flag, release after a failing action, Load Profile restart).
 - `test_output_layer.py` (7), `test_vjoy_writers_use_firewall.py` (3), `test_device_fixes.py` (vJoy busy), `test_xbox_output_module.py` (9), `test_map_to_xbox.py`, `test_map_to_xbox_inputs.py`, `test_xbox_incoming_names.py` (3), `test_xbox_pads_told_apart.py` (4), `test_xbox_viewer_driver_check.py` (8), `test_one_copy_of_each_rule.py`.
 - `test_run_scope_only.py` (6): only CodeRunner begins and stops a Run; nothing keeps its own Run counter.
+- Tracing (S86-S87, D-01-TRACE): `test_trace_*.py` (OUTPUT written / blocked / missing lines, only for ticked controls, the out-of-step watch on a stuck vJoy and a silent stick).
 - `test_ld_model.py` (10), `test_ld_file.py` (15+), `test_ld_refs_a.py` (7), `test_ld_refs_b.py` (8+), `test_ld_refs_c.py`, `test_ld_pack.py` (5), `test_ld_profile.py` (7), `test_ld_lib.py` (7), `test_ld_ui.py` (D-04-LD-FILE), `test_logical_device.py` (8), `test_logical_layout.py`, `test_undo_bar_labels.py` (Logical step labels, `parentCount`), `test_config_pages_shared_pieces.py::test_logical_page_search_delete_and_undo_bar`, `test_logical_events_pass_gate.py` (2), `test_audit_editing.py` (Logical Undo), `test_audit3_actions_undo.py` (Logical Undo), `test_audit2_modes.py` (Logical pane mode).
 - `test_threads.py`, `test_bounded_waits.py`, `test_program_fixes.py` (sound), `test_play_sound_missing_file.py`, `test_mode_refresh_and_add_key.py`, `test_device_scan.py`, `test_device_reconnect.py`, `test_user_script.py`.
 - `test/action_interaction/test_macro.py` (9), `test_pause_resume.py`, `test_tempo.py`, `test_condition.py`.
@@ -68,6 +70,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Third Run number | `PeriodicRegistry._generation` (user_script.py:126) | `PeriodicRegistry.start` |
 | Running flag | `CodeRunner._running`; `shared_state._runtime_active`; `EventListener.gremlin_active` | `CodeRunner.start/stop` only |
 | Paused flag | `EventHandler.process_callbacks` | Pause and Resume action, `EventHandler.pause` on a `VJoyError`, `resume` at Run |
+| Last written value per vJoy output (for the out-of-step check), episode state of each OUT OF STEP warning | `gremlin/trace.py` (`last_written`), `trace_watch.py` | `output.write_vjoy` via `trace.output`; the watch (only while Tracing is on) |
 | Callback table | `EventHandler.callbacks`, `known_modes` | built at Run (`_setup_profile`, script callbacks), cleared at Stop; `rename_mode`/`drop_mode` from mode editing |
 | Release callbacks | `ButtonReleaseActions._registry` | registered by Map to vJoy, Map to Logical Device, Change Mode, Macro, Tempo, Double Tap, Smart Toggle; cleared at Run only |
 | Pending pulse releases | `base_classes._pending_pulses` | `_pulse_event`; flushed at Stop |
@@ -98,6 +101,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Quit (File > Exit, tray Exit, window close) while running | `Main.qml:deactivateThenQuit` 647 | `toggleActiveState`, then `Qt.quit`; then `joystick_gremlin.shutdown_cleanup` (Stop again, `reset_drivers` again, audio, TTS, OSC again) |
 | Open / load a profile, New Profile | `backend._load_profile` 670, `newProfile` 503 | `activate_gremlin(False)` first |
 | Load Profile action while running | `action_plugins/load_profile` -> backend load | Stop, load, Run again (`test_audit2_coverage::test_load_profile_loads_and_restarts_the_run`) |
+| Tracing turned on (01 S147) | `trace.on_change` | `trace_watch` start (1 s loop); `write_vjoy` results write OUTPUT / BLOCKED lines for outputs a ticked control caused (S86); `code_runner` writes EVENT lines "Profile started" / "restarted" / "stopped" / "start failed" and "Mode changed" (`_refresh_on_mode_change`, only while a profile runs) |
 | Device plugged / unplugged | `EventListener.device_change_event` -> `backend._device_change` 305 | Disable: Stop; Ignore: nothing; Reload: Stop + Run. Also `InputModuleRuntime.reload`; `device_initialization` resets vJoy when the vJoy list changed |
 | Auto-load (foreground program changes) | `process_monitor.process_changed` -> `_active_process_changed_cb` 357 | Stop, load, Run; Stop on focus loss unless "Keep running"; refuses over unsaved changes |
 | Run start | `CodeRunner.start` 312 | `_next_run_number`, `_reset_state` (clears release callbacks), macro delay, `output.refresh`, `clear_blocked_log`, `log_once.reset`, `_setup_user_scripts`, mode placeholders, script callbacks, `_setup_profile` (a `CallbackObject` per action sequence), `build_event_lookup`, `InputModuleRuntime.reload`, connect `event`, `key_event`, `virtual_event` -> `process_event`, periodic registry, `MacroManager.start`, `AudioPlayer.start`, `TTSManager.start`, mode listening, `ModeManager.switch_to(start mode)`, `resume`, `_running=True`, `runtime_active=True`, `MouseController.start`, `OscRuntime.start`, `_refresh_axes` |
@@ -147,6 +151,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Other subsystem | Calls out (this -> it) | Called by (it -> this) |
 |---|---|---|
 | Input modules / gate (`gremlin/modules/runtime.py`, `gate.py`, `inputs.py`) | `InputModuleRuntime().reload()` and its `event`/`key_event` signals at Run | sends claimed events; conditions read through `inputs.*` |
+| Tracing (`gremlin/trace.py`, page 01) | `trace.output` at every `write_vjoy` result; EVENT lines at Run/Stop/restart; the watch reads `trace.last_raw/last_written`, polls the stick through the input side and reads vJoy back, writes `trace.warn("OUT OF STEP", …)` | `trace.on_change` starts/stops `trace_watch` |
 | Module files / registry (`modules/registry.py`, `claim.py`) | `registry.outputs()`, `resolve_vjoy_id`, `claim_allows` (claims cache) | - |
 | Wiring labels (`modules/wiring.py`) | - | reads `vjoy_claim`, `vjoy_allows`, `xbox_module` for labels |
 | Event listener / devices (`event_handler.EventListener`, `device_initialization`, `input_cache`, `input_refresh`) | `_refresh_axes` reads the vJoy readback from `input_cache` and queues `RefreshPhysicalInputs`; `vjoy_devices()` | `device_change_event` -> backend Stop/Run; `device_initialization` calls `output.reset_vjoy` |
@@ -173,6 +178,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | "macro scheduler" | `MacroManager.start` | `_is_running` False + event, `join(2.0)` | event wait |
 | "macro" (one per running macro) | `_dispatch_macro` | Run number change, `_stopped` event, own flag; steps under `_step_lock` (2 s acquire timeout) | `Event.wait` (Pause steps) |
 | "mouse controller" | `MouseController.start` | `_is_running` False, `join(2.0)` | `time.sleep(0.01)`, `time.time()` |
+| "trace watch" (new 2026-10-09, D-01-TRACE) | `threads.start` from `trace.on_change` when Tracing turns on | Tracing off or quit (`threads.shutdown`); waits on its stop event 1 s at a time | `gremlin.clock` |
 | "audio player" | `AudioPlayer.start` | `_is_ready` False, `join(2.0)` | `time.sleep(0.01)` |
 | "user script timers" | `PeriodicRegistry.start` (only if callbacks exist) | `_running` False or new generation, `join(2.0)` | `time.monotonic`, `time.sleep` up to 1 s |
 | "vJoy relative axis" (Map to vJoy) | `map_to_vjoy._start_loop` 139 | `vjoy_owned` False, input centred | `clock` |
@@ -279,6 +285,8 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S53. It should pick up an output module saved while running at once, the same as an input module (Q12). [user confirmed 2026-10-06; was code only] [changed 2026-10-07: "today" note removed, fixed in batch 1]
 - S54. It should keep an idle vJoy device alive (re-send after 60 s of no writes) while held, and arm no new keep-alive after release. [user confirmed 2026-10-06; was code only] [test: test_batch3_C3a.py keep-alive tests]
 - S55. It should say "vJoy is not installed or not running" / "Install vJoy, then restart the program." wherever the vJoy driver is checked. [user confirmed 2026-10-06; was code only] [changed 2026-10-07 to follow decision D-02-Q17 (glossary), which wins over the earlier wording "restart Gremlin-Platforms"]
+- S86. While Tracing is on (01 S147), every vJoy write caused by a ticked control should write an OUTPUT line `vJoy N <axis X|Button n|Hat n> = value · written | blocked (not claimed by the vJoy N module) | failed: <why> | missing (vJoy N has no …)`; blocked and missing show as BLOCKED. Writes no ticked control caused write nothing. Each written value is kept for the out-of-step check. Run, restart, Stop and a failed start write EVENT lines, and so does a mode change while a profile runs (`CodeRunner._refresh_on_mode_change`). [user decision: D-01-TRACE]
+- S87. The out-of-step watch (every 1 s while tracing, devices ticked for the Out-of-step check) should warn OUT OF STEP when a ticked axis polled from the driver differs from its last RAW value by more than 0.05 for over 1 s, or when a vJoy axis read back (as Windows sees that vJoy device when it can be found, else the program's own value) differs from its last written value by more than 0.02 for over 1 s; one warning per episode, again only after it was back in step; one EVENT "no input from this stick for 4.0 s while plugged in (info only: a still stick is normal)" per quiet spell. Full wording in 01 S150. [user decision: D-01-TRACE]
 
 ### Xbox output
 - S56. It should pass every control of the Xbox 360 pad straight to ViGEm, with nothing to claim; an old claim in a file is ignored. [help: Xbox output module] [user decision: Xbox output has no claims] [test: test_xbox_output_module.py::test_every_control_reaches_the_pad] [test: test_xbox_output_module.py::test_an_old_xbox_claim_in_a_file_is_ignored] [test: test_xbox_output_module.py::test_no_xbox_code_reads_a_claim]
@@ -362,6 +370,7 @@ Code against spec or rule:
 - G17. `TTSManager.stop` leaves the engine and its signal connection alive across Runs (by design today; no `start` on a dead engine is possible).
 - G19. Logical Device stand-alone (D-04-LD-FILE, 2026-10-09): own module file, permanent ids, Save covers it, Undo kept across profile loads (S78, S83; 04 S2-S2b, S25). Being built 2026-10-09 (`logical_device_file.py` new). [to-do 60 stage A]
 - G18. Help "Run and status" wording matches the glossary, but the test plan rows TB-02 and W-06..09 still say "Toggle", "Active / Not Running", "Activate/Deactivate" (test-plan text only; no such words found on screen).
+- G20. (new 2026-10-09, D-01-TRACE) Nothing showed where an input stopped between the driver and vJoy (9 Oct Star Citizen right stick, nothing in the logs). Tracing (S86-S87, 01 S146-S151) is being built 2026-10-09.
 
 From the to-do list:
 - To-do 44 (done): tests never load the real vJoy driver (`test/vjoy_guard.py`); real-vJoy runs are opt-in (`run_tests.py --real-vjoy`).
@@ -418,6 +427,7 @@ and Q12 as written there). Every question answered as recommended:
 | Q7 | vJoy Initial Values always written at Run through the output module |
 | Q8 | Sound and speech ignored when no Run is on |
 | Q9 | Keyboard and mouse output going straight to Windows is an accepted, written exception to the layer rule; held keys and buttons tracked in one place |
+| S86-S87 | 2026-10-09 (D-01-TRACE; user: "go with your recommendations, approved, go ahead"): OUTPUT trace tap and the out-of-step watch |
 | Q10 | The auto-pause on a vJoy error inside an action is removed |
 | Q11 | Paused shows "Running (Paused)"; Stop then Run starts un-paused (kept) |
 | Q12 | Output module changes saved while running apply at once |

@@ -99,6 +99,22 @@ def _osc_rows_kept() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _trace_off_after() -> Iterator[None]:
+    """Tracing is program-wide (D-01-TRACE): a test that turns it on must not
+    leave it on, its ticks or its notice for the next test. The change hooks
+    stay, so the watchers keep listening."""
+    yield
+    from gremlin import trace
+
+    if trace.enabled():
+        trace.set_enabled(False)
+    with trace._LOCK:  # noqa: SLF001
+        trace._ticks = None  # noqa: SLF001 - ticks reread from the next test's settings
+        trace._oos.clear()  # noqa: SLF001
+    trace.clear_notice()
+
+
+@pytest.fixture(autouse=True)
 def _no_settings_notice_left() -> Iterator[None]:
     """A test that reads a damaged settings file must not leave the
     'Settings Reset' notice for a later test that builds the app."""

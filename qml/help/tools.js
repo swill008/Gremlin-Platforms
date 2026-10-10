@@ -184,7 +184,7 @@ function topics() {
             id: "tools-live-log",
             section: "Live Log Reader",
             title: "Read the logs in the Live Log Reader",
-            body: "<p><b>Debug › Live Log Reader</b> <a href=\"open:debug.liveLog\">Open ›</a> has three tabs: <b>Config</b>, <b>Debug</b> and <b>Input Monitor</b>.</p>"
+            body: "<p><b>Debug › Live Log Reader</b> <a href=\"open:debug.liveLog\">Open ›</a> has four tabs: <b>Config</b>, <b>Debug</b>, <b>Input Monitor</b> and <b>Trace</b>.</p>"
                 + "<ul>"
                 + "<li><b>Config</b> follows the program's activity log (logs.txt): which profiles, modules and settings files were read and saved, and when. Use it to check how a file loads. It starts empty at every start; <b>Clear Log</b> empties it (it asks \"Clear the Config log?\" first) and <b>Copy All</b> copies it.</li>"
                 + "<li><b>Debug</b> shows the diagnostic logs in the Logs folder: <b>System</b> (system.log: errors, warnings, blocked outputs), <b>Scripts</b> (user.log), <b>Events</b> (event.log), <b>All logs</b> (every file together in time order, each line tagged with its log: [System], [Scripts], [Events], [Qt]) and <b>Qt</b> (qt.log: Qt's own messages, such as QML warnings, each with the time).</li>"
@@ -202,7 +202,7 @@ function topics() {
                 + "<li>With <b>Log When Not Responding</b> <a href=\"show:option/Log When Not Responding\">Show me ›</a> on, system.log also says when the program stops responding for 5 seconds, where it was stuck, and when it responds again.</li>"
                 + "<li>Qt's messages also show in the console when the program is started from one. qt.log moves to qt.log.1 at start-up once over 1 MB, and grows at most 5 MB a session.</li>"
                 + "</ul>",
-            related: ["tools-live", "tools-input-monitor", "tools-red-debug-mode", "getting-started-save-diagnostics"]
+            related: ["tools-live", "tools-input-monitor", "tools-trace", "tools-red-debug-mode", "getting-started-save-diagnostics"]
         },
         {
             id: "tools-live",
@@ -240,15 +240,61 @@ function topics() {
             related: ["tools-live-log", "tools-viewers"]
         },
         {
+            id: "tools-trace",
+            section: "Live Log Reader",
+            title: "Follow your controls with Trace",
+            body: "<p>The <b>Trace</b> tab follows the controls you tick, step by step, from the stick to vJoy. Use it when a control stops working or does something odd in a game: the trace shows where the input stopped.</p>"
+                + "<h4>Use it while gaming</h4>"
+                + "<ol>"
+                + "<li>Open <b>Debug › Live Log Reader</b> <a href=\"open:debug.liveLog\">Open ›</a> and choose the <b>Trace</b> tab.</li>"
+                + "<li>Tick the sticks you want to follow. Ticking a stick ticks all its axes, buttons and hats; expand it to tick only some. Keys on the keyboard aren't traced. Each control shows where it goes in the open profile, such as \"→ vJoy 3 X\".</li>"
+                + "<li>Tick <b>Out-of-step check</b> on a stick to have the program check it every second (see below). Tick <b>HidHide</b> to follow HidHide too.</li>"
+                + "<li>Turn <b>Tracing</b> on (the switch in the tab, or <b>Tracing</b> in the <b>Debug</b> menu) before you start the game. You can close the Live Log Reader: tracing keeps running, and the red frame shows it is on.</li>"
+                + "<li>Play as usual. If a control misbehaves, open the Trace tab (or the trace file) and look at the lines around that moment.</li>"
+                + "<li>When everything works, turn <b>Tracing</b> off.</li>"
+                + "</ol>"
+                + "<h4>What each line says</h4>"
+                + "<p>Each line has the time, the control, the <b>point</b> it was written at, and what happened there:</p>"
+                + "<ul>"
+                + "<li><b>RAW</b>: the value as the program gets it from the stick's driver, before anything else. No RAW line means the program never got the move.</li>"
+                + "<li><b>WIRING</b>: whether the control is claimed (or \"not claimed, dropped\"), the mode, and the actions that ran, or \"no actions\".</li>"
+                + "<li><b>OUTPUT</b>: what was sent to vJoy and whether it was written. <b>BLOCKED</b> means it was not sent: the vJoy output is not claimed by its output module, or the vJoy device does not have it.</li>"
+                + "<li><b>EVENT</b>: tracing on or off, Run and Stop, a device plugged in or unplugged, a mode change while the profile runs.</li>"
+                + "<li><b>HIDHIDE</b>: what the program asked HidHide and the answer, and changes to HidHide made outside the program.</li>"
+                + "<li><b>OUT OF STEP</b>: the check below found a stick or a vJoy output that doesn't match.</li>"
+                + "</ul>"
+                + "<p>An axis writes at most 10 lines a second; its last value is always written when you let go of it.</p>"
+                + "<h4>Out-of-step check</h4>"
+                + "<ul>"
+                + "<li>Every second it reads the stick directly and compares with the last value the program got. If they stay different for over a second, the program is not getting that stick's moves.</li>"
+                + "<li>It also reads each vJoy axis back and compares with what the program last wrote. If they stay different, something else is changing vJoy or the write did not arrive.</li>"
+                + "<li>A warning shows in yellow at the top of the tab; <b>Go to line</b> jumps to it. A stick you are not touching is normal: it gets one quiet note, not a warning.</li>"
+                + "</ul>"
+                + "<h4>The HidHide row</h4>"
+                + "<ul>"
+                + "<li>With <b>HidHide</b> ticked, every HidHide call the program makes is written with its result, and HidHide is checked every 5 seconds for changes made outside the program, such as the cloak turned off or a game taken off the list.</li>"
+                + "<li>Each ticked stick is checked to be on HidHide's hidden list. If it is not, the game can see the stick as well as vJoy, and the trace says so.</li>"
+                + "<li>While HidHide's own window is open, HidHide is <i>in use by another program</i> and the program can't read or change it; the trace says so once.</li>"
+                + "</ul>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li>Tracing is always off when the program starts. Your ticks are kept.</li>"
+                + "<li>The lines go to <b>trace.log</b> in the Logs folder (up to 5 MB, then one older copy, trace.log.1). <b>Show Trace File</b> opens it, and <b>Save Diagnostics…</b> includes it.</li>"
+                + "<li><b>Find</b>, <b>Show</b> (<b>All</b> or <b>Warnings</b>) and <b>Points</b> narrow the view; <b>Clear View</b> empties the view, never the file. The tab keeps the last 5000 lines.</li>"
+                + "<li>With tracing off, nothing is written and it costs nothing.</li>"
+                + "</ul>",
+            related: ["tools-input-monitor", "tools-hidhide", "tools-red-debug-mode", "getting-started-save-diagnostics"]
+        },
+        {
             id: "tools-red-debug-mode",
             section: "Live Log Reader",
             title: "Red debug mode",
-            body: "<p>While <b>Diagnostic logs</b> is <b>ALL</b> or Live runs, every window has a red frame and a <b>DEBUG</b> badge at the top.</p>"
+            body: "<p>While <b>Diagnostic logs</b> is <b>ALL</b>, Live runs or <b>Tracing</b> is on, every window has a red frame and a <b>DEBUG</b> badge at the top.</p>"
                 + "<ul>"
                 + "<li>Click the badge to open the Live Log Reader.</li>"
                 + "<li>Button Map exports and prints never include it.</li>"
                 + "</ul>",
-            related: ["tools-live", "tools-live-log"]
+            related: ["tools-live", "tools-live-log", "tools-trace"]
         },
 
         {
@@ -290,7 +336,7 @@ function topics() {
             id: "tools-q-red-frame",
             section: "Common questions",
             title: "Why is there a red frame around every window?",
-            body: "<p>Diagnostic logs is set to ALL or Live is running. See <a href=\"topic:tools-red-debug-mode\">Red debug mode</a>.</p>",
+            body: "<p>Diagnostic logs is set to ALL, Live is running or Tracing is on. See <a href=\"topic:tools-red-debug-mode\">Red debug mode</a>.</p>",
             related: ["tools-red-debug-mode"]
         },
         {

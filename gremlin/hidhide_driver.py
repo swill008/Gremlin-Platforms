@@ -13,6 +13,8 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import threading
+from collections.abc import Callable
 from pathlib import Path
 
 from gremlin import util
@@ -213,9 +215,41 @@ def _full_image_name(path: str) -> str:
     return image
 
 
+# Windows error of the last failed open of the control device (0: it
+# opened). 5 (access denied) means another program holds it: the HidHide
+# Configuration Client window is open.
+ERROR_FILE_NOT_FOUND = 2
+ERROR_ACCESS_DENIED = 5
+_last_open_error = 0
+_in_use_said = False
+
+
+def last_open_error() -> int:
+    """Windows error of the last failed open (0 when the last open worked)."""
+    return _last_open_error
+
+
+def in_use_once() -> bool:
+    """True the first time HidHide is found in use by another program, then
+    False until a call opens it again."""
+    global _in_use_said
+    if _in_use_said:
+        return False
+    _in_use_said = True
+    return True
+
+
+def _opened(handle: int | None, err: int) -> int | None:
+    global _last_open_error, _in_use_said
+    _last_open_error = 0 if handle is not None else (err or -1)
+    if handle is not None:
+        _in_use_said = False
+    return handle
+
+
 def _open_control() -> int | None:
     if os.name != "nt":
-        return None
+        return _opened(None, ERROR_FILE_NOT_FOUND)
     import ctypes
     from ctypes import wintypes
 
@@ -240,13 +274,13 @@ def _open_control() -> int | None:
         None,
     )
     if not handle or int(handle) in (0, -1, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF):
+        err = ctypes.get_last_error()
         _hh_log(
-            f"open \\\\.\\HidHide failed err={ctypes.get_last_error()} "
-            f"handle={handle!r}",
+            f"open \\\\.\\HidHide failed err={err} handle={handle!r}",
             logging.WARNING,
         )
-        return None
-    return handle
+        return _opened(None, err)
+    return _opened(handle, 0)
 
 
 def _close(handle: int | None) -> None:
@@ -319,30 +353,150 @@ def _encode_multi_sz(items: list[str]) -> bytes:
     return raw
 
 
-def _get_multi(code: int) -> list[str]:
+# --- Trace tap (D-01-TRACE item 7a) ----------------------------------------
+# While tracing is on and its HidHide row is ticked, every call below writes
+# one HIDHIDE line: what was asked or sent, and how it went. The HidHide
+# watch reads inside quiet(), as it writes lines of its own.
+
+_quiet = threading.local()
+_marks_lock = threading.Lock()
+# What the program itself last wrote, per setting ("cloak", "inverse",
+# "apps", "devices"), until the watch takes it to name the change.
+_program_marks: dict[str, object] = {}
+
+
+class quiet:
+    """Calls made inside it on this thread write no trace lines and are
+    not marked as the program's own changes."""
+
+    def __enter__(self) -> quiet:
+        _quiet.depth = getattr(_quiet, "depth", 0) + 1
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        _quiet.depth = getattr(_quiet, "depth", 1) - 1
+
+
+def _is_quiet() -> bool:
+    return bool(getattr(_quiet, "depth", 0))
+
+
+def _tracing() -> bool:
+    if _is_quiet():
+        return False
+    trace = sys.modules.get("gremlin.trace")
+    if trace is None:
+        return False
+    try:
+        return bool(trace.enabled() and trace.hidhide_ticked())
+    except Exception:
+        return False
+
+
+def _mark(setting: str, value: object) -> None:
+    if _is_quiet():
+        return
+    with _marks_lock:
+        _program_marks[setting] = value
+
+
+def take_program_marks() -> dict[str, object]:
+    """What the program wrote since the last take (and forgets it)."""
+    with _marks_lock:
+        marks = dict(_program_marks)
+        _program_marks.clear()
+    return marks
+
+
+def open_result() -> str:
+    """Why the last open failed, in trace words."""
+    if _last_open_error == ERROR_ACCESS_DENIED:
+        return "in use by another program (HidHide window open)"
+    if _last_open_error == ERROR_FILE_NOT_FOUND:
+        return "not installed"
+    return f"failed: could not open HidHide (error {_last_open_error})"
+
+
+def _tap(call: str, ok: bool, opened: bool, detail: str = "") -> None:
+    if not _tracing():
+        return
+    if ok:
+        result = "ok" + (f": {detail}" if detail else "")
+    elif not opened:
+        if _last_open_error == ERROR_ACCESS_DENIED and not in_use_once():
+            return
+        result = open_result()
+    else:
+        result = "failed: " + (detail or _ioctl_error or "HidHide driver call failed.")
+    try:
+        sys.modules["gremlin.trace"].hidhide(f"{call} → {result}", warning=not ok)
+    except Exception:
+        pass
+
+
+def app_name(path: str) -> str:
+    """The file name of an app list entry (HidHide stores volume paths)."""
+    text = str(path or "").replace("/", "\\").rstrip("\\")
+    return text.rsplit("\\", 1)[-1] or text
+
+
+def _short(items: list[str], noun: str, name: Callable[[str], str] = str) -> str:
+    shown = ", ".join(name(i) for i in items[:3])
+    more = f" +{len(items) - 3}" if len(items) > 3 else ""
+    count = f"{len(items)} {noun}{'' if len(items) == 1 else 's'}"
+    return f"{count}: {shown}{more}" if items else count
+
+
+def _get_multi(code: int) -> tuple[bool, bool, list[str]]:
+    """(ok, opened, items)."""
     handle = _open_control()
     if handle is None:
-        return []
+        return False, False, []
     try:
         size = 4096
         for _ in range(6):
             ok, data = _ioctl(handle, code, None, size)
             if ok:
-                return _decode_multi_sz(data)
+                return True, True, _decode_multi_sz(data)
             size *= 2
-        return []
+        return False, True, []
     finally:
         _close(handle)
 
 
-def _set_multi(code: int, items: list[str]) -> bool:
+def _set_multi(code: int, items: list[str]) -> tuple[bool, bool]:
+    """(ok, opened)."""
     handle = _open_control()
     if handle is None:
-        return False
+        return False, False
     try:
         payload = _encode_multi_sz(items)
         ok, _ = _ioctl(handle, code, payload, 0)
-        return ok
+        return ok, True
+    finally:
+        _close(handle)
+
+
+def _get_flag(code: int) -> tuple[bool, bool, bool]:
+    """(ok, opened, value)."""
+    handle = _open_control()
+    if handle is None:
+        return False, False, False
+    try:
+        ok, data = _ioctl(handle, code, None, 1)
+        return ok, True, ok and bool(data and data[0])
+    finally:
+        _close(handle)
+
+
+def _set_flag(code: int, on: bool) -> tuple[bool, bool]:
+    """(ok, opened)."""
+    handle = _open_control()
+    if handle is None:
+        return False, False
+    try:
+        ok, _ = _ioctl(handle, code, bytes([1 if on else 0]), 0)
+        return ok, True
     finally:
         _close(handle)
 
@@ -378,69 +532,106 @@ def driver_version() -> str:
 def driver_present() -> bool:
     handle = _open_control()
     if handle is None:
+        _tap("is HidHide there?", False, False)
         return False
     _close(handle)
+    _tap("is HidHide there?", True, True)
     return True
 
 
+def _on_off(on: bool) -> str:
+    return "on" if on else "off"
+
+
+def mode_name(inverse: bool) -> str:
+    return "Block list" if inverse else "Allow list"
+
+
 def get_active() -> bool:
-    handle = _open_control()
-    if handle is None:
-        return False
-    try:
-        ok, data = _ioctl(handle, IOCTL_GET_ACTIVE, None, 1)
-        return ok and bool(data and data[0])
-    finally:
-        _close(handle)
+    ok, opened, value = _get_flag(IOCTL_GET_ACTIVE)
+    _tap("read cloak", ok, opened, _on_off(value))
+    return value
 
 
 def set_active(on: bool) -> bool:
-    handle = _open_control()
-    if handle is None:
-        return False
-    try:
-        ok, _ = _ioctl(handle, IOCTL_SET_ACTIVE, bytes([1 if on else 0]), 0)
-        if not ok:
-            return False
-    finally:
-        _close(handle)
-    return bool(get_active()) == bool(on)
+    ok, opened = _set_flag(IOCTL_SET_ACTIVE, on)
+    if ok:
+        _mark("cloak", bool(on))
+        with quiet():
+            ok = get_active() == bool(on)
+    _tap(
+        f"set cloak {_on_off(on)}", ok, opened,
+        "" if ok or not opened else f"HidHide still reads cloak {_on_off(not on)}",
+    )
+    return ok
 
 
 def get_inverse() -> bool:
-    handle = _open_control()
-    if handle is None:
-        return False
-    try:
-        ok, data = _ioctl(handle, IOCTL_GET_INVERSE, None, 1)
-        return ok and bool(data and data[0])
-    finally:
-        _close(handle)
+    ok, opened, value = _get_flag(IOCTL_GET_INVERSE)
+    _tap("read mode", ok, opened, mode_name(value))
+    return value
 
 
 def set_inverse(on: bool) -> bool:
-    handle = _open_control()
-    if handle is None:
-        return False
-    try:
-        ok, _ = _ioctl(handle, IOCTL_SET_INVERSE, bytes([1 if on else 0]), 0)
-        if not ok:
-            return False
-    finally:
-        _close(handle)
-    return bool(get_inverse()) == bool(on)
+    ok, opened = _set_flag(IOCTL_SET_INVERSE, on)
+    if ok:
+        _mark("inverse", bool(on))
+        with quiet():
+            ok = get_inverse() == bool(on)
+    _tap(
+        f"set mode {mode_name(on)}", ok, opened,
+        "" if ok or not opened else f"HidHide still reads {mode_name(not on)}",
+    )
+    return ok
 
 
 def get_blacklist() -> list[str]:
-    return _get_multi(IOCTL_GET_BLACKLIST)
+    ok, opened, items = _get_multi(IOCTL_GET_BLACKLIST)
+    _tap("read device list", ok, opened, _short(items, "device") if ok else "")
+    return items
 
 
 def set_blacklist(ids: list[str]) -> bool:
-    return _set_multi(IOCTL_SET_BLACKLIST, ids)
+    ok, opened = _set_multi(IOCTL_SET_BLACKLIST, ids)
+    if ok:
+        _mark("devices", list(ids))
+    _tap(f"set device list {_short(list(ids), 'device')}", ok, opened)
+    return ok
+
+
+def get_whitelist() -> list[str]:
+    ok, opened, items = _get_multi(IOCTL_GET_WHITELIST)
+    _tap("read app list", ok, opened, _short(items, "app", app_name) if ok else "")
+    return items
 
 
 def set_whitelist(paths: list[str]) -> bool:
-    return _set_multi(IOCTL_SET_WHITELIST, paths)
+    ok, opened = _set_multi(IOCTL_SET_WHITELIST, paths)
+    if ok:
+        _mark("apps", list(paths))
+    _tap(f"set app list {_short(list(paths), 'app', app_name)}", ok, opened)
+    return ok
+
+
+def read_state() -> dict | None:
+    """HidHide's real state for the watch, read without trace lines: cloak,
+    inverse, apps, devices (None for a read that failed). None when HidHide
+    could not be opened (last_open_error() says why)."""
+    state: dict = {}
+    with quiet():
+        flags = (("cloak", IOCTL_GET_ACTIVE), ("inverse", IOCTL_GET_INVERSE))
+        for key, code in flags:
+            ok, opened, value = _get_flag(code)
+            if not opened:
+                return None
+            state[key] = value if ok else None
+        lists = (("apps", IOCTL_GET_WHITELIST), ("devices", IOCTL_GET_BLACKLIST))
+        for key, code in lists:
+            ok, opened, items = _get_multi(code)
+            if not opened:
+                return None
+            state[key] = items if ok else None
+    return state
 
 
 def list_hid_devices(gaming_only: bool) -> list[dict]:

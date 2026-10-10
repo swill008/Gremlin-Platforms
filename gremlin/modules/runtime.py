@@ -8,8 +8,9 @@ import logging
 
 from PySide6 import QtCore
 
+from gremlin import trace
 from gremlin.common import SingletonDecorator
-from gremlin.event_handler import Event, EventListener
+from gremlin.event_handler import Event, EventListener, trace_kind
 from gremlin.modules import device_class, registry
 from gremlin.modules.gate import should_forward
 from gremlin.modules.ids import guid_key
@@ -17,6 +18,16 @@ from gremlin.signal import signal
 from gremlin.types import InputType
 
 syslog = logging.getLogger("system")
+
+
+def _trace_dropped(event: Event) -> None:
+    """Trace tab (D-01-TRACE): a ticked input its input module doesn't claim."""
+    kind = trace_kind(event.event_type)
+    index = event.identifier
+    if kind is None or not isinstance(index, int):
+        return
+    if trace.ticked(event.device_guid, kind, index):
+        trace.wiring(event.device_guid, kind, index, "not claimed, dropped")
 
 
 def always_forwarded() -> set[str]:
@@ -202,3 +213,5 @@ class InputModuleRuntime(QtCore.QObject):
             passthrough=self._passthrough,
         ):
             self.event.emit(event)
+        elif trace.enabled():
+            _trace_dropped(event)

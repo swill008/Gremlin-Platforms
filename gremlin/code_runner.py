@@ -32,6 +32,7 @@ from gremlin import (
     sendinput,
     shared_state,
     signal,
+    trace,
     tts,
     user_script,
 )
@@ -351,6 +352,7 @@ class CodeRunner:
         self._profile = None
         self._running = False
         self._mode_listening = False
+        self._restarting = False
         self._connected = False
         self._config_listening = False
         self._sys_path: list[str] | None = None
@@ -367,7 +369,12 @@ class CodeRunner:
         """
         # A Run never stopped (a failed start, Run pressed twice) ends first:
         # its signals would otherwise be connected twice.
-        self.stop()
+        restarting = self._running
+        self._restarting = restarting
+        try:
+            self.stop()
+        finally:
+            self._restarting = False
         run_scope.begin()
         # Registered before anything starts: a start that fails partway is
         # undone by the same Stop.
@@ -377,17 +384,25 @@ class CodeRunner:
             self._start(profile, start_mode)
         except ImportError as e:
             logging.getLogger("system").exception("Gremlin start failed")
+            trace.event(f"Profile start failed: {e}")
             self.stop()
             signal.display_error(
                 "Could not run the profile: a user plugin is missing.", str(e)
             )
         except Exception as e:
             logging.getLogger("system").exception("Gremlin start failed")
+            trace.event(f"Profile start failed: {e or type(e).__name__}")
             self.stop()
             signal.display_error(
                 "Could not run the profile.", str(e) or type(e).__name__
             )
             raise
+        else:
+            if self._running:
+                trace.event(
+                    f"Profile {'restarted' if restarting else 'started'}"
+                    f" (mode {mode_manager.ModeManager().current.name})"
+                )
 
     def _start(self, running: profile.Profile, start_mode: str) -> None:
         self._reset_state()
@@ -469,6 +484,8 @@ class CodeRunner:
 
     def stop(self) -> None:
         """Ends the Run: run_scope runs the Stop stages. Safe to call twice."""
+        if self._running and not self._restarting:
+            trace.event("Profile stopped")
         run_scope.stop()
         self._running = False
 
@@ -581,6 +598,7 @@ class CodeRunner:
         output.refresh()
 
     def _refresh_on_mode_change(self, _mode: str) -> None:
+        trace.event(f"Mode changed to {_mode}")
         if Configuration().value("global", "general", "refresh-axis-on-mode-change"):
             RefreshPhysicalInputs.refresh_axes()
 

@@ -109,6 +109,12 @@ function commandList() {
         // Debug
         { id: "debug.liveLog", text: "Live Log Reader", group: "Debug",
           run: function() { openTool("DialogLiveLog.qml") } },
+        // Control tracing (D-01-TRACE): the same switch as the Live Log
+        // Reader's Trace tab; it keeps running with the window closed.
+        { id: "debug.tracing", text: "Tracing", group: "Debug",
+          keywords: "trace controls stick vjoy hidhide out of step",
+          checked: function() { return _tracing.on },
+          run: function() { _tracing.toggle() } },
 
         // Help
         { id: "help.guide", text: "Help", group: "Help", shortcut: "F1",

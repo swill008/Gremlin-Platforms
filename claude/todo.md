@@ -242,6 +242,9 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     test_stage1_button_map._run now keeps the whole stall report. Next if it repeats: faulthandler C-level dump.
     Sighting 2026-10-09 17:25 (local full run, unit-2): test_final_01::test_s12 child app stalled past 120 s
     under full load; passes alone in 1.5 s. Same blocked-while-loading class.
+    Sighting 2026-10-09 20:3x (CI run 38012818159, seed 21247, 468e0838): setup stall in two History
+    window fixtures (test_history_diff_window 6 errors, test_handson_G2_history_heading 1); CI parts
+    took ~11 min each (heavy load). Change was QML card resize only; failed job rerun.
 
 53. QUEUED (user 2026-10-09: do all 3 passes, before the 1.0.30 release): Help gap fill from the
     08:53 audit (all 10 spec pages vs qml/help). Pass 1: fix 6 wrong items (mode bar not "on the
@@ -336,6 +339,15 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     tool windows, pick the screen with the largest overlap, size bindings only on first creation.
     Needs a new 01 spec statement ("tool windows reopen with their whole frame inside the work area of
     the screen they land on") - your OK first.
+
+74. Trace the keyboard (user 2026-10-09: keys left out of the first Trace build, D-01-TRACE / 01 S146).
+    Keys aren't axis/button/hat; needs a key kind and index in gremlin/trace.py, the tap in
+    event_handler.trace_kind, and a Keyboard row in the Trace tab. Not started.
+75. Ideas from the 9 Oct uncommanded-inputs analysis (https://claude.ai/artifact/KWdt2wvTc2aoQmDR3UPWU3),
+    not started, each needs a spec OK: (a) fix "HidHide not installed" while the HidHide window is open
+    (HH-INUSE-1, 02 S67) and keep the switches usable; (b) Change vJoy Output warns that games bound to
+    those vJoy devices now get the other stick (10 S30-S31); (c) a HidHide guard for tests like the vJoy
+    one (offered as a separate task); (d) whether Delete Device should clean profiles that aren't open.
 
 ## On hold / parked (user's choice)
 

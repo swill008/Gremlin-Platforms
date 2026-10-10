@@ -554,11 +554,11 @@ class DebugLog(QtCore.QObject):
             tab = int(_load_choice("tab", "0"))
         except ValueError:
             tab = 0
-        return {"tab": tab if 0 <= tab <= 2 else 0}
+        return {"tab": tab if 0 <= tab <= 3 else 0}
 
     @QtCore.Slot(int)
     def saveTab(self, index: int) -> None:
-        if 0 <= index <= 2:
+        if 0 <= index <= 3:
             _save_choice("tab", str(index))
     find = QtCore.Property(
         str, lambda self: self._find, lambda self, v: self._set("_find", v),

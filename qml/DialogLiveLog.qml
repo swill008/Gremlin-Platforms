@@ -20,6 +20,9 @@ import "confirm.js" as Confirm
 // the Diagnostic logs level (gremlin/log_feed.py).
 // Input Monitor: each input the running profile handles and the actions it
 // ran (gremlin/input_monitor.py).
+// Trace: the ticked controls followed from the device to vJoy
+// (gremlin/trace.py, LiveLogTrace.qml); tracing keeps running when the
+// window closes.
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
@@ -55,7 +58,12 @@ ApplicationWindow {
         mutedColor: String(Style.fgMuted)
     }
 
-    // Live and the Input Monitor stop when the window closes.
+    TraceView {
+        id: _trace
+    }
+
+    // Live and the Input Monitor stop when the window closes (tracing
+    // doesn't: Debug › Tracing or the Trace tab turns it off).
     function _stopAll() {
         _debug.live = false
         _monitor.monitoring = false
@@ -90,7 +98,7 @@ ApplicationWindow {
                 _log.refresh()
             else if (_tabs.currentIndex === 1)
                 _debug.refresh()
-            else
+            else if (_tabs.currentIndex === 2)
                 _monitor.refresh()
         }
     }
@@ -339,6 +347,11 @@ ApplicationWindow {
             TabButton { text: _debug.live ? "Debug ●" : "Debug"; width: implicitWidth }
             TabButton {
                 text: _monitor.monitoring ? "Input Monitor ●" : "Input Monitor"
+                width: implicitWidth
+            }
+            TabButton {
+                objectName: "traceTab"
+                text: _trace.tracing ? "Trace ●" : "Trace"
                 width: implicitWidth
             }
         }
@@ -701,6 +714,11 @@ ApplicationWindow {
                         onClicked: _monitor.copyShown()
                     }
                 }
+            }
+
+            // Trace: the ticked controls, from the device to vJoy.
+            LiveLogTrace {
+                view: _trace
             }
         }
     }

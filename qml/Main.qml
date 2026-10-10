@@ -1331,6 +1331,11 @@ ApplicationWindow {
         }
     }
 
+    // Debug › Tracing (main_commands.js): tracing on or off (D-01-TRACE).
+    TraceSwitch {
+        id: _tracing
+    }
+
     ColorInformation {
         id: colorInformation
     }
@@ -1631,6 +1636,7 @@ ApplicationWindow {
             title: qsTr("Debug")
 
             ThemedMenuItem { command: "debug.liveLog" }
+            ThemedMenuItem { command: "debug.tracing" }
         }
 
         ThemedMenu {

@@ -19,7 +19,7 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin import clock, run_scope
+from gremlin import clock, run_scope, trace
 from gremlin.modules import registry
 from gremlin.modules.claim import claim_allows, claim_ids
 
@@ -424,17 +424,26 @@ def write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> bool:  # n
     kind is "axis" (value -1..1), "button" (pressed) or "hat" (HatDirection).
     """
     input_id = int(input_id)
+    result = _write_vjoy(vjoy_id, kind, input_id, value)
+    if trace.enabled():
+        # OUTPUT tap (D-01-TRACE): trace keeps it only for a ticked input.
+        trace.output(vjoy_id, kind, input_id, value, result)
+    return result == "written"
+
+
+def _write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> str:  # noqa: ANN401
+    """write_vjoy's work; the result as the trace says it."""
     if not _passes(vjoy_id, kind, input_id):
-        return False
+        return f"blocked (not claimed by the vJoy {vjoy_id} module)"
     dev = _open_vjoy(vjoy_id)
     if dev is None:
-        return False
+        return f"failed: vJoy {vjoy_id} not open"
     if not _has(dev, kind, input_id):
         _log_once(
             ("vjoy-missing", int(vjoy_id), kind, input_id),
             f"Output blocked: vJoy {vjoy_id} has no {kind} {input_id}.",
         )
-        return False
+        return f"missing (vJoy {vjoy_id} has no {kind} {input_id})"
     try:
         if kind == "axis":
             dev.axis(input_id).value = float(value)
@@ -445,8 +454,8 @@ def write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> bool:  # n
     except Exception as exc:
         key = ("vjoy-error", int(vjoy_id), kind, input_id)
         _log_once(key, f"vJoy write failed: {exc}")
-        return False
-    return True
+        return f"failed: {exc}"
+    return "written"
 
 
 def write_vjoy_axis_linear(vjoy_id: int, linear_index: int, value: float) -> bool:

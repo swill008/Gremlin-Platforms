@@ -29,6 +29,7 @@ from gremlin import (
     mode_manager,
     run_scope,
     threads,
+    trace,
     tree,
     util,
     windows_event_hook,
@@ -44,6 +45,31 @@ from gremlin.types import (
     ScanCode,
 )
 from vigem.ids import is_vigem_xbox_summary
+
+_TRACE_KINDS = {
+    InputType.JoystickAxis: "axis",
+    InputType.JoystickButton: "button",
+    InputType.JoystickHat: "hat",
+}
+
+
+def trace_kind(event_type: object) -> str | None:
+    """The Trace tab's name for a stick input type ("axis", "button",
+    "hat"); None for anything else."""
+    return _TRACE_KINDS.get(event_type)  # type: ignore[call-overload]
+
+
+def trace_ticked(event: Event) -> tuple[str, int] | None:
+    """(kind, index) of a stick input when tracing is on and it is ticked."""
+    if not trace.enabled():
+        return None
+    kind = trace_kind(event.event_type)
+    index = event.identifier
+    if kind is None or not isinstance(index, int):
+        return None
+    if not trace.ticked(event.device_guid, kind, index):
+        return None
+    return kind, index
 
 if TYPE_CHECKING:
     from gremlin.code_runner import CallbackObject
@@ -342,6 +368,10 @@ class EventListener(QtCore.QObject):
             )
 
     def _joystick_event(self, event: dill.InputEvent) -> None:
+        # Trace tab (D-01-TRACE): the value as the driver sent it, before
+        # the claim gate. Off costs one check.
+        if trace.enabled():
+            self._trace_raw(event)
         if event.input_type == dill.InputType.Axis:
             calibrated_value = self._apply_calibration(event)
             self._joystick[event.device_guid.uuid].axis(event.input_index).update(
@@ -388,6 +418,23 @@ class EventListener(QtCore.QObject):
                 )
             )
 
+    def _trace_raw(self, event: dill.InputEvent) -> None:
+        guid = event.device_guid.uuid
+        index = event.input_index
+        if event.input_type == dill.InputType.Axis:
+            if trace.ticked(guid, "axis", index):
+                calibrated = self._apply_calibration(event)  # type: ignore[arg-type]
+                trace.raw(guid, "axis", index, calibrated,
+                          raw_value=event.value)
+        elif event.input_type == dill.InputType.Button:
+            if trace.ticked(guid, "button", index):
+                trace.raw(guid, "button", index, event.value == 1)
+        elif event.input_type == dill.InputType.Hat:
+            if trace.ticked(guid, "hat", index):
+                direction = util.dill_hat_lookup(event.value)
+                trace.raw(guid, "hat", index,
+                          getattr(direction, "name", str(direction)))
+
     def _joystick_device_handler(
         self, data: dill.DeviceSummary, action: dill.DeviceActionType
     ) -> None:
@@ -409,6 +456,17 @@ class EventListener(QtCore.QObject):
                 return
         except Exception:
             pass
+        if trace.enabled():
+            try:
+                info = (data if isinstance(data, dill.DeviceSummary)
+                        else dill.DeviceSummary(data))
+                if isinstance(action, int):
+                    action = dill.DeviceActionType.from_ctype(action)
+                name = info.name
+                plugged = action == dill.DeviceActionType.Connected
+                trace.event(f"{name} {'plugged in' if plugged else 'unplugged'}")
+            except Exception:
+                pass
         if self._device_update_timer is not None:
             self._device_update_timer.cancel()
         self._device_update_timer = threads.timer(
@@ -446,6 +504,11 @@ class EventListener(QtCore.QObject):
             self._joystick.reconnected(device_guid)
         # HID already ignores ViGEm pads; do not fire Reload if the
         # filtered list did not change.
+        if trace.enabled():
+            trace.event(
+                f"Devices re-read: {len(after)} connected, "
+                f"{len(after - before)} new, {len(before - after)} gone"
+            )
         if before != after:
             self.device_change_event.emit()
 
@@ -762,6 +825,44 @@ class EventHandler(QtCore.QObject):
         # Input Monitor (Live Log Reader): read-only, one check when off.
         if input_monitor.enabled():
             input_monitor.record(event, callbacks, not self.process_callbacks)
+        # Trace tab (D-01-TRACE): outputs written from here on belong to
+        # this input. Off costs one check.
+        traced = trace_ticked(event)
+        if traced is not None:
+            self._trace_wiring(event, *traced, callbacks)
+        try:
+            self._run_callbacks(event, callbacks)
+        finally:
+            if traced is not None:
+                trace.end_input()
+
+    def _trace_wiring(
+        self,
+        event: Event,
+        kind: str,
+        index: int,
+        callbacks: list[Callable[[Event], None]],
+    ) -> None:
+        try:
+            trace.begin_input(event.device_guid, kind, index)
+            names = (input_monitor.callback_text(cb) for cb in callbacks)
+            ran = [text for text in names if text]
+            if ran:
+                done = "ran " + "; ".join(ran)
+            elif callbacks:
+                done = "ran script"
+            else:
+                done = "paused" if not self.process_callbacks else "no actions"
+            trace.wiring(
+                event.device_guid, kind, index,
+                f"claimed · mode {event.mode} · {done}",
+            )
+        except Exception:  # tracing never affects the profile
+            pass
+
+    def _run_callbacks(
+        self, event: Event, callbacks: list[Callable[[Event], None]]
+    ) -> None:
         for cb in callbacks:
             # A vJoy error is logged like any other failure; it no longer
             # pauses the profile (decision 06 Q10).

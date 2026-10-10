@@ -164,6 +164,7 @@ if _startup_failure is None:
         import gremlin.ui.debug_mode
         import gremlin.ui.live_debug  # noqa: F401
         import gremlin.ui.diagnostics  # noqa: F401
+        import gremlin.ui.trace_model  # noqa: F401
         import gremlin.ui.history_model  # noqa: F401
         import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
         import gremlin.ui.logical_layout  # noqa: F401
@@ -897,6 +898,9 @@ def register_config_options() -> None:
     gremlin.ui.module_model._ensure_display_options()
     gremlin.modules.store.bindings()  # registers the file choices setting
     gremlin.ui.hidhide._ensure_options()
+    from gremlin import trace
+
+    trace._ensure_options()  # noqa: SLF001 - the Trace ticks (D-01-TRACE)
     gremlin.ui.window_placement._ensure()
     gremlin.ui.vjoy_status.register_options()
     gremlin.ui.button_map_options.register()
@@ -988,6 +992,11 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         # Log When Not Responding (Options), and when the option changes.
         gremlin.watchdog.apply()
         gremlin.signal.signal.configChanged.connect(gremlin.watchdog.apply)
+        # Trace (D-01-TRACE): the watches start and stop with tracing.
+        from gremlin import hidhide_watch, trace_watch
+
+        trace_watch.install()
+        hidhide_watch.install()
 
         dill.DILL.init()
         device_initialization_error = None

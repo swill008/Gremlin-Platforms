@@ -214,3 +214,23 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | Tool windows: frame-aware restore, best screen (WPY) | fix | ~20 min | 2 min | 17:13–17:15 |
 | 2026-10-09 | Tool windows: size set once (WQML) | fix | ~15 min | 5 min | 17:13–17:18 |
 | 2026-10-09 | Tool window fit: 2 full runs (1 load stall) (lead) | test | ~6 min | 14 min | 17:18–17:32 |
+| 2026-10-09 | Card resize stolen by scrolling: trace + fix (lead) | fix | ~10 min | 2 min | 20:08–20:10 |
+| 2026-10-09 | Card resize real-drag test, fail-on-HEAD proof (RTEST) | test | ~15 min | 3 min | 20:09–20:12 |
+| 2026-10-09 | Full run (parts ~5.5 min each under load) + 1 flake rerun (lead) | test | ~3 min | 8 min | 20:12–20:20 |
+| 2026-10-09 | Uncommanded inputs: logs, History, profile diff, HidHide read (lead) | review | ~10 min | 10 min | 20:11–20:21 |
+| 2026-10-09 | Uncommanded inputs: HidHide code audit (HHAUDIT) | review | ~20 min | 4 min | 20:21–20:25 |
+| 2026-10-09 | Uncommanded inputs: Windows timeline (WINTL) | review | ~15 min | 4 min | 20:21–20:25 |
+| 2026-10-09 | Uncommanded inputs: vJoy writers, SC files (VJAUDIT) | review | ~20 min | 5 min | 20:21–20:26 |
+| 2026-10-09 | Findings page (lead) | report | ~5 min | 2 min | 20:26–20:28 |
+| 2026-10-09 | Uncommanded inputs: static audit of tests and runs (STATIC) | review | ~20 min | 5 min | 20:31–20:36 |
+| 2026-10-09 | Uncommanded inputs: full run with real drivers blocked (DRVTRACE) | test | ~25 min | 9 min | 20:31–20:40 |
+| 2026-10-09 | Findings page v2 (lead) | report | ~5 min | 2 min | 20:40–20:42 |
+| 2026-10-09 | Trace: contract + 7 agents briefed (lead) | plan | ~5 min | 2 min | 20:52–20:54 |
+| 2026-10-09 | Trace: gremlin/trace.py API + 8 tests (CORE) | feature | ~12 min | 3 min | 20:53–20:56 |
+| 2026-10-09 | Trace: RAW/WIRING/EVENT taps + 6 tests (TAPIN) | feature | ~15 min | 4 min | 20:53–20:57 |
+| 2026-10-09 | Trace: OUTPUT tap, out-of-step watch + 9 tests (TAPOUT) | feature | ~15 min | 5 min | 20:53–20:58 |
+| 2026-10-09 | Trace: spec 01/02/06, map, glossary, Help (DOC) | docs | ~15 min | 5 min | 20:54–20:59 |
+| 2026-10-09 | Trace: HidHide calls, 5 s watch, hidden check + 9 tests (HHTRACE) | feature | ~15 min | 8 min | 20:53–21:01 |
+| 2026-10-09 | Trace: end-to-end tests, 12 (E2E; found 3 real gaps) | test | ~18 min | 8 min | 20:54–21:02 |
+| 2026-10-09 | Trace: Trace tab, menu, red mode + 8 tests (UI) | feature | ~18 min | 8 min | 20:54–21:02 |
+| 2026-10-09 | Trace: lead fixes (watch start, import, ticks kept at restart) | fix | ~5 min | 8 min | 20:55–21:03 |
