@@ -22,14 +22,38 @@ PLAIN_LINE = (
     "Gremlin expects."
 )
 STEAM_LINE = (
-    "Steam is running and can see your sticks: Steam Input may pass them to games."
+    "Steam is running and can see your sticks: Steam Input may pass them to other "
+    "programs. Add steam.exe to HidHide's Block list, or turn off Steam Input for "
+    "your game."
 )
 
-SECTION_STICKS = "Physical sticks (from Gremlin)"
-SECTION_VJOY = "vJoy devices (Gremlin's output)"
-SECTION_XBOX = "Xbox pads (XInput)"
-SECTION_OTHER = "Other devices this program sees"
-SECTION_PLAIN_DI = "DirectInput devices"
+# Section headings, shown as written (TW12). Devices Gremlin doesn't know go
+# under the heading for their kind.
+SECTION_STICKS = "YOUR CONTROLLERS"
+SECTION_VJOY = "GREMLIN'S VIRTUAL JOYSTICKS (vJoy)"
+SECTION_XBOX = "XBOX CONTROLLERS"
+SECTION_HID = "ALL GAME DEVICES IN WINDOWS (list only)"
+SECTION_ORDER = (SECTION_STICKS, SECTION_VJOY, SECTION_XBOX)
+
+PASS_HEAD = "✓ Pass: programs see only what they should"
+FAIL_HEAD = "✗ Problem:"
+
+TAG_HIDDEN = "Hidden from programs"
+TAG_VISIBLE = "Programs can see it"
+TAG_UNUSED = "Programs can see it · not in use"
+TAG_BAD = "Programs can see it: should be hidden"
+TAG_MISSING = "Programs can't see it: should be shown"
+TAG_UNKNOWN = "Not set up in Gremlin"
+
+DETAIL_HIDDEN = "Hidden from programs, so there's nothing to show."
+DETAIL_MISSING = "Missing: programs can't see it."
+DETAIL_NOT_SEEN = "This window can't see it."
+
+SHOULD_HIDDEN = "Should be: hidden from programs"
+SHOULD_VISIBLE = "Should be: seen by programs"
+
+HINT_BAD = "Tick it on Gremlin's HidHide page, then press Restart tester."
+HINT_MISSING = "Check it's plugged in and that Gremlin's output for it is on."
 
 
 @dataclass
@@ -51,16 +75,38 @@ class Row:
     @property
     def tag(self) -> str:
         if self.verdict == "bad":
-            return "VISIBLE · should be hidden"
+            return TAG_BAD
         if self.verdict == "missing":
-            return "missing"
+            return TAG_MISSING
         if self.verdict == "unknown":
-            return "not known to Gremlin"
+            return TAG_UNKNOWN
         if self.verdict == "ok":
             if self.expect == "hidden":
-                return "hidden"
-            return "visible" if self.used else "visible · not used by Gremlin"
+                return TAG_HIDDEN
+            return TAG_VISIBLE if self.used else TAG_UNUSED
         return ""
+
+    @property
+    def detail(self) -> str:
+        """The line in place of live values when this window doesn't see it."""
+        if self.seen:
+            return ""
+        if self.verdict == "ok" and self.expect == "hidden":
+            return DETAIL_HIDDEN
+        if self.verdict == "missing":
+            return DETAIL_MISSING
+        return DETAIL_NOT_SEEN
+
+    @property
+    def should_be(self) -> str:
+        return {"hidden": SHOULD_HIDDEN, "visible": SHOULD_VISIBLE}.get(
+            self.expect, ""
+        )
+
+    @property
+    def hint(self) -> str:
+        """How to fix a failing row (S1)."""
+        return {"bad": HINT_BAD, "missing": HINT_MISSING}.get(self.verdict, "")
 
 
 @dataclass
@@ -149,51 +195,71 @@ def steam_state(expected: dict | None, running: bool) -> tuple[dict, str]:
     return state, STEAM_LINE if sees else ""
 
 
+_TESTS = "This window tests what a blocked program sees. "
+
+
 def context_line(expected: dict | None) -> str:
+    """The blue line: what this window shows and why (TW3)."""
     if expected is None:
         return PLAIN_LINE
     written = str(expected.get("written", ""))
     try:
-        stamp = datetime.datetime.fromisoformat(written).strftime("%H:%M:%S")
+        stamp = datetime.datetime.fromisoformat(written).strftime("%H:%M")
     except ValueError:
         stamp = written or "unknown"
-    head = f"Compared with Gremlin's devices (updated {stamp}). "
+    tail = f" (Gremlin's list from {stamp})"
     hidhide = expected.get("hidhide") or {}
     if not hidhide.get("present"):
-        return head + "HidHide isn't installed, so nothing is hidden."
+        return "HidHide isn't installed, so nothing is hidden from programs." + tail
     if not hidhide.get("cloak"):
-        return head + "HidHide is off, so nothing is hidden."
+        return "HidHide is off, so nothing is hidden from programs." + tail
     mode = str(hidhide.get("mode", "block")).casefold()
     on_list = bool(hidhide.get("tester_on_list"))
     if mode == "allow":
         if on_list:
             return (
-                head + "This program is on HidHide's Allow list, "
-                "so it sees hidden sticks too."
+                "This window is on HidHide's Allow list, so it sees your hidden "
+                "sticks too." + tail
             )
         return (
-            head + "This program isn't on HidHide's Allow list, "
-            "so hidden sticks must not show here."
+            _TESTS + "It isn't on HidHide's list, so in Allow mode your hidden "
+            "sticks should not show up here." + tail
         )
     if on_list:
         return (
-            head + "This program is on HidHide's Block list, "
-            "so hidden sticks must not show here."
+            _TESTS + "It's on HidHide's Block list, so your hidden sticks should "
+            "not show up here." + tail
         )
-    return head + (
-        "This program isn't on HidHide's Block list, so it sees hidden sticks too. "
-        "Add it to the list on Gremlin's HidHide page to test like a game."
+    return (
+        "This window isn't on HidHide's Block list, so it sees your hidden sticks "
+        "too. Add it to the list on Gremlin's HidHide page to test like a blocked "
+        "program." + tail
+    )
+
+
+def _section_for(device: SeenDevice) -> tuple[str, str]:
+    """(kind, section) for a device Gremlin didn't list."""
+    if device.kind == "xinput":
+        return "xbox", SECTION_XBOX
+    if device.is_vjoy:
+        return "vjoy", SECTION_VJOY
+    return "other", SECTION_STICKS
+
+
+def _by_section(rows: list[Row]) -> list[Row]:
+    """Rows grouped under their headings, in heading order (stable)."""
+    return sorted(
+        rows,
+        key=lambda r: SECTION_ORDER.index(r.section)
+        if r.section in SECTION_ORDER
+        else len(SECTION_ORDER),
     )
 
 
 def _plain_rows(seen: list[SeenDevice]) -> list[Row]:
     rows = []
     for device in seen:
-        if device.kind == "xinput":
-            kind, section = "xbox", SECTION_XBOX
-        else:
-            kind = "vjoy" if device.is_vjoy else "other"
-            section = SECTION_PLAIN_DI
+        kind, section = _section_for(device)
         rows.append(
             Row(
                 kind,
@@ -208,8 +274,7 @@ def _plain_rows(seen: list[SeenDevice]) -> list[Row]:
                 device=device,
             )
         )
-    rows.sort(key=lambda r: r.section == SECTION_XBOX)
-    return rows
+    return _by_section(rows)
 
 
 def compare(expected: dict | None, seen: list[SeenDevice], steam: bool) -> Verdict:
@@ -303,6 +368,7 @@ def compare(expected: dict | None, seen: list[SeenDevice], steam: bool) -> Verdi
         )
 
     for device in pool + list(pads.values()):
+        _kind, section = _section_for(device)
         rows.append(
             Row(
                 "other",
@@ -311,7 +377,7 @@ def compare(expected: dict | None, seen: list[SeenDevice], steam: bool) -> Verdi
                 True,
                 "unknown",
                 key=device.key,
-                section=SECTION_OTHER,
+                section=section,
                 windows_name=device.name,
                 in_gremlin="not part of Gremlin's setup",
                 ids=_ids(device),
@@ -319,6 +385,7 @@ def compare(expected: dict | None, seen: list[SeenDevice], steam: bool) -> Verdi
             )
         )
 
+    rows = _by_section(rows)
     bad = [r for r in rows if r.verdict == "bad"]
     missing = [r for r in rows if r.verdict == "missing"]
     verdict = "fail" if bad or missing else "pass"
@@ -335,7 +402,7 @@ def compare(expected: dict | None, seen: list[SeenDevice], steam: bool) -> Verdi
 _NOUNS = {
     "stick": ("stick", "sticks"),
     "vjoy": ("vJoy device", "vJoy devices"),
-    "xbox": ("Xbox pad", "Xbox pads"),
+    "xbox": ("Xbox controller", "Xbox controllers"),
     "other": ("device", "devices"),
 }
 
@@ -345,26 +412,41 @@ def _count(n: int, kind: str) -> str:
     return f"{n} {one if n == 1 else many}"
 
 
-def summarise(rows: list[Row]) -> str:
+def _counted(rows: list[Row], verdict: str) -> str:
     parts = []
     for kind in ("stick", "vjoy", "xbox"):
-        n = sum(1 for r in rows if r.kind == kind and r.verdict == "bad")
+        n = sum(1 for r in rows if r.kind == kind and r.verdict == verdict)
         if n:
-            parts.append(f"{_count(n, kind)} visible that should be hidden")
-    for kind in ("stick", "vjoy", "xbox"):
-        n = sum(1 for r in rows if r.kind == kind and r.verdict == "missing")
-        if n:
-            parts.append(f"{_count(n, kind)} missing")
+            parts.append(_count(n, kind))
+    if len(parts) > 1:
+        return ", ".join(parts[:-1]) + " and " + parts[-1]
+    return parts[0] if parts else ""
+
+
+def summarise(rows: list[Row]) -> str:
+    """Fail: what's wrong in plain words (TW2); pass: "N hidden · M shown"
+    (the top line adds the brackets, TW1)."""
+    parts = []
+    bad = _counted(rows, "bad")
+    if bad:
+        parts.append(f"programs can see {bad} that should be hidden")
+    missing = _counted(rows, "missing")
+    if missing:
+        parts.append(f"programs can't see {missing} that should be shown")
+    if parts:
+        return "; ".join(parts)
     hidden = sum(1 for r in rows if r.verdict == "ok" and r.expect == "hidden")
-    visible = sum(1 for r in rows if r.verdict == "ok" and r.expect != "hidden")
-    unknown = sum(1 for r in rows if r.verdict == "unknown")
-    if hidden:
-        parts.append(f"{hidden} hidden")
-    if visible:
-        parts.append(f"{visible} visible")
-    if unknown:
-        parts.append(f"{unknown} not known to Gremlin")
-    return " · ".join(parts)
+    shown = sum(1 for r in rows if r.verdict == "ok" and r.expect != "hidden")
+    return f"{hidden} hidden · {shown} shown"
+
+
+def top_line(verdict: Verdict) -> str:
+    """The verdict line as one sentence (TW1, TW2); "" with no comparison."""
+    if verdict.verdict == "pass":
+        return f"{PASS_HEAD} ({verdict.summary})"
+    if verdict.verdict == "fail":
+        return f"{FAIL_HEAD} {verdict.summary}"
+    return ""
 
 
 def expected_path(gremlin_dir: str | os.PathLike) -> Path:
@@ -373,10 +455,8 @@ def expected_path(gremlin_dir: str | os.PathLike) -> Path:
 
 def result_text(verdict: Verdict, context: str | None = None) -> str:
     """Copy result: verdict + every row as plain text (contract item 8)."""
-    head = {"pass": "✓ Pass", "fail": "✗ Fail"}.get(verdict.verdict, "No comparison")
+    head = top_line(verdict) or "No comparison"
     lines = [f"Gremlin Input Tester: {head}"]
-    if verdict.summary:
-        lines.append(verdict.summary)
     lines.append(verdict.context if context is None else context)
     if verdict.steam_warning:
         lines.append(verdict.steam_warning)
@@ -392,6 +472,8 @@ def result_text(verdict: Verdict, context: str | None = None) -> str:
         tag = f" — {row.tag}" if row.tag else ""
         ids = f" ({row.ids})" if row.ids else ""
         lines.append(f"  {mark} {row.name}{tag}{ids}")
+        if row.hint:
+            lines.append(f"      {row.hint}")
     return "\n".join(lines) + "\n"
 
 

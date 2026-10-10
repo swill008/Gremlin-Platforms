@@ -28,6 +28,8 @@ import sys
 
 import pytest
 
+RESTART_TEXT = "needs a Windows restart, or unplug it and plug it back in"
+
 _HERE = pathlib.Path(__file__).parent
 
 LIVE = r"D:\StarCitizen\LIVE\Bin64\StarCitizen.exe"
@@ -170,7 +172,7 @@ def test_reset_shows_each_rows_result(run: dict) -> None:
     for usb in (EVO_R, EVO_L):
         text = _row(res["rows"], usb)["result"]
         assert re.fullmatch(r"reset ✓ · back after \d+\.\d s", text), text
-    assert _row(res["rows"], THQ)["result"] == "needs a Windows restart"
+    assert _row(res["rows"], THQ)["result"] == RESTART_TEXT
     assert _row(res["rows"], GONE)["result"] == "not found"
     assert _row(res["rows"], PEDALS)["result"] in ("", "—")
     assert res["close"] is True  # the Reset button became Close
@@ -179,7 +181,7 @@ def test_reset_shows_each_rows_result(run: dict) -> None:
 def test_system_log_has_one_line_per_device(run: dict) -> None:
     lines = run["reset"]["syslog"]
     for usb, want in (
-        (EVO_R, "reset"), (EVO_L, "reset"), (THQ, "needs a Windows restart"),
+        (EVO_R, "reset"), (EVO_L, "reset"), (THQ, RESTART_TEXT),
         (GONE, "not found"),
     ):
         mine = [ln for ln in lines if usb.upper() in ln["msg"].upper()]
@@ -190,7 +192,7 @@ def test_system_log_has_one_line_per_device(run: dict) -> None:
 def test_trace_has_a_hidhide_line_per_device(run: dict) -> None:
     lines = run["reset"]["trace"]
     for usb, want in (
-        (EVO_R, "reset ✓"), (EVO_L, "reset ✓"), (THQ, "needs a Windows restart"),
+        (EVO_R, "reset ✓"), (EVO_L, "reset ✓"), (THQ, RESTART_TEXT),
         (GONE, "not found"),
     ):
         mine = [t for t in lines if usb.upper() in t.upper() and want in t]

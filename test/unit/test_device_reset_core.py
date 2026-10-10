@@ -134,7 +134,7 @@ def test_known_but_unplugged_rows() -> None:
     ("code", "outcome", "text"),
     [
         (0, "ok", "reset ✓ · back after 0.0 s"),
-        (3010, "restart", "needs a Windows restart"),
+        (3010, "restart", "needs a Windows restart, or unplug it and plug it back in"),
         (0xE000020B, "failed", "failed: 3758096907 (0xE000020B)"),
         (5, "failed", "failed: 5 (0x00000005)"),
         (-536870389, "failed", "failed: -536870389 (0xE000020B)"),
@@ -244,6 +244,44 @@ def test_batch_runs_and_codes_come_back(tmp_path: Path) -> None:
     codes = device_reset._run_batch(ids, launch, command=f'call "{fake}"')
     assert seen == {"result made first": True}
     assert codes == {ids[0]: 0, ids[1]: 3010, ids[2]: 5}
+
+
+@pytest.mark.skipif(os.name != "nt", reason="cmd.exe batch")
+def test_batch_folder_is_deleted_after_reading() -> None:
+    """S5: the gremlin_reset_* folder goes once the results are read."""
+    ids = ["USB\\VID_231D&PID_0200\\9&AAC4F3F&0&2"]
+    seen: dict[str, str] = {}
+
+    def launch(script: str, folder: str) -> None:
+        seen["folder"] = folder
+        subprocess.run(
+            f'cmd.exe /d /c ""{script}""', cwd=folder, check=True, timeout=30
+        )
+
+    codes = device_reset._run_batch(ids, launch, command="rem")
+    assert codes == {ids[0]: 0}
+    assert os.path.basename(seen["folder"]).startswith("gremlin_reset_")
+    assert not os.path.exists(seen["folder"])
+
+
+def test_batch_folder_cleanup_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A file that can't be removed is left behind without an error."""
+
+    def stuck(path: str) -> None:
+        raise PermissionError(path)
+
+    monkeypatch.setattr(os, "remove", stuck)
+    monkeypatch.setattr(os, "unlink", stuck)
+    seen: dict[str, str] = {}
+
+    def launch(script: str, folder: str) -> None:
+        seen["folder"] = folder
+
+    assert device_reset._run_batch(["X"], launch) == {}
+    monkeypatch.undo()
+    import shutil
+
+    shutil.rmtree(seen["folder"], ignore_errors=True)
 
 
 def test_elevated_launch_is_blocked_under_tests() -> None:

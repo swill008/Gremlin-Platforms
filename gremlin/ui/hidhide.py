@@ -665,7 +665,7 @@ def _result_line(result: dict | None) -> tuple[str, bool]:
         clock_text = datetime.datetime.fromisoformat(written).strftime("%H:%M")
     except ValueError:
         pass
-    head = {"pass": "✓ Pass", "fail": "✗ Fail"}.get(
+    head = {"pass": "✓ Pass", "fail": "✗ Problem"}.get(
         verdict, "Nothing to compare"
     )
     if clock_text:

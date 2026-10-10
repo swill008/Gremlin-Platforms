@@ -98,6 +98,21 @@ Rectangle {
             font.pixelSize: Style.dp(11.5)
             color: Style.fgMuted
         }
+        // How to fix a failing row (S1).
+        Item { Layout.preferredWidth: Style.dp(18); visible: _hint.visible }
+        Text {
+            id: _hint
+            objectName: "rowHint"
+            Layout.columnSpan: 3
+            Layout.fillWidth: true
+            text: _row.row.hint || ""
+            visible: text !== ""
+            wrapMode: Text.Wrap
+            textFormat: Text.PlainText
+            font.family: Style.uiFont
+            font.pixelSize: Style.dp(11.5)
+            color: Style.dangerTextSoft
+        }
     }
 
     MouseArea {

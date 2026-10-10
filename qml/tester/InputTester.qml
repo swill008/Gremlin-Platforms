@@ -25,6 +25,9 @@ Window {
 
     // "All devices" compact view instead of one device.
     property bool showAll: false
+    // The ALL GAME DEVICES IN WINDOWS list is open (S3; closed at start,
+    // kept in memory only).
+    property bool showDetails: false
     // Tab shown: "devices" or "logs".
     property string tab: "devices"
     // The compact view's copy of tester.allDevices, refreshed ~20 a second.
@@ -392,7 +395,7 @@ Window {
                                         leftPadding: Style.dp(14)
                                         topPadding: Style.dp(10)
                                         bottomPadding: Style.dp(4)
-                                        text: (_entry.modelData.section || "").toUpperCase()
+                                        text: _entry.modelData.section || ""
                                         font.family: Style.uiFont
                                         font.pixelSize: Style.dp(11)
                                         font.letterSpacing: Style.dp(0.8)
@@ -410,86 +413,118 @@ Window {
                                 }
                             }
 
-                            // HID game devices: a list only (path and ids).
+                            // Every game device in Windows: a list only (path and
+                            // ids), folded under Show details (S3).
                             Text {
-                                visible: tester.hidDevices.length > 0 || tester.hidSkipped.length > 0
+                                objectName: "hidHeading"
+                                visible: _detailsToggle.visible
                                 width: parent.width
                                 leftPadding: Style.dp(14)
                                 topPadding: Style.dp(10)
-                                bottomPadding: Style.dp(4)
-                                text: "HID GAME DEVICES (LIST ONLY)"
+                                text: "ALL GAME DEVICES IN WINDOWS (list only)"
                                 font.family: Style.uiFont
                                 font.pixelSize: Style.dp(11)
                                 font.letterSpacing: Style.dp(0.8)
                                 color: Style.fgMuted
                             }
-                            Repeater {
-                                model: tester.hidDevices
-                                delegate: Column {
-                                    required property var modelData
-                                    width: _listCol.width
-                                    leftPadding: Style.dp(40)
-                                    rightPadding: Style.dp(14)
-                                    topPadding: Style.dp(4)
-                                    bottomPadding: Style.dp(4)
-                                    Text {
-                                        width: parent.width - parent.leftPadding - parent.rightPadding
-                                        text: (modelData.name || "HID device")
-                                            + "  ·  VID " + modelData.vid + " · PID " + modelData.pid
-                                        elide: Text.ElideRight
-                                        font.family: Style.uiFont
-                                        font.pixelSize: Style.dp(12.5)
-                                        color: Style.fg
-                                    }
-                                    Text {
-                                        width: parent.width - parent.leftPadding - parent.rightPadding
-                                        text: modelData.path || ""
-                                        elide: Text.ElideMiddle
-                                        font.family: Style.monoFont
-                                        font.pixelSize: Style.dp(10.5)
-                                        color: Style.fgMuted
-                                    }
+                            Rectangle {
+                                id: _detailsToggle
+                                objectName: "showDetailsToggle"
+                                visible: tester.hidDevices.length > 0 || tester.hidSkipped.length > 0
+                                width: parent.width
+                                height: _detailsText.implicitHeight + Style.dp(14)
+                                color: _detailsArea.containsMouse ? Style.alpha(Style.bgHover, 0.4) : Style.clear
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Show details"
+                                Text {
+                                    id: _detailsText
+                                    x: Style.dp(14)
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: (_win.showDetails ? "▾ " : "▸ ") + "Show details"
+                                    font.family: Style.uiFont
+                                    font.pixelSize: Style.dp(12.5)
+                                    color: Style.accent
+                                }
+                                MouseArea {
+                                    id: _detailsArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: _win.showDetails = !_win.showDetails
                                 }
                             }
-                            // HID paths left out, dimmed, with the reason.
-                            Repeater {
-                                model: tester.hidSkipped
-                                delegate: Column {
-                                    required property var modelData
-                                    objectName: "hidSkipped"
-                                    width: _listCol.width
-                                    opacity: 0.65
-                                    leftPadding: Style.dp(40)
-                                    rightPadding: Style.dp(14)
-                                    topPadding: Style.dp(4)
-                                    bottomPadding: Style.dp(4)
-                                    Text {
-                                        width: parent.width - parent.leftPadding - parent.rightPadding
-                                        text: (modelData.name || "HID device")
-                                            + (modelData.vid ? "  ·  VID " + modelData.vid
-                                               + " · PID " + modelData.pid : "")
-                                        elide: Text.ElideRight
-                                        font.family: Style.uiFont
-                                        font.pixelSize: Style.dp(12.5)
-                                        color: Style.fgMuted
+                            Column {
+                                objectName: "detailsSection"
+                                width: parent.width
+                                visible: _win.showDetails && _detailsToggle.visible
+                                Repeater {
+                                    model: tester.hidDevices
+                                    delegate: Column {
+                                        required property var modelData
+                                        width: _listCol.width
+                                        leftPadding: Style.dp(40)
+                                        rightPadding: Style.dp(14)
+                                        topPadding: Style.dp(4)
+                                        bottomPadding: Style.dp(4)
+                                        Text {
+                                            width: parent.width - parent.leftPadding - parent.rightPadding
+                                            text: (modelData.name || "HID device")
+                                                + "  ·  VID " + modelData.vid + " · PID " + modelData.pid
+                                            elide: Text.ElideRight
+                                            font.family: Style.uiFont
+                                            font.pixelSize: Style.dp(12.5)
+                                            color: Style.fg
+                                        }
+                                        Text {
+                                            width: parent.width - parent.leftPadding - parent.rightPadding
+                                            text: modelData.path || ""
+                                            elide: Text.ElideMiddle
+                                            font.family: Style.monoFont
+                                            font.pixelSize: Style.dp(10.5)
+                                            color: Style.fgMuted
+                                        }
                                     }
-                                    Text {
-                                        objectName: "hidSkippedLabel"
-                                        width: parent.width - parent.leftPadding - parent.rightPadding
-                                        text: modelData.label || ("left out: " + (modelData.reason || ""))
-                                        elide: Text.ElideRight
-                                        font.family: Style.uiFont
-                                        font.pixelSize: Style.dp(11.5)
-                                        font.italic: true
-                                        color: modelData.denied ? Style.dangerTextSoft : Style.fgMuted
-                                    }
-                                    Text {
-                                        width: parent.width - parent.leftPadding - parent.rightPadding
-                                        text: modelData.path || ""
-                                        elide: Text.ElideMiddle
-                                        font.family: Style.monoFont
-                                        font.pixelSize: Style.dp(10.5)
-                                        color: Style.fgDisabled
+                                }
+                                // HID paths left out, dimmed, with the reason.
+                                Repeater {
+                                    model: tester.hidSkipped
+                                    delegate: Column {
+                                        required property var modelData
+                                        objectName: "hidSkipped"
+                                        width: _listCol.width
+                                        opacity: 0.65
+                                        leftPadding: Style.dp(40)
+                                        rightPadding: Style.dp(14)
+                                        topPadding: Style.dp(4)
+                                        bottomPadding: Style.dp(4)
+                                        Text {
+                                            width: parent.width - parent.leftPadding - parent.rightPadding
+                                            text: (modelData.name || "HID device")
+                                                + (modelData.vid ? "  ·  VID " + modelData.vid
+                                                   + " · PID " + modelData.pid : "")
+                                            elide: Text.ElideRight
+                                            font.family: Style.uiFont
+                                            font.pixelSize: Style.dp(12.5)
+                                            color: Style.fgMuted
+                                        }
+                                        Text {
+                                            objectName: "hidSkippedLabel"
+                                            width: parent.width - parent.leftPadding - parent.rightPadding
+                                            text: modelData.label || ("left out: " + (modelData.reason || ""))
+                                            elide: Text.ElideRight
+                                            font.family: Style.uiFont
+                                            font.pixelSize: Style.dp(11.5)
+                                            font.italic: true
+                                            color: modelData.denied ? Style.dangerTextSoft : Style.fgMuted
+                                        }
+                                        Text {
+                                            width: parent.width - parent.leftPadding - parent.rightPadding
+                                            text: modelData.path || ""
+                                            elide: Text.ElideMiddle
+                                            font.family: Style.monoFont
+                                            font.pixelSize: Style.dp(10.5)
+                                            color: Style.fgDisabled
+                                        }
                                     }
                                 }
                             }
@@ -628,15 +663,15 @@ Window {
                                 Text { text: _win.sel.windowsName || ""; visible: !!_win.sel.windowsName; Layout.fillWidth: true; wrapMode: Text.Wrap; font.family: Style.uiFont; font.pixelSize: Style.dp(12.5); color: Style.fg }
                                 Text { text: "Ids"; visible: !!_win.sel.ids; Layout.preferredWidth: Style.dp(150); font.family: Style.uiFont; font.pixelSize: Style.dp(12.5); color: Style.fgMuted }
                                 Text { text: _win.sel.ids || ""; visible: !!_win.sel.ids; Layout.fillWidth: true; wrapMode: Text.WrapAnywhere; font.family: Style.monoFont; font.pixelSize: Style.dp(11.5); color: Style.fg }
-                                Text { text: "Expected"; visible: !!_win.sel.expected; Layout.preferredWidth: Style.dp(150); font.family: Style.uiFont; font.pixelSize: Style.dp(12.5); color: Style.fgMuted }
-                                Text { text: _win.sel.expected || ""; visible: !!_win.sel.expected; Layout.fillWidth: true; wrapMode: Text.Wrap; font.family: Style.uiFont; font.pixelSize: Style.dp(12.5); color: Style.fg }
+                                Text { objectName: "shouldBe"; text: _win.sel.expected || ""; visible: !!_win.sel.expected; Layout.columnSpan: 2; Layout.fillWidth: true; wrapMode: Text.Wrap; font.family: Style.uiFont; font.pixelSize: Style.dp(12.5); color: Style.fg }
                             }
                         }
 
                         Text {
+                            objectName: "notSeenDetail"
                             visible: _win.sel.seen === false
                             Layout.fillWidth: true
-                            text: "Not seen by this program, so there are no live values."
+                            text: _win.sel.detail || ""
                             wrapMode: Text.Wrap
                             font.family: Style.uiFont
                             font.pixelSize: Style.dp(13)

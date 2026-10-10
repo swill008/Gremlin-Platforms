@@ -84,17 +84,71 @@ def test_runs_without_errors_or_qml_warnings(
 def test_fail_verdict_and_red_row(fail_run: dict) -> None:
     verdict = fail_run["verdict"]
     assert verdict["line_visible"] is True
-    assert verdict["text"] == "✗ Fail"
-    assert "should be hidden" in verdict["summary"]
-    assert "Compared with Gremlin's devices" in verdict["context"]
+    assert verdict["text"] == "✗ Problem:"
+    assert verdict["summary"] == "programs can see 1 stick that should be hidden"
+    assert verdict["context"].startswith(
+        "This window tests what a blocked program sees. It's on HidHide's Block "
+        "list, so your hidden sticks should not show up here. (Gremlin's list "
+        "from 03:14)"
+    )
     assert fail_run["rows"]["stick"] == {"bad": True}
     assert fail_run["rows"]["vjoy"] == {"bad": False}
+
+
+def test_fail_row_shows_fix_hint(fail_run: dict) -> None:
+    """S1: the fix hint under the failing row only."""
+    hints = fail_run["hints"]
+    assert hints["Left stick"] == [
+        "Tick it on Gremlin's HidHide page, then press Restart tester."
+    ]
+    assert all(v == [] for k, v in hints.items() if k != "Left stick")
+
+
+def test_pass_rows_have_no_hint_and_plain_headings(pass_run: dict) -> None:
+    assert all(v == [] for v in pass_run["hints"].values())
+    headings = pass_run["headings"]
+    assert "YOUR CONTROLLERS" in headings
+    assert "GREMLIN'S VIRTUAL JOYSTICKS (vJoy)" in headings
+    assert "ALL GAME DEVICES IN WINDOWS (list only)" in headings
+
+
+@pytest.mark.parametrize("which", ["fail_run", "pass_run"])
+def test_status_line_plain(which: str, request: pytest.FixtureRequest) -> None:
+    """TW13, singular forms: one stick + vJoy, no Xbox, no listed game device."""
+    assert request.getfixturevalue(which)["status_line"] == (
+        "This window sees 2 joysticks · 0 Xbox controllers · 0 game devices · "
+        "updating 62 times a second"
+    )
+
+
+@pytest.mark.parametrize("which", ["fail_run", "pass_run"])
+def test_show_details_folds_game_devices(
+    which: str, request: pytest.FixtureRequest
+) -> None:
+    """S3 by real clicks: closed at start, opens, closes again."""
+    assert request.getfixturevalue(which)["details"] == {
+        "toggle_visible": True,
+        "heading_visible": True,
+        "closed": [False],
+        "open": [True],
+        "closed_again": [False],
+    }
+
+
+def test_hidden_row_detail_line(pass_run: dict) -> None:
+    """TW10/TW11 by a real click on the hidden stick."""
+    assert pass_run["not_seen"] == {
+        "detail": "Hidden from programs, so there's nothing to show.",
+        "detail_visible": True,
+        "should_be": "Should be: hidden from programs",
+    }
 
 
 def test_pass_verdict_no_red_row(pass_run: dict) -> None:
     verdict = pass_run["verdict"]
     assert verdict["line_visible"] is True
-    assert verdict["text"] == "✓ Pass"
+    assert verdict["text"] == "✓ Pass: programs see only what they should"
+    assert verdict["summary"] == "(1 hidden · 2 shown)"
     assert pass_run["rows"]["stick"] == {"bad": False}
     assert pass_run["rows"]["vjoy"] == {"bad": False}
 

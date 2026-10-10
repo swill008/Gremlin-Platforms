@@ -114,17 +114,26 @@ def by_name(verdict: cmp.Verdict) -> dict[str, cmp.Row]:
 def test_hidden_and_not_seen_is_ok() -> None:
     v = cmp.compare(expected([stick("hidden")]), [], False)
     row = by_name(v)["Right stick"]
-    assert (row.verdict, row.seen, row.tag) == ("ok", False, "hidden")
+    assert (row.verdict, row.seen, row.tag) == ("ok", False, "Hidden from programs")
+    assert row.detail == "Hidden from programs, so there's nothing to show."
+    assert row.should_be == "Should be: hidden from programs"
+    assert row.hint == ""
     assert v.verdict == "pass"
+    assert v.summary == "1 hidden · 0 shown"
 
 
 def test_hidden_but_visible_fails() -> None:
     seen = [di("VKBsim Gladiator EVO R", 0x231D, 0x0200, STICK_GUID)]
     v = cmp.compare(expected([stick("hidden")]), seen, False)
     row = by_name(v)["Right stick"]
-    assert (row.verdict, row.tag) == ("bad", "VISIBLE · should be hidden")
+    assert (row.verdict, row.tag) == ("bad", "Programs can see it: should be hidden")
+    assert row.hint == "Tick it on Gremlin's HidHide page, then press Restart tester."
+    assert row.detail == ""  # seen: live values instead
     assert v.verdict == "fail"
-    assert v.summary.startswith("1 stick visible that should be hidden")
+    assert v.summary == "programs can see 1 stick that should be hidden"
+    assert cmp.top_line(v) == (
+        "✗ Problem: programs can see 1 stick that should be hidden"
+    )
 
 
 def test_visible_and_seen_passes() -> None:
@@ -132,7 +141,12 @@ def test_visible_and_seen_passes() -> None:
     v = cmp.compare(expected([stick("visible")]), seen, False)
     assert by_name(v)["Right stick"].verdict == "ok"
     assert v.verdict == "pass"
-    assert v.summary == "1 visible"
+    assert v.summary == "0 hidden · 1 shown"
+    assert cmp.top_line(v) == (
+        "✓ Pass: programs see only what they should (0 hidden · 1 shown)"
+    )
+    assert by_name(v)["Right stick"].tag == "Programs can see it"
+    assert by_name(v)["Right stick"].should_be == "Should be: seen by programs"
 
 
 def test_expected_visible_not_seen_is_missing() -> None:
@@ -152,9 +166,14 @@ def test_expected_visible_not_seen_is_missing() -> None:
         False,
     )
     row = by_name(v)["vJoy Device 3"]
-    assert (row.verdict, row.tag) == ("missing", "missing")
+    assert (row.verdict, row.tag) == (
+        "missing",
+        "Programs can't see it: should be shown",
+    )
+    assert row.detail == "Missing: programs can't see it."
+    assert row.hint == "Check it's plugged in and that Gremlin's output for it is on."
     assert v.verdict == "fail"
-    assert "1 vJoy device missing" in v.summary
+    assert v.summary == "programs can't see 1 vJoy device that should be shown"
 
 
 def test_unknown_device_is_not_a_fail() -> None:
@@ -171,9 +190,10 @@ def test_unknown_device_is_not_a_fail() -> None:
     assert (row.kind, row.verdict, row.tag) == (
         "other",
         "unknown",
-        "not known to Gremlin",
+        "Not set up in Gremlin",
     )
-    assert row.section == cmp.SECTION_OTHER
+    assert row.section == cmp.SECTION_STICKS
+    assert row.hint == ""
     assert v.verdict == "pass"
 
 
@@ -191,12 +211,14 @@ def test_xbox_pad_matched_by_number() -> None:
     rows = by_name(v)
     assert rows["Xbox pad 1"].verdict == "ok"
     assert rows["Xbox pad 2"].verdict == "missing"
+    assert v.summary == "programs can't see 1 Xbox controller that should be shown"
 
 
 def test_xbox_pad_with_no_expect_has_no_verdict() -> None:
     v = cmp.compare(expected(xbox=[{"pad": 2, "on": False, "expect": ""}]), [], False)
     row = by_name(v)["Xbox pad 2"]
     assert (row.verdict, row.tag) == ("", "")
+    assert row.detail == "This window can't see it."
     assert v.verdict == "pass"
 
 
@@ -224,7 +246,7 @@ def test_vjoy_not_used_tag() -> None:
         seen,
         False,
     )
-    assert by_name(v)["vJoy Device 4"].tag == "visible · not used by Gremlin"
+    assert by_name(v)["vJoy Device 4"].tag == "Programs can see it · not in use"
 
 
 # Matching (item 4) --------------------------------------------------------------
@@ -299,8 +321,52 @@ def test_load_expected_reads_file_and_rejects_bad(tmp_path: pathlib.Path) -> Non
 def test_context_line_block_list() -> None:
     line = cmp.context_line(expected())
     assert line == (
-        "Compared with Gremlin's devices (updated 03:14:22). This program is on "
-        "HidHide's Block list, so hidden sticks must not show here."
+        "This window tests what a blocked program sees. It's on HidHide's Block "
+        "list, so your hidden sticks should not show up here. (Gremlin's list "
+        "from 03:14)"
+    )
+
+
+def test_context_line_allow_list_not_on_it() -> None:
+    line = cmp.context_line(expected(mode="allow", on_list=False))
+    assert line == (
+        "This window tests what a blocked program sees. It isn't on HidHide's "
+        "list, so in Allow mode your hidden sticks should not show up here. "
+        "(Gremlin's list from 03:14)"
+    )
+
+
+def test_fail_summary_combines_kinds_and_problems() -> None:
+    """TW2: kinds joined with "and", hidden-but-seen and missing with "; "."""
+    left_guid = "{44444444-0000-0000-0000-000000000000}"
+    seen = [
+        di("VKBsim Gladiator EVO R", 0x231D, 0x0200, STICK_GUID),
+        di("Left", 0x1, 0x2, left_guid),
+        pad(1),
+    ]
+    left = stick("hidden", guid=left_guid, name="Left", vid=0x1, pid=0x2)
+    left["name"] = "Left stick"
+    v = cmp.compare(
+        expected(
+            [stick("hidden"), left],
+            xbox=[{"pad": 1, "on": True, "expect": "hidden"}],
+            vjoy=[{"id": 2, "guid": VJOY_GUID, "used": True, "expect": "visible"}],
+        ),
+        seen,
+        False,
+    )
+    assert v.summary == (
+        "programs can see 2 sticks and 1 Xbox controller that should be hidden; "
+        "programs can't see 1 vJoy device that should be shown"
+    )
+
+
+def test_steam_line_text() -> None:
+    """TW14 + S2: the Steam line names the fix."""
+    assert cmp.STEAM_LINE == (
+        "Steam is running and can see your sticks: Steam Input may pass them to "
+        "other programs. Add steam.exe to HidHide's Block list, or turn off Steam "
+        "Input for your game."
     )
 
 
@@ -328,7 +394,12 @@ def test_plain_mode_without_file() -> None:
     assert v.context == cmp.PLAIN_LINE
     assert v.steam_warning == ""
     assert all(r.verdict == "" and r.tag == "" for r in v.rows)
-    assert [r.section for r in v.rows] == [cmp.SECTION_PLAIN_DI, cmp.SECTION_XBOX]
+    assert [r.section for r in v.rows] == [cmp.SECTION_STICKS, cmp.SECTION_XBOX]
+    assert (cmp.SECTION_STICKS, cmp.SECTION_VJOY, cmp.SECTION_XBOX) == (
+        "YOUR CONTROLLERS",
+        "GREMLIN'S VIRTUAL JOYSTICKS (vJoy)",
+        "XBOX CONTROLLERS",
+    )
 
 
 # result.json (item 6) -----------------------------------------------------------
@@ -365,6 +436,7 @@ def test_result_json_atomic_with_contract_schema(
         }
     ]
     assert data["steam"] == {"running": True, "on_list": False}
+    assert data["summary"] == "programs can see 1 stick that should be hidden"
 
 
 # Model on the fake joystick driver ------------------------------------------------
@@ -401,6 +473,53 @@ def test_model_rows_from_fake_dill(qapp, no_xinput) -> None:  # noqa: ANN001
     assert model.contextLine == f"{cmp.PLAIN_LINE} {model_mod.SOURCE_NOTE}"
     assert model.selectedKey  # something live is selected
     assert model.selected["axisCount"] == 6 and model.selected["buttonCount"] == 64
+    # TW13: two joysticks, singular Xbox controller / game device forms.
+    assert model.statusLine == (
+        "This window sees 2 joysticks · 0 Xbox controllers · 0 game devices · "
+        "updating 62 times a second"
+    )
+
+
+def test_status_line_singular(qapp, monkeypatch) -> None:  # noqa: ANN001
+    stick_one = di("pJoy Pro", 0x5678, 0xFACE, STICK_GUID)
+    model = InputTesterModel(
+        None,
+        snapshot=lambda: [stick_one, pad(1)],
+        poll=lambda d: devices.LiveValues([], [], []),
+        hid_list=lambda: [devices.HidDevice("p", 1, 2, "Pedals")],
+        steam_running=lambda: False,
+        start_timers=False,
+    )
+    assert model.statusLine == (
+        "This window sees 1 joystick · 1 Xbox controller · 1 game device · "
+        "updating 62 times a second"
+    )
+
+
+def test_selected_detail_and_should_be(qapp, no_xinput, tmp_path) -> None:  # noqa: ANN001
+    """TW10/TW11: the detail line and Should be line of a row not seen."""
+    (tmp_path / "tester").mkdir()
+    (tmp_path / "tester" / "expected.json").write_text(
+        json.dumps(
+            expected(
+                [stick("hidden", guid="{55555555-0000-0000-0000-000000000000}")],
+                xbox=[{"pad": 3, "on": True, "expect": "visible"}],
+            )
+        ),
+        encoding="utf-8",
+    )
+    model = make_model(str(tmp_path))
+    keys = {r["name"]: r["key"] for r in model.rows}
+    model.select(keys["Right stick"])
+    assert model.selected["detail"] == (
+        "Hidden from programs, so there's nothing to show."
+    )
+    assert model.selected["expected"] == "Should be: hidden from programs"
+    model.select(keys["Xbox pad 3"])
+    assert model.selected["detail"] == "Missing: programs can't see it."
+    assert model.selected["expected"] == "Should be: seen by programs"
+    hint = next(r["hint"] for r in model.rows if r["name"] == "Xbox pad 3")
+    assert hint == "Check it's plugged in and that Gremlin's output for it is on."
 
 
 def test_model_live_values_and_activity(qapp, no_xinput, monkeypatch) -> None:  # noqa: ANN001
@@ -463,22 +582,38 @@ def test_model_compares_and_writes_result(
     )
     model = make_model(str(tmp_path), steam_on=True)
     assert model.compareMode is True
-    assert model.verdict == "fail" and model.verdictText == "✗ Fail"
+    assert model.verdict == "fail" and model.verdictText == "✗ Problem:"
+    assert model.summary == "programs can see 1 stick that should be hidden"
     row = next(r for r in model.rows if r["name"] == "Right stick")
     assert row["sub"] == "pJoy Pro · feeds vJoy 3"
     assert (row["icon"], row["tagStyle"], row["tag"]) == (
         "✗",
         "bad",
-        "VISIBLE · should be hidden",
+        "Programs can see it: should be hidden",
+    )
+    assert row["hint"] == cmp.HINT_BAD
+    assert cmp.HINT_BAD == (
+        "Tick it on Gremlin's HidHide page, then press Restart tester."
     )
     assert model.steamWarning == cmp.STEAM_LINE
     data = json.loads((tmp_path / "tester" / "result.json").read_text(encoding="utf-8"))
     assert data["verdict"] == "fail"
+    assert data["summary"] == "programs can see 1 stick that should be hidden"
 
     text = model.resultText()
-    assert text.startswith("Gremlin Input Tester: ✗ Fail\n")
-    assert "✗ Right stick — VISIBLE · should be hidden" in text
-    assert "? vJoy Device — not known to Gremlin" in text
+    assert text.startswith(
+        "Gremlin Input Tester: ✗ Problem: programs can see 1 stick that should "
+        "be hidden\n"
+    )
+    assert "\nYOUR CONTROLLERS\n" in text
+    assert "✗ Right stick — Programs can see it: should be hidden" in text
+    assert (
+        "      Tick it on Gremlin's HidHide page, then press Restart tester.\n"
+        in text
+    )
+    assert "\nGREMLIN'S VIRTUAL JOYSTICKS (vJoy)\n" in text
+    assert "? vJoy Device — Not set up in Gremlin" in text
+    assert cmp.STEAM_LINE in text
     assert model.copyResult() == text
     assert copied == [text]
 
@@ -493,6 +628,12 @@ def test_model_rereads_expected_on_change(qapp, no_xinput, tmp_path) -> None:  #
     model.check_changes()
     assert model.compareMode is True
     assert model.verdict == "pass"
+    assert model.verdictText == "✓ Pass: programs see only what they should"
+    assert model.summary == "(0 hidden · 0 shown)"
+    assert model.resultText().startswith(
+        "Gremlin Input Tester: ✓ Pass: programs see only what they should "
+        "(0 hidden · 0 shown)\n"
+    )
 
 
 @pytest.mark.parametrize("gremlin_dir", [None, "", ".", "tester-home"])

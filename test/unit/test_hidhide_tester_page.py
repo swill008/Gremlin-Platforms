@@ -139,6 +139,6 @@ def test_input_tester_button_calls_the_launcher_and_shows_its_message(
 
 def test_last_result_line_comes_from_result_json(run: dict) -> None:
     assert run["result"] == [
-        "Last Input Tester result: \u2717 Fail, 03:14 \u00b7 "
+        "Last Input Tester result: \u2717 Problem, 03:14 \u00b7 "
         "1 stick visible that should be hidden"
     ]

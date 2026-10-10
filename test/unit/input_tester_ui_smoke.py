@@ -191,8 +191,33 @@ def checks(app: QtGui.QGuiApplication) -> None:
             rows[label.property("text")] = row
     result("row_names", sorted(rows))
     result(
-        "hid_skipped",
+        "hints",
+        {
+            name: [
+                i.property("text")
+                for i in items_under(row)
+                if i.objectName() == "rowHint" and i.isVisible()
+            ]
+            for name, row in rows.items()
+        },
+    )
+    result(
+        "headings",
         [
+            i.property("text")
+            for i in items(window)
+            if i.isVisible()
+            and isinstance(i.property("text"), str)
+            and i.property("text").startswith(("YOUR", "GREMLIN'S", "XBOX", "ALL"))
+        ],
+    )
+    result(
+        "status_line",
+        item(window, "statusLine").property("text"),
+    )
+
+    def skipped() -> list[dict]:
+        return [
             {
                 "label": i.property("text"),
                 "visible": bool(i.isVisible()),
@@ -200,8 +225,24 @@ def checks(app: QtGui.QGuiApplication) -> None:
             }
             for i in items(window)
             if i.objectName() == "hidSkippedLabel"
-        ],
-    )
+        ]
+
+    # S3: the game devices list is folded under Show details, closed at start;
+    # a real click opens it and another closes it.
+    toggle = item(window, "showDetailsToggle")
+    details: dict = {
+        "toggle_visible": bool(toggle.isVisible()),
+        "heading_visible": bool(item(window, "hidHeading").isVisible()),
+        "closed": [s["visible"] for s in skipped()],
+    }
+    click(window, toggle)
+    QtTest.QTest.qWait(150)
+    details["open"] = [s["visible"] for s in skipped()]
+    result("hid_skipped", skipped())
+    click(window, toggle)
+    QtTest.QTest.qWait(150)
+    details["closed_again"] = [s["visible"] for s in skipped()]
+    result("details", details)
     stick_row = rows.get("Left stick")
     vjoy_row = next((r for n, r in rows.items() if n.startswith("vJoy Device")), None)
     result(
@@ -215,6 +256,21 @@ def checks(app: QtGui.QGuiApplication) -> None:
             else {"bad": bool(vjoy_row.property("bad"))},
         },
     )
+
+    # The stick row (hidden from programs in the pass case) shows the
+    # detail line and Should be line instead of live values.
+    if CASE == "pass":
+        hidden_row = rows.get("Right stick")
+        click(window, hidden_row)
+        QtTest.QTest.qWait(200)
+        result(
+            "not_seen",
+            {
+                "detail": item(window, "notSeenDetail").property("text"),
+                "detail_visible": bool(item(window, "notSeenDetail").isVisible()),
+                "should_be": item(window, "shouldBe").property("text"),
+            },
+        )
 
     # A click on the vJoy row shows its axes.
     axes[(VJOY_RAW, 1)] = -16384

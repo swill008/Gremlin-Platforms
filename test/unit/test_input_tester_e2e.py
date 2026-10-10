@@ -368,7 +368,9 @@ def test_the_steam_line_in_the_tester_window() -> None:
     from gremlin.input_tester import compare
 
     assert compare.compare(_expected(), [], True).steam_warning == (
-        "Steam is running and can see your sticks: Steam Input may pass them to games."
+        "Steam is running and can see your sticks: Steam Input may pass them to "
+        "other programs. Add steam.exe to HidHide's Block list, or turn off Steam "
+        "Input for your game."
     )
     assert compare.compare(_expected(), [], False).steam_warning == ""
     steam_exe = r"C:\Program Files (x86)\Steam\steam.exe"

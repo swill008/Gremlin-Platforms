@@ -17,6 +17,8 @@ import sys
 
 import pytest
 
+RESTART_TEXT = "needs a Windows restart, or unplug it and plug it back in"
+
 _HERE = pathlib.Path(__file__).parent
 R_USB = r"USB\VID_231D&PID_0200\9&AAC4F3F&0&2"
 L_USB = r"USB\VID_231D&PID_3201\9&1D65FFE4&0&3"
@@ -123,7 +125,7 @@ def test_ticked_again_on_each_open_and_reset_shows_results(run: dict) -> None:
     res = run["reset"]
     assert len(res["calls"]) == 1 and sorted(res["calls"][0]) == sorted([L_USB, R_USB])
     assert by_usb(res, "results") == {
-        P_USB: "—", L_USB: "needs a Windows restart",
+        P_USB: "—", L_USB: RESTART_TEXT,
         R_USB: "reset ✓ · back after 0.0 s", res["usb"][3]: "not plugged in",
     }
     assert res["close"] == ["Close"] and res["reset"] == []

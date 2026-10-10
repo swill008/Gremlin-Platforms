@@ -20,7 +20,7 @@ syslog = logging.getLogger("system")
 OK = "ok"
 
 _TEXTS = {
-    "restart": "needs a Windows restart",
+    "restart": "needs a Windows restart, or unplug it and plug it back in",
     "not_found": "not found",
     "declined": "permission declined",
 }

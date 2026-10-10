@@ -414,13 +414,10 @@ class InputTesterModel(QtCore.QObject):
                 self._selected_key = self._rows[0]["key"]
         if data != self._last_result:
             self._last_result = data
-            head = {"pass": "✓ Pass", "fail": "✗ Fail"}.get(
-                verdict.verdict, "no comparison"
+            head = cmp.top_line(verdict) or (
+                f"no comparison · {len(verdict.rows)} devices"
             )
-            summary = verdict.summary or f"{len(verdict.rows)} devices"
-            self._log.add(
-                f"Result: {head} · {summary}", warn=verdict.verdict == "fail"
-            )
+            self._log.add(f"Result: {head}", warn=verdict.verdict == "fail")
             if self._gremlin_dir:
                 try:
                     result.write_result(Path(self._gremlin_dir) / "tester", verdict)
@@ -458,6 +455,8 @@ class InputTesterModel(QtCore.QObject):
             "iconStyle": icon_style,
             "tag": row.tag,
             "tagStyle": tag_style,
+            "hint": row.hint,
+            "detail": row.detail,
             "verdict": row.verdict,
             "seen": row.seen,
             "greyed": row.expect == "hidden" and not row.seen,
@@ -465,10 +464,7 @@ class InputTesterModel(QtCore.QObject):
             "inGremlin": row.in_gremlin,
             "windowsName": row.windows_name,
             "ids": row.ids,
-            "expected": {
-                "hidden": "hidden from games",
-                "visible": "visible to every program",
-            }.get(row.expect, ""),
+            "expected": row.should_be,
             "axisCount": row.device.axes if row.device else 0,
             "buttonCount": row.device.buttons if row.device else 0,
             "hatCount": row.device.hats if row.device else 0,
@@ -839,10 +835,16 @@ class InputTesterModel(QtCore.QObject):
 
     @QtCore.Property(str, notify=verdictChanged)
     def verdictText(self) -> str:
-        return {"pass": "✓ Pass", "fail": "✗ Fail"}.get(self._verdict.verdict, "")
+        return {"pass": cmp.PASS_HEAD, "fail": cmp.FAIL_HEAD}.get(
+            self._verdict.verdict, ""
+        )
 
     @QtCore.Property(str, notify=verdictChanged)
     def summary(self) -> str:
+        """After verdictText on the top line: the counts in brackets on a
+        pass (TW1), what's wrong on a fail (TW2)."""
+        if self._verdict.verdict == "pass":
+            return f"({self._verdict.summary})"
         return self._verdict.summary
 
     @QtCore.Property(str, notify=verdictChanged)
@@ -879,6 +881,7 @@ class InputTesterModel(QtCore.QObject):
                     "iconStyle",
                     "tag",
                     "tagStyle",
+                    "hint",
                     "verdict",
                     "seen",
                     "greyed",
@@ -929,6 +932,7 @@ class InputTesterModel(QtCore.QObject):
                 "windowsName",
                 "ids",
                 "expected",
+                "detail",
                 "axisCount",
                 "buttonCount",
                 "hatCount",
@@ -1005,8 +1009,10 @@ class InputTesterModel(QtCore.QObject):
         di = sum(1 for d in self._seen if d.kind == "directinput")
         xi = sum(1 for d in self._seen if d.kind == "xinput")
         return (
-            f"DirectInput {di} · XInput pads {xi} · HID {len(self._hid)} · "
-            f"polling {round(1000 / POLL_MS)}/s"
+            f"This window sees {_plural(di, 'joystick')} · "
+            f"{_plural(xi, 'Xbox controller')} · "
+            f"{_plural(len(self._hid), 'game device')} · "
+            f"updating {round(1000 / POLL_MS)} times a second"
         )
 
     # Slots -------------------------------------------------------------------
@@ -1024,6 +1030,10 @@ class InputTesterModel(QtCore.QObject):
     @QtCore.Slot()
     def copyPath(self) -> None:
         _set_clipboard(self._exe)
+
+
+def _plural(n: int, noun: str) -> str:
+    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
 
 
 def _set_clipboard(text: str) -> None:

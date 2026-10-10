@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ntpath
 import os
+import shutil
 import sys
 import tempfile
 from collections.abc import Callable, Iterable
@@ -71,7 +72,7 @@ class ResetResult:
                 return f"reset ✓ · not back after {BACK_TIMEOUT:.0f} s"
             return f"reset ✓ · back after {self.back_after:.1f} s"
         if self.outcome == "restart":
-            return "needs a Windows restart"
+            return "needs a Windows restart, or unplug it and plug it back in"
         if self.outcome == "not_found":
             return "not found"
         if self.outcome == "declined":
@@ -345,12 +346,17 @@ def _run_batch(
     # which this (unelevated) process can't read, so make it here first and
     # let the batch append to it.
     open(result_path, "w", encoding="mbcs").close()
-    launch(script, folder)
     try:
-        with open(result_path, encoding="mbcs", errors="replace") as fh:
-            return _parse_results(fh.read(), ids)
-    except OSError:
-        return {}
+        launch(script, folder)
+        try:
+            with open(result_path, encoding="mbcs", errors="replace") as fh:
+                return _parse_results(fh.read(), ids)
+        except OSError:
+            return {}
+    finally:
+        # Best effort: a file the elevated cmd left (owned by Administrators)
+        # may not go; that's fine.
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 def _real_runner(ids: list[str]) -> dict[str, int]:

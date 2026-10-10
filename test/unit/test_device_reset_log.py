@@ -91,7 +91,8 @@ def test_outcome_texts() -> None:
         )
 
     assert (
-        device_reset_log.outcome_text(r("restart", 3010)) == "needs a Windows restart"
+        device_reset_log.outcome_text(r("restart", 3010))
+        == "needs a Windows restart, or unplug it and plug it back in"
     )
     assert device_reset_log.outcome_text(r("not_found")) == "not found"
     assert device_reset_log.outcome_text(r("declined", 1223)) == "permission declined"

@@ -22,7 +22,7 @@ spec change. See "The plan" in `claude/system-maps.md`.
 | Page | Subsystem | S | Q | Gaps | Review |
 |---|---|---|---|---|---|
 | [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads, Help, shared pieces, control tracing, the build (two exes) | 153 | 16 | 20 | reviewed 2026-10-06 (all as recommended) |
-| [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide, trace taps, Gremlin Input Tester, Reset Devices | 133 | 19 | 29 | reviewed 2026-10-06 (all as recommended) |
+| [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide, trace taps, Gremlin Input Tester, Reset Devices | 137 | 19 | 29 | reviewed 2026-10-06 (all as recommended) |
 | [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 125 | 18 | 37 | reviewed 2026-10-06 (all as recommended) |
 | [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 95 | 21 | 29 | reviewed 2026-10-06 (all as recommended) |
 | [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page | 111 | 20 | 23 | reviewed 2026-10-06 (all as recommended) |
