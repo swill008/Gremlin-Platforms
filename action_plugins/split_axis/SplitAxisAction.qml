@@ -50,13 +50,17 @@ Item {
         RowLayout {
             id: _lowerHeader
 
+            Layout.fillWidth: true
+
+            // Takes the room left beside Add Action and wraps in a narrow
+            // pane rather than pushing the selector past the right edge.
             Label {
+                Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(100)
+
+                wrapMode: Text.Wrap
                 text: "Actions for the <b>lower / left</b> part of the split. "
                     + "Reversed: full at the lower end, at rest at the split point."
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
             }
 
             ActionSelector {
@@ -93,12 +97,16 @@ Item {
         RowLayout {
             id: _upperHeader
 
-            Label {
-                text: "Actions for the <b>upper / right</b> part of the split."
-            }
+            Layout.fillWidth: true
 
-            Rectangle {
+            // Takes the room left beside Add Action and wraps in a narrow
+            // pane rather than pushing the selector past the right edge.
+            Label {
                 Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(100)
+
+                wrapMode: Text.Wrap
+                text: "Actions for the <b>upper / right</b> part of the split."
             }
 
             ActionSelector {

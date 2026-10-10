@@ -3,7 +3,7 @@
 
 """Action editors fit the Configuration pane (no behaviour change).
 
-The Dual Axis Deadzone and Send OSC editors are shown in the off-screen
+The Dual Axis Deadzone, Send OSC and Split Axis editors are shown in the off-screen
 program's Configuration pane at the default window size and at a narrower
 one. Every visible control stays inside the editor's width (the pane's
 content width less the standard right margin the binding gives every
@@ -30,6 +30,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 EDITORS = [
     ("dual-axis-deadzone", "Dual Axis Deadzone", "DualAxisDeadzoneAction"),
     ("send-osc", "Send OSC", "SendOscAction"),
+    ("split-axis", "Split Axis", "SplitAxisAction"),
 ]
 # Default window size, and a narrower one (a narrower pane).
 WIDTHS = [1600, 1280]
@@ -173,7 +174,9 @@ def measured(tmp_path_factory: pytest.TempPathFactory) -> dict:
 def test_editor_fits_the_pane(measured: dict, tag: str, width: int) -> None:
     """Spec: none (no behaviour change). AX2: Dual Axis Deadzone's Add Action
     buttons were cut off ("Add A"); O2: Send OSC ran under the pane's
-    scrollbar. Each editor lays out inside its own width."""
+    scrollbar; SA1: Split Axis's "Actions for the lower / left part" label
+    pushed its Add Action selector out of the pane. Each editor lays out
+    inside its own width."""
     got = measured[(tag, width)]
     edge = got["editor_right"]
     assert got["clip_right"] is None or edge <= got["clip_right"] + 0.5
