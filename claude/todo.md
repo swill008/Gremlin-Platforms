@@ -418,14 +418,17 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     may still see a hidden pad). Verify read-only and say so in Help. Not started.
 86. (RW5, 2026-10-10): the Reset Devices Xbox note shows "can t" on screen (apostrophe missing; the text in the
     code has it). Check the off-screen render. Not started.
-87. (SA1, 2026-10-10; 05 gap SA1, found by the action editor matrix): the Split Axis editor overflows the pane: its
+87. DONE 2026-10-10 (SA1, 2026-10-10; 05 gap SA1, found by the action editor matrix): the Split Axis editor overflows the pane: its
     label row hides the Add Action selector (matrix screenshot split-axis_axis.png). qml/LabelValueComboBox.qml's
-    250 dp minimum width forces the wrapping. Awaiting the user. Not started.
-88. (O1, 2026-10-10): Logical Device self-target / loop guard. Plan given to the user 2026-10-10; awaiting the
-    user's answers O1-Q1..Q4. Not started.
+    250 dp minimum width forces the wrapping. In progress 2026-10-10.
+88. (O1, 2026-10-10): Logical Device self-target / loop guard. User approved P1+P2+P3 (D-06-LD-LOOP; 06 S92-S94):
+    a new Map to Logical Device never starts on its own control, the picker never offers it, loops stop after 8
+    hops with one user-log warning and one notice per Run. In progress 2026-10-10.
 
 ## On hold / parked (user's choice)
 
+89. (LD2, 2026-10-10, found by LD-GUARD): the Logical Device loop guard only catches a macro step re-triggering its own control when the cycle is under 0.1 s; a slower macro self-loop isn't stopped, and mashing a button that runs such a macro faster than 10/s for 8 presses could be stopped by mistake. A full fix carries the chain on each event (event path). Not started.
+90. (LD1, 2026-10-10, found by LD-PICK): a Map to Logical Device loaded from a profile that already targets its own control keeps that target (defaults never change loaded data, S92) but its picker shows nothing selected; the loop guard stops it at Run. Not started.
 32. **N22** – Inconsistent controls in action editors (on hold).
 33. **OSC** (parked 2026-10-02; **picked up 2026-10-09**: decisions D-09-OSC-FILE, D-09-OSC-INPUT, D-09-OSC-FAULTS, spec 09; being built in this batch):
     - **B15 – SUPERSEDED 2026-10-09 (D-09-OSC-FAULTS): input 8001 (intended, adjustable), output 8000, one value each (09 S6).** Default ports clash and disagree. The program listens on

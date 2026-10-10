@@ -302,9 +302,11 @@ function topics() {
                 + "<li>For a button, tick <b>Invert activation</b> if you need it.</li>"
                 + "</ol>"
                 + _good([
-                    "<b>Assign Hardware</b> on the Logical Device creates these actions for you."
+                    "<b>Assign Hardware</b> on the Logical Device creates these actions for you.",
+                    "On a Logical Device control, the list never offers that same control, and a new action never starts on it. If it is the only control of its type, a new one is made for the action.",
+                    "A loop between controls is stopped; see " + "<a href=\"topic:logical-device-q-loop\">Why was a loop between controls stopped?</a>" + "."
                 ]),
-            related: ["logical-device-assign-hardware", "logical-device-about"]
+            related: ["logical-device-assign-hardware", "logical-device-about", "logical-device-q-loop"]
         },
         {
             id: "configuration-actions-map-to-keyboard",

@@ -296,3 +296,13 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | AX1: name first Merge Axis / Dual Axis Deadzone instance (S120) | fix | 3–8 min (table) | 5 min | 08:56–09:01 |
 | 2026-10-10 | DOCS3: map, decisions, to-do, Help for matrix fixes | docs | 3–8 min (table) | 3 min | 09:01–09:04 |
 | 2026-10-10 | Full run + lint, matrix fixes (lead) | test | 6–7 min + lint (table) | 6 min | 09:05–09:11; all green, 4,708 passed |
+| 2026-10-10 | SA1: Split Axis editor width | fix | 3–8 min (table) | 1 min | 09:12–09:13 (61 s) |
+| 2026-10-10 | LD-DOCS: spec 06 S92-S94, decision, Help | docs | 3–8 min (table) | 2 min | 09:13–09:15 |
+| 2026-10-10 | LD-PICK: Logical default + picker (S92 S93) | fix | 3–8 min (table) | 6 min | 09:12–09:18 |
+| 2026-10-10 | LD-E2E: real-path loop tests (7 cases) | test | 3–8 min (table) | 6 min | 09:13–09:19; old code: 4 stack overflows + 2 runaways |
+| 2026-10-10 | LD-GUARD: loop guard module (S94) | fix | 3–8 min (table) | 8 min | 09:12–09:20 |
+| 2026-10-10 | LD-PICK follow-up: pass chain source to guard | fix | 3–8 min (table) | 2 min | 09:19–09:20 |
+| 2026-10-10 | Lead: map row + to-do 89/90 for the loop guard | docs | ~2 min (no timing row for lead docs) | 2 min | 09:20–09:22 |
+| 2026-10-10 | Full run + lint, loop guard batch (lead) | test | 6–7 min + lint (table) | 7 min | 09:20–09:27; 1 failure (test_logical_layout new action on OK), 5 pyright new |
+| 2026-10-10 | LD-PICK fix: picker refresh reported as edit (regression) + 5 pyright | fix | 3–8 min (table) | 3 min | 09:28–09:30 |
+| 2026-10-10 | Full run + lint after LD-PICK fix (lead) | test | 6–7 min + lint (table) | 7 min | 09:31–09:38; all green, 4,543 passed + 75 + 42 |

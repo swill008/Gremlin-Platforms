@@ -251,6 +251,18 @@ function topics() {
             related: ["logical-device-assign-hardware"]
         },
         {
+            id: "logical-device-q-loop",
+            section: questions,
+            title: "Why was a loop between controls stopped?",
+            body: "<p>A control's actions sent back to itself, directly or through other controls (for example Axis 1 › Axis 2 › Axis 1). The program stops a loop after 8 hops (one hop is one control sending to the next) so it can't freeze the program.</p>"
+                + _good([
+                    "The notice names the loop, for example \"Logical Device: a loop between controls was stopped (Axis 1 → Axis 1)\". It shows once per Run, and one warning is written to <b>user.log</b>.",
+                    "To fix it, open the controls named in the notice and change the Map to Logical Device or macro step that sends back along the loop.",
+                    "Map to Logical Device never offers the control it sits on; see " + _link("configuration-actions-map-to-logical-device", "Map to Logical Device") + "."
+                ]),
+            related: ["configuration-actions-map-to-logical-device", "logical-device-add-action"]
+        },
+        {
             id: "logical-device-q-no-controls",
             section: questions,
             title: "Why is the Logical Device page empty?",
