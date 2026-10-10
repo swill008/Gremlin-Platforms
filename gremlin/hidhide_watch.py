@@ -352,34 +352,44 @@ def _stick(device_uuid: uuid.UUID) -> Any | None:  # noqa: ANN401
     return None
 
 
+def _row_ids(row: dict) -> set[str]:
+    return {
+        str(i).upper() for i in row.get("instanceIds") or [row.get("instanceId")] if i
+    }
+
+
 def _stick_rows(dev: Any, rows: list[dict]) -> list[dict]:  # noqa: ANN401
-    """HidHide's device rows for this stick: same VID/PID, narrowed by the
-    HidHide window's link to the device name when two sticks match."""
-    from gremlin.ui import hidhide as hh
+    """HidHide's device rows for this stick, found by its own HID instance
+    path (DirectInput's answer for its GUID), never by its name: twins share
+    the name, VID and PID. Without a path, VID/PID only, and only when no
+    other plugged stick has the same VID/PID."""
+    from gremlin import device_initialization, device_paths
 
     try:
         vid, pid = int(dev.vendor_id), int(dev.product_id)
     except (TypeError, ValueError, AttributeError):
         return []
-    hits = []
-    for row in rows:
-        ids = row.get("instanceIds") or [row.get("instanceId")]
-        if any(hidhide_driver._vid_pid(str(i)) == (vid, pid) for i in ids if i):
-            hits.append(row)
-    if len(hits) > 1:
-        links = {k.upper(): v for k, v in hh._load_links().items()}
-        named = [
-            row
-            for row in hits
-            if any(
-                links.get(str(i).upper()) == dev.name
-                for i in row.get("instanceIds") or [row.get("instanceId")]
-                if i
-            )
-        ]
-        if named:
-            hits = named
-    return hits
+    try:
+        path = device_paths.hid_instance(dev.device_guid.uuid)
+    except Exception:
+        path = ""
+    if path:
+        return [row for row in rows if path.upper() in _row_ids(row)]
+    try:
+        twins = sum(
+            1
+            for other in device_initialization.physical_devices()
+            if (int(other.vendor_id), int(other.product_id)) == (vid, pid)
+        )
+    except Exception:
+        twins = 1
+    if twins > 1:
+        return []
+    return [
+        row
+        for row in rows
+        if any(hidhide_driver._vid_pid(i) == (vid, pid) for i in _row_ids(row))
+    ]
 
 
 def _not_hidden(devices: list[str] | None) -> dict[str, str]:

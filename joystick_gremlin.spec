@@ -108,6 +108,7 @@ tester_binaries = [
 ]
 tester_hidden_imports = [
     "dill",
+    "gremlin.device_paths",
     "gremlin.input_tester",
     "gremlin.input_tester.compare",
     "gremlin.input_tester.devices",

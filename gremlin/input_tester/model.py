@@ -134,6 +134,13 @@ def _valid_gremlin_dir(value: str | None) -> str | None:
     return str(path)
 
 
+def _content(expected: dict | None) -> dict | None:
+    """expected.json without its write time: what a change is compared on."""
+    if expected is None:
+        return None
+    return {k: v for k, v in expected.items() if k != "written"}
+
+
 class InputTesterModel(QtCore.QObject):
     rowsChanged = QtCore.Signal()
     activityChanged = QtCore.Signal()
@@ -366,8 +373,11 @@ class InputTesterModel(QtCore.QObject):
             self._hid, self._hid_skips = list(kept), list(skipped)
         except Exception:  # noqa: BLE001
             self._hid, self._hid_skips = [], []
+        before = self._expected
         self._read_expected()
-        self._log_expected(self._first_refresh)
+        # Refresh re-reads the file; it says "changed" only when it did.
+        if self._first_refresh or _content(before) != _content(self._expected):
+            self._log_expected(self._first_refresh)
         self._first_refresh = False
         self._recompare()
         self._log_open_results()
@@ -388,8 +398,12 @@ class InputTesterModel(QtCore.QObject):
         # and the rows and the axes read follow it (02 S146).
         devices_changed = seen != self._seen
         if file_changed:
+            before = self._expected
             self._read_expected()
-            self._log_expected(False)
+            # Rewritten with the same devices and settings: not a change.
+            file_changed = _content(before) != _content(self._expected)
+            if file_changed:
+                self._log_expected(False)
         if devices_changed:
             self._seen = seen
         if file_changed or devices_changed:

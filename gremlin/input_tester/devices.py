@@ -14,6 +14,7 @@ from ctypes import wintypes
 from dataclasses import dataclass, field
 
 import dill
+from gremlin import device_paths
 from gremlin.axis_names import AXIS_SHORT
 
 VJOY_VID = 0x1234
@@ -37,6 +38,9 @@ class SeenDevice:
     hats: int = 0
     axis_ids: list[int] = field(default_factory=list)
     pad: int = 0  # XInput pad 1-4
+    # HID instance path (upper case) DirectInput gives for it; "" unknown.
+    # What it is matched on: twins share a name and may swap GUIDs.
+    instance_id: str = ""
     handle: object = field(default=None, compare=False, repr=False)  # dill.GUID
 
     @property
@@ -140,6 +144,7 @@ def directinput_devices() -> list[SeenDevice]:
                 hats=int(info.hat_count),
                 axis_ids=axis_ids,
                 handle=info.device_guid,
+                instance_id=device_paths.hid_instance(guid),
             )
         )
         _note_open(OpenResult("directinput", seen[-1].name, guid, True, text="listed"))

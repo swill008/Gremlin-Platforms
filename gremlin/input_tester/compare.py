@@ -145,13 +145,31 @@ def _ids(device: SeenDevice) -> str:
 
 
 def _take(
-    pool: list[SeenDevice], guid: str, vid: int, pid: int, name: str
+    pool: list[SeenDevice],
+    guid: str,
+    vid: int,
+    pid: int,
+    name: str,
+    instance_ids: list[str] | None = None,
 ) -> SeenDevice | None:
-    """Removes and returns the seen device matching by GUID, else VID/PID + name."""
+    """Removes and returns the seen device that is this one: by its HID
+    instance path first; else by GUID, else VID/PID + name, but never a
+    device whose own path says it's another (twins share a name, and
+    DirectInput may give one twin the other's GUID in this process)."""
+    paths = {str(i).upper() for i in instance_ids or [] if i}
+
+    def other(device: SeenDevice) -> bool:
+        return bool(paths and device.instance_id and device.instance_id not in paths)
+
+    if paths:
+        for device in pool:
+            if device.instance_id and device.instance_id in paths:
+                pool.remove(device)
+                return device
     if guid:
         wanted = normalise_guid(guid)
         for device in pool:
-            if device.guid and device.guid == wanted:
+            if device.guid and device.guid == wanted and not other(device):
                 pool.remove(device)
                 return device
     if vid or pid:
@@ -161,6 +179,7 @@ def _take(
                 device.vid == vid
                 and device.pid == pid
                 and _norm_name(device.name) == wanted_name
+                and not other(device)
             ):
                 pool.remove(device)
                 return device
@@ -296,6 +315,7 @@ def compare(expected: dict | None, seen: list[SeenDevice], steam: bool) -> Verdi
             int(stick.get("vid", 0) or 0),
             int(stick.get("pid", 0) or 0),
             windows_name,
+            list(stick.get("instance_ids") or []),
         )
         feeds = ", ".join(stick.get("feeds") or [])
         row = Row(
