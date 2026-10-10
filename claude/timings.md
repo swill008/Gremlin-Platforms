@@ -275,3 +275,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Commit batch in 9 group commits (lead) | docs | ~2 min (table) | 2 min | 07:46–07:48 |
 | 2026-10-10 | TTS81: release Text to Speech at exit (to-do 81) | fix | 3–8 min (table) | 1.5 min | 07:46–07:47 (91 s by the agent's run time) |
 | 2026-10-10 | Final full run + lint (lead) | test | 5–6 min + lint (table) | 6 min | 07:48–07:54; all green, 4,262 passed; 2 new ruff long lines fixed after |
+| 2026-10-10 | Help: HidHide off/on and Gremlin always sees devices (lead) | docs | 3–8 min (table) | 3 min | 08:04–08:07; full run deferred until Gremlin closes |
+| 2026-10-10 | TWIN: twin pads by path, tester 'changed' on Refresh | fix | 3–8 min (table) | 7 min | 08:07–08:14 |
+| 2026-10-10 | TESTBTN: tester buttons area fills height, scroll to pressed (S147 S148) | feature | 3–8 min (table) | 4 min | 08:14–08:18 |
+| 2026-10-10 | DOCS2: map, decisions, to-do for TWIN + TESTBTN | docs | 3–8 min (table) | 2 min | 08:18–08:20 |
+| 2026-10-10 | OOS1: out-of-step false alarm after Stop (rest counted as written) | fix | 3–8 min (table) | 2 min | 08:18–08:20 |
+| 2026-10-10 | DOCS2: OOS1 map pass (01, 06) | docs | 3–8 min (table) | 1 min | 08:21–08:22 |

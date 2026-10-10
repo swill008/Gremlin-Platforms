@@ -412,6 +412,12 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     process_event only via InputModuleRuntime._on_key, runtime.py:185-196, claim_allows_key). As for profile
     keys, with no Keyboard claim saved every key passes (claim.py:173-174). Not verified in a live Run.
     Checking in this batch.
+84. (TWIN, 2026-10-10; 02 gap TW-XBOX-SLOT): the Input Tester's Xbox rows compare Gremlin's Xbox output pad
+    number with the Windows XInput slot number, which are numbered differently; match them properly. Not started.
+85. (TWIN, 2026-10-10): not verified whether HidHide can hide an Xbox pad from XInput (a program reading XInput
+    may still see a hidden pad). Verify read-only and say so in Help. Not started.
+86. (RW5, 2026-10-10): the Reset Devices Xbox note shows "can t" on screen (apostrophe missing; the text in the
+    code has it). Check the off-screen render. Not started.
 
 ## On hold / parked (user's choice)
 
