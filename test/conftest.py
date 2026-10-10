@@ -39,6 +39,21 @@ import vjoy_guard  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 vjoy_guard.install()
 
+# DL1: no test process ever loads the real dill.dll (it loads on first use);
+# the fake comes from test/fake_hardware. Child processes get the same guard
+# from test/hang_trace/sitecustomize.py.
+import dill  # noqa: E402
+
+
+def _refuse_real_dill(path: str) -> None:
+    raise RuntimeError(
+        "tests must use test/fake_hardware: the real dill.dll was about to "
+        f"load ({path})"
+    )
+
+
+dill._load_dll = _refuse_real_dill  # type: ignore[assignment]
+
 import gremlin.util  # noqa: E402
 
 gremlin.util.userprofile_path = Mock(return_value=tempfile.mkdtemp())

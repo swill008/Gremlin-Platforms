@@ -9,6 +9,7 @@ import ctypes
 import ctypes.wintypes as ctwt
 import os
 import sys
+import threading
 import uuid
 from enum import Enum
 from typing import Callable
@@ -312,13 +313,47 @@ def _load_dll(path: str) -> ctypes.CDLL:
 
 
 _dll_path = dll_path()
-_di_listener_dll = _load_dll(_dll_path)
+# The real library, once loaded; None until the first call that needs it
+# (never at import, so tests can swap in a fake first).
+_di_listener_dll: ctypes.CDLL | None = None
+_load_lock = threading.Lock()
 
 
-class DILL:
+class _DillMeta(type):
+    """Makes DILL._dll load the library on first use; setting it (tests'
+    fake) means the real one never loads."""
+
+    @property
+    def _dll(cls):  # noqa: ANN202
+        dll = cls.__dict__["_dll_handle"]
+        if dll is None:
+            dll = _load_real_dll()
+        return dll
+
+    @_dll.setter
+    def _dll(cls, value) -> None:  # noqa: ANN001
+        with _load_lock:
+            type.__setattr__(cls, "_dll_handle", value)
+
+
+def _load_real_dll() -> ctypes.CDLL:
+    """The one load of dill.dll, on first use; thread safe."""
+    global _di_listener_dll
+    with _load_lock:
+        dll = DILL.__dict__["_dll_handle"]
+        if dll is None:
+            dll = _load_dll(DILL._dll_path)
+            DILL._apply_api(dll)
+            _di_listener_dll = dll
+            type.__setattr__(DILL, "_dll_handle", dll)
+        return dll
+
+
+class DILL(metaclass=_DillMeta):
     _dll_path = _dll_path
-    # The one load above; tests swap in a fake by setting DILL._dll.
-    _dll = _di_listener_dll
+    # Loaded on first use (see _DillMeta); tests swap in a fake by setting
+    # DILL._dll.
+    _dll_handle = None
     _dill_initialized = False
     device_change_callback_fn = None
     input_event_callback_fn = None
@@ -401,12 +436,14 @@ class DILL:
 
     @staticmethod
     def initialize_capi() -> None:
+        DILL._apply_api(DILL._dll)
+
+    @staticmethod
+    def _apply_api(dll: object) -> None:
         for fn_name, params in DILL.api_functions.items():
-            dll_fn = getattr(DILL._dll, fn_name)
+            dll_fn = getattr(dll, fn_name)
             if "arguments" in params:
                 dll_fn.argtypes = params["arguments"]
             if "returns" in params:
                 dll_fn.restype = params["returns"]
 
-
-DILL.initialize_capi()

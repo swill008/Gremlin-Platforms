@@ -85,8 +85,51 @@ def _guard_vjoy() -> None:
         sys.stderr.write(f"vjoy guard not installed: {e!r}\n")
 
 
+_NO_REAL_DILL = (
+    "tests must use test/fake_hardware: the real dill.dll was about to load "
+    "({path})"
+)
+
+
+def _refuse_real_dill(path: str) -> None:
+    raise RuntimeError(_NO_REAL_DILL.format(path=path))
+
+
+class _DillGuard:
+    """Import hook: once dill is imported, its loader refuses the real
+    dill.dll (it loads on first use, never at import). A program the tests
+    start must install test/fake_hardware before it reads devices."""
+
+    def find_spec(self, name, path=None, target=None):  # noqa: ANN001, ANN202
+        if name != "dill":
+            return None
+        import importlib.machinery
+
+        spec = importlib.machinery.PathFinder.find_spec(name, path)
+        if spec is None or spec.loader is None:
+            return spec
+        exec_module = spec.loader.exec_module
+
+        def guarded(module):  # noqa: ANN001, ANN202
+            exec_module(module)
+            setattr(module, "_load_dll", _refuse_real_dill)
+
+        spec.loader.exec_module = guarded  # type: ignore[method-assign]
+        return spec
+
+
+def _guard_dill() -> None:
+    """The programs the tests start never load the real dill.dll."""
+    dill = sys.modules.get("dill")
+    if dill is not None:
+        setattr(dill, "_load_dll", _refuse_real_dill)
+    else:
+        sys.meta_path.insert(0, _DillGuard())
+
+
 if _LIMIT:
     _guard_vjoy()
+    _guard_dill()
     import stall_watch
 
     threading.Thread(

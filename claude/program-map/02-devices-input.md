@@ -466,6 +466,8 @@ An Xbox pad can change layout under the same Device ID: when its Xbox connection
 
 ## 10. Known gaps
 
+- **DL1** (fixed 2026-10-10, user-approved): every test process loaded the real `dill.dll` at import (and some test child processes never installed the fake). `dill/__init__.py` now loads the library on first use only (setting `DILL._dll` to a fake means it never loads); `test/conftest.py` and `test/hang_trace/sitecustomize.py` (children) refuse the real library. Test: `test_dill_safety.py` (4). Full run 2026-10-10: no test reaches it.
+
 - **KEY-NAME-ORDER** (fixed 2026-10-10): `keyboard.key_from_name` saved a typed letter under its typed case, so `key_from_code` later named the key "a" instead of "A" depending on which lookup ran first (Keyboard page titles changed with test order). Now a name lookup reuses the by-code key. Test: `test_keyboard_layout.py::test_key_names_do_not_depend_on_which_lookup_ran_first`.
 
 **Code differs from the spec or a rule** (the 6 Oct list; catch-up batches 1-3 fixed all but G6 and G13, see Status)

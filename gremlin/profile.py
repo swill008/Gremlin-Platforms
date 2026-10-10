@@ -1174,7 +1174,7 @@ class Library:
         note_edit()
         if key not in self._actions:
             logging.getLogger("system").warning(
-                f"Attempting to remove non-existant action with id {key}."
+                f"Attempting to remove non-existent action with id {key}."
             )
         if key in self._actions:
             del self._actions[key]
@@ -2700,7 +2700,7 @@ class ModeHierarchy:
         note_edit()
         if not self.mode_exists(mode_name):
             raise error.GremlinError(
-                f"Attempting to delete a non-existant mode '{mode_name}'."
+                f"Attempting to delete a non-existent mode '{mode_name}'."
             )
 
         if len(self.mode_list()) <= 1:
@@ -2789,7 +2789,7 @@ class ModeHierarchy:
         # Handle missing mode to rename
         if not self.mode_exists(old_name):
             raise error.GremlinError(
-                f"Attempting to rename non-existant mode '{old_name}'"
+                f"Attempting to rename non-existent mode '{old_name}'"
             )
         elif not clean_mode_name(new_name):
             raise error.GremlinError("A mode needs a name.")

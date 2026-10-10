@@ -326,7 +326,7 @@ class LogicalLayoutModel(ControlLayoutModel):
             item.osc_uid = osc_uid  # type: ignore[attr-defined]
         logical_type = record["logical_type"]
         logical_id = int(record["logical_id"])
-        for _item, _binding, action in self._links_for(logical_type, logical_id):
+        for _item, _binding, _action in self._links_for(logical_type, logical_id):
             if (
                 _item.device_id == item.device_id
                 and _item.input_type == item.input_type

@@ -551,7 +551,7 @@ def convert_friendly_keys(rows: OscRows | None = None) -> bool:
         if not isinstance(claim, dict) or not isinstance(names, dict):
             return False
         moved = {}
-        for key, value in names.items():
+        for key in names:
             new_key = _uid_key(target, key)
             if new_key and not names.get(new_key):
                 moved[key] = new_key

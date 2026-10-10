@@ -156,7 +156,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-09 | OSC: friendly names by uid (OSC-file follow-up) | fix | ~8 min | 2 min | 14:50–14:52 |
 | 2026-10-09 | OSC: port only when profile uses OSC (OSC-run follow-up) | fix | ~8 min | 1 min | 14:51–14:52 |
 | 2026-10-09 | OSC: profile v16 + missing bindings never fire (OSC-profile incl. follow-up) | feature | ~20 min | 11 min | 14:43–14:54 |
-| 2026-10-09 | OSC: carry-through tests (OSC-carry) | test | ~15 min | 2 min | 14:52–14:54 |
+| 2026-10-09 | OSC: carry-through tests (OSC-carry) | test | ~15 min | 1 min | 14:51–14:52 |
 | 2026-10-09 | OSC: Listen TypeError fix in osc_bulk (lead) | fix | ~3 min | 2 min | 14:55–14:57 |
 | 2026-10-09 | OSC: end-to-end tests, found Listen bug (OSC-e2e) | test | ~15 min | 5 min | 14:51–14:56 |
 | 2026-10-09 | OSC: Device Pack honours pending OSC rows (OSC-refs follow-up) | fix | ~5 min | 2 min | 14:54–14:56 |
@@ -430,3 +430,22 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | SB-MAP: map, S132 (PB2), D-05-PAGE-PARTS, glossary | docs | 3–8 min (table) | 5 min | 14:12–14:17 |
 | 2026-10-10 | Shared parts full run + lint (lead) | test | 6–7 min + lint (table) | 5.5 min | 14:17–14:23; run 5:14; 1 fail = key title 'a' vs 'A' (order-dependent) |
 | 2026-10-10 | KEYNAME: key names depended on lookup order ('a' vs 'A') — fixed in keyboard.py + test | fix | 3–8 min (table) | 2 min | 14:23–14:25 |
+| 2026-10-10 | To-do 91 Method B end to end (approve 14:05 -> push 14:25) | batch | 35–50 min + CI (quoted) | 20 min | 14:05–14:25; CI pending |
+| 2026-10-10 | Lead: audit brief + 10 audit agent briefs | planning | no timing data yet; rough guess 5 min | 3 min | 14:29–14:32 |
+| 2026-10-10 | AUD-MOD: audit 03 + 10 (gap #28 confirmed + 3 related save issues, stale map) | review | 10–15 min (brief) | 3 min | 14:30–14:33 |
+| 2026-10-10 | AUD-BMH: audit 07 + 08 (Q15 already fixed; maps stale; EVO R fallback) | review | 10–15 min (brief) | 3 min | 14:30–14:33 |
+| 2026-10-10 | AUD-ACT: audit 05 (2 spec gaps, stale map, dead code, listener risk) | review | 10–15 min (brief) | ~4 min | 14:30–14:34 (agent clock unreliable) |
+| 2026-10-10 | AUD-RUN: audit 06 (map stale, arrow text, to-do 89/90, output guard, registry cache) | review | 10–15 min (brief) | 4 min | 14:30–14:34 |
+| 2026-10-10 | AUD-DEV: audit 02 (14 findings; a test child process loads the real dill) | review | 10–15 min (brief) | ~5 min | 14:30–14:35 |
+| 2026-10-10 | AUD-SHELL: audit 01 + 04 (maps stale, ColorInformation chain dead, dead slots; typo fix) | review | 10–15 min (brief) | ~5 min | 14:30–14:35 |
+| 2026-10-10 | AUD-FILES: file writes + carry-through (Module Setup names overwrite, gap #28, unsafe fallback write, carry gaps) | review | 10–15 min (brief) | 4 min | 14:30–14:34 |
+| 2026-10-10 | AUD-OSC: audit 09 (Listening box stale fields, tosc recursion crash, server threads, legacy compat code, ColorInformation chain) | review | 10–15 min (brief) | 4 min | 14:30–14:34 |
+| 2026-10-10 | AUD-THREADS: threads sweep (exit crash = Qt clean-up at os._exit; 2 unbounded waits; History order race; tester flag race) | review | 10–15 min (brief) | ~7 min | 14:30–14:37 (agent clock unreliable) |
+| 2026-10-10 | AUD-LINT: 883 type findings triaged (9 real), dead code/signals sweep | review | 10–15 min (brief) | 10 min | 14:30–14:40 |
+| 2026-10-10 | Lead: DL1 dill test-safety check (verified real DLL loads at import in every test process) + brief | review | no timing data yet; rough guess 5 min | 5 min | 14:40–14:45 |
+| 2026-10-10 | SHAKE-JOURNEYS: 40 random journeys (3,600 steps) + editors at 3 scales x 2 themes | test | rough guess 15–25 min (no row) | 13 min | 14:34–14:47 |
+| 2026-10-10 | SHAKE-DAMAGE: 331 damaged-file cases (1 data loss in logical_device.json, History/Library/pack crashes) | test | rough guess 15–20 min (no row) | 14 min | 14:33–14:47 |
+| 2026-10-10 | DILL-SAFE: dill loads on first use + child-process guard + 4 tests | fix | 3–8 min (table) | 6 min | 14:45–14:51 |
+| 2026-10-10 | Lead: main test process refuses the real dill too (test/conftest.py) | fix | 3–8 min (table: agent fix) | 1 min | 14:51–14:52 |
+| 2026-10-10 | SHAKE-STRESS: 6 stress scenarios (clean core; release-entry leak, Options/viewer leaks, harness qWait starves threads) | test | rough guess 15–25 min (no row) | 25 min | 14:34–14:59 |
+| 2026-10-10 | Full run with dill guard (DL1 c) | test | 6–7 min + lint (table) | 5 min | 14:59–15:05; run 4:51; 0 tests reach the real dill; 1 order-dependent History test |
