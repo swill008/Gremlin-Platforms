@@ -226,7 +226,7 @@ function topics() {
                 + "<li>Change the sections you want. <b>Open All</b> and <b>Close All</b> expand or fold them.</li>"
                 + "<li>Choose <b>Save Appearance</b> to keep the changes.</li>"
                 + "</ol>"
-                + "<p>Configuration page sections: <b>Screen</b> (background color or image), <b>Shown</b> (child rows, live bars, LED dots, summary), <b>List</b> and <b>Group</b> (spacing and group cards), <b>Parent Row</b> and <b>Child Row</b> (row size, padding, colors), <b>Text</b>, <b>Selection</b>, and <b>Editor</b> (the action editor beside a row).</p>"
+                + "<p>Each list page keeps its own Appearance. Sections: <b>Shown</b>, <b>Live</b> (Configuration page), <b>Handles</b>, <b>List</b>, <b>Rows</b> (alignment and width of input and action rows, space between groups), <b>Group</b>, <b>Parent Row</b> and <b>Action Row</b> (row size, padding, colors), <b>Text</b> and <b>Selection</b>.</p>"
                 + "<p>Output View sections: <b>Screen</b>, <b>Layout</b>, <b>Pads</b>, <b>Meters</b>, <b>Buttons</b> and <b>Colors</b>.</p>"
                 + _good([
                     "<b>Reset Appearance</b> (red) restores the built-in look; <b>Copy Appearance from…</b> copies another device's look. Both still need Save Appearance.",

@@ -414,67 +414,8 @@ def _load_module_doc(device_name: str, guid: str = "") -> dict:
         hats=len(claim.get("hats") or []),
         nodes=len(data.get("nodes") or []) if isinstance(data.get("nodes"), list) else 0,
         view="view" in data,
-        catalog="catalog" in data,
     )
     return data
-
-
-_DEFAULT_CATALOG = {
-    "listPadding": 8,
-    "rowSpacing": 4,
-    "parentHeight": 50,
-    "childHeight": 36,
-    "parentAlign": "left",
-    "parentLeft": 0,
-    "parentRight": 0,
-    "parentWidthPct": 100,
-    "childAlign": "left",
-    "childLeft": 24,
-    "childRight": 24,
-    "childWidthPct": 50,
-    "parentFont": 13,
-    "childFont": 12,
-    "summaryFont": 12,
-    "parentBold": True,
-    "showChildren": True,
-    "showLiveBars": True,
-    "showLeds": True,
-    "showSummary": True,
-    "rowRadius": 3,
-    "nameColW": 180,
-    "childNameColW": 160,
-    "rowInnerPad": 10,
-    "editorIndent": 12,
-    "editorAlign": "left",
-    "editorRight": 0,
-    "editorWidthPct": 100,
-    "editorPad": 10,
-    "editorGap": 4,
-    "editorRadius": 3,
-    "editorBorderW": 1,
-    "editorAccentW": 3,
-    "showEditorAccent": True,
-    "groupPadShape": "box",
-    "groupPad": 48,
-    "groupPadTop": 48,
-    "groupPadRight": 48,
-    "groupPadBottom": 48,
-    "groupPadLeft": 48,
-    "parkEmptyInUnmapped": False,
-    "unmappedGap": 48,
-    # Colors: "" follows Dark mode; a value is the user's own choice.
-    "colorParent": "",
-    "colorChild": "",
-    "colorSelected": "",
-    "colorText": "",
-    "colorMuted": "",
-    "colorLive": "",
-    "colorBorder": "",
-    "colorSelectBorder": "",
-    "colorEditor": "",
-    "colorEditorBorder": "",
-    "colorEditorAccent": "",
-}
 
 
 _DEFAULT_VIEW = {
@@ -922,40 +863,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def lastSavedPath(self) -> str:
         return self._last_saved_path
 
-    @QtCore.Slot(str, str, result=str)
-    def catalogConfigJson(self, device_name: str, guid: str) -> str:
-        path = store.path_for(device_name, guid) if device_name else None
-        doc = _load_module_doc(device_name, guid) if device_name else {}
-        if path is not None:
-            trace(
-                "READ",
-                "Input Configuration",
-                "catalogConfigJson",
-                path,
-                "ok" if path.is_file() else "missing",
-            )
-        catalog = dict(_DEFAULT_CATALOG)
-        raw = (doc or {}).get("catalog")
-        if isinstance(raw, dict):
-            catalog.update(raw)
-        return json.dumps(catalog)
-
-    @QtCore.Slot(str, result=str)
-    def otherSourceCatalogs(self, current_name: str) -> str:
-        current = str(current_name or "").strip()
-        rows = []
-        seen = set()
-        for row in self._rows:
-            if getattr(row, "direction", "") != "source":
-                continue
-            name = str(getattr(row, "name", "") or "").strip()
-            if not name or name.casefold() == current.casefold() or name.casefold() in seen:
-                continue
-            seen.add(name.casefold())
-            rows.append({"name": name, "guid": str(getattr(row, "guid", "") or "")})
-        rows.sort(key=lambda item: item["name"].lower())
-        return json.dumps(rows)
-
     @QtCore.Slot(str, result=str)
     def otherDestViews(self, current_name: str) -> str:
         current = str(current_name or "").strip()
@@ -971,47 +878,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
             rows.append({"name": name, "guid": str(getattr(row, "guid", "") or "")})
         rows.sort(key=lambda item: item["name"].lower())
         return json.dumps(rows)
-
-    @QtCore.Slot(str, str, str, result=bool)
-    def saveCatalogConfig(self, device_name: str, guid: str, json_text: str) -> bool:
-        name = str(device_name or "").strip()
-        if not name:
-            return False
-        try:
-            incoming = json.loads(json_text or "{}")
-        except json.JSONDecodeError:
-            return False
-        if not isinstance(incoming, dict):
-            return False
-        path = store.path_for(name, guid)
-
-        def change(doc: dict) -> None:
-            catalog = dict(_DEFAULT_CATALOG)
-            raw = doc.get("catalog")
-            if isinstance(raw, dict):
-                catalog.update(raw)
-            catalog.update(incoming)
-            doc["catalog"] = catalog
-            doc.setdefault("kind", "control.hardware")
-            doc.setdefault("device", name)
-
-        _plog("save catalog", name=name, path=str(path))
-        try:
-            if not store.update_path(path, change, "Input Configuration"):
-                return False
-            written = json.loads(path.read_text(encoding="utf-8"))
-            trace("SAVE", "Input Configuration", "saveCatalogConfig", path, "ok")
-        except (OSError, json.JSONDecodeError) as exc:
-            _plog("save catalog failed", path=str(path), error=exc)
-            trace("SAVE", "Input Configuration", "saveCatalogConfig", path, "error")
-            return False
-        if not isinstance(written.get("catalog"), dict):
-            _plog("save catalog mismatch", path=str(path))
-            return False
-        self.viewChanged.emit()
-        _plog("save catalog ok", path=str(path))
-        self._last_saved_path = str(path)
-        return True
 
     @QtCore.Slot(str)
     def ignoreSlug(self, slug: str) -> None:

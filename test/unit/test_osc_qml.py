@@ -160,8 +160,6 @@ def _smoke() -> None:
                 "label",
                 "uid",
                 "actionSequenceCount",
-                "actionSequenceDescriptor",
-                "actionSequenceDisplayMode",
                 "description",
             ],
             start=1,

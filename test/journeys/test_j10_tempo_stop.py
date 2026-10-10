@@ -39,7 +39,7 @@ def story(j: Journey) -> None:
 
     # The pane: a Tempo on button 1 (short: vJoy 5, long: vJoy 6), OK.
     catalog = j.open_configuration("pjoy_pro")
-    catalog.beginPane(j.device_index(catalog, "button", 1), -1)
+    j.open_input(catalog, "button", 1)
     root = j.pane_actions(catalog)[0]
     root.appendAction("Tempo", "children")
     tempo = root.getActions("children")[0]

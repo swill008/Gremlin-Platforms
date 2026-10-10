@@ -1727,42 +1727,6 @@
    "count": 1
   },
   {
-   "file": "gremlin/ui/binding_catalog.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"Literal['QStringList']\" cannot be assigned to parameter \"type\" of type \"type\" in function \"__init__\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/binding_catalog.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
-   "count": 2
-  },
-  {
-   "file": "gremlin/ui/binding_catalog.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot assign to attribute \"deviceName\" for class \"ModuleClaimedInputModel\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/binding_catalog.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot assign to attribute \"guid\" for class \"ModuleClaimedInputModel\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/binding_catalog.py",
-   "rule": "reportOptionalMemberAccess",
-   "message": "\"remove_item_binding\" is not a known attribute of \"None\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/binding_catalog.py",
-   "rule": "reportReturnType",
-   "message": "Type \"Property\" is not assignable to return type \"str\"",
-   "count": 2
-  },
-  {
    "file": "gremlin/ui/button_map_labels.py",
    "rule": "reportArgumentType",
    "message": "Argument of type \"Any | None\" cannot be assigned to parameter \"key\" of type \"InputType\" in function \"get\"",
@@ -1812,39 +1776,9 @@
   },
   {
    "file": "gremlin/ui/device.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"vjoy_device_id\" for class \"AbstractActionData\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"vjoy_input_id\" for class \"AbstractActionData\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"vjoy_input_type\" for class \"AbstractActionData\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device.py",
-   "rule": "reportGeneralTypeIssues",
-   "message": "\"int\" is not iterable",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device.py",
    "rule": "reportOperatorIssue",
    "message": "Operator \"-\" not supported for types \"int | ScanCode | None\" and \"Literal[N]\"",
    "count": 2
-  },
-  {
-   "file": "gremlin/ui/device.py",
-   "rule": "reportOptionalIterable",
-   "message": "Object of type \"None\" cannot be used as iterable value",
-   "count": 1
   },
   {
    "file": "gremlin/ui/device.py",
@@ -1861,25 +1795,7 @@
   {
    "file": "gremlin/ui/device.py",
    "rule": "reportOptionalMemberAccess",
-   "message": "\"drop_inputs\" is not a known attribute of \"None\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device.py",
-   "rule": "reportOptionalMemberAccess",
-   "message": "\"get_actions\" is not a known attribute of \"None\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device.py",
-   "rule": "reportOptionalMemberAccess",
    "message": "\"get_input_item\" is not a known attribute of \"None\"",
-   "count": 2
-  },
-  {
-   "file": "gremlin/ui/device.py",
-   "rule": "reportOptionalMemberAccess",
-   "message": "\"value\" is not a known attribute of \"None\"",
    "count": 1
   },
   {
@@ -3172,7 +3088,7 @@
    "file": "gremlin/ui/binding_catalog.py",
    "rule": "ANN001",
    "message": "Missing type annotation for function argument `item`",
-   "count": 4
+   "count": 3
   },
   {
    "file": "gremlin/ui/binding_catalog.py",
@@ -3182,33 +3098,15 @@
   },
   {
    "file": "gremlin/ui/binding_catalog.py",
-   "rule": "ANN201",
-   "message": "Missing return type annotation for public function `data`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/binding_catalog.py",
-   "rule": "ANN201",
-   "message": "Missing return type annotation for public function `paneModel`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/binding_catalog.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `_control_spec`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/binding_catalog.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 3
+   "count": 1
   },
   {
    "file": "gremlin/ui/device.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 5
+   "count": 4
   },
   {
    "file": "gremlin/ui/device.py",
@@ -3460,7 +3358,7 @@
    "file": "gremlin/ui/module_inputs.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 2
+   "count": 1
   },
   {
    "file": "gremlin/ui/module_inputs.py",
@@ -3520,7 +3418,7 @@
    "file": "gremlin/ui/module_model.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 29
+   "count": 28
   },
   {
    "file": "gremlin/ui/module_model.py",
@@ -3853,82 +3751,10 @@
    "count": 1
   },
   {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `align`",
-   "count": 6
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `d`",
-   "count": 1
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `left`",
-   "count": 6
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `right`",
-   "count": 6
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `total`",
-   "count": 6
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `v`",
-   "count": 1
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `width_pct`",
-   "count": 6
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `leaf_w`",
-   "count": 1
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `leaf_x`",
-   "count": 1
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `num_val`",
-   "count": 1
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `row_w`",
-   "count": 2
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `row_x`",
-   "count": 2
-  },
-  {
-   "file": "test/unit/test_catalog_display.py",
+   "file": "test/unit/test_configuration_page_qml.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 8
+   "count": 2
   },
   {
    "file": "test/unit/test_dest_live_guid.py",
@@ -4021,6 +3847,12 @@
    "count": 1
   },
   {
+   "file": "test/unit/test_list_appearance.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 14
+  },
+  {
    "file": "test/unit/test_logical_layout.py",
    "rule": "ANN001",
    "message": "Missing type annotation for function argument `qapp`",
@@ -4043,12 +3875,6 @@
    "rule": "E501",
    "message": "Line too long (N > N)",
    "count": 1
-  },
-  {
-   "file": "test/unit/test_mode_refresh_and_add_key.py",
-   "rule": "E501",
-   "message": "Line too long (N > N)",
-   "count": 2
   },
   {
    "file": "test/unit/test_output_view_pads.py",

@@ -876,7 +876,7 @@ def history_filter(open_it: Callable[[], object]) -> dict:
 
 def part_history(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     """History as the Button Map's File menu and a Configuration row open it
-    (08 Q15, Q16; GL-188, GL-194)."""
+    (08 Q15, Q16; GL-188, GL-194; the row's menu, 05 S126)."""
     root = main_root(app)
     out["map-file"] = MAP_FILE.name
 
@@ -897,7 +897,7 @@ def part_history(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     # button 1 has an action, so the page lists it).
     from gremlin.plugin_manager import PluginManager
     from gremlin.types import InputType
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    from gremlin.ui.hardware_layout import HardwareLayoutModel
 
     backend = app.backend
     saved = _HOME / "profiles" / "open profile.xml"
@@ -925,26 +925,45 @@ def part_history(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     out["open-profile"] = backend.profilePath()
     ev_in(root, f"openConfigurationForCard(_moduleModel.cardMap({json.dumps(SLUG)}))")
 
-    def row_button() -> QtCore.QObject | None:
-        page = ev_in(root, "catalogPane()")
-        if not isinstance(page, QtCore.QObject):
+    def input_row() -> tuple[QtCore.QObject, str, str] | None:
+        # Stick button 1's input row on the page (a device input, so
+        # deviceIndex >= 0), with the page showing a device.
+        page = ev_in(root, "configurationPane()")
+        if not isinstance(page, QtCore.QObject) or not page.property("guid"):
             return None
-        catalog = page.findChild(BindingCatalogModel)
-        if catalog is None or catalog.rowCount() == 0:
+        layout = page.findChild(HardwareLayoutModel)
+        if layout is None:
             return None
-        content = cast(QtCore.QObject, root.property("contentItem"))
-        for it in walk(content):
-            if it.objectName() == "catalogHistory" and ev_in(
-                it, "(rowKind === 'group' || rowKind === 'unmapped')"
-                " && _root.device !== null && deviceIndex >= 0"
+        names = {int(k): bytes(v).decode() for k, v in layout.roleNames().items()}
+        for row in range(layout.rowCount()):
+            index = layout.index(row, 0)
+            data = {n: layout.data(index, r) for r, n in names.items()}
+            if (
+                data["rowKind"] == "parent" and data["kind"] == "button"
+                and int(data["hwId"]) == 1 and int(data["deviceIndex"]) >= 0
             ):
-                return it
+                return page, str(data["key"]), str(data["title"])
         return None
 
-    button = wait_for(row_button)
-    if not isinstance(button, QtCore.QObject):
-        raise DriveError("no Configuration row with a History button")
-    out["row-filter"] = history_filter(lambda: ev_in(button, "clicked()"))
+    found = wait_for(input_row)
+    if not isinstance(found, tuple):
+        raise DriveError("no Configuration row for stick button 1")
+    page, key, title = found
+
+    def row_history() -> None:
+        # The row's right-click menu (as ControlTree's parentMenu sets it),
+        # then its History entry.
+        if not ev_in(
+            page,
+            f"_menuKey = {json.dumps(key)}; _menuTitle = {json.dumps(title)};"
+            " _menuOnRow = true; _menuOnGroup = false;"
+            " (function() { var r = _layoutMenuModel().quick.filter(function(m)"
+            " { return m.text === 'History' }); if (!r.length) return false;"
+            " r[0].run(); return true })()",
+        ):
+            raise DriveError("no History in the Configuration row's menu")
+
+    out["row-filter"] = history_filter(row_history)
 
 
 def part_quit(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:

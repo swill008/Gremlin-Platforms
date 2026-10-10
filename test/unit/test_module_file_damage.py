@@ -117,12 +117,16 @@ def test_start_fresh_keeps_the_damaged_file(tmp_path: pathlib.Path) -> None:
 def test_layout_saves_are_refused(
     damaged: tuple[pathlib.Path, bytes, str], errors: list
 ) -> None:
+    from gremlin.modules import store
     from gremlin.ui.module_model import ModuleListModel
 
     path, before, guid = damaged
     model = ModuleListModel()
-    catalog = json.dumps({"rowSpacing": 6})
-    assert model.saveCatalogConfig("pJoy Pro", guid, catalog) is False
+    # The Configuration page's groups and order (05 S122; the per-module
+    # Appearance went with D-05-CFG-PAGE CF-Q4).
+    layout = {"groups": ["Throttle"], "order": ["button:1"],
+              "group_of": {"button:1": "Throttle"}}
+    assert store.write_layout(guid, layout, device_name="pJoy Pro") is False
     assert model.saveViewConfig("pJoy Pro", guid, json.dumps({"meters": []})) is False
     assert path.read_bytes() == before  # was: rewritten with 0 of its 40 nodes
     assert len(errors) == 2 and "Nothing was saved" in errors[0][0]

@@ -53,7 +53,6 @@ def story(j: Journey) -> None:
     j.win.setWidth(1600)
     j.win.setHeight(950)
     catalog = j.open_configuration("pjoy_pro")
-    page = j.ev("catalogPane()")
     editors: list[dict] = []
     j.out["editors"] = editors
     for job in jobs:
@@ -62,9 +61,7 @@ def story(j: Journey) -> None:
         editors.append(got)
         mark = len(messages)
         try:
-            hid = j.device_index(catalog, kind, 1)
-            j.ev(f"openAdvancedPane({hid}); true", page)
-            j.wait_until(lambda: catalog.paneModel is not None, "the pane")
+            j.open_input(catalog, kind, 1)
             root = j.wait_until(lambda: j.pane_actions(catalog)[0], "the root action")
             if job["tag"] != "root":
                 before = len(j.pane_actions(catalog))

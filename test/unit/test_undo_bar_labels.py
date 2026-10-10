@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""01 S143: the Configuration page (binding catalog) and the Logical Device
+"""01 S143: the Configuration page (HardwareLayoutModel) and the Logical Device
 page show the shared Undo / Redo bar with the last change beside it. Each
 model names its Undo steps: lastChange is "Last change: X", undone is
 "Undone: X" right after an Undo, and the tips say what Undo / Redo do.
@@ -45,7 +45,7 @@ def _map(item: object, out: int) -> None:
 
 @pytest.fixture
 def catalog() -> Iterator[tuple[object, Profile]]:
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    from test.unit.hardware_page_helper import close, page_on
 
     profile = Profile()
     old = shared_state.current_profile
@@ -54,24 +54,20 @@ def catalog() -> Iterator[tuple[object, Profile]]:
         _STICK, InputType.JoystickButton, 1, "Default", create_if_missing=True
     )
     _map(item, 3)
-    model = BindingCatalogModel()
-
-    def spec(device_index: int) -> tuple:
-        real = profile.get_input_item(_STICK, InputType.JoystickButton, 1, "Default")
-        return profile, _STICK, InputType.JoystickButton, 1, "Default", real
-
-    model._control_spec = spec
-    # The page's name for the input (the claimed rows need a real device).
-    model._step_name = lambda device_index: "Button 1"
+    # The Configuration page's model, its stick listing button 1.
+    model = page_on(_STICK)
     yield model, profile
-    model.endPane()
+    close(model)
     shared_state.current_profile = old
+
+
+_KEY = "parent:button:1"
 
 
 def test_catalog_ok_names_its_step(catalog: tuple[object, Profile]) -> None:
     model, _profile = catalog
     assert model.lastChange == "" and model.undone == ""
-    model.beginPane(0, -1)
+    model.beginPane(_KEY, -1)
     shadow = model._pane_shadow
     shadow.action_sequences[0].root_action.get_actions()[0][0].vjoy_input_id = 8
     model.commitPane()
@@ -88,20 +84,24 @@ def test_catalog_ok_names_its_step(catalog: tuple[object, Profile]) -> None:
 
 def test_catalog_delete_names_its_step(catalog: tuple[object, Profile]) -> None:
     model, profile = catalog
-    item = profile.get_input_item(_STICK, InputType.JoystickButton, 1, "Default")
-    before = model._snapshot(0)
-    binding = item.action_sequences[0]
-    item.remove_item_binding(binding)
-    profile.library.release([binding.root_action])
-    model._step(0, before, label="Delete action from Button 1")
+    # The row's Delete (right-click menu, S126).
+    assert model.deleteAction(_KEY, 0)
     assert model.lastChange == "Last change: Delete action from Button 1"
     # A step with no name: no text.
+    item = profile.get_input_item(
+        _STICK, InputType.JoystickButton, 1, "Default", create_if_missing=True
+    )
     _map(item, 4)
-    before = model._snapshot(0)
-    binding = item.action_sequences[0]
-    item.remove_item_binding(binding)
-    profile.library.release([binding.root_action])
-    model._step(0, before)
+
+    def drop() -> list[dict]:
+        before = model._snapshot(item)
+        binding = item.action_sequences[0]
+        item.remove_item_binding(binding)
+        profile.library.release([binding.root_action])
+        return [{"op": "input", "key": model._input_key(item), "before": before,
+                 "after": model._snapshot(item)}]
+
+    assert model._apply(drop)
     assert model.lastChange == "" and model.undoTip == ""
 
 

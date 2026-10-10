@@ -59,17 +59,18 @@ def _vjoy(out: int) -> Any:  # noqa: ANN401
 
 
 def _catalog(profile: Profile, shown: dict) -> Any:  # noqa: ANN401
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    """The Configuration page's model (HardwareLayoutModel), button 1
+    claimed, showing the mode in shown["mode"]."""
+    from test.unit.hardware_page_helper import page_on
 
-    model = BindingCatalogModel()
-
-    def spec(_index: int) -> tuple:
-        mode = shown["mode"]
-        real = profile.get_input_item(_STICK, InputType.JoystickButton, 1, mode)
-        return profile, _STICK, InputType.JoystickButton, 1, mode, real
-
-    model._control_spec = spec
+    model = page_on(_STICK)
+    model.setMode(shown["mode"])
+    _KEPT.append(model)
     return model
+
+
+_KEPT: list[Any] = []
+_KEY = "parent:button:1"
 
 
 def test_ok_after_the_panes_mode_is_renamed_writes_to_the_new_name(
@@ -77,13 +78,13 @@ def test_ok_after_the_panes_mode_is_renamed_writes_to_the_new_name(
 ) -> None:
     shown = {"mode": "Combat"}
     model = _catalog(profile, shown)
-    model.beginPane(0, -1)  # a new input in Combat
+    model.beginPane(_KEY, -1)  # a new input in Combat
     model._pane_shadow.action_sequences[0].root_action.insert_action(
         _vjoy(5), "children"
     )
     profile.modes.rename_mode("Combat", "Air")
     signal.modeRenamed.emit("Combat", "Air")
-    shown["mode"] = "Air"
+    model.setMode("Air")  # the toolbar follows the rename
     assert model.paneMode == "Air"
     model.commitPane()
     model.endPane()
@@ -97,7 +98,7 @@ def test_the_pane_of_a_deleted_mode_closes(profile: Profile) -> None:
     model = _catalog(profile, {"mode": "Combat"})
     lost: list[int] = []
     model.paneLost.connect(lambda: lost.append(1))
-    model.beginPane(0, -1)
+    model.beginPane(_KEY, -1)
     profile.modes.delete_mode("Combat")
     signal.modeDeleted.emit("Combat")
     assert lost == [1] and model._pane_shadow is None

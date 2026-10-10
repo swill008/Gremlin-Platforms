@@ -1,37 +1,46 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 # Device-Configuration-Macro Change — Configuration display panel.
+# Since D-05-CFG-PAGE (05 S121-S131): the Configuration page is
+# ConfigurationPage.qml on the shared base and its Appearance is the one
+# shared list Appearance (ListAppearancePanel.qml, program settings, S125).
 
 from pathlib import Path
 
-_QML = Path(__file__).resolve().parents[2] / "qml/BindingCatalog.qml"
-_MAIN = Path(__file__).resolve().parents[2] / "qml/Main.qml"
-_IC = Path(__file__).resolve().parents[2] / "qml/InputConfiguration.qml"
-_MM = Path(__file__).resolve().parents[2] / "gremlin/ui/module_model.py"
+_ROOT = Path(__file__).resolve().parents[2]
+_PAGE = _ROOT / "qml/ConfigurationPage.qml"
+_PANEL = _ROOT / "qml/ListAppearancePanel.qml"
+_PANE = _ROOT / "qml/ActionPane.qml"
+_TREE = _ROOT / "qml/ControlTree.qml"
+_MAIN = _ROOT / "qml/Main.qml"
+_IC = _ROOT / "qml/InputConfiguration.qml"
+_MM = _ROOT / "gremlin/ui/module_model.py"
 
 
 def test_main_has_catalog_display_button() -> None:
     text = _MAIN.read_text(encoding="utf-8")
-    assert "property bool catalogPanel: true" in text
+    # The Output View keeps its own Appearance in Main's header.
     assert "property bool outputViewPanel: true" in text
-    assert "displayPanelOpen(panelKind(), id)" in text
-    assert "setDisplayPanelOpen(kind, id, open)" in text
-    assert 'return configDirection === "dest" ? "output" : "configuration"' in text
-    assert 'text: catalogPanel ? "Hide Appearance" : "Appearance…"' in text
     assert 'text: outputViewPanel ? "Hide Appearance" : "Appearance…"' in text
     assert "property string lastSaveText" in text
     assert "function onSaveNoted" in text
     assert "showPanel: _root.outputViewPanel" in text
-    assert 'showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel' in text
     assert "_root.outputViewPanel = false" in text
-    assert "_root.catalogPanel = false" in text
     assert "rememberDisplayPanel()" in text
-    dest_btn = text[text.find("outputViewPanel ?") : text.find("catalogPanel ?")]
-    assert "configDirection === \"dest\"" in dest_btn or 'visible: configDirection === "dest"' in text
+    # The Configuration page's button is on its own bar under the toolbar
+    # (01 S58a); its open state is the page's, one for every device (S125).
+    assert "catalogPanel" not in text
+    page = _PAGE.read_text(encoding="utf-8")
+    bar = page[page.index("property Component pageBar"):]
+    bar = bar[: bar.index("onClicked")]
+    assert 'objectName: "configurationAppearanceButton"' in bar
+    assert 'text: _root.displayOpen ? "Hide Appearance" : "Appearance…"' in bar
+    assert '_place.setDisplayPanelOpen("configuration", "page", displayOpen)' in page
+    assert 'displayOpen = _place.displayPanelOpen("configuration", "page")' in page
 
 
 def test_assignment_summary_counts_destinations() -> None:
-    src = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
+    src = (_ROOT / "gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
     start = src.index("def assignment_summary")
     end = src.index("def leaves_for_item")
     ns: dict = {}
@@ -44,44 +53,42 @@ def test_assignment_summary_counts_destinations() -> None:
     )
     assert text == "2 actions — vJoy 3 · Button 9, vJoy 3 · Button 10"
     assert dest == "vJoy 3 · Button 9, vJoy 3 · Button 10"
-    qml = _QML.read_text(encoding="utf-8")
-    py = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
+    qml = _PAGE.read_text(encoding="utf-8")
+    py = src + (_ROOT / "gremlin/ui/hardware_layout.py").read_text(encoding="utf-8")
     # The quick editor and its row refresh are gone (05 Q18).
     assert "function openSequence" not in qml
     assert "noteOpenRow" not in qml
-    assert "highlightFollowsCurrentItem: false" in qml
     assert "def refreshOpenRow" not in py
     assert "def noteOpenRow" not in py
     assert "def sequences_for_item" in py
     assert "def writeSimpleMap" not in py  # unused, removed in Phase 5
-    assert "function openAdvancedPane" in qml
-    main = Path(__file__).resolve().parents[2].joinpath("qml/Main.qml").read_text(encoding="utf-8")
+    # A row opens the shared pane (S126).
+    assert "function openInput(key, title)" in qml
+    assert "function openAction(key, seq, title)" in qml
+    main = _MAIN.read_text(encoding="utf-8")
     assert "DialogActionEditor.qml" not in main
-    assert 'text: "Add Action"' in qml
+    assert 'MenuModel.action("Add Action"' in qml
     assert "_hold_reload" not in py
     assert "setHoldReload" not in qml
     assert "signal.inputItemChanged.connect(self.reload)" not in py
     assert "def assignment_summary" in py
-    text = _QML.read_text(encoding="utf-8")
-    assert 'text: "Configuration — Appearance"' in text
+    # The shared Appearance panel (S125).
+    assert 'title: "Configuration — Appearance"' in qml
+    text = _PANEL.read_text(encoding="utf-8")
     assert 'text: "Open All"' in text
     assert 'text: "Close All"' in text
-    assert "Layout.preferredWidth: Style.dp(360)" in text
     assert 'text: "Save\\nAppearance"' in text
-    assert "onClicked: resetCatalog()" in text
     assert 'text: "Reset\\nAppearance"' in text
-    assert 'text: "Copy Appearance\\nfrom…"' in text
+    # CF-Q4: no Copy Appearance from another module.
+    assert "Copy Appearance" not in text and "Copy Appearance" not in qml
     assert "id: _savedToast" in text
-    assert "interval: 2000" in text
     assert "CloseOnPressOutside" in text
     assert 'title: "Group"' in text
-    assert 'text: "Space between groups"' in text
     assert 'text: "Space inside the group"' in text
-    assert "def leafRun" in Path(__file__).resolve().parents[2].joinpath("gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
     assert 'title: "Parent Row"' in text
-    assert 'title: "Child Row"' in text
+    assert 'title: "Action Row"' in text
     assert 'title: "Selection"' in text
-    output = Path(__file__).resolve().parents[2].joinpath("qml/OutputModuleView.qml").read_text(encoding="utf-8")
+    output = (_ROOT / "qml/OutputModuleView.qml").read_text(encoding="utf-8")
     assert 'text: "Output View — Appearance"' in output
     assert 'title: "Screen"' in output
     assert 'title: "Pads"' in output
@@ -93,129 +100,118 @@ def test_assignment_summary_counts_destinations() -> None:
     assert 'title: "SCREEN"' not in output
     assert 'title: "Text"' in text
     assert 'title: "Shown"' in text
-    assert 'title: "Editor"' in text
-    assert 'text: "Show accent bar"' in text
-    assert 'text: "Gap below row"' in text
-    assert "function editorX(total)" in text
-    assert "function editorW(total)" in text
     assert 'text: "Show LED dots"' in text
     assert 'text: "Left"' in text
     assert 'text: "Right"' in text
     assert 'model: ["Same on all sides", "Each side"]' in text
-    assert '"value": "center"' in text
     assert "ColorDialog" in text
-    assert "signal closePanel()" in text
+    assert "signal closed()" in text
 
 
 def test_reset_does_not_save() -> None:
-    text = _QML.read_text(encoding="utf-8")
-    chunk = text[text.find("function resetCatalog") : text.find("function selectHid")]
-    assert "saveCatalogConfig" not in chunk
+    text = _PANEL.read_text(encoding="utf-8")
+    chunk = text[text.find("function reset()") : text.find("function requestClose")]
+    assert chunk
+    assert "setListAppearance" not in chunk
     assert "Options have been reset" in chunk
-    assert "applyDefaults()" in chunk
+    assert "applyDisplayDefaults()" in chunk
 
 
 def test_save_writes_catalog_not_view() -> None:
-    text = _QML.read_text(encoding="utf-8")
-    save = text[text.find("function saveCatalog") : text.find("function resetCatalog")]
-    assert "saveCatalogConfig" in save
-    assert "saveViewConfig" not in save
-    assert "Saved to the module file." in save
+    # The Appearance is kept in program settings, one per page (CF-Q4, AP2
+    # (b)): Save writes this page's there, never into a module file.
+    text = _PANEL.read_text(encoding="utf-8")
+    save = text[text.find("function save()") : text.find("function reset()")]
+    assert "_place.setListAppearance(pageKey," in save
+    assert "required property string pageKey" in text
+    page = _PAGE.read_text(encoding="utf-8")
+    panel = page[page.index("ListAppearancePanel {"):]
+    assert 'pageKey: "configuration"' in panel[: panel.index("}")]
+    assert "saveViewConfig" not in save and "saveCatalogConfig" not in save
     mm = _MM.read_text(encoding="utf-8")
-    assert 'doc["catalog"] = catalog' in mm
-    assert "_DEFAULT_CATALOG" in mm
-    assert "def catalogConfigJson" in mm
+    assert 'doc["catalog"]' not in mm
+    assert "_DEFAULT_CATALOG" not in mm
+    assert "def catalogConfigJson" not in mm
+    assert "def saveCatalogConfig" not in mm
+    assert "copyCatalogFrom" not in mm
 
 
 def test_zero_padding_survives_load() -> None:
-    def num_val(v, d):
+    def num_val(v: object, d: float) -> float:
         if v is None or v == "":
             return d
         try:
-            n = float(v)
+            n = float(v)  # type: ignore[arg-type]
         except (TypeError, ValueError):
             return d
         return int(n) if n == int(n) else n
 
     assert num_val(0, 8) == 0
     assert num_val(None, 8) == 8
-    text = _QML.read_text(encoding="utf-8")
-    assert "v.listPadding || 8" not in text
-    assert "numVal(v.listPadding, 8)" in text
+    text = _PANEL.read_text(encoding="utf-8")
+    assert "v.listPad ||" not in text
+    assert "numVal(v.listPad, 0)" in text
+    assert "numVal(v.parentPadLeft, 24)" in text
+
+
+def _box(total: int, indent: int, align: str, pct: int) -> tuple[int, int]:
+    """ControlTree's row box (boxX, boxWidth): the room after the indent,
+    pct of it wide, placed left, centred or right."""
+    room = max(0, total - indent)
+    width = round(room * max(1, min(100, pct)) / 100)
+    spare = room - width
+    if align == "center":
+        return indent + round(spare / 2), width
+    if align == "right":
+        return indent + spare, width
+    return indent, width
 
 
 def test_leaf_geometry_left_center_right() -> None:
-    def leaf_w(total, align, left, right, width_pct):
-        if align == "center":
-            return max(120, round(total * width_pct / 100))
-        return max(120, total - left - right)
-
-    def leaf_x(total, align, left, right, width_pct):
-        w = leaf_w(total, align, left, right, width_pct)
-        if align == "center":
-            return max(0, round((total - w) / 2))
-        if align == "right":
-            return max(0, total - w - right)
-        return left
-
+    # Action rows: alignment and width % (AP3 (b), on the shared tree).
     total = 1000
-    assert leaf_x(total, "left", 24, 24, 50) == 24
-    assert leaf_w(total, "left", 24, 24, 50) == 952
-    assert leaf_x(total, "left", 180, 500, 50) == 180
-    assert leaf_w(total, "left", 180, 500, 50) == 320
-    assert leaf_w(total, "center", 0, 0, 50) == 500
-    assert leaf_x(total, "center", 0, 0, 50) == 250
-    text = _QML.read_text(encoding="utf-8")
-    assert "function leafX(total)" in text
-    assert "function leafW(total)" in text
-    assert "function parentX(total)" in text
-    assert "function parentW(total)" in text
-    assert "function rowX(total, align, left, right, pct)" in text
-    assert "parentX(boxW)" in text
-    assert "parentW(boxW)" in text
+    assert _box(total, 32, "left", 100) == (32, 968)
+    assert _box(total, 32, "left", 50) == (32, 484)
+    assert _box(total, 32, "center", 50) == (274, 484)
+    assert _box(total, 32, "right", 50) == (516, 484)
+    tree = _TREE.read_text(encoding="utf-8")
+    assert "function boxX(kind, total)" in tree
+    assert "function boxWidth(kind, total)" in tree
+    assert 'property string childAlign: "left"' in tree
+    assert "property int childWidthPct: 100" in tree
+    assert 'var pct = kind === "parent" ? parentWidthPct : childWidthPct' in tree
+    panel = _PANEL.read_text(encoding="utf-8")
+    assert 'property string childAlign: "left"' in panel
+    assert "property int childWidthPct: 100" in panel
+    assert '"childAlign": childAlign' in panel
+    assert "childAlign = alignVal(v.childAlign)" in panel
+    page = _PAGE.read_text(encoding="utf-8")
+    assert "childAlign: _appear.childAlign" in page
+    assert "childWidthPct: _appear.childWidthPct" in page
 
 
 def test_parent_geometry_defaults_full_width() -> None:
-    def row_w(total, align, left, right, width_pct):
-        if align == "center":
-            return max(120, round(total * width_pct / 100))
-        return max(120, total - left - right)
-
-    def row_x(total, align, left, right, width_pct):
-        w = row_w(total, align, left, right, width_pct)
-        if align == "center":
-            return max(0, round((total - w) / 2))
-        if align == "right":
-            return max(0, total - w - right)
-        return left
-
+    # Input rows: full width, on the left, unless set (AP3 (b)); Space
+    # between groups above each group after the first.
     total = 1000
-    assert row_x(total, "left", 0, 0, 100) == 0
-    assert row_w(total, "left", 0, 0, 100) == 1000
-    assert row_x(total, "left", 40, 80, 100) == 40
-    assert row_w(total, "left", 40, 80, 100) == 880
-    assert row_w(total, "center", 0, 0, 80) == 800
-    assert row_x(total, "center", 0, 0, 80) == 100
-    mm = _MM.read_text(encoding="utf-8")
-    assert '"parentAlign": "left"' in mm
-    assert '"parentLeft": 0' in mm
-    assert '"parentRight": 0' in mm
-    assert '"parentWidthPct": 100' in mm
-
-
-def test_catalog_merge_does_not_touch_view() -> None:
-    default = {"listPadding": 8, "childAlign": "left"}
-    doc = {"kind": "control.hardware", "device": "EVO R", "view": {"meterWidth": 22}}
-    incoming = {"listPadding": 0, "childAlign": "center"}
-    catalog = dict(default)
-    raw = doc.get("catalog")
-    if isinstance(raw, dict):
-        catalog.update(raw)
-    catalog.update(incoming)
-    doc["catalog"] = catalog
-    assert doc["view"] == {"meterWidth": 22}
-    assert doc["catalog"]["listPadding"] == 0
-    assert doc["catalog"]["childAlign"] == "center"
+    assert _box(total, 16, "left", 100) == (16, 984)
+    assert _box(total, 0, "left", 100) == (0, 1000)
+    assert _box(total, 0, "center", 80) == (100, 800)
+    assert _box(total, 40, "right", 50) == (520, 480)
+    tree = _TREE.read_text(encoding="utf-8")
+    assert 'property string parentAlign: "left"' in tree
+    assert "property int parentWidthPct: 100" in tree
+    assert "property int groupSpacing: 0" in tree
+    assert 'rowKind === "group" && index > 0) ? Style.dp(_tree.groupSpacing)' in tree
+    panel = _PANEL.read_text(encoding="utf-8")
+    assert 'property string parentAlign: "left"' in panel
+    assert "property int parentWidthPct: 100" in panel
+    assert 'text: "Space between groups"' in panel
+    assert "groupSpacing = numVal(v.groupSpacing, 0)" in panel
+    page = _PAGE.read_text(encoding="utf-8")
+    assert "parentAlign: _appear.parentAlign" in page
+    assert "parentWidthPct: _appear.parentWidthPct" in page
+    assert "groupSpacing: _appear.groupSpacing" in page
 
 
 def test_inline_editor_colors_are_properties() -> None:
@@ -223,43 +219,15 @@ def test_inline_editor_colors_are_properties() -> None:
     assert "property color editorFill" in text
     assert "property color editorEdge" in text
     assert "color: editorFill" in text
-    qml = _QML.read_text(encoding="utf-8")
-    assert "openAdvancedPane" in qml
-    assert 'text: "Add Action"' in qml
-    assert 'text: "Close pane after OK"' in qml
-    assert "editorPadTop:" in qml
-    assert 'text: "Show accent bar"' in qml
-
-
-def test_editor_geometry_defaults_match_old_indent() -> None:
-    def row_w(total, align, left, right, width_pct):
-        if align == "center":
-            return max(120, round(total * width_pct / 100))
-        return max(120, total - left - right)
-
-    def row_x(total, align, left, right, width_pct):
-        w = row_w(total, align, left, right, width_pct)
-        if align == "center":
-            return max(0, round((total - w) / 2))
-        if align == "right":
-            return max(0, total - w - right)
-        return left
-
-    total = 1000
-    assert row_x(total, "left", 12, 0, 100) == 12
-    assert row_w(total, "left", 12, 0, 100) == 988
-    assert row_x(total, "left", 96, 256, 100) == 96
-    assert row_w(total, "left", 96, 256, 100) == 648
-    mm = _MM.read_text(encoding="utf-8")
-    assert '"editorAlign": "left"' in mm
-    assert '"editorIndent": 12' in mm
-    assert '"editorRight": 0' in mm
-    assert '"colorEditorAccent": ""' in mm
+    qml = _PAGE.read_text(encoding="utf-8")
+    assert "function openAction(key, seq, title)" in qml
+    assert 'MenuModel.action("Add Action"' in qml
+    assert 'text: "Close pane after OK"' in _PANE.read_text(encoding="utf-8")
 
 
 def test_photo_lookup_does_not_copy_another_device() -> None:
-    text = Path(__file__).resolve().parents[2].joinpath("gremlin/ui/hardware_profile.py").read_text(encoding="utf-8")
     root = Path(__file__).resolve().parents[2]
+    text = root.joinpath("gremlin/ui/hardware_profile.py").read_text(encoding="utf-8")
     registry = root.joinpath("gremlin/modules/registry.py").read_text(encoding="utf-8")
     start = registry.find("def resolve_module_slug")
     end = registry.find("def ", start + 1)

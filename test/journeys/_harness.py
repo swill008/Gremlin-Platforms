@@ -627,21 +627,22 @@ class Journey:
 
     def open_configuration(self, slug: str) -> Any:  # noqa: ANN401
         """Opens the Configuration page for a Home card, as a click on the
-        card does; returns the page's own BindingCatalogModel."""
-        from gremlin.ui.binding_catalog import BindingCatalogModel
+        card does; returns the page's own HardwareLayoutModel (05 S121)."""
+        from gremlin.ui.hardware_layout import HardwareLayoutModel
 
         self.ev(f"openConfigurationForCard(_moduleModel.cardMap({json.dumps(slug)}))")
         page = self.wait_until(
-            lambda: self.ev("catalogPane()"), f"the Configuration page of {slug}"
+            lambda: self.ev("configurationPane()"), f"the Configuration page of {slug}"
         )
-        catalog = self.wait_until(
-            lambda: page.findChild(BindingCatalogModel), "the page's catalog model"
+        layout = self.wait_until(
+            lambda: page.findChild(HardwareLayoutModel), "the page's layout model"
         )
-        self.wait_until(lambda: catalog.rowCount() > 0, "the catalog rows")
-        return catalog
+        self.wait_until(lambda: layout.property("parentCount") > 0, "the input rows")
+        return layout
 
     @staticmethod
     def catalog_rows(catalog: Any) -> list[dict]:  # noqa: ANN401
+        """Every row of a page's layout model (group, input and action rows)."""
         names = {int(k): bytes(v).decode() for k, v in catalog.roleNames().items()}
         rows = []
         for row in range(catalog.rowCount()):
@@ -651,12 +652,33 @@ class Journey:
             )
         return rows
 
+    def _input_row(self, catalog: Any, kind: str, hw: int) -> dict:  # noqa: ANN401
+        for row in self.catalog_rows(catalog):
+            if (
+                row.get("rowKind") == "parent"
+                and row["kind"] == kind
+                and int(row["hwId"]) == hw
+            ):
+                return row
+        raise LookupError(f"No input row for {kind} {hw}")
+
     def device_index(self, catalog: Any, kind: str, hw: int) -> int:  # noqa: ANN401
         """The device index of a control's row ("button", 1...)."""
-        for row in self.catalog_rows(catalog):
-            if row["kind"] == kind and int(row["hwId"]) == hw:
-                return int(row["deviceIndex"])
-        raise LookupError(f"No catalog row for {kind} {hw}")
+        return int(self._input_row(catalog, kind, hw)["deviceIndex"])
+
+    def input_key(self, catalog: Any, kind: str, hw: int) -> str:  # noqa: ANN401
+        """The row key of a control ("parent:button:1")."""
+        return str(self._input_row(catalog, kind, hw)["key"])
+
+    def open_input(self, catalog: Any, kind: str, hw: int) -> None:  # noqa: ANN401
+        """Opens the Configuration page's pane on a control, as a click on
+        its row does: the tree selects the row (the program's current
+        input), then the page's openInput."""
+        row = self._input_row(catalog, kind, hw)
+        key, title = json.dumps(row["key"]), json.dumps(row["title"])
+        page = self.ev("configurationPane()")
+        self.ev(f"_tree.select({key}, false); openInput({key}, {title}); true", page)
+        self.wait_until(lambda: catalog.paneModel is not None, "the pane")
 
     @staticmethod
     def pane_actions(catalog: Any, binding: int = 0) -> list[Any]:  # noqa: ANN401

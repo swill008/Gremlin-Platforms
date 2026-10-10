@@ -63,10 +63,7 @@ def _story(j) -> None:  # noqa: ANN001
         j.win.setHeight(950)
         j.settle()
         catalog = j.open_configuration("pjoy_pro")
-        page = j.ev("catalogPane()")
-        hid = j.device_index(catalog, "axis", 1)
-        j.ev(f"openAdvancedPane({hid}); true", page)
-        j.wait_until(lambda: catalog.paneModel is not None, "the pane")
+        j.open_input(catalog, "axis", 1)
         root = j.wait_until(lambda: j.pane_actions(catalog)[0], "the root action")
         root.appendAction(job["name"], "children")
         stem = job["stem"]

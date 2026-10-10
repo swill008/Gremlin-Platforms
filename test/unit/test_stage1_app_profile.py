@@ -1276,18 +1276,20 @@ def test_run_skips_unfinished_actions(
 
 
 def _catalog(profile: Profile, kind: InputType, hw: int) -> Any:  # noqa: ANN401
-    """The Configuration page model with its pane on stick input hw."""
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    """The Configuration page model (HardwareLayoutModel), stick input hw
+    claimed; its pane opens on _row_key(kind, hw)."""
+    from test.unit.hardware_page_helper import page_on
 
-    model = BindingCatalogModel()
+    model = page_on(_STICK, [(_KIND_WORD[kind], hw)])
     _KEEP.append(model)
-
-    def spec(device_index: int) -> tuple:
-        real = profile.get_input_item(_STICK, kind, hw, "Default")
-        return profile, _STICK, kind, hw, "Default", real
-
-    model._control_spec = spec
     return model
+
+
+_KIND_WORD = {InputType.JoystickAxis: "axis", InputType.JoystickButton: "button"}
+
+
+def _row_key(kind: InputType, hw: int) -> str:
+    return f"parent:{_KIND_WORD[kind]}:{hw}"
 
 
 def _pane_root(model: Any) -> Any:  # noqa: ANN401
@@ -1315,7 +1317,7 @@ def test_merge_axis_reused_in_the_pane_then_cancel_changes_nothing(
     first.add_item_binding().root_action.insert_action(merge, "children")
     _item(profile, 4, InputType.JoystickAxis).add_item_binding()
     model = _catalog(profile, InputType.JoystickAxis, 4)
-    model.beginPane(0, 0)
+    model.beginPane(_row_key(InputType.JoystickAxis, 4), 0)
     _pane_root(model).appendAction("Merge Axis", "children")
     reused = _kids(model._pane_shadow)[0]
     reused.label = "edited in the pane"
@@ -1332,7 +1334,7 @@ def test_save_with_the_pane_open_leaves_the_draft_alone(
     desc.description = "on the input"
     item.add_item_binding().root_action.insert_action(desc, "children")
     model = _catalog(profile, InputType.JoystickButton, 1)
-    model.beginPane(0, 0)
+    model.beginPane(_row_key(InputType.JoystickButton, 1), 0)
     draft = _kids(model._pane_shadow)[0]
     draft.description = "in the pane"
 
@@ -1355,17 +1357,18 @@ def test_save_with_the_pane_open_leaves_the_draft_alone(
     reason="GL-164: a key added with Add Key has no binding to add an action to",
 )
 def test_a_new_key_can_get_its_first_action(profile: Profile) -> None:
-    from gremlin.ui.device import KeyboardManagerModel
+    from gremlin.ui.keyboard_layout import KeyboardLayoutModel
     from gremlin.ui.profile import InputItemModel
 
-    keys = KeyboardManagerModel()
+    # The Keyboard page's model (05 S128).
+    keys = KeyboardLayoutModel()
     _KEEP.append(keys)
     key = keyboard.key_from_name("a")
     event = event_handler.Event(
         InputType.Keyboard, (key.scan_code, key.is_extended), dill.UUID_Keyboard,
         "Default", is_pressed=True,
     )
-    assert keys.addKey([event], "Default") >= 0
+    assert keys.addKey([event], "Default") != ""
     item = profile.get_input_item(
         dill.UUID_Keyboard, InputType.Keyboard, (key.scan_code, key.is_extended),
         "Default",

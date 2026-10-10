@@ -387,3 +387,27 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | Lead: readImportText slot for Import's Choose File (.txt) + test | fix | 3–8 min (table: agent fix) | 1 min | 12:54–12:55 |
 | 2026-10-10 | MAP3: batch 3 map, decisions as wording, glossary | docs | 3–8 min (table) | 4 min | 12:53–12:57 |
 | 2026-10-10 | Batch 3 full run + lint (lead) | test | 6–7 min + lint (table) | 4.7 min | 12:58–13:03; run 4:41, parts balanced ~255 s; 7 fails = temp-folder race in one test's inner pytest (passes alone); 2 pyright fixed |
+| 2026-10-10 | Lead: batch 3 pyright fix + commit + push (6a55f094) | commit | ~2 min (table: end-to-end batch row) | 1 min | 13:03–13:04 |
+| 2026-10-10 | CFG-SAVE: Configuration layout held until File Save, Discard slot | fix | 3–8 min (table) | 2 min | 13:05–13:07 |
+| 2026-10-10 | CFG-MODEL: HardwareLayoutModel (hardware_layout.py), BindingCatalogModel + catalog code removed (RB16) | refactor | 5–10 min (table) | 8 min | 13:05–13:13 |
+| 2026-10-10 | Lead: 05 S36 Undo waits while the Configuration pane is open (base hook _undo_waits) + test | fix | 3–8 min (table: agent fix) | 2 min | 13:14–13:16 |
+| 2026-10-10 | CFG-KEYS: KeyboardLayoutModel + KeyboardPage.qml, KeyboardPaneModel removed | feature | 3–8 min (table) | 12 min | 13:05–13:17 |
+| 2026-10-10 | CFG-APPEAR: ListAppearancePanel (shared setting), live decoration + showKey + parentClicked in ControlTree | feature | 3–8 min (table) | 13 min | 13:05–13:18 |
+| 2026-10-10 | Lead: removed unused WindowPlacement.logicalValue/setLogicalValue + test adjust | fix | 3–8 min (table: agent fix) | 1 min | 13:18–13:19 |
+| 2026-10-10 | CFG-MODEL: QML crash fix (Property notify on a base-class signal) + child-process QML test | fix | 3–8 min (table) | 2 min | 13:18–13:20 |
+| 2026-10-10 | Lead: KeyboardLayoutModel own notify signal (same QML crash pattern) + QML build test | fix | 3–8 min (table: agent fix) | 1 min | 13:20–13:21 |
+| 2026-10-10 | CFG-E2E: Configuration + Keyboard e2e (10) + carry (9) | test | 3–8 min + wait (table) | 14 min | 13:07–13:21 |
+| 2026-10-10 | CFG-PAGE: ConfigurationPage.qml, BindingCatalog.qml deleted | feature | 3–8 min (table) | 15 min | 13:06–13:21 |
+| 2026-10-10 | AS1-REMOVE: row icon setting, icon strip, KeyboardManagerModel, KeyboardInputList/InputButton removed | fix | 3–8 min (table) | 3 min | 13:19–13:22 |
+| 2026-10-10 | CFG-SHELL: Main loads ConfigurationPage/KeyboardPage, leave chain, header cleanup | feature | 3–8 min (table) | 19 min | 13:06–13:25; chased an intermittent crash |
+| 2026-10-10 | Lead: AP2/AP3 routing (per-page Appearance, row alignment/width/group gap back) | planning | no timing data yet; rough guess 2 min | 1 min | 13:26–13:27 |
+| 2026-10-10 | KB-BAR: Keyboard Appearance on the page bar + pageKey | fix | 3–8 min (table) | 1 min | 13:26–13:27 |
+| 2026-10-10 | MAP-C: batch C map, CS1/AP2/AP3/OP5 reversal, glossary, decisions | docs | 3–8 min (table) | 7 min | 13:23–13:30 |
+| 2026-10-10 | CFG-TESTS: ~29 pinned test files moved to the new pages (320 pass) | test | 3–8 min + wait (table) | 25 min | 13:06–13:31 |
+| 2026-10-10 | CFG-TESTS2: journeys/matrix/smoke harnesses on the new pages | test | 3–8 min (table) | 10 min | 13:23–13:33 |
+| 2026-10-10 | Lead: 4 journey files to open_input + journeys run (42 pass) | test | 3–8 min (table: agent fix) | 2 min | 13:33–13:35 |
+| 2026-10-10 | AP-PANEL: per-page Appearance, Rows options, Logical/OSC page bars, OSC panel | feature | rough guess 10–15 min (no row) | 8 min | 13:27–13:35 |
+| 2026-10-10 | Lead: Keyboard row options wired + store test to per-page | fix | 3–8 min (table: agent fix) | 1 min | 13:35–13:36 |
+| 2026-10-10 | MAP-C touch-up: AP-PANEL names, counts, glossary | docs | 3–8 min (table) | 1 min | 13:35–13:36 |
+| 2026-10-10 | Batch C full run + lint (lead) | test | 6–7 min + lint (table) | 5.5 min | 13:36–13:42; run 5:15; 11 fails = removed action images (AS1) + 2 stale Help labels |
+| 2026-10-10 | Lead: removed action image provider/generator + its look tests (AS1), Help labels, lint baseline | fix | 3–8 min (table: agent fix) | 5 min | 13:42–13:47 |

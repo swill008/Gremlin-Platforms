@@ -33,8 +33,9 @@ KEY_LOGICAL = "logical-layout"
 # Each window's tool row: its tools' order, and which are open, pinned and
 # locked (by row name).
 KEY_TOOL_ROWS = "tool-rows"
-# One Appearance for the Configuration, Logical and OSC pages' lists (CF-Q4):
-# a JSON object of the page's look settings; each page merges its defaults.
+# Each list page's own Appearance (AP2): a JSON object keyed by page
+# ("configuration", "logical", "keyboard", "osc"), each holding that page's
+# look settings; the page merges its defaults.
 KEY_LIST_APPEARANCE = "list-appearance"
 
 DEFAULT_W = 1400
@@ -417,8 +418,7 @@ def save_tool(window: QtGui.QWindow, name: str) -> None:
     cfg.set(SECTION, GROUP, KEY_TOOLS, json.dumps(saved, sort_keys=True))
 
 
-def list_appearance() -> dict:
-    """The shared list Appearance ({} when never set)."""
+def _all_list_appearances() -> dict:
     cfg = _ensure()
     try:
         data = json.loads(str(cfg.value(SECTION, GROUP, KEY_LIST_APPEARANCE) or "{}"))
@@ -427,38 +427,48 @@ def list_appearance() -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def set_list_appearance(values: dict) -> None:
-    """Saves the shared list Appearance; {} resets it to the pages' defaults."""
-    cfg = _ensure()
-    text = json.dumps(dict(values), sort_keys=True)
-    cfg.set(SECTION, GROUP, KEY_LIST_APPEARANCE, text)
+def list_appearance(page: str) -> dict:
+    """The page's list Appearance ({} when never set)."""
+    values = _all_list_appearances().get(str(page), {})
+    return values if isinstance(values, dict) else {}
+
+
+def set_list_appearance(page: str, values: dict) -> None:
+    """Saves the page's list Appearance; {} resets that page to its defaults.
+    The other pages keep theirs."""
+    saved = _all_list_appearances()
+    if values:
+        saved[str(page)] = dict(values)
+    else:
+        saved.pop(str(page), None)
+    text = json.dumps(saved, sort_keys=True)
+    _ensure().set(SECTION, GROUP, KEY_LIST_APPEARANCE, text)
 
 
 @ta.QmlElement
 class WindowPlacement(QtCore.QObject):
-    # The shared list Appearance was saved (by this object).
-    listAppearanceChanged = QtCore.Signal()
+    # A page's list Appearance was saved (by this object); the page key.
+    listAppearanceChanged = QtCore.Signal(str)
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         _ensure()
 
-    @QtCore.Slot(result=str)
-    def listAppearance(self) -> str:
-        """The shared Appearance of the Configuration, Logical and OSC lists
-        as a JSON object ("{}" when never set)."""
-        return json.dumps(list_appearance(), sort_keys=True)
+    @QtCore.Slot(str, result=str)
+    def listAppearance(self, page: str) -> str:
+        """The page's list Appearance as a JSON object ("{}" when never set)."""
+        return json.dumps(list_appearance(page), sort_keys=True)
 
-    @QtCore.Slot(str)
-    def setListAppearance(self, json_text: str) -> None:
+    @QtCore.Slot(str, str)
+    def setListAppearance(self, page: str, json_text: str) -> None:
         try:
             values = json.loads(json_text)
         except (json.JSONDecodeError, TypeError):
             return
         if not isinstance(values, dict):
             return
-        set_list_appearance(values)
-        self.listAppearanceChanged.emit()
+        set_list_appearance(page, values)
+        self.listAppearanceChanged.emit(page)
 
     @QtCore.Slot(QtCore.QObject)
     def restore(self, window: QtCore.QObject) -> None:
@@ -588,15 +598,4 @@ class WindowPlacement(QtCore.QObject):
     def setLogicalWidth(self, width: int) -> None:
         data = self._logical()
         data["width"] = max(280, min(900, int(width)))
-        self._save_logical(data)
-
-    @QtCore.Slot(str, result=str)
-    def logicalValue(self, key: str) -> str:
-        value = self._logical().get(key, "")
-        return "" if value is None else str(value)
-
-    @QtCore.Slot(str, str)
-    def setLogicalValue(self, key: str, value: str) -> None:
-        data = self._logical()
-        data[str(key)] = value
         self._save_logical(data)

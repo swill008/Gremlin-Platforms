@@ -8,7 +8,7 @@ import logging
 import math
 import time
 import uuid
-from typing import Any, cast
+from typing import cast
 
 from PySide6 import (
     QtCharts,
@@ -22,11 +22,9 @@ from gremlin import (
     common,
     device_initialization,
     event_handler,
-    keyboard,
     shared_state,
     util,
 )
-from gremlin.base_classes import AbstractActionData
 from gremlin.config import Configuration
 from gremlin.error import GremlinError
 from gremlin.input_cache import DeviceDatabase
@@ -44,45 +42,6 @@ from gremlin.modules import hardware
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
-
-
-def _generate_action_sequence_descriptor(item: InputItem) -> str:
-    icons = []
-    if item is not None:
-        for seq in item.action_sequences:
-            [
-                _collect_action_icons(action, icons)
-                for action in seq.root_action.get_actions()[0]
-            ]
-    return ":".join(icons)
-
-
-def _collect_action_icons(action: AbstractActionData, icons: list[str]) -> None:
-    icons.append(action.icon)
-    if action.tag == "map-to-vjoy":
-        type_lookup = {
-            InputType.JoystickAxis: "A",
-            InputType.JoystickButton: "B",
-            InputType.JoystickHat: "H",
-            InputType.Invalid: "I",
-        }
-        icons[-1] += (
-            f",{action.vjoy_device_id},"
-            f"{type_lookup[action.vjoy_input_type]},"
-            f"{action.vjoy_input_id}"
-        )
-    elif action.tag == "map-to-xbox":
-        target = getattr(action, "xbox_target", None)
-        target_value = target.value if hasattr(target, "value") else str(target or "a")
-        pad_id = getattr(action, "xbox_device_id", 1)
-        icons[-1] += f",{pad_id},{target_value}"
-    for selector in action._valid_selectors():
-        icons.append("(")
-        [
-            _collect_action_icons(child, icons)
-            for child in action._get_container(selector)
-        ]
-        icons.append(")")
 
 
 def _description_from_item(item: InputItem | None) -> str:
@@ -326,12 +285,6 @@ class Device(QtCore.QAbstractListModel):
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"actionSequenceCount"),
-        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(
-            b"actionSequenceDescriptor"
-        ),
-        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(
-            b"actionSequenceDisplayMode"
-        ),
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"description"),
     }
 
@@ -421,17 +374,6 @@ class Device(QtCore.QAbstractListModel):
             case "actionSequenceCount":
                 input_item = self._get_input_item(input_info)
                 return len(input_item.action_sequences) if input_item else 0
-            case "actionSequenceDescriptor":
-                input_item = self._get_input_item(input_info)
-                return (
-                    _generate_action_sequence_descriptor(input_item)
-                    if input_item
-                    else ""
-                )
-            case "actionSequenceDisplayMode":
-                return Configuration().value(
-                    "global", "general", "action-sequence-information"
-                )
             case "description":
                 input_item = self._get_input_item(input_info)
                 return _description_from_item(input_item) if input_item else ""
@@ -602,199 +544,6 @@ class LogicalDeviceSelectorModel(QtCore.QAbstractListModel):
     currentIndex = QtCore.Property(
         int, fget=_get_current_index, fset=_set_current_index, notify=selectionChanged
     )
-
-
-@ta.QmlElement
-class KeyboardManagerModel(QtCore.QAbstractListModel):
-    """Model providing information about and managing keyboard inputs."""
-
-    roles = {
-        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
-        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"actionSequenceCount"),
-        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(
-            b"actionSequenceDescriptor"
-        ),
-        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(
-            b"actionSequenceDisplayMode"
-        ),
-        QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"description"),
-        QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"inMode"),
-        QtCore.Qt.ItemDataRole.UserRole + 7: QtCore.QByteArray(b"note"),
-    }
-
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(parent)
-
-        self._profile = shared_state.current_profile
-        # The mode shown: each key is listed once, with this mode's actions.
-        self._mode = "Default"
-        signal.profileChanged.connect(self._profile_changed_cb)
-        signal.inputItemChanged.connect(self.refreshInput)
-
-    def _profile_changed_cb(self) -> None:
-        self._profile = shared_state.current_profile
-        self.beginResetModel()
-        self.endResetModel()
-
-    @QtCore.Slot(str)
-    def setMode(self, mode: str) -> None:
-        self.beginResetModel()
-        self._mode = str(mode or "Default")
-        self.endResetModel()
-
-    @QtCore.Slot(int, result=InputIdentifier)
-    def inputIdentifier(self, index: int) -> InputIdentifier | None:
-        # None for no row (-1 after the last key is deleted): -1 picked the
-        # last key, or failed on an empty list.
-        keys = self._keys()
-        if not 0 <= index < len(keys):
-            return None
-        identifier = InputIdentifier(parent=self)
-        identifier.device_guid = dill.UUID_Keyboard
-        identifier.input_type = InputType.Keyboard
-        identifier.input_id = keys[index]
-
-        return identifier
-
-    @QtCore.Slot(int)
-    def deleteInput(self, index: int) -> None:
-        """Deletes the key's actions in the mode shown (the key stays listed
-        while another mode still has it)."""
-        keys = self._keys()
-        if not 0 <= index < len(keys):
-            return
-        self.beginResetModel()
-        item = self._mode_item(keys[index])
-        if item is not None:
-            # Only this mode's input: an empty one in another mode may be a
-            # key added there on purpose (Add Key), which can't be told from
-            # one made by viewing the key. Its Delete shows there.
-            self._profile.drop_inputs(dill.UUID_Keyboard, [item])
-        self.endResetModel()
-
-    @QtCore.Slot(list, str, result=int)
-    def addKey(self, data: list[event_handler.Event], mode: str) -> int:
-        """Adds the pressed key to the profile in the mode the user is viewing.
-
-        Returns the key's row (-1: nothing added), for the page to select it.
-        """
-        if not data:
-            return -1
-
-        self.beginResetModel()
-        self._profile.get_input_item(
-            dill.UUID_Keyboard,
-            InputType.Keyboard,
-            data[0].identifier,
-            mode,
-            True,
-        )
-        self.endResetModel()
-        return self._row_of_key(data[0].identifier)
-
-    @QtCore.Slot(InputIdentifier, result=int)
-    def rowOf(self, identifier: InputIdentifier | None) -> int:
-        """The row of this key, or -1 (no key, another device's input, or
-        a key no longer listed)."""
-        if (
-            identifier is None
-            or not identifier.isValid
-            or identifier.device_guid != dill.UUID_Keyboard
-        ):
-            return -1
-        return self._row_of_key(identifier.input_id)
-
-    def _row_of_key(self, key: Any) -> int:  # noqa: ANN401
-        try:
-            wanted = tuple(key)
-        except TypeError:
-            return -1
-        for row, listed in enumerate(self._keys()):
-            if tuple(listed) == wanted:
-                return row
-        return -1
-
-    def _items_of(self, key: Any) -> list[InputItem]:  # noqa: ANN401
-        """The key's inputs in every mode."""
-        if self._profile is None:
-            return []
-        items = self._profile.inputs.get(dill.UUID_Keyboard, [])
-        return [i for i in items if tuple(cast(Any, i.input_id)) == tuple(key)]
-
-    @QtCore.Slot(int)
-    def refreshInput(self, index: int) -> None:
-        """Refreshes the input at the given index.
-
-        Args:
-            index: linear index of the input to refresh
-        """
-        self.dataChanged.emit(self.createIndex(index, 0), self.createIndex(index, 0))
-
-    def _keys(self) -> list:
-        """Every key added in any mode, once (it was listed once per mode,
-        and choosing another mode's row made a copy in this one)."""
-        items = self._profile.inputs.get(dill.UUID_Keyboard, []) if self._profile else []
-        keys = {tuple(cast(Any, item.input_id)): item.input_id for item in items}
-        return sorted(
-            keys.values(), key=lambda key: keyboard.key_from_code(*key).virtual_code
-        )
-
-    def _mode_item(self, key: Any) -> InputItem | None:  # noqa: ANN401
-        """The key's input in the mode shown (None: none there yet)."""
-        if self._profile is None:
-            return None
-        return self._profile.get_input_item(
-            dill.UUID_Keyboard, InputType.Keyboard, key, self._mode, False
-        )
-
-    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._keys())
-
-    def data(
-        self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
-    ) -> str | int | bool:
-        if role not in self.roles:
-            return "Unknown"
-
-        key = self._keys()[index.row()]
-        input_item = self._mode_item(key)
-        match cast(str, self.roles[role]):
-            case "name":
-                return keyboard.key_from_code(*key).name
-            case "actionSequenceCount":
-                return len(input_item.action_sequences) if input_item else 0
-            case "actionSequenceDescriptor":
-                return (
-                    _generate_action_sequence_descriptor(input_item)
-                    if input_item
-                    else ""
-                )
-            case "actionSequenceDisplayMode":
-                return Configuration().value(
-                    "global", "general", "action-sequence-information"
-                )
-            case "description":
-                return _description_from_item(input_item) if input_item else ""
-            case "note":
-                # The key's Note shows on its row (05 S43).
-                from gremlin.ui.binding_catalog import item_note
-
-                return item_note(input_item) if input_item else ""
-            case "inMode":
-                # Delete only where it does something: this mode's actions,
-                # or a key with no actions in any mode (Delete removes it).
-                # A key only looked at in this mode has an empty input here
-                # (the editor makes one), which is nothing to delete.
-                if input_item is None:
-                    return False
-                if input_item.action_sequences:
-                    return True
-                return not any(i.action_sequences for i in self._items_of(key))
-            case _:
-                return ""
-
-    def roleNames(self) -> dict[int, QtCore.QByteArray]:
-        return self.roles
 
 
 @ta.QmlElement
@@ -1527,16 +1276,5 @@ Configuration().register(
     "Numerical and Label",
     "Defines how input name is displayed.",
     {"valid_options": ["Numerical", "Numerical and Label", "Label"]},
-    True,
-)
-
-Configuration().register(
-    "global",
-    "general",
-    "action-sequence-information",
-    PropertyType.Selection,
-    "Full",
-    "How the actions of each input are shown.",
-    {"valid_options": ["Full", "Count"]},
     True,
 )

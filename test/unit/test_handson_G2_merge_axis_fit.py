@@ -53,10 +53,8 @@ def story(j: Journey) -> None:
     j.win.setHeight(950)
     j.QTest.qWait(300)
     catalog = j.open_configuration("pjoy_pro")
-    page = j.ev("catalogPane()")
-    hid = j.device_index(catalog, "axis", 1)
-    j.ev(f"openAdvancedPane({hid}); true", page)
-    j.wait_until(lambda: catalog.paneModel is not None, "the pane")
+    page = j.ev("configurationPane()")
+    j.open_input(catalog, "axis", 1)
     if UNITS:
         j.ev(f"paneUnits = {UNITS}; true", page)
     root = j.wait_until(lambda: j.pane_actions(catalog)[0], "the root action")

@@ -10,12 +10,12 @@ Surfaces (the ways a user edits an action):
   real input, no draft and no OK. No Undo: Configuration Undo steps come
   only from the pane's OK and Delete (05 S35).
 - ``Surface.PANE_BUTTON_MAP``: the Configuration pane as the Button Map and
-  the Configuration page open it, ``BindingCatalogModel.beginPane`` (a stick
-  axis, button or hat of the fake "pJoy Pro").
+  the Configuration page open it, ``HardwareLayoutModel.beginPane`` (a stick
+  axis, button or hat of the fake "pJoy Pro", claimed on the page).
 - ``Surface.PANE_LOGICAL``: the Logical Device page's pane,
   ``LogicalLayoutModel.beginPane`` (a Logical Device axis, button or hat).
 - ``Surface.PANE_KEYBOARD``: the Keyboard page's pane,
-  ``KeyboardPaneModel.showInput`` (key A).
+  ``KeyboardLayoutModel.beginPane`` (key A).
 
 Every pane edit happens in the draft the pane's own models show; OK is
 ``commitPane`` (``Case.commit``).
@@ -33,7 +33,7 @@ Typical use, in a test (the ``matrix`` fixture closes each case)::
 What the harness can't drive is recorded, not changed in the program:
 open_editor always shows the editor in the Configuration page pane of the
 off-screen app (the Logical Device and Keyboard pages host the same
-InputConfiguration and editor files); a Keyboard case's editor is shown
+ActionPane and editor files); a Keyboard case's editor is shown
 on a stick button there.
 """
 
@@ -293,19 +293,6 @@ def _stick_guid() -> uuid.UUID:
     return dill.GUID(fake_hardware.raw_guid(False)).uuid
 
 
-class _KeyIdentifier(QtCore.QObject):
-    """What the Keyboard page hands showInput for the selected key."""
-
-    def __init__(self) -> None:
-        import dill
-
-        super().__init__()
-        self.device_guid = dill.UUID_Keyboard
-        self.input_type = _kind("key")
-        self.input_id = KEY
-        self.isValid = True
-
-
 # Dummy values by Qt type name, given the current value.
 def dummy(type_name: str, current: Any) -> Any:  # noqa: ANN401
     """A changed value of the same type (None: no rule for this type)."""
@@ -383,29 +370,24 @@ class Case:
 
     def _open_page(self) -> None:
         from gremlin.ui import logical_layout
-        from gremlin.ui.binding_catalog import BindingCatalogModel, KeyboardPaneModel
+        from gremlin.ui.keyboard_layout import KeyboardLayoutModel, key_row
 
         if self.surface == Surface.PANE_BUTTON_MAP:
-            model = BindingCatalogModel()
-            profile, key = self.profile, self.key
+            from test.unit import hardware_page_helper
 
-            def spec(device_index: int) -> tuple:
-                real = profile.get_input_item(*key, create_if_missing=False)
-                return (profile, *key, real)
-
-            model._control_spec = spec  # noqa: SLF001 - the device row stands in
-            model.beginPane(0, 0)
+            # The page showing the stick with this input claimed.
+            model = hardware_page_helper.page_on(self.key[0], [(self.input_type, 1)])
+            self._parent_key = hardware_page_helper.key(self.key[1], 1)
         elif self.surface == Surface.PANE_LOGICAL:
             model = logical_layout.LogicalLayoutModel()
             self._parent_key = logical_layout._parent_key(  # noqa: SLF001
                 self.key[1], self._logical_id
             )
-            model.beginPane(self._parent_key, 0)
         else:
-            model = KeyboardPaneModel()
-            self._identifier = _KeyIdentifier()
-            self._kept.append(self._identifier)
-            model.showInput(self._identifier, 0, MODE)
+            model = KeyboardLayoutModel()
+            self._parent_key = key_row(KEY)
+        model.setMode(MODE)
+        model.beginPane(self._parent_key, 0)
         self.page = model
         self._kept.append(model)
         assert model.paneModel is not None, f"{self.surface}: the pane didn't open"
@@ -416,12 +398,7 @@ class Case:
             return
         if self.page.paneModel is not None:
             return
-        if self.surface == Surface.PANE_BUTTON_MAP:
-            self.page.beginPane(0, 0)
-        elif self.surface == Surface.PANE_LOGICAL:
-            self.page.beginPane(self._parent_key, 0)
-        else:
-            self.page.showInput(self._identifier, 0, MODE)
+        self.page.beginPane(self._parent_key, 0)
 
     def binding_model(self) -> Any:  # noqa: ANN401
         """The binding's model as the editor's QML gets it."""
@@ -684,6 +661,11 @@ class Case:
         with contextlib.suppress(Exception):
             if self.page is not None:
                 self.page.endPane()
+        with contextlib.suppress(Exception):
+            if self.surface == Surface.PANE_BUTTON_MAP and self.page is not None:
+                from test.unit import hardware_page_helper
+
+                hardware_page_helper.close(self.page)  # drops what it held
         for obj in self._kept:
             with contextlib.suppress(Exception):
                 obj.deleteLater()

@@ -102,6 +102,8 @@ def test_dest_label_reads_actions(modules: None) -> None:
 def test_no_other_file_builds_its_own_destination_text() -> None:
     for rel in (
         "gremlin/ui/binding_catalog.py",
+        "gremlin/ui/hardware_layout.py",
+        "gremlin/ui/keyboard_layout.py",
         "gremlin/ui/input_pairing.py",
         "gremlin/ui/xbox_viewer.py",
     ):

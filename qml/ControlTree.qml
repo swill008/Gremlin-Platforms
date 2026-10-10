@@ -7,10 +7,11 @@ import QtQuick.Layouts
 
 import Gremlin.Style
 
-// The control list shared by the control pages (Logical Device, OSC):
-// group, parent and action rows from the page's layout model, carets,
-// multi-select, drag order. Menus stay with the page: the rows only say
-// where the right-click was.
+// The control list shared by the control pages (Configuration, Logical
+// Device, OSC): group, parent and action rows from the page's layout model,
+// carets, multi-select, drag order. Menus stay with the page: the rows only
+// say where the right-click was. Live lights and bars are an optional
+// decoration, on for the Configuration page only (05 S131).
 Item {
     id: _tree
 
@@ -32,6 +33,15 @@ Item {
     property int childHeight: 32
     property int rowSpacing: 4
     property int groupInside: 0
+    // Row placement (AP3): input (parent) rows and action rows (every other
+    // non-group row) take widthPct of the room right of their indent, placed
+    // left, center or right; groupSpacing is extra room above each group
+    // after the first. Defaults: today's full-width, left-placed rows.
+    property string parentAlign: "left"
+    property int parentWidthPct: 100
+    property string childAlign: "left"
+    property int childWidthPct: 100
+    property int groupSpacing: 0
     property string listPadShape: "sides"
     property int listPad: 0
     property int listPadTop: 0
@@ -85,6 +95,20 @@ Item {
     property int gripRadius: 2
     property color colorGrip: Style.lineStrong
 
+    // Live decoration (05 S131): a pressed button or hat tints its parent
+    // row, an axis gets a bar along the row's bottom. The values come from
+    // liveState (a DeviceLiveState: stamp, kindAt(i), valueAt(i)) at the
+    // row's "liveIndex" role (-1 or missing: no live value).
+    property bool liveDecoration: false
+    property var liveState: null
+    property bool liveBars: true
+    property bool liveLeds: true
+    property color colorLive: Style.ok
+
+    // The row last shown by showKey(); _flashKey outlines it for a moment.
+    property string highlightKey: ""
+    property string _flashKey: ""
+
     // Selected parent keys; open parents; folded groups.
     property var picked: ([])
     property var opened: ({})
@@ -96,6 +120,8 @@ Item {
     signal actionMenu(string parentKey, int seq, string title, var item, real x, real y)
     signal pageMenu(var item, real x, real y)
     signal actionClicked(string parentKey, int seq, string title)
+    // Left click on a parent row, after the tree has selected it.
+    signal parentClicked(string key, string title, bool shift)
     // Rows of kind "feedback" (OSC, 09 S153): offered while locked too,
     // since feedback stays editable while a profile runs (S155).
     signal feedbackMenu(string key, string title, bool enabled, var item, real x, real y)
@@ -153,6 +179,46 @@ Item {
         return true
     }
 
+    function _rowOf(key) {
+        if (!layout || !key)
+            return -1
+        for (var i = 0; i < _list.count; ++i) {
+            if (layout.keyAt(i) === key)
+                return i
+        }
+        return -1
+    }
+
+    // Jump to an input (the pressed one): unfold its group and its parent,
+    // scroll it into view and flash it. False when the key isn't listed.
+    // Selecting it is the page's choice (select()).
+    function showKey(key) {
+        var row = _rowOf(key)
+        if (row < 0)
+            return false
+        _list.positionViewAtIndex(row, ListView.Contain)
+        var item = _list.itemAtIndex(row)
+        if (item && collapsed[item.groupKey])
+            toggleGroup(item.groupKey)
+        if (item && item.rowKind !== "group" && item.rowKind !== "parent" && item.parentKey && !opened[item.parentKey])
+            toggleOpen(item.parentKey)
+        highlightKey = key
+        _flashKey = key
+        _flashTimer.restart()
+        Qt.callLater(function() {
+            var again = _rowOf(key)
+            if (again >= 0)
+                _list.positionViewAtIndex(again, ListView.Contain)
+        })
+        return true
+    }
+
+    Timer {
+        id: _flashTimer
+        interval: 600
+        onTriggered: _tree._flashKey = ""
+    }
+
     // Moves run after the mouse and drop handlers finish: the move rebuilds the
     // rows, and a handler still running in a destroyed row loses its names.
     function moveLater(kind, from, to, where) {
@@ -182,6 +248,26 @@ Item {
         if (kind === "parent")
             return Style.dp(parentIndent)
         return Style.dp(parentIndent + childIndent)
+    }
+
+    // The row box's left edge and width in a row "total" wide.
+    function boxWidth(kind, total) {
+        var room = Math.max(0, total - rowIndent(kind))
+        if (kind === "group")
+            return room
+        var pct = kind === "parent" ? parentWidthPct : childWidthPct
+        return Math.round(room * Math.max(1, Math.min(100, pct)) / 100)
+    }
+
+    function boxX(kind, total) {
+        var room = Math.max(0, total - rowIndent(kind))
+        var align = kind === "group" ? "left" : (kind === "parent" ? parentAlign : childAlign)
+        var spare = room - boxWidth(kind, total)
+        if (align === "center")
+            return rowIndent(kind) + Math.round(spare / 2)
+        if (align === "right")
+            return rowIndent(kind) + spare
+        return rowIndent(kind)
     }
 
     // Text inset inside the row's box. Action text lines up with its parent's text.
@@ -267,10 +353,21 @@ Item {
             readonly property int extraWriters: model.extraWriters || 0
             // A group the page keeps in place: no drag, nothing dropped into it.
             readonly property bool fixedGroup: !!model.fixedGroup
+            // Live value of a parent row (only with liveDecoration).
+            readonly property bool liveOn: _tree.liveDecoration && _tree.liveState !== null
+                                           && rowKind === "parent" && (model.liveIndex === undefined ? -1 : model.liveIndex) >= 0
+            readonly property int liveStamp: liveOn ? _tree.liveState.stamp : -1
+            readonly property string liveKind: (liveOn && liveStamp >= 0) ? _tree.liveState.kindAt(model.liveIndex) : ""
+            readonly property real liveValue: (liveOn && liveStamp >= 0) ? _tree.liveState.valueAt(model.liveIndex) : 0
+            readonly property bool ledOn: _tree.liveLeds && (liveKind === "button" || liveKind === "hat") && liveValue > 0.5
 
             readonly property bool shown: _tree._rowVisible(rowKind, groupKey, parentKey)
             width: _list.width - Style.dp(16)
             readonly property int rowGap: rowKind === "group" ? 0 : Style.dp(_tree.groupInside)
+            // Space between groups sits above each group row after the first.
+            readonly property int groupTop: (rowKind === "group" && index > 0) ? Style.dp(_tree.groupSpacing) : 0
+            readonly property int boxX: _tree.boxX(rowKind, width)
+            readonly property int boxW: _tree.boxWidth(rowKind, width)
             readonly property int rowMin: Style.dp(rowKind === "group" ? 40 : (rowKind === "parent" ? _tree.parentHeight : _tree.childHeight))
             readonly property int rowPadY: _tree.rowTop(rowKind) + _tree.rowBottom(rowKind)
             readonly property int rowNeed: _line.implicitHeight + rowPadY
@@ -278,20 +375,40 @@ Item {
             height: shown ? implicitHeight : 0
             visible: shown
             clip: true
-            implicitHeight: shown ? (rowBody + rowGap + Style.dp(_tree.rowSpacing)) : 0
+            implicitHeight: shown ? (groupTop + rowBody + rowGap + Style.dp(_tree.rowSpacing)) : 0
             color: "transparent"
             border.width: 0
 
             Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.leftMargin: _tree.rowIndent(rowKind)
+                x: _row.boxX
+                y: _row.groupTop
+                width: _row.boxW
                 height: _row.rowBody
-                color: _tree.picked.indexOf(key) >= 0 ? _tree.colorSelected : (rowKind === "group" ? _tree.colorGroup : (rowKind === "parent" ? _tree.colorParent : _tree.colorChild))
-                border.color: _tree.picked.indexOf(key) >= 0 ? _tree.colorSelectBorder : _tree.colorBorder
-                border.width: Style.dp(1)
+                color: {
+                    var chosen = _tree.picked.indexOf(key) >= 0
+                    if (_row.ledOn)
+                        return Qt.rgba(_tree.colorLive.r, _tree.colorLive.g, _tree.colorLive.b, chosen ? 0.55 : 0.28)
+                    return chosen ? _tree.colorSelected : (rowKind === "group" ? _tree.colorGroup : (rowKind === "parent" ? _tree.colorParent : _tree.colorChild))
+                }
+                border.color: _tree._flashKey === key ? _tree.colorLive : (_tree.picked.indexOf(key) >= 0 ? _tree.colorSelectBorder : _tree.colorBorder)
+                border.width: Style.dp(_tree._flashKey === key ? 2 : 1)
                 radius: Style.dp(rowKind === "group" ? _tree.groupRadius : (rowKind === "parent" ? _tree.parentRadius : _tree.childRadius))
+
+                // An axis's live bar along the bottom of its row.
+                Rectangle {
+                    visible: _tree.liveBars && _row.liveKind === "axis"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: Style.dp(1)
+                    height: Style.dp(5)
+                    color: _tree.colorBorder
+                    Rectangle {
+                        width: Math.max(0, Math.min(parent.width, parent.width * ((_row.liveValue + 1.0) * 0.5)))
+                        height: parent.height
+                        color: _tree.colorLive
+                    }
+                }
             }
 
             RowLayout {
@@ -299,9 +416,9 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                anchors.leftMargin: _tree.rowIndent(rowKind) + _tree.rowLeft(rowKind)
-                anchors.rightMargin: _tree.rowRight(rowKind)
-                anchors.topMargin: _tree.rowTop(rowKind)
+                anchors.leftMargin: _row.boxX + _tree.rowLeft(rowKind)
+                anchors.rightMargin: _row.width - _row.boxX - _row.boxW + _tree.rowRight(rowKind)
+                anchors.topMargin: _row.groupTop + _tree.rowTop(rowKind)
                 height: Math.max(implicitHeight, _row.rowMin - _row.rowPadY)
                 spacing: Style.dp(6)
 
@@ -479,6 +596,7 @@ Item {
             DropArea {
                 id: _drop
                 anchors.fill: parent
+                anchors.topMargin: _row.groupTop
                 anchors.bottomMargin: _row.rowGap
                 z: 4
                 enabled: !_tree.locked && (rowKind === "parent" || rowKind === "group") && !_row.fixedGroup
@@ -545,6 +663,7 @@ Item {
             MouseArea {
                 z: 1
                 anchors.fill: parent
+                anchors.topMargin: _row.groupTop
                 anchors.bottomMargin: _row.rowGap
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 propagateComposedEvents: true
@@ -574,9 +693,10 @@ Item {
                         }
                         return
                     }
-                    if (rowKind === "parent")
+                    if (rowKind === "parent") {
                         _tree.select(key, mouse.modifiers & Qt.ShiftModifier)
-                    else if (rowKind === "child")
+                        _tree.parentClicked(key, title, !!(mouse.modifiers & Qt.ShiftModifier))
+                    } else if (rowKind === "child")
                         _tree.actionClicked(parentKey, sequenceIndex, title)
                     else if (rowKind === "feedback")
                         _tree.feedbackClicked(key, title)

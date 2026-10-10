@@ -99,14 +99,20 @@ def test_pages_load_only_while_needed() -> None:
         ), page
     home = r"active: !_root.trayed[\s\S]{0,200}sourceComponent: StatusPage"
     assert re.search(home, main)
-    # Configuration's panels, one per tab, and none in the tray unless unsaved.
-    for panel in ("BindingCatalog", "XboxDevice", "KeyboardInputList",
-                  "InputConfiguration"):
-        assert f"sourceComponent: {panel} {{" in main, panel
-    # The OSC page (09 S129) has a loader of its own, also gone in the tray.
-    osc = main[main.index("id: _oscPageLoader"):]
-    osc = osc[: osc.index('source: "OscPage.qml"')]
-    assert "&& _root._configLive" in osc
-    assert main.count("&& _root._configLive") == 4
+    # Configuration's pages, one loader per tab, and none in the tray unless
+    # unsaved: the Configuration and Keyboard pages (05 S121, S128), the OSC
+    # page (09 S129), Logical, the output view and Xbox.
+    for loader, page in (
+        ("_configPageLoader", 'source: "ConfigurationPage.qml"'),
+        ("_keyboardPageLoader", 'source: "KeyboardPage.qml"'),
+        ("_oscPageLoader", 'source: "OscPage.qml"'),
+        ("_logicalLoader", 'source: "LogicalPage.qml"'),
+        ("_outputLoader", "sourceComponent: OutputModuleView {"),
+    ):
+        part = main[main.index(f"id: {loader}"):]
+        part = part[: part.index(page)]
+        assert "&& _root._configLive" in part, loader
+    assert "sourceComponent: XboxDevice {" in main
+    assert main.count("&& _root._configLive") == 6
     tray = (_ROOT / "gremlin" / "ui" / "system_tray.py").read_text(encoding="utf-8")
     assert "tray_memory.enter_tray" in tray and "tray_memory.leave_tray" in tray

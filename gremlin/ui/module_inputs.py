@@ -7,10 +7,9 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import common, event_handler, shared_state
-from gremlin.config import Configuration
 from gremlin.input_cache import DeviceDatabase
 from gremlin.signal import signal
-from gremlin.ui.device import _description_from_item, _generate_action_sequence_descriptor
+from gremlin.ui.device import _description_from_item
 from gremlin.modules.claim import claim_friendly, claim_ids, read_claim, type_of
 from gremlin.modules import hardware, store
 
@@ -25,12 +24,6 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"actionSequenceCount"),
-        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(
-            b"actionSequenceDescriptor"
-        ),
-        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(
-            b"actionSequenceDisplayMode"
-        ),
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"description"),
         QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"deviceIndex"),
         QtCore.Qt.ItemDataRole.UserRole + 7: QtCore.QByteArray(b"kind"),
@@ -207,15 +200,9 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
             return row["kind"]
         if key == "hwId":
             return row["hwId"]
-        if key == "actionSequenceDisplayMode":
-            return Configuration().value(
-                "global", "general", "action-sequence-information"
-            )
         item = self._input_item(row)
         if key == "actionSequenceCount":
             return len(item.action_sequences) if item else 0
-        if key == "actionSequenceDescriptor":
-            return _generate_action_sequence_descriptor(item) if item else ""
         if key == "description":
             return _description_from_item(item) if item else ""
         return None

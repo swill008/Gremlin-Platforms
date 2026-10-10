@@ -4,15 +4,16 @@
 
 """Hands-on fixes F4, main window side (01 S71, 03 S40).
 
-S71: File > New with an unsaved Keyboard draft and an unsaved profile asks
+S71: File > New with an unsaved Keyboard page pane and an unsaved profile asks
 about the draft first, then the profile (as Load and Recent do).
 
 S40: Module Setup open with unsaved ticks; Module Setup for another device
 asks Save / Discard / Cancel. After Discard (or Save) the other device's
 window opens; after Cancel the first stays and nothing else opens later.
 
-Driven through the real program off-screen (the journey harness); the
-Keyboard draft's "changed" flag and the profile's unsaved flag are faked.
+Driven through the real program off-screen (the journey harness): the
+Keyboard page's pane really edited (Add Key F, an action not OK'd); the
+profile's unsaved flag is faked.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "journeys"))
 from _harness import Journey, run_journey, step  # noqa: E402
 
-_KB = {"dirty": False}
+_F = 0x21  # scan code of F
 
 
 def _setup_windows(j: Journey) -> list[str]:
@@ -95,29 +96,65 @@ def s40(j: Journey) -> None:
         j.wait_until(lambda: not _setup_windows(j), "the vJoy window to close")
 
 
-def s71(j: Journey) -> None:
-    out = j.out
+def _keyboard_pane(j: Journey) -> object:
+    """The Keyboard page opened, F added (Add Key, then F) and its pane
+    edited but not OK'd. Returns the pane's leave question."""
+    from gremlin.ui.keyboard_layout import KeyboardLayoutModel
+    from gremlin.ui.util import InputListenerModel
+
     state = j.backend.uiState
     j.ev('openConfigurationForCard(_moduleModel.cardMap("keyboard"))')
     j.wait_until(lambda: state.currentTab == "keyboard", "the Keyboard page")
-    j.wait_until(lambda: j.ev("keyboardPane() !== null"), "the Keyboard pane")
-    _KB["dirty"] = True
+    page = j.wait_until(lambda: j.ev("keyboardPane()"), "the Keyboard page item")
+    layout = j.wait_until(
+        lambda: page.findChild(KeyboardLayoutModel), "the page's layout model"
+    )
+    add_key = j.wait_until(
+        lambda: next(
+            (i for i in j.walk(page) if i.objectName() == "keyboardAddKey"), None
+        ),
+        "the Add Key button",
+    )
+    listener = page.findChild(InputListenerModel)
+    j.click(add_key)
+    j.wait_until(lambda: listener.property("enabled"), "the Add Key popup")
+    j.key(_F, True)
+    j.key(_F, False)
+    j.wait_until(lambda: layout.paneModel is not None, "the pane on F")
+    editor = layout.paneModel
+    root = editor.data(editor.index(0, 0), 0x0100 + 1).rootAction
+    root.appendAction("Map to vJoy", "children")
+    j.wait_until(lambda: j.ev("hasUnsaved()", page), "the pane's unsaved edit")
+    pane = next(
+        i for i in j.walk(page) if i.metaObject().className().startswith("ActionPane")
+    )
+    # Its leave question (_leave, a DismissibleDialog): code run on it sees
+    # ActionPane.qml's ids.
+    return next(
+        c
+        for c in pane.children()
+        if c.metaObject().className().startswith("DismissibleDialog")
+    )
+
+
+def s71(j: Journey) -> None:
+    out = j.out
+    pane = _keyboard_pane(j)
     profile = j.profile
     profile.has_unsaved_changes = lambda: True
     j.ev('Commands.trigger("file.new")')
     j.settle()
     out["s71-first"] = [
-        bool(j.ev("_keyboardLeaveGate.visible")),
+        bool(j.ev("_leave.visible", pane)),
         bool(j.ev("_saveBeforeContinueDialog.visible")),
     ]
-    if j.ev("_keyboardLeaveGate.visible"):
-        j.press_in("_keyboardLeaveGate", "Discard")
-        _KB["dirty"] = False
+    if j.ev("_leave.visible", pane):
+        j.press_in("_leave", "Discard", pane)
         j.wait_until(
             lambda: j.ev("_saveBeforeContinueDialog.visible"), "the profile question"
         )
         out["s71-second"] = [
-            bool(j.ev("_keyboardLeaveGate.visible")),
+            bool(j.ev("_leave.visible", pane)),
             bool(j.ev("_saveBeforeContinueDialog.visible")),
         ]
         j.press_in("_saveBeforeContinueDialog", "Cancel")
@@ -132,18 +169,6 @@ def story(j: Journey) -> None:
 
 def main() -> None:
     def before(j: Journey) -> None:
-        from PySide6 import QtCore
-
-        from gremlin.ui import binding_catalog
-
-        original = binding_catalog.KeyboardPaneModel.paneDirty
-
-        def pane_dirty(self: object) -> bool:
-            return _KB["dirty"] or original(self)
-
-        binding_catalog.KeyboardPaneModel.paneDirty = QtCore.Slot(result=bool)(
-            pane_dirty
-        )
         j.input_module("pJoy Pro")
         j.vjoy_module()
 

@@ -225,28 +225,32 @@ def test_swap_exchanges_the_layout_with_the_setup(
 # --- the shared Appearance (CF-Q4) ---------------------------------------------------
 
 
-def test_one_list_appearance_in_program_settings() -> None:
+def test_each_page_keeps_its_own_list_appearance() -> None:
+    # 05 S125 (AP2): one program setting, an entry per page.
     placement = window_placement.WindowPlacement()
-    seen: list[bool] = []
-    placement.listAppearanceChanged.connect(lambda: seen.append(True))
+    seen: list[str] = []
+    placement.listAppearanceChanged.connect(seen.append)
     try:
-        placement.setListAppearance(json.dumps({"rowHeight": 30, "showLeds": False}))
-        assert json.loads(placement.listAppearance()) == {
+        placement.setListAppearance(
+            "configuration", json.dumps({"rowHeight": 30, "showLeds": False})
+        )
+        assert json.loads(placement.listAppearance("configuration")) == {
             "rowHeight": 30,
             "showLeds": False,
         }
-        assert window_placement.list_appearance() == {
+        assert window_placement.list_appearance("configuration") == {
             "rowHeight": 30,
             "showLeds": False,
         }
-        assert seen == [True]
-        placement.setListAppearance("[1, 2]")  # not an object: ignored
-        placement.setListAppearance("not json")
-        assert window_placement.list_appearance() == {
+        assert window_placement.list_appearance("logical") == {}
+        assert seen == ["configuration"]
+        placement.setListAppearance("configuration", "[1, 2]")  # ignored
+        placement.setListAppearance("configuration", "not json")
+        assert window_placement.list_appearance("configuration") == {
             "rowHeight": 30,
             "showLeds": False,
         }
-        assert seen == [True]
+        assert seen == ["configuration"]
     finally:
-        placement.setListAppearance("{}")
-    assert placement.listAppearance() == "{}"
+        placement.setListAppearance("configuration", "{}")
+    assert placement.listAppearance("configuration") == "{}"

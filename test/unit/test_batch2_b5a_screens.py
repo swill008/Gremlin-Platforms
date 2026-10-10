@@ -6,7 +6,8 @@ GL-164). Off-screen, in its own process (this file run as a script:
 python test/unit/test_batch2_b5a_screens.py <out_dir>).
 
 A key just added shows one empty binding with OK; an action put in it is
-not in the profile until OK; Undo takes the OK back.
+not in the profile until OK; Undo takes the OK back. The Keyboard page is
+KeyboardPage.qml with the shared ActionPane (05 S128).
 """
 
 from __future__ import annotations
@@ -57,7 +58,10 @@ def test_the_keyboard_page_edits_a_draft(tmp_path: pathlib.Path) -> None:
     assert not errors, errors
     ours = [
         line for line in lines
-        if line.startswith("WARN") and "InputConfiguration" in line
+        if line.startswith("WARN") and any(
+            name in line
+            for name in ("InputConfiguration", "KeyboardPage", "ActionPane")
+        )
     ]
     assert not ours, ours
     # A new key: one empty binding, nothing written, OK shown.
@@ -102,14 +106,22 @@ import QtQuick
 import QtQuick.Window
 Window {
     width: 1200; height: 700; visible: true
-    QtObject { id: bsi; property var icons: ({ remove: "x" }) }
-    KeyboardInputList { id: _page; width: 400; height: 700 }
-    InputConfiguration { id: _editor; x: 400; width: 800; height: 700 }
+    QtObject { id: bsi; property var icons: ({ remove: "x", verticalDrag: "=" }) }
+    KeyboardPage { id: _page; anchors.fill: parent }
     function findName(item, name) {
         if (item.objectName === name)
             return item
         for (var i = 0; i < item.children.length; i++) {
             var f = findName(item.children[i], name)
+            if (f) return f
+        }
+        return null
+    }
+    function findText(item, text) {
+        if (item.text === text && item.clicked !== undefined)
+            return item
+        for (var i = 0; i < item.children.length; i++) {
+            var f = findText(item.children[i], text)
             if (f) return f
         }
         return null
@@ -140,28 +152,30 @@ Window {
         )
         return len(item.action_sequences) if item is not None else 0
 
-    rows = js("_editor.shownModel ? _editor.shownModel.rowCount() : -1")
-    ok = js("String(findName(_editor, 'keyboardOk').visible)")
+    pane_model = "_page.layoutModel.paneModel"
+    rows = js(f"{pane_model} ? {pane_model}.rowCount() : -1")
+    ok = js("String(findText(_page, 'OK').visible)")
     s._Out.result("new-key", f"{rows} {written()} {ok}")
 
     # An action into the draft's binding, as the editor's Add would.
-    from gremlin.ui.binding_catalog import KeyboardPaneModel
+    from PySide6 import QtQml
 
-    pane = win.findChildren(KeyboardPaneModel)[0]
+    context = QtQml.qmlContext(win)
+    pane = QtQml.QQmlExpression(context, win, "_page.layoutModel").evaluate()[0]
     action = plugin_manager.PluginManager().create_instance(
         "Description", InputType.Keyboard
     )
     root = pane._pane_shadow.action_sequences[0].root_action
     root.insert_action(action, "children")
-    s._Out.result("before-ok", f"{js('String(_editor.paneHasChanges())')} {written()}")
-    js("findName(_editor, 'keyboardOk').clicked(); 1")
+    s._Out.result("before-ok", f"{js('String(_page.paneHasChanges())')} {written()}")
+    js("findText(_page, 'OK').clicked(); 1")
     s._wait(200)
-    dirty = js("String(_editor.paneHasChanges())")
-    undo = js("String(findName(_editor, 'keyboardUndo').enabled)")
+    dirty = js("String(_page.paneHasChanges())")
+    undo = js("String(_page.layoutModel.canUndo)")
     s._Out.result("after-ok", f"{dirty} {written()} {undo}")
-    js("findName(_editor, 'keyboardUndo').clicked(); 1")
+    js("findName(findName(_page, 'keyboardUndoBar'), 'undoBarUndo').clicked(); 1")
     s._wait(200)
-    s._Out.result("undone", f"{written()} {js('String(!!_editor.shownModel)')}")
+    s._Out.result("undone", f"{written()} {js('String(!!' + pane_model + ')')}")
     s._report(warnings)
 
 

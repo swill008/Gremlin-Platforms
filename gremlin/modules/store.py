@@ -21,7 +21,9 @@ Callers pass a device's name and id and never build module paths:
             tied to the device and window that made it)
 - Configuration layout: read_layout, write_layout, friendly_name,
             set_friendly_name (the "layout" key: groups, order; names are
-            the claim's friendly names, CF-Q1, CF-Q8)
+            the claim's friendly names, CF-Q1, CF-Q8); the page's unsaved
+            changes: set_pending_layout, layout_for, has_pending,
+            save_pending (File > Save Profile), discard_pending (CS1)
 
 Rules kept here:
 - one lookup rule (registry.resolve_module_slug), a stale id filtered out
@@ -626,7 +628,7 @@ def normalize_layout(raw: object) -> dict:
             order.append(text)
     group_of: dict[str, str] = {}
     found = raw.get("group_of")
-    for key, name in (found.items() if isinstance(found, dict) else ()):
+    for key, name in found.items() if isinstance(found, dict) else ():
         text = str(name or "").strip()
         if str(key).strip() and text in groups:
             group_of[str(key).strip()] = text
@@ -710,6 +712,156 @@ def set_friendly_name(
 ) -> bool:
     """Rename (CF-Q8): writes the input's friendly name; blank removes it."""
     return write_layout(guid, None, device_name, who, names={str(key): name})
+
+
+# --- unsaved Configuration layouts (CS1) ---------------------------------------
+# The Configuration page's groups, order and Rename are held here per device
+# until File > Save Profile writes them (one write, one History entry per
+# device file), like the Logical Device's and OSC's files (D-04-LD-FILE): the
+# title's "*" covers them and Discard drops them.
+# guid_key(guid) -> {"guid", "device_name", "layout" (dict | None), "names"}
+_pending: dict[str, dict] = {}
+_pending_listeners: list[Callable[[str, str], None]] = []
+
+
+def add_pending_listener(callback: Callable[[str, str], None]) -> None:
+    """callback(what, guid) after each change to the unsaved layouts: what is
+    "changed", "saved" or "discarded" (guid "" for every device)."""
+    if callback not in _pending_listeners:
+        _pending_listeners.append(callback)
+
+
+def remove_pending_listener(callback: Callable[[str, str], None]) -> None:
+    if callback in _pending_listeners:
+        _pending_listeners.remove(callback)
+
+
+def _tell_pending(what: str, guid: str) -> None:
+    for callback in list(_pending_listeners):
+        try:
+            callback(what, guid)
+        except Exception:  # noqa: BLE001 - a listener never stops a save
+            syslog.exception("A Configuration layout listener failed")
+
+
+def _file_names(guid: str, device_name: str) -> dict[str, str]:
+    path = _layout_path(guid, device_name)
+    if path is None:
+        return {}
+    claim = read_path(path).get("claim")
+    names = claim.get("friendly") if isinstance(claim, dict) else None
+    if not isinstance(names, dict):
+        return {}
+    return {str(k): str(v or "").strip() for k, v in names.items()}
+
+
+def set_pending_layout(
+    guid: str,
+    layout: dict | None,
+    names: dict[str, str] | None = None,
+    device_name: str = "",
+) -> None:
+    """Holds the device's layout (None: as it is) and friendly-name changes
+    ({key: name}, "" removes) as unsaved. Names add to the ones already held.
+    Back to what the file has: nothing is held (no "*")."""
+    key = guid_key(guid)
+    entry = _pending.get(key) or {
+        "guid": str(guid),
+        "device_name": device_name,
+        "layout": None,
+        "names": {},
+    }
+    if device_name:
+        entry["device_name"] = device_name
+    if layout is not None:
+        entry["layout"] = normalize_layout(layout)
+    for name_key, name in (names or {}).items():
+        entry["names"][str(name_key)] = str(name or "").strip()
+    saved_layout = read_layout(guid, entry["device_name"])
+    saved_names = _file_names(guid, entry["device_name"])
+    same_layout = entry["layout"] is None or entry["layout"] == saved_layout
+    same_names = all(saved_names.get(k, "") == v for k, v in entry["names"].items())
+    if same_layout and same_names:
+        _pending.pop(key, None)
+    else:
+        _pending[key] = entry
+    _tell_pending("changed", str(guid))
+
+
+def set_pending_name(guid: str, key: str, name: str, device_name: str = "") -> None:
+    """Rename on the Configuration page (CF-Q8), held until Save."""
+    set_pending_layout(guid, None, {str(key): name}, device_name)
+
+
+def pending_layout(guid: str) -> dict | None:
+    """The device's unsaved change ({"layout": dict | None, "names": {...}}),
+    None when it has none."""
+    entry = _pending.get(guid_key(guid))
+    if entry is None:
+        return None
+    layout = entry["layout"]
+    return {
+        "layout": None if layout is None else dict(layout),
+        "names": dict(entry["names"]),
+    }
+
+
+def layout_for(guid: str, device_name: str = "") -> dict:
+    """What the page shows: the unsaved layout, else the file's."""
+    entry = _pending.get(guid_key(guid))
+    if entry is not None and entry["layout"] is not None:
+        return normalize_layout(entry["layout"])
+    return read_layout(guid, device_name)
+
+
+def friendly_name_for(guid: str, key: str, device_name: str = "") -> str:
+    """What the page shows: the unsaved name, else the file's."""
+    entry = _pending.get(guid_key(guid))
+    if entry is not None and str(key) in entry["names"]:
+        return entry["names"][str(key)]
+    return friendly_name(guid, key, device_name)
+
+
+def has_pending() -> bool:
+    """Any device has unsaved Configuration layout changes (the title's "*")."""
+    return bool(_pending)
+
+
+def save_pending(who: str = "Configuration") -> int:
+    """File > Save Profile: writes each device's unsaved layout and names in
+    one write (one History entry each). Returns how many files were written.
+    A device whose file is gone or damaged (said in the error dialog) is
+    dropped; a failed write stays held and its OSError is raised after the
+    others were tried."""
+    written = 0
+    failed: OSError | None = None
+    for key, entry in list(_pending.items()):
+        try:
+            if write_layout(
+                entry["guid"],
+                entry["layout"],
+                entry["device_name"],
+                who,
+                names=entry["names"] or None,
+            ):
+                written += 1
+        except OSError as error:
+            failed = failed or error
+            continue
+        _pending.pop(key, None)
+    _tell_pending("saved", "")
+    if failed is not None:
+        raise failed
+    return written
+
+
+def discard_pending(guid: str = "") -> None:
+    """Discard: drops the unsaved layouts (one device's, or every one)."""
+    if guid:
+        _pending.pop(guid_key(guid), None)
+    else:
+        _pending.clear()
+    _tell_pending("discarded", str(guid))
 
 
 # --- pictures ------------------------------------------------------------------

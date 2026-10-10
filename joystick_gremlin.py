@@ -133,7 +133,6 @@ if _startup_failure is None:
         import gremlin.signal
         import gremlin.tts
         import gremlin.types
-        import gremlin.ui.action_image_generator
         import gremlin.ui.backend
         import gremlin.ui.button_map_options
         import gremlin.ui.system_tray
@@ -169,6 +168,8 @@ if _startup_failure is None:
         import gremlin.input_tester_link  # noqa: F401  # Tools › Input Tester…
         import gremlin.ui.history_model  # noqa: F401
         import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
+        import gremlin.ui.keyboard_layout  # noqa: F401
+        import gremlin.ui.hardware_layout  # noqa: F401
         import gremlin.ui.logical_layout  # noqa: F401
         import gremlin.ui.osc_layout  # noqa: F401
         import gremlin.ui.module_pairing  # noqa: F401
@@ -1171,10 +1172,6 @@ class JoystickGremlinApp(QtWidgets.QApplication):
 
         self.backend = gremlin.ui.backend.Backend(self.engine)
         self.backend.newProfile()
-        action_image_provider = (
-            gremlin.ui.action_image_generator.ActionSummaryImageProvider()
-        )
-        self.engine.addImageProvider("action_summary", action_image_provider)
         self.engine.rootContext().setContextProperty("backend", self.backend)
         self.engine.rootContext().setContextProperty("uiState", self.backend.ui_state)
         self.engine.rootContext().setContextProperty("signal", gremlin.signal.signal)

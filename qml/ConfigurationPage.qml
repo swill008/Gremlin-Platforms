@@ -1,0 +1,752 @@
+// -*- coding: utf-8; -*-
+// SPDX-License-Identifier: GPL-3.0-only
+
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import QtQuick.Window
+
+import Gremlin.Device
+import Gremlin.Menus
+import Gremlin.Style
+import "helpers.js" as Helpers
+import "confirm.js" as Confirm
+import Gremlin.UI
+
+// The Configuration page of a joystick (05 S121-S131): the Logical Device
+// page on the shared base (ControlFindBar, ControlTree, ActionPane) over the
+// module's claimed inputs. Rows can't be added or removed here (Module Setup
+// owns the claims); groups, order and names are kept in the input module
+// file. Live lights/bars and jump-to-pressed decorate the tree (S131).
+Item {
+    id: _root
+
+    // The device shown (Main sets them; uiState.currentDevice and its title).
+    property string guid: ""
+    property string deviceName: ""
+    property string mode: "Default"
+
+    readonly property alias layout: _layout
+    readonly property bool actionOpen: _pane.open
+    readonly property string paneKey: _pane.paneKey
+    readonly property string paneTitle: _pane.paneTitle
+    property alias paneUnits: _pane.paneUnits
+    readonly property int paneWidth: _pane.paneWidth
+    property alias closeAfterOk: _pane.closeAfterOk
+    // The list's open parents, folded groups and selection (ControlTree.qml).
+    property alias _opened: _tree.opened
+    property alias _collapsed: _tree.collapsed
+    property alias _picked: _tree.picked
+
+    // This page's own Appearance (05 S125, AP2) is held by the panel (ListAppearancePanel).
+    property bool displayOpen: false
+    readonly property alias appearance: _appear
+
+    property bool _ready: false
+
+    // The one edit lock (06 S13, S82): nothing is edited while the profile runs.
+    EditLock { id: _lock }
+    readonly property bool editorLocked: _lock.locked
+
+    // Same rules as the Undo and Redo menu items (S36). A focused text field keeps these keys.
+    readonly property bool _undoKeys: visible && !editorLocked && !actionOpen
+    Shortcut {
+        enabled: _root._undoKeys && _layout.canUndo
+        sequences: [StandardKey.Undo]
+        onActivated: _layout.undo()
+    }
+    // On Windows StandardKey.Redo is Ctrl+Y and Ctrl+Shift+Z; listing either
+    // again makes that key ambiguous and it never fires.
+    Shortcut {
+        enabled: _root._undoKeys && _layout.canRedo
+        sequences: [StandardKey.Redo]
+        onActivated: _layout.redo()
+    }
+
+    signal leaveResolved()
+    signal leaveCancelled()
+
+    // +---------------------------------------------------------------------
+    // | Main's hooks (same names as the Logical Device and OSC pages)
+
+    function setMode(next) {
+        mode = next || "Default"
+    }
+
+    // Another device (S127: switching device clears every Undo step).
+    function setDevice(nextGuid, nextName) {
+        guid = String(nextGuid || "")
+        deviceName = String(nextName || "")
+    }
+
+    property bool _leavingPage: false
+
+    function hasUnsaved() { return _pane.hasUnsaved() }
+
+    // Main.closeActionPanes() asks these before a tool changes bindings
+    // behind the pane (05 Q8) or Run starts (06 Q6).
+    function paneHasChanges() { return hasUnsaved() }
+
+    function closeActionPane() { closePaneNow() }
+
+    // OK for Run's "Save" (06 Q6): false when nothing could be written.
+    function savePane() { return _pane.save() }
+
+    function requestLeave() {
+        if (!hasUnsaved()) {
+            leaveResolved()
+            return
+        }
+        _leavingPage = true
+        _pane.askLeave("The action editor has changes that are not saved.")
+    }
+
+    function _finishLeave(resolved) {
+        if (!_leavingPage)
+            return
+        _leavingPage = false
+        if (resolved)
+            leaveResolved()
+        else
+            leaveCancelled()
+    }
+
+    // After a profile change the pane belongs to a profile that is gone.
+    function closePaneNow() { _pane.closeNow() }
+
+    // Jump to pressed input (S131): the input with this device index is
+    // unfolded, scrolled to and flashed. False when it isn't listed.
+    function showIndex(index) {
+        if (index === undefined || index < 0)
+            return false
+        var key = String(_layout.keyForDeviceIndex(index) || "")
+        if (!key.length)
+            return false
+        return !!_tree.showKey(key)
+    }
+
+    // Opens the pane on an input (all its actions) or one action.
+    function openInput(key, title) { _pane.openAt(key, -1, title) }
+
+    function openAction(key, seq, title) { _pane.openAt(key, seq, title) }
+
+    function addAction(key, title) { _pane.openNew(key, title) }
+
+    // The Appearance panel; hiding asks about unsaved changes, like its ×.
+    function toggleAppearance() {
+        if (displayOpen)
+            requestCloseDisplay()
+        else
+            displayOpen = true
+    }
+
+    function requestCloseDisplay() { _appear.requestClose() }
+
+    // The page menu's "Module Setup…": this device's Module Setup, as its
+    // Home card opens it (claims belong there, 03).
+    signal moduleSetupRequested(string guid)
+
+    function openModuleSetup() {
+        moduleSetupRequested(guid)
+        var win = Window.window
+        if (win && typeof win.openConfigureModule === "function"
+                && typeof win._cardForGuid === "function") {
+            var card = win._cardForGuid(guid)
+            if (card) {
+                win.openConfigureModule("source", card)
+                return true
+            }
+        }
+        return false
+    }
+
+    // The page's own controls on the bar under the toolbar (01 S58a).
+    property Component pageBar: Component {
+        RowLayout {
+            Layout.fillWidth: true
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "configurationAppearanceButton"
+                text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
+                onClicked: _root.toggleAppearance()
+            }
+        }
+    }
+
+    // +---------------------------------------------------------------------
+    // | Models
+
+    HardwareLayoutModel { id: _layout }
+    Connections {
+        target: _layout
+        // Its mode was deleted, or the device changed (the model closed the draft).
+        function onPaneLost() { _root.closePaneNow() }
+    }
+
+    DeviceLiveState {
+        id: _live
+        guid: _root.guid
+        deviceName: _root.deviceName
+        locked: _root.editorLocked
+        liveWhileActive: false
+    }
+
+    WindowPlacement { id: _place }
+
+    // The device's inputs by index: the program's current input (uiState)
+    // follows the selected row, as the highlight of a pressed input needs
+    // it to be on this device (backend._highlight_input).
+    Device {
+        id: _device
+        guid: _root.guid
+    }
+
+    // The device index of a listed parent key ("parent:button:3"); -1 when
+    // not listed.
+    function deviceIndexOf(key) {
+        if (!key)
+            return -1
+        for (var i = 0; i < 1024; i++) {
+            var found = String(_layout.keyForDeviceIndex(i) || "")
+            if (found === key)
+                return i
+        }
+        return -1
+    }
+
+    function _noteCurrentInput(key) {
+        if (typeof uiState === "undefined" || !uiState)
+            return
+        var index = deviceIndexOf(key)
+        if (index < 0)
+            return
+        var ident = _device.inputIdentifier(index)
+        if (ident)
+            uiState.setCurrentInput(ident, index)
+    }
+
+    // On load and after a device change: the program's current input on
+    // this device is shown, else the first input becomes the current one.
+    function _showCurrent() {
+        var index = (typeof uiState !== "undefined" && uiState) ? uiState.currentInputIndex : -1
+        if (index >= 0 && String(_layout.keyForDeviceIndex(index) || "").length) {
+            showIndex(index)
+            _noteCurrentInput(String(_layout.keyForDeviceIndex(index)))
+            return
+        }
+        for (var i = 0; i < 1024; i++) {
+            var key = String(_layout.keyForDeviceIndex(i) || "")
+            if (key.length) {
+                _noteCurrentInput(key)
+                return
+            }
+        }
+    }
+
+    Connections {
+        target: _tree
+        function onPickedChanged() {
+            if (_tree.picked.length === 1)
+                _root._noteCurrentInput(_tree.picked[0])
+        }
+    }
+
+    function _applyDevice() {
+        _layout.setDevice(guid, deviceName)
+        Qt.callLater(_showCurrent)
+    }
+
+    onGuidChanged: if (_ready) _applyDevice()
+    onDeviceNameChanged: if (_ready) _applyDevice()
+    onModeChanged: if (_ready) _layout.setMode(mode)
+    onDisplayOpenChanged: {
+        if (_ready)
+            _place.setDisplayPanelOpen("configuration", "page", displayOpen)
+    }
+
+    Component.onCompleted: {
+        if (uiState)
+            mode = uiState.currentMode || mode
+        _appear.load()
+        _layout.setMode(mode)
+        _applyDevice()
+        displayOpen = _place.displayPanelOpen("configuration", "page")
+        _ready = true
+    }
+
+    Connections {
+        target: typeof uiState !== "undefined" ? uiState : null
+        ignoreUnknownSignals: true
+        function onModeChanged() { _root.setMode(uiState.currentMode) }
+    }
+
+    // The backend's highlight of a pressed input (backend._highlight_input).
+    Connections {
+        target: typeof signal !== "undefined" ? signal : null
+        ignoreUnknownSignals: true
+        function onSetInputIndex(index) { _root.showIndex(index) }
+    }
+
+    // A parent row's click opens the pane on all its actions (S126).
+    Connections {
+        target: _tree
+        ignoreUnknownSignals: true
+        function onParentClicked(key, title, shift) {
+            if (!shift)
+                _root.openInput(key, title)
+        }
+    }
+
+    // +---------------------------------------------------------------------
+    // | The page
+
+    RowLayout {
+        anchors.fill: parent
+        spacing: 0
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumWidth: Style.dp(360)
+            spacing: Style.dp(6)
+
+            ControlFindBar {
+                id: _find
+                layout: _layout
+                namePrefix: "configuration"
+                placeholder: "System name, your name, or group"
+                // Inputs by kind; the action Type box comes after Clear.
+                typeChoices: [
+                    { label: "All inputs", value: "all" },
+                    { label: "Buttons", value: "button" },
+                    { label: "Axes", value: "axis" },
+                    { label: "Hats", value: "hat" }
+                ]
+                filters: [
+                    { label: "Ungrouped", name: "ungrouped" },
+                    { label: "No actions in this mode", name: "noAction" }
+                ]
+                locked: _root.editorLocked
+                paneOpen: _root.actionOpen
+                onChanged: _root._applyFind()
+                // The action Type and Output boxes (S124).
+                buttons: [
+                    ComboBox {
+                        id: _actionType
+                        objectName: "configurationActionType"
+                        Layout.alignment: Qt.AlignTop
+                        Layout.preferredWidth: Style.dp(140)
+                        model: _layout.typeFilterNames
+                        onActivated: _root._applyActionFilters()
+                        PointerTip { text: "Show only actions of this type"; show: true }
+                    },
+                    ComboBox {
+                        id: _output
+                        objectName: "configurationOutputFilter"
+                        Layout.alignment: Qt.AlignTop
+                        Layout.preferredWidth: Style.dp(140)
+                        model: _layout.destChoices
+                        onActivated: _root._applyActionFilters()
+                        PointerTip { text: "Show only actions sending to this output"; show: true }
+                    }
+                ]
+            }
+
+            ControlTree {
+                id: _tree
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                layout: _layout
+                locked: _root.editorLocked
+                namePrefix: "configuration"
+                dragMime: "application/x-gremlin-configuration"
+                dragLayer: _root
+                emptyText: "No inputs are claimed for this device. Right-click here and choose Module Setup… to claim its controls."
+                filtering: _find.filtering || _root._actionFiltering
+                liveDecoration: true
+                liveState: _live
+                liveBars: _appear.showLiveBars
+                liveLeds: _appear.showLeds
+                colorLive: _appear.colorLive
+                parentHeight: _appear.parentHeight
+                childHeight: _appear.childHeight
+                rowSpacing: _appear.rowSpacing
+                groupInside: _appear.groupInside
+                parentAlign: _appear.parentAlign
+                parentWidthPct: _appear.parentWidthPct
+                childAlign: _appear.childAlign
+                childWidthPct: _appear.childWidthPct
+                groupSpacing: _appear.groupSpacing
+                listPadShape: _appear.listPadShape
+                listPad: _appear.listPad
+                listPadTop: _appear.listPadTop
+                listPadRight: _appear.listPadRight
+                listPadBottom: _appear.listPadBottom
+                listPadLeft: _appear.listPadLeft
+                groupPadShape: _appear.groupPadShape
+                groupPad: _appear.groupPad
+                groupPadTop: _appear.groupPadTop
+                groupPadRight: _appear.groupPadRight
+                groupPadBottom: _appear.groupPadBottom
+                groupPadLeft: _appear.groupPadLeft
+                groupRadius: _appear.groupRadius
+                colorGroup: _appear.colorGroup
+                parentPadShape: _appear.parentPadShape
+                parentPad: _appear.parentPad
+                parentPadTop: _appear.parentPadTop
+                parentPadRight: _appear.parentPadRight
+                parentPadBottom: _appear.parentPadBottom
+                parentPadLeft: _appear.parentPadLeft
+                parentRadius: _appear.parentRadius
+                colorParent: _appear.colorParent
+                parentIndent: _appear.parentIndent
+                childIndent: _appear.childIndent
+                childPadShape: _appear.childPadShape
+                childPad: _appear.childPad
+                childPadTop: _appear.childPadTop
+                childPadRight: _appear.childPadRight
+                childPadBottom: _appear.childPadBottom
+                childPadLeft: _appear.childPadLeft
+                childRadius: _appear.childRadius
+                colorChild: _appear.colorChild
+                showChildren: _appear.showChildren
+                showSummary: _appear.showSummary
+                summaryFont: _appear.summaryFont
+                parentFont: _appear.parentFont
+                groupFont: _appear.groupFont
+                childFont: _appear.childFont
+                targetFont: _appear.targetFont
+                colorActionTarget: _appear.colorActionTarget
+                parentBold: _appear.parentBold
+                colorText: _appear.colorText
+                colorMuted: _appear.colorMuted
+                colorSelected: _appear.colorSelected
+                colorSelectBorder: _appear.colorSelectBorder
+                colorBorder: _appear.colorBorder
+                caretSize: _appear.caretSize
+                colorCaret: _appear.colorCaret
+                gripWidth: _appear.gripWidth
+                gripHeight: _appear.gripHeight
+                gripRadius: _appear.gripRadius
+                colorGrip: _appear.colorGrip
+
+                onClearFilters: _root._clearFind()
+                onPageMenu: (item, x, y) => _root._openLayoutMenu(false, false, item, x, y)
+                onParentMenu: (key, title, userName, groupName, item, x, y) => {
+                    _root._menuKey = key
+                    _root._menuTitle = title
+                    _root._menuUser = userName
+                    _root._menuGroup = groupName
+                    _root._openLayoutMenu(true, false, item, x, y)
+                }
+                onGroupMenu: (groupName, item, x, y) => {
+                    _root._groupName = groupName
+                    _root._openLayoutMenu(false, true, item, x, y)
+                }
+                onActionMenu: (parentKey, seq, title, item, x, y) => {
+                    _root._actionParent = parentKey
+                    _root._actionSeq = seq
+                    _root._actionTitle = title
+                    _actionMenu.openAt(item, x, y)
+                }
+                onActionClicked: (parentKey, seq, title) => _root.openAction(parentKey, seq, title)
+            }
+        }
+
+        ActionPane {
+            id: _pane
+            layout: _layout
+            locked: _root.editorLocked
+            namePrefix: "configuration"
+            onLeaveDone: (resolved) => _root._finishLeave(resolved)
+        }
+
+        ListAppearancePanel {
+            id: _appear
+            objectName: "configurationAppearance"
+            pageKey: "configuration"
+            visible: _root.displayOpen
+            title: "Configuration — Appearance"
+            liveOptions: true
+            Layout.preferredWidth: Style.dp(360)
+            Layout.maximumWidth: Style.dp(360)
+            Layout.fillHeight: true
+            onClosed: _root.displayOpen = false
+        }
+    }
+
+    // +---------------------------------------------------------------------
+    // | Find
+
+    readonly property bool _actionFiltering: _actionType.currentIndex > 0 || _output.currentIndex > 0
+
+    function _applyFind() {
+        _layout.setFilter(
+            _find.text,
+            _find.typeValue,
+            _find.isChecked("ungrouped"),
+            false,
+            _find.isChecked("noAction")
+        )
+    }
+
+    function _applyActionFilters() {
+        var keys = _layout.typeFilterKeys || []
+        var typeKey = keys[_actionType.currentIndex] || "all"
+        var dest = _output.currentIndex > 0 ? _output.currentText : "All devices"
+        _layout.setActionFilters(typeKey, dest)
+    }
+
+    function _clearFind() {
+        _actionType.currentIndex = 0
+        _output.currentIndex = 0
+        _applyActionFilters()
+        _find.clear()
+    }
+
+    // +---------------------------------------------------------------------
+    // | Right-click menus
+
+    property string _menuKey: ""
+    property string _menuTitle: ""
+    property string _menuUser: ""
+    property string _menuGroup: ""
+    property string _pendingGroup: ""
+    property string _groupName: ""
+    property bool _menuOnRow: false
+    property bool _menuOnGroup: false
+    // Action row under the right-click menu.
+    property string _actionParent: ""
+    property int _actionSeq: -1
+    property string _actionTitle: ""
+
+    function _openLayoutMenu(onRow, onGroup, item, px, py) {
+        _menuOnRow = onRow
+        _menuOnGroup = onGroup
+        _pageMenu.openAt(item, px, py)
+    }
+
+    // Same rule as the model: group names ignore capitals and spacing.
+    function _sameGroup(first, second) {
+        var clean = (text) => String(text || "").split(/\s+/).filter(Boolean).join(" ").toLowerCase()
+        return clean(first) === clean(second)
+    }
+
+    function _groupAs(name) {
+        if (_picked.length === 1 && _menuGroup.length > 0 && !_sameGroup(_menuGroup, name)) {
+            _pendingGroup = name
+            _moveWarn.confirm(
+                "Already in a Group",
+                _menuTitle + " is already in " + _menuGroup + ". Move it to " + name + "?",
+                "Move"
+            )
+            return
+        }
+        _layout.moveSelected(name)
+    }
+
+    // Rename writes the module's friendly name (S129).
+    function _renameRow() {
+        _nameDialog.lastAccepted = _menuUser
+        _nameDialog.text = _menuUser
+        _nameDialog.visible = true
+    }
+
+    function _renameGroup() {
+        _groupDialog.text = _groupName
+        _groupDialog.visible = true
+    }
+
+    // Tools > History, only this input in this mode and this profile (08 Q16).
+    function historyFilter(key) {
+        var parts = String(key).split(":")
+        if (parts.length < 3)
+            return ""
+        var w = {
+            deviceId: guid,
+            inputType: parts[1],
+            inputId: parts[2],
+            mode: mode
+        }
+        var path = (typeof backend !== "undefined" && backend) ? backend.profilePath() : ""
+        if (path.length)
+            w.profile = path
+        return JSON.stringify(w)
+    }
+
+    function _openHistory() {
+        var filter = historyFilter(_menuKey)
+        if (!filter.length)
+            return
+        Helpers.createComponent("DialogHistory.qml", {
+            filter: filter,
+            // After the filter: a new filter clears the label.
+            filterLabel: deviceName
+        })
+    }
+
+    // Delete actions… asks first (01 S140); Undo puts them back.
+    function _askDeleteActions(key, title) {
+        Confirm.ask(_root, {
+            title: "Delete the actions of " + title + "?",
+            text: "Every action of this input in this mode goes. The input stays.",
+            undoable: true,
+            action: "Delete Actions",
+            onAccept: function() { _layout.deleteActions(key) }
+        })
+    }
+
+    function _askDeleteGroup(name) {
+        Confirm.ask(_root, {
+            title: "Delete group " + name + "?",
+            text: "Its inputs stay, in Ungrouped.",
+            undoable: true,
+            action: "Delete Group",
+            onAccept: function() { _layout.removeGroup(name) }
+        })
+    }
+
+    // 01 S140: deleting an action asks first. It closes the editor open
+    // on its input; that editor's unsaved changes are named too.
+    function deleteActionAsked(parentKey, seq, title) {
+        var editing = actionOpen && paneKey === parentKey
+        var dirty = editing && _layout.paneDirty()
+        Confirm.ask(_root, {
+            title: title ? "Delete action " + title + "?" : "Delete this action?",
+            text: dirty
+                ? "The action editor is open on this input with changes that are not saved."
+                  + " Deleting the action closes it and drops those changes."
+                : "It goes from this input in this mode.",
+            undoable: true,
+            action: "Delete Action",
+            onAccept: function() {
+                if (editing)
+                    _pane.finishClose()
+                _layout.deleteAction(parentKey, seq)
+            }
+        })
+    }
+
+    // The page's right-click menu (Gremlin.Menus): on a row, a group or the
+    // empty list. Quick rows first, then sections; Undo and Redo by the
+    // title. No Add Inputs: claims come from Module Setup.
+    function _layoutMenuModel() {
+        var locked = editorLocked
+        var onRow = _menuOnRow && !locked
+        var onGroup = _menuOnGroup && !locked
+        var many = _picked.length > 1
+        var kind = onRow ? "configuration-row" : (onGroup ? "configuration-group" : "configuration")
+        var title = onRow ? (many ? _picked.length + " inputs" : _menuTitle)
+                          : (onGroup ? _groupName : (deviceName.length ? deviceName : "Configuration"))
+        var header = locked ? [] : [
+            { label: "Undo", enabled: _layout.canUndo && !actionOpen, run: function() { _layout.undo() } },
+            { label: "Redo", enabled: _layout.canRedo && !actionOpen, run: function() { _layout.redo() } }
+        ]
+        var quick = []
+        if (onRow) {
+            quick.push(MenuModel.action("Add Action", function() { addAction(_menuKey, _menuTitle) }))
+            quick.push(MenuModel.action("Rename", _renameRow))
+            if (!many)
+                quick.push(MenuModel.action("History", _openHistory))
+        }
+        if (onGroup)
+            quick.push(MenuModel.action("Rename Group", _renameGroup))
+        quick.push(MenuModel.action("Module Setup…", function() { openModuleSetup() }))
+        quick.push(MenuModel.action("Appearance…", function() { displayOpen = true }))
+
+        var moveTo = []
+        if (onRow) {
+            var groups = _layout.groups || []
+            for (var i = 0; i < groups.length; i++) {
+                (function(g) {
+                    moveTo.push(MenuModel.action("Move to " + g.title, function() {
+                        // After the menu has closed; the move rebuilds the list.
+                        Qt.callLater(function() { _layout.moveSelected(g.name) })
+                    }))
+                })(groups[i])
+            }
+        }
+        // S31: not for the input open in the pane (OK would bring it back).
+        var canDelete = onRow && !many && _layout.canDelete(_menuKey)
+        return MenuModel.menu(kind, title, quick, [
+            canDelete ? MenuModel.section("row", "Row", [
+                MenuModel.action("Delete actions…", function() {
+                    _askDeleteActions(_menuKey, _menuTitle)
+                }, true, { danger: true })
+            ]) : null,
+            onRow ? MenuModel.section("group", "Group", [
+                MenuModel.entry("Group as", function(name) { _groupAs(name) }, true,
+                                { placeholder: "Name, then Enter" })
+            ].concat(moveTo)) : null,
+            locked ? null : MenuModel.section("groups", "Groups", [
+                MenuModel.entry("New Group", function(name) { _layout.addGroup(name) }, true,
+                                { placeholder: "Name, then Enter", keepOpen: true }),
+                onGroup ? MenuModel.action("Move Group Up", function() { _layout.moveGroupUp(_groupName) }) : null,
+                onGroup ? MenuModel.action("Move Group Down", function() { _layout.moveGroupDown(_groupName) }) : null,
+                onGroup ? MenuModel.action("Delete Group", function() { _askDeleteGroup(_groupName) }, true,
+                                           { danger: true }) : null
+            ]),
+            locked ? null : MenuModel.section("order", "Order", [
+                MenuModel.action("By System Name", function() { _layout.sortBySystem() }),
+                MenuModel.action("By Your Name", function() { _layout.sortByName() }),
+                MenuModel.action("Group Names A to Z", function() { _layout.sortGroupNames() })
+            ])
+        ], header)
+    }
+
+    ContextMenu {
+        id: _pageMenu
+        build: _root._layoutMenuModel
+    }
+
+    // An action row's right-click menu.
+    ContextMenu {
+        id: _actionMenu
+        menuWidth: Style.dp(220)
+        build: function() {
+            return MenuModel.menu("configuration-action", _root._actionTitle, [
+                MenuModel.action("Open", function() {
+                    _root.openAction(_root._actionParent, _root._actionSeq, _root._actionTitle)
+                }),
+                MenuModel.action("Delete", function() {
+                    _root.deleteActionAsked(_root._actionParent, _root._actionSeq, _root._actionTitle)
+                }, true, { danger: true })
+            ])
+        }
+    }
+
+    TextInputDialog {
+        id: _nameDialog
+        visible: false
+        width: Style.dp(320)
+        clearOnClick: false
+        heading: "Your name"
+        onAccepted: (value) => {
+            _layout.setUserName(_root._menuKey, value)
+            visible = false
+        }
+    }
+
+    TextInputDialog {
+        id: _groupDialog
+        visible: false
+        width: Style.dp(320)
+        clearOnClick: false
+        heading: "Rename group"
+        validator: function(value) { return value.trim().length > 0 }
+        onAccepted: (value) => {
+            _layout.renameGroup(_root._groupName, value.trim())
+            visible = false
+        }
+    }
+
+    DismissibleDialog {
+        id: _moveWarn
+        onConfirmed: {
+            if (_root._pendingGroup.length)
+                _layout.moveSelected(_root._pendingGroup)
+            _root._pendingGroup = ""
+        }
+        onCancelled: _root._pendingGroup = ""
+    }
+}

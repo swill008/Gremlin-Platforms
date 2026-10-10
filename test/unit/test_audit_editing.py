@@ -11,7 +11,6 @@ import sys
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 sys.path.append(".")
@@ -64,7 +63,7 @@ def _outs(item: Any) -> list[int]:  # noqa: ANN401
 
 @pytest.fixture
 def catalog() -> Iterator[tuple[Any, Profile, dict]]:
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    from test.unit.hardware_page_helper import close, page_on
 
     profile = Profile()
     shared_state.current_profile = profile
@@ -74,18 +73,15 @@ def catalog() -> Iterator[tuple[Any, Profile, dict]]:
     )
     for out in (1, 2):
         item.add_item_binding().root_action.insert_action(_vjoy(out), "children")
-    model = BindingCatalogModel()
+    # The Configuration page's model (HardwareLayoutModel), button 1 claimed.
+    model = page_on(_STICK)
     shown = {"mode": "Default"}
-
-    def spec(_index: int) -> tuple:
-        mode = shown["mode"]
-        real = profile.get_input_item(_STICK, InputType.JoystickButton, 1, mode)
-        return profile, _STICK, InputType.JoystickButton, 1, mode, real
-
-    model._control_spec = spec
     yield model, profile, shown
-    model.endPane()
+    close(model)
     shared_state.current_profile = None
+
+
+_KEY = "parent:button:1"
 
 
 def _input(profile: Profile, mode: str = "Default") -> Any:  # noqa: ANN401
@@ -96,9 +92,9 @@ def test_ok_after_a_mode_change_stays_on_its_input_and_undoes(
     catalog: tuple[Any, Profile, dict],
 ) -> None:
     model, profile, shown = catalog
-    model.beginPane(0, -1)
+    model.beginPane(_KEY, -1)
     _first(model).vjoy_input_id = 7
-    shown["mode"] = "Combat"  # the toolbar's mode changed with the pane open
+    model.setMode("Combat")  # the toolbar's mode changed with the pane open
     model.commitPane()
     model.endPane()
     assert _outs(_input(profile)) == [7, 2]
@@ -111,14 +107,12 @@ def test_steps_follow_a_mode_rename_and_go_with_a_deleted_mode(
     catalog: tuple[Any, Profile, dict],
 ) -> None:
     model, profile, _shown = catalog
-    before = model._snapshot(0)
-    _input(profile).remove_item_binding(_input(profile).action_sequences[0])
-    model._step(0, before)
+    assert model.deleteAction(_KEY, 0)
     assert model.canUndo
     signal.modesChanged.emit()  # a mode added: the steps stay
     assert model.canUndo
     signal.modeRenamed.emit("Default", "Main")
-    assert model._undo[0]["key"][3] == "Main"
+    assert model._undo[0]["links"][0]["key"][3] == "Main"
     signal.modeDeleted.emit("Main")
     assert not model.canUndo
 
@@ -127,17 +121,16 @@ def test_the_list_delete_waits_while_the_pane_edits_that_input(
     catalog: tuple[Any, Profile, dict],
 ) -> None:
     model, profile, _shown = catalog
-    # A claimed device with button 1 on row 0, so removeSequence reaches the
-    # delete (without one it returns False whatever the pane does).
-    model._claimed._device = SimpleNamespace(device_guid=SimpleNamespace(uuid=_STICK))
-    model._claimed._rows = [
-        {"kind": "button", "hwId": 1, "deviceIndex": 0, "name": "Button 1"}
-    ]
-    model.beginPane(0, 1)
-    assert model.removeSequence(0, 0) is False
+    # The right-click menu's Delete (S126): hidden and refused for the input
+    # open in the pane.
+    model.beginPane(_KEY, 1)
+    assert model.canDelete(_KEY) is False
+    assert model.deleteAction(_KEY, 0) is False
+    assert model.deleteActions(_KEY) is False
     assert _outs(_input(profile)) == [1, 2]
     model.endPane()
-    assert model.removeSequence(0, 0) is True  # the pane closed: it deletes
+    assert model.canDelete(_KEY) is True
+    assert model.deleteAction(_KEY, 0) is True  # the pane closed: it deletes
     assert _outs(_input(profile)) == [2]
 
 
@@ -145,7 +138,7 @@ def test_removing_every_action_in_the_pane_then_ok_clears_the_input(
     catalog: tuple[Any, Profile, dict],
 ) -> None:
     model, profile, _shown = catalog
-    model.beginPane(0, -1)
+    model.beginPane(_KEY, -1)
     shadow = model._pane_shadow
     for binding in list(shadow.action_sequences):
         shadow.remove_item_binding(binding)

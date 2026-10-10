@@ -61,7 +61,7 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     errors = [line for line in lines if line.startswith("ERROR")]
     assert errors == [], errors
     # No QML warning from the files these fixes are in.
-    ours = ("DialogJoystickButtonMap.qml", "KeyboardInputList.qml",
+    ours = ("DialogJoystickButtonMap.qml", "KeyboardPage.qml",
             "ConfigGroup.qml", "rig_groups.js", "rig_selection.js")
     warned = [
         line for line in lines
@@ -87,8 +87,7 @@ if __name__ != "__main__":
     from gremlin.profile import Profile
     from gremlin.signal import signal
     from gremlin.types import InputType
-    from gremlin.ui.backend import Backend, UIState
-    from gremlin.ui.device import KeyboardManagerModel
+    from gremlin.ui.keyboard_layout import KeyboardLayoutModel, key_row
 
     _APPS: list[QtCore.QCoreApplication] = []
 
@@ -151,60 +150,67 @@ if __name__ != "__main__":
 
     # 20 / 33 -------------------------------------------------------------------
 
-    def _add(model: KeyboardManagerModel, key: tuple, mode: str = "Default") -> int:
+    # The Keyboard page's model (KeyboardLayoutModel, 05 S128).
+    _KEPT: list[QtCore.QObject] = []
+
+    def _page() -> KeyboardLayoutModel:
+        model = KeyboardLayoutModel()
+        _KEPT.append(model)
+        return model
+
+    @pytest.fixture(autouse=True)
+    def _no_held_layout() -> Iterator[None]:
+        from gremlin.modules import store
+        from gremlin.ui.keyboard_layout import keyboard_store
+
+        yield
+        store.discard_pending("")
+        keyboard_store().load()
+
+    def _add(model: KeyboardLayoutModel, key: tuple, mode: str = "Default") -> str:
         pressed = Event(InputType.Keyboard, key, dill.UUID_Keyboard, mode)
         return model.addKey([pressed], mode)
 
+    def _listed(model: KeyboardLayoutModel) -> list[str]:
+        return [r["key"] for r in model._rows if r["rowKind"] == "parent"]
+
     def test_add_key_gives_its_row_and_a_key_finds_its_row(profile: Profile) -> None:
-        model = KeyboardManagerModel()
-        assert _add(model, (31, False)) == 0  # S
-        # A (30) sorts before S: the new key's row, not the row number held.
-        assert _add(model, (30, False)) == 0
-        assert model.inputIdentifier(0).input_id == (30, False)
-        s_key = model.inputIdentifier(1)
-        assert model.rowOf(s_key) == 1
-        assert model.rowOf(None) == -1
-        assert model.addKey([], "Default") == -1
+        model = _page()
+        s_row = _add(model, (31, False))  # S
+        assert s_row == key_row((31, False)) and _listed(model) == [s_row]
+        # A after S: the new key's own row key, not a row number held.
+        a_row = _add(model, (30, False))
+        assert a_row == key_row((30, False))
+        assert set(_listed(model)) == {a_row, s_row}
+        assert model.addKey([], "Default") == ""
 
-    def test_a_key_only_looked_at_shows_no_delete(
-        profile: Profile, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        import gremlin.ui.backend
-
-        # The editor's model of the input isn't needed, only what asking for
-        # it leaves in the profile.
-        monkeypatch.setattr(gremlin.ui.backend, "InputItemModel", lambda *a: a[0])
+    def test_a_key_only_looked_at_shows_no_delete(profile: Profile) -> None:
         profile.modes.add_mode("Combat")
-        model = KeyboardManagerModel()
-        _add(model, (30, False), "Combat")
+        model = _page()
+        a_row = _add(model, (30, False), "Combat")
         profile.get_input_item(
             dill.UUID_Keyboard, InputType.Keyboard, (30, False), "Combat"
         ).add_item_binding()
-        in_mode = _role(model, b"inMode")
-        # The editor shows the key in Default: that makes an empty input.
-        state = UIState()
-        backend = unittest.mock.Mock(profile=profile, ui_state=state)
-        assert Backend.klass.getInputItem(backend, model.inputIdentifier(0), 0)
+        # The pane shows the key in Default: a draft, nothing made in the
+        # profile.
+        model.setMode("Default")
+        model.beginPane(a_row, -1)
+        assert model.paneModel is not None
+        model.endPane()
         assert profile.get_input_item(
             dill.UUID_Keyboard, InputType.Keyboard, (30, False), "Default"
-        ) is not None
-        # Default has nothing to delete (Delete showed, and did nothing).
-        assert model.data(model.index(0, 0), in_mode) is False
+        ) is None
+        # Default has nothing to delete: no Delete.
+        assert not model.canDelete(a_row)
         model.setMode("Combat")
-        assert model.data(model.index(0, 0), in_mode) is True
+        assert model.canDelete(a_row)
         # A key just added, with no actions anywhere: Delete removes it.
-        _add(model, (31, False), "Combat")
-        assert model.data(model.index(1, 0), in_mode) is True
-        state.deleteLater()
+        s_row = _add(model, (31, False), "Combat")
+        assert model.canDelete(s_row)
 
-    def test_a_key_only_looked_at_elsewhere_is_deleted_there(
-        profile: Profile, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        import gremlin.ui.backend
-
-        monkeypatch.setattr(gremlin.ui.backend, "InputItemModel", lambda *a: a[0])
+    def test_a_key_only_looked_at_elsewhere_is_deleted_there(profile: Profile) -> None:
         profile.modes.add_mode("Combat")
-        model = KeyboardManagerModel()
+        model = _page()
 
         def bind(key: tuple, mode: str) -> None:
             _add(model, key, mode)
@@ -218,35 +224,26 @@ if __name__ != "__main__":
         bind((31, False), "Combat")
         # A also has actions in Default: Delete in Combat keeps it listed.
         bind((30, False), "Default")
-        # S only looked at in Default (the editor makes an empty input).
-        state = UIState()
-        backend = unittest.mock.Mock(profile=profile, ui_state=state)
-        s_key = model.inputIdentifier(1)
-        assert s_key is not None
-        assert Backend.klass.getInputItem(backend, s_key, 0)
+        # S added in Default too, with no actions there.
+        s_row = _add(model, (31, False), "Default")
         modes = [str(i.mode) for i in profile.inputs[dill.UUID_Keyboard]]
         assert sorted(modes) == ["Combat", "Combat", "Default", "Default"]
-        in_mode = _role(model, b"inMode")
         model.setMode("Combat")
-        model.deleteInput(1)
+        model.deleteParents([s_row])
         # Only Combat's input goes: an empty one in Default may be a key added
         # there on purpose, so S stays listed ...
-        assert model.rowCount() == 2
-        row = model.rowOf(s_key)
-        assert row == 1
+        assert len(_listed(model)) == 2 and s_row in _listed(model)
         # ... and with no actions anywhere, its Delete shows in Default and
         # removes it.
         model.setMode("Default")
-        assert model.data(model.index(row, 0), in_mode) is True
-        model.deleteInput(row)
-        assert model.rowCount() == 1
-        assert model.rowOf(s_key) == -1
+        assert model.canDelete(s_row)
+        model.deleteParents([s_row])
+        assert s_row not in _listed(model) and len(_listed(model)) == 1
         # A's Combat actions deleted; its Default ones stay, and so does A.
         model.setMode("Combat")
-        model.deleteInput(0)
-        assert model.rowCount() == 1
+        model.deleteParents([key_row((30, False))])
+        assert len(_listed(model)) == 1
         assert [i.mode for i in profile.inputs[dill.UUID_Keyboard]] == ["Default"]
-        state.deleteLater()
 
     # 6 / decision A, 21, 22, 20, 28, 17: the screens ---------------------------
 
@@ -294,12 +291,12 @@ if __name__ != "__main__":
 
     def test_keyboard_highlight_follows_the_editor(tmp_path: pathlib.Path) -> None:
         r = _run("keyboard", tmp_path)
-        # S picked; A added (sorts first): A is highlighted and in the editor.
-        assert r["picked"] == "0 S 0"
-        assert r["added"] == "0 A A 0"
-        # Another reset (a key added before the one shown, from elsewhere):
-        # the highlight follows the editor's key to its new row.
-        assert r["moved"] == "2 S S 2"
+        # The selected row, then the key in the pane (05 S73: Add Key selects
+        # the key and opens the pane on it).
+        assert r["picked"] == "S S"
+        assert r["added"] == "A A"
+        # Keys added from elsewhere: the selection and the pane stay on A.
+        assert r["moved"] == "A A"
 
     def test_options_search_does_not_match_other(tmp_path: pathlib.Path) -> None:
         r = _run("options", tmp_path)
@@ -614,11 +611,13 @@ def _keyboard(out: pathlib.Path) -> None:
     import dill
     import gremlin.action_label  # noqa: F401
     import gremlin.ui.device  # noqa: F401
+    import gremlin.ui.keyboard_layout  # noqa: F401
     import gremlin.ui.util  # noqa: F401
-    from gremlin import shared_state
+    from gremlin import plugin_manager, shared_state
     from gremlin.profile import Profile
     from gremlin.ui.backend import UIState
 
+    plugin_manager.PluginManager()  # the action editors' QML types (the pane)
     shared_state.current_profile = Profile()
     backend_cls, _ = _fakes()
     backend = backend_cls()
@@ -634,26 +633,18 @@ def _keyboard(out: pathlib.Path) -> None:
 import QtQuick
 import QtQuick.Window
 Window {
-    width: 600; height: 700; visible: true
-    QtObject { id: bsi; property var icons: ({ remove: "x" }) }
-    KeyboardInputList { id: _page; anchors.fill: parent }
-    function list() {
-        function find(item) {
-            if (item.model !== undefined && item.currentIndex !== undefined
-                    && item.count !== undefined)
-                return item
-            for (var i = 0; i < item.children.length; i++) {
-                var f = find(item.children[i])
-                if (f) return f
-            }
-            return null
-        }
-        return find(_page)
-    }
+    width: 900; height: 700; visible: true
+    property alias page: _page
+    QtObject { id: bsi; property var icons: ({ remove: "x", verticalDrag: "=" }) }
+    KeyboardPage { id: _page; anchors.fill: parent }
 }
 """,
         QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "Root.qml")),
     )
+    if not engine.rootObjects():
+        for warning in warnings:
+            print("WARN " + warning.encode("ascii", "replace").decode(), flush=True)
+        raise RuntimeError("KeyboardPage did not load")
     win = engine.rootObjects()[0]
     _wait(400)
 
@@ -664,38 +655,26 @@ Window {
     from gremlin.ui.util import InputListenerModel
 
     context = QtQml.qmlContext(win)
-    model = QtQml.QQmlExpression(context, win, "list().model").evaluate()[0]
+    model = QtQml.QQmlExpression(context, win, "page.layoutModel").evaluate()[0]
     add_key = win.findChildren(InputListenerModel)[0]
 
     def press(code: int) -> list:
         return [Event(InputType.Keyboard, (code, False), dill.UUID_Keyboard, "Default")]
 
-    # Row highlighted and its key; the editor's key and the row it was given.
-    name = "l.model.data(l.model.index({0}, 0), 257)"
-    shown = ("var l = list(); var r = l.currentIndex;"
-             " r + ' ' + (r >= 0 ? " + name.format("r") + " : '-')")
-    # The editor's key: the highlighted row's key, or "other".
-    editor = ("var l = list(); var r = l.currentIndex;"
-              " (r >= 0 && l.model.inputIdentifier(r).label"
-              " === uiState.currentInput.label ? " + name.format("r")
-              + " : 'other') + ' ' + uiState.currentInputIndex")
-    model.addKey(press(31), "Default")  # S
-    _wait(200)
-    _js(win, "list().currentIndex = 0; 1")
-    _wait(200)
-    index = _js(win, "String(uiState.currentInputIndex)")
-    _Out.result("picked", _js(win, shown) + " " + index)
-    # Add Key, as the button's listener hands over a pressed A.
-    add_key.listeningTerminated.emit(press(30))
+    # The selected row's name, then the pane's.
+    shown = "page.layoutModel.selectionLabel + ' ' + page.paneTitle"
+    # Add Key, as its listener hands over a pressed S, then A.
+    add_key.listeningTerminated.emit(press(31))  # S
     _wait(300)
-    _Out.result("added", _js(win, shown) + " " + _js(win, editor))
-    # The editor on S, then two keys sorting before it added from elsewhere.
-    _js(win, "list().currentIndex = 1; 1")
-    _wait(200)
+    _Out.result("picked", _js(win, shown))
+    add_key.listeningTerminated.emit(press(30))  # A
+    _wait(300)
+    _Out.result("added", _js(win, shown))
+    # Two keys added from elsewhere.
     model.addKey(press(16), "Default")  # Q
     model.addKey(press(17), "Default")  # W
     _wait(300)
-    _Out.result("moved", _js(win, shown) + " " + _js(win, editor))
+    _Out.result("moved", _js(win, shown))
     _report(warnings)
 
 

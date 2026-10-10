@@ -8,7 +8,7 @@
 pJoy Pro's Configuration page is open and pJoy Pro is unplugged. The
 program moves the page to the first physical device left (02 S33); the
 page then belongs to that device: its title, the focused card, the
-direction and the catalog's device name, not pJoy Pro's over the
+direction and the Configuration page's device name, not pJoy Pro's over the
 Throttle's rows. With no stick left the page is the Logical Device.
 
 Driven through the real program off-screen (the journey harness, fake
@@ -39,7 +39,7 @@ def _page(j: Journey) -> list:
         j.ev("configTitleName"),
         j.ev("configDirection"),
         j.ev("_moduleModel.focusedCardMap().slug"),
-        j.ev("catalogPane() ? catalogPane().claimDeviceName : ''"),
+        j.ev("configurationPane() ? configurationPane().deviceName : ''"),
     ]
 
 

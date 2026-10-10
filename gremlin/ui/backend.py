@@ -763,6 +763,15 @@ class Backend(QtCore.QObject):
         signal.oscDeviceReloaded.emit()
         signal.oscDeviceModified.emit()
 
+    @QtCore.Slot()
+    def discardConfigurationLayouts(self) -> None:
+        """Discard on the save-changes question: the Configuration page's
+        unsaved groups, order and names go with the profile's (CS1)."""
+        from gremlin.modules import store as module_store
+
+        if module_store.has_pending():
+            module_store.discard_pending()
+
     @QtCore.Slot(str)
     def discardRecovery(self, fpath: str) -> None:
         """Discard: the recovery copy of fpath ("" for Untitled) goes."""

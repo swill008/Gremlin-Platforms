@@ -113,7 +113,8 @@ ApplicationWindow {
     // declare `property Component pageBar`; none means an empty bar).
     readonly property Item currentPageItem: {
         var loaders = [_statusLoader, _outputLoader, _logicalLoader, _oscPageLoader,
-                       _configSplitLoader, _scriptLoader, _settingsLoader]
+                       _configPageLoader, _keyboardPageLoader, _xboxLoader,
+                       _scriptLoader, _settingsLoader]
         for (var i = 0; i < loaders.length; i++)
             if (loaders[i].visible && loaders[i].item)
                 return loaders[i].item
@@ -389,20 +390,16 @@ ApplicationWindow {
     property string configTitleName: ""
     onConfigTitleNameChanged: {
         syncOutputView()
-        syncCatalogView()
+        Qt.callLater(syncConfigurationPage)
     }
     property string configDirection: ""
     property int sourceModuleCount: 0
     property int destModuleCount: 0
+    // The Output View's Appearance panel, open or closed per device. The
+    // Configuration, Keyboard, Logical and OSC pages keep their own.
     property bool outputViewPanel: true
-    property bool catalogPanel: true
-    property bool parkEmptyInUnmapped: false
     property bool _panelReady: false
     property string _panelDevice: ""
-
-    function panelKind() {
-        return configDirection === "dest" ? "output" : "configuration"
-    }
 
     function panelDeviceId() {
         var guid = uiState ? String(uiState.currentDevice || "") : ""
@@ -414,24 +411,19 @@ ApplicationWindow {
     function applyDisplayPanel() {
         var id = panelDeviceId()
         _panelDevice = id
-        var open = id.length ? _windowPlacement.displayPanelOpen(panelKind(), id) : true
         _panelReady = false
         if (configDirection === "dest")
-            outputViewPanel = open
-        else
-            catalogPanel = open
+            outputViewPanel = id.length ? _windowPlacement.displayPanelOpen("output", id) : true
         _panelReady = true
     }
 
     function rememberDisplayPanel() {
-        if (!_panelReady)
+        if (!_panelReady || configDirection !== "dest")
             return
         var id = _panelDevice.length ? _panelDevice : panelDeviceId()
         if (!id.length)
             return
-        var kind = panelKind()
-        var open = kind === "output" ? outputViewPanel : catalogPanel
-        _windowPlacement.setDisplayPanelOpen(kind, id, open)
+        _windowPlacement.setDisplayPanelOpen("output", id, outputViewPanel)
     }
 
     function refreshDestBound() {
@@ -554,8 +546,9 @@ ApplicationWindow {
         continueDisplayLeave()
     }
 
-    function catalogPane() {
-        return _configSplitLoader.item ? _configSplitLoader.item.catalog : null
+    // The joystick Configuration page (05 S121-S131).
+    function configurationPane() {
+        return _configPageLoader.item
     }
 
     function outputPane() {
@@ -570,30 +563,14 @@ ApplicationWindow {
         view.deviceName = configTitleName
     }
 
-    function syncCatalogView() {
-        var split = _configSplitLoader.item
-        if (!split || !split.catalog)
+    // The Configuration page shows the open device under its module name.
+    function syncConfigurationPage() {
+        var page = _configPageLoader.item
+        if (!page || !uiState || uiState.currentTab !== "physical")
             return
-        if (configDirection === "logical" || (uiState && uiState.currentTab === "logical"))
-            return
-        split.catalog.claimDeviceName = configTitleName
-    }
-
-    function revealCatalogRow(row) {
-        Qt.callLater(function() {
-            var split = _configSplitLoader.item
-            if (!split || !split.catalog)
-                return
-            split.catalog.revealRowNow(row)
-        })
-    }
-
-    function deferListScroll(list, row) {
-        Qt.callLater(function() {
-            if (!_configSplitLoader.item || !list)
-                return
-            list.scrollRowNow(row)
-        })
+        var guid = String(uiState.currentDevice || "")
+        if (page.guid !== guid || page.deviceName !== configTitleName)
+            page.setDevice(guid, configTitleName)
     }
 
     function logicalPane() {
@@ -622,37 +599,23 @@ ApplicationWindow {
             openConfigurationForCard(card)
     }
 
+    // Each open page with unsaved edits asks in turn (Save / Discard /
+    // Cancel); its leaveResolved() comes back here for the next one.
+    function _leavePages() {
+        return [outputPane(), configurationPane(), keyboardPane(), logicalPane(), oscPane()]
+    }
+
     function continueDisplayLeave() {
-        var quitText = _quitPending ? "Appearance changes are not saved. Quit and they will be lost." : ""
-        var catalog = catalogPane()
-        if (catalog)
-            catalog.leaveMessage = quitText
         var output = outputPane()
         if (output)
-            output.leaveMessage = quitText
-        if (catalog && catalog.needsLeave && catalog.needsLeave()) {
-            catalog.requestLeave()
-            return
-        }
-        if (output && output.hasUnsaved && output.hasUnsaved()) {
-            output.requestLeave()
-            return
-        }
-        var logical = logicalPane()
-        if (logical && logical.hasUnsaved && logical.hasUnsaved()) {
-            logical.requestLeave()
-            return
-        }
-        var osc = oscPane()
-        if (osc && osc.hasUnsaved && osc.hasUnsaved()) {
-            osc.requestLeave()
-            return
-        }
-        // The Keyboard page's draft (it has no leave prompt of its own).
-        var keyboard = keyboardPane()
-        if (keyboard && _paneChanged(keyboard)) {
-            _keyboardLeaveGate.ask("The action editor has changes that are not saved.")
-            return
+            output.leaveMessage = _quitPending ? "Appearance changes are not saved. Quit and they will be lost." : ""
+        var pages = _leavePages()
+        for (var i = 0; i < pages.length; ++i) {
+            var page = pages[i]
+            if (page && page.hasUnsaved && page.hasUnsaved()) {
+                page.requestLeave()
+                return
+            }
         }
         var next = _afterDisplayLeave
         _afterDisplayLeave = null
@@ -660,25 +623,17 @@ ApplicationWindow {
             next()
     }
 
-    // The open action panes (the catalog's pane, the Keyboard page's draft,
-    // the Logical Device pane and the OSC page's pane). Tools that change bindings behind a pane (Auto Mapper Create,
-    // History Restore, Device Pack import) close them first, or a later OK
-    // would write the pane's old copy back (05 Q8, D-05-DRAFT-OUTDATED).
+    // The open action panes (Configuration, Keyboard, Logical Device and
+    // OSC pages). Tools that change bindings behind a pane (Auto Mapper
+    // Create, History Restore, Device Pack import) close them first, or a
+    // later OK would write the pane's old copy back (05 Q8,
+    // D-05-DRAFT-OUTDATED).
     function _actionPanes() {
         var panes = []
-        var catalog = catalogPane()
-        if (catalog)
-            panes.push(catalog)
-        // The Keyboard page's action draft.
-        var keyboard = keyboardPane()
-        if (keyboard)
-            panes.push(keyboard)
-        var logical = logicalPane()
-        if (logical)
-            panes.push(logical)
-        var osc = oscPane()
-        if (osc)
-            panes.push(osc)
+        var all = [configurationPane(), keyboardPane(), logicalPane(), oscPane()]
+        for (var i = 0; i < all.length; ++i)
+            if (all[i])
+                panes.push(all[i])
         return panes
     }
 
@@ -692,8 +647,6 @@ ApplicationWindow {
             pane.closeActionPane()
         else if (typeof pane.closePaneNow === "function")
             pane.closePaneNow()
-        else if (typeof pane.closeAdvancedPane === "function" && pane.paneHid >= 0)
-            pane.closeAdvancedPane()
     }
 
     // Closes the action panes, then calls then(). A pane with changes that
@@ -781,24 +734,21 @@ ApplicationWindow {
         }
     }
 
+    // The Keyboard page (CF-Q7).
     function keyboardPane() {
-        var split = _configSplitLoader.item
-        return split ? split.inputConfig : null
+        return _keyboardPageLoader.item
     }
 
-    // Unsaved display options or an edited Logical, OSC or Keyboard action pane.
+    // Unsaved Output View display options or an edited action pane on the
+    // Configuration, Keyboard, Logical or OSC page.
     function displayUnsaved() {
-        var catalog = catalogPane()
-        if (catalog && catalog.needsLeave && catalog.needsLeave())
-            return true
-        var panes = [outputPane(), logicalPane(), oscPane()]
-        for (var i = 0; i < panes.length; ++i) {
-            var pane = panes[i]
-            if (pane && pane.hasUnsaved && pane.hasUnsaved())
+        var pages = _leavePages()
+        for (var i = 0; i < pages.length; ++i) {
+            var page = pages[i]
+            if (page && page.hasUnsaved && page.hasUnsaved())
                 return true
         }
-        var keyboard = keyboardPane()
-        return !!(keyboard && _paneChanged(keyboard))
+        return false
     }
 
     function openConfigurationForCard(card) {
@@ -1445,6 +1395,8 @@ ApplicationWindow {
             if (backend) {
                 backend.discardLogicalDevice()
                 backend.discardOscDevice()
+                // The Configuration page's groups, order and names (CS1).
+                backend.discardConfigurationLayouts()
             }
             if (action)
                 action()
@@ -1454,29 +1406,6 @@ ApplicationWindow {
             if (quitting)
                 cancelQuitRequest()
         }
-    }
-
-    // continueDisplayLeave(): Save / Discard / Cancel for the Keyboard
-    // page's draft when leaving (profile change, quit).
-    DismissibleDialog {
-        id: _keyboardLeaveGate
-        onSaveChosen: {
-            var keyboard = _root.keyboardPane()
-            if (keyboard && !keyboard.savePane()) {
-                _root.cancelDisplayLeave()
-                return
-            }
-            if (keyboard)
-                keyboard.closeActionPane()
-            _root.continueDisplayLeave()
-        }
-        onDiscardChosen: {
-            var keyboard = _root.keyboardPane()
-            if (keyboard)
-                keyboard.closeActionPane()
-            _root.continueDisplayLeave()
-        }
-        onCancelled: _root.cancelDisplayLeave()
     }
 
     // The one locked-while-running rule (B5a, 06 S13): Run asks about
@@ -2036,12 +1965,6 @@ ApplicationWindow {
         deviceType: "all"
     }
 
-    Device {
-        id: _deviceModel
-
-        guid: uiState ? uiState.currentDevice : ""
-    }
-
     BootstrapIcons {
         id: bsi
         resource: "qrc:///BootstrapIcons"
@@ -2052,12 +1975,13 @@ ApplicationWindow {
 
         function onDeviceChanged() {
             syncOutputView()
+            Qt.callLater(_root.syncConfigurationPage)
         }
+        // The Configuration and Keyboard pages follow the mode themselves.
         function onModeChanged() {
             if (!uiState) {
                 return
             }
-            _deviceModel.setMode(uiState.currentMode)
             var logi = logicalPane()
             if (logi)
                 logi.setMode(uiState.currentMode)
@@ -2098,15 +2022,11 @@ ApplicationWindow {
 
         // Open action panes belong to the old profile; nothing unsaved is left by now.
         function onProfileChanged() {
-            var catalog = _root.catalogPane()
-            if (catalog && catalog.paneHid >= 0)
-                catalog.closeAdvancedPane()
-            var logical = _root.logicalPane()
-            if (logical && logical.closePaneNow)
-                logical.closePaneNow()
-            var osc = _root.oscPane()
-            if (osc && osc.closePaneNow)
-                osc.closePaneNow()
+            var pages = [_root.configurationPane(), _root.keyboardPane(),
+                         _root.logicalPane(), _root.oscPane()]
+            for (var i = 0; i < pages.length; ++i)
+                if (pages[i] && pages[i].closePaneNow)
+                    pages[i].closePaneNow()
         }
 
         function onQuitRequested() {
@@ -2217,7 +2137,6 @@ ApplicationWindow {
 
         anchors.fill: parent
 
-        property InputConfiguration inputConfigurationWidget
         property bool onStatus: !uiState || uiState.currentRoom === "status"
         property bool onConfig: uiState && uiState.currentRoom === "configuration"
 
@@ -2394,38 +2313,6 @@ ApplicationWindow {
                             return
                         }
                         outputViewPanel = !outputViewPanel
-                        rememberDisplayPanel()
-                    }
-                }
-                CheckBox {
-                    visible: configDirection !== "dest" && configDirection !== "logical"
-                             && !(uiState && uiState.currentTab === "osc")
-                    text: "Move inputs with no actions to the end"
-                    checked: _root.parkEmptyInUnmapped
-                    onToggled: {
-                        _root.parkEmptyInUnmapped = checked
-                        var catalog = catalogPane()
-                        if (catalog)
-                            catalog.parkEmptyInUnmapped = checked
-                    }
-                    PointerTip {
-                        text: "When checked, controls with no actions are listed together under No actions."
-                        show: true
-                    }
-                }
-                Button {
-                    // The Keyboard and OSC pages have no Appearance panel.
-                    visible: configDirection !== "dest" && configDirection !== "logical"
-                             && !(uiState && (uiState.currentTab === "keyboard"
-                                              || uiState.currentTab === "osc"))
-                    text: catalogPanel ? "Hide Appearance" : "Appearance…"
-                    onClicked: {
-                        var catalog = catalogPane()
-                        if (catalogPanel && catalog && catalog.requestClose) {
-                            catalog.requestClose()
-                            return
-                        }
-                        catalogPanel = !catalogPanel
                         rememberDisplayPanel()
                     }
                 }
@@ -2615,18 +2502,57 @@ ApplicationWindow {
             }
         }
 
+        // The joystick Configuration page (05 S121-S131): built like the
+        // Logical Device page.
         Loader {
-            id: _configSplitLoader
+            id: _configPageLoader
 
             Layout.fillHeight: true
             Layout.fillWidth: true
-            active: uiState && uiState.currentRoom === "configuration"
-                    && uiState.currentTab !== "logical" && uiState.currentTab !== "osc"
-                    && !(_root.configDirection === "dest" && uiState.currentTab !== "xbox")
+            active: uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "physical"
+                    && _root.configDirection !== "dest"
                     && _root._configLive
             visible: active
-            sourceComponent: _configSplitComp
-            onLoaded: _root.syncCatalogView()
+            source: "ConfigurationPage.qml"
+            onLoaded: _root.syncConfigurationPage()
+
+            Connections {
+                target: _configPageLoader.item
+                ignoreUnknownSignals: true
+                function onLeaveResolved() { _root.continueDisplayLeave() }
+                function onLeaveCancelled() { _root.cancelDisplayLeave() }
+            }
+        }
+
+        // The Keyboard page (CF-Q7): the same layout.
+        Loader {
+            id: _keyboardPageLoader
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            active: uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "keyboard"
+                    && _root.configDirection !== "dest"
+                    && _root._configLive
+            visible: active
+            source: "KeyboardPage.qml"
+
+            Connections {
+                target: _keyboardPageLoader.item
+                ignoreUnknownSignals: true
+                function onLeaveResolved() { _root.continueDisplayLeave() }
+                function onLeaveCancelled() { _root.cancelDisplayLeave() }
+            }
+        }
+
+        Loader {
+            id: _xboxLoader
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            active: uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "xbox"
+                    && _root._configLive
+            visible: active
+            sourceComponent: XboxDevice {}
         }
 
         // Loaded only while shown.
@@ -2652,78 +2578,6 @@ ApplicationWindow {
             visible: active
             sourceComponent: ProfileSettings {
                 settingsModel: ProfileSettingsModel {}
-            }
-        }
-    }
-
-
-    Component {
-        id: _configSplitComp
-
-        SplitView {
-            id: _splitView
-
-            // Each panel loads only for its own tab.
-            readonly property var catalog: _catalogLoader.item
-            readonly property var inputConfig: _inputConfigLoader.item
-
-            clip: true
-            orientation: (uiState && uiState.currentTab === "physical") ? Qt.Vertical : Qt.Horizontal
-
-            Loader {
-                id: _catalogLoader
-                active: uiState && uiState.currentTab === "physical"
-                visible: active
-                SplitView.minimumWidth: Style.dp(400)
-                SplitView.fillWidth: true
-                SplitView.fillHeight: true
-                onLoaded: _root.syncCatalogView()
-                sourceComponent: BindingCatalog {
-                    device: _deviceModel
-                    moduleModel: _moduleModel
-                    isOutput: _root.configDirection === "dest"
-                    showPanel: _root.configDirection === "dest" ? _root.outputViewPanel : _root.catalogPanel
-                    onParkEmptyInUnmappedChanged: _root.parkEmptyInUnmapped = parkEmptyInUnmapped
-                    onClosePanel: {
-                        if (_root.configDirection === "dest")
-                            _root.outputViewPanel = false
-                        else
-                            _root.catalogPanel = false
-                        _root.rememberDisplayPanel()
-                    }
-                    onLeaveResolved: _root.continueDisplayLeave()
-                    onLeaveCancelled: _root.cancelDisplayLeave()
-                }
-            }
-
-            Loader {
-                id: _xboxLoader
-                active: uiState && uiState.currentTab === "xbox"
-                visible: active
-                SplitView.minimumWidth: Style.dp(400)
-                SplitView.fillWidth: true
-                sourceComponent: XboxDevice {}
-            }
-
-            Loader {
-                id: _keyboardLoader
-                active: uiState && uiState.currentTab === "keyboard"
-                visible: active
-                SplitView.minimumWidth: Style.dp(400)
-                sourceComponent: KeyboardInputList {}
-            }
-
-            Loader {
-                id: _inputConfigLoader
-                active: uiState && !["scripts", "settings", "xbox", "physical"].includes(uiState.currentTab)
-                visible: active
-                SplitView.fillWidth: true
-                SplitView.fillHeight: true
-                SplitView.minimumWidth: Style.dp(900)
-                // The Keyboard page's action draft (InputConfiguration's own).
-                sourceComponent: InputConfiguration {
-                    isOutput: _root.configDirection === "dest"
-                }
             }
         }
     }

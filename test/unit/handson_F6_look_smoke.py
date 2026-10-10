@@ -54,13 +54,7 @@ def _alpha_stats(image: object) -> dict:
 
 
 def story(j: Journey) -> None:
-    from PySide6 import QtCore
 
-    import dill
-    from gremlin import plugin_manager
-    from gremlin.config import Configuration
-    from gremlin.types import InputType
-    from gremlin.ui.action_image_generator import ActionSummaryImageProvider
 
     out = j.out
     j.win.setProperty("visible", True)
@@ -100,84 +94,6 @@ def story(j: Journey) -> None:
     if SHOTS:
         shot = pathlib.Path(SHOTS) / f"f6-home-{SCALE}-{THEME}.png"
         j.win.grabWindow().save(str(shot))
-
-    # --- Keyboard page images (09 Q16 / GL-200) ---
-    Configuration().set("ui", "general", "dark-mode", THEME == "dark")
-    j.backend.emitConfigChanged()
-    j.wait_until(
-        lambda: bool(j.ev("Style.isDarkMode")) == (THEME == "dark"), "theme"
-    )
-    out["dark"] = j.ev("Style.isDarkMode")
-    pm = plugin_manager.PluginManager()
-
-    def key(code: int, names: list[tuple[str, dict]]) -> None:
-        item = j.profile.get_input_item(
-            dill.UUID_Keyboard, InputType.Keyboard, (code, False), "Default", True
-        )
-        binding = item.add_item_binding()
-        for name, attrs in names:
-            action = pm.create_instance(name, InputType.JoystickButton)
-            for k, v in attrs.items():
-                setattr(action, k, v)
-            binding.root_action.insert_action(action, "children")
-
-    vjoy = {"vjoy_device_id": 1, "vjoy_input_id": 12,
-            "vjoy_input_type": InputType.JoystickButton}
-    key(0x1E, [("Map to vJoy", vjoy)])
-    key(0x30, [("Map to Keyboard", {})])
-    key(0x20, [("Map to vJoy", vjoy), ("Map to Keyboard", {}), ("Macro", {})])
-    key(0x12, [("Map to Xbox", {})])
-
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("keyboard"))')
-    state = j.backend.uiState
-    j.wait_until(lambda: state.currentTab == "keyboard", "Keyboard page")
-
-    def images() -> list:
-        found = []
-        for item in j.walk(j.win.contentItem()):
-            src = item.property("source")
-            if (
-                isinstance(src, QtCore.QUrl)
-                and src.toString().startswith("image://action_summary/")
-                and item.isVisible()
-                and item.property("sourceSize").width() > 0  # loaded
-            ):
-                found.append(item)
-        return found
-
-    j.wait_until(lambda: len(images()) >= 4, "action summary images")
-    rows = []
-    for item in images():
-        size = item.property("sourceSize")
-        rows.append({
-            "src": item.property("source").toString(),
-            "h": round(item.height()),
-            "srcW": size.width(), "srcH": size.height(),
-        })
-    out["images"] = rows
-    if SHOTS:
-        shot = pathlib.Path(SHOTS) / f"f6-keyboard-{SCALE}-{THEME}.png"
-        j.win.grabWindow().save(str(shot))
-
-    # The images themselves, from the program's provider, by the ids shown.
-    provider = ActionSummaryImageProvider()
-    widest = max(rows, key=lambda r: r["srcW"])
-    image_id = widest["src"][len("image://action_summary/"):]
-    image_id = QtCore.QUrl.fromPercentEncoding(image_id.encode())
-    shown_image = provider.requestImage(image_id, QtCore.QSize(), QtCore.QSize())
-    out["shown"] = _alpha_stats(shown_image)
-    out["shownSize"] = [shown_image.width(), shown_image.height()]
-    # The same picture drawn at 100 % and enlarged: what sharp must beat.
-    plain_id = re.sub(r"([?&])s=\d+", r"\1s=100", image_id)
-    if "s=" not in plain_id:
-        plain_id += "&s=100"
-    plain = provider.requestImage(plain_id, QtCore.QSize(), QtCore.QSize())
-    enlarged = plain.scaled(
-        shown_image.width(), shown_image.height(),
-        QtCore.Qt.AspectRatioMode.IgnoreAspectRatio,
-        QtCore.Qt.TransformationMode.SmoothTransformation,
-    )
-    out["enlarged"] = _alpha_stats(enlarged)
 
 
 def main() -> None:

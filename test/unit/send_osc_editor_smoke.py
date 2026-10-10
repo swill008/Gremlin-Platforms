@@ -36,10 +36,7 @@ def story(j: Journey) -> None:
     j.win.setHeight(950)
     j.QTest.qWait(300)
     catalog = j.open_configuration("pjoy_pro")
-    page = j.ev("catalogPane()")
-    hid = j.device_index(catalog, "button", 1)
-    j.ev(f"openAdvancedPane({hid}); true", page)
-    j.wait_until(lambda: catalog.paneModel is not None, "the pane")
+    j.open_input(catalog, "button", 1)
     root = j.wait_until(lambda: j.pane_actions(catalog)[0], "the root action")
     root.appendAction("Send OSC", "children")
 

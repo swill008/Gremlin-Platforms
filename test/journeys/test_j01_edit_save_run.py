@@ -57,8 +57,7 @@ def story(j: Journey) -> None:
 
     # Configuration page: open button 1 in the pane, change the target, OK.
     catalog = j.open_configuration("pjoy_pro")
-    index = j.device_index(catalog, "button", 1)
-    catalog.beginPane(index, -1)
+    j.open_input(catalog, "button", 1)
     actions = j.pane_actions(catalog)
     out["pane-actions"] = [a.name for a in actions]
     vjoy_editor = actions[1]

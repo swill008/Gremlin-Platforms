@@ -23,6 +23,7 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 import shiboken6
@@ -34,8 +35,8 @@ from gremlin.event_handler import Event
 from gremlin.profile import Profile
 from gremlin.signal import signal
 from gremlin.types import InputType
-from gremlin.ui.backend import Backend, UIState
-from gremlin.ui.device import AxisCalibration, InputIdentifier, KeyboardManagerModel
+from gremlin.ui.backend import UIState
+from gremlin.ui.device import AxisCalibration, InputIdentifier
 
 _APPS: list[QtCore.QCoreApplication] = []
 
@@ -63,55 +64,85 @@ def ui_state() -> Iterator[UIState]:
     shiboken6.delete(state)
 
 
-def _add(model: KeyboardManagerModel, key: tuple, mode: str = "Default") -> None:
-    model.addKey([Event(InputType.Keyboard, key, dill.UUID_Keyboard, mode)], mode)
+_A = (30, False)
+_S = (31, False)
 
 
-def _role(model: KeyboardManagerModel, name: bytes) -> int:
-    return next(r for r, n in model.roles.items() if bytes(n) == name)
+def _page() -> Any:  # noqa: ANN401
+    """The Keyboard page's model (KeyboardLayoutModel, 05 S128)."""
+    from gremlin.ui.keyboard_layout import KeyboardLayoutModel
+
+    model = KeyboardLayoutModel()
+    _KEPT.append(model)
+    return model
+
+
+_KEPT: list[Any] = []
+
+
+def _add(model: Any, key: tuple, mode: str = "Default") -> str:  # noqa: ANN401
+    event = Event(InputType.Keyboard, key, dill.UUID_Keyboard, mode)
+    return model.addKey([event], mode)
+
+
+def _parents(model: Any) -> list[str]:  # noqa: ANN401
+    return [
+        model.keyAt(i)
+        for i in range(model.rowCount())
+        if model.keyAt(i).startswith("parent:")
+    ]
+
+
+@pytest.fixture(autouse=True)
+def _no_held_layout() -> Iterator[None]:
+    from gremlin.modules import store
+    from gremlin.ui.keyboard_layout import keyboard_store
+
+    yield
+    store.discard_pending("")
+    keyboard_store().load()
 
 
 # --- deleting the last key ----------------------------------------------------
 
 
 def test_no_row_gives_no_key(profile: Profile) -> None:
-    model = KeyboardManagerModel()
-    assert model.inputIdentifier(-1) is None  # failed on an empty list
-    _add(model, (30, False))
-    _add(model, (31, False))
-    assert model.inputIdentifier(-1) is None  # was the last key
-    assert model.inputIdentifier(2) is None  # past the end
-    assert model.inputIdentifier(1).input_id == (31, False)
+    model = _page()
+    assert model.keyAt(-1) == ""  # failed on an empty list
+    first = _add(model, _A)
+    second = _add(model, _S)
+    assert model.keyAt(-1) == ""
+    assert model.keyAt(model.rowCount()) == ""  # past the end
+    assert _parents(model) == [first, second]
 
 
-def test_deleting_the_last_key_lets_the_editor_go_of_it(
-    profile: Profile, ui_state: UIState
-) -> None:
-    model = KeyboardManagerModel()
-    _add(model, (30, False))
-    ui_state.setCurrentInput(model.inputIdentifier(0), 0)
-    assert ui_state.currentInput.isValid
-    changes: list[None] = []
-    ui_state.inputChanged.connect(lambda: changes.append(None))
+def test_deleting_the_last_key_lets_the_editor_go_of_it(profile: Profile) -> None:
+    from gremlin.ui.keyboard_layout import key_row
 
-    model.deleteInput(0)
-    assert model.rowCount() == 0
-    # What the page does once the list is empty.
-    ui_state.clearKeyboardInput()
-    assert not ui_state.currentInput.isValid
-    assert changes  # the editor is told
-    # The editor then asks for nothing, and the key is not made again.
-    backend = SimpleNamespace(profile=profile, ui_state=ui_state)
-    assert Backend.klass.getInputItem(backend, ui_state.currentInput, 0) is None
+    model = _page()
+    key = _add(model, _A)
+    assert key == key_row(_A)
+    model.beginPane(key, -1)
+    assert model.paneModel is not None
+    # What the page does on Delete: the pane open on the key closes (S76).
+    page = Path(__file__).resolve().parents[2] / "qml/KeyboardPage.qml"
+    text = page.read_text(encoding="utf-8")
+    delete = text[text.index("function _askDelete"):]
+    delete = delete[: delete.index("_layout.deleteParents(keys)")]
+    assert "if (actionOpen && keys.indexOf(paneKey) >= 0)" in delete
+    assert "_pane.closeNow()" in delete
+    model.endPane()
+    model.deleteParents([key])
+    assert _parents(model) == [] and model.paneModel is None
+    # The editor asks for nothing more, and the key is not made again.
     assert not profile.inputs.get(dill.UUID_Keyboard)
 
 
 def test_loading_another_profile_lets_go_of_the_key(
     profile: Profile, ui_state: UIState
 ) -> None:
-    model = KeyboardManagerModel()
-    _add(model, (30, False))
-    ui_state.setCurrentInput(model.inputIdentifier(0), 0)
+    key = InputIdentifier(dill.UUID_Keyboard, InputType.Keyboard, _A)
+    ui_state.setCurrentInput(key, 0)
     stick = InputIdentifier(dill.UUID_LogicalDevice, InputType.JoystickButton, 1)
     ui_state.setCurrentInput(stick, 3)
 
@@ -129,12 +160,14 @@ def test_loading_another_profile_lets_go_of_the_key(
 
 def test_a_key_only_in_another_mode_is_not_in_this_one(profile: Profile) -> None:
     profile.modes.add_mode("Combat")
-    model = KeyboardManagerModel()
-    _add(model, (30, False), "Combat")
-    in_mode = _role(model, b"inMode")
-    assert model.data(model.index(0, 0), in_mode) is False  # Default shown
+    model = _page()
+    key = _add(model, _A, "Combat")
+    model.setMode("Default")
+    assert not model.canDelete(key)  # Default shown: not in this mode
+    model.deleteParents([key])
+    assert [i.mode for i in profile.inputs[dill.UUID_Keyboard]] == ["Combat"]
     model.setMode("Combat")
-    assert model.data(model.index(0, 0), in_mode) is True
+    assert model.canDelete(key)
 
 
 # --- calibration: a center outside the range ----------------------------------

@@ -15,8 +15,9 @@ _LITERAL = re.compile(r"[\"']#[0-9A-Fa-f]{6,8}[\"']")
 _REMAINING = {
     # Old fixed dark defaults, kept so saved colours equal to them still
     # follow Dark mode; and "#00000000", the "no colour" value.
-    "qml/BindingCatalog.qml": 24,
-    "qml/LogicalPage.qml": 11,
+    # The shared list Appearance (05 S125): the Logical page's 11 moved
+    # defaults plus the Live colour.
+    "qml/ListAppearancePanel.qml": 12,
     "qml/OutputModuleView.qml": 12,
     # Overlays on the device photo and the colour picker's fixed palette.
     "qml/DialogJoystickButtonMap.qml": 37,

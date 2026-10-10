@@ -472,7 +472,8 @@ def test_input_lists_give_the_input_name_without_patches() -> None:
     import gremlin.action_label  # noqa: F401  (imported by the app at start)
     from gremlin.ui import device
 
-    for cls in (device.Device, device.KeyboardManagerModel):
+    # The Keyboard page lists its keys with KeyboardLayoutModel (05 S128).
+    for cls in (device.Device,):
         assert cls.data.__module__ == "gremlin.ui.device"
     item = types.SimpleNamespace(action_name="Fire", action_sequences=[1, 2])
     assert device._description_from_item(item) == "Fire"

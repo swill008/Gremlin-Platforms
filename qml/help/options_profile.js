@@ -20,7 +20,7 @@ function topics() {
                 + "</ol>"
                 + "<ul>"
                 + "<li><b>General</b>: <b>Startup and Tray</b>, <b>Devices</b>, <b>Diagnostics</b> and <b>History</b> (see <a href=\"topic:options-profile-general\">General options</a>).</li>"
-                + "<li><b>Interface</b>: <b>Display</b> (Dark mode, UI scale, Ignore Windows display scaling) and <b>Inputs</b> (Input names, Input highlighting, which stays on the device page you have open, and Action details). See <a href=\"topic:options-profile-interface\">Interface options</a>.</li>"
+                + "<li><b>Interface</b>: <b>Display</b> (Dark mode, UI scale, Ignore Windows display scaling) and <b>Inputs</b> (Input names, and Input highlighting, which stays on the device page you have open). See <a href=\"topic:options-profile-interface\">Interface options</a>.</li>"
                 + "<li><b>Actions</b>: the <b>Add Action Menu</b> (which actions it offers and their order), then Macro, Change Mode, Double Tap, Smart Toggle, Tempo, Axis Delta, Play Sound and Text to Speech.</li>"
                 + "<li><b>Profiles</b>: <b>Auto-load</b>: Load profiles automatically when a chosen program comes to the front, the programs and their profiles, and Keep running when the program loses focus. See <a href=\"topic:options-profile-auto-load\">Load a profile automatically for a game</a>.</li>"
                 + "<li><b>Home</b>: <b>Cards</b>: Compact view, Show devices without a module, Keep last value after release, and <b>Reset All Card Sizes</b>.</li>"
@@ -83,7 +83,6 @@ function topics() {
                 + "<li><b>UI scale</b> and <b>Ignore Windows display scaling</b>: the size of the program. See <a href=\"topic:options-profile-ui-scale\">Change the size of the program</a>.</li>"
                 + "<li><b>Input names</b> <a href=\"show:option/Input names\">Show me ›</a>: <b>Numerical</b> (\"Axis 3\"), <b>Label</b> (the name the program knows for that control on your device model), or <b>Numerical and Label</b> (both, the usual choice). A control with no known label always shows its number name.</li>"
                 + "<li><b>Input highlighting</b>: using a control on a device selects its input on screen, when that device's page is the one you have open.</li>"
-                + "<li><b>Action details</b>: how each input's actions are shown, <b>Full</b> or <b>Count</b>.</li>"
                 + "</ul>",
             related: ["options-profile-ui-scale", "options-profile-options"]
         },

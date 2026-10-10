@@ -18,6 +18,7 @@ import sys
 sys.path.append(".")
 
 from collections.abc import Iterator
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -29,7 +30,6 @@ from gremlin.config import Configuration
 from gremlin.event_handler import Event
 from gremlin.profile import Profile
 from gremlin.types import InputType
-from gremlin.ui.device import KeyboardManagerModel
 
 _APPS: list[QtCore.QCoreApplication] = []
 
@@ -41,11 +41,31 @@ def _app() -> Iterator[QtCore.QCoreApplication]:
     yield app
 
 
+def _keyboard_page() -> Any:  # noqa: ANN401
+    """The Keyboard page's model (KeyboardLayoutModel, 05 S128)."""
+    from gremlin.ui.keyboard_layout import KeyboardLayoutModel
+
+    model = KeyboardLayoutModel()
+    _KEPT.append(model)
+    return model
+
+
+_KEPT: list[Any] = []
+
+
+def _done() -> None:
+    from gremlin.modules import store
+    from gremlin.ui.keyboard_layout import keyboard_store
+
+    store.discard_pending("")
+    keyboard_store().load()
+
+
 def test_add_key_goes_into_the_given_mode() -> None:
     previous = shared_state.current_profile
     shared_state.current_profile = Profile()
     try:
-        model = KeyboardManagerModel()
+        model = _keyboard_page()
         key = (30, False)
         event = Event(InputType.Keyboard, key, dill.UUID_Keyboard, "Combat")
         model.addKey([event], "Combat")
@@ -55,6 +75,7 @@ def test_add_key_goes_into_the_given_mode() -> None:
         assert len(shared_state.current_profile.inputs[dill.UUID_Keyboard]) == 1
     finally:
         shared_state.current_profile = previous
+        _done()
 
 
 def test_a_key_in_two_modes_is_listed_once_with_the_shown_modes_actions() -> None:
@@ -63,25 +84,29 @@ def test_a_key_in_two_modes_is_listed_once_with_the_shown_modes_actions() -> Non
     profile.modes.add_mode("Combat")
     shared_state.current_profile = profile
     try:
-        model = KeyboardManagerModel()
+        model = _keyboard_page()
         key = (30, False)
         for mode in ("Default", "Combat"):
-            model.addKey([Event(InputType.Keyboard, key, dill.UUID_Keyboard, mode)], mode)
+            event = Event(InputType.Keyboard, key, dill.UUID_Keyboard, mode)
+            model.addKey([event], mode)
         profile.get_input_item(
             dill.UUID_Keyboard, InputType.Keyboard, key, "Combat"
         ).add_item_binding()
-        assert model.rowCount() == 1
-        role = next(r for r, n in model.roles.items() if bytes(n) == b"actionSequenceCount")
-        count = model.data(model.index(0, 0), role)
-        assert count == 0  # Default shown: no actions there
+        model.setMode("Default")
+        parents = [r for r in model._rows if r["rowKind"] == "parent"]
+        assert len(parents) == 1
+        assert parents[0]["childCount"] == 0  # Default shown: no actions there
         model.setMode("Combat")
-        assert model.data(model.index(0, 0), role) == 1
+        parents = [r for r in model._rows if r["rowKind"] == "parent"]
+        assert parents[0]["childCount"] == 1
         # Delete takes the key out of the mode shown only.
-        model.deleteInput(0)
+        model.deleteParents([parents[0]["key"]])
         modes = [i.mode for i in profile.inputs[dill.UUID_Keyboard]]
-        assert modes == ["Default"] and model.rowCount() == 1
+        parents = [r for r in model._rows if r["rowKind"] == "parent"]
+        assert modes == ["Default"] and len(parents) == 1
     finally:
         shared_state.current_profile = previous
+        _done()
 
 
 @pytest.fixture

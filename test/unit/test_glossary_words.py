@@ -127,8 +127,8 @@ def test_options_descriptions_use_the_glossary_words() -> None:
 
 
 # | Python display strings (GL-018): the Configuration list text built in
-# | binding_catalog.py and the result lines Python hands to the screens
-# | (Auto Mapper, GL-228). The QML check above can't see them.
+# | binding_catalog.py and hardware_layout.py and the result lines Python
+# | hands to the screens (Auto Mapper, GL-228). The QML check above can't see them.
 
 # Words for what an input does (glossary D2, D11): "action(s)", and an
 # input with none shows "No actions".
@@ -184,7 +184,14 @@ def _python_strings(path: Path) -> list[tuple[str, int, str]]:
 
 
 def _catalog_strings() -> list[tuple[str, int, str]]:
-    return _python_strings(_ROOT / "gremlin" / "ui" / "binding_catalog.py")
+    # The list helpers and the Configuration page's model (05 S121). The
+    # Keyboard page lists its actions with the same helpers; its group
+    # header's "Empty" is the shared group text (control_layout.count_text).
+    return [
+        entry
+        for name in ("binding_catalog.py", "hardware_layout.py")
+        for entry in _python_strings(_ROOT / "gremlin" / "ui" / name)
+    ]
 
 
 def _result_strings() -> list[tuple[str, int, str]]:

@@ -18,7 +18,6 @@ from PySide6 import QtCore
 import gremlin.osc_persist  # noqa: F401  OSC labels on InputIdentifier
 import gremlin.ui.type_aliases as ta
 from gremlin import osc_pattern, shared_state
-from gremlin.config import Configuration
 from gremlin.error import GremlinError
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice, OscRuntime, guess_input_type
 from gremlin.osc_rows import OscRow, OscRows
@@ -30,7 +29,6 @@ from gremlin.ui.device import (
     QML_IMPORT_NAME,
     InputIdentifier,
     _description_from_item,
-    _generate_action_sequence_descriptor,
 )
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
@@ -612,12 +610,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"label"),
         QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"actionSequenceCount"),
-        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(
-            b"actionSequenceDescriptor"
-        ),
-        QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(
-            b"actionSequenceDisplayMode"
-        ),
         QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"description"),
         QtCore.Qt.ItemDataRole.UserRole + 7: QtCore.QByteArray(b"uid"),
         QtCore.Qt.ItemDataRole.UserRole + 8: QtCore.QByteArray(b"mode"),
@@ -977,16 +969,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
                 return row.mode
             case "actionSequenceCount":
                 return len(input_item.action_sequences) if input_item else 0
-            case "actionSequenceDescriptor":
-                return (
-                    _generate_action_sequence_descriptor(input_item)
-                    if input_item
-                    else ""
-                )
-            case "actionSequenceDisplayMode":
-                return Configuration().value(
-                    "global", "general", "action-sequence-information"
-                )
             case "description":
                 return _description_from_item(input_item) if input_item else ""
             case _:

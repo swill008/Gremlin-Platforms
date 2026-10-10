@@ -59,7 +59,7 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
         line for line in lines
         if line.startswith("WARN") and any(
             name in line for name in (
-                "KeyboardInputList", "LogicalPage", "ConfigGroup", "FilePicker",
+                "KeyboardPage", "LogicalPage", "ConfigGroup", "FilePicker",
                 "SearchBox", "UndoBar", "ConfirmDialog", "EmptyState",
             )
         )
@@ -74,7 +74,8 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
 
 def test_keyboard_delete_asks_the_shared_question(tmp_path: pathlib.Path) -> None:
     r = _run("keyboard", tmp_path)
-    assert r["asked"] == "true Delete key A? | Delete Key | This can't be undone."
+    # Delete is an Undo step on the Keyboard page now (05 S127, S128).
+    assert r["asked"] == "true Delete key A? | Delete Key | undoable"
     assert r["enter"] == "False 1"  # Enter cancelled: the key stays
     assert r["click"] == "False 0"  # the red button deleted it
 
@@ -140,14 +141,16 @@ def _keyboard(s, out: pathlib.Path) -> None:  # noqa: ANN001
     import dill
     import gremlin.action_label  # noqa: F401
     import gremlin.ui.device  # noqa: F401
+    import gremlin.ui.keyboard_layout  # noqa: F401
     import gremlin.ui.util  # noqa: F401
-    from gremlin import shared_state
+    from gremlin import plugin_manager, shared_state
     from gremlin.event_handler import Event
     from gremlin.profile import Profile
     from gremlin.signal import signal
     from gremlin.types import InputType
     from gremlin.ui.backend import UIState
 
+    plugin_manager.PluginManager()  # the action editors' QML types (the pane)
     shared_state.current_profile = Profile()
     backend_cls, _ = s._fakes()
     backend = backend_cls()
@@ -161,22 +164,9 @@ def _keyboard(s, out: pathlib.Path) -> None:  # noqa: ANN001
 import QtQuick
 import QtQuick.Window
 Window {
-    width: 600; height: 700; visible: true
-    QtObject { id: bsi; property var icons: ({ remove: "x" }) }
-    KeyboardInputList { id: _page; anchors.fill: parent }
-    function list() {
-        function find(item) {
-            if (item.model !== undefined && item.currentIndex !== undefined
-                    && item.count !== undefined)
-                return item
-            for (var i = 0; i < item.children.length; i++) {
-                var f = find(item.children[i])
-                if (f) return f
-            }
-            return null
-        }
-        return find(_page)
-    }
+    width: 900; height: 700; visible: true
+    QtObject { id: bsi; property var icons: ({ remove: "x", verticalDrag: "=" }) }
+    KeyboardPage { id: _page; anchors.fill: parent }
 }
 """,
         QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "Root.qml")),
@@ -186,23 +176,34 @@ Window {
     from PySide6 import QtQml
 
     context = QtQml.qmlContext(win)
-    model = QtQml.QQmlExpression(context, win, "list().model").evaluate()[0]
-    model.addKey(
+    model = QtQml.QQmlExpression(context, win, "_page.layoutModel").evaluate()[0]
+    key = model.addKey(
         [Event(InputType.Keyboard, (30, False), dill.UUID_Keyboard, "Default")],
         "Default",
     )
     s._wait(200)
-    s._js(win, "_page._confirmDelete(0, 'A'); 1")
+    ask = f"_page._askDelete(['{key}'], 'A'); 1"
+
+    def asked() -> str:
+        dialog = _confirm(win)
+        if dialog is None:
+            return "false"
+        title = dialog.property("titleText")
+        action = dialog.property("actionText")
+        undo = "undoable" if dialog.property("undoable") else "final"
+        return f"true {title} | {action} | {undo}"
+
+    s._js(win, ask)
     s._wait(200)
-    s._Out.result("asked", _confirm_text(win))
+    s._Out.result("asked", asked())
     _key(win, QtCore.Qt.Key.Key_Return)
     s._wait(200)
-    s._Out.result("enter", f"{_confirm(win) is not None} {model.rowCount()}")
-    s._js(win, "_page._confirmDelete(0, 'A'); 1")
+    s._Out.result("enter", f"{_confirm(win) is not None} {model.parentCount}")
+    s._js(win, ask)
     s._wait(200)
     _click_red(win)
     s._wait(300)
-    s._Out.result("click", f"{_confirm(win) is not None} {model.rowCount()}")
+    s._Out.result("click", f"{_confirm(win) is not None} {model.parentCount}")
     s._report(warnings)
 
 

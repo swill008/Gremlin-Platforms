@@ -49,7 +49,7 @@ def story(j: Journey) -> None:
 
     # The pane: a Macro on button 1 (press A, pause, release A), OK.
     catalog = j.open_configuration("pjoy_pro")
-    catalog.beginPane(j.device_index(catalog, "button", 1), -1)
+    j.open_input(catalog, "button", 1)
     root = j.pane_actions(catalog)[0]
     root.appendAction("Macro", "children")
     macro_editor = root.getActions("children")[0]

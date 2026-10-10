@@ -73,7 +73,6 @@ _ENTRY_TITLES = {
     "action-list": "Actions offered",
     # The Actions offered list's stored order (History names it).
     "action-priorities": "Actions offered",
-    "action-sequence-information": "Action details",
 }
 
 # Where the main Options window shows each setting: sidebar sections, their
@@ -112,7 +111,6 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ("Inputs", [
             ("ui", "general", "display-mode"),
             ("ui", "general", "input-highlighting"),
-            ("global", "general", "action-sequence-information"),
         ]),
     ]),
     ("Actions", [

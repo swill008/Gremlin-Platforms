@@ -17,7 +17,6 @@ sys.path.append(".")
 
 import uuid
 from collections.abc import Iterator
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -93,17 +92,12 @@ def test_a_new_binding_has_no_note(profile: Profile) -> None:
 
 @pytest.fixture
 def catalog(profile: Profile) -> Iterator[Any]:
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    # The Configuration page's model (HardwareLayoutModel), buttons 1-2 claimed.
+    from test.unit.hardware_page_helper import close, page_on
 
-    model: Any = BindingCatalogModel()
-    model._claimed._device = SimpleNamespace(device_guid=SimpleNamespace(uuid=_STICK))
-    model._claimed._rows = [
-        {"kind": "button", "hwId": n, "deviceIndex": n - 1, "name": f"Button {n}"}
-        for n in (1, 2)
-    ]
+    model: Any = page_on(_STICK, [("button", 1), ("button", 2)])
     yield model
-    model.endPane()
-    model.deleteLater()
+    close(model)
 
 
 def test_the_configuration_input_row_carries_the_note(
@@ -121,37 +115,48 @@ def test_the_configuration_input_row_carries_the_note(
     note = _role(catalog, b"note")
     by_kind = {
         (catalog.data(catalog.index(i, 0), _role(catalog, b"rowKind")),
-         catalog.data(catalog.index(i, 0), _role(catalog, b"name"))): i
+         catalog.data(catalog.index(i, 0), _role(catalog, b"systemName"))): i
         for i in range(catalog.rowCount())
     }
-    group = catalog.index(by_kind[("group", "Button 1")], 0)
+    subtitle = _role(catalog, b"subtitle")
+    group = catalog.index(by_kind[("parent", "Button 1")], 0)
     assert catalog.data(group, note) == "Gear lever"
-    assert catalog.data(group, _role(catalog, b"summary")).startswith("Gear lever · ")
-    # No Note: the row is as before, and the role is "" (QML wants a string).
-    plain = catalog.index(by_kind[("group", "Button 2")], 0)
+    assert catalog.data(group, subtitle) == "Gear lever"  # the line under the name
+    # No Note: no line, and the role is "" (QML wants a string); the row
+    # still names its destination.
+    plain = catalog.index(by_kind[("parent", "Button 2")], 0)
     assert catalog.data(plain, note) == ""
-    assert catalog.data(plain, _role(catalog, b"summary")) == "1 action — " + str(
-        catalog.data(plain, _role(catalog, b"destLabel"))
+    assert catalog.data(plain, subtitle) == ""
+    assert str(catalog.data(plain, _role(catalog, b"destLabel"))).startswith(
+        "vJoy 1 · Button 2"
     )
-    leaf = catalog.index(by_kind[("leaf", "Button 1")], 0)
+    leaf = catalog.index(by_kind[("child", "Button 1")], 0)
     assert catalog.data(leaf, note) == ""
 
 
 def test_the_keyboard_key_row_carries_the_note(profile: Profile) -> None:
-    from gremlin.ui.device import KeyboardManagerModel
+    # The Keyboard page's model (KeyboardLayoutModel, 05 S128): the key's
+    # parent row shows the Note under its name, as the Configuration page.
+    from gremlin.ui.keyboard_layout import KeyboardLayoutModel
 
-    model = KeyboardManagerModel()
+    model = KeyboardLayoutModel()
     _KEEP.append(model)
     key = (0x21, False)
     event = Event(InputType.Keyboard, key, dill.UUID_Keyboard, "Default")
-    model.addKey([event], "Default")
+    row_key = model.addKey([event], "Default")
     item = profile.get_input_item(
         dill.UUID_Keyboard, InputType.Keyboard, key, "Default"
     )
-    note = _role(model, b"note")
-    assert model.data(model.index(0, 0), note) == ""
+
+    def subtitle() -> str:
+        model._rebuild()
+        rows = [r for r in model._rows if r["key"] == row_key]
+        assert rows, row_key
+        return rows[0]["subtitle"]
+
+    assert subtitle() == ""
     _bind(item, 1, "Gear lever")
-    assert model.data(model.index(0, 0), note) == "Gear lever"
+    assert subtitle() == "Gear lever"
 
 
 # --- 04 S41: alphabetical whatever the capitals ---------------------------------

@@ -2,8 +2,8 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Redo's keys work on the Logical page and the Configuration page's
-catalog (no behaviour change).
+"""Redo's keys work on the Logical page and the Configuration page
+(no behaviour change).
 
 Both Redo Shortcuts listed StandardKey.Redo and "Ctrl+Shift+Z". On Windows
 StandardKey.Redo is Ctrl+Y and Ctrl+Shift+Z, so Ctrl+Shift+Z was there
@@ -39,14 +39,14 @@ def test_redo_keys_on_the_logical_page(tmp_path: pathlib.Path) -> None:
     _check(run_journey(__file__, tmp_path / "home", "logical"))
 
 
-def test_redo_keys_in_the_catalog(tmp_path: pathlib.Path) -> None:
-    out = run_journey(__file__, tmp_path / "home", "catalog")
+def test_redo_keys_on_the_configuration_page(tmp_path: pathlib.Path) -> None:
+    out = run_journey(__file__, tmp_path / "home", "configuration")
     _check(out)
-    # Undo played "before", Redo "after" (Ctrl+Y and Ctrl+Shift+Z).
+    # Undo took the group away, Redo put it back (Ctrl+Y and Ctrl+Shift+Z).
     assert out["played"] == ["before", "after", "before", "after"], out
 
 
-def _keys(j: Journey, model: object, out: dict) -> None:
+def _keys(j: Journey, model: object, out: dict, after_key: object = None) -> None:
     from PySide6 import QtCore, QtGui
 
     j.win.requestActivate()
@@ -67,6 +67,8 @@ def _keys(j: Journey, model: object, out: dict) -> None:
     ):
         j.QTest.keyClick(j.win, key, mods)
         out[name] = state()
+        if after_key is not None:
+            after_key()
 
 
 def _logical(j: Journey) -> None:
@@ -82,20 +84,18 @@ def _logical(j: Journey) -> None:
     _keys(j, model, j.out)
 
 
-def _catalog(j: Journey) -> None:
-    catalog = j.open_configuration("pjoy_pro")
-    library = j.profile.library
+def _configuration(j: Journey) -> None:
+    layout = j.open_configuration("pjoy_pro")
     played: list = []
-    # The profile side of a step is stubbed: the keys reach the model's own
-    # undo/redo, which play the step's "before" or "after".
-    library.restore = lambda key, side: played.append(side)
-    catalog._undo.append(
-        {"hid": 0, "key": ("g", "k", 1, "Default"),
-         "before": "before", "after": "after"}
-    )
-    catalog._redo.clear()
-    catalog.undoChanged.emit()
-    _keys(j, catalog, j.out)
+    # A real Undo step (a new group): Undo plays "before" (no group), Redo
+    # "after" (the group is back).
+    layout.addGroup("Redo keys")
+
+    def side() -> None:
+        names = [group["name"] for group in layout.groups]
+        played.append("after" if "Redo keys" in names else "before")
+
+    _keys(j, layout, j.out, side)
     j.out["played"] = played
 
 
@@ -105,7 +105,7 @@ def _main() -> None:
     def before(j: Journey) -> None:
         j.input_module()
 
-    Journey(before).run(_logical if part == "logical" else _catalog)
+    Journey(before).run(_logical if part == "logical" else _configuration)
 
 
 if __name__ == "__main__":

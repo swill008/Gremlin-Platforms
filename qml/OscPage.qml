@@ -31,6 +31,9 @@ Item {
     readonly property alias monitorPanel: _monitor
     readonly property alias addWindow: _addDialog
     readonly property alias deviceModel: _devices
+    // This page's own list Appearance panel (05 S125, AP2), shown or hidden.
+    property bool displayOpen: false
+    property bool _displayReady: false
     // The list's open parents, folded groups and selection (ControlTree.qml).
     property alias _picked: _tree.picked
 
@@ -208,6 +211,31 @@ Item {
     }
 
     // OSC's Module Setup (D-09-OSC-TABS), as Options' OSC line opens it.
+    // The Appearance panel; hiding asks about unsaved changes, like its ×.
+    function toggleAppearance() {
+        if (displayOpen)
+            requestCloseDisplay()
+        else
+            displayOpen = true
+    }
+
+    function requestCloseDisplay() { _appear.requestClose() }
+
+    onDisplayOpenChanged: if (_displayReady) _monitorPlace.setDisplayPanelOpen("osc", "page", displayOpen)
+
+    // The page's own controls on the bar under the toolbar (01 S58a).
+    property Component pageBar: Component {
+        RowLayout {
+            Layout.fillWidth: true
+            Item { Layout.fillWidth: true }
+            Button {
+                objectName: "oscAppearanceButton"
+                text: _root.displayOpen ? "Hide Appearance" : "Appearance…"
+                onClicked: _root.toggleAppearance()
+            }
+        }
+    }
+
     function openSetup() {
         if (typeof signal !== "undefined" && signal && signal.openOscModuleSetup) {
             signal.openOscModuleSetup()
@@ -483,6 +511,9 @@ Item {
     }
 
     Component.onCompleted: {
+        _appear.load()
+        displayOpen = _monitorPlace.displayPanelOpen("osc", "page")
+        _displayReady = true
         _layout.setMode(mode)
         _devices.setMode(mode)
         _loadMonitorHeight()
@@ -552,6 +583,67 @@ Item {
                     emptyText: "No OSC inputs yet. Right-click here to add some."
                     filtering: _find.filtering
                     rowExtras: _rowExtras
+                    parentHeight: _appear.parentHeight
+                    childHeight: _appear.childHeight
+                    rowSpacing: _appear.rowSpacing
+                    groupInside: _appear.groupInside
+                    parentAlign: _appear.parentAlign
+                    parentWidthPct: _appear.parentWidthPct
+                    childAlign: _appear.childAlign
+                    childWidthPct: _appear.childWidthPct
+                    groupSpacing: _appear.groupSpacing
+                    listPadShape: _appear.listPadShape
+                    listPad: _appear.listPad
+                    listPadTop: _appear.listPadTop
+                    listPadRight: _appear.listPadRight
+                    listPadBottom: _appear.listPadBottom
+                    listPadLeft: _appear.listPadLeft
+                    groupPadShape: _appear.groupPadShape
+                    groupPad: _appear.groupPad
+                    groupPadTop: _appear.groupPadTop
+                    groupPadRight: _appear.groupPadRight
+                    groupPadBottom: _appear.groupPadBottom
+                    groupPadLeft: _appear.groupPadLeft
+                    groupRadius: _appear.groupRadius
+                    colorGroup: _appear.colorGroup
+                    parentPadShape: _appear.parentPadShape
+                    parentPad: _appear.parentPad
+                    parentPadTop: _appear.parentPadTop
+                    parentPadRight: _appear.parentPadRight
+                    parentPadBottom: _appear.parentPadBottom
+                    parentPadLeft: _appear.parentPadLeft
+                    parentRadius: _appear.parentRadius
+                    colorParent: _appear.colorParent
+                    parentIndent: _appear.parentIndent
+                    childIndent: _appear.childIndent
+                    childPadShape: _appear.childPadShape
+                    childPad: _appear.childPad
+                    childPadTop: _appear.childPadTop
+                    childPadRight: _appear.childPadRight
+                    childPadBottom: _appear.childPadBottom
+                    childPadLeft: _appear.childPadLeft
+                    childRadius: _appear.childRadius
+                    colorChild: _appear.colorChild
+                    showChildren: _appear.showChildren
+                    showSummary: _appear.showSummary
+                    summaryFont: _appear.summaryFont
+                    parentFont: _appear.parentFont
+                    groupFont: _appear.groupFont
+                    childFont: _appear.childFont
+                    targetFont: _appear.targetFont
+                    colorActionTarget: _appear.colorActionTarget
+                    parentBold: _appear.parentBold
+                    colorText: _appear.colorText
+                    colorMuted: _appear.colorMuted
+                    colorSelected: _appear.colorSelected
+                    colorSelectBorder: _appear.colorSelectBorder
+                    colorBorder: _appear.colorBorder
+                    caretSize: _appear.caretSize
+                    colorCaret: _appear.colorCaret
+                    gripWidth: _appear.gripWidth
+                    gripHeight: _appear.gripHeight
+                    gripRadius: _appear.gripRadius
+                    colorGrip: _appear.colorGrip
 
                     onClearFilters: _find.clear()
                     onPageMenu: (item, x, y) => _root._openLayoutMenu(false, false, item, x, y)
@@ -602,6 +694,19 @@ Item {
                         _root.openFeedback(next.key, next.title)
                     _root._finishLeave(resolved)
                 }
+            }
+
+            // This page's own list Appearance (05 S125, AP2).
+            ListAppearancePanel {
+                id: _appear
+                objectName: "oscAppearance"
+                pageKey: "osc"
+                visible: _root.displayOpen
+                title: "OSC — Appearance"
+                Layout.preferredWidth: Style.dp(360)
+                Layout.maximumWidth: Style.dp(360)
+                Layout.fillHeight: true
+                onClosed: _root.displayOpen = false
             }
         }
 

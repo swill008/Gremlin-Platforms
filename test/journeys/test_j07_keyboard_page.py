@@ -11,10 +11,10 @@ presses Run and then F: vJoy button 4 is held while F is held. Stop while
 F is held: Gremlin holds no vJoy device, and F sends nothing while
 stopped.
 
-The action is given in the page's own pane (KeyboardPaneModel, a draft
-that OK writes, 05 Q5): a new key shows one empty binding there (Q4).
+The action is given in the page's own pane (KeyboardLayoutModel's draft
+pane, which OK writes, 05 Q5): a new key shows one empty binding there (Q4).
 
-Spec: 05 S72, S73, S74 with Q4, Q5, S78, S79; 06 S1, S4, S29, S33.
+Spec: 05 S72, S73, S74 with Q4, Q5, S78, S79, S128; 06 S1, S4, S29, S33.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ _F = 0x21  # scan code of F
 def story(j: Journey) -> None:
     import dill
     from gremlin.types import InputType
-    from gremlin.ui.binding_catalog import KeyboardPaneModel
+    from gremlin.ui.keyboard_layout import KeyboardLayoutModel, key_row
     from gremlin.ui.util import InputListenerModel
 
     out = j.out
@@ -42,53 +42,39 @@ def story(j: Journey) -> None:
     # The Keyboard card's Configuration page.
     j.ev('openConfigurationForCard(_moduleModel.cardMap("keyboard"))')
     j.wait_until(lambda: state.currentTab == "keyboard", "the Keyboard page")
-
-    def add_key_listener() -> object:
-        for listener in j.win.findChildren(InputListenerModel):
-            holder = listener.parent()
-            if holder is not None and holder.property("text") == "Add Key":
-                return listener
-        return None
-
-    listener = j.wait_until(add_key_listener, "the Add Key button")
-    # Add Key: its record button opens the popup, which turns the listener
-    # on; then F. The button's state machine starts once the page is up
-    # (a click before that opens the popup with the listener off).
-    holder = listener.parent()
-    record = next(
-        item
-        for item in j.walk(holder)
-        if item.metaObject().indexOfSignal("clicked()") >= 0
+    page = j.wait_until(lambda: j.ev("keyboardPane()"), "the Keyboard page item")
+    layout = j.wait_until(
+        lambda: page.findChild(KeyboardLayoutModel), "the page's layout model"
     )
-    machine = next(
-        c for c in holder.children() if c.metaObject().className() == "StateMachine"
+    add_key = j.wait_until(
+        lambda: next(
+            (i for i in j.walk(page) if i.objectName() == "keyboardAddKey"), None
+        ),
+        "the Add Key button",
     )
-    j.wait_until(lambda: machine.property("running"), "the Add Key button to start")
-    j.click(record)
+    listener = j.wait_until(
+        lambda: page.findChild(InputListenerModel), "the Add Key listener"
+    )
+    # Add Key opens its popup, which turns the listener on; then F.
+    j.click(add_key)
     j.wait_until(lambda: listener.property("enabled"), "the Add Key popup")
     j.key(_F, True)
     j.key(_F, False)
-    j.wait_until(
-        lambda: (
-            state.currentInput is not None
-            and state.currentInput.device_guid == dill.UUID_Keyboard
-        ),
-        "F to be selected",
+    keys = j.wait_until(
+        lambda: j.profile.inputs.get(dill.UUID_Keyboard, []), "F to be added"
     )
-    ident = state.currentInput
-    out["selected"] = [ident.input_type == InputType.Keyboard, ident.input_id]
-    keys = j.profile.inputs.get(dill.UUID_Keyboard, [])
-    out["listed"] = [item.input_id for item in keys]
+    code = tuple(keys[0].input_id)
+    row = key_row(code)
+    j.wait_until(lambda: page.property("paneKey") == row, "the pane on F")
+    j.settle()
+    out["selected"] = [
+        keys[0].input_type == InputType.Keyboard and layout._selected == [row],
+        list(code),
+    ]
+    out["listed"] = [list(item.input_id) for item in keys]
 
     # The editor for F: the Keyboard page's pane, a draft that OK writes.
-    def pane() -> object:
-        for model in j.win.findChildren(KeyboardPaneModel):
-            if model.keyName == "F" and model.paneModel is not None:
-                return model
-        return None
-
-    kb = j.wait_until(pane, "the Keyboard page's pane on F")
-    editor = kb.paneModel
+    editor = layout.paneModel
     out["bindings-shown"] = editor.rowCount()
     binding = editor.data(editor.index(0, 0), 0x0100 + 1)
     root = binding.rootAction
@@ -97,11 +83,11 @@ def story(j: Journey) -> None:
     vjoy_editor = root.getActions("children")[0]
     vjoy_editor.vjoyDeviceId = 1
     vjoy_editor.vjoyInputId = 4
-    out["ok"] = kb.commitPane() >= 0
+    out["ok"] = layout.commitPane() >= 0
 
     _path, _url = j.save_and_reopen("journey7")
     item = j.profile.get_input_item(
-        dill.UUID_Keyboard, InputType.Keyboard, ident.input_id, "Default", False
+        dill.UUID_Keyboard, InputType.Keyboard, code, "Default", False
     )
     out["reloaded"] = [
         a.vjoy_input_id

@@ -168,19 +168,14 @@ def test_s7_new_plugins_join_the_list_shown_and_gone_ones_leave(
 
 @pytest.fixture
 def catalog(profile: Profile) -> Iterator[tuple[Any, Profile]]:
-    """The Configuration page on a stick whose buttons 1-3 are claimed."""
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    """The Configuration page (HardwareLayoutModel) on a stick whose buttons
+    1-3 are claimed."""
+    from test.unit.hardware_page_helper import close, page_on
 
     profile.modes.add_mode("Combat")
-    model: Any = BindingCatalogModel()
-    model._claimed._device = SimpleNamespace(device_guid=SimpleNamespace(uuid=_STICK))
-    model._claimed._rows = [
-        {"kind": "button", "hwId": n, "deviceIndex": n - 1, "name": f"Button {n}"}
-        for n in (1, 2, 3)
-    ]
+    model: Any = page_on(_STICK, [("button", n) for n in (1, 2, 3)])
     yield model, profile
-    model.endPane()
-    model.deleteLater()
+    close(model)
 
 
 def _rows(model: Any) -> list[dict]:  # noqa: ANN401
@@ -197,32 +192,30 @@ def test_s12_the_list_shows_claimed_inputs_in_the_toolbars_mode(
     _map(profile, 1, 7, "Combat")
     _map(profile, 9, 9)  # not claimed: never listed
     rows = _rows(model)
-    names = [r["name"] for r in rows if r["rowKind"] == "group"]
+    names = [r["title"] for r in rows if r["rowKind"] == "parent"]
     assert names == ["Button 1", "Button 2", "Button 3"]
-    assert [r["sequenceIndex"] for r in rows if r["rowKind"] == "leaf"] == [0, 1]
-    model._claimed._mode = "Combat"
+    assert [r["sequenceIndex"] for r in rows if r["rowKind"] == "child"] == [0, 1]
+    model.setMode("Combat")  # the toolbar's mode
     rows = _rows(model)
-    leaves = [r for r in rows if r["rowKind"] == "leaf"]
-    assert len(leaves) == 1 and leaves[0]["name"] == "Button 1"
+    leaves = [r for r in rows if r["rowKind"] == "child"]
+    assert len(leaves) == 1 and leaves[0]["systemName"] == "Button 1"
 
 
-def test_s15_inputs_with_no_actions_go_together_under_no_actions(
+def test_s123_the_no_actions_filter_shows_the_inputs_with_none(
     catalog: tuple[Any, Profile],
 ) -> None:
+    # S15 ("Move inputs with no actions to the end") was removed by
+    # D-05-CFG-PAGE CF-Q2: the "No actions in this mode" filter replaces it.
     model, profile = catalog
     _map(profile, 2, 4)
     rows = _rows(model)
-    assert rows[0]["name"] == "Button 1" and rows[0]["summary"] == "No actions"
-    model.parkEmptyInUnmapped = True
-    rows = _rows(model)
-    kinds = [(r["rowKind"], r["name"]) for r in rows]
-    assert kinds == [
-        ("group", "Button 2"),
-        ("leaf", "Button 2"),
-        ("unmapped-header", "No actions"),
-        ("unmapped", "Button 1"),
-        ("unmapped", "Button 3"),
-    ]
+    assert rows[1]["title"] == "Button 1" and rows[1]["childCount"] == 0
+    model.setFilter("", "all", False, False, True)
+    parents = [r["title"] for r in model._rows if r["rowKind"] == "parent"]
+    assert parents == ["Button 1", "Button 3"]
+    model.setFilter("", "all", False, False, False)
+    parents = [r["title"] for r in model._rows if r["rowKind"] == "parent"]
+    assert parents == ["Button 1", "Button 2", "Button 3"]
 
 
 def test_s43_the_note_shows_on_the_inputs_row(catalog: tuple[Any, Profile]) -> None:
@@ -230,13 +223,10 @@ def test_s43_the_note_shows_on_the_inputs_row(catalog: tuple[Any, Profile]) -> N
     _map(profile, 1, 1)
     item = _real(profile)
     item.action_sequences[0].root_action.action_label = "Gear lever"
-    rows = [r for r in _rows(model) if r["name"] == "Button 1"]
-    texts = " ".join(
-        str(r.get(key, ""))
-        for r in rows
-        for key in ("summary", "destLabel", "typeLabel")
-    )
-    assert "Gear lever" in texts
+    rows = [r for r in _rows(model) if r["rowKind"] == "parent"
+            and r["systemName"] == "Button 1"]
+    assert rows and rows[0]["subtitle"] == "Gear lever"
+    assert rows[0]["note"] == "Gear lever"
 
 
 # --- C. The action pane (S20, S22, S23, S24) and D. Undo (S35, S36, S37) ----
@@ -244,21 +234,18 @@ def test_s43_the_note_shows_on_the_inputs_row(catalog: tuple[Any, Profile]) -> N
 
 @pytest.fixture
 def pane(profile: Profile) -> Iterator[tuple[Any, Profile]]:
-    """The Configuration page with button 1 mapped to vJoy buttons 1 and 2."""
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    """The Configuration page (HardwareLayoutModel) with button 1 mapped to
+    vJoy buttons 1 and 2."""
+    from test.unit.hardware_page_helper import close, page_on
 
     _map(profile, 1, 1)
     _map(profile, 1, 2)
-    model: Any = BindingCatalogModel()
-
-    def spec(_index: int) -> tuple:
-        real = profile.get_input_item(_STICK, InputType.JoystickButton, 1, "Default")
-        return profile, _STICK, InputType.JoystickButton, 1, "Default", real
-
-    model._control_spec = spec
+    model: Any = page_on(_STICK)
     yield model, profile
-    model.endPane()
-    model.deleteLater()
+    close(model)
+
+
+_KEY = "parent:button:1"
 
 
 def _real(profile: Profile) -> Any:  # noqa: ANN401
@@ -273,10 +260,10 @@ def test_s20_a_parent_opens_every_action_a_child_only_its_own(
     pane: tuple[Any, Profile],
 ) -> None:
     model, _profile = pane
-    assert model.beginPane(0, -1) == 2
+    assert model.beginPane(_KEY, -1) == 2
     assert [b.root_action.get_actions()[0][0].vjoy_input_id
             for b in model._pane_shadow.action_sequences] == [1, 2]
-    model.beginPane(0, 1)
+    model.beginPane(_KEY, 1)
     assert len(model._pane_shadow.action_sequences) == 1
     assert _pane_first(model).vjoy_input_id == 2
 
@@ -290,7 +277,7 @@ def test_s22_ok_writes_keeps_the_profile_unsaved_and_the_pane_on_a_new_copy(
     on_disk = path.read_bytes()
     assert not profile.has_unsaved_changes()
 
-    model.beginPane(0, -1)
+    model.beginPane(_KEY, -1)
     old_shadow = model._pane_shadow
     _pane_first(model).vjoy_input_id = 8
     model.commitPane()
@@ -332,7 +319,7 @@ def test_s24_ok_with_nothing_changed_makes_no_undo_step(
     pane: tuple[Any, Profile],
 ) -> None:
     model, profile = pane
-    model.beginPane(0, -1)
+    model.beginPane(_KEY, -1)
     assert not model.paneDirty()
     model.commitPane()
     model.endPane()
@@ -343,11 +330,11 @@ def test_s24_ok_with_nothing_changed_makes_no_undo_step(
 def test_s35_undo_keeps_the_last_fifty_steps(pane: tuple[Any, Profile]) -> None:
     model, profile = pane
     for step in range(55):
-        before = model._snapshot(0)
         action = _real(profile).action_sequences[0].root_action.get_actions()[0][0]
-        action.vjoy_input_id = 10 + step
-        model._step(0, before)
-    assert len(model._undo) == model.UNDO_STEPS == 50
+        model._set_sequences(
+            _real(profile), lambda a=action, n=10 + step: setattr(a, "vjoy_input_id", n)
+        )
+    assert len(model._undo) == 50
     for _ in range(50):
         model.undo()
     assert not model.canUndo
@@ -359,7 +346,7 @@ def test_s36_undo_waits_while_an_action_is_open_in_the_pane(
     pane: tuple[Any, Profile],
 ) -> None:
     model, profile = pane
-    model.beginPane(0, -1)
+    model.beginPane(_KEY, -1)
     _pane_first(model).vjoy_input_id = 8
     model.commitPane()
     assert not model.canUndo
@@ -372,11 +359,7 @@ def test_s36_undo_waits_while_an_action_is_open_in_the_pane(
 
 def test_s37_another_device_starts_with_no_steps(pane: tuple[Any, Profile]) -> None:
     model, profile = pane
-    before = model._snapshot(0)
-    binding = _real(profile).action_sequences[0]
-    _real(profile).remove_item_binding(binding)
-    profile.library.release([binding.root_action])  # as the list's Delete does
-    model._step(0, before)
+    assert model.deleteAction(_KEY, 0)  # the right-click menu's Delete
     assert model.canUndo
     model.guid = str(uuid.uuid4())
     assert not model.canUndo and not model.canRedo

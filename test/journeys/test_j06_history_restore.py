@@ -71,7 +71,7 @@ def story(j: Journey) -> None:
 
     # 1. An input, edited in the pane (OK) and saved.
     catalog = j.open_configuration("pjoy_pro")
-    catalog.beginPane(j.device_index(catalog, "button", 1), -1)
+    j.open_input(catalog, "button", 1)
     j.pane_actions(catalog)[1].vjoyInputId = 7
     catalog.commitPane()
     catalog.endPane()

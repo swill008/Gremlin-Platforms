@@ -462,17 +462,17 @@ def _live_editor(item: Any, data: Any) -> Any:  # noqa: ANN401
 
 
 def _catalog(profile: Profile, hw: int = 1) -> Any:  # noqa: ANN401
-    """The Configuration page model, its pane opened on stick axis hw."""
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    """The Configuration page model (HardwareLayoutModel), stick axis hw
+    claimed; its pane opens on _axis_key(hw)."""
+    from test.unit.hardware_page_helper import page_on
 
-    model = BindingCatalogModel()
-
-    def spec(device_index: int) -> tuple:
-        real = _get(profile, _STICK, InputType.JoystickAxis, hw, "Default")
-        return profile, _STICK, InputType.JoystickAxis, hw, "Default", real
-
-    model._control_spec = spec
+    model = page_on(_STICK, [("axis", hw)])
+    _KEEP.append(model)
     return model
+
+
+def _axis_key(hw: int = 1) -> str:
+    return f"parent:axis:{hw}"
 
 
 def test_ok_on_a_shared_action_changes_it_for_both(profile: Profile) -> None:
@@ -568,7 +568,7 @@ def test_configuration_pane_reference_cancel_and_pick_list(
     model = _catalog(profile)
 
     # Reference picked in the pane, then Cancel: nothing changes.
-    model.beginPane(0, 0)
+    model.beginPane(_axis_key(), 0)
     reference = _action_model(model, _kids(model._pane_shadow)[1])
     reference.referenceAction(_values(reference.actions)[0])
     model.discardPane()
@@ -578,7 +578,7 @@ def test_configuration_pane_reference_cancel_and_pick_list(
 
     # The pane lists its copy, not the original; OK writes the edit into
     # the original, which axis 4 still shares (decision A1).
-    model.beginPane(0, 0)
+    model.beginPane(_axis_key(), 0)
     draft = _kids(model._pane_shadow)[2]
     values = _values(_action_model(model, draft).mergeActionList)
     assert str(draft.id) in values and str(merge.id) not in values
@@ -619,7 +619,7 @@ def test_undo_of_ok_on_a_shared_action_puts_both_back(profile: Profile) -> None:
     # 08 S40, decision A2: Undo restores the shared action for every input.
     merge, one, four = _shared_merge(profile)
     model = _catalog(profile)
-    model.beginPane(0, 0)
+    model.beginPane(_axis_key(), 0)
     _kids(model._pane_shadow)[0].label = "after"
     model.commitPane()
     model.endPane()
@@ -654,7 +654,7 @@ def test_a_picked_shared_action_is_a_copy_until_ok(profile: Profile) -> None:
     )
     five.add_item_binding()
     model = _catalog(profile, 5)
-    model.beginPane(0, 0)
+    model.beginPane(_axis_key(5), 0)
     pane = model._pane_shadow
     picked = profile.library.adopt(pane, merge)
     assert picked is not merge
@@ -665,7 +665,7 @@ def test_a_picked_shared_action_is_a_copy_until_ok(profile: Profile) -> None:
     assert merge.label == "before"
     assert not profile.library.has_action(picked.id)
 
-    model.beginPane(0, 0)
+    model.beginPane(_axis_key(5), 0)
     pane = model._pane_shadow
     picked = profile.library.adopt(pane, merge)
     pane.action_sequences[0].root_action.insert_action(picked, "children")
@@ -682,7 +682,7 @@ def test_reuse_in_a_pane_makes_a_copy(profile: Profile) -> None:
     # Add Action > Merge Axis reuses the shared one, as a copy until OK.
     merge, _one, _four = _shared_merge(profile)
     model = _catalog(profile, 5)
-    model.beginPane(0, -1)
+    model.beginPane(_axis_key(5), -1)
     reused = profile.library.create(
         "Merge Axis", InputType.JoystickAxis, item=model._pane_shadow
     )
@@ -706,7 +706,7 @@ def test_ok_after_the_input_changed_under_the_pane_writes_nothing(
     kept = profile.library.snapshot(item)
     _kids(item)[0].vjoy_input_id = 2
     model = _catalog(profile)
-    model.beginPane(0, 0)
+    model.beginPane(_axis_key(), 0)
     profile.library.restore((_STICK, InputType.JoystickAxis, 1, "Default"), kept)
     _kids(model._pane_shadow)[0].vjoy_input_id = 3
     assert model.commitPane() == -1
@@ -811,7 +811,7 @@ def test_reference_pane_list_leaves_out_another_inputs_root(
 ) -> None:
     _item, _reference, other_root = _reference_with_other_root(profile)
     model = _catalog(profile)
-    model.beginPane(0, 0)
+    model.beginPane(_axis_key(), 0)
     values = _values(_action_model(model, _kids(model._pane_shadow)[0]).actions)
     assert values
     assert str(other_root.id) not in values

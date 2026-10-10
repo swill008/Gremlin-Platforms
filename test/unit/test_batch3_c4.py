@@ -56,12 +56,16 @@ def _model_of(binding_model: Any, data: Any) -> Any:  # noqa: ANN401
 
 
 def _catalog_texts() -> list[str]:
-    tree = ast.parse((_ROOT / "gremlin/ui/binding_catalog.py").read_text("utf-8"))
-    return [
-        node.value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str)
-    ]
+    # The list text: the helpers and the page's model (05 S121).
+    texts = []
+    for name in ("binding_catalog.py", "hardware_layout.py"):
+        tree = ast.parse((_ROOT / "gremlin/ui" / name).read_text("utf-8"))
+        texts += [
+            node.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        ]
+    return texts
 
 
 def test_the_configuration_list_says_no_actions() -> None:
@@ -106,8 +110,8 @@ def test_type_names_are_the_plugins_names() -> None:
 
 
 def test_the_type_box_reads_its_names_from_the_model() -> None:
-    qml = (_ROOT / "qml/BindingCatalog.qml").read_text("utf-8")
-    assert "model: _catalog.typeFilterNames" in qml
+    qml = (_ROOT / "qml/ConfigurationPage.qml").read_text("utf-8")
+    assert "model: _layout.typeFilterNames" in qml
     assert '"Map to keyboard"' not in qml
 
 
@@ -127,11 +131,11 @@ def test_action_kinds_name_real_actions() -> None:
 
 
 def test_the_quick_editor_is_gone() -> None:
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    from gremlin.ui.hardware_layout import HardwareLayoutModel
 
     for name in ("vjoyDevices", "addSequence", "noteOpenRow", "refreshOpenRow"):
-        assert not hasattr(BindingCatalogModel, name), name
-    qml = (_ROOT / "qml/BindingCatalog.qml").read_text("utf-8")
+        assert not hasattr(HardwareLayoutModel, name), name
+    qml = (_ROOT / "qml/ConfigurationPage.qml").read_text("utf-8")
     for word in ("openSequence", "editingHid", "quickHid", "armReveal"):
         assert word not in qml, word
 

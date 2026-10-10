@@ -7,9 +7,8 @@ and user folder) at 100 %, 150 % and 175 % UI scale, light and dark.
 
 03 S78 / D-03-Q8-NOFILE: a Home card for a device with no module file shows
 the device's own counts; Keyboard, OSC and Xbox (nothing to count) don't.
-09 Q16 / G6 / GL-200: the Keyboard page's action summary images follow the
-UI scale (as tall next to the row text as at 100 %), drawn sharp at that
-size (not an enlarged 100 % picture), with ink that suits the theme."""
+(The Keyboard page's action summary images, 09 Q16 / GL-200, were removed
+with the row icon strip: user decision AS1, 2026-10-10.)"""
 
 from __future__ import annotations
 
@@ -61,37 +60,3 @@ def test_keyboard_osc_and_xbox_cards_show_no_counts(runs: dict) -> None:
     for slug in ("keyboard", "osc", "xbox"):
         if slug in cards and cards[slug]["isStub"]:
             assert not cards[slug]["countsVisible"], (slug, cards[slug])
-
-
-@pytest.mark.parametrize("look", _LOOKS[1:])
-def test_action_images_follow_the_ui_scale(runs: dict, look: tuple) -> None:
-    base = runs[(100, "light")]
-    out = runs[look]
-    assert _get(out, "uiScale") == look[0]
-    base_ratio = max(i["h"] for i in _get(base, "images")) / base["fontSize"]
-    tallest = max(i["h"] for i in _get(out, "images"))
-    # As tall next to the row text as at 100 % (21 px next to 15 px).
-    ratio = tallest / out["fontSize"]
-    assert abs(ratio - base_ratio) < 0.12, (tallest, out["fontSize"])
-    # Shown at the size it was drawn (not stretched by the list).
-    for image in out["images"]:
-        assert abs(image["h"] - image["srcH"]) <= 1, image
-
-
-@pytest.mark.parametrize("look", _LOOKS[1:])
-def test_action_images_are_drawn_sharp_at_the_scale(runs: dict, look: tuple) -> None:
-    out = runs[look]
-    shown, enlarged = _get(out, "shown"), _get(out, "enlarged")
-    # Drawn at the size shown: fewer soft edge pixels than the 100 %
-    # picture enlarged to the same size.
-    soft = shown["partial"] / shown["ink"]
-    soft_enlarged = enlarged["partial"] / enlarged["ink"]
-    assert soft < 0.9 * soft_enlarged, (shown, enlarged)
-
-
-@pytest.mark.parametrize("look", _LOOKS)
-def test_action_image_ink_suits_the_theme(runs: dict, look: tuple) -> None:
-    out = runs[look]
-    assert _get(out, "dark") == (look[1] == "dark")
-    lum = out["shown"]["lum"]
-    assert lum > 0.7 if look[1] == "dark" else lum < 0.4, out["shown"]

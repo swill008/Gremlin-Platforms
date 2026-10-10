@@ -266,7 +266,7 @@ def test_a_save_with_the_pane_open_leaves_the_draft_alone(tmp_path: Path) -> Non
     from gremlin import plugin_manager, shared_state
     from gremlin.profile import Profile
     from gremlin.types import InputType
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    from test.unit.hardware_page_helper import close, page_on
 
     stick = uuid.UUID("12121212-3434-5656-7878-909090909090")
     profile = Profile()
@@ -284,12 +284,9 @@ def test_a_save_with_the_pane_open_leaves_the_draft_alone(tmp_path: Path) -> Non
         note.description = "on the input"
         root.insert_action(note, "children")
 
-        model = BindingCatalogModel()
-        model._control_spec = lambda _i: (
-            profile, stick, InputType.JoystickAxis, 1, "Default",
-            profile.get_input_item(stick, InputType.JoystickAxis, 1, "Default"),
-        )
-        model.beginPane(0, 0)
+        # The Configuration page's model, axis 1 claimed.
+        model = page_on(stick, [("axis", 1)])
+        model.beginPane("parent:axis:1", 0)
         pane_root = model._pane_shadow.action_sequences[0].root_action
         pane_root.get_actions()[0][1].description = "in the pane"
 
@@ -302,11 +299,10 @@ def test_a_save_with_the_pane_open_leaves_the_draft_alone(tmp_path: Path) -> Non
         )
 
         assert model.commitPane() == 0  # OK after the save still writes
-        model.endPane()
+        close(model)
         item = profile.get_input_item(stick, InputType.JoystickAxis, 1, "Default")
         assert item is not None
         tags = [a.tag for a in item.action_sequences[0].root_action.get_actions()[0]]
         assert tags == ["merge-axis", "description"]
-        model.deleteLater()
     finally:
         shared_state.current_profile = before

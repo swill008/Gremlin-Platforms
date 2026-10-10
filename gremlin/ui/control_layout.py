@@ -530,9 +530,14 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
             return False
         return True
 
+    def _undo_waits(self) -> bool:
+        """True while Undo/Redo must wait (Configuration: an action open in
+        the pane, 05 S36). Logical and OSC don't wait."""
+        return False
+
     @QtCore.Slot()
     def undo(self) -> None:
-        if not self._undo or self._refused():
+        if not self._undo or self._refused() or self._undo_waits():
             return
         entry = self._undo.pop()
         if self._replay(entry, True):
@@ -544,7 +549,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot()
     def redo(self) -> None:
-        if not self._redo or self._refused():
+        if not self._redo or self._refused() or self._undo_waits():
             return
         entry = self._redo.pop()
         if self._replay(entry, False):
@@ -1230,11 +1235,11 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
 
     @QtCore.Property(bool, notify=revisionChanged)
     def canUndo(self) -> bool:
-        return bool(self._undo)
+        return bool(self._undo) and not self._undo_waits()
 
     @QtCore.Property(bool, notify=revisionChanged)
     def canRedo(self) -> bool:
-        return bool(self._redo)
+        return bool(self._redo) and not self._undo_waits()
 
     # The rows listed (buttons, axes, hats): the search box's "N found".
     @QtCore.Property(int, notify=revisionChanged)

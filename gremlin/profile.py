@@ -1969,6 +1969,10 @@ class Profile:
 
             logical_device_file.save_if_dirty()
             osc_device_file.save_if_dirty()
+            # The Configuration page's groups, order and names too (CS1).
+            from gremlin.modules import store as module_store
+
+            module_store.save_pending()
         before = self._saved_snapshot
         self._set_saved(text)
         if before != text:
@@ -2273,11 +2277,15 @@ class Profile:
         return self.has_unsaved_changes()
 
     def _logical_unsaved(self) -> bool:
-        """The Logical Device's or OSC's file has changes its Save writes
-        (the open profile's "*" covers them, D-04-LD-FILE decision 2,
-        D-09-OSC-FILE decision 1)."""
+        """The Logical Device's or OSC's file, or a Configuration layout
+        (CS1), has changes its Save writes (the open profile's "*" covers
+        them, D-04-LD-FILE decision 2, D-09-OSC-FILE decision 1)."""
+        from gremlin.modules import store as module_store
+
         return self._bind and (
-            bool(LogicalDevice().dirty) or bool(OscDevice().rows.dirty)
+            bool(LogicalDevice().dirty)
+            or bool(OscDevice().rows.dirty)
+            or module_store.has_pending()
         )
 
     def note_edit(self) -> None:

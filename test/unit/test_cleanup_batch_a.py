@@ -161,9 +161,13 @@ def test_editors_fit_large_ui_scales() -> None:
 def test_one_user_colour_one_logical_id_one_window_memory() -> None:
     import re
 
-    for page in ("BindingCatalog", "LogicalPage", "OutputModuleView"):
+    # The list pages' colours are in the one shared Appearance panel (05
+    # S125); no page keeps its own copy of userColour.
+    for page in ("ListAppearancePanel", "OutputModuleView"):
         qml = _text(f"qml/{page}.qml")
         assert "function userColour(" not in qml and "Helpers.userColour(" in qml
+    for page in ("ConfigurationPage", "KeyboardPage", "LogicalPage", "OscPage"):
+        assert "function userColour(" not in _text(f"qml/{page}.qml"), page
     assert "function userColour(" in _text("qml/helpers.js")
     guid = re.compile(r"f0af472f-8e17-493b-a1eb-7333ee8543f2", re.I)
     for page in ("Main", "DeviceList"):

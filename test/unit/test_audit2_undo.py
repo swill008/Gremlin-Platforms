@@ -176,14 +176,19 @@ def test_logical_undo_after_the_library_dropped_an_action_still_saves(
 def test_configuration_undo_that_cant_be_played_keeps_its_step(
     profile: Profile,
 ) -> None:
-    from gremlin.ui.binding_catalog import BindingCatalogModel
+    from test.unit.hardware_page_helper import close, page_on
 
-    model = BindingCatalogModel()
+    # The Configuration page's model; a step whose copy is damaged.
+    model = page_on(_STICK)
     key = (_STICK, InputType.JoystickButton, 1, "Default")
+    layout = model._layout.memento()
     model._undo.append({
-        "hid": 0, "key": key,
-        "before": {"input": "<not xml", "actions": []}, "after": None,
+        "before": layout, "after": layout, "label": "",
+        "links": [{
+            "op": "input", "key": key,
+            "before": {"input": "<not xml", "actions": []}, "after": None,
+        }],
     })
     model.undo()
     assert model._undo and not model._redo
-    model.endPane()
+    close(model)
