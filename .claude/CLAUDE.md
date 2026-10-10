@@ -53,9 +53,12 @@ Every piece of work, not only big batches:
 2. **One tracker, nothing else (user, 2026-10-10: "remove all the trackers
    and only keep one consolidated tracker. You keep generating multiple and
    then leaving them stale.").** The ONLY artifact is the Gremlin-Platforms
-   Tracker, https://claude.ai/artifact/QTmzBoHqL8rDerX41Wa9EN. Never publish
+   Tracker, https://claude.ai/artifact/HpP8ef9co1whHSorPcVse8. Never publish
    another artifact (no progress pages, reports, studies, mockups or result
    pages); every other page made before 2026-10-10 is archived to a pointer.
+   The tracker was restarted fresh on 2026-10-10 (user: "the data is too
+   stale"); the old tracker's 880 items are a record only, in
+   claude/archive/2026-10-10-tracker/.
    - Its "Now" panel (ArtifactData document `tracker/now`): what is happening
      now, what is next, every agent and its state, the last test result, CI,
      the latest release and a short log. Update it at every step (agents
