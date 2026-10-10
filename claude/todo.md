@@ -402,7 +402,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     the program folder. Not started.
 81. Exit takes ~5 s in a full off-screen run (either dill), from something else the program loads (D2APP
     2026-10-10). Not investigated.
-82. DONE 2026-10-10 (commit pending; D-02-RESET-DEVICES addendum S5, 02 S137): Reset Devices left its
+82. DONE 2026-10-10 (387e25e7; D-02-RESET-DEVICES addendum S5, 02 S137): Reset Devices left its
     gremlin_reset_* temp folders behind (found 2026-10-10, RFIX). They are now deleted after the results are
     read (best effort; a leftover Administrators-owned file from before is ignored).
 

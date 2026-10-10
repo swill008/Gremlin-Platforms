@@ -36,6 +36,14 @@ section 12; where they disagree, the decision wins). The plan is
    map check (counts, gaps, anything stale) as part of the release steps.
 7. Pass this section on to any agent you start.
 
+## Unreleased program: no legacy compatibility by default (required, user 2026-10-10)
+
+Gremlin-Platforms is unreleased: there are no old user profiles or installs to
+protect. When planning any change, recommend the cleanest current design first.
+Compatibility with a previous method (layout shims, migrations, "keep the old
+behaviour") may be offered as an alternative, never as the first choice, and
+never added without the user asking for it. This applies to every system.
+
 ## Working standard (required, user 2026-10-07)
 
 Every piece of work, not only big batches:
