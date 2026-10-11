@@ -217,7 +217,7 @@ function list(ed) {
     // stops drawing wherever the keyboard is (G45) and never meets the
     // window's Esc that leaves Background mode (that one waits for no tool).
     out.push(_c("stopDrawing", "Insert", "", "Stop Drawing", "Esc"))
-    out.push(_c("importPicture", "Insert", "", "Picture…"))
+    out.push(_c("importPicture", "Insert", "", "Import Picture…"))
     out.push(_c("table.rowAbove", "Format", "Table", "Insert Row Above"))
     out.push(_c("table.rowBelow", "Format", "Table", "Add Row Below"))
     out.push(_c("table.colLeft", "Format", "Table", "Insert Column Left"))
