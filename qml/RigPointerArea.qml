@@ -134,6 +134,9 @@ MouseArea {
         var hit = ed.hitTest(m.x, m.y)
         var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
         if (m.button === Qt.RightButton) {
+            // Where the menu was asked for, for Paste Here (07 S136).
+            menuTarget.mapX = m.x
+            menuTarget.mapY = m.y
             if (hit.kind === "spine") {
                 // Picked as a left click picks it, drawn at once (a part of a
                 // selection keeps the selection: the menu acts on all of it).
@@ -472,6 +475,8 @@ MouseArea {
             spineHoldTimer.stop()
             ed.spineHoldArm = false
             if (m.button === Qt.RightButton) {
+                menuTarget.mapX = ed.spineHoldX
+                menuTarget.mapY = ed.spineHoldY
                 ed.chipMenuRequested(ed.spineHoldX, ed.spineHoldY)
                 menu.openAt(ed, ed.spineHoldX, ed.spineHoldY)
             }

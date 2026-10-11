@@ -16,10 +16,35 @@
 //                                                        stays open
 // The shared ContextMenu (Gremlin.Menus) draws it; only what applies to the
 // target is listed. menuModel() adds Undo and Redo beside the title.
+// A row that is a command (rig_commands.js) carries `cmd: "<id>"`, so the
+// menu can offer its ☆ (07 S137); menuModel().favourites lists the
+// favourites that apply now, shown above the quick rows.
 
 function _act(text, run, enabled, hint) {
     return { kind: "action", text: text, run: run, enabled: enabled === undefined ? true : !!enabled,
              hint: hint || "" }
+}
+
+// A row that is a command: tagged with its id and, unless it does
+// something of its own (own), run through the command list so Repeat sees
+// it (07 S136). Falls back to its own run when the command does not apply
+// (or the editor's command forwarders are missing).
+function _cmdAct(id, text, run, enabled, hint, own) {
+    var a = _act(text, function() {
+        if (!own && typeof cmdRun === "function" && typeof cmdApplies === "function" && cmdApplies(id))
+            cmdRun(id)
+        else
+            run()
+    }, enabled, hint)
+    a.cmd = id
+    return a
+}
+
+// A toggle row that is a command (Lock, Crop, ID column).
+function _cmdTog(id, text, checked, run, enabled) {
+    var t = _tog(text, checked, run, enabled)
+    t.cmd = id
+    return t
 }
 
 // An action with a name (its objectName, for tests and Help) and a tooltip
@@ -31,13 +56,72 @@ function _named(name, text, run, enabled, hint, tip) {
     return a
 }
 
-// Copy and Paste, the same as Ctrl+C / Ctrl+V: Copy for what was clicked,
-// Paste for copied items or a picture on the clipboard.
+function _canPaste() {
+    return !!((copiedNodes && copiedNodes.length) || canPastePicture)
+}
+
+// Cut, Copy and Paste, the same as Ctrl+X / Ctrl+C / Ctrl+V: Cut and Copy
+// for what was clicked, Paste for copied items or a picture on the
+// clipboard.
 function _copyPaste(withCopy) {
     var out = []
-    if (withCopy)
-        out.push(_act("Copy", copySelection, true, "Ctrl+C"))
-    out.push(_act("Paste", pasteClipboard, !!((copiedNodes && copiedNodes.length) || canPastePicture), "Ctrl+V"))
+    if (withCopy) {
+        out.push(_cmdAct("edit.cut", "Cut", function() { if (typeof cutSelection === "function") cutSelection() },
+                         typeof cutSelection === "function", "Ctrl+X"))
+        out.push(_cmdAct("edit.copy", "Copy", copySelection, true, "Ctrl+C"))
+    }
+    out.push(_cmdAct("edit.paste", "Paste", pasteClipboard, _canPaste(), "Ctrl+V"))
+    return out
+}
+
+// Paste Here (07 S136): the copied items centred on the spot right-clicked
+// (_ctx.mapX/mapY, editor pixels; pasteAt takes map fractions).
+function _pasteHere() {
+    var ok = typeof pasteAt === "function" && typeof _ctx.mapX === "number" && typeof _ctx.mapY === "number"
+    var fx = ok ? xToFx(_ctx.mapX) : 0
+    var fy = ok ? yToFy(_ctx.mapY) : 0
+    return _named("bmPasteHere", "Paste Here", function() { pasteAt(fx, fy) }, ok && _canPaste())
+}
+
+function _selectAll() {
+    return _cmdAct("edit.selectAll", "Select All", selectAll, (nodes || []).length > 0, "Ctrl+A")
+}
+
+// Show in Layers and Properties… on every item (07 S136); the window
+// unfolds the Layers panel.
+function _itemFinders() {
+    var id = _ctx.nodeId
+    var can = typeof showInLayersRequested === "function"
+    var canProps = typeof propertiesRequested === "function"
+    return [
+        _named("bmShowInLayers", "Show in Layers", function() { if (can) showInLayersRequested(id) }, can),
+        _named("bmProperties", "Properties…", function() { if (canProps) propertiesRequested() }, canProps, "F4")
+    ]
+}
+
+// Repeat: the last command run again (07 S136), first when it applies.
+function _repeat() {
+    if (typeof cmdCanRepeat !== "function" || !cmdCanRepeat())
+        return []
+    return [_named("bmRepeat", cmdRepeatLabel(), cmdRepeat)]
+}
+
+// The favourites that apply now, in the order added, at most
+// favouritesShown of them (07 S137).
+function _favourites() {
+    var ids = (typeof favourites !== "undefined" && favourites) ? favourites : []
+    var max = typeof favouritesShown === "number" ? favouritesShown : 5
+    var out = []
+    if (max <= 0 || typeof cmdApplies !== "function" || typeof cmdRun !== "function")
+        return out
+    for (var i = 0; i < ids.length && out.length < max; i++) {
+        var id = ids[i]
+        if (!cmdApplies(id))
+            continue
+        var info = typeof cmdInfo === "function" ? cmdInfo(id) : null
+        out.push({ kind: "action", cmd: id, text: (info && info.text) || id, hint: (info && info.key) || "",
+                   enabled: true, run: (function(c) { return function() { cmdRun(c) } })(id) })
+    }
     return out
 }
 
@@ -250,12 +334,12 @@ function _rowAlign(n) {
 function _chipColours() {
     function pick(field) { return function() { pickColor(field) } }
     return _sect("colours", "Colors", [
-        _act("Fill Color…", pick("color")),
-        _act("Outline Color…", pick("border")),
-        _act("Text Color…", pick("textColor")),
-        _act("Pressed Fill…", pick("hlColor")),
-        _act("Pressed Outline…", pick("hlBorder")),
-        _act("Pressed Text…", pick("hlText"))
+        _cmdAct("color.fill", "Fill Color…", pick("color")),
+        _cmdAct("color.outline", "Outline Color…", pick("border")),
+        _cmdAct("color.text", "Text Color…", pick("textColor")),
+        _cmdAct("color.hlFill", "Pressed Fill…", pick("hlColor")),
+        _cmdAct("color.hlOutline", "Pressed Outline…", pick("hlBorder")),
+        _cmdAct("color.hlText", "Pressed Text…", pick("hlText"))
     ])
 }
 
@@ -283,8 +367,8 @@ function _hotspot() {
         flip("hotPress", false),
         flip("hotPulse", false),
         flip("hotLive", true),
-        _act("Hotspot Color…", function() { pickColor("hotColor") }),
-        _act("Pressed Color…", function() { pickColor("hotPressColor") })
+        _cmdAct("color.hot", "Hotspot Color…", function() { pickColor("hotColor") }),
+        _cmdAct("color.hotPress", "Pressed Color…", function() { pickColor("hotPressColor") })
     ])
 }
 
@@ -317,7 +401,8 @@ function _leaderCount() {
 }
 
 function _deleteLeaderItem() {
-    return _act((selectedIds || []).length > 1 ? "Delete leaders" : "Delete leader", deleteLeader, _leaderCount() > 0)
+    return _cmdAct("ends.deleteLeader", (selectedIds || []).length > 1 ? "Delete leaders" : "Delete leader",
+                   deleteLeader, _leaderCount() > 0)
 }
 
 function _leader() {
@@ -332,19 +417,20 @@ function _leader() {
         setSegCurve(currentLeader(nodeAt(selectedId)), Math.max(0, seg), curved)
     }
     return _sect("leader", "Leader", [
-        _act("Leader Color…", function() { pickColor("leaderColor") }),
+        _cmdAct("color.leader", "Leader Color…", function() { pickColor("leaderColor") }),
         _pick("Weight", widths, labels, function(w) { return Math.round(leaderWidthOf(n) * 10) === w },
               function(w) { applyField("leaderWidth", w / 10) }),
-        _act("Add Straight Spine", function() { ensureMidSpine(nodeAt(selectedId)); bump() }),
-        _act("Add Curved Spine", function() { addCurveSpine(nodeAt(selectedId)) }),
+        _cmdAct("addStraightSpine", "Add Straight Spine", function() { ensureMidSpine(nodeAt(selectedId)); bump() }),
+        _cmdAct("addCurvedSpine", "Add Curved Spine", function() { addCurveSpine(nodeAt(selectedId)) }),
         _act("Convert Spine", convertSelectedSpine, ctxHasSelectedSpine()),
         _pick("This Segment", [true, false], ["Curved", "Straight"], function() { return false },
               function(v) { setSeg(v) }),
         _pick("All Segments", [true, false], ["Curved", "Straight"], function() { return false },
               function(v) { setAllSegCurve(v) }),
-        _act("Add Leader", addLeader),
-        _act("Branch from This End", function() { selectedLeader = leader; addBranch() }),
-        _act("Clear All Spines", function() { clearAllSpines(selectedId) }, !!(n && !isDraw(n))),
+        _cmdAct("addLeader", "Add Leader", addLeader),
+        // Its own run: it branches from the leader right-clicked.
+        _cmdAct("ends.branch", "Branch from This End", function() { selectedLeader = leader; addBranch() }, true, "", true),
+        _cmdAct("ends.clearSpines", "Clear All Spines", function() { clearAllSpines(selectedId) }, !!(n && !isDraw(n))),
         _act("Delete Spine", function() { selectedLeader = leader; deleteSelection() }, selectedSpine >= 0),
         _deleteLeaderItem()
     ])
@@ -352,20 +438,21 @@ function _leader() {
 
 function _leaderEnds() {
     return _sect("ends", "Leader Ends", [
-        _act("Detach Chip End", function() { detachEnd("from") }),
-        _act("Detach Hotspot End", function() { detachEnd("to") }),
-        _act("Reconnect to This Chip", function() { attachEndToSelf("from") }),
-        _act("Reconnect to This Hotspot", function() { attachEndToSelf("to") })
+        _cmdAct("ends.detachChip", "Detach Chip End", function() { detachEnd("from") }),
+        _cmdAct("ends.detachHot", "Detach Hotspot End", function() { detachEnd("to") }),
+        _cmdAct("ends.toChip", "Reconnect to This Chip", function() { attachEndToSelf("from") }),
+        _cmdAct("ends.toHot", "Reconnect to This Hotspot", function() { attachEndToSelf("to") })
     ])
 }
 
 function _group() {
     var n = ctxTarget()
     return _sect("group", "Group", [
-        _act("Group Selected", groupSelection, canGroup(), "Ctrl+G"),
-        _act("Break Group", ungroupSelection, canUngroup() || isGroup(n), "Ctrl+Shift+G"),
-        _act("Edit Group", function() { beginGroupEdit(_ctx.nodeId) }, isGroup(n)),
-        _act("Done Editing Group", endGroupEdit, groupEditId !== "")
+        _cmdAct("group", "Group Selected", groupSelection, canGroup(), "Ctrl+G"),
+        _cmdAct("breakGroup", "Break Group", ungroupSelection, canUngroup() || isGroup(n), "Ctrl+Shift+G"),
+        // Its own run: the group right-clicked.
+        _cmdAct("editGroup", "Edit Group", function() { beginGroupEdit(_ctx.nodeId) }, isGroup(n), "", true),
+        _cmdAct("doneGroup", "Done Editing Group", endGroupEdit, groupEditId !== "")
     ])
 }
 
@@ -437,12 +524,12 @@ function _rotate() {
         items.push(_pick("Turn to", [0, 90, 180, 270], ["0°", "90°", "180°", "270°"],
                          function(v) { return Math.abs(rot - v) < 0.05 }, setRotation))
         var step = rotateSnap || 15
-        items.push(_act("Rotate −" + step + "°", by(-step)))
-        items.push(_act("Rotate +" + step + "°", by(step)))
+        items.push(_cmdAct("rotateMinus", "Rotate −" + step + "°", by(-step)))
+        items.push(_cmdAct("rotatePlus", "Rotate +" + step + "°", by(step)))
     }
     if (isFlippable(n)) {
-        items.push(_act("Flip Horizontally", function() { flipSelection("h") }))
-        items.push(_act("Flip Vertically", function() { flipSelection("v") }))
+        items.push(_cmdAct("flipH", "Flip Horizontally", function() { flipSelection("h") }))
+        items.push(_cmdAct("flipV", "Flip Vertically", function() { flipSelection("v") }))
     }
     if (!items.length)
         return null
@@ -467,9 +554,9 @@ function _transform() {
         _pick("Handles", modes, labels, function(m) { return transformMode === m }, setTransformMode, !isLocked(n))
     ]
     if (canEditPoints(n))
-        items.push(_act("Edit Points", convertToPath, !isLocked(n)))
+        items.push(_cmdAct("editPoints", "Edit Points", convertToPath, !isLocked(n)))
     var shaped = hasShaping(n) || (isOverlay(n) && _pictureShaped(n))
-    items.push(_act("Reset Shape", function() { resetShape(selectedId) }, shaped && !isLocked(n)))
+    items.push(_cmdAct("resetShape", "Reset Shape", function() { resetShape(selectedId) }, shaped && !isLocked(n)))
     return _sect("transform", "Transform", items)
 }
 
@@ -486,9 +573,9 @@ function _lockItem() {
     var ids = _arrangeIds()
     if (ids.length > 1) {
         var all = ids.every(function(s) { return isLocked(nodeAt(s)) })
-        return _tog("Lock", all, toggleLockSelection, !!n)
+        return _cmdTog("lock", "Lock", all, toggleLockSelection, !!n)
     }
-    return _tog("Lock", isLocked(n), function() { toggleLock(selectedId) }, !!n)
+    return _cmdTog("lock", "Lock", isLocked(n), function() { toggleLock(selectedId) }, !!n)
 }
 
 function _hideItems() {
@@ -526,27 +613,31 @@ function planeMoveItems(ids) {
         : (front.length ? backgroundRefusal(front[0])
                         : (nodes.length ? "Already in the background" : ""))
     var frontTip = toFront.length ? "" : (nodes.length ? "Already in the foreground" : "")
-    return [
+    // Tagged only: they move these ids (the Layers panel passes its own).
+    var out = [
         _named("bmMoveToBackground", "Move to Background",
                function() { moveToPlane(keep, "background") }, toBack.length > 0, "Ctrl+Shift+B", backTip),
         _named("bmMoveToForeground", "Move to Foreground",
                function() { moveToPlane(keep, "foreground") }, toFront.length > 0, "Ctrl+Shift+B", frontTip)
     ]
+    out[0].cmd = "moveToBackground"
+    out[1].cmd = "moveToForeground"
+    return out
 }
 
 function _arrange(extra) {
     var n = nodeAt(selectedId)
     var items = [
-        _act("Bring to Front", bringToFront),
-        _act("Bring Forward", bringForward),
-        _act("Send Back", sendBack),
-        _act("Send to Back", sendToBack)
+        _cmdAct("bringToFront", "Bring to Front", bringToFront),
+        _cmdAct("bringForward", "Bring Forward", bringForward),
+        _cmdAct("sendBackward", "Send Back", sendBack),
+        _cmdAct("sendToBack", "Send to Back", sendToBack)
     ].concat(planeMoveItems(_arrangeIds()), [
         _lockItem(),
-        _act("Hide", _hideItems)
+        _cmdAct("hide", "Hide", _hideItems)
     ])
     if (n && n.around && n.around.length)
-        items.push(_act("Detach from Chips", _detachFromChips))
+        items.push(_cmdAct("detachFromChips", "Detach from Chips", _detachFromChips))
     return _sect("arrange", "Arrange", items.concat(extra || []))
 }
 
@@ -554,8 +645,8 @@ function _shapeSections() {
     var n = nodeAt(selectedId)
     var style = [
         _pick("Fill", ["filled", "hollow"], ["Filled", "Hollow"], _field("fill", "hollow"), _set("fill")),
-        _act("Fill Color…", function() { requestDrawColor("color") }),
-        _act("Outline Color…", function() { requestDrawColor("border") }),
+        _cmdAct("color.fill", "Fill Color…", function() { requestDrawColor("color") }),
+        _cmdAct("color.outline", "Outline Color…", function() { requestDrawColor("border") }),
         _width(),
         _outline(),
         _opacity("opacity")
@@ -583,7 +674,7 @@ function _lineSections() {
             _act("Swap Heads", swapLineHeads)
         ]),
         _sect("style", "Line", [
-            _act("Color…", function() { requestDrawColor("border") }),
+            _cmdAct("color.outline", "Color…", function() { requestDrawColor("border") }),
             _width(),
             _outline(),
             _opacity("opacity")
@@ -604,7 +695,7 @@ function _pathSections() {
             _tog("Smooth", !!(n && n.smooth), togglePathSmooth)
         ]),
         _sect("style", "Line", [
-            _act("Color…", function() { requestDrawColor("border") }),
+            _cmdAct("color.outline", "Color…", function() { requestDrawColor("border") }),
             _width(),
             _outline(),
             _opacity("opacity")
@@ -613,7 +704,7 @@ function _pathSections() {
     if (closed) {
         out.push(_sect("fill", "Fill", [
             _pick("Fill", ["filled", "hollow"], ["Filled", "Hollow"], _field("fill", "hollow"), _set("fill")),
-            _act("Fill Color…", function() { requestDrawColor("color") })
+            _cmdAct("color.fill", "Fill Color…", function() { requestDrawColor("color") })
         ]))
     } else {
         out.push(_sect("heads", "Arrowheads", [
@@ -634,10 +725,10 @@ function _imageSections() {
         items.push(_act("Choose Picture…", function() { choosePictureRequested(n.id) }, !isLocked(n)))
     return [
         _sect("image", "Picture", items.concat([
-            _tog("Crop", cropId === selectedId, toggleCrop, !isLocked(n)),
-            _act("Reset Crop", resetCrop, !!(n && n.crop) && !isLocked(n)),
-            _act(plantSnap ? "Click the picture to place a snap point…" : "Add snap point", beginPlantSnap),
-            _act("Clear Snap Points", clearSockets, !!(n && n.sockets && n.sockets.length)),
+            _cmdTog("crop", "Crop", cropId === selectedId, toggleCrop, !isLocked(n)),
+            _cmdAct("resetCrop", "Reset Crop", resetCrop, !!(n && n.crop) && !isLocked(n)),
+            _cmdAct("snap.add", plantSnap ? "Click the picture to place a snap point…" : "Add snap point", beginPlantSnap),
+            _cmdAct("snap.clear", "Clear Snap Points", clearSockets, !!(n && n.sockets && n.sockets.length)),
             _opacity("opacity")
         ])),
         _transform(),
@@ -674,14 +765,14 @@ function _textSections() {
             _pick("Theme", themes, themeLabels,
                   function(t) { var b = nodeAt(selectedId); return (b && b.theme ? b.theme : "gremlin") === t },
                   applyTextTheme),
-            _act("Text Color…", function() { requestDrawColor("textColor") }),
-            _act("Fill Color…", function() { requestDrawColor("color") }),
-            _act("Outline Color…", function() { requestDrawColor("border") }),
+            _cmdAct("color.text", "Text Color…", function() { requestDrawColor("textColor") }),
+            _cmdAct("color.fill", "Fill Color…", function() { requestDrawColor("color") }),
+            _cmdAct("color.outline", "Outline Color…", function() { requestDrawColor("border") }),
             _pick("Fill Opacity", opac, opacLabels, _field("fillOpacity", 1), _set("fillOpacity")),
             _pick("Outline Opacity", opac, opacLabels, _field("borderOpacity", 1), _set("borderOpacity"))
         ]),
         _sect("format", "Copy and Paint Format", [
-            _act("Copy Format", copyTextFormat),
+            _cmdAct("copyFormat", "Copy Format", copyTextFormat),
             _tog("Paint format", textPaintOn, function() {
                 if (!textFormatClip)
                     return
@@ -689,14 +780,14 @@ function _textSections() {
                 textPaintOn = true
                 bump()
             }, !!textFormatClip),
-            _act("Clear Formatting", clearTextFormat),
+            _cmdAct("clearFormatting", "Clear Formatting", clearTextFormat),
             _act("Copy Text", copyTextPlain)
         ]),
         _sect("pointer", "Pointer", isCallout(n) ? [
-            _act("Detach from Chip", detachCalloutTail, !!(n.tail && n.tail.to)),
-            _act("Remove Pointer", removeCalloutTail)
+            _cmdAct("callout.detach", "Detach from Chip", detachCalloutTail, !!(n.tail && n.tail.to)),
+            _cmdAct("callout.remove", "Remove Pointer", removeCalloutTail)
         ] : [
-            _act("Add Pointer", addCalloutTail)
+            _cmdAct("addPointer", "Add Pointer", addCalloutTail)
         ]),
         _transform(),
         _rotate(),
@@ -713,19 +804,19 @@ function _tableSections() {
     var stale = (tableExtra >= 0 || tableRow >= 0 || tableCol >= 0) && !hasCell
     return [
         _sect("rows", "Rows and Columns", [
-            _act("Insert Row Above", function() { addTableRow(false) }),
-            _act("Delete This Row", deleteTableRow, !!(n && n.rows && n.rows.length > 1) && !stale),
-            _act("Insert Column Left", function() { addTableCol(false) }),
-            _act("Delete This Column", deleteTableCol, !!(n && n.cols > 1) && !stale),
-            _tog("ID column", !!(n && n.idCol), toggleTableIdCol)
+            _cmdAct("table.rowAbove", "Insert Row Above", function() { addTableRow(false) }),
+            _cmdAct("table.deleteRow", "Delete This Row", deleteTableRow, !!(n && n.rows && n.rows.length > 1) && !stale),
+            _cmdAct("table.colLeft", "Insert Column Left", function() { addTableCol(false) }),
+            _cmdAct("table.deleteCol", "Delete This Column", deleteTableCol, !!(n && n.cols > 1) && !stale),
+            _cmdTog("table.idCol", "ID column", !!(n && n.idCol), toggleTableIdCol)
         ]),
         _sect("cell", "Cell", [
-            _tog("Free position", !!(cell && cell.free), toggleTableCellFree, hasCell),
-            _tog("Independent of table", !!(cell && cell.independent),
+            _cmdTog("cell.free", "Free position", !!(cell && cell.free), toggleTableCellFree, hasCell),
+            _cmdTog("cell.independent", "Independent of table", !!(cell && cell.independent),
                  function() { var c = tableCurrentCell(nodeAt(selectedId)); setTableCellIndependent(!(c && c.independent)) },
                  hasCell),
-            _act("Spawn Empty Cell", spawnEmptyCell),
-            _act("Delete This Cell", deleteThisTableCell, tableExtra >= 0 && hasCell),
+            _cmdAct("table.spawnCell", "Spawn Empty Cell", spawnEmptyCell),
+            _cmdAct("table.deleteCell", "Delete This Cell", deleteThisTableCell, tableExtra >= 0 && hasCell),
             _pick("Place Across", ["left", "center", "right"], ["Far left", "Center", "Far right"],
                   function() { return false }, placeTableCell, hasCell),
             _pick("Place Down", ["top", "middle", "bottom"], ["Top", "Middle", "Bottom"],
@@ -738,8 +829,8 @@ function _tableSections() {
                   function(v) { return n && n.fontSize ? n.fontSize === v : v === 10 }, setTableFont)
         ]),
         _arrange([
-            _act("Break Group", ungroupSelection, canUngroup()),
-            _act("Delete Table", deleteTable)
+            _cmdAct("breakGroup", "Break Group", ungroupSelection, canUngroup()),
+            _cmdAct("table.delete", "Delete Table", deleteTable)
         ])
     ]
 }
@@ -760,9 +851,9 @@ function _canvasSections() {
         _pick("Shape", tools, _SHAPE_LABELS, function(t) { return drawTool === t }, setDrawTool),
         _pick("Line", ["line", "arrowline", "path", "pen"], ["Line", "Arrow", "Path", "Freehand"], function(t) { return drawTool === t }, setDrawTool),
         _pick("Box", ["text", "callout", "table"], ["Text box", "Callout", "Table"], function(t) { return drawTool === t }, setDrawTool),
-        _act("Import Picture…", function() { overlayImportRequested() }),
+        _cmdAct("importPicture", "Import Picture…", function() { overlayImportRequested() }),
         _act("Paste Picture", function() { pastePictureRequested() }, canPastePicture),
-        _act("Stop Drawing", function() { drawTool = "" }, drawTool.length > 0)
+        _cmdAct("stopDrawing", "Stop Drawing", function() { drawTool = "" }, drawTool.length > 0, "", true)
     ]
     var out = [_sect("draw", "Draw", draw)]
     var around = _around()
@@ -802,7 +893,8 @@ function _savedStyles() {
     if (!kind)
         return null
     var id = n.id
-    var items = [_act("Save This Style…", function() { saveStyleOf(id) })]
+    // Its own run: the item right-clicked.
+    var items = [_cmdAct("saveStyle", "Save This Style…", function() { saveStyleOf(id) }, true, "", true)]
     var list = stylesFor(kind)
     for (var i = 0; i < list.length && i < 12; i++) {
         (function(style) {
@@ -870,47 +962,55 @@ function menuModel() {
     var quick = []
     var sections = []
     if (kind === "chip") {
-        quick = [_act("Rename", _renameChip), _act("Add Callout", function() { addCalloutFor(_ctx.nodeId) }), _act("Delete Chip", deleteChip)]
+        quick = [_cmdAct("rename", "Rename", _renameChip),
+                 _cmdAct("addCallout", "Add Callout", function() { addCalloutFor(_ctx.nodeId) }),
+                 // Its own run: this chip only (Delete also takes a spine).
+                 _cmdAct("edit.delete", "Delete Chip", function() { deleteChip() }, true, "", true)]
         sections = [_chipStyle(), _chipColours(), _savedStyles(), _hotspot(), _leader(), _leaderEnds(), _group(), _format(), _around(), _arrange()]
     } else if (kind === "group") {
         quick = groupEditId !== ""
-            ? [_act("Done Editing Group", endGroupEdit), _act("Break Group", ungroupSelection)]
-            : [_act("Edit Group", function() { beginGroupEdit(_ctx.nodeId) }), _act("Break Group", ungroupSelection)]
+            ? [_cmdAct("doneGroup", "Done Editing Group", endGroupEdit), _cmdAct("breakGroup", "Break Group", ungroupSelection)]
+            : [_cmdAct("editGroup", "Edit Group", function() { beginGroupEdit(_ctx.nodeId) }, true, "", true),
+               _cmdAct("breakGroup", "Break Group", ungroupSelection)]
         sections = [_format(), _align(), _turnSection(), _chipStyle(), _chipColours(), _hotspot(), _leader(), _leaderEnds(), _around(), _arrange()]
     } else if (kind === "hotspot") {
         quick = []
         sections = [_hotspot()]
     } else if (kind === "leader") {
-        quick = [_act("Add Leader", addLeader), _deleteLeaderItem()]
+        quick = [_cmdAct("addLeader", "Add Leader", addLeader), _deleteLeaderItem()]
         if (selectedSpine >= 0)
             quick.unshift(_act("Delete Spine", function() { selectedLeader = _ctx.leader; deleteSelection() }))
         sections = [_leader(), _leaderEnds(), _chipStyle(), _chipColours(), _hotspot()]
     } else if (kind === "shape" || kind === "line" || kind === "image" || kind === "path") {
-        quick = [_act("Duplicate", duplicateSelection), _act("Delete", deleteChip)]
+        quick = [_cmdAct("edit.duplicate", "Duplicate", duplicateSelection),
+                 _cmdAct("edit.delete", "Delete", function() { deleteChip() }, true, "", true)]
         sections = kind === "shape" ? _shapeSections()
             : (kind === "line" ? _lineSections() : (kind === "path" ? _pathSections() : _imageSections()))
         if (kind !== "image")
             sections.splice(sections.length - 2, 0, _savedStyles())
     } else if (kind === "text") {
         quick = [
-            _act("Edit Text…", function() { var t = nodeAt(selectedId); if (isText(t)) beginTextRename(t.id) }),
-            _act("Duplicate", duplicateSelection),
-            _act("Delete Text Box", deleteChip)
+            _cmdAct("editText", "Edit Text…", function() { var t = nodeAt(selectedId); if (isText(t)) beginTextRename(t.id) }),
+            _cmdAct("edit.duplicate", "Duplicate", duplicateSelection),
+            _cmdAct("edit.delete", "Delete Text Box", function() { deleteChip() }, true, "", true)
         ]
         sections = _textSections()
         sections.splice(sections.length - 2, 0, _savedStyles())
     } else if (kind === "table") {
-        quick = [_act("Add Row Below", function() { addTableRow(true) }), _act("Add Column Right", function() { addTableCol(true) })]
+        quick = [_cmdAct("table.rowBelow", "Add Row Below", function() { addTableRow(true) }),
+                 _cmdAct("table.colRight", "Add Column Right", function() { addTableCol(true) })]
         sections = _tableSections()
     } else if (kind === "multi") {
-        quick = [_act("Group Selected", groupSelection, canGroup(), "Ctrl+G"),
-                 _act("Duplicate", duplicateSelection, true, "Ctrl+D"),
-                 _act("Delete", function() { deleteSelected() }, true, "Delete")]
+        quick = [_cmdAct("group", "Group Selected", groupSelection, canGroup(), "Ctrl+G"),
+                 _cmdAct("edit.duplicate", "Duplicate", duplicateSelection, true, "Ctrl+D"),
+                 _cmdAct("edit.delete", "Delete", function() { deleteSelected() }, true, "Delete")]
         sections = _multiSections()
     } else {
         quick = quick.concat(_copyPaste(false))
+        quick.push(_pasteHere())
+        quick.push(_selectAll())
         if (drawTool.length)
-            quick.push(_act("Stop Drawing", function() { drawTool = "" }))
+            quick.push(_cmdAct("stopDrawing", "Stop Drawing", function() { drawTool = "" }, true, "", true))
         if (interactive)
             quick.push(_planeSwitch())
         sections = _canvasSections()
@@ -920,8 +1020,13 @@ function menuModel() {
     if (kind !== "canvas" && kind !== "leader" && kind !== "hotspot" && kind !== "")
         quick = quick.concat(_copyPaste(true))
     quick = quick.concat(_hideLock(kind))
+    if (kind !== "canvas" && kind !== "")
+        quick = quick.concat(_itemFinders())
+    quick = _repeat().concat(quick)
     return {
         kind: kind, title: menuTitle(kind), quick: quick, sections: _compact(sections),
+        // Above the quick rows (07 S137).
+        favourites: _favourites(),
         // Beside the title.
         header: [
             { label: "Undo", enabled: canUndo, run: undo },

@@ -100,9 +100,14 @@ def main() -> None:
         if c.objectName() in ("optionsPane", "tool:options")
     ]
     out["groups"] = [
-        g for g in ("labels", "editing", "recovery", "view", "colours", "library")
+        g for g in ("labels", "editing", "right-click", "recovery", "view",
+                    "colours", "library")
         if child("optionsGroup:" + g) is not None
     ]
+    rc = child("optionsGroup:right-click")
+    out["right-click-title"] = [
+        c.property("text") for c in items(rc) if c.property("text")
+    ] if rc is not None else []
 
     def rows() -> list:
         return sorted(
@@ -111,6 +116,9 @@ def main() -> None:
             if c.objectName().startswith("option:") and c.isVisible()
         )
 
+    ev("_opts.paneGroup = 'right-click'")
+    QtTest.QTest.qWait(300)
+    out["right-click-rows"] = rows()
     ev("_opts.paneGroup = 'labels'")
     QtTest.QTest.qWait(300)
     out["labels-rows"] = rows()

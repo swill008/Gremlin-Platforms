@@ -389,6 +389,102 @@ function pasteClipboard() {
     pasteNodes(copiedNodes || [], 16 / Math.max(1, spaceRect().w), 16 / Math.max(1, spaceRect().h))
 }
 
+// Cut (07 S136): Copy then Delete, one Undo step (Copy itself is none).
+// A selected group breaks up, as the Delete key does. Returns what Delete did.
+function cutSelection() {
+    var ids = (selectedIds && selectedIds.length) ? selectedIds : (selectedId ? [selectedId] : [])
+    if (!ids.length)
+        return ""
+    flushPendingStep()
+    var at = histAt
+    copySelection()
+    var did = deleteSelected()
+    squashHistSince(at)
+    return did
+}
+
+// The centre of the bounding box of items in editor pixels (nodeBox), or
+// null when there are none.
+function _boxCentre(list) {
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9
+    var i
+    for (i = 0; i < list.length; i++) {
+        if (!list[i])
+            continue
+        var b = nodeBox(list[i])
+        x0 = Math.min(x0, b.x)
+        y0 = Math.min(y0, b.y)
+        x1 = Math.max(x1, b.x + b.w)
+        y1 = Math.max(y1, b.y + b.h)
+    }
+    if (x0 > x1)
+        return null
+    return { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }
+}
+
+// Paste Here (07 S136): the copied items with the centre of their bounding
+// box on map point (x, y) in page fractions (as chipFx/chipFy), the point
+// right-clicked, into the plane being edited; selected; one Undo step. A
+// picture copied later (as for Ctrl+V) is pasted by the window and then
+// centred on the point, still one step.
+function pasteAt(fx, fy) {
+    var s = spaceRect()
+    var x = fxToX(fx)
+    var y = fyToY(fy)
+    var pictureNewer = canPastePicture
+        && (!(copiedNodes && copiedNodes.length) || clipboardSerial !== clipSerial)
+    if (pictureNewer) {
+        flushPendingStep()
+        var at = histAt
+        var before = JSON.stringify(nodes || [])
+        pastePictureRequested()
+        if (JSON.stringify(nodes || []) === before)
+            return
+        var added = []
+        var ids = selectedIds || []
+        var i
+        for (i = 0; i < ids.length; i++) {
+            if (nodeAt(ids[i]))
+                added.push(nodeAt(ids[i]))
+        }
+        var pc = _boxCentre(added)
+        if (pc) {
+            var seenPack = {}
+            for (i = 0; i < added.length; i++)
+                moveNodeBy(added[i], (x - pc.x) / Math.max(1, s.w), (y - pc.y) / Math.max(1, s.h), seenPack)
+            bump()
+            squashHistSince(at)
+        }
+        return
+    }
+    var src = copiedNodes || []
+    if (!src.length)
+        return
+    var c = _boxCentre(src)
+    if (!c)
+        return
+    pasteNodes(src, (x - c.x) / Math.max(1, s.w), (y - c.y) / Math.max(1, s.h))
+}
+
+// Select All (Ctrl+A): every item in the plane being edited that is shown
+// and not locked, with the tables their chips are packed in. No Undo step.
+function selectAll() {
+    if (!interactive)
+        return
+    var ids = []
+    var list = nodes || []
+    for (var i = 0; i < list.length; i++) {
+        var n = list[i]
+        if (!n || isHidden(n) || isLocked(n) || !inEditPlane(n))
+            continue
+        if (ids.indexOf(n.id) < 0)
+            ids.push(n.id)
+        if (n.packId && ids.indexOf(n.packId) < 0)
+            ids.push(n.packId)
+    }
+    setSelection(ids)
+}
+
 function isSelected(id) {
     if (!id)
         return false

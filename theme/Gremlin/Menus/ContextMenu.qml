@@ -24,6 +24,12 @@ import "menu_model.js" as MenuModel
 //   ContextMenu { id: _menu; build: function() { return MenuModel.menu(...) } }
 //   _menu.openAt(item, x, y)    at a point in item's coordinates
 //   _menu.openBelow(button)     under a button
+//
+// Favourites (opt-in, the Button Map): with favouritesEnabled, the model's
+// `favourites` rows ({cmd, text, hint, enabled, run}) show in an always-open
+// block at the top, each with an × that emits favouriteRemoved(cmd); an action
+// row with a `cmd` shows a ☆ on hover (★ when cmd is in favouriteIds) that
+// emits favouriteToggled(cmd) and does not run the row.
 Popup {
     id: _menu
 
@@ -50,10 +56,18 @@ Popup {
     property bool pinned: false
     // Moved by dragging the title: placed where dropped, no flipping.
     property bool _dragged: false
+    // Favourites (see above). Off: the menu is exactly as without them.
+    property bool favouritesEnabled: false
+    property var favouriteIds: []
+    signal favouriteToggled(string cmd)
+    signal favouriteRemoved(string cmd)
+    // Favourites removed with × since the menu opened: gone at once, whether
+    // or not the owner has rebuilt its list yet.
+    property var _removedFavs: []
     readonly property real edge: Style.menuPad
     readonly property real rowH: Style.menuRowH
     readonly property int textPx: Style.menuTextPx
-    readonly property var rows: _rows(model, current)
+    readonly property var rows: _rows(model, current, favouritesEnabled, _removedFavs)
 
     function hoverRow(area, m, index) {
         var g = area.mapToGlobal(m.x, m.y)
@@ -230,6 +244,7 @@ Popup {
 
     // Opens at a point in item's coordinates (the window's without an item).
     function openAt(item, ix, iy) {
+        _removedFavs = []
         refresh()
         // A pinned menu stays where it is and shows what was clicked now.
         if (pinned && opened) {
@@ -292,14 +307,55 @@ Popup {
         }
     }
 
+    function isFavourite(cmd) {
+        return (favouriteIds || []).indexOf(cmd) >= 0
+    }
+
+    // The ☆ / ★ on a row: adds or removes cmd; the row does not run.
+    function toggleFavourite(cmd) {
+        var gone = _removedFavs.indexOf(cmd)
+        if (gone >= 0) {
+            var left = _removedFavs.slice()
+            left.splice(gone, 1)
+            _removedFavs = left
+        }
+        favouriteToggled(cmd)
+        Qt.callLater(_refreshOpen)
+    }
+
+    // The × on a Favourites row: that row goes, the menu stays open.
+    function removeFavourite(cmd) {
+        if (_removedFavs.indexOf(cmd) < 0)
+            _removedFavs = _removedFavs.concat([cmd])
+        favouriteRemoved(cmd)
+        Qt.callLater(_refreshOpen)
+    }
+
+    function _refreshOpen() {
+        if (opened)
+            refresh()
+    }
+
     function _shown(item) {
         return !hideUnavailable || item.enabled || !!item.shownOff
     }
 
     // Visible rows, top to bottom: quick rows, then each section header and,
     // for the open one, its rows.
-    function _rows(m, open) {
+    function _rows(m, open, favsOn, removed) {
         var out = []
+        // Favourites: always open, above the quick rows.
+        var f = favsOn ? (m.favourites || []).filter(function(it) {
+            return !!it && removed.indexOf(it.cmd) < 0
+        }) : []
+        if (f.length) {
+            out.push({ type: "favLabel" })
+            for (var n = 0; n < f.length; n++) {
+                var fav = Object.assign({}, f[n], { kind: "action" })
+                fav.enabled = f[n].enabled === undefined ? true : !!f[n].enabled
+                out.push({ type: "fav", item: fav, last: n === f.length - 1 })
+            }
+        }
         var q = m.quick || []
         for (var i = 0; i < q.length; i++) {
             if (_shown(q[i]))
@@ -329,8 +385,12 @@ Popup {
                 out.push((r.open ? "v " : "> ") + r.title)
                 continue
             }
+            if (r.type === "favLabel") {
+                out.push("Favourites:")
+                continue
+            }
             var it = r.item
-            var t = (r.indent ? "  " : "") + it.text
+            var t = (r.type === "fav" ? "fav: " : "") + (r.indent ? "  " : "") + it.text
             if (it.kind === "toggle")
                 t += it.checked ? " [x]" : " [ ]"
             if (it.kind === "choice")
@@ -341,6 +401,8 @@ Popup {
                 t += " (" + it.hint + ")"
             if (it.tip)
                 t += " [tip: " + it.tip + "]"
+            if (favouritesEnabled && it.cmd && r.type !== "fav" && isFavourite(it.cmd))
+                t += " [fav]"
             if (!it.enabled)
                 t += " (off)"
             out.push(t)
@@ -352,6 +414,8 @@ Popup {
     function rowIndexOf(text) {
         for (var i = 0; i < rows.length; i++) {
             var r = rows[i]
+            if (r.type === "favLabel")
+                continue
             if ((r.type === "header" ? r.title : r.item.text) === text)
                 return i
         }
@@ -385,7 +449,7 @@ Popup {
 
     function _selectable(i) {
         var r = rows[i]
-        return !!r && (r.type === "header" || r.item.enabled)
+        return !!r && r.type !== "favLabel" && (r.type === "header" || r.item.enabled)
     }
 
     function _move(step) {
@@ -428,7 +492,7 @@ Popup {
                     var row = _repeater.itemAt(_menu.focusRow)
                     if (row && row.item)
                         row.item.editValue()
-                } else if (r && r.item.kind !== "choice")
+                } else if (r && r.item && r.item.kind !== "choice")
                     _menu.run(r.item)
             } else if (e.key === Qt.Key_Right || e.key === Qt.Key_Left) {
                 var step = e.key === Qt.Key_Right ? 1 : -1
@@ -619,6 +683,8 @@ Popup {
                 required property int index
                 width: parent ? parent.width : 0
                 sourceComponent: modelData.type === "header" ? _header
+                    : modelData.type === "favLabel" ? _favLabel
+                    : modelData.type === "fav" ? _favRow
                     : ({ choice: _choice, number: _number, entry: _entry })[modelData.item.kind] || _plain
                 onLoaded: {
                     item.row = Qt.binding(function() { return modelData })
@@ -678,10 +744,14 @@ Popup {
             readonly property var it: row ? row.item : null
             implicitHeight: _menu.rowH
             hot: !!(it && it.enabled && _menu.focusRow === rowIndex)
+            // A row that is a command can be a favourite (favouritesEnabled).
+            readonly property bool _starred: !!(it && it.cmd) && _menu.favouritesEnabled
+                && it.kind === "action"
+            readonly property real _starW: _starred ? Style.dp(22) : 0
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 x: row && row.indent ? Style.menuIndent : Style.dp(6)
-                width: parent.width - x - Math.max(Style.dp(26), _hint.width + Style.dp(16))
+                width: parent.width - x - _starW - Math.max(Style.dp(26), _hint.width + Style.dp(16))
                 text: it ? it.text : ""
                 font.pixelSize: _menu.textPx
                 font.bold: !!(it && it.danger)
@@ -693,7 +763,7 @@ Popup {
                 id: _hint
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
-                anchors.rightMargin: Style.dp(8)
+                anchors.rightMargin: Style.dp(8) + parent._starW
                 text: !it ? "" : (it.kind === "toggle" ? (it.checked ? "✓" : "") : (it.hint || ""))
                 font.pixelSize: it && it.kind === "toggle" ? _menu.textPx : _menu.textPx - Style.dp(1)
                 color: it && it.kind === "toggle" ? Style.menuAccent : Style.menuHint
@@ -717,6 +787,125 @@ Popup {
                     _menu.focusRow = rowIndex
                     _menu.run(it)
                 }
+            }
+            // ☆ on hover (★ when it is a favourite): adds or removes it; the
+            // row does not run.
+            Label {
+                id: _star
+                objectName: parent._starred ? "ctxStar_" + it.cmd : ""
+                visible: parent._starred && (_rowArea.containsMouse || _starArea.containsMouse)
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: Style.dp(6)
+                font.family: Style.iconFont
+                font.pixelSize: _menu.textPx
+                readonly property bool on: parent._starred && _menu.isFavourite(it.cmd)
+                // star-fill when a favourite, star when not.
+                text: on ? "\uF586" : "\uF588"
+                color: on ? Style.menuAccent : (_starArea.containsMouse ? Style.menuText : Style.menuTextOff)
+                MouseArea {
+                    id: _starArea
+                    anchors.fill: parent
+                    anchors.margins: -Style.dp(4)
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: _menu.toggleFavourite(it.cmd)
+                }
+                ToolTip.visible: _starArea.containsMouse
+                ToolTip.text: on ? "Remove from Favourites" : "Add to Favourites"
+            }
+        }
+    }
+
+    // The Favourites block's small title (favouritesEnabled).
+    Component {
+        id: _favLabel
+        Item {
+            objectName: "ctxFavourites"
+            property var row: null
+            property int rowIndex: -1
+            implicitHeight: _menu.rowH - Style.dp(4)
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                x: Style.dp(6)
+                text: "Favourites"
+                font.pixelSize: _menu.textPx - Style.dp(2)
+                font.bold: true
+                color: Style.menuHint
+            }
+        }
+    }
+
+    // A favourite: runs like an action; × takes it off the list.
+    Component {
+        id: _favRow
+        MenuRowBackground {
+            id: _fav
+            property var row: null
+            property int rowIndex: -1
+            readonly property var it: row ? row.item : null
+            objectName: it ? "ctxFavRow_" + it.cmd : ""
+            implicitHeight: _menu.rowH
+            hot: !!(it && it.enabled && _menu.focusRow === rowIndex)
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                readonly property bool on: !!(_fav.it && _fav.it.enabled)
+                cursorShape: on ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onPositionChanged: (m) => { if (on) _menu.hoverRow(this, m, _fav.rowIndex) }
+                onClicked: {
+                    if (!on)
+                        return
+                    _menu.focusRow = _fav.rowIndex
+                    _menu.run(_fav.it)
+                }
+            }
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                x: Style.dp(6)
+                width: parent.width - x - Style.dp(22) - Math.max(Style.dp(26), _favHint.width + Style.dp(16))
+                text: _fav.it ? _fav.it.text : ""
+                font.pixelSize: _menu.textPx
+                color: _fav.it && _fav.it.enabled ? Style.menuText : Style.menuTextOff
+                elide: Text.ElideRight
+            }
+            Label {
+                id: _favHint
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: Style.dp(30)
+                text: _fav.it ? (_fav.it.hint || "") : ""
+                font.pixelSize: _menu.textPx - Style.dp(1)
+                color: Style.menuHint
+            }
+            Label {
+                objectName: _fav.it ? "ctxFavRemove_" + _fav.it.cmd : ""
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: Style.dp(6)
+                font.family: Style.iconFont
+                font.pixelSize: _menu.textPx - Style.dp(2)
+                // x-lg
+                text: "\uF659"
+                color: _removeArea.containsMouse ? Style.menuDanger : Style.menuTextOff
+                MouseArea {
+                    id: _removeArea
+                    anchors.fill: parent
+                    anchors.margins: -Style.dp(4)
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: _menu.removeFavourite(_fav.it.cmd)
+                }
+                ToolTip.visible: _removeArea.containsMouse
+                ToolTip.text: "Remove from Favourites"
+            }
+            // The line under the block.
+            Rectangle {
+                visible: !!(_fav.row && _fav.row.last)
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: Style.menuDivider
             }
         }
     }

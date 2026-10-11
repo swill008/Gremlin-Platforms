@@ -143,6 +143,56 @@ Rectangle {
         return key === "all" ? shownKinds.length === 0 : shownKinds.indexOf(key) >= 0
     }
 
+    // Right-click > Show in Layers (07 S136): the item's row scrolled into
+    // view and lit for a moment. A search or kind filter that hides the
+    // row is cleared first. False when the row is not in this plane's list.
+    property string revealedId: ""
+    function revealRowIndex(id) {
+        var list = rows || []
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].id === id && list[i].part === "")
+                return i
+        }
+        return -1
+    }
+    function revealNode(id) {
+        if (!ed || !id)
+            return false
+        var i = revealRowIndex(id)
+        if (i < 0 && filtering) {
+            searchText = ""
+            kinds = []
+            i = revealRowIndex(id)
+        }
+        if (i < 0)
+            return false
+        revealedId = id
+        _revealTimer.restart()
+        _rowsColumn.forceLayout()
+        var it = _repeater.itemAt(i)
+        if (it) {
+            var maxY = Math.max(0, _flick.contentHeight - _flick.height)
+            var want = it.y + it.height / 2 - _flick.height / 2
+            _flick.contentY = Math.max(0, Math.min(maxY, want))
+        }
+        return true
+    }
+    Timer {
+        id: _revealTimer
+        interval: 1500
+        onTriggered: _panel.revealedId = ""
+    }
+    // For tests: the lit row's index and whether it lies inside the view.
+    function revealedRow() {
+        if (revealedId === "")
+            return { index: -1, inView: false }
+        var i = revealRowIndex(revealedId)
+        var it = i >= 0 ? _repeater.itemAt(i) : null
+        var inView = !!it && it.y >= _flick.contentY - 0.5
+            && it.y + it.height <= _flick.contentY + _flick.height + 0.5
+        return { index: i, inView: inView }
+    }
+
     // Ctrl+F: to the search box, its text selected.
     function focusSearch() {
         _search.focusField()
@@ -417,6 +467,16 @@ Rectangle {
                         readonly property bool heading: !!row.heading
                         opacity: (heading ? 0.5 : 1) * (rowHidden ? 0.55 : 1)
 
+                        // Show in Layers: the revealed row's outline.
+                        Rectangle {
+                            objectName: "layersRevealed"
+                            visible: _panel.revealedId !== "" && _row.row.id === _panel.revealedId && _row.row.part === ""
+                            anchors.fill: parent
+                            color: Style.clear
+                            border.color: Style.accent
+                            border.width: Style.dp(2)
+                            z: 2
+                        }
                         // Drop line: the dragged row lands above this one.
                         Rectangle {
                             visible: _panel.dragRow >= 0 && _panel.dropRow === _row.index

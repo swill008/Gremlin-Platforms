@@ -1193,7 +1193,11 @@ ApplicationWindow {
         if (!e)
             return
         // A spine, a table cell, or every selected item; a group breaks up.
-        e.deleteSelected()
+        // Through rig_commands.js when it applies (07 S137: Repeat sees it).
+        if (editing && RigCommands.enabled(e, "edit.delete"))
+            RigCommands.run(e, "edit.delete")
+        else
+            e.deleteSelected()
         applySelected()
         refreshReservoir()
     }
@@ -1316,12 +1320,126 @@ ApplicationWindow {
 
     // Edit > Cut (07 S135): Copy then Delete; Copy is no undo step, so the
     // Delete is the one step.
+    // Through rig_commands.js (07 S137: Repeat sees it; one Undo step).
     function cutNow() {
+        runEdit("edit.cut")
+    }
+
+    // Edit > Cut / Copy / Paste / Duplicate / Delete / Select All and their
+    // keys (07 S136 S137): through rig_commands.js, as the right-click rows,
+    // so Repeat sees menus and keys. The Chips pool and the selection follow
+    // from the editor's nodesChanged / historyChanged (deferHistory), for
+    // every way in (menus, keys, right-click).
+    function runEdit(id) {
         var e = _ed()
-        if (!editing || !e || e.selectedId === "")
+        if (!editing || !e)
             return
-        e.copySelection()
-        deleteOrBreak()
+        if (id === "edit.delete") {
+            deleteOrBreak()
+            return
+        }
+        if (RigCommands.enabled(e, id))
+            RigCommands.run(e, id)
+    }
+
+    // --- favourites (07 S136) -------------------------------------------------
+    // Command ids kept by Button Map Options (a program setting); the star on
+    // a menu-bar row adds or removes one, the right-click menu shows them.
+    readonly property bool favouritesReady: typeof _opts.toggleFavourite === "function"
+    readonly property var favouriteIds: (favouritesReady && _opts.favourites) ? _opts.favourites : []
+    function isFavourite(id) {
+        var list = favouriteIds || []
+        for (var i = 0; i < list.length; i++) {
+            if (list[i] === id)
+                return true
+        }
+        return false
+    }
+    function toggleFavourite(id) {
+        if (favouritesReady && id)
+            _opts.toggleFavourite(id)
+    }
+    function removeFavourite(id) {
+        if (typeof _opts.removeFavourite === "function" && id)
+            _opts.removeFavourite(id)
+    }
+    // The store's list and count to the editor (its right-click menu).
+    function applyFavouritesToEditor() {
+        var e = _ed()
+        if (!e || !favouritesReady)
+            return
+        var ids = []
+        var list = _opts.favourites || []
+        for (var i = 0; i < list.length; i++)
+            ids.push(String(list[i]))
+        if (e.favourites !== undefined)
+            e.favourites = ids
+        if (e.favouritesShown !== undefined && _opts.favouritesShown !== undefined)
+            e.favouritesShown = Number(_opts.favouritesShown)
+    }
+    Connections {
+        target: _opts
+        ignoreUnknownSignals: true
+        function onFavouritesChanged() { _buttonMap.applyFavouritesToEditor() }
+        function onFavouritesShownChanged() { _buttonMap.applyFavouritesToEditor() }
+    }
+    // A star at the end of a menu-bar row (07 S136), shown on hover.
+    function addStar(row, id) {
+        if (!row || !id)
+            return
+        // Room for the star after the key (kept as a binding, as the scale can change).
+        row.rightPadding = Qt.binding(function() { return Style.dp(30) })
+        _starComp.createObject(row, { cmdId: id, row: row })
+    }
+    Component {
+        id: _starComp
+        Text {
+            id: _star
+            property string cmdId: ""
+            property var row: null
+            readonly property bool on: _buttonMap.isFavourite(cmdId)
+            objectName: "bmStar_" + cmdId
+            visible: _buttonMap.favouritesReady && !!row
+                && (_rowHover.hovered || row.highlighted || _starArea.containsMouse)
+            anchors.right: parent ? parent.right : undefined
+            anchors.rightMargin: Style.dp(8)
+            anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+            text: on ? "★" : "☆"
+            color: on ? Style.menuAccent : Style.menuHint
+            font.pixelSize: Style.menuTextPx
+            // Toggles the favourite; the row itself does not run.
+            function toggle() { _buttonMap.toggleFavourite(cmdId) }
+            // The row's hover (its own follows the platform's hover setting).
+            HoverHandler {
+                id: _rowHover
+                parent: _star.row
+            }
+            MouseArea {
+                id: _starArea
+                anchors.fill: parent
+                anchors.margins: -Style.dp(4)
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: _star.toggle()
+            }
+        }
+    }
+
+    // Right-click > Show in Layers (07 S136): Layers unfolds (unpinned, it
+    // slides over) and its row is scrolled to and lit.
+    function showInLayers(id) {
+        if (!id)
+            return
+        _layersSide.unfold()
+        _layersPanel.revealNode(id)
+        // Again once a just-opened panel is laid out.
+        Qt.callLater(function() { _layersPanel.revealNode(id) })
+    }
+    // Right-click > Properties... (07 S136): as View > Properties (F4) when
+    // it is off: Layers unfolds with Properties shown.
+    function showProperties() {
+        propsOn = true
+        _layersSide.unfold()
     }
 
     // Background mode folds Chips and brings it back after (S130).
@@ -1497,7 +1615,12 @@ ApplicationWindow {
             return
         var first = e.nodeAt(ids[0])
         var inBg = first ? first.plane === "background" : bgMode
-        e.moveToPlane(ids, inBg ? "foreground" : "background")
+        // Through rig_commands.js when it applies (07 S137: Repeat sees it).
+        var cmd = inBg ? "moveToForeground" : "moveToBackground"
+        if (RigCommands.enabled(e, cmd))
+            RigCommands.run(e, cmd)
+        else
+            e.moveToPlane(ids, inBg ? "foreground" : "background")
     }
 
     // A text field or a name being typed has the keys.
@@ -1869,6 +1992,7 @@ ApplicationWindow {
         e.findOn = o["press-to-find"] !== false
         e.findAxes = o["find-axes"] === true
         applyPlaneViewToEditor()
+        applyFavouritesToEditor()
         giveLookMaker(e)
         refreshActionLabels()
     }
@@ -2278,6 +2402,7 @@ ApplicationWindow {
             checkable: !!RigCommands.CHECKABLE[cmdId]
             checked: { _buttonMap.cmdRev; var e = _buttonMap._ed(); return checkable && RigCommands.checked(e, cmdId) }
             onTriggered: _buttonMap.runCmd(cmdId)
+            Component.onCompleted: _buttonMap.addStar(this, cmdId)
         }
     }
     // A disabled row gets no hover of its own, so the menu's list watches
@@ -2372,6 +2497,10 @@ ApplicationWindow {
         var e = _ed()
         if (!editing || !e)
             return
+        if (typeof e.selectAll === "function") {
+            e.selectAll()
+            return
+        }
         var ids = []
         var list = e.nodes || []
         for (var i = 0; i < list.length; i++) {
@@ -3229,18 +3358,21 @@ ApplicationWindow {
                     hint: "Ctrl+X"
                     enabled: { var e = _ed(); return editing && !!e && e.selectedId !== "" }
                     onTriggered: _buttonMap.cutNow()
+                    Component.onCompleted: _buttonMap.addStar(this, "edit.cut")
                 }
                 ThemedMenuItem {
                     text: "Copy"
                     hint: "Ctrl+C"
                     enabled: { var e = _ed(); return e && e.selectedId !== "" }
-                    onTriggered: { var e = _ed(); if (e) e.copySelection() }
+                    onTriggered: _buttonMap.runEdit("edit.copy")
+                    Component.onCompleted: _buttonMap.addStar(this, "edit.copy")
                 }
                 ThemedMenuItem {
                     text: "Paste"
                     hint: "Ctrl+V"
                     enabled: { var e = _ed(); return e && e.copiedNodes && e.copiedNodes.length }
-                    onTriggered: { var e = _ed(); if (e) e.pasteClipboard() }
+                    onTriggered: _buttonMap.runEdit("edit.paste")
+                    Component.onCompleted: _buttonMap.addStar(this, "edit.paste")
                 }
                 ThemedMenuItem {
                     text: "Paste Picture"
@@ -3252,20 +3384,23 @@ ApplicationWindow {
                     text: "Duplicate"
                     hint: "Ctrl+D"
                     enabled: { var e = _ed(); return e && e.selectedId !== "" }
-                    onTriggered: { var e = _ed(); if (e) e.duplicateSelection() }
+                    onTriggered: _buttonMap.runEdit("edit.duplicate")
+                    Component.onCompleted: _buttonMap.addStar(this, "edit.duplicate")
                 }
                 ThemedMenuItem {
                     text: "Delete"
                     hint: "Delete"
                     enabled: { var e = _ed(); return editing && e && e.selectedId !== "" }
                     onTriggered: _buttonMap.deleteOrBreak()
+                    Component.onCompleted: _buttonMap.addStar(this, "edit.delete")
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
                     text: "Select All"
                     hint: "Ctrl+A"
                     enabled: editing
-                    onTriggered: _buttonMap.selectAllNow()
+                    onTriggered: _buttonMap.runEdit("edit.selectAll")
+                    Component.onCompleted: _buttonMap.addStar(this, "edit.selectAll")
                 }
                 ThemedMenuSeparator {}
                 ThemedMenu {
@@ -3956,6 +4091,15 @@ ApplicationWindow {
                             }
                             function onSeededChanged() { _buttonMap.noteSeeded() }
                         }
+                        // The right-click menu's additions (07 S136).
+                        Connections {
+                            target: _card.editorItem
+                            ignoreUnknownSignals: true
+                            function onShowInLayersRequested(id) { _buttonMap.showInLayers(id) }
+                            function onPropertiesRequested() { _buttonMap.showProperties() }
+                            function onFavouriteToggled(id) { _buttonMap.toggleFavourite(id) }
+                            function onFavouriteRemoved(id) { _buttonMap.removeFavourite(id) }
+                        }
                         Component.onCompleted: _cardLoader.item = _card
                         // A newer card may already be in use: only this one's own.
                         Component.onDestruction: {
@@ -4307,28 +4451,28 @@ ApplicationWindow {
                 Shortcut {
                     enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+L"
-                    onActivated: { var e = _ed(); if (e) e.toggleLockSelection() }
+                    onActivated: _buttonMap.runCmd("lock")
                 }
                 Shortcut {
                     enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+Shift+L"
-                    onActivated: { var e = _ed(); if (e) e.unlockAll() }
+                    onActivated: _buttonMap.runCmd("unlockAll")
                 }
                 Shortcut {
                     enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+G"
                     // As Group Selected: only when it would do something.
-                    onActivated: { var e = _ed(); if (e && e.canGroup()) e.groupSelection() }
+                    onActivated: _buttonMap.runCmd("group")
                 }
                 Shortcut {
                     enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+Shift+G"
-                    onActivated: { var e = _ed(); if (e) e.ungroupSelection() }
+                    onActivated: _buttonMap.runCmd("breakGroup")
                 }
                 Shortcut {
                     enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+D"
-                    onActivated: { var e = _ed(); if (e) e.duplicateSelection() }
+                    onActivated: _buttonMap.runEdit("edit.duplicate")
                 }
                 Shortcut {
                     // Edit > Cut (07 S135).
@@ -4339,12 +4483,12 @@ ApplicationWindow {
                 Shortcut {
                     enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+C"
-                    onActivated: { var e = _ed(); if (e) e.copySelection() }
+                    onActivated: _buttonMap.runEdit("edit.copy")
                 }
                 Shortcut {
                     enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+V"
-                    onActivated: { var e = _ed(); if (e) e.pasteClipboard() }
+                    onActivated: _buttonMap.runEdit("edit.paste")
                 }
                 Shortcut {
                     enabled: _buttonMap.keysHere
@@ -4455,7 +4599,7 @@ ApplicationWindow {
                 Shortcut {
                     sequence: "Ctrl+A"
                     enabled: keyOk(editing)
-                    onActivated: selectAllNow()
+                    onActivated: _buttonMap.runEdit("edit.selectAll")
                 }
                 Shortcut {
                     sequence: "Ctrl+M"

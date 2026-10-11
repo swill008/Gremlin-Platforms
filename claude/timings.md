@@ -816,3 +816,13 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | FIX-WIN: recovery copy, open drag, kept pin, greyed-row tooltip, Mouse before Keys (G39 G40 G46 G47) | fix | 3–8 min (table) | 12 min (off-screen hover for the tooltip test) | 15:59–16:11 |
 | 2026-10-11 | Lead: golden re-record (api_sweep), 3 tests updated, lint fix, map G39–G48 closed | fix | 3–8 min (table) | 6 min | 16:07–16:13 |
 | 2026-10-11 | Full run + lint (audit fixes): 2 static-check failures (hand-set tooltip delay; Cancel's cleanup moved to endEditUnsaved), fixed, 27 pass targeted; lint 0 new | test | 5–6 min (table) | 6 min + 3 min fixes | 16:14–16:23 |
+| 2026-10-11 | Right-click batch: OPTS (favourites store, count option) | feature | 3–8 min (table) | 2 min | 16:33–16:35 |
+| 2026-10-11 | Right-click batch: CMD (edit ids, info, applies, Repeat) | feature | 3–8 min (table) | 3 min | 16:33–16:36 |
+| 2026-10-11 | Right-click batch: SEL (Cut one step, Paste Here, Select All, editor wiring) | feature | 3–8 min (table) | 3 min | 16:33–16:36 |
+| 2026-10-11 | Right-click batch: DOC (spec wording, map, Help, glossary) | docs | 3–8 min (table) | 4 min | 16:33–16:37 |
+| 2026-10-11 | Right-click batch: CTX (shared menu Favourites block, ☆/★, ×) | feature | 3–8 min (table) | 6 min | 16:33–16:39 |
+| 2026-10-11 | Right-click batch: TEST (end to end 14 + carry-through 5) | agent tests | ~10 min | 7 min | 16:33–16:40 |
+| 2026-10-11 | Right-click batch: MENU (command tags, new rows, favourites list) | feature | 3–8 min (table) | 8 min | 16:33–16:41 |
+| 2026-10-11 | Right-click batch: WIN (menu-bar ☆, Edit rows/keys through commands, Show in Layers, Properties…) | feature | 3–8 min (table) | 9 min | 16:33–16:42 |
+| 2026-10-11 | Lead: contract, routing 6 agent requests, RigPointerArea point, option.py group, golden re-record (18 files), map G49/G50 + counts | lead | ~5 min | 16 min (incl. 3 min golden) | 16:31–16:47 |
+| 2026-10-11 | Full run + lint (right-click batch): all program tests green; test_times.json too old for today's new files (refreshed from CI run 38176638314); 24 lint items in new test files fixed; 46 pass targeted | test | 5–6 min (table) | 6 min + 4 min fixes | 16:47–16:57 |

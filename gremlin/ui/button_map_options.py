@@ -38,7 +38,12 @@ SECTION = "button-map"
 OptionValue = bool | int | float | str | list
 
 # Groups in the order Options shows them.
-GROUPS = ("labels", "editing", "recovery", "view", "colours", "library")
+GROUPS = (
+    "labels", "editing", "right-click", "recovery", "view", "colours", "library",
+)
+
+# Headings that differ from group_title(key).
+_GROUP_HEADINGS = {"right-click": "Right-click menu"}
 
 # (group, name, type, default, description, properties). A name's number only
 # orders the entries inside their group.
@@ -101,6 +106,13 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
         "leader and no hotspot. Add them later from the chip's menu (Leader → "
         "Add Leader, Hotspot → Hide Hotspot).",
         {},
+    ),
+    (
+        "right-click", "01-favourites-shown", PropertyType.Int, 5,
+        "How many favourites the top of the right-click menu shows (0 turns "
+        "them off). Add one with the ☆ on any command's row; remove it "
+        "with its ×.",
+        {"min": 0, "max": 15},
     ),
     (
         "recovery", "01-recovery-copies", PropertyType.Bool, True,
@@ -192,6 +204,65 @@ def register() -> None:
         )
     _register_pane_group(cfg)
     _register_panels(cfg)
+    _register_favourites(cfg)
+
+
+# --- favourites --------------------------------------------------------------------
+
+# Command ids (qml/rig_commands.js) the right-click menu shows at its top (07
+# S137): a program setting, never in a map file, Export or Device Pack, and
+# left alone by Reset Panels. In the order they were added.
+FAVOURITES_KEY = "favourites"
+
+
+def _register_favourites(cfg: Configuration) -> None:
+    # Registering again keeps the stored list.
+    cfg.register(
+        SECTION, "internal", FAVOURITES_KEY, PropertyType.List, [],
+        "Button Map: the right-click menu's favourite command ids.", {}, False,
+    )
+
+
+def favourites() -> list[str]:
+    cfg = Configuration()
+    _register_favourites(cfg)
+    raw = cfg.value(SECTION, "internal", FAVOURITES_KEY)
+    out: list[str] = []
+    for item in raw if isinstance(raw, list) else []:
+        cmd = str(item or "")
+        if cmd and cmd not in out:
+            out.append(cmd)
+    return out
+
+
+def _store_favourites(ids: list[str]) -> None:
+    cfg = Configuration()
+    _register_favourites(cfg)
+    cfg.set(SECTION, "internal", FAVOURITES_KEY, ids)
+
+
+def toggle_favourite(cmd: str) -> bool:
+    """Adds cmd at the end, or removes it when already there; False for no id."""
+    cmd = str(cmd or "")
+    if not cmd:
+        return False
+    ids = favourites()
+    if cmd in ids:
+        ids.remove(cmd)
+    else:
+        ids.append(cmd)
+    _store_favourites(ids)
+    return True
+
+
+def remove_favourite(cmd: str) -> bool:
+    """False when cmd wasn't a favourite."""
+    ids = favourites()
+    if cmd not in ids:
+        return False
+    ids.remove(cmd)
+    _store_favourites(ids)
+    return True
 
 
 # --- side panels -------------------------------------------------------------------
@@ -350,8 +421,8 @@ def set_props_shown(shown: object) -> bool:
 
 def reset_panels() -> None:
     """The side panels, the divider and Properties back to their defaults
-    (View > Reset Panels, 07 S99). Not the print area's frame or the
-    Keyboard Shortcuts window's pin: they aren't panels."""
+    (View > Reset Panels, 07 S99). Not the print area's frame, the
+    Keyboard Shortcuts window's pin or the favourites: they aren't panels."""
     cfg = _panels_cfg()
     stored = dict(cfg.value(SECTION, PANELS_GROUP, SIDE_PANELS_KEY) or {})
     kept = {k: v for k, v in stored.items() if k == "shortcuts"}
@@ -365,6 +436,8 @@ class _PanelsNotifier(QtCore.QObject):
     made through another."""
 
     changed = QtCore.Signal()
+    # The favourites list changed.
+    favouritesChanged = QtCore.Signal()
 
 
 _panels_notifier: _PanelsNotifier | None = None
@@ -507,16 +580,54 @@ class ButtonMapOptions(QtCore.QObject):
     # A side panel, the Layers/Properties divider or the print area's frame
     # changed. Not sent on configChanged, so a drag doesn't redraw every option.
     panelsChanged = QtCore.Signal()
+    favouritesChanged = QtCore.Signal()
+    favouritesShownChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         register()
         signal.configChanged.connect(self._on_config)
         _notifier().changed.connect(self.panelsChanged)
+        _notifier().favouritesChanged.connect(self.favouritesChanged)
+        self._shown = self._get_favourites_shown()
 
     @QtCore.Slot()
     def _on_config(self) -> None:
         self.changed.emit()
+        shown = self._get_favourites_shown()
+        if shown != self._shown:
+            self._shown = shown
+            self.favouritesShownChanged.emit()
+
+    # --- favourites ----------------------------------------------------------
+
+    def _get_favourites(self) -> list:
+        return favourites()
+
+    # Command ids in the order added; shared by every open window.
+    favourites = QtCore.Property(list, _get_favourites, notify=favouritesChanged)
+
+    def _get_favourites_shown(self) -> int:
+        try:
+            shown = int(typing.cast(int, value("favourites-shown")))
+        except (TypeError, ValueError):
+            return 5
+        return max(0, min(15, shown))
+
+    # How many the right-click menu shows (Options: Right-click menu).
+    favouritesShown = QtCore.Property(
+        int, _get_favourites_shown, notify=favouritesShownChanged
+    )
+
+    @QtCore.Slot(str)
+    def toggleFavourite(self, cmd: str) -> None:
+        if toggle_favourite(cmd):
+            _notifier().favouritesChanged.emit()
+
+    @QtCore.Slot(str)
+    def removeFavourite(self, cmd: str) -> None:
+        if remove_favourite(cmd):
+            _notifier().favouritesChanged.emit()
 
     @QtCore.Property("QVariantMap", notify=changed)
     def values(self) -> dict[str, OptionValue]:
@@ -534,7 +645,10 @@ class ButtonMapOptions(QtCore.QObject):
     @QtCore.Property(list, constant=True)
     def groups(self) -> list:
         """The groups in order, for the Options pane: [{key, title}]."""
-        return [{"key": g, "title": group_title(g)} for g in GROUPS]
+        return [
+            {"key": g, "title": _GROUP_HEADINGS.get(g) or group_title(g)}
+            for g in GROUPS
+        ]
 
     @QtCore.Property(list, constant=True)
     def entries(self) -> list:

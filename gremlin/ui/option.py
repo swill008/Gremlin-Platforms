@@ -240,6 +240,7 @@ def main_layout() -> list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]
 _GROUP_TITLES = {
     "colours": "colors",
     "recovery": "recovery copies",
+    "right-click": "right-click menu",
 }
 
 
@@ -285,8 +286,8 @@ def group_title(name: str) -> str:
 _GROUP_ORDER = {
     "general": 0, "files": 1, "input-names": 2,
     # Button Map (gremlin/ui/button_map_options.py)
-    "labels": 10, "editing": 11, "recovery": 12, "view": 13, "export": 14,
-    "colours": 15, "library": 16,
+    "labels": 10, "editing": 11, "right-click": 12, "recovery": 13, "view": 14,
+    "export": 15, "colours": 16, "library": 17,
 }
 
 

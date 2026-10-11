@@ -34,6 +34,7 @@ import "rig_rulers.js" as RigRulers
 import "rig_print_area.js" as RigPrintJs
 import "rig_transform.js" as RigTransform
 import "rig_hotspot.js" as RigHotspot
+import "rig_commands.js" as RigCommands
 
 Item {
     id: _ed
@@ -253,6 +254,47 @@ Item {
     signal saveStyleRequested(string kind, string fieldsJson)
     // A ruler guide was added, dropped or removed: the window saves them.
     signal rulerGuidesEdited()
+    // Right-click additions (07 S136, S137): Show in Layers and Properties…
+    // ask the window; the menu's ☆ and × change the program's Favourites
+    // (the window keeps them in its settings).
+    signal showInLayersRequested(string id)
+    signal propertiesRequested()
+    signal favouriteToggled(string id)
+    signal favouriteRemoved(string id)
+    // The last command with an id that ran (Repeat), the Favourites (command
+    // ids, in the order added; set by the window) and how many the menu shows.
+    property string lastCommandId: ""
+    property var favourites: []
+    property int favouritesShown: 5
+
+    // The command list (rig_commands.js), for rig_menu.js and the window.
+    function _cmds() { return (typeof RigCommands !== "undefined") ? RigCommands : null }
+    function cmdApplies(id) {
+        var c = _cmds()
+        return !!(c && typeof c.applies === "function" && c.applies(_ed, id))
+    }
+    function cmdInfo(id) {
+        var c = _cmds()
+        return (c && typeof c.info === "function") ? c.info(_ed, id) : { id: id, text: id, key: "" }
+    }
+    function cmdRun(id) {
+        var c = _cmds()
+        if (c && typeof c.run === "function")
+            return c.run(_ed, id)
+    }
+    function cmdRepeatLabel() {
+        var c = _cmds()
+        return (c && typeof c.repeatLabel === "function") ? c.repeatLabel(_ed) : ""
+    }
+    function cmdCanRepeat() {
+        var c = _cmds()
+        return !!(c && typeof c.canRepeat === "function" && c.canRepeat(_ed))
+    }
+    function cmdRepeat() {
+        var c = _cmds()
+        if (c && typeof c.repeat === "function")
+            return c.repeat(_ed)
+    }
 
     property var hist
     property int histAt: -1
@@ -808,6 +850,10 @@ Item {
     function duplicateSelection() { return RigSelection.duplicateSelection() }
     function copySelection() { return RigSelection.copySelection() }
     function pasteClipboard() { return RigSelection.pasteClipboard() }
+    function cutSelection() { return RigSelection.cutSelection() }
+    function pasteAt(x, y) { return RigSelection.pasteAt(x, y) }
+    function selectAll() { return RigSelection.selectAll() }
+    function _boxCentre(list) { return RigSelection._boxCentre(list) }
     function isSelected(id) { return RigSelection.isSelected(id) }
     function setSelection(ids) { return RigSelection.setSelection(ids) }
     function toggleSelected(id) { return RigSelection.toggleSelected(id) }
@@ -1804,6 +1850,9 @@ Item {
         property string kind: ""
         property int seg: -1
         property int leader: 0
+        // The point right-clicked, in editor-item pixels (RigPointerArea).
+        property real mapX: 0
+        property real mapY: 0
         // Cancelling (a double-click on empty map) leaves a pinned menu open.
         function close() { if (!_menu.pinned) _menu.close() }
     }
@@ -1817,6 +1866,11 @@ Item {
         // Stays open while you work and can be dragged by its title; a click
         // outside it closes it.
         stayOpen: true
+        // Favourites (07 S137): the block at the top and the ☆ on rows.
+        favouritesEnabled: true
+        favouriteIds: _ed.favourites
+        onFavouriteToggled: function(cmd) { _ed.favouriteToggled(cmd) }
+        onFavouriteRemoved: function(cmd) { _ed.favouriteRemoved(cmd) }
 
         Connections {
             target: _ed

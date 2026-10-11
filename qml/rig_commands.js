@@ -14,7 +14,19 @@
 // enabled(ed, id) -> bool
 // whyDisabled(ed, id) -> string: why a greyed row can't be used now ("" when
 //                   there is no reason to give), shown as its tooltip (S121).
-// run(ed, id)     -> runs it
+// run(ed, id)     -> runs it, then noteRun
+//
+// The Edit commands (07 S136 S137) have ids too, so they can be favourites
+// and repeated, but are not in list(): the window's Edit menu is written by
+// hand.
+// info(id) / info(ed, id) -> { id, text, key } (null for an unknown id): the
+//                   label Favourites and Repeat show.
+// applies(ed, id) -> bool: usable on the current selection (a favourite shows
+//                   only then).
+// noteRun(ed, id) -> remembers the last command for Repeat (not NO_REPEAT).
+// repeatLabel(ed) -> 'Repeat "Rotate +90°"', "" when nothing to repeat.
+// canRepeat(ed)   -> bool: the last command applies now.
+// repeat(ed)      -> runs the last command again.
 
 // --- the selection -----------------------------------------------------------
 
@@ -200,6 +212,11 @@ function checked(ed, id) {
     return false
 }
 
+// The Edit menu's commands (menu "Edit"), outside list().
+var _EDIT = [["edit.cut", "Cut", "Ctrl+X"], ["edit.copy", "Copy", "Ctrl+C"],
+             ["edit.paste", "Paste", "Ctrl+V"], ["edit.duplicate", "Duplicate", "Ctrl+D"],
+             ["edit.delete", "Delete", "Delete"], ["edit.selectAll", "Select All", "Ctrl+A"]]
+
 function list(ed) {
     var step = _rotateStep(ed)
     var out = []
@@ -344,6 +361,8 @@ function _drawColorKind(ed) {
 function enabled(ed, id) {
     if (!ed || !ed.interactive)
         return false
+    if (id.indexOf("edit.") === 0)
+        return _editEnabled(ed, id)
     var n = _node(ed)
     var k = _selKind(ed)
     if (id.indexOf("draw.") === 0 || id === "importPicture")
@@ -470,6 +489,24 @@ function whyDisabled(ed, id) {
     return ""
 }
 
+// As the window's Edit menu rows.
+function _editEnabled(ed, id) {
+    switch (id) {
+    case "edit.cut":
+    case "edit.copy":
+    case "edit.duplicate":
+    case "edit.delete":
+        return !!ed.selectedId
+    case "edit.paste":
+        // Copied items, or a picture on the clipboard (as the right-click
+        // menu's Paste).
+        return !!((ed.copiedNodes && ed.copiedNodes.length) || ed.canPastePicture)
+    case "edit.selectAll":
+        return true
+    }
+    return false
+}
+
 // --- run -----------------------------------------------------------------------
 
 // Rename, as the chip menu's: the group member being edited, else the chip.
@@ -501,6 +538,56 @@ function _rotate(ed, sign) {
         ed.turnSelectionBy(step)
 }
 
+// Every item on the edited plane that a band drag could take (not hidden,
+// not locked), as the window's Edit > Select All.
+function _selectAll(ed) {
+    if (typeof ed.selectAll === "function") {
+        ed.selectAll()
+        return
+    }
+    var ids = []
+    var nodes = ed.nodes || []
+    for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i]
+        if (!n || ed.isHidden(n) || ed.isLocked(n) || !ed.inEditPlane(n))
+            continue
+        if (ids.indexOf(n.id) < 0)
+            ids.push(n.id)
+        if (n.packId && ids.indexOf(n.packId) < 0)
+            ids.push(n.packId)
+    }
+    ed.setSelection(ids)
+}
+
+function _edit(ed, id) {
+    switch (id) {
+    case "edit.cut":
+        // TODO(SEL): drop the fallback once ed.cutSelection lands.
+        if (typeof ed.cutSelection === "function") {
+            ed.cutSelection()
+        } else {
+            ed.copySelection()
+            ed.deleteSelected()
+        }
+        break
+    case "edit.copy":
+        ed.copySelection()
+        break
+    case "edit.paste":
+        ed.pasteClipboard()
+        break
+    case "edit.duplicate":
+        ed.duplicateSelection()
+        break
+    case "edit.delete":
+        ed.deleteSelected()
+        break
+    case "edit.selectAll":
+        _selectAll(ed)
+        break
+    }
+}
+
 function _color(ed, id) {
     var chipField = {
         "color.fill": "color", "color.outline": "border", "color.text": "textColor",
@@ -516,10 +603,12 @@ function _color(ed, id) {
         ed.requestDrawColor(drawField)
 }
 
-function run(ed, id) {
-    if (!enabled(ed, id))
-        return
+function _exec(ed, id) {
     var n = _node(ed)
+    if (id.indexOf("edit.") === 0) {
+        _edit(ed, id)
+        return
+    }
     if (id.indexOf("draw.") === 0) {
         ed.setDrawTool(id.substring(5))
         return
@@ -736,4 +825,61 @@ function run(ed, id) {
         ed.setTableCellIndependent(!(c && c.independent))
         break
     }
+}
+
+function run(ed, id) {
+    if (!enabled(ed, id))
+        return
+    _exec(ed, id)
+    noteRun(ed, id)
+}
+
+// --- favourites and repeat (07 S136 S137) -----------------------------------------
+
+// Not repeated: they change nothing (Undo, Redo and view commands have no id).
+var NO_REPEAT = { "edit.copy": true, "edit.selectAll": true, "stopDrawing": true }
+
+// info(id) or info(ed, id); ed gives the rotate step in the text.
+function info(a, b) {
+    var ed = typeof a === "string" ? b : a
+    var id = typeof a === "string" ? a : b
+    if (!id || id === "-")
+        return null
+    for (var i = 0; i < _EDIT.length; i++) {
+        if (_EDIT[i][0] === id)
+            return { id: id, text: _EDIT[i][1], key: _EDIT[i][2] }
+    }
+    var all = list(ed)
+    for (var j = 0; j < all.length; j++) {
+        if (all[j].id === id)
+            return { id: id, text: all[j].text, key: all[j].key }
+    }
+    return null
+}
+
+function applies(ed, id) {
+    return !!id && enabled(ed, id)
+}
+
+function noteRun(ed, id) {
+    if (!ed || !id || NO_REPEAT[id] || !info(ed, id))
+        return
+    // TODO(SEL): the guard goes once the editor has lastCommandId.
+    if (ed.lastCommandId === undefined)
+        return
+    ed.lastCommandId = id
+}
+
+function repeatLabel(ed) {
+    var c = ed ? info(ed, ed.lastCommandId || "") : null
+    return c ? 'Repeat "' + c.text + '"' : ""
+}
+
+function canRepeat(ed) {
+    return !!ed && !!ed.lastCommandId && !!info(ed, ed.lastCommandId) && enabled(ed, ed.lastCommandId)
+}
+
+function repeat(ed) {
+    if (canRepeat(ed))
+        run(ed, ed.lastCommandId)
 }
