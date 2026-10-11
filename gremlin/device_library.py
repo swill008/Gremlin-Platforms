@@ -19,11 +19,10 @@ Every saved setup is the device folder zip Export makes (".gmap", S60,
 08 S111), built with gremlin.modules.device_zip: a stick with no module
 file here holds only its bindings, and a damaged module file is kept as it
 is (S20a). An autosave adds the whole folder exactly under exact/ (S18), so
-Undo puts it back as it was. Saved setups kept before device folders are
-Device Packs (08 S49-S55); both are read alike (_read_pack). Bindings of a
-profile that isn't open come from gremlin.library_profiles.read_profile.
-Device
-folders are only read here (through gremlin.modules.store and registry);
+Undo puts it back as it was. Only .gmap files are written or read
+(D-FIXLIST-B2: no .zip Device Pack). Bindings of a profile that isn't open
+come from gremlin.library_profiles.read_profile. Device folders are only
+read here (through gremlin.modules.store and registry);
 Remove from Library removes the device's folder through store.delete
 (S52). Nothing is read from the old deleted devices folder (S9, S37,
 D-10-NO-DELETED-FOLDER).
@@ -61,19 +60,16 @@ syslog = logging.getLogger("system")
 
 PARTS = ["setup", "button_map", "appearance", "calibration", "bindings"]
 # A damaged module file kept exactly as it was (S20a): never copied or
-# swapped onto another stick; only the setup's bindings can be.
+# swapped onto another stick; only the setup's bindings can be. A .gmap
+# keeps its bytes as its module.json.
 DAMAGED_PART = "setup_damaged"
-# Where the damaged file's bytes sit inside a saved setup kept before device
-# folders (beside map.json, which then holds nothing from it but
-# {"damaged": {"file", "reason"}}); a .gmap keeps them as its module.json.
-DAMAGED_ENTRY = "damaged/"
 # An autosave also keeps the module file's bytes exactly, so Undo puts it
 # back as it was, parts it lacked included (S25, S41); a .gmap autosave keeps
 # every file of the device's folder there, by its path in the folder (S18).
 EXACT_ENTRY = "exact/"
-# A saved setup that is a device folder zip (S60) holds this; an older one
-# (a Device Pack) holds map.json.
+# Every saved setup is a device folder zip (S60) and holds this.
 GMAP_JSON = "gmap.json"
+GMAP_EXT = ".gmap"
 GMAP_MODULE = "module.json"
 GMAP_WIRES = "bindings/wires.json"
 GMAP_OUTPUTS = "bindings/outputs/"
@@ -1167,8 +1163,7 @@ def _with_folder(data: bytes, where: Path) -> tuple[bytes, dict] | str:
 
 
 def is_gmap(data: bytes | Path) -> bool:
-    """A saved setup (or pack) that is a device folder zip (S60), not a
-    Device Pack."""
+    """A device folder zip (S60): a zip holding gmap.json."""
     try:
         source = io.BytesIO(data) if isinstance(data, bytes) else Path(data)
         with zipfile.ZipFile(source, "r") as zf:
@@ -1181,7 +1176,7 @@ def _gmap_parts(zf: zipfile.ZipFile, names: list[str]) -> dict | str:
     """A device folder zip read as a pack is: its module.json as the map
     (with the device's name, a pack label and "damaged" from gmap.json) and
     its bindings/wires.json as the wires."""
-    from gremlin.ui import device_pack
+    from gremlin.modules import pack_checks
 
     head = _json_part(zf, GMAP_JSON)
     if not isinstance(head, dict):
@@ -1200,6 +1195,8 @@ def _gmap_parts(zf: zipfile.ZipFile, names: list[str]) -> dict | str:
     doc["pack"] = {
         "exportedName": device,
         "exportedGuid": "" if ident.startswith("name:") else ident,
+        "author": _clean(head.get("madeBy") or ""),
+        "note": str(head.get("note") or "").strip(),
     }
     damaged = head.get("damaged")
     if isinstance(damaged, dict):
@@ -1209,7 +1206,7 @@ def _gmap_parts(zf: zipfile.ZipFile, names: list[str]) -> dict | str:
     wires: object = {}
     if GMAP_WIRES in names:
         wires = _json_part(zf, GMAP_WIRES)
-        problem = device_pack.wires_problem(wires)
+        problem = pack_checks.wires_problem(wires)
         if problem:
             return problem
     for name in names:
@@ -1220,13 +1217,9 @@ def _gmap_parts(zf: zipfile.ZipFile, names: list[str]) -> dict | str:
 
 
 def _too_new(pack: dict) -> str:
-    """Why a pack or device folder zip from a newer program can't be read
-    ("" when it can)."""
-    from gremlin.ui import device_pack
-
-    head = pack.get("gmap")
-    if not isinstance(head, dict):
-        return device_pack.too_new(pack["map"])
+    """Why a device folder zip from a newer program can't be read ("" when
+    it can)."""
+    head = pack["gmap"]
     try:
         version = int(head.get("version") or 1)
     except (TypeError, ValueError):
@@ -1242,43 +1235,27 @@ def _too_new(pack: dict) -> str:
 
 
 def _read_pack(data: bytes | Path) -> dict | str:
-    """The pack's map.json and wires.json, or why it can't be read: the
-    same checks as the Device Pack window (size, wires.json, outputs). A
-    device folder zip (S60) is read as one: its module.json and its
-    bindings/wires.json."""
-    from gremlin.ui import device_pack
+    """A device folder zip (S60) read as a pack: its module.json as the
+    map, its bindings/wires.json as the wires and its gmap.json label; or
+    why it can't be read (size, wires, outputs, damage). Anything else, an
+    old .zip Device Pack too, is not a device file (D-FIXLIST-B2)."""
+    from gremlin.modules import pack_checks
 
     try:
         source = io.BytesIO(data) if isinstance(data, bytes) else Path(data)
         with zipfile.ZipFile(source, "r") as zf:
-            big = device_pack.too_big(zf)
+            big = pack_checks.too_big(zf)
             if big:
                 return big
             names = zf.namelist()
-            if GMAP_JSON in names:
-                got = _gmap_parts(zf, names)
-                if not isinstance(got, str) and zf.testzip() is not None:
-                    return "It is damaged."
-                return got
-            if "map.json" not in names:
-                return "It has no map.json."
-            doc = _json_part(zf, "map.json")
-            wires: object = {}
-            if "wires.json" in names:
-                wires = _json_part(zf, "wires.json")
-                problem = device_pack.wires_problem(wires)
-                if problem:
-                    return problem
-            problem = device_pack.outputs_problem(zf)
-            if problem:
-                return problem
-            if zf.testzip() is not None:
+            if GMAP_JSON not in names:
+                return "It has no gmap.json."
+            got = _gmap_parts(zf, names)
+            if not isinstance(got, str) and zf.testzip() is not None:
                 return "It is damaged."
+            return got
     except (OSError, ValueError, RecursionError, zipfile.BadZipFile, KeyError) as exc:
         return f"It could not be read ({exc})."
-    if not isinstance(doc, dict):
-        return "Its map.json is not a document."
-    return {"map": doc, "wires": wires if isinstance(wires, dict) else {}}
 
 
 def _json_part(zf: zipfile.ZipFile, name: str) -> object:
@@ -1329,13 +1306,7 @@ def _contents(pack: dict) -> tuple[list[str], list[str], int, dict[str, int]]:
     return [p for p in HOLDS if p in held], modes, actions, vjoys
 
 
-def _suffix(data: bytes | Path) -> str:
-    """A device folder zip's extension (".gmap", S60), else a Device
-    Pack's (".zip")."""
-    return ".gmap" if is_gmap(data) else ".zip"
-
-
-def _unique_pack(device_name: str, setup_name: str, suffix: str = ".zip") -> Path:
+def _unique_pack(device_name: str, setup_name: str, suffix: str = GMAP_EXT) -> Path:
     """A new file in the device's Library folder; folder and file names are
     cut to 80 characters (S57)."""
     base = folder() / _file_name(device_name)
@@ -1434,7 +1405,7 @@ def _keep(
                 _remove_files(written)
                 return _result(False, built)
             data, info = built
-            pack = _bg("read Device Pack", _read_pack, data)
+            pack = _bg("read device file", _read_pack, data)
             if isinstance(pack, str):
                 _remove_files(written)
                 return _result(False, pack)
@@ -1455,9 +1426,9 @@ def _keep(
                 or profile_name
                 or device_name
             )
-            dest = _unique_pack(device_name, title, _suffix(data))
+            dest = _unique_pack(device_name, title)
             entry = info.get("damaged") or info.get("exact")
-            failed = _bg("write Device Pack", _write_pack, dest, data, entry)
+            failed = _bg("write device file", _write_pack, dest, data, entry)
             if failed:
                 _remove_files(written)
                 return _result(False, failed)
@@ -1722,19 +1693,12 @@ def photo(setup_key: str) -> str:
         with zipfile.ZipFile(pack, "r") as zf:
             # A device folder zip names its photo by its place in the
             # folder ("pictures/photo.png"), which is its place in the zip.
-            gmap = GMAP_JSON in zf.namelist()
-            doc = json.loads(
-                zf.read(GMAP_MODULE if gmap else "map.json").decode("utf-8")
-            )
-            # The bottom background picture (07 S127): by its place in a
-            # device folder zip, by its name at a pack's root.
+            doc = json.loads(zf.read(GMAP_MODULE).decode("utf-8"))
+            # The bottom background picture (07 S127).
             from gremlin.modules import store
 
             ref = store.device_photo_ref(doc)
-            names = zf.namelist()
-            arc = next(
-                (each for each in (ref, Path(ref).name) if ref and each in names), ""
-            )
+            arc = ref if ref and ref in zf.namelist() else ""
             if not arc:
                 return ""
             tag = hashlib.sha1(
@@ -2202,7 +2166,7 @@ def delete_many(keys: list[str]) -> dict:
 
 
 def export_current(device_key: str, dest: Path) -> dict:
-    """Export Current Setup… (S44): a Device Pack of the device's current
+    """Export Current Setup… (S44): a device file (.gmap) of the device's current
     settings (its module file, and its bindings in the open profile),
     written where the user picked as Export Saved Setup… is (S14, 08 S57).
     No saved setup is kept. Reads the open profile: call on the main
@@ -2214,11 +2178,11 @@ def export_current(device_key: str, dest: Path) -> dict:
     if not built["ok"]:
         return built
     data = built["data"]
-    dest = _export_name(Path(dest), data)
+    dest = _export_name(Path(dest))
     if store.is_inside(dest):
-        return _result(False, "A Device Pack can't be saved inside the modules folder.")
+        return _result(False, "A device file can't be saved inside the modules folder.")
     info = {"device": built["name"], "sizeText": device_pack.size_text(len(data))}
-    out = _bg("export Device Pack", device_pack.save_pack, data, info, dest)
+    out = _bg("export device file", device_pack.save_pack, data, info, dest)
     base = _result(bool(out.get("ok")), str(out.get("error") or ""))
     base.update({k: v for k, v in out.items() if k not in ("ok", "error")})
     return base
@@ -2390,15 +2354,17 @@ def import_pack(path: Path) -> dict:
     connected device named after the pack. {"setup": SavedSetup}"""
 
     path = Path(path)
-    if path.suffix.lower() not in (".zip", ".gmap"):
-        return _result(False, f"{path.name} is not a Device Pack (.zip or .gmap).")
+    if path.suffix.lower() != GMAP_EXT:
+        return _result(False, f"{path.name} is not a device file (.gmap).")
     try:
-        data = _bg("read Device Pack", path.read_bytes)
+        data = _bg("read device file", path.read_bytes)
     except OSError as exc:
         return _result(False, f"{path.name} could not be read ({exc.strerror or exc}).")
-    pack = _bg("read Device Pack", _read_pack, data)
+    pack = _bg("read device file", _read_pack, data)
     if isinstance(pack, str):
-        return _result(False, f"{path.name} is not a Device Pack it can read. {pack}")
+        return _result(
+            False, f"{path.name} is not a device file (.gmap) it can read. {pack}"
+        )
     newer = _too_new(pack)
     if newer:
         return _result(False, newer)
@@ -2432,12 +2398,12 @@ def import_pack(path: Path) -> dict:
         else:
             rec = _pack_record(doc, made_from)
         device_name = rec.get("name") or made_from
-        dest = _unique_pack(device_name, path.stem, _suffix(data))
-        failed = _bg("write Device Pack", _write_pack, dest, data)
+        dest = _unique_pack(device_name, path.stem)
+        failed = _bg("write device file", _write_pack, dest, data)
         if failed:
             return _result(False, failed)
         created = _iso()
-        reason = f"From {author}'s pack" if author else "From a Device Pack"
+        reason = f"From {author}'s device file" if author else "From a device file"
         setup = {
             "key": _new_key("set"),
             "name": path.stem,
@@ -2465,21 +2431,17 @@ def import_pack(path: Path) -> dict:
         return _result(True, "", setup=_setup_out(rec, setup), device=rec["key"])
 
 
-def _export_name(dest: Path, data: bytes) -> Path:
-    """dest with the extension of what is written: ".gmap" for a device
-    folder zip (S60), ".zip" for a Device Pack."""
-    suffix = _suffix(data)
-    if dest.suffix.lower() == suffix:
+def _export_name(dest: Path) -> Path:
+    """dest ending in ".gmap" (S60): added when it has another extension."""
+    if dest.suffix.lower() == GMAP_EXT:
         return dest
-    if dest.suffix.lower() in (".zip", ".gmap"):
-        return dest.with_suffix(suffix)
-    return dest.with_name(dest.name + suffix)
+    return dest.with_name(dest.name + GMAP_EXT)
 
 
 def export_setup(key: str, dest: Path) -> dict:
-    """S14: the saved setup's pack, written where the user picked (08 S57:
-    not inside the modules folder; .gmap added for a device folder zip,
-    .zip for an older Device Pack), then read back."""
+    """S14: the saved setup's device file, written where the user picked
+    (08 S57: not inside the modules folder; ".gmap" added when missing),
+    then read back."""
     from gremlin.modules import store
     from gremlin.ui import device_pack
 
@@ -2492,13 +2454,13 @@ def export_setup(key: str, dest: Path) -> dict:
         return _result(
             False, f"The saved setup's pack could not be read ({exc.strerror or exc})."
         )
-    dest = _export_name(Path(dest), data)
+    dest = _export_name(Path(dest))
     if store.is_inside(dest):
-        return _result(False, "A Device Pack can't be saved inside the modules folder.")
+        return _result(False, "A device file can't be saved inside the modules folder.")
     found = _find_setup(_read(), key)
     name = found[0].get("name", "") if found else ""
     info = {"device": name, "sizeText": device_pack.size_text(len(data))}
-    out = _bg("export Device Pack", device_pack.save_pack, data, info, dest)
+    out = _bg("export device file", device_pack.save_pack, data, info, dest)
     if out.get("ok"):
         add_history(key, f"Exported to {dest.name}")
     base = _result(bool(out.get("ok")), str(out.get("error") or ""))

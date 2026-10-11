@@ -120,7 +120,7 @@ ev('Helpers.createComponent("DialogDevicePack.qml")')
 assert wait_for(
     lambda: any(
         isinstance(w, QtQuick.QQuickWindow)
-        and w.title().startswith("Device Pack")
+        and w.title().startswith("Export / Import Device")
         and w.isVisible()
         for w in app.topLevelWindows()
     )
@@ -129,7 +129,7 @@ pack_win = next(
     w
     for w in app.topLevelWindows()
     if isinstance(w, QtQuick.QQuickWindow)
-    and w.title().startswith("Device Pack")
+    and w.title().startswith("Export / Import Device")
     and w.isVisible()
 )
 

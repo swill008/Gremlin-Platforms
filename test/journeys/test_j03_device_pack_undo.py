@@ -59,11 +59,11 @@ def story(j: Journey) -> None:
 
     # Tools > Device Pack: export the pJoy Pro.
     j.ev('Helpers.createComponent("DialogDevicePack.qml")')
-    pack = j.window("Device Pack")
+    pack = j.window("Export / Import Device")
     j.ev('_exportDevice.currentIndex = _exportDevice.find("pJoy Pro")', pack)
     j.ev("refreshExport()", pack)
     out["export-modes"] = [m["name"] for m in j.ev("exportModes", pack)]
-    zip_path = util.export_dir() / "pjoy.zip"
+    zip_path = util.export_dir() / "pjoy.gmap"
     zip_url = QtCore.QUrl.fromLocalFile(str(zip_path)).toString()
     exported = json.loads(
         j.ev(f'_hw.exportPack("pJoy Pro", "{zip_url}", exportOptions())', pack)
@@ -71,10 +71,12 @@ def story(j: Journey) -> None:
     out["exported"] = bool(exported.get("ok")) and zip_path.is_file()
 
     # Open the pack (as Open Device Pack does) and put it on the X52.
-    j.ev(f'zipUrl = "{zip_url}"', pack)
+    j.ev(f'fileUrl = "{zip_url}"', pack)
     j.ev("_hw.keepPackImport()", pack)
     j.ev('mode = "import"; _pages.currentIndex = 1', pack)
-    j.ev("loadPack(JSON.parse(_hw.peekPackZip(zipUrl)))", pack)
+    j.ev("loadPack(JSON.parse(_hw.peekPackZip(fileUrl)))", pack)
+    # Onto an existing device (D-FIXLIST-B2 3a).
+    j.ev('importTarget = "existing"', pack)
     j.ev('_saveAs.text = "Saitek X52"', pack)
     j.ev("askImport()", pack)
     out["warning"] = j.ev("_warnText.text", pack)

@@ -220,15 +220,19 @@ def test_plans_and_profiles_come_back_with_their_ticket(
     assert len(res["warnings"]) == 2
 
 
-def test_s35_s39_import_takes_only_a_gmap_or_zip(
+def test_s35_s39_import_takes_only_a_gmap(
     qtbot: QtBot, model: DeviceLibraryModel, lib: Fake, tmp_path: pathlib.Path
 ) -> None:
     results: list[dict] = []
     model.result.connect(results.append)
     assert model.importPack((tmp_path / "notes.txt").as_uri()) == 0
     assert not results[-1]["ok"] and "isn't a device file" in results[-1]["error"]
+    # D-FIXLIST-B2: a .zip Device Pack is refused before the owner is asked.
+    calls = len(lib.calls)
+    assert model.importPack((tmp_path / "Sam MFDs.zip").as_uri()) == 0
+    assert not results[-1]["ok"] and len(lib.calls) == calls
     res = _run(
-        qtbot, model, lambda: model.importPack((tmp_path / "Sam MFDs.zip").as_uri())
+        qtbot, model, lambda: model.importPack((tmp_path / "Sam MFDs.gmap").as_uri())
     )
     assert res["ok"] and lib.calls[-1][0] == "import_pack"
     assert model.statusText.startswith("5 devices · 7 saved setups")
@@ -238,11 +242,11 @@ def test_s35_s39_import_takes_a_gmap(
     qtbot: QtBot, model: DeviceLibraryModel, lib: Fake, tmp_path: pathlib.Path
 ) -> None:
     """S35, S39, D-10-GMAP-SETUPS: the picker offers *.gmap, so Import takes
-    a ".gmap" device file as well as an older ".zip" (GMAP-WINDOW-IMPORT)."""
+    a ".gmap" device file, and only that (GMAP-WINDOW-IMPORT, D-FIXLIST-B2)."""
     results: list[dict] = []
     model.result.connect(results.append)
     assert model.importPack((tmp_path / "notes.txt").as_uri()) == 0
-    assert ".gmap" in results[-1]["error"] and ".zip" in results[-1]["error"]
+    assert ".gmap" in results[-1]["error"] and ".zip" not in results[-1]["error"]
     res = _run(
         qtbot, model, lambda: model.importPack((tmp_path / "Sam MFDs.gmap").as_uri())
     )
@@ -254,13 +258,13 @@ def test_s14_export_adds_gmap(
     qtbot: QtBot, model: DeviceLibraryModel, lib: Fake, tmp_path: pathlib.Path
 ) -> None:
     """S14, D-10-GMAP-SETUPS: a bare name becomes ".gmap"; a picked ".gmap"
-    or an older setup's ".zip" stays as it is (GMAP-WINDOW-SUFFIX: the
+    stays; any other name gets ".gmap" added (D-FIXLIST-B2) (GMAP-WINDOW-SUFFIX: the
     window suggests "X.gmap", which was saved as "X.gmap.gmap")."""
     for picked, saved in (
         ("mine", "mine.gmap"),
         ("mine.gmap", "mine.gmap"),
         ("Mine.GMAP", "Mine.GMAP"),
-        ("old.zip", "old.zip"),
+        ("old.zip", "old.zip.gmap"),
     ):
         _run(
             qtbot,

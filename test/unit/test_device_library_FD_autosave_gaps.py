@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Device Library, agent FD: a Device Pack import onto a stick keeps a
-"before Device Pack" autosave first (10 S16-S17), Delete Device's autosave
+"before Import Device" autosave first (10 S16-S17), Delete Device's autosave
 holds a never-saved open profile's bindings (10 S18, 03 S91), and the
 library folder is chosen in Device Library Settings only, not Options
 (10 S37, 01 S124)."""
@@ -76,7 +76,7 @@ def _import(pack: dict, target: str = "Stick R") -> dict:
 # --- Gap 3: Device Pack import ------------------------------------------------------
 
 
-def test_pack_import_keeps_a_before_device_pack_autosave_first(
+def test_pack_import_keeps_a_before_import_device_autosave_first(
     pack: dict, fake: _FakeLibrary, monkeypatch: pytest.MonkeyPatch,
     tmp_path: pathlib.Path,
 ) -> None:
@@ -85,7 +85,7 @@ def test_pack_import_keeps_a_before_device_pack_autosave_first(
     monkeypatch.setattr(shared_state, "current_profile", profile)
     assert _import(pack)["ok"]
     assert fake.calls == [(
-        "Stick R", "{GUID-R}", "pack", "Autosave: before Device Pack Hornet stick",
+        "Stick R", "{GUID-R}", "pack", "Autosave: before Import Device Hornet stick",
         [tmp_path / "open.xml"],
     )]
     assert pack["applied"] == [(pack["zip"], "Stick R")]

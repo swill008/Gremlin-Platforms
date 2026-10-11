@@ -1,20 +1,22 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""One zip for a whole device: a working copy of what was exported.
+"""Export / Import Device (D-FIXLIST-B2): one .gmap for a whole device.
 
-Import is destructive by design: each ticked piece replaces what is on this
-machine (module file pieces; for a ticked mode, the device's wires and
-actions in that mode), except Checked controls: the pack's are added to the
-ones checked here (08 Q3). The window warns first, the previous module file is
-kept in the device folder's imported folder (08 S73), and Undo Import puts
-back the last import. A device folder file (.gmap, 08 S111) is read as a pack
-too (device_zip.read_gmap)."""
+Export writes a .gmap through device_zip.build_gmap (the one writer): the
+device's folder, Made by, Note and the chosen modes' wires. Import reads
+.gmap only (device_zip.read_gmap) onto one of two targets: "existing", a
+working copy of what was exported (each ticked piece replaces what is on
+this machine: module file pieces; for a ticked mode, the device's wires
+and actions in that mode; Checked controls are added, 08 Q3), or "new", a
+new device folder (device_zip.import_device) holding only the ticked
+pieces. The window warns first, the previous module file is kept in the
+device folder's imported folder (08 S73), and Undo Import puts back the
+last import of either kind."""
 
 from __future__ import annotations
 
 import atexit
-import io
 import json
 import logging
 import os
@@ -22,7 +24,6 @@ import re
 import shutil
 import tempfile
 import uuid
-import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -32,11 +33,10 @@ from typing import TYPE_CHECKING
 from gremlin.ui.live_debug import trace
 from gremlin.modules import module_file, store
 from gremlin.modules.claim import claim_ids
-from gremlin.modules.pack_checks import too_big, wires_problem
-from gremlin.modules.registry import is_output_name
+# The checks the Device Library reads through this module.
+from gremlin.modules.pack_checks import too_big, wires_problem  # noqa: F401
 from gremlin.ui.input_pairing import dest_labels_for_item, parse_guid
 from gremlin.modules.store import (
-    PICTURE_EXT as _IMAGE_EXT,
     doc_direction as _doc_direction,
     match_known_device as _match_pack_device,
     member_kind,
@@ -485,22 +485,6 @@ def _picture_item(arc: str, title: str, url: str, on_map: bool) -> dict:
     return row
 
 
-def _take_image(stored: str, resolve, used: set[str], files: list[tuple[Path, str]]) -> str:
-    found = resolve(stored) if stored else None
-    if not found or not found.is_file():
-        return ""
-    arc = _safe_name(found.name, "photo" + found.suffix.lower())
-    if arc in used:
-        stem, ext = Path(arc).stem, Path(arc).suffix
-        number = 1
-        while f"{stem}_{number}{ext}" in used:
-            number += 1
-        arc = f"{stem}_{number}{ext}"
-    used.add(arc)
-    files.append((found, arc))
-    return arc
-
-
 def _is_picture(node: object) -> bool:
     return isinstance(node, dict) and (
         node.get("kind") == "image" or node.get("shape") == "image"
@@ -513,61 +497,6 @@ def _photo_node(doc: dict) -> dict | None:
         if store.is_background(node) and node.get("shape") == "image":
             return node
     return None
-
-
-def _today_layout(doc: dict, folder: Path | None) -> dict:
-    """A copy of a module document in today's layout: a map saved before
-    the planes has its photo as the bottom background picture (OT-2), so
-    a pack never carries the old top-level "image" and "photo"."""
-    copy = json.loads(json.dumps(doc))
-    # ONE-TIME (tracker OT-2): an old map exported before its next Save.
-    from gremlin.modules import planes_once
-
-    planes_once.old_photo_to_layer(copy, folder)
-    return copy
-
-
-def _rewrite_images(
-    doc: dict,
-    resolve: Callable[[str], Path | None],
-    used: set[str],
-    files: list[tuple[Path, str]],
-    folder: Path | None = None,
-) -> tuple[dict, list[dict]]:
-    """The pack's copy of doc with every picture named by its place in the
-    zip, and the picture rows: the bottom background picture is the
-    "Device photo" (07 S127), the others are map pictures that the Map row
-    needs. Background layers travel as layers (08 S113)."""
-    packed = _today_layout(doc, folder)
-    pictures: list[dict] = []
-    photo = _photo_node(packed)
-    map_count = 0
-    for node in packed.get("nodes") or []:
-        if not _is_picture(node):
-            continue
-        arc = _take_image(str(node.get("src") or ""), resolve, used, files)
-        if not arc:
-            node.pop("src", None)
-            node.pop("srcUrl", None)
-            node.pop("lookUrl", None)
-            continue
-        node["src"] = arc
-        node.pop("srcUrl", None)
-        node.pop("lookUrl", None)
-        if node is photo:
-            pictures.append({
-                "arc": arc,
-                "onMap": False,
-                "item": _picture_item(arc, "Device photo", "", False),
-            })
-            continue
-        map_count += 1
-        pictures.append({
-            "arc": arc,
-            "onMap": True,
-            "item": _picture_item(arc, f"Map picture {map_count}", "", True),
-        })
-    return packed, pictures
 
 
 def _read_doc(path: Path) -> dict | None:
@@ -769,26 +698,6 @@ def _collect_wires(
     return out
 
 
-def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]]) -> tuple[dict, list[dict]] | None:
-    match = _match_pack_device(name)
-    guid = str(match["guid"]) if match and match.get("guid") else ""
-    # The file the output uses (the store's rule), and its folder's name as
-    # the pack's key.
-    path = store.module_file(name, guid)
-    slug = path.parent.name
-    doc = _read_doc(path)
-    if not doc:
-        return None
-    packed, pictures = _rewrite_images(doc, resolve, used, files, path.parent)
-    packed.pop("boundGuidLocal", None)
-    packed.pop("boundName", None)
-    packed["device"] = name
-    if is_output_name(name):
-        packed["direction"] = "dest"
-    packed["pack"] = {"exportedName": name, "exportedGuid": guid, "slug": slug}
-    return packed, pictures
-
-
 _NO_FILE = "This device has no module file yet."
 # A module file as the user is told it: <device folder>\module.json.
 _shown = module_file._shown_path
@@ -825,28 +734,6 @@ def _device_dir_for(name: str, guid: str = "") -> Path:
         match = _match_pack_device(name)
         guid = str(match["guid"]) if match and match.get("guid") else ""
     return store.ensure_device_dir(name, guid)
-
-
-def _pack_label(name: str, guid: str, notes: dict | None) -> dict:
-    from datetime import date
-
-    from gremlin.util import get_code_version
-
-    label = {
-        "exportedName": name,
-        "exportedGuid": guid,
-        "format": PACK_FORMAT,
-        "program": get_code_version(),
-        "exportedOn": date.today().isoformat(),
-    }
-    notes = notes if isinstance(notes, dict) else {}
-    author = " ".join(str(notes.get("author") or "").split())
-    note = str(notes.get("note") or "").strip()
-    if author:
-        label["author"] = author
-    if note:
-        label["note"] = note
-    return label
 
 
 def pack_devices() -> list[dict]:
@@ -908,11 +795,12 @@ def plan_pack(
     profile: Profile | None = None,
     guid: str = "",
 ) -> dict | str:
-    """Everything the pack takes from the open profile (or profile, one
-    that isn't open: the Device Library) and the module files,
-    read on the main thread: the documents, the wires and the picture files
-    to copy. build_pack(plan) makes the zip from it on any thread (08 S107).
-    A str when the device can't be exported (none, or damaged: 08 S51, Q19)."""
+    """Everything Export takes from the open profile (or profile, one
+    that isn't open: the Device Library), read on the main thread: the
+    device, its id and its wires (only the chosen modes; None: all). notes:
+    {author, note} (Made by, Note). build_pack(plan) makes the .gmap from
+    it on any thread (08 S107, D-FIXLIST-B2). A str when the device can't
+    be exported (none, or damaged: 08 S51, Q19)."""
     name = " ".join(str(device_name or "").split())
     if not name:
         return "Choose a device."
@@ -923,6 +811,9 @@ def plan_pack(
         if len(ids) > 1:
             return _TWINS.format(name=name)
         guid = next(iter(ids.values()), "")
+    if not guid:
+        match = _match_pack_device(name)
+        guid = str(match["guid"]) if match and match.get("guid") else ""
     # With its id, its own file (twins share a name).
     path = _device_path(name, guid)
     refused = export_refusal(path)
@@ -931,83 +822,65 @@ def plan_pack(
     doc = _read_doc(path)
     if not doc:
         return _NO_FILE
-    used: set[str] = set()
-    files: list[tuple[Path, str]] = []
-    packed, pictures = _rewrite_images(doc, resolve, used, files, path.parent)
-    packed.pop("boundGuidLocal", None)
-    packed.pop("boundName", None)
-    packed["device"] = name
-    packed["pack"] = _pack_label(name, guid, notes)
+    notes = notes if isinstance(notes, dict) else {}
     wires = _collect_wires(guid, modes, profile)
-    outputs: list[tuple[str, dict]] = []
-    for output_name in wires["outputs"]:
-        built = _output_doc(output_name, resolve, used, files)
-        if built is None:
-            continue
-        out_doc = built[0]
-        label = out_doc.get("pack") or {}
-        slug = str(label.get("slug") or _pack_key(output_name))
-        outputs.append((slug, out_doc))
     # The preview's picture: the device photo's file (07 S127).
-    photo_arcs = {row["arc"] for row in pictures if not row.get("onMap")}
-    photo = next((str(src) for src, arc in files if arc in photo_arcs), "")
+    photo_ref = store.device_photo_ref(doc)
+    photo = resolve(photo_ref) if photo_ref and resolve is not None else None
     return {
         "device": name,
-        "map": packed,
-        "wires": {
-            "modes": wires["modes"],
-            "actions": wires["actions"],
-            "tree": wires["tree"],
-            **({"osc": wires["osc"]} if wires.get("osc") else {}),
-        } if wires["modes"] else None,
-        "outputs": outputs,
-        "files": files,
-        "photoPath": photo,
+        "guid": guid,
+        "wires": wires,
+        "modes": [str(m) for m in modes] if modes is not None else None,
+        "madeBy": " ".join(str(notes.get("author") or "").split()),
+        "note": str(notes.get("note") or "").strip(),
+        "photoPath": str(photo) if photo else "",
     }
 
 
 def build_pack(plan: dict) -> tuple[bytes, dict]:
-    """The zip of a plan_pack() plan. Reads only the plan and the picture
-    files, so it may run on a worker thread (08 S107)."""
-    blob = io.BytesIO()
-    with zipfile.ZipFile(blob, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("map.json", json.dumps(plan["map"], indent=2) + "\n")
-        if plan["wires"]:
-            zf.writestr("wires.json", json.dumps(plan["wires"], indent=2) + "\n")
-        for slug, out_doc in plan["outputs"]:
-            zf.writestr(f"outputs/{slug}.json", json.dumps(out_doc, indent=2) + "\n")
-        for src, arc in plan["files"]:
-            zf.write(src, arc)
-    data = blob.getvalue()
-    return data, {
+    """The .gmap of a plan_pack() plan (device_zip.build_gmap, the one
+    writer). Reads only the plan and the device's files, so it may run on a
+    worker thread (08 S107). Raises OSError when it can't be made."""
+    from gremlin.modules import device_zip
+
+    built = device_zip.build_gmap(
+        plan["device"],
+        plan["guid"],
+        plan["wires"],
+        made_by=plan.get("madeBy") or "",
+        note=plan.get("note") or "",
+        modes=plan.get("modes"),
+    )
+    if isinstance(built, str):
+        raise OSError(built)
+    return built, {
         "device": plan["device"],
         "photoPath": plan["photoPath"],
-        "bytes": len(data),
-        "sizeText": size_text(len(data)),
+        "bytes": len(built),
+        "sizeText": size_text(len(built)),
     }
 
 
 def write_pack(plan: dict, dest: Path) -> dict:
-    """Builds the plan's zip and saves it (save_pack). Runs on the export
+    """Builds the plan's .gmap and saves it (save_pack). Runs on the export
     worker (08 S107): no profile, no window."""
     try:
         data, info = build_pack(plan)
     except OSError as exc:
-        # A picture that went away or can't be read meanwhile.
-        name = Path(str(getattr(exc, "filename", "") or "")).name or "a picture"
-        return {
-            "ok": False,
-            "error": f"Export failed. {name} could not be read: "
-            f"{exc.strerror or exc}.",
-        }
+        # A picture that went away or can't be read meanwhile, or the
+        # module file damaged since.
+        name = Path(str(getattr(exc, "filename", "") or "")).name
+        why = f"{name} could not be read: {exc.strerror or exc}." if name else str(exc)
+        return {"ok": False, "error": f"Export failed. {why}"}
     return save_pack(data, info, Path(dest))
 
 
 def save_pack(data: bytes, info: dict, dest: Path) -> dict:
-    """Writes a built pack to dest through a temporary file (a failed write
-    never leaves half a zip over an older pack, 08 R4), then reads it back.
-    The result: {ok, path, folderUrl, device, sizeText}, or {ok: False,
-    error} naming the file, the folder and why (Q19)."""
+    """Writes a built .gmap to dest through a temporary file (a failed
+    write never leaves half a file over an older one, 08 R4), then reads it
+    back. The result: {ok, path, folderUrl, device, sizeText}, or {ok:
+    False, error} naming the file, the folder and why (Q19)."""
     from gremlin.ui.hardware_profile import export_failure
 
     dest = Path(dest)
@@ -1018,10 +891,10 @@ def save_pack(data: bytes, info: dict, dest: Path) -> dict:
         return {
             "ok": False,
             "error": export_failure(
-                dest, fallback="the pack could not be written there"
+                dest, fallback="the file could not be written there"
             ),
         }
-    if not _zip_readable(dest):
+    if not _gmap_readable(dest):
         trace("SAVE", "Device Pack", "exportPack", dest, "unreadable")
         return {
             "ok": False,
@@ -1039,20 +912,13 @@ def save_pack(data: bytes, info: dict, dest: Path) -> dict:
     }
 
 
-def _zip_readable(path: Path) -> bool:
-    """The pack at path opens and has a map.json that is a document; a
-    device file (".gmap", 08 S111) is checked by device_zip.read_gmap."""
-    try:
-        with zipfile.ZipFile(path, "r") as zf:
-            if "gmap.json" in zf.namelist():
-                from gremlin.modules import device_zip
+def _gmap_readable(path: Path) -> bool:
+    """The .gmap at path reads back (device_zip.read_gmap)."""
+    from gremlin.modules import device_zip
 
-                return not isinstance(device_zip.read_gmap(path), str)
-            if "map.json" not in zf.namelist():
-                return False
-            doc = json.loads(zf.read("map.json").decode("utf-8"))
-        return isinstance(doc, dict)
-    except Exception:
+    try:
+        return not isinstance(device_zip.read_gmap(path), str)
+    except Exception:  # noqa: BLE001 - any failure is "not readable"
         return False
 
 
@@ -1064,60 +930,40 @@ def assemble(
     profile: Profile | None = None,
     guid: str = "",
 ) -> tuple[bytes, dict] | str:
-    """The pack for one device. modes: the modes whose wires go in (None:
-    all of them). notes: {author, note}, shown when the pack is imported."""
+    """The .gmap of one device. modes: the modes whose wires go in (None:
+    all of them). notes: {author, note}, shown when it is imported."""
     plan = plan_pack(device_name, resolve, modes, notes, profile, guid)
     if isinstance(plan, str):
         return plan
-    return build_pack(plan)
-
-
-def _json_part(zf: zipfile.ZipFile, name: str) -> object:
-    """A JSON file in the pack; ValueError naming it when it can't be read."""
     try:
-        return json.loads(zf.read(name).decode("utf-8"))
-    except (ValueError, RecursionError) as exc:
-        raise ValueError(f"Its {name} could not be read ({exc}).") from exc
-
-
-def outputs_problem(zf: zipfile.ZipFile) -> str:
-    """What is wrong with the pack's outputs/*.json ("" when nothing is)."""
-    for name in zf.namelist():
-        if name.startswith("outputs/") and name.lower().endswith(".json"):
-            try:
-                payload = _json_part(zf, name)
-            except ValueError as exc:
-                return str(exc)
-            if not isinstance(payload, dict):
-                return f"Its {name} is not a document."
-    return ""
-
-
-def _is_gmap(path: Path) -> bool:
-    """A device folder file (08 S111): by its extension, or a zip with a
-    gmap.json and no map.json."""
-    from gremlin.modules.device_zip import GMAP_EXT, GMAP_JSON
-
-    if Path(path).suffix.lower() == GMAP_EXT:
-        return True
-    try:
-        with zipfile.ZipFile(path, "r") as zf:
-            names = set(zf.namelist())
-    except Exception:  # noqa: BLE001 - _read_zip names the problem
-        return False
-    return GMAP_JSON in names and "map.json" not in names
+        return build_pack(plan)
+    except OSError as exc:
+        return str(exc)
 
 
 def _gmap_ref(ref: object) -> object:
-    """A device folder's "pictures/x" as the pack's "x"."""
+    """A device folder's "pictures/x" as the import's "x"."""
     if isinstance(ref, str) and ref.replace("\\", "/").startswith("pictures/"):
         return ref.replace("\\", "/").split("/", 1)[1]
     return ref
 
 
-def _from_gmap(path: Path) -> dict | str:
-    """A .gmap read as a pack (device_zip.read_gmap): the module file as
-    map.json with its pictures at the root, the bindings' wires and outputs."""
+def _plain_refs(doc: dict) -> dict:
+    """doc with every "pictures/x" it names as "x" (the import's picture
+    names)."""
+    from gremlin.modules import device_zip
+
+    mapping = {str(ref): str(_gmap_ref(ref)) for ref in store.named_refs(doc)}
+    replaced = device_zip.replace_strings(doc, mapping)
+    return replaced if isinstance(replaced, dict) else {}
+
+
+def _read_zip(path: Path) -> dict | str:
+    """A .gmap (device_zip.read_gmap, the only format, D-FIXLIST-B2) as
+    {"doc", "wires", "outputs", "files", "gmap"}: the module file with its
+    pictures by plain name and its label in doc["pack"], the bindings'
+    wires and output modules; files: every picture (the device's and its
+    outputs'). A str when it can't be read."""
     from gremlin.modules import device_zip
 
     loaded = device_zip.read_gmap(path)
@@ -1131,10 +977,7 @@ def _from_gmap(path: Path) -> dict | str:
             "damaged": {"file": "module.json", "reason": str(label.get("damaged"))}
         }
     else:
-        refs = store.named_refs(loaded["module"])
-        mapping = {str(ref): str(_gmap_ref(ref)) for ref in refs}
-        replaced = device_zip.replace_strings(loaded["module"], mapping)
-        doc = replaced if isinstance(replaced, dict) else {}
+        doc = _plain_refs(loaded["module"])
     name = str(label.get("deviceName") or label.get("device") or "").strip()
     exported_id = str(label.get("id") or "")
     doc.setdefault("device", name)
@@ -1146,31 +989,31 @@ def _from_gmap(path: Path) -> dict | str:
         "format": 1,
         "program": str(label.get("app") or ""),
         "exportedOn": str(label.get("exportedAt") or "")[:10],
+        "author": str(loaded.get("madeBy") or label.get("madeBy") or "").strip(),
+        "note": str(loaded.get("note") or label.get("note") or "").strip(),
     }
+    files = dict(loaded["pictures"])
     outputs = []
+    out_pictures = loaded.get("outputPictures") or {}
     for slug, out in loaded["outputs"].items():
-        out = dict(out)
+        out = _plain_refs(dict(out))
         packed = out.get("pack")
         out_label = dict(packed) if isinstance(packed, dict) else {}
         out_label.setdefault("slug", slug)
         out["pack"] = out_label
         outputs.append(out)
-    return {
+        for file, data in (out_pictures.get(slug) or {}).items():
+            files.setdefault(file, data)
+    result = {
         "doc": doc,
         "wires": loaded["wires"] if isinstance(loaded["wires"], dict) else {},
         "outputs": outputs,
-        "files": dict(loaded["pictures"]),
+        "files": files,
+        "gmap": label,
     }
-
-
-def _read_zip(path: Path) -> dict | str:
-    """A pack or a .gmap as {"doc", "wires", "outputs", "files"}, its
-    documents in today's layout; a str when it can't be read."""
-    loaded = _from_gmap(path) if _is_gmap(path) else _read_pack_zip(path)
-    if isinstance(loaded, dict):
-        for doc in [loaded["doc"], *loaded["outputs"]]:
-            _old_photo_in_zip(doc, loaded["files"])
-    return loaded
+    for each in [result["doc"], *result["outputs"]]:
+        _old_photo_in_zip(each, result["files"])
+    return result
 
 
 # ONE-TIME (tracker OT-2)
@@ -1196,49 +1039,6 @@ def _old_photo_in_zip(doc: object, files: dict[str, bytes]) -> None:
         photo = _photo_node(doc)
         if photo is not None:
             photo["src"] = image
-
-
-def _read_pack_zip(path: Path) -> dict | str:
-    try:
-        with zipfile.ZipFile(path, "r") as zf:
-            big = too_big(zf)
-            if big:
-                return big
-            names = zf.namelist()
-            json_name = "map.json" if "map.json" in names else ""
-            if not json_name:
-                for name in names:
-                    if name.lower().endswith(".json") and name.count("/") == 0:
-                        json_name = name
-                        break
-            if not json_name:
-                return "No map.json in this zip."
-            doc = _json_part(zf, json_name)
-            wires: object = {}
-            if "wires.json" in names:
-                wires = _json_part(zf, "wires.json")
-                problem = wires_problem(wires)
-                if problem:
-                    return f"This pack can't be read. {problem}"
-            problem = outputs_problem(zf)
-            if problem:
-                return f"This pack can't be read. {problem}"
-            outputs = []
-            blobs = {}
-            for name in names:
-                if name.startswith("outputs/") and name.lower().endswith(".json"):
-                    outputs.append(_json_part(zf, name))
-                base = Path(name).name
-                if base and Path(base).suffix.lower() in _IMAGE_EXT and not name.endswith("/"):
-                    blobs[base] = zf.read(name)
-                    blobs[name] = zf.read(name)
-    except zipfile.BadZipFile:
-        return "Not a valid zip."
-    except Exception as exc:
-        return f"This pack can't be read. {exc}"
-    if not isinstance(doc, dict):
-        return "No map.json in this zip."
-    return {"doc": doc, "wires": wires if isinstance(wires, dict) else {}, "outputs": outputs, "files": blobs}
 
 
 def drop_preview() -> None:
@@ -1291,6 +1091,15 @@ def _too_new(doc: dict) -> str:
         f"This pack was made by a newer Gremlin-Platforms{by}. "
         "Update the program to import it."
     )
+
+
+def _has_module_file(name: str, guid: str) -> bool:
+    """The device has a module file here: by its id when it has one (a twin
+    of the same name with another id has none), else by its name."""
+    if guid:
+        found = store.dir_of_id(store.id_key(name, guid))
+        return found is not None and store.module_file_in(found).is_file()
+    return store.module_file(name).is_file()
 
 
 def describe_zip(path: Path) -> dict | str:
@@ -1371,6 +1180,18 @@ def _describe(path: Path) -> dict | str:
         "direction": _doc_direction(doc, exported),
         "sections": [row for row in sections if row.get("items")],
         "drivers": _pack_drivers(loaded),
+        # Import's default target: "existing" when the file's device has a
+        # module file here, else "new" (D-FIXLIST-B2 3a).
+        "deviceHasFolder": _has_module_file(
+            exported, str(label.get("exportedGuid") or "")
+        ),
+        "madeBy": str(label.get("author") or ""),
+        "note": str(label.get("note") or ""),
+        "modes": [
+            str(mode.get("name") or "Default")
+            for mode in loaded["wires"].get("modes") or []
+            if isinstance(mode, dict)
+        ],
         "notes": {
             "author": str(label.get("author") or ""),
             "note": str(label.get("note") or ""),
@@ -3252,6 +3073,73 @@ def apply_zip(
     return {"ok": True, "device": target, "report": "\n".join(notes), "canUndo": record_undo}
 
 
+def _new_target(path: Path, target_name: str, selection: dict | None) -> tuple[str, str] | str:
+    """The "As a new device" target: (name, id); the file's device unless
+    target_name / the selection's "targetGuid" name another (its id is the
+    file's: the wires come along even when the device isn't connected). A
+    str when the file can't be read or names no device."""
+    loaded = _read_zip(path)
+    if isinstance(loaded, str):
+        return loaded
+    label = loaded["doc"].get("pack") or {}
+    name = " ".join(str(target_name or label.get("exportedName") or "").split())
+    if not name:
+        return "This file has no device name."
+    guid = _target_guid(selection) or str(label.get("exportedGuid") or "")
+    return name, guid
+
+
+def preview_new(path: Path, target_name: str, selection: dict | None) -> dict:
+    """preview_import for the "As a new device" target (D-FIXLIST-B2 3a):
+    nothing here is replaced; the pieces and modes it brings."""
+    target = _new_target(path, target_name, selection)
+    if isinstance(target, str):
+        return {"ok": False, "error": target}
+    name, guid = target
+    result = preview_import(path, name, selection, target_guid=guid)
+    if result.get("ok"):
+        result["target"] = "new"
+        result["folder"] = ""
+        result["hasModuleFile"] = False
+    return result
+
+
+def import_as_new(path: Path, target_name: str, selection: dict | None) -> dict:
+    """Imports a .gmap as a new device (D-FIXLIST-B2 3a): device_zip
+    .import_device makes the new device folder ("(2)" for a name another
+    device's folder has, 03 S132; refused when the device, by its id,
+    already has one: it is that device), then the ticked pieces go in as on a device with no file
+    (apply_zip fresh). Undo Import removes the folder it made, the files
+    and the wires."""
+    from gremlin.modules import device_zip
+
+    path = Path(path)
+    target = _new_target(path, target_name, selection)
+    if isinstance(target, str):
+        return {"ok": False, "error": target}
+    name, guid = target
+    if not _selected(selection):
+        return {"ok": False, "error": "Choose at least one piece to import."}
+    made = device_zip.import_device(
+        path, name, guid, None, pieces={"module": None, "pictures": [], "modes": []}
+    )
+    if made.get("error"):
+        return {"ok": False, "error": str(made["error"])}
+    folder = Path(made["folder"]) if made.get("folder") else None
+    written = list(made.get("written") or [])
+    result = apply_zip(path, name, selection, fresh=True, target_guid=guid)
+    if not result.get("ok"):
+        _put_back(written)
+        if folder is not None:
+            _remove_made_dir(folder)
+        return result
+    # apply_zip recorded the pieces; the folder joins the same Undo step.
+    add_to_last_import(written, folder)
+    result["folder"] = (folder or store.device_dir(name, guid)).name
+    result["target"] = "new"
+    return result
+
+
 def pack_item_ids(path: Path) -> dict | str:
     """A pack's input device pieces as the window's item ids, without
     staging its pictures (for the Device Library, 10 S23-S24):
@@ -3299,5 +3187,4 @@ def _picture_is_input(item: str, doc: dict) -> bool:
 
 # Public names for the Device Library store (gremlin/modules/library.py).
 collect_wires = _collect_wires
-pack_label = _pack_label
 too_new = _too_new

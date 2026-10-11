@@ -80,19 +80,19 @@ def _write_own_files() -> dict[str, Path]:
 
 
 def _pack(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    """A pack of the first twin: button 1 wired in Default, rowHeight 44."""
+    """A .gmap of the first twin: button 1 wired in Default, rowHeight 44."""
     source = _profile(monkeypatch)
     map_button(source, FIRST, 1, 1)
     built = device_pack.assemble(TWIN, lambda stored: None, guid=str(FIRST))
     assert not isinstance(built, str), built
-    pack = tmp_path / "twin pack.zip"
+    pack = tmp_path / "twin pack.gmap"
     pack.write_bytes(built[0])
     with zipfile.ZipFile(pack) as zf:
-        doc = json.loads(zf.read("map.json"))
-        rest = {n: zf.read(n) for n in zf.namelist() if n != "map.json"}
+        doc = json.loads(zf.read(store.MODULE_FILE))
+        rest = {n: zf.read(n) for n in zf.namelist() if n != store.MODULE_FILE}
     doc["layout"] = {"groups": ["G44"]}
     with zipfile.ZipFile(pack, "w") as zf:
-        zf.writestr("map.json", json.dumps(doc))
+        zf.writestr(store.MODULE_FILE, json.dumps(doc))
         for name, data in rest.items():
             zf.writestr(name, data)
     return pack

@@ -110,7 +110,7 @@ function topics() {
                 + "<p>The tabs: " + _link("osc-server-tab", "Server") + " (where the program listens), " + _link("osc-output-tab", "Output") + " (where it sends), " + _link("osc-feedback-tab", "Feedback") + " (state sent to devices) and " + _link("osc-discovery-tab", "Discovery") + " (finding devices on the network).</p>"
                 + _good([
                     "Changes take effect at once, also while the profile runs.",
-                    "The settings, targets and Feedback rows are kept in OSC's module file. Save to Device Library, Restore, Export and Device Pack carry them, and <a href=\"topic:tools-history\">History</a> keeps every save.",
+                    "The settings, targets and Feedback rows are kept in OSC's module file. Save to Device Library, Restore, Export and Export / Import Device carry them, and <a href=\"topic:tools-history\">History</a> keeps every save.",
                     "A change here or on the OSC page marks the profile changed (<b>*</b> in the title): <b>File › Save Profile</b>" + _show("menu/File/Save Profile") + " (Ctrl+S) saves OSC's file too, and <b>Discard</b> throws the OSC changes away."
                 ]),
             related: ["osc-server-tab", "osc-output-tab", "osc-feedback-tab", "osc-discovery-tab"]
@@ -566,7 +566,7 @@ function topics() {
                     "<b>Remove</b> asks first. Removing the last entry means every sender is accepted again."
                 ])
                 + _good([
-                    "The list is kept in OSC's module file and travels with it (Device Library, Export, Device Pack, History)."
+                    "The list is kept in OSC's module file and travels with it (Device Library, Export, Export / Import Device, History)."
                 ]),
             related: ["osc-server-tab", "osc-monitor", "osc-checklist"]
         },
@@ -793,7 +793,7 @@ function topics() {
                     "At <b>Stop</b>, any OSC button still held is released before the profile stops.",
                     "OSC's inputs and settings are kept only in OSC's module file; a profile keeps only the actions it gives them. Profiles from older versions open, but OSC inputs or settings stored in them are not read.",
                     "Any change to OSC marks the profile changed (<b>*</b>): <b>File › Save Profile</b>" + _show("menu/File/Save Profile") + " saves OSC's file too, and Discard throws the OSC changes away.",
-                    "OSC's inputs, settings, targets and Feedback rows travel with Save to Device Library, Restore, Export and Device Pack, and every save is in History.",
+                    "OSC's inputs, settings, targets and Feedback rows travel with Save to Device Library, Restore, Export and Export / Import Device, and every save is in History.",
                     "The port is open while the program is open and <b>Listen for OSC messages</b> is on, and closes at quit.",
                     "Deleting an input asks first; you can restore it from <b>Tools › History</b>" + _show("menu/Tools/History") + "."
                 ]),

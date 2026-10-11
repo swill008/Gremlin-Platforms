@@ -159,7 +159,7 @@ ApplicationWindow {
         "output": "vJoy output changed. Edit › Undo puts it back.",
         "undo": "Undone.",
         "redo": "Redone.",
-        "import": "Device Pack added as a saved setup.",
+        "import": "Device file added as a saved setup.",
         "export": "Saved setup exported.",
         "delete": "Deleted.",
         "tidy": "Library tidied.",
@@ -441,21 +441,19 @@ ApplicationWindow {
         _description.cursorPosition = _description.text.length
     }
 
-    // The suggested file name for the selection: a device folder zip
-    // (.gmap, S60), or a Device Pack (.zip) for a saved setup kept before
-    // device folders.
-    function _packName(ext) {
-        return details.name.replace(/[\\/:*?"<>|]/g, "_") + ext
+    // The suggested file name for the selection: a device file (.gmap,
+    // S60; D-FIXLIST-B2: the only kind written or read).
+    function _packName() {
+        return details.name.replace(/[\\/:*?"<>|]/g, "_") + ".gmap"
     }
     function exportSaved() {
         _exportFile.key = details.key
-        _exportFile.defaultSuffix = details.fileType === ".zip" ? "zip" : "gmap"
-        _exportFile.currentFile = _packName(details.fileType || ".gmap")
+        _exportFile.currentFile = _packName()
         _exportFile.open()
     }
     function exportCurrent() {
         _exportCurrentFile.key = details.key
-        _exportCurrentFile.currentFile = _packName(".gmap")
+        _exportCurrentFile.currentFile = _packName()
         _exportCurrentFile.open()
     }
 
@@ -470,7 +468,7 @@ ApplicationWindow {
         var free = !busy
         if (!menuKey.length)
             return MenuModel.menu("library-space", "Device Library", [
-                MenuModel.action("Import Device Pack…", function() { _importFile.open() }, free),
+                MenuModel.action("Import Device…", function() { _importFile.open() }, free),
                 MenuModel.action("Expand All", function() { _lib.lib.setAllOpen(true) }),
                 MenuModel.action("Collapse All", function() { _lib.lib.setAllOpen(false) }),
                 MenuModel.action("Device Library Settings…", function() { _settingsDlg.openNow() }, free)
@@ -630,24 +628,24 @@ ApplicationWindow {
         function onChanged() { Qt.callLater(_lib._refreshRowMenu) }
     }
 
-    // 01 S143: Device Pack choosers open in the last Device Pack folder.
+    // 01 S143: device file choosers open in the last device file folder.
     FilePicker {
         id: _importFile
         objectName: "libraryImportPicker"
-        kind: "device-pack"
+        kind: "device"
         mode: "open"
-        title: "Import Device Pack"
-        nameFilters: ["Device Pack (*.gmap *.zip)"]
+        title: "Import Device"
+        nameFilters: ["Device files (*.gmap)"]
         onPicked: (selected) => _lib.lib.importPack(String(selected))
     }
     FilePicker {
         id: _exportFile
         objectName: "libraryExportPicker"
         property string key: ""
-        kind: "device-pack"
+        kind: "device"
         mode: "save"
         title: "Export Saved Setup"
-        nameFilters: ["Device Pack (*.gmap *.zip)"]
+        nameFilters: ["Device files (*.gmap)"]
         defaultSuffix: "gmap"
         onPicked: (selected) => _lib.lib.exportSetup(key, String(selected))
     }
@@ -655,30 +653,30 @@ ApplicationWindow {
         id: _exportCurrentFile
         objectName: "libraryExportCurrentPicker"
         property string key: ""
-        kind: "device-pack"
+        kind: "device"
         mode: "save"
         title: "Export Current Setup"
-        nameFilters: ["Device Pack (*.gmap *.zip)"]
+        nameFilters: ["Device files (*.gmap)"]
         defaultSuffix: "gmap"
         onPicked: (selected) => _lib.lib.exportCurrent(key, String(selected))
     }
 
-    // S39: a Device Pack dropped on the window is imported.
+    // S39: a device file (.gmap) dropped on the window is imported.
     DropArea {
         id: _drop
         objectName: "libraryDrop"
         anchors.fill: parent
-        function zipOf(urls) {
+        function gmapOf(urls) {
             for (var i = 0; i < urls.length; i++) {
                 var url = String(urls[i]).toLowerCase()
-                if (url.endsWith(".zip") || url.endsWith(".gmap"))
+                if (url.endsWith(".gmap"))
                     return String(urls[i])
             }
             return ""
         }
-        onEntered: (drag) => { drag.accepted = drag.hasUrls && zipOf(drag.urls).length > 0 }
+        onEntered: (drag) => { drag.accepted = drag.hasUrls && gmapOf(drag.urls).length > 0 }
         onDropped: (drop) => {
-            var url = zipOf(drop.urls)
+            var url = gmapOf(drop.urls)
             if (url.length && _lib.lib) {
                 _lib.lib.importPack(url)
                 drop.accept()
@@ -696,7 +694,7 @@ ApplicationWindow {
             ThemedMenu {
                 id: _fileMenu
                 title: "File"
-                ThemedMenuItem { text: "Import Device Pack…"; enabled: !_lib.busy; onTriggered: _importFile.open() }
+                ThemedMenuItem { text: "Import Device…"; enabled: !_lib.busy; onTriggered: _importFile.open() }
                 ThemedMenuItem {
                     text: "Export Saved Setup…"
                     enabled: _lib.isSetup && !_lib.busy && !_lib.several

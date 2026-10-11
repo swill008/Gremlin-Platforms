@@ -159,10 +159,10 @@ def test_s36_s38_settings_and_tidy(run: dict) -> None:
     assert "set-00000005" not in run["tidy-remove"]
 
 
-def test_s39_drop_imports_the_zip(run: dict) -> None:
-    assert run["drop"] == "Device Pack added as a saved setup."
+def test_s39_drop_imports_the_gmap(run: dict) -> None:
+    assert run["drop"] == "Device file added as a saved setup."
     assert [c[1] for c in _call(run, "import_pack")] == [
-        str(pathlib.Path("C:/x/Sam MFDs.zip"))
+        str(pathlib.Path("C:/x/Sam MFDs.gmap"))
     ]
 
 

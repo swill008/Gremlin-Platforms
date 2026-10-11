@@ -69,9 +69,8 @@ _NOT_STEPS = ("undo", "redo")
 
 _BUSY_TEXT = "Another change is still running: wait for it to finish."
 
-# A saved setup's file: a ".gmap" device file, or an older Device Pack
-# ".zip" (D-10-GMAP-SETUPS).
-_SETUP_SUFFIXES = (".gmap", ".zip")
+# A saved setup's file: a ".gmap" device file, nothing else (D-FIXLIST-B2).
+_SETUP_SUFFIX = ".gmap"
 
 
 def _real_api() -> types.SimpleNamespace:
@@ -206,7 +205,7 @@ def _setup_sub(setup: dict) -> str:
     """The line under a saved setup's name (how it was kept)."""
     origin = setup.get("origin", "user")
     if origin == "pack":
-        return setup.get("reason") or "From a Device Pack"
+        return setup.get("reason") or "From a device file"
     if origin == "autosave":
         return (
             "Was an autosave, now yours" if setup.get("own") else "Kept automatically"
@@ -227,13 +226,12 @@ def _vjoy_text(vjoys: dict) -> str:
 
 
 def _export_dest(url: str) -> Path:
-    """S14, S44: where an export goes. A picked ".gmap" or ".zip" stays (the
-    owner's _export_name fits it to what is written); a bare name gets
-    ".gmap", never "X.gmap.zip" (GMAP-WINDOW-SUFFIX)."""
+    """S14, S44: where an export goes. A picked ".gmap" stays; any other
+    name gets ".gmap" added (GMAP-WINDOW-SUFFIX, D-FIXLIST-B2)."""
     dest = to_local_path(url)
-    if dest.suffix.lower() in _SETUP_SUFFIXES:
+    if dest.suffix.lower() == _SETUP_SUFFIX:
         return dest
-    return dest.with_name(dest.name + ".gmap")
+    return dest.with_name(dest.name + _SETUP_SUFFIX)
 
 
 def _result(op: str, value: object) -> dict:
@@ -657,7 +655,7 @@ class DeviceLibraryModel(QtCore.QObject):
         elif origin == "autosave":
             kept = f"Kept automatically, now yours · {when}"
         elif origin == "pack":
-            kept = f"{setup.get('reason') or 'From a Device Pack'} · {when}"
+            kept = f"{setup.get('reason') or 'From a device file'} · {when}"
         else:
             kept = f"Saved by you · {when}"
         bindings = []
@@ -703,11 +701,6 @@ class DeviceLibraryModel(QtCore.QObject):
                 for h in setup.get("history", [])
             ],
             "photo": self._photo_of(setup["key"]),
-            # Export keeps its kind: a device folder zip (S60) or an older
-            # Device Pack.
-            "fileType": ".gmap"
-            if str(setup.get("pack", "")).lower().endswith(".gmap")
-            else ".zip",
             "state": state,
             "guid": dev.get("guid", ""),
             "connected": state == "connected",
@@ -1296,11 +1289,11 @@ class DeviceLibraryModel(QtCore.QObject):
 
     @QtCore.Slot(str, result=int)
     def importPack(self, url: str) -> int:
-        """S35, S39: a ".gmap" device file, or an older Device Pack ".zip",
-        becomes a saved setup (D-10-GMAP-SETUPS)."""
+        """S35, S39: a ".gmap" device file becomes a saved setup
+        (D-10-GMAP-SETUPS, D-FIXLIST-B2: nothing else is read)."""
         path = to_local_path(url)
-        if path.suffix.lower() not in _SETUP_SUFFIXES:
-            error = f"{path.name} isn't a device file (.gmap) or Device Pack (.zip)."
+        if path.suffix.lower() != _SETUP_SUFFIX:
+            error = f"{path.name} isn't a device file (.gmap)."
             self.result.emit(_result("import", {"ok": False, "error": error}))
             return 0
         return self._start("import", self.api.library.import_pack, path, main=True)
@@ -1449,7 +1442,7 @@ class DeviceLibraryModel(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=int)
     def exportCurrent(self, key: str, url: str) -> int:
-        """S44 Export Current Setup...: a Device Pack of the device's
+        """S44 Export Current Setup...: a device file (.gmap) of the device's
         current settings."""
         dest = _export_dest(url)
         return self._start(

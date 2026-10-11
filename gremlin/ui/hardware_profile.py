@@ -169,7 +169,7 @@ def _pack_in_background(
     done: Callable[[str], None],
 ) -> None:
     """exportPackAsync's worker: write(plan, dest) builds, writes and reads
-    back the zip; then done(result JSON). Touches no window or profile."""
+    back the .gmap; then done(result JSON). Touches no window or profile."""
     try:
         result = write(plan, dest)
     except Exception:
@@ -463,10 +463,10 @@ def _autosave(name: str, guid: str, trigger: str, reason: str,
 
 
 def _autosave_before_pack(
-    zip_path: Path, target_name: str, target_guid: str = ""
+    gmap_path: Path, target_name: str, target_guid: str = ""
 ) -> str:
-    """Device Pack import onto a stick: a "before Device Pack <pack>"
-    autosave first (10 S16-S17), named after the pack's file. Why it could
+    """Import Device onto a stick: a "before Import Device <file>"
+    autosave first (10 S16-S17), named after the .gmap's file. Why it could
     not be kept, or "". An output device has none (S16: of a stick).
     target_guid: the chosen row's id (twins share a name, 08 S106a)."""
     from gremlin.ui import device_pack
@@ -485,7 +485,7 @@ def _autosave_before_pack(
     if store.direction_for(name, guid) != "source":
         return ""
     return _autosave(
-        name, guid, "pack", f"Autosave: before Device Pack {zip_path.stem}",
+        name, guid, "pack", f"Autosave: before Import Device {gmap_path.stem}",
         _open_profile_paths(),
     )
 
@@ -1358,7 +1358,7 @@ class HardwareProfile(QtCore.QObject):
     def defaultExportUrl(self, device_name: str) -> str:
         name = " ".join(str(device_name or "").split()) or "Device"
         stem = store.folder_name_for(store.shown_name_of(name, self._device_guid))
-        path = _export_dir() / f"{stem}_map.zip"
+        path = _export_dir() / f"{stem}.gmap"
         return path.as_uri()
 
     @QtCore.Slot(result=str)
@@ -1379,7 +1379,7 @@ class HardwareProfile(QtCore.QObject):
     def peekPackDeviceById(self, device_name: str, device_guid: str) -> str:
         """Device Pack's export preview: the device, its photo, its modes and
         about how large the pack will be. The size is estimated from the
-        files' sizes; the zip is built only by Export (08 S49, GL-196: this
+        files' sizes; the .gmap is built only by Export (08 S49, GL-196: this
         runs at every device change, on the UI thread). With the row's id the
         chosen twin's own file is previewed (08 S106a)."""
         from gremlin.ui.device_pack import export_refusal, pack_modes, size_text
@@ -1444,15 +1444,18 @@ class HardwareProfile(QtCore.QObject):
 
     @staticmethod
     def _pack_dest(dest_url: str) -> Path | str:
-        """Where Export writes the pack (.zip added), or why it can't."""
+        """Where Export writes the .gmap (".gmap" in place of any other
+        extension, D-FIXLIST-B2), or why it can't."""
+        from gremlin.modules.device_zip import GMAP_EXT
+
         try:
             dest = to_local_path(dest_url)
         except Exception:
             return "Cannot write that path."
-        if not dest or not str(dest).strip() or dest.name in ("", ".zip"):
+        if not dest or not str(dest).strip() or dest.name in ("", GMAP_EXT):
             return "Cannot write that path."
-        if dest.suffix.lower() != ".zip":
-            dest = dest.with_suffix(".zip")
+        if dest.suffix.lower() != GMAP_EXT:
+            dest = dest.with_suffix(GMAP_EXT)
         if not _outside_maps(dest):
             return "Save the pack outside the module folder."
         return dest
@@ -1499,7 +1502,7 @@ class HardwareProfile(QtCore.QObject):
     def exportPackAsync(self, device_name: str, dest_url: str, options: str) -> str:
         """Export in the background (08 S107, D-08-PACK-BG). What the pack
         takes from the profile and the module files is read here, on the main
-        thread; the zip is built, written and read back on a program thread,
+        thread; the .gmap is built, written and read back on a program thread,
         and packExported(result JSON) is announced on the main thread.
         Returns at once: {ok: True, started: True}; {ok: False, error} when
         it can't be exported (nothing started); {ok: False, busy: True}
@@ -1573,7 +1576,11 @@ class HardwareProfile(QtCore.QObject):
             return json.dumps({"ok": False, "error": error})
 
     def _import_pack(self, src: Path, target_name: str, selection: str) -> str:
-        from gremlin.ui.device_pack import apply_zip, describe_zip
+        """selection: {"target": "new" | "existing" (absent: "existing"),
+        "items", "outputs", "targetGuid", "createLogical"}; empty: every
+        piece the file has onto target_name. "new": a new device folder
+        (target_name / targetGuid: "" = the file's device), D-FIXLIST-B2."""
+        from gremlin.ui.device_pack import apply_zip, describe_zip, import_as_new
 
         chosen: dict | None
         if str(selection or "").strip():
@@ -1597,6 +1604,9 @@ class HardwareProfile(QtCore.QObject):
                     items.append(item["id"])
             chosen = {"items": items, "outputs": outputs}
         chosen = chosen if isinstance(chosen, dict) else {}
+        if chosen.get("target") == "new":
+            # Nothing here is replaced, so there is no autosave to keep.
+            return json.dumps(import_as_new(src, target_name, chosen))
         # The "Put this pack on" row's id (08 S106a); "" goes by the name.
         target_guid = str(chosen.get("targetGuid") or "").strip()
         failed = _autosave_before_pack(src, target_name, target_guid)
@@ -1607,8 +1617,9 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, str, result=str)
     def previewPackImport(self, zip_url: str, target_name: str, selection: str) -> str:
-        """What Import would replace, for the warning before it."""
-        from gremlin.ui.device_pack import preview_import
+        """What Import would replace, for the warning before it.
+        selection["target"]: "new" | "existing" (absent: "existing")."""
+        from gremlin.ui.device_pack import preview_import, preview_new
 
         try:
             src = to_local_path(zip_url)
@@ -1619,6 +1630,8 @@ class HardwareProfile(QtCore.QObject):
         if not src or not src.is_file():
             return json.dumps({"ok": False, "error": "File not found."})
         chosen = chosen if isinstance(chosen, dict) else {}
+        if chosen.get("target") == "new":
+            return json.dumps(preview_new(Path(src), target_name, chosen))
         target_guid = str(chosen.get("targetGuid") or "").strip()
         return json.dumps(
             preview_import(Path(src), target_name, chosen, target_guid=target_guid)

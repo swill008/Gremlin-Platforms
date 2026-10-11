@@ -139,7 +139,7 @@ class FakeLibrary:
     ) -> dict:
         dev = self.device_for(name, guid)
         key = f"set-{sum(len(d['setups']) for d in self.devs)}"
-        path = self.folder / f"{key}.zip"
+        path = self.folder / f"{key}.gmap"
         path.write_bytes(pack)
         setup = {
             "key": key,

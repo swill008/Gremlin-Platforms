@@ -87,8 +87,10 @@ function commandList() {
         { id: "tools.deviceLibrary", text: "Device Library…", group: "Tools › Device Setup",
           keywords: "saved setup autosave copy swap change vjoy output replace stick",
           run: function() { openDeviceLibrary("", "", "") } },
-        { id: "tools.devicePack", text: "Device Pack", group: "Tools › Device Setup",
-          run: function() { openTool("DialogDevicePack.qml") } },
+        // Export / Import Device (08 S111, D-FIXLIST-B2): one window for
+        // .gmap files; from here it opens on its Export tab.
+        { id: "tools.devicePack", text: "Export / Import Device", group: "Tools › Device Setup",
+          run: function() { openToolWith("DialogDevicePack.qml", { mode: "export" }) } },
         { id: "tools.logical", text: "Logical Device", group: "Tools › Mapping",
           enabled: function() {
               return !(uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical")

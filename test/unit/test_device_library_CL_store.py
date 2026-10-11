@@ -14,6 +14,7 @@ from pathlib import Path
 
 from gremlin import device_library as library
 from test.unit import test_device_library_LS_store as _ls
+from test.unit._gmap_pack import write_gmap
 from test.unit.test_device_library_LS_store import (
     GUID,
     NAME,
@@ -83,9 +84,7 @@ def test_remove_after_delete_device_removes_the_device_and_every_setup(
 
 
 def test_remove_a_device_from_a_pack(lib: dict) -> None:
-    pack = lib["tmp"] / "Ann stick.zip"
-    with zipfile.ZipFile(pack, "w") as zf:
-        zf.writestr("map.json", json.dumps({"device": "Ann stick"}))
+    pack = write_gmap(lib["tmp"] / "Ann stick.gmap", {"device": "Ann stick"})
     assert library.import_pack(pack)["ok"]
     key = _row("Ann stick")["key"]
     assert library.removal_plan(key)["module_file"] is False
@@ -169,9 +168,7 @@ def test_delete_many_removes_what_it_may_and_lists_the_rest(lib: dict) -> None:
     two = library.save_setup(NAME, GUID, [])["keys"][0]
     three = library.save_setup(NAME, GUID, [])["keys"][0]
     connected = _row()["key"]
-    pack = lib["tmp"] / "Ann stick.zip"
-    with zipfile.ZipFile(pack, "w") as zf:
-        zf.writestr("map.json", json.dumps({"device": "Ann stick"}))
+    pack = write_gmap(lib["tmp"] / "Ann stick.gmap", {"device": "Ann stick"})
     assert library.import_pack(pack)["ok"]
     ann = _row("Ann stick")["key"]
     out = library.delete_many([one, two, ann, connected])
@@ -214,6 +211,6 @@ def test_export_current_writes_a_pack_and_keeps_no_saved_setup(lib: dict) -> Non
 def test_export_current_refuses_the_modules_folder(lib: dict) -> None:
     _module(lib["modules"])
     lib["plugged"].append((NAME, GUID))
-    out = library.export_current(_row()["key"], lib["modules"] / "x.zip")
+    out = library.export_current(_row()["key"], lib["modules"] / "x.gmap")
     assert not out["ok"]
-    assert not (lib["modules"] / "x.zip").exists()
+    assert not (lib["modules"] / "x.gmap").exists()

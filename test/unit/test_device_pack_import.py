@@ -36,6 +36,7 @@ from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
 from gremlin.ui import device_pack, hardware_profile
 from test.unit._device_folders import ensure_dir, put_module
+from test.unit._gmap_files import write_gmap
 
 _OTHER = uuid.UUID("11111111-2222-3333-4444-555555555555")
 
@@ -184,7 +185,7 @@ def _pack(tmp_path: Path, name: str, uid: uuid.UUID, modules: Path) -> Iterator[
         name, lambda stored: None, None, {"author": "Sam", "note": "My F-16 setup"}
     )
     assert not isinstance(built, str), built
-    zip_path = tmp_path / "pack.zip"
+    zip_path = tmp_path / "pack.gmap"
     zip_path.write_bytes(built[0])
     # The second PC: this stick has its own wires in Default and Landing,
     # and another stick has wires too.
@@ -372,29 +373,27 @@ def test_the_rows_and_notes(pack: dict) -> None:
 
 def test_export_can_take_some_modes(pack: dict, tmp_path: Path) -> None:
     built = device_pack.assemble(pack["name"], lambda stored: None, ["Default"], None)
-    zip_path = tmp_path / "default-only.zip"
+    zip_path = tmp_path / "default-only.gmap"
     zip_path.write_bytes(built[0])
-    wires = json.loads(zipfile.ZipFile(zip_path).read("wires.json"))
+    wires = json.loads(zipfile.ZipFile(zip_path).read("bindings/wires.json"))
     assert [mode["name"] for mode in wires["modes"]] == ["Default"]
     assert wires["tree"] == {"Default": ""}
 
 
 def test_a_newer_pack_is_refused(tmp_path: Path) -> None:
-    path = tmp_path / "newer.zip"
-    with zipfile.ZipFile(path, "w") as zf:
-        zf.writestr(
-            "map.json",
-            json.dumps(
-                {
-                    "device": "pJoy Pro",
-                    "pack": {
-                        "exportedName": "pJoy Pro",
-                        "format": 99,
-                        "program": "9.0.0",
-                    },
-                }
-            ),
-        )
+    path = write_gmap(
+        tmp_path / "newer.gmap",
+        {
+            "map.json": {
+                "device": "pJoy Pro",
+                "pack": {
+                    "exportedName": "pJoy Pro",
+                    "format": 99,
+                    "program": "9.0.0",
+                },
+            }
+        },
+    )
     described = device_pack.describe_zip(path)
     assert (
         isinstance(described, str)

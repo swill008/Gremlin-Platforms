@@ -71,7 +71,7 @@ function topics() {
                 + "</ol>"
                 + _good([
                     "To take it back, choose <b>Undo</b> (<b>Ctrl+Z</b>).",
-                    "A Device Pack import can add the inputs its wires need; <b>Undo Import</b> removes them again. See " + _link("home-devices-device-pack-import", "Put a Device Pack on a device") + "."
+                    "An Export / Import Device import can add the inputs its wires need; <b>Undo Import</b> removes them again. See " + _link("home-devices-device-pack-import", "Import a device file") + "."
                 ]),
             related: ["logical-device-about", "logical-device-rename-control", "logical-device-undo"]
         },
@@ -145,7 +145,7 @@ function topics() {
                 + _good([
                     "To see a control's saved changes, right-click it and choose <b>History</b>; see <a href=\"topic:tools-history\">History</a>.",
                     "Undo steps stay when you load another profile, except steps that changed the old profile's actions or hardware links.",
-                    "All Undo steps go when a mode is deleted, when you choose <b>Discard</b> for unsaved changes, and when the Logical Device's file is read again (a Device Library <b>Restore…</b>, a Device Pack import, or a History restore)."
+                    "All Undo steps go when a mode is deleted, when you choose <b>Discard</b> for unsaved changes, and when the Logical Device's file is read again (a Device Library <b>Restore…</b>, an Export / Import Device import, or a History restore)."
                 ]),
             related: ["logical-device-menus"]
         },

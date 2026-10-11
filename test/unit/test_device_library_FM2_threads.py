@@ -270,8 +270,8 @@ def test_item7_library_changes_and_settings_run_on_the_main_thread(
 
     run(lambda: m.setSettings({"keep": 5}))
     run(lambda: m.deleteItem("set-00000006"))
-    run(lambda: m.importPack((tmp_path / "pack.zip").as_uri()))
-    run(lambda: m.exportSetup("set-00000001", (tmp_path / "out.zip").as_uri()))
+    run(lambda: m.importPack((tmp_path / "pack.gmap").as_uri()))
+    run(lambda: m.exportSetup("set-00000001", (tmp_path / "out.gmap").as_uri()))
     run(lambda: m.tidy(["set-00000003"]))
     assert record == {
         "set_settings": _MAIN,

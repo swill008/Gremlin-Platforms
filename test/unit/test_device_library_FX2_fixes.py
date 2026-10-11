@@ -21,7 +21,6 @@ from __future__ import annotations
 import json
 import pathlib
 import shutil
-import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
@@ -38,6 +37,7 @@ from gremlin import (
 from gremlin import device_library as library
 from gremlin.modules import store
 from gremlin.ui import device_names, device_pack  # noqa: F401
+from test.unit._gmap_pack import write_gmap
 from test.unit.test_device_library_FX_gaps import (  # noqa: F401 - fixtures
     _real_library,
     _second_twin,
@@ -307,19 +307,14 @@ def test_undo_on_an_unplugged_twin_never_writes_the_other_twin(
 
 
 def _pack_from(tmp: Path, name: str, guid: str) -> Path:
-    path = tmp / f"{guid[:4]}.zip"
-    with zipfile.ZipFile(path, "w") as zf:
-        zf.writestr(
-            "map.json",
-            json.dumps(
-                {
-                    "device": name,
-                    "claim": {"buttons": [1]},
-                    "pack": {"exportedName": name, "exportedGuid": guid, "format": 2},
-                }
-            ),
-        )
-    return path
+    return write_gmap(
+        tmp / f"{guid[:4]}.gmap",
+        {
+            "device": name,
+            "claim": {"buttons": [1]},
+            "pack": {"exportedName": name, "exportedGuid": guid},
+        },
+    )
 
 
 def test_a_twins_pack_lands_under_that_twin(
@@ -430,11 +425,11 @@ def test_pack_file_work_runs_in_the_background(
     names = _steps(monkeypatch)
     out = library.import_pack(_pack_from(tmp_path, "Hornet Grip", LEFT_ID))
     assert out["ok"], out
-    assert "read Device Pack" in names and "write Device Pack" in names
+    assert "read device file" in names and "write device file" in names
     names.clear()
-    saved = library.export_setup(out["setup"]["key"], tmp_path / "out" / "shared.zip")
+    saved = library.export_setup(out["setup"]["key"], tmp_path / "out" / "shared.gmap")
     assert saved["ok"], saved
-    assert "export Device Pack" in names
+    assert "export device file" in names
     names.clear()
     library.set_settings({"folder": str(tmp_path / "moved")})
     assert "copy Device Library" in names and "remove old Device Library" in names

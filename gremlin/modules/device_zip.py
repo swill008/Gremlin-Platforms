@@ -3,9 +3,10 @@
 
 """A device folder as one file to share (08 S111, D-03-DEVICE-FOLDERS).
 
-Export zips one device's folder into "<shown name>.gmap"; Import unpacks one
-into a new device folder ("(2)" for a taken name, 03 S132). The bindings are
-an optional part. A Button Map template travels the same way as
+Export zips one device's folder into "<shown name>.gmap" (Export / Import
+Device's only file, D-FIXLIST-B2); Import As a new device unpacks one into a
+new device folder ("(2)" for a taken name, 03 S132), only the ticked pieces.
+The bindings are an optional part. A Button Map template travels the same way as
 ".gtemplate".
 
 .gmap layout::
@@ -14,13 +15,15 @@ an optional part. A Button Map template travels the same way as
                            "deviceName", "id", "direction", "exportedAt", "app",
                            "parts": ["folder"] or ["folder", "bindings"]
                            (Device Library, no module file: ["bindings"]
-                           or []),
+                           or []), "madeBy", "note", "modes" (the modes
+                           whose wires are in it; [] without bindings),
                            "damaged": "<why>" (keep_damaged only)}
     module.json           the module file, boundGuidLocal/boundName stripped
                           (none when parts has no "folder")
     pictures/<file>       only the pictures the module file names
     bindings/wires.json   the Device Pack's wires (only when ticked)
     bindings/outputs/<folder>.json   the output modules those wires send to
+    bindings/outputs/<folder>/pictures/<file>   the pictures each names
 
 Never in it: device.json, recovery.json, imported/, *.bad-*, the edit's
 temporary folder.
@@ -42,6 +45,7 @@ import zipfile
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from xml.etree import ElementTree
 
 from gremlin.modules import module_file, store
 from gremlin.modules.pack_checks import too_big, wires_problem
@@ -67,6 +71,10 @@ PutWires = Callable[
 # A device id: a GUID with or without braces and dashes (an id key is the
 # upper-case form without them, ids.stored_guid_key).
 _GUID_RE = re.compile(r"^[0-9a-fA-F]{32}$")
+# An action's id in a wire block (uuid text, any case).
+_UUID_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
 
 _NO_FILE = "This device has no module file yet."
 
@@ -130,10 +138,10 @@ def guid_like(text: str) -> bool:
     return bool(_GUID_RE.match(plain))
 
 
-def _output_doc(name: str) -> tuple[str, dict] | None:
+def _output_doc(name: str) -> tuple[str, dict, Path, list[str]] | None:
     """An output module the wires send to: (its folder name, its document
-    without this machine's binding). Its pictures don't travel; their refs
-    stay "pictures/<file>"."""
+    without this machine's binding, its folder, the pictures it names as
+    "pictures/<file>")."""
     from gremlin.modules.registry import is_output_name
 
     match = store.match_known_device(name)
@@ -142,7 +150,7 @@ def _output_doc(name: str) -> tuple[str, dict] | None:
     doc = store.read_path(path) if path.is_file() else {}
     if not doc:
         return None
-    doc, _refs = _normal_doc(doc)
+    doc, refs = _normal_doc(doc)
     doc.pop("boundGuidLocal", None)
     doc.pop("boundName", None)
     doc["device"] = name
@@ -150,10 +158,81 @@ def _output_doc(name: str) -> tuple[str, dict] | None:
         doc["direction"] = "dest"
     slug = path.parent.name
     doc["pack"] = {"exportedName": name, "exportedGuid": guid, "slug": slug}
-    return slug, doc
+    return slug, doc, path.parent, refs
 
 
-def _bindings(wires: dict) -> tuple[dict | None, list[tuple[str, dict]]]:
+def _mode_name(mode: object) -> str:
+    return str((mode.get("name") if isinstance(mode, dict) else "") or "Default")
+
+
+def _action_id(block: object) -> str:
+    """An action block's own id ("" when it can't be read)."""
+    try:
+        return str(ElementTree.fromstring(str(block)).get("id") or "").lower()
+    except ElementTree.ParseError:
+        return ""
+
+
+def _ids_in(block: object) -> set[str]:
+    """Every id an input or action block names, in any tag (<root-action>,
+    <action-id>, ...) or attribute; only_modes keeps those that are actions.
+    An action block's own id is left out."""
+    found = {m.lower() for m in _UUID_RE.findall(str(block))}
+    own = _action_id(block)
+    if own:
+        found.discard(own)
+    return found
+
+
+def only_modes(wires: dict, modes: list[str] | None) -> dict:
+    """wires with only these modes' inputs (None: all): their tree entries
+    and the parents above them, the actions those inputs reach, and the OSC
+    rows they use. Its "outputs" list stays as given."""
+    if modes is None:
+        return wires
+    keep = [m for m in wires.get("modes") or [] if _mode_name(m) in modes]
+    out = dict(wires)
+    out["modes"] = keep
+    tree = wires.get("tree") or {}
+    kept_tree: dict = {}
+    pending = [_mode_name(m) for m in keep]
+    while pending:
+        name = pending.pop()
+        if name in kept_tree or name not in tree:
+            continue
+        kept_tree[name] = tree[name]
+        if tree[name]:
+            pending.append(str(tree[name]))
+    out["tree"] = kept_tree
+    blocks = [str(b) for m in keep for b in (m.get("inputs") or [])]
+    by_id = {_action_id(a): a for a in wires.get("actions") or []}
+    wanted: set[str] = set()
+    pending = [i for b in blocks for i in _ids_in(b)]
+    while pending:
+        ident = pending.pop()
+        if ident in wanted:
+            continue
+        wanted.add(ident)
+        if ident in by_id:
+            pending.extend(_ids_in(by_id[ident]))
+    out["actions"] = [a for a in wires.get("actions") or [] if _action_id(a) in wanted]
+    if wires.get("osc"):
+        text = "\n".join(blocks)
+        osc = [
+            row
+            for row in wires["osc"]
+            if not isinstance(row, dict) or str(row.get("uid") or "") in text
+        ]
+        if osc:
+            out["osc"] = osc
+        else:
+            out.pop("osc", None)
+    return out
+
+
+def _bindings(
+    wires: dict,
+) -> tuple[dict | None, list[tuple[str, dict, Path, list[str]]]]:
     """The bindings part of the device's wires and the output modules they
     send to."""
     if not wires.get("modes"):
@@ -180,6 +259,9 @@ def build_gmap(
     *,
     keep_damaged: bool = False,
     no_file_ok: bool = False,
+    made_by: str = "",
+    note: str = "",
+    modes: list[str] | None = None,
 ) -> bytes | str:
     """The .gmap of a device's folder; a str when it can't be made (no
     module file, or a damaged one). wires: the device's wires
@@ -187,7 +269,11 @@ def build_gmap(
     Device Library's autosave, 10 S20a): a damaged module file goes in as
     it is, its reason in gmap.json["damaged"]. no_file_ok (the Device
     Library's saved setups of a stick with no module file here): no folder
-    part, only its bindings (parts ["bindings"], or [] without them)."""
+    part, only its bindings (parts ["bindings"], or [] without them).
+    made_by, note: shown when the file is imported (gmap.json "madeBy",
+    "note"). modes: the modes whose wires go in (None: every mode); the
+    label's "modes" names them. The output modules the wires send to go in
+    with the pictures they name (D-FIXLIST-B2)."""
     from gremlin.util import get_code_version
 
     name = " ".join(str(device_name or "").split())
@@ -216,12 +302,17 @@ def build_gmap(
         "exportedAt": datetime.now().isoformat(timespec="seconds"),
         "app": get_code_version(),
         "parts": ["folder"] if has_file else [],
+        "madeBy": " ".join(str(made_by or "").split()),
+        "note": str(note or "").strip(),
+        "modes": [],
     }
     part: dict | None = None
-    outputs: list[tuple[str, dict]] = []
+    outputs: list[tuple[str, dict, Path, list[str]]] = []
     if wires is not None:
         label["parts"] = [*label["parts"], "bindings"]
-        part, outputs = _bindings(wires)
+        part, outputs = _bindings(only_modes(wires, modes))
+        if part is not None:
+            label["modes"] = [_mode_name(m) for m in part["modes"]]
     blob = io.BytesIO()
     with zipfile.ZipFile(blob, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         if not has_file:
@@ -239,8 +330,15 @@ def build_gmap(
             _zip_pictures(zf, base, refs)
         if part is not None:
             zf.writestr(_WIRES, json.dumps(part, indent=2) + "\n")
-        for slug, out_doc in outputs:
+        for slug, out_doc, out_base, out_refs in outputs:
             zf.writestr(f"{_OUTPUTS}{slug}.json", json.dumps(out_doc, indent=2) + "\n")
+            for ref in out_refs:
+                pic = _picture_name(ref)
+                src = store.picture_path(out_base, ref) if pic else None
+                if src is not None and Path(src).is_file():
+                    zf.writestr(
+                        f"{_OUTPUTS}{slug}/{_PICTURES}{pic}", Path(src).read_bytes()
+                    )
     return blob.getvalue()
 
 
@@ -272,16 +370,23 @@ def export_device(
     guid: str,
     out_path: Path,
     wires: dict | None,
+    *,
+    made_by: str = "",
+    note: str = "",
+    modes: list[str] | None = None,
 ) -> str:
     """Saves the device's folder as out_path (a .gmap); "" or why not.
-    wires: as build_gmap. Refused inside the modules folder (08 S111)."""
+    wires, made_by, note, modes: as build_gmap. Refused inside the modules
+    folder (08 S111)."""
     out = Path(out_path)
     if out.suffix.lower() != GMAP_EXT:
         out = out.with_name(out.name + GMAP_EXT)
     lead = "Export failed."
     if store.is_inside(out):
         return _write_out(out, b"", lead)
-    built = build_gmap(device_name, guid, wires)
+    built = build_gmap(
+        device_name, guid, wires, made_by=made_by, note=note, modes=modes
+    )
     if isinstance(built, str):
         return f"{lead} {built}"
     return _write_out(out, built, lead)
@@ -320,7 +425,9 @@ def read_gmap(zip_path: Path) -> dict | str:
     08 S110): {"gmap": dict, "module": dict | None (None when exported
     damaged; {} with no folder part, a Device Library setup of a stick with
     no module file), "moduleBytes": bytes, "pictures": {file: bytes},
-    "wires": dict | None, "outputs": {folder: dict}}."""
+    "wires": dict | None, "outputs": {folder: dict}, "outputPictures":
+    {folder: {file: bytes}}, "madeBy": str, "note": str, "modes": [mode
+    names] (D-FIXLIST-B2), "bytes": the file's size}."""
     try:
         with zipfile.ZipFile(Path(zip_path), "r") as zf:
             big = too_big(zf)
@@ -364,16 +471,34 @@ def read_gmap(zip_path: Path) -> dict | str:
                     return f"This file can't be read. {problem}"
             outputs: dict[str, dict] = {}
             pictures: dict[str, bytes] = {}
+            output_pictures: dict[str, dict[str, bytes]] = {}
             for name in names:
-                if name.startswith(_OUTPUTS) and name.lower().endswith(".json"):
-                    doc = _json(zf, name)
-                    if not isinstance(doc, dict):
-                        return f"This file can't be read. Its {name} is not a document."
-                    outputs[Path(name).stem] = doc
+                if name.startswith(_OUTPUTS):
+                    rest = name[len(_OUTPUTS) :]
+                    if "/" not in rest and rest.lower().endswith(".json"):
+                        doc = _json(zf, name)
+                        if not isinstance(doc, dict):
+                            return (
+                                f"This file can't be read. Its {name} is not "
+                                "a document."
+                            )
+                        outputs[rest[: -len(".json")]] = doc
+                        continue
+                    slug, _, inner = rest.partition("/")
+                    file = _safe_member(inner)
+                    if slug and slug not in (".", "..") and "\\" not in slug and file:
+                        output_pictures.setdefault(slug, {})[file] = zf.read(name)
                     continue
                 file = _safe_member(name)
                 if file:
                     pictures[file] = zf.read(name)
+            # Only the pictures of an output module that is in the file.
+            output_pictures = {
+                slug: files
+                for slug, files in output_pictures.items()
+                if slug in outputs
+            }
+            size = Path(zip_path).stat().st_size
     except zipfile.BadZipFile:
         return "Not a valid zip."
     except ValueError as exc:
@@ -387,10 +512,69 @@ def read_gmap(zip_path: Path) -> dict | str:
         "pictures": pictures,
         "wires": wires,
         "outputs": outputs,
+        "outputPictures": output_pictures,
+        "madeBy": " ".join(str(label.get("madeBy") or "").split()),
+        "note": str(label.get("note") or "").strip(),
+        "modes": _label_modes(label, wires),
+        "bytes": size,
     }
 
 
+def _label_modes(label: dict, wires: object) -> list[str]:
+    """The modes whose wires the file holds: its label's, else its wires'."""
+    named = label.get("modes")
+    if isinstance(named, list):
+        return [str(m) for m in named]
+    if isinstance(wires, dict):
+        return [_mode_name(m) for m in wires.get("modes") or []]
+    return []
+
+
 # --- import ---------------------------------------------------------------------
+
+
+def _result(
+    key: str = "",
+    error: str = "",
+    folder: Path | None = None,
+    written: list[tuple[Path, bytes | None]] | None = None,
+    wires_put: bool = False,
+) -> dict:
+    return {
+        "key": key,
+        "error": error,
+        "folder": folder,
+        "written": list(written or []),
+        "wiresPut": wires_put,
+    }
+
+
+def _folder_of(name: str, guid: str, key: str) -> Path | None:
+    """The folder this device already has here, by its id alone: another
+    id while a twin of its name is connected is still its own id, never
+    the connected twin's folder (store.guid_filter would call it stale)."""
+    if store.stored_guid_key(guid):
+        return store.dir_of_id(key)
+    return store.device_dir(name, guid)
+
+
+def _new_folder(
+    name: str, guid: str, key: str, existing: Path | None
+) -> tuple[Path, Path | None]:
+    """The device folder to unpack into and the folder made for it (None:
+    it was there). A device with an id gets a folder of its own by that id
+    ("(2)" when its name is taken, 03 S132); its device.json names the
+    device, not the folder, so a twin finds it by name and id."""
+    if existing is not None and existing.is_dir():
+        return existing, None
+    if not store.stored_guid_key(guid):
+        created = existing is None or not existing.is_dir()
+        base = store.ensure_device_dir(name, guid)
+        return base, (base if created else None)
+    base = store.folder() / store.unique_name(store.folder_name_for(name), key)
+    base.mkdir(parents=True, exist_ok=True)
+    store._write_id(base, key, name)
+    return base, base
 
 
 def import_device(
@@ -398,85 +582,127 @@ def import_device(
     target_name: str = "",
     target_guid: str = "",
     put_wires: PutWires | None = None,
-) -> tuple[str, str]:
-    """Unpacks a .gmap into a new device folder: (its id key, "") or ("",
-    why not). The device is target_name/target_guid, else the one the file
-    was exported from. A folder name taken by another device gets "(2)"
-    (03 S132); a device that already has a module file is refused (nothing
-    is replaced). put_wires (device_pack.put_gmap_wires; None: no
-    bindings): the file's wires go into the open profile, and the whole
-    import (folder and wires) is one Undo Import step, as a Device Pack
-    import (user decision 3a, 2026-10-11)."""
+    pieces: dict | None = None,
+) -> dict:
+    """Export / Import Device's "As a new device" (D-FIXLIST-B2): unpacks a
+    .gmap into a new device folder. The device is target_name/target_guid,
+    else the one the file was exported from. A folder name taken by another
+    device gets "(2)" (03 S132); a device that already has a module file is
+    refused (nothing is replaced).
+
+    pieces (None: everything in the file): the window's ticks.
+    "module": the module document to write (built from the ticked module,
+    map and print pieces); None: no module file; absent: the file's own.
+    "pictures": the picture files to write; absent: the ones the written
+    module names. "modes": the modes whose wires go to put_wires; absent:
+    every mode; []: none.
+
+    put_wires (device_pack.put_gmap_wires; None: no bindings): the wires go
+    into the open profile, and the whole import (folder and wires) is one
+    Undo Import step (user decision 3a, 2026-10-11).
+
+    Returns {"key": the device's id key ("" when refused), "error": "" or
+    why not (or what was left out), "folder": the folder this import made
+    (None: it was there already, or none was made), "written": every file
+    it wrote as (path, None) (none was there before), "wiresPut": put_wires
+    took the wires and with them "written" and "folder" for Undo Import}."""
     loaded = read_gmap(Path(zip_path))
     if isinstance(loaded, str):
-        return "", loaded
+        return _result(error=loaded)
     label = loaded["gmap"]
     name = " ".join(
         str(target_name or label.get("deviceName") or label.get("device") or "").split()
     )
     if not name:
-        return "", "This file has no device name."
+        return _result(error="This file has no device name.")
     guid = str(target_guid or "").strip()
     if not guid and not target_name:
         exported = str(label.get("id") or "").strip()
         guid = guid_text(exported) if guid_like(exported) else ""
+    key = store.id_key(name, guid)
+    wires = loaded["wires"]
+    if wires and pieces is not None and "modes" in pieces:
+        wires = only_modes(wires, [str(m) for m in pieces.get("modes") or []])
+    send_wires = put_wires is not None and bool(wires) and bool(wires.get("modes"))
     if not has_folder(label):
         # Only bindings (a Device Library setup of a stick with no module
         # file): no device folder is made.
-        key = store.id_key(name, guid)
-        if put_wires is None or not loaded["wires"]:
-            return key, ""
-        problem = put_wires(Path(zip_path), name, guid, loaded["wires"], None, None)
-        return key, (f"Its bindings were not imported: {problem}" if problem else "")
-    existing = store.device_dir(name, guid)
-    if store.module_file_in(existing).is_file():
-        return "", (
-            f"Nothing was imported: {store.shown_name_of(name, guid)} already "
-            f"has a device folder, {existing.name}. Delete it first, or import "
-            "the file onto another device."
+        if not send_wires:
+            return _result(key)
+        problem = put_wires(Path(zip_path), name, guid, wires, None, None)  # type: ignore[misc]
+        if problem:
+            return _result(key, f"Its bindings were not imported: {problem}")
+        return _result(key, wires_put=True)
+    existing = _folder_of(name, guid, key)
+    if existing is not None and store.module_file_in(existing).is_file():
+        return _result(
+            error=(
+                f"Nothing was imported: {store.shown_name_of(name, guid)} already "
+                f"has a device folder, {existing.name}. Delete it first, or import "
+                "the file onto another device."
+            )
         )
-    created = not existing.is_dir()
-    base = store.ensure_device_dir(name, guid)
+    if pieces is not None and "module" in pieces:
+        doc = pieces.get("module")
+        write_module = isinstance(doc, dict)
+        raw = b""
+    else:
+        doc = loaded["module"]
+        write_module = True
+        raw = loaded["moduleBytes"]
+    if pieces is not None and "pictures" in pieces:
+        wanted = {str(p) for p in pieces.get("pictures") or []}
+    elif pieces is None or (write_module and doc is None):
+        wanted = set(loaded["pictures"])
+    elif isinstance(doc, dict):
+        wanted = {_picture_name(store.normal_ref(r)) for r in store.named_refs(doc)}
+    else:
+        wanted = set()
+    files = {f: data for f, data in loaded["pictures"].items() if f in wanted}
+    try:
+        base, made = _new_folder(name, guid, key, existing)
+    except OSError as exc:
+        return _result(error=f"The device folder could not be made: {exc}.")
     pictures = base / store.PICTURES
     # Every file this import writes, for Undo Import (none was there before).
     written: list[tuple[Path, bytes | None]] = []
     try:
-        for file, data in loaded["pictures"].items():
+        for file, data in files.items():
             written.append((pictures / file, None))
             store.put_picture_at(pictures / file, data)
-        doc = loaded["module"]
-        written.append((store.module_file_in(base), None))
-        if doc is None:
-            # Exported damaged (keep_damaged): its bytes as they were.
-            store.write_file(store.module_file_in(base), loaded["moduleBytes"])
-        else:
-            doc = dict(doc)
-            doc["device"] = name
-            if guid:
-                doc["boundGuidLocal"] = guid
-            store.replace(
-                store.module_file_in(base),
-                (json.dumps(doc, indent=2) + "\n").encode("utf-8"),
-                _WHO,
-            )
+        if write_module:
+            written.append((store.module_file_in(base), None))
+            if doc is None:
+                # Exported damaged (keep_damaged): its bytes as they were.
+                store.write_file(store.module_file_in(base), raw)
+            else:
+                doc = dict(doc)
+                doc["device"] = name
+                if guid:
+                    doc["boundGuidLocal"] = guid
+                store.replace(
+                    store.module_file_in(base),
+                    (json.dumps(doc, indent=2) + "\n").encode("utf-8"),
+                    _WHO,
+                )
     except (OSError, module_file.ModuleFileDamaged) as exc:
-        return "", f"The device folder {base.name} could not be written: {exc}."
-    key = store.id_key(name, guid)
-    if put_wires is not None and loaded["wires"]:
-        problem = put_wires(
-            Path(zip_path),
-            name,
-            guid,
-            loaded["wires"],
-            written,
-            base if created else None,
+        return _result(
+            error=f"The device folder {base.name} could not be written: {exc}.",
+            folder=made,
+            written=written,
         )
+    if send_wires:
+        problem = put_wires(Path(zip_path), name, guid, wires, written, made)  # type: ignore[misc]
         if problem:
-            return key, (
+            return _result(
+                key,
                 f"The device folder {base.name} was imported, but its "
-                f"bindings were not: {problem}"
+                f"bindings were not: {problem}",
+                made,
+                written,
             )
-    return key, ""
+        return _result(key, "", made, written, wires_put=True)
+    return _result(key, "", made, written)
 
 
 # --- templates (.gtemplate) -----------------------------------------------------

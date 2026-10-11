@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import os
 import pathlib
-import re
 import sys
 import uuid
 from collections.abc import Iterator
@@ -155,7 +154,7 @@ pack_win = next(
     w
     for w in app.topLevelWindows()
     if isinstance(w, QtQuick.QQuickWindow)
-    and w.title().startswith("Device Pack")
+    and w.title().startswith("Export / Import Device")
     and w.isVisible()
 )
 root = (
@@ -194,9 +193,12 @@ def import_on_second(url: str, sticks: list, second: int) -> None:
         module_file.write_json(path, doc)
     first_before = files[0].read_text(encoding="utf-8")
     pv("_pages.currentIndex = 1")
-    pv(f'zipUrl = "{url}"')
-    pv("loadPack(JSON.parse(_hw.peekPackZip(zipUrl)))")
-    # As Choose Zip... does: the suggested name picks its first row.
+    pv(f'fileUrl = "{url}"')
+    pv("loadPack(JSON.parse(_hw.peekPackZip(fileUrl)))")
+    # Onto an existing device (D-FIXLIST-B2 3a), as Choose File... picks for a
+    # device with a folder here.
+    pv('importTarget = "existing"')
+    # As Choose File... does: the suggested name picks its first row.
     pv('_saveAs.text = "pJoy Pro"; importGuid = ""; '
        '_importDevice.currentIndex = importRowOf("pJoy Pro")')
     QtTest.QTest.qWait(200)
@@ -312,18 +314,22 @@ def run_twins() -> None:
         # The chosen row is kept when the list is read again.
         pv("reloadDevices()")
         out["twin-kept"] = int(pv("_exportDevice.currentIndex")) == second
-        zip_path = os.path.join(util.userprofile_path(), "twin.zip")
+        zip_path = os.path.join(util.userprofile_path(), "twin.gmap")
         url = QtCore.QUrl.fromLocalFile(zip_path).toString()
         got = json.loads(
             pv(f'_hw.exportPack(exportDeviceName(), "{url}", exportOptions())')
         )
         out["twin-export"] = got
         if got.get("ok"):
+            from gremlin.modules import device_zip
+
             with zipfile.ZipFile(zip_path) as zf:
-                doc = json.loads(zf.read("map.json"))
-            # The pack's label names the device it was made from.
-            found = re.findall(r'"exportedGuid":\s*"([^"]*)"', json.dumps(doc))
-            out["twin-pack-guid"] = found[0] if found else ""
+                label = json.loads(zf.read("gmap.json"))
+            # The .gmap's label names the device it was made from.
+            found = str(label.get("id") or "")
+            out["twin-pack-guid"] = (
+                device_zip.guid_text(found) if device_zip.guid_like(found) else ""
+            )
             import_on_second(url, sticks, second)
     print("RESULT " + json.dumps(out), flush=True)
     smoke_exit(0)
@@ -345,7 +351,7 @@ if shot:
     pack_win.grabWindow().save(shot + "-export.png")
 
 # The pack (both modes), then this machine changes: Default gets another wire.
-zip_path = os.path.join(util.userprofile_path(), "pack.zip")
+zip_path = os.path.join(util.userprofile_path(), "pack.gmap")
 built = device_pack.assemble(
     name, lambda stored: None, None, {"author": "Sam", "note": "My setup"}
 )
@@ -360,8 +366,11 @@ from gremlin.modules import output  # noqa: E402
 
 output.vjoy_driver_found = lambda: False
 pv("_pages.currentIndex = 1")
-pv(f'zipUrl = "{url}"')
-pv("loadPack(JSON.parse(_hw.peekPackZip(zipUrl)))")
+pv(f'fileUrl = "{url}"')
+pv("loadPack(JSON.parse(_hw.peekPackZip(fileUrl)))")
+# Onto an existing device (D-FIXLIST-B2 3a), as Choose File... picks for a
+# device with a folder here.
+pv('importTarget = "existing"')
 pv(f'_saveAs.text = "{name}"')
 QtTest.QTest.qWait(200)
 out["notes"] = child(pack_win, "packNotes").property("text")
@@ -473,7 +482,7 @@ out["message-undone"] = message()
 # (the folder is remembered on accept; no native dialog is shown).
 chosen = pathlib.Path(zip_path).parent / "picked"
 chosen.mkdir(exist_ok=True)
-pick_url = QtCore.QUrl.fromLocalFile(str(chosen / "other.zip")).toString()
+pick_url = QtCore.QUrl.fromLocalFile(str(chosen / "other.gmap")).toString()
 pv(f'_pick._accept("{pick_url}")')
 QtTest.QTest.qWait(200)
 out["remembered"] = str(pv("String(_save.prepare().currentFolder)"))

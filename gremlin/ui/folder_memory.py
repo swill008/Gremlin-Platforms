@@ -28,7 +28,7 @@ KEY = "last-folders"
 DESCRIPTION = "The last folder used for each kind of file, by kind."
 
 KINDS = (
-    "device-pack",
+    "device",
     "picture",
     "profile",
     "script",

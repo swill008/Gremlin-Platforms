@@ -124,7 +124,7 @@ def test_an_autosave_holds_the_whole_folder(lib: dict) -> None:
     )
 
 
-# --- older saved setups stay readable --------------------------------------------
+# --- older saved setups are not read (D-FIXLIST-B2) ---------------------------------
 
 
 def _old_pack(tmp: Path, exact: bytes) -> Path:
@@ -141,24 +141,16 @@ def _old_pack(tmp: Path, exact: bytes) -> Path:
     return path
 
 
-def test_an_old_pack_setup_still_restores(lib: dict) -> None:
-    _put(NAME, GUID, _doc(NAME, GUID, image=""), {})
-    exact = json.dumps(_doc(NAME, GUID, image="")).encode("utf-8") + b"\n"
-    got = library.import_pack(_old_pack(lib["tmp"], exact))
-    assert got["ok"], got
-    key = got["setup"]["key"]
-    assert Path(got["setup"]["pack"]).suffix == ".zip"
-    assert "setup" in got["setup"]["holds"]
-    assert library.photo(key)
-    # Made an autosave-like setup that kept the file exactly.
-    with library._editing(quiet=True) as doc:
-        _rec, setup = library._find_setup(doc, key)  # type: ignore[misc]
-        setup["covers"] = ["setup", "button_map", "appearance", "calibration"]
-        setup["moduleFile"] = "stick_a.json"
-        setup["holds"] = ["setup"]
-    out = library_copy.restore(key)
-    assert out["ok"], out
-    assert store.module_file(NAME, GUID).read_bytes() == exact
+def test_an_old_pack_setup_is_not_read(lib: dict) -> None:
+    """Unreleased: no reader for .zip Device Packs, under either name."""
+    exact = json.dumps(_doc(NAME, GUID, image="")).encode("utf-8")
+    old = _old_pack(lib["tmp"], exact)
+    got = library.import_pack(old)
+    assert not got["ok"] and ".gmap" in got["error"], got
+    renamed = old.rename(old.with_suffix(".gmap"))
+    got = library.import_pack(renamed)
+    assert not got["ok"] and "gmap.json" in got["error"], got
+    assert all(not row["setups"] for row in library.devices())
 
 
 # --- S61: Copy puts the pictures in the receiving stick's folder ------------------

@@ -55,6 +55,7 @@ from test.unit._device_folders import (
     picture_file,
     put_picture,
 )
+from test.unit._gmap_files import write_gmap
 from test.unit.test_stage1_modules import (
     _OTHER,
     map_button,
@@ -493,28 +494,26 @@ def test_export_pack_checks_the_place_and_the_name(
     write_module(folder, "pjoy_pro", stick_doc())
     hw = hardware_profile.HardwareProfile()
     # S57: never inside the modules folder.
-    inside = json.loads(hw.exportPack("pJoy Pro", _url(folder / "pack.zip"), "{}"))
+    inside = json.loads(hw.exportPack("pJoy Pro", _url(folder / "pack.gmap"), "{}"))
     assert inside == {"ok": False, "error": "Save the pack outside the module folder."}
-    assert not (folder / "pack.zip").exists()
-    # A name without .zip gets .zip.
+    assert not (folder / "pack.gmap").exists()
+    # A name without .gmap gets .gmap (D-FIXLIST-B2: the only format).
     done = json.loads(hw.exportPack("pJoy Pro", _url(tmp_path / "my pack"), "{}"))
     assert done["ok"], done
-    assert done["path"] == str(tmp_path / "my pack.zip")
-    with zipfile.ZipFile(tmp_path / "my pack.zip") as zf:
-        doc = json.loads(zf.read("map.json"))
+    assert done["path"] == str(tmp_path / "my pack.gmap")
+    with zipfile.ZipFile(tmp_path / "my pack.gmap") as zf:
+        doc = json.loads(zf.read(store.MODULE_FILE))
     # S56: not this machine's binding.
     assert "boundGuidLocal" not in doc and "boundName" not in doc
     # S51: a device without a module file can't be exported.
-    none = json.loads(hw.exportPack("Gone Stick", _url(tmp_path / "x.zip"), "{}"))
+    none = json.loads(hw.exportPack("Gone Stick", _url(tmp_path / "x.gmap"), "{}"))
     assert none == {"ok": False, "error": "This device has no module file yet."}
 
 
 def _write_zip(path: Path, files: dict[str, object]) -> Path:
-    with zipfile.ZipFile(path, "w") as zf:
-        for name, content in files.items():
-            text = content if isinstance(content, str) else json.dumps(content)
-            zf.writestr(name, text)
-    return path
+    """The old pack members ("map.json", "wires.json", "outputs/...") as a
+    .gmap (D-FIXLIST-B2)."""
+    return write_gmap(path, files)
 
 
 def _pack_map(**extra: object) -> dict:
@@ -537,7 +536,7 @@ def test_a_pack_with_a_bad_part_changes_nothing(
     before = path.read_bytes()
     profile = new_profile(monkeypatch)
     map_button(profile, stick_uid(), 1, 1)
-    pack = _write_zip(tmp_path / "bad.zip", {"map.json": _pack_map(), bad: "{ half"})
+    pack = _write_zip(tmp_path / "bad.gmap", {"map.json": _pack_map(), bad: "{ half"})
     result = device_pack.apply_zip(pack, "pJoy Pro", {"items": ["in.checks"]})
     assert not result["ok"]
     assert path.read_bytes() == before
@@ -548,7 +547,7 @@ def test_a_pack_with_a_bad_part_changes_nothing(
 def test_an_import_with_nothing_ticked_is_refused(folder: Path, tmp_path: Path) -> None:
     path = write_module(folder, "pjoy_pro", stick_doc())
     before = path.read_bytes()
-    pack = _write_zip(tmp_path / "p.zip", {"map.json": _pack_map()})
+    pack = _write_zip(tmp_path / "p.gmap", {"map.json": _pack_map()})
     hw = hardware_profile.HardwareProfile()
     result = json.loads(
         hw.importPack(_url(pack), "pJoy Pro", json.dumps({"items": []}))
@@ -563,7 +562,7 @@ def test_a_pack_import_onto_a_damaged_module_file_is_refused(
     path = ensure_dir(folder, "pJoy Pro", stick_guid()) / "module.json"
     path.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
     before = path.read_bytes()
-    pack = _write_zip(tmp_path / "p.zip", {"map.json": _pack_map()})
+    pack = _write_zip(tmp_path / "p.gmap", {"map.json": _pack_map()})
     result = device_pack.apply_zip(pack, "pJoy Pro", {"items": ["in.checks"]})
     # Q2 / F1: refused, pointing to Start Fresh; the file stays as it is.
     assert not result["ok"]
@@ -593,7 +592,7 @@ def _pack_with_wires(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     root.insert_action(logical, "children")
     built = device_pack.assemble("pJoy Pro", lambda stored: None)
     assert not isinstance(built, str), built
-    pack = tmp_path / "wires.zip"
+    pack = tmp_path / "wires.gmap"
     pack.write_bytes(built[0])
     return pack
 
@@ -640,7 +639,7 @@ def test_a_wire_import_that_fails_partway_puts_everything_back(
 
 def test_undo_import_keeps_a_later_save(folder: Path, tmp_path: Path) -> None:
     path = write_module(folder, "pjoy_pro", stick_doc())
-    pack = _write_zip(tmp_path / "p.zip", {"map.json": _pack_map()})
+    pack = _write_zip(tmp_path / "p.gmap", {"map.json": _pack_map()})
     assert device_pack.apply_zip(pack, "pJoy Pro", {"items": ["in.groups"]})["ok"]
     later = json.loads(path.read_text(encoding="utf-8"))
     later["calibration"] = {"1": [-30000, -50, 50, 30000, True]}
@@ -686,7 +685,7 @@ def test_a_pack_output_module_keeps_to_the_vjoys_size(
         pack={"exportedName": "vJoy 9", "slug": "vjoy_9"},
     )
     pack = _write_zip(
-        tmp_path / "p.zip",
+        tmp_path / "p.gmap",
         {"map.json": _pack_map(), "outputs/vjoy_9.json": output_doc},
     )
     result = device_pack.apply_zip(

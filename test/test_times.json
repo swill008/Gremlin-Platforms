@@ -187,7 +187,6 @@
  "test/unit/test_dependency_lock.py": 0.1,
  "test/unit/test_dest_live_guid.py": 0.0,
  "test/unit/test_device_class.py": 0.4,
- "test/unit/test_device_export_dialog_e2e.py": 2.8,
  "test/unit/test_device_fixes.py": 0.0,
  "test/unit/test_device_folders_devices.py": 0.3,
  "test/unit/test_device_folders_setup_ui.py": 2.4,

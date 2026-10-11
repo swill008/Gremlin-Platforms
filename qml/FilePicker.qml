@@ -6,7 +6,7 @@
 //
 //   FilePicker {
 //       id: _pick
-//       kind: "device-pack"        // see gremlin/ui/folder_memory.py KINDS
+//       kind: "device"        // see gremlin/ui/folder_memory.py KINDS
 //       mode: "open"               // "open" | "save" | "folder"
 //       title: "Open Device Pack"
 //       nameFilters: ["Device packs (*.zip)"]
@@ -26,7 +26,7 @@ import "helpers.js" as Helpers
 Item {
     id: _root
 
-    // Which memory slot: device-pack, picture, profile, script, export,
+    // Which memory slot: device, picture, profile, script, export,
     // module-file, log, diagnostics, template, other.
     property string kind: "other"
     property string mode: "open"

@@ -1,7 +1,7 @@
 // -*- coding: utf-8; -*-
 // SPDX-License-Identifier: GPL-3.0-only
 
-// Help chapter: Home and devices (cards, devices, modules, Device Pack,
+// Help chapter: Home and devices (cards, devices, modules, Export / Import Device,
 // deleted devices).
 
 .pragma library
@@ -78,7 +78,7 @@ function topics() {
                 + "<li><b>Module</b>: <b>Module Setup…</b>, <b>Auto Mapper</b>, <b>Calibration</b>.</li>"
                 + "<li><b>View</b>: the <b>vJoy Viewer</b> or <b>Xbox Viewer</b>, <b>Device Information</b>.</li>"
                 + "<li><b>Cards</b>: <b>Stack Selected Cards</b>, <b>Unstack</b>, <b>Unstack All</b>, <b>Reset Size</b>, <b>Reset All Card Sizes</b>.</li>"
-                + "<li><b>Device</b>: <b>Start Fresh…</b> (for a damaged module file), <b>Copy Setup to Another Stick…</b>, <b>Swap with Another Stick…</b> and <b>Change vJoy Output…</b> (they open the <b>Device Library</b> on that stick), <b>Reset Card Layout</b> (clears its size and stacking) and <b>Delete Device</b>.</li>"
+                + "<li><b>Device</b>: <b>Start Fresh…</b> (for a damaged module file), <b>Copy Setup to Another Stick…</b>, <b>Swap with Another Stick…</b> and <b>Change vJoy Output…</b> (they open the <b>Device Library</b> on that stick), <b>Export Device…</b> (with a module file) and <b>Import Device…</b> (they open <b>Export / Import Device</b> on that device, see <a href=\"topic:home-devices-device-pack\">Share a device</a>), <b>Reset Card Layout</b> (clears its size and stacking) and <b>Delete Device</b>.</li>"
                 + "</ul>"
                 + "<p>Items that don't apply to a card are left out:</p>"
                 + "<ul>"
@@ -132,7 +132,7 @@ function topics() {
                 + "<ul>"
                 + "<li><b>Delete Device</b> keeps an autosave of the stick in the <b>Device Library</b> (see <a href=\"topic:home-devices-delete-device\">Delete a device</a>).</li>"
                 + "<li><b>Delete File</b> in Module Setup asks first and keeps an autosave of the module file in the Device Library (\"Autosave: module file deleted\"); if it can't be kept, nothing is deleted. The device's pictures stay.</li>"
-                + "<li><b>Device Pack</b> import and Module Setup's <b>Import from</b> keep the file they replace in the imported folder inside the modules folder.</li>"
+                + "<li>An import onto an existing device (<b>Export / Import Device</b>) and Module Setup's <b>Import from</b> keep the file they replace in the imported folder inside the device's folder.</li>"
                 + "<li><b>Start Fresh…</b> moves a damaged module file aside and keeps it as a copy.</li>"
                 + "</ul>"
                 + "<p>To put a deleted stick's setup on another stick:</p>"
@@ -142,7 +142,7 @@ function topics() {
                 + "<li>Choose <b>Copy to Another Stick…</b>.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
-                + "<ul><li>A saved setup can also be exported as a Device Pack and imported with <b>Tools › Device Setup › Device Pack</b> <a href=\"open:tools.devicePack\">Open ›</a>.</li></ul>",
+                + "<ul><li>A saved setup can also be exported as a device file (.gmap) and imported with <b>Tools › Device Setup › Export / Import Device</b> <a href=\"open:tools.devicePack\">Open ›</a>.</li></ul>",
             related: ["home-devices-delete-device", "home-devices-module-files", "home-devices-device-pack"]
         },
 
@@ -339,7 +339,7 @@ function topics() {
             body: "<p>A module file that can't be read is never treated as empty, so nothing in it is lost. Until you fix it, the device's inputs are blocked.</p>"
                 + "<ul>"
                 + "<li>Its card says \"Module file damaged – inputs blocked\" in red.</li>"
-                + "<li>Every save into the file is refused, including Module Setup, the Button Map and a Device Pack import.</li>"
+                + "<li>Every save into the file is refused, including Module Setup, the Button Map and an Export / Import Device import.</li>"
                 + "</ul>"
                 + "<p>To set the device up again:</p>"
                 + "<ol>"
@@ -353,46 +353,46 @@ function topics() {
         {
             id: "home-devices-device-pack",
             section: "Modules",
-            title: "Share a setup with a Device Pack",
-            body: "<p><b>Tools › Device Setup › Device Pack</b> <a href=\"open:tools.devicePack\">Open ›</a> shares a working copy of a device's setup as a zip.</p>"
+            title: "Share a device with Export / Import Device",
+            body: "<p><b>Tools › Device Setup › Export / Import Device</b> <a href=\"open:tools.devicePack\">Open ›</a> saves a working copy of a device's setup as one device file (.gmap). A card's right-click <b>Export Device…</b> opens it on the <b>Export</b> tab with that device picked.</p>"
                 + "<ol>"
                 + "<li>On the <b>Export</b> tab, pick the device. It opens on the first device that can be exported.</li>"
                 + "<li>Untick modes under <b>Wires in these modes</b> to leave them out.</li>"
-                + "<li>Fill in <b>Made by</b> and <b>Note</b>; they are shown to whoever imports the pack.</li>"
-                + "<li>Choose <b>Export…</b> and pick where to save it. The chooser opens in the folder you last used for a Device Pack. <b>Show Folder</b> then opens that folder.</li>"
+                + "<li>Fill in <b>Made by</b> and <b>Note</b>; they are shown to whoever imports the file.</li>"
+                + "<li>Choose <b>Export…</b> and pick where to save it. The chooser opens in the folder you last used for a device file. <b>Show Folder</b> then opens that folder.</li>"
                 + "</ol>"
-                + "<p>The pack holds the device's module file, pictures, and its wires (with their actions and the output modules they send to).</p>"
+                + "<p>The file holds the device's folder (its module file and pictures), its wires in the ticked modes (with their actions) and the output modules they send to, with their pictures.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>The pack is written in the background. The window stays usable and shows <b>Exporting…</b>; one export runs at a time.</li>"
+                + "<li>The file is written in the background. The window stays usable and shows <b>Exporting…</b>; one export runs at a time.</li>"
                 + "<li>A device with no module file yet can't be exported (\"This device has no module file yet.\"). One whose file can't be read shows \"(file damaged)\".</li>"
-                + "<li>Save the pack outside the modules folder. A name without .zip gets .zip.</li>"
+                + "<li>Save the file outside the modules folder. A name without .gmap gets .gmap. .gmap is the only device file the program writes or reads.</li>"
                 + "</ul>",
             related: ["home-devices-device-pack-import", "home-devices-module-files", "home-devices-backups"]
         },
         {
             id: "home-devices-device-pack-import",
             section: "Modules",
-            title: "Put a Device Pack on a device",
-            body: "<p>Import puts a pack's setup on one of your devices.</p>"
+            title: "Import a device file",
+            body: "<p>Import brings a device file (.gmap) in, either as a new device or onto one of your devices.</p>"
                 + "<ol>"
-                + "<li>In <b>Device Pack</b> <a href=\"open:tools.devicePack\">Open ›</a>, open the <b>Import</b> tab and choose <b>Choose Zip…</b>.</li>"
-                + "<li>Pick the device under <b>Put this pack on</b>.</li>"
-                + "<li>Tick the pieces to bring in. Import adds the pack's checked controls and never unchecks one you have. Other pieces replace only what they hold, and each ticked mode under <b>Wires</b> replaces the device's wires in that mode. Other modes and devices are left alone.</li>"
-                + "<li>Choose <b>Import</b>, read the warning, then choose <b>Replace</b>. The message line says what was imported, with an <b>Undo Import</b> link.</li>"
+                + "<li>In <b>Export / Import Device</b> <a href=\"open:tools.devicePack\">Open ›</a>, open the <b>Import</b> tab and choose <b>Choose File…</b>. A card's right-click <b>Import Device…</b> opens this tab with that device suggested.</li>"
+                + "<li>Choose where it goes: <b>As a new device</b> makes a new device folder from the file (a name already taken gets \"(2)\"); <b>Onto an existing device</b> puts it on the device you pick under <b>Put it on</b>. As a new device is chosen at first when the file's device has no folder here yet.</li>"
+                + "<li>Tick the pieces to bring in; the same ticks show for both. Onto an existing device, Import adds the file's checked controls and never unchecks one you have. Other pieces replace only what they hold, and each ticked mode under <b>Wires</b> replaces the device's wires in that mode. Other modes and devices are left alone.</li>"
+                + "<li>Choose <b>Import</b>, read the warning, then confirm. The message line says what was imported, with an <b>Undo Import</b> link.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Missing modes are created under their parent, or under Default when the parent isn't here. Tick <b>Create the missing Logical Device inputs</b> to add the ones its wires need.</li>"
                 + "<li>Refused:<ul>"
-                + "<li>A stick pack onto a vJoy (\"A stick pack cannot be copied onto a vJoy.\"), or a vJoy pack onto a stick (\"A vJoy pack cannot be copied onto a stick.\").</li>"
+                + "<li>Onto an existing device: a stick's file onto a vJoy (\"A stick pack cannot be copied onto a vJoy.\"), or a vJoy's file onto a stick (\"A vJoy pack cannot be copied onto a stick.\").</li>"
                 + "<li>A damaged module file (use <b>Start Fresh…</b> first).</li>"
-                + "<li>A pack made by a newer version of the program: the message names that version and ends \"Update the program to import it.\"</li>"
-                + "<li>A pack that unpacks to more than 64 MB: \"This pack is too big to read\" with its size.</li>"
+                + "<li>A file made by a newer version of the program: the message names that version and ends \"Update the program to import it.\"</li>"
+                + "<li>A file that unpacks to more than 64 MB: \"This pack is too big to read\" with its size.</li>"
                 + "</ul></li>"
-                + "<li>A pack that can't be read shows \"This pack can't be read (…).\" with the reason; the log has the details.</li>"
+                + "<li>A file that can't be read shows \"This pack can't be read (…).\" with the reason; the log has the details.</li>"
                 + "<li>If it fails partway, everything it did is undone and it says so.</li>"
-                + "<li><b>Undo Import</b> (the button or the link) puts back the files, pictures and wires, and removes the modes and Logical Device inputs it created. It lasts until you import again, open another pack, or close the window. With another profile open, only the files go back.</li>"
+                + "<li><b>Undo Import</b> (the button or the link) works for both. Onto an existing device it puts back the files, pictures and wires, and removes the modes and Logical Device inputs it created; as a new device it removes the new device's folder and any wires it put in. It lasts until you import again, open another file, or close the window. With another profile open, only the files go back.</li>"
                 + "</ul>",
             related: ["home-devices-device-pack", "home-devices-damaged-file", "device-library-import"]
         },

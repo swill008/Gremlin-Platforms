@@ -61,13 +61,13 @@ def test_each_kind_keeps_its_own_folder(
     packs.mkdir()
     pictures.mkdir()
     memory = folder_memory.FolderMemory()
-    assert memory.lastFolder("device-pack") == ""
+    assert memory.lastFolder("device") == ""
 
     # A picked file: its folder is kept. A picked folder: itself.
-    assert memory.remember("device-pack", _url(packs / "stick.zip"))
+    assert memory.remember("device", _url(packs / "stick.gmap"))
     assert memory.remember("picture", _url(pictures))
 
-    assert memory.lastFolder("device-pack") == _url(packs)
+    assert memory.lastFolder("device") == _url(packs)
     assert memory.lastFolder("picture") == _url(pictures)
     assert memory.lastFolder("profile") == ""
 
@@ -142,7 +142,7 @@ def test_file_picker_opens_in_the_remembered_folder_and_remembers_the_pick(
     engine = QtQml.QQmlEngine()
     root = _picker(
         engine,
-        f'kind: "device-pack"; mode: "open"; folder: "{_url(given)}"\n'
+        f'kind: "device"; mode: "open"; folder: "{_url(given)}"\n'
         "property var got: []\n onPicked: (u) => got.push(String(u))",
     )
     picker = root.findChild(QtCore.QObject, "picker")
@@ -152,7 +152,7 @@ def test_file_picker_opens_in_the_remembered_folder_and_remembers_the_pick(
     _call(picker, "prepare()")
     assert dialog.property("currentFolder").toString() == _url(given)
 
-    folder_memory.remember("device-pack", _url(last))
+    folder_memory.remember("device", _url(last))
     _call(picker, "prepare()")
     assert dialog.property("currentFolder").toString() == _url(last)
 
@@ -162,7 +162,7 @@ def test_file_picker_opens_in_the_remembered_folder_and_remembers_the_pick(
     _call(dialog, f'selectedFile = "{pick}"; accepted()')
     got = _call(picker, "JSON.stringify(got)")
     assert got == json.dumps([pick], separators=(",", ":"))
-    assert folder_memory.FolderMemory().lastFolder("device-pack") == _url(chosen)
+    assert folder_memory.FolderMemory().lastFolder("device") == _url(chosen)
     _call(picker, "prepare()")
     assert dialog.property("currentFolder").toString() == _url(chosen)
     root.deleteLater()
@@ -214,7 +214,7 @@ def test_save_picker_keeps_a_bare_name_with_nothing_remembered(
     # The Device Library's first export passes only "Left.zip": the name is
     # still suggested (in Documents) rather than dropped.
     engine = QtQml.QQmlEngine()
-    root = _picker(engine, 'kind: "device-pack"; mode: "save"; currentFile: "Left.zip"')
+    root = _picker(engine, 'kind: "device"; mode: "save"; currentFile: "Left.zip"')
     picker = root.findChild(QtCore.QObject, "picker")
     dialog = picker.findChild(QtCore.QObject, "filePickerFileDialog")
 

@@ -278,7 +278,7 @@ def test_card_menu_has_export_and_import_device(tmp_path: Path) -> None:
     assert "  Import Device…" in unsaved
 
 
-def test_home_page_opens_the_device_export_dialog() -> None:
+def test_home_page_opens_the_export_import_window() -> None:
     page = (_ROOT / "qml" / "StatusPage.qml").read_text(encoding="utf-8")
     assert (
         "card.onExportDevice.connect(function() { _page.exportDevice(card) })" in page
@@ -286,9 +286,9 @@ def test_home_page_opens_the_device_export_dialog() -> None:
     assert (
         "card.onImportDevice.connect(function() { _page.importDevice(card) })" in page
     )
-    for mode in ('"mode": "export"', '"mode": "import"'):
-        assert mode in page
-    # A Popup made inside this window, never a separate window
-    # (test_device_export_dialog_e2e drives it).
-    assert page.count("_openDeviceExport({") == 2
-    assert 'Helpers.createComponent("DialogDeviceExport.qml"' not in page
+    # One window for both (D-FIXLIST-B2): DialogDevicePack.qml on the
+    # card's tab and device (test_b2_card drives it).
+    assert '_openExportImport("export", card)' in page
+    assert '_openExportImport("import", card)' in page
+    assert 'Helpers.createComponent("DialogDevicePack.qml"' in page
+    assert "DialogDeviceExport" not in page

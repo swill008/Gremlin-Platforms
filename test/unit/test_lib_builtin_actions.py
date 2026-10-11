@@ -210,7 +210,7 @@ def test_export_saved_setup(
 ) -> None:
     _name, guid, _path = built_in
     setup = _save(qtbot, model, guid)
-    dest = tmp_path / "saved.zip"
+    dest = tmp_path / "saved.gmap"
     _run(qtbot, model, lambda: model.exportSetup(setup["key"], _url(dest)))
     assert dest.with_suffix(".gmap").is_file()
 

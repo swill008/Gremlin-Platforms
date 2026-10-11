@@ -266,8 +266,8 @@ STEPS: list[tuple[str, str, str, str]] = [
     ),
     (
         "drop",
-        "_bridge.drop(['file:///C:/x/notes.txt', 'file:///C:/x/Sam%20MFDs.zip'])",
-        "!deviceLibrary.busy && _lib.message.indexOf('Device Pack added') >= 0",
+        "_bridge.drop(['file:///C:/x/notes.txt', 'file:///C:/x/Sam%20MFDs.gmap'])",
+        "!deviceLibrary.busy && _lib.message.indexOf('Device file added') >= 0",
         "_lib.message",
     ),
     (

@@ -194,10 +194,13 @@ def test_history_help_says_when_a_restore_shows() -> None:
 # | ends on another pack; backups are explained.
 
 def test_device_pack_and_backup_help() -> None:
-    pack = (_topic("Module files") + _topic("Share a setup with a Device Pack")
-            + _topic("Put a Device Pack on a device"))
-    assert "adds the pack's checked controls" in pack
-    assert "open another pack" in pack
+    # D-FIXLIST-B2 (08 S49a): the Device Pack topics are now Export / Import
+    # Device's, and a "pack" is a device file (.gmap).
+    pack = (_topic("Module files")
+            + _topic("Share a device with Export / Import Device")
+            + _topic("Import a device file"))
+    assert "adds the file's checked controls" in pack
+    assert "open another file" in pack
     backups = _topic("Deleted devices and backups")
     # The copies are autosaves in the Device Library (D-10-NO-DELETED-FOLDER).
     assert "deleted devices folder" not in backups

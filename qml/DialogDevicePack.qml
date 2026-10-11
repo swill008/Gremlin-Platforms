@@ -26,7 +26,7 @@ ApplicationWindow {
     height: 780
     minimumWidth: Style.fitWidth(Style.dp(720), Screen)
     minimumHeight: Style.fitHeight(Style.dp(640), Screen)
-    title: "Device Pack"
+    title: "Export / Import Device"
 
     Shortcut { sequence: "Esc"; onActivated: {} }
     Shortcut { sequence: "Return"; onActivated: {} }
@@ -35,7 +35,8 @@ ApplicationWindow {
     U.Universal.theme: Style.theme
 
     property string mode: "export"
-    property string zipUrl: ""
+    // The .gmap file open on the Import tab (08 S111, D-FIXLIST-B2).
+    property string fileUrl: ""
     property string status: ""
     property string exportPhoto: ""
     property string exportName: ""
@@ -49,6 +50,12 @@ ApplicationWindow {
     // The "Put this pack on" row's id when a row was chosen; "" when the
     // target was typed or suggested by name (08 S106a).
     property string importGuid: ""
+    // Where Import puts the file (D-FIXLIST-B2 3a): "new" makes a new device
+    // folder ("(2)" for a taken name); "existing" merges onto a device here.
+    property string importTarget: "new"
+    // The device openFor("import", ...) suggested ({name, guid}); a file
+    // opened after it goes onto that device.
+    property var suggestedTarget: null
     property int tickRev: 0
     property int openRev: 0
     property var folded: ({})
@@ -348,7 +355,9 @@ ApplicationWindow {
                     items.push(rows[i].id)
             }
         }
-        return JSON.stringify({ items: items, outputs: outputs, targetGuid: importGuid })
+        // target: "new" or "existing" (D-FIXLIST-B2 3a).
+        return JSON.stringify({ items: items, outputs: outputs, targetGuid: importGuid,
+                                target: importTarget })
     }
 
     function runImport() {
@@ -356,7 +365,7 @@ ApplicationWindow {
         // Read from the preview: the warning has closed by now.
         chosen.createLogical = (preview.missingLogical || []).length > 0 && _createLogical.checked
         var target = _saveAs.text
-        var url = zipUrl
+        var url = fileUrl
         // The action panes close first (asking when one has changes), or a
         // later OK would write a pane's old copy back (05 Q8, GL-098).
         Helpers.closeActionPanes(function() {
@@ -392,6 +401,8 @@ ApplicationWindow {
 
     // The warning before Import: what will be replaced, and what is kept.
     function warningText(p) {
+        if (importTarget === "new")
+            return newDeviceText(p)
         var lines = []
         var device = p.device || _saveAs.text
         var pieces = p.pieces || []
@@ -433,8 +444,29 @@ ApplicationWindow {
         return lines.join("\n")
     }
 
+    // Before Import as a new device: the folder it makes; nothing is replaced.
+    function newDeviceText(p) {
+        var lines = []
+        var device = p.device || _saveAs.text
+        lines.push("Import makes a new device folder, " + device
+                   + ", with the ticked pieces. Nothing on your other devices is replaced.")
+        if (p.missingLogical && p.missingLogical.length)
+            lines.push("Some wires send to Logical Device inputs that don't exist here: "
+                       + p.missingLogical.join(", ") + ".")
+        var drivers = p.drivers || []
+        for (var d = 0; d < drivers.length; ++d)
+            lines.push(drivers[d])
+        var missing = missingPictures()
+        if (missing.length)
+            lines.push("The map uses a picture that is not ticked (" + missing.join(", ")
+                       + "): those chips will have no picture.")
+        lines.push("")
+        lines.push("Undo Import removes the new device until you import again, open another file, or close this window.")
+        return lines.join("\n")
+    }
+
     function askImport() {
-        var p = _parse(_hw.previewPackImport(zipUrl, _saveAs.text, selectionJson()))
+        var p = _parse(_hw.previewPackImport(fileUrl, _saveAs.text, selectionJson()))
         if (!p.ok) {
             say(p.error || "Could not read that pack.", true)
             return
@@ -445,7 +477,123 @@ ApplicationWindow {
         _warn.open()
     }
 
-    Component.onCompleted: reloadDevices()
+    // The device file's default name: "<device>.gmap" in the export folder.
+    function exportHint(name) {
+        var hint = String(_hw.defaultExportUrl(name) || "")
+        if (!hint.length)
+            return ""
+        var cut = hint.lastIndexOf("/")
+        var dot = hint.lastIndexOf(".")
+        var base = dot > cut ? hint.substring(0, dot) : hint
+        // The Device Pack's "<name>_map" stem: the file is named after the device.
+        if (base.length > 4 && base.substring(base.length - 4) === "_map")
+            base = base.substring(0, base.length - 4)
+        return base + ".gmap"
+    }
+
+    // The row for a device: by its Windows id, else the first of its name.
+    function rowFor(name, guid) {
+        var want = String(guid || "").replace(/[{}]/g, "").toLowerCase()
+        if (want.length) {
+            for (var i = 0; i < _deviceModel.count; ++i) {
+                var g = String(_deviceModel.get(i).guid || "").replace(/[{}]/g, "").toLowerCase()
+                if (g === want)
+                    return i
+            }
+        }
+        return importRowOf(String(name || ""))
+    }
+
+    // Whether this machine already has a folder for the device: the file's
+    // own answer when it gives one, else a row of that name with a module file.
+    function hasFolderFor(info, name) {
+        if (info && info.deviceHasFolder !== undefined)
+            return info.deviceHasFolder === true
+        var i = importRowOf(name)
+        return i >= 0 && _deviceModel.get(i).hasFile === true
+    }
+
+    // The As a new device / Onto an existing device choice.
+    function setTarget(target) {
+        importTarget = target === "existing" ? "existing" : "new"
+        if (importTarget === "new") {
+            // A new folder named after the file's device.
+            _importDevice.currentIndex = -1
+            importGuid = ""
+            if (packInfo.ok === true)
+                _saveAs.text = packInfo.suggestedName || importName
+        } else {
+            var row = rowFor(_saveAs.text.trim(), importGuid)
+            _importDevice.currentIndex = row
+            if (row >= 0)
+                importGuid = String(_deviceModel.get(row).guid || "")
+        }
+    }
+
+    // Opens a .gmap on the Import tab: As a new device when its device has
+    // no folder here, else Onto an existing device (D-FIXLIST-B2 3a); a
+    // device suggested by openFor wins.
+    function openFile(url) {
+        fileUrl = String(url)
+        // Another file: the last import stays.
+        _hw.keepPackImport()
+        canUndo = _hw.canUndoPackImport()
+        var info = _parse(_hw.peekPackZip(fileUrl))
+        if (!info.ok) {
+            say(info.error || "Could not read that file.", true)
+            return
+        }
+        mode = "import"
+        _pages.currentIndex = 1
+        loadPack(info)
+        var hint = suggestedTarget
+        if (hint && String(hint.name || "").length) {
+            importTarget = "existing"
+            _saveAs.text = hint.name
+            importGuid = String(hint.guid || "")
+            _importDevice.currentIndex = rowFor(hint.name, hint.guid)
+            return
+        }
+        var suggested = info.suggestedName || ""
+        importTarget = hasFolderFor(info, suggested) ? "existing" : "new"
+        _saveAs.text = suggested
+        importGuid = ""
+        _importDevice.currentIndex = importTarget === "existing" && suggested.length
+                ? importRowOf(suggested) : -1
+    }
+
+    // Home's Export Device... / Import Device... (D-FIXLIST-B2 5a): open on
+    // that tab with that device chosen (Export) or suggested (Import).
+    function openFor(tab, deviceName, guid) {
+        var name = String(deviceName || "")
+        var id = String(guid || "")
+        if (tab === "import") {
+            suggestedTarget = name.length ? { name: name, guid: id } : null
+            _pages.currentIndex = 1
+            if (name.length) {
+                importTarget = "existing"
+                _saveAs.text = name
+                importGuid = id
+                _importDevice.currentIndex = rowFor(name, id)
+            }
+            return
+        }
+        suggestedTarget = null
+        _pages.currentIndex = 0
+        if (name.length || id.length) {
+            var row = rowFor(name, id)
+            if (row >= 0 && _exportDevice.currentIndex !== row)
+                _exportDevice.currentIndex = row
+        }
+        refreshExport()
+    }
+
+    // Opened with {mode: "import"} (Tools, Home card): on the Import tab.
+    Component.onCompleted: {
+        if (mode === "import")
+            _pages.currentIndex = 1
+        reloadDevices()
+    }
     // Closing keeps the last import: Undo Import is no longer offered.
     onClosing: {
         _hw.keepPackImport()
@@ -456,41 +604,24 @@ ApplicationWindow {
     // 01 S143: both open in the last folder used for Device Packs.
     FilePicker {
         id: _save
-        kind: "device-pack"
+        kind: "device"
         mode: "save"
-        title: "Export Device Pack"
-        defaultSuffix: "zip"
-        nameFilters: ["Device packs (*.zip)"]
+        title: "Export Device"
+        defaultSuffix: "gmap"
+        nameFilters: ["Device files (*.gmap)"]
         folder: _hw.exportFolderUrl()
         onPicked: (selected) => startExport(String(selected))
     }
 
     FilePicker {
         id: _pick
-        kind: "device-pack"
+        kind: "device"
         mode: "open"
-        title: "Open Device Pack"
-        // A device folder file (.gmap, 08 S111) reads as a pack too.
-        nameFilters: ["Device packs (*.zip *.gmap)"]
+        title: "Import Device"
+        // One format: the .gmap device file (D-FIXLIST-B2 2a).
+        nameFilters: ["Device files (*.gmap)"]
         folder: _hw.exportFolderUrl()
-        onPicked: (selected) => {
-            zipUrl = String(selected)
-            // Another pack: the last import stays.
-            _hw.keepPackImport()
-            canUndo = _hw.canUndoPackImport()
-            var info = _parse(_hw.peekPackZip(zipUrl))
-            if (!info.ok) {
-                say(info.error || "Could not read that pack.", true)
-                return
-            }
-            mode = "import"
-            _pages.currentIndex = 1
-            loadPack(info)
-            var suggested = info.suggestedName || ""
-            _saveAs.text = suggested
-            importGuid = ""
-            _importDevice.currentIndex = suggested.length ? importRowOf(suggested) : -1
-        }
+        onPicked: (selected) => openFile(String(selected))
     }
 
     // Undo Import over a file changed since the import asks first.
@@ -501,12 +632,16 @@ ApplicationWindow {
     Dialog {
         id: _warn
         objectName: "packWarning"
-        title: "Replace with This Pack?"
+        title: _win.importTarget === "new" ? "Import as a New Device?" : "Replace with This Pack?"
         modal: true
         anchors.centerIn: Overlay.overlay
         width: Math.min(Style.dp(560), _win.width - Style.dp(32))
         standardButtons: Dialog.NoButton
-        background: Rectangle { color: Style.bgCard; border.color: Style.danger; radius: 4 }
+        background: Rectangle {
+            color: Style.bgCard
+            border.color: _win.importTarget === "new" ? Style.line : Style.danger
+            radius: 4
+        }
         contentItem: ColumnLayout {
             spacing: Style.dp(12)
             Label {
@@ -530,11 +665,12 @@ ApplicationWindow {
                     text: "Cancel"
                     onClicked: _warn.close()
                 }
+                // The one go-ahead button, for both targets.
                 Button {
                     objectName: "packReplace"
-                    text: "Replace"
+                    text: _win.importTarget === "new" ? "Import" : "Replace"
                     highlighted: true
-                    U.Universal.accent: Style.danger
+                    U.Universal.accent: _win.importTarget === "new" ? Style.accent : Style.danger
                     onClicked: {
                         _warn.close()
                         runImport()
@@ -565,7 +701,7 @@ ApplicationWindow {
         spacing: Style.dp(10)
 
         Label {
-            text: "Device Pack"
+            text: "Export / Import Device"
             font.pixelSize: Style.dp(22)
             font.bold: true
             color: Style.foreground
@@ -723,8 +859,7 @@ ApplicationWindow {
                             enabled: exportName.length > 0 && exportSize.length > 0
                                      && !_hw.packExporting
                             onClicked: {
-                                var hint = _hw.defaultExportUrl(_win.exportDeviceName())
-                                _save.currentFile = hint || ""
+                                _save.currentFile = _win.exportHint(_win.exportDeviceName())
                                 _save.open()
                             }
                         }
@@ -753,7 +888,8 @@ ApplicationWindow {
                 RowLayout {
                     Layout.fillWidth: true
                     Button {
-                        text: "Choose Zip…"
+                        objectName: "packChooseFile"
+                        text: "Choose File…"
                         focusPolicy: Qt.NoFocus
                         onClicked: {
                             _pick.open()
@@ -834,9 +970,29 @@ ApplicationWindow {
                         }
                     }
                 }
+                // Where it goes (D-FIXLIST-B2 3a): a new device folder, or
+                // merged onto a device here (preview, Replace, Undo Import).
                 RowLayout {
                     Layout.fillWidth: true
-                    Label { text: "Put this pack on"; color: Style.foreground }
+                    spacing: Style.dp(16)
+                    RadioButton {
+                        objectName: "packTargetNew"
+                        text: "As a new device"
+                        checked: _win.importTarget === "new"
+                        onClicked: _win.setTarget("new")
+                    }
+                    RadioButton {
+                        objectName: "packTargetExisting"
+                        text: "Onto an existing device"
+                        checked: _win.importTarget === "existing"
+                        onClicked: _win.setTarget("existing")
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: _win.importTarget === "existing"
+                    Label { text: "Put it on"; color: Style.foreground }
                     // One target: picking a device fills the name below, and
                     // typing a name picks that device (or none, if it is new).
                     ComboBox {
@@ -858,10 +1014,14 @@ ApplicationWindow {
                 TextField {
                     id: _saveAs
                     Layout.fillWidth: true
-                    placeholderText: "Device name on this machine (or pick one above)"
+                    objectName: "packTargetName"
+                    placeholderText: _win.importTarget === "new"
+                                     ? "Name of the new device"
+                                     : "Device name on this machine (or pick one above)"
                     onTextEdited: {
                         _win.importGuid = ""
-                        _importDevice.currentIndex = _win.importRowOf(text.trim())
+                        if (_win.importTarget === "existing")
+                            _importDevice.currentIndex = _win.importRowOf(text.trim())
                     }
                 }
                 RowLayout {
@@ -1062,7 +1222,7 @@ ApplicationWindow {
                         focusPolicy: Qt.NoFocus
                         enabled: {
                             var rev = tickRev
-                            return zipUrl.length > 0 && packInfo.ok === true && _saveAs.text.length > 0 && anyChecked()
+                            return fileUrl.length > 0 && packInfo.ok === true && _saveAs.text.length > 0 && anyChecked()
                         }
                         onClicked: askImport()
                     }

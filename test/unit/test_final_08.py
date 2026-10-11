@@ -35,11 +35,11 @@ from gremlin.types import PropertyType
 from gremlin.ui import device_pack, hardware_profile, history_model
 from test.unit import test_stage1_modules
 from test.unit._device_folders import module_path, picture_file, put_picture
+from test.unit._gmap_files import write_gmap
 from test.unit.test_stage1_history_pack import (
     _pack_map,
     _pack_with_wires,
     _url,
-    _write_zip,
     new_profile,
 )
 from test.unit.test_stage1_modules import (
@@ -453,22 +453,25 @@ def test_s49_s55_a_pack_holds_the_file_pictures_wires_and_outputs(
     map_button(profile, stick_uid(), 1, 1)
     map_button(profile, stick_uid(), 2, 2, "Combat")
     hw = hardware_profile.HardwareProfile()
-    done = json.loads(hw.exportPack("pJoy Pro", _url(tmp_path / "p.zip"), "{}"))
+    done = json.loads(hw.exportPack("pJoy Pro", _url(tmp_path / "p.gmap"), "{}"))
     assert done["ok"], done
-    with zipfile.ZipFile(tmp_path / "p.zip") as zf:
+    with zipfile.ZipFile(tmp_path / "p.gmap") as zf:
         names = set(zf.namelist())
-        doc = json.loads(zf.read("map.json"))
-        wires = json.loads(zf.read("wires.json"))
-    assert {"map.json", "wires.json", "photo.png"} <= names
-    assert any(n.startswith("outputs/") for n in names), names
+        label = json.loads(zf.read("gmap.json"))
+        doc = json.loads(zf.read("module.json"))
+        wires = json.loads(zf.read("bindings/wires.json"))
+    # One .gmap (D-FIXLIST-B2): the folder, its pictures, wires, outputs.
+    assert {
+        "gmap.json", "module.json", "bindings/wires.json", "pictures/photo.png"
+    } <= names
+    assert any(n.startswith("bindings/outputs/") for n in names), names
     assert doc["claim"]["buttons"] == [1, 2]
     assert sorted(m["name"] for m in wires["modes"]) == ["Combat", "Default"]
     assert wires["actions"]
     # S55: format, program version, date, each mode's parent.
-    label = doc["pack"]
-    assert label["format"] == 2
-    assert label["program"] == get_code_version()
-    assert label["exportedOn"] == date.today().isoformat()
+    assert label["format"] == "gremlin-device"
+    assert label["app"] == get_code_version()
+    assert label["exportedAt"].startswith(date.today().isoformat())
     assert wires["tree"] == {"Default": "", "Combat": "Default"}
 
 
@@ -495,8 +498,8 @@ def test_s62_the_pack_suggests_the_device_of_its_name(
     folder: Path, tmp_path: Path
 ) -> None:
     write_module(folder, "pjoy_pro", stick_doc())
-    pack = _write_zip(
-        tmp_path / "p.zip",
+    pack = write_gmap(
+        tmp_path / "p.gmap",
         {"map.json": _pack_map(pack={"exportedName": "pjoy  PRO", "format": 2})},
     )
     described = device_pack.describe_zip(pack)
@@ -509,14 +512,14 @@ def test_s63_a_stick_pack_cant_go_on_a_vjoy_nor_the_other_way(
 ) -> None:
     write_module(folder, "pjoy_pro", stick_doc())
     write_module(folder, "vjoy_1", vjoy_doc())
-    stick = _write_zip(tmp_path / "stick.zip", {"map.json": _pack_map()})
+    stick = write_gmap(tmp_path / "stick.gmap", {"map.json": _pack_map()})
     onto_vjoy = device_pack.apply_zip(stick, "vJoy 1", {"items": ["in.checks"]})
     assert onto_vjoy == {
         "ok": False,
         "error": "A stick pack cannot be copied onto a vJoy.",
     }
-    vjoy = _write_zip(
-        tmp_path / "vjoy.zip",
+    vjoy = write_gmap(
+        tmp_path / "vjoy.gmap",
         {"map.json": vjoy_doc(pack={"exportedName": "vJoy 1", "format": 2})},
     )
     onto_stick = device_pack.apply_zip(vjoy, "pJoy Pro", {"items": ["in.checks"]})
@@ -532,7 +535,7 @@ def test_s63_a_stick_pack_cant_go_on_a_vjoy_nor_the_other_way(
 
 def test_s65_q3_checked_controls_are_added(folder: Path, tmp_path: Path) -> None:
     path = write_module(folder, "pjoy_pro", stick_doc())  # buttons 1, 2
-    pack = _write_zip(tmp_path / "p.zip", {"map.json": _pack_map()})  # button 5
+    pack = write_gmap(tmp_path / "p.gmap", {"map.json": _pack_map()})  # button 5
     result = device_pack.apply_zip(pack, "pJoy Pro", {"items": ["in.checks"]})
     assert result["ok"], result
     claim = json.loads(path.read_text(encoding="utf-8"))["claim"]
@@ -575,8 +578,8 @@ def test_s73_the_previous_file_and_an_overwritten_picture_are_kept_in_imported(
     ref = put_picture(folder, "pJoy Pro", "photo.png", b"old photo", stick_guid())
     path = write_module(folder, "pjoy_pro", stick_doc(image=ref))
     before = path.read_bytes()
-    pack = _write_zip(
-        tmp_path / "p.zip",
+    pack = write_gmap(
+        tmp_path / "p.gmap",
         {"map.json": _pack_map(image="photo.png"), "photo.png": "new photo"},
     )
     result = device_pack.apply_zip(

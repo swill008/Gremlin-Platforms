@@ -461,12 +461,14 @@ def carry(
     def pack() -> dict:
         from gremlin.ui import hardware_profile
 
-        dest = _HOME / "out" / "pack.zip"
+        # Export / Import Device writes a .gmap (D-FIXLIST-B2).
+        dest = _HOME / "out" / "pack.gmap"
         dest.parent.mkdir(parents=True, exist_ok=True)
         hw = hardware_profile.HardwareProfile()
         url = QtCore.QUrl.fromLocalFile(str(dest)).toString()
         done = json.loads(hw.exportPack(NAME, url, json.dumps({"guid": GUID})))
-        return {"done": done, "files": _zip_texts(dest) if dest.is_file() else {}}
+        written = Path(done.get("path") or dest)
+        return {"done": done, "files": _zip_texts(written) if written.is_file() else {}}
 
     step("carry-pack", pack)
 

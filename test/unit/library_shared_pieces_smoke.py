@@ -153,9 +153,9 @@ menus.STEPS = [
     (
         "picker",
         "Qt.createQmlObject('import Gremlin.UI; FolderMemory {}', _lib)"
-        ".remember('device-pack', '" + _FOLDER + "');"
+        ".remember('device', '" + _FOLDER + "');"
         " deviceLibrary.select('set-00000002');"
-        " _exportFile.currentFile = _lib._packName('.gmap');"
+        " _exportFile.currentFile = _lib._packName();"
         " var d = _importFile.prepare(); var e = _exportFile.prepare();"
         " JSON.stringify({want: '" + _FOLDER + "', open: String(d.currentFolder),"
         " save: String(e.selectedFile), shown: d.visible || e.visible})",

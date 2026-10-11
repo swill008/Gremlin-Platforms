@@ -143,15 +143,15 @@ def test_export_shows_the_bottom_background_picture_as_the_device_photo(
     assert isinstance(plan, dict), plan
     # The preview's picture (packExportPhoto) is the bottom background picture.
     assert plan["photoPath"] and Path(plan["photoPath"]).read_bytes() == PNG
-    packed = plan["map"]
-    assert "image" not in packed and "photo" not in packed
-    bg = [n for n in packed["nodes"] if store.is_background(n)]
-    assert [n["id"] for n in bg] == ["bg_photo", "bg_rect"]
-    assert bg[0]["look"] == {"bright": 0.2} and bg[0]["rot"] == 12
     data, _info = device_pack.build_pack(plan)
-    path = tmp_path / "pack.zip"
+    path = tmp_path / "pack.gmap"
     path.write_bytes(data)
     with zipfile.ZipFile(path) as zf:
+        packed = json.loads(zf.read("module.json"))
+        assert "image" not in packed and "photo" not in packed
+        bg = [n for n in packed["nodes"] if store.is_background(n)]
+        assert [n["id"] for n in bg] == ["bg_photo", "bg_rect"]
+        assert bg[0]["look"] == {"bright": 0.2} and bg[0]["rot"] == 12
         assert zf.read(bg[0]["src"]) == PNG
     described = device_pack.describe_zip(path)
     assert isinstance(described, dict), described
@@ -160,8 +160,11 @@ def test_export_shows_the_bottom_background_picture_as_the_device_photo(
     assert "Device photo" in titles
 
 
-def test_export_of_an_old_map_carries_its_photo_as_a_layer(modules: Path) -> None:
-    """OT-2: a map saved before the planes exports in today's layout."""
+def test_export_of_an_old_map_carries_its_photo_as_a_layer(
+    modules: Path, tmp_path: Path
+) -> None:
+    """OT-2: a map saved before the planes is read in today's layout when
+    its .gmap is imported (the .gmap carries the module file as it is)."""
     old = _doc(NAME, GUID, [_chip()])
     old["image"] = "pictures/photo.png"
     old["photo"] = {"scale": 1.0, "fade": 0.25}
@@ -170,12 +173,16 @@ def test_export_of_an_old_map_carries_its_photo_as_a_layer(modules: Path) -> Non
         NAME, lambda ref: store.find_picture(where, ref), guid=GUID
     )
     assert isinstance(plan, dict), plan
-    packed = plan["map"]
+    assert plan["photoPath"]
+    path = tmp_path / "old.gmap"
+    path.write_bytes(device_pack.build_pack(plan)[0])
+    loaded = device_pack._read_zip(path)
+    assert isinstance(loaded, dict), loaded
+    packed = loaded["doc"]
     assert "image" not in packed and "photo" not in packed
     first = packed["nodes"][0]
     assert store.is_background(first) and first["shape"] == "image"
     assert first["opacity"] == pytest.approx(0.75)
-    assert plan["photoPath"]
 
 
 # --- Device Pack import (08 S75, S113) -------------------------------------------
@@ -241,7 +248,7 @@ def test_import_writes_the_background_pictures_into_the_device_folder(
         NAME, lambda ref: store.find_picture(source, ref), guid=GUID
     )
     assert isinstance(plan, dict), plan
-    path = tmp_path / "pack.zip"
+    path = tmp_path / "pack.gmap"
     path.write_bytes(device_pack.build_pack(plan)[0])
     items = device_pack.pack_item_ids(path)
     assert isinstance(items, dict), items

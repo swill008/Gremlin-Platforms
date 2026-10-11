@@ -109,11 +109,13 @@ def story(j: Journey) -> None:
     # Device Pack > Import of that pack onto the pJoy Pro, Replace.
     zip_url = QtCore.QUrl.fromLocalFile(str(packs[-1])).toString() if packs else ""
     j.ev('Helpers.createComponent("DialogDevicePack.qml")')
-    pack = j.window("Device Pack")
-    j.ev(f'zipUrl = "{zip_url}"', pack)
+    pack = j.window("Export / Import Device")
+    j.ev(f'fileUrl = "{zip_url}"', pack)
     j.ev("_hw.keepPackImport()", pack)
     j.ev('mode = "import"; _pages.currentIndex = 1', pack)
-    j.ev("loadPack(JSON.parse(_hw.peekPackZip(zipUrl)))", pack)
+    j.ev("loadPack(JSON.parse(_hw.peekPackZip(fileUrl)))", pack)
+    # Onto an existing device (D-FIXLIST-B2 3a).
+    j.ev('importTarget = "existing"', pack)
     out["suggested"] = j.ev("packInfo.suggestedName || packInfo.exportedName", pack)
     j.ev('_saveAs.text = "pJoy Pro"', pack)
     j.ev("askImport()", pack)

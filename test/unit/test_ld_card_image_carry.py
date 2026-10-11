@@ -214,7 +214,7 @@ def test_export_saved_setup_includes_the_picture(
 ) -> None:
     _set_photo()
     setup = _save()
-    out = library.export_setup(setup["key"], tmp_path / "out" / "ld.zip")
+    out = library.export_setup(setup["key"], tmp_path / "out" / "ld.gmap")
     assert out["ok"], out
     # A device folder zip is written as .gmap (10 S60).
     assert Path(out["path"]) == tmp_path / "out" / "ld.gmap"
@@ -225,7 +225,7 @@ def test_export_current_setup_includes_the_picture(
     ld: LogicalDevice, tmp_path: Path
 ) -> None:
     _set_photo()
-    out = library.export_current(_ld_row()["key"], tmp_path / "out" / "now.zip")
+    out = library.export_current(_ld_row()["key"], tmp_path / "out" / "now.gmap")
     assert out["ok"], out
     assert Path(out["path"]) == tmp_path / "out" / "now.gmap"
     assert _pack_has_photo(Path(out["path"]))

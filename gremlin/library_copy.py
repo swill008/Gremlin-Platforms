@@ -222,8 +222,7 @@ def _scratch() -> Iterator[Path]:
 
 
 def _write_current(scratch: Path, data: bytes) -> Path:
-    suffix = ".gmap" if library.is_gmap(data) else ".zip"
-    path = scratch / f"current-{len(list(scratch.iterdir())) + 1}{suffix}"
+    path = scratch / f"current-{len(list(scratch.iterdir())) + 1}.gmap"
     path.write_bytes(data)
     return path
 

@@ -109,7 +109,8 @@ def test_export_then_import_round_trip(modules: Path, tmp_path: Path) -> None:
 
     shutil.rmtree(base)
     store._dirs_changed()
-    key, error = device_zip.import_device(out)
+    result = device_zip.import_device(out)
+    key, error = result["key"], result["error"]
     assert error == "", error
     assert key == store.id_key(STICK, GUID)
     again = store.device_dir(STICK, GUID)
@@ -127,7 +128,8 @@ def test_import_refuses_a_device_that_has_a_folder(
     _put_device()
     out = tmp_path / "a.gmap"
     assert device_zip.export_device(STICK, GUID, out, None) == ""
-    key, error = device_zip.import_device(out)
+    result = device_zip.import_device(out)
+    key, error = result["key"], result["error"]
     assert key == ""
     assert "already has a device folder" in error
 
@@ -137,7 +139,8 @@ def test_a_taken_name_gets_two(modules: Path, tmp_path: Path) -> None:
     out = tmp_path / "a.gmap"
     assert device_zip.export_device(STICK, GUID, out, None) == ""
     # Another stick of the same name (another id) on this machine.
-    key, error = device_zip.import_device(out, target_name=STICK, target_guid=OTHER)
+    result = device_zip.import_device(out, target_name=STICK, target_guid=OTHER)
+    key, error = result["key"], result["error"]
     assert error == "", error
     assert key == store.id_key(STICK, OTHER)
     folder = store.device_dir(STICK, OTHER)
@@ -211,7 +214,8 @@ def test_a_corrupt_file_is_refused(modules: Path, tmp_path: Path) -> None:
     bad = tmp_path / "bad.gmap"
     bad.write_bytes(b"not a zip at all")
     assert device_zip.read_gmap(bad) == "Not a valid zip."
-    key, error = device_zip.import_device(bad)
+    result = device_zip.import_device(bad)
+    key, error = result["key"], result["error"]
     assert key == "" and error
     no_label = tmp_path / "nolabel.gmap"
     with zipfile.ZipFile(no_label, "w") as zf:
@@ -436,7 +440,8 @@ def test_import_with_bindings_is_one_undo_step(modules: Path, tmp_path: Path) ->
         target = Profile()
         target.device_database.devices[uid] = DeviceInfo(uid, STICK)
         shared_state.current_profile = target
-        key, error = device_zip.import_device(out, put_wires=device_pack.put_gmap_wires)
+        result = device_zip.import_device(out, put_wires=device_pack.put_gmap_wires)
+        error = result["error"]
         assert error == "", error
         assert _wired(target, uid) == [1]
         folder = store.device_dir(STICK, GUID)
@@ -463,6 +468,7 @@ def test_import_without_bindings_leaves_no_undo(modules: Path, tmp_path: Path) -
     shutil.rmtree(base)
     store._dirs_changed()
     device_pack.drop_import_undo()
-    key, error = device_zip.import_device(out, put_wires=device_pack.put_gmap_wires)
+    result = device_zip.import_device(out, put_wires=device_pack.put_gmap_wires)
+    key, error = result["key"], result["error"]
     assert error == "" and key
     assert not device_pack.can_undo_import()

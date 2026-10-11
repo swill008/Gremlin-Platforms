@@ -8,15 +8,17 @@ export never take the first stick for the second."""
 
 from __future__ import annotations
 
+import io
 import json
 import uuid
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from gremlin import auto_mapper, device_initialization, profile
-from gremlin.modules import store
+from gremlin.modules import device_zip, store
 from gremlin.ui import device_pack
 from test.unit import test_stage1_modules
 from test.unit._device_folders import put_module
@@ -84,18 +86,26 @@ def _write_files(guids: tuple[uuid.UUID, ...] = (FIRST, SECOND)) -> None:
         put_module(store.folder(), TWIN, doc, str(guid))
 
 
+def _packed_id(plan: dict) -> str:
+    """The device id in the .gmap a plan builds (gmap.json "id")."""
+    data, _info = device_pack.build_pack(plan)
+    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        label = json.loads(zf.read(device_zip.GMAP_JSON))
+    return device_zip.guid_text(label["id"])
+
+
 def test_pack_export_of_the_second_twin_has_its_id(folder: Path, twins: None) -> None:
     _write_files()
     plan = device_pack.plan_pack(TWIN, lambda _p: None, guid=str(SECOND))
     assert isinstance(plan, dict), plan
-    assert plan["map"]["pack"]["exportedGuid"] == str(SECOND)
+    assert _packed_id(plan) == device_zip.guid_text(str(SECOND))
 
 
 def test_pack_export_by_a_shared_name_is_refused(folder: Path, twins: None) -> None:
     """Old code exported the first twin's id for a name both share."""
     _write_files()
     plan = device_pack.plan_pack(TWIN, lambda _p: None)
-    assert isinstance(plan, str), plan["map"]["pack"]
+    assert isinstance(plan, str), plan
     assert "More than one device is called Twin Stick" in plan
 
 
@@ -109,4 +119,4 @@ def test_pack_export_by_a_name_only_one_device_has(
 
     plan = device_pack.plan_pack(TWIN, lambda _p: None)
     assert isinstance(plan, dict), plan
-    assert plan["map"]["pack"]["exportedGuid"] == str(SECOND)
+    assert _packed_id(plan) == device_zip.guid_text(str(SECOND))

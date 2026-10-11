@@ -255,7 +255,8 @@ def test_gmap_export_then_import_keeps_every_background_layer(
     # An empty modules folder: the device's folder is gone.
     shutil.rmtree(where)
     assert not any(store.folder().iterdir())
-    key, problem = device_zip.import_device(out)
+    done = device_zip.import_device(out)
+    key, problem = done["key"], done["error"]
     assert problem == "", problem
     assert key == store.id_key(name, guid)
     there = store.device_dir(name, guid)

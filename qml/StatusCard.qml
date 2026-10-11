@@ -542,9 +542,9 @@ Rectangle {
                                        function() { _card.addImage() }),
                 (!logical || !_card.photo) ? null
                     : MenuModel.action("Remove Image", function() { _card.removeImage() }),
-                // 08 S111: the device's folder as one ".gmap" file (only
-                // once it has a module file), and Import Device… into a
-                // new folder.
+                // 08 S111 (D-FIXLIST-B2): open the Export / Import Device
+                // window on that tab with this device (Export only once it
+                // has a module file).
                 MenuModel.action("Export Device…", function() { _card.exportDevice() }, _card.isModule),
                 MenuModel.action("Import Device…", function() { _card.importDevice() }),
                 MenuModel.action("Reset Card Layout", function() { _card.clearSettings() }),

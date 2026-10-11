@@ -1,7 +1,8 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Damaged Device Library entries and Device Packs (SHAKE-DAMAGE-03, -04):
+"""Damaged Device Library entries and device files (.gmap; SHAKE-DAMAGE-03,
+-04; D-FIXLIST-B2):
 a bad library.json row is left out with a warning and the rest is listed;
 a pack with wrong types, a broken outputs file or too much to unpack is
 refused with a message that names the part, nothing is written and nothing
@@ -38,10 +39,30 @@ _GOOD_WIRES = {"modes": [{"name": "D", "lines": ["Button 1 → vJoy 1 Button 1"]
 
 
 def _zip(files: Mapping[str, str | bytes]) -> bytes:
+    """A device file (.gmap, D-FIXLIST-B2) from a pack's parts: map.json
+    becomes gmap.json (the device, its id, Made by) and module.json,
+    wires.json and outputs/ go under bindings/."""
     blob = io.BytesIO()
     with zipfile.ZipFile(blob, "w", zipfile.ZIP_DEFLATED) as zf:
         for name, data in files.items():
-            zf.writestr(name, data)
+            if name == "map.json":
+                doc = json.loads(data)
+                label = doc.pop("pack", None) or {}
+                device = label.get("exportedName") or doc.get("device") or ""
+                head = {
+                    "format": "gremlin-device",
+                    "version": 1,
+                    "device": device,
+                    "deviceName": device,
+                    "id": label.get("exportedGuid") or "name:pjoy_pro",
+                    "madeBy": label.get("author", ""),
+                }
+                zf.writestr("gmap.json", json.dumps(head))
+                zf.writestr("module.json", json.dumps(doc))
+            elif name == "wires.json" or name.startswith("outputs/"):
+                zf.writestr("bindings/" + name, data)
+            else:
+                zf.writestr(name, data)
     return blob.getvalue()
 
 
@@ -185,7 +206,7 @@ _BAD_PACKS = {
 @pytest.mark.parametrize("variant", sorted(_BAD_PACKS))
 def test_a_bad_pack_is_refused_naming_the_part(lib: dict, variant: str) -> None:
     files, part = _BAD_PACKS[variant]
-    pack = lib["tmp"] / f"pack_{variant}.zip"
+    pack = lib["tmp"] / f"pack_{variant}.gmap"
     pack.write_bytes(_zip(files))
     before = _snapshot(lib["modules"], lib["folder"])
 
@@ -211,7 +232,7 @@ def test_a_pack_too_big_to_unpack_is_refused(
     from gremlin.modules import pack_checks
 
     monkeypatch.setattr(pack_checks, "MAX_UNPACKED", 64 * 1024)
-    pack = lib["tmp"] / "big.zip"
+    pack = lib["tmp"] / "big.gmap"
     pack.write_bytes(
         _zip({"map.json": json.dumps({**_MAP, "pad": "A" * (200 * 1024)})})
     )
@@ -226,7 +247,7 @@ def test_a_pack_too_big_to_unpack_is_refused(
 
 
 def test_a_good_pack_still_reads(lib: dict) -> None:
-    pack = lib["tmp"] / "good.zip"
+    pack = lib["tmp"] / "good.gmap"
     pack.write_bytes(
         _zip({"map.json": json.dumps(_MAP), "wires.json": json.dumps(_GOOD_WIRES)})
     )
@@ -242,7 +263,7 @@ def test_a_good_pack_still_reads(lib: dict) -> None:
 
 def test_a_very_long_exported_name_imports_into_a_short_folder(lib: dict) -> None:
     long_name = "N" * 5000
-    pack = lib["tmp"] / "long.zip"
+    pack = lib["tmp"] / "long.gmap"
     pack.write_bytes(
         _zip(
             {

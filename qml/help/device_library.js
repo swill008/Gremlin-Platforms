@@ -14,7 +14,7 @@ function topics() {
         t("device-library-about", "Getting started", "What the Device Library is",
             "<p>The <b>Device Library</b> keeps every device the program has known, with copies of their settings and bindings. Use it to put an old stick's setup on a new stick, let two sticks trade places, or change which vJoy a stick sends to, and to go back afterwards.</p>"
             + "<ul>"
-            + "<li><b>Devices</b>: sticks plugged in now, sticks set up here but unplugged, deleted sticks, sticks from someone else's Device Pack, and the program's internal inputs.</li>"
+            + "<li><b>Devices</b>: sticks plugged in now, sticks set up here but unplugged, deleted sticks, sticks from someone else's device file, and the program's internal inputs.</li>"
             + "<li><b>Saved setups</b>: stored copies of a device's settings and bindings, each with a name and a description. You keep your own; the program keeps <b>autosaves</b> by itself before anything replaces or removes a stick's settings.</li>"
             + "</ul>"
             + "<p>Copying never changes the saved setup or the stick it came from.</p>",
@@ -86,7 +86,7 @@ function topics() {
             "<p>Each device row shows its name, its description, how many saved setups it has, and its state:</p>"
             + "<ul>"
             + "<li><b>Connected</b>: plugged in now.</li>"
-            + "<li><b>Not connected</b>: set up here but unplugged, or a device that came only from someone else's Device Pack. You can copy from it, never to it.</li>"
+            + "<li><b>Not connected</b>: set up here but unplugged, or a device that came only from someone else's device file. You can copy from it, never to it.</li>"
             + "<li><b>Deleted</b>: removed with Delete Device on Home or Delete File in Module Setup since the Device Library has existed. Its autosave is kept under it. Sticks deleted before that are not listed.</li>"
             + "</ul>"
             + "<p>Select a device to see its name, description and state, its inputs (for example \"32 buttons, 6 axes, 1 hat\") and when it was last seen. The buttons under its details are <b>Save to Device Library…</b>, <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, and the red <b>Remove from Library…</b> (not connected) or <b>Delete Saved Setups…</b> (connected).</p>"
@@ -159,7 +159,7 @@ function topics() {
             + "<li>Before <b>Copy</b> changes the target stick: \"Autosave: before Copy from Old Warthog\".</li>"
             + "<li>Before <b>Swap</b>, one of each stick: \"Autosave: before Swap with Right stick\".</li>"
             + "<li>Before <b>Change vJoy Output</b>: \"Autosave: before Change vJoy Output (vJoy 1 → 2)\".</li>"
-            + "<li>Before a <b>Device Pack</b> is imported onto the stick from Home: \"Autosave: before Device Pack My F-16\" (the pack's file name).</li>"
+            + "<li>Before a device file is imported onto the stick with <b>Export / Import Device</b>: \"Autosave: before Device Pack My F-16\" (the pack's file name).</li>"
             + "<li>Before <b>Restore to This Stick…</b>: \"Autosave: before Restore of DCS F-16\".</li>"
             + "<li>Before <b>Undo</b> puts back a Copy, Swap, Change vJoy Output or Restore: \"Autosave: before Undo\".</li>"
             + "</ul>"
@@ -368,22 +368,22 @@ function topics() {
 
         // ---- Sharing -------------------------------------------------------
         t("device-library-export", "Sharing", "Export a saved setup",
-            "<p>Export writes a saved setup as a Device Pack (.zip) wherever you choose, ready to give to someone else.</p>"
+            "<p>Export writes a saved setup as a device file (.gmap) wherever you choose, ready to give to someone else.</p>"
             + "<ol>"
             + "<li>Select a saved setup.</li>"
             + "<li>Choose <b>Export…</b>, or <b>File › Export Saved Setup…</b>.</li>"
-            + "<li>Choose where to save the file. The chooser opens in the folder you last used for a Device Pack.</li>"
+            + "<li>Choose where to save the file. The chooser opens in the folder you last used for a device file.</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>To share a stick's settings as they are now, right-click the device and choose <b>Export Current Setup…</b>. It writes a Device Pack of its current settings without keeping a saved setup first. It needs a stick set up here or plugged in.</li>"
+            + "<li>To share a stick's settings as they are now, right-click the device and choose <b>Export Current Setup…</b>. It writes a device file (.gmap) of its current settings without keeping a saved setup first. It needs a stick set up here or plugged in.</li>"
             + "<li><b>File › Open Library Folder</b> opens the library's folder in File Explorer.</li>"
             + "</ul>",
             ["device-library-import", "device-library-qa-share"]),
         t("device-library-import", "Sharing", "Import a Device Pack",
-            "<p>Importing adds a Device Pack (.zip) to the Device Library as a saved setup. Nothing changes on your sticks.</p>"
+            "<p>Importing adds a device file (.gmap) to the Device Library as a saved setup. Nothing changes on your sticks. A .zip is not read.</p>"
             + "<ol>"
-            + "<li>Choose <b>File › Import Device Pack…</b> and pick the file, or drop the file on the window. The chooser opens in the folder you last used for a Device Pack.</li>"
+            + "<li>Choose <b>File › Import Device Pack…</b> and pick the .gmap file, or drop it on the window. The chooser opens in the folder you last used for a device file.</li>"
             + "<li>To use it, select the new saved setup and choose <b>Copy to Another Stick…</b>.</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"
@@ -449,7 +449,7 @@ function topics() {
             + "<p>See <a href=\"topic:device-library-copy\">Copy a setup to another stick</a>.</p>",
             ["device-library-copy"]),
         t("device-library-qa-share", "Common questions", "How do I give my setup to a friend?",
-            "<p>Select the saved setup and press <b>Export…</b>, then send the .zip. Your friend imports it with <b>File › Import Device Pack…</b> (or drops it on their Device Library) and copies it onto their stick. To share the stick's settings as they are now, right-click the device and choose <b>Export Current Setup…</b>.</p>"
+            "<p>Select the saved setup and press <b>Export…</b>, then send the .gmap. Your friend imports it with <b>File › Import Device Pack…</b> (or drops it on their Device Library) and copies it onto their stick. To share the stick's settings as they are now, right-click the device and choose <b>Export Current Setup…</b>.</p>"
             + "<p>See <a href=\"topic:device-library-export\">Export a saved setup</a>.</p>",
             ["device-library-export", "device-library-import"]),
         t("device-library-qa-cant-copy", "Common questions", "Why can't I copy to this stick?",
@@ -460,7 +460,7 @@ function topics() {
             "<ul>"
             + "<li>A deleted stick shows as <b>Deleted</b>, with its autosave under it. Make sure the Deleted and Autosaves filters are ticked and the search box is empty.</li>"
             + "<li>Clear Setup… keeps \"Autosave: stick deleted\" under the stick: right-click it and choose <b>Restore to This Stick…</b>.</li>"
-            + "<li>Copy, Swap, Change vJoy Output, Restore and a Device Pack import keep an autosave first; search for the change (\"before Restore\").</li>"
+            + "<li>Copy, Swap, Change vJoy Output, Restore and an Export / Import Device import keep an autosave first; search for the change (\"before Restore\").</li>"
             + "<li>Only the newest autosaves per stick are kept. Choose <b>Keep This Autosave</b>, or rename or describe one, to keep it for good.</li>"
             + "<li>Anything removed with Delete…, Delete Saved Setups… or Remove from Library…: <b>Edit › Undo</b> puts it back, or <b>Tools › History</b> for an older one.</li>"
             + "</ul>",

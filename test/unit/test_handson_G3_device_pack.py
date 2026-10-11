@@ -7,7 +7,7 @@ D-08-PACK-BG).
 
 S106: the device list marks a device whose module file can't be read
 "(file damaged)" and says which devices can be exported, so the window opens
-on the first one that can. S107: exportPackAsync returns at once and the zip
+on the first one that can. S107: exportPackAsync returns at once and the .gmap
 is built and written on a program thread; packExporting is True until
 packExported(result) is announced on the main thread; one export at a time;
 a failure names the file, the folder and why (Q19)."""
@@ -137,7 +137,7 @@ def test_s107_export_runs_in_the_background(
     qtbot: object, stick: None, slow: _SlowWriter, tmp_path: Path
 ) -> None:
     hw = hardware_profile.HardwareProfile()
-    target = tmp_path / "p.zip"
+    target = tmp_path / "p.gmap"
     changes: list[bool] = []
     hw.packExportingChanged.connect(lambda: changes.append(hw.packExporting))
     announced: list[tuple[dict, threading.Thread]] = []
@@ -164,7 +164,7 @@ def test_s107_export_runs_in_the_background(
     assert not announced
     assert not target.exists()
     # One at a time: a second Export is refused while this one runs.
-    busy = json.loads(hw.exportPackAsync("pJoy Pro", _url(tmp_path / "q.zip"), "{}"))
+    busy = json.loads(hw.exportPackAsync("pJoy Pro", _url(tmp_path / "q.gmap"), "{}"))
     assert busy["ok"] is False and busy.get("busy") is True
 
     with qtbot.waitSignal(hw.packExported, timeout=WAIT_MS):  # type: ignore[attr-defined]
@@ -179,9 +179,11 @@ def test_s107_export_runs_in_the_background(
     assert not hw.packExporting
     assert changes == [True, False]
     assert slow.calls == 1
-    assert not (tmp_path / "q.zip").exists()
+    assert not (tmp_path / "q.gmap").exists()
     with zipfile.ZipFile(target) as zf:
-        assert {"map.json", "wires.json", "photo.png"} <= set(zf.namelist())
+        assert {
+            "gmap.json", "module.json", "bindings/wires.json", "pictures/photo.png"
+        } <= set(zf.namelist())
     qtbot.waitUntil(lambda: not _pack_threads(), timeout=WAIT_MS)  # type: ignore[attr-defined]
 
 
@@ -190,7 +192,7 @@ def test_s107_a_write_failure_names_file_folder_and_reason(
 ) -> None:
     hw = hardware_profile.HardwareProfile()
     # A folder already has the pack's name: it can't be written.
-    target = tmp_path / "p.zip"
+    target = tmp_path / "p.gmap"
     target.mkdir()
     with qtbot.waitSignal(hw.packExported, timeout=WAIT_MS) as blocker:  # type: ignore[attr-defined]
         started = json.loads(hw.exportPackAsync("pJoy Pro", _url(target), "{}"))
@@ -198,7 +200,7 @@ def test_s107_a_write_failure_names_file_folder_and_reason(
     result = json.loads(blocker.args[0])
     assert result["ok"] is False
     assert result["error"] == (
-        f"Export failed. p.zip could not be written to {target.parent}: "
+        f"Export failed. p.gmap could not be written to {target.parent}: "
         "a folder has that name."
     )
     assert not hw.packExporting
@@ -210,11 +212,11 @@ def test_s107_a_refusal_is_told_at_once_and_starts_nothing(
     new_profile(monkeypatch)
     _damage("Gone Stick")
     hw = hardware_profile.HardwareProfile()
-    told = json.loads(hw.exportPackAsync("Gone Stick", _url(tmp_path / "g.zip"), "{}"))
+    told = json.loads(hw.exportPackAsync("Gone Stick", _url(tmp_path / "g.gmap"), "{}"))
     assert told["ok"] is False
     assert "is damaged" in told["error"] and "Start Fresh" in told["error"]
     assert not hw.packExporting
-    inside = json.loads(hw.exportPackAsync("Gone Stick", _url(folder / "x.zip"), "{}"))
+    inside = json.loads(hw.exportPackAsync("Gone Stick", _url(folder / "x.gmap"), "{}"))
     assert inside["ok"] is False
     assert not hw.packExporting
 
@@ -234,7 +236,7 @@ def test_s107_the_profile_is_read_on_the_main_thread(
     monkeypatch.setattr(device_pack, "_collect_wires", spy)
     hw = hardware_profile.HardwareProfile()
     with qtbot.waitSignal(hw.packExported, timeout=WAIT_MS) as blocker:  # type: ignore[attr-defined]
-        json.loads(hw.exportPackAsync("pJoy Pro", _url(tmp_path / "m.zip"), "{}"))
+        json.loads(hw.exportPackAsync("pJoy Pro", _url(tmp_path / "m.gmap"), "{}"))
     assert json.loads(blocker.args[0])["ok"]
     assert seen and all(t is threading.main_thread() for t in seen)
 
@@ -243,10 +245,10 @@ def test_s107_the_sync_export_still_writes_the_same_pack(
     stick: None, tmp_path: Path
 ) -> None:
     hw = hardware_profile.HardwareProfile()
-    done = json.loads(hw.exportPack("pJoy Pro", _url(tmp_path / "s.zip"), "{}"))
+    done = json.loads(hw.exportPack("pJoy Pro", _url(tmp_path / "s.gmap"), "{}"))
     assert done["ok"], done
     resolve = hw._resolver_for("pJoy Pro", stick_guid())
     data, info = device_pack.assemble("pJoy Pro", resolve)  # type: ignore[misc]
     assert info["device"] == "pJoy Pro"
-    with zipfile.ZipFile(tmp_path / "s.zip") as zf:
+    with zipfile.ZipFile(tmp_path / "s.gmap") as zf:
         assert set(zf.namelist()) == set(zipfile.ZipFile(io.BytesIO(data)).namelist())

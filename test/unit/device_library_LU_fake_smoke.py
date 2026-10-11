@@ -42,7 +42,7 @@ def _setup(
         else ["setup", "button_map", "appearance", "calibration", "bindings"],
         "profiles": profiles or [],
         "vjoys": vjoys or {},
-        "pack": f"{key}.zip",
+        "pack": f"{key}.gmap",
         "history": history or [],
     }
 
@@ -160,7 +160,7 @@ def sample_devices() -> list[dict]:
         {
             "key": "dev-00000005",
             "name": "Friend's MFD pair",
-            "description": "From Sam's pack",
+            "description": "From Sam's device file",
             "state": "not_connected",
             "guid": "",
             "module": "",
@@ -172,7 +172,7 @@ def sample_devices() -> list[dict]:
                     "2026-09-30T18:00:00",
                     origin="pack",
                     own=True,
-                    reason="From Sam's pack",
+                    reason="From Sam's device file",
                 ),
             ],
         },
@@ -314,7 +314,7 @@ class FakeLibrary:
             path.stem,
             "2026-10-08T16:00:00",
             origin="pack",
-            reason="From Sam's pack",
+            reason="From Sam's device file",
         )
         self.devs[1]["setups"].insert(0, new)
         return self._res("import_pack", setup=new)
@@ -380,7 +380,7 @@ class FakeLibrary:
         self._rec("note_seen", sorted(guids))
 
     def pack_path(self, key: str) -> Path:
-        return Path(f"{key}.zip")
+        return Path(f"{key}.gmap")
 
     # library_profiles
     def profiles_using(self, guids: list[str], always_open: bool = False) -> list[dict]:

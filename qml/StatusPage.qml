@@ -15,6 +15,7 @@ import "confirm.js" as Confirm
 
 Item {
     id: _page
+    objectName: "homePage"
     focus: true
     Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) {
@@ -591,41 +592,23 @@ Item {
         card.Component.onDestruction.connect(function() { _page.unregisterCard(card) })
     }
 
-    // Export Device… / Import Device… (08 S111): the device's folder as one
-    // ".gmap" file, and one unpacked into a new device folder. The dialog
-    // asks for the file and the bindings tick, then calls deviceExport's
-    // exportDevice / importDevice.
+    // Export Device… / Import Device… (08 S111, D-FIXLIST-B2): the one
+    // Export / Import Device window (DialogDevicePack.qml), on that tab with
+    // this card's device: chosen for Export, the suggested target for Import.
     function exportDevice(card) {
-        _openDeviceExport({
-            "mode": "export",
-            "deviceName": String(card.rawName || card.cardName || card.name || ""),
-            "deviceGuid": String(card.guid || ""),
-            "shownName": String(card.cardName || card.rawName || card.name || "")
-        })
+        _openExportImport("export", card)
     }
 
     function importDevice(card) {
-        _openDeviceExport({
-            "mode": "import",
-            "deviceName": "",
-            "deviceGuid": "",
-            "shownName": ""
-        })
+        _openExportImport("import", card)
     }
 
-    // The box is a Popup: it opens inside this window (over everything,
-    // on the window's overlay) and goes when it closes. Not
-    // Helpers.createComponent, which makes separate windows.
-    function _openDeviceExport(properties) {
-        var component = Qt.createComponent("DialogDeviceExport.qml")
-        if (component.status !== Component.Ready) {
-            console.warn(component.errorString())
-            return null
-        }
-        var box = component.createObject(Overlay.overlay || _page, properties)
-        if (box)
-            box.closed.connect(function() { Qt.callLater(box.destroy) })
-        return box
+    function _openExportImport(tab, card) {
+        var w = Helpers.createComponent("DialogDevicePack.qml", { "mode": tab })
+        if (w && typeof w.openFor === "function")
+            w.openFor(tab, String(card.rawName || card.cardName || card.name || ""),
+                      String(card.guid || ""))
+        return w
     }
 
     // The Logical Device card's picture (03 S88, D-03-LD-IMAGE): the model

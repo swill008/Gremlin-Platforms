@@ -43,9 +43,14 @@ def maps(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.Pat
 def _zip_bytes() -> bytes:
     import io
 
+    from test.unit._gmap_files import gmap_members
+
+    # A .gmap: the only Export / Import Device file (D-FIXLIST-B2).
     blob = io.BytesIO()
+    members = gmap_members({"map.json": {"kind": "control.hardware", "device": "x"}})
     with zipfile.ZipFile(blob, "w") as zf:
-        zf.writestr("map.json", json.dumps({"kind": "control.hardware"}))
+        for name, data in members.items():
+            zf.writestr(name, data)
     return blob.getvalue()
 
 
@@ -65,7 +70,7 @@ def test_a_failed_export_leaves_the_older_pack_whole(
 ) -> None:
     # 08 R4: a write that stops part way never leaves half a zip over the
     # older pack.
-    dest = tmp_path / "out" / "pack.zip"
+    dest = tmp_path / "out" / "pack.gmap"
     dest.parent.mkdir()
     old = _zip_bytes()
     dest.write_bytes(old)
@@ -89,7 +94,7 @@ def test_an_export_that_does_not_read_back_says_so(
 ) -> None:
     # As Delete Device's pack: read back before it counts as written.
     _fake_pack(monkeypatch, b"not a zip")
-    dest = tmp_path / "out" / "pack.zip"
+    dest = tmp_path / "out" / "pack.gmap"
     result = json.loads(hardware_profile.HardwareProfile().exportPack(
         "Test Stick", dest.as_uri(), ""))
     assert result["ok"] is False

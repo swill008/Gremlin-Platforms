@@ -10,15 +10,15 @@ stays as a guard."""
 from __future__ import annotations
 
 import json
-import zipfile
 from pathlib import Path
 
 import pytest
 
-from gremlin.modules import store
+from gremlin.modules import device_zip, store
 from gremlin.ui import device_pack, hardware_profile
 from test.unit import test_stage1_modules
 from test.unit._device_folders import put_module
+from test.unit._gmap_files import read_module
 from test.unit.test_id_not_name_lookups import FIRST, SECOND, TWIN, twins
 from test.unit.test_stage1_history_pack import _url
 
@@ -43,9 +43,10 @@ def _write_own_files() -> None:
         put_module(store.folder(), TWIN, doc, guid)
 
 
-def _map(zip_path: Path) -> dict:
-    with zipfile.ZipFile(zip_path) as zf:
-        return json.loads(zf.read("map.json"))
+def _map(gmap_path: Path) -> tuple[dict, dict]:
+    """The .gmap's label (gmap.json) and module file (module.json)."""
+    label, doc, _names = read_module(gmap_path)
+    return label, doc
 
 
 def test_export_with_the_second_twins_id_exports_it(
@@ -54,13 +55,13 @@ def test_export_with_the_second_twins_id_exports_it(
     """Old code ignored "guid" and refused the shared name."""
     _write_own_files()
     hw = hardware_profile.HardwareProfile()
-    dest = tmp_path / "second.zip"
+    dest = tmp_path / "second.gmap"
     done = json.loads(
         hw.exportPack(TWIN, _url(dest), json.dumps({"guid": str(SECOND)}))
     )
     assert done["ok"], done
-    packed = _map(dest)
-    assert packed["pack"]["exportedGuid"] == str(SECOND)
+    label, packed = _map(dest)
+    assert device_zip.guid_text(label["id"]) == device_zip.guid_text(str(SECOND))
     assert packed["twinMarker"] == "second"
 
 
@@ -69,15 +70,15 @@ def test_async_export_with_the_second_twins_id_exports_it(
 ) -> None:
     _write_own_files()
     hw = hardware_profile.HardwareProfile()
-    dest = tmp_path / "second_async.zip"
+    dest = tmp_path / "second_async.gmap"
     with qtbot.waitSignal(hw.packExported, timeout=WAIT_MS) as blocker:  # type: ignore[attr-defined]
         started = json.loads(
             hw.exportPackAsync(TWIN, _url(dest), json.dumps({"guid": str(SECOND)}))
         )
         assert started["ok"], started
     assert json.loads(blocker.args[0])["ok"]
-    packed = _map(dest)
-    assert packed["pack"]["exportedGuid"] == str(SECOND)
+    label, packed = _map(dest)
+    assert device_zip.guid_text(label["id"]) == device_zip.guid_text(str(SECOND))
     assert packed["twinMarker"] == "second"
 
 
@@ -87,10 +88,10 @@ def test_export_without_an_id_keeps_the_twins_refusal(
 ) -> None:
     _write_own_files()
     hw = hardware_profile.HardwareProfile()
-    done = json.loads(hw.exportPack(TWIN, _url(tmp_path / "x.zip"), options))
+    done = json.loads(hw.exportPack(TWIN, _url(tmp_path / "x.gmap"), options))
     assert not done["ok"]
     assert f"More than one device is called {TWIN}" in done["error"]
-    started = json.loads(hw.exportPackAsync(TWIN, _url(tmp_path / "y.zip"), options))
+    started = json.loads(hw.exportPackAsync(TWIN, _url(tmp_path / "y.gmap"), options))
     assert not started["ok"]
     assert f"More than one device is called {TWIN}" in started["error"]
 

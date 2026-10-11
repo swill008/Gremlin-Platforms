@@ -24,6 +24,7 @@ from gremlin.modules import module_file, store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
 from test.unit._device_folders import put_module
+from test.unit._gmap_pack import write_gmap
 
 GUID = "{6C3D1E20-1111-2222-3333-444455556666}"
 UID = uuid.UUID(GUID.strip("{}"))
@@ -419,37 +420,24 @@ def test_delete_removes_a_deleted_device_and_a_single_setup(lib: dict) -> None:
 
 
 def _foreign_pack(tmp: Path) -> Path:
-    path = tmp / "Ann's Hornet stick.zip"
-    with zipfile.ZipFile(path, "w") as zf:
-        zf.writestr(
-            "map.json",
-            json.dumps(
-                {
-                    "device": "Hornet Grip",
-                    "claim": {"buttons": [1]},
-                    "pack": {
-                        "exportedName": "Hornet Grip",
-                        "exportedGuid": "{BBBBBBBB-1111-2222-3333-444455556666}",
-                        "format": 2,
-                        "author": "Ann",
-                        "note": "My F/A-18 setup",
-                    },
-                }
-            ),
-        )
-        zf.writestr(
-            "wires.json",
-            json.dumps(
-                {
-                    "modes": [
-                        {"name": "Combat", "lines": ["Button 1 → vJoy 3 Button 1"]}
-                    ],
-                    "actions": [],
-                    "tree": {"Combat": ""},
-                }
-            ),
-        )
-    return path
+    return write_gmap(
+        tmp / "Ann's Hornet stick.gmap",
+        {
+            "device": "Hornet Grip",
+            "claim": {"buttons": [1]},
+            "pack": {
+                "exportedName": "Hornet Grip",
+                "exportedGuid": "{BBBBBBBB-1111-2222-3333-444455556666}",
+                "author": "Ann",
+                "note": "My F/A-18 setup",
+            },
+        },
+        {
+            "modes": [{"name": "Combat", "lines": ["Button 1 → vJoy 3 Button 1"]}],
+            "actions": [],
+            "tree": {"Combat": ""},
+        },
+    )
 
 
 def test_someone_elses_pack_becomes_a_not_connected_device(lib: dict) -> None:
@@ -457,7 +445,7 @@ def test_someone_elses_pack_becomes_a_not_connected_device(lib: dict) -> None:
     assert out["ok"], out
     setup = out["setup"]
     assert setup["origin"] == "pack" and not setup["own"]
-    assert setup["reason"] == "From Ann's pack"
+    assert setup["reason"] == "From Ann's device file"
     assert setup["description"] == "My F/A-18 setup"
     assert setup["holds"] == ["setup", "bindings"]
     assert setup["vjoys"] == {"3": 1}
@@ -476,7 +464,7 @@ def test_a_pack_goes_under_its_device_when_the_library_has_it(lib: dict) -> None
 
 
 def test_a_file_that_isnt_a_pack_is_refused(lib: dict) -> None:
-    bad = lib["tmp"] / "notes.zip"
+    bad = lib["tmp"] / "notes.gmap"
     bad.write_bytes(b"not a zip")
     assert not library.import_pack(bad)["ok"]
     assert library.devices() == []
