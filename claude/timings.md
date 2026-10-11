@@ -761,3 +761,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | PANCUR: closed hand while panning (cursor-only overlay; the handler's cursorShape lost to the editor area); real-window test | fix | 3–8 min (table) | 4 min | 13:21–13:25 |
 | 2026-10-11 | Full run (pan cursor, seed 599005): 3 failures + unit-4 stopped by the hang guard, all pass alone (load); journeys pass with the same seed | test | 5–6 min (table) | 6 min + 3 min checks | 13:26–13:35 |
 | 2026-10-11 | TRACE-J20: j20 load failure = real bug G32 (commit_edit leaves the edit folder in "committing" when its removal fails) | review | 5–10 min (table) | 1 min | 13:33–13:34 |
+| 2026-10-11 | Repeat full run (seed 997138) green; commit pan cursor + canvas-menu spec; push | test | 5–6 min (table) | 6 min + 1 min | 13:33–13:40 |
+| 2026-10-11 | ROW: Undo/Redo + Foreground/Background row removed; Show me switch link and Help updated | fix | 3–8 min (table) | 1 min | 13:42–13:43 |
+| 2026-10-11 | SAVEFIX: G32 — Save drops state.json before removing the edit folder (3 tests fail before, pass after) | fix | 3–8 min (table) | 1 min | 13:42–13:43 |
+| 2026-10-11 | CANVAS: Edit Background / Exit Background Editing on the empty-space menu (6 tests fail before, pass after) | fix | 3–8 min (table) | 2 min | 13:42–13:44 |
+| 2026-10-11 | ROW-T: tests moved off the removed row (Edit menu/keys, Show me banner+row only, absence checks; 21 pass) | agent tests | 3–8 min (table) | 2 min | 13:42–13:44 |

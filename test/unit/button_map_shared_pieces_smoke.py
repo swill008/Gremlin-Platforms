@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The Button Map on the shared pieces (01 S140-S143): its message line, its
-Undo / Redo bar, the shared delete question (Reset Layout, Delete Template,
-the Options Library), the Layers search box and its file choosers. Loads
-the window off-screen with stand-ins, drives it with real key and mouse
-events and prints "RESULT name value" lines, then "done".
+Undo / Redo through the Edit menu and Ctrl+Z (no bar), the shared delete
+question (Reset Layout, Delete Template, the Options Library), the Layers
+search box and its file choosers. Loads the window off-screen with
+stand-ins, drives it with real key and mouse events and prints
+"RESULT name value" lines, then "done".
 test_button_map_shared_pieces.py runs it in its own process.
 
     python test/unit/button_map_shared_pieces_smoke.py <out_dir>
@@ -195,16 +196,35 @@ def main() -> None:
         "var m = _messageLine; [m.objectName, m.text, m.failed, m.visible,"
         " _saveGate.opened].join('|')"))
 
-    # The Undo / Redo bar (01 S143): a click on Undo takes the change back.
+    # Undo / Redo through the Edit menu and Ctrl+Z / Ctrl+Y; the window has
+    # no Undo / Redo bar (01 S143, 07 S113).
     js("var e = _ed(); e.nodes.push({id: 'b2', kind: 'draw', shape: 'rect',"
        " fx: 0.4, fy: 0.4, fw: 0.1, fh: 0.1}); e.bump(); 1")
     QtTest.QTest.qWait(600)
-    before = js("_ed().nodes.filter(function(n) { return n.id === 'b2' }).length")
-    shown = js("_undoBar.visible && _undoBar.canUndo")
-    clicked = click_at("_find(_undoBar, 'undoBarUndo')")
-    after = js("_ed().nodes.filter(function(n) { return n.id === 'b2' }).length")
-    result("undo-bar", [shown, clicked, before, after,
-                        js("_undoBar.canRedo")])
+
+    def b2() -> object:
+        return js("_ed().nodes.filter(function(n) { return n.id === 'b2' }).length")
+
+    def edit_item(text: str) -> str:
+        return ("(function() { for (var i = 0; i < _editMenu.count; i++) {"
+                " var it = _editMenu.itemAt(i);"
+                f" if (it && it.text === '{text}') return it }} return null }})()")
+
+    before = b2()
+    menu_on = js(edit_item("Undo") + ".enabled")
+    js(edit_item("Undo") + ".triggered(); 1")
+    QtTest.QTest.qWait(250)
+    after_menu = b2()
+    redo_on = js(edit_item("Redo") + ".enabled")
+    key(Qt.Key.Key_Y, Qt.KeyboardModifier.ControlModifier)
+    after_redo = b2()
+    key(Qt.Key.Key_Z, Qt.KeyboardModifier.ControlModifier)
+    after_ctrl_z = b2()
+    result("undo-edit-menu", [menu_on, before, after_menu, redo_on,
+                              after_redo, after_ctrl_z])
+    result("no-undo-bar", [js("_find(_buttonMap, 'buttonMapUndoBar') === null"),
+                           js("_find(_buttonMap, 'bmPlaneSwitch') === null"),
+                           js("typeof _undoBar === 'undefined'")])
 
     # Reset Layout asks the shared question; Enter cancels, the red button
     # goes ahead (07 S61, 01 S140).

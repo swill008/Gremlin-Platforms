@@ -4,10 +4,10 @@
 
 """The Button Map window's background and foreground planes
 (D-07-BACKGROUND-PLANES, D-07-PLANES-ANSWERS): the Background menu, Background
-mode (switch, banner, Done, Esc, Ctrl+B, status), the plane view program
-settings (07 S114, S115, S120; P4a), Add Picture to Background, Clear
-Background, Save and Cancel with both planes, Copy the background too
-(07 S76) and Space + left-drag panning (07 S14).
+mode (no switch, no Undo / Redo row; banner, Done, Esc, Ctrl+B, status),
+the plane view program settings (07 S114, S115, S120; P4a), Add Picture
+to Background, Clear Background, Save and Cancel with both planes, Copy the
+background too (07 S76) and Space + left-drag panning (07 S14).
 
 The window part runs the real window off-screen (planes_window_smoke.py) in
 its own process.
@@ -141,7 +141,8 @@ def test_planes_in_the_window(tmp_path: pathlib.Path) -> None:
     assert r["banner"] == "True Editing the background —|Done"
     assert r["hint-first"] == "True True"
     assert r["status-bg"] == "Background"
-    assert r["switch"] == "True False"
+    # 07 S113, 01 S143: no Foreground | Background switch, no Undo / Redo row.
+    assert r["no-switch"] == "True True True True"
     assert r["after-done"] == "foreground False"
     assert r["hint-second"] == "False"
     assert r["esc"] == "foreground"

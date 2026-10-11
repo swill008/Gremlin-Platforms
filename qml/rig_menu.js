@@ -743,6 +743,14 @@ function _tableSections() {
 
 // --- canvas ------------------------------------------------------------------
 
+// Into or out of Background mode (07 S113), the same as Ctrl+B. The window
+// follows editPlaneChanged.
+function _planeSwitch() {
+    var bg = editPlane === "background"
+    return _named("bmEditPlane", bg ? "Exit Background Editing" : "Edit Background",
+                  function() { editPlane = bg ? "foreground" : "background" }, true, "Ctrl+B")
+}
+
 function _canvasSections() {
     var tools = ["rect", "roundrect", "ellipse", "triangle", "diamond", "arrow", "arrow2"]
     var draw = [
@@ -900,6 +908,8 @@ function menuModel() {
         quick = quick.concat(_copyPaste(false))
         if (drawTool.length)
             quick.push(_act("Stop Drawing", function() { drawTool = "" }))
+        if (interactive)
+            quick.push(_planeSwitch())
         sections = _canvasSections()
     }
     // Copy and Paste on everything that can be copied (a leader or hotspot

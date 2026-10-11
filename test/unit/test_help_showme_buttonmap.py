@@ -4,9 +4,10 @@
 """07 S126 (D-07-PLANES-FOLLOWUP Q1a): Help's Show me › links into the
 Button Map window (show:buttonmap/<name>) go through Main's own Help link
 handler: checked without the window open, the window opened on a device,
-"Edit the map to see this" outside Edit, and the switch, the banner
+"Edit the map to see this" outside Edit, and the banner
 (Background mode) and the Background row (Layers, Foreground mode) pulsed
-while editing. Runs help_showme_buttonmap_smoke.py off-screen in its own
+while editing; the removed switch (bmPlaneSwitch) is refused (07 S113).
+Runs help_showme_buttonmap_smoke.py off-screen in its own
 process with a fresh user folder.
 """
 
@@ -22,7 +23,7 @@ import pytest
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "help_showme_buttonmap_smoke.py"
-_NAMES = ("bmPlaneSwitch", "bmBgBanner", "bmBgRow")
+_NAMES = ("bmBgBanner", "bmBgRow")
 _EDIT = "Edit the map to see this"
 
 
@@ -48,6 +49,8 @@ def test_links_check_without_the_window(run: dict) -> None:
     for name in _NAMES:
         assert run["check"][name] == "", name
     assert run["check"]["noSuchThing"], "a made-up place is accepted"
+    # 07 S113, S126: the Foreground | Background switch is gone.
+    assert run["check"]["bmPlaneSwitch"], "the removed switch is accepted"
 
 
 def test_not_editing_opens_the_window_and_says_edit_first(run: dict) -> None:

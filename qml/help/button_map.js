@@ -50,7 +50,7 @@ function topics() {
             + "<ul>"
             + "<li>Save reads the layout back and says \"Saved to the module file.\" on the message line under the map. When it can't write it, the line says in red \"Not written. It is still only on this screen.\" A message stays until the next one.</li>"
             + "<li>Cancel and closing ask first when there are unsaved edits; choosing Save there saves and leaves editing.</li>"
-            + "<li>While editing, <b>Undo</b> and <b>Redo</b> show above the map (\"Undo the last change (Ctrl+Z)\", \"Redo (Ctrl+Y)\"). They work only while editing, back as many steps as <b>Undo steps</b> in Button Map Options (80 at first).</li>"
+            + "<li>While editing, <b>Undo</b> (<b>Ctrl+Z</b>) and <b>Redo</b> (<b>Ctrl+Y</b>) are on the <b>Edit</b> menu and at the top of every right-click menu. They work only while editing, back as many steps as <b>Undo steps</b> in Button Map Options (80 at first).</li>"
             + "<li>Most of this chapter is about editing.</li>"
             + "<li>What Save writes, and what is kept at once, is listed in <a href=\"topic:button-map-options\">Button Map Options</a>.</li>"
             + "</ul>",
@@ -164,7 +164,7 @@ function topics() {
             "<p>A Button Map has two planes: the <b>Background</b>, the artwork behind everything, and the <b>Foreground</b> in front of it.</p>"
             + "<ul>"
             + "<li>The background holds pictures, shapes, lines and text, in any number of layers. Its bottom picture is the device's photo. Chips, groups, hotspots, leaders and tables stay in the foreground.</li>"
-            + "<li>To edit the background, choose <b>Background › Edit Background</b> (<b>Ctrl+B</b>), choose <b>Background</b> on the <b>Foreground</b> | <b>Background</b> switch on the tool row <a href=\"show:buttonmap/bmPlaneSwitch\">Show me ›</a>, or double-click the <b>Background</b> row at the bottom of Layers <a href=\"show:buttonmap/bmBgRow\">Show me ›</a>. While you edit the background, a banner reads \"Editing the background\" <a href=\"show:buttonmap/bmBgBanner\">Show me ›</a>; <b>Done</b>, <b>Esc</b> or the switch go back to the foreground.</li>"
+            + "<li>To edit the background, choose <b>Background › Edit Background</b>, right-click an empty part of the map and choose <b>Edit Background</b>, press <b>Ctrl+B</b>, or double-click the <b>Background</b> row at the bottom of Layers <a href=\"show:buttonmap/bmBgRow\">Show me ›</a>. While you edit the background, a banner reads \"Editing the background\" <a href=\"show:buttonmap/bmBgBanner\">Show me ›</a>; <b>Done</b>, <b>Exit Background Editing</b> on the same right-click menu, <b>Esc</b> or <b>Ctrl+B</b> go back to the foreground.</li>"
             + "<li>While you edit the background, the foreground shows faintly and can't be clicked. Clear <b>Show foreground faintly</b> on the banner to hide it. While you edit the foreground, the background shows but can't be clicked.</li>"
             + "<li><b>Background › Add Picture to Background…</b> puts a picture on top of the background, fitted to the photo frame. <b>Background › Clear Background</b> removes every background layer.</li>"
             + "<li>To move items to the other plane, right-click them and choose <b>Move to Background</b> or <b>Move to Foreground</b> (<b>Ctrl+Shift+B</b>); the Layers panel's menu and <b>Arrange</b> have them too. Kinds the background can't hold are greyed out, and their tooltip says why.</li>"

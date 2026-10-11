@@ -54,9 +54,15 @@ def test_save_says_so_on_the_message_line(seen: dict) -> None:
         "messageLine|Saved to the module file.|false|true|false")
 
 
-def test_the_undo_bar_takes_the_change_back(seen: dict) -> None:
-    # 01 S143: shown while editing; a click on Undo; Redo then available.
-    assert seen["undo-bar"] == [True, True, 1, 0, True]
+def test_undo_and_redo_through_the_edit_menu_and_keys(seen: dict) -> None:
+    # 01 S143, 07 S113: Edit › Undo takes the change back, Ctrl+Y redoes it,
+    # Ctrl+Z undoes it again.
+    assert seen["undo-edit-menu"] == [True, 1, 0, True, 1, 0]
+
+
+def test_the_window_has_no_undo_bar_and_no_plane_switch(seen: dict) -> None:
+    # 01 S143, 07 S113: no Undo / Redo row, no Foreground | Background switch.
+    assert seen["no-undo-bar"] == [True, True, True]
 
 
 def test_reset_layout_asks_the_shared_question(seen: dict) -> None:

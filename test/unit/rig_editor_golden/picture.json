@@ -1623,6 +1623,7 @@
     "menu": [
      "Canvas",
      "Paste (Ctrl+V) (off)",
+     "Edit Background (Ctrl+B)",
      "v Draw",
      "  Shape: Rectangle | Rounded | Ellipse | Triangle | Diamond | Arrow | Double arrow",
      "  Line: Line | Arrow | Path | Freehand",
@@ -1669,6 +1670,7 @@
     "menu": [
      "Canvas",
      "Paste (Ctrl+V)",
+     "Edit Background (Ctrl+B)",
      "v Draw",
      "  Shape: Rectangle | Rounded | Ellipse | Triangle | Diamond | Arrow | Double arrow",
      "  Line: Line | Arrow | Path | Freehand",

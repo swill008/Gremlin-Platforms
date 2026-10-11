@@ -251,8 +251,9 @@ def main() -> None:
     )
     wait()
 
-    # Edit Background: banner, Done, the first-time hint, the switch.
-    js("_buttonMap.setEditPlane('background'); 1")
+    # Edit Background (the editor's editPlane; the window follows): banner,
+    # Done, the first-time hint. No switch, no Undo / Redo row (07 S113).
+    js("_ed().editPlane = 'background'; 1")
     wait()
     banner = child("bmBgBanner")
     result(
@@ -267,12 +268,12 @@ def main() -> None:
     )
     result("status-bg", child("bmPlaneStatus").property("text"))
     result(
-        "switch",
-        f"{child('bmPlane_background').property('checked')} "
-        f"{child('bmPlane_foreground').property('checked')}",
+        "no-switch",
+        f"{child('bmPlaneSwitch') is None} {child('bmPlane_background') is None} "
+        f"{child('bmPlane_foreground') is None} {child('buttonMapUndoBar') is None}",
     )
     # Done leaves; entering again shows no hint (once for the program).
-    js("_buttonMap.setEditPlane('foreground'); 1")
+    js("_ed().editPlane = 'foreground'; 1")
     wait()
     result("after-done", f"{js('_ed().editPlane')} {banner.property('visible')}")
     js("_buttonMap.setEditPlane('background'); 1")

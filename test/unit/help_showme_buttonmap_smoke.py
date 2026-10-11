@@ -5,7 +5,8 @@
 D-07-PLANES-FOLLOWUP Q1a), off-screen with stand-in hardware: Main's own
 Style.helpLinks.reveal() for show:buttonmap/<name>, first with no Button Map
 open (it opens on the first device, not editing: the message), then while
-editing (each place pulsed). Prints "RESULT <json>".
+editing (each place pulsed). The removed switch, bmPlaneSwitch, is refused
+(07 S113, S126). Prints "RESULT <json>".
 test_help_showme_buttonmap.py runs it in its own process with a fresh user
 folder.
 """
@@ -39,7 +40,7 @@ from PySide6 import QtCore, QtGui, QtQml, QtQuick  # noqa: E402
 import joystick_gremlin  # noqa: E402
 from gremlin import clock  # noqa: E402
 
-NAMES = ("bmPlaneSwitch", "bmBgBanner", "bmBgRow")
+NAMES = ("bmBgBanner", "bmBgRow")
 
 
 def wait_until(cond, limit_ms: int = 10000) -> bool:  # noqa: ANN001
@@ -107,7 +108,7 @@ wait_until(lambda: bool(ev(win, "Style.helpLinks !== null")), 8000)
 try:
     out["check"] = {
         n: str(ev(win, f"String(Style.helpLinks.check('show:buttonmap/{n}'))"))
-        for n in (*NAMES, "noSuchThing")
+        for n in (*NAMES, "bmPlaneSwitch", "noSuchThing")
     }
     out["closed"] = reveal("show:buttonmap/bmBgBanner")
     wait_until(lambda: map_window() is not None, 5000)

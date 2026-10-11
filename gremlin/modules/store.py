@@ -1755,7 +1755,9 @@ def copy_pictures(
 
 # --- an edit's temporary folder (07 S26 S36 S40 S62 S107 S109) ---------------
 # cache/edit[-<owner>]/<id key>/:
-#   state.json  {"phase": "editing" | "committing"}
+#   state.json  {"phase": "editing" | "committing"}; none once Save is done
+#               (a folder left without it is a finished edit: removed by
+#               the next begin_edit, dropped by recover_edit)
 #   start/      module.json and the pictures it named when the edit began
 #   added/      pictures added during the edit (named "pictures/<file>")
 # Save (commit_edit) copies the added pictures into the device's pictures/,
@@ -1898,6 +1900,13 @@ def commit_edit(
         _back_to_editing(temp)
         remove_unused_pictures(device_name, guid)
         return f"The module file could not be saved. {exc}"
+    # The Save is done: drop state.json first, so a folder that can't be
+    # removed (a picture still open) is a finished edit, never a Save to
+    # undo (recover_edit) or an edit to add to (_staging) (07 G32).
+    try:
+        (temp / STATE_FILE).unlink(missing_ok=True)
+    except OSError:
+        syslog.warning(f"Edit folder {temp} could not be marked finished")
     remove_unused_pictures(device_name, guid)
     try:
         _remove_tree(temp)

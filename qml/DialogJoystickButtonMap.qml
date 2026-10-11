@@ -1189,27 +1189,12 @@ ApplicationWindow {
         var e = _ed()
         return editing && !!e && e.editPlane === "background"
     }
-    // One side of the Foreground | Background switch (07 S113).
-    // (An inline component can't see this file's ids: the window comes in
-    // through current and picked.)
-    component PlaneButton: Button {
-        property bool current: false
-        signal picked()
-        font.pixelSize: Style.dp(11)
-        checkable: true
-        checked: current
-        onClicked: {
-            picked()
-            checked = Qt.binding(() => current)
-        }
-    }
     // The first-time line in the banner, shown this time only (07 S114).
     property bool bgHintNow: false
     // The Background row's eye (07 S120): a program setting.
     readonly property bool bgHidden: _opts.values["bm-bg-hidden"] === true
 
-    // Enters or leaves Background mode (the menu, the switch, Ctrl+B, Done,
-    // Esc). Layers' Background row sets the editor's editPlane itself; the
+    // Enters or leaves Background mode (the menus, Ctrl+B, Done, Esc). Layers' Background row sets the editor's editPlane itself; the
     // window follows that too (planeChanged).
     function setEditPlane(plane) {
         var e = _ed()
@@ -1222,8 +1207,8 @@ ApplicationWindow {
 
     // Help's Show me › into this window (07 S126, D-07-PLANES-FOLLOWUP
     // Q1a): brings the window forward (on the first device when none is
-    // shown), shows the place named (bmPlaneSwitch, bmBgBanner in Background
-    // mode, bmBgRow in Layers in Foreground mode) and hands it to pulse.
+    // shown), shows the place named (bmBgBanner in Background mode, bmBgRow
+    // in Layers in Foreground mode) and hands it to pulse.
     // Returns "" or why not, which the message line says too.
     function revealForHelp(name, pulse) {
         show()
@@ -1243,9 +1228,7 @@ ApplicationWindow {
             return why
         }
         var item = null
-        if (name === "bmPlaneSwitch") {
-            item = _planeSwitch
-        } else if (name === "bmBgBanner") {
+        if (name === "bmBgBanner") {
             setEditPlane("background")
             item = _bgBanner
         } else if (name === "bmBgRow") {
@@ -3147,49 +3130,6 @@ ApplicationWindow {
                     text: "Help"
                     hint: "F1"
                     onTriggered: _buttonMap.openGuide()
-                }
-            }
-        }
-
-        // The editor's own Undo / Redo (01 S143), while editing; Ctrl+Z /
-        // Ctrl+Y stay the window's shortcuts.
-        RowLayout {
-            Layout.fillWidth: true
-            visible: _buttonMap.editing
-            spacing: Style.dp(6)
-            UndoBar {
-                id: _undoBar
-                objectName: "buttonMapUndoBar"
-                Layout.fillWidth: true
-                Layout.leftMargin: Style.dp(6)
-                visible: _buttonMap.editing
-                canUndo: { var e = _ed(); return _buttonMap.editing && e ? e.canUndo : false }
-                canRedo: { var e = _ed(); return _buttonMap.editing && e ? e.canRedo : false }
-                undoTip: "Undo the last change (Ctrl+Z)"
-                redoTip: "Redo (Ctrl+Y)"
-                onUndo: { var e = _ed(); if (e) e.undo() }
-                onRedo: { var e = _ed(); if (e) e.redo() }
-            }
-            // The Foreground | Background switch (07 S113).
-            Row {
-                id: _planeSwitch
-                objectName: "bmPlaneSwitch"
-                Layout.rightMargin: Style.dp(6)
-                spacing: 0
-                HoverHandler { id: _planeHover }
-                ToolTip.visible: _planeHover.hovered
-                ToolTip.text: "Edit the foreground or the background (Ctrl+B)"
-                PlaneButton {
-                    objectName: "bmPlane_foreground"
-                    text: "Foreground"
-                    current: !_buttonMap.bgMode
-                    onPicked: _buttonMap.setEditPlane("foreground")
-                }
-                PlaneButton {
-                    objectName: "bmPlane_background"
-                    text: "Background"
-                    current: _buttonMap.bgMode
-                    onPicked: _buttonMap.setEditPlane("background")
                 }
             }
         }

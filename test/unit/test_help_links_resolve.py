@@ -79,7 +79,11 @@ def test_button_map_show_me_links_resolve(run: dict) -> None:
     """07 S126 (D-07-PLANES-FOLLOWUP Q1a): the Background and foreground
     topic's Show me › links into the Button Map window are in the book and
     check without the window open."""
-    want = {f"show:buttonmap/{n}" for n in ("bmPlaneSwitch", "bmBgBanner", "bmBgRow")}
+    want = {f"show:buttonmap/{n}" for n in ("bmBgBanner", "bmBgRow")}
     found = {x["href"]: x["reason"] for x in run["links"] if x["href"] in want}
     assert set(found) == want, sorted(want - set(found))
     assert all(r == "" for r in found.values()), found
+    # 07 S113: the removed switch is no longer linked from Help.
+    old = "show:buttonmap/bmPlaneSwitch"
+    gone = [x["href"] for x in run["links"] if x["href"] == old]
+    assert not gone, gone
