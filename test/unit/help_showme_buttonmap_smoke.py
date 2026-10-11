@@ -4,9 +4,12 @@
 """Help's Show me › into the Button Map window (07 S126,
 D-07-PLANES-FOLLOWUP Q1a), off-screen with stand-in hardware: Main's own
 Style.helpLinks.reveal() for show:buttonmap/<name>, first with no Button Map
-open (it opens on the first device, not editing: the message), then while
-editing (each place pulsed). The removed switch, bmPlaneSwitch, is refused
-(07 S113, S126). Prints "RESULT <json>".
+open (it opens on the first device, not editing: the message, but the menus
+that work outside Edit are pulsed), then while editing (each place pulsed;
+Properties first with nothing selected, then with a line selected). One link
+per area (user 2026-10-11): each menu's title in the bar, the Chips and
+Layers side panels, Properties, the Background banner and row. The removed
+switch, bmPlaneSwitch, is refused (07 S113, S126). Prints "RESULT <json>".
 test_help_showme_buttonmap.py runs it in its own process with a fresh user
 folder.
 """
@@ -40,7 +43,11 @@ from PySide6 import QtCore, QtGui, QtQml, QtQuick  # noqa: E402
 import joystick_gremlin  # noqa: E402
 from gremlin import clock  # noqa: E402
 
-NAMES = ("bmBgBanner", "bmBgRow")
+# The menus that open outside Edit, those that need it, and the other places.
+FREE_MENUS = ("bmMenuFile", "bmMenuEdit", "bmMenuView", "bmMenuFormat", "bmMenuHelp")
+EDIT_MENUS = ("bmMenuInsert", "bmMenuArrange", "bmMenuLeader")
+PLACES = ("chipsSide", "layersSide", "propsPanel", "bmBgBanner", "bmBgRow")
+NAMES = (*FREE_MENUS, *EDIT_MENUS, *PLACES)
 # Layers is the right side panel (07 S128): the SidePanel holding _layersPanel.
 LAYERS_SIDE = ("(function(){ var p = _layersPanel;"
                " while (p && p.takenWidth === undefined) p = p.parent; return p })()")
@@ -92,14 +99,48 @@ def reveal(link: str) -> str:
     return str(ev(win, f"String(Style.helpLinks.reveal({json.dumps(link)}))"))
 
 
-def pulsed(bm: QtQuick.QQuickWindow, name: str) -> bool:
+def in_bar(bm: QtQuick.QQuickWindow, name: str, what: str) -> object:
+    """what ("item" or "title") of the menu bar's menu with this objectName."""
+    get = "_menuBar.itemAt(i)" if what == "item" else "_menuBar.menuAt(i).title"
+    return ev(bm, "(function(){ for (var i = 0; i < _menuBar.count; ++i)"
+                  f" if (_menuBar.menuAt(i).objectName === {json.dumps(name)})"
+                  f" return {get}; return null }})()")
+
+
+def bar_item(bm: QtQuick.QQuickWindow, name: str) -> object:
+    """The menu bar's title for the menu with this objectName."""
+    return in_bar(bm, name, "item")
+
+
+def target(bm: QtQuick.QQuickWindow, name: str) -> object:
     if name == "bmBgRow":
-        item = ev(bm, "_layersPanel.bgRowPart('bmBgRow')")
-    else:
-        item = find_item(bm.contentItem(), name)
+        return ev(bm, "_layersPanel.bgRowPart('bmBgRow')")
+    if name.startswith("bmMenu"):
+        return bar_item(bm, name)
+    return find_item(bm.contentItem(), name)
+
+
+def pulses(bm: QtQuick.QQuickWindow, name: str) -> int:
+    item = target(bm, name)
     if not isinstance(item, QtQuick.QQuickItem):
-        return False
-    return any(c.objectName() == "helpPulse" for c in item.childItems())
+        return -1
+    return sum(c.objectName() == "helpPulse" for c in item.childItems())
+
+
+def show(bm: QtQuick.QQuickWindow, name: str) -> dict:
+    """Show me › for name: why not, and whether a new pulse marks it."""
+    before = pulses(bm, name)
+    why = reveal(f"show:buttonmap/{name}")
+    settle(100)
+    after = pulses(bm, name)
+    # The place may only exist once shown (the Background row): -1 before.
+    got = {"why": why, "pulsed": after > max(before, 0)}
+    if name.startswith("bmMenu"):
+        item = bar_item(bm, name)
+        ok = isinstance(item, QtCore.QObject)
+        got["text"] = str(item.property("text")) if ok else ""
+        got["title"] = str(in_bar(bm, name, "title") or "")
+    return got
 
 
 out: dict = {"errors": []}
@@ -121,21 +162,35 @@ try:
         settle(500)
         out["device"] = str(ev(bm, "_buttonMap.targetName"))
         out["message"] = str(ev(bm, "_messageLine.text"))
-        out["not_editing"] = {n: reveal(f"show:buttonmap/{n}") for n in NAMES}
+        out["not_editing"] = {n: show(bm, n) for n in NAMES}
         ev(bm, "_buttonMap.enterEdit(); 1")
         wait_until(
             lambda: bool(ev(bm, "_buttonMap.editing && !!_buttonMap._ed()")), 5000
         )
         settle(300)
+        # Nothing selected: Properties says so.
+        ev(bm, "_ed().setSelection([]); 1")
+        settle(100)
+        out["props_unselected"] = show(bm, "propsPanel")
+        # Background mode first, so Chips has to come back from it.
+        ev(bm, "_buttonMap.setEditPlane('background'); 1")
+        settle(200)
         out["editing"] = {}
         for n in NAMES:
-            why = reveal(f"show:buttonmap/{n}")
-            settle(100)
-            out["editing"][n] = {
-                "why": why, "pulsed": pulsed(bm, n),
-                "plane": str(ev(bm, "_buttonMap._ed().editPlane")),
-                "layers": bool(ev(bm, LAYERS_SIDE + ".open")),
-            }
+            if n == "propsPanel":
+                # Properties hidden by View > Properties and Layers folded:
+                # Show me brings both out.
+                ev(bm, "(function(){ var e = _ed(); e.setSelection([]);"
+                       " e.addDrawFree('line', e.fxToX(0.6), e.fyToY(0.6),"
+                       " e.fxToX(0.8), e.fyToY(0.8)); return 1 })()")
+                ev(bm, "_buttonMap.propsOn = false; " + LAYERS_SIDE + ".fold(); 1")
+                settle(200)
+            got = show(bm, n)
+            got["plane"] = str(ev(bm, "_buttonMap._ed().editPlane"))
+            got["layers"] = bool(ev(bm, LAYERS_SIDE + ".open"))
+            got["chips"] = bool(ev(bm, "_chipsSide.open"))
+            got["props"] = bool(ev(bm, "_buttonMap.propsShown"))
+            out["editing"][n] = got
         ev(bm, "_buttonMap.discardEdit(); 1")
         settle(200)
 except Exception as exc:  # noqa: BLE001

@@ -3,9 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware, a stick with a map) and
-runs commands from the Command Palette (07 S100, 01 S65): the Button Map's
-unpinned palette choosing View > Properties (while editing) toggles it, and the main
-window's palette runs its pick once. Prints what it saw as JSON.
+runs a command from the main window's Command Palette (01 S65): its pick
+runs once. (The Button Map has no palette, 07 S100.) Prints what it saw as JSON.
 test_palette_runs_commands.py runs it in its own process and user folder.
 
     python test/unit/palette_runs_commands_smoke.py
@@ -135,37 +134,6 @@ def main() -> None:
         QtCore.QCoreApplication.processEvents()
     out["main-run-count"] = ev(root, "Commands.get('main:p1-test').n")
     out["main-closed"] = ev(root, "_commandPalette.opened") is False
-
-    # The Button Map's palette, not pinned: View > Properties.
-    card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-    call(root, "openButtonMapForCard", card)
-    win = wait_for(lambda: call(root, "buttonMapWindow"))
-    assert isinstance(win, QtCore.QObject)
-    wait_for(lambda: ev(win, "mapShown && targetName === 'pJoy Pro'"))
-    # Properties is a tool for editing.
-    call(win, "enterEdit")
-    out["editing"] = bool(wait_for(
-        lambda: ev(win, "editing && _ed() !== null && _ed().seeded && !_baseWanted")))
-    win.requestActivate()
-    wait_for(win.isActive)
-    out["pinned"] = ev(win, "_tools.isPinned('palette')")
-    before = ev(win, "_tools.isOpen('props')")
-    out["props-before"] = before
-    ev(win, "_palette.open()")
-    out["map-opened"] = bool(wait_for(lambda: ev(win, "_palette.opened")))
-    ev(win, "_palette.search('properties')")
-    out["map-lists"] = list(ev(win, "_palette.describe()") or [])
-    ev(win, "_palette.runPick(0)")
-    out["props-toggled"] = bool(wait_for(
-        lambda: ev(win, "_tools.isOpen('props')") is (not before)))
-    out["map-closed"] = bool(wait_for(lambda: ev(win, "!_palette.opened")))
-    # And back again, the same way.
-    ev(win, "_palette.open()")
-    wait_for(lambda: ev(win, "_palette.opened"))
-    ev(win, "_palette.search('properties')")
-    ev(win, "_palette.runPick(0)")
-    out["props-toggled-back"] = bool(wait_for(
-        lambda: ev(win, "_tools.isOpen('props')") is before))
 
     print("RESULT " + json.dumps(out), flush=True)
     smoke_exit(0)

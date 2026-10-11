@@ -317,7 +317,12 @@ ApplicationWindow {
     // What show:buttonmap/<objectName> may point at in the Button Map
     // window (07 S126, D-07-PLANES-FOLLOWUP Q1a); its revealForHelp shows
     // them. Known here so links check without the window open.
-    readonly property var _helpButtonMapTargets: ["bmBgBanner", "bmBgRow"]
+    // One per area (user 2026-10-11): each menu's title in the bar, the two
+    // side panels, Properties, the Background banner and row.
+    readonly property var _helpButtonMapTargets: [
+        "bmMenuFile", "bmMenuEdit", "bmMenuView", "bmMenuInsert", "bmMenuArrange",
+        "bmMenuLeader", "bmMenuFormat", "bmMenuHelp",
+        "chipsSide", "layersSide", "propsPanel", "bmBgBanner", "bmBgRow"]
 
     function _helpFront() {
         if (_root.visibility === Window.Minimized || !_root.visible)

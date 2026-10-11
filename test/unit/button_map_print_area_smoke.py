@@ -4,7 +4,8 @@
 
 """Starts the program off-screen (stand-in hardware), opens the Button Map
 for a stick, sets its print area with Alt+drag, exports, resizes the area
-by its handle and clears it; prints what happened as JSON.
+by its handle, shows, hides, arms and clears it from the View menu (07
+S135); prints what happened as JSON.
 test_button_map_print_area.py runs it in its own process with a fresh
 user folder.
 
@@ -51,6 +52,14 @@ def call(obj: QtCore.QObject, name: str, *args: object) -> object:
         obj, name, QtCore.Q_RETURN_ARG("QVariant"),
         *[QtCore.Q_ARG("QVariant", a) for a in args],
     )
+
+
+# A View menu row by its text.
+_ROW = (
+    "(function(text) { for (var i = 0; i < _viewMenu.count; i++) {"
+    " var it = _viewMenu.itemAt(i); if (it && String(it.text) === text) return it }"
+    " return null })"
+)
 
 
 def main() -> None:
@@ -128,18 +137,20 @@ def main() -> None:
     end = page_at(0.6, 0.7)
     drag(start, end, Mods.AltModifier)
     out["area"] = json.loads(ev("JSON.stringify(_buttonMap.printArea)"))
-    out["shown"] = [ev("_ed().printAreaShown"), ev("_tools.isOpen('printArea')")]
-    # Like every tool: pinned it stays when the map is clicked, unpinned
-    # it hides.
-    ev("_tools.setPinned('printArea', true)")
+    out["shown"] = [ev("_ed().printAreaShown"), ev("_buttonMap.printAreaOn")]
+    # View > Show Print Area (07 S135): a click on the map keeps it; the
+    # menu item hides and shows it.
     ev("_ed().mapPressed()")
     QtTest.QTest.qWait(200)
-    out["pinned-after-map-click"] = ev("_tools.isOpen('printArea')")
-    ev("_tools.setPinned('printArea', false)")
-    ev("_ed().mapPressed()")
-    QtTest.QTest.qWait(200)
-    out["unpinned-after-map-click"] = ev("_tools.isOpen('printArea')")
-    ev("_tools.setOpen('printArea', true)")
+    out["after-map-click"] = ev("_ed().printAreaShown")
+    ev("(function(it) { it.toggle(); it.triggered(); return true })("
+       + _ROW + "('Show Print Area'))")
+    QtTest.QTest.qWait(100)
+    out["menu-hides"] = [ev("_ed().printAreaShown"), ev("_buttonMap.printAreaOn")]
+    ev("(function(it) { it.toggle(); it.triggered(); return true })("
+       + _ROW + "('Show Print Area'))")
+    QtTest.QTest.qWait(100)
+    out["menu-shows"] = [ev("_ed().printAreaShown"), ev("_buttonMap.printAreaOn")]
     # Part of the edit: written by Save (07 Q1, GL-173).
     out["file-before-save"] = store.module_file("pJoy Pro", GUID).is_file()
     ev("_buttonMap.saveEdit(false)")
@@ -157,14 +168,12 @@ def main() -> None:
                 " return {x: r.x + r.w, y: r.y + r.h} })()")
     drag(corner, corner + QtCore.QPoint(60, 40), Mods.NoModifier)
     out["resized"] = json.loads(ev("JSON.stringify(_buttonMap.printArea)"))
-    # Locked: Alt+drag no longer changes it.
-    ev("_tools.setLocked('printArea', true)")
-    QtTest.QTest.qWait(200)
-    drag(start, end + QtCore.QPoint(100, 0), Mods.AltModifier)
-    out["locked"] = json.loads(ev("JSON.stringify(_buttonMap.printArea)"))
-    ev("_tools.setLocked('printArea', false)")
-    # Cleared: the whole page again.
-    ev("_ed().clearPrintArea()")
+    # View > Set Print Area: arms the next drag (07 S135).
+    ev(_ROW + "('Set Print Area').triggered()")
+    out["set-arms"] = ev("_ed().printAreaArm")
+    ev("_ed().printAreaArm = false")
+    # View > Clear Print Area: the whole page again.
+    ev(_ROW + "('Clear Print Area').triggered()")
     QtTest.QTest.qWait(300)
     out["cleared"] = [ev("JSON.stringify(_buttonMap.printArea)")] + export()
 
@@ -189,15 +198,15 @@ def main() -> None:
     ev("_buttonMap.saveEdit(false)")
     doc = json.loads(store.module_file("pJoy Pro", GUID).read_text(encoding="utf-8"))
     out["saved-print"] = (doc.get("ui") or {}).get("print")
-    # Only while editing: its tool open and pinned, the frame shows in Edit,
-    # not on the live map, and again in the next Edit.
-    ev("_tools.setPinned('printArea', true); _tools.setOpen('printArea', true)")
+    # Only while editing: shown (View > Show Print Area), the frame shows in
+    # Edit, not on the live map, and again in the next Edit.
+    ev("_buttonMap.setPrintAreaShown(true)")
     QtTest.QTest.qWait(200)
     out["frame-editing"] = ev("_ed().printAreaShown")
     ev("_buttonMap.discardEdit()")
     QtTest.QTest.qWait(800)
     out["frame-live"] = [ev("_buttonMap.editing"), ev("_ed().printAreaShown"),
-                         ev("_tools.isOpen('printArea')")]
+                         ev(_ROW + "('Show Print Area').enabled")]
     call(win, "enterEdit")
     QtTest.QTest.qWait(800)
     out["frame-edit-again"] = ev("_ed().printAreaShown")

@@ -42,7 +42,7 @@ ColumnLayout {
         }
     }
 
-    // The tab strip, as the Button Map's ToolRow.
+    // The tab strip.
     Rectangle {
         id: _strip
         property int current: 0

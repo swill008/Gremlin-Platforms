@@ -55,9 +55,15 @@ def test_alt_drag_sets_and_shows_the_area(run: dict) -> None:
     assert run["shown"] == [True, True]
 
 
-def test_pinned_stays_unpinned_hides(run: dict) -> None:
-    assert run["pinned-after-map-click"] is True
-    assert run["unpinned-after-map-click"] is False
+def test_show_print_area_hides_and_shows_it(run: dict) -> None:
+    # View > Show Print Area (07 S135); a click on the map keeps it shown.
+    assert run["after-map-click"] is True
+    assert run["menu-hides"] == [False, False]
+    assert run["menu-shows"] == [True, True]
+
+
+def test_set_print_area_arms_the_next_drag(run: dict) -> None:
+    assert run["set-arms"] is True
 
 
 def test_the_area_is_saved_with_the_map(run: dict) -> None:
@@ -74,10 +80,10 @@ def test_an_export_takes_only_the_area(run: dict) -> None:
     assert abs(run["export"][0] - run["area"]["fw"] * 1920) <= 2
 
 
-def test_the_handle_resizes_and_lock_keeps_it(run: dict) -> None:
+def test_the_handle_resizes_it(run: dict) -> None:
+    # No lock once the tool rows are gone (07 S93).
     assert run["resized"]["fw"] > run["area"]["fw"]
     assert run["resized"]["fh"] > run["area"]["fh"]
-    assert run["locked"] == run["resized"]
 
 
 def test_the_frame_shows_only_while_editing(run: dict) -> None:

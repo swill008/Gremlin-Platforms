@@ -778,3 +778,33 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | SP-T: side-panel e2e (13) + tool-row and Layers smokes updated (80 pass) | agent tests | rough guess 15–30 min | 11 min | 14:00–14:11 |
 | 2026-10-11 | TRACE-TESTER: Input Tester stopped logging after a refused 1 MB rotation (real bug, fixed; test fails before) | fix | 3–8 min (table) | 1 min | 14:11–14:12 |
 | 2026-10-11 | Lead: restoreSides before the first Edit (timing gap); map lines | fix | 3–8 min (table) | 3 min | 14:12–14:15 |
+| 2026-10-11 | Side panels full run (seed 128423): 3 real failures fixed (tooltip delay, panelWidth binding, a test asking Layers to float), 2 load flakes; commit 909bbba6; push | test | 5–6 min (table) | 6 min + 3 min fixes | 14:13–14:22 |
+| 2026-10-11 | Side panels end to end: user go 13:56 → commit 14:22 | feature batch | rough guess 25–40 min (no timing data) | 26 min | 13:56–14:22 |
+| 2026-10-11 | LOOK-DOC: Help for the folded bar, arrow, slide and the Chips filter row (57 Help tests) | docs | 3–8 min (table) | 1 min | 14:29–14:30 |
+| 2026-10-11 | CHIPSROW: Chips filter on its own row (S132; width tests fail before, pass after) | fix | 3–8 min (table) | 4 min | 14:29–14:33 |
+| 2026-10-11 | Lead: Chips minimum 180→210 so Chip only is never cut; test fails at 180, passes at 210 | fix | 3–8 min (table) | 3 min | 14:36–14:39 |
+| 2026-10-11 | CI on 909bbba6 (side panels + Input Tester log fix): green | ci | ~10 min (table) | about 14 min | 14:22–14:36 |
+| 2026-10-11 | LOOK: folded bar like the old side row (tab at the top: name, pin; arrow; spine shadow; hover; 120 ms slide); 11 of 15 tests fail on the old panel | feature | rough guess 10–20 min | 10 min | 14:29–14:39 |
+| 2026-10-11 | SC-LIST: ShortcutList.qml (read-only key list grouped by menu, Mouse rows, search; nothing run) | feature | 3–8 min (table) | about 2 min (agent's clock) | 14:50–14:51 |
+| 2026-10-11 | SC-KEYS: Command Palette removed; Shortcuts list in its tool pane; 22 keys wired with menu hints; Zoom In/Out, Select All (nothing run) | feature | 3–8 min (table) | 4 min | 14:50–14:54 |
+| 2026-10-11 | WINS: ButtonMapOptionsWindow.qml + ShortcutsWindow.qml (nothing run) | feature | rough guess 15–30 min | about 2 min (agent's clock) | 15:01 |
+| 2026-10-11 | PSTORE: side-panel state, props split, print-area-shown in ButtonMapOptions (nothing run) | feature | rough guess 15–30 min | 2 min | 15:00–15:02 |
+| 2026-10-11 | CMD: rig_commands.js (Insert/Arrange/Format list, enabled, run; nothing run) | feature | rough guess 15–30 min | 4 min | 15:00–15:04 |
+| 2026-10-11 | DOC: Button Map Help rewritten for the menu bar, windows, no tool rows; glossary rows (nothing run) | docs | 3–8 min (table) | 4 min | 15:01–15:05 |
+| 2026-10-11 | CMD follow-up: 20 more commands (Align, Distribute, Crop, Edit Points, Snap Points, table deletes, callout ends) — 100 in all | feature | 3–8 min (table) | 1 min | 15:04–15:05 |
+| 2026-10-11 | MENU: menu bar per S135 with Insert/Arrange/Format from rig_commands, Cut, tool rows removed, Properties under Layers, Options/Shortcuts windows, panel store (nothing run) | feature | rough guess up to 40 min | 5 min (agent's clock; checked) | 15:01–15:06 |
+| 2026-10-11 | Lead: Leader menu (rig_commands list + window menu + separators), spec S134/S135, Help | fix | 3–8 min (table) | 6 min | 15:10–15:16 |
+| 2026-10-11 | DRAWER: folded side panel as a drawer left ajar (7 dp edge, hover peek with name + pin, slide; nothing run) | feature | rough guess 10–20 min | 4 min | 15:04–15:08 |
+| 2026-10-11 | Lead: menu order pass (Insert/Arrange/Format groups and separators, tables to Format, Text › and Picture…), sub separators, fitSides width, spec + Help | fix | no timing data yet | 8 min | 15:16–15:24 |
+| 2026-10-11 | Lead: menu follow-ups (Properties shown kept, Reset View label, S93/S99/S135 wording, decision row) | fix | 3–8 min (table) | 4 min | 15:26–15:30 |
+| 2026-10-11 | Lead: Background menu moved into Edit › Background › (window, Help, spec S39/S113/S135, glossary) | fix | 3–8 min (table) | 4 min | 15:31–15:35 |
+| 2026-10-11 | Lead: View menu right after Edit (window, Help list, spec S135) | fix | 3–8 min (table) | 3 min | 15:36–15:39 |
+| 2026-10-11 | Lead: Keyboard Shortcuts window pin; unpinned closes on a click elsewhere; pin kept; spec S100 | fix | 3–8 min (table) | 4 min | 15:40–15:44 |
+| 2026-10-11 | SHOWME: one Show me per group (8 menus, Chips, Layers, Properties) + tests (6 of 10 fail before, 10 pass) | feature | rough guess 15–30 min | 6 min | 15:20–15:26 |
+| 2026-10-11 | SPEC-MAP: page 07 up to date for the menu-bar batch (gaps G33–G38 found) | docs | 3–8 min (table) | 7 min | 15:20–15:27 |
+| 2026-10-11 | Lead: SPEC-MAP findings — print-area lock leftovers removed, Mouse "Wheel", Reset Panels keeps print area + Shortcuts pin, Crop/ID Column ticks, S134/S99 wording | fix | 3–8 min (table) | 8 min | 15:28–15:36 |
+| 2026-10-11 | SHOWME follow-up: 4 help test failures fixed (65/65 help tests) | fix | 3–8 min (table) | 3 min | 15:26–15:29 |
+| 2026-10-11 | T-PANELS: drawer tests (16; 11 fail on HEAD), window/e2e tests on the panel store (28), tool-row tests retired | agent tests | rough guess 15–30 min | 11 min | 15:20–15:31 |
+| 2026-10-11 | T-MENUS: menu bar, command menus, keys, Options and Keyboard Shortcuts window tests (43; found 4 program bugs) | agent tests | rough guess 15–30 min | 15 min | 15:21–15:36 |
+| 2026-10-11 | Lead: T-MENUS's 4 bugs (print area while editing, keys run nothing from the child windows, unpinned Shortcuts closes, Shortcuts lists greyed menus); key guard probed off-screen; tool-row files deleted; map G34–G37 closed | fix | 3–8 min (table) | 9 min | 15:36–15:45 |
+| 2026-10-11 | Full run + lint (menu-bar batch): 4 Button Map tests failed (3 read the old source layout, 1 clicked during the drawer's 120 ms slide); fixed, 34 pass targeted | test | 5–6 min (table) | 6 min + 4 min fixes | 15:46–15:56 |

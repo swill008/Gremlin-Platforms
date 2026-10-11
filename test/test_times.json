@@ -121,7 +121,6 @@
  "test/unit/test_button_map_save_keeps.py": 0.1,
  "test/unit/test_button_map_shared_pieces.py": 12.3,
  "test/unit/test_button_map_templates.py": 0.0,
- "test/unit/test_button_map_tool_row.py": 12.0,
  "test/unit/test_button_map_window.py": 12.7,
  "test/unit/test_calibration_redo_key.py": 1.5,
  "test/unit/test_calibration_shared_pieces.py": 4.6,

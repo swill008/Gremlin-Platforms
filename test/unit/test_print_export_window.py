@@ -184,7 +184,7 @@ def test_dragging_and_zooming_the_preview_moves_the_area(
     zout = result["zoomed-out"]
     assert abs(zout["fw"] - 0.4 / 0.85) < 0.003
     assert abs(zout["fw"] / zout["fh"] - 1) < 0.001
-    assert result["locked-unchanged"] is True
+    # No lock once the tool rows are gone (07 S93).
 
 
 def test_freeform_is_no_paper(run: dict) -> None:

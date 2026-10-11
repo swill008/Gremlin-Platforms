@@ -10,7 +10,7 @@ background (S11), Background menu (S39), pool and filter (S45), Chip only
 (S47), free leader ends (S50), Undo steps (S56), Mirror pictures (S59), Fit
 to Photo Frame (S60), Reset Layout (S61), drop outside Edit (S63), Follow
 the Program (S71), Labels Mode forgotten (S74), export cap (S84), zoom range
-(S94) and the Command Palette (S100). Prints one "RESULT {json}" line; a
+(S94) and no Command Palette (S100). Prints one "RESULT {json}" line; a
 step that raised is {"error": ...} under its own key. test_final_07.py runs
 it.
 
@@ -448,7 +448,8 @@ def main() -> None:
     # --- S61: Reset Layout ---------------------------------------------------
     def reset() -> dict:
         count = w.ev("_ed().nodes.length")
-        w.ev(f"{_ROW}(_fileMenu, 'Reset Layout').triggered()")
+        # Edit › Reset Layout (07 S135).
+        w.ev(f"{_ROW}(_editMenu, 'Reset Layout').triggered()")
 
         # The shared question (01 S140), on the window's root item.
         def asking() -> bool:
@@ -495,17 +496,18 @@ def main() -> None:
 
     step("undo-steps", undo_steps)
 
-    # --- S100: Command Palette -----------------------------------------------
-    def palette() -> list:
-        w.ev("_palette.open()")
-        wait_for(lambda: w.ev("_palette.opened"))
-        texts = w.js("Commands.search('', ['buttonmap']).map(function(c) {"
-                     " return c.text })") or []
-        w.ev("_palette.close()")
-        wait_for(lambda: not w.ev("_palette.opened"))
-        return texts
+    # --- S100: no Command Palette; the menus hold every command -------------
+    def no_palette() -> dict:
+        texts = w.js(
+            "(function() { var out = []; function walk(m) { if (!m) return;"
+            " for (var i = 0; i < m.count; i++) { var it = m.itemAt(i);"
+            " if (!it) continue; if (it.subMenu) { walk(it.subMenu); continue }"
+            " if (it.text) out.push(String(it.text)) } }"
+            " for (var j = 0; j < _menuBar.count; j++) walk(_menuBar.menuAt(j));"
+            " return out })()") or []
+        return {"palette": w.ev("typeof _palette"), "texts": texts}
 
-    step("palette", palette)
+    step("palette", no_palette)
 
     # --- S84: export cap; S94: zoom range ------------------------------------
     def export_cap() -> dict:
@@ -531,7 +533,7 @@ def main() -> None:
         hints = w.js(
             f"[{_ROW}(_viewMenu, 'Zoom to Fit Page').hint,"
             f" {_ROW}(_viewMenu, 'Zoom to Selection').hint,"
-            f" {_ROW}(_viewMenu, 'Reset View (View 100%)').hint]"
+            f" {_ROW}(_viewMenu, 'Reset View').hint]"
         )
         return {"most": round(float(most), 4), "least": round(float(least), 4),
                 "hints": hints}

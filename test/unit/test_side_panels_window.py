@@ -2,21 +2,25 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's side panels in the window (07 S99, S128-S131,
-D-07-SIDE-PANELS), checked in the running program off-screen with mouse
-clicks (side_panels_window_smoke.py, its own process and user folder).
+"""The Button Map's side panels in the window (07 S99, S128-S131, S135,
+D-07-SIDE-PANELS, D-07-SIDE-DRAWER), checked in the running program
+off-screen with mouse clicks (side_panels_window_smoke.py, its own process
+and user folder).
 
-- There are no left or right tool rows; Chips and Layers aren't tools on the
-  top and bottom rows.
-- Outside Edit the strips are hidden; editing, Chips starts pinned and out,
-  Layers folded.
+- There are no tool rows at all.
+- Outside Edit the drawers are hidden; editing, Chips starts pinned and out,
+  Layers folded to its ajar edge (7 px at 100%) on the window's right edge.
 - Pinned, a panel narrows the map; unpinned, it is drawn over the map, and a
   map click or the other strip's click folds it.
 - Background mode folds Chips and brings it back.
 - A narrow window folds Chips first, then Layers, and brings them back; a
   user's own choice in between stays.
-- Width, pin and open are kept for the next window; Reset Tool Rows puts
-  them back.
+- Properties sits under Layers while something is selected, with a divider
+  between them; the divider's share and View > Properties (F4) are kept.
+- Width, pin and open are kept in the Button Map settings (ButtonMapOptions)
+  for the next window; View > Reset Panels puts them, the divider and
+  Properties back.
+- The status line is one slim row.
 """
 
 from __future__ import annotations
@@ -31,7 +35,8 @@ import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = "side_panels_window_smoke.py"
-STRIP = 22
+# The folded drawer's ajar edge at 100% (07 S129, D-07-SIDE-DRAWER).
+STRIP = 7
 
 
 @pytest.fixture(scope="module")
@@ -61,11 +66,18 @@ def _map_fits(s: dict) -> None:
     assert s["map"] == s["row"] - s["leftSlot"] - s["rightSlot"] - 20
 
 
-def test_no_left_or_right_tool_rows(run: dict) -> None:
-    assert run["side-rows"] == [False, False, True, True]
-    tools = run["editing"]["tools"]
-    assert "chips" not in tools and "layers" not in tools
-    assert "props" in tools
+def test_no_tool_rows(run: dict) -> None:
+    # Left, right, top, bottom: none left (D-07-MENUBAR).
+    assert run["tool-rows"] == [False, False, False, False]
+
+
+def test_folded_layers_is_ajar_on_the_window_edge(run: dict) -> None:
+    out_of_edge, edge = run["layers-edge"]
+    assert out_of_edge == edge == STRIP
+
+
+def test_status_line_is_one_slim_row(run: dict) -> None:
+    assert run["status-height"] <= 24
 
 
 def test_only_while_editing(run: dict) -> None:
@@ -95,12 +107,13 @@ def test_unpinned_is_over_the_map_and_folds_on_a_map_click(run: dict) -> None:
 def test_pinned_narrows_the_map(run: dict) -> None:
     unpinned, pinned = run["chips-unpinned"], run["chips-pinned"]
     assert _open(unpinned, "chips") == (True, False)
-    assert pinned["map"] == unpinned["map"] - 260
+    # Pinned it takes its whole width; unpinned only its ajar edge.
+    assert pinned["map"] == unpinned["map"] - (260 - STRIP)
     _map_fits(unpinned)
     _map_fits(pinned)
     both = run["both-pinned"]
     assert _open(both, "layers") == (True, True)
-    assert both["map"] == pinned["map"] - 300
+    assert both["map"] == pinned["map"] - (300 - STRIP)
     _map_fits(both)
 
 
@@ -143,14 +156,50 @@ def test_a_users_own_choice_stays_when_there_is_room(run: dict) -> None:
     assert _open(kept, "layers") == (True, True)
 
 
-def test_kept_for_the_next_window_and_reset(run: dict) -> None:
+def test_properties_under_layers_while_something_is_selected(run: dict) -> None:
+    none, sel = run["props-none"]["props"], run["props-selected"]["props"]
+    assert none["on"] is True and none["shown"] is False
+    assert none["panel"] is False and none["divider"] is False
+    assert none["layersH"] == none["bodyH"]
+    assert sel["shown"] is True and sel["panel"] is True and sel["divider"] is True
+    # Layers takes its share above the divider (0.6 at first).
+    assert sel["split"] == 0.6
+    assert abs(sel["layersH"] - sel["bodyH"] * 0.6) <= 6
+
+
+def test_the_divider_drag_is_kept(run: dict) -> None:
+    dragged = run["props-dragged"]["props"]
+    assert abs(dragged["split"] - 0.7) <= 0.02
+    assert dragged["savedSplit"] == dragged["split"]
+    assert dragged["layersH"] > run["props-selected"]["props"]["layersH"]
+    again = run["reopened"]["props"]
+    assert again["split"] == dragged["split"]
+
+
+def test_f4_hides_properties_and_it_is_kept(run: dict) -> None:
+    f4 = run["props-f4"]["props"]
+    assert f4["on"] is False and f4["shown"] is False and f4["panel"] is False
+    assert f4["savedShown"] is False
+    assert f4["layersH"] == f4["bodyH"]
+    # The next window: still hidden.
+    assert run["reopened"]["props"]["on"] is False
+
+
+def test_kept_for_the_next_window_and_reset_panels(run: dict) -> None:
     again = run["reopened"]
     assert again["layers"]["width"] == 333
     assert _open(again, "layers") == (True, True)
     assert _open(again, "chips") == (True, False)
     assert again["saved"]["layers"] == {"width": 333, "pinned": True, "open": True}
+    # View > Reset Panels, the menu item.
+    assert run["reset-items"] == ["Reset Panels"]
     reset = run["reset"]
     assert _open(reset, "chips") == (True, True)
     assert _open(reset, "layers") == (False, False)
     assert reset["layers"]["width"] == 300
+    assert reset["saved"]["chips"] == {"width": 260, "pinned": True, "open": True}
+    assert reset["saved"]["layers"] == {"width": 300, "pinned": False, "open": False}
+    # The divider and Properties as they start.
+    assert reset["props"]["split"] == reset["props"]["savedSplit"] == 0.6
+    assert reset["props"]["on"] is True and reset["props"]["savedShown"] is True
     _map_fits(reset)

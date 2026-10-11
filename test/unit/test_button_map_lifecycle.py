@@ -37,10 +37,11 @@ def test_button_map_leaves_nothing_behind() -> None:
         for line in lines
         if line.startswith("MEM ")
     }
-    # The palette lists the window's menu commands only while it is open.
-    assert results["palette"] == "True"
-    assert int(results["during"]) > 10
-    assert results["after-palette"] == "0"
+    # No Command Palette (07 S100): no commands in the shared list; its own
+    # small windows open, and close with it.
+    assert results["during"] == "0"
+    assert results["shortcuts"] == "True"
+    assert results["options"] == "True"
     for cycle in range(3):
         assert results[f"opened{cycle}"] == "True"
         assert results[f"gone{cycle}"] == "True"

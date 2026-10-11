@@ -26,7 +26,7 @@ Item {
         return ed.printAreaRect()
     }
     readonly property bool shown: !!ed && ed.printAreaShown && !ed.exporting
-    readonly property bool canEdit: shown && !!ed && ed.interactive && !ed.printAreaLocked
+    readonly property bool canEdit: shown && !!ed && ed.interactive
 
     // Outside the area: dimmed.
     Item {

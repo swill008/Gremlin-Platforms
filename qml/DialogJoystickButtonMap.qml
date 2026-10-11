@@ -12,6 +12,7 @@ import Gremlin.Style
 import Gremlin.Menus
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
+import "rig_commands.js" as RigCommands
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -134,10 +135,9 @@ ApplicationWindow {
 
     property int _nameTick: 0
     property bool editing: false
-    // Properties, Command Palette, Print Area and Options open from the tool
-    // rows (_tools): pinned they stay open when the map is clicked, locked
-    // they can't be moved or resized. Chips and Layers are the side panels
-    // (_chipsSide, _layersSide; 07 S128-S131).
+    // No tool rows (07 S99): the menu bar, Chips on the left and the right
+    // side panel (Layers, Properties under it). Button Map Options and
+    // Keyboard Shortcuts are small windows of their own (S98, S100).
     onEditingChanged: {
         poolDrag = false
         Qt.callLater(fitSides)
@@ -922,7 +922,10 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        // After the tool dock has loaded the kept layout.
+        // Insert, Arrange and Format from the command list (07 S134).
+        buildCommandMenus()
+        // The kept side panels, divider and print area frame (07 S99).
+        readPanelStore()
         Qt.callLater(restoreSides)
         profileModes = _hw.profileModes()
         liveNodes = []
@@ -1198,8 +1201,8 @@ ApplicationWindow {
     property bool layersSqueezed: false
     property bool chipsBgFolded: false
 
-    // Puts the side panels as they were kept (at start and after Reset Tool
-    // Rows).
+    // Puts the side panels as they were kept (at start and after Reset
+    // Panels).
     // Set once the kept side-panel state is on the panels (restoreSides runs
     // a moment after the window opens; an Edit started before that runs it
     // first, so a panel's built-in width is never saved over the kept one).
@@ -1211,11 +1214,13 @@ ApplicationWindow {
         chipsBgFolded = false
         var sides = [[_chipsSide, "chips"], [_layersSide, "layers"]]
         for (var i = 0; i < sides.length; i++) {
-            var st = _tools.sideState(sides[i][1])
-            sides[i][0].panelWidth = st.width
-            sides[i][0].pinned = st.pinned
-            sides[i][0].open = st.open
+            var st = _opts.sidePanelState(sides[i][1]) || {}
+            // Kept in logical px at 100 % UI scale.
+            sides[i][0].panelWidth = Number(st.width) * Style.dp(1)
+            sides[i][0].pinned = !!st.pinned
+            sides[i][0].open = !!st.open
         }
+        readPanelStore()
         if (bgMode)
             bgFoldChips(true)
         Qt.callLater(fitSides)
@@ -1230,7 +1235,67 @@ ApplicationWindow {
         } else {
             layersSqueezed = false
         }
-        _tools.setSideState(id, { width: panel.panelWidth, pinned: panel.pinned, open: panel.open })
+        _opts.setSidePanelState(id, { width: panel.panelWidth / Style.dp(1), pinned: panel.pinned, open: panel.open })
+    }
+
+    // The Layers/Properties divider's share (Layers' part) and the print
+    // area's frame, kept in the Button Map settings (07 S99). The store's
+    // getters are slots: read again whenever it says something changed.
+    property real propsSplit: 0.6
+    property bool printAreaOn: false
+    function readPanelStore() {
+        propsSplit = Number(_opts.propsSplit()) || 0.6
+        printAreaOn = !!_opts.printAreaShown()
+        propsOn = !!_opts.propsShown()
+    }
+    Connections {
+        target: _opts
+        function onPanelsChanged() { _buttonMap.readPanelStore() }
+    }
+
+    // View > Show Print Area: the print area's frame on the map.
+    function setPrintAreaShown(on) {
+        printAreaOn = !!on
+        _opts.setPrintAreaShown(!!on)
+    }
+
+    // View > Reset Panels (07 S99): the side panels and the divider as
+    // they first were.
+    function resetPanels() {
+        _opts.resetPanels()
+        propsOn = true
+        restoreSides()
+    }
+
+    // Properties under Layers (07 S135): shown while something is selected,
+    // unless View > Properties (F4) hid it.
+    // Kept between sessions (07 S99, user 2026-10-11); read from and saved
+    // to the panel store.
+    property bool propsOn: true
+    onPropsOnChanged: _opts.setPropsShown(propsOn)
+    readonly property bool propsHasSelection: {
+        var ed = _ed()
+        return editing && !!ed && ((ed.selectedIds || []).length > 0 || ed.selectedId !== "")
+    }
+    readonly property bool propsShown: propsOn && propsHasSelection
+    function toggleProps() {
+        if (!_layersSide.open) {
+            // Properties lives in the right panel: bring it out with it.
+            propsOn = true
+            _layersSide.unfold()
+            return
+        }
+        propsOn = !propsOn
+    }
+
+    // Edit > Cut (07 S135): Copy then Delete; Copy is no undo step, so the
+    // Delete is the one step.
+    function cutNow() {
+        var e = _ed()
+        if (!editing || !e || e.selectedId === "")
+            return
+        e.copySelection()
+        deleteOrBreak()
     }
 
     // Background mode folds Chips and brings it back after (S130).
@@ -1269,13 +1334,13 @@ ApplicationWindow {
             _layersSide.open = false
         }
         if (layersSqueezed && !_layersSide.open
-                && room - _chipsSide.takenWidth - (strip + _layersSide.shownWidth) >= mapMinWidth) {
+                && room - _chipsSide.takenWidth - _layersSide.shownWidth >= mapMinWidth) {
             layersSqueezed = false
             _layersSide.pinned = true
             _layersSide.open = true
         }
         if (chipsSqueezed && !layersSqueezed && !_chipsSide.open && !bgMode
-                && room - (strip + _chipsSide.shownWidth) - _layersSide.takenWidth >= mapMinWidth) {
+                && room - _chipsSide.shownWidth - _layersSide.takenWidth >= mapMinWidth) {
             chipsSqueezed = false
             _chipsSide.pinned = true
             _chipsSide.open = true
@@ -1305,12 +1370,37 @@ ApplicationWindow {
             e.editPlane = next
     }
 
+    // The menus Help's Show me › points at, by objectName: their title in
+    // the menu bar is pulsed. Insert, Arrange and Leader work only while
+    // editing.
+    readonly property var _helpMenus: ({
+        bmMenuFile: _fileMenu, bmMenuEdit: _editMenu, bmMenuView: _viewMenu,
+        bmMenuInsert: _insertMenu, bmMenuArrange: _arrangeMenu,
+        bmMenuLeader: _leaderMenu, bmMenuFormat: _formatMenu, bmMenuHelp: _helpMenu
+    })
+    readonly property var _helpEditOnlyMenus: ["bmMenuInsert", "bmMenuArrange", "bmMenuLeader"]
+
+    // A menu's title in the menu bar.
+    function menuBarItem(name) {
+        var menu = _helpMenus[name]
+        for (var i = 0; menu && i < _menuBar.count; ++i)
+            if (_menuBar.menuAt(i) === menu)
+                return _menuBar.itemAt(i)
+        return null
+    }
+
     // Help's Show me › into this window (07 S126, D-07-PLANES-FOLLOWUP
     // Q1a): brings the window forward (on the first device when none is
-    // shown), shows the place named (bmBgBanner in Background mode, bmBgRow
-    // in Layers in Foreground mode) and hands it to pulse.
+    // shown), shows the place named and hands it to pulse: a menu's title
+    // in the bar (bmMenu…), the Chips or Layers side panel brought out
+    // (chipsSide, layersSide), Properties under Layers (propsPanel), the
+    // banner in Background mode (bmBgBanner) or the Background row in
+    // Layers in Foreground mode (bmBgRow).
     // Returns "" or why not, which the message line says too.
     function revealForHelp(name, pulse) {
+        var menu = _helpMenus.hasOwnProperty(name)
+        if (!menu && ["chipsSide", "layersSide", "propsPanel", "bmBgBanner", "bmBgRow"].indexOf(name) < 0)
+            return "No such place in the Button Map: " + name
         show()
         raise()
         requestActivate()
@@ -1319,24 +1409,39 @@ ApplicationWindow {
             openForDevice(first.name, first.guid)
         }
         var why = ""
-        if (!targetName.length)
+        var needsEdit = !menu || _helpEditOnlyMenus.indexOf(name) >= 0
+        if (needsEdit && !targetName.length)
             why = "Choose a device from the File menu first"
-        else if (!editing || !_ed())
+        else if (needsEdit && (!editing || !_ed()))
             why = "Edit the map to see this"
+        else if (name === "propsPanel" && !propsHasSelection)
+            why = "Select an item to see Properties"
         if (why !== "") {
             say(why)
             return why
         }
         var item = null
-        if (name === "bmBgBanner") {
+        if (menu) {
+            item = menuBarItem(name)
+        } else if (name === "chipsSide") {
+            // Chips folds by itself in Background mode (07 S130).
+            setEditPlane("foreground")
+            _chipsSide.unfold()
+            item = _chipsSide
+        } else if (name === "layersSide") {
+            _layersSide.unfold()
+            item = _layersSide
+        } else if (name === "propsPanel") {
+            propsOn = true
+            _layersSide.unfold()
+            item = _propsPanel
+        } else if (name === "bmBgBanner") {
             setEditPlane("background")
             item = _bgBanner
         } else if (name === "bmBgRow") {
             setEditPlane("foreground")
             _layersSide.unfold()
             item = _layersPanel.bgRowPart("bmBgRow")
-        } else {
-            return "No such place in the Button Map: " + name
         }
         if (!item || !item.visible)
             return "Can't show this now"
@@ -1969,8 +2074,7 @@ ApplicationWindow {
     }
 
     // Ctrl+F and View > Search layers… (07 S102): to the Layers search box,
-    // opening Layers first. Later, so a just-opened pane is shown and the
-    // palette that ran it has given focus back.
+    // opening Layers first. Later, so a just-opened pane is shown.
     function searchLayers() {
         if (!editing)
             return
@@ -1982,73 +2086,260 @@ ApplicationWindow {
         applySelected()
     }
 
-    // The command palette (Ctrl+K): this window's menu commands. They are
-    // read from the menu bar as it opens and taken away as it closes, so the
-    // shared command list never keeps hold of this window.
-    CommandPalette {
-        id: _palette
-        owners: ["buttonmap"]
-        // Joined to its tab on the tool row (not dimming the window, so the
-        // two read as one piece).
-        readonly property var tab: {
-            _tools.rev
-            _tools.layoutRev
-            return opened ? _tools.tabRect("palette", _buttonMap.contentItem) : null
+    // A key works only while nothing is being typed (07 S133).
+
+    // Only while this window has the focus (not while Keyboard Shortcuts
+    // or Options does) and nothing is being typed.
+    function keyOk(on) {
+        return !!on && keysHere && !typingNow()
+    }
+    // False while Keyboard Shortcuts or Options holds the keyboard. Qt
+    // reports one `active` for this window and its transient children, so
+    // the child's own focus decides (checked off-screen, 2026-10-11).
+    readonly property bool keysHere: !(_shortcutsWin.visible && _shortcutsWin.contentItem.activeFocus)
+                                     && !(_optionsWin.visible && _optionsWin.contentItem.activeFocus)
+    // Back in the Button Map (it holds the keyboard again): an unpinned
+    // Keyboard Shortcuts window closes (07 S100; its own focus-out isn't
+    // reported while it is a transient child of this window).
+    onKeysHereChanged: {
+        if (keysHere && _shortcutsWin.visible && !_shortcutsWin.pinned)
+            _shortcutsWin.close()
+    }
+
+    // Help > Keyboard Shortcuts… and Ctrl+K (07 S100): its own window.
+    function openShortcuts() {
+        _shortcutsWin.openFor(_buttonMap)
+    }
+
+    // Edit > Button Map Options… and Ctrl+, (07 S98): its own window.
+    function openOptions() {
+        _optionsWin.openFor(_buttonMap)
+    }
+
+    // Insert, Arrange and Format (07 S134): the commands from
+    // rig_commands.js, the same code the right-click menus run. cmdRev
+    // goes up as a menu opens, so ticks read the selection again.
+    property int cmdRev: 0
+    function cmdOk(id) {
+        var e = _ed()
+        return editing && !!e && !!RigCommands.enabled(e, id)
+    }
+    function runCmd(id) {
+        var e = _ed()
+        if (editing && e && RigCommands.enabled(e, id))
+            RigCommands.run(e, id)
+    }
+
+    // The keys as Shortcut sequences: Return is both Enter keys; a key that
+    // needs Shift for its sign also comes as the shifted sign.
+    function keySequences(key) {
+        var k = String(key)
+        if (k === "Return" || k === "Enter")
+            return ["Return", "Enter"]
+        if (k === "Ctrl+Shift+]")
+            return [k, "Ctrl+}"]
+        if (k === "Ctrl+Shift+[")
+            return [k, "Ctrl+{"]
+        return [k]
+    }
+
+    // A command key from the list may run now: its command can be used,
+    // nothing is being typed, and Return is not finishing a path.
+    function cmdKeyOk(id, key) {
+        if (!keyOk(cmdOk(id)))
+            return false
+        if (key === "Return" || key === "Enter") {
+            var e = _ed()
+            if (e && e.drawTool && e.drawTool.length)
+                return false
         }
-        readonly property string side: { _tools.rev; return _tools.sideOf("palette") }
-        // Floating: where it was let go over the map (it has no title bar:
-        // its tab's Dock puts it back).
-        readonly property bool floating: { _tools.rev; return _tools.isFloating("palette") }
-        readonly property var floatAt: {
-            _tools.rev
-            var p = _tools.floatPos("palette")
-            return p.x >= 0 ? _mapHost.mapToItem(_buttonMap.contentItem, p.x, p.y) : null
+        return true
+    }
+
+    // Menu rows made from rig_commands.js: { id, item }.
+    property var _cmdRows: []
+
+    // Fills Insert, Arrange and Format from RigCommands.list() once (07
+    // S134): a submenu per `sub` at its first item, in list order, ahead
+    // of the menu's own rows; and a Shortcut for each key, except hintOnly
+    // ones (the window has their Shortcut already).
+    function buildCommandMenus() {
+        if (_cmdRows.length)
+            return
+        var menus = { "Insert": _insertMenu, "Arrange": _arrangeMenu, "Leader": _leaderMenu, "Format": _formatMenu }
+        var at = { "Insert": 0, "Arrange": 0, "Leader": 0, "Format": 0 }
+        var subs = {}
+        var rows = []
+        var entries = RigCommands.list(_ed()) || []
+        for (var i = 0; i < entries.length; i++) {
+            var c = entries[i]
+            var menu = menus[c.menu]
+            if (!menu)
+                continue
+            // A "-" row is a separator between a menu's groups.
+            if (c.id === "-") {
+                if (c.sub && c.sub.length) {
+                    var inSub = subs[c.menu + "/" + c.sub]
+                    if (inSub)
+                        inSub.addItem(_cmdSepComp.createObject(inSub.contentItem))
+                } else {
+                    menu.insertItem(at[c.menu]++, _cmdSepComp.createObject(menu.contentItem))
+                }
+                continue
+            }
+            var host = menu
+            if (c.sub && c.sub.length) {
+                var subKey = c.menu + "/" + c.sub
+                if (!subs[subKey]) {
+                    subs[subKey] = _cmdMenuComp.createObject(menu, { title: c.sub })
+                    menu.insertMenu(at[c.menu]++, subs[subKey])
+                }
+                host = subs[subKey]
+            }
+            // Made inside the menu's list (a visual item), so Qt doesn't warn
+            // "not placed in the graphics scene" before insertItem places it.
+            var item = _cmdItemComp.createObject(host.contentItem, { cmdId: c.id, text: c.text, hint: c.key || "" })
+            if (host === menu)
+                menu.insertItem(at[c.menu]++, item)
+            else
+                host.addItem(item)
+            rows.push({ id: c.id, item: item })
+            if (c.key && c.key.length && !c.hintOnly)
+                _cmdKeyComp.createObject(_buttonMap, { cmdId: c.id, cmdKey: c.key, sequences: keySequences(c.key) })
         }
-        modal: false
-        // On the map side of its tab: under a top-row tab, over a bottom-row
-        // one, beside a side-row one; kept in the window.
-        x: {
-            var w = parent ? parent.width : 0
-            if (floating)
-                return floatAt ? Math.max(0, Math.min(floatAt.x, w - width)) : Math.round((w - width) / 2)
-            if (!tab)
-                return Math.round((w - width) / 2)
-            if (side === "left")
-                return tab.x + tab.w
-            if (side === "right")
-                return tab.x - width
-            return Math.max(Style.dp(8), Math.min(tab.x, w - width - Style.dp(8)))
-        }
-        y: {
-            var h = parent ? parent.height : 0
-            if (floating)
-                return floatAt ? Math.max(0, Math.min(floatAt.y, h - height)) : Math.round(h * 0.12)
-            if (!tab)
-                return Math.round(h * 0.12)
-            if (side === "top")
-                return tab.y + tab.h
-            if (side === "bottom")
-                return tab.y - height
-            return Math.max(Style.dp(8), Math.min(tab.y, h - height - Style.dp(8)))
-        }
-        Component.onCompleted: _tools.setPaneColor("palette", Style.menuBg)
-        beforeOpen: function() {
-            Commands.removeOwner("buttonmap")
-            Commands.defineFromMenuBar(_menuBar, "buttonmap")
-        }
-        // Its tool in the tool row: pinned, it stays open after a command.
-        keepOpen: _tools.isPinned("palette")
-        onOpened: {
-            _tools.setOpen("palette", true)
-            _tools.setPaneShown("palette", true)
-        }
-        onClosed: {
-            Commands.removeOwner("buttonmap")
-            _tools.setPaneShown("palette", false)
-            _tools.setOpen("palette", false)
+        _cmdRows = rows
+    }
+
+    // The rows' texts again (the rotate step follows Button Map Options).
+    function refreshCommandTexts() {
+        cmdRev++
+        var entries = RigCommands.list(_ed()) || []
+        var byId = {}
+        for (var i = 0; i < entries.length; i++)
+            byId[entries[i].id] = entries[i]
+        for (var j = 0; j < _cmdRows.length; j++) {
+            var c = byId[_cmdRows[j].id]
+            if (c)
+                _cmdRows[j].item.text = c.text
         }
     }
-    Component.onDestruction: Commands.removeOwner("buttonmap")
+
+    Component {
+        id: _cmdItemComp
+        ThemedMenuItem {
+            property string cmdId: ""
+            enabled: _buttonMap.cmdOk(cmdId)
+            // On/off commands (Crop, ID Column) show a tick (07 S134).
+            checkable: !!RigCommands.CHECKABLE[cmdId]
+            checked: { _buttonMap.cmdRev; var e = _buttonMap._ed(); return checkable && RigCommands.checked(e, cmdId) }
+            onTriggered: _buttonMap.runCmd(cmdId)
+        }
+    }
+    Component {
+        id: _cmdMenuComp
+        ThemedMenu {
+            compact: false
+        }
+    }
+    Component {
+        id: _cmdSepComp
+        ThemedMenuSeparator {}
+    }
+    Component {
+        id: _cmdKeyComp
+        Shortcut {
+            property string cmdId: ""
+            property string cmdKey: ""
+            enabled: _buttonMap.cmdKeyOk(cmdId, cmdKey)
+            onActivated: _buttonMap.runCmd(cmdId)
+            onActivatedAmbiguously: _buttonMap.runCmd(cmdId)
+        }
+    }
+
+    // Button Map Options (07 S98) and Keyboard Shortcuts (S100): small
+    // windows of their own.
+    ButtonMapOptionsWindow {
+        id: _optionsWin
+        opts: _opts
+        onColorRequested: (key, hex) => _buttonMap.openColorField("printAreaColor", hex, null)
+    }
+    ShortcutsWindow {
+        id: _shortcutsWin
+        menuBar: _menuBar
+        // Its pin is kept with the panels (07 S100).
+        Component.onCompleted: pinned = !!_opts.sidePanelState("shortcuts").pinned
+        onPinnedChanged: _opts.setSidePanelState("shortcuts", { pinned: pinned })
+        // The keys no menu shows (S134).
+        keyRows: [
+            { group: "Keys", text: "Nudge", keys: "Arrows" },
+            { group: "Keys", text: "Nudge by the grid step", keys: "Shift+Arrows" },
+            { group: "Keys", text: "Finish a path", keys: "Enter" },
+            { group: "Keys", text: "Undo a path point", keys: "Backspace" },
+            { group: "Keys", text: "Cancel / leave", keys: "Esc" }
+        ]
+        mouseRows: [
+            { group: "Mouse", text: "Set print area", keys: "Alt+drag" },
+            { group: "Mouse", text: "Pan", keys: "Space+drag" },
+            { group: "Mouse", text: "Pan", keys: "Middle-drag" },
+            { group: "Mouse", text: "Zoom", keys: "Wheel" },
+            { group: "Mouse", text: "Edit Background", keys: "Double-click the Background row" }
+        ]
+    }
+
+    // View > Zoom In / Zoom Out (07 S133): a step about the view's middle.
+    function zoomStep(factor) {
+        var e = _ed()
+        var f = e ? e.face : null
+        if (!f || !f.zoomAt)
+            return
+        f.zoomAt(NaN, NaN, factor)
+        captureView()
+        persistUi()
+    }
+
+    // Edit > Select All (07 S133): every item on the edited plane that a
+    // band drag could take (not hidden, not locked).
+    function selectAllNow() {
+        var e = _ed()
+        if (!editing || !e)
+            return
+        var ids = []
+        var list = e.nodes || []
+        for (var i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (!n || e.isHidden(n) || e.isLocked(n) || !e.inEditPlane(n))
+                continue
+            if (ids.indexOf(n.id) < 0)
+                ids.push(n.id)
+            if (n.packId && ids.indexOf(n.packId) < 0)
+                ids.push(n.packId)
+        }
+        e.setSelection(ids)
+    }
+
+    // File > History: this map's saved versions (Tools > History).
+    function openHistory() {
+        if (!targetName.length)
+            return
+        // By this device's id, every area (twin sticks apart; a save that
+        // also changed claims shows too), as Module Setup does (08 Q15);
+        // entries from before device folders by its name (08 S43).
+        Helpers.createComponent("DialogHistory.qml", {
+            filter: JSON.stringify({
+                deviceId: _fileWatch.deviceIdFor(targetName, targetGuid),
+                deviceName: targetName
+            }),
+            filterLabel: targetName
+        })
+    }
+
+    function setGuidesShown(on) {
+        guidesOn = on
+        var e = _ed()
+        if (e)
+            e.guidesOn = on
+        persistUi()
+    }
 
     // Choosers open in the last folder used for their kind (01 S143).
     FilePicker {
@@ -2724,7 +3015,7 @@ ApplicationWindow {
     // File > Print & Export: its window, and the print area shown on the
     // map to move and resize while it is open.
     function openPrintExport() {
-        _tools.setOpen("printArea", true)
+        setPrintAreaShown(true)
         _printWin.show()
         _printWin.raise()
         _printWin.requestActivate()
@@ -2760,11 +3051,13 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
+        // The menu bar (07 S135), in its order; a separator between groups.
         ThemedMenuBar {
             id: _menuBar
             Layout.fillWidth: true
             ThemedMenu {
                 id: _fileMenu
+                objectName: "bmMenuFile"
                 title: "File"
                 // The lists in it are filled before ThemedMenu hides what
                 // cannot be used and sizes itself.
@@ -2774,47 +3067,25 @@ ApplicationWindow {
                 }
                 ThemedMenuItem {
                     text: "Edit Mapping"
+                    hint: "Ctrl+E"
                     enabled: !_buttonMap.editing && _buttonMap.targetName.length > 0
                     onTriggered: _buttonMap.enterEdit()
                 }
                 ThemedMenuItem { text: "Save"; hint: "Ctrl+S"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
-                ThemedMenuItem { text: "Cancel"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
-                // This map's saved versions (Tools > History).
+                ThemedMenuItem { text: "Cancel"; hint: "Ctrl+Shift+W"; enabled: _buttonMap.editing; onTriggered: _buttonMap.cancelEdit() }
+                // This map's saved versions.
                 ThemedMenuItem {
                     text: "History"
+                    hint: "Ctrl+H"
                     enabled: _buttonMap.targetName.length > 0
-                    // By this device's id, every area (twin sticks apart; a
-                    // save that also changed claims shows too), as Module
-                    // Setup does (08 Q15); entries from before device
-                    // folders by its name (08 S43).
-                    onTriggered: {
-                        Helpers.createComponent("DialogHistory.qml", {
-                            filter: JSON.stringify({
-                                deviceId: _fileWatch.deviceIdFor(_buttonMap.targetName, _buttonMap.targetGuid),
-                                deviceName: _buttonMap.targetName
-                            }),
-                            filterLabel: _buttonMap.targetName
-                        })
-                    }
+                    onTriggered: _buttonMap.openHistory()
                 }
                 ThemedMenuSeparator {}
                 ThemedMenu {
                     id: _deviceMenu
                     title: "Device"
                 }
-                ThemedMenuItem { text: "Reset Layout"; enabled: editing; onTriggered: _buttonMap.askResetLayout() }
-                ThemedMenuItem {
-                    text: "Fit to Photo Frame"
-                    enabled: editing && !fittedThisEdit
-                    onTriggered: fitToPhotoFrame()
-                }
                 ThemedMenuSeparator {}
-                ThemedMenuItem {
-                    text: "Print & Export…"
-                    hint: "Ctrl+P"
-                    enabled: _buttonMap.targetName.length > 0
-                    onTriggered: _buttonMap.openPrintExport()
-                }
                 ThemedMenu {
                     id: _templateMenu
                     title: "Templates"
@@ -2822,6 +3093,7 @@ ApplicationWindow {
                     beforeShow: _buttonMap.refreshTemplates
                     ThemedMenuItem {
                         text: "Save Layout as Template…"
+                        hint: "Ctrl+Shift+S"
                         enabled: (_buttonMap.layoutNow() || []).length > 0
                         onTriggered: _templateNameDlg.open()
                     }
@@ -2842,17 +3114,27 @@ ApplicationWindow {
                     }
                     ThemedMenuItem {
                         text: "Manage Templates…"
+                        hint: "Ctrl+Shift+T"
                         onTriggered: _templatesDlg.open()
                     }
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
+                    text: "Print & Export…"
+                    hint: "Ctrl+P"
+                    enabled: _buttonMap.targetName.length > 0
+                    onTriggered: _buttonMap.openPrintExport()
+                }
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
                     text: "Close"
+                    hint: "Ctrl+W"
                     onTriggered: _buttonMap.close()
                 }
             }
             ThemedMenu {
                 id: _editMenu
+                objectName: "bmMenuEdit"
                 title: "Edit"
                 // The devices with a Button Map, for Copy Button Map from Device.
                 beforeShow: function() {
@@ -2873,10 +3155,11 @@ ApplicationWindow {
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Duplicate"
-                    hint: "Ctrl+D"
-                    enabled: { var e = _ed(); return e && e.selectedId !== "" }
-                    onTriggered: { var e = _ed(); if (e) e.duplicateSelection() }
+                    objectName: "bmCut"
+                    text: "Cut"
+                    hint: "Ctrl+X"
+                    enabled: { var e = _ed(); return editing && !!e && e.selectedId !== "" }
+                    onTriggered: _buttonMap.cutNow()
                 }
                 ThemedMenuItem {
                     text: "Copy"
@@ -2897,61 +3180,55 @@ ApplicationWindow {
                     onTriggered: pastePicture()
                 }
                 ThemedMenuItem {
-                    text: "Mirror Layout"
-                    enabled: editing
-                    onTriggered: _buttonMap.mirrorNow()
+                    text: "Duplicate"
+                    hint: "Ctrl+D"
+                    enabled: { var e = _ed(); return e && e.selectedId !== "" }
+                    onTriggered: { var e = _ed(); if (e) e.duplicateSelection() }
                 }
-                ThemedMenuSeparator {}
-                // The shortcuts' rows: shown with their keys and in the palette.
                 ThemedMenuItem {
                     text: "Delete"
                     hint: "Delete"
                     enabled: { var e = _ed(); return editing && e && e.selectedId !== "" }
                     onTriggered: _buttonMap.deleteOrBreak()
                 }
-                ThemedMenuItem {
-                    text: "Group Selected"
-                    hint: "Ctrl+G"
-                    enabled: { var e = _ed(); return editing && e ? e.canGroup() : false }
-                    onTriggered: { var e = _ed(); if (e) e.groupSelection() }
-                }
-                ThemedMenuItem {
-                    text: "Break Group"
-                    hint: "Ctrl+Shift+G"
-                    enabled: { var e = _ed(); return editing && e ? e.canUngroup() : false }
-                    onTriggered: { var e = _ed(); if (e) e.ungroupSelection() }
-                }
-                ThemedMenuItem {
-                    text: "Lock / Unlock"
-                    hint: "Ctrl+L"
-                    enabled: { var e = _ed(); return editing && e && e.selectedId !== "" }
-                    onTriggered: { var e = _ed(); if (e) e.toggleLockSelection() }
-                }
-                ThemedMenuItem {
-                    text: "Unlock All"
-                    hint: "Ctrl+Shift+L"
-                    enabled: editing
-                    onTriggered: { var e = _ed(); if (e) e.unlockAll() }
-                }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Set Print Area"
-                    hint: "Alt+drag"
-                    enabled: editing && !_tools.isLocked("printArea")
-                    onTriggered: {
-                        var e = _ed()
-                        if (!e)
-                            return
-                        e.printAreaArm = true
-                        if (e.showFindMessage)
-                            e.showFindMessage("Drag on the map to set the print area. Esc cancels.")
+                    text: "Select All"
+                    hint: "Ctrl+A"
+                    enabled: editing
+                    onTriggered: _buttonMap.selectAllNow()
+                }
+                ThemedMenuSeparator {}
+                ThemedMenu {
+                    id: _bgMenu
+                    objectName: "bmMenuBackground"
+                    title: "Background"
+                    // Edit › Background › (user 2026-10-11: moved into Edit); everything
+                    // in it needs editing (07 S39).
+                    enabled: editing
+                    ThemedMenuItem {
+                        objectName: "bmEditBackground"
+                        text: "Edit Background"
+                        hint: "Ctrl+B"
+                        enabled: editing && !_buttonMap.bgMode
+                        onTriggered: _buttonMap.setEditPlane("background")
+                    }
+                    ThemedMenuSeparator {}
+                    ThemedMenuItem {
+                        objectName: "bmAddBgPicture"
+                        text: "Add Picture to Background…"
+                        hint: "Ctrl+I"
+                        enabled: editing
+                        onTriggered: _bgPictureDialog.open()
+                    }
+                    ThemedMenuItem {
+                        objectName: "bmClearBackground"
+                        text: "Clear Background"
+                        enabled: editing
+                        onTriggered: _buttonMap.clearBackground()
                     }
                 }
-                ThemedMenuItem {
-                    text: "Clear Print Area"
-                    enabled: editing && !!_buttonMap.printArea && !_tools.isLocked("printArea")
-                    onTriggered: { var e = _ed(); if (e) e.clearPrintArea() }
-                }
+                ThemedMenuSeparator {}
                 // Another device's Button Map onto this one (its background
                 // stays unless copied too, 07 S76).
                 ThemedMenu {
@@ -2969,15 +3246,233 @@ ApplicationWindow {
                         onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
                     }
                 }
+                ThemedMenuItem {
+                    text: "Mirror Layout"
+                    hint: "Ctrl+M"
+                    enabled: editing
+                    onTriggered: _buttonMap.mirrorNow()
+                }
+                ThemedMenuItem { text: "Reset Layout"; enabled: editing; onTriggered: _buttonMap.askResetLayout() }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
+                    objectName: "bmOptionsItem"
                     text: "Button Map Options…"
-                    onTriggered: _tools.setOpen("options", true)
+                    hint: "Ctrl+,"
+                    onTriggered: _buttonMap.openOptions()
                 }
             }
             ThemedMenu {
                 id: _viewMenu
+                objectName: "bmMenuView"
                 title: "View"
+                ThemedMenuItem {
+                    text: "Zoom In"
+                    hint: "Ctrl+="
+                    onTriggered: _buttonMap.zoomStep(1.25)
+                }
+                ThemedMenuItem {
+                    text: "Zoom Out"
+                    hint: "Ctrl+-"
+                    onTriggered: _buttonMap.zoomStep(0.8)
+                }
+                ThemedMenuItem {
+                    text: "Zoom to Fit Page"
+                    hint: "Ctrl+1"
+                    onTriggered: _buttonMap.zoomToPage()
+                }
+                ThemedMenuItem {
+                    text: "Zoom to Selection"
+                    hint: "Ctrl+2"
+                    enabled: { var e = _ed(); return !!(e && e.selectedIds && e.selectedIds.length) }
+                    onTriggered: _buttonMap.zoomToSelection()
+                }
+                ThemedMenuItem {
+                    text: "Fit to Photo Frame"
+                    hint: "Ctrl+3"
+                    enabled: editing && !fittedThisEdit
+                    onTriggered: fitToPhotoFrame()
+                }
+                ThemedMenuItem {
+                    text: "Reset View"
+                    hint: "Ctrl+0"
+                    onTriggered: _buttonMap.resetViewNow()
+                }
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
+                    text: "Chips"
+                    hint: "F6"
+                    enabled: editing
+                    checkable: true
+                    checked: _chipsSide.open
+                    onTriggered: _chipsSide.toggle()
+                }
+                ThemedMenuItem {
+                    text: "Layers"
+                    hint: "F7"
+                    enabled: editing
+                    checkable: true
+                    checked: _layersSide.open
+                    onTriggered: _layersSide.toggle()
+                }
+                ThemedMenuItem {
+                    objectName: "bmPropertiesItem"
+                    text: "Properties"
+                    hint: "F4"
+                    enabled: editing
+                    checkable: true
+                    checked: _buttonMap.propsOn && _layersSide.open
+                    onTriggered: {
+                        _buttonMap.toggleProps()
+                        checked = Qt.binding(() => _buttonMap.propsOn && _layersSide.open)
+                    }
+                }
+                ThemedMenuItem {
+                    text: "Search layers…"
+                    hint: "Ctrl+F"
+                    enabled: editing
+                    onTriggered: _buttonMap.searchLayers()
+                }
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
+                    text: "Rulers"
+                    hint: "Ctrl+R"
+                    checkable: true
+                    checked: _opts.values["rulers"] === true
+                    onTriggered: _opts.set("rulers", checked)
+                }
+                ThemedMenuItem {
+                    text: "Show Guides"
+                    hint: "Ctrl+;"
+                    checkable: true
+                    checked: _buttonMap.guidesOn
+                    onTriggered: _buttonMap.setGuidesShown(checked)
+                }
+                ThemedMenuItem {
+                    text: "Clear Guides"
+                    enabled: _buttonMap.guidesX.length + _buttonMap.guidesY.length > 0
+                    onTriggered: { var e = _ed(); if (e) e.clearRulerGuides() }
+                }
+                ThemedMenu {
+                    title: "Grid"
+                    ThemedMenuItem {
+                        text: "Show Grid"
+                        hint: "Ctrl+'"
+                        checkable: true
+                        checked: _buttonMap.gridOn
+                        onTriggered: _buttonMap.setGridPref("gridOn", checked)
+                    }
+                    ThemedMenuSeparator {}
+                    ThemedMenu {
+                        title: "Size"
+                        Repeater {
+                            model: [1, 2, 4, 8, 12, 16, 24, 32, 48, 64, 200, 400]
+                            ThemedMenuItem {
+                                required property int modelData
+                                text: String(modelData)
+                                checkable: true
+                                checked: { var e = _ed(); return !!e && e.gridSize === modelData }
+                                onTriggered: _buttonMap.setGridPref("gridSize", modelData)
+                            }
+                        }
+                    }
+                }
+                ThemedMenuItem {
+                    text: "Snap to Grid"
+                    hint: "Ctrl+Shift+'"
+                    checkable: true
+                    checked: _buttonMap.snapOn
+                    onTriggered: _buttonMap.setGridPref("snapOn", checked)
+                }
+                ThemedMenuItem {
+                    text: "Snap to Entities"
+                    hint: "Ctrl+Shift+;"
+                    checkable: true
+                    checked: _buttonMap.snapEntOn
+                    onTriggered: _buttonMap.setGridPref("snapEntOn", checked)
+                }
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
+                    objectName: "bmShowPrintArea"
+                    text: "Show Print Area"
+                    enabled: editing
+                    checkable: true
+                    checked: _buttonMap.printAreaOn
+                    onTriggered: {
+                        _buttonMap.setPrintAreaShown(checked)
+                        // Follows the store again (Print & Export shows it too).
+                        checked = Qt.binding(() => _buttonMap.printAreaOn)
+                    }
+                }
+                ThemedMenuItem {
+                    text: "Set Print Area"
+                    hint: "Alt+drag"
+                    enabled: editing
+                    onTriggered: {
+                        var e = _ed()
+                        if (!e)
+                            return
+                        _buttonMap.setPrintAreaShown(true)
+                        e.printAreaArm = true
+                        if (e.showFindMessage)
+                            e.showFindMessage("Drag on the map to set the print area. Esc cancels.")
+                    }
+                }
+                ThemedMenuItem {
+                    text: "Clear Print Area"
+                    enabled: editing && !!_buttonMap.printArea
+                    onTriggered: { var e = _ed(); if (e) e.clearPrintArea() }
+                }
+                ThemedMenuItem {
+                    text: "Print Area Color…"
+                    onTriggered: {
+                        var e = _ed()
+                        _buttonMap.openColorField("printAreaColor", (e && e.printAreaColor.length) ? e.printAreaColor : String(Style.dangerBright), null)
+                    }
+                }
+                ThemedMenuSeparator {}
+                ThemedMenuItem {
+                    objectName: "bmResetPanels"
+                    text: "Reset Panels"
+                    onTriggered: _buttonMap.resetPanels()
+                }
+            }
+            // Insert, Arrange and Format (07 S134): filled from
+            // rig_commands.js (buildCommandMenus); rows that don't apply to
+            // the selection are greyed out, not hidden.
+            ThemedMenu {
+                id: _insertMenu
+                objectName: "bmMenuInsert"
+                title: "Insert"
+                compact: false
+                enabled: editing
+                beforeShow: _buttonMap.refreshCommandTexts
+            }
+            ThemedMenu {
+                id: _arrangeMenu
+                objectName: "bmMenuArrange"
+                title: "Arrange"
+                compact: false
+                enabled: editing
+                // Its texts follow the editor (the rotate step).
+                beforeShow: _buttonMap.refreshCommandTexts
+            }
+            // Leaders and callouts in a menu of their own (user 2026-10-11).
+            ThemedMenu {
+                id: _leaderMenu
+                objectName: "bmMenuLeader"
+                title: "Leader"
+                compact: false
+                enabled: editing
+                beforeShow: _buttonMap.refreshCommandTexts
+            }
+            ThemedMenu {
+                id: _formatMenu
+                objectName: "bmMenuFormat"
+                title: "Format"
+                compact: false
+                beforeShow: _buttonMap.refreshCommandTexts
+                // Chip Text and Labels Mode moved here from View (S135).
+                ThemedMenuSeparator {}
                 ThemedMenu {
                     title: "Chip Text"
                     Repeater {
@@ -3014,233 +3509,21 @@ ApplicationWindow {
                         onObjectRemoved: (index, object) => _labelModeMenu.removeItem(object)
                     }
                 }
-                ThemedMenuSeparator {}
-                ThemedMenuItem {
-                    text: "Chips"
-                    enabled: editing
-                    checkable: true
-                    checked: _chipsSide.open
-                    onTriggered: _chipsSide.toggle()
-                }
-                ThemedMenuItem {
-                    text: "Layers"
-                    enabled: editing
-                    checkable: true
-                    checked: _layersSide.open
-                    onTriggered: _layersSide.toggle()
-                }
-                ThemedMenuItem {
-                    text: "Search layers…"
-                    hint: "Ctrl+F"
-                    enabled: editing
-                    onTriggered: _buttonMap.searchLayers()
-                }
-                ThemedMenuItem {
-                    text: "Properties"
-                    enabled: editing
-                    checkable: true
-                    checked: _tools.isOpen("props")
-                    onTriggered: _tools.toggle("props")
-                }
-                ThemedMenuItem {
-                    text: "Print Area"
-                    enabled: editing
-                    checkable: true
-                    checked: _tools.isOpen("printArea")
-                    onTriggered: _tools.toggle("printArea")
-                }
-                ThemedMenuItem {
-                    text: "Reset Tool Rows"
-                    onTriggered: {
-                        _tools.resetPlaces()
-                        _buttonMap.restoreSides()
-                    }
-                }
-                ThemedMenuItem {
-                    text: "Print Area Color…"
-                    onTriggered: {
-                        var e = _ed()
-                        _buttonMap.openColorField("printAreaColor", (e && e.printAreaColor.length) ? e.printAreaColor : String(Style.dangerBright), null)
-                    }
-                }
-                ThemedMenuItem {
-                    text: "Command Palette…"
-                    hint: "Ctrl+K"
-                    inPalette: false
-                    onTriggered: _palette.open()
-                }
-                ThemedMenuSeparator {}
-                ThemedMenuItem {
-                    text: "Zoom to Fit Page"
-                    hint: "Ctrl+1"
-                    onTriggered: _buttonMap.zoomToPage()
-                }
-                ThemedMenuItem {
-                    text: "Zoom to Selection"
-                    hint: "Ctrl+2"
-                    enabled: { var e = _ed(); return !!(e && e.selectedIds && e.selectedIds.length) }
-                    onTriggered: _buttonMap.zoomToSelection()
-                }
-                ThemedMenuItem {
-                    text: "Reset View (View 100%)"
-                    hint: "Ctrl+0"
-                    onTriggered: _buttonMap.resetViewNow()
-                }
-                ThemedMenuSeparator {}
-                ThemedMenuItem {
-                    text: "Rulers"
-                    checkable: true
-                    checked: _opts.values["rulers"] === true
-                    onTriggered: _opts.set("rulers", checked)
-                }
-                ThemedMenuItem {
-                    text: "Show Guides"
-                    checkable: true
-                    checked: _buttonMap.guidesOn
-                    onTriggered: {
-                        _buttonMap.guidesOn = checked
-                        var e = _ed()
-                        if (e)
-                            e.guidesOn = checked
-                        persistUi()
-                    }
-                }
-                ThemedMenuItem {
-                    text: "Clear Guides"
-                    enabled: _buttonMap.guidesX.length + _buttonMap.guidesY.length > 0
-                    onTriggered: { var e = _ed(); if (e) e.clearRulerGuides() }
-                }
-                ThemedMenu {
-                    title: "Grid"
-                    ThemedMenuItem {
-                        text: "Show Grid"
-                        checkable: true
-                        checked: _buttonMap.gridOn
-                        onTriggered: _buttonMap.setGridPref("gridOn", checked)
-                    }
-                    ThemedMenuItem {
-                        text: "Snap to Grid"
-                        checkable: true
-                        checked: _buttonMap.snapOn
-                        onTriggered: _buttonMap.setGridPref("snapOn", checked)
-                    }
-                    ThemedMenuItem {
-                        text: "Snap to Entities"
-                        checkable: true
-                        checked: _buttonMap.snapEntOn
-                        onTriggered: _buttonMap.setGridPref("snapEntOn", checked)
-                    }
-                    ThemedMenuSeparator {}
-                    ThemedMenu {
-                        title: "Size"
-                        ThemedMenuItem {
-                            text: "1"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 1 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 1)
-                        }
-                        ThemedMenuItem {
-                            text: "2"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 2 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 2)
-                        }
-                        ThemedMenuItem {
-                            text: "4"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 4 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 4)
-                        }
-                        ThemedMenuItem {
-                            text: "8"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 8 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 8)
-                        }
-                        ThemedMenuItem {
-                            text: "12"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 12 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 12)
-                        }
-                        ThemedMenuItem {
-                            text: "16"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 16 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 16)
-                        }
-                        ThemedMenuItem {
-                            text: "24"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 24 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 24)
-                        }
-                        ThemedMenuItem {
-                            text: "32"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 32 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 32)
-                        }
-                        ThemedMenuItem {
-                            text: "48"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 48 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 48)
-                        }
-                        ThemedMenuItem {
-                            text: "64"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 64 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 64)
-                        }
-                        ThemedMenuItem {
-                            text: "200"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 200 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 200)
-                        }
-                        ThemedMenuItem {
-                            text: "400"
-                            checkable: true
-                            checked: { var e = _ed(); return e && e.gridSize === 400 }
-                            onTriggered: _buttonMap.setGridPref("gridSize", 400)
-                        }
-                    }
-                }
             }
             ThemedMenu {
-                id: _bgMenu
-                objectName: "bmMenuBackground"
-                title: "Background"
-                // Everything in it needs editing (07 S39).
-                enabled: editing
-                ThemedMenuItem {
-                    objectName: "bmEditBackground"
-                    text: "Edit Background"
-                    hint: "Ctrl+B"
-                    enabled: editing && !_buttonMap.bgMode
-                    onTriggered: _buttonMap.setEditPlane("background")
-                }
-                ThemedMenuSeparator {}
-                ThemedMenuItem {
-                    objectName: "bmAddBgPicture"
-                    text: "Add Picture to Background…"
-                    enabled: editing
-                    onTriggered: _bgPictureDialog.open()
-                }
-                ThemedMenuItem {
-                    objectName: "bmClearBackground"
-                    text: "Clear Background"
-                    enabled: editing
-                    onTriggered: _buttonMap.clearBackground()
-                }
-            }
-            ThemedMenu {
+                id: _helpMenu
+                objectName: "bmMenuHelp"
                 title: "Help"
                 ThemedMenuItem {
                     text: "Help"
                     hint: "F1"
                     onTriggered: _buttonMap.openGuide()
+                }
+                ThemedMenuItem {
+                    objectName: "bmKeyboardShortcuts"
+                    text: "Keyboard Shortcuts…"
+                    hint: "Ctrl+K"
+                    onTriggered: _buttonMap.openShortcuts()
                 }
             }
         }
@@ -3249,16 +3532,6 @@ ApplicationWindow {
         MessageLine {
             id: _messageLine
             Layout.fillWidth: true
-        }
-
-        // The top tool row (always shown, empty or not): tools dragged up
-        // from the bottom row, and tools to come.
-        ToolRow {
-            id: _topRow
-            objectName: "toolRowTop"
-            Layout.fillWidth: true
-            dock: _tools
-            side: "top"
         }
 
         RowLayout {
@@ -3285,7 +3558,7 @@ ApplicationWindow {
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
                     available: _buttonMap.editing
-                    minWidth: Style.dp(180)
+                    minWidth: Style.dp(210)
                     maxWidth: Style.dp(520)
                     onChanged: _buttonMap.sideChangedByUser(_chipsSide, "chips")
                     onStripClicked: _layersSide.foldIfUnpinned()
@@ -3343,53 +3616,65 @@ ApplicationWindow {
                                 anchors.bottomMargin: Style.dp(12)
                                 anchors.rightMargin: Style.dp(10)
                                 spacing: Style.dp(6)
+                                // The filter box has the whole top row; Reset and
+                                // Chip only sit under it (07 S132).
+                                Item {
+                                    Layout.fillWidth: true
+                                    implicitHeight: Style.dp(28)
+                                    TextField {
+                                        id: _poolSearch
+                                        objectName: "poolFilter"
+                                        anchors.fill: parent
+                                        placeholderText: "Filter friendly or hardware"
+                                        text: poolFilter
+                                        rightPadding: Style.dp(26)
+                                        onTextChanged: {
+                                            if (poolFilter !== text)
+                                                poolFilter = text
+                                        }
+                                    }
+                                    Text {
+                                        visible: poolFilter.length > 0
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: Style.dp(8)
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "×"
+                                        color: Style.fgMuted
+                                        font.pixelSize: Style.dp(16)
+                                        z: 2
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            anchors.margins: -Style.dp(6)
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: clearPoolFilter()
+                                        }
+                                    }
+                                }
                                 RowLayout {
                                     Layout.fillWidth: true
                                     spacing: Style.dp(6)
-                                    Item {
-                                        Layout.fillWidth: true
-                                        implicitHeight: Style.dp(28)
-                                        TextField {
-                                            id: _poolSearch
-                                            anchors.fill: parent
-                                            placeholderText: "Filter friendly or hardware"
-                                            text: poolFilter
-                                            rightPadding: Style.dp(26)
-                                            onTextChanged: {
-                                                if (poolFilter !== text)
-                                                    poolFilter = text
-                                            }
-                                        }
-                                        Text {
-                                            visible: poolFilter.length > 0
-                                            anchors.right: parent.right
-                                            anchors.rightMargin: Style.dp(8)
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            text: "×"
-                                            color: Style.fgMuted
-                                            font.pixelSize: Style.dp(16)
-                                            z: 2
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                anchors.margins: -Style.dp(6)
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: clearPoolFilter()
-                                            }
-                                        }
-                                    }
                                     Button {
+                                        objectName: "poolReset"
                                         text: "Reset"
                                         implicitHeight: Style.dp(28)
                                         onClicked: clearPoolFilter()
                                     }
                                     // Button Map Options → Chip only, here where chips are added.
                                     CheckBox {
+                                        objectName: "poolChipOnly"
+                                        // Its whole label whenever the panel has room
+                                        // (the spacer after it takes what is left);
+                                        // it shrinks only when the panel does.
+                                        Layout.preferredWidth: implicitWidth
+                                        Layout.maximumWidth: implicitWidth
+                                        Layout.minimumWidth: implicitIndicatorWidth + leftPadding + rightPadding
                                         text: "Chip only"
                                         checked: _opts.values["chip-only"] === true
                                         onToggled: _opts.set("chip-only", checked)
                                         ToolTip.visible: hovered
                                         ToolTip.text: "Add chips with no leader and no hotspot"
                                     }
+                                    Item { Layout.fillWidth: true }
                                 }
                                 Flickable {
                                     Layout.fillWidth: true
@@ -3487,7 +3772,7 @@ ApplicationWindow {
                 id: _mapHost
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                // Room between the map (its rulers) and each tool row.
+                // Room between the map (its rulers) and the side panels.
                 Layout.margins: Style.dp(10)
 
                 JGText {
@@ -3590,14 +3875,13 @@ ApplicationWindow {
                             }
                             function onNodesChanged() { _buttonMap.deferHistory() }
                             function onMapPressed() {
-                                _tools.mapClicked()
                                 _chipsSide.foldIfUnpinned()
                                 _layersSide.foldIfUnpinned()
                             }
                             function onPrintAreaEdited(drawn) {
                                 _buttonMap.printArea = _card.editorItem.printArea
                                 if (drawn)
-                                    _tools.setOpen("printArea", true)
+                                    _buttonMap.setPrintAreaShown(true)
                                 _buttonMap.persistUi()
                                 _buttonMap.noteEditStep()
                             }
@@ -3706,54 +3990,12 @@ ApplicationWindow {
                     property var item: null
                 }
 
-                // Button Map Options as a pane (the Options tool, or Edit >
-                // Button Map Options...), joined to its tab (ToolPane): as
-                // large as its group needs until resized.
-                ToolPane {
-                    id: _optionsFloat
-                    objectName: "optionsPane"
-                    dock: _tools
-                    toolId: "options"
-                    defaultW: _optionsPanel.wantedW + Style.dp(10)
-                    defaultH: _optionsPanel.wanted + Style.dp(10)
-                    minW: Style.dp(320)
-                    minH: Style.dp(120)
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Style.dp(8)
-                        color: Style.bgCard
-                        border.color: Style.lineStrong
-                        border.width: 1
-                    }
-                    // Its clicks are its own, not the map's.
-                    MouseArea {
-                        anchors.fill: parent
-                        acceptedButtons: Qt.AllButtons
-                        onPressed: (m) => { m.accepted = true }
-                        onWheel: (w) => { w.accepted = true }
-                    }
-                    RigOptionsPanel {
-                        id: _optionsPanel
-                        anchors.fill: parent
-                        anchors.margins: Style.dp(5)
-                        opts: _opts
-                        onColorRequested: (key, hex, anchor) => _buttonMap.openColorField("printAreaColor", hex, anchor)
-                    }
-                }
-
-                // The print area's frame follows its tool (shown, locked).
+                // The print area's frame: View > Show Print Area (07 S135).
                 Binding {
                     target: _buttonMap._ed()
                     property: "printAreaShown"
-                    value: _tools.isOpen("printArea")
-                    when: !!_buttonMap._ed()
-                    restoreMode: Binding.RestoreNone
-                }
-                Binding {
-                    target: _buttonMap._ed()
-                    property: "printAreaLocked"
-                    value: _tools.isLocked("printArea")
+                    // Only while editing (07 S86).
+                    value: _buttonMap.printAreaOn && _buttonMap.editing
                     when: !!_buttonMap._ed()
                     restoreMode: Binding.RestoreNone
                 }
@@ -3771,31 +4013,6 @@ ApplicationWindow {
                     when: !!_buttonMap._ed()
                     restoreMode: Binding.RestoreNone
                 }
-                // Properties: the selected item's place, size, angle and style.
-                // Properties, joined to its tab (ToolPane), while something is
-                // selected.
-                ToolPane {
-                    id: _propsPane
-                    objectName: "propsPane"
-                    dock: _tools
-                    toolId: "props"
-                    shown: {
-                        var ed = _buttonMap._ed()
-                        return editing && !!ed && ((ed.selectedIds || []).length > 0 || ed.selectedId !== "")
-                    }
-                    defaultW: Style.dp(300)
-                    defaultH: _propsPanel.implicitHeight
-                    minW: Style.dp(240)
-                    minH: Style.dp(120)
-
-                    RigPropsPanel {
-                        id: _propsPanel
-                        anchors.fill: parent
-                        ed: _buttonMap._ed()
-                        onCloseRequested: _tools.setOpen("props", false)
-                    }
-                }
-
                 MouseArea {
                     id: _poolCatch
                     anchors.fill: parent
@@ -3834,55 +4051,96 @@ ApplicationWindow {
                     onStripClicked: _chipsSide.foldIfUnpinned()
                     onTakenWidthChanged: Qt.callLater(_buttonMap.fitSides)
 
-                    RigLayersPanel {
-                        id: _layersPanel
+                    // Layers on top; Properties under it while something is
+                    // selected (07 S135), with a divider dragged to share the
+                    // height. The share is kept when a drag ends (S99).
+                    Item {
+                        id: _rightBody
+                        objectName: "rightPanelBody"
                         anchors.fill: parent
-                        ed: _buttonMap._ed()
-                        showTitle: false
-                        onCloseRequested: _layersSide.fold()
+                        readonly property real grip: Style.dp(6)
+                        // Mid-drag: the share so far (kept on release); -1 otherwise.
+                        property real liveShare: -1
+                        readonly property real share: Math.max(0.2, Math.min(0.8,
+                            liveShare >= 0 ? liveShare : _buttonMap.propsSplit))
+
+                        RigLayersPanel {
+                            id: _layersPanel
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            height: _buttonMap.propsShown
+                                    ? Math.round((parent.height - _rightBody.grip) * _rightBody.share)
+                                    : parent.height
+                            ed: _buttonMap._ed()
+                            showTitle: false
+                            onCloseRequested: _layersSide.fold()
+                        }
+
+                        // The Layers / Properties divider.
+                        Item {
+                            id: _propsDivider
+                            objectName: "propsDivider"
+                            visible: _buttonMap.propsShown
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: _layersPanel.bottom
+                            height: _rightBody.grip
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                height: 1
+                                color: _dividerArea.containsMouse || _dividerArea.pressed ? Style.accent : Style.lineStrong
+                            }
+                            MouseArea {
+                                id: _dividerArea
+                                anchors.fill: parent
+                                anchors.topMargin: -Style.dp(2)
+                                anchors.bottomMargin: -Style.dp(2)
+                                hoverEnabled: true
+                                preventStealing: true
+                                cursorShape: Qt.SizeVerCursor
+                                property real startY: 0
+                                property real startShare: 0
+                                onPressed: (m) => {
+                                    startY = mapToItem(_rightBody, m.x, m.y).y
+                                    startShare = _rightBody.share
+                                    _rightBody.liveShare = startShare
+                                }
+                                onPositionChanged: (m) => {
+                                    if (!pressed)
+                                        return
+                                    var room = Math.max(1, _rightBody.height - _rightBody.grip)
+                                    var y = mapToItem(_rightBody, m.x, m.y).y
+                                    _rightBody.liveShare = Math.max(0.2, Math.min(0.8, startShare + (y - startY) / room))
+                                }
+                                onReleased: {
+                                    var kept = _rightBody.liveShare
+                                    _buttonMap.propsSplit = kept
+                                    _rightBody.liveShare = -1
+                                    _opts.setPropsSplit(kept)
+                                }
+                                onCanceled: _rightBody.liveShare = -1
+                            }
+                        }
+
+                        // Properties: the selected item's place, size, angle
+                        // and style.
+                        RigPropsPanel {
+                            id: _propsPanel
+                            objectName: "propsPanel"
+                            visible: _buttonMap.propsShown
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: _propsDivider.bottom
+                            anchors.bottom: parent.bottom
+                            ed: _buttonMap._ed()
+                            onCloseRequested: _buttonMap.propsOn = false
+                        }
                     }
                 }
             }
-        }
-
-        // The tool row: Properties, Command Palette, Print Area and Options,
-        // centred (Chips and Layers are the side panels). The tools and their state (which row each button is on, open,
-        // pinned, locked, places, panel docks); the rows draw them.
-        ToolDock {
-            id: _tools
-            name: "button-map"
-            // Floating panels sit over the map.
-            floatArea: _mapHost
-            tools: [
-                { id: "props", label: "Properties", tip: "The selected item's place, size, angle and style" },
-                { id: "palette", label: "Command Palette", tip: "Every command, by name (Ctrl+K)" },
-                { id: "printArea", label: "Print Area", floats: false,
-                  tip: "The part of the page every export and print takes: Alt+drag on the map to set it" },
-                { id: "options", label: "Options",
-                  tip: "The Button Map's settings (also Edit → Button Map Options…)" }
-            ]
-            // Properties starts open and pinned; the others start hidden.
-            // Options starts on the top row, hidden.
-            defaults: ({ props: { open: true, pinned: true }, options: { side: "top" } })
-            // Only while editing: Properties and the print area's frame on
-            // the map.
-            usable: ({ props: _buttonMap.editing, printArea: _buttonMap.editing })
-            onToolChanged: (id) => {
-                if (id !== "palette")
-                    return
-                if (isOpen("palette") && !_palette.opened)
-                    _palette.open()
-                else if (!isOpen("palette") && _palette.opened)
-                    _palette.close()
-            }
-        }
-
-        ToolRow {
-            id: _bottomRow
-            objectName: "toolRowBottom"
-            Layout.fillWidth: true
-            dock: _tools
-            side: "bottom"
         }
 
         // The status line: the view's size, the plane being edited, what the
@@ -3948,98 +4206,106 @@ ApplicationWindow {
                     ToolTip.text: _hw.path
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Delete"
                     onActivated: deleteOrBreak()
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Backspace"
                     onActivated: deleteOrBreak()
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+Z"
                     onActivated: { var e = _ed(); if (e) e.undo() }
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+Shift+Z"
                     onActivated: { var e = _ed(); if (e) e.redo() }
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+Y"
                     onActivated: { var e = _ed(); if (e) e.redo() }
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+Shift+V"
                     onActivated: pastePicture()
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+L"
                     onActivated: { var e = _ed(); if (e) e.toggleLockSelection() }
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+Shift+L"
                     onActivated: { var e = _ed(); if (e) e.unlockAll() }
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+G"
                     // As Group Selected: only when it would do something.
                     onActivated: { var e = _ed(); if (e && e.canGroup()) e.groupSelection() }
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+Shift+G"
                     onActivated: { var e = _ed(); if (e) e.ungroupSelection() }
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+D"
                     onActivated: { var e = _ed(); if (e) e.duplicateSelection() }
                 }
                 Shortcut {
-                    enabled: editing
+                    // Edit > Cut (07 S135).
+                    sequence: "Ctrl+X"
+                    enabled: keyOk(editing)
+                    onActivated: cutNow()
+                }
+                Shortcut {
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+C"
                     onActivated: { var e = _ed(); if (e) e.copySelection() }
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+V"
                     onActivated: { var e = _ed(); if (e) e.pasteClipboard() }
                 }
                 Shortcut {
+                    enabled: _buttonMap.keysHere
                     sequence: "Ctrl+K"
-                    onActivated: _palette.open()
+                    onActivated: _buttonMap.openShortcuts()
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+F"
                     onActivated: searchLayers()
                 }
                 Shortcut {
+                    enabled: _buttonMap.keysHere
                     sequence: "F1"
                     onActivated: _buttonMap.openGuide()
                 }
                 Shortcut {
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     sequence: "Ctrl+S"
                     onActivated: saveEdit()
                 }
                 Shortcut {
                     sequence: "Ctrl+P"
-                    enabled: _buttonMap.targetName.length > 0
+                    enabled: _buttonMap.keysHere && (_buttonMap.targetName.length > 0)
                     onActivated: _buttonMap.openPrintExport()
                 }
                 Shortcut {
                     // Move to Background / Move to Foreground (07 S121).
                     sequence: "Ctrl+Shift+B"
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     onActivated: {
                         if (!_buttonMap.typingNow())
                             _buttonMap.moveSelectionToOtherPlane()
@@ -4048,7 +4314,7 @@ ApplicationWindow {
                 Shortcut {
                     // Background mode in and out (07 S113).
                     sequence: "Ctrl+B"
-                    enabled: editing
+                    enabled: _buttonMap.keysHere && (editing)
                     onActivated: _buttonMap.toggleEditPlane()
                 }
                 Shortcut {
@@ -4056,21 +4322,139 @@ ApplicationWindow {
                     // going on (a selection, a drawing tool, a rename or
                     // Set Print Area take Esc first, in the editor).
                     sequence: "Esc"
-                    enabled: _buttonMap.bgMode && _buttonMap.escLeavesBackground()
+                    enabled: _buttonMap.keysHere && (_buttonMap.bgMode && _buttonMap.escLeavesBackground())
                     onActivated: _buttonMap.setEditPlane("foreground")
                 }
                 Shortcut {
+                    enabled: _buttonMap.keysHere
                     sequence: "Ctrl+1"
                     onActivated: _buttonMap.zoomToPage()
                 }
                 Shortcut {
+                    enabled: _buttonMap.keysHere
                     sequence: "Ctrl+2"
                     onActivated: _buttonMap.zoomToSelection()
                 }
                 Shortcut {
+                    enabled: _buttonMap.keysHere
                     // As View > Reset View: in and out of Edit, and kept.
                     sequence: "Ctrl+0"
                     onActivated: _buttonMap.resetViewNow()
+                }
+                // The menus' other keys (07 S133): each only while its menu
+                // command can be used and nothing is being typed (keyOk).
+                // Keys that need Shift for their sign also come as the
+                // shifted sign, and a press both match runs it once.
+                Shortcut {
+                    sequence: "Ctrl+E"
+                    enabled: keyOk(!editing && targetName.length > 0)
+                    onActivated: enterEdit()
+                }
+                Shortcut {
+                    sequence: "Ctrl+H"
+                    enabled: keyOk(targetName.length > 0)
+                    onActivated: openHistory()
+                }
+                Shortcut {
+                    sequence: "Ctrl+W"
+                    enabled: keyOk(true)
+                    onActivated: _buttonMap.close()
+                }
+                Shortcut {
+                    sequence: "Ctrl+Shift+W"
+                    enabled: keyOk(editing)
+                    onActivated: cancelEdit()
+                }
+                Shortcut {
+                    sequence: "Ctrl+Shift+S"
+                    enabled: keyOk(targetName.length > 0)
+                    onActivated: {
+                        if ((layoutNow() || []).length > 0)
+                            _templateNameDlg.open()
+                    }
+                }
+                Shortcut {
+                    sequence: "Ctrl+Shift+T"
+                    enabled: keyOk(targetName.length > 0)
+                    onActivated: _templatesDlg.open()
+                }
+                Shortcut {
+                    sequence: "Ctrl+3"
+                    enabled: keyOk(editing && !fittedThisEdit)
+                    onActivated: fitToPhotoFrame()
+                }
+                Shortcut {
+                    sequence: "Ctrl+A"
+                    enabled: keyOk(editing)
+                    onActivated: selectAllNow()
+                }
+                Shortcut {
+                    sequence: "Ctrl+M"
+                    enabled: keyOk(editing)
+                    onActivated: mirrorNow()
+                }
+                Shortcut {
+                    sequence: "Ctrl+,"
+                    enabled: keyOk(true)
+                    onActivated: openOptions()
+                }
+                Shortcut {
+                    sequence: "F6"
+                    enabled: keyOk(editing)
+                    onActivated: _chipsSide.toggle()
+                }
+                Shortcut {
+                    sequence: "F7"
+                    enabled: keyOk(editing)
+                    onActivated: _layersSide.toggle()
+                }
+                Shortcut {
+                    sequence: "F4"
+                    enabled: keyOk(editing)
+                    onActivated: toggleProps()
+                }
+                Shortcut {
+                    sequences: ["Ctrl+=", "Ctrl++"]
+                    enabled: keyOk(true)
+                    onActivated: zoomStep(1.25)
+                    onActivatedAmbiguously: zoomStep(1.25)
+                }
+                Shortcut {
+                    sequence: "Ctrl+-"
+                    enabled: keyOk(true)
+                    onActivated: zoomStep(0.8)
+                }
+                Shortcut {
+                    sequence: "Ctrl+R"
+                    enabled: keyOk(true)
+                    onActivated: _opts.set("rulers", _opts.values["rulers"] !== true)
+                }
+                Shortcut {
+                    sequence: "Ctrl+;"
+                    enabled: keyOk(true)
+                    onActivated: setGuidesShown(!guidesOn)
+                }
+                Shortcut {
+                    sequence: "Ctrl+'"
+                    enabled: keyOk(true)
+                    onActivated: setGridPref("gridOn", !gridOn)
+                }
+                Shortcut {
+                    sequences: ["Ctrl+Shift+'", "Ctrl+\""]
+                    enabled: keyOk(true)
+                    onActivated: setGridPref("snapOn", !snapOn)
+                    onActivatedAmbiguously: setGridPref("snapOn", !snapOn)
+                }
+                Shortcut {
+                    sequences: ["Ctrl+Shift+;", "Ctrl+:"]
+                    enabled: keyOk(true)
+                    onActivated: setGridPref("snapEntOn", !snapEntOn)
+                    onActivatedAmbiguously: setGridPref("snapEntOn", !snapEntOn)
+                }
+                Shortcut {
+                    sequence: "Ctrl+I"
+                    enabled: keyOk(editing)
+                    onActivated: _bgPictureDialog.open()
                 }
                 Item { Layout.fillWidth: true; visible: !editing }
             }

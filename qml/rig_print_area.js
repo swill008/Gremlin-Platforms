@@ -163,8 +163,6 @@ function reshapePrintArea() {
 // (the wheel, about the pointer). Its shape stays; kept on the page; no
 // smaller than the smallest area.
 function shiftPrintArea(dfx, dfy, k, ax, ay) {
-    if (printAreaLocked)
-        return false
     var s = spaceRect()
     var r = printAreaRect()
     var w = r.w * k

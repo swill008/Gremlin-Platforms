@@ -229,8 +229,8 @@ def main() -> None:
     # Reset Layout asks the shared question; Enter cancels, the red button
     # goes ahead (07 S61, 01 S140).
     count = js("_ed().nodes.length")
-    js("for (var i = 0; i < _fileMenu.count; i++) {"
-       " var it = _fileMenu.itemAt(i);"
+    js("for (var i = 0; i < _editMenu.count; i++) {"
+       " var it = _editMenu.itemAt(i);"
        " if (it && it.text === 'Reset Layout') { it.triggered(); break } } 1")
     QtTest.QTest.qWait(400)
     asked = question_words()

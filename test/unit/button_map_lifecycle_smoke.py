@@ -2,9 +2,10 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Opens the Button Map the way the program does (helpers.js), uses its
-command palette, closes it, and checks nothing of it is left: the window is
-gone and the shared command list holds none of its commands. Prints the
+"""Opens the Button Map the way the program does (helpers.js), opens its
+Keyboard Shortcuts and Button Map Options windows, closes it, and checks
+nothing of it is left: the window is gone and the shared command list
+holds none of its commands (it has no Command Palette, 07 S100). Prints the
 process's memory at each step. test_button_map_lifecycle.py runs it in its
 own process.
 
@@ -162,15 +163,14 @@ def main() -> None:
         win = run(root, "win()")
         print(f"MEM open{cycle} {memory_mb():.1f}", flush=True)
         if cycle == 0:
-            # The palette lists the window's menu commands while it is open,
-            # and the shared list lets go of them when it closes.
-            print("RESULT palette " + str(run(
-                win, "_palette.open(); _palette.describe().length > 10")), flush=True)
+            # No Command Palette (07 S100): the shared command list never
+            # holds the window's commands. Closed with Keyboard Shortcuts and
+            # Button Map Options open: still nothing left behind.
             print(f"RESULT during {run(root, 'leftOver()')}", flush=True)
-            print("RESULT after-palette " + str(run(
-                win, "_palette.close(); Commands.countOwner('buttonmap')")), flush=True)
-            # Closed with the palette open: still nothing left behind.
-            run(win, "_palette.open()")
+            print("RESULT shortcuts " + str(run(
+                win, "_buttonMap.openShortcuts(); _shortcutsWin.visible")), flush=True)
+            print("RESULT options " + str(run(
+                win, "_buttonMap.openOptions(); _optionsWin.visible")), flush=True)
         run(win, "close()")
         settle()
         print(f"RESULT gone{cycle} {not shiboken6.isValid(win)}", flush=True)

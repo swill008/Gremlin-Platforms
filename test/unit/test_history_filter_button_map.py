@@ -126,13 +126,15 @@ _ALL = {
 
 def test_window_builds_a_device_id_filter_with_no_area() -> None:
     text = _QML.read_text(encoding="utf-8")
+    # File > History calls openHistory(), which builds the filter.
+    assert re.search(r'text:\s*"History".*?onTriggered:\s*_buttonMap\.openHistory\(\)', text, re.S)
     found = re.search(
-        r'text:\s*"History".*?filter:\s*JSON\.stringify\((\{.*?\})\)', text, re.S
+        r'function openHistory\(\).*?filter:\s*JSON\.stringify\((\{.*?\})\)', text, re.S
     )
     assert found, "File > History not found in DialogJoystickButtonMap.qml"
     built = found.group(1)
     assert "deviceId: _fileWatch.deviceIdFor(" in built
-    assert "deviceName: _buttonMap.targetName" in built
+    assert "deviceName: targetName" in built
     assert "area" not in built and "fileName" not in built
 
 

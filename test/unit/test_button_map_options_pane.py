@@ -2,16 +2,15 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's Options pane, checked in the running program off-screen
+"""Button Map Options (07 S98), checked in the running program off-screen
 (button_map_options_pane_smoke.py, its own process and user folder).
 
-- An Options tool on the top row (hidden at first); Edit > Button Map
-  Options... opens the pane, on the live map too, docked under the top row.
+- Its own small window: Edit > Button Map Options... (Ctrl+,) opens it, on
+  the live map too; no Options pane or tool tab in the Button Map (S99).
 - The groups down the left, the chosen group's settings on the right.
-- A setting changed in the pane is kept at once; the group shown is kept.
+- A setting changed in it is kept at once; the group shown is kept.
 - Library shows the saved styles and templates.
-- Joined to its tab, as wide as its settings need; its right edge makes it
-  wider (kept).
+- Esc closes it; Ctrl+, opens it again.
 """
 
 from __future__ import annotations
@@ -47,13 +46,10 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     return json.loads(lines[0][len("RESULT "):])
 
 
-def test_the_menu_opens_the_pane_under_the_top_row(run: dict) -> None:
-    assert run["tool"] == ["top", False]
-    assert run["menu"] is True
-    assert run["open"] == [True, True]
-    assert abs(run["under-top-row"]) <= 1
-    assert run["at-tab"] is True
-    assert run["narrower"] is True
+def test_the_menu_opens_its_own_window(run: dict) -> None:
+    assert run["menu"] == "Ctrl+,"
+    assert run["open"] == [True, "Button Map Options", False]
+    assert run["no-pane"] == []
 
 
 def test_groups_and_their_settings(run: dict) -> None:
@@ -71,39 +67,6 @@ def test_a_change_is_kept_and_so_is_the_group(run: dict) -> None:
     assert run["kept-group"] == "editing"
 
 
-def test_a_tab_dragged_off_its_row_floats(run: dict) -> None:
-    assert run["floated"] == [True, True, "top"]
-    assert run["title"] == [True, True, True, True]
-    assert run["near-drop"] == [True, True]
-    assert run["tab-mark"] is True
-
-
-def test_a_floating_panel_moves_and_resizes(run: dict) -> None:
-    assert run["moved"] == [-50, 30]
-    assert run["corner"] == [40, 30]
-    # The left edge: further left and wider by as much.
-    assert run["left-edge"] == [-30, 30]
-    assert run["locked-still"] is True
-
-
-def test_closing_keeps_it_floating_where_it_was(run: dict) -> None:
-    assert run["closed"] == [False, True]
-    assert run["reopened-same"] is True
-    floating, place = run["kept-floating"]
-    assert floating is True and '"x":' in place
-
-
-def test_it_docks_again(run: dict) -> None:
-    assert run["docked-bottom"] == [False, "bottom"]
-    assert run["double-click"] == [False, "bottom"]
-    assert run["reset"] == [False, "top"]
-
-
-def test_print_area_never_floats(run: dict) -> None:
-    assert run["print-area"] == [False, True]
-    assert run["print-area-floating"] is False
-
-
-def test_its_right_edge_resizes_it(run: dict) -> None:
-    assert abs(run["wider"] - 40) <= 3
-    assert '"w":' in run["size-kept"]
+def test_esc_closes_it_and_ctrl_comma_opens_it(run: dict) -> None:
+    assert run["esc-closed"] is True
+    assert run["key-opens"] is True

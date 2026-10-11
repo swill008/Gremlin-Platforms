@@ -16,7 +16,10 @@ _QML = pathlib.Path(__file__).parents[2] / "qml" / "DialogJoystickButtonMap.qml"
 def test_size_menu_starts_at_one() -> None:
     qml = _QML.read_text(encoding="utf-8")
     menu = qml[qml.index('title: "Size"'):]
-    sizes = [int(v) for v in re.findall(r'setGridPref\("gridSize", (\d+)\)', menu)]
+    model = re.search(r"model: \[([\d, ]+)\]", menu)
+    assert model, "View > Grid > Size has no list of sizes"
+    assert 'setGridPref("gridSize", modelData)' in menu
+    sizes = [int(v) for v in model.group(1).split(",")]
     assert sizes[:3] == [1, 2, 4]
 
 

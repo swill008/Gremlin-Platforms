@@ -2,9 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""View > Properties in the Button Map is usable only in Edit, so the menu
-item is enabled only in Edit and the Command Palette (which lists every
-usable command, 07 S100) leaves it out otherwise. Checked in the running
+"""View > Properties (F4) in the Button Map is usable only in Edit, so the
+menu item is enabled only in Edit; there it and F4 show or hide Properties
+under Layers (07 S133, S135). Checked in the running
 program off-screen (handson_P2_props_menu_smoke.py, its own process and
 user folder).
 """
@@ -39,16 +39,16 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     return json.loads(lines[0][len("RESULT "):])
 
 
-def test_properties_is_disabled_and_unlisted_outside_edit(run: dict) -> None:
+def test_properties_is_disabled_outside_edit(run: dict) -> None:
     assert run["item-found"] is True
     assert run["view-editing"] is False
-    assert run["view-opened"] is True
     assert run["view-enabled"] is False
-    assert "Properties" not in run["view-lists"]
+    assert run["view-hint"] == "F4"
 
 
-def test_properties_is_enabled_listed_and_toggles_in_edit(run: dict) -> None:
+def test_properties_is_enabled_and_toggles_in_edit(run: dict) -> None:
     assert run["editing"] is True
     assert run["edit-enabled"] is True
-    assert run["edit-lists"][0] == "Properties"
     assert run["edit-toggled"] is True
+    assert run["checked-follows"] is True
+    assert run["f4-toggled"] is True

@@ -120,7 +120,6 @@ Item {
     // for a drag, and the area being drawn.
     property var printArea: null
     property bool printAreaShown: false
-    property bool printAreaLocked: false
     // "" until the window sets it (Options' color, or the default red); a
     // plain value, not a binding, as the window replaces it.
     property string printAreaColor: ""
@@ -584,6 +583,8 @@ Item {
     function setPictureLook(id, key, value) { return RigLayers.setPictureLook(id, key, value) }
     function refreshLookUrl(n) { return RigLayers.refreshLookUrl(n) }
     function planeMoveItems(ids) { return RigMenu.planeMoveItems(ids) }
+    // Callout "Detach from Chips" for the menu bar (rig_commands.js, 07 S134).
+    function detachFromChips() { return RigMenu._detachFromChips() }
     // Pictures whose look changed: their adjusted copy is made once the
     // slider pauses briefly, not at every step of a drag.
     property var _lookWaiting: ({})

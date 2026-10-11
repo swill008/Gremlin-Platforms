@@ -65,8 +65,13 @@ def test_each_menu_bar_has_one_help_item(run: dict) -> None:
         helps = [i for i in run[key] if i["text"] == "Help"]
         assert len(helps) == 1, (key, run[key])
         assert not [i for i in run[key] if "Guide" in i["text"]], (key, run[key])
-    for key in ("library_items", "buttonmap_items"):
-        assert run[key] == [{"text": "Help", "hint": "F1"}], (key, run[key])
+    library = run["library_items"]
+    assert library == [{"text": "Help", "hint": "F1"}], library
+    # The Button Map's Help menu also lists its keys (07 S135).
+    assert run["buttonmap_items"] == [
+        {"text": "Help", "hint": "F1"},
+        {"text": "Keyboard Shortcuts…", "hint": "Ctrl+K"},
+    ], run["buttonmap_items"]
 
 
 def test_main_f1_opens_the_whole_book(run: dict) -> None:

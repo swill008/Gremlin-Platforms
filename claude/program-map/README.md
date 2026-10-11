@@ -35,11 +35,11 @@ spec change. See "The plan" in `claude/system-maps.md`.
 | [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 99 | 21 | 24 | reviewed 2026-10-06 (all as recommended) |
 | [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page, R16 fixes, action editor matrix; 2026-10-10 Configuration and Keyboard pages on the shared base (S121-S131, S122a, S125a; batch C, built); to-do 91 shared page parts (S132, PB-G1, built); Appearance panel closes when narrow (S135, built) | 143 | 21 | 65 | reviewed 2026-10-06 (all as recommended) |
 | [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device, loop guard, output trace | 98 | 19 | 37 | reviewed 2026-10-06 (all as recommended) |
-| [07-button-map](07-button-map.md) | Button Map editor, background and foreground planes (S111-S127), device folders (S106-S110), recovery, print/export | 131 | 19 | 33 | reviewed 2026-10-06 (all as recommended) |
+| [07-button-map](07-button-map.md) | Button Map editor, background and foreground planes (S111-S127), device folders (S106-S110), recovery, print/export, side panels and menu bar (S128-S135, built 2026-10-11) | 137 | 19 | 39 | reviewed 2026-10-06 (all as recommended) |
 | [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper, device folder export (S111-S114) | 120 | 21 | 41 | reviewed 2026-10-06 (all as recommended) |
 | [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (picked up 2026-10-09: own module file, per-input settings; Monitor, output and Send OSC, Feedback, encoder, discovery; 2026-10-10 rewrite on the Logical Device page's shared base, S129-S164 in three batches, all built 2026-10-10), sound, speech, tray, theme; shared widgets and foundations | 182 | 20 | 89 | reviewed 2026-10-06 (all as recommended) |
 | [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 66 | 1 | S1-S56 (+S20a, S53a) built; S60, S61, S63 and changed S11, S14, S18, S44, S52, S57 built 2026-10-11 (D-03-DEVICE-FOLDERS, D-10-GMAP-SETUPS; gap DEVICE-FOLDERS closed); S62 and the planes part of S11 not built (D-07-BACKGROUND-PLANES, gap open); S6a (D-04-LD-FILE) built (000e35d0); S57-S59 built (S58, S59 on 07b8d891); open items: to-dos 47, 50, 51, 52; AUD-DRIVEN, AUD-DEVNAMES fixed 2026-10-11 (07b8d891) | approved 2026-10-08 |
-| **Total** | | **1291** | **175** | **400** (+ page 10) | |
+| **Total** | | **1297** | **175** | **406** (+ page 10) | |
 
 ## Most serious findings (to confirm first)
 

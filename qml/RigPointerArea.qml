@@ -94,8 +94,8 @@ MouseArea {
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
         // The print area: Alt+drag from an empty part of the map (on an
         // item Alt still moves it without snapping), or any drag after Set
-        // Print Area. Not while it is locked.
-        if (ed.interactive && m.button === Qt.LeftButton && !ed.printAreaLocked
+        // Print Area.
+        if (ed.interactive && m.button === Qt.LeftButton
                 && (ed.printAreaArm || (ed.altHeld && !ed.hitTest(m.x, m.y).id))) {
             ed.beginGesture()
             ed.beginPrintArea(m.x, m.y)

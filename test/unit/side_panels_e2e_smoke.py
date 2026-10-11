@@ -172,6 +172,10 @@ def main() -> None:
     # --- Edit: the strips come; Chips out and pinned, Layers folded --------
     edit(win)
     out["edit"] = [state(chips), state(layers)]
+    # Folded Layers: its own frame ajar on the window's right edge.
+    body = part(layers, "sidePanelBody")
+    out["layers-ajar"] = [win.width() - rect(body)["x"], rect(body)["w"],
+                          layers.property("stripWidth")]
     host = lambda: rect(ev(win, "_mapHost"))  # noqa: E731
     out["host-edit"] = host()
 
@@ -201,13 +205,14 @@ def main() -> None:
     click(win, QtCore.QPointF(h["x"] + h["w"] * 0.35, h["y"] + h["h"] * 0.5).toPoint())
     out["map-click"] = [state(chips), state(layers)]
 
-    # The other strip's click folds an unpinned panel.
+    # The other drawer's click folds an unpinned panel: Layers out, Chips
+    # folded by its arrow (Layers stays), then Chips' drawer clicked.
     click(win, centre(part(layers, "sideStrip")))
     out["layers-again"] = state(layers)["open"]
+    click(win, centre(part(chips, "sideFold")))
+    out["chips-folded"] = [state(chips), state(layers)]
     click(win, centre(part(chips, "sideStrip")))
     out["other-strip"] = [state(chips), state(layers)]
-    click(win, centre(part(chips, "sideStrip")))
-    out["chips-back"] = state(chips)
 
     # --- resize by the inner edge; kept after closing and reopening --------
     before = chips.property("panelWidth")
@@ -220,15 +225,18 @@ def main() -> None:
     a = QtCore.QPointF(grip["x"] + grip["w"] / 2, grip["y"] + grip["h"] / 2)
     drag(win, a, a + QtCore.QPointF(2000, 0))
     out["at-max"] = [chips.property("panelWidth"), chips.property("maxWidth")]
-    from gremlin.ui import window_placement
+    from gremlin.ui import button_map_options
 
-    out["saved-sides"] = window_placement.tool_row_state("button-map").get("sides")
+    def saved() -> dict:
+        return {p: button_map_options.side_panel_state(p) for p in ("chips", "layers")}
+
+    out["saved-sides"] = saved()
 
     # --- Background mode folds Chips and brings it back (S130) -------------
     ev(win, "_buttonMap.setEditPlane('background')")
     QtTest.QTest.qWait(300)
     out["bg"] = [ev(win, "bgMode"), state(chips)]
-    out["bg-saved"] = window_placement.tool_row_state("button-map").get("sides")
+    out["bg-saved"] = saved()
     ev(win, "_buttonMap.setEditPlane('foreground')")
     QtTest.QTest.qWait(300)
     out["fg"] = [ev(win, "bgMode"), state(chips)]
@@ -279,10 +287,10 @@ def main() -> None:
     chips, layers = sides["left"], sides["right"]
     out["reopened"] = [state(chips), state(layers)]
 
-    # --- Reset Tool Rows puts the side panels back as they start (S99) ------
-    # View > Reset Tool Rows, the menu item itself.
+    # --- Reset Panels puts the side panels back as they start (S99) --------
+    # View > Reset Panels, the menu item itself.
     items = [o for o in win.findChildren(QtCore.QObject)
-             if o.property("text") == "Reset Tool Rows"
+             if o.property("text") == "Reset Panels"
              and o.metaObject().indexOfSignal("triggered()") >= 0]
     out["reset-items"] = len(items)
     if items:

@@ -4,7 +4,7 @@
 
 """Starts the program off-screen (stand-in hardware, two sticks with a map
 each) and drives the Button Map's Layers search from the window (07 S102):
-Ctrl+F, View > Search layers… in the Command Palette, the kinds and search
+Ctrl+F, View > Search layers… in the menu bar, the kinds and search
 kept when another device's map is shown, and both gone after the window
 closes and opens again. Prints what it saw as JSON.
 test_layers_search_window.py runs it in its own process and user folder.
@@ -178,22 +178,20 @@ def main() -> None:
     QtTest.QTest.keyClick(win, Key.Key_F, Mod.ControlModifier)
     out["ctrl-f-when-open"] = bool(wait_for(lambda: ev(win, IN_SEARCH) is True))
 
-    # The Command Palette lists View > Search layers… and runs it.
+    # View > Search layers… (Ctrl+F) does the same (07 S135).
     ev(win, LAYERS_SIDE + ".fold()")
     focus_map(win)
-    ev(win, "_palette.open()")
-    wait_for(lambda: ev(win, "_palette.opened"))
-    ev(win, "_palette.search('search layers')")
-    listed = ev(win, "_palette.describe()") or []
-    out["palette-lists"] = list(listed)
-    out["palette-shortcut"] = ev(
-        win,
-        "(function() { var c = _palette.results[0]; return c ? c.shortcut : '' })()",
+    item = (
+        "(function() { var m = _viewMenu; for (var i = 0; i < m.count; i++) {"
+        " var it = m.itemAt(i); if (it && it.text === 'Search layers…') return it }"
+        " return null })()"
     )
-    ev(win, "_palette.runPick(0)")
-    out["palette-opens-layers"] = bool(wait_for(
+    out["menu-item"] = ev(win, item + ".text")
+    out["menu-shortcut"] = ev(win, item + ".hint")
+    ev(win, item + ".triggered()")
+    out["menu-opens-layers"] = bool(wait_for(
         lambda: ev(win, LAYERS_SIDE + ".open && _layersPanel.visible") is True))
-    out["palette-focuses-search"] = out["palette-opens-layers"] and bool(
+    out["menu-focuses-search"] = out["menu-opens-layers"] and bool(
         wait_for(lambda: ev(win, IN_SEARCH) is True))
 
     # Kinds and search stay when another device's map is shown.

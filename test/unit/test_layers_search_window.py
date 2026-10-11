@@ -7,8 +7,7 @@ D-07-LAYERS-SEARCH), checked in the running program off-screen
 (layers_search_window_smoke.py, its own process and user folder).
 
 - Ctrl+F goes to the Search layers… box, opening Layers if it is closed.
-- The Command Palette lists View > Search layers… (Ctrl+F), which does the
-  same.
+- View > Search layers… (Ctrl+F) in the menu bar does the same.
 - The kinds and the search stay when another device's map is shown, and are
   none and empty after the Button Map closes and opens again.
 - Help describes the box, the kind toggles and the keys.
@@ -54,17 +53,14 @@ def test_ctrl_f_opens_layers_and_goes_to_the_box(run: dict) -> None:
     assert run["ctrl-f-when-open"] is True
 
 
-def test_the_palette_lists_search_layers(run: dict) -> None:
-    assert run["palette-lists"][0] == "Search layers…"
-    assert run["palette-shortcut"] == "Ctrl+F"
+def test_the_view_menu_lists_search_layers(run: dict) -> None:
+    assert run["menu-item"] == "Search layers…"
+    assert run["menu-shortcut"] == "Ctrl+F"
 
 
-# Needs the unpinned palette to run the command it picks: today closing it
-# takes the window's commands away (onClosed: Commands.removeOwner) before
-# runPick's deferred Commands.trigger(id) looks the command up.
-def test_the_palette_searches_layers(run: dict) -> None:
-    assert run["palette-opens-layers"] is True
-    assert run["palette-focuses-search"] is True
+def test_the_view_menu_item_searches_layers(run: dict) -> None:
+    assert run["menu-opens-layers"] is True
+    assert run["menu-focuses-search"] is True
 
 
 def test_kinds_and_search_stay_on_another_devices_map(run: dict) -> None:

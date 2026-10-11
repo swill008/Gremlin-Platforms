@@ -7,6 +7,11 @@ handler: checked without the window open, the window opened on a device,
 "Edit the map to see this" outside Edit, and the banner
 (Background mode) and the Background row (Layers, Foreground mode) pulsed
 while editing; the removed switch (bmPlaneSwitch) is refused (07 S113).
+One link per area (user 2026-10-11): each menu's title in the menu bar
+(File, Edit, View, Format and Help also outside Edit; Insert, Arrange and
+Leader only while editing), the Chips and Layers side panels brought out,
+and Properties under Layers ("Select an item to see Properties" with
+nothing selected).
 Runs help_showme_buttonmap_smoke.py off-screen in its own
 process with a fresh user folder.
 """
@@ -23,8 +28,12 @@ import pytest
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "help_showme_buttonmap_smoke.py"
-_NAMES = ("bmBgBanner", "bmBgRow")
+_FREE_MENUS = ("bmMenuFile", "bmMenuEdit", "bmMenuView", "bmMenuFormat", "bmMenuHelp")
+_EDIT_MENUS = ("bmMenuInsert", "bmMenuArrange", "bmMenuLeader")
+_PLACES = ("chipsSide", "layersSide", "propsPanel", "bmBgBanner", "bmBgRow")
+_NAMES = (*_FREE_MENUS, *_EDIT_MENUS, *_PLACES)
 _EDIT = "Edit the map to see this"
+_SELECT = "Select an item to see Properties"
 
 
 @pytest.fixture(scope="module")
@@ -58,8 +67,25 @@ def test_not_editing_opens_the_window_and_says_edit_first(run: dict) -> None:
     assert run["device"], "the Button Map opened on no device"
     assert run["closed"] == _EDIT
     assert run["message"] == _EDIT
-    for name in _NAMES:
-        assert run["not_editing"][name] == _EDIT, name
+    for name in (*_EDIT_MENUS, *_PLACES):
+        got = run["not_editing"][name]
+        assert got["why"] == _EDIT, (name, got)
+        assert not got["pulsed"], (name, got)
+
+
+def test_not_editing_pulses_the_menus_that_work_outside_edit(run: dict) -> None:
+    for name in _FREE_MENUS:
+        got = run["not_editing"][name]
+        assert got["why"] == "", (name, got)
+        assert got["pulsed"], (name, got)
+        # The pulse is on that menu's title in the bar.
+        assert got["text"] and got["text"] == got["title"], (name, got)
+
+
+def test_properties_with_nothing_selected_says_select(run: dict) -> None:
+    got = run["props_unselected"]
+    assert got["why"] == _SELECT, got
+    assert not got["pulsed"], got
 
 
 def test_editing_pulses_each_place(run: dict) -> None:
@@ -70,3 +96,11 @@ def test_editing_pulses_each_place(run: dict) -> None:
     assert got["bmBgBanner"]["plane"] == "background"
     assert got["bmBgRow"]["plane"] == "foreground"
     assert got["bmBgRow"]["layers"]
+    for name in (*_FREE_MENUS, *_EDIT_MENUS):
+        bar = got[name]
+        assert bar["text"] and bar["text"] == bar["title"], (name, bar)
+    # Chips comes out, in the foreground (it folds in Background mode, 07 S130).
+    assert got["chipsSide"]["chips"] and got["chipsSide"]["plane"] == "foreground"
+    assert got["layersSide"]["layers"]
+    # Properties hidden and Layers folded before: both brought out.
+    assert got["propsPanel"]["layers"] and got["propsPanel"]["props"]

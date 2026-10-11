@@ -107,13 +107,13 @@ Short names used below:
 | S91 | "Export failed." with file, folder and reason | test_batch2_B6.py::test_a_failed_export_names_the_file_and_why | covered |
 | S92 | Print & Export hidden until asked for | test_print_export_window.py::test_it_stays_closed_until_asked_for | covered |
 | S93 | Preview drag moves, wheel resizes; not when locked | test_print_export_window.py::test_dragging_and_zooming_the_preview_moves_the_area; test_button_map_print_area.py::test_the_handle_resizes_and_lock_keeps_it | covered |
-| S94 | Zoom 50-600%, Ctrl+0/1/2 | final::test_zoom_from_50_to_600_percent_with_its_keys; test_button_map_tool_row.py::test_the_view_zooms_out_to_half; golden[zoom] | new |
+| S94 | Zoom 50-600%, Ctrl+0/1/2, Zoom In / Out | final::test_zoom_from_50_to_600_percent_with_its_keys; test_button_map_menubar.py::test_zoom_in_and_out; golden[zoom] | covered |
 | S95 | View / grid kept at once, not in History; guides / area per Q1 | test_history_recording.py::test_the_maps_view_alone_is_not_kept; stage1::test_cancel_takes_back_print_area_and_guides; test_button_map_print_area.py::test_the_area_is_saved_with_the_map | covered |
 | S96 | No module file from zoom / grid outside Edit | final::test_a_device_without_a_photo_shows_none (files-same), final::test_the_blank_page_says_choose_a_device_and_writes_nothing; test_batch2_B6.py::test_a_ui_change_makes_no_module_file | covered + new |
 | S97 | History lists saves under Button Map, with pictures | test_history_recording.py::test_a_module_save_is_kept_with_its_pictures; stage1::test_choose_photo_then_save_is_one_history_entry, ::test_history_restore_puts_the_file_back | covered |
 | S98 | Options for every device, kept at once; last group | test_button_map_options_pane.py::test_a_change_is_kept_and_so_is_the_group; test_button_map_options.py | covered |
-| S99 | Tool rows, tabs, pins kept; Reset Tool Rows | test_button_map_tool_row.py::test_rows_and_docks_are_kept_and_reset | covered |
-| S100 | Command Palette lists every usable menu command | final::test_the_command_palette_lists_the_usable_menu_commands | new |
+| S99 | Side panels, divider, Properties kept; Reset Panels (keeps print area and the Shortcuts pin) | test_side_panels_window.py::test_kept_for_the_next_window_and_reset_panels; test_side_panels_e2e.py::test_reset_panels_resets_the_side_panels; test_button_map_menubar.py::test_reset_panels_keeps_print_area_and_the_shortcuts_pin | covered |
+| S100 | Keyboard Shortcuts window: keys by menu, runs nothing, pin | test_button_map_menubar.py::test_keyboard_shortcuts_lists_keys_by_menu, ::test_keyboard_shortcuts_runs_nothing, ::test_keyboard_shortcuts_pin | covered |
 
 ## Decisions that state behaviour (section 12)
 

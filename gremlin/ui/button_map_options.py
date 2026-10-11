@@ -191,6 +191,190 @@ def register() -> None:
             SECTION, VIEW_GROUP, name, kind, default, description, properties, False
         )
     _register_pane_group(cfg)
+    _register_panels(cfg)
+
+
+# --- side panels -------------------------------------------------------------------
+
+# The Button Map window's side panels, the Layers/Properties divider and the
+# print area's frame: program settings, not listed in Options. Widths are
+# logical px at 100% (QML multiplies by Style.dp(1)).
+PANELS_GROUP = "panels"
+SIDE_PANELS_KEY = "side-panels"
+PROPS_SPLIT_KEY = "props-split"
+PRINT_AREA_SHOWN_KEY = "print-area-shown"
+PROPS_SHOWN_KEY = "props-shown"
+
+PROPS_SPLIT_DEFAULT = 0.6
+PROPS_SPLIT_MIN = 0.2
+PROPS_SPLIT_MAX = 0.8
+# The frame starts hidden, as the Print Area tool did.
+PRINT_AREA_SHOWN_DEFAULT = False
+# Properties under Layers starts shown (View > Properties, F4).
+PROPS_SHOWN_DEFAULT = True
+
+
+def _register_panels(cfg: Configuration) -> None:
+    # Registering again keeps the stored values.
+    cfg.register(
+        SECTION, PANELS_GROUP, SIDE_PANELS_KEY, PropertyType.Dict, {},
+        "Button Map side panels: {id: {width, pinned, open}}.", {}, False,
+    )
+    cfg.register(
+        SECTION, PANELS_GROUP, PROPS_SPLIT_KEY, PropertyType.Float,
+        PROPS_SPLIT_DEFAULT,
+        "Button Map: the Layers panel's share above the Properties panel.",
+        {"min": PROPS_SPLIT_MIN, "max": PROPS_SPLIT_MAX}, False,
+    )
+    cfg.register(
+        SECTION, PANELS_GROUP, PRINT_AREA_SHOWN_KEY, PropertyType.Bool,
+        PRINT_AREA_SHOWN_DEFAULT,
+        "Button Map: the print area's frame is shown (View > Show Print Area).",
+        {}, False,
+    )
+    cfg.register(
+        SECTION, PANELS_GROUP, PROPS_SHOWN_KEY, PropertyType.Bool,
+        PROPS_SHOWN_DEFAULT,
+        "Button Map: Properties shows under Layers (View > Properties).",
+        {}, False,
+    )
+
+
+def _panels_cfg() -> Configuration:
+    cfg = Configuration()
+    _register_panels(cfg)
+    return cfg
+
+
+def side_panel_default(panel_id: str) -> dict:
+    """A side panel never changed: Chips pinned open, Layers closed."""
+    if panel_id == "chips":
+        return {"width": 260, "pinned": True, "open": True}
+    if panel_id == "layers":
+        return {"width": 300, "pinned": False, "open": False}
+    return {"width": 260, "pinned": False, "open": False}
+
+
+def _clean_side(panel_id: str, raw: object, base: dict | None = None) -> dict:
+    """{width, pinned, open} from raw over base (the default when None): a
+    positive whole width, pinned and open as True/False."""
+    out = dict(base if base is not None else side_panel_default(panel_id))
+    if not isinstance(raw, dict):
+        return out
+    if "width" in raw:
+        try:
+            width = round(float(typing.cast(float, raw["width"])))
+        except (TypeError, ValueError, OverflowError):
+            width = 0
+        if width > 0:
+            out["width"] = width
+    for flag in ("pinned", "open"):
+        if raw.get(flag) is not None:
+            out[flag] = bool(raw[flag])
+    return out
+
+
+def side_panel_state(panel_id: str) -> dict:
+    stored = _panels_cfg().value(SECTION, PANELS_GROUP, SIDE_PANELS_KEY)
+    raw = stored.get(panel_id) if isinstance(stored, dict) else None
+    return _clean_side(panel_id, raw)
+
+
+def set_side_panel_state(panel_id: str, state: object) -> bool:
+    """Merges state into the panel's; False when nothing changed."""
+    panel_id = str(panel_id or "")
+    if not panel_id:
+        return False
+    now = side_panel_state(panel_id)
+    new = _clean_side(panel_id, state, now)
+    if new == now:
+        return False
+    cfg = _panels_cfg()
+    stored = cfg.value(SECTION, PANELS_GROUP, SIDE_PANELS_KEY)
+    rows = dict(stored) if isinstance(stored, dict) else {}
+    rows[panel_id] = new
+    cfg.set(SECTION, PANELS_GROUP, SIDE_PANELS_KEY, rows)
+    return True
+
+
+def _clamp_split(raw: object) -> float:
+    try:
+        share = float(typing.cast(float, raw))
+    except (TypeError, ValueError):
+        return PROPS_SPLIT_DEFAULT
+    if share != share:  # NaN
+        return PROPS_SPLIT_DEFAULT
+    return max(PROPS_SPLIT_MIN, min(PROPS_SPLIT_MAX, share))
+
+
+def props_split() -> float:
+    return _clamp_split(_panels_cfg().value(SECTION, PANELS_GROUP, PROPS_SPLIT_KEY))
+
+
+def set_props_split(share: object) -> bool:
+    """Keeps the share, clamped to 0.2..0.8; False when nothing changed."""
+    try:
+        float(typing.cast(float, share))
+    except (TypeError, ValueError):
+        return False
+    new = _clamp_split(share)
+    if new == props_split():
+        return False
+    _panels_cfg().set(SECTION, PANELS_GROUP, PROPS_SPLIT_KEY, new)
+    return True
+
+
+def print_area_shown() -> bool:
+    return bool(_panels_cfg().value(SECTION, PANELS_GROUP, PRINT_AREA_SHOWN_KEY))
+
+
+def set_print_area_shown(shown: object) -> bool:
+    new = bool(shown)
+    if new == print_area_shown():
+        return False
+    _panels_cfg().set(SECTION, PANELS_GROUP, PRINT_AREA_SHOWN_KEY, new)
+    return True
+
+
+def props_shown() -> bool:
+    return bool(_panels_cfg().value(SECTION, PANELS_GROUP, PROPS_SHOWN_KEY))
+
+
+def set_props_shown(shown: object) -> bool:
+    new = bool(shown)
+    if new == props_shown():
+        return False
+    _panels_cfg().set(SECTION, PANELS_GROUP, PROPS_SHOWN_KEY, new)
+    return True
+
+
+def reset_panels() -> None:
+    """The side panels, the divider and Properties back to their defaults
+    (View > Reset Panels, 07 S99). Not the print area's frame or the
+    Keyboard Shortcuts window's pin: they aren't panels."""
+    cfg = _panels_cfg()
+    stored = dict(cfg.value(SECTION, PANELS_GROUP, SIDE_PANELS_KEY) or {})
+    kept = {k: v for k, v in stored.items() if k == "shortcuts"}
+    cfg.set(SECTION, PANELS_GROUP, SIDE_PANELS_KEY, kept)
+    cfg.set(SECTION, PANELS_GROUP, PROPS_SPLIT_KEY, PROPS_SPLIT_DEFAULT)
+    cfg.set(SECTION, PANELS_GROUP, PROPS_SHOWN_KEY, PROPS_SHOWN_DEFAULT)
+
+
+class _PanelsNotifier(QtCore.QObject):
+    """One signal for every ButtonMapOptions, so each window sees a change
+    made through another."""
+
+    changed = QtCore.Signal()
+
+
+_panels_notifier: _PanelsNotifier | None = None
+
+
+def _notifier() -> _PanelsNotifier:
+    global _panels_notifier
+    if _panels_notifier is None:
+        _panels_notifier = _PanelsNotifier()
+    return _panels_notifier
 
 
 # --- saved styles ----------------------------------------------------------------
@@ -320,11 +504,15 @@ class ButtonMapOptions(QtCore.QObject):
     """The Button Map options for QML: values[name], and set(name, value)."""
 
     changed = QtCore.Signal()
+    # A side panel, the Layers/Properties divider or the print area's frame
+    # changed. Not sent on configChanged, so a drag doesn't redraw every option.
+    panelsChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         register()
         signal.configChanged.connect(self._on_config)
+        _notifier().changed.connect(self.panelsChanged)
 
     @QtCore.Slot()
     def _on_config(self) -> None:
@@ -425,6 +613,52 @@ class ButtonMapOptions(QtCore.QObject):
         if ok:
             signal.configChanged.emit()
         return ok
+
+    # --- side panels ---------------------------------------------------------
+
+    @QtCore.Slot(str, result="QVariantMap")
+    def sidePanelState(self, panel_id: str) -> dict:
+        """{width, pinned, open}; width in logical px at 100%."""
+        return side_panel_state(panel_id)
+
+    @QtCore.Slot(str, "QVariantMap")
+    def setSidePanelState(self, panel_id: str, state: dict) -> None:
+        """Merges the given keys of {width, pinned, open} into the panel's."""
+        if set_side_panel_state(panel_id, state):
+            _notifier().changed.emit()
+
+    @QtCore.Slot(result=float)
+    def propsSplit(self) -> float:
+        """The Layers panel's share above Properties, 0.2..0.8."""
+        return props_split()
+
+    @QtCore.Slot(float)
+    def setPropsSplit(self, share: float) -> None:
+        if set_props_split(share):
+            _notifier().changed.emit()
+
+    @QtCore.Slot(result=bool)
+    def printAreaShown(self) -> bool:
+        return print_area_shown()
+
+    @QtCore.Slot(bool)
+    def setPrintAreaShown(self, shown: bool) -> None:
+        if set_print_area_shown(shown):
+            _notifier().changed.emit()
+
+    @QtCore.Slot(result=bool)
+    def propsShown(self) -> bool:
+        return props_shown()
+
+    @QtCore.Slot(bool)
+    def setPropsShown(self, shown: bool) -> None:
+        if set_props_shown(shown):
+            _notifier().changed.emit()
+
+    @QtCore.Slot()
+    def resetPanels(self) -> None:
+        reset_panels()
+        _notifier().changed.emit()
 
     @QtCore.Slot(str, "QVariant")
     def set(self, key: str, new_value: object) -> None:

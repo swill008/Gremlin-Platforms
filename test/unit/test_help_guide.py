@@ -25,9 +25,13 @@ _CHAPTERS = [
 _MENU_SOURCES = [
     "qml/Main.qml", "qml/main_commands.js", "qml/DialogJoystickButtonMap.qml",
     "qml/WindowDeviceLibrary.qml", "qml/rig_menu.js",
+    # The Button Map's Insert, Arrange, Leader and Format menus, built at run
+    # time from its list() (07 S135).
+    "qml/rig_commands.js",
 ]
 # The Photo menu became Background (07 S39, D-07-BACKGROUND-PLANES).
-_MENUS = r"File|Edit|View|Tools|Debug|Help|Device|Background|Insert|Format|Arrange"
+_MENUS = (r"File|Edit|View|Tools|Debug|Help|Device|Background|Insert|Format|Arrange"
+          r"|Leader")
 _LINK = re.compile(r'<a\s+href="topic:([^"]*)"')
 
 
@@ -50,6 +54,11 @@ def _menu_labels() -> set[str]:
         # The Button Map's right-click menu (rig_menu.js).
         labels |= set(re.findall(r'_act\("([^"]+)"', source))
         labels |= set(re.findall(r'_sect\("[^"]+", "([^"]+)"', source))
+        # rig_commands.js list(): _c("id", "Menu", "Sub", "Text", ...); the
+        # submenu and the item text are labels.
+        calls = re.findall(r'_c\("[^"]*", "[^"]*", "([^"]*)", "([^"]+)"', source)
+        for sub, text in calls:
+            labels |= {sub, text} - {""}
     return {label.rstrip("…").strip() for label in labels}
 
 
@@ -92,6 +101,9 @@ def test_every_link_and_related_topic_resolves() -> None:
     assert broken == []
 
 
+# A key combo in bold (<b>Ctrl+I</b>) is a key's name, not a word.
+_KEY_COMBO = re.compile(r"<b>(?:Ctrl|Shift|Alt)\+[^<]*</b>")
+
 _FORBIDDEN = re.compile(
     r"\b(simply|just|easily|basically|please|note that|the user|we|our|bug|"
     r"to-do|todo)\b|\b[SQ]\d+\b|\bD-\d\d-",
@@ -104,7 +116,8 @@ def test_no_words_the_house_style_rules_out() -> None:
     for topic in _topics():
         common = topic["section"] == "Common questions"
         title = topic["title"]
-        for where, text in (("title", title), ("body", help_book.text(topic["body"]))):
+        body = help_book.text(_KEY_COMBO.sub("<b></b>", topic["body"]))
+        for where, text in (("title", title), ("body", body)):
             for match in _FORBIDDEN.finditer(text):
                 found.append(f"{topic['id']} {where}: {match.group(0)!r}")
             # "I" only in a Common questions title (the reader's own words).

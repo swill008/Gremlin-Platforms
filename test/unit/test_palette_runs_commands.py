@@ -2,14 +2,10 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Choosing a command in the Command Palette runs it (07 S100, 01 S65),
-checked in the running program off-screen (palette_runs_commands_smoke.py,
-its own process and user folder).
-
-- The Button Map's palette, not pinned, while editing: View > Properties
-  toggles Properties, both ways. Closing the palette takes the window's
-  commands away, so the pick must still run after that.
-- The main window's palette (Ctrl+K) runs its pick once.
+"""Choosing a command in the main window's Command Palette (Ctrl+K) runs it
+once (01 S65), checked in the running program off-screen
+(palette_runs_commands_smoke.py, its own process and user folder). The
+Button Map has no Command Palette (07 S100): test_button_map_menubar.py.
 """
 
 from __future__ import annotations
@@ -40,16 +36,6 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, done.stdout[-1500:] + done.stderr[-1500:]
     return json.loads(lines[0][len("RESULT "):])
-
-
-def test_the_button_map_palette_runs_properties(run: dict) -> None:
-    assert run["editing"] is True
-    assert run["pinned"] is False
-    assert run["map-opened"] is True
-    assert run["map-lists"][0] == "Properties"
-    assert run["props-toggled"] is True
-    assert run["map-closed"] is True
-    assert run["props-toggled-back"] is True
 
 
 def test_the_main_palette_runs_its_pick_once(run: dict) -> None:

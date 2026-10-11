@@ -76,10 +76,14 @@ def test_link_text_matches_its_kind(run: dict) -> None:
 
 
 def test_button_map_show_me_links_resolve(run: dict) -> None:
-    """07 S126 (D-07-PLANES-FOLLOWUP Q1a): the Background and foreground
-    topic's Show me › links into the Button Map window are in the book and
-    check without the window open."""
-    want = {f"show:buttonmap/{n}" for n in ("bmBgBanner", "bmBgRow")}
+    """07 S126 (D-07-PLANES-FOLLOWUP Q1a): the Show me › links into the
+    Button Map window are in the book and check without the window open:
+    one per area (user 2026-10-11), each menu's title in the bar, the side
+    panels, Properties, the Background banner and row."""
+    names = ("bmMenuFile", "bmMenuEdit", "bmMenuView", "bmMenuInsert", "bmMenuArrange",
+             "bmMenuLeader", "bmMenuFormat", "bmMenuHelp", "chipsSide", "layersSide",
+             "propsPanel", "bmBgBanner", "bmBgRow")
+    want = {f"show:buttonmap/{n}" for n in names}
     found = {x["href"]: x["reason"] for x in run["links"] if x["href"] in want}
     assert set(found) == want, sorted(want - set(found))
     assert all(r == "" for r in found.values()), found

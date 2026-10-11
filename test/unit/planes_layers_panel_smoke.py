@@ -204,6 +204,8 @@ def main() -> None:
     assert wait_until(lambda: ev("editing") is True)
     ev(LAYERS_SIDE + ".unfold()")
     assert wait_until(lambda: ev("_layersPanel.visible") is True)
+    # The drawer slides open (120 ms); clicks land once it is still.
+    assert wait_until(lambda: ev(LAYERS_SIDE + "._reveal") == 1)
     settle()
 
     # --- the real editor ----------------------------------------------------

@@ -291,7 +291,7 @@ def test_the_labels_mode_is_forgotten_when_the_window_closes(seen: dict) -> None
 
 
 # +-------------------------------------------------------------------------
-# | Print and export, view, palette
+# | Print and export, view, menus
 
 
 def test_an_export_is_capped_at_16384_pixels(seen: dict) -> None:
@@ -310,18 +310,21 @@ def test_zoom_from_50_to_600_percent_with_its_keys(seen: dict) -> None:
     }
 
 
-def test_the_command_palette_lists_the_usable_menu_commands(seen: dict) -> None:
-    # S100: while editing, the commands of every menu; Edit Mapping (not
-    # usable in Edit) is left out.
-    texts = _part(seen, "palette")
-    assert isinstance(texts, list)
-    for wanted in ("Save", "Cancel", "Reset Layout", "Fit to Photo Frame",
-                   "Print & Export…", "Mirror Layout", "Button Map Options…",
+def test_no_command_palette_and_the_menus_hold_the_commands(seen: dict) -> None:
+    # S100: the Button Map has no Command Palette; its menus (S135) hold
+    # the commands.
+    part = _part(seen, "palette")
+    assert isinstance(part, dict)
+    assert part["palette"] == "undefined"
+    texts = part["texts"]
+    for wanted in ("Edit Mapping", "Save", "Cancel", "Reset Layout",
+                   "Fit to Photo Frame", "Print & Export…", "Mirror Layout",
+                   "Button Map Options…",
                    "Zoom to Fit Page", "Show Grid", "Edit Background",
-                   "Add Picture to Background…", "Clear Background", "Help"):
+                   "Add Picture to Background…", "Clear Background", "Help",
+                   "Keyboard Shortcuts…"):
         assert wanted in texts
-    assert "Edit Mapping" not in texts
     # The Photo menu's commands are gone (07 S39, S42).
     for gone in ("Choose Photo…", "Clear Photo", "Move Photo", "Adjust Photo…",
-                 "Reset Photo"):
+                 "Reset Photo", "Command Palette…"):
         assert gone not in texts

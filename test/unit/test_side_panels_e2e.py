@@ -4,21 +4,24 @@
 
 """The Button Map's side panels, end to end in the running program
 off-screen (side_panels_e2e_smoke.py, its own process and user folder),
-with real clicks and drags (07 S99, S128-S131, D-07-SIDE-PANELS).
+with real clicks and drags (07 S99, S128-S131, D-07-SIDE-PANELS,
+D-07-SIDE-DRAWER).
 
 - Chips is the left side panel, Layers the right one (S128).
-- Outside Edit no strips; editing brings them as they were left (S130).
-- Chips' strip brings it out at its width; unpinned it lies over the map,
-  pinned the map narrows (S129).
+- Outside Edit no drawers; editing brings them as they were left (S130).
+- Folded, a drawer is its own frame left ajar on its window edge (S129).
+- Chips' drawer click brings it out at its width; unpinned it lies over the
+  map, pinned the map narrows by exactly its width (S129).
 - Unpinned Layers lies over the map and folds on a map click or the other
-  strip's click (S129).
+  drawer's click (S129).
 - The inner edge resizes, up to the maximum; the width, pin and open state
-  are kept after closing and reopening the window (S99, S131).
+  are kept in the Button Map settings after closing and reopening the
+  window (S99, S131).
 - Background mode folds Chips and brings it back, without saving the fold
   (S130).
 - A narrow window folds Chips first, then Layers; they come back when there
   is room (S131).
-- Reset Tool Rows puts the side panels back as they start (S99).
+- View > Reset Panels puts the side panels back as they start (S99).
 """
 
 from __future__ import annotations
@@ -76,8 +79,17 @@ def test_editing_shows_the_strips_chips_out_and_pinned(run: dict) -> None:
     # As they start (put there when the window is up).
     assert _near(chips["panelWidth"], 260 * run["dp"], 1)
     assert _near(layers["panelWidth"], 300 * run["dp"], 1)
-    # Folded: only its strip (about 22 px at 100%).
-    assert _near(layers["takenWidth"], 22 * run["dp"])
+    # Folded: only its ajar edge (7 px at 100%).
+    assert _near(layers["takenWidth"], 7 * run["dp"], 0.5)
+    # Pinned and out: exactly its width, no strip beside it.
+    assert _near(chips["takenWidth"], chips["shownWidth"], 0.5)
+
+
+def test_folded_layers_is_its_frame_ajar_on_the_window_edge(run: dict) -> None:
+    out_of_edge, frame_w, edge = run["layers-ajar"]
+    assert _near(out_of_edge, edge, 0.5) and _near(edge, 7 * run["dp"], 0.5)
+    # The whole drawer's frame, not a separate strip.
+    assert _near(frame_w, run["edit"][1]["shownWidth"], 0.5)
 
 
 def test_strip_brings_chips_out_at_its_width_over_the_map(run: dict) -> None:
@@ -95,10 +107,14 @@ def test_strip_brings_chips_out_at_its_width_over_the_map(run: dict) -> None:
 def test_pinned_chips_narrow_the_map(run: dict) -> None:
     pinned = run["pinned"]
     assert pinned["pinned"] and pinned["open"] and not pinned["overlay"]
+    # Folded it took its ajar edge; pinned it takes its whole width (no
+    # strip beside it).
+    grown = pinned["shownWidth"] - run["edit"][1]["takenWidth"]
     narrowed = run["host-folded"]["w"] - run["host-pinned"]["w"]
-    assert _near(narrowed, pinned["shownWidth"], 3), (narrowed, pinned)
+    assert _near(narrowed, grown, 1), (narrowed, pinned)
+    assert _near(pinned["takenWidth"], pinned["shownWidth"], 0.5)
     # Nothing covered: the map starts after the panel.
-    assert run["host-pinned"]["x"] >= run["host-folded"]["x"] + pinned["shownWidth"] - 3
+    assert _near(run["host-pinned"]["x"] - run["host-folded"]["x"], grown, 1)
 
 
 def test_unpinned_layers_lie_over_the_map(run: dict) -> None:
@@ -115,12 +131,15 @@ def test_a_map_click_folds_unpinned_layers(run: dict) -> None:
     assert chips["open"] is True  # pinned: stays
 
 
-def test_the_other_strip_folds_unpinned_layers(run: dict) -> None:
+def test_the_other_drawer_folds_unpinned_layers(run: dict) -> None:
     assert run["layers-again"] is True
+    # Chips folded by its arrow: Layers stays out.
+    chips, layers = run["chips-folded"]
+    assert chips["open"] is False and layers["open"] is True
+    # Chips' drawer clicked: it comes out, Layers folds.
     chips, layers = run["other-strip"]
+    assert chips["open"] is True
     assert layers["open"] is False
-    assert chips["open"] is False  # its own strip toggles it
-    assert run["chips-back"]["open"] is True
 
 
 def test_the_inner_edge_resizes_up_to_the_maximum(run: dict) -> None:
@@ -129,7 +148,8 @@ def test_the_inner_edge_resizes_up_to_the_maximum(run: dict) -> None:
     width, top = run["at-max"]
     assert _near(width, top, 1)
     assert run["edit"][0]["minWidth"] < run["edit"][0]["maxWidth"]
-    assert _near(run["saved-sides"]["chips"]["width"], width, 1)
+    # Kept in logical px at 100%.
+    assert _near(run["saved-sides"]["chips"]["width"], width / run["dp"], 1)
 
 
 def test_background_mode_folds_chips_and_brings_it_back(run: dict) -> None:
@@ -164,7 +184,7 @@ def test_kept_after_closing_and_reopening(run: dict) -> None:
     assert not layers["open"] and not layers["pinned"]
 
 
-def test_reset_tool_rows_resets_the_side_panels(run: dict) -> None:
+def test_reset_panels_resets_the_side_panels(run: dict) -> None:
     assert run["reset-items"] == 1
     chips, layers = run["reset"]
     dp = run["dp"]

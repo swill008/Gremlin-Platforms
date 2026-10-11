@@ -319,7 +319,7 @@ Window {
                             id: _pan
                             objectName: "printPreviewPan"
                             readonly property var ed: _win.host ? _win.host._ed() : null
-                            readonly property bool canMove: !!ed && !ed.printAreaLocked
+                            readonly property bool canMove: !!ed
                             property point last: Qt.point(0, 0)
                             anchors.fill: parent
                             enabled: canMove

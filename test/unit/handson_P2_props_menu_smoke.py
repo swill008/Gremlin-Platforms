@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware, a stick with a map) and
-checks the Button Map's View > Properties (07 S100: the palette lists every
-usable command): outside Edit it is disabled and the palette leaves it out;
-in Edit it is enabled and the palette's pick toggles it. Prints what it saw
+checks the Button Map's View > Properties (F4; 07 S133, S135): outside Edit
+it is disabled; in Edit it is enabled, and it and F4 show or hide
+Properties. Prints what it saw
 as JSON. test_props_menu_in_edit.py runs it in its own process and user folder.
 
     python test/unit/handson_P2_props_menu_smoke.py
@@ -138,26 +138,26 @@ def main() -> None:
     # Outside Edit.
     out["view-editing"] = ev(win, "editing")
     out["view-enabled"] = item.property("enabled")
-    ev(win, "_palette.open()")
-    out["view-opened"] = bool(wait_for(lambda: ev(win, "_palette.opened")))
-    ev(win, "_palette.search('properties')")
-    out["view-lists"] = list(ev(win, "_palette.describe()") or [])
-    ev(win, "_palette.close()")
-    wait_for(lambda: ev(win, "!_palette.opened"))
+    out["view-hint"] = item.property("hint")
 
-    # In Edit.
+    # In Edit: the item and F4 (07 S133) show or hide Properties under
+    # Layers (S135).
     call(win, "enterEdit")
     out["editing"] = bool(wait_for(
         lambda: ev(win, "editing && _ed() !== null && _ed().seeded && !_baseWanted")))
     out["edit-enabled"] = item.property("enabled")
-    before = ev(win, "_tools.isOpen('props')")
-    ev(win, "_palette.open()")
-    wait_for(lambda: ev(win, "_palette.opened"))
-    ev(win, "_palette.search('properties')")
-    out["edit-lists"] = list(ev(win, "_palette.describe()") or [])
-    ev(win, "_palette.runPick(0)")
-    out["edit-toggled"] = bool(wait_for(
-        lambda: ev(win, "_tools.isOpen('props')") is (not before)))
+
+    def shown() -> object:
+        return ev(win, "propsOn && _layersSide.open")
+
+    before = shown()
+    QtCore.QMetaObject.invokeMethod(item, "triggered")
+    out["edit-toggled"] = bool(wait_for(lambda: shown() is (not before)))
+    out["checked-follows"] = item.property("checked") is shown()
+    win.requestActivate()
+    wait_for(win.isActive)
+    QtTest.QTest.keyClick(win, QtCore.Qt.Key.Key_F4)
+    out["f4-toggled"] = bool(wait_for(lambda: shown() is before))
 
     print("RESULT " + json.dumps(out), flush=True)
     smoke_exit(0)

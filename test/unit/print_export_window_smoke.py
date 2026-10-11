@@ -137,7 +137,10 @@ def main() -> None:
     out["shown-with-the-map"] = print_export_shown()
     call(win, "enterEdit")
     QtTest.QTest.qWait(800)
-    ev("_buttonMap.openPrintExport()")
+    # File > Print & Export… (07 S135).
+    ev("(function() { var m = _fileMenu; for (var i = 0; i < m.count; i++) {"
+       " var it = m.itemAt(i); if (it && it.text === 'Print & Export…')"
+       " { it.triggered(); return true } } return false })()")
     QtTest.QTest.qWait(1200)
     pw = next(
         w for w in QtGui.QGuiApplication.topLevelWindows()
@@ -147,7 +150,7 @@ def main() -> None:
     def child(name: str) -> QtCore.QObject:
         return pw.findChild(QtCore.QObject, name)
 
-    out["open"] = [pw.isVisible(), ev("_tools.isOpen('printArea')")]
+    out["open"] = [pw.isVisible(), ev("_buttonMap.printAreaOn")]
     ev("_buttonMap.setPrint('paper', 'letter')")
     ev("_buttonMap.setPrint('scale', 50)")
     QtTest.QTest.qWait(1500)
@@ -270,14 +273,6 @@ def main() -> None:
     out["zoomed-in"] = area_now()
     wheel(middle(), -2)
     out["zoomed-out"] = area_now()
-    # Locked: neither moves it.
-    ev("_tools.setLocked('printArea', true)")
-    QtTest.QTest.qWait(100)
-    before = area_now()
-    drag_preview(width / 4, 0)
-    wheel(middle(), 1)
-    out["locked-unchanged"] = area_now() == before
-    ev("_tools.setLocked('printArea', false)")
     ev("_buttonMap.setPrint('paper', 'letter')")
     QtTest.QTest.qWait(200)
     # Custom > Freeform (As Drawn): no paper, and back to the last one.

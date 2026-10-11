@@ -123,17 +123,21 @@ def main() -> None:
         value = value[0] if isinstance(value, tuple) else value
         return value.toVariant() if hasattr(value, "toVariant") else value
 
+    # The window the clicks and keys go to: Button Map Options while its
+    # Library is checked (its own window, 07 S98), then the Button Map.
+    surface = [win]
+
     def click(point: QtCore.QPoint) -> None:
-        QtTest.QTest.mouseClick(win, Left, NoMod, point)
+        QtTest.QTest.mouseClick(surface[0], Left, NoMod, point)
         QtTest.QTest.qWait(200)
 
     def type_text(text: str) -> None:
         for ch in text:
-            QtTest.QTest.keyClick(win, ch)
+            QtTest.QTest.keyClick(surface[0], ch)
         QtTest.QTest.qWait(50)
 
     def key(code: QtCore.Qt.Key) -> None:
-        QtTest.QTest.keyClick(win, code, NoMod)
+        QtTest.QTest.keyClick(surface[0], code, NoMod)
         QtTest.QTest.qWait(250)
 
     def row_of(scope: QtQuick.QQuickItem, starts: str) -> QtQuick.QQuickItem | None:
@@ -180,7 +184,8 @@ def main() -> None:
     def outcome(started: dict, renaming: object) -> dict:
         box = started.pop("box", None)
         started["renaming"] = renaming
-        started["window"] = win.isVisible()
+        # Esc ends the rename, never the window it is in.
+        started["window"] = surface[0].isVisible()
         # A saved rename rebuilds the row (the box goes with it).
         started["focus"] = bool(
             box is not None and shiboken6.isValid(box) and box.hasActiveFocus()
@@ -202,11 +207,14 @@ def main() -> None:
         return sorted(json.loads(value)) if isinstance(value, str) else [value]
 
     # --- Options > Library ------------------------------------------------
-    ev("_tools.setOpen('options', true)")
     ev("_opts.paneGroup = 'library'")
+    ev("_buttonMap.openOptions()")
+    options = wait_until(
+        lambda: (o := ev("_optionsWin")) is not None and o.isVisible() and o, 3)
     QtTest.QTest.qWait(400)
+    surface[0] = options
     library = next(
-        (c for c in items(win.contentItem())
+        (c for c in items(options.contentItem())
          if c.metaObject().className().startswith("OptionButtonMapLibrary")),
         None,
     )
@@ -245,7 +253,7 @@ def main() -> None:
     key(Key.Key_Escape)
     result("style-esc", outcome(s, library.property("renaming"))
            | {"names": style_names(), "calls": list(style_calls),
-              "window": win.isVisible()})
+              "window": options.isVisible()})
     # Style: Enter saves once.
     style_calls.clear()
     s = start_rename(library, "Style B", "Style D")
@@ -269,7 +277,10 @@ def main() -> None:
                | {"names": template_names(), "failed": lib_failed()})
 
     # --- File > Templates > Manage Templates --------------------------------
-    ev("_tools.setOpen('options', false)")
+    options.close()
+    surface[0] = win
+    win.requestActivate()
+    wait_until(lambda: QtGui.QGuiApplication.focusWindow() is win, 3)
     ev("_templatesDlg.open()")
     QtTest.QTest.qWait(500)
     dialog_items = [c for c in items(win.contentItem())]

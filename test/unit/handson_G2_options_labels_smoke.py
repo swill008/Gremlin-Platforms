@@ -2,10 +2,11 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Off-screen: the Button Map's Options pane in an 800 px wide Button Map
-window at a UI scale (test_handson_G2_options_labels.py). For every group
-but Library, each setting's label: its text, whether it is shortened (…)
-and whether its text runs past its box. Prints RESULT {json}.
+"""Off-screen: Button Map Options (its own window, 07 S98) opened from an
+800 px wide Button Map window at a UI scale
+(test_handson_G2_options_labels.py). For every group but Library, each
+setting's label: its text, whether it is shortened (…) and whether its
+text runs past its box. Prints RESULT {json}.
 
     python test/unit/handson_G2_options_labels_smoke.py SCALE [shot-folder]
 """
@@ -94,14 +95,21 @@ def main() -> None:
             found += items(c)
         return found
 
-    def child(name: str) -> QtQuick.QQuickItem | None:
-        found = (c for c in items(win.contentItem()) if c.objectName() == name)
+    # Edit > Button Map Options… opens its own window (07 S98).
+    ev("_buttonMap.openOptions()")
+    options = wait_until(
+        lambda: (w := ev("_optionsWin")) is not None and w.isVisible() and w,
+        "the Button Map Options window",
+    )
+
+    def in_options(name: str) -> QtQuick.QQuickItem | None:
+        found = (c for c in items(options.contentItem()) if c.objectName() == name)
         return next(found, None)
 
-    ev("_tools.setOpen('options', true)")
     pane = wait_until(
-        lambda: (p := child("optionsPane")) is not None and p.isVisible() and p,
-        "the Options pane",
+        lambda: (p := in_options("buttonMapOptionsPanel")) is not None
+        and p.isVisible() and p,
+        "the Options panel",
     )
     groups = ["labels", "editing", "recovery", "view", "colours"]
     labels: list = []
@@ -145,7 +153,7 @@ def main() -> None:
             )
         if SHOTS is not None:
             SHOTS.mkdir(parents=True, exist_ok=True)
-            win.grabWindow().save(str(SHOTS / f"options-{SCALE}-{group}.png"))
+            options.grabWindow().save(str(SHOTS / f"options-{SCALE}-{group}.png"))
     out["pane-width"] = pane.width()
     out["labels"] = labels
     print("RESULT " + json.dumps(out), flush=True)
