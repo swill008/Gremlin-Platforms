@@ -145,6 +145,10 @@ def test_s7_new_plugins_join_the_list_shown_and_gone_ones_leave(
     import gremlin.config
     import joystick_gremlin
 
+    # Built before the stand-in Configuration below: that stand-in answers
+    # every key with the priority list, so a PluginManager first made under
+    # it reads a list as the plugins folder (order-dependent CI failure).
+    plugin_manager.PluginManager()
     saved: dict[str, Any] = {}
     stored = [["A Plugin No Longer Here", True], ["Macro", False]]
     fake = SimpleNamespace(
