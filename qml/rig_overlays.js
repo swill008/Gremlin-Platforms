@@ -61,7 +61,8 @@ function setOverlayHover(mx, my) {
     if (overlayHoverId === id)
         return
     overlayHoverId = id
-    bump()
+    // Only a highlight: a redraw, never an undo step (07 S55a).
+    repaint()
 }
 
 // opts (all optional): fx/fy, the picture's centre in page fractions (a drop

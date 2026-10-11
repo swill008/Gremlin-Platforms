@@ -288,7 +288,7 @@ Mapped against code at 4f6bdfa4 (6 Oct). Line numbers drift; re-check them befor
 - **S82** Opening another pack should also end Undo Import. [user confirmed 2026-10-06; was code only] (help doesn't say so: Q6)
 - **S83** When another profile is open, Undo Import puts the files back but not the wires, and says so. [user confirmed 2026-10-06; was code only]
 - **S84** A file Undo Import can't put back should be named. [user confirmed 2026-10-06; was code only]
-- **S85** Module Setup's own "Import from" Undo puts the device's previous module file back (`store.undo_file_import`). [changed 2026-10-11, user: D-03-FOLDERS-WORDING] (was: puts the device's previous file back and binds the devices again; with device folders there are no file bindings) [test: test_audit2_coverage.py::test_undo_of_a_module_import_puts_the_previous_file_back] [tracker: AU-21]
+- **S85** Module Setup's own "Import from" Undo puts the device's previous module file back (`store.undo_file_import`); when the device had no module file before the Import, Undo removes the imported one. [changed 2026-10-11, user: D-07-GESTURE-UNDO 4a] [changed 2026-10-11, user: D-03-FOLDERS-WORDING] (was: puts the device's previous file back and binds the devices again; with device folders there are no file bindings) [test: test_audit2_coverage.py::test_undo_of_a_module_import_puts_the_previous_file_back] [tracker: AU-21]
 
 ### Deleted-device backups
 

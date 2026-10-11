@@ -386,6 +386,10 @@ Item {
             onPressed: (mouse) => {
                 if (!_ruler.ed)
                     return
+                // A new guide dragged out of the ruler is one Undo step,
+                // made on release (07 S55a).
+                if (_ruler.ed.beginGesture)
+                    _ruler.ed.beginGesture()
                 index = _ruler.ed.addRulerGuide(axis, Math.max(0, Math.min(1, fracAt(mouse))))
             }
             onPositionChanged: (mouse) => {
@@ -405,6 +409,13 @@ Item {
                 else
                     e.dropRulerGuide(axis, index, ex, ey)
                 index = -1
+                if (e.endGesture)
+                    e.endGesture()
+            }
+            onCanceled: {
+                index = -1
+                if (_ruler.ed && _ruler.ed.endGesture)
+                    _ruler.ed.endGesture()
             }
         }
     }

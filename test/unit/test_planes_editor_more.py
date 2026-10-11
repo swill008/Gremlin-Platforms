@@ -97,13 +97,9 @@ def test_leader_end_snaps_to_a_background_snap_point_while_dragging(
     assert run["leader_fg"]["during"] == run["leader_bg"]["during"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="program bug: on release RigPointerArea.qml:502 replaces the end with "
-    "attachNear() (rig_leaders.js:408), which hooks it to the picture's edge pin "
-    "as a chip end, so the snap point is lost (foreground pictures too); "
-    "07 S122",
-)
 def test_leader_end_stays_on_a_background_snap_point_after_drop(run: dict) -> None:
     assert run["leader_bg"]["after"] == [0, 0]
     assert run["leader_bg"]["to"]["type"] == "free"
+    # A foreground picture's snap point keeps the end the same way (G30).
+    assert run["leader_fg"]["after"] == [0, 0]
+    assert run["leader_fg"]["to"]["type"] == "free"

@@ -405,14 +405,28 @@ function nearestPin(item, mx, my) {
     return "right"
 }
 
-function attachNear(x, y) {
+// Where a dropped leader end hooks (07 S122). opts: { altOff, owner }.
+// A snap point on a picture of either plane wins, as during the drag, and
+// keeps the end on that point; otherwise it hooks a hotspot or chip edge on
+// the owner's plane (the edited plane without an owner), or stays free on the
+// snapped spot. Pictures are never chip pins.
+function attachNear(x, y, opts) {
+    var o = opts || {}
     var list = nodes || []
-    var best = { type: "free", fx: xToFx(x), fy: yToFy(y) }
+    var sock = o.altOff ? null : socketNear(x, y)
+    if (sock)
+        return { type: "free", fx: xToFx(sock.x), fy: yToFy(sock.y) }
+    var plane = o.owner ? planeOf(o.owner)
+        : (editPlane === "background" ? "background" : "foreground")
+    var sp = snapPos(x, y, o.altOff)
+    var best = { type: "free", fx: xToFx(sp.x), fy: yToFy(sp.y) }
     var bestD = 16
     var i
     for (i = 0; i < list.length; i++) {
         if (isDraw(list[i]))
             continue  // drawings have no hotspot (it fell back to the centre)
+        if (planeOf(list[i]) !== plane)
+            continue
         var h = hotPt(list[i])
         var hd = Math.hypot(x - h.x, y - h.y)
         var lim = hotSz(list[i]) * 0.5 + 10
@@ -422,6 +436,8 @@ function attachNear(x, y) {
         }
     }
     for (i = 0; i < list.length; i++) {
+        if (isOverlay(list[i]) || planeOf(list[i]) !== plane)
+            continue
         var it = _chips.itemAt(i)
         if (!it)
             continue

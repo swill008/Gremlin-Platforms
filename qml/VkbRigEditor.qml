@@ -390,7 +390,7 @@ Item {
     function showLeaderHandles(n, li) { return RigLeaders.showLeaderHandles(n, li) }
     function drawMark(ctx, x, y, size, shape, fill, color) { return RigLeaders.drawMark(ctx, x, y, size, shape, fill, color) }
     function nearestPin(item, mx, my) { return RigLeaders.nearestPin(item, mx, my) }
-    function attachNear(x, y) { return RigLeaders.attachNear(x, y) }
+    function attachNear(x, y, opts) { return RigLeaders.attachNear(x, y, opts) }
     function detachEnd(which) { return RigLeaders.detachEnd(which) }
     function attachEndToSelf(which) { return RigLeaders.attachEndToSelf(which) }
     function _clampPt(pts, i) { return RigLeaders._clampPt(pts, i) }
@@ -896,6 +896,32 @@ Item {
             pushHist()
     }
 
+    // A pointer gesture (a drag from press to release) is one undo step
+    // (07 S55a): steps asked for while it runs wait for endGesture().
+    property bool gestureActive: false
+    property string _gestureSnap: ""
+
+    function beginGesture() {
+        if (gestureActive)
+            return
+        // A waiting run of nudges keeps its own step, before the drag's.
+        flushPendingStep()
+        _gestureSnap = snapJson()
+        gestureActive = true
+    }
+
+    // Ends the gesture: one step if the map changed since beginGesture().
+    // Safe to call when no gesture runs.
+    function endGesture() {
+        if (!gestureActive)
+            return
+        gestureActive = false
+        var changed = snapJson() !== _gestureSnap
+        _gestureSnap = ""
+        if (changed)
+            pushHist()
+    }
+
     // An undo step: the nodes of both planes (pictures, their look and the
     // background among them), the print area and the ruler guides (07 S57).
     // View settings (the plane being edited, the faint foreground, the
@@ -945,7 +971,7 @@ Item {
     }
 
     function pushHist() {
-        if (_restoring || !interactive)
+        if (_restoring || !interactive || gestureActive)
             return
         // A run still waiting for its pause is its own step, before this
         // command's: Undo then takes back the command alone (S55).
@@ -1044,6 +1070,8 @@ Item {
     }
 
     function undo() {
+        // Undo during a drag ends the drag first; its step is what goes back.
+        stopGesture()
         flushPendingStep()
         if (!canUndo)
             return
@@ -1059,6 +1087,8 @@ Item {
     }
 
     function redo() {
+        // Undo during a drag ends the drag first; its step is what goes back.
+        stopGesture()
         flushPendingStep()
         if (!canRedo)
             return
@@ -1071,6 +1101,22 @@ Item {
         historyChanged()
         bump()
         _restoring = false
+    }
+
+    // Stops a drag in progress (Undo/Redo or a lost mouse grab): the drag
+    // keeps what it did so far as its one step.
+    function stopGesture() {
+        if (!gestureActive)
+            return
+        if (dragKind === "turn")
+            endTurn()
+        dragKind = ""
+        banding = false
+        lineArm = false
+        poolHover = false
+        guideDrag = null
+        clearMoveGuides()
+        endGesture()
     }
 
     function clearLayout() {

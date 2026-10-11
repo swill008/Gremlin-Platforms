@@ -97,6 +97,7 @@ MouseArea {
         // Print Area. Not while it is locked.
         if (ed.interactive && m.button === Qt.LeftButton && !ed.printAreaLocked
                 && (ed.printAreaArm || (ed.altHeld && !ed.hitTest(m.x, m.y).id))) {
+            ed.beginGesture()
             ed.beginPrintArea(m.x, m.y)
             ed.dragKind = "printarea"
             return
@@ -109,6 +110,7 @@ MouseArea {
             return
         }
         if (ed.interactive && ed.drawTool === "pen" && m.button === Qt.LeftButton) {
+            ed.beginGesture()
             ed.penStart(m.x, m.y)
             ed.dragKind = "pen"
             return
@@ -117,12 +119,14 @@ MouseArea {
             var onGuide = ed.rulerGuideAt(m.x, m.y)
             var under = onGuide ? ed.hitTest(m.x, m.y) : null
             if (onGuide && !(under && under.kind)) {
+                ed.beginGesture()
                 ed.guideDrag = onGuide
                 ed.dragKind = "rulerguide"
                 return
             }
         }
         if (ed.interactive && m.button === Qt.LeftButton && ed.onTurnHandle(m.x, m.y)) {
+            ed.beginGesture()
             ed.beginTurn(m.x, m.y)
             ed.dragKind = "turn"
             return
@@ -231,6 +235,7 @@ MouseArea {
                 ed.bump()
                 return
             }
+            ed.beginGesture()
             if (hit.handle && hit.handle.indexOf("cell-") === 0) {
                 var crc = ed.tableCurrentRect(dn)
                 ed.dragKind = hit.handle
@@ -275,6 +280,7 @@ MouseArea {
         }
         if (ed.drawTool.length && (!hit.kind || hit.kind === "")) {
             var p0 = ed.snapEnt(m.x, m.y, ed.altHeld)
+            ed.beginGesture()
             ed.dragKind = "drawnew"
             ed.drawX0 = p0.x
             ed.drawY0 = p0.y
@@ -291,6 +297,7 @@ MouseArea {
             ed.lineArm = true
             ed.lineArmX = m.x
             ed.lineArmY = m.y
+            ed.beginGesture()
             ed.dragKind = "linearm"
             ed.bump()
             return
@@ -301,12 +308,17 @@ MouseArea {
             ed.selectedId = hit.id
             ed.selectedSpine = -1
             ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
+            // The end comes off its hook now; that and the drop are one step.
+            ed.beginGesture()
             ed.dragKind = hit.kind
             var ne = ed.nodeAt(hit.id)
             if (ne) {
                 var L0 = ed.currentLeader(ne)
-                if (!L0)
+                if (!L0) {
+                    ed.dragKind = ""
+                    ed.endGesture()
                     return
+                }
                 var ep = ed.endPt(hit.kind === "to" ? L0.to : L0.from)
                 var fr = { type: "free", fx: ed.xToFx(ep.x), fy: ed.yToFy(ep.y) }
                 if (hit.kind === "to") L0.to = fr
@@ -320,6 +332,7 @@ MouseArea {
             ed.selectedId = hit.id
             ed.selectedMember = hit.member
             ed.selectedSpine = -1
+            ed.beginGesture()
             ed.dragKind = "member"
             ed.dragMember = hit.member
             var nm = ed.nodeAt(hit.id)
@@ -339,6 +352,7 @@ MouseArea {
             ed.selectedId = hit.id
             ed.selectedSpine = -1
             ed.selectedSeg = -1
+            ed.beginGesture()
             ed.dragKind = "chip"
             ed.dragSpine = -1
             var n2 = ed.nodeAt(hit.id)
@@ -359,6 +373,7 @@ MouseArea {
                 ed.selectedSeg = hit.spine + 1
                 ed.dragLeader = (hit.leader !== undefined) ? hit.leader : 0
             }
+            ed.beginGesture()
             ed.dragKind = hit.kind
             ed.dragSpine = hit.spine
             ed.bump()
@@ -379,8 +394,21 @@ MouseArea {
         ed.hoverHwLabel = ""
         if (ed.overlayHoverId) {
             ed.overlayHoverId = ""
-            ed.bump()
+            ed.repaint()
         }
+    }
+    // The mouse grab was taken away mid-drag: the drag stops, as one step.
+    onCanceled: {
+        spineHoldTimer.stop()
+        ed.spineHoldArm = false
+        if (ed.dragKind === "printarea")
+            ed.endPrintArea()
+        else if (ed.dragKind === "pen")
+            ed.penEnd()
+        else if (ed.dragKind === "rulerguide" && ed.guideDrag)
+            ed.rulerGuidesEdited()
+        ed.stopGesture()
+        ed.dragKind = ""
     }
     onPositionChanged: (m) => {
         ed.altHeld = !!(m.modifiers & Qt.AltModifier)
@@ -447,6 +475,11 @@ MouseArea {
             }
             return
         }
+        releaseDrag(m)
+        // Every drag is one undo step, made here (07 S55a).
+        ed.endGesture()
+    }
+    function releaseDrag(m) {
         if (ed.dragKind === "turn") {
             ed.dragKind = ""
             ed.endTurn()
@@ -499,7 +532,7 @@ MouseArea {
         if (ed.dragKind === "from" || ed.dragKind === "to") {
             var n3 = ed.nodeAt(ed.selectedId)
             if (n3) {
-                var hooked = ed.attachNear(m.x, m.y)
+                var hooked = ed.attachNear(m.x, m.y, { altOff: ed.altHeld, owner: n3 })
                 var Lr = ed.currentLeader(n3)
                 if (Lr) {
                     if (ed.dragKind === "to") Lr.to = hooked

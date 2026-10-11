@@ -436,5 +436,9 @@ function cancelAllActions() {
     cancelRename()
     armRenameId = ""
     armRenameMember = -1
+    // Esc mid-drag: the drag so far is its one step.
+    if (turnStart)
+        endTurn()
+    endGesture()
     bump()
 }

@@ -748,3 +748,10 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | EDT-T: editor tests for S94 S118 S122 in Background mode (6 pass, 1 strict xfail = leader-end snap lost on release) | agent tests | 3–8 min (table) | 4 min | 12:29–12:33 |
 | 2026-10-11 | CI on 6c6be17e (Show me links) | ci | ~10 min (table) | about 18 min | 12:19–12:37 |
 | 2026-10-11 | SCOUT-UNDO: Undo steps per transform/move gesture traced (cause: hover highlight pushes steps mid-drag) | review | 5–10 min (table) | 3 min | 12:37–12:40 |
+| 2026-10-11 | Lead: commit 93862cc9 + push; spec S55a, S85 sentence, decision D-07-GESTURE-UNDO; memory: plain question numbers | lead | no timing data yet | 4 min | 12:43–12:47 |
+| 2026-10-11 | LEADER: attachNear keeps the snap point on release, pictures not chip pins, owner's plane only (G30; 4 checks + xfail now passes) | fix | 3–8 min (table) | 3 min | 12:46–12:49 |
+| 2026-10-11 | UNDO: one Undo step per drag (hover only repaints; gestureActive/beginGesture/endGesture/stopGesture; onCanceled; leader drop line) — 7→1 and 5→1 steps | fix | 3–8 min (table) | 10 min | 12:46–12:56 |
+| 2026-10-11 | Lead: rulers golden re-recorded (history counts only), 31 golden pass | lead | no timing data yet | 4 min | 12:57–13:01 |
+| 2026-10-11 | UNDO-T: one real drag per gesture kind counted (21 kinds, both planes): before 2–8 steps, after 1; found the ruler new-guide 2 steps | agent tests | 3–8 min (table) | 12 min | 12:47–12:59 |
+| 2026-10-11 | Lead: ruler new guide one step (VkbRigFace beginGesture/endGesture/onCanceled); xfail removed; 32 pass | fix | 3–8 min (table) | 3 min | 12:59–13:02 |
+| 2026-10-11 | CI on 93862cc9 (small items) | ci | ~10 min (table) | about 17 min | 12:43–13:00 |
