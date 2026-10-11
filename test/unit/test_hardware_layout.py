@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Configuration page's model on the shared control page base
+"""The Device Bindings page's model on the shared control page base
 (HardwareLayoutModel): the module's claimed inputs only, Find/Type/Output/
 No actions filters, groups/order/names held until File > Save, Rename
 writes the friendly name, one Undo for OK, Delete and layout (layout steps

@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Configuration page's layout travels (05 S122, S129; batch C).
+"""The Device Bindings page's layout travels (05 S122, S129; batch C).
 
 The page holds its groups, order and Rename names as an unsaved change
 (store.set_pending_layout, CS1 a) until File > Save writes them into the
@@ -14,7 +14,7 @@ that carries a module file:
   and Restore;
 - Swap with Another Stick (part "setup");
 - History restore of the layout save;
-- a Device Pack import of "Configuration layout" (in.groups), Undo Import.
+- a Device Pack import of "Device Bindings layout" (in.groups), Undo Import.
 
 After each put-back the page shows it: store.layout_for and
 store.friendly_name_for (what the page reads) give the restored layout and
@@ -198,7 +198,7 @@ def test_file_save_writes_layout_and_names_in_one_entry(cfg: dict) -> None:
         and (e.get("subject") or {}).get("fileName") == _file_name(cfg)
     ]
     assert len(saves) == 1, saves
-    assert "Configuration layout" in str(saves[0].get("title", "")), saves[0]
+    assert "Device Bindings layout" in str(saves[0].get("title", "")), saves[0]
     # Nothing of the layout goes into the profile.
     assert "Weapons" not in cfg["path"].read_text(encoding="utf-8-sig")
 
@@ -285,7 +285,7 @@ def test_history_restore_of_a_layout_save_puts_it_back(cfg: dict) -> None:
         and (e.get("subject") or {}).get("fileName") == file_name
     ]
     assert len(entries) == 1, entries  # one save: one entry
-    assert "Configuration layout" in str(entries[0].get("title", "")), entries[0]
+    assert "Device Bindings layout" in str(entries[0].get("title", "")), entries[0]
     out = history_model.restore(str(entries[0]["id"]), "before")
     assert out["ok"], out
     _assert_file(cfg, LAYOUT_A, NAMES_A)

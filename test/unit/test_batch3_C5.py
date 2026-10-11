@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Catch-up batch 3, Button Map, History, Device Pack, Auto Mapper (C5):
+"""Catch-up batch 3, Button Map, History, Device Pack, Auto Mapping Tool (C5):
 each fix driven through its real function or slot.
 
 Spec: claude/program-map/07-button-map.md (S11, S20, S68, Q4, Q10, Q11,
@@ -103,13 +103,13 @@ def test_delete_file_confirm_says_the_pictures_are_kept() -> None:
     assert "The device's pictures are kept." in confirm
 
 
-# --- GL-228: the Auto Mapper result in glossary words (08 Q8) ---------------
+# --- GL-228: the Auto Mapping Tool result in glossary words (08 Q8) ---------------
 
 
-def test_auto_mapper_result_says_actions() -> None:
-    from gremlin.auto_mapper import AutoMapper
+def test_auto_mapping_tool_result_says_actions() -> None:
+    from gremlin.auto_mapping_tool import AutoMappingTool
 
-    mapper = AutoMapper(None)  # type: ignore[arg-type]
+    mapper = AutoMappingTool(None)  # type: ignore[arg-type]
     mapper._created_mappings = [object()] * 36  # type: ignore[list-item]
     mapper._num_retained_bindings = 0
     # The mode named too (08 S108).
@@ -291,15 +291,15 @@ def test_a_restored_profile_copy_says_where_it_stays(tmp_path: pathlib.Path) -> 
     assert "until you delete it" in message
 
 
-# --- GL-275: Auto Mapper vJoy sizes through the output module (08 R7) -------
+# --- GL-275: Auto Mapping Tool vJoy sizes through the output module (08 R7) -------
 
 
-def test_auto_mapper_reads_vjoy_sizes_through_the_output_module(
+def test_auto_mapping_tool_reads_vjoy_sizes_through_the_output_module(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from types import SimpleNamespace
 
-    from gremlin import auto_mapper, device_initialization
+    from gremlin import auto_mapping_tool, device_initialization
     from gremlin.modules import output
 
     vjoy = SimpleNamespace(vjoy_id=1, axis_map=[], button_count=0, hat_count=0)
@@ -307,7 +307,7 @@ def test_auto_mapper_reads_vjoy_sizes_through_the_output_module(
     monkeypatch.setattr(device_initialization, "output_vjoy_devices", lambda: [vjoy])
     monkeypatch.setattr(output, "vjoy_layout", lambda vid: (3, 4, 1))
     monkeypatch.setattr(output, "vjoy_axis_ids", lambda vid: {1, 2, 6})
-    limits = auto_mapper.AutoMapper(None)._vjoy_limits(1)  # type: ignore[arg-type]
+    limits = auto_mapping_tool.AutoMappingTool(None)._vjoy_limits(1)  # type: ignore[arg-type]
     assert limits == {"axes": {1, 2, 6}, "buttons": {1, 2, 3, 4}, "hats": {1}}
 
 
@@ -323,12 +323,12 @@ def test_history_shows_the_device_change_choice_as_options_does() -> None:
     assert text.endswith(": Stop")
 
 
-def test_auto_mapper_falls_back_to_the_device_list_without_the_driver(
+def test_auto_mapping_tool_falls_back_to_the_device_list_without_the_driver(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from types import SimpleNamespace
 
-    from gremlin import auto_mapper, device_initialization
+    from gremlin import auto_mapping_tool, device_initialization
     from gremlin.modules import output
 
     def no_driver(vid: int) -> tuple[int, int, int]:
@@ -344,7 +344,7 @@ def test_auto_mapper_falls_back_to_the_device_list_without_the_driver(
     monkeypatch.setattr(device_initialization, "output_vjoy_devices", lambda: [vjoy])
     monkeypatch.setattr(output, "vjoy_layout", no_driver)
     monkeypatch.setattr(output, "vjoy_axis_ids", lambda vid: set())
-    mapper = auto_mapper.AutoMapper(None)  # type: ignore[arg-type]
+    mapper = auto_mapping_tool.AutoMappingTool(None)  # type: ignore[arg-type]
     expected = {"axes": {1, 3}, "buttons": {1, 2}, "hats": {1}}
     assert mapper._vjoy_limits(1) == expected
     # An empty layout (not read) falls back the same way.

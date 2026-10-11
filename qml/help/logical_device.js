@@ -47,7 +47,7 @@ function topics() {
                 + "<ul>"
                 + "<li><b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>) also saves the Logical Device when it changed. The <b>*</b> in the title and the question before New, Load or quit count its changes too; <b>Discard</b> there also throws away the Logical Device's unsaved changes.</li>"
                 + "<li>Each control keeps its own id for good. Actions that send to a control follow it, even when you rename it or its number changes.</li>"
-                + "<li>To keep other layouts, use the " + _link("device-library-built-in", "Device Library") + " <a href=\"show:toolbar/Device Library\">Show me ›</a>: it lists the Logical Device under <b>Internal inputs</b>, with <b>Save to Device Library…</b>, <b>Restore…</b> and <b>Export…</b>. A Logical Device pack from someone else comes in with <b>File › Import Device Pack…</b> there, then <b>Restore…</b>.</li>"
+                + "<li>To keep other layouts, use the " + _link("device-library-built-in", "Device Library") + " <a href=\"show:toolbar/Device Library\">Show me ›</a>: it lists the Logical Device under <b>Internal inputs</b>, with <b>Save to Device Library…</b>, <b>Restore…</b> and <b>Export…</b>. A Logical Device pack from someone else comes in with <b>File › Import Device…</b> there, then <b>Restore…</b>.</li>"
                 + "<li>Every save is kept in <a href=\"topic:tools-history\">History</a> (<b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a>), and the Logical Device can be restored there on its own.</li>"
                 + "</ul>"
                 + _good([
@@ -157,21 +157,21 @@ function topics() {
                 + "<ol>"
                 + "<li>Right-click the control and choose <b>Assign Hardware</b>. It lists claimed physical controls of the same type (for a button, keyboard keys and OSC too).</li>"
                 + "<li>Type in <b>Search</b> to filter the list.</li>"
-                + "<li>Tick a control. It gets a " + _link("configuration-actions-map-to-logical-device", "Map to Logical Device") + " action in the current mode.</li>"
+                + "<li>Tick a control. It gets a " + _link("device-bindings-actions-map-to-logical-device", "Map to Logical Device") + " action in the current mode.</li>"
                 + "</ol>"
                 + "<p>The control then lists the source on a row under it (shown while <b>Show written by</b> is on in <b>Appearance…</b>). On that row an axis has absolute or relative and a scale; a button has <b>Invert</b>.</p>"
                 + _good([
                     "To remove the link, untick the control.",
                     "Assign Hardware only picks what feeds the control; it never lists outputs. To send on, see " + _link("logical-device-send-to-xbox-vjoy", "Send a control to Xbox or vJoy") + "."
                 ]),
-            related: ["configuration-actions-map-to-logical-device", "logical-device-add-action",
+            related: ["device-bindings-actions-map-to-logical-device", "logical-device-add-action",
                       "logical-device-send-to-xbox-vjoy"]
         },
         {
             id: "logical-device-add-action",
             section: main,
             title: "Add an action to a control",
-            body: "<p>A Logical Device control has actions of its own, set up in the same editor as on the Configuration page.</p>"
+            body: "<p>A Logical Device control has actions of its own, set up in the same editor as on the Device Bindings page.</p>"
                 + "<ol>"
                 + "<li>Right-click the control and choose <b>Add Action</b>. The action editor opens beside the list.</li>"
                 + "<li>Choose the action, set it up, then choose <b>OK</b>.</li>"
@@ -180,7 +180,7 @@ function topics() {
                     "To change an action, click its row. Right-click the row to <b>Open</b> or <b>Delete</b> it. Delete asks first (\"Delete action …?\"); the red <b>Delete Action</b> removes it, and <b>Undo</b> puts it back.",
                     "Actions belong to the current <a href=\"topic:modes-modes\">mode</a>."
                 ]),
-            related: ["configuration-actions-add-action", "configuration-actions-choose-action",
+            related: ["device-bindings-actions-add-action", "device-bindings-actions-choose-action",
                       "logical-device-send-to-xbox-vjoy"]
         },
         {
@@ -198,7 +198,7 @@ function topics() {
                     "Map to Xbox needs the <b>ViGEmBus</b> driver; see <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>.",
                     "If Map to Xbox isn't in the list, <b>Actions offered</b> <a href=\"show:option/Actions offered\">Show me ›</a> in " + _link("options-profile-options", "Options") + " may hide it."
                 ]),
-            related: ["configuration-actions-map-to-xbox", "configuration-actions-map-to-vjoy",
+            related: ["device-bindings-actions-map-to-xbox", "device-bindings-actions-map-to-vjoy",
                       "logical-device-assign-hardware"]
         },
         {
@@ -215,7 +215,7 @@ function topics() {
                     "The look is saved for this page, in the program settings.",
                     "<b>Reset Appearance</b> restores the built-in look."
                 ]),
-            related: ["configuration-actions-appearance"]
+            related: ["device-bindings-actions-appearance"]
         },
         {
             id: "logical-device-menus",
@@ -263,9 +263,9 @@ function topics() {
                     "Each event follows the chain of controls it came through, so a loop is stopped after 8 hops however slowly it goes, even through a macro. Presses of a button that isn't in a loop are never stopped, however fast you press.",
                     "The notice names the loop, for example \"Logical Device: a loop between controls was stopped (Axis 1 → Axis 1)\". It shows once per Run, and one warning is written to <b>user.log</b>.",
                     "To fix it, open the controls named in the notice and change the Map to Logical Device or macro step that sends back along the loop.",
-                    "Map to Logical Device never offers the control it sits on; see " + _link("configuration-actions-map-to-logical-device", "Map to Logical Device") + ". One loaded from a file that already targets its own control shows it selected, marked \"(this control: blocked by the loop guard)\"; pick another control to fix it."
+                    "Map to Logical Device never offers the control it sits on; see " + _link("device-bindings-actions-map-to-logical-device", "Map to Logical Device") + ". One loaded from a file that already targets its own control shows it selected, marked \"(this control: blocked by the loop guard)\"; pick another control to fix it."
                 ]),
-            related: ["configuration-actions-map-to-logical-device", "logical-device-add-action"]
+            related: ["device-bindings-actions-map-to-logical-device", "logical-device-add-action"]
         },
         {
             id: "logical-device-q-no-controls",
@@ -279,7 +279,7 @@ function topics() {
             section: questions,
             title: "Why does a macro or condition say \"Add a Logical Device control first.\"?",
             body: "<p>The Logical Device has no controls yet, and nothing is created for you. Add a button, axis or hat first; see " + _link("logical-device-add-controls", "Add buttons, axes and hats") + ".</p>",
-            related: ["logical-device-add-controls", "configuration-actions-macro", "configuration-actions-condition"]
+            related: ["logical-device-add-controls", "device-bindings-actions-macro", "device-bindings-actions-condition"]
         },
         {
             id: "logical-device-q-older-profile",

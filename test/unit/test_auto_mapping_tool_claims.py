@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Auto Mapper maps within the output module's claim, reports what it
+"""The Auto Mapping Tool maps within the output module's claim, reports what it
 skipped, and claims outputs only when asked to."""
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ from unittest import mock
 
 import pytest
 
-from gremlin import auto_mapper
-from gremlin.auto_mapper import AutoMapper, AutoMapperOptions, _ranges
+from gremlin import auto_mapping_tool
+from gremlin.auto_mapping_tool import AutoMappingTool, AutoMappingToolOptions, _ranges
 
 _NXT = {"slug": "nxt", "name": "NXT", "claim": {"buttons": list(range(1, 61))}}
 
@@ -30,7 +30,7 @@ def _vjoy3() -> dict:
 
 
 @pytest.fixture
-def mapper() -> Iterator[tuple[AutoMapper, list, list]]:
+def mapper() -> Iterator[tuple[AutoMappingTool, list, list]]:
     created: list = []
     merged: list = []
     dest = _vjoy3()
@@ -43,17 +43,17 @@ def mapper() -> Iterator[tuple[AutoMapper, list, list]]:
     profile = SimpleNamespace(
         get_input_item=lambda *a, **k: SimpleNamespace(action_sequences=[])
     )
-    m = AutoMapper(profile)
+    m = AutoMappingTool(profile)
     limits = {"axes": set(), "buttons": set(range(1, 59)), "hats": set()}
     with (
-        mock.patch.object(auto_mapper.auto_map, "input_modules", return_value=[_NXT]),
-        mock.patch.object(auto_mapper.auto_map, "output_modules", return_value=[dest]),
-        mock.patch.object(auto_mapper.auto_map, "merge_claim_into_output", merge),
-        mock.patch.object(AutoMapper, "_vjoy_limits", return_value=limits),
-        mock.patch.object(AutoMapper, "_get_used_vjoy_inputs", return_value=[]),
-        mock.patch.object(AutoMapper, "_source_uuid", return_value=uuid.uuid4()),
+        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT]),
+        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "output_modules", return_value=[dest]),
+        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "merge_claim_into_output", merge),
+        mock.patch.object(AutoMappingTool, "_vjoy_limits", return_value=limits),
+        mock.patch.object(AutoMappingTool, "_get_used_vjoy_inputs", return_value=[]),
+        mock.patch.object(AutoMappingTool, "_source_uuid", return_value=uuid.uuid4()),
         mock.patch.object(
-            AutoMapper,
+            AutoMappingTool,
             "_create_new_mapping",
             lambda self, item, target: (
                 created.append(target),
@@ -65,19 +65,19 @@ def mapper() -> Iterator[tuple[AutoMapper, list, list]]:
 
 
 def test_maps_only_to_claimed_outputs_and_reports_the_rest(
-    mapper: tuple[AutoMapper, list, list],
+    mapper: tuple[AutoMappingTool, list, list],
 ) -> None:
     m, created, merged = mapper
-    report = m.generate_module_mappings(["nxt"], ["vjoy_3"], AutoMapperOptions())
+    report = m.generate_module_mappings(["nxt"], ["vjoy_3"], AutoMappingToolOptions())
     assert [t.input_id for t in created] == list(range(1, 57))
     assert merged == []  # nothing claimed behind your back
     assert "Skipped vJoy 3 buttons 57-58: not claimed by the output module." in report
     assert "Skipped vJoy 3 buttons 59-60: not on the vJoy device." in report
 
 
-def test_claim_option_claims_first(mapper: tuple[AutoMapper, list, list]) -> None:
+def test_claim_option_claims_first(mapper: tuple[AutoMappingTool, list, list]) -> None:
     m, created, merged = mapper
-    options = AutoMapperOptions(claim_outputs=True)
+    options = AutoMappingToolOptions(claim_outputs=True)
     report = m.generate_module_mappings(["nxt"], ["vjoy_3"], options)
     assert len(merged) == 1
     assert [t.input_id for t in created] == list(range(1, 59))
@@ -91,14 +91,14 @@ def test_ranges() -> None:
 
 
 def test_input_modules_left_without_an_output_are_named(
-    mapper: tuple[AutoMapper, list, list],
+    mapper: tuple[AutoMappingTool, list, list],
 ) -> None:
     m, _created, _merged = mapper
     second = {"slug": "evo", "name": "EVO", "claim": {"buttons": [1]}}
     with mock.patch.object(
-        auto_mapper.auto_map, "input_modules", return_value=[_NXT, second]
+        auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT, second]
     ):
         report = m.generate_module_mappings(
-            ["nxt", "evo"], ["vjoy_3"], AutoMapperOptions()
+            ["nxt", "evo"], ["vjoy_3"], AutoMappingToolOptions()
         )
     assert "No output module left for EVO" in report

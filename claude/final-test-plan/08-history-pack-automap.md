@@ -1,4 +1,4 @@
-# Final test plan: 08 History, Device Pack and Auto Mapper
+# Final test plan: 08 History, Device Pack and Auto Mapping Tool
 
 Spec: `claude/program-map/08-history-pack-automap.md` (section 8; section 12 decisions win, all Q as recommended; `claude/decisions.md` D-08-*, D-SYS-F1/F3/A3, D-03-Q15, D-05-Q8, D-01-Q7).
 New tests: `test/unit/test_final_08.py` (30 tests, all pass; random order checked with `test/run_tests.py --random-order`).
@@ -36,7 +36,7 @@ Abbreviations: `stage1` = `test/unit/test_stage1_history_pack.py`, `dpi` = `test
 | S28 | Tools > History lists every change, newest first, title, date/time, area | final::test_s28_every_change_newest_first_with_title_date_and_area | new |
 | S29 | Show narrows by area; Search in title and subject | stage1::test_show_and_search; test_history_window.py::test_it_lists_the_devices_changes | covered |
 | S30 / Q13 | Before/After readable (actions, module parts in words, settings names, profile size) | test_history_window.py::test_a_change_before_and_after; test_batch2_b7.py::test_module_text_reads_like_the_pack_rows; test_batch3_C5.py::test_history_shows_the_device_change_choice_as_options_does | covered |
-| S31 / Q15 / Q16 | Editors open History filtered for what they show | stage1::test_the_editors_filters, ::test_button_map_history_is_by_its_own_file_in_every_area, ::test_configuration_row_history_is_for_the_open_profile, ::test_tools_history_opens_on_every_change; test_batch2_b7.py::test_a_profile_filter_matches_the_path_however_written | covered |
+| S31 / Q15 / Q16 | Editors open History filtered for what they show | stage1::test_the_editors_filters, ::test_button_map_history_is_by_its_own_file_in_every_area, ::test_device_bindings_row_history_is_for_the_open_profile, ::test_tools_history_opens_on_every_change; test_batch2_b7.py::test_a_profile_filter_matches_the_path_however_written | covered |
 | S32 | Filter matches a device id however written | test_history_restore.py::test_filters_match_a_device_id_however_written | covered |
 | S33 | "Only ..." line; Show All keeps only the area | test_history_window.py::test_show_all_drops_the_device, ::test_it_lists_the_devices_changes | covered |
 | S34 | Tools > History from the menu opens on every change | stage1::test_tools_history_opens_on_every_change | covered |
@@ -81,7 +81,7 @@ Abbreviations: `stage1` = `test/unit/test_stage1_history_pack.py`, `dpi` = `test
 | S72 | Logical inputs created only when ticked | dpi::test_missing_logical_inputs_can_be_created | covered |
 | S73 | Previous file and overwritten picture kept in imported with a dated name | final::test_s73_the_previous_file_and_an_overwritten_picture_are_kept_in_imported | new |
 | S74 | Profile changes in memory only | final::test_s74_the_profile_changes_in_memory_only | new |
-| S75 | Configuration Appearance, Output View Appearance, photo placement come with it | dpi::test_configuration_appearance_comes_with_the_pack, ::test_the_photo_keeps_its_placement | covered |
+| S75 | Device Bindings Appearance, Output View Appearance, photo placement come with it | dpi::test_device_bindings_appearance_comes_with_the_pack, ::test_the_photo_keeps_its_placement | covered |
 | S76 | A write that fails puts back what was written; previous import stays undoable | dpi::test_a_picture_that_cannot_be_written_puts_everything_back, ::test_an_output_picture_that_cannot_be_written_is_reported, ::test_a_failed_import_leaves_the_last_one_undoable, ::test_a_pack_picture_is_written_whole_or_not_at_all; stage1::test_a_pack_with_a_bad_part_changes_nothing | covered |
 | S77 | An import that matches or writes nothing keeps Undo | dpi::test_an_import_that_matches_nothing_keeps_the_last_undo; test_audit3_saving.py::test_an_import_that_wrote_nothing_keeps_undo_import; test_device_pack_window.py::test_a_failed_import_keeps_undo_import | covered |
 | S78 / Q2 (F1) | Import onto a damaged module file refused, points to Start Fresh | stage1::test_a_pack_import_onto_a_damaged_module_file_is_refused; dpi::test_an_import_onto_a_damaged_module_file_is_refused, ::test_a_damaged_output_module_file_is_left_alone | covered |
@@ -100,33 +100,33 @@ Abbreviations: `stage1` = `test/unit/test_stage1_history_pack.py`, `dpi` = `test
 | S87 | Deleted devices folder default in data folder, changeable | test_deleted_devices_folder.py::test_option_is_a_folder_picker_like_the_others, ::test_backups_default_to_the_data_folder, ::test_backups_follow_the_chosen_folder | covered |
 | S88 | Delete File asks, copies "<name> <date time>.json"; no copy, no delete | test_data_safety.py::test_deleting_a_module_file_keeps_a_copy, ::test_no_copy_means_no_delete; test_batch3_C5.py::test_delete_file_confirm_says_the_pictures_are_kept | covered |
 | S89 | A deleted device's pack imports back | stage1::test_delete_device_saves_a_pack_that_can_be_imported_back | covered |
-| S90 | Auto Mapper: each claimed control to the same number on vJoy, in the chosen mode; card menu ticks the card | final::test_s90_actions_go_in_the_chosen_mode; test_auto_mapper_claims.py::test_maps_only_to_claimed_outputs_and_reports_the_rest; test_audit3_module_files.py::test_calibration_and_auto_mapper_open_on_the_cards_file | new |
-| S91 | Paired by list order; Combine reuses outputs; leftover inputs named | test_auto_mapper_claims.py::test_input_modules_left_without_an_output_are_named; stage1::test_combine_with_more_inputs_than_outputs_uses_each_output_once, ::test_without_combine_the_extra_input_module_is_named | covered |
-| S92 | Only claimed outputs the vJoy has; skipped listed by range and reason | test_auto_mapper_claims.py::test_maps_only_to_claimed_outputs_and_reports_the_rest, ::test_ranges; test_batch3_C5.py::test_auto_mapper_reads_vjoy_sizes_through_the_output_module, ::test_auto_mapper_falls_back_to_the_device_list_without_the_driver | covered |
-| S93 / Q9 | Also claim: claims first, re-reads, refuses damaged; unclaimable outputs skipped and listed | test_auto_mapper_claims.py::test_claim_option_claims_first; stage1::test_also_claim_with_an_output_file_that_cant_be_written | covered |
-| S94 | Overwrite off: used inputs keep actions, used outputs not reused | test_auto_mapper.py::test_get_used_vjoy_inputs_from_profile, ::test_get_used_vjoy_inputs_from_empty_mode; stage1::test_combine_with_more_inputs_than_outputs_uses_each_output_once | covered |
-| S95 | Overwrite on: asks, removes every action incl. nested, nothing left behind | test_profile_unused_actions.py::test_auto_mapper_overwrite_leaves_nothing_behind; stage1::test_overwrite_removes_nested_actions_and_leaves_nothing_behind. Hands-on: tick Overwrite used inputs, Create 1:1 Actions: it asks first | covered + hands-on |
+| S90 | Auto Mapping Tool: each claimed control to the same number on vJoy, in the chosen mode; card menu ticks the card | final::test_s90_actions_go_in_the_chosen_mode; test_auto_mapping_tool_claims.py::test_maps_only_to_claimed_outputs_and_reports_the_rest; test_audit3_module_files.py::test_calibration_and_auto_mapping_tool_open_on_the_cards_file | new |
+| S91 | Paired by list order; Combine reuses outputs; leftover inputs named | test_auto_mapping_tool_claims.py::test_input_modules_left_without_an_output_are_named; stage1::test_combine_with_more_inputs_than_outputs_uses_each_output_once, ::test_without_combine_the_extra_input_module_is_named | covered |
+| S92 | Only claimed outputs the vJoy has; skipped listed by range and reason | test_auto_mapping_tool_claims.py::test_maps_only_to_claimed_outputs_and_reports_the_rest, ::test_ranges; test_batch3_C5.py::test_auto_mapping_tool_reads_vjoy_sizes_through_the_output_module, ::test_auto_mapping_tool_falls_back_to_the_device_list_without_the_driver | covered |
+| S93 / Q9 | Also claim: claims first, re-reads, refuses damaged; unclaimable outputs skipped and listed | test_auto_mapping_tool_claims.py::test_claim_option_claims_first; stage1::test_also_claim_with_an_output_file_that_cant_be_written | covered |
+| S94 | Overwrite off: used inputs keep actions, used outputs not reused | test_auto_mapping_tool.py::test_get_used_vjoy_inputs_from_profile, ::test_get_used_vjoy_inputs_from_empty_mode; stage1::test_combine_with_more_inputs_than_outputs_uses_each_output_once | covered |
+| S95 | Overwrite on: asks, removes every action incl. nested, nothing left behind | test_profile_unused_actions.py::test_auto_mapping_tool_overwrite_leaves_nothing_behind; stage1::test_overwrite_removes_nested_actions_and_leaves_nothing_behind. Hands-on: tick Overwrite used inputs, Create 1:1 Actions: it asks first | covered + hands-on |
 | S96 | Overwrite choice remembered | final::test_s96_the_overwrite_choice_is_remembered | new |
 | S97 | New actions in memory only; undo = load again without saving | final::test_s97_the_new_actions_are_in_memory_only. Hands-on: the dialog says so under Create 1:1 Actions | new + hands-on |
-| S98 / Q7 | Every input (unplugged sticks, nested actions) counts as using a vJoy output | stage1::test_an_output_an_unplugged_stick_uses_is_not_used_again, ::test_an_output_a_nested_action_uses_is_not_used_again; test_batch2_b7.py::test_every_input_and_nested_action_counts_as_used; test_auto_mapper.py::test_get_used_vjoy_inputs_for_disconnected_device_in_profile | covered |
-| S99 | Only vJoy outputs; Keyboard, OSC, Xbox cards have no Auto Mapper | final::test_s99_only_vjoy_outputs; test_stage1_modules.py::test_card_menus_leave_out_what_does_not_apply; test_menus.py (kb-module menu) | new |
-| S100 / Q4 | Running note in Auto Mapper (and, Q4, Device Pack and History) | test_batch3_C1.py::test_running_note_says_module_setup_changes_work_at_once (the note's texts). Hands-on: Run a profile, open Auto Mapper, Device Pack and Tools > History: each shows "The profile is running. Changes here take effect the next time it starts." | hands-on |
-| S101 | Lists follow sticks plugged in/out, keeping ticks | test_device_reconnect.py::test_auto_mapper_keeps_its_ticks | covered |
-| S102 | Esc doesn't close Auto Mapper or Device Pack | Hands-on: open each window, press Esc: it stays open (other tool windows close on Esc: test_usability_fixes.py::test_escape_closes_the_tool_windows) | hands-on |
-| S103 / Q8 | Result line in glossary words | test_batch3_C5.py::test_auto_mapper_result_says_actions | covered |
+| S98 / Q7 | Every input (unplugged sticks, nested actions) counts as using a vJoy output | stage1::test_an_output_an_unplugged_stick_uses_is_not_used_again, ::test_an_output_a_nested_action_uses_is_not_used_again; test_batch2_b7.py::test_every_input_and_nested_action_counts_as_used; test_auto_mapping_tool.py::test_get_used_vjoy_inputs_for_disconnected_device_in_profile | covered |
+| S99 | Only vJoy outputs; Keyboard, OSC, Xbox cards have no Auto Mapping Tool | final::test_s99_only_vjoy_outputs; test_stage1_modules.py::test_card_menus_leave_out_what_does_not_apply; test_menus.py (kb-module menu) | new |
+| S100 / Q4 | Running note in Auto Mapping Tool (and, Q4, Device Pack and History) | test_batch3_C1.py::test_running_note_says_module_setup_changes_work_at_once (the note's texts). Hands-on: Run a profile, open Auto Mapping Tool, Device Pack and Tools > History: each shows "The profile is running. Changes here take effect the next time it starts." | hands-on |
+| S101 | Lists follow sticks plugged in/out, keeping ticks | test_device_reconnect.py::test_auto_mapping_tool_keeps_its_ticks | covered |
+| S102 | Esc doesn't close Auto Mapping Tool or Device Pack | Hands-on: open each window, press Esc: it stays open (other tool windows close on Esc: test_usability_fixes.py::test_escape_closes_the_tool_windows) | hands-on |
+| S103 / Q8 | Result line in glossary words | test_batch3_C5.py::test_auto_mapping_tool_result_says_actions | covered |
 | Q11 | Limits checked at start; Options says so | test_batch3_C2.py::test_history_limits_say_they_are_checked_at_start | covered |
-| D-05-Q8 | Auto Mapper and Device Pack close the action pane first, asking | Hands-on (batch 2 B7): with an unsaved action pane open, Create 1:1 Actions / Import / Restore ask Discard or Cancel first | hands-on |
+| D-05-Q8 | Auto Mapping Tool and Device Pack close the action pane first, asking | Hands-on (batch 2 B7): with an unsaved action pane open, Create 1:1 Actions / Import / Restore ask Discard or Cancel first | hands-on |
 
 ## Batch hands-on checks for this page (from `claude/catchup-test-plan.md`)
 
 - B7: large history files (several MB each): Tools > History opens and comes back to the front without freezing.
-- B7: with an unsaved action pane, Auto Mapper, Device Pack Import and History Restore ask Discard / Cancel first.
+- B7: with an unsaved action pane, Auto Mapping Tool, Device Pack Import and History Restore ask Discard / Cancel first.
 - B7: Import a pack, save the Button Map, then Undo Import: it asks before putting back the changed file.
 - B7: History Restore of Diagnostic logs level or UI scale applies at once.
 - B6: Device Pack export preview with a large photo stays quick.
 - C5: close Device Pack: the `%TEMP%\gremlin-pack-*` folder is gone.
 - C5: export a device whose module file is damaged: it says damaged and points to Start Fresh.
-- C5: Auto Mapper on a vJoy with sparse axes: only the axes the vJoy has are used; the rest listed.
+- C5: Auto Mapping Tool on a vJoy with sparse axes: only the axes the vJoy has are used; the rest listed.
 
 ## Counts
 

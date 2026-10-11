@@ -30,7 +30,7 @@ Short names used below:
 | S14 | Press lights a chip (not editing); hover names it; drag pans | golden[hotspots] (pressed). Hands-on: run a profile, press a claimed button: its chip lights; hover a chip: tooltip names the control; drag the map: it pans | covered + hands-on |
 | S15 | Presses only from the input module feed | final::test_presses_come_only_from_the_input_module_feed | new |
 | S16 | Chip shows where the wire goes, "(not claimed)" | test_wiring_labels.py::test_unclaimed_and_missing_outputs_are_flagged (the label text). Hands-on: wire a button to an unclaimed vJoy button; its chip (Action text) ends "(not claimed)" | covered + hands-on |
-| S17 | Never changes actions | Hands-on: open the Configuration page of a mapped button, edit the map (move, rename, delete its chip), Save: the action is unchanged and the profile is not marked unsaved | hands-on |
+| S17 | Never changes actions | Hands-on: open the Device Bindings page of a mapped button, edit the map (move, rename, delete its chip), Save: the action is unchanged and the profile is not marked unsaved | hands-on |
 | S18 | Lines are "leaders", never "wires" | Hands-on: right-click a leader and open the Layers panel of a chip: rows say Leader, nothing says Wire | hands-on |
 | S19 | Edit Mapping; entering Edit is no change | devices::test_entering_edit_is_not_a_change; stage1::test_save_writes_reads_back_and_says_so; window (edit-is-clean) | covered |
 | S20 | Save writes, reads back, says so; "Not written…" on failure | stage1::test_save_writes_reads_back_and_says_so. Hands-on: make the module file read-only, Save: "Not written. It is still only on this screen." | covered + hands-on |

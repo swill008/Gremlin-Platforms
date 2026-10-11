@@ -93,10 +93,10 @@ def test_condition_model_has_no_add_action() -> None:
     assert not hasattr(ConditionModel, "addAction")
 
 
-# AUD-BMH-06: the Auto Mapper with no profile open returns a message.
+# AUD-BMH-06: the Auto Mapping Tool with no profile open returns a message.
 
 
-def test_auto_mapper_without_profile_returns_message() -> None:
+def test_auto_mapping_tool_without_profile_returns_message() -> None:
     from gremlin import shared_state
     from gremlin.ui.tools import Tools
 

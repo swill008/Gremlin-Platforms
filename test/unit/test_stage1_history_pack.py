@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Stage 1 safety net: History, Device Pack and the Auto Mapper (page 08).
+"""Stage 1 safety net: History, Device Pack and the Auto Mapping Tool (page 08).
 
 Covers gap-list section 1 items GL-022 (History: entries read while the
 writer runs, the first save's pictures, Save As, restore into a deleted
@@ -12,7 +12,7 @@ checks, import onto a damaged file, a wire import failing partway, Undo
 Import after a later save or with another profile open, vJoy sizes, a bad
 wires.json or output file, an empty selection: 08 S57, S78, S79, S83, Q5,
 Q18), GL-024 (Delete Device's "Save a copy" pack: written, read back,
-refused, imported back: 08 S86, S89) and GL-025 (Auto Mapper: Combine with
+refused, imported back: 08 S86, S89) and GL-025 (Auto Mapping Tool: Combine with
 more inputs than outputs, Overwrite with nested actions, twin sticks, Also
 claim with an output file that can't be written: 08 S91, S93, S95, Q7, Q9).
 
@@ -43,7 +43,7 @@ from gremlin import (
     shared_state,
 )
 from gremlin import device_library as library
-from gremlin.auto_mapper import AutoMapper, AutoMapperOptions
+from gremlin.auto_mapping_tool import AutoMappingTool, AutoMappingToolOptions
 from gremlin.modules import module_file, store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType, PropertyType
@@ -417,7 +417,7 @@ def test_the_editors_filters(entries: dict[str, str]) -> None:
         )
     )
     assert _shown(model, entries) == {"logical"}
-    # A Configuration row (by device id, however written: S32).
+    # A Device Bindings row (by device id, however written: S32).
     model.setFilter(
         json.dumps(
             {
@@ -443,7 +443,7 @@ def _qml_history_filter(file_name: str) -> str:
 @pytest.fixture(scope="module")
 def opened_history(tmp_path_factory: pytest.TempPathFactory) -> dict:
     """The filters History opens with from the Button Map's File menu and a
-    Configuration row, in the running program off-screen (its own process)."""
+    Device Bindings row, in the running program off-screen (its own process)."""
     from test.unit.test_stage1_button_map import (  # pyright: ignore[reportMissingImports]
         _run,
     )
@@ -473,7 +473,7 @@ def test_button_map_history_is_by_its_own_file_in_every_area(
     assert not found.get("area")
 
 
-def test_configuration_row_history_is_for_the_open_profile(
+def test_device_bindings_row_history_is_for_the_open_profile(
     opened_history: dict,
 ) -> None:
     # Q16: the open profile is part of the filter (the entries' "profile",
@@ -794,10 +794,12 @@ def test_delete_device_is_refused_when_the_autosave_cant_be_written(
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Combat", 2)}
 
 
-# --- GL-025: Auto Mapper -------------------------------------------------------------
+# --- GL-025: Auto Mapping Tool ---------------------------------------------------
 
 
-def _auto_map_setup(folder: Path, buttons: list[int], outputs: list[int]) -> None:
+def _auto_mapping_tool_setup(
+    folder: Path, buttons: list[int], outputs: list[int]
+) -> None:
     write_module(
         folder,
         "pjoy_pro",
@@ -811,7 +813,7 @@ def _auto_map_setup(folder: Path, buttons: list[int], outputs: list[int]) -> Non
 def test_combine_with_more_inputs_than_outputs_uses_each_output_once(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _auto_map_setup(folder, [1, 2, 3], [1, 2, 3, 4, 5])
+    _auto_mapping_tool_setup(folder, [1, 2, 3], [1, 2, 3, 4, 5])
     write_module(
         folder,
         "gone_stick",
@@ -824,10 +826,10 @@ def test_combine_with_more_inputs_than_outputs_uses_each_output_once(
         },
     )
     profile = new_profile(monkeypatch)
-    report = AutoMapper(profile).generate_module_mappings(
+    report = AutoMappingTool(profile).generate_module_mappings(
         ["pJoy Pro", "Gone Stick"],
         ["vJoy 1"],
-        AutoMapperOptions(repeat_vjoy_inputs=True),
+        AutoMappingToolOptions(repeat_vjoy_inputs=True),
     )
     # S91: both input modules go onto the one output, in turn; S94: an
     # output another input already uses in that mode is not used again.
@@ -839,7 +841,7 @@ def test_combine_with_more_inputs_than_outputs_uses_each_output_once(
 def test_without_combine_the_extra_input_module_is_named(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _auto_map_setup(folder, [1], [1])
+    _auto_mapping_tool_setup(folder, [1], [1])
     write_module(
         folder,
         "gone_stick",
@@ -852,8 +854,8 @@ def test_without_combine_the_extra_input_module_is_named(
         },
     )
     profile = new_profile(monkeypatch)
-    report = AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro", "Gone Stick"], ["vJoy 1"], AutoMapperOptions()
+    report = AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro", "Gone Stick"], ["vJoy 1"], AutoMappingToolOptions()
     )
     assert "No output module left for pJoy Pro" in report
     assert mapped(profile, stick_uid()) == set()
@@ -863,11 +865,11 @@ def test_without_combine_the_extra_input_module_is_named(
 def test_overwrite_removes_nested_actions_and_leaves_nothing_behind(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _auto_map_setup(folder, [1], [1])
+    _auto_mapping_tool_setup(folder, [1], [1])
     profile = new_profile(monkeypatch)
     nested_map(profile, stick_uid(), 1, 7)
-    AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(overwrite_used_inputs=True)
+    AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions(overwrite_used_inputs=True)
     )
     # S95: every action on the input goes, nested ones too, none left behind.
     assert vjoy_targets(profile) == [(1, 1)]
@@ -878,11 +880,11 @@ def test_overwrite_removes_nested_actions_and_leaves_nothing_behind(
 def test_an_output_a_nested_action_uses_is_not_used_again(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _auto_map_setup(folder, [1], [1])
+    _auto_mapping_tool_setup(folder, [1], [1])
     profile = new_profile(monkeypatch)
     nested_map(profile, stick_uid(), 9, 1)  # button 9 -> Tempo -> vJoy 1 button 1
-    AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions()
+    AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions()
     )
     # Q7: nested actions count; vJoy 1 button 1 isn't sent to twice.
     assert vjoy_targets(profile) == [(1, 1)]
@@ -891,11 +893,11 @@ def test_an_output_a_nested_action_uses_is_not_used_again(
 def test_an_output_an_unplugged_stick_uses_is_not_used_again(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _auto_map_setup(folder, [2], [2])
+    _auto_mapping_tool_setup(folder, [2], [2])
     profile = new_profile(monkeypatch)
     map_button(profile, _OTHER, 5, 2)  # the unplugged stick -> vJoy 1 button 2
-    AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions()
+    AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions()
     )
     # Q7 (S98 replaced): every input in the profile counts.
     assert vjoy_targets(profile) == [(1, 2)]
@@ -942,10 +944,10 @@ def test_each_twin_stick_is_mapped_on_its_own_device(
     assert names[first_uid] == "pJoy Pro"
     assert names[twin_uid] == "pJoy Pro (2)"
     profile = new_profile(monkeypatch)
-    AutoMapper(profile).generate_module_mappings(
+    AutoMappingTool(profile).generate_module_mappings(
         ["pJoy Pro", "pJoy Pro (2)"],
         ["vJoy 1"],
-        AutoMapperOptions(repeat_vjoy_inputs=True),
+        AutoMappingToolOptions(repeat_vjoy_inputs=True),
     )
     # Each twin's module maps its own device (S6, S119).
     assert mapped(profile, first_uid) == {("Default", 1)}
@@ -955,7 +957,7 @@ def test_each_twin_stick_is_mapped_on_its_own_device(
 def test_also_claim_with_an_output_file_that_cant_be_written(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _auto_map_setup(folder, [1, 2], [])
+    _auto_mapping_tool_setup(folder, [1, 2], [])
     profile = new_profile(monkeypatch)
     real_write = module_file.write_bytes
 
@@ -966,8 +968,8 @@ def test_also_claim_with_an_output_file_that_cant_be_written(
         real_write(path, data)
 
     monkeypatch.setattr(module_file, "write_bytes", refuse)
-    report = AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(claim_outputs=True)
+    report = AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions(claim_outputs=True)
     )
     # S93 / Q9: no actions to outputs it couldn't claim; listed "not claimed".
     assert vjoy_targets(profile) == []

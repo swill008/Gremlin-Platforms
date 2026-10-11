@@ -39,5 +39,5 @@
 - 03 S41 (P03): presses on a vJoy while its Output Module Setup is open still tick the control and light the row. Should output modules ignore presses there?
 - 03 S71 (P03): Keyboard and OSC cards show only with a module file or show-stubs on (same as sticks). Or always shown?
 - 03 S102 (P03): one Calibration capture at a time is per axis (Extrema stops Center on the same axis, not on another axis). Per axis meant?
-- 05 S43 (P05): the binding's Note (its root action label) shows on no row today. Which row should show it: the Configuration list's input row, the Keyboard row, both — or drop S43?
+- 05 S43 (P05): the binding's Note (its root action label) shows on no row today. Which row should show it: the Device Bindings list's input row, the Keyboard row, both — or drop S43?
 - 02 S40 vs GL-065 (P02): should a hardware event run in the mode that was current when it ARRIVED (D-02-Q8) or when the main thread handles it (batch 1 GL-065, the listener no longer asks the mode manager)? Differs only when a mode change and a press race.

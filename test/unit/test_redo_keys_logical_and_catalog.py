@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Redo's keys work on the Logical page and the Configuration page
+"""Redo's keys work on the Logical page and the Device Bindings page
 (no behaviour change).
 
 Both Redo Shortcuts listed StandardKey.Redo and "Ctrl+Shift+Z". On Windows
@@ -39,8 +39,8 @@ def test_redo_keys_on_the_logical_page(tmp_path: pathlib.Path) -> None:
     _check(run_journey(__file__, tmp_path / "home", "logical"))
 
 
-def test_redo_keys_on_the_configuration_page(tmp_path: pathlib.Path) -> None:
-    out = run_journey(__file__, tmp_path / "home", "configuration")
+def test_redo_keys_on_the_device_bindings_page(tmp_path: pathlib.Path) -> None:
+    out = run_journey(__file__, tmp_path / "home", "device-bindings")
     _check(out)
     # Undo took the group away, Redo put it back (Ctrl+Y and Ctrl+Shift+Z).
     assert out["played"] == ["before", "after", "before", "after"], out
@@ -84,8 +84,8 @@ def _logical(j: Journey) -> None:
     _keys(j, model, j.out)
 
 
-def _configuration(j: Journey) -> None:
-    layout = j.open_configuration("pjoy_pro")
+def _device_bindings(j: Journey) -> None:
+    layout = j.open_device_bindings("pjoy_pro")
     played: list = []
     # A real Undo step (a new group): Undo plays "before" (no group), Redo
     # "after" (the group is back).
@@ -105,7 +105,7 @@ def _main() -> None:
     def before(j: Journey) -> None:
         j.input_module()
 
-    Journey(before).run(_logical if part == "logical" else _configuration)
+    Journey(before).run(_logical if part == "logical" else _device_bindings)
 
 
 if __name__ == "__main__":

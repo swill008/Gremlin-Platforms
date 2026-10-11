@@ -89,7 +89,7 @@ function mainWindow()
 }
 
 // For tool windows that change bindings behind an open action pane
-// (Auto Mapper Create, History Restore, Device Pack import): closes the
+// (Auto Mapping Tool Create, History Restore, Device Pack import): closes the
 // panes first (asking when one has changes), then calls then(). Cancel
 // there means then() is not called.
 function closeActionPanes(then)

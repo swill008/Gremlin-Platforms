@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The Logical Device and Keyboard pages follow a held input like the
-Configuration page (D-05-FOLLOW-ALL-PAGES, 05 S131), end to end.
+Device Bindings page (D-05-FOLLOW-ALL-PAGES, 05 S131), end to end.
 
 A journey (test/journeys/_harness.py): the real app off-screen with a
 temporary USERPROFILE and fake hardware.
@@ -83,7 +83,7 @@ def _logical(j: Journey) -> None:  # noqa: PLR0915 (one page, several parts)
 
     out = j.out
     state = j.backend.uiState
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("logical"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("logical"))')
     j.wait_until(lambda: state.currentTab == "logical", "the Logical Device page")
     page = j.wait_until(
         lambda: j.win.findChild(LogicalLayoutModel), "the Logical Device model"
@@ -189,7 +189,7 @@ def _keyboard(j: Journey) -> None:
 
     out = j.out
     state = j.backend.uiState
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("keyboard"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("keyboard"))')
     j.wait_until(lambda: state.currentTab == "keyboard", "the Keyboard page")
     page = j.wait_until(
         lambda: j.win.findChild(KeyboardLayoutModel), "the Keyboard model"

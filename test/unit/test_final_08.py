@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Final phase: the page 08 statements (History, Device Pack, Auto Mapper)
+"""Final phase: the page 08 statements (History, Device Pack, Auto Mapping Tool)
 that had no check yet. The plan is claude/final-test-plan/08-history-pack-automap.md.
 
 Every test points History at a tmp folder (the stage 1 `folder` fixture or
@@ -28,8 +28,8 @@ from gremlin import (
     history_profile,
     util,
 )
-from gremlin.auto_mapper import AutoMapper, AutoMapperOptions
-from gremlin.modules import auto_map
+from gremlin.auto_mapping_tool import AutoMappingTool, AutoMappingToolOptions
+from gremlin.modules import auto_mapping_tool
 from gremlin.profile import Profile
 from gremlin.types import PropertyType
 from gremlin.ui import device_pack, hardware_profile, history_model
@@ -638,10 +638,10 @@ def test_s81_keeping_the_import_ends_undo_and_drops_the_replaced_actions(
     assert ("Default", 3) not in mapped(target, stick_uid())
 
 
-# --- Auto Mapper ----------------------------------------------------------------
+# --- Auto Mapping Tool ----------------------------------------------------------------
 
 
-def _auto_map_cards(folder: Path) -> None:
+def _auto_mapping_tool_cards(folder: Path) -> None:
     write_module(
         folder,
         "pjoy_pro",
@@ -655,11 +655,11 @@ def _auto_map_cards(folder: Path) -> None:
 def test_s90_actions_go_in_the_chosen_mode(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _auto_map_cards(folder)
+    _auto_mapping_tool_cards(folder)
     profile = new_profile(monkeypatch)
     profile.modes.add_mode("Combat")
-    AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(mode="Combat")
+    AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions(mode="Combat")
     )
     assert mapped(profile, stick_uid()) == {("Combat", 1), ("Combat", 2)}
 
@@ -670,9 +670,9 @@ def test_s96_the_overwrite_choice_is_remembered(
     from gremlin.ui import shell_option, tools
 
     shell_option.ensure_shell_options()
-    cfg.set("automap", "mapper", "remember-overwrite", True)
-    cfg.set("automap", "mapper", "overwrite-used-inputs", False)
-    _auto_map_cards(folder)
+    cfg.set("auto-mapping-tool", "mapper", "remember-overwrite", True)
+    cfg.set("auto-mapping-tool", "mapper", "overwrite-used-inputs", False)
+    _auto_mapping_tool_cards(folder)
     new_profile(monkeypatch)
     window = tools.Tools()
     window.createMappings("Default", {"pJoy Pro": True}, {"vJoy 1": True}, True, False)
@@ -684,13 +684,13 @@ def test_s96_the_overwrite_choice_is_remembered(
 def test_s97_the_new_actions_are_in_memory_only(
     folder: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    _auto_map_cards(folder)
+    _auto_mapping_tool_cards(folder)
     path = tmp_path / "p.xml"
     profile = new_profile(monkeypatch, path)
     profile.to_xml(path)
     on_disk = path.read_bytes()
-    AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions()
+    AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions()
     )
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Default", 2)}
     assert path.read_bytes() == on_disk
@@ -703,7 +703,7 @@ def test_s97_the_new_actions_are_in_memory_only(
 
 def test_s99_only_vjoy_outputs(folder: Path) -> None:
     setup_cards(folder)  # outputs vJoy 1 and Xbox; inputs Keyboard and OSC too
-    outputs = auto_map.output_modules()
+    outputs = auto_mapping_tool.output_modules()
     assert outputs
     assert all(int(row["vjoyId"]) > 0 for row in outputs), outputs
     names = {str(row.get("name") or row.get("device") or "") for row in outputs}

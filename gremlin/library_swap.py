@@ -357,7 +357,7 @@ def _swapped_docs(
     doc_b = copy.deepcopy(store.read_path(path_b))
     if "setup" in parts:
         _exchange_setup(doc_a, doc_b, shared)
-        # The Configuration layout (groups, order) goes with the names (CF-Q1).
+        # The Device Bindings layout (groups, order) goes with the names (CF-Q1).
         _exchange_keys(doc_a, doc_b, ("layout",))
     if "calibration" in parts:
         _exchange_calibration(doc_a, doc_b, shared)

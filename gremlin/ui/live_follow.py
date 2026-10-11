@@ -26,7 +26,7 @@ def may_follow() -> bool:
 def follows(kind: str, value: float, was: float, synthetic: bool) -> bool:
     """A new press of a button, or a hat leaving centre (not an axis, not a
     program-made event), that may move the page to its row, as on the
-    Configuration page."""
+    Device Bindings page."""
     if kind not in ("button", "hat") or value <= 0.5 or was > 0.5 or synthetic:
         return False
     return may_follow()

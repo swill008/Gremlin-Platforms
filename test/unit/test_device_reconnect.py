@@ -13,7 +13,7 @@ and user folder).
 - Module Setup refuses Save while its stick is unplugged (the work on
   screen stays) and allows it again when the stick is back.
 - Calibration's list follows the connected sticks; HidHide re-reads its
-  list; Auto Mapper keeps its ticks.
+  list; Auto Mapping Tool keeps its ticks.
 - A button held (or a hat pushed) as its stick is unplugged is let go of,
   so nothing stays held on the outputs.
 """
@@ -96,5 +96,5 @@ def test_hidhide_rereads_its_list(run: dict) -> None:
     assert run["hidhide-reads"] == 3
 
 
-def test_auto_mapper_keeps_its_ticks(run: dict) -> None:
-    assert run["auto-mapper"] == {"box": True, "ticked-after-replug": [True]}
+def test_auto_mapping_tool_keeps_its_ticks(run: dict) -> None:
+    assert run["auto-mapping-tool"] == {"box": True, "ticked-after-replug": [True]}

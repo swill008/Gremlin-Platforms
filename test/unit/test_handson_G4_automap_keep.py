@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""08 S105 (D-08-AUTOMAP-KEEP): after Create 1:1 Actions the Auto Mapper
+"""08 S105 (D-08-AUTOMAP-KEEP): after Create 1:1 Actions the Auto Mapping Tool
 keeps the ticked modules ticked and selected, so Create again works on the
 same modules (what is shown is what Create uses).
 
@@ -27,8 +27,8 @@ from _harness import Journey, run_journey, step  # noqa: E402
 
 def story(j: Journey) -> None:
     out = j.out
-    j.ev('Helpers.createComponent("DialogAutoMapper.qml", { initialSlug: "pJoy Pro" })')
-    win = j.window("Auto Mapper")
+    j.ev('Helpers.createComponent("DialogAutoMappingTool.qml", { initialSlug: "pJoy Pro" })')
+    win = j.window("Auto Mapping Tool")
 
     def boxes() -> dict[str, object]:
         return {

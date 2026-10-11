@@ -6,7 +6,7 @@
 - One edit lock (06 S13, S82, RB14; GL-171): binding_catalog.editing_locked()
   follows the Run; the pane models refuse edits with it, and every page
   reads it through EditLock instead of its own backend.gremlinActive rule.
-- The Configuration pane while running is read-only with no OK (05 Q11, GL-160);
+- The Device Bindings pane while running is read-only with no OK (05 Q11, GL-160);
   a Logical pane open when Run starts turns read-only too (06 Q6, GL-169).
 - The panes answer Main.closeActionPanes(): each page exposes its pane as
   actionPane, whose ActionPane.qml has paneHasChanges(), closeActionPane(),
@@ -15,7 +15,7 @@
   in the shared pane of its KeyboardLayoutModel (05 S128); a new key shows
   one empty binding to fill in (05 Q4, GL-164); its remove icon now removes
   from the draft only (GL-044).
-- The Configuration page is ConfigurationPage.qml on HardwareLayoutModel
+- The Device Bindings page is DeviceBindingsPage.qml on HardwareLayoutModel
   (05 S121); the Keyboard page is KeyboardPage.qml.
 - The Output filter shows with or without vJoy (05 S18, GL-166).
 - A row's History shows the open profile's changes (08 Q16, GL-194).
@@ -79,7 +79,7 @@ def _vjoy(out: int) -> Any:  # noqa: ANN401
 
 
 def _catalog(profile: Profile, *outs: int) -> Any:  # noqa: ANN401
-    """The Configuration page's model (HardwareLayoutModel), stick button 1
+    """The Device Bindings page's model (HardwareLayoutModel), stick button 1
     claimed and mapped to vJoy buttons outs (3 when none given)."""
     from test.unit.hardware_page_helper import page_on
 
@@ -182,7 +182,7 @@ def _read(name: str) -> str:
 @pytest.mark.parametrize(
     "name",
     [
-        "ConfigurationPage.qml",
+        "DeviceBindingsPage.qml",
         "InputConfiguration.qml",
         "KeyboardPage.qml",
         "LogicalPage.qml",
@@ -195,10 +195,10 @@ def test_every_page_reads_the_one_lock(name: str) -> None:
 
 
 def test_the_catalog_pane_has_no_ok_while_running() -> None:
-    # The Configuration and Keyboard pages use the shared ActionPane (05
+    # The Device Bindings and Keyboard pages use the shared ActionPane (05
     # S121, S128), locked by the page's EditLock: its running line and no OK
     # are checked in test_a_logical_pane_has_no_ok_while_running.
-    for name in ("ConfigurationPage.qml", "KeyboardPage.qml"):
+    for name in ("DeviceBindingsPage.qml", "KeyboardPage.qml"):
         text = _read(name)
         pane = text[text.index("ActionPane {"):]
         pane = pane[: pane.index("}")]
@@ -219,7 +219,7 @@ def test_a_logical_pane_has_no_ok_while_running() -> None:
 
 
 @pytest.mark.parametrize(
-    "name", ["ConfigurationPage.qml", "KeyboardPage.qml", "LogicalPage.qml"]
+    "name", ["DeviceBindingsPage.qml", "KeyboardPage.qml", "LogicalPage.qml"]
 )
 def test_each_pane_answers_close_action_panes(name: str) -> None:
     # Main reaches the pane through page.actionPane (to-do 91).
@@ -338,7 +338,7 @@ def test_the_keyboard_page_uses_the_draft() -> None:
 
 
 def test_the_output_filter_shows_without_vjoy() -> None:
-    text = _read("ConfigurationPage.qml")
+    text = _read("DeviceBindingsPage.qml")
     assert "hasValidVJoyDevices" not in text
     box = text[text.index("id: _output"):]
     box = box[: box.index("PointerTip")]
@@ -348,7 +348,7 @@ def test_the_output_filter_shows_without_vjoy() -> None:
 
 def test_a_rows_history_is_the_open_profiles() -> None:
     # The row's History is in its right-click menu (05 S126).
-    text = _read("ConfigurationPage.qml")
+    text = _read("DeviceBindingsPage.qml")
     fn = text[text.index("function historyFilter(key)"):]
     fn = fn[: fn.index("return JSON.stringify(w)")]
     assert "backend.profilePath()" in fn and "w.profile = path" in fn

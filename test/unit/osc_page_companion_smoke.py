@@ -203,7 +203,7 @@ def main() -> None:  # noqa: C901, PLR0915
     win.setProperty("height", 900)
     wait_for(lambda: False, 500)
 
-    run('_root.openConfigurationNow(_root._cardForGuid("%s"))' % str(ids.OSC).upper())
+    run('_root.openDeviceBindingsNow(_root._cardForGuid("%s"))' % str(ids.OSC).upper())
     wait_for(lambda: the_page() is not None and named("oscSetup") is not None)
     page = the_page()
     result("page", page is not None)

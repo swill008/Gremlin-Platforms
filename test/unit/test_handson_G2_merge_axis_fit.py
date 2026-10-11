@@ -52,8 +52,8 @@ def story(j: Journey) -> None:
     j.win.setWidth(1600)
     j.win.setHeight(950)
     j.QTest.qWait(300)
-    catalog = j.open_configuration("pjoy_pro")
-    page = j.ev("configurationPane()")
+    catalog = j.open_device_bindings("pjoy_pro")
+    page = j.ev("deviceBindingsPane()")
     j.open_input(catalog, "axis", 1)
     if UNITS:
         j.ev(f"paneUnits = {UNITS}; true", page)

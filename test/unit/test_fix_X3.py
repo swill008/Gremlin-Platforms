@@ -92,7 +92,7 @@ def test_a_new_binding_has_no_note(profile: Profile) -> None:
 
 @pytest.fixture
 def catalog(profile: Profile) -> Iterator[Any]:
-    # The Configuration page's model (HardwareLayoutModel), buttons 1-2 claimed.
+    # The Device Bindings page's model (HardwareLayoutModel), buttons 1-2 claimed.
     from test.unit.hardware_page_helper import close, page_on
 
     model: Any = page_on(_STICK, [("button", 1), ("button", 2)])
@@ -100,7 +100,7 @@ def catalog(profile: Profile) -> Iterator[Any]:
     close(model)
 
 
-def test_the_configuration_input_row_carries_the_note(
+def test_the_device_bindings_input_row_carries_the_note(
     profile: Profile, catalog: Any  # noqa: ANN401
 ) -> None:
     item = profile.get_input_item(
@@ -136,7 +136,7 @@ def test_the_configuration_input_row_carries_the_note(
 
 def test_the_keyboard_key_row_carries_the_note(profile: Profile) -> None:
     # The Keyboard page's model (KeyboardLayoutModel, 05 S128): the key's
-    # parent row shows the Note under its name, as the Configuration page.
+    # parent row shows the Note under its name, as the Device Bindings page.
     from gremlin.modules import store
     from gremlin.ui.keyboard_layout import KeyboardLayoutModel
 

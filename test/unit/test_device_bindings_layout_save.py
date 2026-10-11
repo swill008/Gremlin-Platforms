@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Configuration page's groups, order and Rename follow the Logical
+"""The Device Bindings page's groups, order and Rename follow the Logical
 Device's file rule (CS1 (a), D-04-LD-FILE pattern): held unsaved per device,
 the title's "*" shows, File > Save Profile writes each device's module file
 once (one History entry), Discard drops them.
@@ -140,7 +140,7 @@ def test_discard_drops_the_changes(
     try:
         store.set_pending_layout(GUID, LAYOUT, {"button:2": "Pinkie"})
         assert shown.has_unsaved_changes()
-        Backend.klass.discardConfigurationLayouts(None)  # type: ignore[attr-defined]
+        Backend.klass.discardDeviceBindingsLayouts(None)  # type: ignore[attr-defined]
     finally:
         store.remove_pending_listener(listener)
     assert ("discarded", "") in heard

@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
-# Action summaries and filters shared by the control pages (Configuration,
-# Keyboard, Logical Device, OSC) and the edit lock. The Configuration page's
+# Action summaries and filters shared by the control pages (Device Bindings,
+# Keyboard, Logical Device, OSC) and the edit lock. The Device Bindings page's
 # model is gremlin/ui/hardware_layout.py (05 S121, RB16).
 
 from __future__ import annotations
@@ -169,7 +169,7 @@ def binding_note(binding: object) -> str:
 
 def item_note(item: object, indices: list[int] | None = None) -> str:
     """The Notes of an input's bindings (only those in indices, when given),
-    for its row on the Configuration list and the Keyboard page (05 S43,
+    for its row on the Device Bindings list and the Keyboard page (05 S43,
     D-05-S43-BOTHROWS)."""
     sequences = getattr(item, "action_sequences", None) or []
     notes: list[str] = []

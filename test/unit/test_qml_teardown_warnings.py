@@ -8,7 +8,7 @@
 1. The OSC Monitor panel (qml/OscMonitorPanel.qml) destroyed while it
    holds the port releases it without overwriting its ``active`` binding
    (no "qt.qml.binding.removal" message).
-2. The Configuration page (qml/ConfigurationPage.qml) destroyed while its
+2. The Device Bindings page (qml/DeviceBindingsPage.qml) destroyed while its
    delayed "show the current input" call is pending runs nothing of it
    afterwards (no "QQmlVMEMetaObject: Internal error" or "showIndex ... is
    not a function").
@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT / "test" / "journeys"))
 from _harness import Journey, run_journey, step  # noqa: E402
 
 STICK = "pJoy Pro"
-_PAGE_URL = (ROOT / "qml" / "ConfigurationPage.qml").as_uri()
+_PAGE_URL = (ROOT / "qml" / "DeviceBindingsPage.qml").as_uri()
 
 
 # +-------------------------------------------------------------------------
@@ -93,11 +93,11 @@ def story(j: Journey) -> None:
         j.settle()
     j.out["oscReleased"] = list(runtime.calls)
 
-    # 2. The Configuration page: a device change schedules the delayed
+    # 2. The Device Bindings page: a device change schedules the delayed
     # call; the page goes away before it runs.
     guid = str(j.stick(STICK).device_guid.uuid)
     for attempt in range(3):
-        # Hosted in a Loader as Main hosts it (_configPageLoader).
+        # Hosted in a Loader as Main hosts it (_deviceBindingsPageLoader).
         host = j.ev(
             "Qt.createQmlObject('import QtQuick; import QtQuick.Window;"
             " Window { width: 1200; height: 800; visible: true;"
@@ -106,7 +106,7 @@ def story(j: Journey) -> None:
             " Loader { id: _l; anchors.fill: parent;"
             f' source: \"{_PAGE_URL}\" }} }}\', _root, \'cfghost\')'.replace("}}", "}")
         )
-        j.wait_until(lambda: host.property("page"), "the hosted ConfigurationPage")
+        j.wait_until(lambda: host.property("page"), "the hosted DeviceBindingsPage")
         page = host.property("page")
         j.out[f"cfgMade{attempt}"] = "ok" if hasattr(page, "metaObject") else str(page)
         j.ev(f"setDevice({guid!r}, {STICK!r}); true", page)
@@ -143,7 +143,7 @@ def _bad(messages: list[str]) -> list[str]:
         "invalid context",
         "is not a function",
         "OscMonitorPanel.qml",
-        "ConfigurationPage.qml",
+        "DeviceBindingsPage.qml",
     )
     return [m for m in messages if any(k in m for k in marks)]
 

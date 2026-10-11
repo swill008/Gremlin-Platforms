@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""08 S90-S94: Create 1:1 Actions, through the real Auto Mapper window.
+"""08 S90-S94: Create 1:1 Actions, through the real Auto Mapping Tool window.
 
 Driven off-screen in its own process (the journey harness): two sticks with
 input modules claiming axes, buttons 1-8 and hats; the vJoy 1 output module
@@ -56,8 +56,8 @@ def _targets(j: Journey, uid: object) -> list[list]:
 
 def story(j: Journey) -> None:
     out = j.out
-    j.ev('Helpers.createComponent("DialogAutoMapper.qml", {})')
-    win = j.window("Auto Mapper")
+    j.ev('Helpers.createComponent("DialogAutoMappingTool.qml", {})')
+    win = j.window("Auto Mapping Tool")
 
     def boxes() -> dict[str, object]:
         return {

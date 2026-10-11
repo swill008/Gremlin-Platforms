@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Configuration layout in the device's module file (CF-Q1): groups and
+"""The Device Bindings layout in the device's module file (CF-Q1): groups and
 order under "layout", names as the claim's friendly names (CF-Q8), and the
 layout travelling with Device Pack, the Device Library (Copy, Restore,
 Swap) and History. One shared list Appearance in program settings (CF-Q4)."""
@@ -119,7 +119,7 @@ def test_history_names_a_layout_save(
     history_modules._record(
         tmp_path / "pJoy Pro" / "module.json", json.dumps(old), json.dumps(new), "save"
     )
-    assert written == [("modules", "Saved pJoy Pro: Configuration layout")]
+    assert written == [("modules", "Saved pJoy Pro: Device Bindings layout")]
     assert "catalog" not in history_modules._WORDS
 
 
@@ -133,8 +133,8 @@ def test_device_pack_carries_the_layout(pack: dict) -> None:  # noqa: F811
         section["title"]: [item["title"] for item in section["items"]]
         for section in described["sections"]
     }
-    assert "Configuration layout" in titles["Input module"]
-    assert "Configuration Appearance" not in titles["Input module"]
+    assert "Device Bindings layout" in titles["Input module"]
+    assert "Device Bindings Appearance" not in titles["Input module"]
     doc = _doc(name)
     doc["layout"] = {"groups": ["Mine"]}
     module_file.write_json(_own_path(name), doc)
@@ -153,7 +153,7 @@ def test_a_pack_catalog_is_not_imported(pack: dict) -> None:  # noqa: F811
     )
     assert "catalog" not in merged
     assert merged["layout"] == LAYOUT
-    assert "Configuration layout" in device_pack.module_text(
+    assert "Device Bindings layout" in device_pack.module_text(
         {"layout": LAYOUT}, ["layout"]
     )
 
@@ -232,25 +232,25 @@ def test_each_page_keeps_its_own_list_appearance() -> None:
     placement.listAppearanceChanged.connect(seen.append)
     try:
         placement.setListAppearance(
-            "configuration", json.dumps({"rowHeight": 30, "showLeds": False})
+            "device-bindings", json.dumps({"rowHeight": 30, "showLeds": False})
         )
-        assert json.loads(placement.listAppearance("configuration")) == {
+        assert json.loads(placement.listAppearance("device-bindings")) == {
             "rowHeight": 30,
             "showLeds": False,
         }
-        assert window_placement.list_appearance("configuration") == {
+        assert window_placement.list_appearance("device-bindings") == {
             "rowHeight": 30,
             "showLeds": False,
         }
         assert window_placement.list_appearance("logical") == {}
-        assert seen == ["configuration"]
-        placement.setListAppearance("configuration", "[1, 2]")  # ignored
-        placement.setListAppearance("configuration", "not json")
-        assert window_placement.list_appearance("configuration") == {
+        assert seen == ["device-bindings"]
+        placement.setListAppearance("device-bindings", "[1, 2]")  # ignored
+        placement.setListAppearance("device-bindings", "not json")
+        assert window_placement.list_appearance("device-bindings") == {
             "rowHeight": 30,
             "showLeds": False,
         }
-        assert seen == ["configuration"]
+        assert seen == ["device-bindings"]
     finally:
-        placement.setListAppearance("configuration", "{}")
-    assert placement.listAppearance("configuration") == "{}"
+        placement.setListAppearance("device-bindings", "{}")
+    assert placement.listAppearance("device-bindings") == "{}"

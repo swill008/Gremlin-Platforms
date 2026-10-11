@@ -5,9 +5,9 @@
 options and the optional live decoration of the shared tree (AP2, AP3,
 CF-Q10).
 
-- Each page (Configuration, Logical Device, Keyboard, OSC) keeps its own
+- Each page (Device Bindings, Logical Device, Keyboard, OSC) keeps its own
   Appearance (WindowPlacement listAppearance(page)): saving the Logical
-  Device page's leaves the Configuration page's as it was.
+  Device page's leaves the Device Bindings page's as it was.
 - Input and action rows take an alignment (left, center, right) and a
   width %, and groups get "Space between groups"; the defaults keep
   today's look (left, full width, no extra space).
@@ -93,17 +93,17 @@ def test_the_logical_page_panel_uses_its_own_setting(tmp_path: pathlib.Path) -> 
     assert saved["parentAlign"] == "left" and saved["parentWidthPct"] == 100
     assert saved["childAlign"] == "left" and saved["childWidthPct"] == 100
     assert saved["groupSpacing"] == 0
-    # The Configuration page's own values are untouched.
+    # The Device Bindings page's own values are untouched.
     assert json.loads(r["other"]) == {"rowSpacing": 3}
     assert r["toast"] == "Saved for this page."
-    # The live keys ride along, so a save here never drops Configuration's.
+    # The live keys ride along, so a save here never drops Device Bindings'.
     assert saved["showLiveBars"] is True and saved["showLeds"] is True
     # The old Logical-only "logical-layout" setting is gone.
     assert r["old"] == "False"
     assert r["tree"] == "60"
-    # The live rows of the panel are Configuration's only.
+    # The live rows of the panel are Device Bindings' only.
     assert r["liveRows"] == "false"
-    # The Logical Device page tints and follows like Configuration
+    # The Logical Device page tints and follows like Device Bindings
     # (D-05-FOLLOW-ALL-PAGES).
     assert r["liveDecoration"] == "true"
 
@@ -148,7 +148,7 @@ def test_row_alignment_width_and_group_space_apply_to_the_tree(
 
 def test_the_logical_page_turns_the_live_decoration_on() -> None:
     page = (_ROOT / "qml" / "LogicalPage.qml").read_text(encoding="utf-8")
-    # Tint and follow as on the Configuration page (D-05-FOLLOW-ALL-PAGES).
+    # Tint and follow as on the Device Bindings page (D-05-FOLLOW-ALL-PAGES).
     assert "liveDecoration: true" in page
     # Its panel is the shared PageAppearance part (to-do 91).
     assert "PageAppearance {" in page
@@ -179,7 +179,7 @@ def _logical(s, out: pathlib.Path) -> None:  # noqa: ANN001
     LogicalDevice().reset()
     LogicalDevice().create_many(InputType.JoystickButton, 2, "", "")
     window_placement.set_list_appearance("logical", {"rowSpacing": 9})
-    window_placement.set_list_appearance("configuration", {"rowSpacing": 3})
+    window_placement.set_list_appearance("device-bindings", {"rowSpacing": 3})
     backend_cls, _ = s._fakes()
     engine.rootContext().setContextProperty("backend", backend_cls())
     engine.rootContext().setContextProperty("uiState", UIState())
@@ -219,7 +219,7 @@ Window {
     js("panel().parentHeight = 60; panel().save(); 1")
     s._wait(100)
     s._Out.result("saved", json.dumps(window_placement.list_appearance("logical")))
-    other = window_placement.list_appearance("configuration")
+    other = window_placement.list_appearance("device-bindings")
     s._Out.result("other", json.dumps(other))
     s._Out.result("toast", js("panel().toastText"))
     s._Out.result(
@@ -308,7 +308,7 @@ Window {
     shown = js("_tree.showKey('parent:axis:1')")
     s._Out.result("show", f"{str(shown).lower()} k:axis {js('_tree.highlightKey')}")
     s._Out.result("missing", str(js("_tree.showKey('parent:hat:9')")).lower())
-    # A left click on a parent row says so (the Configuration page opens its pane).
+    # A left click on a parent row says so (the Device Bindings page opens its pane).
     from PySide6 import QtTest
 
     at = js(
@@ -334,11 +334,11 @@ def _store(s, out: pathlib.Path) -> None:  # noqa: ANN001
     seen: list[str] = []
     placement.listAppearanceChanged.connect(seen.append)
     mine = {"rowSpacing": 9, "parentAlign": "right"}
-    window_placement.set_list_appearance("configuration", {"rowSpacing": 3})
+    window_placement.set_list_appearance("device-bindings", {"rowSpacing": 3})
     placement.setListAppearance("logical", json.dumps(mine))
     checks = [
         seen == ["logical"],
-        window_placement.list_appearance("configuration") == {"rowSpacing": 3},
+        window_placement.list_appearance("device-bindings") == {"rowSpacing": 3},
         json.loads(placement.listAppearance("logical")) == mine,
         placement.listAppearance("keyboard") == "{}",
         placement.listAppearance("osc") == "{}",
@@ -349,7 +349,7 @@ def _store(s, out: pathlib.Path) -> None:  # noqa: ANN001
     # Reset one page: the others keep theirs.
     placement.setListAppearance("logical", "{}")
     checks.append(placement.listAppearance("logical") == "{}")
-    other = window_placement.list_appearance("configuration")
+    other = window_placement.list_appearance("device-bindings")
     checks.append(other == {"rowSpacing": 3})
     s._Out.result("store", "ok" if all(checks) else repr(checks))
     print("done", flush=True)

@@ -4,7 +4,7 @@
 .pragma library
 .import Gremlin.Menus 1.0 as Menus
 
-// The right-click menus the four list pages share (Configuration, Logical
+// The right-click menus the four list pages share (Device Bindings, Logical
 // Device, Keyboard, OSC). Each page passes itself and the bits only it has;
 // the order, labels and enabled rules of the shared rows live here.
 //

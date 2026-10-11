@@ -103,7 +103,7 @@ def _setup(j: Journey) -> str:
 def _open_page(j: Journey) -> tuple[Any, Any]:  # noqa: ANN401
     from gremlin.ui.osc_layout import OscLayoutModel
 
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("osc"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("osc"))')
     j.wait_until(lambda: j.backend.uiState.currentTab == "osc", "the OSC page")
     layout = j.wait_until(lambda: j.win.findChild(OscLayoutModel), "the layout model")
     page = j.wait_until(lambda: _page(j), "the OscPage item")

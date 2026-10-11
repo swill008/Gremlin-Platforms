@@ -133,7 +133,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | Mode renamed / deleted | `mode_manager.py:250,264` | `rename_mode`, `drop_mode` | main |
 | Change Mode to a mode not in the running profile | `ModeManager.switch_to` | `_known_modes()` reads `EventHandler.known_modes`; ignored, logged once | main |
 | `device_change_event` | Backend `_device_change` | Reload: Stop + Run; Disable: Stop; Ignore: nothing | main (queued) |
-| `device_change_event` (other listeners) | `UIState._device_change`, `InputModuleRuntime.reload`, `DeviceListModel`, `Device`, `DeviceAxisSeries`, `AxisCalibration`, `ModuleModel`, `module_inputs`, `module_pairing`, `module_calibration`, `output_modules`, `auto_map_modules`, `viewer_devices`, `xbox_viewer`, `live_input`, `ui/profile.py:1361`, `HidHideModel.reload`, `ResetDevicesModel._device_change` while its window is shown (S144, 2026-10-10) | each re-reads the device list | main |
+| `device_change_event` (other listeners) | `UIState._device_change`, `InputModuleRuntime.reload`, `DeviceListModel`, `Device`, `DeviceAxisSeries`, `AxisCalibration`, `ModuleModel`, `module_inputs`, `module_pairing`, `module_calibration`, `output_modules`, `auto_mapping_tool_modules`, `viewer_devices`, `xbox_viewer`, `live_input`, `ui/profile.py:1361`, `HidHideModel.reload`, `ResetDevicesModel._device_change` while its window is shown (S144, 2026-10-10) | each re-reads the device list | main |
 | Profile Settings: tick "vJoy as input" | `ui/profile.py:1162` | emits `device_change_event` itself (no device changed) | main |
 | Listen button (InputListener.qml) | `InputListenerModel.enabled = true` | `_connect_listeners` (keyboard always, joystick if asked, mouse hook start if asked); first input or Esc held 1 s ends it | main; Esc abort on timer thread |
 | Macro editor Record | `MacroRecorder.start/stop` | connects raw signals, starts/stops mouse hook, records on main thread via `singleShot(0)` | main |
@@ -178,7 +178,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | Modes (`mode_manager.py`) | both | `Event.mode` stamped from `ModeManager.current`; `known_modes`, `rename_mode`, `drop_mode` |
 | Settings (`config.py`) | calls out | twin names, HidHide choices, aliases, device-change behaviour |
 | Profile (`shared_state.current_profile.settings.vjoy_as_input`) | reads | `input_devices`, `output_vjoy_devices` |
-| Home / Configuration / Calibration / Module Setup / viewers / Auto Mapper / Device Library | called by | ~17 listeners on `device_change_event`; device getters |
+| Home / Device Bindings / Calibration / Module Setup / viewers / Auto Mapping Tool / Device Library | called by | ~17 listeners on `device_change_event`; device getters |
 | Live Log Reader Input Monitor (`input_monitor.py`) | calls out | `process_event` records every event when on |
 | Errors (`signal.display_error`) | calls out | vJoy left out, hot-plug failure, VJoyError |
 | Logical Device | shares | `Joystick` cache holds the Logical Device under `UUID_LogicalDevice` |
@@ -279,7 +279,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 - **S32** While a profile runs, it should follow Options > Device change behavior when a controller is plugged in or removed: Reload (default) stops and runs again, Ignore does nothing, Stop stops (shown as "Stop"; the stored value stays "Disable"). [help: Run and status] [help: Options] [changed 2026-10-07 to follow decision Q2, which wins over the earlier wording "Disable"]
 - **S33** When the selected physical device disappears it should move the page to the first physical device, or to the Logical tab when none is left. [user confirmed 2026-10-06; was code only] (`UIState._device_change`)
 - **S34** HidHide's device list should re-read itself on a device change. [test: test_device_reconnect.py::test_hidhide_rereads_its_list]
-- **S35** Auto Mapper should keep its ticks when the device list is rebuilt. [test: test_device_reconnect.py::test_auto_mapper_keeps_its_ticks]
+- **S35** Auto Mapping Tool should keep its ticks when the device list is rebuilt. [test: test_device_reconnect.py::test_auto_mapping_tool_keeps_its_ticks]
 - **S36** A failed device update during play should not be the only thing that breaks: the error is shown and the old list stays. [user confirmed 2026-10-06; was code only]
 
 ### E. Stick events, calibration, cached state
@@ -543,9 +543,9 @@ An Xbox pad can change layout under the same Device ID: when its Xbox connection
 
 - Scan lock, no-change scan, vJoy reset only on vJoy change, hot-plug error shown: `test_device_scan.py`.
 - Twin naming, bound file keeps plain name, separate cards and calibration: `test_twin_devices.py`.
-- Device folders (2026-10-11, D-03-DEVICE-FOLDERS, 03 S6, S128-S132): `test_device_folders_devices.py` (13: a rename renames the folder, "_" in the folder name but the shown name kept, a busy folder refuses the rename and saves no alias, a built-in rename keeps its folder, twins get their own folders, the device whose id the folder holds keeps the plain name, a scan after an outside name change syncs the folder, a scan with no change leaves it, a module file found by id counts for forgetting, the Logical Device's and OSC's files in their folders, the diagnostics zip names each folder, the Auto Mapper keeps the device's own folder).
+- Device folders (2026-10-11, D-03-DEVICE-FOLDERS, 03 S6, S128-S132): `test_device_folders_devices.py` (13: a rename renames the folder, "_" in the folder name but the shown name kept, a busy folder refuses the rename and saves no alias, a built-in rename keeps its folder, twins get their own folders, the device whose id the folder holds keeps the plain name, a scan after an outside name change syncs the folder, a scan with no change leaves it, a module file found by id counts for forgetting, the Logical Device's and OSC's files in their folders, the diagnostics zip names each folder, the Auto Mapping Tool keeps the device's own folder).
 - vJoy left out: `test_startup_messages.py`.
-- Reconnect, let-go on unplug, Module Setup refuses Save, HidHide re-read, Auto Mapper ticks: `test_device_reconnect.py` (an off-screen program run with a fake stick).
+- Reconnect, let-go on unplug, Module Setup refuses Save, HidHide re-read, Auto Mapping Tool ticks: `test_device_reconnect.py` (an off-screen program run with a fake stick).
 - Plug-in during Run reloads claims: `test_device_fixes.py`.
 - Own Xbox pads told apart: `test_xbox_pads_told_apart.py`.
 - Raw-listener guard: `test_raw_input_listeners.py`. Layer guard for modules: `test_modules_layer.py`.
@@ -608,3 +608,5 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.
+
+[changed 2026-10-11, user: D-FIXLIST-B3] wording only: the Configuration page is now **Device Bindings** (qml/DeviceBindingsPage.qml) and the Auto Mapper is now the **Auto Mapping Tool** (gremlin/auto_mapping_tool.py, gremlin/modules/auto_mapping_tool.py, gremlin/ui/auto_mapping_tool_modules.py, qml/DialogAutoMappingTool.qml); Help topic ids configuration-actions-* / tools-auto-mapper* became device-bindings-actions-* / tools-auto-mapping-tool*; no statement changed.

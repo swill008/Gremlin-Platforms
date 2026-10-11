@@ -22,7 +22,7 @@ A3 = `U/test_audit3_module_files.py`, B1M = `U/test_batch1_module_pages.py`.
 | S10 | vJoy and own Xbox always outputs; a real Xbox pad is an input | U/test_xbox_pads_told_apart; U/test_audit_devices::test_an_unplugged_xbox_pad_is_not_the_xbox_output; U/test_module_registry::test_direction_rules | covered |
 | S11 | Other files are outputs only when marked dest/target/output | U/test_module_registry::test_direction_rules, ::test_scan_classifies_and_finds | covered |
 | S12 | Files re-read when time or size changes | U/test_module_registry::test_changed_file_is_read_again; U/test_status_claim_cache::test_a_newer_save_is_picked_up | covered |
-| S13 | Only claimed controls reach actions, viewers, Auto Mapper | U/test_input_module_gate::test_unclaimed_button_does_not_enter_wire, ::test_source_claimed_enters_wire; U/test_auto_mapper_claims | covered |
+| S13 | Only claimed controls reach actions, viewers, Auto Mapping Tool | U/test_input_module_gate::test_unclaimed_button_does_not_enter_wire, ::test_source_claimed_enters_wire; U/test_auto_mapping_tool_claims | covered |
 | S14 | Connected stick with no module file passes nothing | F03::test_s14_a_connected_stick_with_no_module_file_passes_nothing | new |
 | S15 | OSC and Logical Device pass without a claim | U/test_input_module_gate::test_osc_passthrough; U/test_logical_events_pass_gate::test_logical_device_events_reach_the_wire | covered |
 | S16 | vJoy's own events never enter; read-back vJoy passes unfiltered | U/test_input_module_gate::test_dest_vjoy_hid_never_enters_wire; F03::test_s16_a_vjoy_read_back_as_an_input_passes_unfiltered; F03::test_s16_a_vjoy_read_back_passes_whatever_its_output_module_file (xfail FINAL-03-1) | new (bug found) |
@@ -88,7 +88,7 @@ A3 = `U/test_audit3_module_files.py`, B1M = `U/test_batch1_module_pages.py`.
 | S76 | Card re-reads its file at most twice a second, only on change | U/test_status_claim_cache::test_many_events_read_the_file_once, ::test_a_newer_save_is_picked_up | covered |
 | S77 | Each twin card its own counts | U/test_twin_devices::test_each_twin_has_its_own_card; B1M::test_twin_cards_keep_their_own_counts_and_are_looked_up_by_id | covered |
 | S78 | Card counts are claimed counts (no file: device's own, D-03-Q8-NOFILE) | S1::test_card_counts_at_a_reload_are_the_claimed_counts, ::test_card_counts_after_a_settings_change_are_the_claimed_counts; U/test_batch2_b3::test_a_settings_change_gives_the_same_status_and_counts_as_a_reload; F03::test_s72_... | covered |
-| S79 | Double-click/Enter opens Configuration or Output View; arrows move | Hands-on: double-click a stick card: Configuration; Enter on vJoy card: Output View; arrow keys move focus | hands-on |
+| S79 | Double-click/Enter opens Device Bindings or Output View; arrows move | Hands-on: double-click a stick card: Device Bindings; Enter on vJoy card: Output View; arrow keys move focus | hands-on |
 | S80 | Right-click picks the card; selection kept | U/test_home_right_click::test_a_right_click_picks_the_card, ::test_a_right_click_in_a_selection_keeps_it | covered |
 | S81 | Drag reorders; order persists; hidden/unplugged/renamed/deleted places | A3::test_a_drag_keeps_hidden_cards_places, ::test_a_renamed_stick_keeps_its_cards_place, ::test_a_file_chosen_for_a_stick_does_not_take_another_sticks_place, ::test_a_deleted_devices_place_in_the_card_order_goes | covered |
 | S82 | Hide Card / Hidden Cards / Unhide All | S1::test_hide_card_and_hidden_cards_and_unhide_all | covered |
@@ -98,7 +98,7 @@ A3 = `U/test_audit3_module_files.py`, B1M = `U/test_batch1_module_pages.py`.
 | S86 | Compact view, Layout, divider persist | S1::test_compact_view_and_layout_persist; U/test_cleanup_batch_a::test_pane_dividers_live_with_the_window_layout | covered |
 | S87 | Order/hide/sizes/stacks keyed by device name (F2) | A3::test_a_renamed_stick_keeps_its_cards_place, ::test_a_file_chosen_for_a_stick_does_not_take_another_sticks_place | covered |
 | S88 | Card menu leaves out what doesn't apply | S1::test_card_menus_leave_out_what_does_not_apply, ::test_the_logical_device_card_menu, ::test_output_cards_have_no_delete_device, ::test_an_input_card_offers_delete_device | covered |
-| S89 | Calibration and Auto Mapper from a card open its file | A3::test_calibration_and_auto_mapper_open_on_the_cards_file | covered |
+| S89 | Calibration and Auto Mapping Tool from a card open its file | A3::test_calibration_and_auto_mapping_tool_open_on_the_cards_file | covered |
 | S90 | Delete Device: explain, red confirm, result | J/test_j09_delete_device_and_back::test_delete_device_explains_and_saves_a_copy_first; U/test_batch2_b3::test_delete_device_asks_first_when_stopped | covered |
 | S91 | Save a copy writes a pack and checks it; else nothing deleted | J/test_j09_delete_device_and_back::test_delete_device_explains_and_saves_a_copy_first; U/test_stage1_history_pack::test_delete_device_is_refused_when_the_pack_cant_be_read_back | covered |
 | S92 | Removes actions in every mode, file, pictures, bindings, size, stack | S1::test_delete_device_removes_the_devices_actions_file_and_card_layout; A3::test_delete_device_removes_a_renamed_sticks_file | covered |
@@ -123,14 +123,14 @@ A3 = `U/test_audit3_module_files.py`, B1M = `U/test_batch1_module_pages.py`.
 | S111 | Old settings calibration used until the file has one | F03::test_s111_old_program_calibration_is_used_until_the_module_file_has_one | new |
 | S112 | Damaged file refuses the save, untouched | U/test_module_file_damage::test_calibration_save_does_not_touch_it | covered |
 | S113 | Calibration History shows only this module's file | Hands-on: Calibration › History lists only this module's file | hands-on |
-| S114 | Input highlighting paused while Calibration is open | Hands-on: open Calibration, move a stick: Configuration page doesn't highlight; close: highlighting back | hands-on |
+| S114 | Input highlighting paused while Calibration is open | Hands-on: open Calibration, move a stick: Device Bindings page doesn't highlight; close: highlighting back | hands-on |
 | S115 | Output View is read-only, moves only while running | Hands-on: Output View of vJoy 1 stopped: still; Run and press a mapped button: it moves; nothing editable | hands-on |
 | S116 | Shows claimed outputs; no module: every control numbered per kind | U/test_audit2_coverage::test_output_view_numbers_buttons_and_hats_within_their_kind | covered |
 | S117 | Appearance saved in the module file; copy, reset, ask on leave | F03::test_s117_output_view_appearance_is_saved_in_the_module_file; U/test_output_view_pads::test_vjoy_view_save_uses_that_devices_module_file, ::test_reset_does_not_save_and_has_width. Hands-on: change a colour, leave: asked; Copy from Xbox | new + hands-on |
 | S118 | Output View header "Driven by: [...]" | Hands-on: Output View header shows "Driven by: [pJoy Pro]" for a wired vJoy | hands-on |
-| S119 | Auto Mapper lists claiming inputs once per device, one output per vJoy | F03::test_s119_auto_mapper_lists_claiming_inputs_once_and_one_output_per_vjoy | new |
-| S120 | Also claim reads fresh, refuses damaged | U/test_auto_mapper_claims::test_claim_option_claims_first; S1::test_auto_mapper_also_claim_on_a_damaged_output_file_makes_no_actions | covered |
-| S121 | Configuration list: claimed controls the device has, friendly names | F03::test_s121_configuration_list_shows_claimed_controls_the_device_has | new |
+| S119 | Auto Mapping Tool lists claiming inputs once per device, one output per vJoy | F03::test_s119_auto_mapping_tool_lists_claiming_inputs_once_and_one_output_per_vjoy | new |
+| S120 | Also claim reads fresh, refuses damaged | U/test_auto_mapping_tool_claims::test_claim_option_claims_first; S1::test_auto_mapping_tool_also_claim_on_a_damaged_output_file_makes_no_actions | covered |
+| S121 | Device Bindings list: claimed controls the device has, friendly names | F03::test_s121_device_bindings_list_shows_claimed_controls_the_device_has | new |
 | S122 | vJoy Viewer lists wired devices, marks "(not claimed)" | F03::test_s122_vjoy_viewer_lists_wired_devices_and_marks_unclaimed_outputs | new |
 | Q1 | Running note "Saved changes work at once." | U/test_batch3_C1::test_running_note_says_module_setup_changes_work_at_once | covered |
 | Q2 | Import Image: Cancel puts the old picture back | S1::test_module_setup_cancel_puts_the_old_picture_back; B1M::test_module_setup_keeps_the_photo_to_put_back_and_saves_once | covered |

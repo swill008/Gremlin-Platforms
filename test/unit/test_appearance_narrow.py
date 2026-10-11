@@ -4,7 +4,7 @@
 """05 D-05-APPEARANCE-NARROW (A1): the Appearance panel closes when the
 list (min 360), the action pane (min 420) and the panel (360) don't fit.
 
-The Configuration page off-screen (journey harness: temporary home, fakes):
+The Device Bindings page off-screen (journey harness: temporary home, fakes):
 
 - at 200 % in a 1600 px window, opening the pane closes the Appearance
   panel and OK is inside the window;
@@ -41,7 +41,7 @@ def _story(j) -> None:  # noqa: ANN001
 
     def panel() -> object:
         for it in j.walk(j.win.contentItem()):
-            if it.objectName() == "configurationAppearance":
+            if it.objectName() == "deviceBindingsAppearance":
                 return it
         return None
 
@@ -66,7 +66,7 @@ def _story(j) -> None:  # noqa: ANN001
         j.QTest.qWait(200)
 
     size(1600 * scale // 100)
-    catalog = j.open_configuration("pjoy_pro")
+    catalog = j.open_device_bindings("pjoy_pro")
     j.wait_until(panel, "the Appearance panel")
     j.out["wide"] = shown()
     size(1600)
@@ -78,7 +78,7 @@ def _story(j) -> None:  # noqa: ANN001
     j.out["window"] = j.win.contentItem().width()
     # The user reopens it from the page bar while still too narrow.
     if not shown():
-        j.ev("toggleAppearance(); true", j.ev("configurationPane()"))
+        j.ev("toggleAppearance(); true", j.ev("deviceBindingsPane()"))
         j.QTest.qWait(300)
         j.out["reopened"] = shown()
         size(1590)

@@ -22,7 +22,7 @@ def test_type_box_has_no_no_actions_entry() -> None:
 
 
 def test_help_does_not_offer_no_actions_in_the_type_box() -> None:
-    text = (_ROOT / "qml/help/configuration_actions.js").read_text(encoding="utf-8")
+    text = (_ROOT / "qml/help/device_bindings_actions.js").read_text(encoding="utf-8")
     type_lines = [line for line in text.splitlines() if "<b>Type</b> shows" in line]
     assert type_lines
     # Only the S123 filter may be named, never a Type box "No actions" value.

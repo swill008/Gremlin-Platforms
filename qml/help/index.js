@@ -7,7 +7,7 @@
 
 .import "getting_started.js" as GettingStarted
 .import "home_devices.js" as HomeDevices
-.import "configuration_actions.js" as ConfigurationActions
+.import "device_bindings_actions.js" as DeviceBindingsActions
 .import "logical_device.js" as LogicalDevice
 .import "osc.js" as Osc
 .import "modes.js" as Modes
@@ -17,7 +17,7 @@
 .import "options_profile.js" as OptionsProfile
 
 function _modules() {
-    return [GettingStarted, HomeDevices, ConfigurationActions, LogicalDevice, Osc,
+    return [GettingStarted, HomeDevices, DeviceBindingsActions, LogicalDevice, Osc,
             Modes, ButtonMap, DeviceLibrary, Tools, OptionsProfile]
 }
 

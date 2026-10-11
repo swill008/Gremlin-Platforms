@@ -180,7 +180,7 @@ def _editors(j, shots: pathlib.Path) -> None:  # noqa: ANN001
     out = j.out
 
     # The Condition editor's vJoy condition.
-    catalog = j.open_configuration("pjoy_pro")
+    catalog = j.open_device_bindings("pjoy_pro")
     model, editor = _editor(j, catalog, "Condition", "ConditionAction")
     cond = ca.VJoyCondition(model)
     cond.start_on(VJOY, InputType.JoystickButton, BUTTON)

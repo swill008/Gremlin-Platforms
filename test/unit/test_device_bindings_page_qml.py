@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Configuration page's own QML (qml/ConfigurationPage.qml), driven
+"""The Device Bindings page's own QML (qml/DeviceBindingsPage.qml), driven
 off-screen on the real program (batch C, 05 section M).
 
 A journey (test/journeys/_harness.py): the app runs in its own process with
@@ -91,7 +91,7 @@ def _find_page(j: Journey) -> Any:  # noqa: ANN401
             continue
         for item in j.walk(w.contentItem()):
             name = item.metaObject().className()
-            if name.startswith("ConfigurationPage") and item.isVisible():
+            if name.startswith("DeviceBindingsPage") and item.isVisible():
                 return item
     return None
 
@@ -103,7 +103,7 @@ def _host_page(j: Journey, guid: str) -> Any:  # noqa: ANN401
         "(function() {"
         " var win = Qt.createQmlObject('import QtQuick; import QtQuick.Window;"
         " Window { width: 1600; height: 900; visible: true; color: \"black\" }', _root, 'host');"
-        " var c = Qt.createComponent('ConfigurationPage.qml');"
+        " var c = Qt.createComponent('DeviceBindingsPage.qml');"
         " if (c.status !== Component.Ready) return 'error: ' + c.errorString();"
         f" var page = c.createObject(win.contentItem, {{ guid: {guid!r}, deviceName: {STICK!r} }});"
         " if (!page) return 'error: not made';"
@@ -112,7 +112,7 @@ def _host_page(j: Journey, guid: str) -> Any:  # noqa: ANN401
     )
     j.out["hosted"] = made
     assert made == "ok", made
-    return j.wait_until(lambda: _find_page(j), "the hosted ConfigurationPage")
+    return j.wait_until(lambda: _find_page(j), "the hosted DeviceBindingsPage")
 
 
 def _by_name(j: Journey, root: Any, name: str) -> Any:  # noqa: ANN401
@@ -169,17 +169,17 @@ def story(j: Journey) -> None:
     j.map_button(uid, 1, mode, 1)
     j.settle()
 
-    main_hosts = "ConfigurationPage" in (ROOT / "qml" / "Main.qml").read_text(
+    main_hosts = "DeviceBindingsPage" in (ROOT / "qml" / "Main.qml").read_text(
         encoding="utf-8"
     )
     main_hosts = main_hosts and not os.environ.get("CFG_PAGE_OWN_WINDOW")
     if main_hosts:
         # Main shows the page for the stick's card (the real path).
-        j.ev('openConfigurationForCard(_moduleModel.cardMap("pjoy_pro"))')
+        j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("pjoy_pro"))')
         j.wait_until(
             lambda: j.backend.uiState.currentTab == "physical", "the stick's page"
         )
-        page = j.wait_until(lambda: _find_page(j), "Main's ConfigurationPage")
+        page = j.wait_until(lambda: _find_page(j), "Main's DeviceBindingsPage")
         j.out["host"] = "main"
     else:
         # Main doesn't host it yet: the stick is the current device on a
@@ -201,10 +201,10 @@ def story(j: Journey) -> None:
     j.QTest.qWait(500)
 
     with _Part(j, "find"):
-        find = _by_name(j, page, "configurationFind")
+        find = _by_name(j, page, "deviceBindingsFind")
         j.out["find"] = find is not None
-        j.out["actionType"] = _by_name(j, page, "configurationActionType") is not None
-        j.out["output"] = _by_name(j, page, "configurationOutputFilter") is not None
+        j.out["actionType"] = _by_name(j, page, "deviceBindingsActionType") is not None
+        j.out["output"] = _by_name(j, page, "deviceBindingsOutputFilter") is not None
         texts = _texts(j, page)
         j.out["ticks"] = [
             t for t in ("Ungrouped", "No actions in this mode") if t in texts
@@ -280,13 +280,13 @@ def story(j: Journey) -> None:
         bar = j.ev("pageBar.createObject(_root)", page)
         j.out["barText"] = _texts(j, bar) if bar is not None else []
         if bar is not None:
-            button = _by_name(j, bar, "configurationAppearanceButton")
+            button = _by_name(j, bar, "deviceBindingsAppearanceButton")
             if button is None:
                 button = next(
                     (
                         i
                         for i in j.walk(bar)
-                        if i.objectName() == "configurationAppearanceButton"
+                        if i.objectName() == "deviceBindingsAppearanceButton"
                     ),
                     None,
                 )
@@ -301,7 +301,7 @@ def story(j: Journey) -> None:
         if bar is not None:
             bar.setVisible(False)
             bar.deleteLater()
-        panel = _by_name(j, page, "configurationAppearance")
+        panel = _by_name(j, page, "deviceBindingsAppearance")
         j.out["panel"] = panel is not None
         j.out["panelLive"] = bool(panel is not None and panel.property("liveOptions"))
         _shot(j, win, "config_page_appearance.png")

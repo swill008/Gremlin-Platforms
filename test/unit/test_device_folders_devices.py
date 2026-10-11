@@ -324,11 +324,11 @@ def test_the_diagnostics_zip_names_each_modules_folder(
     assert {r["file"] for r in written["modules"]} == {f"{STICK}/module.json"}
 
 
-# --- Auto Mapper picks the device's own folder (S1) ----------------------------
+# --- Auto Mapping Tool picks the device's own folder (S1) ----------------------------
 
 
-def test_auto_mapper_keeps_the_devices_own_folder(modules: Path) -> None:
-    from gremlin.modules import auto_map, store
+def test_auto_mapping_tool_keeps_the_devices_own_folder(modules: Path) -> None:
+    from gremlin.modules import auto_mapping_tool, store
 
     guid = _stick_guid()
     own = folders.put_module(modules, STICK, _stick_doc(guid), guid).parent
@@ -337,4 +337,4 @@ def test_auto_mapper_keeps_the_devices_own_folder(modules: Path) -> None:
         {"dir": other, "name": STICK, "guid": ""},
         {"dir": own, "name": STICK, "guid": guid},
     ]
-    assert auto_map._choose_input(rows)["dir"] == own
+    assert auto_mapping_tool._choose_input(rows)["dir"] == own

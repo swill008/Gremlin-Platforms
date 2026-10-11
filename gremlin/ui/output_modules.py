@@ -20,7 +20,7 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 def _dest_modules() -> list[dict]:
     """vJoy output modules, one per vJoy device, by vJoy number; each claim
-    cut to the ids the vJoy device has (05 S118, the Auto Mapper check). A
+    cut to the ids the vJoy device has (05 S118, the Auto Mapping Tool check). A
     saved wire to one it lacks is kept and flagged, not re-pointed. A vJoy
     the driver doesn't list (turned off in the vJoy configuration tool) is
     "available": False and keeps its output module's own claim; anything

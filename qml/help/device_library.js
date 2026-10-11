@@ -44,7 +44,7 @@ function topics() {
             + "</ul>"
             + "<p>The menus:</p>"
             + "<ul>"
-            + "<li><b>File</b>: <b>Import Device Pack…</b>, <b>Export Saved Setup…</b>, <b>Open Library Folder</b>, <b>Close</b>.</li>"
+            + "<li><b>File</b>: <b>Import Device…</b>, <b>Export Saved Setup…</b>, <b>Open Library Folder</b>, <b>Close</b>.</li>"
             + "<li><b>Edit</b>: <b>Undo</b> (<b>Ctrl+Z</b>), <b>Redo</b> (<b>Ctrl+Y</b>), <b>Rename…</b> (<b>F2</b>), <b>Delete…</b>, <b>Tidy Library…</b>.</li>"
             + "<li><b>Device</b>: <b>Save to Device Library…</b>, <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>.</li>"
             + "<li><b>View</b>: <b>Connected</b>, <b>Not Connected</b>, <b>Deleted</b> and <b>Autosaves</b> (the same as the filters), <b>Expand All</b>, <b>Collapse All</b>, <b>Search…</b> (<b>Ctrl+F</b>).</li>"
@@ -71,7 +71,7 @@ function topics() {
             + "</ul>"
             + "<p>A saved setup's menu: <b>Copy to Another Stick…</b>, <b>Restore to This Stick…</b> (when its stick is plugged in), <b>Export…</b>, <b>Rename…</b>, <b>Edit Description</b>, <b>Show in History</b> (its device's changes), <b>Keep This Autosave</b> (autosaves only) and <b>Delete…</b>.</p>"
             + "<p>An internal input's menu: <b>Save to Device Library…</b>, <b>Restore…</b>, <b>Export…</b>, <b>Rename…</b> and <b>Edit Description</b>. See <a href=\"topic:device-library-built-in\">Internal inputs</a>.</p>"
-            + "<p>The empty space's menu: <b>Import Device Pack…</b>, <b>Expand All</b>, <b>Collapse All</b> and <b>Device Library Settings…</b>.</p>"
+            + "<p>The empty space's menu: <b>Import Device…</b>, <b>Expand All</b>, <b>Collapse All</b> and <b>Device Library Settings…</b>.</p>"
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>Every menu has small <b>Undo</b> and <b>Redo</b> buttons beside its title, the same as <b>Edit › Undo</b> and <b>Edit › Redo</b>.</li>"
@@ -97,7 +97,7 @@ function topics() {
             + "<ul>"
             + "<li>Their menu and buttons have only <b>Save to Device Library…</b>, <b>Restore…</b> (puts back their newest saved setup), <b>Export…</b>, <b>Rename…</b> and <b>Edit Description</b>.</li>"
             + "<li>They need nothing plugged in, so Restore always works. It brings back the saved setup: its settings in the profiles it came from, the Keyboard's keys and their names, and for the Logical Device its layout and picture too. An autosave is kept first, and <b>Edit › Undo</b> takes the whole Restore back in one step.</li>"
-            + "<li>Every profile uses the one Logical Device, so keep its other layouts here as saved setups. To bring in a Logical Device pack, choose <b>File › Import Device Pack…</b> (it is filed under the Logical Device), then <b>Restore…</b>.</li>"
+            + "<li>Every profile uses the one Logical Device, so keep its other layouts here as saved setups. To bring in a Logical Device pack, choose <b>File › Import Device…</b> (it is filed under the Logical Device), then <b>Restore…</b>.</li>"
             + "<li>They can't be copied, swapped, cleared or removed, and they have no state badge.</li>"
             + "<li>The filters never hide them; a search that matches none of them does.</li>"
             + "</ul>",
@@ -159,7 +159,7 @@ function topics() {
             + "<li>Before <b>Copy</b> changes the target stick: \"Autosave: before Copy from Old Warthog\".</li>"
             + "<li>Before <b>Swap</b>, one of each stick: \"Autosave: before Swap with Right stick\".</li>"
             + "<li>Before <b>Change vJoy Output</b>: \"Autosave: before Change vJoy Output (vJoy 1 → 2)\".</li>"
-            + "<li>Before a device file is imported onto the stick with <b>Export / Import Device</b>: \"Autosave: before Device Pack My F-16\" (the pack's file name).</li>"
+            + "<li>Before a device file is imported onto the stick with <b>Export / Import Device</b>: \"Autosave: before Import Device My F-16\" (the file's name).</li>"
             + "<li>Before <b>Restore to This Stick…</b>: \"Autosave: before Restore of DCS F-16\".</li>"
             + "<li>Before <b>Undo</b> puts back a Copy, Swap, Change vJoy Output or Restore: \"Autosave: before Undo\".</li>"
             + "</ul>"
@@ -380,10 +380,10 @@ function topics() {
             + "<li><b>File › Open Library Folder</b> opens the library's folder in File Explorer.</li>"
             + "</ul>",
             ["device-library-import", "device-library-qa-share"]),
-        t("device-library-import", "Sharing", "Import a Device Pack",
+        t("device-library-import", "Sharing", "Import a device file into the Library",
             "<p>Importing adds a device file (.gmap) to the Device Library as a saved setup. Nothing changes on your sticks. A .zip is not read.</p>"
             + "<ol>"
-            + "<li>Choose <b>File › Import Device Pack…</b> and pick the .gmap file, or drop it on the window. The chooser opens in the folder you last used for a device file.</li>"
+            + "<li>Choose <b>File › Import Device…</b> and pick the .gmap file, or drop it on the window. The chooser opens in the folder you last used for a device file.</li>"
             + "<li>To use it, select the new saved setup and choose <b>Copy to Another Stick…</b>.</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"
@@ -449,7 +449,7 @@ function topics() {
             + "<p>See <a href=\"topic:device-library-copy\">Copy a setup to another stick</a>.</p>",
             ["device-library-copy"]),
         t("device-library-qa-share", "Common questions", "How do I give my setup to a friend?",
-            "<p>Select the saved setup and press <b>Export…</b>, then send the .gmap. Your friend imports it with <b>File › Import Device Pack…</b> (or drops it on their Device Library) and copies it onto their stick. To share the stick's settings as they are now, right-click the device and choose <b>Export Current Setup…</b>.</p>"
+            "<p>Select the saved setup and press <b>Export…</b>, then send the .gmap. Your friend imports it with <b>File › Import Device…</b> (or drops it on their Device Library) and copies it onto their stick. To share the stick's settings as they are now, right-click the device and choose <b>Export Current Setup…</b>.</p>"
             + "<p>See <a href=\"topic:device-library-export\">Export a saved setup</a>.</p>",
             ["device-library-export", "device-library-import"]),
         t("device-library-qa-cant-copy", "Common questions", "Why can't I copy to this stick?",

@@ -6,7 +6,7 @@
 AUD-FILES-06; 04 S13).
 
 Save writes the profile, then the Logical Device's file, OSC's file and the
-Configuration layouts held unsaved. When one of those fails, the profile is
+Device Bindings layouts held unsaved. When one of those fails, the profile is
 still saved and said so: its History entry is made, a Save As moves to the new
 path, and the message names the file that was not written. What failed stays
 unsaved (the title keeps its "*") so a second Save tries it again.

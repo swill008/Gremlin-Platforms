@@ -8,8 +8,8 @@ Some edits dropped an input's link to its actions but kept the actions, and
 saving wrote every action: a user's profile held 1,172 actions, 408 of them
 used. Now the file gets only what an input uses (deleted and replaced ones
 stay in memory, so Undo still works), the leaks are closed where no Undo
-needs the actions (Auto Mapper Overwrite, Delete Mode, Keyboard, OSC,
-Configuration Delete, the live editor's Remove), and remove_unused keeps an
+needs the actions (Auto Mapping Tool Overwrite, Delete Mode, Keyboard, OSC,
+Device Bindings Delete, the live editor's Remove), and remove_unused keeps an
 action another input still uses.
 """
 
@@ -23,8 +23,9 @@ from xml.etree import ElementTree
 
 import pytest
 
-from gremlin import auto_mapper, plugin_manager, shared_state
-from gremlin.auto_mapper import AutoMapper, AutoMapperOptions
+from gremlin import plugin_manager, shared_state
+from gremlin.auto_mapping_tool import AutoMappingTool, AutoMappingToolOptions
+from gremlin.modules import auto_mapping_tool as tool_modules
 from gremlin.profile import Profile
 from gremlin.types import InputType
 
@@ -126,7 +127,7 @@ def test_drop_inputs_takes_their_actions(profile: Profile) -> None:
     assert set(profile.library._actions) == profile.actions_in_use()
 
 
-def test_auto_mapper_overwrite_leaves_nothing_behind(profile: Profile) -> None:
+def test_auto_mapping_tool_overwrite_leaves_nothing_behind(profile: Profile) -> None:
     source = {"slug": "nxt", "name": "NXT", "claim": {"buttons": [1, 2]}}
     dest = {
         "slug": "vjoy_1",
@@ -136,14 +137,14 @@ def test_auto_mapper_overwrite_leaves_nothing_behind(profile: Profile) -> None:
     }
     limits = {"axes": set(), "buttons": {1, 2}, "hats": set()}
     with (
-        mock.patch.object(auto_mapper.auto_map, "input_modules", return_value=[source]),
-        mock.patch.object(auto_mapper.auto_map, "output_modules", return_value=[dest]),
-        mock.patch.object(AutoMapper, "_vjoy_limits", return_value=limits),
-        mock.patch.object(AutoMapper, "_get_used_vjoy_inputs", return_value=[]),
-        mock.patch.object(AutoMapper, "_source_uuid", return_value=_STICK),
+        mock.patch.object(tool_modules, "input_modules", return_value=[source]),
+        mock.patch.object(tool_modules, "output_modules", return_value=[dest]),
+        mock.patch.object(AutoMappingTool, "_vjoy_limits", return_value=limits),
+        mock.patch.object(AutoMappingTool, "_get_used_vjoy_inputs", return_value=[]),
+        mock.patch.object(AutoMappingTool, "_source_uuid", return_value=_STICK),
     ):
-        options = AutoMapperOptions(overwrite_used_inputs=True)
-        AutoMapper(profile).generate_module_mappings(["nxt"], ["vjoy_1"], options)
-        AutoMapper(profile).generate_module_mappings(["nxt"], ["vjoy_1"], options)
+        options = AutoMappingToolOptions(overwrite_used_inputs=True)
+        AutoMappingTool(profile).generate_module_mappings(["nxt"], ["vjoy_1"], options)
+        AutoMappingTool(profile).generate_module_mappings(["nxt"], ["vjoy_1"], options)
     assert len(profile.actions_in_use()) == 4  # two inputs: a root and a map each
     assert set(profile.library._actions) == profile.actions_in_use()

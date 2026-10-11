@@ -5,9 +5,9 @@
 """The list pages' rows follow the device and the edits without a stale
 frame or a list-view warning.
 
-SHAKE-STRESS-09: opening the Configuration page of another stick while the
+SHAKE-STRESS-09: opening the Device Bindings page of another stick while the
 page is shown kept the first stick's rows until a later event (Main's
-deferred syncConfigurationPage); the rows must belong to the new stick as
+deferred syncDeviceBindingsPage); the rows must belong to the new stick as
 soon as the card is opened.
 
 SHAKE-JOURNEYS-02: a Logical Device step sequence (shrunk from the audit's
@@ -67,14 +67,14 @@ def _device_switch(j: Journey) -> None:
     """pJoy Pro's page, then the Throttle card: the rows at once."""
     from gremlin.ui.hardware_layout import HardwareLayoutModel
 
-    layout = j.open_configuration("pjoy_pro")
+    layout = j.open_device_bindings("pjoy_pro")
     j.settle()
     first = {
         "guid": str(layout.property("guid")),
         "parents": int(layout.property("parentCount")),
     }
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("throttle"))')
-    page = j.ev("configurationPane()")
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("throttle"))')
+    page = j.ev("deviceBindingsPane()")
     now = page.findChild(HardwareLayoutModel)
     at_once = {
         "guid": str(now.property("guid")),

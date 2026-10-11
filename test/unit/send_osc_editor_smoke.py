@@ -35,7 +35,7 @@ def story(j: Journey) -> None:
     j.win.setWidth(1600)
     j.win.setHeight(950)
     j.QTest.qWait(300)
-    catalog = j.open_configuration("pjoy_pro")
+    catalog = j.open_device_bindings("pjoy_pro")
     j.open_input(catalog, "button", 1)
     root = j.wait_until(lambda: j.pane_actions(catalog)[0], "the root action")
     root.appendAction("Send OSC", "children")

@@ -122,7 +122,7 @@ def test_layout_saves_are_refused(
 
     path, before, guid = damaged
     model = ModuleListModel()
-    # The Configuration page's groups and order (05 S122; the per-module
+    # The Device Bindings page's groups and order (05 S122; the per-module
     # Appearance went with D-05-CFG-PAGE CF-Q4).
     layout = {"groups": ["Throttle"], "order": ["button:1"],
               "group_of": {"button:1": "Throttle"}}

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """
-Auto-mapping from input modules to output modules.
+The Auto Mapping Tool: mapping from input modules to output modules.
 """
 
 from __future__ import annotations
@@ -21,19 +21,19 @@ from gremlin import (
     profile,
     types,
 )
-from gremlin.modules import auto_map, output, store
+from gremlin.modules import auto_mapping_tool, output, store
 from gremlin.modules.claim import claim_ids
 
 
 @dataclasses.dataclass
-class AutoMapperOptions:
-    """Options for the auto-mapper."""
+class AutoMappingToolOptions:
+    """Options for the Auto Mapping Tool."""
 
     mode: str = "Default"
     repeat_vjoy_inputs: bool = False
     overwrite_used_inputs: bool = False
     # Claim the matching outputs on the output module first. Off by default:
-    # the user claims outputs; the Auto Mapper maps within what is claimed.
+    # the user claims outputs; the Auto Mapping Tool maps within what is claimed.
     claim_outputs: bool = False
     # The toolbar's mode (the one being edited); the result says when the
     # actions went into another (08 S108). Empty: not known, not said.
@@ -67,7 +67,7 @@ _NOT_CLAIMED = "not claimed by the output module"
 _USED = "already used by another input in this mode"
 
 
-class AutoMapper:
+class AutoMappingTool:
     """Generates Map to vJoy actions from an input module onto an output module."""
 
     def __init__(self, profile: profile.Profile) -> None:
@@ -82,16 +82,16 @@ class AutoMapper:
         self,
         source_slugs: list[str],
         dest_slugs: list[str],
-        options: AutoMapperOptions,
+        options: AutoMappingToolOptions,
     ) -> str:
         sources = [
             row
-            for row in auto_map.input_modules()
+            for row in auto_mapping_tool.input_modules()
             if row["slug"] in set(source_slugs)
         ]
         dests = [
             row
-            for row in auto_map.output_modules()
+            for row in auto_mapping_tool.output_modules()
             if row["slug"] in set(dest_slugs)
         ]
         if not sources:
@@ -132,7 +132,7 @@ class AutoMapper:
                         self._skip(dest, kind, as_input, hid)
                 continue
             if options.claim_outputs:
-                auto_map.merge_claim_into_output(dest, claim)
+                auto_mapping_tool.merge_claim_into_output(dest, claim)
             out_claim = dest.get("claim") or {}
             jobs = (
                 (types.InputType.JoystickAxis, "axis", limits["axes"]),
@@ -217,7 +217,7 @@ class AutoMapper:
             ]
         )
 
-    def _toolbar_note(self, options: AutoMapperOptions) -> list[str]:
+    def _toolbar_note(self, options: AutoMappingToolOptions) -> list[str]:
         """The new actions are in a mode the toolbar doesn't show (S108)."""
         toolbar = options.toolbar_mode
         if not self._created_mappings or not toolbar or toolbar == options.mode:

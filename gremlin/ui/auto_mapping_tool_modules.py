@@ -1,15 +1,18 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Auto Mapper's input and output module lists."""
+"""The Auto Mapping Tool's input and output module lists."""
 
 from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import event_handler
-from gremlin.modules.auto_map import input_modules, output_modules
+from gremlin.modules.auto_mapping_tool import input_modules, output_modules
 from gremlin.signal import signal
 
 QML_IMPORT_NAME = "Gremlin.Device"
@@ -26,7 +29,9 @@ class _SlugListModel(QtCore.QAbstractListModel):
 
     countChanged = QtCore.Signal()
 
-    def __init__(self, loader, parent: ta.OQO = None) -> None:
+    def __init__(
+        self, loader: Callable[[], list[dict]], parent: ta.OQO = None
+    ) -> None:
         super().__init__(parent)
         self._loader = loader
         self._rows: list[dict] = []
@@ -48,7 +53,9 @@ class _SlugListModel(QtCore.QAbstractListModel):
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._rows)
 
-    def data(self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole):
+    def data(
+        self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
+    ) -> Any:  # noqa: ANN401 - Qt's data() returns any role's value
         if not index.isValid() or not (0 <= index.row() < len(self._rows)):
             return None
         row = self._rows[index.row()]
@@ -72,12 +79,12 @@ class _SlugListModel(QtCore.QAbstractListModel):
 
 
 @ta.QmlElement
-class AutoMapInputModel(_SlugListModel):
+class AutoMappingToolInputModel(_SlugListModel):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(input_modules, parent)
 
 
 @ta.QmlElement
-class AutoMapOutputModel(_SlugListModel):
+class AutoMappingToolOutputModel(_SlugListModel):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(output_modules, parent)

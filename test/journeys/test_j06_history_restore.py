@@ -5,7 +5,7 @@
 """Journey 6: History keeps a setting, a module file and an input; Restore.
 
 The user changes three things, each saved as the program saves it:
-- an input: stick button 1 sent vJoy button 1; in the Configuration pane
+- an input: stick button 1 sent vJoy button 1; in the Device Bindings pane
   it now sends vJoy button 7 (OK), and the profile is saved;
 - a module file: Module Setup checks button 2 on the pJoy Pro and saves;
 - a setting: Options > History > Days to keep changes goes from 90 to 30.
@@ -72,7 +72,7 @@ def story(j: Journey) -> None:
     _path, url = j.save_and_reopen("journey6")
 
     # 1. An input, edited in the pane (OK) and saved.
-    catalog = j.open_configuration("pjoy_pro")
+    catalog = j.open_device_bindings("pjoy_pro")
     j.open_input(catalog, "button", 1)
     j.pane_actions(catalog)[1].vjoyInputId = 7
     catalog.commitPane()

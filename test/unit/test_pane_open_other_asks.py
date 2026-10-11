@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Opening another input in the action pane with unsaved edits asks Save /
-Discard / Cancel first (05 S26). Every list page (Configuration, Keyboard,
+Discard / Cancel first (05 S26). Every list page (Device Bindings, Keyboard,
 Logical Device, OSC) opens the pane through ActionPane.openAt / openNew:
 a row click, an action row, the menu's Open and Add Action. Cancel keeps
 the edit, the pane on the first input and the selection; Discard drops the

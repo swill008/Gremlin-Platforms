@@ -20,7 +20,7 @@ import pytest
 from PySide6 import QtQml
 
 from gremlin import shared_state
-from gremlin.modules import auto_map, module_file, output
+from gremlin.modules import auto_mapping_tool, module_file, output
 from gremlin.profile import Profile
 from gremlin.ui import module_model
 from test.unit.test_stage1_modules import (  # noqa: F401
@@ -217,7 +217,7 @@ def test_also_claim_with_an_output_file_that_cant_be_written(
     folder: Path,  # noqa: F811
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from gremlin.auto_mapper import AutoMapper, AutoMapperOptions
+    from gremlin.auto_mapping_tool import AutoMappingTool, AutoMappingToolOptions
 
     write_module(folder, "pjoy_pro", stick_doc())
     path = write_module(
@@ -234,8 +234,8 @@ def test_also_claim_with_an_output_file_that_cant_be_written(
         real_write(target, data)
 
     monkeypatch.setattr(module_file, "write_bytes", refuse)
-    report = AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(claim_outputs=True)
+    report = AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions(claim_outputs=True)
     )
     # Q15: skipped and listed "not claimed"; no actions, the file as it was.
     assert mapped(profile, stick_uid()) == set()
@@ -245,12 +245,12 @@ def test_also_claim_with_an_output_file_that_cant_be_written(
 
 def test_merge_keeps_the_old_claim_when_the_write_fails(tmp_path: Path) -> None:
     dest = {"path": tmp_path / "vjoy_1.json", "claim": {"buttons": [7]}}
-    with mock.patch.object(auto_map.store, "update_path", side_effect=OSError("no")):
-        kept = auto_map.merge_claim_into_output(dest, {"buttons": [1, 2]})
+    with mock.patch.object(auto_mapping_tool.store, "update_path", side_effect=OSError("no")):
+        kept = auto_mapping_tool.merge_claim_into_output(dest, {"buttons": [1, 2]})
     assert kept == {"buttons": [7]}
     assert dest["claim"] == {"buttons": [7]}
-    with mock.patch.object(auto_map.store, "update_path", return_value=False):
-        auto_map.merge_claim_into_output(dest, {"buttons": [1, 2]})
+    with mock.patch.object(auto_mapping_tool.store, "update_path", return_value=False):
+        auto_mapping_tool.merge_claim_into_output(dest, {"buttons": [1, 2]})
     assert dest["claim"] == {"buttons": [7]}
 
 

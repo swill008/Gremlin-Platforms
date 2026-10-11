@@ -306,7 +306,7 @@ class ActionModel(QtCore.QObject):
         )
         if action:
             # A new action may pick its own start (Map to vJoy, 05 S115);
-            # never on load or for Auto Mapper's own actions.
+            # never on load or for the Auto Mapping Tool's own actions.
             start_new = getattr(action, "start_new", None)
             if callable(start_new):
                 start_new(shared_state.current_profile, item)

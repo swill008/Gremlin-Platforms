@@ -1,14 +1,14 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 # Device-Configuration-Macro Change — Configuration display panel.
-# Since D-05-CFG-PAGE (05 S121-S131): the Configuration page is
-# ConfigurationPage.qml on the shared base and its Appearance is the one
+# Since D-05-CFG-PAGE (05 S121-S131): the Device Bindings page is
+# DeviceBindingsPage.qml on the shared base and its Appearance is the one
 # shared list Appearance (ListAppearancePanel.qml, program settings, S125).
 
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
-_PAGE = _ROOT / "qml/ConfigurationPage.qml"
+_PAGE = _ROOT / "qml/DeviceBindingsPage.qml"
 _PANEL = _ROOT / "qml/ListAppearancePanel.qml"
 _PART = _ROOT / "qml/PageAppearance.qml"
 _MENU = _ROOT / "qml/control_menu.js"
@@ -29,7 +29,7 @@ def test_main_has_catalog_display_button() -> None:
     assert "showPanel: _root.outputViewPanel" in text
     assert "_root.outputViewPanel = false" in text
     assert "rememberDisplayPanel()" in text
-    # The Configuration page's button is on its own bar under the toolbar
+    # The Device Bindings page's button is on its own bar under the toolbar
     # (01 S58a); its open state is the page's, one for every device (S125).
     assert "catalogPanel" not in text
     # The bar and the open state come from the shared PageAppearance part
@@ -37,8 +37,8 @@ def test_main_has_catalog_display_button() -> None:
     page = _PAGE.read_text(encoding="utf-8")
     use = page[page.index("PageAppearance {") :]
     use = use[: use.index("}")]
-    assert 'buttonName: "configurationAppearanceButton"' in use
-    assert 'pageKey: "configuration"' in use
+    assert 'buttonName: "deviceBindingsAppearanceButton"' in use
+    assert 'pageKey: "device-bindings"' in use
     assert "readonly property Component pageBar: _appear.pageBar" in page
     part = _PART.read_text(encoding="utf-8")
     bar = part[part.index("property Component pageBar") :]
@@ -84,7 +84,7 @@ def test_assignment_summary_counts_destinations() -> None:
     assert "signal.inputItemChanged.connect(self.reload)" not in py
     assert "def assignment_summary" in py
     # The shared Appearance panel (S125).
-    assert 'title: "Configuration — Appearance"' in qml
+    assert 'title: "Device Bindings — Appearance"' in qml
     text = _PANEL.read_text(encoding="utf-8")
     assert 'text: "Open All"' in text
     assert 'text: "Close All"' in text
@@ -137,7 +137,7 @@ def test_save_writes_catalog_not_view() -> None:
     assert "required property string pageKey" in text
     page = _PAGE.read_text(encoding="utf-8")
     panel = page[page.index("PageAppearance {") :]
-    assert 'pageKey: "configuration"' in panel[: panel.index("}")]
+    assert 'pageKey: "device-bindings"' in panel[: panel.index("}")]
     assert "saveViewConfig" not in save and "saveCatalogConfig" not in save
     mm = _MM.read_text(encoding="utf-8")
     assert 'doc["catalog"]' not in mm

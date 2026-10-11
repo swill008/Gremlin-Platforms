@@ -5,7 +5,7 @@
 
 While Gremlin runs a profile from the tray nobody sees its pages, so:
 the main window unloads them (Main.qml enterTray: Home, Scripts, Profile
-Settings, and Configuration unless it holds unsaved edits), Qt drops the
+Settings, and Device Bindings unless it holds unsaved edits), Qt drops the
 hidden window's graphics, unused compiled QML and garbage, and Windows is
 told it may take back the memory pages nothing is using. Showing the window
 again (leaveTray) loads the pages afresh. The profile keeps running

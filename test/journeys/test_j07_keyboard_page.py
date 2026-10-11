@@ -4,7 +4,7 @@
 
 """Journey 7: Keyboard page, Add Key, an action, Run, press the key, Stop.
 
-The user opens the Keyboard card's Configuration page, presses Add Key and
+The user opens the Keyboard card's Device Bindings page, presses Add Key and
 then F: F is listed and selected, and the editor shows it. The user gives
 F a Map to vJoy action (vJoy button 4), saves and opens the profile again,
 presses Run and then F: vJoy button 4 is held while F is held. Stop while
@@ -39,8 +39,8 @@ def story(j: Journey) -> None:
     out = j.out
     state = j.backend.uiState
 
-    # The Keyboard card's Configuration page.
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("keyboard"))')
+    # The Keyboard card's Device Bindings page.
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("keyboard"))')
     j.wait_until(lambda: state.currentTab == "keyboard", "the Keyboard page")
     page = j.wait_until(lambda: j.ev("keyboardPane()"), "the Keyboard page item")
     layout = j.wait_until(

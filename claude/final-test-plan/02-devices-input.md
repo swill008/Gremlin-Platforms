@@ -49,7 +49,7 @@ F02 = `U/test_final_02.py`.
 | S32 | Device change behavior Reload / Ignore / Disable(Stop) | SR1::test_device_change_follows_the_option | covered |
 | S33 | Selected device gone: first physical device, or Logical tab | F02::test_s33_the_page_moves_off_a_device_that_disappeared | new |
 | S34 | HidHide list re-reads on a device change | U/test_device_reconnect::test_hidhide_rereads_its_list; B2b::test_hidhide_stops_reloading_when_its_window_is_closed | covered |
-| S35 | Auto Mapper keeps its ticks | U/test_device_reconnect::test_auto_mapper_keeps_its_ticks | covered |
+| S35 | Auto Mapping Tool keeps its ticks | U/test_device_reconnect::test_auto_mapping_tool_keeps_its_ticks | covered |
 | S36 | Failed update during play: error shown, old list stays | F02::test_s36_a_failed_update_is_shown_and_the_old_list_stays | new |
 | S37 | Calibration applied before any action sees the axis | F02::test_s37_the_axis_calibration_is_applied_before_anything_sees_it | new |
 | S38 | No calibration: default centred, logged once per axis at Info | F02::test_s38_an_axis_without_calibration_is_centred_and_logged_once | new |

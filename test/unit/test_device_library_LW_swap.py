@@ -121,7 +121,7 @@ def _open(
     xml_dir: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> gremlin.profile.Profile:
     profile = gremlin.profile.Profile()
-    profile.from_xml(xml_dir / "profile_auto_mapper.xml")
+    profile.from_xml(xml_dir / "profile_auto_mapping_tool.xml")
     monkeypatch.setattr(shared_state, "current_profile", profile)
     return profile
 
@@ -144,7 +144,7 @@ def _doc(name: str) -> dict:
 def test_swap_devices_keeps_inputs_the_other_stick_lacks(xml_dir: pathlib.Path) -> None:
     """S27: a binding on a control the other stick lacks stays where it was."""
     profile = gremlin.profile.Profile()
-    profile.from_xml(xml_dir / "profile_auto_mapper.xml")
+    profile.from_xml(xml_dir / "profile_auto_mapping_tool.xml")
     result = swap_devices.swap_devices(
         profile,
         uuid.UUID(LEFT_ID),
@@ -160,7 +160,7 @@ def test_swap_devices_keeps_inputs_the_other_stick_lacks(xml_dir: pathlib.Path) 
 
 def test_swap_devices_without_limits_moves_everything(xml_dir: pathlib.Path) -> None:
     profile = gremlin.profile.Profile()
-    profile.from_xml(xml_dir / "profile_auto_mapper.xml")
+    profile.from_xml(xml_dir / "profile_auto_mapping_tool.xml")
     swap_devices.swap_devices(profile, uuid.UUID(LEFT_ID), uuid.UUID(RIGHT_ID))
     assert _where(profile, LEFT_ID) == set()
     assert len(_where(profile, RIGHT_ID)) == 9
@@ -201,7 +201,7 @@ def test_plan_warns_both_directions(
     assert "Left stick has no Button 6: Right stick's setup" in text
     assert (
         "Right stick has no Axis 3: Left stick's bindings on them in "
-        "profile_auto_mapper" in text
+        "profile_auto_mapping_tool" in text
     )
     assert sticks["autosave"] == []  # a plan changes nothing
 
@@ -237,7 +237,7 @@ def test_swap_exchanges_parts_and_bindings(
     # Calibration: axis 1 moves, axis 3 stays.
     assert left["calibration"] == {"3": [10, 20, 30]}
     assert right["calibration"] == {"1": [0, 500, 1000]}
-    # The Configuration layout goes with the setup (CF-Q1); Appearance
+    # The Device Bindings layout goes with the setup (CF-Q1); Appearance
     # (Output View) and Button Map trade places, pictures with them.
     assert (
         left["layout"]
@@ -286,7 +286,7 @@ def test_swap_saved_profile_and_unreadable_one(
     """S33-S34: a ticked saved profile is changed on disk; one that can't be
     read is named and left as it was, the others still change."""
     saved = tmp_path / "saved.xml"
-    shutil.copy(xml_dir / "profile_auto_mapper.xml", saved)
+    shutil.copy(xml_dir / "profile_auto_mapping_tool.xml", saved)
     missing = tmp_path / "missing.xml"
     result = library_swap.swap(LEFT, RIGHT, ["bindings"], [saved, missing])
     assert result["ok"] is True
@@ -369,8 +369,8 @@ def test_plan_lists_references_the_other_stick_lacks(
         LEFT, RIGHT, ["bindings"], [pathlib.Path(profile.fpath)]
     )
     text = "\n".join(plan["warnings"])
-    assert "Merge Axis in profile_auto_mapper refers to Left stick Axis 3" in text
-    assert "Macro in profile_auto_mapper refers to Right stick Button 6" in text
+    assert "Merge Axis in profile_auto_mapping_tool refers to Left stick Axis 3" in text
+    assert "Macro in profile_auto_mapping_tool refers to Right stick Button 6" in text
     assert "Right stick has no Axis 3" in text and "Left stick has no Button 6" in text
 
 
@@ -382,7 +382,7 @@ def test_swap_lists_references_and_still_moves_them(
     result = library_swap.swap(LEFT, RIGHT, ["bindings"], [pathlib.Path(profile.fpath)])
     assert result["ok"] is True
     assert any(
-        "Merge Axis in profile_auto_mapper refers to Left stick Axis 3" in w
+        "Merge Axis in profile_auto_mapping_tool refers to Left stick Axis 3" in w
         for w in result["warnings"]
     )
     merges = profile.library.actions_by_predicate(lambda a: a.name == "Merge Axis")

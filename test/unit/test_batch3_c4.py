@@ -52,7 +52,7 @@ def _model_of(binding_model: Any, data: Any) -> Any:  # noqa: ANN401
     )
 
 
-# --- GL-217 / GL-257: the Configuration list's words (05 S14, S15, Q6) ------
+# --- GL-217 / GL-257: the Device Bindings list's words (05 S14, S15, Q6) ------
 
 
 def _catalog_texts() -> list[str]:
@@ -68,7 +68,7 @@ def _catalog_texts() -> list[str]:
     return texts
 
 
-def test_the_configuration_list_says_no_actions() -> None:
+def test_the_device_bindings_list_says_no_actions() -> None:
     texts = _catalog_texts()
     assert "Unmapped" not in texts
     assert "Sequence" not in texts and "Empty" not in texts
@@ -111,7 +111,7 @@ def test_type_names_are_the_plugins_names() -> None:
 
 
 def test_the_type_box_reads_its_names_from_the_model() -> None:
-    qml = (_ROOT / "qml/ConfigurationPage.qml").read_text("utf-8")
+    qml = (_ROOT / "qml/DeviceBindingsPage.qml").read_text("utf-8")
     assert "model: _layout.typeFilterNames" in qml
     assert '"Map to keyboard"' not in qml
 
@@ -136,7 +136,7 @@ def test_the_quick_editor_is_gone() -> None:
 
     for name in ("vjoyDevices", "addSequence", "noteOpenRow", "refreshOpenRow"):
         assert not hasattr(HardwareLayoutModel, name), name
-    qml = (_ROOT / "qml/ConfigurationPage.qml").read_text("utf-8")
+    qml = (_ROOT / "qml/DeviceBindingsPage.qml").read_text("utf-8")
     for word in ("openSequence", "editingHid", "quickHid", "armReveal"):
         assert word not in qml, word
 

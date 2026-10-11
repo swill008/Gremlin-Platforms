@@ -32,19 +32,19 @@ function topics() {
                 + "<li>Install <b>vJoy</b> and configure its devices. For an Xbox controller, install <b>ViGEmBus</b>. Neither driver ships with this program.</li>"
                 + "<li>On <b>Home</b>, right-click each physical device and choose <b>Module</b> › <b>Module Setup…</b> (or choose <b>Tools › Device Setup › Input Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Input Module Setup\">Show me ›</a>). Press the controls you will use, or tick them, then choose <b>Save Module</b>.</li>"
                 + "<li>Right-click each vJoy device and choose <b>Module</b> › <b>Module Setup…</b> (or <b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>). Tick the outputs you will use, then choose <b>Save Module</b>. The Xbox controller needs no setup.</li>"
-                + "<li>Double-click a physical device to open <b>Configuration</b>. Choose <b>Add Action</b> on an input, for example <b>Map to vJoy</b>, then <b>OK</b>.</li>"
+                + "<li>Double-click a physical device to open <b>Device Bindings</b>. Choose <b>Add Action</b> on an input, for example <b>Map to vJoy</b>, then <b>OK</b>.</li>"
                 + "<li>Choose <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>).</li>"
                 + "<li>Choose <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> on the toolbar. Use the <b>vJoy Viewer</b> <a href=\"open:tools.vjoyViewer\">Open ›</a> or <b>Xbox Viewer</b> <a href=\"open:tools.xboxViewer\">Open ›</a> to watch the result.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
-                + "<ul><li><b>Tools › Mapping › Auto Mapper</b> <a href=\"open:tools.autoMapper\">Open ›</a> creates the Map to vJoy actions for a whole device in one step (see <a href=\"topic:tools-auto-mapper\">Create actions with the Auto Mapper</a>).</li></ul>",
-            related: ["getting-started-overview", "home-devices-input-modules", "configuration-actions-add-action", "getting-started-run"]
+                + "<ul><li><b>Tools › Mapping › Auto Mapping Tool</b> <a href=\"open:tools.autoMappingTool\">Open ›</a> creates the Map to vJoy actions for a whole device in one step (see <a href=\"topic:tools-auto-mapping-tool\">Create actions with the Auto Mapping Tool</a>).</li></ul>",
+            related: ["getting-started-overview", "home-devices-input-modules", "device-bindings-actions-add-action", "getting-started-run"]
         },
         {
             id: "getting-started-main-window",
             section: "Getting started",
             title: "The main window",
-            body: "<p>The main window shows one page at a time (Home, Configuration and others) under a toolbar and a mode bar.</p>"
+            body: "<p>The main window shows one page at a time (Home, Device Bindings and others) under a toolbar and a mode bar.</p>"
                 + "<ul>"
                 + "<li>Title bar: the program's name and version first, then the profile's name, for example \"Gremlin-Platforms R1 1.0.30 - Flight.xml\". A <b>*</b> before the profile's name means there are unsaved changes; a profile not saved yet is called \"Untitled\". Other windows show their own name after the program's, for example \"Gremlin-Platforms R1 1.0.30 - Device Library\".</li>"
                 + "<li>Toolbar, left to right: <b>Home</b> <a href=\"show:toolbar/Home\">Show me ›</a>, <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> (reads <b>Stop</b> while the profile runs), <b>vJoy Viewer</b> <a href=\"show:toolbar/vJoy Viewer\">Show me ›</a> and <b>Xbox Viewer</b> <a href=\"show:toolbar/Xbox Viewer\">Show me ›</a> (each opens its viewer, or closes it when it is open), <b>Button Map</b> <a href=\"show:toolbar/Button Map\">Show me ›</a> (a blank Button Map), <b>Device Library</b> <a href=\"show:toolbar/Device Library\">Show me ›</a> (every device and its saved setups), <b>Logical Device</b> <a href=\"show:toolbar/Logical Device\">Show me ›</a> and <b>Options</b> <a href=\"show:toolbar/Options\">Show me ›</a>. In a narrow window the buttons show icons only; rest the pointer on one to see its name.</li>"
@@ -118,7 +118,7 @@ function topics() {
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li>The next Run starts clean: nothing from the last Run carries over.</li></ul>",
-            related: ["getting-started-run", "configuration-actions-macro", "configuration-actions-play-sound"]
+            related: ["getting-started-run", "device-bindings-actions-macro", "device-bindings-actions-play-sound"]
         },
         {
             id: "getting-started-menus",
@@ -158,7 +158,7 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>New, Load, Recent and closing the program ask <b>Save</b>, <b>Discard</b> or <b>Cancel</b> only when there are unsaved changes. Open Appearance panels with changes ask first.</li>"
-                + "<li>A save that would leave out unfinished actions asks first (see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
+                + "<li>A save that would leave out unfinished actions asks first (see <a href=\"topic:device-bindings-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
                 + "<li>While there are unsaved changes, the program keeps a recovery copy of them about every minute. If it closes unexpectedly, the next time you open that profile (or start the program, for a profile not saved yet) it offers them back (\"Unsaved Edits Found\": <b>Restore</b>, <b>Discard</b> or <b>Not now</b>). Save, Discard and a normal close remove the copy.</li>"
                 + "<li>A profile that won't load (damaged or from an unknown version) shows why, and the profile that was open stays open. A Recent file that won't open offers <b>Forget It</b> (off Recent and start-up; the file stays) or <b>Keep</b>.</li>"
                 + "<li>With <b>Load profiles automatically</b> <a href=\"show:option/Load profiles automatically\">Show me ›</a> on in <b>Options</b>, the profile chosen for a program loads and runs when that program comes to the front.</li>"
@@ -173,7 +173,7 @@ function topics() {
                 + "<ul>"
                 + "<li>A profile given on the command line wins (see <a href=\"topic:getting-started-command-line\">Start the program from a command line</a>).</li>"
                 + "<li>If the last profile won't open, a new, empty profile is open instead and the program says why. Choose <b>Forget It</b> to take that profile off the start-up and <b>Recent</b> lists (the file itself stays), or <b>Keep</b> to try it again next time.</li>"
-                + "<li>If the program closed unexpectedly with unsaved changes, opening the profile offers them back: \"Unsaved Edits Found\" (see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
+                + "<li>If the program closed unexpectedly with unsaved changes, opening the profile offers them back: \"Unsaved Edits Found\" (see <a href=\"topic:device-bindings-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
                 + "<li>The update check, a \"Settings Reset\" notice and the vJoy setup message each come at most once, after the main window is up.</li>"
                 + "<li>The Logical Device and OSC are read from their own files before the profile. An entry in one of them that can't be read is skipped and the rest load; once the main window is up, a note titled <b>Logical Device</b> or <b>OSC</b> names each skipped entry. The skipped entry is kept in the file as it is when you save, so nothing is lost.</li>"
                 + "</ul>",
@@ -225,7 +225,7 @@ function topics() {
                 + "<ul>"
                 + "<li>Profile (<b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a>): modes, actions, profile settings, scripts.</li>"
                 + "<li>Logical Device: its own module file, shared by every profile. <b>File › Save Profile</b> saves it too when it changed. See <a href=\"topic:logical-device-saved\">Where the Logical Device is saved</a>.</li>"
-                + "<li>Module file, one per device: claims, friendly names, the device picture, the Button Map layout, the Appearance of its Configuration page or Output View, and its calibration. Input and Output Module Setup, the Button Map, Calibration and the Appearance panels write it. Saving an output module also saves the profile when the profile already has a file.</li>"
+                + "<li>Module file, one per device: claims, friendly names, the device picture, the Button Map layout, the Appearance of its Device Bindings page or Output View, and its calibration. Input and Output Module Setup, the Button Map, Calibration and the Appearance panels write it. Saving an output module also saves the profile when the profile already has a file.</li>"
                 + "<li>Program settings: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device's Appearance. They are kept in configuration.json in your Gremlin Platforms folder (%USERPROFILE%\\Gremlin Platforms), even when you move the data folder.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
@@ -280,7 +280,7 @@ function topics() {
                 + "<li>The pad exists only while the profile runs and after a Map to Xbox action has sent.</li>"
                 + "<li>Check that the action is <b>Map to Xbox</b> with <b>Xbox 360 Controller</b> and the right <b>Target</b>.</li>"
                 + "</ol>",
-            related: ["home-devices-xbox-output", "configuration-actions-map-to-xbox", "tools-viewers", "getting-started-run"]
+            related: ["home-devices-xbox-output", "device-bindings-actions-map-to-xbox", "tools-viewers", "getting-started-run"]
         },
         {
             id: "getting-started-key-does-not-fire",
@@ -336,7 +336,7 @@ function topics() {
                 + "<li>Error boxes say what happened; their details wrap, and <b>Copy Details</b> copies them.</li>"
                 + "<li>\"An unhandled exception occurred.\" means something went wrong that the program didn't expect. The details are also written to system.log in the logs folder.</li>"
                 + "<li>If the program closes suddenly, crash.log in the logs folder records where it stopped; earlier crashes are kept in the same file.</li>"
-                + "<li>Unsaved profile changes are not lost in a sudden close: a recovery copy is kept about every minute, and the next open of the profile offers it back with <b>Restore</b>, <b>Discard</b> or <b>Not now</b> (see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
+                + "<li>Unsaved profile changes are not lost in a sudden close: a recovery copy is kept about every minute, and the next open of the profile offers it back with <b>Restore</b>, <b>Discard</b> or <b>Not now</b> (see <a href=\"topic:device-bindings-actions-safety-net\">Unfinished actions and recovery copies</a>).</li>"
                 + "</ul>"
                 + "<p>To report it, save one zip with <b>Help › Save Diagnostics…</b> <a href=\"show:menu/Help/Save Diagnostics\">Show me ›</a>.</p>",
             related: ["getting-started-save-diagnostics", "tools-live-log"]

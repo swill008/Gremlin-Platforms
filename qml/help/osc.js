@@ -63,10 +63,10 @@ function topics() {
             body: "<p>OSC (Open Sound Control) is a small network message format. Stream Decks (through Bitfocus Companion), phone and tablet apps such as TouchOSC, lighting desks and music software send it. The program reads OSC messages as button presses and axis moves, and can send OSC messages back.</p>"
                 + "<p>Each message has an <i>address</i> such as <code>/fire</code> and zero or more <i>values</i> such as <code>1</code> or <code>0.75</code>.</p>"
                 + _list([
-                    "OSC is an internal input, like the Keyboard and the Logical Device. Its page lists your OSC inputs: one per address you use. Each input gets actions on the Configuration page like any button or axis.",
+                    "OSC is an internal input, like the Keyboard and the Logical Device. Its page lists your OSC inputs: one per address you use. Each input gets actions on the Device Bindings page like any button or axis.",
                     "OSC is a module with its own module file, like the Keyboard and the Logical Device, not a program setting: its inputs, settings, targets and Feedback rows are kept in that file, and one list of OSC inputs is used by every profile.",
                     "The program listens on a network port (8001 unless you change it). Your app sends to this PC's address and that port.",
-                    "The program can also send: the " + _link("configuration-actions-send-osc", "Send OSC") + " action, and " + _link("osc-feedback-tab", "Feedback") + ", which shows the program's state on your device.",
+                    "The program can also send: the " + _link("device-bindings-actions-send-osc", "Send OSC") + " action, and " + _link("osc-feedback-tab", "Feedback") + ", which shows the program's state on your device.",
                     "Settings are in OSC's Module Setup window (<b>OSC Setup…</b> on the OSC page), in four tabs: <b>Server</b>, <b>Output</b>, <b>Feedback</b> and <b>Discovery</b>. Feedback rows are added and edited on the OSC page."
                 ])
                 + _good([
@@ -139,7 +139,7 @@ function topics() {
             id: "osc-output-tab",
             section: setup,
             title: "Output tab",
-            body: "<p>Where the program sends OSC messages: the " + _link("configuration-actions-send-osc", "Send OSC") + " action and " + _link("osc-feedback-tab", "Feedback") + ".</p>"
+            body: "<p>Where the program sends OSC messages: the " + _link("device-bindings-actions-send-osc", "Send OSC") + " action and " + _link("osc-feedback-tab", "Feedback") + ".</p>"
                 + _list([
                     "<b>OSC output (Send OSC actions and feedback)</b>: the master switch for everything OSC sends. Off, nothing is sent. On unless you turn it off.",
                     "<b>Reply to sender</b>: lets a Send OSC action or Feedback row send back to whoever sent the last message (that message's IP address and port). On unless you turn it off.",
@@ -152,7 +152,7 @@ function topics() {
                     "A target is the device's own address and the port it listens on, never this PC's.",
                     "Removing a target that actions or rows use: those send nothing until you pick another target. A Send OSC action shows <b>Missing target</b>."
                 ]),
-            related: ["osc-setup-window", "configuration-actions-send-osc", "osc-feedback-tab", "osc-tech-out"]
+            related: ["osc-setup-window", "device-bindings-actions-send-osc", "osc-feedback-tab", "osc-tech-out"]
         },
         {
             id: "osc-feedback-tab",
@@ -202,7 +202,7 @@ function topics() {
                 + _list([
                     "Under each address a line sums up its settings in the Add window's words, for example its mode, source value and delay. A pattern input says how many addresses it has seen, for example \"Pattern · 3 addresses seen\".",
                     "Each row shows the input's live value (a button pressed or not, an axis's value) and when a message last reached it (\"last seen 3 s ago\", or \"never\"), also with no Run while the port is open. On an axis input, <b>Invert</b> turns it the other way.",
-                    "A pressed OSC button tints its row until it is released. While the profile is stopped the page also scrolls to the row and flashes it, as the Configuration page does for a stick; while it runs the row only tints. Faders and encoders only tint. <b>Input highlighting</b> in <b>Options</b> turns the scrolling off.",
+                    "A pressed OSC button tints its row until it is released. While the profile is stopped the page also scrolls to the row and flashes it, as the Device Bindings page does for a stick; while it runs the row only tints. Faders and encoders only tint. <b>Input highlighting</b> in <b>Options</b> turns the scrolling off.",
                     "The input's actions for the current mode are its child rows, then its Feedback rows. Click a row to open it in the action pane; a new input shows <b>No actions</b> and <b>Add Action</b>.",
                     "Right-click for the menu: the input's own rows (" + _link("osc-edit-inputs", "Change, order or delete OSC inputs") + "), <b>Add Feedback</b> and <b>Companion feedback</b>, the <b>Row</b>, <b>Group</b> and <b>Groups</b> sections, <b>Add Inputs</b> (<b>Add…</b>, <b>Import…</b>, <b>From TouchOSC Layout…</b>, <b>Listen</b>, <b>Clear…</b>) and <b>Order</b>.",
                     "The page bar: <b>OSC Setup…</b> opens OSC's Module Setup, <b>Monitor</b> shows the " + _link("osc-monitor", "OSC Monitor") + " at the bottom of the page, and <b>Appearance…</b> sets how this page looks (its own look, apart from the Logical Device page's).",
@@ -389,7 +389,7 @@ function topics() {
                     "Many apps need a set type: Companion's key color wants numbers, a text field wants Text. Choose the type the receiving app expects.",
                     "Exact type codes are in " + _link("osc-tech-in", "OSC values the program reads") + " and " + _link("osc-tech-out", "OSC values the program sends") + "."
                 ]),
-            related: ["osc-tech-in", "osc-tech-out", "configuration-actions-send-osc"]
+            related: ["osc-tech-in", "osc-tech-out", "device-bindings-actions-send-osc"]
         },
 
         // ---- Sending OSC ----
@@ -397,10 +397,10 @@ function topics() {
             id: "osc-send",
             section: sending,
             title: "Send OSC from an input",
-            body: "<p>To send a message when you press a button or move an axis, add the " + _link("configuration-actions-send-osc", "Send OSC") + " action to it. It sends to a target from the <b>Output</b> tab, or to <b>Reply to sender</b>.</p>"
+            body: "<p>To send a message when you press a button or move an axis, add the " + _link("device-bindings-actions-send-osc", "Send OSC") + " action to it. It sends to a target from the <b>Output</b> tab, or to <b>Reply to sender</b>.</p>"
                 + "<p>To keep a device in step with the program's state instead, add " + _link("osc-feedback-rows", "Feedback rows") + ": they send only when something changes.</p>"
                 + "<p>Scripts can send OSC to a named target too: see " + _link("osc-scripts", "OSC in conditions, macros and scripts") + ".</p>",
-            related: ["configuration-actions-send-osc", "osc-output-tab", "osc-feedback-rows"]
+            related: ["device-bindings-actions-send-osc", "osc-output-tab", "osc-feedback-rows"]
         },
         {
             id: "osc-feedback-rows",
@@ -726,7 +726,7 @@ function topics() {
                     "Feedback: a button sends Max when pressed and Min when released; an axis sends Min..Max for −1..+1; a hat sends its direction's name as text; the mode sends its name as text.",
                     "Nothing is sent while the profile isn't running or while <b>OSC output (Send OSC actions and feedback)</b> is off."
                 ]),
-            related: ["osc-value-types", "configuration-actions-send-osc", "osc-feedback-how"]
+            related: ["osc-value-types", "device-bindings-actions-send-osc", "osc-feedback-how"]
         },
         {
             id: "osc-tech-timing",

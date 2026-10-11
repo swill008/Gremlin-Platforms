@@ -174,14 +174,14 @@ def main() -> None:
     hidhide.HidHideModel.reload = real_reload  # type: ignore[method-assign]
     del hide
 
-    # Auto Mapper: a tick stays when a stick plugged in or out rebuilds the list.
+    # Auto Mapping Tool: a tick stays when a stick plugged in or out rebuilds the list.
     engine = app.engine
     component = QtQml.QQmlComponent(
-        engine, QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogAutoMapper.qml"))
+        engine, QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogAutoMappingTool.qml"))
     )
     mapper = component.create()
     if mapper is None:
-        out["auto-mapper"] = "failed: " + component.errorString()
+        out["auto-mapping-tool"] = "failed: " + component.errorString()
     else:
         # Rows are made only for a window on screen (off-screen here).
         mapper.setProperty("visible", True)
@@ -204,7 +204,7 @@ def main() -> None:
             if "CheckBox" in o.metaObject().className()
             and o.property("text") == name
         ]
-        out["auto-mapper"] = {
+        out["auto-mapping-tool"] = {
             "box": bool(name),
             "ticked-after-replug": [bool(o.property("checked")) for o in again],
         }

@@ -113,7 +113,7 @@ ApplicationWindow {
     // declare `property Component pageBar`; none means an empty bar).
     readonly property Item currentPageItem: {
         var loaders = [_statusLoader, _outputLoader, _logicalLoader, _oscPageLoader,
-                       _configPageLoader, _keyboardPageLoader, _xboxLoader,
+                       _deviceBindingsPageLoader, _keyboardPageLoader, _xboxLoader,
                        _scriptLoader, _settingsLoader]
         for (var i = 0; i < loaders.length; i++)
             if (loaders[i].visible && loaders[i].item)
@@ -142,7 +142,7 @@ ApplicationWindow {
     property var shortcutCommands: []
 
     // Hidden to the tray (gremlin/ui/tray_memory.py): the pages are
-    // unloaded to give their memory back. Configuration stays while it holds
+    // unloaded to give their memory back. The binding pages stay while they hold
     // unsaved display or Logical Device edits.
     property bool trayed: false
     property bool _keepConfigInTray: false
@@ -412,7 +412,7 @@ ApplicationWindow {
 
     property string configTitleName: ""
     // Moves when a card's shown name may have changed (the user's name for
-    // a device, 10 S7): the Configuration page title reads it afresh.
+    // a device, 10 S7): the Device Bindings page title reads it afresh.
     property int namesRev: 0
 
     function configTitleShown() {
@@ -421,13 +421,13 @@ ApplicationWindow {
     }
     onConfigTitleNameChanged: {
         syncOutputView()
-        Qt.callLater(syncConfigurationPage)
+        Qt.callLater(syncDeviceBindingsPage)
     }
     property string configDirection: ""
     property int sourceModuleCount: 0
     property int destModuleCount: 0
     // The Output View's Appearance panel, open or closed per device. The
-    // Configuration, Keyboard, Logical and OSC pages keep their own.
+    // Device Bindings, Keyboard, Logical and OSC pages keep their own.
     property bool outputViewPanel: true
     property bool _panelReady: false
     property string _panelDevice: ""
@@ -498,7 +498,7 @@ ApplicationWindow {
         leaveDisplayThen(function() { openLogicalDeviceNow() })
     }
 
-    function openConfigurationNow(card) {
+    function openDeviceBindingsNow(card) {
         if (!uiState || !card)
             return
         _panelReady = false
@@ -513,10 +513,10 @@ ApplicationWindow {
         refreshSourceModuleCount()
         // The page shows the new device at once, not after the deferred
         // sync (SHAKE-STRESS-09); the later call then changes nothing.
-        syncConfigurationPage()
+        syncDeviceBindingsPage()
     }
 
-    // The device under the open Configuration page can change without a card
+    // The device under the open Device Bindings page can change without a card
     // click: an unplugged stick moves the page to the first stick left, or to
     // the Logical Device when none is (UIState, 02 S33). The page then
     // belongs to that device: title, focused card, direction and panels
@@ -565,7 +565,7 @@ ApplicationWindow {
         var focused = _moduleModel.focusedCardMap()
         if (focused && focused.slug === card.slug && configTitleName === cardDeviceName(card))
             return
-        openConfigurationNow(card)
+        openDeviceBindingsNow(card)
     }
 
     Connections {
@@ -581,9 +581,9 @@ ApplicationWindow {
         continueDisplayLeave()
     }
 
-    // The joystick Configuration page (05 S121-S131).
-    function configurationPane() {
-        return _configPageLoader.item
+    // The joystick Device Bindings page (05 S121-S131).
+    function deviceBindingsPane() {
+        return _deviceBindingsPageLoader.item
     }
 
     function outputPane() {
@@ -598,9 +598,9 @@ ApplicationWindow {
         view.deviceName = configTitleName
     }
 
-    // The Configuration page shows the open device under its module name.
-    function syncConfigurationPage() {
-        var page = _configPageLoader.item
+    // The Device Bindings page shows the open device under its module name.
+    function syncDeviceBindingsPage() {
+        var page = _deviceBindingsPageLoader.item
         if (!page || !uiState || uiState.currentTab !== "physical")
             return
         var guid = String(uiState.currentDevice || "")
@@ -631,13 +631,13 @@ ApplicationWindow {
         }
         _oscMonitorWanted = true
         if (card)
-            openConfigurationForCard(card)
+            openDeviceBindingsForCard(card)
     }
 
     // Each open page with unsaved edits asks in turn (Save / Discard /
     // Cancel); its leaveResolved() comes back here for the next one.
     function _leavePages() {
-        var pages = [outputPane(), configurationPane(), keyboardPane(), logicalPane(), oscPane()]
+        var pages = [outputPane(), deviceBindingsPane(), keyboardPane(), logicalPane(), oscPane()]
         var out = []
         for (var i = 0; i < pages.length; ++i)
             out.push(_paneOf(pages[i]))
@@ -668,14 +668,14 @@ ApplicationWindow {
             next()
     }
 
-    // The open action panes (Configuration, Keyboard, Logical Device and
-    // OSC pages). Tools that change bindings behind a pane (Auto Mapper
+    // The open action panes (Device Bindings, Keyboard, Logical Device and
+    // OSC pages). Tools that change bindings behind a pane (Auto Mapping Tool
     // Create, History Restore, Device Pack import) close them first, or a
     // later OK would write the pane's old copy back (05 Q8,
     // D-05-DRAFT-OUTDATED).
     function _actionPanes() {
         var panes = []
-        var all = [configurationPane(), keyboardPane(), logicalPane(), oscPane()]
+        var all = [deviceBindingsPane(), keyboardPane(), logicalPane(), oscPane()]
         for (var i = 0; i < all.length; ++i)
             if (all[i])
                 panes.push(_paneOf(all[i]))
@@ -785,7 +785,7 @@ ApplicationWindow {
     }
 
     // Unsaved Output View display options or an edited action pane on the
-    // Configuration, Keyboard, Logical or OSC page.
+    // Device Bindings, Keyboard, Logical or OSC page.
     function displayUnsaved() {
         var pages = _leavePages()
         for (var i = 0; i < pages.length; ++i) {
@@ -796,7 +796,7 @@ ApplicationWindow {
         return false
     }
 
-    function openConfigurationForCard(card) {
+    function openDeviceBindingsForCard(card) {
         if (!uiState || !card)
             return
         var name = cardDeviceName(card)
@@ -805,7 +805,7 @@ ApplicationWindow {
             applyDisplayPanel()
             return
         }
-        leaveDisplayThen(function() { openConfigurationNow(card) })
+        leaveDisplayThen(function() { openDeviceBindingsNow(card) })
     }
 
     function refreshSourceModuleCount() {
@@ -838,10 +838,10 @@ ApplicationWindow {
         var index = moduleIndex(slugs, String(_moduleModel.focusedSlug || ""))
         var card = _moduleModel.cardMap(slugs[(index + step + slugs.length) % slugs.length])
         if (card && card.slug)
-            openConfigurationForCard(card)
+            openDeviceBindingsForCard(card)
     }
 
-    function cycleConfiguration(step) {
+    function cycleDeviceBindings(step) {
         cycleModules("source", step)
     }
 
@@ -850,14 +850,14 @@ ApplicationWindow {
     }
 
     function openOutputViewForCard(card) {
-        openConfigurationForCard(card)
+        openDeviceBindingsForCard(card)
     }
 
     // Menu commands act on the selected card (the Home page's focus).
-    function openConfigurationForFocus() {
+    function openDeviceBindingsForFocus() {
         var card = _moduleModel.focusedCardMap()
         if (card && card.slug)
-            openConfigurationForCard(card)
+            openDeviceBindingsForCard(card)
         else if (uiState)
             uiState.setCurrentRoom("configuration")
     }
@@ -1437,8 +1437,8 @@ ApplicationWindow {
             if (backend) {
                 backend.discardLogicalDevice()
                 backend.discardOscDevice()
-                // The Configuration page's groups, order and names (CS1).
-                backend.discardConfigurationLayouts()
+                // The Device Bindings page's groups, order and names (CS1).
+                backend.discardDeviceBindingsLayouts()
             }
             if (action)
                 action()
@@ -1604,7 +1604,7 @@ ApplicationWindow {
             title: qsTr("View")
 
             ThemedMenuItem { command: "view.home" }
-            ThemedMenuItem { command: "view.configuration" }
+            ThemedMenuItem { command: "view.deviceBindings" }
             ThemedMenuSeparator {}
             ThemedMenu {
                 title: qsTr("Home Layout")
@@ -1641,7 +1641,7 @@ ApplicationWindow {
                 title: qsTr("Mapping")
                 ThemedMenuItem { command: "tools.logical" }
                 ThemedMenuItem { command: "tools.buttonMap" }
-                ThemedMenuItem { command: "tools.autoMapper" }
+                ThemedMenuItem { command: "tools.autoMappingTool" }
                 ThemedMenuItem { command: "tools.manageModes" }
             }
             ThemedMenuSeparator {}
@@ -2017,9 +2017,9 @@ ApplicationWindow {
 
         function onDeviceChanged() {
             syncOutputView()
-            Qt.callLater(_root.syncConfigurationPage)
+            Qt.callLater(_root.syncDeviceBindingsPage)
         }
-        // The Configuration and Keyboard pages follow the mode themselves.
+        // The Device Bindings and Keyboard pages follow the mode themselves.
         function onModeChanged() {
             if (!uiState) {
                 return
@@ -2064,7 +2064,7 @@ ApplicationWindow {
 
         // Open action panes belong to the old profile; nothing unsaved is left by now.
         function onProfileChanged() {
-            var pages = [_root.configurationPane(), _root.keyboardPane(),
+            var pages = [_root.deviceBindingsPane(), _root.keyboardPane(),
                          _root.logicalPane(), _root.oscPane()]
             for (var i = 0; i < pages.length; ++i) {
                 var pane = _root._paneOf(pages[i])
@@ -2141,7 +2141,7 @@ ApplicationWindow {
                 return
             var card = _cardForGuid(uiState.oscDeviceGuid) || _moduleModel.cardMap("osc")
             if (card)
-                _root.openConfigurationForCard(card)
+                _root.openDeviceBindingsForCard(card)
         }
     }
 
@@ -2205,8 +2205,8 @@ ApplicationWindow {
                 onFocusSlug: function(slug) {
                     _moduleModel.setFocus(slug)
                 }
-                onOpenConfiguration: function(card) {
-                    openConfigurationForCard(card)
+                onOpenDeviceBindings: function(card) {
+                    openDeviceBindingsForCard(card)
                 }
                 onOpenButtonMap: function(card) {
                     openButtonMapForCard(card)
@@ -2217,8 +2217,8 @@ ApplicationWindow {
                 onConfigureModule: function(card) {
                     openConfigureModule(card.direction === "dest" ? "dest" : "source", card)
                 }
-                onAutoMap: function(card) {
-                    Helpers.createComponent("DialogAutoMapper.qml", {
+                onOpenAutoMappingTool: function(card) {
+                    Helpers.createComponent("DialogAutoMappingTool.qml", {
                         // The card's device folder (found by its id), as the
                         // window's list names it; card.slug is its card key.
                         "initialSlug": String(_moduleModel.moduleFileFor(card.guid || "",
@@ -2283,7 +2283,7 @@ ApplicationWindow {
                         }
                         Label {
                             visible: configDirection !== "dest" && configDirection !== "logical"
-                            text: "Configuration"
+                            text: "Device Bindings"
                             font.pixelSize: Style.dp(22)
                             font.bold: true
                         }
@@ -2299,7 +2299,7 @@ ApplicationWindow {
                             visible: configDirection === "source" || configDirection === "dest"
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
-                            onClicked: configDirection === "dest" ? _root.cycleOutput(-1) : _root.cycleConfiguration(-1)
+                            onClicked: configDirection === "dest" ? _root.cycleOutput(-1) : _root.cycleDeviceBindings(-1)
                             PointerTip {
                                 text: configDirection === "dest" ? "Previous output module" : "Previous input module"
                                 show: true
@@ -2311,7 +2311,7 @@ ApplicationWindow {
                             visible: configDirection === "source" || configDirection === "dest"
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
-                            onClicked: configDirection === "dest" ? _root.cycleOutput(1) : _root.cycleConfiguration(1)
+                            onClicked: configDirection === "dest" ? _root.cycleOutput(1) : _root.cycleDeviceBindings(1)
                             PointerTip {
                                 text: configDirection === "dest" ? "Next output module" : "Next input module"
                                 show: true
@@ -2548,10 +2548,10 @@ ApplicationWindow {
             }
         }
 
-        // The joystick Configuration page (05 S121-S131): built like the
+        // The joystick Device Bindings page (05 S121-S131): built like the
         // Logical Device page.
         Loader {
-            id: _configPageLoader
+            id: _deviceBindingsPageLoader
 
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -2559,11 +2559,11 @@ ApplicationWindow {
                     && _root.configDirection !== "dest"
                     && _root._configLive
             visible: active
-            source: "ConfigurationPage.qml"
-            onLoaded: _root.syncConfigurationPage()
+            source: "DeviceBindingsPage.qml"
+            onLoaded: _root.syncDeviceBindingsPage()
 
             Connections {
-                target: _root._paneOf(_configPageLoader.item)
+                target: _root._paneOf(_deviceBindingsPageLoader.item)
                 ignoreUnknownSignals: true
                 function onLeaveResolved() { _root.continueDisplayLeave() }
                 function onLeaveCancelled() { _root.cancelDisplayLeave() }

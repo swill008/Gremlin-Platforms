@@ -1,6 +1,6 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
-"""The Configuration page's rows on the shared control page base
+"""The Device Bindings page's rows on the shared control page base
 (D-05-CFG-PAGE, 05 S121-S131).
 
 HardwareLayoutModel is ControlLayoutModel for a hardware device: one parent
@@ -55,11 +55,11 @@ QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
 KINDS = ("axis", "button", "hat")
-# Axes first, as the Configuration page always listed them.
+# Axes first, as the Device Bindings page always listed them.
 TYPE_ORDER = (InputType.JoystickAxis, InputType.JoystickButton, InputType.JoystickHat)
 NO_DEST = ("all", "All devices", "")
 
-# Roles the Configuration page adds to the shared ones.
+# Roles the Device Bindings page adds to the shared ones.
 EXTRA_DEFAULTS: dict[str, Any] = {
     # The parent's index in the page's DeviceLiveState: ControlTree's live
     # lights and bars (S131, scratchpad cfg_appear_contract); -1: none.
@@ -459,7 +459,7 @@ def _pending_relay(model: HardwareLayoutModel) -> Callable[[str, str], None]:
 
 @ta.QmlElement
 class HardwareLayoutModel(ControlLayoutModel):
-    """Rows for the Configuration page: group headers, one parent per
+    """Rows for the Device Bindings page: group headers, one parent per
     claimed input, and its actions in the shown mode."""
 
     roles = {

@@ -28,7 +28,7 @@ build paths:
 - import:   import_choices, import_file, can_undo_file_import,
             undo_file_import, drop_file_import_undo (Module Setup's
             "Import from", its Undo tied to the device and window)
-- Configuration layout: read_layout, write_layout, friendly_name,
+- Device Bindings layout: read_layout, write_layout, friendly_name,
             set_friendly_name (the "layout" key: groups, order; names are
             the claim's friendly names, CF-Q1, CF-Q8); the page's unsaved
             changes: set_pending_layout, layout_for, has_pending,
@@ -903,9 +903,9 @@ def write_text(path: Path, text: str, who: str = "") -> None:
     _reload_internal(path)
 
 
-# --- Configuration layout (CF-Q1, CF-Q8) ------------------------------------------
+# --- Device Bindings layout (CF-Q1, CF-Q8) ------------------------------------------
 
-# A hardware input module file's Configuration layout, shared by every
+# A hardware input module file's Device Bindings layout, shared by every
 # profile: {"groups": [group names in order], "order": [input keys in order],
 # "group_of": {input key: group name}}. An input key is "<kind>:<number>"
 # ("button:5", "axis:1", "hat:1", "key:<id>"), the same key as the claim's
@@ -955,7 +955,7 @@ def _layout_path(guid: str, device_name: str = "") -> Path | None:
 
 
 def read_layout(guid: str, device_name: str = "") -> dict:
-    """The device's Configuration layout (normalized); empty when it has no
+    """The device's Device Bindings layout (normalized); empty when it has no
     module file, a damaged one, or no layout yet."""
     path = _layout_path(guid, device_name)
     if path is None:
@@ -1000,10 +1000,10 @@ def write_layout(
     guid: str,
     layout: dict | None,
     device_name: str = "",
-    who: str = "Configuration",
+    who: str = "Device Bindings",
     names: dict[str, str] | None = None,
 ) -> bool:
-    """Saves the device's Configuration layout (and, names given, friendly
+    """Saves the device's Device Bindings layout (and, names given, friendly
     names in the same write: one History entry). An empty layout removes the
     key. layout None leaves the layout as it is (names only). False when the
     device has no module file or it is damaged (said in the error dialog);
@@ -1038,14 +1038,14 @@ def friendly_name(guid: str, key: str, device_name: str = "") -> str:
 
 
 def set_friendly_name(
-    guid: str, key: str, name: str, device_name: str = "", who: str = "Configuration"
+    guid: str, key: str, name: str, device_name: str = "", who: str = "Device Bindings"
 ) -> bool:
     """Rename (CF-Q8): writes the input's friendly name; blank removes it."""
     return write_layout(guid, None, device_name, who, names={str(key): name})
 
 
-# --- unsaved Configuration layouts (CS1) ---------------------------------------
-# The Configuration page's groups, order and Rename are held here per device
+# --- unsaved Device Bindings layouts (CS1) ---------------------------------------
+# The Device Bindings page's groups, order and Rename are held here per device
 # until File > Save Profile writes them (one write, one History entry per
 # device file), like the Logical Device's and OSC's files (D-04-LD-FILE): the
 # title's "*" covers them and Discard drops them.
@@ -1073,7 +1073,7 @@ def _tell_pending(what: str, guid: str) -> None:
         try:
             callback(what, guid)
         except Exception:  # noqa: BLE001 - a listener never stops a save
-            syslog.exception("A Configuration layout listener failed")
+            syslog.exception("A Device Bindings layout listener failed")
 
 
 def _file_names(guid: str, device_name: str) -> dict[str, str]:
@@ -1121,7 +1121,7 @@ def set_pending_layout(
 
 
 def set_pending_name(guid: str, key: str, name: str, device_name: str = "") -> None:
-    """Rename on the Configuration page (CF-Q8), held until Save."""
+    """Rename on the Device Bindings page (CF-Q8), held until Save."""
     set_pending_layout(guid, None, {str(key): name}, device_name)
 
 
@@ -1155,11 +1155,11 @@ def friendly_name_for(guid: str, key: str, device_name: str = "") -> str:
 
 
 def has_pending() -> bool:
-    """Any device has unsaved Configuration layout changes (the title's "*")."""
+    """Any device has unsaved Device Bindings layout changes (the title's "*")."""
     return bool(_pending)
 
 
-def save_pending(who: str = "Configuration") -> int:
+def save_pending(who: str = "Device Bindings") -> int:
     """File > Save Profile: writes each device's unsaved layout and names in
     one write (one History entry each). Returns how many files were written.
     A device whose file is gone or damaged (said in the error dialog) is

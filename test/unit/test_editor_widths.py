@@ -1,9 +1,9 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Action editors fit the Configuration pane (no behaviour change).
+"""Action editors fit the Device Bindings pane (no behaviour change).
 
-Action editors are shown in the off-screen program's Configuration pane at
+Action editors are shown in the off-screen program's Device Bindings pane at
 UI scales 100, 150 and 200 % (window 1600 x 950), with the pane at its
 default width and at its minimum (420 units, EW-1), and the first three
 also in a narrower window. Every visible control stays inside the editor's
@@ -217,7 +217,7 @@ def _story(j) -> None:  # noqa: ANN001
         j.win.setWidth(WINDOW[spec["scale"]] if at_min else job["width"])
         j.win.setHeight(round(950 * spec["scale"] / 100))
         j.settle()
-        catalog = j.open_configuration("pjoy_pro")
+        catalog = j.open_device_bindings("pjoy_pro")
         # The pane's width in UI units: its minimum, else the default.
         for it in j.walk(j.win.contentItem()):
             if it.metaObject().className().startswith("ActionPane_QML"):

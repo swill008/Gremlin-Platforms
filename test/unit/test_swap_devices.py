@@ -17,7 +17,7 @@ def test_swap_devices_from_data_xml(xml_dir: pathlib.Path) -> None:
     profile = gremlin.profile.Profile()
     existing_uuid = _PROFILE_DEVICE_UUID
     new_uuid = uuid.uuid4()
-    profile.from_xml(str(xml_dir / "profile_auto_mapper.xml"))
+    profile.from_xml(str(xml_dir / "profile_auto_mapping_tool.xml"))
     result = swap_devices.swap_devices(profile, existing_uuid, new_uuid)
     assert result.input_swaps == 9
     assert result.action_swaps == 2

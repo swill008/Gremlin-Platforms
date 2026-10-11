@@ -17,7 +17,7 @@ from test.unit import help_book
 from test.unit.help_book import ROOT as _ROOT
 
 _CHAPTERS = [
-    "getting-started", "home-devices", "configuration-actions",
+    "getting-started", "home-devices", "device-bindings-actions",
     "logical-device", "osc", "modes", "button-map", "device-library", "tools",
     "options-profile",
 ]
@@ -285,7 +285,7 @@ def test_button_map_chapter_covers_the_editor() -> None:
 
 def test_every_action_plugin_has_a_topic() -> None:
     titles = " | ".join(
-        t["title"] for t in help_book.chapter_topics("configuration-actions")
+        t["title"] for t in help_book.chapter_topics("device-bindings-actions")
     )
     for init in sorted(_ROOT.joinpath("action_plugins").glob("*/__init__.py")):
         source = init.read_text(encoding="utf-8")

@@ -4,9 +4,9 @@
 
 """The viewers follow their facts' owners (D-01-OWNER-NOTICES): what drives
 what from signal.bindingsChanged, the Logical Device's input names from
-logicalDeviceModified, device names from deviceNamesChanged and the Auto Map
-list from moduleFilesChanged. Each test failed before: the models kept their
-own lists of raw signals and missed these."""
+logicalDeviceModified, device names from deviceNamesChanged and the Auto
+Mapping Tool list from moduleFilesChanged. Each test failed before: the
+models kept their own lists of raw signals and missed these."""
 
 from __future__ import annotations
 
@@ -115,16 +115,16 @@ def _xbox_page() -> QtCore.QAbstractItemModel:
     return XboxDeviceModel()
 
 
-def _auto_map_inputs() -> QtCore.QAbstractItemModel:
-    from gremlin.ui.auto_map_modules import AutoMapInputModel
+def _auto_mapping_tool_inputs() -> QtCore.QAbstractItemModel:
+    from gremlin.ui.auto_mapping_tool_modules import AutoMappingToolInputModel
 
-    return AutoMapInputModel()
+    return AutoMappingToolInputModel()
 
 
-def _auto_map_outputs() -> QtCore.QAbstractItemModel:
-    from gremlin.ui.auto_map_modules import AutoMapOutputModel
+def _auto_mapping_tool_outputs() -> QtCore.QAbstractItemModel:
+    from gremlin.ui.auto_mapping_tool_modules import AutoMappingToolOutputModel
 
-    return AutoMapOutputModel()
+    return AutoMappingToolOutputModel()
 
 
 @pytest.mark.parametrize(
@@ -169,8 +169,12 @@ def test_device_names_follow_the_names_notice(qtbot: object, make: _Make) -> Non
     assert _resets_after(qtbot, make(), signal.deviceNamesChanged) == 1
 
 
-@pytest.mark.parametrize("make", [_auto_map_inputs, _auto_map_outputs])
-def test_auto_map_list_follows_module_files(qtbot: object, make: _Make) -> None:
+@pytest.mark.parametrize(
+    "make", [_auto_mapping_tool_inputs, _auto_mapping_tool_outputs]
+)
+def test_auto_mapping_tool_list_follows_module_files(
+    qtbot: object, make: _Make
+) -> None:
     assert _resets_after(qtbot, make(), signal.moduleFilesChanged) == 1
 
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // Help chapter: Tools (viewers, calibration, device information, History,
-// Auto Mapper, HidHide, Input Tester, Live Log Reader). Button Map and Device Library
+// Auto Mapping Tool, HidHide, Input Tester, Live Log Reader). Button Map and Device Library
 // have chapters of their own.
 
 .pragma library
@@ -57,12 +57,12 @@ function topics() {
             related: ["home-devices-home"]
         },
         {
-            id: "tools-auto-mapper",
+            id: "tools-auto-mapping-tool",
             section: "Devices",
-            title: "Create actions with the Auto Mapper",
-            body: "<p>The Auto Mapper creates Map to vJoy actions in one step: each claimed input of an input module gets an action to the same number on a vJoy output module.</p>"
+            title: "Create actions with the Auto Mapping Tool",
+            body: "<p>The Auto Mapping Tool creates Map to vJoy actions in one step: each claimed input of an input module gets an action to the same number on a vJoy output module.</p>"
                 + "<ol>"
-                + "<li>Choose <b>Tools › Mapping › Auto Mapper</b> <a href=\"open:tools.autoMapper\">Open ›</a> (or <b>Auto Mapper</b> in a card's menu).</li>"
+                + "<li>Choose <b>Tools › Mapping › Auto Mapping Tool</b> <a href=\"open:tools.autoMappingTool\">Open ›</a> (or <b>Auto Mapping Tool</b> in a card's menu).</li>"
                 + "<li>Tick the input modules and output modules. The first ticked input goes to the first ticked output, the second to the second, and so on.</li>"
                 + "<li>Choose <b>Select Mode</b>. It starts on the mode shown in the Mode box.</li>"
                 + "<li>Choose <b>Create 1:1 Actions</b>. The result names the mode the actions went into, and says so when the Mode box shows another mode.</li>"
@@ -198,7 +198,7 @@ function topics() {
                 + "<li>Pick a change to see it <b>Before</b> and <b>After</b> (until you do, the right side says \"Pick a change to see it before and after.\"). See <a href=\"topic:tools-history-compare\">Compare Before and After</a>.</li>"
                 + "<li>To narrow the list to one kind, use <b>Show</b>: <b>All</b>, <b>Profile</b>, <b>Module files</b>, <b>Button Map</b> or <b>Settings</b>. To find a device, input or file, type in <b>Search</b> (<b>Ctrl+F</b>); it looks in each change's title and in what it is about. A line under it says \"N found\" or \"Nothing matches\"; <b>×</b> or <b>Esc</b> clears it.</li>"
                 + "</ol>"
-                + "<p><b>History</b> in an editor opens it for only what that editor shows: on the Configuration page (the selected input), on a Logical Device control's menu, in Module Setup, in the Button Map's File menu, and in Options. <b>Show All</b> widens it again. <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> from the menu always opens on every change.</p>"
+                + "<p><b>History</b> in an editor opens it for only what that editor shows: on the Device Bindings page (the selected input), on a Logical Device control's menu, in Module Setup, in the Button Map's File menu, and in Options. <b>Show All</b> widens it again. <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> from the menu always opens on every change.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>New changes appear when the window comes back to the front, or when you choose <b>Refresh</b>.</li>"
@@ -459,11 +459,11 @@ function topics() {
             related: ["tools-history-restore", "tools-history"]
         },
         {
-            id: "tools-q-undo-auto-mapper",
+            id: "tools-q-undo-auto-mapping-tool",
             section: "Common questions",
-            title: "How do I take back what the Auto Mapper made?",
-            body: "<p>Its actions are not saved yet: load the profile again without saving. See <a href=\"topic:tools-auto-mapper\">Create actions with the Auto Mapper</a>.</p>",
-            related: ["tools-auto-mapper"]
+            title: "How do I take back what the Auto Mapping Tool made?",
+            body: "<p>Its actions are not saved yet: load the profile again without saving. See <a href=\"topic:tools-auto-mapping-tool\">Create actions with the Auto Mapping Tool</a>.</p>",
+            related: ["tools-auto-mapping-tool"]
         },
         {
             id: "tools-q-clear-history",

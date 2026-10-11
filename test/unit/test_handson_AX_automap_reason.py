@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""08 S108 / S109 (D-08-AUTOMAP-MODE, D-08-AUTOMAP-REASON): the Auto Mapper's
+"""08 S108 / S109 (D-08-AUTOMAP-MODE, D-08-AUTOMAP-REASON): the Auto Mapping Tool's
 result line names the mode, and gives the true reason when nothing is made:
 outputs another input already uses in the mode are skipped (not kept), and an
 output module that claims none is named, pointing to "Also claim the matching
@@ -17,12 +17,12 @@ from unittest import mock
 
 import pytest
 
-from gremlin import auto_mapper
-from gremlin.auto_mapper import AutoMapper, AutoMapperOptions
+from gremlin import auto_mapping_tool
+from gremlin.auto_mapping_tool import AutoMappingTool, AutoMappingToolOptions
 
 
 def test_report_names_the_mode() -> None:
-    mapper = AutoMapper(None)  # type: ignore[arg-type]
+    mapper = AutoMappingTool(None)  # type: ignore[arg-type]
     mapper._created_mappings = [object()] * 36  # type: ignore[list-item]
     assert mapper._create_mappings_report("Default") == (
         "Made 36 actions in Default; 0 inputs kept their actions."
@@ -33,25 +33,25 @@ _NXT = {"slug": "nxt", "name": "NXT", "claim": {"buttons": [1, 2, 3]}}
 
 
 @pytest.fixture
-def claims_none() -> Iterator[AutoMapper]:
+def claims_none() -> Iterator[AutoMappingTool]:
     dest = {"slug": "vjoy_3", "name": "vJoy 3", "vjoyId": 3, "claim": {}}
     profile = SimpleNamespace(
         get_input_item=lambda *a, **k: SimpleNamespace(action_sequences=[])
     )
     limits = {"axes": set(), "buttons": set(range(1, 9)), "hats": set()}
     with (
-        mock.patch.object(auto_mapper.auto_map, "input_modules", return_value=[_NXT]),
-        mock.patch.object(auto_mapper.auto_map, "output_modules", return_value=[dest]),
-        mock.patch.object(AutoMapper, "_vjoy_limits", return_value=limits),
-        mock.patch.object(AutoMapper, "_get_used_vjoy_inputs", return_value=[]),
-        mock.patch.object(AutoMapper, "_source_uuid", return_value=uuid.uuid4()),
+        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT]),
+        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "output_modules", return_value=[dest]),
+        mock.patch.object(AutoMappingTool, "_vjoy_limits", return_value=limits),
+        mock.patch.object(AutoMappingTool, "_get_used_vjoy_inputs", return_value=[]),
+        mock.patch.object(AutoMappingTool, "_source_uuid", return_value=uuid.uuid4()),
     ):
-        yield AutoMapper(profile)
+        yield AutoMappingTool(profile)
 
 
-def test_output_module_that_claims_none_is_named(claims_none: AutoMapper) -> None:
+def test_output_module_that_claims_none_is_named(claims_none: AutoMappingTool) -> None:
     text = claims_none.generate_module_mappings(
-        ["nxt"], ["vjoy_3"], AutoMapperOptions()
+        ["nxt"], ["vjoy_3"], AutoMappingToolOptions()
     )
     assert text.startswith("The output module vJoy 3 claims none of these outputs"), (
         text
@@ -76,14 +76,14 @@ def test_used_by_another_input_is_a_skip_not_kept() -> None:
     used = [types.VjoyInput(3, types.InputType.JoystickButton, n) for n in (1, 2, 3)]
     limits = {"axes": set(), "buttons": set(range(1, 9)), "hats": set()}
     with (
-        mock.patch.object(auto_mapper.auto_map, "input_modules", return_value=[_NXT]),
-        mock.patch.object(auto_mapper.auto_map, "output_modules", return_value=[dest]),
-        mock.patch.object(AutoMapper, "_vjoy_limits", return_value=limits),
-        mock.patch.object(AutoMapper, "_get_used_vjoy_inputs", return_value=used),
-        mock.patch.object(AutoMapper, "_source_uuid", return_value=uuid.uuid4()),
+        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT]),
+        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "output_modules", return_value=[dest]),
+        mock.patch.object(AutoMappingTool, "_vjoy_limits", return_value=limits),
+        mock.patch.object(AutoMappingTool, "_get_used_vjoy_inputs", return_value=used),
+        mock.patch.object(AutoMappingTool, "_source_uuid", return_value=uuid.uuid4()),
     ):
-        text = AutoMapper(profile).generate_module_mappings(
-            ["nxt"], ["vjoy_3"], AutoMapperOptions()
+        text = AutoMappingTool(profile).generate_module_mappings(
+            ["nxt"], ["vjoy_3"], AutoMappingToolOptions()
         )
     assert text.startswith("Made 0 actions in Default; 0 inputs kept their actions."), (
         text

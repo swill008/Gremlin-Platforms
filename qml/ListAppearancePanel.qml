@@ -11,7 +11,7 @@ import Gremlin.UI
 import "helpers.js" as Helpers
 
 // The Appearance panel of the control lists (05 S125): each page
-// (Configuration, Logical Device, Keyboard, OSC) keeps its own look in
+// (Device Bindings, Logical Device, Keyboard, OSC) keeps its own look in
 // program settings (WindowPlacement listAppearance(pageKey), AP2). The page binds its
 // ControlTree's appearance properties to this panel's properties of the
 // same names, calls load() once, and closes the panel on closed().
@@ -19,9 +19,9 @@ Rectangle {
     id: _panel
 
     property string title: "Appearance"
-    // Whose look this is: "configuration", "logical", "keyboard" or "osc".
+    // Whose look this is: "device-bindings", "logical", "keyboard" or "osc".
     required property string pageKey
-    // The live bars / LED dots rows (the Configuration page).
+    // The live bars / LED dots rows (the Device Bindings page).
     property bool liveOptions: false
 
     // The panel asks to be hidden (× with nothing unsaved, or after the
@@ -117,7 +117,7 @@ Rectangle {
     property bool openText: false
     property bool openSelection: false
     property bool openLive: false
-    // Live lights and bars (Configuration only; ControlTree liveDecoration).
+    // Live lights and bars (Device Bindings only; ControlTree liveDecoration).
     property bool showLiveBars: true
     property bool showLeds: true
     property string colorLiveSet: ""

@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""01 S143: the Configuration page (HardwareLayoutModel) and the Logical Device
+"""01 S143: the Device Bindings page (HardwareLayoutModel) and the Logical Device
 page show the shared Undo / Redo bar with the last change beside it. Each
 model names its Undo steps: lastChange is "Last change: X", undone is
 "Undone: X" right after an Undo, and the tips say what Undo / Redo do.
@@ -54,7 +54,7 @@ def catalog() -> Iterator[tuple[object, Profile]]:
         _STICK, InputType.JoystickButton, 1, "Default", create_if_missing=True
     )
     _map(item, 3)
-    # The Configuration page's model, its stick listing button 1.
+    # The Device Bindings page's model, its stick listing button 1.
     model = page_on(_STICK)
     yield model, profile
     close(model)

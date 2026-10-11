@@ -31,7 +31,7 @@ KEY_SPLITS = "pane-splits"
 # locked (by row name).
 KEY_TOOL_ROWS = "tool-rows"
 # Each list page's own Appearance (AP2): a JSON object keyed by page
-# ("configuration", "logical", "keyboard", "osc"), each holding that page's
+# ("device-bindings", "logical", "keyboard", "osc"), each holding that page's
 # look settings; the page merges its defaults.
 KEY_LIST_APPEARANCE = "list-appearance"
 

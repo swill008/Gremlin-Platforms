@@ -449,7 +449,7 @@ def bindings_fingerprint(bindings: Iterable[InputItemBinding]) -> str:
 
 class DraftOutdated(error.GremlinError):
     """OK refused: the input changed under the open pane (History Restore,
-    Auto Mapper, a Device Pack import, or another pane's OK on an action it
+    Auto Mapping Tool, a Device Pack import, or another pane's OK on an action it
     shares), so writing the pane's copy would undo that change (05 Q8)."""
 
 
@@ -1701,7 +1701,7 @@ class Profile:
     def _save_other_files(self, fpath: Path) -> None:
         """Save also saves the Logical Device's and OSC's files when they
         changed (D-04-LD-FILE decision 2, D-09-OSC-FILE decision 1) and the
-        Configuration page's held groups, order and names (CS1). Each is
+        Device Bindings page's held groups, order and names (CS1). Each is
         tried; one that fails stays unsaved (the "*") and SaveIncomplete
         names it."""
         from gremlin import logical_device_file, osc_device_file
@@ -1711,7 +1711,7 @@ class Profile:
         steps = (
             ("the Logical Device's file", logical.path, logical.save_if_dirty),
             ("OSC's file", osc_device_file.path, osc_device_file.save_if_dirty),
-            ("a Configuration layout's module file", None, module_store.save_pending),
+            ("a Device Bindings layout's module file", None, module_store.save_pending),
         )
         failed: list[str] = []
         for label, where, save in steps:
@@ -1813,7 +1813,7 @@ class Profile:
         of the profile (sticks not plugged in, the Logical Device), and Map
         to vJoy actions inside others (Condition, Chain, Tempo...) too
         (08 Q7, GL-189). A binding without a root action has none (GL-190).
-        The one "used" rule for Auto Mapper and a new Map to vJoy (05 S115)."""
+        The one "used" rule for Auto Mapping Tool and a new Map to vJoy (05 S115)."""
         from action_plugins.map_to_vjoy import MapToVjoyData
 
         used: list[VjoyInput] = []
@@ -1987,7 +1987,7 @@ class Profile:
         return self.has_unsaved_changes()
 
     def _logical_unsaved(self) -> bool:
-        """The Logical Device's or OSC's file, or a Configuration layout
+        """The Logical Device's or OSC's file, or a Device Bindings layout
         (CS1), has changes its Save writes (the open profile's "*" covers
         them, D-04-LD-FILE decision 2, D-09-OSC-FILE decision 1)."""
         from gremlin.modules import store as module_store

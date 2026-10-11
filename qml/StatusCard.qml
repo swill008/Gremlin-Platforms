@@ -56,11 +56,11 @@ Rectangle {
     z: stackIndex + (lifting || resizing ? 100 : 0)
 
     signal cardFocused()
-    signal openConfiguration()
+    signal openDeviceBindings()
     signal openButtonMap()
     signal openOutputView()
     signal configureModule()
-    signal autoMap()
+    signal openAutoMappingTool()
     signal openPairing()
     signal openCalibration()
     signal openDeviceInformation()
@@ -105,13 +105,13 @@ Rectangle {
         : (activeFocus ? Style.accent : (focused || selected ? Style.fg : Style.line))
 
     // Keyboard: Tab and the arrow keys move between cards, Enter opens
-    // Configuration as a double-click does, Space picks the card as a click
+    // Device Bindings as a double-click does, Space picks the card as a click
     // does. A click never gives a card the keys: a stick button that sends
     // Return must not open windows.
     objectName: "statusCard"
     activeFocusOnTab: true
-    Keys.onReturnPressed: openConfiguration()
-    Keys.onEnterPressed: openConfiguration()
+    Keys.onReturnPressed: openDeviceBindings()
+    Keys.onEnterPressed: openDeviceBindings()
     Keys.onSpacePressed: cardFocused()
     Keys.onRightPressed: _focusNextCard(true)
     Keys.onDownPressed: _focusNextCard(true)
@@ -352,7 +352,7 @@ Rectangle {
             }
             _card.cardFocused()
             if (button === Qt.LeftButton && isSecondClick(px, py))
-                _card.openConfiguration()
+                _card.openDeviceBindings()
         }
         onCanceled: function() {
             didDrag = false
@@ -490,15 +490,15 @@ Rectangle {
         var dest = direction === "dest"
         var xbox = bus === "XInput" || tab === "xbox" || slug === "xbox"
         // The Keyboard and OSC aren't game controllers: the Device Library's
-        // Copy / Swap / Change vJoy Output, the Auto Mapper and Device
+        // Copy / Swap / Change vJoy Output, the Auto Mapping Tool and Device
         // Information don't list them.
         var notStick = slug === "keyboard" || slug === "osc"
         // The Logical Device has no hardware to set up, calibrate, describe
         // or swap (03 Q7).
         var logical = tab === "logical" || slug === "logical"
         return MenuModel.menu("card", cardName || rawName || "Device", [
-            MenuModel.action(dest ? "Output View" : "Open Configuration",
-                             function() { dest ? _card.openOutputView() : _card.openConfiguration() }),
+            MenuModel.action(dest ? "Output View" : "Open Device Bindings",
+                             function() { dest ? _card.openOutputView() : _card.openDeviceBindings() }),
             MenuModel.action("Button Map", function() { _card.openButtonMap() }),
             MenuModel.action("Hide Card", function() { _card.ignoreDevice() })
         ], [
@@ -508,7 +508,7 @@ Rectangle {
                 (xbox || logical) ? null : MenuModel.action("Module Setup…",
                                  function() { _card.configureModule() }),
                 (notStick || xbox || logical) ? null
-                    : MenuModel.action("Auto Mapper", function() { _card.autoMap() }),
+                    : MenuModel.action("Auto Mapping Tool", function() { _card.openAutoMappingTool() }),
                 (dest || notStick || logical) ? null
                     : MenuModel.action("Calibration", function() { _card.openCalibration() })
             ]),

@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""A Configuration or Keyboard layout held unsaved while another writer
+"""A Device Bindings or Keyboard layout held unsaved while another writer
 changes the device's module file (03 gap #28): the newer file wins, the held
 change is dropped and the page is told (decision AD2). A held name for a
 control no longer claimed is not written (03 S42). Deleting the device's

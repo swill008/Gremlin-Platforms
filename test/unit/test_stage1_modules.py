@@ -731,7 +731,7 @@ def card_menu(
 _NOT_FOR_LOGICAL = {
     "Module Setup…",
     "Calibration",
-    "Auto Mapper",
+    "Auto Mapping Tool",
     "Device Information",
     "Copy Setup to Another Stick…",
     "Swap with Another Stick…",
@@ -743,7 +743,7 @@ def test_card_menus_leave_out_what_does_not_apply() -> None:
     # S88.
     stick = card_menu("pjoy_pro", "pJoy Pro", "source", "DirectInput", "physical")
     assert {
-        "Module Setup…", "Calibration", "Auto Mapper", "Swap with Another Stick…"
+        "Module Setup…", "Calibration", "Auto Mapping Tool", "Swap with Another Stick…"
     } <= set(stick)
     assert "Swap Device…" not in stick
     assert "Start Fresh…" not in stick
@@ -753,7 +753,7 @@ def test_card_menus_leave_out_what_does_not_apply() -> None:
     assert "Start Fresh…" in damaged
     xbox = card_menu("xbox", "Xbox 360 Controller", "dest", "XInput", "xbox")
     assert not {
-        "Module Setup…", "Calibration", "Auto Mapper", "Swap with Another Stick…"
+        "Module Setup…", "Calibration", "Auto Mapping Tool", "Swap with Another Stick…"
     } & set(xbox)
     vjoy = card_menu("vjoy_1", "vJoy 1", "dest", "DirectInput", "physical")
     assert "Module Setup…" in vjoy
@@ -782,10 +782,10 @@ def test_an_input_card_offers_delete_device() -> None:
     assert "Delete Device" in stick
 
 
-def test_auto_mapper_also_claim_on_a_damaged_output_file_makes_no_actions(
+def test_auto_mapping_tool_also_claim_on_a_damaged_output_file_makes_no_actions(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from gremlin.auto_mapper import AutoMapper, AutoMapperOptions
+    from gremlin.auto_mapping_tool import AutoMappingTool, AutoMappingToolOptions
 
     write_module(folder, "pjoy_pro", stick_doc())
     write_module(
@@ -796,15 +796,15 @@ def test_auto_mapper_also_claim_on_a_damaged_output_file_makes_no_actions(
     real_load = module_file.load_for_update
 
     def damaged_meanwhile(path: Path) -> dict:
-        # The output module file is damaged after the Auto Mapper read it.
+        # The output module file is damaged after the Auto Mapping Tool read it.
         if Path(path).parent.name == "vJoy 1":
             raise module_file.ModuleFileDamaged(Path(path), "it is not valid JSON")
         return real_load(path)
 
     monkeypatch.setattr(module_file, "load_for_update", damaged_meanwhile)
     with mock.patch.object(module_file, "report_refused"):
-        report = AutoMapper(profile).generate_module_mappings(
-            ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(claim_outputs=True)
+        report = AutoMappingTool(profile).generate_module_mappings(
+            ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions(claim_outputs=True)
         )
     # S120 / Q15: refused, so no claim and no action; the outputs are listed.
     assert mapped(profile, stick_uid()) == set()

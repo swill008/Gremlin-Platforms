@@ -1,7 +1,7 @@
 """The four list pages stay alike (05 S125, 01 S58a; user decision PS1 (b);
 to-do 91, Method B: shared parts the pages use).
 
-Configuration, Logical Device, Keyboard and OSC share one shape through
+Device Bindings, Logical Device, Keyboard and OSC share one shape through
 three shared parts, each written once:
 - the pane/leave functions live in ActionPane.qml; each page exposes its
   pane as `actionPane`;
@@ -16,7 +16,7 @@ import re
 import pytest
 
 QML = pathlib.Path(__file__).resolve().parents[2] / "qml"
-PAGES = ["ConfigurationPage.qml", "LogicalPage.qml", "KeyboardPage.qml", "OscPage.qml"]
+PAGES = ["DeviceBindingsPage.qml", "LogicalPage.qml", "KeyboardPage.qml", "OscPage.qml"]
 PANE_FUNCTIONS = [
     "requestLeave", "closePaneNow", "savePane",
     "hasUnsaved", "paneHasChanges", "closeActionPane",

@@ -167,12 +167,12 @@ def test_s7_new_plugins_join_the_list_shown_and_gone_ones_leave(
     assert result["Map to vJoy"] is True and result["Response Curve"] is True
 
 
-# --- B. Configuration page list (S12, S15, S43) -------------------------------
+# --- B. Device Bindings page list (S12, S15, S43) -------------------------------
 
 
 @pytest.fixture
 def catalog(profile: Profile) -> Iterator[tuple[Any, Profile]]:
-    """The Configuration page (HardwareLayoutModel) on a stick whose buttons
+    """The Device Bindings page (HardwareLayoutModel) on a stick whose buttons
     1-3 are claimed."""
     from test.unit.hardware_page_helper import close, page_on
 
@@ -238,7 +238,7 @@ def test_s43_the_note_shows_on_the_inputs_row(catalog: tuple[Any, Profile]) -> N
 
 @pytest.fixture
 def pane(profile: Profile) -> Iterator[tuple[Any, Profile]]:
-    """The Configuration page (HardwareLayoutModel) with button 1 mapped to
+    """The Device Bindings page (HardwareLayoutModel) with button 1 mapped to
     vJoy buttons 1 and 2."""
     from test.unit.hardware_page_helper import close, page_on
 

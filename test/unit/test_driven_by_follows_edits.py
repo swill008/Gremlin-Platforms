@@ -11,7 +11,7 @@ Logical Device left the Xbox card and header at [nothing]. Now the
 bindings' owner (input_pairing) sends bindingsChanged for every edit,
 undo and Delete Mode (D-01-OWNER-NOTICES 1a), and the list, the Home cards
 on screen and the header follow. A full reload (profileChanged) refreshes
-the header too, and the Home cards and the Configuration page title show
+the header too, and the Home cards and the Device Bindings page title show
 the user's name for a device (10 S7, 2a).
 
 Off-screen in its own process; what the profile's actions send is set
@@ -123,7 +123,7 @@ out['pre-reload'] = ev('_destBound.text')
 wires[:] = []
 model._reload()
 out['reload'] = ev('_destBound.text')
-# The user's name for the stick: its Home card and the Configuration page
+# The user's name for the stick: its Home card and the Device Bindings page
 # title (10 S7), following the names' owner's notice.
 from gremlin import device_aliases
 ev('_root.configDirection = "source"')

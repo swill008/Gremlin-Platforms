@@ -5,7 +5,7 @@
 """Journey 1: edit an action, save, reload, Run, press, Stop.
 
 The user loads a profile whose stick button 1 sends vJoy button 1, opens
-the stick's Configuration page, changes the action in the pane to send
+the stick's Device Bindings page, changes the action in the pane to send
 vJoy button 5 and presses OK, saves the profile, opens it again: the
 change is there. Run, press the stick button: vJoy button 5 follows the
 button (down, then up). Press it again and Stop while it is held: Gremlin
@@ -55,8 +55,8 @@ def story(j: Journey) -> None:
     j.backend.loadProfile(url)
     out["loaded"] = pathlib.Path(j.backend.profilePath()) == path
 
-    # Configuration page: open button 1 in the pane, change the target, OK.
-    catalog = j.open_configuration("pjoy_pro")
+    # Device Bindings page: open button 1 in the pane, change the target, OK.
+    catalog = j.open_device_bindings("pjoy_pro")
     j.open_input(catalog, "button", 1)
     actions = j.pane_actions(catalog)
     out["pane-actions"] = [a.name for a in actions]

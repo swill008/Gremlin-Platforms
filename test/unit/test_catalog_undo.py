@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Configuration page has Undo and Redo for what OK and Delete change.
+"""The Device Bindings page has Undo and Redo for what OK and Delete change.
 
 A step keeps the input's actions before and after (as XML, the same way
 History keeps them: Profile.input_snapshot / put_input). Undo puts the
@@ -110,7 +110,7 @@ def test_undo_waits_while_the_pane_is_open() -> None:
     # open in the pane (the model's canUndo is the step list itself).
     from pathlib import Path
 
-    qml = (Path(__file__).resolve().parents[2] / "qml/ConfigurationPage.qml").read_text(
+    qml = (Path(__file__).resolve().parents[2] / "qml/DeviceBindingsPage.qml").read_text(
         encoding="utf-8"
     )
     assert "_undoKeys: visible && !editorLocked && !actionOpen" in qml

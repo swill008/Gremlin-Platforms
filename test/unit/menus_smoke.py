@@ -77,7 +77,7 @@ STEPS = [
      " _probe.describe().join('|')"),
     ("card-device", "_probe.activate('Device'); _probe.describe().join('|')"),
     ("card-closed", "_probe.close(); 'ok'"),
-    # The Keyboard card: no Auto Mapper, Device Information or Swap Device
+    # The Keyboard card: no Auto Mapping Tool, Device Information or Swap Device
     # (they don't list the Keyboard).
     ("kb-module",
      "_card.slug = 'keyboard'; _probe.build = _card.menuModel;"

@@ -134,7 +134,7 @@ def test_shared_menus_work(tmp_path: pathlib.Path) -> None:
     assert results["palette-ran"] == "save"
     # A device card's menu.
     assert results["card"] == (
-        "Stick|Open Configuration|Button Map|Hide Card|> Module|> View|> Cards|> Device"
+        "Stick|Open Device Bindings|Button Map|Hide Card|> Module|> View|> Cards|> Device"
     )
     assert results["card-device"].endswith(
         "|  Reset Card Layout|  Delete Device"
@@ -142,7 +142,7 @@ def test_shared_menus_work(tmp_path: pathlib.Path) -> None:
     assert "Unstack" not in results["card-device"]
     # The Keyboard card leaves out what doesn't list the Keyboard.
     assert "Module Setup" in results["kb-module"]
-    assert "Auto Mapper" not in results["kb-module"]
+    assert "Auto Mapping Tool" not in results["kb-module"]
     assert "Calibration" not in results["kb-module"]
     assert "vJoy Viewer" in results["kb-view"]
     assert "Device Information" not in results["kb-view"]

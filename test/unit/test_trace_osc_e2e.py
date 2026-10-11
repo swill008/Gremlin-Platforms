@@ -140,7 +140,7 @@ def _parent_key(address: str) -> str:
 def _open_osc_page(j: Journey) -> Any:  # noqa: ANN401
     from gremlin.ui.osc_layout import OscLayoutModel
 
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("osc"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("osc"))')
     j.wait_until(lambda: j.backend.uiState.currentTab == "osc", "the OSC page")
     return j.wait_until(
         lambda: j.win.findChild(OscLayoutModel), "the OSC page's layout model"

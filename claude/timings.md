@@ -835,3 +835,12 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | B1 OPTWIN: Options/Shortcuts ×, pin, close on click, divider | fix | 3–8 min (table) | 10 min | 17:43–17:53 |
 | 2026-10-11 | B1 HOME: page bar left + Home Undo/Redo (found a Windows file-in-use bug) | feature | 3–8 min (table) | 15 min | 17:43–17:58 |
 | 2026-10-11 | Lead B1: decision, briefs, 3 icons (an Edit-tool slip wrote raw glyphs, fixed), ContextMenu ☆ on toggles, Print & Export ×, lint | lead | ~5 min | 8 min | 17:40–17:48, 17:53–17:59 |
+| 2026-10-11 | B2 CARD: Tools + Home routes, old export window removed | fix | ~10-15 min (rough guess) | 3 min | 18:02–18:05 |
+| 2026-10-11 | B2 ZIP: .gmap made by / note / modes / output pictures; + 2 follow-up fixes (root actions, twin by id) | feature | ~10-15 min (rough guess) | 4 + 1 + 1 min | 18:02–18:06, 18:09, 18:14–18:15 |
+| 2026-10-11 | B2 WIN: Export / Import Device window, target choice, openFor | feature | ~10-15 min (rough guess) | 4 min | 18:02–18:06 |
+| 2026-10-11 | B2 DOC2: spec 08/03/10/01, Help, glossary, to-do 40 | docs | ~10-15 min (rough guess) | 7 min | 18:02–18:09 |
+| 2026-10-11 | B2 LIB: Device Library .gmap only, 13 test files moved | feature | ~10-15 min (rough guess) | 14 min | 18:02–18:16 |
+| 2026-10-11 | B2 TEST2: end to end 11 (found 3 program bugs) | agent tests | ~15 min | 15 min | 18:02–18:17 |
+| 2026-10-11 | B2 TFIX: 5 old .zip test files moved to .gmap | agent tests | ~10 min | 3 min | 18:15–18:18 |
+| 2026-10-11 | B2 PACK: .gmap-only export/import, two targets, Undo for both; 3 bug fixes; 8 test files moved | feature | ~15 min | 21 min | 18:02–18:23 |
+| 2026-10-11 | B3 renames (Configuration page -> Device Bindings, Auto Mapper -> Auto Mapping Tool): R-QML1 1 min, R-QML2 3, R-PY1 2, R-PY2 4, R-DOC 4, R-TEST2 8, R-TEST1 10 | refactor | rough guess 10-15 min | 10 min wall | 18:26–18:36 |

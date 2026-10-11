@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Input and output modules as the Auto Mapper sees them."""
+"""Input and output modules as the Auto Mapping Tool sees them."""
 
 from __future__ import annotations
 
@@ -132,13 +132,15 @@ def merge_claim_into_output(dest: dict, claim: dict) -> dict:
     try:
         # The file as it is now (not the copy read earlier), so nothing saved
         # since is overwritten; a damaged file is refused and left alone.
-        saved = store.update_path(path, change, "Auto Mapper")
+        saved = store.update_path(path, change, "Auto Mapping Tool")
     except OSError:
         saved = False
     if not saved:
         # Not claimed: the output module keeps what it had, so the Auto
-        # Mapper skips those outputs and lists them "not claimed" (03 Q15).
-        trace("SAVE", "Auto Mapper", "merge_claim_into_output", path, "not written")
+        # Mapping Tool skips those outputs and lists them "not claimed" (03 Q15).
+        trace(
+            "SAVE", "Auto Mapping Tool", "merge_claim_into_output", path, "not written"
+        )
         return current
     dest["doc"] = written
     dest["claim"] = merged

@@ -126,7 +126,7 @@ def test_cards_show_the_users_name_and_follow_it(setup: tuple) -> None:
     # card's own name.
     assert stick.target == "Game Pad"
     assert vjoy.target == "My Throttle"
-    # The Configuration page title asks by device id and file name.
+    # The Device Bindings page title asks by device id and file name.
     assert model.shownName(_STICK, "Throttle") == "My Throttle"
     assert model.boundLine("vJoy 1") == "Driven by: [My Throttle]"
     # A reload keeps it; forgetting the name brings the device's own back.

@@ -2,9 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""08 S108 (D-08-AUTOMAP-MODE): the mode the Auto Mapper works in.
+"""08 S108 (D-08-AUTOMAP-MODE): the mode the Auto Mapping Tool works in.
 
-S108: the Auto Mapper's Select Mode starts on the toolbar's mode, and the
+S108: the Auto Mapping Tool's Select Mode starts on the toolbar's mode, and the
 result names the mode the actions went into; when that is not the toolbar's
 mode it says so. Driven through the real window, off-screen, in its own
 process (the journey harness): a profile with "Z Mode" and, under it,
@@ -41,8 +41,8 @@ def story(j: Journey) -> None:
     signal.signal.modesChanged.emit()
     j.backend.uiState.setCurrentMode(PARENT)
 
-    j.ev('Helpers.createComponent("DialogAutoMapper.qml", { initialSlug: "pJoy Pro" })')
-    win = j.window("Auto Mapper")
+    j.ev('Helpers.createComponent("DialogAutoMappingTool.qml", { initialSlug: "pJoy Pro" })')
+    win = j.window("Auto Mapping Tool")
 
     def boxes() -> dict[str, object]:
         return {

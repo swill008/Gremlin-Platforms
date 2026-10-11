@@ -1070,7 +1070,7 @@ class OscLayoutModel(ControlLayoutModel):
     def kindAt(self, index: int) -> str:
         """Kind "button" for a button input (its row tints while pressed),
         "axis" for a fader (its row's live bar, as a stick axis on the
-        Configuration page, D-05-FOLLOW-ALL-PAGES), else "" (an encoder:
+        Device Bindings page, D-05-FOLLOW-ALL-PAGES), else "" (an encoder:
         no tint, no bar)."""
         live = self._live_at(index)
         if live is None:

@@ -296,7 +296,7 @@ def test_a_save_with_the_pane_open_leaves_the_draft_alone(tmp_path: Path) -> Non
         note.description = "on the input"
         root.insert_action(note, "children")
 
-        # The Configuration page's model, axis 1 claimed.
+        # The Device Bindings page's model, axis 1 claimed.
         model = page_on(stick, [("axis", 1)])
         model.beginPane("parent:axis:1", 0)
         pane_root = model._pane_shadow.action_sequences[0].root_action

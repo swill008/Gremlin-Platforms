@@ -1,6 +1,6 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
-"""Shared row model for control pages (Logical Device, OSC, later Configuration).
+"""Shared row model for control pages (Logical Device, OSC, later Device Bindings).
 
 ControlLayoutModel (gremlin/ui/control_layout.py) is the device-independent
 row model behind a control page: groups, parents (inputs), child rows
@@ -70,7 +70,7 @@ Hooks. Required (base raises NotImplementedError):
   _device_guid(self) -> uuid.UUID                the device the pane edits and
                                                  whose InputItems hold actions
                                                  (Logical: LOGICAL device guid;
-                                                 OSC: OSC_GUID; Configuration:
+                                                 OSC: OSC_GUID; Device Bindings:
                                                  the device shown, may change)
   _identifier(self, kind: InputType, input_id: int) -> identifier
   _emit_store_changed(self) -> None              tell the program the store
@@ -102,7 +102,7 @@ Optional (default shown):
   _real_item(self, item) -> InputItem | None     the profile's input in the
                                                  shown mode (cantSend reads
                                                  its actions; Keyboard and
-                                                 Configuration map their own)
+                                                 Device Bindings map their own)
   _rows_after_actions(self, item, extra) -> list[dict]    []
                                                  (OSC later: feedback rows,
                                                  "actions then feedback")
@@ -117,10 +117,10 @@ Optional (default shown):
                                                  then _matches
   _filtering(self) -> bool                       any base filter on; override
                                                  with your extra filters
-                                                 (Configuration: Type/Output)
+                                                 (Device Bindings: Type/Output)
   _sort_system_label(self) -> str                "Sort by System Name"
                                                  (OSC: "Sort by Address")
-  _can_remove(self, item) -> bool                True (Configuration: claimed
+  _can_remove(self, item) -> bool                True (Device Bindings: claimed
                                                  rows False)
   _delete_parent(self, item) -> list[dict]       own InputItems taken (Undo
                                                  copies) + store.delete;
@@ -561,7 +561,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         return True
 
     # An input's actions before and after a change, kept as copies (XML, as
-    # the Configuration page keeps them: Library.snapshot / restore).
+    # the Device Bindings page keeps them: Library.snapshot / restore).
     # Live action objects were kept before; the library could drop or hand
     # them out again, and the saved profile then didn't load.
 
@@ -603,7 +603,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         return True
 
     def _undo_waits(self) -> bool:
-        """True while Undo/Redo must wait (Configuration: an action open in
+        """True while Undo/Redo must wait (Device Bindings: an action open in
         the pane, 05 S36). Logical and OSC don't wait."""
         return False
 

@@ -86,7 +86,7 @@ out['find'] = box(find(root, 'System name, your name, or group') or find(root, '
 
 model = run(win, '_moduleModel')
 dest = next(r.slug for r in model._rows if getattr(r, 'direction', '') == 'dest')
-run(win, f'_root.openConfigurationForCard(_moduleModel.cardMap("{dest}"))')
+run(win, f'_root.openDeviceBindingsForCard(_moduleModel.cardMap("{dest}"))')
 QtTest.QTest.qWait(1000)
 run(win, '_root.outputViewPanel = true')
 QtTest.QTest.qWait(600)

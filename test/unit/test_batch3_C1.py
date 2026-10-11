@@ -120,7 +120,7 @@ def test_home_help_lists_every_card_and_what_each_leaves_out() -> None:
         "Another Stick…, Change vJoy Output… or Delete Device"
     ) in home
     assert (
-        "The Logical Device card has no Module Setup, Auto Mapper, Calibration, "
+        "The Logical Device card has no Module Setup, Auto Mapping Tool, Calibration, "
         "Device Information, Copy Setup to Another Stick…, Swap with Another "
         "Stick… or Change vJoy Output…"
     ) in home

@@ -22,7 +22,7 @@ ApplicationWindow {
     // Opens at the size it was left at (capped to the screen).
     ToolWindowMemory {
         host: _mapper
-        name: "autoMapper"
+        name: "autoMappingTool"
         defaultWidth: _mapper.minimumWidth
         defaultHeight: _mapper.minimumHeight
     }
@@ -33,18 +33,18 @@ ApplicationWindow {
     color: Style.background
     U.Universal.theme: Style.theme
 
-    title: "Auto Mapper"
+    title: "Auto Mapping Tool"
 
     // Off while the Overwrite question is open: there Enter and Esc cancel.
     Shortcut { sequence: "Esc"; enabled: !_mapper._question; onActivated: {} }
     Shortcut { sequence: "Return"; enabled: !_mapper._question; onActivated: {} }
     Shortcut { sequence: "Enter"; enabled: !_mapper._question; onActivated: {} }
 
-    AutoMapInputModel {
+    AutoMappingToolInputModel {
         id: _inputModules
     }
 
-    AutoMapOutputModel {
+    AutoMappingToolOutputModel {
         id: _outputModules
     }
 
@@ -285,7 +285,7 @@ ApplicationWindow {
                 font.pixelSize: Style.dp(24)
 
                 PointerTip {
-                    text: "More in Help (F1): Tools › Auto Mapper. This tool builds starting 1:1 Map to vJoy actions.\n\n"
+                    text: "More in Help (F1): Tools › Auto Mapping Tool. This tool builds starting 1:1 Map to vJoy actions.\n\n"
                         + "Select Mode starts on the toolbar's mode; pick another to make actions there.\n\n"
                         + "This tool does not match devices by name. It uses the order shown in the lists. The first checked input gets an action to the first checked output, the second input to the second output, and so on.\n\n"
                         + "Overwrite used inputs: replaces the actions those controls already have in the selected mode. Leave it off, and those actions stay as they are.\n\n"

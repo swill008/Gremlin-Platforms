@@ -975,12 +975,12 @@ def part_history(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
             f"the saved profile did not open: {backend._load_problem}"
         )
     out["open-profile"] = backend.profilePath()
-    ev_in(root, f"openConfigurationForCard(_moduleModel.cardMap({json.dumps(SLUG)}))")
+    ev_in(root, f"openDeviceBindingsForCard(_moduleModel.cardMap({json.dumps(SLUG)}))")
 
     def input_row() -> tuple[QtCore.QObject, str, str] | None:
         # Stick button 1's input row on the page (a device input, so
         # deviceIndex >= 0), with the page showing a device.
-        page = ev_in(root, "configurationPane()")
+        page = ev_in(root, "deviceBindingsPane()")
         if not isinstance(page, QtCore.QObject) or not page.property("guid"):
             return None
         layout = page.findChild(HardwareLayoutModel)

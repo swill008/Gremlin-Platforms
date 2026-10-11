@@ -24,10 +24,10 @@
             }
         })
 
-// == configuration ==
+// == device-bindings ==
         return ControlMenu.standardMenu(_root, {
-            layout: _layout, kind: "configuration",
-            pageTitle: deviceName.length ? deviceName : "Configuration", manyNoun: "inputs",
+            layout: _layout, kind: "device-bindings",
+            pageTitle: deviceName.length ? deviceName : "Device Bindings", manyNoun: "inputs",
             addAction: function() { addAction(_menuKey, _menuTitle) },
             quickEnd: function(st) { return [MenuModel.action("Module Setup…", function() { openModuleSetup() })] },
             rowItems: function(st) {

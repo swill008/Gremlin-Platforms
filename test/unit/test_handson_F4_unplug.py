@@ -2,13 +2,13 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Hands-on fix F4: the open Configuration page follows the device under it
+"""Hands-on fix F4: the open Device Bindings page follows the device under it
 (05 S105 page part, 02 S33).
 
-pJoy Pro's Configuration page is open and pJoy Pro is unplugged. The
+pJoy Pro's Device Bindings page is open and pJoy Pro is unplugged. The
 program moves the page to the first physical device left (02 S33); the
 page then belongs to that device: its title, the focused card, the
-direction and the Configuration page's device name, not pJoy Pro's over the
+direction and the Device Bindings page's device name, not pJoy Pro's over the
 Throttle's rows. With no stick left the page is the Logical Device.
 
 Driven through the real program off-screen (the journey harness, fake
@@ -39,14 +39,14 @@ def _page(j: Journey) -> list:
         j.ev("configTitleName"),
         j.ev("configDirection"),
         j.ev("_moduleModel.focusedCardMap().slug"),
-        j.ev("configurationPane() ? configurationPane().deviceName : ''"),
+        j.ev("deviceBindingsPane() ? deviceBindingsPane().deviceName : ''"),
     ]
 
 
 def story(j: Journey) -> None:
     out = j.out
     state = j.backend.uiState
-    j.open_configuration("pjoy_pro")
+    j.open_device_bindings("pjoy_pro")
     out["before"] = _page(j)
     throttle = j.stick("Throttle").device_guid
 

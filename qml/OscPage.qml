@@ -526,7 +526,7 @@ Item {
                     layout: _layout
                     // A pressed button input's row tints (D-09-OSC-ROW-FOLLOW);
                     // a fader's row has the live bar, as a stick axis on the
-                    // Configuration page (D-05-FOLLOW-ALL-PAGES). The model
+                    // Device Bindings page (D-05-FOLLOW-ALL-PAGES). The model
                     // is the live state (stamp, kindAt, valueAt).
                     liveDecoration: true
                     liveState: _layout

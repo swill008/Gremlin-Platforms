@@ -4,7 +4,7 @@
 
 """Journey 8: Stop in the middle of a macro releases the key it holds.
 
-In the Configuration pane the user gives stick button 1 a Macro: press A,
+In the Device Bindings pane the user gives stick button 1 a Macro: press A,
 pause 3 seconds, release A. OK, save, open again, Run. A press of the
 button starts the macro: A goes down. Stop during the pause: A comes up at
 once (not when the pause would have ended), and the release the macro
@@ -48,7 +48,7 @@ def story(j: Journey) -> None:
         return [entry[3] for entry in sent if entry[0] == "key" and entry[1] == _A]
 
     # The pane: a Macro on button 1 (press A, pause, release A), OK.
-    catalog = j.open_configuration("pjoy_pro")
+    catalog = j.open_device_bindings("pjoy_pro")
     j.open_input(catalog, "button", 1)
     root = j.pane_actions(catalog)[0]
     root.appendAction("Macro", "children")

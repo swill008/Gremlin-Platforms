@@ -6,7 +6,7 @@
 37697695524).
 
 test/fake_hardware.py faked the vJoy axis, button and hat counts but not
-vjoy.axis_ids, so the output module (and the Auto Mapper through it) asked the
+vjoy.axis_ids, so the output module (and the Auto Mapping Tool through it) asked the
 real vJoy driver which axes exist. On this PC that is the user's vJoy, with
 8 axes; on CI there is none, so every axis was "not on the vJoy device" and
 test_automap_1to1_journey's axes were never mapped. A test run must not

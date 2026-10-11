@@ -67,7 +67,7 @@ function topics() {
                 + "<ul>"
                 + "<li>The first time the window's X hides it, a tray notice says \"Gremlin-Platforms is still running\". It shows only once.</li>"
                 + "<li>To quit, choose <b>File › Exit</b> <a href=\"show:menu/File/Exit\">Show me ›</a> or <b>Exit Gremlin-Platforms</b> in the tray menu. Exit from the tray brings the window back first, so you can answer any question about unsaved changes.</li>"
-                + "<li>While the window is in the tray, the program closes its pages to give memory back to Windows, and opens them again when you show the window. The profile keeps running the whole time. The Configuration page stays open while it has unsaved display edits.</li>"
+                + "<li>While the window is in the tray, the program closes its pages to give memory back to Windows, and opens them again when you show the window. The profile keeps running the whole time. The Device Bindings page stays open while it has unsaved display edits.</li>"
                 + "<li>The tray icon comes back by itself if Windows Explorer restarts.</li>"
                 + "<li>To start the program straight into the tray, use the --start-minimized option with Minimize to tray on. See <a href=\"topic:getting-started-command-line\">Start the program from a command line</a>.</li>"
                 + "</ul>",
@@ -120,7 +120,7 @@ function topics() {
                 + "<li><b>Reset to Default</b> offers every action again, with Map to vJoy, Macro and Response Curve first and the rest by name.</li>"
                 + "<li>Every change is saved at once.</li>"
                 + "</ul>",
-            related: ["options-profile-options", "configuration-actions-add-action"]
+            related: ["options-profile-options", "device-bindings-actions-add-action"]
         },
         {
             id: "options-profile-diagnostics",
@@ -158,7 +158,7 @@ function topics() {
                 + "<li>The trash button on a row with a program or a profile asks first, for example \"Remove auto-load entry?\" with \"Profile X will no longer load for Y.\" Choose the red <b>Remove Entry</b> to remove it; <b>Cancel</b>, <b>Enter</b> or <b>Esc</b> keeps it. You can restore it from <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a>. An empty row goes without asking.</li>"
                 + "<li>A full program path matches that program first. Otherwise a row's text is a pattern matched against the program's path, capitals ignored. Blank or invalid patterns match nothing, and rows turned off are skipped.</li>"
                 + "<li>When the program comes back to the front and its profile is already open, the profile is not loaded again; if it was stopped, it runs.</li>"
-                + "<li>Auto-load never switches over unsaved changes: it shows \"Auto-load Waited\" once for that profile and stops the running profile, which isn't that program's. Save or discard the changes, and it switches the next time the program comes to the front. Unsaved changes are not lost meanwhile; see <a href=\"topic:configuration-actions-safety-net\">Unfinished actions and recovery copies</a>.</li>"
+                + "<li>Auto-load never switches over unsaved changes: it shows \"Auto-load Waited\" once for that profile and stops the running profile, which isn't that program's. Save or discard the changes, and it switches the next time the program comes to the front. Unsaved changes are not lost meanwhile; see <a href=\"topic:device-bindings-actions-safety-net\">Unfinished actions and recovery copies</a>.</li>"
                 + "<li>When the chosen profile file is missing, it says so once (\"<i>name</i> was not loaded: the file is missing.\") and stops the running profile.</li>"
                 + "<li>When a program with no profile comes to the front, the running profile stops. Turn on <b>Keep running when the program loses focus</b> <a href=\"show:option/Keep running when the program loses focus\">Show me ›</a> to keep it running in these cases.</li>"
                 + "<li>Clicking into this program's own window doesn't count as another program.</li>"

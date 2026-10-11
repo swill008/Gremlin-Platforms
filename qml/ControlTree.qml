@@ -7,11 +7,11 @@ import QtQuick.Layouts
 
 import Gremlin.Style
 
-// The control list shared by the control pages (Configuration, Logical
+// The control list shared by the control pages (Device Bindings, Logical
 // Device, OSC): group, parent and action rows from the page's layout model,
 // carets, multi-select, drag order. Menus stay with the page: the rows only
 // say where the right-click was. Live lights and bars are an optional
-// decoration, on for the Configuration page only (05 S131).
+// decoration, on for the Device Bindings page only (05 S131).
 Item {
     id: _tree
 

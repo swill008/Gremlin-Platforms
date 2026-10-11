@@ -386,6 +386,6 @@ class ModulePairButtonModel(_ModulePairMappedModel):
         super().__init__(InputType.JoystickButton, parent)
 
 
+import gremlin.ui.auto_mapping_tool_modules  # noqa: F401
 import gremlin.ui.module_inputs  # noqa: F401
 import gremlin.ui.output_modules  # noqa: F401
-import gremlin.ui.auto_map_modules  # noqa: F401

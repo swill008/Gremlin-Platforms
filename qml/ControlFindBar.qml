@@ -8,7 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Style
 
 // The Find line, its filter ticks and the page's Undo bar, shared by the
-// control pages (Configuration, Keyboard, Logical Device, OSC). The page
+// control pages (Device Bindings, Keyboard, Logical Device, OSC). The page
 // turns changed() into a filter call on its model; the "Can't be sent"
 // tick (D-05-CANT-SEND) is the bar's own and tells the model directly
 // (layout.setCantSendOnly).
@@ -52,7 +52,7 @@ ColumnLayout {
 
     signal changed()
     // Sent by clear() before changed(), so a page resets its own Find
-    // boxes (the Configuration page's Type and Output, S124) too.
+    // boxes (the Device Bindings page's Type and Output, S124) too.
     signal cleared()
 
     function isChecked(name) {

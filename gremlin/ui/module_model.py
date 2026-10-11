@@ -1786,7 +1786,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=str)
     def shownName(self, guid: str, raw_name: str) -> str:
-        """The name a card shows for its device (the Configuration page
+        """The name a card shows for its device (the Device Bindings page
         title): the user's name, else raw_name."""
         want = guid_key(guid)
         for row in self._rows:
@@ -2331,7 +2331,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self.focusChanged.emit()
         self.panesChanged.emit()
         # Pages that ask the list (the Output View header, the
-        # Configuration page title) read afresh after a full reload.
+        # Device Bindings page title) read afresh after a full reload.
         self.targetsChanged.emit()
         self.namesChanged.emit()
 

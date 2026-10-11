@@ -707,8 +707,8 @@ class Backend(QtCore.QObject):
         signal.oscDeviceModified.emit()
 
     @QtCore.Slot()
-    def discardConfigurationLayouts(self) -> None:
-        """Discard on the save-changes question: the Configuration page's
+    def discardDeviceBindingsLayouts(self) -> None:
+        """Discard on the save-changes question: the Device Bindings page's
         unsaved groups, order and names go with the profile's (CS1)."""
         from gremlin.modules import store as module_store
 

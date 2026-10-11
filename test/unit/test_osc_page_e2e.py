@@ -182,7 +182,7 @@ def _open_osc_page(j: Journey) -> Any:  # noqa: ANN401
     from gremlin.ui.osc_layout import OscLayoutModel
 
     state = j.backend.uiState
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("osc"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("osc"))')
     j.wait_until(lambda: state.currentTab == "osc", "the OSC page")
     return j.wait_until(
         lambda: j.win.findChild(OscLayoutModel), "the OSC page's layout model"
@@ -359,7 +359,7 @@ def _part_monitor(j: Journey) -> None:
     j.settle()
     out["4:unfolded"] = state()
     # Leaving the page lets the port go (OP8).
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("keyboard"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("keyboard"))')
     j.wait_until(
         lambda: j.backend.uiState.currentTab == "keyboard", "the Keyboard page"
     )

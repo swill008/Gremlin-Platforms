@@ -445,7 +445,7 @@ def test_logical_undo_brings_back_a_removed_button_binding(
 
 
 # --- Round 2: a shared original after OK, "+" on a shared action, and the
-# Configuration page pane
+# Device Bindings page pane
 
 
 def _live_editor(item: Any, data: Any) -> Any:  # noqa: ANN401
@@ -462,7 +462,7 @@ def _live_editor(item: Any, data: Any) -> Any:  # noqa: ANN401
 
 
 def _catalog(profile: Profile, hw: int = 1) -> Any:  # noqa: ANN401
-    """The Configuration page model (HardwareLayoutModel), stick axis hw
+    """The Device Bindings page model (HardwareLayoutModel), stick axis hw
     claimed; its pane opens on _axis_key(hw)."""
     from test.unit.hardware_page_helper import page_on
 
@@ -549,7 +549,7 @@ def test_new_deadzone_leaves_a_shared_one_as_it_was(profile: Profile) -> None:
     assert deadzone.axis1.input_id == 1  # was cleared
 
 
-def test_configuration_pane_reference_cancel_and_pick_list(
+def test_device_bindings_pane_reference_cancel_and_pick_list(
     profile: Profile, tmp_path: Path
 ) -> None:
     item = _get(profile,

@@ -316,7 +316,7 @@ class MapToVjoyData(AbstractActionData):
     def start_new(self, profile: object, item: object) -> None:
         """Added by the user (Add Action): start on the first claimed output
         not used in the input's mode; all used, the first claimed; none
-        claimed, as made (05 S115; "used" as Auto Mapper, S94/S109)."""
+        claimed, as made (05 S115; "used" as the Auto Mapping Tool, S94/S109)."""
         kinds = [_KIND_OF_BEHAVIOR.get(self.vjoy_input_type, InputType.JoystickButton)]
         used_of = getattr(profile, "vjoy_outputs_used", None)
         mode = getattr(item, "mode", None)

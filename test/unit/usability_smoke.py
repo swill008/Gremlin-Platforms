@@ -53,10 +53,10 @@ def _keyboard_cards(main_win: QtQuick.QQuickWindow, cards: list, out: dict) -> N
         out["enter-opens"] = False
         return
     opened: list[str] = []
-    now.openConfiguration.connect(lambda: opened.append("configuration"))
+    now.openDeviceBindings.connect(lambda: opened.append("device-bindings"))
     QtTest.QTest.keyClick(main_win, Key.Key_Return)
     QtTest.QTest.qWait(300)
-    out["enter-opens"] = opened == ["configuration"]
+    out["enter-opens"] = opened == ["device-bindings"]
 
 
 def main() -> None:
@@ -109,7 +109,7 @@ def main() -> None:
     run(win, "Style.isDarkMode = true; 1")
 
     # UI7: Tab reaches the Home cards, the arrow keys move between them and
-    # Enter opens Configuration.
+    # Enter opens Device Bindings.
     cards = [i for i in items(main_win.contentItem())
              if i.objectName() == "statusCard" and i.isVisible()]
     out["cards"] = len(cards)

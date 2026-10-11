@@ -126,9 +126,9 @@ def test_options_descriptions_use_the_glossary_words() -> None:
     assert _hits(_option_descriptions()) == []
 
 
-# | Python display strings (GL-018): the Configuration list text built in
+# | Python display strings (GL-018): the Device Bindings list text built in
 # | binding_catalog.py and hardware_layout.py and the result lines Python
-# | hands to the screens (Auto Mapper, GL-228). The QML check above can't see them.
+# | hands to the screens (Auto Mapping Tool, GL-228). The QML check above can't see them.
 
 # Words for what an input does (glossary D2, D11): "action(s)", and an
 # input with none shows "No actions".
@@ -184,7 +184,7 @@ def _python_strings(path: Path) -> list[tuple[str, int, str]]:
 
 
 def _catalog_strings() -> list[tuple[str, int, str]]:
-    # The list helpers and the Configuration page's model (05 S121). The
+    # The list helpers and the Device Bindings page's model (05 S121). The
     # Keyboard page lists its actions with the same helpers; its group
     # header's "Empty" is the shared group text (control_layout.count_text).
     return [
@@ -195,7 +195,7 @@ def _catalog_strings() -> list[tuple[str, int, str]]:
 
 
 def _result_strings() -> list[tuple[str, int, str]]:
-    return _python_strings(_ROOT / "gremlin" / "auto_mapper.py")
+    return _python_strings(_ROOT / "gremlin" / "auto_mapping_tool.py")
 
 
 def _word_hits(strings: list[tuple[str, int, str]]) -> list[str]:
@@ -215,11 +215,11 @@ def test_the_check_reads_the_python_display_text() -> None:
     assert "No input module selected" in results
 
 
-def test_configuration_list_text_uses_the_glossary_words() -> None:
+def test_device_bindings_list_text_uses_the_glossary_words() -> None:
     assert _word_hits(_catalog_strings()) == []
 
 
-def test_configuration_list_type_names_are_the_action_names() -> None:
+def test_device_bindings_list_type_names_are_the_action_names() -> None:
     from gremlin.plugin_manager import PluginManager
     from gremlin.ui import binding_catalog
 
@@ -235,5 +235,5 @@ def test_configuration_list_type_names_are_the_action_names() -> None:
     assert wrong == {}
 
 
-def test_auto_mapper_result_uses_the_glossary_words() -> None:
+def test_auto_mapping_tool_result_uses_the_glossary_words() -> None:
     assert _word_hits(_result_strings()) == []

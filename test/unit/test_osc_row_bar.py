@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""An OSC fader's row shows the live bar the Configuration page shows for a
+"""An OSC fader's row shows the live bar the Device Bindings page shows for a
 stick axis (D-05-FOLLOW-ALL-PAGES, "standard on every screen"), end to end.
 
 A journey (test/journeys/_harness.py): the real app off-screen with a
@@ -74,7 +74,7 @@ def story(j: Journey) -> None:
     _loopback_listener()
     out = j.out
     runtime = osc.OscRuntime()
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("osc"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("osc"))')
     j.wait_until(lambda: j.backend.uiState.currentTab == "osc", "the OSC page")
     page = j.wait_until(lambda: j.win.findChild(OscLayoutModel), "the OSC model")
     add = j.win.findChild(OscDeviceManagementModel) or OscDeviceManagementModel()

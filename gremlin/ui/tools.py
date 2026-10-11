@@ -8,7 +8,7 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import (
-    auto_mapper,
+    auto_mapping_tool,
     config,
     shared_state,
     signal,
@@ -16,6 +16,9 @@ from gremlin import (
 
 QML_IMPORT_NAME = "Gremlin.Tools"
 QML_IMPORT_MAJOR_VERSION = 1
+
+# The Auto Mapping Tool's own settings (gremlin.ui.shell_option registers them).
+_KEY = ("auto-mapping-tool", "mapper")
 
 
 @ta.QmlElement
@@ -37,11 +40,11 @@ class Tools(QtCore.QObject):
         profile = shared_state.current_profile
         if profile is None:
             return "No profile is open."
-        mapper = auto_mapper.AutoMapper(profile)
+        mapper = auto_mapping_tool.AutoMappingTool(profile)
         feedback_string = mapper.generate_module_mappings(
             [slug for (slug, chosen) in source_modules.items() if chosen],
             [slug for (slug, chosen) in dest_modules.items() if chosen],
-            auto_mapper.AutoMapperOptions(
+            auto_mapping_tool.AutoMappingToolOptions(
                 mode, repeat, overwrite, claim_outputs, toolbar_mode
             ),
         )
@@ -49,15 +52,15 @@ class Tools(QtCore.QObject):
         signal.signal.reloadCurrentInputItem.emit()
         signal.signal.configChanged.emit()
         cfg = config.Configuration()
-        if cfg.exists("automap", "mapper", "remember-overwrite") and cfg.value(
-            "automap", "mapper", "remember-overwrite"
+        if cfg.exists(*_KEY, "remember-overwrite") and cfg.value(
+            *_KEY, "remember-overwrite"
         ):
-            cfg.set("automap", "mapper", "overwrite-used-inputs", bool(overwrite))
+            cfg.set(*_KEY, "overwrite-used-inputs", bool(overwrite))
         return feedback_string
 
     @QtCore.Slot(result=bool)
     def lastOverwriteUsedInputs(self) -> bool:
         cfg = config.Configuration()
-        if cfg.exists("automap", "mapper", "overwrite-used-inputs"):
-            return bool(cfg.value("automap", "mapper", "overwrite-used-inputs"))
+        if cfg.exists(*_KEY, "overwrite-used-inputs"):
+            return bool(cfg.value(*_KEY, "overwrite-used-inputs"))
         return False

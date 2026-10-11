@@ -21,7 +21,7 @@ import pytest
 from PySide6 import QtCore
 
 from gremlin import config, event_handler, history, shared_state
-from gremlin.modules import auto_map, calibration, ids, output, store
+from gremlin.modules import auto_mapping_tool, calibration, ids, output, store
 from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.profile import Profile
 from gremlin.types import InputType
@@ -484,10 +484,10 @@ def test_s117_output_view_appearance_is_saved_in_the_module_file(modules: Path) 
     assert others == ["Xbox 360 Controller"]
 
 
-# --- N. Auto Mapper ----------------------------------------------------------------
+# --- N. Auto Mapping Tool ----------------------------------------------------------------
 
 
-def test_s119_auto_mapper_lists_claiming_inputs_once_and_one_output_per_vjoy(
+def test_s119_auto_mapping_tool_lists_claiming_inputs_once_and_one_output_per_vjoy(
     modules: Path,
 ) -> None:
     setup_cards(modules)  # pJoy Pro claims buttons; Keyboard and OSC keys only
@@ -503,18 +503,18 @@ def test_s119_auto_mapper_lists_claiming_inputs_once_and_one_output_per_vjoy(
             "claim": {"buttons": [], "axes": [], "hats": [], "keys": []},
         },
     )
-    inputs = auto_map.input_modules()
+    inputs = auto_mapping_tool.input_modules()
     assert [(row["name"], row["slug"]) for row in inputs] == [("pJoy Pro", "pJoy Pro")]
     assert old.is_file()  # the other file for the device is not deleted
     output.refresh()
-    outputs = auto_map.output_modules()
+    outputs = auto_mapping_tool.output_modules()
     assert [(row["vjoyId"], row["slug"]) for row in outputs] == [(1, "vJoy 1")]
 
 
 # --- O. Other readers of claims ------------------------------------------------------
 
 
-def test_s121_configuration_list_shows_claimed_controls_the_device_has(
+def test_s121_device_bindings_list_shows_claimed_controls_the_device_has(
     modules: Path,
 ) -> None:
     from gremlin.ui.module_inputs import ModuleClaimedInputModel

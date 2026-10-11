@@ -103,7 +103,7 @@ def _keyboard_pane(j: Journey) -> object:
     from gremlin.ui.util import InputListenerModel
 
     state = j.backend.uiState
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("keyboard"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("keyboard"))')
     j.wait_until(lambda: state.currentTab == "keyboard", "the Keyboard page")
     page = j.wait_until(lambda: j.ev("keyboardPane()"), "the Keyboard page item")
     layout = j.wait_until(

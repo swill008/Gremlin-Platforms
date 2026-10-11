@@ -817,16 +817,16 @@ class Journey:
         self.backend.newProfile()
         self.backend.loadProfile(url)
 
-    # --- Configuration page ---------------------------------------------------
+    # --- Device Bindings page ---------------------------------------------------
 
-    def open_configuration(self, slug: str) -> Any:  # noqa: ANN401
-        """Opens the Configuration page for a Home card, as a click on the
+    def open_device_bindings(self, slug: str) -> Any:  # noqa: ANN401
+        """Opens the Device Bindings page for a Home card, as a click on the
         card does; returns the page's own HardwareLayoutModel (05 S121)."""
         from gremlin.ui.hardware_layout import HardwareLayoutModel
 
-        self.ev(f"openConfigurationForCard(_moduleModel.cardMap({json.dumps(slug)}))")
+        self.ev(f"openDeviceBindingsForCard(_moduleModel.cardMap({json.dumps(slug)}))")
         page = self.wait_until(
-            lambda: self.ev("configurationPane()"), f"the Configuration page of {slug}"
+            lambda: self.ev("deviceBindingsPane()"), f"the Device Bindings page of {slug}"
         )
         layout = self.wait_until(
             lambda: page.findChild(HardwareLayoutModel), "the page's layout model"
@@ -865,12 +865,12 @@ class Journey:
         return str(self._input_row(catalog, kind, hw)["key"])
 
     def open_input(self, catalog: Any, kind: str, hw: int) -> None:  # noqa: ANN401
-        """Opens the Configuration page's pane on a control, as a click on
+        """Opens the Device Bindings page's pane on a control, as a click on
         its row does: the tree selects the row (the program's current
         input), then the page's openInput."""
         row = self._input_row(catalog, kind, hw)
         key, title = json.dumps(row["key"]), json.dumps(row["title"])
-        page = self.ev("configurationPane()")
+        page = self.ev("deviceBindingsPane()")
         self.ev(f"_tree.select({key}, false); openInput({key}, {title}); true", page)
         self.wait_until(lambda: catalog.paneModel is not None, "the pane")
 

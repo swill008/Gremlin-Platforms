@@ -253,11 +253,11 @@ def test_new_map_to_vjoy_none_claimed_is_unchanged(
 
 
 def test_used_rule_has_one_owner(vjoy: dict, profile: Profile) -> None:
-    from gremlin.auto_mapper import AutoMapper
+    from gremlin.auto_mapping_tool import AutoMappingTool
 
     _wire(profile, 1, "Default", 4)
     assert profile.vjoy_outputs_used("Default") == [(3, B, 4)]
-    assert AutoMapper(profile)._get_used_vjoy_inputs("Default") == [(3, B, 4)]
+    assert AutoMappingTool(profile)._get_used_vjoy_inputs("Default") == [(3, B, 4)]
     assert profile.vjoy_outputs_used("B") == []
 
 

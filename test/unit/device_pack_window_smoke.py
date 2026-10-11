@@ -398,7 +398,7 @@ out["import-below-list"] = (
 if shot:
     pack_win.grabWindow().save(shot + "-import.png")
 pv("setAll(false)")
-# Tick: Default wires, Configuration layout, the checked controls.
+# Tick: Default wires, Device Bindings layout, the checked controls.
 pv(
     'for (var k in checks) checks[k] = false; checks["wire:Default"] = true; '
     'checks["in.groups"] = true; checks["in.checks"] = true; tickRev = tickRev + 1'

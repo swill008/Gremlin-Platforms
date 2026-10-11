@@ -14,7 +14,7 @@ import "confirm.js" as Confirm
 import "control_menu.js" as ControlMenu
 import Gremlin.UI
 
-// The Configuration page of a joystick (05 S121-S131): the Logical Device
+// The Device Bindings page of a joystick (05 S121-S131): the Logical Device
 // page on the shared base (ControlFindBar, ControlTree, ActionPane) over the
 // module's claimed inputs. Rows can't be added or removed here (Module Setup
 // owns the claims); groups, order and names are kept in the input module
@@ -266,7 +266,7 @@ Item {
             ControlFindBar {
                 id: _find
                 layout: _layout
-                namePrefix: "configuration"
+                namePrefix: "deviceBindings"
                 placeholder: "System name, your name, or group"
                 // Inputs by kind; the action Type box comes after Clear.
                 typeChoices: [
@@ -287,7 +287,7 @@ Item {
                 buttons: [
                     ComboBox {
                         id: _actionType
-                        objectName: "configurationActionType"
+                        objectName: "deviceBindingsActionType"
                         Layout.alignment: Qt.AlignTop
                         Layout.preferredWidth: Style.dp(140)
                         model: _layout.typeFilterNames
@@ -296,7 +296,7 @@ Item {
                     },
                     ComboBox {
                         id: _output
-                        objectName: "configurationOutputFilter"
+                        objectName: "deviceBindingsOutputFilter"
                         Layout.alignment: Qt.AlignTop
                         Layout.preferredWidth: Style.dp(140)
                         model: _layout.destChoices
@@ -312,8 +312,8 @@ Item {
                 Layout.fillHeight: true
                 layout: _layout
                 locked: _root.editorLocked
-                namePrefix: "configuration"
-                dragMime: "application/x-gremlin-configuration"
+                namePrefix: "deviceBindings"
+                dragMime: "application/x-gremlin-device-bindings"
                 dragLayer: _root
                 emptyText: "No inputs are claimed for this device. Right-click here and choose Module Setup… to claim its controls."
                 filtering: _find.filtering || _root._actionFiltering
@@ -412,16 +412,16 @@ Item {
             layout: _layout
             locked: _root.editorLocked
             tree: _tree
-            namePrefix: "configuration"
+            namePrefix: "deviceBindings"
         }
 
         // This page's own list Appearance (05 S125, AP2).
         PageAppearance {
             id: _appear
-            objectName: "configurationAppearance"
-            pageKey: "configuration"
-            buttonName: "configurationAppearanceButton"
-            title: "Configuration — Appearance"
+            objectName: "deviceBindingsAppearance"
+            pageKey: "device-bindings"
+            buttonName: "deviceBindingsAppearanceButton"
+            title: "Device Bindings — Appearance"
             liveOptions: true
         }
     }
@@ -599,8 +599,8 @@ Item {
     // empty list. No Add Inputs: claims come from Module Setup.
     function _layoutMenuModel() {
         return ControlMenu.standardMenu(_root, {
-            layout: _layout, kind: "configuration",
-            pageTitle: deviceName.length ? deviceName : "Configuration", manyNoun: "inputs",
+            layout: _layout, kind: "device-bindings",
+            pageTitle: deviceName.length ? deviceName : "Device Bindings", manyNoun: "inputs",
             addAction: function() { addAction(_menuKey, _menuTitle) },
             quickEnd: function(st) { return [MenuModel.action("Module Setup…", function() { openModuleSetup() })] },
             // S31: not for the input open in the pane (OK would bring it back).
@@ -623,7 +623,7 @@ Item {
         id: _actionMenu
         menuWidth: Style.dp(220)
         build: function() {
-            return ControlMenu.actionMenu({ kind: "configuration", title: _root._actionTitle,
+            return ControlMenu.actionMenu({ kind: "device-bindings", title: _root._actionTitle,
                 open: function() { _root.openAction(_root._actionParent, _root._actionSeq, _root._actionTitle) },
                 remove: function() { _root.deleteActionAsked(_root._actionParent, _root._actionSeq, _root._actionTitle) } })
         }

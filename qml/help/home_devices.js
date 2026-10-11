@@ -16,7 +16,7 @@ function topics() {
             title: "Home and its cards",
             body: "<p><b>Home</b> <a href=\"open:view.home\">Open ›</a> shows one card per device: your physical devices, the <b>Keyboard</b>, <b>OSC</b>, each vJoy device, the Xbox controller, and the <b>Logical Device</b>.</p>"
                 + "<ul>"
-                + "<li>Double-click a card, or select it and press <b>Enter</b>, to open its Configuration page (or <b>Output View</b> for an output).</li>"
+                + "<li>Double-click a card, or select it and press <b>Enter</b>, to open its Device Bindings page (or <b>Output View</b> for an output).</li>"
                 + "<li>The arrow keys move between cards.</li>"
                 + "<li>Right-click a card for its menu (see <a href=\"topic:home-devices-card-menu\">Card menus</a>).</li>"
                 + "<li><b>Compact view</b> (also in <b>Options</b> <a href=\"show:option/Compact view\">Show me ›</a>) and <b>Layout</b> (<b>Single list</b>, <b>Side by side</b> or <b>Stacked</b>; also <b>View › Home Layout</b> <a href=\"show:menu/View/Home Layout\">Show me ›</a>) change how the cards are laid out.</li>"
@@ -25,7 +25,7 @@ function topics() {
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li>Home keeps about 50 Undo steps until you close the program; loading another profile clears them. <b>Delete Device</b> is not undone here: use <b>Tools › History</b>.</li><li>A connected device without a module shows as a card without a module when <b>Show devices without a module</b> <a href=\"show:option/Show devices without a module\">Show me ›</a> is on in <b>Options</b> (<b>Home</b>).</li></ul>",
-            related: ["home-devices-card-text", "home-devices-arrange-cards", "home-devices-card-menu", "configuration-actions-configuration-page"]
+            related: ["home-devices-card-text", "home-devices-arrange-cards", "home-devices-card-menu", "device-bindings-actions-device-bindings-page"]
         },
         {
             id: "home-devices-card-text",
@@ -42,7 +42,7 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul><li>A card whose module file can't be read says \"Module file damaged – inputs blocked\" in red. See <a href=\"topic:home-devices-damaged-file\">Fix a damaged module file</a>.</li>"
                 + "<li>A stick, Keyboard or OSC card with actions that send to a vJoy output the program can't send has a red outline and says \"⚠ n bindings can't be sent\". Hover it for the list (input, mode and why; the first 10, then \"… and n more\"). Open the device's page and pick another output in each Map to vJoy; the Find tick <b>Can't be sent</b> shows them.</li></ul>",
-            related: ["home-devices-home", "home-devices-input-modules", "home-devices-damaged-file", "configuration-actions-output-view"]
+            related: ["home-devices-home", "home-devices-input-modules", "home-devices-damaged-file", "device-bindings-actions-output-view"]
         },
         {
             id: "home-devices-arrange-cards",
@@ -74,8 +74,8 @@ function topics() {
             body: "<p>A card's right-click menu holds every command for that device. The card shows as picked first, as a click does; a card in a Shift selection keeps the selection, for items that act on all of it.</p>"
                 + "<ul>"
                 + "<li><b>Undo</b> and <b>Redo</b> sit beside the menu's title, for Home's card changes.</li>"
-                + "<li>At the top: <b>Open Configuration</b> (<b>Output View</b> on an output card), <b>Button Map</b> and <b>Hide Card</b>.</li>"
-                + "<li><b>Module</b>: <b>Module Setup…</b>, <b>Auto Mapper</b>, <b>Calibration</b>.</li>"
+                + "<li>At the top: <b>Open Device Bindings</b> (<b>Output View</b> on an output card), <b>Button Map</b> and <b>Hide Card</b>.</li>"
+                + "<li><b>Module</b>: <b>Module Setup…</b>, <b>Auto Mapping Tool</b>, <b>Calibration</b>.</li>"
                 + "<li><b>View</b>: the <b>vJoy Viewer</b> or <b>Xbox Viewer</b>, <b>Device Information</b>.</li>"
                 + "<li><b>Cards</b>: <b>Stack Selected Cards</b>, <b>Unstack</b>, <b>Unstack All</b>, <b>Reset Size</b>, <b>Reset All Card Sizes</b>.</li>"
                 + "<li><b>Device</b>: <b>Start Fresh…</b> (for a damaged module file), <b>Copy Setup to Another Stick…</b>, <b>Swap with Another Stick…</b> and <b>Change vJoy Output…</b> (they open the <b>Device Library</b> on that stick), <b>Export Device…</b> (with a module file) and <b>Import Device…</b> (they open <b>Export / Import Device</b> on that device, see <a href=\"topic:home-devices-device-pack\">Share a device</a>), <b>Reset Card Layout</b> (clears its size and stacking) and <b>Delete Device</b>.</li>"
@@ -83,9 +83,9 @@ function topics() {
                 + "<p>Items that don't apply to a card are left out:</p>"
                 + "<ul>"
                 + "<li>vJoy cards have no Calibration, Copy Setup to Another Stick…, Swap with Another Stick…, Change vJoy Output… or Delete Device.</li>"
-                + "<li>The Xbox card has no Module Setup, Auto Mapper, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick…, Change vJoy Output… or Delete Device.</li>"
-                + "<li>The Keyboard and OSC cards have no Auto Mapper, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
-                + "<li>The Logical Device card has no Module Setup, Auto Mapper, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
+                + "<li>The Xbox card has no Module Setup, Auto Mapping Tool, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick…, Change vJoy Output… or Delete Device.</li>"
+                + "<li>The Keyboard and OSC cards have no Auto Mapping Tool, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
+                + "<li>The Logical Device card has no Module Setup, Auto Mapping Tool, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
                 + "</ul>"
                 + "<p>To give the Logical Device card a picture, right-click it and choose <b>Add Image…</b> (under <b>Device</b>). Later, use <b>Change Image…</b> or <b>Remove Image</b>. Remove Image doesn't ask; <b>Undo</b> (<b>Ctrl+Z</b>) on Home or <b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> can bring the picture back. Other cards get their picture in Module Setup.</p>",
             related: ["home-devices-home", "home-devices-delete-device", "home-devices-input-modules", "getting-started-menus"]
@@ -116,7 +116,7 @@ function topics() {
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>The device's Configuration page, Button Map and Module Setup close without asking.</li>"
+                + "<li>The device's Device Bindings page, Button Map and Module Setup close without asking.</li>"
                 + "<li>A device still plugged in keeps its card, without a module. The card of a device that isn't plugged in goes.</li>"
                 + "<li>A module file another device uses stays; only this device's actions are removed. The message at the end says what was kept.</li>"
                 + "<li>An autosave of the stick (\"Autosave: stick deleted\") is always kept in the <b>Device Library</b> first: its module file, its pictures and its bindings in every mode. If the autosave can't be written or read back, nothing is deleted.</li>"
@@ -212,14 +212,14 @@ function topics() {
                 + "<li>The Logical Device and the program's own virtual buttons are ignored.</li>"
                 + "<li>To cancel, hold <b>Esc</b> for 1 second. A short tap does not cancel.</li>"
                 + "</ul>",
-            related: ["configuration-actions-keyboard-page", "configuration-actions-macro", "configuration-actions-condition"]
+            related: ["device-bindings-actions-keyboard-page", "device-bindings-actions-macro", "device-bindings-actions-condition"]
         },
 
         {
             id: "home-devices-input-modules",
             section: "Modules",
             title: "Set up an input module",
-            body: "<p>An input module decides which controls of a physical device exist for Gremlin-Platforms. Only claimed controls reach your actions, the viewers and the Auto Mapper.</p>"
+            body: "<p>An input module decides which controls of a physical device exist for Gremlin-Platforms. Only claimed controls reach your actions, the viewers and the Auto Mapping Tool.</p>"
                 + "<ol>"
                 + "<li>Open it from the card menu (<b>Module</b> › <b>Module Setup…</b>) or <b>Tools › Device Setup › Input Module Setup</b> <a href=\"open:tools.configureInput\">Open ›</a>.</li>"
                 + "<li>Press a control on the device to claim it, or tick it. Untick a control to release it.</li>"
@@ -282,7 +282,7 @@ function topics() {
             body: "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"
                 + "<p>To send to it:</p>"
                 + "<ol>"
-                + "<li>Choose <b>Add Action</b> on the input's row on the Configuration page (or right-click a Logical Device control and choose <b>Add Action</b>).</li>"
+                + "<li>Choose <b>Add Action</b> on the input's row on the Device Bindings page (or right-click a Logical Device control and choose <b>Add Action</b>).</li>"
                 + "<li>Choose <b>Map to Xbox</b>.</li>"
                 + "</ol>"
                 + "<p>Its page (double-click the card) shows which inputs drive each control. The <b>Xbox Viewer</b> <a href=\"open:tools.xboxViewer\">Open ›</a> shows the live pad.</p>"
@@ -292,7 +292,7 @@ function topics() {
                 + "<li>The pad number comes from the module's name: Xbox 360 Controller is pad 1.</li>"
                 + "<li>The page and the Xbox Viewer check the driver at their top: <b>ViGEmBus driver found</b> with its version, or what is wrong and what to do. <b>Get ViGEmBus</b> opens the Nefarius releases page; <b>Test ViGEmBus</b> opens Windows Game Controllers.</li>"
                 + "</ul>",
-            related: ["configuration-actions-map-to-xbox", "home-devices-vjoy-output", "tools-viewers", "getting-started-xbox-does-nothing"]
+            related: ["device-bindings-actions-map-to-xbox", "home-devices-vjoy-output", "tools-viewers", "getting-started-xbox-does-nothing"]
         },
         {
             id: "home-devices-module-files",
@@ -407,7 +407,7 @@ function topics() {
         {
             id: "home-devices-q-input-missing",
             section: "Common questions",
-            title: "Why doesn't an input show on the Configuration page?",
+            title: "Why doesn't an input show on the Device Bindings page?",
             body: "<p>Only claimed inputs show. Claim it in the device's input module. See <a href=\"topic:home-devices-input-modules\">Set up an input module</a>.</p>",
             related: ["home-devices-input-modules"]
         },

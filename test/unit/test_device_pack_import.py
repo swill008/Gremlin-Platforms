@@ -10,7 +10,7 @@ profile's action list instead (every other device lost its actions at the
 next save and load), skip controls that already had actions, keep wires on
 the exported vJoy when the output was put on another, create modes without
 their parent, and leave the replaced actions in the file. Also: Map
-settings in two rows, Configuration layout, the photo's placement, a
+settings in two rows, Device Bindings layout, the photo's placement, a
 newer pack refused, and Undo Import.
 
 A pack is exported from one profile and imported into another, as on a
@@ -328,7 +328,7 @@ def test_map_settings_rows_import_separately(pack: dict) -> None:
     assert ui["printArea"] == {"fx": 0, "fy": 0, "fw": 1, "fh": 1}
 
 
-def test_configuration_appearance_comes_with_the_pack(pack: dict) -> None:
+def test_device_bindings_appearance_comes_with_the_pack(pack: dict) -> None:
     path = _own_path(pack["name"])
     _import(pack, ["in.groups"])
     assert json.loads(path.read_text(encoding="utf-8"))["layout"]["groups"] == ["G40"]
@@ -362,7 +362,7 @@ def test_the_rows_and_notes(pack: dict) -> None:
         section["title"]: [item["title"] for item in section["items"]]
         for section in described["sections"]
     }
-    assert "Configuration layout" in titles["Input module"]
+    assert "Device Bindings layout" in titles["Input module"]
     assert titles["Map settings"] == ["Map view", "Print area and print settings"]
     assert "Combat (under Default)" in titles["Wires"]
     settings = next(s for s in described["sections"] if s["title"] == "Map settings")

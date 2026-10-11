@@ -739,7 +739,7 @@ def vjoy_exists(vjoy_id: int) -> bool:
 def vjoy_driver_ids(vjoy_id: int) -> dict[str, set[int]]:
     """The axis, button and hat ids the vJoy driver gives this device
     ({"axes", "buttons", "hats"}); all empty when the program doesn't list
-    it. The one check for "the driver has it" (Auto Mapper, the output
+    it. The one check for "the driver has it" (Auto Mapping Tool, the output
     picker and new actions, 05 S118). Axes by id: the driver can leave gaps."""
     from gremlin import device_initialization
 

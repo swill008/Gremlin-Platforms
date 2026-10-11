@@ -337,7 +337,7 @@ def test_undo_of_a_swap_puts_everything_back(
         monkeypatch.setattr(library, name, _REAL[name])
     monkeypatch.setattr(library, "folder", lambda: tmp_path / "device library")
     profile = gremlin.profile.Profile()
-    profile.from_xml(xml_dir / "profile_auto_mapper.xml")
+    profile.from_xml(xml_dir / "profile_auto_mapping_tool.xml")
     monkeypatch.setattr(shared_state, "current_profile", profile)
     path = pathlib.Path(profile.fpath)
     files = (

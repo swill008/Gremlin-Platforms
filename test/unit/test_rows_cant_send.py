@@ -3,7 +3,7 @@
 # ruff: noqa: E501 - the QML list rows below read best on one line each
 
 """Bindings that can't be sent show on the source's page (D-05-CANT-SEND):
-on the Configuration, Keyboard, Logical Device and OSC pages each action row
+on the Device Bindings, Keyboard, Logical Device and OSC pages each action row
 whose Map to vJoy (nested ones too) can't be sent carries the tooltip text
 (output.cant_send_text) in its cantSend role, its input row carries it too
 (a collapsed row stays findable), and the Find bar's "Can't be sent" tick
@@ -40,7 +40,7 @@ from gremlin.signal import signal
 _HERE = pathlib.Path(__file__).parent
 _ROOT = _HERE.parents[1]
 BAD = 99
-# The stick on the Configuration page (as test_hardware_layout's).
+# The stick on the Device Bindings page (as test_hardware_layout's).
 STICK = uuid.UUID("11111111-2222-3333-4444-555555555555")
 GUID = "{11111111-2222-3333-4444-555555555555}"
 NAME = "Test Stick"
@@ -162,7 +162,7 @@ def test_rows_follow_the_contract_signals(
     assert TEXT in _rows(logical, "parent")["parent:button:1"]["cantSend"]
 
 
-# -- Configuration page -----------------------------------------------------
+# -- Device Bindings page ---------------------------------------------------
 
 
 def test_configuration_rows_and_find_tick(cant: dict, module: Any) -> None:  # noqa: ANN401

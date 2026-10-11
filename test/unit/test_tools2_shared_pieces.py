@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Manage Modes, Auto Mapper, Live Log Reader, Save Diagnostics and HidHide
+"""Manage Modes, Auto Mapping Tool, Live Log Reader, Save Diagnostics and HidHide
 on the shared pieces (01 S140-S143): each delete / replace / clear / remove
 asks the one shared question (Enter cancels, only a click on the red button
 goes ahead), Manage Modes' Undo Delete Mode is the shared Undo / Redo pair
@@ -118,8 +118,8 @@ out['modes_back'] = modes.mode_exists('Flight')
 win.close()
 QtTest.QTest.qWait(200)
 
-# --- Auto Mapper: Overwrite asks; Enter cancels and nothing is made.
-win = open_window('DialogAutoMapper.qml', 'Auto Mapper')
+# --- Auto Mapping Tool: Overwrite asks; Enter cancels and nothing is made.
+win = open_window('DialogAutoMappingTool.qml', 'Auto Mapping Tool')
 ev(win, '_overwriteNonEmpty.checked = true')
 create = [i for i in items(win.contentItem())
           if i.property('text') == 'Create 1:1 Actions'][0]
@@ -225,7 +225,7 @@ def test_tool_windows_use_the_shared_pieces(tmp_path: pathlib.Path) -> None:
     assert out["modes_bar"] == [1, "Last change: Delete mode Flight", True], out
     assert out["modes_back"] is True, out
 
-    # Auto Mapper (08 S95).
+    # Auto Mapping Tool (08 S95).
     q = out["map_q"]
     assert q["shown"] and q["name"] == "confirmDialog", out
     assert q["action"] == "Replace Actions", q

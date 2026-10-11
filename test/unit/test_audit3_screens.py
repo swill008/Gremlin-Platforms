@@ -129,7 +129,7 @@ if __name__ != "__main__":
 
         previous = shared_state.current_profile
         loaded = Profile()
-        loaded.from_xml(str(xml_dir / "profile_auto_mapper.xml"))
+        loaded.from_xml(str(xml_dir / "profile_auto_mapping_tool.xml"))
         shared_state.current_profile = loaded
         try:
             model = ProfileDeviceListModel()

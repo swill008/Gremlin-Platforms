@@ -47,7 +47,7 @@ MAP_KEYS = {
 }
 _WORDS = {
     "claim": "checked controls and names",
-    "layout": "Configuration layout",
+    "layout": "Device Bindings layout",
     "calibration": "calibration",
     "view": "Output View Appearance",
     "nodes": "Button Map",

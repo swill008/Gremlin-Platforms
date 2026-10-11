@@ -31,7 +31,7 @@ function topics() {
                     "A profile always has at least one mode.",
                     "How modes switch while the profile runs, and where a loop back to an earlier mode lands, is in <a href=\"topic:modes-while-running\">How modes change while the profile runs</a>."
                 ]),
-            related: ["modes-manage", "modes-mode-box", "modes-while-running", "configuration-actions-change-mode"]
+            related: ["modes-manage", "modes-mode-box", "modes-while-running", "device-bindings-actions-change-mode"]
         },
         {
             id: "modes-manage",
@@ -117,7 +117,7 @@ function topics() {
                 + "<ul>"
                 + "<li><b>Run</b> starts in the mode shown in the Mode box, with no mode history from an earlier Run. If that mode is no longer in the profile, Run starts in the mode <b>Startup Mode</b> picks.</li>"
                 + "<li>An input with no actions in the running mode uses its parent's actions, through any number of levels.</li>"
-                + "<li><b>Switch</b> goes to a mode, <b>Previous</b> swaps back to the mode before, <b>Unwind</b> steps back one, <b>Cycle</b> goes to the next mode in its list, and <b>Temporary</b> stays in a mode only while the input is held. See <a href=\"topic:configuration-actions-change-mode\">Change Mode</a>.</li>"
+                + "<li><b>Switch</b> goes to a mode, <b>Previous</b> swaps back to the mode before, <b>Unwind</b> steps back one, <b>Cycle</b> goes to the next mode in its list, and <b>Temporary</b> stays in a mode only while the input is held. See <a href=\"topic:device-bindings-actions-change-mode\">Change Mode</a>.</li>"
                 + "<li>A switch to a mode the profile doesn't have is ignored: the mode stays, and one warning goes to the log.</li>"
                 + "<li>When a change goes back to a mode already in the list of modes you came through, <b>Mode cycle resolution</b> <a href=\"show:option/Mode cycle resolution\">Show me ›</a> decides where you land: <b>Oldest</b> (the default) or <b>Newest</b>. This includes loops made by Temporary.</li>"
                 + "</ul>"
@@ -128,7 +128,7 @@ function topics() {
                     "At <b>Stop</b>, a Temporary mode ends and the mode under it stays shown.",
                     "The mode the profile last ran in is kept for <b>Last Active</b> (see <a href=\"topic:options-profile-profile-settings\">Profile Settings</a>). Picking a mode in the Mode box while the profile is stopped doesn't count."
                 ]),
-            related: ["modes-modes", "modes-mode-box", "configuration-actions-change-mode", "getting-started-what-stop-releases"]
+            related: ["modes-modes", "modes-mode-box", "device-bindings-actions-change-mode", "getting-started-what-stop-releases"]
         },
 
         {

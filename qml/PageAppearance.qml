@@ -8,7 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Style
 import Gremlin.UI
 
-// The Appearance part shared by the four list pages (Configuration,
+// The Appearance part shared by the four list pages (Device Bindings,
 // Logical Device, Keyboard, OSC; to-do 91, PB1 from the Logical Device
 // page): the page's ListAppearancePanel (05 S125, AP2), whether it is shown,
 // remembered as displayPanelOpen(pageKey, "page"), and the page-bar button

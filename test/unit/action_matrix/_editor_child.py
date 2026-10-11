@@ -52,7 +52,7 @@ def story(j: Journey) -> None:
     QtCore.qInstallMessageHandler(capture)
     j.win.setWidth(1600)
     j.win.setHeight(950)
-    catalog = j.open_configuration("pjoy_pro")
+    catalog = j.open_device_bindings("pjoy_pro")
     editors: list[dict] = []
     j.out["editors"] = editors
     for job in jobs:

@@ -77,7 +77,7 @@ def _real(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> None:
 
 def _open_saved(xml_dir: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     profile = gremlin.profile.Profile()
-    profile.from_xml(xml_dir / "profile_auto_mapper.xml")
+    profile.from_xml(xml_dir / "profile_auto_mapping_tool.xml")
     monkeypatch.setattr(shared_state, "current_profile", profile)
     return Path(profile.fpath)
 
@@ -128,7 +128,7 @@ def test_undo_of_a_swap_leaves_a_profile_the_swap_left(
     _real(monkeypatch, tmp_path)
     opened = _open_saved(xml_dir, monkeypatch)
     other = tmp_path / "other.xml"
-    shutil.copyfile(xml_dir / "profile_auto_mapper.xml", other)
+    shutil.copyfile(xml_dir / "profile_auto_mapping_tool.xml", other)
     before = other.read_bytes()
     stuck = _unwritable(monkeypatch, other)  # can't be saved now
     result = library_swap.swap(LEFT, RIGHT, ["bindings"], [opened, other])
@@ -163,7 +163,7 @@ def test_a_swap_with_every_profile_failing_puts_the_module_files_back(
         store.module_file(*RIGHT).read_bytes(),
     )
     bad = tmp_path / "bad.xml"
-    shutil.copyfile(xml_dir / "profile_auto_mapper.xml", bad)
+    shutil.copyfile(xml_dir / "profile_auto_mapping_tool.xml", bad)
     _unwritable(monkeypatch, bad)
     result = library_swap.swap(LEFT, RIGHT, ALL, [bad])
     assert not result["ok"], result

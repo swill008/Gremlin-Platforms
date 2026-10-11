@@ -5,7 +5,7 @@
 """qml/control_menu.js, the right-click menu the four list pages share
 (to-do 91, Method B, PB1/PB2): fed each page's options, standardMenu gives
 exactly the menu that page built itself before the change (rows, order,
-labels, danger, enabled), except the Configuration page's Row section, which
+labels, danger, enabled), except the Device Bindings page's Row section, which
 gains Clear Name (PB2). actionMenu gives the action row's Open / Delete.
 
 control_menu_harness.qml is a stand-in page; control_menu_pages.js holds each
@@ -33,7 +33,7 @@ _HERE = pathlib.Path(__file__).resolve().parent
 
 _FILES = {
     "logical": "qml/LogicalPage.qml",
-    "configuration": "qml/ConfigurationPage.qml",
+    "device-bindings": "qml/ConfigurationPage.qml",  # its old menu at f4ee3994
     "keyboard": "qml/KeyboardPage.qml",
     "osc": "qml/OscPage.qml",
 }
@@ -62,7 +62,7 @@ _SCENARIOS: dict[str, dict] = {
 
 def _builders() -> dict[str, str]:
     text = (_HERE / "control_menu_pages.js").read_text(encoding="utf-8")
-    return dict(re.findall(r"^// == (\w+) ==\n(.*?)(?=^// == |\Z)", text, re.S | re.M))
+    return dict(re.findall(r"^// == ([\w-]+) ==\n(.*?)(?=^// == |\Z)", text, re.S | re.M))
 
 
 def _old_body(page: str) -> str:
@@ -157,9 +157,9 @@ def test_standard_menu_matches_each_page(tmp_path: pathlib.Path) -> None:
             assert out[page][name]["new"] == expected[page][name], (page, name)
 
 
-def test_configuration_gains_clear_name(tmp_path: pathlib.Path) -> None:
+def test_device_bindings_gains_clear_name(tmp_path: pathlib.Path) -> None:
     # PB2: the only change from today; the rest of its Row section is as before.
-    menus = _run(tmp_path)["configuration"]
+    menus = _run(tmp_path)["device-bindings"]
     row = menus["row"]["new"]["sections"][0]
     assert row == [
         "row|Row",

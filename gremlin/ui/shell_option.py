@@ -14,7 +14,7 @@ QML_IMPORT_NAME = "Gremlin.Config"
 QML_IMPORT_MAJOR_VERSION = 1
 
 SECTION_DISPLAY = "display"
-SECTION_AUTOMAP = "automap"
+SECTION_AUTO_MAPPING_TOOL = "auto-mapping-tool"
 
 
 def ensure_shell_options() -> None:
@@ -37,25 +37,25 @@ def ensure_shell_options() -> None:
             "Keep a card's last value after the control is released.",
         ),
         (
-            SECTION_AUTOMAP,
+            SECTION_AUTO_MAPPING_TOOL,
             "mapper",
             "remember-overwrite",
             PropertyType.Bool,
             True,
-            "Remember the Auto Mapper overwrite-used-inputs checkbox.",
+            "Remember the Auto Mapping Tool overwrite-used-inputs checkbox.",
         ),
         (
-            SECTION_AUTOMAP,
+            SECTION_AUTO_MAPPING_TOOL,
             "mapper",
             "overwrite-used-inputs",
             PropertyType.Bool,
             False,
-            "Last Auto Mapper overwrite-used-inputs value.",
+            "Last Auto Mapping Tool overwrite-used-inputs value.",
         ),
     ]
     for section, group, name, dtype, initial, desc in specs:
-        # The Auto Mapper remembers its own checkbox; it is not an Options entry.
-        shown = section != SECTION_AUTOMAP
+        # The Auto Mapping Tool remembers its own checkbox; it is not an Options entry.
+        shown = section != SECTION_AUTO_MAPPING_TOOL
         if not cfg.exists(section, group, name):
             cfg.register(section, group, name, dtype, initial, desc, {}, shown)
         else:

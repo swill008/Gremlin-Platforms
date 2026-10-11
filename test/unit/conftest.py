@@ -242,7 +242,7 @@ def _layout_models_quiet() -> Iterator[None]:
     """A page model (ControlLayoutModel) a test makes outlives it when it is
     only deleteLater'd (no event loop runs the deletion), and it still
     follows the program-wide notices: cantSendChanged then rebuilt nine
-    leftover Configuration page models on a later test's stand-in profile
+    leftover Device Bindings page models on a later test's stand-in profile
     (seed 53633, unit-4, test_osc_run). Models a QML page holds (they have
     a parent) are left to that page; models made by a module-scoped
     fixture are set up before this and kept."""
@@ -336,7 +336,7 @@ def xml_dir(unit_test_dir: pathlib.Path, tmp_path: pathlib.Path) -> pathlib.Path
     """A fresh copy of the unit tests' XML folder for each test. A test that
     loads a profile and something later saves it (the profile remembers its
     path) writes into the copy, never into the repo's test data (a full run
-    once rewrote xml/profile_auto_mapper.xml)."""
+    once rewrote xml/profile_auto_mapping_tool.xml)."""
     import shutil
 
     copy = tmp_path / "xml"

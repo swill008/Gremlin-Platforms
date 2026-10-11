@@ -785,7 +785,7 @@ def test_s65_s66_s67_menus_come_from_the_command_list(main_window: dict) -> None
     ]
     # Home is shown: View > Home can't be used, so it isn't listed (S66).
     assert menus["View"] == [
-        "Configuration", "Home Layout >", "Scripts", "Profile Settings",
+        "Device Bindings", "Home Layout >", "Scripts", "Profile Settings",
         "Command Palette… (Ctrl+K)",
     ]
     assert menus["Tools"] == [

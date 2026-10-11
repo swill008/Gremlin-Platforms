@@ -4,7 +4,7 @@
 
 """History window filter by profile (08 Q16, decided as recommended).
 
-The Configuration row's History filters by that input, mode and the open
+The Device Bindings row's History filters by that input, mode and the open
 profile, so another profile's changes to the same input stay out; Show All
 (the window keeps only the area) widens it again. Drives the real
 HistoryModel over entries written to a temporary History store.
@@ -90,7 +90,7 @@ def _titles(m: history_model.HistoryModel) -> set[str]:
 
 
 def _row_filter(profile: Path) -> str:
-    # As ConfigurationPage.qml historyFilter builds it.
+    # As DeviceBindingsPage.qml historyFilter builds it.
     return json.dumps(
         {
             "deviceId": _STICK,
@@ -116,7 +116,7 @@ def test_no_filter_shows_every_entry(model: history_model.HistoryModel) -> None:
     assert _titles(model) == _ALL
 
 
-def test_configuration_row_shows_only_the_open_profiles_input(
+def test_device_bindings_row_shows_only_the_open_profiles_input(
     model: history_model.HistoryModel, store: Path
 ) -> None:
     model.setFilter(_row_filter(store / "One.xml"))

@@ -63,7 +63,7 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
                 opacity: 0.65
-                text: "No input module sends to a vJoy output yet. Save an input module and add Map to vJoy actions in Configuration."
+                text: "No input module sends to a vJoy output yet. Save an input module and add Map to vJoy actions in Device Bindings."
             }
 
             Repeater {

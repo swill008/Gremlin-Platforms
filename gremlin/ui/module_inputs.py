@@ -19,7 +19,7 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 @ta.QmlElement
 class ModuleClaimedInputModel(QtCore.QAbstractListModel):
-    """Configuration left list: only controls the input module passes."""
+    """Device Bindings left list: only controls the input module passes."""
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),

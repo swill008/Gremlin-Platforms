@@ -92,7 +92,7 @@ def test_the_guide_builds_with_every_part(qapp: QtCore.QCoreApplication) -> None
         "Profiles that aren't open",
         "Search the Device Library",
         "Filter the list",
-        "Import a Device Pack",
+        "Import a device file into the Library",  # D-FIXLIST-B2
         "Export a saved setup",
         "Device Library Settings",
         "Tidy the Device Library",
@@ -118,7 +118,7 @@ def test_topics_are_unique_in_the_chapter(qapp: QtCore.QCoreApplication) -> None
 def test_the_menu_items_named_are_the_windows() -> None:
     text = _text(_guide_source())
     menu_items = (
-        "Import Device Pack…",
+        "Import Device…",  # D-FIXLIST-B2 (10 S1, S46)
         "Export Saved Setup…",
         "Open Library Folder",
         "Close",
@@ -190,7 +190,7 @@ def test_the_right_click_menus_named_are_the_windows(
     )
     builtin = ("Restore…",)  # Built-in inputs (10 S6, D-10-BUILTIN-SECTION)
     space = (
-        "Import Device Pack…",
+        "Import Device…",  # D-FIXLIST-B2 (10 S1, S46)
         "Expand All",
         "Collapse All",
         "Device Library Settings…",
@@ -267,7 +267,7 @@ def test_every_bold_label_is_on_screen() -> None:
         "Change vJoy Output",
         "Delete Device",
         "Delete File",
-        "Device Pack",
+        "Export / Import Device",  # D-FIXLIST-B2 (08 S49a)
         "Undo",
         "Esc",
         "Enter",
@@ -318,7 +318,7 @@ def test_the_words_match_the_program() -> None:
         "Autosave: before Copy from ",
         "Autosave: before Swap with ",
         "Autosave: before Change vJoy Output (",
-        "Autosave: before Device Pack ",
+        "Autosave: before Import Device ",
     ):
         assert start in text and start in code, start
     # Window and dialog text quoted in the guide.

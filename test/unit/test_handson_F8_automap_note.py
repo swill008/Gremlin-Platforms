@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Auto Mapper (08 S97, D-08-AUTOMAP-NOTE): after Create 1:1 Actions the
+"""Auto Mapping Tool (08 S97, D-08-AUTOMAP-NOTE): after Create 1:1 Actions the
 result says the new actions are in the open profile and not saved yet, with
 Overwrite on or off. Only the Overwrite question said so; the result line
 under the button is what the Tools slot (createMappings) hands the dialog."""
@@ -13,10 +13,10 @@ from pathlib import Path
 
 import pytest
 
-from gremlin.auto_mapper import AutoMapper, AutoMapperOptions
+from gremlin.auto_mapping_tool import AutoMappingTool, AutoMappingToolOptions
 from gremlin.ui.tools import Tools
 from test.unit import test_stage1_modules
-from test.unit.test_stage1_history_pack import _auto_map_setup, new_profile
+from test.unit.test_stage1_history_pack import _auto_mapping_tool_setup, new_profile
 from test.unit.test_stage1_modules import mapped, stick_uid
 
 _app = test_stage1_modules._app
@@ -32,7 +32,7 @@ NOTE = (
 def test_the_result_says_the_new_actions_are_not_saved(
     folder: Path, monkeypatch: pytest.MonkeyPatch, overwrite: bool
 ) -> None:
-    _auto_map_setup(folder, [1, 2], [1, 2])
+    _auto_mapping_tool_setup(folder, [1, 2], [1, 2])
     profile = new_profile(monkeypatch)
     text = Tools().createMappings(
         "Default", {"pJoy Pro": True}, {"vJoy 1": True}, overwrite, False, False
@@ -46,13 +46,13 @@ def test_no_note_when_nothing_changed(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A second run with Overwrite off makes nothing: nothing to save."""
-    _auto_map_setup(folder, [1], [1])
+    _auto_mapping_tool_setup(folder, [1], [1])
     profile = new_profile(monkeypatch)
-    AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions()
+    AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions()
     )
-    text = AutoMapper(profile).generate_module_mappings(
-        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions()
+    text = AutoMappingTool(profile).generate_module_mappings(
+        ["pJoy Pro"], ["vJoy 1"], AutoMappingToolOptions()
     )
     assert text.startswith("Made 0 actions in Default; 1 inputs kept their actions."), (
         text

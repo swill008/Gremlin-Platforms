@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Clear on the Find bar resets every Find filter (05 S124, decision
-D-05-FIND-CLEAR): on the Configuration page that includes the action Type
+D-05-FIND-CLEAR): on the Device Bindings page that includes the action Type
 and Output boxes, as Clear Filters does.
 
 A journey (test/journeys/_harness.py) on the real program, off-screen, with a
 temporary USERPROFILE and the fake joystick driver. The page is hosted the
-way test_configuration_page_qml hosts it; the user picks a Type and an
+way test_device_bindings_page_qml hosts it; the user picks a Type and an
 Output, then presses the bar's Clear button.
 
 Spec: 05 S124 (FC1).
@@ -42,7 +42,7 @@ def _find_page(j: Journey) -> Any:  # noqa: ANN401
             continue
         for item in j.walk(w.contentItem()):
             if item.metaObject().className().startswith(
-                "ConfigurationPage"
+                "DeviceBindingsPage"
             ) and item.isVisible():
                 return item
     return None
@@ -70,7 +70,7 @@ def story(j: Journey) -> None:
         "(function() {"
         " var win = Qt.createQmlObject('import QtQuick; import QtQuick.Window;"
         " Window { width: 1600; height: 900; visible: true }', _root, 'host');"
-        " var c = Qt.createComponent('ConfigurationPage.qml');"
+        " var c = Qt.createComponent('DeviceBindingsPage.qml');"
         " if (c.status !== Component.Ready) return 'error: ' + c.errorString();"
         f" var page = c.createObject(win.contentItem, {{ guid: {str(uid)!r},"
         f" deviceName: {STICK!r} }});"
@@ -79,7 +79,7 @@ def story(j: Journey) -> None:
         " return 'ok' })()"
     )
     assert made == "ok", made
-    page = j.wait_until(lambda: _find_page(j), "the hosted ConfigurationPage")
+    page = j.wait_until(lambda: _find_page(j), "the hosted DeviceBindingsPage")
     from gremlin.ui.hardware_layout import HardwareLayoutModel
 
     layout = j.wait_until(lambda: page.findChild(HardwareLayoutModel), "the model")
@@ -87,8 +87,8 @@ def story(j: Journey) -> None:
     j.QTest.qWait(300)
     j.out["rowsBefore"] = layout.rowCount()
 
-    kind = _by_name(j, page, "configurationActionType")
-    output = _by_name(j, page, "configurationOutputFilter")
+    kind = _by_name(j, page, "deviceBindingsActionType")
+    output = _by_name(j, page, "deviceBindingsOutputFilter")
     keys = list(layout.property("typeFilterKeys"))
     # Keyboard: no input here has one, so the list is filtered.
     kind.setProperty("currentIndex", keys.index("keyboard"))

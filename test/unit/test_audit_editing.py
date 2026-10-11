@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Configuration page and Logical Device fixes from the code audit (AU-10,
+"""Device Bindings page and Logical Device fixes from the code audit (AU-10,
 11, 12, 13, 28, 29, 30, 33)."""
 
 from __future__ import annotations
@@ -73,7 +73,7 @@ def catalog() -> Iterator[tuple[Any, Profile, dict]]:
     )
     for out in (1, 2):
         item.add_item_binding().root_action.insert_action(_vjoy(out), "children")
-    # The Configuration page's model (HardwareLayoutModel), button 1 claimed.
+    # The Device Bindings page's model (HardwareLayoutModel), button 1 claimed.
     model = page_on(_STICK)
     shown = {"mode": "Default"}
     yield model, profile, shown

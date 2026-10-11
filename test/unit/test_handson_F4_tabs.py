@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Hands-on fix F4: the Configuration device tab bar lists every device
+"""Hands-on fix F4: the Device Bindings device tab bar lists every device
 (Main.qml's DeviceListModel), so a pinned vJoy keeps its tab.
 
 DeviceListModel.deviceType is honoured now (it has a getter); "physical"
@@ -36,7 +36,7 @@ def story(j: Journey) -> None:
 
     out = j.out
     bar = j.ev("_deviceList")
-    # The bar shows on the Configuration page with no device page open.
+    # The bar shows on the Device Bindings page with no device page open.
     j.backend.uiState.setCurrentRoom("configuration")
     j.wait_until(lambda: bar.property("visible"), "the device tab bar")
     pins = VJoyStatus()

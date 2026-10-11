@@ -121,7 +121,7 @@ def story(j: Journey) -> None:  # noqa: PLR0915 (one story, several parts)
     out = j.out
     runtime = osc.OscRuntime()
     state = j.backend.uiState
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("osc"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("osc"))')
     j.wait_until(lambda: state.currentTab == "osc", "the OSC page")
     page = j.wait_until(lambda: j.win.findChild(OscLayoutModel), "the OSC model")
     add = j.win.findChild(OscDeviceManagementModel) or OscDeviceManagementModel()

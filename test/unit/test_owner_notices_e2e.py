@@ -22,7 +22,7 @@ new value anyway):
 4. Device Library Swap (pJoy Pro with Saitek X52, bindings, the open
    profile ticked): vJoy 1 is then driven by the X52, not the pJoy.
 5. Device rename (Home's rename, DeviceNames.setAlias): the Device Library
-   rows, the Input Viewer device list, the Configuration page title and
+   rows, the Input Viewer device list, the Device Bindings page title and
    the Home card show the new name.
 6. Logical Device rename (the Logical Device page's setUserName): the
    Input Viewer's paired-input label and the Xbox page's "incoming" text
@@ -41,7 +41,7 @@ A second journey (fake vJoy 1 and vJoy 2, an output module for each): the
 pJoy Pro's button 1 sends to vJoy 1; the Device Library's Change vJoy
 Output (the window's changeOutput) moves it to vJoy 2 in the open profile.
 "Driven by" moves from the vJoy 1 card to the vJoy 2 card (model rows and
-the Home cards), the Configuration page's wire label names vJoy 2, and the
+the Home cards), the Device Bindings page's wire label names vJoy 2, and the
 open profile (saved and opened again) sends to vJoy 2.
 
 Spec: D-01-OWNER-NOTICES (1a, 2a, 3a, 4a, 6b); 10 S7, S26, S58.
@@ -230,7 +230,7 @@ def _part_osc_undo(j: Journey) -> None:
 
     out = j.out
     state = j.backend.uiState
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("osc"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("osc"))')
     j.wait_until(lambda: state.currentTab == "osc", "the OSC page")
     page = j.wait_until(lambda: j.win.findChild(OscLayoutModel), "the OSC page model")
     adder = j.win.findChild(OscDeviceManagementModel) or OscDeviceManagementModel()
@@ -306,7 +306,7 @@ def _part_device_rename(j: Journey) -> None:
     j.settle()
     out["rename:viewer-before"] = [r["name"] for r in viewer._rows]
     j.ev(
-        "openConfigurationForCard(_moduleModel.cardMap("
+        "openDeviceBindingsForCard(_moduleModel.cardMap("
         f'"{_row(j, "Saitek X52", "source").slug}"))'
     )
     j.wait_until(lambda: j.ev("uiState.currentRoom") == "configuration", "the X52 page")
@@ -432,7 +432,7 @@ def _part_reload_header(j: Journey) -> None:
     out = j.out
     _go_home(j)
     slug = _row(j, "vJoy 1", "dest").slug
-    j.ev(f'openConfigurationForCard(_moduleModel.cardMap("{slug}"))')
+    j.ev(f'openDeviceBindingsForCard(_moduleModel.cardMap("{slug}"))')
     j.wait_until(lambda: j.ev("uiState.currentRoom") == "configuration", "Output View")
     header = j.item(j.win, "destBound")
     out["reload:header-before"] = str(header.property("text"))
@@ -486,7 +486,7 @@ def _button_1_dests(j: Journey, uid: Any) -> list[int]:  # noqa: ANN401
 
 
 def _wire_labels(j: Journey, layout: Any) -> list[str]:  # noqa: ANN401
-    """The Configuration page's wire labels on button 1 (its action rows)."""
+    """The Device Bindings page's wire labels on button 1 (its action rows)."""
     return [
         str(r.get("subtitle") or "")
         for r in j.catalog_rows(layout)
@@ -514,7 +514,7 @@ def output_story(j: Journey) -> None:
     url = QtCore.QUrl.fromLocalFile(str(path)).toString()
     assert j.backend.saveProfile(url), "the profile was not saved"
     saved_before = path.read_text(encoding="utf-8")
-    layout = j.open_configuration(_row(j, "pJoy Pro", "source").slug)
+    layout = j.open_device_bindings(_row(j, "pJoy Pro", "source").slug)
     out["out:wire-before"] = _wire_labels(j, layout)
 
     library = DeviceLibraryModel()

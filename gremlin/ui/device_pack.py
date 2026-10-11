@@ -304,7 +304,7 @@ def _print_lines(doc: dict) -> list[str]:
 
 
 def _groups_lines(doc: dict) -> list[str]:
-    """The Configuration layout (CF-Q1): its groups and their inputs."""
+    """The Device Bindings layout (CF-Q1): its groups and their inputs."""
     from gremlin.modules import store
 
     raw = doc.get(store.LAYOUT_KEY)
@@ -314,7 +314,7 @@ def _groups_lines(doc: dict) -> list[str]:
     if layout == store.empty_layout():
         return []
     names = _friendly(doc)
-    lines = ["The Configuration page's groups and the order of its inputs."]
+    lines = ["The Device Bindings page's groups and the order of its inputs."]
     for group in layout["groups"]:
         members = [
             _layout_input(key, names)
@@ -410,7 +410,7 @@ def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
         items.append(_item(prefix + "view", "Output View Appearance", _clip(view)))
     groups = _groups_lines(doc)
     if groups:
-        items.append(_item(prefix + "groups", "Configuration layout", _clip(groups)))
+        items.append(_item(prefix + "groups", "Device Bindings layout", _clip(groups)))
     logical = _logical_lines(doc)
     if logical:
         items.append(
@@ -455,7 +455,7 @@ def module_text(doc: dict, parts: list[str] | None = None) -> str:
     if "view" in wanted:
         sections.append(("Output View Appearance", _view_lines(doc)))
     if "layout" in wanted:
-        sections.append(("Configuration layout", _groups_lines(doc)))
+        sections.append(("Device Bindings layout", _groups_lines(doc)))
     if "nodes" in wanted:
         sections.append(("Map", _chip_lines(doc)))
     if wanted & {"photo", "image"}:
@@ -1468,7 +1468,7 @@ def _merge_module(
                 + f", and {noun} not checked."
             )
     if prefix + "groups" in chosen and isinstance(incoming.get("layout"), dict):
-        # The Configuration layout (CF-Q1) replaces the target's.
+        # The Device Bindings layout (CF-Q1) replaces the target's.
         base["layout"] = store.normalize_layout(incoming["layout"])
     every = [node for node in (base.get("nodes") or []) if isinstance(node, dict)]
     base_bg = [node for node in every if store.is_background(node)]

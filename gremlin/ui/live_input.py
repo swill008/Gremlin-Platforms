@@ -263,7 +263,7 @@ class DeviceLiveState(QtCore.QObject):
             return False
 
     def _poll_output(self) -> None:
-        """vJoy dest Configuration live: this output module's feeder only."""
+        """vJoy dest Device Bindings live: this output module's feeder only."""
         if not self._live_while_active:
             return
         if not self._vjoy_id:

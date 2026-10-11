@@ -6,8 +6,8 @@ AUD-FILES-12).
 
 Both pages keep their groups, order and Rename names in the device's own
 module file (Keyboard/module.json: "layout" + "key:<id>" names;
-OSC/module.json: "layout" + "osc:<uid>" names). Like the Configuration
-page's (test_cfg_page_carry), they must come back through every path that
+OSC/module.json: "layout" + "osc:<uid>" names). Like the Device Bindings
+page's (test_device_bindings_page_carry), they must come back through every path that
 carries a module file: Device Library save + Restore, Export Current /
 Export Saved Setup, History restore and a Device Pack import (with Undo
 Import). Swap and Copy are not offered for built-in inputs (10 S6), so they

@@ -1151,31 +1151,31 @@
    "count": 1
   },
   {
-   "file": "gremlin/auto_mapper.py",
+   "file": "gremlin/auto_mapping_tool.py",
    "rule": "reportArgumentType",
    "message": "Argument of type \"InputItem | None\" cannot be assigned to parameter \"physical_input\" of type \"InputItem\" in function \"_create_new_mapping\"",
    "count": 1
   },
   {
-   "file": "gremlin/auto_mapper.py",
+   "file": "gremlin/auto_mapping_tool.py",
    "rule": "reportArgumentType",
    "message": "Argument of type \"Profile | None\" cannot be assigned to parameter \"profile\" of type \"Profile\" in function \"__init__\"",
    "count": 1
   },
   {
-   "file": "gremlin/auto_mapper.py",
+   "file": "gremlin/auto_mapping_tool.py",
    "rule": "reportOptionalMemberAccess",
    "message": "\"action_sequences\" is not a known attribute of \"None\"",
    "count": 2
   },
   {
-   "file": "gremlin/auto_mapper.py",
+   "file": "gremlin/auto_mapping_tool.py",
    "rule": "reportOptionalMemberAccess",
    "message": "\"insert_action\" is not a known attribute of \"None\"",
    "count": 1
   },
   {
-   "file": "gremlin/auto_mapper.py",
+   "file": "gremlin/auto_mapping_tool.py",
    "rule": "reportOptionalOperand",
    "message": "Operator \"+\" not supported for \"None\"",
    "count": 1
@@ -1661,7 +1661,7 @@
    "count": 1
   },
   {
-   "file": "gremlin/ui/auto_map_modules.py",
+   "file": "gremlin/ui/auto_mapping_tool_modules.py",
    "rule": "reportArgumentType",
    "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
    "count": 2
@@ -3037,19 +3037,19 @@
    "count": 2
   },
   {
-   "file": "gremlin/ui/auto_map_modules.py",
+   "file": "gremlin/ui/auto_mapping_tool_modules.py",
    "rule": "ANN001",
    "message": "Missing type annotation for function argument `loader`",
    "count": 1
   },
   {
-   "file": "gremlin/ui/auto_map_modules.py",
+   "file": "gremlin/ui/auto_mapping_tool_modules.py",
    "rule": "ANN202",
    "message": "Missing return type annotation for private function `data`",
    "count": 1
   },
   {
-   "file": "gremlin/ui/auto_map_modules.py",
+   "file": "gremlin/ui/auto_mapping_tool_modules.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
    "count": 1
@@ -3739,7 +3739,7 @@
    "count": 1
   },
   {
-   "file": "test/unit/test_configuration_page_qml.py",
+   "file": "test/unit/test_device_bindings_page_qml.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
    "count": 2

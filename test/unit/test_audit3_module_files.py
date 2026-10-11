@@ -192,7 +192,7 @@ def test_delete_device_removes_a_renamed_sticks_file(folder: Path) -> None:
     assert result["stub"] and not result["keptFile"]
 
 
-def test_calibration_and_auto_mapper_open_on_the_cards_file(folder: Path) -> None:
+def test_calibration_and_auto_mapping_tool_open_on_the_cards_file(folder: Path) -> None:
     guid = _renamed(folder)
     # The window's rows are named by device folder.
     assert calibration.module_for_slug("Old Name") is not None
@@ -200,7 +200,7 @@ def test_calibration_and_auto_mapper_open_on_the_cards_file(folder: Path) -> Non
     main = (pathlib.Path(__file__).parents[2] / "qml" / "Main.qml").read_text(
         encoding="utf-8"
     )
-    for window in ("DialogAutoMapper.qml", "DialogCalibration.qml"):
+    for window in ("DialogAutoMappingTool.qml", "DialogCalibration.qml"):
         start = main.find(f'createComponent("{window}"')
         call = main[start : main.find("})", start)]
         # Old: "initialSlug": card.slug (pjoy_pro): another device was shown.

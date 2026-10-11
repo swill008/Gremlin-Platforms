@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""A quick tap always finds its row on the Configuration page
+"""A quick tap always finds its row on the Device Bindings page
 (D-05-QUICK-TAP, 05 S131).
 
 A journey (test/journeys/_harness.py) on the real program off-screen: the
@@ -10,7 +10,7 @@ fake "pJoy Pro" stick, the program stopped, Input highlighting on. A stick
 button pressed and released back to back, with no event loop turn between
 them (so no live-tint poll of the row can see it), still makes the backend
 say setInputIndex (backend._highlight_input on joystick_event) and the page
-jumps to the row and flashes it (ConfigurationPage.showIndex ->
+jumps to the row and flashes it (DeviceBindingsPage.showIndex ->
 ControlTree.showKey). The jump is event-driven, so the row update rate
 can't make it miss.
 """
@@ -61,7 +61,7 @@ def story(j: Journey) -> None:
 
     out = j.out
     uid = j.stick(STICK).device_guid.uuid
-    j.ev(f"openConfigurationForCard(_moduleModel.cardMap({json.dumps('pjoy_pro')}))")
+    j.ev(f"openDeviceBindingsForCard(_moduleModel.cardMap({json.dumps('pjoy_pro')}))")
 
     def page() -> Any:  # noqa: ANN401
         for model in j.win.findChildren(HardwareLayoutModel):
@@ -71,7 +71,7 @@ def story(j: Journey) -> None:
                 return model
         return None
 
-    layout = j.wait_until(page, "the Configuration page of pjoy_pro")
+    layout = j.wait_until(page, "the Device Bindings page of pjoy_pro")
 
     def live_tree() -> Any:  # noqa: ANN401
         for item in j.walk(j.win.contentItem()):

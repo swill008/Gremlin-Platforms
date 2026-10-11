@@ -4,7 +4,7 @@
 
 """Journey 11: random steps on the four list pages, fixed seeds.
 
-The Configuration (pJoy Pro), Logical Device, Keyboard and OSC pages are
+The Device Bindings (pJoy Pro), Logical Device, Keyboard and OSC pages are
 opened through their Home cards and driven with random steps through the
 page models' own slots: add an input or key, an action in the pane (OK or
 x), Rename and Clear Name, groups (add, move into, rename, delete, up,
@@ -48,7 +48,7 @@ SLUG = {
 }
 TAB = {"config": "physical", "logical": "logical", "keyboard": "keyboard", "osc": "osc"}
 PANE_FN = {
-    "config": "configurationPane()",
+    "config": "deviceBindingsPane()",
     "logical": "logicalPane()",
     "keyboard": "keyboardPane()",
     "osc": "oscPane()",
@@ -140,7 +140,7 @@ class _Random:
         j = self.j
         self.page = page
         j.ev(
-            f"openConfigurationForCard(_moduleModel.cardMap({json.dumps(SLUG[page])}))"
+            f"openDeviceBindingsForCard(_moduleModel.cardMap({json.dumps(SLUG[page])}))"
         )
         j.wait_until(
             lambda: j.backend.uiState.currentTab == TAB[page], f"tab {page}", 10
@@ -364,7 +364,7 @@ class _Random:
             # What Main's Discard calls, then the profile opened again.
             j.backend.discardLogicalDevice()
             j.backend.discardOscDevice()
-            j.backend.discardConfigurationLayouts()
+            j.backend.discardDeviceBindingsLayouts()
             self.reopen()
             if bool(j.backend.profileContainsUnsavedChanges):
                 self.fail("unsaved-after-discard-reopen", True)

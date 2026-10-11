@@ -4,7 +4,7 @@
 
 """A mode renamed or deleted: what names a mode follows (audit 2, group C).
 
-The Configuration page's open action and its Undo steps, the Logical
+The Device Bindings page's open action and its Undo steps, the Logical
 Device's, the running profile's mode list, Change Mode lists (in place: a
 running Cycle holds them) and script mode settings.
 """
@@ -59,7 +59,7 @@ def _vjoy(out: int) -> Any:  # noqa: ANN401
 
 
 def _catalog(profile: Profile, shown: dict) -> Any:  # noqa: ANN401
-    """The Configuration page's model (HardwareLayoutModel), button 1
+    """The Device Bindings page's model (HardwareLayoutModel), button 1
     claimed, showing the mode in shown["mode"]."""
     from test.unit.hardware_page_helper import page_on
 

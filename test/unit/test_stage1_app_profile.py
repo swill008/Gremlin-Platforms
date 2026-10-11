@@ -1276,7 +1276,7 @@ def test_run_skips_unfinished_actions(
 
 
 def _catalog(profile: Profile, kind: InputType, hw: int) -> Any:  # noqa: ANN401
-    """The Configuration page model (HardwareLayoutModel), stick input hw
+    """The Device Bindings page model (HardwareLayoutModel), stick input hw
     claimed; its pane opens on _row_key(kind, hw)."""
     from test.unit.hardware_page_helper import page_on
 

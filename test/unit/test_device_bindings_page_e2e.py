@@ -2,12 +2,12 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The new Configuration page, end to end on the real program (batch C).
+"""The new Device Bindings page, end to end on the real program (batch C).
 
 A journey (test/journeys/_harness.py): the app is built off-screen in its
 own process with a temporary USERPROFILE, the fake joystick driver with the
 fake "pJoy Pro" and a second stick, and a fake vJoy behind the output
-module. The story opens the Configuration page from the stick's Home card
+module. The story opens the Device Bindings page from the stick's Home card
 and drives the page's own model (HardwareLayoutModel), as the screen does:
 
 1. Rows are the module's claimed inputs (05 S121). Open a row, add Map to
@@ -70,14 +70,14 @@ _PAGE_MISSING = [
             "gremlin/ui/hardware_layout.py",
             (ROOT / "gremlin/ui/hardware_layout.py").exists(),
         ),
-        ("qml/ConfigurationPage.qml", (ROOT / "qml/ConfigurationPage.qml").exists()),
+        ("qml/DeviceBindingsPage.qml", (ROOT / "qml/DeviceBindingsPage.qml").exists()),
         ("a QML page using HardwareLayoutModel", _qml_uses("HardwareLayoutModel")),
     )
     if not there
 ]
 needs_page = pytest.mark.xfail(
     bool(_PAGE_MISSING),
-    reason="needs the batch C Configuration page: missing " + ", ".join(_PAGE_MISSING),
+    reason="needs the batch C Device Bindings page: missing " + ", ".join(_PAGE_MISSING),
     raises=(AssertionError, JourneyIncomplete),
     strict=True,
 )
@@ -185,13 +185,13 @@ def _same_guid(a: object, b: object) -> bool:
 
 
 def _open_page(j: Journey, slug: str, guid: object) -> Any:  # noqa: ANN401
-    """Opens the Configuration page from the stick's Home card; returns
+    """Opens the Device Bindings page from the stick's Home card; returns
     the page's HardwareLayoutModel showing that stick."""
     import json
 
     from gremlin.ui.hardware_layout import HardwareLayoutModel
 
-    j.ev(f"openConfigurationForCard(_moduleModel.cardMap({json.dumps(slug)}))")
+    j.ev(f"openDeviceBindingsForCard(_moduleModel.cardMap({json.dumps(slug)}))")
 
     def find() -> Any:  # noqa: ANN401
         for model in j.win.findChildren(HardwareLayoutModel):
@@ -201,7 +201,7 @@ def _open_page(j: Journey, slug: str, guid: object) -> Any:  # noqa: ANN401
                 return model
         return None
 
-    return j.wait_until(find, f"the Configuration page of {slug}")
+    return j.wait_until(find, f"the Device Bindings page of {slug}")
 
 
 def _module_path(guid: object) -> pathlib.Path:
@@ -365,7 +365,7 @@ def _part_discard(j: Journey, page: Any, uid: Any) -> None:  # noqa: ANN401
     out["4:groups-edited"] = _group_names(page)
     out["4:pending-edited"] = store.has_pending()
     # What the save question's Discard calls.
-    j.backend.discardConfigurationLayouts()
+    j.backend.discardDeviceBindingsLayouts()
     j.settle()
     out["4:groups-discarded"] = _group_names(page)
     out["4:pending-discarded"] = store.has_pending()
@@ -429,7 +429,7 @@ def _part_switch(j: Journey, page: Any, second: Any) -> None:  # noqa: ANN401
         k for k in _parents(page) if k.startswith("parent:button:")
     )
     # Not saved: the held group goes with Discard.
-    j.backend.discardConfigurationLayouts()
+    j.backend.discardDeviceBindingsLayouts()
     j.settle()
 
 
@@ -440,7 +440,7 @@ def _part_keyboard(j: Journey) -> None:
     from gremlin.ui.keyboard_layout import KeyboardLayoutModel
 
     out = j.out
-    j.ev('openConfigurationForCard(_moduleModel.cardMap("keyboard"))')
+    j.ev('openDeviceBindingsForCard(_moduleModel.cardMap("keyboard"))')
     j.wait_until(
         lambda: j.backend.uiState.currentTab == "keyboard", "the Keyboard page"
     )
@@ -523,7 +523,7 @@ def story(j: Journey) -> None:
 
 def keyboard_story(j: Journey) -> None:
     """The Keyboard page in a process of its own: a crash on the
-    Configuration page doesn't hide it."""
+    Device Bindings page doesn't hide it."""
     with _Part(j, "7"):
         _part_keyboard(j)
 
@@ -535,7 +535,7 @@ def main() -> None:
         j.input_module(SECOND, buttons=[5, 6], guid=second)
         j.vjoy_module()
 
-    which = sys.argv[1] if len(sys.argv) > 1 else "configuration"
+    which = sys.argv[1] if len(sys.argv) > 1 else "device-bindings"
     Journey(before).run(keyboard_story if which == "keyboard" else story)
 
 

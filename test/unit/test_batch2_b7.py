@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Catch-up batch 2, B7: History, Device Pack and Auto Mapper (spec page 08).
+"""Catch-up batch 2, B7: History, Device Pack and Auto Mapping Tool (spec page 08).
 
 Device Pack: a wire import that fails partway changes nothing in the profile
 (GL-099, decision A3); Undo Import asks before putting back a file saved
@@ -11,7 +11,7 @@ actions now (GL-032); output modules stay within the vJoy's size (GL-191).
 History: reading waits for the writer instead of running its work on the
 UI thread (GL-187), reads only what was appended (GL-041), shows module
 files in words (GL-192) and applies Diagnostic logs and UI scale at once
-on Restore (GL-115). Auto Mapper: every input and nested action counts as
+on Restore (GL-115). Auto Mapping Tool: every input and nested action counts as
 using a vJoy output (GL-189), no assert on an odd binding (GL-190), and a
 vJoy read back as an input is skipped and said (GL-313).
 """
@@ -29,7 +29,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from gremlin import auto_mapper, device_initialization, history, plugin_manager
+from gremlin import auto_mapping_tool, device_initialization, history, plugin_manager
 from gremlin.modules import module_file, store
 from gremlin.profile import Profile
 from gremlin.types import InputType, VjoyInput
@@ -299,7 +299,7 @@ def test_an_input_restore_closes_the_action_panes_first() -> None:
     assert history_model.describe(entry)["closesPanes"] is False
 
 
-# --- Auto Mapper ---------------------------------------------------------------
+# --- Auto Mapping Tool ---------------------------------------------------------------
 
 
 def _vjoy_map(item: object, vjoy: int, out: int) -> object:
@@ -333,7 +333,7 @@ def test_every_input_and_nested_action_counts_as_used(
         unplugged, InputType.JoystickButton, 2, "Default", create_if_missing=True
     )
     top.add_item_binding().root_action.insert_action(_vjoy_map(top, 1, 5), "children")
-    used = auto_mapper.AutoMapper(profile)._get_used_vjoy_inputs("Default")
+    used = auto_mapping_tool.AutoMappingTool(profile)._get_used_vjoy_inputs("Default")
     assert VjoyInput(1, InputType.JoystickButton, 4) in used
     assert VjoyInput(1, InputType.JoystickButton, 5) in used
 
@@ -354,21 +354,21 @@ def test_a_binding_without_the_usual_root_is_no_assert() -> None:
     )
     binding = item.add_item_binding()
     binding.root_action = None
-    assert auto_mapper.AutoMapper(profile)._get_used_vjoy_inputs("Default") == []
+    assert auto_mapping_tool.AutoMappingTool(profile)._get_used_vjoy_inputs("Default") == []
 
 
 def test_a_vjoy_read_back_as_an_input_is_skipped_and_said(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """GL-313: no actions to it, and the result line says why."""
-    from gremlin.modules import auto_map
+    from gremlin.modules import auto_mapping_tool as tool_modules
 
     vjoy = SimpleNamespace(vjoy_id=1, axis_map=[], button_count=8, hat_count=0)
     monkeypatch.setattr(device_initialization, "vjoy_devices", lambda: [vjoy])
     monkeypatch.setattr(device_initialization, "output_vjoy_devices", lambda: [])
     stick = uuid.uuid4()
     monkeypatch.setattr(
-        auto_map,
+        tool_modules,
         "input_modules",
         lambda: [
             {
@@ -380,7 +380,7 @@ def test_a_vjoy_read_back_as_an_input_is_skipped_and_said(
         ],
     )
     monkeypatch.setattr(
-        auto_map,
+        tool_modules,
         "output_modules",
         lambda: [
             {
@@ -392,10 +392,10 @@ def test_a_vjoy_read_back_as_an_input_is_skipped_and_said(
         ],
     )
     profile = Profile()
-    mapper = auto_mapper.AutoMapper(profile)
+    mapper = auto_mapping_tool.AutoMappingTool(profile)
     assert mapper._vjoy_limits(1) is None
     text = mapper.generate_module_mappings(
-        ["stick"], ["vjoy_1"], auto_mapper.AutoMapperOptions()
+        ["stick"], ["vjoy_1"], auto_mapping_tool.AutoMappingToolOptions()
     )
     assert "vJoy 1 is used as an input" in text
     items = profile.inputs.get(stick, [])

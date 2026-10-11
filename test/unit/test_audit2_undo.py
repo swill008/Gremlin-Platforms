@@ -173,12 +173,12 @@ def test_logical_undo_after_the_library_dropped_an_action_still_saves(
     model.deleteLater()
 
 
-def test_configuration_undo_that_cant_be_played_keeps_its_step(
+def test_device_bindings_undo_that_cant_be_played_keeps_its_step(
     profile: Profile,
 ) -> None:
     from test.unit.hardware_page_helper import close, page_on
 
-    # The Configuration page's model; a step whose copy is damaged.
+    # The Device Bindings page's model; a step whose copy is damaged.
     model = page_on(_STICK)
     key = (_STICK, InputType.JoystickButton, 1, "Default")
     layout = model._layout.memento()

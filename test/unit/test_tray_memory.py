@@ -99,11 +99,11 @@ def test_pages_load_only_while_needed() -> None:
         ), page
     home = r"active: !_root.trayed[\s\S]{0,200}sourceComponent: StatusPage"
     assert re.search(home, main)
-    # Configuration's pages, one loader per tab, and none in the tray unless
-    # unsaved: the Configuration and Keyboard pages (05 S121, S128), the OSC
+    # The configuration room's pages, one loader per tab, and none in the tray unless
+    # unsaved: the Device Bindings and Keyboard pages (05 S121, S128), the OSC
     # page (09 S129), Logical, the output view and Xbox.
     for loader, page in (
-        ("_configPageLoader", 'source: "ConfigurationPage.qml"'),
+        ("_deviceBindingsPageLoader", 'source: "DeviceBindingsPage.qml"'),
         ("_keyboardPageLoader", 'source: "KeyboardPage.qml"'),
         ("_oscPageLoader", 'source: "OscPage.qml"'),
         ("_logicalLoader", 'source: "LogicalPage.qml"'),

@@ -10,7 +10,7 @@ import pytest
 
 import dill
 from gremlin import (
-    auto_mapper,
+    auto_mapping_tool,
     device_initialization,
     profile,
     shared_state,
@@ -64,10 +64,10 @@ def test_get_used_vjoy_inputs_from_profile(
     register_profile_device: dill.DeviceSummary,
 ) -> None:
     p = profile.Profile()
-    p.from_xml(str(xml_dir / "profile_auto_mapper.xml"))
+    p.from_xml(str(xml_dir / "profile_auto_mapping_tool.xml"))
     shared_state.current_profile = p
 
-    mapper = auto_mapper.AutoMapper(p)
+    mapper = auto_mapping_tool.AutoMappingTool(p)
     used_vjoy_inputs = mapper._get_used_vjoy_inputs("Default")
 
     # Every Map to vJoy, also those inside a Chain or Condition (08 Q7).
@@ -102,10 +102,10 @@ def test_get_used_vjoy_inputs_from_empty_mode(
     xml_dir: pathlib.Path, register_profile_device: dill.DeviceSummary
 ) -> None:
     p = profile.Profile()
-    p.from_xml(str(xml_dir / "profile_auto_mapper.xml"))
+    p.from_xml(str(xml_dir / "profile_auto_mapping_tool.xml"))
     shared_state.current_profile = p
 
-    mapper = auto_mapper.AutoMapper(p)
+    mapper = auto_mapping_tool.AutoMappingTool(p)
     used_vjoy_inputs = mapper._get_used_vjoy_inputs("EmptyMode")
 
     assert len(used_vjoy_inputs) == 0
@@ -117,10 +117,10 @@ def test_get_used_vjoy_inputs_for_disconnected_device_in_profile(
     xml_dir: pathlib.Path,
 ) -> None:
     p = profile.Profile()
-    p.from_xml(str(xml_dir / "profile_auto_mapper.xml"))
+    p.from_xml(str(xml_dir / "profile_auto_mapping_tool.xml"))
     shared_state.current_profile = p
 
-    mapper = auto_mapper.AutoMapper(p)
+    mapper = auto_mapping_tool.AutoMappingTool(p)
     used_vjoy_inputs = mapper._get_used_vjoy_inputs("Default")
 
     # Every Map to vJoy, also those inside a Chain or Condition (08 Q7).

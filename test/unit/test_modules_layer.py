@@ -41,12 +41,12 @@ def test_core_reads_modules_from_the_modules_package() -> None:
     for rel in (
         "gremlin/event_handler.py",
         "gremlin/code_runner.py",
-        "gremlin/auto_mapper.py",
+        "gremlin/auto_mapping_tool.py",
     ):
         names = _imports(_ROOT / rel)
         for ui_module in (
             "gremlin.ui.module_calibration",
-            "gremlin.ui.auto_map_modules",
+            "gremlin.ui.auto_mapping_tool_modules",
             "gremlin.ui.output_modules",
             "gremlin.ui.module_model",
             "gremlin.ui.hardware_profile",

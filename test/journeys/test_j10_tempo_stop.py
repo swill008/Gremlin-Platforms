@@ -4,7 +4,7 @@
 
 """Journey 10: Stop during a Tempo long press: nothing fires after Stop.
 
-In the Configuration pane the user gives stick button 1 a Tempo: a short
+In the Device Bindings pane the user gives stick button 1 a Tempo: a short
 press sends vJoy button 5, a long press (over 0.6 s) sends vJoy button 6.
 OK, save, open again, Run. A long press first works: held past the time,
 vJoy button 6 goes down; released, it comes up. Then the user presses the
@@ -38,7 +38,7 @@ def story(j: Journey) -> None:
     uid = stick.device_guid.uuid
 
     # The pane: a Tempo on button 1 (short: vJoy 5, long: vJoy 6), OK.
-    catalog = j.open_configuration("pjoy_pro")
+    catalog = j.open_device_bindings("pjoy_pro")
     j.open_input(catalog, "button", 1)
     root = j.pane_actions(catalog)[0]
     root.appendAction("Tempo", "children")

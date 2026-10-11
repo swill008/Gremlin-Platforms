@@ -136,8 +136,8 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     highlighting back on. Move them onto the holders.
 38. Local-only crash: replaying CI's unit-1 order (seed 394220, CI file set) in ONE pytest process on
     the user's PC hits "Windows fatal exception: access violation" in
-    `test_device_reconnect.py::test_auto_mapper_keeps_its_ticks` (#724), during pytest-qt event
-    processing. Older than today's Auto Mapper code (same at 870c98dc); CI passes that order; the normal
+    `test_device_reconnect.py::test_auto_mapping_tool_keeps_its_ticks` (#724), during pytest-qt event
+    processing. Older than today's Auto Mapping Tool code (same at 870c98dc); CI passes that order; the normal
     6-part run passes. Likely a real driver on this PC plus an earlier test. Investigate when convenient.
 37. Person checks from the fixes: your 1,172-action profile no longer
     stutters while idle (Q19); after a stick is re-plugged, actions read its
@@ -148,10 +148,13 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     plus menu differences (test_menus, test_button_map_window), runs 37754952665.
     pyproject.toml holds PySide6 below 6.12 until we find what changed and fix it.
 
-40. Retire the Device Pack window once the Device Library is in and used
+40. ~~Retire the Device Pack window once the Device Library is in and used
     (user, 2026-10-08): the Library saves, exports, imports and copies packs;
     decide what of Device Pack's fine-grained piece choices (map view, print
-    settings) to keep. Spec change first (08 S49-S85).
+    settings) to keep. Spec change first (08 S49-S85).~~ Closed 2026-10-11
+    (D-FIXLIST-B2, fix list batch 2): one Export / Import Device window, one
+    .gmap format, Import As a new device / Onto an existing device, every
+    piece tick kept (08 S49, S49a, S59a-S59c, S112).
 41. Compare two saved setups in the Device Library with History's
     before/after view (user, 2026-10-08). Design first.
 
@@ -401,7 +404,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 89. DONE 2026-10-10 (this batch; 06 S94a, L1) (LD2, 2026-10-10, found by LD-GUARD): the Logical Device loop guard only catches a macro step re-triggering its own control when the cycle is under 0.1 s; a slower macro self-loop isn't stopped, and mashing a button that runs such a macro faster than 10/s for 8 presses could be stopped by mistake. A full fix carries the chain on each event (event path). Done 2026-10-10 (this batch).
 90. DONE 2026-10-10 (this batch; 06 S94, S96, AD10, F2-LDPICK) (LD1, 2026-10-10, found by LD-PICK): a Map to Logical Device loaded from a profile that already targets its own control keeps that target (defaults never change loaded data, S92) but its picker shows nothing selected; the loop guard stops it at Run. Done 2026-10-10 (this batch).
 91. DONE 2026-10-10 (e2267c9b; 05 S132) (started 14:05; user: "go ahead and get it done now"; approved **Method B: shared building
-    blocks**, not Method A below; PB1 Logical's version, PB2 Clear Name on Configuration, PB3 pixel-identical
+    blocks**, not Method A below; PB1 Logical's version, PB2 Clear Name on Device Bindings, PB3 pixel-identical
     proof; brief scratchpad sb_brief.md). Method B: each page stays its own file; the repeated glue becomes
     three shared parts the pages use (pane/leave handling in ActionPane, a PageAppearance part, a
     standard-menu helper); page-only features stay in each page; a page that needs different behaviour
@@ -409,7 +412,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     and NOT recommended: QML inheritance needs a hook for every page difference, start-up order traps,
     and it gets rigid as pages grow. Original entry (Method A) kept below for the record.
     (PS1 (a), 2026-10-10, user: "log this (a) as a future todo"; tracker PAGE-SHELL-DUP): **one shared
-    page base for the four list pages** (Configuration, Logical Device, Keyboard, OSC). Not started; the
+    page base for the four list pages** (Device Bindings, Logical Device, Keyboard, OSC). Not started; the
     user chose PS1 (b) for now (the two drift bugs fixed: OSC's missing "Appearance…" menu row, Keyboard's
     own panel-close; guard test `test/unit/test_list_pages_alike.py`).
     - **Why.** The pages already share the model base (`gremlin/ui/control_layout.py` ControlLayoutModel)
@@ -420,7 +423,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
       `requestCloseDisplay` and the 10-line `pageBar` are the same; the menu skeleton (Undo/Redo header,
       Add Action, Rename, History, Appearance…, the Group / Groups / Order sections) is the same apart
       from the "sort by system name" wording. Drift already caused two bugs (fixed in PS1 (b)). Page files
-      then: ConfigurationPage 752, LogicalPage 783, KeyboardPage 579, OscPage 1175 lines; estimated
+      then: DeviceBindingsPage 752, LogicalPage 783, KeyboardPage 579, OscPage 1175 lines; estimated
       100-150 lines each would move into the base (not measured).
     - **What goes in the base** (new `qml/ControlPage.qml`, the page's root item): the `layout` model
       property; the six pane/leave functions and `leaveResolved` / `_leavingPage`; `displayOpen`,
@@ -430,11 +433,11 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
       MenuModel/ContextMenu (header Undo/Redo; quick rows Add Action, Rename, History, Appearance…;
       sections Group, Groups, Order) with **hooks** for page items.
     - **What stays per page** (passed to the base): the model type; extra quick rows and extra sections
-      (Configuration: Module Setup…, Delete actions…; Logical: Assign Hardware, Clear Name, Add Inputs;
+      (Device Bindings: Module Setup…, Delete actions…; Logical: Assign Hardware, Clear Name, Add Inputs;
       Keyboard: Clear Name, Add Key…; OSC: Add Feedback, Change Address…, Copy for Companion, Send Test,
       Companion feedback, Add/Import/TouchOSC/Listen/Clear…, the feedback-row menu); the "sort by system
       name" label (By System Name / By Key Name / By Address); Find placeholder and filter ticks; row
-      extras (Configuration live lights/bars + jump to pressed input; Logical writer rows; OSC Invert,
+      extras (Device Bindings live lights/bars + jump to pressed input; Logical writer rows; OSC Invert,
       live value, feedback rows, docked Monitor); page-only dialogs.
     - **Plan (as proposed 2026-10-10).** Effort then: about 40–50 min + CI 10 min.
       1. One refactor agent builds `ControlPage.qml` from LogicalPage (the reference page), with the hook
@@ -454,7 +457,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
       `paneChanged`, keyboard_layout.py `keyGroupsChanged`); the same care for any Python base used from
       QML. (2) QML base/page name clashes and property-initialisation order: keep page hooks as
       properties/functions with distinct names; test each page loading off-screen. (3) Main.qml calls
-      the page functions by name (`_leavePages()`, `_actionPanes()`, `configurationPane()`,
+      the page functions by name (`_leavePages()`, `_actionPanes()`, `deviceBindingsPane()`,
       `keyboardPane()`, `oscPane()`, `currentPageBar`) — keep those names. (4) Text-reading tests pin
       exact lines. (5) OSC feedback rows stay editable while running (`ActionPane.lockExempt`).
 33. **OSC** (parked 2026-10-02; **picked up 2026-10-09**: decisions D-09-OSC-FILE, D-09-OSC-INPUT, D-09-OSC-FAULTS, spec 09; being built in this batch):
@@ -485,7 +488,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 99. (ORDER-CONFIG, 2026-10-11, found by ORDER-MACRO) Order-dependent: test_config.py run before test_startup_settings_kept.py makes test_startup_registration_keeps_them and test_unused_placement_settings_are_dropped fail with PermissionError (Access is denied) renaming a temporary settings file, and a stall (~140 s). Same with or without the 2026-10-11 conftest change; each file passes alone. Not investigated. Recorded only.
 100. DONE 2026-10-11 (D-01-OWNER-NOTICES). (AUD-DRIVEN, 2026-10-11, audit 97) "Driven by" / what-drives-what goes stale: proven by probe — Delete Mode/Undo Delete Mode, OSC page Undo/Redo/delete (oscDeviceModified not heard), Output View header after any profile reload (_reload never emits targetsChanged), Home cards while Home is shown (no onTargetsChanged); by code — Device Library Swap and Change vJoy Output edit the open profile with no signal at all (library_profiles.Batch._apply_open), viewer windows don't follow action edits. Proposed: one owner notice signal.bindingsChanged (input_pairing.py). Waiting for the user.
 101. DONE 2026-10-11 (D-01-OWNER-NOTICES). (AUD-LD, 2026-10-11, audit 97) Logical Device names: Input Viewer paired-input labels and Xbox page 'incoming' text ignore logicalDeviceModified (probe); OSC Feedback names read the saved file, not memory (maybe intended; spec silent); a script LogicalDeviceVariable creates a control with no signal (probe); a failed profile transaction rolls rows back silently (code only). Proposed: connect the 3 views; optionally logical_device.py sends logicalDeviceModified itself. Waiting for the user.
-102. DONE 2026-10-11 (D-01-OWNER-NOTICES). (AUD-DEVNAMES, 2026-10-11, audit 97) Device rename (alias) not followed by the Device Library window, Input Viewer and Xbox Viewer device lists, and input labels inside the Logical Device/Macro/Condition/Script editors (code only); device_aliases.forget() saves without telling listeners. Spec question: 10 S7 'renames it on its Home card' but Home cards and the Configuration page title show the raw name. Proposed: signal.deviceNamesChanged owned by device_aliases.py. Waiting for the user.
+102. DONE 2026-10-11 (D-01-OWNER-NOTICES). (AUD-DEVNAMES, 2026-10-11, audit 97) Device rename (alias) not followed by the Device Library window, Input Viewer and Xbox Viewer device lists, and input labels inside the Logical Device/Macro/Condition/Script editors (code only); device_aliases.forget() saves without telling listeners. Spec question: 10 S7 'renames it on its Home card' but Home cards and the Device Bindings page title show the raw name. Proposed: signal.deviceNamesChanged owned by device_aliases.py. Waiting for the user.
 103. DONE 2026-10-11 (D-01-OWNER-NOTICES). (AUD-CLAIMS, 2026-10-11, audit 97) Home output cards keep their own claim copy (module_model._dest_targets) not refreshed by the can't-send notice; a Device Library save leaves card claim details stale (probe). Keep the 1 s claim poll (only catcher of outside edits). Open question: should a module file edited outside the program update ⚠ marks and Home cards? Waiting for the user.
 104. (LONG-PATH, 2026-10-11, found by TEST-SWEEP) Device Library Swap's autosave failed with "No such file or directory" when the user folder path was long (a deep scratchpad home); fine under pytest's short temp folder. Likely the Windows 260-character path limit. Not verified; recorded only.
 105. DONE 2026-10-11 (RIG, J13, E2E-PRESET; j13 found and PAIR-NAMES fixed the vJoy Viewer name bug). (user 2026-10-11: "1a, code it as the next batch after this push") (MULTI-DEVICE) Tests see one stick (pJoy Pro) and one vJoy by default; ~35 files build their own extra devices. Build: a `devices` option in the journey harness next to `vjoy_ids` (default one pJoy Pro) with a preset rig (pJoy Pro, Saitek X52, a twin pair, vJoy 1 + 2); one multi-device journey (two sticks to two vJoys, Home cards + Driven by, Swap, Change vJoy Output, twin rename, unplug/re-plug, Input Viewer); today's end-to-end tests use the preset. Test-time rule (user 2026-10-11, 1a): keep one full run; after this batch measure the full run and add a row to timings.md; if it goes over ~7 min, add a "deep" marker for heavy multi-device journeys (in the full run and CI, skipped in targeted runs).

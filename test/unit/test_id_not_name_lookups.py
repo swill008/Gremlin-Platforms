@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """A device is found by its Windows id, never its name (03 S90a): with two
-identical sticks plugged in, the Auto Mapper's source and the Device Pack
+identical sticks plugged in, the Auto Mapping Tool's source and the Device Pack
 export never take the first stick for the second."""
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from gremlin import auto_mapper, device_initialization, profile
+from gremlin import auto_mapping_tool, device_initialization, profile
 from gremlin.modules import device_zip, store
 from gremlin.ui import device_pack
 from test.unit import test_stage1_modules
@@ -44,16 +44,16 @@ def twins(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(store, "live_devices", _twins)
 
 
-# --- Auto Mapper ---------------------------------------------------------------
+# --- Auto Mapping Tool ---------------------------------------------------------------
 
 
-def test_auto_mapper_source_is_its_own_id(twins: None) -> None:
-    mapper = auto_mapper.AutoMapper(profile.Profile())
+def test_auto_mapping_tool_source_is_its_own_id(twins: None) -> None:
+    mapper = auto_mapping_tool.AutoMappingTool(profile.Profile())
     source = {"name": TWIN, "boundName": TWIN, "guid": str(SECOND)}
     assert mapper._source_uuid(source) == SECOND
 
 
-def test_auto_mapper_source_without_an_id_is_no_device(
+def test_auto_mapping_tool_source_without_an_id_is_no_device(
     folder: Path, twins: None
 ) -> None:
     """A folder named after both twins and holding no id: either could use
@@ -66,7 +66,7 @@ def test_auto_mapper_source_without_an_id_is_no_device(
     store._dirs_changed()
     assert store.device_dir(TWIN, str(FIRST)) == shared
     assert store.device_dir(TWIN, str(SECOND)) == shared
-    mapper = auto_mapper.AutoMapper(profile.Profile())
+    mapper = auto_mapping_tool.AutoMappingTool(profile.Profile())
     source = {"name": TWIN, "boundName": TWIN, "guid": "", "dir": str(shared)}
     assert mapper._source_uuid(source) is None
 

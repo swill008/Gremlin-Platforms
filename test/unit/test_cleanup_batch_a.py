@@ -166,7 +166,7 @@ def test_one_user_colour_one_logical_id_one_window_memory() -> None:
     for page in ("ListAppearancePanel", "OutputModuleView"):
         qml = _text(f"qml/{page}.qml")
         assert "function userColour(" not in qml and "Helpers.userColour(" in qml
-    for page in ("ConfigurationPage", "KeyboardPage", "LogicalPage", "OscPage"):
+    for page in ("DeviceBindingsPage", "KeyboardPage", "LogicalPage", "OscPage"):
         assert "function userColour(" not in _text(f"qml/{page}.qml"), page
     assert "function userColour(" in _text("qml/helpers.js")
     guid = re.compile(r"f0af472f-8e17-493b-a1eb-7333ee8543f2", re.I)
@@ -175,7 +175,7 @@ def test_one_user_colour_one_logical_id_one_window_memory() -> None:
     from gremlin.ui.backend import UIState
 
     assert guid.fullmatch(UIState.logicalDeviceGuid.fget(None))
-    windows = ("DialogAutoMapper", "DialogConfigureModule", "DialogDeviceInformation",
+    windows = ("DialogAutoMappingTool", "DialogConfigureModule", "DialogDeviceInformation",
                "DialogDevicePack", "DialogHardwareHide", "DialogManageModes")
     for window in windows:
         assert "ToolWindowMemory {" in _text(f"qml/{window}.qml"), window

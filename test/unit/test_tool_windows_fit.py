@@ -32,7 +32,7 @@ _ROOT = pathlib.Path(__file__).parents[2]
 
 _WINDOWS = [
     "DialogConfigureModule", "DialogDevicePack", "DialogCalibration",
-    "DialogManageModes", "DialogAutoMapper", "DialogDeviceInformation",
+    "DialogManageModes", "DialogAutoMappingTool", "DialogDeviceInformation",
     "DialogOptions", "DialogJoystickButtonMap", "DialogInputViewer",
     "DialogHistory",
 ]
