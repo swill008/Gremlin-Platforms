@@ -9,6 +9,7 @@ Audit fix batch F4, second map pass (2026-10-10, F4-MAP2): T1 (02, 06: Xbox pads
 Decisions of 2026-10-10 16:05 written in (SPEC agent): 01 S132, S152; 02 S67 (HH-INUSE-1 closed, D7); 03 S88; 04 S25 (LD14: no version 14 converter, built); 05 S96, S97, new S135 (A1, built); 06 version 14 converters gone from sections 2, 5, 10, 11; 07 S32 (recovery copies, D8); 09 S44a, S97, S116, S121 (O1, D6). Each with its section 12 row.
 After commit 3702e630 (2026-10-10, MAP4): `gremlin/action_label.py` deleted and removed from every page (05 Q15 done, RB5 fixed; 09 R3 now two modules); 05 EW-1 closed (editor rows wrap at the pane's minimum width); 09 S14 `inputAdded` also selects an existing input (`listenBound` gone); 01 `window_placement.py` and 02 `hidhide.py` unused settings / `downloadUrl` removed; 08 S104 button names in Title Case (to-do 56 closed). Counts recounted, unchanged (no statement, question or gap added or removed).
 MAP6 (2026-10-10, before the can't-be-sent / follow commit): 03 S30, S78a built (gaps 34 closed, 35 open); 04 new S32a (load notice, D-04-CANT-SEND-NOTICE, built); 05 S131, S137-S139 built and S131/S137 widened (D-05-FOLLOW-ALL-PAGES, D-05-QUICK-TAP, D-05-CANT-SEND-ALL, D-09-SENDOSC-TARGET-NAME), new file `gremlin/ui/live_follow.py`, gaps VJ-off, CS-G0, FOLLOW-G1 closed and CS-G1, LD-SYN open; 06 VJ-OFF closed; 09 S32, S141 built, G-OSC66-68 closed, G-OSC69 open.
+Owner notices (2026-10-11, SPEC, D-01-OWNER-NOTICES, audit 97, to-dos 100-103): new 01 S155 (the four owner notices), 03 S73a, S75a, S118a, S122a, S126, S127 (S36 reworded: saves apply at once), 05 S140, 06 S97 (and the vJoy claims cache line in section 3), 07 S105, 09 S173, S174, 10 S58, S59 (S7 confirmed as written), each "(not built yet)" until the code lands; new gaps 02 AUD-DEVNAMES, 03 #36 (AUD-DRIVEN) and #37 (AUD-CLAIMS), 06 AUD-LD, 09 G-OSC70, and page 10 AUD-DRIVEN / AUD-DEVNAMES; section 12 rows added. Counts: S +14, gaps +5.
 
 **The behaviour spec is approved (user, 2026-10-06)**: pages 06, 05 and 03
 reviewed answer by answer, the rest approved as recommended. On each page,
@@ -26,17 +27,17 @@ spec change. See "The plan" in `claude/system-maps.md`.
 
 | Page | Subsystem | S | Q | Gaps | Review |
 |---|---|---|---|---|---|
-| [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads, Help, shared pieces, control tracing, the build (two exes) | 155 | 16 | 22 | reviewed 2026-10-06 (all as recommended) |
-| [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide, trace taps, Gremlin Input Tester, Reset Devices, DirectInput reader, changed layout | 148 | 19 | 41 | reviewed 2026-10-06 (all as recommended) |
-| [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 131 | 18 | 34 | reviewed 2026-10-06 (all as recommended) |
+| [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads, Help, shared pieces, control tracing, the build (two exes), owner notices (S155) | 156 | 16 | 22 | reviewed 2026-10-06 (all as recommended) |
+| [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide, trace taps, Gremlin Input Tester, Reset Devices, DirectInput reader, changed layout | 148 | 19 | 42 | reviewed 2026-10-06 (all as recommended) |
+| [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device | 137 | 18 | 36 | reviewed 2026-10-06 (all as recommended) |
 | [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 99 | 21 | 23 | reviewed 2026-10-06 (all as recommended) |
-| [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page, R16 fixes, action editor matrix; 2026-10-10 Configuration and Keyboard pages on the shared base (S121-S131, S122a, S125a; batch C, built); to-do 91 shared page parts (S132, PB-G1, built); Appearance panel closes when narrow (S135, built) | 140 | 21 | 57 | reviewed 2026-10-06 (all as recommended) |
-| [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device, loop guard, output trace | 95 | 19 | 32 | reviewed 2026-10-06 (all as recommended) |
-| [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 103 | 19 | 23 | reviewed 2026-10-06 (all as recommended) |
+| [05-actions-editors](05-actions-editors.md) | Action plugins, Configuration page, Keyboard page, R16 fixes, action editor matrix; 2026-10-10 Configuration and Keyboard pages on the shared base (S121-S131, S122a, S125a; batch C, built); to-do 91 shared page parts (S132, PB-G1, built); Appearance panel closes when narrow (S135, built) | 141 | 21 | 57 | reviewed 2026-10-06 (all as recommended) |
+| [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device, loop guard, output trace | 96 | 19 | 33 | reviewed 2026-10-06 (all as recommended) |
+| [07-button-map](07-button-map.md) | Button Map editor, photos, recovery, print/export | 104 | 19 | 23 | reviewed 2026-10-06 (all as recommended) |
 | [08-history-pack-automap](08-history-pack-automap.md) | History, Device Pack, Auto Mapper | 115 | 21 | 37 | reviewed 2026-10-06 (all as recommended) |
-| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (picked up 2026-10-09: own module file, per-input settings; Monitor, output and Send OSC, Feedback, encoder, discovery; 2026-10-10 rewrite on the Logical Device page's shared base, S129-S164 in three batches, all built 2026-10-10), sound, speech, tray, theme; shared widgets and foundations | 172 | 20 | 78 | reviewed 2026-10-06 (all as recommended) |
-| [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 60 | 1 | S1-S56 (+S20a, S53a) built; S6a (D-04-LD-FILE) built (000e35d0); open items: to-dos 47, 50, 51, 52 | approved 2026-10-08 |
-| **Total** | | **1218** | **175** | **347** (+ page 10) | |
+| [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (picked up 2026-10-09: own module file, per-input settings; Monitor, output and Send OSC, Feedback, encoder, discovery; 2026-10-10 rewrite on the Logical Device page's shared base, S129-S164 in three batches, all built 2026-10-10), sound, speech, tray, theme; shared widgets and foundations | 174 | 20 | 79 | reviewed 2026-10-06 (all as recommended) |
+| [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 62 | 1 | S1-S56 (+S20a, S53a) built; S6a (D-04-LD-FILE) built (000e35d0); open items: to-dos 47, 50, 51, 52; AUD-DRIVEN, AUD-DEVNAMES (being fixed 2026-10-11) | approved 2026-10-08 |
+| **Total** | | **1232** | **175** | **352** (+ page 10) | |
 
 ## Most serious findings (to confirm first)
 

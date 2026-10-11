@@ -193,6 +193,9 @@ def _home_models_quiet() -> Iterator[None]:
                         (signal.signal.configChanged, model._follow_card_sizes),
                         (signal.signal.logicalDeviceReloaded, model._logical_reloaded),
                         (signal.signal.cantSendChanged, model._follow_cant_send),
+                        (signal.signal.bindingsChanged, model._follow_bindings),
+                        (signal.signal.deviceNamesChanged, model._follow_names),
+                        (signal.signal.moduleFilesChanged, model._follow_module_files),
                     ):
                         try:
                             sig.disconnect(slot)

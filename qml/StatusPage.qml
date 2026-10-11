@@ -1098,6 +1098,14 @@ Item {
         function onCantSendChanged() {
             Qt.callLater(_page.refreshCards)
         }
+        // Driven by and the shown name are filled by hand (fillCard): they
+        // follow while Home is shown (D-01-OWNER-NOTICES 1a, 2a).
+        function onTargetsChanged() {
+            Qt.callLater(_page.refreshCards)
+        }
+        function onNamesChanged() {
+            Qt.callLater(_page.refreshCards)
+        }
         function onLastChanged() {
             Qt.callLater(_page.refreshCards)
         }

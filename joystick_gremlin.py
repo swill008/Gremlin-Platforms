@@ -985,6 +985,13 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         except gremlin.error.GremlinError as e:
             device_initialization_error = str(e)[1:-1]
 
+        # The owners' notices listen from the start (D-01-OWNER-NOTICES).
+        from gremlin import device_aliases
+        from gremlin.ui import input_pairing
+
+        input_pairing.watch_bindings()
+        device_aliases.watch_names()
+
         self.initialize_qt()
 
         if device_initialization_error is not None:

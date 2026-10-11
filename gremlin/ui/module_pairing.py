@@ -161,8 +161,10 @@ class ModulePairDeviceModel(QtCore.QAbstractListModel):
         super().__init__(parent)
         self._rows: list[dict] = []
         self.reload()
-        signal.profileChanged.connect(self.reload)
+        # What drives what: input_pairing's one notice (D-01-OWNER-NOTICES).
+        signal.bindingsChanged.connect(self.reload)
         signal.configChanged.connect(self.reload)
+        # The device list itself.
         event_handler.EventListener().device_change_event.connect(self.reload)
 
     @QtCore.Slot()
@@ -282,9 +284,22 @@ class _ModulePairMappedModel(QtCore.QAbstractListModel):
         self._guid = ""
         self._device_name = ""
         self._rows: list[dict] = []
-        signal.profileChanged.connect(self._reload)
+        # One read for a burst: a Logical Device edit sends both notices.
+        self._soon = QtCore.QTimer(self)
+        self._soon.setSingleShot(True)
+        self._soon.setInterval(0)
+        self._soon.timeout.connect(self._reload)
+        # What drives what, and the Logical Device's input names in the
+        # labels (D-01-OWNER-NOTICES).
+        signal.bindingsChanged.connect(self._reload_soon)
+        signal.logicalDeviceModified.connect(self._reload_soon)
         signal.configChanged.connect(self._reload)
 
+    @QtCore.Slot()
+    def _reload_soon(self) -> None:
+        self._soon.start()
+
+    @QtCore.Slot()
     def _reload(self) -> None:
         self.beginResetModel()
         if self._guid and self._device_name:

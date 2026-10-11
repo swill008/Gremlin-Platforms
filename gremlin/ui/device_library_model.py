@@ -318,6 +318,11 @@ class DeviceLibraryModel(QtCore.QObject):
         self._done.connect(self._finish)
         self._planned.connect(self._take_plan)
         self._sized.connect(self._take_size)
+        # A device's shown name changed (rename, History restore, forget):
+        # the rows read the names again (D-01-OWNER-NOTICES).
+        from gremlin.signal import signal
+
+        signal.deviceNamesChanged.connect(self.refresh)
         if watch_devices:
             try:
                 from gremlin import event_handler

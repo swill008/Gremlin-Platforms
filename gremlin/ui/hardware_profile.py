@@ -873,6 +873,9 @@ def _hook_profile_generation() -> None:
     signal.modesChanged.connect(_profile_changed)
     signal.actionsChanged.connect(_profile_changed)
     signal.inputItemChanged.connect(lambda _index: _profile_changed())
+    # Everything else that changes what drives what (Logical Device, OSC,
+    # Library Swap): input_pairing's notice (D-01-OWNER-NOTICES).
+    signal.bindingsChanged.connect(_profile_changed)
 
 
 def chips_key(guid: str) -> str:
@@ -998,20 +1001,18 @@ class HardwareProfile(QtCore.QObject):
             clipboard.dataChanged.connect(self._clipboard_changed)
         # First: the generation is new before any card asks for its rows.
         _hook_profile_generation()
-        signal.profileChanged.connect(self.profileLabelsChanged)
-        signal.modesChanged.connect(self.profileLabelsChanged)
-        # An action added, removed or edited in the pane: the chips follow
-        # once the edits stop (07 S73), not on every key typed.
+        # What drives what changed (profile, modes, actions, Logical Device,
+        # OSC, Library Swap; input_pairing's one notice, D-01-OWNER-NOTICES):
+        # the chips follow once the edits stop (07 S73), not on every key
+        # typed.
         self._labels_timer = QtCore.QTimer(self)
         self._labels_timer.setSingleShot(True)
         self._labels_timer.setInterval(_LABELS_DELAY_MS)
         self._labels_timer.timeout.connect(self.profileLabelsChanged)
-        signal.actionsChanged.connect(self._actions_edited)
-        signal.inputItemChanged.connect(self._actions_edited)
+        signal.bindingsChanged.connect(self._bindings_changed)
 
     @QtCore.Slot()
-    @QtCore.Slot(int)
-    def _actions_edited(self, _index: int = 0) -> None:
+    def _bindings_changed(self) -> None:
         self._labels_timer.start()
 
     @QtCore.Slot(str, str, bool, bool, result="QVariantMap")

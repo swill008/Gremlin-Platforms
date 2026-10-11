@@ -145,8 +145,20 @@ class XboxDeviceModel(QtCore.QAbstractListModel):
         super().__init__(parent)
         self._pad_id = 1
         self._rows = list(XboxTarget)
-        signal.profileChanged.connect(self.reload)
-        signal.inputItemChanged.connect(self.reload)
+        # One read for a burst: a Logical Device edit sends two notices.
+        self._soon = QtCore.QTimer(self)
+        self._soon.setSingleShot(True)
+        self._soon.setInterval(0)
+        self._soon.timeout.connect(self.reload)
+        # "Incoming": what drives each control, the devices' shown names and
+        # the Logical Device's input names (D-01-OWNER-NOTICES).
+        signal.bindingsChanged.connect(self._reload_soon)
+        signal.deviceNamesChanged.connect(self._reload_soon)
+        signal.logicalDeviceModified.connect(self._reload_soon)
+
+    @QtCore.Slot()
+    def _reload_soon(self) -> None:
+        self._soon.start()
 
     @QtCore.Slot()
     @QtCore.Slot(int)

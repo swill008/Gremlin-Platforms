@@ -118,7 +118,10 @@ class _XboxMappedModel(QtCore.QAbstractListModel):
         self._input_type = input_type
         self._guid = ""
         self._rows: list[dict] = []
+        # What drives what (D-01-OWNER-NOTICES).
+        signal.bindingsChanged.connect(self._reload)
 
+    @QtCore.Slot()
     def _reload(self) -> None:
         self.beginResetModel()
         self._rows = _mapped_xbox_rows(self._guid, self._input_type) if self._guid else []
@@ -181,7 +184,10 @@ class XboxPadListModel(QtCore.QAbstractListModel):
         super().__init__(parent)
         self._guid = ""
         self._rows: list[dict] = []
+        # Which pads this device drives (D-01-OWNER-NOTICES).
+        signal.bindingsChanged.connect(self._reload)
 
+    @QtCore.Slot()
     def _reload(self) -> None:
         self.beginResetModel()
         self._rows = [{"padId": pad} for pad in _pads_for_guid(self._guid)]
@@ -230,7 +236,11 @@ class XboxViewerDeviceModel(QtCore.QAbstractListModel):
         super().__init__(parent)
         self._rows: list[dict] = []
         self.reload()
-        signal.profileChanged.connect(self.reload)
+        # What drives what and the devices' shown names: their owners' one
+        # notice each (D-01-OWNER-NOTICES).
+        signal.bindingsChanged.connect(self.reload)
+        signal.deviceNamesChanged.connect(self.reload)
+        # The device list itself.
         event_handler.EventListener().device_change_event.connect(self.reload)
 
     @QtCore.Slot()

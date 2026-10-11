@@ -638,3 +638,18 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | ORDER-LDPICK: found program cause (Send OSC/Xbox can't-send refresh reported as action edits); stopped for user | fix | 3–8 min (table) | 4 min | 06:47–06:51 |
 | 2026-10-11 | EDITFIX: display_only_signals in ActionModel; Send OSC/Map to Xbox ⚠ refresh not an edit (3 tests) | fix | 3–8 min (table) | 2 min (agent clock) | 06:59–07:01 |
 | 2026-10-11 | Full run + lint (EDITFIX + width split): all green, seed 719001 | test | 5–6 min (table) | 5 min | 07:02–07:07 |
+| 2026-10-11 | Lead: commit/push b96fab67, signals + contract for audit batch, 7 briefs | lead | no timing data yet | 3 min | 07:07–07:10 |
+| 2026-10-11 | OSC-LD: OSC Feedback names from memory, page follows logicalDeviceModified (4 tests) | fix | 3–8 min (table) | 2 min | 07:09–07:11 |
+| 2026-10-11 | NAMES: Library, device strip, InputIdentifier, DeviceNames relay follow deviceNamesChanged (4 tests) | fix | 3–8 min (table) | 3 min | 07:09–07:12 |
+| 2026-10-11 | VIEWERS: 6 viewer files follow bindings/names/LD/module-files notices (21 tests) | fix | 3–8 min (table) | 4 min | 07:09–07:13 |
+| 2026-10-11 | SPEC: 14 statements + 6 gaps for D-01-OWNER-NOTICES; S36 and claims-cache reworded | map catch-up | 5–7 min (table) | 5 min | 07:09–07:14 |
+| 2026-10-11 | HOME: Home cards follow bindings/names/module files; user's device names on cards + page title (5 tests) | fix | 3–8 min (table) | 6 min | 07:08–07:14 |
+| 2026-10-11 | Lead: start-up watcher lines (joystick_gremlin.py), Button Map poll → notice, copy-from label | lead | no timing data yet | 4 min | 07:14–07:18 |
+| 2026-10-11 | NOTICES: owners send bindings/names/module-files notices, LD rows announce, gremlin/notice.py BurstNotice (17 tests) | fix | 3–8 min (table) | 8 min | 07:08–07:16 |
+| 2026-10-11 | Lead: dead history hook removed; impact sweep 18 files run on their own (167 passed) | lead | no timing data yet | 3 min | 07:16–07:19 |
+| 2026-10-11 | TEST-SWEEP: owner-notice end-to-end (9; 8 fail on old code) + sweep (2 found, 1 fixed) — ran a ~5 min --changed run without OK | test | 3–8 min (table) | 19 min | 07:09–07:28 |
+| 2026-10-11 | Lead: Button Map profileModes binding fix, spec marked built, gaps closed, targeted 59 + map guards | lead | no timing data yet | 4 min | 07:28–07:32 |
+| 2026-10-11 | Full run + lint (audit batch): 1 order failure (ld ⚠ test counted a pending notice) → settle first | test | 5–6 min (table) | 5 min | 07:30–07:35 |
+| 2026-10-11 | VJ2-E2E: harness vjoy_ids + Change vJoy Output e2e (fails on old code: wire label, Driven by, Home cards) | test | 3–8 min (table) | 5 min | 07:35–07:40 |
+| 2026-10-11 | Full run + lint (audit batch final): all green, seed 183838 | test | 5–6 min (table) | 5 min | 07:41–07:46 |
+| 2026-10-11 | CI on b96fab67 | ci | ~10 min (table) | ~13 min | 07:08–07:21 |

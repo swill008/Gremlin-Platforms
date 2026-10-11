@@ -44,6 +44,11 @@ class _Item(QtCore.QObject):
 
 @pytest.fixture
 def profile(monkeypatch: pytest.MonkeyPatch) -> Profile:
+    # The chips follow input_pairing's bindings notice (D-01-OWNER-NOTICES),
+    # which the program starts once on the main thread.
+    from gremlin.ui import input_pairing
+
+    input_pairing.watch_bindings()
     p = Profile()
     monkeypatch.setattr(shared_state, "current_profile", p)
     return p

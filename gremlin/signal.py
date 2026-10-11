@@ -50,6 +50,18 @@ class Signal(QtCore.QObject):
     # once per burst, on the main thread; every red ⚠ listens to it
     # (D-05-CANT-SEND-LIVE).
     cantSendChanged = QtCore.Signal()
+    # Which inputs drive which outputs may have changed. Sent only by
+    # gremlin.ui.input_pairing, once per burst, on the main thread
+    # (D-01-OWNER-NOTICES).
+    bindingsChanged = QtCore.Signal()
+    # A device's shown name (the user's name for it, a twin name) may have
+    # changed. Sent only by gremlin.device_aliases, once per burst, on the
+    # main thread (D-01-OWNER-NOTICES).
+    deviceNamesChanged = QtCore.Signal()
+    # A module file was saved, deleted or moved aside. Sent only by
+    # gremlin.modules.store, once per burst, on the main thread
+    # (D-01-OWNER-NOTICES).
+    moduleFilesChanged = QtCore.Signal()
     # Options' "OSC settings are in OSC › Module Setup" button: the main
     # window opens OSC's Module Setup, as its card does.
     openOscModuleSetup = QtCore.Signal()

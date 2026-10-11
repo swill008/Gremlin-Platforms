@@ -33,6 +33,9 @@ class _SlugListModel(QtCore.QAbstractListModel):
         self.reload()
         signal.profileChanged.connect(self.reload)
         signal.configChanged.connect(self.reload)
+        # A module file saved, deleted or moved aside in the program: the
+        # store's notice (D-01-OWNER-NOTICES).
+        signal.moduleFilesChanged.connect(self.reload)
         event_handler.EventListener().device_change_event.connect(self.reload)
 
     @QtCore.Slot()

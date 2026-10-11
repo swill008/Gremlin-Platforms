@@ -247,6 +247,20 @@ def template_row(kind: str, params: dict, target_id: str) -> dict | str:
     return "Unknown template."
 
 
+def logical_choices() -> list[dict]:
+    """The Logical Device's controls in memory, unsaved ones included
+    (D-01-OWNER-NOTICES 5a): [{value: uid, text: shown name}]."""
+    from gremlin.logical_device import LogicalDevice
+
+    out = []
+    for control in LogicalDevice().to_dict()["controls"]:
+        uid = str(control.get("uid") or "")
+        if uid:
+            name = str(control.get("user-label") or control.get("label") or uid)
+            out.append({"value": uid, "text": name})
+    return out
+
+
 @ta.QmlElement
 class OscFeedbackModel(QtCore.QObject):
     """Feedback switches and rows for OSC's Module Setup."""
@@ -271,6 +285,12 @@ class OscFeedbackModel(QtCore.QObject):
             sig = getattr(signal, name, None)
             if sig is not None:
                 sig.connect(self.reload)
+        # Logical Device names come from memory (D-01-OWNER-NOTICES 5a).
+        signal.logicalDeviceModified.connect(self._on_logical)
+
+    @QtCore.Slot()
+    def _on_logical(self) -> None:
+        self.changed.emit()
 
     @QtCore.Slot()
     def reload(self) -> None:
@@ -385,16 +405,7 @@ class OscFeedbackModel(QtCore.QObject):
 
     @QtCore.Property(list, notify=changed)
     def logicalChoices(self) -> list:
-        from gremlin import logical_device_file
-
-        out = []
-        for control in logical_device_file.read_layout()["controls"]:
-            uid = str(control.get("uid") or "")
-            if not uid:
-                continue
-            name = str(control.get("user-label") or control.get("label") or uid)
-            out.append({"value": uid, "text": name})
-        return out
+        return logical_choices()
 
     @QtCore.Property(list, notify=changed)
     def oscChoices(self) -> list:

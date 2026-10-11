@@ -10,6 +10,7 @@ from PySide6 import QtCore
 import gremlin.ui.type_aliases as ta
 from gremlin import device_initialization, shared_state
 from gremlin.modules import wiring
+from gremlin.notice import BurstNotice, NoticeTimer
 from gremlin.signal import signal
 from gremlin.types import InputType
 
@@ -207,6 +208,41 @@ def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
     return rows
 
 
+# --- the "bindings changed" notice (D-01-OWNER-NOTICES) -----------------------
+
+
+def _listen_bindings(timer: NoticeTimer) -> None:
+    """What can change which inputs drive which outputs."""
+    for sig in (
+        signal.profileChanged,
+        signal.actionsChanged,
+        signal.inputItemChanged,
+        signal.logicalDeviceModified,
+        signal.logicalDeviceReloaded,
+        signal.oscDeviceModified,
+        signal.oscDeviceReloaded,
+        signal.modesChanged,
+        signal.modeDeleted,
+    ):
+        sig.connect(timer.ask)
+
+
+_bindings = BurstNotice(signal.bindingsChanged.emit, _listen_bindings)
+
+
+def watch_bindings() -> NoticeTimer | None:
+    """Starts the notice (once, on the main thread); every reader of what
+    drives what calls it, so it is listening before anything is shown."""
+    return _bindings.watch()
+
+
+def notify_bindings() -> None:
+    """Which inputs drive which outputs may have changed:
+    signal.bindingsChanged goes out once for a burst, on the main thread.
+    Any thread may call it."""
+    _bindings.notify()
+
+
 class _MappedModel(QtCore.QAbstractListModel):
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"identifier"),
@@ -224,11 +260,10 @@ class _MappedModel(QtCore.QAbstractListModel):
         self._input_type = input_type
         self._guid = ""
         self._rows: list[dict] = []
-        try:
-            signal.profileChanged.connect(self._reload)
-        except Exception:
-            pass
+        watch_bindings()
+        signal.bindingsChanged.connect(self._reload)
 
+    @QtCore.Slot()
     def _reload(self) -> None:
         self.beginResetModel()
         self._rows = _mapped_rows(self._guid, self._input_type) if self._guid else []

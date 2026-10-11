@@ -388,6 +388,14 @@ ApplicationWindow {
     color: Style.background
 
     property string configTitleName: ""
+    // Moves when a card's shown name may have changed (the user's name for
+    // a device, 10 S7): the Configuration page title reads it afresh.
+    property int namesRev: 0
+
+    function configTitleShown() {
+        return namesRev, _moduleModel.shownName(uiState ? String(uiState.currentDevice || "") : "",
+                                                configTitleName)
+    }
     onConfigTitleNameChanged: {
         syncOutputView()
         Qt.callLater(syncConfigurationPage)
@@ -2159,6 +2167,7 @@ ApplicationWindow {
             target: _moduleModel
             function onClaimsChanged() { refreshDestBound() }
             function onTargetsChanged() { refreshDestBound() }
+            function onNamesChanged() { _root.namesRev++ }
             function onPanesChanged() { _root.refreshSourceModuleCount() }
             function onModelReset() { _root.refreshSourceModuleCount() }
         }
@@ -2290,7 +2299,8 @@ ApplicationWindow {
                         Label {
                             id: _configTitle
                             visible: configDirection !== "logical"
-                            text: configTitleName.length ? configTitleName : "device"
+                            // The user's name for the device (10 S7).
+                            text: configTitleName.length ? _root.configTitleShown() : "device"
                             font.pixelSize: Style.dp(22)
                             font.bold: true
                             elide: Text.ElideRight

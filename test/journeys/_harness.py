@@ -319,9 +319,14 @@ def claim_everything() -> dict:
 class Journey:
     """The program, built off-screen, and what a journey needs to drive it."""
 
-    def __init__(self, before_start: Callable[[Journey], None] | None = None) -> None:
+    def __init__(
+        self,
+        before_start: Callable[[Journey], None] | None = None,
+        vjoy_ids: tuple[int, ...] = (1,),
+    ) -> None:
         """before_start runs once the fakes are in, before the program
-        starts: files written there are on disk when it starts."""
+        starts: files written there are on disk when it starts. vjoy_ids:
+        the vJoy devices the fake driver has (vJoy 1 only by default)."""
         # Never the user's own folder: run_journey gives a temporary one.
         home = pathlib.Path(os.environ.get("USERPROFILE", "")).resolve()
         users = pathlib.Path(os.environ.get("SystemDrive", "C:") + "/Users")
@@ -339,7 +344,8 @@ class Journey:
         os.chdir(ROOT)
         self.out: dict = {}
         self.fake_hardware = _load("fake_hardware")
-        self.dill_fake = self.fake_hardware.install(vjoy_ids=(1,))
+        self.dill_fake = self.fake_hardware.install(vjoy_ids=tuple(vjoy_ids))
+        self._more_vjoys(tuple(vjoy_ids))
         self.fake_input = _load("fake_input")
         # Keys and mouse output stay in this process.
         self.fake_input.install()
@@ -390,6 +396,32 @@ class Journey:
         self.app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
         self.win = self.app.main_window
         self.QTest = _QTest()
+
+    def _more_vjoys(self, vjoy_ids: tuple[int, ...]) -> None:
+        """Every vJoy after the first gets its own fake game controller and
+        fewer buttons (8 fewer each): vJoys alike in axes, buttons and hats
+        can't be told apart (device_initialization). The first keeps
+        fake_hardware's 64."""
+        import dill
+        from vjoy import vjoy
+
+        buttons: dict[int, int] = {}
+        for n, vjoy_id in enumerate(sorted(vjoy_ids)):
+            buttons[vjoy_id] = 64 - 8 * n
+            if n == 0:
+                continue
+            raw = self.fake_hardware.raw_device(is_virtual=True)
+            raw.device_guid = dill._GUID(
+                Data1=0x7A000000 + vjoy_id,
+                Data2=vjoy_id,
+                Data3=vjoy_id,
+                Data4=(9, 9, 9, 9, 9, 9, 9, vjoy_id & 0xFF),
+            )
+            raw.button_count = buttons[vjoy_id]
+            raw.joystick_id = 1 + vjoy_id
+            self.dill_fake.devices.append(raw)
+        if len(buttons) > 1:
+            vjoy.button_count = lambda vjoy_id: buttons.get(vjoy_id, 64)  # type: ignore[assignment]
 
     # --- running the story ---------------------------------------------------
 

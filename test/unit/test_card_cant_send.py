@@ -137,8 +137,10 @@ def test_the_card_follows_an_action_edit(model: module_model.ModuleListModel) ->
     changed: list[int] = []
     model.cantSendChanged.connect(lambda: changed.append(1))
     model.found[:] = [_binding(2)]
-    # actionsChanged / inputItemChanged / logicalDeviceModified run this.
-    model._refresh_targets()
+    # The bindings' owner's notice (D-01-OWNER-NOTICES 1a).
+    from gremlin.signal import signal as _signal
+
+    _signal.bindingsChanged.emit()
     assert _card(model, "throttle")["cantSendCount"] == 1
     assert changed == [1]
     # Claims, vJoy driver, Xbox, OSC, Logical Device: the output layer's

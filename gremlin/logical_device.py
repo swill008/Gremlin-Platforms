@@ -17,6 +17,7 @@ from gremlin.error import (
     GremlinError,
     MissingImplementationError,
 )
+from gremlin.notice import BurstNotice, NoticeTimer
 from gremlin.types import (
     HatDirection,
     InputType,
@@ -74,6 +75,37 @@ class _RowData:
     def changed(self) -> None:
         self.dirty = True
         note_edit()
+        # The rows shown announce their own changes (D-01-OWNER-NOTICES).
+        shown = SingletonMetaclass._instances.get(LogicalDevice)
+        if shown is not None and shown._data is self:
+            notify_rows()
+
+
+# --- the Logical Device notice (D-01-OWNER-NOTICES) ----------------------------
+
+
+def _send_rows() -> None:
+    from gremlin.signal import signal
+
+    signal.logicalDeviceModified.emit()
+
+
+def _listen_rows(timer: NoticeTimer) -> None:
+    from gremlin.signal import signal
+
+    # A page that sends logicalDeviceModified by hand after its change has
+    # said it: the pending send is dropped, so no listener works twice.
+    signal.logicalDeviceModified.connect(timer.sent_elsewhere)
+
+
+_rows_notice = BurstNotice(_send_rows, _listen_rows)
+
+
+def notify_rows() -> None:
+    """The Logical Device rows shown changed: signal.logicalDeviceModified
+    goes out once for a burst, on the main thread (none when a page sent it
+    by hand after the change). Any thread may call it."""
+    _rows_notice.notify()
 
 
 class LogicalRows:

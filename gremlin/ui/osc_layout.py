@@ -301,14 +301,7 @@ def stateful_labels(profile: Profile | None) -> dict[str, str]:
 
 
 def _logical_names() -> dict[str, str]:
-    from gremlin import logical_device_file
-
-    out = {}
-    for control in logical_device_file.read_layout()["controls"]:
-        uid = str(control.get("uid") or "")
-        if uid:
-            out[uid] = str(control.get("user-label") or control.get("label") or uid)
-    return out
+    return {c["value"]: c["text"] for c in osc_feedback_model.logical_choices()}
 
 
 def set_field(row: dict, name: str, value: object) -> str:
@@ -736,6 +729,9 @@ class OscLayoutModel(ControlLayoutModel):
         reloaded = getattr(signal, "oscDeviceReloaded", None)
         if reloaded is not None:
             reloaded.connect(self._on_file_read)
+        # Feedback titles and the editor's choices follow Logical Device
+        # changes, saved or not (D-01-OWNER-NOTICES 4a, 5a).
+        signal.logicalDeviceModified.connect(self._on_logical_changed)
         OscRuntime().liveChanged.connect(self._on_live)
         self._rebuild()
 
@@ -918,6 +914,15 @@ class OscLayoutModel(ControlLayoutModel):
         if self._writing or self._fb_writing:
             return
         self._rebuild()
+
+    def _on_logical_changed(self) -> None:
+        if self._writing or self._fb_writing:
+            return
+        if self._fb_id or any(
+            row["source"]["kind"] == "logical"
+            for row in osc_device_file.read_feedback()
+        ):
+            self._rebuild()
 
     @contextlib.contextmanager
     def _feedback_step(self) -> Iterator[None]:

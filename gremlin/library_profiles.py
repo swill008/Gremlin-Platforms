@@ -408,6 +408,16 @@ class Batch:
         }
         answer: object = None
         failure = ""
+        from gremlin.signal import signal
+
+        # A change that announced itself (Copy's Device Pack import sends
+        # profileChanged) isn't announced twice.
+        said: list[bool] = []
+
+        def heard() -> None:
+            said.append(True)
+
+        signal.profileChanged.connect(heard)
         try:
             with profile.library.change():
                 answer = change(profile, True)
@@ -418,12 +428,23 @@ class Batch:
         except Exception as e:  # noqa: BLE001 - named, the others go on
             _log.exception(f"{self.label}: the open profile couldn't be changed")
             failure = str(e) or type(e).__name__
+        finally:
+            signal.profileChanged.disconnect(heard)
         if failure:
             _put_back(profile, before, items)
             return f"{name} (open) wasn't changed: {failure}"
         self._merge(answer, result)
         profile.note_edit()
         result["changed"].append(str(profile.fpath or ""))
+        # The open profile was edited in memory: every page follows, as after
+        # Copy and Restore (their Device Pack import sends these), and what
+        # drives what is announced (D-01-OWNER-NOTICES).
+        if not said:
+            signal.configChanged.emit()
+            signal.profileChanged.emit()
+        from gremlin.ui.input_pairing import notify_bindings
+
+        notify_bindings()
         return ""
 
     def _apply_saved(

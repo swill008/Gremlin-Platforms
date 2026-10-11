@@ -85,10 +85,18 @@ def test_relative_axis_events_are_synthetic(logical: Any) -> None:  # noqa: ANN4
 
 # The deleted control is the point: a missing reference on purpose.
 @pytest.mark.validate_off
-def test_editor_warning_follows_the_cant_send_notice(matrix: Any) -> None:  # noqa: ANN401
+def test_editor_warning_follows_the_cant_send_notice(
+    matrix: Any,  # noqa: ANN401
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The control is deleted without a Logical Device notice; the output
-    layer's cantSendChanged alone updates the editor's ⚠."""
+    layer's cantSendChanged alone updates the editor's ⚠. (The Logical
+    Device rows announce their own changes since D-01-OWNER-NOTICES: that
+    notice is held back here, so only cantSendChanged is left.)"""
+    from gremlin import logical_device
     from gremlin.signal import signal
+
+    monkeypatch.setattr(logical_device, "notify_rows", lambda: None)
 
     logical = LogicalDevice()
     logical.create(InputType.JoystickButton)
@@ -100,6 +108,9 @@ def test_editor_warning_follows_the_cant_send_notice(matrix: Any) -> None:  # no
         if c.id == data.logical_input_id
     )
     assert picker.cantSendText == ""
+    # Notices set off by opening the editor (or by earlier tests) are
+    # delivered first, so only what follows is counted.
+    settle()
     seen: list[str] = []
     picker.changed.connect(lambda: seen.append(picker.cantSendText))
     logical.delete(target.identifier)

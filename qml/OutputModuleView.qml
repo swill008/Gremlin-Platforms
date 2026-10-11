@@ -423,7 +423,7 @@ Item {
         }
         for (var i = 0; i < rows.length; ++i)
             _copySources.append({
-                "label": rows[i].name,
+                "label": rows[i].label || rows[i].name,
                 "name": rows[i].name,
                 "guid": rows[i].guid || ""
             })

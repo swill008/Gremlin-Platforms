@@ -558,21 +558,9 @@ def _restore_settings(side: dict | None) -> tuple[bool, str]:
     for section, group, name, value in values:
         if not _apply_at_once(section, group, name, value):
             cfg.set(section, group, name, value)
+    # device_aliases announces names that changed (D-01-OWNER-NOTICES).
     signal.configChanged.emit()
-    _names_changed()
     return True, "Settings put back."
-
-
-def _names_changed() -> None:
-    """Friendly names put back show at once (Home, the Library): what
-    device_aliases.set_alias tells its listeners."""
-    from gremlin import device_aliases
-
-    for listener in list(getattr(device_aliases, "_LISTENERS", [])):
-        try:
-            listener()
-        except Exception:  # noqa: BLE001 - one listener never stops Restore
-            logging.getLogger("system").exception("History: a name listener failed")
 
 
 def _apply_at_once(section: str, group: str, name: str, value: object) -> bool:

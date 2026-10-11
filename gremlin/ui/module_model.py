@@ -247,6 +247,20 @@ def _profile_wire_maps() -> list[tuple[str, str, int]]:
     return out
 
 
+def _raw(row: object) -> str:
+    """The card's device name as its module file and vJoy number know it;
+    the shown name may be the user's own (10 S7)."""
+    return str(getattr(row, "raw_name", "") or getattr(row, "name", "") or "")
+
+
+def _shown(key: str, raw: str) -> str:
+    """The user's name for the device, else its own (10 S7): the one owner,
+    gremlin.device_aliases, as the device list and editors use."""
+    from gremlin import device_aliases
+
+    return device_aliases.display_name(key, raw) if key else raw
+
+
 def apply_bound_targets(rows: list) -> None:
     guid_to_name = {
         guid_key(getattr(row, "guid", "")): getattr(row, "name", "")
@@ -259,11 +273,12 @@ def apply_bound_targets(rows: list) -> None:
         if getattr(row, "direction", "") != "dest":
             continue
         name = str(getattr(row, "name", "") or "")
+        raw = _raw(row)
         tab = str(getattr(row, "tab", "") or "")
-        if tab == "xbox" or is_gremlin_xbox_name(name):
+        if tab == "xbox" or is_gremlin_xbox_name(raw):
             xbox_name = name
             continue
-        vjoy_id = vjoy_id_from_name(name)
+        vjoy_id = vjoy_id_from_name(raw)
         if vjoy_id:
             vjoy_to_name[vjoy_id] = name
     src_bound, dest_bound = collect_bound_names(
@@ -271,14 +286,14 @@ def apply_bound_targets(rows: list) -> None:
     )
     for row in rows:
         direction = getattr(row, "direction", "")
-        name = str(getattr(row, "name", "") or "")
+        raw = _raw(row)
         tab = str(getattr(row, "tab", "") or "")
         if direction == "source":
             names = src_bound.get(guid_key(getattr(row, "guid", "")), [])
-        elif tab == "xbox" or is_gremlin_xbox_name(name):
+        elif tab == "xbox" or is_gremlin_xbox_name(raw):
             names = dest_bound.get("xbox", [])
         else:
-            vjoy_id = vjoy_id_from_name(name)
+            vjoy_id = vjoy_id_from_name(raw)
             names = dest_bound.get(f"vjoy:{vjoy_id}", []) if vjoy_id else []
         # Spaces kept in a module file's name ("EVO OT L  ") don't show.
         row.target = ", ".join(" ".join(str(n).split()) for n in names)
@@ -503,6 +518,7 @@ class ModuleRow:
         "last_friendly",
         "last_hardware",
         "damaged",
+        "name_key",
         "vjoy_id",
         "cant_send_count",
         "cant_send_tip",
@@ -510,8 +526,13 @@ class ModuleRow:
 
     def __init__(self) -> None:
         self.slug = ""
+        # The shown name: the user's name for the device, else raw_name
+        # (10 S7, D-01-OWNER-NOTICES 2a). raw_name names its module file.
         self.name = ""
         self.raw_name = ""
+        # The key its user-given name is kept under (device id, or
+        # "keyboard", "osc", "xbox", "logical").
+        self.name_key = ""
         self.guid = ""
         self.direction = "source"
         self.status = "Stub"
@@ -641,13 +662,21 @@ def map_parts(device_name: str, guid: str = "") -> str:
 class ModuleFileWatch(QtCore.QObject):
     """Lets the Button Map see that its module file was changed elsewhere
     (History Restore, Device Pack, Module Setup): outside Edit it reloads,
-    in Edit its Save asks Keep mine / Take theirs (07 Q6, GL-071)."""
+    in Edit its Save asks Keep mine / Take theirs (07 Q6, GL-071).
+    changed follows the store's notice (D-01-OWNER-NOTICES 6b); files edited
+    outside the program are not followed (7a)."""
+
+    changed = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
-        # path -> ((mtime_ns, size), parts): polled once a second, read only
-        # when the file changed.
+        # path -> ((mtime_ns, size), parts): read only when the file changed.
         self._seen: dict[str, tuple[tuple[int, int], str]] = {}
+        signal.moduleFilesChanged.connect(self._files_changed)
+
+    @QtCore.Slot()
+    def _files_changed(self) -> None:
+        self.changed.emit()
 
     @QtCore.Slot(str, str, result=str)
     def mapParts(self, device_name: str, guid: str) -> str:
@@ -706,6 +735,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
     targetsChanged = QtCore.Signal()
     # A card's count of bindings that can't be sent changed (D-05-CANT-SEND).
     cantSendChanged = QtCore.Signal()
+    # A card's shown name (the user's name for the device) may have changed.
+    namesChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -724,11 +755,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._refresh_timer.setSingleShot(True)
         self._refresh_timer.setInterval(50)
         self._refresh_timer.timeout.connect(self._refresh_inplace)
-        # "Driven by" follows action edits; a burst of edits is one check.
-        self._targets_timer = QtCore.QTimer(self)
-        self._targets_timer.setSingleShot(True)
-        self._targets_timer.setInterval(200)
-        self._targets_timer.timeout.connect(self._refresh_targets)
         self._dest_snap: dict[str, dict] = {}
         # vJoy id and claim per output card, read once per reload.
         self._dest_targets: dict[str, tuple[int, dict]] = {}
@@ -747,12 +773,18 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_timer.start()
         signal.profileChanged.connect(self._schedule_reload)
         signal.configChanged.connect(self._schedule_refresh)
-        signal.inputItemChanged.connect(self._input_item_changed)
-        signal.logicalDeviceModified.connect(self._targets_timer.start)
+        # "Driven by" follows the bindings' owner, input_pairing: one notice
+        # per burst of edits, undo and Delete Mode included
+        # (D-01-OWNER-NOTICES 1a).
+        signal.bindingsChanged.connect(self._follow_bindings)
+        # The user's names for devices (10 S7; D-01-OWNER-NOTICES 2a, 3a).
+        signal.deviceNamesChanged.connect(self._follow_names)
+        # A module file saved, deleted or moved aside: output cards drop
+        # their claim copy (D-01-OWNER-NOTICES 6b).
+        signal.moduleFilesChanged.connect(self._follow_module_files)
         # A restored Logical Device file (History, Library) may bring its
         # picture back or take it away: the card shows it at once.
         signal.logicalDeviceReloaded.connect(self._logical_reloaded)
-        signal.actionsChanged.connect(self._targets_timer.start)
         # What can be sent changed (claims, vJoy driver, Xbox, OSC, Logical
         # Device): the output layer's one notice (D-05-CANT-SEND-LIVE).
         signal.cantSendChanged.connect(self._follow_cant_send)
@@ -926,11 +958,16 @@ class ModuleListModel(QtCore.QAbstractListModel):
         for row in self._rows:
             if getattr(row, "direction", "") != "dest":
                 continue
-            name = str(getattr(row, "name", "") or "").strip()
+            name = _raw(row).strip()
             if not name or name.casefold() == current.casefold() or name.casefold() in seen:
                 continue
             seen.add(name.casefold())
-            rows.append({"name": name, "guid": str(getattr(row, "guid", "") or "")})
+            # name opens its view; label is what the user calls it (10 S7).
+            rows.append({
+                "name": name,
+                "label": str(getattr(row, "name", "") or name).strip(),
+                "guid": str(getattr(row, "guid", "") or ""),
+            })
         rows.sort(key=lambda item: item["name"].lower())
         return json.dumps(rows)
 
@@ -1363,6 +1400,44 @@ class ModuleListModel(QtCore.QAbstractListModel):
         return True
 
     @QtCore.Slot()
+    def _follow_bindings(self) -> None:
+        self._refresh_targets()
+
+    @QtCore.Slot()
+    def _follow_names(self) -> None:
+        """Cards show the user's name for their device at once (10 S7)."""
+        role = QtCore.Qt.ItemDataRole.UserRole + 2
+        changed = False
+        for idx, row in enumerate(self._rows):
+            shown = _shown(row.name_key, row.raw_name)
+            if shown != row.name:
+                row.name = shown
+                changed = True
+                at = self.index(idx, 0)
+                self.dataChanged.emit(at, at, [role])
+        if changed:
+            # Driven by lists the other cards by name.
+            self._refresh_targets()
+        self.namesChanged.emit()
+
+    @QtCore.Slot()
+    def _follow_module_files(self) -> None:
+        self._refresh_inplace()
+
+    @QtCore.Slot(str, str, result=str)
+    def shownName(self, guid: str, raw_name: str) -> str:
+        """The name a card shows for its device (the Configuration page
+        title): the user's name, else raw_name."""
+        want = guid_key(guid)
+        for row in self._rows:
+            if want and guid_key(row.guid) == want and row.raw_name == raw_name:
+                return row.name or raw_name
+        for row in self._rows:
+            if raw_name and row.raw_name == raw_name:
+                return row.name or raw_name
+        return raw_name
+
+    @QtCore.Slot()
     def _refresh_targets(self) -> None:
         """Works out every card's "Driven by" again from the profile's actions
         and updates the cards whose list changed."""
@@ -1400,11 +1475,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, result=str)
     def boundLine(self, device_name: str) -> str:
         # Fresh, not as of the last check: the header asks when a page opens.
-        self._targets_timer.stop()
         self._refresh_targets()
         name = str(device_name or "")
         for row in self._rows:
-            if str(getattr(row, "name", "") or "") == name:
+            if _raw(row) == name:
                 target = str(getattr(row, "target", "") or "")
                 return "Driven by: [" + (target if target else "nothing") + "]"
         return "Driven by: [nothing]"
@@ -1446,11 +1520,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
             + len(claim["hats"])
             + len(claim["keys"])
         )
-
-    @QtCore.Slot()
-    def _input_item_changed(self, _index: int) -> None:
-        # A bound method, not a lambda: Qt drops it when the list is deleted.
-        self._targets_timer.start()
 
     def _schedule_reload(self) -> None:
         self._reload_timer.start()
@@ -1764,7 +1833,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
             row = ModuleRow()
             row.slug = slug
             row.raw_name = name
-            row.name = name
+            row.name_key = str(dev.device_guid)
+            row.name = _shown(row.name_key, name)
             row.guid = str(dev.device_guid)
             row.direction = "source"
             row.tab = "physical"
@@ -1798,8 +1868,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
             _show_unconfigured(slug, saved, show_stubs, kept, released)
             row = ModuleRow()
             row.slug = slug
-            row.name = name
             row.raw_name = name
+            row.name_key = slug
+            row.name = _shown(slug, name)
             row.guid = guid
             row.direction = direction
             row.tab = tab
@@ -1824,8 +1895,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 continue
             row = ModuleRow()
             row.slug = slug
-            row.name = name
             row.raw_name = name
+            row.name_key = str(vdev.device_guid)
+            row.name = _shown(row.name_key, name)
             row.guid = str(vdev.device_guid)
             row.direction = "dest"
             row.tab = "physical"
@@ -1877,6 +1949,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
             _set_order(merged)
         self.focusChanged.emit()
         self.panesChanged.emit()
+        # Pages that ask the list (the Output View header, the
+        # Configuration page title) read afresh after a full reload.
+        self.targetsChanged.emit()
+        self.namesChanged.emit()
 
 
 @ta.QmlElement

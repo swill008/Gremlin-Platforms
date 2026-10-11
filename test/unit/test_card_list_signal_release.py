@@ -1,6 +1,7 @@
 """A Home card list leaves no program-wide connection behind once deleted
 (FLK-SWAP): inputItemChanged was connected through a lambda, which held the
-list and could never be dropped, so every list ever made kept reloading."""
+list and could never be dropped, so every list ever made kept reloading.
+Driven by now follows bindingsChanged (D-01-OWNER-NOTICES): the same holds."""
 
 import gc
 
@@ -9,7 +10,7 @@ from PySide6 import QtCore
 from gremlin.signal import signal
 from gremlin.ui.module_model import ModuleListModel
 
-_SIGNAL = QtCore.SIGNAL("inputItemChanged(int)")
+_SIGNAL = QtCore.SIGNAL("bindingsChanged()")
 
 
 def _make_and_delete() -> None:
@@ -20,7 +21,7 @@ def _make_and_delete() -> None:
     gc.collect()
 
 
-def test_a_deleted_card_list_drops_its_input_item_connection(qtbot) -> None:  # noqa: ANN001
+def test_a_deleted_card_list_drops_its_bindings_connection(qtbot) -> None:  # noqa: ANN001
     # A first list may make program-wide helpers that stay connected for the
     # whole process (made once, on first use): make one before counting, so
     # only this test's list moves the count, whatever ran before.

@@ -66,7 +66,11 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
         super().__init__(parent)
         self._rows: list[dict] = []
         self.reload()
-        signal.profileChanged.connect(self.reload)
+        # What drives what and the devices' shown names: their owners' one
+        # notice each (D-01-OWNER-NOTICES).
+        signal.bindingsChanged.connect(self.reload)
+        signal.deviceNamesChanged.connect(self.reload)
+        # The device list itself.
         event_handler.EventListener().device_change_event.connect(self.reload)
 
     @QtCore.Slot()

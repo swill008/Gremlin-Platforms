@@ -1002,6 +1002,7 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        profileModes = _hw.profileModes()
         liveNodes = []
         workNodes = []
         resItems = []
@@ -1083,12 +1084,13 @@ ApplicationWindow {
     }
 
     // Outside Edit the map follows its module file when another window
-    // changes it (History Restore, Device Pack, Module Setup; 07 Q6).
-    Timer {
-        interval: 1000
-        repeat: true
-        running: _buttonMap.visible && !_buttonMap.editing && _buttonMap.targetName.length > 0
-        onTriggered: {
+    // changes it (History Restore, Device Pack, Module Setup; 07 Q6), told
+    // by the store's "module files changed" notice (D-01-OWNER-NOTICES).
+    Connections {
+        target: _fileWatch
+        function onChanged() {
+            if (!_buttonMap.visible || _buttonMap.editing)
+                return
             if (_buttonMap.loadedDevice !== _buttonMap.targetName)
                 return
             if (_buttonMap.filePartsNow() === _buttonMap._fileParts)
@@ -1704,7 +1706,8 @@ ApplicationWindow {
     // running mode while the profile runs, else the mode shown in the main
     // window.
     property string labelMode: ""
-    property var profileModes: _hw.profileModes()
+    // Set at start and by onProfileLabelsChanged (no binding to overwrite).
+    property var profileModes: []
     readonly property string labelModeNow: {
         if (labelMode.length)
             return labelMode

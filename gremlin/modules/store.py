@@ -35,7 +35,10 @@ Rules kept here:
 - every write is atomic (module_file.write_bytes), pictures too;
 - History is hooked here only: writes call history_modules.note_write,
   deletes and Start Fresh go through history_modules.deleting;
-- a saved module file reaches Run's output claims at once (output.refresh).
+- a saved module file reaches Run's output claims at once (output.refresh);
+- a saved, deleted or moved-aside module file is announced:
+  signal.moduleFilesChanged, once per burst, on the main thread
+  (notify_module_files, D-01-OWNER-NOTICES).
 
 registry stays the read-only index of module files and the home of the
 lookup rule; module_file the atomic writer and the damaged-file rule.
@@ -58,6 +61,7 @@ from gremlin.modules import module_file, registry
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import guid_key, stored_guid_key
 from gremlin.modules.registry import plain_slug
+from gremlin.notice import BurstNotice
 
 PICTURE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
 
@@ -403,15 +407,33 @@ def _text_of(data: bytes) -> str | None:
         return None
 
 
+def _send_module_files() -> None:
+    from gremlin.signal import signal
+
+    signal.moduleFilesChanged.emit()
+
+
+_module_files = BurstNotice(_send_module_files)
+
+
+def notify_module_files() -> None:
+    """A module file was saved, deleted or moved aside:
+    signal.moduleFilesChanged goes out once for a burst, on the main
+    thread (D-01-OWNER-NOTICES). Any thread may call it."""
+    _module_files.notify()
+
+
 def _saved() -> None:
     """A module file changed: Run's output claims take effect at once (03
-    S36, 06 S53), not after the output layer's one-second cache."""
+    S36, 06 S53), not after the output layer's one-second cache, and every
+    page showing module files is told."""
     try:
         from gremlin.modules import output
 
         output.refresh()
     except Exception:  # noqa: BLE001 - a refresh never stops a save
         syslog.exception("Output claims could not be re-read after a save")
+    notify_module_files()
 
 
 def _is_module_file(path: Path) -> bool:

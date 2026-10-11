@@ -69,6 +69,8 @@ class InputIdentifier(QtCore.QObject):
         self.device_guid = device_guid
         self.input_type = input_type
         self.input_id = input_id
+        # The label carries the device's shown name (D-01-OWNER-NOTICES).
+        signal.deviceNamesChanged.connect(self.changed)
 
     @QtCore.Property(str, notify=changed)
     def label(self) -> str:
@@ -169,10 +171,22 @@ class DeviceListModel(QtCore.QAbstractListModel):
 
         event_handler.EventListener().device_change_event.connect(self.update_model)
         signal.profileChanged.connect(self.update_model)
+        signal.deviceNamesChanged.connect(self._names_changed)
 
     def update_model(self) -> None:
         """Updates the model if the connected devices change."""
         self._reload_devices()
+
+    @QtCore.Slot()
+    def _names_changed(self) -> None:
+        """A device's shown name changed: the rows' names are read again
+        (D-01-OWNER-NOTICES); the list itself stays."""
+        if self._devices:
+            self.dataChanged.emit(
+                self.index(0, 0),
+                self.index(len(self._devices) - 1, 0),
+                [QtCore.Qt.ItemDataRole.UserRole + 1],
+            )
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._devices)
