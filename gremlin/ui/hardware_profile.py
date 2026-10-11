@@ -22,7 +22,7 @@ from PySide6 import (
 import gremlin.ui.type_aliases as ta
 from gremlin.modules import module_file, registry, store
 from gremlin.modules.claim import claim_ids
-from gremlin.modules.registry import is_output_name, read_doc
+from gremlin.modules.registry import is_output_name
 from gremlin.signal import signal
 from gremlin.ui.live_debug import trace
 from gremlin.ui.util import to_local_path
@@ -339,12 +339,8 @@ def print_image(printer: QtGui.QPagedPaintDevice, image: QtGui.QImage) -> bool:
     return painter.end()
 
 
-def _template_stem(name: str) -> str:
-    """A template's file name: its name, with characters files cannot hold
-    replaced."""
-    text = str(name or "").strip()
-    stem = "".join(c if c.isalnum() or c in " -_" else "_" for c in text).strip()
-    return stem[:80]
+# A template folder's layout file (07 S110).
+TEMPLATE_FILE = "template.json"
 
 
 def _read_template(path: Path) -> dict | None:
@@ -359,62 +355,10 @@ def _read_template(path: Path) -> dict | None:
     return doc
 
 
-def _named_pictures(doc: object) -> set[str]:
-    """The pictures a map names (its photo and every picture chip, also
-    inside groups), as stored references."""
-    refs: set[str] = set()
-    if isinstance(doc, dict):
-        image = str(doc.get("image") or "").strip()
-        if image:
-            refs.add(image)
-
-    def walk(value: object) -> None:
-        if isinstance(value, dict):
-            if value.get("shape") == "image" and value.get("src"):
-                refs.add(str(value["src"]))
-            for inner in value.values():
-                walk(inner)
-        elif isinstance(value, list):
-            for inner in value:
-                walk(inner)
-
-    walk(doc.get("nodes") if isinstance(doc, dict) else None)
-    return refs
-
-
-def _used_pictures() -> set[Path]:
-    """Every picture a module file, a template or a recovery copy names
-    (where it is in the modules folder)."""
-    docs: list[object] = [store.read_path(path) for path in store.module_files()]
-    for folder in (store.folder() / "templates", store.recovery_path("x").parent):
-        if folder.is_dir():
-            docs += [_read_template(path) for path in sorted(folder.glob("*.json"))]
-    used: set[Path] = set()
-    for doc in docs:
-        for ref in _named_pictures(doc):
-            try:
-                used.add(store.picture_path(ref).resolve())
-            except OSError:
-                continue
-    return used
-
-
-def unused_pictures(slug: str) -> list[Path]:
-    """Pictures in a device's folder no map, template or recovery copy names
-    (07 Q11). The photo's files are left to the photo's own safety copy."""
-    folder = store.pictures_dir_of(slug)
-    if not folder.is_dir():
-        return []
-    photos = {p.resolve() for p in store.photo_files(slug)}
-    used = _used_pictures()
-    return [
-        path
-        for path in sorted(folder.iterdir())
-        if path.is_file()
-        and path.suffix.lower() in _IMAGE_EXT
-        and path.resolve() not in photos
-        and path.resolve() not in used
-    ]
+def _is_picture(value: dict) -> bool:
+    """A map item that shows a picture file (store.named_refs' rule)."""
+    kind = value.get("shape") == "image" or value.get("kind") == "image"
+    return bool(kind and value.get("src"))
 
 
 def _is_hex_colour(value: object) -> bool:
@@ -465,13 +409,7 @@ def _maps_dir() -> Path:
 # Old names of what the module file store now owns, kept for callers that
 # have not moved to gremlin.modules.store yet (GL-093). New code uses the
 # store.
-_asset_ref = store.picture_ref
-_module_relative = store.module_relative
-_slug = store.own_slug
 guid_for_module = store.guid_filter
-_write_bindings = store.set_bindings
-_binding_store = registry.binding_store
-_clear_device_binding = store.unbind
 _live_devices = store.live_devices
 _guid_text = store.guid_text
 _pack_file_name = store.pack_file_name
@@ -488,22 +426,8 @@ _device_input_ids = store.device_input_ids
 _filter_nodes = store.filter_nodes
 member_kind = store.member_kind
 prepare_imported_doc = store.prepare_imported_doc
-module_json_path = store.path_for
-_active_module_path = store.path_for
-_own_file_shared = store.is_shared
-
-
-def module_file_choices(device_name: str, guid: str = "") -> list[str]:
-    """Files in the import folder. Live module files are not listed."""
-    del device_name, guid
-    return store.import_choices()
-
-
-def bind_module_file(device_name: str, guid: str, file_name: str) -> str:
-    slug = store.bind(device_name, guid, file_name)
-    if slug:
-        persist_log(f"Persist bind file name={device_name!r} guid={guid!r} slug={slug!r}")
-    return slug
+module_json_path = store.module_file
+_active_module_path = store.module_file
 
 
 # --- Delete File and Delete Device ---------------------------------------------
@@ -572,15 +496,11 @@ def _autosave_before_pack(
 
 
 def delete_module_file(device_name: str, guid: str) -> str:
-    """Delete File: deletes this device's file (the one it opens: a renamed
-    stick's is its old file), keeping a "module file deleted" autosave in
-    the Device Library first (03 S62, 10 S16); nothing is deleted when it
-    can't be kept. The pictures stay (03 Q14). Refused when another stick
-    uses the file."""
+    """Delete File: deletes this device's module.json, keeping a "module
+    file deleted" autosave in the Device Library first (03 S62, 10 S16);
+    nothing is deleted when it can't be kept. The pictures stay (03 Q14)."""
     name = " ".join(str(device_name or "").split())
-    path = store.path_for(name, guid)
-    if store.other_users(path.stem, name, guid):
-        return "Another stick is using this file."
+    path = store.module_file(name, guid)
     if path.is_file():
         failed = _autosave(
             name, guid, "module_file", "Autosave: module file deleted", []
@@ -605,7 +525,7 @@ _STOP_FIRST = (
 
 def delete_preview(device_name: str, guid: str) -> str:
     name = " ".join(str(device_name or "").split())
-    path = store.path_for(name, guid)
+    path = store.module_file(name, guid)
     running = _profile_running()
     return json.dumps({
         "name": name,
@@ -613,8 +533,6 @@ def delete_preview(device_name: str, guid: str) -> str:
         "running": running,
         "runningText": _STOP_FIRST if running else "",
         "canPack": path.is_file(),
-        "shared": store.is_shared(name, guid),
-        "foreign": bool(store.foreign_file(name, guid)),
         "listed": _device_stays_listed(name, guid),
         "keepModule": is_output_name(name),
     })
@@ -664,10 +582,10 @@ def _profile_running() -> bool:
 def delete_device(device_name: str, guid: str) -> str:
     """Delete Device: a "stick deleted" autosave in the Device Library first
     (10 S16-S21, 03 S91: refused when it can't be written or read back),
-    then the device's wires (in memory, the profile left unsaved, 03 Q4),
-    its module file, its pictures, recovery copy and photo safety copies
-    (07 Q11) and its file choices. An output module file, or one another
-    stick uses, stays. Refused while running (03 Q6)."""
+    then the device's wires (in memory, the profile left unsaved, 03 Q4)
+    and its whole folder: module file, pictures, recovery copy and any
+    edit's temporary folder (03 S92). An output module's folder stays.
+    Refused while running (03 Q6)."""
     from gremlin.shared_state import current_profile
 
     name = " ".join(str(device_name or "").split())
@@ -685,15 +603,11 @@ def delete_device(device_name: str, guid: str) -> str:
             "error": f"The device was not deleted. {failed}",
         })
     _drop_profile_wires(name, guid)
-    # The device's file is the one it opens (a renamed stick's old file),
-    # found before its file choices are cleared.
-    own_path = store.path_for(name, guid)
-    shared = store.is_shared(name, guid)
+    own_path = store.module_file(name, guid)
     protected = is_output_name(name)
     file_error = ""
-    if not shared and not protected:
+    if not protected:
         file_error = store.delete(name, guid, pictures=True, who="Delete Device")
-    store.unbind(name, guid)
     own_left = own_path.is_file()
     profile = current_profile
     # The removal is in memory only: Save the profile to keep it.
@@ -712,22 +626,12 @@ def delete_device(device_name: str, guid: str) -> str:
         "ok": True,
         "name": name,
         "autosaved": True,
-        "keptFile": bool((shared or protected) and own_left),
+        "keptFile": bool(protected and own_left),
         "keepModule": protected,
         "stub": listed and not own_left,
         "listed": listed,
         "profileSaved": saved,
     })
-
-
-def maps_folder_url() -> str:
-    return store.folder().as_uri()
-
-
-def imported_folder_url() -> str:
-    path = store.imported_dir()
-    path.mkdir(parents=True, exist_ok=True)
-    return path.as_uri()
 
 
 _PICTURE_FOLDER = ("global", "internal", "button-map-picture-folder")
@@ -892,7 +796,7 @@ def chips_key(guid: str) -> str:
     stamp = "-"
     if name:
         try:
-            stat = store.path_for(name, text).stat()
+            stat = store.module_file(name, text).stat()
             stamp = f"{stat.st_mtime_ns}:{stat.st_size}"
         except OSError:
             stamp = "missing"
@@ -982,6 +886,12 @@ class HardwareProfile(QtCore.QObject):
         self._path = ""
         self._peek_photo = ""
         self._device_guid = ""
+        # Which window's edit this object's pictures wait in: "" the Button
+        # Map, "setup" Module Setup (store.edit_temp_dir's owner).
+        self._owner = ""
+        # The photo Module Setup's Import Image keeps in its edit, named in
+        # the module file by commitEditFor.
+        self._staged_photo = ""
         self._export_error = ""
         # Why the last template rename or export failed (07 S80).
         self._template_error = ""
@@ -1268,16 +1178,11 @@ class HardwareProfile(QtCore.QObject):
         return size.width() / size.height()
 
     def savePastedImage(self, image: QtGui.QImage, device_name: str) -> str:
-        """Writes a pasted picture to the device's folder (and the library) as
-        pasted.png, pasted_1.png...; returns its stored path, or "" if none."""
+        """Keeps a pasted picture in the edit's temporary folder as
+        pasted.png, pasted_1.png... (07 S62, S107): the device's folder gets
+        it on Save. Its reference, or "" if none."""
         if image is None or image.isNull():
             return ""
-        folder = self._profile_dir(device_name)
-        dest = folder / "pasted.png"
-        n = 1
-        while dest.exists():
-            dest = folder / f"pasted_{n}.png"
-            n += 1
         data = QtCore.QByteArray()
         buffer = QtCore.QBuffer(data)
         buffer.open(QtCore.QIODevice.OpenModeFlag.WriteOnly)
@@ -1285,33 +1190,65 @@ class HardwareProfile(QtCore.QObject):
         buffer.close()
         if not saved:
             return ""
-        try:
-            store.put_picture_at(dest, bytes(data.data()))
-            store.into_library(dest)
-        except OSError:
-            return ""
-        return store.picture_ref(folder.name, dest.name)
+        return self._stage(device_name, bytes(data.data()), "pasted.png")
 
-    def _module_slug(self, device_name: str) -> str:
-        """The device's module file (slug) by the store's one rule, with the
-        id this object was given (a stale id is filtered out there): the
-        Button Map document, its pictures, its photo and the photo's safety
-        copy all use it."""
-        return store.slug_for(device_name, self._device_guid)
+    # --- the device this object works on, and its edit (07 S107) -------------
+
+    def _name(self, device_name: str = "") -> str:
+        """The device a slot is about (this object's last one when "")."""
+        name = " ".join(str(device_name or "").split())
+        if name:
+            self._device_name = name
+        return self._device_name
+
+    def _dir(self, device_name: str = "") -> Path:
+        """The device's folder, by the store's one rule with the id this
+        object was given (a stale id is filtered out there)."""
+        return store.device_dir(self._name(device_name), self._device_guid)
 
     def _file_for(self, device_name: str) -> Path:
-        return store.path_of(self._module_slug(device_name))
+        return store.module_file(self._name(device_name), self._device_guid)
 
-    def _profile_dir(self, device_name: str) -> Path:
-        path = store.pictures_dir_of(self._module_slug(device_name))
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+    def _editing(self, device_name: str = "", owner: str | None = None) -> bool:
+        """An edit of the device is open (its temporary folder exists)."""
+        temp = store.edit_temp_dir(
+            self._name(device_name), self._device_guid,
+            self._owner if owner is None else owner,
+        )
+        return (temp / store.STATE_FILE).is_file()
 
-    def _resolve_existing(self, stored: str) -> Path | None:
-        """The file of a stored picture: in the modules folder (only where
-        the reference says, 07 S11), or one of the program's own pictures.
-        None when it is missing. (No stock photos ship, 07 Q12.)"""
-        found = store.find_picture(stored)
+    def _staged(self, device_name: str = "") -> Path | None:
+        """The edit's added/ folder (pictures waiting for Save), or None."""
+        name = self._name(device_name)
+        added = store.staged_dir(name, self._device_guid, self._owner)
+        return added if added.is_dir() else None
+
+    def _stage(self, device_name: str, src: Path | bytes, as_name: str) -> str:
+        """A picture added during the edit, kept in its temporary folder
+        until Save (07 S107). Its reference, or "" when it can't be kept."""
+        name = self._name(device_name)
+        try:
+            ref = store.stage_picture(
+                name, self._device_guid, src, as_name, self._owner
+            )
+        except OSError as exc:
+            syslog.warning(f"Button Map picture not kept for {name}: {exc}")
+            return ""
+        trace("SAVE", "Button Map", "stage", ref, "ok")
+        return ref
+
+    def _resolve_existing(
+        self, stored: str, base: Path | None = None, staged: Path | None = None
+    ) -> Path | None:
+        """The file of a stored picture: the edit's waiting pictures first,
+        then the device's own folder (never another device's, 07 S11), or one
+        of the program's own pictures. None when it is missing. (No stock
+        photos ship, 07 Q12.) base: the device folder (this object's device,
+        with its edit's pictures, when None)."""
+        if base is None:
+            base = self._dir()
+            staged = self._staged()
+        found = store.find_picture(base, stored, staged)
         if found is not None:
             return found
         s = (stored or "").strip().replace("\\", "/")
@@ -1322,49 +1259,100 @@ class HardwareProfile(QtCore.QObject):
             return installed
         return None
 
-    def _pack_assets(self, device_name: str, payload: dict) -> dict:
-        """Copies the photo and the map's pictures into the device's folder
-        (atomic, through the store) and points the document at them."""
-        folder = self._profile_dir(device_name)
-        slug = folder.name
-        image = str(payload.get("image") or "")
-        src = self._resolve_existing(image) if image else None
-        if src is None or not src.is_file():
-            # No photo (Clear Photo leaves none, 07 Q4), or one that is
-            # gone: never another device's or a stock photo (07 S11).
-            payload["image"] = ""
-        else:
-            ext = src.suffix.lower() if src.suffix.lower() in _IMAGE_EXT else ".jpg"
-            dest = folder / f"photo{ext}"
-            self._put(src, dest)
-            payload["image"] = store.picture_ref(slug, dest.name)
-        for node in payload.get("nodes") or []:
-            if not isinstance(node, dict):
-                continue
-            rel = str(node.get("src") or "")
-            if not rel or node.get("shape") != "image":
-                continue
-            ov = self._resolve_existing(rel)
-            if not ov or not ov.is_file():
-                continue
-            dest = folder / store.safe_picture_name(ov.name, "overlay.png")
-            if dest.exists() and dest.resolve() != ov.resolve():
-                n = 1
-                while dest.exists() and dest.resolve() != ov.resolve():
-                    dest = folder / f"{dest.stem}_{n}{dest.suffix}"
-                    n += 1
-            self._put(ov, dest)
-            node["src"] = store.picture_ref(slug, dest.name)
-            node.pop("srcUrl", None)
+    def _resolver_for(
+        self, device_name: str, guid: str
+    ) -> Callable[[str], Path | None]:
+        """_resolve_existing for another device's saved pictures (Device Pack)."""
+        name = " ".join(str(device_name or "").split())
+
+        def resolve(stored: str) -> Path | None:
+            return self._resolve_existing(stored, store.device_dir(name, guid), None)
+
+        return resolve
+
+    def _own_refs(self, device_name: str, payload: dict) -> dict:
+        """Points the document's pictures at the device's folder: every
+        reference becomes "pictures/<file>". A picture from outside it (a
+        file: URL, an absolute path, a program picture) is kept in the edit
+        so Save copies it in; a missing one keeps its file name, shown as
+        "Picture missing" in Edit (07 S108)."""
+        name = self._name(device_name)
+        base = self._dir(name)
+
+        def own(found: Path) -> bool:
+            places = [base / store.PICTURES]
+            staged = self._staged(name)
+            if staged is not None:
+                places.append(staged)
+            try:
+                parent = found.parent.resolve()
+                return any(parent == place.resolve() for place in places)
+            except OSError:
+                return False
+
+        def fix(ref: object) -> str:
+            text = str(ref or "").strip()
+            if not text:
+                return ""
+            found = self._resolve_existing(text, base, self._staged(name))
+            if found is None:
+                plain = text.replace("\\", "/").split("?")[0].rstrip("/")
+                tail = plain.rsplit("/", 1)[-1]
+                return store.picture_ref(tail) if tail else ""
+            if own(found):
+                return store.picture_ref(found.name)
+            return self._stage(name, found, found.name) or store.picture_ref(found.name)
+
+        payload["image"] = fix(payload.get("image"))
+
+        def walk(value: object) -> None:
+            if isinstance(value, dict):
+                if _is_picture(value):
+                    value["src"] = fix(value.get("src"))
+                    value.pop("srcUrl", None)
+                for inner in value.values():
+                    walk(inner)
+            elif isinstance(value, list):
+                for inner in value:
+                    walk(inner)
+
+        walk(payload.get("nodes"))
         return payload
 
     @staticmethod
-    def _put(src: Path, dest: Path) -> Path:
-        """A picture copied into a device folder (nothing when it is already
-        that file)."""
-        if dest.resolve() != src.resolve():
-            store.put_picture_at(dest, src)
-        return dest
+    def _rewrite_refs(value: object, moved: dict[str, str]) -> None:
+        """Pictures named by moved's old references get the new ones."""
+        if isinstance(value, dict):
+            if _is_picture(value):
+                new = moved.get(str(value["src"]).strip())
+                if new:
+                    value["src"] = new
+                value.pop("srcUrl", None)
+            for inner in value.values():
+                HardwareProfile._rewrite_refs(inner, moved)
+        elif isinstance(value, list):
+            for inner in value:
+                HardwareProfile._rewrite_refs(inner, moved)
+
+    def _stage_from(self, device_name: str, src_dir: Path, nodes: list) -> list:
+        """A layout from another device or a template, its pictures kept in
+        this device's edit (copied into its folder on Save, 07 S109)."""
+        name = " ".join(str(device_name or "").split())
+        if not name:
+            return nodes
+        self._name(name)
+        refs = store.named_refs({"nodes": nodes})
+        if not refs:
+            return nodes
+        try:
+            moved = store.stage_copied(
+                name, self._device_guid, src_dir, refs, self._owner
+            )
+        except OSError as exc:
+            syslog.warning(f"Pictures of {src_dir} not copied for {name}: {exc}")
+            moved = {}
+        self._rewrite_refs(nodes, moved)
+        return nodes
 
     @QtCore.Slot(result=str)
     def exportFolderUrl(self) -> str:
@@ -1372,7 +1360,9 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def defaultExportUrl(self, device_name: str) -> str:
-        path = _export_dir() / f"{store.own_slug(device_name)}_map.zip"
+        name = " ".join(str(device_name or "").split()) or "Device"
+        stem = store.folder_name_for(store.shown_name_of(name, self._device_guid))
+        path = _export_dir() / f"{stem}_map.zip"
         return path.as_uri()
 
     @QtCore.Slot(result=str)
@@ -1407,7 +1397,8 @@ class HardwareProfile(QtCore.QObject):
         if not guid:
             match = _match_pack_device(name)
             guid = str(match["guid"]) if match and match.get("guid") else ""
-        path = store.path_for(name, guid)
+        path = store.module_file(name, guid)
+        resolve = self._resolver_for(name, guid)
         # None yet, or damaged (08 S51, Q19).
         refused = export_refusal(path)
         doc = {} if refused else store.read_path(path)
@@ -1419,15 +1410,10 @@ class HardwareProfile(QtCore.QObject):
             })
         estimate = path.stat().st_size
         seen: set[Path] = set()
-        refs = [str(doc.get("image") or "")]
-        refs += [
-            str(node.get("src") or "")
-            for node in doc.get("nodes") or []
-            if isinstance(node, dict) and node.get("shape") == "image"
-        ]
-        photo = self._resolve_existing(refs[0]) if refs[0] else None
-        for ref in refs:
-            found = self._resolve_existing(ref) if ref else None
+        image = str(doc.get("image") or "")
+        photo = resolve(image) if image else None
+        for ref in sorted(store.named_refs(doc)):
+            found = resolve(ref)
             if found is None or found in seen:
                 continue
             seen.add(found)
@@ -1503,7 +1489,7 @@ class HardwareProfile(QtCore.QObject):
 
         modes, notes, guid = self._pack_options(options)
         built = assemble(
-            device_name, self._resolve_existing, modes, notes, guid=guid
+            device_name, self._resolver_for(device_name, guid), modes, notes, guid=guid
         )
         if isinstance(built, str):
             return json.dumps({"ok": False, "error": built})
@@ -1533,7 +1519,7 @@ class HardwareProfile(QtCore.QObject):
             })
         modes, notes, guid = self._pack_options(options)
         plan = plan_pack(
-            device_name, self._resolve_existing, modes, notes, guid=guid
+            device_name, self._resolver_for(device_name, guid), modes, notes, guid=guid
         )
         if isinstance(plan, str):
             return json.dumps({"ok": False, "error": plan})
@@ -1689,14 +1675,6 @@ class HardwareProfile(QtCore.QObject):
     def setDeviceGuid(self, guid: str) -> None:
         self._device_guid = str(guid or "")
 
-    @QtCore.Slot(str, result=str)
-    def moduleFileName(self, device_name: str) -> str:
-        """The file name of the module file this device's map opens (its own
-        file, so twin sticks stay apart): History's filter (08 Q15)."""
-        if not str(device_name or "").strip():
-            return ""
-        return self._file_for(device_name).name
-
     # --- the photo's look (Photo > Adjust photo) ---------------------------------
 
     @QtCore.Slot(str, float, float, float, result=str)
@@ -1721,7 +1699,7 @@ class HardwareProfile(QtCore.QObject):
         key = hashlib.sha1(
             f"{source}|{stamp}|{bright:.3f}|{contrast:.3f}|{grey:.3f}".encode()
         ).hexdigest()[:16]
-        folder = store.folder() / "cache"
+        folder = store.folder() / "cache" / "look"
         target = folder / f"photo-{key}.png"
         # A copy cut short (a crash while it was written) is made again.
         if not target.is_file() or QtGui.QImage(str(target)).isNull():
@@ -1748,51 +1726,74 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, result=list)
     def savedLayouts(self, device_name: str) -> list:
         """Other devices' module files that hold a Button Map layout, as
-        [{name, slug}] by name; device_name's own file is left out."""
-        own = ""
-        if device_name:
-            own = self._file_for(device_name).stem
+        [{name, slug}] by name (slug: the device's folder name);
+        device_name's own folder is left out."""
+        own = self._dir(device_name) if device_name else None
         rows = []
         for path in store.module_files():
-            if path.stem == own:
+            folder = path.parent
+            if own is not None and folder == own:
                 continue
             doc = store.read_path(path)
             if not doc.get("nodes"):
                 continue
-            name = str(doc.get("device") or path.stem)
-            rows.append({"name": name, "slug": path.stem})
+            name = str(doc.get("device") or folder.name)
+            rows.append({"name": name, "slug": folder.name})
         rows.sort(key=lambda row: row["name"].lower())
         return rows
 
+    @staticmethod
+    def _layout_dir(slug: str) -> Path | None:
+        """Another device's folder by its folder name (savedLayouts' slug)."""
+        text = str(slug or "")
+        if not text or any(c in text for c in ("/", "\\", ":")) or text in (".", ".."):
+            return None
+        if text.lower() in store.RESERVED:
+            return None
+        path = store.folder() / text
+        return path if path.is_dir() else None
+
     @QtCore.Slot(str, result=str)
-    def layoutNodes(self, slug: str) -> str:
+    @QtCore.Slot(str, str, result=str)
+    def layoutNodes(self, slug: str, device_name: str = "") -> str:
         """The layout (nodes) in another device's module file, as JSON text;
-        "" when there is none."""
-        if not slug or any(c in slug for c in ("/", "\\", ":")):
+        "" when there is none. With device_name (Copy Button Map from
+        Device), the pictures it uses wait in that device's edit and are
+        copied into its folder on Save (07 S109)."""
+        folder = self._layout_dir(slug)
+        if folder is None:
             return ""
-        nodes = store.read_path(store.path_of(slug)).get("nodes")
-        return json.dumps(nodes) if isinstance(nodes, list) and nodes else ""
+        nodes = store.read_path(store.module_file_in(folder)).get("nodes")
+        if not isinstance(nodes, list) or not nodes:
+            return ""
+        return json.dumps(self._stage_from(device_name, folder, nodes))
 
-    # --- layout templates (File > Templates) ----------------------------------
+    # --- layout templates (File > Templates; 07 S80, S110) -------------------
+    # A template is its own folder: templates/<name>/template.json and the
+    # pictures it uses in pictures/, shared as one ".gtemplate" file.
 
-    def _templates_dir(self) -> Path:
-        return store.folder() / "templates"
+    @staticmethod
+    def _template_dir(name: str) -> Path | None:
+        if not str(name or "").strip():
+            return None
+        return store.template_dir(str(name).strip())
 
     def _template_file(self, name: str) -> Path | None:
-        stem = _template_stem(name)
-        return self._templates_dir() / f"{stem}.json" if stem else None
+        folder = self._template_dir(name)
+        return folder / TEMPLATE_FILE if folder is not None else None
 
     @QtCore.Slot(result=list)
     def templates(self) -> list:
         """Saved layout templates by name: [{name, savedAt, count}]."""
         rows = []
-        folder = self._templates_dir()
-        for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
-            doc = _read_template(path)
+        folder = store.templates_dir()
+        found = sorted(folder.iterdir()) if folder.is_dir() else []
+        for sub in found:
+            doc = _read_template(sub / TEMPLATE_FILE) if sub.is_dir() else None
             if doc is None:
                 continue
             rows.append({
-                "name": str(doc.get("name") or path.stem),
+                "name": str(doc.get("name") or sub.name),
                 "savedAt": str(doc.get("savedAt") or ""),
                 "count": len(doc["nodes"]),
             })
@@ -1806,53 +1807,64 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, str, result=bool)
     def saveTemplate(self, name: str, nodes_json: str, device_name: str) -> bool:
-        """Saves a layout under a name, replacing a template of that name."""
-        path = self._template_file(name)
+        """Saves a layout under a name, replacing a template of that name,
+        with its own copies of the pictures it uses (07 S110)."""
+        folder = self._template_dir(name)
         try:
             nodes = json.loads(nodes_json)
         except ValueError:
             return False
-        if path is None or not isinstance(nodes, list) or not nodes:
+        if folder is None or not isinstance(nodes, list) or not nodes:
             return False
-        doc = {
-            "kind": "button-map-template",
-            "name": name.strip(),
-            "device": device_name,
-            "savedAt": datetime.now().isoformat(timespec="seconds"),
-            "nodes": nodes,
-        }
+        dev = self._name(device_name)
+        base = self._dir(dev)
+        staged = self._staged(dev)
+        pictures = folder / store.PICTURES
+        kept: set[str] = set()
+        moved: dict[str, str] = {}
         try:
-            module_file.write_bytes(path, json.dumps(doc, indent=1).encode("utf-8"))
+            for ref in sorted(store.named_refs({"nodes": nodes})):
+                src = self._resolve_existing(ref, base, staged)
+                if src is None:
+                    continue
+                file_name = store.safe_picture_name(src.name, "picture.png")
+                store.put_picture_at(pictures / file_name, src)
+                kept.add(file_name.casefold())
+                moved[ref] = store.picture_ref(file_name)
+            self._rewrite_refs(nodes, moved)
+            doc = {
+                "kind": "button-map-template",
+                "name": str(name).strip(),
+                "device": dev,
+                "savedAt": datetime.now().isoformat(timespec="seconds"),
+                "nodes": nodes,
+            }
+            module_file.write_bytes(
+                folder / TEMPLATE_FILE, json.dumps(doc, indent=1).encode("utf-8")
+            )
         except OSError:
             return False
+        # A replaced template's pictures it no longer uses go.
+        if pictures.is_dir():
+            for old in pictures.iterdir():
+                if old.is_file() and old.name.casefold() not in kept:
+                    try:
+                        old.unlink()
+                    except OSError:
+                        pass
         return True
 
     @QtCore.Slot(str, result=str)
-    def templateNodes(self, name: str) -> str:
+    @QtCore.Slot(str, str, result=str)
+    def templateNodes(self, name: str, device_name: str = "") -> str:
+        """A template's layout as JSON text ("" when there is none). With
+        device_name (Apply Template), its pictures wait in that device's
+        edit and are copied into its folder on Save (07 S109)."""
         path = self._template_file(name)
         doc = _read_template(path) if path else None
-        return json.dumps(doc["nodes"]) if doc else ""
-
-    @QtCore.Slot(str, result=list)
-    def templateMissingPictures(self, name: str) -> list:
-        """The pictures a template names that are no longer where it says
-        (moved or deleted; a template keeps where they are, not the files,
-        07 S81): their file names."""
-        path = self._template_file(name)
-        doc = _read_template(path) if path else None
-        if doc is None:
-            return []
-        missing: list[str] = []
-        for node in doc["nodes"]:
-            if not isinstance(node, dict) or node.get("shape") != "image":
-                continue
-            ref = str(node.get("src") or "").strip()
-            if not ref or self._resolve_existing(ref) is not None:
-                continue
-            label = ref.replace("\\", "/").rsplit("/", 1)[-1]
-            if label not in missing:
-                missing.append(label)
-        return missing
+        if doc is None or path is None:
+            return ""
+        return json.dumps(self._stage_from(device_name, path.parent, doc["nodes"]))
 
     @QtCore.Slot(str, result="QVariantMap")
     def deviceControls(self, guid: str) -> dict:
@@ -1877,7 +1889,7 @@ class HardwareProfile(QtCore.QObject):
         if not path or not path.is_file():
             return False
         try:
-            path.unlink()
+            shutil.rmtree(path.parent)
         except OSError:
             return False
         return True
@@ -1890,6 +1902,7 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=bool)
     def renameTemplate(self, name: str, new_name: str) -> bool:
+        """Renames a template's folder and the name inside it."""
         lead = "Rename failed."
         self._template_error = ""
         path = self._template_file(name)
@@ -1901,35 +1914,46 @@ class HardwareProfile(QtCore.QObject):
         if target is None:
             self._template_error = _missing_template(lead, None, new_name)
             return False
-        if target.is_file() and target != path:
+        same = target.parent.name.casefold() == path.parent.name.casefold()
+        if target.parent.exists() and not same:
             self._template_error = export_failure(
-                target, lead, "a template already has that name"
+                target.parent, lead, "a template already has that name"
             )
             return False
-        doc["name"] = new_name.strip()
+        # The name is written first and the folder moved second, so a
+        # failure at either step leaves the template as it was.
+        old_name = doc.get("name")
+        doc["name"] = str(new_name).strip()
         try:
-            module_file.write_bytes(target, json.dumps(doc, indent=1).encode("utf-8"))
+            module_file.write_bytes(path, json.dumps(doc, indent=1).encode("utf-8"))
         except OSError:
             self._template_error = export_failure(
-                target, lead, fallback=_TEMPLATE_FILE_PROBLEM
+                path, lead, fallback=_TEMPLATE_FILE_PROBLEM
             )
             return False
-        if target != path:
+        if target.parent.name != path.parent.name:
             try:
-                path.unlink()
+                os.rename(path.parent, target.parent)
             except OSError as exc:
-                self._template_error = _remove_failure(lead, path, exc)
-                # One template, not two: the new name is taken back.
+                self._template_error = export_failure(
+                    target.parent, lead, str(exc.strerror or exc)
+                )
+                doc["name"] = old_name
                 try:
-                    target.unlink()
+                    module_file.write_bytes(
+                        path, json.dumps(doc, indent=1).encode("utf-8")
+                    )
                 except OSError:
-                    pass
+                    pass  # the error above already names the folder
                 return False
         return True
 
     @QtCore.Slot(str, str, result=bool)
     def exportTemplate(self, name: str, url: str) -> bool:
-        """Writes a template to a file to share."""
+        """Writes a template and its pictures to one ".gtemplate" file to
+        share (07 S80)."""
+        from gremlin.modules import device_zip
+
         lead = "Export failed."
         self._template_error = ""
         path = self._template_file(name)
@@ -1937,11 +1961,17 @@ class HardwareProfile(QtCore.QObject):
             self._template_error = _missing_template(lead, path, name)
             return False
         out = Path(to_local_path(url))
+        if out.suffix.lower() != device_zip.GTEMPLATE_EXT:
+            out = out.with_name(out.name + device_zip.GTEMPLATE_EXT)
         try:
             # The user's chosen folder must exist; the writer would make it.
             if not out.parent.is_dir():
                 raise FileNotFoundError(str(out.parent))
-            module_file.write_bytes(out, path.read_bytes())
+            data = device_zip.build_gtemplate(str(name).strip())
+            if not isinstance(data, (bytes, bytearray)):
+                self._template_error = export_failure(out, lead, str(data))
+                return False
+            module_file.write_bytes(out, bytes(data))
         except OSError:
             self._template_error = export_failure(
                 out, lead, fallback=_TEMPLATE_FILE_PROBLEM
@@ -1951,35 +1981,27 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def importTemplate(self, url: str) -> str:
-        """Adds a shared template file; returns its name ("" when the file is
-        not a template). A name already taken gets a number."""
-        doc = _read_template(Path(to_local_path(url)))
-        if doc is None:
-            return ""
-        base = str(doc.get("name") or Path(to_local_path(url)).stem).strip() or "Template"
-        name = base
-        number = 2
-        while self.templateExists(name):
-            name = f"{base} {number}"
-            number += 1
-        doc["name"] = name
-        path = self._template_file(name)
-        if path is None:
-            return ""
-        try:
-            module_file.write_bytes(path, json.dumps(doc, indent=1).encode("utf-8"))
-        except OSError:
-            return ""
-        return name
+        """Adds a shared ".gtemplate" file with its pictures; returns its
+        name ("" when the file is not a template). A name already taken gets
+        a number."""
+        from gremlin.modules import device_zip
 
-    # --- recovery copies (autosave) ------------------------------------------
+        try:
+            name = device_zip.import_gtemplate(Path(to_local_path(url)))
+        except Exception:  # noqa: BLE001 - any unreadable file is "not a template"
+            syslog.exception(f"Template import of {url} failed")
+            return ""
+        return name if name and self.templateExists(name) else ""
+
+    # --- recovery copies (Options > Button Map > Recovery copies, 07 S32) ----
 
     def _recovery_file(self, device_name: str) -> Path:
-        return store.recovery_path(self._module_slug(device_name))
+        return store.recovery_path(self._name(device_name), self._device_guid)
 
     @QtCore.Slot(str, str, result=bool)
     def saveRecovery(self, device_name: str, payload: str) -> bool:
-        """Keeps a copy of unsaved Button Map edits, stamped with the time.
+        """Keeps a copy of unsaved Button Map edits in the device's folder,
+        stamped with the time.
 
         payload is the editor's {image, photo, nodes}. The module file is not
         touched; Save or Discard removes the copy.
@@ -1990,14 +2012,14 @@ class HardwareProfile(QtCore.QObject):
             return False
         if not isinstance(doc, dict) or not isinstance(doc.get("nodes"), list):
             return False
-        doc["device"] = device_name
+        name = self._name(device_name)
+        doc["device"] = name
         doc["savedAt"] = datetime.now().isoformat(timespec="seconds")
-        path = self._recovery_file(device_name)
         try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(doc), encoding="utf-8")
-            os.replace(tmp, path)
+            store.ensure_device_dir(name, self._device_guid)
+            module_file.write_bytes(
+                self._recovery_file(name), json.dumps(doc).encode("utf-8")
+            )
         except OSError:
             return False
         return True
@@ -2024,7 +2046,7 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, result=str)
     def load(self, device_name: str) -> str:
-        name = device_name or self._device_name
+        name = self._name(device_name)
         path = self._file_for(name)
         self._path = str(path)
         self.pathChanged.emit()
@@ -2050,7 +2072,7 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=bool)
     def save(self, device_name: str, json_text: str) -> bool:
-        name = device_name or self._device_name
+        name = self._name(device_name)
         path = self._file_for(name)
         try:
             payload = json.loads(json_text)
@@ -2063,11 +2085,19 @@ class HardwareProfile(QtCore.QObject):
         payload["space"] = "world"
         payload.update(PAGE_SIZE)
         payload["photo"] = _photo_pose(payload.get("photo"))
+        # A damaged module file refuses the save before any picture moves
+        # into the device; the edit stays open with its pictures (07 S12,
+        # GL-079).
+        reason = store.damage_of(path)
+        if reason:
+            trace("SAVE", "Button Map", "save", path, "damaged")
+            module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
+            return False
+        # Every picture named "pictures/<file>"; one from outside the device
+        # waits in the edit with the others (07 S107).
+        packed = self._own_refs(name, payload)
 
         def change(doc: dict) -> None:
-            # Runs only once the file is known not to be damaged: a refused
-            # save copies no photo or picture (07 S12, GL-079).
-            packed = self._pack_assets(name, payload)
             # The Button Map writes its own keys; everything else in the
             # file (claims, names, calibration, Appearance...) stays.
             for key, value in doc.items():
@@ -2077,8 +2107,25 @@ class HardwareProfile(QtCore.QObject):
             doc.clear()
             doc.update(packed)
 
-        if not _write_map(path, change):
-            return False
+        if self._editing(name):
+            # The edit's pictures go into the device's folder, the map is
+            # written and pictures nothing names go (07 S106, S107).
+            error = store.commit_edit(
+                name, self._device_guid, change, self._owner, "Button Map"
+            )
+            if error:
+                syslog.warning(f"Button Map not written to {path}: {error}")
+                return False
+        else:
+            try:
+                store.ensure_device_dir(name, self._device_guid)
+            except OSError as exc:
+                syslog.warning(f"Button Map not written to {path}: {exc}")
+                return False
+            if not _write_map(path, change):
+                return False
+            store.remove_unused_pictures(name, self._device_guid)
+        path = self._file_for(name)
         kept = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
         persist_log(
             f"Persist map save name={name!r} guid={self._device_guid!r} path={path} "
@@ -2094,7 +2141,7 @@ class HardwareProfile(QtCore.QObject):
         """Write only the ui block. Do not stamp page size or rewrite nodes.
         With no module file nothing is written: the ui block waits in the
         window until Save (07 S29, S96)."""
-        name = device_name or self._device_name
+        name = self._name(device_name)
         path = self._file_for(name)
         try:
             incoming = json.loads(json_text)
@@ -2114,24 +2161,16 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=str)
     def copyOverlay(self, source_url: str, device_name: str) -> str:
+        """Import Picture / a dropped file: the picture waits in the edit's
+        temporary folder until Save (07 S62, S107). Its reference."""
         src = to_local_path(source_url)
         if not src.is_file():
             return ""
         ext = src.suffix.lower() or ".png"
         if ext not in _IMAGE_EXT:
             ext = ".png"
-        folder = self._profile_dir(device_name)
-        dest = folder / store.safe_picture_name(src.stem + ext, src.name)
-        n = 1
-        while dest.exists() and dest.resolve() != src.resolve():
-            dest = folder / f"{src.stem}_{n}{ext}"
-            n += 1
-        try:
-            store.into_library(src)
-            self._put(src, dest)
-        except OSError:
-            return ""
-        return store.picture_ref(folder.name, dest.name)
+        as_name = store.safe_picture_name(src.stem + ext, src.name)
+        return self._stage(device_name, src, as_name)
 
     def _local_image(self, source_url: str) -> Path | None:
         raw = str(source_url or "").strip().split("?")[0].split("#")[0]
@@ -2153,196 +2192,166 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=str)
     def copyImage(self, source_url: str, device_name: str) -> str:
-        """Makes a picture the device's photo: photo.<ext> in its folder (the
-        window's safety copy keeps the old one for Cancel); its reference
-        for the window's Save. A damaged module file is refused before
-        any photo file is touched (03 S64, GL-070). The device's own photo
-        again changes nothing: no library copy, no write (03 Q3, GL-089)."""
+        """Choose Photo / Import Image: the picture waits in the edit's
+        temporary folder as photo.<ext> (photo_<n>.<ext> when that name is
+        taken), its reference for the window's Save (07 S40, S107). A
+        damaged module file is refused before anything is kept (03 S64,
+        GL-070). The device's own photo again is the same file (03 Q3)."""
         src = self._local_image(source_url)
         if src is None:
             return ""
         ext = src.suffix.lower() or ".jpg"
         if ext not in _IMAGE_EXT:
             ext = ".jpg"
-        name = device_name or self._device_name
-        slug = self._module_slug(name)
-        path = store.path_of(slug)
+        name = self._name(device_name)
+        path = self._file_for(name)
         reason = store.damage_of(path)
         if reason:
             trace("SAVE", "Button Map", "copyImage", path, "damaged")
             module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
             return ""
-        folder = store.pictures_dir_of(slug)
-        dest = folder / f"photo{ext}"
-        same = dest.is_file() and dest.resolve() == src.resolve()
-        if not same:
-            try:
-                store.into_library(src)
-                store.put_picture_at(dest, src)
-            except OSError:
-                dest = folder / f"photo_{src.stem}{ext}"
-                try:
-                    store.put_picture_at(dest, src)
-                except OSError:
-                    return ""
-            others = [
-                p
-                for p in folder.glob("photo.*")
-                if p.is_file() and p.resolve() != dest.resolve()
-            ]
-            try:
-                store.remove_picture_files(others)
-            except OSError:
-                pass
-            trace("SAVE", "Button Map", "copyImage", dest, "ok")
-        rel = store.picture_ref(slug, dest.name)
+        rel = self._stage(name, src, f"photo{ext}")
+        if not rel:
+            return ""
+        self._staged_photo = rel
         # The module file's "image" is written by the window's Save, not
         # here: nothing in the module file or History until Save (07 Q2).
-        persist_log(f"Persist photo name={name!r} guid={self._device_guid!r} path={path} image={rel!r}")
+        persist_log(
+            f"Persist photo name={name!r} guid={self._device_guid!r} "
+            f"path={path} image={rel!r}"
+        )
         self._path = str(path)
         self.pathChanged.emit()
         self.documentChanged.emit()
         return rel
 
-    @QtCore.Slot(str, result=str)
-    def photoCopyUrl(self, device_name: str) -> str:
-        """A lasting copy of the device's photo as it is now (in the
-        library, not copied again when it is there), so Undo can make it
-        the photo again (07 Q3); "" when it has no photo."""
-        slug = self._module_slug(device_name or self._device_name)
-        pictures = store.pictures_dir_of(slug)
-        found = (
-            sorted(p for p in pictures.glob("photo.*") if p.is_file())
-            if pictures.is_dir()
-            else []
-        )
-        if not found:
-            return ""
-        try:
-            return store.into_library(found[0]).as_uri()
-        except OSError:
-            return ""
-
-    @QtCore.Slot(str, result=bool)
-    def clearImage(self, device_name: str) -> bool:
-        name = device_name or self._device_name
-        if not store.remove_pictures(name, self._device_guid):
-            return False
-        return True
-
     @QtCore.Slot(str, result=int)
     def removeUnusedPictures(self, device_name: str) -> int:
-        """An edit ended (saved or cancelled): pictures it added to the
-        device's folder that no map uses go (07 Q11, GL-273). How many."""
-        slug = self._module_slug(device_name or self._device_name)
-        unused = unused_pictures(slug)
-        removed = 0
-        for path in unused:
-            try:
-                store.remove_picture_files([path])
-            except OSError:
-                continue
-            removed += 1
-            trace("SAVE", "Button Map", "removeUnusedPictures", path, "removed")
-        return removed
+        """Pictures in the device's folder that its map and recovery copy
+        don't name go (07 S106). How many."""
+        name = self._name(device_name)
+        return len(store.remove_unused_pictures(name, self._device_guid))
 
-    # Photo safety copy for one Button Map editing session. Choose
-    # background... and Clear image change the photo files at once; Cancel
-    # puts the session's starting photo (files and the module file's
-    # "image") back, Save drops the copy.
-
-    def _photo_files(self, slug: str) -> list[Path]:
-        return store.photo_files(slug)
-
-    @staticmethod
-    def _stash_dir(slug: str, owner: str = "") -> Path:
-        return store.photo_stash_dir(slug, owner)
-
-    @QtCore.Slot(str)
-    def stashPhoto(self, device_name: str) -> None:
-        """Keep the current photo before this session first changes it."""
-        self.stashPhotoFor(device_name, "")
-
-    @QtCore.Slot(str, str)
-    def stashPhotoFor(self, device_name: str, owner: str) -> None:
-        """stashPhoto for one window's session (owner: "" the Button Map,
-        "setup" Module Setup), so two windows don't share one safety copy."""
-        slug = self._module_slug(device_name or self._device_name)
-        stash = self._stash_dir(slug, owner)
-        if (stash / "manifest.json").is_file():
-            return  # This session's starting photo is already kept.
-        try:
-            stash.mkdir(parents=True, exist_ok=True)
-            files = []
-            for i, p in enumerate(self._photo_files(slug)):
-                kept = stash / f"{i}{p.suffix}"
-                shutil.copy2(p, kept)
-                files.append({"kept": kept.name, "to": str(p.relative_to(store.folder()))})
-            loaded = read_doc(store.path_of(slug))
-            image = loaded.get("image") if loaded is not None else None
-            (stash / "manifest.json").write_text(
-                json.dumps({"files": files, "image": image}), encoding="utf-8"
-            )
-        except OSError:
-            persist_log(f"Persist photo stash failed slug={slug!r}")
+    # --- a missing picture (07 S108) ----------------------------------------
 
     @QtCore.Slot(str, result=bool)
-    def restorePhoto(self, device_name: str) -> bool:
-        """Put the session's starting photo back. False when none was kept."""
-        return self.restorePhotoFor(device_name, "")
+    def pictureMissing(self, ref: str) -> bool:
+        """The map names this picture but its file is not there: Edit shows
+        a "Picture missing" placeholder."""
+        text = str(ref or "").strip()
+        return bool(text) and self._resolve_existing(text) is None
+
+    @QtCore.Slot(str, str, result=str)
+    def choosePictureFor(self, ref: str, url: str) -> str:
+        """Choose Picture… on a missing picture: the chosen file waits in the
+        edit like any added picture; the reference to put in place of ref
+        ("" when it can't be kept)."""
+        del ref  # the node keeps its place; only its file changes
+        src = self._local_image(url)
+        if src is None or src.suffix.lower() not in _IMAGE_EXT:
+            return ""
+        as_name = store.safe_picture_name(src.name, src.name)
+        return self._stage(self._device_name, src, as_name)
+
+    # --- the edit's temporary folder (07 S26 S36 S107) ----------------------
+    # Pictures added in an edit (Choose Photo, Import Picture, Paste, a copied
+    # map or template) wait in cache/edit[-<owner>]/<id key>/ until Save
+    # (commit_edit); Cancel drops the folder, so nothing is left behind. The
+    # device's folder is not touched until Save. owner: "" the Button Map,
+    # "setup" Module Setup.
+
+    @QtCore.Slot(str)
+    def beginEdit(self, device_name: str) -> None:
+        self.beginEditFor(device_name, "")
+
+    @QtCore.Slot(str, str)
+    def beginEditFor(self, device_name: str, owner: str) -> None:
+        """An edit starts (or goes on: one already open is kept)."""
+        self._owner = str(owner or "")
+        name = self._name(device_name)
+        if self._editing(name):
+            return
+        try:
+            store.begin_edit(name, self._device_guid, self._owner)
+        except OSError as exc:
+            syslog.warning(f"Edit of {name}: no temporary folder ({exc})")
+
+    @QtCore.Slot(str, result=bool)
+    def editActive(self, device_name: str) -> bool:
+        return self.editActiveFor(device_name, "")
+
+    @QtCore.Slot(str, str, result=bool)
+    def editActiveFor(self, device_name: str, owner: str) -> bool:
+        return self._editing(device_name, str(owner or ""))
+
+    @QtCore.Slot(str, result=bool)
+    def cancelEdit(self, device_name: str) -> bool:
+        return self.cancelEditFor(device_name, "")
+
+    @QtCore.Slot(str, str, result=bool)
+    def cancelEditFor(self, device_name: str, owner: str) -> bool:
+        """Cancel, Discard or closing: the edit's temporary folder goes and
+        with it every picture the edit added. True when there was one."""
+        owner = str(owner or "")
+        name = self._name(device_name)
+        had = self._editing(name, owner)
+        store.cancel_edit(name, self._device_guid, owner)
+        self._staged_photo = ""
+        if had:
+            who = "Configure Module" if owner else "Button Map"
+            trace("SAVE", who, "cancelEdit", name, "ok")
+        return had
+
+    @QtCore.Slot(str, result=str)
+    def recoverEdit(self, device_name: str) -> str:
+        return self.recoverEditFor(device_name, "")
+
+    @QtCore.Slot(str, str, result=str)
+    def recoverEditFor(self, device_name: str, owner: str) -> str:
+        """After a crash (the window opens): an edit with a recovery copy
+        waiting is kept, any other is dropped, a Save cut short is put back
+        (07 S36). store.recover_edit's word, "" when there was none."""
+        name = self._name(device_name)
+        return store.recover_edit(name, self._device_guid, str(owner or ""))
+
+    @QtCore.Slot(str, str, result=str)
+    def commitEditFor(self, device_name: str, owner: str) -> str:
+        """Module Setup's Save, after its module file is written: the photo
+        Import Image kept goes into the device's folder and is named as its
+        "image" (03 S52); pictures nothing names go. The error, or "". With
+        no module file (Delete File) the edit is dropped."""
+        owner = str(owner or "")
+        name = self._name(device_name)
+        photo = self._staged_photo
+        self._staged_photo = ""
+        if not self._editing(name, owner):
+            return ""
+        if not self._file_for(name).is_file():
+            store.cancel_edit(name, self._device_guid, owner)
+            return ""
+
+        def change(doc: dict) -> object:
+            if not photo or doc.get("image") == photo:
+                return False
+            doc["image"] = photo
+            return True
+
+        who = "Configure Module" if owner else "Button Map"
+        return store.commit_edit(name, self._device_guid, change, owner, who)
+
+    # Module Setup's (DialogConfigureModule.qml) names for the calls above,
+    # until that window uses them.
+    @QtCore.Slot(str, str)
+    def stashPhotoFor(self, device_name: str, owner: str) -> None:
+        self.beginEditFor(device_name, owner)
 
     @QtCore.Slot(str, str, result=bool)
     def restorePhotoFor(self, device_name: str, owner: str) -> bool:
-        """restorePhoto for one window's session (see stashPhotoFor)."""
-        slug = self._module_slug(device_name or self._device_name)
-        stash = self._stash_dir(slug, owner)
-        manifest = stash / "manifest.json"
-        if not manifest.is_file():
-            return False
-        try:
-            kept = json.loads(manifest.read_text(encoding="utf-8"))
-            store.remove_picture_files(self._photo_files(slug))
-            for entry in kept.get("files", []):
-                store.put_picture_at(store.folder() / entry["to"], stash / entry["kept"])
-            doc_path = store.path_of(slug)
-            if doc_path.is_file():
-                # As copyImage: a damaged file is left alone (and said).
-
-                def change(doc: dict) -> bool:
-                    before = doc.get("image")
-                    if kept.get("image") is None:
-                        doc.pop("image", None)
-                    else:
-                        doc["image"] = kept["image"]
-                    return doc.get("image") != before
-
-                store.update_path(doc_path, change, "Button Map")
-        except (OSError, json.JSONDecodeError, KeyError):
-            persist_log(f"Persist photo restore failed slug={slug!r}")
-            return False
-        shutil.rmtree(stash, ignore_errors=True)
-        trace("SAVE", "Button Map", "restorePhoto", slug, "ok")
-        return True
-
-    @QtCore.Slot(str, result=bool)
-    def hasPhotoStash(self, device_name: str) -> bool:
-        """True while a photo change of this editing session isn't saved."""
-        return self.hasPhotoStashFor(device_name, "")
-
-    @QtCore.Slot(str, str, result=bool)
-    def hasPhotoStashFor(self, device_name: str, owner: str) -> bool:
-        slug = self._module_slug(device_name or self._device_name)
-        return (self._stash_dir(slug, owner) / "manifest.json").is_file()
-
-    @QtCore.Slot(str)
-    def dropPhotoStash(self, device_name: str) -> None:
-        """The session was saved: its starting photo is no longer needed."""
-        self.dropPhotoStashFor(device_name, "")
+        return self.cancelEditFor(device_name, owner)
 
     @QtCore.Slot(str, str)
     def dropPhotoStashFor(self, device_name: str, owner: str) -> None:
-        slug = self._module_slug(device_name or self._device_name)
-        shutil.rmtree(self._stash_dir(slug, owner), ignore_errors=True)
+        self.commitEditFor(device_name, owner)
 
     @QtCore.Slot(result=str)
     def imagesFolderUrl(self) -> str:
@@ -2384,26 +2393,23 @@ class HardwareProfile(QtCore.QObject):
         becomes this object's device)."""
         if guid is not None:
             self.setDeviceGuid(guid)
-        # The folder of the file the Button Map opens (a renamed stick's
-        # old file, by the store's one rule with this object's id).
-        slug = self._module_slug(device_name)
-        own = store.pictures_dir_of(slug)
-        for p in sorted(own.glob("photo.*")):
-            if p.is_file():
-                return p.as_uri() + f"?t={int(p.stat().st_mtime_ns)}"
         # Read only: asking for the photo doesn't change this object's
-        # document (07 S11, GL-271).
-        doc = store.read_path(store.path_of(slug))
-        found = self._resolve_existing(str(doc.get("image") or ""))
-        if found and found.is_file():
+        # document (07 S11, GL-271). The saved map's photo, from the
+        # device's own pictures/ only (never another device's).
+        base = self._dir(device_name)
+        own = base / store.PICTURES
+        doc = store.read_path(store.module_file_in(base))
+        found = store.find_picture(base, str(doc.get("image") or ""))
+        candidates = [found] if found is not None else []
+        if own.is_dir():
+            candidates += [p for p in sorted(own.glob("photo.*")) if p.is_file()]
+        for path in candidates:
             try:
-                # A picture saved for another device lives in that device's folder.
-                if found.resolve().parent != own.resolve():
-                    found = None
+                if path.resolve().parent != own.resolve():
+                    continue
+                return path.as_uri() + f"?t={int(path.stat().st_mtime_ns)}"
             except OSError:
-                found = None
-            if found is not None:
-                return found.as_uri() + f"?t={int(found.stat().st_mtime_ns)}"
+                continue
         # No photo: none, never another device's (07 S11; no stock photos
         # ship, 07 Q12).
         return ""

@@ -24,10 +24,11 @@ import pytest
 from PySide6 import QtCore
 
 from gremlin import history_modules, plugin_manager, shared_state
-from gremlin.modules import module_file, store
+from gremlin.modules import store
 from gremlin.profile import Profile
 from gremlin.signal import signal
 from gremlin.types import InputType
+from test.unit._device_folders import put_module
 
 STICK = uuid.UUID("11111111-2222-3333-4444-555555555555")
 GUID = "{11111111-2222-3333-4444-555555555555}"
@@ -64,9 +65,10 @@ def module(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
-    path = folder / "test_stick.json"
-    module_file.write_json(
-        path,
+    # The device's own folder, found by its id (03 S1, S128).
+    path = put_module(
+        folder,
+        NAME,
         {
             "kind": "control.hardware",
             "device": NAME,
@@ -79,10 +81,8 @@ def module(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
             },
             "nodes": [],
         },
+        GUID,
     )
-    found = {GUID: path, OTHER: path}
-    monkeypatch.setattr(store, "file_of_guid", lambda guid: found.get(guid))
-    monkeypatch.setattr(store, "path_for_id", lambda name, guid: found.get(guid))
     monkeypatch.setattr(hardware_layout.hardware, "device_info", lambda guid: _device())
     monkeypatch.setattr(hardware_layout, "_mapping_for", lambda device: None)
     monkeypatch.setattr(

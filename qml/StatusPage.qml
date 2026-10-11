@@ -392,8 +392,6 @@ Item {
         _deleteCard = card
         _deleteName = String(preview.name || raw)
         _deleteCanPack = !!preview.canPack
-        _deleteShared = !!preview.shared
-        _deleteForeign = !!preview.foreign
         _deleteListed = preview.listed !== false
         _deleteKeepModule = !!preview.keepModule
         _explainAdvance = false
@@ -404,15 +402,11 @@ Item {
         var lines = ["Delete " + _deleteName + "."]
         if (_deleteKeepModule)
             lines.push("This does not delete the vJoy or Xbox module file. Only actions stored on this device are removed. Actions from input devices stay.")
-        else if (_deleteForeign)
-            lines.push("This device is using another device's file. That file stays. Only this device's actions are removed.")
-        else if (_deleteShared)
-            lines.push("Another device uses this module file, so the file stays. Only this device's actions are removed. The card stays.")
         else
-            lines.push("This removes this device's module file, its pictures, and its actions in every mode. The card's size and stack are cleared.")
+            lines.push("This removes this device's folder (its settings, Button Map, pictures and recovery copy) and its actions in every mode. The card's size and stack are cleared.")
         if (!_deleteKeepModule)
             lines.push("vJoy and Xbox module files stay. Other input devices that use them are not changed.")
-        if (!_deleteKeepModule && !_deleteShared && _deleteListed)
+        if (!_deleteKeepModule && _deleteListed)
             lines.push("The Windows device stays, and its card stays without a module.")
         else if (!_deleteListed)
             lines.push("This device is not connected, so no card will remain.")
@@ -426,8 +420,6 @@ Item {
         var line = "An autosave is kept in the Device Library first."
         if (_deleteKeepModule)
             line += " The output module file stays. Only this device's actions are removed."
-        else if (_deleteShared)
-            line += " The module file stays."
         else if (_deleteListed)
             line += " Its card will stay, without a module."
         else
@@ -489,8 +481,6 @@ Item {
             done += " An autosave was kept in the Device Library."
         if (result.keepModule)
             done += " The output module file was kept. Only this device's actions were removed."
-        else if (result.keptFile)
-            done += " The module file was kept because another device uses it."
         else if (result.stub)
             done += " Its card stays, without a module."
         else
@@ -506,8 +496,6 @@ Item {
     property var _deleteCard: null
     property string _deleteName: ""
     property bool _deleteCanPack: false
-    property bool _deleteShared: false
-    property bool _deleteForeign: false
     property bool _deleteListed: true
     property bool _deleteKeepModule: false
     property bool _explainAdvance: false
@@ -553,6 +541,8 @@ Item {
         })
         card.onDeleteDevice.connect(function() { _page.askDelete(card) })
         card.onStartFresh.connect(function() { _page.askStartFresh(card) })
+        card.onExportDevice.connect(function() { _page.exportDevice(card) })
+        card.onImportDevice.connect(function() { _page.importDevice(card) })
         card.onAddImage.connect(function() { _page.pickCardImage(card.slug) })
         card.onRemoveImage.connect(function() { _page.removeCardImage(card.slug) })
         card.onUnstackCard.connect(function() {
@@ -564,6 +554,43 @@ Item {
                 model.unstackAll(card.slug)
         })
         card.Component.onDestruction.connect(function() { _page.unregisterCard(card) })
+    }
+
+    // Export Device… / Import Device… (08 S111): the device's folder as one
+    // ".gmap" file, and one unpacked into a new device folder. The dialog
+    // asks for the file and the bindings tick, then calls deviceExport's
+    // exportDevice / importDevice.
+    function exportDevice(card) {
+        _openDeviceExport({
+            "mode": "export",
+            "deviceName": String(card.rawName || card.cardName || card.name || ""),
+            "deviceGuid": String(card.guid || ""),
+            "shownName": String(card.cardName || card.rawName || card.name || "")
+        })
+    }
+
+    function importDevice(card) {
+        _openDeviceExport({
+            "mode": "import",
+            "deviceName": "",
+            "deviceGuid": "",
+            "shownName": ""
+        })
+    }
+
+    // The box is a Popup: it opens inside this window (over everything,
+    // on the window's overlay) and goes when it closes. Not
+    // Helpers.createComponent, which makes separate windows.
+    function _openDeviceExport(properties) {
+        var component = Qt.createComponent("DialogDeviceExport.qml")
+        if (component.status !== Component.Ready) {
+            console.warn(component.errorString())
+            return null
+        }
+        var box = component.createObject(Overlay.overlay || _page, properties)
+        if (box)
+            box.closed.connect(function() { Qt.callLater(box.destroy) })
+        return box
     }
 
     // The Logical Device card's picture (03 S88, D-03-LD-IMAGE): the model

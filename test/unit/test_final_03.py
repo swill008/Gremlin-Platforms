@@ -26,6 +26,7 @@ from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.profile import Profile
 from gremlin.types import InputType
 from gremlin.ui import hardware_profile, module_model
+from test.unit._device_folders import module_path, put_module
 from test.unit.test_stage1_modules import (  # noqa: F401  # pyright: ignore[reportMissingImports]
     folder,
     map_button,
@@ -120,8 +121,7 @@ def test_s16_a_vjoy_read_back_as_an_input_passes_unfiltered(
 def test_s22_a_damaged_module_file_blocks_its_devices_inputs(
     modules: Path, gate: InputModuleRuntime
 ) -> None:
-    path = modules / "pjoy_pro.json"
-    path.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
+    put_module(modules, "pJoy Pro", '{"kind": "control.hardware", "dev', stick_guid())
     gate.reload()
     assert not gate.allows(stick_guid(), InputType.JoystickButton, 1)
     # Fixed (restored, or set up again after Start Fresh): it passes again.
@@ -178,7 +178,7 @@ def test_s42_a_friendly_name_is_saved_only_for_a_claimed_control(
     model.setFriendly(_row_of(model, "button", 1), "Fire")
     model.setFriendly(_row_of(model, "button", 3), "Unticked")
     assert model.saveClaim("pJoy Pro", "source")
-    doc = json.loads((modules / "pjoy_pro.json").read_text(encoding="utf-8"))
+    doc = json.loads(module_path(modules, "pJoy Pro").read_text(encoding="utf-8"))
     assert doc["claim"]["friendly"] == {"button:1": "Fire"}
     model.deleteLater()
 
@@ -210,7 +210,7 @@ def test_s48_a_save_that_does_not_read_back_counts_as_not_saved(
 def test_s55_s56_s58_import_copies_what_the_device_has_and_keeps_the_rest(
     modules: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    current = write_module(modules, "pjoy_pro", stick_doc(image="pjoy_pro/photo.jpg"))
+    current = write_module(modules, "pjoy_pro", stick_doc(image="pictures/photo.jpg"))
     previous = current.read_bytes()
     profile = open_profile(monkeypatch)
     wires = mapped(profile, stick_uid())
@@ -221,7 +221,7 @@ def test_s55_s56_s58_import_copies_what_the_device_has_and_keeps_the_rest(
                 "kind": "control.hardware",
                 "device": "Other Stick",
                 "direction": "source",
-                "image": "other_stick/photo.png",
+                "image": "pictures/photo.png",
                 "claim": {
                     # pJoy Pro has 64 buttons, axes 1-3 and 6-8, 2 hats.
                     "buttons": [1, 3, 200],
@@ -239,7 +239,7 @@ def test_s55_s56_s58_import_copies_what_the_device_has_and_keeps_the_rest(
     message = module_model.ModuleListModel().importModuleFile(
         stick_guid(), "pJoy Pro", str(chosen), "source"
     )
-    assert message.startswith("Imported into pjoy_pro.json."), message
+    assert message.startswith("Imported into pJoy Pro."), message
     # S55: copied into this device's file; the chosen file stays as it was.
     assert chosen.read_bytes() == chosen_bytes
     doc = json.loads(current.read_text(encoding="utf-8"))
@@ -249,12 +249,12 @@ def test_s55_s56_s58_import_copies_what_the_device_has_and_keeps_the_rest(
     assert claim["friendly"] == {"button:3": "Fire"}
     assert "not copied" in message
     # S56: this device's picture kept; profile wires unchanged.
-    assert doc["image"] == "pjoy_pro/photo.jpg"
+    assert doc["image"] == "pictures/photo.jpg"
     assert "The picture already on this device was kept." in message
     assert mapped(profile, stick_uid()) == wires
     assert "Profile wires were not changed." in message
-    # S58: the previous file is kept in the imported folder.
-    kept = list(store.imported_dir().glob("pjoy_pro.*.json"))
+    # S58: the previous file is kept in the device's imported folder.
+    kept = list(store.imported_dir("pJoy Pro", stick_guid()).glob("module *.json"))
     assert [k.read_bytes() for k in kept] == [previous]
 
 
@@ -264,12 +264,12 @@ def test_s55_s56_s58_import_copies_what_the_device_has_and_keeps_the_rest(
 def test_s69_each_module_file_write_and_delete_is_one_history_entry(
     modules: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(store.module_file, "report_refused", lambda error: None)
-    path = store.path_for("pJoy Pro", stick_guid())
+    monkeypatch.setattr(store.module_file_io, "report_refused", lambda error: None)
+    path = store.module_file("pJoy Pro", stick_guid())
     store.write_json(path, stick_doc(), "test")
-    assert _history_count("pjoy_pro.json") == 1
+    assert _history_count("pJoy Pro/module.json") == 1
     assert store.update_path(path, lambda doc: doc.update(note=1), "test")
-    assert _history_count("pjoy_pro.json") == 2
+    assert _history_count("pJoy Pro/module.json") == 2
     # A refused write (damaged file) is no entry.
     good = path.read_bytes()
     path.write_text('{"kind": "control.hard', encoding="utf-8")
@@ -277,11 +277,11 @@ def test_s69_each_module_file_write_and_delete_is_one_history_entry(
         path, lambda doc: doc.update(note=2), "test", report=False
     )
     assert not refused
-    assert _history_count("pjoy_pro.json") == 2
+    assert _history_count("pJoy Pro/module.json") == 2
     path.write_bytes(good)
     assert hardware_profile.delete_module_file("pJoy Pro", stick_guid()) == ""
     assert not path.exists()
-    assert _history_count("pjoy_pro.json") == 3
+    assert _history_count("pJoy Pro/module.json") == 3
 
 
 # --- H. Home cards ---------------------------------------------------------------
@@ -304,7 +304,7 @@ def test_s70_s71_home_shows_each_device_and_always_the_logical_device(
     # S71 changed 2026-10-09 (D-04-LD-FILE): the card shows without its file too.
     assert cards["Logical Device"]["direction"] == "source"
     store.write_json(
-        store.path_for("Logical Device", str(ids.LOGICAL_DEVICE)),
+        store.module_file("Logical Device", str(ids.LOGICAL_DEVICE)),
         {"kind": "control.hardware", "device": "Logical Device", "direction": "source"},
         "test",
     )
@@ -381,7 +381,7 @@ def _calibration_window(monkeypatch: pytest.MonkeyPatch):  # noqa: ANN202
     from gremlin.ui import device as ui_device
 
     model = ui_device.AxisCalibration()
-    model.moduleSlug = "pjoy_pro"
+    model.moduleSlug = "pJoy Pro"
     assert model.rowCount() == 6
     return model
 
@@ -395,9 +395,9 @@ def test_s100_calibration_lists_only_connected_sticks_with_an_input_module(
     model = CalibrationModuleModel()
     assert model.moduleCount == 1
     assert model.data(model.index(0, 0), QtCore.Qt.ItemDataRole.UserRole + 2) == (
-        "pjoy_pro"
+        "pJoy Pro"
     )
-    (modules / "pjoy_pro.json").unlink()
+    module_path(modules, "pJoy Pro").unlink()
     model.reload()
     # None: the window says "No connected input module."
     assert model.moduleCount == 0
@@ -452,7 +452,7 @@ def test_s111_old_program_calibration_is_used_until_the_module_file_has_one(
     )
     assert calibration.values_for_device(stick_uid(), 1) == old
     new = (-1000, 0, 0, 1000, True)
-    assert calibration.write_axes("pjoy_pro", {1: new})
+    assert calibration.write_axes("pJoy Pro", {1: new})
     assert calibration.values_for_device(stick_uid(), 1) == new
     # Other axes still use the old settings.
     assert calibration.values_for_device(stick_uid(), 2) == old
@@ -481,7 +481,8 @@ def test_s119_auto_mapper_lists_claiming_inputs_once_and_one_output_per_vjoy(
     modules: Path,
 ) -> None:
     setup_cards(modules)  # pJoy Pro claims buttons; Keyboard and OSC keys only
-    old = write_module(modules, "pjoy_old", stick_doc(boundGuidLocal=""))
+    # A folder of another name holding a copy of the stick's file.
+    old = put_module(modules, "pJoy Old", stick_doc(boundGuidLocal=""))
     write_module(
         modules,
         "empty_stick",
@@ -493,11 +494,11 @@ def test_s119_auto_mapper_lists_claiming_inputs_once_and_one_output_per_vjoy(
         },
     )
     inputs = auto_map.input_modules()
-    assert [(row["name"], row["slug"]) for row in inputs] == [("pJoy Pro", "pjoy_pro")]
+    assert [(row["name"], row["slug"]) for row in inputs] == [("pJoy Pro", "pJoy Pro")]
     assert old.is_file()  # the other file for the device is not deleted
     output.refresh()
     outputs = auto_map.output_modules()
-    assert [(row["vjoyId"], row["slug"]) for row in outputs] == [(1, "vjoy_1")]
+    assert [(row["vjoyId"], row["slug"]) for row in outputs] == [(1, "vJoy 1")]
 
 
 # --- O. Other readers of claims ------------------------------------------------------

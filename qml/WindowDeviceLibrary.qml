@@ -279,7 +279,7 @@ ApplicationWindow {
             + (details.count > 0 ? " and " + _setupsText(details.count) : "")
             + " from the Library?"
         // Delete Device's autosave goes too; History keeps it all (S51).
-        var body = plan.module_file ? "Its module file here goes too." : ""
+        var body = plan.module_file ? "Its folder here (settings, map, pictures) goes too." : ""
         askConfirm(heading, body, "Remove from Library", function() { _lib.runRemove([key]) })
     }
 
@@ -354,7 +354,7 @@ ApplicationWindow {
                        + (setups ? " and their " + (setups === 1 ? "saved setup" : setups + " saved setups") : "")
                        + " from the Library?",
                        lines.join("\n")
-                       + (files ? "\n\nA module file still here goes too, as Delete Device on Home "
+                       + (files ? "\n\nA device folder still here goes too, as Delete Device on Home "
                                   + "does: an autosave is kept first." : ""),
                        "Remove from Library", function() { _lib.runRemove(keys) })
     }
@@ -441,18 +441,21 @@ ApplicationWindow {
         _description.cursorPosition = _description.text.length
     }
 
-    // The suggested Device Pack name for the selection.
-    function _packName() {
-        return details.name.replace(/[\\/:*?"<>|]/g, "_") + ".zip"
+    // The suggested file name for the selection: a device folder zip
+    // (.gmap, S60), or a Device Pack (.zip) for a saved setup kept before
+    // device folders.
+    function _packName(ext) {
+        return details.name.replace(/[\\/:*?"<>|]/g, "_") + ext
     }
     function exportSaved() {
         _exportFile.key = details.key
-        _exportFile.currentFile = _packName()
+        _exportFile.defaultSuffix = details.fileType === ".zip" ? "zip" : "gmap"
+        _exportFile.currentFile = _packName(details.fileType || ".gmap")
         _exportFile.open()
     }
     function exportCurrent() {
         _exportCurrentFile.key = details.key
-        _exportCurrentFile.currentFile = _packName()
+        _exportCurrentFile.currentFile = _packName(".gmap")
         _exportCurrentFile.open()
     }
 
@@ -634,7 +637,7 @@ ApplicationWindow {
         kind: "device-pack"
         mode: "open"
         title: "Import Device Pack"
-        nameFilters: ["Device Pack (*.zip)"]
+        nameFilters: ["Device Pack (*.gmap *.zip)"]
         onPicked: (selected) => _lib.lib.importPack(String(selected))
     }
     FilePicker {
@@ -644,8 +647,8 @@ ApplicationWindow {
         kind: "device-pack"
         mode: "save"
         title: "Export Saved Setup"
-        nameFilters: ["Device Pack (*.zip)"]
-        defaultSuffix: "zip"
+        nameFilters: ["Device Pack (*.gmap *.zip)"]
+        defaultSuffix: "gmap"
         onPicked: (selected) => _lib.lib.exportSetup(key, String(selected))
     }
     FilePicker {
@@ -655,8 +658,8 @@ ApplicationWindow {
         kind: "device-pack"
         mode: "save"
         title: "Export Current Setup"
-        nameFilters: ["Device Pack (*.zip)"]
-        defaultSuffix: "zip"
+        nameFilters: ["Device Pack (*.gmap *.zip)"]
+        defaultSuffix: "gmap"
         onPicked: (selected) => _lib.lib.exportCurrent(key, String(selected))
     }
 
@@ -667,7 +670,8 @@ ApplicationWindow {
         anchors.fill: parent
         function zipOf(urls) {
             for (var i = 0; i < urls.length; i++) {
-                if (String(urls[i]).toLowerCase().endsWith(".zip"))
+                var url = String(urls[i]).toLowerCase()
+                if (url.endsWith(".zip") || url.endsWith(".gmap"))
                     return String(urls[i])
             }
             return ""

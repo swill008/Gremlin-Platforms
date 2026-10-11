@@ -43,7 +43,6 @@ BAD = 99
 # The stick on the Configuration page (as test_hardware_layout's).
 STICK = uuid.UUID("11111111-2222-3333-4444-555555555555")
 GUID = "{11111111-2222-3333-4444-555555555555}"
-OTHER = "{99999999-2222-3333-4444-555555555555}"
 NAME = "Test Stick"
 TEXT = "vJoy 1's Button 99 is not Found (vJoy 1 has Buttons 1–20)."
 
@@ -290,15 +289,18 @@ def module(
 ) -> Iterator[pathlib.Path]:
     """The stick's input module (as test_hardware_layout's), buttons 1-3."""
     from gremlin import history_modules
-    from gremlin.modules import module_file, store
+    from gremlin.modules import store
     from gremlin.ui import hardware_layout
 
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
-    path = folder / "test_stick.json"
-    module_file.write_json(
-        path,
+    from test.unit._device_folders import put_module
+
+    # Its own folder, found by its id (device.json; 03 S1, S130).
+    path = put_module(
+        folder,
+        NAME,
         {
             "kind": "control.hardware",
             "device": NAME,
@@ -306,10 +308,8 @@ def module(
             "claim": {"buttons": [1, 2, 3], "axes": [1]},
             "nodes": [],
         },
+        GUID,
     )
-    found = {GUID: path, OTHER: path}
-    monkeypatch.setattr(store, "file_of_guid", lambda guid: found.get(guid))
-    monkeypatch.setattr(store, "path_for_id", lambda name, guid: found.get(guid))
     monkeypatch.setattr(hardware_layout.hardware, "device_info", lambda guid: _device())
     monkeypatch.setattr(hardware_layout, "_mapping_for", lambda device: None)
     monkeypatch.setattr(

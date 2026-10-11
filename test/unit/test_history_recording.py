@@ -28,6 +28,7 @@ from gremlin import history, history_profile, plugin_manager, shared_state, util
 from gremlin.modules import module_file
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
+from test.unit._device_folders import ensure_dir, put_picture
 
 _STICK = uuid.UUID("33333333-4444-5555-6666-777777777777")
 
@@ -133,9 +134,8 @@ def test_other_parts_and_the_whole_profile(profile: Profile, tmp_path: Path) -> 
 
 def test_a_module_save_is_kept_with_its_pictures(store: Path) -> None:
     modules = util.modules_dir()
-    (modules / "test_stick").mkdir(parents=True, exist_ok=True)
-    (modules / "test_stick" / "photo.png").write_bytes(b"photo")
-    path = modules / "test_stick.json"
+    ref = put_picture(modules, "Test Stick", "photo.png", b"photo")
+    path = ensure_dir(modules, "Test Stick") / "module.json"
     module_file.write_json(path, {"device": "Test Stick", "claim": {"buttons": [1]}})
     module_file.write_json(
         path,
@@ -151,7 +151,7 @@ def test_a_module_save_is_kept_with_its_pictures(store: Path) -> None:
             "device": "Test Stick",
             "claim": {"buttons": [1]},
             "calibration": {"1": [0, 1, 2, 3, True]},
-            "image": "test_stick/photo.png",
+            "image": ref,
             "nodes": [{"id": "a"}],
         },
     )
@@ -159,14 +159,14 @@ def test_a_module_save_is_kept_with_its_pictures(store: Path) -> None:
     titles = [e["title"] for e in entries]
     assert titles[0] == "Saved Test Stick: Button Map, Button Map photo"
     assert entries[0]["area"] == "button-map"
-    assert entries[0]["after"]["pictures"][0]["ref"] == "test_stick/photo.png"
+    assert entries[0]["after"]["pictures"][0]["ref"] == "pictures/photo.png"
     assert history.kept_file(entries[0]["after"]["pictures"][0]["keptFile"])
     assert titles[1] == "Saved Test Stick: calibration"
     assert entries[1]["area"] == "modules"
 
 
 def test_the_maps_view_alone_is_not_kept(store: Path) -> None:
-    path = util.modules_dir() / "test_stick.json"
+    path = ensure_dir(util.modules_dir(), "Test Stick") / "module.json"
     module_file.write_json(path, {"device": "Test Stick", "ui": {"viewPct": 80}})
     _settle()
     before = len(history.entries())
@@ -184,15 +184,12 @@ def test_a_delete_keeps_the_file_and_its_pictures(store: Path) -> None:
     from gremlin import history_modules
 
     modules = util.modules_dir()
-    (modules / "gone").mkdir(parents=True, exist_ok=True)
-    (modules / "gone" / "photo.png").write_bytes(b"gone photo")
-    path = modules / "gone.json"
-    path.write_text(
-        json.dumps({"device": "Gone", "image": "gone/photo.png"}), encoding="utf-8"
-    )
+    ref = put_picture(modules, "Gone", "photo.png", b"gone photo")
+    path = ensure_dir(modules, "Gone") / "module.json"
+    path.write_text(json.dumps({"device": "Gone", "image": ref}), encoding="utf-8")
     history_modules.note_delete(path)
     path.unlink()
-    (modules / "gone" / "photo.png").unlink()
+    (path.parent / ref).unlink()
     entry = _settle()[0]
     assert entry["kind"] == "delete"
     assert entry["title"] == "Deleted the module file of Gone"

@@ -30,16 +30,20 @@ def test_ctrl_y_and_ctrl_shift_z_redo_in_calibration(
     tmp_path: pathlib.Path,
 ) -> None:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
     home = tmp_path / "home"
     (home / "Gremlin Platforms").mkdir(parents=True)
     env = dict(os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen")
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve())],
-        cwd=_ROOT, env=env, text=True, timeout=180,
+        cwd=_ROOT,
+        env=env,
+        text=True,
+        timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-1500:] + result.stderr[-1500:]
-    out = json.loads(lines[-1][len("RESULT "):])
+    out = json.loads(lines[-1][len("RESULT ") :])
     assert "error" not in out, out
     assert out["edited"] == -20000 and out["original"] != -20000, out
     assert out["after-ctrl-z"] == out["original"], out
@@ -70,7 +74,7 @@ def _smoke() -> None:  # noqa: C901
     import dill
     import joystick_gremlin
     from gremlin import clock, event_handler
-    from gremlin.ui import hardware_profile
+    from gremlin.modules import store
 
     def wait_until(cond, limit_ms: int = 10000) -> bool:  # noqa: ANN001
         end = clock.monotonic() + limit_ms / 1000.0
@@ -107,29 +111,41 @@ def _smoke() -> None:  # noqa: C901
     try:
         dev = fake.devices[0]
         guid = str(dill.GUID(dev.device_guid).uuid)
-        path = hardware_profile.module_json_path("pJoy Pro", guid)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({
-            "kind": "control.hardware", "device": "pJoy Pro",
-            "direction": "source", "boundGuidLocal": guid,
-            "claim": {"buttons": [1], "axes": [1, 2], "hats": [], "keys": []},
-        }), encoding="utf-8")
+        # The device's own folder (03 S128); Calibration picks it by its
+        # folder name.
+        folder = store.ensure_device_dir("pJoy Pro", guid)
+        path = store.module_file_in(folder)
+        path.write_text(
+            json.dumps(
+                {
+                    "kind": "control.hardware",
+                    "device": "pJoy Pro",
+                    "direction": "source",
+                    "boundGuidLocal": guid,
+                    "claim": {"buttons": [1], "axes": [1, 2], "hats": [], "keys": []},
+                }
+            ),
+            encoding="utf-8",
+        )
         event_handler.EventListener()._run_device_list_update()
-        ev(win, "Helpers.createComponent('DialogCalibration.qml',"
-                " {initialSlug: 'pjoy_pro'})")
+        ev(
+            win,
+            "Helpers.createComponent('DialogCalibration.qml',"
+            " {initialSlug: " + json.dumps(folder.name) + "})",
+        )
         if not wait_until(lambda: top_window("Calibration") is not None):
             raise RuntimeError("Calibration did not open")
         w = top_window("Calibration")
         if not wait_until(lambda: int(ev(w, "_axisView.count")) > 0):
             raise RuntimeError("no axes shown")
         w.requestActivate()
-        if not wait_until(lambda: QtGui.QGuiApplication.focusWindow() is w
-                          or w.isActive()):
+        if not wait_until(
+            lambda: QtGui.QGuiApplication.focusWindow() is w or w.isActive()
+        ):
             raise RuntimeError("Calibration window not active")
 
         def low() -> int:
-            return int(ev(w, "_calib.data(_calib.index(0, 0),"
-                             " Qt.UserRole + 4)"))
+            return int(ev(w, "_calib.data(_calib.index(0, 0), Qt.UserRole + 4)"))
 
         def key(k: QtCore.Qt.Key, mods: QtCore.Qt.KeyboardModifier) -> None:
             QtTest.QTest.keyClick(w, k, mods)

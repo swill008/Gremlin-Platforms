@@ -379,7 +379,8 @@ def _export(env: dict, monkeypatch: pytest.MonkeyPatch) -> Profile:
     dest = env["tmp"] / "out" / "now.zip"
     out = library.export_current(row["key"], dest)
     assert out["ok"], out
-    imported = library.import_pack(dest)
+    # Written as "now.gmap": a device folder zip (10 S60).
+    imported = library.import_pack(Path(out["path"]))
     assert imported["ok"], imported
     target_path = env["tmp"] / "target.xml"
     target = _empty(target_path, env["uid"], env["name"])
@@ -458,13 +459,11 @@ def test_vjoy_bindings_open_with_no_vjoy_and_no_modules(
 ) -> None:
     """The profile opens; Map to vJoy, the vJoy condition and the vJoy macro
     step keep vJoy 3 button 5; nothing is dropped on Save."""
-    from gremlin.modules import store
     from vjoy import vjoy
 
     monkeypatch = request.getfixturevalue("monkeypatch")
     env = request.getfixturevalue("env")
     monkeypatch.setattr(vjoy, "device_exists", lambda vjoy_id: False)
-    monkeypatch.setattr(store, "bindings", lambda: {})
     monkeypatch.setattr(output, "vjoy_modules", lambda: [])
     monkeypatch.setattr(
         output, "first_claimed_output", lambda *a, **k: None, raising=False

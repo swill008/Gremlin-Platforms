@@ -28,12 +28,14 @@ ApplicationWindow {
     property string deviceName: ""
     property string deviceGuid: ""
     property string photoUrl: ""
+    // The picture Import Image keeps in this window's edit (its reference,
+    // "pictures/<file>"), named as the device picture by Save (03 S52).
+    property string stagedPhoto: ""
     property var moduleModel: null
 
     property string moduleFileLabel: ""
     property string moduleFileMessage: ""
     property bool moduleFileError: false
-    property string moduleFileNotice: ""
     property bool claimDirty: false
     property bool allowClose: false
     // OSC Setup's tab to show ("Feedback"; the OSC page's "Feedback
@@ -56,21 +58,20 @@ ApplicationWindow {
             moduleFileChoices = []
             return
         }
-        var slug = String(moduleModel.moduleFileFor(deviceGuid, deviceName) || "")
+        // 03 S54: the device's folder name, "(not saved yet)" when it has
+        // no module file there.
+        var folder = String(moduleModel.moduleFileFor(deviceGuid, deviceName) || "")
         var saved = moduleModel.moduleFileExists(deviceGuid, deviceName)
         var names = moduleModel.moduleFileNames(deviceGuid, deviceName) || []
-        var foreign = String(moduleModel.foreignModuleFile(deviceGuid, deviceName) || "")
         var choices = []
         var i
-        moduleFileLabel = slug + ".json" + (saved ? "" : " (not saved yet)")
-        moduleFileNotice = foreign.length
-            ? ("This stick still opens " + foreign + ".json. Import that file to copy it here.")
-            : ""
+        moduleFileLabel = saved && folder.length ? folder : "(not saved yet)"
+        // "Import from": the other devices' folders (03 S58).
         for (i = 0; i < names.length; i++) {
             var item = String(names[i] || "")
             if (!item.length)
                 continue
-            choices.push(item + ".json")
+            choices.push(item)
         }
         _moduleFileQuiet = true
         moduleFileChoices = choices
@@ -148,46 +149,49 @@ ApplicationWindow {
         // A picture imported in a session that never finished (the program
         // closed first) was never saved: the saved one goes back. Only with
         // this window's own safety copy (the Button Map keeps its own).
-        if (_hw.restorePhotoFor)
-            _hw.restorePhotoFor(deviceName, "setup")
+        _hw.cancelEditFor(deviceName, "setup")
         _driver.loadDevice(deviceGuid, deviceName)
         claimDirty = false
         _win.photoUrl = _hw.profilePhotoUrl(deviceName)
     }
 
-    // Import Image changes the photo files at once; the starting photo is
-    // kept so Cancel can put it back, as in the Button Map (03 Q2, 07 Q5).
-    // TODO(batch1): the "setup" owner slots (stashPhotoFor, restorePhotoFor,
-    // dropPhotoStashFor) are asked of hardware_profile.py; until then the
-    // Button Map's safety copy is shared.
+    // Import Image keeps the picture in this window's edit (its temporary
+    // folder, "setup"); the device's folder is not touched until Save, so
+    // Cancel leaves nothing behind (03 S52, 07 S107).
     function stashPhoto() {
-        if (_hw.stashPhotoFor)
-            _hw.stashPhotoFor(deviceName, "setup")
-        else
-            _hw.stashPhoto(deviceName)
+        _hw.beginEditFor(deviceName, "setup")
     }
 
+    function importPhoto(src) {
+        stashPhoto()
+        var ref = _hw.keepPhoto(deviceName, src)
+        if (!ref.length)
+            return
+        stagedPhoto = ref
+        photoUrl = _hw.imageUrl(ref)
+        claimDirty = true
+    }
+
+    // Saved (or the file deleted): the edit is over. After a save the
+    // edit was committed by saveClaim; this only drops what is left.
     function dropPhotoStash() {
-        if (_hw.dropPhotoStashFor)
-            _hw.dropPhotoStashFor(deviceName, "setup")
-        else
-            _hw.dropPhotoStash(deviceName)
+        _hw.commitEditFor(deviceName, "setup")
+        stagedPhoto = ""
     }
 
     function putPhotoBack() {
-        var back = _hw.restorePhotoFor ? _hw.restorePhotoFor(deviceName, "setup")
-                                       : _hw.restorePhoto(deviceName)
-        if (!back)
+        stagedPhoto = ""
+        if (!_hw.cancelEditFor(deviceName, "setup"))
             return
         var url = _hw.profilePhotoUrl(deviceName)
         photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
     }
 
     function commitModule() {
-        // The photo Import Image put in the device's folder is named by this
-        // save: one write, and the library got its copy once, at Import
-        // Image (03 Q3).
-        if (!_driver.saveClaim(deviceName, direction)) {
+        // The photo Import Image kept waits in the edit: this save copies it
+        // into the device's folder and names it, in the same write as the
+        // claims (one History entry, 03 S52, 07 S107).
+        if (!_driver.saveClaim(deviceName, direction, stagedPhoto)) {
             _saveGate.announce(false, _driver.saveBlockedReason()
                                || "Not written. It is still only on this screen.")
             if (backend)
@@ -374,15 +378,7 @@ ApplicationWindow {
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
         folder: _hw.imagesFolderUrl()
         onPicked: (selected) => {
-            var src = String(selected)
-            // The starting photo is kept first (once per session).
-            _win.stashPhoto()
-            var rel = _hw.copyImage(src, deviceName)
-            var url = rel.length ? _hw.imageUrl(rel) : ""
-            if (!url.length)
-                url = _hw.profilePhotoUrl(deviceName)
-            _win.photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
-            claimDirty = true
+            _win.importPhoto(String(selected))
         }
     }
 
@@ -556,10 +552,12 @@ ApplicationWindow {
                 text: "History"
                 focusPolicy: Qt.NoFocus
                 enabled: deviceName.length > 0
-                // By the device's own file: twin sticks share a name.
+                // By the device's id (twin sticks share a name); entries
+                // from before device folders by its name (08 S43).
                 onClicked: Helpers.createComponent("DialogHistory.qml", {
                     filter: JSON.stringify({
-                        fileName: String(moduleModel ? moduleModel.moduleFileFor(deviceGuid, deviceName) : "") + ".json"
+                        deviceId: String(moduleModel ? moduleModel.deviceIdFor(deviceGuid, deviceName) : ""),
+                        deviceName: deviceName
                     }),
                     filterLabel: deviceName
                 })
@@ -608,27 +606,21 @@ ApplicationWindow {
         contentItem: ColumnLayout {
             spacing: Style.dp(10)
             Label {
-                text: "Current file"
+                text: "Device folder"
                 color: Style.fgMuted
                 font.pixelSize: Style.dp(12)
             }
             Label {
+                objectName: "moduleFileLabel"
                 Layout.fillWidth: true
-                text: moduleFileLabel.length ? moduleFileLabel : "None"
+                text: moduleFileLabel.length ? moduleFileLabel : "(not saved yet)"
                 wrapMode: Text.WordWrap
                 font.pixelSize: Style.dp(14)
             }
             Label {
                 Layout.fillWidth: true
-                text: "Import copies the chosen file into this device's file. The chosen file is left where it was."
-                color: Style.fgMuted
-                wrapMode: Text.WordWrap
-                font.pixelSize: Style.dp(12)
-            }
-            Label {
-                Layout.fillWidth: true
-                visible: moduleFileNotice.length > 0
-                text: moduleFileNotice
+                text: "Import copies the chosen file into this device's module file. The chosen file is left where it was; "
+                    + "this device's previous file is kept in its folder's imported folder."
                 color: Style.fgMuted
                 wrapMode: Text.WordWrap
                 font.pixelSize: Style.dp(12)
@@ -645,8 +637,8 @@ ApplicationWindow {
                 onActivated: function(index) {
                     if (_moduleFileQuiet || !moduleModel)
                         return
-                    var label = String(currentText || "")
-                    var slug = label.replace(/\.json$/i, "")
+                    // Another device's folder name (store.resolve_import_source).
+                    var slug = String(currentText || "")
                     if (claimDirty) {
                         pendingFileSlug = slug
                         saveIntent = "file"
@@ -680,7 +672,7 @@ ApplicationWindow {
                     if (!moduleModel)
                         return
                     Confirm.ask(_win, {
-                        title: "Delete " + moduleFileLabel + "?",
+                        title: "Delete " + deviceName + "'s module file?",
                         text: "It holds this device's claimed inputs, calibration and Button Map layout. "
                             + "An autosave of it (\"Autosave: module file deleted\") is kept in the Device Library first; if it can't be kept, nothing is deleted. "
                             + "The device's pictures are kept.",
@@ -718,14 +710,14 @@ ApplicationWindow {
     }
 
     // 01 S143: opens in the last folder a module file was chosen from
-    // (else the imported folder).
+    // (else the device's imported folder, 03 S58).
     FilePicker {
         id: _moduleLoadDialog
         kind: "module-file"
         mode: "open"
         title: "Choose Module File"
         nameFilters: ["Module files (*.json)"]
-        folder: moduleModel ? moduleModel.importedFolderUrl() : ""
+        folder: moduleModel ? moduleModel.importedFolderUrl(deviceGuid, deviceName) : ""
         onPicked: (selected) => {
             if (!moduleModel)
                 return

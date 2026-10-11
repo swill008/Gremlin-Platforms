@@ -175,7 +175,9 @@ def test_s49_keep_and_edit_description(run: dict) -> None:
 def test_s15_s47_remove_asks_and_runs_delete_device_first(run: dict) -> None:
     ask = run["remove-ask"]
     assert ask["title"] == "Remove Rudder pedals from the Library?"
-    assert "module file" in ask["body"] and ask["red"]
+    # The whole device folder goes (S52, D-03-DEVICE-FOLDERS).
+    assert "Its folder here (settings, map, pictures) goes too." in ask["body"]
+    assert ask["red"]
     assert ask["go"] == "Remove from Library"
     # S51 (D-10-IN-HISTORY): You can restore it from Tools › History.
     assert "You can restore it from Tools › History." in ask["body"]
@@ -295,7 +297,7 @@ def test_s44_export_current(run: dict) -> None:
     assert run["export-current"] == "Current setup exported."
     calls = [c for c in run["calls"] if c[0] == "export_current"]
     assert calls and calls[0][1] == "dev-00000001"
-    assert calls[0][2].endswith("Left throttle.zip")
+    assert calls[0][2].endswith("Left throttle.gmap")  # D-10-GMAP-SETUPS
 
 
 def test_menu_tips_use_the_programs_tooltip_not_menu_text() -> None:

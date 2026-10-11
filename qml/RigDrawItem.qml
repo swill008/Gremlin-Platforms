@@ -421,6 +421,41 @@ Item {
             }
         }
     }
+    // A picture the map names whose file is missing (07 S108): in Edit, a
+    // grey box naming the file (right-click: Choose Picture…); outside
+    // Edit, and in print and export, its area stays empty.
+    Rectangle {
+        id: _pictureMissing
+        objectName: "pictureMissing"
+        readonly property bool missing: {
+            _drawRoot.rev
+            var n = node
+            if (!n || n.shape !== "image" || !n.src)
+                return false
+            return !n.srcUrl || _overlayImage.status === Image.Error
+        }
+        readonly property string fileName: {
+            _drawRoot.rev
+            var n = node || {}
+            return String(n.src || "").replace(/\\/g, "/").split("/").pop()
+        }
+        visible: missing && !!ed && ed.showChrome
+        anchors.fill: parent
+        color: Style.bgWell
+        border.color: Style.lineStrong
+        border.width: 1
+        Text {
+            anchors.fill: parent
+            anchors.margins: 4
+            text: "Picture missing: " + _pictureMissing.fileName
+            color: Style.fg
+            wrapMode: Text.Wrap
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            font.pixelSize: Math.max(9, Math.min(14, parent.height / 5))
+        }
+    }
     Repeater {
         model: {
             _drawRoot.rev

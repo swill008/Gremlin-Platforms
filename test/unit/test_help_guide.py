@@ -218,6 +218,11 @@ def test_bold_labels_exist() -> None:
                     part.strip() in known for part in piece.split(" … ")
                 ):
                     continue
+                # A row of toggles: "All · Chips · Groups", each its own label.
+                if " · " in piece and all(
+                    part.strip() in known for part in piece.split(" · ")
+                ):
+                    continue
                 missing.add(f"{topic['chapterId']}: {piece}")
     assert sorted(missing) == []
 

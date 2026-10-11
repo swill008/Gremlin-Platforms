@@ -4,7 +4,8 @@
 """The Logical Device's own module file (decision D-04-LD-FILE).
 
 Every profile uses one Logical Device layout, kept under "logical-device"
-in <modules>/logical_device.json; the file's other keys are left as they
+in its module file, <modules>/Logical Device/module.json (its own folder,
+03 S128; found by its id); the file's other keys are left as they
 are. Writes go through gremlin.modules.store, so module-file History
 records them (08 S4, S46).
 
@@ -25,14 +26,28 @@ from gremlin.modules import store
 if TYPE_CHECKING:
     from gremlin.logical_device import LogicalRows
 
+# The file stem before device folders (03 S134): the one-time move reads it.
 SLUG = "logical_device"
 KEY = "logical-device"
 WHO = "Logical Device"
 
 syslog = logging.getLogger("system")
 
+def _guid() -> str:
+    from gremlin.modules import ids
+
+    return str(ids.LOGICAL_DEVICE)
+
+
 def path() -> Path:
-    return store.path_of(SLUG)
+    """The module file in the Logical Device's folder (may not exist yet)."""
+    return store.module_file(WHO, _guid())
+
+
+def _write_path() -> Path:
+    """path(), its folder made first (with its device.json) for a write."""
+    store.ensure_device_dir(WHO, _guid())
+    return path()
 
 
 def _identity() -> dict:
@@ -150,7 +165,7 @@ def save(rows: LogicalRows | None = None, who: str = "") -> bool:
         doc[KEY] = layout
 
     try:
-        written = store.update_path(path(), change, who or WHO)
+        written = store.update_path(_write_path(), change, who or WHO)
     except RecursionError:
         syslog.warning(
             "Nothing was saved: the Logical Device file is nested too deeply "

@@ -44,10 +44,10 @@ GUID = str(dill.GUID(stick.device_guid).uuid)
 UUID = dill.GUID(stick.device_guid).uuid
 
 # The stick's input module (its axes claimed), as Module Setup saves one.
-from gremlin.ui import hardware_profile  # noqa: E402
+from gremlin.modules import store  # noqa: E402
 
-_module = hardware_profile.module_json_path("pJoy Pro", GUID)
-_module.parent.mkdir(parents=True, exist_ok=True)
+# Its own device folder (03 S128): <modules>/pJoy Pro/module.json.
+_module = store.module_file_in(store.ensure_device_dir("pJoy Pro", GUID))
 _module.write_text(
     json.dumps({
         "kind": "control.hardware",

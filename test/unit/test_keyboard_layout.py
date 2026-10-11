@@ -14,7 +14,6 @@ Spec: 05 S72-S77, S121-S131 (CF-Q7, CF-Q8).
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, cast
@@ -28,6 +27,7 @@ from gremlin.event_handler import Event
 from gremlin.profile import InputItem, Profile
 from gremlin.types import InputType
 from gremlin.ui.keyboard_layout import KeyboardLayoutModel, key_row, keyboard_store
+from test.unit._device_folders import put_module
 
 A = (30, False)
 S = (31, False)
@@ -217,8 +217,7 @@ def test_rename_is_the_friendly_name_held_until_save(
 ) -> None:
     from gremlin.modules import store
 
-    path = modules / "keyboard.json"
-    path.write_text(json.dumps({"name": "Keyboard"}), encoding="utf-8")
+    path = put_module(modules, "Keyboard", {"name": "Keyboard"})
     _add(page, A)
     page.setUserName(key_row(A), "Fire")
     row = _rows(page, "parent")[0]
@@ -340,8 +339,7 @@ def _save_and_reopen(path: Path) -> KeyboardLayoutModel:
 
 
 def _keyboard_file(modules: Path) -> Path:
-    path = modules / "keyboard.json"
-    path.write_text(json.dumps({"name": "Keyboard"}), encoding="utf-8")
+    path = put_module(modules, "Keyboard", {"name": "Keyboard"})
     return path
 
 

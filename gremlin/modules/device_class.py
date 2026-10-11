@@ -183,6 +183,23 @@ def home_key(kind: str) -> str:
     return ""
 
 
+def is_input_kind(kind: str) -> bool:
+    """Whether this kind is an internal input (Keyboard, OSC, the Logical
+    Device)."""
+    return kind in _INPUT_SLUGS
+
+
+def is_output_kind(kind: str) -> bool:
+    """Whether this kind is an internal output (vJoy N, the Xbox pad)."""
+    return bool(kind) and class_of_kind(kind) is DeviceClass.INTERNAL_OUTPUT
+
+
+def is_fixed_id(guid: object) -> bool:
+    """Whether this is the fixed id of a built-in device (Keyboard, OSC, the
+    Logical Device, the program's Xbox pad)."""
+    return ids.guid_key(guid) in _KIND_BY_KEY
+
+
 def guid_of_kind(kind: str) -> uuid.UUID | None:
     """The fixed id of a built-in device (None for vJoy and external)."""
     for guid, (_, slug) in (*INTERNAL_INPUTS.items(), *INTERNAL_OUTPUTS.items()):

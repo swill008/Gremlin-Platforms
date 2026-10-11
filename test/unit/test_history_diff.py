@@ -20,6 +20,7 @@ import pytest
 from gremlin import history, text_diff, util
 from gremlin.modules import module_file
 from gremlin.ui import history_model
+from test.unit._device_folders import ensure_dir
 
 
 def _settle() -> list[dict]:
@@ -102,7 +103,7 @@ def test_the_same_text_has_no_changes() -> None:
 def test_the_model_gives_the_shown_changes_rows(store: Path) -> None:
     # A module file saved twice, as the History window's own run does:
     # the second save added Button 2.
-    path = util.modules_dir() / "diff_stick.json"
+    path = ensure_dir(util.modules_dir(), "Diff Stick") / "module.json"
     module_file.write_json(path, {"device": "Diff Stick", "claim": {"buttons": [1]}})
     _settle()
     module_file.write_json(path, {"device": "Diff Stick", "claim": {"buttons": [1, 2]}})

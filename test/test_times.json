@@ -493,7 +493,6 @@
  "test/unit/test_stage1_history_pack.py": 17.1,
  "test/unit/test_stage1_modules.py": 20.3,
  "test/unit/test_stage1_runtime.py": 0.7,
- "test/unit/test_stale_file_choices.py": 0.2,
  "test/unit/test_stall_detection.py": 12.1,
  "test/unit/test_start_mode_last_active.py": 0.0,
  "test/unit/test_startup_messages.py": 0.0,

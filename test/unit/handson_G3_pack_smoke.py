@@ -90,28 +90,30 @@ profile = shared_state.current_profile
 profile.device_database.devices[uid] = DeviceInfo(uid, name)
 alpha = uuid.uuid4()
 profile.device_database.devices[alpha] = DeviceInfo(alpha, "Alpha Stick")
-modules = util.modules_dir()
-modules.mkdir(parents=True, exist_ok=True)
-# pJoy Pro: a good module file with a large photo.
-photo_dir = store.own_path(name).with_suffix("")
+# pJoy Pro: a good module file with a large photo, in its own device
+# folder (03 S128): <modules>/pJoy Pro/module.json and pictures/.
+device_dir = store.ensure_device_dir(name, str(stick.device_guid))
+photo_dir = device_dir / "pictures"
 photo_dir.mkdir(parents=True, exist_ok=True)
 photo = QtGui.QImage(3000, 2000, QtGui.QImage.Format.Format_RGB32)
 photo.fill(QtGui.QColor("#336699"))
 photo.save(str(photo_dir / "photo.png"))
 module_file.write_json(
-    store.own_path(name),
+    store.module_file_in(device_dir),
     {
         "kind": "control.hardware",
         "device": name,
         "direction": "source",
-        "image": store.picture_ref(photo_dir.name, "photo.png"),
+        "image": store.picture_ref("photo.png"),
         "claim": {"buttons": [1], "axes": [], "hats": [], "keys": []},
         "nodes": [],
     },
 )
 # Alpha Stick: its module file can't be read.
 row = store.match_known_device("Alpha Stick")
-damaged = store.path_for("Alpha Stick", str((row or {}).get("guid") or ""))
+damaged = store.module_file_in(
+    store.ensure_device_dir("Alpha Stick", str((row or {}).get("guid") or ""))
+)
 damaged.write_text("{ not json", encoding="utf-8")
 
 ev('Helpers.createComponent("DialogDevicePack.qml")')

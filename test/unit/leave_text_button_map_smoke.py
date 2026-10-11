@@ -276,7 +276,7 @@ def main() -> None:
     note = next(
         (c for c in dialog_items
          if c.inherits("QQuickText") and c.isVisible()
-         and str(c.property("text") or "").startswith("Templates are kept")),
+         and str(c.property("text") or "").startswith("Each template is kept")),
         None,
     )
     if note is None:

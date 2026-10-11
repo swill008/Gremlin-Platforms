@@ -153,8 +153,9 @@ class InputModuleRuntime(QtCore.QObject):
         for dev in devices:
             guid = guid_key(getattr(dev, "device_guid", ""))
             # A connected stick uses the module Module Setup finds for it
-            # (registry.resolve_module_slug), even when another file also
-            # names it. None found: no claim, so nothing of it gets through.
+            # (registry.for_device: the folder holding its id, else the one
+            # named after it; 03 S1), even when another file also names it.
+            # None found: no claim, so nothing of it gets through.
             if not guid or guid in passthrough:
                 continue
             name = str(getattr(dev, "name", "") or "")

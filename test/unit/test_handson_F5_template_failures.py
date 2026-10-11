@@ -54,10 +54,10 @@ def test_export_to_a_missing_folder_names_file_folder_and_reason(
     profile: hardware_profile.HardwareProfile, tmp_path: pathlib.Path
 ) -> None:
     profile.saveTemplate("Shared", NODES, "x")
-    out = tmp_path / "nowhere" / "shared.json"
+    out = tmp_path / "nowhere" / "shared.gtemplate"
     assert not profile.exportTemplate("Shared", _url(out))
     assert profile.templateError() == (
-        f"Export failed. shared.json could not be written to {out.parent}: "
+        f"Export failed. shared.gtemplate could not be written to {out.parent}: "
         "the folder does not exist."
     )
 
@@ -68,13 +68,13 @@ def test_export_over_a_read_only_file_says_so(
     read_only: list[pathlib.Path],
 ) -> None:
     profile.saveTemplate("Shared", NODES, "x")
-    out = tmp_path / "shared.json"
+    out = tmp_path / "shared.gtemplate"
     out.write_text("{}", encoding="utf-8")
     os.chmod(out, stat.S_IREAD)
     read_only.append(out)
     assert not profile.exportTemplate("Shared", _url(out))
     assert profile.templateError() == (
-        f"Export failed. shared.json could not be written to {tmp_path}: "
+        f"Export failed. shared.gtemplate could not be written to {tmp_path}: "
         "the file is read-only or open in another program."
     )
 
@@ -83,8 +83,8 @@ def test_an_export_that_worked_leaves_no_error(
     profile: hardware_profile.HardwareProfile, tmp_path: pathlib.Path
 ) -> None:
     profile.saveTemplate("Shared", NODES, "x")
-    assert not profile.exportTemplate("Shared", _url(tmp_path / "no" / "a.json"))
-    assert profile.exportTemplate("Shared", _url(tmp_path / "a.json"))
+    assert not profile.exportTemplate("Shared", _url(tmp_path / "no" / "a.gtemplate"))
+    assert profile.exportTemplate("Shared", _url(tmp_path / "a.gtemplate"))
     assert profile.templateError() == ""
 
 
@@ -96,7 +96,7 @@ def test_rename_to_a_taken_name_names_the_file_and_folder(
     assert not profile.renameTemplate("One", "Two")
     folder = tmp_path / "maps" / "templates"
     assert profile.templateError() == (
-        f"Rename failed. Two.json could not be written to {folder}: "
+        f"Rename failed. Two could not be written to {folder}: "
         "a template already has that name."
     )
 
@@ -108,16 +108,18 @@ def test_rename_of_a_read_only_template_names_it_and_keeps_one_copy(
 ) -> None:
     profile.saveTemplate("One", NODES, "x")
     folder = tmp_path / "maps" / "templates"
-    old = folder / "One.json"
+    # A template is its own folder (07 S110): its template.json read-only.
+    old = folder / "One" / "template.json"
     os.chmod(old, stat.S_IREAD)
     read_only.append(old)
+    read_only.append(folder / "Three" / "template.json")
     assert not profile.renameTemplate("One", "Three")
-    assert profile.templateError() == (
-        f"Rename failed. One.json could not be removed from {folder}: "
-        "the file is read-only or open in another program."
-    )
-    # Not both: the new name is taken back.
+    error = profile.templateError()
+    assert error.startswith("Rename failed. template.json could not be written to ")
+    assert error.endswith(": the file is read-only or open in another program.")
+    # Not half done: the template keeps its name and its folder.
     assert [r["name"] for r in profile.templates()] == ["One"]
+    assert sorted(sub.name for sub in folder.iterdir()) == ["One"]
 
 
 def test_the_button_map_shows_the_reason() -> None:

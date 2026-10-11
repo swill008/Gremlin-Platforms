@@ -12,8 +12,8 @@ action kept in memory for Undo, 04 S14).
 
 - profile(p): the profile's inputs, actions, library and mode tree hold
   together (spec 04 S14, S27, S42, S46, S68, S71, S75; 05 library rules).
-- modules(): the module files read, each connected device has its own file
-  and every saved binding points at a file (spec 03 S1, S6, S7, S22, S64).
+- modules(): the module files read, each connected device has its own
+  folder, and each folder its own id (spec 03 S1, S6, S7, S22, S64, S130).
 - after_stop(): a stopped Run left nothing behind (spec 06 S17-S29).
 
 Imports are made inside the checks, so importing this module is cheap and
@@ -382,49 +382,41 @@ def _check_osc(p: Profile, out: list[str]) -> None:
 
 
 def modules() -> list[str]:
-    """Problems with the module files and which device uses which.
+    """Problems with the device folders and their module files.
 
-    - MODULES-DAMAGED: a file in the modules folder that can't be read (bad
-      JSON, not UTF-8, not an object); it blocks its device (03 S22, S64).
-    - MODULES-SHARED-FILE: two connected devices use one file (03 S1, S6,
+    - MODULES-DAMAGED: a module file that can't be read (bad JSON, not
+      UTF-8, not an object); it blocks its device (03 S22, S64).
+    - MODULES-SHARED-FILE: two connected devices use one folder (03 S1, S6,
       S7: each twin and each vJoy has its own). Found with the one rule,
-      registry.resolve_module_slug (what hardware_profile._active_module_path
-      uses).
-    - MODULES-BINDING-MISSING: a saved file choice (module-file-bindings)
-      names a file that isn't there.
-
-    The binding checks are skipped until the program has registered its
-    bindings setting (reading it would register it).
+      store.device_dir.
+    - MODULES-DUPLICATE-ID: two device folders hold one id (copied by
+      hand); the lookup takes the one named after the device (03 S130).
+    - MODULES-NO-ID: a device folder with a module file but no device.json
+      id (03 S130: the id is the lookup authority).
     """
     return _guarded("modules", _check_modules)
-
-
-def _bindings_registered() -> bool:
-    from gremlin.config import Configuration
-
-    return Configuration().exists("global", "internal", "module-file-bindings")
 
 
 def _check_modules(out: list[str]) -> None:
     from gremlin.modules import registry, store
 
-    folder = store.folder()
-    if folder.is_dir():
-        for path in sorted(folder.glob("*.json")):
-            if not path.is_file():
-                continue
-            if registry.read_doc(path) is None:
-                out.append(f"MODULES-DAMAGED: {path.name} can't be read")
-    if not _bindings_registered():
-        return
-    out += _guarded("modules shared files", _check_shared_files)
-    for key, value in sorted(store.bindings().items()):
-        slug = store.own_slug(value) if str(value or "").strip() else ""
-        if not slug or not store.path_of(slug).is_file():
+    ids: dict[str, list[str]] = {}
+    for path in store.module_files():
+        where = f"{path.parent.name}/{path.name}"
+        if registry.read_doc(path) is None:
+            out.append(f"MODULES-DAMAGED: {where} can't be read")
+        held = store._read_json(path.parent / store.ID_FILE)
+        key = str(held.get("id") or "").strip()
+        if not key:
+            out.append(f"MODULES-NO-ID: {path.parent.name} has no device.json id")
+            continue
+        ids.setdefault(store._norm(key), []).append(path.parent.name)
+    for key, names in sorted(ids.items()):
+        if len(names) > 1:
             out.append(
-                f"MODULES-BINDING-MISSING: the saved choice for {key} names "
-                f"'{value}', which isn't in the modules folder"
+                f"MODULES-DUPLICATE-ID: {', '.join(sorted(names))} hold one id ({key})"
             )
+    out += _guarded("modules shared files", _check_shared_files)
 
 
 def _check_shared_files(out: list[str]) -> None:
@@ -441,12 +433,14 @@ def _check_shared_files(out: list[str]) -> None:
     ]
     for name, dev in devices:
         guid = str(getattr(dev, "device_guid", "") or "")
-        slug = store.slug_for(name, guid)
-        users.setdefault(slug, []).append(f"{name} ({guid})")
-    for slug, names in sorted(users.items()):
+        path = store.module_file(name, guid)
+        if not path.is_file():
+            continue
+        users.setdefault(path.parent.name, []).append(f"{name} ({guid})")
+    for folder, names in sorted(users.items()):
         if len(names) > 1:
             out.append(
-                f"MODULES-SHARED-FILE: {slug}.json is used by {', '.join(names)}"
+                f"MODULES-SHARED-FILE: {folder} is used by {', '.join(names)}"
             )
 
 

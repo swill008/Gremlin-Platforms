@@ -83,6 +83,8 @@ ApplicationWindow {
         var text = parts.join(" ")
         if (w.mode)
             text += " in " + w.mode
+        if (w.deviceName && !text.length)
+            text = w.deviceName
         if (w.fileName && !text.length)
             text = w.fileName
         return text

@@ -49,6 +49,7 @@ modules = _carry.modules
 rows = _carry.rows
 watch_maker = _carry.watch_maker
 _osc_doc_in = _carry._osc_doc_in
+_gmap = _carry._gmap
 _save = _carry._save
 
 pytestmark = pytest.mark.validate_off
@@ -196,9 +197,10 @@ def test_export_current_carries_shaping_accel_and_allow_list(
     state_a: dict, tmp_path: Path
 ) -> None:
     row = next(r for r in library.devices() if r["name"] == "OSC")
-    dest = tmp_path / "out" / "now.zip"
-    assert library.export_current(row["key"], dest)["ok"]
-    _assert_carries(_osc_doc_in(dest), state_a)
+    dest = tmp_path / "out" / "now.gmap"
+    out = library.export_current(row["key"], dest)
+    assert out["ok"], out
+    _assert_carries(_osc_doc_in(_gmap(out)), state_a)
 
 
 @needs_fields
@@ -209,9 +211,10 @@ def test_export_saved_setup_carries_shaping_accel_and_allow_list(
 ) -> None:
     setup = _save()
     _change_to_b(rows)
-    dest = tmp_path / "out" / "saved.zip"
-    assert library.export_setup(setup["key"], dest)["ok"]
-    _assert_carries(_osc_doc_in(dest), state_a)
+    dest = tmp_path / "out" / "saved.gmap"
+    out = library.export_setup(setup["key"], dest)
+    assert out["ok"], out
+    _assert_carries(_osc_doc_in(_gmap(out)), state_a)
 
 
 # --- (3) History restore ------------------------------------------------------

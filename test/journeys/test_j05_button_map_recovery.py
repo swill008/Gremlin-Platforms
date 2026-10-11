@@ -10,10 +10,11 @@ red photo. A recovery copy is written (as the recovery timer does), and
 the program ends without closing anything (a crash).
 
 Second run, same data folder: the Button Map offers the unsaved edits.
-Not now keeps both the copy and the red photo (the map shows it). Edit
-offers them again; Restore opens them for editing (the rectangle and the
-red photo, unsaved). Save writes both to the module file, removes the
-recovery copy and the kept photo, and the map opened again offers nothing.
+Not now keeps both the copy and the edit's temporary folder with the red
+photo (07 S107; the saved map still names the blue one). Edit offers them
+again; Restore opens them for editing (the rectangle and the red photo,
+unsaved). Save writes both to the module file, removes the recovery copy
+and the temporary folder, and the map opened again offers nothing.
 
 Spec: 07 S32, S34 (Restore / Discard / Not now; Not now keeps both and
 offers them next time), S36, S23; the audit 3 decision on the recovery
@@ -63,7 +64,7 @@ def _photo(j: Journey, window: object) -> str:
 def _state(j: Journey, window: object) -> dict:
     return {
         "copy": bool(j.ev("_hw.loadRecovery(targetName).length > 0", window)),
-        "kept-photo": bool(j.ev("_hw.hasPhotoStash(targetName)", window)),
+        "edit-kept": bool(j.ev("_hw.editActive(targetName)", window)),
         "photo": _photo(j, window),
     }
 
@@ -91,7 +92,7 @@ def _choose_photo(j: Journey, window: object, colour: str) -> None:
         window,
     )
     j.wait_until(
-        lambda: j.ev("_hw.hasPhotoStash(targetName)", window), "the chosen photo"
+        lambda: j.ev("_hw.editActive(targetName)", window), "the chosen photo"
     )
 
 
@@ -188,15 +189,17 @@ def test_the_first_run_leaves_a_copy_and_the_new_photo(run: dict) -> None:
     assert step(crashed, "first-save") is True
     assert step(crashed, "saved") == {
         "copy": False,
-        "kept-photo": False,
+        "edit-kept": False,
         "photo": "blue",
     }
     assert step(crashed, "drawn") == 1
     assert step(crashed, "dirty") is True
+    # The red photo waits in the edit's temporary folder (07 S107): the
+    # saved map still names the blue one.
     assert step(crashed, "before-crash") == {
         "copy": True,
-        "kept-photo": True,
-        "photo": "red",
+        "edit-kept": True,
+        "photo": "blue",
     }
     assert step(crashed, "saved-nodes-before-crash") == 0
 
@@ -209,7 +212,11 @@ def test_the_restart_offers_the_edits(run: dict) -> None:
 
 def test_not_now_keeps_the_copy_and_the_new_photo(run: dict) -> None:
     again = run["reopen"]
-    assert step(again, "not-now") == {"copy": True, "kept-photo": True, "photo": "red"}
+    assert step(again, "not-now") == {
+        "copy": True,
+        "edit-kept": True,
+        "photo": "blue",
+    }
     assert step(again, "not-now-editing") is False
     assert step(again, "edit-offers") is True
     assert step(again, "edit-editing") is False
@@ -219,11 +226,12 @@ def test_restore_brings_both_back_and_save_keeps_them(run: dict) -> None:
     again = run["reopen"]
     assert step(again, "restored-rect") is True
     assert step(again, "restored-dirty") is True
-    assert step(again, "restored-photo") == "red"
+    # Unsaved: the file still names the blue photo until Save (07 S107).
+    assert step(again, "restored-photo") == "blue"
     assert step(again, "save") is True
     assert step(again, "after-save") == {
         "copy": False,
-        "kept-photo": False,
+        "edit-kept": False,
         "photo": "red",
     }
     assert step(again, "saved-rect") is True

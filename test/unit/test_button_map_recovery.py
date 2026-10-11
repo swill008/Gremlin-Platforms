@@ -17,6 +17,7 @@ import pytest
 
 from gremlin.modules import store
 from gremlin.ui import hardware_profile
+from test.unit._device_folders import ensure_dir
 
 
 @pytest.fixture
@@ -24,9 +25,6 @@ def profile(
     monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> hardware_profile.HardwareProfile:
     monkeypatch.setattr(store, "folder", lambda: tmp_path)
-    monkeypatch.setattr(
-        store, "slug_for", lambda name, guid="": "test_stick"
-    )
     return hardware_profile.HardwareProfile()
 
 
@@ -45,9 +43,9 @@ def test_save_load_and_clear(
     assert doc["nodes"] == [{"id": "b1"}]
     assert doc["device"] == "Test Stick"
     assert doc["savedAt"]
-    # Beside the module files, never in place of one.
-    assert (tmp_path / "recovery" / "test_stick.json").is_file()
-    assert not (tmp_path / "test_stick.json").exists()
+    # In the device's folder beside its module file, never in place of it.
+    assert (tmp_path / "Test Stick" / "recovery.json").is_file()
+    assert not (tmp_path / "Test Stick" / "module.json").exists()
     profile.clearRecovery("Test Stick")
     assert profile.loadRecovery("Test Stick") == ""
     profile.clearRecovery("Test Stick")  # nothing left: no error
@@ -64,6 +62,6 @@ def test_rejects_what_is_not_a_layout(
 def test_a_broken_copy_reads_as_none(
     profile: hardware_profile.HardwareProfile, tmp_path: pathlib.Path
 ) -> None:
-    (tmp_path / "recovery").mkdir()
-    (tmp_path / "recovery" / "test_stick.json").write_text("{", encoding="utf-8")
+    folder = ensure_dir(tmp_path, "Test Stick")
+    (folder / "recovery.json").write_text("{", encoding="utf-8")
     assert profile.loadRecovery("Test Stick") == ""

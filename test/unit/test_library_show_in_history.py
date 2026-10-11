@@ -3,7 +3,7 @@
 
 """10 S56: a Device Library row's Show in History opens Tools > History
 filtered to that device (08 S32-S33), as Module Setup's History does (by
-the device's own module file, its name on the "Only ..." line), even when
+the device's id, its name on the "Only ..." line), even when
 History is already open on everything and for a device with no card:
 its module file's changes and the Device Library's changes to it (Save,
 Delete, Remove), not a twin stick's or another file's."""
@@ -45,7 +45,10 @@ def test_show_in_history_opens_history_on_the_device(tmp_path: pathlib.Path) -> 
     out = json.loads(lines[-1][len("RESULT ") :])
     assert out["result"].get("ok"), out
     assert out["opened"]
-    assert out["filter"]["ofDevice"]["fileName"] == out["file"]
+    # Filtered by the device's id (08 S43), not by a file name.
+    of_device = out["filter"]["ofDevice"]
+    assert of_device["deviceId"] and of_device["guid"], out
+    assert "fileName" not in of_device
     assert out["titles"] == [
         "UR delete setup",
         "UR module save",

@@ -58,8 +58,9 @@ def _load(path: Path) -> dict:
 
 def _source_modules() -> list[dict]:
     """The input modules of connected sticks, one row per stick (by device
-    id), each as Module Setup and Run find it (registry.for_device: by the
-    device it is bound to, else, when the stick has a new id, by its name).
+    id), each as Module Setup and Run find it (registry.for_device: the
+    folder holding its id, else, when the stick has a new id, the folder
+    named after it; 03 S1).
     A stick found by name is marked "rebind": saving its calibration records
     its new id. Two sticks on one file are both listed, each by its own name
     (the second used to be left out); "key" tells them apart."""
@@ -74,9 +75,9 @@ def _source_modules() -> list[dict]:
         # there is nothing to calibrate (another file bound to the stick's
         # id used to be shown and saved instead).
         # Keyboard / OSC files can't be calibrated (03 S90b); judged by the
-        # file's slug alone, as before, even for a stick with its own id.
+        # folder name alone (module.slug), even for a stick with its own id.
         # Only the internal-input names count here: can("calibrate") would
-        # also skip a real pad whose slug reads as an output name
+        # also skip a real pad whose folder reads as an output name
         # ("xbox_360_controller").
         if (
             module is None
@@ -104,8 +105,9 @@ def _source_modules() -> list[dict]:
             }
         )
     rows.sort(key=lambda row: (row["name"].lower(), row["guid"]))
-    # The first stick on a file is picked by the file's slug (cards open
-    # Calibration that way); another one on the same file by "slug@id".
+    # The first stick on a file is picked by its folder name, module.slug
+    # (cards open Calibration that way); another one on the same file by
+    # "slug@id".
     seen: set[str] = set()
     for row in rows:
         row["key"] = row["slug"] if row["slug"] not in seen else (
@@ -116,8 +118,8 @@ def _source_modules() -> list[dict]:
 
 
 def module_for_slug(slug: str) -> dict | None:
-    """The row picked by its key: the file's slug, or "slug@id" for a second
-    stick on the same file."""
+    """The row picked by its key: the folder name (module.slug), or
+    "slug@id" for a second stick on the same file."""
     want = str(slug or "").strip().lower()
     if not want:
         return None

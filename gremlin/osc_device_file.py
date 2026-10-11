@@ -4,7 +4,9 @@
 """OSC's own module file (decision D-09-OSC-FILE).
 
 Every profile uses one OSC address list, kept under "inputs" in
-<modules>/osc.json, with the server and behaviour settings under "server";
+its module file, <modules>/OSC/module.json (its own folder, 03 S128; found by
+its id; "osc.json" in trace lines), with the server and behaviour settings
+under "server";
 the file's other keys are left as they are. Writes go through
 gremlin.modules.store, so module-file History records them.
 
@@ -27,6 +29,7 @@ from gremlin.modules import store
 if TYPE_CHECKING:
     from gremlin.osc_rows import OscRows
 
+# The file stem before device folders (03 S134): the one-time move reads it.
 SLUG = "osc"
 KEY = "inputs"
 SERVER_KEY = "server"
@@ -98,7 +101,20 @@ _BOOL_KEYS = (
 
 
 def path() -> Path:
-    return store.path_of(SLUG)
+    """The module file in OSC's folder (may not exist yet)."""
+    return store.module_file(WHO, str(_osc_id()))
+
+
+def _write_path() -> Path:
+    """path(), its folder made first (with its device.json) for a write."""
+    store.ensure_device_dir(WHO, str(_osc_id()))
+    return path()
+
+
+def _osc_id() -> uuid.UUID:
+    from gremlin.modules import ids
+
+    return ids.OSC
 
 
 def _trace(text: str, **kwargs: object) -> None:
@@ -464,7 +480,7 @@ def _write_key(key: str, value: object, who: str, signal_name: str) -> bool:
 
     count = len(value) if isinstance(value, list) else 0
     what = f"{count} {_KEY_TEXT.get(key, key)}"
-    if not store.update_path(path(), change, who or WHO):
+    if not store.update_path(_write_path(), change, who or WHO):
         _trace(
             f"osc.json not written ({what} unchanged)"
             if same
@@ -601,7 +617,7 @@ def save(rows: OscRows | None = None, who: str = "") -> bool:
         doc[KEY] = inputs
         _put_layout(doc, layout, names, loaded)
 
-    if not store.update_path(path(), change, who or WHO):
+    if not store.update_path(_write_path(), change, who or WHO):
         _trace("osc.json not saved: the file is damaged (refused)", warning=True)
         return False
     _trace(f"osc.json saved ({len(inputs)} inputs)")
@@ -643,7 +659,7 @@ def write_server(settings: dict, who: str = "") -> bool:
         doc[SERVER_KEY] = server
         return True
 
-    if not store.update_path(path(), change, who or WHO):
+    if not store.update_path(_write_path(), change, who or WHO):
         _trace(
             "osc.json not written (server settings unchanged)"
             if same

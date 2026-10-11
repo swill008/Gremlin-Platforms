@@ -48,17 +48,17 @@ def _rows(model: Any) -> list[dict]:  # noqa: ANN401
 def story(j: Journey) -> None:
     import json
 
-    from gremlin import device_initialization, util
-    from gremlin.modules import calibration
+    from gremlin import device_initialization
+    from gremlin.modules import calibration, store
     from gremlin.ui.device import AxisCalibration
     from gremlin.ui.module_model import DriverInputModel
 
     out = j.out
-    modules = util.modules_dir()
     first = j.stick("pJoy Pro")
     second = j.stick("pJoy Pro (2)")
     out["names"] = sorted(d.name for d in device_initialization.physical_devices())
-    first_file = modules / "pjoy_pro.json"
+    # Each twin's own device folder (03 S6, S132).
+    first_file = store.module_file("pJoy Pro", str(first.device_guid))
     first_text = first_file.read_text(encoding="utf-8")
     out["cards"] = [
         j.ev('_moduleModel.cardMap("pjoy_pro").name'),
@@ -77,7 +77,8 @@ def story(j: Journey) -> None:
         if (row["kind"], int(row["hwId"])) in (("button", 2), ("axis", 1)):
             driver.setClaimed(index, True)
     out["setup-saved"] = j.ev("commitModule()", setup)
-    second_file = modules / "pjoy_pro_2.json"
+    second_file = store.module_file("pJoy Pro (2)", str(second.device_guid))
+    out["second-folder"] = second_file.parent.name
     out["second-file"] = second_file.is_file()
     second_doc = json.loads(second_file.read_text(encoding="utf-8"))
     out["second-claim"] = [second_doc["claim"]["buttons"], second_doc["claim"]["axes"]]
@@ -96,7 +97,7 @@ def story(j: Journey) -> None:
     # Calibration on the second twin's file: move the low end, Save All.
     j.ev(
         'Helpers.createComponent("DialogCalibration.qml",'
-        ' {"initialSlug": "pjoy_pro_2"})'
+        ' {"initialSlug": "pJoy Pro (2)"})'
     )
     cal = j.window("Calibration")
     axes = j.wait_until(lambda: cal.findChild(AxisCalibration), "the calibration list")
@@ -162,7 +163,8 @@ def test_each_card_counts_its_own_twins_controls(run: dict) -> None:
 
 
 def test_calibration_writes_only_the_second_twins_file(run: dict) -> None:
-    assert step(run, "cal-slug") == "pjoy_pro_2"
+    assert step(run, "cal-slug") == "pJoy Pro (2)"
+    assert step(run, "second-folder") == "pJoy Pro (2)"
     assert step(run, "cal-saved") is True
     assert step(run, "second-has-curve") is True
     assert step(run, "first-untouched-after-cal") is True

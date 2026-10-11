@@ -14,7 +14,7 @@ gaps they meet (GL-046, GL-047) through the test run's validate report.
 
 from __future__ import annotations
 
-import json
+import shutil
 import sys
 import threading
 import types
@@ -45,6 +45,7 @@ from gremlin.modules import registry, store
 from gremlin.profile import InputItem, InputItemBinding, Profile
 from gremlin.tree import TreeNode
 from gremlin.types import InputType
+from test.unit._device_folders import put_module
 
 # Broken state is built here on purpose: not for the run's validate report.
 pytestmark = pytest.mark.validate_off
@@ -266,76 +267,75 @@ def test_the_profile_check_never_raises() -> None:
 # --- module files -------------------------------------------------------------
 
 
-_Folder = tuple[Path, dict[str, str], list[types.SimpleNamespace]]
+_Folder = tuple[Path, list[types.SimpleNamespace]]
 
 
 @pytest.fixture
 def modules_folder(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[_Folder]:
-    """An empty modules folder, saved file choices and connected sticks, all
-    stand-ins for this test."""
+    """An empty modules folder and connected sticks, stand-ins for this
+    test."""
     folder = tmp_path / "modules"
     folder.mkdir()
-    bindings: dict[str, str] = {}
     sticks: list[types.SimpleNamespace] = []
     monkeypatch.setattr(registry, "_folder", lambda: folder)
     monkeypatch.setattr(store, "folder", lambda: folder)
-    monkeypatch.setattr(registry, "_binding_store", lambda: dict(bindings))
-    monkeypatch.setattr(validate, "_bindings_registered", lambda: True)
     monkeypatch.setattr(device_initialization, "physical_devices", lambda: list(sticks))
     monkeypatch.setattr(device_initialization, "vjoy_devices", lambda: [])
-    yield folder, bindings, sticks
     registry._cache.clear()
+    store._dirs_changed()
+    yield folder, sticks
+    registry._cache.clear()
+    store._dirs_changed()
 
 
 def _stick(name: str) -> types.SimpleNamespace:
     return types.SimpleNamespace(name=name, device_guid=uuid.uuid4(), is_virtual=False)
 
 
-def _module(folder: Path, slug: str, device: str, guid: object = "") -> None:
+def _module(folder: Path, device: str, guid: object = "") -> Path:
     doc = {"device": device, "direction": "source", "boundGuidLocal": str(guid)}
-    (folder / f"{slug}.json").write_text(json.dumps(doc), encoding="utf-8")
+    return put_module(folder, device, doc, str(guid))
 
 
 def test_clean_module_files_have_no_problems(modules_folder: _Folder) -> None:
-    folder, bindings, sticks = modules_folder
+    folder, sticks = modules_folder
     sticks += [_stick("Stick A"), _stick("Stick B")]
-    _module(folder, "stick_a", "Stick A", sticks[0].device_guid)
-    _module(folder, "stick_b", "Stick B", sticks[1].device_guid)
-    bindings["name:stick_a"] = "stick_a"
+    _module(folder, "Stick A", sticks[0].device_guid)
+    _module(folder, "Stick B", sticks[1].device_guid)
     assert validate.modules() == []
 
 
 def test_a_damaged_module_file(modules_folder: _Folder) -> None:
-    folder, _, _ = modules_folder
-    (folder / "broken.json").write_text("{not json", encoding="utf-8")
-    (folder / "latin.json").write_bytes(b'{"device": "\xe9"}')
-    (folder / "list.json").write_text("[]", encoding="utf-8")
+    folder, _ = modules_folder
+    put_module(folder, "Broken", "{not json")
+    put_module(folder, "Latin", b'{"device": "\xe9"}')
+    put_module(folder, "List", "[]")
     problems = validate.modules()
     assert _codes(problems) == {"MODULES-DAMAGED"}
-    assert sorted(p.split(" ")[1] for p in problems) == [
-        "broken.json",
-        "latin.json",
-        "list.json",
-    ]
+    assert len(problems) == 3
+    for name in ("Broken", "Latin", "List"):
+        assert any(name in p for p in problems), (name, problems)
 
 
-def test_two_connected_sticks_on_one_file(modules_folder: _Folder) -> None:
-    folder, bindings, sticks = modules_folder
-    sticks += [_stick("Stick A"), _stick("Stick B")]
-    _module(folder, "shared", "Shared")
-    for stick in sticks:
-        bindings[str(stick.device_guid).upper().replace("-", "")] = "shared"
-    problems = validate.modules()
-    assert _codes(problems) == {"MODULES-SHARED-FILE"}
-    assert "shared.json" in problems[0]
+def test_two_folders_with_one_id(modules_folder: _Folder) -> None:
+    # S130: device.json's id finds the folder; two holding one id is a
+    # problem (contract: MODULES-DUPLICATE-ID).
+    folder, sticks = modules_folder
+    sticks.append(_stick("Stick A"))
+    guid = sticks[0].device_guid
+    first = _module(folder, "Stick A", guid).parent
+    copy = folder / "Stick A copy"
+    shutil.copytree(first, copy)
+    assert _codes(validate.modules()) == {"MODULES-DUPLICATE-ID"}
 
 
-def test_a_saved_choice_naming_a_missing_file(modules_folder: _Folder) -> None:
-    _, bindings, _ = modules_folder
-    bindings["name:stick_a"] = "gone"
-    assert _codes(validate.modules()) == {"MODULES-BINDING-MISSING"}
+def test_a_device_folder_without_its_id_file(modules_folder: _Folder) -> None:
+    folder, _ = modules_folder
+    path = _module(folder, "Stick A")
+    (path.parent / "device.json").unlink()
+    assert _codes(validate.modules()) == {"MODULES-NO-ID"}
 
 
 def test_the_modules_check_never_raises(

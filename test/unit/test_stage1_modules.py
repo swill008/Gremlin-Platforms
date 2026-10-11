@@ -47,9 +47,11 @@ from gremlin import (
 )
 from gremlin import device_library as library
 from gremlin.modules import module_file, output, registry, store
+from gremlin.modules.ids import stored_guid_key
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
 from gremlin.ui import device_pack, hardware_profile, history_model, module_model
+from test.unit._device_folders import ensure_dir, picture_file, put_module, put_picture
 
 _ROOT = Path(__file__).resolve().parents[2]
 _APPS: list[QtCore.QCoreApplication] = []
@@ -107,8 +109,6 @@ def folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     for old in list(path.iterdir()):
         shutil.move(str(old), str(aside / old.name))
     before = set(path.rglob("*"))
-    bindings = store.bindings()
-    store.set_bindings({})
     module_model._ensure_display_options()
     cfg = config.Configuration()
     display = {
@@ -130,7 +130,6 @@ def folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
             extra.unlink(missing_ok=True)
     for old in aside.iterdir():
         shutil.move(str(old), str(path / old.name))
-    store.set_bindings(bindings)
     for key, value in display.items():
         cfg.set(module_model._CFG_SECTION, module_model._CFG_GROUP, key, value)
 
@@ -154,9 +153,11 @@ def vjoy_guid() -> str:
 
 
 def write_module(folder: Path, slug: str, doc: dict) -> Path:
-    path = folder / f"{slug}.json"
-    path.write_text(json.dumps(doc), encoding="utf-8")
-    return path
+    """The device's <Device Folder>/module.json (03 S128); slug is only the
+    fallback name when doc names no device."""
+    from test.unit._device_folders import put_module
+
+    return put_module(folder, str(doc.get("device") or slug), doc)
 
 
 def stick_doc(**extra: object) -> dict:
@@ -291,7 +292,7 @@ def test_hide_card_and_hidden_cards_and_unhide_all(folder: Path) -> None:
     model.ignoreSlug("pjoy_pro")
     model.ignoreSlug("keyboard")
     # Hide Card only takes the card off Home (S82): the file stays.
-    assert (folder / "pjoy_pro.json").is_file()
+    assert store.module_file("pJoy Pro", stick_guid()).is_file()
     assert model.visibleCount() == showing - 2
     assert model.cardMap("pjoy_pro") == {}
     # Hidden Cards lists each by name.
@@ -350,10 +351,8 @@ def test_compact_view_and_layout_persist(folder: Path) -> None:
 
 
 def _stick_with_photo(folder: Path) -> None:
-    write_module(folder, "pjoy_pro", stick_doc(image="pjoy_pro/photo.jpg"))
-    (folder / "pjoy_pro").mkdir()
-    (folder / "pjoy_pro" / "photo.jpg").write_bytes(b"\xff\xd8\xff\xd9")
-    store.bind("pJoy Pro", stick_guid(), "pjoy_pro")
+    write_module(folder, "pjoy_pro", stick_doc(image="pictures/photo.jpg"))
+    put_picture(folder, "pJoy Pro", "photo.jpg", b"\xff\xd8\xff\xd9", stick_guid())
 
 
 def test_delete_device_removes_the_devices_actions_file_and_card_layout(
@@ -368,13 +367,12 @@ def test_delete_device_removes_the_devices_actions_file_and_card_layout(
 
     result = json.loads(model.deleteDevice("pJoy Pro", stick_guid()))
     assert result["ok"], result
-    # S92: actions in every mode, the module file, its pictures, its file
-    # bindings, and the card's size and stack. Other devices keep theirs.
+    # S92: actions in every mode, the device's folder (module file and
+    # pictures), and the card's size and stack. Other devices keep theirs.
     assert mapped(profile, stick_uid()) == set()
     assert mapped(profile, _OTHER) == {("Default", 3)}
-    assert not (folder / "pjoy_pro.json").exists()
-    assert not (folder / "pjoy_pro").exists()
-    assert "pjoy_pro" not in store.bindings().values()
+    assert not (folder / "pJoy Pro").exists()
+    assert (folder / "Keyboard" / "module.json").is_file()
     assert model.cardWidth("pjoy_pro") == 0
     assert model.pileMembers("keyboard") == ["keyboard"]
     # S96: still plugged in, so it keeps a card without a module.
@@ -401,7 +399,7 @@ def test_delete_device_of_an_unplugged_stick(
     model = module_model.ModuleListModel()
     result = json.loads(model.deleteDevice("Gone Stick", str(_OTHER)))
     assert result["ok"], result
-    assert not (folder / "gone_stick.json").exists()
+    assert not (folder / "Gone Stick" / "module.json").exists()
     assert mapped(profile, _OTHER) == set()
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Combat", 2)}
     # S96: an unplugged device's card goes.
@@ -527,25 +525,34 @@ def test_import_refusals_change_nothing(
     assert model.importModuleFile(guid, device, source, direction) == message
     # S57: refused, nothing written, nothing to undo.
     assert {path: path.read_bytes() for path in files} == files
-    assert not (folder / "gone_stick.json").exists()
-    assert not (folder / "imported").exists() or not any(
-        (folder / "imported").iterdir()
-    )
+    assert not (folder / "Gone Stick").exists()
+    # No previous file kept in any device's imported/ folder (03 S58).
+    assert not list(folder.glob("*/imported/*"))
     assert not model.importCanUndo()
 
 
 def test_import_into_a_renamed_stick_goes_into_the_file_it_uses(
     folder: Path, tmp_path: Path
 ) -> None:
-    write_module(folder, "old_name", stick_doc(device="Old Name"))
-    assert registry.resolve_module_slug("pJoy Pro", stick_guid()) == "old_name"
+    # The folder holding the stick's id (device.json), made under its old
+    # name before Windows renamed it.
+    old = folder / "Old Name"
+    old.mkdir()
+    (old / "device.json").write_text(json.dumps({
+        "format": 1, "id": stored_guid_key(stick_guid()), "name": "Old Name",
+    }), encoding="utf-8")
+    (old / "module.json").write_text(
+        json.dumps(stick_doc(device="Old Name")), encoding="utf-8"
+    )
+    store._dirs_changed()
+    assert store.device_dir("pJoy Pro", stick_guid()) == old
     source = _source_file(tmp_path, "other_stick.json", _STICK_FILE)
     model = module_model.ModuleListModel()
     message = model.importModuleFile(stick_guid(), "pJoy Pro", source, "source")
     assert message.startswith("Imported "), message
-    # Q13: into the file the device uses (map 1), not a new own-name file.
-    assert not (folder / "pjoy_pro.json").exists()
-    claim = json.loads((folder / "old_name.json").read_text(encoding="utf-8"))["claim"]
+    # Q13: into the folder the device uses (S130), not a new own-name one.
+    assert not (folder / "pJoy Pro" / "module.json").exists()
+    claim = json.loads((old / "module.json").read_text(encoding="utf-8"))["claim"]
     assert claim["buttons"] == [1, 2, 3]
 
 
@@ -565,29 +572,10 @@ def test_module_setup_cancel_puts_the_old_picture_back(tmp_path: Path) -> None:
     assert out["setup-reopened-photo"] == "photo.png"
 
 
-def test_save_module_with_the_same_photo_adds_nothing_to_the_library(
-    folder: Path,
-) -> None:
-    write_module(folder, "pjoy_pro", stick_doc(image="pjoy_pro/photo.jpg"))
-    (folder / "pjoy_pro").mkdir()
-    (folder / "pjoy_pro" / "photo.jpg").write_bytes(b"\xff\xd8\xff\xd9")
-    hw = hardware_profile.HardwareProfile()
-    hw.setDeviceGuid(stick_guid())
-    library = folder / "library"
-    # What Save Module does (DialogConfigureModule.commitModule).
-    hw.keepPhoto("pJoy Pro", hw.profilePhotoUrl("pJoy Pro"))
-    before = sorted(p.name for p in library.iterdir()) if library.is_dir() else []
-    # Saved again, the photo unchanged.
-    hw.keepPhoto("pJoy Pro", hw.profilePhotoUrl("pJoy Pro"))
-    after = sorted(p.name for p in library.iterdir()) if library.is_dir() else []
-    # Q3: copied to the library only when the photo changed.
-    assert after == before
-
-
 def _damaged_stick(folder: Path) -> Path:
-    path = folder / "pjoy_pro.json"
-    path.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
-    return path
+    return put_module(
+        folder, "pJoy Pro", '{"kind": "control.hardware", "dev', stick_guid()
+    )
 
 
 def test_start_fresh_moves_the_damaged_file_aside(folder: Path) -> None:
@@ -596,8 +584,10 @@ def test_start_fresh_moves_the_damaged_file_aside(folder: Path) -> None:
     model = module_model.ModuleListModel()
     assert model.cardMap("pjoy_pro")["damaged"]
     copy = Path(model.startFresh("pJoy Pro", stick_guid()))
-    # S66: moved aside as <name>.json.bad-<date>, nothing deleted.
-    assert copy.name.startswith("pjoy_pro.json.bad-")
+    # S66: moved aside as module.json.bad-<date> in its folder, nothing
+    # deleted.
+    assert copy.name.startswith("module.json.bad-")
+    assert copy.parent == path.parent
     assert copy.read_bytes() == damaged
     assert not path.exists()
     assert model.cardMap("pjoy_pro")["damaged"] == ""
@@ -615,7 +605,8 @@ def test_start_fresh_is_a_history_entry(folder: Path) -> None:
     # Q17 / F3: Start Fresh is recorded (S69).
     entries = history.entries("modules")
     assert any(
-        (e.get("subject") or {}).get("fileName") == "pjoy_pro.json" for e in entries
+        (e.get("subject") or {}).get("fileName") == "pJoy Pro/module.json"
+        for e in entries
     )
 
 
@@ -673,7 +664,7 @@ def test_a_damaged_card_turns_back_after_history_restore(
     # The app (once made) has a mode list that reads the open profile on
     # profileChanged; the program always has one open.
     monkeypatch.setattr(shared_state, "current_profile", Profile())
-    path = folder / "pjoy_pro.json"
+    path = ensure_dir(folder, "pJoy Pro", stick_guid()) / "module.json"
     module_file.write_json(path, stick_doc())
     settle_history()
     created = history.entries("modules")[0]
@@ -806,14 +797,14 @@ def test_auto_mapper_also_claim_on_a_damaged_output_file_makes_no_actions(
 
     def damaged_meanwhile(path: Path) -> dict:
         # The output module file is damaged after the Auto Mapper read it.
-        if Path(path).name == "vjoy_1.json":
+        if Path(path).parent.name == "vJoy 1":
             raise module_file.ModuleFileDamaged(Path(path), "it is not valid JSON")
         return real_load(path)
 
     monkeypatch.setattr(module_file, "load_for_update", damaged_meanwhile)
     with mock.patch.object(module_file, "report_refused"):
         report = AutoMapper(profile).generate_module_mappings(
-            ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions(claim_outputs=True)
+            ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(claim_outputs=True)
         )
     # S120 / Q15: refused, so no claim and no action; the outputs are listed.
     assert mapped(profile, stick_uid()) == set()
@@ -851,11 +842,9 @@ class _PausingCache(dict):
 def test_the_module_cache_read_on_two_threads_at_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr(store, "folder", lambda: tmp_path)
     for name in ("one", "two"):
-        (tmp_path / f"{name}.json").write_text(
-            json.dumps({"kind": "control.hardware", "device": name}), encoding="utf-8"
-        )
-    monkeypatch.setattr(registry, "_folder", lambda: tmp_path)
+        put_module(tmp_path, name, {"kind": "control.hardware", "device": name})
     paused, resume = threading.Event(), threading.Event()
     monkeypatch.setattr(registry, "_cache", _PausingCache(paused, resume))
     other: list[object] = []
@@ -863,10 +852,7 @@ def test_the_module_cache_read_on_two_threads_at_once(
     def second_reader() -> None:
         if not paused.wait(10.0):
             return
-        (tmp_path / "three.json").write_text(
-            json.dumps({"kind": "control.hardware", "device": "three"}),
-            encoding="utf-8",
-        )
+        put_module(tmp_path, "three", {"kind": "control.hardware", "device": "three"})
         try:
             other.append(len(registry.modules()))
         except Exception as exc:  # noqa: BLE001
@@ -945,7 +931,7 @@ def test_output_claims_and_modules_from_several_threads(
             for _turn in range(200):
                 output.refresh()
                 assert output.vjoy_claim(1).get("buttons") == [1]
-                assert {m.slug for m in registry.modules()} >= {"vjoy_1", "pjoy_pro"}
+                assert {m.slug for m in registry.modules()} >= {"vJoy 1", "pJoy Pro"}
         except BaseException as exc:  # noqa: BLE001
             errors.append(exc)
 
@@ -1006,19 +992,19 @@ def test_import_undo_belongs_to_its_device_and_window(
     assert store.undo_file_import("pJoy Pro", stick_guid(), "Configure Module") == (
         "Undo failed. There is nothing to undo."
     )
-    assert (folder / "keyboard.json").is_file()
+    assert (folder / "Keyboard" / "module.json").is_file()
     undone = store.undo_file_import("Keyboard", "", "Configure Module")
     assert undone.startswith("Undone.")
-    assert not (folder / "keyboard.json").exists()
+    assert not (folder / "Keyboard" / "module.json").exists()
 
 
 def test_a_missing_picture_is_not_another_devices(folder: Path) -> None:
-    # GL-085 (07 S11): a picture is found only where its reference says.
-    (folder / "library").mkdir()
-    (folder / "library" / "photo.jpg").write_bytes(b"someone else's")
-    assert store.find_picture("pjoy_pro/photo.jpg") is None
-    hw = hardware_profile.HardwareProfile()
-    assert hw._resolve_existing("pjoy_pro/photo.jpg") is None
+    # GL-085 (07 S11): a picture is found only in the device's own folder,
+    # never another device's file of the same name.
+    write_module(folder, "pjoy_pro", stick_doc(image="pictures/photo.jpg"))
+    put_picture(folder, "Other Stick", "photo.jpg", b"someone else's", str(_OTHER))
+    own = store.device_dir("pJoy Pro", stick_guid())
+    assert store.find_picture(own, "pictures/photo.jpg") is None
 
 
 def test_a_damaged_file_keeps_its_photo_on_import_image(
@@ -1027,16 +1013,15 @@ def test_a_damaged_file_keeps_its_photo_on_import_image(
     # GL-070 (03 S64): Import Image on a damaged module file touches no photo.
     monkeypatch.setattr(module_file, "report_refused", lambda error: None)
     _damaged_stick(folder)
-    (folder / "pjoy_pro").mkdir()
-    old = folder / "pjoy_pro" / "photo.png"
-    old.write_bytes(b"old")
+    put_picture(folder, "pJoy Pro", "photo.png", b"old", stick_guid())
+    old = picture_file(folder, "pJoy Pro", "photo.png", stick_guid())
     new = tmp_path / "new.jpg"
     new.write_bytes(b"new")
     hw = hardware_profile.HardwareProfile()
     hw.setDeviceGuid(stick_guid())
     assert hw.copyImage(new.as_uri(), "pJoy Pro") == ""
     assert old.read_bytes() == b"old"
-    assert not (folder / "pjoy_pro" / "photo.jpg").exists()
+    assert not picture_file(folder, "pJoy Pro", "photo.jpg", stick_guid()).exists()
 
 
 def test_a_refused_button_map_save_copies_no_picture(
@@ -1051,8 +1036,10 @@ def test_a_refused_button_map_save_copies_no_picture(
     hw.setDeviceGuid(stick_guid())
     payload = {"image": picture.as_uri(), "nodes": []}
     assert not hw.save("pJoy Pro", json.dumps(payload))
-    pictures = folder / "pjoy_pro"
-    assert not pictures.exists() or not any(pictures.iterdir())
+    pictures = store.pictures_dir("pJoy Pro", stick_guid())
+    assert not pictures.exists() or not any(pictures.iterdir()), list(
+        pictures.iterdir()
+    )
 
 
 def test_delete_device_removes_its_recovery_and_photo_safety_copies(
@@ -1060,12 +1047,12 @@ def test_delete_device_removes_its_recovery_and_photo_safety_copies(
 ) -> None:
     # GL-094 (07 Q11): nothing of the deleted device is left behind.
     write_module(folder, "pjoy_pro", stick_doc())
-    recovery = store.recovery_path("pjoy_pro")
-    recovery.parent.mkdir(parents=True)
+    recovery = store.recovery_path("pJoy Pro", stick_guid())
+    recovery.parent.mkdir(parents=True, exist_ok=True)
     recovery.write_text("{}", encoding="utf-8")
-    stash = store.photo_stash_dir("pjoy_pro")
+    stash = store.edit_temp_dir("pJoy Pro", stick_guid())
     stash.mkdir(parents=True)
-    (stash / "manifest.json").write_text("{}", encoding="utf-8")
+    (stash / "state.json").write_text('{"phase": "editing"}', encoding="utf-8")
     result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid()))
     assert result["ok"], result
     assert not recovery.exists()

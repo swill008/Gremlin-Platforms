@@ -17,7 +17,6 @@ import sys
 sys.path.append(".")
 
 import collections
-import json
 import pathlib
 from collections.abc import Iterator
 
@@ -29,6 +28,7 @@ import dill
 from gremlin import device_initialization as di
 from gremlin.config import Configuration
 from test import fake_hardware
+from test.unit._device_folders import put_module
 
 _APP = QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
 _STICK = str(dill.GUID(fake_hardware.raw_guid(is_virtual=False)).uuid).upper()
@@ -85,7 +85,10 @@ def scan(
 
 
 def _module(folder: pathlib.Path, slug: str, doc: dict) -> None:
-    (folder / f"{slug}.json").write_text(json.dumps(doc), encoding="utf-8")
+    """The device's module.json in its own folder (03 S128); slug only
+    names the case."""
+    del slug
+    put_module(folder, doc["device"], doc)
 
 
 def test_twin_names_of_unplugged_devices_without_a_file_are_forgotten(

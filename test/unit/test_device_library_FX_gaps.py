@@ -34,10 +34,9 @@ from gremlin import (
     library_swap,
     shared_state,
     swap_devices,
-    util,
 )
 from gremlin import device_library as library
-from gremlin.modules import registry, store
+from gremlin.modules import store
 from gremlin.profile import Profile
 from gremlin.ui import device_pack
 from test.unit.test_device_library_LC_copy import (  # noqa: F401 - the fixture
@@ -145,15 +144,8 @@ def test_copy_onto_a_renamed_stick(lib: dict, monkeypatch: pytest.MonkeyPatch) -
 
 @pytest.fixture
 def renamed(sticks: dict, monkeypatch: pytest.MonkeyPatch) -> dict:
-    """LW's two sticks, set up and plugged in, with the store finding module
-    files by name only (as store.path_for does for a name that isn't the
-    stick's own)."""
-    own = {"Left stick": "left", "Right stick": "right"}
-    monkeypatch.setattr(
-        store,
-        "path_for",
-        lambda name, guid="": store.path_of(own.get(name) or registry.plain_slug(name)),
-    )
+    """LW's two sticks, set up and plugged in: the store finds their folders
+    by id (device.json), whatever they are called."""
     monkeypatch.setattr(library, "_connected", lambda: [LEFT, RIGHT])
     monkeypatch.setattr(
         library,
@@ -175,13 +167,13 @@ def test_swap_of_renamed_sticks_changes_their_own_files(
         ("My Left", LEFT_ID), ("My Right", RIGHT_ID), ["appearance"], []
     )
     assert result["ok"], result
-    left = json.loads(store.path_of("left").read_text(encoding="utf-8"))
+    left = json.loads(store.module_file(*LEFT).read_text(encoding="utf-8"))
     # Appearance only: the Output View moves; the layout stays (setup).
     assert "view" not in left and "layout" not in left
-    right = json.loads(store.path_of("right").read_text(encoding="utf-8"))
+    right = json.loads(store.module_file(*RIGHT).read_text(encoding="utf-8"))
     assert right["view"] == {"layout": "left view"}
-    assert not store.path_of("my-left").exists()
-    assert not store.path_of("my-right").exists()
+    assert not (renamed["modules"] / "My Left").exists()
+    assert not (renamed["modules"] / "My Right").exists()
     assert result["label"] == "Swap My Left with My Right"
 
 
@@ -348,7 +340,10 @@ def test_undo_of_a_swap_puts_everything_back(
     profile.from_xml(xml_dir / "profile_auto_mapper.xml")
     monkeypatch.setattr(shared_state, "current_profile", profile)
     path = pathlib.Path(profile.fpath)
-    files = (store.path_of("left").read_bytes(), store.path_of("right").read_bytes())
+    files = (
+        store.module_file(*LEFT).read_bytes(),
+        store.module_file(*RIGHT).read_bytes(),
+    )
     where = (_where(profile, LEFT_ID), _where(profile, RIGHT_ID))
     refs = _refs(profile)
     assert where[1] == set()  # Right has no bindings in this profile
@@ -360,8 +355,8 @@ def test_undo_of_a_swap_puts_everything_back(
     assert (_where(profile, LEFT_ID), _where(profile, RIGHT_ID)) == where
     assert _refs(profile) == refs
     assert (
-        store.path_of("left").read_bytes(),
-        store.path_of("right").read_bytes(),
+        store.module_file(*LEFT).read_bytes(),
+        store.module_file(*RIGHT).read_bytes(),
     ) == files
     # Undo is a change too: undoing it swaps again.
     again = library_copy.undo_last()
@@ -418,8 +413,11 @@ _ = uuid
 # --- Twins: the guid decides the Copy target (S22) ---
 
 
-def _twin_doc(slug: str) -> dict:
-    return json.loads((util.modules_dir() / f"{slug}.json").read_text("utf-8"))
+def _twin_doc(guid: str) -> dict:
+    """The twin's module.json, found by its id (device.json)."""
+    folder = store.dir_of_id(guid)
+    assert folder is not None, guid
+    return json.loads(store.module_file_in(folder).read_text("utf-8"))
 
 
 def _second_twin() -> str:
@@ -450,7 +448,7 @@ def test_apply_zip_onto_the_second_twin_writes_its_own_file(
         target_guid=second,
     )
     assert result["ok"], result
-    assert _twin_doc("pjoy_pro_2")["view"] == {"rowHeight": 40}
+    assert _twin_doc(second)["view"] == {"rowHeight": 40}
     assert _own_path(lib["name"]).read_bytes() == first
 
 
@@ -461,5 +459,5 @@ def test_copy_onto_the_second_twin_writes_its_own_file(lib: dict, twins: list) -
         lib["setup"]["key"], "pJoy Pro", second, ["appearance"], [], []
     )
     assert result["ok"], result
-    assert _twin_doc("pjoy_pro_2")["view"] == {"rowHeight": 40}
+    assert _twin_doc(second)["view"] == {"rowHeight": 40}
     assert _own_path(lib["name"]).read_bytes() == first

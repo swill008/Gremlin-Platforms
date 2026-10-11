@@ -29,14 +29,14 @@ folder = test_stage1_modules.folder
 
 def _delete(folder: Path) -> list[dict]:
     """Delete Device on pJoy Pro the way Home does; the entries it made."""
-    write_module(folder, "pjoy_pro", stick_doc())
+    path = write_module(folder, "pjoy_pro", stick_doc())
     settle_history()
     before = {e["id"] for e in history.entries()}
     result = json.loads(
         module_model.ModuleListModel().deleteDevice("pJoy Pro", stick_guid())
     )
     assert result["ok"], result
-    assert not (folder / "pjoy_pro.json").exists()
+    assert not path.exists()
     return [e for e in history.entries() if e["id"] not in before]
 
 
@@ -47,7 +47,7 @@ def test_home_delete_device_is_one_history_entry_and_restore_puts_it_back(
     assert [e["title"] for e in new] == ["Deleted pJoy Pro"]
     out = history_model.restore(new[0]["id"], "before")
     assert out["ok"], out
-    assert (folder / "pjoy_pro.json").is_file()
+    assert (folder / "pJoy Pro" / "module.json").is_file()
 
 
 def test_inside_an_open_group_only_the_outer_entry_is_made(folder: Path) -> None:
@@ -68,4 +68,4 @@ def test_inside_an_open_group_only_the_outer_entry_is_made(folder: Path) -> None
     assert [e["title"] for e in new] == [outer]
     out = history_model.restore(new[0]["id"], "before")
     assert out["ok"], out
-    assert (folder / "pjoy_pro.json").is_file()
+    assert (folder / "pJoy Pro" / "module.json").is_file()

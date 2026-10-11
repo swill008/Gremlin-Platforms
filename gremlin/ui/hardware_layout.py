@@ -160,8 +160,10 @@ class HardwareLayoutStore:
         if not self.guid:
             return None
         if self.device_name:
-            return store.path_for_id(self.device_name, self.guid)
-        return store.file_of_guid(self.guid)
+            return store.module_file(self.device_name, self.guid)
+        # By id only: the folder holding the id (03 S1), never one by name.
+        folder = store.dir_of_id(self.guid)
+        return store.module_file_in(folder) if folder is not None else None
 
     def _read_device(self) -> None:
         self.device = None

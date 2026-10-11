@@ -24,6 +24,7 @@ from gremlin.types import InputType
 from gremlin.ui import osc_device_model
 from gremlin.ui.backend import Backend
 from gremlin.ui.osc_layout import OscLayoutModel
+from test.unit._device_folders import module_path
 
 
 @pytest.fixture
@@ -85,7 +86,7 @@ def _key(address: str) -> str:
 
 
 def _doc(modules: Path) -> dict:
-    return json.loads((modules / "osc.json").read_text(encoding="utf-8"))
+    return json.loads(module_path(modules, "OSC").read_text(encoding="utf-8"))
 
 
 def _group_and_name(page: OscLayoutModel) -> None:

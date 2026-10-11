@@ -174,6 +174,21 @@ def _load(name: str) -> Any:  # noqa: ANN401
     return module
 
 
+def _load_unit(name: str) -> Any:  # noqa: ANN401
+    """A helper from test/unit (_device_folders), loaded by its path: the
+    journey's child has no test package on its path."""
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(
+        name, ROOT / "test" / "unit" / f"{name}.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def _osc_on_loopback() -> None:
     """OSC listens on 127.0.0.1 at a port the OS picked, never the defaults
     (every address, port 8001): another Gremlin-Platforms may hold that,
@@ -604,8 +619,7 @@ class Journey:
 
         devices = self.dill_fake.devices
         index, raw = next(
-            (i, d) for i, d in enumerate(devices)
-            if d.name.decode("utf-8") == name
+            (i, d) for i, d in enumerate(devices) if d.name.decode("utf-8") == name
         )
         guid = dill.GUID(raw.device_guid)
         del devices[index]
@@ -674,22 +688,28 @@ class Journey:
         for callback in list(windows_event_hook.g_keyboard_callbacks):
             callback(event)
 
-    def write_module(self, slug: str, doc: dict) -> pathlib.Path:
-        """A module file, written as Module Setup's Save writes it."""
+    def write_module(self, slug: str, doc: dict, guid: Any = "") -> pathlib.Path:  # noqa: ANN401
+        """A module file, written as Module Setup's Save writes it: the
+        device's folder (named after doc["device"], else slug) with
+        module.json and device.json (D-03-DEVICE-FOLDERS). guid defaults to
+        the doc's boundGuidLocal."""
+        folders = _load_unit("_device_folders")
+        name = str(doc.get("device") or slug)
         if self.app is None:  # before the start: already on disk
-            folder = pathlib.Path(
+            modules = pathlib.Path(
                 os.environ["USERPROFILE"], "Gremlin Platforms", "modules"
             )
-            folder.mkdir(parents=True, exist_ok=True)
-            path = folder / f"{slug}.json"
-            path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
-            return path
+            modules.mkdir(parents=True, exist_ok=True)
+            return folders.put_module(modules, name, doc, guid)
         from gremlin import util
         from gremlin.modules import module_file
 
-        folder = util.modules_dir()
-        folder.mkdir(parents=True, exist_ok=True)
-        path = folder / f"{slug}.json"
+        modules = pathlib.Path(util.modules_dir())
+        modules.mkdir(parents=True, exist_ok=True)
+        folder = folders.ensure_dir(
+            modules, name, guid or doc.get("boundGuidLocal", "")
+        )
+        path = folder / folders.MODULE_FILE
         module_file.write_json(path, doc)
         return path
 
@@ -701,7 +721,7 @@ class Journey:
         slug: str = "",
     ) -> pathlib.Path:
         """The stick's input module, claiming buttons (all when None), bound
-        to guid (the fake "pJoy Pro" when None)."""
+        to guid (the fake "pJoy Pro" when None), in the stick's folder."""
         import dill
         from gremlin.modules.ids import stored_guid_key
         from gremlin.modules.registry import plain_slug

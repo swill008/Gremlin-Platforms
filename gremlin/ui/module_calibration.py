@@ -70,6 +70,18 @@ class CalibrationModuleModel(QtCore.QAbstractListModel):
     def moduleCount(self) -> int:
         return len(self._rows)
 
+    @QtCore.Slot(str, result=str)
+    def deviceIdOf(self, key: str) -> str:
+        """The id key History entries hold for the row picked by key (08 S43,
+        D-03-DEVICE-FOLDERS), "" when no row has that key."""
+        from gremlin.modules import store
+
+        want = str(key or "").strip().lower()
+        for row in self._rows:
+            if row["key"].lower() == want:
+                return store.id_key(row["name"], row["guid"])
+        return ""
+
     @QtCore.Slot(str, result=int)
     def indexOfSlug(self, slug: str) -> int:
         """The row picked by a key (a card's slug picks the first stick)."""

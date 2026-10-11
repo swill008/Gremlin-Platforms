@@ -55,7 +55,9 @@ class DeviceNames(QtCore.QObject):
     def display(self, key: str, default: str) -> str:
         return display_name(key, default)
 
-    @QtCore.Slot(str, str)
-    def setAlias(self, key: str, value: str) -> None:
-        # device_aliases announces the change (deviceNamesChanged).
-        set_alias(key, value)
+    @QtCore.Slot(str, str, result=str)
+    def setAlias(self, key: str, value: str) -> str:
+        """Renames the device (and its folder, 03 S131): "" when done, else
+        why it was refused (nothing changed). device_aliases announces the
+        change (deviceNamesChanged)."""
+        return set_alias(key, value)

@@ -446,7 +446,8 @@ ApplicationWindow {
         id: _moduleModel
     }
 
-    function moduleFileName(card) {
+    // The card's device name (its folder is found from it and its id).
+    function cardDeviceName(card) {
         if (!card)
             return ""
         return card.rawName || card.name || ""
@@ -479,7 +480,7 @@ ApplicationWindow {
             return
         _panelReady = false
         _moduleModel.setFocus(card.slug)
-        configTitleName = moduleFileName(card)
+        configTitleName = cardDeviceName(card)
         refreshDestBound()
         configDirection = card.direction || "source"
         uiState.setCurrentDevice(card.guid)
@@ -539,7 +540,7 @@ ApplicationWindow {
         if (!card || !card.slug)
             return
         var focused = _moduleModel.focusedCardMap()
-        if (focused && focused.slug === card.slug && configTitleName === moduleFileName(card))
+        if (focused && focused.slug === card.slug && configTitleName === cardDeviceName(card))
             return
         openConfigurationNow(card)
     }
@@ -775,7 +776,7 @@ ApplicationWindow {
     function openConfigurationForCard(card) {
         if (!uiState || !card)
             return
-        var name = moduleFileName(card)
+        var name = cardDeviceName(card)
         var direction = card.direction || "source"
         if (uiState.currentRoom === "configuration" && configTitleName === name && configDirection === direction) {
             applyDisplayPanel()
@@ -859,7 +860,7 @@ ApplicationWindow {
             want = "dest"
         if (!want)
             want = "source"
-        var name = card ? moduleFileName(card) : ""
+        var name = card ? cardDeviceName(card) : ""
         var guid = card ? (card.guid || "") : ""
         if (configureWin) {
             var old = configureWin
@@ -1124,7 +1125,7 @@ ApplicationWindow {
             var guid = String(target.guid || "")
             Helpers.createComponent("DialogHistory.qml", {
                 "filter": JSON.stringify({ "ofDevice": {
-                    "fileName": String(_moduleModel.moduleFileFor(guid, name) || "") + ".json",
+                    "deviceId": String(_moduleModel.deviceIdFor(guid, name) || ""),
                     "guid": guid,
                     "name": name
                 } }),
@@ -2198,8 +2199,8 @@ ApplicationWindow {
                 }
                 onAutoMap: function(card) {
                     Helpers.createComponent("DialogAutoMapper.qml", {
-                        // The card's module file (a renamed stick's old file),
-                        // as the window's list names it; card.slug is its name.
+                        // The card's device folder (found by its id), as the
+                        // window's list names it; card.slug is its card key.
                         "initialSlug": String(_moduleModel.moduleFileFor(card.guid || "",
                                 card.rawName || card.name || "") || card.slug || "")
                     })
@@ -2209,8 +2210,8 @@ ApplicationWindow {
                 }
                 onOpenCalibration: function(card) {
                     Helpers.createComponent("DialogCalibration.qml", {
-                        // The card's module file (a renamed stick's old file),
-                        // as the window's list names it; card.slug is its name.
+                        // The card's device folder (found by its id), as the
+                        // window's list names it; card.slug is its card key.
                         "initialSlug": String(_moduleModel.moduleFileFor(card.guid || "",
                                 card.rawName || card.name || "") || card.slug || "")
                     })

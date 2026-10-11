@@ -27,7 +27,7 @@ from _harness import Journey, run_journey, step  # noqa: E402
 
 def story(j: Journey) -> None:
     out = j.out
-    j.ev('Helpers.createComponent("DialogAutoMapper.qml", { initialSlug: "pjoy_pro" })')
+    j.ev('Helpers.createComponent("DialogAutoMapper.qml", { initialSlug: "pJoy Pro" })')
     win = j.window("Auto Mapper")
 
     def boxes() -> dict[str, object]:
@@ -98,8 +98,8 @@ def test_the_ticks_stay_and_are_what_create_uses(run: dict) -> None:
     assert not step(run, "first").startswith("Made 0 "), run["first"]
     assert step(run, "ticked-after") == ["pJoy Pro", "vJoy 1"]
     inputs, outputs = step(run, "selected-after")
-    assert '"pjoy_pro":true' in inputs, inputs
-    assert '"vjoy_1":true' in outputs, outputs
+    assert '"pJoy Pro":true' in inputs, inputs
+    assert '"vJoy 1":true' in outputs, outputs
 
 
 def test_create_again_works_on_the_same_modules(run: dict) -> None:

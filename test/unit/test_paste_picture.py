@@ -2,8 +2,10 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Pasting a picture into the Button Map: it is saved beside the device's
-layout and in the picture library, under a name that is not taken."""
+"""Pasting a picture into the Button Map: it is staged in the edit's
+temporary folder (07 S107) under a name that is not taken, named
+"pictures/<file>" (07 S10); Save copies it into the device's pictures/
+folder. There is no picture library (07 S81 removed)."""
 
 from __future__ import annotations
 
@@ -28,9 +30,6 @@ def profile(
     monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> hardware_profile.HardwareProfile:
     monkeypatch.setattr(store, "folder", lambda: tmp_path)
-    monkeypatch.setattr(
-        store, "slug_for", lambda name, guid="": "test_stick"
-    )
     return hardware_profile.HardwareProfile()
 
 
@@ -45,11 +44,14 @@ def test_saves_under_a_free_name(
 ) -> None:
     first = profile.savePastedImage(_image(), "Test Stick")
     second = profile.savePastedImage(_image(), "Test Stick")
-    assert first == "test_stick/pasted.png"
-    assert second == "test_stick/pasted_1.png"
-    saved = QtGui.QImage(str(tmp_path / "test_stick" / "pasted.png"))
+    assert first == "pictures/pasted.png"
+    assert second == "pictures/pasted_1.png"
+    staged = store.edit_temp_dir("Test Stick") / "added" / "pasted.png"
+    saved = QtGui.QImage(str(staged))
     assert saved.size() == QtCore.QSize(8, 6)
-    assert (tmp_path / "library" / "pasted.png").is_file()
+    # Not in the device's folder until Save, and no library copy.
+    assert not (store.pictures_dir("Test Stick") / "pasted.png").exists()
+    assert not (tmp_path / "library").exists()
 
 
 def test_nothing_to_paste(profile: hardware_profile.HardwareProfile) -> None:
@@ -71,5 +73,5 @@ def test_dropped_files_keep_only_pictures(
     assert profile.hasPictureFiles(urls) is True
     assert profile.hasPictureFiles([notes.as_uri()]) is False
     added = profile.importPictureFiles(urls, "Test Stick")
-    assert added == ["test_stick/grip.png"]
+    assert added == ["pictures/grip.png"]
     assert profile.imageAspect(added[0]) == 3.0

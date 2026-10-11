@@ -15,6 +15,7 @@ sys.path.append(".")
 
 import json
 import pathlib
+import zipfile
 
 import pytest
 from PySide6 import QtCore, QtGui
@@ -190,7 +191,7 @@ def test_a_template_export_cut_short_keeps_the_old_file(
     tmp_path: pathlib.Path,
 ) -> None:
     assert profile.saveTemplate("Shared", NODES, "x")
-    out = tmp_path / "shared.json"
+    out = tmp_path / "shared.gtemplate"
     out.write_bytes(b"the user's old file")
     url = QtCore.QUrl.fromLocalFile(str(out)).toString()
     with monkeypatch.context() as m:
@@ -198,7 +199,9 @@ def test_a_template_export_cut_short_keeps_the_old_file(
         assert not profile.exportTemplate("Shared", url)
     assert out.read_bytes() == b"the user's old file"
     assert profile.exportTemplate("Shared", url)
-    assert json.loads(out.read_text(encoding="utf-8"))["name"] == "Shared"
+    # One ".gtemplate" file (07 S80, S110): template.json and its pictures.
+    with zipfile.ZipFile(out) as zf:
+        assert json.loads(zf.read("template.json"))["name"] == "Shared"
 
 
 # --- adjusted photo cache (AUD-FILES-08) -----------------------------------
@@ -234,4 +237,5 @@ def test_the_cache_is_written_through_the_safe_writer(
     with monkeypatch.context() as m:
         _crash_mid_write(m)
         assert profile.adjustedPhotoUrl(url, 0, 0, 1) == ""
-    assert not list((tmp_path / "maps" / "cache").glob("*"))
+    cache = tmp_path / "maps" / "cache"
+    assert not [p for p in cache.rglob("*") if p.is_file()]

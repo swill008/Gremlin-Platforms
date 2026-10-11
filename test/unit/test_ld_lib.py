@@ -22,6 +22,7 @@ from gremlin import device_library as library
 from gremlin.logical_device import LogicalDevice
 from gremlin.modules import device_class, ids, module_file, registry, store
 from gremlin.ui import module_model
+from test.unit._device_folders import put_module
 from test.unit.test_stage1_modules import (  # noqa: F401  # pyright: ignore[reportMissingImports]
     folder,
 )
@@ -105,9 +106,9 @@ def test_logical_device_listed_under_built_in_inputs(
 ) -> None:
     monkeypatch.setattr(library, "_connected", lambda: [])
     layout = _doc("Logical Device", LD_GUID, _layout("A"))
-    _write(modules / "logical_device.json", layout)
-    _write(modules / "stick_a.json", _doc("Stick A", STICK_GUID))
-    module = next(m for m in registry.modules() if m.slug == "logical_device")
+    put_module(modules, "Logical Device", layout, LD_GUID)
+    put_module(modules, "Stick A", _doc("Stick A", STICK_GUID))
+    module = next(m for m in registry.modules() if m.slug == "Logical Device")
     assert registry.is_built_in_input(module)
     rows = library.devices()
     names = [r["name"] for r in rows]
@@ -132,10 +133,12 @@ def test_import_onto_the_logical_device_skips_the_plugged_in_check_and_reloads(
     message = store.import_file(
         "Logical Device", LD_GUID, str(src), "source", "Device Library"
     )
-    assert message.startswith("Imported into logical_device.json"), message
+    assert message.startswith("Imported into Logical Device."), message
     written = json.loads(logical_device_file.path().read_text(encoding="utf-8"))
     assert [c["label"] for c in written[logical_device_file.KEY]["controls"]] == [
-        "Throttle", "Fire"]
+        "Throttle",
+        "Fire",
+    ]
     # The Logical Device now shows the imported layout, not the old one.
     assert _labels(rows) == ["Throttle", "Fire"]
     assert not rows.dirty
@@ -172,7 +175,8 @@ def test_replacing_another_file_leaves_the_logical_device(
 ) -> None:
     rows.load_dict(_layout("Mine"))
     data = json.dumps(_doc("Stick A", STICK_GUID)).encode()
-    store.replace(modules / "stick_a.json", data, "Device Library", force=True)
+    stick = put_module(modules, "Stick A", _doc("Stick A", STICK_GUID))
+    store.replace(stick, data, "Device Library", force=True)
     assert _labels(rows) == ["Mine"]
 
 

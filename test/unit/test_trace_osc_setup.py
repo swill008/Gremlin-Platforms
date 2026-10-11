@@ -23,6 +23,7 @@ import pytest
 from gremlin import osc_device_file as odf
 from gremlin import trace, util
 from gremlin.modules import store
+from test.unit._device_folders import put_module
 
 
 class _Records(logging.Handler):
@@ -81,7 +82,7 @@ def _osc_lines(area: str = "setup") -> list[str]:
 
 
 def _write_osc(folder: Path, doc: dict) -> None:
-    (folder / "osc.json").write_text(json.dumps(doc), encoding="utf-8")
+    put_module(folder, "OSC", json.dumps(doc))
 
 
 # -- osc.json (E5) ---------------------------------------------------------

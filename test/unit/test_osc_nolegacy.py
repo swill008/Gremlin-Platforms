@@ -19,6 +19,7 @@ from gremlin import osc_device_file as odf
 from gremlin.modules import store
 from gremlin.osc import OscDevice
 from gremlin.profile import Profile
+from test.unit._device_folders import module_path, put_module
 
 
 @pytest.fixture
@@ -40,9 +41,10 @@ def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
 
 
 def test_old_output_keys_are_not_read_or_kept(modules: Path) -> None:
-    (modules / "osc.json").write_text(
+    put_module(
+        modules,
+        "OSC",
         json.dumps({"server": {"output_host": "10.0.0.7", "output_port": 7001}}),
-        encoding="utf-8",
     )
     targets = odf.read_targets()
     assert [(t["name"], t["host"], t["port"]) for t in targets] == [
@@ -69,5 +71,5 @@ def test_an_older_profiles_osc_device_is_not_read(
     profile.from_xml(path)
 
     assert OscDevice().rows.to_dict()["inputs"] == []
-    assert not (modules / "osc.json").exists()
+    assert not module_path(modules, "OSC").exists()
     assert not getattr(profile, "osc_migration_note", None)

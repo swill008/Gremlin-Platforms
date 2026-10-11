@@ -102,16 +102,31 @@ from gremlin import history  # noqa: E402
 
 mine = {"guid": guid, "name": name}
 twin = {"guid": "{00000000-1111-2222-3333-444444444444}", "name": name}
-module_file = (
-    str(ev(win, f"_moduleModel.moduleFileFor({json.dumps(guid)}, {json.dumps(name)})"))
-    + ".json"
+# The device's folder (03 S128); History names its file "<folder>/module.json"
+# and carries the device's id (08 S43).
+folder = str(
+    ev(win, f"_moduleModel.moduleFileFor({json.dumps(guid)}, {json.dumps(name)})")
 )
+module_file = f"{folder}/module.json"
 lib_subject = {"library": "x", "files": []}
 history.record(
-    "modules", "UR module save", {"device": name, "fileName": module_file}, "a", "b"
+    "modules",
+    "UR module save",
+    {"device": name, "deviceId": guid, "folder": folder, "fileName": module_file},
+    "a",
+    "b",
 )
 history.record(
-    "modules", "UR other file", {"device": "Other", "fileName": "other.json"}, "a", "b"
+    "modules",
+    "UR other file",
+    {
+        "device": "Other",
+        "deviceId": "{55555555-1111-2222-3333-444444444444}",
+        "folder": "Other",
+        "fileName": "Other/module.json",
+    },
+    "a",
+    "b",
 )
 history.record(
     "modules",

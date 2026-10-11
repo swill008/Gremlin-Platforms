@@ -30,18 +30,19 @@ from xml.etree import ElementTree
 import pytest
 
 from gremlin import device_initialization, plugin_manager, shared_state, util
-from gremlin.modules import module_file, registry
+from gremlin.modules import module_file
 from gremlin.modules import store as module_store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
 from gremlin.ui import device_pack, hardware_profile
+from test.unit._device_folders import ensure_dir, put_module
 
 _OTHER = uuid.UUID("11111111-2222-3333-4444-555555555555")
 
 
 def _own_path(name: str) -> Path:
-    """The device's own-name module file (the fake stick has no binding)."""
-    return util.modules_dir() / f"{registry.plain_slug(name) or 'device'}.json"
+    """The device's module file: <modules>/<Device Folder>/module.json."""
+    return module_store.module_file(name)
 
 
 def _stick() -> tuple[str, uuid.UUID]:
@@ -113,16 +114,14 @@ def pack(tmp_path: Path) -> Iterator[dict]:
     name, uid = _stick()
     modules = util.modules_dir()
     modules.mkdir(parents=True, exist_ok=True)
-    # Module files and bindings other tests left are put aside, and the
-    # folder is put back as it was afterwards (the pack and imports write
-    # pjoy_pro.json, vjoy_1.json and vjoy_2.json there).
+    # Device folders other tests left are put aside, and the folder is put
+    # back as it was afterwards (the pack and imports write the folders of
+    # pJoy Pro, vJoy 1 and vJoy 2 there).
     aside = tmp_path / "aside"
     aside.mkdir()
-    for old in modules.glob("*.json"):
+    for old in list(modules.iterdir()):
         shutil.move(str(old), str(aside / old.name))
     before = {p.name for p in modules.iterdir()}
-    bindings = module_store.bindings()
-    module_store.set_bindings({})
     try:
         yield from _pack(tmp_path, name, uid, modules)
     finally:
@@ -135,12 +134,12 @@ def pack(tmp_path: Path) -> Iterator[dict]:
                 extra.unlink(missing_ok=True)
         for old in aside.iterdir():
             shutil.move(str(old), str(modules / old.name))
-        module_store.set_bindings(bindings)
 
 
 def _pack(tmp_path: Path, name: str, uid: uuid.UUID, modules: Path) -> Iterator[dict]:
-    module_file.write_json(
-        _own_path(name),
+    put_module(
+        modules,
+        name,
         {
             "kind": "control.hardware",
             "device": name,
@@ -163,8 +162,9 @@ def _pack(tmp_path: Path, name: str, uid: uuid.UUID, modules: Path) -> Iterator[
             "nodes": [],
         },
     )
-    module_file.write_json(
-        modules / "vjoy_2.json",
+    put_module(
+        modules,
+        "vJoy 2",
         {
             "kind": "control.hardware",
             "device": "vJoy 2",
@@ -199,7 +199,7 @@ def _pack(tmp_path: Path, name: str, uid: uuid.UUID, modules: Path) -> Iterator[
 
 
 def _import(pack: dict, items: list[str], **extra: object) -> dict:
-    selection = {"items": items, "outputs": {"vjoy_2": "vJoy 1"}, **extra}
+    selection = {"items": items, "outputs": {"vJoy 2": "vJoy 1"}, **extra}
     return device_pack.apply_zip(pack["zip"], pack["name"], selection)
 
 
@@ -255,7 +255,7 @@ def test_the_warning_says_what_is_replaced(pack: dict) -> None:
     preview = device_pack.preview_import(
         pack["zip"],
         pack["name"],
-        {"items": ["wire:Default", "in.checks"], "outputs": {"vjoy_2": "vJoy 1"}},
+        {"items": ["wire:Default", "in.checks"], "outputs": {"vJoy 2": "vJoy 1"}},
     )
     assert preview["ok"], preview
     assert preview["modes"] == [{"name": "Default", "here": 1, "pack": 2}]
@@ -328,7 +328,7 @@ def test_map_settings_rows_import_separately(pack: dict) -> None:
 
 
 def test_configuration_appearance_comes_with_the_pack(pack: dict) -> None:
-    path = _own_path(pack['name'])
+    path = _own_path(pack["name"])
     _import(pack, ["in.groups"])
     assert json.loads(path.read_text(encoding="utf-8"))["layout"]["groups"] == ["G40"]
 
@@ -442,13 +442,13 @@ def test_the_warning_names_a_vjoy_device_that_is_not_set_up(
 ) -> None:
     _drivers(monkeypatch, vjoy=True, devices={1}, xbox=True)
     # Put on vJoy 1 (set up): nothing to say.
-    selection = {"items": ["wire:Default"], "outputs": {"vjoy_2": "vJoy 1"}}
+    selection = {"items": ["wire:Default"], "outputs": {"vJoy 2": "vJoy 1"}}
     assert (
         device_pack.preview_import(pack["zip"], pack["name"], selection)["drivers"]
         == []
     )
     # Left on vJoy 2 (not set up): said.
-    selection["outputs"] = {"vjoy_2": "vJoy 2"}
+    selection["outputs"] = {"vJoy 2": "vJoy 2"}
     drivers = device_pack.preview_import(pack["zip"], pack["name"], selection)[
         "drivers"
     ]
@@ -497,13 +497,13 @@ def test_a_picture_that_cannot_be_written_puts_everything_back(
     # Audit 2: it stopped the import with an error and left what it wrote.
     _import(pack, ["in.groups"])
     last = device_pack._last_import
-    path = _own_path(pack['name'])
+    path = _own_path(pack["name"])
     before = path.read_bytes()
 
     def half_written(
-        slug: str, files: dict, chosen: set, doc: dict, record: list
+        base: Path, files: dict, chosen: set, doc: dict, record: list
     ) -> None:
-        dest = util.modules_dir() / slug / "half.png"
+        dest = Path(base) / "pictures" / "half.png"
         dest.parent.mkdir(parents=True, exist_ok=True)
         record.append((dest, None))
         dest.write_bytes(b"half")
@@ -514,7 +514,7 @@ def test_a_picture_that_cannot_be_written_puts_everything_back(
     assert not result["ok"]
     assert "pictures" in result["error"]
     assert path.read_bytes() == before
-    assert not (util.modules_dir() / path.stem / "half.png").exists()
+    assert not (path.parent / "pictures" / "half.png").exists()
     assert device_pack._last_import is last
 
 
@@ -525,11 +525,11 @@ def test_an_output_picture_that_cannot_be_written_is_reported(
     written: list[Path] = []
 
     def output_fails(
-        slug: str, files: dict, chosen: set, doc: dict, record: list
+        base: Path, files: dict, chosen: set, doc: dict, record: list
     ) -> dict:
-        if slug == _own_path(pack["name"]).stem:
-            return real(slug, files, chosen, doc, record)
-        dest = util.modules_dir() / slug / "half.png"
+        if Path(base) == _own_path(pack["name"]).parent:
+            return real(base, files, chosen, doc, record)
+        dest = Path(base) / "pictures" / "half.png"
         dest.parent.mkdir(parents=True, exist_ok=True)
         record.append((dest, None))
         dest.write_bytes(b"half")
@@ -537,7 +537,7 @@ def test_an_output_picture_that_cannot_be_written_is_reported(
         raise OSError("disk full")
 
     monkeypatch.setattr(device_pack, "_write_pictures", output_fails)
-    result = _import(pack, ["in.groups", "out:vjoy_2.claim"])
+    result = _import(pack, ["in.groups", "out:vJoy 2.claim"])
     assert result["ok"], result
     assert "pictures for vJoy 1 could not be written" in result["report"]
     assert written and not written[0].exists()
@@ -554,15 +554,14 @@ def test_an_import_that_matches_nothing_keeps_the_last_undo(pack: dict) -> None:
 
 def test_a_damaged_module_file_is_skipped(caplog: pytest.LogCaptureFixture) -> None:
     # Audit 2: text that isn't UTF-8 stopped the whole Device Pack window.
-    path = util.modules_dir() / "damaged_stick.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = put_module(util.modules_dir(), "Damaged Stick", "")
     path.write_bytes(b'{"device": "\xff\xfe"}')
     try:
         assert hardware_profile._read_json_dict(path) is None
-        assert "damaged_stick.json" in caplog.text
+        assert "Damaged Stick" in caplog.text
         assert isinstance(hardware_profile._known_pack_devices(), list)
     finally:
-        path.unlink()
+        shutil.rmtree(path.parent, ignore_errors=True)
 
 
 # --- module files through the store (map 1; GL-072, GL-073, GL-080) --------
@@ -586,11 +585,10 @@ def test_an_import_onto_a_damaged_module_file_is_refused(pack: dict) -> None:
 
 
 def test_a_damaged_output_module_file_is_left_alone(pack: dict) -> None:
-    out = util.modules_dir() / "vjoy_1.json"
-    out.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
+    out = put_module(util.modules_dir(), "vJoy 1", '{"kind": "control.hardware", "dev')
     before = out.read_bytes()
     try:
-        result = _import(pack, ["in.groups", "out:vjoy_2.claim"])
+        result = _import(pack, ["in.groups", "out:vJoy 2.claim"])
         assert result["ok"], result
         assert "vJoy 1 was skipped" in result["report"]
         assert "Start Fresh" in result["report"]
@@ -607,16 +605,14 @@ def test_a_pack_picture_is_written_whole_or_not_at_all(
     import builtins
     import io
 
-    folder = util.modules_dir() / "safe_pictures"
-    folder.mkdir(parents=True, exist_ok=True)
-    dest = folder / "photo.png"
+    folder = util.modules_dir() / "Safe Pictures"
+    dest = folder / "pictures" / "photo.png"
+    dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(b"old")
     opened: list[Path] = []
     real_open = io.open
 
-    def spy(
-        file: object, mode: str = "r", *args: object, **kwargs: object
-    ) -> object:
+    def spy(file: object, mode: str = "r", *args: object, **kwargs: object) -> object:
         if not isinstance(file, int) and any(c in mode for c in "wax+"):
             opened.append(Path(str(file)).resolve())
         return real_open(file, mode, *args, **kwargs)
@@ -626,10 +622,11 @@ def test_a_pack_picture_is_written_whole_or_not_at_all(
     record: list[tuple[Path, bytes | None]] = []
     doc = {"image": "photo.png", "nodes": []}
     written = device_pack._write_pictures(
-        "safe_pictures", {"photo.png": b"new"}, {"pic:photo.png"}, doc, record
+        folder, {"photo.png": b"new"}, {"pic:photo.png"}, doc, record
     )
     monkeypatch.undo()
     assert written == {"photo.png": "photo.png"}
+    assert doc["image"] == "pictures/photo.png"
     assert dest.read_bytes() == b"new"
     assert dest.resolve() not in opened
     assert record == [(dest, b"old")]
@@ -653,7 +650,8 @@ def test_the_clean_up_of_a_failed_import_is_in_history(
             time.sleep(0.02)
         return history.entries()
 
-    path = util.modules_dir() / "cleanup_stick.json"
+    path = ensure_dir(util.modules_dir(), "Cleanup Stick") / "module.json"
+
     module_file.write_json(
         path, {"kind": "control.hardware", "device": "Cleanup Stick"}
     )

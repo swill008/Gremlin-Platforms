@@ -31,7 +31,8 @@ from test.unit.test_stage1_modules import (  # noqa: F401  # pyright: ignore[rep
 )
 
 LD_GUID = "{" + str(ids.LOGICAL_DEVICE).upper() + "}"
-SLUG = logical_device_file.SLUG
+LD = "Logical Device"
+LD_ID = str(ids.LOGICAL_DEVICE)
 # A 1x1 PNG.
 PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGA"
@@ -82,6 +83,7 @@ def ld(modules: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[LogicalDevice
         "claim": {},
         logical_device_file.KEY: layout,
     }
+    store.ensure_device_dir(LD, LD_ID)
     module_file.write_bytes(logical_device_file.path(), json.dumps(doc).encode())
     device.load_dict(layout)
     yield device
@@ -89,14 +91,14 @@ def ld(modules: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[LogicalDevice
 
 
 def _photo_path() -> Path:
-    return store.pictures_dir_of(SLUG) / "photo.png"
+    return store.pictures_dir(LD, LD_ID) / "photo.png"
 
 
 def _set_photo(data: bytes = PNG) -> None:
     """Add Image as the contract says: the picture as photo.<ext> through
     the store, and the module file's "image" through update_path."""
     store.put_picture_at(_photo_path(), data)
-    ref = store.picture_ref(SLUG, "photo.png")
+    ref = store.picture_ref("photo.png")
 
     def change(doc: dict) -> None:
         doc["image"] = ref
@@ -106,7 +108,7 @@ def _set_photo(data: bytes = PNG) -> None:
 
 def _clear_photo() -> None:
     """Remove Image: the photo files go, "image" is ""."""
-    store.remove_picture_files(store.photo_files(SLUG))
+    store.remove_picture_files(store.photo_files(LD, LD_ID))
 
     def change(doc: dict) -> None:
         doc["image"] = ""
@@ -159,7 +161,7 @@ def _card_photo(model: module_model.ModuleListModel | None = None) -> str:
 def test_the_photo_set_through_the_store_shows_on_the_card(ld: LogicalDevice) -> None:
     assert _card_photo() == ""
     _set_photo()
-    assert _image_key() == f"{SLUG}/photo.png"
+    assert _image_key() == "pictures/photo.png"
     assert "photo.png" in _card_photo()
 
 
@@ -184,8 +186,8 @@ def test_restore_puts_the_picture_back(ld: LogicalDevice) -> None:
     out = library_copy.restore_to_stick(setup["key"])
     assert out["ok"], out
     assert _image_key()
-    assert store.photo_files(SLUG)
-    assert store.photo_files(SLUG)[0].read_bytes() == PNG
+    assert store.photo_files(LD, LD_ID)
+    assert store.photo_files(LD, LD_ID)[0].read_bytes() == PNG
     assert _card_photo()
 
 
@@ -198,7 +200,7 @@ def test_putting_a_saved_setup_back_restores_the_picture(ld: LogicalDevice) -> N
     out = library_copy.restore(setup["key"])
     assert out["ok"], out
     assert _image_key()
-    found = store.photo_files(SLUG)
+    found = store.photo_files(LD, LD_ID)
     assert found and found[0].read_bytes() == PNG
     assert _card_photo()
 
@@ -213,7 +215,9 @@ def test_export_saved_setup_includes_the_picture(
     setup = _save()
     out = library.export_setup(setup["key"], tmp_path / "out" / "ld.zip")
     assert out["ok"], out
-    assert _pack_has_photo(tmp_path / "out" / "ld.zip")
+    # A device folder zip is written as .gmap (10 S60).
+    assert Path(out["path"]) == tmp_path / "out" / "ld.gmap"
+    assert _pack_has_photo(Path(out["path"]))
 
 
 def test_export_current_setup_includes_the_picture(
@@ -222,7 +226,8 @@ def test_export_current_setup_includes_the_picture(
     _set_photo()
     out = library.export_current(_ld_row()["key"], tmp_path / "out" / "now.zip")
     assert out["ok"], out
-    assert _pack_has_photo(tmp_path / "out" / "now.zip")
+    assert Path(out["path"]) == tmp_path / "out" / "now.gmap"
+    assert _pack_has_photo(Path(out["path"]))
 
 
 # --- History (history_modules + store._reload_logical_device) ---------------
@@ -233,7 +238,7 @@ def _ld_entries() -> list[dict]:
     return [
         e
         for e in history.entries("button-map") + history.entries("modules")
-        if (e.get("subject") or {}).get("fileName") == f"{SLUG}.json"
+        if (e.get("subject") or {}).get("fileName") == f"{LD}/module.json"
     ]
 
 
@@ -260,7 +265,7 @@ def test_history_restore_brings_the_picture_back_on_the_card(
     signal.logicalDeviceReloaded.connect(lambda: reloaded.append(True))
     result = history_model.restore(removal["id"], "before")
     assert result["ok"], result
-    assert _image_key() == f"{SLUG}/photo.png"
+    assert _image_key() == "pictures/photo.png"
     assert _photo_path().read_bytes() == PNG
     # store._reload_logical_device ran (the file was replaced).
     assert reloaded

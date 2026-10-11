@@ -40,12 +40,8 @@ import joystick_gremlin  # noqa: E402
 from gremlin import clock  # noqa: E402
 
 NAME = sys.argv[1]
+# The device's module file: <modules>/<Device Folder>/module.json (03 S128).
 MODULE = Path(sys.argv[2])
-# Optional file choices to start with (JSON), as a user's settings can hold.
-if len(sys.argv) > 3:
-    from gremlin.modules import store
-
-    store.set_bindings(json.loads(sys.argv[3]))
 messages: list[str] = []
 # GREMLIN_SMOKE_HISTORY=1: a saved setup first, and after the removal its
 # History entries, then Restore of the newest (10 S51, D-10-IN-HISTORY).
@@ -135,8 +131,20 @@ if HISTORY:
     ev(lib, "_lib.lib.refresh()")
     wait_until(lambda: bool(row()) and row().get("count", 0) > 0, 5000)
 
+
+
+def module_now() -> Path:
+    """The module file where it is now: a new alias renames the device's
+    folder (03 S131), so the path given at start goes stale."""
+    if not HISTORY:
+        return MODULE
+    from gremlin.modules import store
+
+    return store.module_file(NAME, _guid)
+
+
 before = row()
-out: dict = {"before": before, "fileBefore": MODULE.is_file()}
+out: dict = {"before": before, "fileBefore": module_now().is_file()}
 if HISTORY:
     from gremlin import history
 
@@ -149,15 +157,12 @@ if before:
     messages.clear()
     if CLEAR:
         ev(lib, f"_lib.runClearSetup({key})")
-        wait_until(lambda: not MODULE.is_file(), 5000)
+        wait_until(lambda: not module_now().is_file(), 5000)
     else:
         ev(lib, f"_lib.runRemove([{key}])")
     wait_until(lambda: row() is None, 5000)
-out["fileAfter"] = MODULE.is_file()
+out["fileAfter"] = module_now().is_file()
 out["after"] = row()
-from gremlin.modules import store as _store  # noqa: E402
-
-out["bindingsAfter"] = _store.bindings()
 if HISTORY:
     out["aliasAfter"] = device_aliases.display_name(_guid, "")
 if HISTORY and before:
@@ -171,8 +176,7 @@ if HISTORY and before:
         out["restore"] = history_model.restore(new[0]["id"], "before")
         ev(lib, "_lib.lib.refresh()")
         wait_until(lambda: row() is not None, 5000)
-    out["fileRestored"] = MODULE.is_file()
-    out["bindingsRestored"] = _store.bindings()
+    out["fileRestored"] = module_now().is_file()
     out["aliasRestored"] = device_aliases.display_name(_guid, "")
     out["rowRestored"] = row()
 out["message"] = str(ev(lib, "_lib.message") or "")

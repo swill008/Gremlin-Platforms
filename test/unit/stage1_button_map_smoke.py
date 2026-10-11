@@ -88,10 +88,16 @@ def chip(hw: int, fx: float) -> dict:
     }
 
 
-MAP_FILE = hp.module_json_path(NAME, GUID)
-SLUG = MAP_FILE.stem
-MODULES = MAP_FILE.parent
-RECOVERY = MODULES / "recovery" / f"{SLUG}.json"
+from gremlin.modules import store  # noqa: E402
+
+# The device's folder (03 S128): <modules>/pJoy Pro/module.json, its
+# pictures in pictures/, its recovery copy recovery.json (07 S32).
+DEVICE = store.ensure_device_dir(NAME, GUID)
+MAP_FILE = store.module_file_in(DEVICE)
+SLUG = store.card_key(NAME)  # the Home card's key
+PICS = DEVICE / "pictures"
+RECOVERY = DEVICE / "recovery.json"
+HISTORY_FILE = f"{DEVICE.name}/module.json"
 START_NODES = [chip(1, 0.20), chip(2, 0.30), chip(3, 0.40)]
 # Another device's map: two of its chips are for buttons this stick (64
 # buttons) does not have (07 Q8).
@@ -113,17 +119,19 @@ def read_doc(path: Path) -> dict:
 
 write_json(MAP_FILE, {
     "kind": "control.hardware", "device": NAME,
-    "image": f"{SLUG}/photo.png", "nodes": START_NODES,
+    "image": "pictures/photo.png", "nodes": START_NODES,
     # The Configuration page lists claimed controls (the history part).
     **({"claim": {"buttons": [1, 2, 3], "axes": [], "hats": [], "keys": []}}
        if sys.argv[1:2] == ["history"] else {}),
 })
-write_json(MODULES / "other_stick.json", {
+write_json(store.module_file_in(store.ensure_device_dir("Other Stick")), {
     "kind": "control.hardware", "device": "Other Stick", "nodes": OTHER_NODES,
 })
 # Damaged other files: not UTF-8, and JSON that is not an object (GL-021).
-(MODULES / "broken_stick.json").write_bytes(b"\xff\xfe{ not json")
-write_json(MODULES / "list_stick.json", [1, 2, 3])
+store.module_file_in(store.ensure_device_dir("Broken Stick")).write_bytes(
+    b"\xff\xfe{ not json"
+)
+write_json(store.module_file_in(store.ensure_device_dir("List Stick")), [1, 2, 3])
 
 import joystick_gremlin  # noqa: E402
 
@@ -182,7 +190,7 @@ def history_count() -> int:
     history_quiet()
     return len([
         e for e in history.entries()
-        if (e.get("subject") or {}).get("fileName") == MAP_FILE.name
+        if (e.get("subject") or {}).get("fileName") == HISTORY_FILE
     ])
 
 
@@ -295,7 +303,7 @@ def open_map(app: joystick_gremlin.JoystickGremlinApp) -> Window:
 
 
 def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
-    make_picture(MODULES / SLUG / "photo.png", "#204060")
+    make_picture(PICS / "photo.png", "#204060")
     chosen = make_picture(_HOME / "pictures" / "new photo.jpg", "#a05020")
     w = open_map(app)
 
@@ -372,8 +380,8 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     out["choose-photo-cancel"] = {
         "file-image": read_doc(MAP_FILE).get("image"),
         "start-image": image0,
-        "old-photo": (MODULES / SLUG / "photo.png").is_file(),
-        "new-photo": (MODULES / SLUG / "photo.jpg").is_file(),
+        "old-photo": (PICS / "photo.png").is_file(),
+        "new-photo": (PICS / "photo.jpg").is_file(),
         "history-after-cancel": h2 - h0,
         "shown": w.ev("_buttonMap.storedImage"),
     }
@@ -410,7 +418,7 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     wait_for(lambda: w.ev("_buttonMap.storedImage === \"\""))
     h7 = history_count()
     out["clear-photo"] = {
-        "photo-files-left": sorted(p.name for p in (MODULES / SLUG).glob("photo.*")),
+        "photo-files-left": sorted(p.name for p in PICS.glob("photo.*")),
         # Clear Photo leaves no photo (07 Q4, GL-221).
         "shown": [w.ev("_buttonMap.storedImage"), w.ev("_buttonMap.photoOverride")],
         "dirty": w.ev("_buttonMap.isDirty()"),
@@ -418,27 +426,10 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     }
     w.leave_edit()
     out["clear-photo-cancel"] = {
-        "photo-back": (MODULES / SLUG / "photo.jpg").is_file(),
+        "photo-back": (PICS / "photo.jpg").is_file(),
         "history": history_count() - h6,
         "file-image": read_doc(MAP_FILE).get("image"),
     }
-
-    # Clear Photo when the file can't be removed (open elsewhere): the photo
-    # stays and "Clear Photo Failed" is said (S41).
-    w.enter_edit()
-    held = (MODULES / SLUG / "photo.jpg").open("rb")
-    try:
-        w.ev(menu_item("Clear Photo"))
-        wait_for(lambda: w.ev("_messageLine.failed"))
-        out["clear-photo-fails"] = {
-            "said": [w.ev("_messageLine.failed"), w.ev("_messageLine.text")],
-            "photo-kept": (MODULES / SLUG / "photo.jpg").is_file(),
-            "shown": w.ev("_buttonMap.storedImage"),
-        }
-    finally:
-        held.close()
-    w.leave_edit()
-    out["clear-photo-fails"]["after-cancel"] = (MODULES / SLUG / "photo.jpg").is_file()
 
     # Choose Photo and Clear Photo are undo steps (07 Q3, GL-179).
     other = make_picture(_HOME / "pictures" / "other photo.png", "#20a0a0")
@@ -455,15 +446,17 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     w.ev("_ed().undo()")
     after_one = {
         "shown": w.ev("_buttonMap.storedImage"),
-        "file": (MODULES / SLUG / "photo.png").is_file(),
+        # 07 S107: an edit's pictures wait in its temporary folder; nothing
+        # is added to the device's pictures/ until Save.
+        "in-pictures": (PICS / "photo.png").is_file(),
     }
     w.ev("_ed().undo()")
     out["photo-undo"] = {
         "after-one": after_one,
         "after-two": w.ev("_buttonMap.storedImage"),
         "saved": saved_image,
-        "jpg-back": (MODULES / SLUG / "photo.jpg").is_file(),
-        "png-gone": not (MODULES / SLUG / "photo.png").exists(),
+        "jpg-kept": (PICS / "photo.jpg").is_file(),
+        "png-not-in-pictures": not (PICS / "photo.png").exists(),
         "dirty": w.ev("_buttonMap.isDirty()"),
     }
     w.ev("_ed().redo()")
@@ -626,7 +619,7 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     }
 
     # A guide changed in Edit on a device with no module file (GL-175).
-    third_file = hp.module_json_path("Third Stick", THIRD_GUID)
+    third_file = store.module_file("Third Stick", THIRD_GUID)
     out["third-file-at-start"] = third_file.is_file()
     w.enter_edit()
     w.ev("(function() { var e = _ed(); e.rulerGuidesX = [0.5];"
@@ -662,7 +655,7 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
 def part_outside(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     from gremlin.ui import history_model
 
-    make_picture(MODULES / SLUG / "photo.png", "#204060")
+    make_picture(PICS / "photo.png", "#204060")
     setup_photo = make_picture(_HOME / "pictures" / "setup photo.jpg", "#30a030")
     w = open_map(app)
 
@@ -675,7 +668,7 @@ def part_outside(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     history_quiet()
     entry = next(
         e for e in history.entries()
-        if (e.get("subject") or {}).get("fileName") == MAP_FILE.name
+        if (e.get("subject") or {}).get("fileName") == HISTORY_FILE
     )
     done = history_model.restore(entry["id"], "before")
     restored_fx = file_fx(1)
@@ -809,7 +802,7 @@ CARD_JS = f"_moduleModel.cardMap({json.dumps(SLUG)})"
 
 def part_setup(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     """Module Setup: Import Image, then Cancel and Discard (03 Q2, GL-078)."""
-    make_picture(MODULES / SLUG / "photo.png", "#204060")
+    make_picture(PICS / "photo.png", "#204060")
     chosen = make_picture(_HOME / "pictures" / "setup photo.jpg", "#30a030")
     image0 = read_doc(MAP_FILE).get("image")
     root = main_root(app)
@@ -847,8 +840,8 @@ def part_setup(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     out["setup-cancel"] = {
         "file-image": read_doc(MAP_FILE).get("image"),
         "start-image": image0,
-        "old-photo": (MODULES / SLUG / "photo.png").is_file(),
-        "new-photo": (MODULES / SLUG / "photo.jpg").is_file(),
+        "old-photo": (PICS / "photo.png").is_file(),
+        "new-photo": (PICS / "photo.jpg").is_file(),
     }
     # Opened again: the picture it shows.
     wait_for(lambda: not ev_in(root, "configureWin"))
@@ -880,7 +873,8 @@ def part_history(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     """History as the Button Map's File menu and a Configuration row open it
     (08 Q15, Q16; GL-188, GL-194; the row's menu, 05 S126)."""
     root = main_root(app)
-    out["map-file"] = MAP_FILE.name
+    out["map-folder"] = DEVICE.name
+    out["map-guid"] = GUID
 
     # Button Map: File > History.
     w = open_map(app)

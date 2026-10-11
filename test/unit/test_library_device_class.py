@@ -9,7 +9,6 @@ id is a normal device that can be copied (S22)."""
 
 from __future__ import annotations
 
-import json
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
@@ -19,7 +18,8 @@ import pytest
 import dill
 from gremlin import device_library as library
 from gremlin import library_copy, library_swap, shared_state, swap_devices
-from gremlin.modules import ids, module_file, store
+from gremlin.modules import ids, store
+from test.unit._device_folders import put_module
 
 KEYBOARD_STICK = "{11111111-2222-3333-4444-555555555555}"
 STICK_GUID = "{6C3D1E20-1111-2222-3333-444455556666}"
@@ -86,16 +86,17 @@ def modules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     shared_state.current_profile = before
 
 
-def _write(folder: Path, slug: str, name: str, guid: str) -> None:
+def _write(folder: Path, name: str, guid: str) -> None:
+    """The device's module.json in its own folder (03 S128)."""
     doc = {"kind": "control.hardware", "device": name, "nodes": [], "claim": {}}
     if guid:
         doc["boundGuidLocal"] = guid
-    module_file.write_bytes(folder / f"{slug}.json", json.dumps(doc).encode("utf-8"))
+    put_module(folder, name, doc, guid)
 
 
 def test_stick_named_keyboard_is_a_normal_library_device(modules: Path) -> None:
-    _write(modules, "keyboard_stick", "Keyboard", KEYBOARD_STICK)
-    _write(modules, "stick_a", "Stick A", STICK_GUID)
+    _write(modules, "Keyboard", KEYBOARD_STICK)
+    _write(modules, "Stick A", STICK_GUID)
     rows = {row["name"]: row for row in library.devices()}
     assert rows["Keyboard"]["builtIn"] is False
     assert rows["Keyboard"]["state"] != "builtin"

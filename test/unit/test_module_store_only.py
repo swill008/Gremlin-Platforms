@@ -6,11 +6,13 @@
 
 System-maps map 1 (module file ownership) section 5, gap list GL-067: outside
 the store and the registry (the read-only index that holds the lookup rule),
-nothing in gremlin/ builds a module file's path from a name, looks a
-device's file up by the rule itself, calls the History hooks of module files
-or writes with the bare atomic writer. A caller that does fails here; it
-asks the store instead (path_for, read, update, replace, put_picture,
-delete, move_aside, bind, card_key...).
+nothing in gremlin/ builds a module file's path from a name, builds a
+path inside a device folder itself (module.json, device.json,
+recovery.json, pictures/, imported/; D-03-DEVICE-FOLDERS), calls the
+History hooks of module files or writes with the bare atomic writer. A
+caller that does fails here; it asks the store instead (device_dir,
+module_file, pictures_dir, recovery_path, imported_dir, read, update,
+replace, put_picture, delete, move_aside, card_key...).
 """
 
 from __future__ import annotations
@@ -26,6 +28,9 @@ _OWNERS = {
     "gremlin/modules/store.py",
     "gremlin/modules/registry.py",
     "gremlin/history_modules.py",
+    # ONE-TIME (tracker OT-1): the move from the old layout builds the new
+    # folders itself.
+    "gremlin/modules/folders_move.py",
 }
 
 _RULES = {
@@ -36,6 +41,9 @@ _RULES = {
         r"(modules_dir|_maps_dir|store\.folder|_folder)\(\)\s*/\s*f[\"']"
     ),
     "looks a device's module file up itself": re.compile(r"resolve_module_slug\("),
+    "builds a path inside a device folder itself": re.compile(
+        r"/\s*[\"'](module|device|recovery)\.json[\"']|/\s*[\"'](pictures|imported)[\"']"
+    ),
     "calls a module file History hook": re.compile(
         r"history_modules\.(note_write|note_delete|delete_before|before_change)\("
         r"|(?<![\w.])deleting\(|history_modules\.deleting\("
@@ -69,6 +77,9 @@ _ALLOWED = {
     # Button Map templates, their exports and the photo cache (07): not
     # module files, but written safely with the shared atomic writer.
     ("gremlin/ui/hardware_profile.py", "writes with module_file directly"),
+    # .gmap / .gtemplate files the user exports, and imported templates
+    # (07 S110, 08 S111): not module files, written with the safe writer.
+    ("gremlin/modules/device_zip.py", "writes with module_file directly"),
 }
 
 
@@ -105,6 +116,7 @@ def test_the_rules_catch_what_they_are_for() -> None:
             'p = _maps_dir() / f"{slug}.json"'
         ),
         "looks a device's module file up itself": "registry.resolve_module_slug(n, g)",
+        "builds a path inside a device folder itself": 'p = folder / "module.json"',
         "calls a module file History hook": "history_modules.note_write(p, t, o)",
         "writes with module_file directly": "module_file.write_json(path, doc)",
     }
@@ -122,3 +134,8 @@ def test_the_rules_catch_what_they_are_for() -> None:
     paths = _RULES["builds a path in the modules folder from a name"]
     assert paths.search("util.modules_dir() / f'{slug}.json'")
     assert not paths.search('store.folder() / "templates"')
+    inside = _RULES["builds a path inside a device folder itself"]
+    for code in ('d / "pictures" / name', "d / 'device.json'", 'd / "imported"'):
+        assert inside.search(code), code
+    assert not inside.search('zf.writestr("module.json", data)')
+    assert not inside.search('GMAP_MODULE = "module.json"')

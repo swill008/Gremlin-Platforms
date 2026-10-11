@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""An unreadable row in logical_device.json (AD1, SHAKE-DAMAGE-01): it is
+"""An unreadable row in the Logical Device module file (AD1, SHAKE-DAMAGE-01): it is
 skipped for use with a load warning, the good rows after it still load, and
 Save writes it back as it was, in its place, so no row is ever lost."""
 
@@ -16,6 +16,7 @@ from gremlin import logical_device_file as ldf
 from gremlin.logical_device import LogicalRows
 from gremlin.modules import store
 from gremlin.types import InputType
+from test.unit._device_folders import ensure_dir
 
 GOOD_FIRST = {"uid": "a" * 32, "type": "button", "id": 1, "label": "Button 1"}
 GOOD_AFTER = [
@@ -47,8 +48,16 @@ def modules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return folder
 
 
+def _ld_path() -> Path:
+    """The Logical Device's module.json, its folder made."""
+    from gremlin.modules import ids
+
+    ensure_dir(store.folder(), "Logical Device", str(ids.LOGICAL_DEVICE))
+    return ldf.path()
+
+
 def _write(controls: list) -> Path:
-    path = ldf.path()
+    path = _ld_path()
     doc = {"device": "Logical Device", ldf.KEY: {"controls": controls, "groups": []}}
     path.write_text(json.dumps(doc), encoding="utf-8")
     return path
@@ -124,7 +133,7 @@ def test_reload_of_a_fixed_file_forgets_the_bad_row(modules: Path) -> None:
 
 
 def test_deep_nesting_is_refused_cleanly(modules: Path) -> None:
-    path = ldf.path()
+    path = _ld_path()
     text = '{"logical-device": {"controls": [' + "[" * 100000 + "]" * 100000 + "]}}"
     path.write_text(text, encoding="utf-8")
     rows = LogicalRows()

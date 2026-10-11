@@ -20,6 +20,7 @@ sys.path.append(".")
 
 import json
 import pathlib
+import shutil
 from collections.abc import Iterator
 
 import pytest
@@ -29,6 +30,7 @@ from gremlin import device_initialization
 from gremlin.modules import module_file
 from gremlin.signal import signal
 from gremlin.util import modules_dir
+from test.unit._device_folders import put_module
 
 _APPS: list[QtCore.QCoreApplication] = []
 
@@ -57,13 +59,11 @@ def damaged() -> Iterator[tuple[pathlib.Path, bytes, str]]:
     devices = device_initialization.physical_devices()
     dev = next(d for d in devices if d.name == "pJoy Pro")
     guid = str(dev.device_guid)
-    path = modules_dir() / "pjoy_pro.json"
     text = json.dumps(_good_doc(guid), indent=2)
-    path.write_text(text[: len(text) // 2], encoding="utf-8")
+    path = put_module(modules_dir(), "pJoy Pro", text[: len(text) // 2], guid)
     before = path.read_bytes()
     yield path, before, guid
-    for leftover in path.parent.glob("pjoy_pro.json*"):
-        leftover.unlink()
+    shutil.rmtree(path.parent, ignore_errors=True)
 
 
 @pytest.fixture
@@ -165,7 +165,7 @@ def test_calibration_save_does_not_touch_it(
     from gremlin.modules import calibration
 
     path, before, _guid = damaged
-    assert calibration.write_axes("pjoy_pro", {1: (-1, 0, 0, 1, True)}) is False
+    assert calibration.write_axes(path.parent.name, {1: (-1, 0, 0, 1, True)}) is False
     assert path.read_bytes() == before
 
 

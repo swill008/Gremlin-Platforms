@@ -307,12 +307,18 @@ def main() -> None:
         QtTest.QTest.qWait(300)
         # Copy Button Map from Device outside Edit: Undo brings the map that
         # was there back (BM9).
-        Path(where).with_name("copysrc.json").write_text(json.dumps({
-            "device": "Copy Src",
-            "nodes": [{"id": "c1", "kind": "draw", "shape": "rect",
-                       "fx": 0.5, "fy": 0.5, "fw": 0.1, "fh": 0.1}],
-        }), encoding="utf-8")
-        js("_buttonMap.copyLayoutFrom({name: 'Copy Src', slug: 'copysrc'}, false); 1")
+        # Another device's own folder (03 S128); its slug is the folder name.
+        from gremlin.modules import store
+
+        store.module_file_in(store.ensure_device_dir("Copy Src")).write_text(
+            json.dumps({
+                "device": "Copy Src",
+                "nodes": [{"id": "c1", "kind": "draw", "shape": "rect",
+                           "fx": 0.5, "fy": 0.5, "fw": 0.1, "fh": 0.1}],
+            }),
+            encoding="utf-8",
+        )
+        js("_buttonMap.copyLayoutFrom({name: 'Copy Src', slug: 'Copy Src'}, false); 1")
         QtTest.QTest.qWait(600)
         ids = "function ids() { return _ed().nodes.map(function(n) { return n.id })"
         copied = js(f"{ids}.join(',') }}; ids()")
@@ -347,14 +353,9 @@ def main() -> None:
         has = any(n.get("id") == "t2" for n in saved.get("nodes", []))
         editing = js("String(_buttonMap.editing)")
         print(f"RESULT cancel-save {editing} {has}", flush=True)
-        # A photo change counts as unsaved even when the file name stays the
-        # same (audit 2, item 17).
-        js("_buttonMap.enterEdit(); _hw.stashPhoto(_buttonMap.targetName); 1")
-        QtTest.QTest.qWait(300)
-        dirty = js("String(_buttonMap.isDirty())")
-        js("_buttonMap.discardEdit(); 1")
-        QtTest.QTest.qWait(300)
-        print(f"RESULT photo-dirty {dirty}", flush=True)
+        # (Retired: "a photo change under the same file name is unsaved",
+        # audit 2 item 17. A new photo always has a name of its own now,
+        # 07 S107, so the name comparison sees it.)
         # Group Selected isn't offered for drawings alone (item 30).
         js("_buttonMap.enterEdit(); var e = _ed();"
            " e.nodes.push({id: 'd1', kind: 'draw', shape: 'rect',"
@@ -370,13 +371,13 @@ def main() -> None:
         # After a crash with unsaved edits: opening the map keeps the new
         # photo for Restore; Discard puts the saved one back (item 3). Not
         # now keeps both (decision A, test_audit3_screens.py).
-        js("var n = _buttonMap.targetName; _hw.stashPhoto(n);"
+        js("var n = _buttonMap.targetName; _hw.beginEdit(n);"
            " _hw.saveRecovery(n, JSON.stringify({nodes: [{id: 'z9', kind: 'draw',"
            " shape: 'rect', fx: 0.2, fy: 0.2, fw: 0.1, fh: 0.1}]})); 1")
         kept = js("_buttonMap.loadLive();"
-                  " String(_hw.hasPhotoStash(_buttonMap.targetName))")
+                  " String(_hw.editActive(_buttonMap.targetName))")
         back = js("_buttonMap.putPhotoBack(); _buttonMap.clearRecovery();"
-                  " String(_hw.hasPhotoStash(_buttonMap.targetName))")
+                  " String(_hw.editActive(_buttonMap.targetName))")
         print(f"RESULT crash-photo {kept} {back}", flush=True)
         # The colour picker takes a typed hex (#RGB too), and follows the
         # theme (BM17, E5).

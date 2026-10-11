@@ -247,6 +247,8 @@ Item {
     signal printAreaEdited(bool drawn)
     signal chipMenuRequested(real x, real y)
     signal overlayImportRequested()
+    // Choose Picture… on a picture whose file is missing (07 S108).
+    signal choosePictureRequested(string nodeId)
     signal historyChanged()
     signal colorPickRequested(string field, string hex)
     // Undo or redo put the photo back; the window's sliders follow.
@@ -555,6 +557,7 @@ Item {
     function overlayContains(n, mx, my) { return RigOverlays.overlayContains(n, mx, my) }
     function setOverlayHover(mx, my) { return RigOverlays.setOverlayHover(mx, my) }
     function addOverlay(rel, fileUrl, opts) { return RigOverlays.addOverlay(rel, fileUrl, opts) }
+    function repointPicture(id, rel, fileUrl) { RigOverlays.repointPicture(id, rel, fileUrl) }
     function pinTarget(id) { return RigOverlays.pinTarget(id) }
     function toggleLock(id) { return RigOverlays.toggleLock(id) }
     function beginPlantSnap() { return RigOverlays.beginPlantSnap() }

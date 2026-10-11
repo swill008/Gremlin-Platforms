@@ -18,6 +18,7 @@ from gremlin import device_library as library
 from gremlin import library_swap, shared_state, swap_devices, util
 from gremlin.modules import ids, store
 from gremlin.types import InputType
+from test.unit._device_folders import put_module, put_picture
 
 LEFT_ID = "97b77b40-07d8-11f0-8028-444553540000"
 RIGHT_ID = str(uuid.UUID("12345678-1234-1234-1234-1234567890ab"))
@@ -52,22 +53,9 @@ def sticks(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> dict:
     modules = tmp_path / "modules"
     modules.mkdir()
     monkeypatch.setattr(util, "modules_dir", lambda: modules)
-    slugs = {LEFT_ID: "left", RIGHT_ID: "right"}
-    real_path_for = store.path_for
-
-    def path_for(name: str, guid: str = "") -> pathlib.Path:
-        # Other sticks (a Home model left by an earlier test may refresh
-        # while this one runs) keep the real lookup.
-        if guid in slugs:
-            return store.path_of(slugs[guid])
-        return real_path_for(name, guid)
-
-    monkeypatch.setattr(store, "path_for", path_for)
     monkeypatch.setattr(store, "connected_input_ids", lambda guid: HAS.get(guid))
-    (modules / "left").mkdir()
-    (modules / "left" / "photo.jpg").write_bytes(b"left photo")
-    (modules / "right").mkdir()
-    (modules / "right" / "map.png").write_bytes(b"right map")
+    photo = put_picture(modules, LEFT[0], "photo.jpg", b"left photo", LEFT_ID)
+    picture = put_picture(modules, RIGHT[0], "map.png", b"right map", RIGHT_ID)
     left = {
         "kind": "control.hardware",
         "device": "Left stick",
@@ -79,7 +67,7 @@ def sticks(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> dict:
         },
         "calibration": {"1": [0, 500, 1000], "3": [10, 20, 30]},
         "view": {"layout": "left view"},
-        "image": "left/photo.jpg",
+        "image": photo,
     }
     right = {
         "kind": "control.hardware",
@@ -95,10 +83,10 @@ def sticks(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> dict:
             "order": ["button:3"],
             "group_of": {"button:3": "Right"},
         },
-        "nodes": [{"id": "n1", "kind": "image", "src": "right/map.png"}],
+        "nodes": [{"id": "n1", "kind": "image", "src": picture}],
     }
-    store.path_of("left").write_text(json.dumps(left), encoding="utf-8")
-    store.path_of("right").write_text(json.dumps(right), encoding="utf-8")
+    put_module(modules, LEFT[0], left, LEFT_ID)
+    put_module(modules, RIGHT[0], right, RIGHT_ID)
     calls: dict = {"autosave": [], "last": [], "fail": set()}
 
     def autosave(
@@ -136,8 +124,16 @@ def _open(
     return profile
 
 
+_STICKS = {"left": LEFT, "right": RIGHT}
+
+
+def _file(name: str) -> pathlib.Path:
+    """The stick's module.json in its device folder (D-03-DEVICE-FOLDERS)."""
+    return store.module_file(*_STICKS[name])
+
+
 def _doc(name: str) -> dict:
-    return json.loads(store.path_of(name).read_text(encoding="utf-8"))
+    return json.loads(_file(name).read_text(encoding="utf-8"))
 
 
 # --- swap_devices with limits (the shared owner) ----------------------------------
@@ -251,10 +247,12 @@ def test_swap_exchanges_parts_and_bindings(
         and "view" not in left
     )
     assert right["view"] == {"layout": "left view"} and "layout" not in right
-    assert right["image"] == "right/photo.jpg"
-    assert (sticks["modules"] / "right" / "photo.jpg").read_bytes() == b"left photo"
-    assert left["nodes"][0]["src"] == "left/map.png"
-    assert (sticks["modules"] / "left" / "map.png").read_bytes() == b"right map"
+    assert right["image"] == "pictures/photo.jpg"
+    assert (
+        _file("right").parent / "pictures" / "photo.jpg"
+    ).read_bytes() == b"left photo"
+    assert left["nodes"][0]["src"] == "pictures/map.png"
+    assert (_file("left").parent / "pictures" / "map.png").read_bytes() == b"right map"
     assert "image" not in left and "nodes" not in right
     # Bindings: the open profile changes in memory, unsaved (S33).
     assert _where(profile, LEFT_ID) == {("JoystickAxis", 3)}
@@ -268,12 +266,12 @@ def test_swap_bindings_only_leaves_module_files(
     sticks: dict, xml_dir: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     profile = _open(xml_dir, monkeypatch)
-    before = (store.path_of("left").read_bytes(), store.path_of("right").read_bytes())
+    before = (_file("left").read_bytes(), _file("right").read_bytes())
     result = library_swap.swap(LEFT, RIGHT, ["bindings"], [pathlib.Path(profile.fpath)])
     assert result["ok"] is True
     assert (
-        store.path_of("left").read_bytes(),
-        store.path_of("right").read_bytes(),
+        _file("left").read_bytes(),
+        _file("right").read_bytes(),
     ) == before
     assert len(_where(profile, RIGHT_ID)) == 8
 
@@ -302,14 +300,14 @@ def test_swap_refused_when_an_autosave_fails(
     """S20, S28: no autosave, no swap; nothing changes."""
     profile = _open(xml_dir, monkeypatch)
     sticks["fail"].add("Right stick")
-    before = (store.path_of("left").read_bytes(), store.path_of("right").read_bytes())
+    before = (_file("left").read_bytes(), _file("right").read_bytes())
     text = profile._xml_text()
     result = library_swap.swap(LEFT, RIGHT, ALL, [pathlib.Path(profile.fpath)])
     assert result["ok"] is False
     assert "Right stick" in result["error"] and "nothing was swapped" in result["error"]
     assert (
-        store.path_of("left").read_bytes(),
-        store.path_of("right").read_bytes(),
+        _file("left").read_bytes(),
+        _file("right").read_bytes(),
     ) == before
     assert profile._xml_text() == text
     assert sticks["last"] == []
@@ -319,12 +317,12 @@ def test_swap_refused_on_a_damaged_module_file(
     sticks: dict, xml_dir: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     profile = _open(xml_dir, monkeypatch)
-    store.path_of("right").write_text("{ not json", encoding="utf-8")
+    _file("right").write_text("{ not json", encoding="utf-8")
     text = profile._xml_text()
-    left_before = store.path_of("left").read_bytes()
+    left_before = _file("left").read_bytes()
     result = library_swap.swap(LEFT, RIGHT, ALL, [pathlib.Path(profile.fpath)])
     assert result["ok"] is False and "damaged" in result["error"]
-    assert store.path_of("left").read_bytes() == left_before
+    assert _file("left").read_bytes() == left_before
     assert profile._xml_text() == text
     assert sticks["last"] == []
 
@@ -407,4 +405,4 @@ def test_other_sticks_keep_the_real_module_file_lookup(sticks: dict) -> None:
     runs: asking about any other stick must not raise (full run seed 752346:
     KeyError in module_model._refresh_inplace failed this file's swap test)."""
     other = "{00000001-0000-0000-0000-000000000000}"
-    assert store.path_for("Some other stick", other).name.endswith(".json")
+    assert store.module_file("Some other stick", other).name == "module.json"

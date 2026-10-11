@@ -17,6 +17,7 @@ import pytest
 from gremlin import history_modules
 from gremlin import osc_device_file as odf
 from gremlin.modules import store
+from test.unit._device_folders import module_path, put_module
 
 OSC_GUID = "A7C3E91B-4D2F-4E18-9B06-2F8C1D5A6E70"
 
@@ -96,19 +97,17 @@ def _row(uid: str, kind: str, number: int, address: str, **extra: object) -> dic
 
 
 def _doc(modules: Path) -> dict:
-    return json.loads((modules / "osc.json").read_text(encoding="utf-8"))
+    return json.loads(module_path(modules, "OSC").read_text(encoding="utf-8"))
 
 
 def test_the_file_is_the_osc_module_file(modules: Path) -> None:
-    assert odf.path() == modules / "osc.json"
+    assert odf.path() == module_path(modules, "OSC")
 
 
 def test_save_writes_rows_keeps_other_keys_and_history_records_it(
     modules: Path, writes: list
 ) -> None:
-    (modules / "osc.json").write_text(
-        json.dumps({"notes": "kept", "server": {"port": 9001}}), encoding="utf-8"
-    )
+    put_module(modules, "OSC", json.dumps({"notes": "kept", "server": {"port": 9001}}))
     rows = FakeRows([_row("a" * 32, "button", 1, "/a", mode="button")])
     rows.dirty = True
     assert odf.save(rows) is True
@@ -118,7 +117,7 @@ def test_save_writes_rows_keeps_other_keys_and_history_records_it(
     assert doc["kind"] == "control.hardware" and doc["direction"] == "source"
     assert doc["device"] == "OSC" and doc["boundGuidLocal"] == OSC_GUID
     assert rows.dirty is False
-    assert [p.name for p, _ in writes] == ["osc.json"]
+    assert [p for p, _ in writes] == [module_path(modules, "OSC")]
 
 
 def test_save_if_dirty_saves_only_a_change(
@@ -127,7 +126,7 @@ def test_save_if_dirty_saves_only_a_change(
     rows = FakeRows([_row("a" * 32, "button", 1, "/a")])
     monkeypatch.setattr(odf, "_rows", lambda r: rows if r is None else r)
     assert odf.save_if_dirty() is False
-    assert not (modules / "osc.json").exists()
+    assert not module_path(modules, "OSC").exists()
     rows.dirty = True
     assert odf.save_if_dirty() is True
     assert _doc(modules)["inputs"][0]["label"] == "/a"
@@ -142,7 +141,7 @@ def test_load_of_a_missing_file_is_empty_with_default_settings(
     assert server == odf.SERVER_DEFAULTS
     assert server["host"] == "" and server["port"] == 8001
     assert server["autorelease_delay_ms"] == 250
-    assert not (modules / "osc.json").exists()
+    assert not module_path(modules, "OSC").exists()
 
 
 def test_load_reads_back_rows_and_server(modules: Path, writes: list) -> None:
@@ -176,8 +175,7 @@ def test_a_damaged_file_is_never_written_over(
     from gremlin.modules import module_file
 
     monkeypatch.setattr(module_file, "report_refused", lambda damaged: None)
-    damaged = modules / "osc.json"
-    damaged.write_text("{ not json", encoding="utf-8")
+    damaged = put_module(modules, "OSC", "{ not json")
     rows = FakeRows([_row("e" * 32, "button", 1, "/a")])
     rows.dirty = True
     assert odf.save(rows) is False
@@ -210,7 +208,7 @@ def test_replacing_another_file_does_not_reload_osc(
 ) -> None:
     rows = FakeRows([_row("5" * 32, "button", 1, "/k")])
     monkeypatch.setattr(odf, "_rows", lambda r: rows if r is None else r)
-    store.replace(modules / "keyboard.json", b"{}", "Library")
+    store.replace(put_module(modules, "Keyboard", "{}"), b"{}", "Library")
     assert rows.inputs[0]["uid"] == "5" * 32
     assert not [n for n in emitted if n.startswith("osc")]
 
@@ -266,7 +264,7 @@ def test_loading_the_file_does_not_read_or_convert_old_friendly_keys(
         "buttons": [3],
         "friendly": {f"osc:{a_uid}": "Fire", "axis:1": "Throttle"},
     }
-    (modules / "osc.json").write_text(json.dumps(doc), encoding="utf-8")
+    put_module(modules, "OSC", json.dumps(doc))
     from gremlin.osc_rows import OscRows
 
     fresh = OscRows()

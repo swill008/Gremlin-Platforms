@@ -44,11 +44,17 @@ from gremlin import (
 )
 from gremlin import device_library as library
 from gremlin.auto_mapper import AutoMapper, AutoMapperOptions
-from gremlin.modules import module_file
+from gremlin.modules import module_file, store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType, PropertyType
 from gremlin.ui import device_pack, hardware_profile, history_model, module_model
 from test.unit import test_stage1_modules, test_twin_devices
+from test.unit._device_folders import (
+    ensure_dir,
+    module_path,
+    picture_file,
+    put_picture,
+)
 from test.unit.test_stage1_modules import (
     _OTHER,
     map_button,
@@ -144,10 +150,9 @@ def test_reading_history_while_the_writer_works_keeps_its_work_on_the_writer(
 
 
 def test_a_saves_before_picture_is_the_picture_it_had(folder: Path) -> None:
-    (folder / "pjoy_pro").mkdir()
-    photo = folder / "pjoy_pro" / "photo.png"
-    photo.write_bytes(b"old photo")
-    path = write_module(folder, "pjoy_pro", stick_doc(image="pjoy_pro/photo.png"))
+    put_picture(folder, "pJoy Pro", "photo.png", b"old photo", stick_guid())
+    photo = picture_file(folder, "pJoy Pro", "photo.png", stick_guid())
+    path = write_module(folder, "pjoy_pro", stick_doc(image="pictures/photo.png"))
     started, release = threading.Event(), threading.Event()
 
     def busy() -> None:
@@ -158,7 +163,7 @@ def test_a_saves_before_picture_is_the_picture_it_had(folder: Path) -> None:
     assert started.wait(10.0)
     try:
         doc = stick_doc(
-            image="pjoy_pro/photo.png", calibration={"1": [0, 1, 2, 3, True]}
+            image="pictures/photo.png", calibration={"1": [0, 1, 2, 3, True]}
         )
         module_file.write_json(path, doc)
         photo.write_bytes(b"new photo")  # the next save's picture
@@ -262,6 +267,7 @@ def _subject(**parts: object) -> dict:
 def entries(folder: Path, tmp_path: Path) -> dict[str, str]:
     """One entry of each kind the editors filter on."""
     stick = stick_guid().strip("{}").lower()
+    twin = "99999999-2222-3333-4444-555555555555"
     made = {
         "input": history.record(
             "profile",
@@ -312,11 +318,25 @@ def entries(folder: Path, tmp_path: Path) -> dict[str, str]:
         "checks": history.record(
             "modules",
             "Saved pJoy Pro: checked controls and names",
-            _subject(device="pJoy Pro", fileName="pjoy_pro.json"),
+            _subject(
+                device="pJoy Pro", deviceId=stick, folder="pJoy Pro",
+                fileName="pJoy Pro/module.json",
+            ),
             None,
             None,
         ),
         "map": history.record(
+            "button-map",
+            "Saved pJoy Pro: Button Map",
+            _subject(
+                device="pJoy Pro", deviceId=stick, folder="pJoy Pro",
+                fileName="pJoy Pro/module.json",
+            ),
+            None,
+            None,
+        ),
+        # An entry from before device folders: no id, the old file name.
+        "old map": history.record(
             "button-map",
             "Saved pJoy Pro: Button Map",
             _subject(device="pJoy Pro", fileName="pjoy_pro.json"),
@@ -325,8 +345,11 @@ def entries(folder: Path, tmp_path: Path) -> dict[str, str]:
         ),
         "twin": history.record(
             "button-map",
-            "Saved pJoy Pro: Button Map",
-            _subject(device="pJoy Pro", fileName="pjoy_pro_2.json"),
+            "Saved pJoy Pro (2): Button Map",
+            _subject(
+                device="pJoy Pro (2)", deviceId=twin, folder="pJoy Pro (2)",
+                fileName="pJoy Pro (2)/module.json",
+            ),
             None,
             None,
         ),
@@ -357,12 +380,12 @@ def test_show_and_search(entries: dict[str, str]) -> None:
     assert _shown(model, entries) == set(entries.values())
     # S29: Show narrows by area.
     model.setFilter(json.dumps({"area": "button-map"}))
-    assert _shown(model, entries) == {"map", "twin"}
+    assert _shown(model, entries) == {"map", "old map", "twin"}
     model.setFilter(json.dumps({"area": "settings"}))  # Options' History
     assert _shown(model, entries) == {"settings"}
     model.setFilter("")
     # Search finds words in the title and in what it is about.
-    model.setSearch("pjoy_pro_2")
+    model.setSearch("pJoy Pro (2)")
     assert _shown(model, entries) == {"twin"}
     model.setSearch("logical button 3")
     assert _shown(model, entries) == {"logical"}
@@ -373,9 +396,14 @@ def test_show_and_search(entries: dict[str, str]) -> None:
 def test_the_editors_filters(entries: dict[str, str]) -> None:
     model = history_model.HistoryModel()
     model.reload()
-    # Module Setup and Calibration: the device's own file, every area (S31).
-    model.setFilter(json.dumps({"fileName": "pjoy_pro.json"}))
-    assert _shown(model, entries) == {"checks", "map"}
+    # Module Setup and Calibration: the device's own folder by its id, every
+    # area (S31, 08 S43); an entry from before device folders by its name.
+    model.setFilter(
+        json.dumps({"deviceId": stick_guid(), "deviceName": "pJoy Pro"})
+    )
+    shown = _shown(model, entries)
+    assert {"checks", "map", "old map"} <= shown
+    assert not shown & {"twin", "logical", "settings"}
     # A Logical Device control.
     model.setFilter(
         json.dumps(
@@ -426,16 +454,21 @@ def test_tools_history_opens_on_every_change() -> None:
     # S34.
     text = (_ROOT / "qml" / "main_commands.js").read_text(encoding="utf-8")
     assert 'openToolWith("DialogHistory.qml", { filter: "" })' in text
-    assert "fileName" in _qml_history_filter("DialogConfigureModule.qml")
-    assert "fileName" in _qml_history_filter("DialogCalibration.qml")
+    assert "deviceId" in _qml_history_filter("DialogConfigureModule.qml")
+    assert "deviceId" in _qml_history_filter("DialogCalibration.qml")
 
 
 def test_button_map_history_is_by_its_own_file_in_every_area(
     opened_history: dict,
 ) -> None:
-    # Q15: by the device's own module file name, all areas.
+    # Q15: by the device's id (its folder, 08 S43), all areas.
+    from gremlin.modules.ids import stored_guid_key
+
     found = opened_history["button-map-filter"]
-    assert found.get("fileName") == opened_history["map-file"]
+    assert stored_guid_key(found.get("deviceId")) == stored_guid_key(
+        opened_history["map-guid"]
+    )
+    assert found.get("deviceName") == "pJoy Pro"
     assert not found.get("area")
 
 
@@ -527,7 +560,7 @@ def test_an_import_with_nothing_ticked_is_refused(folder: Path, tmp_path: Path) 
 def test_a_pack_import_onto_a_damaged_module_file_is_refused(
     folder: Path, tmp_path: Path
 ) -> None:
-    path = folder / "pjoy_pro.json"
+    path = ensure_dir(folder, "pJoy Pro", stick_guid()) / "module.json"
     path.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
     before = path.read_bytes()
     pack = _write_zip(tmp_path / "p.zip", {"map.json": _pack_map()})
@@ -662,7 +695,9 @@ def test_a_pack_output_module_keeps_to_the_vjoys_size(
         {"items": ["out:vjoy_9.checks"], "outputs": {"vjoy_9": "vJoy 1"}},
     )
     assert result["ok"], result
-    claim = json.loads((folder / "vjoy_1.json").read_text(encoding="utf-8"))["claim"]
+    claim = json.loads(
+        module_path(folder, "vJoy 1").read_text(encoding="utf-8")
+    )["claim"]
     # Q18: vJoy 1 has 64 buttons; button 99 is left out and listed.
     assert 2 in claim["buttons"] and 99 not in claim["buttons"]
     assert "Button 99" in result["report"]
@@ -674,9 +709,10 @@ def test_a_pack_output_module_keeps_to_the_vjoys_size(
 def _stick_to_delete(
     folder: Path, monkeypatch: pytest.MonkeyPatch, path: Path | None = None
 ) -> Profile:
-    write_module(folder, "pjoy_pro", stick_doc(image="pjoy_pro/photo.jpg"))
-    (folder / "pjoy_pro").mkdir()
-    (folder / "pjoy_pro" / "photo.jpg").write_bytes(b"\xff\xd8 a photo \xff\xd9")
+    write_module(folder, "pjoy_pro", stick_doc(image="pictures/photo.jpg"))
+    put_picture(
+        folder, "pJoy Pro", "photo.jpg", b"\xff\xd8 a photo \xff\xd9", stick_guid()
+    )
     profile = new_profile(monkeypatch, path)
     profile.modes.add_mode("Combat")
     map_button(profile, stick_uid(), 1, 1)
@@ -702,23 +738,25 @@ def test_delete_device_keeps_an_autosave_that_can_be_imported_back(
     setup = found["setups"][0]
     assert setup["name"] == "Autosave: stick deleted" and setup["origin"] == "autosave"
     pack = library.pack_path(setup["key"])
+    # A .gmap (10 S60, 08 S111): module.json, pictures/, bindings/.
     with zipfile.ZipFile(pack) as zf:
         names = zf.namelist()
-        doc = json.loads(zf.read("map.json"))
-    assert "wires.json" in names and "photo.jpg" in names
+        doc = json.loads(zf.read("module.json"))
+    assert "bindings/wires.json" in names and "pictures/photo.jpg" in names
     assert doc["claim"]["buttons"] == [1, 2]
     assert not (tmp_path / "deleted devices").exists()
-    assert not (folder / "pjoy_pro.json").exists()
+    assert not (folder / "pJoy Pro" / "module.json").exists()
     assert mapped(profile, stick_uid()) == set()
 
     # S89: Device Pack > Import puts it back (the pieces ticked by default).
     hw = hardware_profile.HardwareProfile()
     back = json.loads(hw.importPack(_url(pack), "pJoy Pro", ""))
     assert back["ok"], back
-    restored = json.loads((folder / "pjoy_pro.json").read_text(encoding="utf-8"))
+    own = store.module_file("pJoy Pro", stick_guid())
+    restored = json.loads(own.read_text(encoding="utf-8"))
     assert restored["claim"]["buttons"] == [1, 2]
     assert (
-        folder / "pjoy_pro" / "photo.jpg"
+        own.parent / "pictures" / "photo.jpg"
     ).read_bytes() == b"\xff\xd8 a photo \xff\xd9"
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Combat", 2)}
 
@@ -727,19 +765,19 @@ def test_delete_device_is_refused_when_the_autosave_cant_be_read_back(
     folder: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     profile = _stick_to_delete(folder, monkeypatch)
-    before = (folder / "pjoy_pro.json").read_bytes()
-    monkeypatch.setattr(
-        device_pack,
-        "assemble",
-        lambda *_a, **_k: (b"not a zip", {"device": "pJoy Pro"}),
-    )
+    own = store.module_file("pJoy Pro", stick_guid())
+    before = own.read_bytes()
+    # The autosave is a .gmap (10 S60), built by device_zip.
+    from gremlin.modules import device_zip
+
+    monkeypatch.setattr(device_zip, "build_gmap", lambda *_a, **_k: b"not a zip")
     result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid()))
     # S86, 10 S20: if it can't be read back, nothing is deleted.
     assert not result["ok"]
     assert result["error"].startswith(
         "The device was not deleted. The autosave could not be kept"
     ), result
-    assert (folder / "pjoy_pro.json").read_bytes() == before
+    assert own.read_bytes() == before
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Combat", 2)}
 
 
@@ -753,7 +791,7 @@ def test_delete_device_is_refused_when_the_autosave_cant_be_written(
     result = json.loads(hardware_profile.delete_device("pJoy Pro", stick_guid()))
     assert not result["ok"]
     assert "The autosave could not be kept" in result["error"], result
-    assert (folder / "pjoy_pro.json").is_file()
+    assert store.module_file("pJoy Pro", stick_guid()).is_file()
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Combat", 2)}
 
 
@@ -788,8 +826,8 @@ def test_combine_with_more_inputs_than_outputs_uses_each_output_once(
     )
     profile = new_profile(monkeypatch)
     report = AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro", "gone_stick"],
-        ["vjoy_1"],
+        ["pJoy Pro", "Gone Stick"],
+        ["vJoy 1"],
         AutoMapperOptions(repeat_vjoy_inputs=True),
     )
     # S91: both input modules go onto the one output, in turn; S94: an
@@ -816,7 +854,7 @@ def test_without_combine_the_extra_input_module_is_named(
     )
     profile = new_profile(monkeypatch)
     report = AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro", "gone_stick"], ["vjoy_1"], AutoMapperOptions()
+        ["pJoy Pro", "Gone Stick"], ["vJoy 1"], AutoMapperOptions()
     )
     assert "No output module left for pJoy Pro" in report
     assert mapped(profile, stick_uid()) == set()
@@ -830,7 +868,7 @@ def test_overwrite_removes_nested_actions_and_leaves_nothing_behind(
     profile = new_profile(monkeypatch)
     nested_map(profile, stick_uid(), 1, 7)
     AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions(overwrite_used_inputs=True)
+        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(overwrite_used_inputs=True)
     )
     # S95: every action on the input goes, nested ones too, none left behind.
     assert vjoy_targets(profile) == [(1, 1)]
@@ -845,7 +883,7 @@ def test_an_output_a_nested_action_uses_is_not_used_again(
     profile = new_profile(monkeypatch)
     nested_map(profile, stick_uid(), 9, 1)  # button 9 -> Tempo -> vJoy 1 button 1
     AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions()
+        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions()
     )
     # Q7: nested actions count; vJoy 1 button 1 isn't sent to twice.
     assert vjoy_targets(profile) == [(1, 1)]
@@ -858,7 +896,7 @@ def test_an_output_an_unplugged_stick_uses_is_not_used_again(
     profile = new_profile(monkeypatch)
     map_button(profile, _OTHER, 5, 2)  # the unplugged stick -> vJoy 1 button 2
     AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions()
+        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions()
     )
     # Q7 (S98 replaced): every input in the profile counts.
     assert vjoy_targets(profile) == [(1, 2)]
@@ -891,6 +929,7 @@ def test_each_twin_stick_is_mapped_on_its_own_device(
             "kind": "control.hardware",
             "device": "pJoy Pro (2)",
             "direction": "source",
+            "boundGuidLocal": _twin_guid(),
             "claim": {"buttons": [2], "axes": [], "hats": []},
         },
     )
@@ -905,8 +944,8 @@ def test_each_twin_stick_is_mapped_on_its_own_device(
     assert names[twin_uid] == "pJoy Pro (2)"
     profile = new_profile(monkeypatch)
     AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro", "pjoy_pro_2"],
-        ["vjoy_1"],
+        ["pJoy Pro", "pJoy Pro (2)"],
+        ["vJoy 1"],
         AutoMapperOptions(repeat_vjoy_inputs=True),
     )
     # Each twin's module maps its own device (S6, S119).
@@ -923,13 +962,13 @@ def test_also_claim_with_an_output_file_that_cant_be_written(
 
     # The store writes every module file through write_bytes.
     def refuse(path: Path, data: bytes) -> None:
-        if Path(path).name == "vjoy_1.json":
+        if Path(path).parent.name == "vJoy 1":
             raise OSError("access denied")
         real_write(path, data)
 
     monkeypatch.setattr(module_file, "write_bytes", refuse)
     report = AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions(claim_outputs=True)
+        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(claim_outputs=True)
     )
     # S93 / Q9: no actions to outputs it couldn't claim; listed "not claimed".
     assert vjoy_targets(profile) == []

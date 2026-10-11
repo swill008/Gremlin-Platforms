@@ -426,7 +426,7 @@ ApplicationWindow {
                        + "): those chips will have no picture.")
         lines.push("")
         if (p.hasModuleFile)
-            lines.push("The previous module file is kept in the imported folder.")
+            lines.push("The previous module file is kept in the imported folder inside the device's folder.")
         if (modes.length)
             lines.push("The profile changes on disk only when you save it.")
         lines.push("Undo Import puts this import back until you import again, open another pack, or close this window.")
@@ -470,7 +470,8 @@ ApplicationWindow {
         kind: "device-pack"
         mode: "open"
         title: "Open Device Pack"
-        nameFilters: ["Device packs (*.zip)"]
+        // A device folder file (.gmap, 08 S111) reads as a pack too.
+        nameFilters: ["Device packs (*.zip *.gmap)"]
         folder: _hw.exportFolderUrl()
         onPicked: (selected) => {
             zipUrl = String(selected)

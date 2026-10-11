@@ -13,7 +13,7 @@
   activity lines it added are written, before the installer starts.
 - Quit to install saves the pending update before the installer starts.
 - Log files are written as UTF-8.
-- Undo of a module file import binds the devices it unbound again.
+- Undo of a module file import puts the device's previous file back.
 - Output View numbers buttons and hats within their kind.
 - Swap Devices moves script variables both ways.
 """
@@ -326,7 +326,7 @@ def test_log_files_are_utf8(tmp_path: Path, mode: str) -> None:
 # --- Module Setup import --------------------------------------------------------
 
 
-def test_undo_of_a_module_import_binds_the_devices_again(
+def test_undo_of_a_module_import_puts_the_previous_file_back(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, no_history: None
 ) -> None:
     from gremlin import util
@@ -337,31 +337,32 @@ def test_undo_of_a_module_import_binds_the_devices_again(
     monkeypatch.setattr(util, "modules_dir", lambda: modules)
     chosen = tmp_path / "picked" / "shared_keys.json"
     chosen.parent.mkdir()
-    chosen.write_text(
-        json.dumps(
-            {"kind": "control.hardware", "device": "Keyboard", "claim": {"keys": [30]}}
-        ),
-        encoding="utf-8",
+    chosen_text = json.dumps(
+        {"kind": "control.hardware", "device": "Keyboard", "claim": {"keys": [30]}}
     )
-    before = store.bindings()
-    bound = {"name:stick_a": "shared_keys", "name:keyboard": "old_keys"}
-    store.set_bindings(bound)
+    chosen.write_text(chosen_text, encoding="utf-8")
+    # The keyboard's folder (found by its fixed id, 03 S1), renamed "My Keys".
+    own = store.ensure_device_dir("Keyboard", "")
+    renamed = own.with_name("My Keys")
+    own.rename(renamed)
+    store._dirs_changed()
+    old = b'{"kind": "control.hardware", "device": "Keyboard", "claim": {"keys": [2]}}'
+    (renamed / "module.json").write_bytes(old)
     monkeypatch.setattr(store, "_file_import_undo", {})
-    try:
-        note = store.import_file("Keyboard", "", str(chosen))
-        # 03 Q13 (decision): the import goes into the file the device uses,
-        # not a new one named after it.
-        assert note.startswith("Imported into old_keys.json"), note
-        assert (modules / "old_keys.json").is_file()
-        assert not (modules / "keyboard.json").exists()
-        # The chosen file's device is unbound; the keyboard keeps its file.
-        assert store.bindings() == {"name:keyboard": "old_keys"}
-        undone = store.undo_file_import("Keyboard", "", "Configure Module")
-        assert undone.startswith("Undone."), undone
-        assert not (modules / "old_keys.json").exists()
-        assert store.bindings() == bound
-    finally:
-        store.set_bindings(before)
+    note = store.import_file("Keyboard", "", str(chosen))
+    # 03 Q13 (decision): the import goes into the folder the device uses,
+    # not a new one named after it; the previous file is kept (S58).
+    assert note.startswith("Imported into My Keys."), note
+    assert not (modules / "Keyboard").exists()
+    assert json.loads((renamed / "module.json").read_text())["claim"]["keys"] == [30]
+    assert [p.read_bytes() for p in (renamed / "imported").glob("module *.json")] == [
+        old
+    ]
+    undone = store.undo_file_import("Keyboard", "", "Configure Module")
+    assert undone.startswith("Undone."), undone
+    assert (renamed / "module.json").read_bytes() == old
+    # The chosen file was left as it was.
+    assert chosen.read_text(encoding="utf-8") == chosen_text
 
 
 # --- Output View ------------------------------------------------------------------

@@ -24,6 +24,7 @@ from gremlin import shared_state
 from gremlin.modules import registry, store
 from gremlin.profile import Profile
 from gremlin.ui import device_pack, hardware_profile, option
+from test.unit._device_folders import put_module
 
 
 class _FakeLibrary:
@@ -128,12 +129,8 @@ def test_delete_device_with_a_never_saved_profile_autosaves_its_bindings(
 ) -> None:
     maps = tmp_path / "modules"
     maps.mkdir()
-    (maps / "stick_r.json").write_text(json.dumps({"claim": {"buttons": [1]}}),
-                                       encoding="utf-8")
     monkeypatch.setattr(store, "folder", lambda: maps)
-    monkeypatch.setattr(store, "users_of", lambda slug: set())
-    monkeypatch.setattr(store, "bindings", lambda: {})
-    monkeypatch.setattr(store, "set_bindings", lambda data: None)
+    put_module(maps, "Stick R", {"claim": {"buttons": [1]}})
     monkeypatch.setattr(registry, "guid_for_name", lambda name: "")
     monkeypatch.setattr(hardware_profile, "_profile_running", lambda: False)
     monkeypatch.setattr(hardware_profile, "_device_stays_listed", lambda *_a: False)

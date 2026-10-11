@@ -41,7 +41,6 @@ um.UpdateModel.startup = lambda self, *a, **k: None
 from PySide6 import QtCore, QtQml, QtTest  # noqa: E402
 
 import dill  # noqa: E402
-from gremlin.ui import hardware_profile  # noqa: E402
 
 # Two sticks, each with a map of five chips.
 stick = fake.devices[0]
@@ -62,8 +61,9 @@ NODES = [
     for i in range(1, 6)
 ]
 for _name, _guid in (("pJoy Pro", GUID), ("Other Stick", OTHER_GUID)):
-    _map = hardware_profile.module_json_path(_name, _guid)
-    _map.parent.mkdir(parents=True, exist_ok=True)
+    from gremlin.modules import store
+
+    _map = store.module_file_in(store.ensure_device_dir(_name, _guid))
     _map.write_text(
         json.dumps({"kind": "control.hardware", "device": _name, "nodes": NODES}),
         encoding="utf-8",

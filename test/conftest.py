@@ -22,6 +22,10 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 # Nor reach the network (the programs tests start inherit it): the update
 # check is off. HTTPS_PROXY doesn't stop Qt's network calls.
 os.environ["GREMLIN_OFFLINE"] = "1"
+# Tests are running (D-03-DEVICE-FOLDERS): the one-time device folders move
+# (gremlin/modules/folders_move.run_if_needed) refuses to touch the real
+# Gremlin Platforms folder. Programs tests start inherit it.
+os.environ["GREMLIN_TESTS"] = "1"
 os.environ.setdefault(
     "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
 )
@@ -319,7 +323,8 @@ def pytest_unconfigure(config: pytest.Config) -> None:
     gremlin.threads.shutdown(timeout=2.0)
     main = threading.main_thread()
     left = [
-        t for t in threading.enumerate()
+        t
+        for t in threading.enumerate()
         if t is not main and not t.daemon and t.is_alive()
     ]
     if left:

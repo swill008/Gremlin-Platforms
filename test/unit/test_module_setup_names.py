@@ -17,6 +17,7 @@ sys.path.append(".")
 
 import json
 import pathlib
+import shutil
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
@@ -26,6 +27,7 @@ from PySide6 import QtCore
 from gremlin import device_initialization
 from gremlin.modules import store
 from gremlin.util import modules_dir
+from test.unit._device_folders import put_module
 
 if TYPE_CHECKING:
     from gremlin.ui.module_model import DriverInputModel
@@ -44,8 +46,9 @@ def _app() -> Iterator[QtCore.QCoreApplication]:
 def saved() -> Iterator[tuple[pathlib.Path, str]]:
     devices = device_initialization.physical_devices()
     guid = str(next(d for d in devices if d.name == "pJoy Pro").device_guid)
-    path = modules_dir() / "pjoy_pro.json"
-    path.write_text(
+    path = put_module(
+        modules_dir(),
+        "pJoy Pro",
         json.dumps(
             {
                 "device": "pJoy Pro",
@@ -65,11 +68,10 @@ def saved() -> Iterator[tuple[pathlib.Path, str]]:
             },
             indent=2,
         ),
-        encoding="utf-8",
+        guid,
     )
     yield path, guid
-    for leftover in path.parent.glob("pjoy_pro.json*"):
-        leftover.unlink()
+    shutil.rmtree(path.parent, ignore_errors=True)
 
 
 def _open(guid: str) -> DriverInputModel:

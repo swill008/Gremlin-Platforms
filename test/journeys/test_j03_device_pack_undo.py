@@ -51,8 +51,10 @@ def story(j: Journey) -> None:
     _path, url = j.save_and_reopen("journey3")
     out["pjoy-before"] = j.wires(pjoy)
     out["x52-before"] = j.wires(x52)
-    modules = util.modules_dir()
-    x52_file = modules / "saitek_x52.json"
+    from gremlin.modules import store
+
+    x52_guid = str(j.stick("Saitek X52").device_guid)
+    x52_file = store.module_file("Saitek X52", x52_guid)
     x52_text_before = x52_file.read_text(encoding="utf-8")
 
     # Tools > Device Pack: export the pJoy Pro.
@@ -84,10 +86,10 @@ def story(j: Journey) -> None:
     out["x52-file-after-import"] = json.loads(x52_file.read_text(encoding="utf-8"))[
         "claim"
     ]
+    # Kept in the X52's own imported/ folder (03 S58, 08 S73).
+    kept = store.imported_dir("Saitek X52", x52_guid)
     out["imported-backups"] = (
-        sorted(p.name for p in (modules / "imported").glob("*") if p.is_file())
-        if (modules / "imported").is_dir()
-        else []
+        sorted(p.name for p in kept.glob("*") if p.is_file()) if kept.is_dir() else []
     )
     out["x52-after-import"] = j.wires(x52)
     out["pjoy-after-import"] = j.wires(pjoy)
@@ -137,7 +139,7 @@ def test_the_pack_is_exported_with_its_modes(run: dict) -> None:
 def test_import_onto_the_other_stick_replaces_its_file_and_wires(run: dict) -> None:
     warning = step(run, "warning")
     assert "Saitek X52" in warning.splitlines()[0]
-    assert "The previous module file is kept in the imported folder." in warning
+    assert "kept in the imported folder inside the device's folder." in warning
     assert step(run, "replace-shown") is True
     assert step(run, "can-undo") is True
     # The pack's checked controls are added to the X52's (08 Q3).

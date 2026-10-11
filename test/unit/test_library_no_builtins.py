@@ -8,7 +8,6 @@ temporary modules folder holding a keyboard, an OSC and stick module files."""
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -16,7 +15,8 @@ import pytest
 
 from gremlin import device_library as library
 from gremlin import shared_state
-from gremlin.modules import ids, module_file, registry, store
+from gremlin.modules import ids, registry, store
+from test.unit._device_folders import put_module
 
 STICK_GUID = "{6C3D1E20-1111-2222-3333-444455556666}"
 KEYBOARD_GUID = "{" + str(ids.KEYBOARD).upper() + "}"
@@ -38,37 +38,43 @@ def modules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     shared_state.current_profile = before
 
 
-def _write(folder: Path, slug: str, name: str, guid: str) -> None:
+def _write(folder: Path, name: str, guid: str) -> Path:
+    """The device's module.json in its own folder (03 S128)."""
     doc = {"kind": "control.hardware", "device": name, "nodes": [], "claim": {}}
     if guid:
         doc["boundGuidLocal"] = guid
-    module_file.write_bytes(folder / f"{slug}.json", json.dumps(doc).encode("utf-8"))
+    return put_module(folder, name, doc, guid)
 
 
-def _by_slug(slug: str) -> registry.Module:
-    return next(m for m in registry.modules() if m.slug == slug)
+def _by_path(path: Path) -> registry.Module:
+    return next(m for m in registry.modules() if m.path == path)
 
 
 def test_built_in_inputs_by_id_and_by_name(modules: Path) -> None:
-    _write(modules, "keyboard", "Keyboard", KEYBOARD_GUID)
-    _write(modules, "osc", "OSC", OSC_GUID)
-    _write(modules, "keys_unbound", "Keyboard", "")
-    _write(modules, "stick_a", "Stick A", STICK_GUID)
-    # A stick that Windows names "Keyboard" is still a stick: its id decides.
+    keyboard = _write(modules, "Keyboard", KEYBOARD_GUID)
+    osc = _write(modules, "OSC", OSC_GUID)
+    stick = _write(modules, "Stick A", STICK_GUID)
+    # A stick that Windows names "Keyboard" is still a stick: its id decides
+    # (its folder is "Keyboard (2)", S132).
     other = "{11111111-2222-3333-4444-555555555555}"
-    _write(modules, "keyboard_stick", "Keyboard", other)
-    assert registry.is_built_in_input(_by_slug("keyboard"))
-    assert registry.is_built_in_input(_by_slug("osc"))
-    assert registry.is_built_in_input(_by_slug("keys_unbound"))
-    assert not registry.is_built_in_input(_by_slug("stick_a"))
-    assert not registry.is_built_in_input(_by_slug("keyboard_stick"))
+    keyboard_stick = _write(modules, "Keyboard", other)
+    assert keyboard_stick.parent.name == "Keyboard (2)"
+    assert registry.is_built_in_input(_by_path(keyboard))
+    assert registry.is_built_in_input(_by_path(osc))
+    assert not registry.is_built_in_input(_by_path(stick))
+    assert not registry.is_built_in_input(_by_path(keyboard_stick))
+
+
+def test_a_keyboard_file_without_an_id_is_the_built_in(modules: Path) -> None:
+    unbound = _write(modules, "Keyboard", "")
+    assert registry.is_built_in_input(_by_path(unbound))
 
 
 def _three(modules: Path) -> dict[str, dict]:
-    _write(modules, "keyboard", "Keyboard", KEYBOARD_GUID)
-    _write(modules, "osc", "OSC", OSC_GUID)
-    _write(modules, "stick_a", "Stick A", STICK_GUID)
-    _write(modules, "zed", "Zed Stick", "{22222222-2222-3333-4444-555555555555}")
+    _write(modules, "Keyboard", KEYBOARD_GUID)
+    _write(modules, "OSC", OSC_GUID)
+    _write(modules, "Stick A", STICK_GUID)
+    _write(modules, "Zed Stick", "{22222222-2222-3333-4444-555555555555}")
     return {row["name"]: row for row in library.devices()}
 
 
@@ -96,7 +102,7 @@ def test_built_ins_refuse_remove_and_delete(modules: Path) -> None:
     ):
         assert answer["ok"] is False
         assert "built-in input" in answer["error"]
-    assert (modules / "keyboard.json").exists()
+    assert (modules / "Keyboard" / "module.json").exists()
     assert library.device(key) is not None
 
 

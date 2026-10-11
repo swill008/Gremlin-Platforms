@@ -34,6 +34,7 @@ from gremlin.profile import Profile
 from gremlin.types import PropertyType
 from gremlin.ui import device_pack, hardware_profile, history_model
 from test.unit import test_stage1_modules
+from test.unit._device_folders import module_path, picture_file, put_picture
 from test.unit.test_stage1_history_pack import (
     _pack_map,
     _pack_with_wires,
@@ -443,9 +444,8 @@ def test_s49_s55_a_pack_holds_the_file_pictures_wires_and_outputs(
 ) -> None:
     from gremlin.util import get_code_version
 
-    (folder / "pjoy_pro").mkdir()
-    (folder / "pjoy_pro" / "photo.png").write_bytes(b"a photo")
-    write_module(folder, "pjoy_pro", stick_doc(image="pjoy_pro/photo.png"))
+    ref = put_picture(folder, "pJoy Pro", "photo.png", b"a photo", stick_guid())
+    write_module(folder, "pjoy_pro", stick_doc(image=ref))
     write_module(folder, "vjoy_1", vjoy_doc())
     profile = new_profile(monkeypatch)
     profile.modes.add_mode("Combat")
@@ -524,7 +524,9 @@ def test_s63_a_stick_pack_cant_go_on_a_vjoy_nor_the_other_way(
         "ok": False,
         "error": "A vJoy pack cannot be copied onto a stick.",
     }
-    claims = json.loads((folder / "vjoy_1.json").read_text(encoding="utf-8"))["claim"]
+    claims = json.loads(module_path(folder, "vJoy 1").read_text(encoding="utf-8"))[
+        "claim"
+    ]
     assert claims == vjoy_doc()["claim"]
 
 
@@ -570,9 +572,8 @@ def test_s67_names_are_written_only_for_checked_controls() -> None:
 def test_s73_the_previous_file_and_an_overwritten_picture_are_kept_in_imported(
     folder: Path, tmp_path: Path
 ) -> None:
-    (folder / "pjoy_pro").mkdir()
-    (folder / "pjoy_pro" / "photo.png").write_bytes(b"old photo")
-    path = write_module(folder, "pjoy_pro", stick_doc(image="pjoy_pro/photo.png"))
+    ref = put_picture(folder, "pJoy Pro", "photo.png", b"old photo", stick_guid())
+    path = write_module(folder, "pjoy_pro", stick_doc(image=ref))
     before = path.read_bytes()
     pack = _write_zip(
         tmp_path / "p.zip",
@@ -582,15 +583,16 @@ def test_s73_the_previous_file_and_an_overwritten_picture_are_kept_in_imported(
         pack, "pJoy Pro", {"items": ["in.checks", "pic:photo.png"]}
     )
     assert result["ok"], result
-    imported = folder / "imported"
-    backups = list(imported.glob("pjoy_pro.*.json"))
+    # In the device's own folder (03 S128): <Device Folder>/imported/.
+    imported = path.parent / "imported"
+    backups = list(imported.glob("module *.json"))
     assert len(backups) == 1 and backups[0].read_bytes() == before
-    # A dated name: pjoy_pro.<year>-<day>-<MON>_<h>_<m>_<s>.json
-    assert backups[0].name.split(".")[1][:4].isdigit()
-    assert f"imported\\{backups[0].name}" in result["report"]
-    pictures = list(imported.glob("pjoy_pro_photo.*.png"))
+    # A dated name: module <year>-<day>-<MON>_<h>_<m>_<s>.json
+    assert backups[0].name.split(" ")[1][:4].isdigit()
+    assert f"pJoy Pro\\imported\\{backups[0].name}" in result["report"]
+    pictures = list((imported / "pictures").glob("photo *.png"))
     assert len(pictures) == 1 and pictures[0].read_bytes() == b"old photo"
-    assert (folder / "pjoy_pro" / "photo.png").read_bytes() == b"new photo"
+    assert picture_file(folder, "pJoy Pro", "photo.png").read_bytes() == b"new photo"
 
 
 # Wires to Logical Device button 7, which is missing and not created (08 S64)
@@ -654,7 +656,7 @@ def test_s90_actions_go_in_the_chosen_mode(
     profile = new_profile(monkeypatch)
     profile.modes.add_mode("Combat")
     AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions(mode="Combat")
+        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(mode="Combat")
     )
     assert mapped(profile, stick_uid()) == {("Combat", 1), ("Combat", 2)}
 
@@ -670,9 +672,9 @@ def test_s96_the_overwrite_choice_is_remembered(
     _auto_map_cards(folder)
     new_profile(monkeypatch)
     window = tools.Tools()
-    window.createMappings("Default", {"pjoy_pro": True}, {"vjoy_1": True}, True, False)
+    window.createMappings("Default", {"pJoy Pro": True}, {"vJoy 1": True}, True, False)
     assert window.lastOverwriteUsedInputs() is True
-    window.createMappings("Default", {"pjoy_pro": True}, {"vjoy_1": True}, False, False)
+    window.createMappings("Default", {"pJoy Pro": True}, {"vJoy 1": True}, False, False)
     assert window.lastOverwriteUsedInputs() is False
 
 
@@ -685,7 +687,7 @@ def test_s97_the_new_actions_are_in_memory_only(
     profile.to_xml(path)
     on_disk = path.read_bytes()
     AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions()
+        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions()
     )
     assert mapped(profile, stick_uid()) == {("Default", 1), ("Default", 2)}
     assert path.read_bytes() == on_disk

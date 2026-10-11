@@ -3,10 +3,11 @@
 
 """The names the user gives devices (the Home card name, 10 S7): kept in the
 settings, read by every screen. Not UI: gremlin/modules (the Device Library)
-reads and renames through it. It owns the "device names changed" notice
-(signal.deviceNamesChanged, D-01-OWNER-NOTICES): a rename, a forget, a
-History put-back of the names and a device scan send it, once per burst, on
-the main thread."""
+reads and renames through it. A rename renames the device's folder first
+and is refused, unsaved, when that fails (03 S131). It owns the "device
+names changed" notice (signal.deviceNamesChanged, D-01-OWNER-NOTICES): a
+rename, a forget, a History put-back of the names and a device scan send it,
+once per burst, on the main thread."""
 
 from __future__ import annotations
 
@@ -120,7 +121,8 @@ def _settings_changed() -> None:
     global _ANNOUNCED_RAW
     raw = _stored_raw()
     if raw != _ANNOUNCED_RAW:
-        _ANNOUNCED_RAW = raw
+        before, _ANNOUNCED_RAW = _ANNOUNCED_RAW, raw
+        _sync_folders(before or [], raw)
         notify_names()
 
 
@@ -192,17 +194,105 @@ def notify_names() -> None:
     _names.notify()
 
 
-def set_alias(key: str, value: str) -> None:
+def _device_id(key: object) -> uuid.UUID | None:
+    """The device id of an alias key whose device has a folder named after
+    its shown name: a stick or other external device. None for the
+    built-ins ("keyboard", "osc", ... and their ids: fixed folder names) and
+    vJoy devices (their folder is "vJoy N")."""
+    try:
+        uid = uuid.UUID(str(key or "").strip().strip("{}"))
+    except ValueError:
+        return None
+    from gremlin import device_initialization
+    from gremlin.modules import device_class
+
+    if device_class.is_fixed_id(uid):
+        return None
+    try:
+        if device_initialization.device_for_uuid(uid).is_virtual:
+            return None
+    except KeyError:
+        pass
+    return uid
+
+
+def _rename_folder(key: object, alias: str) -> str:
+    """Renames the device's folder to its new shown name (03 S131): "" when
+    done or there is nothing to rename, else why it was refused."""
+    uid = _device_id(key)
+    if uid is None:
+        return ""
+    from gremlin import device_initialization
+    from gremlin.modules import store
+
+    own = device_initialization.shown_name(uid)
+    device_name = device_initialization.device_name(uid) or own
+    shown = alias or own
+    if not shown:
+        return ""
+    try:
+        ok, reason = store.rename_device_dir(device_name or shown, str(uid), shown)
+    except Exception as exc:  # noqa: BLE001 - a failed rename is refused
+        logging.getLogger("system").exception(f"Device folder of {shown} not renamed")
+        return f"The device's folder could not be renamed to {shown} ({exc})."
+    if ok:
+        return ""
+    return reason or f"The device's folder could not be renamed to {shown}."
+
+
+def set_alias(key: str, value: str) -> str:
+    """Gives a device its shown name (an empty value takes the alias away).
+    Its folder is renamed first (03 S131); when that is refused nothing
+    changes and the reason is returned. "" when done."""
     names = dict(_load())
     stored = _stored_key(names, key)
+    text = str(value or "").strip()
+    current = names.get(stored, "").strip() if stored is not None else ""
+    if text != current:
+        reason = _rename_folder(key, text)
+        if reason:
+            logging.getLogger("system").warning(f"Rename refused: {reason}")
+            return reason
     if stored is not None:
         names.pop(stored)
     key = str(key).strip()
-    text = str(value or "").strip()
     if text:
         names[key] = text
     _save(names)
     notify_names()
+    return ""
+
+
+def _sync_folders(before: list, after: list) -> None:
+    """Names put back from outside (History Restore): the folders of the
+    devices whose alias changed follow (store.sync_dir_name logs a folder
+    it can't rename; no message)."""
+
+    def as_dict(rows: list) -> dict[str, str]:
+        return {
+            _same_key(row[0]): str(row[1]).strip()
+            for row in rows
+            if isinstance(row, list) and len(row) >= 2
+        }
+
+    old, new = as_dict(before or []), as_dict(after)
+    from gremlin import device_initialization
+    from gremlin.modules import store
+
+    for key in old.keys() | new.keys():
+        if old.get(key) == new.get(key):
+            continue
+        uid = _device_id(key)
+        if uid is None:
+            continue
+        name = device_initialization.device_name(uid)
+        name = name or device_initialization.shown_name(uid)
+        try:
+            store.sync_dir_name(name, str(uid))
+        except Exception:  # noqa: BLE001 - logged; the names still change
+            logging.getLogger("system").exception(
+                f"Device folder of {name} not checked"
+            )
 
 
 def forget(gone: Callable[[str], bool]) -> bool:

@@ -208,7 +208,9 @@ def test_a_bad_pack_is_refused_naming_the_part(lib: dict, variant: str) -> None:
 def test_a_pack_too_big_to_unpack_is_refused(
     lib: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(device_pack, "MAX_UNPACKED", 64 * 1024)
+    from gremlin.modules import pack_checks
+
+    monkeypatch.setattr(pack_checks, "MAX_UNPACKED", 64 * 1024)
     pack = lib["tmp"] / "big.zip"
     pack.write_bytes(
         _zip({"map.json": json.dumps({**_MAP, "pad": "A" * (200 * 1024)})})

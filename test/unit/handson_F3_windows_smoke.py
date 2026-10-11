@@ -130,7 +130,7 @@ def part_calib() -> None:
     """03 S101: Calibration opened for a stick that isn't plugged in waits
     for it (no other stick picked) and shows it when it connects."""
     from gremlin import event_handler
-    from gremlin.ui import hardware_profile
+    from gremlin.modules import store
 
     first = fake.devices[0]
     second = fake_hardware.raw_device(is_virtual=False)
@@ -139,17 +139,17 @@ def part_calib() -> None:
     for dev, name, slug in ((first, "pJoy Pro", "pjoy_pro"),
                             (second, "Second Stick", "second_stick")):
         guid = str(dill.GUID(dev.device_guid).uuid)
-        path = hardware_profile.module_json_path(name, guid)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # Its own device folder (03 S128); the folder is its slug.
+        path = store.module_file_in(store.ensure_device_dir(name, guid))
         path.write_text(json.dumps({
             "kind": "control.hardware", "device": name, "direction": "source",
             "boundGuidLocal": guid,
             "claim": {"buttons": [1], "axes": [1, 2], "hats": [], "keys": []},
         }), encoding="utf-8")
-        out[f"file-{slug}"] = path.stem
+        out[f"file-{slug}"] = path.parent.name
     event_handler.EventListener()._run_device_list_update()
     w = open_window(win, "DialogCalibration.qml", "Calibration",
-                    "{initialSlug: 'second_stick'}")
+                    "{initialSlug: 'Second Stick'}")
     root = w
     wait_until(lambda: int(ev(root, "_moduleSelection.count")) > 0)
     wait_until(lambda: ev(root, "shownSlug"))

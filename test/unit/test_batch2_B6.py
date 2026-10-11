@@ -6,8 +6,9 @@
 and the Button Map's JavaScript, each driven through its real slot.
 
 Spec: claude/program-map/07-button-map.md (Q2, Q3, Q8, Q10, Q13, Q19, S29,
-S81, RB8) and 08-history-pack-automap.md (R4, S49).
-GL-030, GL-174, GL-175, GL-177, GL-178, GL-180, GL-181, GL-183, GL-196.
+S107, RB8) and 08-history-pack-automap.md (R4, S49).
+GL-030, GL-174, GL-175, GL-177, GL-178, GL-180, GL-183, GL-196 (GL-181
+retired: 07 S81 removed by D-03-DEVICE-FOLDERS).
 (GL-043 and GL-138 are in test_stage1_modules.py; GL-173, GL-176, GL-179,
 GL-182, GL-184 in test_stage1_button_map.py; GL-188 in
 test_stage1_history_pack.py.)
@@ -26,6 +27,7 @@ from PySide6 import QtCore, QtGui, QtQml
 from gremlin.modules import store
 from gremlin.signal import signal
 from gremlin.ui import device_pack, hardware_profile
+from test.unit._device_folders import module_path, picture_file, put_module, put_picture
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -35,9 +37,6 @@ def maps(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.Pat
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
-    monkeypatch.setattr(
-        store, "slug_for", lambda name, guid="": name.lower().replace(" ", "_")
-    )
     return folder
 
 
@@ -108,35 +107,34 @@ def test_an_export_that_does_not_read_back_says_so(
 def test_choose_photo_writes_no_image_into_the_module_file(
     maps: pathlib.Path, tmp_path: pathlib.Path
 ) -> None:
-    # 07 Q2: the new photo waits beside the old one until Save.
-    path = maps / "test_stick.json"
-    path.write_text(
-        json.dumps({"kind": "control.hardware", "nodes": []}), encoding="utf-8")
+    # 07 Q2, S107: the new photo waits in the edit's temporary folder until
+    # Save; neither the module file nor the device's folder changes.
+    path = put_module(maps, "Test Stick", {"kind": "control.hardware", "nodes": []})
     before = path.read_bytes()
     picture = tmp_path / "new.png"
     image = QtGui.QImage(4, 4, QtGui.QImage.Format.Format_RGB32)
     image.fill(QtGui.QColor("#336699"))
     image.save(str(picture))
     hw = hardware_profile.HardwareProfile()
-    hw.stashPhoto("Test Stick")
+    hw.beginEdit("Test Stick")
     rel = hw.copyImage(picture.as_uri(), "Test Stick")
-    assert rel == "test_stick/photo.png"
-    assert (maps / "test_stick" / "photo.png").is_file()
+    assert rel == "pictures/photo.png"
+    assert not picture_file(maps, "Test Stick", "photo.png").exists()
     assert path.read_bytes() == before
-    # Save names it (one write).
+    # Save names it (one write) and puts the photo in the device's folder.
     assert hw.save("Test Stick", json.dumps({"image": rel, "nodes": []}))
     assert json.loads(path.read_text(encoding="utf-8"))["image"] == rel
+    assert picture_file(maps, "Test Stick", "photo.png").is_file()
 
 
 def test_a_ui_change_makes_no_module_file(maps: pathlib.Path) -> None:
     # 07 S29, S96 (GL-175): the ui block waits in the window until Save.
     hw = hardware_profile.HardwareProfile()
     assert hw.saveUi("Test Stick", json.dumps({"ui": {"guidesX": [0.5]}})) is False
-    assert not (maps / "test_stick.json").exists()
-    (maps / "test_stick.json").write_text(
-        json.dumps({"kind": "control.hardware", "nodes": []}), encoding="utf-8")
+    assert not module_path(maps, "Test Stick").exists()
+    path = put_module(maps, "Test Stick", {"kind": "control.hardware", "nodes": []})
     assert hw.saveUi("Test Stick", json.dumps({"ui": {"guidesX": [0.5]}})) is True
-    doc = json.loads((maps / "test_stick.json").read_text(encoding="utf-8"))
+    doc = json.loads(path.read_text(encoding="utf-8"))
     assert doc["ui"] == {"guidesX": [0.5]}
 
 
@@ -219,8 +217,7 @@ def test_the_pool_rows_key_changes_only_with_what_they_depend_on(
     hw = hardware_profile.HardwareProfile()
     first = hw.chipsKey(guid)
     assert first and hw.chipsKey(guid) == first
-    (maps / "test_stick.json").write_text(
-        json.dumps({"claim": {"buttons": [1]}}), encoding="utf-8")
+    put_module(maps, "Test Stick", {"claim": {"buttons": [1]}})
     second = hw.chipsKey(guid)
     assert second != first
     signal.profileChanged.emit()
@@ -236,27 +233,6 @@ def test_the_card_reads_rows_by_the_key() -> None:
     binding = card[card.find("property var chipRows"):]
     # Not a binding: refreshChipRows() assigns it (no "Overwriting binding").
     assert binding.startswith("property var chipRows: null")
-
-
-# --- GL-181: a template's missing pictures ------------------------------------
-
-
-def test_a_template_says_which_pictures_are_missing(
-    maps: pathlib.Path, tmp_path: pathlib.Path
-) -> None:
-    # 07 S81: a template keeps where its pictures are; a moved or deleted
-    # one is named when it is applied.
-    (maps / "test_stick").mkdir()
-    (maps / "test_stick" / "here.png").write_bytes(b"png")
-    hw = hardware_profile.HardwareProfile()
-    nodes = [
-        {"id": "p1", "kind": "draw", "shape": "image", "src": "test_stick/here.png"},
-        {"id": "p2", "kind": "draw", "shape": "image", "src": "test_stick/gone.png"},
-        {"id": "b1", "kind": "btn", "hwId": 1},
-    ]
-    assert hw.saveTemplate("Mine", json.dumps(nodes), "Test Stick")
-    assert hw.templateMissingPictures("Mine") == ["gone.png"]
-    assert hw.templateMissingPictures("Not there") == []
 
 
 # --- GL-182: the controls a device has ----------------------------------------
@@ -300,11 +276,10 @@ def test_the_pack_preview_estimates_without_building_the_zip(
     maps: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # 08 S49: at every device change, on the UI thread: no zip.
-    (maps / "test_stick").mkdir()
-    (maps / "test_stick" / "photo.jpg").write_bytes(b"x" * 5000)
-    (maps / "test_stick.json").write_text(json.dumps({
-        "kind": "control.hardware", "image": "test_stick/photo.jpg", "nodes": []}),
-        encoding="utf-8")
+    ref = put_picture(maps, "Test Stick", "photo.jpg", b"x" * 5000)
+    put_module(
+        maps, "Test Stick", {"kind": "control.hardware", "image": ref, "nodes": []}
+    )
 
     def no_zip(*args: object, **kwargs: object) -> object:
         raise AssertionError("the preview built the pack")

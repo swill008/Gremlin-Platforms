@@ -205,7 +205,7 @@ def test_osc_friendly_names_are_kept_by_uid() -> None:
         assert [setup._rows[i]["uid"] for i in range(setup.rowCount())] == [first.uid]
         setup.setFriendly(0, "Fire")
         assert setup.saveClaim("OSC", "source")
-        saved = store.path_for("OSC", module_model.OSC_GUID)
+        saved = store.module_file("OSC", module_model.OSC_GUID)
         doc = _json.loads(saved.read_text("utf-8"))
         assert doc["claim"]["friendly"] == {f"osc:{first.uid}": "Fire"}
 

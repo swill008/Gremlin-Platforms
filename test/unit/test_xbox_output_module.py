@@ -7,7 +7,6 @@ control is available and nothing is claimed (as in GremlinEx)."""
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,6 +16,7 @@ import pytest
 
 from gremlin.modules import output, registry
 from gremlin.modules.claim import read_claim
+from test.unit._device_folders import put_module
 from vigem.xbox import XboxTarget
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -60,11 +60,10 @@ def folder(tmp_path: Path) -> Iterator[Path]:
         "direction": "dest",
         "claim": {"buttons": [], "axes": [], "hats": [], "keys": []},
     }
-    path = tmp_path / "xbox_360_controller.json"
-    path.write_text(json.dumps(doc), encoding="utf-8")
+    put_module(tmp_path, "Xbox 360 Controller", doc)
     _FakeProxy.pad = _FakePad()
     with (
-        mock.patch.object(registry, "_folder", return_value=tmp_path),
+        mock.patch("gremlin.modules.store.folder", return_value=tmp_path),
         mock.patch("vigem.xbox.XboxProxy", _FakeProxy),
     ):
         output.refresh()

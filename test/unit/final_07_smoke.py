@@ -61,7 +61,6 @@ from PySide6 import QtCore, QtGui, QtQml, QtTest  # noqa: E402
 
 import dill  # noqa: E402
 from gremlin import clock  # noqa: E402
-from gremlin.ui import hardware_profile as hp  # noqa: E402
 from vigem import own_pads  # noqa: E402
 
 # A stick with no module file, and one of the program's own Xbox pads (an
@@ -97,9 +96,13 @@ THIRD_CARD = {"rawName": "Third Stick", "name": "Third Stick", "guid": THIRD_GUI
 LIMIT = 15.0
 NOT_S = 1.5
 
-MAP_FILE = hp.module_json_path(NAME, GUID)
-SLUG = MAP_FILE.stem
-MODULES = MAP_FILE.parent
+from gremlin.modules import store  # noqa: E402
+
+# The device's folder (03 S128): <modules>/pJoy Pro/module.json, pictures/.
+DEVICE = store.ensure_device_dir(NAME, GUID)
+MAP_FILE = store.module_file_in(DEVICE)
+MODULES = DEVICE.parent
+PICS = DEVICE / "pictures"
 
 
 def chip(hw: int, fx: float) -> dict:
@@ -114,11 +117,11 @@ START_NODES = [chip(1, 0.20), chip(2, 0.30), chip(3, 0.40)]
 # A large photo: 800% of it is past the 16384 pixel cap (S84).
 _photo = QtGui.QImage(2400, 2400, QtGui.QImage.Format.Format_RGB32)
 _photo.fill(QtGui.QColor("#305070"))
-(MODULES / SLUG).mkdir(parents=True, exist_ok=True)
-_photo.save(str(MODULES / SLUG / "photo.png"))
+PICS.mkdir(parents=True, exist_ok=True)
+_photo.save(str(PICS / "photo.png"))
 MAP_FILE.write_text(json.dumps({
     "kind": "control.hardware", "device": NAME,
-    "image": f"{SLUG}/photo.png", "nodes": START_NODES,
+    "image": "pictures/photo.png", "nodes": START_NODES,
 }), encoding="utf-8")
 
 PICTURE = _HOME / "pictures" / "drop me.png"
@@ -156,10 +159,13 @@ def same(a: object, b: object) -> bool:
 
 
 def files_under(folder: Path) -> list[str]:
-    return sorted(
+    """The saved files: an edit's temporary folder in cache/ (07 S107) is
+    not a saved file."""
+    found = (
         str(p.relative_to(folder)).replace("\\", "/")
         for p in folder.rglob("*") if p.is_file()
     )
+    return sorted(name for name in found if not name.startswith("cache/"))
 
 
 # Finds a menu row by its text (submenus too) and returns it.

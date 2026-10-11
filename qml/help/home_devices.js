@@ -296,7 +296,7 @@ function topics() {
             section: "Modules",
             title: "Module files",
             body: "<p>Each device has its own module file, found by the device first and then by its name. It holds the device's claims, friendly names, picture, Button Map layout, Appearance and calibration.</p>"
-                + "<p>In Input or Output Module Setup, <b>Module File</b> shows the <b>Current file</b>, with \"(not saved yet)\" when it doesn't exist yet, and offers:</p>"
+                + "<p>In Input or Output Module Setup, <b>Module File</b> shows the <b>Device folder</b>, with \"(not saved yet)\" when it doesn't exist yet, and offers:</p>"
                 + "<ul>"
                 + "<li><b>Import from</b>: copy another file into this device's file (see <a href=\"topic:home-devices-import-module-file\">Import a module file</a>).</li>"
                 + "<li><b>Browse for File</b> and <b>Open Modules Folder</b>.</li>"

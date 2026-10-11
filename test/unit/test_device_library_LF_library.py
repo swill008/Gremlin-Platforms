@@ -18,9 +18,10 @@ import pytest
 
 from gremlin import device_library as library
 from gremlin import plugin_manager, shared_state
-from gremlin.modules import module_file, registry, store
+from gremlin.modules import store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
+from test.unit._device_folders import put_module, put_picture
 
 GUID = "{6C3D1E20-1111-2222-3333-444455556666}"
 UID = uuid.UUID(GUID.strip("{}"))
@@ -56,8 +57,7 @@ def lib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[dict]:
 
 
 def _module(modules: Path, photo: bool = False) -> Path:
-    slug = registry.plain_slug(NAME)
-    path = modules / f"{slug}.json"
+    """The device's module.json in its own folder (03 S128)."""
     doc: dict = {
         "kind": "control.hardware",
         "device": NAME,
@@ -66,12 +66,8 @@ def _module(modules: Path, photo: bool = False) -> Path:
         "nodes": [],
     }
     if photo:
-        pictures = modules / slug
-        pictures.mkdir(exist_ok=True)
-        (pictures / "photo.png").write_bytes(PNG)
-        doc["image"] = f"{slug}/photo.png"
-    module_file.write_bytes(path, json.dumps(doc).encode("utf-8"))
-    return path
+        doc["image"] = put_picture(modules, NAME, "photo.png", PNG, GUID)
+    return put_module(modules, NAME, doc, GUID)
 
 
 def _profile() -> Profile:
@@ -173,17 +169,17 @@ def test_s22_current_settings_as_a_pack_kept_nowhere(lib: dict) -> None:
     assert "setup" in got["holds"] and "bindings" in got["holds"]
     assert got["modes"] == ["Default"]
     with zipfile.ZipFile(__import__("io").BytesIO(got["data"])) as zf:
-        assert "wires.json" in zf.namelist()
+        assert library.GMAP_WIRES in zf.namelist()
     # Nothing kept in the Library.
     assert _row()["setups"] == []
-    assert not any(lib["folder"].rglob("*.zip"))
+    assert not any(lib["folder"].rglob("*.gmap"))
     module_only = library.current_pack(key, None)
     assert module_only["ok"] and "bindings" not in module_only["holds"]
 
 
 def test_s22_a_device_with_nothing_here_has_no_current_settings(lib: dict) -> None:
-    _module(lib["modules"])
+    path = _module(lib["modules"])
     assert library.autosave(NAME, GUID, "deleted", "Autosave: stick deleted", [])["ok"]
-    (lib["modules"] / f"{registry.plain_slug(NAME)}.json").unlink()
+    path.unlink()
     got = library.current_pack(_row()["key"], None)
     assert not got["ok"] and "saved setup" in got["error"]

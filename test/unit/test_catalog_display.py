@@ -35,13 +35,13 @@ def test_main_has_catalog_display_button() -> None:
     # The bar and the open state come from the shared PageAppearance part
     # (to-do 91); the page gives its key and button name.
     page = _PAGE.read_text(encoding="utf-8")
-    use = page[page.index("PageAppearance {"):]
+    use = page[page.index("PageAppearance {") :]
     use = use[: use.index("}")]
     assert 'buttonName: "configurationAppearanceButton"' in use
     assert 'pageKey: "configuration"' in use
     assert "readonly property Component pageBar: _appear.pageBar" in page
     part = _PART.read_text(encoding="utf-8")
-    bar = part[part.index("property Component pageBar"):]
+    bar = part[part.index("property Component pageBar") :]
     bar = bar[: bar.index("onClicked")]
     assert "objectName: _part.buttonName" in bar
     assert 'text: _part.displayOpen ? "Hide Appearance" : "Appearance…"' in bar
@@ -136,7 +136,7 @@ def test_save_writes_catalog_not_view() -> None:
     assert "_place.setListAppearance(pageKey," in save
     assert "required property string pageKey" in text
     page = _PAGE.read_text(encoding="utf-8")
-    panel = page[page.index("PageAppearance {"):]
+    panel = page[page.index("PageAppearance {") :]
     assert 'pageKey: "configuration"' in panel[: panel.index("}")]
     assert "saveViewConfig" not in save and "saveCatalogConfig" not in save
     mm = _MM.read_text(encoding="utf-8")
@@ -241,15 +241,18 @@ def test_photo_lookup_does_not_copy_another_device() -> None:
     root = Path(__file__).resolve().parents[2]
     text = root.joinpath("gremlin/ui/hardware_profile.py").read_text(encoding="utf-8")
     registry = root.joinpath("gremlin/modules/registry.py").read_text(encoding="utf-8")
-    start = registry.find("def resolve_module_slug")
-    end = registry.find("def ", start + 1)
-    assert start != -1
-    body = registry[start:end]
-    assert "_write_bindings" not in body
+    # No name-slug lookup that could land on another device's file (03 S130).
+    assert "def resolve_module_slug" not in registry
     assert "for folder in _maps_dir().iterdir()" not in text
-    # Which file and picture folder a device uses is the module store's
-    # (store.slug_for / store.pictures_dir, GL-067); the guard test
+    # Which folder and pictures a device uses is the module store's
+    # (store.device_dir / store.pictures_dir, GL-067); the guard test
     # test_module_store_only keeps callers from building module paths.
-    copy = text[text.find("def copyImage"): text.find("def clearImage")]
+    copy = text[text.find("def copyImage") : text.find("def removeUnusedPictures")]
     assert copy
-    assert "self._file_for(name)" not in copy
+    # Choose Photo keeps the picture in the edit (07 S107): nothing is
+    # copied into a device folder or written to a module file here.
+    assert "self._stage(" in copy
+    assert "write_bytes" not in copy and "update_path" not in copy
+    photo = text[text.find("def profilePhotoUrl") : text.find("def path(")]
+    # The photo comes from the device's own pictures/ only (07 S11).
+    assert "path.resolve().parent != own.resolve()" in photo

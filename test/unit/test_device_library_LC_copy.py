@@ -24,11 +24,12 @@ from gremlin import (
     util,
 )
 from gremlin import device_library as library
-from gremlin.modules import module_file, registry
+from gremlin.modules import module_file
 from gremlin.modules import store as module_store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
 from gremlin.ui import device_pack
+from test.unit._device_folders import ensure_dir
 
 _OTHER = uuid.UUID("11111111-2222-3333-4444-555555555555")
 
@@ -40,8 +41,21 @@ def _stick() -> tuple[str, uuid.UUID]:
     pytest.skip("the fake stick is not there")
 
 
+def _write_own(name: str, doc: dict, guid: str = "") -> Path:
+    """The device's module.json in its own folder (with device.json), as
+    Module Setup's Save writes it."""
+    path = ensure_dir(util.modules_dir(), name, guid) / module_store.MODULE_FILE
+    module_file.write_json(path, doc)
+    return path
+
+
 def _own_path(name: str) -> Path:
-    return util.modules_dir() / f"{registry.plain_slug(name) or 'device'}.json"
+    """The module.json in the folder named after the device (D-03-DEVICE-FOLDERS)."""
+    return (
+        util.modules_dir()
+        / module_store.folder_name_for(name)
+        / module_store.MODULE_FILE
+    )
 
 
 def _map(
@@ -197,11 +211,10 @@ def lib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[dict]:
     modules.mkdir(parents=True, exist_ok=True)
     aside = tmp_path / "aside"
     aside.mkdir()
-    for old in modules.glob("*.json"):
+    # Every device folder other tests left is put aside (and back after).
+    for old in list(modules.iterdir()):
         shutil.move(str(old), str(aside / old.name))
     before = {p.name for p in modules.iterdir()}
-    bindings = module_store.bindings()
-    module_store.set_bindings({})
     fake = FakeLibrary(tmp_path)
     fake.install(monkeypatch)
     try:
@@ -217,7 +230,6 @@ def lib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[dict]:
                 extra.unlink(missing_ok=True)
         for old in aside.iterdir():
             shutil.move(str(old), str(modules / old.name))
-        module_store.set_bindings(bindings)
 
 
 def _module(name: str, buttons: list[int], row_height: int) -> dict:
@@ -240,7 +252,7 @@ def _module(name: str, buttons: list[int], row_height: int) -> dict:
 def _setup(tmp_path: Path, name: str, uid: uuid.UUID, fake: FakeLibrary) -> dict:
     # The saved setup: an old stick's pack (made here as pJoy Pro, kept
     # under "Old Stick" in the Library).
-    module_file.write_json(_own_path(name), _module(name, [1, 2], 40))
+    _write_own(name, _module(name, [1, 2], 40), str(uid))
     source = _new_profile(name, uid)
     source.modes.add_mode("Combat")
     _map(source, uid, 1, "Default", 2, 1)
@@ -250,8 +262,8 @@ def _setup(tmp_path: Path, name: str, uid: uuid.UUID, fake: FakeLibrary) -> dict
     assert not isinstance(built, str), built
     setup = fake.add("Old Stick", "", built[0], list(library.PARTS), [])
     # This PC: the stick's own module file and bindings.
-    module_file.write_json(_own_path(name), _module(name, [3], 20))
-    module_file.write_json(_own_path("Other Stick"), _module("Other Stick", [1], 30))
+    _write_own(name, _module(name, [3], 20), str(uid))
+    _write_own("Other Stick", _module("Other Stick", [1], 30), str(_OTHER))
     target = _new_profile(name, uid)
     target.modes.add_mode("Landing")
     _map(target, uid, 3, "Default", 1, 3)

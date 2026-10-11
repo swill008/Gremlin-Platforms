@@ -18,7 +18,11 @@ from PySide6 import QtCore
 from gremlin import history_modules
 from gremlin import logical_device_file as ldf
 from gremlin.modules import module_file, store
+from gremlin.modules.ids import LOGICAL_DEVICE
 from gremlin.ui import module_model
+from test.unit._device_folders import put_module
+
+LD = "Logical Device"
 
 _JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 32 + b"\xff\xd9"
 _PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
@@ -36,7 +40,6 @@ def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
     monkeypatch.setattr(store, "_saved", lambda: None)
-    monkeypatch.setattr(store, "into_library", lambda src: Path(src))
     monkeypatch.setattr(module_model, "_hidden_slugs", lambda: set())
     return folder
 
@@ -69,9 +72,8 @@ def _picture(tmp_path: Path, name: str, data: bytes) -> str:
 
 
 def _ld_file(modules: Path, doc: dict | None = None) -> Path:
-    path = ldf.path()
-    assert path == modules / "logical_device.json"
-    path.write_text(json.dumps(doc or {"name": "Logical Device"}), encoding="utf-8")
+    path = put_module(modules, LD, doc or {"name": LD}, str(LOGICAL_DEVICE))
+    assert path == ldf.path() == modules / LD / "module.json"
     return path
 
 
@@ -90,10 +92,10 @@ def test_add_sets_the_card_photo_and_the_file_image_with_history(
 
     assert model.setCardImage("logical", _picture(tmp_path, "pic.jpg", _JPEG))
 
-    photo = modules / "logical_device" / "photo.jpg"
+    photo = modules / LD / "pictures" / "photo.jpg"
     assert photo.read_bytes() == _JPEG
     doc = _doc(path)
-    assert doc["image"] == "logical_device/photo.jpg"
+    assert doc["image"] == "pictures/photo.jpg"
     assert doc["layout"] == {"controls": []}
     card = model.cardMap("logical")
     assert card["photo"].startswith(photo.as_uri())
@@ -110,10 +112,10 @@ def test_change_replaces_the_picture(
     assert model.setCardImage("logical", _picture(tmp_path, "a.jpg", _JPEG))
     assert model.setCardImage("logical", _picture(tmp_path, "b.png", _PNG))
 
-    pictures = modules / "logical_device"
+    pictures = modules / LD / "pictures"
     assert sorted(p.name for p in pictures.glob("photo*")) == ["photo.png"]
     assert (pictures / "photo.png").read_bytes() == _PNG
-    assert _doc(path)["image"] == "logical_device/photo.png"
+    assert _doc(path)["image"] == "pictures/photo.png"
     assert model.cardMap("logical")["photo"].startswith(
         (pictures / "photo.png").as_uri()
     )
@@ -130,7 +132,7 @@ def test_remove_drops_the_photo_and_clears_image(
 
     assert model.removeCardImage("logical")
 
-    assert not list((modules / "logical_device").glob("photo*"))
+    assert not list((modules / LD / "pictures").glob("photo*"))
     assert _doc(path)["image"] == ""
     assert model.cardMap("logical")["photo"] == ""
     assert model.cardMap("logical")["hasPhoto"] is False
@@ -145,14 +147,13 @@ def test_other_cards_are_refused(modules: Path, tmp_path: Path) -> None:
     assert model.setCardImage("pjoy_pro", url) is False
     assert model.setCardImage("keyboard", url) is False
     assert model.removeCardImage("keyboard") is False
-    assert not (modules / "logical_device").exists()
+    assert not (modules / LD / "pictures").exists()
 
 
 def test_a_damaged_file_is_refused_and_left_alone(
     modules: Path, refused: list, tmp_path: Path
 ) -> None:
-    path = ldf.path()
-    path.write_bytes(b"{not json")
+    path = put_module(modules, LD, b"{not json", str(LOGICAL_DEVICE))
     model = module_model.ModuleListModel()
     model.reload()
 
@@ -160,5 +161,5 @@ def test_a_damaged_file_is_refused_and_left_alone(
     assert model.removeCardImage("logical") is False
 
     assert path.read_bytes() == b"{not json"
-    assert not list(modules.glob("logical_device/photo*"))
+    assert not list(modules.glob(f"{LD}/pictures/photo*"))
     assert refused and refused[0] == path

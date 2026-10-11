@@ -113,11 +113,11 @@ def test_history_names_a_layout_save(
     monkeypatch.setattr(
         history, "write_now", lambda area, title, *a, **k: written.append((area, title))
     )
-    monkeypatch.setattr(history_modules, "_keep_pictures", lambda doc: [])
+    monkeypatch.setattr(history_modules, "_keep_pictures", lambda path, doc: [])
     old = {"device": "pJoy Pro", "claim": {"buttons": [1]}}
     new = dict(old, layout=LAYOUT)
     history_modules._record(
-        tmp_path / "pjoy_pro.json", json.dumps(old), json.dumps(new), "save"
+        tmp_path / "pJoy Pro" / "module.json", json.dumps(old), json.dumps(new), "save"
     )
     assert written == [("modules", "Saved pJoy Pro: Configuration layout")]
     assert "catalog" not in history_modules._WORDS
@@ -205,20 +205,20 @@ def test_swap_exchanges_the_layout_with_the_setup(
         json.dumps({"layout": left_layout, "view": {"a": 1}}), "utf-8"
     )
     paths["R"].write_text(json.dumps({"catalog": {"rows": 2}}), "utf-8")
-    monkeypatch.setattr(store, "path_for_id", lambda name, guid: paths[name])
+    monkeypatch.setattr(store, "module_file", lambda name, guid="": paths[name])
     monkeypatch.setattr(store, "damage_of", lambda path: "")
     monkeypatch.setattr(
         store, "read_path", lambda path: json.loads(Path(path).read_text("utf-8"))
     )
     shared = {"button": set(), "axis": set(), "hat": set()}
-    _a, _b, left, right, _files = library_swap._swapped_docs(
-        ("L", ""), ("R", ""), ["setup"], shared
-    )
+    out = library_swap._swapped_docs(("L", ""), ("R", ""), ["setup"], shared, [])
+    assert not isinstance(out, str), out
+    _a, _b, left, right = out
     assert "layout" not in left and right["layout"] == left_layout
     # Appearance is the Output View only: no "catalog" moves.
-    _a, _b, left, right, _files = library_swap._swapped_docs(
-        ("L", ""), ("R", ""), ["appearance"], shared
-    )
+    out = library_swap._swapped_docs(("L", ""), ("R", ""), ["appearance"], shared, [])
+    assert not isinstance(out, str), out
+    _a, _b, left, right = out
     assert "catalog" not in left and right["view"] == {"a": 1}
 
 

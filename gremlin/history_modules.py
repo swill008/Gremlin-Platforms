@@ -66,9 +66,16 @@ def _modules() -> Path:
 
 
 def is_module_file(path: Path) -> bool:
+    """True for <modules>/<Device Folder>/module.json (not a reserved folder)."""
+    from gremlin.modules import store
+
     path = Path(path)
     try:
-        return path.suffix.lower() == ".json" and path.parent.resolve() == _modules()
+        return (
+            path.name == store.MODULE_FILE
+            and path.parent.parent.resolve() == _modules()
+            and path.parent.name.lower() not in store.RESERVED
+        )
     except OSError:
         return False
 
@@ -110,7 +117,7 @@ def before_change(path: Path) -> None:
             return
         if not is_module_file(path) or not path.is_file():
             return
-        _last_pictures[str(path)] = _keep_pictures(_doc(_read(path)))
+        _last_pictures[str(path)] = _keep_pictures(path, _doc(_read(path)))
 
 
 def note_write(path: Path, text: str, old: str | None) -> None:
@@ -121,7 +128,8 @@ def note_write(path: Path, text: str, old: str | None) -> None:
         return
     if old == text:
         return
-    history.later(lambda: _record(path, old, text, "save"))
+    device_id = _device_id(path)
+    history.later(lambda: _record(path, old, text, "save", device_id=device_id))
 
 
 def delete_before(path: Path) -> dict | None:
@@ -131,7 +139,12 @@ def delete_before(path: Path) -> dict | None:
     if not is_module_file(path) or not path.is_file():
         return None
     old = _read(path)
-    return {"text": old, "pictures": _keep_pictures(_doc(old))}
+    return {
+        "text": old,
+        "pictures": _keep_pictures(path, _doc(old)),
+        # Read now: a delete of the whole folder takes device.json with it.
+        "deviceId": _device_id(path),
+    }
 
 
 # note_delete(path) without before: the old way, called before the delete
@@ -151,9 +164,14 @@ def note_delete(
     if not isinstance(before, dict):
         return
     old, pictures = before.get("text"), list(before.get("pictures") or [])
+    device_id = str(before.get("deviceId") or "")
     with _pictures_lock:
         _last_pictures.pop(str(path), None)
-    history.later(lambda: _record(path, old, None, "delete", pictures, moved_to))
+    history.later(
+        lambda: _record(
+            path, old, None, "delete", pictures, moved_to, device_id=device_id
+        )
+    )
 
 
 @contextmanager
@@ -173,32 +191,38 @@ def deleting(path: Path, moved_to: Path | None = None) -> Iterator[None]:
     note_delete(path, before, moved_to)
 
 
-def _picture_refs(doc: dict | None) -> list[str]:
-    if not doc:
-        return []
-    refs = [str(doc.get("image") or "")]
-    for node in doc.get("nodes") or []:
-        if isinstance(node, dict) and (
-            node.get("kind") == "image" or node.get("shape") == "image"
-        ):
-            refs.append(str(node.get("src") or ""))
-    return [ref for ref in dict.fromkeys(refs) if ref and not ref.startswith("file:")]
-
-
-def picture_path(ref: str) -> Path:
-    """Where a picture the file names is ("qml/maps/..." as the Button Map
-    finds it: in the modules folder)."""
+def _device_id(path: Path) -> str:
+    """The id key in the device folder's device.json ("" when none)."""
     from gremlin.modules import store
 
-    return store.picture_path(str(ref))
+    doc = _doc(_read(Path(path).parent / store.ID_FILE))
+    return str((doc or {}).get("id") or "").strip()
 
 
-def _keep_pictures(doc: dict | None) -> list[dict]:
+def _picture_refs(doc: dict | None) -> list[str]:
+    from gremlin.modules import store
+
+    if not doc:
+        return []
+    return sorted(
+        ref for ref in store.named_refs(doc) if ref and not ref.startswith("file:")
+    )
+
+
+def picture_path(module_path: Path, ref: str) -> Path:
+    """Where a picture the module file names is: its ref is relative to the
+    file's device folder."""
+    from gremlin.modules import store
+
+    return store.picture_path(Path(module_path).parent, str(ref))
+
+
+def _keep_pictures(module_path: Path, doc: dict | None) -> list[dict]:
     # Every picture the file names, kept or not ("keptFile" ""): Restore
     # then names the ones it can't put back.
     kept = []
     for ref in _picture_refs(doc):
-        path = picture_path(ref)
+        path = picture_path(module_path, ref)
         name = history.keep_file(path) if path.is_file() else ""
         kept.append({"ref": ref, "keptFile": name})
     return kept
@@ -216,13 +240,16 @@ def _record(
     kind: str,
     old_pictures: list[dict] | None = None,
     moved_to: Path | None = None,
+    *,
+    device_id: str = "",
 ) -> None:
     old, new = _doc(old_text), _doc(new_text)
+    folder = path.parent.name
     changed = _changed_keys(old, new)
     if kind == "save" and changed <= {"ui"}:
         return  # the Button Map's view only
     # Spaces as typed in the file ("EVO OT L  ") don't reach the title.
-    device = " ".join(str((new or old or {}).get("device") or path.stem).split())
+    device = " ".join(str((new or old or {}).get("device") or folder).split())
     if kind == "delete" and moved_to is not None:
         title = (
             f"Started fresh: the damaged module file of {device} was kept "
@@ -248,19 +275,22 @@ def _record(
             else (
                 _last_pictures[str(path)]
                 if str(path) in _last_pictures
-                else _keep_pictures(old)
+                else _keep_pictures(path, old)
             ),
         }
         after = (
-            {"text": new_text, "pictures": _keep_pictures(new)}
+            {"text": new_text, "pictures": _keep_pictures(path, new)}
             if new_text is not None
             else None
         )
         _last_pictures[str(path)] = after["pictures"] if after else []
     subject = {
         "device": device,
+        # 08 S43: Restore finds the device's folder by this id.
+        "deviceId": device_id,
+        "folder": folder,
         "file": str(path),
-        "fileName": path.name,
+        "fileName": f"{folder}/{path.name}",
         "parts": sorted(changed),
     }
     if moved_to is not None:

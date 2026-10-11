@@ -2,8 +2,10 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The module files in the data folder's modules folder: read once, classified
-once (input or output), and found by bound device or name.
+"""The module files in the modules folder (<Device Folder>/module.json, one
+per device, D-03-DEVICE-FOLDERS): read once, classified once (input or
+output), and found by path or device (store.module_file: the one lookup
+rule).
 
 A file is re-read only when it changes on disk, so callers always see what
 was last saved.
@@ -26,7 +28,7 @@ _INPUT_WORDS = ("source", "input")
 
 @dataclass(frozen=True)
 class Module:
-    """One module file."""
+    """One module file: dir/module.json. slug is the folder's name."""
 
     slug: str
     path: Path
@@ -36,6 +38,7 @@ class Module:
     bound_name: str
     direction: str
     claim: dict = field(compare=False, repr=False)
+    dir: Path = field(default=Path(), compare=False)
 
     @property
     def is_output(self) -> bool:
@@ -136,13 +139,9 @@ def trace(action: str, window: str, function: str, path: object, result: str) ->
     live_trace(action, window, function, path, result)
 
 
-# Which module file each device uses: guid (or name:slug) -> slug.
-
 def _guid_for_name(device_name: str) -> str:
     """The id of the connected device with this name. A vJoy is also found by
-    "vJoy <n>", the name its module file has (it reports "vJoy Device"):
-    without that, a call with no id for a vJoy had no id to check a file's
-    binding against, and it opened another vJoy's file."""
+    "vJoy <n>", the name its module file has (it reports "vJoy Device")."""
     wanted = (device_name or "").strip().lower()
     if not wanted:
         return ""
@@ -161,38 +160,6 @@ def _guid_for_name(device_name: str) -> str:
         if f"vjoy {getattr(dev, 'vjoy_id', '')}" == " ".join(wanted.split()):
             return stored_guid_key(getattr(dev, "device_guid", ""))
     return ""
-
-
-def _binding_store() -> dict[str, str]:
-    from gremlin.config import Configuration
-    from gremlin.types import PropertyType
-
-    cfg = Configuration()
-    section, group, name = "global", "internal", "module-file-bindings"
-    # Register every launch. An existing value is kept. Skipping this when
-    # the key already exists leaves it unregistered, and purge_unused deletes it.
-    cfg.register(
-        section,
-        group,
-        name,
-        PropertyType.String,
-        "{}",
-        "Input module file chosen for each device.",
-        {},
-        False,
-    )
-    try:
-        data = json.loads(cfg.value(section, group, name) or "{}")
-    except (TypeError, json.JSONDecodeError):
-        data = {}
-    if not isinstance(data, dict):
-        return {}
-    return {str(key): str(value) for key, value in data.items() if key and value}
-
-
-def _name_key(device_name: str) -> str:
-    slug = plain_slug(device_name)
-    return f"name:{slug}" if slug else ""
 
 
 def _connected_names() -> dict[str, set[str]]:
@@ -217,66 +184,6 @@ def _connected_names() -> dict[str, set[str]]:
     for dev in vjoys:
         add(f"vJoy {getattr(dev, 'vjoy_id', '')}", dev)
     return names
-
-
-def _belongs_elsewhere(slug: str, want: str, device_name: str) -> bool:
-    """True when the module file slug belongs to another device: it is bound
-    to another device (its boundGuidLocal), or it is named after another
-    connected device, or after another vJoy. Twins once both saved into one
-    file; each now gets its own, and one vJoy never opens another's file."""
-    module = next((m for m in modules() if m.slug == slug), None)
-    if module is None:
-        return False
-    other = guid_key(module.bound_guid)
-    if want and other and other != want:
-        return True
-    named = " ".join(module.name.split()).casefold()
-    this = " ".join(str(device_name or "").split()).casefold()
-    if not named or named == this:
-        return False
-    vjoys = all(plain_slug(n).startswith("vjoy") for n in (module.name, device_name))
-    if vjoys and vjoy_id_from_name(module.name) != vjoy_id_from_name(device_name):
-        return True
-    owners = _connected_names().get(named, set())
-    return bool(owners - {want})
-
-
-def resolve_module_slug(device_name: str, guid: str = "") -> str:
-    """The module file a device uses. The one rule Module Setup, the Button
-    Map, Run and Calibration share (they used to differ, so a stick's ticks
-    could do nothing at Run):
-    1. the file saved for this device (its id);
-    2. a file bound to this exact device (boundGuidLocal), when it names
-       this device or there is no file of the device's own name (the device
-       was renamed); so a stale id never pulls in another device's file;
-    3. the file saved for this device name;
-    4. the file named after the device (twins are named "<name> (2)").
-    Steps 1-3 skip a file that belongs to another device (_belongs_elsewhere):
-    both twins once saved to one file, and the second one kept opening it.
-    """
-    data = _binding_store()
-    key = stored_guid_key(guid) or _guid_for_name(device_name)
-    want = guid_key(key)
-    own = plain_slug(device_name) or "device"
-    saved = plain_slug(data.get(key, "")) if key else ""
-    if saved and not _belongs_elsewhere(saved, want, device_name):
-        return saved
-    if want:
-        wanted_name = " ".join(str(device_name or "").split()).casefold()
-        own_exists = (_folder() / f"{own}.json").is_file()
-        for module in sorted(modules(), key=lambda m: m.slug != own):
-            if guid_key(module.bound_guid) != want:
-                continue
-            names = {module.name.casefold(), module.bound_name.casefold()}
-            if not (module.slug == own or wanted_name in names or not own_exists):
-                continue
-            if not _belongs_elsewhere(module.slug, want, device_name):
-                return module.slug
-    name_key = _name_key(device_name)
-    by_name = plain_slug(data.get(name_key, "")) if name_key else ""
-    if by_name and not _belongs_elsewhere(by_name, want, device_name):
-        return by_name
-    return own
 
 
 # path -> ((mtime_ns, size), Module | None)
@@ -323,11 +230,12 @@ def _read(path: Path) -> Module | None:
     doc = _load_doc(path)
     if doc is None:
         return None
-    slug = path.stem.lower()
-    name = str(doc.get("device") or doc.get("boundName") or path.stem).strip()
+    slug = path.parent.name
+    name = str(doc.get("device") or doc.get("boundName") or slug).strip()
     if not name:
         return None
     return Module(
+        dir=path.parent,
         slug=slug,
         path=path,
         doc=doc,
@@ -340,7 +248,10 @@ def _read(path: Path) -> Module | None:
 
 
 def modules() -> list[Module]:
-    """Every module file, sorted by file name."""
+    """Every device's module file (<folder>/module.json), sorted by folder
+    name; the program's own folders (cache, templates, ...) left out."""
+    from gremlin.modules import store
+
     folder = _folder()
     if not folder.is_dir():
         return []
@@ -348,7 +259,7 @@ def modules() -> list[Module]:
         cache = _cache
         seen: set[Path] = set()
         out: list[Module] = []
-        for path in sorted(folder.glob("*.json")):
+        for path in store.module_files():
             seen.add(path)
             try:
                 stat = path.stat()
@@ -398,11 +309,11 @@ def find_path(path: Path) -> Module | None:
 
 
 def for_device(device_name: str, guid: str = "") -> Module | None:
-    """The module file a device uses (store.path_for: the one rule, a stale
-    id filtered out first)."""
+    """The module file a device uses (store.module_file: the one rule, a
+    stale id filtered out first)."""
     from gremlin.modules import store
 
-    return find_path(store.path_for(device_name, guid))
+    return find_path(store.module_file(device_name, guid))
 
 
 # Public doors for the module file store and other callers (the underscore
@@ -412,16 +323,6 @@ def for_device(device_name: str, guid: str = "") -> Module | None:
 def guid_for_name(device_name: str) -> str:
     """The id of the connected device with this name ("" when none)."""
     return _guid_for_name(device_name)
-
-
-def binding_store() -> dict[str, str]:
-    """The saved module file choices: device id or name:<slug> -> slug."""
-    return _binding_store()
-
-
-def name_key(device_name: str) -> str:
-    """The file choice key of a device name ("name:<slug>")."""
-    return _name_key(device_name)
 
 
 def connected_names() -> dict[str, set[str]]:

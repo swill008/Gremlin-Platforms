@@ -99,7 +99,10 @@ def test_the_warning_says_what_is_replaced(run: dict) -> None:
         in warning
     )
     assert "Logical Device inputs that don't exist here: Button 9" in warning
-    assert "The previous module file is kept in the imported folder." in warning
+    assert (
+        "The previous module file is kept in the imported folder inside "
+        "the device's folder." in warning
+    )
     assert "The profile changes on disk only when you save it." in warning
     assert run["create-logical-shown"] is True
 

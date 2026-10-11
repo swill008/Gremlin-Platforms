@@ -5,12 +5,13 @@
 AUD-FILES-12).
 
 Both pages keep their groups, order and Rename names in the device's own
-module file (keyboard.json: "layout" + "key:<id>" names; osc.json: "layout"
-+ "osc:<uid>" names). Like the Configuration page's (test_cfg_page_carry),
-they must come back through every path that carries a module file: Device
-Library save + Restore, Export Current / Export Saved Setup, History
-restore and a Device Pack import (with Undo Import). Swap and Copy are not
-offered for built-in inputs (10 S6), so they are not here.
+module file (Keyboard/module.json: "layout" + "key:<id>" names;
+OSC/module.json: "layout" + "osc:<uid>" names). Like the Configuration
+page's (test_cfg_page_carry), they must come back through every path that
+carries a module file: Device Library save + Restore, Export Current /
+Export Saved Setup, History restore and a Device Pack import (with Undo
+Import). Swap and Copy are not offered for built-in inputs (10 S6), so they
+are not here.
 
 The real Library store, Device Pack and History (temp folders, via the
 stage-1 `folder` fixture); OSC's shared rows (test_osc_carry fixtures).
@@ -37,6 +38,7 @@ from gremlin.profile import Profile
 from gremlin.ui import device_pack, history_model
 from gremlin.ui.keyboard_layout import DEVICE_NAME as KB_NAME
 from gremlin.ui.keyboard_layout import GUID_TEXT as KB_GUID
+from test.unit._device_folders import put_module
 from test.unit.test_osc_carry import (  # noqa: F401  # pyright: ignore[reportMissingImports]
     _app,
     _change_to_b,
@@ -62,8 +64,8 @@ def _no_held_layouts() -> Iterator[None]:
 
 
 def _doc_in(path: Path) -> dict:
-    """The module file in a zip (keyboard.json in an export, map.json in a
-    saved setup's pack)."""
+    """The module file in a zip (module.json in a .gmap export, map.json in
+    an old saved setup's pack)."""
     with zipfile.ZipFile(io.BytesIO(path.read_bytes())) as zf:
         for name in zf.namelist():
             if not name.endswith(".json"):
@@ -105,9 +107,12 @@ KB_NAMES_B = {"key:30": "", "key:31": "Radio"}
 
 
 def _kb_path() -> Path:
-    path = store.path_for_id(KB_NAME, KB_GUID)
-    assert path is not None
-    return Path(path)
+    return Path(store.module_file(KB_NAME, KB_GUID))
+
+
+def _file_name(path: Path) -> str:
+    """How History names a module file: "<folder>/module.json"."""
+    return f"{path.parent.name}/{path.name}"
 
 
 def _kb_doc() -> dict:
@@ -138,18 +143,17 @@ def _kb_page_shows(layout: dict, names: dict) -> None:
 @pytest.fixture
 def kb(modules: Path) -> dict:
     """The Keyboard's module file with layout A saved from its page."""
-    path = modules / "keyboard.json"
-    path.write_text(
-        json.dumps(
-            {
-                "kind": "control.hardware",
-                "device": KB_NAME,
-                "direction": "source",
-                "claim": {"buttons": [], "axes": [], "hats": [], "keys": []},
-                "nodes": [],
-            }
-        ),
-        encoding="utf-8",
+    path = put_module(
+        modules,
+        KB_NAME,
+        {
+            "kind": "control.hardware",
+            "device": KB_NAME,
+            "direction": "source",
+            "claim": {"buttons": [], "axes": [], "hats": [], "keys": []},
+            "nodes": [],
+        },
+        KB_GUID,
     )
     assert _kb_path().resolve() == path.resolve()
     _kb_page_save(KB_LAYOUT_A, KB_NAMES_A)
@@ -191,7 +195,7 @@ def _kb_after_b_by(how: str, tmp_path: Path, no_profile: Profile) -> None:
     elif how == "import_restore":
         setup = _kb_setup()
         _kb_page_save(KB_LAYOUT_B, KB_NAMES_B)  # the saved setup keeps A
-        dest = tmp_path / "out" / "saved.zip"
+        dest = tmp_path / "out" / "saved.gmap"
         out = library.export_setup(setup["key"], dest)
         assert out["ok"], out
         _kb_assert(KB_LAYOUT_A, KB_NAMES_A, _doc_in(dest))
@@ -248,7 +252,7 @@ def test_keyboard_device_pack_undo_puts_b_back(
 def test_keyboard_export_current_carries_layout_and_names(
     kb: dict, tmp_path: Path
 ) -> None:
-    dest = tmp_path / "out" / "now.zip"
+    dest = tmp_path / "out" / "now.gmap"
     out = library.export_current(_kb_row()["key"], dest)
     assert out["ok"], out
     _kb_assert(KB_LAYOUT_A, KB_NAMES_A, _doc_in(dest))
@@ -257,7 +261,7 @@ def test_keyboard_export_current_carries_layout_and_names(
 def test_keyboard_history_restore_of_a_layout_save(kb: dict) -> None:
     before = _entry_ids()
     _kb_page_save(KB_LAYOUT_B, KB_NAMES_B)
-    entries = _new_entries(before, _kb_path().name)
+    entries = _new_entries(before, _file_name(_kb_path()))
     assert len(entries) == 1, entries  # one save: one entry
     out = history_model.restore(str(entries[0]["id"]), "before")
     assert out["ok"], out
@@ -338,12 +342,12 @@ def test_osc_export_current_and_saved_carry_the_layout(
     osc_a: dict, rows: object, tmp_path: Path
 ) -> None:
     row = next(r for r in library.devices() if r["name"] == "OSC")
-    now = tmp_path / "out" / "now.zip"
+    now = tmp_path / "out" / "now.gmap"
     assert library.export_current(row["key"], now)["ok"]
     assert _osc_file_layout(_osc_doc_in(now)) == osc_a["layout"]
     setup = _save()
     _osc_to_b(rows, osc_a)  # the saved setup keeps A
-    saved = tmp_path / "out" / "saved.zip"
+    saved = tmp_path / "out" / "saved.gmap"
     assert library.export_setup(setup["key"], saved)["ok"]
     assert _osc_file_layout(_osc_doc_in(saved)) == osc_a["layout"]
 
@@ -354,7 +358,9 @@ def test_osc_history_restore_brings_the_layout_back(osc_a: dict, rows: object) -
         {"groups": ["Other"], "order": [], "group_of": {}}
     )
     _osc_page_save(rows, layout_b)
-    entries = _new_entries(before, "osc.json")
+    path = osc_device_file.path()
+    assert path is not None
+    entries = _new_entries(before, _file_name(Path(path)))
     assert len(entries) == 1, entries
     out = history_model.restore(str(entries[0]["id"]), "before")
     assert out["ok"], out

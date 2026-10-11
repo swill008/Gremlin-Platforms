@@ -24,8 +24,10 @@ from gremlin.ui import module_model
 def setup(
     tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[pathlib.Path, list[str], list[float], Callable[[], dict]]:
-    path = tmp_path / "stick.json"
-    path.write_text(json.dumps({"claim": {"buttons": [1, 2]}}), encoding="utf-8")
+    from test.unit._device_folders import put_module
+
+    monkeypatch.setattr(store, "folder", lambda: tmp_path)
+    path = put_module(tmp_path, "Stick", {"claim": {"buttons": [1, 2]}})
     reads = []
     real_load = module_model._load_module_doc
 
@@ -33,8 +35,6 @@ def setup(
         reads.append(name)
         return real_load(name, guid)
 
-    monkeypatch.setattr(store, "folder", lambda: tmp_path)
-    monkeypatch.setattr(store, "slug_for", lambda name, guid="": "stick")
     monkeypatch.setattr(module_model, "_load_module_doc", counting_load)
     clock = [100.0]
     monkeypatch.setattr(module_model.clock, "monotonic", lambda: clock[0])

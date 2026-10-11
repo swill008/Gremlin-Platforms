@@ -32,6 +32,7 @@ from gremlin.ui.osc_layout import (
     OscLayoutStore,
     settings_line,
 )
+from test.unit._device_folders import module_path
 
 
 @pytest.fixture
@@ -232,12 +233,12 @@ def test_groups_order_and_names_are_kept_in_osc_json(
     assert shown == [second, first, fader]
 
     # Kept with the inputs until File > Save Profile (D-09-OSC-FILE).
-    assert not (modules / "osc.json").is_file() or "layout" not in json.loads(
-        (modules / "osc.json").read_text(encoding="utf-8")
+    assert not module_path(modules, "OSC").is_file() or "layout" not in json.loads(
+        module_path(modules, "OSC").read_text(encoding="utf-8")
     )
     assert OscDevice().rows.dirty
     osc_device_file.save()
-    doc = json.loads((modules / "osc.json").read_text(encoding="utf-8"))
+    doc = json.loads(module_path(modules, "OSC").read_text(encoding="utf-8"))
     uid = OscDevice().find_address("/fader").uid
     assert doc["layout"]["groups"] == ["Stream Deck"]
     assert doc["layout"]["group_of"][f"osc:{uid}"] == "Stream Deck"

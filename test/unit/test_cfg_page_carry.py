@@ -100,6 +100,12 @@ def _doc(name: str) -> dict:
     return json.loads(_own_path(name).read_text(encoding="utf-8"))
 
 
+def _file_name(cfg: dict) -> str:
+    """How History names the stick's module file: "<folder>/module.json"."""
+    path = _own_path(cfg["name"])
+    return f"{path.parent.name}/{path.name}"
+
+
 def _page_edit(cfg: dict, layout: dict, names: dict) -> None:
     """What the page does on group/move/reorder/Rename: held until Save."""
     store.set_pending_layout(cfg["guid"], layout, names, cfg["name"])
@@ -163,7 +169,7 @@ def _save_setup(cfg: dict) -> dict:
 
 
 def _module_doc_in(path: Path) -> dict:
-    """The stick's module file inside a pack."""
+    """The stick's module file inside a .gmap (module.json) or pack."""
     with zipfile.ZipFile(io.BytesIO(path.read_bytes())) as zf:
         for name in zf.namelist():
             if not name.endswith(".json"):
@@ -189,7 +195,7 @@ def test_file_save_writes_layout_and_names_in_one_entry(cfg: dict) -> None:
         e
         for e in history.entries()
         if str(e.get("id")) not in cfg["entries_before"]
-        and (e.get("subject") or {}).get("fileName") == _own_path(cfg["name"]).name
+        and (e.get("subject") or {}).get("fileName") == _file_name(cfg)
     ]
     assert len(saves) == 1, saves
     assert "Configuration layout" in str(saves[0].get("title", "")), saves[0]
@@ -229,7 +235,7 @@ def test_export_then_import_and_restore_brings_the_layout_back(
     cfg: dict, which: str, tmp_path: Path
 ) -> None:
     setup = _save_setup(cfg)
-    dest = tmp_path / "out" / f"{which}.zip"
+    dest = tmp_path / "out" / f"{which}.gmap"
     dest.parent.mkdir()
     if which == "current":
         out = library.export_current(_device_key(cfg), dest)
@@ -271,7 +277,7 @@ def test_history_restore_of_a_layout_save_puts_it_back(cfg: dict) -> None:
     before = {str(e.get("id")) for e in history.entries()}
     _change_to_b(cfg)
     settle_history()
-    file_name = _own_path(cfg["name"]).name
+    file_name = _file_name(cfg)
     entries = [
         e
         for e in history.entries()

@@ -102,12 +102,17 @@ def _child() -> None:
     app = QtGui.QGuiApplication(sys.argv[:1])
     QtQml.qmlRegisterSingletonType(
         QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "Style.qml")),
-        "Gremlin.Style", 1, 0, "Style",
+        "Gremlin.Style",
+        1,
+        0,
+        "Style",
     )
 
+    from gremlin.modules import ids, store
+
+    store.ensure_device_dir("Logical Device", str(ids.LOGICAL_DEVICE))
     path = ldf.path()
     result("modules", str(path.parent))
-    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"name": "Logical Device"}), encoding="utf-8")
     pick = out / "pick" / "card.png"
     pick.parent.mkdir(exist_ok=True)
@@ -123,9 +128,7 @@ def _child() -> None:
     warnings: list[str] = []
     engine.warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
     wrapper = out / "LdImageHarness.qml"
-    wrapper.write_text(
-        _WRAPPER.format(qml=(_ROOT / "qml").as_uri()), encoding="utf-8"
-    )
+    wrapper.write_text(_WRAPPER.format(qml=(_ROOT / "qml").as_uri()), encoding="utf-8")
     engine.load(QtCore.QUrl.fromLocalFile(str(wrapper)))
     roots = engine.rootObjects()
     if not roots:
@@ -262,6 +265,7 @@ def _child() -> None:
 
 def _run(tmp_path: Path) -> dict[str, object]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
     profile = tmp_path / "profile"
     profile.mkdir()
     proc = proc_tree.run(
@@ -302,8 +306,8 @@ def test_logical_card_add_change_remove_image_end_to_end(tmp_path: Path) -> None
 
     # The card shows the picture; the module file names it.
     assert r["photo-after-add"], r
-    assert "logical_device/photo.png" in str(r["photo-after-add"])
-    assert r["image-after-add"] == "logical_device/photo.png"
+    assert "pictures/photo.png" in str(r["photo-after-add"])
+    assert r["image-after-add"] == "pictures/photo.png"
     assert r["files-after-add"] == ["photo.png"]
 
     with_photo = r["with-photo"]

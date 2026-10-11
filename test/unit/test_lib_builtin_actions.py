@@ -24,9 +24,10 @@ from pytestqt.qtbot import QtBot
 from gremlin import device_library as library
 from gremlin import history, logical_device_file
 from gremlin.logical_device import LogicalDevice
-from gremlin.modules import ids, module_file, store
+from gremlin.modules import ids, store
 from gremlin.ui import history_model
 from gremlin.ui.device_library_model import DeviceLibraryModel
+from test.unit._device_folders import put_module
 from test.unit.test_stage1_modules import (  # noqa: F401  # pyright: ignore[reportMissingImports]
     folder,
     settle_history,
@@ -37,11 +38,11 @@ def _g(uid: object) -> str:
     return "{" + str(uid).upper() + "}"
 
 
-# (shown name, id, module file name)
+# (shown name, id); each one's module file is <its folder>/module.json.
 BUILT_INS = [
-    ("Keyboard", _g(ids.KEYBOARD), "keyboard.json"),
-    ("OSC", _g(ids.OSC), "osc.json"),
-    ("Logical Device", _g(ids.LOGICAL_DEVICE), "logical_device.json"),
+    ("Keyboard", _g(ids.KEYBOARD)),
+    ("OSC", _g(ids.OSC)),
+    ("Logical Device", _g(ids.LOGICAL_DEVICE)),
 ]
 
 
@@ -100,9 +101,9 @@ def built_in(
     )
     monkeypatch.setattr(library, "_set_alias", aliases.__setitem__)
     modules: Path = request.getfixturevalue(folder.__name__)
-    name, guid, file_name = request.param
-    path = modules / file_name
-    module_file.write_bytes(path, json.dumps(_doc(name, guid, "Saved")).encode())
+    name, guid = request.param
+    path = put_module(modules, name, _doc(name, guid, "Saved"), guid)
+    assert path == modules / name / "module.json"
     if guid == _g(ids.LOGICAL_DEVICE):
         rows.load_dict(_layout("Saved"))
     return name, guid, path
@@ -194,7 +195,8 @@ def test_export_current(
     dest.parent.mkdir()
     key = _row(model, guid)["key"]
     _run(qtbot, model, lambda: model.exportCurrent(key, _url(dest)))
-    made = dest.with_name("current.zip")
+    # A device folder zip is written as .gmap (10 S60).
+    made = dest.with_name("current.gmap")
     assert made.is_file()
     with zipfile.ZipFile(made) as z:
         assert z.namelist()
@@ -210,7 +212,7 @@ def test_export_saved_setup(
     setup = _save(qtbot, model, guid)
     dest = tmp_path / "saved.zip"
     _run(qtbot, model, lambda: model.exportSetup(setup["key"], _url(dest)))
-    assert dest.is_file()
+    assert dest.with_suffix(".gmap").is_file()
 
 
 # --- Rename… and Edit Description (S7, S11, S13) -----------------------------
@@ -285,7 +287,7 @@ def test_history_restores_the_module_file(
     made = [
         e
         for e in _new_entries(before)
-        if (e.get("subject") or {}).get("fileName") == path.name
+        if (e.get("subject") or {}).get("fileName") == f"{path.parent.name}/module.json"
     ]
     assert made, "the module file change made no History entry"
     out = history_model.restore(str(made[0]["id"]), "before")
@@ -293,4 +295,3 @@ def test_history_restores_the_module_file(
     assert json.loads(path.read_bytes()) == json.loads(old)
     if guid == _g(ids.LOGICAL_DEVICE):
         assert [c["label"] for c in rows.to_dict()["controls"]] == ["Saved"]
-

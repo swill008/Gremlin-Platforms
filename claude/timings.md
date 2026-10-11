@@ -668,3 +668,46 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | SPEC-W07: page 07 + glossary written for both features (S106–S127) | map catch-up | 5–7 min (table) | 2 min | 09:19–09:21 |
 | 2026-10-11 | SPEC-W-OTHER: pages 03/08/10 + README for both features | map catch-up | 5–7 min (table) | 3 min | 09:19–09:22 |
 | 2026-10-11 | Lead: page 07 README count + cross-reference check; decisions/todo/tracker for both features | lead | no timing data yet | 6 min | 09:19–09:25 |
+| 2026-10-11 | ARCH: device-folders contract (+3 scouts stopped once the contract covered callers) | research | 5–10 min (table) | 7 min | 09:27–09:34 |
+| 2026-10-11 | A2 MOVE: one-time move OT-1 (folders_move.py, start-up call, 17 tests) | feature | no timing data; rough guess 25–40 min | 7 min | 09:35–09:42 |
+| 2026-10-11 | A5 HISTORY: History per folder, restore by id, old entries readable (6 tests) | feature | no timing data; rough guess 25–40 min | 7 min | 09:35–09:42 |
+| 2026-10-11 | A4b DEVICES: rename renames folder (refused if busy), scan sync, LD/OSC paths, auto map, diagnostics (13 tests) | feature | no timing data; rough guess 30–45 min | 8 min | 09:35–09:43 |
+| 2026-10-11 | A6 EXPORT: device_zip (.gmap/.gtemplate), Device Pack on folders, DeviceExport + dialog (16 tests); fixed _module_items KeyError | feature | no timing data; rough guess 30–45 min | 8 min | 09:35–09:43 |
+| 2026-10-11 | A1 STORE: store + registry + validate on device folders (30 tests) | feature | no timing data; rough guess 30–45 min | 10 min | 09:34–09:44 |
+| 2026-10-11 | A4a SETUP-UI: Module Setup folder label, import from folders, Import Image, Delete Device, History filters, Export/Import Device menu items (8 tests) | feature | no timing data; rough guess 30–45 min | 9 min | 09:35–09:44 |
+| 2026-10-11 | Lead: routing A1/A4a/A6 follow-ups; Calibration deviceIdOf slot + test; D-08-GMAP-IMPORT recorded | lead | no timing data yet | 5 min | 09:44–09:49 |
+| 2026-10-11 | A1 follow-up: file_direction reads the file's direction; damaged message names the folder (2 tests) | fix | 3–8 min (table) | 1 min | 09:45–09:46 |
+| 2026-10-11 | A7 LIBRARY: setups as .gmap, autosave whole folder, Swap/Copy pictures per folder, Remove removes folder, rename refusal (10 tests) | feature | no timing data; rough guess 30–45 min | 10 min | 09:36–09:46 |
+| 2026-10-11 | A6 follow-up: .gmap import with bindings = one Undo step (3a); dialog opens from A4a props; messages name the folder | fix | 3–8 min (table) | 2 min | 09:45–09:47 |
+| 2026-10-11 | Lead: D-10-GMAP-SETUPS spec wording (10 S14 S44, new S63) + decision | lead | no timing data yet | 2 min | 09:44–09:46 |
+| 2026-10-11 | Lead: map rows for new files (device_zip, device_export, DialogDeviceExport, folders_move); move message box suppressed under tests + test; routing | lead | no timing data yet | 3 min | 09:46–09:49 |
+| 2026-10-11 | A7 follow-up: every setup .gmap (bindings-only, damaged), device_zip no_file_ok/has_folder (2 tests + 1 strict xfail) | fix | 3–8 min (table) | 2 min | 09:48–09:50 |
+| 2026-10-11 | Lead: device_pack._from_gmap restores a damaged .gmap's bindings (10 S20a); strict xfail removed; 30 pass | fix | 3–8 min (table) | 3 min | 09:50–09:53 |
+| 2026-10-11 | A3 BUTTONMAP: edit temp folder, unused-picture clean-up, recovery.json, copy/template pictures, templates as folders + .gtemplate, Picture missing placeholder, rename refusal shown (13 tests) | feature | no timing data; rough guess 35–55 min | 16 min | 09:35–09:51 |
+| 2026-10-11 | Lead: A3 follow-up analysis (Module Setup photo vs edit folder), SETUP-PHOTO started, test routing | lead | no timing data yet | 2 min | 09:51–09:53 |
+| 2026-10-11 | Lead: device_pack._zip_readable accepts .gmap (every Library .gmap export failed read-back) | fix | 3–8 min (table) | 2 min | 09:55–09:57 |
+| 2026-10-11 | SETUP-PHOTO: Module Setup Import Image waits in the setup edit; Cancel leaves the folder unchanged; Save one write (2 tests) | fix | 3–8 min (table) | 5 min | 09:52–09:57 |
+| 2026-10-11 | A8a-5: history/home/handson/help tests moved to device folders (11 files; 2 tests that had been passing without testing anything now really test) | agent tests | no timing data yet | 9 min | 09:49–09:58 |
+| 2026-10-11 | Lead: renameTemplate writes the name before moving the folder (a failure leaves both as they were); Help "Device folder" label; the help test checks "·" toggle rows word by word | fix | 3–8 min (table) | 3 min | 09:58–10:01 |
+| 2026-10-11 | A8a-1: Device Pack / audit tests moved to device folders (13 files, 141 pass, 5 retired for removed file bindings/choices) | agent tests | no timing data yet | 13 min | 09:48–10:01 |
+| 2026-10-11 | A8a-2: Library / Logical Device tests moved to device folders (64 files checked, 23 changed, 1 retired; found the twin folder bug) | agent tests | no timing data yet | 13 min | 09:48–10:01 |
+| 2026-10-11 | Lead: store.device_dir finds the folder holding exactly the id and name first (an unplugged twin wrote into the other twin's folder) | fix | 3–8 min (table) | 3 min | 10:02–10:02 |
+| 2026-10-11 | A8a-4: batch/final tests moved to device folders (48 files, 884 pass, 16 edited, 1 retired for removed 07 S81) | agent tests | rough guess 30 min | 14 min | 09:49–10:03 |
+| 2026-10-11 | A8a-3: Button Map / configuration tests moved to device folders (48 files, 912 pass, 14 edited, none retired) | agent tests | no timing data yet | 20 min | 09:48–10:08 |
+| 2026-10-11 | A8b: tests m–z, journeys, smoke scripts moved to device folders (about 60 files; 1 file and 6 tests retired for removed rules; 18 failures routed) | agent tests | rough guess 35–55 min | 37 min | 09:36–10:13 |
+| 2026-10-11 | MAP-3: map pages 04, 06, 09, 10 for device folders (10 statements marked built; found 2 Library window .gmap bugs) | docs | 3–8 min (table) | 4 min | 10:09–10:13 |
+| 2026-10-11 | MAP-2: map pages 07, 08 for device folders (14 statements built, 6 partly) | docs | 3–8 min (table) | 6 min | 10:09–10:15 |
+| 2026-10-11 | Lead: check of A8b's failures, split into 5 fix agents | lead | no timing data yet | 5 min | 10:13–10:17 |
+| 2026-10-11 | MAP-1: map pages 01, 02, 03 for device folders (16 statements marked built) | docs | 3–8 min (table) | 9 min | 10:09–10:18 |
+| 2026-10-11 | FIX-STORE: second paste gets its own name; built-in lists into device_class; refused move logs a warning | fix | 3–8 min (table) | about 3 min | 10:16–10:19 |
+| 2026-10-11 | FIX-OSC-T: 4 OSC carry test files read the .gmap export (39 pass) | agent tests | 3–8 min (table) | 2 min | 10:16–10:18 |
+| 2026-10-11 | FIX-LIB: Library window export adds .gmap (no X.gmap.gmap), import takes .gmap (3 new tests) | fix | 3–8 min (table) | 3 min | 10:16–10:19 |
+| 2026-10-11 | FIX-BM: Button Map Save refused on a damaged file copies no picture (07 S12, GL-079) | fix | 3–8 min (table) | 5 min | 10:16–10:21 |
+| 2026-10-11 | Lead: the damage check moved into store.commit_edit (all callers), loop variable fix; new store test fails on the old order | fix | 3–8 min (table) | 3 min | 10:20–10:23 |
+| 2026-10-11 | FIX-PACK: Device Pack writes through the store again; pack_checks.py (modules layer imports no UI); wires handed to device_zip | fix | 3–8 min (table) | 6 min | 10:16–10:22 |
+| 2026-10-11 | Lead: applied FIX-PACK's 3 call-site edits, test impact sweep (--changed, ~6500 tests, 3 failures fixed), map lines + README counts, to-do | lead | sweep: no timing data yet; rough guess 3–5 min | sweep 7 min; whole step 12 min | 10:23–10:31 |
+| 2026-10-11 | Full run + lint (device folders): 6449 unit + journeys + interaction; 1 order-dependent failure (test_audit_devices, seed 758199); lint 0 new | test | 5–6 min (table) | 6 min run, 1 min lint | 10:31–10:37 |
+| 2026-10-11 | TRACE-ORDER: order-dependent test_audit_devices failure = a test leaving a pJoy Pro folder; fixture cleans it (test only) | fix | 3–8 min (table) | 7 min | 10:37–10:44 |
+| 2026-10-11 | Lead: Export/Import Device box never opened (a Popup made as a window, "transientParent" error the user hit); StatusPage makes it on the window's overlay; new end-to-end test fails before, passes after | fix | 3–8 min (table) | 6 min | 10:46–10:46 |
+| 2026-10-11 | PLAN-TESTS: step 2 test impact (about 25 files + golden images, 20–25 new tests) | review | 5–10 min (table) | 2 min | 10:46–10:48 |
+| 2026-10-11 | PLAN-BUILD: step 2 build plan (trace, statement→change, data shape, split, contract, risks) | review | 5–10 min (table) | 3 min | 10:46–10:49 |

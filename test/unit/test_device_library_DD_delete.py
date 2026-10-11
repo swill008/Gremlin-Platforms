@@ -24,6 +24,7 @@ from gremlin import shared_state, util
 from gremlin.modules import registry, store
 from gremlin.profile import Profile
 from gremlin.ui import hardware_profile, option
+from test.unit._device_folders import put_module
 
 
 class _FakeLibrary:
@@ -47,9 +48,6 @@ def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.
     maps = tmp_path / "modules"
     maps.mkdir()
     monkeypatch.setattr(store, "folder", lambda: maps)
-    monkeypatch.setattr(store, "users_of", lambda slug: set())
-    monkeypatch.setattr(store, "bindings", lambda: {})
-    monkeypatch.setattr(store, "set_bindings", lambda data: None)
     monkeypatch.setattr(registry, "guid_for_name", lambda name: "")
     monkeypatch.setattr(hardware_profile, "_profile_running", lambda: False)
     monkeypatch.setattr(hardware_profile, "_device_stays_listed", lambda *_a: False)
@@ -74,9 +72,7 @@ def open_profile(
 
 
 def _stick(modules: pathlib.Path) -> pathlib.Path:
-    path = modules / "stick_r.json"
-    path.write_text(json.dumps({"claim": {"buttons": [1]}}), encoding="utf-8")
-    return path
+    return put_module(modules, "Stick R", {"claim": {"buttons": [1]}})
 
 
 # --- Delete Device ---------------------------------------------------------------
@@ -174,17 +170,6 @@ def test_delete_file_refused_when_the_autosave_fails(
     assert message.startswith("The module file was not deleted.")
     assert "no room" in message
     assert path.exists()
-
-
-def test_delete_file_used_by_another_stick_keeps_no_autosave(
-    modules: pathlib.Path, fake: _FakeLibrary, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    path = _stick(modules)
-    monkeypatch.setattr(store, "other_users", lambda slug, name, guid="": {"x"})
-    assert hardware_profile.delete_module_file("Stick R", "") == (
-        "Another stick is using this file."
-    )
-    assert fake.calls == [] and path.exists()
 
 
 # --- the real Device Library ------------------------------------------------------

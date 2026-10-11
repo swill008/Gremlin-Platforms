@@ -22,6 +22,7 @@ from gremlin.modules import store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.ui import device_pack, hardware_profile
 from test.unit import test_stage1_modules
+from test.unit._device_folders import put_module
 from test.unit.test_id_not_name_lookups import FIRST, SECOND, TWIN
 from test.unit.test_stage1_history_pack import _url
 from test.unit.test_stage1_modules import map_button, mapped
@@ -61,10 +62,7 @@ def _profile(monkeypatch: pytest.MonkeyPatch) -> Profile:
 def _write_own_files() -> dict[str, Path]:
     """Each twin's own file (bound to its id), told apart by a marker."""
     paths = {}
-    for guid, marker, stem in (
-        (str(FIRST), "first", "twin_stick"),
-        (str(SECOND), "second", "twin_stick_2"),
-    ):
+    for guid, marker in ((str(FIRST), "first"), (str(SECOND), "second")):
         doc = {
             "kind": "control.hardware",
             "device": TWIN,
@@ -73,12 +71,11 @@ def _write_own_files() -> dict[str, Path]:
             "claim": {"buttons": [1], "axes": [], "hats": [], "keys": []},
             "twinMarker": marker,
         }
-        path = store.folder() / f"{stem}.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc), encoding="utf-8")
-        paths[marker] = path
+        paths[marker] = put_module(store.folder(), TWIN, doc, guid)
+    # Each in its own folder, found by its id (03 S6, S132).
+    assert paths["first"].parent != paths["second"].parent
     for guid, marker in ((str(FIRST), "first"), (str(SECOND), "second")):
-        assert store.path_for_id(TWIN, guid) == paths[marker]
+        assert store.module_file(TWIN, guid) == paths[marker]
     return paths
 
 

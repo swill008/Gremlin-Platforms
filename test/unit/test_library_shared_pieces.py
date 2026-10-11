@@ -105,8 +105,12 @@ def test_s142_s143_message_line_and_undo_bar(run: dict) -> None:
 def test_s38_tidy_list_is_its_own_question(run: dict) -> None:
     # One confirmation (user 2026-10-09): Tidy's list is the question.
     ask = run["tidy-ask"]
-    assert ask == {"open": True, "question": False,
-                   "remove": "Remove from Library", "cancelFocus": True}
+    assert ask == {
+        "open": True,
+        "question": False,
+        "remove": "Remove from Library",
+        "cancelFocus": True,
+    }
     # Enter cancels: Tidy closes and nothing is tidied.
     assert run["tidy-enter"]["tidyOpen"] is False
     assert "tidied" not in run["tidy-enter"]["message"]
@@ -119,5 +123,6 @@ def test_s143_device_pack_chooser_opens_in_the_remembered_folder(run: dict) -> N
     pick = run["picker"]
     assert pick["open"] == pick["want"]
     assert pick["save"].startswith(pick["want"] + "/")
-    assert pick["save"].endswith(".zip")
+    # A device's setup is saved as a device folder zip, .gmap (10 S60).
+    assert pick["save"].endswith(".gmap")
     assert pick["shown"] is False

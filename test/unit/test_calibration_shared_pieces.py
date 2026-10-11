@@ -23,22 +23,26 @@ def test_calibration_uses_the_message_line_and_undo_bar(
     tmp_path: pathlib.Path,
 ) -> None:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
     home = tmp_path / "home"
     (home / "Gremlin Platforms").mkdir(parents=True)
     env = dict(os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen")
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve())],
-        cwd=_ROOT, env=env, text=True, timeout=180,
+        cwd=_ROOT,
+        env=env,
+        text=True,
+        timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-1500:] + result.stderr[-1500:]
-    out = json.loads(lines[-1][len("RESULT "):])
+    out = json.loads(lines[-1][len("RESULT ") :])
     assert "error" not in out, out
     # The axis whose Calibrate Extrema was clicked, by its name.
     last = out["last-change"]
     assert last.startswith("Last change: "), out
     assert last.endswith(", Calibrate Extrema"), out
-    axis = last[len("Last change: "):-len(", Calibrate Extrema")]
+    axis = last[len("Last change: ") : -len(", Calibrate Extrema")]
     assert axis.endswith("Axis"), out
     assert out["undone"] == f"Undone: a change to {axis}", out
     assert out["message-shown"] is True, out
@@ -70,7 +74,7 @@ def _smoke() -> None:  # noqa: C901
     import dill
     import joystick_gremlin
     from gremlin import clock, event_handler
-    from gremlin.ui import hardware_profile
+    from gremlin.modules import store
 
     def wait_until(cond, limit_ms: int = 10000) -> bool:  # noqa: ANN001
         end = clock.monotonic() + limit_ms / 1000.0
@@ -107,24 +111,37 @@ def _smoke() -> None:  # noqa: C901
     try:
         dev = fake.devices[0]
         guid = str(dill.GUID(dev.device_guid).uuid)
-        path = hardware_profile.module_json_path("pJoy Pro", guid)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({
-            "kind": "control.hardware", "device": "pJoy Pro",
-            "direction": "source", "boundGuidLocal": guid,
-            "claim": {"buttons": [1], "axes": [1, 2], "hats": [], "keys": []},
-        }), encoding="utf-8")
+        # The device's own folder (03 S128); Calibration picks it by its
+        # folder name.
+        folder = store.ensure_device_dir("pJoy Pro", guid)
+        path = store.module_file_in(folder)
+        path.write_text(
+            json.dumps(
+                {
+                    "kind": "control.hardware",
+                    "device": "pJoy Pro",
+                    "direction": "source",
+                    "boundGuidLocal": guid,
+                    "claim": {"buttons": [1], "axes": [1, 2], "hats": [], "keys": []},
+                }
+            ),
+            encoding="utf-8",
+        )
         event_handler.EventListener()._run_device_list_update()
-        ev(win, "Helpers.createComponent('DialogCalibration.qml',"
-                " {initialSlug: 'pjoy_pro'})")
+        ev(
+            win,
+            "Helpers.createComponent('DialogCalibration.qml',"
+            " {initialSlug: " + json.dumps(folder.name) + "})",
+        )
         if not wait_until(lambda: top_window("Calibration") is not None):
             raise RuntimeError("Calibration did not open")
         w = top_window("Calibration")
         if not wait_until(lambda: int(ev(w, "_axisView.count")) > 0):
             raise RuntimeError("no axes shown")
         w.requestActivate()
-        if not wait_until(lambda: QtGui.QGuiApplication.focusWindow() is w
-                          or w.isActive()):
+        if not wait_until(
+            lambda: QtGui.QGuiApplication.focusWindow() is w or w.isActive()
+        ):
             raise RuntimeError("Calibration window not active")
 
         def items() -> list:
@@ -140,15 +157,19 @@ def _smoke() -> None:  # noqa: C901
             return next((i for i in items() if pred(i)), None)
 
         def click(target) -> None:  # noqa: ANN001
-            centre = target.mapToScene(QtCore.QPointF(
-                target.width() / 2, target.height() / 2)).toPoint()
+            centre = target.mapToScene(
+                QtCore.QPointF(target.width() / 2, target.height() / 2)
+            ).toPoint()
             QtTest.QTest.mouseClick(w, QtCore.Qt.MouseButton.LeftButton, pos=centre)
             for _ in range(10):
                 QtCore.QCoreApplication.processEvents()
 
         out["axis"] = str(ev(w, "_calib.data(_calib.index(0, 0), Qt.UserRole + 1)"))
-        extrema = find(lambda i: i.property("text") == "Calibrate Extrema"
-                       and i.property("visible"))
+        extrema = find(
+            lambda i: (
+                i.property("text") == "Calibrate Extrema" and i.property("visible")
+            )
+        )
         click(extrema)
         bar = find(lambda i: i.objectName() == "undoBarText")
         out["last-change"] = bar.property("text") if bar else ""

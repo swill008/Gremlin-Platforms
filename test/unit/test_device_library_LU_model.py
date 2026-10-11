@@ -220,13 +220,13 @@ def test_plans_and_profiles_come_back_with_their_ticket(
     assert len(res["warnings"]) == 2
 
 
-def test_s35_s39_import_takes_only_a_zip(
+def test_s35_s39_import_takes_only_a_gmap_or_zip(
     qtbot: QtBot, model: DeviceLibraryModel, lib: Fake, tmp_path: pathlib.Path
 ) -> None:
     results: list[dict] = []
     model.result.connect(results.append)
     assert model.importPack((tmp_path / "notes.txt").as_uri()) == 0
-    assert not results[-1]["ok"] and "isn't a Device Pack" in results[-1]["error"]
+    assert not results[-1]["ok"] and "isn't a device file" in results[-1]["error"]
     res = _run(
         qtbot, model, lambda: model.importPack((tmp_path / "Sam MFDs.zip").as_uri())
     )
@@ -234,15 +234,65 @@ def test_s35_s39_import_takes_only_a_zip(
     assert model.statusText.startswith("5 devices · 7 saved setups")
 
 
-def test_s14_export_adds_zip(
+def test_s35_s39_import_takes_a_gmap(
     qtbot: QtBot, model: DeviceLibraryModel, lib: Fake, tmp_path: pathlib.Path
 ) -> None:
-    _run(
-        qtbot,
-        model,
-        lambda: model.exportSetup("set-00000001", (tmp_path / "mine").as_uri()),
+    """S35, S39, D-10-GMAP-SETUPS: the picker offers *.gmap, so Import takes
+    a ".gmap" device file as well as an older ".zip" (GMAP-WINDOW-IMPORT)."""
+    results: list[dict] = []
+    model.result.connect(results.append)
+    assert model.importPack((tmp_path / "notes.txt").as_uri()) == 0
+    assert ".gmap" in results[-1]["error"] and ".zip" in results[-1]["error"]
+    res = _run(
+        qtbot, model, lambda: model.importPack((tmp_path / "Sam MFDs.gmap").as_uri())
     )
-    assert lib.calls[-1] == ("export_setup", "set-00000001", str(tmp_path / "mine.zip"))
+    assert res["ok"] and lib.calls[-1][0] == "import_pack"
+    assert lib.calls[-1][-1] == str(tmp_path / "Sam MFDs.gmap")
+
+
+def test_s14_export_adds_gmap(
+    qtbot: QtBot, model: DeviceLibraryModel, lib: Fake, tmp_path: pathlib.Path
+) -> None:
+    """S14, D-10-GMAP-SETUPS: a bare name becomes ".gmap"; a picked ".gmap"
+    or an older setup's ".zip" stays as it is (GMAP-WINDOW-SUFFIX: the
+    window suggests "X.gmap", which was saved as "X.gmap.gmap")."""
+    for picked, saved in (
+        ("mine", "mine.gmap"),
+        ("mine.gmap", "mine.gmap"),
+        ("Mine.GMAP", "Mine.GMAP"),
+        ("old.zip", "old.zip"),
+    ):
+        _run(
+            qtbot,
+            model,
+            lambda picked=picked: model.exportSetup(
+                "set-00000001", (tmp_path / picked).as_uri()
+            ),
+        )
+        assert lib.calls[-1] == ("export_setup", "set-00000001", str(tmp_path / saved))
+
+
+def test_s44_export_current_adds_gmap(
+    qtbot: QtBot, model: DeviceLibraryModel, lib: Fake, tmp_path: pathlib.Path
+) -> None:
+    """S44: Export Current Setup... keeps "X.gmap" and adds ".gmap" to a bare
+    name (GMAP-WINDOW-SUFFIX)."""
+
+    def export_current(key: str, dest: pathlib.Path) -> dict:
+        lib._rec("export_current", key, str(dest))
+        return lib._res("export_current")
+
+    lib.export_current = export_current
+    for picked, saved in (("cur", "cur.gmap"), ("cur.gmap", "cur.gmap")):
+        _run(
+            qtbot,
+            model,
+            lambda picked=picked: model.exportCurrent(
+                "dev-00000001", (tmp_path / picked).as_uri()
+            ),
+        )
+        assert lib.calls[-1][0] == "export_current"
+        assert lib.calls[-1][-1] == str(tmp_path / saved)
 
 
 def test_s15_delete_and_s38_tidy(

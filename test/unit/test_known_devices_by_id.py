@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-import json
+import shutil
 import types
 import uuid
 from collections.abc import Iterator
@@ -18,7 +18,7 @@ from gremlin import device_aliases, device_initialization, shared_state
 from gremlin.config import Configuration
 from gremlin.modules import store
 from gremlin.profile import DeviceInfo, Profile
-from gremlin.util import modules_dir
+from test.unit._device_folders import put_module
 
 NAME = "VKBsim Gladiator EVO"
 FIRST = uuid.UUID("11111111-2222-3333-4444-555555555551")
@@ -99,16 +99,15 @@ def test_a_one_of_a_kind_stick_has_its_plain_name(setup: Profile) -> None:
 
 
 def test_a_file_only_device_is_one_row_by_name(setup: Profile) -> None:
-    path = modules_dir() / "files_only_stick.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps({"kind": "control.hardware", "device": "Files Only Stick"}),
-        encoding="utf-8",
+    path = put_module(
+        store.folder(),
+        "Files Only Stick",
+        {"kind": "control.hardware", "device": "Files Only Stick"},
     )
     try:
         rows = _rows()
     finally:
-        path.unlink(missing_ok=True)
+        shutil.rmtree(path.parent, ignore_errors=True)
     assert [(r["name"], r["guid"], r["label"], r["hasFile"]) for r in rows] == [
         ("Files Only Stick", "", "Files Only Stick", True)
     ]

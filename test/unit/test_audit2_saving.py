@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import shutil
 import sys
 import time
 import types
@@ -35,6 +36,7 @@ from gremlin import config, history, history_modules, util
 from gremlin.modules import module_file
 from gremlin.modules import store as module_store
 from gremlin.ui import backend, history_model, update_model
+from test.unit._device_folders import ensure_dir
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -59,13 +61,13 @@ def store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
 def test_a_deleted_device_keeps_its_photo_through_the_first_clean_up(
     store: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    modules = util.modules_dir()
-    (modules / "gone_stick").mkdir(parents=True, exist_ok=True)
-    photo = modules / "gone_stick" / "photo.png"
+    base = ensure_dir(util.modules_dir(), "Gone Stick")
+    (base / "pictures").mkdir(parents=True, exist_ok=True)
+    photo = base / "pictures" / "photo.png"
     photo.write_bytes(b"the photo")
-    path = modules / "gone_stick.json"
+    path = base / "module.json"
     module_file.write_json(
-        path, {"device": "Gone Stick", "image": "gone_stick/photo.png"}
+        path, {"device": "Gone Stick", "image": "pictures/photo.png"}
     )
     _settle()
     # A photo no entry has a copy of yet (a new one, not saved since).
@@ -80,7 +82,7 @@ def test_a_deleted_device_keeps_its_photo_through_the_first_clean_up(
     assert entry["title"] == "Deleted the module file of Gone Stick"
     result = history_model.restore(entry["id"], "before")
     assert result["ok"], result
-    assert result["message"] == "Put back gone_stick.json."
+    assert result["message"] == "Put back Gone Stick/module.json."
     assert photo.read_bytes() == b"the new photo"
 
 
@@ -89,18 +91,22 @@ def test_restore_names_the_pictures_it_could_not_put_back(store: Path) -> None:
     modules.mkdir(parents=True, exist_ok=True)
     entry = {
         "subject": {
-            "file": str(modules / "lost_stick.json"),
-            "fileName": "lost_stick.json",
+            "file": str(modules / "Lost Stick" / "module.json"),
+            "fileName": "Lost Stick/module.json",
+            "device": "Lost Stick",
+            "deviceId": "name:lost_stick",
         },
     }
     side = {
         "text": '{"device": "Lost Stick"}',
-        "pictures": [{"ref": "lost_stick/photo.png", "keptFile": "missing.png"}],
+        "pictures": [{"ref": "pictures/photo.png", "keptFile": "missing.png"}],
     }
     ok, message = history_model._restore_module(entry, side)
     assert ok
-    assert "lost_stick/photo.png" in message
-    (modules / "lost_stick.json").unlink()
+    assert "pictures/photo.png" in message
+    assert (modules / "Lost Stick" / "module.json").is_file()
+    shutil.rmtree(modules / "Lost Stick")
+    module_store._dirs_changed()
 
 
 def test_restore_writes_into_the_modules_folder_of_today(
@@ -109,11 +115,17 @@ def test_restore_writes_into_the_modules_folder_of_today(
     moved = tmp_path / "moved modules"
     moved.mkdir()
     monkeypatch.setattr(util, "modules_dir", lambda: moved)
-    old = tmp_path / "old modules" / "moved_stick.json"
-    entry = {"subject": {"file": str(old), "fileName": "moved_stick.json"}}
+    old = tmp_path / "old modules" / "Moved Stick" / "module.json"
+    entry = {
+        "subject": {
+            "file": str(old),
+            "fileName": "Moved Stick/module.json",
+            "device": "Moved Stick",
+        }
+    }
     ok, _ = history_model._restore_module(entry, {"text": "{}", "pictures": []})
     assert ok
-    assert (moved / "moved_stick.json").is_file()
+    assert (moved / "Moved Stick" / "module.json").is_file()
     assert not old.exists()
 
 
@@ -140,7 +152,7 @@ def test_a_save_that_failed_is_no_history_entry(
 ) -> None:
     modules = util.modules_dir()
     modules.mkdir(parents=True, exist_ok=True)
-    path = modules / "locked_stick.json"
+    path = ensure_dir(modules, "Locked Stick") / "module.json"
     module_file.write_json(path, {"device": "Locked Stick"})
     count = len(_settle())
 
@@ -157,7 +169,7 @@ def test_an_import_write_that_failed_is_no_history_entry(
 ) -> None:
     modules = util.modules_dir()
     modules.mkdir(parents=True, exist_ok=True)
-    path = modules / "import_stick.json"
+    path = ensure_dir(modules, "Import Stick") / "module.json"
     module_file.write_json(path, {"device": "Import Stick"})
     count = len(_settle())
 

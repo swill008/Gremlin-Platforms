@@ -9,7 +9,6 @@ remembered by its stamp so it isn't logged on every call."""
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from pathlib import Path
 from unittest import mock
@@ -17,12 +16,13 @@ from unittest import mock
 import pytest
 
 from gremlin.modules import registry
+from test.unit._device_folders import put_module
 
 
 @pytest.fixture
 def folder(tmp_path: Path) -> Iterator[Path]:
     registry._cache.clear()
-    with mock.patch.object(registry, "_folder", return_value=tmp_path):
+    with mock.patch("gremlin.modules.store.folder", return_value=tmp_path):
         yield tmp_path
     registry._cache.clear()
 
@@ -30,8 +30,7 @@ def folder(tmp_path: Path) -> Iterator[Path]:
 def test_a_failed_read_is_retried_on_the_next_call(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    path = folder / "stick.json"
-    path.write_text(json.dumps({"device": "Stick"}), encoding="utf-8")
+    path = put_module(folder, "Stick", {"device": "Stick"})
     real_read_text = Path.read_text
     calls = {"n": 0}
 
@@ -52,8 +51,7 @@ def test_a_failed_read_is_retried_on_the_next_call(
 def test_a_damaged_file_is_read_once_per_stamp(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    path = folder / "broken.json"
-    path.write_text("{not json", encoding="utf-8")
+    path = put_module(folder, "Broken", "{not json")
     real_read_text = Path.read_text
     calls = {"n": 0}
 

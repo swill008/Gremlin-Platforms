@@ -22,7 +22,6 @@ wholly on a program thread: the saved profiles' scan and the size measure.
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
 import types
 from collections.abc import Callable
@@ -70,6 +69,10 @@ _NOT_STEPS = ("undo", "redo")
 
 _BUSY_TEXT = "Another change is still running: wait for it to finish."
 
+# A saved setup's file: a ".gmap" device file, or an older Device Pack
+# ".zip" (D-10-GMAP-SETUPS).
+_SETUP_SUFFIXES = (".gmap", ".zip")
+
 
 def _real_api() -> types.SimpleNamespace:
     """The owners the model calls (imported when first used)."""
@@ -85,16 +88,10 @@ def _real_api() -> types.SimpleNamespace:
             return
         device_forget.forget_device(name, guid)
 
-    def file_choices() -> str:
-        from gremlin.modules import store
-
-        return json.dumps(store.bindings(), sort_keys=True)
-
     return types.SimpleNamespace(
         library=library,
         history=history,
         forget=forget,
-        file_choices=file_choices,
         profiles=library_profiles,
         copy=library_copy,
         swap=library_swap,
@@ -229,6 +226,16 @@ def _vjoy_text(vjoys: dict) -> str:
     return "Sends to " + ", ".join(parts[:-1]) + " and " + parts[-1]
 
 
+def _export_dest(url: str) -> Path:
+    """S14, S44: where an export goes. A picked ".gmap" or ".zip" stays (the
+    owner's _export_name fits it to what is written); a bare name gets
+    ".gmap", never "X.gmap.zip" (GMAP-WINDOW-SUFFIX)."""
+    dest = to_local_path(url)
+    if dest.suffix.lower() in _SETUP_SUFFIXES:
+        return dest
+    return dest.with_name(dest.name + ".gmap")
+
+
 def _result(op: str, value: object) -> dict:
     """A Result map for QML: always op, ok, error, warnings, notes."""
     out: dict[str, Any] = (
@@ -314,7 +321,6 @@ class DeviceLibraryModel(QtCore.QObject):
         self._plan_timers: dict[str, QtCore.QTimer] = {}
         # The History group a Remove from Library is recorded in (S51-S52).
         self._group = ""
-        self._choices: str | None = None
         self._done.connect(self._finish)
         self._planned.connect(self._take_plan)
         self._sized.connect(self._take_size)
@@ -697,6 +703,11 @@ class DeviceLibraryModel(QtCore.QObject):
                 for h in setup.get("history", [])
             ],
             "photo": self._photo_of(setup["key"]),
+            # Export keeps its kind: a device folder zip (S60) or an older
+            # Device Pack.
+            "fileType": ".gmap"
+            if str(setup.get("pack", "")).lower().endswith(".gmap")
+            else ".zip",
             "state": state,
             "guid": dev.get("guid", ""),
             "connected": state == "connected",
@@ -1276,9 +1287,7 @@ class DeviceLibraryModel(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=int)
     def exportSetup(self, key: str, url: str) -> int:
-        dest = to_local_path(url)
-        if dest.suffix.lower() != ".zip":
-            dest = dest.with_name(dest.name + ".zip")
+        dest = _export_dest(url)
         # Main thread: the owner reads the settings and the modules folder
         # (item 7); its file work can go through library_profiles.background.
         return self._start(
@@ -1287,15 +1296,12 @@ class DeviceLibraryModel(QtCore.QObject):
 
     @QtCore.Slot(str, result=int)
     def importPack(self, url: str) -> int:
-        """S35, S39: a Device Pack .zip becomes a saved setup."""
+        """S35, S39: a ".gmap" device file, or an older Device Pack ".zip",
+        becomes a saved setup (D-10-GMAP-SETUPS)."""
         path = to_local_path(url)
-        if path.suffix.lower() != ".zip":
-            self.result.emit(
-                _result(
-                    "import",
-                    {"ok": False, "error": f"{path.name} isn't a Device Pack (.zip)."},
-                )
-            )
+        if path.suffix.lower() not in _SETUP_SUFFIXES:
+            error = f"{path.name} isn't a device file (.gmap) or Device Pack (.zip)."
+            self.result.emit(_result("import", {"ok": False, "error": error}))
             return 0
         return self._start("import", self.api.library.import_pack, path, main=True)
 
@@ -1325,7 +1331,6 @@ class DeviceLibraryModel(QtCore.QObject):
             what = f"{len(clean)} devices"
         self._group = hist.begin_group(f"Removed {what} from the Device Library")
         self._since = self._step_start()
-        self._choices = self._file_choices() if self._group else None
         # A window that never ends it doesn't hold History's records.
         token = self._group
         QtCore.QTimer.singleShot(_GROUP_LIMIT_MS, self, lambda: self._end(token))
@@ -1343,7 +1348,6 @@ class DeviceLibraryModel(QtCore.QObject):
         what = str(plan.get("shown") or plan.get("name") or "a device")
         self._group = hist.begin_group(f"Cleared the setup of {what}")
         self._since = self._step_start()
-        self._choices = self._file_choices() if self._group else None
         token = self._group
         QtCore.QTimer.singleShot(_GROUP_LIMIT_MS, self, lambda: self._end(token))
 
@@ -1356,36 +1360,11 @@ class DeviceLibraryModel(QtCore.QObject):
         if not token or token != self._group or hist is None:
             return
         self._group = ""
-        self._note_choices(hist)
         hist.end_group(token)
         if not self._busy:
             # Clear Setup ends here, with no change of the model's own.
             since, self._since = self._since, None
             self._take_step(since)
-
-    def _file_choices(self) -> str | None:
-        read = getattr(self.api, "file_choices", None)
-        try:
-            return read() if read is not None else None
-        except Exception:  # noqa: BLE001 - not kept, not recorded
-            return None
-
-    def _note_choices(self, hist: Any) -> None:  # noqa: ANN401
-        """The file choices the removal dropped (03 S94, 10 S52): an
-        internal setting the settings save doesn't record, so recorded here
-        into the group, for its Restore."""
-        before, self._choices = self._choices, None
-        after = self._file_choices()
-        if before is None or after is None or before == after:
-            return
-        key = "global/internal/module-file-bindings"
-        hist.record(
-            "settings",
-            "Module file choices",
-            {"keys": [key]},
-            {key: json.dumps(json.loads(before))},
-            {key: json.dumps(json.loads(after))},
-        )
 
     def _removing(self, fn: Callable[..., dict], *args: object) -> Callable[[], dict]:
         """fn(*args), then each device it removed forgotten (S52: friendly
@@ -1410,7 +1389,8 @@ class DeviceLibraryModel(QtCore.QObject):
     @QtCore.Slot(str, result=int)
     def removeDevice(self, key: str) -> int:
         """S15 Remove from Library: the device and all its saved setups
-        (its module file, if any, went first through Home's Delete Device)."""
+        (its module file, if any, went first through Home's Delete Device),
+        and the rest of its folder (S52)."""
         ticket = self._start(
             "remove",
             self._removing(self.api.library.remove_device, key),
@@ -1471,9 +1451,7 @@ class DeviceLibraryModel(QtCore.QObject):
     def exportCurrent(self, key: str, url: str) -> int:
         """S44 Export Current Setup...: a Device Pack of the device's
         current settings."""
-        dest = to_local_path(url)
-        if dest.suffix.lower() != ".zip":
-            dest = dest.with_name(dest.name + ".zip")
+        dest = _export_dest(url)
         return self._start(
             "exportCurrent",
             self.api.library.export_current,

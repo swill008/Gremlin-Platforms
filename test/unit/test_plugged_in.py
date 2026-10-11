@@ -65,9 +65,6 @@ def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.
     maps = tmp_path / "modules"
     maps.mkdir()
     monkeypatch.setattr(store, "folder", lambda: maps)
-    monkeypatch.setattr(store, "users_of", lambda slug: set())
-    monkeypatch.setattr(store, "bindings", lambda: {})
-    monkeypatch.setattr(store, "set_bindings", lambda data: None)
     monkeypatch.setattr(registry, "guid_for_name", lambda name: "")
     monkeypatch.setattr(hardware_profile, "_profile_running", lambda: False)
     monkeypatch.setattr(

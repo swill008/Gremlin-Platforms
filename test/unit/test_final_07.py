@@ -31,6 +31,7 @@ from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.types import InputType
 from gremlin.ui import hardware_profile
 from gremlin.ui.pair_live import PairLiveThrottle
+from test.unit._device_folders import put_module
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "final_07_smoke.py"
@@ -153,9 +154,6 @@ def maps(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.Pat
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
-    monkeypatch.setattr(
-        store, "slug_for", lambda name, guid="": name.lower().replace(" ", "_")
-    )
     return folder
 
 
@@ -164,10 +162,9 @@ def test_a_save_cut_short_leaves_the_old_file_whole(
 ) -> None:
     # S23: written whole through a temporary file; a crash part way leaves
     # the file as it was.
-    path = maps / "test_stick.json"
     old = {"kind": "control.hardware", "device": "Test Stick",
            "nodes": [{"id": "b1", "kind": "btn", "hwId": 1}]}
-    path.write_text(json.dumps(old), encoding="utf-8")
+    path = put_module(maps, "Test Stick", old)
     real = pathlib.Path.write_bytes
 
     def cut_short(self: pathlib.Path, data: bytes) -> int:
@@ -187,7 +184,8 @@ def test_a_save_cut_short_leaves_the_old_file_whole(
         written = False
     assert written is False
     assert json.loads(path.read_text(encoding="utf-8")) == old
-    assert not (maps / "test_stick.json.tmp").exists()
+    left = sorted(p.name for p in path.parent.iterdir())
+    assert left == ["device.json", "module.json"]
     monkeypatch.setattr(pathlib.Path, "write_bytes", real)
     assert hw.save("Test Stick", json.dumps(new)) is True
     assert json.loads(path.read_text(encoding="utf-8"))["nodes"] == new["nodes"]

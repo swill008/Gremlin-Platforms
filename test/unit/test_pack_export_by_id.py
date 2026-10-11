@@ -18,6 +18,7 @@ import pytest
 from gremlin.modules import store
 from gremlin.ui import device_pack, hardware_profile
 from test.unit import test_stage1_modules
+from test.unit._device_folders import put_module
 from test.unit.test_id_not_name_lookups import FIRST, SECOND, TWIN, twins
 from test.unit.test_stage1_history_pack import _url
 
@@ -38,9 +39,8 @@ def _write_own_files() -> None:
             "claim": {"buttons": [1], "axes": [], "hats": [], "keys": []},
             "twinMarker": marker,
         }
-        path = store.path_for_id(TWIN, guid)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc), encoding="utf-8")
+        # Its own folder, found by its id (03 S6, S132).
+        put_module(store.folder(), TWIN, doc, guid)
 
 
 def _map(zip_path: Path) -> dict:
@@ -113,12 +113,9 @@ def test_a_twin_rows_label_reaches_the_pack_list(
 def test_a_damaged_twin_row_keeps_its_label(
     folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    path = store.path_for_id(TWIN, str(SECOND))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("{ not json", encoding="utf-8")
+    put_module(store.folder(), TWIN, "{ not json", str(SECOND))
     row = {"name": TWIN, "guid": str(SECOND), "hasFile": True,
            "label": f"{TWIN} (2)"}
     monkeypatch.setattr(store, "known_devices", lambda: [dict(row)])
-    monkeypatch.setattr(store, "path_for", lambda _n, _g: path)
     (listed,) = device_pack.pack_devices()
     assert listed["label"] == f"{TWIN} (2) (file damaged)"

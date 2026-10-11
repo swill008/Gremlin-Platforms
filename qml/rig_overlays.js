@@ -102,6 +102,17 @@ function addOverlay(rel, fileUrl, opts) {
     return st.id
 }
 
+// Choose Picture… on a missing picture (07 S108): the item keeps its place
+// and size, only its file changes. One Undo step.
+function repointPicture(id, rel, fileUrl) {
+    var n = nodeAt(id)
+    if (!n || n.shape !== "image" || !rel)
+        return
+    n.src = rel
+    n.srcUrl = fileUrl || ""
+    bump()
+}
+
 function pinTarget(id) {
     var n = nodeAt(id || selectedId)
     if (isDraw(n))

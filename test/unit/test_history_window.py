@@ -34,9 +34,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     args = [sys.executable, "test/unit/history_window_smoke.py"]
     if os.environ.get("GREMLIN_SHOT"):
         args.append(os.environ["GREMLIN_SHOT"])
-    result = proc_tree.run(
-        args, cwd=_ROOT, env=env, text=True, timeout=120
-    )
+    result = proc_tree.run(args, cwd=_ROOT, env=env, text=True, timeout=120)
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-2000:] + result.stderr[-2000:]
     return json.loads(lines[0][len("RESULT ") :])
@@ -57,7 +55,7 @@ def test_a_change_before_and_after(run: dict) -> None:
 
 
 def test_restore_before_puts_the_file_back(run: dict) -> None:
-    assert run["message"] == "Put back history_stick.json."
+    assert run["message"] == "Put back History Stick/module.json."
     assert run["file-after-restore"] == {"buttons": [1]}
     assert run["count-after-restore"] == 3
 

@@ -26,7 +26,8 @@ lib = _ls.lib  # the LS fixture
 
 
 def _zips(lib: dict) -> list[Path]:
-    return sorted(lib["folder"].rglob("*.zip"))
+    """The Library's saved setups: device folder zips (.gmap, S60)."""
+    return sorted(lib["folder"].rglob("*.gmap"))
 
 
 # --- Remove from Library (S15, D-10-REMOVE) ------------------------------------------
@@ -201,10 +202,10 @@ def test_export_current_writes_a_pack_and_keeps_no_saved_setup(lib: dict) -> Non
     dest.parent.mkdir()
     out = library.export_current(key, dest)
     assert out["ok"], out
-    written = dest.with_name("Mine.zip")
+    written = dest.with_name("Mine.gmap")
     assert written.is_file()
     with zipfile.ZipFile(written) as zf:
-        doc = json.loads(zf.read("map.json"))
+        doc = json.loads(zf.read(library.GMAP_MODULE))
     assert doc.get("claim")
     assert _row()["setups"] == []
     assert _zips(lib) == []

@@ -11,6 +11,7 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import uuid
+from pathlib import Path
 from typing import Any
 
 import dill
@@ -243,25 +244,25 @@ class AutoMapper:
     def _source_uuid(self, source: dict) -> uuid.UUID | None:
         """The input module's device by id, never by its name: twins share a
         name (03 S90a). Its bound id; else the one plugged-in device whose
-        file (chosen for its id, S6) is this module's. None when there is
-        no such id, or more than one device uses the file."""
+        folder (03 S1, S6) is this module's. None when there is no such id,
+        or more than one device has the folder."""
         text = str(source.get("guid") or "").strip()
         if text:
             try:
                 return dill.GUID.from_str(text).uuid
             except Exception:  # noqa: BLE001 - an id that can't be read is none
                 return None
-        slug = str(source.get("slug") or "")
-        if not slug:
+        folder = source.get("dir")
+        if not folder:
             return None
         users = [
             device.device_guid.uuid
             for device in device_initialization.physical_devices() or []
-            if store.slug_for(
+            if store.device_dir(
                 str(getattr(device, "name", "") or ""),
                 store.guid_text(device.device_guid),
             )
-            == slug
+            == Path(folder)
         ]
         return users[0] if len(users) == 1 else None
 

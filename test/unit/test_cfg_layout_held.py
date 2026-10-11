@@ -20,7 +20,8 @@ import pytest
 
 from gremlin import history_modules
 from gremlin import signal as gremlin_signal
-from gremlin.modules import module_file, store
+from gremlin.modules import store
+from test.unit._device_folders import put_module
 
 GUID = "{11111111-2222-3333-4444-555555555555}"
 NAME = "Test Stick"
@@ -33,9 +34,9 @@ def device(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
-    path = folder / "test_stick.json"
-    module_file.write_json(
-        path,
+    path = put_module(
+        folder,
+        NAME,
         {
             "kind": "control.hardware",
             "device": NAME,
@@ -43,10 +44,9 @@ def device(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
             "claim": {"buttons": [1, 2], "friendly": {"button:1": "Fire"}},
             "nodes": [],
         },
+        GUID,
     )
-    monkeypatch.setattr(
-        store, "_layout_path", lambda guid, name="": path if guid == GUID else None
-    )
+    assert store.module_file(NAME, GUID) == path
     monkeypatch.setattr(history_modules, "note_write", lambda *a, **k: None)
     store.discard_pending()
     yield path

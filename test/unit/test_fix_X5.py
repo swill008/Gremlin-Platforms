@@ -15,16 +15,12 @@ import pytest
 
 from gremlin.modules import module_file, store
 from gremlin.ui import hardware_profile, windows_scale_option
+from test.unit._device_folders import put_module
 
 
 @pytest.fixture
 def maps(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.Path:
     monkeypatch.setattr(store, "folder", lambda: tmp_path)
-    monkeypatch.setattr(
-        store,
-        "slug_for",
-        lambda name, guid="": name.lower().replace(" ", "_"),
-    )
     return tmp_path
 
 
@@ -45,9 +41,8 @@ def test_a_failed_write_is_false_logged_once_and_the_file_stays(
     caplog: pytest.LogCaptureFixture,
     slot: str,
 ) -> None:
-    path = maps / "stick_r.json"
     old_text = json.dumps(_OLD)
-    path.write_text(old_text, encoding="utf-8")
+    path = put_module(maps, "Stick R", old_text)
     _fail_writes(monkeypatch)
     payload = {"device": "Stick R", "image": "", "photo": {}, "ui": {"a": 1},
                "nodes": [{"id": "new"}]}

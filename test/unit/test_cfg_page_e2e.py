@@ -207,7 +207,7 @@ def _open_page(j: Journey, slug: str, guid: object) -> Any:  # noqa: ANN401
 def _module_path(guid: object) -> pathlib.Path:
     from gremlin.modules import store
 
-    return store.path_for_id(STICK, str(guid))
+    return store.module_file(STICK, str(guid))
 
 
 def _module_doc(guid: object) -> dict:
@@ -220,7 +220,8 @@ def _history_count(j: Journey, guid: object) -> int:
     from gremlin import history
 
     j.wait_until(lambda: history._writer is None, "the History writer", 10)
-    name = _module_path(guid).name
+    path = _module_path(guid)
+    name = f"{path.parent.name}/{path.name}"
     return sum(
         1 for e in history.entries() if (e.get("subject") or {}).get("fileName") == name
     )

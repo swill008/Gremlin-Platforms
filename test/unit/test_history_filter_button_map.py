@@ -4,8 +4,9 @@
 
 """Button Map > File > History filter (08 Q15, decided as recommended).
 
-The window filters by the device's own module file name and every area, so
-twin sticks (same name, different files) stay apart and a save that also
+The window filters by the device's id (deviceId, 08 S43; its name only for
+an entry written before device folders) and every area, so twin sticks
+(same name, different ids and folders) stay apart and a save that also
 changed claims (filed under Module files) still shows. Show All (the window
 keeps only the area) widens it again. Drives the real HistoryModel over
 entries written to a temporary History store, with the filter object
@@ -46,17 +47,28 @@ def store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
     _settle()
 
 
-def _module(area: str, title: str, device: str, file_name: str, parts: list) -> None:
+LEFT_ID = "AAAA0001"
+RIGHT_ID = "AAAA0002"
+THROTTLE_ID = "BBBB0001"
+
+
+def _module(
+    area: str, title: str, device: str, device_id: str, folder: str, parts: list
+) -> None:
     # The subject history_modules.py writes for a module file save.
+    subject = {
+        "device": device,
+        "folder": folder,
+        "file": f"C:/modules/{folder}/module.json",
+        "fileName": f"{folder}/module.json",
+        "parts": parts,
+    }
+    if device_id:
+        subject["deviceId"] = device_id
     history.write_now(
         area,
         title,
-        {
-            "device": device,
-            "file": f"C:/modules/{file_name}",
-            "fileName": file_name,
-            "parts": parts,
-        },
+        subject,
         {"text": "{}", "pictures": []},
         {"text": "{}", "pictures": []},
         "save",
@@ -65,17 +77,20 @@ def _module(area: str, title: str, device: str, file_name: str, parts: list) -> 
 
 @pytest.fixture
 def model(store: Path) -> history_model.HistoryModel:
-    # Twin sticks: one name, two files.
-    _module("button-map", "Left map", "Twin Stick", "twin-stick.json", ["map"])
+    # Twin sticks: one name, two ids and folders.
+    _module("button-map", "Left map", "Twin Stick", LEFT_ID, "Twin Stick", ["map"])
     _module(
         "modules",
         "Left map and claims",
         "Twin Stick",
-        "twin-stick.json",
+        LEFT_ID,
+        "Twin Stick",
         ["claims", "map"],
     )
-    _module("button-map", "Right map", "Twin Stick", "twin-stick-2.json", ["map"])
-    _module("button-map", "Throttle map", "Throttle", "throttle.json", ["map"])
+    _module(
+        "button-map", "Right map", "Twin Stick", RIGHT_ID, "Twin Stick (2)", ["map"]
+    )
+    _module("button-map", "Throttle map", "Throttle", THROTTLE_ID, "Throttle", ["map"])
     history.write_now(
         "profile",
         "Saved profile",
@@ -94,9 +109,9 @@ def _titles(m: history_model.HistoryModel) -> set[str]:
     return {e["title"] for e in m._rows}
 
 
-def _window_filter(file_name: str) -> str:
+def _window_filter(device_id: str, device_name: str = "Twin Stick") -> str:
     # As DialogJoystickButtonMap.qml's File > History builds it.
-    return json.dumps({"fileName": file_name})
+    return json.dumps({"deviceId": device_id, "deviceName": device_name})
 
 
 _ALL = {
@@ -109,36 +124,48 @@ _ALL = {
 }
 
 
-def test_window_builds_a_file_name_filter_with_no_area() -> None:
+def test_window_builds_a_device_id_filter_with_no_area() -> None:
     text = _QML.read_text(encoding="utf-8")
     found = re.search(
         r'text:\s*"History".*?filter:\s*JSON\.stringify\((\{.*?\})\)', text, re.S
     )
     assert found, "File > History not found in DialogJoystickButtonMap.qml"
     built = found.group(1)
-    assert "fileName: _hw.moduleFileName(" in built
-    assert "area" not in built and "device" not in built
+    assert "deviceId: _fileWatch.deviceIdFor(" in built
+    assert "deviceName: _buttonMap.targetName" in built
+    assert "area" not in built and "fileName" not in built
 
 
 def test_filter_shows_this_files_entries_in_every_area(
     model: history_model.HistoryModel,
 ) -> None:
-    model.setFilter(_window_filter("twin-stick.json"))
+    model.setFilter(_window_filter(LEFT_ID))
     assert _titles(model) == {"Left map", "Left map and claims"}
 
 
 def test_twin_sticks_stay_apart(model: history_model.HistoryModel) -> None:
-    model.setFilter(_window_filter("twin-stick-2.json"))
+    model.setFilter(_window_filter(RIGHT_ID))
     assert _titles(model) == {"Right map"}
 
 
-def test_file_name_matches_however_cased(model: history_model.HistoryModel) -> None:
-    model.setFilter(_window_filter("Twin-Stick.JSON"))
+def test_device_id_matches_however_written(
+    model: history_model.HistoryModel,
+) -> None:
+    model.setFilter(_window_filter("aaaa0001"))
     assert _titles(model) == {"Left map", "Left map and claims"}
 
 
+def test_an_entry_from_before_device_folders_matches_by_name(
+    model: history_model.HistoryModel,
+) -> None:
+    _module("button-map", "Old throttle map", "Throttle", "", "throttle", ["map"])
+    model.reload()
+    model.setFilter(_window_filter(THROTTLE_ID, "Throttle"))
+    assert _titles(model) == {"Throttle map", "Old throttle map"}
+
+
 def test_show_all_widens_to_everything(model: history_model.HistoryModel) -> None:
-    model.setFilter(_window_filter("twin-stick.json"))
+    model.setFilter(_window_filter(LEFT_ID))
     # Show All in DialogHistory.qml keeps only the area; there is none here.
     model.setFilter("")
     assert _titles(model) == _ALL
@@ -148,7 +175,11 @@ def test_area_picked_then_show_all_keeps_the_area(
     model: history_model.HistoryModel,
 ) -> None:
     # Picking Button Map in the window adds the area to the file filter.
-    model.setFilter(json.dumps({"fileName": "twin-stick.json", "area": "button-map"}))
+    model.setFilter(
+        json.dumps(
+            {"deviceId": LEFT_ID, "deviceName": "Twin Stick", "area": "button-map"}
+        )
+    )
     assert _titles(model) == {"Left map"}
     model.setFilter(json.dumps({"area": "button-map"}))
     assert _titles(model) == {"Left map", "Right map", "Throttle map"}

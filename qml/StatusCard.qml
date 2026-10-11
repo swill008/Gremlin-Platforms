@@ -76,6 +76,8 @@ Rectangle {
     signal clearSettings()
     signal deleteDevice()
     signal startFresh()
+    signal exportDevice()
+    signal importDevice()
     // The Logical Device card's own picture (03 S88, D-03-LD-IMAGE).
     signal addImage()
     signal removeImage()
@@ -535,6 +537,11 @@ Rectangle {
                                        function() { _card.addImage() }),
                 (!logical || !_card.photo) ? null
                     : MenuModel.action("Remove Image", function() { _card.removeImage() }),
+                // 08 S111: the device's folder as one ".gmap" file (only
+                // once it has a module file), and Import Device… into a
+                // new folder.
+                MenuModel.action("Export Device…", function() { _card.exportDevice() }, _card.isModule),
+                MenuModel.action("Import Device…", function() { _card.importDevice() }),
                 MenuModel.action("Reset Card Layout", function() { _card.clearSettings() }),
                 // Output module files are never deleted (03 Q18).
                 dest ? null

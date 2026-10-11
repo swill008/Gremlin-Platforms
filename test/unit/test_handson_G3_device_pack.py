@@ -28,10 +28,12 @@ from gremlin import threads
 from gremlin.modules import store
 from gremlin.ui import device_pack, hardware_profile
 from test.unit import test_stage1_modules
+from test.unit._device_folders import put_picture
 from test.unit.test_stage1_history_pack import _url, new_profile
 from test.unit.test_stage1_modules import (
     map_button,
     stick_doc,
+    stick_guid,
     stick_uid,
     vjoy_doc,
     write_module,
@@ -52,7 +54,7 @@ def _damage(name: str) -> Path:
     """The module file of a known device, written as text that isn't JSON."""
     row = store.match_known_device(name)
     assert row is not None
-    path = store.path_for(name, str(row.get("guid") or ""))
+    path = store.ensure_device_dir(name, str(row.get("guid") or "")) / "module.json"
     path.write_text("{ not json", encoding="utf-8")
     return path
 
@@ -120,9 +122,8 @@ def slow(monkeypatch: pytest.MonkeyPatch) -> Iterator[_SlowWriter]:
 
 @pytest.fixture
 def stick(folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    (folder / "pjoy_pro").mkdir()
-    (folder / "pjoy_pro" / "photo.png").write_bytes(b"a photo")
-    write_module(folder, "pjoy_pro", stick_doc(image="pjoy_pro/photo.png"))
+    photo = put_picture(folder, "pJoy Pro", "photo.png", b"a photo", stick_guid())
+    write_module(folder, "pjoy_pro", stick_doc(image=photo))
     write_module(folder, "vjoy_1", vjoy_doc())
     profile = new_profile(monkeypatch)
     map_button(profile, stick_uid(), 1, 1)
@@ -213,9 +214,7 @@ def test_s107_a_refusal_is_told_at_once_and_starts_nothing(
     assert told["ok"] is False
     assert "is damaged" in told["error"] and "Start Fresh" in told["error"]
     assert not hw.packExporting
-    inside = json.loads(
-        hw.exportPackAsync("Gone Stick", _url(folder / "x.zip"), "{}")
-    )
+    inside = json.loads(hw.exportPackAsync("Gone Stick", _url(folder / "x.zip"), "{}"))
     assert inside["ok"] is False
     assert not hw.packExporting
 
@@ -246,7 +245,8 @@ def test_s107_the_sync_export_still_writes_the_same_pack(
     hw = hardware_profile.HardwareProfile()
     done = json.loads(hw.exportPack("pJoy Pro", _url(tmp_path / "s.zip"), "{}"))
     assert done["ok"], done
-    data, info = device_pack.assemble("pJoy Pro", hw._resolve_existing)  # type: ignore[misc]
+    resolve = hw._resolver_for("pJoy Pro", stick_guid())
+    data, info = device_pack.assemble("pJoy Pro", resolve)  # type: ignore[misc]
     assert info["device"] == "pJoy Pro"
     with zipfile.ZipFile(tmp_path / "s.zip") as zf:
         assert set(zf.namelist()) == set(zipfile.ZipFile(io.BytesIO(data)).namelist())

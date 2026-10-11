@@ -178,6 +178,7 @@ if _startup_failure is None:
         import gremlin.ui.module_calibration  # noqa: F401
         import gremlin.ui.shell_option  # noqa: F401
         import gremlin.ui.folder_memory  # noqa: F401
+        import gremlin.ui.device_export  # noqa: F401
         import gremlin.osc_persist  # noqa: F401
         import gremlin.windows_event_hook
         # isort: on
@@ -268,6 +269,35 @@ def _message_box(text: str, title: str, flags: int) -> int:
         )
         return 2
     return ctypes.windll.user32.MessageBoxW(None, text, title, flags)
+
+
+def _move_to_device_folders() -> None:
+    """ONE-TIME (tracker OT-1): the move to device folders (03 S134), before
+    the device scan and the settings purge. A failure is logged and shown
+    once; the marker is not written, so the next start tries again."""
+    from gremlin.modules import folders_move, store
+
+    try:
+        error = folders_move.run_if_needed(
+            store.folder(), Path(gremlin.util.data_folder())
+        )
+    except Exception as exc:  # noqa: BLE001 - the start goes on
+        logging.getLogger("system").exception("Device folders move")
+        error = str(exc) or type(exc).__name__
+    if error and (
+        error == folders_move.REFUSED or os.environ.get("GREMLIN_TESTS") == "1"
+    ):
+        # Under tests nothing may wait for a click (the off-screen program
+        # would hang); the reason goes to the log.
+        logging.getLogger("system").warning("Device folders move: %s", error)
+        return
+    if error:
+        _message_box(
+            "Moving your device files into device folders did not finish. "
+            "Nothing was lost; the next start tries again.\n\n" + error,
+            "Gremlin-Platforms",
+            0x30,
+        )
 
 
 class StartupError(Exception):
@@ -876,7 +906,11 @@ def register_config_options() -> None:
     # Status layout and the chosen module file must be registered before
     # purge_unused() or the next launch deletes them.
     gremlin.ui.module_model._ensure_display_options()
-    gremlin.modules.store.bindings()  # registers the file choices setting
+    # ONE-TIME (tracker OT-1): the old file-bindings setting, kept for the
+    # move to device folders, which reads it once.
+    from gremlin.modules import folders_move
+
+    folders_move.register_setting()
     gremlin.ui.hidhide._ensure_options()
     from gremlin import trace
 
@@ -959,6 +993,7 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.syslog = logging.getLogger("system")
         register_config_options()
         gremlin.ui.log_option.apply_log_level()
+        _move_to_device_folders()
         # HidHide settings are for the whole PC, not for an off-screen run.
         if running_offscreen():
             self.syslog.info("HidHide start skipped (off-screen)")

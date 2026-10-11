@@ -3,7 +3,7 @@
 
 """Unreadable rows in the Logical Device's and OSC's files (AD1): the user is
 told at start, once the main window is up (not during Backend's start, when
-nothing listens yet); OSC keeps its unreadable rows in osc.json at Save, in
+nothing listens yet); OSC keeps its unreadable rows in its module file at Save, in
 their places; a failed library change's rollback keeps the Logical Device's
 and OSC's unreadable rows."""
 
@@ -30,6 +30,7 @@ from gremlin.profile import Profile
 from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui import backend
+from test.unit._device_folders import put_module
 
 _KEEP: list[Any] = []
 
@@ -71,12 +72,18 @@ def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
 
 
 def _write_ld(controls: list) -> None:
+    from gremlin.modules import ids
+
     doc = {"device": "Logical Device", ldf.KEY: {"controls": controls, "groups": []}}
-    ldf.path().write_text(json.dumps(doc), encoding="utf-8")
+    put_module(store.folder(), "Logical Device", doc, str(ids.LOGICAL_DEVICE))
+    assert ldf.path().is_file()
 
 
 def _write_osc(inputs: list) -> None:
-    odf.path().write_text(json.dumps({odf.KEY: inputs}), encoding="utf-8")
+    from gremlin.modules import ids
+
+    put_module(store.folder(), "OSC", {odf.KEY: inputs}, str(ids.OSC))
+    assert odf.path().is_file()
 
 
 def _osc_on_file() -> list:

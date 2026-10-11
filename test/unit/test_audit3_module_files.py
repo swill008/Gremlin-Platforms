@@ -2,15 +2,15 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Which module file a device uses (audit 3).
+"""Which device folder a device uses (audit 3, D-03-DEVICE-FOLDERS).
 
-A renamed stick opens its old file (bound to its id), but its Button Map
-photo, "not saved yet" label, Delete Module File and Delete Device went by
-its new name. Two identical sticks in an old state both opened one file. An
-old second file marked output and bound to a stick blocked it at Run. A
-module file that isn't UTF-8 stopped Home. The Home card order kept a
-deleted device's place for good, put a renamed stick last, and a drag
-dropped hidden cards' places. History recorded a delete before it happened.
+A renamed stick opens its folder (found by its id, 03 S130), but its Button
+Map photo, "not saved yet" label, Delete Module File and Delete Device went
+by its new name. An old second file marked output naming a stick blocked
+it at Run. A module file that isn't UTF-8 stopped Home. The Home card order
+kept a deleted device's place for good, put a renamed stick last, and a
+drag dropped hidden cards' places. History recorded a delete before it
+happened.
 """
 
 from __future__ import annotations
@@ -31,12 +31,6 @@ from gremlin.modules import store as module_store
 from gremlin.modules.ids import guid_key, stored_guid_key
 from gremlin.types import InputType
 from gremlin.ui import hardware_profile, module_model
-from test.unit.test_twin_devices import (  # noqa: F401
-    _first_guid,
-    _names,
-    _twin_guid,
-    twins,
-)
 
 _APPS: list[QtCore.QCoreApplication] = []
 _CLAIM = {"buttons": [1], "axes": [], "hats": [], "keys": []}
@@ -51,29 +45,26 @@ def _app() -> Iterator[QtCore.QCoreApplication]:
 
 @pytest.fixture
 def folder(tmp_path: Path) -> Iterator[Path]:
-    """The modules folder, empty of module files and bindings (files other
-    tests left are put aside), put back as it was afterwards."""
+    """The modules folder, empty of device folders (those other tests left
+    are put aside), put back as it was afterwards."""
     path = util.modules_dir()
+    path.mkdir(parents=True, exist_ok=True)
     aside = tmp_path / "aside"
     aside.mkdir()
-    for old in path.glob("*.json"):
+    for old in list(path.iterdir()):
         shutil.move(str(old), str(aside / old.name))
-    before = {p.name for p in path.iterdir()}
-    bindings = module_store.bindings()
-    module_store.set_bindings({})
+    module_store._dirs_changed()
     order = module_model._order_slugs()
     hidden = module_model._hidden_slugs()
     yield path
-    for extra in path.iterdir():
-        if extra.name in before:
-            continue
+    for extra in list(path.iterdir()):
         if extra.is_dir():
             shutil.rmtree(extra, ignore_errors=True)
         else:
             extra.unlink(missing_ok=True)
     for old in aside.iterdir():
         shutil.move(str(old), str(path / old.name))
-    module_store.set_bindings(bindings)
+    module_store._dirs_changed()
     module_model._set_order(order)
     module_model._set_hidden(hidden)
 
@@ -85,18 +76,29 @@ def _pjoy_guid() -> str:
     return str(dev.device_guid)
 
 
-def _write(folder: Path, slug: str, doc: dict) -> Path:
-    path = folder / f"{slug}.json"
+def _write(folder: Path, name: str, doc: dict, ident: str = "") -> Path:
+    """<folder>/<name>/module.json, its device.json holding ident (the
+    device's id key; by default the doc's boundGuidLocal, else name:<slug>)."""
+    base = folder / name
+    base.mkdir(parents=True, exist_ok=True)
+    key = ident or stored_guid_key(doc.get("boundGuidLocal") or "")
+    if not key:
+        key = "name:" + registry.plain_slug(name)
+    (base / "device.json").write_text(
+        json.dumps({"format": 1, "id": key, "name": name}), encoding="utf-8"
+    )
+    path = base / "module.json"
     path.write_text(json.dumps(doc), encoding="utf-8")
+    module_store._dirs_changed()
     return path
 
 
 def _renamed(folder: Path) -> str:
-    """pJoy Pro was "Old Name": its file is old_name.json, bound to it."""
+    """pJoy Pro was "Old Name": its folder is Old Name, holding its id."""
     guid = _pjoy_guid()
     _write(
         folder,
-        "old_name",
+        "Old Name",
         {
             "kind": "control.hardware",
             "device": "Old Name",
@@ -105,7 +107,7 @@ def _renamed(folder: Path) -> str:
             "claim": _CLAIM,
         },
     )
-    assert registry.resolve_module_slug("pJoy Pro", guid) == "old_name"
+    assert module_store.device_dir("pJoy Pro", guid) == folder / "Old Name"
     return guid
 
 
@@ -116,39 +118,46 @@ def test_renamed_sticks_photo_goes_with_the_file_its_button_map_opens(
     folder: Path, tmp_path: Path
 ) -> None:
     guid = _renamed(folder)
+    own = folder / "Old Name"
     picture = tmp_path / "shot.jpg"
     picture.write_bytes(b"\xff\xd8\xff\xd9")
     hw = hardware_profile.HardwareProfile()
     hw.setDeviceGuid(guid)
 
-    hw.stashPhoto("pJoy Pro")
+    hw.beginEdit("pJoy Pro")
     rel = hw.copyImage(picture.as_uri(), "pJoy Pro")
-    # Old: pjoy_pro/photo.jpg, which the Button Map (old_name.json) never
-    # reads, and old_name.json kept no picture.
-    assert rel == "old_name/photo.jpg"
-    assert (folder / "old_name" / "photo.jpg").is_file()
-    # 07 Q2 (GL-174): the module file's "image" waits for the window's Save.
-    assert "image" not in json.loads((folder / "old_name.json").read_text())
-    assert hw.hasPhotoStash("pJoy Pro")
-    assert "old_name/photo.jpg" in hw.profilePhotoUrl("pJoy Pro")
+    assert rel == "pictures/photo.jpg"
+    # 07 S107: it waits in the edit's temporary folder until Save; the
+    # device's folder and its module file are untouched (07 Q2, GL-174).
+    assert not (own / "pictures" / "photo.jpg").exists()
+    assert "image" not in json.loads((own / "module.json").read_text())
+    assert hw.editActive("pJoy Pro")
+    # Cancel drops it: no photo.
+    assert hw.cancelEdit("pJoy Pro")
+    assert not (own / "pictures" / "photo.jpg").exists()
+    assert not hw.editActive("pJoy Pro")
 
-    # Cancel puts the session's start back: no photo.
-    assert hw.restorePhoto("pJoy Pro")
-    assert not (folder / "old_name" / "photo.jpg").exists()
-    assert "image" not in json.loads((folder / "old_name.json").read_text())
-    assert not hw.hasPhotoStash("pJoy Pro")
+    # Saved: it goes into the folder the Button Map opens. Old: pjoy_pro/,
+    # which the Button Map (old_name.json) never read.
+    hw.beginEdit("pJoy Pro")
+    assert hw.copyImage(picture.as_uri(), "pJoy Pro") == "pictures/photo.jpg"
+    assert hw.commitEditFor("pJoy Pro", "") == ""
+    assert (own / "pictures" / "photo.jpg").is_file()
+    assert json.loads((own / "module.json").read_text())["image"] == (
+        "pictures/photo.jpg"
+    )
+    assert "Old%20Name/pictures/photo.jpg" in hw.profilePhotoUrl("pJoy Pro")
+    assert not (folder / "pJoy Pro").exists()
 
 
 def test_renamed_sticks_saved_photo_is_shown(folder: Path) -> None:
     guid = _renamed(folder)
-    (folder / "old_name").mkdir()
-    (folder / "old_name" / "photo.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+    (folder / "Old Name" / "pictures").mkdir()
+    (folder / "Old Name" / "pictures" / "photo.jpg").write_bytes(b"\xff\xd8\xff\xd9")
     hw = hardware_profile.HardwareProfile()
     hw.setDeviceGuid(guid)
     # Old: looked in pjoy_pro/ and threw the file's own photo away.
-    assert "old_name/photo.jpg" in hw.profilePhotoUrl("pJoy Pro")
-    assert hw.clearImage("pJoy Pro")
-    assert not (folder / "old_name" / "photo.jpg").exists()
+    assert "Old%20Name/pictures/photo.jpg" in hw.profilePhotoUrl("pJoy Pro")
 
 
 def test_renamed_sticks_file_counts_as_saved_and_is_the_one_deleted(
@@ -156,55 +165,36 @@ def test_renamed_sticks_file_counts_as_saved_and_is_the_one_deleted(
 ) -> None:
     guid = _renamed(folder)
     model = module_model.ModuleListModel()
-    assert model.moduleFileFor(guid, "pJoy Pro") == "old_name"
+    assert model.moduleFileFor(guid, "pJoy Pro") == "Old Name"
     # Old: looked for pjoy_pro.json ("not saved yet").
     assert model.moduleFileExists(guid, "pJoy Pro")
 
     # Old: deleted the missing pjoy_pro.json and said it worked.
     assert hardware_profile.delete_module_file("pJoy Pro", guid) == ""
-    assert not (folder / "old_name.json").exists()
-    assert registry.resolve_module_slug("pJoy Pro", guid) == "pjoy_pro"
+    assert not (folder / "Old Name" / "module.json").exists()
     assert not model.moduleFileExists(guid, "pJoy Pro")
 
 
 def test_delete_device_removes_a_renamed_sticks_file(folder: Path) -> None:
     guid = _renamed(folder)
-    (folder / "old_name").mkdir()
-    (folder / "old_name" / "photo.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+    (folder / "Old Name" / "pictures").mkdir()
+    (folder / "Old Name" / "pictures" / "photo.jpg").write_bytes(b"\xff\xd8\xff\xd9")
     preview = json.loads(hardware_profile.delete_preview("pJoy Pro", guid))
-    assert preview["canPack"] and not preview["shared"]
+    assert preview["canPack"]
 
     result = json.loads(hardware_profile.delete_device("pJoy Pro", guid))
     assert result["ok"], result
     # Old: removed pjoy_pro.json (none) and kept old_name.json and its photo.
-    assert not (folder / "old_name.json").exists()
-    assert not (folder / "old_name").exists()
+    assert not (folder / "Old Name" / "module.json").exists()
+    assert not (folder / "Old Name").exists()
     assert result["stub"] and not result["keptFile"]
-
-
-def test_a_file_another_stick_uses_is_not_deleted(
-    twins: list,  # noqa: F811
-    folder: Path,
-) -> None:
-    # The other stick is plugged in (03 S94: a choice from an id that is
-    # neither plugged in nor in the Device Library is stale).
-    device_initialization.joystick_devices_initialization()
-    guid = _renamed(folder)
-    other = next(g for g, n in _names().items() if n != "pJoy Pro")
-    data = module_store.bindings()
-    data[stored_guid_key(other)] = "old_name"
-    module_store.set_bindings(data)
-    assert hardware_profile.delete_module_file("pJoy Pro", guid) == (
-        "Another stick is using this file."
-    )
-    assert (folder / "old_name.json").is_file()
 
 
 def test_calibration_and_auto_mapper_open_on_the_cards_file(folder: Path) -> None:
     guid = _renamed(folder)
-    # The window's rows are named by module file.
-    assert calibration.module_for_slug("old_name") is not None
-    assert calibration.module_for_slug("pjoy_pro") is None
+    # The window's rows are named by device folder.
+    assert calibration.module_for_slug("Old Name") is not None
+    assert calibration.module_for_slug("pJoy Pro") is None
     main = (pathlib.Path(__file__).parents[2] / "qml" / "Main.qml").read_text(
         encoding="utf-8"
     )
@@ -213,63 +203,10 @@ def test_calibration_and_auto_mapper_open_on_the_cards_file(folder: Path) -> Non
         call = main[start : main.find("})", start)]
         # Old: "initialSlug": card.slug (pjoy_pro): another device was shown.
         assert "moduleFileFor(card.guid" in call
-    assert module_model.ModuleListModel().moduleFileFor(guid, "pJoy Pro") == "old_name"
+    assert module_model.ModuleListModel().moduleFileFor(guid, "pJoy Pro") == "Old Name"
 
 
-# --- Item 8: twins in an old state, and the Run gate --------------------------
-
-
-def test_twins_that_both_saved_into_one_file_each_get_their_own(
-    twins: list,  # noqa: F811
-    folder: Path,
-) -> None:
-    _write(
-        folder,
-        "pjoy_pro",
-        {"device": "pJoy Pro", "direction": "source", "claim": _CLAIM},
-    )
-    device_initialization.joystick_devices_initialization()
-    names = _names()
-    assert sorted(guid_key(g) for g in names) == sorted(
-        guid_key(g) for g in (_first_guid(), _twin_guid())
-    )
-    first = next(g for g, n in names.items() if n == "pJoy Pro")
-    second = next(g for g, n in names.items() if n == "pJoy Pro (2)")
-    module_store.set_bindings(
-        {stored_guid_key(first): "pjoy_pro", stored_guid_key(second): "pjoy_pro"}
-    )
-    assert registry.resolve_module_slug(names[first], first) == "pjoy_pro"
-    # Old: pjoy_pro too (both twins one file).
-    assert registry.resolve_module_slug(names[second], second) == "pjoy_pro_2"
-    assert (
-        module_store.path_for(names[second], second).name
-        == "pjoy_pro_2.json"
-    )
-
-
-def test_plain_file_bound_to_the_second_twin_stays_the_first_ones(
-    twins: list,  # noqa: F811
-    folder: Path,
-) -> None:
-    device_initialization.joystick_devices_initialization()
-    names = _names()
-    plain = next(g for g, n in names.items() if n == "pJoy Pro")
-    second = next(g for g, n in names.items() if n == "pJoy Pro (2)")
-    # Old state: "(2)" saved into the plain-named file, bound to it.
-    _write(
-        folder,
-        "pjoy_pro",
-        {
-            "device": "pJoy Pro",
-            "direction": "source",
-            "boundGuidLocal": second,
-            "claim": _CLAIM,
-        },
-    )
-    module_store.set_bindings({stored_guid_key(second): "pjoy_pro"})
-    # Old: both resolved to pjoy_pro.
-    assert registry.resolve_module_slug("pJoy Pro (2)", second) == "pjoy_pro_2"
-    assert registry.resolve_module_slug("pJoy Pro", plain) == "pjoy_pro"
+# --- Item 8: the Run gate -----------------------------------------------------
 
 
 def test_old_output_file_bound_to_a_stick_does_not_block_it_at_run(
@@ -280,7 +217,7 @@ def test_old_output_file_bound_to_a_stick_does_not_block_it_at_run(
     guid = _pjoy_guid()
     _write(
         folder,
-        "pjoy_pro",
+        "pJoy Pro",
         {
             "device": "pJoy Pro",
             "direction": "source",
@@ -288,17 +225,19 @@ def test_old_output_file_bound_to_a_stick_does_not_block_it_at_run(
             "claim": _CLAIM,
         },
     )
+    # Another folder whose file still names the stick's id (an old copy).
     _write(
         folder,
-        "old_stick",
+        "Old Stick",
         {
             "device": "Old Stick",
             "direction": "dest",
             "boundGuidLocal": guid,
             "claim": _CLAIM,
         },
+        "name:old_stick",
     )
-    assert registry.resolve_module_slug("pJoy Pro", guid) == "pjoy_pro"
+    assert module_store.device_dir("pJoy Pro", guid) == folder / "pJoy Pro"
     gate = InputModuleRuntime()
     try:
         gate.reload()
@@ -306,9 +245,10 @@ def test_old_output_file_bound_to_a_stick_does_not_block_it_at_run(
         assert guid_key(guid) not in gate._dest_guids
         assert gate.allows(guid, InputType.JoystickButton, 1)
         assert not gate.allows(guid, InputType.JoystickButton, 2)
-        assert calibration.module_for_slug("pjoy_pro") is not None
+        assert calibration.module_for_slug("pJoy Pro") is not None
     finally:
-        (folder / "old_stick.json").unlink()
+        shutil.rmtree(folder / "Old Stick")
+        module_store._dirs_changed()
         gate.reload()
 
 
@@ -319,10 +259,10 @@ def test_stick_whose_file_is_an_output_gets_no_claim_from_another_file(
 
     guid = _pjoy_guid()
     # The stick's own file marked output (Run blocks it), and an old input
-    # file bound to it with claims.
+    # file naming its id with claims.
     _write(
         folder,
-        "pjoy_pro",
+        "pJoy Pro",
         {
             "device": "pJoy Pro",
             "direction": "dest",
@@ -332,46 +272,35 @@ def test_stick_whose_file_is_an_output_gets_no_claim_from_another_file(
     )
     _write(
         folder,
-        "old_stick",
+        "Old Stick",
         {
             "device": "Old Stick",
             "direction": "source",
             "boundGuidLocal": guid,
             "claim": _CLAIM,
         },
+        "name:old_stick",
     )
     gate = InputModuleRuntime()
     try:
         gate.reload()
         assert not gate.allows(guid, InputType.JoystickButton, 1)
         # Old: Calibration showed (and saved) old_stick.json for it.
-        assert calibration.module_for_slug("old_stick") is None
+        assert calibration.module_for_slug("Old Stick") is None
     finally:
-        (folder / "old_stick.json").unlink()
-        (folder / "pjoy_pro.json").unlink()
+        shutil.rmtree(folder / "Old Stick")
+        shutil.rmtree(folder / "pJoy Pro")
+        module_store._dirs_changed()
         gate.reload()
-
-
-def test_device_pack_and_output_view_use_the_one_rule(folder: Path) -> None:
-    guid = _pjoy_guid()
-    _write(
-        folder,
-        "chosen",
-        {"device": "Some Other", "direction": "source", "claim": _CLAIM},
-    )
-    module_store.set_bindings({stored_guid_key(guid): "chosen"})
-    assert registry.resolve_module_slug("pJoy Pro", guid) == "chosen"
-    # Old: pjoy_pro.json (its own fallback rule).
-    assert module_store.path_for("pJoy Pro", guid).name == "chosen.json"
 
 
 def test_one_vjoy_never_opens_another_vjoys_file(folder: Path) -> None:
     vjoy = next(iter(device_initialization.vjoy_devices()))
     guid = str(vjoy.device_guid)
-    _write(folder, "vjoy_2", {"device": "vJoy 2", "direction": "dest", "claim": _CLAIM})
-    module_store.set_bindings({stored_guid_key(guid): "vjoy_2"})
-    assert registry.resolve_module_slug("vJoy 1", guid) == "vjoy_1"
-    assert module_store.path_for("vJoy 1", guid).name == "vjoy_1.json"
+    _write(folder, "vJoy 2", {"device": "vJoy 2", "direction": "dest", "claim": _CLAIM})
+    # A vJoy's folder is found by its number (name:vjoy_N), never another's.
+    assert module_store.device_dir("vJoy 1", guid) == folder / "vJoy 1"
+    assert module_store.module_file("vJoy 1", guid) == folder / "vJoy 1" / "module.json"
 
 
 def test_a_vjoy_with_no_id_does_not_open_a_file_bound_to_another_device(
@@ -381,10 +310,10 @@ def test_a_vjoy_with_no_id_does_not_open_a_file_bound_to_another_device(
 
     vjoy = next(iter(device_initialization.vjoy_devices()))
     assert vjoy.name == "vJoy Device"
-    # A file bound to another vJoy, and a leftover name binding to it.
+    # A folder holding another vJoy's file.
     _write(
         folder,
-        "throttle_out",
+        "Throttle Out",
         {
             "device": "Throttle Out",
             "direction": "dest",
@@ -392,24 +321,24 @@ def test_a_vjoy_with_no_id_does_not_open_a_file_bound_to_another_device(
             "claim": _CLAIM,
         },
     )
-    module_store.set_bindings({"name:vjoy_1": "throttle_out"})
     # Old: throttle_out.json (no id, so the file's binding wasn't checked).
     # A Device Pack never has a vJoy's id: it reports "vJoy Device".
-    assert module_store.path_for("vJoy 1", "").name == "vjoy_1.json"
-    assert device_pack._device_path("vJoy 1").name == "vjoy_1.json"
+    assert module_store.module_file("vJoy 1", "") == folder / "vJoy 1" / "module.json"
+    assert device_pack._device_path("vJoy 1") == folder / "vJoy 1" / "module.json"
     assert registry._guid_for_name("vJoy 1") == stored_guid_key(vjoy.device_guid)
-    # Its own file bound to it is still found.
+    # Its own folder is still found.
     _write(
         folder,
-        "vjoy_1",
+        "vJoy 1",
         {
             "device": "vJoy 1",
             "direction": "dest",
             "boundGuidLocal": str(vjoy.device_guid),
             "claim": _CLAIM,
         },
+        "name:vjoy_1",
     )
-    assert registry.resolve_module_slug("vJoy 1", "") == "vjoy_1"
+    assert module_store.device_dir("vJoy 1", "") == folder / "vJoy 1"
 
 
 # --- Item 9: a module file that isn't UTF-8 -----------------------------------
@@ -417,7 +346,7 @@ def test_a_vjoy_with_no_id_does_not_open_a_file_bound_to_another_device(
 
 def test_a_module_file_that_is_not_utf8_doesnt_stop_home(folder: Path) -> None:
     guid = _pjoy_guid()
-    path = folder / "pjoy_pro.json"
+    path = _write(folder, "pJoy Pro", {}, stored_guid_key(guid))
     path.write_bytes(b'{"device": "pJoy Pro", "x": "\xff\xfe"}')
     # Old: each of these raised UnicodeDecodeError.
     assert module_model._load_module_doc("pJoy Pro", guid) == {}
@@ -437,7 +366,7 @@ def test_a_module_file_that_is_not_utf8_doesnt_stop_home(folder: Path) -> None:
 def test_a_deleted_devices_place_in_the_card_order_goes(folder: Path) -> None:
     _write(
         folder,
-        "gone_stick",
+        "Gone Stick",
         {
             "kind": "control.hardware",
             "device": "Gone Stick",
@@ -479,35 +408,6 @@ def test_a_renamed_stick_keeps_its_cards_place(folder: Path) -> None:
     assert [r.slug for r in model._rows].index("pjoy_pro") == 1
 
 
-def test_a_file_chosen_for_a_stick_does_not_take_another_sticks_place(
-    folder: Path,
-) -> None:
-    guid = _pjoy_guid()
-    # Unplugged Stick A's file (saved before files were bound to a stick);
-    # pJoy Pro set to use it in Module Setup.
-    _write(
-        folder,
-        "stick_a",
-        {
-            "kind": "control.hardware",
-            "device": "Stick A",
-            "direction": "source",
-            "claim": _CLAIM,
-        },
-    )
-    module_store.bind("pJoy Pro", guid, "stick_a")
-    assert registry.resolve_module_slug("pJoy Pro", guid) == "stick_a"
-    model = module_model.ModuleListModel()
-    others = [r.slug for r in model._rows if r.slug != "pjoy_pro"]
-    assert "stick_a" not in others
-    module_model._set_order([others[0], "stick_a"] + others[1:])
-    model._reload()
-    order = module_model._order_slugs()
-    # Old: pjoy_pro took Stick A's place, and Stick A's card lost it.
-    assert order.index("stick_a") == 1
-    assert order[-1] == "pjoy_pro"
-
-
 # --- History: a delete is recorded once it went through -----------------------
 
 
@@ -533,7 +433,7 @@ def test_a_delete_module_file_that_failed_is_no_history_entry(
     guid = _pjoy_guid()
     locked = _write(
         folder,
-        "pjoy_pro",
+        "pJoy Pro",
         {
             "device": "pJoy Pro",
             "direction": "source",

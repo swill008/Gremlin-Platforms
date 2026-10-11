@@ -83,12 +83,35 @@ def _subjects(entry: dict) -> list[dict]:
     return found
 
 
+def _id(value: object) -> str:
+    """A device id for comparing: a GUID however written ("{abcd-ef}") and
+    its id key ("ABCDEF") are the same."""
+    return _norm(value).replace("-", "")
+
+
+def _of_device_id(subject: dict, device_id: str, name: str) -> bool:
+    """08 S43: a module-file entry (it has a fileName) of the device with
+    this id. An entry from before device folders has no id: its device
+    name decides."""
+    if not subject.get("fileName"):
+        return False
+    theirs = _id(subject.get("deviceId"))
+    if theirs:
+        return bool(device_id) and theirs == _id(device_id)
+    return bool(name) and _norm(subject.get("device")) == _norm(name)
+
+
 def _about_device(subject: dict, want: dict) -> bool:
     """10 S56: a change to the device's module file, or a Device Library
     change that lists it (subject "devices": [{guid, name}]), by its id
     (by name only when either has no id)."""
     file_name = _norm(want.get("fileName"))
     if file_name and _norm(subject.get("fileName")) == file_name:
+        return True
+    device_id = str(want.get("deviceId") or want.get("guid") or "")
+    if (device_id or want.get("name")) and _of_device_id(
+        subject, device_id, str(want.get("name") or "")
+    ):
         return True
     guid, name = _norm(want.get("guid")), _norm(want.get("name"))
     for dev in subject.get("devices") or []:
@@ -118,6 +141,15 @@ def _matches(entry: dict, wanted: dict) -> bool:
         if key == "ofDevice":
             want = value if isinstance(value, dict) else {}
             if not any(_about_device(s, want) for s in _subjects(entry)):
+                return False
+            continue
+        if key == "deviceName":
+            continue  # only the fallback of "deviceId" for old entries
+        if key == "deviceId":
+            if subject.get("deviceId"):
+                if _id(subject.get("deviceId")) != _id(value):
+                    return False
+            elif not _of_device_id(subject, "", str(wanted.get("deviceName") or "")):
                 return False
             continue
         if _norm(subject.get(key, "")) != _norm(value):
@@ -454,16 +486,68 @@ def _outside_folders(entry: dict) -> list[Path]:
     return found
 
 
+def _restore_target(subject: dict, doc: dict) -> Path:
+    """08 S43: the device's folder today, found by its id (it may have been
+    renamed since), else the folder named after the device (made now)."""
+    from gremlin.modules import store
+
+    guid = str(doc.get("boundGuidLocal") or "").strip()
+    device_id = str(subject.get("deviceId") or "").strip()
+    for key in (guid, device_id):
+        found = store.dir_of_id(key) if key else None
+        if found is not None:
+            return found
+    device = (
+        " ".join(str(subject.get("device") or doc.get("device") or "").split())
+        or Path(str(subject.get("fileName") or "Device")).stem
+    )
+    if not guid and device_id and not device_id.startswith("name:"):
+        guid = device_id
+    return store.ensure_device_dir(device, guid)
+
+
+def _swap_refs(node: object, refs: dict[str, str]) -> object:
+    """The document with each picture ref ("image", an image shape's "src")
+    swapped for its new form."""
+    if isinstance(node, list):
+        return [_swap_refs(item, refs) for item in node]
+    if not isinstance(node, dict):
+        return node
+    out = {}
+    for key, value in node.items():
+        if key in ("image", "src") and isinstance(value, str) and value in refs:
+            out[key] = refs[value]
+        else:
+            out[key] = _swap_refs(value, refs)
+    return out
+
+
 def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
     from gremlin.modules import store
 
     if not side or side.get("text") is None:
         return False, "There is no file to put back."
     subject = entry.get("subject") or {}
-    # Into the modules folder of today (the folder may have moved since).
-    name = str(subject.get("fileName") or Path(str(subject.get("file") or "")).name)
-    path = store.path_of(Path(name).stem)
     text = str(side["text"])
+    try:
+        doc = json.loads(text)
+    except (ValueError, RecursionError):
+        doc = None
+    doc = doc if isinstance(doc, dict) else None
+    folder = _restore_target(subject, doc or {})
+    path = store.module_file_in(folder)
+    # Refs from before device folders ("<slug>/photo.png") as they are
+    # today ("pictures/photo.png"); exactly that version otherwise, also a
+    # damaged file (one way to mend it).
+    refs = {}
+    if doc is not None:
+        refs = {
+            ref: store.normal_ref(ref)
+            for ref in store.named_refs(doc)
+            if store.normal_ref(ref) != ref
+        }
+        if refs:
+            text = json.dumps(_swap_refs(doc, refs), indent=2) + "\n"
     missing = []
     # What each picture was, to put back when the module file can't be
     # written: its pictures then still match it (AUD-FILES-05).
@@ -472,32 +556,30 @@ def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
         if not isinstance(picture, dict):
             continue
         ref = str(picture.get("ref") or "")
-        # "qml/maps/..." is in the modules folder, as the Button Map finds it.
         kept = history.kept_file(str(picture.get("keptFile") or ""))
         try:
             if kept is None:
                 raise FileNotFoundError(ref)
-            dest = store.picture_path(ref)
+            dest = store.picture_path(folder, store.normal_ref(ref))
             if dest not in was:
                 was[dest] = dest.read_bytes() if dest.is_file() else None
             store.put_picture_at(dest, kept)
         except OSError:
             missing.append(ref)
+    shown = f"{folder.name}/{path.name}"
     try:
-        # Exactly that version, also over a damaged file (one way to mend
-        # it); History keeps the restore as a new entry.
+        # History keeps the restore as a new entry.
         store.write_text(path, text, "History")
     except OSError as exc:
         _put_pictures_back(was)
-        return False, f"{path.name} could not be put back. {exc}"
-    _bind_restored(path, text)
+        return False, f"{shown} could not be put back. {exc}"
     _changed_everywhere()
     if missing:
         return True, (
-            f"Put back {path.name}, without these pictures (no copy was "
+            f"Put back {shown}, without these pictures (no copy was "
             f"kept): {', '.join(missing)}."
         )
-    return True, f"Put back {path.name}."
+    return True, f"Put back {shown}."
 
 
 def _put_pictures_back(was: dict[Path, bytes | None]) -> None:
@@ -515,25 +597,6 @@ def _put_pictures_back(was: dict[Path, bytes | None]) -> None:
             logging.getLogger("system").exception(
                 "History: %s could not be put back as it was", dest
             )
-
-
-def _bind_restored(path: Path, text: str) -> None:
-    """The device the restored file is for uses it again (08 Q14): a Delete
-    File, a rename or another file chosen since may have moved it to another
-    file. As Module Setup's Undo of an import binds the device again (S85)."""
-    from gremlin.modules import store
-
-    try:
-        doc = json.loads(text)
-    except (ValueError, RecursionError):
-        return
-    if not isinstance(doc, dict):
-        return
-    device = " ".join(str(doc.get("boundName") or doc.get("device") or "").split())
-    guid = str(doc.get("boundGuidLocal") or "").strip()
-    if not device or store.slug_for(device, guid) == path.stem:
-        return
-    store.bind(device, guid, path.stem)
 
 
 def _restore_settings(side: dict | None) -> tuple[bool, str]:
@@ -595,16 +658,18 @@ def _parts(entry: dict) -> list[dict]:
     for first, second in zip(befores, afters, strict=False):
         if not isinstance(first, dict) or not isinstance(second, dict):
             continue  # history._sound keeps these out; a part never raises
-        parts.append({
-            "id": entry.get("id"),
-            "at": entry.get("at"),
-            "area": first.get("area"),
-            "kind": first.get("kind"),
-            "title": first.get("title"),
-            "subject": first.get("subject"),
-            "before": first.get("side"),
-            "after": second.get("side"),
-        })
+        parts.append(
+            {
+                "id": entry.get("id"),
+                "at": entry.get("at"),
+                "area": first.get("area"),
+                "kind": first.get("kind"),
+                "title": first.get("title"),
+                "subject": first.get("subject"),
+                "before": first.get("side"),
+                "after": second.get("side"),
+            }
+        )
     return parts
 
 
@@ -749,7 +814,8 @@ class HistoryModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str)
     def setFilter(self, text: str) -> None:
         """Which entries show: {"area", "device", "inputType", "inputId",
-        "mode", "ofDevice"}, each optional."""
+        "mode", "ofDevice", "deviceId" (with "deviceName" for module-file
+        entries from before device folders)}, each optional."""
         try:
             wanted = json.loads(text) if text else {}
         except (ValueError, RecursionError):

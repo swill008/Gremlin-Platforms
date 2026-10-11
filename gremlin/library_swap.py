@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Swap with Another Stick (10 F, S26-S29): two connected sticks exchange the
-ticked parts. Module-file parts go through modules/store.py, bindings
+ticked parts. Module-file parts go through modules/store.py (each stick's
+Button Map pictures copied into its own folder, S61), bindings
 through swap_devices on each ticked profile (library_profiles.Batch). Both
 sticks get an autosave first; Undo is library_copy.undo_last (S41)."""
 
@@ -225,7 +226,7 @@ def _plan(first: Stick, second: Stick, parts: list[str], profiles: list[Path]) -
     pairs = ((first, second), (second, first))
     if any(part in parts for part in ("setup", "calibration")):
         for here, there in pairs:
-            doc = store.read_path(store.path_for_id(*own[here[1]]))
+            doc = store.read_path(store.module_file(*own[here[1]]))
             missing = _lacking(_claimed(doc), has[there])
             if missing:
                 out["warnings"].append(
@@ -304,45 +305,56 @@ def _exchange_keys(a: dict, b: dict, keys: tuple[str, ...]) -> None:
             b[key] = value_a
 
 
-def _move_pictures(
-    doc: dict, from_slug: str, to_slug: str, files: list[tuple[Path, bytes]]
-) -> None:
-    """The pictures in from_slug's picture folder that doc's Button Map names
-    go to to_slug's folder (read now, written later); doc names them there."""
+def _rewrite_refs(value: object, moved: dict[str, str]) -> None:
+    """Every picture reference (an "image" or "src", nested) in moved
+    names its new place."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in ("image", "src") and isinstance(item, str) and item in moved:
+                value[key] = moved[item]
+            else:
+                _rewrite_refs(item, moved)
+    elif isinstance(value, list):
+        for item in value:
+            _rewrite_refs(item, moved)
 
-    def moved(ref: str) -> str:
-        text = store.module_relative(ref)
-        prefix = f"{from_slug}/"
-        if not text.lower().startswith(prefix.lower()):
-            return ref  # elsewhere (the picture library, a file: URL): shared
-        found = store.find_picture(text)
-        if found is None:
-            return ref
-        name = Path(text).name
-        files.append((store.pictures_dir_of(to_slug) / name, found.read_bytes()))
-        return store.picture_ref(to_slug, name)
 
-    if doc.get("image"):
-        image = str(doc["image"])
-        doc["image"] = moved(image if "/" in image else f"{from_slug}/{image}")
-    for node in doc.get("nodes") or []:
-        if isinstance(node, dict) and node.get("src"):
-            node["src"] = moved(str(node["src"]))
+def _move_pictures(doc: dict, from_dir: Path, to_dir: Path, added: list[Path]) -> None:
+    """The pictures in from_dir that doc's Button Map names are copied into
+    to_dir's own pictures (store.copy_pictures, 10 S61: a picture is never
+    shared between sticks) and doc names them there. A picture that isn't
+    in the folder (a file: URL, or missing) stays named as it is. added
+    gets each file this put in to_dir, so a failed swap can take it out."""
+    local: dict[str, str] = {}
+    for ref in store.named_refs(doc):
+        norm = store.normal_ref(ref)
+        if not norm.startswith(store.PICTURES + "/"):
+            continue
+        if store.picture_path(from_dir, norm).is_file():
+            local[ref] = norm
+    if not local:
+        return
+    pictures = to_dir / store.PICTURES
+    there = set(pictures.iterdir()) if pictures.is_dir() else set()
+    moved = store.copy_pictures(from_dir, sorted(set(local.values())), to_dir)
+    if pictures.is_dir():
+        added.extend(p for p in pictures.iterdir() if p not in there)
+    _rewrite_refs(doc, {ref: moved.get(norm, norm) for ref, norm in local.items()})
 
 
 def _swapped_docs(
-    first: Stick, second: Stick, parts: list[str], shared: Controls
-) -> tuple[Path, Path, dict, dict, list[tuple[Path, bytes]]] | str:
-    """Both module files after the exchange, and the pictures to write; a
-    reason when it can't be done."""
-    path_a, path_b = store.path_for_id(*first), store.path_for_id(*second)
+    first: Stick, second: Stick, parts: list[str], shared: Controls, added: list[Path]
+) -> tuple[Path, Path, dict, dict] | str:
+    """Both module files after the exchange (the pictures already copied
+    into each stick's own folder, listed in added); a reason when it can't
+    be done."""
+    path_a, path_b = store.module_file(*first), store.module_file(*second)
     for (name, _), path in ((first, path_a), (second, path_b)):
         reason = store.damage_of(path) if path.is_file() else ""
         if reason:
             return f"{name}'s module file is damaged ({reason}): nothing was swapped."
     doc_a = copy.deepcopy(store.read_path(path_a))
     doc_b = copy.deepcopy(store.read_path(path_b))
-    files: list[tuple[Path, bytes]] = []
     if "setup" in parts:
         _exchange_setup(doc_a, doc_b, shared)
         # The Configuration layout (groups, order) goes with the names (CF-Q1).
@@ -352,15 +364,18 @@ def _swapped_docs(
     if "appearance" in parts:
         _exchange_keys(doc_a, doc_b, _APPEARANCE_KEYS)
     if "button_map" in parts:
-        slug_a, slug_b = path_a.stem, path_b.stem
         maps_a = {key: doc_a[key] for key in _MAP_KEYS if key in doc_a}
         maps_b = {key: doc_b[key] for key in _MAP_KEYS if key in doc_b}
         try:
-            _move_pictures(maps_a, slug_a, slug_b, files)
-            _move_pictures(maps_b, slug_b, slug_a, files)
+            dir_a = store.ensure_device_dir(*first)
+            dir_b = store.ensure_device_dir(*second)
+            _move_pictures(maps_a, dir_a, dir_b, added)
+            _move_pictures(maps_b, dir_b, dir_a, added)
         except OSError as failed:
+            _put_back([(p, None) for p in added])
+            added.clear()
             return (
-                f"A Button Map picture can't be read ({failed}): nothing was swapped."
+                f"A Button Map picture can't be copied ({failed}): nothing was swapped."
             )
         for key in _MAP_KEYS:
             doc_a.pop(key, None)
@@ -370,7 +385,7 @@ def _swapped_docs(
     for doc, (name, guid) in ((doc_a, first), (doc_b, second)):
         doc.setdefault("kind", "control.hardware")
         doc.setdefault("device", name)
-    return path_a, path_b, doc_a, doc_b, files
+    return path_a, path_b, doc_a, doc_b
 
 
 Before = list[tuple[Path, "bytes | None"]]
@@ -398,20 +413,26 @@ def _put_back(before: Before) -> bool:
 def _write_module_parts(
     first: Stick, second: Stick, parts: list[str], shared: Controls, before: Before
 ) -> str:
-    """Writes both module files (and moved pictures); "" when done, else why
-    not. A failed write puts back what was written. before gets what each
-    file held, so the swap can be put back later (S26)."""
-    built = _swapped_docs(first, second, parts, shared)
+    """Writes both module files (each stick's pictures copied into its own
+    folder first, S61); "" when done, else why not. A failed write puts
+    back what was written. before gets what each file held, so the swap
+    can be put back later (S26)."""
+    if store.module_file(*first) == store.module_file(*second):
+        return ""  # one module file for both: its parts are already the same
+    added: list[Path] = []
+    # Read before anything is written: the module files as they were.
+    kept = [
+        (p, p.read_bytes() if p.is_file() else None)
+        for p in (store.module_file(*first), store.module_file(*second))
+    ]
+    built = _swapped_docs(first, second, parts, shared, added)
     if isinstance(built, str):
         return built
-    path_a, path_b, doc_a, doc_b, files = built
-    if path_a == path_b:
-        return ""  # one module file for both: its parts are already the same
-    before += [(p, p.read_bytes() if p.is_file() else None) for p in (path_a, path_b)]
-    before += [(p, p.read_bytes() if p.is_file() else None) for p, _ in files]
+    path_a, path_b, doc_a, doc_b = built
+    before += kept
+    # The pictures copied in: none of them was there before.
+    before += [(p, None) for p in added]
     try:
-        for dest, data in files:
-            store.put_picture_at(dest, data)
         store.write_json(path_a, doc_a, "Device Library")
         store.write_json(path_b, doc_b, "Device Library")
     except OSError as failed:

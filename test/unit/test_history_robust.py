@@ -31,6 +31,7 @@ from gremlin import history, history_modules, history_profile, util
 from gremlin.modules import store as module_store
 from gremlin.ui import history_model
 from test.unit import test_stage1_modules
+from test.unit._device_folders import ensure_dir, picture_file, put_picture
 
 _app = test_stage1_modules._app
 
@@ -205,27 +206,37 @@ def test_a_failed_module_write_leaves_the_pictures_as_they_were(
     hist: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     modules = tmp_path / "modules"
-    (modules / "pic_stick").mkdir(parents=True)
+    modules.mkdir()
     monkeypatch.setattr(util, "modules_dir", lambda: modules)
-    photo = modules / "pic_stick" / "photo.png"
-    photo.write_bytes(b"today's photo")
-    other = modules / "pic_stick" / "new.png"  # not there today
+    folder = ensure_dir(modules, "Pic Stick")
+    put_picture(modules, "Pic Stick", "photo.png", b"today's photo")
+    photo = picture_file(modules, "Pic Stick", "photo.png")
+    other = picture_file(modules, "Pic Stick", "new.png")  # not there today
     source = tmp_path / "old.png"
     source.write_bytes(b"the old photo")
     kept = history.keep_file(source)
-    path = modules / "pic_stick.json"
+    path = folder / "module.json"
     path.write_text('{"device": "Pic Stick"}', encoding="utf-8")
 
     def refuse(*_args: object, **_kwargs: object) -> None:
         raise OSError("disk full")
 
     monkeypatch.setattr(module_store, "write_text", refuse)
-    entry = {"subject": {"file": str(path), "fileName": "pic_stick.json"}}
+    entry = {
+        "subject": {
+            "device": "Pic Stick",
+            "deviceId": "name:pic_stick",
+            "folder": folder.name,
+            "file": str(path),
+            "fileName": f"{folder.name}/module.json",
+        }
+    }
+    # One ref as History kept it before device folders, one as today.
     side = {
         "text": '{"device": "Pic Stick", "image": "pic_stick/photo.png"}',
         "pictures": [
             {"ref": "pic_stick/photo.png", "keptFile": kept},
-            {"ref": "pic_stick/new.png", "keptFile": kept},
+            {"ref": "pictures/new.png", "keptFile": kept},
         ],
     }
     ok, message = history_model._restore_module(entry, side)

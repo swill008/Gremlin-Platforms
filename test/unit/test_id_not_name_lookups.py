@@ -19,6 +19,7 @@ from gremlin import auto_mapper, device_initialization, profile
 from gremlin.modules import store
 from gremlin.ui import device_pack
 from test.unit import test_stage1_modules
+from test.unit._device_folders import put_module
 
 _app = test_stage1_modules._app
 folder = test_stage1_modules.folder
@@ -50,51 +51,47 @@ def test_auto_mapper_source_is_its_own_id(twins: None) -> None:
     assert mapper._source_uuid(source) == SECOND
 
 
-def _slug() -> str:
-    return store.slug_for(TWIN, str(SECOND))
-
-
 def test_auto_mapper_source_without_an_id_is_no_device(
     folder: Path, twins: None
 ) -> None:
-    """Both twins use the file: no one device. Old code took the first stick
-    of that name."""
+    """A folder named after both twins and holding no id: either could use
+    it, so no one device. Old code took the first stick of that name."""
+    shared = folder / TWIN
+    shared.mkdir()
+    (shared / "module.json").write_text(
+        json.dumps({"kind": "control.hardware", "device": TWIN}), encoding="utf-8"
+    )
+    store._dirs_changed()
+    assert store.device_dir(TWIN, str(FIRST)) == shared
+    assert store.device_dir(TWIN, str(SECOND)) == shared
     mapper = auto_mapper.AutoMapper(profile.Profile())
-    source = {"name": TWIN, "boundName": TWIN, "guid": "", "slug": _slug()}
+    source = {"name": TWIN, "boundName": TWIN, "guid": "", "dir": str(shared)}
     assert mapper._source_uuid(source) is None
 
 
 # --- Device Pack export ---------------------------------------------------------
 
 
-def _write_files() -> None:
+def _write_files(guids: tuple[uuid.UUID, ...] = (FIRST, SECOND)) -> None:
+    """Each plugged-in twin's folder (its own, by its id, 03 S1 S132)."""
     doc = {
         "kind": "control.hardware",
         "device": TWIN,
         "direction": "source",
         "claim": {"buttons": [1], "axes": [], "hats": [], "keys": []},
     }
-    for guid in ("", str(FIRST), str(SECOND)):
-        path = store.path_for(TWIN, guid)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc), encoding="utf-8")
-        path = store.path_for_id(TWIN, guid) if guid else path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc), encoding="utf-8")
+    for guid in guids:
+        put_module(store.folder(), TWIN, doc, str(guid))
 
 
-def test_pack_export_of_the_second_twin_has_its_id(
-    folder: Path, twins: None
-) -> None:
+def test_pack_export_of_the_second_twin_has_its_id(folder: Path, twins: None) -> None:
     _write_files()
     plan = device_pack.plan_pack(TWIN, lambda _p: None, guid=str(SECOND))
     assert isinstance(plan, dict), plan
     assert plan["map"]["pack"]["exportedGuid"] == str(SECOND)
 
 
-def test_pack_export_by_a_shared_name_is_refused(
-    folder: Path, twins: None
-) -> None:
+def test_pack_export_by_a_shared_name_is_refused(folder: Path, twins: None) -> None:
     """Old code exported the first twin's id for a name both share."""
     _write_files()
     plan = device_pack.plan_pack(TWIN, lambda _p: None)
@@ -108,7 +105,8 @@ def test_pack_export_by_a_name_only_one_device_has(
     one = _twins()[1:]
     monkeypatch.setattr(device_initialization, "physical_devices", lambda: one)
     monkeypatch.setattr(store, "live_devices", lambda: one)
-    _write_files()
+    _write_files((SECOND,))
+
     plan = device_pack.plan_pack(TWIN, lambda _p: None)
     assert isinstance(plan, dict), plan
     assert plan["map"]["pack"]["exportedGuid"] == str(SECOND)

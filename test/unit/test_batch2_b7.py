@@ -80,7 +80,8 @@ def test_undo_import_asks_before_losing_a_later_save(pack: dict) -> None:  # noq
     later = path.read_bytes()
     asked = device_pack.undo_import()
     assert asked.get("ask") is True and not asked["ok"]
-    assert path.name in asked["changed"]
+    # Named as the device's folder and its file (03 S128).
+    assert str(Path(path.parent.name) / path.name) in asked["changed"]
     assert path.read_bytes() == later
     assert device_pack.can_undo_import()
     done = device_pack.undo_import(force=True)
@@ -128,7 +129,7 @@ def test_an_output_module_stays_within_the_vjoy(
         name="vJoy Device",
     )
     monkeypatch.setattr(store, "live_devices", lambda: [vjoy])
-    result = _import(pack, ["out:vjoy_2.checks"])
+    result = _import(pack, ["out:vJoy 2.checks"])
     assert result["ok"], result
     written = [
         p for p, _ in device_pack._last_import["files"] if p.suffix == ".json"

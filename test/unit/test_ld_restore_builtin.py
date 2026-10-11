@@ -19,7 +19,8 @@ from PySide6 import QtCore
 from gremlin import device_library as library
 from gremlin import history, library_copy, logical_device_file
 from gremlin.logical_device import LogicalDevice
-from gremlin.modules import ids, module_file, store
+from gremlin.modules import ids, store
+from test.unit._device_folders import put_module
 from test.unit.test_stage1_modules import (  # noqa: F401  # pyright: ignore[reportMissingImports]
     folder,
     settle_history,
@@ -44,9 +45,7 @@ def _app() -> Iterator[QtCore.QCoreApplication]:
 
 
 @pytest.fixture
-def modules(
-    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
-) -> Path:
+def modules(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> Path:
     # No stick plugged in.
     monkeypatch.setattr(library, "_connected", lambda: [])
     return request.getfixturevalue(folder.__name__)
@@ -106,17 +105,17 @@ def _ld_entries() -> list[dict]:
     return [
         e
         for e in history.entries("modules")
-        if (e.get("subject") or {}).get("fileName") == "logical_device.json"
+        if (e.get("subject") or {}).get("fileName") == "Logical Device/module.json"
     ]
 
 
 def test_restore_of_the_logical_device_skips_the_plugged_in_check(
     modules: Path, rows: LogicalDevice
 ) -> None:
-    path = logical_device_file.path()
-    module_file.write_bytes(
-        path, json.dumps(_doc("Logical Device", LD_GUID, _layout("Saved"))).encode()
+    path = put_module(
+        modules, "Logical Device", _doc("Logical Device", LD_GUID, _layout("Saved"))
     )
+    assert path == logical_device_file.path()
     rows.load_dict(_layout("Saved"))
     setup = _save("Logical Device", LD_GUID)
     changed = _doc("Logical Device", LD_GUID, _layout("Changed", "Later"))
@@ -135,9 +134,7 @@ def test_restore_of_the_logical_device_skips_the_plugged_in_check(
     assert _labels(rows) == ["Saved"]
     # Autosaved first, one change for Undo, one History entry.
     assert out["autosaves"]
-    names = [
-        s.get("name") for d in library.devices() for s in d.get("setups") or []
-    ]
+    names = [s.get("name") for d in library.devices() for s in d.get("setups") or []]
     assert any(str(n).startswith("Autosave: before Restore of") for n in names)
     last = library.last_change()
     assert last and last.get("op") == "copy"
@@ -152,9 +149,7 @@ def test_restore_of_keyboard_and_osc_is_not_refused(
     modules: Path, name: str, uid: object
 ) -> None:
     guid = _g(uid)
-    module_file.write_bytes(
-        modules / f"{name.lower()}.json", json.dumps(_doc(name, guid)).encode()
-    )
+    put_module(modules, name, _doc(name, guid))
     setup = _save(name, guid)
     out = library_copy.restore_to_stick(setup["key"])
     assert out["ok"], out
@@ -162,9 +157,7 @@ def test_restore_of_keyboard_and_osc_is_not_refused(
 
 
 def test_restore_to_an_unplugged_stick_is_still_refused(modules: Path) -> None:
-    module_file.write_bytes(
-        modules / "stick_a.json", json.dumps(_doc("Stick A", STICK_GUID)).encode()
-    )
+    put_module(modules, "Stick A", _doc("Stick A", STICK_GUID))
     found = {
         "key": "dev",
         "guid": STICK_GUID,
@@ -206,10 +199,10 @@ def test_restore_of_picture_and_layout_is_one_history_entry(
         _set_photo,
     )
 
-    path = logical_device_file.path()
-    module_file.write_bytes(
-        path, json.dumps(_doc("Logical Device", LD_GUID, _layout("Saved"))).encode()
+    path = put_module(
+        modules, "Logical Device", _doc("Logical Device", LD_GUID, _layout("Saved"))
     )
+    assert path == logical_device_file.path()
     rows.load_dict(_layout("Saved"))
     _set_photo()
     setup = _save("Logical Device", LD_GUID)
@@ -224,7 +217,7 @@ def test_restore_of_picture_and_layout_is_one_history_entry(
     assert _ld_file_labels() == ["Saved"]
     assert _labels(rows) == ["Saved"]
     assert _image_key()
-    found = store.photo_files(logical_device_file.SLUG)
+    found = store.photo_files("Logical Device", str(ids.LOGICAL_DEVICE))
     assert found and found[0].read_bytes() == PNG
     assert len(_ld_entries()) == before + 1
 
@@ -234,13 +227,14 @@ def test_import_device_pack_carries_the_layout(
 ) -> None:
     from gremlin.ui import device_pack
 
-    path = logical_device_file.path()
-    module_file.write_bytes(
-        path,
-        json.dumps(_doc("Logical Device", LD_GUID, _layout("Packed", "Two"))).encode(),
+    put_module(
+        modules,
+        "Logical Device",
+        _doc("Logical Device", LD_GUID, _layout("Packed", "Two")),
     )
     setup = _save("Logical Device", LD_GUID)
-    pack = tmp_path / "ld.zip"
+    # A saved setup is a device folder zip (.gmap, 10 S60).
+    pack = tmp_path / "ld.gmap"
     pack.write_bytes(library.pack_path(setup["key"]).read_bytes())
     _set_layout(("Here",))
     rows.load_dict(_layout("Here"))

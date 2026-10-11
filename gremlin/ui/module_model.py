@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from PySide6 import QtCore, QtGui
 
@@ -33,17 +34,12 @@ from gremlin.modules.registry import (
     read_doc,
     vjoy_id_from_name,
 )
-from gremlin.modules.registry import modules as registry_modules
 from gremlin.ui.hardware_profile import (
     PAGE_SIZE,
     HardwareProfile,
-    bind_module_file,
     delete_module_file,
     delete_device,
     delete_preview,
-    imported_folder_url,
-    maps_folder_url,
-    module_file_choices,
     persist_log,
 )
 from gremlin.modules import hardware
@@ -328,25 +324,31 @@ def _merged_order(saved: list[str], showing: list[str]) -> list[str]:
 
 def _renamed_into_order(order: list[str], rows: list, hidden: set[str]) -> list[str]:
     """The card order with a renamed stick in its old card's place. A card
-    is named after its device; a renamed stick still opens its old module
-    file, whose name is its old card's. Without this the old card's place
-    stayed in the order for good and the stick went last. Only a file bound
-    to this stick counts: a file chosen in Module Setup that is another
-    (unplugged) stick's would take that stick's place."""
+    is named after its device; a renamed stick's folder (found by its id,
+    03 S130) still records the name it was saved under, which is its old
+    card's. Without this the old card's place stayed in the order for good
+    and the stick went last. Only the folder holding this stick's id counts."""
     showing = {row.slug for row in rows}
-    bound = {module.slug: guid_key(module.bound_guid) for module in registry_modules()}
     out = list(order)
     for row in rows:
         if row.direction != "source" or row.tab != "physical" or row.slug in out:
             continue
+        if not row.guid:
+            continue
         try:
-            old = store.slug_for(row.raw_name or row.name, row.guid)
+            found = store.dir_of_id(row.guid)
+            if found is None:
+                continue
+            doc = read_doc(store.module_file_in(found)) or {}
+            saved_as = str(doc.get("boundName") or doc.get("device") or "")
+            old = store.card_key(saved_as) if saved_as.strip() else ""
         except Exception:
             continue
-        if old == row.slug or old not in out or old in showing or old in hidden:
+        if not old or old == row.slug or old not in out:
             continue
-        if bound.get(old) and bound.get(old) == guid_key(row.guid):
-            out[out.index(old)] = row.slug
+        if old in showing or old in hidden:
+            continue
+        out[out.index(old)] = row.slug
     return out
 
 
@@ -372,6 +374,68 @@ def _sizes() -> dict[str, tuple[int, int]]:
 def _set_sizes(sizes: dict[str, tuple[int, int]]) -> None:
     packed = ",".join(f"{slug}={w}x{h}" for slug, (w, h) in sizes.items())
     _write_status(_CFG_SIZES, packed)
+
+
+# Pictures Import Image takes as they are; anything else is saved as .jpg.
+_PHOTO_EXT = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
+
+
+def _local_file(source: str) -> Path | None:
+    """A picked file (a file: URL or a plain path) as a local path."""
+    text = str(source or "").strip()
+    if not text:
+        return None
+    url = QtCore.QUrl(text)
+    path = Path(url.toLocalFile()) if url.isLocalFile() else Path(text)
+    return path if path.is_file() else None
+
+
+# Module Setup's edit (HardwareProfile.beginEditFor(name, "setup")).
+_SETUP_EDIT = "setup"
+
+
+def import_photo(device_name: str, guid: str, source: str) -> str:
+    """The Logical Device card's Add/Change Image (03 S88), outside any
+    edit: copies the picture into the device's own folder as
+    pictures/photo.<ext> (any other photo.* there goes) and returns its
+    reference for the module file's "image", or "" when nothing was
+    copied. A damaged module file is refused before any picture is
+    touched (03 S64). (Module Setup's Import Image keeps its picture in
+    the window's edit instead: HardwareProfile.keepPhoto.)"""
+    name = " ".join(str(device_name or "").split())
+    src = _local_file(source)
+    if not name or src is None:
+        return ""
+    path = store.module_file(name, guid)
+    reason = store.damage_of(path)
+    if reason:
+        trace("SAVE", "Configure Module", "importImage", path, "damaged")
+        module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
+        return ""
+    ext = src.suffix.lower()
+    if ext not in _PHOTO_EXT:
+        ext = ".jpg"
+    as_name = f"photo{ext}"
+    dest = store.pictures_dir(name, guid) / as_name
+    try:
+        if dest.is_file() and dest.resolve() == src.resolve():
+            return store.picture_ref(as_name)
+    except OSError:
+        return ""
+    try:
+        ref = store.put_picture(name, guid, src, as_name)
+    except OSError as exc:
+        _plog("import image failed", name=name, error=exc)
+        trace("SAVE", "Configure Module", "importImage", dest, "error")
+        return ""
+    pictures = store.pictures_dir(name, guid)
+    others = [p for p in pictures.glob("photo.*") if p.is_file() and p.name != as_name]
+    try:
+        store.remove_picture_files(others)
+    except OSError:
+        pass
+    trace("SAVE", "Configure Module", "importImage", dest, "ok")
+    return ref
 
 
 def _plog(action: str, **parts: object) -> None:
@@ -408,7 +472,7 @@ def _osc_address(guid: str, kind: str, hid: int) -> str:
 def _load_module_doc(device_name: str, guid: str = "") -> dict:
     """The device's module file, from the store ({} when missing or
     damaged). Pass the device's id: twins share a name (decision F4)."""
-    path = store.path_for(device_name, guid)
+    path = store.module_file(device_name, guid)
     if not path.is_file():
         _plog("load miss", name=device_name, guid=guid, path=str(path))
         return {}
@@ -682,7 +746,7 @@ class ModuleFileWatch(QtCore.QObject):
     def mapParts(self, device_name: str, guid: str) -> str:
         if not device_name:
             return ""
-        path = store.path_for(device_name, guid)
+        path = store.module_file(device_name, guid)
         try:
             stat = path.stat()
         except OSError:
@@ -695,6 +759,13 @@ class ModuleFileWatch(QtCore.QObject):
         parts = map_parts(device_name, guid)
         self._seen[str(path)] = (stamp, parts)
         return parts
+
+    @QtCore.Slot(str, str, result=str)
+    def deviceIdFor(self, device_name: str, guid: str) -> str:
+        """The device's id key, as its History entries hold it (08 S43)."""
+        if not device_name:
+            return ""
+        return store.id_key(device_name, guid)
 
 
 @ta.QmlElement
@@ -889,7 +960,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     def viewConfigJson(self, device_name: str, guid: str) -> str:
         doc: dict = {}
         if device_name:
-            path = store.path_for(device_name, guid)
+            path = store.module_file(device_name, guid)
             if path.is_file():
                 loaded = read_doc(path)
                 doc = loaded or {}
@@ -915,7 +986,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
         if not isinstance(incoming, dict):
             return False
-        path = store.path_for(name, guid)
+        try:
+            path = store.module_file_in(store.ensure_device_dir(name, guid))
+        except OSError as exc:
+            _plog("save view failed", name=name, error=exc)
+            return False
 
         def change(doc: dict) -> None:
             view = dict(_DEFAULT_VIEW)
@@ -1351,8 +1426,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if reason:
             module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
             return False
-        self._hw.setDeviceGuid(LOGICAL_GUID)
-        rel = self._hw.copyImage(fileUrl, "Logical Device")
+        rel = import_photo("Logical Device", LOGICAL_GUID, fileUrl)
         if not rel:
             return False
 
@@ -1380,10 +1454,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if reason:
             module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
             return False
-        folder = store.pictures_dir_of(logical_device_file.SLUG)
-        found = (
-            [p for p in folder.glob("photo*.*") if p.is_file()] if folder.is_dir() else []
-        )
+        found = store.photo_files("Logical Device", LOGICAL_GUID)
         try:
             store.remove_picture_files(found)
 
@@ -1575,40 +1646,60 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result="QVariantList")
     def moduleFileNames(self, guid: str, device_name: str) -> list:
-        return module_file_choices(device_name, guid)
+        """Module Setup's "Import from": the other devices' folders (its
+        own isn't listed)."""
+        return store.import_choices(device_name, guid) if device_name else []
 
     @QtCore.Slot(str, str, result=str)
     def moduleFileFor(self, guid: str, device_name: str) -> str:
-        """The device's module file (slug), by the shared rule: twin sticks
-        share a name but not a file."""
+        """The device's folder name (03 S54), found by its id first: twin
+        sticks share a name but not a folder, a renamed stick's folder
+        follows it (S3, S131)."""
         if not device_name:
             return ""
-        return store.path_for(device_name, guid).stem
+        return store.device_dir(device_name, guid).name
 
     @QtCore.Slot(str, str, result=str)
-    def foreignModuleFile(self, guid: str, device_name: str) -> str:
-        return store.foreign_file(device_name, guid)
+    def deviceIdFor(self, guid: str, device_name: str) -> str:
+        """The device's id key, as its History entries hold it (08 S43)."""
+        if not device_name:
+            return ""
+        return store.id_key(device_name, guid)
 
     @QtCore.Slot(result=str)
     def mapsFolderUrl(self) -> str:
-        return maps_folder_url()
+        """The modules folder (every device's folder is in it)."""
+        return store.folder().as_uri()
 
-    @QtCore.Slot(result=str)
-    def importedFolderUrl(self) -> str:
-        return imported_folder_url()
+    @QtCore.Slot(str, str, result=str)
+    def importedFolderUrl(self, guid: str, device_name: str) -> str:
+        """Where Browse for File opens: the device's imported/ (the files
+        imports kept, 03 S58), else its folder, else the modules folder.
+        Nothing is created for a device not saved yet."""
+        if device_name:
+            base = store.device_dir(device_name, guid)
+            if base.is_dir():
+                imported = store.imported_dir(device_name, guid)
+                return (imported if imported.is_dir() else base).as_uri()
+        return store.folder().as_uri()
 
     @QtCore.Slot(str, str, result=bool)
     def moduleFileExists(self, guid: str, device_name: str) -> bool:
-        """True when the file moduleFileFor names is saved (a renamed stick's
-        old file: it was looked for under the new name)."""
+        """True when the device's folder holds its module file; False is
+        Module Setup's "(not saved yet)" (03 S54)."""
         if not device_name:
             return False
-        return store.path_for(device_name, guid).is_file()
+        return store.module_file(device_name, guid).is_file()
 
     @QtCore.Slot(str, str, str, str, result=str)
     def importModuleFile(self, guid: str, device_name: str, file_name: str, direction: str) -> str:
-        # Into the file the device uses; its Undo is tied to this device
-        # and Module Setup (store, 03 S59).
+        # Into the device's own module file; the previous one is kept in its
+        # imported/ (03 S58). "Import from" names another device's folder,
+        # Browse for File a path. Its Undo is tied to this device and Module
+        # Setup (store, 03 S59).
+        source = store.resolve_import_source(file_name)
+        if source is not None:
+            file_name = str(source)
         message = store.import_file(device_name, guid, file_name, direction, _IMPORT_WINDOW)
         if str(message).startswith("Imported "):
             signal.configChanged.emit()
@@ -1730,7 +1821,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if cached is not None and now - cached[0] < self._CLAIM_CHECK_S:
             return cached[2]
         name = row.raw_name or row.name
-        path = store.path_for(name, row.guid)
+        path = store.module_file(name, row.guid)
         try:
             stat = path.stat()
             stamp: tuple[int, int] | None = (stat.st_mtime_ns, stat.st_size)
@@ -2459,16 +2550,25 @@ class DriverInputModel(QtCore.QAbstractListModel):
         return self._not_connected
 
     @QtCore.Slot(str, str, result=bool)
-    def saveClaim(self, device_name: str, direction: str) -> bool:
+    @QtCore.Slot(str, str, str, result=bool)
+    def saveClaim(self, device_name: str, direction: str, photo: str = "") -> bool:
+        """Module Setup's Save. photo: the reference of the picture Import
+        Image kept in the window's edit ("setup"); with the edit open the
+        write goes through store.commit_edit, so the picture is copied into
+        the device's folder and named in the same write as the claims (one
+        History entry, 03 S52, 07 S107)."""
         if self.saveBlockedReason():
             _plog("save claim refused", name=device_name, reason=self._not_connected)
             return False
         name = device_name or self._device_name
-        # The file Module Setup opened (the device's bound file, from the
-        # store: the stale-id filter as Delete and the Device Pack use), not
-        # one named after the device: a device whose name changed kept its file.
-        path = store.path_for(name, self._guid)
-        slug = path.stem
+        # The device's own folder, found by its id (03 S1, S130): a device
+        # whose name changed kept its folder. Made now with its device.json.
+        try:
+            path = store.module_file_in(store.ensure_device_dir(name, self._guid))
+        except OSError as exc:
+            _plog("save claim failed", name=name, error=exc)
+            return False
+        photo = str(photo or "").strip()
         buttons = [int(r["hwId"]) for r in self._rows if r["kind"] == "button" and r["claimed"]]
         axes = [int(r["hwId"]) for r in self._rows if r["kind"] == "axis" and r["claimed"]]
         hats = [int(r["hwId"]) for r in self._rows if r["kind"] == "hat" and r["claimed"]]
@@ -2525,13 +2625,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
             for key in ("pageW", "pageH", "photoWell"):
                 doc.setdefault(key, PAGE_SIZE[key])
             doc.setdefault("nodes", [])
-            # The photo in the device's folder (Import Image put it there):
-            # named here, so a Save is one write and one History entry.
-            pictures = store.pictures_dir_of(slug)
-            if pictures.is_dir():
-                photos = sorted(p for p in pictures.glob("photo.*") if p.is_file())
-                if photos:
-                    doc["image"] = store.picture_ref(slug, photos[-1].name)
+            if photo:
+                doc["image"] = photo
 
         _plog(
             "save claim",
@@ -2544,8 +2639,18 @@ class DriverInputModel(QtCore.QAbstractListModel):
             hats=hats,
             names_edited=list(edited),
         )
+        editing = (
+            store.edit_temp_dir(name, self._guid, _SETUP_EDIT) / store.STATE_FILE
+        ).is_file()
         try:
-            if not store.update_path(path, change, "Configure Module"):
+            if editing:
+                error = store.commit_edit(
+                    name, self._guid, change, _SETUP_EDIT, "Configure Module"
+                )
+                if error:
+                    _plog("save claim failed", path=str(path), error=error)
+                    return False
+            elif not store.update_path(path, change, "Configure Module"):
                 return False
             written = json.loads(path.read_text(encoding="utf-8"))
             trace("SAVE", "Configure Module", "saveClaim", path, "ok")
@@ -2563,7 +2668,6 @@ class DriverInputModel(QtCore.QAbstractListModel):
         if [int(n) for n in (got.get("hats") or [])] != hats:
             _plog("save claim mismatch", path=str(path), field="hats", wrote=hats, read=got.get("hats"))
             return False
-        bind_module_file(name, self._guid, slug)
         signal.configChanged.emit()
         _plog("save claim ok", path=str(path), bytes=path.stat().st_size)
         self._last_saved_path = str(path)

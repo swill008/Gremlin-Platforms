@@ -41,10 +41,20 @@ Item {
         property string nameKey: ""
         property string fallback: ""
 
+        // A rename renames the device's folder (03 S131): when that is
+        // refused, the reason shows here and the dialog stays open.
         onAccepted: (value) => {
-            _names.setAlias(nameKey, value)
+            var why = String(_names.setAlias(nameKey, value) || "")
+            if (why.length) {
+                errorText = why
+                text = value
+                Qt.callLater(function() { _renameDialog.visible = true })
+                return
+            }
+            errorText = ""
             visible = false
         }
+        onEdited: errorText = ""
     }
 
     function rename(key, fallback) {
@@ -54,6 +64,7 @@ Item {
         _renameDialog.nameKey = key
         _renameDialog.fallback = fallback
         _renameDialog.text = _names.display(key, fallback)
+        _renameDialog.errorText = ""
         _renameDialog.visible = true
     }
 

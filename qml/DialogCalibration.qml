@@ -308,9 +308,13 @@ ApplicationWindow {
                 text: "History"
                 focusPolicy: Qt.NoFocus
                 enabled: _moduleSelection.currentText.length > 0
-                // By the module's own file: twin sticks share a name.
+                // By the device's id (twin sticks share a name); entries from
+                // before device folders by its name (08 S43).
                 onClicked: Helpers.createComponent("DialogHistory.qml", {
-                    filter: JSON.stringify({ fileName: String(_moduleSelection.currentValue) + ".json" }),
+                    filter: JSON.stringify({
+                        deviceId: _modules.deviceIdOf ? String(_modules.deviceIdOf(String(_moduleSelection.currentValue)) || "") : "",
+                        deviceName: _moduleSelection.currentText
+                    }),
                     filterLabel: _moduleSelection.currentText
                 })
             }

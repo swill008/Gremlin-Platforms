@@ -16,12 +16,14 @@ import sys
 
 sys.path.append(".")
 
+import shutil
 from collections.abc import Iterator
 
 import pytest
 from PySide6 import QtCore
 
 from gremlin import device_initialization
+from test.unit._device_folders import put_module
 
 _APPS: list[QtCore.QCoreApplication] = []
 
@@ -35,16 +37,15 @@ def _app() -> Iterator[QtCore.QCoreApplication]:
 
 @pytest.fixture
 def model() -> Iterator[object]:
-    from gremlin.modules import module_file
     from gremlin.ui.device import AxisCalibration
     from gremlin.ui.module_calibration import CalibrationModuleModel
     from gremlin.util import modules_dir
 
     devices = device_initialization.physical_devices()
     stick = next(d for d in devices if d.name == "pJoy Pro")
-    path = modules_dir() / "pjoy_pro.json"
-    module_file.write_json(
-        path,
+    path = put_module(
+        modules_dir(),
+        "pJoy Pro",
         {
             "device": "pJoy Pro",
             "direction": "source",
@@ -58,11 +59,10 @@ def model() -> Iterator[object]:
         for i in range(modules.rowCount())
     ]
     made = AxisCalibration()
-    made.moduleSlug = next(slug for slug in slugs if "pjoy" in str(slug))
+    made.moduleSlug = next(slug for slug in slugs if "pjoy" in str(slug).lower())
     assert made.rowCount() > 0
     yield made
-    for leftover in path.parent.glob("pjoy_pro.json*"):
-        leftover.unlink()
+    shutil.rmtree(path.parent, ignore_errors=True)
 
 
 def test_undo_that_stops_a_capture_says_so(model: object) -> None:

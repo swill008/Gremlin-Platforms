@@ -192,14 +192,13 @@ def test_a_stale_twin_name_is_dropped(
     monkeypatch: pytest.MonkeyPatch, scan: None, tmp_path: pathlib.Path
 ) -> None:
     from gremlin.modules import store
+    from test.unit._device_folders import put_module
 
     first = _key(dill.DILL._dll.devices[0])
     gone = "{00000000-0000-0000-0000-0000000000AA}".strip("{}")
     # Kept while it has a module file (D-02-GL243-FORGET).
     monkeypatch.setattr(store, "folder", lambda: tmp_path)
-    (tmp_path / "away_stick_2.json").write_text(
-        '{"device": "Away Stick (2)"}', encoding="utf-8"
-    )
+    put_module(tmp_path, "Away Stick (2)", {"device": "Away Stick (2)"}, gone)
     Configuration().set(
         *di.TWIN_SETTING, {first: "Old Firmware Name (2)", gone: "Away Stick (2)"}
     )

@@ -45,10 +45,11 @@ GUID = str(dill.GUID(fake.devices[0].device_guid).uuid)
 # A few chips on the stand-in stick's map, for the preview to show
 # (SMOKE_CHIPS: that many instead, and SMOKE_PHOTO: a photo, to time a big
 # map).
-from gremlin.ui import hardware_profile  # noqa: E402
 
-_map = hardware_profile.module_json_path("pJoy Pro", GUID)
-_map.parent.mkdir(parents=True, exist_ok=True)
+from gremlin.modules import store  # noqa: E402
+
+# Its own device folder (03 S128): <modules>/pJoy Pro/module.json.
+_map = store.module_file_in(store.ensure_device_dir("pJoy Pro", GUID))
 _chips = int(os.environ.get("SMOKE_CHIPS", "5"))
 _doc: dict = {
     "kind": "control.hardware", "device": "pJoy Pro",
@@ -65,9 +66,9 @@ _doc: dict = {
 if os.environ.get("SMOKE_PHOTO"):
     import shutil
 
-    (_map.parent / "timing").mkdir(exist_ok=True)
-    shutil.copy(os.environ["SMOKE_PHOTO"], _map.parent / "timing" / "photo.jpg")
-    _doc["image"] = "timing/photo.jpg"
+    (_map.parent / "pictures").mkdir(exist_ok=True)
+    shutil.copy(os.environ["SMOKE_PHOTO"], _map.parent / "pictures" / "photo.jpg")
+    _doc["image"] = "pictures/photo.jpg"
 _map.write_text(json.dumps(_doc), encoding="utf-8")
 
 

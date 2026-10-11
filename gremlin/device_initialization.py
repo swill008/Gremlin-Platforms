@@ -17,6 +17,7 @@ from gremlin import (
     error,
     shared_state,
 )
+from gremlin.modules.ids import guid_key
 
 _joystick_devices: dict[uuid.UUID, dill.DeviceSummary] = collections.OrderedDict()
 # vJoy devices left out because of a set-up problem (their DirectInput ids),
@@ -37,7 +38,8 @@ SCAN_WAIT_S = 10.0
 # Two connected devices with the same name (a pair of identical sticks) used
 # to share one module file: claims, card, Button Map and calibration. The
 # second one is now "<name> (2)" (a third "(3)"...), so it has its own of
-# each. The device the existing <name> file is bound to keeps the plain name,
+# each and its own folder (03 S6, S132). The device whose id the <name>
+# folder holds keeps the plain name,
 # and which device is which is kept in the settings (by device id), so the
 # names stay the same from session to session and port to port.
 TWIN_SETTING = ("global", "internal", "twin-device-names")
@@ -48,15 +50,16 @@ def _guid_key(dev: dill.DeviceSummary) -> str:
 
 
 def _file_bound_guid(device_name: str) -> str:
-    """The device id the module file named after device_name is bound to."""
+    """The device id kept in the folder named after device_name (its
+    device.json, 03 S130), as ids.guid_key; "" when there is none."""
     import json
 
     from gremlin.modules import store
 
     try:
-        path = store.own_path(device_name)
-        doc = json.loads(path.read_text(encoding="utf-8"))
-        return str(doc.get("boundGuidLocal") or "").strip("{}").upper()
+        folder = store.folder() / store.folder_name_for(device_name)
+        doc = json.loads((folder / store.ID_FILE).read_text(encoding="utf-8"))
+        return guid_key(doc.get("id") if isinstance(doc, dict) else "")
     except Exception:
         return ""
 
@@ -153,8 +156,9 @@ def _name_twins(devices: list[dill.DeviceSummary]) -> None:
         if len(group) < 2:
             continue
         bound = _file_bound_guid(name)
-        # The device the existing file is bound to first, then by id.
-        group.sort(key=lambda d: (_guid_key(d) != bound, _guid_key(d)))
+        # The device whose id the existing folder holds first, then by id
+        # (03 S132): it keeps the plain name and so its folder.
+        group.sort(key=lambda d: (guid_key(d.device_guid) != bound, _guid_key(d)))
         for dev in group[1:]:
             number = 2
             while f"{name} ({number})" in taken:
@@ -243,6 +247,9 @@ def joystick_devices_initialization() -> None:
         input_cache.Joystick().follow_layouts(list(_joystick_devices.values()))
     finally:
         _joystick_init_lock.release()
+    # Every scan, also one with no device change: a shown name can change
+    # without one (03 S131).
+    _sync_folder_names()
 
 
 def layout_changed() -> set[uuid.UUID]:
@@ -449,14 +456,39 @@ def _has_module_file(name: str, guid: str) -> bool:
 
     try:
         if name:
-            return store.exists(name, guid)
+            return store.module_file(name, guid).is_file()
         # By id only (an alias of a device whose name isn't known): the
-        # file chosen for it or bound to it, not the "device" fallback.
-        slug = store.slug_for("", guid)
-        return slug != store.own_slug("") and store.path_of(slug).is_file()
+        # folder holding that id, not the folder-by-name fallback.
+        folder = store.dir_of_id(guid)
+        return folder is not None and store.module_file_in(folder).is_file()
     except Exception:
         logging.getLogger("system").exception("Module file check failed")
         return True
+
+
+def _sync_folder_names() -> None:
+    """After a scan: each plugged-in stick's folder follows its shown name
+    (03 S130, S131), for a name changed outside a rename (Windows, a twin's
+    number, settings put back). On the main thread; store.sync_dir_name logs
+    what it can't rename."""
+    devices = [
+        (str(dev.name or ""), str(dev.device_guid))
+        for dev in physical_devices()
+        if dev.name
+    ]
+
+    def sync() -> None:
+        from gremlin.modules import store
+
+        for name, guid in devices:
+            try:
+                store.sync_dir_name(name, guid)
+            except Exception:
+                logging.getLogger("system").exception(
+                    f"Device folder of {name} not checked"
+                )
+
+    _on_main_thread(sync)
 
 
 def _profile_names() -> dict[str, str]:

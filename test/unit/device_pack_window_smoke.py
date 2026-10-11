@@ -129,10 +129,9 @@ profile.modes.set_parent("Combat", "Default")
 add_map(profile, uid, 1, "Default", 1, 1)
 add_map(profile, uid, 2, "Combat", 1, 2)
 add_logical(profile, uid, 5, 9)
-modules = util.modules_dir()
-modules.mkdir(parents=True, exist_ok=True)
+# Its own device folder (03 S128): <modules>/pJoy Pro/module.json.
 module_file.write_json(
-    store.own_path(name),
+    store.module_file_in(store.ensure_device_dir(name, str(stick.device_guid))),
     {
         "kind": "control.hardware",
         "device": name,
@@ -180,12 +179,14 @@ def _key(guid: object) -> str:
     return str(guid or "").strip("{}").lower()
 
 
+TWIN_FILES: list = []
+
+
 def import_on_second(url: str, sticks: list, second: int) -> None:
     """Import the pack with "Put this pack on" set to the "(2)" row (picked
     with the keyboard): the selection carries that row's id, and only the
     second stick's module file gets the pack (08 S106a)."""
-    folder = util.modules_dir()
-    files = [folder / "pjoy_pro.json", folder / "pjoy_pro_2.json"]
+    files = list(TWIN_FILES)
     # Different checked controls on each: the pack's are added to the target.
     for path, button in zip(files, (8, 9)):
         doc = json.loads(path.read_text(encoding="utf-8"))
@@ -248,10 +249,13 @@ def run_twins() -> None:
     sticks[-1].name = sticks[0].name
     ids = [str(d.device_guid.uuid) for d in sticks]
     out["twin-ids"] = ids
+    TWIN_FILES.clear()
     for i, guid in enumerate(ids):
-        slug = "pjoy_pro" if i == 0 else "pjoy_pro_2"
+        # Each twin's own folder, found by its id (03 S6, S132).
+        path = store.module_file_in(store.ensure_device_dir(sticks[i].name, guid))
+        TWIN_FILES.append(path)
         module_file.write_json(
-            util.modules_dir() / f"{slug}.json",
+            path,
             {
                 "kind": "control.hardware",
                 "device": sticks[i].name,

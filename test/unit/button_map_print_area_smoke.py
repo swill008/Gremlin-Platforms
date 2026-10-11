@@ -38,8 +38,8 @@ import shiboken6  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
 
 import dill  # noqa: E402
-import gremlin.ui.hardware_profile as hp  # noqa: E402
 import joystick_gremlin  # noqa: E402
+from gremlin.modules import store  # noqa: E402
 
 GUID = str(dill.GUID(fake.devices[0].device_guid).uuid)
 Button = QtCore.Qt.MouseButton
@@ -141,9 +141,9 @@ def main() -> None:
     out["unpinned-after-map-click"] = ev("_tools.isOpen('printArea')")
     ev("_tools.setOpen('printArea', true)")
     # Part of the edit: written by Save (07 Q1, GL-173).
-    out["file-before-save"] = hp.module_json_path("pJoy Pro", GUID).is_file()
+    out["file-before-save"] = store.module_file("pJoy Pro", GUID).is_file()
     ev("_buttonMap.saveEdit(false)")
-    doc = json.loads(hp.module_json_path("pJoy Pro", GUID).read_text(encoding="utf-8"))
+    doc = json.loads(store.module_file("pJoy Pro", GUID).read_text(encoding="utf-8"))
     out["saved"] = (doc.get("ui") or {}).get("printArea")
     out["export"] = export()
     # What the export should be: the area at 100% (1:1 with the photo, or
@@ -189,7 +189,7 @@ def main() -> None:
     ev("_buttonMap.setPrint('scale', 100)")
     out["scale-100"] = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
     ev("_buttonMap.saveEdit(false)")
-    doc = json.loads(hp.module_json_path("pJoy Pro", GUID).read_text(encoding="utf-8"))
+    doc = json.loads(store.module_file("pJoy Pro", GUID).read_text(encoding="utf-8"))
     out["saved-print"] = (doc.get("ui") or {}).get("print")
     # Only while editing: its tool open and pinned, the frame shows in Edit,
     # not on the live map, and again in the next Edit.

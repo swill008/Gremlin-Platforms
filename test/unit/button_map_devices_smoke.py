@@ -44,7 +44,6 @@ from PySide6 import QtCore, QtQml, QtTest  # noqa: E402
 
 import dill  # noqa: E402
 from gremlin import event_handler  # noqa: E402
-from gremlin.ui import hardware_profile  # noqa: E402
 
 # The stick ("pJoy Pro") starts unplugged; its map has five chips.
 stick = fake.devices[0]
@@ -63,8 +62,10 @@ NODES = [
     }
     for i in range(1, 6)
 ]
-_map = hardware_profile.module_json_path("pJoy Pro", GUID)
-_map.parent.mkdir(parents=True, exist_ok=True)
+from gremlin.modules import store  # noqa: E402
+
+# Its own device folder (03 S128): <modules>/pJoy Pro/module.json.
+_map = store.module_file_in(store.ensure_device_dir("pJoy Pro", GUID))
 _map.write_text(
     json.dumps({"kind": "control.hardware", "device": "pJoy Pro", "nodes": NODES}),
     encoding="utf-8",

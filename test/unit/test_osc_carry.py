@@ -144,7 +144,7 @@ class _Watch:
         real = module_file.write_bytes
 
         def counting(path: Path, data: bytes) -> None:
-            if Path(path).name == "osc.json":
+            if Path(path).parent.name == "OSC" and Path(path).name == "module.json":
                 self.writes.append(Path(path))
             real(path, data)
 
@@ -158,7 +158,7 @@ class _Watch:
             e
             for e in history.entries()
             if str(e.get("id")) not in self.before
-            and (e.get("subject") or {}).get("fileName") == "osc.json"
+            and (e.get("subject") or {}).get("fileName") == "OSC/module.json"
         ]
 
 
@@ -167,6 +167,13 @@ def _save() -> dict:
     assert out["ok"], out
     setups = out.get("setups") or [out.get("setup")]
     return setups[0]
+
+
+def _gmap(out: dict) -> Path:
+    """The file an export wrote: a device folder .gmap (10 S60)."""
+    path = Path(out["path"])
+    assert path.suffix == ".gmap" and path.is_file(), out
+    return path
 
 
 def _osc_doc_in(data: bytes | Path) -> dict:
@@ -243,10 +250,10 @@ def test_export_current_includes_inputs_and_server(
     state_a: dict, tmp_path: Path
 ) -> None:
     row = next(r for r in library.devices() if r["name"] == "OSC")
-    dest = tmp_path / "out" / "now.zip"
+    dest = tmp_path / "out" / "now.gmap"
     out = library.export_current(row["key"], dest)
     assert out["ok"], out
-    _assert_carries_a(_osc_doc_in(dest), state_a)
+    _assert_carries_a(_osc_doc_in(_gmap(out)), state_a)
 
 
 def test_export_saved_setup_includes_inputs_and_server(
@@ -254,10 +261,10 @@ def test_export_saved_setup_includes_inputs_and_server(
 ) -> None:
     setup = _save()
     _change_to_b(rows)  # the saved setup keeps A
-    dest = tmp_path / "out" / "saved.zip"
+    dest = tmp_path / "out" / "saved.gmap"
     out = library.export_setup(setup["key"], dest)
     assert out["ok"], out
-    _assert_carries_a(_osc_doc_in(dest), state_a)
+    _assert_carries_a(_osc_doc_in(_gmap(out)), state_a)
 
 
 # --- (3) Device Pack ----------------------------------------------------------

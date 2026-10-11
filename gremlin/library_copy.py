@@ -11,7 +11,9 @@ stick's bindings and renumbers only the vJoy its Map to vJoy actions send to,
 nested actions too. Each keeps an autosave of every stick it changes first
 and refuses when one can't be kept (S20); Undo puts the last change back
 from those autosaves (S41). Nothing here touches devices, vJoy or ViGEm:
-only module files (through the Device Pack import) and profiles.
+only device folders (through the Device Pack import, which reads a saved
+setup's .gmap as an older pack, and writes the pictures the map uses into
+the receiving stick's own folder, S61) and profiles.
 """
 
 from __future__ import annotations
@@ -220,7 +222,8 @@ def _scratch() -> Iterator[Path]:
 
 
 def _write_current(scratch: Path, data: bytes) -> Path:
-    path = scratch / f"current-{len(list(scratch.iterdir())) + 1}.zip"
+    suffix = ".gmap" if library.is_gmap(data) else ".zip"
+    path = scratch / f"current-{len(list(scratch.iterdir())) + 1}{suffix}"
     path.write_bytes(data)
     return path
 
@@ -1056,10 +1059,11 @@ def _put_module_back(
     setup: dict, own: str, guid: str, pack: Path, items: list[str], out: dict
 ) -> str:
     """The stick's module file as the autosave kept it (S25, S41): exactly
-    its bytes, or none when it had none. "" when done, else why not."""
+    its bytes, or none when it had none; an autosave that kept the whole
+    folder (S18) puts its pictures back too. "" when done, else why not."""
     kept = str(setup.get("moduleFile") or "")
-    # By its id alone: an unplugged twin's file, never the other twin's.
-    path = store.path_for_id(own, guid)
+    # By its id alone: an unplugged twin's folder, never the other twin's.
+    path = store.module_file(own, guid)
     if not kept:
         if path.is_file():
             try:
@@ -1088,10 +1092,36 @@ def _put_module_back(
             )
     if exact is not None:
         try:
+            path = store.module_file_in(store.ensure_device_dir(own, guid))
             store.replace(path, exact, "Device Library", force=True)
         except OSError as e:
             return f"{own}'s module file couldn't be put back ({e})."
+        failed = _put_pictures_back(setup, path.parent)
+        if failed:
+            out["warnings"].append(f"{own}'s pictures: {failed}")
     out["notes"].append(f"Put back {own}'s module file.")
+    return ""
+
+
+def _put_pictures_back(setup: dict, where: Path) -> str:
+    """The pictures an autosave kept with the whole folder (S18), each
+    back in the device's own folder as it was; pictures added since (a
+    copy brought them) are left, unused. "" when done, else why not."""
+    try:
+        kept = library.folder_files(str(setup.get("key")))
+    except KeyError:
+        return ""
+    prefix = store.PICTURES + "/"
+    for rel, data in kept.items():
+        if not rel.startswith(prefix):
+            continue
+        dest = where / rel
+        try:
+            if dest.is_file() and dest.read_bytes() == data:
+                continue
+            store.put_picture_at(dest, data)
+        except OSError as e:
+            return f"{Path(rel).name} couldn't be put back ({e})."
     return ""
 
 

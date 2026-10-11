@@ -38,12 +38,15 @@ def _run(tmp_path: pathlib.Path, *args: str) -> dict:
     (home / "Gremlin Platforms").mkdir(parents=True)
     env = dict(os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen")
     result = proc_tree.run(
-        [sys.executable, str(_SMOKE), *args], cwd=_ROOT, env=env,
-        text=True, timeout=180,
+        [sys.executable, str(_SMOKE), *args],
+        cwd=_ROOT,
+        env=env,
+        text=True,
+        timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, result.stdout[-1500:] + result.stderr[-1500:]
-    out = json.loads(lines[-1][len("RESULT "):])
+    out = json.loads(lines[-1][len("RESULT ") :])
     assert "error" not in out, out
     return out
 
@@ -62,11 +65,11 @@ def test_calibration_waits_for_a_stick_not_plugged_in(
     out = _run(tmp_path, "calib")
     before, after = out["before"], out["after"]
     # Waiting: no other stick shown in its place.
-    assert before["shown"] == "second_stick", out
+    assert before["shown"] == "Second Stick", out
     assert before["current"] == "" and before["axes"] == 0, out
     assert before["not-connected"], out
     # Plugged in: it is shown.
-    assert after["shown"] == "second_stick", out
+    assert after["shown"] == "Second Stick", out
     assert after["current"] == "Second Stick" and after["axes"] > 0, out
     assert not after["not-connected"], out
 

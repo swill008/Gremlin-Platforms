@@ -273,7 +273,8 @@ def test_s2_device_names_in_the_profile_osc_and_logical_device_in_their_files(
     text = path.read_text(encoding="utf-8-sig")
     assert "/osc/fire" not in text and "<osc-device" not in text
     assert "<logical-device" not in text and "Fire" not in text
-    assert (modules / "logical_device.json").exists()
+    assert logical_device_file.path().exists()
+    assert logical_device_file.path() == modules / "Logical Device" / "module.json"
     assert [r["label"] for r in osc_device_file.read_inputs()] == ["/osc/fire"]
 
     LogicalDevice().load_dict({"controls": [], "groups": []})

@@ -31,6 +31,7 @@ from gremlin.modules import output, registry, store
 from gremlin.profile import InputItem, InputItemBinding, Profile
 from gremlin.signal import signal
 from gremlin.types import InputType
+from test.unit._device_folders import ensure_dir, module_path
 
 B = InputType.JoystickButton
 
@@ -84,7 +85,8 @@ def world(
     monkeypatch.setattr(output, "vjoy_axis_ids", lambda vid: set())
     monkeypatch.setattr(output, "xbox_available", lambda: False)
     monkeypatch.setattr(output, "_vjoy_off", set())
-    osc_file = folder / "osc.json"
+    osc_file = module_path(folder, "OSC")
+    ensure_dir(folder, "OSC")
     monkeypatch.setattr(osc_device_file, "path", lambda: osc_file)
     osc_file.write_text(
         json.dumps(
@@ -98,7 +100,8 @@ def world(
         encoding="utf-8",
     )
     osc_output.invalidate()
-    vjoy_file = folder / "vjoy_1.json"
+    vjoy_file = module_path(folder, "vJoy 1")
+    ensure_dir(folder, "vJoy 1")
     store.write_json(vjoy_file, _vjoy_doc(range(1, 9)), "test")
     _settle(qapp)
     state.update(folder=folder, vjoy_file=vjoy_file)
@@ -211,7 +214,8 @@ def test_xbox_output_module_added_and_removed_updates_the_open_editor(
     _keep, am = _model(action)
     assert am.cantSendText == "Xbox pad 2 is not Found."
     seen = _notified(am, "cantSendText")
-    pad = world["folder"] / "xbox_360_2.json"
+    ensure_dir(world["folder"], "Xbox 360 2")
+    pad = module_path(world["folder"], "Xbox 360 2")
     store.write_json(
         pad,
         {

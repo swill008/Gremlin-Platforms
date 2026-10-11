@@ -229,13 +229,13 @@ def test_also_claim_with_an_output_file_that_cant_be_written(
     real_write = module_file.write_bytes
 
     def refuse(target: Path, data: bytes) -> None:
-        if Path(target).name == "vjoy_1.json":
+        if Path(target) == path:
             raise OSError("access denied")
         real_write(target, data)
 
     monkeypatch.setattr(module_file, "write_bytes", refuse)
     report = AutoMapper(profile).generate_module_mappings(
-        ["pjoy_pro"], ["vjoy_1"], AutoMapperOptions(claim_outputs=True)
+        ["pJoy Pro"], ["vJoy 1"], AutoMapperOptions(claim_outputs=True)
     )
     # Q15: skipped and listed "not claimed"; no actions, the file as it was.
     assert mapped(profile, stick_uid()) == set()

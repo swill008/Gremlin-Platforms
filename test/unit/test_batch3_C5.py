@@ -26,6 +26,7 @@ from PySide6 import QtCore, QtQml
 
 from gremlin.modules import store
 from gremlin.ui import device_pack, hardware_profile
+from test.unit._device_folders import module_path, picture_file, put_module, put_picture
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _GLADIATOR = "qml/images/vkb_gladiator_rig.jpg"
@@ -36,9 +37,6 @@ def maps(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.Pat
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
-    monkeypatch.setattr(
-        store, "slug_for", lambda name, guid="": name.lower().replace(" ", "_")
-    )
     monkeypatch.setattr(device_pack, "_match_pack_device", lambda name: None)
     monkeypatch.setattr(hardware_profile, "_match_pack_device", lambda name: None)
     return folder
@@ -124,7 +122,7 @@ def test_auto_mapper_result_says_actions() -> None:
 
 
 def test_export_of_a_damaged_module_file_says_so(maps: pathlib.Path) -> None:
-    (maps / "test_stick.json").write_text("{not json", encoding="utf-8")
+    put_module(maps, "Test Stick", "{not json")
     built = device_pack.assemble("Test Stick", lambda ref: None)
     assert isinstance(built, str)
     assert "damaged" in built and "Start Fresh" in built
@@ -157,14 +155,14 @@ def test_checked_controls_are_not_listed_as_replaced() -> None:
 def test_saving_a_map_without_a_photo_names_no_photo(maps: pathlib.Path) -> None:
     hw = hardware_profile.HardwareProfile()
     assert hw.save("VKB Gladiator EVO R", json.dumps({"image": "", "nodes": []}))
-    doc = _read(maps / "vkb_gladiator_evo_r.json")
+    doc = _read(module_path(maps, "VKB Gladiator EVO R"))
     assert doc["image"] == ""
 
 
 def test_a_stock_photo_reference_finds_nothing(maps: pathlib.Path) -> None:
     hw = hardware_profile.HardwareProfile()
     assert hw.imageUrl(_GLADIATOR) == ""
-    _write(maps / "vkb_evo_r.json", {"kind": "control.hardware", "image": _GLADIATOR})
+    put_module(maps, "VKB EVO R", {"kind": "control.hardware", "image": _GLADIATOR})
     assert hw.profilePhotoUrl("VKB EVO R") == ""
     assert not hasattr(hardware_profile, "_stock_photo")
 
@@ -174,8 +172,8 @@ def test_a_stock_photo_reference_finds_nothing(maps: pathlib.Path) -> None:
 
 def test_asking_a_photo_leaves_the_document_alone(maps: pathlib.Path) -> None:
     hw = hardware_profile.HardwareProfile()
-    _write(maps / "stick_a.json", {"kind": "control.hardware", "nodes": [1]})
-    _write(maps / "stick_b.json", {"kind": "control.hardware", "nodes": [2]})
+    put_module(maps, "Stick A", {"kind": "control.hardware", "nodes": [1]})
+    put_module(maps, "Stick B", {"kind": "control.hardware", "nodes": [2]})
     hw.load("Stick A")
     before = (hw.path, hw.text)
     seen: list[str] = []
@@ -187,12 +185,10 @@ def test_asking_a_photo_leaves_the_document_alone(maps: pathlib.Path) -> None:
 
 
 def test_a_photo_named_by_the_file_is_still_found(maps: pathlib.Path) -> None:
-    photo = maps / "stick_b" / "front.png"
-    photo.parent.mkdir()
-    photo.write_bytes(b"png")
-    _write(maps / "stick_b.json", {"image": "stick_b/front.png"})
+    ref = put_picture(maps, "Stick B", "front.png", b"png")
+    put_module(maps, "Stick B", {"image": ref})
     url = hardware_profile.HardwareProfile().profilePhotoUrl("Stick B")
-    assert "stick_b/front.png" in url
+    assert url.split("?")[0].endswith("/pictures/front.png")
 
 
 # --- GL-268, GL-270: Save refuses non-objects; one page size ----------------
@@ -202,46 +198,43 @@ def test_save_refuses_text_that_is_not_an_object(maps: pathlib.Path) -> None:
     hw = hardware_profile.HardwareProfile()
     assert hw.save("Test Stick", "[1, 2]") is False
     assert hw.save("Test Stick", "not json") is False
-    assert not (maps / "test_stick.json").exists()
+    assert not module_path(maps, "Test Stick").exists()
 
 
 def test_save_stamps_the_one_page_size(maps: pathlib.Path) -> None:
     hw = hardware_profile.HardwareProfile()
     assert hw.save("Test Stick", json.dumps({"nodes": [], "page": 1, "pageW": 2}))
-    doc = _read(maps / "test_stick.json")
+    doc = _read(module_path(maps, "Test Stick"))
     for key, value in hardware_profile.PAGE_SIZE.items():
         assert doc[key] == value
     window = (_ROOT / "qml" / "DialogJoystickButtonMap.qml").read_text(encoding="utf-8")
     assert "32000" not in window and "18000" not in window
 
 
-# --- GL-273: pictures no map uses leave the device folder (07 Q11) ----------
+# --- GL-273: pictures no map uses leave the device folder (07 Q11, S106) ----
 
 
 def test_unused_pictures_go_when_an_edit_ends(maps: pathlib.Path) -> None:
-    folder = maps / "test_stick"
-    folder.mkdir()
-    for name in ("photo.jpg", "on_map.png", "in_group.png", "in_template.png",
-                 "in_recovery.png", "added.png", "pasted_1.png"):
-        (folder / name).write_bytes(b"x")
-    (folder / "notes.txt").write_text("not a picture", encoding="utf-8")
-    _write(maps / "test_stick.json", {
-        "image": "test_stick/photo.jpg",
+    # The device's pictures/ keeps what its module.json and recovery.json
+    # name; templates carry their own pictures (S110).
+    for name in ("photo.jpg", "on_map.png", "in_group.png", "in_recovery.png",
+                 "added.png", "pasted_1.png"):
+        put_picture(maps, "Test Stick", name, b"x")
+    put_module(maps, "Test Stick", {
+        "image": "pictures/photo.jpg",
         "nodes": [
-            {"shape": "image", "src": "test_stick/on_map.png"},
+            {"shape": "image", "src": "pictures/on_map.png"},
             {"kind": "group", "members": [
-                {"shape": "image", "src": "test_stick/in_group.png"}]},
+                {"shape": "image", "src": "pictures/in_group.png"}]},
         ],
     })
-    _write(maps / "templates" / "t.json", {
-        "nodes": [{"shape": "image", "src": "test_stick/in_template.png"}]})
-    _write(store.recovery_path("other"), {
-        "nodes": [{"shape": "image", "src": "test_stick/in_recovery.png"}]})
+    _write(store.recovery_path("Test Stick"), {
+        "nodes": [{"shape": "image", "src": "pictures/in_recovery.png"}]})
     hw = hardware_profile.HardwareProfile()
     assert hw.removeUnusedPictures("Test Stick") == 2
+    folder = picture_file(maps, "Test Stick", "x").parent
     left = sorted(p.name for p in folder.iterdir())
-    assert left == ["in_group.png", "in_recovery.png", "in_template.png",
-                    "notes.txt", "on_map.png", "photo.jpg"]
+    assert left == ["in_group.png", "in_recovery.png", "on_map.png", "photo.jpg"]
     assert hw.removeUnusedPictures("Test Stick") == 0
 
 

@@ -39,7 +39,7 @@ Public names (QML), unchanged from LogicalLayoutModel:
   setSelection keeps "parent:" keys only.
 
 The layout store (self._layout, from _make_store()): duck-typed, the
-LogicalDevice API. An OSC store over osc.json implements the same:
+LogicalDevice API. An OSC store over OSC's module file implements the same:
   memento() -> object (== comparable; equal means nothing changed)
   restore(memento) -> None
   group_names() -> list[str]               (order shown; "" not included)

@@ -2,8 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""A device's module file (its Button Map, claims, calibration and layout):
-read it to change it, and write it safely.
+"""A device's module file (<Device Folder>/module.json: its Button Map,
+claims, calibration and layout, D-03-DEVICE-FOLDERS): read it to change it,
+and write it safely. Where it is belongs to gremlin.modules.store.
 
 A file that can't be read is never treated as empty: a save that would
 replace it with a nearly empty file is refused (ModuleFileDamaged) and the
@@ -136,18 +137,26 @@ def write_json(path: Path, doc: dict, indent: int = 2) -> None:
 
 
 def start_fresh(path: Path) -> Path:
-    """Moves a damaged module file aside as <name>.json.bad-<date> (nothing
-    is deleted) so the device can be set up again, with a History entry.
-    Returns the copy's path. New callers use store.move_aside."""
+    """Moves a damaged module file aside as module.json.bad-<date> in its
+    device folder (nothing is deleted) so the device can be set up again,
+    with a History entry. Returns the copy's path. New callers use store.move_aside."""
     from gremlin.modules import store
 
     return store.move_aside_path(Path(path))
 
 
+def _shown_path(path: Path) -> str:
+    """A module file as the user is told it: <device folder>\\module.json."""
+    path = Path(path)
+    if not path.parent.name:
+        return path.name
+    return path.parent.name + "\\" + path.name
+
+
 def refused_message(error: ModuleFileDamaged) -> str:
     """What the user is told when a save into a damaged file is refused."""
     return (
-        f"Nothing was saved: the module file {error.path.name} is damaged "
+        f"Nothing was saved: the module file {_shown_path(error.path)} is damaged "
         f"({error.reason}). Its device's inputs are blocked until it is fixed. "
         "Restore the file, fix it, or choose Start Fresh on the device's card "
         "(the damaged file is kept)."

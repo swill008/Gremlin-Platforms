@@ -68,8 +68,12 @@ def test_export_and_import(
     profile: hardware_profile.HardwareProfile, tmp_path: pathlib.Path
 ) -> None:
     profile.saveTemplate("Shared", NODES, "x")
-    out = tmp_path / "shared.json"
+    out = tmp_path / "shared.gtemplate"
     assert profile.exportTemplate("Shared", _url(out))
+    assert out.is_file()
+    # A name without the extension gets it (07 S80).
+    assert profile.exportTemplate("Shared", _url(tmp_path / "plain"))
+    assert (tmp_path / "plain.gtemplate").is_file()
     # Importing a name already there numbers it.
     assert profile.importTemplate(_url(out)) == "Shared 2"
     assert profile.importTemplate(_url(out)) == "Shared 3"

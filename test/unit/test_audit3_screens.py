@@ -43,6 +43,7 @@ _ROOT = _HERE.parents[1]
 def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     """Runs one screen part; its RESULT lines by name."""
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), part, str(tmp_path)],
         text=True,
@@ -60,10 +61,16 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     errors = [line for line in lines if line.startswith("ERROR")]
     assert errors == [], errors
     # No QML warning from the files these fixes are in.
-    ours = ("DialogJoystickButtonMap.qml", "KeyboardPage.qml",
-            "ConfigGroup.qml", "rig_groups.js", "rig_selection.js")
+    ours = (
+        "DialogJoystickButtonMap.qml",
+        "KeyboardPage.qml",
+        "ConfigGroup.qml",
+        "rig_groups.js",
+        "rig_selection.js",
+    )
     warned = [
-        line for line in lines
+        line
+        for line in lines
         if line.startswith("WARN") and any(f in line for f in ours)
     ]
     assert warned == [], warned
@@ -129,9 +136,7 @@ if __name__ != "__main__":
             source = "97b77b40-07d8-11f0-8028-444553540000"
             target = str(uuid.uuid4())
             assert _rows(model, b"uuid") == [source]
-            swap_devices.swap_devices(
-                loaded, uuid.UUID(source), uuid.UUID(target)
-            )
+            swap_devices.swap_devices(loaded, uuid.UUID(source), uuid.UUID(target))
             signal.profileChanged.emit()
             # The bindings moved: both listed, with their new counts (the
             # list said the old device still had them).
@@ -196,9 +201,12 @@ if __name__ != "__main__":
         model.beginPane(a_row, -1)
         assert model.paneModel is not None
         model.endPane()
-        assert profile.get_input_item(
-            dill.UUID_Keyboard, InputType.Keyboard, (30, False), "Default"
-        ) is None
+        assert (
+            profile.get_input_item(
+                dill.UUID_Keyboard, InputType.Keyboard, (30, False), "Default"
+            )
+            is None
+        )
         # Default has nothing to delete: no Delete.
         assert not model.canDelete(a_row)
         model.setMode("Combat")
@@ -256,19 +264,22 @@ if __name__ != "__main__":
         # applied to B; A's new photo stays with it.
         assert r["switched"] == "gate:false pending:false copyA:true stashA:true"
         assert r["restore-on-b"] == "editing:false"
-        # Back on A: offered again; Not now keeps the copy and the new photo.
+        # Back on A: offered again; Not now keeps the copy and the new photo
+        # (waiting in the edit; the saved map shows the saved photo until
+        # Save, 07 S107).
         assert r["offer-a-again"] == "true"
-        assert r["not-now"] == "copyA:true stashA:true photo:new"
+        assert r["not-now"] == "copyA:true stashA:true photo:old"
         # Edit after Not now offers them again (no new session to write over
         # the copy or delete it on Cancel).
         assert r["edit-offers"] == (
-            "gate:true editing:false copyA:true stashA:true photo:new"
+            "gate:true editing:false copyA:true stashA:true photo:old"
         )
         # Discard puts the saved photo back and removes the copy.
         assert r["discard"] == "copyA:false stashA:false photo:old"
         # Blank page with the offer open: put off as well.
         assert r["blank"] == "gate:false copyA:true stashA:true"
-        # A copy that only changed the photo (same file name) is offered.
+        # A copy that only changed the photo is offered.
+
         assert r["photo-only"] == "offered:true gate:true copyA:true stashA:true"
         # A copy kept under the stick's old name: Restore opens it; Cancel
         # removes it and puts the saved photo back.
@@ -332,7 +343,10 @@ def _engine(out: pathlib.Path) -> tuple:
     app = QtGui.QGuiApplication(sys.argv[:1])
     QtQml.qmlRegisterSingletonType(
         QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "Style.qml")),
-        "Gremlin.Style", 1, 0, "Style",
+        "Gremlin.Style",
+        1,
+        0,
+        "Style",
     )
     import gremlin.ui.backend  # noqa: F401
     import gremlin.ui.button_map_options  # noqa: F401
@@ -419,42 +433,54 @@ def _button_map(out: pathlib.Path) -> None:
 
     old_url = picture("old.png", "#336699")
     new_url = picture("new.png", "#993366")
-    a1 = ("{id: 'a1', kind: 'draw', shape: 'rect',"
-          " fx: 0.1, fy: 0.1, fw: 0.1, fh: 0.1}")
+    a1 = "{id: 'a1', kind: 'draw', shape: 'rect', fx: 0.1, fy: 0.1, fw: 0.1, fh: 0.1}"
     # Stick A saved with the old photo; then an edit changed the photo and
     # the program closed: kept photo, new photo, recovery copy.
     crash = (
         "var n = 'Stick A';"
-        " _hw.stashPhoto(n);"
+        " _hw.beginEdit(n);"
         f" var rel = _hw.copyImage('{new_url}', n);"
         f" _hw.saveRecovery(n, JSON.stringify({{image: rel, nodes: [{a1},"
         " {id: 'a2', kind: 'draw', shape: 'rect',"
         " fx: 0.4, fy: 0.4, fw: 0.1, fh: 0.1}]}));"
         " rel"
     )
-    _js(win, "var n = 'Stick A';"
-             " _hw.save(n, JSON.stringify({kind: 'control.hardware',"
-             f" device: n, nodes: [{a1}]}}));"
-             f" var r = _hw.copyImage('{old_url}', n);"
-             # Saved with that photo: Save names it (07 Q2, GL-174).
-             " _hw.save(n, JSON.stringify({kind: 'control.hardware',"
-             f" device: n, image: r, nodes: [{a1}]}}))")
-    _js(win, "_hw.save('Stick B', JSON.stringify({kind: 'control.hardware',"
-             " device: 'Stick B', nodes: []}))")
+    _js(
+        win,
+        "var n = 'Stick A';"
+        " _hw.save(n, JSON.stringify({kind: 'control.hardware',"
+        f" device: n, nodes: [{a1}]}}));"
+        f" var r = _hw.copyImage('{old_url}', n);"
+        # Saved with that photo: Save names it (07 Q2, GL-174).
+        " _hw.save(n, JSON.stringify({kind: 'control.hardware',"
+        f" device: n, image: r, nodes: [{a1}]}}))",
+    )
+    _js(
+        win,
+        "_hw.save('Stick B', JSON.stringify({kind: 'control.hardware',"
+        " device: 'Stick B', nodes: []}))",
+    )
     _js(win, crash)
 
-    state_a = ("'copyA:' + (_hw.loadRecovery('Stick A').length > 0)"
-               " + ' stashA:' + _hw.hasPhotoStash('Stick A')")
+    state_a = (
+        "'copyA:' + (_hw.loadRecovery('Stick A').length > 0)"
+        " + ' stashA:' + _hw.editActive('Stick A')"
+    )
     _js(win, "_buttonMap.openForDevice('Stick A', '', ''); 1")
     _wait(500)
     _Out.result("offer-a", _js(win, "String(_recoverGate.opened)"))
     # Home: Stick B's Button Map, with the offer still open.
     _js(win, "_buttonMap.openForDevice('Stick B', '', ''); 1")
     _wait(500)
-    _Out.result("switched", _js(
-        win, "'gate:' + _recoverGate.opened"
-             " + ' pending:' + (_buttonMap._pendingRecovery !== null)"
-             f" + ' ' + {state_a}"))
+    _Out.result(
+        "switched",
+        _js(
+            win,
+            "'gate:' + _recoverGate.opened"
+            " + ' pending:' + (_buttonMap._pendingRecovery !== null)"
+            f" + ' ' + {state_a}",
+        ),
+    )
     _js(win, "_buttonMap.restoreRecovery(); 1")
     _wait(200)
     _Out.result("restore-on-b", _js(win, "'editing:' + _buttonMap.editing"))
@@ -462,7 +488,7 @@ def _button_map(out: pathlib.Path) -> None:
     _wait(200)
 
     # Which photo shows: the photo file's colour (copyImage keeps one name).
-    photo_file = ("var p = _hw.imageUrl(JSON.parse(_hw.load('Stick A')).image); p")
+    photo_file = "var p = _hw.imageUrl(JSON.parse(_hw.load('Stick A')).image); p"
 
     def photo_colour() -> str:
         url = _js(win, photo_file)
@@ -482,123 +508,188 @@ def _button_map(out: pathlib.Path) -> None:
     # Edit after Not now: the edits are offered again, not a new session
     # (its recovery copy wrote over the copy and its Cancel deleted copy and
     # photo).
-    edit = _js(win, "_buttonMap.enterEdit();"
-                    " 'gate:' + _recoverGate.opened + ' editing:' + _buttonMap.editing")
-    _js(win, "_recoverGate.close(); _buttonMap.recoveryNow();"
-             " _buttonMap.discardEdit(); 1")
+    edit = _js(
+        win,
+        "_buttonMap.enterEdit();"
+        " 'gate:' + _recoverGate.opened + ' editing:' + _buttonMap.editing",
+    )
+    _js(
+        win,
+        "_recoverGate.close(); _buttonMap.recoveryNow(); _buttonMap.discardEdit(); 1",
+    )
     _wait(300)
-    _Out.result("edit-offers",
-                edit + " " + _js(win, state_a) + " photo:" + photo_colour())
+    _Out.result(
+        "edit-offers", edit + " " + _js(win, state_a) + " photo:" + photo_colour()
+    )
     # Opened again: offered again; Discard.
     _js(win, "_buttonMap.offerRecovery(); 1")
     _wait(300)
-    _js(win, "_recoverGate._choice = 'discard'; _recoverGate.close();"
-             " _recoverGate.discarded(); 1")
+    _js(
+        win,
+        "_recoverGate._choice = 'discard'; _recoverGate.close();"
+        " _recoverGate.discarded(); 1",
+    )
     _wait(300)
     _Out.result("discard", _js(win, state_a) + " photo:" + photo_colour())
     # The same again, then Blank Button Map with the offer open.
-    _js(win, crash)
+    new_ref = _js(win, crash)
     _js(win, "_buttonMap.offerRecovery(); 1")
     _wait(300)
     _js(win, "_buttonMap.openBlank(); 1")
     _wait(300)
     _Out.result("blank", _js(win, f"'gate:' + _recoverGate.opened + ' ' + {state_a}"))
 
-    # Back on A (Not now). A copy that only changed the photo, kept under
-    # the old file name, reads the same as the saved map: still offered
-    # (it was deleted and the old photo put back).
+    # Back on A (Not now). A copy that only changed the photo (the new one
+    # waits in the edit under its own name, 07 S107) is still offered (it
+    # was deleted and the old photo put back).
     _js(win, "_buttonMap.openForDevice('Stick A', '', ''); 1")
     _wait(500)
     _js(win, "_recoverGate.close(); 1")
     _wait(200)
-    _js(win, "_hw.saveRecovery('Stick A', JSON.stringify({image: _buttonMap.liveImage,"
-             " photo: _buttonMap.livePhoto || _buttonMap.photoFromDoc(null),"
-             " nodes: _buttonMap.liveNodes})); 1")
+    _js(
+        win,
+        f"_hw.saveRecovery('Stick A', JSON.stringify({{image: '{new_ref}',"
+        " photo: _buttonMap.livePhoto || _buttonMap.photoFromDoc(null),"
+        " nodes: _buttonMap.liveNodes})); 1",
+    )
     offered = _js(win, "String(_buttonMap.offerRecovery())")
-    _Out.result("photo-only", f"offered:{offered} gate:"
-                + _js(win, "String(_recoverGate.opened)") + " " + _js(win, state_a))
+    _Out.result(
+        "photo-only",
+        f"offered:{offered} gate:"
+        + _js(win, "String(_recoverGate.opened)")
+        + " "
+        + _js(win, state_a),
+    )
     _js(win, "_recoverGate.close(); 1")
     _wait(200)
-    # The stick was renamed since the crash: its copy (found by module file)
-    # names the old name. Restore opens it; Cancel then removes the copy and
-    # puts the saved photo back.
-    from gremlin.ui.hardware_profile import _maps_dir
+    # The stick was renamed since the crash: its copy (in its device folder,
+    # 07 S32) names the old name. Restore opens it; Cancel then removes the
+    # copy and puts the saved photo back.
+    from gremlin.modules import store
 
     copies = [
-        p for p in (_maps_dir() / "recovery").glob("*.json")
-        if json.loads(p.read_text(encoding="utf-8")).get("device") == "Stick A"
+        p
+        for p in [store.recovery_path("Stick A")]
+        if p.is_file()
+        and json.loads(p.read_text(encoding="utf-8")).get("device") == "Stick A"
     ]
+
     if not copies:
         print("ERROR renamed: Stick A's recovery copy is gone", flush=True)
+
         _report(warnings)
     copy = copies[0]
     doc = json.loads(copy.read_text(encoding="utf-8"))
     doc["device"] = "Old Stick A"
-    doc["nodes"] = doc["nodes"] + [{"id": "a2", "kind": "draw", "shape": "rect",
-                                    "fx": 0.4, "fy": 0.4, "fw": 0.1, "fh": 0.1}]
+    doc["nodes"] = doc["nodes"] + [
+        {
+            "id": "a2",
+            "kind": "draw",
+            "shape": "rect",
+            "fx": 0.4,
+            "fy": 0.4,
+            "fw": 0.1,
+            "fh": 0.1,
+        }
+    ]
     copy.write_text(json.dumps(doc), encoding="utf-8")
     _js(win, "_buttonMap.offerRecovery(); _buttonMap.restoreRecovery(); 1")
     _wait(400)
-    restored = _js(win, "'editing:' + _buttonMap.editing + ' a2:'"
-                        " + _buttonMap.workNodes.some(function(n) {"
-                        " return n.id === 'a2' })")
+    restored = _js(
+        win,
+        "'editing:' + _buttonMap.editing + ' a2:'"
+        " + _buttonMap.workNodes.some(function(n) {"
+        " return n.id === 'a2' })",
+    )
     _js(win, "_recoverGate.close(); _buttonMap.discardEdit(); 1")
     _wait(300)
-    _Out.result("renamed",
-                restored + " " + _js(win, state_a) + " photo:" + photo_colour())
+    _Out.result(
+        "renamed", restored + " " + _js(win, state_a) + " photo:" + photo_colour()
+    )
 
     # 21: a picture on the clipboard, then chips copied on Stick B; Ctrl+V
     # on Stick C pastes the chips.
-    _js(win, "_hw.save('Stick C', JSON.stringify({kind: 'control.hardware',"
-             " device: 'Stick C', nodes: []}))")
+    _js(
+        win,
+        "_hw.save('Stick C', JSON.stringify({kind: 'control.hardware',"
+        " device: 'Stick C', nodes: []}))",
+    )
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl(old_url)])
     QtGui.QGuiApplication.clipboard().setMimeData(mime)
     _wait(300)
     _js(win, "_buttonMap.openForDevice('Stick B', '', ''); 1")
     _wait(500)
-    _js(win, "_buttonMap.enterEdit(); var e = _ed();"
-             " e.nodes.push({id: 'c1', kind: 'btn', hwId: 1, chipFx: 0.3, chipFy: 0.3,"
-             " hotFx: 0.35, hotFy: 0.35}); e.bump(); e.setSelection(['c1']);"
-             " e.copySelection(); 1")
+    _js(
+        win,
+        "_buttonMap.enterEdit(); var e = _ed();"
+        " e.nodes.push({id: 'c1', kind: 'btn', hwId: 1, chipFx: 0.3, chipFy: 0.3,"
+        " hotFx: 0.35, hotFy: 0.35}); e.bump(); e.setSelection(['c1']);"
+        " e.copySelection(); 1",
+    )
     _wait(300)
     kept = _js(win, "String(_buttonMap.keptCopySerial === _hw.clipboardSerial)")
     _js(win, "_buttonMap.discardEdit(); _buttonMap.openForDevice('Stick C', '', ''); 1")
     _wait(500)
     _js(win, "_buttonMap.enterEdit(); 1")
     _wait(400)
-    pasted = _js(win, "var e = _ed(); var before = e.nodes.length; e.pasteClipboard();"
-                      " var n = e.nodeAt(e.selectedId);"
-                      " (e.nodes.length - before) + ' ' + (n ? n.kind : '-')")
+    pasted = _js(
+        win,
+        "var e = _ed(); var before = e.nodes.length; e.pasteClipboard();"
+        " var n = e.nodeAt(e.selectedId);"
+        " (e.nodes.length - before) + ' ' + (n ? n.kind : '-')",
+    )
     _Out.result("carry", f"kept:{kept} pasted:{pasted}")
     _js(win, "_buttonMap.discardEdit(); 1")
     _wait(300)
 
     # 22: a table, a chip on it and a text beside it; chip and text chosen.
-    _js(win, "_buttonMap.enterEdit(); var e = _ed();"
-             " e.nodes.push({id: 't1', kind: 'draw', shape: 'table',"
-             " fx: 0.2, fy: 0.2, fw: 0.5, fh: 0.5});"
-             " e.nodes.push({id: 'c2', kind: 'btn', hwId: 2, chipFx: 0.4, chipFy: 0.4,"
-             " hotFx: 0.8, hotFy: 0.8});"
-             " e.nodes.push({id: 'x1', kind: 'draw', shape: 'text', text: 'Hi',"
-             " fx: 0.8, fy: 0.1, fw: 0.1, fh: 0.05}); e.bump(); 1")
+    _js(
+        win,
+        "_buttonMap.enterEdit(); var e = _ed();"
+        " e.nodes.push({id: 't1', kind: 'draw', shape: 'table',"
+        " fx: 0.2, fy: 0.2, fw: 0.5, fh: 0.5});"
+        " e.nodes.push({id: 'c2', kind: 'btn', hwId: 2, chipFx: 0.4, chipFy: 0.4,"
+        " hotFx: 0.8, hotFy: 0.8});"
+        " e.nodes.push({id: 'x1', kind: 'draw', shape: 'text', text: 'Hi',"
+        " fx: 0.8, fy: 0.1, fw: 0.1, fh: 0.05}); e.bump(); 1",
+    )
     _wait(500)
-    _Out.result("group-table-text", _js(
-        win, "var e = _ed(); e.setSelection(['c2', 'x1']); String(e.canGroup())"))
-    _Out.result("group-drawings", _js(
-        win, "var e = _ed(); e.nodes.push({id: 'd9', kind: 'draw', shape: 'rect',"
-             " fx: 0.05, fy: 0.85, fw: 0.05, fh: 0.05}); e.bump();"
-             " e.setSelection(['x1', 'd9']); String(e.canGroup())"))
+    _Out.result(
+        "group-table-text",
+        _js(win, "var e = _ed(); e.setSelection(['c2', 'x1']); String(e.canGroup())"),
+    )
+    _Out.result(
+        "group-drawings",
+        _js(
+            win,
+            "var e = _ed(); e.nodes.push({id: 'd9', kind: 'draw', shape: 'rect',"
+            " fx: 0.05, fy: 0.85, fw: 0.05, fh: 0.05}); e.bump();"
+            " e.setSelection(['x1', 'd9']); String(e.canGroup())",
+        ),
+    )
     # Ctrl+G (as its Shortcut: only when canGroup) on two tables, and on a
     # table with only a drawing: says why nothing was grouped.
-    ctrl_g = ("String(e.canGroup()) + ':'"
-              " + (e.canGroup() ? (e.groupSelection(), e.packWarn) : '')")
-    _Out.result("group-two-tables", _js(
-        win, "var e = _ed(); e.nodes.push({id: 't2', kind: 'draw', shape: 'table',"
-             " fx: 0.75, fy: 0.75, fw: 0.2, fh: 0.2}); e.bump();"
-             f" e.setSelection(['t1', 't2']); {ctrl_g}"))
-    _Out.result("group-table-drawing", _js(
-        win, f"var e = _ed(); e.packWarn = ''; e.setSelection(['t1', 'd9']); {ctrl_g}"))
+    ctrl_g = (
+        "String(e.canGroup()) + ':'"
+        " + (e.canGroup() ? (e.groupSelection(), e.packWarn) : '')"
+    )
+    _Out.result(
+        "group-two-tables",
+        _js(
+            win,
+            "var e = _ed(); e.nodes.push({id: 't2', kind: 'draw', shape: 'table',"
+            " fx: 0.75, fy: 0.75, fw: 0.2, fh: 0.2}); e.bump();"
+            f" e.setSelection(['t1', 't2']); {ctrl_g}",
+        ),
+    )
+    _Out.result(
+        "group-table-drawing",
+        _js(
+            win,
+            f"var e = _ed(); e.packWarn = ''; e.setSelection(['t1', 'd9']); {ctrl_g}",
+        ),
+    )
     _js(win, "_buttonMap.discardEdit(); 1")
     _report(warnings)
 
@@ -716,11 +807,14 @@ Window {
     text = _js(win, "String(otherModel.data(otherModel.index(0, 0), 256 + 3))")
     if needle in (name + " " + text).lower():
         print(f"ERROR options: the row itself says {needle!r}", flush=True)
-    _Out.result("other-shown",
-                _js(win, f"other.filterText = '{needle}'; String(other.visible)"))
+    _Out.result(
+        "other-shown", _js(win, f"other.filterText = '{needle}'; String(other.visible)")
+    )
     word = title.split()[0].lower()
-    _Out.result("titled-shown",
-                _js(win, f"titled.filterText = '{word}'; String(titled.visible)"))
+    _Out.result(
+        "titled-shown",
+        _js(win, f"titled.filterText = '{word}'; String(titled.visible)"),
+    )
     _report(warnings)
 
 

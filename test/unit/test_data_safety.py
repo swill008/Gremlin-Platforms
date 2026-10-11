@@ -5,7 +5,7 @@
 """Nothing the user made is lost without being asked: saving names the
 unfinished actions it would leave out, deleting a module file keeps an
 autosave in the Device Library,
-and cancelling a Button Map edit puts the photo back."""
+and cancelling a Button Map edit leaves the photo as it was."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from gremlin import device_library as library
 from gremlin import profile
 from gremlin.modules import registry, store
 from gremlin.ui import hardware_profile
+from test.unit._device_folders import picture_file, put_module, put_picture
 
 
 def _action(name: str, feedback: list[tuple[str, str]]) -> types.SimpleNamespace:
@@ -57,8 +58,6 @@ def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> pathlib.
     maps.mkdir()
     monkeypatch.setattr(store, "folder", lambda: maps)
     monkeypatch.setattr(library, "folder", lambda: tmp_path / "device library")
-    monkeypatch.setattr(store, "users_of", lambda slug: set())
-    monkeypatch.setattr(store, "bindings", lambda: {})
     monkeypatch.setattr(registry, "guid_for_name", lambda name: "")
     return maps
 
@@ -67,9 +66,9 @@ def test_deleting_a_module_file_keeps_a_copy(modules: pathlib.Path) -> None:
     # 03 S62, 08 S88: the copy is a "module file deleted" autosave in the
     # Device Library (D-10-NO-DELETED-FOLDER).
     claim = {"claim": {"buttons": [1]}}
-    (modules / "stick_r.json").write_text(json.dumps(claim), encoding="utf-8")
+    path = put_module(modules, "Stick R", claim)
     assert hardware_profile.delete_module_file("Stick R", "") == ""
-    assert not (modules / "stick_r.json").exists()
+    assert not path.exists()
     found = library.find_device("Stick R", "")
     assert found is not None
     names = [setup["name"] for setup in found["setups"]]
@@ -80,53 +79,71 @@ def test_deleting_a_module_file_keeps_a_copy(modules: pathlib.Path) -> None:
 def test_no_copy_means_no_delete(
     modules: pathlib.Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    (modules / "stick_r.json").write_text("{}", encoding="utf-8")
+    path = put_module(modules, "Stick R", {})
     monkeypatch.setattr(
         library, "autosave", lambda *args: {"ok": False, "error": "no room"}
     )
     message = hardware_profile.delete_module_file("Stick R", "")
     assert "not deleted" in message
-    assert (modules / "stick_r.json").exists()
+    assert path.exists()
 
 
-def test_cancel_puts_the_starting_photo_back(modules: pathlib.Path) -> None:
-    folder = modules / "stick_r"
-    folder.mkdir()
-    (folder / "photo.jpg").write_bytes(b"original")
-    doc = modules / "stick_r.json"
-    doc.write_text(json.dumps({"image": "stick_r/photo.jpg"}), encoding="utf-8")
+def _png(path: pathlib.Path) -> pathlib.Path:
+    from PySide6 import QtGui
+
+    image = QtGui.QImage(4, 4, QtGui.QImage.Format.Format_RGB32)
+    image.fill(QtGui.QColor("#336699"))
+    assert image.save(str(path))
+    return path
+
+
+def test_cancel_puts_the_starting_photo_back(
+    modules: pathlib.Path, tmp_path: pathlib.Path
+) -> None:
+    # 07 S26, S107: Choose Photo… waits in the edit's temporary folder;
+    # the device's folder and module file are not touched until Save, so
+    # Cancel leaves the starting photo as it was.
+    ref = put_picture(modules, "Stick R", "photo.jpg", b"original")
+    doc = put_module(modules, "Stick R", {"image": ref})
+    before = doc.read_bytes()
+    folder = doc.parent / "pictures"
     hw = hardware_profile.HardwareProfile()
 
-    hw.stashPhoto("Stick R")
-    # Choose photo… with a .png, then a second change in the same edit.
-    (folder / "photo.jpg").unlink()
-    (folder / "photo.png").write_bytes(b"new")
-    doc.write_text(json.dumps({"image": "stick_r/photo.png"}), encoding="utf-8")
-    hw.stashPhoto("Stick R")  # Keeps the session's first photo, not this one.
+    hw.beginEdit("Stick R")
+    assert hw.editActive("Stick R")
+    new = hw.copyImage(_png(tmp_path / "new.png").as_uri(), "Stick R")
+    assert new == "pictures/photo.png"
+    hw.beginEdit("Stick R")  # An edit already open goes on.
+    assert sorted(p.name for p in folder.iterdir()) == ["photo.jpg"]
+    assert doc.read_bytes() == before
 
-    assert hw.restorePhoto("Stick R") is True
+    assert hw.cancelEdit("Stick R") is True
+    assert not hw.editActive("Stick R")
     assert (folder / "photo.jpg").read_bytes() == b"original"
     assert not (folder / "photo.png").exists()
-    assert json.loads(doc.read_text(encoding="utf-8"))["image"] == "stick_r/photo.jpg"
-    # Nothing left to restore.
-    assert hw.restorePhoto("Stick R") is False
+    assert doc.read_bytes() == before
+    # Nothing left to cancel.
+    assert hw.cancelEdit("Stick R") is False
 
 
-def test_clear_image_then_cancel_and_save_drops_the_copy(modules: pathlib.Path) -> None:
-    folder = modules / "stick_r"
-    folder.mkdir()
-    (folder / "photo.jpg").write_bytes(b"original")
+def test_clearing_the_photo_changes_nothing_until_save(modules: pathlib.Path) -> None:
+    ref = put_picture(modules, "Stick R", "photo.jpg", b"original")
+    doc = put_module(modules, "Stick R", {"image": ref})
+    folder = picture_file(modules, "Stick R", "photo.jpg").parent
     hw = hardware_profile.HardwareProfile()
 
-    hw.stashPhoto("Stick R")
-    assert hw.clearImage("Stick R")
-    assert not (folder / "photo.jpg").exists()
-    assert hw.restorePhoto("Stick R") is True
+    # Clear Image only changes the window's map: Cancel keeps the photo.
+    hw.beginEdit("Stick R")
+    assert hw.cancelEdit("Stick R") is True
     assert (folder / "photo.jpg").read_bytes() == b"original"
+    assert json.loads(doc.read_text(encoding="utf-8"))["image"] == ref
 
-    hw.stashPhoto("Stick R")
-    hw.dropPhotoStash("Stick R")
-    assert hw.restorePhoto("Stick R") is False
+    # Save ends the edit; the photo nothing names any more goes (07 S106).
+    hw.beginEdit("Stick R")
+    assert hw.save("Stick R", json.dumps({"image": "", "nodes": []}))
+    assert not hw.editActive("Stick R")
+    assert json.loads(doc.read_text(encoding="utf-8"))["image"] == ""
+    assert not (folder / "photo.jpg").exists()
 
 
 def test_hat_switch_keeps_the_shared_directions() -> None:

@@ -18,6 +18,7 @@ def _norm_guid(value: object) -> str:
 def _row(module: registry.Module, vjoy_id: int = 0) -> dict:
     return {
         "slug": module.slug,
+        "dir": module.dir,
         "name": module.name,
         "path": module.path,
         "doc": module.doc,
@@ -42,13 +43,10 @@ def _same_device(left: dict, right: dict) -> bool:
 
 
 def _choose_input(group: list[dict]) -> dict:
-    """Keep the file the input module is bound to. Do not delete the others."""
+    """Keep the folder the device's own (store.device_dir: the folder holding
+    its id, else the one named after it; 03 S1). Do not delete the others."""
     for row in group:
-        wanted = store.slug_for(row["name"], row.get("guid") or "")
-        if wanted and wanted == row["slug"]:
-            return row
-    for row in group:
-        if row["slug"] == store.own_slug(row["name"]):
+        if row["dir"] == store.device_dir(row["name"], row.get("guid") or ""):
             return row
     return group[0]
 

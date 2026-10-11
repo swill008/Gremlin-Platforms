@@ -30,6 +30,7 @@ import pytest
 from gremlin import history, history_modules, util
 from gremlin.modules import module_file
 from gremlin.ui import device_pack
+from test.unit._device_folders import ensure_dir
 
 # The Device Pack fixtures (a pack exported on one PC, a profile on another).
 _spec = importlib.util.spec_from_file_location(
@@ -87,7 +88,7 @@ def test_an_import_that_wrote_nothing_keeps_undo_import(
         raise OSError("disk full")
 
     monkeypatch.setattr(device_pack, "_write_pictures", fails)
-    result = _import(pack, ["out:vjoy_2.claim"])
+    result = _import(pack, ["out:vJoy 2.claim"])
     # Nothing was written: it says why, and the import before it can still
     # be undone (its replaced actions still kept).
     assert result["ok"] is False
@@ -127,7 +128,7 @@ def test_a_curve_that_cant_be_used_doesnt_replace_a_good_one() -> None:
 def test_a_delete_that_failed_is_no_history_entry(
     store: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    path = util.modules_dir() / "locked_stick.json"
+    path = ensure_dir(util.modules_dir(), "Locked Stick") / "module.json"
     module_file.write_json(path, {"device": "Locked Stick"})
     _settle()
     _locked(monkeypatch, path)
@@ -139,7 +140,7 @@ def test_a_delete_that_failed_is_no_history_entry(
 
 
 def test_a_delete_that_went_through_is_recorded(store: Path) -> None:
-    path = util.modules_dir() / "gone_stick.json"
+    path = ensure_dir(util.modules_dir(), "Gone Stick") / "module.json"
     module_file.write_json(path, {"device": "Gone Stick"})
     with history_modules.deleting(path):
         path.unlink()
@@ -153,14 +154,14 @@ def test_undo_import_of_a_locked_new_file_isnt_recorded_as_deleted(
 ) -> None:
     # The pack's output on vJoy 1, which has no module file yet: Undo
     # Import deletes the new file, and Windows refuses.
-    result = _import(pack, ["out:vjoy_2.claim"])
+    result = _import(pack, ["out:vJoy 2.claim"])
     assert result["ok"], result
-    made = util.modules_dir() / "vjoy_1.json"
+    made = util.modules_dir() / "vJoy 1" / "module.json"
     assert made.is_file()
     real_unlink = pathlib.Path.unlink
     _locked(monkeypatch, made)
     undone = device_pack.undo_import()
-    assert "vjoy_1.json could not be put back." in undone["report"]
+    assert "vJoy 1\module.json could not be put back." in undone["report"]
     assert made.is_file()
     titles = [e["title"] for e in _settle()]
     assert "Deleted the module file of vJoy 1" not in titles
@@ -193,10 +194,14 @@ def test_every_picture_is_named_and_old_style_ones_are_found(store: Path) -> Non
     from gremlin.ui import history_model
 
     modules = util.modules_dir()
-    (modules / "old_stick").mkdir(parents=True, exist_ok=True)
-    photo = modules / "old_stick" / "photo.png"
+    # Refs as an old module file wrote them (03 S128: read as
+    # "pictures/<file>" in the device's folder).
+    base = ensure_dir(modules, "Old Stick")
+    (base / "pictures").mkdir(parents=True, exist_ok=True)
+    photo = base / "pictures" / "photo.png"
     photo.write_bytes(b"old photo")
-    path = modules / "old_stick.json"
+    path = base / "module.json"
+
     doc = {
         "device": "Old Stick",
         "image": "qml/maps/old_stick/photo.png",
@@ -285,7 +290,7 @@ def test_an_old_settings_entry_reads_as_a_new_one(store: Path) -> None:
     model.reload()
     model.setSearch("smart toggle")
     assert model.rowCount() == 1
-    title_role = QtCore.Qt.ItemDataRole.UserRole + 1 + history_model._ROLES.index(
-        "title"
+    title_role = (
+        QtCore.Qt.ItemDataRole.UserRole + 1 + history_model._ROLES.index("title")
     )
     assert model.data(model.index(0, 0), title_role) == "Changed Smart Toggle duration"

@@ -19,6 +19,7 @@ sys.path.append(".")
 
 import json
 import pathlib
+import shutil
 import uuid
 from collections.abc import Iterator
 from types import SimpleNamespace
@@ -29,6 +30,7 @@ from PySide6 import QtCore
 from gremlin import device_initialization
 from gremlin.signal import signal
 from gremlin.util import modules_dir
+from test.unit._device_folders import ensure_dir
 
 _APPS: list[QtCore.QCoreApplication] = []
 
@@ -47,10 +49,9 @@ def _pjoy_guid() -> str:
 
 @pytest.fixture
 def module_path() -> Iterator[pathlib.Path]:
-    path = modules_dir() / "pjoy_pro.json"
+    path = ensure_dir(modules_dir(), "pJoy Pro", _pjoy_guid()) / "module.json"
     yield path
-    for leftover in path.parent.glob("pjoy_pro.json*"):
-        leftover.unlink()
+    shutil.rmtree(path.parent, ignore_errors=True)
 
 
 # 03 S46 ------------------------------------------------------------------------
@@ -153,5 +154,5 @@ def test_button_map_refusal_names_the_damaged_module_file(
     assert module_path.read_bytes() == before
     # The error dialog the user sees names the damage and Start Fresh.
     assert len(shown) == 1
-    assert "pjoy_pro.json is damaged" in shown[0]
+    assert "module.json is damaged" in shown[0]
     assert "Start Fresh" in shown[0]

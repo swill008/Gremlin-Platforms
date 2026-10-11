@@ -49,6 +49,7 @@ import pytest
 from gremlin.modules import store
 from gremlin.types import InputType
 from gremlin.ui import hardware_profile, input_pairing
+from test.unit._device_folders import put_module
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "stage1_button_map_smoke.py"
@@ -225,27 +226,16 @@ def test_clear_photo_then_cancel_brings_it_back_without_history(flows: dict) -> 
     assert back["file-image"].endswith("/photo.jpg")
 
 
-def test_clear_photo_failure_keeps_the_photo_and_says_so(flows: dict) -> None:
-    # S41 (GL-021): the file is open elsewhere.
-    failed = flows["clear-photo-fails"]
-    assert failed["said"] == [
-        True,
-        "The photo file could not be removed (it may be open in another program).",
-    ]
-    assert failed["photo-kept"] is True
-    assert failed["shown"].endswith("/photo.jpg")
-    assert failed["after-cancel"] is True
-
-
 def test_choose_and_clear_photo_are_undo_steps(flows: dict) -> None:
     # 07 Q3 (decided; S57 changed by it), GL-179: each Undo puts the photo
     # before back, files too; back at the start nothing is unsaved.
     undone = flows["photo-undo"]
     assert undone["after-one"]["shown"].endswith("/photo.png")
-    assert undone["after-one"]["file"] is True
+    # 07 S107: the chosen picture waits in the edit's temporary folder.
+    assert undone["after-one"]["in-pictures"] is False
     assert undone["after-two"] == undone["saved"]
-    assert undone["jpg-back"] is True
-    assert undone["png-gone"] is True
+    assert undone["jpg-kept"] is True
+    assert undone["png-not-in-pictures"] is True
     assert undone["dirty"] is False
     assert flows["photo-redo"].endswith("/photo.png")
     assert undone["after-cancel"] is True
@@ -424,37 +414,19 @@ def maps(
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
-    monkeypatch.setattr(
-        store,
-        "slug_for",
-        lambda name, guid="": name.lower().replace(" ", "_"),
-    )
     return folder
-
-
-def test_clear_image_fails_while_the_photo_is_open(maps: pathlib.Path) -> None:
-    # S41: the window then puts the photo back and says so (flows above).
-    photo = maps / "test_stick" / "photo.png"
-    photo.parent.mkdir()
-    photo.write_bytes(b"png")
-    profile = hardware_profile.HardwareProfile()
-    with photo.open("rb"):
-        assert profile.clearImage("Test Stick") is False
-        assert photo.is_file()
-    assert profile.clearImage("Test Stick") is True
-    assert not photo.exists()
 
 
 def test_saved_layouts_skip_damaged_other_files(maps: pathlib.Path) -> None:
     # S75: other devices' files that can't be read are left out quietly.
-    (maps / "good.json").write_text(
-        json.dumps({"device": "Good", "nodes": [{"id": "b1"}]}), encoding="utf-8")
-    (maps / "not_utf8.json").write_bytes(b"\xff\xfe{ nodes")
-    (maps / "a_list.json").write_text("[1, 2]", encoding="utf-8")
-    (maps / "a_number.json").write_text("7", encoding="utf-8")
+    put_module(maps, "Good", {"device": "Good", "nodes": [{"id": "b1"}]})
+    put_module(maps, "Not UTF8", b"\xff\xfe{ nodes")
+    put_module(maps, "A List", "[1, 2]")
+    put_module(maps, "A Number", "7")
     profile = hardware_profile.HardwareProfile()
-    assert profile.savedLayouts("Mine") == [{"name": "Good", "slug": "good"}]
-    for slug in ("not_utf8", "a_list", "a_number"):
+    # Each device's folder is its slug (03 S128).
+    assert profile.savedLayouts("Mine") == [{"name": "Good", "slug": "Good"}]
+    for slug in ("Not UTF8", "A List", "A Number"):
         assert profile.layoutNodes(slug) == ""
 
 

@@ -57,33 +57,48 @@ def home(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> pathlib.Pat
         encoding="utf-8",
     )
     stick = SimpleNamespace(
-        name="pJoy Pro", device_guid="{0F0E0D0C-0000-0000-0000-000000000001}",
-        is_virtual=False, vendor_id=0x044F, product_id=0xB10A,
-        axis_count=6, button_count=32, hat_count=1,
+        name="pJoy Pro",
+        device_guid="{0F0E0D0C-0000-0000-0000-000000000001}",
+        is_virtual=False,
+        vendor_id=0x044F,
+        product_id=0xB10A,
+        axis_count=6,
+        button_count=32,
+        hat_count=1,
     )
     vjoy = SimpleNamespace(
-        name="vJoy Device", device_guid="{0F0E0D0C-0000-0000-0000-000000000002}",
-        is_virtual=True, vendor_id=0x1234, product_id=0xBEAD,
-        axis_count=8, button_count=128, hat_count=4,
+        name="vJoy Device",
+        device_guid="{0F0E0D0C-0000-0000-0000-000000000002}",
+        is_virtual=True,
+        vendor_id=0x1234,
+        product_id=0xBEAD,
+        axis_count=8,
+        button_count=128,
+        hat_count=4,
     )
     monkeypatch.setattr(hardware, "devices", lambda: [stick, vjoy])
     monkeypatch.setattr(
-        hardware, "device_connected",
+        hardware,
+        "device_connected",
         lambda guid: str(guid).strip("{}").upper().endswith("1"),
     )
+
+    def _module(name: str, guid: str, is_output: bool) -> SimpleNamespace:
+        # As registry.Module: <modules>/<Device Folder>/module.json (03 S128).
+        folder = data / "modules" / name
+        return SimpleNamespace(
+            name=name,
+            bound_guid=guid,
+            is_output=is_output,
+            dir=folder,
+            path=folder / "module.json",
+            slug=folder.name,
+        )
+
     modules = [
-        SimpleNamespace(
-            name="pJoy Pro", bound_guid="0F0E0D0C-0000-0000-0000-000000000001",
-            is_output=False, path=data / "modules" / "pjoy.json", slug="pjoy",
-        ),
-        SimpleNamespace(
-            name="Old Pedals", bound_guid="0F0E0D0C-0000-0000-0000-0000000000FF",
-            is_output=False, path=data / "modules" / "pedals.json", slug="pedals",
-        ),
-        SimpleNamespace(
-            name="vJoy 1", bound_guid="", is_output=True,
-            path=data / "modules" / "vjoy1.json", slug="vjoy1",
-        ),
+        _module("pJoy Pro", "0F0E0D0C-0000-0000-0000-000000000001", False),
+        _module("Old Pedals", "0F0E0D0C-0000-0000-0000-0000000000FF", False),
+        _module("vJoy 1", "", True),
     ]
     monkeypatch.setattr(registry, "modules", lambda: modules)
     return home
@@ -100,7 +115,8 @@ def open_profile(home: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> object:
     profile.fpath = home / "Gremlin Platforms" / "profiles" / f"{NAME} flight.xml"
     real = profile._xml_text
     monkeypatch.setattr(
-        profile, "_xml_text",
+        profile,
+        "_xml_text",
         lambda: real().replace("<profile", f"<!-- {home}\\s.py -->\n<profile", 1),
     )
     monkeypatch.setattr(shared_state, "current_profile", profile)
@@ -126,16 +142,21 @@ def test_the_zip_holds_logs_settings_devices_and_versions(
     assert message == f"Diagnostics saved to {dest}."
     files = _read(dest)
     assert set(files) == {
-        "README.txt", "versions.json", "devices.json",
+        "README.txt",
+        "versions.json",
+        "devices.json",
         "settings/configuration.json",
-        "logs/system.log", "logs/logs.txt", "logs/(user) notes.log",
+        "logs/system.log",
+        "logs/logs.txt",
+        "logs/(user) notes.log",
     }
     versions = json.loads(files["versions.json"])
     assert versions["version"] and versions["windows"]
     assert versions["program"].startswith("Gremlin-Platforms")
     found = json.loads(files["devices.json"])
     assert [(d["name"], d["kind"], d["connected"]) for d in found["devices"]] == [
-        ("pJoy Pro", "Game controller", True), ("vJoy Device", "vJoy device", True),
+        ("pJoy Pro", "Game controller", True),
+        ("vJoy Device", "vJoy device", True),
     ]
     assert found["devices"][0]["id"] == "0F0E0D0C-0000-0000-0000-000000000001"
     modules = {m["name"]: m for m in found["modules"]}
@@ -289,4 +310,4 @@ def test_the_stand_in_modules_answer_the_file_lookup(home: pathlib.Path) -> None
     37853647126: AttributeError 'slug' in module_model._refresh_inplace)."""
     from gremlin.modules import store
 
-    assert store.slug_for("Some stick", "{0F0E0D0C-0000-0000-0000-0000000000AA}")
+    assert store.device_dir("Some stick", "{0F0E0D0C-0000-0000-0000-0000000000AA}").name

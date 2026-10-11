@@ -15,7 +15,11 @@ import pytest
 from gremlin import history_modules
 from gremlin import logical_device_file as ldf
 from gremlin.logical_device import LogicalRows
-from gremlin.modules import store
+from gremlin.modules import ids, store
+from test.unit._device_folders import module_path, put_module
+
+LD = "Logical Device"
+LD_GUID = str(ids.LOGICAL_DEVICE)
 
 _HAS_MODEL = all(
     hasattr(LogicalRows, name)
@@ -73,39 +77,38 @@ def _control(uid: str, kind: str, number: int, label: str, **extra: object) -> d
 
 
 def test_the_file_is_the_logical_device_module_file(modules: Path) -> None:
-    assert ldf.path() == modules / "logical_device.json"
+    assert ldf.path() == modules / LD / "module.json"
+    assert ldf.path() == module_path(modules, LD, LD_GUID)
 
 
 def test_save_writes_the_layout_keeps_other_keys_and_history_records_it(
     modules: Path, writes: list
 ) -> None:
-    (modules / "logical_device.json").write_text(
-        json.dumps({"name": "Logical Device", "notes": "kept"}), encoding="utf-8"
-    )
+    put_module(modules, LD, {"name": "Logical Device", "notes": "kept"}, LD_GUID)
     rows = FakeRows(
         {"controls": [_control("a" * 32, "axis", 1, "Axis 1")], "groups": ["G"]}
     )
     rows.dirty = True
     assert ldf.save(rows) is True
-    doc = json.loads((modules / "logical_device.json").read_text(encoding="utf-8"))
+    doc = json.loads(ldf.path().read_text(encoding="utf-8"))
     assert doc["name"] == "Logical Device" and doc["notes"] == "kept"
     assert doc["logical-device"]["controls"][0]["uid"] == "a" * 32
     assert doc["logical-device"]["groups"] == ["G"]
     assert rows.dirty is False
-    assert [p.name for p, _ in writes] == ["logical_device.json"]
+    assert [p for p, _ in writes] == [modules / LD / "module.json"]
 
 
 def test_a_fresh_save_is_listed_as_the_logical_device_built_in(
     modules: Path, writes: list
 ) -> None:
     from gremlin import device_library
-    from gremlin.modules import ids, registry
+    from gremlin.modules import registry
 
     ldf.save(FakeRows())
-    doc = json.loads((modules / "logical_device.json").read_text(encoding="utf-8"))
+    doc = json.loads(ldf.path().read_text(encoding="utf-8"))
     assert doc["kind"] == "control.hardware" and doc["direction"] == "source"
     assert doc["device"] == "Logical Device"
-    found = [m for m in registry.inputs() if m.slug == "logical_device"]
+    found = [m for m in registry.inputs() if m.slug == LD]
     assert len(found) == 1
     assert registry.is_built_in_input(found[0])
     assert ids.guid_key(found[0].bound_guid) == ids.guid_key(ids.LOGICAL_DEVICE)
@@ -119,7 +122,8 @@ def test_load_of_a_missing_file_is_empty_and_no_file_is_made(modules: Path) -> N
     ldf.load(rows)
     assert rows.layout == {"controls": [], "groups": []}
     assert rows.saved == 1
-    assert not (modules / "logical_device.json").exists()
+    assert not ldf.path().exists()
+    assert not (modules / LD).exists()
 
 
 def test_load_reads_back_what_save_wrote(modules: Path, writes: list) -> None:
@@ -139,8 +143,7 @@ def test_a_damaged_file_is_not_written_over(
     from gremlin.modules import module_file
 
     monkeypatch.setattr(module_file, "report_refused", lambda damaged: None)
-    target = modules / "logical_device.json"
-    target.write_text("{ not json", encoding="utf-8")
+    target = put_module(modules, LD, "{ not json", LD_GUID)
     rows = FakeRows(
         {"controls": [_control("d" * 32, "axis", 1, "Axis 1")], "groups": []}
     )

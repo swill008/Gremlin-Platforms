@@ -37,8 +37,8 @@ um.UpdateModel.startup = lambda self, *a, **k: None
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
 
 import joystick_gremlin  # noqa: E402
-from gremlin import history, util  # noqa: E402
-from gremlin.modules import module_file  # noqa: E402
+from gremlin import history  # noqa: E402
+from gremlin.modules import module_file, store  # noqa: E402
 
 
 def main() -> None:
@@ -52,7 +52,7 @@ def main() -> None:
             QtTest.QTest.qWait(20)
         history.flush()
 
-    path = util.modules_dir() / "clear_stick.json"
+    path = store.module_file_in(store.ensure_device_dir("Clear Stick"))
     for word in ("one", "two"):
         module_file.write_json(path, {"device": "Clear Stick", "word": word})
         settle()

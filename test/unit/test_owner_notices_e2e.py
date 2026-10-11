@@ -401,14 +401,14 @@ def _part_script_variable(j: Journey) -> None:
 def _part_module_file_save(j: Journey) -> None:
     import json
 
-    from gremlin import util
     from gremlin.modules import store
 
     out = j.out
     model = _model(j)
     row = _row(j, "vJoy 1", "dest")
     out["claims:before"] = sorted(model._dest_target(row)[1].get("buttons", []))[:5]
-    path = util.modules_dir() / "vjoy_1.json"
+    # vJoy 1's own device folder (03 S128).
+    path = store.module_file("vJoy 1")
     doc = json.loads(path.read_text(encoding="utf-8"))
     doc["claim"]["buttons"] = [1, 2, 3]
     store.write_json(path, doc, "Device Library")

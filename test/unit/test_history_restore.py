@@ -27,6 +27,7 @@ from gremlin.modules import module_file
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
 from gremlin.ui import history_model
+from test.unit._device_folders import ensure_dir, picture_file, put_picture
 
 _STICK = uuid.UUID("44444444-5555-6666-7777-888888888888")
 
@@ -121,20 +122,17 @@ def test_a_module_file_and_its_picture_go_back(
     # that reads the open profile, as the program always has one.
     monkeypatch.setattr(shared_state, "current_profile", Profile())
     modules = util.modules_dir()
-    (modules / "restore_stick").mkdir(parents=True, exist_ok=True)
-    photo = modules / "restore_stick" / "photo.png"
-    photo.write_bytes(b"first photo")
-    path = modules / "restore_stick.json"
-    module_file.write_json(
-        path, {"device": "Restore Stick", "image": "restore_stick/photo.png"}
-    )
+    ref = put_picture(modules, "Restore Stick", "photo.png", b"first photo")
+    photo = picture_file(modules, "Restore Stick", "photo.png")
+    path = ensure_dir(modules, "Restore Stick") / "module.json"
+    module_file.write_json(path, {"device": "Restore Stick", "image": ref})
     _settle()
     photo.write_bytes(b"second photo")
     module_file.write_json(
         path,
         {
             "device": "Restore Stick",
-            "image": "restore_stick/photo.png",
+            "image": ref,
             "calibration": {"1": [0, 1, 2, 3, True]},
         },
     )

@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 from PySide6 import QtCore
 
+from test.unit._device_folders import module_path, put_module
+
 _QML = Path(__file__).resolve().parents[2] / "qml/OutputModuleView.qml"
 
 
@@ -109,7 +111,6 @@ def view_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     modules = tmp_path / "modules"
     modules.mkdir()
     monkeypatch.setattr(store, "folder", lambda: modules)
-    monkeypatch.setattr(registry, "_binding_store", lambda: {})
     monkeypatch.setattr(history, "folder", lambda: tmp_path / "history")
     monkeypatch.setattr(history, "_pruned", True)
     monkeypatch.setattr(history_modules, "_last_pictures", {})
@@ -123,24 +124,23 @@ def test_vjoy_view_save_uses_that_devices_module_file(view_folder: Path) -> None
 
     vjoy = str(next(iter(device_initialization.vjoy_devices())).device_guid)
     stick = next(iter(device_initialization.physical_devices()))
-    stick_file = view_folder / "pjoy_pro.json"
-    stick_file.write_text(json.dumps({
+    stick_file = put_module(view_folder, stick.name, {
         "kind": "control.hardware", "device": stick.name, "direction": "source",
         "boundGuidLocal": str(stick.device_guid),
-    }), encoding="utf-8")
+    })
     stick_before = stick_file.read_bytes()
     model = module_model.ModuleListModel()
     # The view is saved into that vJoy's own module file (by name and id)
     # and read back from it.
     assert model.saveViewConfig("vJoy 1", vjoy, json.dumps({"showPads": False}))
-    saved = json.loads((view_folder / "vjoy_1.json").read_text(encoding="utf-8"))
+    saved = json.loads(module_path(view_folder, "vJoy 1").read_text(encoding="utf-8"))
     assert saved["view"]["showPads"] is False
     assert json.loads(model.viewConfigJson("vJoy 1", vjoy))["showPads"] is False
     # An id that is not this vJoy's (a stale one) never reaches another
     # device's file: the same file, the stick's untouched.
     stale = str(stick.device_guid)
     assert model.saveViewConfig("vJoy 1", stale, json.dumps({"buttonColumns": 3}))
-    saved = json.loads((view_folder / "vjoy_1.json").read_text(encoding="utf-8"))
+    saved = json.loads(module_path(view_folder, "vJoy 1").read_text(encoding="utf-8"))
     assert saved["view"]["buttonColumns"] == 3
     assert json.loads(model.viewConfigJson("vJoy 1", stale))["buttonColumns"] == 3
     assert stick_file.read_bytes() == stick_before

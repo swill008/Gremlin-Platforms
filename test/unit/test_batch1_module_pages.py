@@ -28,8 +28,8 @@ import dill
 from gremlin import clock, device_initialization, history, history_modules
 from gremlin.config import Configuration
 from gremlin.modules import registry, store
-from gremlin.modules.ids import stored_guid_key
 from test import fake_hardware
+from test.unit._device_folders import put_module
 
 _ROOT = Path(__file__).resolve().parents[2]
 _APPS: list[QtCore.QCoreApplication] = []
@@ -54,13 +54,12 @@ def _wait_for(done: Callable[[], bool], limit: float = 10.0) -> bool:
 
 @pytest.fixture
 def folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
-    """An empty modules folder of its own, no file choices, History in the
-    temporary folder."""
+    """An empty modules folder of its own, History in the temporary
+    folder."""
     modules = tmp_path / "modules"
     modules.mkdir()
     _wait_for(lambda: history._writer is None)
     monkeypatch.setattr(store, "folder", lambda: modules)
-    monkeypatch.setattr(registry, "_binding_store", lambda: {})
     monkeypatch.setattr(history, "folder", lambda: tmp_path / "history")
     monkeypatch.setattr(history, "_pruned", True)
     monkeypatch.setattr(history_modules, "_last_pictures", {})
@@ -111,19 +110,18 @@ def _twin_guid() -> str:
     return _guid_of("pJoy Pro (2)")
 
 
-def _module(folder: Path, slug: str, name: str, guid: str, buttons: list[int]) -> Path:
-    path = folder / f"{slug}.json"
-    path.write_text(json.dumps({
+def _module(folder: Path, name: str, guid: str, buttons: list[int]) -> Path:
+    """The device's module.json in its own folder (03 S128)."""
+    return put_module(folder, name, {
         "kind": "control.hardware", "device": name, "direction": "source",
         "boundGuidLocal": guid,
         "claim": {"buttons": buttons, "axes": [], "hats": [], "keys": []},
-    }), encoding="utf-8")
-    return path
+    }, guid)
 
 
 def _two_twin_files(folder: Path) -> None:
-    _module(folder, "pjoy_pro", "pJoy Pro", _first_guid(), [1])
-    _module(folder, "pjoy_pro_2", "pJoy Pro (2)", _twin_guid(), [1, 2, 3])
+    _module(folder, "pJoy Pro", _first_guid(), [1])
+    _module(folder, "pJoy Pro (2)", _twin_guid(), [1, 2, 3])
 
 
 # --- GL-076 / F4: twins are looked up by id ------------------------------------
@@ -136,23 +134,19 @@ def test_twin_cards_keep_their_own_counts_and_are_looked_up_by_id(
 
     _two_twin_files(twins)
     calls: list[tuple[str, str]] = []
-    real = registry.resolve_module_slug
+    real = store.device_dir
 
-    def spy(name: str, guid: str = "") -> str:
+    def spy(name: str, guid: str = "") -> Path:
         calls.append((name, guid))
         return real(name, guid)
 
-    with mock.patch.object(registry, "resolve_module_slug", spy):
-        if hasattr(module_model, "resolve_module_slug"):  # the old code
-            module_model.resolve_module_slug = spy  # type: ignore[attr-defined]
-        try:
-            model = module_model.ModuleListModel()
-            model._reload()
-            calls.clear()
-            model.notifyClaims()  # what a save elsewhere runs
-        finally:
-            if hasattr(module_model, "resolve_module_slug"):
-                module_model.resolve_module_slug = real  # type: ignore[attr-defined]
+    with mock.patch.object(store, "device_dir", spy):
+        model = module_model.ModuleListModel()
+        model._reload()
+        calls.clear()
+        model.notifyClaims()  # what a save elsewhere runs
+    # Each twin has its own folder (03 S132); cards keep their name's key
+    # (decision F2).
     first, second = model.cardMap("pjoy_pro"), model.cardMap("pjoy_pro_2")
     assert (first["buttons"], second["buttons"]) == (1, 3)
     # Every lookup of a twin's file carried its id (S77, decision F4).
@@ -185,14 +179,13 @@ def test_a_stale_id_does_not_send_start_fresh_to_another_devices_file(
 ) -> None:
     from gremlin.ui import module_model
 
-    fine = _module(twins, "pjoy_pro", "pJoy Pro", _first_guid(), [1])
-    # An old stick's file, chosen for an id no connected device has, damaged.
+    fine = _module(twins, "pJoy Pro", _first_guid(), [1])
+    # An old stick's folder, holding an id no connected device has, damaged.
     stale = "{0BADBEEF-0000-0000-0000-000000000001}"
-    damaged = twins / "old_stick.json"
-    damaged.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
-    monkeypatch.setattr(
-        registry, "_binding_store", lambda: {stored_guid_key(stale): "old_stick"}
+    damaged = put_module(
+        twins, "Old Stick", '{"kind": "control.hardware", "dev', stale
     )
+    assert damaged.parent.name == "Old Stick"
     model = module_model.ModuleListModel()
     for guid in (stale, _twin_guid()):
         # pJoy Pro (connected with its own id) called with another id: its
@@ -200,7 +193,7 @@ def test_a_stale_id_does_not_send_start_fresh_to_another_devices_file(
         assert module_model._module_damage("pJoy Pro", guid) == ""
         doc = module_model._load_module_doc("pJoy Pro", guid)
         assert doc["claim"]["buttons"] == [1]
-        assert model.moduleFileFor(guid, "pJoy Pro") == "pjoy_pro"
+        assert model.moduleFileFor(guid, "pJoy Pro") == "pJoy Pro"
         assert model.startFresh("pJoy Pro", guid) == ""
         assert damaged.is_file() and fine.is_file()
 
@@ -211,18 +204,17 @@ def test_a_stale_id_does_not_send_start_fresh_to_another_devices_file(
 def test_start_fresh_is_one_history_entry(folder: Path) -> None:
     from gremlin.ui import module_model
 
-    path = folder / "pjoy_pro.json"
-    path.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
     guid = str(next(
         d for d in device_initialization.physical_devices() if d.name == "pJoy Pro"
     ).device_guid)
+    path = put_module(folder, "pJoy Pro", '{"kind": "control.hardware", "dev', guid)
     model = module_model.ModuleListModel()
     copy = Path(model.startFresh("pJoy Pro", guid))
-    assert copy.name.startswith("pjoy_pro.json.bad-") and not path.exists()
+    assert copy.name.startswith("module.json.bad-") and not path.exists()
     _wait_for(lambda: history._writer is None)
     entries = [
         e for e in history.entries("modules")
-        if (e.get("subject") or {}).get("fileName") == "pjoy_pro.json"
+        if (e.get("subject") or {}).get("fileName") == "pJoy Pro/module.json"
     ]
     assert len(entries) == 1
 
@@ -274,7 +266,7 @@ def test_map_parts_change_with_the_map_and_photo_only(folder: Path) -> None:
     guid = str(next(
         d for d in device_initialization.physical_devices() if d.name == "pJoy Pro"
     ).device_guid)
-    path = _module(folder, "pjoy_pro", "pJoy Pro", guid, [1])
+    path = _module(folder, "pJoy Pro", guid, [1])
     watch = module_model.ModuleFileWatch()
     start = watch.mapParts("pJoy Pro", guid)
     assert start
@@ -291,7 +283,7 @@ def test_map_parts_change_with_the_map_and_photo_only(folder: Path) -> None:
     # The map and the photo are (History Restore, Device Pack, Module Setup).
     moved = edit(lambda d: d.update(nodes=[{"hwId": 1}]))
     assert moved != start
-    assert edit(lambda d: d.update(image="pjoy_pro/photo.png")) != moved
+    assert edit(lambda d: d.update(image="pictures/photo.png")) != moved
     path.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
     assert watch.mapParts("pJoy Pro", guid) == ""
 
@@ -323,7 +315,12 @@ def test_module_setup_keeps_the_photo_to_put_back_and_saves_once() -> None:
     assert "dropPhotoStash()" in commit
     # 03 Q2: Import Image keeps the starting photo first; Discard puts it
     # back.
+    # The "setup" edit starts (its temporary folder, 07 S107) before the
+    # picture is kept in it.
     dialog = qml[qml.index("id: _imageDialog"):]
-    assert dialog.index("_win.stashPhoto()") < dialog.index("_hw.copyImage(")
+    assert "_win.importPhoto(" in dialog
+    photo = _function(qml, "importPhoto")
+    assert photo.index("stashPhoto()") < photo.index("_hw.keepPhoto(")
     gate = qml[qml.index("id: _saveGate"):]
     assert "_win.putPhotoBack()" in gate[:gate.index("onCancelled")]
+

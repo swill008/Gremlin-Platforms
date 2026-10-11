@@ -1,24 +1,33 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The module file store: the one owner of which module file a device uses
-and of every change to module files, their pictures
-and the file choices (system-maps map 1, gap list GL-067).
+"""The module file store: the one owner of each device's folder and of
+every change to module files and their pictures (system-maps map 1, gap
+list GL-067, D-03-DEVICE-FOLDERS).
 
-Callers pass a device's name and id and never build module paths:
+One folder per device in the modules folder, named after the device's
+shown name: device.json (its id and shown name), module.json (the module
+file), recovery.json (the Button Map's recovery copy), pictures/ and
+imported/ (03 S128-S134). Callers pass a device's name and id and never
+build paths:
 
-- where:    slug_for, path_for, pictures_dir, card_key, path_of, ...
-- reading:  read, read_path, damage, exists, find_picture
+- where:    device_dir, ensure_device_dir, module_file, pictures_dir,
+            recovery_path, imported_dir, edit_temp_dir, dir_of_id,
+            device_dirs, id_key, folder_name_for, shown_name_of, card_key
+- reading:  read, read_path, damage, exists, find_picture, module_files
 - writing:  update (load, refuse a damaged file, change, write),
             replace (whole file: import, Device Pack, Undo, Restore),
             write_json / write_text (a whole document as given)
-- pictures: put_picture, remove_pictures, into_library
+- pictures: picture_ref, normal_ref, put_picture, remove_pictures,
+            named_refs, remove_unused_pictures, copy_pictures
+- an edit:  begin_edit, stage_picture, stage_copied, commit_edit,
+            cancel_edit, recover_edit (its temporary folder in cache)
+- folders:  rename_device_dir (an alias set), sync_dir_name (after a scan)
 - deleting: delete (Delete File / Delete Device), move_aside (Start Fresh),
             delete_path
-- choices:  bind, unbind, unbind_file, bindings, users_of, is_shared
-- import:   import_file, can_undo_file_import, undo_file_import,
-            drop_file_import_undo (Module Setup's "Import from", its Undo
-            tied to the device and window that made it)
+- import:   import_choices, import_file, can_undo_file_import,
+            undo_file_import, drop_file_import_undo (Module Setup's
+            "Import from", its Undo tied to the device and window)
 - Configuration layout: read_layout, write_layout, friendly_name,
             set_friendly_name (the "layout" key: groups, order; names are
             the claim's friendly names, CF-Q1, CF-Q8); the page's unsaved
@@ -26,13 +35,20 @@ Callers pass a device's name and id and never build module paths:
             save_pending (File > Save Profile), discard_pending (CS1)
 
 Rules kept here:
-- one lookup rule (registry.resolve_module_slug), a stale id filtered out
-  first (guid_filter);
+- one lookup rule (device_dir): the folder whose device.json holds the
+  device's id, else a folder named after it with no id or its own, else
+  the folder it would get; a stale id is filtered out first (guid_filter);
 - a lookup by name only is for vJoy, Keyboard, OSC and the program's own
   devices; a stick looked up without its id is logged (decision F4);
+- a folder is named after the shown name (folder_name_for); another
+  device of the same name gets " (2)" by id (S132); renaming a device
+  renames its folder, refused while a file in it is open (S131);
+- a module file names its pictures "pictures/<file>" in its own folder;
+  nothing is shared between devices (S133); a save removes the pictures
+  nothing names (07 S106);
 - a damaged file is never written over (ModuleFileDamaged), except by a
   restore that asks for it (force);
-- every write is atomic (module_file.write_bytes), pictures too;
+- every write is atomic (module_file_io.write_bytes), pictures too;
 - History is hooked here only: writes call history_modules.note_write,
   deletes and Start Fresh go through history_modules.deleting;
 - a saved module file reaches Run's output claims at once (output.refresh);
@@ -40,9 +56,9 @@ Rules kept here:
   signal.moduleFilesChanged, once per burst, on the main thread
   (notify_module_files, D-01-OWNER-NOTICES).
 
-registry stays the read-only index of module files and the home of the
-lookup rule; module_file the atomic writer and the damaged-file rule.
-Main thread only.
+registry stays the read-only index of module files; module_file the
+atomic writer and the damaged-file rule. Main thread only (the folder
+index is locked: Run's threads read module files through registry).
 """
 
 from __future__ import annotations
@@ -52,12 +68,14 @@ import logging
 import os
 import re
 import shutil
+import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import datetime
 from pathlib import Path
 
-from gremlin.modules import module_file, registry
+from gremlin.modules import ids, registry
+from gremlin.modules import module_file as module_file_io
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.ids import guid_key, stored_guid_key
 from gremlin.modules.registry import plain_slug
@@ -70,6 +88,28 @@ syslog = logging.getLogger("system")
 
 # --- where ---------------------------------------------------------------------
 
+# One folder per device (D-03-DEVICE-FOLDERS):
+# <modules>/<Device Folder>/device.json, module.json, recovery.json,
+# pictures/<file>, imported/...
+MODULE_FILE = "module.json"
+ID_FILE = "device.json"
+RECOVERY_FILE = "recovery.json"
+PICTURES = "pictures"
+IMPORTED = "imported"
+STATE_FILE = "state.json"
+# Folders of the program's own, never a device's (case ignored).
+RESERVED = frozenset(
+    {"cache", "templates", "library", "recovery", "imported", "backup"}
+)
+_WINDOWS_RESERVED = frozenset(
+    {"con", "prn", "aux", "nul"}
+    | {f"com{n}" for n in range(1, 10)}
+    | {f"lpt{n}" for n in range(1, 10)}
+)
+_UNSAFE = set('\\/:*?"<>|')
+NAME_LIMIT = 80
+_NUMBERED = re.compile(r"^(.*) \((\d+)\)$")
+
 
 def folder() -> Path:
     """The modules folder (Options > Folders). Tests point it elsewhere by
@@ -81,20 +121,9 @@ def folder() -> Path:
 
 def card_key(device_name: str) -> str:
     """A device's Home card key (order, hidden, sizes, stacks): its own
-    name's slug, not its file's (decision F2: changing it would reset
+    name's slug, not its folder's (decision F2: changing it would reset
     everyone's card layout)."""
     return plain_slug(device_name) or "device"
-
-
-def own_slug(device_name: str) -> str:
-    """The file named after the device (the lookup rule's last step)."""
-    return plain_slug(device_name) or "device"
-
-
-def own_path(device_name: str) -> Path:
-    """The module file named after the device, whichever device uses it
-    (twin naming at start-up asks which device it is bound to)."""
-    return path_of(own_slug(device_name))
 
 
 def _same_name(left: str, right: str) -> bool:
@@ -107,15 +136,15 @@ def _same_name(left: str, right: str) -> bool:
 def guid_filter(device_name: str, guid: str) -> str:
     """guid when it belongs to device_name; "" for a stale id: one that a
     connected device of another name has, or another id while a device of
-    this name is connected. A stale id must not select another device's file
-    (03 S2, S9). An id of a device that isn't connected is kept."""
+    this name is connected. A stale id must not select another device's
+    folder (03 S2, S9). An id of a device that isn't connected is kept."""
     given = stored_guid_key(guid)
     if not given:
         return ""
     names = {
         name
-        for name, ids in registry.connected_names().items()
-        if guid_key(given) in ids
+        for name, found in registry.connected_names().items()
+        if guid_key(given) in found
     }
     if names:
         wanted = " ".join(str(device_name or "").split()).casefold()
@@ -126,8 +155,8 @@ def guid_filter(device_name: str, guid: str) -> str:
     return str(guid)
 
 
-# Not a device class (03 S90b): a slug-PREFIX rule for which module files
-# may be looked up by name only without a note ("keyboard_stick" and
+# Not a device class (03 S90b): a slug-PREFIX rule for which devices may be
+# looked up by name only without a note ("keyboard_stick" and
 # "xbox_wireless_controller" count too).
 _NAME_ONLY_OK = ("vjoy", "keyboard", "osc", "logical_device", "xbox")
 _told_name_only: set[str] = set()
@@ -146,167 +175,402 @@ def _note_name_only(device_name: str) -> None:
     if not any(_same_name(name, device_name) for name in registry.connected_names()):
         return  # not connected: there is no id to look it up by
     _told_name_only.add(slug)
-    syslog.warning(f"Module file of {device_name} looked up without its device id")
+    syslog.warning(f"Folder of {device_name} looked up without its device id")
 
 
-def slug_for(device_name: str, guid: str = "") -> str:
-    """The module file (slug) a device uses: the one rule, a stale id
-    filtered out first."""
-    if not stored_guid_key(guid):
-        _note_name_only(device_name)
-    filtered = guid_filter(device_name, guid)
-    return registry.resolve_module_slug(device_name, filtered) or own_slug(device_name)
+def _kind(device_name: str, guid: str = "") -> str:
+    from gremlin.modules import device_class
 
-
-def _safe_stem(slug: str) -> str:
-    text = str(slug or "").strip()
-    if text.lower().endswith(".json"):
-        text = text[:-5]
-    if not text or any(c in text for c in ("/", "\\", ":")) or text in (".", ".."):
+    try:
+        return device_class.device_kind(guid or None, device_name)
+    except Exception:  # noqa: BLE001 - no device list yet
         return ""
+
+
+def id_key(device_name: str, guid: str = "") -> str:
+    """The key a device's folder is found by (device.json "id"): the
+    device's id; the fixed id of Keyboard, OSC, the Logical Device and the
+    program's Xbox pad; "name:<slug>" for a device known by its name only
+    (vJoy N: "name:vjoy_1")."""
+    from gremlin.modules import device_class
+
+    kind = _kind(device_name, guid)
+    slug = plain_slug(device_name)
+    if device_class.is_input_kind(kind) or (
+        kind == "xbox"
+        and (
+            guid_key(guid) == guid_key(ids.XBOX)
+            or slug in ("", "xbox", "xbox_360_controller")
+        )
+    ):
+        fixed = device_class.guid_of_kind(kind)
+        return stored_guid_key(fixed)
+    if device_class.is_output_kind(kind) or registry.is_output_name(device_name):
+        return f"name:{slug}" if slug else ""
+    key = stored_guid_key(guid)
+    if key:
+        return key
+    return f"name:{slug}" if slug else ""
+
+
+def _norm(key: str) -> str:
+    """An id key compared: "name:" keys as they are, ids by guid_key."""
+    text = str(key or "").strip()
+    if not text:
+        return ""
+    if text.lower().startswith("name:"):
+        return "name:" + plain_slug(text[5:])
+    return guid_key(stored_guid_key(text))
+
+
+def _key_dir(key: str) -> str:
+    """An id key as a folder name (":" can't be in one)."""
+    return (str(key or "").replace(":", "_").strip() or "device")[:NAME_LIMIT]
+
+
+def folder_name_for(shown: str) -> str:
+    """A device's folder name from its shown name: spaces collapsed, each
+    character a file name can't hold becomes "_", cut to 80 characters, a
+    reserved name (CON, LPT1, cache, templates, ...) gets a trailing "_".
+    The shown name itself is never changed (03 S128)."""
+    text = " ".join(str(shown or "").split())
+    out = "".join("_" if ch in _UNSAFE or ord(ch) < 32 else ch for ch in text)
+    out = out[:NAME_LIMIT]
+    out = _fix_end(out)
+    if not out:
+        return "Device"
+    return _unreserved(out)
+
+
+def _fix_end(text: str) -> str:
+    """A trailing "." or space becomes "_" (Windows drops them)."""
+    if text and text[-1] in ". ":
+        return text[:-1] + "_"
     return text
 
 
-def path_of(slug: str) -> Path:
-    """<modules>/<slug>.json for a slug the program already has (a card's
-    file, a History entry's file name, a layout picked by file). A slug
-    that is not a plain name is "device"."""
-    return folder() / f"{_safe_stem(slug) or 'device'}.json"
+def _unreserved(text: str) -> str:
+    if text.lower() in _WINDOWS_RESERVED or text.lower() in RESERVED:
+        return (text[: NAME_LIMIT - 1] + "_") if len(text) >= NAME_LIMIT else text + "_"
+    return text
 
 
-def path_for(device_name: str, guid: str = "") -> Path:
-    """<modules>/<slug>.json: the file the device uses."""
-    return path_of(slug_for(device_name, guid))
+def _numbered(base: str, number: int) -> str:
+    """base with " (n)", base cut so the whole fits in 80 characters."""
+    suffix = f" ({number})"
+    return _fix_end(base[: NAME_LIMIT - len(suffix)]) + suffix
 
 
-def _live(guid: str) -> bool:
-    want = guid_key(stored_guid_key(guid))
-    return bool(want) and any(
-        guid_key(guid_text(getattr(dev, "device_guid", ""))) == want
-        for dev in live_devices()
-    )
+def shown_name_of(device_name: str, guid: str = "") -> str:
+    """The name the program shows for a device (its folder is named after
+    it): the user's alias, else the twin name ("<name> (2)"), else its
+    name; Keyboard, OSC, Logical Device and the Xbox pad their fixed names;
+    a vJoy module its own "vJoy N"."""
+    from gremlin.modules import device_class
+
+    name = " ".join(str(device_name or "").split())
+    kind = _kind(name, guid)
+    if device_class.is_input_kind(kind):
+        return device_class.display_name(kind)
+    if kind == "xbox" and id_key(name, guid) == stored_guid_key(ids.XBOX):
+        return device_class.display_name(kind)
+    if device_class.is_output_kind(kind) or registry.is_output_name(name):
+        return name or "Device"
+    if not stored_guid_key(guid):
+        return name or "Device"
+    base = name
+    try:
+        import uuid as _uuid
+
+        from gremlin import device_initialization
+
+        uid = _uuid.UUID(str(guid).strip().strip("{}"))
+        if uid in device_initialization._joystick_devices:
+            base = device_initialization.shown_name(uid) or name
+    except Exception:  # noqa: BLE001 - not a uuid, or no device list yet
+        pass
+    return _home_label(base, guid, _twin_names()) or name or "Device"
 
 
-def file_of_guid(guid: str) -> Path | None:
-    """The module file of the device with this id, found by the id alone
-    (the file chosen for the id, else the one bound to it); None when it
-    has none. Never by name: twins share one (10 S41)."""
-    key = stored_guid_key(guid)
-    want = guid_key(key)
-    if not want:
+def _read_json(path: Path) -> dict:
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError, UnicodeDecodeError, RecursionError):
+        return {}
+    return doc if isinstance(doc, dict) else {}
+
+
+def dir_id(path: Path) -> str:
+    """The id key a device folder holds: device.json's "id", else (missing
+    or damaged) its module.json's boundGuidLocal; "" when neither has one."""
+    path = Path(path)
+    found = str(_read_json(path / ID_FILE).get("id") or "").strip()
+    if found:
+        return found
+    return stored_guid_key(_read_json(path / MODULE_FILE).get("boundGuidLocal") or "")
+
+
+def _device_folders(base: Path | None = None) -> list[Path]:
+    """Every device folder (reserved folders left out), by name."""
+    base = folder() if base is None else base
+    if not base.is_dir():
+        return []
+    try:
+        found = [
+            p for p in base.iterdir() if p.is_dir() and p.name.lower() not in RESERVED
+        ]
+    except OSError:
+        return []
+    return sorted(found, key=lambda p: p.name.lower())
+
+
+# The index: (folder, its mtime, its folder names) -> {normalized id key: folder}.
+_dirs_cache: tuple[tuple, dict[str, Path]] | None = None
+_dirs_lock = threading.RLock()
+_told_duplicate: set[str] = set()
+
+
+def _dirs_changed() -> None:
+    """A folder was made, renamed or deleted, or a device.json changed: the
+    index is built again at the next lookup."""
+    global _dirs_cache
+    with _dirs_lock:
+        _dirs_cache = None
+
+
+def _index() -> dict[str, Path]:
+    global _dirs_cache
+    base = folder()
+    try:
+        stamp: tuple = (str(base), base.stat().st_mtime_ns)
+    except OSError:
+        stamp = (str(base), 0)
+    with _dirs_lock:
+        folders = _device_folders(base)
+        stamp = stamp + (tuple(p.name for p in folders),)
+        if _dirs_cache is not None and _dirs_cache[0] == stamp:
+            return _dirs_cache[1]
+        index: dict[str, Path] = {}
+        for path in folders:
+            key = _norm(dir_id(path))
+            if not key:
+                continue
+            held = index.get(key)
+            if held is None:
+                index[key] = path
+                continue
+            # Two folders with one id (copied by hand): the one named after
+            # the device wins, else the first by name (validate.py says it).
+            shown = str(_read_json(path / ID_FILE).get("name") or "")
+            if shown and path.name == folder_name_for(shown) and held.name != path.name:
+                held_shown = str(_read_json(held / ID_FILE).get("name") or "")
+                if not (held_shown and held.name == folder_name_for(held_shown)):
+                    index[key] = path
+            if key not in _told_duplicate:
+                _told_duplicate.add(key)
+                syslog.warning(
+                    f"Device folders {held.name} and {path.name} have the same id"
+                )
+        _dirs_cache = (stamp, index)
+        return index
+
+
+def device_dirs() -> dict[str, Path]:
+    """{id key: device folder} for every folder with an id."""
+    return dict(_index())
+
+
+def dir_of_id(guid_or_key: str) -> Path | None:
+    """The folder of the device with this id (or "name:<slug>" key); None
+    when it has none. Never by name: twins share one (10 S41)."""
+    key = _norm(guid_or_key)
+    if not key:
         return None
-    found = registry.modules()
-    chosen = plain_slug(bindings().get(key, ""))
-    if chosen and path_of(chosen).is_file():
-        module = next((m for m in found if m.slug == chosen), None)
-        bound = guid_key(module.bound_guid) if module is not None else ""
-        if not bound or bound == want:
-            return path_of(chosen)
-    for module in found:
-        if guid_key(module.bound_guid) == want:
-            return path_of(module.slug)
+    return _index().get(key)
+
+
+def _named_dir(name: str) -> Path | None:
+    """The existing device folder called name (case ignored)."""
+    want = name.casefold()
+    for path in _device_folders():
+        if path.name.casefold() == want:
+            return path
     return None
 
 
-def path_for_id(device_name: str, guid: str) -> Path:
-    """path_for for a device known by its id, plugged in or not (the Device
-    Library and Device Pack, 10 S41): its own file found by its id first
-    (file_of_guid), as twins share a name; else path_for. Unplugged with no
-    file of its own: a path no other device uses, so nothing of another
-    stick (a twin of the same name) is written or removed."""
+def _may_use(path: Path, key: str) -> bool:
+    """A folder of the device's name may be used: it has no id, the same
+    one, or one side is known by name only (a stick's folder saved before
+    it was plugged in)."""
+    held = _norm(dir_id(path))
+    want = _norm(key)
+    if not held or not want or held == want:
+        return True
+    return held.startswith("name:") != want.startswith("name:")
+
+
+def unique_name(base: str, key: str, keep: Path | None = None) -> str:
+    """base when no other device's folder has it, else "base (2)", (3)...:
+    the first free (03 S132). keep: a folder that may keep its name."""
+    number = 1
+    name = base
+    while True:
+        found = _named_dir(name)
+        if found is None or (keep is not None and found == keep):
+            return name
+        if _norm(dir_id(found)) == _norm(key) and _norm(key):
+            return name
+        number += 1
+        name = _numbered(base, number)
+
+
+def names_for_new(devices: list[tuple[str, str]]) -> dict[str, str]:
+    """Folder names for several new devices at once (the one-time move):
+    devices [(id key, shown name)] -> {id key: folder name}. Existing
+    folders keep their names; among the new ones of one name the lowest id
+    key gets the plain name, the others " (2)", (3)... (03 S132)."""
+    taken = {p.name.casefold() for p in _device_folders()}
+    out: dict[str, str] = {}
+    for key, shown in sorted(devices, key=lambda d: (_norm(d[0]), d[1])):
+        base = folder_name_for(shown)
+        name, number = base, 1
+        while name.casefold() in taken:
+            number += 1
+            name = _numbered(base, number)
+        taken.add(name.casefold())
+        out[key] = name
+    return out
+
+
+def _lookup_guid(device_name: str, guid: str) -> str:
+    """The id a lookup uses: the given one with a stale id filtered out;
+    with none, a connected device's of that name."""
     if not stored_guid_key(guid):
-        return path_for(device_name, guid)
-    found = file_of_guid(guid)
+        _note_name_only(device_name)
+        if registry.is_output_name(device_name):
+            return ""
+        return registry.guid_for_name(device_name)
+    return guid_filter(device_name, guid)
+
+
+def _own_dir(device_name: str, guid: str) -> Path | None:
+    """The folder whose device.json holds exactly this id and this device's
+    name. It is the device's own, even when guid_filter would call the id
+    stale: an unplugged twin while the other twin of its name is connected
+    must still find its own folder, never the other's (10 S41)."""
+    if not stored_guid_key(guid):
+        return None
+    found = _index().get(_norm(id_key(device_name, guid)))
+    if found is None:
+        return None
+    held = str(_read_json(found / ID_FILE).get("name") or "")
+    names = (device_name, shown_name_of(device_name, guid))
+    return found if any(_same_name(held, name) for name in names) else None
+
+
+def device_dir(device_name: str, guid: str = "") -> Path:
+    """The device's folder (it may not exist yet): found by its id first,
+    then a folder named after it whose id is empty or its own, else the
+    folder it would get (03 S1, S4, S130)."""
+    exact = _own_dir(device_name, guid)
+    if exact is not None:
+        return exact
+    filtered = _lookup_guid(device_name, guid)
+    key = id_key(device_name, filtered)
+    found = _index().get(_norm(key))
     if found is not None:
         return found
-    path = path_for(device_name, guid)
-    if _live(guid):
-        return path
-    want = guid_key(stored_guid_key(guid))
-    module = next((m for m in registry.modules() if m.slug == path.stem), None)
-    other = guid_key(module.bound_guid) if module is not None else ""
-    named = registry.guid_for_name(device_name)
-    if (other and other != want) or (named and guid_key(named) != want):
-        return path_of(f"{own_slug(device_name)}_{want[:8].lower()}")
+    shown = folder_name_for(shown_name_of(device_name, filtered))
+    for name in dict.fromkeys((shown, folder_name_for(device_name))):
+        path = _named_dir(name)
+        if path is not None and _may_use(path, key):
+            return path
+    return folder() / unique_name(shown, key)
+
+
+def _write_id(path: Path, key: str, shown: str) -> None:
+    doc = {"format": 1, "id": key, "name": shown}
+    module_file_io.write_bytes(
+        Path(path) / ID_FILE, (json.dumps(doc, indent=2) + "\n").encode("utf-8")
+    )
+    _dirs_changed()
+
+
+def ensure_device_dir(device_name: str, guid: str = "") -> Path:
+    """device_dir, made if missing, with its device.json (id and shown
+    name). Every writer calls it before writing into a device's folder.
+    Raises OSError."""
+    filtered = _lookup_guid(device_name, guid)
+    path = device_dir(device_name, guid)
+    key = id_key(device_name, filtered)
+    held = _read_json(path / ID_FILE)
+    held_id = str(held.get("id") or "").strip()
+    new_id = held_id
+    if not held_id or (held_id.startswith("name:") and not key.startswith("name:")):
+        new_id = key
+    shown = str(held.get("name") or "") or shown_name_of(device_name, filtered)
+    if not path.is_dir() or new_id != held_id or not held:
+        path.mkdir(parents=True, exist_ok=True)
+        _write_id(path, new_id, shown)
     return path
 
 
-def pictures_dir_of(slug: str) -> Path:
-    """<modules>/<slug>/ for a slug the program already has."""
-    return folder() / (_safe_stem(slug) or "device")
+def module_file_in(path: Path) -> Path:
+    """<device folder>/module.json."""
+    return Path(path) / MODULE_FILE
+
+
+def module_file(device_name: str, guid: str = "") -> Path:
+    """The device's module file (it may not exist: "(not saved yet)")."""
+    return module_file_in(device_dir(device_name, guid))
 
 
 def pictures_dir(device_name: str, guid: str = "") -> Path:
-    """<modules>/<slug>/: the device's photo and map pictures."""
-    return pictures_dir_of(slug_for(device_name, guid))
+    """<device folder>/pictures: its photo and map pictures."""
+    return device_dir(device_name, guid) / PICTURES
 
 
-def picture_ref(slug: str, name: str) -> str:
-    """A picture as a module file names it (relative to the modules folder)."""
-    return f"{slug}/{name}"
+def recovery_path(device_name: str, guid: str = "") -> Path:
+    """The Button Map's recovery copy of unsaved edits (07 S32)."""
+    return device_dir(device_name, guid) / RECOVERY_FILE
 
 
-def module_relative(stored: str) -> str:
-    """A stored picture reference relative to the modules folder ("qml/maps/"
-    as old files wrote it is dropped)."""
-    text = str(stored or "").replace("\\", "/").lstrip("/")
-    marker = "qml/maps/"
-    if text.lower().startswith(marker):
-        return text[len(marker) :]
-    return text
+def imported_dir(device_name: str, guid: str = "") -> Path:
+    """<device folder>/imported: the previous files imports keep (03 S58)."""
+    return device_dir(device_name, guid) / IMPORTED
 
 
-def picture_path(ref: str) -> Path:
-    """Where a picture a module file names is (it may not exist)."""
-    return folder() / module_relative(ref)
+def edit_temp_dir(device_name: str, guid: str = "", owner: str = "") -> Path:
+    """An edit's temporary folder (07 S107): cache/edit/<id key> for the
+    Button Map, cache/edit-<owner>/<id key> for another window. Keyed by
+    id, so a rename can't race it and export, History and the Library never
+    see it."""
+    key = id_key(device_name, _lookup_guid(device_name, guid))
+    base = folder() / "cache" / ("edit" + (f"-{owner}" if owner else ""))
+    return base / _key_dir(key)
 
 
-def module_of_picture(path: Path) -> Path:
-    """The module file whose picture folder holds path."""
-    path = Path(path)
-    return path.parent.with_name(path.parent.name + ".json")
+def templates_dir() -> Path:
+    """<modules>/templates: one folder per template (07 S110)."""
+    return folder() / "templates"
 
 
-def library_dir() -> Path:
-    """modules/library: every photo and picture chosen, kept for reuse."""
-    return folder() / "library"
+def template_dir(name: str) -> Path:
+    """A template's folder (template.json and pictures/)."""
+    return templates_dir() / folder_name_for(name)
 
 
-def imported_dir() -> Path:
-    """modules/imported: files to import from, and the backups imports keep."""
-    return folder() / "imported"
-
-
-def recovery_path(slug: str) -> Path:
-    """The Button Map's recovery copy of unsaved edits for a module file."""
-    return folder() / "recovery" / f"{_safe_stem(slug) or 'device'}.json"
-
-
-def photo_stash_dir(slug: str, owner: str = "") -> Path:
-    """Where an editing session keeps the photo it started with (Button
-    Map: owner ""; another window: its own owner name)."""
-    base = folder() / "cache" / ("photo-stash" + (f"-{owner}" if owner else ""))
-    return base / (_safe_stem(slug) or "device")
-
-
-def photo_files(slug: str) -> list[Path]:
-    """The device photo's files: photo.<ext> (and photo_<name>.<ext>) in its
-    picture folder, and an old <slug>_photo.<ext> beside the module files."""
-    found: list[Path] = []
-    pictures = pictures_dir_of(slug)
-    if pictures.is_dir():
-        found = [
-            p
-            for pattern in ("photo.*", "photo_*")
-            for p in pictures.glob(pattern)
-            if p.is_file()
-        ]
-    stem = _safe_stem(slug)
-    for ext in PICTURE_EXT:
-        legacy = folder() / f"{stem}_photo{ext}"
-        if stem and legacy.is_file():
-            found.append(legacy)
-    return found
+def photo_files(device_name: str, guid: str = "") -> list[Path]:
+    """The device photo's files: pictures/photo.<ext> and photo_<name>.<ext>."""
+    pictures = pictures_dir(device_name, guid)
+    if not pictures.is_dir():
+        return []
+    return [
+        p
+        for pattern in ("photo.*", "photo_*")
+        for p in sorted(pictures.glob(pattern))
+        if p.is_file()
+    ]
 
 
 def is_inside(path: Path) -> bool:
@@ -328,7 +592,7 @@ def read_path(path: Path) -> dict:
 
 def read(device_name: str, guid: str = "") -> dict:
     """The device's module file; {} when it is missing or damaged."""
-    return read_path(path_for(device_name, guid))
+    return read_path(module_file(device_name, guid))
 
 
 def read_text(path: Path) -> str | None:
@@ -342,22 +606,25 @@ def read_text(path: Path) -> str | None:
 
 def damage(device_name: str, guid: str = "") -> str:
     """Why the device's module file can't be read, or "" (missing or fine)."""
-    return module_file.damage_reason(path_for(device_name, guid))
+    return module_file_io.damage_reason(module_file(device_name, guid))
 
 
 def damage_of(path: Path) -> str:
     """damage() for a path the store gave out."""
-    return module_file.damage_reason(Path(path))
+    return module_file_io.damage_reason(Path(path))
 
 
 def exists(device_name: str, guid: str = "") -> bool:
-    return path_for(device_name, guid).is_file()
+    return module_file(device_name, guid).is_file()
 
 
 def module_files() -> list[Path]:
-    """Every module file in the folder, by name."""
-    base = folder()
-    return sorted(base.glob("*.json")) if base.is_dir() else []
+    """Every device's module file (<folder>/module.json), by folder name."""
+    return [
+        path / MODULE_FILE
+        for path in _device_folders()
+        if (path / MODULE_FILE).is_file()
+    ]
 
 
 def _local_path(text: str) -> Path:
@@ -374,27 +641,6 @@ def _local_path(text: str) -> Path:
         return Path(url2pathname(f"//{parts.netloc}{parts.path}"))
     local = url2pathname(unquote(parts.path)) if parts.path else ""
     return Path(local) if local else Path()
-
-
-def find_picture(stored: str) -> Path | None:
-    """The file a stored picture reference names, in the modules folder (or
-    a file: URL); None when it is not there. A missing picture is missing:
-    another device's picture with the same name is never used instead
-    (07 S11, GL-085)."""
-    text = str(stored or "").strip().replace("\\", "/")
-    if not text:
-        return None
-    if text.startswith("file:"):
-        try:
-            local = _local_path(text)
-        except Exception:  # noqa: BLE001 - not a local file
-            return None
-        return local if local and Path(local).is_file() else None
-    path = Path(text)
-    if path.is_absolute():
-        return path if path.is_file() else None
-    found = picture_path(text)
-    return found if found.is_file() else None
 
 
 # --- writing -------------------------------------------------------------------
@@ -455,16 +701,38 @@ def _write(path: Path, data: bytes, text: str | None = None) -> None:
         # The pictures it names now, before anything replaces them (GL-082).
         history_modules.before_change(path)
     held = _held_parts_of(path) if is_module else {}
-    module_file.write_bytes(path, data)
+    module_file_io.write_bytes(path, data)
     if not is_module:
         return
     if text is None:
         text = _text_of(data)
     if text is not None:
         history_modules.note_write(path, text, old)
+        _sync_id_file(path, text)
     _saved()
     if held:
         _drop_replaced(held, _parts_of_text(text))
+
+
+def _sync_id_file(path: Path, text: str) -> None:
+    """device.json follows the module file: made when missing, and its id
+    set to a non-empty boundGuidLocal that differs (the lookup authority)."""
+    try:
+        doc = json.loads(text)
+    except (ValueError, RecursionError):
+        doc = None
+    doc = doc if isinstance(doc, dict) else {}
+    bound = stored_guid_key(doc.get("boundGuidLocal") or "")
+    id_path = Path(path).parent / ID_FILE
+    held = _read_json(id_path)
+    held_id = str(held.get("id") or "")
+    if held and (not bound or _norm(held_id) == _norm(bound)):
+        return
+    shown = str(held.get("name") or doc.get("device") or Path(path).parent.name)
+    try:
+        _write_id(Path(path).parent, bound or held_id, shown)
+    except OSError:
+        syslog.warning(f"{id_path} could not be written")
 
 
 def write_file(path: Path, data: bytes) -> None:
@@ -476,7 +744,7 @@ def write_file(path: Path, data: bytes) -> None:
 
 def _doc_bytes(doc: dict) -> tuple[bytes, str]:
     text = json.dumps(doc, indent=2) + "\n"
-    return module_file.encode(text), text
+    return module_file_io.encode(text), text
 
 
 def update_path(
@@ -493,11 +761,11 @@ def update_path(
     True when written; raises OSError when the write failed."""
     path = Path(path)
     try:
-        doc = module_file.load_for_update(path)
-    except module_file.ModuleFileDamaged as damaged:
+        doc = module_file_io.load_for_update(path)
+    except module_file_io.ModuleFileDamaged as damaged:
         registry.trace("READ", who, "update", path, "damaged")
         if report:
-            module_file.report_refused(damaged)
+            module_file_io.report_refused(damaged)
         return False
     if change(doc) is False:
         return False
@@ -519,8 +787,16 @@ def update(
     *,
     report: bool = True,
 ) -> bool:
-    """update_path on the file the device uses."""
-    return update_path(path_for(device_name, guid), change, who, report=report)
+    """update_path on the device's module file (its folder is made on the
+    first write)."""
+
+    def made(doc: dict) -> object:
+        result = change(doc)
+        if result is not False:
+            ensure_device_dir(device_name, guid)
+        return result
+
+    return update_path(module_file(device_name, guid), made, who, report=report)
 
 
 def _reload_logical_device(path: Path) -> None:
@@ -599,9 +875,9 @@ def replace(path: Path, data: bytes, who: str = "", *, force: bool = False) -> N
     exactly what was there. Raises OSError when the write failed."""
     path = Path(path)
     if not force and _is_module_file(path):
-        reason = module_file.damage_reason(path)
+        reason = module_file_io.damage_reason(path)
         if reason:
-            raise module_file.ModuleFileDamaged(path, reason)
+            raise module_file_io.ModuleFileDamaged(path, reason)
     try:
         _write(path, data)
     except OSError:
@@ -621,7 +897,7 @@ def write_json(path: Path, doc: dict, who: str = "") -> None:
 
 def write_text(path: Path, text: str, who: str = "") -> None:
     """write_json for text as it is (History Restore)."""
-    _write(Path(path), module_file.encode(text), text.replace("\r\n", "\n"))
+    _write(Path(path), module_file_io.encode(text), text.replace("\r\n", "\n"))
     registry.trace("SAVE", who or "Module files", "write", path, "ok")
     _reload_internal(path)
 
@@ -670,10 +946,11 @@ def normalize_layout(raw: object) -> dict:
 
 
 def _layout_path(guid: str, device_name: str = "") -> Path | None:
-    """The module file of the device: by its id (path_for_id with a name)."""
+    """The module file of the device: by its name and id, else its id."""
     if device_name:
-        return path_for_id(device_name, guid)
-    return file_of_guid(guid)
+        return module_file(device_name, guid)
+    found = dir_of_id(guid)
+    return module_file_in(found) if found is not None else None
 
 
 def read_layout(guid: str, device_name: str = "") -> dict:
@@ -1013,12 +1290,15 @@ def _drop_replaced(
 
 
 # --- pictures ------------------------------------------------------------------
+# A module file names its pictures relative to its own folder:
+# "pictures/<file>" (07 S10). Each device has its own copies (no sharing,
+# S133); a save removes the ones it no longer names (S106).
 
 
 def safe_picture_name(name: str, fallback: str = "image.jpg") -> str:
     """A picture's file name with only letters, digits, ".", "_" and "-",
     always with a picture extension."""
-    raw = Path(name or "").name
+    raw = Path(str(name or "").replace("\\", "/")).name
     if not raw:
         return fallback
     keep = [ch if ch.isalnum() or ch in "._-" else "_" for ch in raw]
@@ -1028,51 +1308,119 @@ def safe_picture_name(name: str, fallback: str = "image.jpg") -> str:
     return out
 
 
+def picture_ref(name: str) -> str:
+    """A picture as a module file names it: "pictures/<name>"."""
+    return f"{PICTURES}/{Path(str(name or '').replace(chr(92), '/')).name}"
+
+
+def _is_outside_ref(text: str) -> bool:
+    return text.lower().startswith("file:") or Path(text).is_absolute()
+
+
+def normal_ref(stored: str) -> str:
+    """Any stored picture reference as today's: "pictures/<file name>"
+    (old "<slug>/<file>", "qml/maps/...", "library/..." refs too). A file:
+    URL or an absolute path is left as it is; "" stays ""."""
+    text = str(stored or "").strip()
+    if not text:
+        return ""
+    if _is_outside_ref(text):
+        return text
+    name = Path(text.replace("\\", "/")).name
+    return picture_ref(name) if name else ""
+
+
+def picture_path(path: Path, ref: str) -> Path:
+    """Where a picture a device folder's module file names is (it may not
+    exist). path: the device folder."""
+    text = normal_ref(ref)
+    if not text:
+        return Path(path) / PICTURES
+    if text.lower().startswith("file:"):
+        return _local_path(text)
+    if Path(text).is_absolute():
+        return Path(text)
+    return Path(path) / text
+
+
+def find_picture(path: Path, stored: str, staged: Path | None = None) -> Path | None:
+    """The file a stored picture reference names: in the edit's staged
+    pictures first (staged: its added/ folder), then the device folder's
+    pictures (path: the device folder), or a file: URL / absolute path.
+    None when it is not there: another device's picture of the same name is
+    never used instead (07 S11)."""
+    text = normal_ref(stored)
+    if not text:
+        return None
+    if _is_outside_ref(text):
+        try:
+            local = picture_path(Path(path), text)
+        except Exception:  # noqa: BLE001 - not a local file
+            return None
+        return local if str(local) not in ("", ".") and local.is_file() else None
+    if staged is not None:
+        candidate = Path(staged) / Path(text).name
+        if candidate.is_file():
+            return candidate
+    found = picture_path(Path(path), text)
+    return found if found.is_file() else None
+
+
+def dir_of_picture(path: Path) -> Path:
+    """The device folder whose pictures/ holds path."""
+    path = Path(path)
+    if path.parent.name == PICTURES:
+        return path.parent.parent
+    return path.parent
+
+
+def _before_picture_change(path: Path) -> None:
+    """History keeps the pictures a device folder's module file names before
+    one of them is replaced or removed."""
+    from gremlin import history_modules
+
+    path = Path(path)
+    if path.parent.name != PICTURES or not is_inside(path):
+        return
+    history_modules.before_change(module_file_in(dir_of_picture(path)))
+
+
 def put_picture_at(dest: Path, src: Path | bytes) -> None:
     """Writes one picture (atomic), keeping the pictures its module file
     names for History first. Raises OSError."""
-    from gremlin import history_modules
-
     dest = Path(dest)
     data = src if isinstance(src, bytes) else Path(src).read_bytes()
-    history_modules.before_change(module_of_picture(dest))
-    module_file.write_bytes(dest, data)
+    _before_picture_change(dest)
+    module_file_io.write_bytes(dest, data)
 
 
 def put_picture(device_name: str, guid: str, src: Path | bytes, as_name: str) -> str:
-    """Writes a picture into the device's picture folder as as_name; its
+    """Writes a picture into the device's pictures/ as as_name; its
     reference for the module file. Raises OSError."""
-    slug = slug_for(device_name, guid)
-    dest = pictures_dir_of(slug) / Path(as_name).name
+    base = ensure_device_dir(device_name, guid)
+    dest = base / PICTURES / Path(str(as_name).replace("\\", "/")).name
     put_picture_at(dest, src)
-    return picture_ref(slug, dest.name)
+    return picture_ref(dest.name)
 
 
 def remove_picture_files(paths: list[Path]) -> None:
     """Deletes picture files (History keeps the pictures their module file
     names first). Raises OSError on the first one that can't go."""
-    from gremlin import history_modules
-
     for path in paths:
         path = Path(path)
-        if is_inside(path) and path.parent.parent.resolve() == folder().resolve():
-            history_modules.before_change(module_of_picture(path))
+        _before_picture_change(path)
         path.unlink(missing_ok=True)
 
 
 def remove_pictures(
     device_name: str, guid: str = "", pattern: str = "photo.*", keep: Path | None = None
 ) -> bool:
-    """Deletes the device's pictures matching pattern (the photo by default),
-    and the old <slug>_photo.<ext> files when pattern is the photo's, except
-    keep. False when one could not be deleted."""
-    slug = slug_for(device_name, guid)
-    pictures = pictures_dir_of(slug)
+    """Deletes the device's pictures matching pattern (the photo by
+    default), except keep. False when one could not be deleted."""
+    pictures = pictures_dir(device_name, guid)
     found: list[Path] = []
     if pictures.is_dir():
         found = [p for p in pictures.glob(pattern) if p.is_file()]
-    if pattern == "photo.*":
-        found += [p for p in photo_files(slug) if p.parent == folder()]
     if keep is not None:
         found = [p for p in found if p.resolve() != Path(keep).resolve()]
     try:
@@ -1084,6 +1432,84 @@ def remove_pictures(
     return True
 
 
+def named_refs(doc: object) -> set[str]:
+    """The pictures a module document (or template, or recovery copy)
+    names, as stored: its photo ("image") and every picture chip ("shape"
+    or "kind" "image", "src"), also inside groups."""
+    refs: set[str] = set()
+    if not isinstance(doc, dict):
+        return refs
+    image = str(doc.get("image") or "").strip()
+    if image:
+        refs.add(image)
+
+    def walk(value: object) -> None:
+        if isinstance(value, dict):
+            if (
+                value.get("shape") == "image" or value.get("kind") == "image"
+            ) and value.get("src"):
+                refs.add(str(value["src"]).strip())
+            for inner in value.values():
+                walk(inner)
+        elif isinstance(value, list):
+            for inner in value:
+                walk(inner)
+
+    walk(doc.get("nodes"))
+    refs.discard("")
+    return refs
+
+
+def _names_of(refs: Iterable[str] | None) -> set[str]:
+    """The file names in pictures/ that refs name (outside refs left out)."""
+    names: set[str] = set()
+    for ref in refs or ():
+        text = normal_ref(str(ref))
+        if text and not _is_outside_ref(text):
+            names.add(Path(text).name.casefold())
+    return names
+
+
+def remove_unused_pictures(
+    device_name: str, guid: str = "", used_refs: Iterable[str] | None = None
+) -> list[Path]:
+    """Removes the files in the device's pictures/ that nothing names (07
+    S106): used_refs, or (None) the pictures module.json and recovery.json
+    name. Nothing is removed while module.json is damaged. The files
+    removed."""
+    base = device_dir(device_name, guid)
+    pictures = base / PICTURES
+    if not pictures.is_dir():
+        return []
+    if used_refs is None:
+        main = module_file_in(base)
+        if module_file_io.damage_reason(main) or module_file_io.damage_reason(
+            base / RECOVERY_FILE
+        ):
+            return []
+        used_refs = named_refs(read_path(main)) | named_refs(
+            read_path(base / RECOVERY_FILE)
+        )
+    keep = _names_of(used_refs)
+    unused = [
+        p
+        for p in sorted(pictures.iterdir())
+        if p.is_file() and p.name.casefold() not in keep
+    ]
+    removed: list[Path] = []
+    for path in unused:
+        try:
+            remove_picture_files([path])
+        except OSError:
+            syslog.warning(f"Unused picture {path} could not be removed")
+            continue
+        removed.append(path)
+        registry.trace(
+            "SAVE", "Module files", "remove_unused_pictures", path, "removed"
+        )
+    return removed
+
+
 def _same_bytes(left: Path, right: Path) -> bool:
     try:
         if left.stat().st_size != right.stat().st_size:
@@ -1093,29 +1519,299 @@ def _same_bytes(left: Path, right: Path) -> bool:
         return False
 
 
-def into_library(src: Path) -> Path:
-    """Keeps a chosen picture in modules/library. A picture already there
-    (the same content) is not copied again (03 Q3, GL-089). Its path there.
-    Raises OSError."""
-    src = Path(src)
-    base = library_dir()
-    base.mkdir(parents=True, exist_ok=True)
-    try:
-        if src.resolve().parent == base.resolve():
-            return src
-    except OSError:
-        pass
-    dest = base / safe_picture_name(src.name, src.name)
-    stem, ext = dest.stem, dest.suffix
-    for kept in sorted(base.glob(f"{stem}*{ext}")):
-        if kept.is_file() and _same_bytes(kept, src):
-            return kept
-    number = 1
-    while dest.exists():
-        dest = base / f"{stem}_{number}{ext}"
+def _free_picture_name(
+    name: str, data: bytes, places: list[Path], reuse_first: bool = True
+) -> tuple[str, bool]:
+    """A file name for data in the first of places: name when it is free in
+    all of them (or holds the same bytes: (name, True), nothing to write),
+    else <stem>_<n><ext>. reuse_first=False: a file already in the first
+    place is never reused, even with the same bytes."""
+    stem, ext = Path(name).stem, Path(name).suffix
+    number = 0
+    candidate = name
+    while True:
+        same = False
+        taken = False
+        for place in places:
+            path = place / candidate
+            if path.is_file() and (reuse_first or place != places[0]):
+                try:
+                    if path.read_bytes() == data:
+                        same = True
+                        continue
+                except OSError:
+                    pass
+                taken = True
+            elif path.exists():
+                taken = True
+        if not taken:
+            return candidate, same
         number += 1
-    module_file.write_bytes(dest, src.read_bytes())
-    return dest
+        candidate = f"{stem}_{number}{ext}"
+
+
+def _copy_into(
+    src_dir: Path, refs: Iterable[str] | None, dest: Path, also: list[Path]
+) -> dict:
+    """Copies the pictures refs name (in device folder src_dir) into the
+    folder dest; {old ref: new ref}. A missing picture is left out."""
+    moved: dict[str, str] = {}
+    for ref in sorted({str(r) for r in (refs or ()) if str(r or "").strip()}):
+        src = find_picture(Path(src_dir), ref)
+        if src is None:
+            continue
+        try:
+            data = src.read_bytes()
+        except OSError:
+            continue
+        name = safe_picture_name(src.name, src.name)
+        name, same = _free_picture_name(name, data, [Path(dest), *also])
+        if not same:
+            put_picture_at(Path(dest) / name, data)
+        moved[ref] = picture_ref(name)
+    return moved
+
+
+def _rename_refs(doc: dict, moved: dict[str, str]) -> None:
+    """Rewrites the picture references in doc (photo and chips, nested) by
+    moved {old ref: new ref}."""
+    if str(doc.get("image") or "").strip() in moved:
+        doc["image"] = moved[str(doc["image"]).strip()]
+
+    def walk(value: object) -> None:
+        if isinstance(value, dict):
+            src = str(value.get("src") or "").strip()
+            if (
+                value.get("shape") == "image" or value.get("kind") == "image"
+            ) and src in moved:
+                value["src"] = moved[src]
+            for inner in value.values():
+                walk(inner)
+        elif isinstance(value, list):
+            for inner in value:
+                walk(inner)
+
+    walk(doc.get("nodes"))
+
+
+def copy_pictures(
+    src_dir: Path, refs: Iterable[str] | None, dest_dir: Path
+) -> dict[str, str]:
+    """Copies the pictures refs name from device folder src_dir into device
+    folder dest_dir's pictures/ (copying a map to another device, a
+    template, the Library: no sharing, 07 S109, 10 S61). The same name with
+    the same bytes is reused; the same name with other bytes is written as
+    <stem>_<n><ext>. {old ref: new ref}; a missing picture is left out.
+    Raises OSError."""
+    return _copy_into(Path(src_dir), refs, Path(dest_dir) / PICTURES, [])
+
+
+# --- an edit's temporary folder (07 S26 S36 S40 S62 S107 S109) ---------------
+# cache/edit[-<owner>]/<id key>/:
+#   state.json  {"phase": "editing" | "committing"}
+#   start/      module.json and the pictures it named when the edit began
+#   added/      pictures added during the edit (named "pictures/<file>")
+# Save (commit_edit) copies the added pictures into the device's pictures/,
+# writes module.json and removes the pictures nothing names; Cancel drops
+# the folder. A crash is sorted out at the next start (recover_edit).
+
+
+def _state(path: Path) -> str:
+    return str(_read_json(Path(path) / STATE_FILE).get("phase") or "")
+
+
+def _set_state(path: Path, phase: str) -> None:
+    module_file_io.write_bytes(
+        Path(path) / STATE_FILE,
+        (json.dumps({"phase": phase}) + "\n").encode("utf-8"),
+    )
+
+
+def _remove_tree(path: Path) -> None:
+    if Path(path).is_dir():
+        shutil.rmtree(path)
+
+
+def begin_edit(device_name: str, guid: str = "", owner: str = "") -> Path:
+    """Starts an edit: a fresh temporary folder with a copy of module.json
+    and the pictures it names as they are now (start/). Its path. Raises
+    OSError."""
+    temp = edit_temp_dir(device_name, guid, owner)
+    _remove_tree(temp)
+    start = temp / "start"
+    (temp / "added").mkdir(parents=True, exist_ok=True)
+    start.mkdir(parents=True, exist_ok=True)
+    base = device_dir(device_name, guid)
+    main = module_file_in(base)
+    if main.is_file():
+        shutil.copyfile(main, start / MODULE_FILE)
+        for ref in named_refs(read_path(main)):
+            src = find_picture(base, ref)
+            if src is not None and src.parent == base / PICTURES:
+                (start / PICTURES).mkdir(exist_ok=True)
+                shutil.copyfile(src, start / PICTURES / src.name)
+    _set_state(temp, "editing")
+    return temp
+
+
+def staged_dir(device_name: str, guid: str = "", owner: str = "") -> Path:
+    """The edit's added/ folder (find_picture's staged)."""
+    return edit_temp_dir(device_name, guid, owner) / "added"
+
+
+def _staging(device_name: str, guid: str, owner: str) -> Path:
+    temp = edit_temp_dir(device_name, guid, owner)
+    if not (temp / STATE_FILE).is_file():
+        begin_edit(device_name, guid, owner)
+    added = temp / "added"
+    added.mkdir(parents=True, exist_ok=True)
+    return added
+
+
+def stage_picture(
+    device_name: str, guid: str, src: Path | bytes, as_name: str, owner: str = ""
+) -> str:
+    """Keeps a picture added during an edit in its added/ folder (the
+    device's pictures/ are not touched until Save). Its reference,
+    "pictures/<name>": a name another picture of the device already has
+    gets _<n> (one added earlier in the edit too, even with the same bytes).
+    Raises OSError."""
+    added = _staging(device_name, guid, owner)
+    data = src if isinstance(src, bytes) else Path(src).read_bytes()
+    name = safe_picture_name(as_name)
+    pictures = pictures_dir(device_name, guid)
+    # Each picture added in the edit gets its own file (a second identical
+    # paste is pasted_1.png, 07 S62); one the device already has is reused.
+    name, same = _free_picture_name(name, data, [added, pictures], reuse_first=False)
+    if not same:
+        module_file_io.write_bytes(added / name, data)
+    return picture_ref(name)
+
+
+def stage_copied(
+    device_name: str,
+    guid: str,
+    src_dir: Path,
+    refs: Iterable[str] | None,
+    owner: str = "",
+) -> dict[str, str]:
+    """copy_pictures into an edit: the pictures refs name in device folder
+    src_dir (another device's, a template's) are staged in added/.
+    {old ref: new ref}. Raises OSError."""
+    added = _staging(device_name, guid, owner)
+    return _copy_into(Path(src_dir), refs, added, [pictures_dir(device_name, guid)])
+
+
+def commit_edit(
+    device_name: str,
+    guid: str,
+    change: Callable[[dict], object],
+    owner: str = "",
+    who: str = "Button Map",
+) -> str:
+    """Save: the added pictures go into the device's pictures/, change(doc)
+    is written into module.json (update_path), the pictures nothing names
+    are removed (S106) and the temporary folder goes. The error, or "".
+    A failed write keeps the edit (phase "editing") so Save can be tried
+    again."""
+    temp = edit_temp_dir(device_name, guid, owner)
+    if not (temp / STATE_FILE).is_file():
+        begin_edit(device_name, guid, owner)
+    try:
+        base = ensure_device_dir(device_name, guid)
+    except OSError as exc:
+        return f"The pictures could not be saved. {exc}"
+    path = module_file_in(base)
+    if module_file_io.damage_reason(path):
+        # A damaged file refuses the Save before any picture moves (07 S12):
+        # update_path reports the refusal and writes nothing; the edit stays.
+        try:
+            update_path(path, change, who)
+        except OSError:
+            pass
+        _back_to_editing(temp)
+        return "The module file is damaged, so the change was not saved."
+    try:
+        _set_state(temp, "committing")
+        added = temp / "added"
+        if added.is_dir():
+            for picture in sorted(added.iterdir()):
+                dest = base / PICTURES / picture.name
+                if dest.is_file() and not _same_bytes(dest, picture):
+                    syslog.warning(f"Picture {dest} not replaced by the edit's copy")
+                    continue
+                if not dest.is_file():
+                    put_picture_at(dest, picture)
+    except OSError as exc:
+        _back_to_editing(temp)
+        return f"The pictures could not be saved. {exc}"
+    try:
+        update_path(path, change, who)
+    except OSError as exc:
+        _back_to_editing(temp)
+        remove_unused_pictures(device_name, guid)
+        return f"The module file could not be saved. {exc}"
+    remove_unused_pictures(device_name, guid)
+    try:
+        _remove_tree(temp)
+    except OSError:
+        syslog.warning(f"Edit folder {temp} could not be removed")
+    return ""
+
+
+def _back_to_editing(temp: Path) -> None:
+    try:
+        _set_state(temp, "editing")
+    except OSError:
+        syslog.warning(f"Edit folder {temp} could not be marked")
+
+
+def cancel_edit(device_name: str, guid: str = "", owner: str = "") -> None:
+    """Cancel: the temporary folder goes; the device's folder was never
+    touched."""
+    temp = edit_temp_dir(device_name, guid, owner)
+    try:
+        _remove_tree(temp)
+    except OSError:
+        syslog.warning(f"Edit folder {temp} could not be removed")
+
+
+def recover_edit(device_name: str, guid: str = "", owner: str = "") -> str:
+    """After a crash: an edit with a recovery copy waiting is kept
+    ("kept"); an edit without one is dropped ("dropped"); a Save that
+    stopped part way puts start/ back ("restored"). "" when there was no
+    edit."""
+    temp = edit_temp_dir(device_name, guid, owner)
+    if not temp.is_dir():
+        return ""
+    phase = _state(temp)
+    base = device_dir(device_name, guid)
+    if phase == "editing" and (base / RECOVERY_FILE).is_file():
+        return "kept"
+    if phase == "committing":
+        start = temp / "start"
+        try:
+            pictures = start / PICTURES
+            if pictures.is_dir():
+                for path in sorted(pictures.iterdir()):
+                    dest = base / PICTURES / path.name
+                    if not dest.is_file() or not _same_bytes(dest, path):
+                        put_picture_at(dest, path)
+            main = module_file_in(base)
+            if (start / MODULE_FILE).is_file():
+                replace(
+                    main, (start / MODULE_FILE).read_bytes(), "Button Map", force=True
+                )
+            elif main.is_file():
+                delete_path(main, "Button Map")
+        except OSError:
+            syslog.exception(f"Edit of {device_name} could not be put back")
+            return "error"
+        remove_unused_pictures(device_name, guid)
+        cancel_edit(device_name, guid, owner)
+        return "restored"
+    cancel_edit(device_name, guid, owner)
+    return "dropped"
 
 
 # --- deleting ------------------------------------------------------------------
@@ -1140,29 +1836,13 @@ def delete_path(path: Path, who: str = "") -> None:
     registry.trace("SAVE", who or "Module files", "delete", path, "removed")
 
 
-def _remove_device_leftovers(slug: str, who: str) -> str:
-    """A deleted device's picture folder, old photo files, Button Map
-    recovery copy and photo safety copies (07 Q11, GL-094). Its error, or
-    ""."""
-    try:
-        pictures = pictures_dir_of(slug)
-        if pictures.is_dir():
-            shutil.rmtree(pictures)
-            registry.trace("SAVE", who, "delete", pictures, "removed")
-        stem = _safe_stem(slug)
-        for extra in folder().glob(f"{stem}_photo.*") if stem else []:
-            if extra.is_file():
-                extra.unlink()
-                registry.trace("SAVE", who, "delete", extra, "removed")
-        recovery_path(slug).unlink(missing_ok=True)
-        stashes = folder() / "cache"
-        if stem and stashes.is_dir():
-            for stash in stashes.glob(f"photo-stash*/{stem}"):
-                if stash.is_dir():
-                    shutil.rmtree(stash)
-    except OSError as exc:
-        return str(exc)
-    return ""
+def _edit_dirs(device_name: str, guid: str) -> list[Path]:
+    """Every window's edit folder of the device."""
+    key = _key_dir(id_key(device_name, _lookup_guid(device_name, guid)))
+    cache = folder() / "cache"
+    if not cache.is_dir():
+        return []
+    return [p for p in cache.glob(f"edit*/{key}") if p.is_dir()]
 
 
 def delete(
@@ -1172,39 +1852,37 @@ def delete(
     pictures: bool = False,
     who: str = "Configure Module",
 ) -> str:
-    """Deletes the device's module file (the one it uses: a renamed stick's
-    old file) and the file choices pointing it there.
-
-    The caller keeps the Device Library's autosave first (03 S62, S91).
-    pictures: its picture folder, old photo files,
-    recovery copy and photo safety copies go too (Delete Device; Delete File
-    keeps the pictures, 03 Q14). Refused when another device uses the file.
-    The reason it was refused or failed, or "".
-    """
-    path = path_for(device_name, guid)
-    slug = path.stem
-    if other_users(slug, device_name, guid):
-        return "Another stick is using this file."
+    """Deletes the device's module file (Delete File keeps the rest of its
+    folder, 03 Q14). pictures: the whole folder goes (Delete Device, Remove
+    from Library), module.json first so History keeps it, and its edit
+    folders. The caller keeps the Device Library's autosave first (03 S62,
+    S91). The reason it failed, or ""."""
+    base = device_dir(device_name, guid)
+    path = module_file_in(base)
     if path.is_file():
         try:
             delete_path(path, who)
         except OSError as exc:
             return f"The module file could not be deleted. {exc}"
-    error = _remove_device_leftovers(slug, who) if pictures else ""
-    # No other device uses the file, so every choice left for it is this
-    # device's own or a stale one (an old id of it, 03 S94): all go.
-    data = bindings()
-    stale = [each for each, value in data.items() if plain_slug(str(value)) == slug]
-    for each in stale:
-        data.pop(each, None)
-    if stale:
-        set_bindings(data)
-    return error
+    if not pictures:
+        return ""
+    try:
+        for temp in _edit_dirs(device_name, guid):
+            shutil.rmtree(temp)
+        if base.is_dir():
+            shutil.rmtree(base)
+            registry.trace("SAVE", who, "delete", base, "removed")
+    except OSError as exc:
+        return str(exc)
+    finally:
+        _dirs_changed()
+        notify_module_files()
+    return ""
 
 
 def move_aside_path(path: Path) -> Path:
-    """Moves the module file at path aside as <name>.json.bad-<date> (kept,
-    not deleted, 03 S66) and records it in History (decision F3). Raises
+    """Moves the module file at path aside as <name>.bad-<date> (kept, not
+    deleted, 03 S66) and records it in History (decision F3). Raises
     OSError when the move failed."""
     from gremlin import history_modules
 
@@ -1223,8 +1901,8 @@ def move_aside(device_name: str, guid: str = "") -> Path | None:
     """Start Fresh: moves the device's damaged module file aside
     (move_aside_path). None when the file is not damaged; raises OSError
     when the move failed."""
-    path = path_for(device_name, guid)
-    if not module_file.damage_reason(path):
+    path = module_file(device_name, guid)
+    if not module_file_io.damage_reason(path):
         return None
     return move_aside_path(path)
 
@@ -1238,64 +1916,59 @@ def pack_file_name(device_name: str) -> str:
     return name or "device"
 
 
-# --- file choices (the binding store) -------------------------------------------
+# --- renaming a device's folder (03 S131) ----------------------------------------
 
 
-def bindings() -> dict[str, str]:
-    """Device id (or name:<slug>) -> the module file chosen for it."""
-    return registry.binding_store()
+def rename_device_dir(device_name: str, guid: str, new_shown: str) -> tuple[bool, str]:
+    """Renames the device's folder after its new shown name (an alias set
+    or cleared). Refused, with nothing changed, while a file in it is open
+    in another program. (True, "") when done or the device has no folder
+    yet; (False, reason) when refused."""
+    base = device_dir(device_name, guid)
+    if not base.is_dir():
+        return True, ""
+    shown = " ".join(str(new_shown or "").split()) or shown_name_of(device_name, guid)
+    key = dir_id(base) or id_key(device_name, _lookup_guid(device_name, guid))
+    want = unique_name(folder_name_for(shown), key, keep=base)
+    target = base.with_name(want)
+    if want != base.name:
+        try:
+            os.rename(base, target)
+        except OSError as exc:
+            reason = exc.strerror or str(exc)
+            return False, (
+                f"The folder {base.name} could not be renamed to {want}: a file "
+                f"in it is open in another program ({reason})."
+            )
+        registry.trace("SAVE", "Device names", "rename", target, "ok")
+    try:
+        held = _read_json(target / ID_FILE)
+        if held.get("name") != shown or not held.get("id"):
+            _write_id(target, str(held.get("id") or key), shown)
+    except OSError:
+        syslog.warning(f"device.json of {target} could not be written")
+    _dirs_changed()
+    notify_module_files()
+    return True, ""
 
 
-def set_bindings(data: dict[str, str]) -> None:
-    """Replaces every file choice (Undo puts a saved set back)."""
-    from gremlin.config import Configuration
-
-    registry.binding_store()  # registers the setting
-    Configuration().set(
-        "global", "internal", "module-file-bindings", json.dumps(dict(data))
-    )
-
-
-def bind(device_name: str, guid: str, slug: str) -> str:
-    """Records that the device uses module file slug (by its id and by its
-    name). The slug, or "" when there is no id to record it by."""
-    slug = plain_slug(slug)
-    key = stored_guid_key(guid) or registry.guid_for_name(device_name)
-    if not slug or not key:
-        return ""
-    data = bindings()
-    data[key] = slug
-    name_key = registry.name_key(device_name)
-    if name_key:
-        data[name_key] = slug
-    set_bindings(data)
-    return slug
-
-
-def unbind(device_name: str, guid: str = "") -> None:
-    """Forgets the device's file choice (by its id and by its name)."""
-    data = bindings()
-    key = stored_guid_key(guid) or registry.guid_for_name(device_name)
-    name_key = registry.name_key(device_name)
-    changed = False
-    for each in (key, name_key):
-        if each and each in data:
-            data.pop(each, None)
-            changed = True
-    if changed:
-        set_bindings(data)
-
-
-def unbind_file(slug: str) -> None:
-    """Forgets every choice of module file slug."""
-    data = bindings()
-    want = plain_slug(slug)
-    keys = [key for key, value in data.items() if plain_slug(value) == want]
-    if not keys:
+def sync_dir_name(device_name: str, guid: str = "") -> None:
+    """After a device scan or a names change: the device's folder takes its
+    shown name when it differs. A failure is logged and tried again at the
+    next one (no message)."""
+    base = device_dir(device_name, guid)
+    if not base.is_dir():
         return
-    for key in keys:
-        data.pop(key, None)
-    set_bindings(data)
+    shown = shown_name_of(device_name, _lookup_guid(device_name, guid))
+    key = dir_id(base) or id_key(device_name, _lookup_guid(device_name, guid))
+    if unique_name(folder_name_for(shown), key, keep=base) == base.name:
+        return
+    ok, reason = rename_device_dir(device_name, guid, shown)
+    if not ok:
+        syslog.warning(reason)
+
+
+# --- devices ---------------------------------------------------------------------
 
 
 def guid_text(value: object) -> str:
@@ -1315,73 +1988,6 @@ def live_devices() -> list:
         return devices
     except Exception:  # noqa: BLE001 - no device list yet
         return []
-
-
-def users_of(slug: str) -> set[str]:
-    """Who uses module file slug: file choice keys, and connected devices
-    whose file it is."""
-    users: set[str] = set()
-    for key, value in bindings().items():
-        if plain_slug(value) == slug:
-            users.add(key)
-    for dev in live_devices():
-        guid = stored_guid_key(getattr(dev, "device_guid", ""))
-        name = str(getattr(dev, "name", "") or "")
-        if guid and name and registry.resolve_module_slug(name, guid) == slug:
-            users.add(guid)
-    return users
-
-
-def _library_ids() -> set[str]:
-    """The ids of the devices the Device Library has a record of."""
-    try:
-        from gremlin import device_library
-
-        records = device_library._read().get("devices") or []
-    except Exception:  # noqa: BLE001 - no Library: it knows no device
-        return set()
-    ids = {
-        guid_key(stored_guid_key(rec.get("guid", "")))
-        for rec in records
-        if isinstance(rec, dict)
-    }
-    return ids - {""}
-
-
-def other_users(slug: str, device_name: str, guid: str = "") -> set[str]:
-    """The other devices that use module file slug: plugged in now, or one
-    the Device Library has as a separate device (03 S94). A choice left by
-    any other id (an old id of the same stick) is stale and doesn't count.
-    Name entries are left out: each is saved with its device's id, and a
-    renamed stick's old name entry is the stick itself."""
-    key = stored_guid_key(guid) or registry.guid_for_name(device_name)
-    own = guid_key(key)
-    users = {
-        user
-        for user in users_of(slug)
-        if not user.startswith("name:") and not (own and guid_key(user) == own)
-    }
-    if not users:
-        return users
-    known = _library_ids()
-    return {
-        user
-        for user in users
-        if _live(user) or guid_key(stored_guid_key(user)) in known
-    }
-
-
-def is_shared(device_name: str, guid: str = "") -> bool:
-    """True when another device uses the file this one uses."""
-    path = path_for(device_name, guid)
-    return path.is_file() and bool(other_users(path.stem, device_name, guid))
-
-
-def foreign_file(device_name: str, guid: str = "") -> str:
-    """The file the device uses when it isn't the one named after it (a
-    renamed stick, a chosen file); "" otherwise."""
-    used = slug_for(device_name, guid)
-    return used if used and used != own_slug(device_name) else ""
 
 
 # --- directions and the devices a pack can name ---------------------------------
@@ -1420,7 +2026,10 @@ def _twin_names() -> dict[str, str]:
     """{id key: twin name} kept for second identical sticks (02 S11-S16)."""
     try:
         from gremlin import device_initialization
+        from gremlin.config import Configuration
 
+        if not Configuration().exists(*device_initialization.TWIN_SETTING):
+            return {}  # not registered yet: no twin names kept
         stored = device_initialization.stored_twins()
     except Exception:  # noqa: BLE001 - no settings yet
         return {}
@@ -1459,10 +2068,10 @@ def known_devices() -> list[dict]:
         key = label.lower()
         if not key:
             return
-        id_key = "" if registry.is_output_name(label) else stored_guid_key(guid)
-        path = path_for(label, guid)
-        row = rows.get("id:" + id_key) if id_key else None
-        if row is None and not id_key:
+        row_id = "" if registry.is_output_name(label) else stored_guid_key(guid)
+        path = module_file(label, guid)
+        row = rows.get("id:" + row_id) if row_id else None
+        if row is None and not row_id:
             same = by_name(key)
             # A name with no id (a file only) is the device of that name;
             # with several of that name (twins) it is none of them.
@@ -1470,12 +2079,12 @@ def known_devices() -> list[dict]:
                 return
             row = same[0] if same else None
         if row is None:
-            rows["id:" + id_key if id_key else "name:" + key] = {
+            rows["id:" + row_id if row_id else "name:" + key] = {
                 "name": label,
                 "guid": guid,
                 "connected": bool(connected),
                 "hasFile": path.is_file(),
-                "fileName": path.name,
+                "fileName": path.parent.name,
             }
             return
         if guid and not row["guid"]:
@@ -1503,7 +2112,7 @@ def known_devices() -> list[dict]:
         doc = registry.read_doc(path)
         if not doc or doc.get("kind") != "control.hardware":
             continue
-        touch(str(doc.get("device") or "").strip() or path.stem, "", False)
+        touch(str(doc.get("device") or "").strip() or path.parent.name, "", False)
     twins = _twin_names()
     for row in rows.values():
         row["label"] = (
@@ -1524,23 +2133,23 @@ def match_known_device(name: str, guid: str = "") -> dict | None:
             if stored_guid_key(text) != key:
                 continue
             own = " ".join(str(getattr(dev, "name", "") or name).split())
-            path = path_for(own, text)
+            path = module_file(own, text)
             return {
                 "name": own,
                 "guid": text,
                 "connected": True,
                 "hasFile": path.is_file(),
-                "fileName": path.name,
+                "fileName": path.parent.name,
             }
         for row in known_devices():
             if stored_guid_key(row.get("guid", "")) == key:
                 return row
-        # Unplugged, its module file found by its id (a twin's shares the
-        # other twin's name, so the name would find the wrong one, 10 S41).
-        found = file_of_guid(guid)
-        if found is not None:
-            doc = registry.read_doc(found) or {}
-            own = " ".join(str(doc.get("device") or name or found.stem).split())
+        # Unplugged, its folder found by its id (a twin's shares the other
+        # twin's name, so the name would find the wrong one, 10 S41).
+        found = dir_of_id(guid)
+        if found is not None and module_file_in(found).is_file():
+            doc = registry.read_doc(module_file_in(found)) or {}
+            own = " ".join(str(doc.get("device") or name or found.name).split())
             return {
                 "name": own,
                 "guid": str(guid),
@@ -1596,27 +2205,29 @@ def archive_stamp(moment: datetime | None = None) -> str:
     )
 
 
-def unique_archive(stem: str, stamp: str = "") -> Path:
-    """A free imported/<stem>.<stamp>.json for a backup an import keeps."""
+def unique_archive(path: Path, stem: str, stamp: str = "") -> Path:
+    """A free <device folder>/imported/<stem> <stamp>.json for the previous
+    file an import keeps (03 S58, 08 S73)."""
     stamp = stamp or archive_stamp()
-    path = imported_dir() / f"{stem}.{stamp}.json"
+    base = Path(path) / IMPORTED
+    found = base / f"{stem} {stamp}.json"
     number = 2
-    while path.exists():
-        path = imported_dir() / f"{stem}.{stamp}_{number}.json"
+    while found.exists():
+        found = base / f"{stem} {stamp}_{number}.json"
         number += 1
-    return path
+    return found
 
 
 # --- Module Setup's "Import from" ------------------------------------------------
 
 
-def import_choices() -> list[str]:
-    """The files in modules/imported to import from ("imported/<name>").
-    Live module files are not listed."""
-    base = imported_dir()
-    if not base.is_dir():
-        return []
-    return [f"imported/{p.stem}" for p in sorted(base.glob("*.json")) if p.is_file()]
+def import_choices(device_name: str = "", guid: str = "") -> list[str]:
+    """The device folders to import from: every folder with a module file,
+    by name; with a device named, its own folder is left out."""
+    own = device_dir(device_name, guid) if (device_name or guid) else None
+    return [
+        path.parent.name for path in module_files() if own is None or path.parent != own
+    ]
 
 
 def _hid(node: dict) -> int | None:
@@ -1808,10 +2419,11 @@ def prepare_imported_doc(
     return payload, _left_out_text(left)
 
 
-def resolve_import_source(file_name: str) -> Path | None:
-    """The file "Import from" names: a path or file: URL, "imported/<name>",
-    or a module file's name. None when there is no such file."""
-    raw = str(file_name or "").strip()
+def resolve_import_source(folder_name: str) -> Path | None:
+    """The module file "Import from" names: a device folder's name (its
+    module.json), or a path or file: URL of a file. None when there is no
+    such file."""
+    raw = str(folder_name or "").strip()
     if not raw:
         return None
     if "://" in raw or raw.lower().startswith("file:"):
@@ -1819,25 +2431,25 @@ def resolve_import_source(file_name: str) -> Path | None:
             src = _local_path(raw)
         except Exception:  # noqa: BLE001 - not a local file
             return None
-        return src if src and Path(src).is_file() else None
+        return src if str(src) not in ("", ".") and Path(src).is_file() else None
+    if "/" not in raw and "\\" not in raw and raw.lower() not in RESERVED:
+        named = _named_dir(raw)
+        if named is not None and module_file_in(named).is_file():
+            return module_file_in(named)
     direct = Path(raw)
-    if direct.is_file():
+    if direct.is_absolute() and direct.is_file():
         return direct
-    rel = raw.replace("\\", "/")
-    if rel.lower().endswith(".json"):
-        rel = rel[:-5]
-    if rel.lower().startswith("imported/"):
-        path = imported_dir() / f"{Path(rel).name}.json"
-        return path if path.is_file() else None
-    path = path_of(plain_slug(rel))
-    return path if path.is_file() else None
+    return None
 
 
 def file_direction(doc: dict, path: Path) -> str:
-    """The direction a file to import from is taken as: a vjoy* file is an
-    output, anything else an input."""
-    del doc
-    return "dest" if Path(path).stem.lower().startswith("vjoy") else "source"
+    """The direction a file to import from is taken as: its "direction",
+    else its device or folder name (a vJoy or the program's Xbox pad is an
+    output), else an input. Every file is module.json, so its own file name
+    says nothing."""
+    path = Path(path)
+    folder_name = path.parent.name if path.name == MODULE_FILE else path.stem
+    return registry.module_direction(doc, folder_name)
 
 
 def device_input_ids(guid: str) -> tuple[list[int], list[int], list[int]]:
@@ -1916,7 +2528,7 @@ def _copied_sentence(buttons: int, axes: int, hats: int, keys: int) -> str:
 
 
 # Undo of "Import from", one per device and window (03 S59, GL-087):
-# (device key, window) -> {"dest", "previous", "bindings", "at"}.
+# (device key, window) -> {"dest", "previous", "at"}.
 _file_import_undo: dict[tuple[str, str], dict] = {}
 _undo_serial = 0
 
@@ -1957,9 +2569,9 @@ def drop_file_import_undo(
 
 
 def undo_file_import(device_name: str = "", guid: str = "", window: str = "") -> str:
-    """Puts this device's previous file back (or removes the new one) and
-    binds again the devices the import unbound (03 S59, 08 S85). The chosen
-    file is not touched. What happened, in words."""
+    """Puts this device's previous file back (or removes the new one) (03
+    S59, 08 S85). The chosen file is not touched. What happened, in
+    words."""
     key = _undo_record(device_name, guid, window)
     record = _file_import_undo.get(key) if key else None
     if not record:
@@ -1975,8 +2587,6 @@ def undo_file_import(device_name: str = "", guid: str = "", window: str = "") ->
             note = "The previous module file was put back."
     except OSError:
         return "Undo failed. The previous module file could not be put back."
-    if record.get("bindings") is not None:
-        set_bindings(record["bindings"])
     _file_import_undo.pop(key, None)  # type: ignore[arg-type]
     return "Undone. " + note
 
@@ -1988,17 +2598,19 @@ def import_file(
     direction: str = "source",
     window: str = "Configure Module",
 ) -> str:
-    """Copies a module file onto the file this device uses (03 S55, Q13: a
-    renamed stick's old file, not a new one named after it). The chosen file
-    stays where it is; the previous file is kept in imported. A damaged
-    current file is refused. What happened, in words (lines)."""
+    """Copies another device's module file (file_name: its folder's name,
+    or a file) onto this device's (03 S55). The chosen file stays where it
+    is; the picture chips it names are copied into this device's pictures
+    (no sharing, S133); the previous file is kept in this device's
+    imported/ (S58). A damaged current file is refused. What happened, in
+    words (lines)."""
     name = str(device_name or "").strip()
     if not name:
         return "That file could not be read."
     src = resolve_import_source(file_name)
     if src is None or not src.is_file():
         return "That file could not be read."
-    dest = path_for(name, guid)
+    dest = module_file(name, guid)
     try:
         if src.resolve() == dest.resolve():
             return "That file is already this device's file."
@@ -2051,13 +2663,18 @@ def import_file(
         previous_image=previous_image,
     )
     try:
+        dest = module_file_in(ensure_device_dir(name, guid))
+        chips = named_refs({"nodes": payload.get("nodes")})
+        moved = copy_pictures(src.parent, chips, dest.parent) if chips else {}
+        if moved:
+            _rename_refs(payload, moved)
         replace(dest, (json.dumps(payload, indent=2) + "\n").encode("utf-8"), window)
-    except (OSError, module_file.ModuleFileDamaged):
+    except (OSError, module_file_io.ModuleFileDamaged):
         return "The module file could not be written."
     claim = _dict(payload.get("claim"))
     friendly = _dict(claim.get("friendly"))
     lines = [
-        f"Imported into {dest.name}.",
+        f"Imported into {dest.parent.name}.",
         _copied_sentence(
             len(claim.get("buttons") or []),
             len(claim.get("axes") or []),
@@ -2077,28 +2694,18 @@ def import_file(
     lines.append("Profile wires were not changed.")
     lines.append("The chosen file was left where it was.")
     if previous_bytes is not None:
-        backup = imported_dir() / f"{dest.stem}.{archive_stamp()}.json"
+        backup = unique_archive(dest.parent, "module")
         try:
-            if backup.exists():
-                raise FileExistsError(backup)
             replace(backup, previous_bytes, window)
             lines.append("The previous file was saved as")
             lines.append(backup.name.replace("-", "‑"))
         except OSError:
             lines.append("The previous file could not be saved to imported.")
-    saved_bindings = bindings()
-    unbind_file(src.stem)
-    if dest.stem == own_slug(name):
-        unbind(name, str(guid or ""))
-    # Otherwise the device keeps its choice of the file it uses (03 Q13): a
-    # renamed stick's, or a name-only device's (Keyboard has no id to bind
-    # it again by).
     global _undo_serial
     _undo_serial += 1
     _file_import_undo[_undo_key(name, str(guid or ""), window)] = {
         "dest": str(dest),
         "previous": previous_bytes,
-        "bindings": saved_bindings,
         "at": _undo_serial,
     }
     return "\n".join(lines)

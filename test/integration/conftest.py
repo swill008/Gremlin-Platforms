@@ -123,17 +123,22 @@ def device_modules(
     module is found by its "vJoy N" name and left unbound, so the gate does not
     treat the device as an output and drop its input events.
     """
-    folder = gremlin.util.modules_dir()
-    folder.mkdir(parents=True, exist_ok=True)
+    from gremlin.modules import store
+
+    # Each in its own device folder (03 S128): <modules>/<Device>/module.json.
+    input_guid = stored_guid_key(vjoy_di_device.device_guid)
+    output_name = f"vJoy {vjoy_control_device_id}"
     files = {
-        folder / "integration_test_input.json": {
+        store.module_file_in(
+            store.ensure_device_dir("Integration Test Input", input_guid)
+        ): {
             "device": "Integration Test Input",
             "direction": "source",
-            "boundGuidLocal": stored_guid_key(vjoy_di_device.device_guid),
+            "boundGuidLocal": input_guid,
             "claim": _claim_everything(),
         },
-        folder / f"vjoy_{vjoy_control_device_id}.json": {
-            "device": f"vJoy {vjoy_control_device_id}",
+        store.module_file_in(store.ensure_device_dir(output_name)): {
+            "device": output_name,
             "direction": "dest",
             "claim": _claim_everything(),
         },
@@ -142,7 +147,7 @@ def device_modules(
         path.write_text(json.dumps(doc), encoding="utf-8")
     yield
     for path in files:
-        path.unlink(missing_ok=True)
+        shutil.rmtree(path.parent, ignore_errors=True)
 
 
 # +-------------------------------------------------------------------------

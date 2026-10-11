@@ -45,7 +45,7 @@ def _rows(model: Any) -> list[dict]:  # noqa: ANN401
 def story(j: Journey) -> None:
     import json
 
-    from gremlin import deferred_write, history, util
+    from gremlin import deferred_write, history
     from gremlin.config import Configuration
     from gremlin.types import InputType
     from gremlin.ui.history_model import HistoryModel
@@ -54,7 +54,9 @@ def story(j: Journey) -> None:
     out = j.out
     stick = j.stick()
     uid = stick.device_guid.uuid
-    module_path = util.modules_dir() / "pjoy_pro.json"
+    from gremlin.modules import store
+
+    module_path = store.module_file("pJoy Pro", str(stick.device_guid))
 
     def vjoy_target() -> int:
         item = j.profile.get_input_item(

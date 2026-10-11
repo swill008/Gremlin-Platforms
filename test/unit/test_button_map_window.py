@@ -51,8 +51,14 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
     # Every print and export is in Print & Export, the File menu's one
     # entry (Export Modes is gone altogether).
     assert "Print & Export…" in with_device
-    for gone in ("Export PDF…", "Export PNG…", "Export JPG…", "Print…",
-                 "Export Modes…", "Light Page for Exports"):
+    for gone in (
+        "Export PDF…",
+        "Export PNG…",
+        "Export JPG…",
+        "Print…",
+        "Export Modes…",
+        "Light Page for Exports",
+    ):
         assert gone not in with_device
     assert all(
         not (a == "---" and b == "---") for a, b in zip(with_device, with_device[1:])
@@ -75,7 +81,8 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
     assert results["save-while-typing"] == "['typed']"
     assert results["clean-after-save"] == "false"
     assert results["cancel-save"] == "false True"
-    assert results["photo-dirty"] == "true"
+    # ("photo-dirty" retired with the photo stash: a new photo waits in the
+    # edit's temporary folder under its own name, 07 S107.)
     assert results["group-drawings"] == "false"
     assert results["crash-photo"] == "true false"
     # A typed hex sets the colour, and the field shows it in full (BM17).

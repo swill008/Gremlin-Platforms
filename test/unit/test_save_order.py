@@ -21,10 +21,11 @@ from types import SimpleNamespace
 import pytest
 
 from gremlin import history_profile, osc_device_file, shared_state
-from gremlin.modules import module_file, store
+from gremlin.modules import store
 from gremlin.profile import Profile, SaveIncomplete
 from gremlin.signal import signal
 from gremlin.ui.backend import Backend
+from test.unit._device_folders import put_module
 
 GUID = "{11111111-2222-3333-4444-555555555556}"
 LAYOUT = {"groups": ["Weapons"], "order": ["button:2", "button:1"], "group_of": {}}
@@ -35,9 +36,9 @@ def device(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
-    path = folder / "save_order_stick.json"
-    module_file.write_json(
-        path,
+    path = put_module(
+        folder,
+        "Save Order Stick",
         {
             "kind": "control.hardware",
             "device": "Save Order Stick",
@@ -45,6 +46,7 @@ def device(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
             "claim": {"buttons": [1, 2]},
             "nodes": [],
         },
+        GUID,
     )
     monkeypatch.setattr(
         store, "_layout_path", lambda guid, name="": path if guid == GUID else None
@@ -164,7 +166,7 @@ def test_save_as_with_a_failed_osc_write_moves_to_the_new_path(
     assert history == [new]
     # One message naming the file that failed.
     assert len(heard) == 1
-    assert "osc.json" in heard[0][1]
+    assert "OSC's file" in heard[0][1]
     assert Backend.klass.saveProblem(fake) == heard[0][1]  # type: ignore[attr-defined]
 
 

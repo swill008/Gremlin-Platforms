@@ -585,14 +585,18 @@ function _pathSections() {
 
 function _imageSections() {
     var n = nodeAt(selectedId)
+    var items = []
+    // A picture whose file is missing is pointed at a new one (07 S108).
+    if (n && n.src && !n.srcUrl)
+        items.push(_act("Choose Picture…", function() { choosePictureRequested(n.id) }, !isLocked(n)))
     return [
-        _sect("image", "Picture", [
+        _sect("image", "Picture", items.concat([
             _tog("Crop", cropId === selectedId, toggleCrop, !isLocked(n)),
             _act("Reset Crop", resetCrop, !!(n && n.crop) && !isLocked(n)),
             _act(plantSnap ? "Click the picture to place a snap point…" : "Add snap point", beginPlantSnap),
             _act("Clear Snap Points", clearSockets, !!(n && n.sockets && n.sockets.length)),
             _opacity("opacity")
-        ]),
+        ])),
         _transform(),
         _rotate(),
         _arrange()

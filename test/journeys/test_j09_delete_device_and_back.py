@@ -62,8 +62,9 @@ def story(j: Journey) -> None:
     pjoy = j.stick("pJoy Pro")
     x52 = j.stick("Saitek X52").device_guid.uuid
     uid = pjoy.device_guid.uuid
-    modules = util.modules_dir()
-    module_path = modules / "pjoy_pro.json"
+    from gremlin.modules import store
+
+    module_path = store.module_file("pJoy Pro", str(pjoy.device_guid))
     j.profile.modes.add_mode("Combat")
     j.profile.modes.set_parent("Combat", "Default")
     j.map_button(uid, 1, "Default", 1)

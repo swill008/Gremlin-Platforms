@@ -95,10 +95,10 @@ def _child() -> None:
 
     # The Logical Device's module file: two controls and a picture.
     ld_guid = "{" + str(ids.LOGICAL_DEVICE).upper() + "}"
-    slug = logical_device_file.SLUG
+    ld_id = str(ids.LOGICAL_DEVICE)
+    store.ensure_device_dir("Logical Device", ld_id)
     path = logical_device_file.path()
     result("modules", str(path.parent))
-    path.parent.mkdir(parents=True, exist_ok=True)
 
     def control(n: int, label: str) -> dict:
         return {
@@ -130,9 +130,11 @@ def _child() -> None:
     def set_photo(data: bytes) -> None:
         # As the card's Add / Change Image does: photo.png through the store
         # and the module file's "image".
-        store.remove_picture_files(store.photo_files(slug))
-        store.put_picture_at(store.pictures_dir_of(slug) / "photo.png", data)
-        ref = store.picture_ref(slug, "photo.png")
+        store.remove_picture_files(store.photo_files("Logical Device", ld_id))
+        store.put_picture_at(
+            store.pictures_dir("Logical Device", ld_id) / "photo.png", data
+        )
+        ref = store.picture_ref("photo.png")
 
         def change(doc: dict) -> None:
             doc["image"] = ref
@@ -153,7 +155,7 @@ def _child() -> None:
         return [str(c.get("label")) for c in LogicalDevice().to_dict()["controls"]]
 
     def photo_bytes() -> str:
-        found = store.photo_files(slug)
+        found = store.photo_files("Logical Device", ld_id)
         if not found:
             return ""
         return "saved" if found[0].read_bytes() == _PNG_SAVED else "other"
@@ -331,6 +333,7 @@ def _child() -> None:
 
 def _run(tmp_path: Path) -> dict[str, object]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+
     profile = tmp_path / "profile"
     profile.mkdir()
     proc = proc_tree.run(

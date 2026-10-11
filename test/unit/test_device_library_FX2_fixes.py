@@ -67,7 +67,6 @@ from test.unit.test_twin_devices import (  # noqa: F401 - the fixtures
     _twin_guid,
     twins,
 )
-from test.unit.test_twin_devices import _module as _twin_module
 
 
 def _real(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> None:
@@ -159,7 +158,10 @@ def test_a_swap_with_every_profile_failing_puts_the_module_files_back(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _real(monkeypatch, tmp_path)
-    files = (store.path_of("left").read_bytes(), store.path_of("right").read_bytes())
+    files = (
+        store.module_file(*LEFT).read_bytes(),
+        store.module_file(*RIGHT).read_bytes(),
+    )
     bad = tmp_path / "bad.xml"
     shutil.copyfile(xml_dir / "profile_auto_mapper.xml", bad)
     _unwritable(monkeypatch, bad)
@@ -168,8 +170,8 @@ def test_a_swap_with_every_profile_failing_puts_the_module_files_back(
     assert result["error"]
     assert any("bad.xml" in w for w in result["warnings"]), result
     assert (
-        store.path_of("left").read_bytes(),
-        store.path_of("right").read_bytes(),
+        store.module_file(*LEFT).read_bytes(),
+        store.module_file(*RIGHT).read_bytes(),
     ) == files
     # Nothing changed, so nothing to undo.
     assert library.last_change() is None
@@ -238,6 +240,15 @@ def test_copy_and_output_words_use_the_home_name(
 # --- Item 2: Undo on an unplugged twin (S41) ---
 
 
+def _shared_name_file(guid: str) -> None:
+    """The twin's module.json names the shared "pJoy Pro", as a twin's
+    file made alone does; it stays in the twin's own folder (by its id)."""
+    path = store.module_file_in(store.dir_of_id(guid))
+    doc = json.loads(path.read_text("utf-8"))
+    doc["device"] = "pJoy Pro"
+    path.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+
+
 def _unplug_twin(twins: list) -> None:
     gone = _twin_guid()
     twins[:] = [
@@ -255,7 +266,7 @@ def test_apply_zip_onto_an_unplugged_twin_writes_its_own_file(
 ) -> None:
     second = _second_twin()
     # Its file has the shared name, as a twin's file made alone has.
-    _twin_module("pjoy_pro_2", "pJoy Pro", second, [7])
+    _shared_name_file(second)
     _unplug_twin(twins)
     first = _own_path(lib["name"]).read_bytes()
     result = device_pack.apply_zip(
@@ -266,7 +277,7 @@ def test_apply_zip_onto_an_unplugged_twin_writes_its_own_file(
         target_guid=second,
     )
     assert result["ok"], result
-    assert _twin_doc("pjoy_pro_2")["view"] == {"rowHeight": 40}
+    assert _twin_doc(second)["view"] == {"rowHeight": 40}
     assert _own_path(lib["name"]).read_bytes() == first
 
 
@@ -275,21 +286,21 @@ def test_undo_on_an_unplugged_twin_never_writes_the_other_twin(
 ) -> None:
     _real_library(lib, monkeypatch)
     second = _second_twin()
-    _twin_module("pjoy_pro_2", "pJoy Pro", second, [7])
-    twin_before = (store.path_of("pjoy_pro_2")).read_bytes()
+    _shared_name_file(second)
+    twin_before = store.module_file_in(store.dir_of_id(second)).read_bytes()
     imported = library.import_pack(lib["pack"])
     assert imported["ok"], imported
     done = library_copy.copy(
         imported["setup"]["key"], "pJoy Pro (2)", second, ["appearance"], [], []
     )
     assert done["ok"], done
-    assert _twin_doc("pjoy_pro_2")["view"] == {"rowHeight": 40}
+    assert _twin_doc(second)["view"] == {"rowHeight": 40}
     _unplug_twin(twins)
     first = _own_path(lib["name"]).read_bytes()
     undone = library_copy.undo_last()
     assert undone["ok"], undone
     assert _own_path(lib["name"]).read_bytes() == first
-    assert store.path_of("pjoy_pro_2").read_bytes() == twin_before
+    assert store.module_file_in(store.dir_of_id(second)).read_bytes() == twin_before
 
 
 # --- Item 10: a twin's pack lands under that twin (S35) ---

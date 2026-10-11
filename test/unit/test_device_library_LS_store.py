@@ -20,9 +20,10 @@ import pytest
 
 from gremlin import device_library as library
 from gremlin import plugin_manager, shared_state
-from gremlin.modules import module_file, registry, store
+from gremlin.modules import module_file, store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
+from test.unit._device_folders import put_module
 
 GUID = "{6C3D1E20-1111-2222-3333-444455556666}"
 UID = uuid.UUID(GUID.strip("{}"))
@@ -70,7 +71,7 @@ def lib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[dict]:
 
 
 def _module(modules: Path, name: str = NAME, guid: str = GUID) -> Path:
-    path = modules / f"{registry.plain_slug(name)}.json"
+    """The device's module.json in its own folder (03 S128)."""
     doc = {
         "kind": "control.hardware",
         "device": name,
@@ -79,8 +80,7 @@ def _module(modules: Path, name: str = NAME, guid: str = GUID) -> Path:
         "calibration": {"1": [0, 100, 200, 300]},
         "nodes": [{"kind": "chip", "id": "b1"}],
     }
-    module_file.write_bytes(path, json.dumps(doc).encode("utf-8"))
-    return path
+    return put_module(modules, name, doc, guid)
 
 
 def _saved_profile(tmp: Path, vjoy: int = 1, buttons: int = 3) -> Path:
@@ -175,8 +175,11 @@ def test_save_setup_keeps_the_module_file_and_a_saved_profiles_bindings(
     assert setup["profiles"][0]["modes"] == ["Default"]
     assert setup["profiles"][0]["actions"] == 3
     assert setup["vjoys"] == {"2": 3}
+    # A new saved setup is a device folder zip (.gmap, S60).
+    assert Path(setup["pack"]).suffix == ".gmap"
     with zipfile.ZipFile(setup["pack"]) as zf:
-        assert "map.json" in zf.namelist() and "wires.json" in zf.namelist()
+        names = zf.namelist()
+    assert library.GMAP_JSON in names and library.GMAP_WIRES in names
     assert library.pack_path(setup["key"]) == Path(setup["pack"])
 
 
@@ -213,7 +216,7 @@ def test_the_limit_keeps_the_newest_autosaves_and_never_the_users_own(
     assert [s["key"] for s in autos] == list(reversed(keys))[:10]
     assert own["key"] in [s["key"] for s in setups]
     # The removed autosaves' packs are gone from the folder too.
-    packs = list(lib["folder"].rglob("*.zip"))
+    packs = list(lib["folder"].rglob("*.gmap"))
     assert len(packs) == 11
 
 
@@ -242,7 +245,7 @@ def test_a_failed_write_refuses_the_autosave(
     real = module_file.write_bytes
 
     def failing(path: Path, data: bytes) -> None:
-        if Path(path).suffix == ".zip":
+        if Path(path).suffix == ".gmap":
             raise OSError(28, "No space left on device")
         real(path, data)
 
@@ -251,7 +254,7 @@ def test_a_failed_write_refuses_the_autosave(
     assert not out["ok"]
     assert out["error"].startswith("The autosave could not be kept")
     assert _row()["setups"] == []
-    assert list(lib["folder"].rglob("*.zip")) == []
+    assert list(lib["folder"].rglob("*.gmap")) == []
 
 
 def test_a_pack_that_cant_be_read_back_refuses_the_autosave(
@@ -267,7 +270,7 @@ def test_a_pack_that_cant_be_read_back_refuses_the_autosave(
     out = library.autosave(NAME, GUID, "copy", "Autosave: before Copy from X", [])
     assert not out["ok"] and "read back" in out["error"]
     assert _row()["setups"] == []
-    assert list(lib["folder"].rglob("*.zip")) == []
+    assert list(lib["folder"].rglob("*.gmap")) == []
 
 
 def test_a_damaged_module_file_is_autosaved_as_it_is(lib: dict) -> None:
@@ -286,11 +289,12 @@ def test_a_damaged_module_file_is_autosaved_as_it_is(lib: dict) -> None:
     assert library.PART_LABELS["setup_damaged"] == "Setup (damaged file, kept as is)"
     assert setup["vjoys"] == {"1": 2}
     with zipfile.ZipFile(setup["pack"]) as zf:
-        assert zf.read(library.DAMAGED_ENTRY + path.name) == raw
-        doc = json.loads(zf.read("map.json"))
-    # The pack's own map holds nothing from the damaged file: an import or
-    # a Copy from it can only bring the bindings.
-    assert "claim" not in doc and doc["damaged"]["file"] == path.name
+        # A .gmap keeps the damaged file's bytes as its module.json.
+        assert zf.read(library.GMAP_MODULE) == raw
+        head = json.loads(zf.read(library.GMAP_JSON))
+    # gmap.json says it is damaged, so an import or a Copy from it never
+    # reads it as a module file and can only bring the bindings.
+    assert head["damaged"]
     assert path.read_bytes() == raw  # the stick's file itself is untouched
 
 
@@ -312,7 +316,7 @@ def test_a_damaged_file_that_doesnt_read_back_refuses_the_autosave(
     real = library.module_file.write_bytes
 
     def changed(dest: Path, data: bytes) -> None:
-        if Path(dest).suffix == ".zip":
+        if Path(dest).suffix == ".gmap":
             blob = io.BytesIO()
             with (
                 zipfile.ZipFile(io.BytesIO(data)) as src,
@@ -320,7 +324,7 @@ def test_a_damaged_file_that_doesnt_read_back_refuses_the_autosave(
             ):
                 for name in src.namelist():
                     body = src.read(name)
-                    if name.startswith(library.DAMAGED_ENTRY):
+                    if name == library.GMAP_MODULE:
                         body = b"something else"
                     out_zip.writestr(name, body)
             data = blob.getvalue()
@@ -329,7 +333,7 @@ def test_a_damaged_file_that_doesnt_read_back_refuses_the_autosave(
     monkeypatch.setattr(library.module_file, "write_bytes", changed)
     out = library.autosave(NAME, GUID, "deleted", "Autosave: stick deleted", [])
     assert not out["ok"] and "read back" in out["error"]
-    assert list(lib["folder"].rglob("*.zip")) == []
+    assert list(lib["folder"].rglob("*.gmap")) == []
 
 
 def test_saving_a_damaged_file_as_the_users_own_is_still_refused(lib: dict) -> None:
@@ -397,7 +401,7 @@ def test_delete_keeps_a_set_up_device_and_removes_its_setups(lib: dict) -> None:
     assert out["ok"] and out["notes"]
     assert library.device(key) is not None
     assert _by_key(key)["setups"] == []
-    assert list(lib["folder"].rglob("*.zip")) == []
+    assert list(lib["folder"].rglob("*.gmap")) == []
 
 
 def test_delete_removes_a_deleted_device_and_a_single_setup(lib: dict) -> None:
@@ -483,10 +487,11 @@ def test_export_writes_the_pack_and_refuses_the_modules_folder(lib: dict) -> Non
     key = library.save_setup(NAME, GUID, [])["keys"][0]
     out = library.export_setup(key, lib["tmp"] / "share" / "mine")
     assert out["ok"], out
-    assert (lib["tmp"] / "share" / "mine.zip").is_file()
-    assert not library.export_setup(key, lib["modules"] / "x.zip")["ok"]
+    # A device folder zip is exported as .gmap (S60).
+    assert (lib["tmp"] / "share" / "mine.gmap").is_file()
+    assert not library.export_setup(key, lib["modules"] / "x.gmap")["ok"]
     history = [line["text"] for line in _row()["setups"][0]["history"]]
-    assert "Exported to mine.zip" in history
+    assert "Exported to mine.gmap" in history
 
 
 # --- search, tidy, size, settings, last change ----------------------------------------

@@ -38,6 +38,41 @@ def _pjoy_guid() -> str:
 
 
 @pytest.fixture
+def pjoy_folder_cleared(tmp_path: Path) -> Iterator[None]:
+    """pJoy Pro's device folders earlier tests left (Module Setup saves make
+    them) are put aside, so a test's own folder is its only one with that
+    id, and put back afterwards; folders the test made are removed."""
+    import shutil
+
+    from gremlin.modules import store
+
+    folder = store.folder()
+    before = {p.name for p in folder.iterdir()} if folder.is_dir() else set()
+    aside = tmp_path / "aside"
+    aside.mkdir()
+    for key, path in store.device_dirs().items():
+        if key == _pjoy_key() or path.name.casefold() == "pjoy pro":
+            shutil.move(str(path), str(aside / path.name))
+    store._dirs_changed()
+    try:
+        yield
+    finally:
+        for path in list(folder.iterdir()) if folder.is_dir() else []:
+            if path.name not in before and path.is_dir():
+                shutil.rmtree(path, ignore_errors=True)
+        for path in aside.iterdir():
+            if not (folder / path.name).exists():
+                shutil.move(str(path), str(folder / path.name))
+        store._dirs_changed()
+
+
+def _pjoy_key() -> str:
+    from gremlin.modules.ids import guid_key
+
+    return guid_key(_pjoy_guid())
+
+
+@pytest.fixture
 def setup() -> Iterator[Any]:
     from gremlin.ui.module_model import DriverInputModel
 
@@ -81,26 +116,33 @@ def test_an_unplugged_xbox_pad_is_not_the_xbox_output(setup: Any) -> None:  # no
     assert not any(r.get("label") == "LB" for r in setup._rows)
 
 
-def test_save_writes_to_the_bound_file(
-    setup: Any, monkeypatch: pytest.MonkeyPatch  # noqa: ANN401
-) -> None:
+@pytest.mark.usefixtures("pjoy_folder_cleared")
+def test_save_writes_to_the_bound_file(setup: Any) -> None:  # noqa: ANN401
+    # The stick's folder is found by its id (03 S130), whatever its name.
+    import shutil
+
     from gremlin.modules import store
+    from gremlin.modules.ids import stored_guid_key
 
     guid = _pjoy_guid()
-    monkeypatch.setattr(store, "slug_for", lambda name, guid="": "renamed_stick")
-    from gremlin.ui.hardware_profile import _clear_device_binding
-
-    setup.loadDevice(guid, "pJoy Pro")
-    setup.setClaimed(0, True)
-    folder = store.folder()
+    own = store.folder() / "Renamed Stick"
+    own.mkdir(parents=True)
+    (own / "device.json").write_text(
+        json.dumps({"format": 1, "id": stored_guid_key(guid), "name": "Renamed Stick"}),
+        encoding="utf-8",
+    )
+    store._dirs_changed()
     try:
+        setup.loadDevice(guid, "pJoy Pro")
+        setup.setClaimed(0, True)
         assert setup.saveClaim("pJoy Pro", "source")
-        assert (folder / "renamed_stick.json").is_file()
+        assert (own / "module.json").is_file()
     finally:
-        (folder / "renamed_stick.json").unlink(missing_ok=True)
-        _clear_device_binding("pJoy Pro", guid)
+        shutil.rmtree(own, ignore_errors=True)
+        store._dirs_changed()
 
 
+@pytest.mark.usefixtures("pjoy_folder_cleared")
 def test_an_input_module_stays_an_input_module(setup: Any) -> None:  # noqa: ANN401
     from gremlin.modules import store
 
@@ -109,7 +151,7 @@ def test_an_input_module_stays_an_input_module(setup: Any) -> None:  # noqa: ANN
     setup.setClaimed(0, True)
     assert setup.saveClaim("pJoy Pro", "source")
     assert setup.saveClaim("pJoy Pro", "dest")  # the Output menu on an input
-    path = store.path_for("pJoy Pro", guid)
+    path = store.module_file("pJoy Pro", guid)
     try:
         assert json.loads(path.read_text(encoding="utf-8"))["direction"] == "source"
     finally:
@@ -127,8 +169,13 @@ def test_calibration_with_low_above_high_is_not_used() -> None:
 def _module(slug: str, guid: str, buttons: list[int]) -> registry.Module:
     doc = {"claim": {"buttons": buttons}}
     return registry.Module(
-        slug=slug, path=Path(f"{slug}.json"), doc=doc, name="pJoy Pro",
-        bound_guid=guid, bound_name="pJoy Pro", direction="source",
+        slug=slug,
+        path=Path(f"{slug}.json"),
+        doc=doc,
+        name="pJoy Pro",
+        bound_guid=guid,
+        bound_name="pJoy Pro",
+        direction="source",
         claim=claim.read_claim(doc),
     )
 
@@ -155,16 +202,24 @@ def test_runtime_uses_the_module_setup_file_for_a_stick(
         gate.reload()
 
 
+@pytest.mark.usefixtures("pjoy_folder_cleared")
 def test_a_stick_marked_as_an_output_is_repaired_by_saving(setup: Any) -> None:  # noqa: ANN401
     # The old Output menu bug left input sticks' files marked "dest".
     from gremlin.modules import store
 
     guid = _pjoy_guid()
-    path = store.path_for("pJoy Pro", guid)
-    path.write_text(json.dumps({
-        "device": "pJoy Pro", "direction": "dest", "boundGuidLocal": guid,
-        "claim": {"buttons": [1], "axes": [], "hats": []},
-    }), encoding="utf-8")
+    path = store.ensure_device_dir("pJoy Pro", guid) / "module.json"
+    path.write_text(
+        json.dumps(
+            {
+                "device": "pJoy Pro",
+                "direction": "dest",
+                "boundGuidLocal": guid,
+                "claim": {"buttons": [1], "axes": [], "hats": []},
+            }
+        ),
+        encoding="utf-8",
+    )
     try:
         setup.loadDevice(guid, "pJoy Pro")
         assert setup.saveClaim("pJoy Pro", "source")
@@ -173,34 +228,59 @@ def test_a_stick_marked_as_an_output_is_repaired_by_saving(setup: Any) -> None: 
         path.unlink(missing_ok=True)
 
 
-def test_module_setup_run_and_calibration_use_the_same_file() -> None:
-    # A stick with an old file bound to it and a file of its own name: Module
-    # Setup used one, Run and Calibration the other (ticks did nothing).
+def test_module_setup_run_and_calibration_use_the_same_file(tmp_path: Path) -> None:
+    # A stick with a folder holding its id and a folder of its own name:
+    # Module Setup used one, Run and Calibration the other (ticks did
+    # nothing).
+    import shutil
+
     from gremlin.modules import calibration, runtime, store
-    from gremlin.modules.ids import guid_key
+    from gremlin.modules.ids import guid_key, stored_guid_key
 
     guid = _pjoy_guid()
     folder = store.folder()
     files = {
-        "old_name": ("Old Name", guid, [1, 2, 3]),
-        "pjoy_pro": ("pJoy Pro", "", [9]),
+        "Old Name": (stored_guid_key(guid), guid, [1, 2, 3]),
+        "pJoy Pro": ("", "", [9]),
     }
-    for slug, (name, bound, buttons) in files.items():
-        (folder / f"{slug}.json").write_text(json.dumps({
-            "device": name, "direction": "source", "boundGuidLocal": bound,
-            "claim": {"buttons": buttons, "axes": [1], "hats": [], "keys": []},
-        }), encoding="utf-8")
+    aside = tmp_path / "aside"
+    aside.mkdir()
+    for name in files:  # folders earlier tests left are put back afterwards
+        if (folder / name).exists():
+            shutil.move(str(folder / name), str(aside / name))
+    for name, (ident, bound, buttons) in files.items():
+        (folder / name).mkdir(parents=True)
+        if ident:
+            (folder / name / "device.json").write_text(
+                json.dumps({"format": 1, "id": ident, "name": name}),
+                encoding="utf-8",
+            )
+        (folder / name / "module.json").write_text(
+            json.dumps(
+                {
+                    "device": name,
+                    "direction": "source",
+                    "boundGuidLocal": bound,
+                    "claim": {"buttons": buttons, "axes": [1], "hats": [], "keys": []},
+                }
+            ),
+            encoding="utf-8",
+        )
+    store._dirs_changed()
     try:
-        setup = store.slug_for("pJoy Pro", guid)
+        setup = store.device_dir("pJoy Pro", guid).name
+        assert setup == "Old Name"
         gate = runtime.InputModuleRuntime()
         gate.reload()
         assert gate._claims[guid_key(guid)]["buttons"] == files[setup][2]
         rows = {guid_key(r["guid"]): r["slug"] for r in calibration._source_modules()}
         assert rows[guid_key(guid)] == setup
     finally:
-        for slug in files:
-            (folder / f"{slug}.json").unlink(missing_ok=True)
-
+        for name in files:
+            shutil.rmtree(folder / name, ignore_errors=True)
+        for kept in aside.iterdir():
+            shutil.move(str(kept), str(folder / kept.name))
+        store._dirs_changed()
 
 
 def test_calibration_window_picks_the_second_stick_on_a_shared_file(
@@ -219,8 +299,14 @@ def test_calibration_window_picks_the_second_stick_on_a_shared_file(
     path.write_text(json.dumps({"device": "Stick"}), encoding="utf-8")
     one, two = uuid.uuid4(), uuid.uuid4()
     module = registry.Module(
-        slug="stick", path=path, doc={}, name="Stick", bound_guid=str(one),
-        bound_name="Stick A", direction="source", claim={},
+        slug="stick",
+        path=path,
+        doc={},
+        name="Stick",
+        bound_guid=str(one),
+        bound_name="Stick A",
+        direction="source",
+        claim={},
     )
     devices = [
         types.SimpleNamespace(name="Stick A", device_guid=one),
@@ -236,8 +322,9 @@ def test_calibration_window_picks_the_second_stick_on_a_shared_file(
         roles = {bytes(v).decode(): k for k, v in model.roleNames().items()}
         assert "key" in roles
         entries = {
-            model.data(model.index(i, 0), roles["name"]):
-                model.data(model.index(i, 0), roles["key"])
+            model.data(model.index(i, 0), roles["name"]): model.data(
+                model.index(i, 0), roles["key"]
+            )
             for i in range(model.rowCount())
         }
         assert set(entries) == {"Stick A", "Stick B"}
@@ -254,5 +341,5 @@ def test_calibration_window_picks_the_second_stick_on_a_shared_file(
     finally:
         model.deleteLater()
     # The window's drop-down picks rows by that key.
-    qml = (Path(__file__).resolve().parents[2] / "qml" / "DialogCalibration.qml")
+    qml = Path(__file__).resolve().parents[2] / "qml" / "DialogCalibration.qml"
     assert 'valueRole: "key"' in qml.read_text(encoding="utf-8")

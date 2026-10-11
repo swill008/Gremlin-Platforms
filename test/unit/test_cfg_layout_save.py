@@ -19,9 +19,10 @@ from typing import Any
 import pytest
 
 from gremlin import history_modules, shared_state
-from gremlin.modules import module_file, store
+from gremlin.modules import store
 from gremlin.profile import Profile
 from gremlin.ui.backend import Backend
+from test.unit._device_folders import put_module
 
 GUID = "{11111111-2222-3333-4444-555555555555}"
 NAME = "Test Stick"
@@ -38,9 +39,9 @@ def device(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
-    path = folder / "test_stick.json"
-    module_file.write_json(
-        path,
+    path = put_module(
+        folder,
+        NAME,
         {
             "kind": "control.hardware",
             "device": NAME,
@@ -48,10 +49,9 @@ def device(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
             "claim": {"buttons": [1, 2], "friendly": {"button:1": "Fire"}},
             "nodes": [],
         },
+        GUID,
     )
-    monkeypatch.setattr(
-        store, "_layout_path", lambda guid, name="": path if guid == GUID else None
-    )
+    assert store.dir_of_id(GUID) == path.parent
     store.discard_pending()
     yield path
     store.discard_pending()
@@ -64,7 +64,9 @@ def writes(monkeypatch: pytest.MonkeyPatch, device: Path) -> list[str]:
     monkeypatch.setattr(
         history_modules,
         "note_write",
-        lambda path, text, old=None: got.append(Path(path).name),
+        lambda path, text, old=None: got.append(
+            f"{Path(path).parent.name}/{Path(path).name}"
+        ),
     )
     return got
 
@@ -103,7 +105,7 @@ def test_a_group_change_waits_for_save_and_saves_once(
     assert shown.looks_unsaved()
     # File > Save Profile writes it, once.
     shown.to_xml(fpath)
-    assert writes == ["test_stick.json"]
+    assert writes == ["Test Stick/module.json"]
     assert _doc(device)["layout"] == LAYOUT
     assert not store.has_pending()
     assert not shown.has_unsaved_changes()
@@ -122,7 +124,7 @@ def test_names_follow_the_same_rule_and_share_the_one_write(
     assert shown.looks_unsaved()
     shown.to_xml(fpath)
     # Layout and both names: one write, one History entry.
-    assert writes == ["test_stick.json"]
+    assert writes == ["Test Stick/module.json"]
     doc = _doc(device)
     assert doc["claim"]["friendly"] == {"button:2": "Pinkie"}
     assert doc["layout"] == LAYOUT

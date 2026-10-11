@@ -47,8 +47,14 @@ def cfg(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> config.Configuration
 
 def _register_folder(cfg: config.Configuration, key: str) -> None:
     cfg.register(
-        "global", "files", key, PropertyType.Path, Path("C:/x"), "",
-        {"is_folder": True}, True,
+        "global",
+        "files",
+        key,
+        PropertyType.Path,
+        Path("C:/x"),
+        "",
+        {"is_folder": True},
+        True,
     )
 
 
@@ -59,9 +65,10 @@ def test_history_folder_shows_with_the_other_folders(cfg: config.Configuration) 
     folders = [key for _g, keys in layout["Folders"] for key in keys]
     history_key = ("global", "files", "history-folder")
     assert history_key in folders
-    assert folders.index(history_key) == folders.index(
-        ("global", "files", "logs-folder")
-    ) + 1
+    assert (
+        folders.index(history_key)
+        == folders.index(("global", "files", "logs-folder")) + 1
+    )
     # No folder (nor any other "global" setting) lands under General > Other.
     other = dict(layout["General"]).get("Other", [])
     assert not [key for key in other if key[1] == "files"]
@@ -131,20 +138,31 @@ def test_card_order_keeps_an_unplugged_stick_in_its_place() -> None:
     assert module_model._merged_order(saved, ["throttle", "pedals", "vjoy1"]) == saved
     # A card moved while the stick is away; the stick keeps its slot.
     assert module_model._merged_order(saved, ["pedals", "throttle", "vjoy1"]) == [
-        "pedals", "stick", "throttle", "vjoy1"
+        "pedals",
+        "stick",
+        "throttle",
+        "vjoy1",
     ]
     # A new card goes last.
     showing = ["throttle", "pedals", "vjoy1", "new"]
     assert module_model._merged_order(saved, showing) == [
-        "throttle", "stick", "pedals", "vjoy1", "new"
+        "throttle",
+        "stick",
+        "pedals",
+        "vjoy1",
+        "new",
     ]
 
 
 def _fake_stick(name: str, number: int) -> SimpleNamespace:
     return SimpleNamespace(
-        name=name, device_guid=f"{{0000000{number}-0000-0000-0000-000000000000}}",
-        vendor_id=number, product_id=number,
-        button_count=4, axis_count=2, hat_count=0,
+        name=name,
+        device_guid=f"{{0000000{number}-0000-0000-0000-000000000000}}",
+        vendor_id=number,
+        product_id=number,
+        button_count=4,
+        axis_count=2,
+        hat_count=0,
     )
 
 

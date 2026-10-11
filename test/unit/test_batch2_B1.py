@@ -247,7 +247,7 @@ def test_settings_registered_later_are_registered_before_the_purge(
     cfg: gremlin.config.Configuration,
 ) -> None:
     import joystick_gremlin
-    from gremlin.modules import registry
+    from gremlin.modules import folders_move
     from gremlin.ui import (
         button_map_options,
         device_names,
@@ -270,7 +270,7 @@ def test_settings_registered_later_are_registered_before_the_purge(
     update_model._register(cfg)
     highlight_option.ensure_registered()
     device_names._ensure()
-    registry._binding_store()
+    folders_move.register_setting()  # ONE-TIME (tracker OT-1)
     window_placement._ensure()
     hidhide._ensure_options()
     vjoy_status.register_options()

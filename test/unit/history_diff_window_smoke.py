@@ -40,8 +40,8 @@ um.UpdateModel.startup = lambda self, *a, **k: None
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
 
 import joystick_gremlin  # noqa: E402
-from gremlin import history, util  # noqa: E402
-from gremlin.modules import module_file  # noqa: E402
+from gremlin import history  # noqa: E402
+from gremlin.modules import module_file, store  # noqa: E402
 
 
 def main() -> None:
@@ -59,7 +59,7 @@ def main() -> None:
     # Button 2 added near the top; Button 40 / Hat 1 become Axis 1 lower down;
     # two settings change at the end (one with characters HTML would eat).
     buttons = list(range(1, 31))
-    path = util.modules_dir() / "diff_stick.json"
+    path = store.module_file_in(store.ensure_device_dir("Diff Stick"))
     module_file.write_json(
         path,
         {

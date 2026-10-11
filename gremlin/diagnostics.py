@@ -156,7 +156,9 @@ def devices() -> dict:
                 "name": module.name,
                 "id": _guid_text(module.bound_guid),
                 "kind": "Output module" if module.is_output else "Input module",
-                "file": module.path.name,
+                # Its device folder (03 S128): "<folder>/module.json".
+                "folder": module.dir.name,
+                "file": f"{module.dir.name}/{module.path.name}",
             }
             if not module.is_output:
                 guid = module.bound_guid

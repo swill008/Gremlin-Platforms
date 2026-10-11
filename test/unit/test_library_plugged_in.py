@@ -8,7 +8,6 @@ the driver's live list are stood in for."""
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,7 +16,8 @@ import pytest
 
 from gremlin import device_initialization, shared_state
 from gremlin import device_library as library
-from gremlin.modules import hardware, module_file, store
+from gremlin.modules import hardware, store
+from test.unit._device_folders import put_module
 
 TWIN_1 = "{6C3D1E20-1111-2222-3333-444455556666}"
 TWIN_2 = "{6C3D1E20-1111-2222-3333-777788889999}"
@@ -66,11 +66,12 @@ def _live(state: Sticks, *guids: str) -> None:
     state.live = {g.strip("{}").lower() for g in guids}
 
 
-def _write(folder: Path, slug: str, name: str, guid: str) -> None:
+def _write(folder: Path, name: str, guid: str) -> None:
+    """The device's module.json in its own folder (03 S128)."""
     doc = {"kind": "control.hardware", "device": name, "nodes": [], "claim": {}}
     if guid:
         doc["boundGuidLocal"] = guid
-    module_file.write_bytes(folder / f"{slug}.json", json.dumps(doc).encode("utf-8"))
+    put_module(folder, name, doc, guid)
 
 
 def _by_guid(guid: str) -> dict:
@@ -116,12 +117,13 @@ def test_twin_sticks_one_unplugged_only_the_plugged_one_is_connected(
 
 
 def test_a_name_with_double_spaces_is_connected_by_its_id(sticks: Sticks) -> None:
-    _write(sticks.folder, "saitek", "Saitek  X52  Pro", SPACED)  # type: ignore[attr-defined]
+    _write(sticks.folder, "Saitek  X52  Pro", SPACED)  # type: ignore[attr-defined]
     sticks.listed = [("Saitek  X52  Pro", SPACED)]
     _live(sticks, SPACED)
     row = _by_guid(SPACED)
     assert row["state"] == "connected"
-    assert row["module"] == "saitek"
+    # The module is its device folder, named after the device (03 S128).
+    assert row["module"] == "Saitek X52 Pro"
     assert library.removal_plan(row["key"])["connected"] is True
     # Unplugged (the id leaves the live list): Not connected, same name.
     _live(sticks)

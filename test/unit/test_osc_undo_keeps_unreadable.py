@@ -20,6 +20,7 @@ from gremlin import osc_device_file as odf
 from gremlin.modules import store
 from gremlin.osc import OscDevice, OscRows, OscRuntime
 from gremlin.ui.osc_layout import OscLayoutModel
+from test.unit._device_folders import put_module
 
 GOOD = {"uid": "1" * 32, "type": "button", "id": 1, "label": "/gear"}
 BAD = {"uid": "9" * 32, "type": "button", "id": "abc", "label": "/broken"}
@@ -46,7 +47,9 @@ def page(
     monkeypatch.setattr(history_modules, "note_write", lambda *_a, **_k: None)
     saved = shared_state.current_profile
     _clear()
-    odf.path().write_text(json.dumps({odf.KEY: [GOOD, BAD, GOOD_2]}), encoding="utf-8")
+    # OSC's own device folder (03 S128).
+    path = put_module(folder, "OSC", json.dumps({odf.KEY: [GOOD, BAD, GOOD_2]}))
+    assert path == odf.path()
     odf.load()
     assert [entry for _, entry in OscDevice().rows.unreadable] == [BAD]
     model = OscLayoutModel()

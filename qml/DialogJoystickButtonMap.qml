@@ -293,8 +293,9 @@ ApplicationWindow {
     }
 
     // Undo or redo went to a step with another photo (07 Q3): that photo
-    // becomes the device's photo again (the safety copy keeps the
-    // session's starting one for Cancel).
+    // shows again. No file changes: every photo of the edit stays where it
+    // is (the device's folder, or the edit's temporary folder) until Save
+    // (07 S107).
     function photoFromHistory(image, source) {
         var e = _ed()
         if (!editing || !targetName.length) {
@@ -302,26 +303,7 @@ ApplicationWindow {
                 e.photoImage = storedImage
             return
         }
-        var rel = ""
-        var cleared = false
-        if (source === "clear") {
-            _hw.stashPhoto(targetName)
-            cleared = _hw.clearImage(targetName)
-        } else if (!source.length) {
-            // The photo this edit started with.
-            if (_hw.restorePhoto(targetName))
-                rel = image
-        } else {
-            _hw.stashPhoto(targetName)
-            rel = _hw.copyImage(source, targetName)
-        }
-        if (rel.length || cleared) {
-            _photoStamp = Date.now()
-            applyImage(rel, source)
-        } else if (e) {
-            // It could not be put back: the photo shown stays.
-            e.photoImage = storedImage
-        }
+        applyImage(source === "clear" ? "" : String(image || ""), source)
     }
 
     function sceneShiftList(list) {
@@ -424,13 +406,12 @@ ApplicationWindow {
     function loadLive(followChange) {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(targetGuid)
-        // A photo kept by an editing session that never finished (the
-        // program closed mid-edit): the photo change was never saved, so the
-        // saved photo goes back before the map is read. Not while unsaved
-        // edits wait to be offered: Restore and Not now keep the new photo
-        // with them, Discard puts the saved one back (putPhotoBack).
-        if (!followChange && !editing && targetName.length && !_hw.loadRecovery(targetName).length
-                && _hw.restorePhoto(targetName))
+        // An edit that never finished (the program closed mid-edit, 07 S36):
+        // its temporary folder is dropped, or a Save cut short is put back.
+        // Kept while unsaved edits wait to be offered: Restore and Not now
+        // keep its pictures, Discard drops them (putPhotoBack).
+        if (!followChange && !editing && targetName.length
+                && _hw.recoverEdit(targetName) === "restored")
             _photoStamp = Date.now()
         if (followChange)
             _photoStamp = Date.now()
@@ -576,8 +557,6 @@ ApplicationWindow {
         _baseWanted = false
         noteEditUiBase()
         clearRecovery()
-        // Saved: the photo this session started with is no longer needed.
-        _hw.dropPhotoStash(targetName)
         applyImage(liveImage)
         hydrateOverlays(liveNodes)
         saveOk = true
@@ -616,10 +595,8 @@ ApplicationWindow {
             return false
         var image = storedImage
         var live = liveImage
-        // A new photo of the same file type keeps the same file name: the
-        // kept copy of the old one says it changed.
-        if (targetName.length && _hw.hasPhotoStash(targetName))
-            return true
+        // (A new photo always has a name of its own, 07 S107: comparing
+        // the names below sees it.)
         // The print area, print setup or guides changed in this edit.
         if (editUiChanged())
             return true
@@ -689,9 +666,7 @@ ApplicationWindow {
         try {
             same = JSON.stringify({ image: doc.image, photo: doc.photo, nodes: doc.nodes }) === JSON.stringify(live)
         } catch (e2) {}
-        // A new photo with the old file name reads the same: the kept copy
-        // of the old photo says it changed (as isDirty).
-        if (same && !_hw.hasPhotoStash(targetName)) {
+        if (same) {
             _hw.clearRecovery(targetName)
             return false
         }
@@ -706,10 +681,10 @@ ApplicationWindow {
         return true
     }
 
-    // An unsaved photo change goes back (the recovery copy was discarded or
-    // put off): the saved photo and the map read again.
+    // The recovery copy was discarded: the pictures its edit kept go and the
+    // saved map reads again.
     function putPhotoBack() {
-        if (editing || !targetName.length || !_hw.restorePhoto(targetName))
+        if (editing || !targetName.length || !_hw.cancelEdit(targetName))
             return
         _photoStamp = Date.now()
         loadLive()
@@ -749,10 +724,9 @@ ApplicationWindow {
         workNodes = nodes
         if (doc.image && String(doc.image).length)
         {
-            // A photo change waiting with the copy: undo comes back to it
-            // from a copy of the photo (or to no photo).
-            var copy = _hw.hasPhotoStash(targetName) ? (_hw.photoCopyUrl(targetName) || "clear") : ""
-            applyImage(String(doc.image), copy)
+            // A photo change waiting with the copy (its file kept in the
+            // edit's temporary folder, 07 S36): undo comes back to it.
+            applyImage(String(doc.image), String(doc.image))
         }
         workPhoto = photoFromDoc(doc.photo)
         applyPhoto(workPhoto)
@@ -781,9 +755,8 @@ ApplicationWindow {
         if (editing) {
             if (_lastRecovery.length)
                 clearRecovery()
-            // Photo files changed in this session go back to how they were.
-            if (_hw.restorePhoto(targetName))
-                _photoStamp = Date.now()
+            // Pictures this edit added go with its temporary folder; the
+            // device's folder was never touched (07 S26, S107).
             dropUnusedPictures()
             // So do the print area, print setup and guides (07 Q1).
             restoreEditUi()
@@ -808,19 +781,9 @@ ApplicationWindow {
         })
     }
 
-    // Take theirs: this edit goes and the file shows as it is now. The
-    // edit's own photo change goes back too, unless the other window changed
-    // the photo (its photo stays).
+    // Take theirs: this edit goes (its added pictures with it) and the file
+    // shows as it is now, with whatever photo the other window saved.
     function takeTheirs() {
-        var theirPhoto = false
-        try {
-            theirPhoto = JSON.parse(filePartsNow() || "{}").image
-                         !== JSON.parse(_fileParts || "{}").image
-        } catch (e) {
-            theirPhoto = true
-        }
-        if (theirPhoto)
-            _hw.dropPhotoStash(targetName)
         discardEdit()
         loadLive(true)
     }
@@ -858,11 +821,12 @@ ApplicationWindow {
         finishLeave()
     }
 
-    // An edit ended (saved or cancelled): pictures it added that no map
-    // uses leave the device's folder (07 Q11).
+    // An edit ended (saved, cancelled or the window closed): its temporary
+    // folder goes, with every picture it added and Save did not keep
+    // (07 S107). Save already put the kept ones in the device's folder.
     function dropUnusedPictures() {
         if (targetName.length)
-            _hw.removeUnusedPictures(targetName)
+            _hw.cancelEdit(targetName)
     }
 
     function finishLeave() {
@@ -2015,15 +1979,14 @@ ApplicationWindow {
         folder: _hw.imagesFolderUrl()
         onPicked: (selectedFile) => {
             _hw.notePictureFolder(selectedFile)
-            // Cancel can put the current photo back.
-            _hw.stashPhoto(targetName)
-            // The photo file only: the module file's image waits for Save
-            // (07 Q2).
+            // The picture waits in the edit's temporary folder; the module
+            // file's image and the device's folder wait for Save (07 Q2,
+            // S40, S107).
             var rel = _hw.copyImage(selectedFile, targetName)
             if (rel.length) {
                 _photoStamp = Date.now()
-                // Undo can bring this photo back from its copy (07 Q3).
-                applyImage(rel, _hw.photoCopyUrl(targetName))
+                // Undo can bring this photo back: its file stays (07 Q3).
+                applyImage(rel, rel)
                 resetPhoto()
             }
         }
@@ -2041,6 +2004,32 @@ ApplicationWindow {
             var e = _ed()
             if (rel.length && e)
                 e.addOverlay(rel, _hw.imageUrl(rel))
+        }
+    }
+
+    // Choose Picture… on a picture whose file is missing (07 S108): the new
+    // file waits in the edit like any added picture; the item keeps its
+    // place (one Undo step).
+    FilePicker {
+        id: _choosePictureDialog
+        property string nodeId: ""
+        function pick(id) {
+            nodeId = String(id || "")
+            open()
+        }
+        kind: "picture"
+        title: "Choose Picture"
+        nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
+        folder: _hw.imagesFolderUrl()
+        onPicked: (selectedFile) => {
+            _hw.notePictureFolder(selectedFile)
+            var e = _ed()
+            var n = e ? e.nodeAt(nodeId) : null
+            if (!n)
+                return
+            var rel = _hw.choosePictureFor(String(n.src || ""), selectedFile)
+            if (rel.length)
+                e.repointPicture(nodeId, rel, _hw.imageUrl(rel))
         }
     }
 
@@ -2188,7 +2177,10 @@ ApplicationWindow {
     function copyLayoutFrom(row, mirror) {
         if (!row)
             return
-        var text = row.template ? _hw.templateNodes(row.name) : _hw.layoutNodes(row.slug)
+        // The pictures it uses wait in this device's edit and are copied
+        // into its folder on Save (07 S109).
+        var text = row.template ? _hw.templateNodes(row.name, targetName)
+                                : _hw.layoutNodes(row.slug, targetName)
         if (!text.length)
             return
         var nodes = []
@@ -2245,8 +2237,7 @@ ApplicationWindow {
     }
 
     // What Copy Button Map and Apply Template say after the copy: chips for
-    // controls this device lacks (07 Q8) and a template's missing pictures
-    // (S81).
+    // controls this device lacks (07 Q8).
     function copyNotes(list, row) {
         var text = ""
         var lacking = lackingChips(list)
@@ -2254,9 +2245,6 @@ ApplicationWindow {
             text += " 1 chip is for a control this device does not have."
         else if (lacking > 1)
             text += " " + lacking + " chips are for controls this device does not have."
-        var missing = row && row.template ? _hw.templateMissingPictures(row.name) : []
-        if (missing.length)
-            text += " Pictures not found (moved or deleted): " + missing.join(", ") + "."
         return text
     }
 
@@ -2517,7 +2505,7 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
                 color: Style.fgMuted
                 text: _buttonMap.templateList.length
-                      ? "Templates are kept with the module files. Export writes one to a file to share; Import adds one. Pictures in a template stay where they are, so share a Device Pack to send pictures too."
+                      ? "Each template is kept in its own folder with its own copies of its pictures. Export writes one, pictures and all, to a .gtemplate file to share; Import adds one."
                       : "No templates yet. File → Templates → Save Layout as Template… keeps the current layout."
             }
             ListView {
@@ -2611,8 +2599,8 @@ ApplicationWindow {
         kind: "template"
         mode: "save"
         title: "Export Template"
-        defaultSuffix: "json"
-        nameFilters: ["Button Map template (*.json)"]
+        defaultSuffix: "gtemplate"
+        nameFilters: ["Button Map template (*.gtemplate)"]
         onPicked: (selectedFile) => {
             if (!_hw.exportTemplate(templateName, selectedFile))
                 _buttonMap.tellFailure("Export Failed", _hw.templateError())
@@ -2623,7 +2611,7 @@ ApplicationWindow {
         id: _templateImportFile
         kind: "template"
         title: "Import Template"
-        nameFilters: ["Button Map template (*.json)"]
+        nameFilters: ["Button Map template (*.gtemplate)"]
         onPicked: (selectedFile) => {
             var name = _hw.importTemplate(selectedFile)
             _buttonMap.refreshTemplates()
@@ -2803,13 +2791,16 @@ ApplicationWindow {
                 ThemedMenuItem {
                     text: "History"
                     enabled: _buttonMap.targetName.length > 0
-                    // By this device's own module file, every area (twin
-                    // sticks apart; a save that also changed claims shows
-                    // too), as Module Setup does (08 Q15).
+                    // By this device's id, every area (twin sticks apart; a
+                    // save that also changed claims shows too), as Module
+                    // Setup does (08 Q15); entries from before device
+                    // folders by its name (08 S43).
                     onTriggered: {
-                        _hw.setDeviceGuid(_buttonMap.targetGuid)
                         Helpers.createComponent("DialogHistory.qml", {
-                            filter: JSON.stringify({ fileName: _hw.moduleFileName(_buttonMap.targetName) }),
+                            filter: JSON.stringify({
+                                deviceId: _fileWatch.deviceIdFor(_buttonMap.targetName, _buttonMap.targetGuid),
+                                deviceName: _buttonMap.targetName
+                            }),
                             filterLabel: _buttonMap.targetName
                         })
                     }
@@ -3223,15 +3214,9 @@ ApplicationWindow {
                     text: "Clear Photo"
                     enabled: editing
                     onTriggered: {
-                        // Cancel can put the current photo back.
-                        _hw.stashPhoto(targetName)
-                        if (!_hw.clearImage(targetName)) {
-                            // It may have stopped part way: put the photo back.
-                            ownFileChange(function() { return _hw.restorePhoto(targetName) })
-                            tellFailure("Clear Photo Failed",
-                                "The photo file could not be removed (it may be open in another program).")
-                            return
-                        }
+                        // No file is touched: Save removes the picture
+                        // nothing uses any more (07 S106), Undo or Cancel
+                        // brings it back.
                         applyImage("", "clear")
                         resetPhoto()
                     }
@@ -3360,6 +3345,7 @@ ApplicationWindow {
                             function onSaveStyleRequested(kind, fieldsJson) { _buttonMap.askStyleName(kind, fieldsJson) }
                             function onRulerGuidesEdited() { _buttonMap.guidesFromEditor() }
                             function onOverlayImportRequested() { _overlayDialog.open() }
+                            function onChoosePictureRequested(nodeId) { _choosePictureDialog.pick(nodeId) }
                             function onPastePictureRequested() { _buttonMap.pastePicture() }
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }
                             function onDrawToolChanged() { _buttonMap.resTick++ }

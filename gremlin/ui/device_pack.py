@@ -7,7 +7,9 @@ Import is destructive by design: each ticked piece replaces what is on this
 machine (module file pieces; for a ticked mode, the device's wires and
 actions in that mode), except Checked controls: the pack's are added to the
 ones checked here (08 Q3). The window warns first, the previous module file is
-kept in the imported folder, and Undo Import puts back the last import."""
+kept in the device folder's imported folder (08 S73), and Undo Import puts
+back the last import. A device folder file (.gmap, 08 S111) is read as a pack
+too (device_zip.read_gmap)."""
 
 from __future__ import annotations
 
@@ -30,6 +32,7 @@ from typing import TYPE_CHECKING
 from gremlin.ui.live_debug import trace
 from gremlin.modules import module_file, store
 from gremlin.modules.claim import claim_ids
+from gremlin.modules.pack_checks import too_big, wires_problem
 from gremlin.modules.registry import is_output_name
 from gremlin.ui.input_pairing import dest_labels_for_item, parse_guid
 from gremlin.modules.store import (
@@ -51,9 +54,6 @@ _UUID_RE = re.compile(
 _KIND_WORD = {"btn": "Button", "button": "Button", "axis": "Axis", "hat": "Hat"}
 # The pack format this program writes and reads. A newer pack is refused.
 PACK_FORMAT = 2
-# The most a pack may unpack to (all its files together); a bigger one is
-# refused before anything in it is read.
-MAX_UNPACKED = 64 * 1024 * 1024
 # The Button Map's view settings (module file "ui"), in two rows.
 _MAP_VIEW_KEYS = (
     "gridOn", "snapOn", "snapEntOn", "gridSize", "viewPct", "panX", "panY",
@@ -415,7 +415,7 @@ def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
     if osc:
         items.append(_item(prefix + "osc", "OSC addresses and server", _clip(osc)))
     chips = _chip_lines(doc)
-    needs = [row["id"] for row in pictures if row.get("onMap")]
+    needs = [row["item"]["id"] for row in pictures if row.get("onMap")]
     if chips:
         row = _item(prefix + "layout", "Map", _clip(chips))
         row["needs"] = needs
@@ -546,8 +546,8 @@ def _read_doc(path: Path) -> dict | None:
 
 def _pack_key(device_name: str) -> str:
     """An output's key in a pack that has none in its label (an older
-    pack): the slug of the name it was exported under."""
-    return store.own_slug(device_name)
+    pack): the folder name of the name it was exported under."""
+    return store.folder_name_for(device_name)
 
 
 def _target_direction(name: str, guid: str = "") -> str:
@@ -740,10 +740,10 @@ def _collect_wires(
 def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]]) -> tuple[dict, list[dict]] | None:
     match = _match_pack_device(name)
     guid = str(match["guid"]) if match and match.get("guid") else ""
-    # The file the output uses (the store's rule), and its slug as the
-    # pack's key; a renamed vJoy's own-name slug could differ (AU-64).
-    path = store.path_for(name, guid)
-    slug = path.stem
+    # The file the output uses (the store's rule), and its folder's name as
+    # the pack's key.
+    path = store.module_file(name, guid)
+    slug = path.parent.name
     doc = _read_doc(path)
     if not doc:
         return None
@@ -758,6 +758,8 @@ def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]
 
 
 _NO_FILE = "This device has no module file yet."
+# A module file as the user is told it: <device folder>\module.json.
+_shown = module_file._shown_path
 
 
 def export_refusal(path: Path) -> str:
@@ -769,7 +771,7 @@ def export_refusal(path: Path) -> str:
     reason = store.damage_of(path)
     if reason:
         return (
-            f"The module file {path.name} is damaged ({reason}), so it can't "
+            f"The module file {_shown(path)} is damaged ({reason}), so it can't "
             "be exported. Choose Start Fresh on the device's card first (the "
             "damaged file is kept)."
         )
@@ -777,12 +779,20 @@ def export_refusal(path: Path) -> str:
 
 
 def _device_path(name: str, guid: str = "") -> Path:
-    if guid:
-        # By its id: an unplugged twin's own file, never the other twin's.
-        return store.path_for_id(name, guid)
-    match = _match_pack_device(name)
-    guid = str(match["guid"]) if match and match.get("guid") else ""
-    return store.path_for(name, guid)
+    """The device's module file (in its folder; may not exist yet). With
+    guid, by its id: an unplugged twin's own folder, never the other twin's."""
+    if not guid:
+        match = _match_pack_device(name)
+        guid = str(match["guid"]) if match and match.get("guid") else ""
+    return store.module_file(name, guid)
+
+
+def _device_dir_for(name: str, guid: str = "") -> Path:
+    """The device's folder, made now (with its device.json) for a write."""
+    if not guid:
+        match = _match_pack_device(name)
+        guid = str(match["guid"]) if match and match.get("guid") else ""
+    return store.ensure_device_dir(name, guid)
 
 
 def _pack_label(name: str, guid: str, notes: dict | None) -> dict:
@@ -817,7 +827,7 @@ def pack_devices() -> list[dict]:
         name = str(row.get("name") or "")
         damaged = False
         if row.get("hasFile"):
-            path = store.path_for(name, str(row.get("guid") or ""))
+            path = store.module_file(name, str(row.get("guid") or ""))
             damaged = bool(store.damage_of(path))
         row["damaged"] = damaged
         row["canExport"] = bool(row.get("hasFile")) and not damaged
@@ -1000,9 +1010,14 @@ def save_pack(data: bytes, info: dict, dest: Path) -> dict:
 
 
 def _zip_readable(path: Path) -> bool:
-    """The pack at path opens and has a map.json that is a document."""
+    """The pack at path opens and has a map.json that is a document; a
+    device file (".gmap", 08 S111) is checked by device_zip.read_gmap."""
     try:
         with zipfile.ZipFile(path, "r") as zf:
+            if "gmap.json" in zf.namelist():
+                from gremlin.modules import device_zip
+
+                return not isinstance(device_zip.read_gmap(path), str)
             if "map.json" not in zf.namelist():
                 return False
             doc = json.loads(zf.read("map.json").decode("utf-8"))
@@ -1027,70 +1042,6 @@ def assemble(
     return build_pack(plan)
 
 
-def too_big(zf: zipfile.ZipFile) -> str:
-    """Why the pack is too big to unpack ("" when it isn't)."""
-    total = sum(max(0, info.file_size) for info in zf.infolist())
-    if total <= MAX_UNPACKED:
-        return ""
-    mb = 1024 * 1024
-    return (
-        f"This pack is too big to read: it unpacks to {total // mb} MB "
-        f"and the most is {MAX_UNPACKED // mb} MB."
-    )
-
-
-def _is_block(value: object) -> bool:
-    if not isinstance(value, str):
-        return False
-    try:
-        ElementTree.fromstring(value)
-    except ElementTree.ParseError:
-        return False
-    return True
-
-
-def wires_problem(wires: object) -> str:
-    """What is wrong with a pack's wires.json ("" when nothing is): every
-    reader trusts its shape once this passes."""
-    if not isinstance(wires, dict):
-        return "Its wires.json is not a document."
-    modes = wires.get("modes")
-    if modes is not None and not isinstance(modes, list):
-        return "Its wires.json has modes that are not a list."
-    for mode in modes or []:
-        if not isinstance(mode, dict):
-            return "Its wires.json has a mode that is not a document."
-        name = mode.get("name")
-        if name is not None and not isinstance(name, str):
-            return "Its wires.json has a mode whose name is not text."
-        label = f'mode "{name or "Default"}"'
-        lines = mode.get("lines")
-        if lines is not None and not (
-            isinstance(lines, list) and all(isinstance(x, str) for x in lines)
-        ):
-            return f"Its wires.json has lines in {label} that are not a list of text."
-        inputs = mode.get("inputs")
-        if inputs is not None and not (
-            isinstance(inputs, list) and all(_is_block(x) for x in inputs)
-        ):
-            return f"Its wires.json has inputs in {label} that can't be read."
-    actions = wires.get("actions")
-    if actions is not None and not (
-        isinstance(actions, list) and all(_is_block(x) for x in actions)
-    ):
-        return "Its wires.json has actions that can't be read."
-    tree = wires.get("tree")
-    if tree is not None and not (
-        isinstance(tree, dict)
-        and all(isinstance(v, str) or v is None for v in tree.values())
-    ):
-        return "Its wires.json has a mode tree that is not a document."
-    osc = wires.get("osc")
-    if osc is not None and not isinstance(osc, list):
-        return "Its wires.json has OSC rows that are not a list."
-    return ""
-
-
 def _json_part(zf: zipfile.ZipFile, name: str) -> object:
     """A JSON file in the pack; ValueError naming it when it can't be read."""
     try:
@@ -1112,7 +1063,79 @@ def outputs_problem(zf: zipfile.ZipFile) -> str:
     return ""
 
 
+def _is_gmap(path: Path) -> bool:
+    """A device folder file (08 S111): by its extension, or a zip with a
+    gmap.json and no map.json."""
+    from gremlin.modules.device_zip import GMAP_EXT, GMAP_JSON
+
+    if Path(path).suffix.lower() == GMAP_EXT:
+        return True
+    try:
+        with zipfile.ZipFile(path, "r") as zf:
+            names = set(zf.namelist())
+    except Exception:  # noqa: BLE001 - _read_zip names the problem
+        return False
+    return GMAP_JSON in names and "map.json" not in names
+
+
+def _gmap_ref(ref: object) -> object:
+    """A device folder's "pictures/x" as the pack's "x"."""
+    if isinstance(ref, str) and ref.replace("\\", "/").startswith("pictures/"):
+        return ref.replace("\\", "/").split("/", 1)[1]
+    return ref
+
+
+def _from_gmap(path: Path) -> dict | str:
+    """A .gmap read as a pack (device_zip.read_gmap): the module file as
+    map.json with its pictures at the root, the bindings' wires and outputs."""
+    from gremlin.modules import device_zip
+
+    loaded = device_zip.read_gmap(path)
+    if isinstance(loaded, str):
+        return loaded
+    label = loaded["gmap"]
+    if loaded["module"] is None:
+        # A damaged module file kept as it was (10 S20a): its bindings still
+        # travel; its module parts are never read as a document.
+        doc: dict = {
+            "damaged": {"file": "module.json", "reason": str(label.get("damaged"))}
+        }
+    else:
+        refs = store.named_refs(loaded["module"])
+        mapping = {str(ref): str(_gmap_ref(ref)) for ref in refs}
+        replaced = device_zip.replace_strings(loaded["module"], mapping)
+        doc = replaced if isinstance(replaced, dict) else {}
+    name = str(label.get("deviceName") or label.get("device") or "").strip()
+    exported_id = str(label.get("id") or "")
+    doc.setdefault("device", name)
+    doc["pack"] = {
+        "exportedName": name,
+        "exportedGuid": (
+            device_zip.guid_text(exported_id) if device_zip.guid_like(exported_id) else ""
+        ),
+        "format": 1,
+        "program": str(label.get("app") or ""),
+        "exportedOn": str(label.get("exportedAt") or "")[:10],
+    }
+    outputs = []
+    for slug, out in loaded["outputs"].items():
+        out = dict(out)
+        packed = out.get("pack")
+        out_label = dict(packed) if isinstance(packed, dict) else {}
+        out_label.setdefault("slug", slug)
+        out["pack"] = out_label
+        outputs.append(out)
+    return {
+        "doc": doc,
+        "wires": loaded["wires"] if isinstance(loaded["wires"], dict) else {},
+        "outputs": outputs,
+        "files": dict(loaded["pictures"]),
+    }
+
+
 def _read_zip(path: Path) -> dict | str:
+    if _is_gmap(path):
+        return _from_gmap(path)
     try:
         with zipfile.ZipFile(path, "r") as zf:
             big = too_big(zf)
@@ -1649,15 +1672,32 @@ def _selected(selection: dict | None) -> set[str]:
     return {str(item) for item in (selection.get("items") or [])}
 
 
+def _archive_picture(base: Path, dest: Path) -> Path:
+    """A free <device folder>/imported/pictures/<stem> <stamp><ext> for a
+    picture an import overwrites (08 S73)."""
+    folder = base / store.IMPORTED / store.PICTURES
+    stamp = store.archive_stamp()
+    path = folder / f"{dest.stem} {stamp}{dest.suffix}"
+    number = 2
+    while path.exists():
+        path = folder / f"{dest.stem} {stamp}_{number}{dest.suffix}"
+        number += 1
+    return path
+
+
 def _write_pictures(
-    slug: str,
+    base: Path,
     files: dict[str, bytes],
     chosen: set[str],
     doc: dict,
     record: list[tuple[Path, bytes | None]] | None = None,
 ) -> dict[str, str]:
+    """Writes the ticked pictures the doc names into the device folder
+    base's pictures/, keeping each one it overwrites in base/imported/
+    (08 S73), and points the doc's refs at them ("pictures/<file>")."""
     written: dict[str, str] = {}
-    folder = store.pictures_dir_of(slug)
+    base = Path(base)
+    folder = base / store.PICTURES
     wanted = {item[4:] for item in chosen if item.startswith("pic:")}
     used = set()
     photo = Path(str(doc.get("image") or "")).name
@@ -1677,9 +1717,8 @@ def _write_pictures(
         if record is not None:
             record.append((dest, dest.read_bytes() if dest.is_file() else None))
         if dest.is_file():
-            backup = _unique_archive(f"{slug}_{dest.stem}")
             store.replace(
-                backup.with_suffix(dest.suffix), dest.read_bytes(), "Device Pack"
+                _archive_picture(base, dest), dest.read_bytes(), "Device Pack"
             )
         # A temporary file, then a swap: a crash can't leave half a picture
         # (08 S76, R3).
@@ -1688,7 +1727,7 @@ def _write_pictures(
         written[arc] = dest.name
     photo = Path(str(doc.get("image") or "")).name
     if photo in written:
-        doc["image"] = store.picture_ref(slug, written[photo])
+        doc["image"] = store.picture_ref(written[photo])
     elif "pic:" + photo not in chosen:
         pass
     else:
@@ -1698,7 +1737,7 @@ def _write_pictures(
             continue
         key = Path(str(node.get("src") or "")).name
         if key in written:
-            node["src"] = store.picture_ref(slug, written[key])
+            node["src"] = store.picture_ref(written[key])
     return written
 
 
@@ -2546,6 +2585,64 @@ def can_undo_import() -> bool:
     return _last_import is not None
 
 
+def add_to_last_import(
+    files: list[tuple[Path, bytes | None]], made_dir: Path | None = None
+) -> None:
+    """Makes files written before the last import (a device folder
+    unpacked from a .gmap, device_zip.import_device) part of its Undo
+    Import step; made_dir: the folder that import made, removed by Undo
+    when nothing else is left in it."""
+    global _last_import
+    if _last_import is None:
+        _last_import = {"files": [], "wires": None, "written": {}}
+    _last_import["files"] = list(files) + list(_last_import["files"])
+    _last_import["written"] = _written(_last_import["files"])
+    if made_dir is not None:
+        _last_import.setdefault("dirs", []).append(Path(made_dir))
+
+
+def put_gmap_wires(
+    path: Path,
+    name: str,
+    guid: str,
+    wires: dict,
+    written: list[tuple[Path, bytes | None]] | None = None,
+    made_dir: Path | None = None,
+) -> str:
+    """Puts a .gmap's wires (every mode) into the open profile for
+    device_zip.import_device ("" or why not). written: the files that
+    import wrote into a device folder, which join this import's Undo
+    Import step when the wires went in (D-08-GMAP-IMPORT 3a); made_dir:
+    the folder it made."""
+    modes = [
+        str(mode.get("name") or "Default")
+        for mode in wires.get("modes") or []
+        if isinstance(mode, dict)
+    ]
+    if modes:
+        selection = {"items": ["wire:" + mode for mode in modes], "targetGuid": guid}
+        result = apply_zip(Path(path), name, selection, target_guid=guid)
+        if not result.get("ok"):
+            return str(result.get("error") or "")
+    if written is not None:
+        add_to_last_import(written, made_dir)
+    return ""
+
+
+def _remove_made_dir(folder: Path) -> None:
+    """Removes a device folder an undone import made, when only its
+    device.json and empty sub-folders are left."""
+    if not folder.is_dir():
+        return
+    for item in folder.rglob("*"):
+        if item.is_file() and item != folder / store.ID_FILE:
+            return
+    shutil.rmtree(folder, ignore_errors=True)
+    changed = getattr(store, "_dirs_changed", None)
+    if callable(changed):
+        changed()
+
+
 def drop_import_undo() -> None:
     """Keeps the last import: Undo Import is no longer offered. The actions
     it replaced left the profile with their inputs (Library.release)."""
@@ -2588,8 +2685,8 @@ def changed_since_import() -> list[str]:
     names: list[str] = []
     for path, _ in record["files"]:
         if str(path) in written and _bytes_now(path) != written[str(path)]:
-            if path.name not in names:
-                names.append(path.name)
+            if _shown(path) not in names:
+                names.append(_shown(path))
     return names
 
 
@@ -2623,7 +2720,9 @@ def undo_import(force: bool = False) -> dict:
             else:
                 store.replace(path, previous, "Device Pack", force=True)
         except OSError:
-            notes.append(f"{path.name} could not be put back.")
+            notes.append(f"{_shown(path)} could not be put back.")
+    for folder in record.get("dirs") or []:
+        _remove_made_dir(folder)
     wires = record.get("wires")
     logical_changed = False
     osc_changed = False
@@ -2719,13 +2818,13 @@ def _write_module(
     merged: dict,
     record: list[tuple[Path, bytes | None]],
 ) -> str:
-    """Writes one module file, keeping the previous one in imported\\ and
-    for Undo Import. Returns the backup's name, "" for a new file; raises
-    OSError when it can't."""
+    """Writes one module file, keeping the previous one in its device
+    folder's imported\\ (08 S73) and for Undo Import. Returns the
+    backup's name, "" for a new file; raises OSError when it can't."""
     previous = dest.read_bytes() if dest.is_file() else None
     backup_name = ""
     if previous is not None:
-        backup = _unique_archive(dest.stem)
+        backup = _unique_archive(dest.parent, "module")
         store.replace(backup, previous, "Device Pack")
         backup_name = backup.name
     record.append((dest, previous))
@@ -2942,7 +3041,9 @@ def apply_zip(
             existing, incoming, chosen, "in.", target, guid, limits
         )
         try:
-            _write_pictures(_slug_for_path(dest), loaded["files"], chosen, merged, files)
+            base = _device_dir_for(target, guid if target_guid else "")
+            dest = store.module_file_in(base)
+            _write_pictures(base, loaded["files"], chosen, merged, files)
             backup_name = _write_module(dest, merged, files)
         except OSError:
             # The pictures written for it go back too; the import before
@@ -2953,9 +3054,10 @@ def apply_zip(
                 "error": "The module file or its pictures could not be written, "
                 "so nothing was replaced.",
             }
-        notes.append(f"Saved {dest.name} for {target}.")
+        notes.append(f"Saved {_shown(dest)} for {target}.")
         notes.append(
-            f"The previous file was kept as imported\\{backup_name}."
+            f"The previous file was kept as "
+            f"{dest.parent.name}\\imported\\{backup_name}."
             if backup_name
             else "A new file was created."
         )
@@ -2981,7 +3083,7 @@ def apply_zip(
         dest = _device_path(out_name)
         if store.damage_of(dest):
             notes.append(
-                f"{out_name} was skipped because its module file {dest.name} "
+                f"{out_name} was skipped because its module file {_shown(dest)} "
                 "is damaged. Choose Start Fresh on its card first."
             )
             continue
@@ -2993,7 +3095,9 @@ def apply_zip(
         )
         start = len(files)
         try:
-            _write_pictures(dest.stem, loaded["files"], chosen, merged, files)
+            out_base = _device_dir_for(out_name, out_guid)
+            dest = store.module_file_in(out_base)
+            _write_pictures(out_base, loaded["files"], chosen, merged, files)
             _write_module(dest, merged, files)
         except OSError:
             # Its pictures written so far go back.
@@ -3004,7 +3108,7 @@ def apply_zip(
                 "so it was not changed."
             )
             continue
-        notes.append(f"Saved {dest.name} for {out_name}.")
+        notes.append(f"Saved {_shown(dest)} for {out_name}.")
         notes.extend(merged_notes)
     plan = _plan_wires(loaded["wires"], chosen, limits)
     wire_notes, wires_undo = _apply_wires(
@@ -3074,14 +3178,10 @@ def pack_item_ids(path: Path) -> dict | str:
 
 def _damaged_text(path: Path, reason: str) -> str:
     return (
-        f"Nothing was imported: the module file {path.name} is damaged "
+        f"Nothing was imported: the module file {_shown(path)} is damaged "
         f"({reason}). Choose Start Fresh on the device's card first (the "
         "damaged file is kept)."
     )
-
-
-def _slug_for_path(path: Path) -> str:
-    return path.stem
 
 
 def _picture_is_input(item: str, doc: dict) -> bool:
