@@ -734,3 +734,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | CI on the step 1 test fix (test_final_05) | ci | ~10 min (table) | about 15 min | 11:16–11:31 |
 | 2026-10-11 | Full run + lint (planes, seed 558790): 5 failures — 4 stale tests/tooltip fixed by the lead (49 pass), 1 order-dependent (TRACE-2); lint 0 new | test | 5–6 min (table) | run 6 min, fixes 4 min | 11:32–11:38 |
 | 2026-10-11 | TRACE-2: test_final_03 order failure = Delete Device test left kept-stubs set; fixture restores Home card settings (test only) | fix | 3–8 min (table) | 6 min | 11:38–11:44 |
+| 2026-10-11 | Confirming full run (seed 558790) green + lint 0 new; commit 2d14cc37; push | test | 5–6 min (table) | 6 min + 1 min | 11:44–11:50 |
+| 2026-10-11 | Planes (step 2) end to end: user go 11:00 → commit 11:50 (8 build agents, 6 follow-ups, Help/map/golden/paths agents, 2 trace agents, 2 full runs) | feature batch | no timing data; rough guess 75–100 min | 50 min to commit | 11:00–11:50 |
+| 2026-10-11 | Lead: Q2a Q3a spec wording (07 S120, 03 S88), decision D-07-PLANES-FOLLOWUP, Q1a split | lead | no timing data yet | 3 min | 11:53–11:56 |
+| 2026-10-11 | CI on 2d14cc37 (planes) | ci | ~10 min (table) | about 19 min | 11:50–12:09 |
+| 2026-10-11 | SHOWME-HELP: three Show me links in the Background topic (53 Help tests) | docs | 3–8 min (table) | 2 min | 12:08–12:10 |
+| 2026-10-11 | SHOWME-CODE: show:buttonmap links (Main.qml handler + window revealForHelp; 3 end-to-end tests + link check) | fix | 3–8 min (table) | 3 min | 12:08–12:11 |

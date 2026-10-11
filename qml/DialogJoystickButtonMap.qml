@@ -1222,6 +1222,48 @@ ApplicationWindow {
             e.editPlane = next
     }
 
+    // Help's Show me › into this window (07 S126, D-07-PLANES-FOLLOWUP
+    // Q1a): brings the window forward (on the first device when none is
+    // shown), shows the place named (bmPlaneSwitch, bmBgBanner in Background
+    // mode, bmBgRow in Layers in Foreground mode) and hands it to pulse.
+    // Returns "" or why not, which the message line says too.
+    function revealForHelp(name, pulse) {
+        show()
+        raise()
+        requestActivate()
+        if (!targetName.length && _inputDeviceItems.count > 0) {
+            var first = _inputDeviceItems.objectAt(0)
+            openForDevice(first.name, "", first.guid)
+        }
+        var why = ""
+        if (!targetName.length)
+            why = "Choose a device from the File menu first"
+        else if (!editing || !_ed())
+            why = "Edit the map to see this"
+        if (why !== "") {
+            say(why)
+            return why
+        }
+        var item = null
+        if (name === "bmPlaneSwitch") {
+            item = _planeSwitch
+        } else if (name === "bmBgBanner") {
+            setEditPlane("background")
+            item = _bgBanner
+        } else if (name === "bmBgRow") {
+            setEditPlane("foreground")
+            _tools.setOpen("layers", true)
+            item = _layersPanel.bgRowPart("bmBgRow")
+        } else {
+            return "No such place in the Button Map: " + name
+        }
+        if (!item || !item.visible)
+            return "Can't show this now"
+        if (typeof pulse === "function")
+            pulse(item)
+        return ""
+    }
+
     function escLeavesBackground() {
         resTick
         var e = _ed()

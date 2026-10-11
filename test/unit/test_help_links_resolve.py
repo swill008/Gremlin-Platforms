@@ -73,3 +73,13 @@ def test_link_text_matches_its_kind(run: dict) -> None:
         if x["text"] != want[x["href"].split(":", 1)[0]]
     ]
     assert not bad, "\n".join(bad)
+
+
+def test_button_map_show_me_links_resolve(run: dict) -> None:
+    """07 S126 (D-07-PLANES-FOLLOWUP Q1a): the Background and foreground
+    topic's Show me › links into the Button Map window are in the book and
+    check without the window open."""
+    want = {f"show:buttonmap/{n}" for n in ("bmPlaneSwitch", "bmBgBanner", "bmBgRow")}
+    found = {x["href"]: x["reason"] for x in run["links"] if x["href"] in want}
+    assert set(found) == want, sorted(want - set(found))
+    assert all(r == "" for r in found.values()), found

@@ -308,8 +308,16 @@ ApplicationWindow {
             var hit = _helpOptionLabels.findSetting(rest.join("/"))
             return hit && hit.length ? "" : "No such setting in Options: " + rest.join("/")
         }
+        if (parts[0] === "buttonmap")
+            return _helpButtonMapTargets.indexOf(rest.join("/")) >= 0
+                ? "" : "No such place in the Button Map: " + rest.join("/")
         return "Not a link to the program: " + link
     }
+
+    // What show:buttonmap/<objectName> may point at in the Button Map
+    // window (07 S126, D-07-PLANES-FOLLOWUP Q1a); its revealForHelp shows
+    // them. Known here so links check without the window open.
+    readonly property var _helpButtonMapTargets: ["bmPlaneSwitch", "bmBgBanner", "bmBgRow"]
 
     function _helpFront() {
         if (_root.visibility === Window.Minimized || !_root.visible)
@@ -352,6 +360,16 @@ ApplicationWindow {
             if (!win || typeof win.revealSetting !== "function")
                 return "Options didn't open."
             return win.revealSetting(rest.join("/")) ? "" : "No such setting in Options: " + rest.join("/")
+        }
+        if (parts[0] === "buttonmap") {
+            // The window as it is, or opened blank (it picks a device).
+            var map = buttonMapWindow()
+            if (!map)
+                openBlankButtonMap()
+            map = buttonMapWindow()
+            if (!map || typeof map.revealForHelp !== "function")
+                return "The Button Map didn't open."
+            return map.revealForHelp(rest.join("/"), _helpPulse)
         }
         _helpFront()
         if (parts[0] === "toolbar") {
