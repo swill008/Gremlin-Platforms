@@ -49,6 +49,8 @@ _told_read_failed = False
 _VJOY_RETRY = 3.0
 _vjoy_failed_at: dict[int, float] = {}
 _told_busy: set[int] = set()
+# vJoy devices the driver didn't list at the last open (turned off).
+_vjoy_off: set[int] = set()
 
 # A held vJoy with no write for this long is reset so it doesn't time out
 # (06 S54); checked this often, one timer per held device.
@@ -163,6 +165,7 @@ def clear_blocked_log() -> None:
         _blocked.clear()
         _vjoy_failed_at.clear()
         _told_busy.clear()
+        _vjoy_off.clear()
 
 
 # --- vJoy -------------------------------------------------------------------
@@ -181,7 +184,19 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
     write, so Gremlin carries on by itself once the device is free.
     """
     vid = int(vjoy_id)
+    if _opened_vjoy(vid) is None and vjoy_driver_found() and not vjoy_exists(vid):
+        # Turned off in the vJoy configuration tool: never asked to open
+        # (the driver logs each try); said once per Run (06 S47).
+        with _lock:
+            _vjoy_off.add(vid)
+        _log_once(
+            ("vjoy-off", vid),
+            f"Output blocked: vJoy {vid} is not available (the vJoy driver "
+            "doesn't list it).",
+        )
+        return None
     with _lock:
+        _vjoy_off.discard(vid)
         failed_at = _vjoy_failed_at.get(vid)
     if failed_at is not None and clock.monotonic() - failed_at < _VJOY_RETRY:
         return None
@@ -449,6 +464,10 @@ def _write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> str:  # n
         return f"blocked (not claimed by the vJoy {vjoy_id} module)"
     dev = _open_vjoy(vjoy_id)
     if dev is None:
+        with _lock:
+            off = int(vjoy_id) in _vjoy_off
+        if off:
+            return f"missing (vJoy {vjoy_id} is not available)"
         return f"failed: vJoy {vjoy_id} not open"
     if not _has(dev, kind, input_id):
         _log_once(

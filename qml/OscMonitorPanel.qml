@@ -48,7 +48,7 @@ Rectangle {
         active: _root.holdsPort
     }
 
-    Component.onDestruction: _model.active = false
+    Component.onDestruction: _model.release()
 
     // Add as Input…: hands the message's settings to the page's Add window.
     function addAsInput(row) {

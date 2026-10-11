@@ -4,8 +4,10 @@
 
 """OSC Receive and Inputs trace (D-09-OSC-TRACE): a message read on the
 loopback is traced at each step (in, match, event); blocked senders,
-malformed packets and bad wildcard addresses are refused with one bounded
-line each and no error traceback (E3); per-message lines are rate limited;
+malformed packets and bad wildcard addresses are refused with no error
+traceback (E3); errors (malformed, bad wildcard) stop at 10 and a note,
+blocked senders are never capped (D-09-OSC-TRACE-ERRORS); per-message and
+blocked lines are rate limited;
 with the areas unticked nothing is written. Loopback only (127.0.0.1, an
 OS-picked port)."""
 
@@ -118,22 +120,40 @@ def test_a_message_on_the_loopback_is_traced_at_each_step(
     assert ("OSC", "port closed") in _osc_lines("Receive")
 
 
-def test_a_blocked_sender_has_one_bounded_line(run: SimpleNamespace) -> None:
+def _trace_clock(monkeypatch: pytest.MonkeyPatch) -> list[float]:
+    """trace's clock only (the runtime keeps the real one); no flush timer."""
+    now = [1000.0]
+    fake = SimpleNamespace(**vars(trace.clock))
+    fake.monotonic = lambda: now[0]
+    monkeypatch.setattr(trace, "clock", fake)
+    monkeypatch.setattr(trace, "_schedule_flush", lambda: None)
+    return now
+
+
+def test_a_blocked_sender_is_never_capped_only_rate_limited(
+    run: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # D-09-OSC-TRACE-ERRORS: an expected refusal is no error: no 10 cap.
+    now = _trace_clock(monkeypatch)
+    gap = 1.0 / trace.axis_rate()
     run.server["allow_senders"] = ["10.0.0.0/8"]
     run.rows.create(BUTTON, "/b")
     run.runtime.start()
     for _ in range(15):
         run.runtime._on_main("/b", (1.0,), PEER)
+        now[0] += gap
     blocked = [d for p, d in _osc_lines("Receive") if p == "BLOCKED"]
     text = "sender 192.168.1.20 not on Allowed senders"
-    # 10 lines, then one note, then nothing until the next Run.
-    assert blocked[:10] == [text] * 10
-    assert len(blocked) == 11 and blocked[10].startswith(text)
-    assert trace.OSC_REPEAT_NOTE in blocked[10]
+    assert blocked == [text] * 15
     assert not any(d.startswith("event") for _p, d in _osc_lines("Inputs"))
-    trace.osc_reset()
+    # Faster than the Axis lines rate: counted on the next line.
+    for _ in range(3):
+        run.runtime._on_main("/b", (1.0,), PEER)
+        now[0] += gap / 10
+    now[0] += gap
     run.runtime._on_main("/b", (1.0,), PEER)
-    assert [d for p, d in _osc_lines("Receive") if p == "BLOCKED"][-1] == text
+    blocked = [d for p, d in _osc_lines("Receive") if p == "BLOCKED"]
+    assert blocked[-1] == f"{text}  (2 messages between)"
 
 
 def test_a_bad_wildcard_address_is_refused_without_an_error(

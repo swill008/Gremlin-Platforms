@@ -5,7 +5,8 @@
 """OSC tracing core (gremlin/trace.py, D-09-OSC-TRACE; 01 S146 S148 S149):
 area ticks saved, nothing written while off or unticked, per-key rate limit
 with "(N messages between)" and the timer flush, the 10-then-quiet repeat
-rule, osc_reset (also at tracing on), log_limited bounded, never raises."""
+rule for errors only (D-09-OSC-TRACE-ERRORS), osc_reset (also at tracing
+on), log_limited bounded, never raises."""
 
 from __future__ import annotations
 
@@ -119,13 +120,14 @@ def test_rate_limit_counts_between_and_flush(monkeypatch: pytest.MonkeyPatch) ->
     assert not trace._osc_pending
 
 
-def test_repeat_rule_ten_then_one_note_until_reset() -> None:
+def test_repeat_rule_errors_ten_then_one_note_until_reset() -> None:
+    # D-09-OSC-TRACE-ERRORS: the cap is for errors (warning=True) only.
     trace.set_osc_all(True)
     trace.set_enabled(True)
     for _ in range(25):
         trace.osc(
-            "receive", "sender 10.0.0.5 not on Allowed senders",
-            blocked=True, key="10.0.0.5",
+            "receive", "malformed packet from 10.0.0.5 (bad)",
+            blocked=True, warning=True, key="10.0.0.5",
         )
     lines = _osc_lines()
     assert len(lines) == trace.REPEAT_LIMIT + 1
@@ -133,22 +135,55 @@ def test_repeat_rule_ten_then_one_note_until_reset() -> None:
     assert lines[-1][3].endswith(trace.OSC_REPEAT_NOTE)
     assert sum(trace.OSC_REPEAT_NOTE in ln[3] for ln in lines) == 1
     # Another key (or reason) has its own count.
-    trace.osc("receive", "sender 10.0.0.6 not on Allowed senders",
-              blocked=True, key="10.0.0.6")
+    trace.osc("receive", "malformed packet from 10.0.0.6 (bad)",
+              blocked=True, warning=True, key="10.0.0.6")
     assert len(_osc_lines()) == trace.REPEAT_LIMIT + 2
     # Run start resets the counts.
     trace.osc_reset()
-    trace.osc("receive", "sender 10.0.0.5 not on Allowed senders",
-              blocked=True, key="10.0.0.5")
+    trace.osc("receive", "malformed packet from 10.0.0.5 (bad)",
+              blocked=True, warning=True, key="10.0.0.5")
     assert len(_osc_lines()) == trace.REPEAT_LIMIT + 3
+
+
+def test_blocked_lines_never_capped_only_rate_limited(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # D-09-OSC-TRACE-ERRORS: an expected refusal is never capped; per key it
+    # goes at the Axis lines rate with "(N messages between)".
+    now = [1000.0]
+    monkeypatch.setattr(clock, "monotonic", lambda: now[0])
+    monkeypatch.setattr(trace, "_schedule_flush", lambda: None)
+    trace.set_osc_all(True)
+    trace.set_enabled(True)
+    gap = 1.0 / trace.axis_rate()
+    text = "sender 10.0.0.5 not on Allowed senders"
+    for _ in range(15):  # spaced: every one is written
+        trace.osc("receive", text, blocked=True, key="10.0.0.5")
+        now[0] += gap
+    lines = _osc_lines()
+    assert len(lines) == 15
+    assert all(ln[2] == trace.BLOCKED and ln[3] == text for ln in lines)
+    assert not any(trace.OSC_REPEAT_NOTE in ln[3] for ln in lines)
+    assert not trace._osc_repeat
+    # Inside one interval: counted, the next line says how many.
+    for _ in range(4):
+        trace.osc("receive", text, blocked=True, key="10.0.0.5")
+        now[0] += gap / 10
+    now[0] += gap
+    trace.osc("receive", text, blocked=True, key="10.0.0.5")
+    assert _osc_lines()[-1][3] == f"{text}  (3 messages between)"
+    assert _osc_lines()[-1][2] == trace.BLOCKED
+    # A blocked line and a rate line with the same key don't share a limit.
+    trace.osc("receive", "in /a ,f 1", rate=True, key="10.0.0.5")
+    assert _osc_lines()[-1][3] == "in /a ,f 1"
 
 
 def test_tracing_on_resets_counts() -> None:
     trace.set_osc_all(True)
     trace.set_enabled(True)
     for _ in range(12):
-        trace.osc("output", "send refused: no target named x",
-                  blocked=True, key="x")
+        trace.osc("output", "send error t 127.0.0.1:9: boom",
+                  warning=True, key="x")
     trace.log_limited("system", "x", logging.ERROR, "send failed")
     assert trace._osc_repeat and trace._log_counts
     trace.set_enabled(False)

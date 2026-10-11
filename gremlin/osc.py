@@ -363,6 +363,7 @@ def report_malformed(client: object, reason: str) -> None:
             RECEIVE,
             f"malformed packet from {host} ({reason})",
             blocked=True,
+            warning=True,
             key=key,
         )
 
@@ -682,9 +683,11 @@ class OscRuntime(QtCore.QObject):
         self._live_timer.setSingleShot(True)
         self._live_timer.timeout.connect(self._flush_live)
         self._listener: OscListener | None = None
-        # A profile runs (start() until stop()); the port opens for it only
-        # when it uses OSC inputs (09 Q5). A Listen keeps the port open only
-        # while it lasts.
+        # The program is open (open_always() until close_always()): the port
+        # stays open while "Listen for OSC messages" is on, Run or not
+        # (D-09-OSC-ALWAYS-LISTEN). A profile runs (start() until stop()); a
+        # Listen keeps the port open while it lasts.
+        self._always = False
         self._running = False
         self._uses_osc = False
         self._learn = False
@@ -797,6 +800,7 @@ class OscRuntime(QtCore.QObject):
                     SETUP,
                     f"{_holder_name(token)} could not open the port",
                     blocked=True,
+                    warning=True,
                     key=f"hold {token}",
                 )
         return self._listener is not None
@@ -861,11 +865,28 @@ class OscRuntime(QtCore.QObject):
         self._enc_ticks.clear()
 
     def _needs_port(self) -> bool:
+        # With _always, _bind itself closes the port when OSC is Off.
         return (
-            self._learn
+            self._always
+            or self._learn
             or bool(self._holders)
             or (self._running and self._uses_osc)
         )
+
+    def open_always(self) -> None:
+        """Program start-up: listen while "Listen for OSC messages" is on,
+        with or without a Run (D-09-OSC-ALWAYS-LISTEN). A port that can't
+        open shows its error once, naming what holds it."""
+        self._always = True
+        self._bind()
+
+    def close_always(self) -> None:
+        """Quit: the port closes unless something else still holds it."""
+        if trace.osc_on(SETUP):
+            # Says why the next "port closed" happens (it isn't the Stop).
+            trace.osc(SETUP, "Quit: always listening ended")
+        self._always = False
+        self._close_if_idle()
 
     def _close_if_idle(self) -> None:
         if not self._needs_port():
@@ -955,6 +976,8 @@ class OscRuntime(QtCore.QObject):
         if self._learn:
             who.append("Listen")
         who.extend(sorted({_holder_name(t) for t in self._holders}))
+        if self._always:
+            who.append("always listening")
         return ", ".join(who) or "nobody"
 
     def start(self) -> None:
@@ -970,10 +993,28 @@ class OscRuntime(QtCore.QObject):
                 SETUP,
                 "Run: the profile uses OSC inputs"
                 if self._uses_osc
+                else "Run: the profile has no OSC inputs"
+                if self._always
                 else "Run: the profile has no OSC inputs (port not opened for it)",
             )
         if self._needs_port():
-            self._bind()
+            before = self._listener
+            # Always listening: a port that couldn't open showed its error at
+            # start-up; a Run shows it again only when it uses OSC inputs.
+            self._bind(report=self._uses_osc or not self._always)
+            listener = self._listener
+            if (
+                self._uses_osc
+                and listener is not None
+                and listener is before
+                and trace.osc_on(RECEIVE)
+            ):
+                # Already open (the Monitor, Listen): _bind wrote nothing.
+                trace.osc(
+                    RECEIVE,
+                    f"port {listener.host}:{listener.bound_port()} already open; "
+                    f"now used by {self._who()}",
+                )
         else:
             self._settings = server_settings()
             log.info("OSC port not opened: the profile has no OSC inputs")
@@ -1434,6 +1475,7 @@ class OscRuntime(QtCore.QObject):
                 f"wildcard address {address} from {host} "
                 "(inputs need exact addresses)",
                 blocked=True,
+                warning=True,
                 key=f"wildcard {host}",
             )
         if not refused and trace.osc_on(INPUTS):
@@ -1700,6 +1742,7 @@ def _bad_pattern(address: str, why: str, peer: tuple[str, int] | None) -> None:
             RECEIVE,
             f"wildcard address {address} from {host} ({why})",
             blocked=True,
+            warning=True,
             key=f"wildcard {host}",
         )
 

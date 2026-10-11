@@ -13,6 +13,9 @@ _SIGNAL = QtCore.SIGNAL("inputItemChanged(int)")
 
 
 def test_a_deleted_card_list_drops_its_input_item_connection(qtbot) -> None:  # noqa: ANN001
+    # Free what earlier tests left first, so only this list moves the count.
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    gc.collect()
     before = signal.receivers(_SIGNAL)
     model = ModuleListModel()
     assert signal.receivers(_SIGNAL) > before

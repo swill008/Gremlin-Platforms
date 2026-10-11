@@ -60,14 +60,19 @@ def trace_kind(event_type: object) -> str | None:
 
 
 def trace_ticked(event: Event) -> tuple[str, int] | None:
-    """(kind, index) of a stick input when tracing is on and it is ticked."""
+    """(kind, index) of a stick input when tracing is on and it is ticked,
+    or of an OSC input while the OSC Inputs area is ticked (its actions'
+    outputs are traced under it, D-09-OSC-TRACE)."""
     if not trace.enabled():
         return None
     kind = trace_kind(event.event_type)
     index = event.identifier
     if kind is None or not isinstance(index, int):
         return None
-    if not trace.ticked(event.device_guid, kind, index):
+    if not (
+        trace.ticked(event.device_guid, kind, index)
+        or trace.osc_input_on(event.device_guid)
+    ):
         return None
     return kind, index
 

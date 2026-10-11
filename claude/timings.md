@@ -565,3 +565,18 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | TR-POLISH: feedback names input, wildcard no double line, settings read under Setup | fix | 3–8 min (table) | 2 min | 18:21–18:23 |
 | 2026-10-10 | Full run 7 (seed 382285): all passed (5566 unit + 75 + 47) | test run | ~5 min (table) | 5:15 | 18:23–18:29 |
 | 2026-10-10 | MAP5: OSC trace map lines, spec built marks, Help/glossary wording matched to code | map catch-up | 5–7 min (table) | 9 min | 18:20–18:29 |
+| 2026-10-10 | Lead: lint, commit 4e56e49a, push, tracker | lead commit | no timing data yet | 2 min | 18:29–18:31 |
+| 2026-10-10 | INV-VJOY4: vJoy picker drops a switch to vJoy 4 when the control isn't on vJoy 4 (output_modules.py setState) | study | rough guess 10–15 min (no data) | 3 min | 18:35–18:38 |
+| 2026-10-10 | INV-OSCRUN: no bug; OSC fires at Run with or without Monitor; 2 trace nits (double Monitor lines, Run using an open port not said) | study | rough guess 10–15 min (no data) | 5 min | 18:35–18:40 |
+| 2026-10-10 | VJ1: vJoy picker switch really moves the binding (output_modules.py), S136 | fix | 3–8 min (table) | 3 min | 18:54–18:57 |
+| 2026-10-10 | TQ1: 10-then-quiet errors only, Monitor double lines, Run uses open port | fix | 3–8 min (table) | 4 min | 18:45–18:49 |
+| 2026-10-10 | OL1: OSC always listens while enabled (open_always/close_always, start-up call) | fix | rough guess 5–10 min (no data) | ~7 min | 18:49–18:56 |
+| 2026-10-10 | OSC action outputs traced (vJoy/mouse writes from OSC inputs) | fix | rough guess (no data) | 2 min | 18:56–18:58 |
+| 2026-10-10 | Full run 8 (seed 699739): all passed (5580 unit + 75 + 47) | test run | ~5 min (table) | 5:05 | 18:59–19:04 |
+| 2026-10-10 | INV-VIEWER: vJoy Viewer drops OSC/LD wires (source-claim filter in module_pairing._module_pair_rows) | study | rough guess 5–10 min (no data) | 2 min | 19:08–19:10 |
+| 2026-10-10 | INV-HILITE: OSC row highlight is off by spec (09 S32, 05 S131); options A tint / B jump | study | rough guess 5–10 min (no data) | 3 min | 19:08–19:11 |
+| 2026-10-10 | VJ1b: vJoy turned off: picker marks (not available) and moves binding; write blocked, logged once; refresh works | fix | 3–8 min (table) | 8 min | 19:04–19:12 |
+| 2026-10-10 | BUG-STOP: not a bug (port closed at quit, per decision); real Run/Stop test added | study+test | 3–8 min (table) | 2 min | 19:12–19:14 |
+| 2026-10-10 | FIX-VIEWER: vJoy Viewer lists/lights OSC and LD wires (claim filter + OSC card name) | fix | rough guess 5–10 min (no data) | 3 min | 19:11–19:14 |
+| 2026-10-10 | QML-WARN: 3 console messages fixed (Monitor release slot, Configuration page jump timer) | fix | 3–8 min (table) | 4 min | 19:12–19:16 |
+| 2026-10-10 | Full run 9 (seed 55000): all passed (5593 unit + 75 + 47) | test run | ~5 min (table) | 5:05 | 19:16–19:21 |

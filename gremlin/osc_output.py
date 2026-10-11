@@ -322,8 +322,8 @@ def refusal(target_id: str, address: str, force: bool = False) -> str:
 
 
 def _refused(target_id: str, address: str, reason: str) -> bool:
-    """A send that didn't go: a BLOCKED Output line (10 per reason, then
-    quiet until the next Run). False."""
+    """A send that didn't go: a BLOCKED Output line (never capped; rate
+    limited per target and address, D-09-OSC-TRACE-ERRORS). False."""
     if trace.osc_on("output"):
         trace.osc(
             "output",

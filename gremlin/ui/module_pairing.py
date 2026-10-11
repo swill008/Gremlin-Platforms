@@ -6,8 +6,9 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 from gremlin import device_initialization, event_handler, shared_state
-from gremlin.modules import registry, store
+from gremlin.modules import device_class, registry, store
 from gremlin.modules import wiring
+from gremlin.modules.runtime import always_forwarded
 from gremlin.modules.ids import guid_key
 from gremlin.signal import signal
 from gremlin.types import InputType
@@ -59,10 +60,30 @@ def _vjoy_maps_only(item) -> list[tuple[int, object, int]]:
     return [m for m in pairing._maps_for_item(item) if m[1] is not None]
 
 
-def _src_label(input_type: InputType, hid: int, claim: dict) -> str:
+def _builtin_label(kind: str, input_type: InputType, hid: int) -> str:
+    """OSC's and the Logical Device's own names for an input: "OSC Button 1",
+    the Logical Device's row title ("Button 1 — Gear"); "" for others."""
+    word = "Axis" if input_type == InputType.JoystickAxis else "Button"
+    if kind == "osc":
+        return f"OSC {word} {int(hid)}"
+    if kind == "logical_device":
+        from gremlin.logical_device import LogicalDevice
+
+        try:
+            ident = LogicalDevice.Input.Identifier(input_type, int(hid))
+            return LogicalDevice()[ident].choice_label
+        except Exception:  # noqa: BLE001 - no such row: its system name
+            return f"{word} {int(hid)}"
+    return ""
+
+
+def _src_label(input_type: InputType, hid: int, claim: dict, kind: str = "") -> str:
     custom = claim_friendly(claim, kind_of(input_type), hid)
     if custom:
         return custom
+    builtin = _builtin_label(kind, input_type, hid)
+    if builtin:
+        return builtin
     if input_type == InputType.JoystickAxis:
         return wiring.AXIS_SHORT.get(int(hid), f"A{int(hid)}")
     if input_type == InputType.JoystickHat:
@@ -72,9 +93,14 @@ def _src_label(input_type: InputType, hid: int, claim: dict) -> str:
 
 def _module_pair_rows(guid: str, device_name: str, input_type: InputType) -> list[dict]:
     src_claim = _source_claim(device_name, guid)
-    allowed = set(claim_ids(src_claim, kind_of(input_type)))
-    if not allowed:
-        return []
+    # OSC and the Logical Device need no claim (03 S90b): every wired input
+    # is listed. Others list only what their module claims.
+    allowed: set[int] | None = None
+    if guid_key(guid) not in always_forwarded():
+        allowed = set(claim_ids(src_claim, kind_of(input_type)))
+        if not allowed:
+            return []
+    src_kind = device_class.device_kind(guid, device_name)
     rows: list[dict] = []
     seen: set[int] = set()
     for item in pairing._items_for_guid(guid):
@@ -84,7 +110,7 @@ def _module_pair_rows(guid: str, device_name: str, input_type: InputType) -> lis
             identifier = int(item.input_id)
         except Exception:
             continue
-        if identifier not in allowed or identifier in seen:
+        if (allowed is not None and identifier not in allowed) or identifier in seen:
             continue
         vjoy_maps = _vjoy_maps_only(item)
         if not vjoy_maps:
@@ -104,7 +130,7 @@ def _module_pair_rows(guid: str, device_name: str, input_type: InputType) -> lis
         rows.append(
             {
                 "identifier": identifier,
-                "label": _src_label(input_type, identifier, src_claim),
+                "label": _src_label(input_type, identifier, src_claim, src_kind),
                 "vjoyId": vjoy_id,
                 "vjoyInput": vinput,
                 "vjoyLabel": vjoy_label,
@@ -174,7 +200,14 @@ class ModulePairDeviceModel(QtCore.QAbstractListModel):
                 if not any(_vjoy_maps_only(item) for item in items or []):
                     continue
                 guid = str(device_id)
-                name = pairing._device_name(guid)
+                # A built-in (OSC, the Logical Device) by its fixed name: DILL
+                # knows only hardware, and the file is found by that name.
+                kind = device_class.device_kind(guid)
+                internal = device_class.DeviceClass.INTERNAL_INPUT
+                if device_class.class_of_kind(kind) is internal:
+                    name = device_class.display_name(kind)
+                else:
+                    name = pairing._device_name(guid)
                 seen.add(key)
                 roster.append((guid, name))
         for guid, raw_name in roster:

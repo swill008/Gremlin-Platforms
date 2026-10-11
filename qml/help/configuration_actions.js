@@ -312,7 +312,7 @@ function topics() {
             title: "Map to vJoy",
             body: "<p>Sends the input to a vJoy axis, button or hat.</p>"
                 + "<ol>"
-                + "<li>Pick the vJoy device by its output module name, then the output.</li>"
+                + "<li>Pick the vJoy device by its output module name, then the output. Picking another vJoy device keeps the same output if that device claims it, otherwise it takes that device's first claimed output of the same kind.</li>"
                 + "<li>For an axis, choose <b>Absolute</b>, or <b>Relative</b> with <b>Speed</b>: the axis moves while the input is held off-center.</li>"
                 + "<li>For a button, tick <b>Invert activation</b>.</li>"
                 + "</ol>"

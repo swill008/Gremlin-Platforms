@@ -169,6 +169,8 @@ def test_s3_s78_s81_restart_after_the_usual_quit_order_with_the_launch_scaling(
     monkeypatch.setattr(jg.gremlin.qt_log, "install", lambda folder: None)
     monkeypatch.setattr(jg, "JoystickGremlinApp", lambda argv: app)
     monkeypatch.setattr(jg, "shutdown_cleanup", lambda: order.append("cleanup"))
+    # No real OSC port in a test (D-09-OSC-ALWAYS-LISTEN opens it at start-up).
+    monkeypatch.setattr(jg, "_osc_open_always", lambda: order.append("osc"))
     monkeypatch.setattr(
         jg.gremlin.threads, "shutdown",
         lambda timeout=2.0: order.append("threads") or [],
@@ -204,7 +206,7 @@ def test_s3_s78_s81_restart_after_the_usual_quit_order_with_the_launch_scaling(
     # S78: every thread asked to stop, waiting writes written, History
     # closed, then the lock given up.
     assert order == [
-        "exec", "cleanup", "threads", "flush", "history", "flush", "unlock",
+        "osc", "exec", "cleanup", "threads", "flush", "history", "flush", "unlock",
         "release",
     ]
     # S81: started again with the same arguments; S3: the new copy reads

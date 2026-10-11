@@ -121,7 +121,7 @@ function topics() {
             title: "Server tab",
             body: "<p>Where and how the program listens for OSC messages.</p>"
                 + _list([
-                    "<b>Listen for OSC messages</b>: turns OSC input on. Off, the program never opens the port. On unless you turn it off.",
+                    "<b>Listen for OSC messages</b>: turns OSC input on. On, the port is open the whole time the program is open, running or not; off, the port closes at once and the program never opens it. On unless you turn it off.",
                     "<b>Host</b>: leave it blank (<b>All addresses on this PC</b>) to listen on every network address of this PC. That keeps working when the PC's address changes. Or type one IP address or computer name to listen only there; the program checks it before saving.",
                     "<b>Port</b>: the UDP port your app sends to. 8001 unless you change it.",
                     "This PC's addresses with the port (for example 192.168.1.10:8001), each with <b>Copy</b>, under <b>Use one of these in your app:</b>. Type one of them into your app as its destination.",
@@ -130,8 +130,8 @@ function topics() {
                     "<b>Allowed senders</b>: OSC is accepted only from the IP addresses and ranges listed, for example 192.168.1.5 or 192.168.1.0/24 (a range). Type one and choose <b>Add</b>; <b>Remove</b> asks first. Empty (the default): OSC from every sender is accepted. See " + _link("osc-allow-senders", "Accept OSC only from some senders") + "."
                 ])
                 + _good([
-                    "The port opens only when needed: see " + _link("osc-tech-network", "OSC network and ports") + ".",
-                    "If the port can't be opened, for example because another program uses it, Run still runs the rest of the profile and shows one error: \"Could not bind OSC on host:port.\", with the host and port. Its detail names the program holding the port when Windows can tell (\"Port 8001 is in use by <i>name</i> (PID <i>n</i>).\"), else \"Port 8001 is in use by another program.\". The error is also written to the log."
+                    "The port opens when the program starts and stays open until you quit or turn <b>Listen for OSC messages</b> off: see " + _link("osc-tech-network", "OSC network and ports") + ".",
+                    "If the port can't be opened, for example because another program uses it, the program shows one error when it starts (and again at Run only for a profile that uses OSC inputs), and Run still runs the rest of the profile: \"Could not bind OSC on host:port.\", with the host and port. Its detail names the program holding the port when Windows can tell (\"Port 8001 is in use by <i>name</i> (PID <i>n</i>).\"), else \"Port 8001 is in use by another program.\". The error is also written to the log."
                 ]),
             related: ["osc-setup-window", "osc-output-tab", "osc-tech-network", "osc-troubleshooting"]
         },
@@ -234,7 +234,7 @@ function topics() {
                     "Adding an input that already exists (the same address, and in Message + data the same values) selects the one already there; it doesn't make a second one.",
                     "Several inputs can share an address when their data or source value differ, for example /pad with P1 and /pad with P2.",
                     "The address may be a pattern such as <code>/deck/*</code>: one input answers every matching address. See " + _link("osc-patterns", "OSC address patterns") + ".",
-                    "Listen opens the port for that one message, also when the profile isn't running, and closes it again afterwards. A Listen belongs to the window that started it: only that window takes the message, and cancelling or closing another window leaves it running.",
+                    "Listen works also when the profile isn't running. A Listen belongs to the window that started it: only that window takes the message, and cancelling or closing another window leaves it running.",
                     "If OSC is off or the port can't be opened, Listen says \"Could not start OSC listener.\": turn OSC on and check its host and port in OSC › Module Setup.",
                     "With <b>Allowed senders</b> set on the Server tab, Listen takes messages only from those senders.",
                     "To add many at once, see " + _link("osc-capture-import", "Capture or import many addresses") + "."
@@ -596,7 +596,7 @@ function topics() {
                     "Same network: the app's device and this PC are on the same network (or the app runs on this PC: use 127.0.0.1).",
                     "Firewall: Windows may ask once to let the program receive on the network. Allow it for private networks. If you said no, allow UDP in on the port in Windows Defender Firewall.",
                     "The app sends to that address and port, over UDP.",
-                    "Something opens the port: a running profile with OSC inputs that have actions, Listen, Bulk capture, a macro's Record, or the OSC Monitor unfolded.",
+                    "<b>Listen for OSC messages</b> is on (Server tab): the port is then open whenever the program is open.",
                     "If <b>Allowed senders</b> on the Server tab lists anything, the app's address is on it.",
                     "To send back: the program's target is the device's own address and the port the app listens on (not 8001).",
                     "Watch the <b>OSC Monitor</b>: In rows prove messages arrive; Out rows show what is sent and where."
@@ -609,7 +609,7 @@ function topics() {
             title: "When OSC doesn't work",
             body: "<h4>Nothing arrives</h4>"
                 + _list([
-                    "Unfold the <b>OSC Monitor</b> on the OSC page. It opens the port, so if nothing shows there, the messages don't reach this PC. Messages that show as blocked come from a sender not on <b>Allowed senders</b> (Server tab).",
+                    "Unfold the <b>OSC Monitor</b> on the OSC page. The port is open while <b>Listen for OSC messages</b> is on, so if nothing shows there, the messages don't reach this PC. Messages that show as blocked come from a sender not on <b>Allowed senders</b> (Server tab).",
                     "Check the app's host and port against the <b>Server</b> tab, and that <b>Listen for OSC messages</b> is on.",
                     "Check the firewall (see " + _link("osc-checklist", "Connection checklist") + ").",
                     "\"Could not bind OSC on host:port.\": another program uses that port; the error's detail names it when Windows can tell. Close it or choose another <b>Port</b> (and set the same in the app).",
@@ -658,11 +658,10 @@ function topics() {
                 ])
                 + "<h4>When the port is open</h4>"
                 + _list([
-                    "While a profile runs that uses OSC inputs (they have actions or are assigned to the Logical Device).",
-                    "During Listen (until its message arrives or <b>Stop</b>) and while <b>Bulk capture</b> is ticked.",
-                    "While the OSC Monitor is unfolded on the OSC page, or popped out.",
-                    "While a macro's Record is recording.",
-                    "Never while <b>Listen for OSC messages</b> is off. At Stop and at quit, the port closes."
+                    "Whenever the program is open and <b>Listen for OSC messages</b> is on: from start-up until you quit, with or without a running profile. The OSC page shows live values and Listen works without the Monitor.",
+                    "A stopped profile still runs no actions: messages update the live values, the Monitor and Listen only.",
+                    "Never while <b>Listen for OSC messages</b> is off: turning it off closes the port at once and frees it for other programs.",
+                    "Changing the host or port moves the open port at once."
                 ])
                 + _good([
                     "Windows Defender Firewall may ask once for inbound UDP when the port first opens.",
@@ -794,7 +793,7 @@ function topics() {
                     "OSC's inputs and settings are kept only in OSC's module file; a profile keeps only the actions it gives them. Profiles from older versions open, but OSC inputs or settings stored in them are not read.",
                     "Any change to OSC marks the profile changed (<b>*</b>): <b>File › Save Profile</b>" + _show("menu/File/Save Profile") + " saves OSC's file too, and Discard throws the OSC changes away.",
                     "OSC's inputs, settings, targets and Feedback rows travel with Save to Device Library, Restore, Export and Device Pack, and every save is in History.",
-                    "The port opens only when something needs it, and closes again after.",
+                    "The port is open while the program is open and <b>Listen for OSC messages</b> is on, and closes at quit.",
                     "Deleting an input asks first; you can restore it from <b>Tools › History</b>" + _show("menu/Tools/History") + "."
                 ]),
             related: ["osc-about", "osc-tech-network", "device-library-built-in", "tools-history"]

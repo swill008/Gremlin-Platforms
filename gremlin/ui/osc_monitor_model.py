@@ -261,16 +261,20 @@ class OscMonitorModel(QtCore.QAbstractListModel):
             hold = getattr(runtime, "hold_open", None)
             if callable(hold):
                 hold(self._token)
-                trace.osc("setup", "Monitor holds the port")
         else:
             osc_traffic.remove_listener(self._on_note)
             release = getattr(runtime, "release_open", None)
             if callable(release):
                 release(self._token)
-                trace.osc("setup", "Monitor released the port")
         self.activeChanged.emit()
 
     active = QtCore.Property(bool, _get_active, _set_active, notify=activeChanged)
+
+    @QtCore.Slot()
+    def release(self) -> None:
+        """Lets go of the port when the panel goes away (its active binding
+        is no longer evaluated then; assigning active would overwrite it)."""
+        self._set_active(False)
 
     # -- controls -------------------------------------------------------
 

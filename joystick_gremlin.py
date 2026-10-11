@@ -362,6 +362,15 @@ def shutdown_cleanup() -> None:
     except Exception:
         log.exception("Shutdown: backend")
     try:
+        # OSC's port (always listening, D-09-OSC-ALWAYS-LISTEN): closed at
+        # quit; only a runtime that was made.
+        osc = sys.modules.get("gremlin.osc")
+        runtime = osc.OscRuntime.instance if osc is not None else None
+        if runtime is not None:
+            runtime.close_always()
+    except Exception:
+        log.exception("Shutdown: OSC")
+    try:
         # OSC discovery: goodbye on the network, zeroconf closed (only when
         # it was loaded; it never runs with both switches off).
         discovery = sys.modules.get("gremlin.osc_discovery")
@@ -1153,6 +1162,13 @@ def _check_second_copy() -> tuple[QtCore.QLockFile | None, bool]:
         _scan_cache = None
 
 
+def _osc_open_always() -> None:
+    try:
+        gremlin.osc.OscRuntime().open_always()
+    except Exception:
+        logging.getLogger("system").exception("Could not start OSC listening")
+
+
 def main() -> int:
     if _startup_failure is not None:
         # The modules didn't load or the user folder couldn't be made.
@@ -1190,6 +1206,10 @@ def main() -> int:
         osc_discovery.start()
     except Exception:
         logging.getLogger("system").exception("Could not start OSC discovery")
+    # OSC listens while the program is open and "Listen for OSC messages"
+    # is on (D-09-OSC-ALWAYS-LISTEN); the window is loaded, so a bind error
+    # shows there once.
+    _osc_open_always()
     app.exec()
     logging.getLogger("system").info("Terminating Gremlin")
     try:

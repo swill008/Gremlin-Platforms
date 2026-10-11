@@ -629,7 +629,7 @@ def output(vjoy_id: int, kind: str, index: int, value: object, result: str) -> N
                 clock.now(),
             )
         cur = current_input()
-        if cur is None or not ticked(cur[0], cur[1], cur[2]):
+        if cur is None:
             return
         if kind == "axis":
             from gremlin import common
@@ -649,9 +649,10 @@ def output(vjoy_id: int, kind: str, index: int, value: object, result: str) -> N
             if kind == "axis" and isinstance(value, (int, float))
             else str(value)
         )
-        _add(
+        _input_add(
+            cur,
             point,
-            control_label(cur[0], cur[1], cur[2]),
+            f"vjoy {vjoy_id} {kind} {index}",
             f"vJoy {vjoy_id} {name} = {shown} · {result}",
         )
     except Exception:
@@ -666,9 +667,9 @@ def mouse(text: str) -> None:
         return
     try:
         cur = current_input()
-        if cur is None or not ticked(cur[0], cur[1], cur[2]):
+        if cur is None:
             return
-        _add(OUTPUT, control_label(cur[0], cur[1], cur[2]), str(text))
+        _input_add(cur, OUTPUT, "mouse", str(text))
     except Exception:
         pass
 
@@ -742,7 +743,9 @@ def osc(
 ) -> None:
     """One OSC line for area (D-09-OSC-TRACE); nothing unless osc_on(area).
     rate: a per-message line, limited per key to axis_rate() lines a second
-    with "(N messages between)". blocked/warning with a key: the same
+    with "(N messages between)". blocked (an expected refusal or drop) with
+    a key: never capped, rate-limited per key and text like rate lines
+    (D-09-OSC-TRACE-ERRORS). warning (an error) with a key: the same
     (area, key, text) at most REPEAT_LIMIT times, then one note. Never
     raises."""
     global _notice
@@ -755,7 +758,7 @@ def osc(
         control = f"OSC {OSC_AREA_NAMES.get(area, area)}"
         detail = str(text)
         with _LOCK:
-            if (blocked or warning) and key is not None:
+            if warning and key is not None:
                 rkey = (area, str(key), detail)
                 if len(_osc_repeat) >= _MAX_KEYS and rkey not in _osc_repeat:
                     _osc_repeat.clear()
@@ -766,28 +769,78 @@ def osc(
                 if count == REPEAT_LIMIT + 1:
                     _add(point, control, f"{detail}  {OSC_REPEAT_NOTE}", warning)
                     return
-            elif rate:
-                okey = (area, "" if key is None else str(key))
-                now = clock.monotonic()
-                if now - _osc_last.get(okey, -math.inf) < _axis_interval:
-                    pending = _osc_pending.get(okey)
-                    if pending is None and len(_osc_pending) >= _MAX_KEYS:
-                        return
-                    count = pending[4] + 1 if pending is not None else 1
-                    _osc_pending[okey] = (control, point, detail, now, count)
-                    _schedule_flush()
+            elif rate or (blocked and key is not None):
+                # A refusal: per key and reason (another reason shows at once).
+                okey = (
+                    area,
+                    f"blocked:{key}:{detail}"
+                    if blocked
+                    else "" if key is None else str(key),
+                )
+                limited = _rate_limited(okey, point, control, detail)
+                if limited is None:
                     return
-                pending = _osc_pending.pop(okey, None)
-                if len(_osc_last) >= _MAX_KEYS and okey not in _osc_last:
-                    _osc_last.clear()
-                _osc_last[okey] = now
-                if pending is not None:
-                    detail += f"  {_between(pending[4])}"
+                detail = limited
             _add(point, control, detail, warning)
             if warning:
                 _notice = f"{control}: {text}"
     except Exception:
         pass
+
+
+def _rate_limited(
+    okey: tuple[str, str], point: str, control: str, detail: str
+) -> str | None:
+    """The per-key Axis lines rate (caller holds _LOCK): None when the line
+    is held back (counted; the next line or the flush writes it), else the
+    text to write, with "(N messages between)" when some were held."""
+    now = clock.monotonic()
+    if now - _osc_last.get(okey, -math.inf) < _axis_interval:
+        pending = _osc_pending.get(okey)
+        if pending is None and len(_osc_pending) >= _MAX_KEYS:
+            return None
+        count = pending[4] + 1 if pending is not None else 1
+        _osc_pending[okey] = (control, point, detail, now, count)
+        _schedule_flush()
+        return None
+    pending = _osc_pending.pop(okey, None)
+    if len(_osc_last) >= _MAX_KEYS and okey not in _osc_last:
+        _osc_last.clear()
+    _osc_last[okey] = now
+    if pending is not None:
+        detail += f"  {_between(pending[4])}"
+    return detail
+
+
+def osc_input_on(device_uuid: object) -> bool:
+    """An OSC input's event while the OSC Inputs area is ticked: what its
+    actions send is traced under it (D-09-OSC-TRACE, S166)."""
+    if not _enabled:
+        return False
+    try:
+        from gremlin.modules import ids
+
+        return _key(device_uuid) == ids.OSC and osc_on("inputs")
+    except Exception:
+        return False
+
+
+def _osc_input_label(kind: str, index: int) -> str:
+    """The control column for an OSC input: "OSC Button 1", "OSC Axis 2"."""
+    return f"OSC {'Axis' if kind == 'axis' else 'Button'} {index}"
+
+
+def _input_add(cur: tuple[Any, ...], point: str, key: str, detail: str) -> None:
+    """An output line for the current input: a ticked stick control, or an
+    OSC input with the Inputs area ticked (rate limited per output key)."""
+    if ticked(cur[0], cur[1], cur[2]):
+        _add(point, control_label(cur[0], cur[1], cur[2]), detail)
+    elif osc_input_on(cur[0]):
+        control = _osc_input_label(cur[1], cur[2])
+        with _LOCK:
+            text = _rate_limited(("osc-out", key), point, control, detail)
+            if text is not None:
+                _add(point, control, text)
 
 
 def log_limited(logger_name: str, key: str, level: int, text: str) -> None:

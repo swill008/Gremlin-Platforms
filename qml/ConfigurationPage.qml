@@ -203,7 +203,16 @@ Item {
 
     function _applyDevice() {
         _layout.setDevice(guid, deviceName)
-        Qt.callLater(_showCurrent)
+        _showCurrentLater.restart()
+    }
+
+    // _showCurrent on the next pass of the event loop. A Timer, not
+    // Qt.callLater: an unloading Loader invalidates the page's context
+    // before it deletes the page, and a queued callLater would still run.
+    Timer {
+        id: _showCurrentLater
+        interval: 0
+        onTriggered: _root._showCurrent()
     }
 
     onGuidChanged: if (_ready) _applyDevice()

@@ -5,7 +5,9 @@
 and the quiet logging fixes: unreadable rows logged once without a
 traceback (E5), Bulk capture only in Trace (E6), TouchOSC refusals without
 a traceback (E7), a missing OSC input in a condition bounded (E8), the
-Monitor's swallowed errors logged (E10)."""
+Monitor's swallowed errors logged (E10); Monitor hold/release written once;
+a Run on a port already open says so; errors capped at 10, refusals not
+(D-09-OSC-TRACE-ERRORS)."""
 
 from __future__ import annotations
 
@@ -252,6 +254,57 @@ def test_traffic_listener_error_is_logged_and_traced(
     assert any("Monitor" in t and "boom" in t for t in _osc_lines())
 
 
+class _FakeListener:
+    host = "127.0.0.1"
+    port = 9000
+
+    def bound_port(self) -> int:
+        return self.port
+
+    def stop(self) -> None:
+        pass
+
+
+def _open_runtime(monkeypatch: pytest.MonkeyPatch) -> object:
+    """An OscRuntime whose port is already open on 127.0.0.1:9000 (a fake
+    listener: nothing binds)."""
+    from gremlin import osc
+
+    runtime = osc.OscRuntime()
+    monkeypatch.setattr(
+        runtime, "_read_options", lambda: (True, "127.0.0.1", 9000)
+    )
+    runtime._listener = _FakeListener()  # type: ignore[assignment]
+    return runtime
+
+
+def test_run_on_a_port_already_open_says_so(
+    traced: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Monitor holds the port; a Run that uses OSC says it now uses it
+    (_bind writes nothing when the port is already open)."""
+    from PySide6 import QtCore
+
+    from gremlin import osc
+
+    _ = QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
+    runtime = _open_runtime(monkeypatch)
+    monkeypatch.setattr(osc, "profile_uses_osc", lambda: True)
+    token = "osc-monitor-test"
+    runtime.hold_open(token)  # type: ignore[attr-defined]
+    try:
+        runtime.start()  # type: ignore[attr-defined]
+        receive = _osc_lines("receive")
+        assert (
+            "port 127.0.0.1:9000 already open; now used by Run, Monitor"
+            in receive
+        ), receive
+    finally:
+        runtime.stop()  # type: ignore[attr-defined]
+        runtime.release_open(token)  # type: ignore[attr-defined]
+        runtime._listener = None  # type: ignore[attr-defined]
+
+
 def test_traffic_note_error_is_logged_and_traced(logs: _Records, traced: None) -> None:
     from gremlin import osc_traffic
 
@@ -269,7 +322,8 @@ def test_monitor_hold_release_and_paused_drop_are_traced(
     from gremlin.ui import osc_monitor_model as mm
 
     _ = QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
-    runtime = SimpleNamespace(hold_open=lambda t: None, release_open=lambda t: None)
+    # The real runtime's hold/release with the port already open (no bind).
+    runtime = _open_runtime(monkeypatch)
     monkeypatch.setattr(mm, "_runtime", lambda: runtime)
     model = mm.OscMonitorModel()
     model.active = True  # pyright: ignore[reportAttributeAccessIssue]
@@ -277,8 +331,9 @@ def test_monitor_hold_release_and_paused_drop_are_traced(
     model._on_note({"address": "/p", "direction": "in", "args": []})
     model.active = False  # pyright: ignore[reportAttributeAccessIssue]
     lines = _osc_lines()
-    assert "Monitor holds the port" in lines
-    assert "Monitor released the port" in lines
+    # Each once: the runtime writes them, the Monitor doesn't repeat them.
+    assert lines.count("Monitor holds the port") == 1, lines
+    assert lines.count("Monitor released the port") == 1, lines
     assert any(t.startswith("Monitor paused: /p not shown") for t in lines)
     osc_traffic.clear()
 
@@ -327,3 +382,7 @@ def test_condition_missing_osc_input_is_bounded_no_traceback(
     assert any("not logged until the next Run" in t for t in warnings)
     lines = _osc_lines("inputs")
     assert any(t.startswith("condition: OSC input gone is missing") for t in lines)
+    # An error (D-09-OSC-TRACE-ERRORS): 10 lines, then one note, then quiet.
+    missing = [t for t in lines if "OSC input gone is missing" in t]
+    assert len(missing) == trace.REPEAT_LIMIT + 1, missing
+    assert missing[-1].endswith(trace.OSC_REPEAT_NOTE)

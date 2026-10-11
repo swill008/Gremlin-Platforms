@@ -32,15 +32,23 @@ _AXIS_WORDS = {
 def _dest_modules() -> list[dict]:
     """vJoy output modules, one per vJoy device, by vJoy number; each claim
     cut to the ids the vJoy device has (05 S118, the Auto Mapper check). A
-    saved wire to one it lacks is kept and flagged, not re-pointed."""
-    return [
-        {
-            "name": module.name,
-            "vjoy_id": vjoy_id,
-            "claim": output.driver_claim(vjoy_id, module.claim),
-        }
-        for vjoy_id, module in output.vjoy_modules()
-    ]
+    saved wire to one it lacks is kept and flagged, not re-pointed. A vJoy
+    the driver doesn't list (turned off in the vJoy configuration tool) is
+    "available": False and keeps its output module's own claim."""
+    modules = []
+    for vjoy_id, module in output.vjoy_modules():
+        available = any(output.vjoy_driver_ids(vjoy_id).values())
+        modules.append(
+            {
+                "name": module.name,
+                "vjoy_id": vjoy_id,
+                "claim": output.driver_claim(vjoy_id, module.claim)
+                if available
+                else dict(module.claim or {}),
+                "available": available,
+            }
+        )
+    return modules
 
 
 @ta.QmlElement
@@ -105,6 +113,9 @@ class OutputModuleDevices(QtCore.QObject):
             claim = module["claim"]
             self._modules[vjoy_id] = module
             options: list[OutputModuleDevices.InputOption] = []
+            # A vJoy that is off: its claimed controls, marked; picking one
+            # saves a valid binding, blocked at Run until it is on (06 S47).
+            mark = "" if module.get("available", True) else " (not available)"
             for input_type in self._valid_types:
                 for input_id in claim_ids(claim, kind_of(input_type)):
                     options.append(
@@ -113,7 +124,7 @@ class OutputModuleDevices(QtCore.QObject):
                             input_type,
                             input_id,
                             module["name"],
-                            self._input_label(claim, input_type, input_id),
+                            self._input_label(claim, input_type, input_id) + mark,
                         )
                     )
             self._choices[vjoy_id] = options
@@ -125,12 +136,11 @@ class OutputModuleDevices(QtCore.QObject):
     @QtCore.Slot(str, str)
     def setState(self, vjoy_name: str, input_name: str) -> None:
         new_selection = self._parse_state_string(vjoy_name, input_name)
-        if (
-            new_selection.input_type == InputType.Invalid
-            or new_selection.input_id == 0
-            or new_selection.vjoy_id == 0
-        ):
+        if new_selection.vjoy_id == 0:
             return
+        if not new_selection.unclaimed:
+            # The user moved off the flagged saved wire (D-05-VJOY-SWITCH).
+            self._unclaimed = None
         self._transfer_current_selection_if_possible(new_selection)
 
     @QtCore.Slot(int, str, int)
@@ -155,16 +165,31 @@ class OutputModuleDevices(QtCore.QObject):
             and flagged.input_str() == input_name
         ):
             return flagged
-        for vjoy_id, options in self._choices.items():
-            if not options:
-                module = self._modules.get(vjoy_id) or {}
-                if str(module.get("name") or "") == vjoy_name:
-                    return OutputModuleDevices.InputOption(
-                        vjoy_id, InputType.Invalid, 0, str(module.get("name") or "")
-                    )
+        for options in self._choices.values():
             for option in options:
                 if option.vjoy_str() == vjoy_name and option.input_str() == input_name:
                     return option
+        # Another vJoy picked while the input box still shows the old one's
+        # output: the same control there (its label can differ), else that
+        # vJoy, same type, id 0 so the transfer picks for it (S136).
+        current = self._current_selection
+        for vjoy_id, module in self._modules.items():
+            name = str(module.get("name") or "")
+            if (name or f"vJoy {vjoy_id}") == vjoy_name:
+                same = next(
+                    (
+                        option
+                        for option in self._choices.get(vjoy_id) or []
+                        if option.input_type == current.input_type
+                        and option.input_id == current.input_id
+                    ),
+                    None,
+                )
+                if same is not None:
+                    return same
+                return OutputModuleDevices.InputOption(
+                    vjoy_id, current.input_type, 0, name
+                )
         return OutputModuleDevices.InputOption(0, InputType.Invalid, 0)
 
     def _transfer_current_selection_if_possible(
@@ -187,7 +212,11 @@ class OutputModuleDevices(QtCore.QObject):
             # Never re-point a saved wire: keep it and flag it.
             new_selection = self._flag_unclaimed(selection)
         elif options:
-            new_selection = options[0]
+            # Same control type first (D-05-VJOY-SWITCH).
+            new_selection = next(
+                (o for o in options if o.input_type == selection.input_type),
+                options[0],
+            )
         elif allow_invalid:
             module = self._modules.get(selection.vjoy_id) or {}
             new_selection = OutputModuleDevices.InputOption(

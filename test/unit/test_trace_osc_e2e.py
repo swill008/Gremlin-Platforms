@@ -23,14 +23,15 @@ A feedback row sends /btn's state to "Loopback" as /fb/btn.
    pattern and encoder inputs give their lines.
 3. A wildcard address gives a BLOCKED line; 200 fast /fader messages give
    few receive lines with "(N messages between)"; the same refusal 15
-   times gives 10 lines and one "repeated" note; a new Run starts the
-   counts again.
+   times is never capped (D-09-OSC-TRACE-ERRORS): no "repeated" note, every
+   refusal is a line or counted "(N messages between)"; a new Run writes
+   it again.
 4. A sender off the allow-list gives BLOCKED lines.
 5. Tracing off again: nothing more is written.
 Through all of it system.log (and the system/user loggers) have no ERROR
 and no traceback.
 
-Spec: 01 S146, S148, S149; 09 D-09-OSC-TRACE.
+Spec: 01 S146, S148, S149; 09 D-09-OSC-TRACE, S168 (D-09-OSC-TRACE-ERRORS).
 """
 
 from __future__ import annotations
@@ -579,16 +580,17 @@ def test_200_fast_messages_give_rate_limited_lines(run: dict) -> None:
     assert len(fast) + sum(counts) >= FAST * 0.9, (len(fast), counts)
 
 
-def test_the_same_refusal_15_times_gives_10_lines_and_one_note(run: dict) -> None:
+def test_the_same_refusal_15_times_is_never_capped(run: dict) -> None:
+    # D-09-OSC-TRACE-ERRORS: a refusal is no error; rate limited, not capped.
     lines = [ln for ln in step(run, "refuse-lines") if "no target named" in ln[3]]
-    note = "repeated; further lines not shown until the next Run"
-    notes = [ln for ln in lines if note in ln[3]]
-    plain = [ln for ln in lines if ln not in notes]
-    assert len(plain) == 10, lines
-    assert len(notes) == 1, lines
+    assert lines, lines
+    assert not any("repeated" in ln[3] for ln in lines), lines
     assert all(ln[2] == "BLOCKED" for ln in lines), lines
-    assert all(ln[3].startswith("BLOCKED send refused: no target named") or
-               ln[3].startswith("send refused: no target named") for ln in lines), lines
+    assert all(ln[3].startswith("send refused: no target named") for ln in lines), lines
+    between = [int(m.group(1)) for ln in lines
+               if (m := re.search(r"\((\d+) messages? between\)", ln[3]))]
+    # Every press is a line or counted between lines (UDP may drop a few).
+    assert len(lines) + sum(between) >= REFUSALS * 0.9, (lines, between)
 
 
 def test_a_new_run_starts_the_counts_again(run: dict) -> None:

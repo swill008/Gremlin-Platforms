@@ -630,6 +630,7 @@ class JoystickCondition(AbstractCondition):
                     "inputs",
                     f"condition: OSC input {uid} is missing (no branch runs)",
                     blocked=True,
+                    warning=True,
                     key=f"condition {uid}",
                 )
                 raise MissingOscInput(f"ConditionAction: OSC input {uid} not present.")
