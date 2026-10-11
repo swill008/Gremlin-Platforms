@@ -32,6 +32,12 @@ Item {
         }
     }
 
+    // A box's widest choice plus its padding (WidestText); the background's
+    // own default width doesn't count.
+    function textWidth(box) {
+        return box.implicitContentWidth + box.leftPadding + box.rightPadding
+    }
+
     function updateState() {
         if (!_vjoy || !_deviceLoader.item || !_inputLoader.item) {
             return
@@ -39,8 +45,16 @@ Item {
         _vjoy.setState(_deviceLoader.item.currentText, _inputLoader.item.currentText)
     }
 
-    Component { id: _baseVariant;    Base.TooltipComboBox    {} }
-    Component { id: _compactVariant; Compact.TooltipComboBox {} }
+    // Each box is as wide as its widest choice, so "vJoy 16" and
+    // "Button 128" are never cut (EW-2).
+    Component {
+        id: _baseVariant
+        Base.TooltipComboBox { implicitContentWidthPolicy: ComboBox.WidestText }
+    }
+    Component {
+        id: _compactVariant
+        Compact.TooltipComboBox { implicitContentWidthPolicy: ComboBox.WidestText }
+    }
 
     OutputModuleDevices {
         id: _vjoy
@@ -80,7 +94,8 @@ Item {
             id: _deviceLoader
 
             visible: _vjoy && _vjoy.hasValidVJoyDevices
-            Layout.minimumWidth: visible ? Style.dp(72) : 0
+            Layout.minimumWidth: visible && item
+                ? Math.max(Style.dp(72), _root.textWidth(item)) : 0
             Layout.fillWidth: visible
             Layout.preferredWidth: visible ? -1 : 0
 
@@ -96,8 +111,9 @@ Item {
             id: _inputLoader
 
             visible: _vjoy && _vjoy.hasValidVJoyDevices && _vjoy.inputChoices.length > 0
-            // Never narrower than the shown "⚠ <Control>".
+            // Never narrower than its widest choice or the shown "⚠ <Control>".
             Layout.minimumWidth: !visible ? 0 : Math.max(Style.dp(72),
+                item ? _root.textWidth(item) : 0,
                 _root.cantSend && item
                 ? item.contentItem.contentWidth + item.contentItem.leftPadding
                   + item.contentItem.rightPadding + item.leftPadding + item.rightPadding : 0)

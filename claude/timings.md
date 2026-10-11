@@ -608,3 +608,11 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | Lead: EW-2 plan + off-screen screenshots (Map to vJoy, Map to Logical Device at min/default pane) | lead | no timing data yet | ~3 min | 04:54–04:56 |
 | 2026-10-11 | CI-LD: mechanism of extra release found (stale mode copy in ButtonReleaseActions), trigger not reproduced; no change | fix | 3–8 min (table) | 10 min | 04:49–04:59 |
 | 2026-10-11 | Full run + lint (CI fixes: ⚠ width, journey limit): all green, seed 341426 | test | 5–6 min (table) | 5 min | 05:00–05:05 |
+| 2026-10-11 | Lead: mock-up of option a) (narrow editors) in a throwaway worktree, 3 renders + comparison sheet | lead | no timing data yet | 9 min | 05:07–05:16 |
+| 2026-10-11 | Lead: option a) mock-up re-rendered incl. red ⚠ state, sheet of 12 renders | lead | no timing data yet | 3 min | 05:16–05:19 |
+| 2026-10-11 | CI on bab82917 (CI fixes) | ci | ~10 min (table) | ~13 min | 05:06–05:19 |
+| 2026-10-11 | Lead: plan for to-dos 93-95 (read-only code checks) | lead | no timing data yet | 3 min | 05:23–05:26 |
+| 2026-10-11 | RELMODE: release reads the live mode; extra release and skipped release proven on old code (3 tests) | fix | 3–8 min (table) | 3 min | 05:23–05:26 |
+| 2026-10-11 | NARROW-LD: Map to Logical Device option a) layout (Speed overflow at default width also fixed) | fix | 3–8 min (table) | ~6 min (agent clock 05:23–05:27 too short) | 05:23–05:29 |
+| 2026-10-11 | NARROW-VJ: Map to vJoy option a) layout; vJoy/control boxes size to widest text | fix | 3–8 min (table) | 5 min | 05:23–05:28 |
+| 2026-10-11 | Full run + lint (editor layout + release fix): all green, seed 836712 | test | 5–6 min (table) | 6 min | 05:29–05:35 |

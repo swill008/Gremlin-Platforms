@@ -50,6 +50,22 @@ EDITORS = [
     ("text-to-speech", "Text to Speech", "TextToSpeechAction", "button"),
     ("play-sound", "Play Sound", "PlaySoundAction", "button"),
     ("run-command", "Run Command", "RunCommandAction", "button"),
+    # Map to vJoy and Map to Logical Device: Invert activation on its own
+    # line; the axis row wraps with Speed beside its box (EW-2, to-do 96).
+    ("map-to-vjoy", "Map to vJoy", "MapToVjoyAction", "button"),
+    ("map-to-vjoy-axis", "Map to vJoy", "MapToVjoyAction", "axis"),
+    (
+        "map-to-logical-device",
+        "Map to Logical Device",
+        "MapToLogicalDeviceAction",
+        "button",
+    ),
+    (
+        "map-to-logical-device-axis",
+        "Map to Logical Device",
+        "MapToLogicalDeviceAction",
+        "axis",
+    ),
     # The red "⚠ <name>" boxes forced to can't-be-sent (CI has no Xbox
     # driver; a PC with one never showed the cut "⚠ Xbox 360 Contro").
     ("map-to-xbox-cant", "Map to Xbox", "MapToXboxAction", "button"),
@@ -62,8 +78,13 @@ EDITORS = [
         "button",
     ),
 ]
-# A choice clicked before measuring (Motion shows the speed boxes).
-CLICK = {"map-to-mouse-button": "Motion"}
+# A choice clicked before measuring (Motion shows the speed boxes; Relative
+# shows Speed and its box).
+CLICK = {
+    "map-to-mouse-button": "Motion",
+    "map-to-vjoy-axis": "Relative",
+    "map-to-logical-device-axis": "Relative",
+}
 SCALES = [100, 150, 200]
 # The window at each scale: 1600 x 950 at 100 %, the same size in UI units
 # at 150 and 200 %, so the pane has its default width.
@@ -79,10 +100,8 @@ MIN = "min"
 MIN_UNITS = 420
 
 
-# Measured at the default width only: at the pane's minimum, Map to vJoy's
-# device box ("vJoy 1") is cut and both run "Invert activation" past the
-# pane, with or without the ⚠ (a known gap, not this check's).
-DEFAULT_ONLY = ("map-to-vjoy-cant", "map-to-logical-device-cant")
+# Measured at the default width only (none since EW-2 was fixed).
+DEFAULT_ONLY: tuple[str, ...] = ()
 
 
 def _widths(tag: str, scale: int) -> list[int | str]:

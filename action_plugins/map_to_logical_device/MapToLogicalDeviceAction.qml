@@ -20,7 +20,9 @@ Item {
 
     implicitHeight: _content.height
 
-    RowLayout {
+    // The control box, then its options on their own line under it
+    // (EW-2), as in Map to Xbox.
+    ColumnLayout {
         id: _content
 
         anchors.left: parent.left
@@ -72,7 +74,10 @@ Item {
             active: _root.action.logicalInputType === "axis"
             Layout.fillWidth: true
 
-            sourceComponent: Row {
+            // Wraps when narrow; Speed stays with its box.
+            sourceComponent: Flow {
+                spacing: Style.dp(8)
+
                 RadioButton {
                     autoExclusive: false
                     checkable: false
@@ -95,21 +100,24 @@ Item {
                     }
                 }
 
-                Label {
-                    text: "Speed"
-                    anchors.verticalCenter: parent.verticalCenter
+                Row {
+                    spacing: Style.dp(8)
                     visible: _relativeMode.checked
-                }
 
-                FloatSpinBox {
-                    visible: _relativeMode.checked
-                    minValue: 0
-                    maxValue: 100
-                    value: _root.action.axisScaling
-                    stepSize: 0.05
+                    Label {
+                        text: "Speed"
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
 
-                    onValueModified: (newValue) => {
-                        _root.action.axisScaling = newValue
+                    FloatSpinBox {
+                        minValue: 0
+                        maxValue: 100
+                        value: _root.action.axisScaling
+                        stepSize: 0.05
+
+                        onValueModified: (newValue) => {
+                            _root.action.axisScaling = newValue
+                        }
                     }
                 }
             }

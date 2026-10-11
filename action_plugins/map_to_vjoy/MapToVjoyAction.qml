@@ -21,7 +21,10 @@ Item {
     implicitHeight: _content.height
 
 
-    RowLayout {
+    // The picker, then its options on their own lines (EW-2): the axis
+    // choices wrap when the pane is narrow, "Invert activation" sits under
+    // the picker as in Map to Xbox.
+    ColumnLayout {
         id: _content
 
         anchors.left: parent.left
@@ -52,9 +55,12 @@ Item {
         // UI for a physical axis behaving as an axis
         Loader {
             active: _root.action.vjoyInputType == "axis"
+            visible: active
             Layout.fillWidth: true
 
-            sourceComponent: Row {
+            sourceComponent: Flow {
+                spacing: Style.dp(8)
+
                 RadioButton {
                     autoExclusive: false
                     checkable: false
@@ -77,21 +83,25 @@ Item {
                     }
                 }
 
-                Label {
-                    text: "Speed"
-                    anchors.verticalCenter: parent.verticalCenter
+                // "Speed" wraps with its box, never apart from it.
+                Row {
                     visible: _relativeMode.checked
-                }
+                    spacing: Style.dp(8)
 
-                FloatSpinBox {
-                    visible: _relativeMode.checked
-                    minValue: 0
-                    maxValue: 100
-                    stepSize: 0.1
-                    value: _root.action.axisScaling
+                    Label {
+                        text: "Speed"
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
 
-                    onValueModified: (newValue) => {
-                        _root.action.axisScaling = newValue
+                    FloatSpinBox {
+                        minValue: 0
+                        maxValue: 100
+                        stepSize: 0.1
+                        value: _root.action.axisScaling
+
+                        onValueModified: (newValue) => {
+                            _root.action.axisScaling = newValue
+                        }
                     }
                 }
             }
@@ -99,16 +109,15 @@ Item {
         // UI for a button input
         Loader {
             active: _root.action.vjoyInputType == "button"
+            visible: active
 
-            sourceComponent: Row {
-                Switch {
-                    text: "Invert activation"
-                    checked: _root.action.buttonInverted
+            sourceComponent: Switch {
+                text: "Invert activation"
+                checked: _root.action.buttonInverted
 
-                    onToggled: function()
-                    {
-                        _root.action.buttonInverted = checked
-                    }
+                onToggled: function()
+                {
+                    _root.action.buttonInverted = checked
                 }
             }
         }

@@ -48,6 +48,7 @@ from gremlin import (
     code_runner,
     event_handler,
     event_helpers,
+    mode_manager,
     shared_state,
     signal,
     threads,
@@ -107,11 +108,20 @@ def runner(monkeypatch: pytest.MonkeyPatch) -> Iterator[code_runner.CodeRunner]:
 def release_actions() -> Iterator[Any]:
     """The shared release registry, emptied and back in its mode after."""
     bra = event_helpers.ButtonReleaseActions()
-    mode = bra._current_mode
-    bra.reset()
-    yield bra
-    bra.reset()
-    bra._mode_changed_cb(mode)
+    mm = mode_manager.ModeManager()
+    stack = list(mm._mode_stack)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(mode_manager, "_known_modes", lambda: set())  # any name
+        bra.reset()
+        yield bra
+        bra.reset()
+    mm._mode_stack = stack
+    mm.mode_changed.emit(mm.current.name)
+
+
+def _switch(name: str) -> None:
+    """Changes the mode the way the program does."""
+    mode_manager.ModeManager().switch_to(mode_manager.Mode(name, None))
 
 
 # --- GL-004 / GL-054: a failed start, then Run again -------------------------
@@ -430,9 +440,9 @@ def test_a_vjoy_button_pressed_before_a_mode_change_is_released(
     release_actions: Any,  # noqa: ANN401
 ) -> None:
     functor, sent = _map_to_vjoy_button(monkeypatch)
-    release_actions._mode_changed_cb("Default")
+    _switch("Default")
     functor(_button("Default", True), Value(True))
-    release_actions._mode_changed_cb("Flight")  # the mode changes, held
+    _switch("Flight")  # the mode changes, held
     # The physical release reaches the event handler in the new mode: the
     # old mode's Map to vJoy doesn't run, the release registry lets go.
     event_handler.EventHandler().process_event(_button("Flight", False))
@@ -444,7 +454,7 @@ def test_in_the_same_mode_the_action_releases_the_button_itself(
     release_actions: Any,  # noqa: ANN401
 ) -> None:
     functor, sent = _map_to_vjoy_button(monkeypatch)
-    release_actions._mode_changed_cb("Default")
+    _switch("Default")
     functor(_button("Default", True), Value(True))
     event_handler.EventHandler().process_event(_button("Default", False))
     assert ("release", 1, 4) not in sent  # no second, doubled release

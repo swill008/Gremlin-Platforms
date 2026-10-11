@@ -25,7 +25,7 @@ from unittest import mock
 import pytest
 from PySide6 import QtCore
 
-from gremlin import event_handler, event_helpers
+from gremlin import event_handler, event_helpers, mode_manager
 from gremlin.base_classes import Value
 from gremlin.event_handler import Event
 from gremlin.types import InputType
@@ -45,11 +45,20 @@ def _app() -> Iterator[QtCore.QCoreApplication]:
 @pytest.fixture
 def release_actions() -> Iterator[Any]:
     bra = event_helpers.ButtonReleaseActions()
-    mode = bra._current_mode
-    bra.reset()
-    yield bra
-    bra.reset()
-    bra._mode_changed_cb(mode)
+    mm = mode_manager.ModeManager()
+    stack = list(mm._mode_stack)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(mode_manager, "_known_modes", lambda: set())  # any name
+        bra.reset()
+        yield bra
+        bra.reset()
+    mm._mode_stack = stack
+    mm.mode_changed.emit(mm.current.name)
+
+
+def _switch(name: str) -> None:
+    """Changes the mode the way the program does."""
+    mode_manager.ModeManager().switch_to(mode_manager.Mode(name, None))
 
 
 def _button(mode: str, pressed: bool) -> Event:
@@ -85,7 +94,7 @@ def test_presses_in_one_mode_keep_no_release_entries(
     release_actions: Any,  # noqa: ANN401
 ) -> None:
     functor, sent = _map_to_vjoy_button(monkeypatch)
-    release_actions._mode_changed_cb("Default")
+    _switch("Default")
     handler = event_handler.EventHandler()
     for _ in range(200):
         functor(_button("Default", True), Value(True))
@@ -103,14 +112,14 @@ def test_a_release_after_a_mode_change_still_lets_go_once(
 ) -> None:
     """06 S38 holds with the bounded registry."""
     functor, sent = _map_to_vjoy_button(monkeypatch)
-    release_actions._mode_changed_cb("Default")
+    _switch("Default")
     handler = event_handler.EventHandler()
     for _ in range(20):  # earlier presses in the same mode
         functor(_button("Default", True), Value(True))
         functor(_button("Default", False), Value(False))
         handler.process_event(_button("Default", False))
     functor(_button("Default", True), Value(True))
-    release_actions._mode_changed_cb("Flight")
+    _switch("Flight")
     handler.process_event(_button("Flight", False))
     assert sent.count(("release", 1, 4)) == 1
     assert _pending(release_actions) == 0

@@ -12,8 +12,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from PySide6 import QtCore
-
 from gremlin import (
     common,
     logical_device,
@@ -72,7 +70,7 @@ class RegistryKey:
 
 
 @common.SingletonDecorator
-class ButtonReleaseActions(QtCore.QObject):
+class ButtonReleaseActions:
     """Ensures a desired action is run when a button is released.
 
     Registered actions are executed by the EventHandler class after at the end
@@ -82,13 +80,7 @@ class ButtonReleaseActions(QtCore.QObject):
 
     def __init__(self) -> None:
         """Initializes the instance."""
-        QtCore.QObject.__init__(self)
-
         self._registry = {}
-
-        mm = mode_manager.ModeManager()
-        self._current_mode = mm.current.name
-        mm.mode_changed.connect(self._mode_changed_cb)
 
     def register_callback(
         self,
@@ -187,6 +179,9 @@ class ButtonReleaseActions(QtCore.QObject):
         if key not in self._registry:
             return
 
+        # The mode at release, from the mode system itself (06 S38): a copy
+        # kept by mode_changed could be out of step and double or skip one.
+        current_mode = mode_manager.ModeManager().current.name
         new_list = []
         for entry in self._registry.get(key, []):
             triggered = event.is_pressed == (entry.release_mode == ReleaseMode.OnPress)
@@ -195,9 +190,9 @@ class ButtonReleaseActions(QtCore.QObject):
                 case ModeMatch.IgnoreMode:
                     run_callback = True
                 case ModeMatch.DifferentMode:
-                    run_callback = self._current_mode != entry.registration_mode
+                    run_callback = current_mode != entry.registration_mode
                 case ModeMatch.MatchMode:
-                    run_callback = self._current_mode == entry.registration_mode
+                    run_callback = current_mode == entry.registration_mode
 
             if triggered and run_callback:
                 entry.callback(event)
@@ -237,14 +232,6 @@ class ButtonReleaseActions(QtCore.QObject):
                 "Attempted to use non existent button: "
                 + f"Logical Device button {input_id}."
             )
-
-    def _mode_changed_cb(self, mode: str) -> None:
-        """Updates the current mode variable.
-
-        Args:
-            mode: name of the now active mode
-        """
-        self._current_mode = mode
 
 
 # Called with (old mode name, new mode name); True when it has done its work
