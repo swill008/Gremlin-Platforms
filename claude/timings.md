@@ -661,3 +661,10 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | PAIR-NAMES: vJoy Viewer device list shows/follows the user's device names (3 tests; j13 7/7) | fix | 3–8 min (table) | 2 min | 07:52–07:54 |
 | 2026-10-11 | Full run + lint (release + multi-device): 2 failures (built-in table outside device_class; test_final_02 child timeout under load, passes alone) | test | 5–6 min (table) | 6 min (unit-3 425 s) | 07:55–08:01 |
 | 2026-10-11 | Lead: device_class.home_key; module_pairing uses it; 75 targeted pass | lead | no timing data yet | 3 min | 08:01–08:04 |
+| 2026-10-11 | CI on 4ada874f (release commit) | ci | ~10 min (table) | 16 min | 08:02–08:18 |
+| 2026-10-11 | Release build 1.0.32 (release-exe workflow, publish) | release | no timing data yet; rough guess 10–20 min | 5 min | 08:18–08:23 |
+| 2026-10-11 | SPEC-PKG: device-folders spec draft for review (scratch) | map catch-up | 5–7 min (table) | 2 min | 09:05–09:07 |
+| 2026-10-11 | SPEC-PLANES: background/foreground spec draft for review (scratch) | map catch-up | 5–7 min (table) | 2 min | 09:05–09:07 |
+| 2026-10-11 | SPEC-W07: page 07 + glossary written for both features (S106–S127) | map catch-up | 5–7 min (table) | 2 min | 09:19–09:21 |
+| 2026-10-11 | SPEC-W-OTHER: pages 03/08/10 + README for both features | map catch-up | 5–7 min (table) | 3 min | 09:19–09:22 |
+| 2026-10-11 | Lead: page 07 README count + cross-reference check; decisions/todo/tracker for both features | lead | no timing data yet | 6 min | 09:19–09:25 |

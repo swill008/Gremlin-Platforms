@@ -44,6 +44,14 @@ Compatibility with a previous method (layout shims, migrations, "keep the old
 behaviour") may be offered as an alternative, never as the first choice, and
 never added without the user asking for it. This applies to every system.
 
+One-time code (user, 2026-10-11): when the user approves code that runs once
+or reads an old layout (a first-start data move, a one-time reader of old
+files), track it so it can be removed later: a tracker issue in group
+"One-time code" (what it does, files/functions, when it can go, status), a
+`# ONE-TIME (tracker <ref>): ...` comment at the code, and a line in
+claude/todo.md, all in the same commit. Before each release, list the open
+"One-time code" issues to the user. Pass this on to agents that write such code.
+
 ## Working standard (required, user 2026-10-07)
 
 Every piece of work, not only big batches:
