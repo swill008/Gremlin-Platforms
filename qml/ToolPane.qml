@@ -7,7 +7,7 @@ import Gremlin.Style
 
 // A tool's panel, joined to its tab on a tool row (ToolDock, ToolRow): it
 // opens from the tab's place, on the map side of it (under a top-row tab,
-// over a bottom-row one, beside a side-row one), reaching the row so the two
+// over a bottom-row one), reaching the row so the two
 // read as one piece (its border is open where the tab meets it). Moving the
 // tab moves the panel; it can't be dragged away from it. Unlocked, its free
 // edges resize it (the one facing the map, the one along the row, and their
@@ -29,9 +29,8 @@ Item {
     property string toolId: ""
     // Shown when its tool is open and this is true (e.g. something selected).
     property bool shown: true
-    // As long as the map along its row (the chip pool: as wide as the map
-    // from a top or bottom tab, as tall from a side one), its tab joining it
-    // where it sits; its depth from the row is defaultH (or as resized).
+    // As wide as the map (the chip pool), its tab joining it where it sits;
+    // its depth from the row is defaultH (or as resized).
     property bool fullWidth: false
     // Its size until resized (e.g. its content's), and the least it takes.
     property real defaultW: Style.dp(300)
@@ -45,7 +44,6 @@ Item {
     default property alias content: _body.data
 
     readonly property string side: { dock ? dock.rev : 0; return dock ? dock.sideOf(toolId) : "bottom" }
-    readonly property bool vertical: side === "left" || side === "right"
     // Kept for tests and older callers: at the top row.
     readonly property bool atTop: side === "top"
     readonly property bool locked: { dock ? dock.rev : 0; return dock ? dock.isLocked(toolId) : true }
@@ -101,46 +99,31 @@ Item {
     readonly property real margin: Style.dp(8)
     // Where it meets the row: the tab's inner edge (else the parent's edge).
     readonly property real reach: {
-        switch (side) {
-        case "top": return tab ? Math.min(0, tab.y + tab.h) : 0
-        case "left": return tab ? Math.min(0, tab.x + tab.w) : 0
-        case "right": return tab ? Math.max(pw, tab.x) : pw
-        default: return tab ? Math.max(ph, tab.y) : ph
-        }
+        if (side === "top")
+            return tab ? Math.min(0, tab.y + tab.h) : 0
+        return tab ? Math.max(ph, tab.y) : ph
     }
     // Room away from the row (its depth), and along it.
-    readonly property real room: {
-        switch (side) {
-        case "top": return ph - reach - margin
-        case "left": return pw - reach - margin
-        case "right": return reach - margin
-        default: return reach - margin
-        }
-    }
-    readonly property real alongRoom: (vertical ? ph : pw) - 2 * margin
+    readonly property real room: side === "top" ? ph - reach - margin : reach - margin
+    readonly property real alongRoom: pw - 2 * margin
 
     // Its depth (away from the row) and length (along it).
     readonly property real depth: {
-        var d = vertical ? (fullWidth ? (liveH >= 0 ? liveH : (kept && kept.h > 0 ? kept.h : defaultH))
-                                      : (liveW >= 0 ? liveW : (kept && kept.w > 0 ? kept.w : defaultW)))
-                         : (liveH >= 0 ? liveH : (kept && kept.h > 0 ? kept.h : defaultH))
-        var least = vertical && !fullWidth ? minW : minH
-        return Math.max(Math.min(least, room), Math.min(d, room))
+        var d = liveH >= 0 ? liveH : (kept && kept.h > 0 ? kept.h : defaultH)
+        return Math.max(Math.min(minH, room), Math.min(d, room))
     }
     readonly property real length: {
         if (fullWidth)
             return alongRoom
-        var l = vertical ? (liveH >= 0 ? liveH : (kept && kept.h > 0 ? kept.h : defaultH))
-                         : (liveW >= 0 ? liveW : (kept && kept.w > 0 ? kept.w : defaultW))
-        var least = vertical ? minH : minW
-        return Math.max(Math.min(least, alongRoom), Math.min(l, alongRoom))
+        var l = liveW >= 0 ? liveW : (kept && kept.w > 0 ? kept.w : defaultW)
+        return Math.max(Math.min(minW, alongRoom), Math.min(l, alongRoom))
     }
     // Its start along the row: under its tab, kept in the window.
     readonly property real start: {
         if (fullWidth)
             return margin
-        var want = tab ? (vertical ? tab.y : tab.x) : margin
-        return Math.max(margin, Math.min(want, (vertical ? ph : pw) - length - margin))
+        var want = tab ? tab.x : margin
+        return Math.max(margin, Math.min(want, pw - length - margin))
     }
 
     visible: !!dock && dock.isOpen(toolId) && shown
@@ -151,10 +134,10 @@ Item {
         // Floating panels over docked ones.
         return 30 + dock.frontOf(toolId) + (floating ? 20 : 0)
     }
-    width: floating ? floatW : (vertical ? depth : length)
-    height: floating ? floatH : (vertical ? length : depth)
-    x: floating ? floatX : (side === "left" ? reach : (side === "right" ? reach - width : start))
-    y: floating ? floatY : (side === "top" ? reach : (side === "bottom" ? reach - height : start))
+    width: floating ? floatW : length
+    height: floating ? floatH : depth
+    x: floating ? floatX : start
+    y: floating ? floatY : (side === "top" ? reach : reach - height)
 
     onVisibleChanged: {
         if (!dock)
@@ -251,7 +234,7 @@ Item {
                     var p = row.mapFromItem(null, s.x, s.y)
                     var id = _pane.toolId
                     Qt.callLater(function() {
-                        dock.dropAt(id, (row.vertical ? p.y : p.x) - Style.dp(20), side)
+                        dock.dropAt(id, p.x - Style.dp(20), side)
                     })
                     return
                 }
@@ -398,39 +381,36 @@ Item {
         visible: !!_pane.tab && !_pane.floating
         z: 50
         // The tab along the panel's edge: its start and length there.
-        readonly property real t0: _pane.tab ? (_pane.vertical ? _pane.tab.y - _pane.y : _pane.tab.x - _pane.x) : 0
-        readonly property real tl: _pane.tab ? (_pane.vertical ? _pane.tab.h : _pane.tab.w) : 0
-        readonly property real span: _pane.vertical ? _pane.height : _pane.width
+        readonly property real t0: _pane.tab ? _pane.tab.x - _pane.x : 0
+        readonly property real tl: _pane.tab ? _pane.tab.w : 0
+        readonly property real span: _pane.width
         readonly property real a: Math.max(0, t0)
         readonly property real b: Math.min(span, t0 + tl)
         readonly property real band: _pane.radius + 1
-        x: _pane.vertical ? (_pane.side === "left" ? 0 : _pane.width - band) : a
-        y: _pane.vertical ? a : (_pane.side === "top" ? 0 : _pane.height - band)
-        width: _pane.vertical ? band : Math.max(0, b - a)
-        height: _pane.vertical ? Math.max(0, b - a) : band
+        x: a
+        y: _pane.side === "top" ? 0 : _pane.height - band
+        width: Math.max(0, b - a)
+        height: band
 
         Rectangle {
             anchors.fill: parent
-            anchors.leftMargin: !_pane.vertical && _join.t0 > 0.5 ? 1 : 0
-            anchors.rightMargin: !_pane.vertical && _join.t0 + _join.tl < _join.span - 0.5 ? 1 : 0
-            anchors.topMargin: _pane.vertical && _join.t0 > 0.5 ? 1 : 0
-            anchors.bottomMargin: _pane.vertical && _join.t0 + _join.tl < _join.span - 0.5 ? 1 : 0
+            anchors.leftMargin: _join.t0 > 0.5 ? 1 : 0
+            anchors.rightMargin: _join.t0 + _join.tl < _join.span - 0.5 ? 1 : 0
             color: _pane.color
         }
         // The tab's sides carried on to the frame's edge, where the tab sits
         // on a corner.
         Rectangle {
             visible: _join.t0 <= 0.5
-            width: _pane.vertical ? parent.width : 1
-            height: _pane.vertical ? 1 : parent.height
+            width: 1
+            height: parent.height
             color: _pane.lineColor
         }
         Rectangle {
             visible: _join.t0 + _join.tl >= _join.span - 0.5
-            x: _pane.vertical ? 0 : parent.width - 1
-            y: _pane.vertical ? parent.height - 1 : 0
-            width: _pane.vertical ? parent.width : 1
-            height: _pane.vertical ? 1 : parent.height
+            x: parent.width - 1
+            width: 1
+            height: parent.height
             color: _pane.lineColor
         }
     }
@@ -466,9 +446,8 @@ Item {
             if (!enabled)
                 return Qt.ArrowCursor
             if (deep && long)
-                return (_pane.side === "top" || _pane.side === "left") ? Qt.SizeFDiagCursor : Qt.SizeBDiagCursor
-            var acrossX = _pane.vertical ? deep : long
-            return acrossX ? Qt.SizeHorCursor : Qt.SizeVerCursor
+                return _pane.side === "top" ? Qt.SizeFDiagCursor : Qt.SizeBDiagCursor
+            return long ? Qt.SizeHorCursor : Qt.SizeVerCursor
         }
         onPressed: (m) => {
             start = mapToItem(_pane.parent, m.x, m.y)
@@ -483,21 +462,10 @@ Item {
             var p = mapToItem(_pane.parent, m.x, m.y)
             var dx = p.x - start.x
             var dy = p.y - start.y
-            if (deep) {
-                var grow = { top: dy, bottom: -dy, left: dx, right: -dx }[_pane.side]
-                var d = Math.max(_pane.vertical && !_pane.fullWidth ? _pane.minW : _pane.minH, startDepth + grow)
-                if (_pane.vertical && !_pane.fullWidth)
-                    _pane.liveW = d
-                else
-                    _pane.liveH = d
-            }
-            if (long) {
-                var l = startLength + (_pane.vertical ? dy : dx)
-                if (_pane.vertical)
-                    _pane.liveH = Math.max(_pane.minH, l)
-                else
-                    _pane.liveW = Math.max(_pane.minW, l)
-            }
+            if (deep)
+                _pane.liveH = Math.max(_pane.minH, startDepth + (_pane.side === "top" ? dy : -dy))
+            if (long)
+                _pane.liveW = Math.max(_pane.minW, startLength + dx)
         }
         onReleased: {
             if (_pane.dock) {
@@ -523,20 +491,19 @@ Item {
     Grip {
         objectName: "paneGripEdge"
         deep: true
-        x: _pane.side === "left" ? parent.width - _pane.grip : 0
         y: _pane.side === "top" ? parent.height - _pane.grip : 0
-        width: _pane.vertical ? _pane.grip : parent.width - (_pane.fullWidth ? 0 : _pane.corner)
-        height: _pane.vertical ? parent.height - (_pane.fullWidth ? 0 : _pane.corner) : _pane.grip
+        width: parent.width - (_pane.fullWidth ? 0 : _pane.corner)
+        height: _pane.grip
     }
-    // The far edge along the row (right for top/bottom, bottom for sides).
+    // The far edge along the row (its right edge).
     Grip {
         objectName: "paneGripRight"
         visible: !_pane.fullWidth && !_pane.floating
         long: true
-        x: _pane.vertical ? (_pane.side === "left" ? 0 : _pane.corner) : parent.width - _pane.grip
-        y: _pane.vertical ? parent.height - _pane.grip : (_pane.side === "top" ? 0 : _pane.corner)
-        width: _pane.vertical ? parent.width - _pane.corner : _pane.grip
-        height: _pane.vertical ? _pane.grip : parent.height - _pane.corner
+        x: parent.width - _pane.grip
+        y: _pane.side === "top" ? 0 : _pane.corner
+        width: _pane.grip
+        height: parent.height - _pane.corner
     }
     Grip {
         objectName: "paneGripCorner"
@@ -545,7 +512,7 @@ Item {
         long: true
         width: _pane.corner
         height: _pane.corner
-        x: (_pane.side === "left" || !_pane.vertical) ? parent.width - width : 0
-        y: (_pane.side === "top" || _pane.vertical) ? parent.height - height : 0
+        x: parent.width - width
+        y: _pane.side === "top" ? parent.height - height : 0
     }
 }

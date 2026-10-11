@@ -6,10 +6,8 @@ import QtQuick.Controls
 import Gremlin.Menus
 import Gremlin.Style
 
-// One of a window's tool rows: "top" (under the menus), "bottom", or a side
-// row, "left" or "right" (between the top and bottom rows; its tabs read up
-// the left one and down the right one). It holds the tabs of the tools on
-// it. An open tool's tab takes its panel's color and has no line on the side
+// One of a window's two tool rows: "top" (under the menus) or "bottom". It
+// holds the tabs of the tools on it. An open tool's tab takes its panel's color and has no line on the side
 // facing the map, where its panel (ToolPane) joins it; a closed one is an
 // outline. What each tool does, and where its tab sits, is the ToolDock's
 // (`dock`); see there for the rules. A tab can be dragged along its row or
@@ -24,19 +22,19 @@ Item {
     id: _row
 
     property var dock: null
+    // "top" or "bottom" (anything else: bottom).
     property string side: "bottom"
-    readonly property bool vertical: side === "left" || side === "right"
+    readonly property string rowSide: side === "top" ? "top" : "bottom"
     readonly property real gap: Style.dp(6)
     readonly property real grid: Style.dp(8)
     // A tab is being dragged here from another row, or along this one.
-    readonly property bool dropTarget: !!dock && dock.dragging.length > 0 && dock.dropSide === side
+    readonly property bool dropTarget: !!dock && dock.dragging.length > 0 && dock.dropSide === rowSide
     // The row's length (along its tabs).
-    readonly property real span: vertical ? _buttons.height : _buttons.width
+    readonly property real span: _buttons.width
 
-    implicitHeight: vertical ? 0 : Style.dp(30)
-    implicitWidth: vertical ? Style.dp(30) : 0
+    implicitHeight: Style.dp(30)
     // A tab dragged off this row is drawn over the map.
-    z: (dock && dock.dragging.length && dock.sideOf(dock.dragging) === side) ? 50 : 0
+    z: (dock && dock.dragging.length && dock.sideOf(dock.dragging) === rowSide) ? 50 : 0
 
     Component.onCompleted: _register()
     onDockChanged: _register()
@@ -48,20 +46,15 @@ Item {
         var next = {}
         for (var k in dock.rows)
             next[k] = dock.rows[k]
-        next[side] = _row
+        next[rowSide] = _row
         dock.rows = next
         relayout()
     }
 
     // A tab's place along the row, and its length there.
-    function _at(b) { return vertical ? b.y : b.x }
-    function _len(b) { return vertical ? b.height : b.width }
-    function _place(b, v) {
-        if (vertical)
-            b.y = v
-        else
-            b.x = v
-    }
+    function _at(b) { return b.x }
+    function _len(b) { return b.width }
+    function _place(b, v) { b.x = v }
 
     // Where a tool's tab sits: its start along the row, or -1 (for tests).
     function placeOf(id) {
@@ -126,7 +119,7 @@ Item {
         var w = span
         if (!(w > 0) || !dock)
             return
-        var ids = dock.order(side)
+        var ids = dock.order(rowSide)
         var pos = dock._pos || {}
         if (!Object.keys(pos).length) {
             var total = 0
@@ -212,10 +205,9 @@ Item {
         color: Style.bgRaised
         // The line on the side facing the map.
         Rectangle {
-            x: _row.side === "left" ? parent.width - 1 : 0
-            y: _row.side === "top" ? parent.height - 1 : 0
-            width: _row.vertical ? 1 : parent.width
-            height: _row.vertical ? parent.height : 1
+            y: _row.rowSide === "top" ? parent.height - 1 : 0
+            width: parent.width
+            height: 1
             color: Style.line
         }
         // Lit while a tab would land here.
@@ -232,11 +224,10 @@ Item {
         id: _buttons
         anchors.fill: parent
         onWidthChanged: _row.relayout()
-        onHeightChanged: _row.relayout()
 
         Repeater {
             id: _rep
-            model: { _row.dock ? _row.dock.rev : 0; return _row.dock ? _row.dock.order(_row.side) : [] }
+            model: { _row.dock ? _row.dock.rev : 0; return _row.dock ? _row.dock.order(_row.rowSide) : [] }
             delegate: Rectangle {
                 id: _btn
                 required property string modelData
@@ -250,18 +241,16 @@ Item {
                 objectName: "tool:" + modelData
                 // A tab: from near the row's outer edge to its inner edge
                 // (the side facing the map, where an open tool's panel joins).
-                readonly property string side: _row.side
+                readonly property string side: _row.rowSide
                 // Joined to its panel (showing); open without one: lit.
                 readonly property bool floating: { dock.rev; return dock.isFloating(modelData) }
                 readonly property bool joined: open && !floating && !!_row.dock.paneShown[modelData]
                 readonly property color edge: open ? Style.lineStrong : Style.line
                 readonly property real lengthWanted: _inner.implicitWidth + Style.dp(14)
-                width: _row.vertical ? _row.width - Style.dp(4) : lengthWanted
-                height: _row.vertical ? lengthWanted : _row.height - Style.dp(4)
-                x: _row.side === "left" ? Style.dp(4) : 0
-                y: _row.side === "top" ? Style.dp(4) : 0
+                width: lengthWanted
+                height: _row.height - Style.dp(4)
+                y: side === "top" ? Style.dp(4) : 0
                 onWidthChanged: _row.relayout()
-                onHeightChanged: _row.relayout()
                 onXChanged: if (_row.dock) _row.dock.layoutRev++
                 onYChanged: if (_row.dock) _row.dock.layoutRev++
                 Component.onCompleted: _row.relayout()
@@ -281,8 +270,8 @@ Item {
                     height: (at === "top" || at === "bottom") ? 1 : _btn.height
                 }
                 readonly property string outer: side
-                readonly property string inner: ({ top: "bottom", bottom: "top", left: "right", right: "left" })[side]
-                readonly property var sides: _row.vertical ? ["top", "bottom"] : ["left", "right"]
+                readonly property string inner: side === "top" ? "bottom" : "top"
+                readonly property var sides: ["left", "right"]
                 Edge { at: _btn.outer; color: _btn.open ? Style.accent : _btn.edge }
                 Edge { at: _btn.sides[0]; color: _btn.edge }
                 Edge { at: _btn.sides[1]; color: _btn.edge }
@@ -294,17 +283,15 @@ Item {
                 transform: Translate { x: _btn.dragDx; y: _btn.dragDy }
                 z: _main.pressed ? 2 : 1
 
-                // Its name, pin and lock; turned on a side row (reading up
-                // the left row, down the right one).
+                // Its name, pin and lock.
                 Item {
                     anchors.centerIn: parent
-                    width: _row.vertical ? _inner.implicitHeight : _inner.implicitWidth
-                    height: _row.vertical ? _inner.implicitWidth : _inner.implicitHeight
+                    width: _inner.implicitWidth
+                    height: _inner.implicitHeight
                     Row {
                         id: _inner
                         anchors.centerIn: parent
                         spacing: Style.dp(6)
-                        rotation: _row.side === "left" ? -90 : (_row.side === "right" ? 90 : 0)
                         Label {
                             anchors.verticalCenter: parent.verticalCenter
                             text: _btn.tool ? _btn.tool.label : _btn.modelData
@@ -447,10 +434,10 @@ Item {
                         }
                         // Where it was let go: on this row or another, along
                         // that row, snapped, then the nearest free spot there.
-                        var target = dock.dropSide || _row.side
+                        var target = dock.dropSide || _row.rowSide
                         var row = (dock.rows || {})[target] || _row
                         var p = row.mapFromItem(_buttons, _btn.x + _btn.dragDx, _btn.y + _btn.dragDy)
-                        var along = row.vertical ? p.y : p.x
+                        var along = p.x
                         _btn.dragDx = 0
                         _btn.dragDy = 0
                         dock.dragging = ""

@@ -27,6 +27,12 @@ import Gremlin.Style
 // (no panel) never floats.
 // What is open, pinned and locked, the rows, places and docks are kept with
 // the window layout under `name`. Adding a tool is one more entry in `tools`.
+// There are only the top and bottom rows: a saved place on another row
+// (once left or right) loads on the bottom one.
+//
+// The window's side panels (SidePanel: Chips, Layers) aren't tools here, but
+// their width, pin and open state are kept with the rest (sideState /
+// setSideState), and Reset Tool Rows puts them back too.
 //
 //   ToolDock { id: _tools; name: "button-map"; tools: [{ id: "chips", label: "Chips" }] }
 //   ToolRow { dock: _tools; side: "top" }   ToolRow { dock: _tools; side: "bottom" }
@@ -71,8 +77,11 @@ Item {
     property int _frontCount: 0
     // Bumped on every change: bindings on the getters follow it.
     property int rev: 0
+    // Side panel id -> { width, pinned, open } (sideState / setSideState).
+    property var _sides: null
 
     signal toolChanged(string id)
+    signal sideChanged(string id)
 
     visible: false
 
@@ -94,9 +103,54 @@ Item {
         return s
     }
 
-    // The rows: "top", "bottom", "left", "right" (anything else: bottom).
+    // The rows: "top" or "bottom" (anything else: bottom).
     function _side(v) {
-        return (v === "top" || v === "left" || v === "right") ? v : "bottom"
+        return v === "top" ? "top" : "bottom"
+    }
+
+    // --- side panels -----------------------------------------------------------
+
+    // A side panel's state before it is used, and after Reset Tool Rows.
+    function _sideDefault(id) {
+        if (id === "chips")
+            return { width: Style.dp(260), pinned: true, open: true }
+        if (id === "layers")
+            return { width: Style.dp(300), pinned: false, open: false }
+        return { width: Style.dp(260), pinned: false, open: false }
+    }
+
+    // A clean copy: a positive width, pinned and open as true/false.
+    function _sideClean(id, v) {
+        var d = _sideDefault(id)
+        v = (v && typeof v === "object") ? v : {}
+        var w = Number(v.width)
+        return { width: w > 0 ? Math.round(w) : d.width,
+                 pinned: v.pinned === undefined ? d.pinned : !!v.pinned,
+                 open: v.open === undefined ? d.open : !!v.open }
+    }
+
+    // { width, pinned, open } of a side panel ("chips", "layers").
+    function sideState(id) {
+        rev
+        var s = (_sides || {})[id]
+        return _sideClean(id, s)
+    }
+
+    // Keeps a side panel's state (only the keys given change).
+    function setSideState(id, state) {
+        var now = sideState(id)
+        state = state || {}
+        var next = _sideClean(id, {
+            width: state.width === undefined ? now.width : state.width,
+            pinned: state.pinned === undefined ? now.pinned : state.pinned,
+            open: state.open === undefined ? now.open : state.open })
+        var all = {}
+        for (var k in (_sides || {}))
+            all[k] = _sides[k]
+        all[id] = next
+        _sides = all
+        _save()
+        sideChanged(id)
     }
 
     function _load() {
@@ -107,6 +161,10 @@ Item {
             saved = {}
         }
         var items = saved.items || {}
+        var sides = (saved.sides && typeof saved.sides === "object") ? saved.sides : {}
+        _sides = {}
+        for (var sid in sides)
+            _sides[sid] = _sideClean(sid, sides[sid])
         _state = {}
         for (var i = 0; i < tools.length; i++) {
             var id = tools[i].id
@@ -164,7 +222,8 @@ Item {
                                    w: s.w || 0, h: s.h || 0, floating: !!s.floating,
                                    fx: s.fx, fy: s.fy, fw: s.fw || 0, fh: s.fh || 0 }
         }
-        _store.saveToolRowState(name, JSON.stringify({ order: _order, items: items, pos: _pos }))
+        _store.saveToolRowState(name, JSON.stringify({ order: _order, items: items, pos: _pos,
+                                                       sides: _sides || {} }))
     }
 
     function tool(id) {
@@ -378,9 +437,15 @@ Item {
     }
 
     // Back to every button on the row it starts on (the bottom unless its
-    // defaults say), together and centred, its panel at its first size (View
-    // > Reset Tool Rows).
+    // defaults say), together and centred, its panel at its first size, and
+    // the side panels as they start (View > Reset Tool Rows).
     function resetPlaces() {
+        var hadSides = ["chips", "layers"]
+        for (var had in (_sides || {})) {
+            if (hadSides.indexOf(had) < 0)
+                hadSides.push(had)
+        }
+        _sides = {}
         _pos = {}
         for (var i = 0; i < tools.length; i++) {
             var s = _entry(tools[i].id)
@@ -397,6 +462,8 @@ Item {
         relayout()
         for (i = 0; i < tools.length; i++)
             toolChanged(tools[i].id)
+        for (i = 0; i < hadSides.length; i++)
+            sideChanged(hadSides[i])
     }
 
     // Where a tool's button sits on its row: its left edge, or -1 (tests).
@@ -457,10 +524,7 @@ Item {
                 continue
             // Along the row exactly; across it, a little either side.
             var p = row.mapFromItem(null, sceneX, sceneY)
-            var along = row.vertical ? (p.y >= 0 && p.y <= row.height) : (p.x >= 0 && p.x <= row.width)
-            var across = row.vertical ? (p.x >= -reach && p.x <= row.width + reach)
-                                      : (p.y >= -reach && p.y <= row.height + reach)
-            if (along && across)
+            if (p.x >= 0 && p.x <= row.width && p.y >= -reach && p.y <= row.height + reach)
                 return side
         }
         return ""

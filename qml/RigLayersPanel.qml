@@ -72,6 +72,10 @@ Rectangle {
         ? (ed.tick, ed.layerRows(filtering ? filterState : filter, expanded)) : []
 
     signal closeRequested()
+    // False inside a side panel (07 S128), whose own header already has the
+    // title and the Fold button: the panel then shows only Show all and
+    // Unlock all here.
+    property bool showTitle: true
 
     // The row the right-click menu was opened on.
     property var menuRow: null
@@ -237,8 +241,13 @@ Rectangle {
             id: _header
             Layout.fillWidth: true
             spacing: Style.dp(4)
+            Item {
+                visible: !_panel.showTitle
+                Layout.fillWidth: true
+            }
             Label {
                 id: _title
+                visible: _panel.showTitle
                 text: "Layers"
                 font.pixelSize: _panel.textPx
                 font.bold: true
@@ -275,6 +284,7 @@ Rectangle {
             }
             Label {
                 id: _closeLabel
+                visible: _panel.showTitle
                 text: "×"
                 font.pixelSize: Style.dp(16)
                 color: _closeArea.containsMouse ? Style.fgStrong : Style.fgMuted

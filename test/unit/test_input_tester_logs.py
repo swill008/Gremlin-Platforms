@@ -223,6 +223,34 @@ def test_rotation_at_one_megabyte(tmp_path) -> None:  # noqa: ANN001
     ]
 
 
+def test_blocked_rotation_keeps_writing_the_file(tmp_path, monkeypatch) -> None:  # noqa: ANN001
+    # Windows refuses the rename while anyone has tester.log open (the Logs
+    # tab, Save Diagnostics, a viewer); the file log must carry on (S116).
+    path = tmp_path / "tester" / "tester.log"
+    path.parent.mkdir()
+    path.write_text("old line\n" * (tester_log.MAX_BYTES // 9 + 1), encoding="utf-8")
+    real_replace = tester_log.os.replace
+    calls = []
+
+    def replace(src, dst) -> None:  # noqa: ANN001
+        calls.append(src)
+        if len(calls) == 1:
+            raise PermissionError(32, "The file is being used by another process")
+        real_replace(src, dst)
+
+    monkeypatch.setattr(tester_log.os, "replace", replace)
+    log = tester_log.TesterLog(path, now=lambda: START)
+    log.add("first while open")
+    assert log.path == path
+    assert "first while open" in path.read_text(encoding="utf-8")
+    log.add("values read ok")
+    assert len(calls) == 2
+    older = path.with_name("tester.log.1")
+    assert "old line" in older.read_text(encoding="utf-8")
+    assert path.read_text(encoding="utf-8").endswith("values read ok\n")
+    assert "old line" not in path.read_text(encoding="utf-8")
+
+
 def test_plain_mode_writes_no_file(qapp, tmp_path, monkeypatch) -> None:  # noqa: ANN001
     monkeypatch.chdir(tmp_path)
     model = make(None, exe_dir=str(tmp_path))

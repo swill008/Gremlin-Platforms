@@ -43,7 +43,7 @@ function topics() {
             "<p>Editing places chips on the photo and draws on the map. Nothing is written until you save.</p>"
             + "<ol>"
             + "<li>Choose <b>File › Edit Mapping</b>.</li>"
-            + "<li>Drag chips from the pool beside the map onto the photo. Type in the pool's filter to find a control by name, number or output.</li>"
+            + "<li>Drag chips from the pool, the <b>Chips</b> panel at the map's left edge, onto the photo. Type in the pool's filter to find a control by name, number or output.</li>"
             + "<li>Choose <b>File › Save</b> (<b>Ctrl+S</b>) to write the layout to the device's module file, or <b>File › Cancel</b> to leave without saving.</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"
@@ -56,25 +56,43 @@ function topics() {
             + "</ul>",
             ["button-map-chips", "button-map-keys", "button-map-options"]),
         t("button-map-tool-rows", "Getting started", "Arrange the tool rows",
-            "<p>Four <b>tool rows</b> frame the map and hold the tools as tabs: one under the menus, one under the map, and one down each side between them (their tabs read up the left one and down the right one).</p>"
+            "<p>Two <b>tool rows</b> hold the tools as tabs: one under the menus and one under the map. Chips and Layers are not on them; they are the side panels at the map's left and right edges (see <a href=\"topic:button-map-side-panels\">Chips and Layers side panels</a>).</p>"
             + "<ul>"
-            + "<li>The tabs are Chips, Properties, Layers, Command Palette, Print Area, and Options on the top row. A tab opens its tool and hides it again.</li>"
-            + "<li>An open tool's panel is joined to its tab, opening from where the tab sits (under a top-row tab, over a bottom-row one, beside a side-row one), and moves with it. The panel opened or selected last is in front.</li>"
-            + "<li>The Chips pool runs the length of the map along its row (as wide as the map, or as tall from a side row). Print Area has no panel; its tab lights up while the frame shows.</li>"
+            + "<li>The tabs are Properties, Command Palette, Print Area, and Options on the top row. A tab opens its tool and hides it again.</li>"
+            + "<li>An open tool's panel is joined to its tab, opening from where the tab sits (under a top-row tab, over a bottom-row one), and moves with it. The panel opened or selected last is in front.</li>"
+            + "<li>Print Area has no panel; its tab lights up while the frame shows.</li>"
             + "<li><b>Pin</b> keeps the tool open when you select the map; unpinned, it hides. <b>Lock</b> stops it being moved or resized.</li>"
-            + "<li>Unlocked, drag a tab anywhere along its row or onto another row (the row it would land on lights up). It snaps to the edges, the middle and a small grid, and its panel goes with it.</li>"
+            + "<li>Unlocked, drag a tab anywhere along its row or onto the other row (the row it would land on lights up). It snaps to the edges, the middle and a small grid, and its panel goes with it.</li>"
             + "<li>Unlocked, a panel's edge facing the map, its far edge along the row and their corner resize it. The Options panel starts as large as its settings need.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li><b>View › Reset Tool Rows</b> puts every tab back on the row it starts on (Options on the top one, the rest on the bottom), docks every panel, and gives every panel its first size.</li>"
-            + "<li>All of this is kept for next time.</li>"
+            + "<li><b>View › Reset Tool Rows</b> puts every tab back on the row it starts on (Options on the top one, the rest on the bottom), docks every panel, gives every panel its first size, and puts the Chips and Layers side panels back as they start (Chips out and pinned, Layers folded).</li>"
+            + "<li>All of this is kept for next time, with each side panel's width, pin and whether it is out.</li>"
             + "</ul>",
-            ["button-map-float", "button-map-options"]),
+            ["button-map-side-panels", "button-map-float", "button-map-options"]),
+        t("button-map-side-panels", "Getting started", "Chips and Layers side panels",
+            "<p>The <b>Chips</b> panel (the pool) sits at the map's left edge and the <b>Layers</b> panel at its right edge. Each folds into its edge as a slim strip with its name written down it.</p>"
+            + "<ul>"
+            + "<li>Click a strip (its tooltip reads \"Show the chips\" or \"Show the layers\") to bring its panel out, at the width it had last; click it again to fold the panel. The panel's header has its name, a pin (<b>Pin</b> or <b>Unpin</b>) and a fold arrow (<b>Fold</b>) that folds it back into its edge.</li>"
+            + "<li>Pinned, the panel stays out beside the map, and the map gets narrower so nothing is covered.</li>"
+            + "<li>Unpinned, the panel slides out over the map and folds again when you click the map or the other strip.</li>"
+            + "<li>Drag a panel's inner edge (the one facing the map) to make it wider or narrower, between its smallest and largest width.</li>"
+            + "<li>The side panels can't be dragged, floated, locked or put on a tool row.</li>"
+            + "</ul>"
+            + "<h4>Good to know</h4>"
+            + "<ul>"
+            + "<li>The strips show only while editing (<b>File › Edit Mapping</b>); when editing starts again they come back as you left them.</li>"
+            + "<li>While you edit the background, Chips folds by itself, and comes back when you go back to the foreground.</li>"
+            + "<li><b>View › Chips</b> and <b>View › Layers</b> (while editing) bring their panel out or fold it; <b>Ctrl+F</b> brings the Layers panel out.</li>"
+            + "<li>When the window is too narrow for the map and the pinned panels, Chips unpins and folds first, then Layers; they come back when there is room again.</li>"
+            + "<li><b>View › Reset Tool Rows</b> puts both back as they start, and each panel's width, pin and whether it is out are kept for next time.</li>"
+            + "</ul>",
+            ["button-map-tool-rows", "button-map-chips", "button-map-layers"]),
         t("button-map-float", "Getting started", "Float a tool panel",
-            "<p>Any tool with a panel can float over the map where you put it.</p>"
+            "<p>A tool with a panel on a tool row can float over the map where you put it. The Chips and Layers side panels don't float.</p>"
             + "<ol>"
-            + "<li>Drag its tab off every row onto the map, or right-click the tab and choose <b>Float</b>.</li>"
+            + "<li>Drag its tab off both rows onto the map, or right-click the tab and choose <b>Float</b>.</li>"
             + "<li>Unlocked, drag the title bar to move it, and any edge or corner to resize it.</li>"
             + "<li>To dock it again, drop the title bar on a tool row, double-click the title bar, or right-click its tab and choose <b>Dock</b>.</li>"
             + "</ol>"
@@ -84,13 +102,13 @@ function topics() {
             + "<li>Closing it hides it; it floats in the same place next time.</li>"
             + "<li>Print Area has no panel and never floats; the Command Palette floats where it was let go.</li>"
             + "</ul>",
-            ["button-map-tool-rows"]),
+            ["button-map-tool-rows", "button-map-side-panels"]),
         t("button-map-menus", "Getting started", "Button Map menus",
             "<p>The Button Map's menus show only what you can use at that moment. Before a device is chosen, <b>File › Device</b> lists the devices; the editing items appear once you choose <b>File › Edit Mapping</b>. The Background menu works while editing.</p>"
             + "<ul>"
             + "<li><b>File</b>: <b>Edit Mapping</b>, <b>Save</b> (<b>Ctrl+S</b>), <b>Cancel</b>, <b>Reset Layout</b>, <b>Fit to Photo Frame</b>, <b>Print &amp; Export…</b> (<b>Ctrl+P</b>), <b>Close</b>. The last row shows the device's module file.</li>"
             + "<li><b>Edit</b>: Undo, Redo, <b>Copy Button Map from Device</b>, <b>Mirror Layout</b>, <b>Set Print Area</b>, <b>Clear Print Area</b>, <b>Paste Picture</b>, the templates, and <b>Button Map Options…</b>.</li>"
-            + "<li><b>View</b>: zoom, <b>Grid</b>, <b>Rulers</b>, guides, <b>Layers</b>, <b>Properties</b>, <b>Print Area</b>, <b>Chip Text</b>, <b>Labels Mode</b>, <b>Command Palette</b> and <b>Reset Tool Rows</b>.</li>"
+            + "<li><b>View</b>: zoom, <b>Grid</b>, <b>Rulers</b>, guides, <b>Chips</b>, <b>Layers</b>, <b>Properties</b>, <b>Print Area</b>, <b>Chip Text</b>, <b>Labels Mode</b>, <b>Command Palette</b> and <b>Reset Tool Rows</b>.</li>"
             + "<li><b>Background</b>: <b>Edit Background</b> (<b>Ctrl+B</b>), <b>Add Picture to Background…</b>, <b>Clear Background</b>. See <a href=\"topic:button-map-background\">Background and foreground</a>.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
@@ -139,7 +157,7 @@ function topics() {
             + "<li>Scroll to zoom (50% to 600%); the <b>Zoom speed</b> setting in Button Map Options sets how fast. Drag with the middle button to pan.</li>"
             + "<li><b>View › Reset View (View 100%)</b> or <b>Ctrl+0</b> returns to 100%. <b>View › Zoom to Fit Page</b> (<b>Ctrl+1</b>) shows the whole page; <b>View › Zoom to Selection</b> (<b>Ctrl+2</b>) fills the view with what is selected.</li>"
             + "<li><b>View › Grid</b>: <b>Show Grid</b>, <b>Snap to Grid</b>, <b>Snap to Entities</b> (edges and middles of other items, with guide lines), and the grid <b>Size</b>. Hold <b>Alt</b> while dragging to skip snapping.</li>"
-            + "<li><b>View › Layers</b> and <b>View › Properties</b> show the two side panels.</li>"
+            + "<li><b>View › Chips</b> and <b>View › Layers</b> bring out or fold the two side panels; <b>View › Properties</b> shows the Properties panel.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
@@ -492,7 +510,7 @@ function topics() {
 
         // ---- Panels --------------------------------------------------------
         t("button-map-layers", "Panels", "Layers panel",
-            "<p><b>View › Layers</b> shows the items of the plane you are editing, top of the stack first. In the foreground it ends with a folded <b>Background</b> row; while you edit the background it lists only the background layers (see <a href=\"topic:button-map-background\">Background and foreground</a>).</p>"
+            "<p>The <b>Layers</b> panel folds into the map's right edge; click its strip, choose <b>View › Layers</b> or press <b>Ctrl+F</b> to bring it out (see <a href=\"topic:button-map-side-panels\">Chips and Layers side panels</a>). It shows the items of the plane you are editing, top of the stack first. In the foreground it ends with a folded <b>Background</b> row; while you edit the background it lists only the background layers (see <a href=\"topic:button-map-background\">Background and foreground</a>).</p>"
             + "<ul>"
             + "<li>The <b>eye</b> hides an item: it is not drawn, on the live map either, and is left out of exports.</li>"
             + "<li>The <b>lock</b> keeps an item in place: clicks pass through it, and it is not moved, nudged or deleted. <b>Ctrl+L</b> locks or unlocks the selection; <b>Ctrl+Shift+L</b> unlocks everything.</li>"
@@ -506,7 +524,7 @@ function topics() {
         t("button-map-search-layers", "Panels", "Search and filter layers",
             "<p>Find rows in the Layers panel by name or kind.</p>"
             + "<ol>"
-            + "<li>Press <b>Ctrl+F</b> or choose <b>View › Search layers…</b>. Layers opens if it is closed.</li>"
+            + "<li>Press <b>Ctrl+F</b> or choose <b>View › Search layers…</b>. Layers comes out if it is folded.</li>"
             + "<li>Type in <b>Search layers…</b>, the box under the panel's header.</li>"
             + "<li>Press <b>Enter</b> to select every match on the map and bring the first into view. <b>Esc</b> or the box's <b>×</b> clears it.</li>"
             + "</ol>"
@@ -585,7 +603,7 @@ function topics() {
             "<p>The print area is the part of the page every export and print takes.</p>"
             + "<ol>"
             + "<li>Hold <b>Alt</b> and drag on an empty part of the map, or choose <b>Edit › Set Print Area</b>, then drag.</li>"
-            + "<li>Show it with <b>Print Area</b> on a tool row (or <b>View › Print Area</b>) while editing: everything outside is dimmed, with handles to resize it and its border to move it.</li>"
+            + "<li>Show it with <b>Print Area</b> on its tool row (or <b>View › Print Area</b>) while editing: everything outside is dimmed, with handles to resize it and its border to move it.</li>"
             + "<li>To go back to the whole page, choose <b>Edit › Clear Print Area</b>.</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"

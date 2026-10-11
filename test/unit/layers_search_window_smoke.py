@@ -120,6 +120,10 @@ def ev(obj: QtCore.QObject, code: str) -> object:
     return value
 
 
+# Layers is the right side panel (07 S128): the SidePanel holding _layersPanel.
+LAYERS_SIDE = ("(function(){ var p = _layersPanel;"
+               " while (p && p.takenWidth === undefined) p = p.parent; return p })()")
+
 # The Layers search box has the keyboard: the window's focus is a text
 # field inside the Layers panel.
 IN_SEARCH = (
@@ -162,12 +166,12 @@ def main() -> None:
     out["active"] = bool(wait_for(win.isActive))
 
     # Ctrl+F with Layers closed: opens it and goes to the box.
-    ev(win, "_tools.setOpen('layers', false)")
+    ev(win, LAYERS_SIDE + ".fold()")
     focus_map(win)
-    out["layers-before"] = ev(win, "_tools.isOpen('layers')")
+    out["layers-before"] = ev(win, LAYERS_SIDE + ".open")
     QtTest.QTest.keyClick(win, Key.Key_F, Mod.ControlModifier)
     out["ctrl-f-opens-layers"] = bool(wait_for(
-        lambda: ev(win, "_tools.isOpen('layers') && _layersPanel.visible") is True))
+        lambda: ev(win, LAYERS_SIDE + ".open && _layersPanel.visible") is True))
     out["ctrl-f-focuses-search"] = bool(wait_for(lambda: ev(win, IN_SEARCH) is True))
     # With Layers already open, it goes to the box again.
     focus_map(win)
@@ -175,7 +179,7 @@ def main() -> None:
     out["ctrl-f-when-open"] = bool(wait_for(lambda: ev(win, IN_SEARCH) is True))
 
     # The Command Palette lists View > Search layers… and runs it.
-    ev(win, "_tools.setOpen('layers', false)")
+    ev(win, LAYERS_SIDE + ".fold()")
     focus_map(win)
     ev(win, "_palette.open()")
     wait_for(lambda: ev(win, "_palette.opened"))
@@ -188,7 +192,7 @@ def main() -> None:
     )
     ev(win, "_palette.runPick(0)")
     out["palette-opens-layers"] = bool(wait_for(
-        lambda: ev(win, "_tools.isOpen('layers') && _layersPanel.visible") is True))
+        lambda: ev(win, LAYERS_SIDE + ".open && _layersPanel.visible") is True))
     out["palette-focuses-search"] = out["palette-opens-layers"] and bool(
         wait_for(lambda: ev(win, IN_SEARCH) is True))
 

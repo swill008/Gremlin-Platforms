@@ -38,6 +38,14 @@ import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
 
 GUID = str(dill.GUID(fake.devices[0].device_guid).uuid)
+# The side panels (07 S128): Chips on the left, Layers on the right.
+_SIDE = ("(function(s){ function f(o){ if (!o) return null;"
+         " if (o.takenWidth !== undefined && o.side === s) return o;"
+         " var c = o.children || []; for (var i = 0; i < c.length; i++) {"
+         " var r = f(c[i]); if (r) return r } return null }"
+         " return f(_buttonMap.contentItem) })")
+CHIPS = _SIDE + "('left')"
+LAYERS = _SIDE + "('right')"
 
 
 def call(obj: QtCore.QObject, name: str, *args: object) -> object:
@@ -70,8 +78,8 @@ def main() -> None:
 
     def look(tag: str) -> None:
         out[tag] = json.loads(ev(
-            "JSON.stringify({chips: _poolFloat.visible, props: _tools.isOpen('props'),"
-            " layers: _layersPanel.visible, palette: _palette.opened,"
+            "JSON.stringify({chips: " + CHIPS + ".open, props: _tools.isOpen('props'),"
+            " layers: " + LAYERS + ".open, palette: _palette.opened,"
             " order: _tools.order('bottom')})"
         ))
 
@@ -83,15 +91,15 @@ def main() -> None:
     call(win, "enterEdit")
     QtTest.QTest.qWait(800)
     look("0-first-edit")
-    # From here as an unpinned, hidden pool (the steps below need one).
-    ev("_tools.setPinned('chips', false); _tools.setOpen('chips', false)")
+    # From here as an unpinned, hidden Properties (the steps below need one).
+    ev("_tools.setPinned('props', false); _tools.setOpen('props', false)")
     look("1-edit")
-    step("_tools.toggle('chips')", "2-chips-open")
-    # A click on the map: the unpinned pool hides.
+    step("_tools.toggle('props')", "2-props-open")
+    # A click on the map: unpinned Properties hides.
     step("_ed().mapPressed()", "3-map-click")
-    step("_tools.setPinned('chips', true); _tools.setOpen('chips', true);"
-         " _tools.setOpen('layers', true)", "4-chips-pinned-layers-open")
-    # Pinned stays, unpinned (Layers) hides.
+    step("_tools.setPinned('props', true); _tools.setOpen('props', true);"
+         " " + LAYERS + ".unfold()", "4-props-pinned-layers-open")
+    # Pinned stays, unpinned (the Layers side panel) folds.
     step("_ed().mapPressed()", "5-map-click")
     step("_tools.moveTo('palette', 0)", "6-moved")
     # Locked: it stays where it is.
@@ -115,9 +123,9 @@ def main() -> None:
     ev("_tools.dropAt('palette', 3)")
     QtTest.QTest.qWait(200)
     out["palette-left"] = places()
-    ev("_tools.dropAt('chips', _tools.placeOf('palette') + 4)")
+    ev("_tools.dropAt('props', _tools.placeOf('palette') + 4)")
     QtTest.QTest.qWait(200)
-    out["chips-onto-palette"] = places()
+    out["props-onto-palette"] = places()
     out["widths"] = json.loads(ev(
         "(function(){ var o = {}; var ids = _tools.order('bottom');"
         " for (var i = 0; i < ids.length; i++) { var b = _bottomRow._button(ids[i]);"
@@ -130,11 +138,8 @@ def main() -> None:
     out["reset"] = places()
     ev("_tools.setLocked('palette', true)")
 
-    # The bars: the status line one row of small text, the tool row below
-    # the map; the pool docked just above the tool row.
+    # The status line: one row of small text.
     out["status-height"] = ev("_statusLine.height")
-    out["pool-bottom-gap"] = ev(
-        "Math.round(_poolFloat.parent.height - _poolFloat.y - _poolFloat.height)")
     from gremlin.ui import window_placement
 
     out["saved"] = window_placement.tool_row_state("button-map")
@@ -178,14 +183,17 @@ def main() -> None:
     ev("_tools.setLocked('palette', false)")
     QtTest.QTest.qWait(100)
     # Grabbed by its name (its pin and lock are buttons of their own).
-    button = scene_rect("_bottomRow._button('chips')")
+    button = scene_rect("_bottomRow._button('props')")
     grab = QtCore.QPointF(button["x"] + 10, middle(button).y())
     drag(grab, QtCore.QPointF(top["x"] + top["w"] * 0.25, middle(top).y()))
-    out["chips-up"] = [ev("_tools.sideOf('chips')"), ev("_tools.dockOf('chips')"),
+    out["props-up"] = [ev("_tools.sideOf('props')"), ev("_tools.dockOf('props')"),
                        ev("_tools.order('top')"), ev("_tools.order('bottom')")]
-    # The pool joins its tab: it reaches up to the top row, under the tab.
-    pool = scene_rect("_poolFloat")
-    tab = scene_rect("_topRow._button('chips')")
+    # A panel on the top row (Options) joins its tab: it reaches up to the
+    # top row, under the tab.
+    ev("_tools.setOpen('options', true); _tools.setSize('options', 0, Style.dp(200))")
+    QtTest.QTest.qWait(300)
+    pool = scene_rect("_optionsFloat")
+    tab = scene_rect("_topRow._button('options')")
     out["pool-at-top"] = round(pool["y"] - (top["y"] + top["h"]))
     out["tab-over-pool"] = (pool["x"] <= tab["x"]
                             and tab["x"] + tab["w"] <= pool["x"] + pool["w"])
@@ -193,28 +201,41 @@ def main() -> None:
     # away from its tab.
     edge = QtCore.QPointF(pool["x"] + pool["w"] / 2, pool["y"] + pool["h"] - 2)
     drag(edge, edge + QtCore.QPointF(0, 60))
-    grown = scene_rect("_poolFloat")
+    grown = scene_rect("_optionsFloat")
     out["pool-resized"] = round(grown["h"] - pool["h"])
-    out["pool-stays"] = [ev("_tools.sideOf('chips')"), round(grown["y"] - pool["y"])]
+    out["pool-stays"] = [ev("_tools.sideOf('options')"), round(grown["y"] - pool["y"])]
     # Locked: no resizing.
-    ev("_tools.setLocked('chips', true)")
+    ev("_tools.setLocked('options', true)")
     QtTest.QTest.qWait(100)
     edge = QtCore.QPointF(grown["x"] + grown["w"] / 2, grown["y"] + grown["h"] - 2)
     drag(edge, edge + QtCore.QPointF(0, 60))
-    out["pool-locked"] = round(scene_rect("_poolFloat")["h"] - grown["h"])
-    ev("_tools.setLocked('chips', false)")
+    out["pool-locked"] = round(scene_rect("_optionsFloat")["h"] - grown["h"])
+    ev("_tools.setLocked('options', false)")
     # Kept: loaded again, the row and the size are as they were.
-    ev("_tools._load()")
+    ev("_tools._load(); _tools.setOpen('options', true)")
     QtTest.QTest.qWait(200)
-    kept_h = scene_rect("_poolFloat")["h"]
-    out["kept"] = [ev("_tools.sideOf('chips')"), round(kept_h - grown["h"])]
+    kept_h = scene_rect("_optionsFloat")["h"]
+    out["kept"] = [ev("_tools.sideOf('props')"), round(kept_h - grown["h"])]
     out["saved-top"] = window_placement.tool_row_state("button-map")
+    # The side panels' width, pin and open state are kept with the rows.
+    ev("_tools.setSideState('chips',"
+       " {width: Style.dp(400), pinned: false, open: false});"
+       " _tools.setSideState('layers',"
+       " {width: Style.dp(350), pinned: true, open: true})")
+    QtTest.QTest.qWait(100)
+    ev("_tools._load()")
+    QtTest.QTest.qWait(100)
+    out["sides-kept"] = json.loads(ev(
+        "JSON.stringify([_tools.sideState('chips'), _tools.sideState('layers')])"))
+    out["sides-saved"] = window_placement.tool_row_state("button-map").get("sides")
     # Reset Tool Rows: every button back on its own row, panels at their
-    # first size.
+    # first size, the side panels as they start.
     ev("_tools.resetPlaces()")
     QtTest.QTest.qWait(200)
     out["reset-rows"] = [ev("_tools.order('top').length"),
-                         ev("_tools.sizeOf('chips') === null")]
+                         ev("_tools.sizeOf('options') === null")]
+    out["sides-reset"] = json.loads(ev(
+        "JSON.stringify([_tools.sideState('chips'), _tools.sideState('layers')])"))
 
     # --- zoom ------------------------------------------------------------------
     face = "_ed().face"
@@ -226,44 +247,28 @@ def main() -> None:
     QtTest.QTest.qWait(100)
     out["out-most"] = ev(f"Math.round({face}.viewPct * 100)")
 
-    # --- the side rows ---------------------------------------------------------
-    left = scene_rect("_leftRow")
-    right = scene_rect("_rightRow")
-    host = scene_rect("_mapHost")
-    out["side-rows"] = {
-        "visible": [ev("_leftRow.visible"), ev("_rightRow.visible")],
-        "width": [round(left["w"]), round(right["w"])],
-        "gaps": [round(host["x"] - (left["x"] + left["w"])),
-                 round(right["x"] - (host["x"] + host["w"]))],
-        # Between the top and bottom rows.
-        "between": [round(left["y"] - (top["y"] + top["h"])),
-                    round(bottom["y"] - (left["y"] + left["h"]))],
-    }
-    # Layers dragged from the bottom row onto the left one, by its name.
-    ev("_tools.setOpen('layers', false)")
-    QtTest.QTest.qWait(100)
-    button = scene_rect("_bottomRow._button('layers')")
-    grab = QtCore.QPointF(button["x"] + 10, middle(button).y())
-    drag(grab, QtCore.QPointF(middle(left).x(), left["y"] + left["h"] * 0.3))
-    out["layers-left"] = [ev("_tools.sideOf('layers')"), ev("_tools.order('left')")]
-    tab = scene_rect("_leftRow._button('layers')")
-    out["tab-upright"] = tab["h"] > tab["w"]
-    ev("_tools.setOpen('layers', true)")
-    QtTest.QTest.qWait(300)
-    pane = scene_rect("_layersPane")
-    # Beside its tab, reaching the row, the tab within its height.
-    out["layers-pane"] = {
-        "joined": round(pane["x"] - (left["x"] + left["w"])),
-        "beside-tab": (pane["y"] <= tab["y"] + 0.5
-                       and tab["y"] + tab["h"] <= pane["y"] + pane["h"] + 0.5),
-    }
-    # Its edge facing the map (the right one) makes it wider.
-    edge = QtCore.QPointF(pane["x"] + pane["w"] - 2, pane["y"] + pane["h"] / 3)
-    drag(edge, edge + QtCore.QPointF(40, 0))
-    out["layers-wider"] = round(scene_rect("_layersPane")["w"] - pane["w"])
-    ev("_tools.resetPlaces()")
-    QtTest.QTest.qWait(300)
-    out["layers-reset"] = ev("_tools.sideOf('layers')")
+    # --- no left or right rows (07 S128, S99) ---------------------------------
+    rows = []
+
+    def walk(item: object) -> None:
+        if item.metaObject().className().startswith("ToolRow"):
+            rows.append(str(item.property("side")))
+        for child in item.childItems():
+            walk(child)
+
+    walk(win.contentItem())
+    out["rows"] = sorted(rows)
+    out["row-tools"] = [ev("_tools.order('top')"), ev("_tools.order('bottom')")]
+    # A saved placement on a removed row is ignored: the tool is on the
+    # bottom row.
+    saved = window_placement.tool_row_state("button-map")
+    saved["items"]["props"]["side"] = "left"
+    saved["items"]["palette"]["side"] = "right"
+    window_placement.save_tool_row_state("button-map", saved)
+    ev("_tools._load()")
+    QtTest.QTest.qWait(200)
+    out["old-side-rows"] = [ev("_tools.sideOf('props')"),
+                            ev("_tools.sideOf('palette')")]
     print("RESULT " + json.dumps(out), flush=True)
     smoke_exit(0)
 

@@ -103,7 +103,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | `own-xbox-pads` (vigem) | ids of Gremlin's own Xbox pads | Xbox output |
 | `<data folder>\tester\expected.json` (file, not a setting; D-02-INPUT-TESTER) | what the Input Tester should see (S106) | the program only (`input_tester_link.write_expected`), whole-file write |
 | `<data folder>\tester\result.json` (file) | the Input Tester's last verdict (S107) | the tester only (`input_tester/result.py`); the program only reads it |
-| `<data folder>\tester\tester.log`, `tester.log.1` (files; addendum 2026-10-10) | the Input Tester's own log (S116) | the tester only (`input_tester/log.py`); the program only reads it (Save Diagnostics, S119) |
+| `<data folder>\tester\tester.log`, `tester.log.1` (files; addendum 2026-10-10) | the Input Tester's own log (S116) | the tester only (`input_tester/log.py`); the program only reads it (Save Diagnostics, S119) A rotation Windows refuses (the file open elsewhere) keeps writing to `tester.log` and retries on the next line (2026-10-11; `test_input_tester_logs.py::test_blocked_rotation_keeps_writing_the_file`). |
 | A temp folder per reset (file, D-02-RESET-DEVICES) | the elevated process's exit code per device (S128) | the elevated `cmd.exe` only; `device_reset.py` reads it, then removes the folder (best effort, S137) |
 | Device folder `device.json` id (from 2026-10-11, D-03-DEVICE-FOLDERS; was the module file's `boundGuidLocal`) | read by `_file_bound_guid` to pick which twin keeps the plain name (03 S132) | Module files page (`store`) |
 

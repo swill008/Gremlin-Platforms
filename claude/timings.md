@@ -766,3 +766,15 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | SAVEFIX: G32 — Save drops state.json before removing the edit folder (3 tests fail before, pass after) | fix | 3–8 min (table) | 1 min | 13:42–13:43 |
 | 2026-10-11 | CANVAS: Edit Background / Exit Background Editing on the empty-space menu (6 tests fail before, pass after) | fix | 3–8 min (table) | 2 min | 13:42–13:44 |
 | 2026-10-11 | ROW-T: tests moved off the removed row (Edit menu/keys, Show me banner+row only, absence checks; 21 pass) | agent tests | 3–8 min (table) | 2 min | 13:42–13:44 |
+| 2026-10-11 | Canvas-menu batch full run (seed 356469): 2 goldens (new menu row) re-recorded; lint fix; commit 2062380e; push | test | 5–6 min (table) | 6 min + 2 min | 13:45–13:52 |
+| 2026-10-11 | Canvas-menu batch end to end: user go 13:41 → commit 13:52 | fix batch | 3–8 min per agent + full run (table) | 11 min | 13:41–13:52 |
+| 2026-10-11 | SP-DOC: Help for the side panels (new topic, tool-row topics fixed; 56/57 pass, 1 waits on WIN) | docs | 3–8 min (table) | 3 min | 14:00–14:03 |
+| 2026-10-11 | SIDE: SidePanel.qml (strip, pin, fold, resize, overlay vs beside; 11 tests fail without it) | feature | rough guess 15–30 min | 4 min | 14:00–14:04 |
+| 2026-10-11 | DOCK: left/right rows removed from ToolDock/ToolRow/ToolPane; sideState/setSideState + reset (4 tests fail before, pass after) | refactor | 5–10 min (table) | 4 min | 14:00–14:04 |
+| 2026-10-11 | WIN: side panels in the window (Chips left, Layers right; Edit-only, Background fold, narrow-window fold, View › Chips, Show me row) | feature | rough guess 20–35 min | 10 min | 14:00–14:10 |
+| 2026-10-11 | Lead: Layers panel hides its own title and × inside the side panel (showTitle); 40 tests pass | fix | 3–8 min (table) | 2 min | 14:11–14:13 |
+| 2026-10-11 | SP-DOC follow-up: View › Chips in the Help (57 Help tests pass) | docs | 3–8 min (table) | 1 min | 14:10–14:11 |
+| 2026-10-11 | CI on 2062380e: 1 failure, the same Input Tester log test (second time) → TRACE-TESTER | ci | ~10 min (table) | about 19 min | 13:52–14:11 |
+| 2026-10-11 | SP-T: side-panel e2e (13) + tool-row and Layers smokes updated (80 pass) | agent tests | rough guess 15–30 min | 11 min | 14:00–14:11 |
+| 2026-10-11 | TRACE-TESTER: Input Tester stopped logging after a refused 1 MB rotation (real bug, fixed; test fails before) | fix | 3–8 min (table) | 1 min | 14:11–14:12 |
+| 2026-10-11 | Lead: restoreSides before the first Edit (timing gap); map lines | fix | 3–8 min (table) | 3 min | 14:12–14:15 |

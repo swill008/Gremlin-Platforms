@@ -259,7 +259,7 @@ def main() -> None:
     out["double-click"] = place()
     # Print Area has no panel: it never floats.
     out["print-area"] = [ev("_tools.canFloat('printArea')"),
-                         ev("_tools.canFloat('layers')")]
+                         ev("_tools.canFloat('options')")]
     ev("_tools.setFloating('printArea', true)")
     out["print-area-floating"] = ev("_tools.isFloating('printArea')")
     # Reset Tool Rows: nothing floats.

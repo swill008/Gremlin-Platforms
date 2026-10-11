@@ -86,7 +86,14 @@ class TesterLog:
             except OSError:
                 size = 0
             if size and size + len(data) > self._max_bytes:
-                os.replace(self._path, self._path.with_name(self._path.name + ".1"))
+                try:
+                    os.replace(
+                        self._path, self._path.with_name(self._path.name + ".1")
+                    )
+                except PermissionError:
+                    # Windows refuses the rename while another program has
+                    # the file open (a log viewer); retried on the next line.
+                    pass
             with open(self._path, "ab") as handle:
                 handle.write(data)
         except OSError:

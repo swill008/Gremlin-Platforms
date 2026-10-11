@@ -41,6 +41,9 @@ import joystick_gremlin  # noqa: E402
 from gremlin import clock  # noqa: E402
 
 NAMES = ("bmBgBanner", "bmBgRow")
+# Layers is the right side panel (07 S128): the SidePanel holding _layersPanel.
+LAYERS_SIDE = ("(function(){ var p = _layersPanel;"
+               " while (p && p.takenWidth === undefined) p = p.parent; return p })()")
 
 
 def wait_until(cond, limit_ms: int = 10000) -> bool:  # noqa: ANN001
@@ -131,7 +134,7 @@ try:
             out["editing"][n] = {
                 "why": why, "pulsed": pulsed(bm, n),
                 "plane": str(ev(bm, "_buttonMap._ed().editPlane")),
-                "layers": bool(ev(bm, "_tools.isOpen('layers')")),
+                "layers": bool(ev(bm, LAYERS_SIDE + ".open")),
             }
         ev(bm, "_buttonMap.discardEdit(); 1")
         settle(200)

@@ -2,24 +2,31 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's tool row (Chips, Properties, Layers, Command Palette),
-checked in the running program off-screen (button_map_tool_row_smoke.py,
-its own process and user folder).
+"""The Button Map's tool rows (Properties, Command Palette, Print Area on
+the bottom one, Options on the top one) and its side panels (Chips on the
+left, Layers on the right, 07 S128; their own end-to-end test is
+test_side_panels_e2e.py), checked in the running program off-screen
+(button_map_tool_row_smoke.py, its own process and user folder).
 
-- Each button opens and hides its tool; Chips (so a new user sees the
-  pool) and Properties start open and pinned, the others hidden.
-- Unpinned tools hide when the map is clicked; pinned ones stay.
+- Each button opens and hides its tool; Properties starts open and pinned,
+  the others hidden; the Chips side panel starts out and pinned, Layers
+  folded.
+- Unpinned tools (and the unpinned Layers panel) hide when the map is
+  clicked; pinned ones stay.
 - An unlocked button moves along the row; a locked one stays.
 - A button let go anywhere on the row snaps to the edges, middle or a small
   grid and goes to the nearest free spot; Reset Tool Row centres them again.
 - The status line (view, photo size, module file) is one slim row at the
-  bottom, and the pool docks just above the tool row.
+  bottom.
 - What is open, pinned and locked, and the order, are saved.
 - A second row under the menus, always shown (empty at first), 10 px from
   the map as the bottom row is; a button dragged onto it moves there with
-  its panel's dock; the chip pool docks under it, can be dragged to the
-  other edge on its own (unlocked), and stays when locked; rows and docks
-  are saved; Reset Tool Rows puts everything on the bottom row again.
+  its panel's dock; a panel on the top row docks under it, resizes by its
+  edge (unlocked), and stays when locked; rows, docks and the side panels'
+  width, pin and open state are saved; Reset Tool Rows puts everything back
+  as it starts, the side panels too (07 S99).
+- There are no left or right rows; a saved placement on one loads on the
+  bottom row (07 S99, S128).
 - The view zooms out to 50%; Zoom to Fit Page still fills the view.
 """
 
@@ -34,7 +41,7 @@ import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
-_ORDER = ["chips", "props", "layers", "palette", "printArea"]
+_ORDER = ["props", "palette", "printArea"]
 
 
 @pytest.fixture(scope="module")
@@ -59,24 +66,25 @@ def _shown(chips: bool, props: bool, layers: bool, palette: bool, order: list) -
 
 
 def test_chips_and_properties_start_open(run: dict) -> None:
+    # Chips is the side panel, out and pinned; Properties on the row.
     assert run["0-first-edit"] == _shown(True, True, False, False, _ORDER)
 
 
 def test_buttons_open_and_hide_their_tools(run: dict) -> None:
-    assert run["1-edit"] == _shown(False, True, False, False, _ORDER)
-    assert run["2-chips-open"] == _shown(True, True, False, False, _ORDER)
+    assert run["1-edit"] == _shown(True, False, False, False, _ORDER)
+    assert run["2-props-open"] == _shown(True, True, False, False, _ORDER)
     assert run["8-palette"]["palette"] is True
     assert run["9-palette-closed"]["palette"] is False
 
 
 def test_a_map_click_hides_unpinned_tools(run: dict) -> None:
-    assert run["3-map-click"] == _shown(False, True, False, False, _ORDER)
-    assert run["4-chips-pinned-layers-open"] == _shown(True, True, True, False, _ORDER)
+    assert run["3-map-click"] == _shown(True, False, False, False, _ORDER)
+    assert run["4-props-pinned-layers-open"] == _shown(True, True, True, False, _ORDER)
     assert run["5-map-click"] == _shown(True, True, False, False, _ORDER)
 
 
 def test_unlocked_buttons_move_locked_ones_stay(run: dict) -> None:
-    moved = ["palette", "chips", "props", "layers", "printArea"]
+    moved = ["palette", "props", "printArea"]
     assert run["6-moved"]["order"] == moved
     assert run["7-locked-move"]["order"] == moved
 
@@ -86,7 +94,7 @@ def test_buttons_go_anywhere_on_the_row(run: dict) -> None:
     # Let go near the left edge: snapped to it.
     assert abs(run["palette-left"]["palette"] - gap) < 1
     # Let go onto another button: beside it, not on it.
-    places, widths = run["chips-onto-palette"], run["widths"]
+    places, widths = run["props-onto-palette"], run["widths"]
     spans = sorted((places[t], places[t] + widths[t]) for t in places)
     assert all(a[1] + gap - 1 <= b[0] for a, b in zip(spans, spans[1:]))
     assert all(0 <= x and x + widths[t] <= run["row-width"] for t, x in places.items())
@@ -94,17 +102,17 @@ def test_buttons_go_anywhere_on_the_row(run: dict) -> None:
     assert run["reset"] == run["centred"]
 
 
-def test_status_line_and_docked_pool(run: dict) -> None:
+def test_status_line(run: dict) -> None:
     assert run["status-height"] <= 24
-    assert run["pool-bottom-gap"] <= 10
 
 
 def test_the_row_is_saved(run: dict) -> None:
     saved = run["saved"]
     # Options is on the top row (saved in the same order).
     order = [t for t in saved["order"] if t != "options"]
-    assert order == ["palette", "chips", "props", "layers", "printArea"]
-    assert saved["items"]["chips"]["pinned"] is True
+    assert order == ["palette", "props", "printArea"]
+    # Chips and Layers are side panels, not row tools.
+    assert "chips" not in saved["items"] and "layers" not in saved["items"]
     assert saved["items"]["palette"]["locked"] is True
     assert saved["items"]["props"]["pinned"] is True
 
@@ -119,15 +127,15 @@ def test_the_top_row_is_always_there(run: dict) -> None:
 
 
 def test_a_button_moves_to_the_top_row_with_its_panel(run: dict) -> None:
-    side, dock, top, bottom = run["chips-up"]
+    side, dock, top, bottom = run["props-up"]
     assert (side, dock) == ("top", "top")
-    assert sorted(top) == ["chips", "options"] and "chips" not in bottom
-    # The pool reaches the top row, its tab over it.
+    assert sorted(top) == ["options", "props"] and "props" not in bottom
+    # A top-row panel (Options) reaches the top row, its tab over it.
     assert abs(run["pool-at-top"]) <= 1
     assert run["tab-over-pool"] is True
 
 
-def test_the_pool_resizes_and_stays_with_its_tab(run: dict) -> None:
+def test_a_panel_resizes_and_stays_with_its_tab(run: dict) -> None:
     assert abs(run["pool-resized"] - 60) <= 2
     assert run["pool-stays"] == ["top", 0]
     assert run["pool-locked"] == 0
@@ -135,29 +143,33 @@ def test_the_pool_resizes_and_stays_with_its_tab(run: dict) -> None:
 
 def test_rows_and_docks_are_kept_and_reset(run: dict) -> None:
     assert run["kept"] == ["top", 0]
-    items = run["saved-top"]["items"]["chips"]
-    assert items["side"] == "top" and items["h"] > 0
+    items = run["saved-top"]["items"]
+    assert items["props"]["side"] == "top" and items["options"]["h"] > 0
     # Each back on the row it starts on (Options on the top one), sizes
     # forgotten.
     assert run["reset-rows"] == [1, True]
 
 
-def test_side_rows_hold_tabs_with_their_panels(run: dict) -> None:
-    rows = run["side-rows"]
-    assert rows["visible"] == [True, True]
-    assert all(24 <= w <= 34 for w in rows["width"])
-    # 10 px between the map and each side row; the side rows run between
-    # the top and bottom rows.
-    assert all(abs(g - run["dp10"]) <= 1 for g in rows["gaps"]), rows["gaps"]
-    assert rows["between"] == [0, 0]
-    # A tab dragged onto the left row: there, upright; its panel beside it,
-    # joined, resized by its edge facing the map; Reset puts it back.
-    assert run["layers-left"] == ["left", ["layers"]]
-    assert run["tab-upright"] is True
-    assert abs(run["layers-pane"]["joined"]) <= 1
-    assert run["layers-pane"]["beside-tab"] is True
-    assert abs(run["layers-wider"] - 40) <= 3
-    assert run["layers-reset"] == "bottom"
+def test_side_panel_states_are_kept_and_reset(run: dict) -> None:
+    dp = run["dp10"] / 10
+    chips, layers = run["sides-kept"]
+    assert abs(chips["width"] - 400 * dp) <= 1
+    assert not chips["pinned"] and not chips["open"]
+    assert abs(layers["width"] - 350 * dp) <= 1 and layers["pinned"] and layers["open"]
+    assert set(run["sides-saved"]) >= {"chips", "layers"}
+    # Reset Tool Rows: as they start.
+    chips, layers = run["sides-reset"]
+    assert abs(chips["width"] - 260 * dp) <= 1 and chips["pinned"] and chips["open"]
+    assert abs(layers["width"] - 300 * dp) <= 1
+    assert not layers["pinned"] and not layers["open"]
+
+
+def test_no_left_or_right_rows(run: dict) -> None:
+    assert run["rows"] == ["bottom", "top"]
+    top, bottom = run["row-tools"]
+    assert "chips" not in top + bottom and "layers" not in top + bottom
+    # Saved on a removed row: loads on the bottom row, no conversion.
+    assert run["old-side-rows"] == ["bottom", "bottom"]
 
 
 def test_the_view_zooms_out_to_half(run: dict) -> None:

@@ -134,13 +134,13 @@ ApplicationWindow {
 
     property int _nameTick: 0
     property bool editing: false
-    // Chips, Properties, Layers and Command Palette open from the tool row at
-    // the bottom (_tools): pinned they stay open when the map is clicked,
-    // locked they can't be moved or resized.
-    // The Layers panel's width (drag its left edge while unlocked).
-    property real layersW: Style.dp(260)
+    // Properties, Command Palette, Print Area and Options open from the tool
+    // rows (_tools): pinned they stay open when the map is clicked, locked
+    // they can't be moved or resized. Chips and Layers are the side panels
+    // (_chipsSide, _layersSide; 07 S128-S131).
     onEditingChanged: {
         poolDrag = false
+        Qt.callLater(fitSides)
         if (editing)
             Qt.callLater(refreshReservoir)
         else
@@ -434,6 +434,8 @@ ApplicationWindow {
     function _startEdit() {
         if (editing)
             return
+        if (!sidesRestored)
+            restoreSides()
         // (Pictures left by a session that never finished were put back by
         // loadLive.)
         try {
@@ -920,6 +922,8 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        // After the tool dock has loaded the kept layout.
+        Qt.callLater(restoreSides)
         profileModes = _hw.profileModes()
         liveNodes = []
         workNodes = []
@@ -1182,6 +1186,102 @@ ApplicationWindow {
         viewPanY = f.panY || 0
     }
 
+    // --- side panels: Chips and Layers (07 S99, S128-S131) -----------------
+
+    // The map area's least width: below it the pinned side panels unpin and
+    // fold, Chips first, then Layers (S131).
+    readonly property real mapMinWidth: Style.dp(420)
+    // A side panel this window unpinned and folded for room (S131), or
+    // folded for Background mode (S130): it comes back as it was when that
+    // ends, unless the user changed it in between. Those folds aren't kept.
+    property bool chipsSqueezed: false
+    property bool layersSqueezed: false
+    property bool chipsBgFolded: false
+
+    // Puts the side panels as they were kept (at start and after Reset Tool
+    // Rows).
+    // Set once the kept side-panel state is on the panels (restoreSides runs
+    // a moment after the window opens; an Edit started before that runs it
+    // first, so a panel's built-in width is never saved over the kept one).
+    property bool sidesRestored: false
+    function restoreSides() {
+        sidesRestored = true
+        chipsSqueezed = false
+        layersSqueezed = false
+        chipsBgFolded = false
+        var sides = [[_chipsSide, "chips"], [_layersSide, "layers"]]
+        for (var i = 0; i < sides.length; i++) {
+            var st = _tools.sideState(sides[i][1])
+            sides[i][0].panelWidth = st.width
+            sides[i][0].pinned = st.pinned
+            sides[i][0].open = st.open
+        }
+        if (bgMode)
+            bgFoldChips(true)
+        Qt.callLater(fitSides)
+    }
+
+    // A strip, pin, fold arrow, resize, the View menu or a map click
+    // changed a side panel: kept, and the user's choice from now on.
+    function sideChangedByUser(panel, id) {
+        if (id === "chips") {
+            chipsSqueezed = false
+            chipsBgFolded = false
+        } else {
+            layersSqueezed = false
+        }
+        _tools.setSideState(id, { width: panel.panelWidth, pinned: panel.pinned, open: panel.open })
+    }
+
+    // Background mode folds Chips and brings it back after (S130).
+    function bgFoldChips(on) {
+        if (on) {
+            if (_chipsSide.open) {
+                chipsBgFolded = true
+                _chipsSide.open = false
+            }
+        } else if (chipsBgFolded) {
+            chipsBgFolded = false
+            _chipsSide.open = true
+        }
+    }
+    onBgModeChanged: bgFoldChips(bgMode)
+
+    // The window's width, a panel's pin or width changed: with too little
+    // room for the map, Chips then Layers unpin and fold; with room again
+    // they come back, Layers first (S131).
+    function fitSides() {
+        if (!editing)
+            return
+        var room = _mapRow.width - 2 * Style.dp(10)
+        var strip = _chipsSide.stripWidth
+        function tooNarrow() {
+            return room - _chipsSide.takenWidth - _layersSide.takenWidth < mapMinWidth
+        }
+        if (tooNarrow() && !chipsSqueezed && !chipsBgFolded && _chipsSide.pinned && _chipsSide.open) {
+            chipsSqueezed = true
+            _chipsSide.pinned = false
+            _chipsSide.open = false
+        }
+        if (tooNarrow() && !layersSqueezed && _layersSide.pinned && _layersSide.open) {
+            layersSqueezed = true
+            _layersSide.pinned = false
+            _layersSide.open = false
+        }
+        if (layersSqueezed && !_layersSide.open
+                && room - _chipsSide.takenWidth - (strip + _layersSide.shownWidth) >= mapMinWidth) {
+            layersSqueezed = false
+            _layersSide.pinned = true
+            _layersSide.open = true
+        }
+        if (chipsSqueezed && !layersSqueezed && !_chipsSide.open && !bgMode
+                && room - (strip + _chipsSide.shownWidth) - _layersSide.takenWidth >= mapMinWidth) {
+            chipsSqueezed = false
+            _chipsSide.pinned = true
+            _chipsSide.open = true
+        }
+    }
+
     // --- background and foreground planes (07 S111-S127) ------------------
 
     // Background mode: the editor is editing the background (07 S113).
@@ -1233,7 +1333,7 @@ ApplicationWindow {
             item = _bgBanner
         } else if (name === "bmBgRow") {
             setEditPlane("foreground")
-            _tools.setOpen("layers", true)
+            _layersSide.unfold()
             item = _layersPanel.bgRowPart("bmBgRow")
         } else {
             return "No such place in the Button Map: " + name
@@ -1874,7 +1974,7 @@ ApplicationWindow {
     function searchLayers() {
         if (!editing)
             return
-        _tools.setOpen("layers", true)
+        _layersSide.unfold()
         Qt.callLater(function() { _layersPanel.focusSearch() })
     }
 
@@ -2916,10 +3016,18 @@ ApplicationWindow {
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Layers"
+                    text: "Chips"
+                    enabled: editing
                     checkable: true
-                    checked: _tools.isOpen("layers")
-                    onTriggered: _tools.toggle("layers")
+                    checked: _chipsSide.open
+                    onTriggered: _chipsSide.toggle()
+                }
+                ThemedMenuItem {
+                    text: "Layers"
+                    enabled: editing
+                    checkable: true
+                    checked: _layersSide.open
+                    onTriggered: _layersSide.toggle()
                 }
                 ThemedMenuItem {
                     text: "Search layers…"
@@ -2943,7 +3051,10 @@ ApplicationWindow {
                 }
                 ThemedMenuItem {
                     text: "Reset Tool Rows"
-                    onTriggered: _tools.resetPlaces()
+                    onTriggered: {
+                        _tools.resetPlaces()
+                        _buttonMap.restoreSides()
+                    }
                 }
                 ThemedMenuItem {
                     text: "Print Area Color…"
@@ -3151,19 +3262,225 @@ ApplicationWindow {
         }
 
         RowLayout {
+            id: _mapRow
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
+            onWidthChanged: Qt.callLater(_buttonMap.fitSides)
 
-            // The left tool row (always shown, between the top and bottom
-            // rows): tools dragged there, and tools to come.
-            ToolRow {
-                id: _leftRow
-                objectName: "toolRowLeft"
+            // Chips (07 S128-S131): a side panel on the left edge, folded to a
+            // strip or out at its width. Pinned it takes its width from the
+            // map area; unpinned it is drawn over the map (this slot's z).
+            Item {
+                id: _leftSlot
                 Layout.fillHeight: true
-                Layout.preferredWidth: implicitWidth
-                dock: _tools
-                side: "left"
+                Layout.preferredWidth: _chipsSide.takenWidth
+                z: 60
+                SidePanel {
+                    id: _chipsSide
+                    objectName: "chipsSide"
+                    side: "left"
+                    title: "Chips"
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    available: _buttonMap.editing
+                    minWidth: Style.dp(180)
+                    maxWidth: Style.dp(520)
+                    onChanged: _buttonMap.sideChangedByUser(_chipsSide, "chips")
+                    onStripClicked: _layersSide.foldIfUnpinned()
+                    onTakenWidthChanged: Qt.callLater(_buttonMap.fitSides)
+
+                        Item {
+                            id: _poolFloat
+                            objectName: "chipPool"
+                            anchors.fill: parent
+
+                            // Its background: takes the clicks (not the map's).
+                            MouseArea {
+                                anchors.fill: parent
+                                z: 0
+                                acceptedButtons: Qt.AllButtons
+                                hoverEnabled: true
+                                enabled: {
+                                    var e = _buttonMap._ed()
+                                    return !(e && e.dragKind && e.dragKind.length)
+                                }
+                                onPressed: (m) => { m.accepted = true }
+                                onClicked: (m) => { m.accepted = true }
+                                onDoubleClicked: (m) => { m.accepted = true }
+                                onWheel: (w) => { w.accepted = true }
+                            }
+
+                            // A chip dragged over the pool lights it: let go to take the
+                            // chip off the map.
+                            readonly property bool dropHot: {
+                                var e = _buttonMap._ed()
+                                return !!(e && e.poolHover)
+                            }
+                            Rectangle {
+                                anchors.fill: parent
+                                z: 1
+                                radius: Style.dp(8)
+                                color: Style.bgCard
+                                border.color: _poolFloat.dropHot ? Style.accent : Style.lineStrong
+                                border.width: _poolFloat.dropHot ? Style.dp(3) : 1
+                            }
+                            Label {
+                                z: 3
+                                visible: _poolFloat.dropHot
+                                anchors.centerIn: parent
+                                text: "Let go to take it off the map"
+                                color: Style.fg
+                                font.bold: true
+                                background: Rectangle { color: Style.bgCard; radius: Style.dp(4) }
+                                padding: Style.dp(6)
+                            }
+                            ColumnLayout {
+                                z: 2
+                                anchors.fill: parent
+                                anchors.margins: Style.dp(8)
+                                anchors.bottomMargin: Style.dp(12)
+                                anchors.rightMargin: Style.dp(10)
+                                spacing: Style.dp(6)
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Style.dp(6)
+                                    Item {
+                                        Layout.fillWidth: true
+                                        implicitHeight: Style.dp(28)
+                                        TextField {
+                                            id: _poolSearch
+                                            anchors.fill: parent
+                                            placeholderText: "Filter friendly or hardware"
+                                            text: poolFilter
+                                            rightPadding: Style.dp(26)
+                                            onTextChanged: {
+                                                if (poolFilter !== text)
+                                                    poolFilter = text
+                                            }
+                                        }
+                                        Text {
+                                            visible: poolFilter.length > 0
+                                            anchors.right: parent.right
+                                            anchors.rightMargin: Style.dp(8)
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: "×"
+                                            color: Style.fgMuted
+                                            font.pixelSize: Style.dp(16)
+                                            z: 2
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                anchors.margins: -Style.dp(6)
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: clearPoolFilter()
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        text: "Reset"
+                                        implicitHeight: Style.dp(28)
+                                        onClicked: clearPoolFilter()
+                                    }
+                                    // Button Map Options → Chip only, here where chips are added.
+                                    CheckBox {
+                                        text: "Chip only"
+                                        checked: _opts.values["chip-only"] === true
+                                        onToggled: _opts.set("chip-only", checked)
+                                        ToolTip.visible: hovered
+                                        ToolTip.text: "Add chips with no leader and no hotspot"
+                                    }
+                                }
+                                Flickable {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    clip: true
+                                    interactive: !_buttonMap.poolDrag
+                                    pressDelay: 0
+                                    contentWidth: width
+                                    contentHeight: _resFlow.implicitHeight
+                                    boundsBehavior: Flickable.StopAtBounds
+                                    Flow {
+                                        id: _resFlow
+                                        width: parent.width
+                                        spacing: Style.dp(6)
+                                        Repeater {
+                                            model: resItems
+                                            delegate: Rectangle {
+                                                required property var modelData
+                                                property bool lit: {
+                                                    var t = _buttonMap.resTick
+                                                    if (!_buttonMap.faceLive || !modelData)
+                                                        return false
+                                                    var e = _ed()
+                                                    if (!e || !e.litOf)
+                                                        return false
+                                                    return e.litOf(modelData.kind, modelData.hwId)
+                                                }
+                                                implicitWidth: Math.min(Style.dp(260), _chipLab.implicitWidth + Style.dp(18))
+                                                implicitHeight: Style.dp(26)
+                                                radius: Style.dp(13)
+                                                color: lit ? "#14532D" : "#18181B"
+                                                border.color: lit ? "#22C55E" : "#3F3F46"
+                                                border.width: lit ? Style.dp(2) : Style.dp(1)
+                                                opacity: (_buttonMap.poolDrag && _buttonMap.poolHw === (modelData ? modelData.hwId : -1) && _buttonMap.poolKind === (modelData ? modelData.kind : "")) ? 0.35 : 1
+                                                Text {
+                                                    id: _chipLab
+                                                    anchors.centerIn: parent
+                                                    text: modelData ? modelData.friendly : ""
+                                                    color: lit ? "#BBF7D0" : "#E4E4E7"
+                                                    font.pixelSize: Style.dp(11)
+                                                }
+                                                PointerTip {
+                                                    show: !_buttonMap.poolDrag && _poolChipHover.containsMouse
+                                                    timeout: 4000
+                                                    text: {
+                                                        var e = _ed()
+                                                        if (!e || !modelData)
+                                                            return ""
+                                                        return e.hardwareLabel(modelData.kind, modelData.hwId)
+                                                    }
+                                                }
+                                                MouseArea {
+                                                    id: _poolChipHover
+                                                    anchors.fill: parent
+                                                    z: 2
+                                                    hoverEnabled: true
+                                                    preventStealing: true
+                                                    cursorShape: Qt.OpenHandCursor
+                                                    onPressed: (m) => {
+                                                        if (!modelData)
+                                                            return
+                                                        var p = mapToItem(_mapHost, m.x, m.y)
+                                                        _buttonMap.poolKind = modelData.kind
+                                                        _buttonMap.poolHw = modelData.hwId
+                                                        _buttonMap.poolName = modelData.friendly
+                                                        _buttonMap.poolX = p.x
+                                                        _buttonMap.poolY = p.y
+                                                        _buttonMap.poolDrag = true
+                                                    }
+                                                    onPositionChanged: (m) => {
+                                                        if (!_buttonMap.poolDrag)
+                                                            return
+                                                        var p = mapToItem(_mapHost, m.x, m.y)
+                                                        _buttonMap.poolX = p.x
+                                                        _buttonMap.poolY = p.y
+                                                    }
+                                                    onReleased: (m) => {
+                                                        if (!_buttonMap.poolDrag)
+                                                            return
+                                                        var p = mapToItem(_mapHost, m.x, m.y)
+                                                        dropPool(p.x, p.y)
+                                                    }
+                                                    onCanceled: _buttonMap.poolDrag = false
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                }
             }
 
             Item {
@@ -3272,7 +3589,11 @@ ApplicationWindow {
                                 _buttonMap.deferHistory()
                             }
                             function onNodesChanged() { _buttonMap.deferHistory() }
-                            function onMapPressed() { _tools.mapClicked() }
+                            function onMapPressed() {
+                                _tools.mapClicked()
+                                _chipsSide.foldIfUnpinned()
+                                _layersSide.foldIfUnpinned()
+                            }
                             function onPrintAreaEdited(drawn) {
                                 _buttonMap.printArea = _card.editorItem.printArea
                                 if (drawn)
@@ -3421,206 +3742,6 @@ ApplicationWindow {
                     }
                 }
 
-                // The chips not on the map, as wide as the map, joined to the
-                // Chips tab (ToolPane) wherever it sits on its row. Unlocked:
-                // its edge facing the map makes it taller or shorter.
-                ToolPane {
-                    id: _poolFloat
-                    objectName: "chipPool"
-                    dock: _tools
-                    toolId: "chips"
-                    shown: editing
-                    fullWidth: true
-                    defaultH: Style.dp(160)
-                    minH: Style.dp(90)
-
-                    // Its background: takes the clicks (not the map's).
-                    MouseArea {
-                        anchors.fill: parent
-                        z: 0
-                        acceptedButtons: Qt.AllButtons
-                        hoverEnabled: true
-                        enabled: {
-                            var e = _buttonMap._ed()
-                            return !(e && e.dragKind && e.dragKind.length)
-                        }
-                        onPressed: (m) => { m.accepted = true }
-                        onClicked: (m) => { m.accepted = true }
-                        onDoubleClicked: (m) => { m.accepted = true }
-                        onWheel: (w) => { w.accepted = true }
-                    }
-
-                    // A chip dragged over the pool lights it: let go to take the
-                    // chip off the map.
-                    readonly property bool dropHot: {
-                        var e = _buttonMap._ed()
-                        return !!(e && e.poolHover)
-                    }
-                    Rectangle {
-                        anchors.fill: parent
-                        z: 1
-                        radius: Style.dp(8)
-                        color: Style.bgCard
-                        border.color: _poolFloat.dropHot ? Style.accent : Style.lineStrong
-                        border.width: _poolFloat.dropHot ? Style.dp(3) : 1
-                    }
-                    Label {
-                        z: 3
-                        visible: _poolFloat.dropHot
-                        anchors.centerIn: parent
-                        text: "Let go to take it off the map"
-                        color: Style.fg
-                        font.bold: true
-                        background: Rectangle { color: Style.bgCard; radius: Style.dp(4) }
-                        padding: Style.dp(6)
-                    }
-                    ColumnLayout {
-                        z: 2
-                        anchors.fill: parent
-                        anchors.margins: Style.dp(8)
-                        anchors.bottomMargin: Style.dp(12)
-                        anchors.rightMargin: Style.dp(10)
-                        spacing: Style.dp(6)
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: Style.dp(6)
-                            Item {
-                                Layout.fillWidth: true
-                                implicitHeight: Style.dp(28)
-                                TextField {
-                                    id: _poolSearch
-                                    anchors.fill: parent
-                                    placeholderText: "Filter friendly or hardware"
-                                    text: poolFilter
-                                    rightPadding: Style.dp(26)
-                                    onTextChanged: {
-                                        if (poolFilter !== text)
-                                            poolFilter = text
-                                    }
-                                }
-                                Text {
-                                    visible: poolFilter.length > 0
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: Style.dp(8)
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: "×"
-                                    color: Style.fgMuted
-                                    font.pixelSize: Style.dp(16)
-                                    z: 2
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        anchors.margins: -Style.dp(6)
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: clearPoolFilter()
-                                    }
-                                }
-                            }
-                            Button {
-                                text: "Reset"
-                                implicitHeight: Style.dp(28)
-                                onClicked: clearPoolFilter()
-                            }
-                            // Button Map Options → Chip only, here where chips are added.
-                            CheckBox {
-                                text: "Chip only"
-                                checked: _opts.values["chip-only"] === true
-                                onToggled: _opts.set("chip-only", checked)
-                                ToolTip.visible: hovered
-                                ToolTip.text: "Add chips with no leader and no hotspot"
-                            }
-                        }
-                        Flickable {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            clip: true
-                            interactive: !_buttonMap.poolDrag
-                            pressDelay: 0
-                            contentWidth: width
-                            contentHeight: _resFlow.implicitHeight
-                            boundsBehavior: Flickable.StopAtBounds
-                            Flow {
-                                id: _resFlow
-                                width: parent.width
-                                spacing: Style.dp(6)
-                                Repeater {
-                                    model: resItems
-                                    delegate: Rectangle {
-                                        required property var modelData
-                                        property bool lit: {
-                                            var t = _buttonMap.resTick
-                                            if (!_buttonMap.faceLive || !modelData)
-                                                return false
-                                            var e = _ed()
-                                            if (!e || !e.litOf)
-                                                return false
-                                            return e.litOf(modelData.kind, modelData.hwId)
-                                        }
-                                        implicitWidth: Math.min(Style.dp(260), _chipLab.implicitWidth + Style.dp(18))
-                                        implicitHeight: Style.dp(26)
-                                        radius: Style.dp(13)
-                                        color: lit ? "#14532D" : "#18181B"
-                                        border.color: lit ? "#22C55E" : "#3F3F46"
-                                        border.width: lit ? Style.dp(2) : Style.dp(1)
-                                        opacity: (_buttonMap.poolDrag && _buttonMap.poolHw === (modelData ? modelData.hwId : -1) && _buttonMap.poolKind === (modelData ? modelData.kind : "")) ? 0.35 : 1
-                                        Text {
-                                            id: _chipLab
-                                            anchors.centerIn: parent
-                                            text: modelData ? modelData.friendly : ""
-                                            color: lit ? "#BBF7D0" : "#E4E4E7"
-                                            font.pixelSize: Style.dp(11)
-                                        }
-                                        PointerTip {
-                                            show: !_buttonMap.poolDrag && _poolChipHover.containsMouse
-                                            timeout: 4000
-                                            text: {
-                                                var e = _ed()
-                                                if (!e || !modelData)
-                                                    return ""
-                                                return e.hardwareLabel(modelData.kind, modelData.hwId)
-                                            }
-                                        }
-                                        MouseArea {
-                                            id: _poolChipHover
-                                            anchors.fill: parent
-                                            z: 2
-                                            hoverEnabled: true
-                                            preventStealing: true
-                                            cursorShape: Qt.OpenHandCursor
-                                            onPressed: (m) => {
-                                                if (!modelData)
-                                                    return
-                                                var p = mapToItem(_mapHost, m.x, m.y)
-                                                _buttonMap.poolKind = modelData.kind
-                                                _buttonMap.poolHw = modelData.hwId
-                                                _buttonMap.poolName = modelData.friendly
-                                                _buttonMap.poolX = p.x
-                                                _buttonMap.poolY = p.y
-                                                _buttonMap.poolDrag = true
-                                            }
-                                            onPositionChanged: (m) => {
-                                                if (!_buttonMap.poolDrag)
-                                                    return
-                                                var p = mapToItem(_mapHost, m.x, m.y)
-                                                _buttonMap.poolX = p.x
-                                                _buttonMap.poolY = p.y
-                                            }
-                                            onReleased: (m) => {
-                                                if (!_buttonMap.poolDrag)
-                                                    return
-                                                var p = mapToItem(_mapHost, m.x, m.y)
-                                                dropPool(p.x, p.y)
-                                            }
-                                            onCanceled: _buttonMap.poolDrag = false
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Layers: every item with an eye and a lock, top of the stack first.
-                // On the right, above the pool when it is docked at the bottom.
                 // The print area's frame follows its tool (shown, locked).
                 Binding {
                     target: _buttonMap._ed()
@@ -3650,27 +3771,6 @@ ApplicationWindow {
                     when: !!_buttonMap._ed()
                     restoreMode: Binding.RestoreNone
                 }
-
-                // Layers, joined to its tab (ToolPane).
-                ToolPane {
-                    id: _layersPane
-                    objectName: "layersPane"
-                    dock: _tools
-                    toolId: "layers"
-                    shown: editing && !!_buttonMap._ed()
-                    defaultW: _buttonMap.layersW
-                    defaultH: parent.height
-                    minW: Style.dp(200)
-                    minH: Style.dp(120)
-
-                    RigLayersPanel {
-                        id: _layersPanel
-                        anchors.fill: parent
-                        ed: _buttonMap._ed()
-                        onCloseRequested: _tools.setOpen("layers", false)
-                    }
-                }
-
                 // Properties: the selected item's place, size, angle and style.
                 // Properties, joined to its tab (ToolPane), while something is
                 // selected.
@@ -3713,19 +3813,40 @@ ApplicationWindow {
                 }
             }
 
-            // The right tool row.
-            ToolRow {
-                id: _rightRow
-                objectName: "toolRowRight"
+            // Layers (07 S128-S131): a side panel on the right edge, as Chips.
+            Item {
+                id: _rightSlot
                 Layout.fillHeight: true
-                Layout.preferredWidth: implicitWidth
-                dock: _tools
-                side: "right"
+                Layout.preferredWidth: _layersSide.takenWidth
+                z: 60
+                SidePanel {
+                    id: _layersSide
+                    objectName: "layersSide"
+                    side: "right"
+                    title: "Layers"
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    available: _buttonMap.editing
+                    minWidth: Style.dp(220)
+                    maxWidth: Style.dp(560)
+                    onChanged: _buttonMap.sideChangedByUser(_layersSide, "layers")
+                    onStripClicked: _chipsSide.foldIfUnpinned()
+                    onTakenWidthChanged: Qt.callLater(_buttonMap.fitSides)
+
+                    RigLayersPanel {
+                        id: _layersPanel
+                        anchors.fill: parent
+                        ed: _buttonMap._ed()
+                        showTitle: false
+                        onCloseRequested: _layersSide.fold()
+                    }
+                }
             }
         }
 
-        // The tool row: Chips, Properties, Layers and Command Palette, centred.
-        // The tools and their state (which row each button is on, open,
+        // The tool row: Properties, Command Palette, Print Area and Options,
+        // centred (Chips and Layers are the side panels). The tools and their state (which row each button is on, open,
         // pinned, locked, places, panel docks); the rows draw them.
         ToolDock {
             id: _tools
@@ -3733,24 +3854,19 @@ ApplicationWindow {
             // Floating panels sit over the map.
             floatArea: _mapHost
             tools: [
-                { id: "chips", label: "Chips", tip: "Chips not on the map yet: drag one onto the map" },
                 { id: "props", label: "Properties", tip: "The selected item's place, size, angle and style" },
-                { id: "layers", label: "Layers", tip: "Every item, with an eye and a lock, top of the stack first" },
                 { id: "palette", label: "Command Palette", tip: "Every command, by name (Ctrl+K)" },
                 { id: "printArea", label: "Print Area", floats: false,
                   tip: "The part of the page every export and print takes: Alt+drag on the map to set it" },
                 { id: "options", label: "Options",
                   tip: "The Button Map's settings (also Edit → Button Map Options…)" }
             ]
-            // Chips (so a new user sees the pool) and Properties (as before)
-            // start open and pinned; the others start hidden.
+            // Properties starts open and pinned; the others start hidden.
             // Options starts on the top row, hidden.
-            defaults: ({ chips: { open: true, pinned: true }, props: { open: true, pinned: true },
-                         options: { side: "top" } })
-            // Only while editing: the pool, Properties, Layers, and the print
-            // area's frame on the map.
-            usable: ({ chips: _buttonMap.editing, props: _buttonMap.editing, layers: _buttonMap.editing,
-                       printArea: _buttonMap.editing })
+            defaults: ({ props: { open: true, pinned: true }, options: { side: "top" } })
+            // Only while editing: Properties and the print area's frame on
+            // the map.
+            usable: ({ props: _buttonMap.editing, printArea: _buttonMap.editing })
             onToolChanged: (id) => {
                 if (id !== "palette")
                     return

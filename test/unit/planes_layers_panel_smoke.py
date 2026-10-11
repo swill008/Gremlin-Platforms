@@ -48,6 +48,10 @@ import joystick_gremlin  # noqa: E402
 NO_MOD = QtCore.Qt.KeyboardModifier.NoModifier
 GUID = str(dill.GUID(fake.devices[0].device_guid).uuid)
 
+# Layers is the right side panel (07 S128): the SidePanel holding _layersPanel.
+LAYERS_SIDE = ("(function(){ var p = _layersPanel;"
+               " while (p && p.takenWidth === undefined) p = p.parent; return p })()")
+
 # A stand-in editor with two planes, rows as rig_layers.layerRows gives
 # them (top of the plane first; Foreground mode ends with the Background
 # row). It records what the panel asks of it.
@@ -198,7 +202,7 @@ def main() -> None:
 
     call(win, "enterEdit")
     assert wait_until(lambda: ev("editing") is True)
-    ev("_tools.setOpen('layers', true)")
+    ev(LAYERS_SIDE + ".unfold()")
     assert wait_until(lambda: ev("_layersPanel.visible") is True)
     settle()
 

@@ -53,6 +53,10 @@ import joystick_gremlin  # noqa: E402
 NO_MOD = QtCore.Qt.KeyboardModifier.NoModifier
 GUID = str(dill.GUID(fake.devices[0].device_guid).uuid)
 
+# Layers is the right side panel (07 S128): the SidePanel holding _layersPanel.
+LAYERS_SIDE = ("(function(){ var p = _layersPanel;"
+               " while (p && p.takenWidth === undefined) p = p.parent; return p })()")
+
 # A stand-in editor: a fixed list of rows, filtered as the contract says
 # (kinds and query on the row; a matching child brings its chip as a
 # heading). It records what the panel asks of it.
@@ -215,9 +219,11 @@ def main() -> None:
         QtCore.QCoreApplication.processEvents()
         ev("_layersPanel.forceLayout()")
 
+    # The window puts its side panels as kept once it is up (restoreSides).
+    QtTest.QTest.qWait(300)
     call(win, "enterEdit")
     assert wait_until(lambda: ev("editing") is True)
-    ev("_tools.setOpen('layers', true)")
+    ev(LAYERS_SIDE + ".unfold()")
     assert wait_until(lambda: ev("_layersPanel.visible") is True)
 
     out["props"] = js("({kinds: _layersPanel.kinds,"
@@ -228,11 +234,14 @@ def main() -> None:
     out["real-rows"] = js("_layersPanel.rows.length")
     out["real-count-line"] = js("_layersPanel.countText")
 
-    # --- fits at the pane's smallest width ---------------------------------
-    ev("_tools.setSize('layers', _layersPane.minW, _layersPane.height)")
-    wait_until(lambda: abs(js("_layersPane.width - _layersPane.minW")) < 1, 2000)
+    # --- fits at the side panel's smallest width (07 S131) -------------------
+    ev(LAYERS_SIDE + ".panelWidth = " + LAYERS_SIDE + ".minWidth")
+    wait_until(lambda: abs(js("(function(){ var s = " + LAYERS_SIDE + ";"
+                              " return s.panelWidth - s.minWidth })()")) < 1, 2000)
+    QtTest.QTest.qWait(300)
     settle()
-    out["pane-w"] = js("[_layersPane.width, _layersPane.minW]")
+    out["pane-w"] = js("(function(){ var s = " + LAYERS_SIDE + ";"
+                       " return [s.panelWidth, s.minWidth] })()")
     out["fit"] = js("_layersPanel.clippedParts()")
     if SHOT:
         Path(SHOT).parent.mkdir(parents=True, exist_ok=True)
@@ -338,7 +347,7 @@ def main() -> None:
     settle()
     out["fit-lit"] = js("_layersPanel.clippedParts()")
     if SHOT:
-        pane = [round(v) for v in rect("_layersPane").values()]
+        pane = [round(v) for v in rect(LAYERS_SIDE).values()]
         win.grabWindow().copy(*pane).save(SHOT)
     print("RESULT " + json.dumps(out), flush=True)
     smoke_exit(0)
