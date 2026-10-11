@@ -755,3 +755,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | UNDO-T: one real drag per gesture kind counted (21 kinds, both planes): before 2–8 steps, after 1; found the ruler new-guide 2 steps | agent tests | 3–8 min (table) | 12 min | 12:47–12:59 |
 | 2026-10-11 | Lead: ruler new guide one step (VkbRigFace beginGesture/endGesture/onCanceled); xfail removed; 32 pass | fix | 3–8 min (table) | 3 min | 12:59–13:02 |
 | 2026-10-11 | CI on 93862cc9 (small items) | ci | ~10 min (table) | about 17 min | 12:43–13:00 |
+| 2026-10-11 | Full run (seed 111279) + lint: 1 golden (rulers history counts after the ruler fix) re-recorded; commit 3130f65c; push | test | 5–6 min (table) | 6 min + 2 min | 13:00–13:07 |
+| 2026-10-11 | Undo per drag + leader snap end to end: user go 12:46 → commit 13:07 | fix batch | 3–8 min per agent + full run (table) | 21 min | 12:46–13:07 |
+| 2026-10-11 | CI on 3130f65c: 1 failure (Input Tester log test waited 15 s; passes locally); failed job re-run | ci | ~10 min (table) | about 18 min | 13:07–13:25 |
+| 2026-10-11 | PANCUR: closed hand while panning (cursor-only overlay; the handler's cursorShape lost to the editor area); real-window test | fix | 3–8 min (table) | 4 min | 13:21–13:25 |
+| 2026-10-11 | Full run (pan cursor, seed 599005): 3 failures + unit-4 stopped by the hang guard, all pass alone (load); journeys pass with the same seed | test | 5–6 min (table) | 6 min + 3 min checks | 13:26–13:35 |
+| 2026-10-11 | TRACE-J20: j20 load failure = real bug G32 (commit_edit leaves the edit folder in "committing" when its removal fails) | review | 5–10 min (table) | 1 min | 13:33–13:34 |

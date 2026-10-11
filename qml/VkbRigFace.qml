@@ -507,6 +507,20 @@ Item {
                 _face.panY = grabY + translation.y
             }
         }
+
+        // A closed hand while _midPan pans (07 S14). The handler's own
+        // cursorShape loses to the items above it (the editor's pointer
+        // area), so this cursor-only area sits on top for the drag; it takes
+        // no buttons.
+        MouseArea {
+            objectName: "bmPanCursor"
+            anchors.fill: parent
+            z: 21
+            enabled: _midPan.active
+            visible: enabled
+            acceptedButtons: Qt.NoButton
+            cursorShape: Qt.ClosedHandCursor
+        }
     } // _viewport
 
 
