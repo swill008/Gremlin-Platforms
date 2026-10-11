@@ -534,6 +534,9 @@ class HardwareLayoutModel(ControlLayoutModel):
             self._device_guid(), item.type, item.id, self._mode, create_if_missing=False
         )
 
+    def _real_item(self, item: LayoutItem) -> Any:  # noqa: ANN401 - InputItem | None
+        return self._real(item)
+
     def _action_filtering(self) -> bool:
         return self._action_type not in ("all", "") or self._dest_filter not in NO_DEST
 

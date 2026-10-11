@@ -46,6 +46,13 @@ Rectangle {
     property bool canStackSelected: false
     property bool stretchPhoto: false
     property bool compactView: false
+    // Map to vJoy bindings from this device that can't be sent
+    // (D-05-CANT-SEND): the count and the tip listing them.
+    property int cantSendCount: 0
+    property string cantSendTip: ""
+    readonly property bool cantSendShown: cantSendCount > 0
+    readonly property string cantSendText: cantSendCount <= 0 ? ""
+        : "⚠ " + cantSendCount + (cantSendCount === 1 ? " binding" : " bindings") + " can't be sent"
     z: stackIndex + (lifting || resizing ? 100 : 0)
 
     signal cardFocused()
@@ -81,8 +88,13 @@ Rectangle {
     radius: Style.dp(4)
     clip: true
     color: selected ? Style.bgSelected : Style.bgCard
-    border.width: activeFocus || focused || selected || dropStacking ? Style.dp(2) : Style.dp(1)
+    // Red wins over the picked and focus colours; picked or focused shows
+    // as a thicker red outline.
+    border.width: cantSendShown && !dropStacking
+        ? (activeFocus || focused || selected ? Style.dp(3) : Style.dp(2))
+        : (activeFocus || focused || selected || dropStacking ? Style.dp(2) : Style.dp(1))
     border.color: dropStacking ? Style.ok
+        : cantSendShown ? Style.danger
         : (activeFocus ? Style.accent : (focused || selected ? Style.fg : Style.line))
 
     // Keyboard: Tab and the arrow keys move between cards, Enter opens
@@ -183,6 +195,18 @@ Rectangle {
             text: (status === "Stub" ? "No module" : status) + " · " + bus
             color: _card.damaged !== "" ? Style.danger : Style.fgMuted
             font.pixelSize: Style.dp(11)
+        }
+
+        Label {
+            visible: _card.cantSendShown
+            text: _card.cantSendText
+            color: Style.danger
+            font.pixelSize: Style.dp(11)
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            PointerTip {
+                text: _card.cantSendTip
+            }
         }
 
         Label {

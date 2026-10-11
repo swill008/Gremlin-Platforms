@@ -63,6 +63,27 @@ Item {
                 onActivated: (index) => {
                     _root.action.target = model[index].id
                 }
+
+                // A target that can't be sent to: "⚠ <name>" in red with
+                // why as the tooltip (D-05-CANT-SEND-ALL).
+                readonly property bool cantSend: !!_root.action && _root.action.cantSendText !== ""
+                displayText: cantSend ? "⚠ " + currentText : currentText
+
+                Component.onCompleted: {
+                    if (contentItem && contentItem.color !== undefined) {
+                        const box = _target
+                        contentItem.color = Qt.binding(() =>
+                            box.cantSend ? Style.danger
+                            : !box.enabled ? box.U.Universal.chromeDisabledLowColor
+                            : box.U.Universal.foreground)
+                    }
+                }
+
+                HoverHandler { id: _targetHover }
+                WrappingTooltip {
+                    text: _root.action ? _root.action.cantSendText : ""
+                    visible: _target.cantSend && _targetHover.hovered
+                }
             }
         }
 

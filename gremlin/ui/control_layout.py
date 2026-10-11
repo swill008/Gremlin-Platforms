@@ -22,12 +22,17 @@ Public names (QML), unchanged from LogicalLayoutModel:
             sortBySystem(), sortByName(), sortGroupNames(),
             moveGroupUp(str), moveGroupDown(str),
             setFilter(search, type, ungrouped, no_writer, no_actions),
+            setCantSendOnly(bool) (the Find bar's "Can't be sent" tick),
             setSelection(list), keyAt(int)->str,
             beginPane(str,int)->int, beginNewAction(str)->int,
             paneDirty()->bool, commitPane()->int, discardPane(), endPane()
   roles     rowKind key title subtitle parentKey groupKey groupName
             systemName userName writerId axisMode axisScale inverted
             sequenceIndex indent canInvert childCount extraWriters
+            cantSend (D-05-CANT-SEND: why an action row, or any action of
+            a parent row, can't be sent; "" when it can. Filled by the
+            base for every child row with a sequenceIndex; asked again on
+            profileChanged, configChanged and device_change_event)
   keys      "group:<name>", "parent:<button|axis|hat>:<id>",
             "child:<word>:<id>:<seq>"; subclass rows pick their own prefix
             (Logical: "writer:<action id>"; OSC feedback e.g. "feedback:<uid>").
@@ -94,6 +99,10 @@ Optional (default shown):
                                                  canInvert, extraWriters)
   _rows_before_actions(self, item, extra) -> list[dict]   extra
                                                  (Logical: extra[1:])
+  _real_item(self, item) -> InputItem | None     the profile's input in the
+                                                 shown mode (cantSend reads
+                                                 its actions; Keyboard and
+                                                 Configuration map their own)
   _rows_after_actions(self, item, extra) -> list[dict]    []
                                                  (OSC later: feedback rows,
                                                  "actions then feedback")
@@ -208,6 +217,43 @@ def count_text(buttons: int, axes: int, hats: int) -> str:
     return " · ".join(parts) if parts else "Empty"
 
 
+# Several reasons in one tooltip: one per line.
+_LINE = "\n"
+
+
+def cant_send_texts(real: InputItem | None) -> dict[int, str]:
+    """{sequence index: why it can't be sent} for an input's actions whose
+    outputs (Map to vJoy, Map to Xbox, Map to Logical Device, Send OSC,
+    anywhere in the tree; macro steps) can't be sent; the texts come from
+    output.cant_send_action_texts (D-05-CANT-SEND, D-05-CANT-SEND-ALL)."""
+    from gremlin.modules import output
+    from gremlin.profile import reachable
+
+    found: dict[int, str] = {}
+    if real is None:
+        return found
+    memo: dict = {}
+    for index, binding in enumerate(getattr(real, "action_sequences", None) or []):
+        texts: list[str] = []
+        for action in reachable([getattr(binding, "root_action", None)]):
+            for text in output.cant_send_action_texts(action, memo):
+                if text not in texts:
+                    texts.append(text)
+        if texts:
+            found[index] = _LINE.join(texts)
+    return found
+
+
+def parent_cant_text(cant: dict[int, str]) -> str:
+    """An input row's ⚠ tooltip: each different reason once."""
+    texts: list[str] = []
+    for index in sorted(cant):
+        for line in cant[index].split(_LINE):
+            if line not in texts:
+                texts.append(line)
+    return _LINE.join(texts)
+
+
 class LayoutItem(Protocol):
     """A parent as the base reads it (gremlin.logical_device's Input)."""
 
@@ -251,6 +297,9 @@ ROW_DEFAULTS: dict[str, Any] = {
     "canInvert": False,
     "childCount": 0,
     "extraWriters": 0,
+    # Why this action (or one of this input's actions) can't be sent, the
+    # red ⚠'s tooltip; "" when it can (D-05-CANT-SEND).
+    "cantSend": "",
 }
 
 
@@ -279,6 +328,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         self._ungrouped_only = False
         self._no_writer = False
         self._no_actions = False
+        self._cant_send_only = False
         self._selected: list[str] = []
         self._undo: list[dict] = []
         self._redo: list[dict] = []
@@ -298,6 +348,15 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         signal.profileChanged.connect(self._on_profile)
         signal.modeRenamed.connect(self._on_mode_renamed)
         signal.modeDeleted.connect(self._on_mode_deleted)
+        # What can be sent changes with the claims (a module saved) and the
+        # vJoy devices the driver lists (D-05-CANT-SEND): ask again.
+        signal.configChanged.connect(self._on_external)
+        try:
+            from gremlin import event_handler
+
+            event_handler.EventListener().device_change_event.connect(self._on_external)
+        except Exception:  # noqa: BLE001 - no device events (tests)
+            pass
 
     # Hooks (see the module docstring).
 
@@ -334,6 +393,19 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
     def _rows_after_actions(self, item: LayoutItem, extra: list[dict]) -> list[dict]:
         return []
 
+    def _real_item(self, item: LayoutItem) -> InputItem | None:
+        """The profile's input behind a parent row in the shown mode."""
+        profile = self._profile()
+        if profile is None:
+            return None
+        return profile.get_input_item(
+            self._device_guid(),
+            item.type,
+            item.id,
+            self._mode,
+            create_if_missing=False,
+        )
+
     def _rows_at_end(self) -> list[dict]:
         """Rows after every group (OSC: feedback not tied to an input)."""
         return []
@@ -366,6 +438,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
             or self._ungrouped_only
             or self._no_writer
             or self._no_actions
+            or self._cant_send_only
         )
 
     def _sort_system_label(self) -> str:
@@ -644,8 +717,13 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
             for item in members:
                 extra = self._extra_rows(item)
                 children = self._child_rows(item)
+                cant = cant_send_texts(self._real_item(item))
+                for row in children:
+                    row["cantSend"] = cant.get(row["sequenceIndex"], "")
+                if filtering and self._cant_send_only and not cant:
+                    continue
                 if not filtering or self._visible_parent(item, extra, len(children)):
-                    shown.append((item, extra, children))
+                    shown.append((item, extra, children, parent_cant_text(cant)))
             if filtering and not shown:
                 continue
             # The header counts the parents in the group, or what a filter
@@ -667,7 +745,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                 if entry[0].type in buckets:
                     buckets[entry[0].type].append(entry)
             for kind in order:
-                for item, extra, children in buckets[kind]:
+                for item, extra, children, cant_text in buckets[kind]:
                     key = parent_key(item.type, item.id)
                     rows.append(
                         self._row(
@@ -682,6 +760,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                             userName=item.second_name,
                             indent=1,
                             childCount=len(children),
+                            cantSend=cant_text,
                             **self._parent_fields(item, extra),
                         )
                     )
@@ -1055,6 +1134,15 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         self._ungrouped_only = bool(ungrouped)
         self._no_writer = bool(no_writer)
         self._no_actions = bool(no_actions)
+        self._rebuild()
+
+    @QtCore.Slot(bool)
+    def setCantSendOnly(self, on: bool) -> None:
+        """The Find bar's "Can't be sent" tick: only inputs with an action
+        that can't be sent (D-05-CANT-SEND)."""
+        if bool(on) == self._cant_send_only:
+            return
+        self._cant_send_only = bool(on)
         self._rebuild()
 
     @QtCore.Slot("QStringList")

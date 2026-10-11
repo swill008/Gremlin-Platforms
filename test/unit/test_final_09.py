@@ -402,7 +402,27 @@ def settings_file(
     monkeypatch.setattr(deferred_write, "_scheduler", lambda: None)
     SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
     yield path
+    _history_writer_ended()
     SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
+
+
+def _history_writer_ended() -> None:
+    """A settings save records History, and the writer's first prune calls
+    Configuration() (history._limits). Made at the same time as the test's
+    own, the writer's instance can replace it after its options were
+    registered (CI run 38095259269: "No parameter with key minimize-to-tray").
+    So the writer writes and ends before the singleton is dropped."""
+    from gremlin import history
+
+    history._settle()
+    with history._start_lock:
+        writer = history._writer
+        if writer is not None:
+            history._stop.set()
+            history._queue.put(lambda: None)  # wakes it to end now
+    if writer is not None:
+        writer.join(2.0)
+        assert not writer.is_alive(), "the History writer did not end"
 
 
 @pytest.mark.parametrize("close_to_tray", [True, False])
@@ -418,6 +438,7 @@ def test_s68_close_to_tray_on_gives_minimize_to_tray_on(
     )
     old.set("global", "general", "close-to-tray", close_to_tray)
     old.save_now(str(settings_file))
+    _history_writer_ended()
     SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
 
     jg.register_config_options()  # the next start
@@ -448,6 +469,7 @@ def test_s82_the_next_start_reads_the_new_windows_scaling_choice(
         assert model.disabled is ignore
         gremlin.config.Configuration().save_now(str(path))
     finally:
+        _history_writer_ended()
         SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
     # The new process reads the file itself, before Qt loads.
     monkeypatch.setenv("USERPROFILE", str(tmp_path))

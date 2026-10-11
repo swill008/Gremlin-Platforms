@@ -504,6 +504,8 @@ class ModuleRow:
         "last_hardware",
         "damaged",
         "vjoy_id",
+        "cant_send_count",
+        "cant_send_tip",
     )
 
     def __init__(self) -> None:
@@ -530,9 +532,53 @@ class ModuleRow:
         self.last_hardware = ""
         # The vJoy number of a vJoy card (0: any other card).
         self.vjoy_id = 0
+        # Its Map to vJoy bindings that can't be sent (D-05-CANT-SEND).
+        self.cant_send_count = 0
+        self.cant_send_tip = ""
 
 
 _DAMAGED_STATUS = "Module file damaged – inputs blocked"
+
+# A card's can't-be-sent tip lists this many bindings, then "… and n more".
+_CANT_SEND_TIP_LIMIT = 10
+
+
+def cant_send_line(count: int) -> str:
+    """The card's red line (glossary): "" when every binding can be sent."""
+    if count <= 0:
+        return ""
+    return f"⚠ {count} binding{'' if count == 1 else 's'} can't be sent"
+
+
+def cant_send_tip(items: list[dict]) -> str:
+    """The first ten as "<input> (<mode>) → <text>", then "… and n more"."""
+    lines = [
+        f"{item.get('input_label', '')} ({item.get('mode', '')})"
+        f" → {item.get('text', '')}"
+        for item in items[:_CANT_SEND_TIP_LIMIT]
+    ]
+    if len(items) > _CANT_SEND_TIP_LIMIT:
+        lines.append(f"… and {len(items) - _CANT_SEND_TIP_LIMIT} more")
+    return "\n".join(lines)
+
+
+def apply_cant_send(rows: list) -> list[int]:
+    """Sets each card's can't-be-sent count and tip from the profile's Map
+    to vJoy bindings, by the binding's source device id (D-05-CANT-SEND).
+    Returns the indexes of the cards that changed."""
+    from gremlin.modules.output import cant_send_bindings
+
+    groups: dict[str, list[dict]] = {}
+    for item in cant_send_bindings():
+        groups.setdefault(guid_key(item.get("device_guid")), []).append(item)
+    changed: list[int] = []
+    for idx, row in enumerate(rows):
+        items = groups.get(guid_key(row.guid), []) if row.direction == "source" else []
+        count, tip = len(items), cant_send_tip(items)
+        if (count, tip) != (row.cant_send_count, row.cant_send_tip):
+            row.cant_send_count, row.cant_send_tip = count, tip
+            changed.append(idx)
+    return changed
 
 
 def _card_status(row: ModuleRow) -> str:
@@ -648,6 +694,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 19: QtCore.QByteArray(b"lastHardware"),
         QtCore.Qt.ItemDataRole.UserRole + 20: QtCore.QByteArray(b"focused"),
         QtCore.Qt.ItemDataRole.UserRole + 21: QtCore.QByteArray(b"damaged"),
+        QtCore.Qt.ItemDataRole.UserRole + 22: QtCore.QByteArray(b"cantSendCount"),
+        QtCore.Qt.ItemDataRole.UserRole + 23: QtCore.QByteArray(b"cantSendTip"),
     }
 
     lastChanged = QtCore.Signal()
@@ -656,6 +704,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
     claimsChanged = QtCore.Signal()
     # A card's "Driven by" changed (an action added, removed or retargeted).
     targetsChanged = QtCore.Signal()
+    # A card's count of bindings that can't be sent changed (D-05-CANT-SEND).
+    cantSendChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -770,6 +820,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 return row.slug == self._focus
             case "damaged":
                 return row.damaged
+            case "cantSendCount":
+                return row.cant_send_count
+            case "cantSendTip":
+                return row.cant_send_tip
             case _:
                 return None
 
@@ -1217,6 +1271,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
             "lastHardware": last_h,
             "focused": row.slug == self._focus,
             "damaged": row.damaged,
+            "cantSendCount": row.cant_send_count,
+            "cantSendTip": row.cant_send_tip,
             "hasPhoto": bool(row.photo),
         }
 
@@ -1318,6 +1374,20 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 self.dataChanged.emit(at, at, [role])
         if changed:
             self.targetsChanged.emit()
+        self._refresh_cant_send()
+
+    def _refresh_cant_send(self) -> None:
+        """The can't-be-sent line follows action edits (D-05-CANT-SEND)."""
+        changed = apply_cant_send(self._rows)
+        roles = [
+            QtCore.Qt.ItemDataRole.UserRole + 22,
+            QtCore.Qt.ItemDataRole.UserRole + 23,
+        ]
+        for idx in changed:
+            at = self.index(idx, 0)
+            self.dataChanged.emit(at, at, roles)
+        if changed:
+            self.cantSendChanged.emit()
 
     @QtCore.Slot(str, result=str)
     def boundLine(self, device_name: str) -> str:
@@ -1421,6 +1491,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
             ix = self.index(idx, 0)
             self.dataChanged.emit(ix, ix, roles)
         self.claimsChanged.emit()
+        # A claim change can make a binding sendable, or not.
+        self._refresh_cant_send()
 
     @QtCore.Slot()
     def notifyClaims(self) -> None:
@@ -1787,6 +1859,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         merged = _merged_order(order, visible)
 
         apply_bound_targets(rows)
+        apply_cant_send(rows)
 
         self.beginResetModel()
         self._rows = rows

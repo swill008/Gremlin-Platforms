@@ -21,7 +21,7 @@ from PySide6 import QtCore
 
 from gremlin import clock, run_scope, trace
 from gremlin.modules import registry
-from gremlin.modules.claim import claim_allows, claim_ids, kind_of
+from gremlin.modules.claim import claim_allows, claim_friendly, claim_ids, kind_of
 from gremlin.types import InputType
 
 # Action plugins reach the Xbox output through this module, not the driver
@@ -962,3 +962,282 @@ def reset_drivers() -> None:
     except Exception:
         syslog.exception("Xbox reset failed")
     clear_blocked_log()
+
+
+# --- bindings the program can't send (D-05-CANT-SEND) ------------------------
+
+# The drop-down's words for vJoy axes (1 = X ... 8 = Dial).
+AXIS_WORDS = {
+    1: "X Axis",
+    2: "Y Axis",
+    3: "Z Axis",
+    4: "X Rotation",
+    5: "Y Rotation",
+    6: "Z Rotation",
+    7: "Slider",
+    8: "Dial",
+}
+_KIND_WORDS = {"axis": "Axes", "button": "Buttons", "hat": "Hats"}
+
+
+def _kind(kind: object) -> str:
+    return kind_of(kind) or str(kind)
+
+
+def control_label(claim: dict | None, kind: object, control_id: int) -> str:
+    """A vJoy control as the Map to vJoy drop-down names it: the output
+    module's name for it, else "X Axis", "Button 3", "Hat 1"."""
+    kind = _kind(kind)
+    custom = claim_friendly(claim, kind, control_id)
+    if custom:
+        return custom
+    if kind == "axis":
+        return AXIS_WORDS.get(int(control_id), f"Axis {int(control_id)}")
+    if kind == "hat":
+        return f"Hat {int(control_id)}"
+    return f"Button {int(control_id)}"
+
+
+def _ranges(ids: list[int]) -> str:
+    """[1..20, 25, 30..56] -> "1–20, 25, 30–56"."""
+    parts: list[str] = []
+    start = prev = None
+    for value in sorted(set(ids)):
+        if prev is not None and value == prev + 1:
+            prev = value
+            continue
+        if start is not None:
+            parts.append(str(start) if start == prev else f"{start}–{prev}")
+        start = prev = value
+    if start is not None:
+        parts.append(str(start) if start == prev else f"{start}–{prev}")
+    return ", ".join(parts)
+
+
+def vjoy_turned_off(vjoy_id: int) -> bool:
+    """The driver doesn't list this vJoy (turned off, or no driver)."""
+    return int(vjoy_id) in _vjoy_off or not any(vjoy_driver_ids(vjoy_id).values())
+
+
+def cant_send_text(vjoy_id: int, kind: object, control_id: int) -> str | None:
+    """None when a Map to vJoy target can be sent; else why not, for the
+    red ⚠ tooltip. Sendable means listed in the action editor's vJoy
+    drop-down: the output module's claim cut to the driver (05 S118)."""
+    vjoy_id, control_id, kind = int(vjoy_id), int(control_id), _kind(kind)
+    off = vjoy_turned_off(vjoy_id)
+    _refresh_claims()
+    claim = _vjoy_claims.get(vjoy_id, {})
+    ids = [] if off else claim_ids(driver_claim(vjoy_id, claim), kind)
+    return cant_send_words(vjoy_id, kind, control_id, claim, ids, off)
+
+
+def cant_send_words(
+    vjoy_id: int,
+    kind: object,
+    control_id: int,
+    claim: dict | None,
+    ids: list[int],
+    off: bool,
+) -> str | None:
+    """The can't-be-sent text from what the drop-down lists (`ids`) and
+    whether the vJoy is turned off; the one wording for it."""
+    vjoy_id, control_id, kind = int(vjoy_id), int(control_id), _kind(kind)
+    if off:
+        return f"vJoy {vjoy_id} is not Found."
+    if control_id in ids:
+        return None
+    control = control_label(claim, kind, control_id)
+    words = _KIND_WORDS.get(kind, kind)
+    have = f"has {words} {_ranges(ids)}" if ids else f"has no {words}"
+    return f"vJoy {vjoy_id}'s {control} is not Found (vJoy {vjoy_id} {have})."
+
+
+def vjoy_targets(action: Any) -> list[tuple[int, InputType, int]]:  # noqa: ANN401
+    """The vJoy outputs one action sends to (Map to vJoy, macro vJoy steps)."""
+    from action_plugins.macro import MacroData
+    from action_plugins.map_to_vjoy import MapToVjoyData
+    from gremlin import macro
+
+    if isinstance(action, MapToVjoyData):
+        return [
+            (action.vjoy_device_id, action.vjoy_input_type, action.vjoy_input_id)
+        ]
+    if isinstance(action, MacroData):
+        return [
+            (step.vjoy_id, step.input_type, step.input_id)
+            for step in action.actions
+            if isinstance(step, macro.VJoyAction)
+        ]
+    return []
+
+
+# --- Map to Xbox, Map to Logical Device, Send OSC (D-05-CANT-SEND-ALL) -------
+
+
+def xbox_pad_label(pad: int) -> str:
+    """A pad as the Map to Xbox editor names it: its Xbox output module's
+    name, else "Xbox 360 Controller" for pad 1, "Xbox pad N" otherwise."""
+    module = xbox_modules().get(int(pad))
+    if module is not None:
+        return module.name
+    return "Xbox 360 Controller" if int(pad) == 1 else f"Xbox pad {int(pad)}"
+
+
+def xbox_cant_send_text(pad: int) -> str | None:
+    """None when Map to Xbox can send to this pad; else "<pad> is not
+    Found." (the Xbox driver, ViGEm, can't be used, or no such pad)."""
+    from vigem.xbox import MAX_PADS
+
+    pad = int(pad)
+    if 1 <= pad <= MAX_PADS and xbox_available():
+        return None
+    return f"{xbox_pad_label(pad)} is not Found."
+
+
+def logical_control_label(input_type: Any, input_id: Any) -> str:  # noqa: ANN401
+    """A Logical Device control by its system name, as the picker shows it
+    ("Button 3")."""
+    return f"{InputType.to_string(input_type).capitalize()} {input_id}"
+
+
+def logical_cant_send_text(action: Any) -> str | None:  # noqa: ANN401
+    """None when a Map to Logical Device action's control is there; else
+    "Logical Device <Control> is not Found." (the control was deleted)."""
+    if not getattr(action, "logical_missing", False):
+        return None
+    label = logical_control_label(action.logical_input_type, action.logical_input_id)
+    return f"Logical Device {label} is not Found."
+
+
+def _logical_step_text(step: Any) -> str | None:  # noqa: ANN401
+    """A macro Logical Device step whose control is gone (none chosen yet
+    is the editor's own prompt, not this)."""
+    if step.input_id is None or step.current_identifier() is not None:
+        return None
+    label = logical_control_label(step.input_type, step.input_id)
+    return f"Logical Device {label} is not Found."
+
+
+def osc_settings() -> tuple[dict, list[dict]]:
+    """(server settings, targets) as osc.json has them now."""
+    from gremlin import osc_device_file
+
+    try:
+        return osc_device_file.read_server(), osc_device_file.read_targets()
+    except Exception:  # noqa: BLE001 - unreadable file: OSC's defaults
+        syslog.debug("OSC settings unreadable", exc_info=True)
+        return {}, []
+
+
+def osc_cant_send_text(
+    target_id: str,
+    settings: tuple[dict, list[dict]] | None = None,
+    name: str = "",
+) -> str | None:
+    """None when Send OSC can send to this target; else "OSC target <name>
+    is not Found." (not in the current Targets; `name` is the action's
+    saved target name, the id only when none was saved,
+    D-09-SENDOSC-TARGET-NAME) or "OSC output is Off."."""
+    from gremlin import osc_output
+
+    server, targets = settings if settings is not None else osc_settings()
+    target_id = str(target_id)
+    if target_id != osc_output.REPLY and target_id not in [
+        str(t.get("id")) for t in targets
+    ]:
+        return f"OSC target {name or target_id} is not Found."
+    if not server.get("output_enabled", True):
+        return "OSC output is Off."
+    return None
+
+
+def cant_send_action_texts(
+    action: Any, memo: dict | None = None  # noqa: ANN401
+) -> list[str]:
+    """Why one action's outputs can't be sent, one text per output (Map to
+    vJoy, Map to Xbox, Map to Logical Device, Send OSC, macro vJoy and
+    Logical Device steps); [] when all can. Nested actions are the caller's
+    (profile.reachable). `memo` shares look-ups across calls."""
+    from action_plugins.macro import MacroData
+    from action_plugins.map_to_logical_device import MapToLogicalDeviceData
+    from action_plugins.map_to_xbox import MapToXboxData
+    from action_plugins.send_osc import SendOscData
+    from gremlin import macro
+
+    memo = {} if memo is None else memo
+    texts: list[str | None] = []
+    for vjoy_id, input_type, input_id in vjoy_targets(action):
+        try:
+            key = ("vjoy", int(vjoy_id), kind_of(input_type), int(input_id))
+        except (TypeError, ValueError):
+            continue
+        if key not in memo:
+            memo[key] = cant_send_text(*key[1:])
+        texts.append(memo[key])
+    if isinstance(action, MapToXboxData):
+        key = ("xbox", int(action.xbox_device_id))
+        if key not in memo:
+            memo[key] = xbox_cant_send_text(key[1])
+        texts.append(memo[key])
+    elif isinstance(action, MapToLogicalDeviceData):
+        texts.append(logical_cant_send_text(action))
+    elif isinstance(action, SendOscData):
+        if "osc" not in memo:
+            memo["osc"] = osc_settings()
+        texts.append(
+            osc_cant_send_text(action.target, memo["osc"], action.target_name)
+        )
+    elif isinstance(action, MacroData):
+        texts.extend(
+            _logical_step_text(step)
+            for step in action.actions
+            if isinstance(step, macro.LogicalDeviceAction)
+        )
+    return [text for text in texts if text]
+
+
+def _input_label(input_type: Any, input_id: Any) -> str:  # noqa: ANN401
+    from gremlin import common
+
+    try:
+        return common.input_to_ui_string(input_type, input_id)
+    except Exception:  # noqa: BLE001 - an input type with no ui string
+        return f"{input_type} {input_id}"
+
+
+def cant_send_bindings(profile: Any = None) -> list[dict]:  # noqa: ANN401
+    """Every output in the profile (default: the current one) that can't be
+    sent (vJoy, Xbox, Logical Device, OSC; cant_send_action_texts), nested
+    actions included: device_guid, device_name, input_type, input_id,
+    input_label, mode, text (the tooltip). Re-ask on signal.profileChanged,
+    signal.configChanged (claims saved), signal.logicalDeviceModified, OSC's
+    settings signals and EventListener().device_change_event."""
+    from gremlin import device_initialization, shared_state
+    from gremlin.profile import Profile, reachable
+
+    profile = profile if profile is not None else shared_state.current_profile
+    if profile is None:
+        return []
+    memo: dict = {}
+    found: list[dict] = []
+    for items in profile.inputs.values():
+        for item in items:
+            for action in reachable(Profile.roots_of([item])):
+                for text in cant_send_action_texts(action, memo):
+                    guid = getattr(item.device_id, "uuid", item.device_id)
+                    found.append(
+                        {
+                            "device_guid": str(guid),
+                            "device_name": device_initialization.device_name(guid),
+                            "input_type": InputType.to_string(item.input_type)
+                            if item.input_type is not None
+                            else "",
+                            "input_id": item.input_id,
+                            "input_label": _input_label(
+                                item.input_type, item.input_id
+                            ),
+                            "mode": str(item.mode or ""),
+                            "text": text,
+                        }
+                    )
+    return found

@@ -75,14 +75,26 @@ def address_error(address: str) -> str:
     return osc_pattern.check(str(address or "").strip(), allow_pattern=False)
 
 
-def _first_target() -> str:
+def _targets() -> list[dict]:
     try:
         from gremlin import osc_device_file
 
-        targets = osc_device_file.read_targets()
+        return osc_device_file.read_targets()
     except Exception:
-        targets = []
+        return []
+
+
+def _first_target() -> str:
+    targets = _targets()
     return str(targets[0]["id"]) if targets else osc_output.REPLY
+
+
+def _name_of(target_id: str, targets: list[dict]) -> str | None:
+    """The target's current name; None when the id isn't a target."""
+    for t in targets:
+        if str(t.get("id")) == target_id:
+            return str(t.get("name") or "")
+    return None
 
 
 class SendOscFunctor(AbstractFunctor):
@@ -168,6 +180,16 @@ class SendOscModel(ActionModel):
         parent: QtCore.QObject,
     ) -> None:
         super().__init__(data, binding_model, action_index, parent_index, parent)
+        # A target renamed in OSC Setup while the editor is open
+        # (D-09-SENDOSC-TARGET-NAME).
+        from gremlin.signal import signal
+
+        signal.oscServerSettingsChanged.connect(self._targets_changed)
+
+    @QtCore.Slot()
+    def _targets_changed(self) -> None:
+        self._osc.refresh_target_name()
+        self.targetChanged.emit()
 
     @property
     def _osc(self) -> SendOscData:
@@ -188,13 +210,10 @@ class SendOscModel(ActionModel):
 
     @QtCore.Property(list, notify=targetChanged)
     def targetChoices(self) -> list:
-        """[{id, name}] of every target, then "Reply to sender"."""
-        try:
-            from gremlin import osc_device_file
-
-            targets = osc_device_file.read_targets()
-        except Exception:
-            targets = []
+        """[{id, name}] of every target, then "Reply to sender"; a missing
+        target last, by its saved name (D-09-SENDOSC-TARGET-NAME)."""
+        targets = _targets()
+        self._osc.refresh_target_name(targets)
         choices = []
         for t in targets:
             name = t.get("name") or "Target"
@@ -202,11 +221,25 @@ class SendOscModel(ActionModel):
             choices.append({"id": str(t["id"]), "name": f"{name} ({where})"})
         choices.append({"id": osc_output.REPLY, "name": "Reply to sender"})
         if self._osc.target not in [c["id"] for c in choices]:
-            choices.append({"id": self._osc.target, "name": "Missing target"})
+            name = self._osc.target_name or "Missing target"
+            choices.append({"id": self._osc.target, "name": name})
         return choices
 
     def _get_target(self) -> str:
         return self._osc.target
+
+    @QtCore.Property(str, notify=targetChanged)
+    def cantSendText(self) -> str:
+        """Why this target can't be sent to ("" when it can), for the red ⚠
+        tooltip (D-05-CANT-SEND-ALL)."""
+        from gremlin.modules import output
+
+        return (
+            output.osc_cant_send_text(
+                self._osc.target, name=self._osc.target_name
+            )
+            or ""
+        )
 
     def _set_target(self, value: str) -> None:
         if str(value) != self._osc.target:
@@ -307,18 +340,49 @@ class SendOscData(AbstractActionData):
         super().__init__(behavior_type)
 
         # Model variables
-        self.target: str = _first_target()
+        self._target = ""
+        self.target_name = ""
+        self.target = _first_target()
         self.address: str = ""
         self.values: list[dict] = [{"source": INPUT, "value": "", "type": "auto"}]
         self.input_min: float = 0.0
         self.input_max: float = 1.0
 
+    @property
+    def target(self) -> str:
+        """The target's id; its name is kept in target_name."""
+        return self._target
+
+    @target.setter
+    def target(self, value: str) -> None:
+        value = str(value)
+        if value != self._target:
+            self._target = value
+            self.target_name = ""
+            self.refresh_target_name()
+
+    def refresh_target_name(self, targets: list[dict] | None = None) -> bool:
+        """Takes the target's current name when its id is still a target
+        (D-09-SENDOSC-TARGET-NAME); a missing target keeps its saved name.
+        True when the name changed."""
+        if self._target == osc_output.REPLY:
+            return False
+        name = _name_of(self._target, _targets() if targets is None else targets)
+        if name is None or name == self.target_name:
+            return False
+        self.target_name = name
+        return True
+
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:
         self._id = util.read_action_id(node)
-        self.target = util.read_property(
-            node, "target", PropertyType.String, osc_output.REPLY
+        self._target = str(
+            util.read_property(node, "target", PropertyType.String, osc_output.REPLY)
         )
+        self.target_name = str(
+            util.read_property(node, "target-name", PropertyType.String, "") or ""
+        )
+        self.refresh_target_name()
         self.address = util.read_property(node, "address", PropertyType.String, "")
         try:
             raw = json.loads(
@@ -336,11 +400,13 @@ class SendOscData(AbstractActionData):
 
     @override
     def _to_xml(self) -> ElementTree.Element:
+        self.refresh_target_name()
         node = util.create_action_node(SendOscData.tag, self._id)
         util.append_property_nodes(
             node,
             [
                 ["target", self.target, PropertyType.String],
+                ["target-name", self.target_name, PropertyType.String],
                 ["address", self.address, PropertyType.String],
                 ["values", json.dumps(self.values), PropertyType.String],
                 ["input-min", self.input_min, PropertyType.Float],

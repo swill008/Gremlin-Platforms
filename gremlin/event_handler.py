@@ -611,6 +611,9 @@ class EventListener(QtCore.QObject):
                     identifier=(key_id.scan_code, key_id.is_extended),
                     mode=NO_MODE,
                     is_pressed=is_pressed,
+                    # Keys this program sent itself (macros, Map to
+                    # Keyboard) never move the Keyboard page (D-05-FOLLOW).
+                    synthetic=bool(getattr(event, "is_own", False)),
                 )
             )
 

@@ -10,23 +10,12 @@ from PySide6 import QtCore
 import gremlin.ui.type_aliases as ta
 from gremlin import common, event_handler
 from gremlin.modules import output
-from gremlin.modules.claim import claim_friendly, claim_ids, kind_of
+from gremlin.modules.claim import claim_ids, kind_of
 from gremlin.signal import signal
 from gremlin.types import InputType
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
-
-_AXIS_WORDS = {
-    1: "X Axis",
-    2: "Y Axis",
-    3: "Z Axis",
-    4: "X Rotation",
-    5: "Y Rotation",
-    6: "Z Rotation",
-    7: "Slider",
-    8: "Dial",
-}
 
 
 def _dest_modules() -> list[dict]:
@@ -34,7 +23,8 @@ def _dest_modules() -> list[dict]:
     cut to the ids the vJoy device has (05 S118, the Auto Mapper check). A
     saved wire to one it lacks is kept and flagged, not re-pointed. A vJoy
     the driver doesn't list (turned off in the vJoy configuration tool) is
-    "available": False and keeps its output module's own claim."""
+    "available": False and keeps its output module's own claim; anything
+    picked on it can't be sent (D-05-CANT-SEND)."""
     modules = []
     for vjoy_id, module in output.vjoy_modules():
         available = any(output.vjoy_driver_ids(vjoy_id).values())
@@ -62,8 +52,10 @@ class OutputModuleDevices(QtCore.QObject):
         input_id: int
         module_name: str = ""
         input_label: str = ""
-        # A saved wire to an output its output module does not claim.
+        # A binding that can't be sent (D-05-CANT-SEND): shown "⚠ <Control>"
+        # in red; `reason` is its tooltip.
         unclaimed: bool = False
+        reason: str = ""
 
         def vjoy_str(self) -> str:
             return self.module_name or f"vJoy {self.vjoy_id}"
@@ -88,7 +80,7 @@ class OutputModuleDevices(QtCore.QObject):
         )
         self._choices: dict[int, list[OutputModuleDevices.InputOption]] = {}
         self._modules: dict[int, dict] = {}
-        # The flagged saved output, listed so the combos can show it.
+        # The flagged binding that can't be sent, listed so the combos show it.
         self._unclaimed: OutputModuleDevices.InputOption | None = None
         self._update_choices()
         event_handler.EventListener().device_change_event.connect(self._update_choices)
@@ -96,14 +88,21 @@ class OutputModuleDevices(QtCore.QObject):
         signal.configChanged.connect(self._update_choices)
 
     def _input_label(self, claim: dict, input_type: InputType, input_id: int) -> str:
-        custom = claim_friendly(claim, kind_of(input_type), input_id)
-        if custom:
-            return custom
-        if input_type == InputType.JoystickAxis:
-            return _AXIS_WORDS.get(int(input_id), f"Axis {int(input_id)}")
-        if input_type == InputType.JoystickHat:
-            return f"Hat {int(input_id)}"
-        return f"Button {int(input_id)}"
+        return output.control_label(claim, kind_of(input_type), input_id)
+
+    def _reason(self, selection: OutputModuleDevices.InputOption) -> str:
+        """Why this binding can't be sent; "" when it can (D-05-CANT-SEND).
+        Judged on this picker's own list, so the flag and the list agree."""
+        module = self._modules.get(selection.vjoy_id)
+        available = bool(module and module.get("available", True))
+        claim = (module or {}).get("claim") or {}
+        kind = kind_of(selection.input_type)
+        ids = claim_ids(claim, kind) if available else []
+        off = module is not None and not available
+        text = output.cant_send_words(
+            selection.vjoy_id, kind, selection.input_id, claim, ids, off
+        )
+        return text or ""
 
     def _update_choices(self) -> None:
         self._modules = {}
@@ -113,9 +112,8 @@ class OutputModuleDevices(QtCore.QObject):
             claim = module["claim"]
             self._modules[vjoy_id] = module
             options: list[OutputModuleDevices.InputOption] = []
-            # A vJoy that is off: its claimed controls, marked; picking one
-            # saves a valid binding, blocked at Run until it is on (06 S47).
-            mark = "" if module.get("available", True) else " (not available)"
+            # A vJoy that is off: its claimed controls; picking one saves a
+            # binding flagged as can't be sent, blocked at Run (06 S47).
             for input_type in self._valid_types:
                 for input_id in claim_ids(claim, kind_of(input_type)):
                     options.append(
@@ -124,7 +122,7 @@ class OutputModuleDevices(QtCore.QObject):
                             input_type,
                             input_id,
                             module["name"],
-                            self._input_label(claim, input_type, input_id) + mark,
+                            self._input_label(claim, input_type, input_id),
                         )
                     )
             self._choices[vjoy_id] = options
@@ -206,6 +204,7 @@ class OutputModuleDevices(QtCore.QObject):
             ),
             None,
         )
+        previous = self._current_selection
         if match is not None:
             new_selection = match
         elif self._keeps_unclaimed(selection):
@@ -230,13 +229,23 @@ class OutputModuleDevices(QtCore.QObject):
                 if options:
                     new_selection = options[0]
                     break
+        if (
+            not new_selection.unclaimed
+            and self._keeps_unclaimed(new_selection)
+            and self._reason(new_selection)
+        ):
+            # Listed, but its vJoy is turned off.
+            new_selection = self._flag_unclaimed(new_selection)
+        self._unclaimed = new_selection if new_selection.unclaimed else None
         self._current_selection = new_selection
         self.choicesChanged.emit()
         self.currentValuesChanged.emit(
             new_selection.vjoy_str(), new_selection.input_str()
         )
-        if new_selection.unclaimed:
-            # Unchanged wire: nothing to write back.
+        if new_selection.unclaimed and (
+            not allow_invalid or self._same_target(previous, new_selection)
+        ):
+            # The saved binding as it is: nothing to write back.
             return
         if new_selection.vjoy_id and new_selection.input_id:
             self.currentSelectionChanged.emit(
@@ -251,6 +260,16 @@ class OutputModuleDevices(QtCore.QObject):
             selection.vjoy_id
             and selection.input_id
             and selection.input_type in self._valid_types
+        )
+
+    @staticmethod
+    def _same_target(
+        a: OutputModuleDevices.InputOption, b: OutputModuleDevices.InputOption
+    ) -> bool:
+        return (a.vjoy_id, a.input_type, a.input_id) == (
+            b.vjoy_id,
+            b.input_type,
+            b.input_id,
         )
 
     def _flag_unclaimed(
@@ -269,8 +288,9 @@ class OutputModuleDevices(QtCore.QObject):
             selection.input_type,
             selection.input_id,
             name,
-            f"{label} (not claimed)",
+            f"⚠ {label}",
             True,
+            self._reason(selection),
         )
         self._unclaimed = flagged
         return flagged
@@ -292,18 +312,28 @@ class OutputModuleDevices(QtCore.QObject):
 
     def _get_input_choices(self) -> list[str]:
         options = self._choices.get(self._current_selection.vjoy_id) or []
-        labels = [option.input_str() for option in options if option.input_str()]
         flagged = self._unclaimed
-        if (
+        if not (
             flagged is not None
             and flagged.vjoy_id == self._current_selection.vjoy_id
             and flagged.input_type in self._valid_types
         ):
-            labels.append(flagged.input_str())
+            return [option.input_str() for option in options if option.input_str()]
+        # The flagged binding once, in place of its plain entry.
+        labels = [
+            option.input_str()
+            for option in options
+            if option.input_str() and not self._same_target(option, flagged)
+        ]
+        labels.append(flagged.input_str())
         return labels
 
     def _get_current_unclaimed(self) -> bool:
         return bool(self._current_selection.unclaimed)
+
+    def _get_current_reason(self) -> str:
+        current = self._current_selection
+        return current.reason if current.unclaimed else ""
 
     def _get_valid_types(self) -> list[str]:
         return [InputType.to_string(item) for item in self._valid_types]
@@ -336,4 +366,8 @@ class OutputModuleDevices(QtCore.QObject):
     )
     currentUnclaimed = QtCore.Property(
         bool, fget=_get_current_unclaimed, notify=choicesChanged
+    )
+    # The tooltip of a binding that can't be sent ("" when it can).
+    currentReason = QtCore.Property(
+        str, fget=_get_current_reason, notify=choicesChanged
     )

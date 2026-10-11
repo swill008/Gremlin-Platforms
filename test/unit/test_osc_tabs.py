@@ -34,7 +34,8 @@ fake_hardware.install()
 import gremlin.ui.update_model as um
 um.UpdateModel.startup = lambda self, *a, **k: None
 import gremlin.osc as gosc
-gosc.OscRuntime._bind = lambda self: None
+# OscRuntime is a SingletonDecorator: patch the class it wraps.
+gosc.OscRuntime.klass._bind = lambda self, report=True: None
 # This PC's addresses as the program finds them: 0.0.0.0 is always among them.
 import gremlin.ui.osc_option as oo
 oo.local_ipv4_addresses = lambda: ['192.168.1.237', '127.0.0.1', '0.0.0.0']

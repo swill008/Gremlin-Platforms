@@ -431,6 +431,12 @@ Item {
     Connections {
         target: _layout
         function onPaneLost() { _pane.closeNow() }
+        // A button pressed while stopped: show its row (D-09-OSC-ROW-FOLLOW;
+        // the model checks Run, the setting and the holds).
+        function onFollowInput(key) {
+            if (_root.visible)
+                _tree.showKey(key)
+        }
         // A feedback row that is gone (deleted, Undo) closes its editor.
         function onFeedbackEditorChanged() {
             if (_pane.open && _layout.isFeedbackKey(_pane.paneKey) && !(_layout.feedbackEditor || {}).key)
@@ -514,9 +520,17 @@ Item {
 
                 ControlTree {
                     id: _tree
+                    objectName: "oscTree"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     layout: _layout
+                    // A pressed button input's row tints (D-09-OSC-ROW-FOLLOW);
+                    // a fader's row has the live bar, as a stick axis on the
+                    // Configuration page (D-05-FOLLOW-ALL-PAGES). The model
+                    // is the live state (stamp, kindAt, valueAt).
+                    liveDecoration: true
+                    liveState: _layout
+                    liveBars: true
                     locked: _root.editorLocked
                     namePrefix: "osc"
                     dragMime: "application/x-gremlin-osc"

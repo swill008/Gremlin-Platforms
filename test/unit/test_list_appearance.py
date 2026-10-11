@@ -103,7 +103,9 @@ def test_the_logical_page_panel_uses_its_own_setting(tmp_path: pathlib.Path) -> 
     assert r["tree"] == "60"
     # The live rows of the panel are Configuration's only.
     assert r["liveRows"] == "false"
-    assert r["liveDecoration"] == "false"
+    # The Logical Device page tints and follows like Configuration
+    # (D-05-FOLLOW-ALL-PAGES).
+    assert r["liveDecoration"] == "true"
 
 
 def test_live_decoration_is_off_by_default_and_lights_rows_when_on(
@@ -144,9 +146,10 @@ def test_row_alignment_width_and_group_space_apply_to_the_tree(
     assert second_y == gap and second_h == group_h + gap
 
 
-def test_the_logical_page_leaves_the_live_decoration_off() -> None:
+def test_the_logical_page_turns_the_live_decoration_on() -> None:
     page = (_ROOT / "qml" / "LogicalPage.qml").read_text(encoding="utf-8")
-    assert "liveDecoration" not in page
+    # Tint and follow as on the Configuration page (D-05-FOLLOW-ALL-PAGES).
+    assert "liveDecoration: true" in page
     # Its panel is the shared PageAppearance part (to-do 91).
     assert "PageAppearance {" in page
     assert 'pageKey: "logical"' in page

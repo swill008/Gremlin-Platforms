@@ -39,7 +39,8 @@ function topics() {
                 + "<li>The <b>last:</b> line: the latest input the input module passed, or on an output card the latest output sent while the profile runs. It uses the friendly name; hover for the hardware name.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
-                + "<ul><li>A card whose module file can't be read says \"Module file damaged – inputs blocked\" in red. See <a href=\"topic:home-devices-damaged-file\">Fix a damaged module file</a>.</li></ul>",
+                + "<ul><li>A card whose module file can't be read says \"Module file damaged – inputs blocked\" in red. See <a href=\"topic:home-devices-damaged-file\">Fix a damaged module file</a>.</li>"
+                + "<li>A stick, Keyboard or OSC card with actions that send to a vJoy output the program can't send has a red outline and says \"⚠ n bindings can't be sent\". Hover it for the list (input, mode and why; the first 10, then \"… and n more\"). Open the device's page and pick another output in each Map to vJoy; the Find tick <b>Can't be sent</b> shows them.</li></ul>",
             related: ["home-devices-home", "home-devices-input-modules", "home-devices-damaged-file", "configuration-actions-output-view"]
         },
         {

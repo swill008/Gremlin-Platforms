@@ -8,8 +8,10 @@ import QtQuick.Layouts
 import Gremlin.Style
 
 // The Find line, its filter ticks and the page's Undo bar, shared by the
-// control pages (Logical Device, OSC). The page turns changed() into a
-// filter call on its model.
+// control pages (Configuration, Keyboard, Logical Device, OSC). The page
+// turns changed() into a filter call on its model; the "Can't be sent"
+// tick (D-05-CANT-SEND) is the bar's own and tells the model directly
+// (layout.setCantSendOnly).
 ColumnLayout {
     id: _bar
 
@@ -38,7 +40,7 @@ ColumnLayout {
     property int _tickRev: 0
     readonly property bool filtering: {
         _tickRev
-        if (_findText.text.length > 0 || _findType.currentIndex > 0)
+        if (_findText.text.length > 0 || _findType.currentIndex > 0 || _cantSend.checked)
             return true
         for (var i = 0; i < _ticks.count; i++) {
             var box = _ticks.itemAt(i)
@@ -69,6 +71,11 @@ ColumnLayout {
             var box = _ticks.itemAt(i)
             if (box)
                 box.checked = false
+        }
+        if (_cantSend.checked) {
+            _cantSend.checked = false
+            if (layout)
+                layout.setCantSendOnly(false)
         }
         _tickRev++
         cleared()
@@ -143,6 +150,18 @@ ColumnLayout {
                     _bar._tickRev++
                     _bar.changed()
                 }
+            }
+        }
+        // Only inputs with an action that can't be sent (D-05-CANT-SEND).
+        CheckBox {
+            id: _cantSend
+            objectName: "cantSendTick"
+            text: "Can't be sent"
+            onClicked: {
+                if (_bar.layout)
+                    _bar.layout.setCantSendOnly(checked)
+                _bar._tickRev++
+                _bar.changed()
             }
         }
     }

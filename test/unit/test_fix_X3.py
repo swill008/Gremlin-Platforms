@@ -127,9 +127,9 @@ def test_the_configuration_input_row_carries_the_note(
     plain = catalog.index(by_kind[("parent", "Button 2")], 0)
     assert catalog.data(plain, note) == ""
     assert catalog.data(plain, subtitle) == ""
-    assert str(catalog.data(plain, _role(catalog, b"destLabel"))).startswith(
-        "vJoy 1 · Button 2"
-    )
+    # Named with or without the red ⚠ (no vJoy module here, D-05-CANT-SEND).
+    dest = str(catalog.data(plain, _role(catalog, b"destLabel")))
+    assert "vJoy 1" in dest and "Button 2" in dest
     leaf = catalog.index(by_kind[("child", "Button 1")], 0)
     assert catalog.data(leaf, note) == ""
 

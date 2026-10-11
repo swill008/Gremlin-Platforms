@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, List, override
+from typing import TYPE_CHECKING, List, cast, override
 from xml.etree import ElementTree
 
 from PySide6 import QtCore
@@ -236,11 +236,21 @@ class MapToXboxModel(ActionModel):
     def _get_pad_choices(self) -> list:
         """The Xbox output module(s) by name. Pad 1 is always there; a saved
         pad 2-4 stays listed and still sends (one pad for now, to-do 16)."""
-        names = {pad: module.name for pad, module in output.xbox_modules().items()}
-        names.setdefault(1, "Xbox 360 Controller")
-        current = int(self._data.xbox_device_id)
-        names.setdefault(current, f"Xbox pad {current}")
-        return [{"value": pad, "label": name} for pad, name in sorted(names.items())]
+        current = int(cast("MapToXboxData", self._data).xbox_device_id)
+        pads = {*output.xbox_modules(), 1, current}
+        return [
+            {"value": pad, "label": output.xbox_pad_label(pad)} for pad in sorted(pads)
+        ]
+
+    def _get_cant_send_text(self) -> str:
+        """Why this pad can't be sent to ("" when it can), for the red ⚠
+        tooltip (D-05-CANT-SEND-ALL)."""
+        pad = int(cast("MapToXboxData", self._data).xbox_device_id)
+        return output.xbox_cant_send_text(pad) or ""
+
+    def _get_pad_label(self) -> str:
+        pad = int(cast("MapToXboxData", self._data).xbox_device_id)
+        return output.xbox_pad_label(pad)
 
     xboxDeviceId = QtCore.Property(
         int,
@@ -272,6 +282,10 @@ class MapToXboxModel(ActionModel):
     padChoices = QtCore.Property(
         "QVariant", fget=_get_pad_choices, notify=padChoicesChanged
     )
+    cantSendText = QtCore.Property(
+        str, fget=_get_cant_send_text, notify=padChoicesChanged
+    )
+    padLabel = QtCore.Property(str, fget=_get_pad_label, notify=padChoicesChanged)
 
 
 class MapToXboxData(AbstractActionData):

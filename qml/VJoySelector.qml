@@ -3,6 +3,7 @@
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Base as Base
@@ -15,6 +16,9 @@ Item {
     id: _root
 
     property bool useCompact: false
+    // The saved binding can't be sent (D-05-CANT-SEND); the tooltip says why.
+    readonly property bool cantSend: _vjoy ? _vjoy.currentUnclaimed : false
+    readonly property string cantSendText: _vjoy ? _vjoy.currentReason : ""
     property alias validTypes: _vjoy.validTypes
 
     signal selectionChanged(int deviceId, string inputType, int inputId)
@@ -101,6 +105,23 @@ Item {
             onLoaded: {
                 item.width = Qt.binding(() => _inputLoader.width)
                 item.model = Qt.binding(() => _vjoy ? _vjoy.inputChoices : [])
+                // A binding that can't be sent: "⚠ <Control>" in red, its
+                // own tooltip in place of the box's (D-05-CANT-SEND).
+                item.enableTooltips = Qt.binding(() => !_root.cantSend)
+                if (item.contentItem && item.contentItem.color !== undefined) {
+                    const box = item
+                    box.contentItem.color = Qt.binding(() =>
+                        _root.cantSend ? Style.danger
+                        : !box.enabled ? box.U.Universal.chromeDisabledLowColor
+                        : box.U.Universal.foreground)
+                }
+            }
+
+            HoverHandler { id: _cantSendHover }
+
+            Base.WrappingTooltip {
+                text: _root.cantSendText
+                visible: _root.cantSend && _cantSendHover.hovered
             }
         }
 
@@ -119,18 +140,6 @@ Item {
 
             text: "Output module has no claimed controls."
             color: Style.fgMuted
-        }
-
-        // A saved wire to an output its output module does not claim. The wire
-        // is kept as saved; claim the output or pick a claimed one.
-        Label {
-            visible: _vjoy && _vjoy.currentUnclaimed
-
-            text: "Output not claimed"
-            color: Style.warn
-            ToolTip.visible: _unclaimedHover.hovered
-            ToolTip.text: "This output is not claimed by its output module. Claim it in Output Module Setup, or pick a claimed output."
-            HoverHandler { id: _unclaimedHover }
         }
     }
 }

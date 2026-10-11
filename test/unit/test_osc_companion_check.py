@@ -136,7 +136,8 @@ fake_hardware.install()
 import gremlin.ui.update_model as um
 um.UpdateModel.startup = lambda self, *a, **k: None
 import gremlin.osc as gosc
-gosc.OscRuntime._bind = lambda self: None
+# OscRuntime is a SingletonDecorator: patch the class it wraps.
+gosc.OscRuntime.klass._bind = lambda self, report=True: None
 gosc.port_holder = lambda port, host='': None
 import gremlin.osc_companion_check  # registers OscCompanionCheck
 import joystick_gremlin

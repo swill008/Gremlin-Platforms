@@ -158,6 +158,24 @@ def _load(name: str) -> Any:  # noqa: ANN401
     return module
 
 
+def _osc_on_loopback() -> None:
+    """OSC listens on 127.0.0.1 at a port the OS picked, never the defaults
+    (every address, port 8001): another Gremlin-Platforms may hold that,
+    and journeys stay off the network. Written to OSC's module file, where
+    the program reads its server settings (D-09-OSC-FILE); the file can't
+    hold port 0, so a free port is asked of the OS first."""
+    import socket
+
+    from gremlin import osc_device_file
+
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    server = osc_device_file.read_server()
+    server.update(host="127.0.0.1", port=port)
+    osc_device_file.write_server(server, "journey harness")
+
+
 def _smoke_exit(code: int) -> None:
     """test/unit/smoke_exit.py: releases Qt, then os._exit(code)."""
     spec = importlib.util.spec_from_file_location(
@@ -357,18 +375,12 @@ class Journey:
             lambda *a: self.errors.append(" | ".join(str(x) for x in a))
         ) if hasattr(gremlin_signal.signal, "showError") else None
 
+        _osc_on_loopback()
         self.app: Any = None
         if before_start is not None:
             before_start(self)
         self.app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
         self.win = self.app.main_window
-        # Run doesn't open the OSC port on the PC's network (another
-        # Gremlin-Platforms may hold it).
-        from gremlin import osc
-        from gremlin.config import Configuration
-
-        if Configuration().exists(osc.OSC_SECTION, osc.OSC_GROUP, "enabled"):
-            Configuration().set(osc.OSC_SECTION, osc.OSC_GROUP, "enabled", False)
         self.QTest = _QTest()
 
     # --- running the story ---------------------------------------------------

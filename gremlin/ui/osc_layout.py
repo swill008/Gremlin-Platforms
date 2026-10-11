@@ -27,7 +27,8 @@ from typing import TYPE_CHECKING, Any, cast
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import clock, osc_device_file, osc_pattern
+from gremlin import clock, osc_device_file, osc_pattern, shared_state
+from gremlin.config import Configuration
 from gremlin.error import GremlinError
 from gremlin.logical_device import _natural_key, _same_group
 from gremlin.modules import store
@@ -72,6 +73,9 @@ EXTRA_DEFAULTS: dict[str, Any] = {
     "feedbackId": "",
     # The bottom group "Feedback not tied to an input": not a user group.
     "fixedGroup": False,
+    # ControlTree's live tint (05 S131, D-09-OSC-ROW-FOLLOW): the input's
+    # place in the model's kindAt / valueAt.
+    "liveIndex": -1,
 }
 LIVE_ROLES = (
     "liveValue",
@@ -176,6 +180,29 @@ def live_fields(uid: str) -> dict[str, Any]:
         "lastSeen": last_seen_text(at),
         "liveSynthetic": bool(live.get("synthetic")),
     }
+
+
+def follows_press(
+    row: OscRow, live: dict | None, was_pressed: bool, tapped: bool = False
+) -> bool:
+    """Whether a live change should move the page to the input's row
+    (D-09-OSC-ROW-FOLLOW): a new press of a button input (not an encoder,
+    not Send Test or a macro step), with Options "Input highlighting" on
+    and nothing holding highlighting (Run holds it, 03 S114). `tapped`: a
+    real press came since the last live change (OscRuntime.take_press), so
+    a press and release inside the throttle still count (D-05-QUICK-TAP)."""
+    if live is None:
+        return False
+    if not tapped:
+        if not live.get("pressed") or was_pressed or live.get("synthetic"):
+            return False
+    if row.input_type != InputType.JoystickButton or row.mode == "encoder":
+        return False
+    if not Configuration().value("ui", "general", "input-highlighting"):
+        return False
+    return not (
+        shared_state.suspend_input_highlighting() or shared_state.runtime_active()
+    )
 
 
 def pattern_line(count: int) -> str:
@@ -670,8 +697,16 @@ class OscLayoutModel(ControlLayoutModel):
 
     feedbackMessageChanged = QtCore.Signal()
     feedbackEditorChanged = QtCore.Signal()
+    stampChanged = QtCore.Signal()
+    # A button input was pressed and the page should show its row
+    # (D-09-OSC-ROW-FOLLOW): its parent key.
+    followInput = QtCore.Signal(str)
 
     def __init__(self, parent: ta.OQO = None) -> None:
+        # Live tint: input uids by liveIndex, and the stamp ControlTree
+        # watches to read kindAt / valueAt again.
+        self._live_uids: list[str] = []
+        self._stamp = 0
         super().__init__(parent)
         self._baseline: dict | None = None
         self._seen_edit = osc_device_model.last_edit()[0]
@@ -747,6 +782,7 @@ class OscLayoutModel(ControlLayoutModel):
             "canInvert": osc_device_model.is_axis_input(row.mode, row.enc_output),
             "inverted": row.invert,
             **live_fields(row.uid),
+            "liveIndex": self._live_index(row.uid),
         }
 
     def _sort_system_label(self) -> str:
@@ -986,9 +1022,11 @@ class OscLayoutModel(ControlLayoutModel):
     # Live value and last seen (S141): only that input's row changes.
 
     def _on_live(self, uid: str) -> None:
+        tapped = OscRuntime().take_press(uid)
         for index, row in enumerate(self._rows):
             if row.get("rowKind") != "parent" or row.get("uid") != uid:
                 continue
+            was_pressed = bool(row.get("livePressed"))
             row.update(live_fields(uid))
             names: list[str] = list(LIVE_ROLES)
             osc_row = OscDevice().rows.by_uid(uid)
@@ -999,7 +1037,53 @@ class OscLayoutModel(ControlLayoutModel):
                 names.append("subtitle")
             at = self.index(index, 0)
             self.dataChanged.emit(at, at, [self._ROLE_OF[name] for name in names])
+            self._stamp += 1
+            self.stampChanged.emit()
+            if osc_row is not None and follows_press(
+                osc_row, OscRuntime().live(uid), was_pressed, tapped
+            ):
+                self.followInput.emit(str(row.get("key", "")))
             return
+
+    # ControlTree's live state (its liveState: stamp, kindAt, valueAt).
+
+    def _live_index(self, uid: str) -> int:
+        if uid not in self._live_uids:
+            self._live_uids.append(uid)
+        return self._live_uids.index(uid)
+
+    def _live_at(self, index: int) -> dict | None:
+        if not 0 <= index < len(self._live_uids):
+            return None
+        return OscRuntime().live(self._live_uids[index])
+
+    @QtCore.Property(int, notify=stampChanged)
+    def stamp(self) -> int:
+        return self._stamp
+
+    @QtCore.Slot(int, result=str)
+    def kindAt(self, index: int) -> str:
+        """Kind "button" for a button input (its row tints while pressed),
+        "axis" for a fader (its row's live bar, as a stick axis on the
+        Configuration page, D-05-FOLLOW-ALL-PAGES), else "" (an encoder:
+        no tint, no bar)."""
+        live = self._live_at(index)
+        if live is None:
+            return ""
+        if live.get("pressed") is not None:
+            return "button"
+        return "axis" if live.get("axis") is not None else ""
+
+    @QtCore.Slot(int, result=float)
+    def valueAt(self, index: int) -> float:
+        """1/0 for a button, the axis value (-1..1) for a fader."""
+        live = self._live_at(index)
+        if live is None:
+            return 0.0
+        if live.get("pressed") is not None:
+            return 1.0 if live.get("pressed") else 0.0
+        axis = live.get("axis")
+        return float(axis) if axis is not None else 0.0
 
     # Helpers.
 

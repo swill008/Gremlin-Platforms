@@ -48,6 +48,15 @@ def modules() -> Iterator[None]:
         mock.patch.object(
             output, "xbox_module", side_effect=lambda p: xbox if p == 1 else None
         ),
+        mock.patch.object(
+            output,
+            "cant_send_text",
+            side_effect=lambda v, k, i: (
+                None
+                if output.vjoy_allows(v, k, i)
+                else f"vJoy {v}'s control is not Found."
+            ),
+        ),
     ):
         yield
 
@@ -66,13 +75,14 @@ def test_named_output_shows_its_name_in_the_long_form(modules: None) -> None:
 
 
 def test_unclaimed_and_missing_outputs_are_flagged(modules: None) -> None:
-    assert wiring.vjoy_dest(3, InputType.JoystickButton, 57) == (
-        "vJoy 3 · Button 57 (not claimed)"
-    )
+    # The long form (the source page's wire label) marks it with the red
+    # ⚠ (D-05-CANT-SEND); the short form (Button Map) is unchanged.
+    assert wiring.vjoy_dest(3, InputType.JoystickButton, 57) == "⚠ vJoy 3 Button 57"
     assert wiring.vjoy_dest(3, InputType.JoystickButton, 57, short=True) == (
         "vJoy 3 B57 (not claimed)"
     )
-    assert wiring.vjoy_dest(4, InputType.JoystickButton, 1).endswith(
+    assert wiring.vjoy_dest(4, InputType.JoystickButton, 1) == "⚠ vJoy 4 Button 1"
+    assert wiring.vjoy_dest(4, InputType.JoystickButton, 1, short=True).endswith(
         "(no output module)"
     )
 

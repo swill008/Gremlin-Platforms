@@ -316,8 +316,11 @@ def main() -> None:
     def before(j: Journey) -> None:
         import gremlin.osc as gosc
 
-        # No socket: the page and Run work without the OSC listener.
-        gosc.OscRuntime._bind = lambda self: None
+        # No socket: the page and Run work without the OSC listener. On the
+        # class itself (OscRuntime is a SingletonDecorator): set on the
+        # decorator, Run bound the PC's real port 8001 and a program holding
+        # it opened the error dialog over the page.
+        gosc.OscRuntime.klass._bind = lambda self, report=True: None
         j.input_module()
         j.vjoy_module()
 

@@ -95,7 +95,7 @@ function topics() {
                 + "<li><b>Clear</b> resets every Find filter: it empties the search and sets the first box, the ticks under the bar and the <b>Type</b> and <b>Output</b> boxes back to show everything.</li>"
                 + "<li>The action box <b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode. To find inputs with none, use <b>No actions in this mode</b>.</li>"
                 + "<li>The <b>Output</b> box shows inputs that send to one place. It lists only the places in use.</li>"
-                + "<li>Under the bar, <b>Ungrouped</b> and <b>No actions in this mode</b> narrow the list further.</li>"
+                + "<li>Under the bar, <b>Ungrouped</b> and <b>No actions in this mode</b> narrow the list further. <b>Can't be sent</b> shows only inputs with a Map to vJoy the program can't send; their action rows show a red <b>⚠</b> (hover it to see why).</li>"
                 + "</ul>"
                 + _good([
                     "When nothing matches, the page says \"Nothing matches the Find filters.\" Choose <b>Clear Filters</b>, or <b>Clear</b> on the bar, to reset everything."
@@ -318,7 +318,8 @@ function topics() {
                 + "</ol>"
                 + _good([
                     "A Relative axis stops when the input rests for 1 second, or when something else moves that vJoy axis.",
-                    "Only outputs claimed by the vJoy output module are sent. An output that isn't claimed shows <b>Output not claimed</b>; claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).",
+                    "Only outputs claimed by the vJoy output module are sent. An output the program can't send (not claimed, not on that vJoy device, or that vJoy turned off) shows in red as <b>⚠</b> and its name, for example <b>⚠ Button 57</b>. Hover it to see why, for example \"vJoy 1's Button 57 is not Found (vJoy 1 has Buttons 1–56).\" or \"vJoy 2 is not Found.\"",
+                    "To fix it, pick another output from the list: it offers only what the vJoy output module includes. To send to that output instead, claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).",
                     "A new Map to vJoy starts on the first claimed output this mode doesn't use yet. When every claimed output is used, it starts on the first one.",
                     "The output list offers only claimed outputs the vJoy device really has."
                 ]),
@@ -722,8 +723,8 @@ function topics() {
         {
             id: "configuration-actions-q-vjoy-not-claimed",
             section: questions,
-            title: "Why does Map to vJoy say Output not claimed?",
-            body: "<p>The vJoy output module doesn't claim that output, so nothing is sent to it. Claim the output in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).</p>",
+            title: "Why is a Map to vJoy output red with ⚠?",
+            body: "<p>The program can't send to that output: the vJoy output module doesn't include it, the vJoy device doesn't have it, or that vJoy is turned off. Hover the output to see which. Pick another output from the list, which offers only what the module includes. The input's device card on Home says how many bindings can't be sent, and the Find tick <b>Can't be sent</b> lists them. To keep the output, claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).</p>",
             related: ["configuration-actions-map-to-vjoy"]
         },
         {

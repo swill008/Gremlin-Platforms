@@ -29,14 +29,38 @@ Item {
         // The controls of the action's type, never the one it sits on
         // (06 S93).
         TooltipComboBox {
+            id: _control
+            objectName: "logicalControl"
             Layout.minimumWidth: Style.dp(200)
             Layout.fillWidth: true
+
+            // A deleted control: "⚠ <Control>" in red with why as the
+            // tooltip, in place of the box's own (D-05-CANT-SEND-ALL).
+            readonly property bool cantSend: _root.action.controlPicker.cantSendText !== ""
+            enableTooltips: !cantSend
+            displayText: cantSend ? "⚠ " + _root.action.controlPicker.missingLabel : currentText
 
             model: _root.action.controlPicker.choices
             currentIndex: _root.action.controlPicker.index
 
             onActivated: (index) => {
                 _root.action.controlPicker.pick(index)
+            }
+
+            Component.onCompleted: {
+                if (contentItem && contentItem.color !== undefined) {
+                    const box = _control
+                    contentItem.color = Qt.binding(() =>
+                        box.cantSend ? Style.danger
+                        : !box.enabled ? box.U.Universal.chromeDisabledLowColor
+                        : box.U.Universal.foreground)
+                }
+            }
+
+            HoverHandler { id: _controlHover }
+            WrappingTooltip {
+                text: _root.action.controlPicker.cantSendText
+                visible: _control.cantSend && _controlHover.hovered
             }
         }
 

@@ -90,7 +90,8 @@ def test_picking_a_vjoy_that_is_off_moves_to_the_same_control(
     picker.setState("vJoy 4", "Button 5")
 
     assert writes == [(4, "button", 5)]  # never id 0, never an invalid control
-    assert picker.inputChoices[4] == "Button 5 (not available)"
+    assert picker.inputChoices[-1] == "⚠ Button 5"  # can't be sent while off
+    assert picker.currentReason == "vJoy 4 is not Found."
     assert "vJoy 4" in picker.vjoyDevices
 
 
@@ -102,21 +103,24 @@ def test_picking_an_off_vjoy_falls_back_to_its_first_claimed_control(
     # A saved wire to vJoy 3's Button 40 (claims 1-32): kept and flagged.
     picker.setInitialState(3, "button", 40)
     writes = _writes(picker)
-    picker.setState("vJoy 4", "Button 40 (not claimed)")
+    picker.setState("vJoy 4", "⚠ Button 40")
 
     assert writes == [(4, "button", 1)]
 
 
-def test_saved_wire_to_an_off_vjoy_shows_not_available(
+def test_saved_wire_to_an_off_vjoy_shows_cant_send(
     driver: _Driver, listener: mock.MagicMock
 ) -> None:
     driver.on = {3}
     picker = _picker(listener)
+    writes = _writes(picker)
     picker.setInitialState(4, "button", 7)
 
-    assert not picker.currentUnclaimed  # claimed, only the device is off
-    assert "Button 7 (not available)" in picker.inputChoices
-    assert not any("(not claimed)" in label for label in picker.inputChoices)
+    assert writes == []  # kept as saved (03 S30)
+    assert picker.currentUnclaimed  # can't be sent (D-05-CANT-SEND)
+    assert picker.currentReason == "vJoy 4 is not Found."
+    assert "⚠ Button 7" in picker.inputChoices
+    assert "Button 7" not in picker.inputChoices
 
 
 # --- (2) turned off / on while the program runs --------------------------------
@@ -135,14 +139,14 @@ def test_picker_rereads_on_a_device_change(
     driver.on = {3}  # vJoy 4 turned off in the vJoy configuration tool
     for slot in slots:
         slot()
-    assert "Button 7 (not available)" in picker.inputChoices
+    assert "⚠ Button 7" in picker.inputChoices
     assert "Button 7" not in picker.inputChoices
 
     driver.on = {3, 4}  # and on again
     for slot in slots:
         slot()
     assert "Button 7" in picker.inputChoices
-    assert not any("(not available)" in label for label in picker.inputChoices)
+    assert not any(label.startswith("⚠") for label in picker.inputChoices)
 
 
 # --- (3) at Run --------------------------------------------------------------

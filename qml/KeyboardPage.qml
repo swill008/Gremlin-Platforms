@@ -83,6 +83,12 @@ Item {
     Connections {
         target: _layout
         function onPaneLost() { _pane.closeNow() }
+        // An input pressed while stopped: show its row (D-05-FOLLOW-ALL-PAGES,
+        // 05 S131; the model checks Run, the setting and the holds).
+        function onFollowInput(key) {
+            if (_root.visible)
+                _tree.showKey(key)
+        }
     }
     // A row's click opens the pane on all its actions (S126).
     Connections {
@@ -143,6 +149,14 @@ Item {
 
             ControlTree {
                 id: _tree
+                objectName: "keyboardTree"
+                // A held input's row tints (05 S131,
+                // D-05-FOLLOW-ALL-PAGES); the model is the live state.
+                liveDecoration: true
+                liveState: _layout
+                liveBars: false
+                liveLeds: _appear.showLeds
+                colorLive: _appear.colorLive
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 layout: _layout

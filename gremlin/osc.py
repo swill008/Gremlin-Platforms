@@ -679,6 +679,10 @@ class OscRuntime(QtCore.QObject):
         self._live: dict[str, dict[str, Any]] = {}
         self._live_sent: dict[str, float] = {}
         self._live_pending: set[str] = set()
+        # Inputs pressed (not Send Test) since their last liveChanged: a
+        # quick tap inside the throttle still reaches the page as a press
+        # (D-05-QUICK-TAP; take_press).
+        self._pressed_since: set[str] = set()
         self._live_timer = QtCore.QTimer(self)
         self._live_timer.setSingleShot(True)
         self._live_timer.timeout.connect(self._flush_live)
@@ -1516,7 +1520,17 @@ class OscRuntime(QtCore.QObject):
         its addresses), with or without a Run; None before any (OX7 Q5)."""
         return self._last_address.get(str(uid))
 
+    def take_press(self, uid: str) -> bool:
+        """Whether the input was pressed (not by Send Test) since the last
+        call for it; clears the mark (D-05-QUICK-TAP)."""
+        uid = str(uid)
+        if uid in self._pressed_since:
+            self._pressed_since.discard(uid)
+            return True
+        return False
+
     def reset_live(self) -> None:
+        self._pressed_since.clear()
         self._last_address.clear()
         self._live.clear()
         self._live_sent.clear()
@@ -1535,6 +1549,9 @@ class OscRuntime(QtCore.QObject):
                 axis = scale_axis(number, row.range_min, row.range_max)
         else:
             pressed = True if value is None else is_pressed((value,))
+            was = (self._live.get(row.uid) or {}).get("pressed")
+            if pressed and not was and not synthetic:
+                self._pressed_since.add(row.uid)
         self._live[row.uid] = {
             "value": value,
             "axis": axis,

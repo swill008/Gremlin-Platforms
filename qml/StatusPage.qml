@@ -620,6 +620,9 @@ Item {
         card.isStub = !!info.isStub
         card.isModule = !!info.isModule
         card.damaged = info.damaged || ""
+        // Bindings this device sends that can't be sent (D-05-CANT-SEND).
+        card.cantSendCount = info.cantSendCount || 0
+        card.cantSendTip = info.cantSendTip || ""
         card.tab = info.tab || "physical"
         card.target = info.target || ""
         card.lastLine = info.lastLine || ""
@@ -1090,6 +1093,9 @@ Item {
                 Qt.callLater(_splitView.applyRatio)
         }
         function onClaimsChanged() {
+            Qt.callLater(_page.refreshCards)
+        }
+        function onCantSendChanged() {
             Qt.callLater(_page.refreshCards)
         }
         function onLastChanged() {

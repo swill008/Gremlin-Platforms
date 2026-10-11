@@ -7,9 +7,12 @@
 Long form, for rows and lists:  "vJoy 3 · Button 5 (Fire)",
                                 "Xbox 360 Controller · Left Trigger".
 Short form, for chips:          "vJoy 3 B5", "Xbox 1 LT".
-A vJoy destination its output module does not claim (so nothing is sent)
-ends in "(not claimed)"; one with no output module says so. Xbox has no
-claim: every Xbox control is always sent.
+A vJoy destination that can't be sent (output.cant_send_text: not in the
+action editor's drop-down, or that vJoy turned off) reads, in the long form,
+"⚠ vJoy 3 Button 57" (D-05-CANT-SEND); the page draws it red with the
+reason as its tooltip. The short form (Button Map, trace, Device Pack)
+keeps "(not claimed)" / "(no output module)" (D-05-CANT-SEND-ALL: Button Map
+unchanged). Xbox has no claim: every Xbox control is always sent.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from gremlin.modules import output
 from gremlin.modules.claim import claim_friendly, kind_of
 from gremlin.types import InputType
 
+CANT_SEND = "⚠"
 NOT_CLAIMED = "(not claimed)"
 NO_MODULE = "(no output module)"
 
@@ -77,19 +81,20 @@ def vjoy_dest(
         input_type = InputType.JoystickButton
     kind = kind_of(input_type)
     name = output.vjoy_module_name(vjoy_id)
-    flag = ""
-    if not name:
-        name, flag = f"vJoy {vjoy_id}", NO_MODULE
-    elif not output.vjoy_allows(vjoy_id, kind, input_id):
-        flag = NOT_CLAIMED
     if short:
         text = f"vJoy {vjoy_id} {_input_short(input_type, input_id)}"
-    else:
-        text = f"{name} · {_input_long(input_type, input_id)}"
-        named = claim_friendly(output.vjoy_claim(vjoy_id), kind, input_id)
-        if named:
-            text += f" ({named})"
-    return f"{text} {flag}" if flag else text
+        if not name:
+            return f"{text} {NO_MODULE}"
+        if not output.vjoy_allows(vjoy_id, kind, input_id):
+            return f"{text} {NOT_CLAIMED}"
+        return text
+    claim = output.vjoy_claim(vjoy_id)
+    if output.cant_send_text(vjoy_id, kind, input_id) is not None:
+        control = output.control_label(claim, kind, input_id)
+        return f"{CANT_SEND} vJoy {vjoy_id} {control}"
+    text = f"{name or f'vJoy {vjoy_id}'} · {_input_long(input_type, input_id)}"
+    named = claim_friendly(claim, kind, input_id)
+    return f"{text} ({named})" if named else text
 
 
 def xbox_dest(pad_id: int, target: Any, short: bool = False) -> str:  # noqa: ANN401

@@ -580,3 +580,24 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | FIX-VIEWER: vJoy Viewer lists/lights OSC and LD wires (claim filter + OSC card name) | fix | rough guess 5–10 min (no data) | 3 min | 19:11–19:14 |
 | 2026-10-10 | QML-WARN: 3 console messages fixed (Monitor release slot, Configuration page jump timer) | fix | 3–8 min (table) | 4 min | 19:12–19:16 |
 | 2026-10-10 | Full run 9 (seed 55000): all passed (5593 unit + 75 + 47) | test run | ~5 min (table) | 5:05 | 19:16–19:21 |
+| 2026-10-10 | Lead: lint, commit + push | lead commit | no timing data yet | 1 min | 19:21–19:22 |
+| 2026-10-10 | DOCS: spec 09 S32/S141, 05 S131/S137-S139, 03 S30/S78a, glossary, Help for can't-send + OSC row | docs | rough guess 10–15 min (no data) | ~2 min (agent clock; doubtful) | 19:59–20:01 |
+| 2026-10-10 | CI-TEST: test_final_09 S68 race (History writer builds its own Configuration) fixed in test | test fix | 3–8 min (table) | 4 min | 20:00–20:04 |
+| 2026-10-10 | MK-CARD: source Home card red outline + line + tooltip; lead wired StatusPage | fix | rough guess 10–15 min (no data) | 5 min (+1 lead) | 19:59–20:05 |
+| 2026-10-10 | MK-PICK: cant_send_text/bindings + red ⚠ in vJoy box, note removed (S53) | fix | rough guess 10–15 min (no data) | 8 min | 19:59–20:07 |
+| 2026-10-10 | LOCK: singleton creation thread-safe (per-class RLock, double-checked) | fix | 3–8 min (table) | 1 min | 20:06–20:07 |
+| 2026-10-10 | OSC-ROW: OSC row tint while pressed + follow while stopped (follows_press, followInput) | fix | rough guess 10–15 min (no data) | 9 min | 19:59–20:08 |
+| 2026-10-10 | MK-ROWS: red ⚠ on rows + Find tick 'Can't be sent' on all four pages | fix | rough guess 10–15 min (no data) | 10 min | 19:59–20:09 |
+| 2026-10-10 | NOTICE: profile-load notice naming bindings that can't be sent | fix | rough guess 5–10 min (no data) | 2 min | 20:07–20:09 |
+| 2026-10-10 | XMARK: can't-send for Xbox, Logical Device, Send OSC (+ macro LD step), rows and card included | fix | rough guess 15–20 min (no data) | 5 min | 20:07–20:12 |
+| 2026-10-10 | FOLLOW: LD + Keyboard tint/follow, LD axis bar, quick tap (live_follow.py) | fix | rough guess 10–15 min (no data) | 6 min | 20:09–20:15 |
+| 2026-10-10 | WIRE-BARS: Configuration wire label red ⚠ + tooltip, OSC fader bars, OSC quick-tap press mark | fix | rough guess 10–15 min (no data) | ~6 min (agent clock unreliable) | 20:12–20:18 |
+| 2026-10-10 | OSCNAME: Send OSC saves target name; Configuration quick tap checked (no fix needed) | fix | rough guess 10–15 min (no data) | 5 min | 20:15–20:20 |
+| 2026-10-10 | MAP6: map + glossary for the can't-send batch (12 line groups + OSCNAME) | map catch-up | 5–7 min (table) | 6 min | 20:19–20:25 |
+| 2026-10-10 | Full run + lint (can't-send batch, run 1): 5 failures (4 old-behaviour tests, 1 timing) | test | 5–6 min (table) | 6 min | 20:25–20:31 |
+| 2026-10-10 | Full run + lint (can't-send batch, run 2): all green except unit-6 stalled in test_final_01 s12 (child app >120 s; passes alone 1.5 s) | test | 5–6 min (table) | 6 min | 20:31–20:37 |
+| 2026-10-10 | Full run + lint (can't-send batch, run 3): no stall; 2 OSC page journeys fail (also alone) | test | 5–6 min (table) | 5 min | 20:39–20:44 |
+| 2026-10-10 | OSCFAIL: 2 OSC journeys bound real port 8001 (stub on SingletonDecorator, not class); tests fixed | fix | 3–8 min (table) | 3 min | 20:45–20:48 |
+| 2026-10-10 | HARNESS: journeys listen for OSC on 127.0.0.1 at an OS-picked port; new j12 (3) | fix | 3–8 min (table) | 3 min | 20:49–20:52 |
+| 2026-10-10 | Full run + lint (can't-send batch, run 4): all green except order-dependent test_card_list_signal_release; test rewritten to warm up first | test | 5–6 min (table) | 5 min | 20:52–20:57 |
+| 2026-10-10 | Full run + lint (can't-send batch, final): all green, seed 273667 | test | 5–6 min (table) | 5 min | 21:03–21:07 |

@@ -438,10 +438,14 @@ def story(j: Journey) -> None:
 def before(j: Journey) -> None:
     import gremlin.osc as gosc
 
-    # No socket: the page and the Monitor work without the OSC listener.
-    gosc.OscRuntime._bind = lambda self: None
-    gosc.OscRuntime.hold_open = lambda self, token: True
-    gosc.OscRuntime.release_open = lambda self, token: None
+    # No socket: the page and the Monitor work without the OSC listener. On
+    # the class itself (OscRuntime is a SingletonDecorator): set on the
+    # decorator, the Monitor bound the PC's real port 8001 and a program
+    # holding it opened the error dialog over the page.
+    runtime = gosc.OscRuntime.klass
+    runtime._bind = lambda self, report=True: None
+    runtime.hold_open = lambda self, token: True
+    runtime.release_open = lambda self, token: None
     j.input_module()
     j.vjoy_module()
 

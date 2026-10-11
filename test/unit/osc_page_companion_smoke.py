@@ -52,9 +52,10 @@ um.UpdateModel.startup = lambda self, *a, **k: None
 import gremlin.osc as gosc  # noqa: E402
 
 # No network: OSC never binds; this PC's address is a fixed one.
-gosc.OscRuntime._bind = lambda self: None  # type: ignore[method-assign]
-gosc.OscRuntime.hold_open = lambda self, token: True  # type: ignore[method-assign]
-gosc.OscRuntime.release_open = lambda self, token: None  # type: ignore[method-assign]
+# OscRuntime is a SingletonDecorator: patch the class it wraps.
+gosc.OscRuntime.klass._bind = lambda self, report=True: None  # type: ignore[method-assign]
+gosc.OscRuntime.klass.hold_open = lambda self, token: True  # type: ignore[method-assign]
+gosc.OscRuntime.klass.release_open = lambda self, token: None  # type: ignore[method-assign]
 gosc.local_ipv4_addresses = lambda: ["192.168.1.20", "127.0.0.1", "0.0.0.0"]
 
 import shiboken6  # noqa: E402

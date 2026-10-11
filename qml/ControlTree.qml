@@ -552,6 +552,26 @@ Item {
                         Rectangle { width: Style.dp(4); height: Style.dp(4); radius: Style.dp(1); color: _tree.colorText; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right }
                     }
                 }
+                // Can't be sent (D-05-CANT-SEND): the action row, and its
+                // input row so a closed row is still found; the tooltip
+                // says why.
+                Label {
+                    id: _cantSend
+                    objectName: "cantSendMark"
+                    readonly property string why: _row.model.cantSend || ""
+                    visible: why.length > 0 && (rowKind === "child" || rowKind === "parent")
+                    text: "⚠"
+                    color: Style.danger
+                    font.bold: true
+                    font.pixelSize: Style.dp(rowKind === "parent" ? _tree.parentFont : _tree.childFont)
+                    Layout.alignment: Qt.AlignVCenter
+                    HoverHandler { id: _cantHover }
+                    ToolTip {
+                        objectName: "cantSendTip"
+                        visible: _cantHover.hovered
+                        text: _cantSend.why
+                    }
+                }
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
@@ -571,14 +591,24 @@ Item {
                             y: _nameHover.point.position.y - height - Style.dp(8)
                         }
                     }
+                    // The wire label: an action that can't be sent is red,
+                    // with the reason as its tooltip (D-05-CANT-SEND).
                     Label {
+                        id: _wire
+                        readonly property bool cantSend: rowKind === "child" && _cantSend.why.length > 0
                         visible: _tree.showSummary && subtitle.length > 0 && rowKind !== "writer"
                         text: subtitle
-                        color: rowKind === "child" ? _tree.colorActionTarget : _tree.colorMuted
+                        color: cantSend ? Style.danger : (rowKind === "child" ? _tree.colorActionTarget : _tree.colorMuted)
                         font.pixelSize: Style.dp(rowKind === "child" ? _tree.targetFont : _tree.summaryFont)
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                         Layout.bottomMargin: visible ? Style.dp(4) : 0
+                        HoverHandler { id: _wireHover; enabled: _wire.cantSend }
+                        ToolTip {
+                            objectName: "wireTip"
+                            visible: _wireHover.hovered && _wire.cantSend
+                            text: _wire.cantSend ? _cantSend.why : ""
+                        }
                     }
                 }
                 Loader {

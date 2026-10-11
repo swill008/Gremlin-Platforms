@@ -476,6 +476,9 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
       `_parse_import_line`), while `qml/OscImportDialog.qml` says otherwise.
       Goes with B16: real types, or fix the text.
 92. WON'T FIX (user 2026-10-10). (H1, 2026-10-10, F3-HIDHIDE, SHAKE-STRESS-06) Hardware Hide opening blocks the window ~0.5 s (after the read-once fix, about half). Moving the device read onto a gremlin.threads worker would need a "Loading…" state in DialogHardwareHide.qml (list opens empty, fills in), late ticks after setCloak/setInverse/setDeviceHidden/setGremlinControl/setGamingOnly/setDevicePhoto (needs a generation guard for quick clicks), a spec statement, and test waits on deviceCount. User chose to record it only (2026-10-10). Not started.
+93. (CS-G1, 2026-10-10, found by MAP6; 03 gap 35, 05 CS-G1) An open action editor doesn't re-check its red ⚠ when the OSC settings or the Xbox driver change while it is open: Map to Xbox re-checks only when its pad list changes; Send OSC re-reads its target's name on oscServerSettingsChanged but other editors don't. Recorded only (user 2026-10-10: "record the open items and we will do them later"). Not started.
+94. (LD-SYN, 2026-10-10, found by FOLLOW; 05 LD-SYN) Events sent by Map to Logical Device aren't marked as program-made (synthetic), unlike keys from macros and Map to Keyboard. Harmless today: they only happen while the profile runs, and the Logical Device page doesn't follow while running. Recorded only. Not started.
+95. (CS-COND, 2026-10-10, found by MAP6) Check that the Condition editor's vJoy target shows the red ⚠ and tooltip for a control that can't be sent (taken from MK-PICK's report, not confirmed in that editor). Recorded only. Not started.
 
 ## Notes kept for reference
 

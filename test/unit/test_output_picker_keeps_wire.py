@@ -49,7 +49,7 @@ def test_saved_unclaimed_output_is_kept_and_flagged(
 
     assert writes == []  # the wire is not re-pointed or written back
     assert picker.currentUnclaimed
-    assert "Button 57 (not claimed)" in picker.inputChoices
+    assert "⚠ Button 57" in picker.inputChoices
     assert "vJoy 3" in picker.vjoyDevices
 
 
@@ -61,7 +61,7 @@ def test_claimed_output_still_selects_normally(
 
     assert writes == [(3, "button", 5)]
     assert not picker.currentUnclaimed
-    assert not any("(not claimed)" in label for label in picker.inputChoices)
+    assert not any(label.startswith("⚠") for label in picker.inputChoices)
 
 
 def test_type_change_still_moves_to_a_claimed_output(
@@ -73,7 +73,7 @@ def test_type_change_still_moves_to_a_claimed_output(
 
     assert writes and writes[-1][1] == "axis"
     assert not picker.currentUnclaimed
-    assert not any("(not claimed)" in label for label in picker.inputChoices)
+    assert not any(label.startswith("⚠") for label in picker.inputChoices)
 
 
 def test_vjoy_without_an_output_module_is_labelled(
@@ -127,11 +127,11 @@ def test_switching_vjoy_from_unclaimed_wire_moves_and_clears_flag(
     two_vjoys.setInitialState(3, "button", 57)
     assert two_vjoys.currentUnclaimed
     writes = _writes(two_vjoys)
-    two_vjoys.setState("vJoy 4", "Button 57 (not claimed)")
+    two_vjoys.setState("vJoy 4", "⚠ Button 57")
 
     assert writes == [(4, "button", 1)]
     assert not two_vjoys.currentUnclaimed
-    assert not any("(not claimed)" in label for label in two_vjoys.inputChoices)
+    assert not any(label.startswith("⚠") for label in two_vjoys.inputChoices)
 
 
 def test_switching_vjoy_keeps_same_control_when_claimed(

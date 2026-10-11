@@ -32,6 +32,7 @@ from gremlin.ui.control_layout import (
     KIND_WORD as _KIND_WORD,
 )
 from gremlin.ui.control_layout import (
+    ROW_DEFAULTS,
     ControlLayoutModel,
     LayoutItem,
 )
@@ -47,6 +48,7 @@ from gremlin.ui.control_layout import (
 from gremlin.ui.control_layout import (
     parse_parent as _parse_parent,
 )
+from gremlin.ui.live_follow import LiveInputs, follows
 from gremlin.ui.module_model import (
     KEYBOARD_GUID,
     LOGICAL_GUID,
@@ -145,15 +147,75 @@ def drop_logical_steps() -> None:
         model.drop_steps()
 
 
+# Roles the Logical Device page adds to the shared ones.
+EXTRA_DEFAULTS: dict[str, Any] = {
+    # ControlTree's live tint and bar (05 S131, D-05-FOLLOW-ALL-PAGES): the
+    # input's place in the model's kindAt / valueAt; -1: none.
+    "liveIndex": -1,
+}
+_KIND_OF = {
+    InputType.JoystickAxis: "axis",
+    InputType.JoystickButton: "button",
+    InputType.JoystickHat: "hat",
+}
+
+
+def _live_value(event: Any) -> float:  # noqa: ANN401
+    """An event's value as ControlTree shows it: an axis -1..1, a button or
+    a hat away from centre 1.0, else 0.0."""
+    if event.event_type == InputType.JoystickAxis:
+        try:
+            return max(-1.0, min(1.0, float(event.value or 0.0)))
+        except (TypeError, ValueError):
+            return 0.0
+    if event.event_type == InputType.JoystickButton:
+        return 1.0 if event.is_pressed else 0.0
+    raw = getattr(event.value, "value", event.value)
+    return 0.0 if raw in (None, (0, 0)) else 1.0
+
+
 @ta.QmlElement
 class LogicalLayoutModel(ControlLayoutModel):
     """Rows for the logical page: group headers, parents, writers, and actions."""
 
+    roles = {
+        **ControlLayoutModel.roles,
+        **{
+            QtCore.Qt.ItemDataRole.UserRole
+            + 1
+            + len(ROW_DEFAULTS)
+            + i: QtCore.QByteArray(name.encode())
+            for i, name in enumerate(EXTRA_DEFAULTS)
+        },
+    }
+
+    stampChanged = QtCore.Signal()
+    # A Logical Device button was pressed and the page should show its row
+    # (D-05-FOLLOW-ALL-PAGES): its parent key.
+    followInput = QtCore.Signal(str)
+
     def __init__(self, parent: ta.OQO = None) -> None:
+        # Live tint: inputs by liveIndex, and the stamp ControlTree watches
+        # to read kindAt / valueAt again; axis moves are shown at most every
+        # 33 ms.
+        self._live = LiveInputs()
+        self._stamp = 0
         super().__init__(parent)
         _MODELS.add(self)
+        self._axis_timer = QtCore.QTimer(self)
+        self._axis_timer.setInterval(33)
+        self._axis_timer.setSingleShot(True)
+        self._axis_timer.timeout.connect(self._bump)
         signal.logicalDeviceModified.connect(self._on_external)
         signal.logicalDeviceReloaded.connect(self._on_reloaded)
+        # The Logical Device's own inputs, as the input module feed passes
+        # them (always forwarded).
+        from gremlin.modules.runtime import InputModuleRuntime
+
+        # Its Signal "event" shadows QObject.event for pyright.
+        InputModuleRuntime().event.connect(  # pyright: ignore[reportAttributeAccessIssue]
+            self._on_input
+        )
         self._rebuild()
 
     # ControlLayoutModel hooks.
@@ -179,9 +241,15 @@ class LogicalLayoutModel(ControlLayoutModel):
     def _parent_subtitle(self, item: LayoutItem, extra: list[dict]) -> str:
         return extra[0]["title"] if extra else ""
 
+    def _row(self, **fields: object) -> dict:
+        return {**ROW_DEFAULTS, **EXTRA_DEFAULTS, **fields}
+
     def _parent_fields(self, item: LayoutItem, extra: list[dict]) -> dict:
         lead = extra[0] if extra else None
         return {
+            "liveIndex": self._live.index(
+                (item.type, item.id), _KIND_OF.get(item.type, "")
+            ),
             "writerId": lead["writerId"] if lead else "",
             "axisMode": lead["axisMode"] if lead else "",
             "axisScale": lead["axisScale"] if lead else 1.0,
@@ -192,6 +260,42 @@ class LogicalLayoutModel(ControlLayoutModel):
 
     def _rows_before_actions(self, item: LayoutItem, extra: list[dict]) -> list[dict]:
         return extra[1:]
+
+    # Live tint and follow (05 S131, D-05-FOLLOW-ALL-PAGES).
+
+    def _on_input(self, event: Any) -> None:  # noqa: ANN401
+        if guid_key(str(event.device_guid)) != guid_key(str(self._device_guid())):
+            return
+        kind = _KIND_OF.get(event.event_type)
+        key = (event.event_type, event.identifier)
+        if kind is None or not self._live.known(key):
+            return
+        was = self._live.value_of(key)
+        value = _live_value(event)
+        self._live.set(key, kind, value)
+        if kind == "axis":
+            if not self._axis_timer.isActive():
+                self._axis_timer.start()
+            return
+        self._bump()
+        if follows(kind, value, was, bool(getattr(event, "synthetic", False))):
+            self.followInput.emit(_parent_key(event.event_type, event.identifier))
+
+    def _bump(self) -> None:
+        self._stamp += 1
+        self.stampChanged.emit()
+
+    @QtCore.Property(int, notify=stampChanged)
+    def stamp(self) -> int:
+        return self._stamp
+
+    @QtCore.Slot(int, result=str)
+    def kindAt(self, index: int) -> str:
+        return self._live.kind_at(index)
+
+    @QtCore.Slot(int, result=float)
+    def valueAt(self, index: int) -> float:
+        return self._live.value_at(index)
 
     def _delete_parent(self, item: LayoutItem) -> list[dict]:
         links = self._detach_links(item.type, item.id)

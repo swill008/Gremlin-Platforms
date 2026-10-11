@@ -242,6 +242,31 @@ def _load_notes(logical: list[str], osc: list[str]) -> list[tuple[str, str]]:
     return notes
 
 
+def _cant_send_notice(loaded: object) -> str:
+    """The load notice for bindings that can't be sent, per source device
+    with its count (D-04-CANT-SEND-NOTICE), e.g. "VKBSim NXT: 94 bindings
+    can't be sent. OSC: 1."; "" when there are none."""
+    from gremlin.modules import output
+
+    try:
+        found = output.cant_send_bindings(loaded)
+    except Exception:
+        logging.getLogger("system").exception("Could not check what can't be sent")
+        return ""
+    counts: dict[str, int] = {}
+    for binding in found:
+        name = binding.get("device_name") or binding.get("device_guid") or "?"
+        counts[name] = counts.get(name, 0) + 1
+    parts = []
+    for name, count in counts.items():
+        if parts:
+            parts.append(f"{name}: {count}.")
+        else:
+            noun = "binding" if count == 1 else "bindings"
+            parts.append(f"{name}: {count} {noun} can't be sent.")
+    return " ".join(parts)
+
+
 def _logical_unsaved() -> bool:
     """The Logical Device has edits its file doesn't have yet."""
     return bool(getattr(LogicalDevice(), "dirty", False))
@@ -913,6 +938,9 @@ class Backend(QtCore.QObject):
         for warning in getattr(new_profile, "load_warnings", []) or []:
             logging.getLogger("system").warning(warning)
             signal.showNotification.emit("Open Profile", warning)
+        notice = _cant_send_notice(new_profile)
+        if notice:
+            signal.showNotification.emit("Open Profile", notice)
 
     def _load_profile(self, fpath: str, report: bool = True) -> bool:
         """Opens a profile; False if it couldn't. report=False: the reason is

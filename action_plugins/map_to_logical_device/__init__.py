@@ -33,6 +33,7 @@ from gremlin.logical_device import (
     LogicalDevice,
     resolve_logical_reference,
 )
+from gremlin.modules import output
 from gremlin.profile import Library
 from gremlin.signal import signal
 from gremlin.types import (
@@ -365,8 +366,21 @@ class ControlPicker(QtCore.QObject):
         entry = choices[index][0]
         self._owner.set_target(entry.type, entry.id)
 
+    def _get_cant_send_text(self) -> str:
+        """Why the action can't send ("" when it can): its control was
+        deleted (D-05-CANT-SEND-ALL)."""
+        return output.logical_cant_send_text(self._owner.map_data()) or ""
+
+    def _get_missing_label(self) -> str:
+        data = self._owner.map_data()
+        return output.logical_control_label(
+            data.logical_input_type, data.logical_input_id
+        )
+
     choices = QtCore.Property(list, fget=_get_choices, notify=changed)
     index = QtCore.Property(int, fget=_get_index, notify=changed)
+    cantSendText = QtCore.Property(str, fget=_get_cant_send_text, notify=changed)
+    missingLabel = QtCore.Property(str, fget=_get_missing_label, notify=changed)
 
 
 class MapToLogicalDeviceData(AbstractActionData):

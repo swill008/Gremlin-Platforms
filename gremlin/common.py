@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import threading
+import weakref
 from typing import (
     Any,
     Generic,
@@ -27,24 +29,42 @@ class SingletonDecorator(Generic[T]):
     def __init__(self, klass: type[T]) -> None:
         self.klass = klass
         self.instance: T | None = None
+        # Reentrant so a constructor touching this singleton on the same
+        # thread doesn't deadlock.
+        self._lock = threading.RLock()
 
     def __call__(self, *args: Any, **kwargs: dict) -> T:  # noqa: ANN401
-        if self.instance is None:
-            self.instance = self.klass(*args, **kwargs)
-        return self.instance
+        instance = self.instance
+        if instance is not None:
+            return instance
+        with self._lock:
+            if self.instance is None:
+                self.instance = self.klass(*args, **kwargs)
+            return self.instance
 
 
 class SingletonMetaclass(type):
     # https://stackoverflow.com/a/6798042
 
     _instances: dict[type, Any] = {}
+    # One lock per class so a slow constructor only blocks its own class.
+    _locks: weakref.WeakKeyDictionary[type, threading.RLock] = (
+        weakref.WeakKeyDictionary()
+    )
+    _locks_guard = threading.Lock()
 
     def __call__(cls, *args: Any, **kwargs: dict) -> Any:  # noqa: ANN401
-        if cls not in cls._instances:
-            cls._instances[cls] = super(SingletonMetaclass, cls).__call__(
-                *args, **kwargs
-            )
-        return cls._instances[cls]
+        instance = cls._instances.get(cls)
+        if instance is not None:
+            return instance
+        with SingletonMetaclass._locks_guard:
+            lock = SingletonMetaclass._locks.setdefault(cls, threading.RLock())
+        with lock:
+            if cls not in cls._instances:
+                cls._instances[cls] = super(SingletonMetaclass, cls).__call__(
+                    *args, **kwargs
+                )
+            return cls._instances[cls]
 
 
 def input_to_ui_string(input_type: InputType, input_id: int | ScanCode) -> str:
@@ -68,5 +88,3 @@ def input_to_ui_string(input_type: InputType, input_id: int | ScanCode) -> str:
         return key_from_code(*input_id).name
     else:
         return f"{InputType.to_string(input_type).capitalize()} {input_id}"
-
-

@@ -31,11 +31,13 @@ from gremlin.profile import InputItem
 from gremlin.types import InputType
 from gremlin.ui.binding_catalog import item_note, sequences_for_item
 from gremlin.ui.control_layout import (
+    ROW_DEFAULTS,
     ControlLayoutModel,
     LayoutItem,
     group_key,
     parent_key,
 )
+from gremlin.ui.live_follow import LiveInputs, follows
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -45,6 +47,13 @@ GUID = dill.UUID_Keyboard
 GUID_TEXT = str(GUID)
 DEVICE_NAME = "Keyboard"
 KEY_PREFIX = "key:"
+
+# Roles the Keyboard page adds to the shared ones.
+EXTRA_DEFAULTS: dict[str, Any] = {
+    # ControlTree's live tint (05 S131, D-05-FOLLOW-ALL-PAGES): the key's
+    # place in the model's kindAt / valueAt; -1: none.
+    "liveIndex": -1,
+}
 
 
 def key_name(code: tuple) -> str:
@@ -385,12 +394,34 @@ class KeyboardLayoutModel(ControlLayoutModel):
     """Rows for the Keyboard page: group headers, one parent per key, and
     its actions in the current mode."""
 
+    roles = {
+        **ControlLayoutModel.roles,
+        **{
+            QtCore.Qt.ItemDataRole.UserRole
+            + 1
+            + len(ROW_DEFAULTS)
+            + i: QtCore.QByteArray(name.encode())
+            for i, name in enumerate(EXTRA_DEFAULTS)
+        },
+    }
+
     # A property notified by a base-class signal crashes when QML builds
     # the type (PySide), so this model's own signal follows groupsChanged.
     keyGroupsChanged = QtCore.Signal()
+    stampChanged = QtCore.Signal()
+    # A key was pressed and the page should show its row
+    # (D-05-FOLLOW-ALL-PAGES): its parent key.
+    followInput = QtCore.Signal(str)
 
     def __init__(self, parent: ta.OQO = None) -> None:
+        # Live tint: keys by liveIndex, and the stamp ControlTree watches.
+        self._live = LiveInputs()
+        self._stamp = 0
         super().__init__(parent)
+        # The keys the Keyboard input module passes (its claim).
+        from gremlin.modules.runtime import InputModuleRuntime
+
+        InputModuleRuntime().key_event.connect(self._on_key)
         self.groupsChanged.connect(self.keyGroupsChanged)
         store.add_pending_listener(self._pending_changed)
         self.destroyed.connect(
@@ -427,7 +458,7 @@ class KeyboardLayoutModel(ControlLayoutModel):
         return len(items), 0, 0
 
     def _row(self, **fields: object) -> dict:
-        row = super()._row(**fields)
+        row = {**ROW_DEFAULTS, **EXTRA_DEFAULTS, **fields}
         if row["rowKind"] == "group":
             row["subtitle"] = _keys_text(int(row["childCount"]))
         return row
@@ -435,6 +466,35 @@ class KeyboardLayoutModel(ControlLayoutModel):
     def _parent_subtitle(self, item: LayoutItem, extra: list[dict]) -> str:
         # The binding's Note under the key's name (05 S43, D-05-S43-BOTHROWS).
         return item_note(self._mode_item(item))
+
+    def _parent_fields(self, item: LayoutItem, extra: list[dict]) -> dict:
+        return {"liveIndex": self._live.index(int(item.id), "button")}
+
+    # Live tint and follow (05 S131, D-05-FOLLOW-ALL-PAGES).
+
+    def _on_key(self, event: Any) -> None:  # noqa: ANN401
+        ident = key_id_of(getattr(event, "identifier", None))
+        if ident is None or not self._live.known(ident):
+            return
+        was = self._live.value_of(ident)
+        value = 1.0 if event.is_pressed else 0.0
+        self._live.set(ident, "button", value)
+        self._stamp += 1
+        self.stampChanged.emit()
+        if follows("button", value, was, bool(getattr(event, "synthetic", False))):
+            self.followInput.emit(parent_key(InputType.Keyboard, ident))
+
+    @QtCore.Property(int, notify=stampChanged)
+    def stamp(self) -> int:
+        return self._stamp
+
+    @QtCore.Slot(int, result=str)
+    def kindAt(self, index: int) -> str:
+        return self._live.kind_at(index)
+
+    @QtCore.Slot(int, result=float)
+    def valueAt(self, index: int) -> float:
+        return self._live.value_at(index)
 
     def _can_remove(self, item: LayoutItem) -> bool:
         """Delete only where it does something (S75): this mode's actions,
@@ -507,6 +567,9 @@ class KeyboardLayoutModel(ControlLayoutModel):
             self._mode,
             False,
         )
+
+    def _real_item(self, item: LayoutItem) -> InputItem | None:
+        return self._mode_item(item)
 
     def _spec(self, key: str) -> tuple | None:
         item = self._item_for(key)

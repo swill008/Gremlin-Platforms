@@ -7,6 +7,7 @@ import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.ActionPlugins
+import Gremlin.Base as Base
 import "../../qml"
 import Gremlin.Style
 
@@ -43,10 +44,27 @@ Item {
                     onModelChanged: Qt.callLater(() => {
                         currentIndex = Math.max(0, indexOfValue(_root.action.xboxDeviceId))
                     })
+                    // A pad that can't be sent to: "⚠ <pad>" in red with
+                    // why as the tooltip (D-05-CANT-SEND-ALL).
+                    readonly property bool cantSend: _root.action.cantSendText !== ""
+                    displayText: cantSend ? "⚠ " + _root.action.padLabel : currentText
                     Component.onCompleted: {
                         currentIndex = Math.max(0, indexOfValue(_root.action.xboxDeviceId))
+                        if (contentItem && contentItem.color !== undefined) {
+                            const box = _pad
+                            contentItem.color = Qt.binding(() =>
+                                box.cantSend ? Style.danger
+                                : !box.enabled ? box.U.Universal.chromeDisabledLowColor
+                                : box.U.Universal.foreground)
+                        }
                     }
                     onActivated: _root.action.xboxDeviceId = currentValue
+
+                    HoverHandler { id: _padHover }
+                    Base.WrappingTooltip {
+                        text: _root.action.cantSendText
+                        visible: _pad.cantSend && _padHover.hovered
+                    }
                 }
             }
 
