@@ -336,6 +336,8 @@ JGListView {
 
                 VJoySelector {
                     Layout.fillWidth: true
+                    // Never squeezed (to-do 98): the name gives way instead.
+                    Layout.minimumWidth: implicitWidth
                     Layout.alignment: Qt.AlignRight
 
                     validTypes: modelData.validTypes
@@ -359,7 +361,12 @@ JGListView {
 
     }
 
+    // Up to labelWidth wide; when the row is short of room the name narrows
+    // and wraps so the setting's control keeps its width (to-do 98).
     component DescriptiveText : RowLayout {
+        Layout.fillWidth: true
+        Layout.maximumWidth: labelWidth
+
         property string text: ""
         property alias description: _tooltip.text
         property bool isValid: false
@@ -379,7 +386,8 @@ JGListView {
             text: `${parent.text} ${modelData.isOptional ? '' : '(req)'}`
             wrapMode: Text.WordWrap
 
-            Layout.minimumWidth: Style.dp(150)
+            Layout.fillWidth: true
+            Layout.minimumWidth: Style.dp(80)
             Layout.preferredWidth: labelWidth
 
             ToolTip {

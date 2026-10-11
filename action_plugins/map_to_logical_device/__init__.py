@@ -132,6 +132,8 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
                 is_pressed=is_pressed,
                 raw_value=value.raw,
                 ld_chain=path,
+                # Made by the program: never moves a page (05 S131).
+                synthetic=True,
             ),
             chain,
         )
@@ -175,6 +177,7 @@ class MapToLogicalDeviceFunctor(RelativeAxisLoop, AbstractFunctor):
                 value=value,
                 raw_value=value,
                 ld_chain=path,
+                synthetic=True,
             ),
             self._relative_chain,
         )
@@ -328,7 +331,10 @@ class ControlPicker(QtCore.QObject):
     def __init__(self, owner: MapToLogicalDeviceModel) -> None:
         super().__init__(owner)
         self._owner = owner
+        # Choices follow the Logical Device's controls; the ⚠ follows the
+        # output layer's can't-be-sent notice (D-05-CANT-SEND-LIVE).
         signal.logicalDeviceModified.connect(self.refresh)
+        signal.cantSendChanged.connect(self.refresh)
 
     @QtCore.Slot()
     def refresh(self) -> None:

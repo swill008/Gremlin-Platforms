@@ -26,6 +26,7 @@ from PySide6 import QtTest
 from gremlin import osc, shared_state, trace
 from gremlin import osc_device_file as odf
 from gremlin.osc import OscDevice, OscRuntime
+from gremlin.profile import InputItem, Library
 from gremlin.types import InputType
 
 BUTTON = InputType.JoystickButton
@@ -62,7 +63,7 @@ def rt(qapp: object, monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespac
     monkeypatch.setattr(
         shared_state,
         "current_profile",
-        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [object()]}),
+        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [InputItem(Library())]}),
     )
     traffic = ModuleType("gremlin.osc_traffic")
     traffic.note = lambda *a: None  # type: ignore[attr-defined]

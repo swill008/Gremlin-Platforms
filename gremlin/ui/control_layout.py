@@ -32,7 +32,7 @@ Public names (QML), unchanged from LogicalLayoutModel:
             cantSend (D-05-CANT-SEND: why an action row, or any action of
             a parent row, can't be sent; "" when it can. Filled by the
             base for every child row with a sequenceIndex; asked again on
-            profileChanged, configChanged and device_change_event)
+            profileChanged and signal.cantSendChanged, D-05-CANT-SEND-LIVE)
   keys      "group:<name>", "parent:<button|axis|hat>:<id>",
             "child:<word>:<id>:<seq>"; subclass rows pick their own prefix
             (Logical: "writer:<action id>"; OSC feedback e.g. "feedback:<uid>").
@@ -348,15 +348,10 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         signal.profileChanged.connect(self._on_profile)
         signal.modeRenamed.connect(self._on_mode_renamed)
         signal.modeDeleted.connect(self._on_mode_deleted)
-        # What can be sent changes with the claims (a module saved) and the
-        # vJoy devices the driver lists (D-05-CANT-SEND): ask again.
-        signal.configChanged.connect(self._on_external)
-        try:
-            from gremlin import event_handler
-
-            event_handler.EventListener().device_change_event.connect(self._on_external)
-        except Exception:  # noqa: BLE001 - no device events (tests)
-            pass
+        # What can be sent changed (claims, vJoy driver, Xbox, OSC, Logical
+        # Device): the output layer's one notice; the ⚠ asks again
+        # (D-05-CANT-SEND-LIVE).
+        signal.cantSendChanged.connect(self._on_cant_send)
 
     # Hooks (see the module docstring).
 
@@ -516,6 +511,10 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
     def _on_external(self) -> None:
         if self._writing:
             return
+        self._rebuild()
+
+    @QtCore.Slot()
+    def _on_cant_send(self) -> None:
         self._rebuild()
 
     def _profile(self) -> Profile | None:

@@ -45,6 +45,11 @@ class Signal(QtCore.QObject):
     oscDeviceReloaded = QtCore.Signal()
     # OSC's server settings (its file's "server" part) changed.
     oscServerSettingsChanged = QtCore.Signal()
+    # What can't be sent may have changed (claims, vJoy driver, Xbox modules,
+    # OSC settings, Logical Device file). Sent only by the output layer,
+    # once per burst, on the main thread; every red ⚠ listens to it
+    # (D-05-CANT-SEND-LIVE).
+    cantSendChanged = QtCore.Signal()
     # Options' "OSC settings are in OSC › Module Setup" button: the main
     # window opens OSC's Module Setup, as its card does.
     openOscModuleSetup = QtCore.Signal()

@@ -15,7 +15,7 @@ from unittest import mock
 
 import pytest
 
-from gremlin import device_initialization
+from gremlin import device_initialization, event_handler
 from gremlin.modules import output
 from gremlin.ui import output_modules
 
@@ -60,7 +60,7 @@ def driver() -> _Driver:
 
 @pytest.fixture
 def listener() -> mock.MagicMock:
-    with mock.patch.object(output_modules.event_handler, "EventListener") as el:
+    with mock.patch.object(event_handler, "EventListener") as el:
         yield el
 
 
@@ -126,25 +126,24 @@ def test_saved_wire_to_an_off_vjoy_shows_cant_send(
 # --- (2) turned off / on while the program runs --------------------------------
 
 
-def test_picker_rereads_on_a_device_change(
+def test_picker_rereads_on_the_cant_send_notice(
     driver: _Driver, listener: mock.MagicMock
 ) -> None:
+    """The picker follows the output layer's notice (D-05-CANT-SEND-LIVE),
+    which a vJoy device-list change sends."""
+    from gremlin.signal import signal
+
     picker = _picker(listener)
-    connect = listener.return_value.device_change_event.connect
-    slots = [call.args[0] for call in connect.call_args_list]
-    assert picker._update_choices in slots
     picker.setInitialState(4, "button", 7)
     assert "Button 7" in picker.inputChoices
 
     driver.on = {3}  # vJoy 4 turned off in the vJoy configuration tool
-    for slot in slots:
-        slot()
+    signal.cantSendChanged.emit()
     assert "⚠ Button 7" in picker.inputChoices
     assert "Button 7" not in picker.inputChoices
 
     driver.on = {3, 4}  # and on again
-    for slot in slots:
-        slot()
+    signal.cantSendChanged.emit()
     assert "Button 7" in picker.inputChoices
     assert not any(label.startswith("⚠") for label in picker.inputChoices)
 

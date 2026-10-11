@@ -23,6 +23,7 @@ import pytest
 from gremlin import osc, shared_state
 from gremlin import osc_device_file as odf
 from gremlin.osc import OscRuntime
+from gremlin.profile import InputItem, Library
 
 
 @pytest.fixture
@@ -32,7 +33,7 @@ def rt(qapp: object, monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespac
     monkeypatch.setattr(
         shared_state,
         "current_profile",
-        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [object()]}),
+        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [InputItem(Library())]}),
     )
     runtime = OscRuntime()
     runtime.stop()

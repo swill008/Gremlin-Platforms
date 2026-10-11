@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import common, event_handler
+from gremlin import common
 from gremlin.modules import output
 from gremlin.modules.claim import claim_ids, kind_of
 from gremlin.signal import signal
@@ -83,9 +83,9 @@ class OutputModuleDevices(QtCore.QObject):
         # The flagged binding that can't be sent, listed so the combos show it.
         self._unclaimed: OutputModuleDevices.InputOption | None = None
         self._update_choices()
-        event_handler.EventListener().device_change_event.connect(self._update_choices)
-        signal.profileChanged.connect(self._update_choices)
-        signal.configChanged.connect(self._update_choices)
+        # Claims, the vJoy driver's devices and the rest decide the list
+        # and its ⚠: the output layer's one notice (D-05-CANT-SEND-LIVE).
+        signal.cantSendChanged.connect(self._update_choices)
 
     def _input_label(self, claim: dict, input_type: InputType, input_id: int) -> str:
         return output.control_label(claim, kind_of(input_type), input_id)
@@ -104,6 +104,7 @@ class OutputModuleDevices(QtCore.QObject):
         )
         return text or ""
 
+    @QtCore.Slot()
     def _update_choices(self) -> None:
         self._modules = {}
         self._choices = {}

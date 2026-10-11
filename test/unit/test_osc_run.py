@@ -20,6 +20,7 @@ from gremlin import osc, shared_state
 from gremlin import osc_device_file as odf
 from gremlin.event_handler import EventListener
 from gremlin.osc import OscDevice, OscRuntime
+from gremlin.profile import InputItem, Library
 from gremlin.types import InputType
 
 AXIS = InputType.JoystickAxis
@@ -46,6 +47,13 @@ class FakeListener:
         self.open = False
 
 
+def _input_item() -> InputItem:
+    """A real input item with no bindings: the session app's Home card list
+    reads the current profile's inputs whenever cantSendChanged fires, and
+    oscServerSettingsChanged sends that notice."""
+    return InputItem(Library())
+
+
 @pytest.fixture
 def run(qapp: object, monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple]:
     server: dict[str, Any] = {}
@@ -56,7 +64,7 @@ def run(qapp: object, monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple]:
     monkeypatch.setattr(
         shared_state,
         "current_profile",
-        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [object()]}),
+        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [_input_item()]}),
     )
     FakeListener.made = []
     FakeListener.fail_ports = set()
@@ -321,7 +329,7 @@ def test_run_opens_port_only_when_profile_uses_osc_inputs(
     from gremlin.signal import signal
 
     runtime, _, _, _ = run
-    other = SimpleNamespace(inputs={"some-joystick": [object()]})
+    other = SimpleNamespace(inputs={"some-joystick": [_input_item()]})
     monkeypatch.setattr(shared_state, "current_profile", other)
     runtime.start()
     assert runtime._listener is None and FakeListener.made == []
@@ -332,7 +340,7 @@ def test_run_opens_port_only_when_profile_uses_osc_inputs(
     runtime._on_main("/new", ())
     assert runtime._listener is None
     runtime.stop()
-    other.inputs[osc.OSC_DEVICE_UUID] = [object()]
+    other.inputs[osc.OSC_DEVICE_UUID] = [_input_item()]
     runtime.start()
     assert runtime._listener is not None
 

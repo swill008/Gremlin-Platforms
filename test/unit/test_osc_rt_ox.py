@@ -26,6 +26,7 @@ from gremlin import clock, log_once, osc, osc_output, run_scope, shared_state
 from gremlin import osc_device_file as odf
 from gremlin.event_handler import EventListener
 from gremlin.osc import OscDevice, OscRuntime
+from gremlin.profile import InputItem, Library
 from gremlin.types import InputType
 
 AXIS = InputType.JoystickAxis
@@ -68,7 +69,7 @@ def rt(qapp: object, monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespac
     monkeypatch.setattr(
         shared_state,
         "current_profile",
-        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [object()]}),
+        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [InputItem(Library())]}),
     )
     fake = Clock()
     monkeypatch.setattr(clock, "now", fake.now)

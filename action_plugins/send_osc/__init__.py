@@ -170,6 +170,7 @@ class SendOscModel(ActionModel):
     valuesChanged = QtCore.Signal()
     inputMinChanged = QtCore.Signal()
     inputMaxChanged = QtCore.Signal()
+    cantSendTextChanged = QtCore.Signal()
 
     def __init__(
         self,
@@ -185,6 +186,9 @@ class SendOscModel(ActionModel):
         from gremlin.signal import signal
 
         signal.oscServerSettingsChanged.connect(self._targets_changed)
+        # OSC output on/off, targets gone: the ⚠ follows the output layer's
+        # notice (D-05-CANT-SEND-LIVE).
+        signal.cantSendChanged.connect(self.cantSendTextChanged)
 
     @QtCore.Slot()
     def _targets_changed(self) -> None:
@@ -228,7 +232,7 @@ class SendOscModel(ActionModel):
     def _get_target(self) -> str:
         return self._osc.target
 
-    @QtCore.Property(str, notify=targetChanged)
+    @QtCore.Property(str, notify=cantSendTextChanged)
     def cantSendText(self) -> str:
         """Why this target can't be sent to ("" when it can), for the red ⚠
         tooltip (D-05-CANT-SEND-ALL)."""
@@ -245,6 +249,7 @@ class SendOscModel(ActionModel):
         if str(value) != self._osc.target:
             self._osc.target = str(value)
             self.targetChanged.emit()
+            self.cantSendTextChanged.emit()
 
     def _get_address(self) -> str:
         return self._osc.address

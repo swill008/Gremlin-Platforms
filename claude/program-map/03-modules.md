@@ -514,6 +514,7 @@ Line numbers in 7.1-7.12 are from the 6 Oct mapping and have moved since (audit 
 ## 11. Size and test coverage
 
 **Size (lines, roughly)**
+- Can't-be-sent notice (2026-10-11, D-05-CANT-SEND-LIVE): `output.py` owns `notify_cant_send()` / `watch_cant_send()` / `_send_cant_send()` (one `signal.cantSendChanged` per burst, main thread, claim cache dropped); sources: `refresh()` on every module file save/delete (`store._saved`), configChanged, profileChanged, oscServerSettingsChanged, oscDeviceReloaded, logicalDeviceModified/Reloaded, `EventListener().device_change_event`, vJoy found off/on in `_open_vjoy`, `clear_blocked_log`. `module_model.ModuleListModel` follows it (`_follow_cant_send`); `configChanged` → `_refresh_inplace` no longer re-reads the card's can't-send line. Tests: `test_cant_send_live.py` (8), `test_cant_send_live_rows.py` (4).
 - Core `gremlin/modules/*`: about 5,270 (store.py 2,082, output.py 1,241, wiring.py 141, registry.py 434, module_file.py 161, device_class.py 194, calibration.py 205, runtime.py 204).
 - UI models: module_model.py 2,420; module-file part of hardware_profile.py about 300; modules/hardware.py 65; device.py calibration part about 570; module_inputs 264; module_pairing 356; output_modules 302; live_input 446; module_calibration 80; auto_map_modules 80. About 4,800.
 - QML: StatusPage 1,178; OutputModuleView 1,286; DialogConfigureModule 739; DialogCalibration 679; StatusCard 510; HatView 75; RunningNote 30. About 4,500.

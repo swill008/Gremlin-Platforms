@@ -141,9 +141,12 @@ def test_the_card_follows_an_action_edit(model: module_model.ModuleListModel) ->
     model._refresh_targets()
     assert _card(model, "throttle")["cantSendCount"] == 1
     assert changed == [1]
-    # Claims changed (Module Setup save) and profile/device reloads too.
+    # Claims, vJoy driver, Xbox, OSC, Logical Device: the output layer's
+    # one notice (D-05-CANT-SEND-LIVE).
     model.found[:] = []
-    model._refresh_inplace()
+    from gremlin.signal import signal
+
+    signal.cantSendChanged.emit()
     assert _card(model, "throttle")["cantSendCount"] == 0
 
 

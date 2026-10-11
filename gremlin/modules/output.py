@@ -100,8 +100,110 @@ def _refresh_claims(force: bool = False) -> None:
 
 
 def refresh() -> None:
-    """Re-read every output module now (on activation and after a save)."""
+    """Re-read every output module now (on activation and after a save).
+    A module file saved or deleted (store._saved) may change what can't be
+    sent, so the notice goes out too."""
     _refresh_claims(force=True)
+    notify_cant_send()
+
+
+# --- the can't-be-sent notice (D-05-CANT-SEND-LIVE) --------------------------
+
+
+class _CantSendNotice(QtCore.QObject):
+    """Sends signal.cantSendChanged once per burst, on the main thread.
+
+    It also listens to the program's own signals for what decides "can't be
+    sent" (claims saved, the vJoy device list, OSC's settings, the Logical
+    Device, the profile), so no ⚠ keeps its own list of them."""
+
+    asked = QtCore.Signal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._timer = QtCore.QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.setInterval(0)
+        self._timer.timeout.connect(self._send)
+        # A worker thread's ask is queued to the main thread.
+        self.asked.connect(self._ask)
+
+    def listen(self) -> None:
+        from gremlin.signal import signal
+
+        for sig in (
+            signal.configChanged,
+            signal.profileChanged,
+            signal.oscServerSettingsChanged,
+            signal.oscDeviceReloaded,
+            signal.logicalDeviceModified,
+            signal.logicalDeviceReloaded,
+        ):
+            sig.connect(self._ask)
+        try:
+            from gremlin import event_handler
+
+            event_handler.EventListener().device_change_event.connect(self._ask)
+        except Exception:  # noqa: BLE001 - no device listener (some tests)
+            syslog.debug("Can't-be-sent notice: no device listener", exc_info=True)
+
+    @QtCore.Slot()
+    def _ask(self) -> None:
+        self._timer.start()
+
+    @QtCore.Slot()
+    def _send(self) -> None:
+        _send_cant_send()
+
+
+_notice: _CantSendNotice | None = None
+_notice_lock = threading.Lock()
+
+
+def _send_cant_send() -> None:
+    global _claims_at
+    # Readers see the new claims, not the one-second cache.
+    with _lock:
+        _claims_at = 0.0
+    from gremlin.signal import signal
+
+    signal.cantSendChanged.emit()
+
+
+def watch_cant_send() -> _CantSendNotice | None:
+    """Starts the notice (once, on the main thread): None without a Qt
+    application, or on another thread before it started. Every
+    can't-be-sent reader calls it, so the notice is listening before any ⚠
+    is shown."""
+    global _notice
+    if _notice is not None:
+        return _notice
+    app = QtCore.QCoreApplication.instance()
+    if app is None or threading.current_thread() is not threading.main_thread():
+        return None
+    with _notice_lock:
+        if _notice is None:
+            notice = _CantSendNotice()
+            notice.listen()
+            _notice = notice
+        return _notice
+
+
+def notify_cant_send() -> None:
+    """What can't be sent may have changed: signal.cantSendChanged goes out
+    once for a burst of calls, on the main thread, with the claim cache
+    dropped. Any thread may call it. Without a Qt application it is sent at
+    once."""
+    notice = watch_cant_send()
+    if notice is not None:
+        notice.asked.emit()
+        return
+    app = QtCore.QCoreApplication.instance()
+    if app is None:
+        _send_cant_send()
+    else:
+        # Another thread before the notice started: started on the main one.
+        QtCore.QTimer.singleShot(0, app, notify_cant_send)
 
 
 def vjoy_claim(vjoy_id: int) -> dict:
@@ -112,6 +214,7 @@ def vjoy_claim(vjoy_id: int) -> dict:
 
 def vjoy_modules() -> list[tuple[int, registry.Module]]:
     """vJoy output modules, one per vJoy device, by vJoy number (read fresh)."""
+    watch_cant_send()
     _refresh_claims(force=True)
     return sorted(_vjoy_modules.items())
 
@@ -165,7 +268,10 @@ def clear_blocked_log() -> None:
         _blocked.clear()
         _vjoy_failed_at.clear()
         _told_busy.clear()
+        was_off = bool(_vjoy_off)
         _vjoy_off.clear()
+    if was_off:
+        notify_cant_send()
 
 
 # --- vJoy -------------------------------------------------------------------
@@ -188,7 +294,10 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
         # Turned off in the vJoy configuration tool: never asked to open
         # (the driver logs each try); said once per Run (06 S47).
         with _lock:
+            newly_off = vid not in _vjoy_off
             _vjoy_off.add(vid)
+        if newly_off:
+            notify_cant_send()
         _log_once(
             ("vjoy-off", vid),
             f"Output blocked: vJoy {vid} is not available (the vJoy driver "
@@ -196,8 +305,11 @@ def _open_vjoy(vjoy_id: int) -> Any | None:  # noqa: ANN401
         )
         return None
     with _lock:
+        back_on = vid in _vjoy_off
         _vjoy_off.discard(vid)
         failed_at = _vjoy_failed_at.get(vid)
+    if back_on:
+        notify_cant_send()
     if failed_at is not None and clock.monotonic() - failed_at < _VJOY_RETRY:
         return None
     try:
@@ -1023,6 +1135,7 @@ def cant_send_text(vjoy_id: int, kind: object, control_id: int) -> str | None:
     """None when a Map to vJoy target can be sent; else why not, for the
     red ⚠ tooltip. Sendable means listed in the action editor's vJoy
     drop-down: the output module's claim cut to the driver (05 S118)."""
+    watch_cant_send()
     vjoy_id, control_id, kind = int(vjoy_id), int(control_id), _kind(kind)
     off = vjoy_turned_off(vjoy_id)
     _refresh_claims()
@@ -1086,6 +1199,7 @@ def xbox_pad_label(pad: int) -> str:
 def xbox_cant_send_text(pad: int) -> str | None:
     """None when Map to Xbox can send to this pad; else "<pad> is not
     Found." (the Xbox driver, ViGEm, can't be used, or no such pad)."""
+    watch_cant_send()
     from vigem.xbox import MAX_PADS
 
     pad = int(pad)
@@ -1103,6 +1217,7 @@ def logical_control_label(input_type: Any, input_id: Any) -> str:  # noqa: ANN40
 def logical_cant_send_text(action: Any) -> str | None:  # noqa: ANN401
     """None when a Map to Logical Device action's control is there; else
     "Logical Device <Control> is not Found." (the control was deleted)."""
+    watch_cant_send()
     if not getattr(action, "logical_missing", False):
         return None
     label = logical_control_label(action.logical_input_type, action.logical_input_id)
@@ -1138,6 +1253,7 @@ def osc_cant_send_text(
     is not Found." (not in the current Targets; `name` is the action's
     saved target name, the id only when none was saved,
     D-09-SENDOSC-TARGET-NAME) or "OSC output is Off."."""
+    watch_cant_send()
     from gremlin import osc_output
 
     server, targets = settings if settings is not None else osc_settings()
@@ -1158,6 +1274,7 @@ def cant_send_action_texts(
     vJoy, Map to Xbox, Map to Logical Device, Send OSC, macro vJoy and
     Logical Device steps); [] when all can. Nested actions are the caller's
     (profile.reachable). `memo` shares look-ups across calls."""
+    watch_cant_send()
     from action_plugins.macro import MacroData
     from action_plugins.map_to_logical_device import MapToLogicalDeviceData
     from action_plugins.map_to_xbox import MapToXboxData
@@ -1209,9 +1326,9 @@ def cant_send_bindings(profile: Any = None) -> list[dict]:  # noqa: ANN401
     """Every output in the profile (default: the current one) that can't be
     sent (vJoy, Xbox, Logical Device, OSC; cant_send_action_texts), nested
     actions included: device_guid, device_name, input_type, input_id,
-    input_label, mode, text (the tooltip). Re-ask on signal.profileChanged,
-    signal.configChanged (claims saved), signal.logicalDeviceModified, OSC's
-    settings signals and EventListener().device_change_event."""
+    input_label, mode, text (the tooltip). Re-ask on signal.cantSendChanged
+    (D-05-CANT-SEND-LIVE)."""
+    watch_cant_send()
     from gremlin import device_initialization, shared_state
     from gremlin.profile import Profile, reachable
 

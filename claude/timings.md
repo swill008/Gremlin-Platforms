@@ -616,3 +616,15 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | NARROW-LD: Map to Logical Device option a) layout (Speed overflow at default width also fixed) | fix | 3–8 min (table) | ~6 min (agent clock 05:23–05:27 too short) | 05:23–05:29 |
 | 2026-10-11 | NARROW-VJ: Map to vJoy option a) layout; vJoy/control boxes size to widest text | fix | 3–8 min (table) | 5 min | 05:23–05:28 |
 | 2026-10-11 | Full run + lint (editor layout + release fix): all green, seed 836712 | test | 5–6 min (table) | 6 min | 05:29–05:35 |
+| 2026-10-11 | NOTICE-ROWS: rows, Find tick, Home card follow signal.cantSendChanged (4 tests) | fix | 3–8 min (table) | 2 min (agent clock) | 05:39–05:41 |
+| 2026-10-11 | COND-95: ⚠ checked in Condition, macro, Script pickers (7 tests); Script page box 4 px past edge | test | 3–8 min (table) | 4 min | 05:39–05:43 |
+| 2026-10-11 | LD-94: LD events synthetic + LD editor follows cantSendChanged (5 tests) | fix | 3–8 min (table) | 5 min | 05:39–05:44 |
+| 2026-10-11 | NOTICE-OUT: output.notify_cant_send + sources + picker/Xbox/OSC listeners (8 tests) | fix | 3–8 min (table) | 7 min | 05:38–05:45 |
+| 2026-10-11 | SCRIPT-98: Script setting name gives way, vJoy picker keeps natural width; 100/150/200 % cases | fix | 3–8 min (table) | ~3 min (agent clock) | 05:47–05:50 |
+| 2026-10-11 | Full run + lint (93-95, 98): 1 failure (test_osc_run x2 alone, notice vs fake profile), 7 lint | test | 5–6 min (table) | 5 min | 05:50–05:55 |
+| 2026-10-11 | OSCRUN-FIX: test_osc_run fake profile items → real InputItem (session app's card list follows the notice) | fix | 3–8 min (table) | 2 min | 05:57–05:59 |
+| 2026-10-11 | Lead: test impact sweep (fake profiles vs new notice; old names) — 11 OSC test files moved to real InputItem; 20 files run targeted | lead | no timing data yet | 6 min | 05:57–06:03 |
+| 2026-10-11 | Full run + lint (after sweep): 5 order-dependent failures (macro setting missing x4, osc_run fake profile get_input_item) | test | 5–6 min (table) | 5 min | 06:03–06:08 |
+| 2026-10-11 | ORDER-OSC: leaked page models from test_final_05 (deleteLater never ran) followed the notice; helper deletes at once + conftest guard | fix | 3–8 min (table) | 10 min | 06:06–06:16 |
+| 2026-10-11 | ORDER-MACRO: test_card_cant_send's fresh Configuration got the macro plugin's settings on first import; _settings_kept copies them back | fix | 3–8 min (table) | 18 min | 06:06–06:24 |
+| 2026-10-11 | Full run + lint (93-95, 98, test isolation fixes): all green, seed 99154 | test | 5–6 min (table) | 5 min | 06:25–06:30 |

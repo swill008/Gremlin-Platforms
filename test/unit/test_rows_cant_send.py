@@ -153,9 +153,10 @@ def test_rows_follow_the_contract_signals(
     logical: Any,  # noqa: ANN401
     cant: dict,
 ) -> None:
-    # The claim changed (File › Save of a module): the rows ask again.
+    # What can be sent changed: the output layer's one notice
+    # (D-05-CANT-SEND-LIVE); the rows ask again.
     cant.clear()
-    signal.configChanged.emit()
+    signal.cantSendChanged.emit()
     assert _rows(logical, "parent")["parent:button:1"]["cantSend"] == ""
     cant[BAD] = TEXT
     signal.profileChanged.emit()

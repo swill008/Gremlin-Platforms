@@ -12,6 +12,7 @@ from unittest import mock
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
+from gremlin import event_handler
 from gremlin.ui import output_modules
 
 # vjoy_3 claims 3 axes and 56 buttons, like the user's file.
@@ -28,7 +29,7 @@ _MODULES = [
 def picker() -> output_modules.OutputModuleDevices:
     with (
         mock.patch.object(output_modules, "_dest_modules", return_value=_MODULES),
-        mock.patch.object(output_modules.event_handler, "EventListener"),
+        mock.patch.object(event_handler, "EventListener"),
     ):
         devices = output_modules.OutputModuleDevices()
         devices.validTypes = ["button"]
@@ -102,7 +103,7 @@ _TWO_MODULES = [
 def two_vjoys() -> output_modules.OutputModuleDevices:
     with (
         mock.patch.object(output_modules, "_dest_modules", return_value=_TWO_MODULES),
-        mock.patch.object(output_modules.event_handler, "EventListener"),
+        mock.patch.object(event_handler, "EventListener"),
     ):
         devices = output_modules.OutputModuleDevices()
         devices.validTypes = ["button"]

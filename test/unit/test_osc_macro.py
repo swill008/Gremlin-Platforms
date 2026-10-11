@@ -20,6 +20,7 @@ from gremlin import macro, osc, shared_state
 from gremlin import osc_device_file as odf
 from gremlin.event_handler import EventListener
 from gremlin.osc import OscDevice, OscRuntime
+from gremlin.profile import InputItem, Library
 from gremlin.types import InputType
 from gremlin.ui.util import MacroRecorder
 
@@ -50,7 +51,7 @@ def rt(qapp: object, monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespac
     monkeypatch.setattr(
         shared_state,
         "current_profile",
-        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [object()]}),
+        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [InputItem(Library())]}),
     )
     rows = OscDevice().rows
     saved = rows.to_dict()

@@ -753,6 +753,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
         # picture back or take it away: the card shows it at once.
         signal.logicalDeviceReloaded.connect(self._logical_reloaded)
         signal.actionsChanged.connect(self._targets_timer.start)
+        # What can be sent changed (claims, vJoy driver, Xbox, OSC, Logical
+        # Device): the output layer's one notice (D-05-CANT-SEND-LIVE).
+        signal.cantSendChanged.connect(self._follow_cant_send)
         # Options > Reset all card sizes changes the saved sizes elsewhere;
         # re-read them here so Home cards follow at once.
         self._sizes_snap = _sizes()
@@ -1376,8 +1379,13 @@ class ModuleListModel(QtCore.QAbstractListModel):
             self.targetsChanged.emit()
         self._refresh_cant_send()
 
+    @QtCore.Slot()
+    def _follow_cant_send(self) -> None:
+        self._refresh_cant_send()
+
     def _refresh_cant_send(self) -> None:
-        """The can't-be-sent line follows action edits (D-05-CANT-SEND)."""
+        """The can't-be-sent line follows action edits (D-05-CANT-SEND) and
+        the output layer's notice (D-05-CANT-SEND-LIVE)."""
         changed = apply_cant_send(self._rows)
         roles = [
             QtCore.Qt.ItemDataRole.UserRole + 22,
@@ -1491,8 +1499,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
             ix = self.index(idx, 0)
             self.dataChanged.emit(ix, ix, roles)
         self.claimsChanged.emit()
-        # A claim change can make a binding sendable, or not.
-        self._refresh_cant_send()
 
     @QtCore.Slot()
     def notifyClaims(self) -> None:

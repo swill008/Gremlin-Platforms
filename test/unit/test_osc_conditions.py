@@ -20,6 +20,7 @@ from gremlin.base_classes import Value
 from gremlin.input_cache import Joystick
 from gremlin.modules import inputs
 from gremlin.osc import OSC_DEVICE_UUID, OscDevice
+from gremlin.profile import InputItem, Library
 from gremlin.types import InputType
 
 AXIS = InputType.JoystickAxis
@@ -149,7 +150,7 @@ def test_runtime_message_reaches_the_condition(
     monkeypatch.setattr(
         shared_state,
         "current_profile",
-        SimpleNamespace(inputs={OSC_DEVICE_UUID: [object()]}),
+        SimpleNamespace(inputs={OSC_DEVICE_UUID: [InputItem(Library())]}),
     )
     btn = rows.create(BUTTON, "/btn")
     cond = _button_condition(btn.uid)

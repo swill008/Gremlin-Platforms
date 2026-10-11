@@ -16,7 +16,7 @@ from types import SimpleNamespace
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
-from gremlin import device_initialization, macro
+from gremlin import device_initialization, event_handler, macro
 from gremlin.modules import output
 from gremlin.types import InputType
 from gremlin.ui import output_modules
@@ -193,7 +193,7 @@ def picker(monkeypatch: pytest.MonkeyPatch) -> output_modules.OutputModuleDevice
     from unittest import mock
 
     monkeypatch.setattr(output_modules, "_dest_modules", lambda: _MODULES)
-    with mock.patch.object(output_modules.event_handler, "EventListener"):
+    with mock.patch.object(event_handler, "EventListener"):
         devices = output_modules.OutputModuleDevices()
         devices.validTypes = ["button"]
         yield devices

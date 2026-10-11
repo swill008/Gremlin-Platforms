@@ -24,6 +24,7 @@ from gremlin.error import GremlinError
 from gremlin.event_handler import EventListener
 from gremlin.osc import OscDevice, OscRuntime
 from gremlin.osc_rows import OscRows
+from gremlin.profile import InputItem, Library
 from gremlin.types import InputType
 
 AXIS = InputType.JoystickAxis
@@ -74,7 +75,7 @@ def run(qapp: object, server: dict, monkeypatch: pytest.MonkeyPatch) -> Iterator
     monkeypatch.setattr(
         shared_state,
         "current_profile",
-        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [object()]}),
+        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [InputItem(Library())]}),
     )
     traffic: list[tuple] = []
     mod = ModuleType("gremlin.osc_traffic")

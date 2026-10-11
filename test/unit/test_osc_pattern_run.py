@@ -28,7 +28,7 @@ from gremlin import osc_device_file as odf
 from gremlin.event_handler import Event, EventListener
 from gremlin.modules import store
 from gremlin.osc import OscDevice, OscRuntime
-from gremlin.profile import Profile
+from gremlin.profile import InputItem, Library, Profile
 from gremlin.types import InputType
 from gremlin.ui.osc_device_model import OscDeviceManagementModel
 
@@ -64,7 +64,7 @@ def rt(
     monkeypatch.setattr(
         shared_state,
         "current_profile",
-        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [object()]}),
+        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [InputItem(Library())]}),
     )
     traffic: list[tuple[str, list[str]]] = []
     monkeypatch.setattr(

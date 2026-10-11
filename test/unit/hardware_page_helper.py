@@ -60,9 +60,15 @@ def page_on(
 
 
 def close(model: Any) -> None:  # noqa: ANN401
-    """Closes the pane and drops what the page held unsaved."""
+    """Closes the pane, drops what the page held unsaved, and deletes the
+    model now: deleteLater never ran outside an event loop, so the model
+    stayed connected to cantSendChanged and rebuilt on a later test's
+    stand-in profile (seed 53633, unit-4)."""
+    import shiboken6
+
     guid = model._store.guid
     model.endPane()
     if guid:
         store.discard_pending(guid)
-    model.deleteLater()
+    if shiboken6.isValid(model):
+        shiboken6.delete(model)

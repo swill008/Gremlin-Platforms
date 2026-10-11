@@ -156,6 +156,13 @@ class MapToXboxModel(ActionModel):
         parent: QtCore.QObject,
     ) -> None:
         super().__init__(data, binding_model, action_index, parent_index, parent)
+        # Xbox output modules added or removed, the driver: the pad names
+        # and the ⚠ follow the output layer's notice (D-05-CANT-SEND-LIVE).
+        signal.signal.cantSendChanged.connect(self._cant_send_changed)
+
+    @QtCore.Slot()
+    def _cant_send_changed(self) -> None:
+        self.padChoicesChanged.emit()
 
     def _qml_path_impl(self) -> str:
         return (

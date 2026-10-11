@@ -55,11 +55,31 @@ def _settings_kept() -> Iterator[None]:
     # The Options registry the same way: options are registered when modules
     # load (the Button Map's library entry...), so a test that makes a fresh
     # one must not leave it behind either.
+    # The class itself, taken now: a test may monkeypatch the module's name
+    # with a fake (test_final_05 S7) and the undo can come after this one.
+    cfg_cls = gremlin.config.Configuration
     kept = {
         cls: SingletonMetaclass._instances.get(cls)
-        for cls in (gremlin.config.Configuration, MetaConfigOption)
+        for cls in (cfg_cls, MetaConfigOption)
     }
     yield
+    used = SingletonMetaclass._instances.get(cfg_cls)
+    original = kept[cfg_cls]
+    if original is not None and used is not None and used is not original:
+        # A module first imported during the test registered its settings
+        # into the test's own Configuration (output.cant_send_action_texts
+        # imports the Macro plugin, 2026-10-11): the import won't run again,
+        # so hand them to the kept one or they are missing for the rest of
+        # the run.
+        with used._lock:  # noqa: SLF001
+            fresh = {
+                key: dict(entry)
+                for key, entry in used._data.items()  # noqa: SLF001
+                if entry.get("is_registered")
+            }
+        with original._lock:  # noqa: SLF001
+            for key, entry in fresh.items():
+                original._data.setdefault(key, entry)  # noqa: SLF001
     for cls, original in kept.items():
         if original is not None:
             SingletonMetaclass._instances[cls] = original
@@ -172,6 +192,7 @@ def _home_models_quiet() -> Iterator[None]:
                         (signal.signal.configChanged, model._schedule_refresh),
                         (signal.signal.configChanged, model._follow_card_sizes),
                         (signal.signal.logicalDeviceReloaded, model._logical_reloaded),
+                        (signal.signal.cantSendChanged, model._follow_cant_send),
                     ):
                         try:
                             sig.disconnect(slot)
@@ -211,6 +232,62 @@ def _backends_stop_ticking() -> Iterator[None]:
                     timer.stop()
             except RuntimeError:  # deleted by the test
                 pass
+
+
+@pytest.fixture(autouse=True)
+def _layout_models_quiet() -> Iterator[None]:
+    """A page model (ControlLayoutModel) a test makes outlives it when it is
+    only deleteLater'd (no event loop runs the deletion), and it still
+    follows the program-wide notices: cantSendChanged then rebuilt nine
+    leftover Configuration page models on a later test's stand-in profile
+    (seed 53633, unit-4, test_osc_run). Models a QML page holds (they have
+    a parent) are left to that page; models made by a module-scoped
+    fixture are set up before this and kept."""
+    import warnings
+
+    import shiboken6
+
+    from gremlin import signal
+    from gremlin.ui import control_layout
+
+    cls = control_layout.ControlLayoutModel
+    made: list[control_layout.ControlLayoutModel] = []
+    real_init = cls.__init__
+
+    def init(
+        self: control_layout.ControlLayoutModel, *args: object, **kwargs: object
+    ) -> None:
+        real_init(self, *args, **kwargs)
+        made.append(self)
+
+    cls.__init__ = init  # type: ignore[method-assign]
+    try:
+        yield
+    finally:
+        cls.__init__ = real_init  # type: ignore[method-assign]
+        sig = signal.signal
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)  # already disconnected
+            for model in made:
+                if not shiboken6.isValid(model) or model.parent() is not None:
+                    continue
+                for notice, name in (
+                    (sig.profileChanged, "_on_profile"),
+                    (sig.modeRenamed, "_on_mode_renamed"),
+                    (sig.modeDeleted, "_on_mode_deleted"),
+                    (sig.cantSendChanged, "_on_cant_send"),
+                    (sig.inputItemChanged, "_on_input_changed"),
+                    (sig.configChanged, "reload"),
+                    (sig.logicalDeviceModified, "_on_external"),
+                    (sig.logicalDeviceReloaded, "_on_reloaded"),
+                ):
+                    slot = getattr(model, name, None)
+                    if slot is None:
+                        continue
+                    try:
+                        notice.disconnect(slot)
+                    except (RuntimeError, TypeError):
+                        pass
 
 
 @pytest.fixture(autouse=True)

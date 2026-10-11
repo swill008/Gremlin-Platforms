@@ -26,6 +26,7 @@ from gremlin import osc_device_file as odf
 from gremlin.mode_manager import ModeManager
 from gremlin.modules import output
 from gremlin.osc import OscDevice, OscRuntime
+from gremlin.profile import InputItem, Library
 from gremlin.types import InputType
 
 
@@ -201,7 +202,7 @@ def test_osc_input_echo_follows_the_runtime(
     monkeypatch.setattr(
         shared_state,
         "current_profile",
-        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [object()]}),
+        SimpleNamespace(inputs={osc.OSC_DEVICE_UUID: [InputItem(Library())]}),
     )
     monkeypatch.setattr(osc, "OscListener", mock.MagicMock())
     rows = OscDevice().rows
