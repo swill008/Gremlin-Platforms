@@ -601,3 +601,10 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-10 | HARNESS: journeys listen for OSC on 127.0.0.1 at an OS-picked port; new j12 (3) | fix | 3–8 min (table) | 3 min | 20:49–20:52 |
 | 2026-10-10 | Full run + lint (can't-send batch, run 4): all green except order-dependent test_card_list_signal_release; test rewritten to warm up first | test | 5–6 min (table) | 5 min | 20:52–20:57 |
 | 2026-10-10 | Full run + lint (can't-send batch, final): all green, seed 273667 | test | 5–6 min (table) | 5 min | 21:03–21:07 |
+| 2026-10-11 | Lead: CI 51f5d8be triage + fix plan (Xbox width, j11 limit, LD extra release), read-only checks incl. old-vs-new j11 timing | lead | no timing data yet | 7 min | 04:33–04:40 |
+| 2026-10-11 | Lead: off-screen screenshots of Map to Xbox editor, normal vs ⚠ (cut off) | lead | no timing data yet | 5 min | 04:41–04:46 |
+| 2026-10-11 | JLIMIT: journey child run-time limit 100 s (harness 110 s); proof with limit 5 | fix | 3–8 min (table) | 2 min | 04:49–04:51 |
+| 2026-10-11 | WIDTH: ⚠ boxes sized to shown text (4 editors), forced-⚠ width cases | fix | 3–8 min (table) | 5 min | 04:49–04:54 |
+| 2026-10-11 | Lead: EW-2 plan + off-screen screenshots (Map to vJoy, Map to Logical Device at min/default pane) | lead | no timing data yet | ~3 min | 04:54–04:56 |
+| 2026-10-11 | CI-LD: mechanism of extra release found (stale mode copy in ButtonReleaseActions), trigger not reproduced; no change | fix | 3–8 min (table) | 10 min | 04:49–04:59 |
+| 2026-10-11 | Full run + lint (CI fixes: ⚠ width, journey limit): all green, seed 341426 | test | 5–6 min (table) | 5 min | 05:00–05:05 |

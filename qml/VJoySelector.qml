@@ -96,7 +96,11 @@ Item {
             id: _inputLoader
 
             visible: _vjoy && _vjoy.hasValidVJoyDevices && _vjoy.inputChoices.length > 0
-            Layout.minimumWidth: visible ? Style.dp(72) : 0
+            // Never narrower than the shown "⚠ <Control>".
+            Layout.minimumWidth: !visible ? 0 : Math.max(Style.dp(72),
+                _root.cantSend && item
+                ? item.contentItem.contentWidth + item.contentItem.leftPadding
+                  + item.contentItem.rightPadding + item.leftPadding + item.rightPadding : 0)
             Layout.fillWidth: visible
             Layout.preferredWidth: visible ? -1 : 0
 

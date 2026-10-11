@@ -43,6 +43,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 # What a journey may take at most (the parts each wait for less).
 JOURNEY_TIMEOUT = 110
+# A journey's own run-time limit in the child's hang watch
+# (test/hang_trace/sitecustomize.py): a little under JOURNEY_TIMEOUT, so a
+# journey that runs too long prints its own stacks before this side ends
+# it. Replaces the 50 s other test programs get (test/conftest.py); the
+# stall check (BLOCKED_AFTER) still catches a frozen journey early.
+JOURNEY_HANG_LIMIT = JOURNEY_TIMEOUT - 10
 
 
 # +-------------------------------------------------------------------------
@@ -69,6 +75,8 @@ def run_journey(script: str | pathlib.Path, home: pathlib.Path, *args: str) -> d
         ),
         PYTHONIOENCODING="utf-8",
     )
+    if env.get("GREMLIN_TEST_HANG_LIMIT"):  # empty: the hang watch is off
+        env["GREMLIN_TEST_HANG_LIMIT"] = str(JOURNEY_HANG_LIMIT)
     # Here, not at the top: the journey's own child imports this file
     # without test/ on its path.
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)

@@ -35,9 +35,12 @@ Item {
                 // Xbox output modules (one pad for now).
                 ComboBox {
                     id: _pad
-                    // As wide as its widest pad name, never squeezed below it.
+                    // As wide as its widest pad name (or the shown "⚠ <pad>"),
+                    // never squeezed below it.
                     implicitContentWidthPolicy: ComboBox.WidestText
-                    Layout.minimumWidth: implicitWidth
+                    Layout.minimumWidth: Math.max(implicitWidth, cantSend
+                        ? contentItem.contentWidth + contentItem.leftPadding
+                          + contentItem.rightPadding + leftPadding + rightPadding : 0)
                     textRole: "label"
                     valueRole: "value"
                     model: _root.action.padChoices

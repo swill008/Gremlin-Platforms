@@ -73,7 +73,9 @@ fake_input.install()
 # one that stalls or runs longer than this prints every thread's stack and
 # ends, and one whose main code has ended doesn't wait for its threads. Below the
 # shortest timeout a test gives such a program (60 s), so the stacks arrive
-# before the test gives up. Tests in this process: stall detection below.
+# before the test gives up. Journeys get their own, longer limit
+# (test/journeys/_harness.py, JOURNEY_HANG_LIMIT). Tests in this process:
+# stall detection below.
 os.environ.setdefault("GREMLIN_TEST_HANG_LIMIT", "50")
 _HANG_TRACE = str(pathlib.Path(__file__).parent / "hang_trace")
 if _HANG_TRACE not in os.environ.get("PYTHONPATH", "").split(os.pathsep):

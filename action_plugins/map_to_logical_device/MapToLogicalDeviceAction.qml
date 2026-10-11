@@ -31,7 +31,10 @@ Item {
         TooltipComboBox {
             id: _control
             objectName: "logicalControl"
-            Layout.minimumWidth: Style.dp(200)
+            // Never narrower than the shown "⚠ <Control>".
+            Layout.minimumWidth: Math.max(Style.dp(200), cantSend
+                ? contentItem.contentWidth + contentItem.leftPadding
+                  + contentItem.rightPadding + leftPadding + rightPadding : 0)
             Layout.fillWidth: true
 
             // A deleted control: "⚠ <Control>" in red with why as the

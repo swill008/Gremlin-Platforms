@@ -42,7 +42,10 @@ Item {
                 objectName: "sendOscTarget"
 
                 Layout.fillWidth: true
-                Layout.minimumWidth: Style.dp(200)
+                // Never narrower than the shown "⚠ <name>".
+                Layout.minimumWidth: Math.max(Style.dp(200), cantSend
+                    ? contentItem.contentWidth + contentItem.leftPadding
+                      + contentItem.rightPadding + leftPadding + rightPadding : 0)
 
                 model: _root.action ? _root.action.targetChoices : []
                 textRole: "name"
