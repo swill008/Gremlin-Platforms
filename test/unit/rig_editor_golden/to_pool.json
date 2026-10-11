@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "border": "#3F3F46",
@@ -1295,18 +1296,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 0,
     "histLen": 1,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "placed": {
      "btn:1": true,
      "btn:2": true,
@@ -1322,6 +1318,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "2": {
       "border": "#3F3F46",
@@ -1378,18 +1375,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 0,
     "histLen": 1,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "placed": {
      "btn:1": true,
      "btn:2": true,
@@ -1408,6 +1400,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -2475,18 +2468,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 1,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 18,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "placed": {
      "btn:1": true,
      "btn:2": true,
@@ -2502,6 +2490,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -3621,18 +3610,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 0,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "placed": {
      "btn:1": true,
      "btn:2": true,
@@ -3648,6 +3632,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "2": {
       "border": "#3F3F46",
@@ -3705,18 +3690,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 1,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "placed": {
      "btn:1": true,
      "btn:2": true,
@@ -3732,6 +3712,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -4451,18 +4432,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 3,
     "histLen": 4,
     "layers": [],
     "menu": [],
     "nodeCount": 17,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "placed": {
      "btn:1": true,
      "btn:2": true,
@@ -4478,6 +4454,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -4997,18 +4974,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 16,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "placed": {
      "btn:1": false,
      "btn:2": false,
@@ -5024,6 +4996,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "1": {
       "border": "#3F3F46",
@@ -5108,18 +5081,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
     "menu": [],
     "nodeCount": 16,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "placed": {
      "btn:1": false,
      "btn:2": false,

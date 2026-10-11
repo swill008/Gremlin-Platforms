@@ -230,10 +230,10 @@ def main() -> None:
     js("var m = Qt.createQmlObject('import Gremlin.UI; FolderMemory {}', _buttonMap);"
        f" m.remember('picture', {json.dumps(folder)}); m.destroy(); 1")
     result("picker", [
-        js("_imageDialog.kind"), js("_overlayDialog.kind"),
+        js("_bgPictureDialog.kind"), js("_overlayDialog.kind"),
         js("_exportPngDialog.kind + ' ' + _exportPngDialog.mode"),
         js("_templateImportFile.kind"),
-        str(js("String(_imageDialog.prepare().currentFolder)")).rstrip("/").lower()
+        str(js("String(_bgPictureDialog.prepare().currentFolder)")).rstrip("/").lower()
         == folder.rstrip("/").lower(),
     ])
 

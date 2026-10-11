@@ -48,9 +48,9 @@ ApplicationWindow {
 
     property string leaveKind: ""
     property string targetName: ""
-    // The map's parts of the module file (map and photo) as this window last
-    // read or wrote them: another window may change the file meanwhile
-    // (History Restore, Device Pack, Module Setup's photo; 07 Q6).
+    // The map's parts of the module file as this window last read or wrote
+    // them: another window may change the file meanwhile (History Restore,
+    // Device Pack, Module Setup's Import Image; 07 Q6).
     property string _fileParts: ""
     // A Save that asked Keep mine / Take theirs: its report flag, and
     // whether a leave (close, switch...) waits for it.
@@ -62,8 +62,8 @@ ApplicationWindow {
         return targetName.length ? _fileWatch.mapParts(targetName, targetGuid) : ""
     }
 
-    // This window's own change of the file (a photo change during Edit) is
-    // not a change made elsewhere; one made elsewhere before it still is.
+    // This window's own change of the file is not a change made elsewhere;
+    // one made elsewhere before it still is.
     function ownFileChange(change) {
         var unchanged = filePartsNow() === _fileParts
         var result = change()
@@ -81,10 +81,10 @@ ApplicationWindow {
         _saveGate.ask()
     }
     property string targetGuid: ""
-    property string initialPhoto: ""
+    // Given by Main.qml when it opens the window; not used: the map's own
+    // background is all that shows (07 S11).
     property string loadedDevice: ""
     property string pendingDevice: ""
-    property string pendingPhoto: ""
     property string pendingGuid: ""
     property bool startBlank: false
     property bool faceLive: false
@@ -132,9 +132,6 @@ ApplicationWindow {
         }
     }
 
-    // A map that names no photo shows the device's own card photo, or no
-    // photo at all (07 S11; no stock photos ship, 07 Q12).
-    property string fallbackImage: initialPhoto
     property int _nameTick: 0
     property bool editing: false
     // Chips, Properties, Layers and Command Palette open from the tool row at
@@ -146,27 +143,19 @@ ApplicationWindow {
         poolDrag = false
         if (editing)
             Qt.callLater(refreshReservoir)
+        else
+            setEditPlane("foreground")
     }
     property var liveNodes
     property var workNodes
+    // The bottom background picture ("the device's photo", 07 S127) of the
+    // map shown, for the view: its load and size recover the view.
     property string photoOverride: ""
-    property string storedImage: ""
-    property string liveImage: ""
     property bool fittedOldPage: false
     property bool fittedThisEdit: false
     property real viewPctSave: 1
     property real viewPanX: 0
     property real viewPanY: 0
-    property real photoScale: 1
-    property real photoOffX: 0
-    property real photoOffY: 0
-    property real photoRot: 0
-    // The photo's Layers panel flags as loaded; the editor keeps the live ones.
-    property bool photoHidden: false
-    property bool photoLocked: false
-    property bool movePhoto: false
-    property var livePhoto
-    property var workPhoto
     property string selectedId: ""
     property var selectedNode: null
     property bool _allowClose: false
@@ -192,6 +181,15 @@ ApplicationWindow {
     ButtonMapOptions {
         id: _opts
         onChanged: _buttonMap.applyOptionsToEditor()
+    }
+    // Space held: the map pans with a left-drag in Edit (07 S14).
+    ButtonMapSpaceKey { id: _spaceKey }
+    Binding {
+        target: _cardLoader.item && _cardLoader.item.editorItem ? _cardLoader.item.editorItem.face : null
+        property: "spaceHeld"
+        value: _spaceKey.held && !(_cardLoader.item.editorItem.renameId)
+        when: !!(_cardLoader.item && _cardLoader.item.editorItem && _cardLoader.item.editorItem.face)
+        restoreMode: Binding.RestoreNone
     }
 
     Instantiator {
@@ -260,50 +258,41 @@ ApplicationWindow {
     function hydrateOverlays(list) {
         if (!list)
             return
+        var e = _ed()
+        if (e)
+            giveLookMaker(e)
         var i
         for (i = 0; i < list.length; i++) {
             var n = list[i]
-            if (n && n.shape === "image" && n.src)
+            if (n && n.shape === "image" && n.src) {
                 n.srcUrl = _hw.imageUrl(n.src)
+                // A picture's look (07 S43) shows from an adjusted copy.
+                if (n.look && e && e.refreshLookUrl)
+                    e.refreshLookUrl(n)
+            }
         }
     }
 
-    // Set when a photo file is replaced or put back under the same name, so
-    // the photo reloads instead of showing Qt's cached copy.
-    property double _photoStamp: 0
-
-    // source: where undo gets this photo again (see VkbRigEditor's
-    // photoImageRestored): a copy of it, "clear", or "" for the photo the
-    // edit started with.
-    function applyImage(rel, source) {
-        // Clear Photo leaves no photo (07 Q4): the card photo the window
-        // opened with was that photo, so it is no fallback any more.
-        if (source === "clear" && !(rel && rel.length))
-            initialPhoto = ""
-        storedImage = rel && rel.length ? rel : fallbackImage
-        var url = _hw.imageUrl(storedImage)
-        if (_photoStamp > 0 && url.indexOf("file:") === 0)
-            url += (url.indexOf("?") < 0 ? "?" : "&") + "t=" + _photoStamp
-        photoOverride = url
-        var e = _ed()
-        if (e) {
-            e.photoImage = storedImage
-            e.photoSource = source ? String(source) : ""
-        }
+    // The editor makes a picture's look copy through this window's
+    // HardwareProfile (adjustedPhotoUrl, 07 S43).
+    function giveLookMaker(e) {
+        if (e && typeof e.lookUrlFor !== "function")
+            e.lookUrlFor = function(url, look) { return _hw.adjustedPhotoUrl(url, look) }
     }
 
-    // Undo or redo went to a step with another photo (07 Q3): that photo
-    // shows again. No file changes: every photo of the edit stays where it
-    // is (the device's folder, or the edit's temporary folder) until Save
-    // (07 S107).
-    function photoFromHistory(image, source) {
-        var e = _ed()
-        if (!editing || !targetName.length) {
-            if (e)
-                e.photoImage = storedImage
-            return
+    // The bottom background picture of a node list (07 S127): its address,
+    // or "" when the background has no picture.
+    function bottomPictureUrl(list) {
+        for (var i = 0; i < (list || []).length; i++) {
+            var n = list[i]
+            if (n && n.plane === "background" && n.shape === "image" && n.src)
+                return n.srcUrl || _hw.imageUrl(n.src)
         }
-        applyImage(source === "clear" ? "" : String(image || ""), source)
+        return ""
+    }
+
+    function notePhoto(list) {
+        photoOverride = bottomPictureUrl(list)
     }
 
     function sceneShiftList(list) {
@@ -402,36 +391,32 @@ ApplicationWindow {
 
 
     // followChange: the file changed elsewhere and the map follows it (not
-    // an opening: a kept photo is left alone, it may be another window's).
+    // an opening: a kept edit folder is left alone, it may be another
+    // window's).
     function loadLive(followChange) {
         if (_hw.setDeviceGuid)
             _hw.setDeviceGuid(targetGuid)
         // An edit that never finished (the program closed mid-edit, 07 S36):
         // its temporary folder is dropped, or a Save cut short is put back.
         // Kept while unsaved edits wait to be offered: Restore and Not now
-        // keep its pictures, Discard drops them (putPhotoBack).
-        if (!followChange && !editing && targetName.length
-                && _hw.recoverEdit(targetName) === "restored")
-            _photoStamp = Date.now()
-        if (followChange)
-            _photoStamp = Date.now()
+        // keep its pictures, Discard drops them (putSavedMapBack).
+        if (!followChange && !editing && targetName.length)
+            _hw.recoverEdit(targetName)
         _fileParts = filePartsNow()
         var text = _hw.load(targetName)
         var doc = parseDoc(text)
         if (!doc || !doc.nodes) {
             return false
         }
+        // Both planes are nodes (07 S111); an old map's photo is already
+        // its bottom background picture (load, 07 S125).
         liveNodes = JSON.parse(JSON.stringify(doc.nodes))
         hydrateOverlays(liveNodes)
-        liveImage = doc.image && doc.image.length ? doc.image : fallbackImage
+        notePhoto(liveNodes)
         if (doc.ui)
             applyUi(doc.ui)
-        applyImage(liveImage)
-        livePhoto = photoFromDoc(doc.photo)
-        applyPhoto(livePhoto)
         applyGridToEditor()
         applyViewToFace()
-        applyPhotoToEditor()
         return true
     }
 
@@ -440,7 +425,7 @@ ApplicationWindow {
             return
         // Unsaved edits a crash left (put off with Not now) are offered
         // again: a new session would write over their copy, and Cancel
-        // would delete it with their photo. Restore starts Edit with them.
+        // would delete it with their pictures. Restore starts Edit with them.
         if (offerRecovery())
             return
         _startEdit()
@@ -449,8 +434,8 @@ ApplicationWindow {
     function _startEdit() {
         if (editing)
             return
-        // (A photo left by a session that never finished was put back by
-        // loadLive; this session keeps its own on its first photo change.)
+        // (Pictures left by a session that never finished were put back by
+        // loadLive.)
         try {
             loadLive()
         } catch (e) {
@@ -465,9 +450,6 @@ ApplicationWindow {
         }
         workNodes = src
         hydrateOverlays(workNodes)
-        workPhoto = photoFromDoc(livePhoto)
-        applyPhoto(workPhoto)
-        applyImage(liveImage)
         // The print area, print setup and guides as this edit starts:
         // Cancel puts them back (07 Q1).
         noteEditUiBase()
@@ -514,17 +496,14 @@ ApplicationWindow {
             nodes = ed.nodes
         else if (workNodes)
             nodes = workNodes
-        // The photo as shown: "" after Clear Photo (07 Q4).
-        var image = storedImage
+        // Both planes are in the nodes (07 S111): no photo of its own.
         var doc = {
             kind: "control.hardware",
             device: targetName,
             space: "world",
             // The page size is stamped by Save (hardware_profile.PAGE_SIZE).
-            image: image,
             imageWidth: 1348,
             imageHeight: 1380,
-            photo: photoBag(),
             ui: uiBag(),
             nodes: nodes
         }
@@ -549,16 +528,14 @@ ApplicationWindow {
             return false
         }
         liveNodes = JSON.parse(JSON.stringify(nodes))
-        liveImage = image
-        livePhoto = photoBag()
         _fileParts = filePartsNow()
         // Saved: later changes are compared with what was just saved.
         editBase = JSON.stringify(nodes)
         _baseWanted = false
         noteEditUiBase()
         clearRecovery()
-        applyImage(liveImage)
         hydrateOverlays(liveNodes)
+        notePhoto(liveNodes)
         saveOk = true
         if (report) {
             say("Saved to the module file.")
@@ -593,19 +570,16 @@ ApplicationWindow {
     function isDirty() {
         if (!editing)
             return false
-        var image = storedImage
-        var live = liveImage
-        // (A new photo always has a name of its own, 07 S107: comparing
-        // the names below sees it.)
         // The print area, print setup or guides changed in this edit.
         if (editUiChanged())
             return true
+        // Both planes are nodes: a background change (a picture added,
+        // replaced, moved or cleared) shows here too (07 S30). A new
+        // picture always has a name of its own (07 S107).
         try {
             var now = JSON.stringify(editorNodesNow())
             var base = editBase !== null ? editBase : JSON.stringify(liveNodes)
-            if (now !== base)
-                return true
-            return JSON.stringify({ image: image, photo: photoBag() }) !== JSON.stringify({ image: live, photo: livePhoto || photoFromDoc(null) })
+            return now !== base
         } catch (e) {
             return true
         }
@@ -618,8 +592,6 @@ ApplicationWindow {
 
     function recoveryPayload() {
         return JSON.stringify({
-            image: storedImage,
-            photo: photoBag(),
             nodes: editorNodesNow()
         })
     }
@@ -661,10 +633,9 @@ ApplicationWindow {
         try { doc = JSON.parse(text) } catch (e) { doc = null }
         if (!doc || !doc.nodes)
             return false
-        var live = { image: liveImage, photo: livePhoto || photoFromDoc(null), nodes: liveNodes }
         var same = false
         try {
-            same = JSON.stringify({ image: doc.image, photo: doc.photo, nodes: doc.nodes }) === JSON.stringify(live)
+            same = JSON.stringify(doc.nodes) === JSON.stringify(liveNodes)
         } catch (e2) {}
         if (same) {
             _hw.clearRecovery(targetName)
@@ -682,15 +653,14 @@ ApplicationWindow {
     }
 
     // The recovery copy was discarded: the pictures its edit kept go and the
-    // saved map reads again.
-    function putPhotoBack() {
+    // saved map (both planes) reads again (07 S34).
+    function putSavedMapBack() {
         if (editing || !targetName.length || !_hw.cancelEdit(targetName))
             return
-        _photoStamp = Date.now()
         loadLive()
     }
 
-    // Not now: the copy and its photo stay as they are, offered again the
+    // Not now: the copy and its pictures stay as they are, offered again the
     // next time this device's map opens.
     function putOffRecovery() {
         _pendingRecovery = null
@@ -719,19 +689,12 @@ ApplicationWindow {
         _lastRecovery = JSON.stringify(doc)
         // The restored work is unsaved: compared with the saved map.
         _baseWanted = false
+        // Both planes come back (their pictures kept in the edit's
+        // temporary folder, 07 S36).
         var nodes = JSON.parse(JSON.stringify(doc.nodes || []))
         hydrateOverlays(nodes)
         workNodes = nodes
-        if (doc.image && String(doc.image).length)
-        {
-            // A photo change waiting with the copy (its file kept in the
-            // edit's temporary folder, 07 S36): undo comes back to it.
-            applyImage(String(doc.image), String(doc.image))
-        }
-        workPhoto = photoFromDoc(doc.photo)
-        applyPhoto(workPhoto)
         Qt.callLater(function() {
-            applyPhotoToEditor()
             var e = _ed()
             if (e && e.seedHist)
                 e.seedHist()
@@ -748,7 +711,7 @@ ApplicationWindow {
     }
 
     function discardEdit() {
-        // The edit's own recovery copy and photo change go. Outside Edit,
+        // The edit's own recovery copy and pictures go. Outside Edit,
         // a copy left by a crash (put off with Not now) keeps both; Edit
         // offers that copy before it starts, so a session's copy is one it
         // wrote or restored.
@@ -768,10 +731,7 @@ ApplicationWindow {
         workNodes = []
         selectedId = ""
         selectedNode = null
-        applyImage(liveImage)
-        applyPhoto(livePhoto)
-        movePhoto = false
-        applyPhotoToEditor()
+        notePhoto(liveNodes)
         // The discarded edits leave no undo steps behind: start the history
         // again from the live map once it is back on screen.
         Qt.callLater(function() {
@@ -782,7 +742,7 @@ ApplicationWindow {
     }
 
     // Take theirs: this edit goes (its added pictures with it) and the file
-    // shows as it is now, with whatever photo the other window saved.
+    // shows as it is now, with whatever background the other window saved.
     function takeTheirs() {
         discardEdit()
         loadLive(true)
@@ -884,13 +844,11 @@ ApplicationWindow {
         selectedId = n ? n.id : ""
     }
 
-    function showBlank(photo) {
+    // No map: an empty background, never another device's pictures (07 S11).
+    function showBlank() {
         liveNodes = []
         workNodes = []
-        var img = String(photo || "")
-        liveImage = img
-        storedImage = img
-        photoOverride = img.length ? _hw.imageUrl(img) : ""
+        photoOverride = ""
     }
 
     function clearToBlank() {
@@ -899,10 +857,8 @@ ApplicationWindow {
         faceLive = false
         targetName = ""
         loadedDevice = ""
-        initialPhoto = ""
-        pendingPhoto = ""
         pendingDevice = ""
-        showBlank("")
+        showBlank()
     }
 
     function openBlank() {
@@ -928,20 +884,20 @@ ApplicationWindow {
         }
         dropRecoveryOffer()
         discardEdit()
-        // This device's photo only; never the previous device's.
-        initialPhoto = pendingPhoto
         targetName = name
         targetGuid = pendingGuid
         loadedDevice = name
+        // This device's own map only; never the previous device's (07 S11).
         if (!loadLive())
-            showBlank(initialPhoto)
+            showBlank()
         pendingDevice = ""
         Qt.callLater(offerRecovery)
     }
 
+    // photo: the caller's card photo, not used (the map's background is the
+    // device's photo, 07 S127).
     function openForDevice(name, photo, guid) {
         var next = String(name || "")
-        pendingPhoto = String(photo || "")
         pendingGuid = String(guid || "")
         if (!next.length)
             return
@@ -975,13 +931,12 @@ ApplicationWindow {
         if (startBlank || !targetName.length) {
             targetName = ""
             loadedDevice = ""
-            initialPhoto = ""
-            showBlank("")
+            showBlank()
             return
         }
         loadedDevice = targetName
         if (!loadLive())
-            showBlank(initialPhoto)
+            showBlank()
         Qt.callLater(offerRecovery)
     }
 
@@ -991,7 +946,7 @@ ApplicationWindow {
         onDiscarded: {
             _buttonMap._pendingRecovery = null
             _buttonMap.clearRecovery()
-            _buttonMap.putPhotoBack()
+            _buttonMap.putSavedMapBack()
         }
         onCancelled: _buttonMap.putOffRecovery()
     }
@@ -1107,18 +1062,6 @@ ApplicationWindow {
             e.copiedNodesChanged.connect(keep)
             e.clipSerialChanged.connect(keep)
         })
-    }
-
-    // The editor leaves Move photo on its own (Esc, picking a node, layers);
-    // follow it, or the hint stays up and the next photo change turns it back on.
-    Connections {
-        target: _cardLoader.item ? _cardLoader.item.editorItem : null
-        ignoreUnknownSignals: true
-        function onMovePhotoChanged() {
-            var e = _buttonMap._ed()
-            if (e && !e.movePhoto)
-                _buttonMap.movePhoto = false
-        }
     }
 
     function poolHaystack(row) {
@@ -1241,151 +1184,187 @@ ApplicationWindow {
         viewPanY = f.panY || 0
     }
 
-    function photoFromDoc(p) {
-        p = p || {}
-        var s = Number(p.scale)
-        if (!(s === s) || s <= 0)
-            s = 1
-        var ox = Number(p.offX)
-        var oy = Number(p.offY)
-        var r = Number(p.rot)
-        if (!(ox === ox)) ox = 0
-        if (!(oy === oy)) oy = 0
-        if (!(r === r)) r = 0
-        var pose = {
-            scale: Math.max(0.25, Math.min(4, s)),
-            offX: Math.max(-1, Math.min(1, ox)),
-            offY: Math.max(-1, Math.min(1, oy)),
-            rot: r
-        }
-        // Layers panel flags, kept only when on (as the editor saves them).
-        if (p.hidden === true)
-            pose.hidden = true
-        if (p.locked === true)
-            pose.locked = true
-        // The look, kept only when changed.
-        var look = { bright: [-1, 1], contrast: [-1, 1], grey: [0, 1], fade: [0, 0.9] }
-        for (var key in look) {
-            var v = Number(p[key])
-            if (v === v && v !== 0)
-                pose[key] = Math.max(look[key][0], Math.min(look[key][1], v))
-        }
-        return pose
-    }
+    // --- background and foreground planes (07 S111-S127) ------------------
 
-    function photoBag() {
+    // Background mode: the editor is editing the background (07 S113).
+    readonly property bool bgMode: {
         var e = _ed()
-        if (e && e.photoBag)
-            return e.photoBag()
-        return photoFromDoc({
-            scale: photoScale,
-            offX: photoOffX,
-            offY: photoOffY,
-            rot: photoRot,
-            hidden: photoHidden,
-            locked: photoLocked
-        })
+        return editing && !!e && e.editPlane === "background"
     }
-
-    function applyPhoto(p) {
-        p = photoFromDoc(p)
-        photoScale = p.scale
-        photoOffX = p.offX
-        photoOffY = p.offY
-        photoRot = p.rot
-        photoHidden = !!p.hidden
-        photoLocked = !!p.locked
-        applyPhotoToEditor()
-        var e = _ed()
-        if (faceLive && e && e.applyPhotoPose)
-            e.applyPhotoPose({ scale: photoScale, offX: photoOffX, offY: photoOffY, rot: photoRot,
-                               hidden: photoHidden, locked: photoLocked,
-                               look: { bright: p.bright, contrast: p.contrast, grey: p.grey, fade: p.fade } })
+    // One side of the Foreground | Background switch (07 S113).
+    // (An inline component can't see this file's ids: the window comes in
+    // through current and picked.)
+    component PlaneButton: Button {
+        property bool current: false
+        signal picked()
+        font.pixelSize: Style.dp(11)
+        checkable: true
+        checked: current
+        onClicked: {
+            picked()
+            checked = Qt.binding(() => current)
+        }
     }
+    // The first-time line in the banner, shown this time only (07 S114).
+    property bool bgHintNow: false
+    // The Background row's eye (07 S120): a program setting.
+    readonly property bool bgHidden: _opts.values["bm-bg-hidden"] === true
 
-    function applyPhotoToEditor() {
-        if (!faceLive)
-            return
+    // Enters or leaves Background mode (the menu, the switch, Ctrl+B, Done,
+    // Esc). Layers' Background row sets the editor's editPlane itself; the
+    // window follows that too (planeChanged).
+    function setEditPlane(plane) {
         var e = _ed()
         if (!e)
             return
-        if (e.applyPhotoPose)
-            e.applyPhotoPose({
-                scale: photoScale,
-                offX: photoOffX,
-                offY: photoOffY,
-                rot: photoRot
-            })
-        else {
-            e.photoScale = photoScale
-            e.photoOffX = photoOffX
-            e.photoOffY = photoOffY
-            e.photoRot = photoRot
+        var next = (plane === "background" && editing) ? "background" : "foreground"
+        if (e.editPlane !== next)
+            e.editPlane = next
+    }
+
+    function escLeavesBackground() {
+        resTick
+        var e = _ed()
+        if (!e)
+            return false
+        return !(e.drawTool && e.drawTool.length) && !e.printAreaArm && !e.renameId
+               && !e.selectedId && !(e.selectedIds && e.selectedIds.length)
+    }
+
+    // Ctrl+Shift+B (07 S121): the selection to the other plane; the
+    // editor says "Moved to …" with Undo (planeMoved).
+    function moveSelectionToOtherPlane() {
+        var e = _ed()
+        if (!editing || !e)
+            return
+        var ids = (e.selectedIds && e.selectedIds.length) ? e.selectedIds.slice()
+                  : (e.selectedId ? [e.selectedId] : [])
+        if (!ids.length)
+            return
+        var first = e.nodeAt(ids[0])
+        var inBg = first ? first.plane === "background" : bgMode
+        e.moveToPlane(ids, inBg ? "foreground" : "background")
+    }
+
+    // A text field or a name being typed has the keys.
+    function typingNow() {
+        var e = _ed()
+        if (e && e.renameId)
+            return true
+        var f = _buttonMap.activeFocusItem
+        return !!f && f.cursorPosition !== undefined && f.readOnly !== true
+    }
+
+    function toggleEditPlane() {
+        setEditPlane(bgMode ? "foreground" : "background")
+    }
+
+    // The editor's plane changed, from here or from Layers.
+    function planeChanged() {
+        var e = _ed()
+        if (!e)
+            return
+        if (e.editPlane !== "background") {
+            bgHintNow = false
+            return
         }
-        e.movePhoto = movePhoto && editing
-        if (e.repaint)
-            e.repaint()
+        if (!editing) {
+            e.editPlane = "foreground"
+            return
+        }
+        // Once for the whole program, never per device (07 S114).
+        if (_opts.values["bm-bg-hint-seen"] !== true) {
+            bgHintNow = true
+            _opts.set("bm-bg-hint-seen", true)
+        }
     }
 
-    function setPhotoScale(v) {
-        photoScale = photoFromDoc({ scale: v }).scale
-        applyPhotoToEditor()
-        notePhotoChange()
+    // The plane view settings (07 S115, S120): program settings, the same
+    // for every map, never in the map file.
+    function applyPlaneViewToEditor() {
+        var e = _ed()
+        if (!e)
+            return
+        var o = _opts.values
+        e.showFgFaint = o["bm-fg-faint"] !== false
+        e.bgViewHidden = o["bm-bg-hidden"] === true
+        // A slider value not kept yet wins over the stored one.
+        if (_planeViewTimer.running)
+            return
+        var op = Number(o["bm-bg-opacity"])
+        e.bgViewOpacity = (op === op && op >= 0 && op <= 1) ? op : 1
     }
 
-    function setPhotoOff(x, y) {
-        var p = photoFromDoc({ offX: x, offY: y })
-        photoOffX = p.offX
-        photoOffY = p.offY
-        applyPhotoToEditor()
-        notePhotoChange()
+    // The editor's view settings changed (the Background row's eye and
+    // Opacity slider, the banner's tick): kept as program settings. The
+    // slider is kept once it rests.
+    function keepPlaneView(key) {
+        var e = _ed()
+        if (!e)
+            return
+        if (key === "bm-bg-opacity") {
+            _planeViewTimer.restart()
+            return
+        }
+        var v = key === "bm-fg-faint" ? e.showFgFaint : e.bgViewHidden
+        if (_opts.values[key] !== v)
+            _opts.set(key, v)
     }
 
-    function setPhotoRot(v) {
-        var r = Number(v)
-        if (!(r === r))
-            r = 0
-        photoRot = r
-        applyPhotoToEditor()
-        notePhotoChange()
-    }
-
-    // The photo's look: an adjusted copy (a cached image file), made once
-    // the sliders rest and never while one is held.
-    property bool _lookSliding: false
     Timer {
-        id: _lookTimer
-        interval: 150
+        id: _planeViewTimer
+        interval: 300
         onTriggered: {
             var e = _buttonMap._ed()
-            if (!e || _buttonMap._lookSliding)
-                return
-            e.photoLookUrl = _hw.adjustedPhotoUrl(String(e.photoBaseUrl), e.photoBright,
-                                                  e.photoContrast, e.photoGrey)
+            if (e && Number(_opts.values["bm-bg-opacity"]) !== Number(e.bgViewOpacity))
+                _opts.set("bm-bg-opacity", Number(e.bgViewOpacity))
         }
     }
 
-    // The pose returns to the frame; hidden, locked and the look stay as they
-    // are (Reset look puts the look back).
-    function resetPhoto() {
-        var e = _ed()
-        applyPhoto({ scale: 1, offX: 0, offY: 0, rot: 0,
-                     hidden: e ? e.photoHidden : photoHidden, locked: e ? e.photoLocked : photoLocked,
-                     bright: e ? e.photoBright : 0, contrast: e ? e.photoContrast : 0,
-                     grey: e ? e.photoGrey : 0, fade: e ? e.photoFade : 0 })
-        movePhoto = false
-        applyPhotoToEditor()
-        notePhotoChange()
+    // Move to Background / Foreground (07 S121): the message line says so,
+    // with Undo.
+    function notePlaneMoved(plane, count) {
+        if (!(count > 0))
+            return
+        _messageLine.show("Moved to " + (plane === "background" ? "Background" : "Foreground"),
+                          false, "Undo", function() { var e = _ed(); if (e) e.undo() })
     }
 
-    // An undo step for a photo change, while editing.
-    function notePhotoChange() {
-        var e = _ed()
-        if (editing && e && e.notePhotoChange)
-            e.notePhotoChange()
+    Connections {
+        target: _cardLoader.item ? _cardLoader.item.editorItem : null
+        ignoreUnknownSignals: true
+        function onPlaneMoved(plane, count) { _buttonMap.notePlaneMoved(plane, count) }
     }
 
-    // Undo or redo moved the photo in the editor: the sliders follow.
+    // Background > Add Picture to Background… (07 S40): the top background
+    // layer, fitted to the photo frame; the file waits in the edit's
+    // temporary folder until Save. One Undo step.
+    function addBackgroundPicture(fileUrl) {
+        var e = _ed()
+        if (!editing || !e || !targetName.length)
+            return ""
+        _hw.notePictureFolder(fileUrl)
+        var rel = _hw.copyOverlay(fileUrl, targetName)
+        if (!rel.length) {
+            say("The picture could not be added to the background.", true)
+            return ""
+        }
+        var id = e.addOverlay(rel, _hw.imageUrl(rel),
+                              { plane: "background", fitFrame: true, aspect: _hw.imageAspect(rel) })
+        say("Added to the background. Undo takes it away.")
+        return id
+    }
+
+    // Background > Clear Background (07 S41): every background layer goes
+    // as one Undo step, without asking; Save removes unused picture files.
+    function clearBackground() {
+        var e = _ed()
+        if (!editing || !e)
+            return
+        e.clearPlane("background")
+        say("Background cleared. Undo puts it back.")
+    }
+
     // Eyedropper: the next click anywhere in the window takes the colour
     // under it for the picker's field; Esc gives up.
     property string eyedropField: ""
@@ -1454,22 +1433,6 @@ ApplicationWindow {
         return rels.length > 0
     }
 
-    function syncPhotoFromEditor() {
-        var e = _ed()
-        if (!e)
-            return
-        photoScale = e.photoScale
-        photoOffX = e.photoOffX
-        photoOffY = e.photoOffY
-        photoRot = e.photoRot
-    }
-
-    function fitPhotoWell() {
-        photoScale = 1
-        applyPhotoToEditor()
-        notePhotoChange()
-    }
-
     function applyViewToFace() {
         if (!faceLive)
             return
@@ -1531,7 +1494,9 @@ ApplicationWindow {
             landscape: p.landscape === true,
             margin: marginInches[p.margin] !== undefined ? p.margin : "quarter",
             scale: (p.scale >= 10 && p.scale <= 800) ? Math.round(p.scale) : 100,
-            light: p.light === true
+            light: p.light === true,
+            // Include background (07 S123): on unless turned off.
+            includeBg: p.includeBg !== false
         }
     }
 
@@ -1541,10 +1506,10 @@ ApplicationWindow {
     property var printArea: null
     // Print & Export, saved with the map: the paper ("fit": the print
     // area's own shape), its orientation, the margins, the scale (100% =
-    // the photo's own pixels; with no photo, the page 1920 px wide) and the
-    // background (light: white, every color's lightness turned over), the
-    // same for every print and export.
-    property var printSetup: ({ paper: "fit", landscape: false, margin: "quarter", scale: 100, light: false })
+    // the bottom background picture's own pixels; with none, the page 1920
+    // px wide), the Page (light: white, every color's lightness turned
+    // over) and Include background, the same for every print and export.
+    property var printSetup: ({ paper: "fit", landscape: false, margin: "quarter", scale: 100, light: false, includeBg: true })
     readonly property var paperInches: ({
         letter: [8.5, 11], legal: [8.5, 14], tabloid: [11, 17],
         a3: [11.69, 16.54], a4: [8.27, 11.69], a5: [5.83, 8.27]
@@ -1581,25 +1546,13 @@ ApplicationWindow {
     }
 
     // Export pixels for each editor pixel on screen: the scale over the
-    // photo's own pixels (no photo: the page 1920 px wide). The same export
-    // at any window size: the page on screen and the photo grow together.
+    // bottom background picture's own pixels (none: the page 1920 px wide,
+    // 07 S83); the renderer works it out. The same export at any window size.
     function exportFactor() {
         var e = _ed()
         if (!e)
             return 1
-        var scale = Math.max(10, Math.min(800, Number(printSetup.scale) || 100)) / 100
-        var s = e.spaceRect()
-        var nat = e.photoNatural()
-        var f
-        if (nat.w > 0 && nat.h > 0) {
-            var inner = e.innerPageRect()
-            var byHeight = nat.w / nat.h <= inner.w / inner.h
-            var shownH = (byHeight ? inner.h : inner.w * nat.h / nat.w) * e.photoScale
-            f = scale * nat.h / Math.max(1, shownH)
-        } else {
-            f = scale * 1920 / Math.max(1, s.w)
-        }
-        return f
+        return _renderer.exportFactor(e, printSetup.scale)
     }
 
     // The export's size in pixels: the print area at the scale, no side
@@ -1661,6 +1614,8 @@ ApplicationWindow {
             f.rulersOn = o["rulers"] === true
         e.findOn = o["press-to-find"] !== false
         e.findAxes = o["find-axes"] === true
+        applyPlaneViewToEditor()
+        giveLookMaker(e)
         refreshActionLabels()
     }
 
@@ -1758,7 +1713,7 @@ ApplicationWindow {
         if (e.repaint)
             e.repaint()
         applyViewToFace()
-        applyPhotoToEditor()
+        applyPlaneViewToEditor()
     }
 
     function deferSelected() {
@@ -1780,6 +1735,8 @@ ApplicationWindow {
         Qt.callLater(function() {
             applySelected()
             refreshReservoir()
+            if (editing)
+                notePhoto(editorNodesNow())
         })
     }
 
@@ -1972,24 +1929,12 @@ ApplicationWindow {
 
     // Choosers open in the last folder used for their kind (01 S143).
     FilePicker {
-        id: _imageDialog
+        id: _bgPictureDialog
         kind: "picture"
-        title: "Choose Photo"
+        title: "Choose Background Picture"
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)"]
         folder: _hw.imagesFolderUrl()
-        onPicked: (selectedFile) => {
-            _hw.notePictureFolder(selectedFile)
-            // The picture waits in the edit's temporary folder; the module
-            // file's image and the device's folder wait for Save (07 Q2,
-            // S40, S107).
-            var rel = _hw.copyImage(selectedFile, targetName)
-            if (rel.length) {
-                _photoStamp = Date.now()
-                // Undo can bring this photo back: its file stays (07 Q3).
-                applyImage(rel, rel)
-                resetPhoto()
-            }
-        }
+        onPicked: (selectedFile) => _buttonMap.addBackgroundPicture(selectedFile)
     }
 
     FilePicker {
@@ -2050,6 +1995,7 @@ ApplicationWindow {
             snap: _renderer.snapshot(e, whole === true),
             pixels: pixels || exportPixels(),
             light: printSetup.light === true,
+            includeBg: printSetup.includeBg !== false,
             onPicture: onPicture
         }
     }
@@ -2174,7 +2120,9 @@ ApplicationWindow {
         _copyDlg.open()
     }
 
-    function copyLayoutFrom(row, mirror) {
+    // withBg: Copy the background too (07 S76); without it this device's
+    // background stays.
+    function copyLayoutFrom(row, mirror, withBg) {
         if (!row)
             return
         // The pictures it uses wait in this device's edit and are copied
@@ -2194,10 +2142,10 @@ ApplicationWindow {
                 return
             // The copy is a change: compared with the saved map.
             _baseWanted = false
-            Qt.callLater(function() { _replaceLayout(nodes, mirror, row) })
+            Qt.callLater(function() { _replaceLayout(nodes, mirror, row, withBg === true) })
             return
         }
-        _replaceLayout(nodes, mirror, row)
+        _replaceLayout(nodes, mirror, row, withBg === true)
     }
 
     // How many chips (group members too) are for controls this device
@@ -2248,15 +2196,29 @@ ApplicationWindow {
         return text
     }
 
-    function _replaceLayout(nodes, mirror, row) {
+    function _isBg(n) {
+        return !!n && n.plane === "background"
+    }
+
+    function _replaceLayout(nodes, mirror, row, withBg) {
         var before = _ed()
         if (before && before.flushPendingStep)
             before.flushPendingStep()
         // The undo position before the copy: the copy (and its mirroring)
         // is one step after it (S78).
         var startAt = before ? before.histAt : -1
+        // This device's background stays unless it is copied too (07 S76).
+        var own = []
+        if (!withBg) {
+            var cur = (before && before.nodes) ? before.nodes : (workNodes || [])
+            own = JSON.parse(JSON.stringify(cur.filter(_isBg)))
+            hydrateOverlays(own)
+            nodes = nodes.filter(function(n) { return !_isBg(n) })
+        }
         hydrateOverlays(nodes)
-        workNodes = nodes
+        // Mirroring turns the copy only: the kept background joins after it.
+        var later = mirror && own.length > 0
+        workNodes = later ? nodes : own.concat(nodes)
         Qt.callLater(function() {
             var e = _ed()
             if (!e)
@@ -2265,6 +2227,10 @@ ApplicationWindow {
                 e.mirrorLayout(_opts.values["mirror-pictures"] === true)
             else
                 e.bump()
+            if (later) {
+                workNodes = own.concat((e.nodes || []).filter(function(n) { return !_isBg(n) }))
+                e.bump()
+            }
             if (e === before && e.squashHistSince)
                 e.squashHistSince(startAt)
             refreshReservoir()
@@ -2278,7 +2244,11 @@ ApplicationWindow {
         title: _buttonMap._copyFrom && _buttonMap._copyFrom.template ? "Apply Template" : "Copy Button Map"
         modal: true
         // Another device's layout is usually the other hand's; a template is not.
-        onOpened: _copyMirror.checked = !(_buttonMap._copyFrom && _buttonMap._copyFrom.template)
+        onOpened: {
+            _copyMirror.checked = !(_buttonMap._copyFrom && _buttonMap._copyFrom.template)
+            // Off by default (07 S76).
+            _copyBg.checked = false
+        }
         anchors.centerIn: parent
         width: Style.dp(460)
         standardButtons: Dialog.NoButton
@@ -2298,7 +2268,15 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 color: Style.fgMuted
-                text: "This device's photo stays. Nothing is saved until you save; Undo puts the old layout back."
+                text: _copyBg.checked
+                      ? "This device's background is replaced too. Nothing is saved until you save; Undo puts the old layout back."
+                      : "This device's background stays. Nothing is saved until you save; Undo puts the old layout back."
+            }
+            CheckBox {
+                id: _copyBg
+                objectName: "bmCopyBgTick"
+                checked: false
+                text: "Copy the background too"
             }
             CheckBox {
                 id: _copyMirror
@@ -2324,7 +2302,7 @@ ApplicationWindow {
                     onClicked: {
                         var row = _buttonMap._copyFrom
                         _copyDlg.close()
-                        _buttonMap.copyLayoutFrom(row, _copyMirror.checked)
+                        _buttonMap.copyLayoutFrom(row, _copyMirror.checked, _copyBg.checked)
                     }
                 }
             }
@@ -2655,115 +2633,6 @@ ApplicationWindow {
         onPicked: (selectedFile) => exportTo(selectedFile, "pdf")
     }
 
-    Popup {
-        id: _photoAdj
-        modal: false
-        focus: true
-        x: Math.round((_buttonMap.width - width) / 2)
-        y: Style.dp(52)
-        width: Style.dp(360)
-        implicitHeight: Style.dp(690)
-        padding: Style.dp(12)
-        background: Rectangle {
-            color: Style.bgCard
-            border.color: Style.line
-            radius: Style.dp(4)
-        }
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: Style.dp(8)
-            Label { text: "Photo"; color: Style.fg; font.pixelSize: Style.dp(13) }
-            Label { text: "Size  " + Math.round(photoScale * 100) + "%"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
-            Slider {
-                Layout.fillWidth: true
-                from: 0.25
-                to: 4
-                stepSize: 0.01
-                value: photoScale
-                onMoved: _buttonMap.setPhotoScale(value)
-            }
-            Label { text: "Offset X  " + photoOffX.toFixed(3); color: Style.fgMuted; font.pixelSize: Style.dp(11) }
-            Slider {
-                Layout.fillWidth: true
-                from: -0.5
-                to: 0.5
-                stepSize: 0.001
-                value: photoOffX
-                onMoved: _buttonMap.setPhotoOff(value, photoOffY)
-            }
-            Label { text: "Offset Y  " + photoOffY.toFixed(3); color: Style.fgMuted; font.pixelSize: Style.dp(11) }
-            Slider {
-                Layout.fillWidth: true
-                from: -0.5
-                to: 0.5
-                stepSize: 0.001
-                value: photoOffY
-                onMoved: _buttonMap.setPhotoOff(photoOffX, value)
-            }
-            Label { text: "Rotate  " + Math.round(photoRot) + "°"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
-            Slider {
-                Layout.fillWidth: true
-                from: -180
-                to: 180
-                stepSize: 1
-                value: photoRot
-                onMoved: _buttonMap.setPhotoRot(value)
-            }
-            Label { text: "Look"; color: Style.fg; font.pixelSize: Style.dp(13); Layout.topMargin: Style.dp(6) }
-            Repeater {
-                model: [
-                    { key: "bright", label: "Brightness", from: -1, to: 1 },
-                    { key: "contrast", label: "Contrast", from: -1, to: 1 },
-                    { key: "grey", label: "Greyscale", from: 0, to: 1 },
-                    { key: "fade", label: "Fade", from: 0, to: 0.9 }
-                ]
-                ColumnLayout {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    spacing: 0
-                    readonly property real current: {
-                        var e = _cardLoader.item ? _cardLoader.item.editorItem : null
-                        if (!e)
-                            return 0
-                        var k = modelData.key
-                        return k === "bright" ? e.photoBright : (k === "contrast" ? e.photoContrast
-                               : (k === "grey" ? e.photoGrey : e.photoFade))
-                    }
-                    Label {
-                        text: modelData.label + "  " + Math.round(parent.current * 100) + "%"
-                        color: Style.fgMuted
-                        font.pixelSize: Style.dp(11)
-                    }
-                    Slider {
-                        Layout.fillWidth: true
-                        from: modelData.from
-                        to: modelData.to
-                        stepSize: 0.01
-                        value: parent.current
-                        onMoved: { var e = _buttonMap._ed(); if (e) e.setPhotoLook(modelData.key, value) }
-                        // Let go: the adjusted copy is made now, once.
-                        onPressedChanged: {
-                            _buttonMap._lookSliding = pressed
-                            if (!pressed)
-                                _lookTimer.restart()
-                        }
-                    }
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                Button { text: "Reset Look"; onClicked: { var e = _buttonMap._ed(); if (e) e.resetPhotoLook() } }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                Button { text: "Size 100%"; onClicked: _buttonMap.fitPhotoWell() }
-                Button { text: "Reset Photo"; onClicked: _buttonMap.resetPhoto() }
-                Item { Layout.fillWidth: true }
-                Button { text: "Close"; onClicked: _photoAdj.close() }
-            }
-        }
-    }
-
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -2960,7 +2829,8 @@ ApplicationWindow {
                     enabled: editing && !!_buttonMap.printArea && !_tools.isLocked("printArea")
                     onTriggered: { var e = _ed(); if (e) e.clearPrintArea() }
                 }
-                // Another device's Button Map onto this one (its photo stays).
+                // Another device's Button Map onto this one (its background
+                // stays unless copied too, 07 S76).
                 ThemedMenu {
                     id: _copyMenu
                     title: "Copy Button Map from Device"
@@ -3205,46 +3075,30 @@ ApplicationWindow {
                 }
             }
             ThemedMenu {
-                id: _photoMenu
-                title: "Photo"
-                // Everything in it needs editing.
+                id: _bgMenu
+                objectName: "bmMenuBackground"
+                title: "Background"
+                // Everything in it needs editing (07 S39).
                 enabled: editing
-                ThemedMenuItem { text: "Choose Photo…"; enabled: editing; onTriggered: _imageDialog.open() }
                 ThemedMenuItem {
-                    text: "Clear Photo"
-                    enabled: editing
-                    onTriggered: {
-                        // No file is touched: Save removes the picture
-                        // nothing uses any more (07 S106), Undo or Cancel
-                        // brings it back.
-                        applyImage("", "clear")
-                        resetPhoto()
-                    }
+                    objectName: "bmEditBackground"
+                    text: "Edit Background"
+                    hint: "Ctrl+B"
+                    enabled: editing && !_buttonMap.bgMode
+                    onTriggered: _buttonMap.setEditPlane("background")
                 }
                 ThemedMenuSeparator {}
                 ThemedMenuItem {
-                    text: "Move Photo"
-                    checkable: true
+                    objectName: "bmAddBgPicture"
+                    text: "Add Picture to Background…"
                     enabled: editing
-                    checked: {
-                        var e = _ed()
-                        return e ? e.movePhoto : _buttonMap.movePhoto
-                    }
-                    onTriggered: {
-                        _buttonMap.movePhoto = checked
-                        _buttonMap.applyPhotoToEditor()
-                    }
+                    onTriggered: _bgPictureDialog.open()
                 }
                 ThemedMenuItem {
-                    text: "Adjust Photo…"
+                    objectName: "bmClearBackground"
+                    text: "Clear Background"
                     enabled: editing
-                    onTriggered: _photoAdj.open()
-                }
-                ThemedMenuSeparator {}
-                ThemedMenuItem {
-                    text: "Reset Photo"
-                    enabled: editing
-                    onTriggered: _buttonMap.resetPhoto()
+                    onTriggered: _buttonMap.clearBackground()
                 }
             }
             ThemedMenu {
@@ -3259,18 +3113,45 @@ ApplicationWindow {
 
         // The editor's own Undo / Redo (01 S143), while editing; Ctrl+Z /
         // Ctrl+Y stay the window's shortcuts.
-        UndoBar {
-            id: _undoBar
-            objectName: "buttonMapUndoBar"
+        RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: Style.dp(6)
             visible: _buttonMap.editing
-            canUndo: { var e = _ed(); return _buttonMap.editing && e ? e.canUndo : false }
-            canRedo: { var e = _ed(); return _buttonMap.editing && e ? e.canRedo : false }
-            undoTip: "Undo the last change (Ctrl+Z)"
-            redoTip: "Redo (Ctrl+Y)"
-            onUndo: { var e = _ed(); if (e) e.undo() }
-            onRedo: { var e = _ed(); if (e) e.redo() }
+            spacing: Style.dp(6)
+            UndoBar {
+                id: _undoBar
+                objectName: "buttonMapUndoBar"
+                Layout.fillWidth: true
+                Layout.leftMargin: Style.dp(6)
+                visible: _buttonMap.editing
+                canUndo: { var e = _ed(); return _buttonMap.editing && e ? e.canUndo : false }
+                canRedo: { var e = _ed(); return _buttonMap.editing && e ? e.canRedo : false }
+                undoTip: "Undo the last change (Ctrl+Z)"
+                redoTip: "Redo (Ctrl+Y)"
+                onUndo: { var e = _ed(); if (e) e.undo() }
+                onRedo: { var e = _ed(); if (e) e.redo() }
+            }
+            // The Foreground | Background switch (07 S113).
+            Row {
+                id: _planeSwitch
+                objectName: "bmPlaneSwitch"
+                Layout.rightMargin: Style.dp(6)
+                spacing: 0
+                HoverHandler { id: _planeHover }
+                ToolTip.visible: _planeHover.hovered
+                ToolTip.text: "Edit the foreground or the background (Ctrl+B)"
+                PlaneButton {
+                    objectName: "bmPlane_foreground"
+                    text: "Foreground"
+                    current: !_buttonMap.bgMode
+                    onPicked: _buttonMap.setEditPlane("foreground")
+                }
+                PlaneButton {
+                    objectName: "bmPlane_background"
+                    text: "Background"
+                    current: _buttonMap.bgMode
+                    onPicked: _buttonMap.setEditPlane("background")
+                }
+            }
         }
 
         // What just happened: saved, exported, copied, failed (01 S142).
@@ -3319,6 +3200,63 @@ ApplicationWindow {
                     opacity: 0.65
                 }
 
+                // Background mode's banner (07 S114, S115): over the map,
+                // never printed (the renderer draws from the editor).
+                Rectangle {
+                    id: _bgBanner
+                    objectName: "bmBgBanner"
+                    visible: _buttonMap.bgMode
+                    z: 50
+                    anchors.top: parent.top
+                    anchors.topMargin: Style.dp(6)
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(parent.width - Style.dp(20), _bgBannerCol.implicitWidth + Style.dp(24))
+                    height: _bgBannerCol.implicitHeight + Style.dp(12)
+                    radius: Style.dp(6)
+                    color: Style.infoFillDeep
+                    border.color: Style.info
+                    ColumnLayout {
+                        id: _bgBannerCol
+                        anchors.centerIn: parent
+                        width: parent.width - Style.dp(24)
+                        spacing: Style.dp(2)
+                        RowLayout {
+                            spacing: Style.dp(8)
+                            Label {
+                                objectName: "bmBgBannerText"
+                                text: "Editing the background —"
+                                color: Style.fgStrong
+                                font.pixelSize: Style.dp(12)
+                            }
+                            Button {
+                                objectName: "bmBgDone"
+                                text: "Done"
+                                font.pixelSize: Style.dp(11)
+                                onClicked: _buttonMap.setEditPlane("foreground")
+                            }
+                            CheckBox {
+                                objectName: "bmFgFaintTick"
+                                text: "Show foreground faintly"
+                                font.pixelSize: Style.dp(11)
+                                checked: _opts.values["bm-fg-faint"] !== false
+                                onToggled: {
+                                    _opts.set("bm-fg-faint", checked)
+                                    checked = Qt.binding(() => _opts.values["bm-fg-faint"] !== false)
+                                }
+                            }
+                        }
+                        Label {
+                            objectName: "bmBgHint"
+                            visible: _buttonMap.bgHintNow
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: "Your chips are shown faintly. Use Move to Foreground to bring an item forward."
+                            color: Style.fg
+                            font.pixelSize: Style.dp(11)
+                        }
+                    }
+                }
+
 
                 Component {
                     id: _cardComp
@@ -3338,10 +3276,10 @@ ApplicationWindow {
                             function onTickChanged() { _buttonMap.resTick++ }
                             function onChipMenuRequested(x, y) { _buttonMap.openChipMenu(x, y) }
                             function onFindNotPlaced(label) { _buttonMap.poolFilter = label }
-                            function onPhotoBrightChanged() { _lookTimer.restart() }
-                            function onPhotoContrastChanged() { _lookTimer.restart() }
-                            function onPhotoGreyChanged() { _lookTimer.restart() }
-                            function onPhotoBaseUrlChanged() { _lookTimer.restart() }
+                            function onEditPlaneChanged() { _buttonMap.planeChanged() }
+                            function onShowFgFaintChanged() { _buttonMap.keepPlaneView("bm-fg-faint") }
+                            function onBgViewHiddenChanged() { _buttonMap.keepPlaneView("bm-bg-hidden") }
+                            function onBgViewOpacityChanged() { _buttonMap.keepPlaneView("bm-bg-opacity") }
                             function onSaveStyleRequested(kind, fieldsJson) { _buttonMap.askStyleName(kind, fieldsJson) }
                             function onRulerGuidesEdited() { _buttonMap.guidesFromEditor() }
                             function onOverlayImportRequested() { _overlayDialog.open() }
@@ -3349,7 +3287,6 @@ ApplicationWindow {
                             function onPastePictureRequested() { _buttonMap.pastePicture() }
                             function onColorPickRequested(field, hex) { _buttonMap.openColorField(field, hex, null) }
                             function onDrawToolChanged() { _buttonMap.resTick++ }
-                            function onPhotoRestored() { _buttonMap.syncPhotoFromEditor() }
                             function onHistoryChanged() {
                                 _buttonMap.noteHistoryForFit()
                                 _buttonMap.deferHistory()
@@ -3363,7 +3300,6 @@ ApplicationWindow {
                                 _buttonMap.persistUi()
                                 _buttonMap.noteEditStep()
                             }
-                            function onPhotoImageRestored(image, source) { _buttonMap.photoFromHistory(image, source) }
                             function onSeededChanged() { _buttonMap.noteSeeded() }
                         }
                         Component.onCompleted: _cardLoader.item = _card
@@ -3853,8 +3789,8 @@ ApplicationWindow {
             side: "bottom"
         }
 
-        // The status line: the view's and photo's size, what the tool does,
-        // and the module file (its full path on hover).
+        // The status line: the view's size, the plane being edited, what the
+        // tool does, and the module file (its full path on hover).
         ToolBar {
             id: _statusLine
             Layout.fillWidth: true
@@ -3878,9 +3814,19 @@ ApplicationWindow {
                     font.pixelSize: Style.dp(11)
                 }
                 Label {
-                    visible: editing
-                    text: "Photo size " + Math.round(photoScale * 100) + "%"
-                    color: Style.fgMuted
+                    // 07 S117: the plane while editing; "Background hidden"
+                    // while the Background row's eye hides it.
+                    objectName: "bmPlaneStatus"
+                    visible: text.length > 0
+                    text: {
+                        var parts = []
+                        if (editing)
+                            parts.push(_buttonMap.bgMode ? "Background" : "Foreground")
+                        if (_buttonMap.bgHidden && !_buttonMap.bgMode)
+                            parts.push("Background hidden")
+                        return parts.join(" · ")
+                    }
+                    color: _buttonMap.bgMode ? Style.info : Style.fgMuted
                     font.pixelSize: Style.dp(11)
                 }
                 Label {
@@ -3890,12 +3836,6 @@ ApplicationWindow {
                         return editing && e && e.drawTool && e.drawTool.length
                     }
                     text: "Drawing — drag empty. Shift locks aspect. Esc cancels."
-                    color: Style.warn
-                    font.pixelSize: Style.dp(11)
-                }
-                Label {
-                    visible: editing && movePhoto
-                    text: "Move photo — drag to park. Esc leaves the tool."
                     color: Style.warn
                     font.pixelSize: Style.dp(11)
                 }
@@ -3999,6 +3939,29 @@ ApplicationWindow {
                     sequence: "Ctrl+P"
                     enabled: _buttonMap.targetName.length > 0
                     onActivated: _buttonMap.openPrintExport()
+                }
+                Shortcut {
+                    // Move to Background / Move to Foreground (07 S121).
+                    sequence: "Ctrl+Shift+B"
+                    enabled: editing
+                    onActivated: {
+                        if (!_buttonMap.typingNow())
+                            _buttonMap.moveSelectionToOtherPlane()
+                    }
+                }
+                Shortcut {
+                    // Background mode in and out (07 S113).
+                    sequence: "Ctrl+B"
+                    enabled: editing
+                    onActivated: _buttonMap.toggleEditPlane()
+                }
+                Shortcut {
+                    // Esc leaves Background mode once nothing else is
+                    // going on (a selection, a drawing tool, a rename or
+                    // Set Print Area take Esc first, in the editor).
+                    sequence: "Esc"
+                    enabled: _buttonMap.bgMode && _buttonMap.escLeavesBackground()
+                    onActivated: _buttonMap.setEditPlane("foreground")
                 }
                 Shortcut {
                     sequence: "Ctrl+1"

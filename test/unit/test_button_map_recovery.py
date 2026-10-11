@@ -30,7 +30,7 @@ def profile(
 
 def _payload() -> str:
     return json.dumps(
-        {"image": "x.png", "photo": {"scale": 1}, "nodes": [{"id": "b1"}]}
+        {"nodes": [{"id": "b1"}]}
     )
 
 

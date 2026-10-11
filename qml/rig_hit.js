@@ -10,13 +10,16 @@
 // What is under the pointer. Small targets win over bodies: group members,
 // leader ends, hotspots and spines first, then the topmost item, then leader
 // lines. Each pass looks from the top of the stack down and skips anything
-// hidden or locked, so clicks pass through to what is underneath.
+// hidden or locked, so clicks pass through to what is underneath, and
+// anything not on the plane being edited (07 S115, S116).
 function hitTest(mx, my) {
     var list = nodes || []
     var i
     var n
     for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
+        if (!inEditPlane(n))
+            continue
         if (!isGroup(n) || isHidden(n) || isLocked(n))
             continue
         var mi0 = memberHit(n, mx, my)
@@ -28,6 +31,8 @@ function hitTest(mx, my) {
     }
     for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
+        if (!inEditPlane(n))
+            continue
         if (n.kind === "draw")
             continue
         var ls = leaderList(n)
@@ -41,6 +46,8 @@ function hitTest(mx, my) {
     }
     for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
+        if (!inEditPlane(n))
+            continue
         var ls2 = leaderList(n)
         for (var lj = 0; lj < ls2.length; lj++) {
             if (leaderBlocked(n, lj))
@@ -53,6 +60,8 @@ function hitTest(mx, my) {
     }
     for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
+        if (!inEditPlane(n))
+            continue
         if (n.kind === "draw" || hotBlocked(n))
             continue
         var h = hotPt(n)
@@ -61,6 +70,8 @@ function hitTest(mx, my) {
     }
     for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
+        if (!inEditPlane(n))
+            continue
         var lss = leaderList(n)
         for (var lk = 0; lk < lss.length; lk++) {
             if (!showLeaderHandles(n, lk) || leaderBlocked(n, lk))
@@ -77,6 +88,8 @@ function hitTest(mx, my) {
     // A selected drawing's handles, even when another item covers them.
     for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
+        if (!inEditPlane(n))
+            continue
         if (!isDraw(n) || isHidden(n) || isLocked(n) || !isSelected(n.id))
             continue
         var hd = hitDraw(n, mx, my)
@@ -86,6 +99,8 @@ function hitTest(mx, my) {
     // The topmost chip, group or drawing under the pointer.
     for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
+        if (!inEditPlane(n))
+            continue
         if (isHidden(n) || isLocked(n))
             continue
         if (isDraw(n)) {
@@ -110,6 +125,8 @@ function hitTest(mx, my) {
     }
     for (i = list.length - 1; i >= 0; i--) {
         n = list[i]
+        if (!inEditPlane(n))
+            continue
         var seg = _nearLeader(n, mx, my)
         if (seg && seg.seg >= 0 && !leaderBlocked(n, seg.leader))
             return { kind: "line", id: n.id, spine: -1, leader: seg.leader, seg: seg.seg }
@@ -346,7 +363,7 @@ function selectBand(add) {
     var list = nodes || []
     for (var i = 0; i < list.length; i++) {
         var n = list[i]
-        if (isHidden(n) || isLocked(n))
+        if (isHidden(n) || isLocked(n) || !inEditPlane(n))
             continue
         var hit = false
         if (isTable(n)) {

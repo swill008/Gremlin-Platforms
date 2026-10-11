@@ -32,7 +32,9 @@ function applyPointer(mx, my, altOff) {
     if (!n)
         return
     if (dragKind === "from" || dragKind === "to") {
-        var ep2 = snapPos(mx, my, altOff)
+        // A snap point on a picture of either plane wins (07 S122).
+        var sock = altOff ? null : socketNear(mx, my)
+        var ep2 = sock || snapPos(mx, my, altOff)
         var fr2 = { type: "free", fx: xToFx(ep2.x), fy: yToFy(ep2.y) }
         var Ld = currentLeader(n)
         if (!Ld)
@@ -47,15 +49,6 @@ function applyPointer(mx, my, altOff) {
         var hp = snapPos(mx, my, altOff)
         n.hotFx = xToFx(hp.x)
         n.hotFy = yToFy(hp.y)
-    } else if (dragKind === "photo") {
-        if (photoLocked)
-            return
-        var sPhoto = spaceRect()
-        var dw = Math.max(1, sPhoto.w)
-        var dh = Math.max(1, sPhoto.h)
-        photoOffX = Math.max(-1, Math.min(1, dragOffX + (mx - photoDragX0) / dw))
-        photoOffY = Math.max(-1, Math.min(1, dragOffY + (my - photoDragY0) / dh))
-        return
     } else if (dragKind === "chip") {
         var cp = snapPos(mx - dragOffX, my - dragOffY, altOff)
         var fx = xToFx(cp.x)

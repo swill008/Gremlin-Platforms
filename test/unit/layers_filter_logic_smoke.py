@@ -91,7 +91,7 @@ def main() -> None:
     out["empty-open"] = rows(empty, {"b3": True})
     out["hotspots"] = rows({"kinds": ["hotspot"], "query": ""})
     out["shapes"] = rows({"kinds": ["shape"], "query": ""})
-    queries = ("hat", "HAT ", "button", "hotspot", "fire", "weapon", "rect", "photo")
+    queries = ("hat", "HAT ", "button", "hotspot", "fire", "weapon", "rect")
     for q in (*queries, "zzz"):
         out["q:" + q] = rows({"kinds": [], "query": q})
     out["chip+hat"] = rows({"kinds": ["chip"], "query": "hat"})
@@ -116,8 +116,9 @@ def main() -> None:
     member_state = {"kinds": [], "query": "button 21"}
     out["select-member"] = _call(s, "selectLayerMatches", member_state)
     out["select-member-ids"] = s.state()["selected"]
-    photo_state = {"kinds": ["photo"], "query": ""}
-    out["select-photo"] = _call(s, "selectLayerMatches", photo_state)
+    # The folded Background row is not selected (07 S120).
+    bg_state = {"kinds": [], "query": "background"}
+    out["select-background"] = _call(s, "selectLayerMatches", bg_state)
     out["can-delete-member"] = _call(s, "canDeleteLayer", "p2122", "member:0")
     print("RESULT " + json.dumps(out), flush=True)
     smoke_exit(0)

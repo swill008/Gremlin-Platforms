@@ -334,16 +334,25 @@ def test_configuration_appearance_comes_with_the_pack(pack: dict) -> None:
 
 
 def test_the_photo_keeps_its_placement() -> None:
+    # The device's photo is the bottom background picture (07 S127): its
+    # place, size and look come with it.
+    photo = {"id": "bg", "kind": "draw", "shape": "image", "plane": "background",
+             "src": "photo.png", "fx": 0.1, "fy": 0.2, "fw": 0.5, "fh": 0.4,
+             "rot": 15, "opacity": 0.8, "look": {"grey": True}}
     merged, _notes = device_pack._merge_module(
-        {"kind": "control.hardware", "photo": {"x": 0}},
-        {"image": "photo.png", "photo": {"x": 0.1, "scale": 1.5}, "nodes": []},
+        {"kind": "control.hardware", "nodes": []},
+        {"nodes": [photo]},
         {"pic:photo.png"},
         "in.",
         "pJoy Pro",
         "",
     )
-    assert merged["image"] == "photo.png"
-    assert merged["photo"] == {"x": 0.1, "scale": 1.5}
+    background = [n for n in merged["nodes"] if n.get("plane") == "background"]
+    assert len(background) == 1
+    got = background[0]
+    for key in ("shape", "src", "fx", "fy", "fw", "fh", "rot", "opacity", "look"):
+        assert got.get(key) == photo[key], key
+    assert "image" not in merged and "photo" not in merged
 
 
 def test_the_rows_and_notes(pack: dict) -> None:
@@ -620,13 +629,14 @@ def test_a_pack_picture_is_written_whole_or_not_at_all(
     monkeypatch.setattr(io, "open", spy)
     monkeypatch.setattr(builtins, "open", spy)
     record: list[tuple[Path, bytes | None]] = []
-    doc = {"image": "photo.png", "nodes": []}
+    doc = {"nodes": [{"id": "bg", "kind": "draw", "shape": "image",
+                      "plane": "background", "src": "photo.png"}]}
     written = device_pack._write_pictures(
         folder, {"photo.png": b"new"}, {"pic:photo.png"}, doc, record
     )
     monkeypatch.undo()
     assert written == {"photo.png": "photo.png"}
-    assert doc["image"] == "pictures/photo.png"
+    assert doc["nodes"][0]["src"] == "pictures/photo.png"
     assert dest.read_bytes() == b"new"
     assert dest.resolve() not in opened
     assert record == [(dest, b"old")]

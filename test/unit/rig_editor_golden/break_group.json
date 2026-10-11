@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "border": "#3F3F46",
@@ -1253,18 +1254,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 18,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID34"
@@ -1274,6 +1270,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "17": {
       "border": "#3F3F46",
@@ -1336,18 +1333,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },

@@ -60,18 +60,23 @@ def _picture_files(root: pathlib.Path) -> list[str]:
 
 
 def _payload(image: str = "", nodes: list | None = None) -> str:
+    """The editor's Save: the device's photo is the bottom background
+    picture, a node like any other (07 S111, S127)."""
+    background = [_background_node(image)] if image else []
     return json.dumps({
         "kind": "control.hardware",
         "device": DEVICE,
-        "image": image,
-        "photo": {},
         "ui": {},
-        "nodes": nodes or [],
+        "nodes": background + (nodes or []),
     })
 
 
 def _picture_node(ref: str, node_id: str = "p1") -> dict:
     return {"id": node_id, "kind": "draw", "shape": "image", "src": ref}
+
+
+def _background_node(ref: str) -> dict:
+    return {**_picture_node(ref, "bg"), "plane": "background"}
 
 
 def test_paste_then_cancel_leaves_no_file(maps: pathlib.Path) -> None:
@@ -108,8 +113,8 @@ def test_save_removes_an_unused_picture_and_keeps_used_ones(
     maps: pathlib.Path
 ) -> None:
     base = _put_module(DEVICE, {
-        "image": "pictures/photo.png",
         "nodes": [
+            _background_node("pictures/photo.png"),
             _picture_node("pictures/a.png"),
             _picture_node("pictures/b.png", "p2"),
         ],
@@ -215,7 +220,7 @@ def test_a_template_round_trip_carries_its_pictures(
     hp2.load(OTHER)
     applied = json.loads(hp2.templateNodes(name, OTHER))
     assert applied[0]["src"] == "pictures/logo.png"
-    assert hp2.save(OTHER, json.dumps({"nodes": applied, "image": ""}))
+    assert hp2.save(OTHER, json.dumps({"nodes": applied}))
     assert (store.pictures_dir(OTHER) / "logo.png").is_file()
 
 
@@ -234,7 +239,7 @@ def test_recovery_copy_is_kept_in_the_device_folder(
     base = _put_module(DEVICE, {"nodes": []})
     hp = hardware_profile.HardwareProfile()
     hp.load(DEVICE)
-    assert hp.saveRecovery(DEVICE, json.dumps({"nodes": [], "image": ""}))
+    assert hp.saveRecovery(DEVICE, json.dumps({"nodes": []}))
     assert (base / "recovery.json").is_file()
     assert hp.loadRecovery(DEVICE)
     hp.clearRecovery(DEVICE)

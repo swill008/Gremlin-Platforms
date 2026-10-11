@@ -151,13 +151,18 @@ def test_a_module_save_is_kept_with_its_pictures(store: Path) -> None:
             "device": "Test Stick",
             "claim": {"buttons": [1]},
             "calibration": {"1": [0, 1, 2, 3, True]},
-            "image": ref,
-            "nodes": [{"id": "a"}],
+            # The device's photo is the bottom background picture, a node
+            # like any other (07 S111, S127).
+            "nodes": [
+                {"id": "bg", "kind": "draw", "shape": "image",
+                 "plane": "background", "src": ref},
+                {"id": "a"},
+            ],
         },
     )
     entries = _settle()
     titles = [e["title"] for e in entries]
-    assert titles[0] == "Saved Test Stick: Button Map, Button Map photo"
+    assert titles[0] == "Saved Test Stick: Button Map"
     assert entries[0]["area"] == "button-map"
     assert entries[0]["after"]["pictures"][0]["ref"] == "pictures/photo.png"
     assert history.kept_file(entries[0]["after"]["pictures"][0]["keptFile"])

@@ -144,6 +144,8 @@ Window {
             pan: [Math.round(_face.panX), Math.round(_face.panY)]
         })
     }
+    // The window gives the face the bottom background picture's file, whose
+    // load recovers the view.
     function setPhotoUrl(url) { _face.photoOverride = url }
     function setRulers(on) { _face.rulersOn = on }
     // A transform handle's window point.
@@ -264,7 +266,8 @@ Window {
             menu: menuLines(),
             layers: JSON.parse(layerLines()),
             props: JSON.parse(propLines()),
-            photo: [e.photoScale, e.photoOffX, e.photoOffY, e.photoRot],
+            editPlane: e.editPlane,
+            bgCount: e.planeRange("background").last + 1,
             cropId: e.cropId,
             pasteRequests: _win.pasteRequests,
             nodes: e.nodes,
@@ -410,7 +413,7 @@ class Session:
         self.wait(30)
 
     def hold_runs(self) -> None:
-        """A run of nudges, photo or color changes ends when it pauses
+        """A run of nudges, look or color changes ends when it pauses
         (400 ms). A slow machine pauses between the harness's own steps, so
         runs are held open until end_run()."""
         self.set_prop("stepPauseMs", _RUN_HELD_MS)
@@ -602,6 +605,10 @@ class Session:
         path.write_text(json.dumps(doc, indent=1, sort_keys=True), encoding="utf-8")
 
 
+def _file_url(path: Path) -> str:
+    return QtCore.QUrl.fromLocalFile(str(path)).toString()
+
+
 def _load(s: Session, layout: str) -> None:
     doc = json.loads(LAYOUTS[layout].read_text(encoding="utf-8"))
     s.js("setNodes", json.dumps(doc.get("nodes") or []))
@@ -751,11 +758,26 @@ def scenario_api_sweep(s: Session) -> None:
     chips = [n["id"] for n in nodes if n["kind"] == "btn"]
     stack = next(n["id"] for n in nodes if n["kind"] == "stack")
 
-    # Photo pose.
-    s.call("applyPhotoPose", {"scale": 1.5, "offX": 0.1, "offY": -0.1, "rot": 10})
-    s.record("photo-pose", image=True)
-    s.call("resetPhotoPose")
-    s.record("photo-reset")
+    # A background picture's pose, in Background mode: fitted to the photo
+    # frame, moved, sized and turned, its shape reset, then the background
+    # cleared.
+    s.set_prop("editPlane", "background")
+    bg = s.call(
+        "addOverlay",
+        "test/icon",
+        _file_url(ROOT / "gfx" / "icon.png"),
+        {"plane": "background", "fitFrame": True, "aspect": 1},
+    )
+    s.call("setSelection", [bg])
+    s.call("setProp", "x", 30)
+    s.call("setProp", "w", 50)
+    s.call("setRotation", 10)
+    s.record("background-pose", image=True)
+    s.call("resetShape", bg)
+    s.record("background-reset")
+    s.call("clearPlane", "background")
+    s.set_prop("editPlane", "foreground")
+    s.record("background-cleared")
 
     # Chip styling.
     s.call("setSelection", [chips[0]])
@@ -1068,14 +1090,23 @@ def scenario_layers(s: Session) -> None:
     s.wait(150)
     s.record("renamed")
 
-    # The photo's own row.
-    s.call("setPhotoFlag", "locked", True)
-    s.record("photo-locked")
+    # A background picture: the Background row stands for it, and its lock
+    # locks the whole background.
+    s.call(
+        "addOverlay",
+        "test/icon",
+        _file_url(ROOT / "gfx" / "icon.png"),
+        {"plane": "background", "fitFrame": True, "aspect": 1},
+    )
+    s.call("setSelection", [])
+    s.record("background-row", image=True)
+    s.call("setPlaneLocked", "background", True)
+    s.record("background-locked")
 
 
 def scenario_transform(s: Session) -> None:
     """Rotate handle, resizing a turned shape, a typed angle, flips, a
-    picture keeping its proportions, and undoing a photo change."""
+    picture keeping its proportions, and undoing a background picture's move."""
     Mod = QtCore.Qt.KeyboardModifier
     Key = QtCore.Qt.Key
     _load(s, "evo_r")
@@ -1152,15 +1183,22 @@ def scenario_transform(s: Session) -> None:
     s.drag(corner, QtCore.QPoint(corner.x() + 60, corner.y() - 30), Mod.ShiftModifier)
     s.record("picture-stretched")
 
-    # The photo: a change is one undo step, and undo puts it back.
-    s.call("applyPhotoPose", {"scale": 1.2, "offX": 0.2, "offY": 0.1, "rot": 20})
-    s.call("notePhotoChange")
-    s.end_run()
-    s.record("photo-changed")
+    # A background picture moved in Background mode: one undo step, and undo
+    # puts it back.
+    bg = s.call(
+        "addOverlay",
+        "test/icon",
+        _file_url(icon),
+        {"plane": "background", "fitFrame": True, "aspect": 1},
+    )
+    s.set_prop("editPlane", "background")
+    s.call("setSelection", [])
+    s.drag(s.center(bg), s.center(bg, dx=60, dy=30))
+    s.record("background-moved")
     s.call("undo")
-    s.record("photo-undone")
+    s.record("background-undone")
     s.call("redo")
-    s.record("photo-redone")
+    s.record("background-redone")
 
 
 def scenario_props(s: Session) -> None:
@@ -1711,29 +1749,39 @@ def scenario_styles(s: Session) -> None:
     s.steps[-1]["state"]["saveAsked"] = json.loads(s.js("styleAsked"))
 
 
-def scenario_photo_look(s: Session) -> None:
-    """The photo's look: brightness, contrast, greyscale and fade, saved with
-    its pose, undone in one step, and reset on its own."""
+def scenario_background_look(s: Session) -> None:
+    """A background picture's look: brightness, contrast, greyscale and
+    opacity, one undo step, and set back to neutral. The harness makes no
+    adjusted copies (the window's lookUrlFor), so only opacity shows."""
     _load(s, "evo_r")
-    # A picture stands in for the photo, which a plain checkout lacks.
     icon = ROOT / "gfx" / "icon_large.png"
-    s.js("setPhotoUrl", QtCore.QUrl.fromLocalFile(str(icon)).toString())
+    size = QtGui.QImage(str(icon)).size()
+    pic = s.call(
+        "addOverlay",
+        "test/icon_large",
+        _file_url(icon),
+        {
+            "plane": "background",
+            "fitFrame": True,
+            "aspect": size.width() / max(1, size.height()),
+        },
+    )
+    s.js("setPhotoUrl", _file_url(icon))
     s.call("setSelection", [])
     s.record("plain", image=True)
-    s.call("setPhotoLook", "grey", 1)
-    s.call("setPhotoLook", "bright", 0.3)
-    s.call("setPhotoLook", "fade", 0.5)
+    s.call("setPictureLook", pic, "grey", 1)
+    s.call("setPictureLook", pic, "bright", 0.3)
+    s.call("setPictureLook", pic, "opacity", 0.5)
     s.end_run()
     s.record("adjusted", image=True)
-    s.steps[-1]["state"]["bag"] = s.call("photoBag")
     s.key(QtCore.Qt.Key.Key_Z, QtCore.Qt.KeyboardModifier.ControlModifier)
     s.record("undone")
-    s.steps[-1]["state"]["bag"] = s.call("photoBag")
-    s.call("setPhotoLook", "contrast", 0.5)
-    s.call("resetPhotoLook")
+    s.call("setPictureLook", pic, "contrast", 0.5)
+    for key in ("bright", "contrast", "grey"):
+        s.call("setPictureLook", pic, key, 0)
+    s.call("setPictureLook", pic, "opacity", 1)
     s.end_run()
     s.record("reset")
-    s.steps[-1]["state"]["bag"] = s.call("photoBag")
 
 
 def scenario_light_page(s: Session) -> None:
@@ -2218,7 +2266,7 @@ SCENARIOS = {
     "callout": scenario_callout,
     "paths": scenario_paths,
     "styles": scenario_styles,
-    "photo_look": scenario_photo_look,
+    "background_look": scenario_background_look,
     "light_page": scenario_light_page,
     "zoom": scenario_zoom,
     "rulers": scenario_rulers,

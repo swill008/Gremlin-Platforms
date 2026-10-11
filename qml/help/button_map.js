@@ -86,19 +86,19 @@ function topics() {
             + "</ul>",
             ["button-map-tool-rows"]),
         t("button-map-menus", "Getting started", "Button Map menus",
-            "<p>The Button Map's menus show only what you can use at that moment. Before a device is chosen, <b>File › Device</b> lists the devices; the editing items appear once you choose <b>File › Edit Mapping</b>. The Photo menu works while editing.</p>"
+            "<p>The Button Map's menus show only what you can use at that moment. Before a device is chosen, <b>File › Device</b> lists the devices; the editing items appear once you choose <b>File › Edit Mapping</b>. The Background menu works while editing.</p>"
             + "<ul>"
             + "<li><b>File</b>: <b>Edit Mapping</b>, <b>Save</b> (<b>Ctrl+S</b>), <b>Cancel</b>, <b>Reset Layout</b>, <b>Fit to Photo Frame</b>, <b>Print &amp; Export…</b> (<b>Ctrl+P</b>), <b>Close</b>. The last row shows the device's module file.</li>"
             + "<li><b>Edit</b>: Undo, Redo, <b>Copy Button Map from Device</b>, <b>Mirror Layout</b>, <b>Set Print Area</b>, <b>Clear Print Area</b>, <b>Paste Picture</b>, the templates, and <b>Button Map Options…</b>.</li>"
             + "<li><b>View</b>: zoom, <b>Grid</b>, <b>Rulers</b>, guides, <b>Layers</b>, <b>Properties</b>, <b>Print Area</b>, <b>Chip Text</b>, <b>Labels Mode</b>, <b>Command Palette</b> and <b>Reset Tool Rows</b>.</li>"
-            + "<li><b>Photo</b>: <b>Choose Photo…</b>, <b>Clear Photo</b>, <b>Move Photo</b>, <b>Adjust Photo…</b>, <b>Reset Photo</b>.</li>"
+            + "<li><b>Background</b>: <b>Edit Background</b> (<b>Ctrl+B</b>), <b>Add Picture to Background…</b>, <b>Clear Background</b>. See <a href=\"topic:button-map-background\">Background and foreground</a>.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li><b>Reset Layout</b> clears everything from the map: chips go back to the pool, and leaders, hotspots, drawings, text boxes, pictures and tables are removed. It asks first (\"Reset the layout?\"); the red <b>Reset Layout</b> clears it, and actions are not changed. <b>Ctrl+Z</b> brings the layout back, and <b>File › Cancel</b> leaves editing without keeping the reset; <b>Save</b> makes the empty map the live one.</li>"
-            + "<li><b>Fit to Photo Frame</b> shrinks an older, oversized layout to the photo.</li>"
+            + "<li><b>Fit to Photo Frame</b> shrinks an older, oversized layout to the photo frame.</li>"
             + "</ul>",
-            ["button-map-keys", "button-map-print", "button-map-photo"]),
+            ["button-map-keys", "button-map-print", "button-map-background"]),
         t("button-map-options", "Getting started", "Button Map Options",
             "<p><b>Button Map Options</b> holds the Button Map's own settings; they are not in the program's main Options. They apply to every device.</p>"
             + "<p>Open it with <b>Options</b> on the top tool row, or <b>Edit › Button Map Options…</b>. The groups are down its left; the chosen group's settings sit on the right, one line each, with each setting's description on its ⓘ. Changes apply and are kept at once, and the pane opens on the group you used last. Like every tool it can be pinned, locked, moved with its tab, or resized by its edges.</p>"
@@ -112,7 +112,7 @@ function topics() {
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>While editing, the map, the photo, the print area, the print settings and the guides are written to the module file only by Save; Cancel takes them back.</li>"
+            + "<li>While editing, the map (background and foreground), the print area, the print settings and the guides are written to the module file only by Save; Cancel takes them back.</li>"
             + "<li>The view (zoom and pan), the grid settings and Show Guides are kept with the device's map at once, also while editing, and Cancel leaves them. Outside editing, Print &amp; Export's settings are kept at once. Rulers is a setting of the program, kept at once.</li>"
             + "</ul>",
             ["button-map-edit", "button-map-styles"]),
@@ -122,7 +122,7 @@ function topics() {
             + "<li>For an unplugged stick the map is covered with \"Connect &lt;name&gt; to see its Button Map.\" It loads by itself when the stick connects.</li>"
             + "<li>An unplugged stick's map still exports from <b>Print &amp; Export…</b>.</li>"
             + "<li>Outputs (vJoy, Xbox), Keyboard, Logical Device and OSC need no stick and always show.</li>"
-                + "<li>A device with no photo shows none; it never borrows another device's photo.</li>"
+                + "<li>A device with no background shows none; it never borrows another device's background.</li>"
             + "<li>Unplugging a stick while you edit keeps the edit on screen: \"&lt;name&gt; is disconnected. You can still save or cancel this edit.\"</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
@@ -160,20 +160,25 @@ function topics() {
             + "<li><b>View › Show Guides</b> hides and shows them, and <b>View › Clear Guides</b> removes them all. They never print or export.</li>"
             + "</ul>",
             ["button-map-view"]),
-        t("button-map-photo", "The map", "Change the photo",
-            "<p>The photo is the device picture under everything else.</p>"
+        t("button-map-background", "The map", "Background and foreground",
+            "<p>A Button Map has two planes: the <b>Background</b>, the artwork behind everything, and the <b>Foreground</b> in front of it.</p>"
             + "<ul>"
-            + "<li><b>Photo › Choose Photo…</b> uses another picture; <b>Photo › Clear Photo</b> removes the photo.</li>"
-            + "<li><b>Photo › Move Photo</b> drags it (<b>Esc</b> leaves the tool); <b>Adjust Photo…</b> sets its size, offset and rotation; <b>Reset Photo</b> puts it back.</li>"
-            + "<li><b>Adjust Photo…</b> also sets its <b>Look</b>, so the chips stand out against a busy picture: <b>Brightness</b> and <b>Contrast</b> (either way), <b>Greyscale</b> and <b>Fade</b>. <b>Reset Look</b> puts them back; Reset Photo leaves the look alone.</li>"
+            + "<li>The background holds pictures, shapes, lines and text, in any number of layers. Its bottom picture is the device's photo. Chips, groups, hotspots, leaders and tables stay in the foreground.</li>"
+            + "<li>To edit the background, choose <b>Background › Edit Background</b> (<b>Ctrl+B</b>), choose <b>Background</b> on the <b>Foreground</b> | <b>Background</b> switch on the tool row, or double-click the <b>Background</b> row at the bottom of Layers. A banner reads \"Editing the background\"; <b>Done</b>, <b>Esc</b> or the switch go back to the foreground.</li>"
+            + "<li>While you edit the background, the foreground shows faintly and can't be clicked. Clear <b>Show foreground faintly</b> on the banner to hide it. While you edit the foreground, the background shows but can't be clicked.</li>"
+            + "<li><b>Background › Add Picture to Background…</b> puts a picture on top of the background, fitted to the photo frame. <b>Background › Clear Background</b> removes every background layer.</li>"
+            + "<li>To move items to the other plane, right-click them and choose <b>Move to Background</b> or <b>Move to Foreground</b> (<b>Ctrl+Shift+B</b>); the Layers panel's menu and <b>Arrange</b> have them too. Kinds the background can't hold are greyed out, and their tooltip says why.</li>"
+            + "<li>A picture's <b>Look</b> in Properties sets <b>Brightness</b> and <b>Contrast</b> (either way), <b>Greyscale</b> and <b>Opacity</b>, so the chips stand out against a busy picture. <b>Reset Shape</b> takes off a picture's crop, turn, flip and skew.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>Choose Photo and Clear Photo are steps for Undo, and Cancel puts back the photo you started with. If Clear Photo fails, the reason shows in red on the message line.</li>"
-            + "<li>The look is saved with the layout, shows on the live map and in exports, and Undo steps through it.</li>"
-            + "<li>The photo has its own row at the bottom of the Layers panel, so it can be hidden or locked like any item.</li>"
+            + "<li>Add Picture to Background, Clear Background and each move are one step for Undo, and Cancel puts back the background you started with.</li>"
+            + "<li>The status line says <b>Foreground</b> or <b>Background</b> while editing.</li>"
+            + "<li>In the foreground, the <b>Background</b> row in Layers has an <b>eye</b> that hides the background on screen only (the status line says <b>Background hidden</b>), a <b>lock</b> that locks every background layer, and an <b>Opacity</b> slider for how strongly it shows on screen. The eye, the slider and Show foreground faintly are the same for every map and never print.</li>"
+            + "<li>Chips snapped to a snap point on a background picture follow it when it moves.</li>"
+            + "<li>Print &amp; Export prints both planes; clear <b>Include background</b> to leave the background out.</li>"
             + "</ul>",
-            ["button-map-layers", "button-map-pictures"]),
+            ["button-map-layers", "button-map-pictures", "button-map-print"]),
         t("button-map-select", "The map", "Select items and find a control",
             "<p>Select items to move, style or delete them.</p>"
             + "<ul>"
@@ -302,7 +307,7 @@ function topics() {
             + "</ol>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>It replaces this map's chips, leaders and drawings. This device's photo stays.</li>"
+            + "<li>It replaces this map's foreground: chips, leaders and drawings. This device's background stays, unless you tick <b>Copy the background too</b>.</li>"
             + "<li>One Undo puts the old layout back, mirrored or not, and nothing is saved until you save.</li>"
             + "</ul>",
             ["button-map-mirror", "button-map-templates"]),
@@ -453,7 +458,7 @@ function topics() {
             + "</ul>",
             ["button-map-groups", "button-map-text-boxes"]),
         t("button-map-pictures", "Drawing", "Add pictures",
-            "<p>Pictures sit on top of the photo, for logos, icons or close-ups.</p>"
+            "<p>Pictures in the foreground sit over the background, for logos, icons or close-ups; pictures can also be moved to the background (see <a href=\"topic:button-map-background\">Background and foreground</a>).</p>"
             + "<ul>"
             + "<li><b>Draw</b> › <b>Import Picture…</b> adds a picture file.</li>"
             + "<li><b>Edit › Paste Picture</b> (<b>Ctrl+Shift+V</b>), or <b>Paste Picture</b> in the canvas's Draw section, adds the picture on the clipboard: a copied picture, or picture files copied in File Explorer. <b>Ctrl+V</b> pastes a picture too when it was copied after your last chip copy.</li>"
@@ -470,7 +475,7 @@ function topics() {
             + "<li>Pictures are saved beside the device's module file.</li>"
             + "<li>A picture dropped while not editing is refused: \"Click Edit Mapping first, then drop the picture again.\"</li>"
             + "</ul>",
-            ["button-map-rotate", "button-map-photo"]),
+            ["button-map-rotate", "button-map-background"]),
         t("button-map-styles", "Drawing", "Save and apply styles",
             "<p>A look you use often can be kept under a name and put on other items.</p>"
             + "<ol>"
@@ -487,7 +492,7 @@ function topics() {
 
         // ---- Panels --------------------------------------------------------
         t("button-map-layers", "Panels", "Layers panel",
-            "<p><b>View › Layers</b> shows every item while editing, top of the stack first, then the photo.</p>"
+            "<p><b>View › Layers</b> shows the items of the plane you are editing, top of the stack first. In the foreground it ends with a folded <b>Background</b> row; while you edit the background it lists only the background layers (see <a href=\"topic:button-map-background\">Background and foreground</a>).</p>"
             + "<ul>"
             + "<li>The <b>eye</b> hides an item: it is not drawn, on the live map either, and is left out of exports.</li>"
             + "<li>The <b>lock</b> keeps an item in place: clicks pass through it, and it is not moved, nudged or deleted. <b>Ctrl+L</b> locks or unlocks the selection; <b>Ctrl+Shift+L</b> unlocks everything.</li>"
@@ -506,7 +511,7 @@ function topics() {
             + "<li>Press <b>Enter</b> to select every match on the map and bring the first into view. <b>Esc</b> or the box's <b>×</b> clears it.</li>"
             + "</ol>"
             + "<p>It finds, in any case and anywhere in: the row's name, the control (Button 12, Hat 1, X Axis, even when the chip has a friendly name), what the chip shows (its action or description), and the kind of row.</p>"
-            + "<p>Under the box, one toggle per kind of row: <b>All · Chips · Groups · Hotspots · Leaders · Shapes · Lines · Pictures · Text · Tables · Photo</b>. Turn on any number of kinds to show only those; with none on, every row shows and <b>All</b> lights; <b>All</b> turns them all off again. The search looks only in the kinds that are on.</p>"
+            + "<p>Under the box, one toggle per kind of row: <b>All · Chips · Groups · Hotspots · Leaders · Shapes · Lines · Pictures · Text · Tables</b>; while you edit the background, <b>Shapes · Lines · Pictures · Text</b>. Turn on any number of kinds to show only those; with none on, every row shows and <b>All</b> lights; <b>All</b> turns them all off again. The search looks only in the kinds that are on.</p>"
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>A matching hotspot, leader or group member shows under its chip or group, which is dimmed when it doesn't match itself.</li>"
@@ -555,13 +560,14 @@ function topics() {
             "<p><b>File › Print &amp; Export…</b> (<b>Ctrl+P</b>) has every print and export in one place.</p>"
             + "<ol>"
             + "<li>Open <b>Print &amp; Export…</b>. A preview shows the page as it will come out.</li>"
-            + "<li>Choose the paper (Letter, Legal, Tabloid, A3, A4, A5), its orientation, the margins and the background. Under <b>Custom</b> are the scale and <b>Freeform (As Drawn)</b>.</li>"
+            + "<li>Choose the paper (Letter, Legal, Tabloid, A3, A4, A5), its orientation, the margins, the page and whether to include the background. Under <b>Custom</b> are the scale and <b>Freeform (As Drawn)</b>.</li>"
             + "<li>Press <b>Print…</b>, <b>Export PDF…</b>, <b>Export PNG…</b> or <b>Export JPG…</b>.</li>"
             + "</ol>"
             + "<ul>"
-            + "<li><b>Scale</b>: the size in pixels of every export and print. 100% is the photo's own size, pixel for pixel (without a photo, the page 1920 pixels wide). The window shows the pixels, and on a paper how many dots an inch they print at: the print area fills the paper inside its margins.</li>"
+            + "<li><b>Scale</b>: the size in pixels of every export and print. 100% is the bottom background picture's own size, pixel for pixel (without one, the page 1920 pixels wide). The window shows the pixels, and on a paper how many dots an inch they print at: the print area fills the paper inside its margins.</li>"
             + "<li><b>Freeform (As Drawn)</b> sets no paper: the print area keeps whatever shape you draw (Paper, Orientation and Margins grey out), and a PDF gets a page of that shape, at 96 pixels an inch.</li>"
-            + "<li><b>Background</b>: <b>Dark</b>, as on screen, or <b>Light</b>, a white page where every color has its lightness turned over, so dark chips come out light with dark text and a dark red becomes a light red, while the photo stays as it is. The screen does not change.</li>"
+            + "<li><b>Page</b>: <b>Dark</b>, as on screen, or <b>Light</b>, a white page where every color has its lightness turned over, so dark chips come out light with dark text and a dark red becomes a light red, while pictures stay as they are. The screen does not change.</li>"
+            + "<li><b>Include background</b> (on at first) prints the background under the foreground; clear it to leave the background out.</li>"
             + "<li>The preview follows the print area as it moves or is resized on the map, and sharpens a moment after it stops. In the preview, drag the picture to move the print area and turn the mouse wheel to zoom: in makes the print area smaller, out larger, about the pointer, keeping its shape. Not while the print area is locked.</li>"
             + "<li><b>Print…</b> prints the print area as Export draws it, on the chosen paper and margins. Windows' printer dialog comes first. With <b>Freeform (As Drawn)</b> it goes on the paper chosen in the printer dialog, turned to landscape when wider than tall.</li>"
             + "</ul>"

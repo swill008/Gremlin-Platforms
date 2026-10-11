@@ -8,11 +8,15 @@ import QtQuick.Layouts
 import Gremlin.Style
 import Gremlin.Menus
 
-// The Button Map editor's Layers panel: every item, top of the stack first,
-// with an eye (show or hide) and a lock on each. Chips and groups open to
-// their hotspot and leaders, which have their own eye and lock; the
-// background photo is the last row. Click a row to select it (Ctrl or Shift
-// adds), drag a row to restack it, double-click to rename a drawing. The
+// The Button Map editor's Layers panel: the items of the plane being
+// edited (07 S119), top of the stack first, with an eye (show or hide) and a
+// lock on each. Chips and groups open to their hotspot and leaders, which
+// have their own eye and lock. In Foreground mode the last row is the folded
+// Background row (07 S120): its eye hides the background on screen only, its
+// lock locks every background layer, its Opacity slider sets how strongly
+// the background shows, and a double-click edits the background. Click a row
+// to select it (Ctrl or Shift adds), drag a row to restack it within its
+// plane, double-click to rename a drawing. The
 // trash icon, or Delete in a row's right-click menu, deletes it
 // (ed.deleteLayer: chips back to the pool, leaders and pictures removed,
 // hotspots hidden).
@@ -28,21 +32,33 @@ Rectangle {
     // The kind toggles that are on (none = every kind) and the search text.
     // Kept on the panel, which the window keeps while it is open: another
     // device's map (a new ed) keeps them (07 S102).
+    // Kinds the other plane has stay in kinds but count only there: the
+    // toggles shown are the plane's own (07 S102).
     property var kinds: []
     property string searchText: ""
-    readonly property var filterState: ({ kinds: kinds.slice(), query: searchText.trim() })
-    readonly property bool filtering: kinds.length > 0 || searchText.trim() !== ""
+    // Background mode: the editor is editing the background plane (07 S113).
+    readonly property bool bgMode: !!ed && ed.editPlane === "background"
+    readonly property var shownKinds: {
+        var keys = kindToggles.map(function(t) { return t.key })
+        return kinds.filter(function(k) { return keys.indexOf(k) >= 0 })
+    }
+    readonly property var filterState: ({ kinds: shownKinds.slice(), query: searchText.trim() })
+    readonly property bool filtering: shownKinds.length > 0 || searchText.trim() !== ""
     readonly property var counts: (filtering && ed && ed.layerCounts) ? (ed.tick, ed.layerCounts(filterState)) : null
     // "12 of 148" or "No layers match" while a filter is on.
     readonly property string countText: !counts ? ""
         : (counts.matches > 0 ? counts.matches + " of " + counts.total : "No layers match")
-    readonly property var kindToggles: [
+    // The background holds only shapes, lines, pictures and text (07 S102).
+    readonly property var kindToggles: bgMode ? [
+        { key: "all", label: "All" }, { key: "shape", label: "Shapes" },
+        { key: "line", label: "Lines" }, { key: "picture", label: "Pictures" },
+        { key: "text", label: "Text" }
+    ] : [
         { key: "all", label: "All" }, { key: "chip", label: "Chips" },
         { key: "group", label: "Groups" }, { key: "hotspot", label: "Hotspots" },
         { key: "leader", label: "Leaders" }, { key: "shape", label: "Shapes" },
         { key: "line", label: "Lines" }, { key: "picture", label: "Pictures" },
-        { key: "text", label: "Text" }, { key: "table", label: "Tables" },
-        { key: "photo", label: "Photo" }
+        { key: "text", label: "Text" }, { key: "table", label: "Tables" }
     ]
     // Chip ids whose hotspot and leader rows are open.
     property var expanded: ({})
@@ -60,6 +76,16 @@ Rectangle {
     // The row the right-click menu was opened on.
     property var menuRow: null
 
+    // Move to Background / Move to Foreground for an item's row (07 S121):
+    // the whole selection when the row is in it, else the row's item. Not
+    // on hotspot, leader or member rows, nor the Background row.
+    function planeItems(row) {
+        if (!row || !row.id || row.part !== "" || !ed || !ed.planeMoveItems)
+            return []
+        var sel = ed.selectedIds || []
+        return ed.planeMoveItems(sel.indexOf(row.id) >= 0 ? sel.slice() : [row.id])
+    }
+
     function deleteRow(row) {
         if (row && ed && ed.canDeleteLayer(row.id, row.part))
             ed.deleteLayer(row.id, row.part)
@@ -72,11 +98,11 @@ Rectangle {
             if (!row)
                 return MenuModel.menu("layer", "", [], [], [])
             var dot = (row.part === "hot") ? "Hide Hotspot" : "Delete"
-            return MenuModel.menu("layer", row.name, [
+            return MenuModel.menu("layer", row.name, _panel.planeItems(row).concat([
                 MenuModel.action(dot, function() { _panel.deleteRow(row) },
                                  !!(_panel.ed && _panel.ed.canDeleteLayer(row.id, row.part)),
                                  { danger: row.part !== "hot" })
-            ], [])
+            ]), [])
         }
     }
 
@@ -92,10 +118,12 @@ Rectangle {
         onWheel: (w) => { w.accepted = true }
     }
 
-    // A kind toggle: All turns them all off; any other turns itself on or off.
+    // A kind toggle: All turns this plane's toggles off; any other turns
+    // itself on or off.
     function toggleKind(key) {
         if (key === "all") {
-            kinds = []
+            var shown = shownKinds
+            kinds = kinds.filter(function(k) { return shown.indexOf(k) < 0 })
             return
         }
         var k = kinds.slice()
@@ -108,7 +136,7 @@ Rectangle {
     }
 
     function kindOn(key) {
-        return key === "all" ? kinds.length === 0 : kinds.indexOf(key) >= 0
+        return key === "all" ? shownKinds.length === 0 : shownKinds.indexOf(key) >= 0
     }
 
     // Ctrl+F: to the search box, its text selected.
@@ -131,8 +159,18 @@ Rectangle {
         expanded = Object.assign({}, e)
     }
 
+    function isBgRow(row) {
+        return !!row && row.part === "background"
+    }
+
+    // The Background row's double-click: Background mode.
+    function editBackground() {
+        if (ed)
+            ed.editPlane = "background"
+    }
+
     function select(row, mods) {
-        if (!row || row.part === "photo" || !row.id)
+        if (!row || isBgRow(row) || !row.id)
             return
         if (mods & (Qt.ShiftModifier | Qt.ControlModifier))
             ed.toggleSelected(row.id)
@@ -153,21 +191,27 @@ Rectangle {
     function flag(row, which) {
         if (!hasFlags(row))
             return
-        if (row.part === "photo")
-            ed.setPhotoFlag(which, !(which === "hidden" ? ed.photoHidden : ed.photoLocked))
-        else
+        // The Background row: the eye is a view setting, the lock locks
+        // every background layer (one Undo step, in the editor).
+        if (isBgRow(row)) {
+            if (which === "hidden")
+                ed.bgViewHidden = !ed.bgViewHidden
+            else
+                ed.setPlaneLocked("background", !row.locked)
+        } else
             ed.toggleLayerFlag(row.id, row.part, which)
     }
 
     // Moves the dragged item so it sits just above the item of the row the
-    // line is over (or to the bottom when the line is under the last row).
+    // line is over (or to the bottom of its plane when the line is under the
+    // last item).
     function drop(fromRow, beforeRow) {
         var moving = rows[fromRow]
-        if (!moving || moving.depth !== 0 || moving.part === "photo")
+        if (!moving || moving.depth !== 0 || isBgRow(moving))
             return
         var target = null
         for (var k = beforeRow; k < rows.length; k++) {
-            if (rows[k].depth === 0 && rows[k].part !== "photo") {
+            if (rows[k].depth === 0 && !isBgRow(rows[k])) {
                 target = rows[k]
                 break
             }
@@ -176,7 +220,8 @@ Rectangle {
             return
         var from = moving.index
         if (!target) {
-            ed.moveNodeTo(moving.id, 0)
+            var range = ed.planeRange ? ed.planeRange(ed.editPlane || "foreground") : null
+            ed.moveNodeTo(moving.id, range ? Math.max(0, range.first) : 0)
             return
         }
         var t = target.index
@@ -348,13 +393,19 @@ Rectangle {
                         required property var modelData
                         required property int index
                         readonly property var row: modelData
+                        // The folded Background row (07 S120): taller, with
+                        // its Opacity slider on a second line.
+                        readonly property bool isBg: _panel.isBgRow(row)
+                        readonly property bool rowHidden: isBg
+                            ? !!(_panel.ed && _panel.ed.bgViewHidden) : (row.hidden || row.hiddenFrom)
+                        objectName: isBg ? "bmBgRow" : ""
                         width: _rowsColumn.width
-                        height: _panel.rowH
+                        height: isBg ? _panel.rowH + Style.dp(24) : _panel.rowH
                         color: row.selected ? Style.bgSelected : (_rowArea.containsMouse ? Style.bgRaised : Style.clear)
                         // A heading (shown only for a matching row under
                         // it) is dimmed.
                         readonly property bool heading: !!row.heading
-                        opacity: (heading ? 0.5 : 1) * ((row.hidden || row.hiddenFrom) ? 0.55 : 1)
+                        opacity: (heading ? 0.5 : 1) * (rowHidden ? 0.55 : 1)
 
                         // Drop line: the dragged row lands above this one.
                         Rectangle {
@@ -396,7 +447,7 @@ Rectangle {
                                     var at = mapToItem(panel, m.x, m.y)
                                     panel.menuRow = row
                                     Qt.callLater(function() {
-                                        if (!row.selected && row.id && row.part !== "photo") {
+                                        if (!row.selected && row.id && !panel.isBgRow(row)) {
                                             panel.ed.setSelection([row.id])
                                             panel.ed.bump()
                                         }
@@ -405,7 +456,7 @@ Rectangle {
                                 }
                             }
                             onPositionChanged: (m) => {
-                                if (!pressed || _row.row.depth !== 0 || _row.row.part === "photo")
+                                if (!pressed || _row.row.depth !== 0 || _row.isBg)
                                     return
                                 if (_panel.dragRow < 0 && Math.abs(m.y - pressY) > Style.dp(6))
                                     _panel.dragRow = _row.index
@@ -430,7 +481,9 @@ Rectangle {
                                     panel.select(_row.row, m.modifiers)
                             }
                             onDoubleClicked: {
-                                if (_row.row.renamable)
+                                if (_row.isBg)
+                                    _panel.editBackground()
+                                else if (_row.row.renamable)
                                     _panel.renameId = _row.row.id
                                 else if (_row.row.depth === 0 && (_row.row.type === "chip"))
                                     _panel.ed.beginRename(_row.row.id, -1)
@@ -438,7 +491,10 @@ Rectangle {
                         }
 
                         RowLayout {
-                            anchors.fill: parent
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            height: _panel.rowH
                             anchors.leftMargin: Style.dp(4) + _row.row.depth * Style.dp(16)
                             anchors.rightMargin: Style.dp(2)
                             spacing: Style.dp(2)
@@ -463,7 +519,7 @@ Rectangle {
                                     var icons = {
                                         chip: "", group: "", shape: "", line: "",
                                         picture: "", text: "", table: "", hotspot: "",
-                                        member: "", leader: "", photo: ""
+                                        member: "", leader: "", background: ""
                                     }
                                     return icons[t] || ""
                                 }
@@ -513,13 +569,14 @@ Rectangle {
                                 }
                             }
                             // Delete (trash), left of the eye so the eye and lock keep
-                            // their places: not on the photo; greyed when locked or
-                            // (a hotspot) already hidden.
+                            // their places: not on the Background row (an empty
+                            // place keeps them lined up); greyed when locked or (a
+                            // hotspot) already hidden.
                             Label {
-                                readonly property bool can: !!(_panel.ed && _panel.ed.canDeleteLayer(_row.row.id, _row.row.part))
+                                readonly property bool can: !_row.isBg && !!(_panel.ed && _panel.ed.canDeleteLayer(_row.row.id, _row.row.part))
                                 Layout.preferredWidth: Style.dp(22)
                                 horizontalAlignment: Text.AlignHCenter
-                                visible: _row.row.part !== "photo"
+                                opacity: _row.isBg ? 0 : 1
                                 text: ""
                                 font.family: Style.iconFont
                                 font.pixelSize: Style.dp(13)
@@ -542,8 +599,10 @@ Rectangle {
                                 model: ["hidden", "locked"]
                                 delegate: Label {
                                     required property string modelData
-                                    objectName: "flag_" + modelData
-                                    readonly property bool on: modelData === "hidden" ? _row.row.hidden : _row.row.locked
+                                    objectName: _row.isBg ? (modelData === "hidden" ? "bmBgRowEye" : "bmBgRowLock")
+                                                          : "flag_" + modelData
+                                    readonly property bool on: modelData === "hidden"
+                                        ? (_row.isBg ? _row.rowHidden : _row.row.hidden) : _row.row.locked
                                     readonly property bool from: modelData === "hidden" ? _row.row.hiddenFrom : _row.row.lockedFrom
                                     Layout.preferredWidth: Style.dp(22)
                                     horizontalAlignment: Text.AlignHCenter
@@ -562,7 +621,48 @@ Rectangle {
                                         hoverEnabled: true
                                         onClicked: _panel.flag(_row.row, parent.modelData)
                                     }
+                                    ToolTip.visible: _row.isBg && _flagArea.containsMouse
+                                    ToolTip.text: modelData === "hidden" ? "Hide the background on screen"
+                                                                         : "Lock every background layer"
                                 }
+                            }
+                        }
+
+                        // The Background row's Opacity: on screen only, a
+                        // program setting (07 S120, P4a), not an Undo step.
+                        RowLayout {
+                            visible: _row.isBg
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.leftMargin: Style.dp(36)
+                            anchors.rightMargin: Style.dp(6)
+                            height: Style.dp(24)
+                            spacing: Style.dp(4)
+                            Label {
+                                text: "Opacity"
+                                font.pixelSize: _panel.textPx - Style.dp(2)
+                                color: Style.fgMuted
+                            }
+                            Slider {
+                                id: _bgOpacity
+                                objectName: _row.isBg ? "bmBgRowOpacity" : ""
+                                Layout.fillWidth: true
+                                from: 0
+                                to: 1
+                                stepSize: 0.01
+                                onMoved: if (_panel.ed) _panel.ed.bgViewOpacity = value
+                                Binding on value {
+                                    value: (_panel.ed && _panel.ed.bgViewOpacity !== undefined)
+                                        ? _panel.ed.bgViewOpacity : 1
+                                }
+                            }
+                            Label {
+                                Layout.preferredWidth: Style.dp(34)
+                                horizontalAlignment: Text.AlignRight
+                                text: Math.round(_bgOpacity.value * 100) + " %"
+                                font.pixelSize: _panel.textPx - Style.dp(2)
+                                color: Style.fgMuted
                             }
                         }
                     }
@@ -577,7 +677,7 @@ Rectangle {
         for (var i = 0; i < rows.length; i++) {
             var r = rows[i]
             var t = "  ".repeat(r.depth) + (r.canOpen ? (r.open ? "v " : "> ") : "") + r.name
-            if (r.hidden) t += " [hidden]"
+            if (isBgRow(r) ? !!(ed && ed.bgViewHidden) : r.hidden) t += " [hidden]"
             if (r.locked) t += " [locked]"
             if (r.hiddenFrom) t += " (hidden by chip)"
             if (r.lockedFrom) t += " (locked by chip)"
@@ -614,6 +714,20 @@ Rectangle {
         return null
     }
     function clearButton() { return _find(_search, "searchClear") }
+    // For tests: the row menu's lines and a line's rectangle.
+    function rowMenuLines() { return _rowMenu.describe() }
+    function rowMenuRect(text) { return _rowMenu.rowRect(_rowMenu.rowIndexOf(text)) }
+    // For tests: a part of the Background row (bmBgRow, bmBgRowEye,
+    // bmBgRowLock, bmBgRowOpacity), or null when there is none.
+    function bgRowPart(name) {
+        _rowsColumn.forceLayout()
+        for (var i = 0; i < _repeater.count; i++) {
+            var it = _repeater.itemAt(i)
+            if (it && it.isBg)
+                return it.objectName === name ? it : _find(it, name)
+        }
+        return null
+    }
     function flagButton(i, which) {
         _rowsColumn.forceLayout()
         return _find(_repeater.itemAt(i), "flag_" + which)

@@ -22,6 +22,15 @@ function _act(text, run, enabled, hint) {
              hint: hint || "" }
 }
 
+// An action with a name (its objectName, for tests and Help) and a tooltip
+// saying why it is greyed out.
+function _named(name, text, run, enabled, hint, tip) {
+    var a = _act(text, run, enabled, hint)
+    a.name = name
+    a.tip = tip || ""
+    return a
+}
+
 // Copy and Paste, the same as Ctrl+C / Ctrl+V: Copy for what was clicked,
 // Paste for copied items or a picture on the clipboard.
 function _copyPaste(withCopy) {
@@ -441,6 +450,12 @@ function _rotate() {
     return _sect("rotate", title, items)
 }
 
+// A picture turned, flipped, cropped or skewed: Reset Shape puts it back
+// (07 S42).
+function _pictureShaped(n) {
+    return !!(n && ((n.rot || 0) % 360 || n.flipH || n.flipV || n.crop || n.skew))
+}
+
 // Transform: which handles the drawing shows, Edit points and Reset shape.
 function _transform() {
     var n = nodeAt(selectedId)
@@ -453,7 +468,8 @@ function _transform() {
     ]
     if (canEditPoints(n))
         items.push(_act("Edit Points", convertToPath, !isLocked(n)))
-    items.push(_act("Reset Shape", resetShape, hasShaping(n) && !isLocked(n)))
+    var shaped = hasShaping(n) || (isOverlay(n) && _pictureShaped(n))
+    items.push(_act("Reset Shape", function() { resetShape(selectedId) }, shaped && !isLocked(n)))
     return _sect("transform", "Transform", items)
 }
 
@@ -492,16 +508,43 @@ function _detachFromChips() {
     bump()
 }
 
+// --- Move to Background / Foreground (07 S112, S121) ------------------------
+
+// Move to Background and Move to Foreground for these items (the
+// selection, several at once in their order): each is offered when one of
+// them can go, else greyed out with the reason as its tooltip. Also for the
+// Layers panel's row menu.
+function planeMoveItems(ids) {
+    var nodes = (ids || []).map(function(id) { return nodeAt(id) }).filter(function(n) { return !!n })
+    var front = nodes.filter(function(n) { return !isBackground(n) })
+    var toBack = front.filter(function(n) { return canHoldBackground(n) })
+    var toFront = nodes.filter(function(n) { return isBackground(n) })
+    var keep = nodes.map(function(n) { return n.id })
+    // The reason the first item that can't go gives (Chips stay in the
+    // foreground, ...).
+    var backTip = toBack.length ? ""
+        : (front.length ? backgroundRefusal(front[0])
+                        : (nodes.length ? "Already in the background" : ""))
+    var frontTip = toFront.length ? "" : (nodes.length ? "Already in the foreground" : "")
+    return [
+        _named("bmMoveToBackground", "Move to Background",
+               function() { moveToPlane(keep, "background") }, toBack.length > 0, "Ctrl+Shift+B", backTip),
+        _named("bmMoveToForeground", "Move to Foreground",
+               function() { moveToPlane(keep, "foreground") }, toFront.length > 0, "Ctrl+Shift+B", frontTip)
+    ]
+}
+
 function _arrange(extra) {
     var n = nodeAt(selectedId)
     var items = [
         _act("Bring to Front", bringToFront),
         _act("Bring Forward", bringForward),
         _act("Send Back", sendBack),
-        _act("Send to Back", sendToBack),
+        _act("Send to Back", sendToBack)
+    ].concat(planeMoveItems(_arrangeIds()), [
         _lockItem(),
         _act("Hide", _hideItems)
-    ]
+    ])
     if (n && n.around && n.around.length)
         items.push(_act("Detach from Chips", _detachFromChips))
     return _sect("arrange", "Arrange", items.concat(extra || []))

@@ -70,6 +70,7 @@ import re
 import shutil
 import threading
 import time
+import uuid
 from collections.abc import Callable, Iterable
 from datetime import datetime
 from pathlib import Path
@@ -1432,10 +1433,156 @@ def remove_pictures(
     return True
 
 
+# The Button Map's page and the photo frame in its middle (07 S68), as
+# fractions of the page: where the device's photo is fitted.
+PAGE_W = 32000
+PAGE_H = 18000
+PHOTO_FRAME = (0.125, 0.125, 0.75, 0.75)
+
+
+def is_background(node: object) -> bool:
+    """A map layer on the background plane (07 S111); no key: foreground."""
+    return isinstance(node, dict) and node.get("plane") == "background"
+
+
+def _bottom_picture_index(nodes: object) -> int:
+    """Where the bottom background picture is in nodes, or -1."""
+    if not isinstance(nodes, list):
+        return -1
+    for index, node in enumerate(nodes):
+        if is_background(node) and node.get("shape") == "image":
+            return index
+    return -1
+
+
+def device_photo_ref(doc: object) -> str:
+    """The device's photo (07 S127): "pictures/<name>" of the bottom
+    background picture, "" when there is none. A map saved before the
+    planes names it in "image" until it is saved again (OT-2)."""
+    if not isinstance(doc, dict):
+        return ""
+    nodes = doc.get("nodes")
+    index = _bottom_picture_index(nodes)
+    if isinstance(nodes, list) and index >= 0:
+        return normal_ref(str(nodes[index].get("src") or ""))
+    # ONE-TIME (tracker OT-2): the old top-level photo, until the next Save.
+    return normal_ref(str(doc.get("image") or ""))
+
+
+def picture_size(folder: Path | None, ref: str) -> tuple[int, int]:
+    """A picture's size in pixels, read from its file's header (not the
+    whole picture); (0, 0) when it can't be found or read."""
+    if folder is None or not str(ref or "").strip():
+        return 0, 0
+    found = find_picture(Path(folder), str(ref))
+    if found is None:
+        return 0, 0
+    from PySide6 import QtGui
+
+    size = QtGui.QImageReader(str(found)).size()
+    if not size.isValid() or size.width() <= 0 or size.height() <= 0:
+        return 0, 0
+    return size.width(), size.height()
+
+
+def fit_in_box(
+    box: tuple[float, float, float, float], width: float, height: float
+) -> tuple[float, float, float, float]:
+    """A picture of width x height pixels fitted inside box (fx, fy, fw,
+    fh as page fractions), keeping its shape, centred. Unknown size: the
+    box itself."""
+    fx, fy, fw, fh = box
+    if width <= 0 or height <= 0:
+        return fx, fy, fw, fh
+    box_w, box_h = fw * PAGE_W, fh * PAGE_H
+    scale = min(box_w / width, box_h / height)
+    out_w = width * scale / PAGE_W
+    out_h = height * scale / PAGE_H
+    return fx + (fw - out_w) / 2, fy + (fh - out_h) / 2, out_w, out_h
+
+
+def background_picture_node(ref: str, box: tuple[float, float, float, float]) -> dict:
+    """A new background picture layer showing ref in box (page fractions),
+    with the editor's defaults for a picture (rig_overlays.addOverlay)."""
+    fx, fy, fw, fh = box
+    return {
+        "kind": "draw",
+        "rot": 0,
+        "fill": "filled",
+        "color": "#14532D",
+        "border": "#22C55E",
+        "stroke": 2,
+        "opacity": 1,
+        "pad": 8,
+        "around": [],
+        "id": "d_bg" + uuid.uuid4().hex[:12],
+        "shape": "image",
+        "src": ref,
+        "locked": False,
+        "pinned": False,
+        "sockets": [],
+        "fx": fx,
+        "fy": fy,
+        "fw": fw,
+        "fh": fh,
+        "plane": "background",
+    }
+
+
+def set_device_photo(doc: dict, ref: str, folder: Path | None = None) -> None:
+    """Makes ref the device's photo: the bottom background picture (07
+    S127, Module Setup's Import Image). An existing one shows the new
+    picture in its place (fitted in its box); without one, a new bottom
+    layer fitted to the photo frame. "" removes it. folder (the device
+    folder) is where the picture's size is read. A map saved before the
+    planes is turned into today's first (OT-2); "image" and "photo" go."""
+    if not isinstance(doc, dict):
+        return
+    from gremlin.modules import planes_once
+
+    planes_once.old_photo_to_layer(doc, folder)
+    for key in planes_once.OLD_PHOTO_KEYS:
+        doc.pop(key, None)
+    nodes = doc.get("nodes")
+    if not isinstance(nodes, list):
+        nodes = []
+        doc["nodes"] = nodes
+    text = str(ref or "").strip()
+    index = _bottom_picture_index(nodes)
+    if not text:
+        if index >= 0:
+            del nodes[index]
+        return
+    width, height = picture_size(folder, text)
+    if index < 0:
+        box = fit_in_box(PHOTO_FRAME, width, height)
+        nodes.insert(0, background_picture_node(text, box))
+        return
+    node = nodes[index]
+    if str(node.get("src") or "").strip() == text:
+        return
+    node["src"] = text
+    node.pop("srcUrl", None)
+    node.pop("lookUrl", None)
+    # The old picture's crop means nothing on another picture.
+    node.pop("crop", None)
+    try:
+        fx, fy, fw, fh = (
+            float(node.get(key, default))
+            for key, default in zip(("fx", "fy", "fw", "fh"), PHOTO_FRAME)
+        )
+    except (TypeError, ValueError):
+        fx, fy, fw, fh = PHOTO_FRAME
+    node["fx"], node["fy"], node["fw"], node["fh"] = fit_in_box(
+        (fx, fy, fw, fh), width, height
+    )
+
+
 def named_refs(doc: object) -> set[str]:
     """The pictures a module document (or template, or recovery copy)
-    names, as stored: its photo ("image") and every picture chip ("shape"
-    or "kind" "image", "src"), also inside groups."""
+    names, as stored: every picture layer ("shape" or "kind" "image",
+    "src"), background and foreground, also inside groups, and the old
+    top-level photo ("image") of a map saved before the planes (OT-2)."""
     refs: set[str] = set()
     if not isinstance(doc, dict):
         return refs
@@ -2348,10 +2495,12 @@ def prepare_imported_doc(
     hats: set[int],
     *,
     keep_keys: bool,
-    previous_image: str = "",
+    previous_background: list | None = None,
 ) -> tuple[dict, str]:
     """A module document copied onto this device: only the controls it has,
-    its own name and id, its own picture. (the copy, what was left out)."""
+    its own name and id; its Button Map keeps this device's background
+    (previous_background, its layers bottom first) and takes the file's
+    foreground (03 S135). (the copy, what was left out)."""
     claim = _dict(doc.get("claim"))
     source_keys = _numbers(claim.get("keys"))
     keys = set(source_keys) if keep_keys else set()
@@ -2381,7 +2530,9 @@ def prepare_imported_doc(
         "friendly": _filter_friendly(_dict(claim.get("friendly")), *kept),
     }
     nodes = payload.get("nodes") if isinstance(payload.get("nodes"), list) else []
-    payload["nodes"] = filter_nodes(nodes, *kept)
+    foreground = [n for n in filter_nodes(nodes, *kept) if not is_background(n)]
+    background = json.loads(json.dumps(list(previous_background or [])))
+    payload["nodes"] = background + foreground
     calibration = payload.get("calibration")
     if isinstance(calibration, dict):
         kept_cal = {}
@@ -2407,10 +2558,10 @@ def prepare_imported_doc(
         view = dict(view)
         view["meters"] = meters
         payload["view"] = view
-    if previous_image:
-        payload["image"] = previous_image
-    else:
-        payload.pop("image", None)
+    # The file's own photo (a map saved before the planes) is background,
+    # never copied (OT-2).
+    for key in ("image", "photo", "imageWidth", "imageHeight"):
+        payload.pop(key, None)
     left = []
     left.extend(f"Button {n}" for n in sorted(source_buttons - kept_buttons))
     left.extend(f"Axis {n}" for n in sorted(source_axes - kept_axes))
@@ -2639,7 +2790,7 @@ def import_file(
     if limits is None:
         return "This device is not connected, so the file cannot be checked."
     buttons, axes, hats = limits
-    previous_image = ""
+    previous_background: list = []
     previous_bytes: bytes | None = None
     if dest.is_file():
         try:
@@ -2650,7 +2801,16 @@ def import_file(
             return "The current file could not be read, so it was not replaced."
         if not isinstance(previous, dict):
             return "The current file could not be read, so it was not replaced."
-        previous_image = str(previous.get("image") or "")
+        # A map saved before the planes: its photo as a layer first (OT-2).
+        from gremlin.modules import planes_once
+
+        planes_once.old_photo_to_layer(previous, dest.parent)
+        previous_nodes = previous.get("nodes")
+        previous_background = (
+            [n for n in previous_nodes if is_background(n)]
+            if isinstance(previous_nodes, list)
+            else []
+        )
     payload, left = prepare_imported_doc(
         doc,
         name,
@@ -2660,14 +2820,17 @@ def import_file(
         axes,
         hats,
         keep_keys=keep_keys,
-        previous_image=previous_image,
+        previous_background=previous_background,
     )
     try:
         dest = module_file_in(ensure_device_dir(name, guid))
-        chips = named_refs({"nodes": payload.get("nodes")})
+        # Only the file's foreground brings pictures; the background's are
+        # this device's own already.
+        imported = {"nodes": [n for n in payload["nodes"] if not is_background(n)]}
+        chips = named_refs(imported)
         moved = copy_pictures(src.parent, chips, dest.parent) if chips else {}
         if moved:
-            _rename_refs(payload, moved)
+            _rename_refs(imported, moved)
         replace(dest, (json.dumps(payload, indent=2) + "\n").encode("utf-8"), window)
     except (OSError, module_file_io.ModuleFileDamaged):
         return "The module file could not be written."
@@ -2687,10 +2850,10 @@ def import_file(
             _count_phrase(len(friendly), "name was copied.", "names were copied.")
         )
     lines.append(left.strip() if left.strip() else "Everything in the file was copied.")
-    if previous_image:
-        lines.append("The picture already on this device was kept.")
+    if previous_background:
+        lines.append("This device's background was kept.")
     else:
-        lines.append("No picture was added from the chosen file.")
+        lines.append("No background was copied from the chosen file.")
     lines.append("Profile wires were not changed.")
     lines.append("The chosen file was left where it was.")
     if previous_bytes is not None:

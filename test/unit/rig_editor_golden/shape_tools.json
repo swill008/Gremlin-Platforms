@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1312,18 +1313,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 1,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID0"
@@ -1333,6 +1329,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "adj": {
@@ -1359,18 +1356,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 3,
     "histLen": 4,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID0"
@@ -1391,6 +1383,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "adj": {
@@ -1417,18 +1410,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID0"
@@ -1449,6 +1437,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "adj": {
@@ -1476,18 +1465,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID0"
@@ -1508,6 +1492,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "adj": {
@@ -1539,18 +1524,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 6,
     "histLen": 7,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID0"
@@ -1574,6 +1554,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1595,18 +1576,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 7,
     "histLen": 8,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID0"
@@ -1623,6 +1599,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "1": {
       "around": [],
@@ -2951,6 +2928,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 10,
     "histLen": 11,
     "layers": [],
@@ -2961,12 +2939,6 @@
      "path",
      3,
      true
-    ],
-    "photo": [
-     1,
-     0,
-     0,
-     0
     ],
     "props": [],
     "selected": [

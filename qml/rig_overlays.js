@@ -47,12 +47,13 @@ function overlayContains(n, mx, my) {
     return p.x >= 0 && p.y >= 0 && p.x <= it.width && p.y <= it.height
 }
 
+// Only items on the plane being edited light up (S116).
 function setOverlayHover(mx, my) {
     var list = nodes || []
     var id = ""
     var i
     for (i = list.length - 1; i >= 0; i--) {
-        if (overlayContains(list[i], mx, my)) {
+        if (inEditPlane(list[i]) && overlayContains(list[i], mx, my)) {
             id = list[i].id
             break
         }
@@ -65,7 +66,9 @@ function setOverlayHover(mx, my) {
 
 // opts (all optional): fx/fy, the picture's centre in page fractions (a drop
 // point); aspect, its width / height, so the box fits the picture; noBump to
-// add several pictures in one undo step.
+// add several pictures in one undo step; plane, "background" or
+// "foreground" (default: the plane being edited, S62); fitFrame, fitted to
+// the photo frame (Add Picture to Background…, S40).
 function addOverlay(rel, fileUrl, opts) {
     opts = opts || {}
     var st = _drawStyle()
@@ -93,9 +96,16 @@ function addOverlay(rel, fileUrl, opts) {
     st.fy = Math.max(0, Math.min(1 - fh, cy - fh / 2))
     st.fw = fw
     st.fh = fh
+    if (opts.fitFrame) {
+        var fr = frameFit(aspect)
+        st.fx = fr.fx
+        st.fy = fr.fy
+        st.fw = fr.fw
+        st.fh = fr.fh
+    }
     st.rot = 0
     st.opacity = 1
-    insertBelowChips(st)
+    insertInPlane(st, opts.plane || editPlane)
     setSelection([st.id])
     if (!opts.noBump)
         bump()
@@ -111,6 +121,24 @@ function repointPicture(id, rel, fileUrl) {
     n.src = rel
     n.srcUrl = fileUrl || ""
     bump()
+}
+
+// The photo frame (the middle photoWellFraction of the page) as page
+// fractions, narrowed to a picture of width / height aspect (0: the whole
+// frame), centred.
+function frameFit(aspect) {
+    var pad = (1 - photoWellFraction) / 2
+    var fw = photoWellFraction
+    var fh = photoWellFraction
+    var a = Number(aspect || 0)
+    if (a > 0) {
+        var frameAspect = worldPageW / worldPageH
+        if (a > frameAspect)
+            fh = fw * frameAspect / a
+        else
+            fw = fh * a / frameAspect
+    }
+    return { fx: pad + (photoWellFraction - fw) / 2, fy: pad + (photoWellFraction - fh) / 2, fw: fw, fh: fh }
 }
 
 function pinTarget(id) {
@@ -258,6 +286,39 @@ function snapChipToSocket(chipId, mx, my) {
     syncOverlayChips(best)
     bump()
     return true
+}
+
+// The snap point on any picture (either plane, S122) within reach of
+// (mx, my), as an editor point, or null: a leader end dropped there sits on it.
+function socketNear(mx, my) {
+    var list = nodes || []
+    var best = null
+    var bestD = Style.dp(12)
+    for (var i = 0; i < list.length; i++) {
+        var ov = list[i]
+        if (!isOverlay(ov) || !ov.sockets || isHidden(ov))
+            continue
+        for (var j = 0; j < ov.sockets.length; j++) {
+            var pt = socketWorld(ov, ov.sockets[j])
+            var d = Math.hypot(mx - pt.x, my - pt.y)
+            if (d < bestD) {
+                bestD = d
+                best = pt
+            }
+        }
+    }
+    return best
+}
+
+// The chips snapped to the picture's snap points (they follow it, P6a).
+function socketChipIds(n) {
+    var out = []
+    var socks = (n && n.sockets) || []
+    for (var i = 0; i < socks.length; i++) {
+        if (socks[i] && socks[i].chipId)
+            out.push(socks[i].chipId)
+    }
+    return out
 }
 
 function clearSockets() {

@@ -119,7 +119,8 @@ function updateMoveGuides(n) {
     var i
     for (i = 0; i < list.length; i++) {
         var o = list[i]
-        if (guideSkipTarget(n, o))
+        // Items line up only with their own plane (07 S122).
+        if (guideSkipTarget(n, o) || planeOf(o) !== planeOf(n))
             continue
         var ob = nodeBox(o)
         if (ob.w < 2 || ob.h < 2)
@@ -216,7 +217,8 @@ function snapEnt(x, y, altOff) {
     var i
     for (i = 0; i < list.length; i++) {
         var nn = list[i]
-        if (dragKind && nn.id === selectedId)
+        // Only the plane being edited gives snaps (07 S115, S122).
+        if ((dragKind && nn.id === selectedId) || !inEditPlane(nn))
             continue
         if (isDraw(nn)) {
             var g = drawGeom(nn)

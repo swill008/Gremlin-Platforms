@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "border": "#3F3F46",
@@ -1295,18 +1296,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 0,
     "histLen": 1,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Nothing selected"
     ],
@@ -1316,6 +1312,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -2626,18 +2623,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 1,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Rectangle",
      "X: 30%",
@@ -2660,6 +2652,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -2681,18 +2674,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 8,
     "histLen": 9,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Rectangle",
      "X: 5%",
@@ -2715,6 +2703,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "3": {
       "border": "#3F3F46",
@@ -2771,18 +2760,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 9,
     "histLen": 10,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Button 3",
      "X: 45%",
@@ -2804,6 +2788,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "1": {
       "around": [],
@@ -4122,18 +4107,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 12,
     "histLen": 13,
     "layers": [],
     "menu": [],
     "nodeCount": 21,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Arrow",
      "Start X: 5%",
@@ -4155,6 +4135,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -5482,18 +5463,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 14,
     "histLen": 15,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "2 selected",
      "Fill: hollow",
@@ -5512,6 +5488,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -5534,18 +5511,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 15,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Rectangle (locked)",
      "X: 5%",

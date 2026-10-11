@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "border": "#3F3F46",
@@ -1295,6 +1296,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 1,
     "histLen": 2,
     "layerName": "Axis 3",
@@ -1330,12 +1332,6 @@
     "name": "Axis\n3",
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID4"
@@ -1346,6 +1342,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "2": {
       "alignRowsApart": true,
@@ -1403,6 +1400,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 2,
     "histLen": 3,
     "layers": [],
@@ -1437,12 +1435,6 @@
     ],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID4"
@@ -1452,6 +1444,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "2": {
       "alignRowsApart": false,
@@ -1510,18 +1503,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -1529,6 +1517,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "2": {
       "alignRowsApart": true,
@@ -1589,18 +1578,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 7,
     "histLen": 8,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -1608,6 +1592,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -2970,18 +2955,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 12,
     "histLen": 13,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [],
     "tableAfter": {
@@ -3007,6 +2987,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -3075,18 +3056,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 13,
     "histLen": 14,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [],
     "tableAfter": {

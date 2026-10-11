@@ -99,10 +99,12 @@ def test_help_describes_the_search(qapp: QtCore.QCoreApplication) -> None:
         "Esc",
         "Enter",
         "All · Chips · Groups · Hotspots · Leaders · Shapes · Lines · Pictures"
-        " · Text · Tables · Photo",
+        " · Text · Tables",
         "No layers match",
         "when the Button Map closes",
     ):
         assert words in body, words
     # The old single-choice kind buttons are gone.
     assert "Drawings" not in body
+    # No Photo toggle: the background has its own row (07 S102, S120).
+    assert "· Photo" not in body

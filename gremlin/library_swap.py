@@ -25,9 +25,9 @@ Controls = swap_devices.Controls
 _MODULE_PARTS = ("setup", "button_map", "appearance", "calibration")
 _KIND_WORD = {"button": "Button", "axis": "Axis", "hat": "Hat"}
 _BUCKET = {"button": "buttons", "axis": "axes", "hat": "hats"}
-# The Button Map's keys in a module file: the map, the photo, its view and
-# print settings.
-_MAP_KEYS = ("nodes", "image", "photo", "ui")
+# The Button Map's keys in a module file: the map (both planes; the photo is
+# its bottom background picture, 07 S127), its view and print settings.
+_MAP_KEYS = ("nodes", "ui")
 _APPEARANCE_KEYS = ("view",)
 
 
@@ -364,6 +364,12 @@ def _swapped_docs(
     if "appearance" in parts:
         _exchange_keys(doc_a, doc_b, _APPEARANCE_KEYS)
     if "button_map" in parts:
+        # ONE-TIME (tracker OT-2): a map saved before the planes swaps in
+        # today's layout, its photo as the bottom background picture.
+        from gremlin.modules import planes_once
+
+        planes_once.old_photo_to_layer(doc_a, path_a.parent)
+        planes_once.old_photo_to_layer(doc_b, path_b.parent)
         maps_a = {key: doc_a[key] for key in _MAP_KEYS if key in doc_a}
         maps_b = {key: doc_b[key] for key in _MAP_KEYS if key in doc_b}
         try:

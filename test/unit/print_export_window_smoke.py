@@ -68,7 +68,12 @@ if os.environ.get("SMOKE_PHOTO"):
 
     (_map.parent / "pictures").mkdir(exist_ok=True)
     shutil.copy(os.environ["SMOKE_PHOTO"], _map.parent / "pictures" / "photo.jpg")
-    _doc["image"] = "pictures/photo.jpg"
+    # The device's photo: the bottom background picture (07 S111, S127).
+    _doc["nodes"].insert(0, {
+        "kind": "draw", "shape": "image", "plane": "background", "id": "bg1",
+        "src": "pictures/photo.jpg", "fx": 0.125, "fy": 0.125, "fw": 0.75,
+        "fh": 0.75, "rot": 0, "opacity": 1,
+    })
 _map.write_text(json.dumps(_doc), encoding="utf-8")
 
 

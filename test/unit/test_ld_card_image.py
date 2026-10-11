@@ -3,7 +3,8 @@
 
 """The Logical Device card's Add/Change/Remove Image (03 S88,
 D-03-LD-IMAGE): the picture is the card's photo, kept with its module file
-(photo.<ext> plus "image") and written through the store, so History
+(photo.<ext>, the bottom background picture, 07 S127) and written through
+the store, so History
 records it. Other cards and a damaged file are refused."""
 
 from __future__ import annotations
@@ -95,12 +96,13 @@ def test_add_sets_the_card_photo_and_the_file_image_with_history(
     photo = modules / LD / "pictures" / "photo.jpg"
     assert photo.read_bytes() == _JPEG
     doc = _doc(path)
-    assert doc["image"] == "pictures/photo.jpg"
+    assert store.device_photo_ref(doc) == "pictures/photo.jpg"
+    assert "image" not in doc
     assert doc["layout"] == {"controls": []}
     card = model.cardMap("logical")
     assert card["photo"].startswith(photo.as_uri())
     assert card["hasPhoto"] is True
-    assert any(p == path and '"image"' in text for p, text in writes)
+    assert any(p == path and '"background"' in text for p, text in writes)
 
 
 def test_change_replaces_the_picture(
@@ -115,7 +117,7 @@ def test_change_replaces_the_picture(
     pictures = modules / LD / "pictures"
     assert sorted(p.name for p in pictures.glob("photo*")) == ["photo.png"]
     assert (pictures / "photo.png").read_bytes() == _PNG
-    assert _doc(path)["image"] == "pictures/photo.png"
+    assert store.device_photo_ref(_doc(path)) == "pictures/photo.png"
     assert model.cardMap("logical")["photo"].startswith(
         (pictures / "photo.png").as_uri()
     )
@@ -133,7 +135,7 @@ def test_remove_drops_the_photo_and_clears_image(
     assert model.removeCardImage("logical")
 
     assert not list((modules / LD / "pictures").glob("photo*"))
-    assert _doc(path)["image"] == ""
+    assert store.device_photo_ref(_doc(path)) == ""
     assert model.cardMap("logical")["photo"] == ""
     assert model.cardMap("logical")["hasPhoto"] is False
     assert any(p == path for p, _ in writes)

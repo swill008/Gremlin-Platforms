@@ -25,7 +25,12 @@ from pathlib import Path
 
 from gremlin import history
 
-# What the Button Map writes, and what a change means in words.
+# What the Button Map writes, and what a change means in words. The
+# device's photo is the bottom background picture, inside "nodes" (07
+# S127); "photo", "image", "imageWidth" and "imageHeight" are a map saved
+# before the planes, dropped by its next Save (OT-2), still a Button Map
+# change. The background's view settings are program settings, never in
+# the file (08 S9).
 MAP_KEYS = {
     "nodes",
     "photo",

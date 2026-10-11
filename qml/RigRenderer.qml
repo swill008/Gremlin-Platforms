@@ -13,8 +13,13 @@ import Gremlin.Style
 // a screen scaled past 100% that cut used to miss part of the area). The
 // map on screen keeps its zoom and its editing marks the whole time.
 //
+// Both planes print at full strength, background underneath (07 S87,
+// S123): the copy starts in Foreground mode with the background shown and
+// the foreground at full strength, whatever the screen's view settings.
+//
 // Jobs wait their turn: a preview waits behind an export. A job is
 //   { snap: snapshot(editor, whole), pixels: { w, h }, light: bool,
+//     includeBg: bool (absent: true; false leaves the background out),
 //     preview: "" or its kind, onPicture: function(grabResult or null) }
 // A preview replaces a waiting one of its kind; drop(kind) takes it away.
 Item {
@@ -39,9 +44,8 @@ Item {
     // page, whatever the print area.
     function snapshot(e, whole) {
         var f = e ? e.face : null
-        var keys = ["photoScale", "photoOffX", "photoOffY", "photoRot", "photoHidden", "photoFade",
-                    "photoBright", "photoContrast", "photoGrey", "photoLookUrl", "chipTextMode",
-                    "actionLabels", "unboundText", "savedStyles", "printArea"]
+        // The pictures, both planes, are nodes: no photo of its own.
+        var keys = ["chipTextMode", "actionLabels", "unboundText", "savedStyles", "printArea"]
         var props = {}
         for (var i = 0; e && i < keys.length; i++)
             props[keys[i]] = e[keys[i]]
@@ -50,13 +54,49 @@ Item {
         return {
             nodes: JSON.stringify(e ? (e.nodes || []) : []),
             props: props,
-            photo: f ? String(f.photoOverride || "") : "",
             dest: f ? { btn: f.destBtn, axis: f.destAxis, hat: f.destHat } : null,
             chipRows: f ? f.chipRows : [],
             w: e ? e.width : 1,
             h: e ? e.height : 1,
             area: e ? (whole ? e.spaceRect() : e.printAreaRect()) : { x: 0, y: 0, w: 1, h: 1 }
         }
+    }
+
+    // The nodes a job draws: without Include background, no background
+    // node (07 S123).
+    function jobNodes(snapNodes, includeBg) {
+        var list = JSON.parse(snapNodes || "[]")
+        if (includeBg !== false)
+            return list
+        return list.filter(function(n) { return !(n && n.plane === "background") })
+    }
+
+    // Export pixels for each editor pixel on screen (07 S83): at 100% the
+    // bottom background picture shows at its own pixels (its box, less any
+    // crop, the picture fitted in it); with none, the page 1920 px wide.
+    // The same export at any window size or screen scale.
+    function exportFactor(e, scalePct) {
+        if (!e)
+            return 1
+        var scale = Math.max(10, Math.min(800, Number(scalePct) || 100)) / 100
+        var s = e.spaceRect()
+        var n = e.bottomPicture ? e.bottomPicture() : null
+        // The editor's own reading (it loads the picture; a binding on this
+        // follows when it is ready). Read only: Print & Export's pixels is
+        // a binding on this function.
+        var nat = (n && e.photoNatural) ? e.photoNatural() : { w: 0, h: 0 }
+        if (n && nat && nat.w > 0 && nat.h > 0) {
+            var g = e.drawGeom(n)
+            var c = n.crop || null
+            var keepW = c ? Math.max(0.02, 1 - (c.l || 0) - (c.r || 0)) : 1
+            var keepH = c ? Math.max(0.02, 1 - (c.t || 0) - (c.b || 0)) : 1
+            var boxW = g.w / keepW
+            var boxH = g.h / keepH
+            var shownH = Math.min(boxH, boxW * nat.h / nat.w)
+            if (shownH > 0)
+                return scale * nat.h / shownH
+        }
+        return scale * 1920 / Math.max(1, s.w)
     }
 
     function enqueue(job) {
@@ -114,8 +154,7 @@ Item {
             f.destTick++
         }
         f.chipRows = s.chipRows
-        f.photoOverride = s.photo
-        f.editorNodes = JSON.parse(s.nodes)
+        f.editorNodes = _r.jobNodes(s.nodes, j.includeBg)
     }
 
     // Once the editor is there: the map's look, then the print area as this
@@ -125,6 +164,18 @@ Item {
         e.exportZoom = j.k
         e.exporting = true
         e.printLight = !!j.light
+        // Screen-only plane views never print (07 S87, S120).
+        if ("editPlane" in e)
+            e.editPlane = "foreground"
+        if ("showFgFaint" in e)
+            e.showFgFaint = false
+        if ("bgViewHidden" in e)
+            e.bgViewHidden = false
+        if ("bgViewOpacity" in e)
+            e.bgViewOpacity = 1
+        // Big pictures at their own pixels, not the screen's copy (07 S124).
+        if ("fullResolution" in e)
+            e.fullResolution = true
         var p = j.snap.props
         for (var key in p)
             e[key] = p[key]
@@ -137,7 +188,7 @@ Item {
         j.applied = true
     }
 
-    // Nothing still loading: the photo, pictures on the map.
+    // Nothing still loading: the pictures on the map.
     function _loading(item) {
         if (!item || !item.visible)
             return false
@@ -206,7 +257,7 @@ Item {
         onLoaded: _r._setUp()
     }
 
-    // Waits for the copy to be ready (its chips placed, the photo and
+    // Waits for the copy to be ready (its chips placed, the
     // pictures loaded), then a few frames for its canvases, then grabs.
     Timer {
         interval: 40
@@ -223,7 +274,7 @@ Item {
                     _r._applyEditor(e)
                     return
                 }
-                // Ready, or given up waiting (a photo that never loads).
+                // Ready, or given up waiting (a picture that never loads).
                 if ((e.seeded && !_r._loading(_faceLoader.item)) || j.ticks > 200)
                     _r._settle()
             } else if (j.state === "settle") {

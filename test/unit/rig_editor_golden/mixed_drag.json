@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1312,18 +1313,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 2,
     "histLen": 3,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID5",

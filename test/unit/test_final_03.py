@@ -210,7 +210,14 @@ def test_s48_a_save_that_does_not_read_back_counts_as_not_saved(
 def test_s55_s56_s58_import_copies_what_the_device_has_and_keeps_the_rest(
     modules: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    current = write_module(modules, "pjoy_pro", stick_doc(image="pictures/photo.jpg"))
+    # The device's photo is the bottom background picture (07 S127).
+    def background(ref: str) -> dict:
+        return {"id": "bg", "kind": "draw", "shape": "image",
+                "plane": "background", "src": ref}
+
+    current = write_module(
+        modules, "pjoy_pro", stick_doc(nodes=[background("pictures/photo.jpg")])
+    )
     previous = current.read_bytes()
     profile = open_profile(monkeypatch)
     wires = mapped(profile, stick_uid())
@@ -221,7 +228,7 @@ def test_s55_s56_s58_import_copies_what_the_device_has_and_keeps_the_rest(
                 "kind": "control.hardware",
                 "device": "Other Stick",
                 "direction": "source",
-                "image": "pictures/photo.png",
+                "nodes": [background("pictures/photo.png")],
                 "claim": {
                     # pJoy Pro has 64 buttons, axes 1-3 and 6-8, 2 hats.
                     "buttons": [1, 3, 200],
@@ -248,9 +255,12 @@ def test_s55_s56_s58_import_copies_what_the_device_has_and_keeps_the_rest(
     assert (claim["buttons"], claim["axes"], claim["hats"]) == ([1, 3], [1], [1])
     assert claim["friendly"] == {"button:3": "Fire"}
     assert "not copied" in message
-    # S56: this device's picture kept; profile wires unchanged.
-    assert doc["image"] == "pictures/photo.jpg"
-    assert "The picture already on this device was kept." in message
+    # S56, S135: this device's background kept; profile wires unchanged.
+    assert store.device_photo_ref(doc) == "pictures/photo.jpg"
+    assert [n["src"] for n in doc["nodes"] if n.get("plane") == "background"] == [
+        "pictures/photo.jpg"
+    ]
+    assert "This device's background was kept." in message
     assert mapped(profile, stick_uid()) == wires
     assert "Profile wires were not changed." in message
     # S58: the previous file is kept in the device's imported folder.

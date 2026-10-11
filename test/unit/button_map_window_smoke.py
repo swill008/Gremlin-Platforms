@@ -58,11 +58,10 @@ STEPS = [
      "   var it = _fileMenu.itemAt(i);"
      "   if (it.visible) shown.push(it.text === undefined ? '---' : it.text) }"
      " shown.join('|')"),
-    ("photo-adjust", "_fileMenu.close(); _photoAdj.open()"),
-    ("guide", "_photoAdj.close(); _buttonMap.openGuide()"),
-    ("zoom",
-     "_photoAdj.close(); _buttonMap.zoomToPage(); _buttonMap.zoomToSelection()"),
-    ("closed", "_photoAdj.close(); _styleNameDlg.close()"),
+    # (The Adjust Photo… popup is gone: 07 S42, D-07-BACKGROUND-PLANES.)
+    ("guide", "_fileMenu.close(); _buttonMap.openGuide()"),
+    ("zoom", "_buttonMap.zoomToPage(); _buttonMap.zoomToSelection()"),
+    ("closed", "_styleNameDlg.close()"),
 ]
 
 
@@ -224,7 +223,6 @@ def main() -> None:
         plain_doc = {
             "kind": "control.hardware",
             "device": "Smoke Stick",
-            "image": "",
             "nodes": [{
                 "id": "p1", "kind": "draw", "shape": "rect",
                 "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.1, "fx": 0.1, "fy": 0.2,
@@ -368,15 +366,16 @@ def main() -> None:
         js("_buttonMap.discardEdit(); 1")
         QtTest.QTest.qWait(300)
         print(f"RESULT group-drawings {group}", flush=True)
-        # After a crash with unsaved edits: opening the map keeps the new
-        # photo for Restore; Discard puts the saved one back (item 3). Not
-        # now keeps both (decision A, test_audit3_screens.py).
+        # After a crash with unsaved edits: opening the map keeps the edit's
+        # pictures for Restore; Discard (the offer's own button) puts the
+        # saved map back, both planes (item 3, 07 S34). Not now keeps both
+        # (decision A, test_audit3_screens.py).
         js("var n = _buttonMap.targetName; _hw.beginEdit(n);"
            " _hw.saveRecovery(n, JSON.stringify({nodes: [{id: 'z9', kind: 'draw',"
            " shape: 'rect', fx: 0.2, fy: 0.2, fw: 0.1, fh: 0.1}]})); 1")
         kept = js("_buttonMap.loadLive();"
                   " String(_hw.editActive(_buttonMap.targetName))")
-        back = js("_buttonMap.putPhotoBack(); _buttonMap.clearRecovery();"
+        back = js("_recoverGate.discarded();"
                   " String(_hw.editActive(_buttonMap.targetName))")
         print(f"RESULT crash-photo {kept} {back}", flush=True)
         # The colour picker takes a typed hex (#RGB too), and follows the

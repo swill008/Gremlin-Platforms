@@ -10,6 +10,8 @@ import Gremlin.Style
 // The Button Map editor's Properties panel: the selected item's exact place,
 // size, angle and style (rig_props.js lists the fields). Type a number and
 // press Enter, click a value, or click a colour to open the colour picker.
+// A picture also has its Look: sliders for brightness, contrast, greyscale
+// and opacity.
 // A locked item's fields show but do not change.
 Rectangle {
     id: _panel
@@ -84,11 +86,15 @@ Rectangle {
                 spacing: Style.dp(4)
                 enabled: !_panel.model.locked
 
+                // A heading (a picture's Look) is its title only.
                 Label {
-                    Layout.preferredWidth: Style.dp(86)
+                    Layout.preferredWidth: _row.field.kind === "heading" ? -1 : Style.dp(86)
+                    Layout.topMargin: _row.field.kind === "heading" ? Style.dp(4) : 0
                     text: _row.field.label
                     font.pixelSize: _panel.textPx
-                    color: _row.enabled ? Style.fgSoft : Style.fgDisabled
+                    font.bold: _row.field.kind === "heading"
+                    color: !_row.enabled ? Style.fgDisabled
+                           : (_row.field.kind === "heading" ? Style.fgStrong : Style.fgSoft)
                     elide: Text.ElideRight
                 }
 
@@ -121,6 +127,29 @@ Rectangle {
                     visible: _row.field.kind === "number"
                     text: _row.field.suffix || ""
                     font.pixelSize: _panel.textPx
+                    color: Style.fgSoft
+                }
+
+                // A slider (a picture's Look): applied as it moves; a run
+                // of moves is one Undo step.
+                Slider {
+                    id: _slider
+                    objectName: "propSlider_" + _row.field.key
+                    visible: _row.field.kind === "slider"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: _panel.rowH
+                    from: _row.field.kind === "slider" ? _row.field.min : 0
+                    to: _row.field.kind === "slider" ? _row.field.max : 1
+                    stepSize: _row.field.step || 1
+                    value: _row.field.kind === "slider" ? _row.field.value : 0
+                    onMoved: _panel.ed.setProp(_row.field.key, Math.round(value))
+                }
+                Label {
+                    visible: _row.field.kind === "slider"
+                    Layout.preferredWidth: Style.dp(40)
+                    horizontalAlignment: Text.AlignRight
+                    text: _row.field.kind === "slider" ? Math.round(_slider.value) + (_row.field.suffix || "") : ""
+                    font.pixelSize: _panel.textPx - Style.dp(1)
                     color: Style.fgSoft
                 }
 
@@ -175,7 +204,7 @@ Rectangle {
                     font.pixelSize: _panel.textPx - Style.dp(1)
                     color: Style.fgMuted
                 }
-                Item { Layout.fillWidth: _row.field.kind !== "choice" }
+                Item { Layout.fillWidth: _row.field.kind !== "choice" && _row.field.kind !== "slider" }
             }
         }
     }
@@ -186,6 +215,10 @@ Rectangle {
         var f = model.fields
         for (var i = 0; i < f.length; i++) {
             var v = f[i].value
+            if (f[i].kind === "heading") {
+                out.push(f[i].label)
+                continue
+            }
             out.push(f[i].label + ": " + (typeof v === "string" ? v : Math.round(v * 100) / 100) + (f[i].suffix || ""))
         }
         return out

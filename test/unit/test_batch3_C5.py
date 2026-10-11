@@ -154,9 +154,11 @@ def test_checked_controls_are_not_listed_as_replaced() -> None:
 
 def test_saving_a_map_without_a_photo_names_no_photo(maps: pathlib.Path) -> None:
     hw = hardware_profile.HardwareProfile()
-    assert hw.save("VKB Gladiator EVO R", json.dumps({"image": "", "nodes": []}))
+    assert hw.save("VKB Gladiator EVO R", json.dumps({"nodes": []}))
     doc = _read(module_path(maps, "VKB Gladiator EVO R"))
-    assert doc["image"] == ""
+    # No background picture, no photo keys (07 S111, S127).
+    assert store.device_photo_ref(doc) == ""
+    assert "image" not in doc and "photo" not in doc
 
 
 def test_a_stock_photo_reference_finds_nothing(maps: pathlib.Path) -> None:

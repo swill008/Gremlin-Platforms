@@ -11,7 +11,8 @@ import Gremlin.Style
 // Print & Export (Button Map, File > Print & Export): the page as it will
 // come out (a preview of the print area on the paper, inside its margins,
 // drawn by the same hidden copy of the map as every print and export), the
-// paper, orientation, margins, scale and background (kept with the map),
+// paper, orientation, margins, page (Dark / Light), scale and whether the
+// background prints (kept with the map),
 // and every print and export in one place. A window of its own, so the
 // print area can be moved and resized on the map while it is open.
 Window {
@@ -62,7 +63,11 @@ Window {
     property var area: null
     readonly property var areaNow: (area && area.fw > 0 && area.fh > 0)
                                    ? area : { fx: 0, fy: 0, fw: 1, fh: 1 }
-    readonly property string lightKey: setup.light ? "light" : "dark"
+    // Include background (07 S123): on unless turned off.
+    readonly property bool includeBg: setup.includeBg !== false
+    // What a picture of the page depends on besides the area: the page
+    // colour and whether the background is in it.
+    readonly property string lightKey: (setup.light ? "light" : "dark") + (includeBg ? "" : "-nobg")
     readonly property string areaKey: JSON.stringify(areaNow) + lightKey
     // The sharp picture is of the area as it is now.
     readonly property bool sharp: !!shotResult && shotKey === areaKey
@@ -204,7 +209,6 @@ Window {
         target: _win.host
         function onPrintAreaChanged() { _win.areaMoved() }
         function onPrintSetupChanged() { _win.refreshSoon() }
-        function onPhotoOverrideChanged() { _win.refreshSoon() }
     }
     Connections {
         target: _win.host ? _win.host._ed() : null
@@ -213,7 +217,6 @@ Window {
         function onActionLabelsChanged() { _win.refreshSoon() }
         function onChipTextModeChanged() { _win.refreshSoon() }
         function onUnboundTextChanged() { _win.refreshSoon() }
-        function onPhotoLookUrlChanged() { _win.refreshSoon() }
         function onSavedStylesChanged() { _win.refreshSoon() }
     }
 
@@ -412,7 +415,8 @@ Window {
                     onActivated: (i) => _win.host.setPrint("margin", _win.margins[i].value)
                 }
 
-                Label { text: "Background"; color: Style.fgMuted }
+                // The page colour (07 S82, S89): not the background plane.
+                Label { objectName: "printPage"; text: "Page"; color: Style.fgMuted }
                 RowLayout {
                     RadioButton {
                         objectName: "printDark"
@@ -425,6 +429,17 @@ Window {
                         text: "Light"
                         checked: !!_win.setup.light
                         onClicked: _win.host.setPrint("light", true)
+                    }
+                }
+                // Off: the background plane is left out (07 S123).
+                CheckBox {
+                    objectName: "printIncludeBg"
+                    text: "Include background"
+                    checked: _win.includeBg
+                    onToggled: {
+                        _win.host.setPrint("includeBg", checked)
+                        // A click replaces the binding: follow the setting again.
+                        checked = Qt.binding(function() { return _win.includeBg })
                     }
                 }
 
@@ -450,7 +465,7 @@ Window {
                         Label {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
-                            text: "Scale (100% = the photo's own size)"
+                            text: "Scale (100% = the bottom background picture's own size)"
                             color: Style.fgMuted
                         }
                         SpinBox {

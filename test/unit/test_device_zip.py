@@ -50,8 +50,10 @@ def _stick_doc(guid: str = GUID, name: str = STICK) -> dict:
         "boundGuidLocal": guid,
         "boundName": name,
         "claim": {"buttons": [1, 2], "axes": [], "hats": [], "keys": []},
-        "image": "pictures/photo.png",
         "nodes": [
+            # The device's photo: the bottom background picture (07 S127).
+            {"kind": "draw", "shape": "image", "plane": "background",
+             "src": "pictures/photo.png"},
             {"kind": "image", "shape": "image", "src": "pictures/chip.png"},
             {"kind": "btn", "hwId": 1},
         ],
@@ -115,7 +117,7 @@ def test_export_then_import_round_trip(modules: Path, tmp_path: Path) -> None:
     assert (again / "pictures" / "chip.png").read_bytes() == b"chip-bytes"
     assert not (again / "pictures" / "unused.png").exists()
     doc = json.loads(store.module_file_in(again).read_text(encoding="utf-8"))
-    assert doc["image"] == "pictures/photo.png"
+    assert store.device_photo_ref(doc) == "pictures/photo.png"
     assert doc["claim"]["buttons"] == [1, 2]
 
 
@@ -326,8 +328,8 @@ def test_the_device_pack_reads_a_gmap(modules: Path, tmp_path: Path) -> None:
     loaded = device_pack._read_zip(path)
     assert isinstance(loaded, dict), loaded
     # The pack's own way: pictures at the zip's root, refs their file names.
-    assert loaded["doc"]["image"] == "photo.png"
-    assert loaded["doc"]["nodes"][0]["src"] == "chip.png"
+    assert loaded["doc"]["nodes"][0]["src"] == "photo.png"
+    assert loaded["doc"]["nodes"][1]["src"] == "chip.png"
     assert set(loaded["files"]) == {"photo.png", "chip.png"}
     assert loaded["doc"]["pack"]["exportedName"] == STICK
     described = device_pack.describe_zip(path)
@@ -344,7 +346,10 @@ def test_device_pack_import_writes_pictures_into_the_device_folder(
     # the ones here kept in the device folder's imported/.
     (base / "pictures" / "photo.png").write_bytes(b"photo-here")
     record: list[tuple[Path, bytes | None]] = []
-    doc = {"image": "photo.png", "nodes": [{"shape": "image", "src": "chip.png"}]}
+    doc = {"nodes": [
+        {"shape": "image", "plane": "background", "src": "photo.png"},
+        {"shape": "image", "src": "chip.png"},
+    ]}
     written = device_pack._write_pictures(
         base,
         {"photo.png": b"photo-bytes", "chip.png": b"chip-bytes"},
@@ -354,8 +359,8 @@ def test_device_pack_import_writes_pictures_into_the_device_folder(
     )
     assert written == {"photo.png": "photo.png", "chip.png": "chip.png"}
     assert (base / "pictures" / "photo.png").read_bytes() == b"photo-bytes"
-    assert doc["image"] == "pictures/photo.png"
-    assert doc["nodes"][0]["src"] == "pictures/chip.png"
+    assert doc["nodes"][0]["src"] == "pictures/photo.png"
+    assert doc["nodes"][1]["src"] == "pictures/chip.png"
     kept = list((base / "imported" / "pictures").glob("photo *.png"))
     assert [p.read_bytes() for p in kept] == [b"photo-here"]
     # Nothing written at the modules folder's root or an old imported/.

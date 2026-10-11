@@ -26,7 +26,8 @@ _MENU_SOURCES = [
     "qml/Main.qml", "qml/main_commands.js", "qml/DialogJoystickButtonMap.qml",
     "qml/WindowDeviceLibrary.qml", "qml/rig_menu.js",
 ]
-_MENUS = r"File|Edit|View|Tools|Debug|Help|Device|Photo|Insert|Format|Arrange"
+# The Photo menu became Background (07 S39, D-07-BACKGROUND-PLANES).
+_MENUS = r"File|Edit|View|Tools|Debug|Help|Device|Background|Insert|Format|Arrange"
 _LINK = re.compile(r'<a\s+href="topic:([^"]*)"')
 
 
@@ -153,6 +154,9 @@ def test_removed_or_wrong_things_are_not_in_the_help() -> None:
         assert phrase not in text, phrase
     for phrase in (
         "50%–400%", "World page", "not in yet", "Empty photo — Draw only",
+        # The Photo menu and its tools are gone (07 S39, S42).
+        "Photo › ", "Adjust Photo", "Move Photo", "Reset Photo",
+        "Choose Photo", "Clear Photo",
     ):
         assert phrase not in text, phrase
 
@@ -235,7 +239,9 @@ def test_button_map_chapter_covers_the_editor() -> None:
     section = "\n".join(t["title"] + "\n" + help_book.text(t["body"]) for t in chapter)
     for feature in (
         "Edit Mapping", "Print & Export", "Print Area", "Snap to Entities",
-        "Adjust Photo",
+        # 07 S113, S121, S42, S123, S126 (D-07-BACKGROUND-PLANES).
+        "Background and foreground", "Edit Background", "Move to Background",
+        "Move to Foreground", "Reset Shape", "Include background",
         "Highlight on press", "Pressed Fill", "Hotspot", "spine", "Leader Ends",
         "Group Selected", "Mini hat", "Radial", "Undo", "Rounded", "Double arrow",
         "Shape Around Selection", "Arrowheads", "Swap Heads", "Dashed",

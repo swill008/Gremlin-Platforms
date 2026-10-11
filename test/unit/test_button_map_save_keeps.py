@@ -102,7 +102,8 @@ def test_cancel_leaves_a_damaged_module_file_alone(
     )
     profile = hardware_profile.HardwareProfile()
     profile.beginEdit("Stick R")
-    # Choose Photo into a damaged file is refused before anything is kept.
+    # A new photo (Import Image) into a damaged file is refused before
+    # anything is kept.
     assert profile.copyImage(_photo(maps), "Stick R") == ""
     profile.cancelEdit("Stick R")
     assert path.read_text(encoding="utf-8") == "{ damaged"

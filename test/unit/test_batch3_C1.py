@@ -160,11 +160,13 @@ def test_merge_axis_help_says_prefer_center() -> None:
     assert "Prefercenter" not in _GUIDE
 
 
-# | GL-221, GL-222: Clear Photo removes the photo; what Save writes.
+# | GL-221, GL-222: Clear Background (was Clear Photo, 07 S41,
+# | D-07-BACKGROUND-PLANES); what Save writes.
 
-def test_button_map_help_on_clear_photo_and_save() -> None:
+def test_button_map_help_on_clear_background_and_save() -> None:
     assert "module's picture" not in _GUIDE
-    assert "Clear Photo removes the photo" in _GUIDE
+    assert "Clear Background" in _GUIDE
+    assert "Clear Photo" not in _GUIDE
     assert "only written by Save" not in _GUIDE
     options = _topic("Button Map Options")
     assert "written to the module file only by Save" in options

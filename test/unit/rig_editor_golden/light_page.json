@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1369,18 +1370,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -1388,9 +1384,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "ink": [
@@ -1401,12 +1399,6 @@
     "menu": [],
     "nodeCount": 22,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -1414,21 +1406,17 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },

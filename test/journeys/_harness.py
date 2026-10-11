@@ -393,7 +393,8 @@ class Journey:
 
         update_model.UpdateModel.startup = lambda self, *a, **k: None
 
-        # The program folder is where the script is: Choose Photo would make
+        # The program folder is where the script is: a picture added to the
+        # background (or Import Image) would make
         # qml/images there, in the repository (GL-178). The temporary home
         # stands in for it.
         from gremlin.ui import hardware_profile

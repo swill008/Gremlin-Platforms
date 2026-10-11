@@ -59,8 +59,11 @@ def _doc(name: str, guid: str, image: str = "pictures/photo.png") -> dict:
         "device": name,
         "boundGuidLocal": guid,
         "claim": {"buttons": [1, 2], "axes": [], "hats": [], "friendly": {}},
-        "image": image,
-        "nodes": [{"kind": "chip", "id": "b1"}],
+        # The device's photo: the bottom background picture (07 S127).
+        "nodes": (
+            [{"id": "bg", "kind": "draw", "shape": "image", "plane": "background",
+              "src": image}] if image else []
+        ) + [{"kind": "chip", "id": "b1"}],
     }
 
 
@@ -180,7 +183,7 @@ def test_copy_puts_the_pictures_in_the_receiving_folder(lib: dict) -> None:
     there = store.device_dir(target, target_guid)
     assert there != source
     doc = store.read_path(store.module_file_in(there))
-    ref = str(doc.get("image") or "")
+    ref = store.device_photo_ref(doc)
     assert ref.startswith("pictures/"), ref
     assert store.picture_path(there, ref).read_bytes() == PHOTO_A
     # Not shared: the source keeps its own copy.
@@ -249,7 +252,7 @@ def test_swap_keeps_each_sticks_pictures_in_its_own_folder(lib: dict) -> None:
     assert failed == ""
     for where, photo in ((dir_a, PHOTO_B), (dir_b, PHOTO_A)):
         doc = store.read_path(store.module_file_in(where))
-        ref = str(doc["image"])
+        ref = store.device_photo_ref(doc)
         assert ref.startswith("pictures/"), ref
         assert store.picture_path(where, ref).read_bytes() == photo
     # Each stick's own photo is still where it was.

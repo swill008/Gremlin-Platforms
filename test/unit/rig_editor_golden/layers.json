@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1375,6 +1376,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 0,
     "histLen": 1,
     "layers": [
@@ -1401,17 +1403,11 @@
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
      "Ellipse [locked]",
      "Rounded rectangle",
-     "Background photo"
+     "Background"
     ],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -1419,6 +1415,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -2729,6 +2726,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 2,
     "histLen": 3,
     "layers": [
@@ -2752,17 +2750,11 @@
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
      "Rectangle *",
-     "Background photo"
+     "Background"
     ],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID42"
@@ -2772,6 +2764,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -2794,6 +2787,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 3,
     "histLen": 4,
     "layers": [
@@ -2817,17 +2811,11 @@
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
      "Rectangle [hidden]",
-     "Background photo"
+     "Background"
     ],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -2835,6 +2823,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -2909,6 +2898,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [
@@ -2932,17 +2922,11 @@
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
      "Rectangle",
-     "Background photo"
+     "Background"
     ],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -2950,9 +2934,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [
@@ -2976,17 +2962,11 @@
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
      "Rectangle",
-     "Background photo"
+     "Background"
     ],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID6"
@@ -2996,6 +2976,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -3018,6 +2999,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 6,
     "histLen": 7,
     "layers": [
@@ -3041,17 +3023,11 @@
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
      "Rectangle [locked] *",
-     "Background photo"
+     "Background"
     ],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID42"
@@ -3061,6 +3037,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -3134,6 +3111,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 7,
     "histLen": 8,
     "layers": [
@@ -3157,17 +3135,11 @@
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
      "Rectangle *",
-     "Background photo"
+     "Background"
     ],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID42"
@@ -3177,6 +3149,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "8": {
       "border": "#3F3F46",
@@ -3245,6 +3218,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 9,
     "histLen": 10,
     "layers": [
@@ -3268,17 +3242,12 @@
      "> Group: Button 16, Button 18, Button 19, Button 17, Button 20",
      "> Button 3",
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
-     "> Group: Button 11, Button 13, Button 14, Button 12, Button 15"
+     "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
+     "Background"
     ],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID42"
@@ -3288,6 +3257,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "border": "#3F3F46",
@@ -4600,6 +4570,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 10,
     "histLen": 11,
     "layers": [
@@ -4625,17 +4596,11 @@
      "> Button 3",
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
-     "Background photo"
+     "Background"
     ],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID42"
@@ -4645,6 +4610,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "19": {
       "around": [],
@@ -4667,6 +4633,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 11,
     "histLen": 12,
     "layers": [
@@ -4692,17 +4659,11 @@
      "> Button 3",
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
-     "Background photo"
+     "Background"
     ],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID42"
@@ -4712,13 +4673,1348 @@
   },
   {
    "state": {
-    "changed": {},
+    "bgCount": 1,
+    "changed": {
+     "0": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.75,
+      "fill": "filled",
+      "fw": 0.42188,
+      "fx": 0.28906,
+      "fy": 0.125,
+      "id": "ID43",
+      "kind": "draw",
+      "locked": false,
+      "opacity": 1,
+      "pad": 8,
+      "pinned": false,
+      "plane": "background",
+      "rot": 0,
+      "shape": "image",
+      "sockets": [],
+      "src": "test/icon",
+      "srcUrl": "<repo>/gfx/icon.png",
+      "stroke": 2
+     },
+     "1": {
+      "border": "#3F3F46",
+      "chipFx": 0.32727,
+      "chipFy": 0.01378,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID2",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "hollow",
+      "hotFx": 0.44788,
+      "hotFy": 0.17467,
+      "hotSize": 28,
+      "id": "ID2",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID2",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID3",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.42,
+          "fy": 0.12289
+         }
+        ],
+        "to": {
+         "id": "ID2",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 11",
+        "hwId": 11,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 13",
+        "hwId": 13,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 14",
+        "hwId": 14,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 12",
+        "hwId": 12,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 15",
+        "hwId": 15,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.40722,
+      "ny": 0.17422,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.42,
+        "fy": 0.12289
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     "10": {
+      "border": "#3F3F46",
+      "chipFx": 0.61824,
+      "chipFy": 0.36104,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "ID20",
+      "from": {
+       "id": "ID20",
+       "pin": "left",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56912,
+      "hotFy": 0.30533,
+      "hotSize": 4,
+      "id": "ID20",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID20",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID21",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.59975,
+          "fy": 0.36778
+         }
+        ],
+        "to": {
+         "id": "ID20",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 1",
+        "hwId": 1,
+        "ox": 0,
+        "oy": 0,
+        "role": "half"
+       },
+       {
+        "friendly": "Button 2",
+        "hwId": 2,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "full"
+       }
+      ],
+      "nx": 0.62644,
+      "ny": 0.30978,
+      "pin": "left",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.59975,
+        "fy": 0.36778
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID20",
+       "type": "hot"
+      }
+     },
+     "11": {
+      "border": "#3F3F46",
+      "chipFx": 0.58868,
+      "chipFy": 0.42453,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 5",
+      "from": {
+       "fx": 0.55726,
+       "fy": 0.42289,
+       "type": "free"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58813,
+      "hotFy": 0.43622,
+      "hotSize": 4,
+      "hwId": 5,
+      "id": "ID22",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "fx": 0.55726,
+         "fy": 0.42289,
+         "type": "free"
+        },
+        "id": "ID23",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57269,
+          "fy": 0.42956
+         }
+        ],
+        "to": {
+         "id": "ID22",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.60961,
+      "ny": 0.42222,
+      "pin": "left",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57269,
+        "fy": 0.42956
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID22",
+       "type": "hot"
+      }
+     },
+     "12": {
+      "border": "#3F3F46",
+      "chipFx": 0.49635,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 28",
+      "from": {
+       "id": "ID24",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.53912,
+      "hotFy": 0.714,
+      "hotSize": 4,
+      "hwId": 28,
+      "id": "ID24",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID24",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID25",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.52617,
+          "fy": 0.67525
+         }
+        ],
+        "to": {
+         "id": "ID24",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.57232,
+      "ny": 0.71556,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.52617,
+        "fy": 0.67525
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID24",
+       "type": "hot"
+      }
+     },
+     "13": {
+      "border": "#3F3F46",
+      "chipFx": 0.53168,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 27",
+      "from": {
+       "id": "ID26",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.56363,
+      "hotFy": 0.70044,
+      "hotSize": 4,
+      "hwId": 27,
+      "id": "ID26",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID26",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID27",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.55471,
+          "fy": 0.66847
+         }
+        ],
+        "to": {
+         "id": "ID26",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.6178,
+      "ny": 0.70044,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.55471,
+        "fy": 0.66847
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID26",
+       "type": "hot"
+      }
+     },
+     "14": {
+      "border": "#3F3F46",
+      "chipFx": 0.56581,
+      "chipFy": 0.6165,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 29",
+      "from": {
+       "id": "ID28",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58913,
+      "hotFy": 0.69444,
+      "hotSize": 4,
+      "hwId": 29,
+      "id": "ID28",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID28",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID29",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.58453,
+          "fy": 0.66547
+         }
+        ],
+        "to": {
+         "id": "ID28",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.66237,
+      "ny": 0.69511,
+      "pin": "bottom",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.58453,
+        "fy": 0.66547
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID28",
+       "type": "hot"
+      }
+     },
+     "15": {
+      "border": "#3F3F46",
+      "chipFx": 0.56274,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID30",
+      "from": {
+       "id": "ID30",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.57563,
+      "hotFy": 0.80489,
+      "hotSize": 4,
+      "id": "ID30",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID30",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID31",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.57778,
+          "fy": 0.82667
+         }
+        ],
+        "to": {
+         "id": "ID30",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 25",
+        "hwId": 25,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 26",
+        "hwId": 26,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.6369,
+      "ny": 0.79511,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.57778,
+        "fy": 0.82667
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID30",
+       "type": "hot"
+      }
+     },
+     "16": {
+      "border": "#3F3F46",
+      "chipFx": 0.32727,
+      "chipFy": 0.17733,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Axis 4",
+      "from": {
+       "id": "ID32",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.35613,
+      "hotFy": 0.18289,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID32",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID32",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID33",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.34732,
+          "fy": 0.18011
+         }
+        ],
+        "to": {
+         "id": "ID32",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.68239,
+      "ny": 0.78756,
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.34732,
+        "fy": 0.18011
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID32",
+       "type": "hot"
+      }
+     },
+     "17": {
+      "border": "#3F3F46",
+      "chipFx": 0.6335,
+      "chipFy": 0.84844,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID34",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.62787,
+      "hotFy": 0.778,
+      "hotSize": 4,
+      "id": "ID34",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID34",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID35",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.63928,
+          "fy": 0.81322
+         }
+        ],
+        "to": {
+         "id": "ID34",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 23",
+        "hwId": 23,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 24",
+        "hwId": 24,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       }
+      ],
+      "nx": 0.73378,
+      "ny": 0.77778,
+      "pin": "top",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.63928,
+        "fy": 0.81322
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     "18": {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.465,
+      "chipFy": 0.6565,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 6",
+      "from": {
+       "id": "ID36",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.47938,
+      "hotFy": 0.65644,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 6,
+      "id": "ID36",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID36",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID37",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.47766,
+          "fy": 0.65647
+         }
+        ],
+        "to": {
+         "id": "ID36",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.47766,
+        "fy": 0.65647
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID36",
+       "type": "hot"
+      }
+     },
+     "19": {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.3472,
+      "chipFy": 0.18911,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 5",
+      "from": {
+       "id": "ID38",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.35912,
+      "hotFy": 0.18111,
+      "hotShape": "round",
+      "hotSize": 9,
+      "hwId": 5,
+      "id": "ID38",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID38",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID39",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.35863,
+          "fy": 0.18511
+         }
+        ],
+        "to": {
+         "id": "ID38",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.35863,
+        "fy": 0.18511
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID38",
+       "type": "hot"
+      }
+     },
+     "2": {
+      "border": "#3F3F46",
+      "chipFx": 0.30175,
+      "chipFy": 0.34933,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID4",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "hollow",
+      "hotFx": 0.44275,
+      "hotFy": 0.23244,
+      "hotSize": 28,
+      "id": "ID4",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID4",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID5",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.437,
+          "fy": 0.33089
+         }
+        ],
+        "to": {
+         "id": "ID4",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 6",
+        "hwId": 6,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 8",
+        "hwId": 8,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 9",
+        "hwId": 9,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 7",
+        "hwId": 7,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 10",
+        "hwId": 10,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.39812,
+      "ny": 0.232,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.437,
+        "fy": 0.33089
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     "20": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.14507,
+      "fill": "filled",
+      "fw": 0.14375,
+      "fx": 0.2375,
+      "fy": 0.33333,
+      "id": "ID42",
+      "kind": "draw",
+      "name": "Cover",
+      "opacity": 1,
+      "pad": 8,
+      "rot": 0,
+      "shape": "rect",
+      "stroke": 2
+     },
+     "3": {
+      "border": "#3F3F46",
+      "chipFx": 0.32345,
+      "chipFy": 0.2684,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "Button 3",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.41625,
+      "hotFy": 0.25556,
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID6",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID6",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID7",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.38501,
+          "fy": 0.26698
+         }
+        ],
+        "to": {
+         "id": "ID6",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.34854,
+      "ny": 0.25467,
+      "pin": "right",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.38501,
+        "fy": 0.26698
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     "4": {
+      "border": "#3F3F46",
+      "chipFx": 0.3755,
+      "chipFy": 0.42396,
+      "color": "#18181B",
+      "fontSize": 10,
+      "friendly": "ID8",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotColor": "#ff4f03",
+      "hotFill": "hollow",
+      "hotFx": 0.44825,
+      "hotFy": 0.37978,
+      "hotSize": 28,
+      "id": "ID8",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID8",
+         "pin": "right",
+         "type": "chip"
+        },
+        "id": "ID9",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.4385,
+          "fy": 0.44778
+         }
+        ],
+        "to": {
+         "id": "ID8",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 16",
+        "hwId": 16,
+        "ox": 0,
+        "oy": 0,
+        "role": "up"
+       },
+       {
+        "friendly": "Button 18",
+        "hwId": 18,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "down"
+       },
+       {
+        "friendly": "Button 19",
+        "hwId": 19,
+        "ox": 0,
+        "oy": 0.04302,
+        "role": "left"
+       },
+       {
+        "friendly": "Button 17",
+        "hwId": 17,
+        "ox": 0,
+        "oy": 0.06453,
+        "role": "right"
+       },
+       {
+        "friendly": "Button 20",
+        "hwId": 20,
+        "ox": 0,
+        "oy": 0.08604,
+        "role": "center"
+       }
+      ],
+      "nx": 0.40631,
+      "ny": 0.38044,
+      "pin": "right",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.4385,
+        "fy": 0.44778
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     "5": {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.40987,
+      "chipFy": 0.6365,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 1",
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.47925,
+      "hotFy": 0.65711,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 1,
+      "id": "ID10",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID10",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID11",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.44456,
+          "fy": 0.65181
+         }
+        ],
+        "to": {
+         "id": "ID10",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "left",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.44456,
+        "fy": 0.65181
+       }
+      ],
+      "textColor": "#E4E4E7"
+     },
+     "6": {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.465,
+      "chipFy": 0.51,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 2",
+      "from": {
+       "id": "ID12",
+       "pin": "bottom",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.4795,
+      "hotFy": 0.656,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 2,
+      "id": "ID12",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID12",
+         "pin": "bottom",
+         "type": "chip"
+        },
+        "id": "ID13",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.47772,
+          "fy": 0.593
+         }
+        ],
+        "to": {
+         "id": "ID12",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "bottom",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.47772,
+        "fy": 0.593
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID12",
+       "type": "hot"
+      }
+     },
+     "7": {
+      "border": "#3F3F46",
+      "chipFill": "filled",
+      "chipFx": 0.60213,
+      "chipFy": 0.84089,
+      "chipShape": "round",
+      "chipSize": 18,
+      "color": "#18181B",
+      "curve": true,
+      "fontSize": 10,
+      "friendly": "Axis 3",
+      "from": {
+       "id": "ID14",
+       "pin": "top",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFill": "filled",
+      "hotFx": 0.5995,
+      "hotFy": 0.78178,
+      "hotShape": "round",
+      "hotSize": 4,
+      "hwId": 3,
+      "id": "ID14",
+      "kind": "axis",
+      "label": "",
+      "leaders": [
+       {
+        "curve": true,
+        "from": {
+         "id": "ID14",
+         "pin": "top",
+         "type": "chip"
+        },
+        "id": "ID15",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.60628,
+          "fy": 0.81133
+         }
+        ],
+        "to": {
+         "id": "ID14",
+         "type": "hot"
+        }
+       }
+      ],
+      "pin": "top",
+      "prefix": "A",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.60628,
+        "fy": 0.81133
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID14",
+       "type": "hot"
+      }
+     },
+     "8": {
+      "border": "#3F3F46",
+      "chipFx": 0.61901,
+      "chipFy": 0.2484,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "Button 4",
+      "from": {
+       "fx": 0.56178,
+       "fy": 0.25109,
+       "type": "free"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotColor": "#fda500",
+      "hotFx": 0.627,
+      "hotFy": 0.26,
+      "hotLocked": true,
+      "hotSize": 4,
+      "hwId": 4,
+      "id": "ID16",
+      "kind": "btn",
+      "label": "",
+      "leaders": [
+       {
+        "from": {
+         "fx": 0.56178,
+         "fy": 0.25109,
+         "type": "free"
+        },
+        "hidden": true,
+        "id": "ID17",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.5965,
+          "fy": 0.25711
+         }
+        ],
+        "to": {
+         "id": "ID16",
+         "type": "hot"
+        }
+       }
+      ],
+      "nx": 0.61462,
+      "ny": 0.24889,
+      "pin": "left",
+      "prefix": "",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.5965,
+        "fy": 0.25711
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID16",
+       "type": "hot"
+      }
+     },
+     "9": {
+      "border": "#3F3F46",
+      "chipFx": 0.61699,
+      "chipFy": 0.29311,
+      "color": "#18181B",
+      "fontSize": 8,
+      "friendly": "ID18",
+      "from": {
+       "id": "ID18",
+       "pin": "left",
+       "type": "chip"
+      },
+      "highlight": true,
+      "hlBorder": "#22C55E",
+      "hlColor": "#14532D",
+      "hlText": "#BBF7D0",
+      "hotFx": 0.58913,
+      "hotFy": 0.28578,
+      "hotSize": 4,
+      "id": "ID18",
+      "kind": "stack",
+      "leaders": [
+       {
+        "from": {
+         "id": "ID18",
+         "pin": "left",
+         "type": "chip"
+        },
+        "id": "ID19",
+        "spines": [
+         {
+          "curve": true,
+          "fx": 0.60037,
+          "fy": 0.30978
+         }
+        ],
+        "to": {
+         "id": "ID18",
+         "type": "hot"
+        }
+       }
+      ],
+      "members": [
+       {
+        "friendly": "Button 21",
+        "hwId": 21,
+        "ox": 0,
+        "oy": 0,
+        "role": "push"
+       },
+       {
+        "friendly": "Button 22",
+        "hwId": 22,
+        "ox": 0,
+        "oy": 0.02151,
+        "role": "pull"
+       }
+      ],
+      "nx": 0.66328,
+      "ny": 0.28578,
+      "pin": "left",
+      "spines": [
+       {
+        "curve": true,
+        "fx": 0.60037,
+        "fy": 0.30978
+       }
+      ],
+      "textColor": "#E4E4E7",
+      "to": {
+       "id": "ID18",
+       "type": "hot"
+      }
+     }
+    },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 12,
     "histLen": 13,
     "layers": [
-     "Cover *",
+     "Cover",
      "> Axis 5",
      "> Axis 6",
      "> Group: Button 23, Button 24",
@@ -4740,23 +6036,80 @@
      "> Button 3",
      "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
      "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
-     "Background photo [locked]"
+     "Background"
     ],
     "menu": [],
-    "nodeCount": 20,
+    "nodeCount": 21,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
-    "selected": [
-     "ID42"
-    ]
+    "selected": []
    },
-   "step": "photo-locked"
+   "step": "background-row"
+  },
+  {
+   "state": {
+    "bgCount": 1,
+    "changed": {
+     "0": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "fh": 0.75,
+      "fill": "filled",
+      "fw": 0.42188,
+      "fx": 0.28906,
+      "fy": 0.125,
+      "id": "ID43",
+      "kind": "draw",
+      "locked": true,
+      "opacity": 1,
+      "pad": 8,
+      "plane": "background",
+      "rot": 0,
+      "shape": "image",
+      "sockets": [],
+      "src": "test/icon",
+      "srcUrl": "<repo>/gfx/icon.png",
+      "stroke": 2
+     }
+    },
+    "cropId": "",
+    "drawTool": "",
+    "editPlane": "foreground",
+    "histAt": 13,
+    "histLen": 14,
+    "layers": [
+     "Cover",
+     "> Axis 5",
+     "> Axis 6",
+     "> Group: Button 23, Button 24",
+     "> Axis 4",
+     "> Group: Button 25, Button 26",
+     "> Button 29",
+     "> Button 27",
+     "> Button 28",
+     "> Button 5",
+     "> Group: Button 1, Button 2",
+     "> Group: Button 21, Button 22",
+     "v Button 4",
+     "  Hotspot [locked]",
+     "  Leader 1 [hidden]",
+     "> Axis 3",
+     "> Axis 2",
+     "> Axis 1",
+     "> Group: Button 16, Button 18, Button 19, Button 17, Button 20",
+     "> Button 3",
+     "> Group: Button 6, Button 8, Button 9, Button 7, Button 10",
+     "> Group: Button 11, Button 13, Button 14, Button 12, Button 15",
+     "Background [locked]"
+    ],
+    "menu": [],
+    "nodeCount": 21,
+    "pasteRequests": 0,
+    "props": [],
+    "selected": []
+   },
+   "step": "background-locked"
   }
  ],
  "warnings": []

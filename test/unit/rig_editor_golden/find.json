@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "border": "#3F3F46",
@@ -1295,6 +1296,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "find": {
      "msg": "Found Button 3.",
      "notPlaced": "",
@@ -1309,12 +1311,6 @@
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID4"
@@ -1324,9 +1320,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "find": {
      "msg": "Found Button 1.",
      "notPlaced": "",
@@ -1341,12 +1339,6 @@
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID18"
@@ -1356,9 +1348,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "find": {
      "msg": "Button 40 is not on the map yet: it is in the pool.",
      "notPlaced": "Button 40",
@@ -1373,12 +1367,6 @@
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID18"
@@ -1388,9 +1376,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "find": {
      "msg": "Button 40 is not on the map yet: it is in the pool.",
      "notPlaced": "Button 40",
@@ -1405,12 +1395,6 @@
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -1418,9 +1402,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "find": {
      "msg": "Found Axis 1.",
      "notPlaced": "Button 40",
@@ -1435,12 +1421,6 @@
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID8"
@@ -1450,9 +1430,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "find": {
      "msg": "Found Axis 1.",
      "notPlaced": "Button 40",
@@ -1467,12 +1449,6 @@
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },

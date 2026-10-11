@@ -100,11 +100,11 @@ def _png(path: pathlib.Path) -> pathlib.Path:
 def test_cancel_puts_the_starting_photo_back(
     modules: pathlib.Path, tmp_path: pathlib.Path
 ) -> None:
-    # 07 S26, S107: Choose Photo… waits in the edit's temporary folder;
-    # the device's folder and module file are not touched until Save, so
-    # Cancel leaves the starting photo as it was.
+    # 07 S26, S107: a new photo (Import Image) waits in the edit's
+    # temporary folder; the device's folder and module file are not touched
+    # until Save, so Cancel leaves the starting photo as it was.
     ref = put_picture(modules, "Stick R", "photo.jpg", b"original")
-    doc = put_module(modules, "Stick R", {"image": ref})
+    doc = put_module(modules, "Stick R", {"nodes": [_background(ref)]})
     before = doc.read_bytes()
     folder = doc.parent / "pictures"
     hw = hardware_profile.HardwareProfile()
@@ -126,23 +126,34 @@ def test_cancel_puts_the_starting_photo_back(
     assert hw.cancelEdit("Stick R") is False
 
 
-def test_clearing_the_photo_changes_nothing_until_save(modules: pathlib.Path) -> None:
+def _background(ref: str) -> dict:
+    """The device's photo: the bottom background picture (07 S111, S127)."""
+    return {"id": "bg", "kind": "draw", "shape": "image", "plane": "background",
+            "src": ref, "fx": 0.125, "fy": 0.125, "fw": 0.75, "fh": 0.75}
+
+
+def test_clearing_the_background_changes_nothing_until_save(
+    modules: pathlib.Path,
+) -> None:
     ref = put_picture(modules, "Stick R", "photo.jpg", b"original")
-    doc = put_module(modules, "Stick R", {"image": ref})
+    doc = put_module(modules, "Stick R", {"nodes": [_background(ref)]})
     folder = picture_file(modules, "Stick R", "photo.jpg").parent
     hw = hardware_profile.HardwareProfile()
 
-    # Clear Image only changes the window's map: Cancel keeps the photo.
+    # Clear Background only changes the window's map: Cancel keeps it (07
+    # S41, S26).
     hw.beginEdit("Stick R")
     assert hw.cancelEdit("Stick R") is True
     assert (folder / "photo.jpg").read_bytes() == b"original"
-    assert json.loads(doc.read_text(encoding="utf-8"))["image"] == ref
+    assert store.device_photo_ref(json.loads(doc.read_text(encoding="utf-8"))) == ref
 
-    # Save ends the edit; the photo nothing names any more goes (07 S106).
+    # Save ends the edit; the picture nothing names any more goes (07 S106).
     hw.beginEdit("Stick R")
-    assert hw.save("Stick R", json.dumps({"image": "", "nodes": []}))
+    assert hw.save("Stick R", json.dumps({"nodes": []}))
     assert not hw.editActive("Stick R")
-    assert json.loads(doc.read_text(encoding="utf-8"))["image"] == ""
+    saved = json.loads(doc.read_text(encoding="utf-8"))
+    assert store.device_photo_ref(saved) == ""
+    assert "image" not in saved and "photo" not in saved
     assert not (folder / "photo.jpg").exists()
 
 

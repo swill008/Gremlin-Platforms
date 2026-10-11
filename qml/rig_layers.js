@@ -63,11 +63,111 @@ function _legacyZ(n) {
     return isDraw(n) ? 2 : 3
 }
 
-// Puts a new node under the chips: shapes drawn around chips, pictures and
-// tables would otherwise cover them.
-function insertBelowChips(n) {
+// --- planes (07 S111-S122) ----------------------------------------------------
+
+// A node on the background plane carries plane: "background"; no key is the
+// foreground. The nodes list holds every background node first (bottom
+// first), then the foreground, so the background always draws underneath.
+function isBackground(n) {
+    return !!(n && n.plane === "background")
+}
+
+// Pictures, shapes, lines and text may go to the background; chips, groups,
+// leaders, hotspots and tables stay in the foreground (S112). A drawing kept
+// with a table goes with the table.
+function canHoldBackground(n) {
+    return !!(n && isDraw(n) && !isTable(n) && !n.packId)
+}
+
+// Why an item can't go to the background ("" when it can): the tooltip on a
+// greyed Move to Background (S121).
+function backgroundRefusal(n) {
+    if (!n)
+        return "Not found"
+    if (isTable(n))
+        return "Tables stay in the foreground"
+    if (n.packId)
+        return "Part of a table"
+    if (isGroup(n))
+        return "Groups stay in the foreground"
+    if (!isDraw(n))
+        return "Chips stay in the foreground"
+    return ""
+}
+
+function planeOf(n) {
+    return isBackground(n) ? "background" : "foreground"
+}
+
+// The node is on the plane being edited: only those are hit, selected and
+// snapped to (S115, S116, S122).
+function inEditPlane(n) {
+    return !!n && planeOf(n) === (editPlane === "background" ? "background" : "foreground")
+}
+
+// { first, last } indexes of a plane in nodes. An empty plane has last =
+// first - 1, first being where its bottom item would go.
+function planeRange(plane) {
     var list = nodes || []
+    var bg = 0
+    while (bg < list.length && isBackground(list[bg]))
+        bg++
+    if (plane === "background")
+        return { first: 0, last: bg - 1 }
+    return { first: bg, last: list.length - 1 }
+}
+
+// Puts every background node first, keeping each plane's own order; a node
+// the background can't hold goes back to the foreground. Runs at every
+// change (bump), so stacking commands, paste and undo never mix the planes.
+// True when the list changed.
+function normalizePlanes() {
+    var list = nodes || []
+    var bg = []
+    var fg = []
+    var changed = false
     for (var i = 0; i < list.length; i++) {
+        var n = list[i]
+        if (!n)
+            continue
+        if (n.plane !== undefined && (n.plane !== "background" || !canHoldBackground(n))) {
+            delete n.plane
+            changed = true
+        }
+        if (isBackground(n))
+            bg.push(n)
+        else
+            fg.push(n)
+    }
+    var all = bg.concat(fg)
+    if (all.length !== list.length)
+        changed = true
+    for (var k = 0; k < all.length && !changed; k++) {
+        if (all[k] !== list[k])
+            changed = true
+    }
+    if (!changed)
+        return false
+    list.splice(0, list.length)
+    for (var j = 0; j < all.length; j++)
+        list.push(all[j])
+    return true
+}
+
+// Adds a new node to a plane: on top of the background, or in the foreground
+// under the chips (shapes drawn round chips, pictures and tables would
+// otherwise cover them). What the background can't hold goes to the
+// foreground.
+function insertInPlane(n, plane) {
+    var list = nodes || []
+    if (plane === "background" && canHoldBackground(n)) {
+        n.plane = "background"
+        list.splice(planeRange("background").last + 1, 0, n)
+        return
+    }
+    delete n.plane
+    var r = planeRange("foreground")
+    for (var i = r.first; i < list.length; i++) {
         if (!isDraw(list[i])) {
             list.splice(i, 0, n)
             return
@@ -76,8 +176,210 @@ function insertBelowChips(n) {
     list.push(n)
 }
 
+// The drawing tools' name for it: the plane being edited.
+function insertBelowChips(n) {
+    insertInPlane(n, editPlane)
+}
+
+// Move to Background / Foreground (S121): the items, in their stacking
+// order, land next to the other plane (top of the background, bottom of the
+// foreground). One undo step. Returns { moved: [ids], refused: [{id, reason}] }.
+function moveToPlane(ids, plane) {
+    var toBg = plane === "background"
+    var list = nodes || []
+    var want = {}
+    var refused = []
+    for (var i = 0; i < (ids || []).length; i++) {
+        var n = nodeAt(ids[i])
+        if (!n || isBackground(n) === toBg)
+            continue
+        var why = toBg ? backgroundRefusal(n) : ""
+        if (why) {
+            refused.push({ id: ids[i], reason: why })
+            continue
+        }
+        want[n.id] = true
+    }
+    var going = list.filter(function(q) { return want[q.id] })
+    if (!going.length)
+        return { moved: [], refused: refused }
+    var rest = list.filter(function(q) { return !want[q.id] })
+    list.splice(0, list.length)
+    rest.forEach(function(q) { list.push(q) })
+    var at = planeRange("background").last + 1
+    for (var g = 0; g < going.length; g++) {
+        if (toBg)
+            going[g].plane = "background"
+        else
+            delete going[g].plane
+        list.splice(at + g, 0, going[g])
+    }
+    _dropOtherPlaneSelection()
+    bump()
+    planeMoved(toBg ? "background" : "foreground", going.length)
+    return { moved: going.map(function(q) { return q.id }), refused: refused }
+}
+
+// Clear Background (S41): every node of the plane goes, one undo step.
+function clearPlane(plane) {
+    var list = nodes || []
+    var bg = plane === "background"
+    var keep = list.filter(function(q) { return isBackground(q) !== bg })
+    if (keep.length === list.length)
+        return
+    list.splice(0, list.length)
+    keep.forEach(function(q) { list.push(q) })
+    var ids = selectedIds || []
+    var still = ids.filter(function(s) { return !!nodeAt(s) })
+    if (still.length !== ids.length)
+        setSelection(still)
+    bump()
+}
+
+// The Background row's lock (S120): locks or unlocks every node of the
+// plane at once. One undo step.
+function setPlaneLocked(plane, on) {
+    var list = nodes || []
+    var any = false
+    for (var i = 0; i < list.length; i++) {
+        var n = list[i]
+        if (planeOf(n) !== plane)
+            continue
+        if (on && !n.locked) {
+            n.locked = true
+            any = true
+        } else if (!on && (n.locked || n.pinned)) {
+            delete n.locked
+            any = true
+        }
+        delete n.pinned
+    }
+    if (any)
+        bump()
+}
+
+// True when the plane has nodes and every one is locked.
+function planeLocked(plane) {
+    tick
+    var list = nodes || []
+    var r = planeRange(plane)
+    if (r.last < r.first)
+        return false
+    for (var i = r.first; i <= r.last; i++) {
+        if (!isLocked(list[i]))
+            return false
+    }
+    return true
+}
+
+// The device's photo: the bottom background picture (null without one).
+function bottomPicture() {
+    var list = nodes || []
+    for (var i = 0; i < list.length && isBackground(list[i]); i++) {
+        if (isOverlay(list[i]))
+            return list[i]
+    }
+    return null
+}
+
+// Selected items not on the plane being edited are let go.
+function _dropOtherPlaneSelection() {
+    var ids = selectedIds || []
+    var keep = ids.filter(function(s) { return inEditPlane(nodeAt(s)) })
+    if (keep.length !== ids.length)
+        setSelection(keep)
+}
+
+// Reset Shape on a picture (07 S42): no crop, skew, flip or turn, one undo
+// step. Other drawings use rig_transform.js's resetShape.
+function resetPictureShape(n) {
+    if (!n || isLocked(n))
+        return
+    delete n.crop
+    delete n.skew
+    delete n.flipH
+    delete n.flipV
+    n.rot = 0
+    if (cropId === n.id)
+        cropId = ""
+    bump()
+}
+
+var _LOOK_RANGE = { bright: [-1, 1], contrast: [-1, 1], grey: [0, 1] }
+
+// A picture's look (07 S43): bright and contrast -1 to 1, grey and opacity
+// 0 to 1. Only keys that differ from neutral are kept in "look". A
+// run of slider changes is one undo step once it rests.
+function setPictureLook(id, key, value) {
+    var n = nodeAt(id)
+    if (!n || !isOverlay(n))
+        return
+    if (key === "opacity") {
+        var o = Number(value)
+        n.opacity = (o === o) ? Math.max(0, Math.min(1, o)) : 1
+    } else {
+        var look = Object.assign({}, n.look || {})
+        if (_LOOK_RANGE[key]) {
+            var v = Number(value)
+            v = (v === v) ? Math.max(_LOOK_RANGE[key][0], Math.min(_LOOK_RANGE[key][1], v)) : 0
+            if (v)
+                look[key] = v
+            else
+                delete look[key]
+        } else {
+            return
+        }
+        if (Object.keys(look).length)
+            n.look = look
+        else
+            delete n.look
+        _queueLookUrl(n.id)
+    }
+    repaint()
+    selectedChanged()
+    noteLiveEdit()
+}
+
+// A picture's adjusted copy for its look (lookUrl, made by the window's
+// lookUrlFor), or none when its look is neutral.
+function refreshLookUrl(n) {
+    if (!n || !isOverlay(n))
+        return
+    var look = n.look || {}
+    var any = !!(look.bright || look.contrast || look.grey)
+    if (any && n.srcUrl && typeof lookUrlFor === "function")
+        n.lookUrl = String(lookUrlFor(n.srcUrl, { bright: look.bright || 0, contrast: look.contrast || 0, grey: look.grey || 0 }) || "")
+    else
+        delete n.lookUrl
+}
+
+// How strongly a node shows on screen: the Background row's eye and Opacity
+// in Foreground mode (S120), the faint foreground in Background mode (S115).
+// 0: not shown. Prints and exports show both planes in full.
+function planeOpacity(n) {
+    if (exporting || !n)
+        return 1
+    var bgMode = interactive && editPlane === "background"
+    if (isBackground(n)) {
+        if (bgMode)
+            return 1
+        return bgViewHidden ? 0 : Math.max(0, Math.min(1, bgViewOpacity))
+    }
+    if (!bgMode)
+        return 1
+    return showFgFaint ? fgFaint : 0
+}
+
+// The same for the leader lines and hotspots (P7a).
+function foregroundOpacity() {
+    if (exporting || !(interactive && editPlane === "background"))
+        return 1
+    return showFgFaint ? fgFaint : 0
+}
+
 // The leader canvas sits just under the lowest chip, so leaders are above the
-// drawings under the chips and below anything moved over them.
+// drawings under the chips (and the whole background) and below anything
+// moved over them.
 function leaderLayerZ() {
     tick
     var list = nodes || []
@@ -98,14 +400,17 @@ function _movable(ids) {
     return out
 }
 
-// Moves a node to a list index (0 is the bottom).
+// Moves a node to a list index (0 is the bottom), kept inside its own plane.
+// The stacking commands below may swap across the planes' border; bump's
+// normalizePlanes puts each node back in its plane, so they too stay inside it.
 function moveNodeTo(id, index) {
     var list = nodes || []
     var from = nodeIndex(id)
     if (from < 0)
         return
     var n = list.splice(from, 1)[0]
-    var to = Math.max(0, Math.min(list.length, index))
+    var r = planeRange(planeOf(n))
+    var to = Math.max(r.first, Math.min(r.last + 1, index))
     list.splice(to, 0, n)
     bump()
 }
@@ -262,10 +567,10 @@ function toggleLayerFlag(id, part, flag) {
 // Layers panel Delete (its trash icon and right-click menu): a chip or group
 // goes back to the pool, a leader is removed, a hotspot is hidden (a chip
 // always keeps its hotspot's place), a picture, drawing, text box or table is
-// removed. The photo and locked items are not deleted. One undo step.
+// removed. The Background row and locked items are not deleted. One undo step.
 function canDeleteLayer(id, part) {
     // A group member's row (a search result) is not its own item.
-    if (part === "photo" || !id || String(part || "").indexOf("member:") === 0)
+    if (part === "background" || !id || String(part || "").indexOf("member:") === 0)
         return false
     var n = nodeAt(id)
     if (!n || isLocked(n))
@@ -344,14 +649,12 @@ function _clearFlag(flag) {
 
 function showAll() {
     _clearFlag("hidden")
-    photoHidden = false
     bump()
 }
 
 // Ctrl+Shift+L.
 function unlockAll() {
     _clearFlag("locked")
-    photoLocked = false
     bump()
 }
 
@@ -429,7 +732,7 @@ var _FILTERS = {
 // member counts as a group's row.
 var _KIND_WORDS = {
     chip: "Chips", group: "Groups", member: "Groups", hotspot: "Hotspots", leader: "Leaders",
-    shape: "Shapes", line: "Lines", picture: "Pictures", text: "Text", table: "Tables", photo: "Photo"
+    shape: "Shapes", line: "Lines", picture: "Pictures", text: "Text", table: "Tables"
 }
 
 // The panel's filter as { kinds, query, active }. A string is the old
@@ -557,16 +860,29 @@ function _itemRows(f, n, i, expanded, all) {
     return [head].concat(shown)
 }
 
-function _photoRow(f) {
+// The folded Background row that ends the list in Foreground mode (S120):
+// its eye is the on-screen bgViewHidden, its lock locks every background
+// layer (setPlaneLocked). It always shows, whatever the filter.
+function _backgroundRow() {
     return {
-        id: "", part: "photo", depth: 0, type: "photo", name: "Background photo",
-        hidden: photoHidden, locked: photoLocked, hiddenFrom: false, lockedFrom: false,
+        id: "", part: "background", depth: 0, type: "background", name: "Background",
+        hidden: !!bgViewHidden, locked: planeLocked("background"), hiddenFrom: false, lockedFrom: false,
         selected: false, canOpen: false, open: false, index: -1, renamable: false,
-        match: !f.active || _rowMatches(f, "photo", "Background photo", []), heading: false
+        match: true, heading: false
     }
 }
 
-// The Layers panel's rows, top of the stack first, then the background photo.
+// The rows of the plane being edited, top first (S119).
+function _planeIndexes() {
+    var r = planeRange(editPlane === "background" ? "background" : "foreground")
+    var out = []
+    for (var i = r.last; i >= r.first; i--)
+        out.push(i)
+    return out
+}
+
+// The Layers panel's rows: the plane being edited, top of its stack first,
+// then (Foreground mode) the folded Background row.
 // expanded maps a chip's id to true when its hotspot and leader rows show.
 // state is the panel's filter, { kinds, query } (07 S102), or an old kind
 // name ("all", "chips", ...). Each row has match (it passes the filter) and
@@ -577,28 +893,30 @@ function layerRows(state, expanded) {
     var f = _layerFilter(state)
     var list = nodes || []
     var rows = []
-    for (var i = list.length - 1; i >= 0; i--) {
+    var at = _planeIndexes()
+    for (var k = 0; k < at.length; k++) {
+        var i = at[k]
         var n = list[i]
         if (f.legacy && f.kinds.length && f.kinds.indexOf(layerType(n)) < 0)
             continue
         rows = rows.concat(_itemRows(f, n, i, expanded, false))
     }
-    var photo = _photoRow(f)
-    if (f.legacy ? !f.kinds.length : photo.match)
-        rows.push(photo)
+    if (editPlane !== "background")
+        rows.push(_backgroundRow())
     return rows
 }
 
-// The panel's "12 of 148": every row there is (open or not, hotspots,
-// leaders, group members and the photo) and how many pass the filter.
+// The panel's "12 of 148": every row of the plane being edited (open or
+// not, hotspots, leaders and group members; not the Background row) and how
+// many pass the filter.
 function layerCounts(state) {
     tick
     var f = _layerFilter(state)
     var list = nodes || []
     var all = []
-    for (var i = list.length - 1; i >= 0; i--)
-        all = all.concat(_itemRows(f, list[i], i, null, true))
-    all.push(_photoRow(f))
+    var at = _planeIndexes()
+    for (var k = 0; k < at.length; k++)
+        all = all.concat(_itemRows(f, list[at[k]], at[k], null, true))
     var matches = 0
     for (var r = 0; r < all.length; r++) {
         if (!f.active || all[r].match)
@@ -608,7 +926,7 @@ function layerCounts(state) {
 }
 
 // Enter in the search box: selects every match on the map (a hotspot,
-// leader or member selects its chip or group; not the photo, nor a hidden
+// leader or member selects its chip or group; not the Background row, nor a hidden
 // item) and brings the first into view. Selecting is not an edit: no undo
 // step. Returns how many items were selected.
 function selectLayerMatches(state) {
@@ -629,14 +947,4 @@ function selectLayerMatches(state) {
     repaint()
     selectedChanged()
     return ids.length
-}
-
-function setPhotoFlag(flag, on) {
-    if (flag === "hidden")
-        photoHidden = !!on
-    else
-        photoLocked = !!on
-    if (photoLocked)
-        movePhoto = false
-    bump()
 }

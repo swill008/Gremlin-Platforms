@@ -129,7 +129,7 @@ def _child() -> None:
 
     def set_photo(data: bytes) -> None:
         # As the card's Add / Change Image does: photo.png through the store
-        # and the module file's "image".
+        # and the module file's bottom background picture (07 S127).
         store.remove_picture_files(store.photo_files("Logical Device", ld_id))
         store.put_picture_at(
             store.pictures_dir("Logical Device", ld_id) / "photo.png", data
@@ -137,7 +137,7 @@ def _child() -> None:
         ref = store.picture_ref("photo.png")
 
         def change(doc: dict) -> None:
-            doc["image"] = ref
+            store.set_device_photo(doc, ref)
 
         if not store.update_path(path, change, "Home"):
             print("ERROR the picture wasn't set", flush=True)
@@ -312,7 +312,7 @@ def _child() -> None:
         result("restore-bad", ev("_lib.messageBad"))
         pump()
         result("file-after", file_labels())
-        result("image-after", str(doc().get("image") or ""))
+        result("image-after", store.device_photo_ref(doc()))
         result("photo-after", photo_bytes())
         result("ld-after", ld_labels())
         result("card-after", card_photo())

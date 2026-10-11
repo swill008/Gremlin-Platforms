@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
+import QtQuick.Window
 import QtQml
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -15,6 +16,17 @@ Item {
     // the drag tick only (big maps: other items stay as they are).
     property int rev: ed ? ed.tick : 0
     property var node: ({ kind: "draw" })
+    // Pictures at their own size even past bigSide (07 S124): set by the
+    // print and export renderer through the editor's fullResolution.
+    property bool fullResolution: !!(ed && ed.fullResolution)
+    // Past this many pixels on a side, a picture is drawn on screen from a
+    // copy the size of the screen.
+    readonly property int bigSide: 4000
+    readonly property int screenSide: {
+        var dpr = Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1
+        var side = Math.max(Screen.width, Screen.height) * dpr
+        return side > 0 ? Math.round(side) : 1920
+    }
     anchors.fill: parent
     // Skew (Transform → Skew) about the middle, before the item is turned.
     transform: Matrix4x4 {
@@ -414,13 +426,47 @@ Item {
             y: _picClip.crop ? -(_picClip.crop.t || 0) * height : 0
             fillMode: Image.PreserveAspectFit
             asynchronous: true
+            // With a Look (07 S43), the adjusted copy the window made
+            // (HardwareProfile.adjustedPhotoUrl, kept in the node's lookUrl,
+            // never saved); else the file itself.
             source: {
                 _drawRoot.rev
                 var n = node || {}
-                return n.srcUrl || ""
+                return (n.lookUrl && _drawRoot.hasLook(n)) ? n.lookUrl : (n.srcUrl || "")
+            }
+            // The picture's own size, read once it has loaded at that size.
+            property size natural: Qt.size(0, 0)
+            readonly property bool big: natural.width > _drawRoot.bigSide || natural.height > _drawRoot.bigSide
+            // A big picture loads again at most screenSide on its longer side.
+            sourceSize: (big && !_drawRoot.fullResolution)
+                        ? _drawRoot.screenCopySize(natural) : undefined
+            onSourceChanged: natural = Qt.size(0, 0)
+            onStatusChanged: {
+                if (status === Image.Ready && natural.width <= 0)
+                    natural = Qt.size(implicitWidth, implicitHeight)
             }
         }
     }
+    function hasLook(n) {
+        var l = n && n.look
+        return !!(l && (Number(l.bright) || Number(l.contrast) || Number(l.grey)))
+    }
+
+    // A big picture's screen copy: its shape, at most screenSide long.
+    function screenCopySize(nat) {
+        var k = Math.min(1, screenSide / Math.max(1, nat.width, nat.height))
+        return Qt.size(Math.max(1, Math.round(nat.width * k)), Math.max(1, Math.round(nat.height * k)))
+    }
+
+    // The picture's state, for tests: its own size, the size it is drawn
+    // from and whether that is a screen copy.
+    function pictureInfo() {
+        return { natW: _overlayImage.natural.width, natH: _overlayImage.natural.height,
+                 loadW: _overlayImage.implicitWidth, loadH: _overlayImage.implicitHeight,
+                 capped: _overlayImage.big && !fullResolution, status: _overlayImage.status,
+                 source: String(_overlayImage.source) }
+    }
+
     // A picture the map names whose file is missing (07 S108): in Edit, a
     // grey box naming the file (right-click: Choose Picture…); outside
     // Edit, and in print and export, its area stays empty.

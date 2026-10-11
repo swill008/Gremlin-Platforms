@@ -11,7 +11,6 @@ import "rig_coords.js" as RigCoords
 import "rig_style.js" as RigStyle
 import "rig_snap.js" as RigSnap
 import "rig_chips.js" as RigChips
-import "rig_photo.js" as RigPhoto
 import "rig_leaders.js" as RigLeaders
 import "rig_hit.js" as RigHit
 import "rig_groups.js" as RigGroups
@@ -79,6 +78,9 @@ Item {
     // widths, borders) go through fixPx, so the picture keeps the screen's
     // proportions at any size.
     property real exportZoom: 1
+    // Printing and exporting: pictures over about 4000 px are drawn from the
+    // original instead of a screen-sized copy (07 S124; RigDrawItem).
+    property bool fullResolution: false
     function fixPx(v) { return v * exportZoom }
     // Turning several items together (rig_grouprot.js): where they started,
     // and the angle so far.
@@ -117,10 +119,6 @@ Item {
     // shows, whether it can be changed, its color, Set Print Area waiting
     // for a drag, and the area being drawn.
     property var printArea: null
-    // The photo file shown and where to get it again (set by the window;
-    // part of each undo step, see photoImageRestored).
-    property string photoImage: ""
-    property string photoSource: ""
     property bool printAreaShown: false
     property bool printAreaLocked: false
     // "" until the window sets it (Options' color, or the default red); a
@@ -205,11 +203,6 @@ Item {
     property int spineHoldIndex: -1
     property real spineHoldX: 0
     property real spineHoldY: 0
-    property real photoScale: 1
-    property real photoOffX: 0
-    property real photoOffY: 0
-    property real photoRot: 0
-    property bool movePhoto: false
     // How far above a selected drawing's top edge its rotate handle sits.
     readonly property real rotateHandleOffset: 24
     // The picture in crop mode (its handles cut), and its crop when a handle
@@ -226,20 +219,24 @@ Item {
     // Selection and handle colours, the same on the photo in both themes.
     readonly property color handleFill: "#FBBF24"
     readonly property color handleInk: "#18181B"
-    // Layers panel flags for the background photo (saved with its pose).
-    property bool photoHidden: false
-    property bool photoLocked: false
-    // The photo's look (Photo → Adjust photo), saved with its pose.
-    property real photoBright: 0
-    property real photoContrast: 0
-    property real photoGrey: 0
-    property real photoFade: 0
-    // An adjusted copy of the photo for brightness, contrast and greyscale,
-    // made by the window (HardwareProfile.adjustedPhotoUrl); "" for none.
-    property string photoLookUrl: ""
-    readonly property url photoBaseUrl: _photoWell ? _photoWell.baseUrl : ""
-    property real photoDragX0: 0
-    property real photoDragY0: 0
+    // The planes (07 S111-S122): which one is being edited ("foreground" or
+    // "background"); in Background mode the foreground shows at fgFaint when
+    // showFgFaint, else not at all (S115). In Foreground mode the Background
+    // row's eye (bgViewHidden) and Opacity (bgViewOpacity) change how the
+    // background shows on screen (S120). All are program settings set by the
+    // window: never saved in the map, never undo steps (P4a).
+    property string editPlane: "foreground"
+    property bool showFgFaint: true
+    property real fgFaint: 0.25
+    property bool bgViewHidden: false
+    property real bgViewOpacity: 1
+    // Set by the window: function (srcUrl, look) giving an adjusted copy of a
+    // picture for its look (HardwareProfile.adjustedPhotoUrl), kept in the
+    // node's lookUrl (never saved). null: no adjusted copies.
+    property var lookUrlFor: null
+    // Move to Background / Foreground moved count items (S121): the window
+    // says "Moved to Background" (or Foreground) with Undo.
+    signal planeMoved(string plane, int count)
     signal selectedChanged()
     // Any press on the map (the window hides its unpinned tools).
     signal mapPressed()
@@ -251,13 +248,6 @@ Item {
     signal choosePictureRequested(string nodeId)
     signal historyChanged()
     signal colorPickRequested(string field, string hex)
-    // Undo or redo put the photo back; the window's sliders follow.
-    signal photoRestored()
-    // Undo or redo went to a step with another photo file (Choose Photo,
-    // Clear Photo; 07 Q3): the window makes it the photo again. source: a
-    // copy of that picture, "clear" for no photo, "" for the photo the
-    // session started with.
-    signal photoImageRestored(string image, string source)
     // Press to find: a pressed control that has no chip on the map.
     signal findNotPlaced(string label)
     // Save this style: the window asks for a name.
@@ -371,18 +361,8 @@ Item {
     function cancelRename() { return RigChips.cancelRename() }
     function chipWGuess(n, mem) { return RigChips.chipWGuess(n, mem) }
 
-    // The background photo's pose (scale, offset, rotation) and its frame (rig_photo.js)
-    function viewCenterPage() { return RigPhoto.viewCenterPage() }
-    function clampPhotoScale(v) { return RigPhoto.clampPhotoScale(v) }
-    function clampPhotoOff(v) { return RigPhoto.clampPhotoOff(v) }
-    function applyPhotoPose(pose) { return RigPhoto.applyPhotoPose(pose) }
-    function resetPhotoPose() { return RigPhoto.resetPhotoPose() }
-    function fitPhotoWell() { return RigPhoto.fitPhotoWell() }
-    function photoBag() { return RigPhoto.photoBag() }
-    function setPhotoLook(key, value) { return RigPhoto.setPhotoLook(key, value) }
-    function resetPhotoLook() { return RigPhoto.resetPhotoLook() }
-    function pagePhotoRect() { return RigPhoto.pagePhotoRect() }
-    function toPhoto(mx, my) { return RigPhoto.toPhoto(mx, my) }
+    // The middle of the view as a page point.
+    function viewCenterPage() { return Qt.point(xToFx(width * 0.5), yToFy(height * 0.5)) }
 
     // Leader lines (rig_leaders.js)
     function hotPt(n) { return RigLeaders.hotPt(n) }
@@ -567,6 +547,9 @@ Item {
     function unsnapChip(chipId) { return RigOverlays.unsnapChip(chipId) }
     function snapChipToSocket(chipId, mx, my) { return RigOverlays.snapChipToSocket(chipId, mx, my) }
     function clearSockets() { return RigOverlays.clearSockets() }
+    function frameFit(aspect) { return RigOverlays.frameFit(aspect) }
+    function socketNear(mx, my) { return RigOverlays.socketNear(mx, my) }
+    function socketChipIds(n) { return RigOverlays.socketChipIds(n) }
 
     // Drawings (rig_draw.js)
     function isDraw(n) { return RigDraw.isDraw(n) }
@@ -584,6 +567,34 @@ Item {
     // Layers: stacking, hiding and locking, names (rig_layers.js)
     function normalizeStacking() { return RigLayers.normalizeStacking() }
     function insertBelowChips(n) { return RigLayers.insertBelowChips(n) }
+    // The planes (rig_layers.js)
+    function isBackground(n) { return RigLayers.isBackground(n) }
+    function canHoldBackground(n) { return RigLayers.canHoldBackground(n) }
+    function backgroundRefusal(n) { return RigLayers.backgroundRefusal(n) }
+    function planeOf(n) { return RigLayers.planeOf(n) }
+    function inEditPlane(n) { return RigLayers.inEditPlane(n) }
+    function planeRange(plane) { return RigLayers.planeRange(plane) }
+    function normalizePlanes() { return RigLayers.normalizePlanes() }
+    function insertInPlane(n, plane) { return RigLayers.insertInPlane(n, plane) }
+    function moveToPlane(ids, plane) { return RigLayers.moveToPlane(ids, plane) }
+    function clearPlane(plane) { return RigLayers.clearPlane(plane) }
+    function setPlaneLocked(plane, on) { return RigLayers.setPlaneLocked(plane, on) }
+    function planeLocked(plane) { return RigLayers.planeLocked(plane) }
+    function bottomPicture() { return RigLayers.bottomPicture() }
+    function setPictureLook(id, key, value) { return RigLayers.setPictureLook(id, key, value) }
+    function refreshLookUrl(n) { return RigLayers.refreshLookUrl(n) }
+    function planeMoveItems(ids) { return RigMenu.planeMoveItems(ids) }
+    // Pictures whose look changed: their adjusted copy is made once the
+    // slider pauses briefly, not at every step of a drag.
+    property var _lookWaiting: ({})
+    function _queueLookUrl(id) {
+        var w = _lookWaiting
+        w[id] = true
+        _lookWaiting = w
+        _lookTimer.restart()
+    }
+    function planeOpacity(n) { return RigLayers.planeOpacity(n) }
+    function foregroundOpacity() { return RigLayers.foregroundOpacity() }
     function leaderLayerZ() { return RigLayers.leaderLayerZ() }
     function moveNodeTo(id, index) { return RigLayers.moveNodeTo(id, index) }
     function bringForward() { return RigLayers.bringForward() }
@@ -611,7 +622,6 @@ Item {
     function layerRows(state, expanded) { return RigLayers.layerRows(state, expanded) }
     function layerCounts(state) { return RigLayers.layerCounts(state) }
     function selectLayerMatches(state) { return RigLayers.selectLayerMatches(state) }
-    function setPhotoFlag(flag, on) { return RigLayers.setPhotoFlag(flag, on) }
 
     // Lining up and spacing out the selection (rig_align.js)
     function canAlign() { return RigAlign.canAlign() }
@@ -711,8 +721,11 @@ Item {
     function shiftPrintArea(dfx, dfy, k, ax, ay) { return RigPrintJs.shiftPrintArea(dfx, dfy, k, ax, ay) }
     function reshapePrintArea() { return RigPrintJs.reshapePrintArea() }
     function drawnPrintRect() { return RigPrintJs.drawnPrintRect() }
-    // The photo's own size in pixels ({0, 0} without one).
-    function photoNatural() { return { w: _photoWell.naturalW, h: _photoWell.naturalH } }
+    // The device's photo's own size in pixels: the bottom background
+    // picture's ({0, 0} without one); what 100% print scale means (07 S83).
+    function photoNatural() {
+        return _bottomPic.status === Image.Ready ? { w: _bottomPic.implicitWidth, h: _bottomPic.implicitHeight } : { w: 0, h: 0 }
+    }
 
     // Transform handles (rig_transform.js)
     function transformModesFor(n) { return RigTransform.transformModesFor(n) }
@@ -725,7 +738,18 @@ Item {
     function transformHandleAt(n, px, py, w, h) { return RigTransform.transformHandleAt(n, px, py, w, h) }
     function dragTransform(n, name, mx, my) { return RigTransform.dragTransform(n, name, mx, my) }
     function convertToPath() { return RigTransform.convertToPath() }
-    function resetShape() { return RigTransform.resetShape() }
+    // Reset Shape (07 S42) on an item (the selected one when id is ""): a
+    // picture loses its crop, skew, flip and turn; a shape its shaping.
+    function resetShape(id) {
+        var n = nodeAt(id || selectedId)
+        if (!n)
+            return
+        if (isOverlay(n))
+            return RigLayers.resetPictureShape(n)
+        if (n.id !== selectedId)
+            setSelection([n.id])
+        return RigTransform.resetShape()
+    }
 
     // Hotspots (rig_hotspot.js)
     function hotPressed(n) { return RigHotspot.hotPressed(n) }
@@ -812,6 +836,10 @@ Item {
             if (!n || isTable(n) || tablePackOf(n))
                 return repaint()
             set[n.id] = true
+            // Chips on a picture's snap points follow it (P6a).
+            var socks = socketChipIds(n)
+            for (var si = 0; si < socks.length; si++)
+                set[socks[si]] = true
         }
         var list = nodes || []
         for (var j = 0; j < list.length; j++) {
@@ -861,18 +889,20 @@ Item {
     }
 
     function bump() {
+        normalizePlanes()
         repaint()
         selectedChanged()
         if (!_restoring)
             pushHist()
     }
 
-    // An undo step: the nodes, the photo's pose and flags, the photo file,
-    // the print area and the ruler guides (07 Q3).
+    // An undo step: the nodes of both planes (pictures, their look and the
+    // background among them), the print area and the ruler guides (07 S57).
+    // View settings (the plane being edited, the faint foreground, the
+    // Background row's eye and Opacity) are not part of it (P1a, P4a).
     function snapJson() {
         try {
-            return JSON.stringify({ nodes: nodes || [], photo: photoBag(),
-                                    image: photoImage, imageSource: photoSource,
+            return JSON.stringify({ nodes: nodes || [],
                                     printArea: printArea,
                                     guidesX: rulerGuidesX || [], guidesY: rulerGuidesY || [] })
         } catch (e) {
@@ -951,12 +981,10 @@ Item {
         list.splice(0, list.length)
         for (var i = 0; i < next.length; i++)
             list.push(next[i])
-        if (!Array.isArray(doc) && doc.photo) {
-            // The look is saved as plain keys; one left out was not set.
-            var ph = doc.photo
-            applyPhotoPose(Object.assign({ hidden: false, locked: false }, ph,
-                                         { look: { bright: ph.bright, contrast: ph.contrast, grey: ph.grey, fade: ph.fade } }))
-            photoRestored()
+        // Adjusted copies follow the look of that step.
+        for (var k = 0; k < list.length; k++) {
+            if (list[k] && list[k].look && isOverlay(list[k]))
+                _queueLookUrl(list[k].id)
         }
         if (Array.isArray(doc))
             return
@@ -973,38 +1001,32 @@ Item {
             rulerGuidesY = (doc.guidesY || []).slice()
             rulerGuidesEdited()
         }
-        if (doc.image !== undefined && doc.image !== photoImage)
-            photoImageRestored(String(doc.image), String(doc.imageSource || ""))
     }
 
-    // Photo changes from the Adjust photo sliders come many per drag: one undo
-    // step once they stop.
+    // Slider changes (a picture's look, the color picker) come many per drag:
+    // one undo step once they stop.
     // The pause that ends such a run; tests set it to end runs when they
     // choose, whatever the machine's speed.
-    property alias stepPauseMs: _photoHist.interval
-    readonly property bool stepWaiting: _photoHist.running
-
-    function notePhotoChange() {
-        noteLiveEdit()
-    }
+    property alias stepPauseMs: _runHist.interval
+    readonly property bool stepWaiting: _runHist.running
 
     // A run of live edits (the color picker) makes one undo step when it
-    // pauses, like the photo controls. Its step is the state after its
+    // pauses, like a picture's look sliders. Its step is the state after its
     // latest edit, kept now: a command may change the map before the run's
     // step goes in.
     function noteLiveEdit() {
         if (_restoring || !interactive)
             return
         _runSnap = snapJson()
-        _photoHist.restart()
+        _runHist.restart()
     }
 
     // A step still waiting for a pause (nudges, live edits) goes into the
     // history first, so Undo takes back exactly it.
     function flushPendingStep() {
-        if (!_photoHist.running)
+        if (!_runHist.running)
             return
-        _photoHist.stop()
+        _runHist.stop()
         _landRun()
     }
 
@@ -1075,6 +1097,7 @@ Item {
             cancelRename()
             armRenameId = ""
             armRenameMember = -1
+            editPlane = "foreground"
         } else {
             Qt.callLater(seedHist)
         }
@@ -1197,7 +1220,14 @@ Item {
             readonly property bool live: !!(node && _ed.liveIds && _ed.liveIds[node.id])
             readonly property int rev: _ed.tick + (live ? _ed.liveTick : 0)
             // tick: hiding changes the node in place, not the node object.
-            visible: { _wrap.rev; return node !== null && !node.hidden }
+            // planeShow: the plane's on-screen strength (S115, S120).
+            readonly property real planeShow: {
+                _wrap.rev
+                _ed.editPlane; _ed.interactive; _ed.exporting; _ed.showFgFaint
+                _ed.fgFaint; _ed.bgViewHidden; _ed.bgViewOpacity
+                return _ed.planeOpacity(node)
+            }
+            visible: { _wrap.rev; return node !== null && !node.hidden && planeShow > 0 }
             x: {
                 _wrap.rev
                 if (!node)
@@ -1222,7 +1252,7 @@ Item {
             }
             z: index
             rotation: { _wrap.rev; return (_ed.isDraw(node) && node.rot) ? node.rot : 0 }
-            opacity: { _wrap.rev; return (_ed.isDraw(node) && node.opacity !== undefined && node.opacity !== null) ? node.opacity : 1 }
+            opacity: { _wrap.rev; return ((_ed.isDraw(node) && node.opacity !== undefined && node.opacity !== null) ? node.opacity : 1) * planeShow }
             transformOrigin: Item.Center
             clip: false
             width: {
@@ -1279,8 +1309,10 @@ Item {
         }
     }
 
-    RigLeaderLayer { id: _lines; ed: _ed; part: "still"; z: _ed.leaderLayerZ() }
-    RigLeaderLayer { id: _liveLines; ed: _ed; part: "live"; z: _ed.leaderLayerZ() }
+    // Leader lines and hotspots fade with the foreground (P7a).
+    readonly property real fgShow: { _ed.editPlane; _ed.interactive; _ed.exporting; _ed.showFgFaint; _ed.fgFaint; return _ed.foregroundOpacity() }
+    RigLeaderLayer { id: _lines; ed: _ed; part: "still"; z: _ed.leaderLayerZ(); opacity: _stack.fgShow; visible: _stack.fgShow > 0 }
+    RigLeaderLayer { id: _liveLines; ed: _ed; part: "live"; z: _ed.leaderLayerZ(); opacity: _stack.fgShow; visible: _stack.fgShow > 0 }
     }
 
     Component {
@@ -1296,6 +1328,22 @@ Item {
     Component {
         id: _tagComp
         RigChipItem { ed: _ed }
+    }
+
+    // Switching plane is not an edit (S57): what was selected on the other
+    // plane is let go, tools and open groups end.
+    onEditPlaneChanged: {
+        groupEditId = ""
+        selectedMember = -1
+        drawTool = ""
+        dragKind = ""
+        banding = false
+        cropId = ""
+        cancelRename()
+        RigLayers._dropOtherPlaneSelection()
+        clearMoveGuides()
+        repaint()
+        selectedChanged()
     }
 
     onWidthChanged: { paintLeaders(); if (_grid) _grid.requestPaint() }
@@ -1316,6 +1364,7 @@ Item {
         onTriggered: {
             var list = _ed.nodes || []
             _ed.normalizeStacking()
+            _ed.normalizePlanes()
             _ed.demoteSpecialKinds()
             for (var i = 0; i < list.length; i++) {
                 _ed.ensureFriendly(list[i])
@@ -1331,7 +1380,19 @@ Item {
         }
     }
 
-    RigPhotoLayer { id: _photoWell; ed: _ed; linesCanvas: _lines }
+    // The device's photo (the bottom background picture), read only for its
+    // own size (photoNatural); never shown.
+    Image {
+        id: _bottomPic
+        visible: false
+        asynchronous: true
+        cache: true
+        source: {
+            _ed.tick
+            var n = _ed.bottomPicture()
+            return (n && n.srcUrl) ? n.srcUrl : ""
+        }
+    }
 
     RigGuides { id: _guides; ed: _ed; z: 3 }
 
@@ -1653,7 +1714,20 @@ Item {
     }
 
     Timer {
-        id: _photoHist
+        id: _lookTimer
+        interval: 120
+        repeat: false
+        onTriggered: {
+            var ids = Object.keys(_ed._lookWaiting || {})
+            _ed._lookWaiting = ({})
+            for (var i = 0; i < ids.length; i++)
+                _ed.refreshLookUrl(_ed.nodeAt(ids[i]))
+            _ed.repaint()
+        }
+    }
+
+    Timer {
+        id: _runHist
         interval: 400
         repeat: false
         // The pause: the run's step goes in.

@@ -1,12 +1,12 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Logical Device's card picture is kept like every device's photo
-(03 S88, D-03-LD-IMAGE): photo.<ext> in its picture folder plus its module
-file's "image", so Save to Device Library and Restore (10 S6, S6a), Export
-(S14, S44) and History carry it. The photo is set through the store as Add
-Image does; the real store, Library, Device Pack and History in an empty
-modules folder."""
+"""The Logical Device's card picture is kept like every device's photo (03 S88,
+D-03-LD-IMAGE): photo.<ext> in its picture folder, the bottom background
+picture of its module file (07 S127), so Save to Device Library and Restore
+(10 S6, S6a), Export (S14, S44) and History carry it. The photo is set
+through the store as Add Image does; the real store, Library, Device Pack
+and History in an empty modules folder."""
 
 from __future__ import annotations
 
@@ -96,22 +96,23 @@ def _photo_path() -> Path:
 
 def _set_photo(data: bytes = PNG) -> None:
     """Add Image as the contract says: the picture as photo.<ext> through
-    the store, and the module file's "image" through update_path."""
+    the store, and the module file's bottom background picture (07 S127)
+    through update_path."""
     store.put_picture_at(_photo_path(), data)
     ref = store.picture_ref("photo.png")
 
     def change(doc: dict) -> None:
-        doc["image"] = ref
+        store.set_device_photo(doc, ref)
 
     assert store.update_path(logical_device_file.path(), change, "Home")
 
 
 def _clear_photo() -> None:
-    """Remove Image: the photo files go, "image" is ""."""
+    """Remove Image: the photo files go, and its background picture."""
     store.remove_picture_files(store.photo_files(LD, LD_ID))
 
     def change(doc: dict) -> None:
-        doc["image"] = ""
+        store.set_device_photo(doc, "")
 
     assert store.update_path(logical_device_file.path(), change, "Home")
     assert not _photo_path().exists()
@@ -119,7 +120,7 @@ def _clear_photo() -> None:
 
 def _image_key() -> str:
     doc = json.loads(logical_device_file.path().read_text(encoding="utf-8-sig"))
-    return str(doc.get("image") or "")
+    return store.device_photo_ref(doc)
 
 
 def _pack_has_photo(data: bytes | Path) -> bool:
@@ -135,7 +136,7 @@ def _pack_has_photo(data: bytes | Path) -> bool:
                 doc = json.loads(zf.read(name).decode("utf-8-sig"))
             except ValueError:
                 continue
-            if isinstance(doc, dict) and str(doc.get("image") or ""):
+            if isinstance(doc, dict) and store.device_photo_ref(doc):
                 named = True
     return bool(pictures) and named
 
@@ -256,8 +257,10 @@ def test_history_restore_brings_the_picture_back_on_the_card(
     removal = next(
         e
         for e in sorted(_ld_entries(), key=lambda e: str(e.get("when") or ""))[::-1]
-        if json.loads((e.get("before") or {}).get("text") or "{}").get("image")
-        and not json.loads((e.get("after") or {}).get("text") or "{}").get("image")
+        if store.device_photo_ref(
+            json.loads((e.get("before") or {}).get("text") or "{}"))
+        and not store.device_photo_ref(
+            json.loads((e.get("after") or {}).get("text") or "{}"))
     )
     reloaded: list[bool] = []
     from gremlin.signal import signal

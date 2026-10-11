@@ -24,7 +24,7 @@ import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 from PySide6 import QtCore
 
-from gremlin import device_initialization
+from gremlin import config, device_initialization
 from gremlin.modules import store
 from gremlin.ui import module_model
 
@@ -40,13 +40,33 @@ def _app() -> Iterator[QtCore.QCoreApplication]:
     yield app
 
 
+_DISPLAY_KEYS = (
+    module_model._CFG_HIDDEN,
+    module_model._CFG_ORDER,
+    module_model._CFG_STACKS,
+    module_model._CFG_SIZES,
+    module_model._CFG_COMPACT,
+    module_model._CFG_SPLIT,
+    module_model._CFG_KEPT_STUBS,
+    module_model._CFG_SHOW_STUBS,
+)
+
+
 @pytest.fixture
-def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+def modules(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
+    """A tmp modules folder; the Home card settings (Delete Device keeps the
+    stick's card in kept-stubs, 03 S94a) are put back afterwards."""
     folder = tmp_path / "modules"
     folder.mkdir()
     monkeypatch.setattr(store, "folder", lambda: folder)
     store._dirs_changed()
+    module_model._ensure_display_options()
+    cfg = config.Configuration()
+    sec, grp = module_model._CFG_SECTION, module_model._CFG_GROUP
+    display = {key: cfg.value(sec, grp, key) for key in _DISPLAY_KEYS}
     yield folder
+    for key, value in display.items():
+        cfg.set(sec, grp, key, value)
     store._dirs_changed()
 
 

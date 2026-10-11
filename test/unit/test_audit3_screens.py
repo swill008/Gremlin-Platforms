@@ -434,13 +434,22 @@ def _button_map(out: pathlib.Path) -> None:
     old_url = picture("old.png", "#336699")
     new_url = picture("new.png", "#993366")
     a1 = "{id: 'a1', kind: 'draw', shape: 'rect', fx: 0.1, fy: 0.1, fw: 0.1, fh: 0.1}"
+
+    # The device's photo is the bottom background picture, a node like any
+    # other (07 S111, S127); a recovery copy holds the nodes only.
+    def bg(ref: str) -> str:
+        return (
+            "{id: 'bg', kind: 'draw', shape: 'image', plane: 'background',"
+            f" src: {ref}, fx: 0.125, fy: 0.125, fw: 0.75, fh: 0.75}}"
+        )
+
     # Stick A saved with the old photo; then an edit changed the photo and
     # the program closed: kept photo, new photo, recovery copy.
     crash = (
         "var n = 'Stick A';"
         " _hw.beginEdit(n);"
         f" var rel = _hw.copyImage('{new_url}', n);"
-        f" _hw.saveRecovery(n, JSON.stringify({{image: rel, nodes: [{a1},"
+        f" _hw.saveRecovery(n, JSON.stringify({{nodes: [{bg('rel')}, {a1},"
         " {id: 'a2', kind: 'draw', shape: 'rect',"
         " fx: 0.4, fy: 0.4, fw: 0.1, fh: 0.1}]}));"
         " rel"
@@ -453,7 +462,7 @@ def _button_map(out: pathlib.Path) -> None:
         f" var r = _hw.copyImage('{old_url}', n);"
         # Saved with that photo: Save names it (07 Q2, GL-174).
         " _hw.save(n, JSON.stringify({kind: 'control.hardware',"
-        f" device: n, image: r, nodes: [{a1}]}}))",
+        f" device: n, nodes: [{bg('r')}, {a1}]}}))",
     )
     _js(
         win,
@@ -487,8 +496,9 @@ def _button_map(out: pathlib.Path) -> None:
     _js(win, "_buttonMap.discardEdit(); 1")
     _wait(200)
 
-    # Which photo shows: the photo file's colour (copyImage keeps one name).
-    photo_file = "var p = _hw.imageUrl(JSON.parse(_hw.load('Stick A')).image); p"
+    # Which photo shows: the saved map's bottom background picture (07
+    # S127), by its file's colour (copyImage keeps one name).
+    photo_file = "_hw.profilePhotoUrl('Stick A')"
 
     def photo_colour() -> str:
         url = _js(win, photo_file)
@@ -548,9 +558,9 @@ def _button_map(out: pathlib.Path) -> None:
     _wait(200)
     _js(
         win,
-        f"_hw.saveRecovery('Stick A', JSON.stringify({{image: '{new_ref}',"
-        " photo: _buttonMap.livePhoto || _buttonMap.photoFromDoc(null),"
-        " nodes: _buttonMap.liveNodes})); 1",
+        f"_hw.saveRecovery('Stick A', JSON.stringify({{nodes: [{bg(repr(new_ref))}]"
+        ".concat(_buttonMap.liveNodes.filter(function(n) {"
+        " return n.plane !== 'background' }))})); 1",
     )
     offered = _js(win, "String(_buttonMap.offerRecovery())")
     _Out.result(

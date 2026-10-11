@@ -106,4 +106,4 @@ def test_scale_and_saving(run: dict) -> None:
     assert abs(half["w"] * 2 - full["w"]) <= 2 and abs(half["h"] * 2 - full["h"]) <= 2
     assert run["saved-print"] == {
         "paper": "letter", "landscape": True, "margin": "quarter", "scale": 100,
-        "light": False}
+        "light": False, "includeBg": True}

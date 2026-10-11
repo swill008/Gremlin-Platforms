@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "border": "#3F3F46",
@@ -1251,18 +1252,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 18,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID34"
@@ -1273,6 +1269,7 @@
   {
    "state": {
     "alignH": "free",
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -1870,6 +1867,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
@@ -1877,12 +1875,6 @@
     "movedByGrouping": 0.0,
     "nodeCount": 17,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID36"
@@ -1892,6 +1884,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "16": {
       "alignH": "free",
@@ -1974,6 +1967,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 8,
     "histLen": 9,
     "layers": [],
@@ -1981,12 +1975,6 @@
     "movedByTurn": true,
     "nodeCount": 17,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID38"
@@ -1996,6 +1984,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "16": {
       "alignH": "free",
@@ -2078,6 +2067,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 11,
     "histLen": 12,
     "layers": [],
@@ -2085,12 +2075,6 @@
     "movedAfterTurnBack": 0.0,
     "nodeCount": 17,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID40"
@@ -2100,6 +2084,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "16": {
       "alignH": "free",
@@ -2182,18 +2167,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 14,
     "histLen": 15,
     "layers": [],
     "menu": [],
     "nodeCount": 17,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID42"

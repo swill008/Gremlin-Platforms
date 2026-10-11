@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1329,18 +1330,13 @@
     },
     "cropId": "",
     "drawTool": "arrow2",
+    "editPlane": "foreground",
     "histAt": 3,
     "histLen": 4,
     "layers": [],
     "menu": [],
     "nodeCount": 21,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID1"
@@ -1350,6 +1346,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -2668,18 +2665,13 @@
     },
     "cropId": "",
     "drawTool": "line",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID40"
@@ -2689,6 +2681,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -4007,18 +4000,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID41"
@@ -4028,6 +4016,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "2": {
       "around": [],
@@ -4057,18 +4046,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 6,
     "histLen": 7,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID40"
@@ -4078,6 +4062,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "3": {
       "around": [],
@@ -4107,18 +4092,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 9,
     "histLen": 10,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID41"
@@ -4128,6 +4108,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "3": {
       "around": [],
@@ -4157,18 +4138,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 11,
     "histLen": 12,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID41"
@@ -4178,6 +4154,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -4244,18 +4221,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 15,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID0"
@@ -4265,21 +4237,17 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 15,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID40"
@@ -4289,21 +4257,17 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 15,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -4311,6 +4275,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -4358,18 +4323,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 13,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },

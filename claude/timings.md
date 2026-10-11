@@ -711,3 +711,26 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | Lead: Export/Import Device box never opened (a Popup made as a window, "transientParent" error the user hit); StatusPage makes it on the window's overlay; new end-to-end test fails before, passes after | fix | 3–8 min (table) | 6 min | 10:46–10:46 |
 | 2026-10-11 | PLAN-TESTS: step 2 test impact (about 25 files + golden images, 20–25 new tests) | review | 5–10 min (table) | 2 min | 10:46–10:48 |
 | 2026-10-11 | PLAN-BUILD: step 2 build plan (trace, statement→change, data shape, split, contract, risks) | review | 5–10 min (table) | 3 min | 10:46–10:49 |
+| 2026-10-11 | Confirming full run (seed 758199) + lint; commit 44ab601c; push both branches | test | 5–6 min (table) | run 6 min; commit/push 2 min | 10:45–10:52 |
+| 2026-10-11 | SPEC-P: planes answers P1a–P7a into pages 07, 08, 03 (new 03 S135) | docs | 3–8 min (table) | 1 min | 10:52–10:53 |
+| 2026-10-11 | Lead: decisions row D-07-PLANES-ANSWERS, todo, README count, tracker OT-2, planes contract | lead | no timing data yet | 6 min | 10:53–10:54 |
+| 2026-10-11 | PD: Layers panel for planes (folded Background row with eye/lock/opacity, per-plane rows and toggles; 14 tests) | feature | rough guess 15–30 min | 6 min | 10:56–11:02 |
+| 2026-10-11 | PG: print for planes (Page, Include background, 100% from the bottom picture, full resolution, views never print; 7 tests) | feature | rough guess 15–30 min | 6 min | 10:56–11:02 |
+| 2026-10-11 | PA: planes Python contract (store photo helpers, planes_once OT-2, load/save, Import keeps background; 24 tests) + greyscale fix | feature | rough guess 15–30 min | 9 min + 1 min | 10:55–11:05 |
+| 2026-10-11 | PE: planes menus + properties (Move to Background/Foreground, Reset Shape, Look section, 4000 px cap; 7 tests) | feature | rough guess 15–30 min | 8 min | 10:56–11:04 |
+| 2026-10-11 | PC: planes editor core (planes, plane-limited stacking/hit/snap, faint foreground, chips follow, Undo nodes-only, look URLs, planeMoved; 15 tests) | feature | rough guess 15–30 min | 10 min | 10:56–11:06 |
+| 2026-10-11 | PB: planes carry-through (Device Pack export/import background, Library photo, Copy carries background, Logical Device card, Swap; 9 tests) | feature | rough guess 15–30 min | 12 min | 10:55–11:07 |
+| 2026-10-11 | PD follow-up: Move to Background/Foreground in the Layers row menu (16 tests) | fix | 3–8 min (table) | 2 min | 11:05–11:07 |
+| 2026-10-11 | PF: planes window (Background menu, mode switch/banner/hint/Esc/Ctrl+B, plane view settings, photo special cases removed, Copy background tick, Space-drag pan, Moved-to message, look URLs; 4 tests incl. off-screen window) | feature | rough guess 15–30 min | 13 min | 10:56–11:09 |
+| 2026-10-11 | CI on 44ab601c (device folders): 1 order-dependent failure (test_final_05 plugin-directory a list, seed 867771) | ci | ~10 min (table) | 17 min (parts ran ~15 min) | 10:52–11:09 |
+| 2026-10-11 | PF follow-up: opacity slider value lost when entering Background mode (pending save) | fix | 3–8 min (table) | 1 min | 11:13 |
+| 2026-10-11 | TRACE-CI: CI failure test_final_05 = the test made the plugin manager under its fake settings when no earlier test had; makes it first (test only) | fix | 3–8 min (table) | 5 min | 11:10–11:15 |
+| 2026-10-11 | PT: existing tests moved to planes (photo fixtures → background nodes, Photo flows → Background, Layers row, look API, Help words; 1 file retired) | agent tests | rough guess 15–30 min | 19 min | 10:56–11:15 |
+| 2026-10-11 | PH-HELP: "Background and foreground" Help topic, Photo wording removed (55 Help tests) | docs | 3–8 min (table) | 2 min | 11:16–11:18 |
+| 2026-10-11 | PH-MAP: map pages 03, 07, 08, 10 for planes (about 45 statements marked built; gaps G26 G27 41 closed; G28, G29, BG-SHOWME opened) | docs | 3–8 min (table) | 7 min | 11:16–11:23 |
+| 2026-10-11 | PF follow-up: Ctrl+Shift+B moves the selection to the other plane (G28) | fix | 3–8 min (table) | 1 min | 11:24 |
+| 2026-10-11 | CARRY-T: background travels through History restore, .gmap, Library restore, Device Pack round trip (6 tests) | agent tests | 3–8 min (table) | 2 min | 11:24–11:26 |
+| 2026-10-11 | GOLDEN: harness moved to background pictures; 48 golden files re-recorded and checked (1 open question: Background row under a kind filter) | agent tests | rough guess 10–20 min | 16 min | 11:16–11:32 |
+| 2026-10-11 | CI on the step 1 test fix (test_final_05) | ci | ~10 min (table) | about 15 min | 11:16–11:31 |
+| 2026-10-11 | Full run + lint (planes, seed 558790): 5 failures — 4 stale tests/tooltip fixed by the lead (49 pass), 1 order-dependent (TRACE-2); lint 0 new | test | 5–6 min (table) | run 6 min, fixes 4 min | 11:32–11:38 |
+| 2026-10-11 | TRACE-2: test_final_03 order failure = Delete Device test left kept-stubs set; fixture restores Home card settings (test only) | fix | 3–8 min (table) | 6 min | 11:38–11:44 |

@@ -251,6 +251,8 @@ function moveNodeBy(n, dx, dy, seenPack) {
             shiftIndependentParts(n, n.fx - oldFx, n.fy - oldFy)
         }
         followTablePacked(n)
+        // Chips snapped to a picture's snap points follow it (07 S122, P6a).
+        syncOverlayChips(n)
     } else {
         n.chipFx = Math.max(0.01, Math.min(0.92, (n.chipFx || 0) + dx))
         n.chipFy = Math.max(0.01, Math.min(0.92, (n.chipFy || 0) + dy))
@@ -427,7 +429,6 @@ function cancelAllActions() {
     selectedLeader = 0
     selectedSeg = -1
     setSelection([])
-    movePhoto = false
     if (_ctx)
         _ctx.close()
     cropId = ""

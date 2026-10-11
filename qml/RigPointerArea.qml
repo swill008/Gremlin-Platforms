@@ -127,14 +127,6 @@ MouseArea {
             ed.dragKind = "turn"
             return
         }
-        if (ed.interactive && ed.movePhoto && !ed.photoLocked && m.button === Qt.LeftButton) {
-            ed.dragKind = "photo"
-            ed.dragOffX = ed.photoOffX
-            ed.dragOffY = ed.photoOffY
-            ed.photoDragX0 = m.x
-            ed.photoDragY0 = m.y
-            return
-        }
         var hit = ed.hitTest(m.x, m.y)
         var shift = (m.modifiers & Qt.ShiftModifier) || (m.modifiers & Qt.ControlModifier)
         if (m.button === Qt.RightButton) {

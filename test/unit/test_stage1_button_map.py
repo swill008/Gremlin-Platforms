@@ -14,20 +14,20 @@ no undo (S25, S26, S19); closing with unsaved edits asks once (S28); the
 recovery copy is written, removed when undone, offered with Restore /
 Discard / Not now, quietly dropped when it equals the saved map, put off
 when another device shows, never written more often than every 10 seconds
-(S32-S35, S37); Copy Button Map from Device (S75-S77); Choose Photo and
-Clear Photo, then Cancel (S26, S40, S41).
+(S32-S35, S37); Copy Button Map from Device (S75-S77); Add Picture to
+Background and Clear Background, then Cancel (S26, S40, S41).
 
 GL-020 (07-T3): the module file changed elsewhere while the map is open
 (History Restore, Module Setup's photo, a Device Pack import), Delete Device
 in the middle of an edit, a copy onto a device with fewer controls.
 
-GL-021 (07-T4): Clear Photo when the file is open elsewhere (S41), the
+GL-021 (07-T4): the
 picture folder and a read-only install folder, the pool of an unplugged
 device (S46), other devices' damaged module files (S75).
 
 Known gaps were marked xfail(strict) until fixed; all are fixed in batch 2:
 GL-176 (Delete Device mid-edit, 07 Q7), GL-173 (print area
-and guides, 07 Q1), GL-174 (Choose Photo waits for Save, 07 Q2), GL-175 (no
+and guides, 07 Q1), GL-174 (a new picture waits for Save, 07 Q2), GL-175 (no
 module file made by a guide change, S29), GL-178 (no folder in the install
 folder, 07 Q13), GL-182 (chips for controls the device lacks, 07 Q8).
 """
@@ -179,65 +179,74 @@ def test_closing_with_unsaved_edits_asks_once(flows: dict) -> None:
 
 
 # +-------------------------------------------------------------------------
-# | GL-019: photo
+# | GL-019: background (07 S40, S41, S57; D-07-BACKGROUND-PLANES)
 
 
-def test_choose_photo_then_cancel_puts_the_starting_photo_back(flows: dict) -> None:
-    # S26, S40.
-    chosen = flows["choose-photo"]
-    assert chosen["shown"].endswith("/photo.jpg")
-    assert chosen["dirty"] is True
-    back = flows["choose-photo-cancel"]
-    assert back["file-image"] == back["start-image"]
-    assert back["shown"] == back["start-image"]
+def test_add_picture_to_background_then_cancel_leaves_nothing(flows: dict) -> None:
+    # S26, S40: the picture becomes the top background layer; Cancel puts
+    # the starting background back and leaves no file behind.
+    added = flows["add-background"]
+    assert added["shown"][:-1] == added["start"]
+    assert added["shown"][-1].endswith(".jpg")
+    assert added["dirty"] is True
+    back = flows["add-background-cancel"]
+    assert back["file"] == back["start"] == ["pictures/photo.png"]
+    assert back["shown"] == back["start"]
     assert back["old-photo"] is True
-    assert back["new-photo"] is False
+    assert back["new-jpg"] is False
 
 
-def test_choose_photo_writes_nothing_until_save(flows: dict) -> None:
-    # 07 Q2, S29: the new photo waits beside the old one; nothing in the
-    # module file or History until Save.
-    chosen = flows["choose-photo"]
-    assert chosen["file-image-before-save"] == chosen["start-image"]
-    assert chosen["history-before-save"] == 0
-    assert flows["choose-photo-cancel"]["history-after-cancel"] == 0
+def test_add_picture_to_background_writes_nothing_until_save(flows: dict) -> None:
+    # 07 Q2, S29, S40: nothing in the module file or History until Save.
+    added = flows["add-background"]
+    assert added["file-before-save"] == added["start"]
+    assert added["history-before-save"] == 0
+    assert flows["add-background-cancel"]["history-after-cancel"] == 0
 
 
-def test_choose_photo_then_save_is_one_history_entry(flows: dict) -> None:
-    saved = flows["choose-photo-save"]
-    assert saved["file-image"].endswith("/photo.jpg")
+def test_add_picture_to_background_then_save_is_one_history_entry(flows: dict) -> None:
+    saved = flows["add-background-save"]
+    assert saved["file"][0] == "pictures/photo.png"
+    assert saved["file"][-1].endswith(".jpg")
+    # Copied into the device's folder on Save (S40).
+    assert saved["jpg-in-pictures"] == [saved["file"][-1]]
     assert saved["after-save"] == 1
 
 
-def test_the_photo_history_entry_comes_with_save(flows: dict) -> None:
-    assert flows["choose-photo-save"]["before-save"] == 0
+def test_the_background_history_entry_comes_with_save(flows: dict) -> None:
+    assert flows["add-background-save"]["before-save"] == 0
 
 
-def test_clear_photo_then_cancel_brings_it_back_without_history(flows: dict) -> None:
-    # S26, S41: an unsaved change; Cancel puts the photo back.
-    assert flows["clear-photo-ran"] is True
-    assert flows["clear-photo"]["dirty"] is True
-    # 07 Q4 (GL-221): Clear Photo leaves no photo, not the card's.
-    assert flows["clear-photo"]["shown"] == ["", ""]
-    assert flows["clear-photo"]["history-before-save"] == 0
-    back = flows["clear-photo-cancel"]
-    assert back["photo-back"] is True
+def test_clear_background_then_cancel_brings_it_back_without_history(
+    flows: dict,
+) -> None:
+    # S41: every background layer goes, without asking; an unsaved change
+    # (S30); no stock or card picture (Q4); files only go on Save (S106).
+    assert flows["clear-background-ran"] is True
+    cleared = flows["clear-background"]
+    assert cleared["shown"] == []
+    assert cleared["asked"] is False
+    assert cleared["dirty"] is True
+    assert cleared["history-before-save"] == 0
+    assert cleared["files-kept"] is True
+    # S26: Cancel puts the saved background back.
+    back = flows["clear-background-cancel"]
     assert back["history"] == 0
-    assert back["file-image"].endswith("/photo.jpg")
+    assert back["file"] == back["saved"]
+    assert back["shown"] == back["saved"]
+    assert len(back["saved"]) == 2
 
 
-def test_choose_and_clear_photo_are_undo_steps(flows: dict) -> None:
-    # 07 Q3 (decided; S57 changed by it), GL-179: each Undo puts the photo
-    # before back, files too; back at the start nothing is unsaved.
-    undone = flows["photo-undo"]
-    assert undone["after-one"]["shown"].endswith("/photo.png")
+def test_add_picture_and_clear_background_are_undo_steps(flows: dict) -> None:
+    # S57: each is one Undo step; back at the start nothing is unsaved.
+    undone = flows["background-undo"]
+    assert undone["after-one"]["shown"][:-1] == undone["saved"]
+    assert undone["after-one"]["shown"][-1].endswith(".png")
     # 07 S107: the chosen picture waits in the edit's temporary folder.
     assert undone["after-one"]["in-pictures"] is False
     assert undone["after-two"] == undone["saved"]
-    assert undone["jpg-kept"] is True
-    assert undone["png-not-in-pictures"] is True
     assert undone["dirty"] is False
-    assert flows["photo-redo"].endswith("/photo.png")
+    assert flows["background-redo"][-1].endswith(".png")
     assert undone["after-cancel"] is True
 
 

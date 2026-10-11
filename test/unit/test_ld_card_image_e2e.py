@@ -7,8 +7,8 @@ real Home page (qml/StatusPage.qml) off-screen over the real ModuleListModel
 and a temp modules folder. A real right-click opens the Logical Device
 card's own menu; Add Image… opens the page's FilePicker, which is handed a
 PNG as its file dialog would; the card then shows the photo and the module
-file has "image". The menu then reads Change Image… and Remove Image, and
-Remove Image clears both.
+file's bottom background picture is it (07 S127). The menu then reads
+Change Image… and Remove Image, and Remove Image clears both.
 
 The off-screen part runs in its own process (this file run as a script):
 
@@ -234,7 +234,7 @@ def _child() -> None:
                 QtTest.QTest.qWait(300)
                 c = card()
                 result("photo-after-add", str(c.property("photo")) if c else "")
-                result("image-after-add", doc().get("image", None))
+                result("image-after-add", store.device_photo_ref(doc()))
                 files = sorted(p.name for p in path.parent.rglob("photo*.*"))
                 result("files-after-add", files)
 
@@ -249,7 +249,7 @@ def _child() -> None:
                     QtTest.QTest.qWait(300)
                     c = card()
                     result("photo-after-remove", str(c.property("photo")) if c else "?")
-                    result("image-after-remove", doc().get("image", None))
+                    result("image-after-remove", store.device_photo_ref(doc()))
                     files = sorted(p.name for p in path.parent.rglob("photo*.*"))
                     result("files-after-remove", files)
                     on(menu, "close()")

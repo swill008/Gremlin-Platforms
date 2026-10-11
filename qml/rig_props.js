@@ -11,6 +11,9 @@
 //   { key, label, kind: "number", value, min, max, step, suffix }
 //   { key, label, kind: "choice", options: [{ text, value }], value }
 //   { key, label, kind: "colour", value }              opens the colour picker
+//   { key, label, kind: "heading" }                    a section title
+//   { key, label, kind: "slider", value, min, max, suffix, step }
+//                                                      applied as it moves
 // setProp(key, value) applies one. Positions and sizes are percent of the page.
 
 
@@ -28,6 +31,11 @@ function _choiceField(key, label, values, labels, value) {
     for (var i = 0; i < values.length; i++)
         options.push({ text: labels[i], value: values[i] })
     return { key: key, label: label, kind: "choice", options: options, value: value }
+}
+
+function _sliderField(key, label, value, min, max) {
+    return { key: key, label: label, kind: "slider", value: value, min: min, max: max,
+             suffix: "%", step: 1 }
 }
 
 function _colourField(key, label, value) {
@@ -63,6 +71,20 @@ function _drawStyleFields(n) {
     }
     out.push(_numField("opacity", "Opacity", Math.round((n.opacity === undefined ? 1 : n.opacity) * 100), 0, 100, "%"))
     return out
+}
+
+// A picture's Look (07 S43), as sliders: brightness and contrast -100..100 %,
+// greyscale and opacity 0..100 %. Saved in the node's "look" and "opacity".
+function _lookFields(n) {
+    var look = n.look || {}
+    function pct(v) { return Math.round((Number(v) || 0) * 100) }
+    return [
+        { key: "look", label: "Look", kind: "heading" },
+        _sliderField("bright", "Brightness", pct(look.bright), -100, 100),
+        _sliderField("contrast", "Contrast", pct(look.contrast), -100, 100),
+        _sliderField("grey", "Greyscale", pct(look.grey), 0, 100),
+        _sliderField("opacity", "Opacity", pct(n.opacity === undefined ? 1 : n.opacity), 0, 100)
+    ]
 }
 
 function propsModel() {
@@ -117,7 +139,9 @@ function propsModel() {
             fields.push(_numField("hotY", "Hotspot Y", _pct(hotFyOf(n)), 0, 100, "%", 0.1))
         }
     }
-    if (isDraw(n))
+    if (isOverlay(n))
+        fields = fields.concat(_lookFields(n))
+    else if (isDraw(n))
         fields = fields.concat(_drawStyleFields(n))
     else
         fields = fields.concat([
@@ -168,8 +192,18 @@ function setProp(key, value) {
     }
     if (!(v === v))
         return
+    if (key === "opacity" && isOverlay(n) && ids.length === 1) {
+        setPictureLook(n.id, "opacity", Math.max(0, Math.min(100, v)) / 100)
+        return
+    }
     if (key === "opacity") {
         applyDrawField("opacity", Math.max(0, Math.min(100, v)) / 100)
+        return
+    }
+    if (key === "bright" || key === "contrast" || key === "grey") {
+        var low = key === "grey" ? 0 : -100
+        if (isOverlay(n) && ids.length === 1)
+            setPictureLook(n.id, key, Math.max(low, Math.min(100, v)) / 100)
         return
     }
     if (key === "stroke") {

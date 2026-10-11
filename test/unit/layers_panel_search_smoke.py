@@ -79,8 +79,9 @@ QtObject {
         { id: "p1", part: "", depth: 0, type: "picture", name: "Logo", ctl: "" },
         { id: "t1", part: "", depth: 0, type: "text", name: "Title", ctl: "" },
         { id: "b1", part: "", depth: 0, type: "table", name: "Table", ctl: "" },
-        { id: "", part: "photo", depth: 0, type: "photo", name: "Background photo",
-          ctl: "" }
+        // The folded Background row (07 S120, contract part "background").
+        { id: "", part: "background", depth: 0, type: "background",
+          name: "Background", ctl: "" }
     ]
     function _hit(r, st) {
         var ks = (st && st.kinds) || []
@@ -126,7 +127,7 @@ QtObject {
         selected = JSON.parse(JSON.stringify(st))
         return layerCounts(st).matches
     }
-    function canDeleteLayer(id, part) { return part !== "photo" }
+    function canDeleteLayer(id, part) { return part !== "background" }
     function toggleLayerFlag(id, part, which) {
         flagged = flagged.concat([id + "/" + part + "/" + which])
         tick++
@@ -331,7 +332,8 @@ def main() -> None:
                         " _layersPanel.ed.lastState]")
 
     # Wrap check with everything lit and a search in (×) at the smallest width.
-    for key in ("group", "leader", "line", "picture", "table", "photo"):
+    # (No Photo toggle any more: 07 S102, D-07-BACKGROUND-PLANES.)
+    for key in ("group", "leader", "line", "picture", "table"):
         toggle(key)
     settle()
     out["fit-lit"] = js("_layersPanel.clippedParts()")

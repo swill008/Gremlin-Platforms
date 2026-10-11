@@ -249,7 +249,7 @@ def test_photo_lookup_does_not_copy_another_device() -> None:
     # test_module_store_only keeps callers from building module paths.
     copy = text[text.find("def copyImage") : text.find("def removeUnusedPictures")]
     assert copy
-    # Choose Photo keeps the picture in the edit (07 S107): nothing is
+    # Import Image keeps the picture in the edit (07 S107): nothing is
     # copied into a device folder or written to a module file here.
     assert "self._stage(" in copy
     assert "write_bytes" not in copy and "update_path" not in copy

@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "border": "#3F3F46",
@@ -1295,18 +1296,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 0,
     "histLen": 1,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -1314,21 +1310,17 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 0,
     "histLen": 1,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID4"
@@ -1338,6 +1330,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "2": {
       "border": "#3F3F46",
@@ -1394,18 +1387,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 1,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID4"
@@ -1415,6 +1403,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "2": {
       "border": "#3F3F46",
@@ -1471,18 +1460,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 1,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 19,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID4"
@@ -1492,6 +1476,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -2802,18 +2787,13 @@
     },
     "cropId": "",
     "drawTool": "ellipse",
+    "editPlane": "foreground",
     "histAt": 3,
     "histLen": 4,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID38"
@@ -2823,6 +2803,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "1": {
       "around": [],
@@ -4133,18 +4114,13 @@
     },
     "cropId": "",
     "drawTool": "rect",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
     "menu": [],
     "nodeCount": 21,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID39"
@@ -4154,6 +4130,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -4175,18 +4152,13 @@
     },
     "cropId": "",
     "drawTool": "rect",
+    "editPlane": "foreground",
     "histAt": 6,
     "histLen": 7,
     "layers": [],
     "menu": [],
     "nodeCount": 21,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID38"
@@ -4196,6 +4168,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "1": {
       "around": [],
@@ -4217,18 +4190,13 @@
     },
     "cropId": "",
     "drawTool": "rect",
+    "editPlane": "foreground",
     "histAt": 7,
     "histLen": 8,
     "layers": [],
     "menu": [],
     "nodeCount": 21,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID39"
@@ -4238,6 +4206,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "1": {
       "around": [],
@@ -4259,18 +4228,13 @@
     },
     "cropId": "",
     "drawTool": "rect",
+    "editPlane": "foreground",
     "histAt": 10,
     "histLen": 11,
     "layers": [],
     "menu": [],
     "nodeCount": 21,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID39"
@@ -4280,6 +4244,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "21": {
       "align": "center",
@@ -4312,18 +4277,13 @@
     },
     "cropId": "",
     "drawTool": "text",
+    "editPlane": "foreground",
     "histAt": 11,
     "histLen": 12,
     "layers": [],
     "menu": [],
     "nodeCount": 22,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID40"
@@ -4333,6 +4293,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -5688,18 +5649,13 @@
     },
     "cropId": "",
     "drawTool": "table",
+    "editPlane": "foreground",
     "histAt": 12,
     "histLen": 13,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID41"
@@ -5709,9 +5665,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 12,
     "histLen": 13,
     "layers": [],
@@ -5736,12 +5694,6 @@
     ],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID14"
@@ -5751,9 +5703,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 12,
     "histLen": 13,
     "layers": [],
@@ -5777,12 +5731,6 @@
     ],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID40"
@@ -5792,9 +5740,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 12,
     "histLen": 13,
     "layers": [],
@@ -5813,12 +5763,6 @@
     ],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID41"
@@ -5828,6 +5772,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -7168,18 +7113,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 13,
     "histLen": 14,
     "layers": [],
     "menu": [],
     "nodeCount": 24,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID42"
@@ -7189,6 +7129,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "10": {
       "border": "#3F3F46",
@@ -8292,18 +8233,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 14,
     "histLen": 15,
     "layers": [],
     "menu": [],
     "nodeCount": 23,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID43"
@@ -8313,6 +8249,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "22": {
       "border": "#3F3F46",
@@ -8375,18 +8312,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 15,
     "histLen": 16,
     "layers": [],
     "menu": [],
     "nodeCount": 24,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -8394,6 +8326,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "24": {
       "around": [],
@@ -8415,18 +8348,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 16,
     "histLen": 17,
     "layers": [],
     "menu": [],
     "nodeCount": 25,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID47"
@@ -8436,6 +8364,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "25": {
       "around": [],
@@ -8457,18 +8386,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 17,
     "histLen": 18,
     "layers": [],
     "menu": [],
     "nodeCount": 26,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID48"
@@ -8478,21 +8402,17 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 18,
     "histLen": 19,
     "layers": [],
     "menu": [],
     "nodeCount": 25,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -8500,6 +8420,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -8538,18 +8459,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 19,
     "histLen": 20,
     "layers": [],
     "menu": [],
     "nodeCount": 25,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID38"
@@ -8559,6 +8475,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -8597,18 +8514,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 20,
     "histLen": 21,
     "layers": [],
     "menu": [],
     "nodeCount": 25,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID38"
@@ -8618,6 +8530,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -8640,18 +8553,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 21,
     "histLen": 22,
     "layers": [],
     "menu": [],
     "nodeCount": 25,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -8659,6 +8567,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -8680,18 +8589,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 22,
     "histLen": 23,
     "layers": [],
     "menu": [],
     "nodeCount": 25,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": [
      "ID38"
@@ -8701,21 +8605,17 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 18,
     "histLen": 23,
     "layers": [],
     "menu": [],
     "nodeCount": 25,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },
@@ -8723,6 +8623,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -8761,18 +8662,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 19,
     "histLen": 23,
     "layers": [],
     "menu": [],
     "nodeCount": 25,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [],
     "selected": []
    },

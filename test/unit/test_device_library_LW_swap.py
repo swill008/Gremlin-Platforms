@@ -67,7 +67,9 @@ def sticks(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> dict:
         },
         "calibration": {"1": [0, 500, 1000], "3": [10, 20, 30]},
         "view": {"layout": "left view"},
-        "image": photo,
+        # The device's photo: the bottom background picture (07 S127).
+        "nodes": [{"id": "bg", "kind": "draw", "shape": "image",
+                   "plane": "background", "src": photo}],
     }
     right = {
         "kind": "control.hardware",
@@ -247,13 +249,15 @@ def test_swap_exchanges_parts_and_bindings(
         and "view" not in left
     )
     assert right["view"] == {"layout": "left view"} and "layout" not in right
-    assert right["image"] == "pictures/photo.jpg"
+    assert store.device_photo_ref(right) == "pictures/photo.jpg"
     assert (
         _file("right").parent / "pictures" / "photo.jpg"
     ).read_bytes() == b"left photo"
     assert left["nodes"][0]["src"] == "pictures/map.png"
     assert (_file("left").parent / "pictures" / "map.png").read_bytes() == b"right map"
-    assert "image" not in left and "nodes" not in right
+    assert store.device_photo_ref(left) == ""
+    assert [n["id"] for n in right["nodes"]] == ["bg"]
+    assert "image" not in left and "image" not in right
     # Bindings: the open profile changes in memory, unsaved (S33).
     assert _where(profile, LEFT_ID) == {("JoystickAxis", 3)}
     assert len(_where(profile, RIGHT_ID)) == 8

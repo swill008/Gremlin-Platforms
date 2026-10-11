@@ -1290,11 +1290,13 @@ def _json_part(zf: zipfile.ZipFile, name: str) -> object:
 
 def _contents(pack: dict) -> tuple[list[str], list[str], int, dict[str, int]]:
     """What a pack holds: parts, modes, inputs with bindings, inputs per vJoy."""
+    from gremlin.modules import store
+
     doc = pack["map"]
     held = set()
     if doc.get("claim") or doc.get("layout"):
         held.add("setup")
-    if doc.get("nodes") or doc.get("image"):
+    if doc.get("nodes") or store.device_photo_ref(doc):
         held.add("button_map")
     if doc.get("view"):
         held.add("appearance")
@@ -1724,12 +1726,16 @@ def photo(setup_key: str) -> str:
             doc = json.loads(
                 zf.read(GMAP_MODULE if gmap else "map.json").decode("utf-8")
             )
-            arc = str(doc.get("image") or "") if isinstance(doc, dict) else ""
-            if gmap:
-                from gremlin.modules import store
+            # The bottom background picture (07 S127): by its place in a
+            # device folder zip, by its name at a pack's root.
+            from gremlin.modules import store
 
-                arc = store.normal_ref(arc)
-            if not arc or arc not in zf.namelist():
+            ref = store.device_photo_ref(doc)
+            names = zf.namelist()
+            arc = next(
+                (each for each in (ref, Path(ref).name) if ref and each in names), ""
+            )
+            if not arc:
                 return ""
             tag = hashlib.sha1(
                 f"{pack}|{stamp.st_size}|{stamp.st_mtime_ns}|{arc}".encode("utf-8")

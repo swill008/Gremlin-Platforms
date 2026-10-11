@@ -98,11 +98,12 @@ def test_the_device_menu_lists_no_outputs(seen: dict) -> None:
         assert wanted in rows
 
 
-def test_a_device_without_a_photo_shows_none(seen: dict) -> None:
-    # S11: after a device with a photo, one without shows no photo; S96: its
-    # zoom and grid changes make no module file.
+def test_a_device_without_a_background_shows_an_empty_one(seen: dict) -> None:
+    # S11: after a device with a background picture, one without shows an
+    # empty background, never the other device's; S96: its zoom and grid
+    # changes make no module file.
     assert _part(seen, "no-file") == {
-        "first-photo": True, "third-photo": "", "photo-override": "",
+        "first-background": ["pictures/photo.png"], "third-background": [],
         "files-same": True,
     }
 
@@ -192,13 +193,13 @@ def test_a_save_cut_short_leaves_the_old_file_whole(
 
 
 # +-------------------------------------------------------------------------
-# | Photo
+# | Background
 
 
-def test_the_photo_menu_only_while_editing(seen: dict) -> None:
-    # S39.
-    assert _part(seen, "outside-edit")["photo-menu"] is False  # type: ignore[index]
-    assert _part(seen, "inside-edit") == {"photo-menu": True}
+def test_the_background_menu_only_while_editing(seen: dict) -> None:
+    # S39 (D-07-BACKGROUND-PLANES: the Photo menu became Background).
+    assert _part(seen, "outside-edit")["background-menu"] is False  # type: ignore[index]
+    assert _part(seen, "inside-edit") == {"background-menu": True}
 
 
 # +-------------------------------------------------------------------------
@@ -316,7 +317,11 @@ def test_the_command_palette_lists_the_usable_menu_commands(seen: dict) -> None:
     assert isinstance(texts, list)
     for wanted in ("Save", "Cancel", "Reset Layout", "Fit to Photo Frame",
                    "Print & Export…", "Mirror Layout", "Button Map Options…",
-                   "Zoom to Fit Page", "Show Grid", "Choose Photo…",
-                   "Adjust Photo…", "Help"):
+                   "Zoom to Fit Page", "Show Grid", "Edit Background",
+                   "Add Picture to Background…", "Clear Background", "Help"):
         assert wanted in texts
     assert "Edit Mapping" not in texts
+    # The Photo menu's commands are gone (07 S39, S42).
+    for gone in ("Choose Photo…", "Clear Photo", "Move Photo", "Adjust Photo…",
+                 "Reset Photo"):
+        assert gone not in texts

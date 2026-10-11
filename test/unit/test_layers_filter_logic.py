@@ -37,7 +37,20 @@ def results() -> dict:
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     assert lines, done.stdout[-1500:] + done.stderr[-1500:]
-    return json.loads(lines[0][len("RESULT "):])
+    out = json.loads(lines[0][len("RESULT "):])
+    # In Foreground mode the list ends with the folded Background row (07
+    # S120), whatever the filter; it is not one of the filtered rows, so the
+    # checks below look at the rows above it.
+    ends = {}
+    for key, value in list(out.items()):
+        if (
+                isinstance(value, list) and value
+                and isinstance(value[0], dict) and "part" in value[0]
+        ):
+            ends[key] = value[-1]
+            out[key] = [r for r in value if r.get("part") != "background"]
+    out["_background-rows"] = ends
+    return out
 
 
 def _shown(rows: list) -> list:
@@ -66,7 +79,18 @@ def test_empty_filter_gives_todays_rows(results: dict) -> None:
 def test_old_kind_names_still_work(results: dict) -> None:
     assert {r["type"] for r in results["old-chips"]} == {"chip", "group"}
     assert {r["type"] for r in results["old-drawings"]} == {"shape", "line"}
-    assert results["old-all"][-1]["type"] == "photo"
+    # The Photo kind is gone (07 S102); the folded Background row ends the
+    # list instead (S120): never selectable, never deleted.
+    assert all(r["type"] for r in results["old-all"])
+    assert "photo" not in {r["type"] for r in results["old-all"]}
+
+
+def test_every_list_ends_with_the_folded_background_row(results: dict) -> None:
+    ends = results["_background-rows"]
+    assert "old-all" in ends and "q:zzz" in ends
+    for key, row in ends.items():
+        assert (row["id"], row["part"], row["type"], row["name"]) == (
+            "", "background", "background", "Background"), key
 
 
 def test_hotspots_alone_show_under_dimmed_headings(results: dict) -> None:
@@ -78,7 +102,7 @@ def test_hotspots_alone_show_under_dimmed_headings(results: dict) -> None:
     heads = [r for r in rows if r["depth"] == 0]
     assert [r["id"] for r in heads] == [c["id"] for c in chips]
     assert all(r["heading"] and not r["match"] for r in heads)
-    # No leaders, drawings or photo; each hotspot right under its chip.
+    # No leaders or drawings; each hotspot right under its chip.
     assert {r["type"] for r in rows} == {"chip", "group", "hotspot"}
     for i, r in enumerate(rows):
         if r["type"] == "hotspot":
@@ -125,7 +149,6 @@ def test_chip_text_and_name(results: dict) -> None:
     # What b5 shows on the map (its action), not its name.
     assert _matches(results["q:weapon"]) == [("b5", "")]
     assert _matches(results["q:rect"]) == [(results["ids"]["rect"], "")]
-    assert _matches(results["q:photo"]) == [("", "photo")]
     assert results["q:zzz"] == []
 
 
@@ -156,10 +179,10 @@ def test_select_matches_selects_without_an_undo_step(results: dict) -> None:
     assert sorted(results["select-hat-ids"]) == ["h1", "h2"]
     before_at, after_at, before_len, after_len = results["select-hat-steps"]
     assert (after_at, after_len) == (before_at, before_len)
-    # A member selects its group; the photo is not selectable.
+    # A member selects its group; the Background row is not selectable.
     assert results["select-member"] == 1
     assert results["select-member-ids"] == ["p2122"]
-    assert results["select-photo"] == 0
+    assert results["select-background"] == 0
 
 
 def test_a_member_row_is_not_deleted(results: dict) -> None:

@@ -130,7 +130,8 @@ def test_renamed_sticks_photo_goes_with_the_file_its_button_map_opens(
     # 07 S107: it waits in the edit's temporary folder until Save; the
     # device's folder and its module file are untouched (07 Q2, GL-174).
     assert not (own / "pictures" / "photo.jpg").exists()
-    assert "image" not in json.loads((own / "module.json").read_text())
+    assert module_store.device_photo_ref(
+        json.loads((own / "module.json").read_text())) == ""
     assert hw.editActive("pJoy Pro")
     # Cancel drops it: no photo.
     assert hw.cancelEdit("pJoy Pro")
@@ -143,9 +144,10 @@ def test_renamed_sticks_photo_goes_with_the_file_its_button_map_opens(
     assert hw.copyImage(picture.as_uri(), "pJoy Pro") == "pictures/photo.jpg"
     assert hw.commitEditFor("pJoy Pro", "") == ""
     assert (own / "pictures" / "photo.jpg").is_file()
-    assert json.loads((own / "module.json").read_text())["image"] == (
-        "pictures/photo.jpg"
-    )
+    # Module Setup's Save makes it the bottom background picture (07 S127).
+    saved = json.loads((own / "module.json").read_text())
+    assert module_store.device_photo_ref(saved) == "pictures/photo.jpg"
+    assert "image" not in saved
     assert "Old%20Name/pictures/photo.jpg" in hw.profilePhotoUrl("pJoy Pro")
     assert not (folder / "pJoy Pro").exists()
 

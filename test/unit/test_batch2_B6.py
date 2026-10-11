@@ -121,9 +121,14 @@ def test_choose_photo_writes_no_image_into_the_module_file(
     assert rel == "pictures/photo.png"
     assert not picture_file(maps, "Test Stick", "photo.png").exists()
     assert path.read_bytes() == before
-    # Save names it (one write) and puts the photo in the device's folder.
-    assert hw.save("Test Stick", json.dumps({"image": rel, "nodes": []}))
-    assert json.loads(path.read_text(encoding="utf-8"))["image"] == rel
+    # Save names it (one write) and puts the photo in the device's folder:
+    # the bottom background picture (07 S111, S127).
+    background = {"id": "bg", "kind": "draw", "shape": "image",
+                  "plane": "background", "src": rel}
+    assert hw.save("Test Stick", json.dumps({"nodes": [background]}))
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert store.device_photo_ref(saved) == rel
+    assert "image" not in saved
     assert picture_file(maps, "Test Stick", "photo.png").is_file()
 
 
@@ -278,7 +283,11 @@ def test_the_pack_preview_estimates_without_building_the_zip(
     # 08 S49: at every device change, on the UI thread: no zip.
     ref = put_picture(maps, "Test Stick", "photo.jpg", b"x" * 5000)
     put_module(
-        maps, "Test Stick", {"kind": "control.hardware", "image": ref, "nodes": []}
+        maps, "Test Stick", {"kind": "control.hardware", "nodes": [
+            # The device's photo: the bottom background picture (07 S127).
+            {"id": "bg", "kind": "draw", "shape": "image",
+             "plane": "background", "src": ref},
+        ]}
     )
 
     def no_zip(*args: object, **kwargs: object) -> object:

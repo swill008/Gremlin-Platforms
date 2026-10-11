@@ -242,6 +242,11 @@ def _chip_lines(doc: dict) -> list[str]:
         if not isinstance(node, dict):
             continue
         kind = str(node.get("kind") or "")
+        if store.is_background(node):
+            # A layer of the background plane (07 S111).
+            picture = node.get("shape") == "image"
+            lines.append("Background picture" if picture else "Background layer")
+            continue
         if kind == "image":
             lines.append("Picture on the map")
             continue
@@ -454,7 +459,7 @@ def module_text(doc: dict, parts: list[str] | None = None) -> str:
     if "nodes" in wanted:
         sections.append(("Map", _chip_lines(doc)))
     if wanted & {"photo", "image"}:
-        photo = str(doc.get("image") or doc.get("photo") or "")
+        photo = store.device_photo_ref(doc)
         sections.append(("Photo", [Path(photo).name] if photo else []))
     if "ui" in wanted:
         sections.append(("Map view", _map_view_lines(doc) + _print_lines(doc)))
@@ -496,40 +501,67 @@ def _take_image(stored: str, resolve, used: set[str], files: list[tuple[Path, st
     return arc
 
 
-def _rewrite_images(doc: dict, resolve, used: set[str], files: list[tuple[Path, str]]) -> tuple[dict, list[dict]]:
-    packed = json.loads(json.dumps(doc))
+def _is_picture(node: object) -> bool:
+    return isinstance(node, dict) and (
+        node.get("kind") == "image" or node.get("shape") == "image"
+    )
+
+
+def _photo_node(doc: dict) -> dict | None:
+    """The device's photo: the bottom background picture (07 S127)."""
+    for node in doc.get("nodes") or []:
+        if store.is_background(node) and node.get("shape") == "image":
+            return node
+    return None
+
+
+def _today_layout(doc: dict, folder: Path | None) -> dict:
+    """A copy of a module document in today's layout: a map saved before
+    the planes has its photo as the bottom background picture (OT-2), so
+    a pack never carries the old top-level "image" and "photo"."""
+    copy = json.loads(json.dumps(doc))
+    # ONE-TIME (tracker OT-2): an old map exported before its next Save.
+    from gremlin.modules import planes_once
+
+    planes_once.old_photo_to_layer(copy, folder)
+    return copy
+
+
+def _rewrite_images(
+    doc: dict,
+    resolve: Callable[[str], Path | None],
+    used: set[str],
+    files: list[tuple[Path, str]],
+    folder: Path | None = None,
+) -> tuple[dict, list[dict]]:
+    """The pack's copy of doc with every picture named by its place in the
+    zip, and the picture rows: the bottom background picture is the
+    "Device photo" (07 S127), the others are map pictures that the Map row
+    needs. Background layers travel as layers (08 S113)."""
+    packed = _today_layout(doc, folder)
     pictures: list[dict] = []
-    image = str(packed.get("image") or "")
-    photo_arc = _take_image(image, resolve, used, files) if image else ""
-    if photo_arc:
-        packed["image"] = photo_arc
-        pictures.append({
-            "arc": photo_arc,
-            "onMap": False,
-            "item": _picture_item(photo_arc, "Device photo", "", False),
-        })
-    else:
-        packed.pop("image", None)
+    photo = _photo_node(packed)
     map_count = 0
     for node in packed.get("nodes") or []:
-        if not isinstance(node, dict):
-            continue
-        if node.get("kind") != "image" and node.get("shape") != "image":
+        if not _is_picture(node):
             continue
         arc = _take_image(str(node.get("src") or ""), resolve, used, files)
         if not arc:
             node.pop("src", None)
             node.pop("srcUrl", None)
+            node.pop("lookUrl", None)
             continue
         node["src"] = arc
         node.pop("srcUrl", None)
-        map_count += 1
-        if any(row["arc"] == arc for row in pictures):
-            for row in pictures:
-                if row["arc"] == arc:
-                    row["onMap"] = True
-                    row["item"]["onMap"] = True
+        node.pop("lookUrl", None)
+        if node is photo:
+            pictures.append({
+                "arc": arc,
+                "onMap": False,
+                "item": _picture_item(arc, "Device photo", "", False),
+            })
             continue
+        map_count += 1
         pictures.append({
             "arc": arc,
             "onMap": True,
@@ -747,7 +779,7 @@ def _output_doc(name: str, resolve, used: set[str], files: list[tuple[Path, str]
     doc = _read_doc(path)
     if not doc:
         return None
-    packed, pictures = _rewrite_images(doc, resolve, used, files)
+    packed, pictures = _rewrite_images(doc, resolve, used, files, path.parent)
     packed.pop("boundGuidLocal", None)
     packed.pop("boundName", None)
     packed["device"] = name
@@ -901,7 +933,7 @@ def plan_pack(
         return _NO_FILE
     used: set[str] = set()
     files: list[tuple[Path, str]] = []
-    packed, pictures = _rewrite_images(doc, resolve, used, files)
+    packed, pictures = _rewrite_images(doc, resolve, used, files, path.parent)
     packed.pop("boundGuidLocal", None)
     packed.pop("boundName", None)
     packed["device"] = name
@@ -916,11 +948,9 @@ def plan_pack(
         label = out_doc.get("pack") or {}
         slug = str(label.get("slug") or _pack_key(output_name))
         outputs.append((slug, out_doc))
-    photo = ""
-    for picture in pictures:
-        if not picture.get("onMap"):
-            photo = str(resolve(str(doc.get("image") or "")) or "")
-            break
+    # The preview's picture: the device photo's file (07 S127).
+    photo_arcs = {row["arc"] for row in pictures if not row.get("onMap")}
+    photo = next((str(src) for src, arc in files if arc in photo_arcs), "")
     return {
         "device": name,
         "map": packed,
@@ -1134,8 +1164,41 @@ def _from_gmap(path: Path) -> dict | str:
 
 
 def _read_zip(path: Path) -> dict | str:
-    if _is_gmap(path):
-        return _from_gmap(path)
+    """A pack or a .gmap as {"doc", "wires", "outputs", "files"}, its
+    documents in today's layout; a str when it can't be read."""
+    loaded = _from_gmap(path) if _is_gmap(path) else _read_pack_zip(path)
+    if isinstance(loaded, dict):
+        for doc in [loaded["doc"], *loaded["outputs"]]:
+            _old_photo_in_zip(doc, loaded["files"])
+    return loaded
+
+
+# ONE-TIME (tracker OT-2)
+def _old_photo_in_zip(doc: object, files: dict[str, bytes]) -> None:
+    """ONE-TIME (tracker OT-2): a pack or saved setup made from a map saved
+    before the planes names its photo in "image": it becomes the bottom
+    background picture (07 S125), sized from the picture in the zip."""
+    if not isinstance(doc, dict) or not isinstance(doc.get("image"), str):
+        return
+    from gremlin.modules import planes_once
+
+    image = doc["image"].strip()
+    data = files.get(Path(image.replace("\\", "/")).name) if image else None
+    if data and not doc.get("imageWidth"):
+        from PySide6 import QtCore, QtGui
+
+        buffer = QtCore.QBuffer()
+        buffer.setData(QtCore.QByteArray(data))
+        size = QtGui.QImageReader(buffer).size()
+        if size.isValid() and size.width() > 0 and size.height() > 0:
+            doc["imageWidth"], doc["imageHeight"] = size.width(), size.height()
+    if planes_once.old_photo_to_layer(doc, None) and image:
+        photo = _photo_node(doc)
+        if photo is not None:
+            photo["src"] = image
+
+
+def _read_pack_zip(path: Path) -> dict | str:
     try:
         with zipfile.ZipFile(path, "r") as zf:
             big = too_big(zf)
@@ -1256,37 +1319,9 @@ def _describe(path: Path) -> dict | str:
     if not exported:
         return "This pack has no device name."
     _folder, urls = _stage_images(loaded["files"])
-    pictures = []
-    photo_arc = Path(str(doc.get("image") or "")).name
-    if photo_arc and photo_arc in urls:
-        pictures.append({
-            "arc": photo_arc,
-            "onMap": False,
-            "item": _picture_item(photo_arc, "Device photo", urls.get(photo_arc, ""), False),
-        })
-    map_count = 0
-    for node in doc.get("nodes") or []:
-        if not isinstance(node, dict):
-            continue
-        if node.get("kind") != "image" and node.get("shape") != "image":
-            continue
-        arc = Path(str(node.get("src") or "")).name
-        if not arc or arc not in urls:
-            continue
-        if arc == photo_arc and not pictures:
-            continue
-        if any(row["arc"] == arc for row in pictures):
-            for row in pictures:
-                if row["arc"] == arc:
-                    row["onMap"] = True
-                    row["item"]["onMap"] = True
-            continue
-        map_count += 1
-        pictures.append({
-            "arc": arc,
-            "onMap": True,
-            "item": _picture_item(arc, f"Map picture {map_count}", urls.get(arc, ""), True),
-        })
+    pictures = _zip_pictures(doc, urls)
+    # The preview: the device photo, the bottom background picture (07 S127).
+    photo_arc = Path(store.device_photo_ref(doc)).name
     sections = []
     module_rows, map_rows, setting_rows = _split_sections(doc, pictures, "in.")
     if module_rows:
@@ -1314,14 +1349,7 @@ def _describe(path: Path) -> dict | str:
         out_label = output.get("pack") if isinstance(output.get("pack"), dict) else {}
         out_name = str(out_label.get("exportedName") or output.get("device") or "Output").strip()
         slug = str(out_label.get("slug") or _pack_key(out_name))
-        out_pictures = []
-        out_photo = Path(str(output.get("image") or "")).name
-        if out_photo and out_photo in urls:
-            out_pictures.append({
-                "arc": out_photo,
-                "onMap": False,
-                "item": _picture_item(out_photo, "Device photo", urls.get(out_photo, ""), False),
-            })
+        out_pictures = _zip_pictures(output, urls)
         sections.append({
             "id": "out:" + slug,
             "title": out_name,
@@ -1350,6 +1378,43 @@ def _describe(path: Path) -> dict | str:
             "program": str(label.get("program") or ""),
         },
     }
+
+
+def _zip_pictures(doc: dict, urls: dict[str, str]) -> list[dict]:
+    """A pack document's picture rows (the pictures in the zip): the
+    bottom background picture is the "Device photo" (07 S127), the others
+    are map pictures the Map row needs (08 S113)."""
+    photo = _photo_node(doc)
+    pictures: list[dict] = []
+    map_count = 0
+    for node in doc.get("nodes") or []:
+        if not _is_picture(node):
+            continue
+        arc = Path(str(node.get("src") or "")).name
+        if not arc or arc not in urls:
+            continue
+        if any(row["arc"] == arc for row in pictures):
+            for row in pictures:
+                if row["arc"] == arc:
+                    row["onMap"] = True
+                    row["item"]["onMap"] = True
+            continue
+        if node is photo:
+            pictures.append({
+                "arc": arc,
+                "onMap": False,
+                "item": _picture_item(arc, "Device photo", urls.get(arc, ""), False),
+            })
+            continue
+        map_count += 1
+        pictures.append({
+            "arc": arc,
+            "onMap": True,
+            "item": _picture_item(
+                arc, f"Map picture {map_count}", urls.get(arc, ""), True
+            ),
+        })
+    return pictures
 
 
 def _split_sections(
@@ -1583,23 +1648,36 @@ def _merge_module(
             )
     if prefix + "groups" in chosen and isinstance(incoming.get("layout"), dict):
         # The Configuration layout (CF-Q1) replaces the target's.
-        from gremlin.modules import store
-
         base["layout"] = store.normalize_layout(incoming["layout"])
-    nodes = [node for node in (base.get("nodes") or []) if isinstance(node, dict)]
+    every = [node for node in (base.get("nodes") or []) if isinstance(node, dict)]
+    base_bg = [node for node in every if store.is_background(node)]
+    nodes = [node for node in every if not store.is_background(node)]
+    copied = [
+        json.loads(json.dumps(node))
+        for node in (incoming.get("nodes") or [])
+        if isinstance(node, dict)
+    ]
+    in_photo = _photo_node({"nodes": copied})
+    photo_arc = Path(str((in_photo or {}).get("src") or "")).name
+    take_photo = bool(photo_arc) and "pic:" + photo_arc in chosen
+    in_bg = [node for node in copied if store.is_background(node)]
     if prefix + "layout" in chosen:
-        incoming_nodes = [json.loads(json.dumps(node)) for node in (incoming.get("nodes") or []) if isinstance(node, dict)]
+        incoming_nodes = [node for node in copied if not store.is_background(node)]
         missing_picture = False
-        for node in incoming_nodes:
-            if node.get("kind") != "image" and node.get("shape") != "image":
+        for node in incoming_nodes + [n for n in in_bg if n is not in_photo]:
+            if not _is_picture(node):
                 continue
             arc = Path(str(node.get("src") or "")).name
             if arc and "pic:" + arc not in chosen:
                 missing_picture = True
                 node.pop("src", None)
                 node.pop("srcUrl", None)
+                node.pop("lookUrl", None)
         if missing_picture:
-            notes.append("The map uses a picture that was not ticked. That picture was left out.")
+            notes.append(
+                "The map uses a picture that was not ticked. "
+                "That picture was left out."
+            )
         covered: set[tuple[str, int]] = set()
         incoming_ids = set()
         for node in incoming_nodes:
@@ -1618,6 +1696,9 @@ def _merge_module(
         if not consumed:
             merged_nodes.extend(incoming_nodes)
         nodes = merged_nodes
+    nodes = _merge_background(
+        base, base_bg, in_bg, in_photo, take_photo, prefix + "layout" in chosen
+    ) + nodes
     if prefix + "names" in chosen and prefix + "layout" in chosen:
         _copy_names_onto_nodes(nodes, claim.get("friendly") or {})
     base["nodes"] = nodes
@@ -1647,14 +1728,49 @@ def _merge_module(
         for key in _OSC_KEYS:
             if key in incoming:
                 base[key] = json.loads(json.dumps(incoming[key]))
-    photo = Path(str(incoming.get("image") or "")).name
-    if photo and ("pic:" + photo) in chosen:
-        base["image"] = photo
-        # Where the photo sits on the page (position, size, turn, crop).
-        if isinstance(incoming.get("photo"), dict):
-            base["photo"] = json.loads(json.dumps(incoming["photo"]))
     base.pop("pack", None)
     return base, notes
+
+
+def _merge_background(
+    base: dict,
+    base_bg: list[dict],
+    in_bg: list[dict],
+    in_photo: dict | None,
+    take_photo: bool,
+    take_layers: bool,
+) -> list[dict]:
+    """The background of an import (08 S75, S113; 10 S62): with the Map
+    ticked and the pack holding background layers besides its photo, the
+    pack's background as it was; else this device's. The device photo
+    (the bottom background picture) follows its own tick: ticked, the
+    pack's, where and as it was shown; unticked, this device's."""
+    base_photo = _photo_node({"nodes": base_bg})
+    others = [node for node in in_bg if node is not in_photo]
+    if take_layers and others:
+        out = []
+        for node in in_bg:
+            if node is not in_photo or take_photo:
+                out.append(node)
+            elif base_photo is not None:
+                out.append(base_photo)
+        if in_photo is None and base_photo is not None:
+            out.insert(0, base_photo)
+    else:
+        out = list(base_bg)
+        if take_photo and in_photo is not None:
+            if base_photo is not None:
+                out[out.index(base_photo)] = in_photo
+            else:
+                out.insert(0, in_photo)
+    if take_photo:
+        # ONE-TIME (tracker OT-2): a map saved before the planes loses its
+        # old photo keys once the pack's photo is its bottom layer.
+        from gremlin.modules import planes_once
+
+        for key in planes_once.OLD_PHOTO_KEYS:
+            base.pop(key, None)
+    return out
 
 
 def _target_guid(selection: dict | None, target_guid: str = "") -> str:
@@ -1700,9 +1816,6 @@ def _write_pictures(
     folder = base / store.PICTURES
     wanted = {item[4:] for item in chosen if item.startswith("pic:")}
     used = set()
-    photo = Path(str(doc.get("image") or "")).name
-    if photo:
-        used.add(photo)
     for node in doc.get("nodes") or []:
         if isinstance(node, dict):
             name = Path(str(node.get("src") or "")).name
@@ -1725,13 +1838,6 @@ def _write_pictures(
         store.put_picture_at(dest, data)
         trace("SAVE", "Device Pack", "_write_pictures", dest, "ok")
         written[arc] = dest.name
-    photo = Path(str(doc.get("image") or "")).name
-    if photo in written:
-        doc["image"] = store.picture_ref(written[photo])
-    elif "pic:" + photo not in chosen:
-        pass
-    else:
-        doc.pop("image", None)
     for node in doc.get("nodes") or []:
         if not isinstance(node, dict):
             continue
@@ -3069,7 +3175,11 @@ def apply_zip(
         out_label = output.get("pack") if isinstance(output.get("pack"), dict) else {}
         slug = str(out_label.get("slug") or _pack_key(str(output.get("device") or "")))
         prefix = "out:" + slug + "."
-        if not any(item.startswith(prefix) or item == "pic:" + Path(str(output.get("image") or "")).name for item in chosen):
+        if not any(
+            item.startswith(prefix)
+            or (item.startswith("pic:") and _picture_is_input(item, output))
+            for item in chosen
+        ):
             continue
         out_name = " ".join(str(targets.get(slug) or out_label.get("exportedName") or output.get("device") or "").split())
         if not out_name:
@@ -3155,13 +3265,8 @@ def pack_item_ids(path: Path) -> dict | str:
     if newer:
         return newer
     arcs: list[str] = []
-    photo = Path(str(doc.get("image") or "")).name
-    if photo and photo in loaded["files"]:
-        arcs.append(photo)
     for node in doc.get("nodes") or []:
-        if isinstance(node, dict) and (
-            node.get("kind") == "image" or node.get("shape") == "image"
-        ):
+        if _is_picture(node):
             arc = Path(str(node.get("src") or "")).name
             if arc and arc in loaded["files"] and arc not in arcs:
                 arcs.append(arc)
@@ -3186,8 +3291,6 @@ def _damaged_text(path: Path, reason: str) -> str:
 
 def _picture_is_input(item: str, doc: dict) -> bool:
     arc = item[4:]
-    if Path(str(doc.get("image") or "")).name == arc:
-        return True
     for node in doc.get("nodes") or []:
         if isinstance(node, dict) and Path(str(node.get("src") or "")).name == arc:
             return True

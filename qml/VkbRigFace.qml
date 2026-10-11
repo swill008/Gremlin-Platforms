@@ -15,7 +15,11 @@ Item {
     property var chipRows: []
     property bool editing: false
     property var editorNodes: []
+    // The bottom background picture (07 S127): its load recovers the view.
     property string photoOverride: ""
+    // Space is held (the window watches the key): in Edit a left-drag pans
+    // (07 S14), in Foreground and Background mode alike.
+    property bool spaceHeld: false
     readonly property var editorItem: _editorLoader.item
 
     property var destBtn: ({})
@@ -237,13 +241,13 @@ Item {
             transformOrigin: Item.Center
             scale: _face.zoom
 
-    // The photo, hidden (the editor draws its own): its load and size
-    // tell the view to recover and the editor to redraw.
+    // The bottom background picture, hidden (the editor draws it): its load
+    // and size tell the view to recover and the editor to redraw.
     Image {
         id: _img
         anchors.fill: parent
         visible: false
-        // No photo chosen shows none (not the Gladiator).
+        // No background picture shows none (not the Gladiator).
         source: _face.photoOverride.length ? _face.photoOverride : ""
         fillMode: Image.PreserveAspectFit
         asynchronous: true
@@ -438,6 +442,37 @@ Item {
                 }
                 _face.zoomAt(w.x, w.y, Math.pow(_face.wheelBase, dy))
                 w.accepted = true
+            }
+        }
+
+        // In Edit, Space + left-drag pans: over the editor while Space is
+        // held, so no item is picked or moved (07 S14). A middle-drag pans
+        // everywhere (_midPan).
+        MouseArea {
+            id: _spacePan
+            objectName: "bmSpacePan"
+            anchors.fill: parent
+            z: 20
+            enabled: _face.editing && (_face.spaceHeld || pressed)
+            visible: enabled
+            acceptedButtons: Qt.LeftButton
+            preventStealing: true
+            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            property real grabX: 0
+            property real grabY: 0
+            property real startX: 0
+            property real startY: 0
+            onPressed: (mouse) => {
+                startX = mouse.x
+                startY = mouse.y
+                grabX = _face.panX
+                grabY = _face.panY
+            }
+            onPositionChanged: (mouse) => {
+                if (!pressed)
+                    return
+                _face.panX = grabX + mouse.x - startX
+                _face.panY = grabY + mouse.y - startY
             }
         }
 

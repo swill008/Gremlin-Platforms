@@ -2,18 +2,18 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Starts the program off-screen (stand-in hardware, a temporary user
-folder) and drives the Button Map window as the user does: Edit Mapping,
-Save, Cancel and its question, closing with unsaved edits, the recovery
-offer, Choose / Clear Photo, the print area and guides, Copy Button Map from
-Device, and the module file being changed elsewhere (History Restore,
-Module Setup's photo, a Device Pack import, Delete Device) while the map is
-open. Other parts drive Module Setup's Import Image then Cancel (setup), the
-History window as the Button Map and a Configuration row open it (history),
-and a restart with unsaved changes (quit). Prints what it saw as one
-"RESULT {json}" line; a step it could not do as the user does is an "error"
-(DriveError), never a result. test_stage1_button_map.py runs it in its own
-process, one part at a time (also for test_stage1_modules,
+"""Starts the program off-screen (stand-in hardware, a temporary user folder)
+and drives the Button Map window as the user does: Edit Mapping, Save,
+Cancel and its question, closing with unsaved edits, the recovery offer, Add
+Picture to Background / Clear Background, the print area and guides, Copy
+Button Map from Device, and the module file being changed elsewhere (History
+Restore, Module Setup's photo, a Device Pack import, Delete Device) while
+the map is open. Other parts drive Module Setup's Import Image then Cancel
+(setup), the History window as the Button Map and a Configuration row open
+it (history), and a restart with unsaved changes (quit). Prints what it saw
+as one "RESULT {json}" line; a step it could not do as the user does is an
+"error" (DriveError), never a result. test_stage1_button_map.py runs it in
+its own process, one part at a time (also for test_stage1_modules,
 test_stage1_history_pack and test_stage1_app_profile).
 
     python test/unit/stage1_button_map_smoke.py flows|outside|setup|history|quit
@@ -104,6 +104,16 @@ START_NODES = [chip(1, 0.20), chip(2, 0.30), chip(3, 0.40)]
 OTHER_NODES = [chip(1, 0.25), chip(2, 0.35), chip(70, 0.45), chip(80, 0.55)]
 
 
+# The device's photo is the bottom background picture (07 S111, S127): a
+# background node, first in "nodes", fitted to the photo frame.
+BACKGROUND = {
+    "kind": "draw", "shape": "image", "plane": "background", "id": "bg1",
+    "src": "pictures/photo.png", "fx": 0.125, "fy": 0.125, "fw": 0.75,
+    "fh": 0.75, "rot": 0, "opacity": 1, "locked": False, "pinned": False,
+    "sockets": [], "fill": "filled",
+}
+
+
 def write_json(path: Path, doc: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(doc), encoding="utf-8")
@@ -119,7 +129,7 @@ def read_doc(path: Path) -> dict:
 
 write_json(MAP_FILE, {
     "kind": "control.hardware", "device": NAME,
-    "image": "pictures/photo.png", "nodes": START_NODES,
+    "nodes": [BACKGROUND, *START_NODES],
     # The Configuration page lists claimed controls (the history part).
     **({"claim": {"buttons": [1, 2, 3], "axes": [], "hats": [], "keys": []}}
        if sys.argv[1:2] == ["history"] else {}),
@@ -154,9 +164,13 @@ def expression(obj: QtCore.QObject, code: str) -> QtQml.QQmlExpression:
 
 
 def hw_ids(nodes: object) -> list[int]:
-    """The chips' control numbers, sorted."""
+    """The chips' control numbers, sorted (background layers have none:
+    a copy keeps this device's background, 07 S76)."""
     rows = nodes if isinstance(nodes, list) else []
-    return sorted(int(n.get("hwId") or 0) for n in rows if isinstance(n, dict))
+    return sorted(
+        int(n.get("hwId") or 0) for n in rows
+        if isinstance(n, dict) and n.get("plane") != "background"
+    )
 
 
 def call(obj: QtCore.QObject, name: str, *args: object) -> object:
@@ -280,6 +294,50 @@ class Window:
         wait_for(lambda: not self.ev("_buttonMap.editing"))
 
 
+def file_background() -> list[str]:
+    """The module file's background layers (07 S111), bottom first: each
+    one's picture file (or its shape)."""
+    return [
+        str(n.get("src") or n.get("shape"))
+        for n in read_doc(MAP_FILE).get("nodes") or []
+        if isinstance(n, dict) and n.get("plane") == "background"
+    ]
+
+
+def file_photo() -> str:
+    """The device's photo: the file's bottom background picture (07 S127)."""
+    return store.device_photo_ref(read_doc(MAP_FILE))
+
+
+# The editor's background layers, bottom first (07 S111).
+BG_JS = (
+    "(_ed() ? _ed().nodes.filter(function(n) { return _ed().isBackground(n) })"
+    ".map(function(n) { return String(n.src || n.shape) }) : [])"
+)
+
+
+def pick_background_picture(w: "Window", picture: Path) -> bool:
+    """Add Picture to Background…: its picker ("Choose Background Picture",
+    07 S40) given a file, as its file dialog does (FilePicker._accept)."""
+    if w.ev("_bgPictureDialog.title") != "Choose Background Picture":
+        raise DriveError("no Choose Background Picture picker")
+    url = QtCore.QUrl.fromLocalFile(str(picture)).toString()
+    w.ev(f"_bgPictureDialog._accept({json.dumps(url)}); true")
+    return True
+
+
+def trigger_background_item(w: "Window", name: str) -> bool:
+    """Triggers the Background menu's row with this objectName (07 S39,
+    the contract's names); False when it is missing or greyed out."""
+    return bool(w.ev(
+        "(function() { for (var i = 0; i < _bgMenu.count; i++) {"
+        " var it = _bgMenu.itemAt(i);"
+        f" if (it && it.objectName === {json.dumps(name)}) {{"
+        " if (!it.enabled) return false; it.triggered(); return true } }"
+        " return false })()"
+    ))
+
+
 def file_fx(hw: int) -> float | None:
     for n in read_doc(MAP_FILE).get("nodes") or []:
         if isinstance(n, dict) and n.get("hwId") == hw:
@@ -358,111 +416,108 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     wait_for(lambda: not w.ev("_buttonMap.editing"))
     out["cancel-clean"] = [w.ev("_buttonMap.editing"), w.opened("_saveGate")]
 
-    # Choose Photo, then Cancel: the starting photo comes back (S26, S40);
-    # History and the module file (07 Q2, GL-174).
-    image0 = read_doc(MAP_FILE).get("image")
+    # Add Picture to Background…, then Cancel: the starting background comes
+    # back and the added picture leaves nothing (S26, S40); History and the
+    # module file (07 Q2, GL-174).
+    bg0 = file_background()
+    jpgs0 = sorted(p.name for p in PICS.glob("*.jpg"))
     h0 = history_count()
     w.enter_edit()
-    w.ev("_imageDialog._accept("
-         + json.dumps(QtCore.QUrl.fromLocalFile(str(chosen)).toString())
-         + "); true")
-    wait_for(lambda: str(w.ev("_buttonMap.storedImage")).endswith(".jpg"))
+    pick_background_picture(w, chosen)
+    wait_for(lambda: len(w.js(BG_JS) or []) == len(bg0) + 1)
     h1 = history_count()
-    out["choose-photo"] = {
-        "shown": w.ev("_buttonMap.storedImage"),
+    out["add-background"] = {
+        "shown": w.js(BG_JS),
         "dirty": w.ev("_buttonMap.isDirty()"),
-        "file-image-before-save": read_doc(MAP_FILE).get("image"),
-        "start-image": image0,
+        "file-before-save": file_background(),
+        "start": bg0,
         "history-before-save": h1 - h0,
     }
     w.leave_edit()
     h2 = history_count()
-    out["choose-photo-cancel"] = {
-        "file-image": read_doc(MAP_FILE).get("image"),
-        "start-image": image0,
+    out["add-background-cancel"] = {
+        "file": file_background(),
+        "start": bg0,
         "old-photo": (PICS / "photo.png").is_file(),
-        "new-photo": (PICS / "photo.jpg").is_file(),
+        "new-jpg": sorted(p.name for p in PICS.glob("*.jpg")) != jpgs0,
         "history-after-cancel": h2 - h0,
-        "shown": w.ev("_buttonMap.storedImage"),
+        "shown": w.js(BG_JS),
     }
 
-    # Choose Photo, then Save: one History entry, at Save (07 Q2).
+    # Add Picture to Background…, then Save: one History entry, at Save.
     h3 = history_count()
     w.enter_edit()
-    w.ev("_imageDialog._accept("
-         + json.dumps(QtCore.QUrl.fromLocalFile(str(chosen)).toString())
-         + "); true")
-    wait_for(lambda: str(w.ev("_buttonMap.storedImage")).endswith(".jpg"))
+    pick_background_picture(w, chosen)
+    wait_for(lambda: len(w.js(BG_JS) or []) == len(bg0) + 1)
     h4 = history_count()
     w.ev("_buttonMap.saveEdit(false)")
     h5 = history_count()
-    out["choose-photo-save"] = {
-        "file-image": read_doc(MAP_FILE).get("image"),
+    out["add-background-save"] = {
+        "file": file_background(),
+        "jpg-in-pictures": [
+            ref for ref in file_background()
+            if ref.endswith(".jpg") and (DEVICE / ref).is_file()
+        ],
         "before-save": h4 - h3,
         "after-save": h5 - h3,
     }
     w.leave_edit()
 
-    # Clear Photo, then Cancel: no History entry, the photo comes back.
-    def menu_item(text: str) -> str:
-        return (
-            "(function() { for (var i = 0; i < _photoMenu.count; i++) {"
-            " var it = _photoMenu.itemAt(i);"
-            f" if (it && it.text === {json.dumps(text)})"
-            " { it.triggered(); return true } } return false })()"
-        )
+    # Clear Background, then Cancel: no question, no History entry, the
+    # background comes back (S41, S26).
+    def trigger(name: str) -> bool:
+        return trigger_background_item(w, name)
 
+    saved_bg = file_background()
     h6 = history_count()
     w.enter_edit()
-    out["clear-photo-ran"] = w.ev(menu_item("Clear Photo"))
-    wait_for(lambda: w.ev("_buttonMap.storedImage === \"\""))
+    out["clear-background-ran"] = trigger("bmClearBackground")
+    wait_for(lambda: w.js(BG_JS) == [])
     h7 = history_count()
-    out["clear-photo"] = {
-        "photo-files-left": sorted(p.name for p in PICS.glob("photo.*")),
-        # Clear Photo leaves no photo (07 Q4, GL-221).
-        "shown": [w.ev("_buttonMap.storedImage"), w.ev("_buttonMap.photoOverride")],
+    out["clear-background"] = {
+        "shown": w.js(BG_JS),
+        "asked": w.opened("_saveGate"),
         "dirty": w.ev("_buttonMap.isDirty()"),
         "history-before-save": h7 - h6,
+        # Files go only on Save (S106).
+        "files-kept": all((DEVICE / ref).is_file() for ref in saved_bg),
     }
     w.leave_edit()
-    out["clear-photo-cancel"] = {
-        "photo-back": (PICS / "photo.jpg").is_file(),
+    out["clear-background-cancel"] = {
+        "file": file_background(),
+        "saved": saved_bg,
         "history": history_count() - h6,
-        "file-image": read_doc(MAP_FILE).get("image"),
+        "shown": w.js(BG_JS),
     }
 
-    # Choose Photo and Clear Photo are undo steps (07 Q3, GL-179).
+    # Add Picture to Background and Clear Background are undo steps (S57).
     other = make_picture(_HOME / "pictures" / "other photo.png", "#20a0a0")
-    saved_image = read_doc(MAP_FILE).get("image")
+    pngs0 = sorted(p.name for p in PICS.glob("*.png"))
     w.enter_edit()
-    w.ev("_imageDialog._accept("
-         + json.dumps(QtCore.QUrl.fromLocalFile(str(other)).toString())
-         + "); true")
-    wait_for(lambda: str(w.ev("_buttonMap.storedImage")).endswith(".png"))
+    pick_background_picture(w, other)
+    wait_for(lambda: len(w.js(BG_JS) or []) == len(saved_bg) + 1)
     w.ev("_ed().flushPendingStep()")
-    w.ev(menu_item("Clear Photo"))
-    wait_for(lambda: w.ev("_buttonMap.storedImage === \"\""))
+    trigger("bmClearBackground")
+    wait_for(lambda: w.js(BG_JS) == [])
     w.ev("_ed().flushPendingStep()")
     w.ev("_ed().undo()")
     after_one = {
-        "shown": w.ev("_buttonMap.storedImage"),
+        "shown": w.js(BG_JS),
         # 07 S107: an edit's pictures wait in its temporary folder; nothing
         # is added to the device's pictures/ until Save.
-        "in-pictures": (PICS / "photo.png").is_file(),
+        "in-pictures": sorted(p.name for p in PICS.glob("*.png")) != pngs0,
     }
     w.ev("_ed().undo()")
-    out["photo-undo"] = {
+    out["background-undo"] = {
         "after-one": after_one,
-        "after-two": w.ev("_buttonMap.storedImage"),
-        "saved": saved_image,
-        "jpg-kept": (PICS / "photo.jpg").is_file(),
-        "png-not-in-pictures": not (PICS / "photo.png").exists(),
+        "after-two": w.js(BG_JS),
+        "saved": saved_bg,
         "dirty": w.ev("_buttonMap.isDirty()"),
     }
     w.ev("_ed().redo()")
-    out["photo-redo"] = str(w.ev("_buttonMap.storedImage"))
+    out["background-redo"] = w.js(BG_JS)
     w.leave_edit()
-    out["photo-undo"]["after-cancel"] = read_doc(MAP_FILE).get("image") == saved_image
+    out["background-undo"]["after-cancel"] = file_background() == saved_bg
 
     # A guide and the print area are undo steps too (07 Q3, GL-179).
     w.enter_edit()
@@ -598,9 +653,8 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     out["discard"] = [w.ev("_buttonMap.editing"), RECOVERY.is_file(),
                       file_fx(3) != crash_fx]
     # A copy the same as the saved map goes without asking (S37).
-    w.ev("_hw.saveRecovery(_buttonMap.targetName, JSON.stringify({image:"
-         " _buttonMap.liveImage,"
-         " photo: _buttonMap.livePhoto || _buttonMap.photoFromDoc(null),"
+    # A recovery copy holds the nodes, both planes (07 S34, S111).
+    w.ev("_hw.saveRecovery(_buttonMap.targetName, JSON.stringify({"
          " nodes: _buttonMap.liveNodes}))")
     out["same-copy-written"] = RECOVERY.is_file()
     out["same-copy-offered"] = w.ev("_buttonMap.offerRecovery()")
@@ -692,13 +746,15 @@ def part_outside(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     # as ModuleListModel's save names it.
     from gremlin.modules import store
 
+    # It sets the bottom background picture (07 S127).
     store.update(
-        NAME, GUID, lambda doc: doc.__setitem__("image", setup_ref), "Module Setup")
-    out["setup-photo-written"] = read_doc(MAP_FILE).get("image") == setup_ref
+        NAME, GUID, lambda doc: store.set_device_photo(doc, setup_ref, DEVICE),
+        "Module Setup")
+    out["setup-photo-written"] = file_photo() == setup_ref
     w.ev("_buttonMap.saveEdit(true)")
     wait_for(lambda: w.opened("_saveGate"))
     out["setup-photo-save"] = {
-        "file-image": read_doc(MAP_FILE).get("image"),
+        "file-image": file_photo(),
         "setup-image": setup_ref,
         "said": w.ev("_saveGate.messageText"),
     }
@@ -804,7 +860,7 @@ def part_setup(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     """Module Setup: Import Image, then Cancel and Discard (03 Q2, GL-078)."""
     make_picture(PICS / "photo.png", "#204060")
     chosen = make_picture(_HOME / "pictures" / "setup photo.jpg", "#30a030")
-    image0 = read_doc(MAP_FILE).get("image")
+    image0 = file_photo()
     root = main_root(app)
     ev_in(root, f"openConfigureModule('source', {CARD_JS})")
     win = wait_for(lambda: top_window("Input Module Setup"))
@@ -819,7 +875,7 @@ def part_setup(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
                     and ev_in(win, "claimDirty")):
         raise DriveError("Import Image did not show the picture")
     out["setup-imported"] = {
-        "file-image": read_doc(MAP_FILE).get("image"),
+        "file-image": file_photo(),
         "start-image": image0,
     }
     # The window's Cancel button, then Discard in its question.
@@ -838,7 +894,7 @@ def part_setup(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     if not wait_for(lambda: not shown(win)):
         raise DriveError("Discard did not close Module Setup")
     out["setup-cancel"] = {
-        "file-image": read_doc(MAP_FILE).get("image"),
+        "file-image": file_photo(),
         "start-image": image0,
         "old-photo": (PICS / "photo.png").is_file(),
         "new-photo": (PICS / "photo.jpg").is_file(),

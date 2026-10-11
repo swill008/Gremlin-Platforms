@@ -209,7 +209,7 @@ def _run(scenario: str, out_dir: pathlib.Path) -> dict:
         "callout",
         "paths",
         "styles",
-        "photo_look",
+        "background_look",
         "light_page",
         "zoom",
         "rulers",

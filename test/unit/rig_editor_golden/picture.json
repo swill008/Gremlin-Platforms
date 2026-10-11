@@ -2,6 +2,7 @@
  "steps": [
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1317,18 +1318,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 1,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Picture: icon",
      "X: 36%",
@@ -1340,6 +1336,10 @@
      "Crop top: 0%",
      "Crop right: 0%",
      "Crop bottom: 0%",
+     "Look",
+     "Brightness: 0%",
+     "Contrast: 0%",
+     "Greyscale: 0%",
      "Opacity: 100%"
     ],
     "selected": [
@@ -1350,21 +1350,17 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "ID0",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 1,
     "histLen": 2,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Picture: icon",
      "X: 36%",
@@ -1376,6 +1372,10 @@
      "Crop top: 0%",
      "Crop right: 0%",
      "Crop bottom: 0%",
+     "Look",
+     "Brightness: 0%",
+     "Contrast: 0%",
+     "Greyscale: 0%",
      "Opacity: 100%"
     ],
     "selected": [
@@ -1386,6 +1386,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1418,18 +1419,13 @@
     },
     "cropId": "ID0",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 3,
     "histLen": 4,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Picture: icon",
      "X: 36%",
@@ -1441,6 +1437,10 @@
      "Crop top: 0%",
      "Crop right: 39.96%",
      "Crop bottom: 25%",
+     "Look",
+     "Brightness: 0%",
+     "Contrast: 0%",
+     "Greyscale: 0%",
      "Opacity: 100%"
     ],
     "selected": [
@@ -1451,21 +1451,17 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 3,
     "histLen": 4,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Nothing selected"
     ],
@@ -1475,6 +1471,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1507,18 +1504,13 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 4,
     "histLen": 5,
     "layers": [],
     "menu": [],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Picture: icon",
      "X: 41.6%",
@@ -1530,6 +1522,10 @@
      "Crop top: 0%",
      "Crop right: 39.96%",
      "Crop bottom: 25%",
+     "Look",
+     "Brightness: 0%",
+     "Contrast: 0%",
+     "Greyscale: 0%",
      "Opacity: 100%"
     ],
     "selected": [
@@ -1540,6 +1536,7 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
@@ -1566,6 +1563,7 @@
     },
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
@@ -1589,12 +1587,6 @@
     ],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Picture: icon",
      "X: 36%",
@@ -1606,6 +1598,10 @@
      "Crop top: 0%",
      "Crop right: 0%",
      "Crop bottom: 0%",
+     "Look",
+     "Brightness: 0%",
+     "Contrast: 0%",
+     "Greyscale: 0%",
      "Opacity: 100%"
     ],
     "selected": [
@@ -1616,9 +1612,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
@@ -1635,12 +1633,6 @@
     ],
     "nodeCount": 20,
     "pasteRequests": 0,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Picture: icon",
      "X: 36%",
@@ -1652,6 +1644,10 @@
      "Crop top: 0%",
      "Crop right: 0%",
      "Crop bottom: 0%",
+     "Look",
+     "Brightness: 0%",
+     "Contrast: 0%",
+     "Greyscale: 0%",
      "Opacity: 100%"
     ],
     "selected": [
@@ -1662,9 +1658,11 @@
   },
   {
    "state": {
+    "bgCount": 0,
     "changed": {},
     "cropId": "",
     "drawTool": "",
+    "editPlane": "foreground",
     "histAt": 5,
     "histLen": 6,
     "layers": [],
@@ -1681,12 +1679,6 @@
     ],
     "nodeCount": 20,
     "pasteRequests": 1,
-    "photo": [
-     1,
-     0,
-     0,
-     0
-    ],
     "props": [
      "Picture: icon",
      "X: 36%",
@@ -1698,6 +1690,10 @@
      "Crop top: 0%",
      "Crop right: 0%",
      "Crop bottom: 0%",
+     "Look",
+     "Brightness: 0%",
+     "Contrast: 0%",
+     "Greyscale: 0%",
      "Opacity: 100%"
     ],
     "selected": [

@@ -204,7 +204,7 @@ def test_a_template_export_cut_short_keeps_the_old_file(
         assert json.loads(zf.read("template.json"))["name"] == "Shared"
 
 
-# --- adjusted photo cache (AUD-FILES-08) -----------------------------------
+# --- adjusted picture cache (AUD-FILES-08; a picture's look, 07 S43) ---------
 
 
 def test_a_cut_short_cache_file_is_not_reused(
@@ -215,11 +215,11 @@ def test_a_cut_short_cache_file_is_not_reused(
     image.fill(QtGui.QColor("#FF0000"))
     image.save(str(src))
     url = QtCore.QUrl.fromLocalFile(str(src)).toString()
-    first = profile.adjustedPhotoUrl(url, 0, 0, 1)
+    first = profile.adjustedPhotoUrl(url, {"grey": True})
     cached = pathlib.Path(QtCore.QUrl(first).toLocalFile())
     whole = cached.read_bytes()
     cached.write_bytes(whole[: len(whole) // 2])
-    again = profile.adjustedPhotoUrl(url, 0, 0, 1)
+    again = profile.adjustedPhotoUrl(url, {"grey": True})
     assert not QtGui.QImage(QtCore.QUrl(again).toLocalFile()).isNull()
     assert pathlib.Path(QtCore.QUrl(again).toLocalFile()).read_bytes() == whole
 
@@ -236,6 +236,6 @@ def test_the_cache_is_written_through_the_safe_writer(
     url = QtCore.QUrl.fromLocalFile(str(src)).toString()
     with monkeypatch.context() as m:
         _crash_mid_write(m)
-        assert profile.adjustedPhotoUrl(url, 0, 0, 1) == ""
+        assert profile.adjustedPhotoUrl(url, {"grey": True}) == ""
     cache = tmp_path / "maps" / "cache"
     assert not [p for p in cache.rglob("*") if p.is_file()]

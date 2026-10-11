@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import json
 import re
+import typing
 
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui
 
 import gremlin.ui.type_aliases as ta
 from gremlin.config import Configuration
@@ -137,6 +138,37 @@ OPTIONS: list[tuple[str, str, PropertyType, OptionValue, str, dict]] = [
 ]
 
 
+# The Button Map's plane view settings (07 S114, S115, S120; D-07-PLANES-ANSWERS
+# P4a): program settings, the same for every map, never in a map file, so
+# they make no History entry. Not listed in Options; QML reads and sets them
+# under these names like the options above.
+VIEW_GROUP = "plane-view"
+VIEW_SETTINGS: list[tuple[str, PropertyType, OptionValue, str, dict]] = [
+    (
+        "bm-fg-faint", PropertyType.Bool, True,
+        "Background mode shows the foreground faintly (the banner's Show "
+        "foreground faintly tick).",
+        {},
+    ),
+    (
+        "bm-bg-hidden", PropertyType.Bool, False,
+        "The Background row's eye: the background is hidden on screen.",
+        {},
+    ),
+    (
+        "bm-bg-opacity", PropertyType.Float, 1.0,
+        "The Background row's Opacity: how strongly the background shows on "
+        "screen.",
+        {"min": 0.0, "max": 1.0},
+    ),
+    (
+        "bm-bg-hint-seen", PropertyType.Bool, False,
+        "Background mode's first-time line has been shown.",
+        {},
+    ),
+]
+
+
 def key_of(name: str) -> str:
     """The name QML uses: without the ordering number."""
     return re.sub(r"^[0-9]+-", "", name)
@@ -154,6 +186,10 @@ def register() -> None:
         SECTION, "internal", "styles", PropertyType.List, [],
         "Saved Button Map styles: [{name, kind, fields}].", {},
     )
+    for name, kind, default, description, properties in VIEW_SETTINGS:
+        cfg.register(
+            SECTION, VIEW_GROUP, name, kind, default, description, properties, False
+        )
     _register_pane_group(cfg)
 
 
@@ -240,6 +276,9 @@ def _entry(key: str) -> tuple[str, str] | None:
     for group, name, *_rest in OPTIONS:
         if key_of(name) == key:
             return group, name
+    for name, *_rest in VIEW_SETTINGS:
+        if name == key:
+            return VIEW_GROUP, name
     return None
 
 
@@ -294,11 +333,15 @@ class ButtonMapOptions(QtCore.QObject):
     @QtCore.Property("QVariantMap", notify=changed)
     def values(self) -> dict[str, OptionValue]:
         cfg = Configuration()
-        return {
+        out = {
             key_of(name): cfg.value(SECTION, group, name)
             for group, name, *_rest in OPTIONS
             if cfg.exists(SECTION, group, name)
         }
+        for name, *_rest in VIEW_SETTINGS:
+            if cfg.exists(SECTION, VIEW_GROUP, name):
+                out[name] = cfg.value(SECTION, VIEW_GROUP, name)
+        return out
 
     @QtCore.Property(list, constant=True)
     def groups(self) -> list:
@@ -387,5 +430,42 @@ class ButtonMapOptions(QtCore.QObject):
     def set(self, key: str, new_value: object) -> None:
         if _entry(key) is None:
             return
+        if key == "bm-bg-opacity":
+            try:
+                new_value = max(0.0, min(1.0, float(typing.cast(float, new_value))))
+            except (TypeError, ValueError):
+                return
         set_value(key, new_value)
         signal.configChanged.emit()
+
+
+@ta.QmlElement
+class ButtonMapSpaceKey(QtCore.QObject):
+    """Whether Space is held down, for Space + left-drag panning in Edit
+    (07 S14). It only watches: every key still goes where it went."""
+
+    heldChanged = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        self._held = False
+        app = QtCore.QCoreApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
+
+    def _set_held(self, value: bool) -> None:
+        if value != self._held:
+            self._held = value
+            self.heldChanged.emit()
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:  # noqa: N802
+        kind = event.type()
+        if kind in (QtCore.QEvent.Type.KeyPress, QtCore.QEvent.Type.KeyRelease):
+            key = typing.cast(QtGui.QKeyEvent, event)
+            if key.key() == QtCore.Qt.Key.Key_Space and not key.isAutoRepeat():
+                self._set_held(kind == QtCore.QEvent.Type.KeyPress)
+        elif kind == QtCore.QEvent.Type.ApplicationDeactivate:
+            self._set_held(False)
+        return False
+
+    held = QtCore.Property(bool, lambda self: self._held, notify=heldChanged)

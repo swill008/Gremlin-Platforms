@@ -30,7 +30,7 @@ import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _ALL = ["> Fire", "> Gear", "Throttle group", "Rectangle", "Line", "Logo", "Title",
-        "Table", "Background photo"]
+        "Table", "Background"]
 
 
 def _run(tmp_path_factory: pytest.TempPathFactory, scale: int) -> dict:

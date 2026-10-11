@@ -1086,8 +1086,7 @@ ApplicationWindow {
         }
         Helpers.createComponent("DialogJoystickButtonMap.qml", {
             "targetName": name,
-            "targetGuid": guid,
-            "initialPhoto": photo
+            "targetGuid": guid
         })
     }
 

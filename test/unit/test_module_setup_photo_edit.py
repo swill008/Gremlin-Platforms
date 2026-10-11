@@ -72,7 +72,9 @@ module = store.module_file_in(folder)
 (folder / 'pictures' / 'photo.jpg').write_bytes(OLD)
 module.write_text(json.dumps({
     'kind': 'control.hardware', 'device': name, 'direction': 'source',
-    'image': 'pictures/photo.jpg',
+    # The device's photo: the bottom background picture (07 S127).
+    'nodes': [{'id': 'bg', 'kind': 'draw', 'shape': 'image',
+               'plane': 'background', 'src': 'pictures/photo.jpg'}],
     'claim': {'buttons': [], 'axes': [], 'hats': [], 'keys': []},
 }), encoding='utf-8')
 store._dirs_changed()
@@ -111,7 +113,7 @@ run(w, '_driver.setClaimed(0, true)')
 ok = run(w, '_win.commitModule()')
 QtTest.QTest.qWait(200)
 doc = json.loads(module.read_text(encoding='utf-8'))
-image = str(doc.get('image') or '')
+image = store.device_photo_ref(doc)
 new = folder / image if image else None
 out['save'] = {
     'waiting': waiting,

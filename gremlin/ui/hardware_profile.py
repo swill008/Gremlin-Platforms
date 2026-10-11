@@ -20,7 +20,7 @@ from PySide6 import (
 )
 
 import gremlin.ui.type_aliases as ta
-from gremlin.modules import module_file, registry, store
+from gremlin.modules import module_file, planes_once, registry, store
 from gremlin.modules.claim import claim_ids
 from gremlin.modules.registry import is_output_name
 from gremlin.signal import signal
@@ -60,40 +60,18 @@ def _write_map(path: Path, change: Callable[[dict], object]) -> bool:
         return False
 
 
-def _photo_pose(raw) -> dict:
-    src = raw if isinstance(raw, dict) else {}
-
-    def _num(key: str, default: float) -> float:
-        try:
-            val = float(src.get(key, default))
-        except (TypeError, ValueError):
-            val = default
-        return val
-
-    scale = _num("scale", 1.0)
-    if scale <= 0:
-        scale = 1.0
-    pose = {
-        "scale": max(0.25, min(4.0, scale)),
-        "offX": max(-1.0, min(1.0, _num("offX", 0.0))),
-        "offY": max(-1.0, min(1.0, _num("offY", 0.0))),
-        "rot": _num("rot", 0.0),
-    }
-    # Set from the Button Map's Layers panel; written only when on.
-    for flag in ("hidden", "locked"):
-        if src.get(flag) is True:
-            pose[flag] = True
-    # The photo's look (Photo > Adjust photo); written only when changed.
-    for key, low, high in _PHOTO_LOOK:
-        value = max(low, min(high, _num(key, 0.0)))
-        if value:
-            pose[key] = value
-    return pose
-
-
-# Brightness and contrast -1..1, greyscale 0..1, fade 0..0.9.
-_PHOTO_LOOK = (("bright", -1.0, 1.0), ("contrast", -1.0, 1.0), ("grey", 0.0, 1.0),
-               ("fade", 0.0, 0.9))
+# ONE-TIME (tracker OT-2)
+def _planes_text(text: str, folder: Path) -> str:
+    """A map saved before the planes, as today's layout: its photo is the
+    bottom background picture (07 S125). In memory only; the file is not
+    written. Today's map (or text that isn't a map) comes back as it is."""
+    try:
+        doc = json.loads(text)
+    except (ValueError, RecursionError):
+        return text
+    if not isinstance(doc, dict) or not planes_once.old_photo_to_layer(doc, folder):
+        return text
+    return json.dumps(doc, indent=2)
 
 
 _RECENT_COLOURS = 10
@@ -319,6 +297,23 @@ def adjust_photo(
         painter.fillRect(out.rect(), wash)
     painter.end()
     return out
+
+
+def _look_values(look: object) -> tuple[float, float, float]:
+    """(bright, contrast, grey) from a picture layer's "look" (a dict, or a
+    JavaScript object from QML); missing or bad values are neutral."""
+    if hasattr(look, "toVariant"):
+        look = look.toVariant()  # type: ignore[union-attr]
+    source = look if isinstance(look, dict) else {}
+
+    def number(key: str) -> float:
+        try:
+            value = float(source.get(key) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+        return max(-1.0, min(1.0, value)) if value == value else 0.0
+
+    return number("bright"), number("contrast"), max(0.0, number("grey"))
 
 
 # How many adjusted photos the cache keeps.
@@ -1303,13 +1298,13 @@ class HardwareProfile(QtCore.QObject):
                 return store.picture_ref(found.name)
             return self._stage(name, found, found.name) or store.picture_ref(found.name)
 
-        payload["image"] = fix(payload.get("image"))
-
         def walk(value: object) -> None:
             if isinstance(value, dict):
                 if _is_picture(value):
                     value["src"] = fix(value.get("src"))
+                    # Screen-only: the file's URL and its look's copy.
                     value.pop("srcUrl", None)
+                    value.pop("lookUrl", None)
                 for inner in value.values():
                     walk(inner)
             elif isinstance(value, list):
@@ -1328,6 +1323,7 @@ class HardwareProfile(QtCore.QObject):
                 if new:
                     value["src"] = new
                 value.pop("srcUrl", None)
+                value.pop("lookUrl", None)
             for inner in value.values():
                 HardwareProfile._rewrite_refs(inner, moved)
         elif isinstance(value, list):
@@ -1410,7 +1406,7 @@ class HardwareProfile(QtCore.QObject):
             })
         estimate = path.stat().st_size
         seen: set[Path] = set()
-        image = str(doc.get("image") or "")
+        image = store.device_photo_ref(doc)
         photo = resolve(image) if image else None
         for ref in sorted(store.named_refs(doc)):
             found = resolve(ref)
@@ -1677,13 +1673,13 @@ class HardwareProfile(QtCore.QObject):
 
     # --- the photo's look (Photo > Adjust photo) ---------------------------------
 
-    @QtCore.Slot(str, float, float, float, result=str)
-    def adjustedPhotoUrl(
-        self, url: str, bright: float, contrast: float, grey: float
-    ) -> str:
-        """A copy of the photo with brightness, contrast and greyscale applied,
-        kept in a cache beside the module files; "" when nothing is changed
-        or the photo cannot be read."""
+    @QtCore.Slot(str, "QVariant", result=str)
+    def adjustedPhotoUrl(self, url: str, look: object) -> str:
+        """A copy of a picture with its look applied (a picture layer's
+        "look": bright and contrast -1..1, grey 0..1), kept in a cache
+        beside the module files; "" when nothing is changed or the picture
+        cannot be read."""
+        bright, contrast, grey = _look_values(look)
         if not (bright or contrast or grey):
             return ""
         text = str(url or "")
@@ -2003,7 +1999,7 @@ class HardwareProfile(QtCore.QObject):
         """Keeps a copy of unsaved Button Map edits in the device's folder,
         stamped with the time.
 
-        payload is the editor's {image, photo, nodes}. The module file is not
+        payload is the editor's {nodes}. The module file is not
         touched; Save or Discard removes the copy.
         """
         try:
@@ -2035,7 +2031,7 @@ class HardwareProfile(QtCore.QObject):
             return ""
         if not isinstance(doc, dict) or not isinstance(doc.get("nodes"), list):
             return ""
-        return text
+        return _planes_text(text, path.parent)
 
     @QtCore.Slot(str)
     def clearRecovery(self, device_name: str) -> None:
@@ -2053,7 +2049,7 @@ class HardwareProfile(QtCore.QObject):
         if path.is_file():
             text = store.read_text(path)
             # Not UTF-8 (damaged): shown empty; saving into it is refused.
-            self._text = text if text is not None else ""
+            self._text = _planes_text(text, path.parent) if text is not None else ""
             trace("READ", "Button Map", "load", path, "ok" if text is not None else "damaged")
         else:
             self._text = ""
@@ -2084,7 +2080,10 @@ class HardwareProfile(QtCore.QObject):
         payload["device"] = name
         payload["space"] = "world"
         payload.update(PAGE_SIZE)
-        payload["photo"] = _photo_pose(payload.get("photo"))
+        # The device's photo is the bottom background picture (07 S127):
+        # the old top-level photo keys are never written (OT-2).
+        for key in planes_once.OLD_PHOTO_KEYS:
+            payload.pop(key, None)
         # A damaged module file refuses the save before any picture moves
         # into the device; the edit stays open with its pictures (07 S12,
         # GL-079).
@@ -2099,7 +2098,10 @@ class HardwareProfile(QtCore.QObject):
 
         def change(doc: dict) -> None:
             # The Button Map writes its own keys; everything else in the
-            # file (claims, names, calibration, Appearance...) stays.
+            # file (claims, names, calibration, Appearance...) stays, except
+            # an old map's photo keys: its photo is a layer now (OT-2).
+            for key in planes_once.OLD_PHOTO_KEYS:
+                doc.pop(key, None)
             for key, value in doc.items():
                 packed.setdefault(key, value)
             if is_output_name(name):
@@ -2214,7 +2216,7 @@ class HardwareProfile(QtCore.QObject):
         if not rel:
             return ""
         self._staged_photo = rel
-        # The module file's "image" is written by the window's Save, not
+        # The module file's photo layer is written by the window's Save, not
         # here: nothing in the module file or History until Save (07 Q2).
         persist_log(
             f"Persist photo name={name!r} guid={self._device_guid!r} "
@@ -2317,9 +2319,10 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, str, result=str)
     def commitEditFor(self, device_name: str, owner: str) -> str:
         """Module Setup's Save, after its module file is written: the photo
-        Import Image kept goes into the device's folder and is named as its
-        "image" (03 S52); pictures nothing names go. The error, or "". With
-        no module file (Delete File) the edit is dropped."""
+        Import Image kept goes into the device's folder and becomes the
+        bottom background picture (03 S52, 07 S127); pictures nothing names
+        go. The error, or "". With no module file (Delete File) the edit is
+        dropped."""
         owner = str(owner or "")
         name = self._name(device_name)
         photo = self._staged_photo
@@ -2330,10 +2333,12 @@ class HardwareProfile(QtCore.QObject):
             store.cancel_edit(name, self._device_guid, owner)
             return ""
 
+        folder = self._dir(name)
+
         def change(doc: dict) -> object:
-            if not photo or doc.get("image") == photo:
+            if not photo or store.device_photo_ref(doc) == store.normal_ref(photo):
                 return False
-            doc["image"] = photo
+            store.set_device_photo(doc, photo, folder)
             return True
 
         who = "Configure Module" if owner else "Button Map"
@@ -2399,7 +2404,7 @@ class HardwareProfile(QtCore.QObject):
         base = self._dir(device_name)
         own = base / store.PICTURES
         doc = store.read_path(store.module_file_in(base))
-        found = store.find_picture(base, str(doc.get("image") or ""))
+        found = store.find_picture(base, store.device_photo_ref(doc))
         candidates = [found] if found is not None else []
         if own.is_dir():
             candidates += [p for p in sorted(own.glob("photo.*")) if p.is_file()]

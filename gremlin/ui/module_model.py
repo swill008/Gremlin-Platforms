@@ -398,7 +398,7 @@ def import_photo(device_name: str, guid: str, source: str) -> str:
     """The Logical Device card's Add/Change Image (03 S88), outside any
     edit: copies the picture into the device's own folder as
     pictures/photo.<ext> (any other photo.* there goes) and returns its
-    reference for the module file's "image", or "" when nothing was
+    reference for the device's photo (store.set_device_photo), or "" when nothing was
     copied. A damaged module file is refused before any picture is
     touched (03 S64). (Module Setup's Import Image keeps its picture in
     the window's edit instead: HardwareProfile.keepPhoto.)"""
@@ -707,7 +707,8 @@ class CardSizes(QtCore.QObject):
 
 # The keys the Button Map writes as its map (its "ui" block is saved on its
 # own and is not part of an edit).
-_MAP_KEYS = ("image", "imageWidth", "imageHeight", "photo", "nodes")
+# The device's photo is the bottom background layer in "nodes" (07 S127).
+_MAP_KEYS = ("nodes",)
 
 
 def map_parts(device_name: str, guid: str = "") -> str:
@@ -1414,7 +1415,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, str, result=bool)
     def setCardImage(self, slug: str, fileUrl: str) -> bool:
         """Add/Change Image on the Logical Device card (03 S88): the picture
-        becomes its photo and its module file's "image", through the store
+        becomes its photo, the bottom background picture of its map (07
+        S127), through the store
         (History, Library, Export and Restore carry it). Other cards and a
         damaged file: False."""
         if slug != "logical":
@@ -1431,7 +1433,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return False
 
         def change(doc: dict) -> None:
-            doc["image"] = rel
+            store.set_device_photo(doc, rel, path.parent)
 
         try:
             if not store.update_path(path, change, "Home"):
@@ -1444,7 +1446,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, result=bool)
     def removeCardImage(self, slug: str) -> bool:
         """Remove Image on the Logical Device card: its photo files go and
-        its module file's "image" is "" (History keeps both)."""
+        its bottom background picture goes (History keeps both)."""
         if slug != "logical":
             return False
         from gremlin import logical_device_file
@@ -1459,9 +1461,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
             store.remove_picture_files(found)
 
             def change(doc: dict) -> object:
-                if not doc.get("image"):
+                if not store.device_photo_ref(doc):
                     return False
-                doc["image"] = ""
+                store.set_device_photo(doc, "", path.parent)
                 return None
 
             store.update_path(path, change, "Home")
@@ -2626,7 +2628,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
                 doc.setdefault(key, PAGE_SIZE[key])
             doc.setdefault("nodes", [])
             if photo:
-                doc["image"] = photo
+                # The device's photo: the bottom background picture (07 S127).
+                store.set_device_photo(doc, photo, path.parent)
 
         _plog(
             "save claim",

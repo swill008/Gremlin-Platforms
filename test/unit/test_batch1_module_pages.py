@@ -280,10 +280,13 @@ def test_map_parts_change_with_the_map_and_photo_only(folder: Path) -> None:
     # Claims, calibration and the map's ui block are not the map's parts.
     assert edit(lambda d: d.update(claim={"buttons": [1, 2]})) == start
     assert edit(lambda d: d.update(ui={"grid": 4})) == start
-    # The map and the photo are (History Restore, Device Pack, Module Setup).
+    # The map is, background included (History Restore, Device Pack, Module
+    # Setup): the photo is the bottom background picture (07 S127).
     moved = edit(lambda d: d.update(nodes=[{"hwId": 1}]))
     assert moved != start
-    assert edit(lambda d: d.update(image="pictures/photo.png")) != moved
+    photo = {"kind": "draw", "shape": "image", "plane": "background",
+             "src": "pictures/photo.png"}
+    assert edit(lambda d: d.update(nodes=[photo, {"hwId": 1}])) != moved
     path.write_text('{"kind": "control.hardware", "dev', encoding="utf-8")
     assert watch.mapParts("pJoy Pro", guid) == ""
 

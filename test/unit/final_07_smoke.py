@@ -5,13 +5,14 @@
 """Final test plan, Button Map (07): starts the program off-screen (stand-in
 hardware, a temporary user folder) and drives the Button Map window through
 its own functions for the spec statements no other test checks: one window
-(S1), the blank page (S2, S96), File → Device (S4), no other device's photo
-(S11), Photo menu (S39), pool and filter (S45), Chip only (S47), free leader
-ends (S50), Undo steps (S56), Mirror pictures (S59), Fit to Photo Frame
-(S60), Reset Layout (S61), drop outside Edit (S63), Follow the Program
-(S71), Labels Mode forgotten (S74), export cap (S84), zoom range (S94) and
-the Command Palette (S100). Prints one "RESULT {json}" line; a step that
-raised is {"error": ...} under its own key. test_final_07.py runs it.
+(S1), the blank page (S2, S96), File → Device (S4), no other device's
+background (S11), Background menu (S39), pool and filter (S45), Chip only
+(S47), free leader ends (S50), Undo steps (S56), Mirror pictures (S59), Fit
+to Photo Frame (S60), Reset Layout (S61), drop outside Edit (S63), Follow
+the Program (S71), Labels Mode forgotten (S74), export cap (S84), zoom range
+(S94) and the Command Palette (S100). Prints one "RESULT {json}" line; a
+step that raised is {"error": ...} under its own key. test_final_07.py runs
+it.
 
     python test/unit/final_07_smoke.py
 
@@ -114,6 +115,15 @@ def chip(hw: int, fx: float) -> dict:
 
 START_NODES = [chip(1, 0.20), chip(2, 0.30), chip(3, 0.40)]
 
+# The device's photo is the bottom background picture (07 S111, S127): a
+# background node, first in "nodes", fitted to the photo frame.
+BACKGROUND = {
+    "kind": "draw", "shape": "image", "plane": "background", "id": "bg1",
+    "src": "pictures/photo.png", "fx": 0.125, "fy": 0.125, "fw": 0.75,
+    "fh": 0.75, "rot": 0, "opacity": 1, "locked": False, "pinned": False,
+    "sockets": [], "fill": "filled",
+}
+
 # A large photo: 800% of it is past the 16384 pixel cap (S84).
 _photo = QtGui.QImage(2400, 2400, QtGui.QImage.Format.Format_RGB32)
 _photo.fill(QtGui.QColor("#305070"))
@@ -121,7 +131,7 @@ PICS.mkdir(parents=True, exist_ok=True)
 _photo.save(str(PICS / "photo.png"))
 MAP_FILE.write_text(json.dumps({
     "kind": "control.hardware", "device": NAME,
-    "image": "pictures/photo.png", "nodes": START_NODES,
+    "nodes": [BACKGROUND, *START_NODES],
 }), encoding="utf-8")
 
 PICTURE = _HOME / "pictures" / "drop me.png"
@@ -276,15 +286,22 @@ def main() -> None:
     step("one-window", one_window)
 
     # --- S11, S96: a stick with no module file -------------------------------
+    # The background layers on show (07 S11, S111): the editor's nodes on the
+    # background plane, each one's picture file.
+    background = (
+        "(_ed() ? _ed().nodes.filter(function(n) { return _ed().isBackground(n) })"
+        ".map(function(n) { return String(n.src || n.shape) }) : [])"
+    )
+
     def no_file() -> dict:
         call(root, "openButtonMapForCard", CARD)
         w.loaded(NAME)
-        wait_for(lambda: str(w.ev("_buttonMap.storedImage")).endswith("photo.png"))
-        had = str(w.ev("_buttonMap.storedImage"))
+        wait_for(lambda: w.js(background) == ["pictures/photo.png"])
+        had = w.js(background)
         call(root, "openButtonMapForCard", THIRD_CARD)
         wait_for(lambda: w.ev("_buttonMap.targetName") == "Third Stick"
                  and w.ev("_buttonMap.faceLive"))
-        wait_for(lambda: w.ev("_buttonMap.storedImage") == "", NOT_S)
+        wait_for(lambda: w.js(background) == [], NOT_S)
         before = files_under(MODULES)
         w.ev("_buttonMap.setGridPref('gridOn', true)")
         w.ev("_buttonMap.setGridPref('gridSize', 32)")
@@ -293,9 +310,8 @@ def main() -> None:
              " _buttonMap.persistUi(); return true })()")
         wait_for(lambda: files_under(MODULES) != before, NOT_S)
         return {
-            "first-photo": had.endswith("photo.png"),
-            "third-photo": w.ev("_buttonMap.storedImage"),
-            "photo-override": w.ev("_buttonMap.photoOverride"),
+            "first-background": had,
+            "third-background": w.js(background),
             "files-same": files_under(MODULES) == before,
         }
 
@@ -314,15 +330,20 @@ def main() -> None:
     step("device-menu", device_menu)
 
     # --- S39, S56: outside Edit ----------------------------------------------
+    # The Background menu (07 S39; objectName bmMenuBackground, id _bgMenu).
+    def background_menu() -> object:
+        return w.ev("_bgMenu.objectName === 'bmMenuBackground'"
+                    " ? _bgMenu.enabled : 'missing'")
+
     step("outside-edit", lambda: {
-        "photo-menu": w.ev("_photoMenu.enabled"),
+        "background-menu": background_menu(),
         "undo": w.ev(f"{_ROW}(_editMenu, 'Undo').enabled"),
         "redo": w.ev(f"{_ROW}(_editMenu, 'Redo').enabled"),
         "hist-cap": w.ev("_ed().histCap"),
     })
 
     w.enter_edit()
-    step("inside-edit", lambda: {"photo-menu": w.ev("_photoMenu.enabled")})
+    step("inside-edit", lambda: {"background-menu": background_menu()})
 
     # --- S45: the pool -------------------------------------------------------
     def pool() -> dict:
@@ -488,7 +509,10 @@ def main() -> None:
 
     # --- S84: export cap; S94: zoom range ------------------------------------
     def export_cap() -> dict:
-        wait_for(lambda: w.ev("_ed().photoNatural().w > 0"))
+        # 100% is the bottom background picture's own pixels (07 S83).
+        # (photoNatural: the bottom background picture's size, once loaded.)
+        wait_for(lambda: w.ev("_ed().bottomPicture() !== null"
+                              " && _ed().photoNatural().w > 0"))
         w.ev("_buttonMap.setPrint('scale', 100)")
         at_100 = w.js("_buttonMap.exportPixels()") or {}
         w.ev("_buttonMap.setPrint('scale', 800)")
