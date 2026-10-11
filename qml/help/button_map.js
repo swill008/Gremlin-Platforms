@@ -427,7 +427,7 @@ function topics() {
         t("button-map-callouts", "Drawing", "Add a callout",
             "<p>A callout is a text box with a pointer.</p>"
             + "<ol>"
-            + "<li>Choose <b>Callout</b> on the <b>Insert</b> menu (or <b>Draw</b> › <b>Box</b> › <b>Callout</b>) and drag the box, or select a chip and choose <b>Insert › Add Callout</b> (also on its right-click menu) for one beside the chip, pointing at it and showing its text.</li>"
+            + "<li>Choose <b>Callout</b> on the <b>Insert</b> menu (or <b>Draw</b> › <b>Box</b> › <b>Callout</b>) and drag the box, or select a chip and choose <b>Leader › Add Callout</b> (also on its right-click menu) for one beside the chip, pointing at it and showing its text.</li>"
             + "<li>Select the callout to see the round handle at the pointer's tip. Drag it anywhere to point at a spot on the photo, or drop it on a chip so the pointer follows that chip when it moves (the handle is filled while it does).</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"

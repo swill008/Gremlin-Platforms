@@ -112,6 +112,17 @@ function finishPath(closed) {
         tick++
 }
 
+// Backspace while drawing a path (07 S134): drops the last point. True when
+// there was one to drop.
+function undoPathPoint() {
+    var draft = pathDraft || []
+    if (!draft.length)
+        return false
+    pathDraft = draft.slice(0, draft.length - 1)
+    tick++
+    return true
+}
+
 function cancelPath() {
     pathDraft = []
     pathHover = null

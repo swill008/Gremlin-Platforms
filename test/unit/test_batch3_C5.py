@@ -244,7 +244,11 @@ def test_the_window_drops_unused_pictures_when_an_edit_ends() -> None:
     window = (_ROOT / "qml" / "DialogJoystickButtonMap.qml").read_text(encoding="utf-8")
     start = window.index("function discardEdit()")
     body = window[start:window.index("function takeTheirs", start)]
-    assert "dropUnusedPictures()" in body
+    # Cancel ends the edit through the shared way out (07 S32, S34).
+    assert "endEditUnsaved()" in body
+    start = window.index("function endEditUnsaved()")
+    shared = window[start : window.index("\n    }\n", start)]
+    assert "dropUnusedPictures()" in shared
 
 
 # --- GL-276: the pack's preview folder is removed --------------------------

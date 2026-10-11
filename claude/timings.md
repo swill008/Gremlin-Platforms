@@ -808,3 +808,11 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | T-MENUS: menu bar, command menus, keys, Options and Keyboard Shortcuts window tests (43; found 4 program bugs) | agent tests | rough guess 15–30 min | 15 min | 15:21–15:36 |
 | 2026-10-11 | Lead: T-MENUS's 4 bugs (print area while editing, keys run nothing from the child windows, unpinned Shortcuts closes, Shortcuts lists greyed menus); key guard probed off-screen; tool-row files deleted; map G34–G37 closed | fix | 3–8 min (table) | 9 min | 15:36–15:45 |
 | 2026-10-11 | Full run + lint (menu-bar batch): 4 Button Map tests failed (3 read the old source layout, 1 clicked during the drawer's 120 ms slide); fixed, 34 pass targeted | test | 5–6 min (table) | 6 min + 4 min fixes | 15:46–15:56 |
+| 2026-10-11 | Button Map audit: 6 read-only agents (menus, panels, edit, print/planes, spec/Help, canvas); 11 verified bugs, 0 crashes | review | 5–10 min (table) | 6 min (AUD-MENUS longest) | 15:52–15:58 |
+| 2026-10-11 | FIX-PTR: Shift/Ctrl+right-click acts on the clicked item (G42) | fix | 3–8 min (table) | 3 min | 15:59–16:01 |
+| 2026-10-11 | FIX-DOC: Help, glossary, map G39–G48, agent_log crash | docs | 3–8 min (table) | 2 min | 15:59–16:01 |
+| 2026-10-11 | FIX-CMD: whyDisabled, Esc stops drawing, stale table rows grey (G44 G45 G47) | fix | 3–8 min (table) | 5 min | 15:59–16:04 |
+| 2026-10-11 | FIX-SEL: paste plane, Backspace path point, stale table target (G41 G43 G44) | fix | 3–8 min (table) | 8 min | 15:59–16:07 |
+| 2026-10-11 | FIX-WIN: recovery copy, open drag, kept pin, greyed-row tooltip, Mouse before Keys (G39 G40 G46 G47) | fix | 3–8 min (table) | 12 min (off-screen hover for the tooltip test) | 15:59–16:11 |
+| 2026-10-11 | Lead: golden re-record (api_sweep), 3 tests updated, lint fix, map G39–G48 closed | fix | 3–8 min (table) | 6 min | 16:07–16:13 |
+| 2026-10-11 | Full run + lint (audit fixes): 2 static-check failures (hand-set tooltip delay; Cancel's cleanup moved to endEditUnsaved), fixed, 27 pass targeted; lint 0 new | test | 5–6 min (table) | 6 min + 3 min fixes | 16:14–16:23 |

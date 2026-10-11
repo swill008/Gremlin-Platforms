@@ -495,6 +495,8 @@ Item {
     function tableExtraRect(n, i) { return RigTables.tableExtraRect(n, i) }
     function tableCurrentCell(n) { return RigTables.tableCurrentCell(n) }
     function tableHasTarget() { return RigTables.tableHasTarget() }
+    function tableTargetValid() { return RigTables.tableTargetValid() }
+    function resetTableTarget() { return RigTables.resetTableTarget() }
     function tableCurrentRect(n) { return RigTables.tableCurrentRect(n) }
     function tableCellRect(n, row, col) { return RigTables.tableCellRect(n, row, col) }
     function tableCellAt(n, mx, my) { return RigTables.tableCellAt(n, mx, my) }
@@ -687,6 +689,7 @@ Item {
     function pathHoverAt(mx, my) { return RigPath.pathHoverAt(mx, my) }
     function finishPath(closed) { return RigPath.finishPath(closed) }
     function cancelPath() { return RigPath.cancelPath() }
+    function undoPathPoint() { return RigPath.undoPathPoint() }
     function penStart(mx, my) { return RigPath.penStart(mx, my) }
     function penMove(mx, my) { return RigPath.penMove(mx, my) }
     function penEnd() { return RigPath.penEnd() }

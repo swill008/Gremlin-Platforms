@@ -23,15 +23,20 @@ def main() -> int:
     _FOLDER.mkdir(exist_ok=True)
     stamp = time.strftime("%H:%M:%S")
     with (
-        open(_FOLDER / f"{name}.log", "a", encoding="utf-8") as own,
-        open(_FOLDER / "all.log", "a", encoding="utf-8") as shared,
+        open(_FOLDER / f"{name}.log", "a", encoding="utf-8", errors="replace") as own,
+        open(_FOLDER / "all.log", "a", encoding="utf-8", errors="replace") as shared,
     ):
         own.write(f"--- {stamp} ---\n")
         shared.write(f"[{name}] --- {stamp} ---\n")
         own.flush()
         shared.flush()
-        for line in sys.stdin:
-            sys.stdout.write(line)
+        # Bytes in, UTF-8 out with "replace": a line that isn't valid UTF-8
+        # (a grep of a binary file) must never stop the pipe.
+        out = sys.stdout.buffer
+        for raw in sys.stdin.buffer:
+            line = raw.decode("utf-8", errors="replace").replace("\r\n", "\n")
+            out.write(line.encode("utf-8", errors="replace"))
+            out.flush()
             own.write(line)
             shared.write(f"[{name}] {line}")
             own.flush()

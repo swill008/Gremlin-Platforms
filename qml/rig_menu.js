@@ -706,14 +706,17 @@ function _textSections() {
 
 function _tableSections() {
     var n = nodeAt(selectedId)
-    var cell = tableCurrentCell(n)
-    var hasCell = tableHasTarget()
+    // A stale target (another table's row, an extra cell undone) greys the
+    // cell rows rather than acting on a cell that isn't there.
+    var hasCell = typeof tableTargetValid === "function" ? tableTargetValid() : tableHasTarget()
+    var cell = hasCell ? tableCurrentCell(n) : null
+    var stale = (tableExtra >= 0 || tableRow >= 0 || tableCol >= 0) && !hasCell
     return [
         _sect("rows", "Rows and Columns", [
             _act("Insert Row Above", function() { addTableRow(false) }),
-            _act("Delete This Row", deleteTableRow, !!(n && n.rows && n.rows.length > 1)),
+            _act("Delete This Row", deleteTableRow, !!(n && n.rows && n.rows.length > 1) && !stale),
             _act("Insert Column Left", function() { addTableCol(false) }),
-            _act("Delete This Column", deleteTableCol, !!(n && n.cols > 1)),
+            _act("Delete This Column", deleteTableCol, !!(n && n.cols > 1) && !stale),
             _tog("ID column", !!(n && n.idCol), toggleTableIdCol)
         ]),
         _sect("cell", "Cell", [
@@ -722,7 +725,7 @@ function _tableSections() {
                  function() { var c = tableCurrentCell(nodeAt(selectedId)); setTableCellIndependent(!(c && c.independent)) },
                  hasCell),
             _act("Spawn Empty Cell", spawnEmptyCell),
-            _act("Delete This Cell", deleteThisTableCell, tableExtra >= 0),
+            _act("Delete This Cell", deleteThisTableCell, tableExtra >= 0 && hasCell),
             _pick("Place Across", ["left", "center", "right"], ["Far left", "Center", "Far right"],
                   function() { return false }, placeTableCell, hasCell),
             _pick("Place Down", ["top", "middle", "bottom"], ["Top", "Middle", "Bottom"],

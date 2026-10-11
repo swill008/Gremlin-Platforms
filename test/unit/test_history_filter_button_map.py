@@ -127,7 +127,9 @@ _ALL = {
 def test_window_builds_a_device_id_filter_with_no_area() -> None:
     text = _QML.read_text(encoding="utf-8")
     # File > History calls openHistory(), which builds the filter.
-    assert re.search(r'text:\s*"History".*?onTriggered:\s*_buttonMap\.openHistory\(\)', text, re.S)
+    assert re.search(
+        r'text:\s*"History".*?onTriggered:\s*_buttonMap\.openHistory\(\)', text, re.S
+    )
     found = re.search(
         r'function openHistory\(\).*?filter:\s*JSON\.stringify\((\{.*?\})\)', text, re.S
     )

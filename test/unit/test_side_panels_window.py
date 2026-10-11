@@ -189,7 +189,8 @@ def test_kept_for_the_next_window_and_reset_panels(run: dict) -> None:
     again = run["reopened"]
     assert again["layers"]["width"] == 333
     assert _open(again, "layers") == (True, True)
-    assert _open(again, "chips") == (True, False)
+    # Pinned before the narrow window folded it: the pin is kept (07 S131).
+    assert _open(again, "chips") == (True, True)
     assert again["saved"]["layers"] == {"width": 333, "pinned": True, "open": True}
     # View > Reset Panels, the menu item.
     assert run["reset-items"] == ["Reset Panels"]

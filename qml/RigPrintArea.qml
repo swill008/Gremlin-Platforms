@@ -7,7 +7,7 @@ import Gremlin.Style
 // The print area on the Button Map (rig_print_area.js): while shown
 // (View > Print Area, or its tool), a dashed frame in the print area's
 // color with a small "Print Area" label, and everything outside dimmed.
-// While editing and not locked, its handles resize it and its border moves
+// While editing, its handles resize it and its border moves
 // it. Also the rubber band while a new area is drawn (Alt+drag).
 Item {
     id: _area

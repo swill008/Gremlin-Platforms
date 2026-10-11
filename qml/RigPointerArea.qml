@@ -137,8 +137,8 @@ MouseArea {
             if (hit.kind === "spine") {
                 // Picked as a left click picks it, drawn at once (a part of a
                 // selection keeps the selection: the menu acts on all of it).
-                if (!shift && !ed.isSelected(hit.id)) {
-                    ed.setSelection([hit.id])
+                if (!ed.isSelected(hit.id)) {
+                    ed.setSelection(shift ? menuSelectionPlus(hit.id) : [hit.id])
                     ed.bump()
                 }
                 ed.selectedId = hit.id
@@ -158,8 +158,10 @@ MouseArea {
                 return
             }
             if (hit.id) {
-                if (!shift && !ed.isSelected(hit.id)) {
-                    ed.setSelection([hit.id])
+                // Shift/Ctrl+right-click on an unselected item adds it, so the
+                // menu (titled for it, or "N selected") acts on what it names.
+                if (!ed.isSelected(hit.id)) {
+                    ed.setSelection(shift ? menuSelectionPlus(hit.id) : [hit.id])
                     ed.bump()
                 }
                 menuTarget.nodeId = hit.id
@@ -479,6 +481,16 @@ MouseArea {
         // Every drag is one undo step, made here (07 S55a).
         ed.endGesture()
     }
+    // The current selection plus id (selectedId counts even when selectedIds
+    // doesn't hold it), id last so it becomes selectedId.
+    function menuSelectionPlus(id) {
+        var s = (ed.selectedIds || []).slice()
+        if (ed.selectedId && s.indexOf(ed.selectedId) < 0)
+            s.push(ed.selectedId)
+        s.push(id)
+        return s
+    }
+
     function releaseDrag(m) {
         if (ed.dragKind === "turn") {
             ed.dragKind = ""

@@ -107,6 +107,9 @@ function deleteChip(id) {
 // group is broken apart instead; groups and locked items in a wider
 // selection stay (and stay selected). Returns what it did.
 function deleteSelected() {
+    // Backspace while drawing a path takes back its last point (S134).
+    if (pathDraft && pathDraft.length && undoPathPoint())
+        return "pathPoint"
     var n = nodeAt(selectedId)
     if (n && selectedSpine >= 0) {
         var L = currentLeader(n)
@@ -115,7 +118,7 @@ function deleteSelected() {
             return "spine"
         }
     }
-    if (n && isTable(n) && tableExtra >= 0) {
+    if (n && isTable(n) && tableExtra >= 0 && tableTargetValid()) {
         deleteThisTableCell()
         return "cell"
     }
@@ -332,7 +335,14 @@ function pasteNodes(src, dx, dy) {
             if (ls[li].to && ls[li].to.id && map[ls[li].to.id])
                 ls[li].to.id = map[ls[li].to.id]
         }
-        nodes.push(n)
+        // Into the plane being edited (S116, S121), not the copy's own: on
+        // top of the background, or on top of everything in the foreground.
+        if (editPlane === "background" && canHoldBackground(n)) {
+            insertInPlane(n, "background")
+        } else {
+            delete n.plane
+            nodes.push(n)
+        }
     }
     var ids = []
     for (i = 0; i < copies.length; i++)
@@ -396,8 +406,12 @@ function setSelection(ids) {
     var next = ids || []
     if (JSON.stringify(next) !== JSON.stringify(selectedIds || []))
         transformMode = "resize"
+    var was = selectedId
     selectedIds = next
     selectedId = selectedIds.length ? selectedIds[selectedIds.length - 1] : ""
+    // A cell target belongs to its table: another table starts with none.
+    if (selectedId !== was && isTable(nodeAt(selectedId)))
+        resetTableTarget()
     // Crop mode ends when its picture is no longer selected.
     if (cropId && selectedIds.indexOf(cropId) < 0)
         cropId = ""

@@ -9,7 +9,7 @@ import Gremlin.Style
 
 // Keyboard Shortcuts (Help > Keyboard Shortcuts…, Ctrl+K, 07 S135): every
 // key and what it does, read from the menu bar as the window opens, then
-// the keys no menu shows ("Keys") and the mouse moves ("Mouse"). Read-only:
+// the mouse moves ("Mouse") and the keys no menu shows ("Keys"). Read-only:
 // nothing in it runs a command. Remembers its place and size; Esc closes it.
 //
 //   ShortcutsWindow { menuBar: _menuBar; keyRows: [...]; mouseRows: [...] }
@@ -99,7 +99,7 @@ Window {
         anchors.margins: Style.dp(8)
         anchors.topMargin: _pin.height + Style.dp(14)
         menuBar: _win.menuBar
-        // Each row carries its group, so Keys then Mouse.
-        mouseRows: (_win.keyRows || []).concat(_win.mouseRows || [])
+        // Each row carries its group: Mouse, then Keys (glossary).
+        mouseRows: (_win.mouseRows || []).concat(_win.keyRows || [])
     }
 }

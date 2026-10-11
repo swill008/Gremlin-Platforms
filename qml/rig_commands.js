@@ -12,6 +12,8 @@
 //                   already has a Shortcut for that key, so only the hint is
 //                   shown. ed is optional (the rotate step in the text).
 // enabled(ed, id) -> bool
+// whyDisabled(ed, id) -> string: why a greyed row can't be used now ("" when
+//                   there is no reason to give), shown as its tooltip (S121).
 // run(ed, id)     -> runs it
 
 // --- the selection -----------------------------------------------------------
@@ -32,6 +34,18 @@ function _multi(ed) {
 // Lock and Hide act on the whole selection when several are selected.
 function _arrangeIds(ed) {
     return _multi(ed) ? ed.selectedIds.slice() : (ed.selectedId ? [ed.selectedId] : [])
+}
+
+// The table cell the menus act on still exists in the selected table (a
+// stale row, column or extra cell from another table or an undo doesn't).
+function _tableTargetOk(ed) {
+    return typeof ed.tableTargetValid === "function" ? !!ed.tableTargetValid() : ed.tableHasTarget()
+}
+
+// The target is set but no longer exists.
+function _tableTargetStale(ed) {
+    var set = ed.tableExtra >= 0 || ed.tableRow >= 0 || ed.tableCol >= 0
+    return set && !_tableTargetOk(ed)
 }
 
 // What kind of item one node is, as rig_menu's _multiKind (a group is a
@@ -199,7 +213,10 @@ function list(ed) {
         out.push(_c("draw." + _BOXES[i][0], "Insert", "Text", _BOXES[i][1]))
     for (i = 0; i < _AROUND.length; i++)
         out.push(_c("around." + _AROUND[i][0], "Insert", "Shape Around Selection", _AROUND[i][1]))
-    out.push(_c("stopDrawing", "Insert", "", "Stop Drawing", "Esc", true))
+    // Its own Esc Shortcut, on only while a draw tool is active, so Esc
+    // stops drawing wherever the keyboard is (G45) and never meets the
+    // window's Esc that leaves Background mode (that one waits for no tool).
+    out.push(_c("stopDrawing", "Insert", "", "Stop Drawing", "Esc"))
     out.push(_c("importPicture", "Insert", "", "Picture…"))
     out.push(_c("table.rowAbove", "Format", "Table", "Insert Row Above"))
     out.push(_c("table.rowBelow", "Format", "Table", "Add Row Below"))
@@ -334,7 +351,7 @@ function enabled(ed, id) {
     if (id.indexOf("around.") === 0)
         return _hasChips(ed)
     if (id.indexOf("cell.") === 0)
-        return _single(ed, ["table"]) && ed.tableHasTarget()
+        return _single(ed, ["table"]) && _tableTargetOk(ed)
     if (id.indexOf("align.") === 0)
         return ed.canAlign()
     if (id.indexOf("distribute.") === 0)
@@ -345,11 +362,11 @@ function enabled(ed, id) {
         if (!_single(ed, ["table"]))
             return false
         if (id === "table.deleteRow")
-            return !!(n.rows && n.rows.length > 1)
+            return !!(n.rows && n.rows.length > 1) && !_tableTargetStale(ed)
         if (id === "table.deleteCol")
-            return n.cols > 1
+            return n.cols > 1 && !_tableTargetStale(ed)
         if (id === "table.deleteCell")
-            return ed.tableExtra >= 0
+            return ed.tableExtra >= 0 && _tableTargetOk(ed)
         return true
     }
     if (id === "callout.remove")
@@ -439,6 +456,20 @@ function enabled(ed, id) {
     return false
 }
 
+// The right-click menu's own reason (rig_menu.js planeMoveItems' tip), so the
+// menu bar and the right-click menu say the same words.
+function whyDisabled(ed, id) {
+    if (!ed || !ed.interactive || enabled(ed, id))
+        return ""
+    if (id === "moveToBackground" || id === "moveToForeground") {
+        if (!_node(ed))
+            return ""
+        var items = ed.planeMoveItems(_arrangeIds(ed))
+        return String(items[id === "moveToBackground" ? 0 : 1].tip || "")
+    }
+    return ""
+}
+
 // --- run -----------------------------------------------------------------------
 
 // Rename, as the chip menu's: the group member being edited, else the chip.
@@ -515,7 +546,14 @@ function run(ed, id) {
     }
     switch (id) {
     case "stopDrawing":
-        ed.drawTool = ""
+        // What Esc on the map does (RigPointerArea): a rename ends, else
+        // everything under way stops (the tool, a path draft, a drag).
+        if (ed.renameId) {
+            ed.cancelRename()
+        } else {
+            ed.cancelAllActions()
+            ed.closeMenu()
+        }
         break
     case "importPicture":
         ed.overlayImportRequested()

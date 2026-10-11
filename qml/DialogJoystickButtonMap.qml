@@ -40,7 +40,7 @@ ApplicationWindow {
         if (_allowClose || !editing)
             return
         if (!isDirty()) {
-            dropUnusedPictures()
+            endEditUnsaved()
             return
         }
         e.accepted = false
@@ -490,6 +490,10 @@ ApplicationWindow {
             return false
         }
         var ed = _cardLoader.item ? _cardLoader.item.editorItem : null
+        // A drag left open ends as its one Undo step before the map is
+        // written, so it can't hold Undo in the next edit (07 S55a).
+        if (ed && ed.stopGesture)
+            ed.stopGesture()
         // A name or text still being typed (Ctrl+S) is saved with the rest.
         if (ed && ed.renameId)
             ed.commitRename()
@@ -712,17 +716,29 @@ ApplicationWindow {
         onTriggered: _buttonMap.recoveryNow()
     }
 
+    // Every way out of an edit without saving (Cancel, Discard, closing the
+    // window or quitting with nothing unsaved): a drag left open stops
+    // (07 S55a), the edit's own recovery copy goes, also when every change
+    // was undone before the timer removed it (S32, S34), and so do the
+    // pictures it added. Outside Edit, a copy left by a crash (put off with
+    // Not now) keeps both; Edit offers that copy before it starts, so a
+    // session's copy is one it wrote or restored.
+    function endEditUnsaved() {
+        if (!editing)
+            return
+        var e = _ed()
+        if (e && e.stopGesture)
+            e.stopGesture()
+        if (_lastRecovery.length)
+            clearRecovery()
+        // Pictures this edit added go with its temporary folder; the
+        // device's folder was never touched (07 S26, S107).
+        dropUnusedPictures()
+    }
+
     function discardEdit() {
-        // The edit's own recovery copy and pictures go. Outside Edit,
-        // a copy left by a crash (put off with Not now) keeps both; Edit
-        // offers that copy before it starts, so a session's copy is one it
-        // wrote or restored.
         if (editing) {
-            if (_lastRecovery.length)
-                clearRecovery()
-            // Pictures this edit added go with its temporary folder; the
-            // device's folder was never touched (07 S26, S107).
-            dropUnusedPictures()
+            endEditUnsaved()
             // So do the print area, print setup and guides (07 Q1).
             restoreEditUi()
         }
@@ -763,6 +779,8 @@ ApplicationWindow {
         raise()
         requestActivate()
         if (_allowClose || !editing || !isDirty()) {
+            if (!_allowClose)
+                endEditUnsaved()
             _allowClose = true
             close()
             Qt.quit()
@@ -1228,14 +1246,22 @@ ApplicationWindow {
 
     // A strip, pin, fold arrow, resize, the View menu or a map click
     // changed a side panel: kept, and the user's choice from now on.
+    // While a narrow window has unpinned it (S131), the pin it shows is the
+    // window's, not the user's: opening or folding the drawer keeps only
+    // open and width, and the kept pin stays for the next window. A click
+    // on the pin itself keeps the pin.
     function sideChangedByUser(panel, id) {
+        var squeezed = id === "chips" ? chipsSqueezed : layersSqueezed
+        var state = { width: panel.panelWidth / Style.dp(1), open: panel.open }
+        if (!squeezed || panel.pinned)
+            state.pinned = panel.pinned
         if (id === "chips") {
             chipsSqueezed = false
             chipsBgFolded = false
         } else {
             layersSqueezed = false
         }
-        _opts.setSidePanelState(id, { width: panel.panelWidth / Style.dp(1), pinned: panel.pinned, open: panel.open })
+        _opts.setSidePanelState(id, state)
     }
 
     // The Layers/Properties divider's share (Layers' part) and the print
@@ -2170,6 +2196,15 @@ ApplicationWindow {
         var at = { "Insert": 0, "Arrange": 0, "Leader": 0, "Format": 0 }
         var subs = {}
         var rows = []
+        // Each menu that holds command rows gets one hover watcher, which
+        // shows a greyed row's reason (07 S121).
+        var watched = []
+        function watch(m) {
+            if (watched.indexOf(m) < 0) {
+                watched.push(m)
+                _cmdWhyComp.createObject(m.contentItem, { list: m.contentItem })
+            }
+        }
         var entries = RigCommands.list(_ed()) || []
         for (var i = 0; i < entries.length; i++) {
             var c = entries[i]
@@ -2199,6 +2234,7 @@ ApplicationWindow {
             // Made inside the menu's list (a visual item), so Qt doesn't warn
             // "not placed in the graphics scene" before insertItem places it.
             var item = _cmdItemComp.createObject(host.contentItem, { cmdId: c.id, text: c.text, hint: c.key || "" })
+            watch(host)
             if (host === menu)
                 menu.insertItem(at[c.menu]++, item)
             else
@@ -2229,10 +2265,43 @@ ApplicationWindow {
         ThemedMenuItem {
             property string cmdId: ""
             enabled: _buttonMap.cmdOk(cmdId)
+            // Greyed out: why, as its tooltip (07 S121); "" when there is no
+            // reason to give.
+            readonly property string whyText: {
+                _buttonMap.cmdRev
+                if (enabled || !_buttonMap.editing || typeof RigCommands.whyDisabled !== "function")
+                    return ""
+                var e = _buttonMap._ed()
+                return e ? String(RigCommands.whyDisabled(e, cmdId) || "") : ""
+            }
             // On/off commands (Crop, ID Column) show a tick (07 S134).
             checkable: !!RigCommands.CHECKABLE[cmdId]
             checked: { _buttonMap.cmdRev; var e = _buttonMap._ed(); return checkable && RigCommands.checked(e, cmdId) }
             onTriggered: _buttonMap.runCmd(cmdId)
+        }
+    }
+    // A disabled row gets no hover of its own, so the menu's list watches
+    // the pointer and shows the reason of the greyed row under it.
+    Component {
+        id: _cmdWhyComp
+        Item {
+            objectName: "bmCmdWhy"
+            property var list: null
+            anchors.fill: parent
+            z: 100
+            HoverHandler { id: _whyHover }
+            // The reason of the greyed row at (x, y) in this item, or "".
+            function tipAt(x, y) {
+                if (!list)
+                    return ""
+                var q = mapToItem(list.contentItem, x, y)
+                var row = list.itemAt(q.x, q.y)
+                return row && !row.enabled && row.whyText ? row.whyText : ""
+            }
+            readonly property string tipText: _whyHover.hovered
+                ? tipAt(_whyHover.point.position.x, _whyHover.point.position.y) : ""
+            ToolTip.visible: tipText.length > 0
+            ToolTip.text: tipText
         }
     }
     Component {

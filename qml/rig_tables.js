@@ -198,7 +198,7 @@ function writeTablePartRect(n, cell, x, y, w, h) {
 
 function setTableCellIndependent(on) {
     var n = nodeAt(selectedId)
-    if (!isTable(n) || !tableHasTarget())
+    if (!isTable(n) || !tableTargetValid())
         return
     var cell = tableCurrentCell(n)
     if (!cell)
@@ -252,6 +252,26 @@ function tableCurrentCell(n) {
 
 function tableHasTarget() {
     return tableExtra >= 0 || (tableRow >= 0 && tableCol >= 0)
+}
+
+// The cell commands' target is real: the selected node is a table and the
+// target row/column or extra cell is still in it (an Undo or another table
+// can leave a stale one).
+function tableTargetValid() {
+    var n = nodeAt(selectedId)
+    if (!isTable(n))
+        return false
+    if (tableExtra >= 0)
+        return !!n.extras && tableExtra < n.extras.length
+    if (tableRow >= 0 && tableCol >= 0)
+        return !!n.rows && tableRow < n.rows.length && tableCol < (n.cols > 0 ? n.cols : 2)
+    return false
+}
+
+function resetTableTarget() {
+    tableRow = -1
+    tableCol = -1
+    tableExtra = -1
 }
 
 function tableCurrentRect(n) {
@@ -333,7 +353,7 @@ function tableCellAt(n, mx, my) {
 
 function setTableCellFree(on) {
     var n = nodeAt(selectedId)
-    if (!isTable(n) || !tableHasTarget())
+    if (!isTable(n) || !tableTargetValid())
         return
     ensureTable(n)
     var cell = tableCurrentCell(n)
@@ -376,7 +396,7 @@ function toggleTableCellFree() {
 
 function placeTableCell(where) {
     var n = nodeAt(selectedId)
-    if (!isTable(n) || !tableHasTarget())
+    if (!isTable(n) || !tableTargetValid())
         return
     ensureTable(n)
     setTableCellFree(true)
@@ -439,11 +459,9 @@ function spawnEmptyCell() {
 
 function deleteThisTableCell() {
     var n = nodeAt(selectedId)
-    if (!isTable(n) || tableExtra < 0)
+    if (!isTable(n) || tableExtra < 0 || !tableTargetValid())
         return
     ensureTable(n)
-    if (!n.extras || tableExtra >= n.extras.length)
-        return
     n.extras.splice(tableExtra, 1)
     tableExtra = Math.min(tableExtra, n.extras.length - 1)
     bump()

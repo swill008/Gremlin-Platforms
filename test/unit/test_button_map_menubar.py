@@ -263,7 +263,7 @@ def test_reset_panels_keeps_print_area_and_the_shortcuts_pin(seen: dict) -> None
 
 
 def test_keyboard_shortcuts_lists_keys_by_menu(seen: dict) -> None:
-    # S100: Ctrl+K; the menus' keys under their menu, then Keys and Mouse.
+    # S100: Ctrl+K; the menus' keys under their menu, then Mouse and Keys.
     part = _part(seen, "shortcuts")
     assert isinstance(part, dict)
     assert part["ctrl-k"] is True
@@ -277,8 +277,8 @@ def test_keyboard_shortcuts_lists_keys_by_menu(seen: dict) -> None:
         "Arrange",
         "Format",
         "Help",
-        "Keys",
         "Mouse",
+        "Keys",
     ]
     for wanted in (
         "File: Edit Mapping (Ctrl+E)",
@@ -314,8 +314,8 @@ def test_keyboard_shortcuts_lists_every_menu_outside_edit(seen: dict) -> None:
         "Arrange",
         "Format",
         "Help",
-        "Keys",
         "Mouse",
+        "Keys",
     ]
 
 
