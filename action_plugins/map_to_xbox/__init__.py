@@ -145,7 +145,11 @@ class MapToXboxModel(ActionModel):
     buttonInvertedChanged = QtCore.Signal()
     triggerRangeChanged = QtCore.Signal()
     targetChoicesChanged = QtCore.Signal()
-    padChoicesChanged = QtCore.Signal()
+    # The pad names and the ⚠: re-read on a pad pick (xboxDeviceIdChanged
+    # is the edit) and on the can't-send notice (not an edit).
+    cantSendTextChanged = QtCore.Signal()
+
+    display_only_signals = frozenset({"cantSendTextChanged"})
 
     def __init__(
         self,
@@ -158,11 +162,7 @@ class MapToXboxModel(ActionModel):
         super().__init__(data, binding_model, action_index, parent_index, parent)
         # Xbox output modules added or removed, the driver: the pad names
         # and the ⚠ follow the output layer's notice (D-05-CANT-SEND-LIVE).
-        signal.signal.cantSendChanged.connect(self._cant_send_changed)
-
-    @QtCore.Slot()
-    def _cant_send_changed(self) -> None:
-        self.padChoicesChanged.emit()
+        signal.signal.cantSendChanged.connect(self.cantSendTextChanged)
 
     def _qml_path_impl(self) -> str:
         return (
@@ -193,7 +193,7 @@ class MapToXboxModel(ActionModel):
         self._data.xbox_device_id = ident
         self.xboxDeviceIdChanged.emit()
         self.targetChoicesChanged.emit()
-        self.padChoicesChanged.emit()
+        self.cantSendTextChanged.emit()
         self._notify_item()
 
     def _get_xbox_target(self) -> str:
@@ -287,12 +287,12 @@ class MapToXboxModel(ActionModel):
         "QVariant", fget=_get_target_choices, notify=targetChoicesChanged
     )
     padChoices = QtCore.Property(
-        "QVariant", fget=_get_pad_choices, notify=padChoicesChanged
+        "QVariant", fget=_get_pad_choices, notify=cantSendTextChanged
     )
     cantSendText = QtCore.Property(
-        str, fget=_get_cant_send_text, notify=padChoicesChanged
+        str, fget=_get_cant_send_text, notify=cantSendTextChanged
     )
-    padLabel = QtCore.Property(str, fget=_get_pad_label, notify=padChoicesChanged)
+    padLabel = QtCore.Property(str, fget=_get_pad_label, notify=cantSendTextChanged)
 
 
 class MapToXboxData(AbstractActionData):

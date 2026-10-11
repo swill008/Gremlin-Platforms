@@ -103,6 +103,11 @@ class ActionModel(QtCore.QObject):
 
     actionChanged = QtCore.Signal()
 
+    # Notify signals that only refresh what the editor shows, such as the
+    # red ⚠ re-read from the can't-send notice; they aren't edits of the
+    # action (D-05-CANT-SEND-LIVE).
+    display_only_signals: frozenset[str] = frozenset()
+
     def __init__(
         self,
         data: AbstractActionData,
@@ -138,7 +143,7 @@ class ActionModel(QtCore.QObject):
             prop = meta.property(i)
             if prop.hasNotifySignal():
                 notifies.add(bytes(prop.notifySignal().name().data()).decode())
-        for name in notifies:
+        for name in notifies - self.display_only_signals:
             getattr(self, name).connect(self._action_edited)
 
     @QtCore.Slot()

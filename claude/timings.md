@@ -628,3 +628,13 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | ORDER-OSC: leaked page models from test_final_05 (deleteLater never ran) followed the notice; helper deletes at once + conftest guard | fix | 3–8 min (table) | 10 min | 06:06–06:16 |
 | 2026-10-11 | ORDER-MACRO: test_card_cant_send's fresh Configuration got the macro plugin's settings on first import; _settings_kept copies them back | fix | 3–8 min (table) | 18 min | 06:06–06:24 |
 | 2026-10-11 | Full run + lint (93-95, 98, test isolation fixes): all green, seed 99154 | test | 5–6 min (table) | 5 min | 06:25–06:30 |
+| 2026-10-11 | AUD-DEVNAMES: device name audit (3 missed updates on rename, 1 minor, spec question 10 S7) | research | 5–10 min (table) | ~2 min (agent clock) | 06:30–06:32 |
+| 2026-10-11 | AUD-DRIVEN: 'Driven by' audit (4 proven stale cases, 2 by code; M5 Swap/Change vJoy send no signal) | research | 5–10 min (table) | 4 min | 06:30–06:34 |
+| 2026-10-11 | AUD-CLAIMS: claims audit (vJoy sends fresh; Home output cards keep an old claim copy, probe-proven; keep 1 s poll) | research | 5–10 min (table) | 4 min | 06:30–06:34 |
+| 2026-10-11 | AUD-LD: Logical Device names audit (3 views miss both signals, script variable creates a control silently) | research | 5–10 min (table) | 5 min | 06:30–06:35 |
+| 2026-10-11 | WIDTH-SPLIT: width test children chunked (≤20 jobs, lazy per test); slowest child 35 s → 13.8 s | fix | 3–8 min (table) | 5 min | 06:36–06:41 |
+| 2026-10-11 | Full run + lint (width split): 1 order failure test_ld_pick (also on CI a0584ac3) | test | 5–6 min (table) | 5 min | 06:42–06:47 |
+| 2026-10-11 | CI on a0584ac3: failed (width test stall, fixed in tree; test_ld_pick order) | ci | ~10 min (table) | ~15 min | 06:30–06:45 |
+| 2026-10-11 | ORDER-LDPICK: found program cause (Send OSC/Xbox can't-send refresh reported as action edits); stopped for user | fix | 3–8 min (table) | 4 min | 06:47–06:51 |
+| 2026-10-11 | EDITFIX: display_only_signals in ActionModel; Send OSC/Map to Xbox ⚠ refresh not an edit (3 tests) | fix | 3–8 min (table) | 2 min (agent clock) | 06:59–07:01 |
+| 2026-10-11 | Full run + lint (EDITFIX + width split): all green, seed 719001 | test | 5–6 min (table) | 5 min | 07:02–07:07 |

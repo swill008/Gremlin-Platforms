@@ -357,17 +357,51 @@ def _main() -> None:
 # | The test
 
 
-@pytest.fixture(scope="module")
-def measured(tmp_path_factory: pytest.TempPathFactory) -> dict:
-    sys.path.insert(0, str(_ROOT / "test" / "journeys"))
-    from _harness import run_journey  # pyright: ignore[reportMissingImports]
+# Jobs per child program. Each child is one test's wait (the stall limit is
+# 120 s and CI is about 2.5x slower than a developer PC), so a scale's jobs
+# run in several small children, each started by the first test needing it.
+JOBS_PER_CHILD = 20
 
-    tmp = tmp_path_factory.mktemp("editor-widths")
-    shots = pathlib.Path(os.environ.get(SHOTS_ENV) or tmp)
-    found: dict = {}
+
+def _jobs(scale: int) -> list[tuple[str, str, str, str, int | str]]:
+    """Every (tag, name, stem, kind, width) measured at a scale."""
     # While working on one editor: EDITOR_WIDTH_ONLY=tag,tag measures those.
     only = [t for t in os.environ.get("EDITOR_WIDTH_ONLY", "").split(",") if t]
-    for scale in SCALES:
+    return [
+        (tag, name, stem, kind, width)
+        for tag, name, stem, kind in EDITORS
+        for width in _widths(tag, scale)
+        if not only or tag in only
+    ]
+
+
+def _chunks(scale: int) -> list[list[tuple[str, str, str, str, int | str]]]:
+    jobs = _jobs(scale)
+    return [jobs[i : i + JOBS_PER_CHILD] for i in range(0, len(jobs), JOBS_PER_CHILD)]
+
+
+class _Measured(dict):
+    """Results by (tag, scale, width); a missing one runs the child program
+    for its chunk."""
+
+    def __init__(self, tmp: pathlib.Path) -> None:
+        super().__init__()
+        self.tmp = tmp
+        self.shots = pathlib.Path(os.environ.get(SHOTS_ENV) or tmp)
+        self.seconds: dict[tuple[int, int], float] = {}
+
+    def __missing__(self, key: tuple[str, int, int | str]) -> dict:
+        tag, scale, width = key
+        for index, chunk in enumerate(_chunks(scale)):
+            if any(t == tag and w == width for t, _n, _s, _k, w in chunk):
+                self._run(scale, index, chunk)
+                return dict.__getitem__(self, key)
+        raise KeyError(key)
+
+    def _run(self, scale: int, index: int, chunk: list) -> None:
+        sys.path.insert(0, str(_ROOT / "test" / "journeys"))
+        from _harness import run_journey  # pyright: ignore[reportMissingImports]
+
         jobs = [
             {
                 "tag": tag,
@@ -375,23 +409,34 @@ def measured(tmp_path_factory: pytest.TempPathFactory) -> dict:
                 "stem": stem,
                 "kind": kind,
                 "width": width,
-                "shot": str(shots / f"{tag}_{scale}_{width}.png"),
+                "shot": str(self.shots / f"{tag}_{scale}_{width}.png"),
                 "click": CLICK.get(tag, ""),
             }
-            for tag, name, stem, kind in EDITORS
-            for width in _widths(tag, scale)
-            if not only or tag in only
+            for tag, name, stem, kind, width in chunk
         ]
-        spec = tmp / f"jobs_{scale}.json"
+        spec = self.tmp / f"jobs_{scale}_{index}.json"
         spec.write_text(json.dumps({"scale": scale, "jobs": jobs}), encoding="utf-8")
         out = run_journey(
-            pathlib.Path(__file__), pathlib.Path(tempfile.mkdtemp(dir=tmp)), str(spec)
+            pathlib.Path(__file__),
+            pathlib.Path(tempfile.mkdtemp(dir=self.tmp)),
+            str(spec),
+        )
+        self.seconds[(scale, index)] = out.get("_seconds", 0.0)
+        print(
+            f"editor widths: {scale} % chunk {index} ({len(jobs)} jobs)"
+            f" took {self.seconds[(scale, index)]} s",
+            file=sys.stderr,
         )
         assert not out.get("error"), out.get("traceback")
         assert out.get("uiScale") == scale, f"UI scale {out.get('uiScale')} != {scale}"
         for r in out["results"]:
-            found[(r["tag"], scale, r["width"])] = r
-    return found
+            self[(r["tag"], scale, r["width"])] = r
+
+
+@pytest.fixture(scope="module")
+def measured(tmp_path_factory: pytest.TempPathFactory) -> _Measured:
+    """Measured lazily: each test waits on at most one child program."""
+    return _Measured(tmp_path_factory.mktemp("editor-widths"))
 
 
 CASES = [

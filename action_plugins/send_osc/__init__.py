@@ -172,6 +172,8 @@ class SendOscModel(ActionModel):
     inputMaxChanged = QtCore.Signal()
     cantSendTextChanged = QtCore.Signal()
 
+    display_only_signals = frozenset({"cantSendTextChanged"})
+
     def __init__(
         self,
         data: AbstractActionData,
