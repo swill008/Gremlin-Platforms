@@ -21,9 +21,10 @@ function topics() {
                 + "<li>Right-click a card for its menu (see <a href=\"topic:home-devices-card-menu\">Card menus</a>).</li>"
                 + "<li><b>Compact view</b> (also in <b>Options</b> <a href=\"show:option/Compact view\">Show me ›</a>) and <b>Layout</b> (<b>Single list</b>, <b>Side by side</b> or <b>Stacked</b>; also <b>View › Home Layout</b> <a href=\"show:menu/View/Home Layout\">Show me ›</a>) change how the cards are laid out.</li>"
                 + "<li>Right-click empty space for <b>Unhide All Cards</b>, <b>Reset All Card Sizes</b>, <b>Hidden Cards</b> and <b>Layout</b>.</li>"
+                + "<li><b>Undo</b> (<b>Ctrl+Z</b>) and <b>Redo</b> (<b>Ctrl+Y</b> or <b>Ctrl+Shift+Z</b>) take back a change to the cards: a size, the order or a stack, <b>Reset Card Layout</b>, a card picture, <b>Compact view</b>, <b>Layout</b> or the line between the lists. The Undo / Redo pair sits on the bar under the toolbar, after <b>Layout</b>, and beside the title of every card's right-click menu.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
-                + "<ul><li>A connected device without a module shows as a card without a module when <b>Show devices without a module</b> <a href=\"show:option/Show devices without a module\">Show me ›</a> is on in <b>Options</b> (<b>Home</b>).</li></ul>",
+                + "<ul><li>Home keeps about 50 Undo steps until you close the program; loading another profile clears them. <b>Delete Device</b> is not undone here: use <b>Tools › History</b>.</li><li>A connected device without a module shows as a card without a module when <b>Show devices without a module</b> <a href=\"show:option/Show devices without a module\">Show me ›</a> is on in <b>Options</b> (<b>Home</b>).</li></ul>",
             related: ["home-devices-card-text", "home-devices-arrange-cards", "home-devices-card-menu", "configuration-actions-configuration-page"]
         },
         {
@@ -62,6 +63,7 @@ function topics() {
                 + "<li><b>Compact view</b>, <b>Layout</b> and, in <b>Side by side</b> and <b>Stacked</b>, the place of the line between the two lists are kept between sessions.</li>"
                 + "<li>Unplugged and hidden cards keep their places. A renamed stick takes its old card's place.</li>"
                 + "<li>When you delete a device, its place goes too.</li>"
+                + "<li>Changed your mind? <b>Undo</b> (<b>Ctrl+Z</b>) puts back a move, a size, a stack or a layout change.</li>"
                 + "</ul>",
             related: ["home-devices-home", "home-devices-card-menu", "home-devices-hidden-cards"]
         },
@@ -71,6 +73,7 @@ function topics() {
             title: "Card menus",
             body: "<p>A card's right-click menu holds every command for that device. The card shows as picked first, as a click does; a card in a Shift selection keeps the selection, for items that act on all of it.</p>"
                 + "<ul>"
+                + "<li><b>Undo</b> and <b>Redo</b> sit beside the menu's title, for Home's card changes.</li>"
                 + "<li>At the top: <b>Open Configuration</b> (<b>Output View</b> on an output card), <b>Button Map</b> and <b>Hide Card</b>.</li>"
                 + "<li><b>Module</b>: <b>Module Setup…</b>, <b>Auto Mapper</b>, <b>Calibration</b>.</li>"
                 + "<li><b>View</b>: the <b>vJoy Viewer</b> or <b>Xbox Viewer</b>, <b>Device Information</b>.</li>"
@@ -84,7 +87,7 @@ function topics() {
                 + "<li>The Keyboard and OSC cards have no Auto Mapper, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
                 + "<li>The Logical Device card has no Module Setup, Auto Mapper, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
                 + "</ul>"
-                + "<p>To give the Logical Device card a picture, right-click it and choose <b>Add Image…</b> (under <b>Device</b>). Later, use <b>Change Image…</b> or <b>Remove Image</b>. Remove Image doesn't ask; <b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> can bring the picture back. Other cards get their picture in Module Setup.</p>",
+                + "<p>To give the Logical Device card a picture, right-click it and choose <b>Add Image…</b> (under <b>Device</b>). Later, use <b>Change Image…</b> or <b>Remove Image</b>. Remove Image doesn't ask; <b>Undo</b> (<b>Ctrl+Z</b>) on Home or <b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> can bring the picture back. Other cards get their picture in Module Setup.</p>",
             related: ["home-devices-home", "home-devices-delete-device", "home-devices-input-modules", "getting-started-menus"]
         },
         {

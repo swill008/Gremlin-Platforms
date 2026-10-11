@@ -85,6 +85,11 @@ Rectangle {
     signal unstackAllCards()
     signal shiftToggled()
     signal stackSelectedCards()
+    // Home's Undo / Redo, beside the menu's title (D-FIXLIST-B1 10).
+    property bool canUndo: false
+    property bool canRedo: false
+    signal undoStep()
+    signal redoStep()
 
     implicitHeight: _body.implicitHeight + Style.dp(20)
     radius: Style.dp(4)
@@ -547,6 +552,10 @@ Rectangle {
                 dest ? null
                     : MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
             ])
+        ], [
+            // Home's Undo / Redo (D-FIXLIST-B1 10), as the Button Map's menus.
+            { label: "Undo", enabled: _card.canUndo, run: function() { _card.undoStep() } },
+            { label: "Redo", enabled: _card.canRedo, run: function() { _card.redoStep() } }
         ])
     }
 

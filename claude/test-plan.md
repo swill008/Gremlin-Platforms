@@ -449,7 +449,7 @@ Legend: PASS, FAIL, DEFERRED (needs you), NOTE (not a bug, or observation).
 | W-12 | PASS | Dialogs readable in the dark theme. |
 | LP-20 | PASS | Add Button from the empty-area menu. |
 | NOTE | not a bug | The Add Button menu stays open after adding; an Undo line appears, and a stray click on it undid the add. |
-| XB-IMG | FAIL (back burner #9) | stderr: `qml/images/xbox360_two_panel.jpg` missing (removed in "moved user data"). Xbox Viewer has no picture. |
+| XB-IMG | fixed 2026-10-11 (D-FIXLIST-B1 9, 06 S98) | Was: stderr `qml/images/xbox360_two_panel.jpg` missing, then blank once device folders removed the shared picture library. Now program art `gfx/xbox360_two_panel.jpg`; "Xbox face image missing" when not found (`test_b1_xbox.py`). |
 | DP-LOOP | NOTE | stderr: `DialogDevicePack.qml:381 recursive rearrange` layout warning when Device Pack opens. |
 
 ## Batch 2: Home (2026-09-30)
@@ -688,7 +688,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 11. H-03-dest, H-19d, H-17, H-13, OV-08b, XV-01b: Home and viewer behavior.
 12. ~~B-SPEC-IMPORTS~~ fixed: axis_delta / run_command added to spec hidden imports.
 13. Minor/cosmetic: F-01b, HD-01b, PS-06, MENU-CLIP, IC-01b, IC-17b, C-06, LP-24b, S-05b, OPT-X1b, OPT-U01b, OPT-F08b, CAL-05b, MM-01b, AE-XML-CHAIN, AE-NARROW, HH-08 note.
-14. ~~Back burner: XB-IMG / XV-IMG (#9)~~ fixed: Xbox face loads xbox360_two_panel.jpg from the data folder's modules/library; picture labels corrected (only LB / RB on the bumpers kept).
+14. ~~Back burner: XB-IMG / XV-IMG (#9)~~ fixed: Xbox face loads xbox360_two_panel.jpg as program art from `gfx/` beside the QML folder, never from user data or a device folder, and shows "Xbox face image missing" when it is not found (06 S98, D-FIXLIST-B1 9, 2026-10-11; `test_b1_xbox.py`); picture labels corrected (only LB / RB on the bumpers kept).
 15. To do: [Stock Images] Code still looks for the stock pictures in `qml/images`, which "moved user data" (a4f743fc) emptied; the pictures are now in `User_Data/images` and `User_Data/modules/library`. Points at the old path: `imagesFolderUrl()` (hardware_profile.py, creates an empty `qml/images` next to the exe), `_stock_photo()` / `_stock_photo_l()`, the relative-path fallback in hardware_profile.py, Button Map `stockImage`, VkbRigFace / VkbRigEditor (`images/vkb_gladiator_rig.jpg`), Xbox360Face (done: now uses the modules library lookup). Decide where stock pictures live for other users (bundled read-only vs copied into the data folder), then point all of these at one place.
 16. To do: [Xbox Pads] Only one Xbox pad for now ("Xbox 360 Controller" = pad 1). Later: a way to add Xbox output modules for pads 2-4 ("Xbox 360 N", nothing claimed), listed in Map to Xbox and the viewers. The output layer already maps "Xbox 360 N" to pad N (output.xbox_pad_of).
 

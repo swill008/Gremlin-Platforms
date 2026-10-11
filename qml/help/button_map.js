@@ -36,13 +36,14 @@ function topics() {
             + "<li>There is one Button Map window: opening it for another device reuses it.</li>"
                 + "<li>The Button Map closes when its device is deleted.</li>"
             + "<li>Before you edit, the map is live: rest the pointer on a chip to see which control it is, and drag with the left or middle button to pan.</li>"
+            + "<li>Until you edit, a slim line under the menu bar reads \"View only. To edit this device map, choose File › Edit Mapping.\" Select its <b>Edit Mapping</b> link to start editing. The line goes while you edit and comes back after Save or Cancel.</li>"
             + "<li>Every command is in the menu bar, with its key beside it; commands that don't apply right now are greyed out. <b>Help › Keyboard Shortcuts…</b> (<b>Ctrl+K</b>) lists every key.</li>"
             + "</ul>",
             ["button-map-edit", "button-map-menus", "button-map-keys"]),
         t("button-map-edit", "Getting started", "Edit and save a Button Map",
             "<p>Editing places chips on the photo and draws on the map. Nothing is written until you save.</p>"
             + "<ol>"
-            + "<li>Choose <b>File › Edit Mapping</b>.</li>"
+            + "<li>Choose <b>File › Edit Mapping</b>, or the <b>Edit Mapping</b> link in the \"View only\" line under the menu bar.</li>"
             + "<li>Drag chips from the pool, the <b>Chips</b> panel at the map's left edge, onto the photo. Type in the pool's filter to find a control by name, number or output.</li>"
             + "<li>Choose <b>File › Save</b> (<b>Ctrl+S</b>) to write the layout to the device's module file, or <b>File › Cancel</b> to leave without saving.</li>"
             + "</ol>"
@@ -96,7 +97,7 @@ function topics() {
             ["button-map-keys", "button-map-side-panels", "button-map-print", "button-map-background"]),
         t("button-map-options", "Getting started", "Button Map Options",
             "<p><b>Button Map Options</b> holds the Button Map's own settings; they are not in the program's main Options. They apply to every device.</p>"
-            + "<p>Open it with <b>Edit › Button Map Options…</b> (<b>Ctrl+,</b>) <a href=\"show:buttonmap/bmMenuEdit\">Show me ›</a>. It is a small window of its own. The groups are down its left; the chosen group's settings sit on the right, one line each, with each setting's description on its ⓘ. Changes apply and are kept at once, and the window opens on the group you used last.</p>"
+            + "<p>Open it with <b>Edit › Button Map Options…</b> (<b>Ctrl+,</b>) <a href=\"show:buttonmap/bmMenuEdit\">Show me ›</a>. It is a small window of its own, with a <b>×</b> to close it and a pin: unpinned, a click anywhere else closes it; pinned, it stays open, and the pin is kept for next time. The groups are down its left; the chosen group's settings sit on the right (drag the divider between them to widen the list; its width is kept), one line each, with each setting's description on its ⓘ. Changes apply and are kept at once, and the window opens on the group you used last.</p>"
             + "<ul>"
             + "<li><b>Labels</b>: <b>Chip text</b>, <b>Description first</b>, <b>Several actions</b> and <b>No actions</b>. See <a href=\"topic:button-map-action-labels\">Show actions on chips</a>.</li>"
             + "<li><b>Editing</b>: <b>Mirror pictures</b>, whether Mirror Layout and Copy Button Map from Device also flip pictures (off: pictures only move, so text in them still reads); <b>Undo steps</b>, how far Undo can go back (80 at first); <b>Rotate snap</b>, the degrees per step when Shift is held while turning an item or drawing a line; <b>Press to find</b> and <b>Find axes</b>.</li>"
@@ -180,6 +181,7 @@ function topics() {
             "<p>Select items to move, style or delete them.</p>"
             + "<ul>"
             + "<li>Click an item to select it; Shift-click or Ctrl-click adds or removes; drag on empty space for a box selection. <b>Edit › Select All</b> (<b>Ctrl+A</b>) selects everything.</li>"
+            + "<li>A click only selects: an item starts to move once you drag it a few pixels, so a click never shifts it or adds an Undo step.</li>"
             + "<li>Arrow keys nudge the selection; Shift+Arrow nudges by the grid size.</li>"
             + "<li><b>Press to find</b>: while editing, press a button or hat on the device and its chip is selected and scrolled into view (a group member selects its group). A control not on the map yet is shown in the pool, filtered by name; a hidden one is pointed to the Layers panel. Turn it off, or let a pushed axis count too (<b>Find axes</b>), in Button Map Options.</li>"
             + "</ul>"
@@ -200,6 +202,7 @@ function topics() {
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>The window is a list to read: it runs nothing. Use the key, or the menu, to run a command.</li>"
+            + "<li>Close it with the <b>×</b> on its title bar. Unpinned, a click anywhere else closes it too; pin it to keep it open (the pin is kept for next time).</li>"
             + "<li>A key works while its command can be used, and never while you type in a text box.</li>"
             + "<li>Commands that pick from a list (devices, templates, grid sizes and the like) and commands that clear a lot at once (<b>Reset Layout</b>, <b>Clear Background</b>, <b>Clear Print Area</b>, <b>Clear Guides</b>) have no key.</li>"
             + "<li>The Button Map has no Command Palette.</li>"
@@ -339,6 +342,7 @@ function topics() {
             + "<h4>Favourites</h4>"
             + "<ul>"
             + "<li>Hover a command's row in a right-click menu or in the menu bar's Insert, Arrange, Leader, Format or Edit menu (Cut, Copy, Paste, Duplicate, Delete, Select All) and select the <b>☆</b> at its end to add it to your favourites; a ★ means it is one already, and selecting it takes it off. Rows that pick a value (colours, sizes, sliders) have no ☆.</li>"
+            + "<li>An item's own <b>Hide</b> and <b>Lock</b> rows (Hide Chip, Lock Chip, Hide Shape and so on) have the ☆ too. As a favourite, Hide or Lock acts on everything selected, not only the item you right-clicked. The rows that hide or lock only a hotspot or a leader line have no ☆.</li>"
             + "<li>Favourites are listed at the very top of every right-click menu under <b>Favourites</b>, in the order you added them, and only those that apply to what you right-clicked. Select the <b>×</b> at a favourite's end to remove it.</li>"
             + "<li>One list for every device, kept for next time; it belongs to the program, not to a device's map.</li>"
             + "<li>Button Map Options › <b>Right-click menu</b> › <b>Favourites shown</b> sets how many show (5 at first, up to 15); 0 hides the Favourites section. Open Options from <b>Edit › Button Map Options…</b> (<b>Ctrl+,</b>) <a href=\"show:buttonmap/bmMenuEdit\">Show me ›</a>.</li>"

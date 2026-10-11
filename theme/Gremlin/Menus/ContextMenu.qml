@@ -746,7 +746,6 @@ Popup {
             hot: !!(it && it.enabled && _menu.focusRow === rowIndex)
             // A row that is a command can be a favourite (favouritesEnabled).
             readonly property bool _starred: !!(it && it.cmd) && _menu.favouritesEnabled
-                && it.kind === "action"
             readonly property real _starW: _starred ? Style.dp(22) : 0
             Label {
                 anchors.verticalCenter: parent.verticalCenter

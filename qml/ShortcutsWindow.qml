@@ -10,7 +10,8 @@ import Gremlin.Style
 // Keyboard Shortcuts (Help > Keyboard Shortcuts…, Ctrl+K, 07 S135): every
 // key and what it does, read from the menu bar as the window opens, then
 // the mouse moves ("Mouse") and the keys no menu shows ("Keys"). Read-only:
-// nothing in it runs a command. Remembers its place and size; Esc closes it.
+// nothing in it runs a command. Remembers its place and size; Esc or its ×
+// closes it.
 //
 //   ShortcutsWindow { menuBar: _menuBar; keyRows: [...]; mouseRows: [...] }
 //   _shortcutsWin.openFor(_buttonMap)
@@ -31,7 +32,10 @@ Window {
     property bool pinned: false
 
     title: "Keyboard Shortcuts"
-    flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
+    // WindowSystemMenuHint: on Windows a Tool window draws its × only with
+    // the system menu (Qt's windows plugin sets WS_SYSMENU from it; only a
+    // Dialog gets one from the close hint alone).
+    flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowSystemMenuHint | Qt.WindowCloseButtonHint
     // No width/height binding: ToolWindowMemory sets the size once when
     // the window opens (saved size, or its default fitted to the screen).
     minimumWidth: Style.fitWidth(Style.dp(240), Screen)

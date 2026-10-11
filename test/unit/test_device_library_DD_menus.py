@@ -143,7 +143,7 @@ def test_the_toolbar_has_the_device_library_button_not_home() -> None:
     block = main[main.index("id: _deviceLibraryButton"):]
     block = block[: block.index("}") + 1]
     assert 'caption: "Device Library"' in block
-    assert r'text: "\uF1A5"' in block  # Bootstrap Icons bookshelf
+    assert r'text: "\uF447"' in block  # Bootstrap Icons journals (D-FIXLIST-B1)
     assert 'qsTr("Every device and its saved setups")' in block
     assert '_root.openDeviceLibrary("", "", "")' in block
 

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 import QtQuick
-import Gremlin.Device
 import Gremlin.Style
 
 Item {
@@ -33,14 +32,12 @@ Item {
     function pw(n) { return n * _pw }
     function ph(n) { return n * _ph }
 
-    // The picture lives in the data folder's modules library, with the other
-    // device pictures.
-    HardwareProfile { id: _hw }
-
     Image {
         id: _img
         anchors.fill: parent
-        source: _hw.imageUrl("xbox360_two_panel.jpg")
+        // Program art shipped beside qml/ (the .spec files ship gfx), never a
+        // device folder.
+        source: Qt.resolvedUrl("../gfx/xbox360_two_panel.jpg")
         fillMode: Image.PreserveAspectFit
         asynchronous: true
         cache: true
@@ -50,7 +47,9 @@ Item {
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
         y: 0
-        text: _img.status === Image.Error ? "Xbox face image missing" : ("Xbox 360  " + padId)
+        // Null is an empty source: missing too.
+        text: (_img.status === Image.Error || _img.status === Image.Null)
+              ? "Xbox face image missing" : ("Xbox 360  " + padId)
         color: "#94a3b8"
         font.pixelSize: Style.dp(11)
         z: 4

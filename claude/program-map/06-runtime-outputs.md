@@ -312,6 +312,7 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - S62. It should never plug in two pads for one pad number when two threads send at once. [tracker: DEV14]
 - S63. It should log a failed Xbox write once and go on. [user confirmed 2026-10-06; was code only]
 - S64. It should describe the ViGEmBus state (found with version, not installed, installed but not running, DLL missing) with one wording everywhere. [help: Xbox output module] [tracker: G-XBOXDRV]
+- S98. The Xbox Viewer's pad picture (`xbox360_two_panel.jpg`) should be program art that ships with the program and is loaded from the program's own image folder (`gfx/`), never from user data or a device folder; when it can't be found the pad card shows "Xbox face image missing". [added 2026-10-11, user: D-FIXLIST-B1] (built 2026-10-11) [test: test_b1_xbox.py]
 
 ### Macros, keyboard, mouse
 - S65. It should play a macro's steps with the default delay between steps (not around Pause steps), and support Single, Count, Toggle and Hold repeat with a delay. [help: Macro] [help: Profile Settings] [test: action_interaction/test_macro.py::test_repeat]
@@ -495,6 +496,7 @@ and Q12 as written there). Every question answered as recommended:
 | S96 | 2026-10-10 (AD10; user approved AD1-AD10, "all recommendations", 2026-10-10, audit batch F2): a loaded self-target shows selected in the picker, marked "(this control: blocked by the loop guard)" (answers the LD1 question) |
 | S94, S94a | 2026-10-10 (D-06-LOOP-CHAIN; user: "Go with your recommendations", 2026-10-10, audit L1, to-do 89): the loop guard follows each event's chain at any speed; replaces the 0.1 s window; built 2026-10-10 (L1) |
 | S97 | 2026-10-11 (D-01-OWNER-NOTICES, 01 S155; user: "4a"): the Logical Device rows send logicalDeviceModified themselves (script variables and roll-back included); the vJoy Viewer labels, the Xbox page and the OSC page follow it |
+| S98 | 2026-10-11 (D-FIXLIST-B1; user: "1a 3a, start coding batch 1", fix list item 9a): the Xbox Viewer face picture ships with the program in `gfx/` and "Xbox face image missing" shows when it is not found (it went blank when device folders removed the shared picture library). Built 2026-10-11 |
 
 The section 8 statements are now the definition of correct for this
 subsystem; where today's code differs (section 10 and the decisions above),

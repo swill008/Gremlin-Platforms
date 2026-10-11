@@ -826,3 +826,12 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | Right-click batch: WIN (menu-bar ☆, Edit rows/keys through commands, Show in Layers, Properties…) | feature | 3–8 min (table) | 9 min | 16:33–16:42 |
 | 2026-10-11 | Lead: contract, routing 6 agent requests, RigPointerArea point, option.py group, golden re-record (18 files), map G49/G50 + counts | lead | ~5 min | 16 min (incl. 3 min golden) | 16:31–16:47 |
 | 2026-10-11 | Full run + lint (right-click batch): all program tests green; test_times.json too old for today's new files (refreshed from CI run 38176638314); 24 lint items in new test files fixed; 46 pass targeted | test | 5–6 min (table) | 6 min + 4 min fixes | 16:47–16:57 |
+| 2026-10-11 | Fix list collection (13 items, record only; 2 scouts: Device Pack vs .gmap, icons rendered) | lead | — | ~35 min (user's pace) | 17:05–17:40 |
+| 2026-10-11 | B1 XBOX: Xbox face picture as program art | fix | 3–8 min (table) | 2 min | 17:43–17:45 |
+| 2026-10-11 | B1 DOC: spec first (07 S138 S139, 03 S136, 06 S98; S98 S100 S137 S143 S58), Help, glossary | docs | 3–8 min (table) | 5 min | 17:43–17:48 |
+| 2026-10-11 | B1 MENU: Hide/Lock favourites | fix | 3–8 min (table) | 6 min | 17:42–17:48 |
+| 2026-10-11 | B1 DRAG: 4 px dead zone | fix | 3–8 min (table) | 9 min | 17:42–17:51 |
+| 2026-10-11 | B1 BANNER: view-only banner + link | fix | 3–8 min (table) | 11 min | 17:42–17:53 |
+| 2026-10-11 | B1 OPTWIN: Options/Shortcuts ×, pin, close on click, divider | fix | 3–8 min (table) | 10 min | 17:43–17:53 |
+| 2026-10-11 | B1 HOME: page bar left + Home Undo/Redo (found a Windows file-in-use bug) | feature | 3–8 min (table) | 15 min | 17:43–17:58 |
+| 2026-10-11 | Lead B1: decision, briefs, 3 icons (an Edit-tool slip wrote raw glyphs, fixed), ContextMenu ☆ on toggles, Print & Export ×, lint | lead | ~5 min | 8 min | 17:40–17:48, 17:53–17:59 |

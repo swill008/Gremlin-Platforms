@@ -249,6 +249,9 @@ var _LAYER_WORDS = {
 // Hide and Lock for what was right-clicked: the item, its hotspot or the
 // leader clicked; several selected items all at once. Unhide or unlock from
 // the Layers panel (a hidden or locked item cannot be clicked on the map).
+// An item's rows carry the hide / lock command ids, so they can be
+// favourites (a favourite runs the command on the whole selection); the
+// hotspot and leader rows act on a part and stay plain toggles.
 function _hideLock(kind) {
     var id = _ctx.nodeId
     if (!id || kind === "canvas")
@@ -269,8 +272,11 @@ function _hideLock(kind) {
         var on = !all(flag)
         return function() { setLayerFlags(targets, flag, on) }
     }
-    return [_tog("Hide " + word, all("hidden"), flip("hidden")),
-            _tog("Lock " + word, all("locked"), flip("locked"))]
+    if (kind === "hotspot" || kind === "leader")
+        return [_tog("Hide " + word, all("hidden"), flip("hidden")),
+                _tog("Lock " + word, all("locked"), flip("locked"))]
+    return [_cmdTog("hide", "Hide " + word, all("hidden"), flip("hidden")),
+            _cmdTog("lock", "Lock " + word, all("locked"), flip("locked"))]
 }
 
 // --- chips, groups and leaders -------------------------------------------

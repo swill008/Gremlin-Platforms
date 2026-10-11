@@ -420,8 +420,12 @@ ApplicationWindow {
         return true
     }
 
+    // File › Edit Mapping, Ctrl+E and the view-only banner's link all
+    // start editing here, with the same refusals (D-FIXLIST-B1).
+    readonly property bool canEnterEdit: !editing && targetName.length > 0
+
     function enterEdit() {
-        if (editing)
+        if (!canEnterEdit)
             return
         // Unsaved edits a crash left (put off with Not now) are offered
         // again: a new session would write over their copy, and Cancel
@@ -3266,7 +3270,7 @@ ApplicationWindow {
                 ThemedMenuItem {
                     text: "Edit Mapping"
                     hint: "Ctrl+E"
-                    enabled: !_buttonMap.editing && _buttonMap.targetName.length > 0
+                    enabled: _buttonMap.canEnterEdit
                     onTriggered: _buttonMap.enterEdit()
                 }
                 ThemedMenuItem { text: "Save"; hint: "Ctrl+S"; enabled: _buttonMap.editing; onTriggered: _buttonMap.saveEdit() }
@@ -3728,6 +3732,62 @@ ApplicationWindow {
                     text: "Keyboard Shortcuts…"
                     hint: "Ctrl+K"
                     onTriggered: _buttonMap.openShortcuts()
+                }
+            }
+        }
+
+        // The view-only banner (D-FIXLIST-B1 item 1): one slim line under
+        // the menu bar while the map is live (not editing), in the
+        // Background-mode banner's look. Its link starts editing as File ›
+        // Edit Mapping does. No close button; hidden while editing.
+        Rectangle {
+            id: _viewOnlyBanner
+            objectName: "bmViewOnlyBanner"
+            visible: !_buttonMap.editing
+            Layout.fillWidth: true
+            Layout.leftMargin: Style.dp(10)
+            Layout.rightMargin: Style.dp(10)
+            Layout.topMargin: Style.dp(4)
+            Layout.preferredHeight: _viewOnlyRow.implicitHeight + Style.dp(4)
+            radius: Style.dp(4)
+            color: Style.infoFillDeep
+            border.color: Style.info
+            RowLayout {
+                id: _viewOnlyRow
+                anchors.centerIn: parent
+                spacing: 0
+                Label {
+                    objectName: "bmViewOnlyText"
+                    text: "View only. To edit this device map, choose File › "
+                    color: Style.fgStrong
+                    font.pixelSize: Style.dp(11)
+                }
+                Label {
+                    id: _viewOnlyEdit
+                    objectName: "bmViewOnlyEdit"
+                    text: "Edit Mapping"
+                    enabled: _buttonMap.canEnterEdit
+                    color: enabled ? Style.info : Style.fg
+                    opacity: enabled ? 1 : 0.6
+                    font.pixelSize: Style.dp(11)
+                    font.underline: enabled
+                    Accessible.role: Accessible.Link
+                    Accessible.name: text
+                    Accessible.onPressAction: activate()
+                    function activate() {
+                        _buttonMap.enterEdit()
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: parent.enabled
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: _viewOnlyEdit.activate()
+                    }
+                }
+                Label {
+                    text: "."
+                    color: Style.fgStrong
+                    font.pixelSize: Style.dp(11)
                 }
             }
         }
@@ -4560,7 +4620,7 @@ ApplicationWindow {
                 // shifted sign, and a press both match runs it once.
                 Shortcut {
                     sequence: "Ctrl+E"
-                    enabled: keyOk(!editing && targetName.length > 0)
+                    enabled: keyOk(canEnterEdit)
                     onActivated: enterEdit()
                 }
                 Shortcut {

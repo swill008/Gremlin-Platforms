@@ -1743,7 +1743,7 @@ ApplicationWindow {
                     JGToolButton {
                         id: _vjoyViewerButton
                         compact: _root.toolbarCompact
-                        text: "\uF3F2"
+                        text: "\uF788"
                         tooltip: qsTr("Show or hide the vJoy Viewer")
                         caption: "vJoy Viewer"
 
@@ -1767,7 +1767,7 @@ ApplicationWindow {
                     JGToolButton {
                         id: _buttonMapButton
                         compact: _root.toolbarCompact
-                        text: "\uF5E7"
+                        text: "\uF47F"
                         tooltip: qsTr("Open a blank Button Map")
                         caption: "Button Map"
 
@@ -1778,7 +1778,7 @@ ApplicationWindow {
                     JGToolButton {
                         id: _deviceLibraryButton
                         compact: _root.toolbarCompact
-                        text: "\uF1A5"
+                        text: "\uF447"
                         tooltip: qsTr("Every device and its saved setups")
                         caption: "Device Library"
 

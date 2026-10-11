@@ -80,7 +80,32 @@ MouseArea {
         }
     }
 
+    // Move dead zone (D-FIXLIST-B1): a chip, group member, drawing or free
+    // table cell moves only once the pointer is more than 4 screen pixels
+    // from the press, so a click that wobbles only selects.
+    readonly property real moveDeadZone: 4
+    property bool moveArmed: false
+    property real pressSceneX: 0
+    property real pressSceneY: 0
+    function isMoveDrag(kind) {
+        return kind === "chip" || kind === "member" || kind === "draw" || kind === "tablecell"
+    }
+    // True while a move drag is still inside its dead zone.
+    function inDeadZone(m) {
+        if (!moveArmed || !isMoveDrag(ed.dragKind))
+            return false
+        var sp = mapToItem(null, m.x, m.y)
+        if (Math.hypot(sp.x - pressSceneX, sp.y - pressSceneY) <= moveDeadZone)
+            return true
+        moveArmed = false
+        return false
+    }
+
     onPressed: (m) => {
+        var ps = mapToItem(null, m.x, m.y)
+        pressSceneX = ps.x
+        pressSceneY = ps.y
+        moveArmed = true
         ed.mapPressed()
         if (ed.renameId) {
             var nr = ed.nodeAt(ed.renameId)
@@ -430,6 +455,8 @@ MouseArea {
             ed.movePrintArea(m.x, m.y)
             return
         }
+        if (inDeadZone(m))
+            return
         if (ed.dragKind === "chip" || ed.dragKind === "member")
             ed.poolHover = ed.overPool(m.x, m.y)
         if (ed.dragKind === "rulerguide" && ed.guideDrag) {
@@ -568,6 +595,16 @@ MouseArea {
             ed.bump()
             return
         }
+        // Never left the dead zone: the press only selected.
+        if (inDeadZone(m)) {
+            moveArmed = false
+            ed.poolHover = false
+            ed.dragKind = ""
+            ed.clearMoveGuides()
+            ed.bump()
+            return
+        }
+        moveArmed = false
         // Dropped on the pool: back off the map.
         if ((ed.dragKind === "chip" || ed.dragKind === "member") && ed.poolHover) {
             ed.poolHover = false

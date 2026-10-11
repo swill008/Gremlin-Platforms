@@ -275,6 +275,9 @@ SIDE_PANELS_KEY = "side-panels"
 PROPS_SPLIT_KEY = "props-split"
 PRINT_AREA_SHOWN_KEY = "print-area-shown"
 PROPS_SHOWN_KEY = "props-shown"
+# The Options window's group list width (its divider); 0 = fit the names.
+OPTIONS_GROUPS_WIDTH_KEY = "options-groups-width"
+OPTIONS_GROUPS_WIDTH_MAX = 2000
 
 PROPS_SPLIT_DEFAULT = 0.6
 PROPS_SPLIT_MIN = 0.2
@@ -308,6 +311,11 @@ def _register_panels(cfg: Configuration) -> None:
         PROPS_SHOWN_DEFAULT,
         "Button Map: Properties shows under Layers (View > Properties).",
         {}, False,
+    )
+    cfg.register(
+        SECTION, PANELS_GROUP, OPTIONS_GROUPS_WIDTH_KEY, PropertyType.Int, 0,
+        "Button Map Options: the group list's width (0 = fit the names).",
+        {"min": 0, "max": OPTIONS_GROUPS_WIDTH_MAX}, False,
     )
 
 
@@ -419,13 +427,43 @@ def set_props_shown(shown: object) -> bool:
     return True
 
 
+def options_groups_width() -> int:
+    """The Options window's group list width in logical px at 100%; 0 when
+    never dragged (the window fits the names)."""
+    raw = _panels_cfg().value(SECTION, PANELS_GROUP, OPTIONS_GROUPS_WIDTH_KEY)
+    try:
+        width = round(float(typing.cast(float, raw)))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+    return max(0, min(OPTIONS_GROUPS_WIDTH_MAX, width))
+
+
+def set_options_groups_width(width: object) -> bool:
+    """Keeps the dragged width (the window clamps it to its own room);
+    False when nothing changed."""
+    try:
+        new = round(float(typing.cast(float, width)))
+    except (TypeError, ValueError, OverflowError):
+        return False
+    new = max(0, min(OPTIONS_GROUPS_WIDTH_MAX, new))
+    if new == options_groups_width():
+        return False
+    _panels_cfg().set(SECTION, PANELS_GROUP, OPTIONS_GROUPS_WIDTH_KEY, new)
+    return True
+
+
+# Windows of their own, not Button Map panels: Reset Panels keeps their pin.
+_RESET_KEEPS = ("shortcuts", "options")
+
+
 def reset_panels() -> None:
     """The side panels, the divider and Properties back to their defaults
     (View > Reset Panels, 07 S99). Not the print area's frame, the
-    Keyboard Shortcuts window's pin or the favourites: they aren't panels."""
+    Keyboard Shortcuts and Options windows (pin, group list width) or the
+    favourites: they aren't panels."""
     cfg = _panels_cfg()
     stored = dict(cfg.value(SECTION, PANELS_GROUP, SIDE_PANELS_KEY) or {})
-    kept = {k: v for k, v in stored.items() if k == "shortcuts"}
+    kept = {k: v for k, v in stored.items() if k in _RESET_KEEPS}
     cfg.set(SECTION, PANELS_GROUP, SIDE_PANELS_KEY, kept)
     cfg.set(SECTION, PANELS_GROUP, PROPS_SPLIT_KEY, PROPS_SPLIT_DEFAULT)
     cfg.set(SECTION, PANELS_GROUP, PROPS_SHOWN_KEY, PROPS_SHOWN_DEFAULT)
@@ -767,6 +805,16 @@ class ButtonMapOptions(QtCore.QObject):
     @QtCore.Slot(bool)
     def setPropsShown(self, shown: bool) -> None:
         if set_props_shown(shown):
+            _notifier().changed.emit()
+
+    @QtCore.Slot(result=int)
+    def optionsGroupsWidth(self) -> int:
+        """The Options window's group list width; 0 = fit the names."""
+        return options_groups_width()
+
+    @QtCore.Slot(float)
+    def setOptionsGroupsWidth(self, width: float) -> None:
+        if set_options_groups_width(width):
             _notifier().changed.emit()
 
     @QtCore.Slot()

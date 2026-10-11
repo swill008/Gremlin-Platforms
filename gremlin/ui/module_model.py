@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui
@@ -15,6 +17,7 @@ from gremlin import (
     device_initialization,
     event_handler,
 )
+from gremlin import shared_state
 from gremlin.shared_state import runtime_active
 from gremlin.signal import signal
 from gremlin.types import InputType, PropertyType
@@ -438,6 +441,83 @@ def import_photo(device_name: str, guid: str, source: str) -> str:
     return ref
 
 
+# Home's Undo / Redo (01 S143, D-FIXLIST-B1 10): about 50 steps of the card
+# layout, kept until the program closes; another profile clears them.
+_HOME_STEPS = 50
+_HOME_LAYOUT_KEYS = (_CFG_ORDER, _CFG_STACKS, _CFG_SIZES, _CFG_COMPACT, _CFG_SPLIT)
+
+
+def _logical_picture() -> dict:
+    """The Logical Device card's picture as Undo keeps it: its photo files
+    (name -> bytes, so Undo of Remove Image brings the file back) and the
+    bottom background picture node with its place in the map."""
+    from gremlin import logical_device_file
+
+    files: dict[str, bytes] = {}
+    for path in store.photo_files("Logical Device", LOGICAL_GUID):
+        try:
+            files[path.name] = path.read_bytes()
+        except OSError:
+            continue
+    doc = store.read_path(logical_device_file.path())
+    ref = store.device_photo_ref(doc)
+    node, index = None, 0
+    nodes = doc.get("nodes")
+    if ref and isinstance(nodes, list):
+        for at, item in enumerate(nodes):
+            if (
+                store.is_background(item)
+                and store.normal_ref(str(item.get("src") or "")) == ref
+            ):
+                node, index = json.loads(json.dumps(item)), at
+                break
+    return {"files": files, "node": node, "index": index}
+
+
+def _put_logical_picture(saved: dict) -> None:
+    """Puts the Logical Device card's picture back as _logical_picture()
+    kept it. Raises OSError."""
+    from gremlin import logical_device_file
+
+    keep: dict[str, bytes] = saved.get("files") or {}
+    for name, data in keep.items():
+        dest = store.pictures_dir("Logical Device", LOGICAL_GUID) / name
+        try:
+            if dest.is_file() and dest.read_bytes() == data:
+                continue
+        except OSError:
+            pass
+        store.put_picture("Logical Device", LOGICAL_GUID, data, name)
+    path = logical_device_file.path()
+    node = saved.get("node")
+
+    def change(doc: dict) -> None:
+        store.set_device_photo(doc, "", path.parent)
+        if node is not None:
+            nodes = doc.setdefault("nodes", [])
+            at = max(0, min(int(saved.get("index") or 0), len(nodes)))
+            nodes.insert(at, json.loads(json.dumps(node)))
+
+    store.update_path(path, change, "Home")
+    now = store.photo_files("Logical Device", LOGICAL_GUID)
+    _remove_pictures_soon([p for p in now if p.name not in keep])
+
+
+def _remove_pictures_soon(paths: list[Path]) -> None:
+    """Deletes picture files, waiting up to a second for one still open: the
+    card's picture is read on another thread just after an Undo shows it,
+    and Windows refuses to delete a file being read. Raises OSError."""
+    deadline = clock.monotonic() + 1.0
+    while True:
+        try:
+            store.remove_picture_files(paths)
+            return
+        except PermissionError:
+            if clock.monotonic() > deadline:
+                raise
+            clock.sleep(0.025)
+
+
 def _plog(action: str, **parts: object) -> None:
     detail = " ".join(f"{key}={value!r}" for key, value in parts.items())
     persist_log(f"Persist {action} {detail}")
@@ -809,10 +889,20 @@ class ModuleListModel(QtCore.QAbstractListModel):
     cantSendChanged = QtCore.Signal()
     # A card's shown name (the user's name for the device) may have changed.
     namesChanged = QtCore.Signal()
+    # Home's Undo / Redo steps changed (D-FIXLIST-B1 10).
+    stepsChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._rows: list[ModuleRow] = []
+        # Home's Undo / Redo: (label, before, after); before and after hold
+        # only the parts of the layout one user action changed.
+        self._undo_steps: list[tuple[str, dict, dict]] = []
+        self._redo_steps: list[tuple[str, dict, dict]] = []
+        self._just_undid = False
+        self._step_depth = 0
+        self._divider_before: dict | None = None
+        self._steps_profile = id(shared_state.current_profile)
         self._hidden_names: dict[str, str] = {}
         self._focus = ""
         self._last: dict[str, tuple[str, str]] = {}
@@ -844,6 +934,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._dest_timer.timeout.connect(self._poll_dest_last)
         self._dest_timer.start()
         signal.profileChanged.connect(self._schedule_reload)
+        signal.profileChanged.connect(self._forget_steps_on_switch)
         signal.configChanged.connect(self._schedule_refresh)
         # "Driven by" follows the bindings' owner, input_pairing: one notice
         # per burst of edits, undo and Delete Mode included
@@ -1085,6 +1176,18 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str)
     def moveSlugBefore(self, slug: str, before_slug: str) -> None:
+        with self._home_step("Move Card"):
+            self._move_slug_before(slug, before_slug)
+
+    @QtCore.Slot(str, str)
+    def dropSlugBefore(self, slug: str, before_slug: str) -> None:
+        """A card dragged to a new place: out of its stack and moved, as one
+        step."""
+        with self._home_step("Move Card"):
+            self.unstackSlug(slug)
+            self._move_slug_before(slug, before_slug)
+
+    def _move_slug_before(self, slug: str, before_slug: str) -> None:
         groups = {g[0]: g for g in self._stacks()}
         stacked = {s for g in groups.values() for s in g}
         leaders: list[str] = []
@@ -1139,6 +1242,158 @@ class ModuleListModel(QtCore.QAbstractListModel):
         packed = "|".join("+".join(g) for g in groups if len(g) > 1)
         _write_status(_CFG_STACKS, packed)
 
+    # +---------------------------------------------------------------------
+    # | Home's Undo / Redo (01 S143, D-FIXLIST-B1 10). One user action is one
+    # | step; Delete Device is not one (History). The keys, the page bar's
+    # | Undo / Redo pair and the card menu's header all use these.
+
+    def _home_state(self, picture: bool = False) -> dict:
+        _ensure_display_options()
+        cfg = config.Configuration()
+        state: dict = {
+            key: cfg.value(_CFG_SECTION, _CFG_GROUP, key) for key in _HOME_LAYOUT_KEYS
+        }
+        state["ratio"] = self._ratio_now()
+        if picture:
+            state["picture"] = _logical_picture()
+        return state
+
+    def _ratio_now(self) -> float:
+        """The divider's place, as a step keeps it."""
+        return round(float(self.splitRatio), 4)  # pyright: ignore[reportArgumentType]
+
+    @contextlib.contextmanager
+    def _home_step(self, label: str, picture: bool = False) -> Iterator[None]:
+        """Records what the block changes as one step (the outermost block
+        only: Reset Card Layout's unstack is part of its own step)."""
+        if self._step_depth:
+            yield
+            return
+        before = self._home_state(picture)
+        self._step_depth += 1
+        try:
+            yield
+        finally:
+            self._step_depth -= 1
+        self._push_step(label, before, self._home_state(picture))
+
+    def _push_step(self, label: str, before: dict, after: dict) -> None:
+        changed = [key for key in after if before.get(key) != after[key]]
+        if not changed:
+            return
+        self._undo_steps.append(
+            (label, {k: before.get(k) for k in changed}, {k: after[k] for k in changed})
+        )
+        del self._undo_steps[:-_HOME_STEPS]
+        self._redo_steps.clear()
+        self._just_undid = False
+        self.stepsChanged.emit()
+
+    def _apply_state(self, state: dict) -> None:
+        for key in _HOME_LAYOUT_KEYS:
+            if key in state:
+                _write_status(key, state[key])
+        if "ratio" in state:
+            from gremlin.ui import window_placement
+
+            try:
+                window_placement.save_split("home", float(state["ratio"]))
+            except Exception:
+                pass
+        if "picture" in state:
+            try:
+                _put_logical_picture(state["picture"])
+            except OSError as exc:
+                _plog("home undo picture failed", error=exc)
+            self._set_card_photo("logical")
+        self._reload()
+        signal.configChanged.emit()
+        self.panesChanged.emit()
+
+    @QtCore.Slot()
+    def undo(self) -> None:
+        if not self._undo_steps:
+            return
+        step = self._undo_steps.pop()
+        self._apply_state(step[1])
+        self._redo_steps.append(step)
+        self._just_undid = True
+        self.stepsChanged.emit()
+
+    @QtCore.Slot()
+    def redo(self) -> None:
+        if not self._redo_steps:
+            return
+        step = self._redo_steps.pop()
+        self._apply_state(step[2])
+        self._undo_steps.append(step)
+        self._just_undid = False
+        self.stepsChanged.emit()
+
+    @QtCore.Slot()
+    def _forget_steps_on_switch(self) -> None:
+        """Another profile opened: its Home steps start empty."""
+        now = id(shared_state.current_profile)
+        if now == self._steps_profile:
+            return
+        self._steps_profile = now
+        self.forgetSteps()
+
+    @QtCore.Slot()
+    def forgetSteps(self) -> None:
+        if not self._undo_steps and not self._redo_steps:
+            return
+        self._undo_steps.clear()
+        self._redo_steps.clear()
+        self._just_undid = False
+        self.stepsChanged.emit()
+
+    @QtCore.Property(bool, notify=stepsChanged)
+    def canUndo(self) -> bool:
+        return bool(self._undo_steps)
+
+    @QtCore.Property(bool, notify=stepsChanged)
+    def canRedo(self) -> bool:
+        return bool(self._redo_steps)
+
+    @QtCore.Property(str, notify=stepsChanged)
+    def undoTip(self) -> str:
+        return f"Undo {self._undo_steps[-1][0]} (Ctrl+Z)" if self._undo_steps else ""
+
+    @QtCore.Property(str, notify=stepsChanged)
+    def redoTip(self) -> str:
+        return f"Redo {self._redo_steps[-1][0]} (Ctrl+Y)" if self._redo_steps else ""
+
+    @QtCore.Property(str, notify=stepsChanged)
+    def lastChange(self) -> str:
+        return f"Last change: {self._undo_steps[-1][0]}" if self._undo_steps else ""
+
+    @QtCore.Property(str, notify=stepsChanged)
+    def undone(self) -> str:
+        if self._just_undid and self._redo_steps:
+            return f"Undone: {self._redo_steps[-1][0]}"
+        return ""
+
+    @QtCore.Property(int, notify=stepsChanged)
+    def stepCount(self) -> int:
+        return len(self._undo_steps)
+
+    @QtCore.Slot()
+    def beginDivider(self) -> None:
+        """The Input / Output divider is picked up: its step starts here."""
+        self._divider_before = {"ratio": self._ratio_now()}
+
+    @QtCore.Slot(float)
+    def endDivider(self, ratio: float) -> None:
+        """The divider is let go: one step from where it was picked up."""
+        before = self._divider_before
+        self._divider_before = None
+        self.setSplitRatio(ratio)
+        if before is not None:
+            self._push_step(
+                "Move Divider", before, {"ratio": self._ratio_now()}
+            )
+
     @QtCore.Property(bool, notify=panesChanged)
     def compactView(self) -> bool:
         try:
@@ -1154,11 +1409,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
         flag = bool(compact)
         if flag == self.compactView:
             return
-        try:
-            _ensure_display_options()
-            _write_status(_CFG_COMPACT, flag)
-        except Exception:
-            return
+        with self._home_step("Compact View On" if flag else "Compact View Off"):
+            try:
+                _ensure_display_options()
+                _write_status(_CFG_COMPACT, flag)
+            except Exception:
+                return
         self.panesChanged.emit()
 
     @QtCore.Property(str, notify=panesChanged)
@@ -1179,11 +1435,15 @@ class ModuleListModel(QtCore.QAbstractListModel):
             name = "none"
         if name == self.splitMode:
             return
-        try:
-            _ensure_display_options()
-            _write_status(_CFG_SPLIT, name)
-        except Exception:
-            return
+        shown = {
+            "none": "Single list", "vertical": "Side by side", "horizontal": "Stacked"
+        }
+        with self._home_step(f"Layout: {shown[name]}"):
+            try:
+                _ensure_display_options()
+                _write_status(_CFG_SPLIT, name)
+            except Exception:
+                return
         self.panesChanged.emit()
 
     @QtCore.Property(float, notify=panesChanged)
@@ -1246,39 +1506,53 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, int, int)
     def setPileSize(self, slug: str, width: int, height: int) -> None:
+        """A card's size, once its corner is let go (one step)."""
         w, h = _clamp_size(width, height)
-        sizes = _sizes()
-        for member in self.pileMembers(slug):
-            sizes[member] = (w, h)
-        _set_sizes(sizes)
+        with self._home_step("Resize Card"):
+            sizes = _sizes()
+            for member in self.pileMembers(slug):
+                sizes[member] = (w, h)
+            _set_sizes(sizes)
         self.panesChanged.emit()
 
     @QtCore.Slot(str)
     def resetCardSize(self, slug: str) -> None:
-        sizes = _sizes()
-        for member in self.pileMembers(slug):
-            sizes.pop(member, None)
-        _set_sizes(sizes)
+        with self._home_step("Reset Size"):
+            sizes = _sizes()
+            for member in self.pileMembers(slug):
+                sizes.pop(member, None)
+            _set_sizes(sizes)
         signal.configChanged.emit()
         self.panesChanged.emit()
 
     @QtCore.Slot(str)
     def clearCardSettings(self, slug: str) -> None:
+        with self._home_step("Reset Card Layout"):
+            self._clear_card_settings(slug)
+
+    def _clear_card_settings(self, slug: str) -> None:
+        """The card's size and stack go (Reset Card Layout, Delete Device:
+        only the first is a Home step)."""
         sizes = _sizes()
         sizes.pop(slug, None)
         _set_sizes(sizes)
-        self.unstackSlug(slug)
+        self._unstack_slug(slug)
         signal.configChanged.emit()
         self.panesChanged.emit()
 
     @QtCore.Slot()
     def resetAllCardSizes(self) -> None:
-        reset_all_card_sizes()
+        with self._home_step("Reset All Card Sizes"):
+            reset_all_card_sizes()
         self.panesChanged.emit()
 
     @QtCore.Slot(str, str)
     def stackSelected(self, leader: str, slugs_csv: str) -> None:
         """Stack the listed slugs onto leader. Leader keeps the pile slot."""
+        with self._home_step("Stack Selected Cards"):
+            self._stack_selected(leader, slugs_csv)
+
+    def _stack_selected(self, leader: str, slugs_csv: str) -> None:
         if not leader:
             return
         names: list[str] = []
@@ -1320,6 +1594,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str)
     def unstackSlug(self, slug: str) -> None:
+        with self._home_step("Unstack"):
+            self._unstack_slug(slug)
+
+    def _unstack_slug(self, slug: str) -> None:
         groups = []
         changed = False
         for group in self._saved_stacks():
@@ -1337,6 +1615,10 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str)
     def unstackAll(self, slug: str) -> None:
+        with self._home_step("Unstack All"):
+            self._unstack_all(slug)
+
+    def _unstack_all(self, slug: str) -> None:
         groups = []
         changed = False
         for group in self._saved_stacks():
@@ -1428,18 +1710,21 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if reason:
             module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
             return False
-        rel = import_photo("Logical Device", LOGICAL_GUID, fileUrl)
-        if not rel:
-            return False
-
-        def change(doc: dict) -> None:
-            store.set_device_photo(doc, rel, path.parent)
-
-        try:
-            if not store.update_path(path, change, "Home"):
+        had = store.photo_files("Logical Device", LOGICAL_GUID)
+        label = "Change Image" if had else "Add Image"
+        with self._home_step(label, picture=True):
+            rel = import_photo("Logical Device", LOGICAL_GUID, fileUrl)
+            if not rel:
                 return False
-        except OSError:
-            return False
+
+            def change(doc: dict) -> None:
+                store.set_device_photo(doc, rel, path.parent)
+
+            try:
+                if not store.update_path(path, change, "Home"):
+                    return False
+            except OSError:
+                return False
         self._set_card_photo(slug)
         return True
 
@@ -1457,18 +1742,20 @@ class ModuleListModel(QtCore.QAbstractListModel):
             module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
             return False
         found = store.photo_files("Logical Device", LOGICAL_GUID)
-        try:
-            store.remove_picture_files(found)
+        # Undo keeps the picture file, so it comes back (D-FIXLIST-B1 10).
+        with self._home_step("Remove Image", picture=True):
+            try:
+                store.remove_picture_files(found)
 
-            def change(doc: dict) -> object:
-                if not store.device_photo_ref(doc):
-                    return False
-                store.set_device_photo(doc, "", path.parent)
-                return None
+                def change(doc: dict) -> object:
+                    if not store.device_photo_ref(doc):
+                        return False
+                    store.set_device_photo(doc, "", path.parent)
+                    return None
 
-            store.update_path(path, change, "Home")
-        except OSError:
-            return False
+                store.update_path(path, change, "Home")
+            except OSError:
+                return False
         self._set_card_photo(slug)
         return True
 
@@ -1755,7 +2042,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
             slug = store.card_key(device_name)
             if data.get("stub"):
                 _remember_stub(slug)
-            self.clearCardSettings(slug)
+            # Not a Home step: Delete Device is undone through History.
+            self._clear_card_settings(slug)
             if self._focus == slug:
                 self._focus = ""
             self._reload()

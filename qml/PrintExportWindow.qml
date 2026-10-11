@@ -22,7 +22,9 @@ Window {
     property var host: null
 
     title: "Print & Export"
-    flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
+    // WindowSystemMenuHint: on Windows a Tool window draws its × only with
+    // the system menu (as ShortcutsWindow.qml).
+    flags: Qt.Tool | Qt.WindowTitleHint | Qt.WindowSystemMenuHint | Qt.WindowCloseButtonHint
     // Kept inside the screen at any UI scale (as the other tool windows).
     // No width/height binding: ToolWindowMemory sets the size once when
     // the window opens (saved size, or its default fitted to the screen);

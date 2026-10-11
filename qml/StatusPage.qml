@@ -23,6 +23,37 @@ Item {
         }
     }
 
+    // Home's Undo / Redo (01 S143, D-FIXLIST-B1 10): the steps are the
+    // model's; Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z while Home shows and no text
+    // box is being typed in. On Windows StandardKey.Redo is Ctrl+Y and
+    // Ctrl+Shift+Z.
+    function _typing() {
+        var f = Window.activeFocusItem
+        return !!f && ("cursorPosition" in f)
+    }
+    function undo() {
+        if (model && model.canUndo) {
+            model.undo()
+            refreshCards()
+        }
+    }
+    function redo() {
+        if (model && model.canRedo) {
+            model.redo()
+            refreshCards()
+        }
+    }
+    Shortcut {
+        enabled: _page.visible && !!_page.model && _page.model.canUndo
+        sequences: [StandardKey.Undo]
+        onActivated: if (!_page._typing()) _page.undo()
+    }
+    Shortcut {
+        enabled: _page.visible && !!_page.model && _page.model.canRedo
+        sequences: [StandardKey.Redo]
+        onActivated: if (!_page._typing()) _page.redo()
+    }
+
     property var model: null
     // Cards on show, kept current as the model reloads.
     property int shownCount: 0
@@ -365,8 +396,8 @@ Item {
         clearDrag()
         if (before === home)
             return
-        model.unstackSlug(slug)
-        model.moveSlugBefore(slug, before)
+        // Out of its stack and moved: one Undo step.
+        model.dropSlugBefore(slug, before)
     }
 
     function askDelete(card) {
@@ -553,6 +584,10 @@ Item {
             if (model)
                 model.unstackAll(card.slug)
         })
+        // The card menu's Undo / Redo pair; after the click, as the cards are
+        // made again.
+        card.undoStep.connect(function() { Qt.callLater(_page.undo) })
+        card.redoStep.connect(function() { Qt.callLater(_page.redo) })
         card.Component.onDestruction.connect(function() { _page.unregisterCard(card) })
     }
 
@@ -675,12 +710,13 @@ Item {
     }
 
     // Home's controls, shown by Main in the bar under the toolbar (D-01-MODE-BAR).
-    // Built in this file, so its bindings still reach _page.
+    // Built in this file, so its bindings still reach _page. On the left
+    // after the divider (01 S58a), then the Undo / Redo pair (01 S143).
     property Component pageBar: Component {
         RowLayout {
             Layout.fillWidth: true
-            Item { Layout.fillWidth: true }
             CheckBox {
+                objectName: "homeCompactView"
                 text: "Compact view"
                 checked: !!(_page.model && _page.model.compactView)
                 onToggled: {
@@ -706,6 +742,19 @@ Item {
                         return
                     _page.model.setSplitMode(["none", "vertical", "horizontal"][currentIndex])
                 }
+            }
+            UndoBar {
+                objectName: "homeUndoBar"
+                Layout.fillWidth: true
+                Layout.leftMargin: Style.dp(10)
+                canUndo: !!_page.model && _page.model.canUndo
+                canRedo: !!_page.model && _page.model.canRedo
+                undoTip: _page.model ? _page.model.undoTip : ""
+                redoTip: _page.model ? _page.model.redoTip : ""
+                lastChange: _page.model ? _page.model.lastChange : ""
+                undone: _page.model ? _page.model.undone : ""
+                onUndo: _page.undo()
+                onRedo: _page.redo()
             }
         }
     }
@@ -760,7 +809,18 @@ Item {
                 if (visible)
                     Qt.callLater(applyRatio)
             }
-            onResizingChanged: if (!resizing && visible) saveRatio()
+            // One Undo step per drag of the divider (D-FIXLIST-B1 10).
+            onResizingChanged: {
+                if (!visible || !_page.model)
+                    return
+                if (resizing) {
+                    _page.model.beginDivider()
+                    return
+                }
+                var r = orientation === Qt.Horizontal ? (_inputPane.width / width) : (_inputPane.height / height)
+                if (r > 0 && width >= 8 && height >= 8)
+                    _page.model.endDivider(r)
+            }
 
             StatusPane {
                 id: _inputPane
@@ -984,6 +1044,8 @@ Item {
                                     stackIndex: index
                                     stacked: _pile.members.length > 1
                                     compactView: !!(_page.model && _page.model.compactView)
+                                    canUndo: !!(_page.model && _page.model.canUndo)
+                                    canRedo: !!(_page.model && _page.model.canRedo)
                                     width: _card.resizing ? _card.liveW : _pile.cardW
                                     height: _card.resizing ? _card.liveH : Math.max(_pile.cardH > 0 ? _pile.cardH : 0, implicitHeight)
                                     stretchPhoto: _pile.cardH >= Style.dp(140)
