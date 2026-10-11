@@ -200,7 +200,7 @@ def main() -> None:
     )
     out["filter-before-switch"] = ev(win, FILTER)
     call(win, "discardEdit")
-    call(win, "openForDevice", "Other Stick", "", OTHER_GUID)
+    call(win, "openForDevice", "Other Stick", OTHER_GUID)
     wait_for(lambda: ev(win, "mapShown && targetName === 'Other Stick'"))
     edit(win)
     out["switched"] = ev(win, "targetName")

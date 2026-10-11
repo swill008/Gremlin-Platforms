@@ -663,7 +663,7 @@ def part_flows(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     RECOVERY.write_text(left, encoding="utf-8")
     w.ev("_buttonMap.offerRecovery()")
     wait_for(lambda: w.opened("_recoverGate"))
-    w.ev("_buttonMap.openForDevice('Third Stick', '', " + json.dumps(THIRD_GUID) + ")")
+    w.ev("_buttonMap.openForDevice('Third Stick', " + json.dumps(THIRD_GUID) + ")")
     wait_for(lambda: w.ev("_buttonMap.targetName") == "Third Stick")
     wait_for(lambda: not w.opened("_recoverGate"))
     out["switch-puts-off"] = {

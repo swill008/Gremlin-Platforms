@@ -475,11 +475,11 @@ def _button_map(out: pathlib.Path) -> None:
         "'copyA:' + (_hw.loadRecovery('Stick A').length > 0)"
         " + ' stashA:' + _hw.editActive('Stick A')"
     )
-    _js(win, "_buttonMap.openForDevice('Stick A', '', ''); 1")
+    _js(win, "_buttonMap.openForDevice('Stick A', ''); 1")
     _wait(500)
     _Out.result("offer-a", _js(win, "String(_recoverGate.opened)"))
     # Home: Stick B's Button Map, with the offer still open.
-    _js(win, "_buttonMap.openForDevice('Stick B', '', ''); 1")
+    _js(win, "_buttonMap.openForDevice('Stick B', ''); 1")
     _wait(500)
     _Out.result(
         "switched",
@@ -508,7 +508,7 @@ def _button_map(out: pathlib.Path) -> None:
         name = image.pixelColor(2, 2).name()
         return {"#993366": "new", "#336699": "old"}.get(name, name)
 
-    _js(win, "_buttonMap.openForDevice('Stick A', '', ''); 1")
+    _js(win, "_buttonMap.openForDevice('Stick A', ''); 1")
     _wait(500)
     _Out.result("offer-a-again", _js(win, "String(_recoverGate.opened)"))
     # Not now.
@@ -552,7 +552,7 @@ def _button_map(out: pathlib.Path) -> None:
     # Back on A (Not now). A copy that only changed the photo (the new one
     # waits in the edit under its own name, 07 S107) is still offered (it
     # was deleted and the old photo put back).
-    _js(win, "_buttonMap.openForDevice('Stick A', '', ''); 1")
+    _js(win, "_buttonMap.openForDevice('Stick A', ''); 1")
     _wait(500)
     _js(win, "_recoverGate.close(); 1")
     _wait(200)
@@ -628,7 +628,7 @@ def _button_map(out: pathlib.Path) -> None:
     mime.setUrls([QtCore.QUrl(old_url)])
     QtGui.QGuiApplication.clipboard().setMimeData(mime)
     _wait(300)
-    _js(win, "_buttonMap.openForDevice('Stick B', '', ''); 1")
+    _js(win, "_buttonMap.openForDevice('Stick B', ''); 1")
     _wait(500)
     _js(
         win,
@@ -639,7 +639,7 @@ def _button_map(out: pathlib.Path) -> None:
     )
     _wait(300)
     kept = _js(win, "String(_buttonMap.keptCopySerial === _hw.clipboardSerial)")
-    _js(win, "_buttonMap.discardEdit(); _buttonMap.openForDevice('Stick C', '', ''); 1")
+    _js(win, "_buttonMap.discardEdit(); _buttonMap.openForDevice('Stick C', ''); 1")
     _wait(500)
     _js(win, "_buttonMap.enterEdit(); 1")
     _wait(400)

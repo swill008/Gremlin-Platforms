@@ -205,7 +205,7 @@ ApplicationWindow {
             onTriggered: {
                 // A click flips 'checked': the tick follows the device shown.
                 checked = Qt.binding(() => name === _buttonMap.targetName)
-                _buttonMap.openForDevice(name, "", guid)
+                _buttonMap.openForDevice(name, guid)
             }
         }
         // File → Device: the devices to switch to, under their own heading.
@@ -894,9 +894,7 @@ ApplicationWindow {
         Qt.callLater(offerRecovery)
     }
 
-    // photo: the caller's card photo, not used (the map's background is the
-    // device's photo, 07 S127).
-    function openForDevice(name, photo, guid) {
+    function openForDevice(name, guid) {
         var next = String(name || "")
         pendingGuid = String(guid || "")
         if (!next.length)
@@ -1233,7 +1231,7 @@ ApplicationWindow {
         requestActivate()
         if (!targetName.length && _inputDeviceItems.count > 0) {
             var first = _inputDeviceItems.objectAt(0)
-            openForDevice(first.name, "", first.guid)
+            openForDevice(first.name, first.guid)
         }
         var why = ""
         if (!targetName.length)

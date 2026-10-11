@@ -146,7 +146,9 @@ def _settings() -> tuple[dict, list[dict]]:
     with _lock:
         _cache, _cache_run = fresh, run
     if trace.osc_on("setup"):
-        trace.osc("setup", f"settings read from osc.json ({len(fresh[1])} targets)")
+        trace.osc(
+            "setup", f"settings read from OSC/module.json ({len(fresh[1])} targets)"
+        )
     return fresh
 
 

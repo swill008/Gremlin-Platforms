@@ -1084,11 +1084,9 @@ ApplicationWindow {
 
     function openButtonMapForCard(card) {
         var name = ""
-        var photo = ""
         var guid = ""
         if (card) {
             name = String(card.rawName || card.name || "")
-            photo = String(card.photo || "")
             guid = String(card.guid || "")
         }
         name = name.trim()
@@ -1096,7 +1094,7 @@ ApplicationWindow {
             return
         var existing = buttonMapWindow()
         if (existing && existing.openForDevice) {
-            existing.openForDevice(name, photo, guid)
+            existing.openForDevice(name, guid)
             existing.show()
             existing.raise()
             existing.requestActivate()

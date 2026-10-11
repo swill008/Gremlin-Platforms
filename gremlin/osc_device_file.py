@@ -5,7 +5,7 @@
 
 Every profile uses one OSC address list, kept under "inputs" in
 its module file, <modules>/OSC/module.json (its own folder, 03 S128; found by
-its id; "osc.json" in trace lines), with the server and behaviour settings
+its id; "OSC/module.json" in trace lines), with the server and behaviour settings
 under "server";
 the file's other keys are left as they are. Writes go through
 gremlin.modules.store, so module-file History records them.
@@ -482,13 +482,13 @@ def _write_key(key: str, value: object, who: str, signal_name: str) -> bool:
     what = f"{count} {_KEY_TEXT.get(key, key)}"
     if not store.update_path(_write_path(), change, who or WHO):
         _trace(
-            f"osc.json not written ({what} unchanged)"
+            f"OSC/module.json not written ({what} unchanged)"
             if same
-            else "osc.json not saved: the file is damaged (refused)",
+            else "OSC/module.json not saved: the file is damaged (refused)",
             warning=not same,
         )
         return False
-    _trace(f"osc.json saved ({what})")
+    _trace(f"OSC/module.json saved ({what})")
     _emit(signal_name)
     return True
 
@@ -520,7 +520,7 @@ def load(rows: OscRows | None = None) -> dict:
     file = path()
     doc = store.read_path(file)
     if not file.exists():
-        _trace("osc.json missing: defaults used (made on the first save)")
+        _trace("OSC/module.json missing: defaults used (made on the first save)")
     target = _rows(rows)
     # Each unreadable row is said once, below; no error traceback per row.
     with quiet():
@@ -538,7 +538,7 @@ def load(rows: OscRows | None = None) -> dict:
         targets = doc.get(TARGETS_KEY) if TARGETS_KEY in doc else [default_target()]
         skipped = f", {len(places)} unreadable" if places else ""
         _trace(
-            f"osc.json loaded ({len(_raw(doc.get(KEY))) - len(places)} inputs, "
+            f"OSC/module.json loaded ({len(_raw(doc.get(KEY))) - len(places)} inputs, "
             f"{len(clean_targets(targets))} targets{skipped})"
         )
     target.layout = store.normalize_layout(doc.get(store.LAYOUT_KEY))
@@ -618,9 +618,9 @@ def save(rows: OscRows | None = None, who: str = "") -> bool:
         _put_layout(doc, layout, names, loaded)
 
     if not store.update_path(_write_path(), change, who or WHO):
-        _trace("osc.json not saved: the file is damaged (refused)", warning=True)
+        _trace("OSC/module.json not saved: the file is damaged (refused)", warning=True)
         return False
-    _trace(f"osc.json saved ({len(inputs)} inputs)")
+    _trace(f"OSC/module.json saved ({len(inputs)} inputs)")
     source.names_loaded = names
     source.mark_saved()
     return True
@@ -661,12 +661,12 @@ def write_server(settings: dict, who: str = "") -> bool:
 
     if not store.update_path(_write_path(), change, who or WHO):
         _trace(
-            "osc.json not written (server settings unchanged)"
+            "OSC/module.json not written (server settings unchanged)"
             if same
-            else "osc.json not saved: the file is damaged (refused)",
+            else "OSC/module.json not saved: the file is damaged (refused)",
             warning=not same,
         )
         return False
-    _trace("osc.json saved (server settings)")
+    _trace("OSC/module.json saved (server settings)")
     _emit("oscServerSettingsChanged")
     return True

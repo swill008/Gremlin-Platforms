@@ -740,3 +740,11 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | CI on 2d14cc37 (planes) | ci | ~10 min (table) | about 19 min | 11:50–12:09 |
 | 2026-10-11 | SHOWME-HELP: three Show me links in the Background topic (53 Help tests) | docs | 3–8 min (table) | 2 min | 12:08–12:10 |
 | 2026-10-11 | SHOWME-CODE: show:buttonmap links (Main.qml handler + window revealForHelp; 3 end-to-end tests + link check) | fix | 3–8 min (table) | 3 min | 12:08–12:11 |
+| 2026-10-11 | Q1a full run (seed 231591) green + lint 0 new; commit 6c6be17e; push | test | 5–6 min (table) | 6 min + 1 min | 12:12–12:19 |
+| 2026-10-11 | Q1a Show me end to end: user go → commit | fix batch | 3–8 min per agent + full run (table) | 12 min | 12:07–12:19 |
+| 2026-10-11 | ARG-W: unused photo argument removed from openForDevice and its callers (62 tests) | fix | 3–8 min (table) | 1 min | 12:29–12:30 |
+| 2026-10-11 | SPEC-W: 9 stale spec sentences reworded (03 S62, 04 S2, 06 S95/LD3, 07 S106, 08 S85 S87, 09 S44 S168) | docs | 3–8 min (table) | 2 min | 12:28–12:30 |
+| 2026-10-11 | OSC-W: OSC trace/Help text names OSC/module.json (5 tests failed before, 71 pass) | fix | 3–8 min (table) | 1 min | 12:29–12:30 |
+| 2026-10-11 | EDT-T: editor tests for S94 S118 S122 in Background mode (6 pass, 1 strict xfail = leader-end snap lost on release) | agent tests | 3–8 min (table) | 4 min | 12:29–12:33 |
+| 2026-10-11 | CI on 6c6be17e (Show me links) | ci | ~10 min (table) | about 18 min | 12:19–12:37 |
+| 2026-10-11 | SCOUT-UNDO: Undo steps per transform/move gesture traced (cause: hover highlight pushes steps mid-drag) | review | 5–10 min (table) | 3 min | 12:37–12:40 |

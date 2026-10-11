@@ -544,8 +544,8 @@ def test_pattern_and_encoder_inputs_are_traced(run: dict) -> None:
 
 def test_setup_lines_when_oscs_file_is_saved(run: dict) -> None:
     lines = step(run, "main-lines")
-    _first(lines, "Setup and files", r"^osc\.json saved \(.+\)$")
-    _first(lines, "Setup and files", r"^osc\.json not written \(.*unchanged\)$")
+    _first(lines, "Setup and files", r"^OSC/module\.json saved \(.+\)$")
+    _first(lines, "Setup and files", r"^OSC/module\.json not written \(.*unchanged\)$")
 
 
 def test_a_wildcard_address_is_blocked_without_a_traceback(run: dict) -> None:

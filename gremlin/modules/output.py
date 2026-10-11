@@ -1234,7 +1234,7 @@ def _logical_step_text(step: Any) -> str | None:  # noqa: ANN401
 
 
 def osc_settings() -> tuple[dict, list[dict]]:
-    """(server settings, targets) as osc.json has them now."""
+    """(server settings, targets) as OSC/module.json has them now."""
     from gremlin import osc_device_file
 
     try:

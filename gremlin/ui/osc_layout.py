@@ -4,7 +4,7 @@
 
 OscLayoutModel is ControlLayoutModel for OSC: one parent per OSC input
 (OscDevice().rows), its actions as child rows, groups, order and your names
-kept in OSC's module file (osc.json: key "layout", input keys "osc:<uid>",
+kept in OSC's module file (OSC/module.json: key "layout", input keys "osc:<uid>",
 names in the claim's friendly names), the settings line under each title
 (S134), live value and last seen (S141), Send Test (S145), Change Address,
 Edit Settings on several inputs (S146) and Copy for Companion (S122).

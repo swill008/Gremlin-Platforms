@@ -85,7 +85,7 @@ def _write_osc(folder: Path, doc: dict) -> None:
     put_module(folder, "OSC", json.dumps(doc))
 
 
-# -- osc.json (E5) ---------------------------------------------------------
+# -- OSC/module.json (E5) --------------------------------------------------
 
 
 def test_unreadable_row_is_one_warning_no_traceback_and_traced(
@@ -114,7 +114,9 @@ def test_unreadable_row_is_one_warning_no_traceback_and_traced(
         t.startswith("row 2 unreadable:") and t.endswith("(kept in the file)")
         for t in lines
     ), lines
-    assert any(t.startswith("osc.json loaded (1 inputs, 1 targets") for t in lines)
+    assert any(
+        t.startswith("OSC/module.json loaded (1 inputs, 1 targets") for t in lines
+    )
     assert "port abc cleaned to 8001" in lines
 
 
@@ -125,7 +127,7 @@ def test_missing_file_gives_defaults_and_a_line(
 
     server = odf.load(OscRows())
     assert server["port"] == odf.SERVER_DEFAULTS["port"]
-    assert any("osc.json missing" in t for t in _osc_lines())
+    assert any("OSC/module.json missing" in t for t in _osc_lines())
 
 
 def test_save_and_settings_writes_are_traced(modules: Path, traced: None) -> None:
@@ -138,8 +140,8 @@ def test_save_and_settings_writes_are_traced(modules: Path, traced: None) -> Non
     assert odf.save(rows)
     assert odf.write_server(dict(odf.SERVER_DEFAULTS, port=9001))
     lines = _osc_lines()
-    assert "osc.json saved (1 inputs)" in lines
-    assert "osc.json saved (server settings)" in lines
+    assert "OSC/module.json saved (1 inputs)" in lines
+    assert "OSC/module.json saved (server settings)" in lines
 
 
 # -- TouchOSC (E7) -----------------------------------------------------------

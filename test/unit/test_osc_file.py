@@ -85,7 +85,15 @@ def emitted(monkeypatch: pytest.MonkeyPatch) -> list[str]:
         "logicalDeviceReloaded",
         "logicalDeviceModified",
     )
-    fake = SimpleNamespace(**{n: Sig(n) for n in names})
+    real = gremlin.signal.signal
+
+    class Fake(SimpleNamespace):
+        # Signals not recorded here stay the real ones: a notice another
+        # test queued (e.g. cantSendChanged) may fire while this one runs.
+        def __getattr__(self, name: str) -> object:
+            return getattr(real, name)
+
+    fake = Fake(**{n: Sig(n) for n in names})
     monkeypatch.setattr(gremlin.signal, "signal", fake)
     return seen
 

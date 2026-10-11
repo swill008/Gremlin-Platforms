@@ -57,7 +57,7 @@ def osc(
         osc_output = importlib.reload(osc_output)
     monkeypatch.setattr(util, "logs_dir", lambda: tmp_path / "logs")
     trace._reset_for_tests()
-    file = tmp_path / "osc.json"
+    file = tmp_path / "module.json"
     file.write_text(
         json.dumps(
             {
@@ -159,10 +159,10 @@ def test_a_sent_message_is_an_out_line(osc: dict) -> None:
     texts = [text for _, text in _lines("output")]
     assert "client 10.0.0.5:9000 open" in texts
     assert "out Desk 10.0.0.5:9000 /a ,if 1 2.0 (Send OSC)" in texts
-    # Reading osc.json is a Setup and files line, not an Output one.
+    # Reading OSC/module.json is a Setup and files line, not an Output one.
     assert not any(t.startswith("settings read") for t in texts)
     setup = [text for _, text in _lines("setup")]
-    assert "settings read from osc.json (1 targets)" in setup
+    assert "settings read from OSC/module.json (1 targets)" in setup
 
 
 def test_a_failing_target_logs_at_most_ten_then_one_note(

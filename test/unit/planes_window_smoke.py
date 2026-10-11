@@ -213,7 +213,7 @@ def main() -> None:
     result("photo-adjust-gone", js("typeof _photoAdj === 'undefined'"))
     result("photo-menu-gone", js("typeof _photoMenu === 'undefined'"))
 
-    js(f"_buttonMap.openForDevice('{DEVICE}', '', '{GUID}'); 1")
+    js(f"_buttonMap.openForDevice('{DEVICE}', '{GUID}'); 1")
     wait(800)
     # The background menu: shown, its items only while editing (07 S39).
     result(
