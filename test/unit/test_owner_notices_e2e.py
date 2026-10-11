@@ -6,11 +6,12 @@
 real program (D-01-OWNER-NOTICES; audit 97, to-dos 100-103).
 
 A journey (test/journeys/_harness.py): the app is built off-screen in its
-own process with a temporary USERPROFILE, the fake joystick driver (two
-sticks: the pJoy Pro and a Saitek X52) and a fake vJoy 1 behind the output
-module. Home is shown (off-screen). Each part edits through the path the
-screens use and records what the user would read afterwards, without
-opening anything again (a fresh page would read the new value anyway):
+own process with a temporary USERPROFILE, the fake joystick driver (the
+shared RIG: pJoy Pro, Saitek X52 and two Twin Sticks; vJoy 1 and 2) and
+an output module for vJoy 1. Home is shown (off-screen). Each part edits
+through the path the screens use and records what the user would read
+afterwards, without opening anything again (a fresh page would read the
+new value anyway):
 
 1. Home on screen while another window edits: a Map to vJoy added (the
    editors' actionsChanged) shows on the vJoy 1 card's "Driven by".
@@ -58,6 +59,7 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "test" / "journeys"))
 from _harness import (  # noqa: E402  # pyright: ignore[reportMissingImports]
+    RIG,
     Journey,
     run_journey,
     step,
@@ -564,16 +566,22 @@ def main() -> None:
             j.vjoy_module(1)
             j.vjoy_module(2)
 
-        Journey(before_output, vjoy_ids=(1, 2)).run(output_story)
+        Journey(before_output, vjoy_ids=RIG["vjoy_ids"]).run(output_story)
         return
 
     def before(j: Journey) -> None:
-        x52 = j.add_stick("Saitek X52", 1)
+        import dill
+
+        x52 = next(
+            dill.GUID(d.device_guid)
+            for d in j.dill_fake.devices
+            if d.name == b"Saitek X52"
+        )
         j.input_module()
         j.input_module("Saitek X52", guid=x52)
         j.vjoy_module()
 
-    Journey(before).run(story)
+    Journey(before, **RIG).run(story)
 
 
 # +-------------------------------------------------------------------------

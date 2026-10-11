@@ -653,3 +653,11 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | VJ2-E2E: harness vjoy_ids + Change vJoy Output e2e (fails on old code: wire label, Driven by, Home cards) | test | 3–8 min (table) | 5 min | 07:35–07:40 |
 | 2026-10-11 | Full run + lint (audit batch final): all green, seed 183838 | test | 5–6 min (table) | 5 min | 07:41–07:46 |
 | 2026-10-11 | CI on b96fab67 | ci | ~10 min (table) | ~13 min | 07:08–07:21 |
+| 2026-10-11 | RELNOTES: release-notes/1.0.32.md (passes release_body check) | docs | rough guess 5–10 min | 1 min | 07:48–07:49 |
+| 2026-10-11 | RIG: harness sticks= + RIG preset + unplug/replug through the real device-change path (smoke 2) | test | 3–8 min (table) | 2 min (agent clock) | 07:47–07:49 |
+| 2026-10-11 | J13: multi-device journey (7; 6 pass; found vJoy Viewer device list ignores the user's device name) | test | 3–8 min (table) | 4 min | 07:47–07:51 |
+| 2026-10-11 | MAPCHECK: pre-release full map check (counts recounted 1249 S / 379 gaps, 96 line counts, stale tags) | map catch-up | 5–7 min (table) | 4 min | 07:48–07:52 |
+| 2026-10-11 | E2E-PRESET: owner-notice e2e on the shared rig (10 pass) | test | 3–8 min (table) | 6 min (mostly waiting on RIG) | 07:47–07:53 |
+| 2026-10-11 | PAIR-NAMES: vJoy Viewer device list shows/follows the user's device names (3 tests; j13 7/7) | fix | 3–8 min (table) | 2 min | 07:52–07:54 |
+| 2026-10-11 | Full run + lint (release + multi-device): 2 failures (built-in table outside device_class; test_final_02 child timeout under load, passes alone) | test | 5–6 min (table) | 6 min (unit-3 425 s) | 07:55–08:01 |
+| 2026-10-11 | Lead: device_class.home_key; module_pairing uses it; 75 targeted pass | lead | no timing data yet | 3 min | 08:01–08:04 |

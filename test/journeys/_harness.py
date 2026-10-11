@@ -50,6 +50,14 @@ JOURNEY_TIMEOUT = 110
 # stall check (BLOCKED_AFTER) still catches a frozen journey early.
 JOURNEY_HANG_LIMIT = JOURNEY_TIMEOUT - 10
 
+# The multi-device rig: Journey(before, **RIG). Shown after start as
+# "pJoy Pro", "Saitek X52", "Twin Stick" and "Twin Stick (2)", with vJoy 1
+# and vJoy 2 (56 buttons, _more_vjoys).
+RIG: dict[str, Any] = {
+    "vjoy_ids": (1, 2),
+    "sticks": (("Saitek X52", 1), ("Twin Stick", 2), ("Twin Stick", 3)),
+}
+
 
 # +-------------------------------------------------------------------------
 # | Pytest side
@@ -323,10 +331,13 @@ class Journey:
         self,
         before_start: Callable[[Journey], None] | None = None,
         vjoy_ids: tuple[int, ...] = (1,),
+        sticks: tuple[tuple[str, int], ...] = (),
     ) -> None:
         """before_start runs once the fakes are in, before the program
         starts: files written there are on disk when it starts. vjoy_ids:
-        the vJoy devices the fake driver has (vJoy 1 only by default)."""
+        the vJoy devices the fake driver has (vJoy 1 only by default).
+        sticks: more sticks as (name, seed), added with add_stick before
+        before_start (only the fake "pJoy Pro" by default)."""
         # Never the user's own folder: run_journey gives a temporary one.
         home = pathlib.Path(os.environ.get("USERPROFILE", "")).resolve()
         users = pathlib.Path(os.environ.get("SystemDrive", "C:") + "/Users")
@@ -346,6 +357,10 @@ class Journey:
         self.fake_hardware = _load("fake_hardware")
         self.dill_fake = self.fake_hardware.install(vjoy_ids=tuple(vjoy_ids))
         self._more_vjoys(tuple(vjoy_ids))
+        # Unplugged sticks: name -> (place in the driver's list, its summary).
+        self._unplugged: dict[str, tuple[int, Any]] = {}
+        for name, seed in sticks:
+            self.add_stick(name, seed)
         self.fake_input = _load("fake_input")
         # Keys and mouse output stay in this process.
         self.fake_input.install()
@@ -579,6 +594,54 @@ class Journey:
         raw.product_id = 0xC000 + seed
         self.dill_fake.devices.append(raw)
         return dill.GUID(raw.device_guid)
+
+    def unplug(self, name: str, timeout: float = 15.0) -> None:
+        """Unplugs the stick the driver calls name (the first of twins): it
+        leaves the fake driver, which tells the program as the real one does
+        (the device change callback), and the wait ends once
+        physical_devices() no longer lists its id."""
+        import dill
+
+        devices = self.dill_fake.devices
+        index, raw = next(
+            (i, d) for i, d in enumerate(devices)
+            if d.name.decode("utf-8") == name
+        )
+        guid = dill.GUID(raw.device_guid)
+        del devices[index]
+        self._unplugged[name] = (index, raw)
+        self._device_changed(raw, dill.DeviceActionType.Disconnected)
+        self.wait_until(
+            lambda: not self._listed(guid), f"{name} gone from the devices", timeout
+        )
+
+    def replug(self, name: str, timeout: float = 15.0) -> None:
+        """Plugs an unplugged stick back in (the same id, at its old place in
+        the driver's list) the same way; waits until it is listed again."""
+        import dill
+
+        index, raw = self._unplugged.pop(name)
+        guid = dill.GUID(raw.device_guid)
+        self.dill_fake.devices.insert(index, raw)
+        self._device_changed(raw, dill.DeviceActionType.Connected)
+        self.wait_until(
+            lambda: self._listed(guid), f"{name} back in the devices", timeout
+        )
+
+    def _device_changed(self, raw: Any, action: Any) -> None:  # noqa: ANN401
+        """What the driver calls on a plug or unplug (the callback the event
+        listener gave it)."""
+        callback = self.dill_fake.device_change_callback
+        assert callback is not None, "the event listener is not listening"
+        callback(raw, action.value)
+
+    @staticmethod
+    def _listed(guid: Any) -> bool:  # noqa: ANN401
+        from gremlin import device_initialization
+
+        return any(
+            d.device_guid == guid for d in device_initialization.physical_devices()
+        )
 
     def stick(self, name: str = "pJoy Pro") -> Any:  # noqa: ANN401
         """The connected stick shown with this name (a twin is "<name> (2)")."""

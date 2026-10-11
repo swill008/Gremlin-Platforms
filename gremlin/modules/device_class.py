@@ -172,6 +172,17 @@ def display_name(kind: str) -> str:
     return "vJoy" if kind == VJOY else ""
 
 
+def home_key(kind: str) -> str:
+    """The Home card key of a built-in device ("keyboard", "osc", "logical",
+    "xbox"): the user's name for it is stored under this key, not under a
+    device id (D-01-OWNER-NOTICES). "" for any other kind."""
+    if kind == "logical_device":
+        return "logical"
+    if kind in _INPUT_SLUGS or kind in {s for _, s in INTERNAL_OUTPUTS.values()}:
+        return kind
+    return ""
+
+
 def guid_of_kind(kind: str) -> uuid.UUID | None:
     """The fixed id of a built-in device (None for vJoy and external)."""
     for guid, (_, slug) in (*INTERNAL_INPUTS.items(), *INTERNAL_OUTPUTS.items()):

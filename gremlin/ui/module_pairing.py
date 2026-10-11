@@ -41,6 +41,23 @@ def _source_title(device_name: str, fallback: str, guid: str = "") -> str:
     return raw or str(fallback or device_name).strip()
 
 
+def _name_key(guid: str) -> str:
+    """The key the user's name for a device is stored under, as the Home
+    cards use: the built-ins' card key, else the device id."""
+    slug = device_class.home_key(device_class.device_kind(guid))
+    return slug or str(guid or "")
+
+
+def _shown_title(device_name: str, guid: str = "") -> str:
+    """The row title: the user's name for the device, else the module
+    file's (03 S122a; D-01-OWNER-NOTICES 3a). Lookups keep the raw name."""
+    from gremlin import device_aliases
+
+    title = _source_title(device_name, device_name, guid)
+    key = _name_key(guid)
+    return device_aliases.display_name(key, title) if key else title
+
+
 def _dest_for_vjoy(vjoy_id: int) -> dict:
     name = f"vJoy {int(vjoy_id)}"
     module = registry.output_for_vjoy(int(vjoy_id))
@@ -144,7 +161,8 @@ def _module_pair_rows(guid: str, device_name: str, input_type: InputType) -> lis
 
 @ta.QmlElement
 class ModulePairDeviceModel(QtCore.QAbstractListModel):
-    """Source modules that have vJoy wires. Names come from the module pack."""
+    """Source modules that have vJoy wires. Names: the user's, else the
+    module file's; deviceName stays raw for lookups."""
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"guid"),
@@ -164,6 +182,8 @@ class ModulePairDeviceModel(QtCore.QAbstractListModel):
         # What drives what: input_pairing's one notice (D-01-OWNER-NOTICES).
         signal.bindingsChanged.connect(self.reload)
         signal.configChanged.connect(self.reload)
+        # The user's names for devices (03 S122a; D-01-OWNER-NOTICES 3a).
+        signal.deviceNamesChanged.connect(self.reload)
         # The device list itself.
         event_handler.EventListener().device_change_event.connect(self.reload)
 
@@ -234,7 +254,7 @@ class ModulePairDeviceModel(QtCore.QAbstractListModel):
             self._rows.append(
                 {
                     "guid": guid,
-                    "name": _source_title(raw_name, raw_name, guid),
+                    "name": _shown_title(raw_name, guid),
                     "deviceName": raw_name,
                     "pairLabel": ", ".join(d["name"] for d in dests),
                     "mapped": True,
