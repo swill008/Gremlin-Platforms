@@ -1,10 +1,11 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Xbox Viewer face picture (D-FIXLIST-B1 item 9): the picture is program art
-in gfx/, loaded beside qml/ and never from a device folder; "Xbox face image
-missing" shows whenever it can't be loaded, an empty source included.
-Spec: 02/06 (Xbox Viewer), D-FIXLIST-B1 (9)."""
+"""Xbox pad face picture on the Xbox Output View (D-FIXLIST-B1 item 9): the
+picture is program art in gfx/, loaded beside qml/ and never from a device
+folder; "Xbox face image missing" shows whenever it can't be loaded, an
+empty source included.
+Spec: 02/06 (Xbox Output View), D-FIXLIST-B1 (9)."""
 
 from __future__ import annotations
 

@@ -498,13 +498,6 @@ function leaderBlocked(n, li) {
     return !!(L && (L.hidden || L.locked))
 }
 
-function leaderHidden(n, li) {
-    if (!n || isHidden(n))
-        return true
-    var L = leaderList(n)[li]
-    return !!(L && L.hidden)
-}
-
 // part: "" for the item, "hot" for a chip's hotspot, "leader:<n>" for a leader.
 function _partTarget(n, part) {
     if (!part)
@@ -526,14 +519,6 @@ function layerFlag(id, part, flag) {
         return false
     var t = _partTarget(n, part)
     return !!(t.obj && t.obj[_flagKey(t.key, flag)])
-}
-
-// True when the item the part belongs to already hides or locks it.
-function layerFlagInherited(id, part, flag) {
-    var n = nodeAt(id)
-    if (!n || !part)
-        return false
-    return flag === "locked" ? isLocked(n) : isHidden(n)
 }
 
 function setLayerFlag(id, part, flag, on) {

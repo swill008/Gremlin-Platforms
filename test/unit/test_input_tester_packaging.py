@@ -11,7 +11,6 @@ spec, the installer scripts and the release workflow instead.
 from __future__ import annotations
 
 import ast
-import importlib.util
 import pathlib
 import re
 
@@ -119,24 +118,6 @@ def test_installer_takes_the_whole_program_folder() -> None:
     assert re.search(
         r'Source: "\{#DistDir\}\\\*"; DestDir: "\{app\}";[^\n]*recursesubdirs', iss
     )
-
-
-def test_wix_generator_installs_the_tester_with_a_valid_id(
-    tmp_path: pathlib.Path,
-) -> None:
-    spec = importlib.util.spec_from_file_location(
-        "generate_wix", _ROOT / "generate_wix.py"
-    )
-    assert spec is not None and spec.loader is not None
-    wix = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(wix)
-    (tmp_path / "gremlin_platforms.exe").write_bytes(b"")
-    (tmp_path / f"{_TESTER}.exe").write_bytes(b"")
-    files = wix.generate_file_list(str(tmp_path))
-    assert f"{_TESTER}.exe" in files
-    entry = wix.create_data_for_file(f"{_TESTER}.exe")
-    assert entry["component_id"] == "component_Gremlin_Input_Tester.exe"
-    assert re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*", entry["file_id"])
 
 
 def test_release_workflow_checks_the_tester_was_built() -> None:

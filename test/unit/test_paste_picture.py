@@ -75,3 +75,57 @@ def test_dropped_files_keep_only_pictures(
     added = profile.importPictureFiles(urls, "Test Stick")
     assert added == ["pictures/grip.png"]
     assert profile.imageAspect(added[0]) == 3.0
+
+
+def test_image_aspect_reads_through_store_picture_size(
+    profile: hardware_profile.HardwareProfile,
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """imageAspect reads a picture's size through the shared reader
+    store.picture_size; an unreadable or missing file gives 1."""
+    picture = tmp_path / "wide.png"
+    image = QtGui.QImage(QtCore.QSize(40, 10), QtGui.QImage.Format.Format_RGB32)
+    image.fill(QtGui.QColor("#336699"))
+    assert image.save(str(picture))
+    broken = tmp_path / "broken.png"
+    broken.write_text("not a picture", encoding="utf-8")
+    calls: list[str] = []
+    real = store.picture_size
+
+    def spy(folder: pathlib.Path | None, ref: str) -> tuple[int, int]:
+        calls.append(ref)
+        return real(folder, ref)
+
+    monkeypatch.setattr(store, "picture_size", spy)
+    assert profile.imageAspect(str(picture)) == 4.0
+    assert profile.imageAspect(picture.as_uri()) == 4.0
+    assert profile.imageAspect(str(broken)) == 1.0
+    assert profile.imageAspect(str(tmp_path / "missing.png")) == 1.0
+    assert profile.imageAspect("") == 1.0
+    assert calls == [str(picture), str(picture), str(broken)]
+
+
+def test_picture_size_reads_files_through_store_picture_size(
+    profile: hardware_profile.HardwareProfile,
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """pictureSize reads a file's size through store.picture_size."""
+    picture = tmp_path / "tall.png"
+    image = QtGui.QImage(QtCore.QSize(6, 18), QtGui.QImage.Format.Format_RGB32)
+    image.fill(QtGui.QColor("#336699"))
+    assert image.save(str(picture))
+    broken = tmp_path / "broken2.png"
+    broken.write_text("not a picture", encoding="utf-8")
+    calls: list[str] = []
+    real = store.picture_size
+
+    def spy(folder: pathlib.Path | None, ref: str) -> tuple[int, int]:
+        calls.append(ref)
+        return real(folder, ref)
+
+    monkeypatch.setattr(store, "picture_size", spy)
+    assert profile.pictureSize(picture.as_uri()) == {"w": 6, "h": 18}
+    assert profile.pictureSize(str(broken)) == {"w": 0, "h": 0}
+    assert calls == [str(picture), str(broken)]

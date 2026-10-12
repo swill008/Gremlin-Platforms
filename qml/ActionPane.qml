@@ -316,7 +316,6 @@ RowLayout {
                 visible: !_pane.editor
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                holdModel: true
                 inputItemModel: _pane.layout.paneModel
             }
             ScrollView {

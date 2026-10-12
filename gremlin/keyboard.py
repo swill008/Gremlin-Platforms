@@ -42,11 +42,6 @@ _get_keyboard_layout = _create_function(
     "user32", "GetKeyboardLayout", [wintypes.DWORD], wintypes.HKL
 )
 
-# https://msdn.microsoft.com/en-us/library/windows/desktop/ms646299(v=vs.85).aspx
-_get_keyboard_state = _create_function(
-    "user32", "GetKeyboardState", [ctypes.POINTER(ctypes.c_char)], wintypes.BOOL
-)
-
 # https://msdn.microsoft.com/en-us/library/windows/desktop/ms646307(v=vs.85).aspx
 _map_virtual_key_ex = _create_function(
     "user32",

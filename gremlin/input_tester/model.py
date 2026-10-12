@@ -633,10 +633,6 @@ class InputTesterModel(QtCore.QObject):
         elif self._follower.changed():
             self._load_log()
 
-    @QtCore.Slot()
-    def reloadLog(self) -> None:
-        self._load_log()
-
     @QtCore.Property(list, notify=logSourcesChanged)
     def logSources(self) -> list:
         return [

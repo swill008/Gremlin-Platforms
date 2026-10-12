@@ -124,7 +124,7 @@ def profile() -> Iterator[Profile]:
         before.bind_devices()
     else:
         LogicalDevice().reset()
-        OscDevice().reset()
+        OscDevice().rows.reset()
 
 
 @pytest.fixture
@@ -265,7 +265,7 @@ def test_s2_device_names_in_the_profile_osc_and_logical_device_in_their_files(
     LogicalDevice().load_dict({"controls": [], "groups": []})
     profile.bind_devices()
     LogicalDevice().create(InputType.JoystickButton, label="Fire")
-    OscDevice().create(InputType.JoystickButton, label="/osc/fire")
+    OscDevice().rows.create(InputType.JoystickButton, label="/osc/fire")
     _bind(profile)
     profile.remember_device(_STICK, "Test Stick")
     path = tmp_path / "rows.xml"
@@ -278,7 +278,7 @@ def test_s2_device_names_in_the_profile_osc_and_logical_device_in_their_files(
     assert [r["label"] for r in osc_device_file.read_inputs()] == ["/osc/fire"]
 
     LogicalDevice().load_dict({"controls": [], "groups": []})
-    OscDevice().reset()
+    OscDevice().rows.reset()
     back = Profile()
     back.from_xml(path)
     back.bind_devices()

@@ -259,7 +259,7 @@ function topics() {
             id: "device-bindings-actions-output-view",
             section: page,
             title: "Output View",
-            body: "<p>A vJoy output device opens its <b>Output View</b> in place of a Device Bindings page: a live view of what its output module sends. The Xbox controller's <b>Output View</b> button opens the Xbox page instead: the driver check and, for each Xbox control, what sends to it.</p>"
+            body: "<p>A vJoy output device opens its <b>Output View</b> in place of a Device Bindings page: a live view of what its output module sends. The Xbox controller's <b>Output View</b> shows the driver check, a live pad for each device that drives it, and, for each Xbox control, what sends to it.</p>"
                 + "<p>It is labelled \"View only — shows what the input modules' actions send.\"</p>"
                 + _good([
                     "A wire to an output the output module doesn't claim is shown as <b>(not claimed)</b> and sends nothing."

@@ -21,7 +21,6 @@ Item {
     property InputItemModel inputItemModel
     property bool hideControlSetup: false
     property bool catalogSequence: false
-    property InputItemBindingConfigurationHeader headerWidget: _header
     readonly property string sequenceId: (inputBinding && inputBinding.rootAction)
         ? inputBinding.rootAction.id : ""
 
@@ -48,8 +47,6 @@ Item {
         // | Header
         // +--------------------------------------------------------------------
         InputItemBindingConfigurationHeader {
-            id: _header
-
             Layout.fillWidth: true
             Layout.leftMargin: Style.dp(5)
             Layout.rightMargin: Style.dp(20)
@@ -64,8 +61,6 @@ Item {
         // | Render the root action node
         // +--------------------------------------------------------------------
         RootActionNode {
-            id: _action_node
-
             Layout.fillWidth: true
             Layout.rightMargin: Style.dp(20)
 
@@ -84,8 +79,6 @@ Item {
     }
 
     DropArea {
-        id: _sequenceDrop
-
         anchors.fill: parent
         keys: ["application/x-gremlin-sequence"]
         property bool placeBefore: true

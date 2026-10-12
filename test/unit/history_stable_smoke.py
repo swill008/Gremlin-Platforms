@@ -92,6 +92,13 @@ def hv(code: str) -> object:
     return value
 
 
+def row_of(entry_id: str) -> int:
+    """The row an entry shows on now (-1: not shown), from the page's model."""
+    model = hv("_model")
+    rows = getattr(model, "_rows", [])
+    return next((r for r, e in enumerate(rows) if e.get("id") == entry_id), -1)
+
+
 def item(name: str) -> QtQuick.QQuickItem | None:
     pending = [hist.contentItem()]
     while pending:
@@ -147,7 +154,7 @@ QtTest.QTest.qWait(300)
 out["file-after-restore"] = json.loads(fold.read_text(encoding="utf-8"))["claim"]
 out["place-after-restore"] = place()
 out["tag"] = hv(
-    f'_model.data(_model.index(_model.rowOf("{head}"), 0), Qt.UserRole + 12)'
+    f'_model.data(_model.index({row_of(head)}, 0), Qt.UserRole + 12)'
 )
 out["new-after-restore"] = hv("_model.newCount")
 out["message"] = prop("historyMessage", "text")

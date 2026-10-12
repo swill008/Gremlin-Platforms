@@ -127,7 +127,9 @@ def test_export_of_a_damaged_module_file_says_so(maps: pathlib.Path) -> None:
     assert isinstance(built, str)
     assert "damaged" in built and "Start Fresh" in built
     assert "no module file yet" not in built
-    peek = json.loads(hardware_profile.HardwareProfile().peekPackDevice("Test Stick"))
+    peek = json.loads(
+        hardware_profile.HardwareProfile().peekPackDeviceById("Test Stick", "")
+    )
     assert peek["ok"] is False and peek["error"] == built
 
 
@@ -135,7 +137,9 @@ def test_export_without_a_module_file_still_says_none_yet(maps: pathlib.Path) ->
     assert device_pack.assemble("Test Stick", lambda ref: None) == (
         "This device has no module file yet."
     )
-    peek = json.loads(hardware_profile.HardwareProfile().peekPackDevice("Test Stick"))
+    peek = json.loads(
+        hardware_profile.HardwareProfile().peekPackDeviceById("Test Stick", "")
+    )
     assert peek["error"] == "This device has no module file yet."
 
 
@@ -234,12 +238,11 @@ def test_unused_pictures_go_when_an_edit_ends(maps: pathlib.Path) -> None:
     })
     _write(store.recovery_path("Test Stick"), {
         "nodes": [{"shape": "image", "src": "pictures/in_recovery.png"}]})
-    hw = hardware_profile.HardwareProfile()
-    assert hw.removeUnusedPictures("Test Stick") == 2
+    assert len(store.remove_unused_pictures("Test Stick", "")) == 2
     folder = picture_file(maps, "Test Stick", "x").parent
     left = sorted(p.name for p in folder.iterdir())
     assert left == ["in_group.png", "in_recovery.png", "on_map.png", "photo.jpg"]
-    assert hw.removeUnusedPictures("Test Stick") == 0
+    assert store.remove_unused_pictures("Test Stick", "") == []
 
 
 def test_the_window_drops_unused_pictures_when_an_edit_ends() -> None:

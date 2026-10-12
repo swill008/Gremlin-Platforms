@@ -411,7 +411,6 @@ MouseArea {
             ed.selectedLeader = (hit.leader !== undefined) ? hit.leader : 0
             ed.selectedSeg = (hit.seg !== undefined) ? hit.seg : 0
             ed.selectedSpine = -1
-            ed.lineArm = true
             ed.lineArmX = m.x
             ed.lineArmY = m.y
             ed.beginGesture()
@@ -591,7 +590,6 @@ MouseArea {
             if (Math.hypot(m.x - ed.lineArmX, m.y - ed.lineArmY) <= 6)
                 return
             var sid = ed.addSpineAt(ed.selectedId, ed.lineArmX, ed.lineArmY, true)
-            ed.lineArm = false
             if (sid < 0) {
                 ed.dragKind = ""
                 return
@@ -678,7 +676,6 @@ MouseArea {
             ed.pathDraft = []
         ed.dragKind = ""
         ed.banding = false
-        ed.lineArm = false
         ed.poolHover = false
         ed.guideDrag = null
         ed.clearMoveGuides()
@@ -777,7 +774,6 @@ MouseArea {
             return
         }
         if (ed.dragKind === "linearm") {
-            ed.lineArm = false
             ed.dragKind = ""
             ed.bump()
             return
@@ -891,8 +887,6 @@ MouseArea {
             var mi = (hit.member !== undefined && hit.member >= 0) ? hit.member : ed.memberHit(gn, m.x, m.y)
             if (mi >= 0)
                 ed.selectedMember = mi
-            ed.armRenameId = ""
-            ed.armRenameMember = -1
             if (mi >= 0 && wasOpen)
                 ed.beginRename(gn.id, mi)
             else
@@ -901,8 +895,6 @@ MouseArea {
         }
         if (gn && !ed.isDraw(gn) && (hit.kind === "chip" || hit.kind === "member")) {
             ed.setSelection([gn.id])
-            ed.armRenameId = ""
-            ed.armRenameMember = -1
             ed.beginRename(gn.id, -1)
         }
     }

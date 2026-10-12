@@ -15,7 +15,6 @@ _MENU = _ROOT / "qml/control_menu.js"
 _PANE = _ROOT / "qml/ActionPane.qml"
 _TREE = _ROOT / "qml/ControlTree.qml"
 _MAIN = _ROOT / "qml/Main.qml"
-_IC = _ROOT / "qml/InputConfiguration.qml"
 _MM = _ROOT / "gremlin/ui/module_model.py"
 
 
@@ -52,7 +51,7 @@ def test_main_has_catalog_display_button() -> None:
 def test_assignment_summary_counts_destinations() -> None:
     src = (_ROOT / "gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
     start = src.index("def assignment_summary")
-    end = src.index("def leaves_for_item")
+    end = src.index("# --- The edit lock")
     ns: dict = {}
     exec(src[start:end], ns)
     text, dest = ns["assignment_summary"](
@@ -225,11 +224,7 @@ def test_parent_geometry_defaults_full_width() -> None:
     assert "groupSpacing: _appear.groupSpacing" in page
 
 
-def test_inline_editor_colors_are_properties() -> None:
-    text = _IC.read_text(encoding="utf-8")
-    assert "property color editorFill" in text
-    assert "property color editorEdge" in text
-    assert "color: editorFill" in text
+def test_actions_open_in_the_shared_pane() -> None:
     qml = _PAGE.read_text(encoding="utf-8")
     assert "function openAction(key, seq, title)" in qml
     assert "addAction: function() { addAction(_menuKey, _menuTitle) }" in qml
@@ -247,12 +242,15 @@ def test_photo_lookup_does_not_copy_another_device() -> None:
     # Which folder and pictures a device uses is the module store's
     # (store.device_dir / store.pictures_dir, GL-067); the guard test
     # test_module_store_only keeps callers from building module paths.
-    copy = text[text.find("def copyImage") : text.find("def removeUnusedPictures")]
+    copy = text[text.find("def copyImage") : text.find("# --- a missing picture")]
     assert copy
     # Import Image keeps the picture in the edit (07 S107): nothing is
     # copied into a device folder or written to a module file here.
     assert "self._stage(" in copy
     assert "write_bytes" not in copy and "update_path" not in copy
-    photo = text[text.find("def profilePhotoUrl") : text.find("def path(")]
+    photo = text[text.find("def _photo_url") : text.find("def _want_device_photo")]
+    assert photo
     # The photo comes from the device's own pictures/ only (07 S11).
-    assert "path.resolve().parent != own.resolve()" in photo
+    # Old: profilePhotoUrl checked "path.resolve().parent != own.resolve()";
+    # the check now lives in _photo_url (D-03-DEVICE-IMAGE precedence).
+    assert "found.resolve().parent == own.resolve()" in photo

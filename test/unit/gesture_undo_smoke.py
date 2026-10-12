@@ -28,7 +28,9 @@ from smoke_exit import smoke_exit  # noqa: E402
 
 QP = QtCore.QPoint
 ALT = QtCore.Qt.KeyboardModifier.AltModifier
-PICTURE = QtCore.QUrl.fromLocalFile(str(ROOT / "gfx" / "icon_large.png")).toString()
+PICTURE = QtCore.QUrl.fromLocalFile(
+    str(ROOT / "test" / "unit" / "fixtures" / "icon_large.png")
+).toString()
 
 
 def _picture(id_: str, fx: float, fy: float, plane: str = "") -> dict:

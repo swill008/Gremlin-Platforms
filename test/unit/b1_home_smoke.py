@@ -80,7 +80,7 @@ def story(j: Journey) -> None:
         return j.ev(code)
 
     def steps() -> int:
-        return int(ev(f"{model}.stepCount"))
+        return len(ev(model)._undo_steps)  # type: ignore[attr-defined]
 
     out["start"] = {"steps": steps(), "canUndo": ev(f"{model}.canUndo")}
 

@@ -26,7 +26,6 @@ from PySide6 import QtCore
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = "layers_search_window_smoke.py"
-_HELP = _ROOT / "qml" / "help_topics.js"
 
 
 @pytest.fixture(scope="module")

@@ -133,15 +133,6 @@ def _open_profile() -> Profile | None:
     return shared_state.current_profile
 
 
-def _same(a: Path | str | None, b: Path | str | None) -> bool:
-    if not a or not b:
-        return False
-    try:
-        return Path(a).resolve() == Path(b).resolve()
-    except OSError:
-        return str(a) == str(b)
-
-
 def _is_open_path(path: Path | str) -> bool:
     """path is the open profile's file (an empty path: the open profile
     when it was never saved)."""
@@ -150,7 +141,7 @@ def _is_open_path(path: Path | str) -> bool:
         return False
     if not str(path) or str(path) == ".":
         return current.fpath is None
-    return _same(current.fpath, path)
+    return util.same_path(current.fpath, path)
 
 
 def _ids(guids: Iterable[str]) -> set[uuid.UUID]:
@@ -255,7 +246,7 @@ def saved_profiles_using(guids: list[str], open_path: str = "") -> list[dict]:
     if not ids:
         return rows
     for path in _candidates():
-        if open_path and _same(open_path, path):
+        if open_path and util.same_path(open_path, path):
             continue
         read = read_profile(path)
         if isinstance(read, str):

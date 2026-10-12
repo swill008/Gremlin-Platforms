@@ -435,10 +435,6 @@ class DILL(metaclass=_DillMeta):
         return DILL._dll.device_exists(guid.ctypes)
 
     @staticmethod
-    def initialize_capi() -> None:
-        DILL._apply_api(DILL._dll)
-
-    @staticmethod
     def _apply_api(dll: object) -> None:
         for fn_name, params in DILL.api_functions.items():
             dll_fn = getattr(dll, fn_name)

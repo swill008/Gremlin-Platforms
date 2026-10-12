@@ -36,7 +36,6 @@ Item {
     // The last results sent (read only for callers).
     readonly property var matches: _matches || []
     readonly property bool searching: HelpSearch.words(text).length > 0
-    readonly property int topicCount: _inScopeCount
 
     // No [] here: an array literal is a binding, and _search() assigns it
     // (qt.qml.binding.removal).
@@ -179,7 +178,6 @@ Item {
             // No visible bindings on item.visible here: an item's visible
             // follows its parent's, which would loop.
             Loader {
-                id: _scopeLoader
                 sourceComponent: _bar.scopeButton
             }
 

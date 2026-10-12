@@ -170,7 +170,6 @@ Item {
     readonly property bool padAOn: padsOn && (padAX > 0 || padAY > 0)
     readonly property bool padBOn: padsOn && (padBX > 0 || padBY > 0)
     readonly property bool metersOn: showMeters
-    readonly property int btnCellW: buttonSize === "small" ? Style.dp(52) : (buttonSize === "large" ? Style.dp(88) : Style.dp(64))
     readonly property int btnCellH: buttonSize === "small" ? Style.dp(48) : (buttonSize === "large" ? Style.dp(68) : Style.dp(56))
 
     ModuleClaimedInputModel {

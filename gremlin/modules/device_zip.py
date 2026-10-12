@@ -31,9 +31,9 @@ temporary folder.
 .gtemplate layout: template.json + pictures/<file>.
 
 The bindings belong to the Device Pack (gremlin.ui.device_pack); this
-module never imports the UI, so its callers hand them in: the wires
-collected for export (device_pack.collect_wires) and, for import, the
-function that puts them into the profile (device_pack.put_gmap_wires).
+module never imports the UI, so its callers hand in the wires collected
+for export (device_pack.collect_wires). On import the Device Pack puts
+them into the profile itself (device_pack.import_as_new -> apply_zip).
 """
 
 from __future__ import annotations
@@ -42,7 +42,6 @@ import io
 import json
 import re
 import zipfile
-from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from xml.etree import ElementTree
@@ -61,13 +60,6 @@ _WIRES = "bindings/wires.json"
 _OUTPUTS = "bindings/outputs/"
 _WHO = "Device Export"
 
-# Puts a .gmap's wires into the open profile (zip path, device name, device
-# id, the file's wires, the files the import wrote or None, the folder it
-# made or None): "" or why not (device_pack.put_gmap_wires).
-PutWires = Callable[
-    [Path, str, str, dict, list[tuple[Path, bytes | None]] | None, Path | None],
-    str,
-]
 # A device id: a GUID with or without braces and dashes (an id key is the
 # upper-case form without them, ids.stored_guid_key).
 _GUID_RE = re.compile(r"^[0-9a-fA-F]{32}$")
@@ -125,7 +117,7 @@ def _zip_pictures(zf: zipfile.ZipFile, base: Path, refs: list[str]) -> None:
 # --- export ---------------------------------------------------------------------
 
 
-def guid_text(text: str) -> str:
+def braced_guid(text: str) -> str:
     """A device id (an id key too) as "{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}"."""
     h = str(text or "").strip().replace("{", "").replace("}", "").replace("-", "")
     h = h.upper()
@@ -538,14 +530,12 @@ def _result(
     error: str = "",
     folder: Path | None = None,
     written: list[tuple[Path, bytes | None]] | None = None,
-    wires_put: bool = False,
 ) -> dict:
     return {
         "key": key,
         "error": error,
         "folder": folder,
         "written": list(written or []),
-        "wiresPut": wires_put,
     }
 
 
@@ -581,7 +571,6 @@ def import_device(
     zip_path: Path,
     target_name: str = "",
     target_guid: str = "",
-    put_wires: PutWires | None = None,
     pieces: dict | None = None,
 ) -> dict:
     """Export / Import Device's "As a new device" (D-FIXLIST-B2): unpacks a
@@ -594,18 +583,15 @@ def import_device(
     "module": the module document to write (built from the ticked module,
     map and print pieces); None: no module file; absent: the file's own.
     "pictures": the picture files to write; absent: the ones the written
-    module names. "modes": the modes whose wires go to put_wires; absent:
-    every mode; []: none.
-
-    put_wires (device_pack.put_gmap_wires; None: no bindings): the wires go
-    into the open profile, and the whole import (folder and wires) is one
-    Undo Import step (user decision 3a, 2026-10-11).
+    module names. The bindings are not written here: the Device Pack's
+    import_as_new puts them in afterwards (apply_zip), and the whole import
+    (folder and wires) is one Undo Import step (user decision 3a,
+    2026-10-11).
 
     Returns {"key": the device's id key ("" when refused), "error": "" or
     why not (or what was left out), "folder": the folder this import made
     (None: it was there already, or none was made), "written": every file
-    it wrote as (path, None) (none was there before), "wiresPut": put_wires
-    took the wires and with them "written" and "folder" for Undo Import}."""
+    it wrote as (path, None) (none was there before)}."""
     loaded = read_gmap(Path(zip_path))
     if isinstance(loaded, str):
         return _result(error=loaded)
@@ -618,21 +604,12 @@ def import_device(
     guid = str(target_guid or "").strip()
     if not guid and not target_name:
         exported = str(label.get("id") or "").strip()
-        guid = guid_text(exported) if guid_like(exported) else ""
+        guid = braced_guid(exported) if guid_like(exported) else ""
     key = store.id_key(name, guid)
-    wires = loaded["wires"]
-    if wires and pieces is not None and "modes" in pieces:
-        wires = only_modes(wires, [str(m) for m in pieces.get("modes") or []])
-    send_wires = put_wires is not None and bool(wires) and bool(wires.get("modes"))
     if not has_folder(label):
         # Only bindings (a Device Library setup of a stick with no module
-        # file): no device folder is made.
-        if not send_wires:
-            return _result(key)
-        problem = put_wires(Path(zip_path), name, guid, wires, None, None)  # type: ignore[misc]
-        if problem:
-            return _result(key, f"Its bindings were not imported: {problem}")
-        return _result(key, wires_put=True)
+        # file): no device folder is made; the caller puts the bindings in.
+        return _result(key)
     existing = _folder_of(name, guid, key)
     if existing is not None and store.module_file_in(existing).is_file():
         return _result(
@@ -691,17 +668,6 @@ def import_device(
             folder=made,
             written=written,
         )
-    if send_wires:
-        problem = put_wires(Path(zip_path), name, guid, wires, written, made)  # type: ignore[misc]
-        if problem:
-            return _result(
-                key,
-                f"The device folder {base.name} was imported, but its "
-                f"bindings were not: {problem}",
-                made,
-                written,
-            )
-        return _result(key, "", made, written, wires_put=True)
     return _result(key, "", made, written)
 
 

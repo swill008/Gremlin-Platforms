@@ -29,14 +29,6 @@ def ensure_shell_options() -> None:
             "Show a card for each device without a module.",
         ),
         (
-            SECTION_DISPLAY,
-            "status",
-            "last-keep-after-release",
-            PropertyType.Bool,
-            True,
-            "Keep a card's last value after the control is released.",
-        ),
-        (
             SECTION_AUTO_MAPPING_TOOL,
             "mapper",
             "remember-overwrite",

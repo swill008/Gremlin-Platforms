@@ -288,7 +288,6 @@ class Device(QtCore.QAbstractListModel):
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
-        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"actionSequenceCount"),
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"description"),
     }
 
@@ -375,9 +374,6 @@ class Device(QtCore.QAbstractListModel):
         match cast(str, self.roles[role]):
             case "name":
                 return self._name(input_info)
-            case "actionSequenceCount":
-                input_item = self._get_input_item(input_info)
-                return len(input_item.action_sequences) if input_item else 0
             case "description":
                 input_item = self._get_input_item(input_info)
                 return _description_from_item(input_item) if input_item else ""

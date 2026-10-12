@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The OSC page and Companion (D-09-OSC-COMPANION, D-09-OSC-TABS):
-companionText(uid) gives Companion's Generic OSC connection settings
+companion_text(row) (Copy for Companion) gives Companion's Generic OSC
+connection settings
 (this PC's address, the listening port, UDP, Listen for Feedback on, a
 source port that isn't the program's) and the key actions for the input's
 mode, worded as Generic OSC 2.8.2 and 3.0.0 name them. In the real program
@@ -80,7 +81,10 @@ def _add(model: OscDeviceManagementModel, settings: str) -> str:
 
 
 def _text(model: OscDeviceManagementModel, uid: str) -> str:
-    return str(_qml(model, f'm.companionText("{uid}")'))
+    # The text Copy for Companion gives (OscLayoutModel.copyForCompanion).
+    del model
+    row = OscDevice().rows.by_uid(uid)
+    return osc_device_model.companion_text(row) if row is not None else ""
 
 
 def test_companion_text_has_the_generic_osc_connection(

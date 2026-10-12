@@ -81,27 +81,6 @@ Item {
         panY = Math.min(Math.max(panY, minPanY), maxPanY)
     }
 
-    function viewOffScreen() {
-        var vw = _viewport.width
-        var vh = _viewport.height
-        if (vw < 8 || vh < 8)
-            return false
-        if (!(zoom >= zoomMin && zoom <= zoomMax))
-            return true
-        if (panX !== panX || panY !== panY)
-            return true
-        var W = _world.width
-        var H = _world.height
-        var z = zoom
-        var left = panX + W * 0.5 * (1 - z)
-        var right = panX + W * 0.5 * (1 + z)
-        var top = panY + H * 0.5 * (1 - z)
-        var bot = panY + H * 0.5 * (1 + z)
-        if (right < 8 || left > vw - 8 || bot < 8 || top > vh - 8)
-            return true
-        return false
-    }
-
     // Pans, without zooming, so an editor rect is in view (press to find).
     // Editor and world coordinates are the same; the world is scaled by
     // zoom about its centre and moved by panX and panY.
@@ -460,7 +439,6 @@ Item {
         // held, so no item is picked or moved (07 S14). A middle-drag pans
         // everywhere (_midPan).
         MouseArea {
-            id: _spacePan
             objectName: "dmeSpacePan"
             anchors.fill: parent
             z: 20

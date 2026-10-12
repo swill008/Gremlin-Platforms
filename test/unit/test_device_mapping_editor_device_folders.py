@@ -136,12 +136,12 @@ def test_a_missing_picture_is_reported_and_choose_picture_fixes_it(
     base = _put_module(DEVICE, {"nodes": [_picture_node("pictures/gone.png")]})
     hp = hardware_profile.HardwareProfile()
     hp.load(DEVICE)
-    assert hp.pictureMissing("pictures/gone.png") is True
+    assert hp._resolve_existing("pictures/gone.png") is None
     assert hp.imageUrl("pictures/gone.png") == ""
     new = _png(maps.parent / "outside" / "found.png")
     ref = hp.choosePictureFor("pictures/gone.png", new.as_uri())
     assert ref == "pictures/found.png"
-    assert hp.pictureMissing(ref) is False
+    assert hp._resolve_existing(ref) is not None
     assert hp.save(DEVICE, _payload("", [_picture_node(ref)]))
     saved = json.loads((base / "module.json").read_text(encoding="utf-8"))
     assert saved["nodes"][0]["src"] == "pictures/found.png"

@@ -28,14 +28,21 @@ ApplicationWindow {
     property string deviceName: ""
     property string deviceGuid: ""
     property string photoUrl: ""
-    // The picture Import Image keeps in this window's edit (its reference,
-    // "pictures/<file>"), named as the device picture by Save (03 S52).
+    // An output's Import Image: the picture kept in this window's edit (its
+    // reference, "pictures/<file>"), its bottom background picture on Save.
     property string stagedPhoto: ""
+    // An input module's Device Image (03 S52): the picture Add Image… /
+    // Change Image… keeps in this window's edit, and a Remove Image waiting
+    // for Save; nothing reaches the device's folder until Save.
+    readonly property bool isInput: direction !== "dest"
+    property string stagedImage: ""
+    property bool imageRemoved: false
+    property bool savedHasImage: false
+    readonly property bool hasImage: stagedImage.length > 0 || (savedHasImage && !imageRemoved)
     property var moduleModel: null
 
     property string moduleFileLabel: ""
     property string moduleFileMessage: ""
-    property bool moduleFileError: false
     property bool claimDirty: false
     property bool allowClose: false
     // OSC Setup's tab to show ("Feedback"; the OSC page's "Feedback
@@ -85,6 +92,14 @@ ApplicationWindow {
             _hw.setDeviceGuid(deviceGuid)
         _driver.loadDevice(deviceGuid, deviceName)
         claimDirty = false
+        stagedImage = ""
+        imageRemoved = false
+        showSavedPhoto()
+    }
+
+    // The device's photo as saved (07 S127: its device image first).
+    function showSavedPhoto() {
+        savedHasImage = isInput && _hw.hasDeviceImage(deviceName)
         var url = _hw.profilePhotoUrl(deviceName)
         photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
     }
@@ -152,6 +167,7 @@ ApplicationWindow {
         _hw.cancelEditFor(deviceName, "setup")
         _driver.loadDevice(deviceGuid, deviceName)
         claimDirty = false
+        _win.savedHasImage = isInput && _hw.hasDeviceImage(deviceName)
         _win.photoUrl = _hw.profilePhotoUrl(deviceName)
     }
 
@@ -172,26 +188,59 @@ ApplicationWindow {
         claimDirty = true
     }
 
+    // Add Image… / Change Image… (input modules, 03 S52): the picture waits
+    // in this window's edit until Save.
+    function addImage(src) {
+        stashPhoto()
+        var ref = _hw.keepImage(deviceName, src)
+        if (!ref.length)
+            return
+        stagedImage = ref
+        imageRemoved = false
+        photoUrl = _hw.imageUrl(ref)
+        claimDirty = true
+    }
+
+    // Remove Image: waits for Save; the preview shows the photo the device
+    // will have without it (07 S127).
+    function removeImage() {
+        stagedImage = ""
+        imageRemoved = savedHasImage
+        var url = _hw.generatedPhotoUrl(deviceName)
+        photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
+        claimDirty = true
+    }
+
     // Saved (or the file deleted): the edit is over. After a save the
     // edit was committed by saveClaim; this only drops what is left.
     function dropPhotoStash() {
         _hw.commitEditFor(deviceName, "setup")
         stagedPhoto = ""
+        stagedImage = ""
+        imageRemoved = false
+        showSavedPhoto()
     }
 
     function putPhotoBack() {
         stagedPhoto = ""
-        if (!_hw.cancelEditFor(deviceName, "setup"))
+        var changed = stagedImage.length > 0 || imageRemoved
+        stagedImage = ""
+        imageRemoved = false
+        if (!_hw.cancelEditFor(deviceName, "setup") && !changed)
             return
-        var url = _hw.profilePhotoUrl(deviceName)
-        photoUrl = url.length ? (url.split("?")[0] + "?t=" + Date.now()) : ""
+        showSavedPhoto()
     }
 
     function commitModule() {
-        // The photo Import Image kept waits in the edit: this save copies it
-        // into the device's folder and names it, in the same write as the
-        // claims (one History entry, 03 S52, 07 S107).
-        if (!_driver.saveClaim(deviceName, direction, stagedPhoto)) {
+        // The picture kept in the edit: this save copies it into the
+        // device's folder and names it, in the same write as the claims
+        // (one History entry, 03 S52, 07 S107). An input module's is its
+        // device image (or its removal); an output's Import Image its
+        // bottom background picture.
+        var saved = isInput
+            ? _driver.saveClaim(deviceName, direction, stagedImage, imageRemoved)
+            : _driver.saveClaim(deviceName, direction, stagedPhoto)
+        if (!saved) {
             _saveGate.announce(false, _driver.saveBlockedReason()
                                || "Not written. It is still only on this screen.")
             if (backend)
@@ -312,7 +361,6 @@ ApplicationWindow {
     function showFileMessage(text, failed, undoable) {
         _dropImportUndo()
         moduleFileMessage = text
-        moduleFileError = failed
         if (undoable) {
             _importUndoOffered = true
             _fileMessage.show(text, failed, "Undo", _win.undoImport)
@@ -374,11 +422,14 @@ ApplicationWindow {
         id: _imageDialog
         kind: "picture"
         mode: "open"
-        title: "Import Image"
+        title: isInput ? "Choose Image" : "Import Image"
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)"]
         folder: _hw.imagesFolderUrl()
         onPicked: (selected) => {
-            _win.importPhoto(String(selected))
+            if (_win.isInput)
+                _win.addImage(String(selected))
+            else
+                _win.importPhoto(String(selected))
         }
     }
 
@@ -427,6 +478,11 @@ ApplicationWindow {
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: Style.dp(8)
+                    Label {
+                        visible: isInput
+                        text: "Device Image"
+                        font.bold: true
+                    }
                     Image {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -442,11 +498,24 @@ ApplicationWindow {
                         verticalAlignment: Text.AlignVCenter
                         wrapMode: Text.WordWrap
                         color: Style.fgMuted
-                        text: "No photo for this module.\nImport image…"
+                        text: isInput ? "No picture for this device.\nAdd Image…"
+                                      : "No photo for this module.\nImport image…"
                     }
-                    Button {
-                        text: "Import Image…"
-                        onClicked: _imageDialog.open()
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Style.dp(8)
+                        Button {
+                            objectName: "moduleSetupImage"
+                            text: !isInput ? "Import Image…"
+                                : hasImage ? "Change Image…" : "Add Image…"
+                            onClicked: _imageDialog.open()
+                        }
+                        Button {
+                            objectName: "moduleSetupRemoveImage"
+                            visible: isInput && hasImage
+                            text: "Remove Image"
+                            onClicked: _win.removeImage()
+                        }
                     }
                 }
             }

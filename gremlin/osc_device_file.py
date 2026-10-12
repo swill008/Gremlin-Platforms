@@ -29,8 +29,6 @@ from gremlin.modules import store
 if TYPE_CHECKING:
     from gremlin.osc_rows import OscRows
 
-# The file stem before device folders (03 S134): the one-time move reads it.
-SLUG = "osc"
 KEY = "inputs"
 SERVER_KEY = "server"
 WHO = "OSC"

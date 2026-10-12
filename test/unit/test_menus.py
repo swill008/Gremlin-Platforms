@@ -61,6 +61,10 @@ def test_every_main_command_is_in_the_menu_bar() -> None:
     commands = (_ROOT / "qml" / "main_commands.js").read_text(encoding="utf-8")
     main = (_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
     ids = re.findall(r'\{ id: "([^"]+)", text:', commands)
+    # A command marked menu: false has no menu on purpose: view.xboxOutput
+    # is only a Help "Open" target (03 S139, the Xbox Viewer moved there).
+    hidden = set(re.findall(r'\{ id: "([^"]+)"[^}]*menu: false', commands))
+    ids = [i for i in ids if i not in hidden]
     in_menus = set(re.findall(r'command: "([^"]+)"', main))
     assert ids and [i for i in ids if i not in in_menus] == []
 

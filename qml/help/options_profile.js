@@ -23,7 +23,7 @@ function topics() {
                 + "<li><b>Interface</b>: <b>Display</b> (Dark mode, UI scale, Ignore Windows display scaling) and <b>Inputs</b> (Input names, and Input highlighting, which stays on the device page you have open). See <a href=\"topic:options-profile-interface\">Interface options</a>.</li>"
                 + "<li><b>Actions</b>: the <b>Add Action Menu</b> (which actions it offers and their order), then Macro, Change Mode, Double Tap, Smart Toggle, Tempo, Axis Delta, Play Sound and Text to Speech.</li>"
                 + "<li><b>Profiles</b>: <b>Auto-load</b>: Load profiles automatically when a chosen program comes to the front, the programs and their profiles, and Keep running when the program loses focus. See <a href=\"topic:options-profile-auto-load\">Load a profile automatically for a game</a>.</li>"
-                + "<li><b>Home</b>: <b>Cards</b>: Compact view, Show devices without a module, Keep last value after release, and <b>Reset All Card Sizes</b>.</li>"
+                + "<li><b>Home</b>: <b>Cards</b>: Compact view, Show devices without a module, and <b>Reset All Card Sizes</b>.</li>"
                 + "<li><b>OSC</b>: one line, <b>OSC settings are in OSC › Module Setup.</b>, with the button <b>Open OSC Module Setup</b>, which opens OSC's Module Setup window. All of OSC is in the <a href=\"topic:osc-about\">OSC</a> chapter.</li>"
                 + "<li><b>Folders</b>: the data folder, and the profiles, modules, scripts, export, logs, history and plugins folders. See <a href=\"topic:options-profile-folders\">Change where files are kept</a>.</li>"
                 + "</ul>"

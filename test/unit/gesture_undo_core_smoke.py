@@ -59,7 +59,7 @@ def main() -> None:
     out: dict[str, object] = {}
     h._load(s, "evo_r")
     s.hold_runs()
-    icon = h.ROOT / "gfx" / "icon_large.png"
+    icon = h.ROOT / "test" / "unit" / "fixtures" / "icon_large.png"
     s.call("addOverlay", "test/icon", QtCore.QUrl.fromLocalFile(str(icon)).toString())
     pic = s.state()["selected"][0]
     s.end_run()

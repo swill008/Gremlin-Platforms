@@ -871,7 +871,6 @@ class OscLayoutModel(ControlLayoutModel):
             parentKey=parent,
             groupKey=group,
             groupName=group_name,
-            indent=1,
             enabled=bool(entry["enabled"]),
             feedbackId=entry["id"],
         )
@@ -1248,11 +1247,6 @@ class OscLayoutModel(ControlLayoutModel):
         if not self._apply(fn, f"Turn Invert {state} · {address}"):
             return False
         return not (error and error[0])
-
-    @QtCore.Slot(result="QVariantList")
-    def encAccelChoices(self) -> list[dict]:
-        """The encoder acceleration presets (S164) for a dropdown."""
-        return [dict(c) for c in osc_device_model.ENC_ACCEL_CHOICES]
 
     @QtCore.Slot(str, result=str)
     def copyForCompanion(self, key: str) -> str:

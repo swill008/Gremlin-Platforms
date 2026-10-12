@@ -121,7 +121,7 @@ def test_choose_photo_writes_no_image_into_the_module_file(
     image.fill(QtGui.QColor("#336699"))
     image.save(str(picture))
     hw = hardware_profile.HardwareProfile()
-    hw.beginEdit("Test Stick")
+    hw.beginEditFor("Test Stick", "")
     rel = hw.copyImage(picture.as_uri(), "Test Stick")
     assert rel == "pictures/photo.png"
     assert not picture_file(maps, "Test Stick", "photo.png").exists()
@@ -264,19 +264,26 @@ def test_device_controls_come_from_the_pool_when_not_connected(
 # --- GL-183: which file and why ------------------------------------------------
 
 
-def test_a_failed_export_names_the_file_and_why(tmp_path: pathlib.Path) -> None:
+def test_a_failed_export_names_the_file_and_why(
+    qtbot: object, tmp_path: pathlib.Path
+) -> None:
     # 07 Q19: as Template export does.
     target = tmp_path / "no folder" / "map.png"
     hw = hardware_profile.HardwareProfile()
     image = QtGui.QImage(20, 10, QtGui.QImage.Format.Format_RGB32)
     image.fill(QtGui.QColor("#202020"))
-    assert hw.saveArea(image, 20, 10, target.as_uri(), "png", "{}") is False
+    with qtbot.waitSignal(hw.areaSaved, timeout=10000) as blocker:  # type: ignore[attr-defined]
+        assert hw.saveAreaAsync(image, 20, 10, target.as_uri(), "png", "{}")
+    assert blocker.args[0] is False
     said = hw.exportError()
     assert said.startswith("Export failed.")
     assert "map.png" in said and "the folder does not exist" in said
     ok = tmp_path / "map.png"
-    assert hw.saveArea(image, 20, 10, ok.as_uri(), "png", "{}") is True
+    with qtbot.waitSignal(hw.areaSaved, timeout=10000) as blocker:  # type: ignore[attr-defined]
+        assert hw.saveAreaAsync(image, 20, 10, ok.as_uri(), "png", "{}")
+    assert blocker.args == [True, ""]
     assert hw.exportError() == ""
+    qtbot.waitUntil(lambda: not hw.exporting, timeout=10000)  # type: ignore[attr-defined]
 
 
 # --- GL-196: the export preview builds no zip ----------------------------------
@@ -299,10 +306,14 @@ def test_the_pack_preview_estimates_without_building_the_zip(
         raise AssertionError("the preview built the pack")
 
     monkeypatch.setattr(device_pack, "assemble", no_zip)
-    info = json.loads(hardware_profile.HardwareProfile().peekPackDevice("Test Stick"))
+    info = json.loads(
+        hardware_profile.HardwareProfile().peekPackDeviceById("Test Stick", "")
+    )
     assert info["ok"] is True, info
     assert info["bytes"] > 5000
     assert info["sizeText"].startswith("about ")
     assert info["photoUrl"].endswith("photo.jpg")
-    missing = json.loads(hardware_profile.HardwareProfile().peekPackDevice("Nobody"))
+    missing = json.loads(
+        hardware_profile.HardwareProfile().peekPackDeviceById("Nobody", "")
+    )
     assert missing["ok"] is False

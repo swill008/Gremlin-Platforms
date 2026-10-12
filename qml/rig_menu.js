@@ -66,8 +66,7 @@ function _canPaste() {
 function _copyPaste(withCopy) {
     var out = []
     if (withCopy) {
-        out.push(_cmdAct("edit.cut", "Cut", function() { if (typeof cutSelection === "function") cutSelection() },
-                         typeof cutSelection === "function", "Ctrl+X"))
+        out.push(_cmdAct("edit.cut", "Cut", cutSelection, true, "Ctrl+X"))
         out.push(_cmdAct("edit.copy", "Copy", copySelection, true, "Ctrl+C"))
     }
     out.push(_cmdAct("edit.paste", "Paste", pasteClipboard, _canPaste(), "Ctrl+V"))

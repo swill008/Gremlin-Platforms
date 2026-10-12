@@ -92,14 +92,6 @@ def _load_extra() -> set[str]:
     return extras
 
 
-def _save_extra(extras: set[str]) -> None:
-    _ensure(
-        EXTRA_NAME,
-        list(EXTRA_DEFAULT),
-        _EXTRA_DESCRIPTION,
-    ).set(SECTION, GROUP, EXTRA_NAME, sorted(extras))
-
-
 @ta.QmlElement
 class VJoyStatus(QtCore.QObject):
     changed = QtCore.Signal()
@@ -154,18 +146,3 @@ class VJoyStatus(QtCore.QObject):
     @QtCore.Slot(str, result=bool)
     def isExtraPinned(self, name: str) -> bool:
         return str(name).strip().lower() in self._extra
-
-    def _count(self) -> int:
-        return sum(1 for item in self._active if item)
-
-    def _pin_stamp(self) -> int:
-        total = 0
-        for index in self._pins:
-            total += 1 << index
-        for offset, name in enumerate(EXTRA_ALLOWED, start=17):
-            if name in self._extra:
-                total += 1 << offset
-        return total
-
-    activeCount = QtCore.Property(int, fget=_count, notify=changed)
-    pinStamp = QtCore.Property(int, fget=_pin_stamp, notify=changed)

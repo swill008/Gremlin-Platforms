@@ -23,7 +23,6 @@ from gremlin import (
     common,
     event_handler,
     shared_state,
-    swap_devices,
     tree,
 )
 from gremlin.error import GremlinError
@@ -1066,10 +1065,6 @@ class ModeHierarchyModel(QtCore.QObject):
             options.append({"value": entry})
         return options
 
-    @QtCore.Slot(result=list)
-    def modeStringList(self) -> list[str]:
-        return self.current_modes.mode_names()
-
 
 @ta.QmlElement
 class LabelValueSelectionModel(QtCore.QAbstractListModel):
@@ -1479,61 +1474,3 @@ class ProfileSettingsModel(QtCore.QObject):
         fset=_set_macro_delay_from_options,
         notify=settingsChanged,
     )
-
-
-@ta.QmlElement
-class ProfileDeviceListModel(QtCore.QAbstractListModel):
-    """Model listing devices with bindings in the profile."""
-
-    selectedIndexChanged = QtCore.Signal()
-
-    roles = {
-        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
-        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"nameAndActions"),
-        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"uuid"),
-    }
-
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(parent)
-
-        self._devices: list[swap_devices.ProfileDeviceInfo] = []
-        self.update_model()
-        event_handler.EventListener().device_change_event.connect(self.update_model)
-        # A swap or another profile loaded: the list showed the old devices
-        # and counts, and a second Swap swapped everything back.
-        signal.profileChanged.connect(self.update_model)
-
-    @QtCore.Slot()
-    def update_model(self) -> None:
-        """Lists the open profile's devices again (devices plugged in or out,
-        a swap, another profile)."""
-        self.beginResetModel()
-        self._devices = swap_devices.get_profile_devices(shared_state.current_profile)
-        self.endResetModel()
-
-    def rowCount(self, parent: ta.MI = QtCore.QModelIndex()) -> int:
-        return len(self._devices)
-
-    def data(
-        self, index: ta.MI, role: int = QtCore.Qt.ItemDataRole.DisplayRole
-    ) -> str | None:
-        if not index.isValid() or not (0 <= index.row() < len(self._devices)):
-            return None
-
-        device = self._devices[index.row()]
-        match cast(str, self.roles[role]):
-            case "name":
-                return device.name
-            case "nameAndActions":
-                count = device.num_bindings
-                actions = f"{count} action" + ("" if count == 1 else "s")
-                if device.name:
-                    return f"{device.name} - {actions}"
-                # No name known (not plugged in): a short id tells two apart.
-                short = str(device.device_uuid).split("-")[0]
-                return f"Unknown device ({short}) - {actions}"
-            case "uuid":
-                return str(device.device_uuid)
-
-    def roleNames(self) -> dict[int, QtCore.QByteArray]:
-        return self.roles

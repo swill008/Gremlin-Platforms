@@ -20,16 +20,6 @@ function spaceRect() {
     }
 }
 
-function innerPageRect() {
-    var s = spaceRect()
-    return {
-        x: s.x + s.w * innerPadX,
-        y: s.y + s.h * innerPadY,
-        w: s.w * (innerPageW / worldPageW),
-        h: s.h * (innerPageH / worldPageH)
-    }
-}
-
 function clamp01(v) {
     return Math.max(0, Math.min(1, v))
 }

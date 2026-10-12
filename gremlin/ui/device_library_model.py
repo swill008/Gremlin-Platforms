@@ -67,6 +67,11 @@ _GROUP_LIMIT_MS = 60_000
 # Changes that are not steps for Undo (S53): Undo and Redo themselves.
 _NOT_STEPS = ("undo", "redo")
 
+# The list's share of the divider (S3): its default and its limits.
+_SPLIT_DEFAULT = 0.54
+_SPLIT_MIN = 0.15
+_SPLIT_MAX = 0.85
+
 _BUSY_TEXT = "Another change is still running: wait for it to finish."
 
 # A saved setup's file: a ".gmap" device file, nothing else (D-FIXLIST-B2).
@@ -114,6 +119,15 @@ def _count_text(count: int) -> str:
     if count == 0:
         return "No saved setups"
     return "1 saved setup" if count == 1 else f"{count} saved setups"
+
+
+def _image_url(value: str) -> str:
+    """A picture for an Image: a URL is kept; a file path (with an optional
+    "?t=" stamp) becomes a file URL."""
+    if not value or "://" in value or value.startswith(("qrc:", "file:")):
+        return value
+    path, sep, query = value.partition("?")
+    return QtCore.QUrl.fromLocalFile(path).toString() + (sep + query if query else "")
 
 
 def _date(at: str) -> str:
@@ -310,6 +324,8 @@ class DeviceLibraryModel(QtCore.QObject):
         # Read once per refresh: a device's inputs (S8), a setup's photo (S11).
         self._inputs: dict[str, str] = {}
         self._photos: dict[str, str] = {}
+        # A device row's small picture (S6), by module folder, per refresh.
+        self._thumbs: dict[str, str] = {}
         # The sticks last noted as seen (S8).
         self._seen: set[str] = set()
         # op -> (ticket, fn, args, paths): the newest plan asked for,
@@ -383,6 +399,7 @@ class DeviceLibraryModel(QtCore.QObject):
             self._picked = [self._selected]
         self._inputs.clear()
         self._photos.clear()
+        self._thumbs.clear()
         self._note_seen()
         self._rebuild()
         self._measure()
@@ -435,6 +452,24 @@ class DeviceLibraryModel(QtCore.QObject):
             self._photos[key] = path
         return self._photos[key]
 
+    def _thumb_of(self, folder: str) -> str:
+        """A device row's small picture (S6): its module's shown picture
+        (device_library.device_photo) as a URL, "" when it has none."""
+        if not folder:
+            return ""
+        if folder not in self._thumbs:
+            url = ""
+            read = getattr(self.api.library, "device_photo", None)
+            if read is not None:
+                try:
+                    url = _image_url(str(read(folder) or ""))
+                except Exception:
+                    logging.getLogger("system").exception(
+                        "Device Library: device picture not read"
+                    )
+            self._thumbs[folder] = url
+        return self._thumbs[folder]
+
     def _search_keys(self, text: str) -> set[str]:
         try:
             return set(self.api.library.search(text))
@@ -483,6 +518,7 @@ class DeviceLibraryModel(QtCore.QObject):
                     "hasChildren": count > 0,
                     "builtIn": built_in,
                     "icon": _built_in_icon(dev),
+                    "photo": self._thumb_of(str(dev.get("module") or "")),
                     # The list's section: built-ins sit under their heading.
                     "section": "builtin" if built_in else "",
                 }
@@ -1562,6 +1598,28 @@ class DeviceLibraryModel(QtCore.QObject):
         except Exception:
             logging.getLogger("system").exception("Device Library: vJoy list")
             return []
+
+    @QtCore.Property(float, constant=True)
+    def splitRatio(self) -> float:
+        """The list's share of the window's divider (S3), kept with the other
+        window layout (window_placement)."""
+        from gremlin.ui import window_placement
+
+        try:
+            share = window_placement.split_ratio("deviceLibrary", _SPLIT_DEFAULT)
+        except Exception:
+            share = _SPLIT_DEFAULT
+        return min(_SPLIT_MAX, max(_SPLIT_MIN, float(share)))
+
+    @QtCore.Slot(float)
+    def setSplitRatio(self, ratio: float) -> None:
+        from gremlin.ui import window_placement
+
+        value = min(_SPLIT_MAX, max(_SPLIT_MIN, float(ratio)))
+        try:
+            window_placement.save_split("deviceLibrary", value)
+        except Exception:
+            logging.getLogger("system").exception("Device Library: divider not kept")
 
     @QtCore.Slot(str, result=str)
     def fileUrl(self, path: str) -> str:

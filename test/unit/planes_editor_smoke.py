@@ -26,7 +26,9 @@ from rig_editor_harness import ROOT, Session, _load  # noqa: E402
 from smoke_exit import smoke_exit  # noqa: E402
 
 CTRL = QtCore.Qt.KeyboardModifier.ControlModifier
-PICTURE = QtCore.QUrl.fromLocalFile(str(ROOT / "gfx" / "icon_large.png")).toString()
+PICTURE = QtCore.QUrl.fromLocalFile(
+    str(ROOT / "test" / "unit" / "fixtures" / "icon_large.png")
+).toString()
 
 
 def _rect(id_: str, fx: float, fy: float, plane: str = "") -> dict:

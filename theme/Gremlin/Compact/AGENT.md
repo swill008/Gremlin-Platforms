@@ -59,7 +59,6 @@ Furthermre padding is reduced, usually by half to keep some padding but reduce t
 | Property | Value |
 |---|---|
 | Button padding | `padding: 4`, `verticalPadding: 2` |
-| ItemDelegate padding | `padding: 6`, `topPadding: 4`, `bottomPadding: 4` |
 | CheckBox padding | `padding: 2` |
 
 Do not introduce a new base override that deviates from these without updating
@@ -99,7 +98,7 @@ this table.
 ```qml
 import Compact as Compact
 
-Compact.Button { text: "Add" }
+Compact.CheckBox { text: "Enabled" }
 Compact.ComboBox { model: [...] }
 Compact.ButtonStateSelector {
     isPressed: modelData.isPressed
@@ -107,4 +106,4 @@ Compact.ButtonStateSelector {
 }
 ```
 
-Callers are in `action_plugins/**/MacroAction.qml` and `qml/compact/ButtonStateSelector.qml`.
+Callers are in `action_plugins/**/MacroAction.qml` and `action_plugins/condition/Comparator.qml`.

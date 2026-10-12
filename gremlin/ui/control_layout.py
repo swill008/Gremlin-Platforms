@@ -13,7 +13,7 @@ Public names (QML), unchanged from LogicalLayoutModel:
   signals   revisionChanged, groupsChanged, selectionChanged,
             paneModelChanged, paneLost
   props     canUndo, canRedo, lastChange, undone, undoTip, redoTip,
-            paneModel, parentCount, selectionCount, selectionLabel, groups
+            paneModel, parentCount, selectionLabel, groups
   slots     undo(), redo(), setMode(str), deleteAction(str,int)->bool,
             addGroup(str), renameGroup(str,str), removeGroup(str),
             setUserName(str,str), hidesSystem(str)->bool,
@@ -28,7 +28,7 @@ Public names (QML), unchanged from LogicalLayoutModel:
             paneDirty()->bool, commitPane()->int, discardPane(), endPane()
   roles     rowKind key title subtitle parentKey groupKey groupName
             systemName userName writerId axisMode axisScale inverted
-            sequenceIndex indent canInvert childCount extraWriters
+            sequenceIndex canInvert childCount extraWriters
             cantSend (D-05-CANT-SEND: why an action row, or any action of
             a parent row, can't be sent; "" when it can. Filled by the
             base for every child row with a sequenceIndex; asked again on
@@ -293,7 +293,6 @@ ROW_DEFAULTS: dict[str, Any] = {
     "axisScale": 1.0,
     "inverted": False,
     "sequenceIndex": -1,
-    "indent": 0,
     "canInvert": False,
     "childCount": 0,
     "extraWriters": 0,
@@ -689,7 +688,6 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                     groupName=item.group or "",
                     systemName=item.system_name,
                     sequenceIndex=index,
-                    indent=1,
                 )
             )
         return rows
@@ -757,7 +755,6 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                             groupName=item.group or "",
                             systemName=item.system_name,
                             userName=item.second_name,
-                            indent=1,
                             childCount=len(children),
                             cantSend=cant_text,
                             **self._parent_fields(item, extra),
@@ -1391,10 +1388,6 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
     def redoTip(self) -> str:
         label = self._top_label(self._redo)
         return f"Redo {label}" if label else ""
-
-    @QtCore.Property(int, notify=selectionChanged)
-    def selectionCount(self) -> int:
-        return len(self._selected)
 
     @QtCore.Property(str, notify=selectionChanged)
     def selectionLabel(self) -> str:

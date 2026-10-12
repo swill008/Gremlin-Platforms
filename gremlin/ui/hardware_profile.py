@@ -229,15 +229,6 @@ def export_failure(
     return f"{lead} {path.name} could not be written to {path.parent}: {why}."
 
 
-def _remove_failure(lead: str, path: Path, exc: OSError) -> str:
-    """A file that could not be removed: which, where and why."""
-    if isinstance(exc, PermissionError):
-        why = "the file is read-only or open in another program"
-    else:
-        why = str(exc.strerror or exc)
-    return f"{lead} {path.name} could not be removed from {path.parent}: {why}."
-
-
 def _missing_template(lead: str, path: Path | None, name: str) -> str:
     """A template that can't be read (gone or damaged): which, where."""
     if path is None:
@@ -324,6 +315,13 @@ _PICTURE_SIZES: dict[tuple[str, int], tuple[int, int]] = {}
 _PICTURE_SIZE_CACHE = 256
 
 
+def _file_picture_size(path: Path) -> tuple[int, int]:
+    """A picture file's size in pixels through store.picture_size (the
+    shared reader); (0, 0) when it can't be read."""
+    path = Path(path).absolute()
+    return store.picture_size(path.parent, str(path))
+
+
 def print_image(printer: QtGui.QPagedPaintDevice, image: QtGui.QImage) -> bool:
     """Draws image as large as fits on the printer's page (inside its
     margins), keeping its shape, centred."""
@@ -400,33 +398,8 @@ def _install_root() -> Path:
     return Path(os.path.normcase(os.path.dirname(os.path.abspath(sys.argv[0]))))
 
 
-def _maps_dir() -> Path:
-    """The modules folder (the module file store's)."""
-    return store.folder()
-
-
-# Old names of what the module file store now owns, kept for callers that
-# have not moved to gremlin.modules.store yet (GL-093). New code uses the
-# store.
-guid_for_module = store.guid_filter
-_live_devices = store.live_devices
-_guid_text = store.guid_text
-_pack_file_name = store.pack_file_name
-_archive_stamp = store.archive_stamp
-_unique_archive = store.unique_archive
-_doc_direction = store.doc_direction
-_target_direction = store.direction_for
-_known_pack_devices = store.known_devices
 _match_pack_device = store.match_known_device
-_suggest_pack_name = store.suggest_device_name
-_safe_name = store.safe_picture_name
-_read_json_dict = registry.read_doc
 _device_input_ids = store.device_input_ids
-_filter_nodes = store.filter_nodes
-member_kind = store.member_kind
-prepare_imported_doc = store.prepare_imported_doc
-module_json_path = store.module_file
-_active_module_path = store.module_file
 
 
 # --- Delete File and Delete Device ---------------------------------------------
@@ -898,9 +871,6 @@ class HardwareProfile(QtCore.QObject):
         # Which window's edit this object's pictures wait in: "" the Button
         # Map, "setup" Module Setup (store.edit_temp_dir's owner).
         self._owner = ""
-        # The photo Module Setup's Import Image keeps in its edit, named in
-        # the module file by commitEditFor.
-        self._staged_photo = ""
         self._export_error = ""
         # Why the last template rename or export failed (07 S80).
         self._template_error = ""
@@ -1006,27 +976,6 @@ class HardwareProfile(QtCore.QObject):
         return image.pixelColor(px, py).name().upper()
 
     @QtCore.Slot(QtGui.QImage, int, int, str, str, str, result=bool)
-    def saveArea(
-        self,
-        image: QtGui.QImage,
-        width: int,
-        height: int,
-        url: str,
-        fmt: str,
-        setup_json: str,
-    ) -> bool:
-        """Saves the print area (Print & Export): image is RigRenderer's
-        picture of it, written at width x height pixels; setup_json the
-        paper for a PDF. When it fails, exportError() says which file and
-        why (07 Q19)."""
-        self._export_error = ""
-        path = to_local_path(url)
-        if save_area(image, width, height, path, fmt, _setup(setup_json)):
-            return True
-        self._export_error = export_failure(path)
-        return False
-
-    @QtCore.Slot(QtGui.QImage, int, int, str, str, str, result=bool)
     def saveAreaAsync(
         self,
         image: QtGui.QImage,
@@ -1036,7 +985,9 @@ class HardwareProfile(QtCore.QObject):
         fmt: str,
         setup_json: str,
     ) -> bool:
-        """saveArea in the background (07 S101): returns True at once and
+        """Saves the print area (Print & Export) in the background (07 S101):
+        image is RigRenderer's picture of it, written at width x height
+        pixels; setup_json the paper for a PDF. Returns True at once and
         announces the result with areaSaved(ok, error) on the main thread.
         Returns False, starting nothing, while an export is running."""
         if self._exporting:
@@ -1181,10 +1132,10 @@ class HardwareProfile(QtCore.QObject):
         found = self._resolve_existing(stored)
         if not found:
             return 1.0
-        size = QtGui.QImageReader(str(found)).size()
-        if size.width() <= 0 or size.height() <= 0:
+        width, height = _file_picture_size(found)
+        if width <= 0 or height <= 0:
             return 1.0
-        return size.width() / size.height()
+        return width / height
 
     def savePastedImage(self, image: QtGui.QImage, device_name: str) -> str:
         """Keeps a pasted picture in the edit's temporary folder as
@@ -1387,11 +1338,6 @@ class HardwareProfile(QtCore.QObject):
 
         return json.dumps({"ok": True, "devices": pack_devices()})
 
-    @QtCore.Slot(str, result=str)
-    def peekPackDevice(self, device_name: str) -> str:
-        """Device Pack's export preview by name (no id): see peekPackDeviceById."""
-        return self.peekPackDeviceById(device_name, "")
-
     @QtCore.Slot(str, str, result=str)
     def peekPackDeviceById(self, device_name: str, device_guid: str) -> str:
         """Device Pack's export preview: the device, its photo, its modes and
@@ -1423,7 +1369,8 @@ class HardwareProfile(QtCore.QObject):
             })
         estimate = path.stat().st_size
         seen: set[Path] = set()
-        image = store.device_photo_ref(doc)
+        # The device's photo as shown everywhere (07 S127, 08 S107).
+        image = store.shown_photo_ref(doc, lambda r: resolve(r) is not None)
         photo = resolve(image) if image else None
         for ref in sorted(store.named_refs(doc)):
             found = resolve(ref)
@@ -2111,6 +2058,10 @@ class HardwareProfile(QtCore.QObject):
         payload["device"] = name
         payload["space"] = "world"
         payload.update(PAGE_SIZE)
+        # The device image is not the editor's (07 S127): the file's own
+        # key always stays, so an image set on Home while the editor was
+        # open is not undone by this Save.
+        payload.pop(store.DEVICE_IMAGE_KEY, None)
         # The device's photo is the bottom background picture (07 S127):
         # the old top-level photo keys are never written (OT-2).
         for key in planes_once.OLD_PHOTO_KEYS:
@@ -2220,7 +2171,34 @@ class HardwareProfile(QtCore.QObject):
         return src if src.is_file() else None
 
     @QtCore.Slot(str, str, result=str)
+    def keepImage(self, device_name: str, source_url: str) -> str:
+        """Module Setup's Add Image… / Change Image… on an input module: the
+        picture waits in the window's edit as device-image.<ext> (a free
+        name when that one is taken) until Save names it as the device image
+        (03 S52); the device map is not touched. A damaged module file is
+        refused before anything is kept (03 S64). Its reference, or ""."""
+        src = self._local_image(source_url)
+        if src is None:
+            return ""
+        name = self._name(device_name)
+        path = self._file_for(name)
+        reason = store.damage_of(path)
+        if reason:
+            trace("SAVE", "Configure Module", "keepImage", path, "damaged")
+            module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
+            return ""
+        rel = self._stage(name, src, store.device_image_name(src))
+        if rel:
+            persist_log(
+                f"Persist device image name={name!r} guid={self._device_guid!r} "
+                f"path={path} image={rel!r}"
+            )
+        return rel
+
+    @QtCore.Slot(str, str, result=str)
     def keepPhoto(self, device_name: str, source_url: str) -> str:
+        """Output Module Setup's Import Image (unchanged: the bottom
+        background picture)."""
         return self.copyImage(source_url, device_name)
 
     @QtCore.Slot(str, str, result=str)
@@ -2246,7 +2224,6 @@ class HardwareProfile(QtCore.QObject):
         rel = self._stage(name, src, f"photo{ext}")
         if not rel:
             return ""
-        self._staged_photo = rel
         # The module file's photo layer is written by the window's Save, not
         # here: nothing in the module file or History until Save (07 Q2).
         persist_log(
@@ -2258,21 +2235,7 @@ class HardwareProfile(QtCore.QObject):
         self.documentChanged.emit()
         return rel
 
-    @QtCore.Slot(str, result=int)
-    def removeUnusedPictures(self, device_name: str) -> int:
-        """Pictures in the device's folder that its map and recovery copy
-        don't name go (07 S106). How many."""
-        name = self._name(device_name)
-        return len(store.remove_unused_pictures(name, self._device_guid))
-
     # --- a missing picture (07 S108) ----------------------------------------
-
-    @QtCore.Slot(str, result=bool)
-    def pictureMissing(self, ref: str) -> bool:
-        """The map names this picture but its file is not there: Edit shows
-        a "Picture missing" placeholder."""
-        text = str(ref or "").strip()
-        return bool(text) and self._resolve_existing(text) is None
 
     @QtCore.Slot(str, str, result=str)
     def choosePictureFor(self, ref: str, url: str) -> str:
@@ -2293,10 +2256,6 @@ class HardwareProfile(QtCore.QObject):
     # device's folder is not touched until Save. owner: "" the Device Mapping Editor,
     # "setup" Module Setup.
 
-    @QtCore.Slot(str)
-    def beginEdit(self, device_name: str) -> None:
-        self.beginEditFor(device_name, "")
-
     @QtCore.Slot(str, str)
     def beginEditFor(self, device_name: str, owner: str) -> None:
         """An edit starts (or goes on: one already open is kept)."""
@@ -2308,10 +2267,6 @@ class HardwareProfile(QtCore.QObject):
             store.begin_edit(name, self._device_guid, self._owner)
         except OSError as exc:
             syslog.warning(f"Edit of {name}: no temporary folder ({exc})")
-
-    @QtCore.Slot(str, result=bool)
-    def editActive(self, device_name: str) -> bool:
-        return self.editActiveFor(device_name, "")
 
     @QtCore.Slot(str, str, result=bool)
     def editActiveFor(self, device_name: str, owner: str) -> bool:
@@ -2329,7 +2284,6 @@ class HardwareProfile(QtCore.QObject):
         name = self._name(device_name)
         had = self._editing(name, owner)
         store.cancel_edit(name, self._device_guid, owner)
-        self._staged_photo = ""
         if had:
             who = "Configure Module" if owner else "Device Mapping Editor"
             trace("SAVE", who, "cancelEdit", name, "ok")
@@ -2349,45 +2303,22 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot(str, str, result=str)
     def commitEditFor(self, device_name: str, owner: str) -> str:
-        """Module Setup's Save, after its module file is written: the photo
-        Import Image kept goes into the device's folder and becomes the
-        bottom background picture (03 S52, 07 S127); pictures nothing names
-        go. The error, or "". With no module file (Delete File) the edit is
+        """Module Setup's Save or Delete File: whatever of its edit is left
+        (saveClaim has already committed the pictures it names, 03 S52)
+        is finished with no change of its own; pictures nothing names go.
+        The error, or "". With no module file (Delete File) the edit is
         dropped."""
         owner = str(owner or "")
         name = self._name(device_name)
-        photo = self._staged_photo
-        self._staged_photo = ""
         if not self._editing(name, owner):
             return ""
         if not self._file_for(name).is_file():
             store.cancel_edit(name, self._device_guid, owner)
             return ""
-
-        folder = self._dir(name)
-
-        def change(doc: dict) -> object:
-            if not photo or store.device_photo_ref(doc) == store.normal_ref(photo):
-                return False
-            store.set_device_photo(doc, photo, folder)
-            return True
-
         who = "Configure Module" if owner else "Device Mapping Editor"
-        return store.commit_edit(name, self._device_guid, change, owner, who)
-
-    # Module Setup's (DialogConfigureModule.qml) names for the calls above,
-    # until that window uses them.
-    @QtCore.Slot(str, str)
-    def stashPhotoFor(self, device_name: str, owner: str) -> None:
-        self.beginEditFor(device_name, owner)
-
-    @QtCore.Slot(str, str, result=bool)
-    def restorePhotoFor(self, device_name: str, owner: str) -> bool:
-        return self.cancelEditFor(device_name, owner)
-
-    @QtCore.Slot(str, str)
-    def dropPhotoStashFor(self, device_name: str, owner: str) -> None:
-        self.commitEditFor(device_name, owner)
+        return store.commit_edit(
+            name, self._device_guid, lambda _doc: False, owner, who
+        )
 
     @QtCore.Slot(result=str)
     def imagesFolderUrl(self) -> str:
@@ -2432,26 +2363,52 @@ class HardwareProfile(QtCore.QObject):
         # Read only: asking for the photo doesn't change this object's
         # document (07 S11, GL-271). The saved map's photo, from the
         # device's own pictures/ only (never another device's).
+        return self._photo_url(device_name, with_image=True)
+
+    @QtCore.Slot(str, result=bool)
+    def hasDeviceImage(self, device_name: str) -> bool:
+        """The saved module file names a device image whose file is in the
+        device's folder (03 S52): Module Setup's Change Image… / Remove
+        Image."""
+        base = self._dir(device_name)
+        ref = store.device_image_ref(store.read_path(store.module_file_in(base)))
+        return bool(ref) and store.find_picture(base, ref) is not None
+
+    @QtCore.Slot(str, result=str)
+    def generatedPhotoUrl(self, device_name: str) -> str:
+        """The device's photo as it would be without its device image (07
+        S127 from the second step): Module Setup's preview after a Remove
+        Image that waits for Save."""
+        return self._photo_url(device_name, with_image=False)
+
+    def _photo_url(self, device_name: str, with_image: bool) -> str:
+        # Read only: asking for the photo doesn't change this object's
+        # document (07 S11, GL-271). The saved map's photo, from the
+        # device's own pictures/ only (never another device's).
         base = self._dir(device_name)
         own = base / store.PICTURES
         doc = store.read_path(store.module_file_in(base))
-        # The device's background picture (07 S157); the bottom background
-        # picture while it is being made or missing (07 S127).
-        ref = store.shown_photo_ref(
-            doc, lambda r: store.find_picture(base, r) is not None
-        )
-        found = store.find_picture(base, ref)
-        self._want_device_photo(device_name, base, doc, ref)
-        candidates = [found] if found is not None else []
-        if own.is_dir():
-            candidates += [p for p in sorted(own.glob("photo.*")) if p.is_file()]
-        for path in candidates:
+        if not isinstance(doc, dict):
+            doc = {}
+
+        def exists(ref: str) -> bool:
+            return store.find_picture(base, ref) is not None
+
+        # The device image, else the device's background picture (07 S157),
+        # else the bottom background picture while that is being made or
+        # missing (07 S127). The background part is asked for even when the
+        # image wins: the background picture is still made (07 S157).
+        background = {k: v for k, v in doc.items() if k != store.DEVICE_IMAGE_KEY}
+        generated = store.shown_photo_ref(background, exists)
+        self._want_device_photo(device_name, base, doc, generated)
+        ref = store.shown_photo_ref(doc, exists) if with_image else generated
+        found = store.find_picture(base, ref) if ref else None
+        if found is not None:
             try:
-                if path.resolve().parent != own.resolve():
-                    continue
-                return path.as_uri() + f"?t={int(path.stat().st_mtime_ns)}"
+                if found.resolve().parent == own.resolve():
+                    return found.as_uri() + f"?t={int(found.stat().st_mtime_ns)}"
             except OSError:
-                continue
+                pass
         # No photo: none, never another device's (07 S11; no stock photos
         # ship, 07 Q12).
         return ""
@@ -2498,9 +2455,14 @@ class HardwareProfile(QtCore.QObject):
         key = (source, stamp)
         size = _PICTURE_SIZES.get(key)
         if size is None:
-            read = QtGui.QImageReader(source).size()
-            ok = read.isValid() and read.width() > 0 and read.height() > 0
-            size = (read.width(), read.height()) if ok else (0, 0)
+            if not text.startswith("qrc:"):
+                size = _file_picture_size(Path(source))
+            else:
+                # A program resource (qrc:) is no file store.picture_size
+                # can find, so Qt reads it.
+                read = QtGui.QImageReader(source).size()
+                ok = read.isValid() and read.width() > 0 and read.height() > 0
+                size = (read.width(), read.height()) if ok else (0, 0)
             if len(_PICTURE_SIZES) >= _PICTURE_SIZE_CACHE:
                 _PICTURE_SIZES.clear()
             _PICTURE_SIZES[key] = size

@@ -599,7 +599,6 @@ class KeyboardLayoutModel(ControlLayoutModel):
                     groupName=item.group or "",
                     systemName=item.system_name,
                     sequenceIndex=index,
-                    indent=1,
                 )
             )
         return rows

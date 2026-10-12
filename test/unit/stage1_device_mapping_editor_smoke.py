@@ -858,7 +858,8 @@ CARD_JS = f"_moduleModel.cardMap({json.dumps(SLUG)})"
 
 
 def part_setup(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
-    """Module Setup: Import Image, then Cancel and Discard (03 Q2, GL-078)."""
+    """Module Setup: Add Image… (an input module's Device Image, 03 S52;
+    old: Import Image), then Cancel and Discard (03 Q2, GL-078)."""
     make_picture(PICS / "photo.png", "#204060")
     chosen = make_picture(_HOME / "pictures" / "setup photo.jpg", "#30a030")
     image0 = file_photo()
@@ -867,14 +868,15 @@ def part_setup(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
     win = wait_for(lambda: top_window("Input Module Setup"))
     if not isinstance(win, QtCore.QObject):
         raise DriveError("Module Setup did not open")
-    # Import Image... and a picture picked in the file dialog.
+    # Add Image... and a picture picked in the file dialog. Old: Import
+    # Image kept it as photo.jpg; now it waits as device-image.jpg.
     # (A FilePicker, 01 S143: _accept is what its file dialog calls.)
     ev_in(win, "_imageDialog._accept("
           + json.dumps(QtCore.QUrl.fromLocalFile(str(chosen)).toString())
           + "); true")
-    if not wait_for(lambda: "photo.jpg" in str(ev_in(win, "_win.photoUrl"))
+    if not wait_for(lambda: "device-image.jpg" in str(ev_in(win, "_win.photoUrl"))
                     and ev_in(win, "claimDirty")):
-        raise DriveError("Import Image did not show the picture")
+        raise DriveError("Add Image did not show the picture")
     out["setup-imported"] = {
         "file-image": file_photo(),
         "start-image": image0,
@@ -898,7 +900,7 @@ def part_setup(app: joystick_gremlin.JoystickGremlinApp, out: dict) -> None:
         "file-image": file_photo(),
         "start-image": image0,
         "old-photo": (PICS / "photo.png").is_file(),
-        "new-photo": (PICS / "photo.jpg").is_file(),
+        "new-photo": (PICS / "device-image.jpg").is_file(),
     }
     # Opened again: the picture it shows.
     wait_for(lambda: not ev_in(root, "configureWin"))

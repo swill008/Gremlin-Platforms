@@ -80,7 +80,7 @@ def _normalize(doc: dict) -> dict:
                 if old in value:
                     value = value.replace(old, names[old])
             # Files under the checkout (an image layer's srcUrl).
-            return re.sub(r"file:///\S*?/(gfx|qml)/", r"<repo>/\1/", value)
+            return re.sub(r"file:///\S*?/(gfx|qml|test)/", r"<repo>/\1/", value)
         if isinstance(value, float):
             return round(value, 5)
         return value

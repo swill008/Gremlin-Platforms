@@ -658,15 +658,6 @@ def vjoy_held(vjoy_id: int) -> bool:
     return _opened_vjoy(vjoy_id) is not None
 
 
-def vjoy_owned(vjoy_id: int) -> bool:
-    """True while Gremlin holds this vJoy device."""
-    dev = _opened_vjoy(vjoy_id)
-    try:
-        return dev is not None and bool(dev.is_owned())
-    except Exception:
-        return False
-
-
 def vjoy_lost(vjoy_id: int) -> bool:
     """True when Gremlin opened this vJoy device and no longer owns it
     (another program took it). A device not opened yet is not lost: the

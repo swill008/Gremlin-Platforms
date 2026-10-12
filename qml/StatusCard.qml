@@ -24,6 +24,9 @@ Rectangle {
     property int axes: 0
     property int hats: 0
     property string photo: ""
+    // The device has its own Device Image (an input module's uploaded
+    // picture; the model's hasImage). The generated picture doesn't count.
+    property bool hasImage: false
     property bool isStub: true
     // Why the module file can't be read ("" when it is fine).
     property string damaged: ""
@@ -41,6 +44,9 @@ Rectangle {
     // drag; otherwise the card follows its pile's saved size (width/height stay bound).
     property real liveW: 0
     property real liveH: 0
+    // The widest the card may be where it sits (the page's free width; 0 =
+    // no limit): a resize never makes it wider than the window shows.
+    property real fitWidth: 0
     property bool dropStacking: false
     property bool selected: false
     property bool canStackSelected: false
@@ -78,7 +84,8 @@ Rectangle {
     signal startFresh()
     signal exportDevice()
     signal importDevice()
-    // The Logical Device card's own picture (03 S88, D-03-LD-IMAGE).
+    // The card's picture: the Logical Device's own (03 S88, D-03-LD-IMAGE)
+    // or an input module's Device Image.
     signal addImage()
     signal removeImage()
     signal unstackCard()
@@ -167,11 +174,10 @@ Rectangle {
                     anchors.margins: Style.dp(2)
                     source: photo
                     fillMode: Image.PreserveAspectFit
-                    // Decoded no larger than a card can show (720 x 520, see
-                    // _clampW/_clampH), not at the photo's full size: about
-                    // 5 MB less per card. A fixed size, so resizing a card
-                    // does not decode the photo again.
-                    sourceSize: Qt.size(720 * Screen.devicePixelRatio, 520 * Screen.devicePixelRatio)
+                    // Decoded no larger than a card can show (maxW x maxH, see
+                    // _clampW/_clampH), not at the photo's full size. A fixed
+                    // size, so resizing a card does not decode the photo again.
+                    sourceSize: Qt.size(_card.maxW * Screen.devicePixelRatio, _card.maxH * Screen.devicePixelRatio)
                     asynchronous: true
                     cache: true
                     visible: photo && photo.length
@@ -301,7 +307,8 @@ Rectangle {
             if (!pressed || pressButton !== Qt.LeftButton || shiftHeld)
                 return
             if (!didDrag) {
-                if (Math.abs(mouse.x - pressX) < 10 && Math.abs(mouse.y - pressY) < 10)
+                // As the Device Bindings rows (ControlTree): a 4 dp move starts it.
+                if (Math.abs(mouse.x - pressX) + Math.abs(mouse.y - pressY) < Style.dp(4))
                     return
                 didDrag = true
                 // Lift only after the pointer moves. Lifting on the press
@@ -386,7 +393,16 @@ Rectangle {
         }
     }
 
-    function _clampW(w) { return Math.max(220, Math.min(720, w)) }
+    // The card size limits (03 S83): 220-1080 wide, 140-780 tall, and never
+    // wider than the page has room for (fitWidth).
+    readonly property int minW: 220
+    readonly property int maxW: 1080
+    readonly property int minH: 140
+    readonly property int maxH: 780
+    function _clampW(w) {
+        var most = fitWidth > 0 ? Math.max(minW, Math.min(maxW, fitWidth)) : maxW
+        return Math.max(minW, Math.min(most, w))
+    }
 
     function _beginResize() {
         liveW = width
@@ -400,7 +416,7 @@ Rectangle {
         sizeChanged(Math.round(liveW), Math.round(liveH))
         resizing = false
     }
-    function _clampH(h) { return Math.max(140, Math.min(520, h)) }
+    function _clampH(h) { return Math.max(minH, Math.min(maxH, h)) }
 
     MouseArea {
         id: _east
@@ -513,7 +529,8 @@ Rectangle {
                     : MenuModel.action("Calibration", function() { _card.openCalibration() })
             ]),
             MenuModel.section("view", "View", [
-                MenuModel.action(xbox ? "Xbox Viewer" : "vJoy Viewer", function() { _card.openPairing() }),
+                // The Xbox pad view is part of the Xbox Output View now.
+                xbox ? null : MenuModel.action("vJoy Viewer", function() { _card.openPairing() }),
                 (notStick || xbox || logical) ? null
                     : MenuModel.action("Device Information", function() { _card.openDeviceInformation() })
             ]),
@@ -535,13 +552,24 @@ Rectangle {
                     : MenuModel.action("Swap with Another Stick…", function() { _card.openDeviceLibrary("swap") }),
                 (dest || xbox || notStick || logical) ? null
                     : MenuModel.action("Change vJoy Output…", function() { _card.openDeviceLibrary("output") }),
-                // The Logical Device's card picture (03 S88, D-03-LD-IMAGE):
-                // the other cards set theirs in Module Setup / the Device Mapping Editor.
+                // The Logical Device's card picture (03 S88, D-03-LD-IMAGE),
+                // unchanged: its bottom background picture.
                 !logical ? null
                     : MenuModel.action(_card.photo ? "Change Image…" : "Add Image…",
                                        function() { _card.addImage() }),
                 (!logical || !_card.photo) ? null
                     : MenuModel.action("Remove Image", function() { _card.removeImage() }),
+                // An input module's Device Image (D-03-DEVICE-IMAGE): only
+                // the uploaded image is removable here, not the generated
+                // picture. Output cards keep theirs as they are. A card needs
+                // a readable module file to hold one.
+                (dest || xbox || logical) ? null
+                    : MenuModel.action(_card.hasImage ? "Change Image…" : "Add Image…",
+                                       function() { _card.addImage() },
+                                       _card.isModule && _card.damaged === ""),
+                (dest || xbox || logical || !_card.hasImage) ? null
+                    : MenuModel.action("Remove Image", function() { _card.removeImage() },
+                                       _card.damaged === ""),
                 // 08 S111 (D-FIXLIST-B2): open the Export / Import Device
                 // window on that tab with this device (Export only once it
                 // has a module file).

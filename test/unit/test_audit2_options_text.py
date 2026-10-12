@@ -194,7 +194,7 @@ def test_home_cards_keep_an_unplugged_stick_in_its_place(
     assert module_model._order_slugs() == ["throttle", "stick", "pedals", *tail]
 
     # Pedals dragged before the throttle while the stick is away.
-    model.moveSlugBefore("pedals", "throttle")
+    model.dropSlugBefore("pedals", "throttle")
     assert [r.slug for r in model._rows] == ["pedals", "throttle", *tail]
     assert module_model._order_slugs() == ["pedals", "stick", "throttle", *tail]
 

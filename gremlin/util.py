@@ -29,9 +29,6 @@ from gremlin.types import (
     ScriptVariableType,
 )
 
-# Table storing which modules have been imported already
-g_loaded_modules = {}
-
 
 def parse_id_or_uuid(value: str) -> int | uuid.UUID:
     """Attempts to parse an identifier value.
@@ -742,23 +739,6 @@ def create_calibration_function(
         return lambda x: no_center_calibration(x, low, high)
 
 
-def truncate(text: str, left_size: int, right_size: int) -> str:
-    """Returns a truncated string matching the specified character counts.
-
-    Args:
-        text: the text to truncate
-        left_size: number of characters on the left side
-        right_size: number of characters on the right side
-
-    Returns:
-        string truncated to the specified character counts if required
-    """
-    if len(text) < left_size + right_size:
-        return text
-
-    return f"{text[:left_size]}...{text[-right_size:]}"
-
-
 # Folder under %userprofile% for configuration.json and the default user data.
 # joystick_gremlin.py reads the same folder before Qt loads; keep the two in step.
 USER_DATA_FOLDER = "Gremlin Platforms"
@@ -1053,6 +1033,31 @@ def dill_hat_lookup(value: int) -> HatDirection:
         HatDirection corresponding to the raw value if exact, else "Center".
     """
     return _dill_hat_lookup.get(value, HatDirection.Center)
+
+
+def path_key(path: str | os.PathLike) -> str:
+    """A path as files are compared: resolved, with Windows case and
+    slashes (another spelling of the same file gives the same key)."""
+    try:
+        text = str(Path(path).resolve())
+    except (OSError, ValueError):
+        text = os.path.abspath(str(path))
+    return os.path.normcase(text)
+
+
+def same_path(a: str | os.PathLike | None, b: str | os.PathLike | None) -> bool:
+    """a and b are the same file however written; an empty path is none."""
+    if a is None or b is None or not str(a) or not str(b):
+        return False
+    return path_key(a) == path_key(b)
+
+
+def is_inside(path: str | os.PathLike, folder: str | os.PathLike) -> bool:
+    """path is folder or something in it."""
+    key, base = path_key(path), path_key(folder)
+    if key == base:
+        return True
+    return key.startswith(base if base.endswith(os.sep) else base + os.sep)
 
 
 def file_exists_and_is_accessible(filename: str) -> bool:

@@ -81,12 +81,3 @@ class CalibrationModuleModel(QtCore.QAbstractListModel):
             if row["key"].lower() == want:
                 return store.id_key(row["name"], row["guid"])
         return ""
-
-    @QtCore.Slot(str, result=int)
-    def indexOfSlug(self, slug: str) -> int:
-        """The row picked by a key (a card's slug picks the first stick)."""
-        want = str(slug or "").strip().lower()
-        for i, row in enumerate(self._rows):
-            if row["key"].lower() == want:
-                return i
-        return -1

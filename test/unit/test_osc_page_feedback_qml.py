@@ -83,7 +83,7 @@ def _setup(j: Journey) -> str:
     from gremlin.signal import signal
     from gremlin.types import InputType
 
-    row = OscDevice().create(InputType.JoystickButton, label=ADDRESS)
+    row = OscDevice().rows.create(InputType.JoystickButton, label=ADDRESS)
     osc_device_file.save(who="test")
     signal.oscDeviceModified.emit()
     action = plugin_manager.PluginManager().create_instance(

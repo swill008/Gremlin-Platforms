@@ -254,12 +254,14 @@ class _MappedModel(QtCore.QAbstractListModel):
     }
 
     guidChanged = QtCore.Signal()
+    stampChanged = QtCore.Signal()
 
     def __init__(self, input_type: InputType, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._input_type = input_type
         self._guid = ""
         self._rows: list[dict] = []
+        self._stamp = 0
         watch_bindings()
         signal.bindingsChanged.connect(self._reload)
 
@@ -268,6 +270,8 @@ class _MappedModel(QtCore.QAbstractListModel):
         self.beginResetModel()
         self._rows = _mapped_rows(self._guid, self._input_type) if self._guid else []
         self.endResetModel()
+        self._stamp += 1
+        self.stampChanged.emit()
 
     def _get_guid(self) -> str:
         return self._guid
@@ -294,6 +298,13 @@ class _MappedModel(QtCore.QAbstractListModel):
         return self.roles
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
+
+    def _get_stamp(self) -> int:
+        return self._stamp
+
+    # Goes up each time the rows are read again (a new device, or what
+    # drives what changed), so QML can redraw labels taken from the rows.
+    stamp = QtCore.Property(int, fget=_get_stamp, notify=stampChanged)
 
     @QtCore.Slot(int, result=str)
     def destLabel(self, identifier: int) -> str:

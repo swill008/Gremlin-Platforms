@@ -223,8 +223,8 @@ def main() -> None:  # noqa: C901, PLR0915
 
     # Two inputs, added as the Add window adds them.
     dev = OscDevice()
-    fire = dev.create(InputType.JoystickButton, label="/sd/fire")
-    fader = dev.create(InputType.JoystickAxis, label="/fader/1")
+    fire = dev.rows.create(InputType.JoystickButton, "/sd/fire")
+    fader = dev.rows.create(InputType.JoystickAxis, "/fader/1")
     osc_device_file.save(who="test")
     signal.oscDeviceModified.emit()
     wait_for(lambda: False, 500)

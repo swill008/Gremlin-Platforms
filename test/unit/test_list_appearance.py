@@ -331,13 +331,11 @@ def _store(s, out: pathlib.Path) -> None:  # noqa: ANN001
     from gremlin.ui import window_placement
 
     placement = window_placement.WindowPlacement()
-    seen: list[str] = []
-    placement.listAppearanceChanged.connect(seen.append)
     mine = {"rowSpacing": 9, "parentAlign": "right"}
     window_placement.set_list_appearance("device-bindings", {"rowSpacing": 3})
     placement.setListAppearance("logical", json.dumps(mine))
     checks = [
-        seen == ["logical"],
+        window_placement.list_appearance("logical") == mine,
         window_placement.list_appearance("device-bindings") == {"rowSpacing": 3},
         json.loads(placement.listAppearance("logical")) == mine,
         placement.listAppearance("keyboard") == "{}",
@@ -345,7 +343,7 @@ def _store(s, out: pathlib.Path) -> None:  # noqa: ANN001
     ]
     placement.setListAppearance("logical", "[1, 2]")  # not an object: ignored
     placement.setListAppearance("logical", "not json")
-    checks.append(seen == ["logical"])
+    checks.append(json.loads(placement.listAppearance("logical")) == mine)
     # Reset one page: the others keep theirs.
     placement.setListAppearance("logical", "{}")
     checks.append(placement.listAppearance("logical") == "{}")

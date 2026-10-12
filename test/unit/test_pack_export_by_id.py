@@ -61,7 +61,7 @@ def test_export_with_the_second_twins_id_exports_it(
     )
     assert done["ok"], done
     label, packed = _map(dest)
-    assert device_zip.guid_text(label["id"]) == device_zip.guid_text(str(SECOND))
+    assert device_zip.braced_guid(label["id"]) == device_zip.braced_guid(str(SECOND))
     assert packed["twinMarker"] == "second"
 
 
@@ -78,7 +78,7 @@ def test_async_export_with_the_second_twins_id_exports_it(
         assert started["ok"], started
     assert json.loads(blocker.args[0])["ok"]
     label, packed = _map(dest)
-    assert device_zip.guid_text(label["id"]) == device_zip.guid_text(str(SECOND))
+    assert device_zip.braced_guid(label["id"]) == device_zip.braced_guid(str(SECOND))
     assert packed["twinMarker"] == "second"
 
 

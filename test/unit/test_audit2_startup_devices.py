@@ -34,7 +34,6 @@ sys.path.append(".")
 
 import pytest
 
-import dill
 from gremlin import error, plugin_manager, shared_state, swap_devices
 from gremlin.modules import ids
 from gremlin.profile import ModeHierarchy, Profile
@@ -293,17 +292,6 @@ def profile() -> Iterator[Profile]:
     yield p
     shared_state.current_profile = None
     rows.load_dict(saved)
-
-
-def test_swap_devices_lists_only_sticks(profile: Profile) -> None:
-    profile.get_input_item(_STICK, InputType.JoystickButton, 1, "Default", True)
-    profile.get_input_item(
-        dill.UUID_Keyboard, InputType.Keyboard, (0x1E, False), "Default", True
-    )
-    for device in (ids.LOGICAL_DEVICE, ids.OSC, ids.XBOX):
-        profile.get_input_item(device, InputType.JoystickButton, 1, "Default", True)
-    listed = [d.device_uuid for d in swap_devices.get_profile_devices(profile)]
-    assert listed == [_STICK]
 
 
 @pytest.mark.parametrize(

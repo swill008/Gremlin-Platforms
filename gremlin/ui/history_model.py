@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import zlib
 from datetime import date, datetime, timedelta
@@ -29,7 +28,7 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import clock, history, history_profile, shared_state, text_diff
+from gremlin import clock, history, history_profile, shared_state, text_diff, util
 from gremlin.ui.option import entry_title
 
 QML_IMPORT_NAME = "Gremlin.UI"
@@ -199,7 +198,7 @@ def _matches(entry: dict, wanted: dict) -> bool:
             continue
         if key == "profile":
             # A path however written (case, slashes, relative): GL-194.
-            if not _same_file(subject.get("profile"), value):
+            if not util.same_path(subject.get("profile"), value):
                 return False
             continue
         if key == "ofDevice":
@@ -521,16 +520,6 @@ def _effect(entry: dict, which: str, can: bool) -> str:
 # --- restore -------------------------------------------------------------------
 
 
-def _same_file(a: object, b: object) -> bool:
-    if not a or not b:
-        return False
-    try:
-        first, second = Path(str(a)).resolve(), Path(str(b)).resolve()
-    except OSError:
-        first, second = Path(str(a)), Path(str(b))
-    return os.path.normcase(str(first)) == os.path.normcase(str(second))
-
-
 def _changed_everywhere() -> None:
     from gremlin.signal import signal
 
@@ -546,7 +535,7 @@ def _restore_input(entry: dict, side: dict | None) -> tuple[bool, str]:
     subject = entry.get("subject") or {}
     if profile is None:
         return False, "No profile is open."
-    if not _same_file(profile.fpath, subject.get("profile")):
+    if not util.same_path(profile.fpath, subject.get("profile")):
         return False, f"Open {subject.get('profileName') or 'that profile'} first."
     uid = parse_guid(str(subject.get("deviceId") or ""))
     if uid is None:
@@ -590,28 +579,17 @@ def _profile_path(entry: dict) -> Path:
     return Path(str((entry.get("subject") or {}).get("profile") or "profile.xml"))
 
 
-def _inside(path: Path, folder: Path) -> bool:
-    """path is folder or in it (case and spelling of the path don't matter)."""
-    try:
-        path, folder = path.resolve(), folder.resolve()
-    except OSError:
-        return False
-    return Path(os.path.normcase(path)).is_relative_to(os.path.normcase(folder))
-
-
 def _outside_folders(entry: dict) -> list[Path]:
     """AD6: the folders a profile Restore of this entry (or its parts) would
     write into that are neither the profiles folder nor the folder the
     profile is still in. An entry's path is only what its line says."""
-    from gremlin import util
-
     found: list[Path] = []
     for item in _parts(entry) if entry.get("kind") == history.GROUP_KIND else [entry]:
         if item.get("area") != "profile" or item.get("kind") == "input":
             continue
         original = _profile_path(item)
         folder = original.parent
-        if original.is_file() or _inside(folder, util.profiles_dir()):
+        if original.is_file() or util.is_inside(folder, util.profiles_dir()):
             continue
         if folder not in found:
             found.append(folder)
@@ -1162,14 +1140,6 @@ class HistoryModel(QtCore.QAbstractListModel):
             self.endInsertRows()
         index = self.index(head, 0)
         self.dataChanged.emit(index, index, [self._role("groupOpen")])
-
-    @QtCore.Slot(str, result=int)
-    def rowOf(self, entry_id: str) -> int:
-        """The row an entry shows on now; -1 when it isn't shown."""
-        return next(
-            (row for row, e in enumerate(self._rows) if e.get("id") == entry_id),
-            -1,
-        )
 
     def _new_count(self) -> int:
         return self._new

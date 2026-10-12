@@ -159,7 +159,10 @@ def test_export_shows_the_bottom_background_picture_as_the_device_photo(
     assert isinstance(described, dict), described
     assert described["photoUrl"]
     titles = [i["title"] for s in described["sections"] for i in s["items"]]
-    assert "Device photo" in titles
+    # Old: a "Device photo" row; it is gone (D-03-DEVICE-IMAGE 1a): the bottom
+    # background picture travels with the Map tick as a map picture.
+    assert "Device photo" not in titles
+    assert "Map picture 1" in titles
 
 
 def test_export_of_an_old_map_carries_its_photo_as_a_layer(
@@ -207,14 +210,23 @@ def _incoming() -> dict:
 
 
 def test_the_photo_tick_takes_the_packs_photo_where_it_was_shown() -> None:
-    base = _mine()
-    merged, _notes = device_pack._merge_module(
-        base, _incoming(), {"pic:photo.png"}, "in.", NAME, ""
+    """Old: a Device photo tick alone put the pack's photo in place of this
+    one. That row is gone (D-03-DEVICE-IMAGE 1a): the pack's bottom picture
+    comes with the Map tick and its picture's tick, where it was shown."""
+    alone, _notes = device_pack._merge_module(
+        _mine(), _incoming(), {"pic:photo.png"}, "in.", NAME, ""
+    )
+    # The picture's tick on its own changes nothing of the map.
+    assert [n["id"] for n in alone["nodes"]] == ["bg_photo", "mine_rect", "b2"]
+    assert store.device_photo_ref(alone) == "pictures/mine.png"
+    merged, notes = device_pack._merge_module(
+        _mine(), _incoming(), {"in.layout", "pic:photo.png"}, "in.", NAME, ""
     )
     nodes = merged["nodes"]
-    assert [n["id"] for n in nodes] == ["in_photo", "mine_rect", "b2"]
+    assert [n["id"] for n in nodes][:2] == ["in_photo", "in_rect"]
     assert nodes[0]["fx"] == 0.2 and nodes[0]["look"] == {"bright": 0.2}
     assert store.device_photo_ref(merged) == "pictures/photo.png"
+    assert not notes
 
 
 def test_the_map_tick_takes_the_packs_background_and_keeps_this_photo() -> None:
@@ -223,11 +235,16 @@ def test_the_map_tick_takes_the_packs_background_and_keeps_this_photo() -> None:
         base, _incoming(), {"in.layout"}, "in.", NAME, ""
     )
     ids_ = [n["id"] for n in merged["nodes"]]
-    # Background first: this device's photo (unticked), the pack's layer.
-    assert ids_[:2] == ["bg_photo", "in_rect"]
-    assert "mine_rect" not in ids_
+    # Background first. Old: this device's photo was kept (the Device photo
+    # row decided it); now the Map tick takes the pack's whole background,
+    # its bottom picture too (D-03-DEVICE-IMAGE 1a).
+    assert ids_[:2] == ["in_photo", "in_rect"]
+    assert "mine_rect" not in ids_ and "bg_photo" not in ids_
     assert set(ids_[2:]) == {"b1", "b2"}
-    assert store.device_photo_ref(merged) == "pictures/mine.png"
+    # Its picture was not ticked: left out, and said so.
+    assert not merged["nodes"][0].get("src")
+    assert store.device_photo_ref(merged) == ""
+    assert any("not ticked" in note for note in _notes)
 
 
 def test_a_pack_without_background_keeps_this_devices_background() -> None:

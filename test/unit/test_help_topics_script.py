@@ -4,8 +4,7 @@
 
 """The Help book must load: a syntax slip in any chapter leaves the Help
 window empty (it failed to open after one, caught only by a window test).
-qml/help/index.js joins the chapters; qml/help_topics.js keeps the old entry
-points over it (01 S128)."""
+qml/help/index.js joins the chapters (01 S128)."""
 
 from __future__ import annotations
 
@@ -19,16 +18,12 @@ _QML = Path(__file__).resolve().parents[2] / "qml"
 _LOADER = """
 import QtQml
 import "%s" as Book
-import "%s" as Old
 QtObject {
     property var chapters: Book.chapters()
     property var book: Book.topics("")
     property var deviceMappingEditor: Book.topics("device-mapping-editor")
     property var found: Book.find(Book.topics("")[3].id)
     property var notFound: Book.find("no-such-topic")
-    property int oldAll: Old.topics().length
-    property int oldDeviceMappingEditor: Old.deviceMappingEditorTopics().length
-    property int oldLibrary: Old.deviceLibraryTopics().length
 }
 """
 
@@ -37,8 +32,7 @@ def _load() -> QtCore.QObject:
     engine = QtQml.QQmlEngine()
     component = QtQml.QQmlComponent(engine)
     component.setData(
-        (_LOADER % ((_QML / "help" / "index.js").as_uri(),
-                    (_QML / "help_topics.js").as_uri())).encode("utf-8"),
+        (_LOADER % (_QML / "help" / "index.js").as_uri()).encode("utf-8"),
         QtCore.QUrl.fromLocalFile(str(_QML / "loader.qml")),
     )
     obj = component.create()
@@ -81,11 +75,3 @@ def test_topics_carry_their_chapter(qapp: QtCore.QCoreApplication) -> None:
     assert found["id"] == _value(obj, "book")[3]["id"]
     assert _one(obj, "notFound") is None
 
-
-def test_the_old_entry_points_read_the_book(qapp: QtCore.QCoreApplication) -> None:
-    obj = _load()
-    assert obj.property("oldAll") == len(_value(obj, "book")) > 10
-    assert obj.property("oldDeviceMappingEditor") == len(
-        _value(obj, "deviceMappingEditor")) > 0
-    assert obj.property("oldLibrary") == len(
-        help_book.chapter_topics("device-library")) > 0

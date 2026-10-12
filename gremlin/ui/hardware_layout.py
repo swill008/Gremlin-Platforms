@@ -475,7 +475,7 @@ class HardwareLayoutModel(ControlLayoutModel):
 
     deviceChanged = QtCore.Signal()
     filtersChanged = QtCore.Signal()
-    # paneKey/paneMode's own signal: a property can't notify with a base
+    # paneKey's own signal: a property can't notify with a base
     # class's signal (QML crashed building the model).
     paneChanged = QtCore.Signal()
 
@@ -583,7 +583,6 @@ class HardwareLayoutModel(ControlLayoutModel):
                     groupName=item.group or "",
                     systemName=item.system_name,
                     sequenceIndex=index,
-                    indent=1,
                     deviceIndex=getattr(item, "device_index", -1),
                     kind=kind_word(item.type),
                     hwId=item.id,
@@ -775,10 +774,6 @@ class HardwareLayoutModel(ControlLayoutModel):
     def destChoices(self) -> list[str]:
         return list(self._dest_choices)
 
-    @QtCore.Property(bool, constant=True)
-    def canRemoveRows(self) -> bool:
-        return False
-
     # Delete (S31: not the input the pane edits).
 
     def _pane_on(self, key: str) -> bool:
@@ -838,26 +833,9 @@ class HardwareLayoutModel(ControlLayoutModel):
         kind, _, number = key.partition(":")
         return parent_key(type_of(kind), int(number))
 
-    @QtCore.Slot(int, result=int)
-    def rowForDeviceIndex(self, device_index: int) -> int:
-        key = self.keyForDeviceIndex(device_index)
-        if not key:
-            return -1
-        for row, entry in enumerate(self._rows):
-            if entry["rowKind"] == "parent" and entry["key"] == key:
-                return row
-        return -1
-
     @QtCore.Property(str, notify=paneChanged)
     def paneKey(self) -> str:
         return self._pane_key if self._pane_model is not None else ""
-
-    @QtCore.Property(str, notify=paneChanged)
-    def paneMode(self) -> str:
-        shadow = self._pane_shadow
-        if self._pane_model is None:
-            return ""
-        return str(shadow.mode) if shadow is not None else self._mode
 
     @QtCore.Slot(result=int)
     def commitPane(self) -> int:

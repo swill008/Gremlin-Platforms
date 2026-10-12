@@ -49,7 +49,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 
-from gremlin import clock
+from gremlin import clock, util
 from gremlin.modules import module_file
 from gremlin.modules.ids import stored_guid_key
 
@@ -157,7 +157,6 @@ def _file_name(text: str) -> str:
 
 def _register_setting() -> None:
     """Registers device-library-folder (01 Folders style) when nothing has."""
-    from gremlin import util
     from gremlin.config import Configuration
     from gremlin.types import PropertyType
 
@@ -180,8 +179,6 @@ def _register_setting() -> None:
 def folder() -> Path:
     """The library folder: its own setting, default <data folder>\\device
     library (S37). Tests point it elsewhere by patching this function."""
-    from gremlin import util
-
     try:
         _register_setting()
     except Exception:  # noqa: BLE001 - no configuration yet: the default
@@ -548,7 +545,7 @@ def restore_history(entry: dict, side: dict | None) -> tuple[bool, str]:
         for item in side.get("files") or []:
             rel = str(item.get("file") or "")
             path = base / rel
-            if not rel or rel == LIST_NAME or not _inside(path, base):
+            if not rel or rel == LIST_NAME or not util.is_inside(path, base):
                 continue
             _note_file(path)
             try:
@@ -636,14 +633,6 @@ def set_settings(values: dict) -> None:
         _apply_limits(doc)
 
 
-def _inside(path: Path, base: Path) -> bool:
-    try:
-        Path(path).resolve().relative_to(Path(base).resolve())
-    except (OSError, ValueError):
-        return False
-    return True
-
-
 _T = TypeVar("_T")
 
 
@@ -683,7 +672,7 @@ def _move_to(target: Path) -> None:
     from gremlin.config import Configuration
 
     source = folder()
-    if _inside(target, source):
+    if util.is_inside(target, source):
         raise ValueError(
             f"{target} is inside the Device Library's folder: choose another folder."
         )
@@ -1191,12 +1180,7 @@ def _is_open(path: Path) -> bool:
         return False
     if not str(path) or str(path) == ".":
         return current.fpath is None
-    if current.fpath is None:
-        return False
-    try:
-        return Path(current.fpath).resolve() == Path(path).resolve()
-    except OSError:
-        return str(current.fpath) == str(path)
+    return util.same_path(current.fpath, path)
 
 
 def _profile_for(path: Path) -> Profile | str:
@@ -1277,16 +1261,6 @@ def _with_folder(data: bytes, where: Path) -> tuple[bytes, dict] | str:
     module = EXACT_ENTRY + store.MODULE_FILE
     exact = next((f for f in files if f[0] == module), None)
     return blob.getvalue(), ({"exact": exact} if exact else {})
-
-
-def is_gmap(data: bytes | Path) -> bool:
-    """A device folder zip (S60): a zip holding gmap.json."""
-    try:
-        source = io.BytesIO(data) if isinstance(data, bytes) else Path(data)
-        with zipfile.ZipFile(source, "r") as zf:
-            return GMAP_JSON in zf.namelist()
-    except (OSError, ValueError, zipfile.BadZipFile):
-        return False
 
 
 def _gmap_parts(zf: zipfile.ZipFile, names: list[str]) -> dict | str:
@@ -1388,7 +1362,8 @@ def _contents(pack: dict) -> tuple[list[str], list[str], int, dict[str, int]]:
 
     doc = pack["map"]
     held = set()
-    if doc.get("claim") or doc.get("layout"):
+    # The device image (03 S52) is part of the setup, not the map.
+    if doc.get("claim") or doc.get("layout") or store.device_image_ref(doc):
         held.add("setup")
     if doc.get("nodes") or store.device_photo_ref(doc):
         held.add("device_map")
@@ -1832,6 +1807,38 @@ def photo(setup_key: str) -> str:
         syslog.warning(f"Device Library: photo of {setup_key} not shown ({exc})")
         return ""
     return str(dest)
+
+
+def device_photo(folder: str) -> str:
+    """The photo a device folder shows (07 S127: its device image, else its
+    background picture, else its bottom background picture) as a file URL
+    with "?t=<mtime>" so a changed picture is read again; "" when it has
+    none, or no folder or module file. Read only: it never asks for a
+    picture to be made (the Device Library's thumbnails)."""
+    from gremlin.modules import store
+
+    if not folder:
+        return ""
+    # The Library's device rows give the folder's name (relative to the
+    # modules folder); a full path is taken as it is.
+    base = Path(folder)
+    if not base.is_absolute():
+        base = store.folder() / base
+    try:
+        doc = store.read_path(store.module_file_in(base))
+        if not doc:
+            return ""
+        ref = store.shown_photo_ref(
+            doc, lambda r: store.find_picture(base, r) is not None
+        )
+        found = store.find_picture(base, ref) if ref else None
+        if found is None:
+            return ""
+        stamp = found.stat().st_mtime_ns
+    except (OSError, ValueError) as exc:
+        syslog.warning(f"Device Library: photo of {folder} not shown ({exc})")
+        return ""
+    return f"{found.as_uri()}?t={stamp}"
 
 
 def _own_name(row: dict) -> str:

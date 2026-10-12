@@ -6,7 +6,6 @@ import QtQuick.Controls
 import QtQuick.Controls.Universal as U
 
 import Gremlin.Style
-import "render_helpers.js" as RH
 
 Rectangle {
     id: _control

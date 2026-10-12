@@ -31,7 +31,9 @@ END_PT = (
     "(function(){var p=ed().endPt(ed().leaderList(ed().nodeAt('b3'))[0].to);"
     "return [p.x,p.y]})()"
 )
-PICTURE = QtCore.QUrl.fromLocalFile(str(ROOT / "gfx" / "icon_large.png")).toString()
+PICTURE = QtCore.QUrl.fromLocalFile(
+    str(ROOT / "test" / "unit" / "fixtures" / "icon_large.png")
+).toString()
 
 
 def _rect(id_: str, fx: float, fy: float, plane: str = "", fw: float = 0.06) -> dict:

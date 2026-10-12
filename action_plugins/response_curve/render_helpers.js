@@ -1,24 +1,6 @@
 // -*- coding: utf-8; -*-
 // SPDX-License-Identifier: GPL-3.0-only
 
-function draw_curve(ctx, points, width, height) {
-    width /= 2
-    height /= 2
-
-    ctx.moveTo((points[0].x + 1) * width, (height * 2) - (points[0].y + 1) * height);
-    for (let i = 1; i < points.length; i++) {
-        let x = (points[i].x + 1) * width
-        let y = (height * 2) - (points[i].y + 1) * height
-        ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-}
-
-function draw_background(ctx, width, height)
-{
-    ctx.drawImage("grid.png", 0, 0, width, height);
-}
-
 function clamp(val, min, max) {
     return Math.min(Math.max(val, min), max)
 }

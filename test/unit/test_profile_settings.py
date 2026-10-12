@@ -91,8 +91,8 @@ def test_load_profile_settings_from_existing_xml(xml_dir: Path) -> None:
     p.from_xml(str(xml_path))
 
     assert p.settings.startup_mode == "Default"
-    # The old automatic 0.05 means "not set": it follows Options.
-    assert p.settings.macro_default_delay is None
+    # A saved delay with no "options" source is the profile's own, 0.05 too.
+    assert p.settings.macro_default_delay == 0.05
 
     assert p.settings.vjoy_as_input == {}
     assert p.settings.vjoy_initial_values == {}
@@ -122,6 +122,17 @@ def test_macro_delay_follows_options_unless_set(
     p2 = _roundtrip_profile(p)
     assert p2.settings.macro_default_delay == 0.3
     assert p2.settings.effective_macro_delay() == 0.3
+
+
+def test_a_saved_own_delay_of_0_05_stays_0_05(monkeypatch: pytest.MonkeyPatch) -> None:
+    from gremlin import profile
+
+    monkeypatch.setattr(profile, "options_macro_delay", lambda: 0.2)
+    p = Profile()
+    p.settings.macro_default_delay = 0.05  # the user's own choice
+    again = _roundtrip_profile(p)
+    assert again.settings.macro_default_delay == 0.05
+    assert again.settings.effective_macro_delay() == 0.05
 
 
 def test_settings_model_switches_between_options_and_own(

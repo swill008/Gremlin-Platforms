@@ -30,7 +30,6 @@ Item {
     readonly property string paneTitle: _pane.paneTitle
     readonly property alias layout: _layout
     readonly property alias monitorPanel: _monitor
-    readonly property alias addWindow: _addDialog
     readonly property alias deviceModel: _devices
     // The page's Appearance part (PageAppearance.qml, to-do 91).
     property alias displayOpen: _appear.displayOpen

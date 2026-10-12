@@ -23,7 +23,6 @@ from gremlin.modules.claim import read_claim
 from gremlin.modules.ids import guid_key, stored_guid_key
 
 _OUTPUT_WORDS = ("dest", "target", "output")
-_INPUT_WORDS = ("source", "input")
 
 
 @dataclass(frozen=True)

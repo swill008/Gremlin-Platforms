@@ -27,12 +27,13 @@ from gremlin import history
 
 # What the Device Mapping Editor writes, and what a change means in words. The
 # device's photo is the bottom background picture, inside "nodes" (07
-# S127); "photo", "image", "imageWidth" and "imageHeight" are a map saved
-# before the planes, dropped by its next Save (OT-2), still a device map
-# change. The background's view settings are program settings, never in
+# S127). The background's view settings are program settings, never in
 # the file (08 S9).
 MAP_KEYS = {
     "nodes",
+    # ONE-TIME (tracker OT-2): "photo", "image", "imageWidth" and
+    # "imageHeight" are a map saved before the planes, dropped by its next
+    # Save, still a device map change.
     "photo",
     "image",
     "imageWidth",

@@ -273,7 +273,7 @@ def osc() -> None:
     # Save As (profiles) leaves its "Saved" note open over the window.
     ev(win, "_saveResultDialog.close(); true")
     wait_until(lambda: not ev(win, "_saveResultDialog.opened"), 2000)
-    OscDevice().create(InputType.JoystickButton, label="/clear/me")
+    OscDevice().rows.create(InputType.JoystickButton, label="/clear/me")
     osc_device_file.save(who="test")
     signal.oscDeviceModified.emit()
     ev(win, "uiState.setCurrentRoom('configuration');"

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
 
 from gremlin import clock
 from gremlin.base_classes import (
@@ -14,9 +13,6 @@ from gremlin.base_classes import (
 )
 from gremlin.profile import InputItemBinding
 from gremlin.types import InputType
-
-AnalysisFunction = Callable[[InputItemBinding, InputType], list[UserFeedback]]
-
 
 # Definition of action tags. Actions are not imported due to their significant
 # dependencies, especially on Qt.

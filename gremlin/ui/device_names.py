@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from PySide6 import QtCore
 
-import gremlin.osc_bulk  # noqa: F401
 import gremlin.ui.osc_settings_info  # noqa: F401
 import gremlin.ui.vjoy_status  # noqa: F401
 import gremlin.ui.live_input  # noqa: F401

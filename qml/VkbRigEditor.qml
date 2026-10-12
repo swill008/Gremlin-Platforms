@@ -169,10 +169,6 @@ Item {
     readonly property real worldPageW: 32000
     readonly property real worldPageH: 18000
     readonly property real photoWellFraction: 0.75
-    readonly property real innerPageW: worldPageW * photoWellFraction
-    readonly property real innerPageH: worldPageH * photoWellFraction
-    readonly property real innerPadX: (1 - photoWellFraction) / 2
-    readonly property real innerPadY: (1 - photoWellFraction) / 2
     readonly property real uiRefW: 1600
     readonly property real uiScale: {
         var s = Math.min(width / Math.max(1, worldPageW), height / Math.max(1, worldPageH))
@@ -181,12 +177,9 @@ Item {
             return 1
         return sw / uiRefW
     }
-    readonly property string worldSpace: "world"
     property var textFormatClip: null
     property bool textPaintOn: false
     property string renameDraft: ""
-    property string armRenameId: ""
-    property int armRenameMember: -1
     property int selectedLeader: 0
     property int selectedSeg: -1
     property int dragLeader: 0
@@ -206,7 +199,6 @@ Item {
     property real rzY1: 0
     // The items Ctrl+C copied (it was named clip, which hid Item.clip).
     property var copiedNodes: []
-    property bool lineArm: false
     property real lineArmX: 0
     property real lineArmY: 0
     property bool spineHoldArm: false
@@ -334,7 +326,6 @@ Item {
 
     // Page coordinates (rig_coords.js)
     function spaceRect() { return RigCoords.spaceRect() }
-    function innerPageRect() { return RigCoords.innerPageRect() }
     function clamp01(v) { return RigCoords.clamp01(v) }
     function worldToX(wx) { return RigCoords.worldToX(wx) }
     function worldToY(wy) { return RigCoords.worldToY(wy) }
@@ -431,7 +422,6 @@ Item {
     function pullToBox(prev, center, hw, hh) { return RigLeaders.pullToBox(prev, center, hw, hh) }
     function clipHollowEnd(prev, tip, end) { return RigLeaders.clipHollowEnd(prev, tip, end) }
     function pathPtsL(L) { return RigLeaders.pathPtsL(L) }
-    function pathPts(n) { return RigLeaders.pathPts(n) }
     function segIsCurve(L, j) { return RigLeaders.segIsCurve(L, j) }
     function setSegCurve(L, j, on) { return RigLeaders.setSegCurve(L, j, on) }
     function toggleSegCurve() { return RigLeaders.toggleSegCurve() }
@@ -501,10 +491,8 @@ Item {
     function memByRole(n, role) { return RigGroups.memByRole(n, role) }
     function themeGap(n) { return RigGroups.themeGap(n) }
     function themeGeom(n) { return RigGroups.themeGeom(n) }
-    function themeCell(n) { return RigGroups.themeCell(n) }
     function clearThemeMemberLayout(n) { return RigGroups.clearThemeMemberLayout(n) }
     function applyFiveWayFormat(fmt) { return RigGroups.applyFiveWayFormat(fmt) }
-    function resetFiveWayFormat() { return RigGroups.resetFiveWayFormat() }
     function buildRadialLeaders(n) { return RigGroups.buildRadialLeaders(n) }
     function beginGroupEdit(id) { return RigGroups.beginGroupEdit(id) }
     function endGroupEdit() { return RigGroups.endGroupEdit() }
@@ -517,7 +505,6 @@ Item {
     function _partsFrom(n) { return RigGroups._partsFrom(n) }
     function groupSelection() { return RigGroups.groupSelection() }
     function ungroupSelection() { return RigGroups.ungroupSelection() }
-    function setGroupKind(kind) { return RigGroups.setGroupKind(kind) }
 
     // Text boxes (rig_text.js)
     function textThemeStyle(n) { return RigText.textThemeStyle(n) }
@@ -611,7 +598,6 @@ Item {
     function isTable(n) { return RigDraw.isTable(n) }
     function isText(n) { return RigDraw.isText(n) }
     function drawGeom(n) { return RigDraw.drawGeom(n) }
-    function shapeOutlinePts(n, w, h) { return RigDraw.shapeOutlinePts(n, w, h) }
     function applyDrawResize(n, mx, my, handle, altOff) { return RigDraw.applyDrawResize(n, mx, my, handle, altOff) }
     function _drawStyle() { return RigDraw._drawStyle() }
     function addDrawAround(shape) { return RigDraw.addDrawAround(shape) }
@@ -662,9 +648,7 @@ Item {
     function hotBlocked(n) { return RigLayers.hotBlocked(n) }
     function hotHidden(n) { return RigLayers.hotHidden(n) }
     function leaderBlocked(n, li) { return RigLayers.leaderBlocked(n, li) }
-    function leaderHidden(n, li) { return RigLayers.leaderHidden(n, li) }
     function layerFlag(id, part, flag) { return RigLayers.layerFlag(id, part, flag) }
-    function layerFlagInherited(id, part, flag) { return RigLayers.layerFlagInherited(id, part, flag) }
     function setLayerFlag(id, part, flag, on) { return RigLayers.setLayerFlag(id, part, flag, on) }
     function setLayerFlags(targets, flag, on) { return RigLayers.setLayerFlags(targets, flag, on) }
     function toggleLayerFlag(id, part, flag) { return RigLayers.toggleLayerFlag(id, part, flag) }
@@ -735,7 +719,6 @@ Item {
 
     // Paths and freehand lines (rig_path.js)
     function isPath(n) { return RigPath.isPath(n) }
-    function isPathTool(tool) { return RigPath.isPathTool(tool) }
     function pathLocal(n, w, h) { return RigPath.pathLocal(n, w, h) }
     function pathPointsAt(n) { return RigPath.pathPointsAt(n) }
     function setPathPoints(n, pts) { return RigPath.setPathPoints(n, pts) }
@@ -1199,7 +1182,6 @@ Item {
             endGroupResize()
         dragKind = ""
         banding = false
-        lineArm = false
         poolHover = false
         guideDrag = null
         clearMoveGuides()
@@ -1281,7 +1263,6 @@ Item {
         cropStart = null
         dragKind = ""
         banding = false
-        lineArm = false
         poolHover = false
         guideDrag = null
         clearMoveGuides()
@@ -1324,8 +1305,6 @@ Item {
             dragMember = -1
             hoverHwLabel = ""
             cancelRename()
-            armRenameId = ""
-            armRenameMember = -1
             editPlane = "foreground"
         } else {
             Qt.callLater(seedHist)
@@ -1360,20 +1339,6 @@ Item {
         return false
     }
 
-    function ctxHasSpines() {
-        tick
-        var n = ctxTarget()
-        if (!n || isDraw(n))
-            return false
-        var ls = leaderList(n)
-        var i
-        for (i = 0; i < ls.length; i++) {
-            if (ls[i].spines && ls[i].spines.length)
-                return true
-        }
-        return !!(n.spines && n.spines.length)
-    }
-
     function ctxSpineIndex() {
         tick
         if (_ctx && _ctx.kind === "spine" && _ctx.seg >= 0)
@@ -1383,40 +1348,6 @@ Item {
 
     function ctxHasSelectedSpine() {
         return ctxSpineIndex() >= 0
-    }
-
-    function ctxSpineCurved() {
-        tick
-        var n = ctxTarget()
-        var i = ctxSpineIndex()
-        if (!n || i < 0)
-            return false
-        var L = currentLeader(n)
-        return !!(L && L.spines && L.spines[i] && L.spines[i].curve)
-    }
-
-    function ctxMode() {
-        tick
-        var k = (_ctx && _ctx.kind) ? String(_ctx.kind) : ""
-        if (k === "line" || k === "spine" || k === "from" || k === "to")
-            return "leader"
-        if (k === "draw")
-            return "draw"
-        var n = ctxTarget()
-        if (!n)
-            return "empty"
-        if (isDraw(n))
-            return "draw"
-        return "chip"
-    }
-
-    function ctxIsLeader() {
-        return ctxMode() === "leader"
-    }
-
-    function ctxHasMapItem() {
-        var m = ctxMode()
-        return m === "chip" || m === "leader"
     }
 
 

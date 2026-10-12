@@ -583,7 +583,9 @@ def test_s73_the_previous_file_and_an_overwritten_picture_are_kept_in_imported(
         {"map.json": _pack_map(image="photo.png"), "photo.png": "new photo"},
     )
     result = device_pack.apply_zip(
-        pack, "pJoy Pro", {"items": ["in.checks", "pic:photo.png"]}
+        # Old: "pic:photo.png" alone took the photo (the Device photo row);
+        # it now comes with the Map tick (D-03-DEVICE-IMAGE).
+        pack, "pJoy Pro", {"items": ["in.checks", "in.layout", "pic:photo.png"]}
     )
     assert result["ok"], result
     # In the device's own folder (03 S128): <Device Folder>/imported/.

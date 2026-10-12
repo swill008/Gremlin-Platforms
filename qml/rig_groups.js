@@ -385,11 +385,6 @@ function themeGeom(n) {
     }
 }
 
-function themeCell(n) {
-    var g = themeGeom(n)
-    return { w: g.w, h: chipH(n), gap: themeGap(n) }
-}
-
 function clearThemeMemberLayout(n) {
     var mem = n && n.members ? n.members : []
     var keys = ["chipShape", "chipSize", "circleSize", "chipFill", "fontSize", "color", "border", "textColor",
@@ -416,18 +411,6 @@ function applyFiveWayFormat(fmt) {
     } else if (n.leaders && n.leaders.length > 1) {
         n.leaders = [n.leaders[0]]
     }
-    bump()
-}
-
-function resetFiveWayFormat() {
-    var id = selectedId || groupEditId
-    var n = nodeAt(id)
-    if (!isFiveWay(n))
-        return
-    clearThemeMemberLayout(n)
-    delete n.format
-    if (n.leaders && n.leaders.length > 1)
-        n.leaders = [n.leaders[0]]
     bump()
 }
 
@@ -811,13 +794,5 @@ function ungroupSelection() {
     groupEditId = ""
     selectedMember = -1
     setSelection([])
-    bump()
-}
-
-function setGroupKind(kind) {
-    var n = nodeAt(selectedId)
-    if (!isGroup(n) || !kind)
-        return
-    n.kind = kind === "plus" ? "stack" : kind
     bump()
 }

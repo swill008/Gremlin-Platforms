@@ -250,8 +250,13 @@ def test_taking_the_packs_background_takes_its_picture(
     base = _device(modules, "current")
     before = store.device_photo_path(base).read_bytes()
     path, data = _pack(tmp_path, "current")
+    # Old: the Device photo tick alone ("pic:theirs.png"); that row is gone,
+    # the pack's background comes with the Map tick (D-03-DEVICE-IMAGE).
     result = device_pack.apply_zip(
-        path, "pJoy Pro", {"items": ["pic:theirs.png"]}, target_guid=stick_guid()
+        path,
+        "pJoy Pro",
+        {"items": ["in.layout", "pic:theirs.png"]},
+        target_guid=stick_guid(),
     )
     assert result.get("ok"), result
     assert store.device_photo_path(base).read_bytes() == data["photo"]

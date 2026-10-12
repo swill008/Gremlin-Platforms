@@ -36,10 +36,8 @@ def test_options_list_a_device_mapping_editor_section_in_group_order() -> None:
     sections = ConfigSectionModel()
     names = [sections.data(sections.index(i), 257) for i in range(sections.rowCount())]
     assert "Device Map" not in names
-    own = ConfigSectionModel()
-    own.setProperty("scope", bmo.SECTION)
-    titles = [own.data(own.index(i), 257) for i in range(own.rowCount())]
-    assert titles == ["Device Map"]
+    # The editor's own window lists the section's groups directly (the
+    # section model's "scope" was removed in the 2026-10-12 audit clean-up).
     groups = ConfigGroupModel(bmo.SECTION)
     shown = [groups.data(groups.index(i), 257) for i in range(groups.rowCount())]
     # Headings may be spelled differently from the stored keys ("colours").

@@ -82,14 +82,14 @@ def test_cancel_never_writes_the_module_file(
         lambda p, data: (writes.append(p), real(p, data)),
     )
     profile = hardware_profile.HardwareProfile()
-    profile.beginEdit("Stick R")
+    profile.beginEditFor("Stick R", "")
     assert profile.copyImage(_photo(maps), "Stick R") == "pictures/photo.png"
     assert profile.cancelEdit("Stick R")
     assert path not in writes
     assert path.read_bytes() == before
     # The chosen photo waited in the edit and went with it.
     assert not (path.parent / "pictures" / "photo.png").exists()
-    assert not profile.editActive("Stick R")
+    assert not profile.editActiveFor("Stick R", "")
 
 
 def test_cancel_leaves_a_damaged_module_file_alone(
@@ -101,7 +101,7 @@ def test_cancel_leaves_a_damaged_module_file_alone(
         module_file, "report_refused", lambda damaged: told.append(damaged)
     )
     profile = hardware_profile.HardwareProfile()
-    profile.beginEdit("Stick R")
+    profile.beginEditFor("Stick R", "")
     # A new photo (Import Image) into a damaged file is refused before
     # anything is kept.
     assert profile.copyImage(_photo(maps), "Stick R") == ""

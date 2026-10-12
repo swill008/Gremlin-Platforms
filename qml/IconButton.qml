@@ -7,7 +7,6 @@ import QtQuick.Controls
 import Gremlin.Style
 
 Button {
-    property alias backgroundColor: _bg.color
     property alias textColor: _text.color
 
     font.family: Style.iconFont
@@ -25,8 +24,6 @@ Button {
     }
 
     background: Rectangle {
-        id: _bg
-
         anchors.fill: parent
         color: "transparent"
     }

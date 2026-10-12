@@ -604,8 +604,8 @@ def assign(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
     logical.create(InputType.JoystickButton)
     logical.create(InputType.JoystickAxis)
     OscDevice().rows.load_dict({"inputs": []})
-    OscDevice().create(InputType.JoystickButton, label="/fire")
-    OscDevice().create(InputType.JoystickAxis, label="/throttle")
+    OscDevice().rows.create(InputType.JoystickButton, label="/fire")
+    OscDevice().rows.create(InputType.JoystickAxis, label="/throttle")
     model = logical_layout.LogicalLayoutModel()
     yield SimpleNamespace(
         model=model,

@@ -234,7 +234,7 @@ def test_a_new_profile_object_leaves_the_shared_logical_device_and_osc_rows_alon
     every profile (D-04-LD-FILE, D-09-OSC-FILE): a throwaway Profile wipes
     neither shared list, and neither is in any profile file."""
     LogicalDevice().create(InputType.JoystickButton, label="Fire")
-    OscDevice().create(InputType.JoystickButton, label="/osc/fire")
+    OscDevice().rows.create(InputType.JoystickButton, label="/osc/fire")
     try:
         other = Profile()  # a throwaway one used to wipe them
         assert LogicalDevice().exists("Fire")  # one layout, still there

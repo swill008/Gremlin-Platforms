@@ -704,10 +704,6 @@ def register_config_options() -> None:
     cfg = gremlin.config.Configuration()
 
     cfg.register(
-        "global", "internal", "last-mode", PropertyType.String, "Default",
-        "Name of the last active mode", {},
-    )
-    cfg.register(
         "global", "internal", "last-mode-per-profile", PropertyType.Dict, {},
         "Last active mode for each profile path", {},
     )
@@ -825,20 +821,13 @@ def register_config_options() -> None:
     # Defined once, by the modules that show them in Options.
     gremlin.ui.ui_scale_option.register()
     gremlin.ui.windows_scale_option.register()
-    # One setting covers minimizing and closing. "close-to-tray" was the
-    # second one: whoever had it on keeps that behavior, then it is dropped.
-    was_close_to_tray = bool(
-        cfg.exists("global", "general", "close-to-tray")
-        and cfg.value("global", "general", "close-to-tray")
-    )
+    # One setting covers minimizing and closing.
     cfg.register(
         "global", "general", "minimize-to-tray", PropertyType.Bool, False,
         "Minimizing or closing the window hides it to the system tray, and the "
         "profile keeps running. Exit from File > Exit or the tray icon's menu.",
         {}, True,
     )
-    if was_close_to_tray and not cfg.value("global", "general", "minimize-to-tray"):
-        cfg.set("global", "general", "minimize-to-tray", True)
     cfg.register(
         "global", "internal", "tray-notice-shown", PropertyType.Bool, False,
         "The one-time notice that closing kept the program in the tray was shown.",

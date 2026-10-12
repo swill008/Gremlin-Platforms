@@ -328,7 +328,7 @@ def run_twins() -> None:
             # The .gmap's label names the device it was made from.
             found = str(label.get("id") or "")
             out["twin-pack-guid"] = (
-                device_zip.guid_text(found) if device_zip.guid_like(found) else ""
+                device_zip.braced_guid(found) if device_zip.guid_like(found) else ""
             )
             import_on_second(url, sticks, second)
     print("RESULT " + json.dumps(out), flush=True)

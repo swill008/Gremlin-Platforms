@@ -690,10 +690,6 @@ def stop() -> None:
         _feedback.stop()
 
 
-def resend_all(reason: str = "") -> int:
-    return instance().resend_all(reason) if _feedback is not None else 0
-
-
 def handle_incoming(address: str, args: Any, peer: tuple | None) -> bool:  # noqa: ANN401
     """Any thread (OscRuntime, first for every message). True when address
     is the sync address: the message is consumed (never reaches inputs) and

@@ -63,16 +63,6 @@ ApplicationWindow {
         return targetName.length ? _fileWatch.mapParts(targetName, targetGuid) : ""
     }
 
-    // This window's own change of the file is not a change made elsewhere;
-    // one made elsewhere before it still is.
-    function ownFileChange(change) {
-        var unchanged = filePartsNow() === _fileParts
-        var result = change()
-        if (unchanged)
-            _fileParts = filePartsNow()
-        return result
-    }
-
     function askLeave(kind) {
         leaveKind = kind
         // (A Save's Keep mine / Take theirs question, if open, is replaced.)
@@ -151,13 +141,11 @@ ApplicationWindow {
     // The bottom background picture ("the device's photo", 07 S127) of the
     // map shown, for the view: its load and size recover the view.
     property string photoOverride: ""
-    property bool fittedOldPage: false
     property bool fittedThisEdit: false
     property real viewPctSave: 1
     property real viewPanX: 0
     property real viewPanY: 0
     property string selectedId: ""
-    property var selectedNode: null
     property bool _allowClose: false
     property var resItems
     property int resTick: 0
@@ -408,8 +396,9 @@ ApplicationWindow {
         if (!doc || !doc.nodes) {
             return false
         }
-        // Both planes are nodes (07 S111); an old map's photo is already
-        // its bottom background picture (load, 07 S125).
+        // Both planes are nodes (07 S111).
+        // ONE-TIME (tracker OT-2): an old map's photo is already its bottom
+        // background picture (_hw.load turns it into one, 07 S125).
         liveNodes = JSON.parse(JSON.stringify(doc.nodes))
         hydrateOverlays(liveNodes)
         notePhoto(liveNodes)
@@ -467,7 +456,6 @@ ApplicationWindow {
         fittedThisEdit = false
         fitHistAt = -1
         selectedId = ""
-        selectedNode = null
         Qt.callLater(function() {
             refreshReservoir()
             applyGridToEditor()
@@ -511,9 +499,6 @@ ApplicationWindow {
             kind: "control.hardware",
             device: targetName,
             space: "world",
-            // The page size is stamped by Save (hardware_profile.PAGE_SIZE).
-            imageWidth: 1348,
-            imageHeight: 1380,
             ui: uiBag(),
             nodes: nodes
         }
@@ -752,7 +737,6 @@ ApplicationWindow {
         editing = false
         workNodes = []
         selectedId = ""
-        selectedNode = null
         notePhoto(liveNodes)
         // The discarded edits leave no undo steps behind: start the history
         // again from the live map once it is back on screen.
@@ -903,7 +887,6 @@ ApplicationWindow {
 
     function applySelected() {
         var n = currentNode()
-        selectedNode = n
         selectedId = n ? n.id : ""
     }
 
@@ -1218,7 +1201,6 @@ ApplicationWindow {
         if (e)
             e.clearLayout()
         selectedId = ""
-        selectedNode = null
         Qt.callLater(refreshReservoir)
     }
 
@@ -3070,7 +3052,6 @@ ApplicationWindow {
     // --- layout templates (File → Templates) ---------------------------------
 
     property var templateList: []
-    property string _templateMsg: ""
 
     function refreshTemplates() {
         templateList = _hw.templates()
@@ -3363,7 +3344,6 @@ ApplicationWindow {
                 }
                 ThemedMenuSeparator {}
                 ThemedMenu {
-                    id: _templateMenu
                     title: "Templates"
                     enabled: _editorWin.targetName.length > 0
                     beforeShow: _editorWin.refreshTemplates
@@ -3988,7 +3968,6 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     implicitHeight: Style.dp(28)
                                     TextField {
-                                        id: _poolSearch
                                         objectName: "poolFilter"
                                         anchors.fill: parent
                                         placeholderText: "Filter friendly or hardware"
@@ -4398,7 +4377,6 @@ ApplicationWindow {
                     restoreMode: Binding.RestoreNone
                 }
                 MouseArea {
-                    id: _poolCatch
                     anchors.fill: parent
                     z: 40
                     visible: poolDrag
@@ -4846,7 +4824,6 @@ ApplicationWindow {
     }
 
     Rectangle {
-        id: _poolGhost
         parent: _mapHost
         visible: poolDrag && editing
         z: 2000

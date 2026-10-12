@@ -215,15 +215,6 @@ function _defineRow(item, owner, path, at) {
     })
 }
 
-// The same for each menu of a menu bar.
-function defineFromMenuBar(bar, owner) {
-    for (var i = 0; bar && i < bar.count; i++) {
-        var menu = bar.menuAt(i)
-        if (menu && menu.enabled)
-            defineFromMenu(menu, owner, [menu.title])
-    }
-}
-
 // How many commands an owner has (tests: a closed window leaves none).
 function countOwner(owner) {
     var n = 0

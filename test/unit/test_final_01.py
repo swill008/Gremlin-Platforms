@@ -278,24 +278,6 @@ def test_s24_settings_stay_in_the_profile_folder_when_the_data_folder_moves(
     assert not (moved / "configuration.json").exists()
 
 
-# --- S37: Close to tray becomes Minimize to tray ---------------------------
-
-
-@pytest.mark.parametrize("old_value", [True, False])
-def test_s37_close_to_tray_becomes_minimize_to_tray_then_is_dropped(
-    settings_path: pathlib.Path, old_value: bool
-) -> None:
-    _settings_file(
-        settings_path,
-        {("global", "general", "close-to-tray"): ("bool", old_value)},
-    )
-    cfg = gremlin.config.Configuration()
-    jg.register_config_options()
-    assert cfg.value("global", "general", "minimize-to-tray") is old_value
-    cfg.purge_unused()
-    assert not cfg.exists("global", "general", "close-to-tray")
-
-
 # --- S40: the Options sidebar ----------------------------------------------
 
 
@@ -625,7 +607,7 @@ run('_root.profileDirty = false')
 
 # S58, S59, S61: the toolbar.
 pump(lambda: run('_optionsButton.x > _logicalButton.x'))
-TOOLBAR = ('[_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton, '
+TOOLBAR = ('[_homeButton, _toggleButton, _vjoyViewerButton, '
            '_deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, '
            '_optionsButton]')
 out['captions'] = run(TOOLBAR + '.map(function(b) { return b.caption })')
@@ -759,7 +741,7 @@ def test_s57_the_title_names_the_profile_and_marks_unsaved_changes(
 
 def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:
     assert main_window["captions"] == [
-        "Home", "Run", "vJoy Viewer", "Xbox Viewer", "Mapping Editor",
+        "Home", "Run", "vJoy Viewer", "Mapping Editor",
         "Device Library", "Logical Device", "Options",
     ]
     assert main_window["order"] is True

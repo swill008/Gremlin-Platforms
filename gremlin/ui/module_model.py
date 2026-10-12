@@ -518,6 +518,67 @@ def _remove_pictures_soon(paths: list[Path]) -> None:
             clock.sleep(0.025)
 
 
+def _takes_image(row: ModuleRow) -> bool:
+    """Input module cards (stick, Keyboard, OSC) have Add / Change / Remove
+    Image for the device image (03 S88, D-03-DEVICE-IMAGE). Output cards
+    have none; the Logical Device card keeps its own picture items."""
+    return row.direction == "source" and row.slug != "logical"
+
+
+def _image_state(device_name: str, guid: str) -> dict:
+    """A device's image as Home Undo keeps it: the module file's
+    reference and the image file's bytes (so Undo of Remove Image brings
+    the file back)."""
+    path = store.module_file(device_name, guid)
+    doc = (read_doc(path) or {}) if path.is_file() else {}
+    ref = store.normal_ref(store.device_image_ref(doc))
+    files: dict[str, bytes] = {}
+    found = store.find_picture(path.parent, ref) if ref else None
+    if found is not None:
+        try:
+            files[found.name] = found.read_bytes()
+        except OSError:
+            pass
+    return {"name": device_name, "guid": guid, "ref": ref, "files": files}
+
+
+def _put_image_state(saved: dict) -> None:
+    """Puts a device's image back as _image_state() kept it: its file, the
+    module file's key (one write through the store, so History has it),
+    and drops the image file the state doesn't name. Raises OSError."""
+    name, guid = str(saved.get("name") or ""), str(saved.get("guid") or "")
+    ref = str(saved.get("ref") or "")
+    pictures = store.pictures_dir(name, guid)
+    for file_name, data in (saved.get("files") or {}).items():
+        dest = pictures / file_name
+        try:
+            if dest.is_file() and dest.read_bytes() == data:
+                continue
+        except OSError:
+            pass
+        store.put_picture_at(dest, data)
+    path = store.module_file(name, guid)
+    old: list[str] = []
+
+    def change(doc: dict) -> object:
+        old.append(store.normal_ref(store.device_image_ref(doc)))
+        if old[0] == ref:
+            return False
+        if ref:
+            doc[store.DEVICE_IMAGE_KEY] = ref
+        else:
+            doc.pop(store.DEVICE_IMAGE_KEY, None)
+        return None
+
+    store.update_path(path, change, "Home")
+    if old and old[0] and old[0] != ref:
+        gone = store.find_picture(path.parent, old[0])
+        doc = read_doc(path) or {}
+        named = {store.normal_ref(r) for r in store.named_refs(doc)}
+        if gone is not None and old[0] not in named:
+            _remove_pictures_soon([gone])
+
+
 def _plog(action: str, **parts: object) -> None:
     detail = " ".join(f"{key}={value!r}" for key, value in parts.items())
     persist_log(f"Persist {action} {detail}")
@@ -525,8 +586,8 @@ def _plog(action: str, **parts: object) -> None:
 
 def _clamp_size(w: int, h: int) -> tuple[int, int]:
     return (
-        max(220, min(720, int(w))),
-        max(140, min(520, int(h))),
+        max(220, min(1080, int(w))),
+        max(140, min(780, int(h))),
     )
 
 
@@ -666,6 +727,7 @@ class ModuleRow:
         "vjoy_id",
         "cant_send_count",
         "cant_send_tip",
+        "has_image",
     )
 
     def __init__(self) -> None:
@@ -700,6 +762,8 @@ class ModuleRow:
         # Its Map to vJoy bindings that can't be sent (D-05-CANT-SEND).
         self.cant_send_count = 0
         self.cant_send_tip = ""
+        # An input card's device has a device image (D-03-DEVICE-IMAGE).
+        self.has_image = False
 
 
 _DAMAGED_STATUS = "Module file damaged – inputs blocked"
@@ -877,6 +941,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
         QtCore.Qt.ItemDataRole.UserRole + 21: QtCore.QByteArray(b"damaged"),
         QtCore.Qt.ItemDataRole.UserRole + 22: QtCore.QByteArray(b"cantSendCount"),
         QtCore.Qt.ItemDataRole.UserRole + 23: QtCore.QByteArray(b"cantSendTip"),
+        QtCore.Qt.ItemDataRole.UserRole + 24: QtCore.QByteArray(b"hasImage"),
     }
 
     lastChanged = QtCore.Signal()
@@ -1022,6 +1087,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 return row.cant_send_count
             case "cantSendTip":
                 return row.cant_send_tip
+            case "hasImage":
+                return row.has_image
             case _:
                 return None
 
@@ -1175,11 +1242,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         return sorted(cards, key=lambda c: c["name"].lower())
 
     @QtCore.Slot(str, str)
-    def moveSlugBefore(self, slug: str, before_slug: str) -> None:
-        with self._home_step("Move Card"):
-            self._move_slug_before(slug, before_slug)
-
-    @QtCore.Slot(str, str)
     def dropSlugBefore(self, slug: str, before_slug: str) -> None:
         """A card dragged to a new place: out of its stack and moved, as one
         step."""
@@ -1247,7 +1309,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
     # | step; Delete Device is not one (History). The keys, the page bar's
     # | Undo / Redo pair and the card menu's header all use these.
 
-    def _home_state(self, picture: bool = False) -> dict:
+    def _home_state(
+        self, picture: bool = False, image: tuple[str, str, str] | None = None
+    ) -> dict:
+        """picture: the Logical Device card's picture; image: (slug, device
+        name, guid) of an input card whose device image the step changes."""
         _ensure_display_options()
         cfg = config.Configuration()
         state: dict = {
@@ -1256,6 +1322,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
         state["ratio"] = self._ratio_now()
         if picture:
             state["picture"] = _logical_picture()
+        if image is not None:
+            slug, name, guid = image
+            state["image"] = {"slug": slug, **_image_state(name, guid)}
         return state
 
     def _ratio_now(self) -> float:
@@ -1263,19 +1332,24 @@ class ModuleListModel(QtCore.QAbstractListModel):
         return round(float(self.splitRatio), 4)  # pyright: ignore[reportArgumentType]
 
     @contextlib.contextmanager
-    def _home_step(self, label: str, picture: bool = False) -> Iterator[None]:
+    def _home_step(
+        self,
+        label: str,
+        picture: bool = False,
+        image: tuple[str, str, str] | None = None,
+    ) -> Iterator[None]:
         """Records what the block changes as one step (the outermost block
         only: Reset Card Layout's unstack is part of its own step)."""
         if self._step_depth:
             yield
             return
-        before = self._home_state(picture)
+        before = self._home_state(picture, image)
         self._step_depth += 1
         try:
             yield
         finally:
             self._step_depth -= 1
-        self._push_step(label, before, self._home_state(picture))
+        self._push_step(label, before, self._home_state(picture, image))
 
     def _push_step(self, label: str, before: dict, after: dict) -> None:
         changed = [key for key in after if before.get(key) != after[key]]
@@ -1306,6 +1380,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
             except OSError as exc:
                 _plog("home undo picture failed", error=exc)
             self._set_card_photo("logical")
+        if "image" in state:
+            try:
+                _put_image_state(state["image"])
+            except OSError as exc:
+                _plog("home undo image failed", error=exc)
+            self._set_card_photo(str(state["image"].get("slug") or ""))
         self._reload()
         signal.configChanged.emit()
         self.panesChanged.emit()
@@ -1373,10 +1453,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         if self._just_undid and self._redo_steps:
             return f"Undone: {self._redo_steps[-1][0]}"
         return ""
-
-    @QtCore.Property(int, notify=stepsChanged)
-    def stepCount(self) -> int:
-        return len(self._undo_steps)
 
     @QtCore.Slot()
     def beginDivider(self) -> None:
@@ -1672,6 +1748,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             "cantSendCount": row.cant_send_count,
             "cantSendTip": row.cant_send_tip,
             "hasPhoto": bool(row.photo),
+            "hasImage": row.has_image,
         }
 
     @QtCore.Slot(str, result="QVariantMap")
@@ -1686,23 +1763,45 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._set_card_photo("logical")
 
     def _set_card_photo(self, slug: str) -> None:
-        """Reads the card's photo again (after Add/Remove Image)."""
+        """Reads the card's photo and whether it has a device image again
+        (after Add/Change/Remove Image)."""
         for idx, row in enumerate(self._rows):
             if row.slug != slug:
                 continue
             row.photo = self._photo(row.raw_name or row.name, row.guid)
+            row.has_image = self._has_image(row)
             ix = self.index(idx, 0)
-            self.dataChanged.emit(ix, ix, [QtCore.Qt.ItemDataRole.UserRole + 11])
+            user = QtCore.Qt.ItemDataRole.UserRole
+            self.dataChanged.emit(ix, ix, [user + 11, user + 24])
+
+    @staticmethod
+    def _has_image(row: ModuleRow) -> bool:
+        """An input card's device has a device image and its file is there."""
+        if not _takes_image(row):
+            return False
+        path = store.module_file(row.raw_name or row.name, row.guid)
+        if not path.is_file():
+            return False
+        ref = store.device_image_ref(read_doc(path) or {})
+        return bool(ref) and store.find_picture(path.parent, ref) is not None
+
+    def _image_row(self, slug: str) -> ModuleRow | None:
+        """The input card slug names (None: no such card, or not an input
+        module card)."""
+        row = next((r for r in self._rows if r.slug == slug), None)
+        return row if row is not None and _takes_image(row) else None
 
     @QtCore.Slot(str, str, result=bool)
     def setCardImage(self, slug: str, fileUrl: str) -> bool:
-        """Add/Change Image on the Logical Device card (03 S88): the picture
-        becomes its photo, the bottom background picture of its map (07
-        S127), through the store
-        (History, Library, Export and Restore carry it). Other cards and a
-        damaged file: False."""
+        """Add/Change Image on a card (03 S88). An input module card (stick,
+        Keyboard, OSC): the picture becomes the device image, its own file
+        named by the module file (store.set_device_image; D-03-DEVICE-IMAGE).
+        The Logical Device card: the picture becomes its photo, the bottom
+        background picture of its map (07 S127). Both go through the store
+        (History, Library, Export and Restore carry it) and are one Home
+        Undo step. Output cards and a damaged file: False."""
         if slug != "logical":
-            return False
+            return self._set_input_image(slug, fileUrl)
         from gremlin import logical_device_file
 
         path = logical_device_file.path()
@@ -1730,10 +1829,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, result=bool)
     def removeCardImage(self, slug: str) -> bool:
-        """Remove Image on the Logical Device card: its photo files go and
-        its bottom background picture goes (History keeps both)."""
+        """Remove Image. An input module card: its device image goes (the
+        key and the file; History and Home Undo keep both). The Logical
+        Device card: its photo files go and its bottom background picture
+        goes (History keeps both)."""
         if slug != "logical":
-            return False
+            return self._remove_input_image(slug)
         from gremlin import logical_device_file
 
         path = logical_device_file.path()
@@ -1758,6 +1859,38 @@ class ModuleListModel(QtCore.QAbstractListModel):
                 return False
         self._set_card_photo(slug)
         return True
+
+    def _set_input_image(self, slug: str, file_url: str) -> bool:
+        """setCardImage for an input module card (D-03-DEVICE-IMAGE)."""
+        row = self._image_row(slug)
+        src = _local_file(file_url)
+        if row is None or src is None:
+            return False
+        name = row.raw_name or row.name
+        label = "Change Image" if self._has_image(row) else "Add Image"
+        with self._home_step(label, image=(slug, name, row.guid)):
+            try:
+                ref = store.set_device_image(name, row.guid, src, "Home")
+            except OSError as exc:
+                _plog("card image failed", name=name, error=exc)
+                ref = ""
+        self._set_card_photo(slug)
+        return bool(ref)
+
+    def _remove_input_image(self, slug: str) -> bool:
+        """removeCardImage for an input module card (D-03-DEVICE-IMAGE)."""
+        row = self._image_row(slug)
+        if row is None:
+            return False
+        name = row.raw_name or row.name
+        with self._home_step("Remove Image", image=(slug, name, row.guid)):
+            try:
+                done = store.remove_device_image(name, row.guid, "Home")
+            except OSError as exc:
+                _plog("card image remove failed", name=name, error=exc)
+                done = False
+        self._set_card_photo(slug)
+        return bool(done)
 
     @QtCore.Slot()
     def _follow_bindings(self) -> None:
@@ -1867,20 +2000,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return self._row_map(self._rows[0])
         return {}
 
-    @QtCore.Slot(str, result=int)
-    @QtCore.Slot(str, str, result=int)
-    def claimedCount(self, device_name: str, guid: str = "") -> int:
-        doc = _load_module_doc(device_name, guid)
-        if not doc:
-            return 0
-        claim = read_claim(doc)
-        return (
-            len(claim["buttons"])
-            + len(claim["axes"])
-            + len(claim["hats"])
-            + len(claim["keys"])
-        )
-
     def _schedule_reload(self) -> None:
         self._reload_timer.start()
 
@@ -1908,10 +2027,12 @@ class ModuleListModel(QtCore.QAbstractListModel):
         roles = roles + [
             QtCore.Qt.ItemDataRole.UserRole + 15,
             QtCore.Qt.ItemDataRole.UserRole + 21,
+            QtCore.Qt.ItemDataRole.UserRole + 24,
         ]
         for idx, row in enumerate(self._rows):
             name = row.raw_name or row.name
             row.photo = self._photo(name, row.guid)
+            row.has_image = self._has_image(row)
             # By the card's device id: twins share a name (decision F4).
             saved = module_exists(name, row.guid)
             row.is_module = saved
@@ -2302,6 +2423,9 @@ class ModuleListModel(QtCore.QAbstractListModel):
 
         # Always a card, as Keyboard and OSC (03 S71, D-04-LD-FILE).
         extra("logical", "Logical Device", LOGICAL_GUID, "logical", "Logical", "source")
+
+        for row in rows:
+            row.has_image = self._has_image(row)
 
         if not self._focus and rows:
             src = next((r for r in rows if r.direction == "source" and r.status != "Stub"), None)
@@ -2841,12 +2965,24 @@ class DriverInputModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=bool)
     @QtCore.Slot(str, str, str, result=bool)
-    def saveClaim(self, device_name: str, direction: str, photo: str = "") -> bool:
-        """Module Setup's Save. photo: the reference of the picture Import
-        Image kept in the window's edit ("setup"); with the edit open the
-        write goes through store.commit_edit, so the picture is copied into
-        the device's folder and named in the same write as the claims (one
-        History entry, 03 S52, 07 S107)."""
+    @QtCore.Slot(str, str, str, bool, result=bool)
+    def saveClaim(
+        self,
+        device_name: str,
+        direction: str,
+        image: str = "",
+        removeImage: bool = False,
+    ) -> bool:
+        """Module Setup's Save. image: the reference of the picture Add /
+        Change Image kept in the window's edit ("setup"); removeImage: Remove
+        Image was chosen. With the edit open the write goes through
+        store.commit_edit, so the picture is copied into the device's folder
+        and named in the same write as the claims (one History entry, 03
+        S52, 07 S107). An input device: the picture is the device image
+        (the module file's deviceImage, D-03-DEVICE-IMAGE); the old image
+        file goes with the edit's clean-up. An output device: the picture
+        is the bottom background picture of its map, as before (outputs
+        unchanged)."""
         if self.saveBlockedReason():
             _plog("save claim refused", name=device_name, reason=self._not_connected)
             return False
@@ -2858,7 +2994,8 @@ class DriverInputModel(QtCore.QAbstractListModel):
         except OSError as exc:
             _plog("save claim failed", name=name, error=exc)
             return False
-        photo = str(photo or "").strip()
+        photo = str(image or "").strip()
+        output = is_output_name(name)
         buttons = [int(r["hwId"]) for r in self._rows if r["kind"] == "button" and r["claimed"]]
         axes = [int(r["hwId"]) for r in self._rows if r["kind"] == "axis" and r["claimed"]]
         hats = [int(r["hwId"]) for r in self._rows if r["kind"] == "hat" and r["claimed"]]
@@ -2915,9 +3052,15 @@ class DriverInputModel(QtCore.QAbstractListModel):
             for key in ("pageW", "pageH", "photoWell"):
                 doc.setdefault(key, PAGE_SIZE[key])
             doc.setdefault("nodes", [])
-            if photo:
-                # The device's photo: the bottom background picture (07 S127).
-                store.set_device_photo(doc, photo, path.parent)
+            if output:
+                if photo:
+                    # An output's photo: the bottom background picture (07 S127).
+                    store.set_device_photo(doc, photo, path.parent)
+            elif photo:
+                # An input's device image: its own file, not a map layer.
+                doc[store.DEVICE_IMAGE_KEY] = store.normal_ref(photo)
+            elif removeImage:
+                doc.pop(store.DEVICE_IMAGE_KEY, None)
 
         _plog(
             "save claim",
@@ -2943,6 +3086,9 @@ class DriverInputModel(QtCore.QAbstractListModel):
                     return False
             elif not store.update_path(path, change, "Configure Module"):
                 return False
+            elif removeImage and not output:
+                # No edit to clean up after: the dropped image file goes here.
+                store.remove_unused_pictures(name, self._guid)
             written = json.loads(path.read_text(encoding="utf-8"))
             trace("SAVE", "Configure Module", "saveClaim", path, "ok")
         except (OSError, json.JSONDecodeError) as exc:

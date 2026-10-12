@@ -170,14 +170,14 @@ def test_shaping_is_not_offered_when_a_button_is_chosen(page: OscLayoutModel) ->
 
 def test_accel_preset_from_the_add_window_is_saved(page: OscLayoutModel) -> None:
     manage = OscDeviceManagementModel()
-    assert [c["value"] for c in manage.encAccelChoices()] == [
+    assert [c["value"] for c in osc_device_model.ENC_ACCEL_CHOICES] == [
         "off", "low", "medium", "high",
     ]
     assert manage.createConfiguredInput(
         {"address": "/enc", "mode": "encoder", "enc_accel": "Medium"}
     )
     assert _row("/enc").enc_accel == "medium"
-    assert manage.inputSettings(_row("/enc").uid)["enc_accel"] == "medium"
+    assert osc_device_model.settings_of(_row("/enc"))["enc_accel"] == "medium"
     assert "Acceleration: Medium" in settings_line(_row("/enc"))
     saved = OscDevice().rows.to_dict()["inputs"]
     assert [r["enc_accel"] for r in saved] == ["medium"]

@@ -205,8 +205,8 @@ class VirtualHatButton(AbstractVirtualButton):
 
 
 
-# Every profile saved before the Options fallback carried this value.
-_OLD_MACRO_DELAY = 0.05
+# Options > Action > Macro > Default delay when the setting can't be read.
+_FALLBACK_MACRO_DELAY = 0.05
 
 
 def options_macro_delay() -> float:
@@ -217,7 +217,7 @@ def options_macro_delay() -> float:
     try:
         return float(Configuration().value("action", "macro", "default-delay"))
     except (error.GremlinError, TypeError, ValueError):
-        return _OLD_MACRO_DELAY
+        return _FALLBACK_MACRO_DELAY
 
 
 class Settings(EditNoted):
@@ -265,9 +265,6 @@ class Settings(EditNoted):
         )
         source = settings_node.find("macro-delay-source")
         if source is not None and (source.text or "").strip() == "options":
-            self.macro_default_delay = None
-        elif abs(delay - _OLD_MACRO_DELAY) < 1e-9:
-            # Older profiles always saved 0.05, chosen or not: follow Options.
             self.macro_default_delay = None
         else:
             self.macro_default_delay = delay
@@ -1951,11 +1948,6 @@ class Profile:
     def actions_in_use(self) -> set[uuid.UUID]:
         """Ids of every action an input uses (Library.in_use)."""
         return self.library.in_use()
-
-    def drop_unused_actions(self, roots: list[AbstractActionData]) -> None:
-        """Removes these actions, and every action inside them, unless an
-        input still uses them (Library.release)."""
-        self.library.release(roots)
 
     def has_unsaved_changes(self) -> bool:
         """Checks if the profile has unsaved changes.

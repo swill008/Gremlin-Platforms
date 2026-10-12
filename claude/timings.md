@@ -882,3 +882,29 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Full run with fix + guard | test | 5-6 min | 7 min (3 stall tests failed) | 05:49-05:56 |
 | 2026-10-12 | STALLREAD (read-only) + stall_watch fix | fix | 3-8 min | 3 min | 05:58-06:01 |
 | 2026-10-12 | Unit rerun (5 groups) + stall proof x3 | test | ~7 min | 9 min + 1 min | 05:57-06:07 |
+| 2026-10-12 | Full code map + dead-code audit, 7 parallel agents (EXERCISE instrumented full run 7 min; PY-REFS, QML-REFS, BRIDGE, ASSETS, LEFTOVERS, MAPCHK read-only) | research | 5-10 min each, limit 20 | 5-35 min each (QML-REFS 35) | 06:10-06:45 |
+| 2026-10-12 | SPECCHK (read-only, 3 possible missing behaviours) | research | 5-10 min | 1 min | 06:58-06:59 |
+| 2026-10-12 | SMALLFIX: liveStamp bug + vjoy/theme guards | fix | 3-8 min | 3 min | 06:58-07:01 |
+| 2026-10-12 | A-STORE Device Image store | feature | 3-8 min | 3 min | 06:58-07:01 |
+| 2026-10-12 | A-HOME card image slots + undo | feature | 3-8 min | 6 min | 06:58-07:04 |
+| 2026-10-12 | XBOX: viewer into the Xbox Output View | feature | 3-8 min | 7 min | 06:58-07:05 |
+| 2026-10-12 | LIB: Library thumbnails + rows | feature | 3-8 min | 8 min | 06:58-07:06 |
+| 2026-10-12 | DOCS wave 1: spec, glossary, Help | docs | 3-8 min | 8 min | 06:58-07:06 |
+| 2026-10-12 | A-PACK: Device image row, Library photo lookup | feature | 3-8 min | 8 min | 06:58-07:06 |
+| 2026-10-12 | A-SETUP: Module Setup image, editor save, precedence | feature | 3-8 min | 9 min | 06:58-07:07 |
+| 2026-10-12 | HOMEUI: Home image menu, drag look, cards 1080x780 | feature | 3-8 min | 10 min | 06:58-07:08 |
+| 2026-10-12 | T-SWEEP: 16 old-rule tests updated | fix | 3-8 min | 9 min | 07:07-07:16 |
+| 2026-10-12 | DEVIMG-TESTS: Device Image e2e (12) + carry (10); found the Library thumbnail path bug | test | 3-8 min | 9 min | 07:07-07:16 |
+| 2026-10-12 | Wave 1 full run + lint (all passed, 1 line auto-fixed) | full run | ~7 min | 7 min | 07:17-07:24 |
+| 2026-10-12 | W2-UI / W2-CORE / W2-QML / W2-ASSETS phase 1 (verify only, 4 in parallel) | audit | no data | 3-4 min each | 07:20-07:24 |
+| 2026-10-12 | W2-MAP: program map audit fixes (stale names, line refs, owners, retire 01 S37/09 S68) | docs | rough 15 min | 13 min | 07:20-07:33 |
+| 2026-10-12 | W2-CORE: dead core code, close-to-tray, osc_bulk plain functions, macro 0.05, OT-2 markers, bindings-only .gmap test | removal | rough 20 min | 6 min | 07:26-07:32 |
+| 2026-10-12 | W2-ASSETS: 145 unused files removed, icon_large to fixtures, WiX path gone | removal | rough 20 min | 8 min | 07:26-07:34 |
+| 2026-10-12 | W2-UI: dead UI Python, test-only Slots, dead Options row, put_gmap_wires, osc_bulk wiring | removal | rough 15-20 min | 8 min | 07:26-07:34 |
+| 2026-10-12 | W2-QML: 6 dead files, 31 functions, ~30 properties, inline mode, TODO(SEL) fallbacks | removal | rough 20 min | 9 min | 07:26-07:35 |
+| 2026-10-12 | DUP-GUID: device_zip.guid_text -> braced_guid (rename, 6 call sites) | merge | rough 10 min | 1 min | 07:37-07:38 |
+| 2026-10-12 | DUP-PIC: imageAspect/pictureSize read through store.picture_size, 2 tests | merge | rough 10 min | 1 min | 07:37-07:38 |
+| 2026-10-12 | OSC-TEST: test_osc_qml stand-in matched to real Slots + drift check | test | rough 10 min | 2 min | 07:37-07:39 |
+| 2026-10-12 | DUP-PATH: 8 same-file/inside checks -> util.path_key/same_path/is_inside, 14 tests | merge | rough 10 min | 3 min | 07:37-07:40 |
+| 2026-10-12 | W2-MAP follow-ups: ~70 removal + merge map lines | docs | no data | 5 min | 07:37-07:42 |
+| 2026-10-12 | Wave 2 full run (1 fail: test pinned removed scope) + lint (9 new test-line errors fixed) | full run | ~7 min | 7 + 3 min | 07:41-07:52 |

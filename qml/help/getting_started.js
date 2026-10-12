@@ -34,7 +34,7 @@ function topics() {
                 + "<li>Right-click each vJoy device and choose <b>Module</b> › <b>Module Setup…</b> (or <b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>). Tick the outputs you will use, then choose <b>Save Module</b>. The Xbox controller needs no setup.</li>"
                 + "<li>Double-click a physical device to open <b>Device Bindings</b>. Choose <b>Add Action</b> on an input, for example <b>Map to vJoy</b>, then <b>OK</b>.</li>"
                 + "<li>Choose <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> (<b>Ctrl+S</b>).</li>"
-                + "<li>Choose <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> on the toolbar. Use the <b>vJoy Viewer</b> <a href=\"open:tools.vjoyViewer\">Open ›</a> or <b>Xbox Viewer</b> <a href=\"open:tools.xboxViewer\">Open ›</a> to watch the result.</li>"
+                + "<li>Choose <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> on the toolbar. Use the <b>vJoy Viewer</b> <a href=\"open:tools.vjoyViewer\">Open ›</a>, or the Xbox 360 Controller's <b>Output View</b> <a href=\"open:view.xboxOutput\">Open ›</a>, to watch the result.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li><b>Tools › Mapping › Auto Mapping Tool</b> <a href=\"open:tools.autoMappingTool\">Open ›</a> creates the Map to vJoy actions for a whole device in one step (see <a href=\"topic:tools-auto-mapping-tool\">Create actions with the Auto Mapping Tool</a>).</li></ul>",
@@ -47,7 +47,7 @@ function topics() {
             body: "<p>The main window shows one page at a time (Home, Device Bindings and others) under a toolbar and a mode bar.</p>"
                 + "<ul>"
                 + "<li>Title bar: the program's name and version first, then the profile's name, for example \"Gremlin-Platforms R1 1.0.30 - Flight.xml\". A <b>*</b> before the profile's name means there are unsaved changes; a profile not saved yet is called \"Untitled\". Other windows show their own name after the program's, for example \"Gremlin-Platforms R1 1.0.30 - Device Library\".</li>"
-                + "<li>Toolbar, left to right: <b>Home</b> <a href=\"show:toolbar/Home\">Show me ›</a>, <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> (reads <b>Stop</b> while the profile runs), <b>vJoy Viewer</b> <a href=\"show:toolbar/vJoy Viewer\">Show me ›</a> and <b>Xbox Viewer</b> <a href=\"show:toolbar/Xbox Viewer\">Show me ›</a> (each opens its viewer, or closes it when it is open), <b>Mapping Editor</b> <a href=\"show:toolbar/Mapping Editor\">Show me ›</a> (a blank Device Mapping Editor), <b>Device Library</b> <a href=\"show:toolbar/Device Library\">Show me ›</a> (every device and its saved setups), <b>Logical Device</b> <a href=\"show:toolbar/Logical Device\">Show me ›</a> and <b>Options</b> <a href=\"show:toolbar/Options\">Show me ›</a>. In a narrow window the buttons show icons only; rest the pointer on one to see its name.</li>"
+                + "<li>Toolbar, left to right: <b>Home</b> <a href=\"show:toolbar/Home\">Show me ›</a>, <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> (reads <b>Stop</b> while the profile runs), <b>vJoy Viewer</b> <a href=\"show:toolbar/vJoy Viewer\">Show me ›</a> (opens the viewer, or closes it when it is open), <b>Mapping Editor</b> <a href=\"show:toolbar/Mapping Editor\">Show me ›</a> (a blank Device Mapping Editor), <b>Device Library</b> <a href=\"show:toolbar/Device Library\">Show me ›</a> (every device and its saved setups), <b>Logical Device</b> <a href=\"show:toolbar/Logical Device\">Show me ›</a> and <b>Options</b> <a href=\"show:toolbar/Options\">Show me ›</a>. In a narrow window the buttons show icons only; rest the pointer on one to see its name.</li>"
                 + "<li>Mode bar, under the toolbar on every page: <b>Mode</b> <a href=\"show:modebar\">Show me ›</a>, its list and <b>Manage Modes</b> <a href=\"show:modebar/Manage Modes\">Show me ›</a> always on the left, then the open page's own controls (on Home: <b>Compact view</b> and <b>Layout</b>). When the window is narrow, the page's controls scroll sideways; Mode and Manage Modes stay put.</li>"
                 + "<li>Bottom bar: the status (Running or Stopped) and what the last save wrote.</li>"
                 + "</ul>"
@@ -276,7 +276,7 @@ function topics() {
             title: "Xbox does nothing",
             body: "<p>Check these in order.</p>"
                 + "<ol>"
-                + "<li>Open the Xbox page or the <b>Xbox Viewer</b> <a href=\"open:tools.xboxViewer\">Open ›</a>: the check at the top must say <b>ViGEmBus driver found</b>. If not, it says what to do.</li>"
+                + "<li>Open the Xbox 360 Controller's <b>Output View</b> <a href=\"open:view.xboxOutput\">Open ›</a>: the check at the top must say <b>ViGEmBus driver found</b>. If not, it says what to do.</li>"
                 + "<li>The pad exists only while the profile runs and after a Map to Xbox action has sent.</li>"
                 + "<li>Check that the action is <b>Map to Xbox</b> with <b>Xbox 360 Controller</b> and the right <b>Target</b>.</li>"
                 + "</ol>",

@@ -1,7 +1,6 @@
 # IDE & tool generated files
 *.sw[op]
 *.pyc
-*.wxs
 
 # IDE & Python generated folders
 __pycache__
@@ -12,7 +11,7 @@ __pycache__
 .jekyll_cache
 
 # Logfiles
-dill_debug.log
+dill_debug*.log
 /qml/livedebug/
 
 # Development folders

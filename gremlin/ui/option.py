@@ -29,17 +29,6 @@ from gremlin.types import PropertyType
 QML_IMPORT_NAME = "Gremlin.Config"
 QML_IMPORT_MAJOR_VERSION = 1
 
-SECTION_DISPLAY_NAMES = {
-    "global": "Global",
-    "ui": "User Interface (UI)",
-    "action": "Action",
-    "profile": "Profile",
-    "osc": "OSC Connection",
-    "display": "Home",
-    "auto-mapping-tool": "Auto Mapping Tool",
-    "device-mapping-editor": "Device Map",
-}
-
 # Titles for entries whose key does not read well as a title; any other
 # entry shows its key with spaces ("zoom-speed" -> "Zoom speed").
 _ENTRY_TITLES = {
@@ -49,7 +38,6 @@ _ENTRY_TITLES = {
     "max-megabytes": "Largest history file (MB)",
     "disable-windows-scaling": "Ignore Windows display scaling",
     "show-stubs": "Show devices without a module",
-    "last-keep-after-release": "Keep last value after release",
     "debug": "Diagnostic logs",
     # The Diagnostic logs level (not a row of its own; recorded for History).
     "log-level": "Diagnostic logs",
@@ -138,7 +126,6 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ("Cards", [
             ("display", "status", "compact-view"),
             ("display", "status", "show-stubs"),
-            ("display", "status", "last-keep-after-release"),
             ("display", "status", "reset-card-sizes"),
         ]),
     ]),
@@ -304,14 +291,8 @@ def _js_trim(text: str) -> str:
 
 @ta.QmlElement
 class ConfigSectionModel(QtCore.QAbstractListModel):
-    """The sections an Options window lists, each with its groups.
-
-    scope "" is the main Options window: the sections of main_layout(). Any
-    other scope is one stored section shown on its own (the Device Mapping Editor's
-    options window uses "device-mapping-editor").
-    """
-
-    scopeChanged = QtCore.Signal()
+    """The sections the Options window lists (main_layout()), each with its
+    groups."""
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
@@ -320,22 +301,8 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
-        self._scope = ""
         self._main_sections: list[tuple[str, list | None]] | None = None
         self._group_models: dict[int, ConfigGroupModel] = {}
-
-    def _get_scope(self) -> str:
-        return self._scope
-
-    def _set_scope(self, value: str) -> None:
-        if value != self._scope:
-            self.beginResetModel()
-            self._scope = value
-            self._group_models = {}
-            self.endResetModel()
-            self.scopeChanged.emit()
-
-    scope = QtCore.Property(str, fget=_get_scope, fset=_set_scope, notify=scopeChanged)
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._sections())
@@ -357,7 +324,7 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
                 # and a parentless model handed to QML is never freed.
                 model = self._group_models.get(index.row())
                 if model is None:
-                    model = ConfigGroupModel(self._scope, self, groups=groups)
+                    model = ConfigGroupModel("", self, groups=groups)
                     self._group_models[index.row()] = model
                 return model
         return None
@@ -375,7 +342,7 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
         return [
             row
             for row, (_title, groups) in enumerate(self._sections())
-            if ConfigGroupModel(self._scope, groups=groups).matches(needle)
+            if ConfigGroupModel("", groups=groups).matches(needle)
         ]
 
     def _settings(self) -> list[tuple[int, str, str, str]]:
@@ -384,9 +351,9 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
         name_role = QtCore.Qt.ItemDataRole.UserRole + 5
         out = []
         for row, (_title, groups) in enumerate(self._sections()):
-            group_model = ConfigGroupModel(self._scope, groups=groups)
+            group_model = ConfigGroupModel("", groups=groups)
             for title, keys, stored in group_model._combined_groups():
-                entries = ConfigEntryModel(self._scope, stored, keys=keys)
+                entries = ConfigEntryModel("", stored, keys=keys)
                 for index, key in enumerate(entries._keys):
                     label = str(entries.data(entries.index(index), name_role) or "")
                     if label:
@@ -422,8 +389,6 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
         return []
 
     def _sections(self) -> list[tuple[str, list | None]]:
-        if self._scope:
-            return [(SECTION_DISPLAY_NAMES.get(self._scope, self._scope), None)]
         # main_layout() walks the whole registry; Qt asks for the sections
         # many times while the window opens, so build it once per model. A
         # new model is made each time an Options window opens.
@@ -459,10 +424,6 @@ class ConfigGroupModel(QtCore.QAbstractListModel):
         self._section_name = section
         self._groups = groups
         self._entry_models: dict[tuple, ConfigEntryModel] = {}
-
-    @QtCore.Property(str, notify=changed)
-    def sectionName(self) -> str:
-        return self._section_name
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._combined_groups())

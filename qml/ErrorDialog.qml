@@ -16,7 +16,6 @@ Popup {
     property string detailedText: ""
 
     signal accepted()
-    signal rejected()
 
     width: Style.dp(800)
     height: Style.dp(500)

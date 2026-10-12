@@ -23,9 +23,7 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
-        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"actionSequenceCount"),
         QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"description"),
-        QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"deviceIndex"),
         QtCore.Qt.ItemDataRole.UserRole + 7: QtCore.QByteArray(b"kind"),
         QtCore.Qt.ItemDataRole.UserRole + 8: QtCore.QByteArray(b"hwId"),
     }
@@ -194,15 +192,11 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
         key = bytes(self.roles.get(role, b"")).decode()
         if key == "name":
             return row["name"]
-        if key == "deviceIndex":
-            return row["deviceIndex"]
         if key == "kind":
             return row["kind"]
         if key == "hwId":
             return row["hwId"]
         item = self._input_item(row)
-        if key == "actionSequenceCount":
-            return len(item.action_sequences) if item else 0
         if key == "description":
             return _description_from_item(item) if item else ""
         return None
@@ -233,13 +227,6 @@ class ModuleClaimedInputModel(QtCore.QAbstractListModel):
         if 0 <= row < len(self._rows):
             return str(self._rows[row]["name"])
         return ""
-
-    @QtCore.Slot(int, result=int)
-    def rowForDeviceIndex(self, device_index: int) -> int:
-        for i, row in enumerate(self._rows):
-            if int(row["deviceIndex"]) == int(device_index):
-                return i
-        return -1
 
     guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
     deviceName = QtCore.Property(

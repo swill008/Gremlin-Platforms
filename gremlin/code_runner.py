@@ -296,20 +296,6 @@ class CallbackObject:
         return [value]
 
 
-def run_number() -> int:
-    """The current Run's number (a different one after Stop). The one Run
-    number is run_scope's; this forwards to it."""
-    return run_scope.number()
-
-
-def __getattr__(name: str) -> object:
-    # TODO(batch1): test/conftest.py reads code_runner._run_number to tell
-    # whether a test ran or stopped a Run; it should read run_scope.number().
-    if name == "_run_number":
-        return run_scope.number()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
 def _profile_path(running: Any) -> str | None:  # noqa: ANN401
     """The running profile's file, for OSC feedback's profile-switch resend."""
     path = getattr(running, "fpath", None)

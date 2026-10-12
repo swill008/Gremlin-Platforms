@@ -91,14 +91,14 @@ def _packed_id(plan: dict) -> str:
     data, _info = device_pack.build_pack(plan)
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
         label = json.loads(zf.read(device_zip.GMAP_JSON))
-    return device_zip.guid_text(label["id"])
+    return device_zip.braced_guid(label["id"])
 
 
 def test_pack_export_of_the_second_twin_has_its_id(folder: Path, twins: None) -> None:
     _write_files()
     plan = device_pack.plan_pack(TWIN, lambda _p: None, guid=str(SECOND))
     assert isinstance(plan, dict), plan
-    assert _packed_id(plan) == device_zip.guid_text(str(SECOND))
+    assert _packed_id(plan) == device_zip.braced_guid(str(SECOND))
 
 
 def test_pack_export_by_a_shared_name_is_refused(folder: Path, twins: None) -> None:
@@ -119,4 +119,4 @@ def test_pack_export_by_a_name_only_one_device_has(
 
     plan = device_pack.plan_pack(TWIN, lambda _p: None)
     assert isinstance(plan, dict), plan
-    assert _packed_id(plan) == device_zip.guid_text(str(SECOND))
+    assert _packed_id(plan) == device_zip.braced_guid(str(SECOND))

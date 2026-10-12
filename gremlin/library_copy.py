@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 from xml.etree import ElementTree
 
 from gremlin import device_library as library
-from gremlin import shared_state
+from gremlin import shared_state, util
 from gremlin.modules import store
 from gremlin.ui import device_pack
 
@@ -50,6 +50,9 @@ _LOGICAL_ITEM = "in.logical"
 # OSC's addresses and server settings in its module file (D-09-OSC-FILE);
 # only OSC's own packs have them.
 _OSC_ITEM = "in.osc"
+# The device's own uploaded picture (03 S52): a put-back brings it; Copy
+# to Another Stick leaves it with its stick (10 S62).
+_IMAGE_ITEM = "in.image"
 _MODULE_PARTS = {"setup", "device_map", "appearance", "calibration"}
 _KIND_WORD = {2: "axis", 3: "button", 4: "hat"}
 # A part LS marks as a damaged module file kept as is (S20a).
@@ -144,13 +147,12 @@ def _uid(guid: str) -> uuid.UUID | None:
         return None
 
 
-def _same_path(a: Path | str, b: Path | str | None) -> bool:
-    if b is None:
-        return not str(a) or str(a) == "."
-    try:
-        return Path(a).resolve() == Path(b).resolve()
-    except OSError:
-        return str(a) == str(b)
+def _is_current(path: Path | str, fpath: Path | str | None) -> bool:
+    """path names the open profile's file fpath; "" or "." name an open
+    profile that was never saved (fpath None)."""
+    if fpath is None:
+        return not str(path) or str(path) == "."
+    return util.same_path(path, fpath)
 
 
 def _read(path: Path) -> object:
@@ -159,7 +161,7 @@ def _read(path: Path) -> object:
     from gremlin import library_profiles
 
     current = shared_state.current_profile
-    if current is not None and _same_path(path, current.fpath):
+    if current is not None and _is_current(path, current.fpath):
         return current
     if not str(path) or str(path) == ".":
         return f"{_profile_name(path)}: no profile is open."
@@ -180,9 +182,14 @@ def _batch(paths: list[Path], label: str) -> object:
 
 
 def _module_items(
-    ids: list[str], parts: list[str], everything: bool = False
+    ids: list[str], parts: list[str], everything: bool = False, image: bool = False
 ) -> list[str]:
+    """The pack items for parts. everything: the Library's own put-back
+    (Undo); image: the device image too (Restore to This Stick); Copy to
+    Another Stick never takes it (10 S62)."""
     wanted: set[str] = set()
+    if image or everything:
+        wanted.add(_IMAGE_ITEM)
     for part in parts:
         wanted.update(_PART_ITEMS.get(part, ()))
     if "device_map" in parts:
@@ -485,7 +492,7 @@ def _exists(stored: str) -> bool:
     if not str(stored or "").strip():
         return False
     current = shared_state.current_profile
-    if current is not None and _same_path(stored, current.fpath):
+    if current is not None and _is_current(stored, current.fpath):
         return True
     if str(stored) == ".":
         return False
@@ -622,7 +629,8 @@ def _copy(
     ids = checked["ids"]
     parts = checked["parts"]
     pack = checked["pack"]
-    module = _module_items(ids["input"], parts)
+    # A restore brings the stick's own device image back (10 S62).
+    module = _module_items(ids["input"], parts, image=restore)
     wires = _wire_items(ids["modes"], parts, modes)
     bind = ("bindings" in parts) if current else bool(wires)
     if not module and not (bind and profiles):

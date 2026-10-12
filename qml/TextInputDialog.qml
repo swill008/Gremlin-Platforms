@@ -34,7 +34,6 @@ Popup {
     // only places the cursor (it used to wipe the name).
     property bool clearOnClick: false
     property bool _clearedOnClick: false
-    property bool _committed: false
     property bool showOption: false
     property string optionText: ""
     property bool optionChecked: false
@@ -64,7 +63,6 @@ Popup {
         if (!_check())
             return
         _root.lastAccepted = _input.text
-        _root._committed = true
         _root.accepted(_input.text)
         _root.close()
     }
@@ -87,7 +85,6 @@ Popup {
     }
 
     onOpened: {
-        _committed = false
         _clearedOnClick = false
         _input.text = seedText()
         _option.checked = optionChecked

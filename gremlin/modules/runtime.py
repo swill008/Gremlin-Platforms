@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from PySide6 import QtCore
 
 from gremlin import trace
@@ -16,8 +14,6 @@ from gremlin.modules.gate import should_forward
 from gremlin.modules.ids import guid_key
 from gremlin.signal import signal
 from gremlin.types import InputType
-
-syslog = logging.getLogger("system")
 
 
 def _trace_dropped(event: Event) -> None:

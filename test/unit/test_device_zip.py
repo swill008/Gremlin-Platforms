@@ -418,7 +418,27 @@ def _wired(profile: object, uid: uuid.UUID) -> list[int]:
     )
 
 
-def test_import_with_bindings_is_one_undo_step(modules: Path, tmp_path: Path) -> None:
+def _ticked(described: dict) -> dict:
+    """Every piece the import window shows ticked, as it sends them."""
+    items, outputs = [], {}
+    for section in described.get("sections") or []:
+        if str(section.get("id", "")).startswith("out:"):
+            outputs[str(section["id"])[4:]] = section.get("target") or ""
+        for item in section.get("items") or []:
+            if item.get("checked") is not False:
+                items.append(item["id"])
+    return {"items": items, "outputs": outputs, "target": "new"}
+
+
+@pytest.mark.parametrize("with_folder", [True, False])
+def test_import_as_new_with_bindings_is_one_undo_step(
+    modules: Path, tmp_path: Path, with_folder: bool
+) -> None:
+    """Import as a new device puts the file's wires into the open profile
+    (device_pack.import_as_new -> apply_zip), with and without a device
+    folder in the file (a Device Library setup of a stick with no module
+    file holds only bindings); Undo Import takes the wires and the folder
+    back in one step."""
     import shutil
 
     from gremlin import shared_state
@@ -433,26 +453,37 @@ def test_import_with_bindings_is_one_undo_step(modules: Path, tmp_path: Path) ->
         base = _put_device()
         out = tmp_path / "wired.gmap"
         wires = device_pack.collect_wires(GUID)
-        assert device_zip.export_device(STICK, GUID, out, wires) == ""
-        # Another PC: no folder, a profile without the wires.
-        shutil.rmtree(base)
-        store._dirs_changed()
+        if not with_folder:
+            shutil.rmtree(base)
+            store._dirs_changed()
+        built = device_zip.build_gmap(STICK, GUID, wires, no_file_ok=True)
+        assert isinstance(built, bytes), built
+        out.write_bytes(built)
+        with zipfile.ZipFile(out) as zf:
+            assert ("module.json" in zf.namelist()) is with_folder
+        if with_folder:
+            # Another PC: no folder, a profile without the wires.
+            shutil.rmtree(base)
+            store._dirs_changed()
         target = Profile()
         target.device_database.devices[uid] = DeviceInfo(uid, STICK)
         shared_state.current_profile = target
-        result = device_zip.import_device(out, put_wires=device_pack.put_gmap_wires)
-        error = result["error"]
-        assert error == "", error
+        described = device_pack.describe_zip(out)
+        assert isinstance(described, dict), described
+        selection = _ticked(described)
+        preview = device_pack.preview_new(out, "", selection)
+        assert preview.get("ok"), preview
+        result = device_pack.import_as_new(out, "", selection)
+        assert result.get("ok"), result
         assert _wired(target, uid) == [1]
         folder = store.device_dir(STICK, GUID)
-        assert (folder / "module.json").is_file()
+        assert (folder / "module.json").is_file() is with_folder
         assert device_pack.can_undo_import()
         undone = device_pack.undo_import()
         assert undone["ok"], undone
-        # One step: the wires and the whole folder are gone again.
+        # One step: the wires (and the folder it made) are gone again.
         assert _wired(target, uid) == []
         assert not (folder / "module.json").exists()
-        assert not folder.exists()
         assert not device_pack.can_undo_import()
     finally:
         device_pack.drop_import_undo()
@@ -468,7 +499,7 @@ def test_import_without_bindings_leaves_no_undo(modules: Path, tmp_path: Path) -
     shutil.rmtree(base)
     store._dirs_changed()
     device_pack.drop_import_undo()
-    result = device_zip.import_device(out, put_wires=device_pack.put_gmap_wires)
+    result = device_zip.import_device(out)
     key, error = result["key"], result["error"]
     assert error == "" and key
     assert not device_pack.can_undo_import()

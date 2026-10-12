@@ -206,18 +206,6 @@ def assignment_summary(shown: list[tuple]) -> tuple[str, str]:
     return f"{count} — {summary}", summary
 
 
-def leaves_for_item(item) -> list[tuple[str, str, str]]:
-    out: list[tuple[str, str, str]] = []
-    if item is None:
-        return out
-    for seq in getattr(item, "action_sequences", None) or []:
-        root = getattr(seq, "root_action", None)
-        if root is None:
-            continue
-        out.extend(collect_leaves(root))
-    return out
-
-
 # --- The edit lock (06 S13, S82, RB14; 05 S32, S101) ------------------------
 
 

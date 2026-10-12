@@ -26,8 +26,6 @@ from gremlin.modules import store
 if TYPE_CHECKING:
     from gremlin.logical_device import LogicalRows
 
-# The file stem before device folders (03 S134): the one-time move reads it.
-SLUG = "logical_device"
 KEY = "logical-device"
 WHO = "Logical Device"
 

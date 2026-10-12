@@ -42,6 +42,7 @@ _STEPS = [
      + " _win.ran = ''; _probe.activate('Remove Image'); _win.ran"),
     ("stick-photo",
      "_card.slug = 'pjoy_pro'; _card.tab = 'physical'; _card.bus = 'DirectInput';"
+     " _card.isModule = true;"
      " " + _OPEN_DEVICE),
     ("stick-bare", "_card.photo = ''; " + _OPEN_DEVICE),
     ("closed", "_probe.close(); 'ok'"),
@@ -94,11 +95,14 @@ def test_logical_card_menu_has_the_image_items(tmp_path: pathlib.Path) -> None:
     assert results["logical-add-runs"] == "add"
     assert results["logical-change-runs"] == "add"
     assert results["logical-remove-runs"] == "remove"
-    # Other cards are unchanged, photo or not.
+    # Other input cards follow their own Device Image (hasImage), not the
+    # photo (D-03-DEVICE-IMAGE): without one, Add Image… only.
     for step in ("stick-photo", "stick-bare"):
-        rows = results[step]
-        assert "Image" not in rows, (step, rows)
-        assert "Delete Device" in rows, (step, rows)
+        rows = results[step].split("|")
+        assert "  Add Image…" in rows, (step, rows)
+        assert "  Change Image…" not in rows, (step, rows)
+        assert "  Remove Image" not in rows, (step, rows)
+        assert "  Delete Device" in rows, (step, rows)
 
 
 def test_home_page_routes_the_card_image_to_the_model() -> None:

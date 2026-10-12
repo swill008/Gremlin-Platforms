@@ -30,11 +30,11 @@ from xml.etree import ElementTree
 import pytest
 
 from gremlin import device_initialization, plugin_manager, shared_state, util
-from gremlin.modules import module_file
+from gremlin.modules import module_file, registry
 from gremlin.modules import store as module_store
 from gremlin.profile import DeviceInfo, Profile
 from gremlin.types import InputType
-from gremlin.ui import device_pack, hardware_profile
+from gremlin.ui import device_pack
 from test.unit._device_folders import ensure_dir, put_module
 from test.unit._gmap_files import write_gmap
 
@@ -343,7 +343,9 @@ def test_the_photo_keeps_its_placement() -> None:
     merged, _notes = device_pack._merge_module(
         {"kind": "control.hardware", "nodes": []},
         {"nodes": [photo]},
-        {"pic:photo.png"},
+        # Old: the Device photo tick alone ("pic:photo.png"); that row is
+        # gone, the bottom picture comes with the Map tick (D-03-DEVICE-IMAGE).
+        {"in.layout", "pic:photo.png"},
         "in.",
         "pJoy Pro",
         "",
@@ -509,7 +511,12 @@ def test_a_picture_that_cannot_be_written_puts_everything_back(
     before = path.read_bytes()
 
     def half_written(
-        base: Path, files: dict, chosen: set, doc: dict, record: list
+        base: Path,
+        files: dict,
+        chosen: set,
+        doc: dict,
+        record: list,
+        image: bool = False,  # the "Device image" row (08 S75)
     ) -> None:
         dest = Path(base) / "pictures" / "half.png"
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -533,10 +540,15 @@ def test_an_output_picture_that_cannot_be_written_is_reported(
     written: list[Path] = []
 
     def output_fails(
-        base: Path, files: dict, chosen: set, doc: dict, record: list
+        base: Path,
+        files: dict,
+        chosen: set,
+        doc: dict,
+        record: list,
+        image: bool = False,  # the "Device image" row (08 S75)
     ) -> dict:
         if Path(base) == _own_path(pack["name"]).parent:
-            return real(base, files, chosen, doc, record)
+            return real(base, files, chosen, doc, record, image=image)
         dest = Path(base) / "pictures" / "half.png"
         dest.parent.mkdir(parents=True, exist_ok=True)
         record.append((dest, None))
@@ -565,9 +577,9 @@ def test_a_damaged_module_file_is_skipped(caplog: pytest.LogCaptureFixture) -> N
     path = put_module(util.modules_dir(), "Damaged Stick", "")
     path.write_bytes(b'{"device": "\xff\xfe"}')
     try:
-        assert hardware_profile._read_json_dict(path) is None
+        assert registry.read_doc(path) is None
         assert "Damaged Stick" in caplog.text
-        assert isinstance(hardware_profile._known_pack_devices(), list)
+        assert isinstance(module_store.known_devices(), list)
     finally:
         shutil.rmtree(path.parent, ignore_errors=True)
 

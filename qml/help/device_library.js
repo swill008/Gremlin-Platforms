@@ -37,7 +37,7 @@ function topics() {
             + "<ul>"
             + "<li><b>Filters</b> at the top: <b>Connected</b>, <b>Not connected</b>, <b>Deleted</b> and <b>Autosaves</b>. A ticked filter shows that kind; select one to hide it.</li>"
             + "<li>The <b>search box</b> under them finds devices and saved setups as you type. See <a href=\"topic:device-library-search\">Search the Device Library</a>.</li>"
-            + "<li>The <b>list</b>: one row per device, with its saved setups under it. The internal inputs come last, under their own heading. A row of the library's own list that can't be read is left out of the list, with a warning in the system log, and kept in the file as it is.</li>"
+            + "<li>The <b>list</b>: one row per device, with its saved setups under it. Drag the line between the list and the details to make the list narrower or wider; the program remembers where you put it. The internal inputs come last, under their own heading. A row of the library's own list that can't be read is left out of the list, with a warning in the system log, and kept in the file as it is.</li>"
             + "<li>The <b>details</b>: the name, the description, what it holds, and buttons for what you can do with it.</li>"
             + "<li>The message line above the status bar says how the last change went and lists anything to check: plain when it worked, red when it failed. After a delete it ends with an <b>Undo</b> link. A message stays until the next one.</li>"
             + "<li>The <b>status bar</b> shows how many devices and saved setups there are, how many autosaves are kept per stick, the library's size on disk (for example \"Library: 48 MB\"), the <b>Undo</b> and <b>Redo</b> buttons with the last change beside them (see <a href=\"topic:device-library-undo\">Undo and redo a change</a>) and the library folder.</li>"
@@ -83,7 +83,7 @@ function topics() {
 
         // ---- Devices and saved setups --------------------------------------
         t("device-library-devices", "Devices and saved setups", "Devices",
-            "<p>Each device row shows its name, its description, how many saved setups it has, and its state:</p>"
+            "<p>Each device row shows a small picture of the device (its device image or the picture made from its device map; the device's icon when it has none), then its name, its description and how many saved setups it has, one under the other, and its state on the right:</p>"
             + "<ul>"
             + "<li><b>Connected</b>: plugged in now.</li>"
             + "<li><b>Not connected</b>: set up here but unplugged, or a device that came only from someone else's device file. You can copy from it, never to it.</li>"
@@ -113,7 +113,7 @@ function topics() {
             + "<li><b>Calibration</b>.</li>"
             + "<li><b>Bindings</b>: the stick's actions from one profile, in the modes saved, and the vJoy outputs they send to.</li>"
             + "</ul>"
-            + "<p>Select one to see its name and description, when and why it was kept, exactly what it holds under <b>Holds</b> (for example \"Bindings from DCS.xml · modes Default, Landing · 212 actions\" and \"Sends to vJoy 1 (38 inputs)\"), a preview of its device photo (a picture of the saved setup's background), and its <b>Activity</b>: when it was saved, when its description was edited, and which sticks it was copied to. The buttons under the details are <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, <b>Export…</b> and <b>Delete…</b>.</p>"
+            + "<p>Select one to see its name and description, when and why it was kept, exactly what it holds under <b>Holds</b> (for example \"Bindings from DCS.xml · modes Default, Landing · 212 actions\" and \"Sends to vJoy 1 (38 inputs)\"), a preview of its device photo (its device image, else a picture of the saved setup's background), and its <b>Activity</b>: when it was saved, when its description was edited, and which sticks it was copied to. The buttons under the details are <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, <b>Export…</b> and <b>Delete…</b>.</p>"
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>Activity covers only that saved setup; <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> keeps every saved change in the program.</li>"

@@ -9,27 +9,11 @@ import gremlin.ui.type_aliases as ta
 from gremlin import clock, trace
 from gremlin.osc import OscDevice, OscRuntime
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
-from gremlin.ui.osc_device_model import OscDeviceManagementModel
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1
 
 _DEBOUNCE_S = 0.3
-
-_orig_learned = OscDeviceManagementModel._on_learned
-_orig_cancel_model = OscDeviceManagementModel.cancelListen
-_orig_listen_cmd = OscDeviceManagementModel.listenForCommand
-
-
-def model_listen_for_command(
-    self: OscDeviceManagementModel, settings: object = None
-) -> None:
-    # The Add window passes its settings (D-09-OSC-INPUT); old callers none.
-    setattr(self, "_bulk", False)
-    if settings is None:
-        _orig_listen_cmd(self)
-    else:
-        _orig_listen_cmd(self, settings)  # type: ignore[call-arg]
 
 
 def _as_dict(value: object) -> dict | None:
@@ -77,13 +61,6 @@ def _answered(model: object, address: str, payload: tuple) -> bool:
     return bool(rows.answered_by(address))
 
 
-def model_cancel_listen(self: OscDeviceManagementModel) -> None:
-    if not OscRuntime().listens_for(self):
-        return  # another window's Listen keeps going
-    setattr(self, "_bulk", False)
-    _orig_cancel_model(self)
-
-
 def _create_captured(model: object, address: str, payload: tuple) -> None:
     settings = getattr(model, "_bulk_settings", None)
     create = getattr(model, "createConfiguredInput", None)
@@ -96,52 +73,37 @@ def _create_captured(model: object, address: str, payload: tuple) -> None:
     create(dict(settings, address=address, data=data))
 
 
-def model_on_learned(self: object, address: str, args: object) -> None:
-    if not OscRuntime().listens_for(self):
-        # another model's Listen (the OSC Monitor has its own)
+def on_bulk_learned(model: object, address: str, payload: tuple) -> None:
+    """A message heard while model's Bulk capture listens (the model has
+    checked it owns the Listen): a repeat within the debounce or an address
+    an input already answers is skipped; otherwise it becomes an input."""
+    now = clock.monotonic()
+    key = ((address or "").casefold(), payload)
+    if key == getattr(model, "_last_bulk_addr", "") and (
+        now - getattr(model, "_last_bulk_time", 0.0) < _DEBOUNCE_S
+    ):
         trace.osc(
             "setup",
-            f"Listen: {address} not taken (another window listens)",
+            f"Bulk skipped {address} (repeat within {_DEBOUNCE_S:g} s)",
             rate=True,
-            key="listen-owner",
+            key=f"bulk-repeat {address}",
         )
         return
-    if getattr(self, "_bulk", False):
-        payload = args if isinstance(args, tuple) else ()
-        now = clock.monotonic()
-        key = ((address or "").casefold(), payload)
-        if key == getattr(self, "_last_bulk_addr", "") and (
-            now - getattr(self, "_last_bulk_time", 0.0) < _DEBOUNCE_S
-        ):
-            trace.osc(
-                "setup",
-                f"Bulk skipped {address} (repeat within {_DEBOUNCE_S:g} s)",
-                rate=True,
-                key=f"bulk-repeat {address}",
-            )
-            return
-        setattr(self, "_last_bulk_addr", key)
-        setattr(self, "_last_bulk_time", now)
-        if _answered(self, address, payload):
-            setattr(self, "_bulk_skipped", bulk_skipped(self) + 1)
-            # Trace only (E6): one line per skip filled the system log.
-            trace.osc(
-                "setup",
-                f"Bulk skipped {address} (already answered)",
-                rate=True,
-                key=f"bulk-answered {address}",
-            )
-            return
-        shown = ", ".join(str(item) for item in payload)
-        getattr(self, "commandCaptured").emit(address, shown)
-        _create_captured(self, address, payload)
+    setattr(model, "_last_bulk_addr", key)
+    setattr(model, "_last_bulk_time", now)
+    if _answered(model, address, payload):
+        setattr(model, "_bulk_skipped", bulk_skipped(model) + 1)
+        # Trace only (E6): one line per skip filled the system log.
+        trace.osc(
+            "setup",
+            f"Bulk skipped {address} (already answered)",
+            rate=True,
+            key=f"bulk-answered {address}",
+        )
         return
-    _orig_learned(self, address, args)  # type: ignore[arg-type]
-
-
-setattr(OscDeviceManagementModel, "listenForCommand", model_listen_for_command)
-setattr(OscDeviceManagementModel, "cancelListen", model_cancel_listen)
-setattr(OscDeviceManagementModel, "_on_learned", model_on_learned)
+    shown = ", ".join(str(item) for item in payload)
+    getattr(model, "commandCaptured").emit(address, shown)
+    _create_captured(model, address, payload)
 
 
 @ta.QmlElement

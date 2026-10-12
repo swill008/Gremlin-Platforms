@@ -12,18 +12,25 @@ Import's help names the suffixes and its text reaches the model.
 The windows are hosted as qml/OscPage.qml hosts them (09 S129, S135: Add…,
 Import… and Edit Settings… are right-click menu rows now, no footer or
 pencil menu): openAdd() is resetFields() + open(), Edit Settings… is
-openForEdit(uid, inputSettings(uid)), OK goes to createConfiguredInput and
-Import's OK to importInputs. The page's own parts (Delete asks first,
-Change Address… shows the model's error, Import's result on the message
-line) are driven on the real page, from its right-click menu, in
+openForKeys(keys, OscLayoutModel.editSettingsFor(keys)) and its OK goes to
+OscLayoutModel.applySettings(keys, changed); Add's OK goes to
+createConfiguredInput and Import's OK to importInputs. The page's own parts
+(Delete asks first, Change Address… shows the model's error, Import's result
+on the message line) are driven on the real page, from its right-click menu, in
 osc_page_companion_smoke.py (test_osc_page_companion.py).
 
 The real QML runs off-screen in a child process (this file run as a script)
-against a stand-in model that records every call, printing "RESULT name value".
+against stand-in models that record every call, printing "RESULT name value".
+The stand-ins are used rather than the real OscDeviceManagementModel and
+OscLayoutModel because the real ones need a loaded profile and Listen opens a
+real OSC socket; test_stand_in_slots_exist_on_the_real_models keeps every
+stand-in Slot pinned to a method of the same name on the real class, so the
+QML here can only call routes the program has.
 """
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import pathlib
@@ -49,17 +56,22 @@ ApplicationWindow {
     }
 
     OscDeviceManagementModel { id: _devices }
+    OscLayoutModel { id: _layout }
 
     // As OscPage.qml hosts and opens them.
     OscAddDialog {
         id: _addDialog
         objectName: "oscAdd"
         deviceModel: _devices
+        applySettings: function(keys, changed) {
+            return _layout.applySettings(keys, changed)
+        }
         onAccepted: (settings) => _devices.createConfiguredInput(settings)
     }
 
     OscImportDialog {
         id: _importDialog
+        deviceModel: _devices
         onAccepted: (text) => _devices.importInputs(text)
     }
 
@@ -69,9 +81,8 @@ ApplicationWindow {
         return true
     }
 
-    function editSettings(uid) {
-        _addDialog.openForEdit(uid, _devices.inputSettings(uid))
-        return true
+    function editSettings(keys) {
+        return _addDialog.openForKeys(keys, _layout.editSettingsFor(keys))
     }
 
     function openImport() {
@@ -149,7 +160,6 @@ def _smoke() -> None:
                 "name",
                 "label",
                 "uid",
-                "actionSequenceCount",
                 "description",
             ],
             start=1,
@@ -180,7 +190,7 @@ def _smoke() -> None:
             row = rows[index.row()]
             if name in row:
                 return row[name]
-            return 0 if name == "actionSequenceCount" else ""
+            return ""
 
         @QtCore.Slot(int, result=QtCore.QObject)
         def inputIdentifier(self, index: int) -> QtCore.QObject:
@@ -191,35 +201,10 @@ def _smoke() -> None:
             record("createConfiguredInput", settings)
             return True
 
-        @QtCore.Slot(str, result="QVariant")
-        def inputSettings(self, uid: str) -> object:
-            record("inputSettings", uid)
-            return {
-                "address": "/fader/1", "mode": "axis", "cmd_mode": "message",
-                "data": [], "source": 1, "range_min": -1.0, "range_max": 1.0,
-                "trigger": None, "delay_ms": None, "locked": True,
-            }
-
-        @QtCore.Slot(str, "QVariant", result=str)
-        def updateInputSettings(self, uid: str, settings: object) -> str:
-            record("updateInputSettings", uid, settings)
-            return ""
-
-        @QtCore.Slot(str, str, result=str)
-        def changeName(self, uid: str, address: str) -> str:
-            record("changeName", uid, address)
-            if address.startswith("/"):
-                return ""
-            return "An OSC address must start with /."
-
         @QtCore.Slot(str, result=str)
         def importInputs(self, text: str) -> str:
             record("importInputs", text)
             return "Added 2, skipped 1."
-
-        @QtCore.Slot(str)
-        def deleteInput(self, uid: str) -> None:
-            record("deleteInput", uid)
 
         @QtCore.Slot("QVariant")
         def setCaptureSettings(self, settings: object) -> None:
@@ -235,19 +220,31 @@ def _smoke() -> None:
             record("cancelListen")
             self.setListening(False)
 
-        @QtCore.Slot()
-        def sortInputs(self) -> None:
-            record("sortInputs")
-
-        @QtCore.Slot()
-        def clearAllInputs(self) -> None:
-            record("clearAllInputs")
-
         listening = QtCore.Property(
             bool, fget=lambda self: self._listening, notify=listenChanged
         )
 
     models: list[OscDeviceManagementModel] = []
+
+    class OscLayoutModel(QtCore.QObject):
+        # The page's own model (osc_layout.py): Edit Settings… reads and
+        # writes through it by row key.
+        @QtCore.Slot("QStringList", result="QVariantMap")
+        def editSettingsFor(self, keys: list) -> dict[str, object]:
+            record("editSettingsFor", list(keys))
+            return {
+                "count": 1, "keys": list(keys), "address": "/fader/1",
+                "locked": True, "mixed": [], "shaping": True,
+                "mode": "axis", "cmd_mode": "message", "data": [],
+                "source": 1, "range_min": -1.0, "range_max": 1.0,
+                "trigger": None, "delay_ms": None, "invert": False,
+                "deadzone_low": 0.0, "deadzone_high": 0.0,
+            }
+
+        @QtCore.Slot("QStringList", "QVariantMap", result=str)
+        def applySettings(self, keys: list, changed: object) -> str:
+            record("applySettings", list(keys), changed)
+            return ""
 
     sys.stdout.reconfigure(encoding="utf-8")
     app = QtGui.QGuiApplication(sys.argv[:1])  # noqa: F841
@@ -256,8 +253,8 @@ def _smoke() -> None:
         "Gremlin.Style", 1, 0, "Style",
     )
     for cls in (
-        OscDeviceManagementModel, OscSettingsInfo, OscBulkCapture,
-        InputIdentifier,
+        OscDeviceManagementModel, OscLayoutModel, OscSettingsInfo,
+        OscBulkCapture, InputIdentifier,
     ):
         QtQml.qmlRegisterType(cls, "Gremlin.Device", 1, 0, cls.__name__)
     engine = QtQml.QQmlApplicationEngine()
@@ -422,8 +419,8 @@ def _smoke() -> None:
 
     # 4. Edit Settings… (right-click menu): opens with the input's settings.
     calls.clear()
-    call("editSettings", "u1")
-    report("edit-asked", last("inputSettings"))
+    call("editSettings", ["axis:u1"])
+    report("edit-asked", last("editSettingsFor"))
     report("edit-range-shown", visible("oscRangeRow"))
     report("edit-locked", [
         bool(find(n).property("enabled")) if find(n) else None
@@ -431,7 +428,7 @@ def _smoke() -> None:
     ])
     set_text("oscRangeMax", "4")
     click("oscOk")
-    report("edit-saved", last("updateInputSettings"))
+    report("edit-saved", last("applySettings"))
 
     # 5. Add Inputs › Import…: help names the suffixes; the text reaches the model.
     call("openImport")
@@ -507,14 +504,14 @@ def test_osc_add_listen_edit_and_import_reach_the_model(tmp_path: pathlib.Path) 
     assert trig["trigger"] is True and trig["delay_ms"] == 500
 
     (asked,) = got["edit-asked"]
-    assert asked == "u1"
+    assert asked == ["axis:u1"]
     assert got["edit-range-shown"] is True
     # An axis with actions stays an axis: Change and Button are greyed.
     assert got["edit-locked"] == [False, False, True]
-    uid, edited = got["edit-saved"]
-    assert uid == asked
-    assert edited["mode"] == "axis" and edited["range_max"] == 4
-    assert edited["range_min"] == -1 and edited["source"] == 1
+    keys, edited = got["edit-saved"]
+    assert keys == asked
+    # Only what changed since the window opened (S146).
+    assert edited == {"range_max": 4}
 
     help_text = got["import-help"]
     for piece in ("A: axis", "BNP", "C: change",
@@ -522,6 +519,44 @@ def test_osc_add_listen_edit_and_import_reach_the_model(tmp_path: pathlib.Path) 
                   "unknown suffix", "space or a comma"):
         assert piece in help_text, piece
     assert got["import-call"] == ["/a A\n/b, BNP"]
+
+
+# Stand-in class (in _smoke) -> the file of the real class it stands in for.
+_REAL = {
+    "OscDeviceManagementModel": "gremlin/ui/osc_device_model.py",
+    "OscLayoutModel": "gremlin/ui/osc_layout.py",
+    "OscSettingsInfo": "gremlin/ui/osc_settings_info.py",
+    "OscBulkCapture": "gremlin/osc_bulk.py",
+}
+
+
+def _methods(tree: ast.AST, cls: str, slots_only: bool) -> set[str]:
+    out: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == cls:
+            for item in node.body:
+                if not isinstance(item, ast.FunctionDef):
+                    continue
+                if slots_only and not any(
+                    "Slot" in ast.unparse(d) for d in item.decorator_list
+                ):
+                    continue
+                out.add(item.name)
+    return out
+
+
+def test_stand_in_slots_exist_on_the_real_models() -> None:
+    here = ast.parse(pathlib.Path(__file__).read_text(encoding="utf-8"))
+    missing = []
+    for cls, path in _REAL.items():
+        real = _methods(
+            ast.parse((_ROOT / path).read_text(encoding="utf-8")), cls, False
+        )
+        assert real, f"{cls} not found in {path}"
+        for name in _methods(here, cls, True):
+            if name not in real:
+                missing.append(f"{cls}.{name}")
+    assert missing == [], missing
 
 
 if __name__ == "__main__":

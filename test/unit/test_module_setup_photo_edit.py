@@ -2,8 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Module Setup's Import Image waits in the window's edit until Save
-(03 S52, 07 S107, D-03-DEVICE-FOLDERS).
+"""Module Setup's Add Image… (an input module's Device Image; old: Import
+Image) waits in the window's edit until Save (03 S52, 07 S107,
+D-03-DEVICE-FOLDERS, D-03-DEVICE-IMAGE).
 
 Import Image wrote the picture straight into the device's pictures/, so
 Cancel (which only drops the edit's temporary folder) left the new photo
@@ -113,12 +114,13 @@ run(w, '_driver.setClaimed(0, true)')
 ok = run(w, '_win.commitModule()')
 QtTest.QTest.qWait(200)
 doc = json.loads(module.read_text(encoding='utf-8'))
-image = store.device_photo_ref(doc)
+image = store.device_image_ref(doc)
 new = folder / image if image else None
 out['save'] = {
     'waiting': waiting,
     'ok': bool(ok),
     'image': image,
+    'bottom': store.device_photo_ref(doc),
     'image_is_new': bool(
         new and new.is_file() and new.read_bytes() == pathlib.Path(PICK).read_bytes()),
     'claimed': doc.get('claim', {}),
@@ -164,13 +166,19 @@ def test_save_after_import_image_names_it_in_one_write(result: dict) -> None:
     # Old: Import Image wrote pictures/photo.png at once.
     assert save["waiting"], save
     assert save["ok"], save
-    assert save["image"].startswith("pictures/photo"), save
+    # Old: the picture became the bottom background picture (photo.*); an
+    # input module's Add Image… now names the Device Image (deviceImage,
+    # 03 S52, D-03-DEVICE-IMAGE) and leaves the map alone.
+    assert save["image"].startswith("pictures/device-image"), save
+    assert save["bottom"] == "pictures/photo.jpg", save
     assert save["image_is_new"], save
     assert save["claimed"].get("buttons") or save["claimed"].get("axes") or save[
         "claimed"
     ].get("keys"), save
-    # The old photo nothing names any more goes (07 S106).
-    assert save["pictures"] == [save["image"].split("/", 1)[1]], save
+    # The map's own photo is still named, so it stays (07 S106).
+    assert save["pictures"] == sorted(
+        [save["image"].split("/", 1)[1], "photo.jpg"]
+    ), save
     # Old: two writes (saveClaim, then the edit's commit): two entries.
     assert save["entries"] == 1, save
     assert not save["temp_left"], save

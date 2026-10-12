@@ -789,14 +789,37 @@ ApplicationWindow {
 
         SplitView {
             id: _split
+            objectName: "librarySplit"
             Layout.fillWidth: true
             Layout.fillHeight: true
             orientation: Qt.Horizontal
 
+            // S3: the divider's place is remembered as the list's share.
+            property bool applying: false
+
+            function applyRatio() {
+                if (!_lib.lib || width < 8)
+                    return
+                applying = true
+                _listPane.SplitView.preferredWidth = Math.round(width * _lib.lib.splitRatio)
+                applying = false
+            }
+
+            function saveRatio() {
+                if (applying || !_lib.lib || width < 8 || _listPane.width <= 0)
+                    return
+                _lib.lib.setSplitRatio(_listPane.width / width)
+            }
+
+            onWidthChanged: applyRatio()
+            onResizingChanged: if (!resizing) saveRatio()
+
             // | Left: filters, search, the list (S3)
             Pane {
-                SplitView.preferredWidth: Style.dp(640)
-                SplitView.minimumWidth: Style.dp(380)
+                id: _listPane
+                objectName: "libraryListPane"
+                // Its width comes from the kept share (_split.applyRatio).
+                SplitView.minimumWidth: Style.dp(260)
                 padding: Style.dp(12)
                 background: Rectangle { color: Style.bgPage }
 
@@ -913,7 +936,7 @@ ApplicationWindow {
                                     && _lib.lib.busyKeys.indexOf(modelData.key) >= 0
                                 objectName: "libraryRow_" + modelData.key
                                 width: ListView.view.width
-                                height: isDev ? Style.dp(50) : Style.dp(42)
+                                height: isDev ? Style.dp(58) : Style.dp(42)
                                 color: isSel ? Style.bgSelected
                                     : _rowMouse.pressed ? Style.alpha(Style.accent, 0.22)
                                     : _rowMouse.containsMouse ? Style.bgHover
@@ -964,12 +987,20 @@ ApplicationWindow {
                                             onClicked: _lib.lib.toggleOpen(_row.modelData.key)
                                         }
                                     }
-                                    // Device, saved setup (save mark) or autosave (S10).
+                                    // A device's small picture, its icon when it has none (S6).
+                                    DeviceThumb {
+                                        visible: _row.isDev
+                                        objectName: "libraryThumb_" + _row.modelData.key
+                                        source: _row.isDev ? (_row.modelData.photo || "") : ""
+                                        glyph: _row.modelData.icon === "keyboard" ? "" : ""
+                                    }
+                                    // Saved setup (save mark) or autosave (S10).
                                     Text {
-                                        text: _row.isDev ? (_row.modelData.icon === "keyboard" ? "\uF451" : "\uF448") : (_row.modelData.mark === "autosave" ? "" : "")
+                                        visible: !_row.isDev
+                                        text: _row.modelData.mark === "autosave" ? "" : ""
                                         font.family: Style.iconFont
-                                        font.pixelSize: Style.dp(_row.isDev ? 17 : 14)
-                                        color: _row.isDev ? Style.fgSoft : (_row.modelData.mark === "autosave" ? Style.fgMuted : Style.info)
+                                        font.pixelSize: Style.dp(14)
+                                        color: _row.modelData.mark === "autosave" ? Style.fgMuted : Style.info
                                     }
                                     ColumnLayout {
                                         Layout.fillWidth: true
@@ -990,6 +1021,16 @@ ApplicationWindow {
                                             font.pixelSize: Style.dp(12)
                                             color: Style.fgMuted
                                         }
+                                        // S6: a device's saved setups, under its name and description.
+                                        Label {
+                                            objectName: "libraryRowCount_" + _row.modelData.key
+                                            visible: _row.isDev
+                                            Layout.fillWidth: true
+                                            text: _row.isDev ? (_row.modelData.countText || "") : ""
+                                            elide: Text.ElideRight
+                                            font.pixelSize: Style.dp(11)
+                                            color: Style.fgMuted
+                                        }
                                     }
                                     BusyIndicator {
                                         objectName: "libraryRowBusy_" + _row.modelData.key
@@ -999,7 +1040,8 @@ ApplicationWindow {
                                         Layout.preferredHeight: Style.dp(16)
                                     }
                                     Label {
-                                        text: _row.isDev ? _row.modelData.countText : _row.modelData.date
+                                        visible: !_row.isDev
+                                        text: _row.isDev ? "" : _row.modelData.date
                                         font.pixelSize: Style.dp(12)
                                         color: Style.fgMuted
                                     }

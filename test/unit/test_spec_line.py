@@ -19,7 +19,9 @@ import pytest
 
 _ROOT = Path(__file__).resolve().parents[2]
 _THIS = "test/unit/test_spec_line.py"
-_PROGRAM = ("gremlin/", "qml/", "action_plugins/", "dill/", "vigem/")
+_PROGRAM = (
+    "gremlin/", "qml/", "action_plugins/", "dill/", "vigem/", "vjoy/", "theme/",
+)
 _PROGRAM_FILES = ("joystick_gremlin.py", "input_tester.py")
 _SPEC = re.compile(r"^Spec:\s*\S", re.MULTILINE)
 
@@ -84,4 +86,6 @@ def test_the_rule_reads_spec_lines() -> None:
     assert not _SPEC.search("Spec:\n")
     assert _touches_program(["gremlin/profile.py"])
     assert _touches_program(["joystick_gremlin.py"])
+    assert _touches_program(["vjoy/vjoy.py"])
+    assert _touches_program(["theme/Gremlin/Menus/ContextMenu.qml"])
     assert not _touches_program(["claude/todo.md", "test/unit/x.py"])

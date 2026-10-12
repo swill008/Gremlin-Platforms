@@ -85,7 +85,7 @@ def test_ok_after_the_panes_mode_is_renamed_writes_to_the_new_name(
     profile.modes.rename_mode("Combat", "Air")
     signal.modeRenamed.emit("Combat", "Air")
     model.setMode("Air")  # the toolbar follows the rename
-    assert model.paneMode == "Air"
+    assert model._pane_shadow is not None and model._pane_shadow.mode == "Air"
     model.commitPane()
     model.endPane()
     assert profile.get_input_item(_STICK, InputType.JoystickButton, 1, "Air")

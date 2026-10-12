@@ -15,10 +15,6 @@ function isPath(n) {
     return isDraw(n) && n.shape === "path"
 }
 
-function isPathTool(tool) {
-    return tool === "path" || tool === "pen"
-}
-
 // A path's points in its own box (w x h), flips applied as the drawing is.
 function pathLocal(n, w, h) {
     var rel = (n && n.pts) ? n.pts : []

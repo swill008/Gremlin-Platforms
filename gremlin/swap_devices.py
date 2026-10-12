@@ -31,13 +31,6 @@ class SameDevice(error.GremlinError):
 
 
 @dataclasses.dataclass
-class ProfileDeviceInfo:
-    device_uuid: uuid.UUID
-    name: str = ""
-    num_bindings: int = 0
-
-
-@dataclasses.dataclass
 class SwapDevicesResult:
     action_swaps: int = 0
     input_swaps: int = 0
@@ -48,35 +41,6 @@ class SwapDevicesResult:
             f"Swapped {self.input_swaps} input(s), {self.action_swaps} "
             f"actions, and {self.user_script_swaps} user script variables."
         )
-
-
-def get_profile_devices(profile: gremlin.profile.Profile) -> list[ProfileDeviceInfo]:
-    """Returns ProfileDeviceInfo for all devices present in the profile.
-
-    Args:
-        profile: The Profile to analyze.
-
-    Returns:
-        A list of ProfileDeviceInfo objects for all devices present in the
-        profile.
-    """
-    # Count the number of non-empty bindings.
-    profile_devices = {}
-    for device_uuid, inputs in profile.inputs.items():
-        if not_swappable(device_uuid):
-            continue
-        if device_uuid not in profile_devices:
-            profile_devices[device_uuid] = ProfileDeviceInfo(device_uuid)
-
-        binding_count = sum(1 for e in inputs if e.action_sequences)
-        profile_devices[device_uuid].num_bindings += binding_count
-
-    # Attempt to retrieve device name from the database.
-    for dev_info in profile.device_database.devices.values():
-        if dev_info.device_uuid in profile_devices:
-            profile_devices[dev_info.device_uuid].name = dev_info.name
-
-    return list(profile_devices.values())
 
 
 # Where a device reference is kept: a device id and an input on one object

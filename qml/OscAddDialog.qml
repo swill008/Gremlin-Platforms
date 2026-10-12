@@ -137,7 +137,8 @@ Popup {
         _message.clear()
     }
 
-    // Fill the window from an input's settings (inputSettings(uid)).
+    // Fill the window from an input's settings (the shape osc_device_model.settings_of
+    // gives); OK saves them through updateInputSettings.
     function openForEdit(uid, s) {
         resetFields()
         editUid = uid

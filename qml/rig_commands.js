@@ -562,13 +562,7 @@ function _selectAll(ed) {
 function _edit(ed, id) {
     switch (id) {
     case "edit.cut":
-        // TODO(SEL): drop the fallback once ed.cutSelection lands.
-        if (typeof ed.cutSelection === "function") {
-            ed.cutSelection()
-        } else {
-            ed.copySelection()
-            ed.deleteSelected()
-        }
+        ed.cutSelection()
         break
     case "edit.copy":
         ed.copySelection()
@@ -863,9 +857,6 @@ function applies(ed, id) {
 
 function noteRun(ed, id) {
     if (!ed || !id || NO_REPEAT[id] || !info(ed, id))
-        return
-    // TODO(SEL): the guard goes once the editor has lastCommandId.
-    if (ed.lastCommandId === undefined)
         return
     ed.lastCommandId = id
 }

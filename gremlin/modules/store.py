@@ -18,8 +18,8 @@ build paths:
 - writing:  update (load, refuse a damaged file, change, write),
             replace (whole file: import, Device Pack, Undo, Restore),
             write_json / write_text (a whole document as given)
-- pictures: picture_ref, normal_ref, put_picture, remove_pictures,
-            named_refs, remove_unused_pictures, copy_pictures
+- pictures: picture_ref, normal_ref, put_picture, named_refs,
+            remove_unused_pictures, copy_pictures
 - the device's background picture (07 S157): visible_background,
             makes_device_photo, background_key, device_photo_path,
             device_photo_key, device_photo_current, write_device_photo,
@@ -114,7 +114,6 @@ _WINDOWS_RESERVED = frozenset(
 )
 _UNSAFE = set('\\/:*?"<>|')
 NAME_LIMIT = 80
-_NUMBERED = re.compile(r"^(.*) \((\d+)\)$")
 
 
 def folder() -> Path:
@@ -1425,26 +1424,6 @@ def remove_picture_files(paths: list[Path]) -> None:
         path.unlink(missing_ok=True)
 
 
-def remove_pictures(
-    device_name: str, guid: str = "", pattern: str = "photo.*", keep: Path | None = None
-) -> bool:
-    """Deletes the device's pictures matching pattern (the photo by
-    default), except keep. False when one could not be deleted."""
-    pictures = pictures_dir(device_name, guid)
-    found: list[Path] = []
-    if pictures.is_dir():
-        found = [p for p in pictures.glob(pattern) if p.is_file()]
-    if keep is not None:
-        found = [p for p in found if p.resolve() != Path(keep).resolve()]
-    try:
-        remove_picture_files(found)
-    except OSError:
-        return False
-    for path in found:
-        registry.trace("SAVE", "Module files", "remove_pictures", path, "removed")
-    return True
-
-
 # The Device Mapping Editor's page and the photo frame in its middle (07 S68), as
 # fractions of the page: where the device's photo is fitted.
 PAGE_W = 32000
@@ -1552,6 +1531,8 @@ def set_device_photo(doc: dict, ref: str, folder: Path | None = None) -> None:
         return
     from gremlin.modules import planes_once
 
+    # ONE-TIME (tracker OT-2): a map saved before the planes, turned into
+    # today's; goes with planes_once.
     planes_once.old_photo_to_layer(doc, folder)
     for key in planes_once.OLD_PHOTO_KEYS:
         doc.pop(key, None)
@@ -1738,16 +1719,126 @@ def remove_device_photo(folder: Path) -> None:
     registry.trace("SAVE", "Module files", "remove_device_photo", path, "removed")
 
 
+# --- the Device Image (D-03-DEVICE-IMAGE, input modules only) ------------------
+# A picture the user uploads for an input module's device: its own file
+# pictures/device-image.<ext>, named by the module file's top-level key
+# "deviceImage". Not a map layer: the Device Mapping Editor never shows it
+# and it is not part of the background picture's key.
+
+DEVICE_IMAGE_KEY = "deviceImage"
+DEVICE_IMAGE_STEM = "device-image"
+IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
+
+
+def device_image_ref(doc: object) -> str:
+    """The device's uploaded image as the module file names it
+    ("pictures/<file>"), "" when none."""
+    if not isinstance(doc, dict):
+        return ""
+    value = doc.get(DEVICE_IMAGE_KEY)
+    return normal_ref(value) if isinstance(value, str) else ""
+
+
+def device_image_name(src: Path | str) -> str:
+    """The file name: device-image + the picked file's extension (IMAGE_EXT,
+    else .jpg)."""
+    ext = Path(str(src or "")).suffix.lower()
+    return DEVICE_IMAGE_STEM + (ext if ext in IMAGE_EXT else ".jpg")
+
+
+def _has_device_image(device_name: str, guid: str) -> bool:
+    """Whether the device may have a Device Image: input modules only."""
+    from gremlin.modules import device_class
+
+    kind = _kind(device_name, guid)
+    return kind != "logical_device" and not device_class.is_output_kind(kind)
+
+
+def set_device_image(
+    device_name: str, guid: str, src: Path | bytes, who: str, as_name: str = ""
+) -> str:
+    """Outside any edit (the Home card menu): copies src into the device's
+    pictures/ under a free device-image name (as_name gives the extension
+    for bytes), names it in the module file (one write, one History entry)
+    and then drops the previous image's file. "" (nothing written) for an
+    output or the Logical Device, a damaged module file (reported, 03 S64)
+    or a failed write (the new file is removed again). The new ref."""
+    if not _has_device_image(device_name, guid):
+        return ""
+    path = module_file(device_name, guid)
+    if module_file_io.damage_reason(path):
+        update_path(path, lambda doc: False, who)
+        return ""
+    try:
+        data = src if isinstance(src, bytes) else Path(src).read_bytes()
+        pictures = ensure_device_dir(device_name, guid) / PICTURES
+        name = device_image_name(as_name or ("" if isinstance(src, bytes) else src))
+        name, same = _free_picture_name(name, data, [pictures])
+        dest = pictures / name
+        if not same:
+            put_picture_at(dest, data)
+    except OSError as exc:
+        syslog.warning(f"Device Image for {device_name} could not be written: {exc}")
+        return ""
+    ref = picture_ref(name)
+
+    def change(doc: dict) -> object:
+        doc[DEVICE_IMAGE_KEY] = ref
+        return None
+
+    try:
+        written = update(device_name, guid, change, who)
+    except OSError:
+        written = False
+    if not written:
+        if not same:
+            try:
+                dest.unlink(missing_ok=True)
+            except OSError:
+                syslog.warning(f"Picture {dest} could not be removed")
+        return ""
+    remove_unused_pictures(device_name, guid)
+    return ref
+
+
+def remove_device_image(device_name: str, guid: str, who: str) -> bool:
+    """Drops the module file's Device Image key and then its file (History
+    keeps it with the entry). False when there was none, or the module file
+    is damaged (reported)."""
+    path = module_file(device_name, guid)
+    if not path.is_file():
+        return False
+
+    def change(doc: dict) -> object:
+        if DEVICE_IMAGE_KEY not in doc:
+            return False
+        doc.pop(DEVICE_IMAGE_KEY)
+        return None
+
+    try:
+        written = update_path(path, change, who)
+    except OSError:
+        return False
+    if written:
+        remove_unused_pictures(device_name, guid)
+    return written
+
+
 def shown_photo_ref(doc: object, exists: Callable[[str], bool]) -> str:
     """What every place that shows "the device's photo" uses (07 S127,
-    S157): the device's background picture when the map has a visible
-    background and exists(its ref); else the bottom background picture
-    (while the file is being made, or when it is missing). Outputs and
-    the Logical Device always get the bottom background picture
-    (makes_device_photo)."""
-    ref = picture_ref(DEVICE_PHOTO)
-    if visible_background(doc) and makes_device_photo(doc) and exists(ref):
-        return ref
+    S157, D-03-DEVICE-IMAGE): for an input module, its Device Image when
+    set and exists(it), else the device's background picture when the map
+    has a visible background and exists(its ref); else the bottom
+    background picture (while the file is being made, or when it is
+    missing). Outputs and the Logical Device always get the bottom
+    background picture (makes_device_photo)."""
+    if makes_device_photo(doc):
+        image = device_image_ref(doc)
+        if image and exists(image):
+            return image
+        ref = picture_ref(DEVICE_PHOTO)
+        if visible_background(doc) and exists(ref):
+            return ref
     return device_photo_ref(doc)
 
 
@@ -1755,10 +1846,14 @@ def named_refs(doc: object) -> set[str]:
     """The pictures a module document (or template, or recovery copy)
     names, as stored: every picture layer ("shape" or "kind" "image",
     "src"), background and foreground, also inside groups, the old
-    top-level photo ("image") of a map saved before the planes (OT-2), and
-    the device's background picture when the map has a visible background
-    (07 S157: kept by the clean-up, History and every .gmap)."""
+    top-level photo ("image") of a map saved before the planes (OT-2), the
+    Device Image (D-03-DEVICE-IMAGE) and the device's background picture
+    when the map has a visible background (07 S157: kept by the clean-up,
+    History and every .gmap)."""
     refs = _layer_refs(doc)
+    image = device_image_ref(doc)
+    if image:
+        refs.add(image)
     if visible_background(doc) and makes_device_photo(doc):
         refs.add(picture_ref(DEVICE_PHOTO))
     return refs
@@ -1769,6 +1864,8 @@ def _layer_refs(doc: object) -> set[str]:
     refs: set[str] = set()
     if not isinstance(doc, dict):
         return refs
+    # ONE-TIME (tracker OT-2): the old top-level photo of a map saved
+    # before the planes, until its next Save.
     image = str(doc.get("image") or "").strip()
     if image:
         refs.add(image)
@@ -1907,10 +2004,13 @@ def _copy_into(
 
 
 def _rename_refs(doc: dict, moved: dict[str, str]) -> None:
-    """Rewrites the picture references in doc (photo and chips, nested) by
-    moved {old ref: new ref}."""
+    """Rewrites the picture references in doc (photo, Device Image and
+    chips, nested) by moved {old ref: new ref}."""
     if str(doc.get("image") or "").strip() in moved:
         doc["image"] = moved[str(doc["image"]).strip()]
+    image = device_image_ref(doc)
+    if image and image in moved:
+        doc[DEVICE_IMAGE_KEY] = moved[image]
 
     def walk(value: object) -> None:
         if isinstance(value, dict):
@@ -2761,8 +2861,8 @@ def prepare_imported_doc(
         view = dict(view)
         view["meters"] = meters
         payload["view"] = view
-    # The file's own photo (a map saved before the planes) is background,
-    # never copied (OT-2).
+    # ONE-TIME (tracker OT-2): the file's own photo (a map saved before the
+    # planes) is background, never copied.
     for key in ("image", "photo", "imageWidth", "imageHeight"):
         payload.pop(key, None)
     left = []
@@ -3004,7 +3104,8 @@ def import_file(
             return "The current file could not be read, so it was not replaced."
         if not isinstance(previous, dict):
             return "The current file could not be read, so it was not replaced."
-        # A map saved before the planes: its photo as a layer first (OT-2).
+        # ONE-TIME (tracker OT-2): a map saved before the planes: its photo
+        # as a layer first.
         from gremlin.modules import planes_once
 
         planes_once.old_photo_to_layer(previous, dest.parent)

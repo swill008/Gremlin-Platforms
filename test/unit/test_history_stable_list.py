@@ -86,7 +86,7 @@ def test_a_restore_is_one_hidden_entry_linked_to_the_original(
     # No new row; the original is tagged in place.
     assert model.rowCount() == rows
     assert model.newCount == 0
-    row = model.rowOf(entry["id"])
+    row = next(r for r, e in enumerate(model._rows) if e.get("id") == entry["id"])
     assert str(_role(model, row, "tag")).startswith("Restored · ")
     # Restoring to after: "Reapplied", still linked to the first original.
     assert json.loads(model.restore(entry["id"], "after"))["ok"]

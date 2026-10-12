@@ -7,10 +7,6 @@ import QtQuick
 import QtQuick.Controls.Universal
 
 Item {
-    function removeAlpha(color) {
-        return Qt.rgba(color.r, color.g, color.b, 1.0)
-    }
-
     property bool isDarkMode: false
 
     // Color definitions.
@@ -161,7 +157,6 @@ Item {
 
     // Spinbox presets.
     property int decimalsPrecise: 4
-    property int decimalsStandard: 2
 
     // UI scale in percent. It follows the Options slider when Windows scaling
     // is disabled and stays at 100 otherwise.

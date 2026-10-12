@@ -439,82 +439,6 @@ class OscFeedbackModel(QtCore.QObject):
         template, showUnder (numbers as text; off/on "" when not set)."""
         return [_entry(row) for row in self._rows]
 
-    def _index_of(self, row_id: str) -> int:
-        for index, row in enumerate(self._rows):
-            if row["id"] == str(row_id):
-                return index
-        return -1
-
-    @QtCore.Slot(str, result="QVariantMap")
-    def rowById(self, row_id: str) -> dict:
-        for entry in rows_for_page(self._rows):
-            if entry["id"] == str(row_id):
-                entry["placement"] = entry["placement"] or ""
-                return entry
-        return {}
-
-    @QtCore.Slot(str, bool, result=bool)
-    def setRowEnabled(self, row_id: str, on: bool) -> bool:
-        return self.setRowValue(self._index_of(row_id), "enabled", bool(on))
-
-    @QtCore.Slot(str, str, "QVariant", result=bool)
-    def setRowValueById(self, row_id: str, key: str, value: object) -> bool:
-        return self.setRowValue(self._index_of(row_id), key, value)
-
-    @QtCore.Slot(str, result=bool)
-    def removeRowById(self, row_id: str) -> bool:
-        return self.removeRow(self._index_of(row_id))
-
-    @QtCore.Slot(str, result=str)
-    def duplicateRow(self, row_id: str) -> str:
-        """Copies a row (new id) right after it; the new id, "" when the
-        row isn't there."""
-        index = self._index_of(row_id)
-        if index < 0:
-            return ""
-        copy = dict(self._rows[index])
-        copy["source"] = dict(copy["source"])
-        copy["id"] = osc_device_file.new_id()
-        rows = [dict(r) for r in self._rows]
-        rows.insert(index + 1, copy)
-        return copy["id"] if self._write(rows) else ""
-
-    @QtCore.Slot("QVariantMap", result=str)
-    def addRowFor(self, fields: dict) -> str:
-        """A new row from new_row() with the given stored-row keys; the
-        new id, "" (with message) when refused."""
-        row = new_row()
-        given = dict(fields or {})
-        if "source" in given:
-            given["source"] = dict(given["source"] or {})
-        row.update(given)
-        row["id"] = osc_device_file.new_id()
-        why = check_address(row.get("address"))
-        if why:
-            self._say(why)
-            return ""
-        cleaned = osc_device_file.clean_feedback([row])[0]
-        rows = [dict(r) for r in self._rows] + [cleaned]
-        return cleaned["id"] if self._write(rows) else ""
-
-    @QtCore.Slot(str, result=bool)
-    def actionMissing(self, row_id: str) -> bool:
-        """An action_state row whose action isn't in the current profile
-        (S158)."""
-        index = self._index_of(row_id)
-        if index < 0:
-            return False
-        source = self._rows[index]["source"]
-        if source["kind"] != "action_state":
-            return False
-        action = source.get("action")
-        profile = _current_profile()
-        if not action or profile is None:
-            return True
-        return str(action) not in action_inputs(profile) and not _in_library(
-            profile, str(action)
-        )
-
     def _write(self, rows: list[dict]) -> bool:
         try:
             osc_device_file.write_feedback(rows, WHO)
@@ -656,15 +580,6 @@ class OscFeedbackModel(QtCore.QObject):
         rows = [dict(r) for r in self._rows]
         rows[index] = row
         return self._write(rows)
-
-
-def _in_library(profile: object, action_id: str) -> bool:
-    """action_id is used by an input of profile (any device)."""
-    try:
-        used = profile.library.in_use()  # type: ignore[attr-defined]
-    except Exception:
-        return False
-    return action_id in {str(a) for a in used}
 
 
 def _vjoy_ids() -> list[int]:

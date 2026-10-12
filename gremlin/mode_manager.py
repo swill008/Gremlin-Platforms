@@ -5,13 +5,12 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6 import QtCore
 
-from gremlin import shared_state
+from gremlin import shared_state, util
 from gremlin.common import SingletonDecorator
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
@@ -114,31 +113,16 @@ _pending_last: dict[str, str] = {}
 _LAST_KEY = ("global", "internal", "last-mode-per-profile")
 
 
-def _path_key(fpath: str | Path) -> str:
-    """A profile path as the last-mode store compares it: resolved and
-    case-folded, so another spelling of the same file finds its entry
-    (GL-152, 04 Q17), as Recent does."""
-    try:
-        text = str(Path(fpath).resolve())
-    except OSError:
-        text = str(fpath)
-    return os.path.normcase(text).casefold()
-
-
-def _same_key(a: str | Path, b: str | Path) -> bool:
-    return _path_key(a) == _path_key(b)
-
-
 def _last_mode_of(stored: dict[str, str], fpath: str | Path) -> str | None:
     for key, mode in stored.items():
-        if _same_key(key, fpath):
+        if util.same_path(key, fpath):
             return mode
     return None
 
 
 def _put_last_mode(stored: dict[str, str], fpath: str | Path, mode: str | None) -> None:
     """One entry per file: other spellings of it go."""
-    for key in [key for key in stored if _same_key(key, fpath)]:
+    for key in [key for key in stored if util.same_path(key, fpath)]:
         del stored[key]
     if mode:
         stored[str(fpath)] = mode

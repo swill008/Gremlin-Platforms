@@ -90,7 +90,7 @@ ApplicationWindow {
     readonly property int _modeListWidth: Style.dp(200)
     readonly property int _modeListMinWidth: Style.dp(120)
     function _toolbarWidth(withCaptions) {
-        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton,
+        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton,
                        _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         var w = _homeButton.rightPadding + _toolbarRow.spacing * buttons.length
         for (var i = 0; i < buttons.length; i++)
@@ -192,7 +192,7 @@ ApplicationWindow {
     // are one button).
     function _helpToolbarButton(name) {
         var want = _helpNorm(name)
-        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton,
+        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton,
                        _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         for (var i = 0; i < buttons.length; ++i) {
             var b = buttons[i]
@@ -967,14 +967,22 @@ ApplicationWindow {
     }
 
     // Opens (or brings forward) the card's viewer; it never closes one that
-    // is already open (the toolbar's Toggle buttons do that).
+    // is already open (the toolbar's Toggle buttons do that). The Xbox
+    // output's live pads are on its Output View.
     function pairingForCard(card) {
         if (!card)
             return
         if (card.bus === "XInput" || card.tab === "xbox" || card.slug === "xbox")
-            Helpers.createComponent("DialogXboxViewer.qml")
+            openOutputViewForCard(card)
         else
             Helpers.createComponent("DialogInputViewer.qml")
+    }
+
+    // The Xbox output's Output View (its card is always there).
+    function openXboxOutputView() {
+        var card = _moduleModel ? _moduleModel.cardMap("xbox") : null
+        if (card && card.slug)
+            openOutputViewForCard(card)
     }
 
     function closeWorkRoomNow() {
@@ -1628,7 +1636,6 @@ ApplicationWindow {
             ThemedMenu {
                 title: qsTr("Viewers")
                 ThemedMenuItem { command: "tools.vjoyViewer" }
-                ThemedMenuItem { command: "tools.xboxViewer" }
                 ThemedMenuItem { command: "tools.inputTester" }
             }
             ThemedMenu {
@@ -1753,18 +1760,6 @@ ApplicationWindow {
 
                         onClicked: () => {
                             Helpers.toggleComponent("DialogInputViewer.qml")
-                        }
-                    }
-
-                    JGToolButton {
-                        id: _xboxViewerButton
-                        compact: _root.toolbarCompact
-                        text: "\uF2D4"
-                        tooltip: qsTr("Show or hide the Xbox Viewer")
-                        caption: "Xbox Viewer"
-
-                        onClicked: () => {
-                            Helpers.toggleComponent("DialogXboxViewer.qml")
                         }
                     }
 
@@ -2186,7 +2181,6 @@ ApplicationWindow {
         anchors.fill: parent
 
         property bool onStatus: !uiState || uiState.currentRoom === "status"
-        property bool onConfig: uiState && uiState.currentRoom === "configuration"
 
         Connections {
             target: _moduleModel

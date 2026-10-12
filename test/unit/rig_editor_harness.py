@@ -1303,7 +1303,7 @@ def scenario_picture(s: Session) -> None:
     Key = QtCore.Qt.Key
     _load(s, "evo_r")
     s.js("showProps", True)
-    icon = ROOT / "gfx" / "icon_large.png"
+    icon = ROOT / "test" / "unit" / "fixtures" / "icon_large.png"
     s.call("addOverlay", "test/icon", QtCore.QUrl.fromLocalFile(str(icon)).toString())
     pic = s.state()["selected"][0]
     s.record("picture", image=True)
@@ -1783,7 +1783,7 @@ def scenario_background_look(s: Session) -> None:
     opacity, one undo step, and set back to neutral. The harness makes no
     adjusted copies (the window's lookUrlFor), so only opacity shows."""
     _load(s, "evo_r")
-    icon = ROOT / "gfx" / "icon_large.png"
+    icon = ROOT / "test" / "unit" / "fixtures" / "icon_large.png"
     size = QtGui.QImage(str(icon)).size()
     pic = s.call(
         "addOverlay",

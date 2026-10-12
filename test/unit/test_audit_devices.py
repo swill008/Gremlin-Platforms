@@ -331,8 +331,8 @@ def test_calibration_window_picks_the_second_stick_on_a_shared_file(
         # A card opens Calibration by the file's slug: the first stick.
         assert entries["Stick A"] == "stick"
         assert entries["Stick B"] == f"stick@{guid_key(two)}"
-        assert model.indexOfSlug("stick") != model.indexOfSlug(entries["Stick B"])
-        assert model.indexOfSlug(entries["Stick B"]) >= 0
+        # Each stick's key picks its own row.
+        assert list(entries.values()).count(entries["Stick B"]) == 1
         # The second stick's key saves to the shared file, recording its id.
         assert calibration.write_axis(entries["Stick B"], 1, (-100, -5, 5, 100, True))
         doc = json.loads(path.read_text(encoding="utf-8"))

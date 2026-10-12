@@ -182,7 +182,7 @@ def _known_words() -> str:
                             ("gremlin", "*.py"), ("action_plugins", "*.py"),
                             ("action_plugins", "*.qml"), ("action_plugins", "*.js")):
         for path in (_ROOT / folder).rglob(pattern):
-            if "help" in path.parts or path.name == "help_topics.js":
+            if "help" in path.parts:
                 continue
             parts.append(path.read_text(encoding="utf-8", errors="replace"))
     parts.append((_ROOT / "claude" / "glossary.md").read_text(encoding="utf-8"))

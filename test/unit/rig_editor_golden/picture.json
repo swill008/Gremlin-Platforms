@@ -23,7 +23,7 @@
       "shape": "image",
       "sockets": [],
       "src": "test/icon",
-      "srcUrl": "<repo>/gfx/icon_large.png",
+      "srcUrl": "<repo>/test/unit/fixtures/icon_large.png",
       "stroke": 2
      },
      "1": {
@@ -1413,7 +1413,7 @@
       "shape": "image",
       "sockets": [],
       "src": "test/icon",
-      "srcUrl": "<repo>/gfx/icon_large.png",
+      "srcUrl": "<repo>/test/unit/fixtures/icon_large.png",
       "stroke": 2
      }
     },
@@ -1472,7 +1472,7 @@
       "shape": "image",
       "sockets": [],
       "src": "test/icon",
-      "srcUrl": "<repo>/gfx/icon_large.png",
+      "srcUrl": "<repo>/test/unit/fixtures/icon_large.png",
       "stroke": 2
      }
     },
@@ -1537,7 +1537,7 @@
       "shape": "image",
       "sockets": [],
       "src": "test/icon",
-      "srcUrl": "<repo>/gfx/icon_large.png",
+      "srcUrl": "<repo>/test/unit/fixtures/icon_large.png",
       "stroke": 2
      }
     },
@@ -1596,7 +1596,7 @@
       "shape": "image",
       "sockets": [],
       "src": "test/icon",
-      "srcUrl": "<repo>/gfx/icon_large.png",
+      "srcUrl": "<repo>/test/unit/fixtures/icon_large.png",
       "stroke": 2
      }
     },

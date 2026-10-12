@@ -51,8 +51,8 @@ def test_python_search_equals_qml_search(tmp_path: pathlib.Path) -> None:
     errors = [line for line in lines if line.startswith("ERROR")]
     assert errors == [], errors[:20]
     checked = [line for line in lines if line.startswith("CHECKED ")]
-    # Both windows, many words each.
-    assert len(checked) == 2 and all(int(c.split()[2]) > 50 for c in checked), checked
+    # The Options window, many words.
+    assert len(checked) == 1 and all(int(c.split()[2]) > 50 for c in checked), checked
     warned = [line for line in lines if "ConfigGroup.qml" in line]
     assert warned == [], warned
 
@@ -121,9 +121,8 @@ def _main(out: pathlib.Path) -> None:
     engine.warnings.connect(
         lambda ws: [print("WARN " + w.toString(), flush=True) for w in ws]
     )
-    for scope in ("", "device-mapping-editor"):
+    for scope in ("",):
         model = option.ConfigSectionModel()
-        model.scope = scope
         engine.rootContext().setContextProperty("sectionModel", model)
         # Every section's groups built as the Options page builds them.
         engine.loadData(

@@ -25,7 +25,6 @@ ApplicationWindow {
 
     readonly property alias panel: _panel
     readonly property alias monitor: _panel.monitor
-    readonly property alias addWindow: _addDialog
 
     property bool _open: true
 

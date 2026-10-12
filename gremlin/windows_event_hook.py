@@ -95,7 +95,6 @@ WM_MBUTTONUP    = 0x0208
 WM_MOUSEWHEEL   = 0x020A
 WM_XBUTTONDOWN  = 0x020B
 WM_XBUTTONUP    = 0x020C
-WM_MOUSEHWHEEL  = 0x020E
 WM_TIMER        = 0x0113
 # Asks a hook's thread to put its hook back (rehook_soon).
 WM_REHOOK       = 0x8000 + 1

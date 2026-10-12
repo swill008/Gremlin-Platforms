@@ -228,8 +228,6 @@ def test_swap_exchanges_the_layout_with_the_setup(
 def test_each_page_keeps_its_own_list_appearance() -> None:
     # 05 S125 (AP2): one program setting, an entry per page.
     placement = window_placement.WindowPlacement()
-    seen: list[str] = []
-    placement.listAppearanceChanged.connect(seen.append)
     try:
         placement.setListAppearance(
             "device-bindings", json.dumps({"rowHeight": 30, "showLeds": False})
@@ -243,14 +241,12 @@ def test_each_page_keeps_its_own_list_appearance() -> None:
             "showLeds": False,
         }
         assert window_placement.list_appearance("logical") == {}
-        assert seen == ["device-bindings"]
         placement.setListAppearance("device-bindings", "[1, 2]")  # ignored
         placement.setListAppearance("device-bindings", "not json")
         assert window_placement.list_appearance("device-bindings") == {
             "rowHeight": 30,
             "showLeds": False,
         }
-        assert seen == ["device-bindings"]
     finally:
         placement.setListAppearance("device-bindings", "{}")
     assert placement.listAppearance("device-bindings") == "{}"

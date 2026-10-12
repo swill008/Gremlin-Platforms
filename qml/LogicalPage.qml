@@ -37,7 +37,6 @@ Item {
     function requestCloseDisplay() { _appear.requestCloseDisplay() }
     // The list's open parents, folded groups and selection (ControlTree.qml).
     property alias _opened: _tree.opened
-    property alias _collapsed: _tree.collapsed
     property alias _picked: _tree.picked
 
     // The one edit lock (06 S13, S82): nothing is edited while the profile runs.
@@ -64,17 +63,9 @@ Item {
         _layout.setMode(mode)
     }
 
-    function _toggleOpen(key) { _tree.toggleOpen(key) }
-
-    function _toggleGroup(key) { _tree.toggleGroup(key) }
-
-    function _select(key, shift) { _tree.select(key, shift) }
-
     function _openPane(key, seq, title) { _pane.openAt(key, seq, title) }
 
     function _openNewPane(key, title) { _pane.openNew(key, title) }
-
-    function _closePane() { _pane.requestClose() }
 
     function _finishClose() { _pane.finishClose() }
 

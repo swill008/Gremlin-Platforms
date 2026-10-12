@@ -71,22 +71,23 @@ Item {
     property var _liveCards: []
     property var slotSnap: []
 
+    // A card being dragged to a new place (03 S81, as the Device Bindings
+    // rows): a picture of the card follows the pointer and a line shows
+    // where it will go; the other cards stay still.
     property string dragSlug: ""
     property string dragDir: ""
-    property string dragName: ""
-    property string dragPhoto: ""
     property string insertBefore: ""
     property string homeBefore: ""
-    property string dragStackSlug: ""
-    property string stackCandidate: ""
     property int ghostW: 0
     property int ghostH: 0
-    property int pendingStackW: 0
-    property int pendingStackH: 0
-    property real dragOriginX: 0
-    property real dragOriginY: 0
-    property real stackTravel: 0
-    property real insertTravel: Style.dp(24)
+    // The card's picture (grabToImage) and the result that keeps it alive.
+    property string dragGhost: ""
+    property var _ghostResult: null
+    // The drop line, in page coordinates; hidden where the card would stay.
+    property bool dropLineShown: false
+    property real dropLineX: 0
+    property real dropLineY: 0
+    property real dropLineH: 0
     property real floatX: 0
     property real floatY: 0
     property real grabOffX: 0
@@ -242,7 +243,9 @@ Item {
         refreshCards()
     }
 
-    function snapshotSlots(dragged, dir, dragCard) {
+    // Where each other pile sits when the drag starts (page coordinates, in
+    // the pane's order). Nothing moves during the drag, so it stays true.
+    function snapshotSlots(dragged, dir) {
         var list = []
         if (!model)
             return
@@ -262,46 +265,69 @@ Item {
             var card = cardBySlug(s)
             if (!card)
                 continue
-            var o = card.mapToItem(_page, 0, 0)
-            // Keep original positions. Compacting put the next card's
-            // center on the one you picked up, so a few pixels right
-            // already counted as "past it" (~20%) while left needed a
-            // full cover (~90%).
+            // The pile's slot (a stack is wider and taller than its front card).
+            var slot = card.parent || card
+            var o = slot.mapToItem(_page, 0, 0)
             list.push({
                 slug: s,
                 left: o.x,
-                mid: o.x + card.width / 2,
                 top: o.y,
-                y: o.y + card.height / 2,
-                w: card.width,
-                h: card.height
+                w: slot.width,
+                h: slot.height,
+                mid: o.x + slot.width / 2
             })
         }
         slotSnap = list
     }
 
-    function pickInsertFromSnap(gx, gy) {
+    // The drop spot under the pointer (page coordinates): the row the pointer
+    // is in, then before the first pile whose middle is right of it, else
+    // after the row's last pile. Sets insertBefore and the line.
+    function pickDrop(px, py) {
         var slots = slotSnap
-        if (!slots || !slots.length)
-            return insertBefore
-        var hit = false
+        if (!slots || !slots.length) {
+            dropLineShown = false
+            return
+        }
+        var rowTop = null
+        var firstTop = slots[0].top
+        for (var i = 0; i < slots.length; ++i) {
+            firstTop = Math.min(firstTop, slots[i].top)
+            if (slots[i].top <= py && (rowTop === null || slots[i].top > rowTop))
+                rowTop = slots[i].top
+        }
+        if (rowTop === null)
+            rowTop = firstTop
+        var gap = (model && model.compactView) ? Style.dp(8) : Style.dp(16)
         var before = ""
+        var lineX = 0
+        var lineH = 0
+        var last = -1
+        var found = false
         for (var j = 0; j < slots.length; ++j) {
             var s = slots[j]
-            var sameRow = Math.abs(gy - s.y) < Math.max(Style.dp(120), s.h * 0.75)
-            if (!sameRow)
+            if (Math.abs(s.top - rowTop) >= 1)
                 continue
-            hit = true
-            // Float center vs the card's left edge: ~50% overlap from
-            // either side, same distance in both directions.
-            if (gx <= s.left) {
+            lineH = Math.max(lineH, s.h)
+            if (found)
+                continue
+            last = j
+            if (px < s.mid) {
                 before = s.slug
-                break
+                lineX = s.left - gap / 2
+                found = true
             }
         }
-        if (!hit)
-            return insertBefore
-        return before
+        if (!found) {
+            var end = slots[last]
+            before = last + 1 < slots.length ? slots[last + 1].slug : ""
+            lineX = end.left + end.w + gap / 2
+        }
+        insertBefore = before
+        dropLineX = lineX
+        dropLineY = rowTop
+        dropLineH = lineH
+        dropLineShown = before !== homeBefore
     }
 
     function nextLeader(slug, dir) {
@@ -325,13 +351,7 @@ Item {
             return
         clearSelection()
         var origin = card.mapToItem(_page, 0, 0)
-        var mid = card.mapToItem(_page, card.width / 2, card.height / 2)
-        dragOriginX = mid.x
-        dragOriginY = mid.y
-        stackTravel = Math.max(Style.dp(110), Math.min(card.width, card.height) * 0.5)
         dragDir = paneDir(card)
-        dragName = card.cardName || ""
-        dragPhoto = card.photo || ""
         ghostW = Math.round(card.width)
         ghostH = Math.round(card.height)
         floatX = origin.x
@@ -339,14 +359,22 @@ Item {
         gotGrab = false
         grabOffX = 0
         grabOffY = 0
-        dragStackSlug = ""
-        stackCandidate = ""
-        pendingStackW = 0
-        pendingStackH = 0
-        snapshotSlots(card.slug, dragDir, card)
+        dragGhost = ""
+        _ghostResult = null
+        dropLineShown = false
+        snapshotSlots(card.slug, dragDir)
         homeBefore = nextLeader(card.slug, dragDir)
         insertBefore = homeBefore
         dragSlug = card.slug
+        // The card's own picture (in a stack, the card picked up: the front
+        // card). The card stays shown until the picture is ready.
+        var slug = card.slug
+        card.grabToImage(function(result) {
+            if (_page.dragSlug !== slug)
+                return
+            _page._ghostResult = result
+            _page.dragGhost = String(result.url)
+        })
     }
 
     function updateDragAt(sx, sy) {
@@ -360,29 +388,17 @@ Item {
         }
         floatX = p.x - grabOffX
         floatY = p.y - grabOffY
-        var gx = floatX + ghostW / 2
-        var gy = floatY + ghostH / 2
-        var dx = gx - dragOriginX
-        var dy = gy - dragOriginY
-        var traveled = Math.sqrt(dx * dx + dy * dy)
-        if (traveled < insertTravel)
-            return
-        var before = pickInsertFromSnap(gx, gy)
-        if (insertBefore !== before)
-            insertBefore = before
+        pickDrop(p.x, p.y)
     }
 
     function clearDrag() {
         dragSlug = ""
         dragDir = ""
-        dragName = ""
-        dragPhoto = ""
         insertBefore = ""
         homeBefore = ""
-        dragStackSlug = ""
-        stackCandidate = ""
-        pendingStackW = 0
-        pendingStackH = 0
+        dragGhost = ""
+        _ghostResult = null
+        dropLineShown = false
         gotGrab = false
         slotSnap = []
     }
@@ -672,6 +688,7 @@ Item {
         card.target = info.target || ""
         card.lastLine = info.lastLine || ""
         card.lastHardware = info.lastHardware || ""
+        card.hasImage = !!info.hasImage
         card.focused = !!info.focused
         if (card.lifting && _page.dragSlug !== card.slug)
             card.lifting = false
@@ -835,37 +852,6 @@ Item {
         }
     }
 
-    component SlotGhost: Rectangle {
-        radius: Style.dp(4)
-        color: Style.alpha(Style.bgCard, 0.2)
-        border.width: Style.dp(2)
-        border.color: Style.fgMuted
-
-        Image {
-            anchors.fill: parent
-            anchors.margins: Style.dp(10)
-            source: _page.dragPhoto
-            // The card's photo size (StatusCard), not the full photo.
-            sourceSize: Qt.size(720 * Screen.devicePixelRatio, 520 * Screen.devicePixelRatio)
-            fillMode: Image.PreserveAspectFit
-            opacity: 0.4
-            visible: _page.dragPhoto && _page.dragPhoto.length
-            asynchronous: true
-            cache: true
-        }
-
-        Label {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: Style.dp(12)
-            text: _page.dragName
-            color: Style.fg
-            font.pixelSize: Style.dp(13)
-            font.bold: true
-            opacity: 0.8
-        }
-    }
-
     component StatusPane: Item {
         id: _pane
         property string title: ""
@@ -947,27 +933,21 @@ Item {
                             property var members: _page.model ? _page.model.pileMembers(modelData) : [modelData]
                             property int extra: Math.max(0, members.length - 1) * Style.dp(14)
                             property bool dragging: false
-                            property bool isDragHome: _page.dragSlug === modelData && members.length === 1
-                            property bool showGhost: {
-                                if (!_page.dragSlug.length || _page.dragStackSlug.length)
-                                    return false
-                                if (_pane.direction.length && _page.dragDir !== _pane.direction)
-                                    return false
-                                return _page.insertBefore === modelData
-                            }
+                            // The free width for this pile's front card: a card is
+                            // never wider than the window shows (03 S83).
+                            property real fitW: _flow.width - extra
                             property int cardW: {
                                 _page.pileRev
                                 var compact = _page.model && _page.model.compactView
+                                var want = Style.dp(compact ? 240 : 280)
                                 if (!compact) {
                                     var saved = _page.model ? _page.model.cardWidth(modelData) : 0
                                     if (saved >= 220)
-                                        return Style.dp(saved)
+                                        want = Style.dp(saved)
                                 }
-                                var avail = _flow.width
-                                var want = Style.dp(compact ? 240 : 280)
-                                if (avail < Style.dp(40))
+                                if (fitW < Style.dp(40))
                                     return want
-                                return Math.min(want, avail)
+                                return Math.min(want, Math.max(Style.dp(220), fitW))
                             }
                             property int cardH: {
                                 _page.pileRev
@@ -976,25 +956,19 @@ Item {
                                 var saved = _page.model ? _page.model.cardHeight(modelData) : 0
                                 return saved >= 140 ? Style.dp(saved) : 0
                             }
-                            property int ghostPad: showGhost ? _page.ghostW + Style.dp(16) : 0
                             // The front card's own height, kept up to date by the card
                             // (its photo loads after the slot is made). Reading the card
                             // through itemAt() would not update the slot when it grows,
                             // and the next row would overlap it.
                             property real leadH: 0
 
-                            width: isDragHome ? 0 : (cardW + extra + ghostPad)
+                            width: cardW + extra
                             height: {
-                                if (isDragHome)
-                                    return Math.max(1, _page.ghostH)
                                 var compact = _page.model && _page.model.compactView
                                 var need = leadH > 0 ? Math.round(leadH) : Style.dp(compact ? 120 : 260)
-                                var h = Math.max(cardH >= Style.dp(140) ? cardH : 0, need) + extra
-                                if (showGhost)
-                                    h = Math.max(h, _page.ghostH)
-                                return h
+                                return Math.max(cardH >= Style.dp(140) ? cardH : 0, need) + extra
                             }
-                            z: dragging || isDragHome ? 10000 : 0
+                            z: dragging ? 10000 : 0
                             clip: false
 
                             function freezeSlot() {
@@ -1009,20 +983,12 @@ Item {
                                 _pane.dragLocks = Math.max(0, _pane.dragLocks - 1)
                             }
 
-                            SlotGhost {
-                                visible: _pile.showGhost
-                                x: 0
-                                y: 0
-                                width: visible ? _page.ghostW : 0
-                                height: visible ? _page.ghostH : 0
-                            }
-
                             Repeater {
                                 id: _memberCards
                                 model: _pile.members
                                 delegate: StatusCard {
                                     id: _card
-                                    x: index * 14 + _pile.ghostPad
+                                    x: index * 14
                                     y: index * 14
                                     stackIndex: index
                                     stacked: _pile.members.length > 1
@@ -1032,8 +998,10 @@ Item {
                                     width: _card.resizing ? _card.liveW : _pile.cardW
                                     height: _card.resizing ? _card.liveH : Math.max(_pile.cardH > 0 ? _pile.cardH : 0, implicitHeight)
                                     stretchPhoto: _pile.cardH >= Style.dp(140)
+                                    fitWidth: _pile.fitW
                                     dropStacking: false
-                                    opacity: (_page.dragSlug === modelData || _page.dragSlug === slug) ? 0 : 1
+                                    // Dimmed in its place while its picture is dragged.
+                                    opacity: (_page.dragSlug === slug && _page.dragGhost.length) ? 0.4 : 1
                                     onLiftingChanged: {
                                         if (lifting)
                                             _pile.freezeSlot()
@@ -1061,55 +1029,39 @@ Item {
                             }
                         }
                     }
-
-                    SlotGhost {
-                        visible: _pane.paneActive && _page.dragSlug.length && !_page.dragStackSlug.length && _page.insertBefore === "" && (!_pane.direction.length || _page.dragDir === _pane.direction)
-                        width: visible ? _page.ghostW : 0
-                        height: visible ? _page.ghostH : 0
-                    }
                 }
             }
         }
     }
 
-    Item {
+    // The dragged card's picture under the pointer, as the Device Bindings
+    // rows show theirs (ControlTree): 0.85 opaque.
+    Image {
         id: _float
-        visible: _page.dragSlug.length > 0
+        objectName: "homeDragPicture"
+        visible: _page.dragSlug.length > 0 && _page.dragGhost.length > 0
         z: 100000
         x: _page.floatX
         y: _page.floatY
         width: _page.ghostW
         height: _page.ghostH
+        source: _page.dragGhost
+        cache: false
+        opacity: 0.85
+    }
 
-        Rectangle {
-            anchors.fill: parent
-            radius: Style.dp(4)
-            color: Style.bgCard
-            border.width: Style.dp(2)
-            border.color: Style.fg
-
-            Image {
-                anchors.fill: parent
-                anchors.margins: Style.dp(10)
-                source: _page.dragPhoto
-                // The card's photo size (StatusCard), not the full photo.
-                sourceSize: Qt.size(720 * Screen.devicePixelRatio, 520 * Screen.devicePixelRatio)
-                fillMode: Image.PreserveAspectFit
-                visible: _page.dragPhoto && _page.dragPhoto.length
-                asynchronous: true
-                cache: true
-            }
-
-            Label {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: Style.dp(12)
-                text: _page.dragName
-                color: Style.fg
-                font.pixelSize: Style.dp(13)
-                font.bold: true
-            }
-        }
+    // Where the card will go: a 2 dp line between the cards (ControlTree's
+    // insert line, upright here).
+    Rectangle {
+        id: _dropLine
+        objectName: "homeDropLine"
+        visible: _page.dragSlug.length > 0 && _page.dropLineShown
+        z: 99999
+        x: Math.round(_page.dropLineX - width / 2)
+        y: _page.dropLineY
+        width: Style.dp(2)
+        height: _page.dropLineH
+        color: Style.info
     }
 
     function popupEmptyMenu(pageX, pageY) {

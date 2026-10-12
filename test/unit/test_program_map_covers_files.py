@@ -100,6 +100,17 @@ def _program_units() -> list[tuple[str, list[str]]]:
         name = _rel(folder) + "/"
         units.append((name, [name, name + "__init__.py"]))
 
+    # The vJoy driver wrapper: each Python file, like gremlin/.
+    for path in sorted((_ROOT / "vjoy").glob("*.py")):
+        if path.name == "__init__.py" and _is_trivial_init(path):
+            continue
+        file_unit(path, "vjoy/")
+    # The program's QML style and shared controls: each QML/JS file, or
+    # the folder it sits in.
+    for path in sorted((_ROOT / "theme").rglob("*")):
+        if path.suffix in (".qml", ".js"):
+            file_unit(path, _rel(path.parent) + "/")
+
     units.append(("joystick_gremlin.py", ["joystick_gremlin.py"]))
     units.append(("input_tester.py", ["input_tester.py"]))
     units.append(("dill/", ["dill/"]))

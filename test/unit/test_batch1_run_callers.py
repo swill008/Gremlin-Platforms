@@ -260,7 +260,6 @@ def vjoy_axis(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
         return True
 
     monkeypatch.setattr(output, "vjoy_value", lambda *_a: state.value)
-    monkeypatch.setattr(output, "vjoy_owned", lambda *_a: True)
     monkeypatch.setattr(output, "write_vjoy", write)
     return state
 

@@ -376,6 +376,7 @@ def test_import_e_adds_an_encoder_axis_with_auto_format(model: Model) -> None:
 
 def test_encoder_settings_create_update_and_read_back(model: Model) -> None:
     from gremlin.types import InputType
+    from gremlin.ui.osc_device_model import settings_of
 
     assert model.createConfiguredInput({
         "address": "/knob", "mode": "encoder", "enc_format": "signed",
@@ -383,7 +384,7 @@ def test_encoder_settings_create_update_and_read_back(model: Model) -> None:
     }) is True
     [row] = _rows()
     assert row.input_type == InputType.JoystickButton
-    settings = model.inputSettings(row.uid)
+    settings = settings_of(row)
     assert settings["mode"] == "encoder"
     assert (settings["enc_format"], settings["enc_output"]) == ("signed", "pulse_cw")
     assert settings["enc_step"] == pytest.approx(0.1)
@@ -392,7 +393,7 @@ def test_encoder_settings_create_update_and_read_back(model: Model) -> None:
     assert model.updateInputSettings(row.uid, {"enc_output": "axis"}) == ""
     [row] = _rows()
     assert row.input_type == InputType.JoystickAxis
-    assert model.inputSettings(row.uid)["enc_output"] == "axis"
+    assert settings_of(row)["enc_output"] == "axis"
 
 
 def test_encoder_kind_change_is_refused_when_locked(

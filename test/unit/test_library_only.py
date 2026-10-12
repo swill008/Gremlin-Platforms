@@ -20,7 +20,6 @@ _ROOT = pathlib.Path(__file__).parents[2]
 
 _FORBIDDEN = re.compile(
     r"library\.(add_action|delete_action|remove_unused|clone_action|from_xml)\("
-    r"|drop_unused_actions\("
     r"|_copied_from"
     r"|\.inputs\[[^\]]+\]\s*=(?!=)"
 )

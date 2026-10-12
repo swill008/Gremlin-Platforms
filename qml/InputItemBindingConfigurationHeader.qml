@@ -19,7 +19,6 @@ Item {
     property bool hideControlSetup: false
     property bool catalogSequence: false
     readonly property bool showTreat: !hideControlSetup && _behavior.hasChoice
-    property MouseArea dragHandleArea: showTreat ? _gripTop : _gripName
 
     implicitHeight: _layout.implicitHeight
 
@@ -32,8 +31,6 @@ Item {
         // Treat as has its own line so the name line can be narrower.
         // A button or a key has no Treat as, so that line is not shown.
         RowLayout {
-            id: _treatRow
-
             visible: _root.showTreat
             Layout.fillWidth: true
             spacing: Style.dp(6)
@@ -212,8 +209,6 @@ Item {
 
         // UI for an axis behaving like a button.
         Loader {
-            id: _behaviorAxisButton
-
             active: !_root.hideControlSetup &&
                 _root.inputBinding.behavior == "button" &&
                 _root.inputBinding.inputType == "axis"

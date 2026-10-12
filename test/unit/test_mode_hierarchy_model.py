@@ -53,7 +53,8 @@ def test_mode_names_refuse_blank_and_look_alikes(qapp: QtCore.QCoreApplication) 
         # Renaming a mode may change the capitals of its own name.
         assert not model.nameTaken("TEST MODE", "Test Mode")
         model.newMode("test mode")
-        assert sum(n.casefold() == "test mode" for n in model.modeStringList()) == 1
+        names = model.current_modes.mode_names()
+        assert sum(n.casefold() == "test mode" for n in names) == 1
         model.deleteLater()
     finally:
         shared_state.current_profile = old

@@ -2,14 +2,15 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Xbox Viewer and the Xbox output page check the ViGEmBus driver at
-their top, like HidHide (XboxDriverCheck). On the page it sits above the
+"""The Xbox output page (its Output View, which also holds the live pads
+since the Xbox Viewer window went, D-NEXTLIST-1 item 1) checks the ViGEmBus
+driver once, at its top, like HidHide (XboxDriverCheck). It sits above the
 pad's name. The page has no Appearance panel, so the header shows no
 Appearance button there (vJoy outputs keep theirs).
 
 The row shows whether ViGEmBus is installed and running, its version, and
 what to do when it isn't, with Get ViGEmBus and Test ViGEmBus. It shows
-even when nothing is mapped to Xbox yet. The window is opened off-screen
+even when nothing is mapped to Xbox yet. The page is opened off-screen
 in its own process with a fresh profile (no Map to Xbox actions), and the
 driver is faked so the result doesn't depend on this PC.
 """
@@ -55,11 +56,6 @@ import joystick_gremlin
 from PySide6 import QtQml, QtQuick, QtTest
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
 win = app.main_window
-open_viewer = 'Helpers.createComponent("DialogXboxViewer.qml")'
-expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, open_viewer)
-expr.evaluate()
-assert not expr.hasError(), expr.error().toString()
-QtTest.QTest.qWait(500)
 
 def walk(item):
     yield item
@@ -74,22 +70,7 @@ def shown_texts(items):
             if i.isVisible() and isinstance(i.property('text'), str)]
 
 out = {}
-for w in app.topLevelWindows():
-    if w is win or not w.isVisible() or not isinstance(w, QtQuick.QQuickWindow):
-        continue
-    items = list(walk(w.contentItem()))
-    row = next((i for i in items if i.objectName() == 'xboxDriverRow'), None)
-    status = next((i for i in items if i.objectName() == 'xboxDriverStatus'), None)
-    texts = shown_texts(items)
-    out['row'] = row is not None and row.isVisible() and row.height() > 0
-    out['row-top'] = top(row)
-    out['status'] = status.property('text') if status else ''
-    out['texts'] = texts
-    if len(sys.argv) > 1:
-        w.grabWindow().save(sys.argv[1])
-    w.close()
-
-# The Xbox output page: the same check above its rows.
+# The Xbox output page: one check above its pads and rows.
 from PySide6 import QtCore
 host = QtQuick.QQuickWindow()
 host.resize(900, 600)
@@ -105,6 +86,8 @@ items = list(walk(page))
 row = next((i for i in items if i.objectName() == 'xboxDriverRow'), None)
 status = next((i for i in items if i.objectName() == 'xboxDriverStatus'), None)
 out['page-row'] = row is not None and row.isVisible() and row.height() > 0
+out['page-rows'] = len([i for i in items if i.objectName() == 'xboxDriverRow'])
+out['texts'] = shown_texts(items)
 out['page-row-top'] = top(row)
 out['page-status'] = status.property('text') if status else ''
 # The pad's name: Xbox pad 1 here (a fresh profile has no Xbox module file).
@@ -142,7 +125,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     args = [sys.executable, str(script)]
     shot = os.environ.get("GREMLIN_SHOT")
     if shot:
-        args += [shot + "-viewer.png", shot + "-page.png"]
+        args += ["", shot + "-page.png"]
     result = proc_tree.run(
         args, cwd=_ROOT, env=env, text=True, timeout=120
     )
@@ -152,14 +135,14 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
 
 
 def test_the_driver_check_shows_with_nothing_mapped(run: dict) -> None:
-    assert run["row"] is True
+    assert run["page-row"] is True
     assert "No Map to Xbox actions on connected devices." in run["texts"]
-    # At the top of the window.
-    assert 0 <= run["row-top"] < 40
+    # One check: the page's own (the viewer window's is gone).
+    assert run["page-rows"] == 1
 
 
 def test_not_installed_says_what_to_do(run: dict) -> None:
-    assert run["status"] == "ViGEmBus is not installed"
+    assert run["page-status"] == "ViGEmBus is not installed"
     assert any("Install ViGEmBus 1.22" in t for t in run["texts"])
     assert "Get ViGEmBus" in run["texts"] and "Test ViGEmBus" in run["texts"]
 

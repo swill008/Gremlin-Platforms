@@ -28,7 +28,9 @@ Item {
     property int axisStamp: _live && _live.axisStamp !== undefined ? _live.axisStamp : (_live ? _live.stamp : 0)
     property int buttonStamp: _live && _live.buttonStamp !== undefined ? _live.buttonStamp : (_live ? _live.stamp : 0)
     property int hatStamp: _live && _live.hatStamp !== undefined ? _live.hatStamp : (_live ? _live.stamp : 0)
-    property int liveStamp: buttonStamp + axisStamp + hatStamp + _buttons.count + _axes.count + _hats.count
+    // Changes on live input and whenever the mapped rows are read again
+    // (what drives what changed), so the face and its editor redraw.
+    property int liveStamp: buttonStamp + axisStamp + hatStamp + _buttons.stamp + _axes.stamp + _hats.stamp
 
     PairLiveThrottle {
         id: _live

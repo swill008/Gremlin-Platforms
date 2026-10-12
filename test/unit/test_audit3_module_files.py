@@ -124,36 +124,51 @@ def test_renamed_sticks_photo_goes_with_the_file_its_device_mapping_editor_opens
     hw = hardware_profile.HardwareProfile()
     hw.setDeviceGuid(guid)
 
-    hw.beginEdit("pJoy Pro")
-    rel = hw.copyImage(picture.as_uri(), "pJoy Pro")
-    assert rel == "pictures/photo.jpg"
+    # Module Setup's Add Image… on an input module (03 S52,
+    # D-03-DEVICE-IMAGE). Old: Import Image (copyImage, photo.jpg) made the
+    # bottom background picture and commitEditFor wrote it; now keepImage
+    # keeps it as device-image.jpg and saveClaim names it (deviceImage).
+    hw.beginEditFor("pJoy Pro", "setup")
+    rel = hw.keepImage("pJoy Pro", picture.as_uri())
+    assert rel == "pictures/device-image.jpg"
     # 07 S107: it waits in the edit's temporary folder until Save; the
     # device's folder and its module file are untouched (07 Q2, GL-174).
-    assert not (own / "pictures" / "photo.jpg").exists()
-    assert module_store.device_photo_ref(
-        json.loads((own / "module.json").read_text())) == ""
-    assert hw.editActive("pJoy Pro")
-    # Cancel drops it: no photo.
-    assert hw.cancelEdit("pJoy Pro")
-    assert not (own / "pictures" / "photo.jpg").exists()
-    assert not hw.editActive("pJoy Pro")
+    assert not (own / "pictures" / "device-image.jpg").exists()
+    assert module_store.DEVICE_IMAGE_KEY not in json.loads(
+        (own / "module.json").read_text())
+    assert hw.editActiveFor("pJoy Pro", "setup")
+    # Cancel drops it: no image.
+    assert hw.cancelEditFor("pJoy Pro", "setup")
+    assert not (own / "pictures" / "device-image.jpg").exists()
+    assert not hw.editActiveFor("pJoy Pro", "setup")
 
     # Saved: it goes into the folder the Device Mapping Editor opens. Old: pjoy_pro/,
     # which the Device Mapping Editor (old_name.json) never read.
-    hw.beginEdit("pJoy Pro")
-    assert hw.copyImage(picture.as_uri(), "pJoy Pro") == "pictures/photo.jpg"
-    assert hw.commitEditFor("pJoy Pro", "") == ""
-    assert (own / "pictures" / "photo.jpg").is_file()
-    # Module Setup's Save makes it the bottom background picture (07 S127).
+    hw.beginEditFor("pJoy Pro", "setup")
+    assert hw.keepImage("pJoy Pro", picture.as_uri()) == rel
+    setup = module_model.DriverInputModel()
+    try:
+        setup.loadDevice(guid, "pJoy Pro")
+        assert setup.saveClaim("pJoy Pro", "source", rel)
+    finally:
+        setup.deleteLater()
+    assert hw.commitEditFor("pJoy Pro", "setup") == ""
+    assert (own / "pictures" / "device-image.jpg").is_file()
     saved = json.loads((own / "module.json").read_text())
-    assert module_store.device_photo_ref(saved) == "pictures/photo.jpg"
+    assert saved[module_store.DEVICE_IMAGE_KEY] == rel
+    assert module_store.device_photo_ref(saved) == ""
     assert "image" not in saved
-    assert "Old%20Name/pictures/photo.jpg" in hw.profilePhotoUrl("pJoy Pro")
+    assert "Old%20Name/pictures/device-image.jpg" in hw.profilePhotoUrl("pJoy Pro")
     assert not (folder / "pJoy Pro").exists()
 
 
 def test_renamed_sticks_saved_photo_is_shown(folder: Path) -> None:
     guid = _renamed(folder)
+    # Old: an unnamed pictures/photo.* was found by glob; that fallback is
+    # gone, so the file names its picture (the device image, 03 S137).
+    doc = json.loads((folder / "Old Name" / "module.json").read_text())
+    doc[module_store.DEVICE_IMAGE_KEY] = "pictures/photo.jpg"
+    _write(folder, "Old Name", doc)
     (folder / "Old Name" / "pictures").mkdir()
     (folder / "Old Name" / "pictures" / "photo.jpg").write_bytes(b"\xff\xd8\xff\xd9")
     hw = hardware_profile.HardwareProfile()
@@ -353,7 +368,6 @@ def test_a_module_file_that_is_not_utf8_doesnt_stop_home(folder: Path) -> None:
     # Old: each of these raised UnicodeDecodeError.
     assert module_model._load_module_doc("pJoy Pro", guid) == {}
     model = module_model.ModuleListModel()
-    assert model.claimedCount("pJoy Pro") == 0
     assert json.loads(model.viewConfigJson("pJoy Pro", guid))["layout"]
     assert calibration._load(path) == {}
     hw = hardware_profile.HardwareProfile()
@@ -390,7 +404,7 @@ def test_a_drag_keeps_hidden_cards_places(folder: Path) -> None:
     assert len(showing) >= 2
     module_model._set_order([showing[0], "hidden_one"] + showing[1:])
     module_model._set_hidden({"hidden_one"})
-    model.moveSlugBefore(showing[-1], showing[0])
+    model.dropSlugBefore(showing[-1], showing[0])
     order = module_model._order_slugs()
     # Old: the hidden card's place was dropped.
     assert "hidden_one" in order

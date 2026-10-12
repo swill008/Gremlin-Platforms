@@ -142,13 +142,18 @@ def test_remove_drops_the_photo_and_clears_image(
 
 
 def test_other_cards_are_refused(modules: Path, tmp_path: Path) -> None:
+    """Output cards are refused. Input module cards (sticks, Keyboard) now
+    take a Device Image of their own (D-03-DEVICE-IMAGE); it never lands in
+    the Logical Device's folder."""
     _ld_file(modules)
     model = module_model.ModuleListModel()
     model.reload()
     url = _picture(tmp_path, "a.jpg", _JPEG)
-    assert model.setCardImage("pjoy_pro", url) is False
-    assert model.setCardImage("keyboard", url) is False
-    assert model.removeCardImage("keyboard") is False
+    # Old: every card but the Logical Device was refused.
+    assert model.setCardImage("xbox", url) is False
+    assert model.removeCardImage("xbox") is False
+    model.setCardImage("pjoy_pro", url)
+    model.setCardImage("keyboard", url)
     assert not (modules / LD / "pictures").exists()
 
 

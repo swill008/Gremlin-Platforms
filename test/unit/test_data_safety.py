@@ -109,16 +109,16 @@ def test_cancel_puts_the_starting_photo_back(
     folder = doc.parent / "pictures"
     hw = hardware_profile.HardwareProfile()
 
-    hw.beginEdit("Stick R")
-    assert hw.editActive("Stick R")
+    hw.beginEditFor("Stick R", "")
+    assert hw.editActiveFor("Stick R", "")
     new = hw.copyImage(_png(tmp_path / "new.png").as_uri(), "Stick R")
     assert new == "pictures/photo.png"
-    hw.beginEdit("Stick R")  # An edit already open goes on.
+    hw.beginEditFor("Stick R", "")  # An edit already open goes on.
     assert sorted(p.name for p in folder.iterdir()) == ["photo.jpg"]
     assert doc.read_bytes() == before
 
     assert hw.cancelEdit("Stick R") is True
-    assert not hw.editActive("Stick R")
+    assert not hw.editActiveFor("Stick R", "")
     assert (folder / "photo.jpg").read_bytes() == b"original"
     assert not (folder / "photo.png").exists()
     assert doc.read_bytes() == before
@@ -142,15 +142,15 @@ def test_clearing_the_background_changes_nothing_until_save(
 
     # Clear Background only changes the window's map: Cancel keeps it (07
     # S41, S26).
-    hw.beginEdit("Stick R")
+    hw.beginEditFor("Stick R", "")
     assert hw.cancelEdit("Stick R") is True
     assert (folder / "photo.jpg").read_bytes() == b"original"
     assert store.device_photo_ref(json.loads(doc.read_text(encoding="utf-8"))) == ref
 
     # Save ends the edit; the picture nothing names any more goes (07 S106).
-    hw.beginEdit("Stick R")
+    hw.beginEditFor("Stick R", "")
     assert hw.save("Stick R", json.dumps({"nodes": []}))
-    assert not hw.editActive("Stick R")
+    assert not hw.editActiveFor("Stick R", "")
     saved = json.loads(doc.read_text(encoding="utf-8"))
     assert store.device_photo_ref(saved) == ""
     assert "image" not in saved and "photo" not in saved

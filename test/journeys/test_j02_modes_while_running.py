@@ -89,7 +89,7 @@ def story(j: Journey) -> None:
     hierarchy = j.wait_until(
         lambda: manage.findChild(ModeHierarchyModel), "the Manage Modes model"
     )
-    out["window-modes"] = sorted(hierarchy.modeStringList())
+    out["window-modes"] = sorted(hierarchy.current_modes.mode_names())
     j.ev('modeHierarchy.renameMode("Orbit", "Low Orbit")', manage)
     out["modes-after-rename"] = sorted(j.profile.modes.mode_names())
     out["after-press-2"] = tap("Low Orbit")

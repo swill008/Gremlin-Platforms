@@ -61,14 +61,16 @@ function commandList() {
         { id: "view.settings", text: "Profile Settings", group: "View",
           enabled: function() { return _room() !== "settings" },
           run: function() { _openRoom("settings") } },
+        // The Xbox output's Output View (live pads and its controls); Help's
+        // Open links use it. Not a menu item or a palette entry.
+        { id: "view.xboxOutput", text: "Xbox Output View", group: "View",
+          palette: false, menu: false, run: function() { openXboxOutputView() } },
         { id: "view.palette", text: "Command Palette…", group: "View", shortcut: "Ctrl+K",
           palette: false, run: function() { _commandPalette.open() } },
 
         // Tools
         { id: "tools.vjoyViewer", text: "vJoy Viewer", group: "Tools › Viewers",
           run: function() { openTool("DialogInputViewer.qml") } },
-        { id: "tools.xboxViewer", text: "Xbox Viewer", group: "Tools › Viewers",
-          run: function() { openTool("DialogXboxViewer.qml") } },
         // The Input Tester (D-02-INPUT-TESTER): what a game sees through HidHide.
         { id: "tools.inputTester", text: "Input Tester…", group: "Tools › Viewers",
           keywords: "hidhide game sees hidden visible check test devices",

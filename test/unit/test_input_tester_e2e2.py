@@ -657,7 +657,6 @@ def test_plain_mode_keeps_the_log_in_memory_and_writes_no_file(
     before = _snapshot(home, temp, control)
     tester = _Tester(home, control, [_PEDALS], args=[], temp=temp)
     try:
-        tester.call("reloadLog")
         state = tester.state(
             lambda s: s.get("logSource") == "tester" and s.get("logLines")
         )

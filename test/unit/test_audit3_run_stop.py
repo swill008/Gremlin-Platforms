@@ -469,7 +469,6 @@ def test_a_failing_step_doesnt_cut_stop_short(scope: Any) -> None:  # noqa: ANN4
 def test_the_run_number_changes_at_run_and_stop(scope: Any) -> None:  # noqa: ANN401
     run = scope.begin()
     assert scope.alive(run) and scope.running()
-    assert code_runner.run_number() == run  # the one counter
     scope.stop()
     assert not scope.alive(run) and not scope.running()
     assert scope.begin() != run

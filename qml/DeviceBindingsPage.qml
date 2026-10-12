@@ -36,7 +36,6 @@ Item {
     property alias closeAfterOk: _pane.closeAfterOk
     // The list's open parents, folded groups and selection (ControlTree.qml).
     property alias _opened: _tree.opened
-    property alias _collapsed: _tree.collapsed
     property alias _picked: _tree.picked
 
     // The pane and its leave/save functions (ActionPane.qml, to-do 91).
@@ -109,10 +108,7 @@ Item {
 
     // The page menu's "Module Setup…": this device's Module Setup, as its
     // Home card opens it (claims belong there, 03).
-    signal moduleSetupRequested(string guid)
-
     function openModuleSetup() {
-        moduleSetupRequested(guid)
         var win = Window.window
         if (win && typeof win.openConfigureModule === "function"
                 && typeof win._cardForGuid === "function") {

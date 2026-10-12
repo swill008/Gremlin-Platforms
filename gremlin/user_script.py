@@ -891,16 +891,6 @@ class Script(EditNoted):
         """
         return name in self.variables
 
-    def set_variable(self, name: str, variable: AbstractVariable) -> None:
-        """Sets the value of a named variable.
-
-        Args:
-            name: Name of the variable object to be set
-            variable: Variable to store
-        """
-        self.variables[name] = variable
-        note_edit()
-
     def get_variable(self, name: str) -> AbstractVariable:
         """Returns the variable stored under the specified name.
 

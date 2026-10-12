@@ -14,100 +14,26 @@ Item {
     id: _root
 
     property InputItemModel inputItemModel
-    property int inputIndex
-    property bool isOutput: false
-    property bool holdModel: false
-    property bool inlineMode: false
-    property bool hideControlSetup: false
-    property bool catalogSequence: false
-    property int onlySequence: -1
-    property color editorFill: Style.infoFillDeep
-    property color editorEdge: Style.info
-    property color editorAccent: Style.info
-    property int editorRadius: Style.dp(3)
-    property int editorBorderW: Style.dp(1)
-    property int editorAccentW: Style.dp(3)
-    property bool showAccent: true
-    property int editorPad: Style.dp(10)
-    property int editorPadTop: Style.dp(10)
-    property int editorPadRight: Style.dp(10)
-    property int editorPadBottom: Style.dp(10)
-    property int editorPadLeft: Style.dp(10)
     // The one edit lock (06 S13): nothing is edited while the profile runs.
-    // Output pages are not locked.
     EditLock { id: _lock }
-    readonly property bool editorLocked: _lock.locked && !isOutput
+    readonly property bool editorLocked: _lock.locked
     enabled: true
     opacity: editorLocked ? 0.55 : 1.0
-    implicitHeight: inlineMode ? Math.max(Style.dp(80), _content.implicitHeight) + editorPadTop + editorPadBottom : Style.dp(200)
+    implicitHeight: Style.dp(200)
 
-    Rectangle {
-        visible: inlineMode
-        anchors.fill: parent
-        color: editorFill
-        border.color: editorEdge
-        border.width: editorBorderW
-        radius: editorRadius
-    }
-
-    Rectangle {
-        visible: inlineMode && showAccent && editorAccentW > 0
-        width: editorAccentW
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.margins: Math.max(Style.dp(1), editorBorderW)
-        color: editorAccent
-    }
-
-    // The model always comes from the page (holdModel: the action panes,
-    // the catalog). The Keyboard page uses the shared ActionPane (05 S128).
+    // The model always comes from the page (the action panes, the catalog).
+    // The Keyboard page uses the shared ActionPane (05 S128).
 
     ColumnLayout {
-        id: _content
-
-        anchors.fill: inlineMode ? undefined : parent
-        x: inlineMode ? editorPadLeft : 0
-        y: inlineMode ? editorPadTop : 0
-        width: parent.width - (inlineMode ? editorPadLeft + editorPadRight : 0)
+        anchors.fill: parent
         spacing: Style.dp(8)
 
-        Repeater {
-            id: _inlineRepeater
-            model: _root.inlineMode && _root.onlySequence < 0 ? _root.inputItemModel : null
-
-            delegate: InputItemBinding {
-                Layout.fillWidth: true
-                enabled: !editorLocked
-                inputBinding: modelData
-                inputItemModel: _root.inputItemModel
-                hideControlSetup: _root.hideControlSetup
-                catalogSequence: _root.catalogSequence
-            }
-        }
-
-        Loader {
-            Layout.fillWidth: true
-            active: _root.inlineMode && _root.onlySequence >= 0 && _root.inputItemModel
-                    && _root.onlySequence < _root.inputItemModel.rowCount()
-            sourceComponent: InputItemBinding {
-                width: _content.width
-                enabled: !editorLocked
-                inputItemModel: _root.inputItemModel
-                inputBinding: _root.inputItemModel.data(_root.inputItemModel.index(_root.onlySequence, 0))
-                hideControlSetup: _root.hideControlSetup
-                catalogSequence: _root.catalogSequence
-            }
-        }
-
         JGListView {
-            id: _listView
-            visible: !_root.inlineMode
             Layout.fillHeight: true
             Layout.fillWidth: true
             scrollbarAlwaysVisible: true
             enabled: !editorLocked
-            model: _root.inlineMode ? null : _root.inputItemModel
+            model: _root.inputItemModel
             delegate: _entryDelegate
         }
 
@@ -115,8 +41,6 @@ Item {
             id: _entryDelegate
 
             Item {
-                id: _delegate
-
                 height: _binding.height
                 width: _binding.width
 
@@ -132,7 +56,6 @@ Item {
 
                     inputBinding: modelData
                     inputItemModel: _root.inputItemModel
-                    hideControlSetup: _root.hideControlSetup
                 }
             }
         }

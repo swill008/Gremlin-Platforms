@@ -390,7 +390,7 @@ def test_s73_start_minimized_minimizes_and_goes_to_the_tray_when_on(
     ]
 
 
-# --- S68: the old "Close to tray" becomes Minimize to tray ------------------
+# --- A settings file of its own (used by the S82 tests) ---------------------
 
 
 @pytest.fixture
@@ -423,27 +423,6 @@ def _history_writer_ended() -> None:
     if writer is not None:
         writer.join(2.0)
         assert not writer.is_alive(), "the History writer did not end"
-
-
-@pytest.mark.parametrize("close_to_tray", [True, False])
-def test_s68_close_to_tray_on_gives_minimize_to_tray_on(
-    settings_file: pathlib.Path, close_to_tray: bool
-) -> None:
-    import joystick_gremlin as jg
-    from gremlin.types import PropertyType
-
-    old = gremlin.config.Configuration()
-    old.register(
-        "global", "general", "close-to-tray", PropertyType.Bool, False, "", {}, True
-    )
-    old.set("global", "general", "close-to-tray", close_to_tray)
-    old.save_now(str(settings_file))
-    _history_writer_ended()
-    SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
-
-    jg.register_config_options()  # the next start
-    cfg = gremlin.config.Configuration()
-    assert cfg.value("global", "general", "minimize-to-tray") is close_to_tray
 
 
 # --- S82: Ignore Windows display scaling is read by the next start ----------

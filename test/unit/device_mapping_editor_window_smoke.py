@@ -370,13 +370,13 @@ def main() -> None:
         # pictures for Restore; Discard (the offer's own button) puts the
         # saved map back, both planes (item 3, 07 S34). Not now keeps both
         # (decision A, test_audit3_screens.py).
-        js("var n = _editorWin.targetName; _hw.beginEdit(n);"
+        js("var n = _editorWin.targetName; _hw.beginEditFor(n, '');"
            " _hw.saveRecovery(n, JSON.stringify({nodes: [{id: 'z9', kind: 'draw',"
            " shape: 'rect', fx: 0.2, fy: 0.2, fw: 0.1, fh: 0.1}]})); 1")
         kept = js("_editorWin.loadLive();"
-                  " String(_hw.editActive(_editorWin.targetName))")
+                  " String(_hw.editActiveFor(_editorWin.targetName, ''))")
         back = js("_recoverGate.discarded();"
-                  " String(_hw.editActive(_editorWin.targetName))")
+                  " String(_hw.editActiveFor(_editorWin.targetName, ''))")
         print(f"RESULT crash-photo {kept} {back}", flush=True)
         # The colour picker takes a typed hex (#RGB too), and follows the
         # theme (BM17, E5).

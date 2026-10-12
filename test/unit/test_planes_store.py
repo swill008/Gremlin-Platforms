@@ -163,6 +163,7 @@ from test.unit.test_stage1_modules import (  # noqa: E402,F401  # pyright: ignor
     folder,
     stick_doc,
     stick_guid,
+    vjoy_doc,
     write_module,
 )
 
@@ -331,7 +332,11 @@ def test_profile_photo_is_the_background_picture_file_once_made(modules: Path) -
 def test_module_setup_import_image_sets_the_bottom_picture(
     modules: Path, tmp_path: Path
 ) -> None:
-    """07 S127: Module Setup's Import Image sets the same layer."""
+    """07 S127, 03 S52 (D-03-DEVICE-IMAGE, input modules only). Old: Import
+    Image set the bottom background picture for every device. Now an input
+    module's Add Image… names the Device Image (deviceImage) on Save and
+    leaves the map alone; an output module's Import Image still sets the
+    bottom background picture."""
     current = write_module(
         modules, "pjoy_pro", stick_doc(nodes=[_bg("pictures/back.png"), _chip(1)])
     )
@@ -339,16 +344,55 @@ def test_module_setup_import_image_sets_the_bottom_picture(
     chosen = tmp_path / "pick" / "new.png"
     _picture(tmp_path / "pick", "x.png", 50, 50)
     (tmp_path / "pick" / store.PICTURES / "x.png").replace(chosen)
+    url = QtCore.QUrl.fromLocalFile(str(chosen)).toString()
     hw = _profile()
     hw.beginEditFor("pJoy Pro", "setup")
-    rel = hw.copyImage(QtCore.QUrl.fromLocalFile(str(chosen)).toString(), "pJoy Pro")
-    assert rel
+    rel = hw.keepImage("pJoy Pro", url)
+    assert rel == "pictures/device-image.png"
+    setup = module_model.DriverInputModel()
+    try:
+        setup.loadDevice(stick_guid(), "pJoy Pro")
+        assert setup.saveClaim("pJoy Pro", "source", rel)
+    finally:
+        setup.deleteLater()
     assert hw.commitEditFor("pJoy Pro", "setup") == ""
     doc = json.loads(current.read_text(encoding="utf-8"))
     assert "image" not in doc
-    assert store.device_photo_ref(doc) == store.normal_ref(rel)
+    assert doc[store.DEVICE_IMAGE_KEY] == rel
+    assert (current.parent / rel).read_bytes() == chosen.read_bytes()
+    # The map is not touched: its bottom picture stays and is kept.
+    assert store.device_photo_ref(doc) == "pictures/back.png"
     assert [n["id"] for n in doc["nodes"]] == ["bpictures/back.png", "c1"]
-    # The old picture is no longer named and goes (07 S106).
+    assert (current.parent / store.PICTURES / "back.png").exists()
+
+
+def test_module_setup_import_image_on_an_output_sets_the_bottom_picture(
+    modules: Path, tmp_path: Path
+) -> None:
+    """Outputs unchanged (D-03-DEVICE-IMAGE): Import Image sets the bottom
+    background picture (07 S127) and the old one, no longer named, goes
+    (07 S106)."""
+    current = write_module(
+        modules, "vjoy_1", vjoy_doc(nodes=[_bg("pictures/back.png"), _chip(1)])
+    )
+    _picture(current.parent, "back.png", 40, 20)
+    chosen = tmp_path / "pick" / "new.png"
+    _picture(tmp_path / "pick", "x.png", 50, 50)
+    (tmp_path / "pick" / store.PICTURES / "x.png").replace(chosen)
+    hw = hardware_profile.HardwareProfile()
+    hw.beginEditFor("vJoy 1", "setup")
+    rel = hw.keepPhoto("vJoy 1", QtCore.QUrl.fromLocalFile(str(chosen)).toString())
+    assert rel
+    setup = module_model.DriverInputModel()
+    try:
+        setup.loadDevice("", "vJoy 1")
+        assert setup.saveClaim("vJoy 1", "dest", rel)
+    finally:
+        setup.deleteLater()
+    assert hw.commitEditFor("vJoy 1", "setup") == ""
+    doc = json.loads(current.read_text(encoding="utf-8"))
+    assert "image" not in doc and store.DEVICE_IMAGE_KEY not in doc
+    assert store.device_photo_ref(doc) == store.normal_ref(rel)
     assert not (current.parent / store.PICTURES / "back.png").exists()
 
 

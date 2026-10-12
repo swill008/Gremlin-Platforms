@@ -33,7 +33,7 @@ function topics() {
             title: "What a card shows",
             body: "<p>Each card sums up its device, top to bottom.</p>"
                 + "<ul>"
-                + "<li>The device photo, a picture of the device's background (left out in <b>Compact view</b>) and the device name.</li>"
+                + "<li>The device photo: its device image when you gave it one, else a picture of the device's background (left out in <b>Compact view</b>), and the device name.</li>"
                 + "<li>Its status and bus, for example <b>Connected</b>, <b>Virtual</b> or <b>No module</b>. A vJoy device another program holds shows \"In use by another program\".</li>"
                 + "<li>The claimed buttons, axes and hats, in words (\"1 hat\", \"2 hats\").</li>"
                 + "<li>On output cards only, <b>Driven by: [device]</b>: the input devices whose actions send to it, or <b>Driven by: [nothing]</b>. It follows your action edits within a moment. The <b>Output View</b> header shows the same line.</li>"
@@ -50,7 +50,7 @@ function topics() {
             title: "Arrange and resize cards",
             body: "<p>Put the cards in the order and size you like. Both are kept between sessions.</p>"
                 + "<ul>"
-                + "<li>To move a card, drag it to its new place.</li>"
+                + "<li>To move a card, drag it: a picture of the card follows the pointer (for a stack, its front card), the other cards stay where they are, and a line shows where it will go. Let go to put it there. Dragging never stacks cards.</li>"
                 + "<li>To resize a card, drag its right edge, its bottom edge or its bottom-right corner.</li>"
                 + "<li>To stack cards, Shift-click them, then right-click one and choose <b>Stack Selected Cards</b> (under <b>Cards</b>). Only cards of the same kind stack: inputs with inputs, outputs with outputs. Click a stacked card to bring it to the top.</li>"
                 + "<li>To take cards out of a stack, right-click a stacked card and choose <b>Unstack</b>, or <b>Unstack All</b>.</li>"
@@ -76,7 +76,7 @@ function topics() {
                 + "<li><b>Undo</b> and <b>Redo</b> sit beside the menu's title, for Home's card changes.</li>"
                 + "<li>At the top: <b>Open Device Bindings</b> (<b>Output View</b> on an output card), <b>Device Mapping Editor</b> and <b>Hide Card</b>.</li>"
                 + "<li><b>Module</b>: <b>Module Setup…</b>, <b>Auto Mapping Tool</b>, <b>Calibration</b>.</li>"
-                + "<li><b>View</b>: the <b>vJoy Viewer</b> or <b>Xbox Viewer</b>, <b>Device Information</b>.</li>"
+                + "<li><b>View</b>: the <b>vJoy Viewer</b> (not on the Xbox card: its <b>Output View</b> shows the live pads), <b>Device Information</b>.</li>"
                 + "<li><b>Cards</b>: <b>Stack Selected Cards</b>, <b>Unstack</b>, <b>Unstack All</b>, <b>Reset Size</b>, <b>Reset All Card Sizes</b>.</li>"
                 + "<li><b>Device</b>: <b>Start Fresh…</b> (for a damaged module file), <b>Copy Setup to Another Stick…</b>, <b>Swap with Another Stick…</b> and <b>Change vJoy Output…</b> (they open the <b>Device Library</b> on that stick), <b>Export Device…</b> (with a module file) and <b>Import Device…</b> (they open <b>Export / Import Device</b> on that device, see <a href=\"topic:home-devices-device-pack\">Share a device</a>), <b>Reset Card Layout</b> (clears its size and stacking) and <b>Delete Device</b>.</li>"
                 + "</ul>"
@@ -87,7 +87,7 @@ function topics() {
                 + "<li>The Keyboard and OSC cards have no Auto Mapping Tool, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
                 + "<li>The Logical Device card has no Module Setup, Auto Mapping Tool, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
                 + "</ul>"
-                + "<p>To give the Logical Device card a picture, right-click it and choose <b>Add Image…</b> (under <b>Device</b>). Later, use <b>Change Image…</b> or <b>Remove Image</b>. Remove Image doesn't ask; <b>Undo</b> (<b>Ctrl+Z</b>) on Home or <b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> can bring the picture back. Other cards get their picture in Module Setup.</p>",
+                + "<p>To give the Logical Device card a picture, right-click it and choose <b>Add Image…</b> (under <b>Device</b>). Later, use <b>Change Image…</b> or <b>Remove Image</b>. Remove Image doesn't ask; <b>Undo</b> (<b>Ctrl+Z</b>) on Home or <b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> can bring the picture back.</p><p>To give a stick, the Keyboard or OSC a picture of its own, its <b>device image</b>, right-click its card and choose <b>Add Image…</b> (under <b>Device</b>), or use the <b>Device Image</b> box in Module Setup. Later, use <b>Change Image…</b> or <b>Remove Image</b>. The device image shows on the card, in Module Setup and in the Device Library ahead of the picture made from the device map's background; it is not part of the device map. Remove Image doesn't ask; <b>Undo</b> (<b>Ctrl+Z</b>) on Home or <b>Tools › History</b> can bring it back. Output cards (vJoy, Xbox) have no image items.</p>",
             related: ["home-devices-home", "home-devices-delete-device", "home-devices-input-modules", "getting-started-menus"]
         },
         {
@@ -285,12 +285,12 @@ function topics() {
                 + "<li>Choose <b>Add Action</b> on the input's row on the Device Bindings page (or right-click a Logical Device control and choose <b>Add Action</b>).</li>"
                 + "<li>Choose <b>Map to Xbox</b>.</li>"
                 + "</ol>"
-                + "<p>Its page (double-click the card) shows which inputs drive each control. The <b>Xbox Viewer</b> <a href=\"open:tools.xboxViewer\">Open ›</a> shows the live pad.</p>"
+                + "<p>Its <b>Output View</b> <a href=\"open:view.xboxOutput\">Open ›</a> (double-click the card) shows, under the driver check, a live pad for each device that drives it, then which inputs drive each control. The pads are under <b>Live pads</b>: fold it with its heading; it opens unfolded, and the program remembers whether you folded it.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when the profile stops.</li>"
                 + "<li>The pad number comes from the module's name: Xbox 360 Controller is pad 1.</li>"
-                + "<li>The page and the Xbox Viewer check the driver at their top: <b>ViGEmBus driver found</b> with its version, or what is wrong and what to do. <b>Get ViGEmBus</b> opens the Nefarius releases page; <b>Test ViGEmBus</b> opens Windows Game Controllers.</li>"
+                + "<li>The Output View checks the driver at its top: <b>ViGEmBus driver found</b> with its version, or what is wrong and what to do. <b>Get ViGEmBus</b> opens the Nefarius releases page; <b>Test ViGEmBus</b> opens Windows Game Controllers.</li>"
                 + "</ul>",
             related: ["device-bindings-actions-map-to-xbox", "home-devices-vjoy-output", "tools-viewers", "getting-started-xbox-does-nothing"]
         },
@@ -306,10 +306,10 @@ function topics() {
                 + "<li><b>Delete File</b>: it asks \"Delete &lt;file&gt;?\", ending \"You can restore it from Tools › History.\" Choose the red <b>Delete File</b>; <b>Cancel</b>, <b>Enter</b> and <b>Esc</b> keep the file. An autosave is kept (see <a href=\"topic:home-devices-backups\">Deleted devices and backups</a>).</li>"
                 + "</ul>"
                 + "<p>The message line under them says what an import, its Undo or Delete File did: plain when it worked, red when it failed.</p>"
-                + "<p><b>Import Image…</b> puts the picture at the bottom of the device map's background; the device's photo is then a picture of the whole background.</p>"
+                + "<p>For an input device, the <b>Device Image</b> box has <b>Add Image…</b> (<b>Change Image…</b> when it has one) and <b>Remove Image</b>: the picture becomes the device image, shown ahead of the picture made from the device map's background. Nothing changes until you choose <b>Save</b>; <b>Cancel</b> leaves the device as it was. For a vJoy output, <b>Import Image…</b> puts the picture at the bottom of the device map's background.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li>When the stick still opens a file of another name, a note says so; import that file to copy it here.</li>"
-                + "<li><b>Browse for File</b> opens in the folder you last picked a module file from; <b>Import Image…</b> opens in the folder you last picked a picture from.</li></ul>",
+                + "<li><b>Browse for File</b> opens in the folder you last picked a module file from; <b>Add Image…</b> and <b>Import Image…</b> open in the folder you last picked a picture from.</li></ul>",
             related: ["home-devices-import-module-file", "home-devices-damaged-file", "getting-started-saved-where", "home-devices-device-pack"]
         },
         {
@@ -378,7 +378,7 @@ function topics() {
                 + "<ol>"
                 + "<li>In <b>Export / Import Device</b> <a href=\"open:tools.devicePack\">Open ›</a>, open the <b>Import</b> tab and choose <b>Choose File…</b>. A card's right-click <b>Import Device…</b> opens this tab with that device suggested.</li>"
                 + "<li>Choose where it goes: <b>As a new device</b> makes a new device folder from the file (a name already taken gets \"(2)\"); <b>Onto an existing device</b> puts it on the device you pick under <b>Put it on</b>. As a new device is chosen at first when the file's device has no folder here yet.</li>"
-                + "<li>Tick the pieces to bring in; the same ticks show for both. Onto an existing device, Import adds the file's checked controls and never unchecks one you have. Other pieces replace only what they hold, and each ticked mode under <b>Wires</b> replaces the device's wires in that mode. Other modes and devices are left alone.</li>"
+                + "<li>Tick the pieces to bring in; the same ticks show for both. Onto an existing device, Import adds the file's checked controls and never unchecks one you have. Other pieces replace only what they hold, and each ticked mode under <b>Wires</b> replaces the device's wires in that mode. <b>Device image</b> (ticked at first) brings the file's device image; untick it to keep this device's. Other modes and devices are left alone.</li>"
                 + "<li>Choose <b>Import</b>, read the warning, then confirm. The message line says what was imported, with a <b>Restore Import</b> link.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"

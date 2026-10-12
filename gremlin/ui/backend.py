@@ -193,17 +193,6 @@ def _open_folder(folder: str) -> None:
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(folder))
 
 
-def _same_file(a: str | Path | None, b: str | Path | None) -> bool:
-    """The same file, however the paths are written (a Path and a str were
-    never equal, so auto-load reloaded the open profile at every focus)."""
-    if not a or not b:
-        return False
-    try:
-        return Path(a).resolve() == Path(b).resolve()
-    except OSError:
-        return False
-
-
 def _sync_run_highlight_hold(runner: code_runner.CodeRunner) -> None:
     """Run holds input highlighting off while it runs; Stop lets go of only
     its own hold, so Calibration, OSC Add, Listen or Record still hold
@@ -501,7 +490,7 @@ class Backend(QtCore.QObject):
             return
         # The program's own window is no change: clicking into it stopped
         # the Run (GL-130, 02 Q18).
-        if _same_file(path, sys.executable):
+        if util.same_path(path, sys.executable):
             return
         profile_path = config.get_profile_with_regex(path)
         if profile_path and not os.path.isfile(profile_path):
@@ -520,7 +509,7 @@ class Backend(QtCore.QObject):
                 self.activate_gremlin(False)
             return
         if profile_path:
-            if not _same_file(self.profile.fpath, profile_path):
+            if not util.same_path(self.profile.fpath, profile_path):
                 if self.profile.has_unsaved_changes():
                     # The open profile isn't this program's: it stops, as
                     # when the file is missing (GL-150, 04 Q3).
@@ -858,13 +847,11 @@ class Backend(QtCore.QObject):
     def forgetProfile(self, fpath: str) -> None:
         """Takes a profile off the start-up and Recent lists (the file stays
         where it is)."""
-        gone = Path(fpath).resolve()
-        if str(self.config.value("global", "internal", "last-profile") or ""):
-            last = Path(str(self.config.value("global", "internal", "last-profile")))
-            if last.resolve() == gone:
-                self.config.set("global", "internal", "last-profile", "")
+        last = str(self.config.value("global", "internal", "last-profile") or "")
+        if util.same_path(last, fpath):
+            self.config.set("global", "internal", "last-profile", "")
         recent = list(self.config.value("global", "internal", "recent-profiles") or [])
-        kept = [entry for entry in recent if Path(entry).resolve() != gone]
+        kept = [entry for entry in recent if not util.same_path(entry, fpath)]
         if kept != recent:
             self.config.set("global", "internal", "recent-profiles", kept)
             self.recentProfilesChanged.emit()

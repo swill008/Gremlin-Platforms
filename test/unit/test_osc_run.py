@@ -405,8 +405,8 @@ def test_bulk_capture_passes_window_settings_to_each_new_input(
     window = {"mode": "button", "cmd_mode": "data", "source": 0, "trigger": True,
               "delay_ms": 100}
     osc_bulk.start_bulk(model, window)
-    osc_bulk.model_on_learned(model, "/a", (1, "x"))
-    osc_bulk.model_on_learned(model, "/b", ())
+    osc_bulk.on_bulk_learned(model, "/a", (1, "x"))
+    osc_bulk.on_bulk_learned(model, "/b", ())
     assert model.window == window
     assert model.made == [
         dict(window, address="/a", data=["1", "x"]),

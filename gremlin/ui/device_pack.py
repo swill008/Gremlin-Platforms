@@ -397,7 +397,25 @@ def _item(item_id: str, title: str, body: str, checked: bool = True, kind: str =
     }
 
 
-def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
+def _image_item(prefix: str, doc: dict, urls: dict[str, str] | None) -> dict | None:
+    """The "Device image" row (08 S75, 03 S52): the device's own uploaded
+    picture, ticked by default; None when the file names none or the pack
+    doesn't hold it (urls: the pack's pictures; None: not known)."""
+    ref = store.device_image_ref(doc)
+    arc = Path(ref).name if ref else ""
+    if not arc or (urls is not None and arc not in urls):
+        return None
+    row = _item(prefix + "image", "Device image", "Device image", kind="image")
+    row["url"] = (urls or {}).get(arc, "")
+    return row
+
+
+def _module_items(
+    prefix: str,
+    doc: dict,
+    pictures: list[dict],
+    urls: dict[str, str] | None = None,
+) -> list[dict]:
     items: list[dict] = []
     checks = _control_lines(doc)
     if checks:
@@ -414,6 +432,9 @@ def _module_items(prefix: str, doc: dict, pictures: list[dict]) -> list[dict]:
     groups = _groups_lines(doc)
     if groups:
         items.append(_item(prefix + "groups", "Device Bindings layout", _clip(groups)))
+    image = _image_item(prefix, doc, urls)
+    if image is not None:
+        items.append(image)
     logical = _logical_lines(doc)
     if logical:
         items.append(
@@ -464,9 +485,15 @@ def module_text(doc: dict, parts: list[str] | None = None) -> str:
     if wanted & {"photo", "image"}:
         photo = store.device_photo_ref(doc)
         sections.append(("Photo", [Path(photo).name] if photo else []))
+    if store.DEVICE_IMAGE_KEY in wanted:
+        image = store.device_image_ref(doc)
+        sections.append(("Device image", [Path(image).name] if image else []))
     if "ui" in wanted:
         sections.append(("Map view", _map_view_lines(doc) + _print_lines(doc)))
-    shown = {"claim", "calibration", "view", "layout", "nodes", "photo", "image", "ui"}
+    shown = {
+        "claim", "calibration", "view", "layout", "nodes", "photo", "image", "ui",
+        store.DEVICE_IMAGE_KEY,
+    }
     other = [
         f"{key}: {doc[key]}" if isinstance(doc[key], (str, int, float)) else key
         for key in sorted(wanted - shown)
@@ -990,7 +1017,7 @@ def _read_zip(path: Path) -> dict | str:
     doc["pack"] = {
         "exportedName": name,
         "exportedGuid": (
-            device_zip.guid_text(exported_id) if device_zip.guid_like(exported_id) else ""
+            device_zip.braced_guid(exported_id) if device_zip.guid_like(exported_id) else ""
         ),
         "format": 1,
         "program": str(label.get("app") or ""),
@@ -1141,7 +1168,7 @@ def _describe(path: Path) -> dict | str:
         store.shown_photo_ref(doc, lambda r: Path(r).name in urls)
     ).name
     sections = []
-    module_rows, map_rows, setting_rows = _split_sections(doc, pictures, "in.")
+    module_rows, map_rows, setting_rows = _split_sections(doc, pictures, "in.", urls)
     if module_rows:
         sections.append({"id": "input", "title": "Input module", "items": module_rows})
     if map_rows:
@@ -1175,7 +1202,9 @@ def _describe(path: Path) -> dict | str:
             "target": _suggest_pack_name(out_name) or out_name,
             "items": [
                 row
-                for rows in _split_sections(output, out_pictures, "out:" + slug + ".")
+                for rows in _split_sections(
+                    output, out_pictures, "out:" + slug + ".", urls
+                )
                 for row in rows
             ],
         })
@@ -1211,10 +1240,10 @@ def _describe(path: Path) -> dict | str:
 
 
 def _zip_pictures(doc: dict, urls: dict[str, str]) -> list[dict]:
-    """A pack document's picture rows (the pictures in the zip): the
-    bottom background picture is the "Device photo" (07 S127), the others
-    are map pictures the Map row needs (08 S113)."""
-    photo = _photo_node(doc)
+    """A pack document's picture rows (the pictures in the zip): map
+    pictures the Map row needs (08 S113), the bottom background picture
+    too (it goes with the background, 08 S75). The device image has its
+    own row (_image_item)."""
     pictures: list[dict] = []
     map_count = 0
     for node in doc.get("nodes") or []:
@@ -1231,13 +1260,6 @@ def _zip_pictures(doc: dict, urls: dict[str, str]) -> list[dict]:
                     row["onMap"] = True
                     row["item"]["onMap"] = True
             continue
-        if node is photo:
-            pictures.append({
-                "arc": arc,
-                "onMap": False,
-                "item": _picture_item(arc, "Device photo", urls.get(arc, ""), False),
-            })
-            continue
         map_count += 1
         pictures.append({
             "arc": arc,
@@ -1250,13 +1272,16 @@ def _zip_pictures(doc: dict, urls: dict[str, str]) -> list[dict]:
 
 
 def _split_sections(
-    doc: dict, pictures: list[dict], prefix: str
+    doc: dict,
+    pictures: list[dict],
+    prefix: str,
+    urls: dict[str, str] | None = None,
 ) -> tuple[list[dict], list[dict], list[dict]]:
     """The module rows, the Device Mapping Editor rows and the Map settings rows."""
-    placed = _place_pictures(doc, pictures, prefix)
+    placed = _place_pictures(doc, pictures, prefix, urls)
     module_ids = {
         prefix + "checks", prefix + "names", prefix + "calibration",
-        prefix + "view", prefix + "groups",
+        prefix + "view", prefix + "groups", prefix + "image",
     }
     setting_ids = {prefix + "mapview", prefix + "print"}
     return (
@@ -1266,10 +1291,14 @@ def _split_sections(
     )
 
 
-def _place_pictures(doc: dict, pictures: list[dict], prefix: str = "in.") -> list[dict]:
-    items = _module_items(prefix, doc, pictures)
-    photos = [row["item"] for row in pictures if not row.get("onMap")]
-    maps = [row["item"] for row in pictures if row.get("onMap")]
+def _place_pictures(
+    doc: dict,
+    pictures: list[dict],
+    prefix: str = "in.",
+    urls: dict[str, str] | None = None,
+) -> list[dict]:
+    items = _module_items(prefix, doc, pictures, urls)
+    maps = [row["item"] for row in pictures]
     placed: list[dict] = []
     inserted = False
     for item in items:
@@ -1278,10 +1307,8 @@ def _place_pictures(doc: dict, pictures: list[dict], prefix: str = "in.") -> lis
         placed.append(item)
         if item["id"].endswith("layout"):
             placed.extend(maps)
-            placed.extend(photos)
             inserted = True
     if not inserted:
-        placed.extend(photos)
         placed.extend(maps)
     return placed
 
@@ -1481,6 +1508,11 @@ def _merge_module(
     if prefix + "groups" in chosen and isinstance(incoming.get("layout"), dict):
         # The Device Bindings layout (CF-Q1) replaces the target's.
         base["layout"] = store.normalize_layout(incoming["layout"])
+    in_image = store.device_image_ref(incoming)
+    if prefix + "image" in chosen and in_image:
+        # The pack's device image replaces this device's (08 S75);
+        # _write_pictures puts its file in and points the key at it.
+        base[store.DEVICE_IMAGE_KEY] = in_image
     every = [node for node in (base.get("nodes") or []) if isinstance(node, dict)]
     base_bg = [node for node in every if store.is_background(node)]
     nodes = [node for node in every if not store.is_background(node)]
@@ -1489,14 +1521,11 @@ def _merge_module(
         for node in (incoming.get("nodes") or [])
         if isinstance(node, dict)
     ]
-    in_photo = _photo_node({"nodes": copied})
-    photo_arc = Path(str((in_photo or {}).get("src") or "")).name
-    take_photo = bool(photo_arc) and "pic:" + photo_arc in chosen
     in_bg = [node for node in copied if store.is_background(node)]
     if prefix + "layout" in chosen:
         incoming_nodes = [node for node in copied if not store.is_background(node)]
         missing_picture = False
-        for node in incoming_nodes + [n for n in in_bg if n is not in_photo]:
+        for node in incoming_nodes + in_bg:
             if not _is_picture(node):
                 continue
             arc = Path(str(node.get("src") or "")).name
@@ -1529,7 +1558,7 @@ def _merge_module(
             merged_nodes.extend(incoming_nodes)
         nodes = merged_nodes
     nodes = _merge_background(
-        base, base_bg, in_bg, in_photo, take_photo, prefix + "layout" in chosen
+        base, base_bg, in_bg, prefix + "layout" in chosen
     ) + nodes
     if prefix + "names" in chosen and prefix + "layout" in chosen:
         _copy_names_onto_nodes(nodes, claim.get("friendly") or {})
@@ -1568,41 +1597,20 @@ def _merge_background(
     base: dict,
     base_bg: list[dict],
     in_bg: list[dict],
-    in_photo: dict | None,
-    take_photo: bool,
     take_layers: bool,
 ) -> list[dict]:
     """The background of an import (08 S75, S113; 10 S62): with the Map
-    ticked and the pack holding background layers besides its photo, the
-    pack's background as it was; else this device's. The device photo
-    (the bottom background picture) follows its own tick: ticked, the
-    pack's, where and as it was shown; unticked, this device's."""
-    base_photo = _photo_node({"nodes": base_bg})
-    others = [node for node in in_bg if node is not in_photo]
-    if take_layers and others:
-        out = []
-        for node in in_bg:
-            if node is not in_photo or take_photo:
-                out.append(node)
-            elif base_photo is not None:
-                out.append(base_photo)
-        if in_photo is None and base_photo is not None:
-            out.insert(0, base_photo)
-    else:
-        out = list(base_bg)
-        if take_photo and in_photo is not None:
-            if base_photo is not None:
-                out[out.index(base_photo)] = in_photo
-            else:
-                out.insert(0, in_photo)
-    if take_photo:
-        # ONE-TIME (tracker OT-2): a map saved before the planes loses its
-        # old photo keys once the pack's photo is its bottom layer.
-        from gremlin.modules import planes_once
+    ticked and the pack holding a background, the pack's background as it
+    was, its bottom background picture included; else this device's."""
+    if not (take_layers and in_bg):
+        return list(base_bg)
+    # ONE-TIME (tracker OT-2): a map saved before the planes loses its old
+    # photo keys once the pack's background replaces its own.
+    from gremlin.modules import planes_once
 
-        for key in planes_once.OLD_PHOTO_KEYS:
-            base.pop(key, None)
-    return out
+    for key in planes_once.OLD_PHOTO_KEYS:
+        base.pop(key, None)
+    return list(in_bg)
 
 
 def _target_guid(selection: dict | None, target_guid: str = "") -> str:
@@ -1639,10 +1647,13 @@ def _write_pictures(
     chosen: set[str],
     doc: dict,
     record: list[tuple[Path, bytes | None]] | None = None,
+    image: bool = False,
 ) -> dict[str, str]:
     """Writes the ticked pictures the doc names into the device folder
     base's pictures/, keeping each one it overwrites in base/imported/
-    (08 S73), and points the doc's refs at them ("pictures/<file>")."""
+    (08 S73), and points the doc's refs at them ("pictures/<file>").
+    image: the "Device image" row was ticked, so the device image the doc
+    names (the pack's, _merge_module) is written too (08 S75)."""
     written: dict[str, str] = {}
     base = Path(base)
     folder = base / store.PICTURES
@@ -1653,6 +1664,10 @@ def _write_pictures(
             name = Path(str(node.get("src") or "")).name
             if name:
                 used.add(name)
+    image_arc = Path(store.device_image_ref(doc)).name if image else ""
+    if image_arc:
+        wanted.add(image_arc)
+        used.add(image_arc)
     for arc, data in files.items():
         if "/" in arc.replace("\\", "/"):
             continue
@@ -1676,6 +1691,8 @@ def _write_pictures(
         key = Path(str(node.get("src") or "")).name
         if key in written:
             node["src"] = store.picture_ref(written[key])
+    if image_arc in written:
+        doc[store.DEVICE_IMAGE_KEY] = store.picture_ref(written[image_arc])
     _take_device_photo(base, files, doc, record)
     return written
 
@@ -2568,34 +2585,6 @@ def add_to_last_import(
         _last_import.setdefault("dirs", []).append(Path(made_dir))
 
 
-def put_gmap_wires(
-    path: Path,
-    name: str,
-    guid: str,
-    wires: dict,
-    written: list[tuple[Path, bytes | None]] | None = None,
-    made_dir: Path | None = None,
-) -> str:
-    """Puts a .gmap's wires (every mode) into the open profile for
-    device_zip.import_device ("" or why not). written: the files that
-    import wrote into a device folder, which join this import's Undo
-    Import step when the wires went in (D-08-GMAP-IMPORT 3a); made_dir:
-    the folder it made."""
-    modes = [
-        str(mode.get("name") or "Default")
-        for mode in wires.get("modes") or []
-        if isinstance(mode, dict)
-    ]
-    if modes:
-        selection = {"items": ["wire:" + mode for mode in modes], "targetGuid": guid}
-        result = apply_zip(Path(path), name, selection, target_guid=guid)
-        if not result.get("ok"):
-            return str(result.get("error") or "")
-    if written is not None:
-        add_to_last_import(written, made_dir)
-    return ""
-
-
 def _remove_made_dir(folder: Path) -> None:
     """Removes a device folder an undone import made, when only its
     device.json and empty sub-folders are left."""
@@ -2807,7 +2796,7 @@ def _write_module(
 
 _INPUT_KEYS = {
     "in.checks", "in.names", "in.calibration", "in.view", "in.groups",
-    "in.layout", "in.mapview", "in.print", "in.logical", "in.osc",
+    "in.layout", "in.mapview", "in.print", "in.logical", "in.osc", "in.image",
 }
 
 
@@ -3010,7 +2999,10 @@ def apply_zip(
         try:
             base = _device_dir_for(target, guid if target_guid else "")
             dest = store.module_file_in(base)
-            _write_pictures(base, loaded["files"], chosen, merged, files)
+            _write_pictures(
+                base, loaded["files"], chosen, merged, files,
+                image="in.image" in chosen,
+            )
             backup_name = _write_module(dest, merged, files)
         except OSError:
             # The pictures written for it go back too; the import before
@@ -3068,7 +3060,10 @@ def apply_zip(
         try:
             out_base = _device_dir_for(out_name, out_guid)
             dest = store.module_file_in(out_base)
-            _write_pictures(out_base, loaded["files"], chosen, merged, files)
+            _write_pictures(
+                out_base, loaded["files"], chosen, merged, files,
+                image=prefix + "image" in chosen,
+            )
             _write_module(dest, merged, files)
         except OSError:
             # Its pictures written so far go back.
@@ -3165,7 +3160,7 @@ def import_as_new(path: Path, target_name: str, selection: dict | None) -> dict:
     if not _selected(selection):
         return {"ok": False, "error": "Choose at least one piece to import."}
     made = device_zip.import_device(
-        path, name, guid, None, pieces={"module": None, "pictures": [], "modes": []}
+        path, name, guid, pieces={"module": None, "pictures": [], "modes": []}
     )
     if made.get("error"):
         return {"ok": False, "error": str(made["error"])}
@@ -3203,7 +3198,8 @@ def pack_item_ids(path: Path) -> dict | str:
             if arc and arc in loaded["files"] and arc not in arcs:
                 arcs.append(arc)
     pictures = [{"item": _item("pic:" + arc, arc, arc)} for arc in arcs]
-    ids = [str(row["id"]) for row in _module_items("in.", doc, pictures)]
+    held = {name: "" for name in loaded["files"]}
+    ids = [str(row["id"]) for row in _module_items("in.", doc, pictures, held)]
     ids.extend("pic:" + arc for arc in arcs)
     modes = [
         str(mode.get("name") or "Default")

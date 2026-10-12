@@ -233,29 +233,8 @@ def test_feedback_row_address_refuses_patterns(model: SimpleNamespace) -> None:
         assert m.message == osc_pattern.NO_PATTERN
         assert fbm.check_address(address) == osc_pattern.NO_PATTERN
     assert model.store["rows"][0]["address"] == "/m"
-    assert m.addRowFor({"address": "/x/*"}) == ""
     assert len(model.store["rows"]) == 1
     assert m.setRowValue(0, "address", "/fader/1") is True
-
-
-def test_by_id_edits_enable_duplicate_show_under(model: SimpleNamespace) -> None:
-    m = model.m
-    assert m.setRowEnabled("r1", False) is True
-    assert model.store["rows"][0]["enabled"] is False
-    new_id = m.duplicateRow("r1")
-    assert new_id and new_id != "r1"
-    assert [r["id"] for r in model.store["rows"]] == ["r1", new_id]
-    assert m.setRowValueById(new_id, "showUnder", "osc-2") is True
-    assert m.rowById(new_id)["placement"] == "osc-2"
-    assert m.rowById("r1")["placement"] == ""
-    assert m.removeRowById("r1") is True
-    assert [r["id"] for r in model.store["rows"]] == [new_id]
-    added = m.addRowFor(
-        {"source": {"kind": "action_state", "action": "abc"}, "address": "/k"}
-    )
-    assert m.rowById(added)["action"] == "abc"
-    assert m.actionMissing(added) is True
-    assert m.duplicateRow("nope") == ""
 
 
 def test_send_osc_refuses_a_pattern_address(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -252,31 +252,6 @@ def test_import_without_the_module_piece(modules: Path, tmp_path: Path) -> None:
     assert not store.module_file_in(store.device_dir(STICK, GUID)).exists()
 
 
-def test_import_passes_only_the_ticked_modes_to_put_wires(
-    modules: Path, tmp_path: Path
-) -> None:
-    base = _put_device()
-    out = tmp_path / "m.gmap"
-    assert device_zip.export_device(STICK, GUID, out, _wires()) == ""
-    shutil.rmtree(base)
-    store._dirs_changed()
-    seen: list[dict] = []
-
-    def put(path, name, guid, wires, written, made) -> str:  # noqa: ANN001
-        seen.append(wires)
-        return ""
-
-    result = device_zip.import_device(out, put_wires=put, pieces={"modes": ["Default"]})
-    assert result["error"] == ""
-    assert [m["name"] for m in seen[0]["modes"]] == ["Default"]
-    seen.clear()
-    result = device_zip.import_device(
-        out, target_name=STICK, target_guid=OTHER, put_wires=put, pieces={"modes": []}
-    )
-    assert result["error"] == ""
-    assert seen == []
-
-
 def test_chosen_modes_keep_root_actions_and_what_they_reach() -> None:
     # An input names its action by <root-action> (profile.InputItemBinding);
     # that root names its children by <action-id>, and they name theirs.

@@ -89,6 +89,13 @@ def hv(code: str) -> object:
     return value
 
 
+def row_of(entry_id: str) -> int:
+    """The row an entry shows on now (-1: not shown), from the page's model."""
+    model = hv("_model")
+    rows = getattr(model, "_rows", [])
+    return next((r for r, e in enumerate(rows) if e.get("id") == entry_id), -1)
+
+
 def item(name: str) -> QtQuick.QQuickItem | None:
     """By name: Repeater rows aren't object children, so walk the items."""
     pending = [hist.contentItem()]
@@ -132,7 +139,7 @@ out["count-after-restore"] = hv("_list.count")
 # The restore is one hidden entry: no new row; the change restored shows
 # the tag "Restored · HH:MM" (D-TESTLIST-1 item 13).
 out["tag-after-restore"] = hv(
-    f'_model.data(_model.index(_model.rowOf("{first}"), 0), Qt.UserRole + 12)'
+    f'_model.data(_model.index({row_of(first)}, 0), Qt.UserRole + 12)'
 )
 hv("showAll()")
 QtTest.QTest.qWait(200)

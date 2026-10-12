@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import uuid
-import weakref
 from typing import Any
 from xml.etree import ElementTree
 
@@ -136,17 +135,6 @@ def _osc_uid_of(src_type: InputType, src_id: object) -> str | None:
 
 
 
-# The Logical pages open now, for drop_logical_steps.
-_MODELS: weakref.WeakSet = weakref.WeakSet()
-
-
-def drop_logical_steps() -> None:
-    """The Logical Device was read again from its file (Discard, Restore):
-    Undo / Redo steps would play edits that are gone, so they go."""
-    for model in list(_MODELS):
-        model.drop_steps()
-
-
 # Roles the Logical Device page adds to the shared ones.
 EXTRA_DEFAULTS: dict[str, Any] = {
     # ControlTree's live tint and bar (05 S131, D-05-FOLLOW-ALL-PAGES): the
@@ -201,7 +189,6 @@ class LogicalLayoutModel(ControlLayoutModel):
         self._live = LiveInputs()
         self._stamp = 0
         super().__init__(parent)
-        _MODELS.add(self)
         self._axis_timer = QtCore.QTimer(self)
         self._axis_timer.setInterval(33)
         self._axis_timer.setSingleShot(True)
@@ -599,7 +586,6 @@ class LogicalLayoutModel(ControlLayoutModel):
                     "axisScale": float(getattr(action, "axis_scaling", 1.0) or 1.0),
                     "inverted": bool(getattr(action, "button_inverted", False)),
                     "sequenceIndex": -1,
-                    "indent": 1,
                     "canInvert": item.type == InputType.JoystickButton,
                     "childCount": 0,
                     "extraWriters": 0,

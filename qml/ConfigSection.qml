@@ -110,19 +110,4 @@ ScrollView {
 
         Item { implicitHeight: Style.dp(20) }
     }
-
-    // Any setting matches the search (some group shows).
-    function anyMatch() {
-        filterText
-        var stack = [contentItem]
-        while (stack.length) {
-            var item = stack.pop()
-            if (item.firstMatch !== undefined && item.firstMatch >= 0)
-                return true
-            var kids = item.children || []
-            for (var i = 0; i < kids.length; i++)
-                stack.push(kids[i])
-        }
-        return false
-    }
 }

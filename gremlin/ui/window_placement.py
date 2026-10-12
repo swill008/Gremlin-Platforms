@@ -439,9 +439,6 @@ def set_list_appearance(page: str, values: dict) -> None:
 
 @ta.QmlElement
 class WindowPlacement(QtCore.QObject):
-    # A page's list Appearance was saved (by this object); the page key.
-    listAppearanceChanged = QtCore.Signal(str)
-
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         _ensure()
@@ -460,7 +457,6 @@ class WindowPlacement(QtCore.QObject):
         if not isinstance(values, dict):
             return
         set_list_appearance(page, values)
-        self.listAppearanceChanged.emit(page)
 
     @QtCore.Slot(QtCore.QObject)
     def restore(self, window: QtCore.QObject) -> None:

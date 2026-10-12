@@ -83,7 +83,7 @@ def _background(j: Journey, window: object) -> list[str]:
 def _state(j: Journey, window: object) -> dict:
     return {
         "copy": bool(j.ev("_hw.loadRecovery(targetName).length > 0", window)),
-        "edit-kept": bool(j.ev("_hw.editActive(targetName)", window)),
+        "edit-kept": bool(j.ev("_hw.editActiveFor(targetName, '')", window)),
         "background": _background(j, window),
     }
 

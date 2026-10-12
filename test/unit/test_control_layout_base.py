@@ -191,7 +191,7 @@ def test_rows_come_from_the_hooks(model: _Model) -> None:
 def test_groups_order_and_undo(model: _Model) -> None:
     model.addGroup("Deck")
     model.setSelection(["parent:button:2", "group:"])
-    assert model.selectionCount == 1
+    assert model._selected == ["parent:button:2"]
     model.moveSelected("Deck")
     assert [g["name"] for g in model.groups] == ["", "Deck"]
     assert model._layout[(InputType.JoystickButton, 2)].group == "Deck"

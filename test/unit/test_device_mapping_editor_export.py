@@ -88,10 +88,13 @@ def test_nothing_to_write_writes_nothing(tmp_path: pathlib.Path) -> None:
     assert not target.exists()
 
 
-def test_save_area_slot(tmp_path: pathlib.Path) -> None:
+def test_save_area_slot(qtbot: object, tmp_path: pathlib.Path) -> None:
     profile = HardwareProfile()
     url = QtCore.QUrl.fromLocalFile(str(tmp_path / "slot.png")).toString()
-    assert profile.saveArea(_area_picture(), 120, 60, url, "png", "{}")
+    with qtbot.waitSignal(profile.areaSaved, timeout=10000) as blocker:  # type: ignore[attr-defined]
+        assert profile.saveAreaAsync(_area_picture(), 120, 60, url, "png", "{}")
+    assert blocker.args == [True, ""]
+    qtbot.waitUntil(lambda: not profile.exporting, timeout=10000)  # type: ignore[attr-defined]
     assert QtGui.QImage(str(tmp_path / "slot.png")).size() == QtCore.QSize(120, 60)
 
 

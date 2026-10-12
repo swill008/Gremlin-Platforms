@@ -9,7 +9,8 @@ Export puts it in the .gmap and a Device Library saved setup shows it (08
 S113, 10 S11); Import as new / onto existing and Restore Import take or keep
 it with the background tick (08 S75) and it stays current, so nothing is
 made again; a History restore, a Device Library restore, Module Setup's
-Save with Import Image (03 S52) and the Logical Device card's Add Image (03
+Save (03 S52; its Add Image… now names the Device Image and leaves the
+background alone) and the Logical Device card's Add Image (03
 S88) send the module-files notice, the maker's check_all runs and a stale
 picture is made again. The real store, Device Pack, Device Library,
 History and DevicePhotoMaker in an empty modules folder; a fake host draws
@@ -33,7 +34,7 @@ from gremlin import device_initialization, history, library_copy, logical_device
 from gremlin import device_library as library
 from gremlin.logical_device import LogicalDevice
 from gremlin.modules import ids, module_file, store
-from gremlin.ui import device_pack, history_model, module_model
+from gremlin.ui import device_pack, hardware_profile, history_model, module_model
 from test.unit.test_stage1_modules import (  # noqa: F401  # pyright: ignore[reportMissingImports]
     folder,
 )
@@ -437,21 +438,31 @@ def test_module_setup_save_with_import_image_makes_the_picture(
     src = tmp_path / "pick" / "shot.png"
     src.parent.mkdir()
     src.write_bytes(PNG)
-    rel = module_model.import_photo(target, target_guid, src.as_uri())
-    assert rel == "pictures/photo.png"
+    # Old: Import Image set the bottom background picture, so the background
+    # picture was made again. An input module's Add Image… now names the
+    # Device Image (03 S52, D-03-DEVICE-IMAGE): Save still sends the
+    # module-files notice, but the background is not touched.
+    hw = hardware_profile.HardwareProfile()
+    hw.setDeviceGuid(target_guid)
+    hw.beginEditFor(target, "setup")
+    rel = hw.keepImage(target, src.as_uri())
+    assert rel == "pictures/device-image.png"
     setup = module_model.DriverInputModel()
     try:
         setup.loadDevice(target_guid, target)
         setup.setClaimed(0, True)
         checks = host.checks()  # type: ignore[attr-defined]
         assert setup.saveClaim(target, "source", rel)
+        assert hw.commitEditFor(target, "setup") == ""
         _settle()
     finally:
         setup.deleteLater()
     assert host.checks() > checks  # type: ignore[attr-defined]
-    assert store.device_photo_ref(_read(there)) == rel
-    assert host.drew(there)
-    assert store.device_photo_current(there)
+    doc = _read(there)
+    assert doc[store.DEVICE_IMAGE_KEY] == rel
+    assert (there / rel).read_bytes() == PNG
+    assert store.device_photo_ref(doc) == ""
+    assert not host.drew(there)
 
 
 @pytest.fixture

@@ -203,9 +203,6 @@ def test_bulk_skip_and_debounce_are_trace_only(
     from gremlin import osc_bulk
 
     monkeypatch.setattr(
-        osc_bulk, "OscRuntime", lambda: SimpleNamespace(listens_for=lambda o: True)
-    )
-    monkeypatch.setattr(
         osc_bulk,
         "OscDevice",
         lambda: SimpleNamespace(
@@ -213,8 +210,8 @@ def test_bulk_skip_and_debounce_are_trace_only(
         ),
     )
     model = SimpleNamespace(_bulk=True, _bulk_settings={"mode": "button"})
-    osc_bulk.model_on_learned(model, "/known", (1.0,))
-    osc_bulk.model_on_learned(model, "/known", (1.0,))
+    osc_bulk.on_bulk_learned(model, "/known", (1.0,))
+    osc_bulk.on_bulk_learned(model, "/known", (1.0,))
     assert osc_bulk.bulk_skipped(model) == 1
     assert logs.at(logging.INFO) == []
     lines = _osc_lines()
@@ -225,12 +222,17 @@ def test_bulk_skip_and_debounce_are_trace_only(
 def test_listen_owner_drop_is_traced(
     traced: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from gremlin import osc_bulk
+    from gremlin.ui import osc_device_model
 
     monkeypatch.setattr(
-        osc_bulk, "OscRuntime", lambda: SimpleNamespace(listens_for=lambda o: False)
+        osc_device_model,
+        "OscRuntime",
+        lambda: SimpleNamespace(listens_for=lambda o: False),
     )
-    osc_bulk.model_on_learned(SimpleNamespace(_bulk=True), "/x", ())
+    # The model checks it owns the Listen before Bulk capture sees anything.
+    osc_device_model.OscDeviceManagementModel._on_learned(
+        SimpleNamespace(_bulk=True), "/x", ()
+    )
     assert any(
         t.startswith("Listen: /x not taken (another window listens)")
         for t in _osc_lines()

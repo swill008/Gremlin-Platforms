@@ -18,7 +18,11 @@ from PySide6 import QtCore, QtQml
 from gremlin import shared_state
 from gremlin.osc import OscDevice
 from gremlin.types import InputType
-from gremlin.ui.osc_device_model import OscDeviceManagementModel
+from gremlin.ui.osc_device_model import (
+    OscDeviceManagementModel,
+    has_actions,
+    settings_of,
+)
 
 
 @pytest.fixture
@@ -69,8 +73,7 @@ def test_create_configured_input_saves_settings(
     assert got == ("axis", 1, -1.0, 1.0)
     assert row.delay_ms == 300
     assert OscDevice().rows.dirty
-    settings = _qml(model, f'm.inputSettings("{row.uid}")')
-    assert settings["address"] == "/fader/1" and settings["mode"] == "axis"
+    assert settings_of(row)["mode"] == "axis"
 
 
 def test_data_mode_inputs_may_share_an_address(model: OscDeviceManagementModel) -> None:
@@ -112,11 +115,11 @@ def test_change_name_checks_the_address(model: OscDeviceManagementModel) -> None
     model.createMappedInput("Button", "/one")
     model.createMappedInput("Button", "/two")
     uid = next(r.uid for r in _rows() if r.label == "/one")
-    assert _qml(model, f'm.changeName("{uid}", "   ")') != ""
-    assert _qml(model, f'm.changeName("{uid}", "noslash")') != ""
-    dup = _qml(model, f'm.changeName("{uid}", "/two")')
+    assert _qml(model, f'm.updateInputSettings("{uid}", {{address: "   "}})') != ""
+    assert _qml(model, f'm.updateInputSettings("{uid}", {{address: "noslash"}})') != ""
+    dup = _qml(model, f'm.updateInputSettings("{uid}", {{address: "/two"}})')
     assert "already" in dup
-    assert _qml(model, f'm.changeName("{uid}", "/uno")') == ""
+    assert _qml(model, f'm.updateInputSettings("{uid}", {{address: "/uno"}})') == ""
     assert OscDevice().rows.by_uid(uid).label == "/uno"
 
 
@@ -128,19 +131,6 @@ def test_update_settings_by_uid(model: OscDeviceManagementModel) -> None:
     assert err == ""
     row = OscDevice().rows.by_uid(uid)
     assert (row.mode, row.delay_ms) == ("change", 50)
-
-
-def test_add_after_sort_selects_the_added_row(model: OscDeviceManagementModel) -> None:
-    model.createMappedInput("Button", "/zz")
-    model.createMappedInput("Button", "/mm")
-    model.sortInputs()
-    picked: list[str] = []
-    model.inputAdded.connect(picked.append)
-    model.createMappedInput("Button", "/aa")
-    assert OscDevice().rows.by_uid(picked[-1]).label == "/aa"
-    picked.clear()
-    model.importInputs("/bb B")
-    assert OscDevice().rows.by_uid(picked[-1]).label == "/bb"
 
 
 def test_adding_an_existing_input_selects_it(model: OscDeviceManagementModel) -> None:
@@ -188,13 +178,6 @@ def test_osc_row_description_is_the_input_name(
     assert model.data(model.index(by_label["/bare"], 0), role) == ""
 
 
-def test_delete_by_uid(model: OscDeviceManagementModel) -> None:
-    model.createMappedInput("Button", "/k")
-    uid = _rows()[0].uid
-    _qml(model, f'm.deleteInput("{uid}")')
-    assert _rows() == []
-
-
 def test_listen_uses_the_window_settings(model: OscDeviceManagementModel) -> None:
     _qml(model, 'm.setCaptureSettings({mode: "change", cmd_mode: "data", '
                 'delay_ms: 80})')
@@ -220,7 +203,7 @@ def test_type_change_refused_while_the_input_has_actions(
         OSC_DEVICE_UUID, row.input_type, row.input_id, "Other", True
     )
     item.action_sequences.append(object())  # stands in for a real sequence
-    assert _qml(model, f'm.inputSettings("{row.uid}")')["locked"] is True
+    assert has_actions(row) is True
     err = _qml(model, f'm.updateInputSettings("{row.uid}", {{mode: "axis"}})')
     assert err.startswith("Remove this input's actions first")
     assert OscDevice().rows.by_uid(row.uid).input_type == InputType.JoystickButton
@@ -228,5 +211,5 @@ def test_type_change_refused_while_the_input_has_actions(
     assert ok == ""
     item.action_sequences.clear()
     profile.drop_inputs(OSC_DEVICE_UUID, [item])
-    assert _qml(model, f'm.inputSettings("{row.uid}")')["locked"] is False
+    assert has_actions(OscDevice().rows.by_uid(row.uid)) is False
     assert _qml(model, f'm.updateInputSettings("{row.uid}", {{mode: "axis"}})') == ""

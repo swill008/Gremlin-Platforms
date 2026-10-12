@@ -217,11 +217,3 @@ def test_pdf_in_the_background(qtbot: object, tmp_path: pathlib.Path) -> None:
     assert data.startswith(b"%PDF")
     assert b"/MediaBox [0 0 144.000000 72.000000]" in data
     qtbot.waitUntil(lambda: not _export_threads(), timeout=WAIT_MS)  # type: ignore[attr-defined]
-
-
-def test_the_old_save_area_still_saves_at_once(tmp_path: pathlib.Path) -> None:
-    profile = HardwareProfile()
-    target = tmp_path / "sync.png"
-    assert profile.saveArea(_area_picture(), 120, 60, _url(target), "png", "{}")
-    assert target.exists()
-    assert not profile.exporting

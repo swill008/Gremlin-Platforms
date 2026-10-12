@@ -10,7 +10,7 @@ import Gremlin.Style
 
 // The ViGEmBus check, like HidHide's: whether the Xbox driver is installed
 // and running, its version, what to do when it isn't, Get and Test. On the
-// Xbox Viewer and the Xbox output page.
+// Xbox output page (its Output View).
 Rectangle {
     objectName: "xboxDriverRow"
 

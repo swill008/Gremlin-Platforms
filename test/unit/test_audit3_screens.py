@@ -91,7 +91,6 @@ if __name__ != "__main__":
     from gremlin import shared_state
     from gremlin.event_handler import Event
     from gremlin.profile import Profile
-    from gremlin.signal import signal
     from gremlin.types import InputType
     from gremlin.ui.keyboard_layout import KeyboardLayoutModel, key_row
 
@@ -109,48 +108,6 @@ if __name__ != "__main__":
         shared_state.current_profile = Profile()
         yield shared_state.current_profile
         shared_state.current_profile = previous
-
-    def _role(model: QtCore.QAbstractListModel, name: bytes) -> int:
-        return next(r for r, n in model.roles.items() if bytes(n) == name)
-
-    def _rows(model: QtCore.QAbstractListModel, name: bytes) -> list:
-        role = _role(model, name)
-        return [model.data(model.index(r, 0), role) for r in range(model.rowCount())]
-
-    # 17 ------------------------------------------------------------------------
-
-    def test_the_swap_list_follows_a_swap_and_another_profile(
-        xml_dir: pathlib.Path,
-    ) -> None:
-        import uuid
-
-        from gremlin import swap_devices
-        from gremlin.ui.profile import ProfileDeviceListModel
-
-        previous = shared_state.current_profile
-        loaded = Profile()
-        loaded.from_xml(str(xml_dir / "profile_auto_mapping_tool.xml"))
-        shared_state.current_profile = loaded
-        try:
-            model = ProfileDeviceListModel()
-            source = "97b77b40-07d8-11f0-8028-444553540000"
-            target = str(uuid.uuid4())
-            assert _rows(model, b"uuid") == [source]
-            swap_devices.swap_devices(loaded, uuid.UUID(source), uuid.UUID(target))
-            signal.profileChanged.emit()
-            # The bindings moved: both listed, with their new counts (the
-            # list said the old device still had them).
-            uuids = _rows(model, b"uuid")
-            assert uuids == [source, target]
-            labels = _rows(model, b"nameAndActions")
-            assert labels[0].endswith("- 0 actions")
-            assert labels[1].endswith("- 9 actions")
-            # Another profile: its devices, not the old one's.
-            shared_state.current_profile = Profile()
-            signal.profileChanged.emit()
-            assert model.rowCount() == 0
-        finally:
-            shared_state.current_profile = previous
 
     # 20 / 33 -------------------------------------------------------------------
 
@@ -447,7 +404,7 @@ def _device_mapping_editor(out: pathlib.Path) -> None:
     # the program closed: kept photo, new photo, recovery copy.
     crash = (
         "var n = 'Stick A';"
-        " _hw.beginEdit(n);"
+        " _hw.beginEditFor(n, '');"
         f" var rel = _hw.copyImage('{new_url}', n);"
         f" _hw.saveRecovery(n, JSON.stringify({{nodes: [{bg('rel')}, {a1},"
         " {id: 'a2', kind: 'draw', shape: 'rect',"
@@ -473,7 +430,7 @@ def _device_mapping_editor(out: pathlib.Path) -> None:
 
     state_a = (
         "'copyA:' + (_hw.loadRecovery('Stick A').length > 0)"
-        " + ' stashA:' + _hw.editActive('Stick A')"
+        " + ' stashA:' + _hw.editActiveFor('Stick A', '')"
     )
     _js(win, "_editorWin.openForDevice('Stick A', ''); 1")
     _wait(500)

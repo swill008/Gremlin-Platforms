@@ -157,7 +157,6 @@ def test_rows_are_the_claimed_inputs_only(page: tuple[Any, Profile]) -> None:
         "1", "2"
     )
     # Claims belong to Module Setup: rows can't be removed here.
-    assert model.canRemoveRows is False
     model.deleteParents(["parent:button:2"])
     assert "parent:button:2" in _parents(model)
     assert not model.canUndo
@@ -309,9 +308,7 @@ def test_live_roles(page: tuple[Any, Profile]) -> None:
     assert _row(model, "parent:button:1")["kind"] == "button"
     assert _row(model, "parent:button:1")["hwId"] == 1
     assert model.keyForDeviceIndex(3) == "parent:button:2"
-    row = model.rowForDeviceIndex(3)
-    assert model.keyAt(row) == "parent:button:2"
-    assert model.rowForDeviceIndex(5) == -1
+    assert model.keyForDeviceIndex(5) == ""
     names = {bytes(v.data()).decode() for v in model.roleNames().values()}
     wanted = {"liveIndex", "deviceIndex", "kind", "hwId", "note", "destLabel"}
     assert wanted <= names
@@ -343,7 +340,7 @@ engine = QtQml.QQmlEngine()
 component = QtQml.QQmlComponent(engine)
 component.setData(
     b"import QtQml; import Gremlin.Device; HardwareLayoutModel {"
-    b" property string k: paneKey; property string m: paneMode;"
+    b" property string k: paneKey;"
     b" property bool u: canUndo; property var d: destChoices;"
     b" Component.onCompleted: setDevice('x', 'pJoy Pro') }",
     QtCore.QUrl(),

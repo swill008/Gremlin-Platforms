@@ -37,11 +37,11 @@ def test_an_open_edit_is_known_until_cancel(
     hw = HardwareProfile()
     name = "Photo Stick"
     try:
-        assert not hw.editActive(name)
-        hw.beginEdit(name)
-        assert hw.editActive(name)
+        assert not hw.editActiveFor(name, "")
+        hw.beginEditFor(name, "")
+        assert hw.editActiveFor(name, "")
         assert hw.cancelEdit(name)
-        assert not hw.editActive(name)
+        assert not hw.editActiveFor(name, "")
         assert not hw.cancelEdit(name)  # nothing left to cancel
     finally:
         hw.deleteLater()

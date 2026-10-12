@@ -182,10 +182,6 @@ function pathPtsL(L) {
     return pts
 }
 
-function pathPts(n) {
-    return pathPtsL(leaderList(n)[0])
-}
-
 function segIsCurve(L, j) {
     if (!L)
         return true

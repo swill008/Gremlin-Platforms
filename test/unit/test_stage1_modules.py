@@ -557,8 +557,9 @@ def test_import_into_a_renamed_stick_goes_into_the_file_it_uses(
 
 
 def test_module_setup_cancel_puts_the_old_picture_back(tmp_path: Path) -> None:
-    # Q2: Import Image works like the Device Mapping Editor: Module Setup, off-screen in
-    # the running program, imports a picture, then Cancel and Discard; the
+    # Q2: Add Image… (old: Import Image) works like the Device Mapping Editor: Module
+    # Setup, off-screen in the running program, keeps a picture as the Device
+    # Image (03 S52), then Cancel and Discard; the
     # starting photo is back on the module file, on disk and in the window.
     from test.unit.test_stage1_device_mapping_editor import (  # pyright: ignore[reportMissingImports]
         _run,

@@ -115,7 +115,7 @@ def main() -> None:
     bg = s.call(
         "addOverlay",
         "test/icon",
-        h._file_url(h.ROOT / "gfx" / "icon_large.png"),
+        h._file_url(h.ROOT / "test" / "unit" / "fixtures" / "icon_large.png"),
         {"plane": "background", "fitFrame": True, "aspect": 1},
     )
     s.call("setSelection", [bg])

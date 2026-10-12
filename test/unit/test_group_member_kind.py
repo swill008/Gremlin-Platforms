@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
+from gremlin.modules.store import filter_nodes as _filter_nodes
+from gremlin.modules.store import member_kind
 from gremlin.ui import device_pack
-from gremlin.ui.hardware_profile import _filter_nodes, member_kind
 
 # Axis 5, Hat 1 and Axis 4 grouped together: used to read as Buttons 5, 1, 4.
 _MIXED = {

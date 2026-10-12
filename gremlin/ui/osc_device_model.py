@@ -16,6 +16,7 @@ from typing import Any, cast
 
 from PySide6 import QtCore
 
+import gremlin.osc_bulk as osc_bulk
 import gremlin.osc_persist  # noqa: F401  OSC labels on InputIdentifier
 import gremlin.ui.type_aliases as ta
 from gremlin import osc_pattern, shared_state, trace
@@ -623,7 +624,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"label"),
-        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"actionSequenceCount"),
         QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"description"),
         QtCore.Qt.ItemDataRole.UserRole + 7: QtCore.QByteArray(b"uid"),
         QtCore.Qt.ItemDataRole.UserRole + 8: QtCore.QByteArray(b"mode"),
@@ -635,7 +635,8 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
         self._mode: str = "Default"
         self._capture_only = False
         self._capture: dict[str, Any] = {}
-        self._sort_alpha = False
+        # Bulk capture listens (osc_bulk.start_bulk sets it).
+        self._bulk = False
         runtime = OscRuntime()
         runtime.learned.connect(self._on_learned)
         runtime.listenChanged.connect(self.listenChanged)
@@ -652,35 +653,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
 
     def _ordered(self) -> list[OscRow]:
         rows = list(_rows().rows())
-        if self._sort_alpha:
-            return sorted(rows, key=lambda r: (r.label.casefold(), r.input_id))
         return sorted(rows, key=lambda r: (r.input_type.name, r.input_id))
-
-    def _find_row(self, key: str) -> OscRow | None:
-        """A row by uid, else by address when only one row has it."""
-        rows = _rows()
-        row = rows.by_uid(key) if key else None
-        if row is not None:
-            return row
-        hits = [r for r in rows.rows() if r.label.casefold() == (key or "").casefold()]
-        return hits[0] if len(hits) == 1 else None
-
-    def _drop_profile_mappings(self, uid: str) -> None:
-        """Remove the open profile's bindings on the input with this uid."""
-        profile = shared_state.current_profile
-        row = _rows().by_uid(uid)
-        if profile is None or row is None:
-            return
-        items = profile.inputs.get(OSC_DEVICE_UUID, [])
-        profile.drop_inputs(
-            OSC_DEVICE_UUID,
-            [
-                item
-                for item in items
-                if item.input_type == row.input_type
-                and item.input_id == row.input_id
-            ],
-        )
 
     def _changed(self, select_uid: str = "", label: str = "") -> None:
         self.beginResetModel()
@@ -737,11 +710,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
             self._changed(added[-1].uid, label)
         return result
 
-    @QtCore.Slot(result="QVariantList")
-    def encAccelChoices(self) -> list[dict]:
-        """The encoder acceleration presets (S164) for a dropdown."""
-        return [dict(c) for c in ENC_ACCEL_CHOICES]
-
     @QtCore.Slot(str, result="QVariantMap")
     def readImportText(self, path: str) -> dict[str, str]:
         """Import's Choose File… for a .txt file: its text, or why not."""
@@ -784,6 +752,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     @QtCore.Slot()
     @QtCore.Slot("QVariantMap")
     def listenForCommand(self, settings: object = None) -> None:
+        self._bulk = False
         if settings is not None:
             self.setCaptureSettings(settings)
         self._capture_only = True
@@ -793,6 +762,7 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     def cancelListen(self) -> None:
         if not OscRuntime().listens_for(self):
             return  # another window's Listen
+        self._bulk = False
         self._capture_only = False
         OscRuntime().cancel_listen(owner=self)
 
@@ -820,6 +790,9 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
             )
             return
         payload = args if isinstance(args, tuple) else ()
+        if self._bulk:
+            osc_bulk.on_bulk_learned(self, address, payload)
+            return
         if self._capture_only:
             self._capture_only = False
             shown = ", ".join(str(item) for item in payload)
@@ -857,27 +830,9 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
 
     # -- editing --------------------------------------------------------
 
-    @QtCore.Slot(str, result=str)
-    def companionText(self, uid: str) -> str:
-        """Copy for Companion: the connection settings and key actions."""
-        row = _rows().by_uid(uid)
-        return companion_text(row) if row is not None else ""
-
     @QtCore.Slot(str, result=bool)
     def copyText(self, text: str) -> bool:
         return copy_text(text)
-
-    @QtCore.Slot(str, result="QVariantMap")
-    def inputSettings(self, uid: str) -> dict[str, Any]:
-        row = _rows().by_uid(uid)
-        if row is None:
-            return {}
-        return {
-            "uid": row.uid,
-            "address": row.label,
-            "locked": has_actions(row),
-            **settings_of(row),
-        }
 
     @QtCore.Slot(str, "QVariantMap", result=str)
     def updateInputSettings(self, uid: str, settings: object) -> str:
@@ -889,40 +844,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
             return error
         self._changed(label=f"Edit Settings of {before}")
         return ""
-
-    @QtCore.Slot(str, str, result=str)
-    def changeName(self, key: str, new_address: str) -> str:
-        """Change an input's address (key: uid, or an address held by one
-        row); returns "" or the error to show."""
-        row = self._find_row(key)
-        if row is None:
-            return "That input no longer exists."
-        return self.updateInputSettings(row.uid, {"address": new_address})
-
-    @QtCore.Slot()
-    def clearAllInputs(self) -> None:
-        rows = _rows()
-        for row in list(rows.rows()):
-            self._drop_profile_mappings(row.uid)
-            rows.delete(row.uid)
-        self._changed()
-
-    @QtCore.Slot()
-    def sortInputs(self) -> None:
-        self._sort_alpha = True
-        self.beginResetModel()
-        self.endResetModel()
-
-    @QtCore.Slot(str)
-    def deleteInput(self, key: str) -> None:
-        """Delete an input (key: uid, or an address held by one row) and its
-        bindings in the open profile. QML asks first."""
-        row = self._find_row(key)
-        if row is None:
-            return
-        self._drop_profile_mappings(row.uid)
-        _rows().delete(row.uid)
-        self._changed()
 
     # -- model ----------------------------------------------------------
 
@@ -977,8 +898,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
                 return row.uid
             case "mode":
                 return row.mode
-            case "actionSequenceCount":
-                return len(input_item.action_sequences) if input_item else 0
             case "description":
                 return _description_from_item(input_item) if input_item else ""
             case _:

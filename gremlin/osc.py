@@ -24,7 +24,6 @@ from PySide6 import QtCore
 
 from gremlin import axis_shaping, clock, osc_pattern, threads, trace
 from gremlin.common import SingletonDecorator, SingletonMetaclass
-from gremlin.error import GremlinError
 from gremlin.modules import ids
 from gremlin.osc_rows import OscRow, OscRows
 from gremlin.types import InputType
@@ -226,51 +225,10 @@ class OscDevice(metaclass=SingletonMetaclass):
 
     device_guid = OSC_DEVICE_UUID
 
-    class Input:
-        # Old profile reader's row type; kept until profile.py reads the file.
-        def __init__(self, label: str, input_id: int, input_type: InputType) -> None:
-            self.label = label
-            self.id = input_id
-            self.type = input_type
-
     def __init__(self) -> None:
         self.rows = OscRows()
 
-    # Thin forms of the rows' API for older callers.
-
-    def reset(self) -> None:
-        self.rows.reset()
-
-    def create(
-        self,
-        input_type: InputType,
-        label: str | None = None,
-        input_id: int | None = None,
-        **settings: Any,  # noqa: ANN401
-    ) -> OscRow:
-        if input_type not in (InputType.JoystickAxis, InputType.JoystickButton):
-            raise GremlinError(f"OSC inputs must be axis or button, got {input_type}")
-        if label is None:
-            prefix = (
-                "/osc/axis" if input_type == InputType.JoystickAxis else "/osc/button"
-            )
-            number = input_id or 1
-            while self.rows.by_number(input_type, number) is not None:
-                number += 1
-            label = f"{prefix}/{number}"
-        return self.rows.create(input_type, label, input_id=input_id, **settings)
-
-    def labels_of_type(self, type_list: list[InputType] | None = None) -> list[str]:
-        if not type_list:
-            type_list = [InputType.JoystickAxis, InputType.JoystickButton]
-        return [
-            row.label
-            for row in sorted(
-                self.rows.rows(), key=lambda r: (r.input_type.name, r.input_id)
-            )
-            if row.input_type in type_list
-        ]
-
+    # Tools/osc_functional_check.py and tests find an input by its address.
     def find_address(self, address: str) -> OscRow | None:
         key = (address or "").strip().casefold()
         for row in self.rows.rows():

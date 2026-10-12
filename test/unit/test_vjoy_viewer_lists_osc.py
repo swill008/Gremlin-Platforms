@@ -100,7 +100,7 @@ def _cards(
 
         osc = OscDevice()
         if osc.rows.by_number(InputType.JoystickButton, 1) is None:
-            osc.create(InputType.JoystickButton, input_id=1)
+            osc.rows.create(InputType.JoystickButton, "/osc/button/1", input_id=1)
     output.refresh()
     profile = Profile()
     monkeypatch.setattr(shared_state, "current_profile", profile)
