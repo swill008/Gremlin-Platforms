@@ -1192,8 +1192,18 @@ ApplicationWindow {
                         // A device (S8).
                         ColumnLayout {
                             visible: _lib.isDevice
+                            Layout.fillWidth: true
                             spacing: Style.dp(4)
                             Label { text: (_lib.details.stateLabel || "") + " · " + (_lib.details.countText || ""); color: Style.fgSoft }
+                            // A built-in input with nothing saved (S6, item 61).
+                            Label {
+                                objectName: "libraryNothingSaved"
+                                visible: text.length > 0
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                text: _lib.details.emptyText || ""
+                                color: Style.fgMuted
+                            }
                             Label { objectName: "libraryDeviceInputs"; visible: (_lib.details.inputs || "").length > 0; text: "Inputs: " + (_lib.details.inputs || ""); color: Style.fgSoft }
                             Label { objectName: "libraryDeviceSeen"; visible: (_lib.details.lastSeen || "").length > 0; text: "Last seen " + (_lib.details.lastSeen || ""); color: Style.fgSoft }
                         }

@@ -419,10 +419,15 @@ ApplicationWindow {
                 horizontalAlignment: Text.AlignRight
             }
 
+            // Shows the live value only; read-only like other value fields
+            // (03 gap 25, to-do 49).
             JGTextField {
+                objectName: "calibrationRaw" + index
                 Layout.preferredWidth: Style.dp(100)
 
                 text: rawValue
+                readOnly: true
+                selectByMouse: true
             }
 
             JGText {

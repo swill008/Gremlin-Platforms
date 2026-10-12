@@ -79,7 +79,7 @@ def test_remove_after_delete_device_removes_the_device_and_every_setup(
     out = library.remove_device(key)
     assert out["ok"], out
     assert library.device(key) is None
-    assert library.devices() == []
+    assert [r for r in library.devices() if not r["builtIn"]] == []
     assert _zips(lib) == []
 
 

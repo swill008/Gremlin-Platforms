@@ -72,7 +72,7 @@ def write_bytes(path: Path, data: bytes) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     # A name of its own, so two writes of the same file never share one.
-    temporary = path.with_name(f"{path.name}.{uuid.uuid4().hex[:8]}.tmp")
+    temporary = _long(path.with_name(f"{path.name}.{uuid.uuid4().hex[:8]}.tmp"))
     try:
         temporary.write_bytes(data)
         _swap(temporary, path)
@@ -85,6 +85,16 @@ def write_bytes(path: Path, data: bytes) -> None:
         except OSError:
             pass
         raise
+
+
+def _long(path: Path) -> Path:
+    r"""path in Windows' extended-length form (\\?\C:\...) when it nears the
+    260-character limit: the temporary file's suffix can push a file that
+    fits past it (a deep user folder). Other paths are left as they are."""
+    text = os.path.abspath(path)
+    if os.name != "nt" or len(text) < 240 or text.startswith("\\\\"):
+        return path
+    return Path("\\\\?\\" + text)
 
 
 # Waits between swap attempts (seconds): about 0.75 s in all.

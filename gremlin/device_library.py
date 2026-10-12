@@ -1028,6 +1028,7 @@ def _view(doc: dict) -> list[dict]:
             row["state"] = (
                 "deleted" if rec.get("kind") == "deleted" else "not_connected"
             )
+    _add_empty_built_ins(rows, order, row_for)
     seen_map = doc.get("seen")
     seen: dict = seen_map if isinstance(seen_map, dict) else {}
     out = []
@@ -1060,6 +1061,31 @@ def _view(doc: dict) -> list[dict]:
     # The built-in inputs come after every device (S6).
     out.sort(key=lambda r: (r["builtIn"], _collapsed(r["name"])))
     return out
+
+
+def _add_empty_built_ins(
+    rows: dict[str, dict],
+    order: list[str],
+    row_for: Callable[[dict | None, str, str], dict],
+) -> None:
+    """Keyboard, OSC and the Logical Device are always listed under INTERNAL
+    INPUTS, even with no module file and no saved setup (S6, item 61): a row
+    for display only, nothing is written."""
+    from gremlin.modules import device_class
+
+    listed = {
+        device_class.device_kind(rows[k]["guid"], rows[k]["ownName"])
+        for k in order
+        if rows[k]["builtIn"]
+    }
+    for guid, (name, kind) in device_class.INTERNAL_INPUTS.items():
+        if kind in listed or not device_class.can("library_builtin", guid):
+            continue
+        text = "{" + str(guid).upper() + "}"
+        row = row_for(None, name, text)
+        row["name"] = _alias(text, name)
+        row["builtIn"] = True
+        row["state"] = "builtin"
 
 
 def devices() -> list[dict]:
@@ -1518,7 +1544,12 @@ def _keep(
                 or profile_name
                 or device_name
             )
-            dest = _unique_pack(device_name, title)
+            # An autosave's file is "Autosave <time>": the list keeps its
+            # full reason, and the long reason in the file name pushed the
+            # path past Windows' 260-character limit in a deep user folder.
+            dest = _unique_pack(
+                device_name, "Autosave" if origin == "autosave" else title
+            )
             entry = info.get("damaged") or info.get("exact")
             failed = _bg("write device file", _write_pack, dest, data, entry)
             if failed:

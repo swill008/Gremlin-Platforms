@@ -97,14 +97,15 @@ def _write(folder: Path, name: str, guid: str) -> None:
 def test_stick_named_keyboard_is_a_normal_library_device(modules: Path) -> None:
     _write(modules, "Keyboard", KEYBOARD_STICK)
     _write(modules, "Stick A", STICK_GUID)
-    rows = {row["name"]: row for row in library.devices()}
-    assert rows["Keyboard"]["builtIn"] is False
-    assert rows["Keyboard"]["state"] != "builtin"
+    rows = {row["guid"]: row for row in library.devices()}
+    assert rows[KEYBOARD_STICK]["name"] == "Keyboard"
+    assert rows[KEYBOARD_STICK]["builtIn"] is False
+    assert rows[KEYBOARD_STICK]["state"] != "builtin"
     # Copy from it and onto it: never refused as a built-in input; it is
     # refused only because nothing is plugged in here.
     for source, name, guid in (
-        (rows["Keyboard"]["key"], "Stick A", STICK_GUID),
-        (rows["Stick A"]["key"], "Keyboard", KEYBOARD_STICK),
+        (rows[KEYBOARD_STICK]["key"], "Stick A", STICK_GUID),
+        (rows[STICK_GUID]["key"], "Keyboard", KEYBOARD_STICK),
     ):
         answer = library_copy.plan_copy(source, name, guid, ["module"], [], [])
         assert answer["ok"] is False

@@ -37,6 +37,8 @@ Xbox Setup and Xbox pads (2026-10-12, XS-DOCS, D-XBOX-PADS; user: "approved as r
 
 OSC card line (2026-10-12, DOCS-D, D-09-OSC-CARD-LINE; user: "go ahead with OSC", 6a 8a 9a 10a 11a 12a): 09 new S175 (the full name Open Sound Control (OSC) under OSC's page title, as the card title's tooltip, in the glossary), S176 (the Home OSC card's second line: Listening on / From / Server not started / Not listening), S177 (one owner, `osc_card_status.py`); 03 S73 notes the OSC card's exception; gap G-OSC71; 09 counts 182 to 185 S, 89 to 90 gaps.
 
+Batch G (2026-10-12, G-DOCS; user approved batch G): 10 S6 changed and built (D-10-LIB-BUILTINS, to-do 61: the internal inputs always listed, with the empty line and Save greyed); no other statement changed. Gaps: 03 gap 25 (Calibration Raw box read-only, to-do 49) and new gap 50 (renamed stick keeps card size and stack, to-do 23) closed; 05 G13 note (GL-254, to-do 19: viewing a key creates no input, already fixed); new 01 test-harness gap for to-do 128 (stall watch during QML load); 10 LIB-BUILTINS closed; to-do 104 (Swap autosave on long user folders) done with 10 gap LONG-PATH left open (a final path over 260 characters). Counts: 01 gaps 25 to 26, 03 gaps 49 to 50, total 460.
+
 **The behaviour spec is approved (user, 2026-10-06)**: pages 06, 05 and 03
 reviewed answer by answer, the rest approved as recommended. On each page,
 section 8 plus the decisions in section 9 (recorded in section 12) are the
@@ -53,9 +55,9 @@ spec change. See "The plan" in `claude/system-maps.md`.
 
 | Page | Subsystem | S | Q | Gaps | Review |
 |---|---|---|---|---|---|
-| [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads, Help, shared pieces, control tracing, the build (two exes), owner notices (S155) | 158 | 16 | 25 | reviewed 2026-10-06 (all as recommended) |
+| [01-app-shell](01-app-shell.md) | Startup, quit, settings, Options, main window, logging, updates, threads, Help, shared pieces, control tracing, the build (two exes), owner notices (S155) | 158 | 16 | 26 | reviewed 2026-10-06 (all as recommended) |
 | [02-devices-input](02-devices-input.md) | Device scan, events, hooks, keyboard, HidHide, trace taps, Gremlin Input Tester, Reset Devices, DirectInput reader, changed layout | 148 | 19 | 46 | reviewed 2026-10-06 (all as recommended) |
-| [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device, device folders (S128-S134), Import keeps the background (S135), Xbox Output View list (S140), Xbox Setup and Xbox pads (S141-S145) | 157 | 18 | 49 | reviewed 2026-10-06 (all as recommended) |
+| [03-modules](03-modules.md) | Input/output modules, Home, Module Setup, Calibration, Output View, Delete Device, device folders (S128-S134), Import keeps the background (S135), Xbox Output View list (S140), Xbox Setup and Xbox pads (S141-S145) | 157 | 18 | 50 | reviewed 2026-10-06 (all as recommended) |
 | [04-profile-modes](04-profile-modes.md) | Profile load/save, modes, Manage Modes, auto-load, scripts, Swap Devices | 99 | 21 | 24 | reviewed 2026-10-06 (all as recommended) |
 | [05-actions-editors](05-actions-editors.md) | Action plugins, Device Bindings page, Keyboard page, R16 fixes, action editor matrix; 2026-10-10 Device Bindings and Keyboard pages on the shared base (S121-S131, S122a, S125a; batch C, built); to-do 91 shared page parts (S132, PB-G1, built); Appearance panel closes when narrow (S135, built) | 145 | 21 | 65 | reviewed 2026-10-06 (all as recommended) |
 | [06-runtime-outputs](06-runtime-outputs.md) | Run/Stop, macros, mouse, vJoy/Xbox output, Logical Device, loop guard, output trace | 100 | 19 | 39 | reviewed 2026-10-06 (all as recommended) |
@@ -63,7 +65,7 @@ spec change. See "The plan" in `claude/system-maps.md`.
 | [08-history-pack-automap](08-history-pack-automap.md) | History, Export / Import Device (was the Device Pack; D-FIXLIST-B2, S49a, S59a-S59c, built 2026-10-11), Auto Mapping Tool, `.gmap` device files (S111-S114); History window rework and Restore Import (D-TESTLIST-1, S28a, S30a, S39a, S79a, S79b, S84a, built 2026-10-11) | 130 | 21 | 47 | reviewed 2026-10-06 (all as recommended) |
 | [09-osc-sound-misc](09-osc-sound-misc.md) | OSC (picked up 2026-10-09: own module file, per-input settings; Monitor, output and Send OSC, Feedback, encoder, discovery; 2026-10-10 rewrite on the Logical Device page's shared base, S129-S164 in three batches, all built 2026-10-10), sound, speech, tray, theme; shared widgets and foundations | 185 | 20 | 90 | reviewed 2026-10-06 (all as recommended) |
 | [10-device-library](10-device-library.md) | Device Library: every device and its saved setups; Copy, Swap, Change vJoy Output; autosaves | 69 | 1 | S1-S56 (+S20a, S53a) built; S60, S61, S63 and changed S11, S14, S18, S44, S52, S57 built 2026-10-11 (D-03-DEVICE-FOLDERS, D-10-GMAP-SETUPS; gap DEVICE-FOLDERS closed); S62 and the planes part of S11 built 2026-10-11 (D-07-BACKGROUND-PLANES, gap BACKGROUND-PLANES closed); S6a (D-04-LD-FILE) built (000e35d0); S57-S59 built (S58, S59 on 07b8d891); open items: to-dos 47, 50, 51, 52; GMAP-ONLY closed 2026-10-11 (D-FIXLIST-B2: S1, S14, S35, S39, S46, S63, `.gmap` only, built); AUD-DRIVEN, AUD-DEVNAMES fixed 2026-10-11 (07b8d891) | approved 2026-10-08 |
-| **Total** | | **1349** | **175** | **458** (+ page 10) | |
+| **Total** | | **1349** | **175** | **460** (+ page 10) | |
 
 ## Most serious findings (to confirm first)
 

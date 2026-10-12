@@ -155,7 +155,7 @@ def test_nothing_is_read_from_the_old_deleted_devices_folder(lib: dict) -> None:
     old.mkdir(parents=True)
     (old / "Old Stick.2026.zip").write_bytes(b"PK")
     (lib["tmp"] / "deleted devices" / "old_stick 2026.json").write_text("{}")
-    assert library.devices() == []
+    assert [r for r in library.devices() if not r["builtIn"]] == []
 
 
 # --- saving (S12, S18) -------------------------------------------------------------
@@ -413,7 +413,7 @@ def test_delete_removes_a_deleted_device_and_a_single_setup(lib: dict) -> None:
     assert library.delete(one["keys"][0])["ok"]
     assert [s["key"] for s in _row()["setups"]] == two["keys"]
     assert library.delete(_row()["key"])["ok"]
-    assert library.devices() == []
+    assert [r for r in library.devices() if not r["builtIn"]] == []
 
 
 # --- packs from other people (S35, S14) -----------------------------------------------
@@ -459,7 +459,7 @@ def test_someone_elses_pack_becomes_a_not_connected_device(lib: dict) -> None:
 def test_a_pack_goes_under_its_device_when_the_library_has_it(lib: dict) -> None:
     _module(lib["modules"], "Hornet Grip", "{BBBBBBBB-1111-2222-3333-444455556666}")
     library.import_pack(_foreign_pack(lib["tmp"]))
-    assert len(library.devices()) == 1
+    assert len([r for r in library.devices() if not r["builtIn"]]) == 1
     assert _row("Hornet Grip")["module"]
 
 
@@ -467,7 +467,7 @@ def test_a_file_that_isnt_a_pack_is_refused(lib: dict) -> None:
     bad = lib["tmp"] / "notes.gmap"
     bad.write_bytes(b"not a zip")
     assert not library.import_pack(bad)["ok"]
-    assert library.devices() == []
+    assert [r for r in library.devices() if not r["builtIn"]] == []
 
 
 def test_export_writes_the_pack_and_refuses_the_modules_folder(lib: dict) -> None:
@@ -526,7 +526,7 @@ def test_tidy_lists_old_autosaves_and_empty_deleted_devices(
     preview = library.tidy_preview(3)
     assert [row["key"] for row in preview] == [_row()["key"]]
     assert library.tidy([preview[0]["key"]])["removed"] == 1
-    assert library.devices() == []
+    assert [r for r in library.devices() if not r["builtIn"]] == []
 
 
 def test_size_counts_the_library_folder(lib: dict) -> None:

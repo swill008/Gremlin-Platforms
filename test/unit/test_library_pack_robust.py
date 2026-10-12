@@ -144,7 +144,7 @@ def test_a_deeply_nested_library_list_reads_as_damaged(
     path.write_text("[" * 100_000 + "]" * 100_000, encoding="utf-8")
     before = path.read_bytes()
     with caplog.at_level(logging.WARNING, logger="system"):
-        assert library.devices() == []
+        assert [r for r in library.devices() if not r["builtIn"]] == []
     assert "Device Library" in " ".join(r.getMessage() for r in caplog.records)
     assert path.read_bytes() == before
 

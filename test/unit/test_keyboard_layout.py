@@ -390,3 +390,53 @@ def test_discard_drops_an_unsaved_added_key(
         assert _keys(again) == []
     finally:
         again.deleteLater()
+
+
+# -- GL-254 (05 G13, RB18): viewing a key creates nothing --------------------
+
+
+def test_viewing_a_key_with_no_actions_creates_no_input(
+    page: KeyboardLayoutModel, modules: Path, tmp_path: Path
+) -> None:
+    """Selecting a key row with no actions and opening its pane (input or
+    Add Action) leaves the profile alone: no input, not unsaved, and Save
+    writes no empty input for it. OK on an action then creates the input,
+    one Undo step."""
+    _keyboard_file(modules)
+    profile = _profile()
+    _add(page, A)  # A is listed (Default); Combat has no input for it.
+    path = tmp_path / "p.xml"
+    profile.to_xml(path)
+    from gremlin.modules import store
+
+    store.save_pending()
+    profile.mark_clean()
+    page.setMode("Combat")
+    steps = len(page._undo)
+    page.setSelection([key_row(A)])
+    for open_pane in (
+        lambda: page.beginPane(key_row(A), -1),
+        lambda: page.beginNewAction(key_row(A)),
+    ):
+        open_pane()
+        assert page.paneModel is not None
+        assert not page.paneDirty()
+        assert page.commitPane() == -1  # OK on nothing writes nothing
+        page.discardPane()
+        page.endPane()
+        assert [i.mode for i in _items(A)] == ["Default"]
+    assert not profile.has_unsaved_changes()
+    assert len(page._undo) == steps
+    profile.to_xml(path)
+    assert path.read_text(encoding="utf-8").count('mode="Combat"') == 0
+
+    page.beginNewAction(key_row(A))
+    _must(page._pane_shadow).add_item_binding()
+    assert page.commitPane() >= 0
+    page.endPane()
+    combat = [i for i in _items(A) if i.mode == "Combat"]
+    assert len(combat) == 1 and combat[0].action_sequences
+    assert len(page._undo) == steps + 1
+    assert profile.has_unsaved_changes()
+    page.undo()
+    assert not any(i.action_sequences for i in _items(A) if i.mode == "Combat")

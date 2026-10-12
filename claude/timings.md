@@ -969,3 +969,13 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | F-LEAK: OSC trace tick leak + s44 settings leak fixed in tests | fix | 5-10 min | 3 min | 10:33-10:36 |
 | 2026-10-12 | F-SUMMARY: actionSummary role + ControlTree line + Appearance switch on 4 pages, 7 tests | feature | 8-12 min | 5 min | 10:33-10:38 |
 | 2026-10-12 | Quick tests batch F (--changed: 3,460 tests) + lint: all passed | test | ~6 min | 6 min | 10:39-10:45 |
+| 2026-10-12 | G-HIST: History test keeps full smoke output on failure | test | 3-8 min | 2 min | 10:54-10:56 |
+| 2026-10-12 | G-KEY: GL-254 already fixed; guard test added | test | 8-12 min | 2 min | 10:54-10:56 |
+| 2026-10-12 | G-RENAME: renamed stick keeps card size + stack, 2 tests | fix | 3-8 min | 3 min | 10:54-10:57 |
+| 2026-10-12 | G-RAW: Calibration Raw box read-only, 1 test | fix | 3-8 min | 1 min | 10:55-10:56 |
+| 2026-10-12 | G-GUARD: conftest guards the app's configChanged watchdog listener, 1 test | test | 3-8 min | 2 min | 10:54-10:56 |
+| 2026-10-12 | G-LOAD: 128 cause found (stall watch injects into main thread inside QML load), repro without load 4/4 | research | 10-15 min | 8 min | 10:50-10:58 |
+| 2026-10-12 | G-LIB: Library always lists Keyboard/OSC/Logical Device with empty line, Save greyed; 3 tests + 7 updated | feature | 8-12 min | 5 min | 10:55-11:00 |
+| 2026-10-12 | G-SWAP: Swap autosave long path (short autosave file name + extended-length temp file), 2 tests | fix | 5-10 min | 8 min | 10:55-11:03 |
+| 2026-10-12 | G-DOCS: batch G spec (10 S6), decisions, glossary, Help, map lines for 7 agents | docs | 3-8 min | 8 min | 10:55-11:03 |
+| 2026-10-12 | CI on 46820406 (batch F): passed | ci | ~20 min | 23 min | 10:46-11:09 |

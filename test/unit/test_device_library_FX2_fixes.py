@@ -329,7 +329,8 @@ def test_a_twins_pack_lands_under_that_twin(
     monkeypatch.setattr(library, "_set_up", lambda: [])
     # Keyboard and OSC (built-ins) may be loaded by an earlier test.
     monkeypatch.setattr(library, "_modules", lambda: [])
-    rows = library.devices()
+    # Keyboard, OSC and the Logical Device are always listed (10 S6).
+    rows = [r for r in library.devices() if not r["builtIn"]]
     assert [r["guid"] for r in rows] == [LEFT_ID, RIGHT_ID] or len(rows) == 2
     out = library.import_pack(_pack_from(tmp_path, "T.16000M", RIGHT_ID))
     assert out["ok"], out

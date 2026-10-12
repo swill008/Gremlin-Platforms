@@ -115,6 +115,13 @@ def size_text(count: int) -> str:
     return ""
 
 
+# A built-in input with no module file and no saved setup (10 S6, item 61).
+NOTHING_SAVED = (
+    "Nothing saved yet. Set it up on its page, then Save to Device Library…, "
+    "or bring one in with File › Import Device…"
+)
+
+
 def _count_text(count: int) -> str:
     if count == 0:
         return "No saved setups"
@@ -665,9 +672,12 @@ class DeviceLibraryModel(QtCore.QObject):
             else _date_time(str(dev.get("seen") or "")),
             # S22: Copy takes its current settings (module file here, or
             # plugged in now); otherwise one of its saved setups.
-            "hasCurrent": bool(dev.get("module"))
-            or state == "connected"
-            or bool(dev.get("builtIn")),
+            # A built-in input has something to save only once it has a
+            # module file (S6, item 61).
+            "hasCurrent": bool(dev.get("module")) or state == "connected",
+            "emptyText": NOTHING_SAVED
+            if dev.get("builtIn") and not dev.get("module") and not count
+            else "",
             "countText": _count_text(count),
             "count": count,
             "connected": state == "connected",
@@ -742,9 +752,7 @@ class DeviceLibraryModel(QtCore.QObject):
             "connected": state == "connected",
             # Its device's current settings (S12: something to save now).
             "module": dev.get("module", ""),
-            "hasCurrent": bool(dev.get("module"))
-            or state == "connected"
-            or bool(dev.get("builtIn")),
+            "hasCurrent": bool(dev.get("module")) or state == "connected",
             "builtIn": bool(dev.get("builtIn")),
         }
 

@@ -83,7 +83,8 @@ def test_built_ins_listed_last_and_flagged(modules: Path) -> None:
     names = [row["name"] for row in library.devices()]
     # Devices first by name, then the built-ins, though "Keyboard" < "Stick A".
     assert names[:2] == ["Stick A", "Zed Stick"]
-    assert sorted(names[2:]) == ["Keyboard", "OSC"]
+    # The Logical Device is listed with no file too (item 61).
+    assert sorted(names[2:]) == ["Keyboard", "Logical Device", "OSC"]
     for name in ("Keyboard", "OSC"):
         assert rows[name]["builtIn"] is True
         assert rows[name]["state"] == "builtin"

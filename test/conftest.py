@@ -206,6 +206,33 @@ def qapp_cls() -> type[joystick_gremlin.JoystickGremlinApp]:
 
 
 @pytest.fixture(scope="session")
+def qapp(qapp: joystick_gremlin.JoystickGremlinApp) -> Iterator[object]:
+    """The session's app, built once. Its start connects Log When Not
+    Responding to configChanged; a test with a settings file of its own
+    (no program settings registered) has no such option to follow, so the
+    app's listener leaves it alone there instead of failing (item 130)."""
+    import gremlin.config
+    import gremlin.signal
+    import gremlin.watchdog
+
+    def follow_option() -> None:
+        if gremlin.config.Configuration().exists(*gremlin.watchdog.OPTION):
+            gremlin.watchdog.apply()
+
+    changed = gremlin.signal.signal.configChanged
+    try:
+        changed.disconnect(gremlin.watchdog.apply)
+    except (RuntimeError, TypeError):
+        pass
+    changed.connect(follow_option)
+    yield qapp
+    try:
+        changed.disconnect(follow_option)
+    except (RuntimeError, TypeError):
+        pass
+
+
+@pytest.fixture(scope="session")
 def test_root_dir() -> pathlib.Path:
     return pathlib.Path(__file__).parent
 

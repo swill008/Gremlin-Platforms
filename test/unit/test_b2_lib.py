@@ -71,7 +71,7 @@ def test_an_old_zip_device_pack_is_refused_and_the_message_says_gmap(
     out = library.import_pack(_old_pack(lib / "Ann's Hornet stick.zip"))
     assert not out["ok"]
     assert ".gmap" in out["error"] and "(.zip" not in out["error"]
-    assert library.devices() == []
+    assert [r for r in library.devices() if not r["builtIn"]] == []
 
 
 def test_a_device_file_named_zip_is_refused(lib: Path) -> None:
@@ -79,7 +79,7 @@ def test_a_device_file_named_zip_is_refused(lib: Path) -> None:
     renamed = gmap.rename(lib / "Hornet.zip")
     out = library.import_pack(renamed)
     assert not out["ok"] and ".gmap" in out["error"]
-    assert library.devices() == []
+    assert [r for r in library.devices() if not r["builtIn"]] == []
 
 
 def test_an_old_pack_inside_a_gmap_name_is_refused(lib: Path) -> None:
@@ -87,7 +87,7 @@ def test_an_old_pack_inside_a_gmap_name_is_refused(lib: Path) -> None:
     .gmap is not a device file."""
     out = library.import_pack(_old_pack(lib / "old.gmap"))
     assert not out["ok"] and ".gmap" in out["error"]
-    assert library.devices() == []
+    assert [r for r in library.devices() if not r["builtIn"]] == []
 
 
 def test_a_gmap_imports_with_its_made_by_and_note(lib: Path) -> None:

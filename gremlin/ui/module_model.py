@@ -325,16 +325,16 @@ def _merged_order(saved: list[str], showing: list[str]) -> list[str]:
     return out
 
 
-def _renamed_into_order(order: list[str], rows: list, hidden: set[str]) -> list[str]:
-    """The card order with a renamed stick in its old card's place. A card
-    is named after its device; a renamed stick's folder (found by its id,
-    03 S130) still records the name it was saved under, which is its old
-    card's. Without this the old card's place stayed in the order for good
-    and the stick went last. Only the folder holding this stick's id counts."""
+def _renamed_cards(order: list[str], rows: list, hidden: set[str]) -> dict[str, str]:
+    """Each renamed stick's old card key -> its new one. A card is named
+    after its device; a renamed stick's folder (found by its id, 03 S130)
+    still records the name it was saved under, which is its old card's.
+    Only the folder holding this stick's id counts, and only an old card
+    that isn't showing or hidden and a new one the order doesn't hold yet."""
     showing = {row.slug for row in rows}
-    out = list(order)
+    out: dict[str, str] = {}
     for row in rows:
-        if row.direction != "source" or row.tab != "physical" or row.slug in out:
+        if row.direction != "source" or row.tab != "physical" or row.slug in order:
             continue
         if not row.guid:
             continue
@@ -347,12 +347,40 @@ def _renamed_into_order(order: list[str], rows: list, hidden: set[str]) -> list[
             old = store.card_key(saved_as) if saved_as.strip() else ""
         except Exception:
             continue
-        if not old or old == row.slug or old not in out:
+        if not old or old == row.slug or old not in order:
             continue
-        if old in showing or old in hidden:
+        if old in showing or old in hidden or old in out:
             continue
-        out[out.index(old)] = row.slug
+        out[old] = row.slug
     return out
+
+
+def _renamed_into_order(order: list[str], renamed: dict[str, str]) -> list[str]:
+    """The card order with each renamed stick in its old card's place.
+    Without this the old card's place stayed in the order for good and the
+    stick went last."""
+    return [renamed.get(slug, slug) for slug in order]
+
+
+def _carry_renamed_layout(renamed: dict[str, str]) -> None:
+    """A renamed stick keeps its old card's size and stack, as it keeps its
+    place (_renamed_into_order). Written only when something moved."""
+    if not renamed:
+        return
+    sizes = _sizes()
+    moved = {renamed.get(slug, slug): dim for slug, dim in sizes.items()}
+    for old, new in renamed.items():
+        if old in sizes and new in sizes:
+            moved[new] = sizes[new]
+    if moved != sizes:
+        _set_sizes(moved)
+    _ensure_display_options()
+    raw = str(config.Configuration().value(_CFG_SECTION, _CFG_GROUP, _CFG_STACKS) or "")
+    parts = (part.split("+") for part in raw.split("|"))
+    groups = [g for g in ([s.strip() for s in p if s.strip()] for p in parts) if g]
+    carried = [[renamed.get(s, s) for s in g] for g in groups]
+    if carried != groups:
+        _write_status(_CFG_STACKS, "|".join("+".join(g) for g in carried))
 
 
 def _sizes() -> dict[str, tuple[int, int]]:
@@ -2451,7 +2479,8 @@ class ModuleListModel(QtCore.QAbstractListModel):
             self._focus = src.slug
 
         saved_order = _order_slugs()
-        order = _renamed_into_order(saved_order, rows, hidden)
+        renamed = _renamed_cards(saved_order, rows, hidden)
+        order = _renamed_into_order(saved_order, renamed)
         if order:
             rank = {slug: index for index, slug in enumerate(order)}
             rows.sort(key=lambda row: rank.get(row.slug, 1000 + len(rank)))
@@ -2469,6 +2498,7 @@ class ModuleListModel(QtCore.QAbstractListModel):
             _set_kept_stubs(kept - released)
         if visible and merged != saved_order:
             _set_order(merged)
+        _carry_renamed_layout(renamed)
         self.focusChanged.emit()
         self.panesChanged.emit()
         # Pages that ask the list (the Output View header, the

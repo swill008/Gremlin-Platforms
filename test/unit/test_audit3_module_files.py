@@ -424,6 +424,74 @@ def test_a_renamed_stick_keeps_its_cards_place(folder: Path) -> None:
     assert [r.slug for r in model._rows].index("pjoy_pro") == 1
 
 
+def _raw_stacks() -> str:
+    m = module_model
+    m._ensure_display_options()
+    return str(
+        m.config.Configuration().value(m._CFG_SECTION, m._CFG_GROUP, m._CFG_STACKS)
+        or ""
+    )
+
+
+@pytest.fixture
+def layout(folder: Path) -> Iterator[Path]:
+    """Card sizes and stacks put back as they were afterwards."""
+    sizes = module_model._sizes()
+    stacks = _raw_stacks()
+    yield folder
+    module_model._set_sizes(sizes)
+    module_model._write_status(module_model._CFG_STACKS, stacks)
+
+
+def test_a_renamed_stick_keeps_its_cards_size_and_stack(layout: Path) -> None:
+    """Todo item 23: the place came along, the size and stack didn't."""
+    _renamed(layout)
+    model = module_model.ModuleListModel()
+    others = [r.slug for r in model._rows if r.slug != "pjoy_pro"]
+    module_model._set_order([others[0], "old_name"] + others[1:])
+    module_model._set_sizes({"old_name": (400, 300), others[0]: (400, 300)})
+    module_model._write_status(
+        module_model._CFG_STACKS, f"{others[0]}+old_name"
+    )
+    model._reload()
+    # Old: pjoy_pro had no size and dropped out of the stack.
+    assert module_model._sizes().get("pjoy_pro") == (400, 300)
+    assert "old_name" not in module_model._sizes()
+    assert [others[0], "pjoy_pro"] in model._stacks()
+    assert module_model._order_slugs().index("pjoy_pro") == 1
+
+
+def test_a_library_rename_keeps_the_cards_size_stack_and_place(
+    layout: Path,
+) -> None:
+    """The Device Library's rename (device_names.set_alias, 03 S131) moves
+    the folder; the card key is the device's own name, so nothing moves."""
+    from gremlin import device_aliases
+
+    guid = _pjoy_guid()
+    _write(
+        layout,
+        "pJoy Pro",
+        {"device": "pJoy Pro", "direction": "source", "boundGuidLocal": guid,
+         "claim": _CLAIM},
+    )
+    model = module_model.ModuleListModel()
+    others = [r.slug for r in model._rows if r.slug != "pjoy_pro"]
+    module_model._set_order([others[0], "pjoy_pro"] + others[1:])
+    module_model._set_sizes({"pjoy_pro": (400, 300), others[0]: (400, 300)})
+    module_model._write_status(module_model._CFG_STACKS, f"{others[0]}+pjoy_pro")
+    try:
+        assert device_aliases.set_alias(guid, "Main Stick") == ""
+        model._reload()
+        row = next(r for r in model._rows if r.guid == guid)
+        assert row.name == "Main Stick"
+        assert module_model._sizes().get(row.slug) == (400, 300)
+        assert [others[0], row.slug] in model._stacks()
+        assert module_model._order_slugs().index(row.slug) == 1
+    finally:
+        device_aliases.set_alias(guid, "")
+
+
 # --- History: a delete is recorded once it went through -----------------------
 
 
