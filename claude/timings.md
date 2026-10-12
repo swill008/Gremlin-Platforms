@@ -871,3 +871,14 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | Read-only traces (ZOOMTEXT, RCLICK, RCLICK2, DEVIMG-PLAN) | research | 5-10 min | 1-15 min | 22:01-22:45 |
 | 2026-10-11 | Click zone + grid + docs + Mouse trace + input-only (CLICKZONE, GRIDBOX, DOCS2, MOUSETRACE, INPUTONLY) | feature | 3-8 min each | 2-11 min each | 23:01-23:15 |
 | 2026-10-11 | Full runs for the batch (5 runs; 4 with failures) | test | 5-6 min | 7 min each | 22:16-23:42 |
+| 2026-10-12 | CI crash triage (CICRASH): reproduced 4/4 with CI's order, native cause not found | research | 3-8 min fix + ~7 min run | 42 min (not fixed) | 00:04-00:46 |
+| 2026-10-12 | Old-commit reproduction (3515b8cd worktree), 2 runs | test | ~10 min | 10 min | passes 2/2: the crash comes with b4f3ff13 |
+| 2026-10-12 | CI crash split + native stack (CICRASH): split runs x2 crashed, debugger caught a timer event to a deleted object | research | 30 min limit | 30 min (not fixed) | 04:37-05:07 |
+| 2026-10-12 | Parallel split (SPLIT-P/Z/T, 3 worktrees side by side, 2 runs each) + 2 read-only audits | research | ~10 min | 10 min (all three still crashed) | 05:19-05:30 |
+| 2026-10-12 | CICRASH: Qt warning -> GC on History thread -> HardwareProfile cycle; fix + proof 2/2 | fix | 30 min limit | 28 min | 05:07-05:35 |
+| 2026-10-12 | OLDCHECK: 3515b8cd 2 runs side by side | test | ~10 min | 6 min (passed 2/2) | 05:32-05:38 |
+| 2026-10-12 | PROOF3: fix proof, 3 worktrees side by side | test | ~5 min | 6 min (passed 3/3) | 05:39-05:45 |
+| 2026-10-12 | GCGUARD: main-thread GC + test check | fix | 3-8 min | 10 min | 05:39-05:49 |
+| 2026-10-12 | Full run with fix + guard | test | 5-6 min | 7 min (3 stall tests failed) | 05:49-05:56 |
+| 2026-10-12 | STALLREAD (read-only) + stall_watch fix | fix | 3-8 min | 3 min | 05:58-06:01 |
+| 2026-10-12 | Unit rerun (5 groups) + stall proof x3 | test | ~7 min | 9 min + 1 min | 05:57-06:07 |

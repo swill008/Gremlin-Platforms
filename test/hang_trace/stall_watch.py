@@ -301,8 +301,14 @@ class StallWatch:
             if label is None:
                 return None
             frame = sys._current_frames().get(self._main.ident or 0)
-            # The heartbeat's own tick isn't the main thread's work.
-            while frame is not None and frame.f_code.co_filename == __file__:
+            # The heartbeat's own tick isn't the main thread's work, and nor is
+            # the program's main-thread garbage collection tick
+            # (gremlin/gc_guard.py): a test idling in its event loop must
+            # still read as idle while that tick runs now and then.
+            while frame is not None and (
+                frame.f_code.co_filename == __file__
+                or frame.f_code.co_filename.endswith(("gc_guard.py",))
+            ):
                 frame = frame.f_back
             now = time.monotonic()
             sig = _signature(frame)

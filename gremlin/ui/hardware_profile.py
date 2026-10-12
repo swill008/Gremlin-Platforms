@@ -1312,20 +1312,23 @@ class HardwareProfile(QtCore.QObject):
                 return store.picture_ref(found.name)
             return self._stage(name, found, found.name) or store.picture_ref(found.name)
 
-        def walk(value: object) -> None:
+        # A loop, not a recursive closure: a closure that calls itself is a
+        # reference cycle holding self (through fix), so this object would
+        # be freed later by the cycle collector, on whatever thread it runs
+        # (the History thread), with its labels timer still registered on
+        # the main thread: an access violation at the timer's next tick.
+        stack: list[object] = [payload.get("nodes")]
+        while stack:
+            value = stack.pop()
             if isinstance(value, dict):
                 if _is_picture(value):
                     value["src"] = fix(value.get("src"))
                     # Screen-only: the file's URL and its look's copy.
                     value.pop("srcUrl", None)
                     value.pop("lookUrl", None)
-                for inner in value.values():
-                    walk(inner)
+                stack.extend(value.values())
             elif isinstance(value, list):
-                for inner in value:
-                    walk(inner)
-
-        walk(payload.get("nodes"))
+                stack.extend(value)
         return payload
 
     @staticmethod

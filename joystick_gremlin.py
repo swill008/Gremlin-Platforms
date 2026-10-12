@@ -129,6 +129,7 @@ if _startup_failure is None:
         import gremlin.error
         import gremlin.error_report
         import gremlin.event_handler
+        import gremlin.gc_guard
         import gremlin.library_part_id_once
         import gremlin.mode_manager
         import gremlin.modules.store
@@ -988,6 +989,9 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         )
         cmd_args, qt_argv = parser.parse_known_args(argv)
         super().__init__(qt_argv)
+        # Cycles are collected on this (the main) thread only, never on a
+        # worker that frees a main-thread QObject (gremlin/gc_guard.py).
+        gremlin.gc_guard.install(self)
         # Before the first EventListener (Backend, below) starts the hook.
         _no_hooks_offscreen()
 

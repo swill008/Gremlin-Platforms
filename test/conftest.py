@@ -26,6 +26,9 @@ os.environ["GREMLIN_OFFLINE"] = "1"
 # (gremlin/modules/folders_move.run_if_needed) refuses to touch the real
 # Gremlin Platforms folder. Programs tests start inherit it.
 os.environ["GREMLIN_TESTS"] = "1"
+# Qt's messages go to the error stream even with no console (as in the
+# program, gremlin/qt_log.py), where the CROSS-THREAD-TIMER check reads them.
+os.environ.setdefault("QT_FORCE_STDERR_LOGGING", "1")
 os.environ.setdefault(
     "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
 )
@@ -344,6 +347,73 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):  # noqa
     report = _Stalls.reports.get(item.nodeid)
     if report is not None and call.excinfo is not None:
         outcome.get_result().sections.append(("stall report", report))
+    if call.when == "teardown":
+        _fail_on_cross_thread_timer(item, outcome.get_result())
+
+
+# | A QObject with a timer freed on another thread than its own (Python's
+# | cycle collector on a worker, CI run 38205139995): Qt says so, and the
+# | timer's next tick can reach freed memory. The test it happened in fails.
+# | No message handler of our own (a Python one deadlocks while QML compiles
+# | on Qt's loader thread, gremlin/qt_log.py): Qt's messages during setup and
+# | the test are in pytest-qt's capture (its handler, kept from setup below),
+# | the rest on the captured error stream. With capture off (-s), only
+# | pytest-qt's part is seen.
+
+CROSS_THREAD_TIMER = (
+    "Timers cannot be stopped from another thread",
+    "Timers cannot be started from another thread",
+)
+
+
+_QT_CAPTURE = pytest.StashKey[object]()
+
+
+def _fail_on_cross_thread_timer(item: pytest.Item, report: pytest.TestReport) -> None:
+    capture = item.stash.get(_QT_CAPTURE, None)
+    lines = [
+        str(getattr(record, "message", ""))
+        for record in getattr(capture, "records", ())
+    ] + [
+        line
+        for name, text in report.sections
+        if name.startswith("Captured stderr")
+        for line in text.splitlines()
+    ]
+    found = [
+        line.strip()
+        for line in lines
+        if any(message in line for message in CROSS_THREAD_TIMER)
+    ]
+    if not found or report.failed:
+        return
+    report.outcome = "failed"
+    report.longrepr = (
+        f"CROSS-THREAD-TIMER in {item.nodeid}: Qt freed or touched a timer "
+        "from another thread than its own (gremlin/gc_guard.py):\n" + "\n".join(found)
+    )
+
+
+@pytest.fixture(autouse=True)
+def _gc_on_main_thread() -> Iterator[None]:
+    """The cycle collector runs on the main thread, as in the program
+    (gremlin/gc_guard.py, installed with the application): installed for
+    any application a test made, turned off again after a test turned it
+    back on, and one collection step after each test so garbage doesn't
+    pile up between event loops."""
+    import gc
+
+    from PySide6 import QtCore
+
+    from gremlin import gc_guard
+
+    app = QtCore.QCoreApplication.instance()
+    if app is not None:
+        gc_guard.install(app)
+    yield
+    if gc_guard.installed():
+        gc.disable()
+        gc_guard.collect()
 
 
 def _stop_history_writer(deadline: float) -> None:
@@ -553,6 +623,10 @@ def pytest_runtest_setup(item: pytest.Item):  # noqa: ANN201
     except Exception:
         pass
     yield
+    # pytest-qt's Qt message capture; it drops it after the test.
+    capture = getattr(item, "qt_log_capture", None)
+    if capture is not None:
+        item.stash[_QT_CAPTURE] = capture
 
 
 @pytest.hookimpl(hookwrapper=True)
