@@ -3,8 +3,10 @@
 
 """The background plane travels with the map (D-07-BACKGROUND-PLANES).
 
-The device's photo is the bottom background picture (07 S127): a map saved
-in today's layout has no top-level "image". Device Pack export shows it as
+Until the device's background picture (pictures/device-photo.png, 07 S157)
+is made, the device's photo shown is the bottom background picture (07
+S127, the fallback; none of these folders has the file): a map saved in
+today's layout has no top-level "image". Device Pack export shows it as
 the Device photo and in its preview, and carries every background layer and
 its pictures (08 S113); Import's Device photo tick takes the pack's photo
 where it was shown (08 S75) and the Map tick the pack's background layers;

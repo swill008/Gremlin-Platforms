@@ -1369,6 +1369,10 @@ ApplicationWindow {
         id: _inputTesterLink
     }
 
+    // The device's background picture (07 S157): draws it, hidden, when
+    // devicePhotoMaker asks (gremlin/ui/device_photo.py).
+    DevicePhotoHost {}
+
     function openInputTester() {
         var message = _inputTesterLink.launch()
         if (message.length) {

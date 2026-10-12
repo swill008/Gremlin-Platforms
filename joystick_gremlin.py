@@ -1173,6 +1173,20 @@ class JoystickGremlinApp(QtWidgets.QApplication):
             "deviceLibrary", self.device_library
         )
 
+        # The device's background picture (07 S157): drawn by DevicePhotoHost.qml.
+        from gremlin.ui.device_photo import DevicePhotoMaker
+
+        self.device_photo_maker = DevicePhotoMaker(self)
+        self.engine.rootContext().setContextProperty(
+            "devicePhotoMaker", self.device_photo_maker
+        )
+        self.aboutToQuit.connect(self.device_photo_maker.close)
+        # ONE-TIME (tracker OT-5): temporary click trace for the dead
+        # right-click report; remove after the fix (the 3 lines below).
+        from gremlin.ui import click_trace
+
+        self.click_trace = click_trace.install(self, self.engine)
+
 
 def _check_second_copy() -> tuple[QtCore.QLockFile | None, bool]:
     """The instance lock, and False when the user chose not to start.

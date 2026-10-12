@@ -319,6 +319,10 @@ def _look_values(look: object) -> tuple[float, float, float]:
 # How many adjusted photos the cache keeps.
 _LOOK_CACHE = 12
 
+# pictureSize's answers by (path, modification time); cleared when full.
+_PICTURE_SIZES: dict[tuple[str, int], tuple[int, int]] = {}
+_PICTURE_SIZE_CACHE = 256
+
 
 def print_image(printer: QtGui.QPagedPaintDevice, image: QtGui.QImage) -> bool:
     """Draws image as large as fits on the printer's page (inside its
@@ -2428,7 +2432,13 @@ class HardwareProfile(QtCore.QObject):
         base = self._dir(device_name)
         own = base / store.PICTURES
         doc = store.read_path(store.module_file_in(base))
-        found = store.find_picture(base, store.device_photo_ref(doc))
+        # The device's background picture (07 S157); the bottom background
+        # picture while it is being made or missing (07 S127).
+        ref = store.shown_photo_ref(
+            doc, lambda r: store.find_picture(base, r) is not None
+        )
+        found = store.find_picture(base, ref)
+        self._want_device_photo(device_name, base, doc, ref)
         candidates = [found] if found is not None else []
         if own.is_dir():
             candidates += [p for p in sorted(own.glob("photo.*")) if p.is_file()]
@@ -2442,6 +2452,56 @@ class HardwareProfile(QtCore.QObject):
         # No photo: none, never another device's (07 S11; no stock photos
         # ship, 07 Q12).
         return ""
+
+    def _want_device_photo(
+        self, device_name: str, base: Path, doc: dict, shown: str
+    ) -> None:
+        """Asks for the device's background picture to be made again when
+        it is missing or no longer matches the background (07 S157): the
+        safety net for a write that sent no module-files notice."""
+        made = shown == store.picture_ref(store.DEVICE_PHOTO)
+        if made:
+            stale = not store.device_photo_current(base, doc)
+        else:
+            # Outputs and the Logical Device get none (makes_device_photo);
+            # a file left in their folder is removed by the maker.
+            stale = (
+                bool(store.visible_background(doc))
+                and store.makes_device_photo(doc, base)
+            ) or (
+                store.device_photo_path(base).is_file()
+            )
+        if stale:
+            from gremlin.ui import device_photo
+
+            device_photo.want(device_name, self._device_guid)
+
+    @QtCore.Slot(str, result="QVariant")
+    def pictureSize(self, url: str) -> dict:
+        """A picture's own size in pixels, {w, h}, from its file's header;
+        {0, 0} when it can't be read (07 S83: what 100 % scale is set by)."""
+        text = str(url or "").strip()
+        if not text:
+            return {"w": 0, "h": 0}
+        if text.startswith("qrc:"):
+            source = text[len("qrc"):]
+            stamp = 0
+        else:
+            source = str(to_local_path(text))
+            try:
+                stamp = Path(source).stat().st_mtime_ns
+            except (OSError, ValueError):
+                return {"w": 0, "h": 0}
+        key = (source, stamp)
+        size = _PICTURE_SIZES.get(key)
+        if size is None:
+            read = QtGui.QImageReader(source).size()
+            ok = read.isValid() and read.width() > 0 and read.height() > 0
+            size = (read.width(), read.height()) if ok else (0, 0)
+            if len(_PICTURE_SIZES) >= _PICTURE_SIZE_CACHE:
+                _PICTURE_SIZES.clear()
+            _PICTURE_SIZES[key] = size
+        return {"w": size[0], "h": size[1]}
 
     @QtCore.Property(str, notify=pathChanged)
     def path(self) -> str:

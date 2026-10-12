@@ -135,6 +135,8 @@ def test_other_parts_and_the_whole_profile(profile: Profile, tmp_path: Path) -> 
 def test_a_module_save_is_kept_with_its_pictures(store: Path) -> None:
     modules = util.modules_dir()
     ref = put_picture(modules, "Test Stick", "photo.png", b"photo")
+    # The device's background picture (07 S157) is kept with the save too.
+    shown = put_picture(modules, "Test Stick", "device-photo.png", b"made")
     path = ensure_dir(modules, "Test Stick") / "module.json"
     module_file.write_json(path, {"device": "Test Stick", "claim": {"buttons": [1]}})
     module_file.write_json(
@@ -164,8 +166,11 @@ def test_a_module_save_is_kept_with_its_pictures(store: Path) -> None:
     titles = [e["title"] for e in entries]
     assert titles[0] == "Saved Test Stick: Device Map"
     assert entries[0]["area"] == "device-mapping-editor"
-    assert entries[0]["after"]["pictures"][0]["ref"] == "pictures/photo.png"
-    assert history.kept_file(entries[0]["after"]["pictures"][0]["keptFile"])
+    pictures = {p["ref"]: p["keptFile"] for p in entries[0]["after"]["pictures"]}
+    assert set(pictures) == {ref, shown}
+    assert ref == "pictures/photo.png"
+    for ref_kept in (ref, shown):
+        assert history.kept_file(pictures[ref_kept])
     assert titles[1] == "Saved Test Stick: calibration"
     assert entries[1]["area"] == "modules"
 

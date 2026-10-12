@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
@@ -47,12 +48,12 @@ def store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
     _settle()
 
 
-def _two_saves() -> tuple[Path, dict]:
-    path = ensure_dir(util.modules_dir(), "Stable Stick") / "module.json"
-    module_file.write_json(path, {"device": "Stable Stick"})
+def _two_saves(name: str = "Stable Stick") -> tuple[Path, dict]:
+    path = ensure_dir(util.modules_dir(), name) / "module.json"
+    module_file.write_json(path, {"device": name})
     _settle()
     module_file.write_json(
-        path, {"device": "Stable Stick", "calibration": {"1": [0, 1, 2, 3, True]}}
+        path, {"device": name, "calibration": {"1": [0, 1, 2, 3, True]}}
     )
     return path, _settle()[0]
 
@@ -112,7 +113,14 @@ def test_new_changes_wait_until_show(store: Path, qapp: object) -> None:
 
 
 def test_repeated_changes_fold_and_open(store: Path, qapp: object) -> None:
-    _two_saves()
+    # A device of its own, so the first save always creates the file. That
+    # creation is a Device Mapping Editor entry and the calibration save a
+    # Module files entry: different areas, the same file (S28 folds by the
+    # file). With a shared device the file was already there from another
+    # test, both saves were Module files and the split never showed.
+    _two_saves(f"Fold Stick {uuid.uuid4().hex[:8]}")
+    areas = [e["area"] for e in _settle()]
+    assert areas == ["modules", "device-mapping-editor"]
     model = history_model.HistoryModel()
     model.reload()
     # Two saves of the same device's file today: one row of two.

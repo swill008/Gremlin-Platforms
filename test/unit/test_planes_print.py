@@ -9,8 +9,12 @@ picture of 800 x 400 pixels.
 
 - The page colour setting is called "Page"; the tick "Include background"
   is on by default and kept in printSetup.includeBg.
-- 100% scale is the bottom background picture's own pixels: exported at
-  100% it is 800 x 400 pixels, at 50% 400 x 200.
+- 100% scale is the own pixels of the visible background picture with the
+  most detail (07 S83, D-07-BG-COMPOSITE): with the red picture alone,
+  exported at 100% it is 800 x 400 pixels, at 50% 400 x 200; with a green
+  picture of 3.75 times the detail above it ("dense"), the green one is
+  400 x 400 at 100% and the red one 3000 x 1500; an even denser hidden
+  picture is left out.
 - Both planes print at full strength: the screen's background opacity,
   hidden background, faint foreground and Background mode never reach the
   print.
@@ -70,10 +74,10 @@ def _result(tree: proc_tree.Tree, home: pathlib.Path) -> dict:
 def runs(tmp_path_factory: pytest.TempPathFactory) -> dict:
     # Both at once, each in its own process and user folder.
     started = {}
-    for kind in ("plain", "big"):
+    for kind in ("plain", "big", "dense"):
         home = tmp_path_factory.mktemp(f"home-{kind}")
         folder = tmp_path_factory.mktemp(f"out-{kind}")
-        extra = ("big",) if kind == "big" else ()
+        extra = (kind,) if kind != "plain" else ()
         started[kind] = (_start(home, folder, *extra), home)
     return {kind: _result(tree, home) for kind, (tree, home) in started.items()}
 
@@ -104,10 +108,20 @@ def test_snapshot_has_no_photo_keys(run: dict) -> None:
     assert "photo" not in run["snapshot-keys"].lower()
 
 
-def test_100_percent_is_the_bottom_background_pictures_own_pixels(run: dict) -> None:
+def test_100_percent_is_the_most_detailed_background_picture(runs: dict) -> None:
+    # One picture: it is the most detailed, at its own pixels.
+    run = runs["plain"]
     assert _near(run["full-100"]["box"], (800, 400)), run["full-100"]
     assert _near(run["full-50"]["box"], (400, 200)), run["full-50"]
     assert _full_red(run["full-100"])
+    # A denser picture above it sets 100% (07 S83): the red one, 3.75 times
+    # less detailed, comes out 3.75 times its own size; the denser hidden
+    # one (7.5 times) is left out. Slack: the boxes are page fractions of
+    # the editor's page, rounded to whole pixels.
+    dense = runs["dense"]
+    assert _near(dense["full-100"]["box"], (3000, 1500), slack=12), dense
+    assert _near(dense["full-50"]["box"], (1500, 750), slack=8), dense
+    assert _full_red(dense["full-100"]), dense
 
 
 def test_screen_views_never_print(run: dict) -> None:

@@ -1813,11 +1813,13 @@ def photo(setup_key: str) -> str:
             # A device folder zip names its photo by its place in the
             # folder ("pictures/photo.png"), which is its place in the zip.
             doc = json.loads(zf.read(GMAP_MODULE).decode("utf-8"))
-            # The bottom background picture (07 S127).
+            # The saved setup's background picture (07 S157); its bottom
+            # background picture when it has none (07 S127).
             from gremlin.modules import store
 
-            ref = store.device_photo_ref(doc)
-            arc = ref if ref and ref in zf.namelist() else ""
+            names = set(zf.namelist())
+            ref = store.shown_photo_ref(doc, lambda r: r in names)
+            arc = ref if ref and ref in names else ""
             if not arc:
                 return ""
             tag = hashlib.sha1(

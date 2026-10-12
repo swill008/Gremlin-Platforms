@@ -467,7 +467,7 @@ Window {
                         Label {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
-                            text: "Scale (100% = the bottom background picture's own size)"
+                            text: "Scale (100% = the most detailed background picture's own size)"
                             color: Style.fgMuted
                         }
                         SpinBox {

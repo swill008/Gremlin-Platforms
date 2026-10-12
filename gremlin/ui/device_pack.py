@@ -827,8 +827,11 @@ def plan_pack(
         return _NO_FILE
     notes = notes if isinstance(notes, dict) else {}
     wires = _collect_wires(guid, modes, profile)
-    # The preview's picture: the device photo's file (07 S127).
-    photo_ref = store.device_photo_ref(doc)
+    # The preview's picture: the device's background picture (07 S157),
+    # the bottom background picture while it has none (07 S127).
+    photo_ref = store.shown_photo_ref(
+        doc, lambda r: resolve is not None and resolve(r) is not None
+    )
     photo = resolve(photo_ref) if photo_ref and resolve is not None else None
     return {
         "device": name,
@@ -1132,8 +1135,11 @@ def _describe(path: Path) -> dict | str:
         return "This file has no device name."
     _folder, urls = _stage_images(loaded["files"])
     pictures = _zip_pictures(doc, urls)
-    # The preview: the device photo, the bottom background picture (07 S127).
-    photo_arc = Path(store.device_photo_ref(doc)).name
+    # The preview: the device's background picture (07 S157), the bottom
+    # background picture when the file has none (07 S127).
+    photo_arc = Path(
+        store.shown_photo_ref(doc, lambda r: Path(r).name in urls)
+    ).name
     sections = []
     module_rows, map_rows, setting_rows = _split_sections(doc, pictures, "in.")
     if module_rows:
@@ -1215,7 +1221,9 @@ def _zip_pictures(doc: dict, urls: dict[str, str]) -> list[dict]:
         if not _is_picture(node):
             continue
         arc = Path(str(node.get("src") or "")).name
-        if not arc or arc not in urls:
+        # The device's background picture is made, never a map picture
+        # (07 S157): it goes with the background part (_write_pictures).
+        if not arc or arc not in urls or arc == store.DEVICE_PHOTO:
             continue
         if any(row["arc"] == arc for row in pictures):
             for row in pictures:
@@ -1668,7 +1676,36 @@ def _write_pictures(
         key = Path(str(node.get("src") or "")).name
         if key in written:
             node["src"] = store.picture_ref(written[key])
+    _take_device_photo(base, files, doc, record)
     return written
+
+
+def _take_device_photo(
+    base: Path,
+    files: dict[str, bytes],
+    doc: dict,
+    record: list[tuple[Path, bytes | None]] | None,
+) -> None:
+    """Puts the pack's background picture (07 S157) in the device folder
+    when it matches the background the import leaves (08 S75: taking the
+    pack's background takes its picture; keeping this device's keeps
+    this device's). A picture that doesn't match is left out; the maker
+    makes this device's again."""
+    data = files.get(store.DEVICE_PHOTO)
+    if not data or not store.visible_background(doc):
+        return
+    from PySide6 import QtCore, QtGui
+
+    buffer = QtCore.QBuffer()
+    buffer.setData(QtCore.QByteArray(data))
+    key = QtGui.QImageReader(buffer).text(store.DEVICE_PHOTO_KEY)
+    if not key or key != store.background_key(doc, base):
+        return
+    dest = store.device_photo_path(base)
+    if record is not None:
+        record.append((dest, dest.read_bytes() if dest.is_file() else None))
+    store.write_device_photo(base, data)
+    trace("SAVE", WHO, "_take_device_photo", dest, "ok")
 
 
 def _device_limits(guid: str) -> dict[str, set[int]] | None:

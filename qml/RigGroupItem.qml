@@ -34,7 +34,7 @@ Item {
         border.width: ed.fixPx(Style.dp(1))
     }
     Text {
-        renderType: Text.NativeRendering
+        renderType: Text.QtRendering
         visible: { _grp.rev; return ed.captionH(_grp.node) > 0 }
         text: { _grp.rev; return ed.fiveWayCaption(_grp.node) }
         color: { _grp.rev; return ed.ink("#E4E4E7") }

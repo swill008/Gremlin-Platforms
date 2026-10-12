@@ -38,14 +38,15 @@ Item {
 
     Text {
         id: _one
-        renderType: Text.NativeRendering
+        renderType: Text.QtRendering
         anchors.centerIn: parent
         visible: !_label.apart
         color: _label.color
         font.pixelSize: _label.pixelSize
         text: _label.text
-        // One row has nothing to line up with: drawn as a plain text, as
-        // before (an alignment set on it moves native text by a pixel).
+        // One row has nothing to line up with: drawn as a plain text.
+        // Qt rendering, not native: native text is rasterized at the tiny
+        // window-scaled size and goes blocky when the zoom enlarges it.
         horizontalAlignment: {
             _label.rev
             if (_label.rows.length < 2 || !_label.ed)
@@ -74,7 +75,7 @@ Item {
             Text {
                 required property string modelData
                 required property int index
-                renderType: Text.NativeRendering
+                renderType: Text.QtRendering
                 width: _rows.rowW
                 color: _label.color
                 font.pixelSize: _label.pixelSize

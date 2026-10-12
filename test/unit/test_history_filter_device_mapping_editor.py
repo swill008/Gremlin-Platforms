@@ -125,7 +125,9 @@ def model(store: Path) -> history_model.HistoryModel:
 
 
 def _titles(m: history_model.HistoryModel) -> set[str]:
-    return {e["title"] for e in m._rows}
+    # Every entry the list holds, folded ones too: repeated saves of one
+    # file fold into one row that opens to show each (S28), whatever area.
+    return {e["title"] for e in m._shown}
 
 
 def _window_filter(device_id: str, device_name: str = "Twin Stick") -> str:

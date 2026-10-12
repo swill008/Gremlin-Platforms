@@ -33,7 +33,7 @@ function topics() {
             title: "What a card shows",
             body: "<p>Each card sums up its device, top to bottom.</p>"
                 + "<ul>"
-                + "<li>The device photo (left out in <b>Compact view</b>) and the device name.</li>"
+                + "<li>The device photo, a picture of the device's background (left out in <b>Compact view</b>) and the device name.</li>"
                 + "<li>Its status and bus, for example <b>Connected</b>, <b>Virtual</b> or <b>No module</b>. A vJoy device another program holds shows \"In use by another program\".</li>"
                 + "<li>The claimed buttons, axes and hats, in words (\"1 hat\", \"2 hats\").</li>"
                 + "<li>On output cards only, <b>Driven by: [device]</b>: the input devices whose actions send to it, or <b>Driven by: [nothing]</b>. It follows your action edits within a moment. The <b>Output View</b> header shows the same line.</li>"
@@ -306,7 +306,7 @@ function topics() {
                 + "<li><b>Delete File</b>: it asks \"Delete &lt;file&gt;?\", ending \"You can restore it from Tools › History.\" Choose the red <b>Delete File</b>; <b>Cancel</b>, <b>Enter</b> and <b>Esc</b> keep the file. An autosave is kept (see <a href=\"topic:home-devices-backups\">Deleted devices and backups</a>).</li>"
                 + "</ul>"
                 + "<p>The message line under them says what an import, its Undo or Delete File did: plain when it worked, red when it failed.</p>"
-                + "<p><b>Import Image…</b> sets the device picture.</p>"
+                + "<p><b>Import Image…</b> puts the picture at the bottom of the device map's background; the device's photo is then a picture of the whole background.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li>When the stick still opens a file of another name, a note says so; import that file to copy it here.</li>"
                 + "<li><b>Browse for File</b> opens in the folder you last picked a module file from; <b>Import Image…</b> opens in the folder you last picked a picture from.</li></ul>",

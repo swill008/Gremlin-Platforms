@@ -2667,7 +2667,12 @@ ApplicationWindow {
 
     // A hidden copy of the map draws each print, export and preview at its
     // own size; the map on screen is never touched.
-    RigRenderer { id: _renderer }
+    // 100 % comes from the background picture with the most detail; the
+    // pictures' own sizes are read from their files (07 S83).
+    RigRenderer {
+        id: _renderer
+        sizeOf: function(u) { return _hw.pictureSize(u) }
+    }
 
     // A job for the renderer: the map as it is now (the whole page with
     // whole), at pixels (the export's size unless given), on Print &

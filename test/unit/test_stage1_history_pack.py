@@ -367,10 +367,9 @@ def entries(folder: Path, tmp_path: Path) -> dict[str, str]:
 
 
 def _shown(model: history_model.HistoryModel, names: dict[str, str]) -> set[str]:
-    role = QtCore.Qt.ItemDataRole.UserRole + 1
-    ids = [
-        str(model.data(model.index(row, 0), role)) for row in range(model.rowCount())
-    ]
+    # Every entry the list holds, folded ones too: repeated saves of one
+    # file fold into one row that opens to show each (S28), whatever area.
+    ids = [str(e.get("id", "")) for e in model._shown]
     # Only this test's entries (a settings change can add one of its own).
     return {names[entry_id] for entry_id in ids if entry_id in names}
 

@@ -110,8 +110,11 @@ def _thing(entry: dict) -> str:
         return "settings|" + ",".join(keys) if keys else ""
     if kind == "library":
         return "library|" + _norm(entry.get("title"))
+    # A module file is one thing whichever area its save landed in (a
+    # map-only change is "Device Mapping Editor", others "Module files"):
+    # S28 folds by the file, never by the area.
     device = _id(subject.get("deviceId")) or _norm(subject.get("fileName"))
-    return f"{area}|{device}" if device else ""
+    return f"module|{device}" if device else ""
 
 
 def _side(value: object) -> dict | None:
@@ -694,7 +697,10 @@ def _restore_module(entry: dict, side: dict | None) -> tuple[bool, str]:
                 was[dest] = dest.read_bytes() if dest.is_file() else None
             store.put_picture_at(dest, kept)
         except OSError:
-            missing.append(ref)
+            # The device's background picture is made again from the map
+            # after the restore (07 S157), so a missing copy of it is no loss.
+            if store.normal_ref(ref) != store.picture_ref(store.DEVICE_PHOTO):
+                missing.append(ref)
     shown = f"{folder.name}/{path.name}"
     try:
         # History keeps the restore as a new entry.

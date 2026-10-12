@@ -32,6 +32,8 @@ POINTS = {
     "HidHide": (trace.HIDHIDE,),
     "OSC": (trace.OSC,),
     "Out of step": (trace.OUT_OF_STEP,),
+    # ONE-TIME (tracker OT-5): the click trace's lines; remove after the fix.
+    "Mouse": (trace.MOUSE,),
 }
 
 
@@ -280,6 +282,11 @@ class TraceTree(QtCore.QAbstractListModel):
         rows.append(row(
             kind="hidhide", text="HidHide (calls, changes, sticks not hidden)",
             check=2 if trace.hidhide_ticked() else 0,
+        ))
+        # ONE-TIME (tracker OT-5): the click trace's Mouse row; remove after the fix.
+        rows.append(row(
+            kind="mouse", text="Mouse (clicks in the Device Mapping Editor)",
+            check=2 if trace.mouse_ticked() else 0,
         ))
         areas = trace.osc_ticked()
         total = len(trace.OSC_AREAS)
@@ -649,6 +656,12 @@ class TraceView(QtCore.QObject):
     @QtCore.Slot(bool)
     def setHidhide(self, on: bool) -> None:  # noqa: N802 - QML name
         trace.set_hidhide(on)
+        self.reloadTree()
+
+    # ONE-TIME (tracker OT-5): the click trace's Mouse tick; remove after the fix.
+    @QtCore.Slot(bool)
+    def setMouse(self, on: bool) -> None:  # noqa: N802 - QML name
+        trace.set_mouse(on)
         self.reloadTree()
 
     @QtCore.Slot(str, bool)

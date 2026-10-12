@@ -27,7 +27,7 @@ _REMAINING = {
     # Rig*.qml parts were split out of VkbRigEditor.qml with their colours.
     "qml/RigChipItem.qml": 6,
     "qml/RigDrawItem.qml": 8,
-    "qml/RigGrid.qml": 3,
+    "qml/RigGrid.qml": 2,
     "qml/RigGroupItem.qml": 3,
     "qml/RigGuides.qml": 1,
     "qml/RigLeaderLayer.qml": 9,

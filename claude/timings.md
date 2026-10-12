@@ -866,3 +866,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | GOLDEN (10 re-recorded) and PRINT (smoke box) in parallel | fix | 3-8 min each | 5 min / 1 min | 21:44-21:49 |
 | 2026-10-11 | BGPIC-PLAN contract + split + spec draft | research | 5-10 min | 6 min | 21:43-21:49 |
 | 2026-10-11 | Full run 2 (PS-MATCH final) | test | 5-6 min | 9 min (user's app open; part 6 509 s) | 21:49-21:58 (2 failed, pass alone) |
+| 2026-10-11 | BG-COMPOSITE card picture: plan + 8 agents (both waves together) | feature | 3-8 min each | 2-14 min each | 21:43-22:16 |
+| 2026-10-11 | Fix agents after full runs (FIXMAKER, FIXRENDER, FIXTESTS, HISTFLAKE x2, RCTRACE x3, CRASH) | fix | 3-8 min each | 2-15 min each | 22:20-23:34 |
+| 2026-10-11 | Read-only traces (ZOOMTEXT, RCLICK, RCLICK2, DEVIMG-PLAN) | research | 5-10 min | 1-15 min | 22:01-22:45 |
+| 2026-10-11 | Click zone + grid + docs + Mouse trace + input-only (CLICKZONE, GRIDBOX, DOCS2, MOUSETRACE, INPUTONLY) | feature | 3-8 min each | 2-11 min each | 23:01-23:15 |
+| 2026-10-11 | Full runs for the batch (5 runs; 4 with failures) | test | 5-6 min | 7 min each | 22:16-23:42 |

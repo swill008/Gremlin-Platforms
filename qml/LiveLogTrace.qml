@@ -444,6 +444,9 @@ ColumnLayout {
                                         _root.view.setOutOfStep(_row.device, on)
                                     else if (_row.rowKind === "hidhide")
                                         _root.view.setHidhide(on)
+                                    // ONE-TIME (tracker OT-5): the click trace's Mouse row; remove after the fix.
+                                    else if (_row.rowKind === "mouse")
+                                        _root.view.setMouse(on)
                                     else if (_row.rowKind === "osc")
                                         _root.view.setOscAll(on)
                                     else if (_row.rowKind === "osc-area")

@@ -7,17 +7,30 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// The snap grid behind the Device Mapping Editor.
+// The snap grid behind the Device Mapping Editor. It covers the map's box
+// (the editor) scaled 1.2x about its centre, not only the page, with a
+// border on its edge. Visual only: it takes no input, and showChrome hides
+// it in prints and exports.
 Canvas {
     id: _grid
     property var ed: null
-    anchors.fill: parent
+    // How far the grid reaches past the editor on each side.
+    readonly property real overX: parent ? parent.width * 0.1 : 0
+    readonly property real overY: parent ? parent.height * 0.1 : 0
+    readonly property color borderColour: Style.lineStrong
+    objectName: "rigGrid"
+    x: -overX
+    y: -overY
+    width: parent ? parent.width + overX * 2 : 0
+    height: parent ? parent.height + overY * 2 : 0
     z: 1
     visible: ed.showChrome && ed.gridOn
+    onWidthChanged: requestPaint()
+    onHeightChanged: requestPaint()
+    onBorderColourChanged: requestPaint()
     onPaint: {
         var ctx = getContext("2d")
         ctx.reset()
-        var s = ed.spaceRect()
         var pageW = ed.worldPageW
         var pageH = ed.worldPageH
         var step = Math.max(1, ed.gridSize)
@@ -26,46 +39,37 @@ Canvas {
         if (pageH / step > 80)
             step = Math.max(step, Math.ceil(pageH / 80))
         var major = step * 4
-        ctx.save()
-        ctx.beginPath()
-        ctx.rect(s.x, s.y, s.w, s.h)
-        ctx.clip()
+        // World range covered by this canvas, on whole steps from the page's
+        // origin so the lines carry on past the page.
+        var x0 = Math.floor(ed.xToWorld(-overX) / step) * step
+        var x1 = ed.xToWorld(width - overX)
+        var y0 = Math.floor(ed.yToWorld(-overY) / step) * step
+        var y1 = ed.yToWorld(height - overY)
         ctx.lineWidth = 1
-        ctx.strokeStyle = "#14FFFFFF"
-        ctx.beginPath()
         var w
         var px
         var py
-        for (w = 0; w <= pageW; w += step) {
-            if (Math.round(w) % major === 0)
-                continue
-            px = ed.worldToX(w) + 0.5
-            ctx.moveTo(px, s.y)
-            ctx.lineTo(px, s.y + s.h)
+        for (var pass = 0; pass < 2; pass++) {
+            var wantMajor = pass === 1
+            ctx.strokeStyle = wantMajor ? "#28FFFFFF" : "#14FFFFFF"
+            ctx.beginPath()
+            for (w = x0; w <= x1; w += step) {
+                if ((Math.round(w) % major === 0) !== wantMajor)
+                    continue
+                px = ed.worldToX(w) + overX + 0.5
+                ctx.moveTo(px, 0)
+                ctx.lineTo(px, height)
+            }
+            for (w = y0; w <= y1; w += step) {
+                if ((Math.round(w) % major === 0) !== wantMajor)
+                    continue
+                py = ed.worldToY(w) + overY + 0.5
+                ctx.moveTo(0, py)
+                ctx.lineTo(width, py)
+            }
+            ctx.stroke()
         }
-        for (w = 0; w <= pageH; w += step) {
-            if (Math.round(w) % major === 0)
-                continue
-            py = ed.worldToY(w) + 0.5
-            ctx.moveTo(s.x, py)
-            ctx.lineTo(s.x + s.w, py)
-        }
-        ctx.stroke()
-        ctx.strokeStyle = "#28FFFFFF"
-        ctx.beginPath()
-        for (w = 0; w <= pageW; w += major) {
-            px = ed.worldToX(w) + 0.5
-            ctx.moveTo(px, s.y)
-            ctx.lineTo(px, s.y + s.h)
-        }
-        for (w = 0; w <= pageH; w += major) {
-            py = ed.worldToY(w) + 0.5
-            ctx.moveTo(s.x, py)
-            ctx.lineTo(s.x + s.w, py)
-        }
-        ctx.stroke()
-        ctx.strokeStyle = "#40A1A1AA"
-        ctx.strokeRect(s.x + 0.5, s.y + 0.5, s.w - 1, s.h - 1)
-        ctx.restore()
+        ctx.strokeStyle = borderColour
+        ctx.strokeRect(0.5, 0.5, width - 1, height - 1)
     }
 }

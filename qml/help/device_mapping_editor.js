@@ -136,7 +136,9 @@ function topics() {
             + "<li>Scroll to zoom (50% to 600%); the <b>Zoom speed</b> setting in Device Map Options sets how fast. Drag with the middle button to pan.</li>"
             + "<li><b>View › Reset View</b> or <b>Ctrl+0</b> returns to 100%. <b>View › Zoom to Fit Page</b> (<b>Ctrl+1</b>) shows the whole page; <b>View › Zoom to Selection</b> (<b>Ctrl+2</b>) fills the view with what is selected.</li>"
             + "<li><b>View › Zoom In</b> (<b>Ctrl+=</b>) and <b>View › Zoom Out</b> (<b>Ctrl+-</b>) zoom a step at a time.</li>"
-            + "<li><b>View › Grid</b> has <b>Show Grid</b> (<b>Ctrl+'</b>) and the grid <b>Size</b>. <b>View › Snap to Grid</b> (<b>Ctrl+Shift+'</b>) and <b>View › Snap to Entities</b> (<b>Ctrl+Shift+;</b>: edges and middles of other items, with guide lines) turn snapping on or off. Hold <b>Alt</b> while dragging to skip snapping.</li>"
+            + "<li><b>View › Grid</b> has <b>Show Grid</b> (<b>Ctrl+'</b>) and the grid <b>Size</b>. <b>View › Snap to Grid</b> (<b>Ctrl+Shift+'</b>) and <b>View › Snap to Entities</b> (<b>Ctrl+Shift+;</b>: edges and middles of other items, with guide lines) turn snapping on or off. Hold <b>Ctrl</b> while dragging to skip snapping.</li>"
+            + "<li>The grid covers the map's box and a little more round it, with a border line at its edge; zoomed all the way out it fills the view, leaving a narrow strip at each side. It is only a guide on screen: it is never printed or exported.</li>"
+            + "<li>Clicking, right-clicking, selecting, dragging and box selection work anywhere in the view, at any zoom or pan, also outside the grid's border.</li>"
             + "<li><b>View › Chips</b> (<b>F6</b>) and <b>View › Layers</b> (<b>F7</b>) bring out or fold the two side panels; <b>View › Properties</b> (<b>F4</b>) shows or hides Properties under Layers.</li>"
             + "</ul>"
             + "<h4>Good to know</h4>"
@@ -161,7 +163,7 @@ function topics() {
         t("device-mapping-editor-background", "The map", "Background and foreground",
             "<p>A device map has two planes: the <b>Background</b>, the artwork behind everything, and the <b>Foreground</b> in front of it.</p>"
             + "<ul>"
-            + "<li>The background holds pictures, shapes, lines and text, in any number of layers. Its bottom picture is the device's photo. Chips, groups, hotspots, leaders and tables stay in the foreground.</li>"
+            + "<li>The background holds pictures, shapes, lines and text, in any number of layers. When you save, a picture of the whole background (every visible layer, as it looks) becomes the device's photo on Home, in Module Setup, in the HidHide window and in the Device Library. Chips, groups, hotspots, leaders and tables stay in the foreground.</li>"
             + "<li>To edit the background, choose <b>Edit › Background › Edit Background</b>, right-click an empty part of the map and choose <b>Edit Background</b>, press <b>Ctrl+B</b>, or double-click the <b>Background</b> row at the bottom of Layers <a href=\"show:devicemappingeditor/dmeBgRow\">Show me ›</a>. While you edit the background, a banner reads \"Editing the background\" <a href=\"show:devicemappingeditor/dmeBgBanner\">Show me ›</a>; <b>Done</b>, <b>Exit Background Editing</b> on the same right-click menu, <b>Esc</b> or <b>Ctrl+B</b> go back to the foreground.</li>"
             + "<li>While you edit the background, the foreground shows faintly and can't be clicked. Clear <b>Show foreground faintly</b> on the banner to hide it. While you edit the foreground, the background shows but can't be clicked.</li>"
             + "<li><b>Edit › Background › Add Picture to Background…</b> (<b>Ctrl+I</b>) puts a picture on top of the background, fitted to the photo frame. <b>Background › Clear Background</b> removes every background layer.</li>"
@@ -330,7 +332,7 @@ function topics() {
 
         // ---- Drawing -------------------------------------------------------
         t("device-mapping-editor-context-menu", "Drawing", "Right-click menu",
-            "<p>While editing, the right-click menu shows only what applies to what you right-clicked: a chip, a group, a leader, a shape, a line, a picture, a text box, a table, several selected items, or empty canvas.</p>"
+            "<p>While editing, the right-click menu shows only what applies to what you right-clicked: a chip, a group, a leader, a shape, a line, a picture, a text box, a table, several selected items, or empty canvas. Empty canvas is anywhere in the view with nothing under the pointer, at any zoom or pan, also outside the grid's border.</p>"
             + "<ul>"
             + "<li>It opens small: the item's name with <b>Undo</b> and <b>Redo</b>, a few actions, then sections such as Chip style or Arrowheads.</li>"
             + "<li>Select a section to open it; one is open at a time, and the menu reopens on the section you used last for that kind of item.</li>"
@@ -587,7 +589,7 @@ function topics() {
             + "<li>Press <b>Print…</b>, <b>Export PDF…</b>, <b>Export PNG…</b> or <b>Export JPG…</b>.</li>"
             + "</ol>"
             + "<ul>"
-            + "<li><b>Scale</b>: the size in pixels of every export and print. 100% is the bottom background picture's own size, pixel for pixel (without one, the page 1920 pixels wide). The window shows the pixels, and on a paper how many dots an inch they print at: the print area fills the paper inside its margins.</li>"
+            + "<li><b>Scale</b>: the size in pixels of every export and print. 100% shows the most detailed background picture at its own size, pixel for pixel (without a background picture, the page 1920 pixels wide). The window shows the pixels, and on a paper how many dots an inch they print at: the print area fills the paper inside its margins.</li>"
             + "<li><b>Freeform (As Drawn)</b> sets no paper: the print area keeps whatever shape you draw (Paper, Orientation and Margins grey out), and a PDF gets a page of that shape, at 96 pixels an inch.</li>"
             + "<li><b>Page</b>: <b>Dark</b>, as on screen, or <b>Light</b>, a white page where every color has its lightness turned over, so dark chips come out light with dark text and a dark red becomes a light red, while pictures stay as they are. The screen does not change.</li>"
             + "<li><b>Include background</b> (on at first) prints the background under the foreground; clear it to leave the background out.</li>"

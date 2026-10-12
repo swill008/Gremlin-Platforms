@@ -14,7 +14,25 @@ MouseArea {
     property var menuTarget: null
     property var menu: null
     property var spineHoldTimer: null
-    anchors.fill: parent
+    // The area reaches past the editor by ext on every side, so a click
+    // anywhere in the view hits it at every zoom and pan, also beside and
+    // below the page (07 S136); the view's clip keeps it to the view. ext
+    // covers the view at the lowest zoom with room for a pan past the
+    // clamp. Handlers get editor coordinates from _e(); edMouseX/Y are the
+    // pointer in editor coordinates.
+    readonly property real ext: Math.ceil(Math.max(parent ? parent.width : 0, parent ? parent.height : 0)
+                                          * 2 / Math.max(0.1, (ed && ed.face && ed.face.zoomMin) ? ed.face.zoomMin : 0.5))
+    x: -ext
+    y: -ext
+    width: (parent ? parent.width : 0) + 2 * ext
+    height: (parent ? parent.height : 0) + 2 * ext
+    readonly property real edMouseX: mouseX - ext
+    readonly property real edMouseY: mouseY - ext
+    // A mouse event in editor coordinates.
+    function _e(r) {
+        return { x: r.x - ext, y: r.y - ext, button: r.button, buttons: r.buttons,
+                 modifiers: r.modifiers, wasHeld: r.wasHeld }
+    }
     z: 8
     enabled: ed.interactive
     hoverEnabled: true
@@ -125,15 +143,24 @@ MouseArea {
     function inDeadZone(m) {
         if (!moveArmed || !isMoveDrag(ed.dragKind))
             return false
-        var sp = mapToItem(null, m.x, m.y)
+        var sp = ed.mapToItem(null, m.x, m.y)
         if (Math.hypot(sp.x - pressSceneX, sp.y - pressSceneY) <= moveDeadZone)
             return true
         moveArmed = false
         return false
     }
 
-    onPressed: (m) => {
-        var ps = mapToItem(null, m.x, m.y)
+    function _ctRight(branch, m, hit) {  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+        if (typeof clickTrace === "undefined" || !clickTrace || !clickTrace.on) return  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+        clickTrace.line("RigPointerArea right press x=" + Math.round(m.x) + " y=" + Math.round(m.y)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+            + " drawTool=" + ed.drawTool + " dragKind=" + ed.dragKind + " gestureActive=" + ed.gestureActive  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+            + " menuOpened=" + (menu ? menu.opened : "?") + " menuPinned=" + (menu ? menu.pinned : "?")  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+            + " hitKind=" + (hit ? hit.kind : "-") + " hitId=" + (hit ? hit.id : "-") + " branch=" + branch)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+    }  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+
+    onPressed: (r) => {
+        var m = _e(r)
+        var ps = ed.mapToItem(null, m.x, m.y)
         pressSceneX = ps.x
         pressSceneY = ps.y
         moveArmed = true
@@ -175,8 +202,10 @@ MouseArea {
             return
         }
         if (ed.interactive && ed.drawTool === "path") {
-            if (m.button === Qt.RightButton)
+            if (m.button === Qt.RightButton) {  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+                _ctRight("path-finish", m, null)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
                 ed.finishPath(false)
+            }  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
             else
                 ed.pathClick(m.x, m.y)
             return
@@ -230,6 +259,7 @@ MouseArea {
                 ed.spineHoldX = m.x
                 ed.spineHoldY = m.y
                 spineHoldTimer.restart()
+                _ctRight("spine-hold", m, hit)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
                 return
             }
             if (hit.id) {
@@ -256,6 +286,7 @@ MouseArea {
                 }
                 var tn = ed.nodeAt(hit.id)
                 if (ed.isText(tn)) {
+                    _ctRight("text-menu", m, hit)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
                     ed.chipMenuRequested(m.x, m.y)
                     menu.openAt(ed, m.x, m.y)
                     return
@@ -265,6 +296,7 @@ MouseArea {
                     ed.tableRow = cell.row
                     ed.tableCol = cell.col
                     ed.tableExtra = (cell.extra !== undefined) ? cell.extra : -1
+                    _ctRight("table-menu", m, hit)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
                     ed.chipMenuRequested(m.x, m.y)
                     menu.openAt(ed, m.x, m.y)
                     return
@@ -275,6 +307,7 @@ MouseArea {
                 menuTarget.seg = -1
                 menuTarget.leader = 0
             }
+            _ctRight(hit.id ? "item-menu" : "empty-menu", m, hit)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
             ed.chipMenuRequested(m.x, m.y)
             menu.openAt(ed, m.x, m.y)
             return
@@ -498,7 +531,8 @@ MouseArea {
         ed.stopGesture()
         ed.dragKind = ""
     }
-    onPositionChanged: (m) => {
+    onPositionChanged: (r) => {
+        var m = _e(r)
         ed.altHeld = !!(m.modifiers & Qt.AltModifier)
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
         ed.snapOffHeld = !!(m.modifiers & Qt.ControlModifier)
@@ -577,7 +611,8 @@ MouseArea {
         }
         ed.applyPointer(m.x, m.y, ed.snapOffHeld)
     }
-    onReleased: (m) => {
+    onReleased: (r) => {
+        var m = _e(r)
         if (ed.spineHoldArm) {
             spineHoldTimer.stop()
             ed.spineHoldArm = false
@@ -811,7 +846,8 @@ MouseArea {
             ed.bump()
         }
     }
-    onDoubleClicked: (m) => {
+    onDoubleClicked: (r) => {
+        var m = _e(r)
         if (ed.drawTool === "path") {
             ed.finishPath(false)
             return

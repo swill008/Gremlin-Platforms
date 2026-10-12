@@ -106,6 +106,8 @@ Item {
     readonly property color clear: "#00000000"
     // A sheet of paper (Print & Export's preview): white in either theme.
     readonly property color paper: "#FFFFFF"
+    // Pure black in either theme (the background picture's black grab, 07 S157).
+    readonly property color ink: "#000000"
     // Backdrop behind a modal dialog.
     readonly property color dim: "#66000000"
     // Delete buttons: white text on red in both modes.

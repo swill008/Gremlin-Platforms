@@ -10,7 +10,8 @@ go straight into the runtime's handler; the UDP listener is a stand-in."""
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
@@ -80,6 +81,13 @@ def run(qapp: object, monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple]:
 
 def _wait(ms: int) -> None:
     QtTest.QTest.qWait(ms)
+
+
+def _wait_for(done: Callable[[], bool], limit_ms: int) -> None:
+    """Runs events until done() or limit_ms has passed."""
+    deadline = time.monotonic() + limit_ms / 1000
+    while not done() and time.monotonic() < deadline:
+        QtTest.QTest.qWait(10)
 
 
 # -- rows ----------------------------------------------------------------------
@@ -200,7 +208,10 @@ def test_encoder_ticks_during_a_pulse_queue_after_it(run: tuple) -> None:
     runtime._on_main("/e", (1,))
     runtime._on_main("/e", (1,))
     runtime._on_main("/e", (0,))  # ccw: not this input's way
-    _wait(250)
+    # The pulses run on main-thread timers: wait for them (bounded), not a
+    # fixed time a busy PC can overrun; then a little longer for any extra.
+    _wait_for(lambda: len(events) >= 4, 3000)
+    _wait(100)
     assert events == [("button", 1, True), ("button", 1, False)] * 2
 
 

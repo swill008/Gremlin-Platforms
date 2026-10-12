@@ -16,7 +16,7 @@ import uuid
 import pytest
 
 import joystick_gremlin as jg
-from gremlin import audio_player, config, run_scope, user_script
+from gremlin import audio_player, config, error, run_scope, user_script
 from gremlin.ui import backend, option, ui_scale_option, windows_scale_option
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -177,10 +177,20 @@ def test_queueing_a_sound_waits_for_the_queue_lock() -> None:
 _DEVICE_CHANGE = ("global", "general", "device-change-behavior")
 
 
+def _ensure_registered(cfg: config.Configuration, key: tuple[str, str, str]) -> None:
+    """Registers the program's options unless this one is registered already.
+    A key read back from a settings file an earlier test saved exists without
+    its description (load keeps only value, type and properties), so exists()
+    alone is not enough."""
+    try:
+        cfg.description(*key)
+    except (KeyError, error.GremlinError):
+        jg.register_config_options()
+
+
 def test_device_change_behavior_shows_stop_and_stores_disable() -> None:
     cfg = config.Configuration()
-    if not cfg.exists(*_DEVICE_CHANGE):
-        jg.register_config_options()
+    _ensure_registered(cfg, _DEVICE_CHANGE)
     before = cfg.value(*_DEVICE_CHANGE)
     model = option.ConfigEntryModel("global", "general", keys=[_DEVICE_CHANGE])
     index = model.index(0, 0)
@@ -199,8 +209,7 @@ def test_device_change_behavior_shows_stop_and_stores_disable() -> None:
 
 def test_device_change_behavior_description_names_stop() -> None:
     cfg = config.Configuration()
-    if not cfg.exists(*_DEVICE_CHANGE):
-        jg.register_config_options()
+    _ensure_registered(cfg, _DEVICE_CHANGE)
     text = cfg.description(*_DEVICE_CHANGE)
     assert "Stop" in text and "Disable" not in text
 
@@ -210,8 +219,7 @@ def test_device_change_behavior_description_names_stop() -> None:
 
 def test_history_limits_say_they_are_checked_at_start() -> None:
     cfg = config.Configuration()
-    if not cfg.exists("global", "history", "keep-days"):
-        jg.register_config_options()
+    _ensure_registered(cfg, ("global", "history", "keep-days"))
     for name in ("keep-days", "max-megabytes"):
         assert "Checked at start." in cfg.description("global", "history", name)
 

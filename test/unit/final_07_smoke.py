@@ -252,6 +252,9 @@ def main() -> None:
         wait_for(lambda: w.win is not None)
         win = w.win
         wait_for(lambda: bool(win.property("visible")))
+        # The program makes the device's background picture at start-up
+        # (07 S157: missing -> made); let that settle before the snapshot.
+        wait_for(lambda: store.device_photo_current(DEVICE))
         before = files_under(MODULES)
         hint = next((
             o for o in win.findChildren(QtCore.QObject)
@@ -511,7 +514,8 @@ def main() -> None:
 
     # --- S84: export cap; S94: zoom range ------------------------------------
     def export_cap() -> dict:
-        # 100% is the bottom background picture's own pixels (07 S83).
+        # 100% is the most detailed visible background picture's own pixels
+        # (07 S83); this map has one picture, so it is that one.
         # (photoNatural: the bottom background picture's size, once loaded.)
         wait_for(lambda: w.ev("_ed().bottomPicture() !== null"
                               " && _ed().photoNatural().w > 0"))

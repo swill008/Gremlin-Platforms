@@ -113,7 +113,7 @@ function topics() {
             + "<li><b>Calibration</b>.</li>"
             + "<li><b>Bindings</b>: the stick's actions from one profile, in the modes saved, and the vJoy outputs they send to.</li>"
             + "</ul>"
-            + "<p>Select one to see its name and description, when and why it was kept, exactly what it holds under <b>Holds</b> (for example \"Bindings from DCS.xml · modes Default, Landing · 212 actions\" and \"Sends to vJoy 1 (38 inputs)\"), a preview of its device photo, and its <b>Activity</b>: when it was saved, when its description was edited, and which sticks it was copied to. The buttons under the details are <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, <b>Export…</b> and <b>Delete…</b>.</p>"
+            + "<p>Select one to see its name and description, when and why it was kept, exactly what it holds under <b>Holds</b> (for example \"Bindings from DCS.xml · modes Default, Landing · 212 actions\" and \"Sends to vJoy 1 (38 inputs)\"), a preview of its device photo (a picture of the saved setup's background), and its <b>Activity</b>: when it was saved, when its description was edited, and which sticks it was copied to. The buttons under the details are <b>Copy to Another Stick…</b>, <b>Swap with Another Stick…</b>, <b>Change vJoy Output…</b>, <b>Export…</b> and <b>Delete…</b>.</p>"
             + "<h4>Good to know</h4>"
             + "<ul>"
             + "<li>Activity covers only that saved setup; <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> keeps every saved change in the program.</li>"

@@ -15,7 +15,14 @@ With "big" the picture is 4200 x 300 pixels of 4-pixel red and black
 stripes instead (over the 4000-pixel screen-copy limit, 07 S124), and only
 a 100% export is made: printed from the original, the stripes stay sharp.
 
-    python test/unit/planes_print_smoke.py <folder> [big]
+With "dense" a second, green picture (400 x 400 pixels) sits above the red
+one in a small box at the page's top-left corner, so it has 3.75 times the
+red picture's pixels per unit of the page, and a third, blue one, even
+denser, is hidden; 100% and 50% exports are made (07 S83 as changed,
+D-07-BG-COMPOSITE: 100% is the most detailed visible background picture's
+own pixels, hidden pictures left out).
+
+    python test/unit/planes_print_smoke.py <folder> [big|dense]
 """
 
 from __future__ import annotations
@@ -48,6 +55,7 @@ from gremlin.modules import store  # noqa: E402
 
 GUID = str(dill.GUID(fake.devices[0].device_guid).uuid)
 BIG = len(sys.argv) > 2 and sys.argv[2] == "big"
+DENSE = len(sys.argv) > 2 and sys.argv[2] == "dense"
 NATURAL = (4200, 300) if BIG else (800, 400)
 
 _map = store.module_file_in(store.ensure_device_dir("pJoy Pro", GUID))
@@ -64,6 +72,34 @@ _red.save(str(_map.parent / "pictures" / "bg.png"))
 # a new picture (rig_overlays.js frameFit: the photo frame, 0.75 of the 16:9
 # page, narrowed to the picture). The picture fills its box exactly (07 S140),
 # so a box of other proportions would stretch it.
+
+def _square(name: str, side: int, color: QtGui.QColor) -> None:
+    pic = QtGui.QImage(side, side, QtGui.QImage.Format.Format_RGB32)
+    pic.fill(color)
+    pic.save(str(_map.parent / "pictures" / name))
+
+
+# A square box fw wide in page fractions (the page is 16:9).
+def _box(fx: float, fy: float, fw: float) -> dict:
+    return {"fx": fx, "fy": fy, "fw": fw, "fh": fw * 16 / 9}
+
+
+_dense: list = []
+if DENSE:
+    _square("dense.png", 400, QtGui.QColor(0, 255, 0))
+    _square("hidden.png", 400, QtGui.QColor(0, 0, 255))
+    # 400 pixels across 0.1 of the page against the red 800 across 0.75:
+    # 3.75 times the detail. The hidden one (0.05 of the page) would be 7.5.
+    _dense = [
+        {"kind": "draw", "id": "bg2", "shape": "image", "plane": "background",
+         "src": "pictures/dense.png", **_box(0.01, 0.01, 0.1), "rot": 0,
+         "opacity": 1, "locked": False, "pinned": False, "sockets": [],
+         "fill": "filled"},
+        {"kind": "draw", "id": "bg3", "shape": "image", "plane": "background",
+         "src": "pictures/hidden.png", **_box(0.94, 0.01, 0.05), "rot": 0,
+         "opacity": 1, "locked": False, "pinned": False, "sockets": [],
+         "fill": "filled", "hidden": True},
+    ]
 _aspect = NATURAL[0] / NATURAL[1]
 _fw, _fh = 0.75, 0.75
 if _aspect > 16 / 9:
@@ -76,8 +112,10 @@ _map.write_text(json.dumps({
         # The bottom background picture, in the photo frame.
         {"kind": "draw", "id": "bg1", "shape": "image", "plane": "background",
          "src": "pictures/bg.png", "fx": 0.125 + (0.75 - _fw) / 2,
-         "fy": 0.125 + (0.75 - _fh) / 2, "fw": _fw, "fh": _fh, "rot": 0, "opacity": 1, "locked": False, "pinned": False,
+         "fy": 0.125 + (0.75 - _fh) / 2, "fw": _fw, "fh": _fh, "rot": 0,
+         "opacity": 1, "locked": False, "pinned": False,
          "sockets": [], "fill": "filled"},
+        *_dense,
         {"kind": "btn", "id": "b1", "label": "Button 1",
          "chipFx": 0.05, "chipFy": 0.05},
     ],
@@ -216,6 +254,13 @@ def main() -> None:
     ev("_editorWin.setPrint('scale', 50)")
     QtTest.QTest.qWait(200)
     out["full-50"] = export("full-50.png")
+    if DENSE:
+        out["export-pixels"] = ev("JSON.stringify(_editorWin.exportPixels())")
+        pw.close()
+        win.close()
+        QtTest.QTest.qWait(300)
+        print("RESULT " + json.dumps(out), flush=True)
+        smoke_exit(0)
 
     # Screen-only views turned down: the print is unchanged (07 S87, S120).
     # The live values are read as each picture is asked for.

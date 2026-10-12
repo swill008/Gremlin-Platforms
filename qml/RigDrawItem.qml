@@ -119,7 +119,7 @@ Item {
                     return ed.fixPx(sel ? 2 : 1)
                 }
                 Text {
-                    renderType: Text.NativeRendering
+                    renderType: Text.QtRendering
                     anchors.fill: parent
                     anchors.margins: ed.fixPx(Style.dp(3))
                     visible: {
@@ -217,7 +217,7 @@ Item {
                     return (ed.isSelected(node.id) && ed.tableExtra === index) ? ed.fixPx(2) : ed.fixPx(1)
                 }
                 Text {
-                    renderType: Text.NativeRendering
+                    renderType: Text.QtRendering
                     anchors.fill: parent
                     anchors.margins: ed.fixPx(Style.dp(3))
                     visible: {
@@ -354,7 +354,7 @@ Item {
             }
         }
         Text {
-            renderType: Text.NativeRendering
+            renderType: Text.QtRendering
             anchors.fill: parent
             anchors.margins: ed.fixPx(Style.dp(4))
             visible: {

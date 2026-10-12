@@ -2,10 +2,12 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The device's photo is the bottom background picture (07 S111, S127,
-D-07-BACKGROUND-PLANES): store.device_photo_ref reads it and
-store.set_device_photo sets it; the pictures a map names include its
-background layers (07 S106)."""
+"""The bottom background picture (07 S111, S127, D-07-BACKGROUND-PLANES):
+store.device_photo_ref reads it and store.set_device_photo sets it; it is
+the device's photo shown elsewhere only until the device's background
+picture (pictures/device-photo.png, 07 S157, D-07-BG-COMPOSITE) is made.
+The pictures a map names include its background layers and, with a visible
+background, that background picture (07 S106)."""
 
 from __future__ import annotations
 
@@ -128,7 +130,16 @@ def test_named_refs_counts_background_pictures() -> None:
             {"id": "f", "shape": "image", "src": "pictures/front.png"},
         ]
     }
-    assert store.named_refs(doc) == {"pictures/back.png", "pictures/front.png"}
+    # With a visible background the device's background picture is named
+    # too, so clean-up, History and packs keep it (07 S157).
+    assert store.named_refs(doc) == {
+        "pictures/back.png",
+        "pictures/front.png",
+        store.picture_ref(store.DEVICE_PHOTO),
+    }
+    # No visible background: not named.
+    hidden = {"nodes": [_bg("pictures/back.png", hidden=True)]}
+    assert store.picture_ref(store.DEVICE_PHOTO) not in store.named_refs(hidden)
 
 
 def test_unused_pictures_keep_background_pictures(tmp_path: Path) -> None:
@@ -136,7 +147,8 @@ def test_unused_pictures_keep_background_pictures(tmp_path: Path) -> None:
     _picture(tmp_path, "back.png", 10, 10)
     _picture(tmp_path, "stray.png", 10, 10)
     keep = store._names_of(store.named_refs({"nodes": [_bg("pictures/back.png")]}))
-    assert keep == {"back.png"}
+    # The device's background picture is kept too (07 S157); stray.png is not.
+    assert keep == {"back.png", store.DEVICE_PHOTO}
 
 
 # --- the real paths: Import, the Device Mapping Editor's load and save,
@@ -293,13 +305,27 @@ def test_save_writes_no_old_photo_keys(modules: Path) -> None:
     assert hw.profilePhotoUrl("pJoy Pro").split("?")[0].endswith("pictures/photo.png")
 
 
-def test_profile_photo_is_the_bottom_background_picture(modules: Path) -> None:
+def test_profile_photo_is_the_bottom_background_picture_without_the_background_picture_file(  # noqa: E501
+    modules: Path,
+) -> None:
+    """07 S127 fallback: no device-photo.png yet, the bottom picture shows."""
     current = write_module(
         modules, "pjoy_pro", stick_doc(nodes=[_bg("pictures/back.png"), _chip(1)])
     )
     _picture(current.parent, "back.png", 40, 20)
     url = _profile().profilePhotoUrl("pJoy Pro")
     assert url.split("?")[0].endswith("pictures/back.png")
+
+
+def test_profile_photo_is_the_background_picture_file_once_made(modules: Path) -> None:
+    """07 S127, S157: with device-photo.png there, that is the photo shown."""
+    current = write_module(
+        modules, "pjoy_pro", stick_doc(nodes=[_bg("pictures/back.png"), _chip(1)])
+    )
+    _picture(current.parent, "back.png", 40, 20)
+    _picture(current.parent, store.DEVICE_PHOTO, 30, 30)
+    url = _profile().profilePhotoUrl("pJoy Pro")
+    assert url.split("?")[0].endswith("pictures/" + store.DEVICE_PHOTO)
 
 
 def test_module_setup_import_image_sets_the_bottom_picture(

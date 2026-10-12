@@ -20,6 +20,10 @@ build paths:
             write_json / write_text (a whole document as given)
 - pictures: picture_ref, normal_ref, put_picture, remove_pictures,
             named_refs, remove_unused_pictures, copy_pictures
+- the device's background picture (07 S157): visible_background,
+            makes_device_photo, background_key, device_photo_path,
+            device_photo_key, device_photo_current, write_device_photo,
+            remove_device_photo, shown_photo_ref
 - an edit:  begin_edit, stage_picture, stage_copied, commit_edit,
             cancel_edit, recover_edit (its temporary folder in cache)
 - folders:  rename_device_dir (an alias set), sync_dir_name (after a scan)
@@ -63,6 +67,7 @@ index is locked: Run's threads read module files through registry).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -1400,6 +1405,13 @@ def put_picture(device_name: str, guid: str, src: Path | bytes, as_name: str) ->
     reference for the module file. Raises OSError."""
     base = ensure_device_dir(device_name, guid)
     dest = base / PICTURES / Path(str(as_name).replace("\\", "/")).name
+    if _reserved(dest.name):
+        # The device's background picture's name is never a user picture's
+        # (07 S157): renamed as for any other clash.
+        number = 1
+        while (dest.parent / f"{dest.stem}_{number}{dest.suffix}").exists():
+            number += 1
+        dest = dest.parent / f"{dest.stem}_{number}{dest.suffix}"
     put_picture_at(dest, src)
     return picture_ref(dest.name)
 
@@ -1578,11 +1590,182 @@ def set_device_photo(doc: dict, ref: str, folder: Path | None = None) -> None:
     )
 
 
+# --- the device's background picture (07 S157) --------------------------------
+# pictures/device-photo.png: a picture of the whole visible background plane,
+# made by gremlin.ui.device_photo through the hidden renderer whenever the
+# background changes. Its key (a PNG text chunk) says which background it
+# shows; a file whose key differs is stale and is made again.
+
+DEVICE_PHOTO = "device-photo.png"
+DEVICE_PHOTO_SIDE = 1024
+DEVICE_PHOTO_KEY = "GremlinBackgroundKey"
+# Bump when the renderer's look changes: every file is then made again.
+RENDER_VERSION = 1
+# Keys only the screen uses; they don't change the picture.
+_SCREEN_ONLY = frozenset({"srcUrl", "lookUrl", "selected"})
+
+
+def _reserved(name: str) -> bool:
+    return str(name or "").casefold() == DEVICE_PHOTO.casefold()
+
+
+def visible_background(doc: object) -> list[dict]:
+    """The background nodes a composite draws: plane "background", not
+    hidden (a hidden group takes its members with it), in order."""
+    if not isinstance(doc, dict):
+        return []
+    nodes = doc.get("nodes")
+    if not isinstance(nodes, list):
+        return []
+    return [n for n in nodes if is_background(n) and not n.get("hidden")]
+
+
+def makes_device_photo(doc: object, folder: Path | None = None) -> bool:
+    """Whether a device gets the background picture: input modules only
+    (07 S157). Outputs (vJoy, the Xbox pad: direction "dest") and the
+    Logical Device never do; they show the bottom background picture as
+    before (07 S127). Known by the module document (direction, device
+    name, bound id) and, with folder, its device.json (id, shown name)."""
+    from gremlin.modules import device_class
+
+    def _input(name: str, guid: str) -> bool:
+        kind = _kind(name, guid)
+        return kind != "logical_device" and not device_class.is_output_kind(kind)
+
+    if isinstance(doc, dict):
+        if doc_direction(doc) == "dest":
+            return False
+        name = str(doc.get("device") or doc.get("boundName") or "")
+        if not _input(name, str(doc.get("boundGuidLocal") or "")):
+            return False
+    if folder is not None:
+        held = _read_json(Path(folder) / ID_FILE)
+        key = str(held.get("id") or "").strip()
+        guid = "" if key.lower().startswith("name:") else key
+        name = str(held.get("name") or "")
+        if key.lower().startswith("name:") and registry.is_output_name(key[5:]):
+            return False
+        if (key or name) and not _input(name, guid):
+            return False
+    return True
+
+
+def _key_view(value: object) -> object:
+    """value without the screen-only keys, at every depth."""
+    if isinstance(value, dict):
+        return {
+            k: _key_view(v)
+            for k, v in value.items()
+            if k not in _SCREEN_ONLY and not str(k).startswith("_")
+        }
+    if isinstance(value, list):
+        return [_key_view(v) for v in value]
+    return value
+
+
+def background_key(doc: object, folder: Path | None) -> str:
+    """Which background the device's background picture shows: "" with no
+    visible background, else a hash of the render version, the visible
+    background nodes (screen-only keys left out) and the byte size of each
+    picture they name (-1 when missing). Size, not time: a copied picture
+    keeps its size, so an imported file stays current. "" too for a device
+    that gets no background picture (makes_device_photo: outputs and the
+    Logical Device)."""
+    nodes = visible_background(doc)
+    if not nodes or not makes_device_photo(doc, folder):
+        return ""
+    sizes = {}
+    for ref in sorted(_layer_refs({"nodes": nodes})):
+        found = find_picture(Path(folder), ref) if folder is not None else None
+        try:
+            sizes[ref] = found.stat().st_size if found is not None else -1
+        except OSError:
+            sizes[ref] = -1
+    text = "|".join(
+        (
+            str(RENDER_VERSION),
+            json.dumps(_key_view(nodes), sort_keys=True),
+            json.dumps(sizes, sort_keys=True),
+        )
+    )
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:20]
+
+
+def device_photo_path(folder: Path) -> Path:
+    """Where a device folder's background picture is (it may not exist)."""
+    return Path(folder) / PICTURES / DEVICE_PHOTO
+
+
+def device_photo_key(folder: Path) -> str:
+    """The key in the folder's background picture (its header only); ""
+    when it is missing or unreadable."""
+    path = device_photo_path(folder)
+    if not path.is_file():
+        return ""
+    from PySide6 import QtGui
+
+    return str(QtGui.QImageReader(str(path)).text(DEVICE_PHOTO_KEY) or "")
+
+
+def device_photo_current(folder: Path, doc: object | None = None) -> bool:
+    """The folder's background picture is there and shows its background
+    (doc, or the folder's module file). False with no visible background."""
+    if doc is None:
+        doc = read_path(module_file_in(Path(folder)))
+    key = background_key(doc, Path(folder))
+    return bool(key) and device_photo_key(folder) == key
+
+
+def write_device_photo(folder: Path, png: bytes) -> None:
+    """Writes the folder's background picture (atomic). No History step: it
+    is made from the module file, which History keeps. Raises OSError."""
+    path = device_photo_path(folder)
+    module_file_io.write_bytes(path, png)
+    registry.trace("SAVE", "Module files", "write_device_photo", path, "written")
+
+
+def remove_device_photo(folder: Path) -> None:
+    """Removes the folder's background picture (no visible background
+    left). A file that can't go is logged and left."""
+    path = device_photo_path(folder)
+    if not path.is_file():
+        return
+    try:
+        path.unlink()
+    except OSError as exc:
+        syslog.warning(f"Background picture {path} could not be removed: {exc}")
+        return
+    registry.trace("SAVE", "Module files", "remove_device_photo", path, "removed")
+
+
+def shown_photo_ref(doc: object, exists: Callable[[str], bool]) -> str:
+    """What every place that shows "the device's photo" uses (07 S127,
+    S157): the device's background picture when the map has a visible
+    background and exists(its ref); else the bottom background picture
+    (while the file is being made, or when it is missing). Outputs and
+    the Logical Device always get the bottom background picture
+    (makes_device_photo)."""
+    ref = picture_ref(DEVICE_PHOTO)
+    if visible_background(doc) and makes_device_photo(doc) and exists(ref):
+        return ref
+    return device_photo_ref(doc)
+
+
 def named_refs(doc: object) -> set[str]:
     """The pictures a module document (or template, or recovery copy)
     names, as stored: every picture layer ("shape" or "kind" "image",
-    "src"), background and foreground, also inside groups, and the old
-    top-level photo ("image") of a map saved before the planes (OT-2)."""
+    "src"), background and foreground, also inside groups, the old
+    top-level photo ("image") of a map saved before the planes (OT-2), and
+    the device's background picture when the map has a visible background
+    (07 S157: kept by the clean-up, History and every .gmap)."""
+    refs = _layer_refs(doc)
+    if visible_background(doc) and makes_device_photo(doc):
+        refs.add(picture_ref(DEVICE_PHOTO))
+    return refs
+
+
+def _layer_refs(doc: object) -> set[str]:
+    """named_refs without the device's background picture."""
     refs: set[str] = set()
     if not isinstance(doc, dict):
         return refs
@@ -1672,14 +1855,15 @@ def _free_picture_name(
     """A file name for data in the first of places: name when it is free in
     all of them (or holds the same bytes: (name, True), nothing to write),
     else <stem>_<n><ext>. reuse_first=False: a file already in the first
-    place is never reused, even with the same bytes."""
+    place is never reused, even with the same bytes. The device's
+    background picture's name is always taken (07 S157)."""
     stem, ext = Path(name).stem, Path(name).suffix
     number = 0
     candidate = name
     while True:
         same = False
-        taken = False
-        for place in places:
+        taken = _reserved(candidate)
+        for place in places if not taken else ():
             path = place / candidate
             if path.is_file() and (reuse_first or place != places[0]):
                 try:
@@ -1704,6 +1888,9 @@ def _copy_into(
     folder dest; {old ref: new ref}. A missing picture is left out."""
     moved: dict[str, str] = {}
     for ref in sorted({str(r) for r in (refs or ()) if str(r or "").strip()}):
+        if normal_ref(ref) == picture_ref(DEVICE_PHOTO):
+            # Made from the destination's own background (07 S157).
+            continue
         src = find_picture(Path(src_dir), ref)
         if src is None:
             continue

@@ -1662,7 +1662,7 @@ Item {
     }
 
     Text {
-        renderType: Text.NativeRendering
+        renderType: Text.QtRendering
         id: _textFit
         visible: false
         width: 100
@@ -1826,8 +1826,8 @@ Item {
         readonly property string label: { _ed.anyTick; _ed.turnAngle; return _ed.gestureActive ? _ed.readoutText() : "" }
         visible: _ed.showChrome && label.length > 0
         z: 12
-        x: Math.max(0, Math.min(_ed.width - width, _pointer.mouseX + Style.dp(16)))
-        y: Math.max(0, Math.min(_ed.height - height, _pointer.mouseY + Style.dp(16)))
+        x: Math.max(0, Math.min(_ed.width - width, _pointer.edMouseX + Style.dp(16)))
+        y: Math.max(0, Math.min(_ed.height - height, _pointer.edMouseY + Style.dp(16)))
         width: _readoutText.implicitWidth + Style.dp(12)
         height: _readoutText.implicitHeight + Style.dp(6)
         radius: Style.dp(3)
