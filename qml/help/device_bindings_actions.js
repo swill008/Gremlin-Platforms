@@ -260,7 +260,7 @@ function topics() {
             section: page,
             title: "Output View",
             body: "<p>A vJoy output device opens its <b>Output View</b> in place of a Device Bindings page: a live view of what its output module sends. The Xbox card's <b>Output View</b> shows a section for each Xbox pad that is on and bound: its live picture, the devices that drive it, and, for each Xbox control, what sends to it.</p>"
-                + "<p>It is labelled \"View only — shows what the input modules' actions send.\"</p>"
+                + "<p>You don't edit bindings here: it shows what the input modules' actions send. To change one, open the input device's Device Bindings page.</p>"
                 + _good([
                     "A wire to an output the output module doesn't claim is shown as <b>(not claimed)</b> and sends nothing."
                 ]),

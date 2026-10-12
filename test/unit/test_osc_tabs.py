@@ -38,7 +38,8 @@ import gremlin.osc as gosc
 gosc.OscRuntime.klass._bind = lambda self, report=True: None
 # This PC's addresses as the program finds them: 0.0.0.0 is always among them.
 import gremlin.ui.osc_option as oo
-oo.local_ipv4_addresses = lambda: ['192.168.1.237', '127.0.0.1', '0.0.0.0']
+PC_IPS = ['192.168.1.237', '127.0.0.1', '0.0.0.0']
+oo.local_ipv4_addresses = lambda: list(PC_IPS)
 import joystick_gremlin
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
@@ -114,6 +115,35 @@ if setup is not None:
     out["addresses"] = [it.property("text") for it in walk(w.contentItem())
                         if it.objectName().startswith("oscPcAddress") and shown(it)]
 
+    def shown_addresses():
+        return [it.property("text") for it in walk(w.contentItem())
+                if it.objectName().startswith("oscPcAddress") and shown(it)]
+
+    # The list is read again when the window comes to the front (S97).
+    PC_IPS[:] = ['10.1.2.3', '127.0.0.1']
+    # Another window takes the front (the main window counts as the setup
+    # window's own), then the setup window comes back.
+    other = QtGui.QWindow()
+    other.show()
+    other.requestActivate()
+    out["went-back"] = wait_for(lambda: not w.isActive(), 2000)
+    w.requestActivate()
+    wait_for(lambda: shown_addresses() == ['10.1.2.3:8001'], 2000)
+    out["after-activate"] = shown_addresses()
+    other.destroy()
+
+    # And on the 5 s tick while the Server tab shows (driven, not waited).
+    section = named(w, "oscServerSection")
+    timer = None if section is None else section.findChild(
+        QtCore.QObject, "oscPcAddressTimer")
+    out["timer"] = None if timer is None else [
+        timer.property("interval"), timer.property("running")]
+    PC_IPS[:] = ['10.1.2.4', '192.168.5.6']
+    if timer is not None:
+        QtCore.QMetaObject.invokeMethod(timer, "triggered")
+        app.processEvents()
+    out["after-tick"] = shown_addresses()
+
     # Each tab by a real click: its own controls show, the others' hide.
     marks = {"Server": "oscServerHost", "Output": "oscTargetNameField",
              "Feedback": "oscFeedbackSection", "Discovery": "oscAnnounce"}
@@ -127,6 +157,8 @@ if setup is not None:
         wait_for(lambda: named(w, marks[tab]) is not None, 1000)
         out["tabs"][tab] = sorted(
             t for t, m in marks.items() if named(w, m) is not None)
+        if tab == "Output" and timer is not None:
+            out["timer-on-output"] = timer.property("running")
 
     # Each tab's page scrolls on its own.
     pages = {"Server": "oscServerSection", "Output": "oscOutputTab",
@@ -276,6 +308,16 @@ def test_page_fills_the_window_and_no_undo_bar_behind_the_buttons(result: dict) 
 
 def test_this_pcs_addresses_leave_out_all_addresses(result: dict) -> None:
     assert result["addresses"] == ["192.168.1.237:8001"]
+
+
+def test_this_pcs_addresses_refresh_on_activation_and_tick(result: dict) -> None:
+    """The list is read again when the window comes to the front and on the
+    5 s tick, which runs only while the Server tab shows (09 S97)."""
+    assert result["went-back"] is True, result
+    assert result["after-activate"] == ["10.1.2.3:8001"], result
+    assert result["timer"] == [5000, True], result
+    assert result["after-tick"] == ["10.1.2.4:8001", "192.168.5.6:8001"], result
+    assert result["timer-on-output"] is False, result
 
 
 def test_add_companion_adds_or_points_back_the_target(result: dict) -> None:

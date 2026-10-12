@@ -6,8 +6,9 @@
 
 OSC's Device Bindings page shows a small grey "Open Sound Control (OSC)"
 line under the title, placed like the output pages' Driven by line. No other
-device's page shows it. The pages are opened the way a card click opens them
-(openDeviceBindingsNow). Off-screen in its own process.
+device's page shows it. The Xbox and vJoy Output Views show Driven by and
+no "View only" line (removed 2026-10-12). The pages are opened the way a
+card click opens them (openDeviceBindingsNow). Off-screen in its own process.
 """
 
 from __future__ import annotations
@@ -71,6 +72,22 @@ out['osc'] = show('osc')
 out['stick'] = show(stick.slug)
 out['osc-again'] = show('osc')
 out['xbox'] = show('xbox')
+
+# The output pages: Driven by shows, the old "View only —" line is gone.
+def texts():
+    return [str(o.property('text')) for o in win.findChildren(QtCore.QObject)
+            if o.property('visible') and isinstance(o.property('text'), str)]
+
+bound = win.findChild(QtCore.QObject, 'destBound')
+def is_vjoy(r):
+    return r.direction == 'dest' and r.tab != 'xbox'
+
+until(lambda: any(is_vjoy(r) for r in model._rows))
+vjoy = next(r for r in model._rows if is_vjoy(r))
+for slug, key in (('xbox', 'xbox-page'), (vjoy.slug, 'vjoy-page')):
+    tab = show(slug)[0]
+    out[key] = [tab, ev('configDirection'), bool(bound.property('visible')),
+                any('View only' in t for t in texts())]
 print('RESULT ' + json.dumps(out), flush=True)
 os._exit(0)  # threads started by the app would keep it alive
 """
@@ -109,3 +126,9 @@ def test_another_input_device_page_does_not(run: dict) -> None:
 
 def test_an_output_page_does_not(run: dict) -> None:
     assert not run["xbox"][1]
+
+
+def test_output_views_show_driven_by_and_no_view_only_line(run: dict) -> None:
+    # 15a (user 2026-10-12): the "View only —" header line is gone.
+    assert run["xbox-page"] == ["xbox", "dest", True, False]
+    assert run["vjoy-page"] == ["physical", "dest", True, False]

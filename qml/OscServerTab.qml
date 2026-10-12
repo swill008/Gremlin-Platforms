@@ -27,6 +27,19 @@ Flickable {
     }
     Component.onDestruction: commit()
 
+    // This PC's addresses are read again when the window comes to the front
+    // and every 5 s while this tab shows (S97).
+    readonly property bool windowActive: Window.active
+    onWindowActiveChanged: if (windowActive) server.refreshPcAddresses()
+    Timer {
+        objectName: "oscPcAddressTimer"
+        interval: 5000
+        repeat: true
+        running: _root.visible && _root.Window.window !== null
+                 && _root.Window.window.visible
+        onTriggered: _root.server.refreshPcAddresses()
+    }
+
     clip: true
     contentWidth: width
     contentHeight: _column.implicitHeight + Style.dp(24)

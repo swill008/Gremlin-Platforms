@@ -159,12 +159,14 @@ class OscServerModel(QtCore.QObject):
     changed = QtCore.Signal()
     messageChanged = QtCore.Signal()
     foundChanged = QtCore.Signal()
+    pcAddressesChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._server: dict[str, Any] = {}
         self._targets: list[dict] = []
         self._found: list[dict] = []
+        self._pc_addresses = self._read_pc_addresses()
         self._message = ""
         self._failed = False
         self.reload()
@@ -452,13 +454,27 @@ class OscServerModel(QtCore.QObject):
 
     # This PC's addresses, for the app that sends to Gremlin.
 
-    @QtCore.Property(list, notify=changed)
-    def pcAddresses(self) -> list[str]:
+    @staticmethod
+    def _read_pc_addresses() -> list[str]:
         # 0.0.0.0 means "all addresses": an app can't send to it.
         own = [
             ip for ip in local_ipv4_addresses() if ip not in ("127.0.0.1", "0.0.0.0")
         ]
         return own or ["127.0.0.1"]
+
+    @QtCore.Property(list, notify=pcAddressesChanged)
+    def pcAddresses(self) -> list[str]:
+        return list(self._pc_addresses)
+
+    @QtCore.Slot()
+    def refreshPcAddresses(self) -> None:
+        """Reads this PC's addresses again (the Server tab calls it when its
+        window comes to the front and every 5 s while it shows); the notice
+        goes out only when the list changed."""
+        addresses = self._read_pc_addresses()
+        if addresses != self._pc_addresses:
+            self._pc_addresses = addresses
+            self.pcAddressesChanged.emit()
 
     @QtCore.Slot(str, result=bool)
     def copyText(self, text: str) -> bool:

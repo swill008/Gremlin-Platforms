@@ -961,3 +961,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | DOCS-V: D-03-VJOY-VIEWER-QUICK, 03 S122, gap 33 reopened, glossary, Help | docs | 3-8 min | 1 min | 10:10-10:11 |
 | 2026-10-12 | VJV-FIX: viewer cards without module file, pair_live refresh, empty text, chips fit | fix | 3-8 min | 5 min | 10:10-10:15 |
 | 2026-10-12 | Quick tests OSC+viewer batch (--changed: 4,427 tests) + lint: all passed | test | ~6 min | 7 min | 10:16-10:23 |
+| 2026-10-12 | E2: count line hidden on Keyboard/OSC/Logical cards, 1 test | fix | 3-8 min | 1 min | 10:24-10:25 |
+| 2026-10-12 | E3: Output View 'View only' line removed, Help reworded, 1 test | fix | 3-8 min | 2 min | 10:24-10:26 |
+| 2026-10-12 | E1: OSC Setup address list refresh (activation + 5 s), 5 tests | feature | 3-8 min | 2 min | 10:24-10:26 |
+| 2026-10-12 | Quick tests batch E (--changed: 2,698 tests) + lint: 1 order flake (to-do 47 setting, passes 2/2 alone), no new lint | test | ~6 min | 5 min | 10:27-10:32 |

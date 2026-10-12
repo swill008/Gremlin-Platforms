@@ -2338,12 +2338,6 @@ ApplicationWindow {
                         font.pixelSize: Style.dp(12)
                         Layout.fillWidth: true
                     }
-                    Label {
-                        visible: configDirection === "dest"
-                        text: "View only — shows what the input modules' actions send."
-                        color: Style.fgMuted
-                        font.pixelSize: Style.dp(12)
-                    }
                 }
                 // Not on the Xbox page: its list has its own Appearance
                 // button on the page bar (XboxDevice.qml pageBar, 03 S139).

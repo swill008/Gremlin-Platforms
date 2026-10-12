@@ -50,6 +50,8 @@ ApplicationWindow {{
         property var order: ["a", "b", "c", "d"]
         property var widths: ({{}})
         property var piles: ({{}})
+        property var tabs: ({{}})
+        property var dests: []
         property var calls: []
         signal panesChanged()
         signal claimsChanged()
@@ -67,8 +69,10 @@ ApplicationWindow {{
         function pileMembers(slug) {{ return piles[slug] || [slug] }}
         function cardMap(slug) {{
             return {{ slug: slug, name: "Card " + slug, rawName: "Card " + slug,
-                     guid: "", direction: slug === "x" ? "dest" : "source",
-                     status: "Connected", bus: "HID", tab: "physical",
+                     guid: "",
+                     direction: slug === "x" || dests.indexOf(slug) >= 0
+                                ? "dest" : "source",
+                     status: "Connected", bus: "HID", tab: tabs[slug] || "physical",
                      isModule: true, isStub: false, hasImage: slug === "b",
                      photo: "" }}
         }}
@@ -413,6 +417,8 @@ def main() -> None:
         _band(ev, quick, result, move, out)
     elif mode == "osc":
         _osc(ev, result, out, quick)
+    elif mode == "counts":
+        _counts(ev, result)
     for w in warnings:
         print(f"WARN {w}", flush=True)
     print("done", flush=True)
@@ -589,6 +595,30 @@ def _osc(ev, result, out: Path, quick) -> None:  # noqa: ANN001
     QtTest.QTest.qWait(50)
     result("message", {s: line(s) for s in ("a", "osc")})
     quick.grabWindow().save(str(out / "osc_message.png"))
+
+
+def _counts(ev, result) -> None:  # noqa: ANN001
+    """The button / axis / hat count line (03 S73): a stick, a vJoy and the
+    Xbox card keep it; the Keyboard, OSC and Logical Device cards don't."""
+    from PySide6 import QtTest
+
+    slugs = ["a", "vjoy-1", "xbox", "keyboard", "osc", "logical"]
+    ev(
+        "_fake.tabs = {xbox: 'xbox', keyboard: 'keyboard', osc: 'osc',"
+        " logical: 'logical'}; _fake.dests = ['vjoy-1', 'xbox'];"
+        f" _fake.order = {json.dumps(slugs)}; _page.pileRev++"
+    )
+    QtTest.QTest.qWait(400)
+    result(
+        "counts",
+        {
+            s: ev(
+                f"var l = inCard('{s}', 'cardCounts');"
+                " l ? [l.visible, l.text] : null"
+            )
+            for s in slugs
+        },
+    )
 
 
 def run(tmp_path: Path, mode: str, qml_dir: Path | None = None) -> dict[str, object]:

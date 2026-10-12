@@ -67,6 +67,9 @@ Rectangle {
     // listens, the last message, or why it isn't open. Made for the OSC card
     // only.
     readonly property bool _isOsc: slug === "osc"
+    // No button / axis / hat count line on these cards (03 S73).
+    readonly property bool _noCounts: ["keyboard", "osc", "logical"].indexOf(tab) >= 0
+                                      || ["keyboard", "osc", "logical"].indexOf(slug) >= 0
     readonly property QtObject _oscStatus: _oscMaker.object
     Instantiator {
         id: _oscMaker
@@ -275,8 +278,11 @@ Rectangle {
 
                 Label {
                     // Claimed counts; with no module file, the device's own counts
-                    // (D-03-Q8-NOFILE). Keyboard, OSC and Xbox have none to show.
-                    visible: isModule || (isStub && tab === "physical")
+                    // (D-03-Q8-NOFILE). The Keyboard, OSC and Logical Device
+                    // cards hold many kinds of input, so they show none.
+                    objectName: "cardCounts"
+                    visible: !_card._noCounts
+                             && (isModule || (isStub && tab === "physical"))
                     text: buttons + (buttons === 1 ? " button  " : " buttons  ")
                           + axes + (axes === 1 ? " axis  " : " axes  ")
                           + hats + (hats === 1 ? " hat" : " hats")
