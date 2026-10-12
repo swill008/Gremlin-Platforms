@@ -4,7 +4,9 @@
 """The Xbox Output View with one section per pad (D-XBOX-PADS, 03 S139): a
 red line only when the ViGEmBus driver is missing (its link asks Main for
 Xbox Setup), the Find bar once for every pad, then one foldable section per
-pad that is on and bound (face, chip rows per device, the pad's own list),
+pad that is on and bound (a header drawn like the list's group rows from the
+Appearance, face, chip rows per device, the pad's own list, a border round
+it, "Space between groups" apart; "Show only bound controls" ticked first),
 each remembered, all open the first time; nothing bound shows one line and
 hides the Find bar and Appearance. The Xbox Viewer window, its toolbar
 button and Tools item stay gone; Help's Open link and the card's viewer
@@ -26,8 +28,6 @@ import pytest
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 import proc_tree  # noqa: E402  # pyright: ignore[reportMissingImports]  (test/)
-
-from vigem.xbox import XboxTarget  # noqa: E402
 
 _HERE = pathlib.Path(__file__).resolve().parent
 _ROOT = _HERE.parents[1]
@@ -129,12 +129,39 @@ def test_each_list_is_the_shared_list_view_only_in_the_page_scroll(
         assert pad["treeGroups"] is False
         assert pad["treeOwnScroll"] is False
         assert pad["treeFull"] is True
-        assert pad["rows"] == len(XboxTarget)  # every control of the pad
+    # "Show only bound controls" is ticked the first time: pad 1 shows A
+    # and Left Stick X, pad 2 shows B.
+    assert run["tickFirst"] is True
+    assert run["open"]["pads"]["1"]["rows"] == 2
+    assert run["open"]["pads"]["2"]["rows"] == 1
 
 
 def test_one_find_bar_filters_every_pad(run: dict) -> None:
-    assert run["find"] == {"1": 2, "2": 2}  # Left Stick X and Y
-    assert run["findCleared"] == {"1": len(XboxTarget), "2": len(XboxTarget)}
+    assert run["find"] == {"1": 1, "2": 0}  # bound and "Left Stick": LSX
+    assert run["findCleared"] == {"1": 2, "2": 1}
+
+
+def test_pad_headers_use_the_appearance_group_look(run: dict) -> None:
+    look = run["look"]
+    assert look["headers"] == [look["group"], look["group"]]
+    assert look["headerBorders"] == [look["border"], look["border"]]
+    assert look["titleColours"] == [look["text"], look["text"]]
+    changed = run["lookChanged"]
+    assert changed["group"] == "#ff123456"
+    assert changed["headers"] == ["#ff123456", "#ff123456"]
+
+
+def test_each_pad_section_has_a_border(run: dict) -> None:
+    look = run["look"]
+    assert look["sectionBorders"] == [look["border"], look["border"]]
+    assert all(w and w >= 1 for w in look["sectionBorderWidths"])
+
+
+def test_sections_are_space_between_groups_apart(run: dict) -> None:
+    assert run["look"]["spacing"] == 0 and run["look"]["gap"] == 0
+    changed = run["lookChanged"]
+    assert changed["spacing"] > 0  # Style.dp(20)
+    assert changed["gap"] == changed["spacing"]
 
 
 def test_the_list_has_its_own_appearance_button(run: dict) -> None:

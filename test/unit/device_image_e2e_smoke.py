@@ -338,7 +338,8 @@ def home() -> None:
     # Home Undo / Redo: one step each.
     undo: list[dict] = []
     for _ in range(3):
-        tip = str(ev(win, "_moduleModel.undoTip") or "")
+        done = ev(win, "_moduleModel")._undo_steps  # type: ignore[attr-defined]
+        tip = f"Undo {done[-1][0]}" if done else ""
         ev(win, "_moduleModel.undo()")
         settle()
         undo.append({

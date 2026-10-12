@@ -492,6 +492,7 @@ function topics() {
             + "<p>A picture moves, resizes, turns and flips like a shape. Its <b>Picture</b> section has:</p>"
             + "<ul>"
             + "<li><b>Crop</b>: the handles turn blue and cut the picture instead of scaling it; what stays does not move. <b>Shift</b> on a corner keeps the crop's proportions. <b>Enter</b> or selecting something else ends it and keeps the crop; <b>Esc</b> ends it and puts the crop back as it was. <b>Reset Crop</b> (also on the <b>Arrange</b> menu) shows the whole picture again; Properties takes exact crop values.</li>"
+            + "<li><b>Reset Picture</b> (first in the <b>Picture</b> section of the right-click menu, and a button in the picture's Properties) puts the picture back as adding it again would place it: its fresh size, centered where it is now, with no crop, turn, flip or skew and full opacity. Its snap points, layer, name and whether it is hidden or locked stay. It works on every selected picture at once and is one step for Undo; it is greyed out when there is nothing to reset or the picture is locked.</li>"
             + "<li><b>Add snap point</b> (then select a spot on the picture) and <b>Clear Snap Points</b>: chips snap to these points.</li>"
             + "<li>Opacity.</li>"
             + "</ul>"

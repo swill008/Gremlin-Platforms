@@ -53,7 +53,7 @@ function findTick() {
     for (var i = 0; i < controls.length; i++) {
         var c = controls[i]
         var key = c.kind + ":" + c.hwId
-        var was = !!findPrev[key]
+        var was = !!(findPrev || {})[key]
         var now = _findPressed(c.kind, c.hwId, was)
         if (now)
             next[key] = true

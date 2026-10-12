@@ -154,7 +154,7 @@ def test_sending_filter(model: XboxOutputListModel) -> None:
     model.setFilter("", "all", True)
     assert _parents(model) == ["Left Trigger", "A"]
     assert model.filters == [
-        {"label": "Only controls with something sending", "name": "sending"}
+        {"label": "Show only bound controls", "name": "sending"}
     ]
 
 

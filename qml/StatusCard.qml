@@ -50,6 +50,9 @@ Rectangle {
     property bool dropStacking: false
     property bool selected: false
     property bool canStackSelected: false
+    // This card is in a selection of one or more (Hide Selected Cards,
+    // Reset Size of Selected Cards; D-03-HOME-BAND).
+    property bool canActOnSelected: false
     property bool stretchPhoto: false
     property bool compactView: false
     // Map to vJoy bindings from this device that can't be sent
@@ -92,6 +95,8 @@ Rectangle {
     signal unstackAllCards()
     signal shiftToggled()
     signal stackSelectedCards()
+    signal hideSelectedCards()
+    signal resetSelectedSizes()
     // Home's Undo / Redo, beside the menu's title (D-FIXLIST-B1 10).
     property bool canUndo: false
     property bool canRedo: false
@@ -170,9 +175,11 @@ Rectangle {
 
                 Image {
                     id: _photo
+                    objectName: "cardPhoto"
                     anchors.fill: parent
                     anchors.margins: Style.dp(2)
-                    source: photo
+                    // Not decoded while compact: the small thumb shows it then.
+                    source: _card.compactView ? "" : photo
                     fillMode: Image.PreserveAspectFit
                     // Decoded no larger than a card can show (maxW x maxH, see
                     // _clampW/_clampH), not at the photo's full size. A fixed
@@ -195,70 +202,91 @@ Rectangle {
             }
         }
 
-        Label {
-            text: cardName
-            color: Style.fg
-            font.pixelSize: Style.dp(14)
-            font.bold: true
-            elide: Text.ElideRight
+        // Compact view: the device's small picture beside the text lines
+        // (D-03-COMPACT-THUMB), its icon when it has none, as the Device
+        // Library rows show it.
+        RowLayout {
             Layout.fillWidth: true
-        }
+            spacing: Style.dp(8)
 
-        Label {
-            text: (status === "Stub" ? "No module" : status) + " · " + bus
-            color: _card.damaged !== "" ? Style.danger : Style.fgMuted
-            font.pixelSize: Style.dp(11)
-        }
-
-        Label {
-            visible: _card.cantSendShown
-            text: _card.cantSendText
-            color: Style.danger
-            font.pixelSize: Style.dp(11)
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            PointerTip {
-                text: _card.cantSendTip
+            DeviceThumb {
+                objectName: "cardThumb"
+                visible: _card.compactView
+                Layout.alignment: Qt.AlignTop
+                source: _card.compactView ? _card.photo : ""
+                glyph: _card.slug === "keyboard" ? "" : ""
             }
-        }
 
-        Label {
-            // Claimed counts; with no module file, the device's own counts
-            // (D-03-Q8-NOFILE). Keyboard, OSC and Xbox have none to show.
-            visible: isModule || (isStub && tab === "physical")
-            text: buttons + (buttons === 1 ? " button  " : " buttons  ")
-                  + axes + (axes === 1 ? " axis  " : " axes  ")
-                  + hats + (hats === 1 ? " hat" : " hats")
-            color: Style.fg
-            font.pixelSize: Style.dp(11)
-        }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: Style.dp(6)
 
-        Label {
-            // Output cards only: what feeds them (the glossary's Driven by).
-            visible: direction === "dest"
-            text: "Driven by: [" + (target.length ? target : "nothing") + "]"
-            color: Style.fgMuted
-            font.pixelSize: Style.dp(11)
-            wrapMode: Text.WordWrap
-            Layout.fillWidth: true
-            HoverHandler { id: _boundHover }
-            PointerTip {
-                text: target
-                show: target.length > 0
-            }
-        }
+                Label {
+                    text: cardName
+                    color: Style.fg
+                    font.pixelSize: Style.dp(14)
+                    font.bold: true
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
 
-        Label {
-            text: lastLine.length ? ("last: " + lastLine) : "last: —"
-            color: Style.fg
-            font.pixelSize: Style.dp(11)
-            elide: Text.ElideRight
-            Layout.fillWidth: true
+                Label {
+                    text: (status === "Stub" ? "No module" : status) + " · " + bus
+                    color: _card.damaged !== "" ? Style.danger : Style.fgMuted
+                    font.pixelSize: Style.dp(11)
+                }
 
-            HoverHandler { id: _lastHover }
-            PointerTip {
-                text: lastHardware
-                show: lastHardware.length > 0
+                Label {
+                    visible: _card.cantSendShown
+                    text: _card.cantSendText
+                    color: Style.danger
+                    font.pixelSize: Style.dp(11)
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    PointerTip {
+                        text: _card.cantSendTip
+                    }
+                }
+
+                Label {
+                    // Claimed counts; with no module file, the device's own counts
+                    // (D-03-Q8-NOFILE). Keyboard, OSC and Xbox have none to show.
+                    visible: isModule || (isStub && tab === "physical")
+                    text: buttons + (buttons === 1 ? " button  " : " buttons  ")
+                          + axes + (axes === 1 ? " axis  " : " axes  ")
+                          + hats + (hats === 1 ? " hat" : " hats")
+                    color: Style.fg
+                    font.pixelSize: Style.dp(11)
+                }
+
+                Label {
+                    // Output cards only: what feeds them (the glossary's Driven by).
+                    visible: direction === "dest"
+                    text: "Driven by: [" + (target.length ? target : "nothing") + "]"
+                    color: Style.fgMuted
+                    font.pixelSize: Style.dp(11)
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    HoverHandler { id: _boundHover }
+                    PointerTip {
+                        text: target
+                        show: target.length > 0
+                    }
+                }
+
+                Label {
+                    text: lastLine.length ? ("last: " + lastLine) : "last: —"
+                    color: Style.fg
+                    font.pixelSize: Style.dp(11)
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+
+                    HoverHandler { id: _lastHover }
+                    PointerTip {
+                        text: lastHardware
+                        show: lastHardware.length > 0
+                    }
+                }
             }
         }
     }
@@ -541,6 +569,8 @@ Rectangle {
             ]),
             MenuModel.section("cards", "Cards", [
                 MenuModel.action("Stack Selected Cards", function() { _card.stackSelectedCards() }, _card.canStackSelected),
+                MenuModel.action("Hide Selected Cards", function() { _card.hideSelectedCards() }, _card.canActOnSelected),
+                MenuModel.action("Reset Size of Selected Cards", function() { _card.resetSelectedSizes() }, _card.canActOnSelected),
                 MenuModel.action("Unstack", function() { _card.unstackCard() }, stacked),
                 MenuModel.action("Unstack All", function() { _card.unstackAllCards() }, stacked),
                 MenuModel.action("Reset Size", function() { _card.resetSize() }),

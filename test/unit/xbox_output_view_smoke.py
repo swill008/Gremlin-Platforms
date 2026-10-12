@@ -51,6 +51,11 @@ BOUND: dict = {
 output.xbox_pads_on = lambda: [1, 2]
 xbox_output_list.pad_bindings = lambda: {k: dict(v) for k, v in BOUND.items()}
 xbox_output_list.device_label = lambda guid: DEVICE
+# Each list's source lines: one per bound control.
+xbox_output_list.incoming_list = lambda pad, target: (
+    [f"{DEVICE} · Button 1"]
+    if target.value in BOUND.get(pad, {}).get(GUID, set()) else []
+)
 
 
 def _chips(pad: int) -> list[dict]:
@@ -236,6 +241,57 @@ out["outputAppearanceButton"] = bar_button("outputAppearanceButton")
 out["pageKey"] = run("_xboxLoader.item.appearance.pageKey")
 if len(sys.argv) > 1:
     win.grabWindow().save(sys.argv[1])
+
+
+def colour(item: QtCore.QObject | None, name: str) -> str | None:
+    """A colour property as #AARRGGBB; "border.color" read through QML."""
+    if item is None:
+        return None
+    value = run(name, item) if "." in name else item.property(name)
+    return QtGui.QColor(value).name(QtGui.QColor.NameFormat.HexArgb)
+
+
+def look() -> dict:
+    """Each pad header's look and section border against the Appearance."""
+    item = page()
+    if item is None:
+        return {}
+    items = list(walk(item))
+    appear = named(items, "xboxOutputAppearance")
+    sections = [named(items, f"xboxPadSection{p}") for p in (1, 2)]
+    boxes = [named(items, f"xboxPadHeadingBox{p}") for p in (1, 2)]
+    titles = [named(items, f"xboxPadTitle{p}") for p in (1, 2)]
+    column = named(items, "xboxPadSections")
+    one, two = sections
+    return {
+        "group": colour(appear, "colorGroup"),
+        "border": colour(appear, "colorBorder"),
+        "text": colour(appear, "colorText"),
+        "headers": [colour(b, "color") for b in boxes],
+        "headerBorders": [colour(b, "border.color") for b in boxes],
+        "titleColours": [colour(t, "color") for t in titles],
+        "sectionBorders": [colour(sec, "border.color") for sec in sections],
+        "sectionBorderWidths": [
+            run("border.width", sec) if sec else None for sec in sections
+        ],
+        "spacing": column.property("spacing") if column else None,
+        "gap": (top(two) - top(one) - round(one.height()))
+        if one is not None and two is not None else None,
+    }
+
+
+# The pad headers are drawn like the list's group rows, from the page's
+# Appearance; each section has a border; sections sit "Space between
+# groups" apart. Changing them in the Appearance changes the page.
+out["tickFirst"] = run("_xboxLoader.item.findSending")
+out["look"] = look()
+run("_xboxLoader.item.appearance.colorGroupSet = '#ff123456'")
+run("_xboxLoader.item.appearance.groupSpacing = 20")
+pump(0.3)
+out["lookChanged"] = look()
+run("_xboxLoader.item.appearance.colorGroupSet = ''")
+run("_xboxLoader.item.appearance.groupSpacing = 0")
+pump(0.3)
 
 # The Find bar once, for every pad's list.
 first = page()

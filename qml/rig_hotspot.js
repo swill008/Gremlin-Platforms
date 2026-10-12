@@ -210,7 +210,7 @@ function hotPulseTick() {
             continue
         var down = hotPressed(n)
         next[n.id] = down
-        if (down && !hotHeld[n.id]) {
+        if (down && !(hotHeld || {})[n.id]) {
             hotPulseAt[n.id] = now
             any = true
         }

@@ -724,7 +724,10 @@ function _pathSections() {
 
 function _imageSections() {
     var n = nodeAt(selectedId)
-    var items = []
+    // Reset Picture first (D-07-RESET-PICTURE): every selected picture.
+    var ids = (selectedIds && selectedIds.length) ? selectedIds : [selectedId]
+    var items = [_cmdAct("resetPicture", "Reset Picture", function() { resetPicture() },
+                      ids.some(function(i) { return canResetPicture(i) }))]
     // A picture whose file is missing is pointed at a new one (07 S108).
     if (n && n.src && !n.srcUrl)
         items.push(_act("Choose Picture…", function() { choosePictureRequested(n.id) }, !isLocked(n)))

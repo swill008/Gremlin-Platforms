@@ -60,8 +60,10 @@ Rectangle {
         { key: "line", label: "Lines" }, { key: "picture", label: "Pictures" },
         { key: "text", label: "Text" }, { key: "table", label: "Tables" }
     ]
-    // Chip ids whose hotspot and leader rows are open.
-    property var expanded: ({})
+    // Chip ids whose hotspot and leader rows are open; null = none. No {}
+    // here: a literal is a binding, and toggleOpen() assigns it
+    // (qt.qml.binding.removal); layerRows() takes null.
+    property var expanded: null
     property string renameId: ""
     // Row being dragged to a new place, and where the line shows.
     property int dragRow: -1
@@ -205,7 +207,7 @@ Rectangle {
     }
 
     function toggleOpen(id) {
-        var e = expanded
+        var e = expanded || {}
         if (e[id])
             delete e[id]
         else

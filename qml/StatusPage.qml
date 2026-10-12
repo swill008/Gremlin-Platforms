@@ -19,6 +19,7 @@ Item {
     focus: true
     Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) {
+            bandSlug = ""
             deselectAll()
             event.accepted = true
         }
@@ -26,7 +27,8 @@ Item {
 
     // Home's Undo / Redo (01 S143, D-FIXLIST-B1 10): the steps are the
     // model's; Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z while Home shows and no text
-    // box is being typed in. On Windows StandardKey.Redo is Ctrl+Y and
+    // box is being typed in, and the Undo / Redo pair in the card and
+    // empty-space menus (D-03-HOME-BAND: no Undo bar on the page bar). On Windows StandardKey.Redo is Ctrl+Y and
     // Ctrl+Shift+Z.
     function _typing() {
         var f = Window.activeFocusItem
@@ -95,6 +97,13 @@ Item {
     property bool gotGrab: false
     property var selectedSlugs: []
     property int selectRev: 0
+
+    // The selection box (D-03-HOME-BAND): a left-drag on empty space draws
+    // it; the cards it touches (a stack whole) are selected. bandSlug names
+    // the pane drawing it ("" = none); bandBase is the selection kept under
+    // Shift.
+    property string bandSlug: ""
+    property var bandBase: []
 
     signal focusSlug(string slug)
     signal openDeviceBindings(var card)
@@ -229,6 +238,75 @@ Item {
         selectRev++
         refreshCards()
         forceActiveFocus()
+    }
+
+    // The box's cards: every member of a pile any of whose cards the box
+    // touches. The box is in item's coordinates; only cards in item's
+    // parent (its pane's scroll content) count.
+    function cardsInBox(item, x0, y0, x1, y1) {
+        var hit = []
+        if (!model)
+            return hit
+        var left = Math.min(x0, x1), right = Math.max(x0, x1)
+        var top = Math.min(y0, y1), bottom = Math.max(y0, y1)
+        for (var i = 0; i < _liveCards.length; ++i) {
+            var card = _liveCards[i]
+            if (!card || !cardOnPage(card) || !_inPane(card, item.parent))
+                continue
+            var o = card.mapToItem(item, 0, 0)
+            if (o.x > right || o.y > bottom || o.x + card.width < left
+                    || o.y + card.height < top)
+                continue
+            var pile = model.pileMembers(card.slug)
+            for (var m = 0; m < pile.length; ++m) {
+                if (hit.indexOf(pile[m]) < 0)
+                    hit.push(pile[m])
+            }
+        }
+        return hit
+    }
+
+    function _inPane(card, item) {
+        for (var p = card.parent; p; p = p.parent) {
+            if (p === item)
+                return true
+        }
+        return false
+    }
+
+    // Selects the box's cards (with the kept ones under Shift); only when
+    // the set changes.
+    function bandSelect(hit) {
+        var list = bandBase.slice()
+        for (var i = 0; i < hit.length; ++i) {
+            if (list.indexOf(hit[i]) < 0)
+                list.push(hit[i])
+        }
+        if (list.length === selectedSlugs.length
+                && list.every(function(s) { return selectedSlugs.indexOf(s) >= 0 }))
+            return
+        selectedSlugs = list
+        selectRev++
+        refreshCards()
+    }
+
+    // Hide Selected Cards / Reset Size of Selected Cards (D-03-HOME-BAND):
+    // each one Home Undo step.
+    function hideSelected() {
+        if (!model || !selectedSlugs.length)
+            return
+        var list = selectedSlugs.slice()
+        selectedSlugs = []
+        selectRev++
+        model.hideSelected(list.join(","))
+        refreshCards()
+    }
+
+    function resetSelectedSizes() {
+        if (!model || !selectedSlugs.length)
+            return
+        model.resetSelectedSizes(selectedSlugs.join(","))
+        refreshCards()
     }
 
     function stackSelected(leader) {
@@ -561,6 +639,8 @@ Item {
         })
         card.shiftToggled.connect(function() { _page.toggleSelect(card) })
         card.stackSelectedCards.connect(function() { _page.stackSelected(card.slug) })
+        card.hideSelectedCards.connect(function() { Qt.callLater(_page.hideSelected) })
+        card.resetSelectedSizes.connect(function() { Qt.callLater(_page.resetSelectedSizes) })
         card.onOpenDeviceBindings.connect(function() { _page.openDeviceBindings(_page.pack(card)) })
         card.openDeviceMappingEditor.connect(function() { _page.openDeviceMappingEditor(_page.pack(card)) })
         card.openOutputView.connect(function() { _page.openOutputView(_page.pack(card)) })
@@ -694,6 +774,7 @@ Item {
             card.lifting = false
         card.selected = _page._selectHas(card.slug)
         card.canStackSelected = card.selected && selectedSlugs.length >= 2
+        card.canActOnSelected = card.selected && selectedSlugs.length >= 1
     }
 
     onVisibleChanged: {
@@ -710,11 +791,12 @@ Item {
     }
 
     // Home's controls, shown by Main in the bar under the toolbar (D-01-MODE-BAR).
-    // Built in this file, so its bindings still reach _page. On the left
-    // after the divider (01 S58a), then the Undo / Redo pair (01 S143).
+    // Built in this file, so its bindings still reach _page. Compact view and
+    // Layout together on the left after the divider (01 S58a, D-03-HOME-BAND).
     property Component pageBar: Component {
         RowLayout {
             Layout.fillWidth: true
+            spacing: Style.dp(8)
             CheckBox {
                 objectName: "homeCompactView"
                 text: "Compact view"
@@ -724,7 +806,12 @@ Item {
                         _page.model.setCompactView(checked)
                 }
             }
-            Label { text: "Layout"; color: Style.fgMuted; font.pixelSize: Style.dp(11) }
+            Label {
+                objectName: "homeLayoutLabel"
+                text: "Layout"
+                color: Style.fgMuted
+                font.pixelSize: Style.dp(11)
+            }
             ComboBox {
                 id: _split
                 objectName: "homeLayoutCombo"
@@ -743,19 +830,8 @@ Item {
                     _page.model.setSplitMode(["none", "vertical", "horizontal"][currentIndex])
                 }
             }
-            UndoBar {
-                objectName: "homeUndoBar"
-                Layout.fillWidth: true
-                Layout.leftMargin: Style.dp(10)
-                canUndo: !!_page.model && _page.model.canUndo
-                canRedo: !!_page.model && _page.model.canRedo
-                undoTip: _page.model ? _page.model.undoTip : ""
-                redoTip: _page.model ? _page.model.redoTip : ""
-                lastChange: _page.model ? _page.model.lastChange : ""
-                undone: _page.model ? _page.model.undone : ""
-                onUndo: _page.undo()
-                onRedo: _page.redo()
-            }
+            // The rest of the bar stays empty.
+            Item { Layout.fillWidth: true }
         }
     }
 
@@ -824,6 +900,7 @@ Item {
 
             StatusPane {
                 id: _inputPane
+                objectName: "homeInputPane"
                 SplitView.minimumWidth: Style.dp(180)
                 SplitView.minimumHeight: Style.dp(120)
                 title: "Input Modules"
@@ -833,6 +910,7 @@ Item {
             }
             StatusPane {
                 id: _outputPane
+                objectName: "homeOutputPane"
                 SplitView.minimumWidth: Style.dp(180)
                 SplitView.minimumHeight: Style.dp(120)
                 SplitView.fillWidth: true
@@ -844,6 +922,7 @@ Item {
 
         StatusPane {
             id: _allPane
+            objectName: "homeAllPane"
             Layout.fillWidth: true
             Layout.fillHeight: !_page.splitOn
             visible: !_page.splitOn
@@ -879,6 +958,7 @@ Item {
 
             Flickable {
                 id: _flick
+                objectName: _pane.objectName + "Scroll"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
@@ -888,12 +968,26 @@ Item {
                 interactive: _pane.dragLocks === 0
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
+                // Empty space: a left-drag draws the selection box
+                // (D-03-HOME-BAND) and never scrolls the page (the wheel and
+                // the scroll bar still do); a click clears the selection.
                 MouseArea {
+                    id: _empty
+                    objectName: "homeEmptyArea"
                     z: -1
                     width: _flick.width
                     height: Math.max(_flick.height, _flow.implicitHeight)
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    preventStealing: false
+                    // Keeps the drag from the Flickable.
+                    preventStealing: true
+                    property real x0: 0
+                    property real y0: 0
+                    property real x1: 0
+                    property real y1: 0
+                    // The pointer in the visible area, for the edge scroll.
+                    property real viewY: 0
+                    property bool shift: false
+                    readonly property bool banding: _page.bandSlug === _pane.objectName
                     onPressed: function(mouse) {
                         if (_page.dragSlug.length) {
                             mouse.accepted = false
@@ -908,10 +1002,77 @@ Item {
                             _page.popupEmptyMenu(p.x, p.y)
                             return
                         }
-                        if (!(mouse.modifiers & Qt.ShiftModifier))
+                        shift = !!(mouse.modifiers & Qt.ShiftModifier)
+                        if (!shift)
                             _page.deselectAll()
-                        mouse.accepted = false
+                        else
+                            _page.forceActiveFocus()
+                        x0 = x1 = mouse.x
+                        y0 = y1 = mouse.y
+                        viewY = mouse.y - _flick.contentY
                     }
+                    onPositionChanged: function(mouse) {
+                        if (!pressed || !(pressedButtons & Qt.LeftButton))
+                            return
+                        x1 = mouse.x
+                        y1 = mouse.y
+                        viewY = mouse.y - _flick.contentY
+                        if (!banding && Math.hypot(x1 - x0, y1 - y0) < Style.dp(4))
+                            return
+                        if (!banding) {
+                            _page.bandBase = shift ? _page.selectedSlugs.slice() : []
+                            _page.bandSlug = _pane.objectName
+                        }
+                        _page.bandSelect(_page.cardsInBox(_empty, x0, y0, x1, y1))
+                    }
+                    onReleased: endBand()
+                    onCanceled: endBand()
+                    function endBand() {
+                        if (banding)
+                            _page.bandSlug = ""
+                        _page.bandBase = []
+                    }
+
+                    // The page scrolls while the box is held at the top or
+                    // bottom edge.
+                    Timer {
+                        objectName: "homeBandScroll"
+                        interval: 30
+                        repeat: true
+                        running: _empty.banding
+                        onTriggered: {
+                            var edge = Style.dp(24)
+                            var step = 0
+                            if (_empty.viewY < edge)
+                                step = -Style.dp(12)
+                            else if (_empty.viewY > _flick.height - edge)
+                                step = Style.dp(12)
+                            if (!step)
+                                return
+                            var maxY = Math.max(0, _flick.contentHeight - _flick.height)
+                            var to = Math.max(0, Math.min(maxY, _flick.contentY + step))
+                            if (to === _flick.contentY)
+                                return
+                            _empty.y1 += to - _flick.contentY
+                            _flick.contentY = to
+                            _page.bandSelect(_page.cardsInBox(_empty, _empty.x0, _empty.y0,
+                                                              _empty.x1, _empty.y1))
+                        }
+                    }
+                }
+
+                // The selection box, as the Device Mapping Editor's.
+                Rectangle {
+                    objectName: _pane.objectName + "Band"
+                    visible: _empty.banding
+                    z: 1000
+                    x: Math.min(_empty.x0, _empty.x1)
+                    y: Math.min(_empty.y0, _empty.y1)
+                    width: Math.abs(_empty.x1 - _empty.x0)
+                    height: Math.abs(_empty.y1 - _empty.y0)
+                    color: Qt.rgba(Style.warn.r, Style.warn.g, Style.warn.b, 0.2)
+                    border.color: Style.warn
+                    border.width: Style.dp(1)
                 }
 
                 Flow {
@@ -1069,27 +1230,36 @@ Item {
         Qt.callLater(function() { _emptyMenu.openAt(_page, pageX, pageY) })
     }
 
-    // The page's right-click menu (Gremlin.Menus), off the cards.
+    // The page's right-click menu (Gremlin.Menus), off the cards: Undo /
+    // Redo beside its title (D-03-HOME-BAND).
     ContextMenu {
         id: _emptyMenu
         menuWidth: Style.dp(240)
-        build: function() {
-            return MenuModel.menu("home", "Home", [
-                MenuModel.action("Unhide All Cards", function() {
-                    if (_page.model)
-                        _page.model.unignoreAll()
-                }, !!(_page.model && _page.model.hiddenList().length)),
-                MenuModel.action("Reset All Card Sizes", function() { _page.resetAllCardSizes() })
-            ], [
-                // Opens to list each hidden card; clicking one unhides it.
-                MenuModel.section("hidden", "Hidden Cards", _page.hiddenCardRows()),
-                MenuModel.section("layout", "Layout", [
-                    MenuModel.command("view.layout.single"),
-                    MenuModel.command("view.layout.side"),
-                    MenuModel.command("view.layout.stacked")
-                ])
+        build: _page.emptyMenuModel
+    }
+
+    function emptyMenuModel() {
+        return MenuModel.menu("home", "Home", [
+            MenuModel.action("Unhide All Cards", function() {
+                if (_page.model)
+                    _page.model.unignoreAll()
+            }, !!(_page.model && _page.model.hiddenList().length)),
+            MenuModel.action("Reset All Card Sizes", function() { _page.resetAllCardSizes() })
+        ], [
+            // Opens to list each hidden card; clicking one unhides it.
+            MenuModel.section("hidden", "Hidden Cards", _page.hiddenCardRows()),
+            MenuModel.section("layout", "Layout", [
+                MenuModel.command("view.layout.single"),
+                MenuModel.command("view.layout.side"),
+                MenuModel.command("view.layout.stacked")
             ])
-        }
+        ], [
+            // Home's Undo / Redo beside the title, as on the cards.
+            { label: "Undo", enabled: !!(_page.model && _page.model.canUndo),
+              run: function() { Qt.callLater(_page.undo) } },
+            { label: "Redo", enabled: !!(_page.model && _page.model.canRedo),
+              run: function() { Qt.callLater(_page.redo) } }
+        ])
     }
 
     // Home menu → Hidden Cards: a row per hidden card (by name). With none

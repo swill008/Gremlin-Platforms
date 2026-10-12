@@ -27,7 +27,10 @@ Dialog {
     property bool isCurrent: false
     property var holds: []
     property var sticks: []
-    property var parts: ({})
+    // No {} here: a literal is a binding, and openFor() assigns it
+    // (qt.qml.binding.removal). Set in Component.onCompleted; bindings
+    // read it guarded.
+    property var parts: null
     property var profiles: []
     property var modes: []
     property var warnings: []
@@ -197,7 +200,7 @@ Dialog {
                         objectName: "libraryCopyPart_" + modelData.key
                         text: modelData.label
                         enabled: _dlg.holds.indexOf(modelData.key) >= 0
-                        checked: _dlg.parts[modelData.key] === true
+                        checked: (_dlg.parts || {})[modelData.key] === true
                         onToggled: {
                             var p = Object.assign({}, _dlg.parts)
                             p[modelData.key] = checked
@@ -209,7 +212,7 @@ Dialog {
             }
 
             ColumnLayout {
-                visible: _dlg.parts["bindings"] === true
+                visible: (_dlg.parts || {})["bindings"] === true
                 Layout.fillWidth: true
                 Layout.leftMargin: Style.dp(24)
                 spacing: Style.dp(2)
@@ -338,4 +341,8 @@ Dialog {
         }
     }
     onAccepted: lib.copy(sourceKey, target.key, chosenParts(), chosenProfiles(), chosenModes())
+
+    Component.onCompleted: {
+        parts = {}
+    }
 }

@@ -6,9 +6,10 @@
 over a stand-in card model, driven with real mouse events. Prints
 "RESULT name json" per value, "ERROR ..." for a failing step, "WARN ..." per
 QML warning, then "done". test_home_card_drag.py, test_home_card_size.py and
-test_home_image_menu.py run it in its own process:
+test_home_image_menu.py, test_home_compact_thumb.py and test_home_band.py run
+it in its own process:
 
-    python test/unit/home_cards_smoke.py <out_dir> <drag|size|image>
+    python test/unit/home_cards_smoke.py <out_dir> <drag|size|image|compact|band>
 
 HOME_QML_DIR points it at another qml folder (a copy with the old files,
 to show a test fails on the old code).
@@ -26,6 +27,7 @@ _ROOT = _HERE.parents[1]
 
 # The stand-in model: four input cards a, b, c, d in one pane, no stacks.
 # Card "b" has a Device Image (hasImage). It records what the page asks.
+# piles: a stack's members by any of its slugs (band mode stacks b and c).
 _WRAPPER = """
 import QtQuick
 import QtQuick.Controls
@@ -44,13 +46,10 @@ ApplicationWindow {{
         property bool compactView: false
         property bool canUndo: false
         property bool canRedo: false
-        property string undoTip: ""
-        property string redoTip: ""
-        property string lastChange: ""
-        property string undone: ""
         property string focusedSlug: ""
         property var order: ["a", "b", "c", "d"]
         property var widths: ({{}})
+        property var piles: ({{}})
         property var calls: []
         signal panesChanged()
         signal claimsChanged()
@@ -65,7 +64,7 @@ ApplicationWindow {{
         function note(text) {{ var c = calls.slice(); c.push(text); calls = c }}
         function visibleCount() {{ return order.length }}
         function pileLeaders(dir) {{ return order }}
-        function pileMembers(slug) {{ return [slug] }}
+        function pileMembers(slug) {{ return piles[slug] || [slug] }}
         function cardMap(slug) {{
             return {{ slug: slug, name: "Card " + slug, rawName: "Card " + slug,
                      guid: "", direction: slug === "x" ? "dest" : "source",
@@ -86,6 +85,10 @@ ApplicationWindow {{
             return true
         }}
         function removeCardImage(slug) {{ note("remove " + slug); return true }}
+        function hideSelected(csv) {{ note("hide " + csv) }}
+        function resetSelectedSizes(csv) {{ note("reset " + csv) }}
+        function undo() {{ note("undo") }}
+        function redo() {{ note("redo") }}
         function setFocus(slug) {{}}
         function raiseSlug(slug) {{}}
         function hiddenList() {{ return [] }}
@@ -123,6 +126,42 @@ ApplicationWindow {{
         }}
         return null
     }}
+    // The first item named so inside the card (depth first).
+    function inCard(slug, name) {{
+        var found = null
+        function walk(it) {{
+            if (found || !it) return
+            if (it.objectName === name) {{ found = it; return }}
+            for (var i = 0; i < it.children.length; ++i) walk(it.children[i])
+        }}
+        walk(cardOf(slug))
+        return found
+    }}
+    // Compact thumb, glyph and big picture of a card (D-03-COMPACT-THUMB).
+    function looks(slug) {{
+        var t = inCard(slug, "cardThumb")
+        var g = inCard(slug, "deviceThumbGlyph")
+        var p = inCard(slug, "cardPhoto")
+        return {{ thumb: t ? t.visible : null,
+                 thumbSize: t ? [Math.round(t.width), Math.round(t.height)] : null,
+                 thumbPicture: t ? t.showsPicture : null,
+                 glyph: g && g.visible ? g.text : "",
+                 photoSource: p ? String(p.source) : null,
+                 photoReady: p ? p.status === Image.Ready : null,
+                 height: Math.round(cardOf(slug).height) }}
+    }}
+    // The first item named so on the page (depth first).
+    function onPage(name) {{
+        var found = null
+        function walk(it) {{
+            if (found || !it) return
+            if (it.objectName === name) {{ found = it; return }}
+            for (var i = 0; i < it.children.length; ++i) walk(it.children[i])
+        }}
+        walk(_page)
+        return found
+    }}
+    function sel() {{ return _page.selectedSlugs.slice().sort().join(",") }}
     function child(name) {{
         for (var i = 0; i < _page.children.length; ++i)
             if (_page.children[i].objectName === name)
@@ -351,11 +390,164 @@ def main() -> None:
         result("b-remove-ran", ev("menuOf('b').activate('Remove Image')"))
         QtTest.QTest.qWait(200)
         result("calls", ev("_fake.calls"))
+    elif mode == "compact":
+        # Card b gets a real picture; a has none (D-03-COMPACT-THUMB).
+        png = out / "stick.png"
+        img = QtGui.QImage(64, 48, QtGui.QImage.Format.Format_RGB32)
+        img.fill(QtGui.QColor(40, 120, 200))
+        img.save(str(png))
+        url = QtCore.QUrl.fromLocalFile(str(png)).toString()
+        result("url", url)
+        ev(f"cardOf('b').photo = {json.dumps(url)}")
+        QtTest.QTest.qWait(400)
+        result("full", {s: ev(f"looks('{s}')") for s in "ab"})
+        ev("_fake.compactView = true")
+        QtTest.QTest.qWait(400)
+        result("compact", {s: ev(f"looks('{s}')") for s in "ab"})
+        result("dp40", ev("Style.dp(40)"))
+        ev("_fake.compactView = false")
+        QtTest.QTest.qWait(400)
+        result("full-again", {s: ev(f"looks('{s}')") for s in "ab"})
+    elif mode == "band":
+        _band(ev, quick, result, move, out)
     for w in warnings:
         print(f"WARN {w}", flush=True)
     print("done", flush=True)
     app.processEvents()
     os._exit(0)
+
+
+def _band(ev, quick, result, move, out: Path) -> None:  # noqa: ANN001
+    """The selection box on empty space (D-03-HOME-BAND): piles a, b (a
+    stack of b and c), d ... w, four a row (six rows), so the page scrolls."""
+    from PySide6 import QtCore, QtGui, QtTest
+
+    left = QtCore.Qt.MouseButton.LeftButton
+    none = QtCore.Qt.KeyboardModifier.NoModifier
+    shift = QtCore.Qt.KeyboardModifier.ShiftModifier
+    ev(
+        "_fake.piles = { b: ['b', 'c'], c: ['b', 'c'] };"
+        " _fake.order = 'abdefghijklmnopqrstuvw'.split('');"
+        " _page.pileRev++"
+    )
+    QtTest.QTest.qWait(500)
+    scroll = "onPage('homeAllPaneScroll')"
+
+    def flick_y() -> float:
+        return float(ev(f"{scroll}.contentY") or 0)  # type: ignore[arg-type]
+
+    def xy(slug: str) -> list[int]:
+        return ev(f"at('{slug}')")  # type: ignore[return-value]
+
+    _ax, ay, _aw, _ah = xy("a")
+    ex, _ey, ew, _eh = xy("e")
+    bx, _by, bw, _bh = xy("b")
+    result("row", [xy(s)[1] for s in "abde"])
+    result("scrollable", ev(f"{scroll}.contentHeight > {scroll}.height"))
+    # Empty space right of the first row.
+    start = QtCore.QPoint(ex + ew + 40, ay + 30)
+    result("start-empty", ev(f"_page.cardUnder({start.x()}, {start.y()}) === null"))
+    y0 = flick_y()
+    QtTest.QTest.mousePress(quick, left, none, start)
+    QtTest.QTest.qWait(50)
+    target = QtCore.QPoint(bx + bw // 2, ay + 60)
+    for step in range(1, 9):
+        move(start + (target - start) * step / 8)
+    result(
+        "band",
+        ev(
+            "var b = onPage('homeAllPaneBand'); b ? [b.visible,"
+            " Qt.colorEqual(b.border.color, Style.warn),"
+            " Math.round(b.width), Math.round(b.height)] : null"
+        ),
+    )
+    result("band-selected", ev("sel()"))
+    result("band-scrolled", flick_y() - y0)
+    quick.grabWindow().save(str(out / "band.png"))
+    QtTest.QTest.mouseRelease(quick, left, none, target)
+    QtTest.QTest.qWait(100)
+    result("band-after", [ev("onPage('homeAllPaneBand').visible"), ev("sel()")])
+    # The card menu acts on the selection.
+    dx, dy, _dw, _dh = xy("d")
+    QtTest.QTest.mouseClick(
+        quick, QtCore.Qt.MouseButton.RightButton, none, QtCore.QPoint(dx + 30, dy + 30)
+    )
+    QtTest.QTest.qWait(250)
+    rows = str(ev("menuOf('d').describe().join('|')") or "").split("|")
+    if "> Cards" in rows:
+        ev("menuOf('d').activate('Cards')")
+    rows = str(ev("menuOf('d').describe().join('|')") or "").split("|")
+    result("card-rows", [r.strip() for r in rows if "Selected" in r])
+    ev("menuOf('d').activate('Reset Size of Selected Cards')")
+    QtTest.QTest.qWait(100)
+    result("after-reset", ev("sel()"))
+    ev("menuOf('d').activate('Hide Selected Cards')")
+    QtTest.QTest.qWait(100)
+    result("menu-calls", ev("_fake.calls"))
+    result("after-hide", ev("sel()"))
+
+    # A box over e alone, then Shift + a box over the second row's first card.
+    QtTest.QTest.mousePress(quick, left, none, start)
+    on_e = QtCore.QPoint(ex + ew - 20, ay + 40)
+    move(start + (on_e - start) / 2)
+    move(on_e)
+    QtTest.QTest.mouseRelease(quick, left, none, on_e)
+    result("only-e", ev("sel()"))
+    fx, fy, fw, _fh = xy("f")
+    row2 = QtCore.QPoint(ex + ew + 40, fy + 30)
+    on_f = QtCore.QPoint(fx + fw - 20, fy + 40)
+    QtTest.QTest.mousePress(quick, left, shift, row2)
+    move(row2 + (on_f - row2) / 2)
+    move(on_f)
+    QtTest.QTest.mouseRelease(quick, left, shift, on_f)
+    result("shift-added", ev("sel()"))
+    # A plain click on empty space clears.
+    QtTest.QTest.mouseClick(quick, left, none, start)
+    QtTest.QTest.qWait(100)
+    result("click-cleared", ev("sel()"))
+
+    # The wheel still scrolls.
+    y0 = flick_y()
+    wheel = QtGui.QWheelEvent(
+        QtCore.QPointF(start), QtCore.QPointF(start), QtCore.QPoint(0, 0),
+        QtCore.QPoint(0, -240), QtCore.Qt.MouseButton.NoButton, none,
+        QtCore.Qt.ScrollPhase.NoScrollPhase, False,
+    )
+    QtGui.QGuiApplication.sendEvent(quick, wheel)
+    QtTest.QTest.qWait(400)
+    result("wheel-scrolled", flick_y() - y0)
+    ev(f"{scroll}.contentY = 0")
+    QtTest.QTest.qWait(100)
+
+    # Held at the bottom edge, the page scrolls and the box takes more cards.
+    y0 = flick_y()
+    QtTest.QTest.mousePress(quick, left, none, start)
+    bottom = QtCore.QPoint(start.x() - 300, quick.height() - 16)
+    move(start + QtCore.QPoint(-20, 20))
+    result("edge-before", ev("_page.selectedSlugs.length"))
+    for step in range(1, 6):
+        move(start + (bottom - start) * step / 5)
+    held = ev("_page.selectedSlugs.length")
+    QtTest.QTest.qWait(800)
+    result("edge-scrolled", flick_y() - y0)
+    result("edge-selected", [held, ev("_page.selectedSlugs.length")])
+    # Esc clears, even with the box still held.
+    QtTest.QTest.keyClick(quick, QtCore.Qt.Key.Key_Escape)
+    QtTest.QTest.qWait(50)
+    result("esc", [ev("sel()"), ev("onPage('homeAllPaneBand').visible")])
+    QtTest.QTest.mouseRelease(quick, left, none, bottom)
+    QtTest.QTest.qWait(50)
+
+    # The empty-space menu: Undo / Redo beside its title.
+    ev("_fake.canUndo = true")
+    result(
+        "empty-header",
+        ev("JSON.stringify(_page.emptyMenuModel().header.map(function(h) {"
+           " return [h.label, h.enabled] }))"),
+    )
+    ev("_page.emptyMenuModel().header[0].run()")
+    QtTest.QTest.qWait(100)
+    result("empty-undo", ev("_fake.calls[_fake.calls.length - 1]"))
 
 
 def run(tmp_path: Path, mode: str, qml_dir: Path | None = None) -> dict[str, object]:

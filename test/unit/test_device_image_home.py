@@ -100,21 +100,21 @@ def test_add_change_remove_on_an_input_card_with_home_undo(
     assert doc["nodes"] == nodes
     assert _pictures(path) == ["device-image.jpg"]
     assert model.cardMap("keyboard")["hasImage"] is True
-    assert model.undoTip == "Undo Add Image (Ctrl+Z)"
+    assert model._undo_steps[-1][0] == "Add Image"
 
     # Change Image…: the new file replaces the old one.
     assert model.setCardImage("keyboard", _pick(tmp_path, "b.png", _PNG))
     ref = store.device_image_ref(_doc(path))
     assert ref.startswith("pictures/device-image") and ref.endswith(".png")
     assert _pictures(path) == [Path(ref).name]
-    assert model.undoTip == "Undo Change Image (Ctrl+Z)"
+    assert model._undo_steps[-1][0] == "Change Image"
 
     # Remove Image: key and file go.
     assert model.removeCardImage("keyboard")
     assert store.DEVICE_IMAGE_KEY not in _doc(path)
     assert _pictures(path) == []
     assert model.cardMap("keyboard")["hasImage"] is False
-    assert model.undoTip == "Undo Remove Image (Ctrl+Z)"
+    assert model._undo_steps[-1][0] == "Remove Image"
 
     # Undo Remove brings the file and the key back.
     model.undo()

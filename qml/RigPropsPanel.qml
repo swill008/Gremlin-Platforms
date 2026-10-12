@@ -11,7 +11,7 @@ import Gremlin.Style
 // size, angle and style (rig_props.js lists the fields). Type a number and
 // press Enter, click a value, or click a colour to open the colour picker.
 // A picture also has its Look: sliders for brightness, contrast, greyscale
-// and opacity.
+// and opacity, and a Reset Picture button.
 // A locked item's fields show but do not change.
 Rectangle {
     id: _panel
@@ -90,6 +90,7 @@ Rectangle {
 
                 // A heading (a picture's Look) is its title only.
                 Label {
+                    visible: _row.field.kind !== "button"
                     Layout.preferredWidth: _row.field.kind === "heading" ? -1 : Style.dp(86)
                     Layout.topMargin: _row.field.kind === "heading" ? Style.dp(4) : 0
                     text: _row.field.label
@@ -219,6 +220,17 @@ Rectangle {
                     }
                 }
 
+                // A button (Reset Picture): runs the field's key.
+                Button {
+                    objectName: "propButton_" + _row.field.key
+                    visible: _row.field.kind === "button"
+                    enabled: _row.field.kind === "button" && !!_row.field.enabled
+                    Layout.preferredHeight: _panel.rowH
+                    text: _row.field.kind === "button" ? _row.field.label : ""
+                    font.pixelSize: _panel.textPx - Style.dp(1)
+                    onClicked: _panel.ed.setProp(_row.field.key, "")
+                }
+
                 // A colour: its swatch and hex; click to open the picker.
                 Rectangle {
                     visible: _row.field.kind === "colour"
@@ -249,7 +261,7 @@ Rectangle {
         var f = model.fields
         for (var i = 0; i < f.length; i++) {
             var v = f[i].value
-            if (f[i].kind === "heading") {
+            if (f[i].kind === "heading" || f[i].kind === "button") {
                 out.push(f[i].label)
                 continue
             }

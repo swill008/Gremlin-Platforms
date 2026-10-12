@@ -121,10 +121,13 @@ Item {
     property string highlightKey: ""
     property string _flashKey: ""
 
-    // Selected parent keys; open parents; folded groups.
-    property var picked: ([])
-    property var opened: ({})
-    property var collapsed: ({})
+    // Selected parent keys; open parents; folded groups. No [] / {} here:
+    // a literal is a binding, and select() / toggleOpen() / toggleGroup()
+    // assign them (qt.qml.binding.removal). Set in Component.onCompleted;
+    // rows built before that read them guarded.
+    property var picked: null
+    property var opened: null
+    property var collapsed: null
     property string _dragFrom: ""
 
     signal parentMenu(string key, string title, string userName, string groupName, var item, real x, real y)
@@ -153,7 +156,7 @@ Item {
     }
 
     function select(key, shift) {
-        var next = picked.slice()
+        var next = (picked || []).slice()
         if (!shift) {
             next = [key]
         } else {
@@ -180,16 +183,16 @@ Item {
     function _rowVisible(kind, groupKey, parentKey) {
         if (kind === "group" && !showGroups)
             return false
-        if (kind !== "group" && showGroups && collapsed[groupKey])
+        if (kind !== "group" && showGroups && (collapsed || {})[groupKey])
             return false
         if (kind === "writer" && !showSummary)
             return false
         if (kind === "writer" || kind === "child")
-            return showChildren && !!opened[parentKey]
+            return showChildren && !!(opened || {})[parentKey]
         // Feedback rows sit under an input (opened with it) or in a group
         // of their own (shown while the group is unfolded).
         if (kind === "feedback")
-            return parentKey === groupKey || (showChildren && !!opened[parentKey])
+            return parentKey === groupKey || (showChildren && !!(opened || {})[parentKey])
         return true
     }
 
@@ -406,12 +409,12 @@ Item {
                 width: _row.boxW
                 height: _row.rowBody
                 color: {
-                    var chosen = _tree.picked.indexOf(key) >= 0
+                    var chosen = (_tree.picked || []).indexOf(key) >= 0
                     if (_row.ledOn)
                         return Qt.rgba(_tree.colorLive.r, _tree.colorLive.g, _tree.colorLive.b, chosen ? 0.55 : 0.28)
                     return chosen ? _tree.colorSelected : (rowKind === "group" ? _tree.colorGroup : (rowKind === "parent" ? _tree.colorParent : _tree.colorChild))
                 }
-                border.color: _tree._flashKey === key ? _tree.colorLive : (_tree.picked.indexOf(key) >= 0 ? _tree.colorSelectBorder : _tree.colorBorder)
+                border.color: _tree._flashKey === key ? _tree.colorLive : ((_tree.picked || []).indexOf(key) >= 0 ? _tree.colorSelectBorder : _tree.colorBorder)
                 border.width: Style.dp(_tree._flashKey === key ? 2 : 1)
                 radius: Style.dp(rowKind === "group" ? _tree.groupRadius : (rowKind === "parent" ? _tree.parentRadius : _tree.childRadius))
 
@@ -446,7 +449,7 @@ Item {
                 Label {
                     id: _caret
                     visible: _tree._hasList(rowKind, childCount, _row.extraWriters)
-                    text: (rowKind === "group" ? _tree.collapsed[groupKey] : !_tree.opened[key]) ? "▸" : "▾"
+                    text: (rowKind === "group" ? (_tree.collapsed || {})[groupKey] : !(_tree.opened || {})[key]) ? "▸" : "▾"
                     color: _tree.colorCaret
                     font.pixelSize: Style.dp(_tree.caretSize)
                     Layout.alignment: Qt.AlignVCenter
@@ -770,5 +773,11 @@ Item {
                 }
             }
         }
+    }
+
+    Component.onCompleted: {
+        picked = []
+        opened = {}
+        collapsed = {}
     }
 }

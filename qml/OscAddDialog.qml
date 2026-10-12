@@ -32,7 +32,9 @@ Popup {
     // settings() as the window opened on keys; OK sends what differs from it.
     property var _startSettings: null
     // The settings the inputs don't share (shown blank): {key: true}.
-    property var differs: ({})
+    // No {} here: a literal is a binding, and the window assigns it
+    // (qt.qml.binding.removal); null = nothing differs.
+    property var differs: null
     readonly property bool editingMany: editKeys.length > 1
     readonly property bool editing: editUid.length > 0 || editKeys.length > 0
     // The values of the last captured message (P1..Pn).
@@ -677,7 +679,7 @@ Popup {
                 id: _data
                 objectName: "oscData"
                 Layout.fillWidth: true
-                placeholderText: _root.differs.data ? "Differs: leave blank to keep each" : "1, 0.5"
+                placeholderText: (_root.differs || {}).data ? "Differs: leave blank to keep each" : "1, 0.5"
             }
         }
 
@@ -872,7 +874,7 @@ Popup {
                     objectName: "oscDeadzoneLow"
                     text: "0"
                     implicitWidth: Style.dp(80)
-                    placeholderText: _root.differs.deadzone_low ? "Differs" : "0"
+                    placeholderText: (_root.differs || {}).deadzone_low ? "Differs" : "0"
                 }
                 Label { text: "high:" }
                 TextField {
@@ -880,7 +882,7 @@ Popup {
                     objectName: "oscDeadzoneHigh"
                     text: "0"
                     implicitWidth: Style.dp(80)
-                    placeholderText: _root.differs.deadzone_high ? "Differs" : "0"
+                    placeholderText: (_root.differs || {}).deadzone_high ? "Differs" : "0"
                 }
                 Label {
                     objectName: "oscDeadzoneError"

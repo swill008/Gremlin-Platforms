@@ -11,10 +11,12 @@ import Gremlin.UI
 
 // One pad's section on the Xbox Output View (03 S139, D-XBOX-PADS): a
 // header that folds it ("Xbox 360 N", what drives it, how many controls are
-// bound), then the pad's face lit from what the pad really sends, its chip
-// rows (one line per device that drives it) and its control list (the
-// shared ControlTree, view only, as tall as its rows: the page scrolls).
-ColumnLayout {
+// bound), drawn like the list's group rows from the page's Appearance, then
+// the pad's face lit from what the pad really sends, its chip rows (one line
+// per device that drives it) and its control list (the shared ControlTree,
+// view only, as tall as its rows: the page scrolls). A thin border in the
+// list's border colour goes round the whole section.
+Rectangle {
     id: _root
 
     required property int padId
@@ -33,11 +35,34 @@ ColumnLayout {
 
     readonly property alias list: _list
 
+    // The Appearance's Group row look, for the header (ControlTree's group
+    // rows use the same values).
+    readonly property color groupColor: appear ? appear.colorGroup : Style.bgRaised
+    readonly property color borderColor: appear ? appear.colorBorder : Style.line
+    readonly property color textColor: appear ? appear.colorText : Style.fg
+    readonly property color mutedColor: appear ? appear.colorMuted : Style.fgMuted
+    readonly property int groupRadius: appear ? appear.groupRadius : 3
+    readonly property int groupFont: appear ? appear.groupFont : 15
+    readonly property bool groupBold: appear ? appear.parentBold : true
+
     signal toggleRequested()
     signal clearFilters()
 
+    // The Group padding on one side ("Top", "Left", ...), as ControlTree
+    // pads its group rows.
+    function _groupPad(side) {
+        if (!appear)
+            return 0
+        return Style.dp(appear.groupPadShape === "box" ? appear.groupPad
+                                                       : appear["groupPad" + side])
+    }
+
     objectName: "xboxPadSection" + padId
-    spacing: Style.dp(6)
+    color: "transparent"
+    border.color: borderColor
+    border.width: Style.dp(1)
+    radius: Style.dp(groupRadius)
+    implicitHeight: _column.implicitHeight + 2 * border.width
 
     XboxOutputListModel {
         id: _list
@@ -66,68 +91,6 @@ ColumnLayout {
     onFindTypeChanged: _applyFind()
     onFindSendingChanged: _applyFind()
     Component.onCompleted: _applyFind()
-
-    // The header: click to fold or open the section.
-    AbstractButton {
-        id: _heading
-        objectName: "xboxPadHeading" + _root.padId
-        Layout.fillWidth: true
-        implicitHeight: _headRow.implicitHeight + Style.dp(8)
-        hoverEnabled: true
-        Accessible.name: (_root.open ? "Fold " : "Open ") + _root.title
-        onClicked: _root.toggleRequested()
-
-        background: Rectangle {
-            radius: Style.dp(3)
-            color: _heading.hovered ? Style.bgWell : "transparent"
-        }
-
-        contentItem: RowLayout {
-            id: _headRow
-            spacing: Style.dp(8)
-
-            Label {
-                text: _root.open ? "▾" : "▸"
-                font.pixelSize: Style.dp(13)
-            }
-            Label {
-                text: _root.title
-                font.bold: true
-                font.pixelSize: Style.dp(14)
-            }
-            Label {
-                text: "Driven by: " + _root.drivenBy
-                color: Style.fgMuted
-                font.pixelSize: Style.dp(12)
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-            }
-            Label {
-                text: _root.boundCount === 1
-                      ? "1 control bound"
-                      : _root.boundCount + " controls bound"
-                color: Style.fgMuted
-                font.pixelSize: Style.dp(12)
-            }
-        }
-    }
-
-    // The pad's face, lit from what this pad sends.
-    Item {
-        visible: _root.open
-        Layout.fillWidth: true
-        Layout.preferredHeight: _face.implicitHeight
-        Xbox360Face {
-            id: _face
-            objectName: "xboxPadFace" + _root.padId
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: Math.min(implicitWidth, parent.width)
-            height: implicitHeight
-            padId: _root.padId
-            live: _live
-            stamp: _live.xboxStamp
-        }
-    }
 
     // One chip: the input on the left, the pad's control on the right; each
     // half lights while it is on.
@@ -218,127 +181,220 @@ ColumnLayout {
         }
     }
 
-    JGText {
-        visible: _root.open && _chips.axisLines > 0
-        text: "Mapped axes"
-        opacity: 0.7
-        font.pixelSize: Style.dp(13)
-    }
-    Repeater {
-        model: _chips
-        delegate: ChipLine {
-            required property string guid
-            required property string name
-            required property var axes
-            objectName: "xboxAxisLine" + _root.padId
-            visible: _root.open && axes.length > 0
-            deviceGuid: guid
-            deviceName: name
-            chips: axes
-        }
-    }
+    ColumnLayout {
+        id: _column
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: _root.border.width
+        spacing: 0
 
-    JGText {
-        visible: _root.open && _chips.buttonLines > 0
-        text: "Mapped buttons"
-        opacity: 0.7
-        font.pixelSize: Style.dp(13)
-    }
-    Repeater {
-        model: _chips
-        delegate: ChipLine {
-            required property string guid
-            required property string name
-            required property var buttons
-            objectName: "xboxButtonLine" + _root.padId
-            visible: _root.open && buttons.length > 0
-            deviceGuid: guid
-            deviceName: name
-            chips: buttons
-        }
-    }
+        // The header: click to fold or open the section.
+        AbstractButton {
+            id: _heading
+            objectName: "xboxPadHeading" + _root.padId
+            Layout.fillWidth: true
+            topPadding: _root._groupPad("Top")
+            bottomPadding: _root._groupPad("Bottom")
+            leftPadding: _root._groupPad("Left") + Style.dp(8)
+            rightPadding: _root._groupPad("Right") + Style.dp(8)
+            implicitHeight: Math.max(Style.dp(40),
+                                     _headRow.implicitHeight + topPadding + bottomPadding)
+            hoverEnabled: true
+            Accessible.name: (_root.open ? "Fold " : "Open ") + _root.title
+            onClicked: _root.toggleRequested()
 
-    // The pad's controls in pad order, each with what sends to it (S139):
-    // the shared list, view only, no groups, full height in the page scroll.
-    ControlTree {
-        id: _tree
-        objectName: "xboxOutputTree" + _root.padId
-        visible: _root.open
-        Layout.fillWidth: true
-        Layout.preferredHeight: _root.open ? Math.max(listHeight, Style.dp(80)) : 0
-        ownScroll: false
-        readOnly: true
-        showGroups: false
-        layout: _list
-        namePrefix: "xboxOutput" + _root.padId
-        emptyText: "No Xbox controls."
-        filtering: _root.filtering
-        liveDecoration: true
-        liveState: _list
-        onClearFilters: _root.clearFilters()
-        liveBars: _root.appear.showLiveBars
-        liveLeds: _root.appear.showLeds
-        colorLive: _root.appear.colorLive
-        parentHeight: _root.appear.parentHeight
-        childHeight: _root.appear.childHeight
-        rowSpacing: _root.appear.rowSpacing
-        groupInside: _root.appear.groupInside
-        parentAlign: _root.appear.parentAlign
-        parentWidthPct: _root.appear.parentWidthPct
-        childAlign: _root.appear.childAlign
-        childWidthPct: _root.appear.childWidthPct
-        groupSpacing: _root.appear.groupSpacing
-        listPadShape: _root.appear.listPadShape
-        listPad: _root.appear.listPad
-        listPadTop: _root.appear.listPadTop
-        listPadRight: _root.appear.listPadRight
-        listPadBottom: _root.appear.listPadBottom
-        listPadLeft: _root.appear.listPadLeft
-        groupPadShape: _root.appear.groupPadShape
-        groupPad: _root.appear.groupPad
-        groupPadTop: _root.appear.groupPadTop
-        groupPadRight: _root.appear.groupPadRight
-        groupPadBottom: _root.appear.groupPadBottom
-        groupPadLeft: _root.appear.groupPadLeft
-        groupRadius: _root.appear.groupRadius
-        colorGroup: _root.appear.colorGroup
-        parentPadShape: _root.appear.parentPadShape
-        parentPad: _root.appear.parentPad
-        parentPadTop: _root.appear.parentPadTop
-        parentPadRight: _root.appear.parentPadRight
-        parentPadBottom: _root.appear.parentPadBottom
-        parentPadLeft: _root.appear.parentPadLeft
-        parentRadius: _root.appear.parentRadius
-        colorParent: _root.appear.colorParent
-        parentIndent: _root.appear.parentIndent
-        childIndent: _root.appear.childIndent
-        childPadShape: _root.appear.childPadShape
-        childPad: _root.appear.childPad
-        childPadTop: _root.appear.childPadTop
-        childPadRight: _root.appear.childPadRight
-        childPadBottom: _root.appear.childPadBottom
-        childPadLeft: _root.appear.childPadLeft
-        childRadius: _root.appear.childRadius
-        colorChild: _root.appear.colorChild
-        showChildren: _root.appear.showChildren
-        showSummary: _root.appear.showSummary
-        summaryFont: _root.appear.summaryFont
-        parentFont: _root.appear.parentFont
-        groupFont: _root.appear.groupFont
-        childFont: _root.appear.childFont
-        targetFont: _root.appear.targetFont
-        colorActionTarget: _root.appear.colorActionTarget
-        parentBold: _root.appear.parentBold
-        colorText: _root.appear.colorText
-        colorMuted: _root.appear.colorMuted
-        colorSelected: _root.appear.colorSelected
-        colorSelectBorder: _root.appear.colorSelectBorder
-        colorBorder: _root.appear.colorBorder
-        caretSize: _root.appear.caretSize
-        colorCaret: _root.appear.colorCaret
-        gripWidth: _root.appear.gripWidth
-        gripHeight: _root.appear.gripHeight
-        gripRadius: _root.appear.gripRadius
-        colorGrip: _root.appear.colorGrip
+            // Hover lightens the Group colour.
+            background: Rectangle {
+                objectName: "xboxPadHeadingBox" + _root.padId
+                radius: Style.dp(_root.groupRadius)
+                color: _heading.hovered ? Qt.lighter(_root.groupColor, 1.25)
+                                        : _root.groupColor
+                border.color: _root.borderColor
+                border.width: Style.dp(1)
+            }
+
+            contentItem: RowLayout {
+                id: _headRow
+                spacing: Style.dp(8)
+
+                Label {
+                    text: _root.open ? "▾" : "▸"
+                    color: _root.textColor
+                    font.pixelSize: Style.dp(13)
+                }
+                Label {
+                    objectName: "xboxPadTitle" + _root.padId
+                    text: _root.title
+                    color: _root.textColor
+                    font.bold: _root.groupBold
+                    font.pixelSize: Style.dp(_root.groupFont)
+                }
+                Label {
+                    text: "Driven by: " + _root.drivenBy
+                    color: _root.mutedColor
+                    font.pixelSize: Style.dp(12)
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+                Label {
+                    text: _root.boundCount === 1
+                          ? "1 control bound"
+                          : _root.boundCount + " controls bound"
+                    color: _root.mutedColor
+                    font.pixelSize: Style.dp(12)
+                }
+            }
+        }
+
+        // Face, chips and list, inside the section's border.
+        ColumnLayout {
+            id: _body
+            visible: _root.open
+            Layout.fillWidth: true
+            Layout.margins: Style.dp(8)
+            spacing: Style.dp(6)
+
+            // The pad's face, lit from what this pad sends.
+            Item {
+                visible: _root.open
+                Layout.fillWidth: true
+                Layout.preferredHeight: _face.implicitHeight
+                Xbox360Face {
+                    id: _face
+                    objectName: "xboxPadFace" + _root.padId
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(implicitWidth, parent.width)
+                    height: implicitHeight
+                    padId: _root.padId
+                    live: _live
+                    stamp: _live.xboxStamp
+                }
+            }
+
+            JGText {
+                visible: _root.open && _chips.axisLines > 0
+                text: "Mapped axes"
+                opacity: 0.7
+                font.pixelSize: Style.dp(13)
+            }
+            Repeater {
+                model: _chips
+                delegate: ChipLine {
+                    required property string guid
+                    required property string name
+                    required property var axes
+                    objectName: "xboxAxisLine" + _root.padId
+                    visible: _root.open && axes.length > 0
+                    deviceGuid: guid
+                    deviceName: name
+                    chips: axes
+                }
+            }
+
+            JGText {
+                visible: _root.open && _chips.buttonLines > 0
+                text: "Mapped buttons"
+                opacity: 0.7
+                font.pixelSize: Style.dp(13)
+            }
+            Repeater {
+                model: _chips
+                delegate: ChipLine {
+                    required property string guid
+                    required property string name
+                    required property var buttons
+                    objectName: "xboxButtonLine" + _root.padId
+                    visible: _root.open && buttons.length > 0
+                    deviceGuid: guid
+                    deviceName: name
+                    chips: buttons
+                }
+            }
+
+            // The pad's controls in pad order, each with what sends to it (S139):
+            // the shared list, view only, no groups, full height in the page scroll.
+            ControlTree {
+                id: _tree
+                objectName: "xboxOutputTree" + _root.padId
+                visible: _root.open
+                Layout.fillWidth: true
+                Layout.preferredHeight: _root.open ? Math.max(listHeight, Style.dp(80)) : 0
+                ownScroll: false
+                readOnly: true
+                showGroups: false
+                layout: _list
+                namePrefix: "xboxOutput" + _root.padId
+                emptyText: "No Xbox controls."
+                filtering: _root.filtering
+                liveDecoration: true
+                liveState: _list
+                onClearFilters: _root.clearFilters()
+                liveBars: _root.appear.showLiveBars
+                liveLeds: _root.appear.showLeds
+                colorLive: _root.appear.colorLive
+                parentHeight: _root.appear.parentHeight
+                childHeight: _root.appear.childHeight
+                rowSpacing: _root.appear.rowSpacing
+                groupInside: _root.appear.groupInside
+                parentAlign: _root.appear.parentAlign
+                parentWidthPct: _root.appear.parentWidthPct
+                childAlign: _root.appear.childAlign
+                childWidthPct: _root.appear.childWidthPct
+                groupSpacing: _root.appear.groupSpacing
+                listPadShape: _root.appear.listPadShape
+                listPad: _root.appear.listPad
+                listPadTop: _root.appear.listPadTop
+                listPadRight: _root.appear.listPadRight
+                listPadBottom: _root.appear.listPadBottom
+                listPadLeft: _root.appear.listPadLeft
+                groupPadShape: _root.appear.groupPadShape
+                groupPad: _root.appear.groupPad
+                groupPadTop: _root.appear.groupPadTop
+                groupPadRight: _root.appear.groupPadRight
+                groupPadBottom: _root.appear.groupPadBottom
+                groupPadLeft: _root.appear.groupPadLeft
+                groupRadius: _root.appear.groupRadius
+                colorGroup: _root.appear.colorGroup
+                parentPadShape: _root.appear.parentPadShape
+                parentPad: _root.appear.parentPad
+                parentPadTop: _root.appear.parentPadTop
+                parentPadRight: _root.appear.parentPadRight
+                parentPadBottom: _root.appear.parentPadBottom
+                parentPadLeft: _root.appear.parentPadLeft
+                parentRadius: _root.appear.parentRadius
+                colorParent: _root.appear.colorParent
+                parentIndent: _root.appear.parentIndent
+                childIndent: _root.appear.childIndent
+                childPadShape: _root.appear.childPadShape
+                childPad: _root.appear.childPad
+                childPadTop: _root.appear.childPadTop
+                childPadRight: _root.appear.childPadRight
+                childPadBottom: _root.appear.childPadBottom
+                childPadLeft: _root.appear.childPadLeft
+                childRadius: _root.appear.childRadius
+                colorChild: _root.appear.colorChild
+                showChildren: _root.appear.showChildren
+                showSummary: _root.appear.showSummary
+                summaryFont: _root.appear.summaryFont
+                parentFont: _root.appear.parentFont
+                groupFont: _root.appear.groupFont
+                childFont: _root.appear.childFont
+                targetFont: _root.appear.targetFont
+                colorActionTarget: _root.appear.colorActionTarget
+                parentBold: _root.appear.parentBold
+                colorText: _root.appear.colorText
+                colorMuted: _root.appear.colorMuted
+                colorSelected: _root.appear.colorSelected
+                colorSelectBorder: _root.appear.colorSelectBorder
+                colorBorder: _root.appear.colorBorder
+                caretSize: _root.appear.caretSize
+                colorCaret: _root.appear.colorCaret
+                gripWidth: _root.appear.gripWidth
+                gripHeight: _root.appear.gripHeight
+                gripRadius: _root.appear.gripRadius
+                colorGrip: _root.appear.colorGrip
+            }
+        }
     }
 }

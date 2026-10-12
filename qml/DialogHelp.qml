@@ -76,11 +76,13 @@ ApplicationWindow {
 
     // Program links (S139): why each open:/show: link of the open topic
     // can't be shown now ({href: reason}; none = it can), and the reason
-    // from the last click that failed, shown under the title.
-    property var _linkReasons: ({})
+    // from the last click that failed, shown under the title. null until
+    // recheckLinks() sets it (no {} here: a literal is a binding, and
+    // recheckLinks() assigns it, qt.qml.binding.removal); null = no reasons.
+    property var _linkReasons: null
     property string _linkNote: ""
     readonly property string hoverReason: _body.hoveredLink.length
-                                          ? (_linkReasons[_body.hoveredLink] || "") : ""
+                                          ? ((_linkReasons || {})[_body.hoveredLink] || "") : ""
 
     WindowPlacement { id: _place }
 

@@ -21,11 +21,13 @@ Item {
     // The red line's "Open Xbox Setup" link; Main opens the window.
     signal xboxSetupRequested()
 
-    // Pad number -> open; a pad not in it is open.
-    property var padOpenMap: ({})
+    // Pad number -> open; a pad not in it is open. Set from the saved state
+    // when the page loads (no starting binding to overwrite).
+    property var padOpenMap
     readonly property int padSectionCount: _sections.count
-    // The Find bar's "Only controls with something sending" tick.
-    property bool findSending: false
+    // The Find bar's "Show only bound controls" tick: on the first time,
+    // then as last left (saved with the fold state).
+    property bool findSending: true
 
     // The page's Appearance part (PageAppearance.qml): Main shows its
     // Appearance… / Hide Appearance button on the page bar.
@@ -45,7 +47,7 @@ Item {
     WindowPlacement { id: _place }
 
     function isPadOpen(pad) {
-        return padOpenMap[String(pad)] !== false
+        return !padOpenMap || padOpenMap[String(pad)] !== false
     }
 
     function setPadOpen(pad, open) {
@@ -54,7 +56,15 @@ Item {
             next[key] = padOpenMap[key]
         next[String(pad)] = !!open
         padOpenMap = next
-        _place.saveToolRowState("xboxOutput", JSON.stringify({ open: next }))
+        _saveState()
+    }
+
+    // The fold state and the tick, kept per page in the tool-row state.
+    function _saveState() {
+        _place.saveToolRowState("xboxOutput", JSON.stringify({
+            open: padOpenMap || {},
+            boundOnly: findSending
+        }))
     }
 
     // That pad's control list, or null when it has no section.
@@ -67,14 +77,30 @@ Item {
         return null
     }
 
-    function _loadPadOpen() {
-        var state = {}
+    // The saved fold state and tick, read once when the page is made.
+    function _readState() {
         try {
-            state = JSON.parse(_place.toolRowState("xboxOutput")) || {}
+            var state = JSON.parse(_place.toolRowState("xboxOutput"))
+            return (state && typeof state === "object") ? state : {}
         } catch (e) {
-            state = {}
+            return {}
         }
-        padOpenMap = (state.open && typeof state.open === "object") ? state.open : {}
+    }
+    readonly property var _saved: _readState()
+    // How the "sending" tick starts: as last left, on the first time.
+    readonly property bool _boundStart: _saved.boundOnly !== false
+    // The Find bar's ticks, the "sending" one starting as saved.
+    readonly property var _filters: _pads.filters.map(function(tick) {
+        var copy = { label: tick.label, name: tick.name }
+        if (tick.name === "sending")
+            copy.checked = _boundStart
+        return copy
+    })
+
+    function _loadPadOpen() {
+        var open = _saved.open
+        padOpenMap = (open && typeof open === "object") ? open : {}
+        findSending = _boundStart
     }
 
     Component.onCompleted: _loadPadOpen()
@@ -182,24 +208,37 @@ Item {
                     showUndo: false
                     showCantSend: false
                     typeChoices: _pads.typeChoices
-                    filters: _pads.filters
-                    onChanged: _root.findSending = _find.isChecked("sending")
+                    filters: _root._filters
+                    onChanged: {
+                        var on = _find.isChecked("sending")
+                        if (on !== _root.findSending) {
+                            _root.findSending = on
+                            _root._saveState()
+                        }
+                    }
                 }
 
-                Repeater {
-                    id: _sections
-                    model: _pads
-                    delegate: XboxPadCard {
-                        Layout.fillWidth: true
-                        open: _root.isPadOpen(padId)
-                        running: _root.running
-                        appear: _appear
-                        findText: _find.text
-                        findType: _find.typeValue
-                        findSending: _root.findSending
-                        filtering: _find.filtering
-                        onToggleRequested: _root.setPadOpen(padId, !open)
-                        onClearFilters: _find.clear()
+                // The pad sections, "Space between groups" apart (S139).
+                ColumnLayout {
+                    objectName: "xboxPadSections"
+                    Layout.fillWidth: true
+                    spacing: Style.dp(_appear.groupSpacing)
+
+                    Repeater {
+                        id: _sections
+                        model: _pads
+                        delegate: XboxPadCard {
+                            Layout.fillWidth: true
+                            open: _root.isPadOpen(padId)
+                            running: _root.running
+                            appear: _appear
+                            findText: _find.text
+                            findType: _find.typeValue
+                            findSending: _root.findSending
+                            filtering: _find.filtering
+                            onToggleRequested: _root.setPadOpen(padId, !open)
+                            onClearFilters: _find.clear()
+                        }
                     }
                 }
             }

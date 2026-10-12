@@ -146,7 +146,7 @@ var _ORDER = {
               "moveToBackground", "moveToForeground", "-",
               "@Align", "@Distribute", "-",
               "flipH", "flipV", "rotatePlus", "rotateMinus", "-",
-              "resetShape", "editPoints", "crop", "resetCrop", "@Snap Points", "-",
+              "resetShape", "editPoints", "crop", "resetCrop", "resetPicture", "@Snap Points", "-",
               "group", "breakGroup", "editGroup", "doneGroup", "-",
               "lock", "unlockAll", "hide", "-", "rename"],
     Format: ["editText", "-", "copyFormat", "pasteFormat", "clearFormatting", "saveStyle", "-",
@@ -265,6 +265,7 @@ function list(ed) {
     out.push(_c("resetShape", "Arrange", "", "Reset Shape"))
     out.push(_c("crop", "Arrange", "", "Crop"))
     out.push(_c("resetCrop", "Arrange", "", "Reset Crop"))
+    out.push(_c("resetPicture", "Arrange", "", "Reset Picture"))
     out.push(_c("snap.add", "Arrange", "Snap Points", "Add Snap Point"))
     out.push(_c("snap.clear", "Arrange", "Snap Points", "Clear Snap Points"))
     out.push(_c("group", "Arrange", "", "Group Selected", "Ctrl+G", true))
@@ -449,6 +450,8 @@ function enabled(ed, id) {
         return !!(n && n.around && n.around.length)
     case "resetCrop":
         return _single(ed, ["image"]) && !!n.crop && !ed.isLocked(n)
+    case "resetPicture":
+        return (ed.selectedIds || []).some(function(i) { return ed.canResetPicture(i) })
     case "group":
         return ed.canGroup()
     case "breakGroup":
@@ -743,6 +746,9 @@ function _exec(ed, id) {
         break
     case "resetCrop":
         ed.resetCrop()
+        break
+    case "resetPicture":
+        ed.resetPicture()
         break
     case "group":
         ed.groupSelection()

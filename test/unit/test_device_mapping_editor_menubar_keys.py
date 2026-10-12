@@ -118,6 +118,7 @@ SPEC_COMMAND_MENUS: dict[str, str] = {
     "flipH": "Arrange",
     "resetShape": "Arrange",
     "resetCrop": "Arrange",
+    "resetPicture": "Arrange",
     "group": "Arrange",
     "breakGroup": "Arrange",
     "editGroup": "Arrange",

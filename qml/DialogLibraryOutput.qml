@@ -27,8 +27,11 @@ Dialog {
     // from, and the stick that sends to a target vJoy now.
     property var rows: []
     property var vjoys: []
-    property var other: ({})
-    property var moves: ({})
+    // No {} for other and moves: a literal is a binding, and openFor()
+    // assigns them (qt.qml.binding.removal). Set in Component.onCompleted;
+    // bindings read them guarded.
+    property var other: null
+    property var moves: null
     property var warnings: []
     property int profileTicket: 0
     property int planTicket: 0
@@ -213,14 +216,14 @@ Dialog {
             // Its text wraps: it can name several sticks (S30).
             RowLayout {
                 Layout.fillWidth: true
-                visible: (_dlg.other.text || "").length > 0
+                visible: ((_dlg.other || {}).text || "").length > 0
                 spacing: 0
                 CheckBox {
                     id: _swapOther
                     objectName: "libraryOutputSwapOther"
                     Layout.alignment: Qt.AlignTop
                     // Read by screen readers; shown by the label beside it.
-                    property string label: _dlg.other.text || ""
+                    property string label: (_dlg.other || {}).text || ""
                     Accessible.name: label
                     onToggled: _dlg.replan()
                 }
@@ -287,4 +290,9 @@ Dialog {
         }
     }
     onAccepted: lib.changeOutput(key, moves, _swapOther.checked && _swapOther.visible, chosenProfiles())
+
+    Component.onCompleted: {
+        other = {}
+        moves = {}
+    }
 }

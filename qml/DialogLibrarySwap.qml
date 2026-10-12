@@ -23,7 +23,10 @@ Dialog {
     property string firstName: ""
     property string firstGuid: ""
     property var sticks: []
-    property var parts: ({})
+    // No {} here: a literal is a binding, and openFor() assigns it
+    // (qt.qml.binding.removal). Set in Component.onCompleted; bindings
+    // read it guarded.
+    property var parts: null
     property var profiles: []
     property var warnings: []
     property int profileTicket: 0
@@ -134,7 +137,7 @@ Dialog {
                         required property var modelData
                         objectName: "librarySwapPart_" + modelData.key
                         text: modelData.label
-                        checked: _dlg.parts[modelData.key] === true
+                        checked: (_dlg.parts || {})[modelData.key] === true
                         onToggled: {
                             var p = Object.assign({}, _dlg.parts)
                             p[modelData.key] = checked
@@ -146,7 +149,7 @@ Dialog {
             }
 
             ColumnLayout {
-                visible: _dlg.parts["bindings"] === true
+                visible: (_dlg.parts || {})["bindings"] === true
                 Layout.fillWidth: true
                 Layout.leftMargin: Style.dp(24)
                 spacing: Style.dp(2)
@@ -241,4 +244,8 @@ Dialog {
         }
     }
     onAccepted: lib.swap(firstKey, second.key, chosenParts(), chosenProfiles())
+
+    Component.onCompleted: {
+        parts = {}
+    }
 }

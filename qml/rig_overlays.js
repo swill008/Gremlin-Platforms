@@ -65,6 +65,22 @@ function setOverlayHover(mx, my) {
     repaint()
 }
 
+// The box a picture gets when added (page fractions): with its aspect
+// (width / height) the same on-screen area at the picture's own shape, else
+// a square. Reset Picture uses it too (D-07-RESET-PICTURE).
+function freshPictureSize(aspect) {
+    var fw = 0.28
+    var fh = 0.28
+    var a = Number(aspect || 0)
+    if (a > 0) {
+        var s = spaceRect()
+        var ratio = Math.max(1, s.w) / Math.max(1, s.h)
+        fh = Math.min(0.6, fw * ratio / a)
+        fw = Math.min(0.6, fh * a / ratio)
+    }
+    return { fw: fw, fh: fh }
+}
+
 // opts (all optional): fx/fy, the picture's centre in page fractions (a drop
 // point); aspect, its width / height, so the box fits the picture; noBump to
 // add several pictures in one undo step; plane, "background" or
@@ -81,16 +97,10 @@ function addOverlay(rel, fileUrl, opts) {
     st.pinned = false
     st.sockets = []
     st.fill = "filled"
-    var fw = 0.28
-    var fh = 0.28
     var aspect = Number(opts.aspect || 0)
-    if (aspect > 0) {
-        // Same on-screen area, the picture's own shape.
-        var s = spaceRect()
-        var ratio = Math.max(1, s.w) / Math.max(1, s.h)
-        fh = Math.min(0.6, fw * ratio / aspect)
-        fw = Math.min(0.6, fh * aspect / ratio)
-    }
+    var size = freshPictureSize(aspect)
+    var fw = size.fw
+    var fh = size.fh
     var cx = opts.fx === undefined ? 0.5 : clamp01(opts.fx)
     var cy = opts.fy === undefined ? 0.42 : clamp01(opts.fy)
     st.fx = Math.max(0, Math.min(1 - fw, cx - fw / 2))

@@ -392,3 +392,53 @@ function resetShape() {
     delete n.skew
     bump()
 }
+
+// Reset Picture (07, D-07-RESET-PICTURE): the size a fresh add of the
+// picture gets (freshPictureSize), centred where it is; no crop, turn, flip,
+// skew or shaping, opacity 100%. Snap points, file, plane, stacking place,
+// name, look, hidden and locked stay.
+function _pictureResetDone(n) {
+    var size = freshPictureSize(pictureAspect(n))
+    var same = function(a, b) { return Math.abs((Number(a) || 0) - b) < 1e-6 }
+    return !((n.rot || 0) % 360 || n.flipH || n.flipV || n.crop || n.skew || n.adj
+             || (n.opacity !== undefined && n.opacity !== 1)
+             || !same(n.fw, size.fw) || !same(n.fh, size.fh))
+}
+
+// True when the picture is unlocked and has something to reset.
+function canResetPicture(id) {
+    var n = nodeAt(id)
+    return isOverlay(n) && !isLocked(n) && !_pictureResetDone(n)
+}
+
+// Every picture in ids (default: the selection) that can be reset, in one
+// Undo step.
+function resetPicture(ids) {
+    ids = ids || ((selectedIds && selectedIds.length) ? selectedIds : [selectedId])
+    var done = 0
+    for (var i = 0; i < ids.length; i++) {
+        var n = nodeAt(ids[i])
+        if (!canResetPicture(ids[i]))
+            continue
+        var size = freshPictureSize(pictureAspect(n))
+        var cx = n.fx + n.fw / 2
+        var cy = n.fy + n.fh / 2
+        delete n.crop
+        delete n.skew
+        delete n.adj
+        delete n.flipH
+        delete n.flipV
+        n.rot = 0
+        n.opacity = 1
+        n.fw = size.fw
+        n.fh = size.fh
+        n.fx = cx - size.fw / 2
+        n.fy = cy - size.fh / 2
+        syncOverlayChips(n)
+        if (cropId === n.id)
+            cropId = ""
+        done++
+    }
+    if (done)
+        bump()
+}

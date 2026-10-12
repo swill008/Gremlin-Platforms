@@ -19,7 +19,10 @@ Dialog {
     modal: true
 
     property var lib: null
-    property var parts: ({})
+    // No {} here: a literal is a binding, and openNow() assigns it
+    // (qt.qml.binding.removal). Set in Component.onCompleted; bindings
+    // read it guarded.
+    property var parts: null
     property string folder: ""
     property string startFolder: ""
 
@@ -85,7 +88,7 @@ Dialog {
                     required property var modelData
                     objectName: "librarySettingsPart_" + modelData.key
                     text: modelData.label
-                    checked: _dlg.parts[modelData.key] === true
+                    checked: (_dlg.parts || {})[modelData.key] === true
                     onToggled: {
                         var p = Object.assign({}, _dlg.parts)
                         p[modelData.key] = checked
@@ -132,5 +135,9 @@ Dialog {
         if (folder !== startFolder)
             values.folder = folder
         lib.setSettings(values)
+    }
+
+    Component.onCompleted: {
+        parts = {}
     }
 }

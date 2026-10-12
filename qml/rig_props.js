@@ -14,6 +14,7 @@
 //   { key, label, kind: "heading" }                    a section title
 //   { key, label, kind: "slider", value, min, max, suffix, step }
 //                                                      applied as it moves
+//   { key, label, kind: "button", enabled }            setProp(key) runs it
 // setProp(key, value) applies one. Positions and sizes are percent of the page.
 // With the editor's linkSize on, Width and Height keep the box's proportions.
 
@@ -41,6 +42,13 @@ function _sliderField(key, label, value, min, max) {
 
 function _colourField(key, label, value) {
     return { key: key, label: label, kind: "colour", value: value }
+}
+
+// Reset Picture (D-07-RESET-PICTURE): greyed out when no selected picture
+// has anything to reset.
+function _resetPictureField(ids) {
+    return { key: "resetPicture", label: "Reset Picture", kind: "button",
+             enabled: ids.some(function(i) { return canResetPicture(i) }) }
 }
 
 function _propsIds() {
@@ -109,6 +117,8 @@ function propsModel() {
                       _colourField("color", "Fill color", styleVal(n, null, "color", styleDefault("color"))),
                       _colourField("border", "Outline color", styleVal(n, null, "border", styleDefault("border"))),
                       _colourField("textColor", "Text color", styleVal(n, null, "textColor", styleDefault("textColor")))]
+        if (ids.every(function(i) { return isOverlay(nodeAt(i)) }))
+            fields = [_resetPictureField(ids)].concat(fields)
         return { title: title, locked: false, fields: fields }
     }
     if (isLine(n)) {
@@ -131,6 +141,7 @@ function propsModel() {
             fields.push(_numField("cropT", "Crop top", _pct(c.t || 0), 0, 98, "%", 0.1))
             fields.push(_numField("cropR", "Crop right", _pct(c.r || 0), 0, 98, "%", 0.1))
             fields.push(_numField("cropB", "Crop bottom", _pct(c.b || 0), 0, 98, "%", 0.1))
+            fields.push(_resetPictureField([n.id]))
         }
     } else {
         fields.push(_numField("x", "X", _pct(n.chipFx), 0, 100, "%", 0.1))
@@ -193,6 +204,10 @@ function setProp(key, value) {
     if (!ids.length)
         return
     var n = nodeAt(selectedId) || nodeAt(ids[0])
+    if (key === "resetPicture") {
+        resetPicture(ids)
+        return
+    }
     var v = Number(value)
     if (["color", "border", "textColor", "hotColor"].indexOf(key) >= 0) {
         if (isDraw(n))

@@ -489,15 +489,18 @@ Item {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         background: Rectangle { color: Style.bgCard; border.color: Style.line }
         property var devices: []
-        property var moduleOpen: ({})
+        // Open devices ({name: true}); null = none. No {} here: a literal
+        // is a binding, and opening the list resets it
+        // (qt.qml.binding.removal).
+        property var moduleOpen: null
         function deviceOpen(name) {
             if (_search.text.length)
                 return true
-            return moduleOpen[name] === true
+            return (moduleOpen || {})[name] === true
         }
         function toggleDevice(name) {
             var next = Object.assign({}, moduleOpen)
-            next[name] = moduleOpen[name] !== true
+            next[name] = next[name] !== true
             moduleOpen = next
         }
         ColumnLayout {

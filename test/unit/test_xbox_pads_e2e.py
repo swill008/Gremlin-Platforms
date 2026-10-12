@@ -22,7 +22,8 @@ Main run:
    pad 1 (Button 2 -> B): sections "Xbox 360 1" then "Xbox 360 2", each with
    Driven by, the bound count, chip lines per device and its own list's
    source lines;
-4. Find narrows every section;
+4. "Show only bound controls" is ticked the first time and narrows every
+   section to its bound controls; Find narrows every section;
 5. folding pad 2 is remembered when the page is opened again;
 6. lowering the count to 1 asks first and lists B's pad-2 binding; Yes keeps
    the binding, pad 2's section goes, and that action's Map to Xbox editor
@@ -64,6 +65,7 @@ EMPTY = (
 )
 DRIVER_LINE = "ViGEmBus driver not found: the Xbox pads can't be sent."
 OPEN_SETUP = "Open Xbox Setup"
+BOUND_ONLY = "Show only bound controls"
 
 # Writes the fake ViGEm received: [pad, target, value].
 WRITES: list[list] = []
@@ -398,6 +400,17 @@ def _part_find(j: Journey) -> None:
     lists = _lists(j)
     box = _find_box(j)
     assert box is not None, "no xboxOutputFind box"
+    bar = _named(_page(j), "xboxOutputFindBar")
+    out["find:boundOnly"] = {pad: _parents(m) for pad, m in sorted(lists.items())}
+    # Untick it for the text checks: every control again.
+    tick = next(
+        (i for i in Journey.walk(bar) if i.property("text") == BOUND_ONLY),
+        None,
+    )
+    assert tick is not None, f"no {BOUND_ONLY!r} tick"
+    j.ev("checked = false; clicked(); true", tick)
+    j.settle()
+    out["find:unticked"] = {pad: len(_parents(m)) for pad, m in sorted(lists.items())}
     box.setProperty("text", "Left Stick")
     j.settle()
     out["find:text"] = {pad: _parents(m) for pad, m in sorted(lists.items())}
@@ -675,6 +688,8 @@ def test_each_pad_list_shows_its_own_sources(run: dict) -> None:
 
 def test_find_narrows_every_section(run: dict) -> None:
     _no_error(run, "find")
+    assert step(run, "find:boundOnly") == {"1": ["A", "B"], "2": ["Left Stick X"]}
+    assert step(run, "find:unticked") == {"1": 22, "2": 22}
     text = step(run, "find:text")
     assert text == {
         "1": ["Left Stick X", "Left Stick Y"],

@@ -930,3 +930,14 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | XS-E2E: Xbox pads end-to-end (13 tests, two runs, real Setup window) | test | 3-8 min | 10 min | 08:32-08:42 |
 | 2026-10-12 | Lead: rerun 5 Main.qml-dependent files (90 passed) | test | ~2 min | 1 min | 08:43-08:43 |
 | 2026-10-12 | Full run Xbox pads batch + lint: 1 load failure (module setup photo, passes 2/2 alone, to-do 122), no new lint | full run | ~7 min | 7 min | 08:44-08:51 |
+| 2026-10-12 | COMPACT-THUMB: compact card 40x40 thumb + big picture not decoded, 1 test | feature | 3-8 min | 2 min | 08:53-08:55 |
+| 2026-10-12 | DOCS-B: D-07-RESET-PICTURE (07 S161), D-03-COMPACT-THUMB (03 S73), D-XBOX-PADS-LOOK (03 S139 S140), glossary, Help | docs | 3-8 min | 4 min | 08:53-08:57 |
+| 2026-10-12 | PAD-HEADER: pad header Group look, framed sections, spacing, tick renamed + remembered, 68 tests | feature | 3-8 min | 6 min | 08:53-08:59 |
+| 2026-10-12 | DOCS-B follow-up: D-03-HOME-BAND (03 S136 S146-S148, 01 S58a), glossary, Help | docs | ~3 min | 1 min | 08:58-08:59 |
+| 2026-10-12 | PAD-HEADER follow-up: ControlFindBar filter checked key, children walk removed, 95 tests | fix | ~5 min | 1 min | 08:58-08:59 |
+| 2026-10-12 | BINDSWEEP: 22 assigned ({})/([]) properties fixed in 13 files, guard test (failed old, passes new) | fix | 3-8 min | 10 min | 08:53-09:03 |
+| 2026-10-12 | HOME-BAND: Undo bar removed, empty-menu Undo, bar spacing, rubber band, Hide/Reset Size of Selected, 7+12 tests | feature | 6-16 min | 8 min | 08:58-09:06 |
+| 2026-10-12 | PICRESET: Reset Picture (menu, Arrange, Properties), freshPictureSize, 6 binding props, goldens, 9 tests | feature | 3-8 min | 15 min | 08:53-09:08 |
+| 2026-10-12 | HOME-BAND follow-up: precise Undo of Hide Selected, 4 dead props removed | fix | 3-8 min | 3 min | 09:08-09:11 |
+| 2026-10-12 | CI on 273c2bd9 (Xbox pads) | ci | ~20 min | see run | 08:52-09:16 |
+| 2026-10-12 | Full run batch B + lint: 2 OSC timing flakes (pass 2/2 alone, to-do 125), no new lint | full run | ~7 min | 8 min | 09:11-09:19 |

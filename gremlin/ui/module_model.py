@@ -964,7 +964,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         # only the parts of the layout one user action changed.
         self._undo_steps: list[tuple[str, dict, dict]] = []
         self._redo_steps: list[tuple[str, dict, dict]] = []
-        self._just_undid = False
         self._step_depth = 0
         self._divider_before: dict | None = None
         self._steps_profile = id(shared_state.current_profile)
@@ -1215,6 +1214,23 @@ class ModuleListModel(QtCore.QAbstractListModel):
         self._reload()
 
     @QtCore.Slot(str)
+    def hideSelected(self, slugs_csv: str) -> None:
+        """Hide Selected Cards (D-03-HOME-BAND): the listed cards, one step."""
+        slugs = {s.strip() for s in (slugs_csv or "").split(",") if s.strip()}
+        hidden = _hidden_slugs()
+        added = sorted(slugs - hidden)
+        if not added:
+            return
+        _set_hidden(hidden | slugs)
+        # Its Undo shows only these cards again; cards hidden another way
+        # stay hidden (Hide Card is not a step).
+        self._add_step("Hide Selected Cards", {"show": added}, {"hide": added})
+        if self._focus in slugs:
+            self._focus = ""
+        self._reload()
+        self.panesChanged.emit()
+
+    @QtCore.Slot(str)
     def unignoreSlug(self, slug: str) -> None:
         hidden = _hidden_slugs()
         hidden.discard(slug)
@@ -1355,18 +1371,24 @@ class ModuleListModel(QtCore.QAbstractListModel):
         changed = [key for key in after if before.get(key) != after[key]]
         if not changed:
             return
-        self._undo_steps.append(
-            (label, {k: before.get(k) for k in changed}, {k: after[k] for k in changed})
+        self._add_step(
+            label, {k: before.get(k) for k in changed}, {k: after[k] for k in changed}
         )
+
+    def _add_step(self, label: str, undo_state: dict, redo_state: dict) -> None:
+        """undo_state / redo_state: what _apply_state puts back or redoes."""
+        self._undo_steps.append((label, undo_state, redo_state))
         del self._undo_steps[:-_HOME_STEPS]
         self._redo_steps.clear()
-        self._just_undid = False
         self.stepsChanged.emit()
 
     def _apply_state(self, state: dict) -> None:
         for key in _HOME_LAYOUT_KEYS:
             if key in state:
                 _write_status(key, state[key])
+        if "show" in state or "hide" in state:
+            hidden = _hidden_slugs() - set(state.get("show") or [])
+            _set_hidden(hidden | set(state.get("hide") or []))
         if "ratio" in state:
             from gremlin.ui import window_placement
 
@@ -1397,7 +1419,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         step = self._undo_steps.pop()
         self._apply_state(step[1])
         self._redo_steps.append(step)
-        self._just_undid = True
         self.stepsChanged.emit()
 
     @QtCore.Slot()
@@ -1407,7 +1428,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
         step = self._redo_steps.pop()
         self._apply_state(step[2])
         self._undo_steps.append(step)
-        self._just_undid = False
         self.stepsChanged.emit()
 
     @QtCore.Slot()
@@ -1425,7 +1445,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
             return
         self._undo_steps.clear()
         self._redo_steps.clear()
-        self._just_undid = False
         self.stepsChanged.emit()
 
     @QtCore.Property(bool, notify=stepsChanged)
@@ -1435,24 +1454,6 @@ class ModuleListModel(QtCore.QAbstractListModel):
     @QtCore.Property(bool, notify=stepsChanged)
     def canRedo(self) -> bool:
         return bool(self._redo_steps)
-
-    @QtCore.Property(str, notify=stepsChanged)
-    def undoTip(self) -> str:
-        return f"Undo {self._undo_steps[-1][0]} (Ctrl+Z)" if self._undo_steps else ""
-
-    @QtCore.Property(str, notify=stepsChanged)
-    def redoTip(self) -> str:
-        return f"Redo {self._redo_steps[-1][0]} (Ctrl+Y)" if self._redo_steps else ""
-
-    @QtCore.Property(str, notify=stepsChanged)
-    def lastChange(self) -> str:
-        return f"Last change: {self._undo_steps[-1][0]}" if self._undo_steps else ""
-
-    @QtCore.Property(str, notify=stepsChanged)
-    def undone(self) -> str:
-        if self._just_undid and self._redo_steps:
-            return f"Undone: {self._redo_steps[-1][0]}"
-        return ""
 
     @QtCore.Slot()
     def beginDivider(self) -> None:
@@ -1597,6 +1598,22 @@ class ModuleListModel(QtCore.QAbstractListModel):
             sizes = _sizes()
             for member in self.pileMembers(slug):
                 sizes.pop(member, None)
+            _set_sizes(sizes)
+        signal.configChanged.emit()
+        self.panesChanged.emit()
+
+    @QtCore.Slot(str)
+    def resetSelectedSizes(self, slugs_csv: str) -> None:
+        """Reset Size of Selected Cards (D-03-HOME-BAND): each listed card
+        and its stack, one step."""
+        slugs = [s.strip() for s in (slugs_csv or "").split(",") if s.strip()]
+        if not slugs:
+            return
+        with self._home_step("Reset Size of Selected Cards"):
+            sizes = _sizes()
+            for slug in slugs:
+                for member in self.pileMembers(slug):
+                    sizes.pop(member, None)
             _set_sizes(sizes)
         signal.configChanged.emit()
         self.panesChanged.emit()

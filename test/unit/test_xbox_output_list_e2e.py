@@ -13,11 +13,14 @@ to Xbox actions from two devices onto pad 1's A (pJoy Pro button 1, Saitek
 X52 button 2) and one onto Left Stick X (pJoy Pro axis 1). The Output View
 is opened the way Help's Open link does (view.xboxOutput), then:
 
-1. the list shows every Xbox control in pad order, no group header;
-2. A has two source lines (device name and input), Left Stick X one, the
+1. "Show only bound controls" is ticked the first time (only A and Left
+   Stick X show); Clear unticks it, and the page opened again keeps it
+   unticked (saved with the fold state);
+2. then the list shows every Xbox control in pad order, no group header;
+   A has two source lines (device name and input), Left Stick X one, the
    others none;
-3. the Find bar's text, type choice and "Only controls with something
-   sending" narrow the rows;
+3. the Find bar's text, type choice and "Show only bound controls" narrow
+   the rows;
 4. view only: no grip, a right-click opens no menu, a click selects and
    opens no action pane;
 5. Appearance: the page-bar button shows it, a setting changed and saved is
@@ -46,7 +49,7 @@ from _harness import (  # noqa: E402  # pyright: ignore[reportMissingImports]
     step,
 )
 
-SENDING = "Only controls with something sending"
+SENDING = "Show only bound controls"
 
 
 # +-------------------------------------------------------------------------
@@ -422,6 +425,9 @@ def _part_appearance(j: Journey) -> None:
         tree.property("parentBold"),
         tree.property("parentHeight"),
     ]
+    # The tick left off by Clear stays off on the page opened again.
+    out["look:tickReloaded"] = j.ev("isChecked('sending')", _find_bar(j)[1])
+    out["look:rowsReloaded"] = len(_parents(_model(j)))
     # Back to defaults for the parts after this one.
     if panel.metaObject().indexOfMethod("reset()") >= 0:
         j.ev("reset(); true", panel)
@@ -460,6 +466,13 @@ def story(j: Journey) -> None:
     with _Part(j, "open"):
         _open_page(j)
         j.out["open:room"] = [j.ev("uiState.currentRoom"), j.ev("uiState.currentTab")]
+        _box, bar = _find_bar(j)
+        j.out["open:tickFirst"] = j.ev("isChecked('sending')", bar)
+        j.out["open:rowsFirst"] = _parents(_model(j))
+        # Clear unticks it; the rest of the story starts from every row.
+        j.ev("clear(); true", bar)
+        j.settle()
+        j.out["open:rowsCleared"] = len(_parents(_model(j)))
     for name, part in (
         ("rows", _part_rows),
         ("find", _part_find),
@@ -503,6 +516,16 @@ def _no_error(run: dict, part: str) -> None:
 def test_the_page_opens(run: dict) -> None:
     _no_error(run, "open")
     assert step(run, "open:room") == ["configuration", "xbox"]
+
+
+def test_show_only_bound_is_ticked_first_and_remembered(run: dict) -> None:
+    _no_error(run, "open")
+    assert step(run, "open:tickFirst") is True
+    assert step(run, "open:rowsFirst") == ["Left Stick X", "A"]  # pad order
+    assert step(run, "open:rowsCleared") == 22
+    _no_error(run, "look")
+    assert step(run, "look:tickReloaded") is False
+    assert step(run, "look:rowsReloaded") == 22
 
 
 def test_every_control_in_pad_order_without_a_group_header(run: dict) -> None:

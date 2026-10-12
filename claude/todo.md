@@ -53,38 +53,38 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 6. Problems panel: show validate() findings in the app (unused actions,
    missing Logical controls, damaged module files, two inputs on one vJoy
    output) with Go to.
-7. Profile recovery copy after a crash (GL-029, approved, deferred).
+7. DONE (scrub 2026-10-12: df271e84, D-04-Q14, test_profile_recovery.py). Profile recovery copy after a crash (GL-029, approved, deferred).
 8. Test panel without the game: press a binding on screen, see what
    vJoy/Xbox gets.
 9. Find in profile: every use of a key, vJoy output, mode or action.
 10. Copy a mode or an input's bindings from another profile.
-11. Save diagnostics: one local zip of logs, settings, device list.
-12. Rule checks (validate) from report to fail (Stage 2 leftover).
+11. DONE (scrub 2026-10-12: faf5c0ca, D-01-DIAG-ZIP, test_diagnostics_zip.py). Save diagnostics: one local zip of logs, settings, device list.
+12. DONE (scrub 2026-10-12: f6417411, D-TEST-RULES-FAIL, test_rules_fail_on_damage.py). Rule checks (validate) from report to fail (Stage 2 leftover).
 13. **SHELVED by the user 2026-10-07.** Startup time: load rarely used pages on first open; a startup-time test.
     Measured before shelving (off-screen, S13; scripts in `.agent-logs/handson/S13/`): window built and drawn
     ~0.9 s after start-up begins, whole process ~2.0 s (empty profile); the user's 386 KB profile (204 inputs,
     4 sticks + 3 vJoy) ~0.92 s / ~2.1 s. Removing single parts of Main.qml changed it by less than run-to-run
     noise. Off-screen skips HidHide and the keyboard/mouse hooks (their real cost not measured).
-14. What's new in Check for Updates (release notes before updating).
+14. DONE (scrub 2026-10-12: 11f8295c, D-01-UPDATE-NOTES, test_update_notes_window.py). What's new in Check for Updates (release notes before updating).
 15. Coverage report; fill the riskiest gaps.
-16. Faster CI: cache the venv and compiled QML (with item 2).
-17. Keep shrinking hardware_profile.py, module_model.py, binding_catalog.py.
-18. Screenshot tests at several UI scales (70–175 %).
+16. PARTLY (scrub 2026-10-12: split + test-times cache done (a840239d); venv cache tried and dropped (5745aecf); compiled-QML cache not done). Faster CI: cache the venv and compiled QML (with item 2).
+17. PARTLY (scrub 2026-10-12: binding_catalog.py 1147->242 done; hardware_profile.py (2477) and module_model.py (3132) have grown). Keep shrinking hardware_profile.py, module_model.py, binding_catalog.py.
+18. PARTLY (scrub 2026-10-12: some windows checked at 100/150/175; no full screenshot suite; waits on item 1). Screenshot tests at several UI scales (70–175 %).
 
 ## Carried-over fixes (one at a time, spec first)
 
-19. **GL-254** Viewing a key on the Keyboard page creates an empty input
+19. PARTLY (scrub 2026-10-12: models reused; viewing a key still creates an empty input). **GL-254** Viewing a key on the Keyboard page creates an empty input
     (needs a detached draft input in ui/profile.py + Library).
 20. **GL-257** `qml/action_kinds.js` keeps its own action-type table.
 21. **GL-260** Condition editor: data and UI (QObject) mixed — a redesign.
-22. Idea: `output.write_vjoy` / `write_xbox` refuse writes when no Run is
+22. DONE (scrub 2026-10-12: e414d0b3, output._sending() gates write_vjoy/write_xbox). Idea: `output.write_vjoy` / `write_xbox` refuse writes when no Run is
     on (today it holds only because every sender stops at Stop).
 23. A renamed stick keeps its card order slot but loses its saved card size
     and stack (keyed by name slug).
 24. About 170 fixed `qWait` calls left in the off-screen window smoke
     scripts (print_export, button_map_*, usability_smoke); fix as those
     areas are touched (AU-119 leftover).
-25. Calibration's axis graph (`gremlin/ui/device.py` ~862, 881) still reads
+25. DONE (scrub 2026-10-12: device.py uses clock.monotonic, GL-265 done). Calibration's axis graph (`gremlin/ui/device.py` ~862, 881) still reads
     `time.time()`, not `gremlin.clock` (GL-265 leftover).
 
 ## Planned features (need the user's decisions)
@@ -109,7 +109,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
       program converts maps with the old page size as they load
       (recommended), the user re-places them, or a one-time conversion of
       their files (only with their go-ahead, on a backup).
-27. **GL-270** Read the page size back on load (comes with BM41).
+27. PARTLY (scrub 2026-10-12: one page size done; read-on-load waits for BM41). **GL-270** Read the page size back on load (comes with BM41).
 28. CLOSED 2026-10-11 (no longer needed: D-03-DEVICE-FOLDERS removes the shared picture library). **GL-274** Picture library "Remove unused" button (D-07-GL274-LATER:
     design what "unused" means first).
 29. **GL-186** New draw shapes: Plus, Radial ring, Named Card.
@@ -121,7 +121,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     test_twin_devices::test_each_twin_has_its_own_card creates the
     runtime). The live-map test in test_final_07 now connects the runtime
     to the current listener itself.
-31. Log noise in tests: "No parameter with key ('global','internal',
+31. PARTLY (scrub 2026-10-12: guarded in store/device_initialization; other test paths not checked). Log noise in tests: "No parameter with key ('global','internal',
     'twin-device-names')".
 34. Order leak: `test_batch2_b7::test_restore_applies_logs_and_ui_scale_at_once`
     run straight before `test_history_recording::test_settings_the_user_chooses_are_kept`
@@ -143,7 +143,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     stutters while idle (Q19); after a stick is re-plugged, actions read its
     last value until it moves (D-05-UNPLUG-CENTRE note).
 
-39. PySide6 6.12.0: CI picked it up on 2026-10-08 (no poetry.lock in the repo) and 24
+39. PARTLY (scrub 2026-10-12: pinned <6.12 (717f5420); cause not found). PySide6 6.12.0: CI picked it up on 2026-10-08 (no poetry.lock in the repo) and 24
     tests that start the program off-screen crashed (access violation, exit 3221225477),
     plus menu differences (test_menus, test_device_mapping_editor_window), runs 37754952665.
     pyproject.toml holds PySide6 below 6.12 until we find what changed and fix it.
@@ -158,7 +158,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 41. Compare two saved setups in the Device Library with History's
     before/after view (user, 2026-10-08). Design first.
 
-42. Test teardown hang (found 2026-10-08, HG): one pytest process running
+42. PARTLY (scrub 2026-10-12: exit deadman + model teardown done; native cause open, EXIT_HANG_FAILS off). Test teardown hang (found 2026-10-08, HG): one pytest process running
     test_data_safety.py::test_a_profile_with_an_unknown_action_type_opens_and_keeps_it
     with a Delete Device test from test_stage1_history_pack.py passes, then never
     exits (native teardown after atexit; no Python thread left). Same on the code
@@ -170,7 +170,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     test_diagnostics_zip on CI run 37853647126). Fixed the two fakes; the real fix is
     test fixtures that delete the models they make (or a conftest teardown).
 
-43. Exit-hang check (user go 2026-10-08, after the Device Library is committed):
+43. DONE (scrub 2026-10-12: de73a665 (warning only until 42 is solved)). Exit-hang check (user go 2026-10-08, after the Device Library is committed):
     (1) test-plan.md rule: a run must end within 20 s of pytest's summary, else it is an
     EXIT HANG (reported with part and files, never passed/slow) + batch checklist line;
     (2) run_tests.py: after a part's summary wait <= 20 s, then report EXIT HANG, list
@@ -178,7 +178,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     fixed, then a failure; (3) conftest pytest_unconfigure arms faulthandler (20 s, dump
     + exit); (4) agent contract + lead watcher report exit hangs; (5) memory note.
 
-44. Tests must never touch the real vJoy driver (user, 2026-10-08). The PC blue-screened
+44. DONE (scrub 2026-10-12: de73a665, test/vjoy_guard.py). Tests must never touch the real vJoy driver (user, 2026-10-08). The PC blue-screened
     (0x3B SYSTEM_SERVICE_EXCEPTION in vjoy.sys 2.1.9, 2019; dump analysed with WinDbg:
     AV_vjoy!unknown_function at vjoy+0x4bc3) while stuck test processes were being
     killed. Add a check at test start-up/teardown: if the real vJoy library
@@ -203,7 +203,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     comes within 400 ms: push the run's own step first (session_r, callout goldens change);
     (b) Add callout makes two undo steps (rig_callout.js addCalloutFor: addDrawFree + bump);
     (c) device_mapping_editor_fixes_smoke.py nudge test depends on 5 nudges within 400 ms.
-47. Test race (found 2026-10-08, full run seed 124841; passed on rerun): test_stall_detection.py's
+47. PARTLY (scrub 2026-10-12: stall part done; other order culprits open). Test race (found 2026-10-08, full run seed 124841; passed on rerun): test_stall_detection.py's
     inner pytest runs failed at collection with FileNotFoundError on a %TEMP%\gremlin-pack-*
     folder another test removed meanwhile; test_final_01.py::test_s44 failed in the same run
     (cause not logged). Stall part DONE 2026-10-09 (inner runs get their own pytest.ini/rootdir/confcutdir). Still: find s44's cause.
@@ -233,7 +233,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 51. Device Library ideas (2026-10-09, not started): drag a saved setup onto a stick row to start
     Copy to Another Stick; sort the device list by name / last seen / saved setups (View, remembered);
     highlight the search match in names and descriptions.
-52. AFTER THE 1.0.30 RELEASE (user 2026-10-09: remind me): streamline shared pieces. First the
+52. PARTLY (scrub 2026-10-12: ea296dde shared pieces done; heading/empty-state not verified). AFTER THE 1.0.30 RELEASE (user 2026-10-09: remind me): streamline shared pieces. First the
     destructive pair: DangerButton (one red button) + ConfirmDialog / Confirm.ask (names what goes,
     red go button, Cancel default, Enter/Esc cancel, "History can put it back" or "can't be undone");
     move every delete/clear question onto it (Library, History Clear, Delete Device, Delete File,
@@ -249,7 +249,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     window fixtures (test_history_diff_window 6 errors, test_handson_G2_history_heading 1); CI parts
     took ~11 min each (heavy load). Change was QML card resize only; failed job rerun.
 
-53. QUEUED (user 2026-10-09: do all 3 passes, before the 1.0.30 release): Help gap fill from the
+53. DONE (scrub 2026-10-12: 384891fb + 4e56e49a (pass 3 by inference)). QUEUED (user 2026-10-09: do all 3 passes, before the 1.0.30 release): Help gap fill from the
     08:53 audit (all 10 spec pages vs qml/help). Pass 1: fix 6 wrong items (mode bar not "on the
     toolbar"; auto-load on "comes to the front"; Text to Speech buttons only; Device Library menus
     "left out" not greyed; Map to Xbox offers only fitting targets; Undo Delete Mode needs a spec line,
@@ -259,7 +259,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     (S137, S138); Device Mapping Editor unplugged/damaged; Device Pack refusals; card drag/resize; mode rules).
     Pass 3: ~55 partly covered topics. 5 agents, one chapter file each; claude/help-style.md.
     Estimates: 10 + 30-40 + 30 min.
-54. PLANNING (user 2026-10-09): "Show me" links in Help that open or point at the thing a topic
+54. DONE (scrub 2026-10-12: ec5a042b, D-01-HELP-LINKS). PLANNING (user 2026-10-09): "Show me" links in Help that open or point at the thing a topic
     names (a menu, a window, a setting). Discussion in progress; no code.
 
 55. DONE 2026-10-09 (built: gremlin/profile_recovery.py, 04 S94; Help checked in the 2026-10-10 Help pass 2). Was: AFTER THE 1.0.30 RELEASE (user 2026-10-09: build it after the release). GAP (found 2026-10-09 by HW-config): 04 S94 profile recovery copy (Q14, approved 2026-10-06:
@@ -390,7 +390,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     number with the Windows XInput slot number, which are numbered differently; match them properly. Done 2026-10-10 (this batch).
 85. (TWIN, 2026-10-10): not verified whether HidHide can hide an Xbox pad from XInput (a program reading XInput
     may still see a hidden pad). Verify read-only and say so in Help. Not started.
-86. NOT REPRODUCED 2026-10-10 (T86-APOS: the real dialog off-screen draws "can't"; waiting for the user's full-size screenshot and UI/Windows scale). (RW5, 2026-10-10): the Reset Devices Xbox note shows "can t" on screen (apostrophe missing; the text in the
+86. PARTLY (scrub 2026-10-12: not reproduced off-screen; waiting for the user's screenshot). NOT REPRODUCED 2026-10-10 (T86-APOS: the real dialog off-screen draws "can't"; waiting for the user's full-size screenshot and UI/Windows scale). (RW5, 2026-10-10): the Reset Devices Xbox note shows "can t" on screen (apostrophe missing; the text in the
     code has it). Check the off-screen render. Not started.
 87. DONE 2026-10-10 (SA1, 2026-10-10; 05 gap SA1, found by the action editor matrix): the Split Axis editor overflows the pane: its
     label row hides the Add Action selector (matrix screenshot split-axis_axis.png). qml/LabelValueComboBox.qml's
@@ -460,7 +460,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
       the page functions by name (`_leavePages()`, `_actionPanes()`, `deviceBindingsPane()`,
       `keyboardPane()`, `oscPane()`, `currentPageBar`) — keep those names. (4) Text-reading tests pin
       exact lines. (5) OSC feedback rows stay editable while running (`ActionPane.lockExempt`).
-33. **OSC** (parked 2026-10-02; **picked up 2026-10-09**: decisions D-09-OSC-FILE, D-09-OSC-INPUT, D-09-OSC-FAULTS, spec 09; being built in this batch):
+33. DONE (scrub 2026-10-12: OSC batches built 2026-10-09/10 (program-map 09)). **OSC** (parked 2026-10-02; **picked up 2026-10-09**: decisions D-09-OSC-FILE, D-09-OSC-INPUT, D-09-OSC-FAULTS, spec 09; being built in this batch):
     - **B15 – SUPERSEDED 2026-10-09 (D-09-OSC-FAULTS): input 8001 (intended, adjustable), output 8000, one value each (09 S6).** Default ports clash and disagree. The program listens on
       8000 when nothing is set (`gremlin/osc.py` `DEFAULT_PORT`), Options
       shows 8001 (`gremlin/ui/osc_option.py` `OscInputHostModel.port_default`),
@@ -483,7 +483,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 94. DONE 2026-10-11 (LD-94). (LD-SYN, 2026-10-10, found by FOLLOW; 05 LD-SYN) Events sent by Map to Logical Device aren't marked as program-made (synthetic), unlike keys from macros and Map to Keyboard. Harmless today: they only happen while the profile runs, and the Logical Device page doesn't follow while running. Recorded only. Not started.
 95. DONE 2026-10-11 (COND-95: checked; Script settings width issue split out as 98). (CS-COND, 2026-10-10, found by MAP6) Check that the Condition editor's vJoy target shows the red ⚠ and tooltip for a control that can't be sent (taken from MK-PICK's report, not confirmed in that editor). Recorded only. Not started.
 96. DONE 2026-10-11 (option a, user-approved mock-up; NARROW-VJ, NARROW-LD). (EW-2, 2026-10-11, found by WIDTH; 05 EW-2) At the action pane's minimum width, Map to vJoy's device box cuts "vJoy 1" and "Invert activation" runs past the pane in Map to vJoy (2–4 px) and Map to Logical Device (42–70 px). When fixed, remove the two tags from test_editor_widths.py DEFAULT_ONLY. Recorded only. Not started.
-97. (AUDIT-NOTICE, 2026-10-11, user: "follow up with an audit"; runs after 93 is pushed) Read-only audit of look-alike areas where screens listen to raw signals instead of one owner notice: Logical Device names/controls (logicalDeviceModified 5 listeners vs logicalDeviceReloaded 2), Home card "Driven by" lines, vJoy claims (1 s polling cache in output.py), device names after rename/re-plug (device_change_event 22 listeners). Find real missed updates; propose an owner notice only where one is found. Report in chat. Not started.
+97. DONE (scrub 2026-10-12: items 100-103 done, D-01-OWNER-NOTICES). (AUDIT-NOTICE, 2026-10-11, user: "follow up with an audit"; runs after 93 is pushed) Read-only audit of look-alike areas where screens listen to raw signals instead of one owner notice: Logical Device names/controls (logicalDeviceModified 5 listeners vs logicalDeviceReloaded 2), Home card "Driven by" lines, vJoy claims (1 s polling cache in output.py), device names after rename/re-plug (device_change_event 22 listeners). Find real missed updates; propose an owner notice only where one is found. Report in chat. Not started.
 98. DONE 2026-10-11 (option a; SCRIPT-98). (SCRIPT-CUT, 2026-10-11, found by COND-95) Script settings page: with a vJoy setting that can't be sent, the red "⚠ Button 57" box ends 4 px past the page and window edge (1604 vs 1600 at 1600 x 950, 100 %); the same row with a claimed control fits (ends 1580). Likely the ⚠ minimum width in VJoySelector.qml with nothing in the row giving way; cause not confirmed. test_vjoy_picker_cant_send_places.py::test_the_box_is_not_cut[script] is xfail(strict) until fixed. Waiting for the user's choice. Not started.
 99. (ORDER-CONFIG, 2026-10-11, found by ORDER-MACRO) Order-dependent: test_config.py run before test_startup_settings_kept.py makes test_startup_registration_keeps_them and test_unused_placement_settings_are_dropped fail with PermissionError (Access is denied) renaming a temporary settings file, and a stall (~140 s). Same with or without the 2026-10-11 conftest change; each file passes alone. Not investigated. Recorded only.
 100. DONE 2026-10-11 (D-01-OWNER-NOTICES). (AUD-DRIVEN, 2026-10-11, audit 97) "Driven by" / what-drives-what goes stale: proven by probe — Delete Mode/Undo Delete Mode, OSC page Undo/Redo/delete (oscDeviceModified not heard), Output View header after any profile reload (_reload never emits targetsChanged), Home cards while Home is shown (no onTargetsChanged); by code — Device Library Swap and Change vJoy Output edit the open profile with no signal at all (library_profiles.Batch._apply_open), viewer windows don't follow action edits. Proposed: one owner notice signal.bindingsChanged (input_pairing.py). Waiting for the user.
@@ -492,7 +492,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 103. DONE 2026-10-11 (D-01-OWNER-NOTICES). (AUD-CLAIMS, 2026-10-11, audit 97) Home output cards keep their own claim copy (module_model._dest_targets) not refreshed by the can't-send notice; a Device Library save leaves card claim details stale (probe). Keep the 1 s claim poll (only catcher of outside edits). Open question: should a module file edited outside the program update ⚠ marks and Home cards? Waiting for the user.
 104. (LONG-PATH, 2026-10-11, found by TEST-SWEEP) Device Library Swap's autosave failed with "No such file or directory" when the user folder path was long (a deep scratchpad home); fine under pytest's short temp folder. Likely the Windows 260-character path limit. Not verified; recorded only.
 105. DONE 2026-10-11 (RIG, J13, E2E-PRESET; j13 found and PAIR-NAMES fixed the vJoy Viewer name bug). (user 2026-10-11: "1a, code it as the next batch after this push") (MULTI-DEVICE) Tests see one stick (pJoy Pro) and one vJoy by default; ~35 files build their own extra devices. Build: a `devices` option in the journey harness next to `vjoy_ids` (default one pJoy Pro) with a preset rig (pJoy Pro, Saitek X52, a twin pair, vJoy 1 + 2); one multi-device journey (two sticks to two vJoys, Home cards + Driven by, Swap, Change vJoy Output, twin rename, unplug/re-plug, Input Viewer); today's end-to-end tests use the preset. Test-time rule (user 2026-10-11, 1a): keep one full run; after this batch measure the full run and add a row to timings.md; if it goes over ~7 min, add a "deep" marker for heavy multi-device journeys (in the full run and CI, skipped in targeted runs).
-106. Device folders (D-03-DEVICE-FOLDERS, with D-08-GMAP-IMPORT and D-10-GMAP-SETUPS) BUILT 2026-10-11 (this commit). Background/foreground planes (D-07-BACKGROUND-PLANES, D-07-PLANES-ANSWERS) BUILT 2026-10-11.
+106. PARTLY (scrub 2026-10-12: device folders built; listener dill.dll load, planes (b)-(e), spec wording left). Device folders (D-03-DEVICE-FOLDERS, with D-08-GMAP-IMPORT and D-10-GMAP-SETUPS) BUILT 2026-10-11 (this commit). Background/foreground planes (D-07-BACKGROUND-PLANES, D-07-PLANES-ANSWERS) BUILT 2026-10-11.
    - ONE-TIME code (tracker group "One-time code"): OT-1 the move to device folders, `gremlin/modules/folders_move.py` and `joystick_gremlin._move_to_device_folders` (also `folders_move.register_setting` reading the old file-bindings setting once). Remove when no install still has the old layout (the user decides; at the latest before the first public release). OT-2 (an old map's photo becomes the bottom background picture when the map opens, in memory, written at the next Save; D-07-PLANES-ANSWERS P3a), built: gremlin/modules/planes_once.py, the fallback in store.device_photo_ref, hardware_profile._planes_text, device_pack._today_layout / _old_photo_in_zip / _merge_background, library_swap._swapped_docs (all marked `# ONE-TIME (tracker OT-2)`); remove once every map has been saved in the new format.
    - OT-3 one-time settings move: remove before release with OT-1/OT-2. The Button Map's settings move to the Device Mapping Editor's names at start (section "button-map" -> "device-mapping-editor"; global/internal/button-map-<x> -> device-map-<x>): `gremlin/device_map_settings_once.py` (all marked `# ONE-TIME (tracker OT-3)`), its call in `joystick_gremlin.py` before register_config_options, test `test/unit/test_device_map_settings_once.py`.
    - OT-4 one-time move: Library part id button_map -> device_map; remove before release with OT-1/OT-2/OT-3. At start, library.json's default parts, every saved setup's holds and the last change's parts are renamed once (backup of library.json in <data folder>/backup/<date> library part id move/; no old id left = done): `gremlin/library_part_id_once.py` (all marked `# ONE-TIME (tracker OT-4)`), its call in `joystick_gremlin.py` after register_config_options, test `test/unit/test_library_part_id_once.py`.
@@ -559,12 +559,12 @@ agents where work splits: see `.claude/CLAUDE.md` "Working standard".
 111. CRASHED in a full run (2026-10-11 22:30, seed of full_bg2): test_tts_release.py::test_shutdown_cleanup_releases_the_speech_engine, "Fatal Python error: Aborted / access violation" in gremlin/tts.py:146 close() called from shutdown_cleanup (native QTextToSpeech release under load); ended part unit-3 early. Passes alone (3 of 3). Investigate: release on the engine's own thread / guard double close.
 
 ## D-NEXTLIST-1 (user, 2026-10-12): changes collected for the next run — record only, no code/spec/tests until the user says build
-1. (2026-10-12) Remove the Xbox Viewer from the toolbar and bring it into the Xbox output's own Output View, as a special case: the Xbox Viewer's content (ViGEmBus driver row with Get/Test ViGEmBus, the per-input-device pad face(s) "VKBsim Gladiator EVO R -> Xbox 360 1" with the lit controls, Mapped axes / Mapped buttons chips) combined with today's Xbox 360 Controller Output View (driver row, control rows: Left Stick X ... DPad, "who targets each control"). Both keep working as they do today. User screenshots: Xbox Viewer window and Output View › Xbox 360 Controller (scratchpad nextlist_1a.png, nextlist_1b.webp).
-2. (2026-10-12) Home screen card drag: when reordering cards (not moving between sections — user corrected "I misspoke, just reordering cards"), use the same drag behaviour as the Device Bindings rows: show the card being dragged and show where it will be placed. The Device Bindings row drag is the reference for how dragging and reordering should look and work.
-3. (2026-10-12; user: "lets plan for a 50% increase") Home cards: raise the maximum card size by 50 % (720 x 520 -> 1080 x 780; was first asked as double) so a user who wants large pictures can enlarge a card up to the new maximum. Today: card size clamped to 220-720 wide x 140-520 tall (StatusCard.qml:389, :403); pictures decoded at most 720 x 520 x screen scale (StatusCard.qml:174, StatusPage.qml:849, :1096); the generated device picture is at most 1024 px on its longer side (store.DEVICE_PHOTO_SIDE). Impacts discussed with the user 2026-10-12: memory per card up to 4x, generated picture cap must rise or large cards look soft, very large cards must still fit the window. User note: the program already has a feature that reduces memory while minimized (tray memory) — check it releases the larger card pictures too.
-4. (2026-10-12) Device Library window: a small picture for each device row, like the HidHide window's rows; streamline by reusing the same way it is done there (user: "reuse or implement the same way if it is already done"). Today: HidHide shows a 40 x 40 framed picture (Style.bgWell, Style.line border, radius 3, decoded at 80 px) from row.photo (DialogHardwareHide.qml:497-512); the Library rows show a joystick/keyboard icon glyph (WindowDeviceLibrary.qml:969) and only the right-hand details show the device map photo (:1210). Lead's suggestion (to confirm at planning): a shared small DeviceThumb component (frame + picture + the current icon as fallback) used by the Library rows, fed by the device's shown picture (Device Image > generated picture > bottom background picture); HidHide itself left untouched (user rule) unless the user wants it to adopt the shared component too; saved-setup rows may show their own setup's picture. Follow-up (user, 2026-10-12): the Keyboard, Logical Device and OSC rows DO have pictures, in their modules (seen read-only: modules\Keyboard\pictures\photo.jpg, modules\Logical Device\pictures\photo.png, modules\OSC\pictures\photo.jpg) — tie them in; user asks whether to change HidHide's method and do a combination (one shared picture lookup + one shared thumbnail for HidHide, Library, and anywhere else). HidHide today: its own per-row pick (setting display/hidhide/photos) else the device's picture via hardware_profile.profilePhotoUrl (hidhide.py:498-512, with a vJoy fallback). User idea (2026-10-12): just use each module's own picture (the one generated in / kept with its module) as the thumbnail source everywhere, rather than a separate image system.
-5. (2026-10-12, from the user's code audit; record only until the user picks) Audit results to decide on: one real bug (DeviceMapCard.qml:31 liveStamp uses a `count` the Python list doesn't have -> always 0, the map card's change signal never fires); guard-test gap (vjoy/ and theme/ outside test_spec_line.py / test_program_map_covers_files.py and the CLAUDE.md list); a dead Options switch (display/status/last-keep-after-release); dead code and leftovers lists in scratchpad/audit/*.md (PY-REFS 54 dead / 96 test-only; QML-REFS 5 dead files, 31 dead functions, 30 dead properties; BRIDGE 5 dead + 38 test-only seam names, 8 unused roles; ASSETS 141 unused shipped pictures, old WiX build files, a committed log; LEFTOVERS 22 legacy shims, 16 duplicate-helper groups, OT-2 places missing markers; MAPCHK 27 stale names, ~35 stale line references, 14 files with unclear owner).
-6. (2026-10-12) Device Library device rows: move the "N saved setups" / "No saved setups" text from the right side to below the device name, so the left/right divider can be moved further left and the view is cleaner. Open at planning: its order with the description line (e.g. "test decription." under VKBsim Gladiator EVO R), and whether the Connected / Not connected badge stays on the right. Screenshot: the Device Library window (user, 2026-10-12).
+1. DONE 2026-10-12 (c52f7205, D-NEXTLIST-1). (2026-10-12) Remove the Xbox Viewer from the toolbar and bring it into the Xbox output's own Output View, as a special case: the Xbox Viewer's content (ViGEmBus driver row with Get/Test ViGEmBus, the per-input-device pad face(s) "VKBsim Gladiator EVO R -> Xbox 360 1" with the lit controls, Mapped axes / Mapped buttons chips) combined with today's Xbox 360 Controller Output View (driver row, control rows: Left Stick X ... DPad, "who targets each control"). Both keep working as they do today. User screenshots: Xbox Viewer window and Output View › Xbox 360 Controller (scratchpad nextlist_1a.png, nextlist_1b.webp).
+2. DONE 2026-10-12 (c52f7205, D-NEXTLIST-1). (2026-10-12) Home screen card drag: when reordering cards (not moving between sections — user corrected "I misspoke, just reordering cards"), use the same drag behaviour as the Device Bindings rows: show the card being dragged and show where it will be placed. The Device Bindings row drag is the reference for how dragging and reordering should look and work.
+3. DONE 2026-10-12 (c52f7205, D-NEXTLIST-1). (2026-10-12; user: "lets plan for a 50% increase") Home cards: raise the maximum card size by 50 % (720 x 520 -> 1080 x 780; was first asked as double) so a user who wants large pictures can enlarge a card up to the new maximum. Today: card size clamped to 220-720 wide x 140-520 tall (StatusCard.qml:389, :403); pictures decoded at most 720 x 520 x screen scale (StatusCard.qml:174, StatusPage.qml:849, :1096); the generated device picture is at most 1024 px on its longer side (store.DEVICE_PHOTO_SIDE). Impacts discussed with the user 2026-10-12: memory per card up to 4x, generated picture cap must rise or large cards look soft, very large cards must still fit the window. User note: the program already has a feature that reduces memory while minimized (tray memory) — check it releases the larger card pictures too.
+4. DONE 2026-10-12 (c52f7205, D-NEXTLIST-1). (2026-10-12) Device Library window: a small picture for each device row, like the HidHide window's rows; streamline by reusing the same way it is done there (user: "reuse or implement the same way if it is already done"). Today: HidHide shows a 40 x 40 framed picture (Style.bgWell, Style.line border, radius 3, decoded at 80 px) from row.photo (DialogHardwareHide.qml:497-512); the Library rows show a joystick/keyboard icon glyph (WindowDeviceLibrary.qml:969) and only the right-hand details show the device map photo (:1210). Lead's suggestion (to confirm at planning): a shared small DeviceThumb component (frame + picture + the current icon as fallback) used by the Library rows, fed by the device's shown picture (Device Image > generated picture > bottom background picture); HidHide itself left untouched (user rule) unless the user wants it to adopt the shared component too; saved-setup rows may show their own setup's picture. Follow-up (user, 2026-10-12): the Keyboard, Logical Device and OSC rows DO have pictures, in their modules (seen read-only: modules\Keyboard\pictures\photo.jpg, modules\Logical Device\pictures\photo.png, modules\OSC\pictures\photo.jpg) — tie them in; user asks whether to change HidHide's method and do a combination (one shared picture lookup + one shared thumbnail for HidHide, Library, and anywhere else). HidHide today: its own per-row pick (setting display/hidhide/photos) else the device's picture via hardware_profile.profilePhotoUrl (hidhide.py:498-512, with a vJoy fallback). User idea (2026-10-12): just use each module's own picture (the one generated in / kept with its module) as the thumbnail source everywhere, rather than a separate image system.
+5. DONE 2026-10-12 (c52f7205, D-NEXTLIST-1). (2026-10-12, from the user's code audit; record only until the user picks) Audit results to decide on: one real bug (DeviceMapCard.qml:31 liveStamp uses a `count` the Python list doesn't have -> always 0, the map card's change signal never fires); guard-test gap (vjoy/ and theme/ outside test_spec_line.py / test_program_map_covers_files.py and the CLAUDE.md list); a dead Options switch (display/status/last-keep-after-release); dead code and leftovers lists in scratchpad/audit/*.md (PY-REFS 54 dead / 96 test-only; QML-REFS 5 dead files, 31 dead functions, 30 dead properties; BRIDGE 5 dead + 38 test-only seam names, 8 unused roles; ASSETS 141 unused shipped pictures, old WiX build files, a committed log; LEFTOVERS 22 legacy shims, 16 duplicate-helper groups, OT-2 places missing markers; MAPCHK 27 stale names, ~35 stale line references, 14 files with unclear owner).
+6. DONE 2026-10-12 (c52f7205, D-NEXTLIST-1). (2026-10-12) Device Library device rows: move the "N saved setups" / "No saved setups" text from the right side to below the device name, so the left/right divider can be moved further left and the view is cleaner. Open at planning: its order with the description line (e.g. "test decription." under VKBsim Gladiator EVO R), and whether the Connected / Not connected badge stays on the right. Screenshot: the Device Library window (user, 2026-10-12).
 Planning answers (user, 2026-10-12): "1a, 2b, 3a, 4a, 5 leave the image generation as is, we will only increase its actual sizing shown, not increase its quality. 6a, 7a, 8a, 9a. the remainder are as you recommend." =
 - Item 1 Xbox: 1a pad cards above the control rows, one card per driving device, foldable section (open by default, remembered); 2b the Tools > Viewers > Xbox Viewer menu item is removed too (and the card menu's Xbox Viewer entry).
 - Item 2 Home drag: 3a other cards stay still, a line shows the drop spot (Device Bindings style), 4 px start; 4a a stacked pile's drag shows its front card.
@@ -577,11 +577,7 @@ User (2026-10-12, "approved"): Add Image on a Keyboard/OSC stub card with no mod
 112. (2026-10-12, found by DEVIMG-TESTS, not verified as a user bug) Module Setup Add Image… fails silently when the edit's temporary path goes over the Windows 260-character path limit: store.begin_edit could not copy start\pictures\device-photo.png ("Device map picture not kept") and the dialog stayed empty. Normal paths work. Check long-path handling in store.begin_edit / the edit folder (\\?\ prefix or shorter temp names) and show a message instead of failing silently.
 113. (2026-10-12, found by W2-UI in the audit clean-up, from reading the code, not tried in the program) Changing the "vjoy-tabs" setting in Options may not update the vJoy tab bar until refresh() or a restart: nothing tells the bar (HUB.changed) when Options writes that setting; only VJoyStatus.setPinned does. Check and fix at the owner (gremlin/ui/vjoy_status.py).
 114. (2026-10-12, found by OSC-TEST in the audit clean-up, from reading the code) Dead OSC edit path: OscDeviceManagementModel.updateInputSettings (gremlin/ui/osc_device_model.py ~:838) is no longer reached from the screens, and the `editing && editUid` branch in OscAddDialog.accept() (qml/OscAddDialog.qml:501-508) is dead because openForEdit is only called with "" (OscPage.qml:151, WindowOscMonitor.qml:49). Edit Settings now goes through OscLayoutModel.applySettings (S146). Candidate for the next removal wave (tests that call updateInputSettings move to applySettings).
-115. (2026-10-12, W2-CORE audit clean-up, left on purpose) Test-only program code still in place, each with many test callers: Profile.bind_devices (empty, ~15 test uses, with the bind parameter), Library.remove_unused (11), plugin_manager.create_instance (82; check the scripting spec first, user scripts may call it), module_file.start_fresh (8), Script.get_variable. config.init_calibration/set_calibration stay (03 S111). Move the tests to the program paths and remove, in a later clean-up.
+115. (2026-10-12, W2-CORE audit clean-up, left on purpose; KEEP — user 2026-10-12: "leave the code as is for now. keep a record, but do not remove. I have one other person testing, so I need to keep the code for him.") Test-only program code still in place, each with many test callers: Profile.bind_devices (empty, ~15 test uses, with the bind parameter), Library.remove_unused (11), plugin_manager.create_instance (82; check the scripting spec first, user scripts may call it), module_file.start_fresh (8), Script.get_variable. config.init_calibration/set_calibration stay (03 S111). Move the tests to the program paths and remove, in a later clean-up.
 116. (2026-10-12, full run of the Xbox list batch, seed in .agent-logs) Load flake: test/unit/action_matrix/test_matrix_flow.py::test_flow_action[double-tap-key-pane_keyboard] failed once under the 6-part load ({"single": [], "double": [button 4 press/release]}), passed 3 of 3 alone. Double-tap decides by a time window, so a slow machine can read two taps as one double. Make the check wait on the action's own timer (gremlin.clock) instead of wall time, or give it the same grace other timing tests use.
-117. (2026-10-12, user approved 1a 2a 3a 4a; build right after the Xbox pads batch) Reset Picture in the Device Mapping Editor: Picture section + Properties; back to a fresh-add size centred in place; clears size, crop, rotation, flip, skew, opacity (keeps snap points, file, layer, name, hidden, locked); one Undo step; Reset Shape fixed to also undo rotation/flip on pictures (it only clears skew today, found from code reading). Plan: claude/plans/picture-reset/README.md.
-118. (2026-10-12, user: "Fix it, a) Sweep all 40"; with the Picture reset batch) qt.qml.binding.removal warnings: `property var X: ({})` / `([])` declarations later assigned from JS (seen: qml/DialogHelp.qml:80 vs :476 _linkReasons). Sweep the 40, fix only the assigned ones, add an off-screen test that fails on any binding.removal warning.
-119. (2026-10-12, user approved 1a 2a 3a; with the Picture reset batch) Home compact view: 40x40 DeviceThumb per card from the card photo (icon glyph when none, as the Device Library), and the hidden big picture not decoded while compact is on.
-120. (2026-10-12, user approved 1a 2a; next batch) Xbox Output View pad headers use the list Appearance Group row look (colour, border, corner, height, text), each pad section framed, Space between groups between pads.
-121. (2026-10-12, user approved 1a 2a; same agent as 120) Xbox Output View tick renamed "Show only bound controls", ticked from the start and remembered.
 122. (2026-10-12, Xbox pads full run; not this batch) test_module_setup_photo_edit.py::test_save_after_import_image_names_it_in_one_write failed once under the 6-part load (an extra pictures/device-photo.png listed after Save with a new Device Image) and passed 2 of 2 alone. Possible race from the Device Image work: a generated-picture run queued before the Save may still write device-photo.png afterwards. Not verified; trace the generator queue vs store.set_device_image (03 Device Image statements) and make the test wait on the generator.
+125. (2026-10-12, batch B full run) Load flake: test_osc_run.py::test_new_press_restarts_the_release_timer and ::test_server_default_delay_used_when_input_has_none failed once under the 6-part load (the release came late: two presses, no release after 670 ms of wall-clock waits); the file passes 2 of 2 alone and was not changed today. Same kind as 116: the test waits wall-clock time for a timer; make it drive the program clock.

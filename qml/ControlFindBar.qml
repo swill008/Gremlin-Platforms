@@ -24,7 +24,8 @@ ColumnLayout {
         { label: "Axes", value: "axis" },
         { label: "Hats", value: "hat" }
     ]
-    // [{label, name}]: one tick each, on a line of their own.
+    // [{label, name, checked}]: one tick each, on a line of their own;
+    // checked (optional, default off) is how the tick starts.
     property var filters: []
     property bool locked: false
     property bool paneOpen: false
@@ -150,6 +151,7 @@ ColumnLayout {
                 required property var modelData
                 readonly property string name: modelData.name
                 text: modelData.label
+                checked: !!modelData.checked
                 onClicked: {
                     _bar._tickRev++
                     _bar.changed()

@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Home off-screen (D-FIXLIST-B1 items 6 and 10; args: <ui scale>): where
-the page bar's controls sit, and Home's Undo / Redo driven through what the
-page calls (the model's slots, the page bar's Undo / Redo pair, the keys,
-the card menu's header). test_b1_home.py runs it in its own process with a
-fresh user folder (journey harness).
+the page bar's controls sit (Compact view and Layout only, D-03-HOME-BAND),
+and Home's Undo / Redo driven through what the page calls (the model's slots,
+the keys, the card menu's and the empty-space menu's header pairs; Hide
+Selected Cards and Reset Size of Selected Cards). test_b1_home.py runs it
+in its own process with a fresh user folder (journey harness).
 
     python test/unit/b1_home_smoke.py 100
 """
@@ -44,12 +45,16 @@ def _bar(j: Journey) -> dict:
         "winWidth": j.win.width(),
         "divider": right("modeBarDivider"),
         "compact": left("homeCompactView"),
+        "compactRight": right("homeCompactView"),
+        "labelLeft": left("homeLayoutLabel"),
+        "labelRight": right("homeLayoutLabel"),
+        "layoutLeft": left("homeLayoutCombo"),
         "layoutRight": right("homeLayoutCombo"),
-        "undoBar": left("homeUndoBar"),
-        "undoButton": j.item(j.win, "undoBarUndo") is not None,
+        "undoBar": j.item(j.win, "homeUndoBar") is not None,
         "loaderWidth": round(flick.width(), 1) if flick is not None else None,
         "dp10": j.ev("Style.dp(10)"),
         "dp40": j.ev("Style.dp(40)"),
+        "dp16": j.ev("Style.dp(16)"),
     }
 
 
@@ -82,6 +87,16 @@ def story(j: Journey) -> None:
     def steps() -> int:
         return len(ev(model)._undo_steps)  # type: ignore[attr-defined]
 
+    def last_step() -> str:
+        """The label of the step Undo would take back ("" for none)."""
+        done = ev(model)._undo_steps  # type: ignore[attr-defined]
+        return done[-1][0] if done else ""
+
+    def undone_step() -> str:
+        """The label of the step Redo would put back ("" for none)."""
+        undone = ev(model)._redo_steps  # type: ignore[attr-defined]
+        return undone[-1][0] if undone else ""
+
     out["start"] = {"steps": steps(), "canUndo": ev(f"{model}.canUndo")}
 
     def keys(key: QtCore.Qt.Key, mods: QtCore.Qt.KeyboardModifier) -> None:
@@ -98,10 +113,10 @@ def story(j: Journey) -> None:
     j.ev("toggle(); toggled(); true", box)
     j.settle()
     seen = {"after": ev(f"{model}.compactView"), "steps": steps(),
-            "last": ev(f"{model}.lastChange")}
+            "last": last_step()}
     keys(z, ctrl)
     seen["ctrlZ"] = ev(f"{model}.compactView")
-    seen["undone"] = ev(f"{model}.undone")
+    seen["undone"] = undone_step()
     seen["boxAfterUndo"] = box.property("checked")
     keys(y, ctrl)
     seen["ctrlY"] = ev(f"{model}.compactView")
@@ -131,16 +146,22 @@ def story(j: Journey) -> None:
     keys(z, ctrl)
     out["typing"]["afterFieldGone"] = ev(f"{model}.compactView")
 
-    # --- Layout, undone with the page bar's Undo button ------------------------
+    # --- Layout, undone with the empty-space menu's Undo / Redo -----------------
     ev(f"{model}.setSplitMode('vertical')")
     j.settle()
-    lay = {"after": ev(f"{model}.splitMode"), "tip": ev(f"{model}.undoTip")}
-    undo_button = j.item(j.win, "undoBarUndo")
-    lay["buttonEnabled"] = undo_button.property("enabled")
-    j.click(undo_button)
+    lay = {"after": ev(f"{model}.splitMode"), "tip": last_step()}
+    page = "_statusLoader.item"
+    header = j.ev(
+        f"JSON.stringify({page}.emptyMenuModel().header.map(function(h) {{"
+        " return [h.label, h.enabled] }))"
+    )
+    lay["emptyHeader"] = header
+    j.ev(f"{page}.emptyMenuModel().header[0].run(); true")
+    j.settle()
     j.settle()
     lay["undone"] = ev(f"{model}.splitMode")
-    j.click(j.item(j.win, "undoBarRedo"))
+    j.ev(f"{page}.emptyMenuModel().header[1].run(); true")
+    j.settle()
     j.settle()
     lay["redone"] = ev(f"{model}.splitMode")
 
@@ -214,6 +235,55 @@ def story(j: Journey) -> None:
     cards["clearUndone"] = layout_of(a)
     out["cards"] = cards
 
+    # --- Hide Selected Cards / Reset Size of Selected Cards: one step each -------
+    sel: dict = {}
+    ev(f"{model}.unstackAll('{a}')")  # a and b are stacked again after the undo
+    ev(f"{model}.setPileSize('{a}', 400, 300)")
+    ev(f"{model}.setPileSize('{b}', 420, 300)")
+    n = steps()
+    ev(f"{model}.resetSelectedSizes('{a},{b}')")
+    sel["reset"] = [ev(f"{model}.cardWidth('{a}')"), ev(f"{model}.cardWidth('{b}')")]
+    sel["resetSteps"] = steps() - n
+    sel["resetTip"] = last_step()
+    ev(f"{model}.undo()")
+    sel["resetUndone"] = [
+        ev(f"{model}.cardWidth('{a}')"), ev(f"{model}.cardWidth('{b}')")
+    ]
+    n = steps()
+    ev(f"{model}.hideSelected('{a},{b}')")
+    sel["hidden"] = sorted(ev(f"{model}.hiddenList()"))  # type: ignore[arg-type]
+    def shown() -> list:
+        leaders = ev(f"{model}.pileLeaders('')")
+        return [s for s in (a, b) if s in leaders]  # type: ignore[operator]
+
+    sel["shownAfterHide"] = shown()
+    sel["hideSteps"] = steps() - n
+    sel["hideTip"] = last_step()
+    ev(f"{model}.undo()")
+    sel["hiddenUndone"] = ev(f"{model}.hiddenList()")
+    sel["shownUndone"] = shown()
+    ev(f"{model}.redo()")
+    sel["hiddenRedone"] = sorted(ev(f"{model}.hiddenList()"))  # type: ignore[arg-type]
+    ev(f"{model}.undo()")
+    sel["ab"] = sorted([a, b])
+    # Undo brings back only the cards that step hid: c, hidden with Hide
+    # Card afterwards, stays hidden; Redo hides a and b again.
+    ev(f"{model}.hideSelected('{a},{b}')")
+    ev(f"{model}.ignoreSlug('{c}')")
+    ev(f"{model}.undo()")
+    sel["onlyStepUndone"] = sorted(
+        ev(f"{model}.hiddenList()")  # type: ignore[arg-type]
+    )
+    ev(f"{model}.redo()")
+    sel["onlyStepRedone"] = sorted(
+        ev(f"{model}.hiddenList()")  # type: ignore[arg-type]
+    )
+    sel["abc"] = sorted([a, b, c])
+    sel["c"] = [c]
+    ev(f"{model}.undo()")
+    ev(f"{model}.unignoreSlug('{c}')")
+    out["selected"] = sel
+
     # --- The Logical Device card's picture -----------------------------------------
     from PySide6 import QtGui
 
@@ -241,14 +311,14 @@ def story(j: Journey) -> None:
     picture["added"] = ev(f"{model}.setCardImage('logical', '{url}')")
     picture["files"] = files()
     picture["photo"] = bool(ev(f"{model}.cardMap('logical').photo"))
-    picture["addTip"] = ev(f"{model}.undoTip")
+    picture["addTip"] = last_step()
     picture["removed"] = ev(f"{model}.removeCardImage('logical')")
     picture["filesRemoved"] = files()
     picture["photoRemoved"] = bool(ev(f"{model}.cardMap('logical').photo"))
     ev("_statusLoader.item.undo()")
     picture["filesBack"] = files()
     picture["photoBack"] = bool(ev(f"{model}.cardMap('logical').photo"))
-    picture["nextUndo"] = ev(f"{model}.undoTip")
+    picture["nextUndo"] = last_step()
     ev("_statusLoader.item.undo()")
     picture["filesAddUndone"] = files()
     picture["photoAddUndone"] = bool(ev(f"{model}.cardMap('logical').photo"))

@@ -51,14 +51,16 @@ Item {
     // While items are dragged only they follow: liveTick moves them, the
     // global tick stays (each pointer move used to redraw every item: about
     // 165 ms a move with 330 items). liveIds: the dragged items' ids.
-    property var liveIds: ({})
+    // null, not ({}): a ({}) binding is dropped with a warning when the
+    // property is assigned (BINDSWEEP, 2026-10-12); reads use (X || {}).
+    property var liveIds: null
     property int liveTick: 0
     // For what is drawn over the items (selection, handles, guides): both.
     readonly property int anyTick: tick + liveTick
     // The dragged items' leaders, and leaders ending on their hotspots: drawn
     // on their own canvas while dragging (redrawing every leader on each
     // pointer move cost about 120 ms on a big map).
-    property var liveLeaderIds: ({})
+    property var liveLeaderIds: null  // null, not ({}): see liveIds
 
     function paintLeaders() {
         if (_lines)
@@ -112,7 +114,7 @@ Item {
     // Hotspot pulses (rig_hotspot.js): when each pulse started, and which
     // controls were held at the last live update.
     property var hotPulseAt: ({})
-    property var hotHeld: ({})
+    property var hotHeld: null  // null, not ({}): see liveIds
     property var selectedIds: []
     property bool banding: false
     property bool bandAdd: false
@@ -308,13 +310,13 @@ Item {
     // Press to find (Device Map Options → Editing).
     property bool findOn: true
     property bool findAxes: false
-    property var findPrev: ({})
+    property var findPrev: null  // null, not ({}): see liveIds
     property string findMsg: ""
     // Chip text (Device Map Options → Labels) and the window's labels for
     // the chosen mode: {"btn:5": "Gear up"}.
     property string chipTextMode: "Name"
     property string unboundText: "Name"
-    property var actionLabels: ({})
+    property var actionLabels: null  // null, not ({}): see liveIds
     property bool _restoring: false
     // The state after the latest edit of a run still waiting for its pause
     // (nudges, live edits): that run's undo step (S55).
@@ -579,6 +581,7 @@ Item {
     function overlayContains(n, mx, my) { return RigOverlays.overlayContains(n, mx, my) }
     function setOverlayHover(mx, my) { return RigOverlays.setOverlayHover(mx, my) }
     function addOverlay(rel, fileUrl, opts) { return RigOverlays.addOverlay(rel, fileUrl, opts) }
+    function freshPictureSize(aspect) { return RigOverlays.freshPictureSize(aspect) }
     function repointPicture(id, rel, fileUrl, aspect) { RigOverlays.repointPicture(id, rel, fileUrl, aspect) }
     function pinTarget(id) { return RigOverlays.pinTarget(id) }
     function toggleLock(id) { return RigOverlays.toggleLock(id) }
@@ -629,9 +632,9 @@ Item {
     function detachFromChips() { return RigMenu._detachFromChips() }
     // Pictures whose look changed: their adjusted copy is made once the
     // slider pauses briefly, not at every step of a drag.
-    property var _lookWaiting: ({})
+    property var _lookWaiting: null  // null, not ({}): see liveIds
     function _queueLookUrl(id) {
-        var w = _lookWaiting
+        var w = _lookWaiting || {}
         w[id] = true
         _lookWaiting = w
         _lookTimer.restart()
@@ -779,6 +782,8 @@ Item {
     function transformHandleAt(n, px, py, w, h) { return RigTransform.transformHandleAt(n, px, py, w, h) }
     function dragTransform(n, name, mx, my) { return RigTransform.dragTransform(n, name, mx, my) }
     function convertToPath() { return RigTransform.convertToPath() }
+    function resetPicture(ids) { return RigTransform.resetPicture(ids) }
+    function canResetPicture(id) { return RigTransform.canResetPicture(id) }
     // Reset Shape (07 S42) on an item (the selected one when id is ""): a
     // picture loses its crop, skew, flip and turn; a shape its shaping.
     function resetShape(id) {

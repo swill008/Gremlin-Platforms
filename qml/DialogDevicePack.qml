@@ -43,10 +43,14 @@ ApplicationWindow {
     property string exportSize: ""
     property string importPhoto: ""
     property string importName: ""
-    property var packInfo: ({})
+    // The {} starting values of packInfo, checks, targets, folded,
+    // exportTicks, packNotes and preview are set in Component.onCompleted:
+    // a {} here is a binding, and the window assigns them later
+    // (qt.qml.binding.removal). Bindings read them guarded.
+    property var packInfo: null
     property var sections: []
-    property var checks: ({})
-    property var targets: ({})
+    property var checks: null
+    property var targets: null
     // The "Put this pack on" row's id when a row was chosen; "" when the
     // target was typed or suggested by name (08 S106a).
     property string importGuid: ""
@@ -58,20 +62,20 @@ ApplicationWindow {
     property var suggestedTarget: null
     property int tickRev: 0
     property int openRev: 0
-    property var folded: ({})
+    property var folded: null
     // Export: the device's modes with wires ({name, count}) and which are
     // ticked; the folder of the last export (Show Folder).
     property var exportModes: []
-    property var exportTicks: ({})
+    property var exportTicks: null
     property int exportRev: 0
     property string exportFolder: ""
     // Import: the file's notes, and whether Restore Import is offered.
-    property var packNotes: ({})
+    property var packNotes: null
     // Drivers the pack needs that aren't found (vJoy, a vJoy device, Xbox).
     property var packDrivers: []
     property bool canUndo: false
     // What the warning before Import showed (preview from the program).
-    property var preview: ({})
+    property var preview: null
 
     ListModel { id: _deviceModel }
     HardwareProfile { id: _hw }
@@ -307,7 +311,7 @@ ApplicationWindow {
     }
 
     function isFoldedOpen(key) {
-        return folded[key] === true
+        return (folded || {})[key] === true
     }
 
     function anyChecked() {
@@ -590,6 +594,13 @@ ApplicationWindow {
 
     // Opened with {mode: "import"} (Tools, Home card): on the Import tab.
     Component.onCompleted: {
+        packInfo = {}
+        checks = {}
+        targets = {}
+        folded = {}
+        exportTicks = {}
+        packNotes = {}
+        preview = {}
         if (mode === "import")
             _pages.currentIndex = 1
         reloadDevices()
@@ -656,7 +667,7 @@ ApplicationWindow {
             CheckBox {
                 id: _createLogical
                 objectName: "packCreateLogical"
-                visible: (_win.preview.missingLogical || []).length > 0
+                visible: ((_win.preview || {}).missingLogical || []).length > 0
                 text: "Create the missing Logical Device inputs"
             }
             RowLayout {
@@ -1222,7 +1233,7 @@ ApplicationWindow {
                         focusPolicy: Qt.NoFocus
                         enabled: {
                             var rev = tickRev
-                            return fileUrl.length > 0 && packInfo.ok === true && _saveAs.text.length > 0 && anyChecked()
+                            return fileUrl.length > 0 && (packInfo || {}).ok === true && _saveAs.text.length > 0 && anyChecked()
                         }
                         onClicked: askImport()
                     }

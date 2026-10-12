@@ -24,13 +24,15 @@ Popup {
     property var toscRows: []
     property var toscSkipped: []
     // index -> ticked
-    property var _ticked: ({})
+    // No {} here: a literal is a binding, and the window assigns it
+    // (qt.qml.binding.removal); null = nothing ticked.
+    property var _ticked: null
     readonly property bool previewing: toscPath.length > 0
     readonly property var chosen: {
         var out = []
         for (var i = 0; i < toscRows.length; i++) {
             var row = toscRows[i]
-            if (!row.exists && _ticked[row.index] === true)
+            if (!row.exists && (_ticked || {})[row.index] === true)
                 out.push(row.index)
         }
         return out
@@ -278,7 +280,7 @@ Popup {
                         CheckBox {
                             objectName: "oscToscTick" + _toscRow.index
                             enabled: !_toscRow.modelData.exists
-                            checked: _root._ticked[_toscRow.modelData.index] === true
+                            checked: (_root._ticked || {})[_toscRow.modelData.index] === true
                             onClicked: _root.setTicked(_toscRow.modelData.index, checked)
                         }
                         Label {

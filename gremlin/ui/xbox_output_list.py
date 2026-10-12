@@ -36,7 +36,7 @@ TYPE_CHOICES = [
     {"label": "Buttons", "value": "button"},
     {"label": "D-Pad", "value": "dpad"},
 ]
-FILTERS = [{"label": "Only controls with something sending", "name": "sending"}]
+FILTERS = [{"label": "Show only bound controls", "name": "sending"}]
 
 _DPAD = {
     XboxTarget.DPAD_UP,

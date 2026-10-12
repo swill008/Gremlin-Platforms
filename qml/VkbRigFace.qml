@@ -22,9 +22,12 @@ Item {
     property bool spaceHeld: false
     readonly property var editorItem: _editorLoader.item
 
-    property var destBtn: ({})
-    property var destAxis: ({})
-    property var destHat: ({})
+    // What each button, axis and hat sends ({id: label}); null = nothing
+    // known. No {} here: a literal is a binding, and the picture renderer
+    // assigns them (qt.qml.binding.removal); the label*() readers take null.
+    property var destBtn: null
+    property var destAxis: null
+    property var destHat: null
     property int destTick: 0
     property real zoom: 2
     property real panX: 0
