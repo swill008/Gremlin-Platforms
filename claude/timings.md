@@ -846,3 +846,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | B3 renames (Configuration page -> Device Bindings, Auto Mapper -> Auto Mapping Tool): R-QML1 1 min, R-QML2 3, R-PY1 2, R-PY2 4, R-DOC 4, R-TEST2 8, R-TEST1 10 | refactor | rough guess 10-15 min | 10 min wall | 18:26–18:36 |
 | 2026-10-11 | B4 rename Button Map -> Device Mapping Editor (8 agents: E-RIG 1 min, E-SHELL 2, E-OT3 2, E-WIN 4, E-PY 5, E-TEST1 7, E-TEST2 9, E-DOC 9) + OT-4 Library part id move (3 min) | refactor | rough guess 15-20 min | 10 min wall (+3 OT-4) | 18:38–18:48 |
 | 2026-10-11 | ONE full run + lint over fix-list batches 1-4 (seed 5299): 3 failures (2 tests still .zip, the store-only guard on OT-4), fixed, 7 pass targeted; lint 0 new; lint wrap 2 agents 1-4 min | test | 5–6 min (table) | 6 min + 2 min fixes | 18:54–19:02 |
+| 2026-10-11 | Live test session with the user (lead watching logs, 13-item list, research on wording and history UIs) | lead | — | ~55 min (user's pace) | 19:05–19:58 |
+| 2026-10-11 | Test-session list: OT4 1 min, PACKWIN 1, LOOKUP 1, PACKPY 3, HMODEL 5, DOC 5, LIB 6, HUI 9, WIN 9 (9 agents) | fix/feature | 5-10 min (table); History rough guess 15 | 9 min wall | 19:58–20:07 |
+| 2026-10-11 | HTFIX: older History tests to the new design (90 pass) | agent tests | ~10 min | 6 min | 20:07–20:13 |
+| 2026-10-11 | ONE full run + lint (test-session list, seed 956683): 2 tests pinned old behaviour (folded rows, Help wording) + 5 lint items; fixed, targeted green | test | 5–6 min (table) | 7 min + 4 min fixes | 20:13–20:24 |

@@ -314,11 +314,11 @@ function topics() {
             + "<ol>"
             + "<li>Right-click a device or one of its saved setups.</li>"
             + "<li>Choose <b>Show in History</b>. History opens in the main window, showing only that device's changes.</li>"
-            + "<li>Select a change and use <b>Restore Before</b> to put back how it was.</li>"
+            + "<li>Select a change and use <b>Restore to before this change</b> to put back how it was.</li>"
             + "</ol>"
             + "<h4>Good to know</h4>"
             + "<ul>"
-            + "<li>Each Library action is one History entry named for what it did, for example \"Removed Old Warthog stick from the Device Library\", \"Deleted saved setup DCS F-16\" or \"Saved Left throttle to the Device Library\". Restore puts back every file and setting it changed.</li>"
+            + "<li>Each Library action is one History entry named for what it did, for example \"Removed Old Warthog stick from the Device Library\", \"Deleted saved setup DCS F-16\" or \"Saved Left throttle to the Device Library\". Restore puts back only that change: the saved setups and files it removed come back and the ones it added go, and every later change stays.</li>"
             + "</ul>",
             ["device-library-undo", "device-library-delete", "tools-history"]),
 
@@ -390,7 +390,7 @@ function topics() {
             + "<ul>"
             + "<li>It goes under the device it was made from when that device is in the Device Library; otherwise under a new <b>Not connected</b> device named after the pack.</li>"
             + "<li>The saved setup says where it came from (\"From Sam's pack\") and takes the pack's note as its description.</li>"
-            + "<li>A pack that can't be read is refused, and the message says why. That includes a pack that unpacks to more than 64 MB (\"This pack is too big to read: it unpacks to N MB and the most is 64 MB.\") and a pack whose outputs file (outputs/*.json) is damaged.</li>"
+            + "<li>A pack that can't be read is refused, and the message says why. That includes a pack that unpacks to more than 64 MB (\"This file is too big to read: it unpacks to N MB and the most is 64 MB.\") and a pack whose outputs file (outputs/*.json) is damaged.</li>"
             + "<li>A very long device name is cut to 80 characters in the Library's folder and file names; the list shows the full name.</li>"
             + "</ul>",
             ["device-library-export", "device-library-copy", "home-devices-device-pack"]),

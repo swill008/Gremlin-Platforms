@@ -143,9 +143,13 @@ def test_a_module_file_and_its_picture_go_back(
     assert "calibration" not in json.loads(path.read_text(encoding="utf-8"))
     # The picture as it was with that version.
     assert photo.read_bytes() == b"first photo"
-    # Restore is itself a change.
-    assert _settle()[0]["title"] == "Saved Restore Stick: calibration"
-    assert _settle()[0]["id"] != entry["id"]
+    # Restore is itself a change: one hidden entry linked to the original
+    # (D-TESTLIST-1 item 13), not a second "Saved ..." row.
+    newest = _settle()[0]
+    assert newest["title"] == "Restored: Saved Restore Stick: calibration"
+    assert newest["id"] != entry["id"]
+    assert newest["of"] == entry["id"]
+    assert newest["restore"] == "before"
 
 
 def test_settings_go_back(

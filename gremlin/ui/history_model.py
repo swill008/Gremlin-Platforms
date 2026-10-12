@@ -2,13 +2,17 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The History window (Tools > History): every saved change, newest first,
-with what it was before and after, and Restore.
+grouped by day, with what it was before and after, and Restore.
 
-Restore puts a version back through the normal save paths, so it is itself
-a new entry. An input's actions go back into the open profile as an unsaved
-change (save it to keep it). A module file or a setting is saved at once,
-as its editor does. A whole profile is written as a copy next to the
-profile, to open with File > Load Profile.
+Restore puts a version back through the normal save paths. What it saves
+is kept as one entry linked to the entry restored ("of"), which the window
+doesn't list: the restored entry shows a tag instead ("Restored · 19:47",
+"Reapplied · 19:48"), so the list stays as it is. An input's actions go
+back into the open profile as an unsaved change (save it to keep it). A
+module file or a setting is saved at once, as its editor does. A whole
+profile is written as a copy next to the profile, to open with File > Load
+Profile. The list never reloads under the user: changes recorded meanwhile
+wait as "N new changes" until Show (showNew).
 """
 
 from __future__ import annotations
@@ -18,14 +22,14 @@ import logging
 import os
 import re
 import zlib
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import history, history_profile, shared_state, text_diff
+from gremlin import clock, history, history_profile, shared_state, text_diff
 from gremlin.ui.option import entry_title
 
 QML_IMPORT_NAME = "Gremlin.UI"
@@ -34,7 +38,21 @@ QML_IMPORT_MAJOR_VERSION = 1
 _UUID = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
-_ROLES = ("entryId", "when", "areaName", "title", "danger")
+_ROLES = (
+    "entryId",
+    "when",
+    "areaName",
+    "title",
+    "danger",
+    "day",
+    "time",
+    "groupKey",
+    "groupSize",
+    "groupFirst",
+    "groupOpen",
+    "tag",
+    "effect",
+)
 # 08 S12b: a Device Library entry's area, and what Restore of one does.
 LIBRARY_AREA = "Device Library"
 LIBRARY_NOTE = (
@@ -51,6 +69,49 @@ def _when(at: float) -> str:
         return datetime.fromtimestamp(float(at)).strftime("%Y-%m-%d %H:%M")
     except (TypeError, ValueError, OSError, OverflowError):
         return ""
+
+
+def _time(at: float) -> str:
+    try:
+        return datetime.fromtimestamp(float(at)).strftime("%H:%M")
+    except (TypeError, ValueError, OSError, OverflowError):
+        return ""
+
+
+def _day(at: float, today: date | None = None) -> str:
+    """ "Today", "Yesterday" or the date ("2026-10-09")."""
+    try:
+        day = datetime.fromtimestamp(float(at)).date()
+    except (TypeError, ValueError, OSError, OverflowError):
+        return ""
+    today = today or datetime.fromtimestamp(clock.now()).date()
+    if day == today:
+        return "Today"
+    if day == today - timedelta(days=1):
+        return "Yesterday"
+    return day.isoformat()
+
+
+def _thing(entry: dict) -> str:
+    """What an entry changed, for folding repeated changes to it into one
+    row; "" never folds (a group, a clearing)."""
+    kind, area = entry.get("kind"), str(entry.get("area") or "")
+    subject = entry.get("subject") or {}
+    if kind in (history.GROUP_KIND, history.CLEARED_KIND, history.RESTORE_KIND):
+        return ""
+    if area == "profile" and kind == "input":
+        parts = ("profile", "deviceId", "inputType", "inputId", "mode")
+        return "input|" + "|".join(_norm(subject.get(k)) for k in parts)
+    if area == "profile":
+        return f"profile|{kind}|{_norm(subject.get('profile'))}"
+    if area == "settings":
+        keys = subject.get("keys")
+        keys = sorted(str(k) for k in keys) if isinstance(keys, list) else []
+        return "settings|" + ",".join(keys) if keys else ""
+    if kind == "library":
+        return "library|" + _norm(entry.get("title"))
+    device = _id(subject.get("deviceId")) or _norm(subject.get("fileName"))
+    return f"{area}|{device}" if device else ""
 
 
 def _side(value: object) -> dict | None:
@@ -370,6 +431,10 @@ def describe(entry: dict) -> dict:
         note = "Saved at once, with its pictures."
     # What changed, row for row and word by word (08 S104).
     diff = text_diff.rows(texts[0], texts[1])
+    effects = tuple(
+        _effect(entry, which, ok)
+        for which, ok in zip(("before", "after"), can, strict=True)
+    )
     return {
         "title": _title(entry),
         "when": _when(entry.get("at", 0)),
@@ -383,7 +448,71 @@ def describe(entry: dict) -> dict:
         "closesPanes": panes,
         "diffRows": diff,
         "diffBlocks": text_diff.blocks(diff),
+        "effect": effects[0],
+        "effectAfter": effects[1],
     }
+
+
+def _thing_words(entry: dict) -> str:
+    """What the entry is about, in a few words ("EVO OT L's module file")."""
+    kind, area = entry.get("kind"), entry.get("area")
+    subject = entry.get("subject") or {}
+    if area == "profile" and kind == "input":
+        name = subject.get("profileName") or "the profile"
+        return f"this input's actions in {name}"
+    if area == "profile":
+        return f"{subject.get('profileName') or 'the profile'}"
+    if area == "settings":
+        keys = subject.get("keys")
+        names = [
+            entry_title(str(k).rsplit("/", 1)[-1], str(k))
+            for k in (keys if isinstance(keys, list) else [])
+        ]
+        if len(names) == 1:
+            return f"the setting {names[0]}"
+        return "the settings " + ", ".join(names) if names else "these settings"
+    if kind == "library":
+        return "the Device Library's setups and files this change touched"
+    device = " ".join(str(subject.get("device") or "").split())
+    if not device and subject.get("fileName"):
+        device = Path(str(subject.get("fileName"))).stem
+    return f"{device}'s module file" if device else "the module file"
+
+
+def _effect(entry: dict, which: str, can: bool) -> str:
+    """In plain words, what Restore to before (or after) this change does."""
+    if entry.get("kind") == history.CLEARED_KIND:
+        return "Nothing to restore: History before this point was deleted."
+    if entry.get("area") == "profile" and entry.get("kind") == "section":
+        return (
+            "This part can't be restored on its own. Restore the profile's "
+            "save below it in the list."
+        )
+    if not can:
+        return f"There is no version from {which} this change to put back."
+    when = f"as it was {which} this change"
+    kind, area = entry.get("kind"), entry.get("area")
+    if kind == history.GROUP_KIND:
+        count = len(_parts(entry))
+        return f"Puts back all {count} parts of this change, {when}, at once."
+    if area == "profile" and kind == "input":
+        return (
+            f"Puts {_thing_words(entry)} back {when}, into the open profile. "
+            "Save the profile to keep it."
+        )
+    if area == "profile":
+        return (
+            f"Writes {_thing_words(entry)} {when} as a copy next to it, to "
+            "open with File > Load Profile. The profile itself is not changed."
+        )
+    if area == "settings":
+        return f"Sets {_thing_words(entry)} back {when}. Saved at once."
+    if kind == "library":
+        return (
+            f"Puts {_thing_words(entry)} back {when}. Later changes stay. "
+            "Saved at once."
+        )
+    return f"Puts {_thing_words(entry)} back {when}, with its pictures. Saved at once."
 
 
 # --- restore -------------------------------------------------------------------
@@ -680,7 +809,7 @@ def _restore_group(entry: dict, which: str) -> tuple[bool, str]:
     if which == "before":
         parts.reverse()
     key = "canRestoreBefore" if which == "before" else "canRestoreAfter"
-    token = history.begin_group(f"Put back from History: {entry.get('title', '')}")
+    token = history.begin_group(history.restore_title(entry, which))
     messages: list[str] = []
     try:
         for part in parts:
@@ -736,35 +865,98 @@ def restore(entry_id: str, which: str, outside_ok: bool = False) -> dict:
                 "profiles folder and the profile's own folder."
             ),
         }
+    # One entry for the restore, linked to the entry it restored (a restore
+    # of a restore names the first original): the window tags that one.
+    original_id = str(entry.get("of") or entry_id)
+    original = history.entry(original_id) if entry.get("of") else entry
+    token = history.begin_group(
+        history.restore_title(original or entry, which),
+        str(entry.get("area") or "modules"),
+        extra={"of": original_id, "restore": which},
+    )
+    ok = False
     try:
         ok, message = _restore_one(entry, which)
     except Exception as exc:
-        return {"ok": False, "message": f"It couldn't be put back: {exc}"}
+        message = f"It couldn't be put back: {exc}"
+    finally:
+        if not ok:
+            history.drop_link(token)
+        history.end_group(token)
     return {"ok": ok, "message": message}
+
+
+def _tags(entries: list[dict]) -> dict[str, str]:
+    """Each restored entry's tag from its latest restore: "Restored · 19:47"
+    or "Reapplied · 19:48"."""
+    tags: dict[str, tuple[float, str]] = {}
+    for item in entries:
+        if not history.is_restore(item):
+            continue
+        at = float(item.get("at") or 0)
+        word = history.restore_word(str(item.get("restore") or "before"))
+        ids = item.get("ofAll")
+        ids = [str(i) for i in ids] if isinstance(ids, list) else []
+        ids.append(str(item.get("of")))
+        for entry_id in ids:
+            if entry_id not in tags or tags[entry_id][0] < at:
+                tags[entry_id] = (at, f"{word} · {_time(at)}")
+    return {key: value[1] for key, value in tags.items()}
 
 
 @ta.QmlElement
 class HistoryModel(QtCore.QAbstractListModel):
-    """The entries for the History window, filtered."""
+    """The entries for the History window, filtered, grouped by day, with
+    repeated changes to one thing folded into one row. The rows never change
+    under the user: a restore tags its entry in place, and changes recorded
+    meanwhile wait (newCount) until showNew()."""
 
     filterChanged = QtCore.Signal()
     # The change detail() last read: its rows and blocks changed.
     diffChanged = QtCore.Signal()
+    newCountChanged = QtCore.Signal()
+    # From the History writer thread: an entry was written.
+    _written = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         self._diff_rows: list[dict] = []
         self._diff_blocks: list[int] = []
+        # Every entry read, restores too.
         self._all: list[dict] = []
+        # What the list shows (filtered, no restores), each with its run.
+        self._shown: list[dict] = []
+        self._runs: dict[str, dict] = {}
+        self._open: set[str] = set()
         self._rows: list[dict] = []
+        self._tags: dict[str, str] = {}
+        # Each row's effect, worked out once (describe() reads the sides).
+        self._effects: dict[str, str] = {}
+        self._new = 0
         self._filter: dict = {}
         self._search = ""
+        # History writes come in bursts: read once they settle.
+        self._later = QtCore.QTimer(self)
+        self._later.setSingleShot(True)
+        self._later.setInterval(300)
+        self._later.timeout.connect(self.refresh)
+        self._written.connect(
+            self._later.start, QtCore.Qt.ConnectionType.QueuedConnection
+        )
+        self._listener = self._written.emit
+        history.add_written_listener(self._listener)
+        self.destroyed.connect(
+            lambda *_: history.remove_written_listener(self._listener)
+        )
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return {
             QtCore.Qt.ItemDataRole.UserRole + i: QtCore.QByteArray(name.encode())
             for i, name in enumerate(_ROLES, start=1)
         }
+
+    def _role(self, name: str) -> int:
+        return QtCore.Qt.ItemDataRole.UserRole + _ROLES.index(name) + 1
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
         return len(self._rows)
@@ -778,10 +970,13 @@ class HistoryModel(QtCore.QAbstractListModel):
         name = (
             _ROLES[role - QtCore.Qt.ItemDataRole.UserRole - 1]
             if role > QtCore.Qt.ItemDataRole.UserRole
+            and role - QtCore.Qt.ItemDataRole.UserRole <= len(_ROLES)
             else ""
         )
+        entry_id = str(entry.get("id", ""))
+        run = self._runs.get(entry_id) or {}
         if name == "entryId":
-            return entry.get("id", "")
+            return entry_id
         if name == "when":
             return _when(entry.get("at", 0))
         if name == "areaName":
@@ -790,26 +985,190 @@ class HistoryModel(QtCore.QAbstractListModel):
             return entry.get("kind") == history.CLEARED_KIND
         if name == "title":
             return _title(entry)
+        if name == "day":
+            return _day(entry.get("at", 0))
+        if name == "time":
+            return _time(entry.get("at", 0))
+        if name == "groupKey":
+            return run.get("key", entry_id)
+        if name == "groupSize":
+            return run.get("size", 1)
+        if name == "groupFirst":
+            return run.get("first", True)
+        if name == "groupOpen":
+            return run.get("key", entry_id) in self._open
+        if name == "tag":
+            return self._tags.get(entry_id, "")
+        if name == "effect":
+            if entry_id not in self._effects:
+                self._effects[entry_id] = describe(entry)["effect"]
+            return self._effects[entry_id]
         return None
 
-    @QtCore.Slot()
-    def reload(self) -> None:
-        self._all = history.entries()
-        self._apply()
+    # --- what shows ----------------------------------------------------------
 
-    def _apply(self) -> None:
-        self.beginResetModel()
+    def _visible(self) -> list[dict]:
         words = self._search.lower().split()
-        self._rows = [
+        return [
             e
             for e in self._all
-            if _matches(e, self._filter)
+            if not history.is_restore(e)
+            and _matches(e, self._filter)
             and all(
                 w in (_title(e) + " " + json.dumps(e.get("subject"))).lower()
                 for w in words
             )
         ]
+
+    def _set_shown(self, shown: list[dict]) -> None:
+        """shown and its runs: next to each other, the same day and the same
+        thing (_thing) fold into one run keyed by its newest entry's id."""
+        self._shown = shown
+        self._runs = {}
+        head: dict | None = None
+        for entry in shown:
+            entry_id = str(entry.get("id", ""))
+            thing = _thing(entry)
+            day = _day(entry.get("at", 0))
+            if (
+                head is not None
+                and thing
+                and head["thing"] == thing
+                and head["day"] == day
+            ):
+                head["size"] += 1
+                self._runs[entry_id] = {"run": head, "first": False}
+                continue
+            head = {"key": entry_id, "thing": thing, "day": day, "size": 1}
+            self._runs[entry_id] = {"run": head, "first": True}
+        for entry_id, place in self._runs.items():
+            run = place["run"]
+            self._runs[entry_id] = {
+                "key": run["key"],
+                "size": run["size"],
+                "first": place["first"],
+            }
+        keys = {run["key"] for run in self._runs.values()}
+        self._open &= keys
+
+    def _row_list(self) -> list[dict]:
+        rows = []
+        for entry in self._shown:
+            run = self._runs[str(entry.get("id", ""))]
+            if run["first"] or run["key"] in self._open:
+                rows.append(entry)
+        return rows
+
+    def _set_new(self, count: int) -> None:
+        if count != self._new:
+            self._new = count
+            self.newCountChanged.emit()
+
+    @QtCore.Slot()
+    def reload(self) -> None:
+        """Reads History and shows it all again (on open, after a filter
+        or a clearing)."""
+        self._all = history.entries()
+        self._apply()
+
+    def _apply(self) -> None:
+        self.beginResetModel()
+        self._tags = _tags(self._all)
+        self._set_shown(self._visible())
+        self._rows = self._row_list()
         self.endResetModel()
+        self._set_new(0)
+
+    @QtCore.Slot()
+    def refresh(self) -> None:
+        """Reads History again without changing the rows: tags change in
+        place, and newCount counts what waits for showNew()."""
+        self._all = history.entries()
+        tags = _tags(self._all)
+        changed, self._tags = self._tags, tags
+        role = self._role("tag")
+        for row, entry in enumerate(self._rows):
+            entry_id = str(entry.get("id", ""))
+            if changed.get(entry_id, "") != tags.get(entry_id, ""):
+                index = self.index(row, 0)
+                self.dataChanged.emit(index, index, [role])
+        shown = {str(e.get("id", "")) for e in self._shown}
+        self._set_new(
+            sum(1 for e in self._visible() if str(e.get("id", "")) not in shown)
+        )
+
+    @QtCore.Slot()
+    def showNew(self) -> None:
+        """The changes waiting (newCount) join the top of the list. The rows
+        already there stay as they are when the new ones only go above
+        them; a new change to the thing of the top row regroups (reset)."""
+        old_rows = [str(e.get("id", "")) for e in self._rows]
+        old_runs = {key: dict(value) for key, value in self._runs.items()}
+        shown = self._visible()
+        known = {str(e.get("id", "")) for e in self._shown}
+        if not any(str(e.get("id", "")) not in known for e in shown):
+            self._set_new(0)
+            return
+        self._set_shown(shown)
+        rows = self._row_list()
+        ids = [str(e.get("id", "")) for e in rows]
+        added = len(ids) - len(old_rows)
+        same = (
+            added > 0
+            and ids[added:] == old_rows
+            and all(self._runs[i] == old_runs.get(i) for i in old_rows)
+        )
+        if same:
+            self.beginInsertRows(QtCore.QModelIndex(), 0, added - 1)
+            self._rows = rows
+            self.endInsertRows()
+        else:
+            self.beginResetModel()
+            self._rows = rows
+            self.endResetModel()
+        self._set_new(0)
+
+    @QtCore.Slot(str)
+    def toggleGroup(self, key: str) -> None:
+        """Opens or closes the run with this groupKey: its other changes
+        show under its first row, or go."""
+        head = next(
+            (row for row, e in enumerate(self._rows) if str(e.get("id")) == key),
+            -1,
+        )
+        if head < 0 or self._runs.get(key, {}).get("size", 1) < 2:
+            return
+        members = [
+            e
+            for e in self._shown
+            if self._runs[str(e.get("id", ""))]["key"] == key
+            and not self._runs[str(e.get("id", ""))]["first"]
+        ]
+        if key in self._open:
+            self.beginRemoveRows(QtCore.QModelIndex(), head + 1, head + len(members))
+            self._open.discard(key)
+            del self._rows[head + 1 : head + 1 + len(members)]
+            self.endRemoveRows()
+        else:
+            self.beginInsertRows(QtCore.QModelIndex(), head + 1, head + len(members))
+            self._open.add(key)
+            self._rows[head + 1 : head + 1] = members
+            self.endInsertRows()
+        index = self.index(head, 0)
+        self.dataChanged.emit(index, index, [self._role("groupOpen")])
+
+    @QtCore.Slot(str, result=int)
+    def rowOf(self, entry_id: str) -> int:
+        """The row an entry shows on now; -1 when it isn't shown."""
+        return next(
+            (row for row, e in enumerate(self._rows) if e.get("id") == entry_id),
+            -1,
+        )
+
+    def _new_count(self) -> int:
+        return self._new
+
+    newCount = QtCore.Property(int, fget=_new_count, notify=newCountChanged)
 
     @QtCore.Slot(str)
     def setFilter(self, text: str) -> None:
@@ -833,6 +1192,10 @@ class HistoryModel(QtCore.QAbstractListModel):
     def detail(self, entry_id: str) -> str:
         entry = next((e for e in self._all if e.get("id") == entry_id), None)
         shown = describe(entry) if entry else {}
+        if entry:
+            shown["tag"] = self._tags.get(entry_id, "")
+            shown["time"] = _time(entry.get("at", 0))
+            shown["day"] = _day(entry.get("at", 0))
         # Kept for diffRows / diffBlocks, the same rows as in the text.
         self._diff_rows = list(shown.get("diffRows") or [])
         self._diff_blocks = list(shown.get("diffBlocks") or [])
@@ -842,15 +1205,21 @@ class HistoryModel(QtCore.QAbstractListModel):
     @QtCore.Slot(str, str, result=str)
     def restore(self, entry_id: str, which: str) -> str:
         """{"ok", "message"}; with "ask": true nothing was written and the
-        message is the question for restoreOutside (AD6)."""
+        message is the question for restoreOutside (AD6). The entry's tag
+        changes in place; no row is added."""
         result = restore(entry_id, which)
+        if result.get("ok"):
+            self.refresh()
         return json.dumps(result)
 
     @QtCore.Slot(str, str, result=str)
     def restoreOutside(self, entry_id: str, which: str) -> str:
         """restore() after the user said yes to writing a profile copy
         outside the profiles folder (AD6)."""
-        return json.dumps(restore(entry_id, which, outside_ok=True))
+        result = restore(entry_id, which, outside_ok=True)
+        if result.get("ok"):
+            self.refresh()
+        return json.dumps(result)
 
     @QtCore.Slot(result=str)
     def summary(self) -> str:

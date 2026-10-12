@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The History window, off-screen (history_window_smoke.py): opened for one
-device as Module Setup opens it, it lists that device's saved changes,
-shows one before and after, Restore Before puts the file back (a new
-change in the list), Show All drops the device filter, and picking the
-same change again reads it again."""
+device as Module Setup opens it, it lists that device's saved changes
+(two saves of one file fold into one run),
+shows one before and after, Restore Before puts the file back (no new
+row: the change restored gets the tag "Restored · HH:MM"), Show All
+drops the device filter, and picking the same change again reads it
+again."""
 
 from __future__ import annotations
 
@@ -41,7 +43,11 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
 
 
 def test_it_lists_the_devices_changes(run: dict) -> None:
-    assert run["count"] == 2
+    # Two saves of the same file, next to each other: one folded run of 2
+    # (D-TESTLIST-1 item 13); opened, both are rows.
+    assert run["count"] == 1
+    assert run["group-size"] == 2
+    assert run["count-group-open"] == 2
     assert run["about"] == "Only History Stick"
     assert run["first-title"] == "Saved History Stick: checked controls and names"
 
@@ -57,7 +63,10 @@ def test_a_change_before_and_after(run: dict) -> None:
 def test_restore_before_puts_the_file_back(run: dict) -> None:
     assert run["message"] == "Put back History Stick/module.json."
     assert run["file-after-restore"] == {"buttons": [1]}
-    assert run["count-after-restore"] == 3
+    # D-TESTLIST-1 item 13: a restore adds no visible row; the change
+    # restored carries the tag instead.
+    assert run["count-after-restore"] == 1
+    assert run["tag-after-restore"].startswith("Restored · ")
 
 
 def test_show_all_drops_the_device(run: dict) -> None:

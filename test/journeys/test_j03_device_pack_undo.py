@@ -96,7 +96,7 @@ def story(j: Journey) -> None:
     out["x52-after-import"] = j.wires(x52)
     out["pjoy-after-import"] = j.wires(pjoy)
 
-    # Undo Import.
+    # Restore Import.
     j.ev("undoImport()", pack)
     out["status-undo"] = j.ev("status", pack)
     out["can-undo-after"] = j.ev("canUndo", pack)
@@ -144,7 +144,7 @@ def test_import_onto_the_other_stick_replaces_its_file_and_wires(run: dict) -> N
     assert "kept in the imported folder inside the device's folder." in warning
     assert step(run, "replace-shown") is True
     assert step(run, "can-undo") is True
-    # The pack's checked controls are added to the X52's (08 Q3).
+    # The file's checked controls are added to the X52's (08 Q3).
     assert sorted(step(run, "x52-file-after-import")["buttons"]) == [1, 2, 3, 4]
     assert step(run, "imported-backups"), "the old X52 file is kept"
     assert step(run, "x52-after-import") == _PJOY
@@ -152,7 +152,7 @@ def test_import_onto_the_other_stick_replaces_its_file_and_wires(run: dict) -> N
 
 
 def test_the_warning_says_checked_controls_are_added(run: dict) -> None:
-    assert "adds the pack's checked controls" in step(run, "warning")
+    assert "adds the file's checked controls" in step(run, "warning")
 
 
 def test_undo_import_puts_the_file_and_the_wires_back(run: dict) -> None:

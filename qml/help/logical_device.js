@@ -71,7 +71,7 @@ function topics() {
                 + "</ol>"
                 + _good([
                     "To take it back, choose <b>Undo</b> (<b>Ctrl+Z</b>).",
-                    "An Export / Import Device import can add the inputs its wires need; <b>Undo Import</b> removes them again. See " + _link("home-devices-device-pack-import", "Import a device file") + "."
+                    "An Export / Import Device import can add the inputs its wires need; <b>Restore Import</b> removes them again. See " + _link("home-devices-device-pack-import", "Import a device file") + "."
                 ]),
             related: ["logical-device-about", "logical-device-rename-control", "logical-device-undo"]
         },

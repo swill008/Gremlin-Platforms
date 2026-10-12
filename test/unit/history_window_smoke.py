@@ -104,6 +104,15 @@ out["count"] = hv("_list.count")
 out["about"] = item("historyAbout").property("text")
 first = hv("_model.data(_model.index(0, 0), Qt.UserRole + 1)")
 out["first-title"] = hv("_model.data(_model.index(0, 0), Qt.UserRole + 4)")
+# The two saves of the same file fold into one run (D-TESTLIST-1 item 13):
+# one row, group size 2; opening the run shows both.
+out["group-size"] = hv("_model.data(_model.index(0, 0), Qt.UserRole + 9)")
+group_key = hv("_model.data(_model.index(0, 0), Qt.UserRole + 8)")
+hv(f'_model.toggleGroup("{group_key}")')
+QtTest.QTest.qWait(100)
+out["count-group-open"] = hv("_list.count")
+hv(f'_model.toggleGroup("{group_key}")')
+QtTest.QTest.qWait(100)
 hv(f'pick("{first}")')
 QtTest.QTest.qWait(200)
 out["before"] = item("history:before").property("text")
@@ -120,6 +129,11 @@ out["message"] = item("historyMessage").property("text")
 out["file-after-restore"] = json.loads(path.read_text(encoding="utf-8"))["claim"]
 hv("_model.reload()")
 out["count-after-restore"] = hv("_list.count")
+# The restore is one hidden entry: no new row; the change restored shows
+# the tag "Restored · HH:MM" (D-TESTLIST-1 item 13).
+out["tag-after-restore"] = hv(
+    f'_model.data(_model.index(_model.rowOf("{first}"), 0), Qt.UserRole + 12)'
+)
 hv("showAll()")
 QtTest.QTest.qWait(200)
 out["about-after-show-all"] = item("historyAbout").property("text")

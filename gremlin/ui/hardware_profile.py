@@ -175,7 +175,7 @@ def _pack_in_background(
     except Exception:
         logging.getLogger("system").exception(f"Export of {dest} failed")
         try:
-            error = export_failure(dest, fallback="the pack could not be written there")
+            error = export_failure(dest, fallback="the file could not be written there")
         except Exception:
             error = f"Export failed. {Path(dest).name} could not be written."
         result = {"ok": False, "error": error}
@@ -451,7 +451,10 @@ def _autosave(name: str, guid: str, trigger: str, reason: str,
     except Exception as exc:  # noqa: BLE001 - any failure refuses the delete
         result = {"ok": False, "error": str(exc) or type(exc).__name__}
     if isinstance(result, dict) and result.get("ok"):
-        trace("SAVE", "Device Library", trigger, name, "ok")
+        # The packs written, with their full paths (a bare name would be
+        # shown as a path in the program folder).
+        written = "; ".join(result.get("paths") or []) or name
+        trace("SAVE", "Device Library", trigger, written, "ok")
         return ""
     trace("SAVE", "Device Library", trigger, name, "error")
     error = str(result.get("error", "") if isinstance(result, dict) else "")
@@ -632,18 +635,25 @@ def delete_device(device_name: str, guid: str) -> str:
 _PICTURE_FOLDER = ("global", "internal", "device-map-picture-folder")
 
 
-def _picture_folder_config():  # noqa: ANN202 - Configuration, imported late
-    """The settings, with the last picture folder's entry in them."""
+def register_options() -> None:
+    """Registers the last picture folder's setting. Called at start with the
+    other settings (joystick_gremlin.register_config_options), so the
+    start-up purge_unused keeps a saved folder (D-TESTLIST-1 item 2)."""
     from gremlin.config import Configuration
     from gremlin.types import PropertyType
 
-    cfg = Configuration()
-    if not cfg.exists(*_PICTURE_FOLDER):
-        cfg.register(
-            *_PICTURE_FOLDER, PropertyType.String, "",
-            "Folder Choose Photo and Import Picture last took a picture from.", {},
-        )
-    return cfg
+    Configuration().register(
+        *_PICTURE_FOLDER, PropertyType.String, "",
+        "Folder Choose Photo and Import Picture last took a picture from.", {},
+    )
+
+
+def _picture_folder_config():  # noqa: ANN202 - Configuration, imported late
+    """The settings, with the last picture folder's entry in them."""
+    from gremlin.config import Configuration
+
+    register_options()
+    return Configuration()
 
 
 def _picture_folder() -> Path:
@@ -1457,7 +1467,7 @@ class HardwareProfile(QtCore.QObject):
         if dest.suffix.lower() != GMAP_EXT:
             dest = dest.with_suffix(GMAP_EXT)
         if not _outside_maps(dest):
-            return "Save the pack outside the module folder."
+            return "Save the file outside the module folder."
         return dest
 
     @staticmethod
@@ -1528,7 +1538,7 @@ class HardwareProfile(QtCore.QObject):
         self._pack_exporting = True
         try:
             threads.start(
-                "Device Pack export",
+                "Export / Import Device export",
                 _pack_in_background,
                 write_pack,
                 plan,
@@ -1571,8 +1581,8 @@ class HardwareProfile(QtCore.QObject):
         try:
             return self._import_pack(Path(src), target_name, selection)
         except Exception as exc:
-            syslog.exception(f"Device Pack import of {src} failed")
-            error = f"This pack can't be read ({exc})."
+            syslog.exception(f"Export / Import Device: import of {src} failed")
+            error = f"This file can't be read ({exc})."
             return json.dumps({"ok": False, "error": error})
 
     def _import_pack(self, src: Path, target_name: str, selection: str) -> str:
@@ -1625,7 +1635,7 @@ class HardwareProfile(QtCore.QObject):
             src = to_local_path(zip_url)
             chosen = json.loads(selection) if str(selection or "").strip() else {}
         except Exception:
-            error = "The pack or the selection could not be read."
+            error = "The file or the selection could not be read."
             return json.dumps({"ok": False, "error": error})
         if not src or not src.is_file():
             return json.dumps({"ok": False, "error": "File not found."})
@@ -1640,7 +1650,7 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(result=str)
     @QtCore.Slot(bool, result=str)
     def undoPackImport(self, force: bool = False) -> str:
-        """Undo Import. A file saved again since the import makes it ask
+        """Restore Import. A file saved again since the import makes it ask
         first ({"ask": True, "changed": [...]}); force: the user said yes."""
         from gremlin.ui.device_pack import undo_import
 
@@ -1648,7 +1658,7 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Slot()
     def keepPackImport(self) -> None:
-        """The last import stays: Undo Import is no longer offered."""
+        """The last import stays: Restore Import is no longer offered."""
         from gremlin.ui.device_pack import drop_import_undo
 
         drop_import_undo()

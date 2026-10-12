@@ -36,7 +36,7 @@ function topics() {
             + "<li>There is one Device Mapping Editor window: opening it for another device reuses it.</li>"
                 + "<li>The Device Mapping Editor closes when its device is deleted.</li>"
             + "<li>Before you edit, the map is live: rest the pointer on a chip to see which control it is, and drag with the left or middle button to pan.</li>"
-            + "<li>Until you edit, a slim line under the menu bar reads \"View only. To edit this device map, choose File › Edit Mapping.\" Select its <b>Edit Mapping</b> link to start editing. The line goes while you edit and comes back after Save or Cancel.</li>"
+            + "<li>Until you edit, a slim line under the menu bar reads \"View only. To edit this device map, choose File › Edit Mapping.\" Select its <b>Edit Mapping</b> link to start editing. With no device chosen it reads \"No device chosen. Choose one from File › Device, then File › Edit Mapping to edit its device map.\" Its <b>File › Device</b> link opens that menu. The line goes while you edit and comes back after Save or Cancel.</li>"
             + "<li>Every command is in the menu bar, with its key beside it; commands that don't apply right now are greyed out. <b>Help › Keyboard Shortcuts…</b> (<b>Ctrl+K</b>) lists every key.</li>"
             + "</ul>",
             ["device-mapping-editor-edit", "device-mapping-editor-menus", "device-mapping-editor-keys"]),

@@ -159,6 +159,10 @@ def test_rows_with_sides_of_the_wrong_type_can_still_be_read(hist: Path) -> None
     _write(hist, "modules", list(_ODD_SIDES.values()))
     model = history_model.HistoryModel()
     model.reload()
+    # Changes to the same thing fold into one row (D-TESTLIST-1): open them.
+    for row in range(model.rowCount()):
+        if _role(model, row, "groupSize") > 1 and not _role(model, row, "groupOpen"):
+            model.toggleGroup(str(_role(model, row, "groupKey")))
     assert model.rowCount() == len(_ODD_SIDES)
     for row in range(model.rowCount()):
         for name in history_model._ROLES:

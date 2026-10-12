@@ -809,8 +809,47 @@ ApplicationWindow {
     // folder goes, with every picture it added and Save did not keep
     // (07 S107). Save already put the kept ones in the device's folder.
     function dropUnusedPictures() {
-        if (targetName.length)
-            _hw.cancelEdit(targetName)
+        if (!targetName.length)
+            return
+        releaseEditPictures()
+        _hw.cancelEdit(targetName)
+    }
+
+    // Before an edit's temporary folder goes, the editor lets go of the
+    // pictures only that edit shows: one still loading (just pasted or
+    // dropped) would otherwise go on reading a file that is gone and warn
+    // "Cannot open" (D-TESTLIST-1 item 3). Clearing a picture's address
+    // stops its load at once; the saved map's own pictures are kept, so
+    // they don't load again.
+    function releaseEditPictures() {
+        var e = _ed()
+        var list = (e && e.nodes) || []
+        var keep = {}
+        var i
+        var live = liveNodes || []
+        for (i = 0; i < live.length; i++) {
+            var l = live[i]
+            if (l && l.srcUrl)
+                keep[l.srcUrl] = true
+            if (l && l.lookUrl)
+                keep[l.lookUrl] = true
+        }
+        var changed = false
+        for (i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (!n || n.shape !== "image")
+                continue
+            if (n.srcUrl && !keep[n.srcUrl]) {
+                n.srcUrl = ""
+                changed = true
+            }
+            if (n.lookUrl && !keep[n.lookUrl]) {
+                n.lookUrl = ""
+                changed = true
+            }
+        }
+        if (changed && e.repaint)
+            e.repaint()
     }
 
     function finishLeave() {
@@ -1535,6 +1574,25 @@ ApplicationWindow {
             if (_menuBar.menuAt(i) === menu)
                 return _menuBar.itemAt(i)
         return null
+    }
+
+    // The view-only banner's "File › Device" link (D-TESTLIST-1 item 4):
+    // the File menu opens from the menu bar with its Device list out.
+    function openDeviceMenu() {
+        var bar = menuBarItem("dmeMenuFile")
+        if (!bar)
+            return false
+        if (!_fileMenu.opened)
+            bar.triggered()
+        for (var i = 0; i < _fileMenu.count; i++) {
+            var it = _fileMenu.itemAt(i)
+            if (it && it.subMenu === _deviceMenu) {
+                if (!_deviceMenu.opened)
+                    it.triggered()
+                return true
+            }
+        }
+        return false
     }
 
     // Help's Show me › into this window (07 S126, D-07-PLANES-FOLLOWUP
@@ -3738,8 +3796,10 @@ ApplicationWindow {
 
         // The view-only banner (D-FIXLIST-B1 item 1): one slim line under
         // the menu bar while the map is live (not editing), in the
-        // Background-mode banner's look. Its link starts editing as File ›
-        // Edit Mapping does. No close button; hidden while editing.
+        // Background-mode banner's look. No close button; hidden while
+        // editing. Two texts (D-TESTLIST-1 item 4): with no device, how to
+        // choose one (its "File › Device" link opens that menu); with a
+        // device, its link starts editing as File › Edit Mapping does.
         Rectangle {
             id: _viewOnlyBanner
             objectName: "dmeViewOnlyBanner"
@@ -3752,19 +3812,43 @@ ApplicationWindow {
             radius: Style.dp(4)
             color: Style.infoFillDeep
             border.color: Style.info
+            readonly property bool hasDevice: _editorWin.targetName.length > 0
             RowLayout {
                 id: _viewOnlyRow
                 anchors.centerIn: parent
                 spacing: 0
                 Label {
                     objectName: "dmeViewOnlyText"
-                    text: "View only. To edit this device map, choose File › "
+                    text: _viewOnlyBanner.hasDevice
+                          ? "View only. To edit this device map, choose File › "
+                          : "No device chosen. Choose one from "
                     color: Style.fgStrong
                     font.pixelSize: Style.dp(11)
                 }
                 Label {
+                    id: _viewOnlyDevice
+                    objectName: "dmeViewOnlyDevice"
+                    text: "File › Device"
+                    visible: !_viewOnlyBanner.hasDevice
+                    color: Style.info
+                    font.pixelSize: Style.dp(11)
+                    font.underline: true
+                    Accessible.role: Accessible.Link
+                    Accessible.name: text
+                    Accessible.onPressAction: activate()
+                    function activate() {
+                        _editorWin.openDeviceMenu()
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: _viewOnlyDevice.activate()
+                    }
+                }
+                Label {
                     id: _viewOnlyEdit
                     objectName: "dmeViewOnlyEdit"
+                    visible: _viewOnlyBanner.hasDevice
                     text: "Edit Mapping"
                     enabled: _editorWin.canEnterEdit
                     color: enabled ? Style.info : Style.fg
@@ -3785,7 +3869,9 @@ ApplicationWindow {
                     }
                 }
                 Label {
-                    text: "."
+                    text: _viewOnlyBanner.hasDevice
+                          ? "."
+                          : ", then File › Edit Mapping to edit its device map."
                     color: Style.fgStrong
                     font.pixelSize: Style.dp(11)
                 }

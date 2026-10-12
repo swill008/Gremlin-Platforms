@@ -12,7 +12,8 @@ window off-screen in its own process and user folder (b1_banner_smoke.py):
   the banner hides while editing;
 - it is back after Cancel, after Save once the edit ends, and when the
   window closed mid-edit opens again;
-- with no device the link is greyed and starting is refused.
+- with no device the banner says to choose one first (File › Device link)
+  and starting is refused.
 """
 
 from __future__ import annotations

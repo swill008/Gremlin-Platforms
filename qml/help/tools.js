@@ -187,7 +187,7 @@ function topics() {
             id: "tools-history",
             section: "History",
             title: "See saved changes in History",
-            body: "<p><b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> lists every saved change, newest first, each with its title, its date and time, and its area.</p>"
+            body: "<p><b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> lists every saved change, newest first, under day headings (<b>Today</b>, <b>Yesterday</b>, then the date), each with its title, its time and its area.</p>"
                 + "<ul>"
                 + "<li>Profile saves: each input whose actions changed, and other parts such as modes and scripts.</li>"
                 + "<li>Module files: checked controls and names, calibration, Appearance, the device map, and the Logical Device.</li>"
@@ -195,13 +195,14 @@ function topics() {
                 + "<li>The settings you choose in Options, HidHide and OSC.</li>"
                 + "</ul>"
                 + "<ol>"
-                + "<li>Pick a change to see it <b>Before</b> and <b>After</b> (until you do, the right side says \"Pick a change to see it before and after.\"). See <a href=\"topic:tools-history-compare\">Compare Before and After</a>.</li>"
+                + "<li>Pick a change. The right side says in plain words what restoring it will do; <b>Show full before/after</b> shows it <b>Before</b> and <b>After</b> (until you pick one, the right side says \"Pick a change to see it before and after.\"). See <a href=\"topic:tools-history-compare\">Compare Before and After</a>.</li>"
+                + "<li>Several changes in a row to the same thing (the same file, input or setting) are folded into one row that says how many it holds. Open the row to see each one.</li>"
                 + "<li>To narrow the list to one kind, use <b>Show</b>: <b>All</b>, <b>Profile</b>, <b>Module files</b>, <b>Device Mapping Editor</b> or <b>Settings</b>. To find a device, input or file, type in <b>Search</b> (<b>Ctrl+F</b>); it looks in each change's title and in what it is about. A line under it says \"N found\" or \"Nothing matches\"; <b>×</b> or <b>Esc</b> clears it.</li>"
                 + "</ol>"
                 + "<p><b>History</b> in an editor opens it for only what that editor shows: on the Device Bindings page (the selected input), on a Logical Device control's menu, in Module Setup, in the Device Mapping Editor's File menu, and in Options. <b>Show All</b> widens it again. <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> from the menu always opens on every change.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>New changes appear when the window comes back to the front, or when you choose <b>Refresh</b>.</li>"
+                + "<li>The list stays where it is while you look: your selection and scroll position are kept. Changes saved meanwhile show as a bar at the top, \"N new changes · Show\"; choose <b>Show</b> (or <b>Refresh</b>) to add them.</li>"
                 + "<li>With nothing to show, the list says \"No saved changes to show.\"</li>"
                 + "<li>Window sizes and places, and the Device Mapping Editor's zoom, guides and print area, aren't kept.</li>"
                 + "<li><b>Days to keep changes</b> <a href=\"show:option/Days to keep changes\">Show me ›</a> (90) and <b>Largest history file (MB)</b> <a href=\"show:option/Largest history file (MB)\">Show me ›</a> (20) in Options set how long changes are kept and how big each history file may grow; the oldest go first. Both are checked when the program starts.</li>"
@@ -216,7 +217,7 @@ function topics() {
             id: "tools-history-compare",
             section: "History",
             title: "Compare Before and After",
-            body: "<p>When you pick a change in History, <b>Before</b> and <b>After</b> show it side by side, lined up row for row.</p>"
+            body: "<p>When you pick a change in History, it first says in plain words what restoring it will do. Choose <b>Show full before/after</b> to see <b>Before</b> and <b>After</b> side by side, lined up row for row.</p>"
                 + "<ul>"
                 + "<li>A changed line has a soft tint and a thin bar on its left edge: red on Before, green on After. Inside it, the words that changed have a stronger tint. Unchanged lines stay plain.</li>"
                 + "<li><b>Previous Change</b> and <b>Next Change</b> move both sides together to the previous or next changed line. Each is off when there is no change that way.</li>"
@@ -234,14 +235,15 @@ function topics() {
             title: "Restore an earlier version",
             body: "<p>Restore puts the version before or after a saved change back.</p>"
                 + "<ol>"
-                + "<li>Open <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> and pick the change.</li>"
-                + "<li>Choose <b>Restore Before</b> or <b>Restore After</b>. It asks first.</li>"
+                + "<li>Open <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> and pick the change. The right side says in plain words what restoring it will do.</li>"
+                + "<li>Choose <b>Restore to before this change</b> to undo it. To put back the version after it instead, choose the link <b>Restore to after this change</b>. Either one asks first.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>An input's actions go back into the open profile, unsaved: open that profile first, and save it to keep them. The restore shows in the History at that Save Profile.</li>"
-                + "<li>A module file, with its pictures, and settings are saved at once, and the restore is a new change in the History at once.</li>"
-                + "<li>A Device Library change: \"Restoring puts back the Device Library's list and its saved setups together.\"</li>"
+                + "<li>A restore adds no new row: the change you restored stays where it is and gets the tag <b>Restored · HH:MM</b>. If you then undo that restore, the tag says <b>Reapplied · HH:MM</b>. Its full title reads \"Restored: <i>the change's title</i>\" or \"Reapplied: <i>the change's title</i>\".</li>"
+                + "<li>An input's actions go back into the open profile, unsaved: open that profile first, and save it to keep them. The restore is recorded at that Save Profile.</li>"
+                + "<li>A module file, with its pictures, and settings are saved at once, and the restore is recorded at once.</li>"
+                + "<li>A Device Library change: restoring puts back only that change (the saved setups and files it removed come back, the ones it added go); later changes to the Library stay.</li>"
                 + "<li>A whole profile (on its save's entry) is written as a copy next to the profile, to open with <b>File › Load Profile…</b> <a href=\"show:menu/File/Load Profile\">Show me ›</a>. It stays next to the profile until you delete it, and is not a change in the History.</li>"
                 + "<li>When that copy would go into a folder outside your profiles folder where the profile isn't any more, it asks first (\"Write the restored profile to <i>folder</i>?\"); only the red <b>Write Here</b> writes it there.</li>"
                 + "<li>A part of a profile (modes, Profile Settings, scripts) can't be restored on its own: \"Put this back with Restore on the profile's save, below it in the list.\" The Logical Device and OSC have their own module files, so their entries can be restored on their own.</li>"

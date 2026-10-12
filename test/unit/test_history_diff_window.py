@@ -6,7 +6,8 @@
 D-08-HISTORY-DIFF), off-screen (history_diff_window_smoke.py): changed rows
 tinted with a bar (red Before, green After), changed words in a stronger
 tint, same and filler rows plain, the sides lined up row for row, and
-Previous Change / Next Change moving both sides together."""
+Previous Change / Next Change moving both sides together. The two-column
+view shows after "Show full before/after" (D-TESTLIST-1 item 13)."""
 
 from __future__ import annotations
 
@@ -108,6 +109,12 @@ def test_the_sides_line_up(run: dict) -> None:
             if twin:
                 assert row["height"] == twin["height"], key
     assert run["start"]["aligned"]
+
+
+def test_the_full_view_waits_for_show_full(run: dict) -> None:
+    # Hidden when a change is picked; showFull = true shows it.
+    assert run["full-hidden-at-pick"] is True
+    assert run["full-shown"] is True
 
 
 def test_previous_and_next_change_move_both_sides(run: dict) -> None:

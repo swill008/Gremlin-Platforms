@@ -185,12 +185,16 @@ _group: dict | None = None
 _capture = threading.local()
 
 
-def begin_group(title: str, area: str = "modules") -> str:
+def begin_group(title: str, area: str = "modules", extra: dict | None = None) -> str:
     """Opens a group named title; returns its token ("" when one is open
-    already: what this records joins that one)."""
+    already: what this records joins that one, and extra is added to it).
+    extra: fields put on the written entry, e.g. a restore's link
+    {"of", "restore", "ofAll"} (restore_title())."""
     global _group
     with _group_lock:
         if _group is not None:
+            if extra and _group["thread"] == threading.get_ident():
+                _group["extra"] = {**extra, **_group["extra"]}
             return ""
         token = uuid.uuid4().hex
         _group = {
@@ -199,8 +203,17 @@ def begin_group(title: str, area: str = "modules") -> str:
             "area": area,
             "thread": threading.get_ident(),
             "items": [],
+            "extra": dict(extra or {}),
         }
         return token
+
+
+def drop_link(token: str) -> None:
+    """The open group (token) is no longer a restore's: a Restore that
+    failed part way shows what it did change as a change of its own."""
+    with _group_lock:
+        if token and _group is not None and _group["token"] == token:
+            _group["extra"] = {}
 
 
 def end_group(token: str) -> None:
@@ -217,7 +230,7 @@ def end_group(token: str) -> None:
         if _group is None or _group["token"] != token:
             return
         group, _group = _group, None
-    if group["items"]:
+    if group["items"] or group["extra"].get("of"):
         later(lambda: _write_group(group))
 
 
@@ -256,13 +269,66 @@ def _write_group(group: dict) -> None:
                 parts.append(item)
     finally:
         _capture.entries = None
+    extra = group.get("extra") or {}
     if not parts:
+        if extra.get("of"):
+            # A restore that saved nothing at once (an input put back into
+            # the open profile, unsaved): the link alone, for the tag.
+            _append(
+                {
+                    **_make(
+                        group["area"], group["title"], {}, None, None, RESTORE_KIND
+                    ),
+                    **extra,
+                }
+            )
         return
     if len(parts) == 1:
         entry = dict(parts[0], title=group["title"] or parts[0]["title"])
-        _append(entry)
+        _append({**entry, **extra})
         return
-    _append(group_entry(group["area"], group["title"], parts))
+    _append({**group_entry(group["area"], group["title"], parts), **extra})
+
+
+# --- restores (08 History, D-TESTLIST-1 13/15) ---------------------------------
+#
+# A Restore from History is one entry linked to the entry it restored
+# ("of"; "ofAll" when several were restored together) with "restore":
+# "before" | "after". The window doesn't list it: it tags the original
+# ("Restored · 19:47" / "Reapplied · 19:48").
+
+RESTORE_KIND = "restore"
+_RESTORE_WORDS = {"before": "Restored", "after": "Reapplied"}
+
+
+def is_restore(entry: dict) -> bool:
+    """An entry that records a Restore (hidden in the window)."""
+    return bool(entry.get("of"))
+
+
+def restore_word(which: str) -> str:
+    """ "Restored" for a restore to before, "Reapplied" for one to after."""
+    return _RESTORE_WORDS.get(which, "Restored")
+
+
+def original_title(entry: dict) -> str:
+    """The entry's title without a restore's "Restored: " / "Reapplied: "."""
+    title = str(entry.get("title") or "")
+    prefixes = [f"{w}: " for w in _RESTORE_WORDS.values()]
+    changed = True
+    while changed:
+        changed = False
+        for prefix in prefixes:
+            if title.startswith(prefix):
+                title = title[len(prefix) :]
+                changed = True
+    return title
+
+
+def restore_title(entry: dict, which: str) -> str:
+    """A restore's title: "Restored: <original title>" or "Reapplied:
+    <original title>", never stacked."""
+    return f"{restore_word(which)}: {original_title(entry)}"
 
 
 def group_entry(area: str, title: str, parts: list[dict]) -> dict:
@@ -431,6 +497,26 @@ def _append(entry: dict) -> None:
             trace("SAVE", "History", "record", path, "error")
             return
     trace("SAVE", "History", "record", path, "ok")
+    for listener in list(_written_listeners):
+        try:
+            listener()
+        except Exception:  # noqa: BLE001 - a gone listener stops listening
+            _written_listeners.remove(listener)
+
+
+# Told after each entry is written (the History window's "N new changes").
+_written_listeners: list[Callable[[], None]] = []
+
+
+def add_written_listener(listener: Callable[[], None]) -> None:
+    """listener() runs after each entry is written (writer thread)."""
+    if listener not in _written_listeners:
+        _written_listeners.append(listener)
+
+
+def remove_written_listener(listener: Callable[[], None]) -> None:
+    if listener in _written_listeners:
+        _written_listeners.remove(listener)
 
 
 def _ends_cut(path: Path) -> bool:

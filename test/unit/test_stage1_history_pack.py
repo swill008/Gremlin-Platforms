@@ -495,7 +495,7 @@ def test_export_pack_checks_the_place_and_the_name(
     hw = hardware_profile.HardwareProfile()
     # S57: never inside the modules folder.
     inside = json.loads(hw.exportPack("pJoy Pro", _url(folder / "pack.gmap"), "{}"))
-    assert inside == {"ok": False, "error": "Save the pack outside the module folder."}
+    assert inside == {"ok": False, "error": "Save the file outside the module folder."}
     assert not (folder / "pack.gmap").exists()
     # A name without .gmap gets .gmap (D-FIXLIST-B2: the only format).
     done = json.loads(hw.exportPack("pJoy Pro", _url(tmp_path / "my pack"), "{}"))

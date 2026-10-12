@@ -11,7 +11,7 @@ this machine: module file pieces; for a ticked mode, the device's wires
 and actions in that mode; Checked controls are added, 08 Q3), or "new", a
 new device folder (device_zip.import_device) holding only the ticked
 pieces. The window warns first, the previous module file is kept in the
-device folder's imported folder (08 S73), and Undo Import puts back the
+device folder's imported folder (08 S73), and Restore Import puts back the
 last import of either kind."""
 
 from __future__ import annotations
@@ -54,6 +54,9 @@ _UUID_RE = re.compile(
 _KIND_WORD = {"btn": "Button", "button": "Button", "axis": "Axis", "hat": "Hat"}
 # The pack format this program writes and reads. A newer pack is refused.
 PACK_FORMAT = 2
+
+# Who the logs and History name for this window's saves (D-TESTLIST-1 item 6).
+WHO = "Export / Import Device"
 # The Device Mapping Editor's view settings (module file "ui"), in two rows.
 _MAP_VIEW_KEYS = (
     "gridOn", "snapOn", "snapEntOn", "gridSize", "viewPct", "panX", "panY",
@@ -887,7 +890,7 @@ def save_pack(data: bytes, info: dict, dest: Path) -> dict:
     try:
         store.write_file(dest, data)
     except Exception:
-        trace("SAVE", "Device Pack", "exportPack", dest, "error")
+        trace("SAVE", WHO, "exportPack", dest, "error")
         return {
             "ok": False,
             "error": export_failure(
@@ -895,14 +898,14 @@ def save_pack(data: bytes, info: dict, dest: Path) -> dict:
             ),
         }
     if not _gmap_readable(dest):
-        trace("SAVE", "Device Pack", "exportPack", dest, "unreadable")
+        trace("SAVE", WHO, "exportPack", dest, "unreadable")
         return {
             "ok": False,
             "error": export_failure(
                 dest, reason="it was written but could not be read back"
             ),
         }
-    trace("SAVE", "Device Pack", "exportPack", dest, "ok")
+    trace("SAVE", WHO, "exportPack", dest, "ok")
     return {
         "ok": True,
         "path": str(dest),
@@ -1088,7 +1091,7 @@ def _too_new(doc: dict) -> str:
     program = str(label.get("program") or "").strip()
     by = f" (version {program})" if program else ""
     return (
-        f"This pack was made by a newer Gremlin-Platforms{by}. "
+        f"This file was made by a newer Gremlin-Platforms{by}. "
         "Update the program to import it."
     )
 
@@ -1110,9 +1113,9 @@ def describe_zip(path: Path) -> dict | str:
         return _describe(path)
     except Exception as exc:  # noqa: BLE001 - a pack is outside data
         logging.getLogger("system").warning(
-            f"Device Pack: {path} could not be described: {exc!r}"
+            f"{WHO}: {path} could not be described: {exc!r}"
         )
-        return f"This pack can't be read ({exc})."
+        return f"This file can't be read ({exc})."
 
 
 def _describe(path: Path) -> dict | str:
@@ -1126,7 +1129,7 @@ def _describe(path: Path) -> dict | str:
     label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
     exported = str(label.get("exportedName") or doc.get("device") or "").strip()
     if not exported:
-        return "This pack has no device name."
+        return "This file has no device name."
     _folder, urls = _stage_images(loaded["files"])
     pictures = _zip_pictures(doc, urls)
     # The preview: the device photo, the bottom background picture (07 S127).
@@ -1652,12 +1655,12 @@ def _write_pictures(
             record.append((dest, dest.read_bytes() if dest.is_file() else None))
         if dest.is_file():
             store.replace(
-                _archive_picture(base, dest), dest.read_bytes(), "Device Pack"
+                _archive_picture(base, dest), dest.read_bytes(), WHO
             )
         # A temporary file, then a swap: a crash can't leave half a picture
         # (08 S76, R3).
         store.put_picture_at(dest, data)
-        trace("SAVE", "Device Pack", "_write_pictures", dest, "ok")
+        trace("SAVE", WHO, "_write_pictures", dest, "ok")
         written[arc] = dest.name
     for node in doc.get("nodes") or []:
         if not isinstance(node, dict):
@@ -2259,7 +2262,7 @@ def _apply_wires(
     id_moves: dict[str, str] | None = None,
 ) -> tuple[list[str], dict | None]:
     """Replaces the device's wires and actions in each ticked mode with the
-    pack's. Returns the notes and what Undo Import needs. into: the profile
+    pack's. Returns the notes and what Restore Import needs. into: the profile
     to change (None: the open one). id_moves: the action ids already given
     new ones (_action_id_moves)."""
     if not plan["modes"]:
@@ -2351,7 +2354,7 @@ def _apply_wires(
                 profile.remember_device(uid, target_name)
     except Exception as exc:
         # Nothing of the wires stays (the module files written before are
-        # kept, and Undo Import puts them back).
+        # kept, and Restore Import puts them back).
         return [
             f"The wires were not written, and nothing in the profile was changed. {exc}"
         ], None
@@ -2359,7 +2362,7 @@ def _apply_wires(
     for mode in plan["modes"]:
         count = plan["counts"].get(mode, 0)
         noun = "wire" if count == 1 else "wires"
-        notes.insert(0, f"{mode}: {count} {noun} from the pack.")
+        notes.insert(0, f"{mode}: {count} {noun} from the file.")
     notes.insert(
         0,
         f"Replaced the wires of {target_name} in "
@@ -2377,7 +2380,7 @@ def _apply_wires(
         from gremlin.signal import signal
 
         try:
-            logical_device_file.save(who="Device Pack")
+            logical_device_file.save(who=WHO)
         except OSError as exc:
             notes.append(f"The Logical Device file could not be saved: {exc}")
         signal.logicalDeviceModified.emit()
@@ -2425,7 +2428,7 @@ def _save_osc(notes: list[str]) -> None:
     from gremlin.signal import signal
 
     try:
-        osc_device_file.save(who="Device Pack")
+        osc_device_file.save(who=WHO)
     except OSError as exc:
         notes.append(f"OSC's file could not be saved: {exc}")
     changed = getattr(signal, "oscDeviceModified", None)
@@ -2434,7 +2437,7 @@ def _save_osc(notes: list[str]) -> None:
 
 
 def _osc_has_actions(profile: Profile, ident: object) -> bool:
-    """Whether the profile has actions on this OSC input (Undo Import keeps
+    """Whether the profile has actions on this OSC input (Restore Import keeps
     it then, as for the Logical Device, 08 Q21)."""
     from gremlin.osc import OSC_DEVICE_UUID
 
@@ -2449,7 +2452,7 @@ def _osc_has_actions(profile: Profile, ident: object) -> bool:
 
 
 def _input_back(profile: Profile, item: object) -> dict:
-    """What Undo Import needs to put a replaced input back: its snapshot
+    """What Restore Import needs to put a replaced input back: its snapshot
     (Library.snapshot), or, for one without actions, its XML."""
     from gremlin.types import InputType
 
@@ -2466,7 +2469,7 @@ def _input_back(profile: Profile, item: object) -> dict:
 
 
 def _put_inputs_back(profile: Profile, uid: uuid.UUID, wires: dict) -> None:
-    """Undo Import's wires: the imported inputs go, the replaced ones come
+    """Restore Import's wires: the imported inputs go, the replaced ones come
     back. All or nothing (Library.change); Profile methods only (GL-109)."""
     from gremlin.types import InputType
 
@@ -2489,7 +2492,7 @@ def _put_inputs_back(profile: Profile, uid: uuid.UUID, wires: dict) -> None:
 
 def _logical_has_actions(profile: Profile, ident: object) -> bool:
     """Whether an input of the profile on this Logical Device input has
-    actions (Undo Import keeps it then, 08 Q21)."""
+    actions (Restore Import keeps it then, 08 Q21)."""
     from gremlin.logical_device import LogicalDevice
 
     for item in profile.inputs.get(LogicalDevice.device_guid, []) or []:
@@ -2502,7 +2505,7 @@ def _logical_has_actions(profile: Profile, ident: object) -> bool:
     return False
 
 
-# The last import, so Undo Import can put it back: the files it replaced
+# The last import, so Restore Import can put it back: the files it replaced
 # (with their previous bytes, None for a new file), what it wrote in them
 # ("written": a file changed since is asked about, 08 Q5) and the wires.
 _last_import: dict | None = None
@@ -2571,7 +2574,7 @@ def _remove_made_dir(folder: Path) -> None:
 
 
 def drop_import_undo() -> None:
-    """Keeps the last import: Undo Import is no longer offered. The actions
+    """Keeps the last import: Restore Import is no longer offered. The actions
     it replaced left the profile with their inputs (Library.release)."""
     global _last_import
     _last_import = None
@@ -2583,9 +2586,9 @@ def _put_back(files: list[tuple[Path, bytes | None]]) -> None:
     for path, previous in reversed(files):
         try:
             if previous is None:
-                store.delete_path(path, "Device Pack")
+                store.delete_path(path, WHO)
             else:
-                store.replace(path, previous, "Device Pack", force=True)
+                store.replace(path, previous, WHO, force=True)
         except OSError:
             pass
 
@@ -2604,7 +2607,7 @@ def _written(files: list[tuple[Path, bytes | None]]) -> dict[str, bytes | None]:
 
 def changed_since_import() -> list[str]:
     """Files of the last import saved again since (the Device Mapping Editor, Module
-    Setup): Undo Import would lose those changes (08 Q5)."""
+    Setup): Restore Import would lose those changes (08 Q5)."""
     record = _last_import
     if record is None or "written" not in record:
         return []
@@ -2628,14 +2631,13 @@ def undo_import(force: bool = False) -> dict:
             "ok": False,
             "ask": True,
             "changed": changed,
-            "error": "Changed after the import: "
+            "error": "These files changed after the import: "
             + ", ".join(changed)
-            + ". Undo Import puts these back as they were before the import, "
-            "and those changes are lost.",
+            + ". Restore Import discards those changes.",
         }
     record, _last_import = _last_import, None
     if record is None:
-        return {"ok": False, "error": "There is no import to undo."}
+        return {"ok": False, "error": "There is no import to restore."}
     notes: list[str] = []
     for path, previous in reversed(record["files"]):
         try:
@@ -2643,9 +2645,9 @@ def undo_import(force: bool = False) -> dict:
             # removal once it went through; the old bytes go back as they
             # were, also over a file damaged since.
             if previous is None:
-                store.delete_path(path, "Device Pack")
+                store.delete_path(path, WHO)
             else:
-                store.replace(path, previous, "Device Pack", force=True)
+                store.replace(path, previous, WHO, force=True)
         except OSError:
             notes.append(f"{_shown(path)} could not be put back.")
     for folder in record.get("dirs") or []:
@@ -2725,7 +2727,7 @@ def undo_import(force: bool = False) -> dict:
         from gremlin import logical_device_file
 
         try:
-            logical_device_file.save(who="Device Pack")
+            logical_device_file.save(who=WHO)
         except OSError as exc:
             notes.append(f"The Logical Device file could not be saved: {exc}")
     try:
@@ -2737,7 +2739,8 @@ def undo_import(force: bool = False) -> dict:
         signal.profileChanged.emit()
     except Exception:
         pass
-    return {"ok": True, "report": "\n".join(["Undid the import."] + notes)}
+    restored = "Restored the device as it was before the import."
+    return {"ok": True, "report": "\n".join([restored] + notes)}
 
 
 def _write_module(
@@ -2746,19 +2749,19 @@ def _write_module(
     record: list[tuple[Path, bytes | None]],
 ) -> str:
     """Writes one module file, keeping the previous one in its device
-    folder's imported\\ (08 S73) and for Undo Import. Returns the
+    folder's imported\\ (08 S73) and for Restore Import. Returns the
     backup's name, "" for a new file; raises OSError when it can't."""
     previous = dest.read_bytes() if dest.is_file() else None
     backup_name = ""
     if previous is not None:
         backup = _unique_archive(dest.parent, "module")
-        store.replace(backup, previous, "Device Pack")
+        store.replace(backup, previous, WHO)
         backup_name = backup.name
     record.append((dest, previous))
     try:
         # A damaged file is refused (decision F1); apply_zip checks first.
         store.replace(
-            dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"), "Device Pack"
+            dest, (json.dumps(merged, indent=2) + "\n").encode("utf-8"), WHO
         )
     except module_file.ModuleFileDamaged as damaged:
         raise OSError(str(damaged)) from damaged
@@ -2902,7 +2905,7 @@ def apply_zip(
 ) -> dict:
     """Imports the ticked pieces onto target_name. For the Device Library
     (10 S24, S41), without the window: profile is the profile the wires go
-    into (None: the open one); record_undo=False leaves Undo Import as it
+    into (None: the open one); record_undo=False leaves Restore Import as it
     was (the Library's autosave is the way back); fresh=True builds the
     module file from the pack alone instead of adding to the one here;
     target_guid (twins share a name) decides which device it is."""
@@ -2910,12 +2913,12 @@ def apply_zip(
     target = " ".join(str(target_name or "").split())
     target_guid = _target_guid(selection, target_guid)
     if not target:
-        return {"ok": False, "error": "Choose the device this pack is for."}
+        return {"ok": False, "error": "Choose the device this file is for."}
     loaded = _read_zip(path)
     if isinstance(loaded, str):
-        trace("READ", "Device Pack", "apply_zip", path, "error")
+        trace("READ", WHO, "apply_zip", path, "error")
         return {"ok": False, "error": loaded}
-    trace("READ", "Device Pack", "apply_zip", path, "ok")
+    trace("READ", WHO, "apply_zip", path, "ok")
     doc = loaded["doc"]
     newer = _too_new(doc)
     if newer:
@@ -2923,11 +2926,11 @@ def apply_zip(
     label = doc.get("pack") if isinstance(doc.get("pack"), dict) else {}
     exported = str(label.get("exportedName") or doc.get("device") or "").strip()
     if not exported:
-        return {"ok": False, "error": "This pack has no device name."}
+        return {"ok": False, "error": "This file has no device name."}
     if _doc_direction(doc, exported) != _target_direction(target):
         if _doc_direction(doc, exported) == "dest":
-            return {"ok": False, "error": "A vJoy pack cannot be copied onto a stick."}
-        return {"ok": False, "error": "A stick pack cannot be copied onto a vJoy."}
+            return {"ok": False, "error": "A vJoy file cannot be copied onto a stick."}
+        return {"ok": False, "error": "A stick file cannot be copied onto a vJoy."}
     chosen = _selected(selection)
     if not chosen:
         return {"ok": False, "error": "Choose at least one piece to import."}
@@ -3052,13 +3055,17 @@ def apply_zip(
         profile,
         id_moves,
     )
+    # The files part and the wires part are paragraphs (D-TESTLIST-1 item 11).
+    report = "\n\n".join(
+        part for part in ("\n".join(notes), "\n".join(wire_notes)) if part
+    )
     notes.extend(wire_notes)
     if not notes:
-        return {"ok": False, "error": "Nothing in the pack matched the pieces you ticked."}
+        return {"ok": False, "error": "Nothing in the file matched the pieces you ticked."}
     if not files and wires_undo is None:
         # Nothing was written (an output that couldn't be, wires that
         # weren't): the import before this one can still be undone.
-        return {"ok": False, "error": "\n".join(notes)}
+        return {"ok": False, "error": report}
     if record_undo:
         # A new import keeps the one before it for good (only an import that
         # changed something: a failed one leaves the last one undoable).
@@ -3070,7 +3077,7 @@ def apply_zip(
         signal.profileChanged.emit()
     except Exception:
         pass
-    return {"ok": True, "device": target, "report": "\n".join(notes), "canUndo": record_undo}
+    return {"ok": True, "device": target, "report": report, "canUndo": record_undo}
 
 
 def _new_target(path: Path, target_name: str, selection: dict | None) -> tuple[str, str] | str:
@@ -3109,7 +3116,7 @@ def import_as_new(path: Path, target_name: str, selection: dict | None) -> dict:
     .import_device makes the new device folder ("(2)" for a name another
     device's folder has, 03 S132; refused when the device, by its id,
     already has one: it is that device), then the ticked pieces go in as on a device with no file
-    (apply_zip fresh). Undo Import removes the folder it made, the files
+    (apply_zip fresh). Restore Import removes the folder it made, the files
     and the wires."""
     from gremlin.modules import device_zip
 

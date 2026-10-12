@@ -8,7 +8,7 @@ Export lists the device's modes (all ticked) and takes a name and a note.
 Import shows who made the pack, keeps its list below Open All when every
 section is open (it used to draw over the buttons), warns before it
 replaces anything (with the option to create missing Logical Device
-inputs), and offers Undo Import afterwards. Two identical sticks are two
+inputs), and offers Restore Import afterwards. Two identical sticks are two
 rows; Export sends the chosen one's id, and Import onto the "(2)" row
 sends its id and changes only that stick's module file (08 S106a).
 """
@@ -95,7 +95,7 @@ def test_the_warning_says_what_is_replaced(run: dict) -> None:
     warning = run["warning"]
     assert "Import replaces these on pJoy Pro:" in warning
     assert (
-        "The wires and actions of pJoy Pro in Default: 3 here, 2 from the pack."
+        "The wires and actions of pJoy Pro in Default: 3 here, 2 from the file."
         in warning
     )
     assert "Logical Device inputs that don't exist here: Button 9" in warning
@@ -113,7 +113,8 @@ def test_replace_then_undo(run: dict) -> None:
     assert run["default-after"] == [1, 5]
     assert run["logical-created"] is True
     assert run["default-undone"] == [1, 3, 5]
-    assert run["status-undone"].startswith("Undid the import.")
+    restored = "Restored the device as it was before the import."
+    assert run["status-undone"].startswith(restored)
     assert run["undo-hidden"] is True
 
 
@@ -122,7 +123,7 @@ def test_a_failed_import_keeps_undo_import(run: dict) -> None:
     assert "could not be written" in run["status-failed"]
     assert run["backend-undo-after-failed"] is True
     assert run["undo-after-failed"] is True
-    # And Undo Import still puts back the first import.
+    # And Restore Import still puts back the first import.
     assert run["default-undone"] == [1, 3, 5]
 
 
@@ -133,16 +134,17 @@ def test_a_missing_driver_is_told_before_import(run: dict) -> None:
 
 
 def test_messages_are_on_the_shared_message_line(run: dict) -> None:
-    # 01 S142: the import's report with an Undo Import link; a failure red.
+    # 01 S142: the import's report with a Restore Import link; a failure red.
     after = run["message-after"]
     assert after["shown"] and not after["failed"]
     assert after["text"] == run["status-after"]
-    assert after["undo"] == "Undo Import"
+    assert after["undo"] == "Restore Import"
     failed = run["message-failed"]
     assert failed["failed"] and failed["text"] == run["status-failed"]
     assert failed["undo"] == ""
     undone = run["message-undone"]
-    assert undone["text"].startswith("Undid the import.") and not undone["failed"]
+    restored = "Restored the device as it was before the import."
+    assert undone["text"].startswith(restored) and not undone["failed"]
 
 
 def test_the_choosers_open_in_the_last_device_pack_folder(run: dict) -> None:
@@ -177,5 +179,5 @@ def test_import_onto_the_second_twin_goes_by_its_id(twins: dict) -> None:
     chosen = _key(twins["twin-second-guid"])
     assert _key(twins["twin-selection"].get("targetGuid")) == chosen
     assert twins["twin-first-unchanged"] is True, twins["twin-import-status"]
-    # The pack's checked control (1) is added to the second stick's own (9).
+    # The file's checked control (1) is added to the second stick's own (9).
     assert twins["twin-second-buttons"] == [1, 9], twins["twin-import-status"]

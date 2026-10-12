@@ -516,7 +516,7 @@ def test_s63_a_stick_pack_cant_go_on_a_vjoy_nor_the_other_way(
     onto_vjoy = device_pack.apply_zip(stick, "vJoy 1", {"items": ["in.checks"]})
     assert onto_vjoy == {
         "ok": False,
-        "error": "A stick pack cannot be copied onto a vJoy.",
+        "error": "A stick file cannot be copied onto a vJoy.",
     }
     vjoy = write_gmap(
         tmp_path / "vjoy.gmap",
@@ -525,7 +525,7 @@ def test_s63_a_stick_pack_cant_go_on_a_vjoy_nor_the_other_way(
     onto_stick = device_pack.apply_zip(vjoy, "pJoy Pro", {"items": ["in.checks"]})
     assert onto_stick == {
         "ok": False,
-        "error": "A vJoy pack cannot be copied onto a stick.",
+        "error": "A vJoy file cannot be copied onto a stick.",
     }
     claims = json.loads(module_path(folder, "vJoy 1").read_text(encoding="utf-8"))[
         "claim"

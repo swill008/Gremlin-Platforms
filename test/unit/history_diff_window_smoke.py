@@ -6,7 +6,8 @@
 (test_history_diff_window.py, 08 S104).
 
 A module file is saved twice with changes in three places, then History
-opens on that device and the newest change is picked: each row's tint and
+opens on that device and the newest change is picked, then "Show full
+before/after" (showFull) is turned on: each row's tint and
 bar, the changed words of a changed row, the two sides lined up, and Next
 Change / Previous Change clicked. With a folder as the first argument it
 also saves the window in the light and dark theme there. Prints RESULT
@@ -158,7 +159,12 @@ def main() -> None:
 
     first = hv("_model.data(_model.index(0, 0), Qt.UserRole + 1)")
     hv(f'pick("{first}")')
+    # The two-column view and Previous/Next Change show only after
+    # "Show full before/after" (D-TESTLIST-1 item 13).
+    out["full-hidden-at-pick"] = not item("historyNextChange").isVisible()
+    hv("showFull = true")
     QtTest.QTest.qWait(300)
+    out["full-shown"] = bool(item("historyNextChange").isVisible())
     rows = hv("JSON.stringify(diffRows)")
     rows = json.loads(rows)
     out["blocks"] = json.loads(hv("JSON.stringify(diffBlocks)"))
@@ -179,6 +185,12 @@ def main() -> None:
     # Every row the window has made, each side: its tint, its bar and its text.
     shown_rows: dict = {}
     for index, row in enumerate(rows):
+        if row_item("before", index) is None:
+            # The detail pane above the two columns is taller since
+            # D-TESTLIST-1 item 13, so fewer rows are made at the top:
+            # bring this one into view (both sides move together).
+            hv(f"_beforeList.positionViewAtIndex({index}, ListView.Contain)")
+            QtTest.QTest.qWait(100)
         for side in ("before", "after"):
             delegate = row_item(side, index)
             if delegate is None:
@@ -207,6 +219,8 @@ def main() -> None:
                 "height": delegate.height(),
             }
     out["rows"] = shown_rows
+    hv("_beforeList.positionViewAtBeginning()")
+    QtTest.QTest.qWait(200)
     out["start"] = lists_state()
     # The plain text the earlier tests read is still there.
     out["before-text"] = item("history:before").property("text")

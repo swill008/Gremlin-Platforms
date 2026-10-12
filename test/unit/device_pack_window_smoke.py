@@ -5,7 +5,7 @@
 """Off-screen run of the Device Pack window (test_device_pack_window.py).
 
 A pack is made from the open profile, then imported back over a changed
-setup: the warning, Replace, Undo Import, the export choices, and the list
+setup: the warning, Replace, Restore Import, the export choices, and the list
 kept in its own area. With GREMLIN_PACK_PART=twins: two identical sticks,
 one row each, Export of the second sends its id, and Import onto the
 "(2)" row sends that id and changes only its module file (08 S106a). Prints
@@ -425,7 +425,7 @@ out["status-after"] = pv("status")
 out["undo-shown"] = child(pack_win, "packUndo").isVisible()
 
 
-# 01 S142: what happened, on the shared message line (Undo Import link).
+# 01 S142: what happened, on the shared message line (Restore Import link).
 def message() -> dict:
     line = child(pack_win, "packMessage")
     link = child(pack_win, "messageUndo")
@@ -450,7 +450,7 @@ out["logical-created"] = LogicalDevice().exists(
 )
 
 # The same import again, but the module file can't be written: nothing is
-# replaced, and Undo Import still offers the import before it.
+# replaced, and Restore Import still offers the import before it.
 def _cannot_write(*_args: object, **_kwargs: object) -> str:
     raise OSError("locked")
 

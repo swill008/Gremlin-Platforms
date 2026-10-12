@@ -65,7 +65,7 @@ ApplicationWindow {
     property var exportTicks: ({})
     property int exportRev: 0
     property string exportFolder: ""
-    // Import: the pack's notes, and whether Undo Import is offered.
+    // Import: the file's notes, and whether Restore Import is offered.
     property var packNotes: ({})
     // Drivers the pack needs that aren't found (vJoy, a vJoy device, Xbox).
     property var packDrivers: []
@@ -87,11 +87,11 @@ ApplicationWindow {
     }
 
     // 01 S142: what just happened, on the shared message line; after an
-    // import its Undo link is Undo Import (08 S80).
+    // import its link is Restore Import (08 S80).
     function say(text, failed, undoable) {
         status = text
         if (undoable)
-            _message.show(text, !!failed, "Undo Import", _win.undoImport)
+            _message.show(text, !!failed, "Restore Import", _win.undoImport)
         else
             _message.show(text, !!failed)
     }
@@ -384,7 +384,7 @@ ApplicationWindow {
             var info = _parse(_hw.undoPackImport(false))
             if (info.ask) {
                 // A file saved again since the import (08 Q5): ask first.
-                _undoGate.confirmThen("Undo Import?", info.error || "", "Undo Import",
+                _undoGate.confirmThen("Restore Import?", info.error || "", "Restore Import",
                                       function() { _showUndo(_parse(_hw.undoPackImport(true))) },
                                       null, true)
                 return
@@ -394,7 +394,7 @@ ApplicationWindow {
     }
 
     function _showUndo(info) {
-        say(info.ok ? (info.report || "Undid the import.") : (info.error || "Undo failed."), !info.ok)
+        say(info.ok ? (info.report || "Restored the device as it was before the import.") : (info.error || "Restore Import failed."), !info.ok)
         canUndo = _hw.canUndoPackImport()
         reloadDevices()
     }
@@ -409,7 +409,7 @@ ApplicationWindow {
         var modes = p.modes || []
         // Checked controls are added, not replaced (08 Q3).
         if (p.addsChecks)
-            lines.push("Import adds the pack's checked controls to the ones checked on "
+            lines.push("Import adds the file's checked controls to the ones checked on "
                        + device + "; none are unchecked.")
         if (pieces.length || modes.length || !p.addsChecks)
             lines.push("Import replaces these on " + device + ":")
@@ -418,7 +418,7 @@ ApplicationWindow {
         for (var m = 0; m < modes.length; ++m) {
             var mode = modes[m]
             lines.push("\u2022 The wires and actions of " + device + " in " + mode.name
-                       + ": " + mode.here + " here, " + mode.pack + " from the pack.")
+                       + ": " + mode.here + " here, " + mode.pack + " from the file.")
         }
         var moves = p.moves || []
         for (var v = 0; v < moves.length; ++v)
@@ -440,7 +440,7 @@ ApplicationWindow {
             lines.push("The previous module file is kept in the imported folder inside the device's folder.")
         if (modes.length)
             lines.push("The profile changes on disk only when you save it.")
-        lines.push("Undo Import puts this import back until you import again, open another pack, or close this window.")
+        lines.push("You can restore the device as it was with Restore Import until you import the file again or close this window.")
         return lines.join("\n")
     }
 
@@ -461,14 +461,14 @@ ApplicationWindow {
             lines.push("The map uses a picture that is not ticked (" + missing.join(", ")
                        + "): those chips will have no picture.")
         lines.push("")
-        lines.push("Undo Import removes the new device until you import again, open another file, or close this window.")
+        lines.push("You can remove the new device with Restore Import until you import the file again or close this window.")
         return lines.join("\n")
     }
 
     function askImport() {
         var p = _parse(_hw.previewPackImport(fileUrl, _saveAs.text, selectionJson()))
         if (!p.ok) {
-            say(p.error || "Could not read that pack.", true)
+            say(p.error || "This file can't be read.", true)
             return
         }
         preview = p
@@ -594,7 +594,7 @@ ApplicationWindow {
             _pages.currentIndex = 1
         reloadDevices()
     }
-    // Closing keeps the last import: Undo Import is no longer offered.
+    // Closing keeps the last import: Restore Import is no longer offered.
     onClosing: {
         _hw.keepPackImport()
         // The preview pictures in %TEMP% go with the window.
@@ -624,7 +624,7 @@ ApplicationWindow {
         onPicked: (selected) => openFile(String(selected))
     }
 
-    // Undo Import over a file changed since the import asks first.
+    // Restore Import over a file changed since the import asks first.
     DismissibleDialog { id: _undoGate }
 
     // Import is destructive: it replaces the ticked pieces on this machine
@@ -632,7 +632,7 @@ ApplicationWindow {
     Dialog {
         id: _warn
         objectName: "packWarning"
-        title: _win.importTarget === "new" ? "Import as a New Device?" : "Replace with This Pack?"
+        title: _win.importTarget === "new" ? "Import as a New Device?" : "Replace with This File?"
         modal: true
         anchors.centerIn: Overlay.overlay
         width: Math.min(Style.dp(560), _win.width - Style.dp(32))
@@ -797,7 +797,7 @@ ApplicationWindow {
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: exportSize.length ? ("Pack size: " + exportSize) : ""
+                            text: exportSize.length ? ("File size: " + exportSize) : ""
                             color: Style.fg
                             font.pixelSize: Style.dp(24)
                         }
@@ -921,7 +921,7 @@ ApplicationWindow {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Label {
-                            text: importName.length ? importName : "No pack open"
+                            text: importName.length ? importName : "No file open"
                             color: Style.foreground
                             font.pixelSize: Style.dp(18)
                             font.bold: true
@@ -929,7 +929,7 @@ ApplicationWindow {
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: "Windows name in the pack. The device you choose below is the one that is written."
+                            text: "Windows name in the file. The device you choose below is the one that is written."
                             wrapMode: Text.WordWrap
                             Layout.fillWidth: true
                             color: Style.fgMuted
@@ -971,7 +971,7 @@ ApplicationWindow {
                     }
                 }
                 // Where it goes (D-FIXLIST-B2 3a): a new device folder, or
-                // merged onto a device here (preview, Replace, Undo Import).
+                // merged onto a device here (preview, Replace, Restore Import).
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Style.dp(16)
@@ -1228,7 +1228,7 @@ ApplicationWindow {
                     }
                     Button {
                         objectName: "packUndo"
-                        text: "Undo Import"
+                        text: "Restore Import"
                         focusPolicy: Qt.NoFocus
                         visible: canUndo
                         onClicked: undoImport()

@@ -6,9 +6,14 @@
 
 At 150 % the History window's "Before" heading touched the "Restore
 Before" button (hands-on 08, note O5, s48-created-entry.png): the heading
-was squeezed to less than its text, which drew on under the button. Each
-side's heading and its Restore button now sit in one row with a gap; the
-heading is shortened (…) when there is no room.
+was squeezed to less than its text, which drew on under the button.
+
+Since D-TESTLIST-1 item 13 the Restore buttons are no longer beside the
+headings: one controls row holds "Restore to before this change", the link
+"Restore to after this change" and "Show full before/after". This checks
+that row stays clear (no control drawn over the next, all inside the row)
+and that each heading, shown with "Show full before/after", is drawn inside
+its own side (shortened (…) when there is no room).
 
 The real History window off-screen in its own process
 (handson_G2_history_smoke.py) at 100, 150 and 175 %.
@@ -50,15 +55,29 @@ def run(
     return json.loads(lines[0][len("RESULT ") :])
 
 
-@pytest.mark.parametrize("side", ["Before", "After"])
-def test_heading_ends_before_its_restore_button(run: dict, side: str) -> None:
-    at = run[side]
-    # The drawn text and the heading's own box, with a gap before the button.
-    assert at["text-end"] <= at["button-start"] - at["gap-wanted"] + 0.5, at
-    assert at["heading-end"] <= at["button-start"] - at["gap-wanted"] + 0.5, at
+def test_restore_controls_do_not_overlap(run: dict) -> None:
+    controls = run["controls"]
+    assert [c["name"] for c in controls] == [
+        "historyRestoreBefore",
+        "historyRestoreAfter",
+        "historyShowFull",
+    ]
+    for left, right in zip(controls, controls[1:]):
+        # The drawn text and the box, with a gap before the next control.
+        limit = right["start"] - run["gap-wanted"] + 0.5
+        assert left["text-end"] <= limit, (left, right)
+        assert left["end"] <= limit, (left, right)
+
+
+def test_restore_controls_inside_the_row(run: dict) -> None:
+    for control in run["controls"]:
+        assert control["start"] >= run["row-start"] - 0.5, control
+        assert control["end"] <= run["row-end"] + 0.5, control
+        assert control["text-end"] <= run["row-end"] + 0.5, control
 
 
 @pytest.mark.parametrize("side", ["Before", "After"])
-def test_restore_button_inside_its_side(run: dict, side: str) -> None:
+def test_heading_drawn_inside_its_side(run: dict, side: str) -> None:
     at = run[side]
-    assert at["button-end"] <= at["row-end"] + 0.5, at
+    assert at["heading-start"] >= at["side-start"] - 0.5, at
+    assert at["text-end"] <= at["side-end"] + 0.5, at

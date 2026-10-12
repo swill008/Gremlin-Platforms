@@ -189,7 +189,11 @@ def main() -> None:
         "title-colour": colour(title.property("color")) if title else "",
     }
 
-    # Picking it: the note, no Restore, no Previous/Next Change.
+    # Picking it: the note, no Restore button or "Restore to after" link,
+    # no Previous/Next Change. Those two only show with "Show full
+    # before/after" (showFull), so it is turned on first: the cleared entry
+    # must hide them itself, not only because the full view is off.
+    hv("showFull = true")
     click(row)
     out["picked"] = {
         "selected": hv("selected") == entry_id,

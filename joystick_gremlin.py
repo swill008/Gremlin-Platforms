@@ -139,6 +139,7 @@ if _startup_failure is None:
         import gremlin.types
         import gremlin.ui.backend
         import gremlin.ui.device_map_options
+        import gremlin.ui.hardware_profile
         import gremlin.ui.system_tray
         import gremlin.ui.option
         import gremlin.ui.osc_option  # noqa: F401
@@ -919,6 +920,7 @@ def register_config_options() -> None:
     gremlin.ui.window_placement._ensure()
     gremlin.ui.vjoy_status.register_options()
     gremlin.ui.device_map_options.register()
+    gremlin.ui.hardware_profile.register_options()
     gremlin.ui.live_debug.register_options()
     gremlin.ui.update_model._register(cfg)
     # Registered when its module loads (through device_names); named here so

@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Off-screen run of the History window at a UI scale
-(test_handson_G2_history_heading.py): a change picked, then where each
-side's heading ("Before", "After") and its Restore button lie. Prints
-RESULT {json}.
+(test_handson_G2_history_heading.py): a change picked, then where the
+restore controls lie (the main button and the two links), and, with "Show
+full before/after" on, where each side's heading ("Before", "After") lies.
+Prints RESULT {json}.
 
     python test/unit/handson_G2_history_smoke.py SCALE [shot.png]
 """
@@ -124,38 +125,57 @@ wait_until(
         named("historyRestoreBefore") is not None
         and named("historyRestoreBefore").isVisible()
     ),
-    "the sides",
+    "the restore controls",
 )
 QtTest.QTest.qWait(200)
 
-for side, button_name in (
-    ("Before", "historyRestoreBefore"),
-    ("After", "historyRestoreAfter"),
-):
-    button = named(button_name)
-    row = button.parentItem()
-    heading = next(
-        c
-        for c in row.childItems()
-        if c.property("text") == side and c.inherits("QQuickText")
+# The restore controls row (D-TESTLIST-1 item 13): the main button, the
+# "Restore to after" link and the "Show full before/after" link, left to
+# right, each clear of the next and inside the row.
+controls = [
+    named(n)
+    for n in ("historyRestoreBefore", "historyRestoreAfter", "historyShowFull")
+]
+row = controls[0].parentItem()
+out["controls"] = []
+for control in controls:
+    at = control.mapToScene(QtCore.QPointF(0, 0)).x()
+    # A Label's drawn text can run past its box; a Button draws inside it.
+    drawn = control.property("contentWidth") if control.inherits("QQuickText") else None
+    out["controls"].append(
+        {
+            "name": control.objectName(),
+            "start": at,
+            "end": at + control.width(),
+            "text-end": at + (drawn if drawn is not None else control.width()),
+        }
     )
+out["row-start"] = row.mapToScene(QtCore.QPointF(0, 0)).x()
+out["row-end"] = row.mapToScene(QtCore.QPointF(row.width(), 0)).x()
+out["gap-wanted"] = hv("Style.dp(8)")
+
+# The Before / After headings, shown with "Show full before/after": each
+# drawn inside its own side (shortened when there is no room).
+hv("showFull = true")
+QtTest.QTest.qWait(300)
+for side in ("Before", "After"):
+    heading = next(
+        i
+        for i in items(hist.contentItem())
+        if i.inherits("QQuickText") and i.property("text") == side and i.isVisible()
+    )
+    column = heading.parentItem()
     h_at = heading.mapToScene(QtCore.QPointF(0, 0)).x()
-    b_at = button.mapToScene(QtCore.QPointF(0, 0)).x()
     out[side] = {
-        # Where the heading's drawn text ends: shortened (elided) inside its
-        # width, else all of it, past its width too.
         "text-end": h_at
         + (
             heading.width()
             if heading.property("truncated")
             else heading.property("contentWidth")
         ),
-        "heading-end": h_at + heading.width(),
-        "button-start": b_at,
-        "button-end": b_at + button.width(),
-        "row-end": row.mapToScene(QtCore.QPointF(row.width(), 0)).x(),
-        "gap-wanted": hv("Style.dp(8)"),
-        "truncated": heading.property("truncated"),
+        "side-start": column.mapToScene(QtCore.QPointF(0, 0)).x(),
+        "side-end": column.mapToScene(QtCore.QPointF(column.width(), 0)).x(),
+        "heading-start": h_at,
     }
 if SHOT:
     hist.grabWindow().save(SHOT)

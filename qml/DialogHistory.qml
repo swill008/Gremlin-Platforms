@@ -12,9 +12,13 @@ import Gremlin.UI
 import "helpers.js" as Helpers
 import "confirm.js" as Confirm
 
-// Tools > History: every saved change, newest first. Pick one to see it
-// before and after, and Restore either. An editor opens it filtered to
-// what it shows (filter: {"area", "device", "inputType", "inputId", "mode"}).
+// Tools > History: every saved change, newest first, under day headings,
+// repeated changes to one thing folded into one row. Pick one to read what
+// restoring does, and restore to before (or after) it. The list never moves
+// under the user (D-TESTLIST-1 13): a restore tags its entry in place and new
+// changes wait behind the "N new changes · Show" bar. An editor opens it
+// filtered to what it shows (filter: {"area", "device", "inputType",
+// "inputId", "mode"}).
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _root
@@ -50,6 +54,8 @@ ApplicationWindow {
     // 08 S12b: a "History cleared" entry is selected (no Restore, no
     // Previous/Next Change).
     readonly property bool isCleared: selected.length > 0 && shown.danger === true
+    // "Show full before/after": today's two-column view of the change.
+    property bool showFull: false
 
     readonly property var areas: [
         { key: "", label: "All" },
@@ -122,10 +128,33 @@ ApplicationWindow {
         message = ""
     }
 
+    // The selected entry read again (its tag after a restore) without
+    // moving the list or dropping the selection.
+    function reread() {
+        shownRevision++
+    }
+
+    // Done after a restore: tags change in place, the rows stay (no reload).
+    function restored(text) {
+        _model.refresh()
+        reread()
+        message = text || ""
+    }
+
+    // "N new changes · Show": the waiting entries go on top; the selection
+    // stays on its entry.
+    function showNew() {
+        if (_model.newCount <= 0)
+            return
+        _model.showNew()
+        reread()
+        _list.positionViewAtBeginning()
+    }
+
     function restore(which) {
-        var what = which === "before" ? "the version before this change" : "the version this change saved"
+        var effect = which === "before" ? (shown.effect || "") : (shown.effectAfter || "")
         _gate.confirmThen("Restore?",
-            "Put back " + what + "? " + (shown.note || ""),
+            effect || (shown.note || ""),
             "Restore",
             function() {
                 var entryId = selected
@@ -138,14 +167,12 @@ ApplicationWindow {
                             _gate.confirmThen("Restore?", result.message, "Write Here",
                                 function() {
                                     var done = JSON.parse(_model.restoreOutside(entryId, which))
-                                    _model.reload()
-                                    message = done.message || ""
+                                    _root.restored(done.message)
                                 }, null, true)
                         })
                         return
                     }
-                    _model.reload()
-                    message = result.message || ""
+                    _root.restored(result.message)
                 }
                 // An input's actions go back into the profile: the action
                 // panes close first, asking when one has changes (05 Q8).
@@ -210,13 +237,12 @@ ApplicationWindow {
         applyFilter()
     }
     Component.onCompleted: applyFilter()
-    // New changes appear when the window comes back to the front.
+    // Back at the front: tags and the new-changes count are read again; the
+    // rows, selection and scroll stay (new changes wait for Show).
     onActiveChanged: {
         if (active) {
-            var keep = selected
-            _model.reload()
-            if (keep.length)
-                pick(keep)
+            _model.refresh()
+            reread()
         }
     }
 
@@ -332,7 +358,7 @@ ApplicationWindow {
         }
     }
 
-    // A side's heading, its Restore button and its rows.
+    // A side's heading and its rows.
     component DiffSide: ColumnLayout {
         id: _diffSide
         property string side: "before"
@@ -340,28 +366,13 @@ ApplicationWindow {
         Layout.fillWidth: true
         Layout.fillHeight: true
         spacing: Style.dp(4)
-        // The heading, a gap, its button; short of room the heading is
-        // shortened (…), never drawn under the button.
-        RowLayout {
+        Label {
+            text: _diffSide.side === "before" ? "Before" : "After"
+            color: Style.fg
+            font.bold: true
+            elide: Text.ElideRight
             Layout.fillWidth: true
-            spacing: Style.dp(8)
-            Label {
-                text: _diffSide.side === "before" ? "Before" : "After"
-                color: Style.fg
-                font.bold: true
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-            }
-            Button {
-                objectName: _diffSide.side === "before" ? "historyRestoreBefore" : "historyRestoreAfter"
-                text: _diffSide.side === "before" ? "Restore Before" : "Restore After"
-                focusPolicy: Qt.NoFocus
-                enabled: _diffSide.side === "before"
-                         ? _root.shown.canRestoreBefore === true
-                         : _root.shown.canRestoreAfter === true
-                onClicked: _root.restore(_diffSide.side)
-            }
+            Layout.minimumWidth: 0
         }
         Rectangle {
             id: _frame
@@ -403,12 +414,15 @@ ApplicationWindow {
                 count: _list.count
                 onTextChanged: _model.setSearch(text)
             }
+            // 08 S35: as Show on the new-changes bar; the selection and the
+            // rows already shown stay.
             Button {
+                objectName: "historyRefresh"
                 text: "Refresh"
                 focusPolicy: Qt.NoFocus
                 onClicked: {
-                    _model.reload()
-                    _root.pick("")
+                    _model.refresh()
+                    _root.showNew()
                 }
             }
             // 08 S12b: refused while the profile runs.
@@ -448,55 +462,145 @@ ApplicationWindow {
             Layout.fillHeight: true
             orientation: Qt.Horizontal
 
-            JGListView {
-                id: _list
-                objectName: "historyList"
+            ColumnLayout {
                 SplitView.preferredWidth: Style.dp(460)
                 SplitView.minimumWidth: Style.dp(280)
-                model: _model
-                delegate: Rectangle {
-                    id: _entryRow
-                    required property var model
-                    required property string entryId
-                    required property string when
-                    required property string areaName
-                    required property string title
-                    // 08 S12b: "History cleared" in the danger colour.
-                    readonly property bool danger: model.danger === true
-                    objectName: "historyEntry:" + entryId
-                    width: ListView.view.width
-                    height: _rowText.implicitHeight + Style.dp(12)
-                    color: _root.selected === entryId ? Style.alpha(Style.accent, 0.25) : "transparent"
-                    border.color: _root.selected === entryId ? Style.accent : "transparent"
-                    ColumnLayout {
-                        id: _rowText
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.margins: Style.dp(6)
-                        spacing: 0
-                        Label {
-                            text: title
-                            color: _entryRow.danger ? Style.dangerText : Style.fg
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
-                        }
-                        Label {
-                            text: when + " \u00b7 " + areaName
-                            color: Style.fgMuted
-                            font.pixelSize: Style.dp(11)
-                        }
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: _root.pick(entryId)
+                spacing: Style.dp(4)
+
+                // Changes made since the list was shown wait here; the
+                // list itself never changes under the user.
+                Rectangle {
+                    id: _newBar
+                    objectName: "historyNewBar"
+                    visible: _model.newCount > 0
+                    Layout.fillWidth: true
+                    implicitHeight: _newText.implicitHeight + Style.dp(10)
+                    color: Style.alpha(Style.accent, 0.18)
+                    border.color: Style.accent
+                    radius: Style.dp(3)
+                    Label {
+                        id: _newText
+                        objectName: "historyNewText"
+                        anchors.centerIn: parent
+                        textFormat: Text.StyledText
+                        text: (_model.newCount === 1 ? "1 new change"
+                                                     : _model.newCount + " new changes")
+                              + " · <a href=\"show\">Show</a>"
+                        color: Style.fg
+                        linkColor: Style.accent
+                        onLinkActivated: _root.showNew()
                     }
                 }
-                EmptyState {
-                    anchors.centerIn: parent
-                    width: _list.width - Style.dp(24)
-                    visible: _list.count === 0
-                    text: "No saved changes to show."
+
+                JGListView {
+                    id: _list
+                    objectName: "historyList"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    model: _model
+                    // Today / Yesterday / the date.
+                    section.property: "day"
+                    section.criteria: ViewSection.FullString
+                    section.delegate: Label {
+                        required property string section
+                        objectName: "historyDay:" + section
+                        width: ListView.view.width
+                        text: section
+                        color: Style.fgMuted
+                        font.bold: true
+                        topPadding: Style.dp(8)
+                        bottomPadding: Style.dp(2)
+                        leftPadding: Style.dp(6)
+                    }
+                    delegate: Rectangle {
+                        id: _entryRow
+                        required property var model
+                        required property string entryId
+                        required property string when
+                        required property string areaName
+                        required property string title
+                        // 08 S12b: "History cleared" in the danger colour.
+                        readonly property bool danger: model.danger === true
+                        readonly property string groupKey: model.groupKey || ""
+                        readonly property int groupSize: model.groupSize || 1
+                        readonly property bool groupFirst: model.groupFirst !== false
+                        readonly property bool groupOpen: model.groupOpen === true
+                        readonly property string tag: model.tag || ""
+                        // A row of an open run, under its head.
+                        readonly property bool inner: !groupFirst
+                        objectName: "historyEntry:" + entryId
+                        width: ListView.view.width
+                        height: _rowText.implicitHeight + Style.dp(12)
+                        color: _root.selected === entryId ? Style.alpha(Style.accent, 0.25) : "transparent"
+                        border.color: _root.selected === entryId ? Style.accent : "transparent"
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: _root.pick(_entryRow.entryId)
+                        }
+                        RowLayout {
+                            id: _rowText
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.margins: Style.dp(6)
+                            anchors.leftMargin: _entryRow.inner ? Style.dp(28) : Style.dp(6)
+                            spacing: Style.dp(6)
+                            // A run's head: ▸ / ▾ opens or closes it.
+                            ToolButton {
+                                objectName: "historyGroupToggle:" + _entryRow.entryId
+                                visible: _entryRow.groupFirst && _entryRow.groupSize > 1
+                                text: _entryRow.groupOpen ? "▾" : "▸"
+                                focusPolicy: Qt.NoFocus
+                                Layout.alignment: Qt.AlignTop
+                                implicitWidth: Style.dp(22)
+                                implicitHeight: Style.dp(22)
+                                onClicked: _model.toggleGroup(_entryRow.groupKey)
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                Label {
+                                    text: _entryRow.title
+                                    color: _entryRow.danger ? Style.dangerText : Style.fg
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: (_entryRow.model.time || _entryRow.when) + " · " + _entryRow.areaName
+                                          + (_entryRow.groupFirst && _entryRow.groupSize > 1
+                                             ? " · " + _entryRow.groupSize + " changes" : "")
+                                    color: Style.fgMuted
+                                    font.pixelSize: Style.dp(11)
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
+                            }
+                            // "Restored · 19:47" / "Reapplied · 19:48".
+                            Label {
+                                objectName: "historyTag:" + _entryRow.entryId
+                                visible: _entryRow.tag.length > 0
+                                text: _entryRow.tag
+                                color: Style.fg
+                                font.pixelSize: Style.dp(11)
+                                leftPadding: Style.dp(6)
+                                rightPadding: Style.dp(6)
+                                topPadding: Style.dp(2)
+                                bottomPadding: Style.dp(2)
+                                Layout.alignment: Qt.AlignTop
+                                background: Rectangle {
+                                    color: Style.alpha(Style.accent, 0.2)
+                                    border.color: Style.accent
+                                    radius: Style.dp(3)
+                                }
+                            }
+                        }
+                    }
+                    EmptyState {
+                        anchors.centerIn: parent
+                        width: _list.width - Style.dp(24)
+                        visible: _list.count === 0
+                        text: "No saved changes to show."
+                    }
                 }
             }
 
@@ -507,7 +611,7 @@ ApplicationWindow {
                 spacing: Style.dp(8)
                 Label {
                     visible: !_root.selected.length
-                    text: "Pick a change to see it before and after."
+                    text: "Pick a change to see what restoring it does."
                     color: Style.fgMuted
                 }
                 Label {
@@ -518,34 +622,14 @@ ApplicationWindow {
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }
-                RowLayout {
+                Label {
+                    objectName: "historyWhen"
                     visible: _root.selected.length > 0
+                    text: (_root.shown.when || "") + " · " + (_root.shown.area || "")
+                          + ((_root.shown.tag || "").length ? " · " + _root.shown.tag : "")
+                    color: Style.fgMuted
+                    elide: Text.ElideRight
                     Layout.fillWidth: true
-                    spacing: Style.dp(8)
-                    Label {
-                        text: (_root.shown.when || "") + " \u00b7 " + (_root.shown.area || "")
-                        color: Style.fgMuted
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                    }
-                    // 08 S104: both sides move together to a change;
-                    // 08 S12b: not for "History cleared".
-                    Button {
-                        visible: !_root.isCleared
-                        objectName: "historyPreviousChange"
-                        text: "Previous Change"
-                        focusPolicy: Qt.NoFocus
-                        enabled: _root.diffAt > 0
-                        onClicked: _root.goToChange(_root.diffAt - 1)
-                    }
-                    Button {
-                        visible: !_root.isCleared
-                        objectName: "historyNextChange"
-                        text: "Next Change"
-                        focusPolicy: Qt.NoFocus
-                        enabled: _root.diffAt < _root.diffBlocks.length - 1
-                        onClicked: _root.goToChange(_root.diffAt + 1)
-                    }
                 }
                 // 08 S12b: what a clearing deleted, and that nothing
                 // before it can be restored.
@@ -565,13 +649,74 @@ ApplicationWindow {
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }
-                Item {
-                    visible: _root.isCleared
-                    Layout.fillHeight: true
+                // What restoring does, in plain words.
+                Label {
+                    objectName: "historyEffect"
+                    visible: _root.selected.length > 0 && !_root.isCleared
+                    text: _root.shown.effect || _root.shown.note || ""
+                    color: Style.fg
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+                RowLayout {
+                    visible: _root.selected.length > 0 && !_root.isCleared
+                    Layout.fillWidth: true
+                    spacing: Style.dp(12)
+                    Button {
+                        objectName: "historyRestoreBefore"
+                        text: "Restore to before this change"
+                        highlighted: true
+                        focusPolicy: Qt.NoFocus
+                        enabled: _root.shown.canRestoreBefore === true
+                        onClicked: _root.restore("before")
+                    }
+                    Label {
+                        objectName: "historyRestoreAfter"
+                        readonly property bool enabledLink: _root.shown.canRestoreAfter === true
+                        textFormat: Text.StyledText
+                        text: enabledLink ? "<a href=\"after\">Restore to after this change</a>"
+                                          : "Restore to after this change"
+                        color: enabledLink ? Style.fg : Style.fgMuted
+                        linkColor: Style.accent
+                        onLinkActivated: _root.restore("after")
+                        ToolTip.visible: _afterHover.hovered && (_root.shown.effectAfter || "").length > 0
+                        ToolTip.text: _root.shown.effectAfter || ""
+                        HoverHandler { id: _afterHover }
+                    }
+                    Item { Layout.fillWidth: true }
+                    Label {
+                        objectName: "historyShowFull"
+                        textFormat: Text.StyledText
+                        text: "<a href=\"full\">" + (_root.showFull ? "Hide full before/after"
+                                                                     : "Show full before/after") + "</a>"
+                        linkColor: Style.accent
+                        onLinkActivated: _root.showFull = !_root.showFull
+                    }
+                }
+                // 08 S104: both sides move together to a change.
+                RowLayout {
+                    visible: _root.selected.length > 0 && !_root.isCleared && _root.showFull
+                    Layout.fillWidth: true
+                    spacing: Style.dp(8)
+                    Item { Layout.fillWidth: true }
+                    Button {
+                        objectName: "historyPreviousChange"
+                        text: "Previous Change"
+                        focusPolicy: Qt.NoFocus
+                        enabled: _root.diffAt > 0
+                        onClicked: _root.goToChange(_root.diffAt - 1)
+                    }
+                    Button {
+                        objectName: "historyNextChange"
+                        text: "Next Change"
+                        focusPolicy: Qt.NoFocus
+                        enabled: _root.diffAt < _root.diffBlocks.length - 1
+                        onClicked: _root.goToChange(_root.diffAt + 1)
+                    }
                 }
                 RowLayout {
                     id: _sides
-                    visible: _root.selected.length > 0 && !_root.isCleared
+                    visible: _root.selected.length > 0 && !_root.isCleared && _root.showFull
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     spacing: Style.dp(8)
@@ -587,16 +732,8 @@ ApplicationWindow {
                     }
                 }
                 Item {
-                    visible: !_root.selected.length
+                    visible: !_sides.visible
                     Layout.fillHeight: true
-                }
-                Label {
-                    visible: _root.selected.length > 0 && !_root.isCleared
-                             && (_root.shown.note || "").length > 0
-                    text: "Restore: " + (_root.shown.note || "")
-                    color: Style.fgMuted
-                    wrapMode: Text.WordWrap
-                    Layout.fillWidth: true
                 }
                 Label {
                     objectName: "historyMessage"

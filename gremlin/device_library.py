@@ -424,17 +424,127 @@ def history_text(side: dict | None) -> str:
     return "\n".join(lines)
 
 
+# A restore puts back only that entry's change (D-TESTLIST-1 item 14): the
+# list as it is now, with what the entry changed undone (or done again);
+# what changed after it stays.
+_GONE = object()
+
+
+def _keyed(value: object) -> bool:
+    """A list of records or saved setups: dicts matched by their "key"."""
+    return isinstance(value, list) and all(
+        isinstance(v, dict) and v.get("key") for v in value
+    )
+
+
+def _merge(now: object, was: object, to: object) -> object:
+    """now with the change was -> to applied; _GONE: not there. A value
+    changed since (now neither was nor to) stays as it is now."""
+    if was == to:
+        return now
+    if now == was:
+        return to
+    if now is _GONE:
+        # Its device was removed since: it comes back with the setups the
+        # change puts back, and only those.
+        if isinstance(to, dict) and _keyed(to.get("setups")):
+            old = was.get("setups") if isinstance(was, dict) else []
+            back = _merge([], old if _keyed(old) else [], to["setups"])
+            return {**to, "setups": back} if back else _GONE
+        return _GONE
+    if isinstance(now, dict) and isinstance(was, dict) and isinstance(to, dict):
+        out = dict(now)
+        for key in list(was) + [k for k in to if k not in was]:
+            got = _merge(now.get(key, _GONE), was.get(key, _GONE), to.get(key, _GONE))
+            if got is _GONE:
+                out.pop(key, None)
+            else:
+                out[key] = got
+        return out
+    if _keyed(now) and _keyed(was) and _keyed(to):
+        return _merge_keyed(now, was, to)  # type: ignore[arg-type]
+    if to is _GONE and isinstance(now, dict) and isinstance(was, dict):
+        # Added by the change, changed since: its own setups go; a device
+        # that still holds later ones stays.
+        if _keyed(now.get("setups")) and _keyed(was.get("setups")):
+            mine = {s["key"] for s in was["setups"]}
+            left = [s for s in now["setups"] if s["key"] not in mine]
+            return {**now, "setups": left} if left else _GONE
+        return _GONE
+    return now
+
+
+def _merge_keyed(now: list[dict], was: list[dict], to: list[dict]) -> list[dict]:
+    was_by = {v["key"]: v for v in was}
+    to_by = {v["key"]: v for v in to}
+    out: list[dict] = []
+    for item in now:
+        key = item["key"]
+        if key not in was_by and key not in to_by:
+            out.append(item)
+            continue
+        got = _merge(item, was_by.get(key, _GONE), to_by.get(key, _GONE))
+        if got is not _GONE:
+            out.append(got)  # type: ignore[arg-type]
+    have = {v["key"] for v in now}
+    for index, item in enumerate(to):
+        key = item["key"]
+        if key in have:
+            continue
+        got = _merge(_GONE, was_by.get(key, _GONE), item)
+        if got is _GONE:
+            continue
+        # After the one before it in that version, when it is still there.
+        at = 0
+        for prev in reversed(to[:index]):
+            spot = next((i for i, v in enumerate(out) if v["key"] == prev["key"]), None)
+            if spot is not None:
+                at = spot + 1
+                break
+        out.insert(at, got)  # type: ignore[arg-type]
+        have.add(key)
+    return out
+
+
+def _doc_of(text: object) -> dict | None:
+    if text is None:
+        return _empty()
+    try:
+        doc = json.loads(str(text))
+    except (ValueError, RecursionError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _merged_list(was_text: object, to_text: object) -> str | None:
+    """library.json now with the entry's change of the list (was_text ->
+    to_text) applied. None: the list is to be removed. Raises
+    LibraryDamaged when a side or the list now can't be read."""
+    was, to = _doc_of(was_text), _doc_of(to_text)
+    if was is None or to is None:
+        raise LibraryDamaged("that version of the list can't be read")
+    now_text = _list_text()
+    now = _load()
+    if to_text is None and (now_text is None or now == was):
+        return None
+    merged = _merge(now, was, to)
+    return json.dumps(merged, indent=2) + "\n"
+
+
 def restore_history(entry: dict, side: dict | None) -> tuple[bool, str]:
-    """Restore of a Library entry: the list and each pack it touched as
-    they were on that side. Recorded as a new entry."""
+    """Restore of a Library entry: only that entry's change is put back
+    ("before") or done again ("after"): each pack it touched as it was on
+    that side, and its change of the list undone in the list as it is now
+    (D-TESTLIST-1 item 14). Later changes stay."""
     from gremlin import history
 
     if not side:
         return False, "There is nothing to put back."
+    which = "before" if side is entry.get("before") else "after"
+    other = entry.get("after" if which == "before" else "before") or {}
     base = folder()
-    title = str(entry.get("title") or "a Device Library change")
     missing: list[str] = []
-    with _action(f"Put back from History: {title}"):
+    with _LOCK, _action(history.restore_title(entry, which)):
         for item in side.get("files") or []:
             rel = str(item.get("file") or "")
             path = base / rel
@@ -456,6 +566,12 @@ def restore_history(entry: dict, side: dict | None) -> tuple[bool, str]:
             _note_list()
             text = side.get("text")
             try:
+                if "text" in other:
+                    try:
+                        text = _merged_list(other.get("text"), text)
+                    except LibraryDamaged as exc:
+                        # Nothing to merge into: that version as it was.
+                        syslog.warning(f"Device Library: whole list put back ({exc})")
                 if text is None:
                     _list_path().unlink(missing_ok=True)
                 else:
@@ -463,12 +579,13 @@ def restore_history(entry: dict, side: dict | None) -> tuple[bool, str]:
             except OSError as exc:
                 return False, f"The Device Library list could not be put back. {exc}"
     _drop_empty_folders()
+    done = "Restored" if which == "before" else "Reapplied"
     if missing:
         return True, (
-            "Put back the Device Library, without these saved setups (no copy "
-            f"was kept): {', '.join(missing)}."
+            f"{done} that Device Library change, without these saved setups "
+            f"(no copy was kept): {', '.join(missing)}."
         )
-    return True, "Put back the Device Library as it was."
+    return True, f"{done} that Device Library change; later changes stay."
 
 
 def _read() -> dict:
@@ -1506,6 +1623,8 @@ def _keep(
             setup=rows[0] if rows else None,
             keys=[s["key"] for s in rows],
             device=rec["key"],
+            # Each pack written, its full path (for the log, item 9).
+            paths=[str(Path(p).absolute()) for p in written],
         )
 
 

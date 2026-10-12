@@ -6,8 +6,10 @@ becomes "device_map" (the Device Mapping Editor rename). Removed before
 release with OT-1, OT-2 and OT-3.
 
 Part ids are stored only in library.json (the .gmap files hold none): the
-default parts (settings.default_parts), each saved setup's "holds" and the
-last change's detail (a swap's "parts"). At start, when library.json holds
+default parts (settings.default_parts), each saved setup's "holds" and
+"covers", the last change's detail (a swap's "parts") and any other list.
+The move renames the id wherever it is a value in the document (a list
+item or a field's value), so no list is missed. At start, when library.json holds
 the old id, a copy of it goes to <data folder>/backup/<date> library part
 id move/ and library.json is written with the new id. Once moved, no old id
 is left, which is the marker: the move never runs again. No History entry
@@ -75,7 +77,11 @@ def _renamed(ids: object) -> tuple[object, int]:
 
 
 def _walk(value: object) -> tuple[object, int]:
-    """ONE-TIME (tracker OT-4): every list of part ids inside value renamed."""
+    """ONE-TIME (tracker OT-4): the old id renamed wherever it is a value
+    inside value: in every list (holds, covers, default parts, a change's
+    parts) and as a field's value."""
+    if value == OLD_ID:
+        return NEW_ID, 1
     if isinstance(value, list):
         renamed, moved = _renamed(value)
         out = []
@@ -96,22 +102,12 @@ def _walk(value: object) -> tuple[object, int]:
 
 def migrate(doc: dict) -> int:
     """ONE-TIME (tracker OT-4): renames the old id in a library.json document
-    in place: default parts, every setup's holds and the last change.
-    Returns how many were renamed."""
+    in place, wherever it is a value: default parts, every setup's holds and
+    covers, the last change and any other list. Returns how many were
+    renamed."""
     moved = 0
-    settings = doc.get("settings")
-    if isinstance(settings, dict):
-        settings["default_parts"], count = _renamed(settings.get("default_parts"))
-        moved += count
-    for rec in doc.get("devices") or []:
-        if not isinstance(rec, dict):
-            continue
-        for setup in rec.get("setups") or []:
-            if isinstance(setup, dict) and "holds" in setup:
-                setup["holds"], count = _renamed(setup.get("holds"))
-                moved += count
-    if isinstance(doc.get("lastChange"), dict):
-        doc["lastChange"], count = _walk(doc["lastChange"])
+    for key in list(doc):
+        doc[key], count = _walk(doc[key])
         moved += count
     return moved
 

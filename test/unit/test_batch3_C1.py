@@ -183,7 +183,7 @@ def test_history_help_says_when_a_restore_shows() -> None:
         "Restore an earlier version"
     )
     assert "and is itself a new change in the History" not in history
-    assert "shows in the History at that Save Profile" in history
+    assert "recorded at that Save Profile" in history
     assert "not a change in the History" in history
     glossary = _read("claude/glossary.md")
     assert "It is itself a saved change (a new History entry)." not in glossary

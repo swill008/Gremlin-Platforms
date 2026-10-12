@@ -13,7 +13,9 @@ The user changes three things, each saved as the program saves it:
 Tools > History lists the three changes. For each one the user picks it,
 presses Restore Before and confirms: the input goes back into the open
 profile as an unsaved change (vJoy button 1 again), the module file is put
-back at once (button 1 only), and the setting goes back to 90.
+back at once (button 1 only), and the setting goes back to 90. No restore
+adds a row: each is one hidden entry "Restored: <title>" and the original
+shows the tag "Restored · HH:MM" (D-TESTLIST-1 item 13).
 
 Spec: 08 S2, S8, S11, S15, S28, S30, S38, S40, S43, S44. No known gap on
 this path (Q1: a restored input becomes a History entry when the profile
@@ -146,6 +148,30 @@ def story(j: Journey) -> None:
     out["setting-message"] = restore_before("Changed Days to keep changes")
     out["setting-after"] = Configuration().value("global", "history", "keep-days")
 
+    # D-TESTLIST-1 item 13: a restore adds no visible row. Each one is a
+    # hidden entry ("Restored: <title>", field "of" = the original's id)
+    # and the original carries the tag "Restored · HH:MM". The settings
+    # write the last restore set off is done first.
+    j.wait_until(
+        lambda: not deferred_write.pending("configuration"), "the settings file"
+    )
+    history.flush()
+    j.ev("_model.reload()", window)
+    after = _rows(model)
+    out["rows-before"] = len(shown)
+    out["rows-after"] = len(after)
+    out["tags"] = {
+        row["title"]: row["tag"]
+        for row in after
+        if row["entryId"] in {r["entryId"] for r in shown}
+    }
+    originals = {r["entryId"]: r["title"] for r in shown}
+    out["restores"] = sorted(
+        (originals.get(e["of"], "?"), e.get("title", ""), e.get("restore", ""))
+        for e in history.entries()
+        if e.get("of") in originals
+    )
+
 
 def setting_right_away(j: Journey) -> None:
     """First run: a setting changed as soon as the program is up, while
@@ -220,6 +246,20 @@ def test_the_module_file_goes_back(run: dict) -> None:
 def test_the_setting_goes_back(run: dict) -> None:
     assert step(run, "setting-message")
     assert step(run, "setting-after") == 90
+
+
+def test_restores_add_no_row_and_tag_the_originals(run: dict) -> None:
+    # D-TESTLIST-1 item 13.
+    assert step(run, "rows-after") == step(run, "rows-before")
+    tags = step(run, "tags")
+    for start in ("Changed the actions of", "Saved pJoy Pro", "Changed Days to keep"):
+        tagged = [tag for title, tag in tags.items() if title.startswith(start)]
+        assert tagged and tagged[0].startswith("Restored · "), (start, tags)
+    restores = step(run, "restores")
+    assert len(restores) == 3, restores
+    for original, title, which in restores:
+        assert title == f"Restored: {original}", restores
+        assert which == "before", restores
 
 
 def test_a_setting_changed_right_away_on_a_first_run_is_one_entry(

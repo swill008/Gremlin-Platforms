@@ -49,7 +49,11 @@ def put_back(ids: list[str], which: str, title: str) -> dict:
     order = list(ids) if which == "before" else list(reversed(ids))
     token = ""
     if len(order) > 1:
-        token = history.begin_group(f"Put back from History: {title}")
+        token = history.begin_group(
+            history.restore_title({"title": title}, which),
+            "modules",
+            extra={"of": ids[0], "ofAll": list(ids), "restore": which},
+        )
     notes: list[str] = []
     try:
         for entry_id in order:

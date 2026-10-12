@@ -4,7 +4,7 @@
 
 """Device Pack Import never lets an unexpected error out of the importPack
 slot (07 S104 batch, AD8 audit): a failure while the pack is read or applied
-comes back as {"ok": False, "error": "This pack can't be read (...)."} and
+comes back as {"ok": False, "error": "This file can't be read (...)."} and
 is logged, instead of an exception into QML."""
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ def test_apply_zip_raising_comes_back_as_an_error(
     monkeypatch.setattr(hardware_profile, "_autosave_before_pack", lambda *a, **k: "")
     with caplog.at_level(logging.ERROR, logger="system"):
         done = _import(_pack(tmp_path), json.dumps({"items": []}))
-    assert done == {"ok": False, "error": "This pack can't be read (bad member)."}
+    assert done == {"ok": False, "error": "This file can't be read (bad member)."}
     logged = [r for r in caplog.records if r.exc_info]
     assert logged and "bad member" in str(logged[0].exc_info[1])
 
@@ -56,4 +56,4 @@ def test_describe_zip_raising_comes_back_as_an_error(
     monkeypatch.setattr(device_pack, "describe_zip", boom)
     done = _import(_pack(tmp_path), "")
     assert done["ok"] is False
-    assert done["error"].startswith("This pack can't be read (")
+    assert done["error"].startswith("This file can't be read (")

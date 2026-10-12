@@ -22,7 +22,7 @@ def too_big(zf: zipfile.ZipFile) -> str:
         return ""
     mb = 1024 * 1024
     return (
-        f"This pack is too big to read: it unpacks to {total // mb} MB "
+        f"This file is too big to read: it unpacks to {total // mb} MB "
         f"and the most is {MAX_UNPACKED // mb} MB."
     )
 

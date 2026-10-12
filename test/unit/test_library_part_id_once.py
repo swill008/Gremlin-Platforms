@@ -106,3 +106,65 @@ def test_refuses_the_real_library_under_tests(
     assert once.run(lib["path"], lib["data"]) == once.REFUSED
     assert lib["path"].read_bytes() == before
     assert not (lib["data"] / "backup").exists()
+
+
+def _user_shaped_doc() -> dict:
+    """The shape the user's library.json had after the first move: holds
+    renamed, three setups' "covers" still with the old id."""
+    def setup(key: str, covers: list[str]) -> dict:
+        return {
+            "key": key,
+            "name": key,
+            "file": f"Stick/{key}.gmap",
+            "holds": ["setup", "device_map", "appearance", "bindings"],
+            "covers": covers,
+        }
+
+    return {
+        "format": 1,
+        "settings": {"default_parts": ["setup", "device_map", "bindings"]},
+        "devices": [
+            {
+                "key": "dev-1",
+                "setups": [
+                    setup("a", ["setup", "device_map"]),
+                    setup("b", ["setup", "device_map"]),
+                    setup("c", ["setup", "button_map", "appearance"]),
+                ],
+            },
+            {"key": "dev-2", "setups": []},
+            {
+                "key": "dev-3",
+                "setups": [
+                    setup("d", ["setup", "device_map"]),
+                    setup("e", ["setup", "button_map"]),
+                    setup("f", ["setup", "button_map", "bindings"]),
+                ],
+            },
+        ],
+        "lastChange": {"kind": "restore", "detail": {"part": "button_map"}},
+    }
+
+
+def test_covers_and_every_other_part_id_value_are_renamed(tmp_path: Path) -> None:
+    path = tmp_path / "library.json"
+    path.write_text(json.dumps(_user_shaped_doc(), indent=2) + "\n", encoding="utf-8")
+    summary = once.run(path, tmp_path)
+    assert "4 renamed" in summary
+    text = path.read_text(encoding="utf-8")
+    assert "button_map" not in text
+    doc = json.loads(text)
+    covers = [s["covers"] for d in doc["devices"] for s in d["setups"]]
+    assert covers[2] == ["setup", "device_map", "appearance"]
+    assert covers[4] == ["setup", "device_map"]
+    assert covers[5] == ["setup", "device_map", "bindings"]
+    assert doc["lastChange"]["detail"]["part"] == "device_map"
+    # Nothing is left, so the next start does nothing and keeps no new backup.
+    assert once.run(path, tmp_path) == ""
+    assert len(list((tmp_path / "backup").iterdir())) == 1
+
+
+def test_free_text_mentioning_the_old_id_is_kept() -> None:
+    doc = {"devices": [{"setups": [{"name": "my button_map copy", "covers": []}]}]}
+    assert once.migrate(doc) == 0
+    assert doc["devices"][0]["setups"][0]["name"] == "my button_map copy"

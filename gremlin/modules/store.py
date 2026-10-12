@@ -2222,13 +2222,17 @@ def known_devices() -> list[dict]:
     def by_name(key: str) -> list[dict]:
         return [row for row in rows.values() if row["name"].lower() == key]
 
-    def touch(name: str, guid: str = "", connected: bool = False) -> None:
+    def touch(
+        name: str, guid: str = "", connected: bool = False, path: Path | None = None
+    ) -> None:
         label = " ".join(str(name or "").split())
         key = label.lower()
         if not key:
             return
         row_id = "" if registry.is_output_name(label) else stored_guid_key(guid)
-        path = module_file(label, guid)
+        # A saved file is already found: never look a connected stick's
+        # folder up again by its name alone (decision F4).
+        path = path if path is not None else module_file(label, guid)
         row = rows.get("id:" + row_id) if row_id else None
         if row is None and not row_id:
             same = by_name(key)
@@ -2271,7 +2275,7 @@ def known_devices() -> list[dict]:
         doc = registry.read_doc(path)
         if not doc or doc.get("kind") != "control.hardware":
             continue
-        touch(str(doc.get("device") or "").strip() or path.parent.name, "", False)
+        touch(str(doc.get("device") or "").strip() or path.parent.name, "", False, path)
     twins = _twin_names()
     for row in rows.values():
         row["label"] = (
