@@ -11,7 +11,7 @@ older text is in git history.
 
 ## Next up
 
-1. **Limit the UI scale to 175 %** (user, 2026-10-07; replaces AU-56 /
+1. DONE (user 2026-10-12: "we fixed it by zooming out to 50% and if it runs over at higher zoom scale we will come back and fix it"; SCALE_MAX stays 200). **Limit the UI scale to 175 %** (user, 2026-10-07; replaces AU-56 /
    GL-201). 175 % is the highest scale the window tests confirm keeps every
    control in view; 200 % cuts contents off on small screens. When done
    (spec first): spec 09 S81 (slider 70–175 %) and S84 (replaced), the AU-56
@@ -54,7 +54,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
    missing Logical controls, damaged module files, two inputs on one vJoy
    output) with Go to.
 7. DONE (scrub 2026-10-12: df271e84, D-04-Q14, test_profile_recovery.py). Profile recovery copy after a crash (GL-029, approved, deferred).
-8. Test panel without the game: press a binding on screen, see what
+8. DONE (user 2026-10-12). Test panel without the game: press a binding on screen, see what
    vJoy/Xbox gets.
 9. Find in profile: every use of a key, vJoy output, mode or action.
 10. Copy a mode or an input's bindings from another profile.
@@ -89,7 +89,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 ## Planned features (need the user's decisions)
 
-26. **BM41 – A bigger page for the Device Mapping Editor.** The page (32000 x 18000
+26. DONE (user 2026-10-12). **BM41 – A bigger page for the Device Mapping Editor.** The page (32000 x 18000
     page units, `worldPageW/H` in `qml/VkbRigEditor.qml`; `pageW/pageH`
     saved by `gremlin/ui/hardware_profile.py`, one `PAGE_SIZE` since batch 3)
     grows so there is more room around the photo; the photo frame (inner
@@ -127,7 +127,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     run straight before `test_history_recording::test_settings_the_user_chooses_are_kept`
     makes the latter see an extra settings entry (pre-existing; a flush in
     b7's finally did not fix it).
-35. Timing flake: `test/action_interaction/test_double_tap_tempo.py::test_single_tap_long`
+35. DONE (batch C, C-DTAP: test_double_tap_tempo.py on virtual timers). Timing flake: `test/action_interaction/test_double_tap_tempo.py::test_single_tap_long`
     failed once under the 6-part load, passed 3/3 alone; wait for the result
     instead of a fixed time (as cc3b49f3 did for the keyboard tests).
 36. **DONE 2026-10-07 (31f05950, CI green 37687912233).** Listen / macro Record switch input highlighting directly
@@ -155,8 +155,6 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     (D-FIXLIST-B2, fix list batch 2): one Export / Import Device window, one
     .gmap format, Import As a new device / Onto an existing device, every
     piece tick kept (08 S49, S49a, S59a-S59c, S112).
-41. Compare two saved setups in the Device Library with History's
-    before/after view (user, 2026-10-08). Design first.
 
 42. PARTLY (scrub 2026-10-12: exit deadman + model teardown done; native cause open, EXIT_HANG_FAILS off). Test teardown hang (found 2026-10-08, HG): one pytest process running
     test_data_safety.py::test_a_profile_with_an_unknown_action_type_opens_and_keeps_it
@@ -190,7 +188,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     Decision 2026-10-08 (user): integration tests are opt-in for real vJoy. Normal runs
     (full run, CI) use the stand-in vJoy; a separate, clearly named command runs them
     against the real vJoy only when asked, one process, never killed mid-run.
-45. Device Mapping Editor canvas editor into the shared Rename box (parked by the user 2026-10-08,
+45. DONE (user 2026-10-12). Device Mapping Editor canvas editor into the shared Rename box (parked by the user 2026-10-08,
     D-01-CANVAS-EXEMPT). Plan: RenameField gets a row limit (Shift+Enter adds a row; chips 2),
     a per-place empty rule (keep / default label / allow empty) and a plain canvas look; the
     canvas keeps placing it over the chip (chipScreenRect, rotation, font size). Text boxes and
@@ -217,7 +215,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     test_module_setup_cancel_puts_the_old_picture_back stalled 10 s waiting on the event
     handler thread (passes locally in 1.5 s). Watch; dig in if it repeats.
     Also (2026-10-09, DL-tool): test_final_01::test_s44_a_switch_is_saved_and_announced_when_changed fails after test_device_library_DD_menus in one process (GremlinError: no parameter ('global','general','log-when-not-responding'), gremlin/watchdog.py); passes alone. Predates today.
-48. vJoy loopback stand-in for the integration tests (VG idea, user 2026-10-08: to-do).
+48. DONE (user 2026-10-12). vJoy loopback stand-in for the integration tests (VG idea, user 2026-10-08: to-do).
     Today test/integration (219 tests) skips unless run_tests.py --real-vjoy, and on CI it
     always skipped (no vJoy there). A stand-in vJoy that records what the program writes
     (axes, buttons, hats per vJoy device) and feeds it back as the matching joystick input
@@ -230,7 +228,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     no summary and no error, last at test_device_library_GC_guide.py::test_the_delete_topic_
     follows_the_states (passes alone; same-seed rerun all green). Looks like a native crash;
     see 38. If it happens again, capture the exit code and a faulthandler dump for the part.
-51. Device Library ideas (2026-10-09, not started): drag a saved setup onto a stick row to start
+51. DONE (user 2026-10-12). Device Library ideas (2026-10-09, not started): drag a saved setup onto a stick row to start
     Copy to Another Stick; sort the device list by name / last seen / saved setups (View, remembered);
     highlight the search match in names and descriptions.
 52. PARTLY (scrub 2026-10-12: ea296dde shared pieces done; heading/empty-state not verified). AFTER THE 1.0.30 RELEASE (user 2026-10-09: remind me): streamline shared pieces. First the
@@ -388,7 +386,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     Checking in this batch.
 84. DONE 2026-10-10 (this batch; 02 S105, S106, T1) (TWIN, 2026-10-10; 02 gap TW-XBOX-SLOT): the Input Tester's Xbox rows compare Gremlin's Xbox output pad
     number with the Windows XInput slot number, which are numbered differently; match them properly. Done 2026-10-10 (this batch).
-85. (TWIN, 2026-10-10): not verified whether HidHide can hide an Xbox pad from XInput (a program reading XInput
+85. DONE (user 2026-10-12: "HIDHide only does HID, not what xbox uses"; Help tools-hidhide Good to know line added). (TWIN, 2026-10-10): not verified whether HidHide can hide an Xbox pad from XInput (a program reading XInput
     may still see a hidden pad). Verify read-only and say so in Help. Not started.
 86. PARTLY (scrub 2026-10-12: not reproduced off-screen; waiting for the user's screenshot). NOT REPRODUCED 2026-10-10 (T86-APOS: the real dialog off-screen draws "can't"; waiting for the user's full-size screenshot and UI/Windows scale). (RW5, 2026-10-10): the Reset Devices Xbox note shows "can t" on screen (apostrophe missing; the text in the
     code has it). Check the off-screen render. Not started.
@@ -574,10 +572,13 @@ Planning answers (user, 2026-10-12): "1a, 2b, 3a, 4a, 5 leave the image generati
 - Item 5 audit: 10a fix the map-card liveStamp bug; 11a add vjoy/ and theme/ to the guard tests and vjoy/ to the CLAUDE.md program list; 12a remove the dead Options row; 13a read-only spec check of the 3 possible missing behaviours first; 14a remove the double-confirmed dead code (+ test-only code the spec doesn't need, with its tests), leave medium-confidence; 15a remove the 141 unused pictures, the WiX files and the committed log; 16a remove legacy shims not covered by decisions, add the 4 missing OT-2 markers, fix the macro 0.05 s rule; 17a merge the risky duplicate helpers; 18a fix the program map.
 SPECCHK (2026-10-12, claude/audits/2026-10-12-code-audit context): none of the 3 is missing behaviour; user approved ("approved") deleting in wave 2: (1) logical_layout.drop_logical_steps + _MODELS (logicalDeviceReloaded already drops the steps); (2) option.ConfigSectionModel.scope + its signal + single-section branch, fix the two stale docstrings, update tests that set scope; (3) device_pack.put_gmap_wires + device_zip put_wires/PutWires/send_wires branches, docstrings, page 08 line 86, test_b2_zip put= cases — ONLY after checking the bindings-only .gmap (no folder) case: if it still imports its wires another way, delete; if not, keep #3 and tell the user.
 User (2026-10-12, "approved"): Add Image on a Keyboard/OSC stub card with no module file is allowed (it creates the file; the card becomes a normal card); CLAUDE.md change-control list also gets theme/ (done with vjoy/).
-112. (2026-10-12, found by DEVIMG-TESTS, not verified as a user bug) Module Setup Add Image… fails silently when the edit's temporary path goes over the Windows 260-character path limit: store.begin_edit could not copy start\pictures\device-photo.png ("Device map picture not kept") and the dialog stayed empty. Normal paths work. Check long-path handling in store.begin_edit / the edit folder (\\?\ prefix or shorter temp names) and show a message instead of failing silently.
-113. (2026-10-12, found by W2-UI in the audit clean-up, from reading the code, not tried in the program) Changing the "vjoy-tabs" setting in Options may not update the vJoy tab bar until refresh() or a restart: nothing tells the bar (HUB.changed) when Options writes that setting; only VJoyStatus.setPinned does. Check and fix at the owner (gremlin/ui/vjoy_status.py).
-114. (2026-10-12, found by OSC-TEST in the audit clean-up, from reading the code) Dead OSC edit path: OscDeviceManagementModel.updateInputSettings (gremlin/ui/osc_device_model.py ~:838) is no longer reached from the screens, and the `editing && editUid` branch in OscAddDialog.accept() (qml/OscAddDialog.qml:501-508) is dead because openForEdit is only called with "" (OscPage.qml:151, WindowOscMonitor.qml:49). Edit Settings now goes through OscLayoutModel.applySettings (S146). Candidate for the next removal wave (tests that call updateInputSettings move to applySettings).
+112. (2026-10-12, found by DEVIMG-TESTS, not verified as a user bug; seen again by C-PHOTORACE 2026-10-12: with USERPROFILE under the long scratchpad path keepImage/keepPhoto silently take nothing, with a short temp home it works) Module Setup Add Image… fails silently when the edit's temporary path goes over the Windows 260-character path limit: store.begin_edit could not copy start\pictures\device-photo.png ("Device map picture not kept") and the dialog stayed empty. Normal paths work. Check long-path handling in store.begin_edit / the edit folder (\\?\ prefix or shorter temp names) and show a message instead of failing silently.
+113. CLOSED (C-VJTABS 2026-10-12: not a gap; devices/display/vjoy-tabs is unexposed (vjoy_status.py:41-50 expose False), Options never shows it, VJoyStatus.setPinned is the only writer and already notifies; probe in .agent-logs/C-VJTABS.log). (2026-10-12, found by W2-UI in the audit clean-up, from reading the code, not tried in the program) Changing the "vjoy-tabs" setting in Options may not update the vJoy tab bar until refresh() or a restart: nothing tells the bar (HUB.changed) when Options writes that setting; only VJoyStatus.setPinned does. Check and fix at the owner (gremlin/ui/vjoy_status.py).
+114. DONE (batch C, C-OSCDEAD 2026-10-12: updateInputSettings and the OscAddDialog edit branch removed, openForEdit renamed openWith; tests on applySettings). (2026-10-12, found by OSC-TEST in the audit clean-up, from reading the code) Dead OSC edit path: OscDeviceManagementModel.updateInputSettings (gremlin/ui/osc_device_model.py ~:838) is no longer reached from the screens, and the `editing && editUid` branch in OscAddDialog.accept() (qml/OscAddDialog.qml:501-508) is dead because openForEdit is only called with "" (OscPage.qml:151, WindowOscMonitor.qml:49). Edit Settings now goes through OscLayoutModel.applySettings (S146). Candidate for the next removal wave (tests that call updateInputSettings move to applySettings).
 115. (2026-10-12, W2-CORE audit clean-up, left on purpose; KEEP — user 2026-10-12: "leave the code as is for now. keep a record, but do not remove. I have one other person testing, so I need to keep the code for him.") Test-only program code still in place, each with many test callers: Profile.bind_devices (empty, ~15 test uses, with the bind parameter), Library.remove_unused (11), plugin_manager.create_instance (82; check the scripting spec first, user scripts may call it), module_file.start_fresh (8), Script.get_variable. config.init_calibration/set_calibration stay (03 S111). Move the tests to the program paths and remove, in a later clean-up.
-116. (2026-10-12, full run of the Xbox list batch, seed in .agent-logs) Load flake: test/unit/action_matrix/test_matrix_flow.py::test_flow_action[double-tap-key-pane_keyboard] failed once under the 6-part load ({"single": [], "double": [button 4 press/release]}), passed 3 of 3 alone. Double-tap decides by a time window, so a slow machine can read two taps as one double. Make the check wait on the action's own timer (gremlin.clock) instead of wall time, or give it the same grace other timing tests use.
-122. (2026-10-12, Xbox pads full run; not this batch) test_module_setup_photo_edit.py::test_save_after_import_image_names_it_in_one_write failed once under the 6-part load (an extra pictures/device-photo.png listed after Save with a new Device Image) and passed 2 of 2 alone. Possible race from the Device Image work: a generated-picture run queued before the Save may still write device-photo.png afterwards. Not verified; trace the generator queue vs store.set_device_image (03 Device Image statements) and make the test wait on the generator.
-125. (2026-10-12, batch B full run) Load flake: test_osc_run.py::test_new_press_restarts_the_release_timer and ::test_server_default_delay_used_when_input_has_none failed once under the 6-part load (the release came late: two presses, no release after 670 ms of wall-clock waits); the file passes 2 of 2 alone and was not changed today. Same kind as 116: the test waits wall-clock time for a timer; make it drive the program clock.
+116. DONE (batch C, C-DTAP: virtual timers, test_matrix_flow + test_double_tap_tempo). (2026-10-12, full run of the Xbox list batch, seed in .agent-logs) Load flake: test/unit/action_matrix/test_matrix_flow.py::test_flow_action[double-tap-key-pane_keyboard] failed once under the 6-part load ({"single": [], "double": [button 4 press/release]}), passed 3 of 3 alone. Double-tap decides by a time window, so a slow machine can read two taps as one double. Make the check wait on the action's own timer (gremlin.clock) instead of wall time, or give it the same grace other timing tests use.
+122. CLOSED (C-PHOTORACE 2026-10-12: not a race; the generator correctly draws the visible background ~80 ms after the test read the folder; background_key (store.py:1647) ignores deviceImage and DevicePhotoMaker.rendered re-checks before writing; test now waits for the maker). (2026-10-12, Xbox pads full run; not this batch) test_module_setup_photo_edit.py::test_save_after_import_image_names_it_in_one_write failed once under the 6-part load (an extra pictures/device-photo.png listed after Save with a new Device Image) and passed 2 of 2 alone. Possible race from the Device Image work: a generated-picture run queued before the Save may still write device-photo.png afterwards. Not verified; trace the generator queue vs store.set_device_image (03 Device Image statements) and make the test wait on the generator.
+125. DONE (batch C, C-DTAP; other _wait() calls in test_osc_run.py, e.g. test_button_no_value_uses_input_delay_and_trigger, have the same weakness, not changed). (2026-10-12, batch B full run) Load flake: test_osc_run.py::test_new_press_restarts_the_release_timer and ::test_server_default_delay_used_when_input_has_none failed once under the 6-part load (the release came late: two presses, no release after 670 ms of wall-clock waits); the file passes 2 of 2 alone and was not changed today. Same kind as 116: the test waits wall-clock time for a timer; make it drive the program clock.
+126. (2026-10-12, CI 38258772966 on 273c2bd9; watch) CI unit-1: history_stable_smoke.py ended without a RESULT line (all 5 test_history_window_stable setups errored); the stack showed the smoke inside settle() -> deferred_write flush -> live_debug -> util.logs_dir mkdir; output cut at 2,000 chars. Locally: passes 3/3 alone and in a CI-seed (481347) 3-part rerun. CI passed on c52f7205 and 03e02cd7. Likely CI-runner slowness; if it repeats, raise the smoke output kept on failure (more than 2,000 chars) to see why it ended.
+127. DECIDED (user 2026-10-12: "remove the old feature and code related to it. I dont see a pin"; batch C, C-TABROW). (2026-10-12, found by C-VJTABS): no screen calls VJoyStatus.setPinned any more (the only one, VJoyStatusPopup from 47c3b6ac, was removed in cleanup batch A, test_cleanup_batch_a.py:71); with the default vjoy-tabs [] a user has no way to show a vJoy tab in the device bar, and extra-tabs has no editor either. Decide: restore a way to choose the tabs (where?), or drop the vJoy tabs feature (setPinned, the settings, the test test_handson_F4_tabs.py). Spec pages 06 section 10 and 01.
+128. (2026-10-12, found by C-DTAP under a heavy load run: 4 copies + 16 CPU-load processes) 3 test processes crashed with an access violation while creating the QApplication (joystick_gremlin.py:1049), right after a stall-watch report, before any test ran. Not caused by the tests; cause not checked. A start-up crash under heavy load.

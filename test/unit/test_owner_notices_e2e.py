@@ -21,8 +21,8 @@ new value anyway):
    takes it away.
 4. Device Library Swap (pJoy Pro with Saitek X52, bindings, the open
    profile ticked): vJoy 1 is then driven by the X52, not the pJoy.
-5. Device rename (Home's rename, DeviceNames.setAlias): the Device Library
-   rows, the Input Viewer device list, the Device Bindings page title and
+5. Device rename (the Device Library's rename, device_names.set_alias): the
+   Device Library rows, the Input Viewer device list, the Device Bindings page title and
    the Home card show the new name.
 6. Logical Device rename (the Logical Device page's setUserName): the
    Input Viewer's paired-input label and the Xbox page's "incoming" text
@@ -294,8 +294,8 @@ def _part_library_swap(j: Journey) -> None:
 
 
 def _part_device_rename(j: Journey) -> None:
+    from gremlin.ui import device_names
     from gremlin.ui.device_library_model import DeviceLibraryModel
-    from gremlin.ui.device_names import DeviceNames
     from gremlin.ui.viewer_devices import ViewerDeviceModel
 
     out = j.out
@@ -311,7 +311,7 @@ def _part_device_rename(j: Journey) -> None:
     )
     j.wait_until(lambda: j.ev("uiState.currentRoom") == "configuration", "the X52 page")
     out["rename:title-before"] = j.ev("configTitleName")
-    DeviceNames().setAlias(str(x52), NEW_NAME)
+    device_names.set_alias(str(x52), NEW_NAME)
     j.settle()
     out["rename:library"] = j.await_value(
         lambda: NEW_NAME in str(library.property("rows")), True

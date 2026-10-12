@@ -834,17 +834,6 @@ class OscDeviceManagementModel(QtCore.QAbstractListModel):
     def copyText(self, text: str) -> bool:
         return copy_text(text)
 
-    @QtCore.Slot(str, "QVariantMap", result=str)
-    def updateInputSettings(self, uid: str, settings: object) -> str:
-        """Apply edited settings (and address) to one input; "" or the error."""
-        row = _rows().by_uid(uid)
-        before = row.label if row is not None else ""
-        error = update_settings(uid, normalize_raw(settings))
-        if error:
-            return error
-        self._changed(label=f"Edit Settings of {before}")
-        return ""
-
     # -- model ----------------------------------------------------------
 
     @QtCore.Slot(str)

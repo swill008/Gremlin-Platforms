@@ -1,6 +1,7 @@
 # -*- coding: utf-8; -*-
 """Saved window and tab settings survive the startup purge."""
 import json
+import os
 import tempfile
 from collections.abc import Iterator
 from unittest import mock
@@ -20,14 +21,15 @@ SAVED = {
     ("global", "internal", "close-pane-after-ok"): ("bool", True),
     ("global", "internal", "action-pane-width"): ("int", 700),
     ("global", "internal", "tool-windows"): ("string", '{"options": [1, 2, 3, 4]}'),
-    ("devices", "display", "vjoy-tabs"): ("list", [1, 3]),
-    ("devices", "display", "extra-tabs"): ("list", ["osc"]),
 }
 # Settings no part of the program reads any more.
 GONE = {
     ("global", "internal", "button-map-menu-width"): ("int", 300),
     ("global", "internal", "button-map-menu-height"): ("int", 600),
     ("global", "internal", "logical-layout"): ("string", '{"k": 1}'),
+    # The device tab row's pins (removed, question 127).
+    ("devices", "display", "vjoy-tabs"): ("list", [1, 3]),
+    ("devices", "display", "extra-tabs"): ("list", ["osc"]),
 }
 
 
@@ -43,7 +45,8 @@ def saved_cfg() -> Iterator[gremlin.config.Configuration]:
             "properties": {},
             "value": value,
         }
-    path = tempfile.mkstemp(suffix=".json")[1]
+    handle_no, path = tempfile.mkstemp(suffix=".json")
+    os.close(handle_no)  # an open handle blocks the save's replace on Windows
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(data, handle)
     SingletonMetaclass._instances.pop(gremlin.config.Configuration, None)
@@ -57,10 +60,9 @@ def saved_cfg() -> Iterator[gremlin.config.Configuration]:
 def test_window_and_tab_settings_survive_purge(
     saved_cfg: gremlin.config.Configuration,
 ) -> None:
-    from gremlin.ui import vjoy_status, window_placement
+    from gremlin.ui import window_placement
 
     window_placement._ensure()
-    vjoy_status.register_options()
     saved_cfg.purge_unused()
 
     for (section, group, name), (_, value) in SAVED.items():

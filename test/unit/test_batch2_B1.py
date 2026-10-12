@@ -256,7 +256,6 @@ def test_settings_registered_later_are_registered_before_the_purge(
         live_debug,
         module_model,
         update_model,
-        vjoy_status,
         window_placement,
     )
 
@@ -273,7 +272,6 @@ def test_settings_registered_later_are_registered_before_the_purge(
     folders_move.register_setting()  # ONE-TIME (tracker OT-1)
     window_placement._ensure()
     hidhide._ensure_options()
-    vjoy_status.register_options()
     device_map_options.register()
     module_model._ensure_display_options()
     assert set(cfg._keys()) - before == set()

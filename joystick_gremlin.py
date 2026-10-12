@@ -159,7 +159,6 @@ if _startup_failure is None:
         import gremlin.ui.highlight_option  # loaded by device_names
         import gremlin.ui.hidhide  # noqa: F401
         import gremlin.ui.live_debug  # noqa: F401
-        import gremlin.ui.vjoy_status
         import gremlin.ui.window_placement
         import gremlin.ui.module_model  # noqa: F401
         import gremlin.deferred_write
@@ -908,7 +907,6 @@ def register_config_options() -> None:
 
     trace._ensure_options()  # noqa: SLF001 - the Trace ticks (D-01-TRACE)
     gremlin.ui.window_placement._ensure()
-    gremlin.ui.vjoy_status.register_options()
     gremlin.ui.device_map_options.register()
     gremlin.ui.hardware_profile.register_options()
     gremlin.ui.live_debug.register_options()

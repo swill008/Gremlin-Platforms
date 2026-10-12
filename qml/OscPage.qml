@@ -148,7 +148,7 @@ Item {
     function openAddWith(settings) {
         if (editorLocked || !settings || !settings.address)
             return false
-        _addDialog.openForEdit("", settings)
+        _addDialog.openWith(settings)
         _addDialog.lastParameters = settings.values || ""
         return true
     }

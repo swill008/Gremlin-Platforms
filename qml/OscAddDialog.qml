@@ -3,10 +3,10 @@
 
 // The OSC Add window (D-09-OSC-INPUT): one OSC input with its settings.
 // Typed, Listen and Bulk capture all use the settings chosen here. Encoder
-// mode (D-09-OSC-ENCODER) adds format, output and step size / pulse delay. Opened
-// with openForEdit() it changes an existing input's settings instead. The
-// OSC page opens it with openForKeys() on one or several inputs (OX6, 09
-// S146): a setting they don't share starts blank, and OK sends only the
+// mode (D-09-OSC-ENCODER) adds format, output and step size / pulse delay.
+// openWith() opens it filled in for a new input (the OSC Monitor's Add as
+// Input…). The OSC page opens it with openForKeys() to edit one or several
+// inputs (OX6, 09 S146): a setting they don't share starts blank, and OK sends only the
 // settings changed here, through the page's applySettings (one Undo step).
 
 import QtQuick
@@ -23,8 +23,6 @@ Popup {
     property string lastParameters: ""
     property string lastSource: ""
     property bool closeOnCapture: true
-    // "" adds a new input; a uid edits that input's settings.
-    property string editUid: ""
     // The page's inputs edited (openForKeys): their row keys, and
     // function(keys, changed) -> "" or the error (OscLayoutModel.applySettings).
     property var editKeys: []
@@ -36,7 +34,7 @@ Popup {
     // (qt.qml.binding.removal); null = nothing differs.
     property var differs: null
     readonly property bool editingMany: editKeys.length > 1
-    readonly property bool editing: editUid.length > 0 || editKeys.length > 0
+    readonly property bool editing: editKeys.length > 0
     // The values of the last captured message (P1..Pn).
     readonly property var capturedValues: _splitValues(lastParameters)
     // Source choices: the captured values, or as many as the edited input needs.
@@ -109,7 +107,6 @@ Popup {
     }
 
     function resetFields() {
-        editUid = ""
         editKeys = []
         _startSettings = null
         differs = ({})
@@ -139,11 +136,10 @@ Popup {
         _message.clear()
     }
 
-    // Fill the window from an input's settings (the shape osc_device_model.settings_of
-    // gives); OK saves them through updateInputSettings.
-    function openForEdit(uid, s) {
+    // A new input filled in from a settings map (the shape
+    // osc_device_model.settings_of gives); OK adds it.
+    function openWith(s) {
         resetFields()
-        editUid = uid
         _fill(s || {})
         open()
     }
@@ -233,9 +229,6 @@ Popup {
 
     function _fill(st) {
         _cmd.text = st.address || ""
-        var encAxis = st.mode === "encoder" && (st.enc_output || "axis") === "axis"
-        if (st.locked)
-            lockedKind = (st.mode === "axis" || encAxis) ? "axis" : "button"
         if (st.enc_format === "direction")
             _encFormatDirection.checked = true
         else if (st.enc_format === "signed")
@@ -488,7 +481,7 @@ Popup {
         _root.close()
     }
 
-    // OK: adds the input, or saves the edited input's settings.
+    // OK: adds the input, or saves the edited inputs' settings.
     function accept() {
         var err = rangeError() || stepError() || delayError() || deadzoneError()
         if (err.length) {
@@ -500,15 +493,6 @@ Popup {
         var s = settings()
         if (!s.address.length)
             return false
-        if (editing) {
-            var res = deviceModel ? deviceModel.updateInputSettings(editUid, s) : ""
-            if (res && String(res).length) {
-                _message.show(String(res), true)
-                return false
-            }
-            close()
-            return true
-        }
         _root.accepted(s)
         close()
         return true

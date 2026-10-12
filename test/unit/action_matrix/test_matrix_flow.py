@@ -19,6 +19,7 @@ Tempo / Double Tap / Smart Toggle state machines, 05 S60a for Reference,
 
 from __future__ import annotations
 
+import contextlib
 import json
 import pathlib
 import uuid
@@ -26,6 +27,9 @@ from typing import Any
 
 import pytest
 
+from test.action_interaction.virtual_timers import (  # pyright: ignore[reportMissingImports]
+    virtual_timers,
+)
 from test.unit.action_matrix import harness  # pyright: ignore[reportMissingImports]
 from test.unit.action_matrix.harness import (  # pyright: ignore[reportMissingImports]
     Surface,
@@ -128,15 +132,30 @@ def _off(kind: str) -> Any:  # noqa: ANN401
 def _drive(case: Any, steps: list[tuple[Any, float]]) -> list[tuple]:  # noqa: ANN401
     """OK, then Run with each (value, wait-after) in order; the outputs.
     Like Case.run, with a wait of its own after each event (timing
-    actions need held presses)."""
+    actions need held presses).
+
+    A timing action's waits are on the program's timers stepped by the
+    test (virtual_timers), not the wall clock, so a busy PC can't change
+    which taps count as one double tap."""
     assert case.commit(), "OK wrote nothing"
-    with harness._running(case.profile, case._watched) as collected:  # noqa: SLF001
+    timed = case.tag in TIMING_FIELD
+    with (
+        harness._running(case.profile, case._watched) as collected,  # noqa: SLF001
+        virtual_timers() if timed else contextlib.nullcontext() as clock,
+    ):
         from gremlin import event_handler
 
         handler = event_handler.EventHandler()
         for value, wait in steps:
             handler.process_event(case._event(case.input_type, value))  # noqa: SLF001
-            settle(wait)
+            if clock is None:
+                settle(wait)
+            else:
+                settle()
+                clock.advance(wait)
+                settle()
+        if clock is not None:
+            clock.advance(0.1)
         settle(0.1)
         return collected()
 

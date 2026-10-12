@@ -4,12 +4,15 @@
 
 """OSC device page list model (D-09-OSC-INPUT, D-09-OSC-FAULTS): per-input
 settings from the Add window, Import suffixes and result text, address
-checks, delete by uid, selection after Sort. Slots are called from real QML
-so the QVariantMap / return types are the ones the page uses."""
+checks, delete by uid, selection after Sort. Edit Settings goes through the
+OSC page's OscLayoutModel.applySettings (09 S146), the path the page uses.
+Slots are called from real QML so the QVariantMap / return types are the
+ones the page uses."""
 
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -23,6 +26,7 @@ from gremlin.ui.osc_device_model import (
     has_actions,
     settings_of,
 )
+from gremlin.ui.osc_layout import OscLayoutModel
 
 
 @pytest.fixture
@@ -36,7 +40,25 @@ def model(qapp: object) -> Iterator[OscDeviceManagementModel]:
     shared_state.current_profile = saved
 
 
-def _qml(model: OscDeviceManagementModel, body: str) -> Any:  # noqa: ANN401
+@pytest.fixture
+def page(
+    model: OscDeviceManagementModel, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[OscLayoutModel]:
+    """The OSC page's model (Edit Settings… applies through it, S146), with
+    OSC's module file in a temporary modules folder."""
+    from gremlin.modules import store
+    from gremlin.profile import Profile
+
+    folder = tmp_path / "modules"
+    folder.mkdir()
+    monkeypatch.setattr(store, "folder", lambda: folder)
+    shared_state.current_profile = Profile()
+    p = OscLayoutModel()
+    yield p
+    p.endPane()
+
+
+def _qml(model: object, body: str) -> Any:  # noqa: ANN401
     """Run a JS expression in real QML with `m` = the model; returns it."""
     engine = QtQml.QQmlEngine()
     engine.rootContext().setContextProperty("m", model)
@@ -55,6 +77,12 @@ def _qml(model: OscDeviceManagementModel, body: str) -> Any:  # noqa: ANN401
 
 def _rows() -> list[Any]:
     return list(OscDevice().rows.rows())
+
+
+def _edit(page: OscLayoutModel, uid: str, settings: str) -> Any:  # noqa: ANN401
+    """Edit Settings… OK on one input, as OscAddDialog sends it: the page's
+    applySettings(keys, changed); "" or the refusal."""
+    return _qml(page, f'm.applySettings([m.keyOfUid("{uid}")], {settings})')
 
 
 def test_create_configured_input_saves_settings(
@@ -111,24 +139,25 @@ def test_import_suffixes_and_result_text(model: OscDeviceManagementModel) -> Non
     assert any("/f Q" in line for line in lines)
 
 
-def test_change_name_checks_the_address(model: OscDeviceManagementModel) -> None:
+def test_change_name_checks_the_address(
+    model: OscDeviceManagementModel, page: OscLayoutModel
+) -> None:
     model.createMappedInput("Button", "/one")
     model.createMappedInput("Button", "/two")
     uid = next(r.uid for r in _rows() if r.label == "/one")
-    assert _qml(model, f'm.updateInputSettings("{uid}", {{address: "   "}})') != ""
-    assert _qml(model, f'm.updateInputSettings("{uid}", {{address: "noslash"}})') != ""
-    dup = _qml(model, f'm.updateInputSettings("{uid}", {{address: "/two"}})')
-    assert "already" in dup
-    assert _qml(model, f'm.updateInputSettings("{uid}", {{address: "/uno"}})') == ""
+    assert _edit(page, uid, '{address: "   "}') != ""
+    assert _edit(page, uid, '{address: "noslash"}') != ""
+    assert "already" in _edit(page, uid, '{address: "/two"}')
+    assert _edit(page, uid, '{address: "/uno"}') == ""
     assert OscDevice().rows.by_uid(uid).label == "/uno"
 
 
-def test_update_settings_by_uid(model: OscDeviceManagementModel) -> None:
+def test_edit_settings_applies_to_the_input(
+    model: OscDeviceManagementModel, page: OscLayoutModel
+) -> None:
     model.createMappedInput("Button", "/p")
     uid = _rows()[0].uid
-    call = f'm.updateInputSettings("{uid}", {{mode: "change", delay_ms: 50}})'
-    err = _qml(model, call)
-    assert err == ""
+    assert _edit(page, uid, '{mode: "change", delay_ms: 50}') == ""
     row = OscDevice().rows.by_uid(uid)
     assert (row.mode, row.delay_ms) == ("change", 50)
 
@@ -189,10 +218,10 @@ def test_listen_uses_the_window_settings(model: OscDeviceManagementModel) -> Non
 
 
 def test_type_change_refused_while_the_input_has_actions(
-    model: OscDeviceManagementModel,
+    model: OscDeviceManagementModel, page: OscLayoutModel
 ) -> None:
     from gremlin.osc import OSC_DEVICE_UUID
-    from gremlin.profile import Profile
+    from gremlin.profile import InputItemBinding, Profile
 
     profile = Profile()
     profile.modes.add_mode("Other")  # actions in a mode the page isn't showing
@@ -202,14 +231,13 @@ def test_type_change_refused_while_the_input_has_actions(
     item = profile.get_input_item(
         OSC_DEVICE_UUID, row.input_type, row.input_id, "Other", True
     )
-    item.action_sequences.append(object())  # stands in for a real sequence
+    item.action_sequences.append(InputItemBinding(item))  # an empty sequence
     assert has_actions(row) is True
-    err = _qml(model, f'm.updateInputSettings("{row.uid}", {{mode: "axis"}})')
-    assert err.startswith("Remove this input's actions first")
+    err = _edit(page, row.uid, '{mode: "axis"}')
+    assert err.startswith("/held: Remove this input's actions first")
     assert OscDevice().rows.by_uid(row.uid).input_type == InputType.JoystickButton
-    ok = _qml(model, f'm.updateInputSettings("{row.uid}", {{mode: "change"}})')
-    assert ok == ""
+    assert _edit(page, row.uid, '{mode: "change"}') == ""
     item.action_sequences.clear()
     profile.drop_inputs(OSC_DEVICE_UUID, [item])
     assert has_actions(OscDevice().rows.by_uid(row.uid)) is False
-    assert _qml(model, f'm.updateInputSettings("{row.uid}", {{mode: "axis"}})') == ""
+    assert _edit(page, row.uid, '{mode: "axis"}') == ""

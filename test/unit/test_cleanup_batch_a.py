@@ -170,8 +170,7 @@ def test_one_user_colour_one_logical_id_one_window_memory() -> None:
         assert "function userColour(" not in _text(f"qml/{page}.qml"), page
     assert "function userColour(" in _text("qml/helpers.js")
     guid = re.compile(r"f0af472f-8e17-493b-a1eb-7333ee8543f2", re.I)
-    for page in ("Main", "DeviceList"):
-        assert not guid.search(_text(f"qml/{page}.qml"))
+    assert not guid.search(_text("qml/Main.qml"))
     from gremlin.ui.backend import UIState
 
     assert guid.fullmatch(UIState.logicalDeviceGuid.fget(None))

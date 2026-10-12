@@ -1000,10 +1000,6 @@ ApplicationWindow {
         configDirection = ""
         uiState.setCurrentRoom("status")
         uiState.setCurrentTab("physical")
-        if (_scriptButton)
-            _scriptButton.checked = false
-        if (_profileSettingsButton)
-            _profileSettingsButton.checked = false
     }
 
     function closeWorkRoom() {
@@ -2005,14 +2001,6 @@ ApplicationWindow {
         }
     }
 
-    DeviceListModel {
-        id: _deviceListModel
-
-        // Every device: the bar shows pinned vJoy devices too (DeviceList
-        // hides the vJoy tabs that are not pinned).
-        deviceType: "all"
-    }
-
     BootstrapIcons {
         id: bsi
         resource: "qrc:///BootstrapIcons"
@@ -2037,13 +2025,6 @@ ApplicationWindow {
             if (osc)
                 osc.setMode(uiState.currentMode)
             _modeSelector.currentIndex = _modeSelector.find(uiState.currentMode)
-        }
-        function onTabChanged() {
-            if (!uiState) {
-                return
-            }
-            _scriptButton.checked = uiState.currentTab === "scripts"
-            _profileSettingsButton.checked = uiState.currentTab === "settings"
         }
     }
     // backend.recentProfileFailed (B4's side of 04 Q15); ignored until the
@@ -2397,91 +2378,6 @@ ApplicationWindow {
                 text: "Home"
                 Layout.rightMargin: Style.dp(12)
                 onClicked: closeWorkRoom()
-            }
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            visible: uiState && uiState.currentRoom === "configuration" && !configTitleName.length
-            height: visible ? implicitHeight : 0
-
-            DeviceList {
-                id: _deviceList
-
-                Layout.minimumHeight: Style.dp(50)
-                Layout.maximumHeight: Style.dp(50)
-                Layout.fillWidth: true
-
-                deviceListModel: _deviceListModel
-            }
-
-            ColumnLayout {
-                IconButton {
-                    text: "\uF285"
-                    font.pixelSize: Style.dp(14)
-
-                    onClicked: () => { _deviceList.nextTab() }
-                }
-                IconButton {
-                    text: "\uF284"
-                    font.pixelSize: Style.dp(14)
-
-                    onClicked: () => { _deviceList.previousTab() }
-                }
-            }
-
-            DeviceTabBar {
-                scrollbarAlwaysVisible: false
-
-                Component.onCompleted: () => { _scriptButton.checked = false }
-
-                JGTabButton {
-                    id: _scriptButton
-
-                    text: "Scripts"
-                    width: _metricScripts.width + Style.dp(50)
-                    checked: false
-
-                    onClicked: () => {
-                        leaveDisplayThen(function() {
-                            if (uiState) {
-                                uiState.setCurrentRoom("scripts")
-                                uiState.setCurrentTab("scripts")
-                            }
-                        })
-                    }
-
-                    TextMetrics {
-                        id: _metricScripts
-
-                        font: _scriptButton.font
-                        text: _scriptButton.text
-                    }
-                }
-
-                JGTabButton {
-                    id: _profileSettingsButton
-
-                    text: "Profile Settings"
-                    width: _metricProfileSettings.width + Style.dp(50)
-                    checked: false
-
-                    onClicked: () => {
-                        leaveDisplayThen(function() {
-                            if (uiState) {
-                                uiState.setCurrentRoom("settings")
-                                uiState.setCurrentTab("settings")
-                            }
-                        })
-                    }
-
-                    TextMetrics {
-                        id: _metricProfileSettings
-
-                        font: _profileSettingsButton.font
-                        text: _profileSettingsButton.text
-                    }
-                }
             }
         }
 

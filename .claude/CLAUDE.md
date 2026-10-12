@@ -69,10 +69,14 @@ Every piece of work, not only big batches:
    claude/archive/2026-10-10-tracker/.
    - Its "Now" panel (ArtifactData document `tracker/now`): what is happening
      now, what is next, every agent and its state, the last test result, CI,
-     the latest release and a short log. Update it at every step (agents
-     started/finished, test runs, commits, pushes, CI, releases).
+     the latest release and a short log. Update it once per commit, right
+     after the commit and push (user, 2026-10-12: "do it at the end of a
+     commit, not in the middle of runs"): not at every step, not during
+     agent or test runs. Releases and CI results are added at the next
+     update.
    - Its issue list (ArtifactData collection `issues`) is a running copy: at
-     every commit add an item for each new fix, feature, gap or to-do (ref,
+     the same once-per-commit update (right after the commit and push), add
+     an item for each new fix, feature, gap or to-do (ref,
      title, group, severity, status, evidence: commit and spec line) and set
      the status of items it fixes. A to-do item in claude/todo.md is an issue
      here too.
@@ -139,17 +143,26 @@ Every piece of work, not only big batches:
    time the work is down to one running agent, show the table with the
    parallel work considered (test-only, end-to-end, carry-through, audit of
    related paths, docs) and why each was or wasn't started.
-5. **Test runs (agents; user 2026-10-07).**
-   - The full run is `python test/run_tests.py --random-order` (6 parts, ~3
-     min): once, at the end, after the targeted tests pass.
+5. **Commits and test runs (agents; user 2026-10-07, changed 2026-10-12).**
+   - One commit per batch of approved work (user, 2026-10-12: "do commits in
+     batches, not after every run"); small fixes found mid-batch ride along
+     in that batch's commit.
+   - Before a batch commit, run quick tests, not the full run (user,
+     2026-10-12: "unless its very complex lets do quick testing prior to
+     commits, not full testing after every change"):
+     `python test/run_tests.py --changed`, the targeted tests for the files
+     changed, and `tools/pyright_baseline.py`. Continuous integration (CI)
+     runs everything after the push.
+   - The full run (`python test/run_tests.py --random-order`, 6 parts, ~7
+     min) only for a very complex batch, and the message says why.
    - While working, run only the tests for the files you changed.
    - To reproduce a CI failure, run that part once with CI's seed
      (`--seed N --parts 3`); never run a whole part in one pytest process.
    - No more proof runs once a fix is shown (the test failed on the old code
-     and passes on the new): stop and go to the final full run.
+     and passes on the new): stop and go to the pre-commit quick tests.
    - Before any command expected to take over 3 min, log
-     `AGENT: <step>, expect ~N min, why`; anything over 5 min other than the
-     one full run needs the lead's OK first.
+     `AGENT: <step>, expect ~N min, why`; anything over 5 min other than an
+     approved full run needs the lead's OK first.
 6. **Overseeing agents (the lead; user 2026-10-07).**
    - Give every agent a time budget in its brief ("about 20 min; check in
      if you need more").
@@ -157,7 +170,7 @@ Every piece of work, not only big batches:
      command an agent starts with its expected time, and alerts on any single
      test command running over 6 min.
    - When an agent's fix is proven, check in: stop extra proof runs, move it
-     to the final full run and its report.
+     to the pre-commit quick tests and its report.
    - Tell the user about any agent step over 5 min when it starts, not after.
 7. **Timing table (user, 2026-10-09).** `claude/timings.md` is the source
    for every time quoted to the user.
@@ -178,7 +191,7 @@ Every piece of work, not only big batches:
      - Every option, recommendation, offer or plan shown to the user carries
        its effort, quoted from the table and naming the kind it came from,
        e.g. "Effort: 3-8 min (timings.md: agent fix)". End-to-end figures add
-       up the table's steps (agents + lead checks + full run + commit + CI).
+       up the table's steps (agents + lead checks + quick tests + commit + CI).
      - When the table has no matching kind, say so: "no timing data yet;
        rough guess N min", never a bare number.
      - An agent's brief gets the table's estimate, not a padded budget; a

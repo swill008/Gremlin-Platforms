@@ -29,7 +29,7 @@ fake_hardware.install()
 
 from PySide6 import QtCore, QtGui, QtQml  # noqa: E402
 
-import gremlin.ui.vjoy_status  # noqa: E402, F401  (Gremlin.Device)
+import gremlin.ui.device_names  # noqa: E402, F401  (Gremlin.Device)
 import gremlin.ui.window_placement  # noqa: E402, F401  (Gremlin.UI)
 from gremlin.modules import output  # noqa: E402
 from gremlin.signal import signal  # noqa: E402

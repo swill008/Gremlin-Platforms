@@ -19,7 +19,8 @@ records its own values (an error in one doesn't hide the others):
    file changes, the open profile doesn't.
 5. vJoy Viewer (the Input Viewer window) with the twins wired too: its
    device list has all four sticks and both vJoys; so has the Device Mapping Editor's.
-6. Twin rename (Home's rename, DeviceNames.setAlias) of "Twin Stick (2)":
+6. Twin rename (the Device Library's rename, device_names.set_alias) of
+   "Twin Stick (2)":
    Home, the Device Library and both viewer lists show the new name; the
    other twin keeps its own.
 7. Unplug and plug the X52 back in (the driver's device change): its card,
@@ -340,8 +341,8 @@ def _part_viewer(j: Journey) -> None:
 
 
 def _part_twin_rename(j: Journey) -> None:
+    from gremlin.ui import device_names
     from gremlin.ui.device_library_model import DeviceLibraryModel
-    from gremlin.ui.device_names import DeviceNames
     from gremlin.ui.module_pairing import ModulePairDeviceModel
     from gremlin.ui.viewer_devices import ViewerDeviceModel
 
@@ -354,7 +355,7 @@ def _part_twin_rename(j: Journey) -> None:
     j.settle()
     _go_home(j)
     out["rename:cards-before"] = _card_names(j)
-    DeviceNames().setAlias(str(ids["twin2"]), TWIN_NAME)
+    device_names.set_alias(str(ids["twin2"]), TWIN_NAME)
     j.settle()
 
     def twins(names: list[str]) -> list[str]:

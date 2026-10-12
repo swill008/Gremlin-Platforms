@@ -32,7 +32,7 @@ import pytest
 _ROOT = pathlib.Path(__file__).parents[2]
 
 _CODE = r"""
-import json, os, sys
+import json, os, sys, time
 ROOT, PICK = sys.argv[1], sys.argv[2]
 sys.path.insert(0, ROOT)
 import importlib.util
@@ -113,6 +113,16 @@ waiting = sorted(pictures()) == ['photo.jpg'] and pictures()['photo.jpg'] == OLD
 run(w, '_driver.setClaimed(0, true)')
 ok = run(w, '_win.commitModule()')
 QtTest.QTest.qWait(200)
+# The device's background picture (07 S157) of the map's photo.jpg: the
+# maker draws it from the module file the test wrote, so it can land
+# before or after Save. Wait (bounded) until the maker is idle and the
+# picture is current.
+maker = app.device_photo_maker
+deadline = time.monotonic() + 30
+while time.monotonic() < deadline and not (
+        maker._job is None and not maker._queue
+        and store.device_photo_current(folder)):
+    QtTest.QTest.qWait(50)
 doc = json.loads(module.read_text(encoding='utf-8'))
 image = store.device_image_ref(doc)
 new = folder / image if image else None
@@ -175,9 +185,10 @@ def test_save_after_import_image_names_it_in_one_write(result: dict) -> None:
     assert save["claimed"].get("buttons") or save["claimed"].get("axes") or save[
         "claimed"
     ].get("keys"), save
-    # The map's own photo is still named, so it stays (07 S106).
+    # The map's own photo is still named, so it stays (07 S106); the
+    # device's background picture is drawn from it (07 S157).
     assert save["pictures"] == sorted(
-        [save["image"].split("/", 1)[1], "photo.jpg"]
+        [save["image"].split("/", 1)[1], "photo.jpg", "device-photo.png"]
     ), save
     # Old: two writes (saveClaim, then the edit's commit): two entries.
     assert save["entries"] == 1, save

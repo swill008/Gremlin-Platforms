@@ -43,7 +43,6 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 - `gremlin/ui/xbox_setup.py` (new 2026-10-12, D-XBOX-PADS, 03 S141-S144): `XboxSetupModel` (QML `XboxSetupModel`): `padCount` (notify, follows `signal.xboxPadsChanged`), `bindingsOutside(n)` (the Map to Xbox bindings on pads above n, `output.xbox_bindings_on_pads`), `apply(n)` (`output.set_xbox_pad_count`).
 - `qml/DialogXboxSetup.qml` (new 2026-10-12, D-XBOX-PADS, 03 S141, S144): the **Xbox Setup** window: `XboxDriverCheck` (the full ViGEmBus check, 06 S64) and **Number of Xbox pads** 1-4; OK applies (asking first when lowering leaves bindings on pads that go), Cancel leaves it. Opened by `Main.openXboxSetup()` from the Xbox card menu, the palette command `tools.xboxSetup` and the Output View's **Open Xbox Setup** link (`XboxDevice.qml` `xboxSetupRequested`).
 - D-XBOX-PADS output parts (2026-10-12, `gremlin/modules/output.py`, page 03 owns it): `xbox_pad_count`, `xbox_pads_on`, `set_xbox_pad_count` (makes / removes the "Xbox 360 N" modules, one History group, emits `xboxPadsChanged`), `xbox_bindings_on_pads`, `xbox_pad_label`, `xbox_cant_send_text` ("Xbox 360 N is off in Xbox Setup (pad 1 on / pads 1-k on)." for a pad above the count); `write_xbox` sends only to `xbox_pads_on()` (S99). `gremlin/signal.py`: `xboxPadsChanged`.
-- `gremlin/ui/vjoy_status.py` (171; owner, page 01 lists its part): `VJoyStatus` (QML `Gremlin.Device`): which vJoy devices are active, which vJoy and extra tabs (Keyboard, Logical, OSC, Xbox) are pinned on Home (settings `devices/display/vjoy-tabs`, `extra-tabs`); slots `refresh`, `isActive`, `isPinned`, `setPinned`, `isExtraPinned` (`activeCount` / `pinStamp` removed 2026-10-12). `EXTRA_ALLOWED` / `EXTRA_DEFAULT` are saved setting keys, allowed by the no-built-in-lists guard (03 S90b).
 
 **Logical Device**
 - `gremlin/logical_device.py` (973; from 2026-10-10 (F1, AD1) `load_dict` skips a control it can't read, keeps it in `unreadable` and lists `load_warnings`; values under `_VALUE_LOCK`): `LogicalDevice` singleton: inputs (axis/button/hat, id, permanent `uid` (04 S2a), label, user name, group, hide system name), current values (`_value`), groups, order, `memento/restore` (for Undo); `LogicalRows.create(..., uid=None)`, `by_uid`, `uid_of`, `identifier_of_uid`, `to_dict` / `load_dict`, `dirty` / `mark_saved`; module-level `resolve_logical_reference` (the one reader of a saved reference: uid, else type and number; unknown uid = missing; the version 14 map went 2026-10-10, LD14). No file IO.
@@ -166,7 +165,6 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | Xbox Output View list: Find, type filter, **Show only bound controls**, click a row, fold arrow (2026-10-12, D-XBOX-LIST, 03 S140) | `XboxDevice.qml` (`ControlFindBar`, `ControlTree` readOnly) | `XboxOutputListModel` (filters, `setSelection`) |
 | Xbox Output View **Appearance…** / **Hide Appearance** on the page bar (2026-10-12, D-XBOX-LIST) | `XboxDevice.qml` `pageBar`, `toggleAppearance` (shown by `Main.qml`) | `PageAppearance` pageKey "xbox-output" → `WindowPlacement.listAppearance("xbox-output")` |
 | Home Xbox tab / Xbox output page (from D-NEXTLIST-1 item 1 also the pad cards, the card menu and Help's Open links, 03 S139) | `XboxDevice.qml`, `XboxDriverCheck.qml` | `XboxDeviceModel` (pad rows), `XboxDriverStatus` (driver line, Download, Game Controllers) |
-| Home device list: which vJoy and extra tabs show | `DeviceList.qml` (`VJoyStatus`) | `isActive`, `isPinned`, `isExtraPinned`; pins kept in settings `devices/display/vjoy-tabs`, `extra-tabs` |
 
 ## 5. Talks to
 
@@ -185,7 +183,7 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 | User scripts (`user_script.py`) | `_setup_user_scripts` (retry, reload), callback and periodic registries | scripts write vJoy through `ScriptVJoy`, keys through `keyboard` |
 | OSC (parked) | `OscRuntime().start/stop` at Run/Stop and again at quit | OSC emits `joystick_event` (always forwarded) |
 | Xbox Output View (`XboxDevice.qml`, 2026-10-12) | `XboxOutputListModel` (`xbox_output_list.py`, the list, live state from `output.xbox_state`; D-XBOX-LIST), shared `ControlTree` / `ControlFindBar` / `PageAppearance` (pages 05, 09), `XboxDeviceModel`, `XboxViewerDeviceModel` + `XboxViewerCard` (`xbox_viewer.py`), `WindowPlacement` (Live pads open or folded), `XboxDriverCheck` | - |
-| Viewers and Home cards (`live_input`, `pair_live`, `xbox_viewer`, `xbox_device_model`, `output_modules`, `module_model`, `vjoy_status`) | - | `vjoy_state`, `vjoy_held`, `xbox_state`, `vjoy_modules`, `vjoy_in_use_elsewhere`, driver checks; `runtime_active()` |
+| Viewers and Home cards (`live_input`, `pair_live`, `xbox_viewer`, `xbox_device_model`, `output_modules`, `module_model`) | - | `vjoy_state`, `vjoy_held`, `xbox_state`, `vjoy_modules`, `vjoy_in_use_elsewhere`, driver checks; `runtime_active()` |
 | Device Bindings and Keyboard pages (05) | same shared base and pane as the Logical page (batch C) | `editorLocked` from `gremlinActive` |
 | Device Pack (`device_pack.py`) | - | creates and deletes Logical Device inputs; driver checks |
 | Auto Mapping Tool (`modules/auto_mapping_tool.py`) | - | `vjoy_modules()` |
@@ -438,9 +436,10 @@ Open tracker items for this subsystem:
 - AU-116: closed 2026-10-10 (G1, GL-047; F2-VJOY also guards the output layer, S4).
 - AU-117 (open): other Run/Stop leftovers (macro key, vJoy relative loop, script keys, Logical Device values).
 - AU-64 (open): suspected races; the 1 s output-claims block is in this subsystem.
-- AU-119 (open): about 20 tests wait a fixed short time (Tempo, Double Tap, macro); test-only.
+- AU-119 (open): about 20 tests wait a fixed short time (Tempo, Double Tap, macro); test-only. Batch C (2026-10-12, to-dos 35, 116, 125 done): `test_matrix_flow.py`, `test_double_tap_tempo.py` (virtual timers, `test/action_interaction/virtual_timers.py`) and the two release-timer tests in `test_osc_run.py` no longer depend on timing. The other `_wait()` calls in `test_osc_run.py` and the macro waits remain.
 - APP5 (open, OSC parked): OSC listener opens a LAN port on every Run.
 - AU-74 (won't fix): Run/Stop only on the toolbar and tray.
+- ~~To-do 127~~ Closed 2026-10-12 (D-01-TABROW-REMOVED, page 01): to-do 113 found that nothing could pin a vJoy tab to the device bar any more; the user chose to remove the tab row, so `gremlin/ui/vjoy_status.py` and its `vjoy-tabs` / `extra-tabs` settings are gone. [test: test_device_tab_row_removed.py]
 
 Things nothing owns:
 - (Done in batch 1, GL-046) "What a Run holds" is owned by `gremlin/run_scope.py`; Stop runs its stages in order.
@@ -451,7 +450,7 @@ Things nothing owns:
 ## 11. Size and test coverage
 
 - D-XBOX-PADS (2026-10-12): tests to be named by the lead for S58, S64, S99 (`test_xbox_pads.py`, `test_xbox_output_module.py`).
-Size (lines, roughly, rechecked 2026-10-10): run_scope 438, code_runner 721, event_helpers 294, macro 1451, sendinput 492, output 945, Xbox page and viewer about 1,180 (Python 654, QML 549), vjoy_status 171, audio_player 222, tts 242, logical_device 976, logical_device_file 187 (rechecked 2026-10-11), logical_layout 720, LogicalPage.qml 651, system_tray 344; vjoy 1100, vigem 720; parts of backend (~120), event_handler (~200), user_script (~200), base_classes (~120), joystick_gremlin (~45), Main.qml (~40). About 9,500 lines in all (the Logical page shrank when it moved onto the shared base, 2026-10-10).
+Size (lines, roughly, rechecked 2026-10-10): run_scope 438, code_runner 721, event_helpers 294, macro 1451, sendinput 492, output 945, Xbox page and viewer about 1,180 (Python 654, QML 549), audio_player 222, tts 242, logical_device 976, logical_device_file 187 (rechecked 2026-10-11), logical_layout 720, LogicalPage.qml 651, system_tray 344; vjoy 1100, vigem 720; parts of backend (~120), event_handler (~200), user_script (~200), base_classes (~120), joystick_gremlin (~45), Main.qml (~40). About 9,300 lines in all (vjoy_status 171 removed 2026-10-12) (the Logical page shrank when it moved onto the shared base, 2026-10-10).
 
 Added 2026-10-10: `test_mouse_motion.py` (20: Map to Mouse adding up, ramps, mode change, Stop, Pause and Trace lines, S72, S86, S88-S90); `test_device_relaid_update.py` (a relaid device during a Run, 02 S143); `test_device_layout_change.py` (4, page 02; a start with one unreadable control, S91).
 Changed 2026-10-10 (Logical Device fixtures, D-04-LD-FILE / D-04-LD-NOLEGACY): `test/action_interaction/conftest.py` `set_up_logical_device` sets up the Logical Device through its API (axes, buttons, hats 1-4 "Input" and 11-14 "Output", in its own module file), and the 19 fixture profiles in `test/action_interaction/profiles/` are version 16; `test_ld_nolegacy.py` gained the `as_v14` helper (writes an old version 14 copy of a profile for the refusal tests).
@@ -462,6 +461,7 @@ Added 2026-10-10 (F3-LEAKS): `test_leaks.py` (6). (F2-PAGEROWS): `test_page_rows
 Covered well: Stop releasing held keys, mouse buttons and motion (`test_audit3_run_stop.py`); macros at Stop and stale macros (`test_audit2_macros.py`, `test_action_fixes.py`); the vJoy firewall (`test_output_layer.py`, `test_vjoy_writers_use_firewall.py`); vJoy busy (`test_device_fixes.py`); Xbox pass-through (`test_xbox_output_module.py`, `test_map_to_xbox.py`); thread start/stop (`test_threads.py`, `test_bounded_waits.py`); Logical Device data (`test_logical_device.py`) and its Undo (`test_audit_editing.py`, `test_audit3_actions_undo.py`, step labels `test_undo_bar_labels.py`); Logical page shared pieces (Find, delete questions, Undo bar: `test_config_pages_shared_pieces.py`); sound loading (`test_program_fixes.py`, `test_play_sound_missing_file.py`). The four files run off-screen today: 28 passed.
 
 Not tested (seen in code, no test found):
+- Device tab row removed (2026-10-12, D-01-TABROW-REMOVED, page 01): `test_device_tab_row_removed.py::test_the_tab_row_and_its_pins_are_removed` (1: the four files and the `vjoy-tabs` / `extra-tabs` settings are gone); `test_handson_F4_tabs.py` deleted with the feature.
 - Release mode (2026-10-11, RELMODE): `test_release_reads_live_mode.py` (3: a missed mode change sends no extra Logical Device release; a real mode change while held releases once; a missed change away from the press mode still releases). `test_leaks.py` and `test_stage1_runtime.py` switch the real ModeManager (`_switch`).
 - A Run that fails partway, then Run again (double connection, callbacks twice).
 - `CodeRunner.start` end to end with a real profile, outputs mocked, then Stop: order of Stop steps (map 3 asks for an order test).

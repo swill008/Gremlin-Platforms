@@ -31,10 +31,6 @@ ALLOWED = {
     # "xbox_wireless_controller" count too), not a device class: kept as it
     # is by the lead's decision (2026-10-09, D-03-DEVICE-CLASSES work).
     ("gremlin/modules/store.py", "_NAME_ONLY_OK"),
-    # Home's tab pin keys, saved in the settings as they are spelled
-    # ("logical", not "logical_device"): settings values, not a device list.
-    ("gremlin/ui/vjoy_status.py", "EXTRA_ALLOWED"),
-    ("gremlin/ui/vjoy_status.py", "EXTRA_DEFAULT"),
 }
 
 _ID_ATTRS = {

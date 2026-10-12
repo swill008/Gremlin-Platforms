@@ -95,6 +95,7 @@ function topics() {
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
+                + "<li>HidHide hides HID devices only: the controllers games read through DirectInput or raw input. Xbox controllers that games read through XInput, including the virtual Xbox 360 pads this program creates, are not HID devices, so HidHide does not hide them.</li>"
                 + "<li>Until <b>Gremlin-Platforms controls HidHide</b> is on, the settings show but can't be changed, and the program changes nothing in HidHide.</li>"
                 + "<li>Turning <b>Gremlin-Platforms controls HidHide</b> off leaves HidHide as it is: devices hidden then stay hidden. To show them again, untick them first.</li>"
                 + "<li>If the HidHide driver refuses <b>HidHide Enabled</b>, the switch flips back and the error shows.</li>"

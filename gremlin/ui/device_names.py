@@ -5,12 +5,14 @@ from __future__ import annotations
 
 from PySide6 import QtCore
 
-import gremlin.ui.osc_settings_info  # noqa: F401
-import gremlin.ui.vjoy_status  # noqa: F401
-import gremlin.ui.live_input  # noqa: F401
 import gremlin.ui.highlight_option  # noqa: F401
-import gremlin.ui.window_placement  # noqa: F401
+import gremlin.ui.live_input  # noqa: F401
+import gremlin.ui.osc_settings_info  # noqa: F401
 import gremlin.ui.type_aliases as ta
+import gremlin.ui.window_placement  # noqa: F401
+import gremlin.ui.xbox_device_model  # noqa: F401
+import gremlin.ui.xbox_output_list  # noqa: F401  # the Xbox Output View's list
+import gremlin.ui.xbox_setup  # noqa: F401  # the Xbox Setup window
 from gremlin.device_aliases import (  # noqa: F401 - the names live there now
     GROUP,
     NAME,
@@ -53,10 +55,3 @@ class DeviceNames(QtCore.QObject):
     @QtCore.Slot(str, str, result=str)
     def display(self, key: str, default: str) -> str:
         return display_name(key, default)
-
-    @QtCore.Slot(str, str, result=str)
-    def setAlias(self, key: str, value: str) -> str:
-        """Renames the device (and its folder, 03 S131): "" when done, else
-        why it was refused (nothing changed). device_aliases announces the
-        change (deviceNamesChanged)."""
-        return set_alias(key, value)

@@ -46,7 +46,7 @@ ApplicationWindow {
         pageOpen: _win._open && _win.visible
 
         onAddAsInputRequested: (settings) => {
-            _addDialog.openForEdit("", settings)
+            _addDialog.openWith(settings)
             _addDialog.lastParameters = settings.values || ""
         }
     }

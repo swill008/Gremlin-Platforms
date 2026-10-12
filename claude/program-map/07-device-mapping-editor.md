@@ -556,6 +556,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - **G70** (open, 2026-10-11, D-07-BG-COMPOSITE, not tested) 03 S52, S157: Module Setup's Import Image through `HardwareProfile.keepPhoto` / `store.commit_edit` asking for a new background picture is not tested end to end (the Save path through `saveClaim` is).
 - ~~**G71**~~ Closed 2026-10-11 (built, D-07-CLICK-ZONE, S136, S159). Was: the click zone and the grid were only the map's box (the editor item), so at low zoom the strips of the view round it took no clicks: right-clicks there reached `_viewport` (`VkbRigFace.qml`, wheel and middle-pan only) and no menu opened (user's click trace, 22:49, zoom 0.667).
 - ~~**G72**~~ Closed 2026-10-12 (fixed, D-NEXTLIST-1 item 5 answer 10a, audit BRIDGE item 1; S160) [test: test_device_map_card_live_stamp.py]. Was: `DeviceMapCard.liveStamp` read `.count` from the mapped models, which they don't have, so it was always 0 and the map card's face was never told about live input or mapping changes (`VkbRigFace.qml` `liveStamp`, `VkbRigEditor.qml`).
+- ~~To-do 122~~ Closed 2026-10-12 (batch C, not a race, no spec change; S157): after a Save with a new Device Image, `pictures/device-photo.png` appearing about 80 ms after the test read the folder is the generator correctly drawing the visible background. `store.background_key` (store.py:1647) does not include `deviceImage`, and `DevicePhotoMaker.rendered` re-checks the key before writing. The test now waits for the maker to be idle and expects the file.
 
 **From the to-do list**
 - **To-do 45** (parked, D-01-CANVAS-EXEMPT): the canvas chip editor and the Layers panel rename keep their own boxes, not the shared Rename box.
@@ -604,6 +605,7 @@ Time: `datetime.now()` stamps recovery copies and templates (`savedAt`); `Date.n
 - Covered from 2026-10-12 (D-NEXTLIST-1 item 5, audit BRIDGE item 1, S160, G72): `test_device_map_card_live_stamp.py` (2: the card's liveStamp changes on live input and on a mapping change).
 - Covered from 2026-10-12 (D-03-DEVICE-IMAGE, S127, S157): `test_device_image_store.py` (17), `test_device_image_setup.py` (13), `test_device_image_e2e.py` (12) + `device_image_e2e_smoke.py`.
 - D-07-RESET-PICTURE (2026-10-12, PICRESET, S161): `test_reset_picture.py` + `reset_picture_smoke.py` (9: first row of Picture, full reset to fresh-add size centred, one Undo, greyed when locked or nothing to reset, several pictures in one step, Arrange › Reset Picture, the Properties button, Reset Shape gives back a turn (guard for S42, passes on the old code too), no QML warnings); `test_device_mapping_editor_menubar_keys.py` (resetPicture in Arrange, S134); `rig_editor_golden/picture` regenerated (Properties shows the button).
+- Batch C (2026-10-12, to-do 122, S157; test-only): `test_module_setup_photo_edit.py::test_save_after_import_image_names_it_in_one_write` waits for `DevicePhotoMaker` to be idle and expects `pictures/device-photo.png` with the Device Image, so the generator's timing can't change the result.
 
 ## 12. Review (user, 2026-10-06)
 

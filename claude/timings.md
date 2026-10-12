@@ -941,3 +941,14 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | HOME-BAND follow-up: precise Undo of Hide Selected, 4 dead props removed | fix | 3-8 min | 3 min | 09:08-09:11 |
 | 2026-10-12 | CI on 273c2bd9 (Xbox pads) | ci | ~20 min | see run | 08:52-09:16 |
 | 2026-10-12 | Full run batch B + lint: 2 OSC timing flakes (pass 2/2 alone, to-do 125), no new lint | full run | ~7 min | 8 min | 09:11-09:19 |
+| 2026-10-12 | CI repro: History alone 3/3 pass; CI seed 3-part rerun stopped by the 10-min part cap (History tests passed in it) | research | 5-8 min | 10 min | 09:20-09:30 |
+| 2026-10-12 | C-VJTABS: 113 checked (not a gap), found 127 | research | 3-8 min | 1 min | 09:30-09:31 |
+| 2026-10-12 | C-DOCS part 1: CLAUDE.md 3 rules, page 09 OSC edit path, 127 gap | docs | 3-8 min | 1 min | 09:31-09:32 |
+| 2026-10-12 | C-OSCDEAD: dead OSC edit path removed, 2 test files moved to applySettings, 66 tests | removal | 3-8 min | 7 min | 09:30-09:37 |
+| 2026-10-12 | C-PHOTORACE: traced (not a race), test waits for the maker, 10/10 incl. 8 under load | research+test | 5-10 + 3-8 min | 7 min | 09:30-09:37 |
+| 2026-10-12 | C-DTAP: virtual timers for Tempo/Double Tap/Smart Toggle tests, OSC release tests wait on result; stall proof | fix | 3-8 min | 13 min | 09:30-09:43 |
+| 2026-10-12 | Lead LOAD TEST: 4 copies of the 3 timer-test files: 4x (73+4) passed | test | ~2-3 min | 1 min | 09:44-09:45 |
+| 2026-10-12 | C-TABROW: device tab row, DeviceTabBar/JGTabButton, vjoy_status.py removed; startup test handle bug fixed | removal | 3-8 min | 11 min | 09:39-09:50 |
+| 2026-10-12 | C-ALIAS: DeviceNames.setAlias removed, 3 tests moved | removal | 3-8 min | 1 min | 09:51-09:52 |
+| 2026-10-12 | C-DOCS: CLAUDE.md 3 rules, map lines for all batch C agents | docs | 3-8 min | 21 min (waiting on agents) | 09:31-09:52 |
+| 2026-10-12 | Quick tests batch C (--changed: 3,755 tests, 6 parts) + lint: all passed, no new errors | test | 2-3 min | 6 min | 09:53-09:59 |

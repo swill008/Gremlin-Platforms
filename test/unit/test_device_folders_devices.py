@@ -118,15 +118,14 @@ def test_a_folder_name_gets_underscores_but_the_shown_name_stays(
 
 
 def test_a_busy_folder_refuses_the_rename_and_saves_no_alias(modules: Path) -> None:
-    from gremlin.ui.device_names import DeviceNames
+    from gremlin.ui import device_names
 
     guid = _stick_guid()
     path = folders.put_module(modules, STICK, _stick_doc(guid), guid)
-    names = DeviceNames()
 
     # A file in the folder held open elsewhere: Windows can't rename it.
     with path.open("rb"):
-        reason = names.setAlias(guid, "Main Stick")
+        reason = device_names.set_alias(guid, "Main Stick")
 
     assert reason, "the rename should be refused with the reason"
     assert STICK in reason and "Main Stick" in reason

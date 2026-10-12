@@ -9,7 +9,8 @@ the UDP listener is a stand-in."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
 from typing import Any
 
@@ -93,6 +94,14 @@ def _wait(ms: int) -> None:
     QtTest.QTest.qWait(ms)
 
 
+def _wait_for(done: Callable[[], bool]) -> None:
+    """Runs the event loop until done(); a busy PC is slow, never wrong."""
+    end = time.monotonic() + 10
+    while not done():
+        assert time.monotonic() < end, "timed out"
+        QtTest.QTest.qWait(10)
+
+
 # -- per-input behaviour -----------------------------------------------------
 
 
@@ -138,17 +147,23 @@ def test_trigger_true_pulses_even_with_a_value(run: tuple) -> None:
 
 
 def test_new_press_restarts_the_release_timer(run: tuple) -> None:
-    """The old one-shot timers released early on a repeat press."""
+    """The old one-shot timers released early on a repeat press. Checked on
+    the timers themselves, not the wall clock: the first press's timer is
+    stopped and a new full-length one waits, so one release comes."""
     runtime, rows, events, _ = run
     rows.create(BUTTON, "/b", delay_ms=300)
     runtime.start()
     runtime._on_main("/b", ())
-    _wait(200)
+    (first,) = runtime._timers.values()
     runtime._on_main("/b", ())
-    _wait(170)
+    (second,) = runtime._timers.values()
+    assert not first.isActive()
+    assert second is not first and second.isActive()
+    assert second.interval() == 300
     assert ("button", 1, False) not in events
-    _wait(300)
+    _wait_for(lambda: ("button", 1, False) in events)
     assert events.count(("button", 1, False)) == 1
+    assert runtime._timers == {}
 
 
 def test_stop_releases_a_pending_auto_release_once(run: tuple) -> None:
@@ -299,7 +314,9 @@ def test_server_default_delay_used_when_input_has_none(run: tuple) -> None:
     rows.create(BUTTON, "/b")
     runtime.start()
     runtime._on_main("/b", ())
-    _wait(120)
+    (timer,) = runtime._timers.values()
+    assert timer.interval() == 30
+    _wait_for(lambda: len(events) == 2)
     assert events == [("button", 1, True), ("button", 1, False)]
 
 

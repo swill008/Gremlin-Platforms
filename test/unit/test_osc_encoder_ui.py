@@ -27,6 +27,7 @@ import pytest
 
 if TYPE_CHECKING:
     from gremlin.ui.osc_device_model import OscDeviceManagementModel as Model
+    from gremlin.ui.osc_layout import OscLayoutModel as Page
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -42,6 +43,7 @@ ApplicationWindow {
     height: 900
     visible: true
     property var lastAccepted: null
+    property var lastApplied: null
 
     OscDeviceManagementModel { id: _model; objectName: "fakeModel" }
 
@@ -49,6 +51,11 @@ ApplicationWindow {
         id: _add
         objectName: "addDialog"
         deviceModel: _model
+        // The OSC page's OscLayoutModel.applySettings (Edit Settings…, S146).
+        applySettings: function(keys, changed) {
+            _win.lastApplied = {keys: keys, changed: changed}
+            return ""
+        }
         onAccepted: (s) => _win.lastAccepted = s
     }
 
@@ -68,8 +75,6 @@ def _smoke() -> None:
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
-
-    calls: list[list[object]] = []
 
     def plain(value: object) -> object:
         if isinstance(value, QtQml.QJSValue):
@@ -98,11 +103,6 @@ def _smoke() -> None:
     class OscDeviceManagementModel(QtCore.QObject):
         listenChanged = QtCore.Signal()
         commandCaptured = QtCore.Signal(str, str)
-
-        @QtCore.Slot(str, "QVariantMap", result=str)
-        def updateInputSettings(self, uid: str, settings: object) -> str:
-            calls.append(["updateInputSettings", uid, plain(settings)])
-            return ""
 
         @QtCore.Slot("QVariant")
         def setCaptureSettings(self, settings: object) -> None:
@@ -240,10 +240,10 @@ def _smoke() -> None:
     click("oscOk")
     report("add-pulse", plain(win.property("lastAccepted")))
 
-    # 3. Edit a locked encoder axis: pulses are greyed, it saves its settings.
-    calls.clear()
+    # 3. Edit a locked encoder axis (the page's Edit Settings…, S146):
+    # pulses are greyed; OK sends the changed step to applySettings.
     call(dialog, (
-        'openForEdit("u1", {address: "/knob/1", locked: true, mode: "encoder", '
+        'openForKeys(["k1"], {address: "/knob/1", locked: true, mode: "encoder", '
         'enc_format: "direction", enc_step: 0.2, enc_output: "axis", '
         'cmd_mode: "message", data: [], source: 0})'
     ))
@@ -254,12 +254,13 @@ def _smoke() -> None:
            if find("oscEncStep") else None)
     report("locked-axis-format", bool(find("oscEncFormatDirection")
            and find("oscEncFormatDirection").property("checked")))
+    set_text("oscEncStep", "0.3")
     click("oscOk")
-    report("edit-saved", calls[-1][1:] if calls else None)
+    report("edit-saved", plain(win.property("lastApplied")))
 
     # 4. A locked button switched to Encoder gets pulses, never the axis.
     call(dialog, (
-        'openForEdit("u2", {address: "/btn/1", locked: true, mode: "button", '
+        'openForKeys(["k2"], {address: "/btn/1", locked: true, mode: "button", '
         'cmd_mode: "message", data: [], source: 0})'
     ))
     click("oscModeEncoder")
@@ -328,10 +329,10 @@ def test_add_window_encoder_settings_reach_the_model(tmp_path: pathlib.Path) -> 
     assert got["locked-axis-outs"] == [True, False, False]
     assert got["locked-axis-step"] == "0.2"
     assert got["locked-axis-format"] is True
-    uid, saved = got["edit-saved"]
-    assert uid == "u1" and saved["mode"] == "encoder"
-    assert saved["enc_format"] == "direction" and saved["enc_output"] == "axis"
-    assert saved["enc_step"] == pytest.approx(0.2)
+    saved = got["edit-saved"]
+    assert saved["keys"] == ["k1"]
+    assert list(saved["changed"]) == ["enc_step"]
+    assert saved["changed"]["enc_step"] == pytest.approx(0.3)
 
     # Encoder pulses count as a button.
     assert got["locked-button-outs"] == [False, True, True]
@@ -358,10 +359,34 @@ def model(qapp: object) -> Iterator[Model]:
     shared_state.current_profile = saved
 
 
+@pytest.fixture
+def page(
+    model: Model, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[Page]:
+    """The OSC page's model: Edit Settings… applies through it (S146)."""
+    from gremlin import shared_state
+    from gremlin.modules import store
+    from gremlin.profile import Profile
+    from gremlin.ui.osc_layout import OscLayoutModel
+
+    folder = tmp_path / "modules"
+    folder.mkdir()
+    monkeypatch.setattr(store, "folder", lambda: folder)
+    shared_state.current_profile = Profile()
+    p = OscLayoutModel()
+    yield p
+    p.endPane()
+
+
 def _rows() -> list[Any]:
     from gremlin.osc import OscDevice
 
     return list(OscDevice().rows.rows())
+
+
+def _edit(page: Page, uid: str, changed: dict[str, Any]) -> str:
+    """Edit Settings… OK on one input: the page's applySettings."""
+    return page.applySettings([page.keyOfUid(uid)], changed)
 
 
 def test_import_e_adds_an_encoder_axis_with_auto_format(model: Model) -> None:
@@ -374,7 +399,9 @@ def test_import_e_adds_an_encoder_axis_with_auto_format(model: Model) -> None:
         assert (row.mode, row.enc_format, row.enc_output) == ("encoder", "auto", "axis")
 
 
-def test_encoder_settings_create_update_and_read_back(model: Model) -> None:
+def test_encoder_settings_create_update_and_read_back(
+    model: Model, page: Page
+) -> None:
     from gremlin.types import InputType
     from gremlin.ui.osc_device_model import settings_of
 
@@ -390,14 +417,14 @@ def test_encoder_settings_create_update_and_read_back(model: Model) -> None:
     assert settings["enc_step"] == pytest.approx(0.1)
 
     # Pulses -> axis moves it to an axis while nothing is mapped on it.
-    assert model.updateInputSettings(row.uid, {"enc_output": "axis"}) == ""
+    assert _edit(page, row.uid, {"enc_output": "axis"}) == ""
     [row] = _rows()
     assert row.input_type == InputType.JoystickAxis
     assert settings_of(row)["enc_output"] == "axis"
 
 
 def test_encoder_kind_change_is_refused_when_locked(
-    model: Model, monkeypatch: pytest.MonkeyPatch
+    model: Model, page: Page, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from gremlin.ui import osc_device_model as odm
 
@@ -406,10 +433,10 @@ def test_encoder_kind_change_is_refused_when_locked(
     [row] = _rows()
     monkeypatch.setattr(odm, "has_actions", lambda r: True)
     # Encoder axis -> plain axis keeps the kind; -> pulses changes it.
-    assert model.updateInputSettings(row.uid, {"enc_output": "pulse_ccw"}) == \
-        odm.TYPE_LOCKED
-    assert model.updateInputSettings(row.uid, {"mode": "button"}) == odm.TYPE_LOCKED
-    assert model.updateInputSettings(row.uid, {"mode": "axis"}) == ""
+    locked = f"/knob: {odm.TYPE_LOCKED}"
+    assert _edit(page, row.uid, {"enc_output": "pulse_ccw"}) == locked
+    assert _edit(page, row.uid, {"mode": "button"}) == locked
+    assert _edit(page, row.uid, {"mode": "axis"}) == ""
 
 
 def test_normalize_settings_cleans_encoder_fields() -> None:
