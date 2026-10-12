@@ -131,6 +131,32 @@ Item {
         function onPaneLost() { _pane.closeNow() }
     }
 
+    // The physical joysticks (not Keyboard, OSC, the Logical Device or
+    // vJoy) for the Appearance panel's "Copy from device…"
+    // (D-05-APPEARANCE-COPY-FROM); the panel leaves out the shown one.
+    property int _sticksRev: 0
+    readonly property var copyScopeChoices: {
+        var rev = _sticksRev
+        var out = []
+        for (var i = 0; i < _sticks.count; ++i) {
+            var row = _sticks.objectAt(i)
+            if (row && row.guid.length)
+                out.push({ label: row.name, scope: row.guid })
+        }
+        return out
+    }
+    Instantiator {
+        id: _sticks
+        model: DeviceListModel { deviceType: "physical" }
+        delegate: QtObject {
+            required property string name
+            required property string guid
+            onNameChanged: _root._sticksRev++
+        }
+        onObjectAdded: _root._sticksRev++
+        onObjectRemoved: _root._sticksRev++
+    }
+
     DeviceLiveState {
         id: _live
         guid: _root.guid
@@ -434,6 +460,7 @@ Item {
             pageKey: "device-bindings"
             // Each device keeps its own look (05 S125).
             scopeKey: _root.guid
+            scopeChoices: _root.copyScopeChoices
             buttonName: "deviceBindingsAppearanceButton"
             title: "Device Bindings — Appearance"
             liveOptions: true

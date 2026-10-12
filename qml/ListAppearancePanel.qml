@@ -6,6 +6,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 
+import Gremlin.Menus
 import Gremlin.Style
 import Gremlin.UI
 import "helpers.js" as Helpers
@@ -15,7 +16,9 @@ import "helpers.js" as Helpers
 // program settings (WindowPlacement listAppearanceFor(pageKey, scopeKey),
 // AP2). Device Bindings passes the shown device as scopeKey: each device
 // keeps its own look, falling back to the page's shared one, and "Apply to
-// all devices" makes the shown look the shared one for every device. The
+// all devices" makes the shown look the shared one for every device;
+// "Copy from device…" loads the shared look or another device's into the
+// panel, unsaved until Save Appearance (D-05-APPEARANCE-COPY-FROM). The
 // page binds its ControlTree's appearance properties to this panel's
 // properties of the same names, calls load() once, and closes the panel on
 // closed(); a new scopeKey loads that device's look.
@@ -28,6 +31,10 @@ Rectangle {
     // The device whose look this is on Device Bindings (its guid); "" on
     // the other pages (one look per page).
     property string scopeKey: ""
+    // Device Bindings: the devices "Copy from device…" offers, as
+    // [{label, scope}] (scope as scopeKey); the shown device is left out
+    // here and the shared look is added first.
+    property var scopeChoices: []
     // The live bars / LED dots rows (the Device Bindings page).
     property bool liveOptions: false
 
@@ -520,6 +527,46 @@ Rectangle {
                     verticalAlignment: Text.AlignVCenter
                 }
             }
+            // Device Bindings only: another device's look (or the shared
+            // one) shown here, not saved.
+            Button {
+                id: _copyButton
+                objectName: "copyAppearanceFrom"
+                visible: _panel.scopeKey.length > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: Style.dp(44)
+                text: "Copy from
+device…"
+                highlighted: true
+                onClicked: _copyMenu.popup(_copyButton, 0, _copyButton.height)
+                ToolTip.visible: hovered
+                ToolTip.delay: 500
+                ToolTip.text: "Load another device's look here (not saved until Save Appearance)"
+                contentItem: Text {
+                    text: parent.text
+                    color: Style.onColor
+                    font.pixelSize: Style.dp(12)
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                ThemedMenu {
+                    id: _copyMenu
+                    objectName: "copyAppearanceMenu"
+                    property var choices: []
+                    // Filled before ThemedMenu checks its rows (it hides rows added later).
+                    beforeShow: function() { choices = _panel.copyChoices() }
+                    Instantiator {
+                        model: _copyMenu.choices
+                        delegate: ThemedMenuItem {
+                            required property var modelData
+                            text: modelData.label
+                            onTriggered: _panel.copyFrom(modelData.scope, modelData.label)
+                        }
+                        onObjectAdded: (index, object) => _copyMenu.insertItem(index, object)
+                        onObjectRemoved: (index, object) => _copyMenu.removeItem(object)
+                    }
+                }
+            }
         }
     }
 
@@ -1006,11 +1053,11 @@ Rectangle {
         return savedDisplay.length > 0 && JSON.stringify(displayPayload()) !== savedDisplay
     }
 
-    // Reads this page's setting; keys it doesn't have take their defaults.
-    function load() {
+    // Shows the scope's saved look; keys it doesn't have take their defaults.
+    function _showLook(scope) {
         var v = {}
         try {
-            v = JSON.parse(_place.listAppearanceFor(pageKey, scopeKey))
+            v = JSON.parse(_place.listAppearanceFor(pageKey, scope))
         } catch (e) {
             v = {}
         }
@@ -1018,7 +1065,32 @@ Rectangle {
             applyDisplayDefaults()
         else
             applyDisplay(v)
+    }
+
+    // Reads this page's setting.
+    function load() {
+        _showLook(scopeKey)
         rememberDisplay()
+    }
+
+    // "Copy from device…": the shared look, then every other device.
+    function copyChoices() {
+        var out = [{ label: "Shared Device Bindings look", scope: "" }]
+        var list = scopeChoices || []
+        for (var i = 0; i < list.length; ++i) {
+            var scope = String(list[i].scope || "")
+            if (scope.length && scope !== scopeKey)
+                out.push({ label: String(list[i].label || ""), scope: scope })
+        }
+        return out
+    }
+
+    // Loads another look into the panel without saving: it shows at once
+    // and counts as an unsaved change until Save Appearance.
+    function copyFrom(scope, label) {
+        _showLook(String(scope || ""))
+        toastText = "Copied from " + label + ". Save Appearance to keep it."
+        _savedToast.open()
     }
 
     function save() {

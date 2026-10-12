@@ -993,3 +993,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Appearance per device: panel + page (S-PANEL) | feature | 3-8 min | 4 min | 13:37-13:41 |
 | 2026-10-12 | Appearance per device: end-to-end test (S-E2E) | test | 3-8 min | 5 min (incl. waiting) | 13:37-13:42 |
 | 2026-10-12 | Quick tests batch J (--changed, 3,151 tests; 2 source tests updated) | test | ~7 min | 5 min + 1 | 13:42-13:48 |
+| 2026-10-12 | Copy from device: spec, glossary, Help (C-DOCS) | docs | 3-8 min | 1 min | 14:31-14:32 |
+| 2026-10-12 | Copy from device: panel + page (C-PANEL) | feature | 3-8 min | 5 min | 14:31-14:36 |
+| 2026-10-12 | Copy from device: end-to-end test (C-E2E) | test | 3-8 min | 13 min (incl. waiting) | 14:31-14:44 |
+| 2026-10-12 | Quick tests batch K + themed-menu fix (lead) | test/fix | ~7 min | 5 + 4 min | 14:45-14:59 |
