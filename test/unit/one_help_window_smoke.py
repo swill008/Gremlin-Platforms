@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware) and opens Help from the
-main window, the Device Library and the Button Map (01 S128, 10 S42),
+main window, the Device Library and the Device Mapping Editor (01 S128, 10 S42),
 printing as JSON what the one Help window showed. test_one_help_window.py
 runs it in its own process with a fresh user folder.
 """
@@ -204,15 +204,17 @@ try:
     out["back_clicked"] = click_object(help_win, "viewChapterOnly")
     out["library_back"] = state()
 
-    # The Button Map: its chapter only.
-    ev(win, "Commands.trigger('tools.buttonMap')")
-    wait_until(lambda: bool(visible(lambda t: t.startswith("Button Map"))), 8000)
-    bm = visible(lambda t: t.startswith("Button Map"))[0]
-    out["buttonmap_items"] = help_items(bm, "_menuBar")
+    # The Device Mapping Editor: its chapter only.
+    ev(win, "Commands.trigger('tools.deviceMappingEditor')")
+    wait_until(
+        lambda: bool(visible(lambda t: t.startswith("Device Mapping Editor"))), 8000
+    )
+    bm = visible(lambda t: t.startswith("Device Mapping Editor"))[0]
+    out["editor_items"] = help_items(bm, "_menuBar")
     help_win.close()
     wait_until(lambda: not help_windows(), 3000)
     press_f1(bm)
-    out["buttonmap_f1"] = state()
+    out["editor_f1"] = state()
 
     # Main F1 again: the whole book, in the same window.
     press_f1(win)

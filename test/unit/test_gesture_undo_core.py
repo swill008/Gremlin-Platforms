@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""A drag in the Button Map editor is one undo step (07 S55a).
+"""A drag in the Device Mapping Editor is one undo step (07 S55a).
 
 A picture's hover highlight used to save an undo step each time it changed,
 so dragging a corner handle back and forth across the picture's edge made

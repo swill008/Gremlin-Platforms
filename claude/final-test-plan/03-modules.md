@@ -12,10 +12,10 @@ A3 = `U/test_audit3_module_files.py`, B1M = `U/test_batch1_module_pages.py`.
 |---|---|---|---|
 | S1 | One file rule: id, bound file, saved name, own name | U/test_module_lookup_device_first::test_saved_binding_still_wins; U/test_module_registry::test_resolve_prefers_bound_device | covered |
 | S2 | A stale id never pulls in another device's file | U/test_module_lookup_device_first::test_stale_id_does_not_pull_in_another_devices_file | covered |
-| S3 | Renamed stick keeps its old file everywhere | A3::test_renamed_sticks_file_counts_as_saved_and_is_the_one_deleted, ::test_delete_device_removes_a_renamed_sticks_file, ::test_renamed_sticks_photo_goes_with_the_file_its_button_map_opens; S1::test_import_into_a_renamed_stick_goes_into_the_file_it_uses | covered |
+| S3 | Renamed stick keeps its old file everywhere | A3::test_renamed_sticks_file_counts_as_saved_and_is_the_one_deleted, ::test_delete_device_removes_a_renamed_sticks_file, ::test_renamed_sticks_photo_goes_with_the_file_its_device_mapping_editor_opens; S1::test_import_into_a_renamed_stick_goes_into_the_file_it_uses | covered |
 | S4 | No device match: the file named after the device | U/test_module_lookup_device_first::test_no_device_match_falls_back_to_the_name | covered |
 | S5 | Twins get "<name> (2)"; the bound one keeps the plain name | U/test_twin_devices::test_the_second_identical_device_gets_its_own_name, ::test_the_device_the_file_is_bound_to_keeps_the_plain_name | covered |
-| S6 | Each twin its own file/card/Button Map/calibration | U/test_twin_devices::test_each_twin_has_its_own_card, ::test_an_old_shared_choice_doesnt_hand_a_twin_the_other_twins_file, ::test_the_button_map_of_the_second_twin_opens_its_own_file; A3::test_twins_that_both_saved_into_one_file_each_get_their_own; J/test_j04_twin_sticks | covered |
+| S6 | Each twin its own file/card/device map/calibration | U/test_twin_devices::test_each_twin_has_its_own_card, ::test_an_old_shared_choice_doesnt_hand_a_twin_the_other_twins_file, ::test_the_device_map_of_the_second_twin_opens_its_own_file; A3::test_twins_that_both_saved_into_one_file_each_get_their_own; J/test_j04_twin_sticks | covered |
 | S7 | One vJoy never opens another vJoy's file | A3::test_one_vjoy_never_opens_another_vjoys_file, ::test_a_vjoy_with_no_id_does_not_open_a_file_bound_to_another_device | covered |
 | S8 | Device Pack and Output View use the same rule | A3::test_device_pack_and_output_view_use_the_one_rule | covered |
 | S9 | Every caller passes name and id, one stale-id filter | B1M::test_a_stale_id_does_not_send_start_fresh_to_another_devices_file, ::test_twin_cards_keep_their_own_counts_and_are_looked_up_by_id, ::test_pairing_and_module_inputs_read_the_twins_own_file; guard U/test_module_store_only | covered |
@@ -73,7 +73,7 @@ A3 = `U/test_audit3_module_files.py`, B1M = `U/test_batch1_module_pages.py`.
 | S61 | Import with unsaved ticks asks first | Hands-on: tick a box, Module File › Import from: asked before the import | hands-on |
 | S62 | Delete File asks, keeps a copy, refuses without copy or when shared | U/test_data_safety::test_deleting_a_module_file_keeps_a_copy, ::test_no_copy_means_no_delete; A3::test_a_file_another_stick_uses_is_not_deleted. Hands-on: the confirm appears and says pictures are kept | covered |
 | S63 | Failed Delete File: no History entry | A3::test_a_delete_module_file_that_failed_is_no_history_entry | covered |
-| S64 | Damaged file never empty; every save refused | U/test_module_file_damage::test_damaged_file_is_refused, ::test_module_setup_save_is_refused, ::test_layout_saves_are_refused, ::test_button_map_save_is_refused | covered |
+| S64 | Damaged file never empty; every save refused | U/test_module_file_damage::test_damaged_file_is_refused, ::test_module_setup_save_is_refused, ::test_layout_saves_are_refused, ::test_device_mapping_editor_save_is_refused | covered |
 | S65 | Card "Module file damaged – inputs blocked", Start Fresh… | U/test_module_file_damage::test_card_says_damaged_and_start_fresh_keeps_a_copy; S1::test_a_damaged_card_turns_back_after_history_restore | covered |
 | S66 | Start Fresh asks, moves aside, says when it fails | U/test_module_file_damage::test_start_fresh_keeps_the_damaged_file; S1::test_start_fresh_moves_the_damaged_file_aside | covered |
 | S67 | Damaged file never stops Home or Run lists | A3::test_a_module_file_that_is_not_utf8_doesnt_stop_home | covered |
@@ -142,7 +142,7 @@ A3 = `U/test_audit3_module_files.py`, B1M = `U/test_batch1_module_pages.py`.
 | Q8 | Cards show claimed counts (D-03-Q8-NOFILE: no file, own counts) | S1 card count tests; F03::test_s72_... | covered |
 | Q9 | Calibration lists every axis, marks unclaimed | U/test_batch2_b2b::test_calibration_lists_every_axis_and_marks_unclaimed_ones | covered |
 | Q10 | Stacks keep cards that aren't showing | S1::test_a_stack_edit_keeps_a_hidden_card_in_its_stack; U/test_batch2_b3::test_unstacking_another_card_keeps_a_hidden_card_in_its_stack, ::test_a_new_stack_keeps_a_hidden_card_in_its_old_stack | covered |
-| Q11 | "Input/Output Module Setup" in the glossary | U/test_batch3_C1::test_glossary_names_module_setup_windows_and_button_map_options | covered |
+| Q11 | "Input/Output Module Setup" in the glossary | U/test_batch3_C1::test_glossary_names_module_setup_windows_and_device_map_options | covered |
 | Q12 | Help Home topic lists Keyboard, OSC, Logical Device | U/test_batch3_C1::test_home_help_lists_every_card_and_what_each_leaves_out | covered |
 | Q13 | Import into the file the device uses | S1::test_import_into_a_renamed_stick_goes_into_the_file_it_uses | covered |
 | Q14 | Delete File keeps pictures, confirm says so | U/test_batch3_C5::test_delete_file_confirm_says_the_pictures_are_kept | covered |

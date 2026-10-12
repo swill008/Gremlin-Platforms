@@ -163,16 +163,16 @@ def test_merge_axis_help_says_prefer_center() -> None:
 # | GL-221, GL-222: Clear Background (was Clear Photo, 07 S41,
 # | D-07-BACKGROUND-PLANES); what Save writes.
 
-def test_button_map_help_on_clear_background_and_save() -> None:
+def test_device_mapping_editor_help_on_clear_background_and_save() -> None:
     assert "module's picture" not in _GUIDE
     assert "Clear Background" in _GUIDE
     assert "Clear Photo" not in _GUIDE
     assert "only written by Save" not in _GUIDE
-    options = _topic("Button Map Options")
+    options = _topic("Device Map Options")
     assert "written to the module file only by Save" in options
     assert "kept with the device's map at once" in options
     assert "one undo puts the old layout back" in _topic(
-        "Copy a Button Map from another device"
+        "Copy a device map from another device"
     ).casefold()
 
 
@@ -245,7 +245,7 @@ def test_hidhide_window_and_developer_notes() -> None:
 
 # | GL-211, GL-223: glossary names.
 
-def test_glossary_names_module_setup_windows_and_button_map_options() -> None:
+def test_glossary_names_module_setup_windows_and_device_map_options() -> None:
     glossary = _read("claude/glossary.md")
     assert "**Input Module Setup**" in glossary
     assert "**Output Module Setup**" in glossary

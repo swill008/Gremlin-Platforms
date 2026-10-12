@@ -91,7 +91,7 @@ def _stored_key(names: dict[str, str], key: object) -> str | None:
 
 
 def display_name(key: str, default: str) -> str:
-    """The alias the user gave (Home device list, Button Map), else default.
+    """The alias the user gave (Home device list, Device Mapping Editor), else default.
     A reader of the names: the notice is started, so it hears a History
     put-back and a device scan."""
     watch_names()

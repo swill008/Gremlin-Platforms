@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen for the 4 px drag dead zone
+"""Drives the Device Mapping Editor off-screen for the 4 px drag dead zone
 (D-FIXLIST-B1 item 3): a press on a chip, group member or drawing that moves
 less than 4 screen pixels only selects; past 4 px the item follows the
 pointer from where it was pressed. Prints the results as JSON;

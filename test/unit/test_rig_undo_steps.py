@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""One undo step per command in the Button Map editor (07 S55).
+"""One undo step per command in the Device Mapping Editor (07 S55).
 
 A run of nudges or color-picker moves waits for a pause before it becomes
 an undo step. A command made during that wait used to take the run into its

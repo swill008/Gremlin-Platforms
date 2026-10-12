@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Button Map grid sizes go down to 1 (View > Grid > Size), and a map saved
+"""Device map grid sizes go down to 1 (View > Grid > Size), and a map saved
 with a size of 1 or 2 keeps it when it loads (sizes under 4 were dropped)."""
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from __future__ import annotations
 import pathlib
 import re
 
-_QML = pathlib.Path(__file__).parents[2] / "qml" / "DialogJoystickButtonMap.qml"
+_QML = pathlib.Path(__file__).parents[2] / "qml" / "DialogDeviceMappingEditor.qml"
 
 
 def test_size_menu_starts_at_one() -> None:

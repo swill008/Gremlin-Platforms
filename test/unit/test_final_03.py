@@ -484,7 +484,7 @@ def test_s117_output_view_appearance_is_saved_in_the_module_file(modules: Path) 
     assert others == ["Xbox 360 Controller"]
 
 
-# --- N. Auto Mapping Tool ----------------------------------------------------------------
+# --- N. Auto Mapping Tool -------------------------------------------------------------
 
 
 def test_s119_auto_mapping_tool_lists_claiming_inputs_once_and_one_output_per_vjoy(

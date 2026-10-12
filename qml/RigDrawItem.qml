@@ -8,7 +8,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// A drawing in the Button Map editor: shape, text box, table or image layer.
+// A drawing in the Device Mapping Editor: shape, text box, table or image layer.
 Item {
     id: _drawRoot
     property var ed: null

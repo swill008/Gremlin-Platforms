@@ -111,7 +111,7 @@ def _main(out: pathlib.Path) -> None:
         "Gremlin.Style", 1, 0, "Style",
     )
     import gremlin.ui.backend  # noqa: F401
-    import gremlin.ui.button_map_options  # noqa: F401
+    import gremlin.ui.device_map_options  # noqa: F401
     import joystick_gremlin
     from gremlin.ui import option
 
@@ -121,7 +121,7 @@ def _main(out: pathlib.Path) -> None:
     engine.warnings.connect(
         lambda ws: [print("WARN " + w.toString(), flush=True) for w in ws]
     )
-    for scope in ("", "button-map"):
+    for scope in ("", "device-mapping-editor"):
         model = option.ConfigSectionModel()
         model.scope = scope
         engine.rootContext().setContextProperty("sectionModel", model)

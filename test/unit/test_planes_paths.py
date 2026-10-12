@@ -9,7 +9,7 @@ bottom background picture is the device's photo (07 S127). Each path puts
 back every background node as it was (its plane key, its place in the
 order) and every picture it names:
 
-- History: a Button Map Save is an entry; Restore puts the background
+- History: a Device Mapping Editor Save is an entry; Restore puts the background
   layers and their pictures back (08 S114).
 - Device folder file (.gmap): export, then import into an empty modules
   folder (08 S111, S113).
@@ -19,7 +19,7 @@ order) and every picture it names:
   ticked (Map and Device photo): the pack's background in its order (08
   S75, S113).
 
-The real store, History, Device Library, Device Pack and Button Map Save
+The real store, History, Device Library, Device Pack and Device Mapping Editor Save
 (HardwareProfile.save) in an empty modules folder; the fake stick.
 """
 
@@ -131,8 +131,8 @@ def _read(where: Path) -> dict:
     return store.read_path(store.module_file_in(where))
 
 
-def _button_map_save(name: str, guid: str, nodes: list[dict]) -> None:
-    """The Button Map's Save (07 S12), not in an edit: the pictures are in
+def _device_map_save(name: str, guid: str, nodes: list[dict]) -> None:
+    """The Device Mapping Editor's Save (07 S12), not in an edit: the pictures are in
     the device's folder already."""
     hw = hardware_profile.HardwareProfile()
     hw.setDeviceGuid(guid)
@@ -143,7 +143,7 @@ def _change_background(name: str, guid: str, where: Path) -> None:
     """Background B instead of A; A's pictures are no longer named, so the
     save removes them from the folder (07 S106)."""
     store.put_picture_at(where / store.PICTURES / "new.png", NEW_PHOTO)
-    _button_map_save(name, guid, _background_b() + _foreground())
+    _device_map_save(name, guid, _background_b() + _foreground())
     doc = _read(where)
     assert [n["id"] for n in doc["nodes"] if store.is_background(n)] == ["bg_new"]
     assert not (where / store.PICTURES / "photo.png").exists()
@@ -210,7 +210,7 @@ def test_history_restore_puts_the_background_and_its_pictures_back(
 ) -> None:
     name, guid = stick
     where = _put(name, guid, _map(name, guid, _foreground()), _PICTURES_A)
-    _button_map_save(name, guid, _background_a() + _foreground())
+    _device_map_save(name, guid, _background_a() + _foreground())
     saved_a = _read(where)
     check_background(saved_a, where, _background_a(), _PICTURES_A)
     settle_history()
@@ -227,7 +227,7 @@ def test_history_restore_puts_the_background_and_its_pictures_back(
     ]
     assert len(new) == 1, new
     entry = new[0]
-    assert entry["area"] == "button-map"
+    assert entry["area"] == "device-mapping-editor"
     kept = {p["ref"] for p in entry["before"]["pictures"] if p["keptFile"]}
     assert kept >= {"pictures/photo.png", "pictures/knob.png"}
 

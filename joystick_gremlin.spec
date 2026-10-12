@@ -28,7 +28,7 @@ binaries = [
 ]
 
 hidden_imports = [
-    # Button Map File > Print (imported where it is used).
+    # Device Mapping Editor File > Print (imported where it is used).
     "PySide6.QtPrintSupport",
     "action_plugins",
     "action_plugins.axis_delta",

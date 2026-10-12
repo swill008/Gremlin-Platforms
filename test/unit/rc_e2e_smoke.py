@@ -2,9 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's right-click additions and Favourites (07 S136, S137) in
+"""The Device Mapping Editor's right-click additions and Favourites (07 S136, S137) in
 the real window: starts the program off-screen (stand-in hardware, a
-temporary user folder), opens a stick's Button Map, and drives the
+temporary user folder), opens a stick's Device Mapping Editor, and drives the
 right-click menu (its ☆, Favourites block and ×, Repeat, Cut, Paste Here,
 Show in Layers, Properties…) and the menu bar's ☆ with the mouse. Prints one
 "RESULT {json}" line; a step that raised is {"error": ...} under its own
@@ -96,7 +96,7 @@ store.module_file_in(DEVICE).write_text(
 )
 
 import joystick_gremlin  # noqa: E402
-from gremlin.ui import button_map_options  # noqa: E402
+from gremlin.ui import device_map_options  # noqa: E402
 
 # Commands that apply to a selected chip (the Favourites block shows them).
 CHIP_CMDS = [
@@ -164,7 +164,7 @@ class Window:
 
     @property
     def win(self) -> QtQuick.QQuickWindow:
-        return call(self.root, "buttonMapWindow")  # type: ignore[return-value]
+        return call(self.root, "deviceMappingEditorWindow")  # type: ignore[return-value]
 
     def content(self) -> QtQuick.QQuickItem:
         """The window's content item (its overlay holds the menus)."""
@@ -381,7 +381,7 @@ class Window:
                 (
                     c
                     for c in _items(row)
-                    if c.objectName() == f"bmStar_{cid}" and c.isVisible()
+                    if c.objectName() == f"dmeStar_{cid}" and c.isVisible()
                 ),
                 None,
             ),
@@ -398,21 +398,21 @@ class Window:
 
 
 def open_window(root: QtCore.QObject, w: Window) -> None:
-    call(root, "openButtonMapForCard", CARD)
+    call(root, "openDeviceMappingEditorForCard", CARD)
     wait_for(lambda: w.win is not None)
     w.win.setProperty("width", 1300)
     w.win.setProperty("height", 860)
     wait_for(
         lambda: w.ev(
-            f"_buttonMap.targetName === {json.dumps(NAME)} && _buttonMap.faceLive"
+            f"_editorWin.targetName === {json.dumps(NAME)} && _editorWin.faceLive"
             " && _ed() !== null && _ed().nodes.length > 0"
         )
     )
-    w.ev("_buttonMap.enterEdit()")
+    w.ev("_editorWin.enterEdit()")
     wait_for(
         lambda: w.ev(
-            "_buttonMap.editing && _ed() !== null && _ed().seeded &&"
-            " !_buttonMap._baseWanted"
+            "_editorWin.editing && _ed() !== null && _ed().seeded &&"
+            " !_editorWin._baseWanted"
         )
     )
 
@@ -440,8 +440,8 @@ def carry(
         # A change so the save writes.
         w.select(["b2"])
         w.ev("_ed().nodeAt('b2').label = 'Saved'; _ed().bump()")
-        w.ev("_buttonMap.saveEdit()")
-        wait_for(lambda: not w.ev("_buttonMap.editing"), 5)
+        w.ev("_editorWin.saveEdit()")
+        wait_for(lambda: not w.ev("_editorWin.editing"), 5)
         path = store.module_file_in(DEVICE)
         text = path.read_text(encoding="utf-8")
         return {"path": str(path), "text": text, "saved": "Saved" in text}
@@ -476,7 +476,7 @@ def carry(
     step(
         "carry-setting",
         lambda: {
-            "stored": button_map_options.favourites(),
+            "stored": device_map_options.favourites(),
             "files": {
                 str(p.relative_to(_HOME)): p.read_text(
                     encoding="utf-8", errors="replace"
@@ -514,7 +514,7 @@ def main() -> None:
             pass
 
     open_window(root, w)
-    out["editing"] = bool(w.ev("_buttonMap.editing"))
+    out["editing"] = bool(w.ev("_editorWin.editing"))
 
     if CARRY:
         carry(w, out, step)
@@ -756,16 +756,16 @@ def main() -> None:
 
     # --- Properties… ---------------------------------------------------------
     def properties() -> dict:
-        w.ev("_buttonMap.propsOn = false")
+        w.ev("_editorWin.propsOn = false")
         w.ev("_layersSide.pinned = false; _layersSide.open = false")
         QtTest.QTest.qWait(100)
         w.select(["b2"])
         w.right_click(w.centre("b2"))
         res: dict = {"clicked": w.click_row("Properties…")}
         QtTest.QTest.qWait(300)
-        res["props-on"] = w.ev("_buttonMap.propsOn")
+        res["props-on"] = w.ev("_editorWin.propsOn")
         res["layers-open"] = w.ev("_layersSide.open")
-        res["shown"] = w.ev("_buttonMap.propsShown")
+        res["shown"] = w.ev("_editorWin.propsShown")
         return res
 
     step("properties", properties)
@@ -776,13 +776,13 @@ def main() -> None:
         w.ev(f"{_ROW}('View', 'Reset Panels').triggered()")
         QtTest.QTest.qWait(100)
         res: dict = {"after-reset": w.favs()}
-        w.ev("_buttonMap.discardEdit()")
-        wait_for(lambda: not w.ev("_buttonMap.editing"), 5)
+        w.ev("_editorWin.discardEdit()")
+        wait_for(lambda: not w.ev("_editorWin.editing"), 5)
         w.win.close()
         QtTest.QTest.qWait(300)
         open_window(root, w)
         res["next-window"] = w.js("_ed().favourites")
-        res["stored"] = button_map_options.favourites()
+        res["stored"] = device_map_options.favourites()
         w.select(["b1"])
         w.right_click(w.centre("b1"))
         res["rows"] = w.fav_rows()

@@ -89,7 +89,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 ## Planned features (need the user's decisions)
 
-26. **BM41 – A bigger page for the Button Map.** The page (32000 x 18000
+26. **BM41 – A bigger page for the Device Mapping Editor.** The page (32000 x 18000
     page units, `worldPageW/H` in `qml/VkbRigEditor.qml`; `pageW/pageH`
     saved by `gremlin/ui/hardware_profile.py`, one `PAGE_SIZE` since batch 3)
     grows so there is more room around the photo; the photo frame (inner
@@ -145,7 +145,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 39. PySide6 6.12.0: CI picked it up on 2026-10-08 (no poetry.lock in the repo) and 24
     tests that start the program off-screen crashed (access violation, exit 3221225477),
-    plus menu differences (test_menus, test_button_map_window), runs 37754952665.
+    plus menu differences (test_menus, test_device_mapping_editor_window), runs 37754952665.
     pyproject.toml holds PySide6 below 6.12 until we find what changed and fix it.
 
 40. ~~Retire the Device Pack window once the Device Library is in and used
@@ -190,7 +190,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     Decision 2026-10-08 (user): integration tests are opt-in for real vJoy. Normal runs
     (full run, CI) use the stand-in vJoy; a separate, clearly named command runs them
     against the real vJoy only when asked, one process, never killed mid-run.
-45. Button Map canvas editor into the shared Rename box (parked by the user 2026-10-08,
+45. Device Mapping Editor canvas editor into the shared Rename box (parked by the user 2026-10-08,
     D-01-CANVAS-EXEMPT). Plan: RenameField gets a row limit (Shift+Enter adds a row; chips 2),
     a per-place empty rule (keep / default label / allow empty) and a plain canvas look; the
     canvas keeps placing it over the chip (chipScreenRect, rotation, font size). Text boxes and
@@ -202,7 +202,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     (a) a waiting nudge/photo/colour run merges into the next command's undo step if it
     comes within 400 ms: push the run's own step first (session_r, callout goldens change);
     (b) Add callout makes two undo steps (rig_callout.js addCalloutFor: addDrawFree + bump);
-    (c) button_map_fixes_smoke.py nudge test depends on 5 nudges within 400 ms.
+    (c) device_mapping_editor_fixes_smoke.py nudge test depends on 5 nudges within 400 ms.
 47. Test race (found 2026-10-08, full run seed 124841; passed on rerun): test_stall_detection.py's
     inner pytest runs failed at collection with FileNotFoundError on a %TEMP%\gremlin-pack-*
     folder another test removed meanwhile; test_final_01.py::test_s44 failed in the same run
@@ -237,12 +237,12 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     destructive pair: DangerButton (one red button) + ConfirmDialog / Confirm.ask (names what goes,
     red go button, Cancel default, Enter/Esc cancel, "History can put it back" or "can't be undone");
     move every delete/clear question onto it (Library, History Clear, Delete Device, Delete File,
-    Button Map, Manage Modes). Then 1 shared search box (from HelpSearchBar) and 2 shared message line
+    Device Mapping Editor, Manage Modes). Then 1 shared search box (from HelpSearchBar) and 2 shared message line
     (Library's, with Undo link). Later: section divider/heading, empty state, file/folder picker that
     remembers folders, shared Undo/Redo bar. Estimates: pair ~30 min (3 agents), 1+2 ~30 min.
-    Sighting 2026-10-09 (CI run 37979393055, seed 759318): stage1_button_map_smoke 'outside' part blocked in
-    QMetaObject.invokeMethod(root, "buttonMapWindow") (smoke line 153), no Python frame above; passes locally (39 in 42 s).
-    test_stage1_button_map._run now keeps the whole stall report. Next if it repeats: faulthandler C-level dump.
+    Sighting 2026-10-09 (CI run 37979393055, seed 759318): stage1_device_mapping_editor_smoke 'outside' part blocked in
+    QMetaObject.invokeMethod(root, "deviceMappingEditorWindow") (smoke line 153), no Python frame above; passes locally (39 in 42 s).
+    test_stage1_device_mapping_editor._run now keeps the whole stall report. Next if it repeats: faulthandler C-level dump.
     Sighting 2026-10-09 17:25 (local full run, unit-2): test_final_01::test_s12 child app stalled past 120 s
     under full load; passes alone in 1.5 s. Same blocked-while-loading class.
     Sighting 2026-10-09 20:3x (CI run 38012818159, seed 21247, 468e0838): setup stall in two History
@@ -256,7 +256,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     ask the user). Pass 2: ~12 new topics (safety net: recovery copy, unfinished actions / Save
     without them, missing files; Treat as; what Stop releases; the tray incl. memory saving (01 S87);
     Clear History + Before/After + Previous/Next change; command-line options; the Help window itself
-    (S137, S138); Button Map unplugged/damaged; Device Pack refusals; card drag/resize; mode rules).
+    (S137, S138); Device Mapping Editor unplugged/damaged; Device Pack refusals; card drag/resize; mode rules).
     Pass 3: ~55 partly covered topics. 5 agents, one chapter file each; claude/help-style.md.
     Estimates: 10 + 30-40 + 30 min.
 54. PLANNING (user 2026-10-09): "Show me" links in Help that open or point at the thing a topic
@@ -274,7 +274,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
     "Plug in <device> to change its setup. Nothing was saved."; gremlin/ui/module_model.py ~1900,
     ~1951); 03 S103 a calibration with lowest above highest gets "...lowest and highest values are the
     same"; 08 S104 spec spells "Previous change"/"Next change", buttons say "Previous Change"/"Next
-    Change" (glossary Title Case); 05 S59 "Reuse" never appears on screen; 07 S12 Button Map status
+    Change" (glossary Title Case); 05 S59 "Reuse" never appears on screen; 07 S12 Device Mapping Editor status
     line on a refused save into a damaged file says only "Not written..." (check the dialog).
 
 57. DONE 2026-10-09 (with the shared-pieces batch) (user 2026-10-09): show the program version in the main
@@ -494,8 +494,10 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 105. DONE 2026-10-11 (RIG, J13, E2E-PRESET; j13 found and PAIR-NAMES fixed the vJoy Viewer name bug). (user 2026-10-11: "1a, code it as the next batch after this push") (MULTI-DEVICE) Tests see one stick (pJoy Pro) and one vJoy by default; ~35 files build their own extra devices. Build: a `devices` option in the journey harness next to `vjoy_ids` (default one pJoy Pro) with a preset rig (pJoy Pro, Saitek X52, a twin pair, vJoy 1 + 2); one multi-device journey (two sticks to two vJoys, Home cards + Driven by, Swap, Change vJoy Output, twin rename, unplug/re-plug, Input Viewer); today's end-to-end tests use the preset. Test-time rule (user 2026-10-11, 1a): keep one full run; after this batch measure the full run and add a row to timings.md; if it goes over ~7 min, add a "deep" marker for heavy multi-device journeys (in the full run and CI, skipped in targeted runs).
 106. Device folders (D-03-DEVICE-FOLDERS, with D-08-GMAP-IMPORT and D-10-GMAP-SETUPS) BUILT 2026-10-11 (this commit). Background/foreground planes (D-07-BACKGROUND-PLANES, D-07-PLANES-ANSWERS) BUILT 2026-10-11.
    - ONE-TIME code (tracker group "One-time code"): OT-1 the move to device folders, `gremlin/modules/folders_move.py` and `joystick_gremlin._move_to_device_folders` (also `folders_move.register_setting` reading the old file-bindings setting once). Remove when no install still has the old layout (the user decides; at the latest before the first public release). OT-2 (an old map's photo becomes the bottom background picture when the map opens, in memory, written at the next Save; D-07-PLANES-ANSWERS P3a), built: gremlin/modules/planes_once.py, the fallback in store.device_photo_ref, hardware_profile._planes_text, device_pack._today_layout / _old_photo_in_zip / _merge_background, library_swap._swapped_docs (all marked `# ONE-TIME (tracker OT-2)`); remove once every map has been saved in the new format.
+   - OT-3 one-time settings move: remove before release with OT-1/OT-2. The Button Map's settings move to the Device Mapping Editor's names at start (section "button-map" -> "device-mapping-editor"; global/internal/button-map-<x> -> device-map-<x>): `gremlin/device_map_settings_once.py` (all marked `# ONE-TIME (tracker OT-3)`), its call in `joystick_gremlin.py` before register_config_options, test `test/unit/test_device_map_settings_once.py`.
+   - OT-4 one-time move: Library part id button_map -> device_map; remove before release with OT-1/OT-2/OT-3. At start, library.json's default parts, every saved setup's holds and the last change's parts are renamed once (backup of library.json in <data folder>/backup/<date> library part id move/; no old id left = done): `gremlin/library_part_id_once.py` (all marked `# ONE-TIME (tracker OT-4)`), its call in `joystick_gremlin.py` after register_config_options, test `test/unit/test_library_part_id_once.py`.
    - To check: the device-export end-to-end test's off-screen child logged a refused load of the real dill.dll from an "event listener" thread (the harness guard caught it; the test passes). Find which import starts that thread in the off-screen Home page harness.
-   - Planes, open for the user: (a) S126 Show me links into the Button Map window (BG-SHOWME); (b) should a Layers kind filter hide the folded Background row (now it always shows); (c) 03 S88 wording says the Logical Device card photo is the file's "image" (now the bottom background picture); (d) the window's openForDevice photo argument is unused (tidy-up); (e) editor-only tests not written: Align/Distribute and zoom in Background mode, leader ends snapping to a background picture.
+   - Planes, open for the user: (a) S126 Show me links into the Device Mapping Editor window (BG-SHOWME); (b) should a Layers kind filter hide the folded Background row (now it always shows); (c) 03 S88 wording says the Logical Device card photo is the file's "image" (now the bottom background picture); (d) the window's openForDevice photo argument is unused (tidy-up); (e) editor-only tests not written: Align/Distribute and zoom in Background mode, leader ends snapping to a background picture.
    - Spec wording to ask the user about (map check, 2026-10-11): 04 S2 and 09 S44 name `store.path_of(...)` (gone); 06 S95 and LD3 say `logical_device.json`; 09 S168 and the OSC trace lines say `osc.json` (gap OSC-TRACE-NAME); 03 S62 "another stick uses the file" can't happen with device folders; 07 S106 also keeps pictures the recovery copy names; 08 S85 "binds the devices again"; 08 S87 names a deleted test file.
 
 107. FLAKY on CI (2026-10-11, run 38162521838 on 3130f65c): test_input_tester_e2e2.py::test_tester_log_rotates_at_one_megabyte waited its 15 s for "values read ok" in tester.log and failed; passes locally in 0.7 s; not touched by today's commits. If it fails again, trace why the tester writes that line late under CI load (re-run passed/failed: see timings).
@@ -515,7 +517,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 - [x] **Item 2: CI on one branch only** (2026-10-07, c3743f47): `ci.yml`
   runs on pushes and pull requests to `Gremlin-Platforms` only.
-- [x] **Item 3: Button Map exports in the background** (2026-10-07,
+- [x] **Item 3: Device Mapping Editor exports in the background** (2026-10-07,
   8cf783dd; spec 07 S101, D-07-EXPORT-BG): `saveAreaAsync` on a
   `gremlin.threads` worker, `areaSaved` on the main thread, Export buttons
   disabled with "Exporting…" while one runs.

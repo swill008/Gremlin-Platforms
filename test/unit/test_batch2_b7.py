@@ -354,7 +354,8 @@ def test_a_binding_without_the_usual_root_is_no_assert() -> None:
     )
     binding = item.add_item_binding()
     binding.root_action = None
-    assert auto_mapping_tool.AutoMappingTool(profile)._get_used_vjoy_inputs("Default") == []
+    tool = auto_mapping_tool.AutoMappingTool(profile)
+    assert tool._get_used_vjoy_inputs("Default") == []
 
 
 def test_a_vjoy_read_back_as_an_input_is_skipped_and_said(

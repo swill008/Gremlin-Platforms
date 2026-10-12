@@ -54,7 +54,7 @@ _UUID_RE = re.compile(
 _KIND_WORD = {"btn": "Button", "button": "Button", "axis": "Axis", "hat": "Hat"}
 # The pack format this program writes and reads. A newer pack is refused.
 PACK_FORMAT = 2
-# The Button Map's view settings (module file "ui"), in two rows.
+# The Device Mapping Editor's view settings (module file "ui"), in two rows.
 _MAP_VIEW_KEYS = (
     "gridOn", "snapOn", "snapEntOn", "gridSize", "viewPct", "panX", "panY",
     "guidesX", "guidesY", "guidesOn",
@@ -1136,7 +1136,7 @@ def _describe(path: Path) -> dict | str:
     if module_rows:
         sections.append({"id": "input", "title": "Input module", "items": module_rows})
     if map_rows:
-        sections.append({"id": "map", "title": "Button map", "items": map_rows})
+        sections.append({"id": "map", "title": "Device map", "items": map_rows})
     if setting_rows:
         sections.append(
             {"id": "mapset", "title": "Map settings", "items": setting_rows}
@@ -1241,7 +1241,7 @@ def _zip_pictures(doc: dict, urls: dict[str, str]) -> list[dict]:
 def _split_sections(
     doc: dict, pictures: list[dict], prefix: str
 ) -> tuple[list[dict], list[dict], list[dict]]:
-    """The module rows, the Button Map rows and the Map settings rows."""
+    """The module rows, the Device Mapping Editor rows and the Map settings rows."""
     placed = _place_pictures(doc, pictures, prefix)
     module_ids = {
         prefix + "checks", prefix + "names", prefix + "calibration",
@@ -2603,7 +2603,7 @@ def _written(files: list[tuple[Path, bytes | None]]) -> dict[str, bytes | None]:
 
 
 def changed_since_import() -> list[str]:
-    """Files of the last import saved again since (the Button Map, Module
+    """Files of the last import saved again since (the Device Mapping Editor, Module
     Setup): Undo Import would lose those changes (08 Q5)."""
     record = _last_import
     if record is None or "written" not in record:

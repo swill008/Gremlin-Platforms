@@ -785,7 +785,7 @@ class CardSizes(QtCore.QObject):
         reset_all_card_sizes()
 
 
-# The keys the Button Map writes as its map (its "ui" block is saved on its
+# The keys the Device Mapping Editor writes as its map (its "ui" block is saved on its
 # own and is not part of an edit).
 # The device's photo is the bottom background layer in "nodes" (07 S127).
 _MAP_KEYS = ("nodes",)
@@ -805,7 +805,7 @@ def map_parts(device_name: str, guid: str = "") -> str:
 
 @ta.QmlElement
 class ModuleFileWatch(QtCore.QObject):
-    """Lets the Button Map see that its module file was changed elsewhere
+    """Lets the Device Mapping Editor see that its module file was changed elsewhere
     (History Restore, Device Pack, Module Setup): outside Edit it reloads,
     in Edit its Save asks Keep mine / Take theirs (07 Q6, GL-071).
     changed follows the store's notice (D-01-OWNER-NOTICES 6b); files edited
@@ -2911,7 +2911,7 @@ class DriverInputModel(QtCore.QAbstractListModel):
             if self._is_keyboard() and not keys:
                 doc["claim"]["keysChosen"] = True
             doc.setdefault("space", "world")
-            # The one page size (the Button Map's, GL-270).
+            # The one page size (the Device Mapping Editor's, GL-270).
             for key in ("pageW", "pageH", "photoWell"):
                 doc.setdefault(key, PAGE_SIZE[key])
             doc.setdefault("nodes", [])

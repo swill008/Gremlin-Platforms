@@ -238,7 +238,7 @@ def _ld_entries() -> list[dict]:
     settle_history()
     return [
         e
-        for e in history.entries("button-map") + history.entries("modules")
+        for e in history.entries("device-mapping-editor") + history.entries("modules")
         if (e.get("subject") or {}).get("fileName") == f"{LD}/module.json"
     ]
 

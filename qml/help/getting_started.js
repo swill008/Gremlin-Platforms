@@ -47,7 +47,7 @@ function topics() {
             body: "<p>The main window shows one page at a time (Home, Device Bindings and others) under a toolbar and a mode bar.</p>"
                 + "<ul>"
                 + "<li>Title bar: the program's name and version first, then the profile's name, for example \"Gremlin-Platforms R1 1.0.30 - Flight.xml\". A <b>*</b> before the profile's name means there are unsaved changes; a profile not saved yet is called \"Untitled\". Other windows show their own name after the program's, for example \"Gremlin-Platforms R1 1.0.30 - Device Library\".</li>"
-                + "<li>Toolbar, left to right: <b>Home</b> <a href=\"show:toolbar/Home\">Show me ›</a>, <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> (reads <b>Stop</b> while the profile runs), <b>vJoy Viewer</b> <a href=\"show:toolbar/vJoy Viewer\">Show me ›</a> and <b>Xbox Viewer</b> <a href=\"show:toolbar/Xbox Viewer\">Show me ›</a> (each opens its viewer, or closes it when it is open), <b>Button Map</b> <a href=\"show:toolbar/Button Map\">Show me ›</a> (a blank Button Map), <b>Device Library</b> <a href=\"show:toolbar/Device Library\">Show me ›</a> (every device and its saved setups), <b>Logical Device</b> <a href=\"show:toolbar/Logical Device\">Show me ›</a> and <b>Options</b> <a href=\"show:toolbar/Options\">Show me ›</a>. In a narrow window the buttons show icons only; rest the pointer on one to see its name.</li>"
+                + "<li>Toolbar, left to right: <b>Home</b> <a href=\"show:toolbar/Home\">Show me ›</a>, <b>Run</b> <a href=\"show:toolbar/Run\">Show me ›</a> (reads <b>Stop</b> while the profile runs), <b>vJoy Viewer</b> <a href=\"show:toolbar/vJoy Viewer\">Show me ›</a> and <b>Xbox Viewer</b> <a href=\"show:toolbar/Xbox Viewer\">Show me ›</a> (each opens its viewer, or closes it when it is open), <b>Mapping Editor</b> <a href=\"show:toolbar/Mapping Editor\">Show me ›</a> (a blank Device Mapping Editor), <b>Device Library</b> <a href=\"show:toolbar/Device Library\">Show me ›</a> (every device and its saved setups), <b>Logical Device</b> <a href=\"show:toolbar/Logical Device\">Show me ›</a> and <b>Options</b> <a href=\"show:toolbar/Options\">Show me ›</a>. In a narrow window the buttons show icons only; rest the pointer on one to see its name.</li>"
                 + "<li>Mode bar, under the toolbar on every page: <b>Mode</b> <a href=\"show:modebar\">Show me ›</a>, its list and <b>Manage Modes</b> <a href=\"show:modebar/Manage Modes\">Show me ›</a> always on the left, then the open page's own controls (on Home: <b>Compact view</b> and <b>Layout</b>). When the window is narrow, the page's controls scroll sideways; Mode and Manage Modes stay put.</li>"
                 + "<li>Bottom bar: the status (Running or Stopped) and what the last save wrote.</li>"
                 + "</ul>"
@@ -205,7 +205,7 @@ function topics() {
                 + "<ol>"
                 + "<li>A <b>Module Setup</b> or <b>Calibration</b> window with unsaved work asks first.</li>"
                 + "<li>Then open panels ask, then the profile: <b>Save</b>, <b>Discard</b> or <b>Cancel</b>.</li>"
-                + "<li>Then the Button Map asks about its own changes.</li>"
+                + "<li>Then the Device Mapping Editor asks about its own changes.</li>"
                 + "<li>Then the profile stops (see <a href=\"topic:getting-started-what-stop-releases\">What Stop lets go of</a>) and the program closes.</li>"
                 + "</ol>"
                 + "<h4>Good to know</h4>"
@@ -225,7 +225,7 @@ function topics() {
                 + "<ul>"
                 + "<li>Profile (<b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a>): modes, actions, profile settings, scripts.</li>"
                 + "<li>Logical Device: its own module file, shared by every profile. <b>File › Save Profile</b> saves it too when it changed. See <a href=\"topic:logical-device-saved\">Where the Logical Device is saved</a>.</li>"
-                + "<li>Module file, one per device: claims, friendly names, the device picture, the Button Map layout, the Appearance of its Device Bindings page or Output View, and its calibration. Input and Output Module Setup, the Button Map, Calibration and the Appearance panels write it. Saving an output module also saves the profile when the profile already has a file.</li>"
+                + "<li>Module file, one per device: claims, friendly names, the device picture, the device map, the Appearance of its Device Bindings page or Output View, and its calibration. Input and Output Module Setup, the Device Mapping Editor, Calibration and the Appearance panels write it. Saving an output module also saves the profile when the profile already has a file.</li>"
                 + "<li>Program settings: Options, Home layout and card sizes, window sizes, HidHide choices, and the Logical Device's Appearance. They are kept in configuration.json in your Gremlin Platforms folder (%USERPROFILE%\\Gremlin Platforms), even when you move the data folder.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
@@ -240,7 +240,7 @@ function topics() {
             id: "getting-started-using-help",
             section: "Getting started",
             title: "Use Help",
-            body: "<p>Help is one book in chapters. <b>F1</b> or <b>Help › Help</b> <a href=\"show:menu/Help/Help\">Show me ›</a> in the main window opens the whole book; in the Button Map or the Device Library it opens that chapter only, and <b>View Full Help</b> shows the whole book.</p>"
+            body: "<p>Help is one book in chapters. <b>F1</b> or <b>Help › Help</b> <a href=\"show:menu/Help/Help\">Show me ›</a> in the main window opens the whole book; in the Device Mapping Editor or the Device Library it opens that chapter only, and <b>View Full Help</b> shows the whole book.</p>"
                 + "<ul>"
                 + "<li>Search: type in <b>Search Help…</b> (<b>Ctrl+F</b>). The list keeps the topics that hold all your words, in any order, each with its count, and says \"N topics match\" (\"No topic mentions '…'\" when none does). The open topic marks every match. <b>Enter</b> or <b>F3</b> goes to the next match and <b>Shift+F3</b> to the previous one, on into the next topic; \"k of n\" shows where you are. × in the box or <b>Esc</b> clears the search and keeps the topic you were on.</li>"
                 + "<li>When Help shows one chapter, <b>Search all of Help</b> adds matching topics from the other chapters.</li>"

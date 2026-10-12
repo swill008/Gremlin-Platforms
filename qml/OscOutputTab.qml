@@ -32,7 +32,7 @@ Flickable {
         policy: _root.contentHeight > _root.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
     }
 
-    // The Button Map's small outline button.
+    // The Device Mapping Editor's small outline button.
     component SmallButton: Rectangle {
         id: _small
         property alias text: _smallText.text

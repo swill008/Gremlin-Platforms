@@ -4,7 +4,7 @@
 .import "window_registry.js" as Registry
 
 // One list for the whole program (each file that imports this script gets
-// its own copy of it), so the Button Map's Options is the main window's.
+// its own copy of it), so the Device Mapping Editor's Options is the main window's.
 var _openWindows = Registry.openWindows
 
 function _applyProps(window, properties)

@@ -826,7 +826,8 @@ class Journey:
 
         self.ev(f"openDeviceBindingsForCard(_moduleModel.cardMap({json.dumps(slug)}))")
         page = self.wait_until(
-            lambda: self.ev("deviceBindingsPane()"), f"the Device Bindings page of {slug}"
+            lambda: self.ev("deviceBindingsPane()"),
+            f"the Device Bindings page of {slug}",
         )
         layout = self.wait_until(
             lambda: page.findChild(HardwareLayoutModel), "the page's layout model"

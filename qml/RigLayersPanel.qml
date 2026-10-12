@@ -8,7 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Style
 import Gremlin.Menus
 
-// The Button Map editor's Layers panel: the items of the plane being
+// The Device Mapping Editor's Layers panel: the items of the plane being
 // edited (07 S119), top of the stack first, with an eye (show or hide) and a
 // lock on each. Chips and groups open to their hotspot and leaders, which
 // have their own eye and lock. In Foreground mode the last row is the folded
@@ -458,7 +458,7 @@ Rectangle {
                         readonly property bool isBg: _panel.isBgRow(row)
                         readonly property bool rowHidden: isBg
                             ? !!(_panel.ed && _panel.ed.bgViewHidden) : (row.hidden || row.hiddenFrom)
-                        objectName: isBg ? "bmBgRow" : ""
+                        objectName: isBg ? "dmeBgRow" : ""
                         width: _rowsColumn.width
                         height: isBg ? _panel.rowH + Style.dp(24) : _panel.rowH
                         color: row.selected ? Style.bgSelected : (_rowArea.containsMouse ? Style.bgRaised : Style.clear)
@@ -669,7 +669,7 @@ Rectangle {
                                 model: ["hidden", "locked"]
                                 delegate: Label {
                                     required property string modelData
-                                    objectName: _row.isBg ? (modelData === "hidden" ? "bmBgRowEye" : "bmBgRowLock")
+                                    objectName: _row.isBg ? (modelData === "hidden" ? "dmeBgRowEye" : "dmeBgRowLock")
                                                           : "flag_" + modelData
                                     readonly property bool on: modelData === "hidden"
                                         ? (_row.isBg ? _row.rowHidden : _row.row.hidden) : _row.row.locked
@@ -716,7 +716,7 @@ Rectangle {
                             }
                             Slider {
                                 id: _bgOpacity
-                                objectName: _row.isBg ? "bmBgRowOpacity" : ""
+                                objectName: _row.isBg ? "dmeBgRowOpacity" : ""
                                 Layout.fillWidth: true
                                 from: 0
                                 to: 1
@@ -787,8 +787,8 @@ Rectangle {
     // For tests: the row menu's lines and a line's rectangle.
     function rowMenuLines() { return _rowMenu.describe() }
     function rowMenuRect(text) { return _rowMenu.rowRect(_rowMenu.rowIndexOf(text)) }
-    // For tests: a part of the Background row (bmBgRow, bmBgRowEye,
-    // bmBgRowLock, bmBgRowOpacity), or null when there is none.
+    // For tests: a part of the Background row (dmeBgRow, dmeBgRowEye,
+    // dmeBgRowLock, dmeBgRowOpacity), or null when there is none.
     function bgRowPart(name) {
         _rowsColumn.forceLayout()
         for (var i = 0; i < _repeater.count; i++) {

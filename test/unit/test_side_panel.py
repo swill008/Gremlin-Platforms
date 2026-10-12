@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's side panels (qml/SidePanel.qml, 07 S128-S131,
+"""The Device Mapping Editor's side panels (qml/SidePanel.qml, 07 S128-S131,
 D-07-SIDE-DRAWER), checked off-screen in a small harness
 (side_panel_smoke.py, its own process): two panels, Chips (left, pinned)
 and Layers (right, unpinned), round a stand-in map that narrows by each

@@ -41,7 +41,10 @@ def story(j: Journey) -> None:
     signal.signal.modesChanged.emit()
     j.backend.uiState.setCurrentMode(PARENT)
 
-    j.ev('Helpers.createComponent("DialogAutoMappingTool.qml", { initialSlug: "pJoy Pro" })')
+    j.ev(
+        'Helpers.createComponent("DialogAutoMappingTool.qml", '
+        '{ initialSlug: "pJoy Pro" })'
+    )
     win = j.window("Auto Mapping Tool")
 
     def boxes() -> dict[str, object]:

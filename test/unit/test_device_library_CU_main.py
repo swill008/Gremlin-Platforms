@@ -3,7 +3,7 @@
 
 """10 S44: the Device Library's row menus reach the main window in the
 running program (device_library_open.js toMain -> Main.qml libraryAction):
-Show on Home selects the card on Home, Open Button Map and Open Module
+Show on Home selects the card on Home, Open Device Mapping Editor and Open Module
 Setup open their windows, a device with no card says so, and nothing
 calls itself (the bare-name trap of 7912a47b)."""
 

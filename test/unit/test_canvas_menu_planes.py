@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Button Map: the empty-space right-click menu switches planes (07 S113).
+"""Device Mapping Editor: the empty-space right-click menu switches planes (07 S113).
 
 Right-clicking an empty part of the map while editing offers Edit Background
 (Foreground mode) or Exit Background Editing (Background mode), Ctrl+B beside
@@ -41,7 +41,7 @@ def results(tmp_path_factory: pytest.TempPathFactory) -> dict:
 
 
 def _item(menu: dict) -> dict:
-    return next(i for i in menu["quick"] if i["name"] == "bmEditPlane")
+    return next(i for i in menu["quick"] if i["name"] == "dmeEditPlane")
 
 
 def test_foreground_offers_edit_background(results: dict) -> None:
@@ -75,7 +75,7 @@ def test_other_items_stay(results: dict) -> None:
 
 def test_not_offered_while_viewing(results: dict) -> None:
     assert results["viewing-interactive"] is False
-    assert all(i["name"] != "bmEditPlane" for i in results["viewing"]["quick"])
+    assert all(i["name"] != "dmeEditPlane" for i in results["viewing"]["quick"])
 
 
 def test_no_warnings(results: dict) -> None:

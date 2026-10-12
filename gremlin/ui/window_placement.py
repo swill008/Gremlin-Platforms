@@ -280,8 +280,8 @@ def _tool_map(cfg: Configuration) -> dict:
 
 def _set_maximized(window: QtGui.QWindow, maximized: bool) -> None:
     """Windowed or maximized, without showing a hidden window: setting the
-    visibility shows it (Print & Export, made hidden with the Button Map,
-    opened every time the Button Map did). A hidden window keeps the state
+    visibility shows it (Print & Export, made hidden with the Device Mapping Editor,
+    opened every time the Device Mapping Editor did). A hidden window keeps the state
     for when it is shown."""
     if window.isVisible():
         window.setVisibility(

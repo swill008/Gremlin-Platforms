@@ -18,14 +18,15 @@ from test.unit.help_book import ROOT as _ROOT
 
 _CHAPTERS = [
     "getting-started", "home-devices", "device-bindings-actions",
-    "logical-device", "osc", "modes", "button-map", "device-library", "tools",
+    "logical-device", "osc", "modes", "device-mapping-editor", "device-library",
+    "tools",
     "options-profile",
 ]
 # Every window whose menus the book names.
 _MENU_SOURCES = [
-    "qml/Main.qml", "qml/main_commands.js", "qml/DialogJoystickButtonMap.qml",
+    "qml/Main.qml", "qml/main_commands.js", "qml/DialogDeviceMappingEditor.qml",
     "qml/WindowDeviceLibrary.qml", "qml/rig_menu.js",
-    # The Button Map's Insert, Arrange, Leader and Format menus, built at run
+    # The Device Mapping Editor's Insert, Arrange, Leader and Format menus, built at run
     # time from its list() (07 S135).
     "qml/rig_commands.js",
 ]
@@ -51,7 +52,7 @@ def _menu_labels() -> set[str]:
         labels |= set(re.findall(r'(?:text|title): qsTr\("([^"]+)"\)', source))
         labels |= set(re.findall(r'(?:text|title): "([^"]+)"', source))
         labels |= set(re.findall(r'MenuModel\.action\("([^"]+)"', source))
-        # The Button Map's right-click menu (rig_menu.js).
+        # The Device Mapping Editor's right-click menu (rig_menu.js).
         labels |= set(re.findall(r'_act\("([^"]+)"', source))
         labels |= set(re.findall(r'_sect\("[^"]+", "([^"]+)"', source))
         # rig_commands.js list(): _c("id", "Menu", "Sub", "Text", ...); the
@@ -185,7 +186,7 @@ def _known_words() -> str:
                 continue
             parts.append(path.read_text(encoding="utf-8", errors="replace"))
     parts.append((_ROOT / "claude" / "glossary.md").read_text(encoding="utf-8"))
-    # Options and Button Map Options show a setting's key as its label
+    # Options and Device Map Options show a setting's key as its label
     # (gremlin/ui/option.py), without its order prefix ("02-rotate-snap").
     keys = []
     for path in [_ROOT / "joystick_gremlin.py", *(_ROOT / "gremlin").rglob("*.py")]:
@@ -244,10 +245,10 @@ def test_bold_labels_exist() -> None:
     assert sorted(missing) == []
 
 
-def test_button_map_chapter_covers_the_editor() -> None:
-    """The Button Map chapter covers every part of the editor and nothing
+def test_device_mapping_editor_chapter_covers_the_editor() -> None:
+    """The Device Mapping Editor chapter covers every part of the editor and nothing
     else."""
-    chapter = help_book.chapter_topics("button-map")
+    chapter = help_book.chapter_topics("device-mapping-editor")
     assert len(chapter) >= 20
     section = "\n".join(t["title"] + "\n" + help_book.text(t["body"]) for t in chapter)
     for feature in (
@@ -269,16 +270,17 @@ def test_button_map_chapter_covers_the_editor() -> None:
     ):
         assert feature.casefold() in section.casefold(), feature
     # One book: the chapter may say how to open it from the main window
-    # (Tools › Mapping › Button Map), but not cover other features.
+    # (Tools › Mapping › Device Mapping Editor), but not cover other features.
     for elsewhere in ("Device Pack",):
         assert elsewhere not in section, elsewhere
-    # Its settings are its own (Button Map Options), not the main Options.
-    assert not re.search(r"(?<!Button Map )Options [→›]", section)
-    # No other chapter repeats the Button Map: one topic per subject.
+    # Its settings are its own (Device Map Options), not the main Options.
+    assert not re.search(r"(?<!Device Map )Options [→›]", section)
+    # No other chapter repeats the Device Mapping Editor: one topic per subject.
     others = [
         t["id"] for t in _topics()
-        if t["chapterId"] != "button-map" and t["section"] != "Common questions"
-        and t["title"].casefold().startswith("button map")
+        if t["chapterId"] != "device-mapping-editor"
+        and t["section"] != "Common questions"
+        and t["title"].casefold().startswith("device mapping editor")
     ]
     assert others == []
 

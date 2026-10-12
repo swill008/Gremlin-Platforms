@@ -46,9 +46,15 @@ def mapper() -> Iterator[tuple[AutoMappingTool, list, list]]:
     m = AutoMappingTool(profile)
     limits = {"axes": set(), "buttons": set(range(1, 59)), "hats": set()}
     with (
-        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT]),
-        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "output_modules", return_value=[dest]),
-        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "merge_claim_into_output", merge),
+        mock.patch.object(
+            auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT]
+        ),
+        mock.patch.object(
+            auto_mapping_tool.auto_mapping_tool, "output_modules", return_value=[dest]
+        ),
+        mock.patch.object(
+            auto_mapping_tool.auto_mapping_tool, "merge_claim_into_output", merge
+        ),
         mock.patch.object(AutoMappingTool, "_vjoy_limits", return_value=limits),
         mock.patch.object(AutoMappingTool, "_get_used_vjoy_inputs", return_value=[]),
         mock.patch.object(AutoMappingTool, "_source_uuid", return_value=uuid.uuid4()),
@@ -96,7 +102,9 @@ def test_input_modules_left_without_an_output_are_named(
     m, _created, _merged = mapper
     second = {"slug": "evo", "name": "EVO", "claim": {"buttons": [1]}}
     with mock.patch.object(
-        auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT, second]
+        auto_mapping_tool.auto_mapping_tool,
+        "input_modules",
+        return_value=[_NXT, second],
     ):
         report = m.generate_module_mappings(
             ["nxt", "evo"], ["vjoy_3"], AutoMappingToolOptions()

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware) at a UI scale, opens
-the Button Map for a stick in Edit with the Layers tool open, and uses the
+the Device Mapping Editor for a stick in Edit with the Layers tool open, and uses the
 Layers panel's search box and kind toggles (07 S102). Prints what shows
 after each step as JSON. test_layers_panel_search.py runs it in its own
 process with a fresh user folder.
@@ -166,9 +166,9 @@ def main() -> None:
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
     root = app.engine.rootObjects()[0]
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-    call(root, "openButtonMapForCard", card)
-    assert wait_until(lambda: call(root, "buttonMapWindow") is not None)
-    win = call(root, "buttonMapWindow")
+    call(root, "openDeviceMappingEditorForCard", card)
+    assert wait_until(lambda: call(root, "deviceMappingEditorWindow") is not None)
+    win = call(root, "deviceMappingEditorWindow")
     win.setProperty("width", 1400)
     win.setProperty("height", 900)
     out: dict = {"warnings": []}

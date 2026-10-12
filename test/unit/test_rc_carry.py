@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Favourites are a program setting (07 S137, D-07-RIGHTCLICK 3a): after
-adding favourites in the real Button Map window (☆ in the right-click menu
+adding favourites in the real Device Mapping Editor window (☆ in the right-click menu
 and in the menu bar) and saving the map, the module file, an Export (.gmap)
 and the Export / Import Device window's .gmap hold none of them; the
 program's settings do."""

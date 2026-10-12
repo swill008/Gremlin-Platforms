@@ -74,7 +74,7 @@ function topics() {
             body: "<p>A card's right-click menu holds every command for that device. The card shows as picked first, as a click does; a card in a Shift selection keeps the selection, for items that act on all of it.</p>"
                 + "<ul>"
                 + "<li><b>Undo</b> and <b>Redo</b> sit beside the menu's title, for Home's card changes.</li>"
-                + "<li>At the top: <b>Open Device Bindings</b> (<b>Output View</b> on an output card), <b>Button Map</b> and <b>Hide Card</b>.</li>"
+                + "<li>At the top: <b>Open Device Bindings</b> (<b>Output View</b> on an output card), <b>Device Mapping Editor</b> and <b>Hide Card</b>.</li>"
                 + "<li><b>Module</b>: <b>Module Setup…</b>, <b>Auto Mapping Tool</b>, <b>Calibration</b>.</li>"
                 + "<li><b>View</b>: the <b>vJoy Viewer</b> or <b>Xbox Viewer</b>, <b>Device Information</b>.</li>"
                 + "<li><b>Cards</b>: <b>Stack Selected Cards</b>, <b>Unstack</b>, <b>Unstack All</b>, <b>Reset Size</b>, <b>Reset All Card Sizes</b>.</li>"
@@ -116,7 +116,7 @@ function topics() {
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>The device's Device Bindings page, Button Map and Module Setup close without asking.</li>"
+                + "<li>The device's Device Bindings page, Device Mapping Editor and Module Setup close without asking.</li>"
                 + "<li>A device still plugged in keeps its card, without a module. The card of a device that isn't plugged in goes.</li>"
                 + "<li>A module file another device uses stays; only this device's actions are removed. The message at the end says what was kept.</li>"
                 + "<li>An autosave of the stick (\"Autosave: stick deleted\") is always kept in the <b>Device Library</b> first: its module file, its pictures and its bindings in every mode. If the autosave can't be written or read back, nothing is deleted.</li>"
@@ -150,7 +150,7 @@ function topics() {
             id: "home-devices-identical",
             section: "Devices",
             title: "Identical devices",
-            body: "<p>Two devices of the same make get names of their own, so each has its own module file, card, Button Map and calibration.</p>"
+            body: "<p>Two devices of the same make get names of their own, so each has its own module file, card, device map and calibration.</p>"
                 + "<ul>"
                 + "<li>The device the existing module file belongs to keeps the plain name. The second is named \"&lt;name&gt; (2)\", a third \"&lt;name&gt; (3)\".</li>"
                 + "<li>Each name stays with its device, whichever port it uses and in every session.</li>"
@@ -298,7 +298,7 @@ function topics() {
             id: "home-devices-module-files",
             section: "Modules",
             title: "Module files",
-            body: "<p>Each device has its own module file, found by the device first and then by its name. It holds the device's claims, friendly names, picture, Button Map layout, Appearance and calibration.</p>"
+            body: "<p>Each device has its own module file, found by the device first and then by its name. It holds the device's claims, friendly names, picture, device map, Appearance and calibration.</p>"
                 + "<p>In Input or Output Module Setup, <b>Module File</b> shows the <b>Device folder</b>, with \"(not saved yet)\" when it doesn't exist yet, and offers:</p>"
                 + "<ul>"
                 + "<li><b>Import from</b>: copy another file into this device's file (see <a href=\"topic:home-devices-import-module-file\">Import a module file</a>).</li>"
@@ -339,7 +339,7 @@ function topics() {
             body: "<p>A module file that can't be read is never treated as empty, so nothing in it is lost. Until you fix it, the device's inputs are blocked.</p>"
                 + "<ul>"
                 + "<li>Its card says \"Module file damaged – inputs blocked\" in red.</li>"
-                + "<li>Every save into the file is refused, including Module Setup, the Button Map and an Export / Import Device import.</li>"
+                + "<li>Every save into the file is refused, including Module Setup, the Device Mapping Editor and an Export / Import Device import.</li>"
                 + "</ul>"
                 + "<p>To set the device up again:</p>"
                 + "<ol>"

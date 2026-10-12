@@ -1,0 +1,107 @@
+# -*- coding: utf-8; -*-
+
+# SPDX-License-Identifier: GPL-3.0-only
+
+"""01 S134/S135 (D-01-LEAVE-TEXT, D-01-ONE-RENAME) for the Device Mapping Editor's
+rename boxes (saved style and template renames in Options > Library, the
+template rename in Manage Templates), end to end: the real program
+off-screen with the program-wide leave-text owner in place
+(leave_text_device_mapping_editor_smoke.py), real clicks and keys. Rename opens the box
+focused with the whole name selected, so typing replaces it with no click
+into the box; Enter or a click away saves the rename once and ends rename
+mode; Esc cancels: the old name stays and nothing is saved."""
+
+from __future__ import annotations
+
+import json
+import os
+import pathlib
+import sys
+
+import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import pytest
+
+_HERE = pathlib.Path(__file__).parent
+
+
+@pytest.fixture(scope="module")
+def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
+    home = tmp_path_factory.mktemp("leave_text_bmap_home")
+    (home / "Gremlin Platforms").mkdir()
+    proc = proc_tree.run(
+        [sys.executable, str(_HERE / "leave_text_device_mapping_editor_smoke.py")],
+        text=True,
+        encoding="utf-8",
+        timeout=150,
+        cwd=str(_HERE.parents[1]),
+        env={
+            **os.environ,
+            "USERPROFILE": str(home),
+            "QT_QPA_PLATFORM": "offscreen",
+            "PYTHONUNBUFFERED": "1",
+        },
+    )
+    results: dict = {"errors": []}
+    for line in proc.stdout.splitlines():
+        if line.startswith("RESULT "):
+            _tag, name, value = line.split(" ", 2)
+            results[name] = json.loads(value)
+        elif line.startswith("ERROR"):
+            results["errors"].append(line)
+    assert "done" in proc.stdout, proc.stdout[-3000:] + proc.stderr[-3000:]
+    return results
+
+
+def _left(res: dict) -> None:
+    # Opened by Rename alone: focused, whole name selected (S135).
+    assert res["row"] and res["shown"], res
+    assert res["focused"] is True, res
+    assert res["selected"] is True, res
+    assert res["focus"] is False
+    assert res["renaming"] == ""
+    assert res["window"] is True
+
+
+def test_runs_without_errors(run: dict) -> None:
+    assert run["errors"] == []
+
+
+@pytest.mark.parametrize("how", ["click-away", "esc", "enter"])
+def test_library_style_rename(run: dict, how: str) -> None:
+    res = run[f"style-{how}"]
+    _left(res)
+    if how == "esc":
+        assert res["names"] == ["Style B"]
+        assert res["calls"] == []
+        return
+    old, new = {"click-away": ("Style A", "Style B"),
+                "enter": ("Style B", "Style D")}[how]
+    assert res["names"] == [new]
+    assert res["calls"] == [[old, new]]
+
+
+@pytest.mark.parametrize("how", ["click-away", "esc", "enter"])
+def test_library_template_rename(run: dict, how: str) -> None:
+    res = run[f"lib-template-{how}"]
+    _left(res)
+    # Esc keeps the old name (Tmpl B from the click away).
+    kept = {"click-away": "Tmpl B", "esc": "Tmpl B", "enter": "Tmpl D"}[how]
+    assert kept in res["names"]
+    assert not any(n.startswith("Tmpl") and n != kept for n in res["names"])
+    # Saved twice would try the old name again and say the rename failed.
+    assert res["failed"] is False
+
+
+@pytest.mark.parametrize("how", ["esc", "enter", "click-away"])
+def test_manage_templates_rename(run: dict, how: str) -> None:
+    res = run[f"dlg-template-{how}"]
+    _left(res)
+    old, new = {"esc": ("Esc A", "Esc B"), "enter": ("Enter A", "Enter B"),
+                "click-away": ("Away A", "Away B")}[how]
+    if how == "esc":
+        assert old in res["names"] and new not in res["names"]
+    else:
+        assert new in res["names"] and old not in res["names"]
+    assert res["failed"] is False
+    # Esc only leaves the box: the dialog (closed by Esc) stays open.
+    assert res["open"] is True

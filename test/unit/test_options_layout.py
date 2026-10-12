@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """The main Options window shows every registered setting exactly once, in
-its sidebar sections (stored keys unchanged); the Button Map's settings are
+its sidebar sections (stored keys unchanged); the Device Mapping Editor's settings are
 only in its own window. The Add Action Menu list reorders an action among
 its own kind and leaves every other action in its place."""
 
@@ -19,11 +19,11 @@ from gremlin import config
 from gremlin.ui import option
 
 
-def test_every_setting_shows_once_and_button_map_is_apart() -> None:
+def test_every_setting_shows_once_and_device_mapping_editor_is_apart() -> None:
     layout = option.main_layout()
     titles = [title for title, _groups in layout]
     assert titles[:3] == ["General", "Interface", "Actions"]
-    assert "Button Map" not in titles
+    assert "Device Map" not in titles
     shown = [key for _t, groups in layout for _g, keys in groups for key in keys]
     assert len(shown) == len(set(shown))  # nothing twice
     assert not any(key[0] in option._OWN_WINDOW for key in shown)

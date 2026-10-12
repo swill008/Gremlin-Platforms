@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's Print & Export window, checked in the running program
+"""The Device Mapping Editor's Print & Export window, checked in the running program
 off-screen (print_export_window_smoke.py, its own process and user folder),
 at screen scales 1 and 1.5 (on a 150% screen an export once lost a third of
 the print area).
@@ -133,8 +133,8 @@ def _busy(image: QtGui.QImage) -> float:
 
 
 def test_it_stays_closed_until_asked_for(run: dict) -> None:
-    # Made with the Button Map; restoring its saved place used to show it
-    # each time the Button Map opened.
+    # Made with the Device Mapping Editor; restoring its saved place used to show it
+    # each time the Device Mapping Editor opened.
     assert run["shown-with-the-map"] is False
     assert run["shown-after-reopening"] is False
 

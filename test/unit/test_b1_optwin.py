@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Fix list item 4 (D-FIXLIST-B1): Button Map Options and Keyboard
+"""Fix list item 4 (D-FIXLIST-B1): Device Map Options and Keyboard
 Shortcuts, checked in the running program off-screen (b1_optwin_smoke.py,
 its own process and user folder), at 100% and at a large UI scale.
 
@@ -10,7 +10,7 @@ its own process and user folder), at 100% and at a large UI scale.
   (WindowSystemMenuHint with the close hint). Whether the × is drawn can
   only be seen on a real screen.
 - Options has a pin, kept for next time; Reset Panels keeps it. Unpinned,
-  going back to the Button Map closes it; pinned, it stays.
+  going back to the Device Mapping Editor closes it; pinned, it stays.
 - Its group list starts wide enough for every group name; the divider
   drags, the width is kept, and it stays between a short name and half the
   pane.
@@ -26,7 +26,7 @@ import sys
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
 
-from gremlin.ui import button_map_options as bmo
+from gremlin.ui import device_map_options as bmo
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -83,7 +83,7 @@ def test_options_closes_on_a_click_elsewhere_unless_pinned(run: dict) -> None:
     assert run["activated-map"] is True
     assert run["pinned-stays"] is True
     assert run["unpinned-closes-own"] is True
-    # As a transient child of the Button Map (how it opens) its `active`
+    # As a transient child of the Device Mapping Editor (how it opens) its `active`
     # stays true; its own focus going away closes it.
     assert run["unpinned-closes"] is True
 

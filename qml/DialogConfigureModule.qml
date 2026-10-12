@@ -148,7 +148,7 @@ ApplicationWindow {
             _hw.setDeviceGuid(deviceGuid)
         // A picture imported in a session that never finished (the program
         // closed first) was never saved: the saved one goes back. Only with
-        // this window's own safety copy (the Button Map keeps its own).
+        // this window's own safety copy (the Device Mapping Editor keeps its own).
         _hw.cancelEditFor(deviceName, "setup")
         _driver.loadDevice(deviceGuid, deviceName)
         claimDirty = false
@@ -400,11 +400,11 @@ ApplicationWindow {
             // key is found (or added) and ticked (_on_key).
             text: direction === "dest"
                 ? "Tick the outputs this module may use; clear a check box to let it go. "
-                  + "Names and marks are set in the Button Map."
+                  + "Names and marks are set in the Device Mapping Editor."
                 : deviceName.toLowerCase() === "keyboard"
                 ? "Press a key to find it and claim it for this module; clear its check box to let it go."
                 : "Press a control on the device to claim it for this module; clear its check box to let it go. "
-                  + "Names, marks and 5-way hats are set in the Button Map."
+                  + "Names, marks and 5-way hats are set in the Device Mapping Editor."
             color: Style.fgMuted
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -673,7 +673,7 @@ ApplicationWindow {
                         return
                     Confirm.ask(_win, {
                         title: "Delete " + deviceName + "'s module file?",
-                        text: "It holds this device's claimed inputs, calibration and Button Map layout. "
+                        text: "It holds this device's claimed inputs, calibration and device map. "
                             + "An autosave of it (\"Autosave: module file deleted\") is kept in the Device Library first; if it can't be kept, nothing is deleted. "
                             + "The device's pictures are kept.",
                         undoable: true,

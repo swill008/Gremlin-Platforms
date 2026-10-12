@@ -10,8 +10,8 @@ Short form, for chips:          "vJoy 3 B5", "Xbox 1 LT".
 A vJoy destination that can't be sent (output.cant_send_text: not in the
 action editor's drop-down, or that vJoy turned off) reads, in the long form,
 "⚠ vJoy 3 Button 57" (D-05-CANT-SEND); the page draws it red with the
-reason as its tooltip. The short form (Button Map, trace, Device Pack)
-keeps "(not claimed)" / "(no output module)" (D-05-CANT-SEND-ALL: Button Map
+reason as its tooltip. The short form (Device Mapping Editor, trace, Device Pack)
+keeps "(not claimed)" / "(no output module)" (D-05-CANT-SEND-ALL: Device Mapping Editor
 unchanged). Xbox has no claim: every Xbox control is always sent.
 """
 

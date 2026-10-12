@@ -7,7 +7,7 @@
 Every rename and delete goes through one path (gremlin.ui.profile
 rename_mode / delete_mode): Manage Modes and Device Pack Undo Import alike.
 A Cycle steps over a deleted mode, a script that could not be loaded keeps
-a renamed mode's new name, and the Button Map's Labels mode follows.
+a renamed mode's new name, and the Device Mapping Editor's Labels mode follows.
 """
 
 from __future__ import annotations
@@ -270,7 +270,7 @@ _LABEL_MODE = textwrap.dedent(
         "Gremlin.Style", 1, 0, "Style",
     )
     import gremlin.ui.backend
-    import gremlin.ui.button_map_options
+    import gremlin.ui.device_map_options
     import gremlin.ui.device_names
     import joystick_gremlin
     joystick_gremlin.register_config_options()
@@ -290,7 +290,7 @@ _LABEL_MODE = textwrap.dedent(
     engine.rootContext().setContextProperty("uiState", ui_state)
     engine.rootContext().setContextProperty("signal", signal)
     engine.load(
-        QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogJoystickButtonMap.qml"))
+        QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogDeviceMappingEditor.qml"))
     )
     win = engine.rootObjects()[0]
     QtTest.QTest.qWait(300)
@@ -302,21 +302,21 @@ _LABEL_MODE = textwrap.dedent(
             print("ERROR", expr.error().toString(), flush=True)
         return value[0]
 
-    run("_buttonMap.labelMode = 'Combat'")
+    run("_editorWin.labelMode = 'Combat'")
     model = ModeHierarchyModel()
     model.renameMode("Combat", "Fight")
     QtTest.QTest.qWait(100)
-    print("RENAMED", run("_buttonMap.labelMode"), flush=True)
+    print("RENAMED", run("_editorWin.labelMode"), flush=True)
     model.deleteMode("Fight")
     QtTest.QTest.qWait(100)
-    print("DELETED", repr(run("_buttonMap.labelMode")), flush=True)
+    print("DELETED", repr(run("_editorWin.labelMode")), flush=True)
     print("done", flush=True)
     os._exit(0)
     """
 )
 
 
-def test_button_map_labels_mode_follows_a_rename(tmp_path: Path) -> None:
+def test_device_mapping_editor_labels_mode_follows_a_rename(tmp_path: Path) -> None:
     script = tmp_path / "label_mode.py"
     script.write_text(_LABEL_MODE, encoding="utf-8")
     result = proc_tree.run(

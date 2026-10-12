@@ -120,7 +120,7 @@ def test_s23_s25_s53_copy_and_undo(run: dict) -> None:
     assert copy["to"] == "Right stick"
     assert copy["sticks"] == ["Left throttle", "Right stick"]
     # Calibration unticked by default; only the open profile ticked.
-    assert copy["parts"] == ["setup", "button_map", "appearance", "bindings"]
+    assert copy["parts"] == ["setup", "device_map", "appearance", "bindings"]
     assert copy["profiles"] == [
         "DCS.xml:true",
         "StarCitizen.xml:false",
@@ -188,7 +188,7 @@ def test_s22_copy_takes_a_devices_current_settings(run: dict) -> None:
     assert cur["from"] == "Rudder pedals  ›  current settings"
     assert cur["source"] == "dev-00000003"
     assert cur["modes"] == ["Default", "Combat"]
-    assert cur["parts"] == ["setup", "button_map", "bindings"]
+    assert cur["parts"] == ["setup", "device_map", "bindings"]
     # The open profile, never saved, is passed on as "" (S33).
     assert cur["profiles"] == [""]
     copies = _call(run, "copy")

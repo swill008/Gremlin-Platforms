@@ -75,7 +75,7 @@ def test_unused_pieces_are_gone() -> None:
     for name in ("VJoyStatusPopup", "LogicalDevice {", "function focusedCard",
                  "function moduleField"):
         assert name not in main
-    assert "component ColorSwatch" not in _text("qml/DialogJoystickButtonMap.qml")
+    assert "component ColorSwatch" not in _text("qml/DialogDeviceMappingEditor.qml")
 
 
 def test_wording_follows_the_glossary() -> None:
@@ -85,8 +85,8 @@ def test_wording_follows_the_glossary() -> None:
     assert '"Output Module View"' not in main and '"Input Configuration"' not in main
     assert '"No module"' in _text("qml/StatusCard.qml")
     assert '"Save Module"' in _text("qml/DialogConfigureModule.qml")
-    assert "Edit → Button Map Options… → Library" in _text(
-        "qml/DialogJoystickButtonMap.qml"
+    assert "Edit → Device Map Options… → Library" in _text(
+        "qml/DialogDeviceMappingEditor.qml"
     )
 
 
@@ -107,7 +107,7 @@ def test_a_leader_end_skips_drawings_hotspots() -> None:
 
 
 def test_colour_picker_follows_the_theme_and_takes_a_hex() -> None:
-    qml = _text("qml/DialogJoystickButtonMap.qml")
+    qml = _text("qml/DialogDeviceMappingEditor.qml")
     start = qml.index("id: _colorPop")
     # The picker, to its closing brace (four spaces in).
     picker = qml[start:qml.index("\n    }\n", start)]
@@ -175,8 +175,9 @@ def test_one_user_colour_one_logical_id_one_window_memory() -> None:
     from gremlin.ui.backend import UIState
 
     assert guid.fullmatch(UIState.logicalDeviceGuid.fget(None))
-    windows = ("DialogAutoMappingTool", "DialogConfigureModule", "DialogDeviceInformation",
-               "DialogDevicePack", "DialogHardwareHide", "DialogManageModes")
+    windows = ("DialogAutoMappingTool", "DialogConfigureModule",
+               "DialogDeviceInformation", "DialogDevicePack", "DialogHardwareHide",
+               "DialogManageModes")
     for window in windows:
         assert "ToolWindowMemory {" in _text(f"qml/{window}.qml"), window
     assert "saveWindowSize" not in _text("qml/DialogHardwareHide.qml")

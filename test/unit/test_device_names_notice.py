@@ -132,7 +132,7 @@ def test_the_device_strip_rereads_its_names(
 def test_device_names_relays_the_one_notice(
     qtbot: QtBot, aliases: dict[str, str]
 ) -> None:
-    """DeviceNames.changed (the strip and the Button Map bind to it) is the
+    """DeviceNames.changed (the strip and the Device Mapping Editor bind to it) is the
     owner's notice, forget included; no list of its own."""
     from gremlin import device_aliases
     from gremlin.ui import device_names

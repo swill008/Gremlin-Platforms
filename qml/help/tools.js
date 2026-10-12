@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // Help chapter: Tools (viewers, calibration, device information, History,
-// Auto Mapping Tool, HidHide, Input Tester, Live Log Reader). Button Map and Device Library
+// Auto Mapping Tool, HidHide, Input Tester, Live Log Reader). Device Mapping Editor and Device Library
 // have chapters of their own.
 
 .pragma library
@@ -190,20 +190,20 @@ function topics() {
             body: "<p><b>Tools › History</b> <a href=\"open:tools.history\">Open ›</a> lists every saved change, newest first, each with its title, its date and time, and its area.</p>"
                 + "<ul>"
                 + "<li>Profile saves: each input whose actions changed, and other parts such as modes and scripts.</li>"
-                + "<li>Module files: checked controls and names, calibration, Appearance, the Button Map, and the Logical Device.</li>"
+                + "<li>Module files: checked controls and names, calibration, Appearance, the device map, and the Logical Device.</li>"
                 + "<li>The Device Library's list and saved setups, labelled <b>Device Library</b>.</li>"
                 + "<li>The settings you choose in Options, HidHide and OSC.</li>"
                 + "</ul>"
                 + "<ol>"
                 + "<li>Pick a change to see it <b>Before</b> and <b>After</b> (until you do, the right side says \"Pick a change to see it before and after.\"). See <a href=\"topic:tools-history-compare\">Compare Before and After</a>.</li>"
-                + "<li>To narrow the list to one kind, use <b>Show</b>: <b>All</b>, <b>Profile</b>, <b>Module files</b>, <b>Button Map</b> or <b>Settings</b>. To find a device, input or file, type in <b>Search</b> (<b>Ctrl+F</b>); it looks in each change's title and in what it is about. A line under it says \"N found\" or \"Nothing matches\"; <b>×</b> or <b>Esc</b> clears it.</li>"
+                + "<li>To narrow the list to one kind, use <b>Show</b>: <b>All</b>, <b>Profile</b>, <b>Module files</b>, <b>Device Mapping Editor</b> or <b>Settings</b>. To find a device, input or file, type in <b>Search</b> (<b>Ctrl+F</b>); it looks in each change's title and in what it is about. A line under it says \"N found\" or \"Nothing matches\"; <b>×</b> or <b>Esc</b> clears it.</li>"
                 + "</ol>"
-                + "<p><b>History</b> in an editor opens it for only what that editor shows: on the Device Bindings page (the selected input), on a Logical Device control's menu, in Module Setup, in the Button Map's File menu, and in Options. <b>Show All</b> widens it again. <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> from the menu always opens on every change.</p>"
+                + "<p><b>History</b> in an editor opens it for only what that editor shows: on the Device Bindings page (the selected input), on a Logical Device control's menu, in Module Setup, in the Device Mapping Editor's File menu, and in Options. <b>Show All</b> widens it again. <b>Tools › History</b> <a href=\"show:menu/Tools/History\">Show me ›</a> from the menu always opens on every change.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>New changes appear when the window comes back to the front, or when you choose <b>Refresh</b>.</li>"
                 + "<li>With nothing to show, the list says \"No saved changes to show.\"</li>"
-                + "<li>Window sizes and places, and the Button Map's zoom, guides and print area, aren't kept.</li>"
+                + "<li>Window sizes and places, and the Device Mapping Editor's zoom, guides and print area, aren't kept.</li>"
                 + "<li><b>Days to keep changes</b> <a href=\"show:option/Days to keep changes\">Show me ›</a> (90) and <b>Largest history file (MB)</b> <a href=\"show:option/Largest history file (MB)\">Show me ›</a> (20) in Options set how long changes are kept and how big each history file may grow; the oldest go first. Both are checked when the program starts.</li>"
                 + "<li>The history is kept in the history folder, set on the <b>Folders</b> page of Options <a href=\"show:option/History folder\">Show me ›</a>. After you move it, the changes saved before stay in the old folder, and the window shows only the new one.</li>"
                 + "<li>The whole profile is kept for the newest 20 saves of each profile.</li>"
@@ -395,7 +395,7 @@ function topics() {
             body: "<p>While <b>Diagnostic logs</b> is <b>ALL</b>, Live runs or <b>Tracing</b> is on, every window has a red frame and a <b>DEBUG</b> badge at the top.</p>"
                 + "<ul>"
                 + "<li>Click the badge to open the Live Log Reader.</li>"
-                + "<li>Button Map exports and prints never include it.</li>"
+                + "<li>Device map exports and prints never include it.</li>"
                 + "</ul>",
             related: ["tools-live", "tools-live-log", "tools-trace"]
         },

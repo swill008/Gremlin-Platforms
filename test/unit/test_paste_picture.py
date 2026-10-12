@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Pasting a picture into the Button Map: it is staged in the edit's
+"""Pasting a picture into the Device Mapping Editor: it is staged in the edit's
 temporary folder (07 S107) under a name that is not taken, named
 "pictures/<file>" (07 S10); Save copies it into the device's pictures/
 folder. There is no picture library (07 S81 removed)."""

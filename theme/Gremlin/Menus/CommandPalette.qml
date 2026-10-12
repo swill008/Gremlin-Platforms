@@ -53,7 +53,7 @@ T.Popup {
         close()
         // After the palette has closed, so a dialog it opens gets the focus.
         // Runs the command it holds: closing may take the window's commands
-        // out of the list (a Button Map's onClosed).
+        // out of the list (a Device Mapping Editor's onClosed).
         Qt.callLater(function() { c.run() })
     }
 

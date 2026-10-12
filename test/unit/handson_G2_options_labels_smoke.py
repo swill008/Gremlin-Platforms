@@ -2,8 +2,8 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Off-screen: Button Map Options (its own window, 07 S98) opened from an
-800 px wide Button Map window at a UI scale
+"""Off-screen: Device Map Options (its own window, 07 S98) opened from an
+800 px wide Device Mapping Editor window at a UI scale
 (test_handson_G2_options_labels.py). For every group but Library, each
 setting's label: its text, whether it is shortened (…) and whether its
 text runs past its box. Prints RESULT {json}.
@@ -73,8 +73,10 @@ def main() -> None:
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
     root = wait_until(lambda: app.engine.rootObjects(), "the main window")[0]
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-    call(root, "openButtonMapForCard", card)
-    win = wait_until(lambda: call(root, "buttonMapWindow"), "the Button Map")
+    call(root, "openDeviceMappingEditorForCard", card)
+    win = wait_until(
+        lambda: call(root, "deviceMappingEditorWindow"), "the Device Mapping Editor"
+    )
     # The width the hands-on check used.
     win.setProperty("width", 800)
     win.setProperty("height", 600)
@@ -95,11 +97,11 @@ def main() -> None:
             found += items(c)
         return found
 
-    # Edit > Button Map Options… opens its own window (07 S98).
-    ev("_buttonMap.openOptions()")
+    # Edit > Device Map Options… opens its own window (07 S98).
+    ev("_editorWin.openOptions()")
     options = wait_until(
         lambda: (w := ev("_optionsWin")) is not None and w.isVisible() and w,
-        "the Button Map Options window",
+        "the Device Map Options window",
     )
 
     def in_options(name: str) -> QtQuick.QQuickItem | None:
@@ -107,7 +109,7 @@ def main() -> None:
         return next(found, None)
 
     pane = wait_until(
-        lambda: (p := in_options("buttonMapOptionsPanel")) is not None
+        lambda: (p := in_options("deviceMapOptionsPanel")) is not None
         and p.isVisible() and p,
         "the Options panel",
     )

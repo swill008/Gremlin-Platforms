@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""qml/rig_groups.js _uid: the Button Map's ids for new items.
+"""qml/rig_groups.js _uid: the Device Mapping Editor's ids for new items.
 
 An id was the clock and a random number 0-999. Break Group makes all its
 chips in one millisecond, so two of them now and then shared an id; grouping

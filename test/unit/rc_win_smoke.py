@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map window's part of the right-click additions (07 S136,
+"""The Device Mapping Editor window's part of the right-click additions (07 S136,
 S137) in the real window, off-screen (stand-in hardware, a temporary user
 folder): the star on menu-bar rows, Edit rows and keys through
 rig_commands.js (Repeat sees them), the favourites store wiring, Show in
@@ -97,7 +97,7 @@ store.module_file_in(DEVICE).write_text(
 )
 
 import joystick_gremlin  # noqa: E402
-from gremlin.ui import button_map_options  # noqa: E402
+from gremlin.ui import device_map_options  # noqa: E402
 
 
 def wait_for(cond: Callable[[], object], limit: float = LIMIT) -> object:
@@ -154,7 +154,7 @@ class Window:
 
     @property
     def win(self) -> QtGui.QWindow:
-        return call(self.root, "buttonMapWindow")  # type: ignore[return-value]
+        return call(self.root, "deviceMappingEditorWindow")  # type: ignore[return-value]
 
     def ev(self, code: str) -> object:
         win = self.win
@@ -205,7 +205,7 @@ class Window:
 # The star under a menu row (made by the window's addStar), or null.
 _STAR = (
     "(function(r) { if (!r) return null; for (var i = 0; i < r.children.length; i++) {"
-    " var c = r.children[i]; if (String(c.objectName).indexOf('bmStar_') === 0)"
+    " var c = r.children[i]; if (String(c.objectName).indexOf('dmeStar_') === 0)"
     " return c } return null })"
 )
 
@@ -242,22 +242,22 @@ def main() -> None:
         except Exception as error:
             out[name] = {"error": repr(error), "traceback": traceback.format_exc()}
 
-    call(root, "openButtonMapForCard", CARD)
+    call(root, "openDeviceMappingEditorForCard", CARD)
     wait_for(lambda: w.win is not None)
     w.win.setProperty("width", 1200)
     w.win.setProperty("height", 700)
     wait_for(
         lambda: w.ev(
-            f"_buttonMap.targetName === {json.dumps(NAME)} && _buttonMap.faceLive"
+            f"_editorWin.targetName === {json.dumps(NAME)} && _editorWin.faceLive"
             " && _ed() !== null && _ed().nodes.length > 0"
         )
     )
-    w.ev("_buttonMap.enterEdit()")
+    w.ev("_editorWin.enterEdit()")
     out["editing"] = bool(
         wait_for(
             lambda: w.ev(
-                "_buttonMap.editing && _ed() !== null && _ed().seeded &&"
-                " !_buttonMap._baseWanted"
+                "_editorWin.editing && _ed() !== null && _ed().seeded &&"
+                " !_editorWin._baseWanted"
             )
         )
     )
@@ -305,20 +305,20 @@ def main() -> None:
             QtCore.QPoint(int(sp[0]), int(sp[1])),
         )
         QtTest.QTest.qWait(200)
-        res["stored"] = list(button_map_options.favourites())
+        res["stored"] = list(device_map_options.favourites())
         res["editor"] = w.js("_ed().favourites")
         res["star-text"] = w.ev(f"({_STAR})({row}).text")
         res["ran-nothing"] = [w.nodes(), w.hist()] == before
         w.ev(f"{_EDIT_MENU}.close()")
         # A second toggle (what the click runs) takes it off again.
         w.ev(f"({_STAR})({row}).toggle()")
-        res["after-second"] = list(button_map_options.favourites())
+        res["after-second"] = list(device_map_options.favourites())
         # The editor's own signals reach the store.
         w.ev("_ed().favouriteToggled('rotatePlus')")
-        res["from-editor"] = list(button_map_options.favourites())
+        res["from-editor"] = list(device_map_options.favourites())
         res["editor-after"] = w.js("_ed().favourites")
         w.ev("_ed().favouriteRemoved('rotatePlus')")
-        res["removed-from-editor"] = list(button_map_options.favourites())
+        res["removed-from-editor"] = list(device_map_options.favourites())
         res["shown-count"] = w.ev("_ed().favouritesShown")
         return res
 
@@ -394,20 +394,20 @@ def main() -> None:
     # --- Properties...: Layers with Properties shown --------------------------
     def properties() -> dict:
         res: dict = {}
-        w.ev("_buttonMap.propsOn = false")
+        w.ev("_editorWin.propsOn = false")
         w.ev("_layersSide.fold()")
         w.select(["b3"])
         w.ev("_ed().propertiesRequested()")
         QtTest.QTest.qWait(100)
         res["open"] = bool(w.ev("_layersSide.open"))
-        res["propsOn"] = bool(w.ev("_buttonMap.propsOn"))
-        res["propsShown"] = bool(w.ev("_buttonMap.propsShown"))
+        res["propsOn"] = bool(w.ev("_editorWin.propsOn"))
+        res["propsShown"] = bool(w.ev("_editorWin.propsShown"))
         w.select([])
         return res
 
     step("properties", properties)
 
-    w.ev("_buttonMap.discardEdit()")
+    w.ev("_editorWin.discardEdit()")
     print("RESULT " + json.dumps(out), flush=True)
     smoke_exit(0)
 

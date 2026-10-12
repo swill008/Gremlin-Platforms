@@ -5,7 +5,7 @@
 """The can't-be-sent notice only refreshes what open editors show
 (D-05-CANT-SEND-LIVE, 05 S137): Send OSC's and Map to Xbox's red ⚠ re-read
 it, but that isn't an edit of the action (no signal.actionsChanged, so no
-profile change, Button Map recheck or recovery nudge). Picking a pad or a
+profile change, Device Mapping Editor recheck or recovery nudge). Picking a pad or a
 target still is."""
 
 from __future__ import annotations

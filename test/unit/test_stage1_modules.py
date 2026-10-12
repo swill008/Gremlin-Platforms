@@ -557,10 +557,10 @@ def test_import_into_a_renamed_stick_goes_into_the_file_it_uses(
 
 
 def test_module_setup_cancel_puts_the_old_picture_back(tmp_path: Path) -> None:
-    # Q2: Import Image works like the Button Map: Module Setup, off-screen in
+    # Q2: Import Image works like the Device Mapping Editor: Module Setup, off-screen in
     # the running program, imports a picture, then Cancel and Discard; the
     # starting photo is back on the module file, on disk and in the window.
-    from test.unit.test_stage1_button_map import (  # pyright: ignore[reportMissingImports]
+    from test.unit.test_stage1_device_mapping_editor import (  # pyright: ignore[reportMissingImports]
         _run,
     )
 
@@ -1024,7 +1024,7 @@ def test_a_damaged_file_keeps_its_photo_on_import_image(
     assert not picture_file(folder, "pJoy Pro", "photo.jpg", stick_guid()).exists()
 
 
-def test_a_refused_button_map_save_copies_no_picture(
+def test_a_refused_device_map_save_copies_no_picture(
     folder: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # GL-079 (07 S12): the damage check comes before any picture is copied.

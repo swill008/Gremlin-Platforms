@@ -32,7 +32,7 @@ def _qml_files() -> dict[str, str]:
 
 
 def test_no_stock_menus_anywhere() -> None:
-    # The Button Map included: it uses the shared menus too.
+    # The Device Mapping Editor included: it uses the shared menus too.
     found = [rel for rel, text in _qml_files().items() if _STOCK_MENU.search(text)]
     assert found == [], (
         "Use Gremlin.Menus (ContextMenu, ThemedMenu, ThemedMenuItem) instead "
@@ -134,7 +134,8 @@ def test_shared_menus_work(tmp_path: pathlib.Path) -> None:
     assert results["palette-ran"] == "save"
     # A device card's menu.
     assert results["card"] == (
-        "Stick|Open Device Bindings|Button Map|Hide Card|> Module|> View|> Cards|> Device"
+        "Stick|Open Device Bindings|Device Mapping Editor|Hide Card"
+        "|> Module|> View|> Cards|> Device"
     )
     assert results["card-device"].endswith(
         "|  Reset Card Layout|  Delete Device"

@@ -282,7 +282,7 @@ def _setup(tmp_path: Path, name: str, uid: uuid.UUID, fake: FakeLibrary) -> dict
     }
 
 
-_ALL = ["setup", "button_map", "appearance", "bindings"]
+_ALL = ["setup", "device_map", "appearance", "bindings"]
 
 
 def _doc(name: str) -> dict:

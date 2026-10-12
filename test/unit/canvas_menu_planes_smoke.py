@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen for the empty-space right-click
+"""Drives the Device Mapping Editor off-screen for the empty-space right-click
 menu's plane switch (07 S113): Edit Background in Foreground mode, Exit
 Background Editing in Background mode, Ctrl+B beside it, only while editing.
 Prints the results as JSON; test_canvas_menu_planes.py runs it in its own

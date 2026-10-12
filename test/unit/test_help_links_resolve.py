@@ -75,19 +75,20 @@ def test_link_text_matches_its_kind(run: dict) -> None:
     assert not bad, "\n".join(bad)
 
 
-def test_button_map_show_me_links_resolve(run: dict) -> None:
+def test_device_mapping_editor_show_me_links_resolve(run: dict) -> None:
     """07 S126 (D-07-PLANES-FOLLOWUP Q1a): the Show me › links into the
-    Button Map window are in the book and check without the window open:
+    Device Mapping Editor window are in the book and check without the window open:
     one per area (user 2026-10-11), each menu's title in the bar, the side
     panels, Properties, the Background banner and row."""
-    names = ("bmMenuFile", "bmMenuEdit", "bmMenuView", "bmMenuInsert", "bmMenuArrange",
-             "bmMenuLeader", "bmMenuFormat", "bmMenuHelp", "chipsSide", "layersSide",
-             "propsPanel", "bmBgBanner", "bmBgRow")
-    want = {f"show:buttonmap/{n}" for n in names}
+    names = ("dmeMenuFile", "dmeMenuEdit", "dmeMenuView", "dmeMenuInsert",
+             "dmeMenuArrange",
+             "dmeMenuLeader", "dmeMenuFormat", "dmeMenuHelp", "chipsSide", "layersSide",
+             "propsPanel", "dmeBgBanner", "dmeBgRow")
+    want = {f"show:devicemappingeditor/{n}" for n in names}
     found = {x["href"]: x["reason"] for x in run["links"] if x["href"] in want}
     assert set(found) == want, sorted(want - set(found))
     assert all(r == "" for r in found.values()), found
     # 07 S113: the removed switch is no longer linked from Help.
-    old = "show:buttonmap/bmPlaneSwitch"
+    old = "show:devicemappingeditor/dmePlaneSwitch"
     gone = [x["href"] for x in run["links"] if x["href"] == old]
     assert not gone, gone

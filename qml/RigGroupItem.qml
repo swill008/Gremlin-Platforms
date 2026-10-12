@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// A group of chips (plus, pair, stack, 5-way) in the Button Map editor.
+// A group of chips (plus, pair, stack, 5-way) in the Device Mapping Editor.
 Item {
     id: _grp
     property var ed: null

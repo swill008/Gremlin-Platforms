@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""More of the Button Map editor's background and foreground planes (07 S94,
+"""More of the Device Mapping Editor's background and foreground planes (07 S94,
 S118, S122; D-07-BACKGROUND-PLANES), checked on the real editor off-screen
 (planes_editor_more_smoke.py, its own process and user folder).
 

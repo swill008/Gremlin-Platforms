@@ -88,7 +88,7 @@ def test_clear_deletes_history_only(data: Path) -> None:
     assert (hist / "notes.txt").read_text(encoding="utf-8") == "mine"
     assert (hist / "files" / "readme.txt").read_text(encoding="utf-8") == "mine"
     assert [p.name for p in (hist / "files").iterdir()] == ["readme.txt"]
-    for area in ("settings", "profile", "modules", "button-map"):
+    for area in ("settings", "profile", "modules", "device-mapping-editor"):
         assert not (hist / f"{area}.jsonl").exists()
 
     left = _settled()

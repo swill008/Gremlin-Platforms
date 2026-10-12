@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Final fix round X5: a failed Button Map write is False, not an error out
+"""Final fix round X5: a failed device map write is False, not an error out
 of the Qt slot, and the old file stays whole (07 S20, S23)."""
 
 from __future__ import annotations
@@ -51,7 +51,11 @@ def test_a_failed_write_is_false_logged_once_and_the_file_stays(
             "Stick R", json.dumps(payload)
         )
     assert result is False
-    said = [r for r in caplog.records if "Button Map not written" in r.getMessage()]
+    said = [
+        r
+        for r in caplog.records
+        if "Device Mapping Editor not written" in r.getMessage()
+    ]
     assert len(said) == 1
     assert path.read_text(encoding="utf-8") == old_text
 

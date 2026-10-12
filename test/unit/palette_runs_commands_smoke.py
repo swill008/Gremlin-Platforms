@@ -4,7 +4,8 @@
 
 """Starts the program off-screen (stand-in hardware, a stick with a map) and
 runs a command from the main window's Command Palette (01 S65): its pick
-runs once. (The Button Map has no palette, 07 S100.) Prints what it saw as JSON.
+runs once. (The Device Mapping Editor has no palette, 07 S100.) Prints what
+it saw as JSON.
 test_palette_runs_commands.py runs it in its own process and user folder.
 
     python test/unit/palette_runs_commands_smoke.py

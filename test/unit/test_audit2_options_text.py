@@ -125,9 +125,9 @@ def test_history_names_settings_as_options_does(
 
 
 def test_numbered_setting_loses_its_number_in_history() -> None:
-    # Button Map's "01-recovery-copies" once read "Changed 01 ...".
+    # Device Mapping Editor's "01-recovery-copies" once read "Changed 01 ...".
     text = history_model._settings_text(
-        {"button-map/recovery/01-recovery-copies": "true"}
+        {"device-mapping-editor/recovery/01-recovery-copies": "true"}
     )
     assert text == "Keep recovery copies: true"
 

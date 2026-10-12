@@ -9,10 +9,10 @@ anything replaces them) and note_write() after; its deletes and Start Fresh
 go through deleting() (delete_before() before, note_delete() after). An
 entry keeps
 the file as it was and as it became, and the pictures it uses (kept once
-each by content), so it can be put back. A change to the Button Map's view
-only (zoom, pan, grid, guides, print area) isn't kept: it changes all the
-time. A save that changes only the Button Map is filed under Button Map,
-others under Module files.
+each by content), so it can be put back. A change to the Device Mapping
+Editor's view only (zoom, pan, grid, guides, print area) isn't kept: it
+changes all the time. A save that changes only the device map is filed
+under Device Mapping Editor, others under Module files.
 """
 
 from __future__ import annotations
@@ -25,10 +25,10 @@ from pathlib import Path
 
 from gremlin import history
 
-# What the Button Map writes, and what a change means in words. The
+# What the Device Mapping Editor writes, and what a change means in words. The
 # device's photo is the bottom background picture, inside "nodes" (07
 # S127); "photo", "image", "imageWidth" and "imageHeight" are a map saved
-# before the planes, dropped by its next Save (OT-2), still a Button Map
+# before the planes, dropped by its next Save (OT-2), still a device map
 # change. The background's view settings are program settings, never in
 # the file (08 S9).
 MAP_KEYS = {
@@ -50,9 +50,9 @@ _WORDS = {
     "layout": "Device Bindings layout",
     "calibration": "calibration",
     "view": "Output View Appearance",
-    "nodes": "Button Map",
-    "photo": "Button Map photo",
-    "image": "Button Map photo",
+    "nodes": "Device Map",
+    "photo": "Device Map photo",
+    "image": "Device Map photo",
 }
 
 
@@ -252,7 +252,7 @@ def _record(
     folder = path.parent.name
     changed = _changed_keys(old, new)
     if kind == "save" and changed <= {"ui"}:
-        return  # the Button Map's view only
+        return  # the Device Mapping Editor's view only
     # Spaces as typed in the file ("EVO OT L  ") don't reach the title.
     device = " ".join(str((new or old or {}).get("device") or folder).split())
     if kind == "delete" and moved_to is not None:
@@ -271,7 +271,7 @@ def _record(
         title = f"Saved {device}" + (": " + ", ".join(words) if words else "")
         if old_text is None:
             title = f"Created the module file of {device}"
-        area = "button-map" if changed <= MAP_KEYS | {"ui"} else "modules"
+        area = "device-mapping-editor" if changed <= MAP_KEYS | {"ui"} else "modules"
     with _pictures_lock:
         before = {
             "text": old_text,

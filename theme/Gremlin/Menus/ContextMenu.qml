@@ -9,7 +9,7 @@ import QtQuick.Layouts
 import Gremlin.Style
 import "menu_model.js" as MenuModel
 
-// The program's right-click menu, in the Button Map's style. It lists only
+// The program's right-click menu, in the Device Mapping Editor's style. It lists only
 // what applies to what was clicked (build() returns the list, made with
 // menu_model.js): a title, a few quick rows, then collapsed sections that
 // open one at a time. It reopens the section last used for that kind of
@@ -25,7 +25,7 @@ import "menu_model.js" as MenuModel
 //   _menu.openAt(item, x, y)    at a point in item's coordinates
 //   _menu.openBelow(button)     under a button
 //
-// Favourites (opt-in, the Button Map): with favouritesEnabled, the model's
+// Favourites (opt-in, the Device Mapping Editor): with favouritesEnabled, the model's
 // `favourites` rows ({cmd, text, hint, enabled, run}) show in an always-open
 // block at the top, each with an × that emits favouriteRemoved(cmd); an action
 // row with a `cmd` shows a ☆ on hover (★ when cmd is in favouriteIds) that
@@ -48,7 +48,7 @@ Popup {
     property real anchorX: 0
     property real anchorY: 0
     // Stays open after a row is chosen (refreshed to the new state) and can be
-    // dragged by its title; a click outside it or Esc closes it (Button Map).
+    // dragged by its title; a click outside it or Esc closes it (Device Mapping Editor).
     property bool stayOpen: false
     // Pinned with the pin by the title: a click outside does not close it, it
     // stays open after a row is chosen and stays where it is; Esc closes it
@@ -211,7 +211,7 @@ Popup {
     onClosed: pinned = false
 
     // Clicks, the wheel and the pointer on the menu stay on the menu: nothing
-    // under it (the Button Map) reacts to them.
+    // under it (the Device Mapping Editor) reacts to them.
     // One panel per column: the menu at the pointer, and the second column
     // beside it as high as it needs.
     background: Item {

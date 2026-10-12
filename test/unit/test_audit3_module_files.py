@@ -114,7 +114,7 @@ def _renamed(folder: Path) -> str:
 # --- Item 7: a renamed stick ------------------------------------------------
 
 
-def test_renamed_sticks_photo_goes_with_the_file_its_button_map_opens(
+def test_renamed_sticks_photo_goes_with_the_file_its_device_mapping_editor_opens(
     folder: Path, tmp_path: Path
 ) -> None:
     guid = _renamed(folder)
@@ -138,8 +138,8 @@ def test_renamed_sticks_photo_goes_with_the_file_its_button_map_opens(
     assert not (own / "pictures" / "photo.jpg").exists()
     assert not hw.editActive("pJoy Pro")
 
-    # Saved: it goes into the folder the Button Map opens. Old: pjoy_pro/,
-    # which the Button Map (old_name.json) never read.
+    # Saved: it goes into the folder the Device Mapping Editor opens. Old: pjoy_pro/,
+    # which the Device Mapping Editor (old_name.json) never read.
     hw.beginEdit("pJoy Pro")
     assert hw.copyImage(picture.as_uri(), "pJoy Pro") == "pictures/photo.jpg"
     assert hw.commitEditFor("pJoy Pro", "") == ""

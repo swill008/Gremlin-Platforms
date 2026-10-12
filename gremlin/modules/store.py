@@ -7,7 +7,7 @@ list GL-067, D-03-DEVICE-FOLDERS).
 
 One folder per device in the modules folder, named after the device's
 shown name: device.json (its id and shown name), module.json (the module
-file), recovery.json (the Button Map's recovery copy), pictures/ and
+file), recovery.json (the Device Mapping Editor's recovery copy), pictures/ and
 imported/ (03 S128-S134). Callers pass a device's name and id and never
 build paths:
 
@@ -532,7 +532,7 @@ def pictures_dir(device_name: str, guid: str = "") -> Path:
 
 
 def recovery_path(device_name: str, guid: str = "") -> Path:
-    """The Button Map's recovery copy of unsaved edits (07 S32)."""
+    """The Device Mapping Editor's recovery copy of unsaved edits (07 S32)."""
     return device_dir(device_name, guid) / RECOVERY_FILE
 
 
@@ -543,7 +543,7 @@ def imported_dir(device_name: str, guid: str = "") -> Path:
 
 def edit_temp_dir(device_name: str, guid: str = "", owner: str = "") -> Path:
     """An edit's temporary folder (07 S107): cache/edit/<id key> for the
-    Button Map, cache/edit-<owner>/<id key> for another window. Keyed by
+    Device Mapping Editor, cache/edit-<owner>/<id key> for another window. Keyed by
     id, so a rename can't race it and export, History and the Library never
     see it."""
     key = id_key(device_name, _lookup_guid(device_name, guid))
@@ -1433,7 +1433,7 @@ def remove_pictures(
     return True
 
 
-# The Button Map's page and the photo frame in its middle (07 S68), as
+# The Device Mapping Editor's page and the photo frame in its middle (07 S68), as
 # fractions of the page: where the device's photo is fitted.
 PAGE_W = 32000
 PAGE_H = 18000
@@ -1856,7 +1856,7 @@ def commit_edit(
     guid: str,
     change: Callable[[dict], object],
     owner: str = "",
-    who: str = "Button Map",
+    who: str = "Device Mapping Editor",
 ) -> str:
     """Save: the added pictures go into the device's pictures/, change(doc)
     is written into module.json (update_path), the pictures nothing names
@@ -1956,10 +1956,13 @@ def recover_edit(device_name: str, guid: str = "", owner: str = "") -> str:
             main = module_file_in(base)
             if (start / MODULE_FILE).is_file():
                 replace(
-                    main, (start / MODULE_FILE).read_bytes(), "Button Map", force=True
+                    main,
+                    (start / MODULE_FILE).read_bytes(),
+                    "Device Mapping Editor",
+                    force=True,
                 )
             elif main.is_file():
-                delete_path(main, "Button Map")
+                delete_path(main, "Device Mapping Editor")
         except OSError:
             syslog.exception(f"Edit of {device_name} could not be put back")
             return "error"
@@ -2408,7 +2411,7 @@ def member_kind(node: dict, member: dict) -> str:
 def filter_nodes(
     nodes: list, buttons: set[int], axes: set[int], hats: set[int], keys: set[int]
 ) -> list:
-    """The Button Map nodes whose control is in these sets (groups keep the
+    """The device map nodes whose control is in these sets (groups keep the
     members that are); nodes of no control are kept."""
     kept: list = []
     for node in nodes:
@@ -2507,7 +2510,7 @@ def prepare_imported_doc(
     previous_background: list | None = None,
 ) -> tuple[dict, str]:
     """A module document copied onto this device: only the controls it has,
-    its own name and id; its Button Map keeps this device's background
+    its own name and id; its device map keeps this device's background
     (previous_background, its layers bottom first) and takes the file's
     foreground (03 S135). (the copy, what was left out)."""
     claim = _dict(doc.get("claim"))

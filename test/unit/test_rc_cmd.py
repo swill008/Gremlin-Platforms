@@ -4,7 +4,7 @@
 
 # ruff: noqa: E501  (the stand-in editor is JavaScript, one function a line)
 
-"""The Button Map's command list for Favourites and Repeat (07 S136 S137,
+"""The Device Mapping Editor's command list for Favourites and Repeat (07 S136 S137,
 D-07-RIGHTCLICK-ANSWERS): the Edit commands have ids, every id has a label,
 a command run is remembered for Repeat (not Copy, Select All or Stop
 Drawing), and Repeat runs it again only when it applies. Drives

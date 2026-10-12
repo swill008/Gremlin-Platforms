@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Print & Export with the Button Map's two planes (07 S82, S83, S87, S89,
+"""Print & Export with the Device Mapping Editor's two planes (07 S82, S83, S87, S89,
 S123), checked in the running program off-screen (planes_print_smoke.py,
 its own process and user folder). The map's background holds one plain red
 picture of 800 x 400 pixels.

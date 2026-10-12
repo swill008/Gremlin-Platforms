@@ -34,7 +34,7 @@ _IMAGE_EXT = store.PICTURE_EXT
 
 syslog = logging.getLogger("system")
 
-# The Button Map page every position is a fraction of, and the photo frame
+# The Device Mapping Editor page every position is a fraction of, and the photo frame
 # in its middle (07 S68, Q14): the one place it is written. Save stamps it
 # into the map (VkbRigEditor's world page follows it).
 PAGE_SIZE = {"page": 32000, "pageW": 32000, "pageH": 18000, "photoWell": 0.75}
@@ -50,13 +50,13 @@ def persist_log(message: str) -> None:
 
 
 def _write_map(path: Path, change: Callable[[dict], object]) -> bool:
-    """store.update_path for the Button Map's slots: a failed write is False
+    """store.update_path for the Device Mapping Editor's slots: a failed write is False
     (the window says "Not written"), logged once; the old file stays whole
     (07 S20, S23)."""
     try:
-        return store.update_path(path, change, "Button Map")
+        return store.update_path(path, change, "Device Mapping Editor")
     except OSError as exc:
-        syslog.warning(f"Button Map not written to {path}: {exc}")
+        syslog.warning(f"Device Mapping Editor not written to {path}: {exc}")
         return False
 
 
@@ -78,11 +78,11 @@ _RECENT_COLOURS = 10
 
 
 def _recent_count() -> int:
-    """How many recent colours to keep (Options → Button Map → Colours)."""
+    """How many recent colours to keep (Device Map Options → Colours)."""
     try:
-        from gremlin.ui import button_map_options
+        from gremlin.ui import device_map_options
 
-        return max(1, int(button_map_options.value("recent-colours")))
+        return max(1, int(device_map_options.value("recent-colours")))
     except Exception:
         return _RECENT_COLOURS
 
@@ -158,7 +158,7 @@ def _export_in_background(
     try:
         done(ok, error)
     except RuntimeError:
-        # The Button Map closed while it ran: nobody to tell.
+        # The Device Mapping Editor closed while it ran: nobody to tell.
         pass
 
 
@@ -222,7 +222,7 @@ def export_failure(
     reason: str = "",
     fallback: str = "the picture could not be written there",
 ) -> str:
-    """What the Button Map says when a file can't be written: which file,
+    """What the Device Mapping Editor says when a file can't be written: which file,
     which folder and why (07 Q19; templates too, 07 S80)."""
     path = Path(path)
     why = reason or _write_problem(path, fallback)
@@ -629,7 +629,7 @@ def delete_device(device_name: str, guid: str) -> str:
     })
 
 
-_PICTURE_FOLDER = ("global", "internal", "button-map-picture-folder")
+_PICTURE_FOLDER = ("global", "internal", "device-map-picture-folder")
 
 
 def _picture_folder_config():  # noqa: ANN202 - Configuration, imported late
@@ -852,7 +852,7 @@ def _osc_names(guid: str) -> dict[str, str]:
 
 @ta.QmlElement
 class HardwareProfile(QtCore.QObject):
-    """Load / save a control.hardware JSON beside the Button Map."""
+    """Load / save a control.hardware JSON beside the Device Mapping Editor."""
 
     documentChanged = QtCore.Signal()
     pathChanged = QtCore.Signal()
@@ -926,7 +926,7 @@ class HardwareProfile(QtCore.QObject):
     ) -> dict[str, str]:
         """What each control of a device does in a mode: {"btn:5": "Gear up"}."""
         from gremlin import shared_state
-        from gremlin.ui.button_map_labels import action_labels
+        from gremlin.ui.device_map_labels import action_labels
 
         return action_labels(
             shared_state.current_profile, guid, mode, prefer_description, join_all
@@ -936,7 +936,7 @@ class HardwareProfile(QtCore.QObject):
     def profileModes(self) -> list:
         """The loaded profile's modes, parents before their children."""
         from gremlin import shared_state
-        from gremlin.ui.button_map_labels import mode_order
+        from gremlin.ui.device_map_labels import mode_order
 
         return mode_order(shared_state.current_profile)
 
@@ -946,7 +946,7 @@ class HardwareProfile(QtCore.QObject):
         from gremlin.config import Configuration
 
         stored = Configuration().value(
-            "global", "internal", "button-map-recent-colours"
+            "global", "internal", "device-map-recent-colours"
         )
         return [str(c) for c in (stored or []) if _is_hex_colour(c)][:_recent_count()]
 
@@ -960,7 +960,7 @@ class HardwareProfile(QtCore.QObject):
             return
         recent = [c for c in self.recentColours if c.upper() != colour]
         recent = [colour, *recent][:_recent_count()]
-        Configuration().set("global", "internal", "button-map-recent-colours", recent)
+        Configuration().set("global", "internal", "device-map-recent-colours", recent)
         self.recentColoursChanged.emit()
 
     @QtCore.Slot(QtCore.QObject, float, float, result=str)
@@ -1035,7 +1035,7 @@ class HardwareProfile(QtCore.QObject):
         page = QtGui.QImage(image).copy()
         try:
             threads.start(
-                "Button Map export",
+                "Device Map export",
                 _export_in_background,
                 page,
                 int(width),
@@ -1096,7 +1096,7 @@ class HardwareProfile(QtCore.QObject):
         printer = QtPrintSupport.QPrinter(
             QtPrintSupport.QPrinter.PrinterMode.HighResolution
         )
-        printer.setDocName(title or "Button Map")
+        printer.setDocName(title or "Device Map")
         layout = page_layout(_setup(setup_json))
         if layout is not None:
             printer.setPageLayout(layout)
@@ -1107,7 +1107,7 @@ class HardwareProfile(QtCore.QObject):
                 else QtGui.QPageLayout.Orientation.Portrait
             )
         dialog = QtPrintSupport.QPrintDialog(printer)
-        dialog.setWindowTitle("Print Button Map")
+        dialog.setWindowTitle("Print Device Map")
         if dialog.exec() != QtPrintSupport.QPrintDialog.DialogCode.Accepted:
             return False
         return print_image(printer, page)
@@ -1122,7 +1122,7 @@ class HardwareProfile(QtCore.QObject):
 
     @QtCore.Property(bool, notify=clipboardChanged)
     def clipboardHasImage(self) -> bool:
-        """The clipboard holds a picture the Button Map can paste: picture
+        """The clipboard holds a picture the Device Mapping Editor can paste: picture
         data, or picture files copied in Explorer."""
         clipboard = _clipboard()
         data = clipboard.mimeData() if clipboard is not None else None
@@ -1227,9 +1227,9 @@ class HardwareProfile(QtCore.QObject):
                 name, self._device_guid, src, as_name, self._owner
             )
         except OSError as exc:
-            syslog.warning(f"Button Map picture not kept for {name}: {exc}")
+            syslog.warning(f"Device map picture not kept for {name}: {exc}")
             return ""
-        trace("SAVE", "Button Map", "stage", ref, "ok")
+        trace("SAVE", "Device Mapping Editor", "stage", ref, "ok")
         return ref
 
     def _resolve_existing(
@@ -1730,11 +1730,11 @@ class HardwareProfile(QtCore.QObject):
                     pass
         return QtCore.QUrl.fromLocalFile(str(target)).toString()
 
-    # --- layouts of other devices (Edit > Copy Button Map from Device) ---
+    # --- layouts of other devices (Edit > Copy Device Map from Device) ---
 
     @QtCore.Slot(str, result=list)
     def savedLayouts(self, device_name: str) -> list:
-        """Other devices' module files that hold a Button Map layout, as
+        """Other devices' module files that hold a device map layout, as
         [{name, slug}] by name (slug: the device's folder name);
         device_name's own folder is left out."""
         own = self._dir(device_name) if device_name else None
@@ -1766,7 +1766,7 @@ class HardwareProfile(QtCore.QObject):
     @QtCore.Slot(str, str, result=str)
     def layoutNodes(self, slug: str, device_name: str = "") -> str:
         """The layout (nodes) in another device's module file, as JSON text;
-        "" when there is none. With device_name (Copy Button Map from
+        "" when there is none. With device_name (Copy Device Map from
         Device), the pictures it uses wait in that device's edit and are
         copied into its folder on Save (07 S109)."""
         folder = self._layout_dir(slug)
@@ -1842,7 +1842,7 @@ class HardwareProfile(QtCore.QObject):
                 moved[ref] = store.picture_ref(file_name)
             self._rewrite_refs(nodes, moved)
             doc = {
-                "kind": "button-map-template",
+                "kind": "device-map-template",
                 "name": str(name).strip(),
                 "device": dev,
                 "savedAt": datetime.now().isoformat(timespec="seconds"),
@@ -2002,14 +2002,14 @@ class HardwareProfile(QtCore.QObject):
             return ""
         return name if name and self.templateExists(name) else ""
 
-    # --- recovery copies (Options > Button Map > Recovery copies, 07 S32) ----
+    # --- recovery copies (Device Map Options > Recovery copies, 07 S32) ----
 
     def _recovery_file(self, device_name: str) -> Path:
         return store.recovery_path(self._name(device_name), self._device_guid)
 
     @QtCore.Slot(str, str, result=bool)
     def saveRecovery(self, device_name: str, payload: str) -> bool:
-        """Keeps a copy of unsaved Button Map edits in the device's folder,
+        """Keeps a copy of unsaved Device Mapping Editor edits in the device's folder,
         stamped with the time.
 
         payload is the editor's {nodes}. The module file is not
@@ -2063,10 +2063,11 @@ class HardwareProfile(QtCore.QObject):
             text = store.read_text(path)
             # Not UTF-8 (damaged): shown empty; saving into it is refused.
             self._text = _planes_text(text, path.parent) if text is not None else ""
-            trace("READ", "Button Map", "load", path, "ok" if text is not None else "damaged")
+            state = "ok" if text is not None else "damaged"
+            trace("READ", "Device Mapping Editor", "load", path, state)
         else:
             self._text = ""
-            trace("READ", "Button Map", "load", path, "missing")
+            trace("READ", "Device Mapping Editor", "load", path, "missing")
         persist_log(
             f"Persist map load name={name!r} guid={self._device_guid!r} path={path} bytes={len(self._text)}"
         )
@@ -2102,7 +2103,7 @@ class HardwareProfile(QtCore.QObject):
         # GL-079).
         reason = store.damage_of(path)
         if reason:
-            trace("SAVE", "Button Map", "save", path, "damaged")
+            trace("SAVE", "Device Mapping Editor", "save", path, "damaged")
             module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
             return False
         # Every picture named "pictures/<file>"; one from outside the device
@@ -2110,7 +2111,7 @@ class HardwareProfile(QtCore.QObject):
         packed = self._own_refs(name, payload)
 
         def change(doc: dict) -> None:
-            # The Button Map writes its own keys; everything else in the
+            # The Device Mapping Editor writes its own keys; everything else in the
             # file (claims, names, calibration, Appearance...) stays, except
             # an old map's photo keys: its photo is a layer now (OT-2).
             for key in planes_once.OLD_PHOTO_KEYS:
@@ -2126,16 +2127,16 @@ class HardwareProfile(QtCore.QObject):
             # The edit's pictures go into the device's folder, the map is
             # written and pictures nothing names go (07 S106, S107).
             error = store.commit_edit(
-                name, self._device_guid, change, self._owner, "Button Map"
+                name, self._device_guid, change, self._owner, "Device Mapping Editor"
             )
             if error:
-                syslog.warning(f"Button Map not written to {path}: {error}")
+                syslog.warning(f"Device Mapping Editor not written to {path}: {error}")
                 return False
         else:
             try:
                 store.ensure_device_dir(name, self._device_guid)
             except OSError as exc:
-                syslog.warning(f"Button Map not written to {path}: {exc}")
+                syslog.warning(f"Device Mapping Editor not written to {path}: {exc}")
                 return False
             if not _write_map(path, change):
                 return False
@@ -2222,7 +2223,7 @@ class HardwareProfile(QtCore.QObject):
         path = self._file_for(name)
         reason = store.damage_of(path)
         if reason:
-            trace("SAVE", "Button Map", "copyImage", path, "damaged")
+            trace("SAVE", "Device Mapping Editor", "copyImage", path, "damaged")
             module_file.report_refused(module_file.ModuleFileDamaged(path, reason))
             return ""
         rel = self._stage(name, src, f"photo{ext}")
@@ -2272,7 +2273,7 @@ class HardwareProfile(QtCore.QObject):
     # Pictures added in an edit (Choose Photo, Import Picture, Paste, a copied
     # map or template) wait in cache/edit[-<owner>]/<id key>/ until Save
     # (commit_edit); Cancel drops the folder, so nothing is left behind. The
-    # device's folder is not touched until Save. owner: "" the Button Map,
+    # device's folder is not touched until Save. owner: "" the Device Mapping Editor,
     # "setup" Module Setup.
 
     @QtCore.Slot(str)
@@ -2313,7 +2314,7 @@ class HardwareProfile(QtCore.QObject):
         store.cancel_edit(name, self._device_guid, owner)
         self._staged_photo = ""
         if had:
-            who = "Configure Module" if owner else "Button Map"
+            who = "Configure Module" if owner else "Device Mapping Editor"
             trace("SAVE", who, "cancelEdit", name, "ok")
         return had
 
@@ -2354,7 +2355,7 @@ class HardwareProfile(QtCore.QObject):
             store.set_device_photo(doc, photo, folder)
             return True
 
-        who = "Configure Module" if owner else "Button Map"
+        who = "Configure Module" if owner else "Device Mapping Editor"
         return store.commit_edit(name, self._device_guid, change, owner, who)
 
     # Module Setup's (DialogConfigureModule.qml) names for the calls above,

@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// The snap grid behind the Button Map editor.
+// The snap grid behind the Device Mapping Editor.
 Canvas {
     id: _grid
     property var ed: null

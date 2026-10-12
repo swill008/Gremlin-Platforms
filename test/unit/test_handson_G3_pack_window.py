@@ -81,7 +81,7 @@ def test_s107_export_runs_in_the_background(run: dict) -> None:
     assert run["file-before-release"] is False
     assert run["finished"] is True
     assert run["status-after"].startswith("Wrote ")
-    assert "g3 pack.zip" in run["status-after"]
+    assert "g3 pack.gmap" in run["status-after"]
     assert run["busy-after"] is False
     assert run["export-enabled-after"] is True
     assert run["show-folder-after"] is True
@@ -94,6 +94,6 @@ def test_s107_export_runs_in_the_background(run: dict) -> None:
 
 def test_s107_a_failure_names_file_folder_and_reason(run: dict) -> None:
     status = run["status-failed"]
-    assert status.startswith("Export failed. taken.zip could not be written to ")
+    assert status.startswith("Export failed. taken.gmap could not be written to ")
     assert status.endswith(": a folder has that name.")
     assert run["export-enabled-after-fail"] is True

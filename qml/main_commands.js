@@ -96,8 +96,8 @@ function commandList() {
               return !(uiState && uiState.currentRoom === "configuration" && uiState.currentTab === "logical")
           },
           run: function() { openLogicalDevice() } },
-        { id: "tools.buttonMap", text: "Button Map", group: "Tools › Mapping",
-          run: function() { openBlankButtonMap() } },
+        { id: "tools.deviceMappingEditor", text: "Device Mapping Editor", group: "Tools › Mapping",
+          run: function() { openBlankDeviceMappingEditor() } },
         { id: "tools.autoMappingTool", text: "Auto Mapping Tool", group: "Tools › Mapping",
           run: function() { openTool("DialogAutoMappingTool.qml") } },
         { id: "tools.manageModes", text: "Manage Modes", group: "Tools › Mapping",

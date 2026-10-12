@@ -115,7 +115,7 @@ def test_s8_s11_details(model: DeviceLibraryModel) -> None:
     assert d["kept"] == "Saved by you · 2026-10-02 14:20"
     assert d["holdsLabels"] == [
         "Setup (claims, friendly names)",
-        "Button Map and photo",
+        "Device Map and photo",
         "Appearance",
         "Calibration",
     ]

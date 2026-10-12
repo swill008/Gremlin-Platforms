@@ -270,7 +270,7 @@ def test_gtemplate_round_trip(modules: Path, tmp_path: Path) -> None:
     (base / "pictures" / "panel.png").write_bytes(b"panel")
     (base / "pictures" / "spare.png").write_bytes(b"spare")
     template = {
-        "kind": "button-map-template",
+        "kind": "device-map-template",
         "name": "Desk",
         "nodes": [{"shape": "image", "kind": "image", "src": "pictures/panel.png"}],
     }
@@ -297,7 +297,7 @@ def test_an_old_json_template_brings_the_pictures_that_exist(
     old.write_text(
         json.dumps(
             {
-                "kind": "button-map-template",
+                "kind": "device-map-template",
                 "name": "Old",
                 "nodes": [
                     {"shape": "image", "src": "old_stick/here.png"},

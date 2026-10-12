@@ -3,7 +3,7 @@
 
 """No "Overwriting binding" warning when the program starts and the Button
 Map opens: a property is never set over its own binding (the user saw one
-for the Button Map card's chipRows, 2026-10-09). Spec: none (no behaviour
+for the device map card's chipRows, 2026-10-09). Spec: none (no behaviour
 change)."""
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ _SMOKE = pathlib.Path(__file__).resolve().parent / "no_binding_overwrite_smoke.p
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
-def test_no_binding_is_overwritten_opening_the_button_map(
+def test_no_binding_is_overwritten_opening_the_device_mapping_editor(
     tmp_path: pathlib.Path,
 ) -> None:
     (tmp_path / "Gremlin Platforms").mkdir()

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Button Map right-click additions (07 S136, S137; D-07-RIGHTCLICK,
+"""Device Mapping Editor right-click additions (07 S136, S137; D-07-RIGHTCLICK,
 D-07-RIGHTCLICK-ANSWERS), through a real right-click on the editor run
 off-screen in its own process (rc_menu_smoke.py):
 
@@ -119,7 +119,7 @@ def test_paste_here_centres_on_the_spot(results: dict) -> None:
 
 def test_repeat_first_after_right_click_command(results: dict) -> None:
     first = results["afterFlip"]["quick"][0]
-    assert first["name"] == "bmRepeat"
+    assert first["name"] == "dmeRepeat"
     assert first["text"] == 'Repeat "Flip Horizontally"'
 
 

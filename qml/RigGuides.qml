@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// Alignment guide lines shown while moving items in the Button Map editor.
+// Alignment guide lines shown while moving items in the Device Mapping Editor.
 Canvas {
     id: _guides
     property var ed: null

@@ -8,7 +8,7 @@ import QtQuick.Layouts
 import QtQuick.Controls.Universal as U
 import Gremlin.Style
 
-// Print & Export (Button Map, File > Print & Export): the page as it will
+// Print & Export (Device Mapping Editor, File > Print & Export): the page as it will
 // come out (a preview of the print area on the paper, inside its margins,
 // drawn by the same hidden copy of the map as every print and export), the
 // paper, orientation, margins, page (Dark / Light), scale and whether the
@@ -17,7 +17,7 @@ import Gremlin.Style
 // print area can be moved and resized on the map while it is open.
 Window {
     id: _win
-    // The Button Map window (DialogJoystickButtonMap): its settings and
+    // The Device Mapping Editor window (DialogDeviceMappingEditor): its settings and
     // exports.
     property var host: null
 

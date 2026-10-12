@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map window's background and foreground planes
+"""The Device Mapping Editor window's background and foreground planes
 (D-07-BACKGROUND-PLANES, D-07-PLANES-ANSWERS): the Background menu, Background
 mode (no switch, no Undo / Redo row; banner, Done, Esc, Ctrl+B, status),
 the plane view program settings (07 S114, S115, S120; P4a), Add Picture
@@ -25,13 +25,13 @@ import pytest
 
 _HERE = pathlib.Path(__file__).parent
 _ROOT = _HERE.parents[1]
-_WINDOW = _ROOT / "qml" / "DialogJoystickButtonMap.qml"
+_WINDOW = _ROOT / "qml" / "DialogDeviceMappingEditor.qml"
 
 
 @pytest.fixture
 def config() -> Iterator[None]:
     """The program's settings; the plane view settings put back after."""
-    from gremlin.ui import button_map_options as bmo
+    from gremlin.ui import device_map_options as bmo
 
     bmo.register()
     kept = {name: bmo.value(name) for name, *_r in bmo.VIEW_SETTINGS}
@@ -44,7 +44,7 @@ def test_plane_view_settings_are_program_settings(config: None) -> None:
     """07 S114, S115, S120 (P4a): the four plane view settings are registered
     with their defaults, readable and settable by name, and not listed in
     Options."""
-    from gremlin.ui import button_map_options as bmo
+    from gremlin.ui import device_map_options as bmo
 
     for name, _kind, default, *_r in bmo.VIEW_SETTINGS:
         bmo.set_value(name, default)
@@ -59,9 +59,9 @@ def test_plane_view_settings_are_program_settings(config: None) -> None:
 
 
 def test_plane_view_settings_reach_qml(config: None) -> None:
-    from gremlin.ui import button_map_options as bmo
+    from gremlin.ui import device_map_options as bmo
 
-    opts = bmo.ButtonMapOptions()
+    opts = bmo.DeviceMapOptions()
     values = opts.values
     for key in ("bm-fg-faint", "bm-bg-hidden", "bm-bg-opacity", "bm-bg-hint-seen"):
         assert key in values
@@ -112,7 +112,7 @@ def test_planes_in_the_window(tmp_path: pathlib.Path) -> None:
     mine = [
         line
         for line in lines
-        if line.startswith("WARN") and "DialogJoystickButtonMap.qml" in line
+        if line.startswith("WARN") and "DialogDeviceMappingEditor.qml" in line
     ]
     assert mine == []
     r = {

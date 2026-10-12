@@ -34,10 +34,10 @@ from gremlin.ui.util import to_local_path
 
 # The parts a saved setup can hold, in the order they are shown (contract
 # PARTS), with their labels.
-PARTS = ["setup", "button_map", "appearance", "calibration", "bindings"]
+PARTS = ["setup", "device_map", "appearance", "calibration", "bindings"]
 PART_LABELS = {
     "setup": "Setup",
-    "button_map": "Button Map",
+    "device_map": "Device Map",
     "appearance": "Appearance",
     "calibration": "Calibration",
     "bindings": "Bindings",
@@ -45,7 +45,7 @@ PART_LABELS = {
 # The longer labels in a saved setup's details (S11).
 _HOLDS_LABELS = {
     "setup": "Setup (claims, friendly names)",
-    "button_map": "Button Map and photo",
+    "device_map": "Device Map and photo",
     "appearance": "Appearance",
     "calibration": "Calibration",
     "setup_damaged": "Setup (damaged file, kept as is)",
@@ -801,7 +801,7 @@ class DeviceLibraryModel(QtCore.QObject):
     @QtCore.Slot(str, result=dict)
     def deviceTarget(self, key: str) -> dict:
         """A device's own name, id and Home card key: what Home's Delete
-        Device, Module Setup, Button Map and Show on Home take (S15, S44)."""
+        Device, Module Setup, Device Mapping Editor and Show on Home take (S15, S44)."""
         dev = self._device(key)
         if dev is None:
             return {}

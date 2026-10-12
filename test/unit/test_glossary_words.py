@@ -128,7 +128,8 @@ def test_options_descriptions_use_the_glossary_words() -> None:
 
 # | Python display strings (GL-018): the Device Bindings list text built in
 # | binding_catalog.py and hardware_layout.py and the result lines Python
-# | hands to the screens (Auto Mapping Tool, GL-228). The QML check above can't see them.
+# | hands to the screens (Auto Mapping Tool, GL-228). The QML check above can't
+# | see them.
 
 # Words for what an input does (glossary D2, D11): "action(s)", and an
 # input with none shows "No actions".

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Starts the program off-screen (stand-in hardware) with a Button Map whose
+"""Starts the program off-screen (stand-in hardware) with a device map whose
 background holds one plain red picture (800 x 400 pixels) and whose
 foreground holds a chip, opens Print & Export and exports PNGs into the
 folder given: at 100% and 50%, with the screen's plane view settings
@@ -138,9 +138,9 @@ def main() -> None:
 
     app.engine.warnings.connect(warned)
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-    call(root, "openButtonMapForCard", card)
+    call(root, "openDeviceMappingEditorForCard", card)
     QtTest.QTest.qWait(1000)
-    win = call(root, "buttonMapWindow")
+    win = call(root, "deviceMappingEditorWindow")
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(300)
@@ -155,7 +155,7 @@ def main() -> None:
 
     call(win, "enterEdit")
     QtTest.QTest.qWait(800)
-    ev("_buttonMap.openPrintExport()")
+    ev("_editorWin.openPrintExport()")
     QtTest.QTest.qWait(1200)
     pw = next(
         w for w in QtGui.QGuiApplication.topLevelWindows()
@@ -170,10 +170,10 @@ def main() -> None:
     tick = child("printIncludeBg")
     out["page-label"] = page.property("text") if page else None
     out["tick"] = [tick.property("text"), tick.property("checked")] if tick else None
-    out["setup-default"] = ev("_buttonMap.printSetup.includeBg !== false")
+    out["setup-default"] = ev("_editorWin.printSetup.includeBg !== false")
     # The snapshot the renderer draws from carries no photo keys.
     out["snapshot-keys"] = ev(
-        "var s = _renderer.snapshot(_buttonMap._ed(), true);"
+        "var s = _renderer.snapshot(_editorWin._ed(), true);"
         " JSON.stringify(Object.keys(s)) + JSON.stringify(Object.keys(s.props))")
 
     saved: list = []
@@ -183,16 +183,16 @@ def main() -> None:
         target = folder / name
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
         count = len(saved) + 1
-        ev(f"_buttonMap.exportTo({json.dumps(url)}, 'png')")
+        ev(f"_editorWin.exportTo({json.dumps(url)}, 'png')")
         for _ in range(400):
             QtTest.QTest.qWait(25)
-            if len(saved) >= count and ev("_buttonMap.exportBusy") is False:
+            if len(saved) >= count and ev("_editorWin.exportBusy") is False:
                 break
         return red_box(target)
 
-    ev("_buttonMap.setPrint('paper', 'fit')")
-    ev("_buttonMap._ed().clearPrintArea()")
-    ev("_buttonMap.setPrint('scale', 100)")
+    ev("_editorWin.setPrint('paper', 'fit')")
+    ev("_editorWin._ed().clearPrintArea()")
+    ev("_editorWin.setPrint('scale', 100)")
     QtTest.QTest.qWait(300)
     out["full-100"] = export("full-100.png")
     if BIG:
@@ -202,44 +202,44 @@ def main() -> None:
         QtTest.QTest.qWait(300)
         print("RESULT " + json.dumps(out), flush=True)
         smoke_exit(0)
-    ev("_buttonMap.setPrint('scale', 50)")
+    ev("_editorWin.setPrint('scale', 50)")
     QtTest.QTest.qWait(200)
     out["full-50"] = export("full-50.png")
 
     # Screen-only views turned down: the print is unchanged (07 S87, S120).
     # The live values are read as each picture is asked for.
-    views = ("var e = _buttonMap._ed(); JSON.stringify([e.editPlane,"
+    views = ("var e = _editorWin._ed(); JSON.stringify([e.editPlane,"
              " e.showFgFaint, e.bgViewHidden, e.bgViewOpacity])")
     # Background mode first: entering it puts the program's view settings
     # back on the editor.
-    ev("_buttonMap._ed().editPlane = 'background'")
+    ev("_editorWin._ed().editPlane = 'background'")
     QtTest.QTest.qWait(300)
-    ev("var e = _buttonMap._ed(); e.bgViewOpacity = 0.2; e.showFgFaint = true")
+    ev("var e = _editorWin._ed(); e.bgViewOpacity = 0.2; e.showFgFaint = true")
     QtTest.QTest.qWait(300)
     out["live-views-down"] = ev(views)
     out["views-down"] = export("views-down.png")
-    ev("_buttonMap._ed().bgViewHidden = true")
+    ev("_editorWin._ed().bgViewHidden = true")
     QtTest.QTest.qWait(300)
     out["live-bg-hidden"] = ev(views)
     out["bg-hidden-view"] = export("bg-hidden-view.png")
-    ev("var e = _buttonMap._ed(); e.bgViewHidden = false; e.bgViewOpacity = 1;"
+    ev("var e = _editorWin._ed(); e.bgViewHidden = false; e.bgViewOpacity = 1;"
        " e.showFgFaint = true; e.editPlane = 'foreground'")
 
     # Include background off, through the tick: no background.
     QtCore.QMetaObject.invokeMethod(tick, "click")
     QtTest.QTest.qWait(300)
-    out["tick-off"] = [tick.property("checked"), ev("_buttonMap.printSetup.includeBg")]
+    out["tick-off"] = [tick.property("checked"), ev("_editorWin.printSetup.includeBg")]
     out["no-bg"] = export("no-bg.png")
     QtCore.QMetaObject.invokeMethod(tick, "click")
     QtTest.QTest.qWait(300)
-    out["tick-on"] = [tick.property("checked"), ev("_buttonMap.printSetup.includeBg")]
+    out["tick-on"] = [tick.property("checked"), ev("_editorWin.printSetup.includeBg")]
 
     # Light page: pictures unchanged (07 S89).
-    ev("_buttonMap.setPrint('light', true)")
+    ev("_editorWin.setPrint('light', true)")
     QtTest.QTest.qWait(200)
     out["light"] = export("light.png")
-    ev("_buttonMap.setPrint('light', false)")
-    out["live-exporting"] = ev("_buttonMap._ed().exporting")
+    ev("_editorWin.setPrint('light', false)")
+    out["live-exporting"] = ev("_editorWin._ed().exporting")
     out["binding-loops"] = loops[:5]
     pw.close()
     win.close()

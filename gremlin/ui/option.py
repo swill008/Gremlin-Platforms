@@ -37,7 +37,7 @@ SECTION_DISPLAY_NAMES = {
     "osc": "OSC Connection",
     "display": "Home",
     "auto-mapping-tool": "Auto Mapping Tool",
-    "button-map": "Button Map",
+    "device-mapping-editor": "Device Map",
 }
 
 # Titles for entries whose key does not read well as a title; any other
@@ -62,7 +62,7 @@ _ENTRY_TITLES = {
     "pad-args": "Treat address-only messages as 1.0",
     "delay-presets": "Auto-release delay presets",
     "plugin-directory": "Plugins folder",
-    # Button Map Options; "Autosave" is only the Device Library's word
+    # Device Map Options; "Autosave" is only the Device Library's word
     # (D-07-RECOVERY-COPIES).
     "recovery-copies": "Keep recovery copies",
     "recovery-seconds": "Seconds between recovery copies",
@@ -193,8 +193,8 @@ _HIDDEN = {
     ("global", "files", "device-library-folder"),
 }
 
-# Sections with a window of their own (the Button Map's options).
-_OWN_WINDOW = {"button-map"}
+# Sections with a window of their own (the Device Mapping Editor's options).
+_OWN_WINDOW = {"device-mapping-editor"}
 
 # Which sidebar section an unplaced setting's stored section belongs to.
 _HOME_OF = {
@@ -285,7 +285,7 @@ def group_title(name: str) -> str:
 # Group order inside a section; others follow by name.
 _GROUP_ORDER = {
     "general": 0, "files": 1, "input-names": 2,
-    # Button Map (gremlin/ui/button_map_options.py)
+    # Device Mapping Editor (gremlin/ui/device_map_options.py)
     "labels": 10, "editing": 11, "right-click": 12, "recovery": 13, "view": 14,
     "export": 15, "colours": 16, "library": 17,
 }
@@ -307,8 +307,8 @@ class ConfigSectionModel(QtCore.QAbstractListModel):
     """The sections an Options window lists, each with its groups.
 
     scope "" is the main Options window: the sections of main_layout(). Any
-    other scope is one stored section shown on its own (the Button Map's
-    options window uses "button-map").
+    other scope is one stored section shown on its own (the Device Mapping Editor's
+    options window uses "device-mapping-editor").
     """
 
     scopeChanged = QtCore.Signal()

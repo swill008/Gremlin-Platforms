@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen through a fixed session.
+"""Drives the Device Mapping Editor off-screen through a fixed session.
 
 Run in its own process (Qt teardown inside the test session can hang):
 
@@ -60,12 +60,12 @@ Window {
     height: 900
     visible: true
     color: "#202020"
-    // As the Button Map window: left unset, the controls' theme varied.
+    // As the Device Mapping Editor window: left unset, the controls' theme varied.
     U.Universal.theme: Style.theme
 
     VkbRigFace { id: _face; anchors.fill: parent }
 
-    // The Layers panel, as the Button Map window places it; shown only by
+    // The Layers panel, as the Device Mapping Editor window places it; shown only by
     // scenarios that use it, so other screenshots are unchanged.
     RigLayersPanel {
         id: _layers
@@ -288,7 +288,7 @@ Window {
         return JSON.stringify([p.x, p.y])
     }
     function geom(id) { return JSON.stringify(ed().nodeBox(ed().nodeAt(id))) }
-    // Export as the Button Map window does it: editing marks off, a frame to
+    // Export as the Device Mapping Editor window does it: editing marks off, a frame to
     // redraw, then the editor drawn f times larger. exportDone gets the page
     // rect in the picture's pixels once the file is written.
     property string exportDone: ""

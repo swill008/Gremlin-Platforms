@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware, two sticks with a map
-each) and drives the Button Map's Layers search from the window (07 S102):
+each) and drives the Device Mapping Editor's Layers search from the window (07 S102):
 Ctrl+F, View > Search layers… in the menu bar, the kinds and search
 kept when another device's map is shown, and both gone after the window
 closes and opens again. Prints what it saw as JSON.
@@ -127,7 +127,7 @@ LAYERS_SIDE = ("(function(){ var p = _layersPanel;"
 # The Layers search box has the keyboard: the window's focus is a text
 # field inside the Layers panel.
 IN_SEARCH = (
-    "(function() { var f = _buttonMap.activeFocusItem; var p = f;"
+    "(function() { var f = _editorWin.activeFocusItem; var p = f;"
     " while (p && p !== _layersPanel) p = p.parent;"
     " return !!p && f.selectAll !== undefined && f.cursorPosition !== undefined })()"
 )
@@ -144,8 +144,8 @@ def main() -> None:
 
     def open_map(name: str, guid: str) -> QtCore.QObject:
         card = {"rawName": name, "name": name, "guid": guid}
-        call(root, "openButtonMapForCard", card)
-        win = wait_for(lambda: call(root, "buttonMapWindow"))
+        call(root, "openDeviceMappingEditorForCard", card)
+        win = wait_for(lambda: call(root, "deviceMappingEditorWindow"))
         assert isinstance(win, QtCore.QObject)
         wait_for(lambda: ev(win, "mapShown && targetName === '" + name + "'"))
         return win
@@ -157,7 +157,7 @@ def main() -> None:
                             " && !_baseWanted"))
 
     def focus_map(win: QtCore.QObject) -> None:
-        ev(win, "_buttonMap.contentItem.forceActiveFocus()")
+        ev(win, "_editorWin.contentItem.forceActiveFocus()")
         wait_for(lambda: not ev(win, IN_SEARCH))
 
     win = open_map("pJoy Pro", GUID)
@@ -209,11 +209,11 @@ def main() -> None:
     out["same-panel-after-switch"] = same(ev(win, "_layersPanel"), panel)
     out["filter-after-switch"] = ev(win, FILTER)
 
-    # Closing the Button Map and opening it again: none and empty.
+    # Closing the Device Mapping Editor and opening it again: none and empty.
     call(win, "discardEdit")
     old = win
-    ev(win, "_buttonMap.close()")
-    wait_for(lambda: not same(call(root, "buttonMapWindow"), old))
+    ev(win, "_editorWin.close()")
+    wait_for(lambda: not same(call(root, "deviceMappingEditorWindow"), old))
     win = open_map("pJoy Pro", GUID)
     out["new-window"] = not same(win, old)
     edit(win)

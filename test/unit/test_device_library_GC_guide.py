@@ -169,7 +169,7 @@ def test_the_right_click_menus_named_are_the_windows(
         "Rename…",
         "Edit Description",
         "Open Module Setup…",
-        "Open Button Map",
+        "Open Device Mapping Editor",
         "Show on Home",
         "Show in History",  # 10 S56
         "Expand",

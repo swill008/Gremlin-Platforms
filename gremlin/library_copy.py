@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 # The pack pieces each part of a saved setup is (10 S11).
 _PART_ITEMS = {
     "setup": ("in.checks", "in.names", "in.groups"),
-    "button_map": ("in.layout",),
+    "device_map": ("in.layout",),
     "appearance": ("in.view",),
     "calibration": ("in.calibration",),
 }
@@ -50,7 +50,7 @@ _LOGICAL_ITEM = "in.logical"
 # OSC's addresses and server settings in its module file (D-09-OSC-FILE);
 # only OSC's own packs have them.
 _OSC_ITEM = "in.osc"
-_MODULE_PARTS = {"setup", "button_map", "appearance", "calibration"}
+_MODULE_PARTS = {"setup", "device_map", "appearance", "calibration"}
 _KIND_WORD = {2: "axis", 3: "button", 4: "hat"}
 # A part LS marks as a damaged module file kept as is (S20a).
 _DAMAGED_SUFFIX = "_damaged"
@@ -185,7 +185,7 @@ def _module_items(
     wanted: set[str] = set()
     for part in parts:
         wanted.update(_PART_ITEMS.get(part, ()))
-    if "button_map" in parts:
+    if "device_map" in parts:
         wanted.update(i for i in ids if i.startswith("pic:"))
         if everything:
             wanted.update(_MAP_SETTINGS)

@@ -4,7 +4,7 @@
 import QtQuick
 import QtQml
 
-// A chip's label in the Button Map editor: one or two rows (Shift+Enter
+// A chip's label in the Device Mapping Editor: one or two rows (Shift+Enter
 // while naming), and the action on a row of its own in Name and action.
 // The rows line up by Text Align, or each by its own (Align Rows
 // Separately). One centred row draws as a plain centred text, as before.

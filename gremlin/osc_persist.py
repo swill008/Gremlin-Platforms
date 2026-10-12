@@ -65,7 +65,7 @@ def osc_address(input_type: InputType, input_id: int) -> str:
 
 def osc_addresses() -> dict[str, str]:
     """{"btn:1": "/fire", "axis:2": "/throttle"}: every OSC input's address,
-    keyed as the Button Map's chips are."""
+    keyed as the Device Mapping Editor's chips are."""
     kinds = {InputType.JoystickButton: "btn", InputType.JoystickAxis: "axis",
              InputType.JoystickHat: "hat"}
     out: dict[str, str] = {}

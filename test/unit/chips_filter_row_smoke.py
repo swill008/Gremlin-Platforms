@@ -144,8 +144,8 @@ def main() -> None:
     out: dict = {}
 
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-    call(root, "openButtonMapForCard", card)
-    win = wait_for(lambda: call(root, "buttonMapWindow"))
+    call(root, "openDeviceMappingEditorForCard", card)
+    win = wait_for(lambda: call(root, "deviceMappingEditorWindow"))
     assert isinstance(win, QtGui.QWindow)
     wait_for(lambda: ev(win, "mapShown && targetName === 'pJoy Pro'"))
     win.resize(1600, 900)
@@ -173,7 +173,7 @@ def main() -> None:
     click(win, centre(win, "_poolFloat", "poolReset"))
     out["reset"] = ev(win, "poolFilter")
     out["after-reset"] = ev(win, "resItems.length")
-    # Chip only still sets the Button Map option.
+    # Chip only still sets the Device Mapping Editor option.
     before = ev(win, "_opts.values['chip-only'] === true")
     click(win, centre(win, "_poolFloat", "poolChipOnly"))
     out["chip-only"] = [before, ev(win, "_opts.values['chip-only'] === true")]

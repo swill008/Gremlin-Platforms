@@ -23,11 +23,11 @@ import "%s" as Old
 QtObject {
     property var chapters: Book.chapters()
     property var book: Book.topics("")
-    property var buttonMap: Book.topics("button-map")
+    property var deviceMappingEditor: Book.topics("device-mapping-editor")
     property var found: Book.find(Book.topics("")[3].id)
     property var notFound: Book.find("no-such-topic")
     property int oldAll: Old.topics().length
-    property int oldButtonMap: Old.buttonMapTopics().length
+    property int oldDeviceMappingEditor: Old.deviceMappingEditorTopics().length
     property int oldLibrary: Old.deviceLibraryTopics().length
 }
 """
@@ -73,7 +73,9 @@ def test_topics_carry_their_chapter(qapp: QtCore.QCoreApplication) -> None:
     titles = {c["id"]: c["title"] for c in _value(obj, "chapters")}
     for topic in _value(obj, "book"):
         assert titles[topic["chapterId"]] == topic["chapter"]
-    assert {t["chapterId"] for t in _value(obj, "buttonMap")} == {"button-map"}
+    assert {t["chapterId"] for t in _value(obj, "deviceMappingEditor")} == {
+        "device-mapping-editor"
+    }
     found = _one(obj, "found")
     assert found is not None
     assert found["id"] == _value(obj, "book")[3]["id"]
@@ -83,6 +85,7 @@ def test_topics_carry_their_chapter(qapp: QtCore.QCoreApplication) -> None:
 def test_the_old_entry_points_read_the_book(qapp: QtCore.QCoreApplication) -> None:
     obj = _load()
     assert obj.property("oldAll") == len(_value(obj, "book")) > 10
-    assert obj.property("oldButtonMap") == len(_value(obj, "buttonMap")) > 0
+    assert obj.property("oldDeviceMappingEditor") == len(
+        _value(obj, "deviceMappingEditor")) > 0
     assert obj.property("oldLibrary") == len(
         help_book.chapter_topics("device-library")) > 0

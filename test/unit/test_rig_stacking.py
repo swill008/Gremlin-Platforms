@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""qml/rig_layers.js normalizeStacking: the Button Map's stacking order.
+"""qml/rig_layers.js normalizeStacking: the Device Mapping Editor's stacking order.
 
 It sorted every map each time it was opened or saved, putting every drawing
 under every chip, so Bring to Front and Layers-panel moves were undone. Only

@@ -4,7 +4,7 @@
 
 """Screens (audit 3).
 
-- Button Map: switching device with the crash-recovery offer open deleted
+- Device Mapping Editor: switching device with the crash-recovery offer open deleted
   the recovery copy, and Restore then loaded the first device's edits into
   the second (6). Not now kept the copy but deleted its new photo; it now
   keeps both until Restore or Discard (decision A).
@@ -14,7 +14,7 @@
 - Keyboard: after Add Key the highlighted row was another key than the
   editor's (20); a key only looked at in a mode showed Delete (33), and
   Delete in the mode with its actions left it listed.
-- Button Map: Ctrl+V after switching device pasted the clipboard's picture
+- Device Mapping Editor: Ctrl+V after switching device pasted the clipboard's picture
   instead of the chips copied (21); Group Selected refused a chip on a
   table with a text, which grouping packs, and Ctrl+G ignored it (22).
 - Options search: "other" showed every row under "Other" (28).
@@ -62,7 +62,7 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     assert errors == [], errors
     # No QML warning from the files these fixes are in.
     ours = (
-        "DialogJoystickButtonMap.qml",
+        "DialogDeviceMappingEditor.qml",
         "KeyboardPage.qml",
         "ConfigGroup.qml",
         "rig_groups.js",
@@ -254,10 +254,10 @@ if __name__ != "__main__":
 
     # 6 / decision A, 21, 22, 20, 28, 17: the screens ---------------------------
 
-    def test_button_map_recovery_offer_and_device_switch(
+    def test_device_mapping_editor_recovery_offer_and_device_switch(
         tmp_path: pathlib.Path,
     ) -> None:
-        r = _run("buttonmap", tmp_path)
+        r = _run("editor", tmp_path)
         # The offer is open on Stick A.
         assert r["offer-a"] == "true"
         # Stick B opened from Home: A's offer is put off, never deleted or
@@ -349,7 +349,7 @@ def _engine(out: pathlib.Path) -> tuple:
         "Style",
     )
     import gremlin.ui.backend  # noqa: F401
-    import gremlin.ui.button_map_options  # noqa: F401
+    import gremlin.ui.device_map_options  # noqa: F401
     import gremlin.ui.device_names  # noqa: F401
     import joystick_gremlin
 
@@ -407,7 +407,7 @@ def _fakes() -> tuple:
     return FakeBackend, FakeUiState
 
 
-def _button_map(out: pathlib.Path) -> None:
+def _device_mapping_editor(out: pathlib.Path) -> None:
     from PySide6 import QtCore, QtGui
 
     app, engine, warnings = _engine(out)  # noqa: F841 (kept for the run)
@@ -416,7 +416,7 @@ def _button_map(out: pathlib.Path) -> None:
     engine.rootContext().setContextProperty("backend", backend)
     engine.rootContext().setContextProperty("uiState", ui_state)
     engine.load(
-        QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "DialogJoystickButtonMap.qml"))
+        QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "DialogDeviceMappingEditor.qml"))
     )
     win = engine.rootObjects()[0]
     win.setProperty("width", 1400)
@@ -475,25 +475,25 @@ def _button_map(out: pathlib.Path) -> None:
         "'copyA:' + (_hw.loadRecovery('Stick A').length > 0)"
         " + ' stashA:' + _hw.editActive('Stick A')"
     )
-    _js(win, "_buttonMap.openForDevice('Stick A', ''); 1")
+    _js(win, "_editorWin.openForDevice('Stick A', ''); 1")
     _wait(500)
     _Out.result("offer-a", _js(win, "String(_recoverGate.opened)"))
-    # Home: Stick B's Button Map, with the offer still open.
-    _js(win, "_buttonMap.openForDevice('Stick B', ''); 1")
+    # Home: Stick B's Device Mapping Editor, with the offer still open.
+    _js(win, "_editorWin.openForDevice('Stick B', ''); 1")
     _wait(500)
     _Out.result(
         "switched",
         _js(
             win,
             "'gate:' + _recoverGate.opened"
-            " + ' pending:' + (_buttonMap._pendingRecovery !== null)"
+            " + ' pending:' + (_editorWin._pendingRecovery !== null)"
             f" + ' ' + {state_a}",
         ),
     )
-    _js(win, "_buttonMap.restoreRecovery(); 1")
+    _js(win, "_editorWin.restoreRecovery(); 1")
     _wait(200)
-    _Out.result("restore-on-b", _js(win, "'editing:' + _buttonMap.editing"))
-    _js(win, "_buttonMap.discardEdit(); 1")
+    _Out.result("restore-on-b", _js(win, "'editing:' + _editorWin.editing"))
+    _js(win, "_editorWin.discardEdit(); 1")
     _wait(200)
 
     # Which photo shows: the saved map's bottom background picture (07
@@ -508,7 +508,7 @@ def _button_map(out: pathlib.Path) -> None:
         name = image.pixelColor(2, 2).name()
         return {"#993366": "new", "#336699": "old"}.get(name, name)
 
-    _js(win, "_buttonMap.openForDevice('Stick A', ''); 1")
+    _js(win, "_editorWin.openForDevice('Stick A', ''); 1")
     _wait(500)
     _Out.result("offer-a-again", _js(win, "String(_recoverGate.opened)"))
     # Not now.
@@ -520,19 +520,19 @@ def _button_map(out: pathlib.Path) -> None:
     # photo).
     edit = _js(
         win,
-        "_buttonMap.enterEdit();"
-        " 'gate:' + _recoverGate.opened + ' editing:' + _buttonMap.editing",
+        "_editorWin.enterEdit();"
+        " 'gate:' + _recoverGate.opened + ' editing:' + _editorWin.editing",
     )
     _js(
         win,
-        "_recoverGate.close(); _buttonMap.recoveryNow(); _buttonMap.discardEdit(); 1",
+        "_recoverGate.close(); _editorWin.recoveryNow(); _editorWin.discardEdit(); 1",
     )
     _wait(300)
     _Out.result(
         "edit-offers", edit + " " + _js(win, state_a) + " photo:" + photo_colour()
     )
     # Opened again: offered again; Discard.
-    _js(win, "_buttonMap.offerRecovery(); 1")
+    _js(win, "_editorWin.offerRecovery(); 1")
     _wait(300)
     _js(
         win,
@@ -541,28 +541,28 @@ def _button_map(out: pathlib.Path) -> None:
     )
     _wait(300)
     _Out.result("discard", _js(win, state_a) + " photo:" + photo_colour())
-    # The same again, then Blank Button Map with the offer open.
+    # The same again, then Blank Device Mapping Editor with the offer open.
     new_ref = _js(win, crash)
-    _js(win, "_buttonMap.offerRecovery(); 1")
+    _js(win, "_editorWin.offerRecovery(); 1")
     _wait(300)
-    _js(win, "_buttonMap.openBlank(); 1")
+    _js(win, "_editorWin.openBlank(); 1")
     _wait(300)
     _Out.result("blank", _js(win, f"'gate:' + _recoverGate.opened + ' ' + {state_a}"))
 
     # Back on A (Not now). A copy that only changed the photo (the new one
     # waits in the edit under its own name, 07 S107) is still offered (it
     # was deleted and the old photo put back).
-    _js(win, "_buttonMap.openForDevice('Stick A', ''); 1")
+    _js(win, "_editorWin.openForDevice('Stick A', ''); 1")
     _wait(500)
     _js(win, "_recoverGate.close(); 1")
     _wait(200)
     _js(
         win,
         f"_hw.saveRecovery('Stick A', JSON.stringify({{nodes: [{bg(repr(new_ref))}]"
-        ".concat(_buttonMap.liveNodes.filter(function(n) {"
+        ".concat(_editorWin.liveNodes.filter(function(n) {"
         " return n.plane !== 'background' }))})); 1",
     )
-    offered = _js(win, "String(_buttonMap.offerRecovery())")
+    offered = _js(win, "String(_editorWin.offerRecovery())")
     _Out.result(
         "photo-only",
         f"offered:{offered} gate:"
@@ -603,15 +603,15 @@ def _button_map(out: pathlib.Path) -> None:
         }
     ]
     copy.write_text(json.dumps(doc), encoding="utf-8")
-    _js(win, "_buttonMap.offerRecovery(); _buttonMap.restoreRecovery(); 1")
+    _js(win, "_editorWin.offerRecovery(); _editorWin.restoreRecovery(); 1")
     _wait(400)
     restored = _js(
         win,
-        "'editing:' + _buttonMap.editing + ' a2:'"
-        " + _buttonMap.workNodes.some(function(n) {"
+        "'editing:' + _editorWin.editing + ' a2:'"
+        " + _editorWin.workNodes.some(function(n) {"
         " return n.id === 'a2' })",
     )
-    _js(win, "_recoverGate.close(); _buttonMap.discardEdit(); 1")
+    _js(win, "_recoverGate.close(); _editorWin.discardEdit(); 1")
     _wait(300)
     _Out.result(
         "renamed", restored + " " + _js(win, state_a) + " photo:" + photo_colour()
@@ -628,20 +628,20 @@ def _button_map(out: pathlib.Path) -> None:
     mime.setUrls([QtCore.QUrl(old_url)])
     QtGui.QGuiApplication.clipboard().setMimeData(mime)
     _wait(300)
-    _js(win, "_buttonMap.openForDevice('Stick B', ''); 1")
+    _js(win, "_editorWin.openForDevice('Stick B', ''); 1")
     _wait(500)
     _js(
         win,
-        "_buttonMap.enterEdit(); var e = _ed();"
+        "_editorWin.enterEdit(); var e = _ed();"
         " e.nodes.push({id: 'c1', kind: 'btn', hwId: 1, chipFx: 0.3, chipFy: 0.3,"
         " hotFx: 0.35, hotFy: 0.35}); e.bump(); e.setSelection(['c1']);"
         " e.copySelection(); 1",
     )
     _wait(300)
-    kept = _js(win, "String(_buttonMap.keptCopySerial === _hw.clipboardSerial)")
-    _js(win, "_buttonMap.discardEdit(); _buttonMap.openForDevice('Stick C', ''); 1")
+    kept = _js(win, "String(_editorWin.keptCopySerial === _hw.clipboardSerial)")
+    _js(win, "_editorWin.discardEdit(); _editorWin.openForDevice('Stick C', ''); 1")
     _wait(500)
-    _js(win, "_buttonMap.enterEdit(); 1")
+    _js(win, "_editorWin.enterEdit(); 1")
     _wait(400)
     pasted = _js(
         win,
@@ -650,13 +650,13 @@ def _button_map(out: pathlib.Path) -> None:
         " (e.nodes.length - before) + ' ' + (n ? n.kind : '-')",
     )
     _Out.result("carry", f"kept:{kept} pasted:{pasted}")
-    _js(win, "_buttonMap.discardEdit(); 1")
+    _js(win, "_editorWin.discardEdit(); 1")
     _wait(300)
 
     # 22: a table, a chip on it and a text beside it; chip and text chosen.
     _js(
         win,
-        "_buttonMap.enterEdit(); var e = _ed();"
+        "_editorWin.enterEdit(); var e = _ed();"
         " e.nodes.push({id: 't1', kind: 'draw', shape: 'table',"
         " fx: 0.2, fy: 0.2, fw: 0.5, fh: 0.5});"
         " e.nodes.push({id: 'c2', kind: 'btn', hwId: 2, chipFx: 0.4, chipFy: 0.4,"
@@ -700,7 +700,7 @@ def _button_map(out: pathlib.Path) -> None:
             f"var e = _ed(); e.packWarn = ''; e.setSelection(['t1', 'd9']); {ctrl_g}",
         ),
     )
-    _js(win, "_buttonMap.discardEdit(); 1")
+    _js(win, "_editorWin.discardEdit(); 1")
     _report(warnings)
 
 
@@ -842,7 +842,11 @@ if __name__ == "__main__":
     _part, _out_dir = sys.argv[1], pathlib.Path(sys.argv[2])
     _out_dir.mkdir(parents=True, exist_ok=True)
     try:
-        parts = {"buttonmap": _button_map, "keyboard": _keyboard, "options": _options}
+        parts = {
+            "editor": _device_mapping_editor,
+            "keyboard": _keyboard,
+            "options": _options,
+        }
         parts[_part](_out_dir)
     except Exception as failed:  # noqa: BLE001 (said, then the process ends)
         import traceback

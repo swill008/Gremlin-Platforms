@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Right-click Favourites setting (07 S137, D-07-RIGHTCLICK-ANSWERS): a
-program setting kept by ButtonMapOptions, and the Options group "Right-click
+program setting kept by DeviceMapOptions, and the Options group "Right-click
 menu" with how many favourites show."""
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import sys
 sys.path.append(".")
 
 from gremlin.config import Configuration
-from gremlin.ui import button_map_options as bmo
+from gremlin.ui import device_map_options as bmo
 
 
 def _clear() -> None:
@@ -24,8 +24,8 @@ def _clear() -> None:
 
 def test_favourites_toggle_remove_and_keep_order() -> None:
     _clear()
-    opts = bmo.ButtonMapOptions()
-    other = bmo.ButtonMapOptions()
+    opts = bmo.DeviceMapOptions()
+    other = bmo.DeviceMapOptions()
     seen: list[str] = []
     other.favouritesChanged.connect(lambda: seen.append("x"))
     opts.toggleFavourite("edit.cut")
@@ -42,7 +42,7 @@ def test_favourites_toggle_remove_and_keep_order() -> None:
     opts.removeFavourite("no.such")
     assert len(seen) == 5
     # Kept for the next window, in the program's settings.
-    assert bmo.ButtonMapOptions().favourites == ["edit.paste"]
+    assert bmo.DeviceMapOptions().favourites == ["edit.paste"]
     stored = Configuration().value(bmo.SECTION, "internal", "favourites")
     assert stored == ["edit.paste"]
     _clear()
@@ -55,7 +55,7 @@ def test_favourites_shown_option() -> None:
     )
     assert (group, default, props) == ("right-click", 5, {"min": 0, "max": 15})
     assert description.startswith("How many favourites the top of the right-click")
-    opts = bmo.ButtonMapOptions()
+    opts = bmo.DeviceMapOptions()
     assert opts.favouritesShown == 5
     hits: list[int] = []
     opts.favouritesShownChanged.connect(lambda: hits.append(opts.favouritesShown))
@@ -67,7 +67,7 @@ def test_favourites_shown_option() -> None:
 
 
 def test_right_click_group_in_the_options_pane() -> None:
-    opts = bmo.ButtonMapOptions()
+    opts = bmo.DeviceMapOptions()
     titles = {g["key"]: g["title"] for g in opts.groups}
     assert titles["right-click"] == "Right-click menu"
     rows = [e for e in opts.entries if e["group"] == "right-click"]
@@ -78,7 +78,7 @@ def test_right_click_group_in_the_options_pane() -> None:
 
 def test_reset_panels_leaves_favourites() -> None:
     _clear()
-    opts = bmo.ButtonMapOptions()
+    opts = bmo.DeviceMapOptions()
     opts.toggleFavourite("edit.copy")
     opts.resetPanels()
     assert opts.favourites == ["edit.copy"]

@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 
 syslog = logging.getLogger("system")
 
-PARTS = ["setup", "button_map", "appearance", "calibration", "bindings"]
+PARTS = ["setup", "device_map", "appearance", "calibration", "bindings"]
 # A damaged module file kept exactly as it was (S20a): never copied or
 # swapped onto another stick; only the setup's bindings can be. A .gmap
 # keeps its bytes as its module.json.
@@ -74,17 +74,17 @@ GMAP_MODULE = "module.json"
 GMAP_WIRES = "bindings/wires.json"
 GMAP_OUTPUTS = "bindings/outputs/"
 # The order holds are listed in.
-HOLDS = ["setup", DAMAGED_PART, "button_map", "appearance", "calibration", "bindings"]
+HOLDS = ["setup", DAMAGED_PART, "device_map", "appearance", "calibration", "bindings"]
 PART_LABELS = {
     DAMAGED_PART: "Setup (damaged file, kept as is)",
     "setup": "Setup",
-    "button_map": "Button Map",
+    "device_map": "Device Map",
     "appearance": "Appearance",
     "calibration": "Calibration",
     "bindings": "Bindings",
 }
 # What Copy and Swap tick to start (S23, S36): Calibration off.
-DEFAULT_PARTS = ["setup", "button_map", "appearance", "bindings"]
+DEFAULT_PARTS = ["setup", "device_map", "appearance", "bindings"]
 TRIGGERS = ("deleted", "module_file", "copy", "swap", "output", "pack")
 DEFAULT_KEEP = 10
 SETTING = "device-library-folder"
@@ -1274,7 +1274,7 @@ def _contents(pack: dict) -> tuple[list[str], list[str], int, dict[str, int]]:
     if doc.get("claim") or doc.get("layout"):
         held.add("setup")
     if doc.get("nodes") or store.device_photo_ref(doc):
-        held.add("button_map")
+        held.add("device_map")
     if doc.get("view"):
         held.add("appearance")
     if doc.get("calibration"):
@@ -1682,7 +1682,7 @@ def _photo_cache() -> Path:
 
 
 def photo(setup_key: str) -> str:
-    """S11: the saved setup's Button Map photo as a file to show, taken out
+    """S11: the saved setup's Device Map photo as a file to show, taken out
     of its pack once; "" when it has none (or it can't be read)."""
     try:
         pack = pack_path(setup_key)

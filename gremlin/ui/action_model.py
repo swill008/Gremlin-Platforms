@@ -131,7 +131,7 @@ class ActionModel(QtCore.QObject):
     def _report_edits(self) -> None:
         """Every edit of this action's properties (any plugin's) also tells
         the program, so summaries of the profile's actions such as the
-        Button Map's chips check again (07 S73)."""
+        Device Mapping Editor's chips check again (07 S73)."""
         meta = self.metaObject()
         notifies: set[str] = set()
         # This class's own properties onwards (not QObject's objectName).

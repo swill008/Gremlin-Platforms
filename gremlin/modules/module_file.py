@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""A device's module file (<Device Folder>/module.json: its Button Map,
+"""A device's module file (<Device Folder>/module.json: its device map,
 claims, calibration and layout, D-03-DEVICE-FOLDERS): read it to change it,
 and write it safely. Where it is belongs to gremlin.modules.store.
 

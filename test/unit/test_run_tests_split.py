@@ -111,7 +111,7 @@ def test_the_kept_times_cover_the_unit_files() -> None:
 
 # A module fixture is built once in every part a file runs in: a file split
 # over 6 parts was booked 6 setups and stayed "heavy" for ever (35 s app
-# start-up: test_stage1_button_map 47 s became 252 s).
+# start-up: test_stage1_device_mapping_editor 47 s became 252 s).
 _FILES = [f"test/unit/test_{n}.py" for n in "abcd"]
 
 

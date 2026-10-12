@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Edits in the action pane show at once: "Off: never runs" when Press and
-Release are both switched off (05 S44), and the Button Map's chips follow an
+Release are both switched off (05 S44), and the Device Mapping Editor's chips follow an
 action edit (07 S73, AU-112)."""
 
 from __future__ import annotations

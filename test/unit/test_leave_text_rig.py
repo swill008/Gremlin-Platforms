@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""01 S134 (D-01-LEAVE-TEXT) in the Button Map editor: with the program-wide
+"""01 S134 (D-01-LEAVE-TEXT) in the Device Mapping Editor: with the program-wide
 leave-text filter installed, real key and mouse events off-screen.
 
 The Layers panel's inline rename keeps the typed name when left by a click

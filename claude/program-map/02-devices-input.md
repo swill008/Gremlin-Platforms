@@ -98,7 +98,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 | `global/general/device-change-behavior` | Reload (default) / Ignore / Disable | Options |
 | `global/general/hidhide-on-start` | HidHide "Automatically Start" (also shown in Options as "Turn HidHide on at start") | HidHide window, Options |
 | `display/hidhide/*`: `games`, `photos`, `module-links`, `list-mode`, `hidden-devices`, `cloak`, `managed`, `gaming-only`, `window-width/height`, `split-ratio` | HidHide choices and window | HidHide window; `apply_on_start` |
-| `devices/display/aliases` | user display names for devices | `DeviceNames.setAlias` (Home device list, Button Map); from 2026-10-11 written only after the device's folder is renamed (03 S131) |
+| `devices/display/aliases` | user display names for devices | `DeviceNames.setAlias` (Home device list, Device Mapping Editor); from 2026-10-11 written only after the device's folder is renamed (03 S131) |
 | `profile/automation/enable-auto-loading`, `remain-active-on-focus-loss`, auto-load list | auto-load | Options > Profiles |
 | `ui/general/display-mode` | input names: Numerical / Label / both (DeviceDatabase) | Options |
 | `own-xbox-pads` (vigem) | ids of Gremlin's own Xbox pads | Xbox output |
@@ -249,7 +249,7 @@ This part finds the controllers Windows reports (sticks, throttles, pedals, vJoy
 
 ### B. Identical devices (twins)
 
-- **S11** It should name the second of two identical devices "<name> (2)", a third "(3)", so each has its own module file, card, Button Map and calibration. [tracker: DEV8] [test-plan: TWIN-DEVICES] [test: test_twin_devices.py::test_the_second_identical_device_gets_its_own_name]
+- **S11** It should name the second of two identical devices "<name> (2)", a third "(3)", so each has its own module file, card, device map and calibration. [tracker: DEV8] [test-plan: TWIN-DEVICES] [test: test_twin_devices.py::test_the_second_identical_device_gets_its_own_name]
 - **S12** It should give the plain name to the device the existing "<name>" module file is bound to. [test: test_twin_devices.py::test_the_device_the_file_is_bound_to_keeps_the_plain_name]
 - **S13** It should keep each twin's name by device id, the same every session and port. [test-plan: TWIN-DEVICES]
 - **S14** It should not rename a device that has no twin. [test: test_twin_devices.py::test_a_single_device_is_not_renamed]
@@ -610,3 +610,5 @@ The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.
 
 [changed 2026-10-11, user: D-FIXLIST-B3] wording only: the Configuration page is now **Device Bindings** (qml/DeviceBindingsPage.qml) and the Auto Mapper is now the **Auto Mapping Tool** (gremlin/auto_mapping_tool.py, gremlin/modules/auto_mapping_tool.py, gremlin/ui/auto_mapping_tool_modules.py, qml/DialogAutoMappingTool.qml); Help topic ids configuration-actions-* / tools-auto-mapper* became device-bindings-actions-* / tools-auto-mapping-tool*; no statement changed.
+
+[changed 2026-10-11, user: D-FIXLIST-B4] wording only: the Button Map is now the **Device Mapping Editor** (the window; toolbar caption **Mapping Editor**, the full name in its tooltip) and what it makes is a **device map** (**Copy Device Map from Device**; **Button Map Options** is now **Device Map Options**; Device Library part **Device Map**); files qml/DialogDeviceMappingEditor.qml, qml/DeviceMapOptionsWindow.qml, qml/DeviceMapCard.qml, qml/OptionDeviceMapLibrary.qml, gremlin/ui/device_map_options.py, gremlin/ui/device_map_labels.py, qml/help/device_mapping_editor.js; spec page 07-device-mapping-editor.md; Help chapter and topic ids button-map* became device-mapping-editor*, Show me show:buttonmap/bm* became show:devicemappingeditor/dme*; settings section button-map became device-mapping-editor (moved once at start, one-time code OT-3); no statement changed.

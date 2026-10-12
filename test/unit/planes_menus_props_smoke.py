@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen for the planes' menus and
+"""Drives the Device Mapping Editor off-screen for the planes' menus and
 properties (07 S42, S43, S121, S124): Move to Background / Move to
 Foreground in the right-click menu's Arrange section, Reset Shape on a
 picture, the Properties panel's Look for pictures, and big pictures drawn

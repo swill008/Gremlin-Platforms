@@ -40,7 +40,11 @@ TAGS = (
     "axis-delta",
     "hat-buttons",
 )
-_EDITING = (Surface.CONFIG_PAGE, Surface.PANE_BUTTON_MAP, Surface.PANE_LOGICAL)
+_EDITING = (
+    Surface.CONFIG_PAGE,
+    Surface.PANE_DEVICE_MAPPING_EDITOR,
+    Surface.PANE_LOGICAL,
+)
 # Plugins load only once the test config is up, so the list is written out
 # here and checked against harness.cases() in the first test.
 CASES = [
@@ -651,7 +655,7 @@ def test_editor_qml_off_screen(tmp_path: pathlib.Path) -> None:
         # the Configuration page pane).
         for surface in (
             Surface.CONFIG_PAGE,
-            Surface.PANE_BUTTON_MAP,
+            Surface.PANE_DEVICE_MAPPING_EDITOR,
             Surface.PANE_LOGICAL,
         ):
             record(

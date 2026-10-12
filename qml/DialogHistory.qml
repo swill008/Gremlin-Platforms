@@ -55,7 +55,7 @@ ApplicationWindow {
         { key: "", label: "All" },
         { key: "profile", label: "Profile" },
         { key: "modules", label: "Module files" },
-        { key: "button-map", label: "Button Map" },
+        { key: "device-mapping-editor", label: "Device Mapping Editor" },
         { key: "settings", label: "Settings" }
     ]
 

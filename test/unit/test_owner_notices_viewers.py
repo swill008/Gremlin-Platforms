@@ -178,7 +178,7 @@ def test_auto_mapping_tool_list_follows_module_files(
     assert _resets_after(qtbot, make(), signal.moduleFilesChanged) == 1
 
 
-def test_button_map_chips_follow_the_bindings_notice(qtbot: object) -> None:
+def test_device_mapping_editor_chips_follow_the_bindings_notice(qtbot: object) -> None:
     from gremlin.ui.hardware_profile import HardwareProfile
 
     hp = HardwareProfile()
@@ -189,7 +189,7 @@ def test_button_map_chips_follow_the_bindings_notice(qtbot: object) -> None:
         hp.deleteLater()
 
 
-def test_button_map_pool_key_moves_on_the_bindings_notice() -> None:
+def test_device_mapping_editor_pool_key_moves_on_the_bindings_notice() -> None:
     from gremlin.ui import hardware_profile
 
     hardware_profile._hook_profile_generation()

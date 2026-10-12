@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware, a stick with a map) and
-checks the Button Map's View > Properties (F4; 07 S133, S135): outside Edit
+checks the Device Mapping Editor's View > Properties (F4; 07 S133, S135): outside Edit
 it is disabled; in Edit it is enabled, and it and F4 show or hide
 Properties. Prints what it saw
 as JSON. test_props_menu_in_edit.py runs it in its own process and user folder.
@@ -125,8 +125,8 @@ def main() -> None:
     out: dict = {}
 
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-    call(root, "openButtonMapForCard", card)
-    win = wait_for(lambda: call(root, "buttonMapWindow"))
+    call(root, "openDeviceMappingEditorForCard", card)
+    win = wait_for(lambda: call(root, "deviceMappingEditorWindow"))
     assert isinstance(win, QtCore.QObject)
     wait_for(lambda: ev(win, "mapShown && targetName === 'pJoy Pro'"))
     win.requestActivate()

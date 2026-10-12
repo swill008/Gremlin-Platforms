@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// The Button Map editor's Properties panel: the selected item's exact place,
+// The Device Mapping Editor's Properties panel: the selected item's exact place,
 // size, angle and style (rig_props.js lists the fields). Type a number and
 // press Enter, click a value, or click a colour to open the colour picker.
 // A picture also has its Look: sliders for brightness, contrast, greyscale

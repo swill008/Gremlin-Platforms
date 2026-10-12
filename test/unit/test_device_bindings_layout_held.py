@@ -158,13 +158,13 @@ def test_own_save_keeps_nothing_and_is_not_replaced(
 def test_write_not_touching_layout_or_claim_keeps_held(
     device: Path, told: list
 ) -> None:
-    """A Button Map picture or view change leaves the held layout valid."""
+    """A device map picture or view change leaves the held layout valid."""
     store.set_pending_layout(GUID, HELD, None, NAME)
 
     def change(doc: dict) -> None:
         doc["view"] = {"zoom": 2}
 
-    store.update_path(device, change, "Button Map")
+    store.update_path(device, change, "Device Mapping Editor")
     assert store.has_pending()
     store.save_pending()
     assert _doc(device)["layout"]["groups"] == ["A"]

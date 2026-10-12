@@ -7,7 +7,7 @@
 Module Setup said "to save its setup" when the stick was unplugged after
 it opened (03 S46 says "to change its setup" either way); Calibration said
 the lowest and highest values were the same when the lowest was above the
-highest (03 S103); the Button Map's refusal of a damaged module file names
+highest (03 S103); the Device Mapping Editor's refusal of a damaged module file names
 the damage (07 S12).
 """
 
@@ -131,7 +131,7 @@ def test_equal_lowest_and_highest_keep_their_own_message() -> None:
 # 07 S12 ------------------------------------------------------------------------
 
 
-def test_button_map_refusal_names_the_damaged_module_file(
+def test_device_mapping_editor_refusal_names_the_damaged_module_file(
     module_path: pathlib.Path,
 ) -> None:
     from gremlin.ui.hardware_profile import HardwareProfile

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen for the right-click additions
+"""Drives the Device Mapping Editor off-screen for the right-click additions
 (07 S136, S137): command tags (cmd) on the rows that are commands, Cut beside
 Copy, Paste Here and Select All on empty space, Show in Layers and
 Properties… on every item, Repeat first, and the Favourites list. Prints the

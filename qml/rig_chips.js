@@ -161,7 +161,7 @@ function fullNameOf(kind, hwId) {
     return s
 }
 
-// What a chip shows (Options → Button Map → Labels): its name, what the
+// What a chip shows (Device Map Options → Labels): its name, what the
 // control does in the profile (actionLabels, filled by the window for the
 // chosen mode), or both. Renaming always edits the name.
 // A chip's name has at most this many rows (Shift+Enter starts the next).
@@ -258,7 +258,7 @@ function hotFyOf(n) {
     return 0.5
 }
 
-// chipOnly (Button Map Options → Chip only): the chip on its own, with no
+// chipOnly (Device Map Options → Chip only): the chip on its own, with no
 // leader and its hotspot hidden; both can be added from its menu later.
 function addChiplet(kind, hwId, wx, wy, chipOnly) {
     kind = leafKind(kind)

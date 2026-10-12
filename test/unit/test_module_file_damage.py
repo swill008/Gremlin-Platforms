@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""A damaged module file (a device's Button Map, claims, calibration).
+"""A damaged module file (a device's Device Mapping Editor, claims, calibration).
 
 Every save that changes a module file used to treat a file it couldn't read
 as empty and write a nearly empty one over it, losing the map and claims.
@@ -145,7 +145,7 @@ def test_module_setup_save_is_refused(
     assert errors
 
 
-def test_button_map_save_is_refused(
+def test_device_mapping_editor_save_is_refused(
     damaged: tuple[pathlib.Path, bytes, str], errors: list
 ) -> None:
     from gremlin.ui.hardware_profile import HardwareProfile

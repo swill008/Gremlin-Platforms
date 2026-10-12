@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Button Map planes: menus and properties (07 S42, S43, S112, S121, S124;
+"""Device Mapping Editor planes: menus and properties (07 S42, S43, S112, S121, S124;
 D-07-BACKGROUND-PLANES).
 
 Right-click › Arrange offers Move to Background (Ctrl+Shift+B) and Move to
@@ -44,23 +44,23 @@ def results(tmp_path_factory: pytest.TempPathFactory) -> dict:
 
 def test_chip_cannot_go_to_the_background(results: dict) -> None:
     menu = results["menu-chip"]
-    back = menu["bmMoveToBackground"]
+    back = menu["dmeMoveToBackground"]
     assert back["section"] == "arrange"
     assert back["text"] == "Move to Background"
     assert back["enabled"] is False
     assert back["tip"] == "Chips stay in the foreground"
-    front = menu["bmMoveToForeground"]
+    front = menu["dmeMoveToForeground"]
     assert front["enabled"] is False
     assert front["tip"] == "Already in the foreground"
 
 
 def test_shape_and_picture_offer_move_to_background(results: dict) -> None:
     for key in ("menu-rect", "menu-pic"):
-        back = results[key]["bmMoveToBackground"]
+        back = results[key]["dmeMoveToBackground"]
         assert back["enabled"] is True, key
         assert back["hint"] == "Ctrl+Shift+B"
         assert back["tip"] == ""
-        assert results[key]["bmMoveToForeground"]["enabled"] is False
+        assert results[key]["dmeMoveToForeground"]["enabled"] is False
 
 
 def test_move_to_background_and_back_from_the_menu(results: dict) -> None:
@@ -69,9 +69,9 @@ def test_move_to_background_and_back_from_the_menu(results: dict) -> None:
     assert results["move-steps"] == 1
     assert results["order-after-move"][:2] == ["pbg", "rect1"]
     menu = results["menu-rect-bg"]
-    assert menu["bmMoveToForeground"]["enabled"] is True
-    assert menu["bmMoveToBackground"]["enabled"] is False
-    assert menu["bmMoveToBackground"]["tip"] == "Already in the background"
+    assert menu["dmeMoveToForeground"]["enabled"] is True
+    assert menu["dmeMoveToBackground"]["enabled"] is False
+    assert menu["dmeMoveToBackground"]["tip"] == "Already in the background"
     assert results["rect-after-back"] == ""
 
 

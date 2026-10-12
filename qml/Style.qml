@@ -195,7 +195,7 @@ Item {
     readonly property string iconFont: "bootstrap-icons"
 
     // Menus, dropdown lists and the command palette (Gremlin.Menus): one look
-    // everywhere, the Button Map's. A raised surface with a strong line, rows
+    // everywhere, the Device Mapping Editor's. A raised surface with a strong line, rows
     // that light up under the pointer with an accent bar on the left.
     readonly property color menuBg: bgRaised
     readonly property color menuLine: lineStrong

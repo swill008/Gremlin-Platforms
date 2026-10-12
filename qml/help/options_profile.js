@@ -31,7 +31,7 @@ function topics() {
                 + "<ul>"
                 + "<li>× in the search box clears it; <b>Esc</b> clears the typing and leaves the box.</li>"
                 + "<li>The Device Library's folder is in Device Library Settings.</li>"
-                + "<li>The Button Map's settings are in the Button Map: <b>Edit</b> › <b>Button Map Options…</b>.</li>"
+                + "<li>The Device Mapping Editor's settings are in the Device Mapping Editor: <b>Edit</b> › <b>Device Map Options…</b>.</li>"
                 + "</ul>",
             related: ["options-profile-general", "options-profile-interface", "options-profile-profile-settings", "getting-started-saved-where"]
         },

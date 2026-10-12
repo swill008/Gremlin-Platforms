@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's Layers panel: search box and kind toggles (07 S102,
+"""The Device Mapping Editor's Layers panel: search box and kind toggles (07 S102,
 D-07-LAYERS-SEARCH), checked in the running program off-screen
 (layers_panel_search_smoke.py, its own process and user folder), at UI
 scale 100 % and 175 %.

@@ -8,7 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Config
 import Gremlin.Style
 
-// One setting in an Options window (main Options and Button Map Options):
+// One setting in an Options window (main Options and Device Map Options):
 // its name, a short description under it, and its control on the right. A
 // wide control (a list, a path, a custom panel) goes under the text instead.
 // Rows sit in a ConfigGroup card; every row after the first has a divider.

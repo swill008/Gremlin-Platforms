@@ -2,10 +2,10 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Final test plan, Button Map: the section 8 statements no other test
-checked (claude/final-test-plan/07-button-map.md).
+"""Final test plan, Device Mapping Editor: the section 8 statements no other test
+checked (claude/final-test-plan/07-device-mapping-editor.md).
 
-Spec: claude/program-map/07-button-map.md S1, S2, S4, S11, S15, S23, S39,
+Spec: claude/program-map/07-device-mapping-editor.md S1, S2, S4, S11, S15, S23, S39,
 S45, S47, S50, S56, S59, S60, S61, S63, S71, S74, S84, S94, S96, S100.
 
 The window checks run final_07_smoke.py (the program off-screen, stand-in
@@ -311,7 +311,7 @@ def test_zoom_from_50_to_600_percent_with_its_keys(seen: dict) -> None:
 
 
 def test_no_command_palette_and_the_menus_hold_the_commands(seen: dict) -> None:
-    # S100: the Button Map has no Command Palette; its menus (S135) hold
+    # S100: the Device Mapping Editor has no Command Palette; its menus (S135) hold
     # the commands.
     part = _part(seen, "palette")
     assert isinstance(part, dict)
@@ -319,7 +319,7 @@ def test_no_command_palette_and_the_menus_hold_the_commands(seen: dict) -> None:
     texts = part["texts"]
     for wanted in ("Edit Mapping", "Save", "Cancel", "Reset Layout",
                    "Fit to Photo Frame", "Print & Export…", "Mirror Layout",
-                   "Button Map Options…",
+                   "Device Map Options…",
                    "Zoom to Fit Page", "Show Grid", "Edit Background",
                    "Add Picture to Background…", "Clear Background", "Help",
                    "Keyboard Shortcuts…"):

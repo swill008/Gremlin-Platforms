@@ -125,9 +125,11 @@ if _startup_failure is None:
         import gremlin.audio_player
         import gremlin.config
         import gremlin.device_initialization
+        import gremlin.device_map_settings_once
         import gremlin.error
         import gremlin.error_report
         import gremlin.event_handler
+        import gremlin.library_part_id_once
         import gremlin.mode_manager
         import gremlin.modules.store
         import gremlin.plugin_manager
@@ -136,7 +138,7 @@ if _startup_failure is None:
         import gremlin.tts
         import gremlin.types
         import gremlin.ui.backend
-        import gremlin.ui.button_map_options
+        import gremlin.ui.device_map_options
         import gremlin.ui.system_tray
         import gremlin.ui.option
         import gremlin.ui.osc_option  # noqa: F401
@@ -732,8 +734,8 @@ def register_config_options() -> None:
         "Release the user chose to skip in the Update dialog.", {},
     )
     cfg.register(
-        "global", "internal", "button-map-recent-colours", PropertyType.List, [],
-        "Colors last applied in the Button Map editor, newest first.", {},
+        "global", "internal", "device-map-recent-colours", PropertyType.List, [],
+        "Colors last applied in the Device Mapping Editor, newest first.", {},
     )
     cfg.register(
         "global", "internal", "last-folders", PropertyType.Dict, {},
@@ -916,7 +918,7 @@ def register_config_options() -> None:
     trace._ensure_options()  # noqa: SLF001 - the Trace ticks (D-01-TRACE)
     gremlin.ui.window_placement._ensure()
     gremlin.ui.vjoy_status.register_options()
-    gremlin.ui.button_map_options.register()
+    gremlin.ui.device_map_options.register()
     gremlin.ui.live_debug.register_options()
     gremlin.ui.update_model._register(cfg)
     # Registered when its module loads (through device_names); named here so
@@ -990,7 +992,9 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         configure_loggers()
         gremlin.ui.live_debug.start()
         self.syslog = logging.getLogger("system")
+        gremlin.device_map_settings_once.run_if_needed()  # ONE-TIME (tracker OT-3)
         register_config_options()
+        gremlin.library_part_id_once.run_if_needed()  # ONE-TIME (tracker OT-4)
         gremlin.ui.log_option.apply_log_level()
         _move_to_device_folders()
         # HidHide settings are for the whole PC, not for an off-screen run.

@@ -290,7 +290,7 @@ STEPS: list[tuple[str, str, str, str]] = [
         " _bridge.click('libraryRow_dev-00000001', 'right', '');"
         " _rowMenu.activate('Open Module Setup…');"
         " _bridge.click('libraryRow_dev-00000001', 'right', '');"
-        " _rowMenu.activate('Open Button Map'); 'ok'",
+        " _rowMenu.activate('Open Device Mapping Editor'); 'ok'",
         "",
         "",
     ),

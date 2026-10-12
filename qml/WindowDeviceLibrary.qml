@@ -360,7 +360,7 @@ ApplicationWindow {
     }
 
     // To the main window (Main.qml libraryAction): Home's Delete Device,
-    // Module Setup, Button Map, Show on Home (S15, S44). Its Result.
+    // Module Setup, Device Mapping Editor, Show on Home (S15, S44). Its Result.
     function toMain(action, key) {
         var raw = DeviceLibraryOpen.toMain(action, lib.deviceTarget(key))
         var res = {}
@@ -530,7 +530,7 @@ ApplicationWindow {
             MenuModel.action("Rename…", function() { _lib.startRename() }, free, { hint: "F2" }),
             MenuModel.action("Edit Description", function() { _lib.editDescription() }, free),
             MenuModel.action("Open Module Setup…", function() { _lib.toMain("moduleSetup", d.key) }, card),
-            MenuModel.action("Open Button Map", function() { _lib.toMain("buttonMap", d.key) }, card),
+            MenuModel.action("Open Device Mapping Editor", function() { _lib.toMain("deviceMappingEditor", d.key) }, card),
             MenuModel.action("Show on Home", function() { _lib.toMain("home", d.key) }, card),
             MenuModel.action("Show in History", function() { _lib.toMain("history", d.key) }),
             row && row.hasChildren
@@ -1218,7 +1218,7 @@ ApplicationWindow {
                                         visible: (_lib.details.photo || "").length === 0
                                         spacing: Style.dp(6)
                                         Text { anchors.horizontalCenter: parent.horizontalCenter; text: ""; font.family: Style.iconFont; font.pixelSize: Style.dp(34); color: Style.fgMuted }
-                                        Label { text: "Button Map photo"; font.pixelSize: Style.dp(11); color: Style.fgMuted }
+                                        Label { text: "Device map photo"; font.pixelSize: Style.dp(11); color: Style.fgMuted }
                                     }
                                 }
                                 ColumnLayout {

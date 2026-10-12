@@ -39,7 +39,7 @@ def _setup(
         "reason": reason,
         "holds": holds
         if holds is not None
-        else ["setup", "button_map", "appearance", "calibration", "bindings"],
+        else ["setup", "device_map", "appearance", "calibration", "bindings"],
         "profiles": profiles or [],
         "vjoys": vjoys or {},
         "pack": f"{key}.gmap",
@@ -187,7 +187,7 @@ class FakeLibrary:
         self.calls: list[tuple] = []
         self.conf = {
             "keep": 10,
-            "default_parts": ["setup", "button_map", "appearance", "bindings"],
+            "default_parts": ["setup", "device_map", "appearance", "bindings"],
             "folder": "C:/Users/you/Gremlin Platforms/device library",
         }
         self.last: dict | None = None
@@ -453,7 +453,7 @@ class FakeLibrary:
         self.plan_threads.append(threading.current_thread().name)
         current = (
             {
-                "holds": ["setup", "button_map", "bindings"],
+                "holds": ["setup", "device_map", "bindings"],
                 "sourceModes": ["Default", "Combat"],
             }
             if setup_key.startswith("dev-")

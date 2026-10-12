@@ -11,7 +11,7 @@
 - A card shows the user's name for its device and follows
   deviceNamesChanged (10 S7, 2a); rawName still names the module file.
 - Output and input cards drop their copy of the claims when the store says
-  a module file changed (6b); the Button Map's file watch follows the same
+  a module file changed (6b); the Device Mapping Editor's file watch follows the same
   notice.
 """
 
@@ -153,7 +153,9 @@ def test_a_module_file_notice_drops_the_claim_copies(setup: tuple) -> None:
     assert told == [1]
 
 
-def test_the_button_map_file_watch_follows_the_store_notice(setup: tuple) -> None:
+def test_the_device_mapping_editor_file_watch_follows_the_store_notice(
+    setup: tuple,
+) -> None:
     watch = module_model.ModuleFileWatch()
     told: list[int] = []
     watch.changed.connect(lambda: told.append(1))

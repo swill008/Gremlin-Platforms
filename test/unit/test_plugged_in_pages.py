@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Plugged in is decided by the Windows id, never by the name (03 S90a), on
-the pages that ask: the Button Map's cover (07 S5-S8), Module Setup's Save
+the pages that ask: the Device Mapping Editor's cover (07 S5-S8), Module Setup's Save
 (03 S46) and the Home card's status (03 S73)."""
 
 from __future__ import annotations
@@ -36,24 +36,24 @@ def _twin_guid() -> str:
     return str(dill.GUID(_twin().device_guid).uuid)
 
 
-# Button Map cover (07 S5-S8) -------------------------------------------------
+# Device Mapping Editor cover (07 S5-S8) -----------------------------------------------
 
 
-def test_button_map_of_a_stick_with_no_id_is_covered_though_its_name_is_in() -> None:
+def test_editor_of_a_stick_with_no_id_is_covered_though_its_name_is_in() -> None:
     # "pJoy Pro" is plugged in; a card with no id isn't it.
     assert ViewerDeviceModel().available("", "pJoy Pro") is False
 
 
-def test_button_map_of_the_unplugged_one_of_two_identical_sticks_is_covered() -> None:
+def test_editor_of_the_unplugged_one_of_two_identical_sticks_is_covered() -> None:
     model = ViewerDeviceModel()
     assert model.available(_pjoy_guid(), "pJoy Pro") is True
     assert model.available(_twin_guid(), "pJoy Pro") is False
     assert model.available("", "pJoy  Pro") is False
 
 
-def test_button_map_shows_as_soon_as_the_stick_is_in_the_live_list() -> None:
+def test_device_mapping_editor_shows_as_soon_as_the_stick_is_in_the_live_list() -> None:
     # Windows lists the twin before the program's own device list is rebuilt
-    # (before it moves): its Button Map loads now, not when it moves.
+    # (before it moves): its device map loads now, not when it moves.
     fake = dill.DILL._dll
     twin = _twin()
     fake.devices.append(twin)
@@ -63,7 +63,7 @@ def test_button_map_shows_as_soon_as_the_stick_is_in_the_live_list() -> None:
         fake.devices.remove(twin)
 
 
-def test_button_map_built_ins_always_show() -> None:
+def test_device_mapping_editor_built_ins_always_show() -> None:
     model = ViewerDeviceModel()
     assert model.available("", "vJoy Device 1") is True
     assert model.available(str(dill.UUID_Keyboard), "Keyboard") is True

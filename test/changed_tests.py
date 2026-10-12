@@ -18,8 +18,8 @@ chosen when it:
   Map window uses VkbRigEditor). A bare word is not enough: Button and
   Switch are plain words too. Tests that start the whole program count as
   naming Main.qml;
-- runs a helper script (button_map_window_smoke.py) chosen the same way,
-  or one that imports a chosen helper (button_map_fixes_smoke.py imports
+- runs a helper script (device_mapping_editor_window_smoke.py) chosen the same way,
+  or one that imports a chosen helper (device_mapping_editor_fixes_smoke.py imports
   rig_editor_harness.py);
 - names another changed file (the installer script) by its file name.
 

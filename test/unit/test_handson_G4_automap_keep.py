@@ -27,7 +27,10 @@ from _harness import Journey, run_journey, step  # noqa: E402
 
 def story(j: Journey) -> None:
     out = j.out
-    j.ev('Helpers.createComponent("DialogAutoMappingTool.qml", { initialSlug: "pJoy Pro" })')
+    j.ev(
+        'Helpers.createComponent("DialogAutoMappingTool.qml", '
+        '{ initialSlug: "pJoy Pro" })'
+    )
     win = j.window("Auto Mapping Tool")
 
     def boxes() -> dict[str, object]:

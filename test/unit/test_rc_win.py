@@ -2,11 +2,11 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map window's part of the right-click additions (07 S136,
+"""The Device Mapping Editor window's part of the right-click additions (07 S136,
 S137), off-screen in its own process and user folder (rc_win_smoke.py).
 
 - Every menu-bar command row and the Edit rows Cut, Copy, Paste, Duplicate,
-  Delete and Select All have a star (bmStar_<id>); on hover it shows, and a
+  Delete and Select All have a star (dmeStar_<id>); on hover it shows, and a
   click on it adds the favourite (stored, and handed to the editor) without
   running the row; the editor's favouriteToggled / favouriteRemoved reach
   the store.
@@ -80,7 +80,7 @@ def test_star_on_edit_and_command_rows(seen: dict) -> None:
     stars = _ok(seen["stars"])
     assert isinstance(stars, dict)
     for cid, name in stars.items():
-        assert name == f"bmStar_{cid}", cid
+        assert name == f"dmeStar_{cid}", cid
 
 
 def test_star_click_adds_and_runs_nothing(seen: dict) -> None:
@@ -140,6 +140,6 @@ def test_no_binding_overwrite_from_the_star(seen: dict) -> None:
     bad = [
         ln
         for ln in seen["_stderr"].splitlines()
-        if "DialogJoystickButtonMap.qml" in ln or "RigLayersPanel.qml" in ln
+        if "DialogDeviceMappingEditor.qml" in ln or "RigLayersPanel.qml" in ln
     ]
     assert bad == []

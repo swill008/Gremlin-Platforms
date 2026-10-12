@@ -2,15 +2,15 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's Layers panel with the background and foreground planes
+"""The Device Mapping Editor's Layers panel with the background and foreground planes
 (07 S119, S120, S102, S44; D-07-BACKGROUND-PLANES, D-07-PLANES-ANSWERS P2a,
 P4a), checked in the running program off-screen
 (planes_layers_panel_smoke.py, its own process and user folder).
 
-- Foreground mode: the list ends with the folded Background row (bmBgRow).
-  Its eye (bmBgRowEye) hides the background on screen only (the editor's
-  bgViewHidden, no Undo step), its lock (bmBgRowLock) locks every background
-  layer (setPlaneLocked), its Opacity slider (bmBgRowOpacity) is the
+- Foreground mode: the list ends with the folded Background row (dmeBgRow).
+  Its eye (dmeBgRowEye) hides the background on screen only (the editor's
+  bgViewHidden, no Undo step), its lock (dmeBgRowLock) locks every background
+  layer (setPlaneLocked), its Opacity slider (dmeBgRowOpacity) is the
   editor's bgViewOpacity, and a double-click edits the background.
 - Background mode: only background rows, no Background row, toggles
   Shapes · Lines · Pictures · Text only; no groups.

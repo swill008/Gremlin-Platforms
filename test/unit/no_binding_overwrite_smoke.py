@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware), opens Help and the
-Button Map, and prints every Qt message, so test_no_binding_overwrite.py can
+Device Mapping Editor, and prints every Qt message, so test_no_binding_overwrite.py can
 check none says "Overwriting binding" (a property set over its own binding).
 """
 
@@ -27,7 +27,7 @@ win = app.main_window
 win.setProperty("visible", True)
 wait_until(lambda: win.isVisible())
 wait_until(lambda: bool(ev(win, "_statusLoader.item !== null")))
-# The Button Map for the stand-in stick, as from its card (the card that
+# The Device Mapping Editor for the stand-in stick, as from its card (the card that
 # showed the warning is only built for a device).
 import json  # noqa: E402
 
@@ -36,8 +36,8 @@ import dill  # noqa: E402
 stick = next(d for d in g["fake"].devices if bytes(d.name) == b"pJoy Pro")
 guid = str(dill.GUID(stick.device_guid).uuid)
 card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": guid}
-ev(win, f"openButtonMapForCard({json.dumps(card)})")
-wait_until(lambda: bool(visible(lambda t: t.startswith("Button Map"))), 8000)
+ev(win, f"openDeviceMappingEditorForCard({json.dumps(card)})")
+wait_until(lambda: bool(visible(lambda t: t.startswith("Device Mapping Editor"))), 8000)
 wait_until(lambda: False, 1500)
 for text in g["messages"]:
     print("MSG " + text.replace("\n", " "), flush=True)

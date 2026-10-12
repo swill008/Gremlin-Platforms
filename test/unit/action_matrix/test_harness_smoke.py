@@ -25,8 +25,8 @@ TAG = "map-to-vjoy"
 SURFACE_CASES = [
     (Surface.CONFIG_PAGE, "button"),
     (Surface.CONFIG_PAGE, "axis"),
-    (Surface.PANE_BUTTON_MAP, "button"),
-    (Surface.PANE_BUTTON_MAP, "hat"),
+    (Surface.PANE_DEVICE_MAPPING_EDITOR, "button"),
+    (Surface.PANE_DEVICE_MAPPING_EDITOR, "hat"),
     (Surface.PANE_LOGICAL, "button"),
     (Surface.PANE_LOGICAL, "axis"),
     (Surface.PANE_KEYBOARD, "key"),

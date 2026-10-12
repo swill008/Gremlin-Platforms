@@ -57,7 +57,7 @@ Rectangle {
 
     signal cardFocused()
     signal openDeviceBindings()
-    signal openButtonMap()
+    signal openDeviceMappingEditor()
     signal openOutputView()
     signal configureModule()
     signal openAutoMappingTool()
@@ -499,7 +499,7 @@ Rectangle {
         return MenuModel.menu("card", cardName || rawName || "Device", [
             MenuModel.action(dest ? "Output View" : "Open Device Bindings",
                              function() { dest ? _card.openOutputView() : _card.openDeviceBindings() }),
-            MenuModel.action("Button Map", function() { _card.openButtonMap() }),
+            MenuModel.action("Device Mapping Editor", function() { _card.openDeviceMappingEditor() }),
             MenuModel.action("Hide Card", function() { _card.ignoreDevice() })
         ], [
             MenuModel.section("module", "Module", [
@@ -536,7 +536,7 @@ Rectangle {
                 (dest || xbox || notStick || logical) ? null
                     : MenuModel.action("Change vJoy Output…", function() { _card.openDeviceLibrary("output") }),
                 // The Logical Device's card picture (03 S88, D-03-LD-IMAGE):
-                // the other cards set theirs in Module Setup / Button Map.
+                // the other cards set theirs in Module Setup / the Device Mapping Editor.
                 !logical ? null
                     : MenuModel.action(_card.photo ? "Change Image…" : "Add Image…",
                                        function() { _card.addImage() }),
@@ -553,7 +553,7 @@ Rectangle {
                     : MenuModel.action("Delete Device", function() { _card.deleteDevice() }, true, { danger: true })
             ])
         ], [
-            // Home's Undo / Redo (D-FIXLIST-B1 10), as the Button Map's menus.
+            // Home's Undo / Redo (D-FIXLIST-B1 10), as the Device Mapping Editor's menus.
             { label: "Undo", enabled: _card.canUndo, run: function() { _card.undoStep() } },
             { label: "Redo", enabled: _card.canRedo, run: function() { _card.redoStep() } }
         ])

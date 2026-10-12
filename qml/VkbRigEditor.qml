@@ -91,7 +91,7 @@ Item {
     // pointer for the Path tool's next segment.
     property var pathDraft: []
     property var pathHover: null
-    // Saved styles (Options → Button Map → Library), from the window.
+    // Saved styles (Device Map Options → Library), from the window.
     property var savedStyles: []
     // Guides dragged out of the rulers, as page fractions (rig_rulers.js).
     property var rulerGuidesX: []
@@ -301,12 +301,12 @@ Item {
     property int histCap: 80
     // Degrees per Shift step when turning an item or drawing a line (Options).
     property int rotateSnap: 15
-    // Press to find (Options → Button Map → Editing).
+    // Press to find (Device Map Options → Editing).
     property bool findOn: true
     property bool findAxes: false
     property var findPrev: ({})
     property string findMsg: ""
-    // Chip text (Options → Button Map → Labels) and the window's labels for
+    // Chip text (Device Map Options → Labels) and the window's labels for
     // the chosen mode: {"btn:5": "Gear up"}.
     property string chipTextMode: "Name"
     property string unboundText: "Name"

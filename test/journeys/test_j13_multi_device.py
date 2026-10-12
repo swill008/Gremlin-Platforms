@@ -18,7 +18,7 @@ records its own values (an error in one doesn't hide the others):
 4. Change vJoy Output on a saved profile that is not the open one: the
    file changes, the open profile doesn't.
 5. vJoy Viewer (the Input Viewer window) with the twins wired too: its
-   device list has all four sticks and both vJoys; so has the Button Map's.
+   device list has all four sticks and both vJoys; so has the Device Mapping Editor's.
 6. Twin rename (Home's rename, DeviceNames.setAlias) of "Twin Stick (2)":
    Home, the Device Library and both viewer lists show the new name; the
    other twin keeps its own.
@@ -329,8 +329,8 @@ def _part_viewer(j: Journey) -> None:
     out["viewer:vjoys"] = sorted(
         {p.strip() for r in rows for p in str(r["pairLabel"]).split(",") if p.strip()}
     )
-    button_map = ViewerDeviceModel()
-    mapped = [r for r in button_map._rows if r.get("mapped")]
+    editor_list = ViewerDeviceModel()
+    mapped = [r for r in editor_list._rows if r.get("mapped")]
     out["map:names"] = sorted(str(r["name"]) for r in mapped)
     out["map:vjoys"] = sorted(
         {p.strip() for r in mapped for p in str(r["pairLabel"]).split(",") if p.strip()}

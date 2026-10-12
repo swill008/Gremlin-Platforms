@@ -2,14 +2,14 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Layers search in the Button Map window (07 S102,
+"""The Layers search in the Device Mapping Editor window (07 S102,
 D-07-LAYERS-SEARCH), checked in the running program off-screen
 (layers_search_window_smoke.py, its own process and user folder).
 
 - Ctrl+F goes to the Search layers… box, opening Layers if it is closed.
 - View > Search layers… (Ctrl+F) in the menu bar does the same.
 - The kinds and the search stay when another device's map is shown, and are
-  none and empty after the Button Map closes and opens again.
+  none and empty after the Device Mapping Editor closes and opens again.
 - Help describes the box, the kind toggles and the keys.
 """
 
@@ -72,17 +72,17 @@ def test_kinds_and_search_stay_on_another_devices_map(run: dict) -> None:
     assert json.loads(run["filter-after-switch"]) == want
 
 
-def test_closing_the_button_map_resets_them(run: dict) -> None:
+def test_closing_the_device_mapping_editor_resets_them(run: dict) -> None:
     assert run["new-window"] is True
     assert json.loads(run["filter-after-reopen"]) == {"kinds": [], "query": ""}
 
 
 def _layers_help() -> str:
-    """The Button Map chapter's Layers topics, from the one Help book."""
+    """The Device Mapping Editor chapter's Layers topics, from the one Help book."""
     from test.unit import help_book  # noqa: PLC0415
 
     return " ".join(
-        t["body"] for t in help_book.chapter_topics("button-map")
+        t["body"] for t in help_book.chapter_topics("device-mapping-editor")
         if "layer" in t["title"].lower()
     )
 
@@ -97,7 +97,7 @@ def test_help_describes_the_search(qapp: QtCore.QCoreApplication) -> None:
         "All · Chips · Groups · Hotspots · Leaders · Shapes · Lines · Pictures"
         " · Text · Tables",
         "No layers match",
-        "when the Button Map closes",
+        "when the Device Mapping Editor closes",
     ):
         assert words in body, words
     # The old single-choice kind buttons are gone.

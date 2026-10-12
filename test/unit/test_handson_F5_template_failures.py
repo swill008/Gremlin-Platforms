@@ -25,7 +25,7 @@ from gremlin.ui import hardware_profile
 
 NODES = json.dumps([{"id": "b1", "kind": "btn", "hwId": 1}])
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
-_QML = _ROOT / "qml" / "DialogJoystickButtonMap.qml"
+_QML = _ROOT / "qml" / "DialogDeviceMappingEditor.qml"
 
 
 @pytest.fixture
@@ -122,7 +122,7 @@ def test_rename_of_a_read_only_template_names_it_and_keeps_one_copy(
     assert sorted(sub.name for sub in folder.iterdir()) == ["One"]
 
 
-def test_the_button_map_shows_the_reason() -> None:
+def test_the_device_mapping_editor_shows_the_reason() -> None:
     """The Templates window shows templateError(), not fixed text."""
     text = _QML.read_text(encoding="utf-8")
     assert "Could not write " not in text

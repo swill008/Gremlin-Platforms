@@ -6,7 +6,7 @@
 Export zips one device's folder into "<shown name>.gmap" (Export / Import
 Device's only file, D-FIXLIST-B2); Import As a new device unpacks one into a
 new device folder ("(2)" for a taken name, 03 S132), only the ticked pieces.
-The bindings are an optional part. A Button Map template travels the same way as
+The bindings are an optional part. A device map template travels the same way as
 ".gtemplate".
 
 .gmap layout::

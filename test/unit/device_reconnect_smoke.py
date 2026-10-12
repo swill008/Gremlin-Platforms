@@ -177,7 +177,8 @@ def main() -> None:
     # Auto Mapping Tool: a tick stays when a stick plugged in or out rebuilds the list.
     engine = app.engine
     component = QtQml.QQmlComponent(
-        engine, QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogAutoMappingTool.qml"))
+        engine,
+        QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogAutoMappingTool.qml")),
     )
     mapper = component.create()
     if mapper is None:

@@ -213,7 +213,7 @@ function topics() {
                 + _good([
                     "The page is locked while the profile runs, except Feedback rows: those can be changed while it runs, and a change takes effect at once.",
                     "The page has no <b>Hide system name</b>: the address is the input and always shows.",
-                    "The Button Map and the OSC card on Home show an OSC input by its address, for example /fire, not by a number."
+                    "The Device Mapping Editor and the OSC card on Home show an OSC input by its address, for example /fire, not by a number."
                 ]),
             related: ["osc-add-input", "osc-edit-inputs", "osc-feedback-rows", "osc-monitor"]
         },

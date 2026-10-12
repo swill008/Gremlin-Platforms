@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""07 S104 (D-07-EDITOR-LOADFAIL, AD8): when the Button Map editor
+"""07 S104 (D-07-EDITOR-LOADFAIL, AD8): when the Device Mapping Editor
 (VkbRigEditor.qml) can't load, VkbRigFace shows the plain error "The Button
 Map editor could not load." and the reason goes to the log; no built-in
 device layout (the old EVO R tag column and its leader lines) is shown.
@@ -22,7 +22,7 @@ import sys
 import pytest
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
-MESSAGE = "The Button Map editor could not load."
+MESSAGE = "The Device Mapping Editor could not load."
 
 _HOST = r"""
 import QtQuick
@@ -125,7 +125,7 @@ def test_failed_load_shows_no_device_layout(found: dict[str, str]) -> None:
 
 def test_the_reason_goes_to_the_log(found: dict[str, str]) -> None:
     # console.warn goes to the error stream, which qt_log copies to qt.log.
-    assert "The Button Map editor could not load:" in found["stderr"]
+    assert "The Device Mapping Editor could not load:" in found["stderr"]
     assert "VkbRigEditor.qml" in found["stderr"]
 
 

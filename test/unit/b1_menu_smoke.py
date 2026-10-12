@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen for the right-click Hide / Lock
+"""Drives the Device Mapping Editor off-screen for the right-click Hide / Lock
 rows (D-FIXLIST-B1 item 2): an item's Hide and Lock rows carry the hide /
 lock command ids (so the menu offers the ☆), clicking the row acts on what
 was right-clicked, a Hide favourite hides the whole selection, and the

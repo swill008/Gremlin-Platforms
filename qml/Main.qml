@@ -53,7 +53,7 @@ ApplicationWindow {
     }
 
     // Unsaved profile edits a crash left (04 S94): Restore / Discard /
-    // Not now, as the Button Map's Autosave. Not now keeps the copy for the
+    // Not now, as the Device Mapping Editor's Autosave. Not now keeps the copy for the
     // next open of the profile.
     function offerProfileRecovery() {
         if (!backend || typeof backend.takeRecoveryOffer !== "function")
@@ -91,7 +91,7 @@ ApplicationWindow {
     readonly property int _modeListMinWidth: Style.dp(120)
     function _toolbarWidth(withCaptions) {
         var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton,
-                       _buttonMapButton, _deviceLibraryButton, _logicalButton, _optionsButton]
+                       _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         var w = _homeButton.rightPadding + _toolbarRow.spacing * buttons.length
         for (var i = 0; i < buttons.length; i++)
             w += withCaptions ? buttons[i].fullWidth : buttons[i].compactWidth
@@ -193,7 +193,7 @@ ApplicationWindow {
     function _helpToolbarButton(name) {
         var want = _helpNorm(name)
         var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton,
-                       _buttonMapButton, _deviceLibraryButton, _logicalButton, _optionsButton]
+                       _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         for (var i = 0; i < buttons.length; ++i) {
             var b = buttons[i]
             var names = [b.caption, b.tooltip]
@@ -308,21 +308,21 @@ ApplicationWindow {
             var hit = _helpOptionLabels.findSetting(rest.join("/"))
             return hit && hit.length ? "" : "No such setting in Options: " + rest.join("/")
         }
-        if (parts[0] === "buttonmap")
-            return _helpButtonMapTargets.indexOf(rest.join("/")) >= 0
-                ? "" : "No such place in the Button Map: " + rest.join("/")
+        if (parts[0] === "devicemappingeditor")
+            return _helpDeviceMappingEditorTargets.indexOf(rest.join("/")) >= 0
+                ? "" : "No such place in the Device Mapping Editor: " + rest.join("/")
         return "Not a link to the program: " + link
     }
 
-    // What show:buttonmap/<objectName> may point at in the Button Map
-    // window (07 S126, D-07-PLANES-FOLLOWUP Q1a); its revealForHelp shows
+    // What show:devicemappingeditor/<objectName> may point at in the Device
+    // Mapping Editor window (07 S126, D-07-PLANES-FOLLOWUP Q1a); its revealForHelp shows
     // them. Known here so links check without the window open.
     // One per area (user 2026-10-11): each menu's title in the bar, the two
     // side panels, Properties, the Background banner and row.
-    readonly property var _helpButtonMapTargets: [
-        "bmMenuFile", "bmMenuEdit", "bmMenuView", "bmMenuInsert", "bmMenuArrange",
-        "bmMenuLeader", "bmMenuFormat", "bmMenuHelp",
-        "chipsSide", "layersSide", "propsPanel", "bmBgBanner", "bmBgRow"]
+    readonly property var _helpDeviceMappingEditorTargets: [
+        "dmeMenuFile", "dmeMenuEdit", "dmeMenuView", "dmeMenuInsert", "dmeMenuArrange",
+        "dmeMenuLeader", "dmeMenuFormat", "dmeMenuHelp",
+        "chipsSide", "layersSide", "propsPanel", "dmeBgBanner", "dmeBgRow"]
 
     function _helpFront() {
         if (_root.visibility === Window.Minimized || !_root.visible)
@@ -366,14 +366,14 @@ ApplicationWindow {
                 return "Options didn't open."
             return win.revealSetting(rest.join("/")) ? "" : "No such setting in Options: " + rest.join("/")
         }
-        if (parts[0] === "buttonmap") {
+        if (parts[0] === "devicemappingeditor") {
             // The window as it is, or opened blank (it picks a device).
-            var map = buttonMapWindow()
+            var map = deviceMappingEditorWindow()
             if (!map)
-                openBlankButtonMap()
-            map = buttonMapWindow()
+                openBlankDeviceMappingEditor()
+            map = deviceMappingEditorWindow()
             if (!map || typeof map.revealForHelp !== "function")
-                return "The Button Map didn't open."
+                return "The Device Mapping Editor didn't open."
             return map.revealForHelp(rest.join("/"), _helpPulse)
         }
         _helpFront()
@@ -1003,9 +1003,9 @@ ApplicationWindow {
         // Its windows close without asking: Save would write the deleted
         // device's module file again (07 Q7).
         var dropped = false
-        var map = buttonMapWindow()
+        var map = deviceMappingEditorWindow()
         if (map && (String(map.targetName || "") === name || String(map.targetGuid || "") === guid)) {
-            dropped = buttonMapNeedsLeave()
+            dropped = deviceMappingEditorNeedsLeave()
             map._allowClose = true
             map.close()
         }
@@ -1083,11 +1083,11 @@ ApplicationWindow {
             updater.setInstallOnExit(false)
     }
 
-    function buttonMapWindow() {
-        return Helpers.windowOf("DialogJoystickButtonMap.qml")
+    function deviceMappingEditorWindow() {
+        return Helpers.windowOf("DialogDeviceMappingEditor.qml")
     }
 
-    function openButtonMapForCard(card) {
+    function openDeviceMappingEditorForCard(card) {
         var name = ""
         var guid = ""
         if (card) {
@@ -1097,7 +1097,7 @@ ApplicationWindow {
         name = name.trim()
         if (!name.length)
             return
-        var existing = buttonMapWindow()
+        var existing = deviceMappingEditorWindow()
         if (existing && existing.openForDevice) {
             existing.openForDevice(name, guid)
             existing.show()
@@ -1105,7 +1105,7 @@ ApplicationWindow {
             existing.requestActivate()
             return
         }
-        Helpers.createComponent("DialogJoystickButtonMap.qml", {
+        Helpers.createComponent("DialogDeviceMappingEditor.qml", {
             "targetName": name,
             "targetGuid": guid
         })
@@ -1126,7 +1126,7 @@ ApplicationWindow {
 
     // The Device Library's row menus (10 S15, S44), for target {name, guid,
     // slug} (device_library_open.js toMain): Home's Delete Device, Module
-    // Setup, Button Map, Show on Home. Returns a Result as JSON text.
+    // Setup, Device Mapping Editor, Show on Home. Returns a Result as JSON text.
     function libraryAction(action, target) {
         var name = String(target.name || "")
         var card = _moduleModel.cardMap(String(target.slug || ""))
@@ -1157,8 +1157,8 @@ ApplicationWindow {
             return JSON.stringify({ "ok": false, "error": (target.shown || name) + " has no card on Home." })
         if (action === "moduleSetup")
             _root.openConfigureModule(card.direction === "dest" ? "dest" : "source", card)
-        else if (action === "buttonMap")
-            _root.openButtonMapForCard(card)
+        else if (action === "deviceMappingEditor")
+            _root.openDeviceMappingEditorForCard(card)
         else if (action === "home")
             _root.showCardOnHome(card)
         else
@@ -1230,21 +1230,21 @@ ApplicationWindow {
         return cut >= 0 ? text.slice(cut + 1) : text
     }
 
-    function openBlankButtonMap() {
-        var existing = buttonMapWindow()
+    function openBlankDeviceMappingEditor() {
+        var existing = deviceMappingEditorWindow()
         if (existing && existing.openBlank) {
             existing.openBlank()
             return
         }
-        Helpers.createComponent("DialogJoystickButtonMap.qml", {
+        Helpers.createComponent("DialogDeviceMappingEditor.qml", {
             "startBlank": true,
             "targetName": "",
             "targetGuid": ""
         })
     }
 
-    function buttonMapNeedsLeave() {
-        var w = buttonMapWindow()
+    function deviceMappingEditorNeedsLeave() {
+        var w = deviceMappingEditorWindow()
         if (!w)
             return false
         if (!w.editing)
@@ -1254,8 +1254,8 @@ ApplicationWindow {
         return w.isDirty()
     }
 
-    function offerButtonMapLeaveThenQuit() {
-        var w = buttonMapWindow()
+    function offerDeviceMappingEditorLeaveThenQuit() {
+        var w = deviceMappingEditorWindow()
         if (!w)
             return false
         if (typeof w.requestLeaveForAppQuit === "function") {
@@ -1266,8 +1266,8 @@ ApplicationWindow {
     }
 
     function deactivateThenQuit() {
-        if (buttonMapNeedsLeave()) {
-            offerButtonMapLeaveThenQuit()
+        if (deviceMappingEditorNeedsLeave()) {
+            offerDeviceMappingEditorLeaveThenQuit()
             return
         }
         // Quitting stops a running profile once, in shutdown_cleanup.
@@ -1640,7 +1640,7 @@ ApplicationWindow {
             ThemedMenu {
                 title: qsTr("Mapping")
                 ThemedMenuItem { command: "tools.logical" }
-                ThemedMenuItem { command: "tools.buttonMap" }
+                ThemedMenuItem { command: "tools.deviceMappingEditor" }
                 ThemedMenuItem { command: "tools.autoMappingTool" }
                 ThemedMenuItem { command: "tools.manageModes" }
             }
@@ -1765,13 +1765,13 @@ ApplicationWindow {
                     }
 
                     JGToolButton {
-                        id: _buttonMapButton
+                        id: _deviceMappingEditorButton
                         compact: _root.toolbarCompact
                         text: "\uF47F"
-                        tooltip: qsTr("Open a blank Button Map")
-                        caption: "Button Map"
+                        tooltip: qsTr("Device Mapping Editor: Open a blank device map")
+                        caption: "Mapping Editor"
 
-                        onClicked: () => { openBlankButtonMap() }
+                        onClicked: () => { openBlankDeviceMappingEditor() }
                     }
 
                     // Every page (01 S58, 10 S2): the window on no device.
@@ -2165,8 +2165,8 @@ ApplicationWindow {
             quitGremlin(false)
             return
         }
-        if (buttonMapNeedsLeave()) {
-            offerButtonMapLeaveThenQuit()
+        if (deviceMappingEditorNeedsLeave()) {
+            offerDeviceMappingEditorLeaveThenQuit()
             close.accepted = false
             return
         }
@@ -2208,8 +2208,8 @@ ApplicationWindow {
                 onOpenDeviceBindings: function(card) {
                     openDeviceBindingsForCard(card)
                 }
-                onOpenButtonMap: function(card) {
-                    openButtonMapForCard(card)
+                onOpenDeviceMappingEditor: function(card) {
+                    openDeviceMappingEditorForCard(card)
                 }
                 onOpenOutputView: function(card) {
                     openOutputViewForCard(card)

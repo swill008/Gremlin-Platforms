@@ -4,7 +4,7 @@
 
 """Safe writes (03 S68, 04 S13, 07 S23): a file is written whole or not at
 all. The swap Windows refuses (antivirus, indexer) is tried again and then
-fails cleanly, never written in place; Button Map templates and the adjusted
+fails cleanly, never written in place; device map templates and the adjusted
 photo cache go through the same safe writer (AUD-FILES-03/07/08)."""
 
 from __future__ import annotations
@@ -102,7 +102,7 @@ def test_temporary_names_are_unique(
     assert all(name.endswith(".tmp") for name in seen)
 
 
-# --- Button Map templates (AUD-FILES-07) -----------------------------------
+# --- device map templates (AUD-FILES-07) -----------------------------------
 
 
 @pytest.fixture

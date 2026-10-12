@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Right-click additions in the Button Map editor (07 S136, S137): Cut is
+"""Right-click additions in the Device Mapping Editor (07 S136, S137): Cut is
 one Undo step, Paste Here centres the pasted items on the point, and the
 editor carries the Favourites / Repeat properties, signals, command
 forwarders and the right-click menu's Favourites wiring.

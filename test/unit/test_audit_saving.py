@@ -149,7 +149,7 @@ def test_history_close_writes_at_once(area_file: Path) -> None:
 def test_remembered_choices_are_registered_at_start() -> None:
     cfg = config.Configuration()
     for name in ("live-log-tab", "live-log-file", "live-log-level",
-                 "button-map-options-group"):
+                 "device-map-options-group"):
         assert cfg.exists("global", "internal", name), name
 
 

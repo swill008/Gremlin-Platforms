@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""View > Properties (F4) in the Button Map is usable only in Edit, so the
+"""View > Properties (F4) in the Device Mapping Editor is usable only in Edit, so the
 menu item is enabled only in Edit; there it and F4 show or hide Properties
 under Layers (07 S133, S135). Checked in the running
 program off-screen (handson_P2_props_menu_smoke.py, its own process and

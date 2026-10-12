@@ -5,7 +5,8 @@
 """Choosing a command in the main window's Command Palette (Ctrl+K) runs it
 once (01 S65), checked in the running program off-screen
 (palette_runs_commands_smoke.py, its own process and user folder). The
-Button Map has no Command Palette (07 S100): test_button_map_menubar.py.
+Device Mapping Editor has no Command Palette (07 S100):
+test_device_mapping_editor_menubar.py.
 """
 
 from __future__ import annotations

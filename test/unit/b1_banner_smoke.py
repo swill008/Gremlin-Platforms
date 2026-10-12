@@ -2,9 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's view-only banner (D-FIXLIST-B1 item 1) in the real
+"""The Device Mapping Editor's view-only banner (D-FIXLIST-B1 item 1) in the real
 window: starts the program off-screen (stand-in hardware, a temporary user
-folder), opens a stick's Button Map and clicks the banner's Edit Mapping
+folder), opens a stick's Device Mapping Editor and clicks the banner's Edit Mapping
 link, then Cancel, Save and a window with no device. Prints one
 "RESULT {json}" line. test_b1_banner.py runs it.
 
@@ -124,7 +124,7 @@ _STATE = (
     " return { visible: b.visible, text: words.join(''), linkText: String(l.text),"
     "  linkEnabled: l.enabled, gap: bp.y - (mb.y + _menuBar.height),"
     "  height: b.height, bgHeight: _bgBanner.height, buttons: buttons,"
-    "  editing: _buttonMap.editing } })()"
+    "  editing: _editorWin.editing } })()"
 )
 
 
@@ -135,7 +135,7 @@ def main() -> None:
     out: dict = {}
 
     def win() -> QtGui.QWindow:
-        return call(root, "buttonMapWindow")  # type: ignore[return-value]
+        return call(root, "deviceMappingEditorWindow")  # type: ignore[return-value]
 
     def ev(code: str) -> object:
         w = win()
@@ -173,8 +173,8 @@ def main() -> None:
         return bool(
             wait_for(
                 lambda: ev(
-                    "_buttonMap.editing && _ed() !== null && _ed().seeded"
-                    " && !_buttonMap._baseWanted"
+                    "_editorWin.editing && _ed() !== null && _ed().seeded"
+                    " && !_editorWin._baseWanted"
                 )
             )
         )
@@ -185,13 +185,13 @@ def main() -> None:
         except Exception as error:
             out[name] = {"error": repr(error), "traceback": traceback.format_exc()}
 
-    call(root, "openButtonMapForCard", CARD)
+    call(root, "openDeviceMappingEditorForCard", CARD)
     wait_for(lambda: win() is not None)
     win().setProperty("width", 1200)
     win().setProperty("height", 800)
     wait_for(
         lambda: ev(
-            f"_buttonMap.targetName === {json.dumps(NAME)} && _buttonMap.faceLive"
+            f"_editorWin.targetName === {json.dumps(NAME)} && _editorWin.faceLive"
             " && _ed() !== null"
         )
     )
@@ -208,8 +208,8 @@ def main() -> None:
     step("clicked", via_link)
 
     def after_cancel() -> dict:
-        ev("_buttonMap.cancelEdit()")
-        wait_for(lambda: not ev("_buttonMap.editing"))
+        ev("_editorWin.cancelEdit()")
+        wait_for(lambda: not ev("_editorWin.editing"))
         return state()
 
     step("cancelled", after_cancel)
@@ -219,12 +219,12 @@ def main() -> None:
         # brings the banner back.
         click_link()
         res = {"started": ready()}
-        ev("_buttonMap.saveEdit()")
+        ev("_editorWin.saveEdit()")
         QtTest.QTest.qWait(200)
-        res["saved"] = bool(ev("_buttonMap.saveOk"))
+        res["saved"] = bool(ev("_editorWin.saveOk"))
         res["whileEditing"] = state()
-        ev("_buttonMap.cancelEdit()")
-        wait_for(lambda: not ev("_buttonMap.editing"))
+        ev("_editorWin.cancelEdit()")
+        wait_for(lambda: not ev("_editorWin.editing"))
         res.update(state())
         return res
 
@@ -238,12 +238,12 @@ def main() -> None:
         win().close()
         wait_for(lambda: win() is None)
         res["closed"] = win() is None
-        call(root, "openButtonMapForCard", CARD)
+        call(root, "openDeviceMappingEditorForCard", CARD)
         wait_for(
             lambda: (
                 win() is not None
                 and ev(
-                    f"_buttonMap.targetName === {json.dumps(NAME)} && _ed() !== null"
+                    f"_editorWin.targetName === {json.dumps(NAME)} && _ed() !== null"
                 )
             )
         )
@@ -256,13 +256,13 @@ def main() -> None:
     def no_device() -> dict:
         # No device: the link is greyed and a click (or the call) is
         # refused, as File › Edit Mapping is.
-        ev('_buttonMap.targetName = ""')
+        ev('_editorWin.targetName = ""')
         QtTest.QTest.qWait(100)
         click_link()
-        ev("_buttonMap.enterEdit()")
+        ev("_editorWin.enterEdit()")
         QtTest.QTest.qWait(100)
         res = state()
-        res["canEnterEdit"] = bool(ev("_buttonMap.canEnterEdit"))
+        res["canEnterEdit"] = bool(ev("_editorWin.canEnterEdit"))
         return res
 
     step("nodevice", no_device)

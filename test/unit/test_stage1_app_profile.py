@@ -631,7 +631,7 @@ def test_restart_quits_the_usual_way_and_a_cancel_clears_it(tmp_path: Path) -> N
     """A restart with unsaved changes, in the running program off-screen (its
     own process): the usual question; Cancel calls the restart off; Discard
     quits through Qt.quit() with the restart still set."""
-    from test.unit.test_stage1_button_map import (  # pyright: ignore[reportMissingImports]
+    from test.unit.test_stage1_device_mapping_editor import (  # pyright: ignore[reportMissingImports]
         _run,
     )
 

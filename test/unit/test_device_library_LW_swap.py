@@ -24,7 +24,7 @@ LEFT_ID = "97b77b40-07d8-11f0-8028-444553540000"
 RIGHT_ID = str(uuid.UUID("12345678-1234-1234-1234-1234567890ab"))
 LEFT = ("Left stick", LEFT_ID)
 RIGHT = ("Right stick", RIGHT_ID)
-ALL = ["setup", "button_map", "appearance", "calibration", "bindings"]
+ALL = ["setup", "device_map", "appearance", "calibration", "bindings"]
 
 # Left has buttons 1-5, axes 1-3, hat 1; Right has buttons 1-6, axes 1-2, hat 1.
 HAS = {
@@ -238,7 +238,7 @@ def test_swap_exchanges_parts_and_bindings(
     assert left["calibration"] == {"3": [10, 20, 30]}
     assert right["calibration"] == {"1": [0, 500, 1000]}
     # The Device Bindings layout goes with the setup (CF-Q1); Appearance
-    # (Output View) and Button Map trade places, pictures with them.
+    # (Output View) and Device Mapping Editor trade places, pictures with them.
     assert (
         left["layout"]
         == {

@@ -626,7 +626,8 @@ run('_root.profileDirty = false')
 # S58, S59, S61: the toolbar.
 pump(lambda: run('_optionsButton.x > _logicalButton.x'))
 TOOLBAR = ('[_homeButton, _toggleButton, _vjoyViewerButton, _xboxViewerButton, '
-           '_buttonMapButton, _deviceLibraryButton, _logicalButton, _optionsButton]')
+           '_deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, '
+           '_optionsButton]')
 out['captions'] = run(TOOLBAR + '.map(function(b) { return b.caption })')
 out['order'] = run('(function() { var xs = ' + TOOLBAR + '.map(function(b) { '
                    'return b.x }); '
@@ -758,7 +759,7 @@ def test_s57_the_title_names_the_profile_and_marks_unsaved_changes(
 
 def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:
     assert main_window["captions"] == [
-        "Home", "Run", "vJoy Viewer", "Xbox Viewer", "Button Map",
+        "Home", "Run", "vJoy Viewer", "Xbox Viewer", "Mapping Editor",
         "Device Library", "Logical Device", "Options",
     ]
     assert main_window["order"] is True

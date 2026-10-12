@@ -9,9 +9,10 @@ Surfaces (the ways a user edits an action):
   action model's ``appendAction`` (``Library.create`` + ``start_new``) on the
   real input, no draft and no OK. No Undo: Configuration Undo steps come
   only from the pane's OK and Delete (05 S35).
-- ``Surface.PANE_BUTTON_MAP``: the Configuration pane as the Button Map and
-  the Configuration page open it, ``HardwareLayoutModel.beginPane`` (a stick
-  axis, button or hat of the fake "pJoy Pro", claimed on the page).
+- ``Surface.PANE_DEVICE_MAPPING_EDITOR``: the Configuration pane as the Device
+  Mapping Editor and the Configuration page open it,
+  ``HardwareLayoutModel.beginPane`` (a stick axis, button or hat of the fake
+  "pJoy Pro", claimed on the page).
 - ``Surface.PANE_LOGICAL``: the Logical Device page's pane,
   ``LogicalLayoutModel.beginPane`` (a Logical Device axis, button or hat).
 - ``Surface.PANE_KEYBOARD``: the Keyboard page's pane,
@@ -22,7 +23,7 @@ Every pane edit happens in the draft the pane's own models show; OK is
 
 Typical use, in a test (the ``matrix`` fixture closes each case)::
 
-    case = matrix.open("map-to-vjoy", "button", Surface.PANE_BUTTON_MAP)
+    case = matrix.open("map-to-vjoy", "button", Surface.PANE_DEVICE_MAPPING_EDITOR)
     for field in case.fields():
         case.set(field["name"])          # a dummy value
     ok, diff = case.save_reload()
@@ -72,18 +73,18 @@ MODE = "Default"
 
 class Surface:
     CONFIG_PAGE = "config_page"
-    PANE_BUTTON_MAP = "pane_button_map"
+    PANE_DEVICE_MAPPING_EDITOR = "pane_device_mapping_editor"
     PANE_LOGICAL = "pane_logical"
     PANE_KEYBOARD = "pane_keyboard"
 
-    ALL = (CONFIG_PAGE, PANE_BUTTON_MAP, PANE_LOGICAL, PANE_KEYBOARD)
-    PANES = (PANE_BUTTON_MAP, PANE_LOGICAL, PANE_KEYBOARD)
+    ALL = (CONFIG_PAGE, PANE_DEVICE_MAPPING_EDITOR, PANE_LOGICAL, PANE_KEYBOARD)
+    PANES = (PANE_DEVICE_MAPPING_EDITOR, PANE_LOGICAL, PANE_KEYBOARD)
 
 
 # The input kinds each surface edits.
 SURFACE_INPUTS: dict[str, tuple[str, ...]] = {
     Surface.CONFIG_PAGE: ("axis", "button", "hat"),
-    Surface.PANE_BUTTON_MAP: ("axis", "button", "hat"),
+    Surface.PANE_DEVICE_MAPPING_EDITOR: ("axis", "button", "hat"),
     Surface.PANE_LOGICAL: ("axis", "button", "hat"),
     Surface.PANE_KEYBOARD: ("key",),
 }
@@ -372,7 +373,7 @@ class Case:
         from gremlin.ui import logical_layout
         from gremlin.ui.keyboard_layout import KeyboardLayoutModel, key_row
 
-        if self.surface == Surface.PANE_BUTTON_MAP:
+        if self.surface == Surface.PANE_DEVICE_MAPPING_EDITOR:
             from test.unit import hardware_page_helper
 
             # The page showing the stick with this input claimed.
@@ -563,7 +564,7 @@ class Case:
         after = self.xml()
         if after == before:
             return False, "OK changed nothing, so there is no Undo step"
-        if self.surface == Surface.PANE_BUTTON_MAP:
+        if self.surface == Surface.PANE_DEVICE_MAPPING_EDITOR:
             self.page.endPane()  # Undo waits while the pane is open
         self.page.undo()
         settle()
@@ -662,7 +663,10 @@ class Case:
             if self.page is not None:
                 self.page.endPane()
         with contextlib.suppress(Exception):
-            if self.surface == Surface.PANE_BUTTON_MAP and self.page is not None:
+            if (
+                self.surface == Surface.PANE_DEVICE_MAPPING_EDITOR
+                and self.page is not None
+            ):
                 from test.unit import hardware_page_helper
 
                 hardware_page_helper.close(self.page)  # drops what it held

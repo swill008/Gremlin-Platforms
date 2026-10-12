@@ -62,7 +62,9 @@ _SCENARIOS: dict[str, dict] = {
 
 def _builders() -> dict[str, str]:
     text = (_HERE / "control_menu_pages.js").read_text(encoding="utf-8")
-    return dict(re.findall(r"^// == ([\w-]+) ==\n(.*?)(?=^// == |\Z)", text, re.S | re.M))
+    return dict(
+        re.findall(r"^// == ([\w-]+) ==\n(.*?)(?=^// == |\Z)", text, re.S | re.M)
+    )
 
 
 def _old_body(page: str) -> str:

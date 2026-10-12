@@ -14,8 +14,8 @@ Abbreviations: `stage1` = `test/unit/test_stage1_history_pack.py`, `dpi` = `test
 | S6 | A save with the same text as the last load/save makes no entry | final::test_s6_a_save_with_the_same_text_makes_no_entry | new |
 | S7 | Save As recorded under the new file, old text as before | stage1::test_save_as_is_recorded_under_the_new_file | covered |
 | S8 | Module save kept with before/after and its pictures, once by content | test_history_recording.py::test_a_module_save_is_kept_with_its_pictures; test_history_store.py::test_a_picture_is_kept_once_and_put_back; stage1::test_a_saves_before_picture_is_the_picture_it_had | covered |
-| S9 | Button Map view-only save not kept | test_history_recording.py::test_the_maps_view_alone_is_not_kept | covered |
-| S10 | Button Map-only changes filed under Button Map, others Module files | test_history_recording.py::test_a_module_save_is_kept_with_its_pictures | covered |
+| S9 | Device Mapping Editor view-only save not kept | test_history_recording.py::test_the_maps_view_alone_is_not_kept | covered |
+| S10 | Device Mapping Editor-only changes filed under Device Mapping Editor, others Module files | test_history_recording.py::test_a_module_save_is_kept_with_its_pictures | covered |
 | S11 | "Created the module file of X" first, then "Saved X: <words>" | test_stage1_modules.py::test_a_damaged_card_turns_back_after_history_restore; test_history_recording.py::test_a_module_save_is_kept_with_its_pictures | covered |
 | S12 | Module-file delete recorded once it went through | test_audit3_saving.py::test_a_delete_that_went_through_is_recorded, ::test_a_delete_that_failed_is_no_history_entry, ::test_undo_import_of_a_locked_new_file_isnt_recorded_as_deleted; test_history_recording.py::test_a_delete_keeps_the_file_and_its_pictures | covered |
 | S13 | A failed write leaves no entry | test_audit2_saving.py::test_a_save_that_failed_is_no_history_entry, ::test_an_import_write_that_failed_is_no_history_entry | covered |
@@ -36,7 +36,7 @@ Abbreviations: `stage1` = `test/unit/test_stage1_history_pack.py`, `dpi` = `test
 | S28 | Tools > History lists every change, newest first, title, date/time, area | final::test_s28_every_change_newest_first_with_title_date_and_area | new |
 | S29 | Show narrows by area; Search in title and subject | stage1::test_show_and_search; test_history_window.py::test_it_lists_the_devices_changes | covered |
 | S30 / Q13 | Before/After readable (actions, module parts in words, settings names, profile size) | test_history_window.py::test_a_change_before_and_after; test_batch2_b7.py::test_module_text_reads_like_the_pack_rows; test_batch3_C5.py::test_history_shows_the_device_change_choice_as_options_does | covered |
-| S31 / Q15 / Q16 | Editors open History filtered for what they show | stage1::test_the_editors_filters, ::test_button_map_history_is_by_its_own_file_in_every_area, ::test_device_bindings_row_history_is_for_the_open_profile, ::test_tools_history_opens_on_every_change; test_batch2_b7.py::test_a_profile_filter_matches_the_path_however_written | covered |
+| S31 / Q15 / Q16 | Editors open History filtered for what they show | stage1::test_the_editors_filters, ::test_device_mapping_editor_history_is_by_its_own_file_in_every_area, ::test_device_bindings_row_history_is_for_the_open_profile, ::test_tools_history_opens_on_every_change; test_batch2_b7.py::test_a_profile_filter_matches_the_path_however_written | covered |
 | S32 | Filter matches a device id however written | test_history_restore.py::test_filters_match_a_device_id_however_written | covered |
 | S33 | "Only ..." line; Show All keeps only the area | test_history_window.py::test_show_all_drops_the_device, ::test_it_lists_the_devices_changes | covered |
 | S34 | Tools > History from the menu opens on every change | stage1::test_tools_history_opens_on_every_change | covered |
@@ -121,7 +121,7 @@ Abbreviations: `stage1` = `test/unit/test_stage1_history_pack.py`, `dpi` = `test
 
 - B7: large history files (several MB each): Tools > History opens and comes back to the front without freezing.
 - B7: with an unsaved action pane, Auto Mapping Tool, Device Pack Import and History Restore ask Discard / Cancel first.
-- B7: Import a pack, save the Button Map, then Undo Import: it asks before putting back the changed file.
+- B7: Import a pack, save the Device Mapping Editor, then Undo Import: it asks before putting back the changed file.
 - B7: History Restore of Diagnostic logs level or UI scale applies at once.
 - B6: Device Pack export preview with a large photo stays quick.
 - C5: close Device Pack: the `%TEMP%\gremlin-pack-*` folder is gone.

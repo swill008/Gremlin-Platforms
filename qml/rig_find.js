@@ -3,7 +3,7 @@
 
 // Press to find: while editing, pressing a control on the device selects its
 // chip and brings it into view; a control not on the map is pointed out in
-// the pool. Options → Button Map → Editing turns it on or off, and axes too.
+// the pool. Device Map Options → Editing turns it on or off, and axes too.
 // Code-behind for VkbRigEditor.qml (imported without .pragma library): it
 // uses the editor's ids, properties and functions directly, and each
 // function here has a forwarder of the same name in the editor.

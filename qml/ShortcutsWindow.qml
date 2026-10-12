@@ -14,11 +14,11 @@ import Gremlin.Style
 // closes it.
 //
 //   ShortcutsWindow { menuBar: _menuBar; keyRows: [...]; mouseRows: [...] }
-//   _shortcutsWin.openFor(_buttonMap)
+//   _shortcutsWin.openFor(_editorWin)
 Window {
     id: _win
 
-    // The Button Map window's ThemedMenuBar, or a list of its menus.
+    // The Device Mapping Editor window's ThemedMenuBar, or a list of its menus.
     property var menuBar: null
     // Keys with no menu item: [{ group: "Keys", text, keys }].
     property var keyRows: []
@@ -45,12 +45,12 @@ Window {
 
     ToolWindowMemory {
         host: _win
-        name: "button-map-shortcuts"
+        name: "device-mapping-editor-shortcuts"
         defaultWidth: Style.fitWidth(Style.dp(420), Screen)
         defaultHeight: Style.fitHeight(Style.dp(560), Screen)
     }
 
-    // Shows it over the Button Map window with the menus read again, the
+    // Shows it over the Device Mapping Editor window with the menus read again, the
     // search box ready, and brings it to the front.
     function openFor(parentWindow) {
         if (!visible && parentWindow)

@@ -245,7 +245,9 @@ def test_also_claim_with_an_output_file_that_cant_be_written(
 
 def test_merge_keeps_the_old_claim_when_the_write_fails(tmp_path: Path) -> None:
     dest = {"path": tmp_path / "vjoy_1.json", "claim": {"buttons": [7]}}
-    with mock.patch.object(auto_mapping_tool.store, "update_path", side_effect=OSError("no")):
+    with mock.patch.object(
+        auto_mapping_tool.store, "update_path", side_effect=OSError("no")
+    ):
         kept = auto_mapping_tool.merge_claim_into_output(dest, {"buttons": [1, 2]})
     assert kept == {"buttons": [7]}
     assert dest["claim"] == {"buttons": [7]}

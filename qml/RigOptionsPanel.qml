@@ -8,7 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Device
 import Gremlin.Style
 
-// Button Map Options as a pane (the Options tool, or Edit > Button Map
+// Device Map Options as a pane (the Options tool, or Edit > Device Map
 // Options...): the groups down the left, the chosen group's settings on the
 // right in two columns, one row each (a switch, a choice, a number box or
 // a color swatch; a long label goes onto more lines); each setting's
@@ -18,7 +18,7 @@ import Gremlin.Style
 Item {
     id: _panel
 
-    // The window's ButtonMapOptions.
+    // The window's DeviceMapOptions.
     property var opts: null
     // The print area color: the window opens its color picker.
     signal colorRequested(string key, string hex, var anchor)
@@ -274,7 +274,7 @@ Item {
                 }
             }
 
-            OptionButtonMapLibrary {
+            OptionDeviceMapLibrary {
                 id: _library
                 visible: _panel.group === "library"
                 x: Style.dp(14)

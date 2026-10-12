@@ -49,7 +49,7 @@ Flickable {
         onSavedChanged: text = saved
     }
 
-    // The Button Map's small outline button.
+    // The Device Mapping Editor's small outline button.
     component SmallButton: Rectangle {
         id: _small
         property alias text: _smallText.text

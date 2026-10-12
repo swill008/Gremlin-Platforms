@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Button Map: a 4 px dead zone (screen pixels) before a chip, group member
+"""Device Mapping Editor: a 4 px dead zone (screen pixels) before a chip, group member
 or drawing move-drag starts (D-FIXLIST-B1 item 3). A press and release with
 less movement only selects: nothing moves, no undo step. Past 4 px the item
 follows the pointer from where it was pressed, with no jump. Real mouse

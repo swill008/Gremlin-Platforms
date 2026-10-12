@@ -11,8 +11,8 @@ function topics() {
     return Book.topics("")
 }
 
-function buttonMapTopics() {
-    return Book.topics("button-map")
+function deviceMappingEditorTopics() {
+    return Book.topics("device-mapping-editor")
 }
 
 function deviceLibraryTopics() {

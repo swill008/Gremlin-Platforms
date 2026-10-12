@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Device Library store, the gaps filled by LF: what inputs a device has and
-when it was last seen (10 S8), a saved setup's Button Map photo (S11), and a
+when it was last seen (10 S8), a saved setup's device map photo (S11), and a
 device's current settings as a pack kept nowhere (S22). The real store in a
 temporary library folder and modules folder."""
 

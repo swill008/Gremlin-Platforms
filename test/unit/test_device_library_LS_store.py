@@ -172,7 +172,7 @@ def test_save_setup_keeps_the_module_file_and_a_saved_profiles_bindings(
     (setup,) = out["setups"]
     assert setup["own"] and setup["origin"] == "user"
     assert setup["name"] == "Flight"  # named after the profile (S12)
-    assert setup["holds"] == ["setup", "button_map", "calibration", "bindings"]
+    assert setup["holds"] == ["setup", "device_map", "calibration", "bindings"]
     assert setup["profiles"][0]["modes"] == ["Default"]
     assert setup["profiles"][0]["actions"] == 3
     assert setup["vjoys"] == {"2": 3}
@@ -540,7 +540,7 @@ def test_size_counts_the_library_folder(lib: dict) -> None:
 def test_settings_default_and_change(lib: dict) -> None:
     values = library.settings()
     assert values["keep"] == 10
-    assert values["default_parts"] == ["setup", "button_map", "appearance", "bindings"]
+    assert values["default_parts"] == ["setup", "device_map", "appearance", "bindings"]
     assert values["folder"] == str(lib["folder"])
     library.set_settings({"keep": 4, "default_parts": ["bindings", "calibration"]})
     values = library.settings()

@@ -26,7 +26,7 @@
 
 - 02 S9 (→Q6), S16 (→Q3), S32 (→Q2), S50 (→Q4), S64 (→Q9), S94 (→Device ID): reword to the decisions.
 
-- 01 S12: the start-up failure page button reads "OK" (glossary), not "Quit". 01 S127 and the copy_legacy_modules line in section 2: retire (GL-272 removed it; nothing ships). 01 S39: drop "also when opened from the Button Map" (Button Map has its own Options pane, 07 Q17).
+- 01 S12: the start-up failure page button reads "OK" (glossary), not "Quit". 01 S127 and the copy_legacy_modules line in section 2: retire (GL-272 removed it; nothing ships). 01 S39: drop "also when opened from the Device Mapping Editor" (Device Mapping Editor has its own Options pane, 07 Q17).
 
 ## Ideas for the proper process (not bugs)
 - 06 Q19/S4 (P06): output.write_vjoy / write_xbox don't check for a Run themselves; the rule holds because every sender stops at Stop. A guard in the output module could make it explicit (check Output View test writes first).

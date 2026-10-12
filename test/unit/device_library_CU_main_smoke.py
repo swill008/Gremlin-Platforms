@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware), opens the Device
-Library and sends its row menus' Show on Home, Open Button Map and Open
+Library and sends its row menus' Show on Home, Open Device Mapping Editor and Open
 Module Setup to the main window the way the window does
 (device_library_open.js toMain -> Main.qml libraryAction), and prints as
 JSON what happened and what QML printed. test_device_library_CU_main.py
@@ -106,9 +106,9 @@ wait_until(lambda: ev(win, "_moduleModel.focusedSlug") == card.get("slug"), 3000
 out["focused"] = ev(win, "_moduleModel.focusedSlug")
 out["room"] = ev(win, "uiState.currentRoom")
 out["map"] = json.loads(
-    str(ev(lib, f"DeviceLibraryOpen.toMain('buttonMap', {target})"))
+    str(ev(lib, f"DeviceLibraryOpen.toMain('deviceMappingEditor', {target})"))
 )
-out["mapOpened"] = wait_until(lambda: window("Button Map") is not None, 8000)
+out["mapOpened"] = wait_until(lambda: window("Device Mapping Editor") is not None, 8000)
 out["setup"] = json.loads(
     str(ev(lib, f"DeviceLibraryOpen.toMain('moduleSetup', {target})"))
 )

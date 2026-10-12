@@ -4,12 +4,12 @@
 
 """Module pages on the module file store (map 1, batch 1).
 
-Home cards, Module Setup, Calibration and the Button Map find a device's
+Home cards, Module Setup, Calibration and the Device Mapping Editor find a device's
 module file through gremlin.modules.store, by the device's name and id:
 twins are looked up by id (decision F4, GL-076), a stale id is filtered the
 same way for every caller (GL-075), Start Fresh is a History entry
 (decision F3, GL-080), Calibration lists every stick, also two on one file
-(GL-088), and the Button Map can see its file changed elsewhere (GL-071).
+(GL-088), and the Device Mapping Editor can see its file changed elsewhere (GL-071).
 """
 
 from __future__ import annotations
@@ -257,7 +257,7 @@ def test_calibration_lists_both_sticks_that_share_a_file(tmp_path: Path) -> None
     assert json.loads(path.read_text())["calibration"]["1"] == [-100, -5, 5, 100, True]
 
 
-# --- GL-071: the Button Map sees its file changed elsewhere ----------------------
+# --- GL-071: the Device Mapping Editor sees its file changed elsewhere --------
 
 
 def test_map_parts_change_with_the_map_and_photo_only(folder: Path) -> None:
@@ -291,13 +291,14 @@ def test_map_parts_change_with_the_map_and_photo_only(folder: Path) -> None:
     assert watch.mapParts("pJoy Pro", guid) == ""
 
 
-def test_button_map_asks_before_writing_over_a_change_and_follows_one() -> None:
-    qml = (_ROOT / "qml" / "DialogJoystickButtonMap.qml").read_text(encoding="utf-8")
+def test_device_mapping_editor_asks_before_writing_over_a_change_and_follows_one(
+) -> None:
+    qml = (_ROOT / "qml" / "DialogDeviceMappingEditor.qml").read_text(encoding="utf-8")
     assert "ModuleFileWatch { id: _fileWatch }" in qml
     # In Edit, Save asks Keep Mine / Take Theirs (07 Q6; glossary D15).
     assert '"Keep Mine", "Take Theirs"' in qml
     # Outside Edit, the map follows the file.
-    assert "_buttonMap.loadLive(true)" in qml
+    assert "_editorWin.loadLive(true)" in qml
 
 
 # --- GL-078 / GL-089: Module Setup's photo ---------------------------------------

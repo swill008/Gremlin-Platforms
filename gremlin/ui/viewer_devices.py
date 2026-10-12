@@ -161,7 +161,7 @@ class ViewerDeviceModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(str, str, result=bool)
     def available(self, guid: str, name: str) -> bool:
-        """Whether this device's Button Map can show now: built-ins (vJoy,
+        """Whether this device's device map can show now: built-ins (vJoy,
         Xbox, Keyboard, Logical Device, OSC) always; a stick only while its
         id is in the live device list, never by its name (03 S90a)."""
         from gremlin.modules import hardware

@@ -76,7 +76,7 @@ def test_named_output_shows_its_name_in_the_long_form(modules: None) -> None:
 
 def test_unclaimed_and_missing_outputs_are_flagged(modules: None) -> None:
     # The long form (the source page's wire label) marks it with the red
-    # ⚠ (D-05-CANT-SEND); the short form (Button Map) is unchanged.
+    # ⚠ (D-05-CANT-SEND); the short form (Device Mapping Editor) is unchanged.
     assert wiring.vjoy_dest(3, InputType.JoystickButton, 57) == "⚠ vJoy 3 Button 57"
     assert wiring.vjoy_dest(3, InputType.JoystickButton, 57, short=True) == (
         "vJoy 3 B57 (not claimed)"

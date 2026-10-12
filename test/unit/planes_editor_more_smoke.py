@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen through more of the background
+"""Drives the Device Mapping Editor off-screen through more of the background
 and foreground planes (07 S94, S118, S122; D-07-BACKGROUND-PLANES) and prints
 what it saw as one JSON object. test_planes_editor_more.py runs it in its own
 process.

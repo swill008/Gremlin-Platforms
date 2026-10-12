@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's right-click additions and Favourites (07 S136, S137;
+"""The Device Mapping Editor's right-click additions and Favourites (07 S136, S137;
 D-07-RIGHTCLICK, D-07-RIGHTCLICK-ANSWERS) in the running window, off-screen
 in its own process and user folder (rc_e2e_smoke.py):
 
@@ -10,7 +10,7 @@ in its own process and user folder (rc_e2e_smoke.py):
   running the row; the Favourites block sits at the top in the order added;
 - a favourite row runs its command; its × removes it and the menu stays open;
 - only favourites that apply to the selection show; none: no block;
-- Button Map Options › Favourites shown 0 / 2 / 5;
+- Device Map Options › Favourites shown 0 / 2 / 5;
 - Repeat follows a menu-bar command, a right-click row and a key (not Copy
   or Select All), and its row runs it again;
 - Cut is one Undo step; Paste Here centres the pasted items on the spot;

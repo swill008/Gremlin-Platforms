@@ -91,7 +91,7 @@ Popup {
     }
     OscBulkCapture { id: _bulk }
 
-    // A Button Map card (osc_style.md): card fill, strong line, round corners.
+    // A Device Mapping Editor card (osc_style.md): card fill, strong line, round corners.
     background: Rectangle {
         color: Style.bgCard
         border.color: Style.lineStrong

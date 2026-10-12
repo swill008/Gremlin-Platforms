@@ -8,8 +8,8 @@ Profile saves (Profile.to_xml): an entry per input whose actions changed,
 compared by what they do, not by their ids (an editor's OK gives new ids);
 an entry per other part that changed; and the whole profile, compressed.
 Module files (module_file.write_text, the import replace, deletes): the file
-before and after with its pictures; a Button Map-only save is filed under
-Button Map; a change to the map's view only isn't kept. Settings
+before and after with its pictures; a Device Mapping Editor-only save is filed under
+Device Mapping Editor; a change to the map's view only isn't kept. Settings
 (Configuration.save_now): the user's own settings that changed, not window
 places or what the program remembers for itself.
 """
@@ -162,8 +162,8 @@ def test_a_module_save_is_kept_with_its_pictures(store: Path) -> None:
     )
     entries = _settle()
     titles = [e["title"] for e in entries]
-    assert titles[0] == "Saved Test Stick: Button Map"
-    assert entries[0]["area"] == "button-map"
+    assert titles[0] == "Saved Test Stick: Device Map"
+    assert entries[0]["area"] == "device-mapping-editor"
     assert entries[0]["after"]["pictures"][0]["ref"] == "pictures/photo.png"
     assert history.kept_file(entries[0]["after"]["pictures"][0]["keptFile"])
     assert titles[1] == "Saved Test Stick: calibration"

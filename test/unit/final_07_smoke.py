@@ -2,8 +2,8 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Final test plan, Button Map (07): starts the program off-screen (stand-in
-hardware, a temporary user folder) and drives the Button Map window through
+"""Final test plan, Device Mapping Editor (07): starts the program off-screen (stand-in
+hardware, a temporary user folder) and drives the Device Mapping Editor window through
 its own functions for the spec statements no other test checks: one window
 (S1), the blank page (S2, S96), File → Device (S4), no other device's
 background (S11), Background menu (S39), pool and filter (S45), Chip only
@@ -195,7 +195,7 @@ class Window:
 
     @property
     def win(self) -> QtCore.QObject:
-        return call(self.root, "buttonMapWindow")  # type: ignore[return-value]
+        return call(self.root, "deviceMappingEditorWindow")  # type: ignore[return-value]
 
     def ev(self, code: str) -> object:
         win = self.win
@@ -218,19 +218,19 @@ class Window:
 
     def loaded(self, name: str) -> bool:
         return bool(wait_for(lambda: self.ev(
-            f"_buttonMap.targetName === {json.dumps(name)} && _buttonMap.faceLive"
+            f"_editorWin.targetName === {json.dumps(name)} && _editorWin.faceLive"
             " && _ed() !== null && _ed().nodes.length > 0")))
 
     def enter_edit(self) -> bool:
-        self.ev("_buttonMap.enterEdit()")
+        self.ev("_editorWin.enterEdit()")
         return bool(wait_for(lambda: self.ev(
-            "_buttonMap.editing && _ed() !== null && _ed().seeded"
-            " && !_buttonMap._baseWanted")))
+            "_editorWin.editing && _ed() !== null && _ed().seeded"
+            " && !_editorWin._baseWanted")))
 
     def discard(self) -> None:
-        if self.ev("_buttonMap.editing"):
-            self.ev("_buttonMap.discardEdit()")
-            wait_for(lambda: not self.ev("_buttonMap.editing"))
+        if self.ev("_editorWin.editing"):
+            self.ev("_editorWin.discardEdit()")
+            wait_for(lambda: not self.ev("_editorWin.editing"))
 
 
 def main() -> None:
@@ -248,7 +248,7 @@ def main() -> None:
 
     # --- S2, S1: the blank page, then devices in the same window ------------
     def blank() -> dict:
-        call(root, "openBlankButtonMap")
+        call(root, "openBlankDeviceMappingEditor")
         wait_for(lambda: w.win is not None)
         win = w.win
         wait_for(lambda: bool(win.property("visible")))
@@ -258,9 +258,9 @@ def main() -> None:
             if o.property("text") == "Choose a device from the File menu."
         ), None)
         shown = bool(hint is not None and hint.property("visible"))
-        w.ev("_buttonMap.setGridPref('gridOn', false)")
-        w.ev("_buttonMap.setGridPref('gridSize', 16)")
-        w.ev("_buttonMap.resetViewNow()")
+        w.ev("_editorWin.setGridPref('gridOn', false)")
+        w.ev("_editorWin.setGridPref('gridSize', 16)")
+        w.ev("_editorWin.resetViewNow()")
         wait_for(lambda: files_under(MODULES) != before, NOT_S)
         return {"hint": shown, "files-same": files_under(MODULES) == before}
 
@@ -268,14 +268,14 @@ def main() -> None:
 
     def one_window() -> dict:
         first = w.win
-        call(root, "openButtonMapForCard", CARD)
+        call(root, "openDeviceMappingEditorForCard", CARD)
         w.loaded(NAME)
         after_card = w.win
-        call(root, "openButtonMapForCard", THIRD_CARD)
-        wait_for(lambda: w.ev("_buttonMap.targetName") == "Third Stick")
+        call(root, "openDeviceMappingEditorForCard", THIRD_CARD)
+        wait_for(lambda: w.ev("_editorWin.targetName") == "Third Stick")
         after_other = w.win
-        call(root, "openBlankButtonMap")
-        wait_for(lambda: w.ev("_buttonMap.targetName") == "")
+        call(root, "openBlankDeviceMappingEditor")
+        wait_for(lambda: w.ev("_editorWin.targetName") == "")
         after_blank = w.win
         return {
             "card": same(first, after_card),
@@ -294,20 +294,20 @@ def main() -> None:
     )
 
     def no_file() -> dict:
-        call(root, "openButtonMapForCard", CARD)
+        call(root, "openDeviceMappingEditorForCard", CARD)
         w.loaded(NAME)
         wait_for(lambda: w.js(background) == ["pictures/photo.png"])
         had = w.js(background)
-        call(root, "openButtonMapForCard", THIRD_CARD)
-        wait_for(lambda: w.ev("_buttonMap.targetName") == "Third Stick"
-                 and w.ev("_buttonMap.faceLive"))
+        call(root, "openDeviceMappingEditorForCard", THIRD_CARD)
+        wait_for(lambda: w.ev("_editorWin.targetName") == "Third Stick"
+                 and w.ev("_editorWin.faceLive"))
         wait_for(lambda: w.js(background) == [], NOT_S)
         before = files_under(MODULES)
-        w.ev("_buttonMap.setGridPref('gridOn', true)")
-        w.ev("_buttonMap.setGridPref('gridSize', 32)")
+        w.ev("_editorWin.setGridPref('gridOn', true)")
+        w.ev("_editorWin.setGridPref('gridSize', 32)")
         w.ev("(function() { var f = _ed() ? _ed().face : null;"
-             " if (f && f.zoomAt) f.zoomAt(NaN, NaN, 1.5); _buttonMap.captureView();"
-             " _buttonMap.persistUi(); return true })()")
+             " if (f && f.zoomAt) f.zoomAt(NaN, NaN, 1.5); _editorWin.captureView();"
+             " _editorWin.persistUi(); return true })()")
         wait_for(lambda: files_under(MODULES) != before, NOT_S)
         return {
             "first-background": had,
@@ -318,7 +318,7 @@ def main() -> None:
     step("no-file", no_file)
 
     # Back on the stick with a map for the rest.
-    call(root, "openButtonMapForCard", CARD)
+    call(root, "openDeviceMappingEditorForCard", CARD)
     w.loaded(NAME)
 
     # --- S4: File → Device --------------------------------------------------
@@ -330,9 +330,9 @@ def main() -> None:
     step("device-menu", device_menu)
 
     # --- S39, S56: outside Edit ----------------------------------------------
-    # The Background menu (07 S39; objectName bmMenuBackground, id _bgMenu).
+    # The Background menu (07 S39; objectName dmeMenuBackground, id _bgMenu).
     def background_menu() -> object:
-        return w.ev("_bgMenu.objectName === 'bmMenuBackground'"
+        return w.ev("_bgMenu.objectName === 'dmeMenuBackground'"
                     " ? _bgMenu.enabled : 'missing'")
 
     step("outside-edit", lambda: {
@@ -347,13 +347,13 @@ def main() -> None:
 
     # --- S45: the pool -------------------------------------------------------
     def pool() -> dict:
-        w.ev("_buttonMap.poolFilter = ''; _buttonMap.refreshReservoir()")
-        rows = w.js("(_buttonMap.resItems || []).map(function(r) {"
+        w.ev("_editorWin.poolFilter = ''; _editorWin.refreshReservoir()")
+        rows = w.js("(_editorWin.resItems || []).map(function(r) {"
                     " return r.kind + ':' + r.hwId })") or []
-        w.ev("_buttonMap.poolFilter = '17'; _buttonMap.refreshReservoir()")
-        filtered = w.js("(_buttonMap.resItems || []).map(function(r) {"
+        w.ev("_editorWin.poolFilter = '17'; _editorWin.refreshReservoir()")
+        filtered = w.js("(_editorWin.resItems || []).map(function(r) {"
                         " return r.kind + ':' + r.hwId })") or []
-        w.ev("_buttonMap.poolFilter = ''; _buttonMap.refreshReservoir()")
+        w.ev("_editorWin.poolFilter = ''; _editorWin.refreshReservoir()")
         return {
             "placed-left-out": not any(k in rows for k in ("btn:1", "btn:2", "btn:3")),
             "has-17": "btn:17" in rows,
@@ -365,8 +365,8 @@ def main() -> None:
     # --- S47: Chip only ------------------------------------------------------
     def chip_only() -> dict:
         def drop(hw: int) -> dict | None:
-            w.ev(f"_buttonMap.poolKind = 'btn'; _buttonMap.poolHw = {hw};"
-                 " _buttonMap.dropPool(_mapHost.width * 0.5, _mapHost.height * 0.45)")
+            w.ev(f"_editorWin.poolKind = 'btn'; _editorWin.poolHw = {hw};"
+                 " _editorWin.dropPool(_mapHost.width * 0.5, _mapHost.height * 0.45)")
             wait_for(lambda: w.node(hw) is not None)
             return w.node(hw)
 
@@ -392,7 +392,7 @@ def main() -> None:
         at = w.js(f"(function() {{ var e = _ed();"
                   f" var n = e.nodeAt({json.dumps(line_id)});"
                   " var p = e.endPt(n.from); return [e.xToFx(p.x), e.yToFy(p.y)] })()")
-        w.ev("_ed().setSelection(['b2']); _buttonMap.deleteOrBreak()")
+        w.ev("_ed().setSelection(['b2']); _editorWin.deleteOrBreak()")
         end = w.js(f"_ed().nodeAt({json.dumps(line_id)}).from") or {}
         return {
             "type": end.get("type"),
@@ -413,11 +413,11 @@ def main() -> None:
         def flip() -> object:
             return w.ev(f"!!_ed().nodeAt({json.dumps(pic)}).flipH")
 
-        w.ev("_opts.set('mirror-pictures', false); _buttonMap.mirrorNow()")
+        w.ev("_opts.set('mirror-pictures', false); _editorWin.mirrorNow()")
         plain = [flip(), w.node(1)["chipFx"] != fx0]  # type: ignore[index]
         w.ev("_ed().undo()")
         back = abs(w.node(1)["chipFx"] - fx0) < 1e-9  # type: ignore[index]
-        w.ev("_opts.set('mirror-pictures', true); _buttonMap.mirrorNow()")
+        w.ev("_opts.set('mirror-pictures', true); _editorWin.mirrorNow()")
         with_pictures = flip()
         w.ev("_ed().undo(); _opts.set('mirror-pictures', false)")
         return {"plain": plain, "undo": back, "pictures": with_pictures,
@@ -428,19 +428,19 @@ def main() -> None:
     # --- S60: Fit to Photo Frame --------------------------------------------
     def fit() -> dict:
         n0 = w.node(1) or {}
-        w.ev("_buttonMap.fitToPhotoFrame()")
+        w.ev("_editorWin.fitToPhotoFrame()")
         n1 = w.node(1) or {}
-        w.ev("_buttonMap.fitToPhotoFrame()")
+        w.ev("_editorWin.fitToPhotoFrame()")
         n2 = w.node(1) or {}
         w.ev("_ed().undo()")
-        wait_for(lambda: not w.ev("_buttonMap.fittedThisEdit"), NOT_S)
+        wait_for(lambda: not w.ev("_editorWin.fittedThisEdit"), NOT_S)
         n3 = w.node(1) or {}
         return {
             "chip": [n0.get("chipFx"), n1.get("chipFx")],
             "hot": [n0.get("hotFx"), n1.get("hotFx")],
             "once": n2.get("chipFx") == n1.get("chipFx"),
             "undo": n3.get("chipFx") == n0.get("chipFx"),
-            "again": not w.ev("_buttonMap.fittedThisEdit"),
+            "again": not w.ev("_editorWin.fittedThisEdit"),
         }
 
     step("fit", fit)
@@ -454,7 +454,7 @@ def main() -> None:
         # The shared question (01 S140), on the window's root item.
         def asking() -> bool:
             try:
-                item = w.ev("_buttonMap.contentItem")
+                item = w.ev("_editorWin.contentItem")
                 while isinstance(item, QtCore.QObject) and item.parent() is not None:
                     item = item.parent()
                 if not isinstance(item, QtCore.QObject):
@@ -472,7 +472,7 @@ def main() -> None:
             QtCore.Qt.Key.Key_Return)
         wait_for(lambda: not asking())
         unchanged = unchanged and w.ev("_ed().nodes.length") == count
-        w.ev("_buttonMap.resetLayout()")
+        w.ev("_editorWin.resetLayout()")
         cleared = w.ev("_ed().nodes.length")
         w.ev("_ed().undo()")
         return {"asked": asked, "unchanged": unchanged, "cleared": cleared,
@@ -515,11 +515,11 @@ def main() -> None:
         # (photoNatural: the bottom background picture's size, once loaded.)
         wait_for(lambda: w.ev("_ed().bottomPicture() !== null"
                               " && _ed().photoNatural().w > 0"))
-        w.ev("_buttonMap.setPrint('scale', 100)")
-        at_100 = w.js("_buttonMap.exportPixels()") or {}
-        w.ev("_buttonMap.setPrint('scale', 800)")
-        at_800 = w.js("_buttonMap.exportPixels()") or {}
-        w.ev("_buttonMap.setPrint('scale', 100)")
+        w.ev("_editorWin.setPrint('scale', 100)")
+        at_100 = w.js("_editorWin.exportPixels()") or {}
+        w.ev("_editorWin.setPrint('scale', 800)")
+        at_800 = w.js("_editorWin.exportPixels()") or {}
+        w.ev("_editorWin.setPrint('scale', 100)")
         return {"100": at_100, "800": at_800}
 
     step("export-cap", export_cap)
@@ -546,7 +546,7 @@ def main() -> None:
     def drop_outside() -> dict:
         before = files_under(MODULES)
         url = QtCore.QUrl.fromLocalFile(str(PICTURE)).toString()
-        took = w.ev(f"_buttonMap.dropPictures([{json.dumps(url)}], 20, 20, _mapHost)")
+        took = w.ev(f"_editorWin.dropPictures([{json.dumps(url)}], 20, 20, _mapHost)")
         return {
             "took": took,
             "said": w.ev("_ed().findMsg"),
@@ -557,28 +557,28 @@ def main() -> None:
 
     # --- S71: Follow the Program; S74: forgotten when the window closes ------
     def follow() -> dict:
-        w.ev("_buttonMap.labelMode = ''")
+        w.ev("_editorWin.labelMode = ''")
         w.ev("uiState.setCurrentMode('Combat')")
-        followed = w.ev("_buttonMap.labelModeNow")
+        followed = w.ev("_editorWin.labelModeNow")
         w.ev("uiState.setCurrentMode('Default')")
-        back = w.ev("_buttonMap.labelModeNow")
-        w.ev("_buttonMap.labelMode = 'Chosen'")
-        chosen = w.ev("_buttonMap.labelModeNow")
+        back = w.ev("_editorWin.labelModeNow")
+        w.ev("_editorWin.labelMode = 'Chosen'")
+        chosen = w.ev("_editorWin.labelModeNow")
         w.ev("uiState.setCurrentMode('Combat')")
-        kept = w.ev("_buttonMap.labelModeNow")
+        kept = w.ev("_editorWin.labelModeNow")
         w.ev("uiState.setCurrentMode('Default')")
         return {"follows": [followed, back], "chosen": [chosen, kept]}
 
     step("follow", follow)
 
     def forgotten() -> dict:
-        w.ev("_buttonMap.labelMode = 'Default'")
+        w.ev("_editorWin.labelMode = 'Default'")
         old = w.win
-        w.ev("_buttonMap.close()")
+        w.ev("_editorWin.close()")
         wait_for(lambda: not shiboken6.isValid(old) or not old.property("visible"))
-        call(root, "openButtonMapForCard", CARD)
+        call(root, "openDeviceMappingEditorForCard", CARD)
         w.loaded(NAME)
-        return {"label-mode": w.ev("_buttonMap.labelMode")}
+        return {"label-mode": w.ev("_editorWin.labelMode")}
 
     step("forgotten", forgotten)
 

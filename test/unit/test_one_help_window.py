@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """01 S128, 10 S42 (D-01-ONE-HELP): one Help window. The main window's Help
-(F1) shows the whole book; the Device Library's and the Button Map's show
+(F1) shows the whole book; the Device Library's and the Device Mapping Editor's show
 only their chapter, with View Full Help widening to the whole book and a
 way back. Links and Related topics open topics. Each menu bar has one Help
 item. Runs the program off-screen in its own process.
@@ -61,17 +61,17 @@ def _only(state: dict, chapter: str, title: str) -> None:
 
 
 def test_each_menu_bar_has_one_help_item(run: dict) -> None:
-    for key in ("main_items", "library_items", "buttonmap_items"):
+    for key in ("main_items", "library_items", "editor_items"):
         helps = [i for i in run[key] if i["text"] == "Help"]
         assert len(helps) == 1, (key, run[key])
         assert not [i for i in run[key] if "Guide" in i["text"]], (key, run[key])
     library = run["library_items"]
     assert library == [{"text": "Help", "hint": "F1"}], library
-    # The Button Map's Help menu also lists its keys (07 S135).
-    assert run["buttonmap_items"] == [
+    # The Device Mapping Editor's Help menu also lists its keys (07 S135).
+    assert run["editor_items"] == [
         {"text": "Help", "hint": "F1"},
         {"text": "Keyboard Shortcuts…", "hint": "Ctrl+K"},
-    ], run["buttonmap_items"]
+    ], run["editor_items"]
 
 
 def test_main_f1_opens_the_whole_book(run: dict) -> None:
@@ -98,8 +98,8 @@ def test_library_f1_shows_its_chapter_and_view_full_help_widens(run: dict) -> No
     _only(run["library_back"], "device-library", "Device Library")
 
 
-def test_button_map_f1_shows_its_chapter(run: dict) -> None:
-    _only(run["buttonmap_f1"], "button-map", "Button Map")
+def test_device_mapping_editor_f1_shows_its_chapter(run: dict) -> None:
+    _only(run["editor_f1"], "device-mapping-editor", "Device Mapping Editor")
 
 
 def test_main_f1_after_an_area_shows_the_whole_book(run: dict) -> None:

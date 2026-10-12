@@ -1,7 +1,7 @@
 // -*- coding: utf-8; -*-
 // SPDX-License-Identifier: GPL-3.0-only
 
-// The Button Map's Insert, Arrange and Format menus (07 S134).
+// The Device Mapping Editor's Insert, Arrange and Format menus (07 S134).
 // Imported by the window as RigCommands. The menu bar has no right-click
 // target, so every command acts on the editor's selection (ed.selectedId /
 // ed.selectedIds) through the same editor functions the right-click menu

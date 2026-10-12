@@ -139,7 +139,8 @@ def test_unused_pictures_keep_background_pictures(tmp_path: Path) -> None:
     assert keep == {"back.png"}
 
 
-# --- the real paths: Import, the Button Map's load and save, Module Setup ---
+# --- the real paths: Import, the Device Mapping Editor's load and save,
+# Module Setup ---
 
 from collections.abc import Iterator  # noqa: E402
 

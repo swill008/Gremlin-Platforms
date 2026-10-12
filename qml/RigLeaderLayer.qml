@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// Leader lines and hotspots of every chip in the Button Map editor, on one canvas.
+// Leader lines and hotspots of every chip in the Device Mapping Editor, on one canvas.
 Canvas {
     id: _lines
     property var ed: null

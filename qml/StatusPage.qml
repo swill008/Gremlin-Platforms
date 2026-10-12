@@ -97,7 +97,7 @@ Item {
 
     signal focusSlug(string slug)
     signal openDeviceBindings(var card)
-    signal openButtonMap(var card)
+    signal openDeviceMappingEditor(var card)
     signal openOutputView(var card)
     signal configureModule(var card)
     signal openAutoMappingTool(var card)
@@ -435,7 +435,7 @@ Item {
         if (_deleteKeepModule)
             lines.push("This does not delete the vJoy or Xbox module file. Only actions stored on this device are removed. Actions from input devices stay.")
         else
-            lines.push("This removes this device's folder (its settings, Button Map, pictures and recovery copy) and its actions in every mode. The card's size and stack are cleared.")
+            lines.push("This removes this device's folder (its settings, device map, pictures and recovery copy) and its actions in every mode. The card's size and stack are cleared.")
         if (!_deleteKeepModule)
             lines.push("vJoy and Xbox module files stay. Other input devices that use them are not changed.")
         if (!_deleteKeepModule && _deleteListed)
@@ -478,7 +478,7 @@ Item {
         _startFreshGate.confirmThen("Start Fresh?",
             name + "'s module file can't be read (" + card.damaged + "). Start Fresh moves it"
                 + " aside, keeping it as a copy, and starts an empty setup for this device:"
-                + " its Button Map, claims and calibration start over. Nothing is deleted.",
+                + " its device map, claims and calibration start over. Nothing is deleted.",
             "Start Fresh", function() {
                 var copy = model ? model.startFresh(name, guid) : ""
                 _doneTitle = copy ? "Started fresh" : "Start Fresh stopped"
@@ -546,7 +546,7 @@ Item {
         card.shiftToggled.connect(function() { _page.toggleSelect(card) })
         card.stackSelectedCards.connect(function() { _page.stackSelected(card.slug) })
         card.onOpenDeviceBindings.connect(function() { _page.openDeviceBindings(_page.pack(card)) })
-        card.openButtonMap.connect(function() { _page.openButtonMap(_page.pack(card)) })
+        card.openDeviceMappingEditor.connect(function() { _page.openDeviceMappingEditor(_page.pack(card)) })
         card.openOutputView.connect(function() { _page.openOutputView(_page.pack(card)) })
         card.onConfigureModule.connect(function() { _page.configureModule(_page.pack(card)) })
         card.onOpenAutoMappingTool.connect(function() { _page.openAutoMappingTool(_page.pack(card)) })
@@ -613,7 +613,7 @@ Item {
 
     // The Logical Device card's picture (03 S88, D-03-LD-IMAGE): the model
     // copies it next to the module file; Remove doesn't ask (History can
-    // bring it back), as the Button Map's Clear Photo.
+    // bring it back), as the Device Mapping Editor's Clear Photo.
     property string _imageSlug: ""
 
     function pickCardImage(slug) {

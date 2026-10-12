@@ -5,7 +5,7 @@ import QtQuick
 import QtQuick.Controls
 import Gremlin.Style
 
-// A fixed side panel of the Button Map (07 S128-S131): Chips on the left,
+// A fixed side panel of the Device Mapping Editor (07 S128-S131): Chips on the left,
 // Layers on the right. It is a drawer on its edge of the window (S129,
 // D-07-SIDE-DRAWER). Folded it is left ajar: the panel's own edge (its
 // colour, border and rounded corners) peeks `stripWidth` out from the

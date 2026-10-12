@@ -4,7 +4,7 @@
 import QtQuick
 import Gremlin.Style
 
-// The print area on the Button Map (rig_print_area.js): while shown
+// The print area on the device map (rig_print_area.js): while shown
 // (View > Print Area, or its tool), a dashed frame in the print area's
 // color with a small "Print Area" label, and everything outside dimmed.
 // While editing, its handles resize it and its border moves

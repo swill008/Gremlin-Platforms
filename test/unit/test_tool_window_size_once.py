@@ -74,13 +74,13 @@ for name in sys.argv[2].split(','):
     if name == 'DialogConfigureModule':
         run('_root.openConfigureModule("source", null)')
     elif name == 'PrintExportWindow':
-        run('Helpers.createComponent("DialogJoystickButtonMap.qml")')
+        run('Helpers.createComponent("DialogDeviceMappingEditor.qml")')
     else:
         run('Helpers.createComponent("WindowDeviceLibrary.qml")')
     QtTest.QTest.qWait(400)
     new = [w for w in tool_windows() if w not in before]
     if name == 'PrintExportWindow':
-        # Made (hidden) with the Button Map, which stays open behind it.
+        # Made (hidden) with the Device Mapping Editor, which stays open behind it.
         found = [w for w in new if w.title() == 'Print & Export']
         found[0].setScreen(screen(800))
         found[0].show()

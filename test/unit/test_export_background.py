@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Button Map exports are encoded and written in the background (07 S101,
+"""Device map exports are encoded and written in the background (07 S101,
 D-07-EXPORT-BG): saveAreaAsync returns at once, exporting is True until
 areaSaved(ok, error) is announced on the main thread, one export at a time,
 failures say what Q19 says."""

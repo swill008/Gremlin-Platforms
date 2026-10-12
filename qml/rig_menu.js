@@ -80,7 +80,7 @@ function _pasteHere() {
     var ok = typeof pasteAt === "function" && typeof _ctx.mapX === "number" && typeof _ctx.mapY === "number"
     var fx = ok ? xToFx(_ctx.mapX) : 0
     var fy = ok ? yToFy(_ctx.mapY) : 0
-    return _named("bmPasteHere", "Paste Here", function() { pasteAt(fx, fy) }, ok && _canPaste())
+    return _named("dmePasteHere", "Paste Here", function() { pasteAt(fx, fy) }, ok && _canPaste())
 }
 
 function _selectAll() {
@@ -94,8 +94,8 @@ function _itemFinders() {
     var can = typeof showInLayersRequested === "function"
     var canProps = typeof propertiesRequested === "function"
     return [
-        _named("bmShowInLayers", "Show in Layers", function() { if (can) showInLayersRequested(id) }, can),
-        _named("bmProperties", "Properties…", function() { if (canProps) propertiesRequested() }, canProps, "F4")
+        _named("dmeShowInLayers", "Show in Layers", function() { if (can) showInLayersRequested(id) }, can),
+        _named("dmeProperties", "Properties…", function() { if (canProps) propertiesRequested() }, canProps, "F4")
     ]
 }
 
@@ -103,7 +103,7 @@ function _itemFinders() {
 function _repeat() {
     if (typeof cmdCanRepeat !== "function" || !cmdCanRepeat())
         return []
-    return [_named("bmRepeat", cmdRepeatLabel(), cmdRepeat)]
+    return [_named("dmeRepeat", cmdRepeatLabel(), cmdRepeat)]
 }
 
 // The favourites that apply now, in the order added, at most
@@ -621,9 +621,9 @@ function planeMoveItems(ids) {
     var frontTip = toFront.length ? "" : (nodes.length ? "Already in the foreground" : "")
     // Tagged only: they move these ids (the Layers panel passes its own).
     var out = [
-        _named("bmMoveToBackground", "Move to Background",
+        _named("dmeMoveToBackground", "Move to Background",
                function() { moveToPlane(keep, "background") }, toBack.length > 0, "Ctrl+Shift+B", backTip),
-        _named("bmMoveToForeground", "Move to Foreground",
+        _named("dmeMoveToForeground", "Move to Foreground",
                function() { moveToPlane(keep, "foreground") }, toFront.length > 0, "Ctrl+Shift+B", frontTip)
     ]
     out[0].cmd = "moveToBackground"
@@ -847,7 +847,7 @@ function _tableSections() {
 // follows editPlaneChanged.
 function _planeSwitch() {
     var bg = editPlane === "background"
-    return _named("bmEditPlane", bg ? "Exit Background Editing" : "Edit Background",
+    return _named("dmeEditPlane", bg ? "Exit Background Editing" : "Edit Background",
                   function() { editPlane = bg ? "foreground" : "background" }, true, "Ctrl+B")
 }
 

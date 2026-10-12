@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""qml/rig_shapes.js: the Button Map editor's pure shape maths."""
+"""qml/rig_shapes.js: the Device Mapping Editor's pure shape maths."""
 
 from __future__ import annotations
 

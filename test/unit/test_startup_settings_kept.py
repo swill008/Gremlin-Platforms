@@ -83,7 +83,7 @@ def test_startup_registration_keeps_them(
 def test_unused_placement_settings_are_dropped(
     saved_cfg: gremlin.config.Configuration,
 ) -> None:
-    """Button Map menu size and the old Logical-only layout value are read by
+    """Device Mapping Editor menu size and the old Logical-only layout value are read by
     nothing, so start-up drops them."""
     import joystick_gremlin
 

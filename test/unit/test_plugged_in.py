@@ -188,7 +188,7 @@ def test_delete_result_a_renamed_plugged_in_stick_keeps_its_card(
 
 
 def test_built_in_cards_without_an_id_are_there() -> None:
-    # Module Setup and the Button Map open Keyboard / OSC / Logical Device
+    # Module Setup and the Device Mapping Editor open Keyboard / OSC / Logical Device
     # with no id; a stick with no id is still not plugged in.
     from gremlin.modules import hardware
 

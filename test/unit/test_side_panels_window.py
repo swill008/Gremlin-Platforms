@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's side panels in the window (07 S99, S128-S131, S135,
+"""The Device Mapping Editor's side panels in the window (07 S99, S128-S131, S135,
 D-07-SIDE-PANELS, D-07-SIDE-DRAWER), checked in the running program
 off-screen with mouse clicks (side_panels_window_smoke.py, its own process
 and user folder).
@@ -17,7 +17,7 @@ and user folder).
   user's own choice in between stays.
 - Properties sits under Layers while something is selected, with a divider
   between them; the divider's share and View > Properties (F4) are kept.
-- Width, pin and open are kept in the Button Map settings (ButtonMapOptions)
+- Width, pin and open are kept in the Device Mapping Editor settings (DeviceMapOptions)
   for the next window; View > Reset Panels puts them, the divider and
   Properties back.
 - The status line is one slim row.

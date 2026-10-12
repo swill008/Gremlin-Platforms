@@ -3,7 +3,7 @@
 
 """Swap with Another Stick (10 F, S26-S29): two connected sticks exchange the
 ticked parts. Module-file parts go through modules/store.py (each stick's
-Button Map pictures copied into its own folder, S61), bindings
+device map pictures copied into its own folder, S61), bindings
 through swap_devices on each ticked profile (library_profiles.Batch). Both
 sticks get an autosave first; Undo is library_copy.undo_last (S41)."""
 
@@ -22,10 +22,10 @@ from gremlin.profile import Profile
 Stick = tuple[str, str]  # (device name, device id text)
 Controls = swap_devices.Controls
 
-_MODULE_PARTS = ("setup", "button_map", "appearance", "calibration")
+_MODULE_PARTS = ("setup", "device_map", "appearance", "calibration")
 _KIND_WORD = {"button": "Button", "axis": "Axis", "hat": "Hat"}
 _BUCKET = {"button": "buttons", "axis": "axes", "hat": "hats"}
-# The Button Map's keys in a module file: the map (both planes; the photo is
+# The Device Mapping Editor's keys in a module file: the map (both planes; the photo is
 # its bottom background picture, 07 S127), its view and print settings.
 _MAP_KEYS = ("nodes", "ui")
 _APPEARANCE_KEYS = ("view",)
@@ -320,7 +320,7 @@ def _rewrite_refs(value: object, moved: dict[str, str]) -> None:
 
 
 def _move_pictures(doc: dict, from_dir: Path, to_dir: Path, added: list[Path]) -> None:
-    """The pictures in from_dir that doc's Button Map names are copied into
+    """The pictures in from_dir that doc's device map names are copied into
     to_dir's own pictures (store.copy_pictures, 10 S61: a picture is never
     shared between sticks) and doc names them there. A picture that isn't
     in the folder (a file: URL, or missing) stays named as it is. added
@@ -363,7 +363,7 @@ def _swapped_docs(
         _exchange_calibration(doc_a, doc_b, shared)
     if "appearance" in parts:
         _exchange_keys(doc_a, doc_b, _APPEARANCE_KEYS)
-    if "button_map" in parts:
+    if "device_map" in parts:
         # ONE-TIME (tracker OT-2): a map saved before the planes swaps in
         # today's layout, its photo as the bottom background picture.
         from gremlin.modules import planes_once
@@ -381,7 +381,7 @@ def _swapped_docs(
             _put_back([(p, None) for p in added])
             added.clear()
             return (
-                f"A Button Map picture can't be copied ({failed}): nothing was swapped."
+                f"A device map picture can't be copied ({failed}): nothing was swapped."
             )
         for key in _MAP_KEYS:
             doc_a.pop(key, None)

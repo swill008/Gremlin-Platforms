@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map window's background and foreground planes, off-screen
+"""The Device Mapping Editor window's background and foreground planes, off-screen
 (07 S113-S117, S14, S30, S39-S42, S57, S76; D-07-PLANES-ANSWERS P4a).
 
 Loads the real window with stand-ins for the program's backend, opens a
@@ -161,7 +161,7 @@ def main() -> None:
         "Style",
     )
     import gremlin.ui.backend  # noqa: F401
-    import gremlin.ui.button_map_options  # noqa: F401
+    import gremlin.ui.device_map_options  # noqa: F401
     import gremlin.ui.device_names  # noqa: F401
     import joystick_gremlin
 
@@ -177,7 +177,7 @@ def main() -> None:
     warnings: list[str] = []
     engine.warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
     engine.load(
-        QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogJoystickButtonMap.qml"))
+        QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogDeviceMappingEditor.qml"))
     )
     roots = engine.rootObjects()
     if not roots:
@@ -213,7 +213,7 @@ def main() -> None:
     result("photo-adjust-gone", js("typeof _photoAdj === 'undefined'"))
     result("photo-menu-gone", js("typeof _photoMenu === 'undefined'"))
 
-    js(f"_buttonMap.openForDevice('{DEVICE}', '{GUID}'); 1")
+    js(f"_editorWin.openForDevice('{DEVICE}', '{GUID}'); 1")
     wait(800)
     # The background menu: shown, its items only while editing (07 S39).
     result(
@@ -225,13 +225,13 @@ def main() -> None:
             " m.title + '|' + m.enabled + '|' + t.join('|')"
         ),
     )
-    result("bottom-photo", js("_buttonMap.photoOverride.indexOf('bg.png') >= 0"))
+    result("bottom-photo", js("_editorWin.photoOverride.indexOf('bg.png') >= 0"))
 
-    js("_buttonMap.enterEdit(); 1")
+    js("_editorWin.enterEdit(); 1")
     wait(800)
     result("bg-menu-editing", js("_bgMenu.enabled"))
-    result("plane-start", js("_ed().editPlane + ' ' + _buttonMap.bgMode"))
-    result("status-fg", child("bmPlaneStatus").property("text"))
+    result("plane-start", js("_ed().editPlane + ' ' + _editorWin.bgMode"))
+    result("status-fg", child("dmePlaneStatus").property("text"))
     # A picture's look shows from an adjusted copy (07 S43).
     result(
         "look",
@@ -255,30 +255,31 @@ def main() -> None:
     # Done, the first-time hint. No switch, no Undo / Redo row (07 S113).
     js("_ed().editPlane = 'background'; 1")
     wait()
-    banner = child("bmBgBanner")
+    banner = child("dmeBgBanner")
     result(
         "banner",
         f"{banner.property('visible')} "
-        f"{child('bmBgBannerText').property('text')}|{child('bmBgDone').property('text')}",
+        f"{child('dmeBgBannerText').property('text')}|{child('dmeBgDone').property('text')}",
     )
     result(
         "hint-first",
-        f"{child('bmBgHint').property('visible')} "
+        f"{child('dmeBgHint').property('visible')} "
         f"{js('_opts.values["bm-bg-hint-seen"]')}",
     )
-    result("status-bg", child("bmPlaneStatus").property("text"))
+    result("status-bg", child("dmePlaneStatus").property("text"))
     result(
         "no-switch",
-        f"{child('bmPlaneSwitch') is None} {child('bmPlane_background') is None} "
-        f"{child('bmPlane_foreground') is None} {child('buttonMapUndoBar') is None}",
+        f"{child('dmePlaneSwitch') is None} {child('dmePlane_background') is None} "
+        f"{child('dmePlane_foreground') is None} "
+        f"{child('deviceMappingEditorUndoBar') is None}",
     )
     # Done leaves; entering again shows no hint (once for the program).
     js("_ed().editPlane = 'foreground'; 1")
     wait()
     result("after-done", f"{js('_ed().editPlane')} {banner.property('visible')}")
-    js("_buttonMap.setEditPlane('background'); 1")
+    js("_editorWin.setEditPlane('background'); 1")
     wait()
-    result("hint-second", child("bmBgHint").property("visible"))
+    result("hint-second", child("dmeBgHint").property("visible"))
 
     # Esc leaves Background mode when nothing else takes it.
     js("_ed().setSelection([]); 1")
@@ -323,7 +324,7 @@ def main() -> None:
     wait()
     result(
         "faint-off",
-        f"{js('_ed().showFgFaint')} {child('bmFgFaintTick').property('checked')}",
+        f"{js('_ed().showFgFaint')} {child('dmeFgFaintTick').property('checked')}",
     )
     js("_ed().showFgFaint = true; 1")
     wait()
@@ -333,7 +334,7 @@ def main() -> None:
     result(
         "hidden-kept",
         f"{js('_opts.values["bm-bg-hidden"]')} "
-        f"{child('bmPlaneStatus').property('text')}",
+        f"{child('dmePlaneStatus').property('text')}",
     )
     js("_ed().bgViewHidden = false; _ed().bgViewOpacity = 0.4; 1")
     wait(600)
@@ -357,10 +358,10 @@ def main() -> None:
     # Add Picture to Background…: the top background layer, fitted to the
     # photo frame, one Undo step, an unsaved change (07 S30, S40).
     added_url = QtCore.QUrl.fromLocalFile(str(out / "added.png")).toString()
-    result("clean-before", js("_buttonMap.isDirty()"))
+    result("clean-before", js("_editorWin.isDirty()"))
     js("_ed().seedHist(); 1")
     wait()
-    added = js(f"_buttonMap.addBackgroundPicture('{added_url}')")
+    added = js(f"_editorWin.addBackgroundPicture('{added_url}')")
     wait()
     result(
         "added",
@@ -374,7 +375,7 @@ def main() -> None:
             " + (Math.abs(n.fw - f.fw) < 0.001 && Math.abs(n.fh - f.fh) < 0.001)"
         ),
     )
-    result("dirty-after-add", js("_buttonMap.isDirty()"))
+    result("dirty-after-add", js("_editorWin.isDirty()"))
     result(
         "add-undo",
         js(
@@ -390,7 +391,7 @@ def main() -> None:
         "clear",
         js(
             "function isBg(n) { return n.plane === 'background' }"
-            " var e = _ed(); _buttonMap.clearBackground();"
+            " var e = _ed(); _editorWin.clearBackground();"
             " var bg = e.nodes.filter(isBg).length;"
             " var fg = e.nodes.length - bg;"
             " e.undo();"
@@ -401,7 +402,7 @@ def main() -> None:
     wait()
 
     # Save writes both planes in the nodes and no photo of its own.
-    js("_buttonMap.saveEdit(false); 1")
+    js("_editorWin.saveEdit(false); 1")
     wait()
     saved = json.loads(target.read_text(encoding="utf-8"))
     planes = sorted({n.get("plane", "foreground") for n in saved.get("nodes", [])})
@@ -412,64 +413,64 @@ def main() -> None:
     )
 
     # Cancel puts the saved map (both planes) back.
-    js("var e = _ed(); _buttonMap.clearBackground(); 1")
+    js("var e = _ed(); _editorWin.clearBackground(); 1")
     wait()
-    js("_buttonMap.discardEdit(); 1")
+    js("_editorWin.discardEdit(); 1")
     wait(500)
     result(
         "cancel",
         js(
             "function isBg(n) { return n.plane === 'background' }"
-            " _buttonMap.liveNodes.filter(isBg).length > 0"
-            " && _buttonMap.editing === false"
+            " _editorWin.liveNodes.filter(isBg).length > 0"
+            " && _editorWin.editing === false"
         ),
     )
     result("plane-after-edit", js("_ed().editPlane"))
 
-    # Copy Button Map: this device's background stays unless ticked.
+    # Copy Device Map: this device's background stays unless ticked.
     def ids() -> str:
         return js(
             "_ed().nodes.map(function(n) { return n.id + ':' + (n.plane || 'fg') })"
             ".sort().join(',')"
         )
 
-    js("_buttonMap.openCopyLayout({name: 'Copy Src', slug: 'Copy Src'}); 1")
+    js("_editorWin.openCopyLayout({name: 'Copy Src', slug: 'Copy Src'}); 1")
     wait()
     result(
         "copy-tick",
-        f"{child('bmCopyBgTick').property('text')}|"
-        f"{child('bmCopyBgTick').property('checked')}",
+        f"{child('dmeCopyBgTick').property('text')}|"
+        f"{child('dmeCopyBgTick').property('checked')}",
     )
     js("_copyDlg.close(); 1")
     js(
-        "_buttonMap.copyLayoutFrom({name: 'Copy Src', slug: 'Copy Src'},"
+        "_editorWin.copyLayoutFrom({name: 'Copy Src', slug: 'Copy Src'},"
         " false, false); 1"
     )
     wait(800)
     result("copy-keep", ids())
-    js("_buttonMap.discardEdit(); 1")
+    js("_editorWin.discardEdit(); 1")
     wait(400)
     js(
-        "_buttonMap.copyLayoutFrom({name: 'Copy Src', slug: 'Copy Src'},"
+        "_editorWin.copyLayoutFrom({name: 'Copy Src', slug: 'Copy Src'},"
         " true, false); 1"
     )
     wait(800)
     result("copy-keep-mirror", ids())
-    js("_buttonMap.discardEdit(); 1")
+    js("_editorWin.discardEdit(); 1")
     wait(400)
     js(
-        "_buttonMap.copyLayoutFrom({name: 'Copy Src', slug: 'Copy Src'},"
+        "_editorWin.copyLayoutFrom({name: 'Copy Src', slug: 'Copy Src'},"
         " false, true); 1"
     )
     wait(800)
     result("copy-with-bg", ids())
-    js("_buttonMap.discardEdit(); 1")
+    js("_editorWin.discardEdit(); 1")
     wait(400)
 
     # Space + left-drag pans in Edit (07 S14), in both modes.
-    js("_buttonMap.enterEdit(); 1")
+    js("_editorWin.enterEdit(); 1")
     wait(600)
-    js("_buttonMap.setEditPlane('background'); 1")
+    js("_editorWin.setEditPlane('background'); 1")
     wait()
     face_pan = "var f = _ed().face; f.panX.toFixed(0) + ',' + f.panY.toFixed(0)"
     before = js(face_pan)
@@ -500,7 +501,7 @@ def main() -> None:
     wait(100)
     after = js(face_pan)
     result("space-pan", f"{held} {before != after} {js('_ed().face.spaceHeld')}")
-    js("_buttonMap.discardEdit(); 1")
+    js("_editorWin.discardEdit(); 1")
     wait(300)
 
     for warning in warnings:

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor's Layers filter off-screen (07 S102): the
+"""Drives the Device Mapping Editor's Layers filter off-screen (07 S102): the
 rows, counts and Enter-to-select for kinds and search text. Prints the
 results as JSON; test_layers_filter_logic.py runs it in its own process.
 

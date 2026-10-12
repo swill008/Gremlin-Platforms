@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's side panels, end to end in the running program
+"""The Device Mapping Editor's side panels, end to end in the running program
 off-screen (side_panels_e2e_smoke.py, its own process and user folder),
 with real clicks and drags (07 S99, S128-S131, D-07-SIDE-PANELS,
 D-07-SIDE-DRAWER).
@@ -15,7 +15,7 @@ D-07-SIDE-DRAWER).
 - Unpinned Layers lies over the map and folds on a map click or the other
   drawer's click (S129).
 - The inner edge resizes, up to the maximum; the width, pin and open state
-  are kept in the Button Map settings after closing and reopening the
+  are kept in the Device Mapping Editor settings after closing and reopening the
   window (S99, S131).
 - Background mode folds Chips and brings it back, without saving the fold
   (S130).

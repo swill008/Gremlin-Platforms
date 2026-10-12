@@ -15,7 +15,7 @@ function openDeviceLibrary(deviceName, guid, action)
 }
 
 // The Device Library's row menus reach the main window here (10 S15, S44):
-// action "deleteDevice" (Home's Delete Device), "moduleSetup", "buttonMap"
+// action "deleteDevice" (Home's Delete Device), "moduleSetup", "deviceMappingEditor"
 // or "home" (Show on Home) for target, the model's deviceTarget(key).
 // Main.qml's libraryAction does them; returns its Result as JSON text.
 function toMain(action, target)

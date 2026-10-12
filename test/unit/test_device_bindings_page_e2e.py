@@ -77,7 +77,8 @@ _PAGE_MISSING = [
 ]
 needs_page = pytest.mark.xfail(
     bool(_PAGE_MISSING),
-    reason="needs the batch C Device Bindings page: missing " + ", ".join(_PAGE_MISSING),
+    reason="needs the batch C Device Bindings page: missing "
+    + ", ".join(_PAGE_MISSING),
     raises=(AssertionError, JourneyIncomplete),
     strict=True,
 )

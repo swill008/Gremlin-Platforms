@@ -25,8 +25,8 @@ def test_the_program_comes_first_then_the_window() -> None:
     library = window_titles.format_title("Device Library")
     assert library == f"{_PROGRAM} - Device Library"
     assert (
-        window_titles.format_title("Help — Button Map")
-        == f"{_PROGRAM} - Help — Button Map"
+        window_titles.format_title("Help — Device Mapping Editor")
+        == f"{_PROGRAM} - Help — Device Mapping Editor"
     )
 
 

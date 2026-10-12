@@ -118,7 +118,7 @@ def _old_entry(tmp_path: Path, doc: dict) -> tuple[dict, dict]:
     knob = tmp_path / "kept knob.png"
     knob.write_bytes(b"old knob")
     entry = {
-        "area": "button-map",
+        "area": "device-mapping-editor",
         "kind": "save",
         "subject": {
             "device": "Old Stick",

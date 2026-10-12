@@ -45,7 +45,7 @@ TAGS = (
 # Written out: the plugins can't be listed before the settings are
 # registered (a package fixture); test_the_seven_actions_are_listed checks
 # this list against harness.cases().
-_PANES = (Surface.CONFIG_PAGE, Surface.PANE_BUTTON_MAP, Surface.PANE_LOGICAL)
+_PANES = (Surface.CONFIG_PAGE, Surface.PANE_DEVICE_MAPPING_EDITOR, Surface.PANE_LOGICAL)
 CASES = sorted(
     [(tag, "button", s) for tag in TAGS for s in _PANES]
     + [(tag, "key", Surface.PANE_KEYBOARD) for tag in TAGS]

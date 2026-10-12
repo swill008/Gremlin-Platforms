@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen through one real mouse gesture of
+"""Drives the Device Mapping Editor off-screen through one real mouse gesture of
 each kind (07 S55a; D-07-GESTURE-UNDO) and prints, for each, how many undo
 steps it made and whether one Undo put the map back exactly, as one JSON
 object. test_gesture_undo.py runs it in its own process.
@@ -171,7 +171,7 @@ def main() -> None:
         return res
 
     _load(s, "evo_r")
-    # The window's part (DialogJoystickButtonMap.noteEditStep): a guide or
+    # The window's part (DialogDeviceMappingEditor.noteEditStep): a guide or
     # print area change in Edit is an undo step.
     qml("ed().rulerGuidesEdited.connect(function() { ed().pushHist() })")
     qml("ed().printAreaEdited.connect(function() { ed().pushHist() })")

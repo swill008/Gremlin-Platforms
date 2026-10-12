@@ -4,7 +4,7 @@
 """The program's history: every saved change, kept in its own files.
 
 One file per area in the history folder (profile.jsonl, modules.jsonl,
-button-map.jsonl, settings.jsonl): one JSON line per entry, only ever
+device-mapping-editor.jsonl, settings.jsonl): one JSON line per entry, only ever
 appended. Only one copy of the program runs at a time (its lock file), so
 only this one writes them. A damaged line (a crash mid-write) is skipped.
 Pictures an entry needs are kept once each in history/files, named by
@@ -38,7 +38,7 @@ from gremlin import clock, threads
 AREAS = {
     "profile": "Profile",
     "modules": "Module files",
-    "button-map": "Button Map",
+    "device-mapping-editor": "Device Mapping Editor",
     "settings": "Settings",
     # Tools › History's own: the "History cleared" entries (08 S12b).
     "history": "History",

@@ -66,6 +66,9 @@ _ALLOWED = {
     # The Device Library's own list and saved-setup packs (10), not module
     # files: module files it puts back go through the store (store.replace).
     ("gremlin/device_library.py", "writes with module_file directly"),
+    # ONE-TIME (tracker OT-4): the Library part id move rewrites the
+    # Library's own list (library.json), not a module file.
+    ("gremlin/library_part_id_once.py", "writes with module_file directly"),
     # Profile recovery copies (04 S94) live in the data folder's recovery
     # folder, not the modules folder; they are not module files.
     ("gremlin/profile_recovery.py", "builds a path in the modules folder from a name"),
@@ -74,7 +77,7 @@ _ALLOWED = {
     ("gremlin/modules/device_class.py", "builds a module file name from a device name"),
     # Saved profiles that aren't open, changed by Copy / Swap (10 S33).
     ("gremlin/library_profiles.py", "writes with module_file directly"),
-    # Button Map templates, their exports and the photo cache (07): not
+    # Device Mapping Editor templates, their exports and the photo cache (07): not
     # module files, but written safely with the shared atomic writer.
     ("gremlin/ui/hardware_profile.py", "writes with module_file directly"),
     # .gmap / .gtemplate files the user exports, and imported templates

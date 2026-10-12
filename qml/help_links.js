@@ -15,7 +15,7 @@ var _allowedOpen = [
     "tools.calibration", "tools.hidhide", "tools.configureInput",
     "tools.configureOutput", "tools.deviceInfo", "tools.deviceLibrary",
     "tools.devicePack",
-    "tools.logical", "tools.buttonMap", "tools.autoMappingTool", "tools.manageModes",
+    "tools.logical", "tools.deviceMappingEditor", "tools.autoMappingTool", "tools.manageModes",
     "tools.history", "tools.options",
     "debug.liveLog",
     "help.about"

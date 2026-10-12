@@ -196,7 +196,7 @@ try:
 
 
     device_pack.write_pack = slow_write
-    zip_path = os.path.join(util.userprofile_path(), "g3 pack.zip")
+    zip_path = os.path.join(util.userprofile_path(), "g3 pack.gmap")
     url = QtCore.QUrl.fromLocalFile(zip_path).toString()
     pv(f'startExport("{url}")')
     out["entered"] = entered.wait(WAIT_MS / 1000)
@@ -229,7 +229,7 @@ try:
 
     # A failure is reported when done, naming the file, folder and reason.
     # A folder already has the pack's name.
-    bad = os.path.join(util.userprofile_path(), "taken.zip")
+    bad = os.path.join(util.userprofile_path(), "taken.gmap")
     os.makedirs(bad, exist_ok=True)
     pv(f'startExport("{QtCore.QUrl.fromLocalFile(bad).toString()}")')
     wait_for(lambda: str(pv("status")).startswith("Export failed"))

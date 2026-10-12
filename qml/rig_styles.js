@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // Saved styles: a chip's, shape's, line's or text box's look kept under a
-// name (Options → Button Map → Library lists them) and put on other items of
+// name (Device Map Options → Library lists them) and put on other items of
 // the same kind from the right-click menu.
 // Code-behind for VkbRigEditor.qml (imported without .pragma library): it
 // uses the editor's ids, properties and functions directly, and each

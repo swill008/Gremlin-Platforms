@@ -274,7 +274,7 @@ def test_a_saved_setup_shows_its_bottom_background_picture(modules: Path) -> Non
     out = library.save_setup(NAME, GUID, [])
     assert out["ok"], out
     setup = out["setup"]
-    assert "button_map" in setup["holds"]
+    assert "device_map" in setup["holds"]
     shown = library.photo(setup["key"])
     assert shown and Path(shown).read_bytes() == PNG
 
@@ -294,7 +294,7 @@ def test_copy_to_another_stick_carries_every_background_layer(modules: Path) -> 
     saved = library.save_setup(NAME, GUID, [])
     assert saved["ok"], saved
     out = library_copy.copy(
-        saved["setup"]["key"], target, target_guid, ["setup", "button_map"], [], []
+        saved["setup"]["key"], target, target_guid, ["setup", "device_map"], [], []
     )
     assert out["ok"], out
     doc = _read(there)

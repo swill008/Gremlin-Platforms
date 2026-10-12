@@ -35,7 +35,7 @@ Item {
     readonly property real zoomMin: zoomFit / 2
     readonly property real zoomMax: 8.0
     readonly property real zoomPage: 1.0
-    // Wheel zoom speed in percent (Options → Button Map → View).
+    // Wheel zoom speed in percent (Device Map Options → View).
     property real zoomSpeed: 100
     readonly property real wheelBase: 1 + 0.0012 * Math.max(0.25, zoomSpeed / 100)
     readonly property real viewPct: zoom / zoomFit
@@ -271,7 +271,7 @@ Item {
         source: "VkbRigEditor.qml"
         onStatusChanged: {
             if (status === Loader.Error)
-                console.warn("The Button Map editor could not load: "
+                console.warn("The Device Mapping Editor could not load: "
                              + Qt.createComponent(source).errorString())
         }
     }
@@ -461,7 +461,7 @@ Item {
         // everywhere (_midPan).
         MouseArea {
             id: _spacePan
-            objectName: "bmSpacePan"
+            objectName: "dmeSpacePan"
             anchors.fill: parent
             z: 20
             enabled: _face.editing && (_face.spaceHeld || pressed)
@@ -513,7 +513,7 @@ Item {
         // area), so this cursor-only area sits on top for the drag; it takes
         // no buttons.
         MouseArea {
-            objectName: "bmPanCursor"
+            objectName: "dmePanCursor"
             anchors.fill: parent
             z: 21
             enabled: _midPan.active
@@ -569,6 +569,6 @@ Item {
         visible: _editorLoader.status === Loader.Error
         color: Style.fg
         font.pixelSize: Style.dp(14)
-        text: "The Button Map editor could not load."
+        text: "The Device Mapping Editor could not load."
     }
 }

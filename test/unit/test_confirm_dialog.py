@@ -52,7 +52,7 @@ ApplicationWindow {
         })
     }
     // A Window declared inside another object has a parent (Qt 6.7+): the
-    // question must still open in it (the Button Map is such a window).
+    // question must still open in it (the Device Mapping Editor is such a window).
     function askInner() {
         _inner.visible = true
         innerDlg = Confirm.ask(_inner, { title: "Inner?", action: "Remove" })

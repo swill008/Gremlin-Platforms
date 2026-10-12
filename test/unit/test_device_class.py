@@ -286,8 +286,8 @@ def test_delete_device_keeps_output_files(guid: object, name: str) -> None:
 
 
 @pytest.mark.parametrize(("guid", "name"), DEVICES, ids=_ids(DEVICES))
-def test_button_map_any_device(guid: object, name: str) -> None:
-    assert dc.can("button_map", guid, name)
+def test_device_mapping_editor_any_device(guid: object, name: str) -> None:
+    assert dc.can("device_map", guid, name)
 
 
 # --- a live vJoy device is known by its id ----------------------------------

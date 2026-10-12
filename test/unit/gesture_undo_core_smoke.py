@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen through drags that wander across
+"""Drives the Device Mapping Editor off-screen through drags that wander across
 a picture's edge (07 S55a: a drag is one undo step; the hover highlight is
 never a step) and prints the results as JSON. test_gesture_undo_core.py
 runs it in its own process.

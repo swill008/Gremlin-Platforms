@@ -43,7 +43,7 @@ New owners: `gremlin/run_scope.py` (Run lifecycle), `gremlin/modules/store.py`
 | 067 / 068 | One store, one writer, one History hook; refused swap falls back | guard `test_module_store_only`; a save whose swap fails is written directly with one History entry |
 | 069 / 094 | Delete Device always keeps a JSON copy; removes recovery and photo safety copies | stage1_modules GL-069/094 tests |
 | 070 / 079 | Damaged file: Import Image and Button Map Save refused before any photo/picture is touched | stage1_modules GL-070/079 tests |
-| 071 | Button Map follows outside changes; in Edit, Save asks "Module File Changed" (Keep mine / Take theirs / Cancel) | stage1_button_map GL-071 tests, smoke parts "outside" |
+| 071 | Button Map follows outside changes; in Edit, Save asks "Module File Changed" (Keep mine / Take theirs / Cancel) | stage1_device_mapping_editor GL-071 tests, smoke parts "outside" |
 | 072 | Pack import onto a damaged input module refused; damaged output skipped with a note | `test_an_import_onto_a_damaged_module_file_is_refused`, `test_a_damaged_output_module_file_is_left_alone`, stage1_history_pack GL-072 |
 | 073 | Pack pictures written whole or not at all | `test_a_pack_picture_is_written_whole_or_not_at_all` |
 | 075 / 076 / 090 | One stale-id filter; twins looked up by id; card key from the store | `test_batch1_module_pages`, `test_twin_devices`; no "looked up without its device id" warning while Home loads |
@@ -117,7 +117,7 @@ Spec text aligned with decisions: 02 S56 (06 Q10), 07 S57 (Q3), S91 (Q19), S95 (
 | B4 profiles, modes, scripts | 027, 028, 039, 074, 119, 129, 130, 149-159, 171 (models) | test_batch2_b4 | auto-load: clicking into Gremlin keeps the Run; Undo Delete Mode; vJoy Behavior switch while running shows the note |
 | B5a action pane & locking | 044, 098, 106, 160, 164, 166, 169, 171, 194 | test_batch2_b5a, test_batch2_b5a_screens | Keyboard page: Add Key then first action + OK; switch keys with changes asks; Run with a pane open shows read-only |
 | B5b action logic & speech | 042, 135, 161-163, 165, 167, 197-199, 310, 312 | test_batch2_B5b, test_stage1_runtime | TTS under Tempo/macro speaks; Options "(default)" voice; HidHide pointer row; TTS on a keyboard key |
-| B6 Button Map | 030, 043, 138, 173-175, 177-184, 188, 196 | test_batch2_B6, test_stage1_button_map, rig golden, j09 | mirrored copy then one Ctrl+Z; Device Pack preview with a large photo; Choose Photo then Undo |
+| B6 Button Map | 030, 043, 138, 173-175, 177-184, 188, 196 | test_batch2_B6, test_stage1_device_mapping_editor, rig golden, j09 | mirrored copy then one Ctrl+Z; Device Pack preview with a large photo; Choose Photo then Undo |
 | B7 History, Device Pack, Auto Mapper | 031, 032, 041, 098 (dialogs), 099, 109, 115, 187, 189-192, 195, 313 | test_batch2_b7, test_stage1_history_pack, test_auto_mapper, test_history_window | large history files: no freeze; tools ask Discard/Cancel with an unsaved pane; import, save Button Map, Undo Import asks; restore log level / UI scale applies at once |
 
 Guard tests: `test_library_only` `_WAITING` is now empty.
@@ -151,7 +151,7 @@ unless the row says so; the existing tests guard them.
 | C3a modules & Home | 203, 245-248, 250, 253, 254 (models), 258, 266, 267, 270/275 support | test_batch3_C3a, test_stage1_modules | Profile Settings with real vJoy; idle vJoy during a long Run stays alive, no keep-alive after Stop; Rename on Keyboard/Logical rows; Home after Delete Device and a re-save |
 | C3b devices & input | 209, 239-241, 243 (question), 244, 265, shown-name follow-up | test_batch3_C3b, test_hidhide_group | Listen and Record of mouse buttons; HidHide window with the real driver; plug a Gremlin Xbox pad; Input Monitor shows the alias |
 | C4 actions | 217, 244 (marking), 255-257, 260 (two plugins), 261 (catalog), 262-264 | test_batch3_c4, test_catalog_*, action_interaction, integration plugins | Configuration page Type box and "No actions"; Merge Axis/Deadzone record, switch, "+", save/reload; relative axis on vJoy and Logical Device |
-| C5 Button Map, History, Pack, Auto Mapper | EVO R names, 213, 221, 224 (checked), 228, 229, 230, 235, 268, 270 (part), 271-273, 275, 276, 277 | test_batch3_C5, test_stage1_button_map, j03 | Clear Photo then Save: no photo after reopening; Import Picture then Cancel: file gone; close Device Pack: %TEMP% folder gone; export a damaged device; Auto Mapper on vJoy with sparse axes |
+| C5 Button Map, History, Pack, Auto Mapper | EVO R names, 213, 221, 224 (checked), 228, 229, 230, 235, 268, 270 (part), 271-273, 275, 276, 277 | test_batch3_C5, test_stage1_device_mapping_editor, j03 | Clear Photo then Save: no photo after reopening; Import Picture then Cancel: file gone; close Device Pack: %TEMP% folder gone; export a damaged device; Auto Mapper on vJoy with sparse axes |
 | L3 / lead | 258 (InputItem field), 272 (legacy qml/maps copy removed), test sweep | test_batch3_L3, test_glossary_words | – |
 
 Carried to the proper process (after the baseline): GL-249 and GL-243 (user questions), GL-254 viewing creates an input, GL-260 Condition data/UI split, GL-261 rest (newActionSequence, keyboard _description_from_item, ActionPriorityListModel), GL-269 and GL-274 (user questions), GL-270 read-on-load (BM41), GL-279 OSC part (parked), action_kinds.js own table.

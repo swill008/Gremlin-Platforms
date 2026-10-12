@@ -53,7 +53,7 @@ def _settings_kept() -> Iterator[None]:
     from gremlin.ui.option import MetaConfigOption
 
     # The Options registry the same way: options are registered when modules
-    # load (the Button Map's library entry...), so a test that makes a fresh
+    # load (the Device Mapping Editor's library entry...), so a test that makes a fresh
     # one must not leave it behind either.
     # The class itself, taken now: a test may monkeypatch the module's name
     # with a fake (test_final_05 S7) and the undo can come after this one.

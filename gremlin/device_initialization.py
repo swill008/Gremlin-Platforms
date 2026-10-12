@@ -36,7 +36,7 @@ SCAN_WAIT_S = 10.0
 
 
 # Two connected devices with the same name (a pair of identical sticks) used
-# to share one module file: claims, card, Button Map and calibration. The
+# to share one module file: claims, card, Device Mapping Editor and calibration. The
 # second one is now "<name> (2)" (a third "(3)"...), so it has its own of
 # each and its own folder (03 S6, S132). The device whose id the <name>
 # folder holds keeps the plain name,

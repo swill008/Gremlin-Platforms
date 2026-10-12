@@ -298,7 +298,7 @@ def test_undo_of_a_copy_onto_a_new_stick_leaves_it_new(
 def test_undo_of_a_copy_puts_the_module_file_back_exactly(
     lib: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Parts the target lacked (Calibration, Button Map nodes...) go again."""
+    """Parts the target lacked (Calibration, device map nodes...) go again."""
     _real_library(lib, monkeypatch)
     before = _own_path(lib["name"]).read_bytes()
     path = _saved_open(lib)

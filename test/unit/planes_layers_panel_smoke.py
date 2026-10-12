@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Starts the program off-screen (stand-in hardware), opens the Button Map
+"""Starts the program off-screen (stand-in hardware), opens the Device Mapping Editor
 for a stick in Edit with the Layers tool open, and checks the Layers panel
 with the background and foreground planes (07 S119, S120, S102, S44;
 D-07-BACKGROUND-PLANES, D-07-PLANES-ANSWERS P2a, P4a). Prints what shows
@@ -147,9 +147,9 @@ def main() -> None:
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
     root = app.engine.rootObjects()[0]
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-    call(root, "openButtonMapForCard", card)
-    assert wait_until(lambda: call(root, "buttonMapWindow") is not None)
-    win = call(root, "buttonMapWindow")
+    call(root, "openDeviceMappingEditorForCard", card)
+    assert wait_until(lambda: call(root, "deviceMappingEditorWindow") is not None)
+    win = call(root, "deviceMappingEditorWindow")
     win.setProperty("width", 1400)
     win.setProperty("height", 900)
     out: dict = {"warnings": []}
@@ -213,8 +213,8 @@ def main() -> None:
                                 " && _layersPanel.ed.editPlane !== undefined")
     out["real-fg-plane"] = js("_layersPanel.ed.editPlane")
     out["real-fg-bgrow"] = bg_row()
-    out["real-fg-bgrow-item"] = js("!!_layersPanel.bgRowPart('bmBgRow')")
-    out["real-fg-parts"] = js("['bmBgRowEye', 'bmBgRowLock', 'bmBgRowOpacity']"
+    out["real-fg-bgrow-item"] = js("!!_layersPanel.bgRowPart('dmeBgRow')")
+    out["real-fg-parts"] = js("['dmeBgRowEye', 'dmeBgRowLock', 'dmeBgRowOpacity']"
                               ".map(function(n) {"
                               " return !!_layersPanel.bgRowPart(n) })")
     out["real-fg-kinds"] = kinds_shown()
@@ -222,18 +222,18 @@ def main() -> None:
                                 " return r.part === 'photo' }).length")
     if out["real-fg-bgrow-item"] is True:
         hidden0 = js("_layersPanel.ed.bgViewHidden")
-        click(rect("_layersPanel.bgRowPart('bmBgRowEye')"))
+        click(rect("_layersPanel.bgRowPart('dmeBgRowEye')"))
         settle()
         out["real-eye"] = [hidden0, js("_layersPanel.ed.bgViewHidden")]
-        click(rect("_layersPanel.bgRowPart('bmBgRowEye')"))
+        click(rect("_layersPanel.bgRowPart('dmeBgRowEye')"))
         settle()
         out["real-eye-back"] = js("_layersPanel.ed.bgViewHidden")
         ev("_layersPanel.ed.bgViewOpacity = 0.4")
         settle()
         out["real-slider-follows"] = js(
-            "_layersPanel.bgRowPart('bmBgRowOpacity').value")
+            "_layersPanel.bgRowPart('dmeBgRowOpacity').value")
         ev("_layersPanel.ed.bgViewOpacity = 1")
-        r = rect("_layersPanel.bgRowPart('bmBgRow')")
+        r = rect("_layersPanel.bgRowPart('dmeBgRow')")
         r["h"] = js("_layersPanel.rowH")
         QtTest.QTest.mouseDClick(win, QtCore.Qt.MouseButton.LeftButton, NO_MOD,
                                  at(r, 0.4))
@@ -292,35 +292,37 @@ def main() -> None:
     settle()
     out["fg-rows"] = js("_layersPanel.describe()")
     out["fg-kinds"] = kinds_shown()
-    out["fg-trash-shown"] = js("(function(){ var r = _layersPanel.bgRowPart('bmBgRow');"
-                               " return r ? r.height : -1 })()")
+    out["fg-trash-shown"] = js(
+        "(function(){ var r = _layersPanel.bgRowPart('dmeBgRow');"
+        " return r ? r.height : -1 })()"
+    )
     out["rowH"] = js("_layersPanel.rowH")
     # Eye: the view setting, no Undo step (no editor call).
-    click(rect("_layersPanel.bgRowPart('bmBgRowEye')"))
+    click(rect("_layersPanel.bgRowPart('dmeBgRowEye')"))
     settle()
     out["eye"] = js("[_layersPanel.ed.bgViewHidden, _layersPanel.ed.calls,"
                     " _layersPanel.describe()[3]]")
-    click(rect("_layersPanel.bgRowPart('bmBgRowEye')"))
+    click(rect("_layersPanel.bgRowPart('dmeBgRowEye')"))
     settle()
     out["eye-back"] = js("_layersPanel.ed.bgViewHidden")
     # Lock: every background layer, through the editor.
-    click(rect("_layersPanel.bgRowPart('bmBgRowLock')"))
+    click(rect("_layersPanel.bgRowPart('dmeBgRowLock')"))
     settle()
-    click(rect("_layersPanel.bgRowPart('bmBgRowLock')"))
+    click(rect("_layersPanel.bgRowPart('dmeBgRowLock')"))
     settle()
     out["lock"] = js("_layersPanel.ed.calls")
-    out["lock-lit"] = js("_layersPanel.bgRowPart('bmBgRowLock').on")
+    out["lock-lit"] = js("_layersPanel.bgRowPart('dmeBgRowLock').on")
     # Slider: a click near its left end sets a low opacity.
     ev("_layersPanel.ed.calls = []")
-    click(rect("_layersPanel.bgRowPart('bmBgRowOpacity')"), 0.2)
+    click(rect("_layersPanel.bgRowPart('dmeBgRowOpacity')"), 0.2)
     settle()
     out["slider-low"] = js("_layersPanel.ed.bgViewOpacity")
     out["slider-calls"] = js("_layersPanel.ed.calls")
     ev("_layersPanel.ed.bgViewOpacity = 0.75")
     settle()
-    out["slider-follows"] = js("_layersPanel.bgRowPart('bmBgRowOpacity').value")
+    out["slider-follows"] = js("_layersPanel.bgRowPart('dmeBgRowOpacity').value")
     # A click on the Background row selects nothing.
-    r = rect("_layersPanel.bgRowPart('bmBgRow')")
+    r = rect("_layersPanel.bgRowPart('dmeBgRow')")
     r["h"] = js("_layersPanel.rowH")
     click(r, 0.4)
     settle()
@@ -330,7 +332,7 @@ def main() -> None:
     click(rect("_layersPanel.kindButton('chip')"))
     settle()
     out["fg-chip-rows"] = js("_layersPanel.describe()")
-    r = rect("_layersPanel.bgRowPart('bmBgRow')")
+    r = rect("_layersPanel.bgRowPart('dmeBgRow')")
     r["h"] = js("_layersPanel.rowH")
     QtTest.QTest.mouseDClick(win, QtCore.Qt.MouseButton.LeftButton, NO_MOD, at(r, 0.4))
     settle()
@@ -339,7 +341,7 @@ def main() -> None:
     out["bg-kinds"] = kinds_shown()
     out["bg-lit"] = js("_layersPanel.litKinds()")
     out["bg-state"] = js("_layersPanel.ed.lastState")
-    out["bg-no-bgrow"] = js("_layersPanel.bgRowPart('bmBgRow') === null")
+    out["bg-no-bgrow"] = js("_layersPanel.bgRowPart('dmeBgRow') === null")
     click(rect("_layersPanel.kindButton('picture')"))
     settle()
     out["bg-pic-rows"] = js("_layersPanel.describe()")

@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware, a stick with a map) and
-drives the Button Map's side panels, Chips on the left and Layers on the
+drives the Device Mapping Editor's side panels, Chips on the left and Layers on the
 right (07 S99, S128-S131, D-07-SIDE-PANELS), with mouse clicks on the real
 window: hidden outside Edit, the map narrowed by a pinned panel and not by
 an unpinned one, a map click and the other strip's click folding an unpinned
 panel, Background mode folding Chips and bringing it back, a narrow window
 folding Chips then Layers and bringing them back, a user's own fold kept,
 Properties under Layers with its divider (View > Properties, F4), and the
-state kept in the Button Map settings (ButtonMapOptions) for the next
+state kept in the Device Mapping Editor settings (DeviceMapOptions) for the next
 window, View > Reset Panels putting it back. Prints what it saw as JSON.
 test_side_panels_window.py runs it in its own process and user folder.
 
@@ -141,8 +141,8 @@ STATE = ("JSON.stringify({"
          " rightSlot: Math.round(_rightSlot.width),"
          " saved: { chips: _opts.sidePanelState('chips'),"
          "  layers: _opts.sidePanelState('layers') },"
-         " props: { on: _buttonMap.propsOn, shown: _buttonMap.propsShown,"
-         "  split: _buttonMap.propsSplit, panel: _propsPanel.visible,"
+         " props: { on: _editorWin.propsOn, shown: _editorWin.propsShown,"
+         "  split: _editorWin.propsSplit, panel: _propsPanel.visible,"
          "  divider: _propsDivider.visible,"
          "  layersH: Math.round(_layersPanel.height),"
          "  bodyH: Math.round(_rightBody.height),"
@@ -161,8 +161,8 @@ def main() -> None:
 
     def open_map() -> QtGui.QWindow:
         card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-        call(root, "openButtonMapForCard", card)
-        win = wait_for(lambda: call(root, "buttonMapWindow"))
+        call(root, "openDeviceMappingEditorForCard", card)
+        win = wait_for(lambda: call(root, "deviceMappingEditorWindow"))
         assert isinstance(win, QtGui.QWindow)
         wait_for(lambda: ev(win, "mapShown && targetName === 'pJoy Pro'"))
         win.resize(1600, 900)
@@ -177,7 +177,7 @@ def main() -> None:
 
     win = open_map()
     out["not-editing"] = state(win)
-    rows = ", ".join(f"_f(_buttonMap.contentItem, 'toolRow{side}')"
+    rows = ", ".join(f"_f(_editorWin.contentItem, 'toolRow{side}')"
                      for side in ("Left", "Right", "Top", "Bottom"))
     out["tool-rows"] = ev(win, "(function() { " + FIND + " return [" + rows + "]"
                           ".map(function(r) { return !!r }) })()")
@@ -187,7 +187,7 @@ def main() -> None:
     out["layers-edge"] = ev(win, "(function() { " + FIND + " var b ="
                             " _f(_layersSide, 'sidePanelBody');"
                             " var p = b.mapToItem(null, 0, 0);"
-                            " return [Math.round(_buttonMap.width - p.x),"
+                            " return [Math.round(_editorWin.width - p.x),"
                             " Math.round(Style.dp(7))] })()")
     # The status line: one slim row of small text.
     out["status-height"] = ev(win, "_statusLine.height")
@@ -266,8 +266,8 @@ def main() -> None:
     # Properties under Layers (Layers is out, pinned): shown while something
     # is selected, with the divider between them (07 S135).
     out["props-none"] = state(win)
-    ev(win, "_buttonMap.selectAllNow()")
-    wait_for(lambda: ev(win, "_buttonMap.propsShown"))
+    ev(win, "_editorWin.selectAllNow()")
+    wait_for(lambda: ev(win, "_editorWin.propsShown"))
     out["props-selected"] = state(win)
     # The divider dragged down by a tenth of the room: kept when let go.
     start = centre(win, "_layersSide", "propsDivider")
@@ -283,7 +283,7 @@ def main() -> None:
     out["props-dragged"] = state(win)
     # View > Properties (F4) hides it; kept for the next window.
     QtTest.QTest.keyClick(win, QtCore.Qt.Key.Key_F4)
-    wait_for(lambda: not ev(win, "_buttonMap.propsOn"))
+    wait_for(lambda: not ev(win, "_editorWin.propsOn"))
     out["props-f4"] = state(win)
 
     # A width kept from the inner edge (as a drag ends), then leaving Edit.
@@ -294,14 +294,14 @@ def main() -> None:
 
     # The next window has them as they were left.
     old = win
-    ev(win, "_buttonMap.close()")
-    wait_for(lambda: not same(call(root, "buttonMapWindow"), old))
+    ev(win, "_editorWin.close()")
+    wait_for(lambda: not same(call(root, "deviceMappingEditorWindow"), old))
     win = open_map()
     edit(win)
     out["reopened"] = state(win)
 
     # View > Reset Panels, the menu item itself: back to the first look.
-    items = [o for o in win.findChildren(QtCore.QObject, "bmResetPanels")
+    items = [o for o in win.findChildren(QtCore.QObject, "dmeResetPanels")
              if o.metaObject().indexOfSignal("triggered()") >= 0]
     out["reset-items"] = [o.property("text") for o in items]
     if items:

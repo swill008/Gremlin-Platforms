@@ -1,7 +1,7 @@
 // -*- coding: utf-8; -*-
 // SPDX-License-Identifier: GPL-3.0-only
 
-// Pure shape maths for the Button Map editor: block arrows, line ends,
+// Pure shape maths for the Device Mapping Editor: block arrows, line ends,
 // arrowheads, dash patterns, distance to a line and angle snapping. No editor
 // state; test/unit/test_rig_shapes.py runs these directly.
 .pragma library

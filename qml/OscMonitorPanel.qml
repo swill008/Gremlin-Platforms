@@ -104,7 +104,7 @@ Rectangle {
         }
     }
 
-    // Columns (D-09-OSC-LOOK, the Button Map's table look): Time and In / Out
+    // Columns (D-09-OSC-LOOK, the Device Mapping Editor's table look): Time and In / Out
     // fit their widest text, Address takes the spare room, the rest are
     // fixed; the last column always keeps room for Add as Input… so rows
     // line up with the heads. Every cell elides; the row's hover shows it all.
@@ -430,7 +430,7 @@ Rectangle {
                                 Layout.preferredWidth: _root._addWidth
                                 Layout.fillHeight: true
 
-                                // Small outline button (the Button Map's panel buttons).
+                                // Small outline button (the Device Mapping Editor's panel buttons).
                                 Rectangle {
                                     objectName: "oscMonitorAddRow" + _row.index
                                     anchors.right: parent.right

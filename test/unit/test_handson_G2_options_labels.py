@@ -2,14 +2,14 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Hands-on fix G2: Button Map Options labels are not cut short.
+"""Hands-on fix G2: Device Map Options labels are not cut short.
 
-In an 800 px wide Button Map window the Options pane's "Seconds between
+In an 800 px wide Device Mapping Editor window the Options pane's "Seconds between
 recovery copies" read "Seconds betw…" (hands-on 07, "Other things seen",
 q16_options_after_down.png). The pane's setting rows
 (qml/RigOptionsPanel.qml) now let a label go onto a second line instead.
 
-The real Button Map off-screen in its own process
+The real Device Mapping Editor off-screen in its own process
 (handson_G2_options_labels_smoke.py), 800 px wide, at 100 and 175 %.
 """
 

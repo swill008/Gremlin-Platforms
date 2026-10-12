@@ -216,7 +216,7 @@ def test_every_picture_is_named_and_old_style_ones_are_found(store: Path) -> Non
     assert pictures["old_stick/gone.png"] == ""
     kept = history.kept_file(pictures["qml/maps/old_stick/photo.png"])
     assert kept is not None and kept.read_bytes() == b"old photo"
-    # Restore puts the photo back where the Button Map finds it and names
+    # Restore puts the photo back where the Device Mapping Editor finds it and names
     # the one no copy was kept of.
     photo.unlink()
     result = history_model.restore(entry["id"], "before")

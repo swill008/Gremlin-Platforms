@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Button Map's view-only banner (D-FIXLIST-B1 item 1), in the running
+"""The Device Mapping Editor's view-only banner (D-FIXLIST-B1 item 1), in the running
 window off-screen in its own process and user folder (b1_banner_smoke.py):
 
 - one slim line just below the menu bar while the map is live (not

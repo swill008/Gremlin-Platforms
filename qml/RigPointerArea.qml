@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// All mouse, wheel and key input of the Button Map editor: picking, dragging,
+// All mouse, wheel and key input of the Device Mapping Editor: picking, dragging,
 // drawing, resizing, band selection and the right-click menus.
 MouseArea {
     property var ed: null

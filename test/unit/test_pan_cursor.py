@@ -5,7 +5,7 @@
 """The pan cursor (07 S14; D-07-PAN-CURSOR): while a pan drag is under way
 the pointer is a closed hand; with Space held before the drag, an open hand.
 
-Runs the real Button Map window off-screen (pan_cursor_smoke.py) in its own
+Runs the real Device Mapping Editor window off-screen (pan_cursor_smoke.py) in its own
 process.
 """
 

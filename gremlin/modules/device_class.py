@@ -233,7 +233,7 @@ CAN: dict[str, frozenset] = {
     "always_present": frozenset({_IN, _OUT}),
     # Inputs that run without an input-module claim.
     "no_claim_needed": frozenset({"osc", "logical_device"}),
-    "button_map": frozenset({_EXT, _IN, _OUT}),
+    "device_map": frozenset({_EXT, _IN, _OUT}),
 }
 
 

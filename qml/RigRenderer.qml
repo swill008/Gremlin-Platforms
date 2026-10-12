@@ -5,7 +5,7 @@ import QtQuick
 import QtQuick.Window
 import Gremlin.Style
 
-// Every print and export of the Button Map, and Print & Export's preview,
+// Every print and export of the device map, and Print & Export's preview,
 // is drawn by this hidden copy of the map, never by the map on screen. The
 // copy is made only while a picture is taken, outside the window, at the
 // picture's own size: lines and text are drawn at that size, not enlarged,

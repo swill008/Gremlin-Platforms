@@ -2,15 +2,15 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Catch-up batch 3, Button Map, History, Device Pack, Auto Mapping Tool (C5):
-each fix driven through its real function or slot.
+"""Catch-up batch 3, Device Mapping Editor, History, Device Pack, Auto Mapping
+Tool (C5): each fix driven through its real function or slot.
 
-Spec: claude/program-map/07-button-map.md (S11, S20, S68, Q4, Q10, Q11,
+Spec: claude/program-map/07-device-mapping-editor.md (S11, S20, S68, Q4, Q10, Q11,
 Q12, Q14, RB10), 08-history-pack-automap.md (Q3, Q8, Q17, Q19, S45, S51,
 section 10 gap 29), 03-modules.md (Q14). Decision D-07-RB10-NOEVOR.
 GL-213, GL-221, GL-228, GL-229, GL-230, GL-268, GL-270, GL-271, GL-272,
 GL-273, GL-276, GL-277. (GL-221's window part is in
-test_stage1_button_map.py, GL-230's warning in test_j03_device_pack_undo.)
+test_stage1_device_mapping_editor.py, GL-230's warning in test_j03_device_pack_undo.)
 """
 
 from __future__ import annotations
@@ -209,7 +209,9 @@ def test_save_stamps_the_one_page_size(maps: pathlib.Path) -> None:
     doc = _read(module_path(maps, "Test Stick"))
     for key, value in hardware_profile.PAGE_SIZE.items():
         assert doc[key] == value
-    window = (_ROOT / "qml" / "DialogJoystickButtonMap.qml").read_text(encoding="utf-8")
+    window = (_ROOT / "qml" / "DialogDeviceMappingEditor.qml").read_text(
+        encoding="utf-8"
+    )
     assert "32000" not in window and "18000" not in window
 
 
@@ -241,7 +243,9 @@ def test_unused_pictures_go_when_an_edit_ends(maps: pathlib.Path) -> None:
 
 
 def test_the_window_drops_unused_pictures_when_an_edit_ends() -> None:
-    window = (_ROOT / "qml" / "DialogJoystickButtonMap.qml").read_text(encoding="utf-8")
+    window = (_ROOT / "qml" / "DialogDeviceMappingEditor.qml").read_text(
+        encoding="utf-8"
+    )
     start = window.index("function discardEdit()")
     body = window[start:window.index("function takeTheirs", start)]
     # Cancel ends the edit through the shared way out (07 S32, S34).

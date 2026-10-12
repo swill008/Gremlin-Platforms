@@ -2,8 +2,8 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Starts the program off-screen (stand-in hardware), opens the Button Map,
-Button Map Options and Keyboard Shortcuts, and prints as JSON what the
+"""Starts the program off-screen (stand-in hardware), opens the Device Mapping Editor,
+Device Map Options and Keyboard Shortcuts, and prints as JSON what the
 fix-list item 4 (D-FIXLIST-B1) needs: the windows' flags (the ×), the
 Options pin, closing on a click elsewhere, and the group list's width and
 divider. test_b1_optwin.py runs it in its own process and user folder.
@@ -40,7 +40,7 @@ from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
 from gremlin.config import Configuration  # noqa: E402
-from gremlin.ui import button_map_options, ui_scale_option  # noqa: E402
+from gremlin.ui import device_map_options, ui_scale_option  # noqa: E402
 
 GUID = str(dill.GUID(fake.devices[0].device_guid).uuid)
 
@@ -83,9 +83,9 @@ def main() -> None:
     QtTest.QTest.qWait(800)
     root = app.engine.rootObjects()[0]
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-    call(root, "openButtonMapForCard", card)
+    call(root, "openDeviceMappingEditorForCard", card)
     QtTest.QTest.qWait(1000)
-    win = call(root, "buttonMapWindow")
+    win = call(root, "deviceMappingEditorWindow")
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(300)
@@ -113,14 +113,14 @@ def main() -> None:
             "WindowCloseButtonHint": bool(f & wt.WindowCloseButtonHint),
         }
 
-    ev("_buttonMap.openOptions()")
+    ev("_editorWin.openOptions()")
     opts_win = wait_for(
         lambda: (lambda w: w if w is not None and w.isVisible() else None)(
             ev("_optionsWin")
         )
     )
     assert isinstance(opts_win, QtGui.QWindow), opts_win
-    ev("_buttonMap.openShortcuts()")
+    ev("_editorWin.openShortcuts()")
     sc_win = ev("_shortcutsWin")
     wait_for(lambda: sc_win.isVisible())
     out["flags"] = {"options": flags(opts_win), "shortcuts": flags(sc_win)}
@@ -129,7 +129,7 @@ def main() -> None:
     # Keyboard Shortcuts took the focus: the unpinned Options closed.
     out["closed-by-shortcuts"] = bool(wait_for(lambda: not opts_win.isVisible()))
     QtTest.QTest.qWait(200)
-    ev("_optionsWin.openFor(_buttonMap)")
+    ev("_optionsWin.openFor(_editorWin)")
     wait_for(lambda: opts_win.isVisible())
     activate(opts_win)
     QtTest.QTest.qWait(200)
@@ -153,23 +153,23 @@ def main() -> None:
         )
         QtTest.QTest.qWait(150)
     out["pin-clicked"] = ev("_optionsWin.pinned")
-    out["pin-kept"] = button_map_options.side_panel_state("options").get("pinned")
-    # Pinned: going back to the Button Map leaves it open.
+    out["pin-kept"] = device_map_options.side_panel_state("options").get("pinned")
+    # Pinned: going back to the Device Mapping Editor leaves it open.
     activate(opts_win)
     out["activated-map"] = activate(win)
     QtTest.QTest.qWait(300)
     out["pinned-stays"] = opts_win.isVisible()
     # Reset Panels keeps the pin.
-    ev("_buttonMap.resetPanels()")
+    ev("_editorWin.resetPanels()")
     QtTest.QTest.qWait(100)
     out["reset-keeps-pin"] = [
         ev("_optionsWin.pinned"),
-        button_map_options.side_panel_state("options").get("pinned"),
+        device_map_options.side_panel_state("options").get("pinned"),
     ]
-    # Unpinned: going back to the Button Map closes it.
+    # Unpinned: going back to the Device Mapping Editor closes it.
     ev("_optionsWin.pinned = false")
-    out["unpin-kept"] = button_map_options.side_panel_state("options").get("pinned")
-    ev("_optionsWin.openFor(_buttonMap)")
+    out["unpin-kept"] = device_map_options.side_panel_state("options").get("pinned")
+    ev("_optionsWin.openFor(_editorWin)")
     wait_for(lambda: opts_win.isVisible())
     activate(opts_win)
     QtTest.QTest.qWait(100)
@@ -187,7 +187,7 @@ def main() -> None:
 
     # --- the group list ----------------------------------------------------
     ev("_optionsWin.pinned = true")
-    ev("_optionsWin.openFor(_buttonMap)")
+    ev("_optionsWin.openFor(_editorWin)")
     wait_for(lambda: opts_win.isVisible())
     opts_win.resize(1000, 600)
     QtTest.QTest.qWait(300)
@@ -213,7 +213,7 @@ def main() -> None:
         )
     out["names-fit"] = fits
     groups = child("optionsGroups")
-    panel = child("buttonMapOptionsPanel")
+    panel = child("deviceMapOptionsPanel")
     out["start-width"] = groups.width() if groups is not None else None
     divider = child("optionsDivider")
     out["divider"] = divider is not None
@@ -257,7 +257,7 @@ def main() -> None:
         wider = drag(60)
         out["drag-wider"] = [start, wider]
         out["kept-width"] = [
-            button_map_options.options_groups_width(),
+            device_map_options.options_groups_width(),
             round(wider / (out["scale"] / 100)),
         ]
         out["drag-max"] = [drag(2000), panel.width() / 2]

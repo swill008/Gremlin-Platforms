@@ -40,8 +40,12 @@ def claims_none() -> Iterator[AutoMappingTool]:
     )
     limits = {"axes": set(), "buttons": set(range(1, 9)), "hats": set()}
     with (
-        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT]),
-        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "output_modules", return_value=[dest]),
+        mock.patch.object(
+            auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT]
+        ),
+        mock.patch.object(
+            auto_mapping_tool.auto_mapping_tool, "output_modules", return_value=[dest]
+        ),
         mock.patch.object(AutoMappingTool, "_vjoy_limits", return_value=limits),
         mock.patch.object(AutoMappingTool, "_get_used_vjoy_inputs", return_value=[]),
         mock.patch.object(AutoMappingTool, "_source_uuid", return_value=uuid.uuid4()),
@@ -76,8 +80,12 @@ def test_used_by_another_input_is_a_skip_not_kept() -> None:
     used = [types.VjoyInput(3, types.InputType.JoystickButton, n) for n in (1, 2, 3)]
     limits = {"axes": set(), "buttons": set(range(1, 9)), "hats": set()}
     with (
-        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT]),
-        mock.patch.object(auto_mapping_tool.auto_mapping_tool, "output_modules", return_value=[dest]),
+        mock.patch.object(
+            auto_mapping_tool.auto_mapping_tool, "input_modules", return_value=[_NXT]
+        ),
+        mock.patch.object(
+            auto_mapping_tool.auto_mapping_tool, "output_modules", return_value=[dest]
+        ),
         mock.patch.object(AutoMappingTool, "_vjoy_limits", return_value=limits),
         mock.patch.object(AutoMappingTool, "_get_used_vjoy_inputs", return_value=used),
         mock.patch.object(AutoMappingTool, "_source_uuid", return_value=uuid.uuid4()),

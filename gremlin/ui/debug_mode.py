@@ -8,7 +8,7 @@ every window shows a subtle red frame with a DEBUG badge (DebugFrame.qml).
 
 The frame is added to each program window by install(): new windows are
 picked up when they get focus and by a slow check. It sits at the window
-root, so Button Map exports and prints (which grab the page, not the
+root, so Device Map exports and prints (which grab the page, not the
 window) never include it; the eyedropper hides it while it samples
 (hidden_frames)."""
 

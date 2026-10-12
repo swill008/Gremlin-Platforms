@@ -249,7 +249,7 @@ def test_settings_registered_later_are_registered_before_the_purge(
     import joystick_gremlin
     from gremlin.modules import folders_move
     from gremlin.ui import (
-        button_map_options,
+        device_map_options,
         device_names,
         hidhide,
         highlight_option,
@@ -274,7 +274,7 @@ def test_settings_registered_later_are_registered_before_the_purge(
     window_placement._ensure()
     hidhide._ensure_options()
     vjoy_status.register_options()
-    button_map_options.register()
+    device_map_options.register()
     module_model._ensure_display_options()
     assert set(cfg._keys()) - before == set()
 

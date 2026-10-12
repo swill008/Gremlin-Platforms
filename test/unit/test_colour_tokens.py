@@ -20,7 +20,7 @@ _REMAINING = {
     "qml/ListAppearancePanel.qml": 12,
     "qml/OutputModuleView.qml": 12,
     # Overlays on the device photo and the colour picker's fixed palette.
-    "qml/DialogJoystickButtonMap.qml": 37,
+    "qml/DialogDeviceMappingEditor.qml": 37,
     # Counted since .js files are scanned too; older than the scan.
     "qml/helpers.js": 4,
     # Drawn on the device photo, which looks the same in both modes. The
@@ -46,7 +46,7 @@ _REMAINING = {
 def _counts() -> dict[str, int]:
     found = {}
     for folder in ("qml", "theme", "action_plugins"):
-        # .js too: QML code-behind files (the Button Map editor's rig_*.js).
+        # .js too: QML code-behind files (the Device Mapping Editor's rig_*.js).
         paths = [*(_ROOT / folder).rglob("*.qml"), *(_ROOT / folder).rglob("*.js")]
         for path in paths:
             name = path.relative_to(_ROOT).as_posix()

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Starts the program off-screen (stand-in hardware), opens the Button Map
+"""Starts the program off-screen (stand-in hardware), opens the Device Mapping Editor
 for a stick and uses its side panels (Chips on the left, Layers on the
 right, 07 S128-S131) with real clicks and drags; prints what shows after
 each step as JSON. test_side_panels_e2e.py runs it in its own process with
@@ -110,8 +110,8 @@ def main() -> None:
     out: dict = {}
 
     def open_window() -> QtGui.QWindow:
-        call(root, "openButtonMapForCard", card)
-        win = wait_until(lambda: call(root, "buttonMapWindow"))
+        call(root, "openDeviceMappingEditorForCard", card)
+        win = wait_until(lambda: call(root, "deviceMappingEditorWindow"))
         assert isinstance(win, QtGui.QWindow)
         wait_until(lambda: ev(win, "mapShown") is True)
         win.setProperty("width", 1400)
@@ -225,19 +225,19 @@ def main() -> None:
     a = QtCore.QPointF(grip["x"] + grip["w"] / 2, grip["y"] + grip["h"] / 2)
     drag(win, a, a + QtCore.QPointF(2000, 0))
     out["at-max"] = [chips.property("panelWidth"), chips.property("maxWidth")]
-    from gremlin.ui import button_map_options
+    from gremlin.ui import device_map_options
 
     def saved() -> dict:
-        return {p: button_map_options.side_panel_state(p) for p in ("chips", "layers")}
+        return {p: device_map_options.side_panel_state(p) for p in ("chips", "layers")}
 
     out["saved-sides"] = saved()
 
     # --- Background mode folds Chips and brings it back (S130) -------------
-    ev(win, "_buttonMap.setEditPlane('background')")
+    ev(win, "_editorWin.setEditPlane('background')")
     QtTest.QTest.qWait(300)
     out["bg"] = [ev(win, "bgMode"), state(chips)]
     out["bg-saved"] = saved()
-    ev(win, "_buttonMap.setEditPlane('foreground')")
+    ev(win, "_editorWin.setEditPlane('foreground')")
     QtTest.QTest.qWait(300)
     out["fg"] = [ev(win, "bgMode"), state(chips)]
 
@@ -272,7 +272,7 @@ def main() -> None:
     out["kept-width"] = chips.property("panelWidth")
 
     # --- leave Edit: the strips go ------------------------------------------
-    ev(win, "_buttonMap.discardEdit()")
+    ev(win, "_editorWin.discardEdit()")
     QtTest.QTest.qWait(300)
     out["after-edit"] = [state(chips), state(layers)]
 

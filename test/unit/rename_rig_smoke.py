@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""01 S135 (D-01-ONE-RENAME) in the Button Map editor: the Layers panel's
+"""01 S135 (D-01-ONE-RENAME) in the Device Mapping Editor: the Layers panel's
 inline rename and a chip's rename on the map, driven by real key and mouse
 events off-screen with the program-wide leave-text filter installed.
 Prints RESULT lines as JSON; test_rename_rig.py runs it in its own process.

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Golden tests for the Button Map editor.
+"""Golden tests for the Device Mapping Editor.
 
 rig_editor_harness.py drives the editor through fixed sessions in its own
 process. Every step's editor state, and a few screenshots, must match the

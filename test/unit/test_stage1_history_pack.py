@@ -327,8 +327,8 @@ def entries(folder: Path, tmp_path: Path) -> dict[str, str]:
             None,
         ),
         "map": history.record(
-            "button-map",
-            "Saved pJoy Pro: Button Map",
+            "device-mapping-editor",
+            "Saved pJoy Pro: Device Map",
             _subject(
                 device="pJoy Pro", deviceId=stick, folder="pJoy Pro",
                 fileName="pJoy Pro/module.json",
@@ -338,15 +338,15 @@ def entries(folder: Path, tmp_path: Path) -> dict[str, str]:
         ),
         # An entry from before device folders: no id, the old file name.
         "old map": history.record(
-            "button-map",
-            "Saved pJoy Pro: Button Map",
+            "device-mapping-editor",
+            "Saved pJoy Pro: Device Map",
             _subject(device="pJoy Pro", fileName="pjoy_pro.json"),
             None,
             None,
         ),
         "twin": history.record(
-            "button-map",
-            "Saved pJoy Pro (2): Button Map",
+            "device-mapping-editor",
+            "Saved pJoy Pro (2): Device Map",
             _subject(
                 device="pJoy Pro (2)", deviceId=twin, folder="pJoy Pro (2)",
                 fileName="pJoy Pro (2)/module.json",
@@ -380,7 +380,7 @@ def test_show_and_search(entries: dict[str, str]) -> None:
     model.reload()
     assert _shown(model, entries) == set(entries.values())
     # S29: Show narrows by area.
-    model.setFilter(json.dumps({"area": "button-map"}))
+    model.setFilter(json.dumps({"area": "device-mapping-editor"}))
     assert _shown(model, entries) == {"map", "old map", "twin"}
     model.setFilter(json.dumps({"area": "settings"}))  # Options' History
     assert _shown(model, entries) == {"settings"}
@@ -442,9 +442,9 @@ def _qml_history_filter(file_name: str) -> str:
 
 @pytest.fixture(scope="module")
 def opened_history(tmp_path_factory: pytest.TempPathFactory) -> dict:
-    """The filters History opens with from the Button Map's File menu and a
+    """The filters History opens with from the Device Mapping Editor's File menu and a
     Device Bindings row, in the running program off-screen (its own process)."""
-    from test.unit.test_stage1_button_map import (  # pyright: ignore[reportMissingImports]
+    from test.unit.test_stage1_device_mapping_editor import (  # pyright: ignore[reportMissingImports]
         _run,
     )
 
@@ -459,13 +459,13 @@ def test_tools_history_opens_on_every_change() -> None:
     assert "deviceId" in _qml_history_filter("DialogCalibration.qml")
 
 
-def test_button_map_history_is_by_its_own_file_in_every_area(
+def test_device_mapping_editor_history_is_by_its_own_file_in_every_area(
     opened_history: dict,
 ) -> None:
     # Q15: by the device's id (its folder, 08 S43), all areas.
     from gremlin.modules.ids import stored_guid_key
 
-    found = opened_history["button-map-filter"]
+    found = opened_history["device-mapping-editor-filter"]
     assert stored_guid_key(found.get("deviceId")) == stored_guid_key(
         opened_history["map-guid"]
     )

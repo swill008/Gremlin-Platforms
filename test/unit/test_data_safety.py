@@ -5,7 +5,7 @@
 """Nothing the user made is lost without being asked: saving names the
 unfinished actions it would leave out, deleting a module file keeps an
 autosave in the Device Library,
-and cancelling a Button Map edit leaves the photo as it was."""
+and cancelling a Device Mapping Editor edit leaves the photo as it was."""
 
 from __future__ import annotations
 

@@ -101,7 +101,7 @@ def test_a_saved_setup_is_a_gmap_of_the_folder(lib: dict) -> None:
     assert "gmap.json" in names and "module.json" in names
     assert "pictures/photo.png" in names
     assert "device.json" not in names
-    assert {"setup", "button_map"} <= set(setup["holds"])
+    assert {"setup", "device_map"} <= set(setup["holds"])
     shown = library.photo(setup["key"])
     assert shown and Path(shown).read_bytes() == PHOTO_A
 
@@ -169,7 +169,7 @@ def test_copy_puts_the_pictures_in_the_receiving_folder(lib: dict) -> None:
     saved = library.save_setup(NAME, GUID, [])
     assert saved["ok"], saved
     out = library_copy.copy(
-        saved["setup"]["key"], target, target_guid, ["setup", "button_map"], [], []
+        saved["setup"]["key"], target, target_guid, ["setup", "device_map"], [], []
     )
     assert out["ok"], out
     there = store.device_dir(target, target_guid)
@@ -239,7 +239,7 @@ def test_swap_keeps_each_sticks_pictures_in_its_own_folder(lib: dict) -> None:
     shared = {"button": {1, 2}, "axis": set(), "hat": set()}
     before: list = []
     failed = library_swap._write_module_parts(
-        (NAME, GUID), (NAME_B, GUID_B), ["button_map"], shared, before
+        (NAME, GUID), (NAME_B, GUID_B), ["device_map"], shared, before
     )
     assert failed == ""
     for where, photo in ((dir_a, PHOTO_B), (dir_b, PHOTO_A)):

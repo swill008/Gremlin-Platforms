@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Right-click additions in the Button Map editor (07 S136, S137), off-screen.
+"""Right-click additions in the Device Mapping Editor (07 S136, S137), off-screen.
 
 Run in its own process (Qt teardown inside the test session can hang):
 

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The pan cursor in the Button Map window, off-screen (07 S14;
+"""The pan cursor in the Device Mapping Editor window, off-screen (07 S14;
 D-07-PAN-CURSOR).
 
 Loads the real window (stand-ins from planes_window_smoke.py), drags with the
@@ -57,7 +57,7 @@ def main() -> None:
         "Style",
     )
     import gremlin.ui.backend  # noqa: F401
-    import gremlin.ui.button_map_options  # noqa: F401
+    import gremlin.ui.device_map_options  # noqa: F401
     import gremlin.ui.device_names  # noqa: F401
     import joystick_gremlin
 
@@ -73,7 +73,7 @@ def main() -> None:
     warnings: list[str] = []
     engine.warnings.connect(lambda ws: warnings.extend(w.toString() for w in ws))
     engine.load(
-        QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogJoystickButtonMap.qml"))
+        QtCore.QUrl.fromLocalFile(str(ROOT / "qml" / "DialogDeviceMappingEditor.qml"))
     )
     roots = engine.rootObjects()
     if not roots:
@@ -136,7 +136,7 @@ def main() -> None:
         after = shape()
         return f"{before} {during} {after} {before_pan != js(pan)}"
 
-    js(f"_buttonMap.openForDevice('{pws.DEVICE}', '{pws.GUID}'); 1")
+    js(f"_editorWin.openForDevice('{pws.DEVICE}', '{pws.GUID}'); 1")
     wait(800)
     quick.requestActivate()
     wait()
@@ -146,7 +146,7 @@ def main() -> None:
     result("middle-view", drag(Btn.MiddleButton))
 
     # In Edit: a middle-drag pans with a closed hand, over the editor.
-    js("_buttonMap.enterEdit(); 1")
+    js("_editorWin.enterEdit(); 1")
     wait(800)
     result("middle-edit", drag(Btn.MiddleButton))
 
@@ -163,7 +163,7 @@ def main() -> None:
     QtTest.QTest.mouseMove(quick, QtCore.QPoint(x + 2, y + 2))
     wait(60)
     result("space-released", shape())
-    js("_buttonMap.discardEdit(); 1")
+    js("_editorWin.discardEdit(); 1")
     wait(300)
 
     for warning in warnings:

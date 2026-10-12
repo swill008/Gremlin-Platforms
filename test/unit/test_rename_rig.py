@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""01 S135 (D-01-ONE-RENAME) in the Button Map editor, real key and mouse
+"""01 S135 (D-01-ONE-RENAME) in the Device Mapping Editor, real key and mouse
 events off-screen: the Layers panel's rename (the shared RenameField) opens
 focused with the whole name selected; Enter or a click away saves once, one
 undo step; Esc cancels; an empty name keeps the old one. A chip's rename on

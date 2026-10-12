@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """OSC inputs are shown by their address (D-09-OSC-ADDRESSES, plan H): the
-Button Map's chips and pool, and the Home OSC card's last-pressed line, say
+Device Mapping Editor's chips and pool, and the Home OSC card's last-pressed line, say
 "/fire" instead of "Button 1"; a name the user gave still wins."""
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def osc_rows() -> Iterator[object]:
     rows.reset()
 
 
-# --- Button Map: the pool rows carry the address ---------------------------
+# --- Device Mapping Editor: the pool rows carry the address ---------------------------
 
 
 def test_osc_pool_rows_carry_the_address(
@@ -63,7 +63,7 @@ def test_other_devices_have_no_address(monkeypatch: pytest.MonkeyPatch) -> None:
     assert rows and "hwName" not in rows[0]
 
 
-# --- Button Map: chip names in the real rig_chips.js ------------------------
+# --- Device Mapping Editor: chip names in the real rig_chips.js -----------------------
 
 
 _APPS: list[QtCore.QCoreApplication] = []

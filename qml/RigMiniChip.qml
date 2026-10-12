@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// One member chip inside a group in the Button Map editor.
+// One member chip inside a group in the Device Mapping Editor.
 Rectangle {
     id: _miniRoot
     property var ed: null

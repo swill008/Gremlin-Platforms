@@ -11,7 +11,7 @@ Map's Autosave does. Save, Discard and a clean close remove the copies this
 session wrote; a copy put off with Not now stays until it is restored or
 discarded (or this session's own edits to that profile replace it).
 
-The copy is written on the main thread, as the Button Map's is: the text is
+The copy is written on the main thread, as the Device Mapping Editor's is: the text is
 the one the unsaved check already builds, and the file is small.
 """
 

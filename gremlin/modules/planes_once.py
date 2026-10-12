@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""ONE-TIME (tracker OT-2): a Button Map saved before the background and
+"""ONE-TIME (tracker OT-2): a device map saved before the background and
 foreground planes kept the device's photo outside its layers, as a
 top-level "image" with a "photo" pose and look. When such a map is opened,
 the photo becomes the bottom background picture, in memory only; opening

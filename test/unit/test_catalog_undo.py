@@ -110,9 +110,9 @@ def test_undo_waits_while_the_pane_is_open() -> None:
     # open in the pane (the model's canUndo is the step list itself).
     from pathlib import Path
 
-    qml = (Path(__file__).resolve().parents[2] / "qml/DeviceBindingsPage.qml").read_text(
-        encoding="utf-8"
-    )
+    qml = (
+        Path(__file__).resolve().parents[2] / "qml/DeviceBindingsPage.qml"
+    ).read_text(encoding="utf-8")
     assert "_undoKeys: visible && !editorLocked && !actionOpen" in qml
     assert "enabled: _root._undoKeys && _layout.canUndo" in qml
     assert "enabled: _root._undoKeys && _layout.canRedo" in qml

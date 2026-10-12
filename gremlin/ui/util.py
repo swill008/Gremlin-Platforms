@@ -637,7 +637,7 @@ def updated_recent_profiles(recent: list[str], path: Path, limit: int) -> list[s
     return [str(new_path), *remaining][:limit]
 
 
-# The papers the Button Map prints and exports on (Print & Export), and
+# The papers the Device Mapping Editor prints and exports on (Print & Export), and
 # their margins in inches. "fit": the page is the print area's own shape.
 PAPERS = {
     "letter": QtGui.QPageSize.PageSizeId.Letter,

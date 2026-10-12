@@ -2,15 +2,15 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Catch-up batch 2, Button Map (B6): fixes in gremlin/ui/hardware_profile.py
-and the Button Map's JavaScript, each driven through its real slot.
+"""Catch-up batch 2, Device Mapping Editor (B6): fixes in gremlin/ui/hardware_profile.py
+and the Device Mapping Editor's JavaScript, each driven through its real slot.
 
-Spec: claude/program-map/07-button-map.md (Q2, Q3, Q8, Q10, Q13, Q19, S29,
+Spec: claude/program-map/07-device-mapping-editor.md (Q2, Q3, Q8, Q10, Q13, Q19, S29,
 S107, RB8) and 08-history-pack-automap.md (R4, S49).
 GL-030, GL-174, GL-175, GL-177, GL-178, GL-180, GL-183, GL-196 (GL-181
 retired: 07 S81 removed by D-03-DEVICE-FOLDERS).
 (GL-043 and GL-138 are in test_stage1_modules.py; GL-173, GL-176, GL-179,
-GL-182, GL-184 in test_stage1_button_map.py; GL-188 in
+GL-182, GL-184 in test_stage1_device_mapping_editor.py; GL-188 in
 test_stage1_history_pack.py.)
 """
 
@@ -237,8 +237,8 @@ def test_the_pool_rows_key_changes_only_with_what_they_depend_on(
 
 def test_the_card_reads_rows_by_the_key() -> None:
     # The card asks for the rows only when the key changed, not at every
-    # live stamp (JoystickButtonMapCard.qml).
-    card = (_ROOT / "qml" / "JoystickButtonMapCard.qml").read_text(encoding="utf-8")
+    # live stamp (DeviceMapCard.qml).
+    card = (_ROOT / "qml" / "DeviceMapCard.qml").read_text(encoding="utf-8")
     assert "_inventory.chipsKey(deviceGuid)" in card
     binding = card[card.find("property var chipRows"):]
     # Not a binding: refreshChipRows() assigns it (no "Overwriting binding").

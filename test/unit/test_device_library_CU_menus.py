@@ -11,7 +11,7 @@ goes (S47), Remove from Library runs Home's Delete Device first when a
 module file is still here and stops when it is refused (S15), Clear Setup,
 Delete Saved Setups, Restore (S48), Keep (S49), Ctrl/Shift-click several
 rows and one question (S50), the Menu key and Shift+F10 (S43), and Show on
-Home / Open Module Setup / Open Button Map reaching Main (S44)."""
+Home / Open Module Setup / Open Device Mapping Editor reaching Main (S44)."""
 
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ def test_s44_s15_connected_device_menu(run: dict) -> None:
         "Rename… (F2)",
         "Edit Description",
         "Open Module Setup…",
-        "Open Button Map",
+        "Open Device Mapping Editor",
         "Show on Home",
         "Show in History",  # 10 S56
         "Expand",
@@ -118,7 +118,7 @@ def test_s44_s15_not_connected_and_deleted_device_menus(run: dict) -> None:
         "Rename… (F2)",
         "Edit Description",
         "Open Module Setup…",
-        "Open Button Map",
+        "Open Device Mapping Editor",
         "Show on Home",
         "Show in History",  # 10 S56
         "Remove from Library… [tip: Gone from the Library, with its saved setups]",
@@ -159,7 +159,7 @@ def test_s45_saved_setup_menus(run: dict) -> None:
 def test_s46_empty_space_menu(run: dict) -> None:
     assert _menu(run["rc-space"]["menu"]) == [
         "Device Library",
-        "Import Device Pack…",
+        "Import Device…",
         "Expand All",
         "Collapse All",
         "Device Library Settings…",
@@ -229,11 +229,11 @@ def test_s44_routes_reach_main(run: dict) -> None:
     assert [
         c
         for c in run["calls"]
-        if c[0] in ("main.home", "main.moduleSetup", "main.buttonMap")
+        if c[0] in ("main.home", "main.moduleSetup", "main.deviceMappingEditor")
     ] == [
         ["main.home", "Left throttle", "left_throttle"],
         ["main.moduleSetup", "Left throttle", "left_throttle"],
-        ["main.buttonMap", "Left throttle", "left_throttle"],
+        ["main.deviceMappingEditor", "Left throttle", "left_throttle"],
     ]
 
 

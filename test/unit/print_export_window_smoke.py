@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Starts the program off-screen (stand-in hardware), opens the Button Map
+"""Starts the program off-screen (stand-in hardware), opens the Device Mapping Editor
 for a stick and its Print & Export window, changes the paper and scale,
 exports the whole page and a print area as PNG and a PDF on Letter into
 the folder given, and prints what the window shows as JSON.
@@ -111,9 +111,9 @@ def main() -> None:
     root = app.engine.rootObjects()[0]
     out: dict = {}
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
-    call(root, "openButtonMapForCard", card)
+    call(root, "openDeviceMappingEditorForCard", card)
     QtTest.QTest.qWait(1000)
-    win = call(root, "buttonMapWindow")
+    win = call(root, "deviceMappingEditorWindow")
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(300)
@@ -133,7 +133,7 @@ def main() -> None:
             for w in QtGui.QGuiApplication.topLevelWindows()
         )
 
-    # Made with the Button Map, hidden until asked for.
+    # Made with the Device Mapping Editor, hidden until asked for.
     out["shown-with-the-map"] = print_export_shown()
     call(win, "enterEdit")
     QtTest.QTest.qWait(800)
@@ -150,9 +150,9 @@ def main() -> None:
     def child(name: str) -> QtCore.QObject:
         return pw.findChild(QtCore.QObject, name)
 
-    out["open"] = [pw.isVisible(), ev("_buttonMap.printAreaOn")]
-    ev("_buttonMap.setPrint('paper', 'letter')")
-    ev("_buttonMap.setPrint('scale', 50)")
+    out["open"] = [pw.isVisible(), ev("_editorWin.printAreaOn")]
+    ev("_editorWin.setPrint('paper', 'letter')")
+    ev("_editorWin.setPrint('scale', 50)")
     QtTest.QTest.qWait(1500)
     page = child("printPreviewPage")
     image = child("printPreviewImage")
@@ -161,7 +161,7 @@ def main() -> None:
     out["paper-box"] = child("printPaper").property("currentText")
     out["scale-box"] = child("printScale").property("value")
     out["pixels-text"] = child("printPixels").property("text")
-    px = json.loads(ev("JSON.stringify(_buttonMap.exportPixels())"))
+    px = json.loads(ev("JSON.stringify(_editorWin.exportPixels())"))
     out["pixels"] = [px["w"], px["h"]]
     out["dpr"] = pw.devicePixelRatio()
 
@@ -182,7 +182,7 @@ def main() -> None:
     crop = child("printPreviewCrop")
     sharp = child("printPreviewImage")
     moved = {"fx": 0.1, "fy": 0.15, "fw": 0.3, "fh": 0.6}
-    ev(f"_buttonMap._ed().printArea = {json.dumps(moved)}")
+    ev(f"_editorWin._ed().printArea = {json.dumps(moved)}")
     QtTest.QTest.qWait(40)
     out["moved-at-once"] = {
         "aspect": content.property("width") / content.property("height"),
@@ -208,7 +208,7 @@ def main() -> None:
 
     def timed(kind: str) -> float:
         start = time.perf_counter()
-        ev(f"_buttonMap.renderPreview('{kind}', 1560, 1560, function(r) {{}})")
+        ev(f"_editorWin.renderPreview('{kind}', 1560, 1560, function(r) {{}})")
         QtTest.QTest.qWait(1)
         while ev("_renderer.busy") is True or ev("_renderer._queue.length") > 0:
             QtTest.QTest.qWait(5)
@@ -218,7 +218,7 @@ def main() -> None:
 
     # Drag and zoom in the preview: the print area follows.
     def area_now() -> dict:
-        return json.loads(str(ev("JSON.stringify(_buttonMap._ed().printArea)")))
+        return json.loads(str(ev("JSON.stringify(_editorWin._ed().printArea)")))
 
     def middle() -> QtCore.QPointF:
         return content.mapToScene(QtCore.QPointF(
@@ -251,9 +251,9 @@ def main() -> None:
         QtCore.QCoreApplication.sendEvent(pw, event)
         QtTest.QTest.qWait(50)
 
-    ev("_buttonMap.setPrint('paper', 'fit')")
+    ev("_editorWin.setPrint('paper', 'fit')")
     start = {"fx": 0.3, "fy": 0.3, "fw": 0.4, "fh": 0.4}
-    ev(f"_buttonMap._ed().printArea = {json.dumps(start)}")
+    ev(f"_editorWin._ed().printArea = {json.dumps(start)}")
     QtTest.QTest.qWait(300)
     width = content.property("width")
     drag_preview(width / 4, 0)
@@ -263,17 +263,17 @@ def main() -> None:
     out["dragged-to-edge"] = area_now()
     QtTest.QTest.qWait(200)
     # In Edit the area is part of the edit: Save keeps it (07 Q1, GL-173).
-    ev("_buttonMap.saveEdit(false)")
+    ev("_editorWin.saveEdit(false)")
     doc = json.loads(_map.read_text(encoding="utf-8"))
     out["kept"] = (doc.get("ui") or {}).get("printArea")
     # The wheel: in (smaller) about the pointer, out (larger).
-    ev(f"_buttonMap._ed().printArea = {json.dumps(start)}")
+    ev(f"_editorWin._ed().printArea = {json.dumps(start)}")
     QtTest.QTest.qWait(300)
     wheel(middle(), 1)
     out["zoomed-in"] = area_now()
     wheel(middle(), -2)
     out["zoomed-out"] = area_now()
-    ev("_buttonMap.setPrint('paper', 'letter')")
+    ev("_editorWin.setPrint('paper', 'letter')")
     QtTest.QTest.qWait(200)
     # Custom > Freeform (As Drawn): no paper, and back to the last one.
     freeform = child("printFreeform")
@@ -282,7 +282,7 @@ def main() -> None:
 
     def freeform_state() -> list:
         return [freeform.property("checked"), paper.property("enabled"),
-                ev("_buttonMap.printSetup.paper"), paper.property("currentText")]
+                ev("_editorWin.printSetup.paper"), paper.property("currentText")]
 
     QtCore.QMetaObject.invokeMethod(freeform, "click")
     QtTest.QTest.qWait(200)
@@ -303,10 +303,10 @@ def main() -> None:
 
     def busy_state() -> dict:
         return {
-            "busy": ev("_buttonMap.exportBusy"),
+            "busy": ev("_editorWin.exportBusy"),
             "enabled": [b.property("enabled") for b in buttons],
             "note": [busy_note.property("visible"), busy_note.property("text")],
-            # The Button Map's message line, in red (01 S142).
+            # The Device Mapping Editor's message line, in red (01 S142).
             "failure": [ev("_messageLine.failed"), ev("_messageLine.visible")],
             "saved": len(saved),
         }
@@ -315,7 +315,7 @@ def main() -> None:
         """Until the export has announced its result (bounded)."""
         for _ in range(400):
             QtTest.QTest.qWait(25)
-            if len(saved) >= count and ev("_buttonMap.exportBusy") is False:
+            if len(saved) >= count and ev("_editorWin.exportBusy") is False:
                 return
 
     def export(name: str, fmt: str) -> list:
@@ -323,39 +323,40 @@ def main() -> None:
         result (areaSaved, then not busy)."""
         target = folder / name
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
-        size = json.loads(str(ev("JSON.stringify(_buttonMap.exportPixels())")))
+        size = json.loads(str(ev("JSON.stringify(_editorWin.exportPixels())")))
         count = len(saved) + 1
-        ev(f"_buttonMap.exportTo({json.dumps(url)}, {json.dumps(fmt)})")
+        ev(f"_editorWin.exportTo({json.dumps(url)}, {json.dumps(fmt)})")
         if "busy-during" not in out:
             out["busy-during"] = busy_state()
         wait_done(count)
         return [size["w"], size["h"], target.exists() and saved[-1][0] is True]
 
     # The whole page, then a print area: the same scale, no paper.
-    ev("_buttonMap.setPrint('paper', 'fit')")
-    ev("_buttonMap.setPrint('scale', 50)")
-    ev("_buttonMap._ed().clearPrintArea()")
+    ev("_editorWin.setPrint('paper', 'fit')")
+    ev("_editorWin.setPrint('scale', 50)")
+    ev("_editorWin._ed().clearPrintArea()")
     QtTest.QTest.qWait(300)
     out["full"] = export("full.png", "png")
-    ev("_buttonMap.setPrint('scale', 200)")
+    ev("_editorWin.setPrint('scale', 200)")
     out["full-200"] = export("full-200.png", "png")
-    ev("_buttonMap.setPrint('scale', 50)")
+    ev("_editorWin.setPrint('scale', 50)")
     area = {"fx": 0.25, "fy": 0.2, "fw": 0.5, "fh": 0.5}
-    ev(f"_buttonMap._ed().printArea = {json.dumps(area)}; _buttonMap.printArea = _buttonMap._ed().printArea")
+    ev(f"_editorWin._ed().printArea = {json.dumps(area)};"
+       " _editorWin.printArea = _editorWin._ed().printArea")
     QtTest.QTest.qWait(300)
     out["area"] = export("area.png", "png")
     out["light"] = None
-    ev("_buttonMap.setPrint('light', true)")
+    ev("_editorWin.setPrint('light', true)")
     out["light"] = export("light.png", "png")
-    ev("_buttonMap.setPrint('light', false)")
-    ev("_buttonMap.setPrint('paper', 'letter')")
+    ev("_editorWin.setPrint('light', false)")
+    ev("_editorWin.setPrint('paper', 'letter')")
     out["pdf"] = export("letter.pdf", "pdf")
     out["busy-after"] = busy_state()
     # A folder that is not there: "Export Failed" with the reason, once the
     # background export has announced it, not before.
     missing = folder / "not-here" / "x.png"
     count = len(saved) + 1
-    ev("_buttonMap.exportTo(%s, 'png')"
+    ev("_editorWin.exportTo(%s, 'png')"
        % json.dumps(QtCore.QUrl.fromLocalFile(str(missing)).toString()))
     out["failed-before"] = busy_state()
     wait_done(count)
@@ -365,14 +366,14 @@ def main() -> None:
     out["failed-saved"] = saved[-1] if saved else None
     ev("_messageLine.clear()")
     # The map on screen was never put into export mode.
-    out["live-exporting"] = ev("_buttonMap._ed().exporting")
-    # Closed (its place kept), then the Button Map opened again: it stays
+    out["live-exporting"] = ev("_editorWin._ed().exporting")
+    # Closed (its place kept), then the Device Mapping Editor opened again: it stays
     # closed (restoring its place used to show it).
     pw.close()
     QtTest.QTest.qWait(300)
     win.close()
     QtTest.QTest.qWait(500)
-    call(root, "openButtonMapForCard", card)
+    call(root, "openDeviceMappingEditorForCard", card)
     QtTest.QTest.qWait(1200)
     out["shown-after-reopening"] = print_export_shown()
     print("RESULT " + json.dumps(out), flush=True)

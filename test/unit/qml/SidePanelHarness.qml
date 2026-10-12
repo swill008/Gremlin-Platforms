@@ -8,7 +8,7 @@ import Gremlin.Style
 
 import "../../../qml"
 
-// Two side panels round a stand-in map, laid out as the Button Map does:
+// Two side panels round a stand-in map, laid out as the Device Mapping Editor does:
 // the map narrows by each panel's takenWidth; a map click folds unpinned
 // panels; a strip click folds the other panel if unpinned. For
 // side_panel_smoke.py.

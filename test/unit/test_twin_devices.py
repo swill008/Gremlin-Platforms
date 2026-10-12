@@ -4,7 +4,7 @@
 
 """Two identical devices (same name, e.g. a pair of T.16000M).
 
-They shared one module file (claims, card, Button Map, calibration), and
+They shared one module file (claims, card, device map, calibration), and
 saving from one moved the other's calibration. The second is now
 "<name> (2)" with its own device folder (03 S6, S132); the device whose id
 the existing folder holds (device.json) keeps the plain name, and the names
@@ -151,7 +151,7 @@ def _module(slug: str, name: str, guid: str, buttons: list[int]) -> Path:
     }, guid)
 
 
-def test_the_button_map_of_the_second_twin_opens_its_own_file(twins: list) -> None:
+def test_the_device_map_of_the_second_twin_opens_its_own_file(twins: list) -> None:
     from gremlin.ui.hardware_profile import HardwareProfile
 
     first, second = _first_guid(), _twin_guid()

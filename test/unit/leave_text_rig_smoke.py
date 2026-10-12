@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""01 S134 (D-01-LEAVE-TEXT) in the Button Map editor's panels: the Layers
+"""01 S134 (D-01-LEAVE-TEXT) in the Device Mapping Editor's panels: the Layers
 panel's inline rename and the Properties panel's number boxes, left by a
 click outside or Esc with the program-wide leave-text filter installed.
 Prints RESULT lines as JSON; test_leave_text_rig.py runs it in its own

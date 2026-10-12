@@ -844,3 +844,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | B2 TFIX: 5 old .zip test files moved to .gmap | agent tests | ~10 min | 3 min | 18:15–18:18 |
 | 2026-10-11 | B2 PACK: .gmap-only export/import, two targets, Undo for both; 3 bug fixes; 8 test files moved | feature | ~15 min | 21 min | 18:02–18:23 |
 | 2026-10-11 | B3 renames (Configuration page -> Device Bindings, Auto Mapper -> Auto Mapping Tool): R-QML1 1 min, R-QML2 3, R-PY1 2, R-PY2 4, R-DOC 4, R-TEST2 8, R-TEST1 10 | refactor | rough guess 10-15 min | 10 min wall | 18:26–18:36 |
+| 2026-10-11 | B4 rename Button Map -> Device Mapping Editor (8 agents: E-RIG 1 min, E-SHELL 2, E-OT3 2, E-WIN 4, E-PY 5, E-TEST1 7, E-TEST2 9, E-DOC 9) + OT-4 Library part id move (3 min) | refactor | rough guess 15-20 min | 10 min wall (+3 OT-4) | 18:38–18:48 |
+| 2026-10-11 | ONE full run + lint over fix-list batches 1-4 (seed 5299): 3 failures (2 tests still .zip, the store-only guard on OT-4), fixed, 7 pass targeted; lint 0 new; lint wrap 2 agents 1-4 min | test | 5–6 min (table) | 6 min + 2 min fixes | 18:54–19:02 |

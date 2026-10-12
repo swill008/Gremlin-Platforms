@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// Selection ring drawn around a chip or drawing in the Button Map editor.
+// Selection ring drawn around a chip or drawing in the Device Mapping Editor.
 Rectangle {
     property bool on: false
     property color ringColor: "#FBBF24"

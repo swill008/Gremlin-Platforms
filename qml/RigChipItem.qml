@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Gremlin.Style
 
-// One chip (button, axis or hat label) in the Button Map editor.
+// One chip (button, axis or hat label) in the Device Mapping Editor.
 Rectangle {
     id: _chipRoot
     property var ed: null

@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Drives the Button Map editor off-screen through commands that follow a
+"""Drives the Device Mapping Editor off-screen through commands that follow a
 waiting run of edits (07 S55: one undo step per command) and prints the
 results as JSON. test_rig_undo_steps.py runs it in its own process.
 

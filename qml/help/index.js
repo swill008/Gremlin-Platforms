@@ -11,14 +11,14 @@
 .import "logical_device.js" as LogicalDevice
 .import "osc.js" as Osc
 .import "modes.js" as Modes
-.import "button_map.js" as ButtonMap
+.import "device_mapping_editor.js" as DeviceMappingEditor
 .import "device_library.js" as DeviceLibrary
 .import "tools.js" as Tools
 .import "options_profile.js" as OptionsProfile
 
 function _modules() {
     return [GettingStarted, HomeDevices, DeviceBindingsActions, LogicalDevice, Osc,
-            Modes, ButtonMap, DeviceLibrary, Tools, OptionsProfile]
+            Modes, DeviceMappingEditor, DeviceLibrary, Tools, OptionsProfile]
 }
 
 var _book = null

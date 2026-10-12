@@ -60,7 +60,7 @@ function topics() {
                 + "<p>Group, order and name changes are kept for <b>File › Save Profile</b> (<b>Ctrl+S</b>), as on the Logical Device and OSC pages. Until then the title shows <b>*</b>, and <b>Discard</b> on the save-changes question drops them.</p>"
                 + _good([
                     "They are saved in the device's module file, so every profile shows the same groups, order and names.",
-                    "If something else changes that device's layout or claims before you save (History Restore, the Device Library, an Export / Import Device import, or Module Setup), the newer file wins: your unsaved changes for it are dropped with the note \"The layout changed elsewhere; your unsaved changes for <i>device</i> were dropped.\" A change to only a picture or the Button Map view keeps them.",
+                    "If something else changes that device's layout or claims before you save (History Restore, the Device Library, an Export / Import Device import, or Module Setup), the newer file wins: your unsaved changes for it are dropped with the note \"The layout changed elsewhere; your unsaved changes for <i>device</i> were dropped.\" A change to only a picture or the device map keeps them.",
                     "<b>Undo</b> takes these changes back too; see " + _link("undo", "Undo a change on the Device Bindings page") + "."
                 ]),
             related: ["device-bindings-actions-device-bindings-page", "device-bindings-actions-menus",

@@ -11,7 +11,7 @@ import Gremlin.Style
 // An Options page: the groups (ConfigGroup) of the chosen section. While
 // searching (filterText set) it shows every section's matching settings,
 // each under its section's title. Used by the main Options window and the
-// Button Map's own options window.
+// Device Mapping Editor's own options window.
 //
 // A section's groups are built the first time it shows (it is the current
 // section, or the search matches it) and then kept: building every section
