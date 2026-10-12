@@ -432,6 +432,8 @@ Item {
             id: _appear
             objectName: "deviceBindingsAppearance"
             pageKey: "device-bindings"
+            // Each device keeps its own look (05 S125).
+            scopeKey: _root.guid
             buttonName: "deviceBindingsAppearanceButton"
             title: "Device Bindings — Appearance"
             liveOptions: true

@@ -120,10 +120,15 @@ def test_binding_targets_list_destinations() -> None:
 
 
 def test_reset_does_not_save() -> None:
+    # A page without a device scope only resets the panel; on Device Bindings
+    # Reset saves the defaults as the shown device's own look (05 S125,
+    # D-05-APPEARANCE-PER-DEVICE), so it doesn't fall back to the shared look.
     text = _PANEL.read_text(encoding="utf-8")
     chunk = text[text.find("function reset()") : text.find("function requestClose")]
     assert chunk
-    assert "setListAppearance" not in chunk
+    assert "_place.setListAppearance(" not in chunk
+    saving = chunk[chunk.index("_place.setListAppearanceFor") - 60 :]
+    assert "if (scopeKey.length)" in saving[:80]
     assert "Options have been reset" in chunk
     assert "applyDisplayDefaults()" in chunk
 
@@ -133,7 +138,9 @@ def test_save_writes_catalog_not_view() -> None:
     # (b)): Save writes this page's there, never into a module file.
     text = _PANEL.read_text(encoding="utf-8")
     save = text[text.find("function save()") : text.find("function reset()")]
-    assert "_place.setListAppearance(pageKey," in save
+    # Per device on Device Bindings (D-05-APPEARANCE-PER-DEVICE): scope "" is
+    # the page's own look on the other pages.
+    assert "_place.setListAppearanceFor(pageKey, scopeKey," in save
     assert "required property string pageKey" in text
     page = _PAGE.read_text(encoding="utf-8")
     panel = page[page.index("PageAppearance {") :]

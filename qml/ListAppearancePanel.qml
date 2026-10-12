@@ -12,15 +12,22 @@ import "helpers.js" as Helpers
 
 // The Appearance panel of the control lists (05 S125): each page
 // (Device Bindings, Logical Device, Keyboard, OSC) keeps its own look in
-// program settings (WindowPlacement listAppearance(pageKey), AP2). The page binds its
-// ControlTree's appearance properties to this panel's properties of the
-// same names, calls load() once, and closes the panel on closed().
+// program settings (WindowPlacement listAppearanceFor(pageKey, scopeKey),
+// AP2). Device Bindings passes the shown device as scopeKey: each device
+// keeps its own look, falling back to the page's shared one, and "Apply to
+// all devices" makes the shown look the shared one for every device. The
+// page binds its ControlTree's appearance properties to this panel's
+// properties of the same names, calls load() once, and closes the panel on
+// closed(); a new scopeKey loads that device's look.
 Rectangle {
     id: _panel
 
     property string title: "Appearance"
     // Whose look this is: "device-bindings", "logical", "keyboard" or "osc".
     required property string pageKey
+    // The device whose look this is on Device Bindings (its guid); "" on
+    // the other pages (one look per page).
+    property string scopeKey: ""
     // The live bars / LED dots rows (the Device Bindings page).
     property bool liveOptions: false
 
@@ -485,6 +492,26 @@ Rectangle {
                 text: "Save\nAppearance"
                 highlighted: true
                 onClicked: _panel.save()
+                contentItem: Text {
+                    text: parent.text
+                    color: Style.onColor
+                    font.pixelSize: Style.dp(12)
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+            // Device Bindings only: the shown look for every device.
+            Button {
+                objectName: "applyAppearanceAll"
+                visible: _panel.scopeKey.length > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: Style.dp(44)
+                text: "Apply to all\ndevices"
+                highlighted: true
+                onClicked: _panel.applyToAll()
+                ToolTip.visible: hovered
+                ToolTip.delay: 500
+                ToolTip.text: "Use this look for every device on Device Bindings"
                 contentItem: Text {
                     text: parent.text
                     color: Style.onColor
@@ -983,7 +1010,7 @@ Rectangle {
     function load() {
         var v = {}
         try {
-            v = JSON.parse(_place.listAppearance(pageKey))
+            v = JSON.parse(_place.listAppearanceFor(pageKey, scopeKey))
         } catch (e) {
             v = {}
         }
@@ -995,17 +1022,35 @@ Rectangle {
     }
 
     function save() {
-        _place.setListAppearance(pageKey, JSON.stringify(displayPayload()))
+        _place.setListAppearanceFor(pageKey, scopeKey,
+                                    JSON.stringify(displayPayload()))
         rememberDisplay()
-        toastText = "Saved for this page."
+        toastText = scopeKey.length ? "Saved for this device." : "Saved for this page."
         _savedToast.open()
     }
 
+    // With a device: its defaults are saved as its own look, so it doesn't
+    // fall back to the shared one.
     function reset() {
         applyDisplayDefaults()
+        if (scopeKey.length) {
+            _place.setListAppearanceFor(pageKey, scopeKey,
+                                        JSON.stringify(displayPayload()))
+            rememberDisplay()
+        }
         toastText = "Options have been reset"
         _savedToast.open()
     }
+
+    // The shown look for every device: the shared look, device looks cleared.
+    function applyToAll() {
+        _place.applyListAppearanceToAll(pageKey, JSON.stringify(displayPayload()))
+        rememberDisplay()
+        toastText = "Saved for every device."
+        _savedToast.open()
+    }
+
+    onScopeKeyChanged: load()
 
     function requestClose() {
         if (!dirty()) {

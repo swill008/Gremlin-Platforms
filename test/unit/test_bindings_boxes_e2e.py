@@ -17,7 +17,8 @@ none. The Device Bindings page is opened from the stick's Home card:
 2. The page's Appearance panel, through its own controls (section
    "Bindings"): Brackets off, Corners Square, Target text color changed:
    the row follows; Save Appearance writes the keys to the page's
-   Appearance JSON. Reset to defaults puts the contract defaults back.
+   Appearance JSON for the shown device. Reset to defaults puts the contract
+   defaults back.
 3. The Keyboard page shows the boxes for a bound key too.
 
 Spec: 05 S142, S125; D-05-BINDINGS-BOXES.
@@ -293,7 +294,10 @@ def _part_appearance(j: Journey, page: Any, tree: Any) -> None:  # noqa: ANN401
     )
     j.click(save)
     j.settle()
-    saved = window_placement.list_appearance("device-bindings")
+    # Saved for the shown device (05 S125: per device on Device Bindings).
+    saved = window_placement.list_appearance_for(
+        "device-bindings", str(page.property("guid"))
+    )
     keys = ("bindingsBrackets", "bindingTargetRounded", "bindingTargetTextColor")
     out["2:saved"] = {key: saved.get(key) for key in keys}
     out["2:saved-old-key"] = "showActionSummary" in saved

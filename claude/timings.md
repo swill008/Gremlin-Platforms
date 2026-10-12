@@ -988,3 +988,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Bindings boxes: row display + roles (B-ROW) | feature | 3-8 min | 8 min | 12:58-13:06 |
 | 2026-10-12 | Bindings boxes: end-to-end test (B-E2E) | test | 3-8 min | 9 min (incl. waiting) | 12:58-13:07 |
 | 2026-10-12 | Quick tests batch I (--changed, 3,673 tests) + baseline | test | ~7 min | 7 min | 13:07-13:14 |
+| 2026-10-12 | Appearance per device: storage (S-STORE) | feature | 3-8 min | 1 min | 13:37-13:38 |
+| 2026-10-12 | Appearance per device: spec, glossary, Help (S-DOCS) | docs | 3-8 min | 1 min | 13:37-13:38 |
+| 2026-10-12 | Appearance per device: panel + page (S-PANEL) | feature | 3-8 min | 4 min | 13:37-13:41 |
+| 2026-10-12 | Appearance per device: end-to-end test (S-E2E) | test | 3-8 min | 5 min (incl. waiting) | 13:37-13:42 |
+| 2026-10-12 | Quick tests batch J (--changed, 3,151 tests; 2 source tests updated) | test | ~7 min | 5 min + 1 | 13:42-13:48 |

@@ -32,7 +32,9 @@ KEY_SPLITS = "pane-splits"
 KEY_TOOL_ROWS = "tool-rows"
 # Each list page's own Appearance (AP2): a JSON object keyed by page
 # ("device-bindings", "logical", "keyboard", "osc"), each holding that page's
-# look settings; the page merges its defaults.
+# look settings; the page merges its defaults. Device Bindings also keeps a
+# look per device under "device-bindings/<device guid>" (05 S125); a device
+# without one uses the page's shared entry.
 KEY_LIST_APPEARANCE = "list-appearance"
 
 DEFAULT_W = 1400
@@ -57,7 +59,11 @@ def _ensure() -> Configuration:
     )
     for name, data_type, initial in specs:
         props = {"min": -100000, "max": 100000} if data_type == PropertyType.Int else {}
-        value = cfg.value(SECTION, GROUP, name) if cfg.exists(SECTION, GROUP, name) else initial
+        value = (
+            cfg.value(SECTION, GROUP, name)
+            if cfg.exists(SECTION, GROUP, name)
+            else initial
+        )
         cfg.register(
             SECTION,
             GROUP,
@@ -354,7 +360,9 @@ def _centered_frame(
     return _fit_client(rect, screen, margins)
 
 
-def restore_tool(window: QtGui.QWindow, name: str, default_w: int, default_h: int) -> None:
+def restore_tool(
+    window: QtGui.QWindow, name: str, default_w: int, default_h: int
+) -> None:
     """Reopen a tool window where it was left, its whole frame inside the work
     area of the screen showing most of it; centre it when that spot is gone."""
     entry = _tool_map(_ensure()).get(str(name)) or {}
@@ -425,6 +433,11 @@ def list_appearance(page: str) -> dict:
     return values if isinstance(values, dict) else {}
 
 
+def _store_list_appearances(saved: dict) -> None:
+    text = json.dumps(saved, sort_keys=True)
+    _ensure().set(SECTION, GROUP, KEY_LIST_APPEARANCE, text)
+
+
 def set_list_appearance(page: str, values: dict) -> None:
     """Saves the page's list Appearance; {} resets that page to its defaults.
     The other pages keep theirs."""
@@ -433,8 +446,67 @@ def set_list_appearance(page: str, values: dict) -> None:
         saved[str(page)] = dict(values)
     else:
         saved.pop(str(page), None)
-    text = json.dumps(saved, sort_keys=True)
-    _ensure().set(SECTION, GROUP, KEY_LIST_APPEARANCE, text)
+    _store_list_appearances(saved)
+
+
+def _scoped_key(page: str, scope: str) -> str:
+    return f"{page}/{scope}"
+
+
+def has_own_list_appearance(page: str, scope: str) -> bool:
+    """True when the scope (a device) has a look of its own on the page."""
+    if not scope:
+        return False
+    values = _all_list_appearances().get(_scoped_key(page, scope))
+    return isinstance(values, dict)
+
+
+def list_appearance_for(page: str, scope: str) -> dict:
+    """The scope's own look on the page, else the page's shared one."""
+    if scope:
+        values = _all_list_appearances().get(_scoped_key(page, scope))
+        if isinstance(values, dict):
+            return values
+    return list_appearance(page)
+
+
+def set_list_appearance_for(page: str, scope: str, values: dict) -> None:
+    """Saves the scope's own look; {} removes it (back to the shared look).
+    Scope "" saves the page's shared look."""
+    if not scope:
+        set_list_appearance(page, values)
+        return
+    saved = _all_list_appearances()
+    key = _scoped_key(page, scope)
+    if values:
+        saved[key] = dict(values)
+    else:
+        saved.pop(key, None)
+    _store_list_appearances(saved)
+
+
+def apply_list_appearance_to_all(page: str, values: dict) -> None:
+    """Saves the page's shared look and drops every scope's own look on that
+    page, so all of them show it; {} resets the shared look."""
+    prefix = _scoped_key(page, "")
+    saved = {
+        key: value
+        for key, value in _all_list_appearances().items()
+        if not key.startswith(prefix)
+    }
+    if values:
+        saved[str(page)] = dict(values)
+    else:
+        saved.pop(str(page), None)
+    _store_list_appearances(saved)
+
+
+def _json_object(json_text: str) -> dict | None:
+    try:
+        values = json.loads(json_text)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return values if isinstance(values, dict) else None
 
 
 @ta.QmlElement
@@ -450,13 +522,30 @@ class WindowPlacement(QtCore.QObject):
 
     @QtCore.Slot(str, str)
     def setListAppearance(self, page: str, json_text: str) -> None:
-        try:
-            values = json.loads(json_text)
-        except (json.JSONDecodeError, TypeError):
-            return
-        if not isinstance(values, dict):
-            return
-        set_list_appearance(page, values)
+        values = _json_object(json_text)
+        if values is not None:
+            set_list_appearance(page, values)
+
+    @QtCore.Slot(str, str, result=str)
+    def listAppearanceFor(self, page: str, scope: str) -> str:
+        """The scope's look (its own, else the page's shared one) as JSON."""
+        return json.dumps(list_appearance_for(page, scope), sort_keys=True)
+
+    @QtCore.Slot(str, str, result=bool)
+    def hasOwnListAppearance(self, page: str, scope: str) -> bool:
+        return has_own_list_appearance(page, scope)
+
+    @QtCore.Slot(str, str, str)
+    def setListAppearanceFor(self, page: str, scope: str, json_text: str) -> None:
+        values = _json_object(json_text)
+        if values is not None:
+            set_list_appearance_for(page, scope, values)
+
+    @QtCore.Slot(str, str)
+    def applyListAppearanceToAll(self, page: str, json_text: str) -> None:
+        values = _json_object(json_text)
+        if values is not None:
+            apply_list_appearance_to_all(page, values)
 
     @QtCore.Slot(QtCore.QObject)
     def restore(self, window: QtCore.QObject) -> None:
@@ -471,7 +560,9 @@ class WindowPlacement(QtCore.QObject):
         save_window(window)
 
     @QtCore.Slot(QtCore.QObject, str, int, int)
-    def restoreTool(self, window: QtCore.QObject, name: str, default_w: int, default_h: int) -> None:
+    def restoreTool(
+        self, window: QtCore.QObject, name: str, default_w: int, default_h: int
+    ) -> None:
         if window is None:
             return
         restore_tool(window, name, default_w, default_h)
