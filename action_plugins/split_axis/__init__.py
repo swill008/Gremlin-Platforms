@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -14,7 +15,7 @@ from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
-from gremlin import util
+from gremlin import references, util
 from gremlin.base_classes import (
     AbstractActionData,
     AbstractFunctor,
@@ -130,6 +131,11 @@ class SplitAxisData(AbstractActionData):
         self.lower_actions: List[AbstractActionData] = []
         self.upper_actions: List[AbstractActionData] = []
         self.split_value: float = 0.0
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # A container: its actions are walked by the finder, not here.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import enum
 import logging
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -20,6 +21,7 @@ from gremlin import (
     event_handler,
     event_helpers,
     mode_manager,
+    references,
     shared_state,
     util,
 )
@@ -279,6 +281,18 @@ class ChangeModeData(AbstractActionData):
             raise error.GremlinError("Incorrect number of modes for change type")
 
         self._target_modes = value
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        kind = self.change_type.name
+        return tuple(
+            references.Reference(
+                "switches-mode",
+                references.mode(name),
+                f"Change Mode ({kind}): {name}",
+            )
+            for name in self.target_modes
+        )
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

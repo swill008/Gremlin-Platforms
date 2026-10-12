@@ -1053,3 +1053,14 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Search: Find uses… menus (P-MENUS) | feature | 5-10 min | 13 min | 16:48-17:01 |
 | 2026-10-12 | Search docs finished: built tags, map, README recount, glossary (P-DOCS2) | docs | 5-10 min | 4 min | 17:02-17:06 |
 | 2026-10-12 | Full run batch O+P, seed 570729 (7,262 passed, 1 load flake) | test | ~7 min | 7 min | 17:02-17:09 |
+| 2026-10-12 | References batch: OSC targets + Mouse in Search (Q-UI) | feature | 5-10 min | 4 min | 17:13-17:17 |
+| 2026-10-12 | References batch: macro steps + conditions (Q-STEPS) | refactor | 8-12 min | 4 min | 17:13-17:17 |
+| 2026-10-12 | References batch: 27 action plugins (Q-PLUG) | refactor | 10-15 min | 4 min | 17:13-17:17 |
+| 2026-10-12 | References batch: contract + finder asks references() (Q-API) | refactor | 8-12 min | 5 min | 17:13-17:18 |
+| 2026-10-12 | References batch: spec S164, map, glossary, Help (Q-DOCS) | docs | 5-10 min | 5 min | 17:13-17:18 |
+| 2026-10-12 | References batch: UI walkers onto the finder (Q-WALK2) | refactor | 10-15 min | 5 min | 17:13-17:18 |
+| 2026-10-12 | References batch follow-up: axis reads + why text (Q-PLUG) | fix | 3-8 min | 2 min | 17:17-17:19 |
+| 2026-10-12 | References batch: output/profile walkers onto the finder (Q-WALK1) | refactor | 8-12 min | 8 min | 17:13-17:21 |
+| 2026-10-12 | References batch: finder pieces, shims out, dedupe, tests (Q-FINISH) | refactor | 5-10 min | 4 min | 17:21-17:25 |
+| 2026-10-12 | References batch: dead walkers removed, map finished (Q-DEAD) | fix | 3-8 min | 3 min | 17:26-17:29 |
+| 2026-10-12 | Full run references batch, seed 415668 (7,328 passed; 2 batch fixes + 1 known flake) + fixes | test | ~7 min | 7 min + 4 | 17:30-17:41 |

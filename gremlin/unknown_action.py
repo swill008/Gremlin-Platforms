@@ -89,6 +89,10 @@ class UnknownActionData(AbstractActionData):
         self.children: list[AbstractActionData] = []
 
     @override
+    def references(self) -> tuple:
+        # Unknown type kept as raw XML: what it points at can't be read.
+        return ()
+
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:
         self._id = util.read_action_id(node)
         self.tag = str(node.get("type") or "unknown")

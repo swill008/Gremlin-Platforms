@@ -51,6 +51,7 @@ class _Query:
     input_id: object = None
     output: str = ""
     output_id: int = 0
+    output_key: str = ""
     mode: str = ""
     action_tag: str = ""
 
@@ -67,6 +68,10 @@ class _FakeUsages(types.ModuleType):
         }
         self.queries: list = []
         self.answer: list = []
+        self.refs: list = []
+
+    def iter_usages(self, profile: object) -> list:
+        return [types.SimpleNamespace(target=t, usage=None) for t in self.refs]
 
     def find(self, profile: object, query: object) -> list:
         self.queries.append(query)
@@ -261,7 +266,7 @@ def test_choices_outputs_and_their_controls(
     monkeypatch.setattr(output, "vjoy_claim", lambda vjoy_id: claim)
     monkeypatch.setattr(output, "xbox_pads_on", lambda: [1, 2])
     labels = [row["label"] for row in model.choices("output")]
-    assert labels == ["vJoy 1", "vJoy 2", "Xbox 360 Controller", "Xbox 360 2"]
+    assert labels[:4] == ["vJoy 1", "vJoy 2", "Xbox 360 Controller", "Xbox 360 2"]
     model.output, model.outputId = "vjoy", 2
     controls = model.choices("outputInput")
     values = [row["value"] for row in controls]
@@ -274,6 +279,95 @@ def test_choices_outputs_and_their_controls(
         "label": XboxTarget.LEFT_STICK_X.label,
         "value": {"inputType": -1, "inputId": "left_stick_x"},
     }
+
+
+def _osc_targets(monkeypatch: pytest.MonkeyPatch) -> None:
+    from gremlin import osc_device_file
+
+    targets = [
+        {"id": "t1", "name": "Mixer", "host": "10.0.0.2", "port": 9000},
+        {"id": "t2", "name": "", "host": "10.0.0.3", "port": 8000},
+    ]
+    monkeypatch.setattr(osc_device_file, "read_targets", lambda: targets)
+
+
+def test_choices_outputs_add_osc_targets_and_mouse(
+    model: UsagesModel, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Output picker: vJoy, Xbox pads, then each OSC target in OSC Setup
+    (and Reply to sender), then Mouse."""
+    from gremlin import osc_output
+
+    monkeypatch.setattr(output, "vjoy_modules", lambda: [(1, object())])
+    monkeypatch.setattr(output, "xbox_pads_on", lambda: [1])
+    _osc_targets(monkeypatch)
+    rows = model.choices("output")
+    assert [row["label"] for row in rows] == [
+        "vJoy 1",
+        "Xbox 360 Controller",
+        "OSC target Mixer",
+        "OSC target 10.0.0.3:8000",
+        "OSC Reply to sender",
+        "Mouse",
+    ]
+    assert rows[2]["value"] == {"output": "osc", "outputId": 0, "outputKey": "t1"}
+    assert rows[4]["value"]["outputKey"] == osc_output.REPLY
+    assert rows[5]["value"] == {"output": "mouse", "outputId": 0, "outputKey": ""}
+
+
+def test_choices_mouse_controls_and_osc_addresses(
+    model: UsagesModel, fake: _FakeUsages
+) -> None:
+    model.output = "mouse"
+    mouse = model.choices("outputInput")
+    assert [row["label"] for row in mouse] == [
+        "Left",
+        "Right",
+        "Middle",
+        "Forward",
+        "Back",
+        "Wheel Up",
+        "Wheel Down",
+        "Motion",
+    ]
+    assert mouse[0]["value"] == {"inputType": -1, "inputId": "Left"}
+    assert mouse[-1]["value"] == {"inputType": -1, "inputId": "Motion"}
+    # OSC: the addresses the profile sends to that target.
+    fake.refs = [
+        ("osc-out", "t1", "/b"),
+        ("osc-out", "t1", "/a"),
+        ("osc-out", "t1", "/a"),
+        ("osc-out", "t2", "/c"),
+        ("vjoy", 1, 1, 1),
+    ]
+    model.output, model.outputKey = "osc", "t1"
+    assert model.choices("outputInput") == [
+        {"label": "/a", "value": {"inputType": -1, "inputId": "/a"}},
+        {"label": "/b", "value": {"inputType": -1, "inputId": "/b"}},
+    ]
+
+
+def test_set_from_output_key_queries_osc_and_mouse(
+    model: UsagesModel, fake: _FakeUsages
+) -> None:
+    model.setFromOutputKey("osc", "t1", "/a")
+    assert fake.queries[-1] == _Query(
+        kind="output", output="osc", output_key="t1", input_id="/a"
+    )
+    assert (model.kind, model.output, model.outputKey) == ("output", "osc", "t1")
+    model.setFromOutputKey("osc", "t1", None)
+    assert fake.queries[-1].input_id is None
+    model.setFromOutputKey("mouse", "", "Left")
+    assert fake.queries[-1] == _Query(kind="output", output="mouse", input_id="Left")
+    # Mouse with no control picked: every mouse use.
+    model.setFromOutputKey("mouse", "", None)
+    assert fake.queries[-1] == _Query(kind="output", output="mouse")
+    # An OSC search without a target is not complete.
+    count = len(fake.queries)
+    model.setFromOutputKey("osc", "", None)
+    assert len(fake.queries) == count and model.count == 0
+    model.clear()
+    assert model.outputKey == ""
 
 
 def test_real_find_on_a_real_profile(model: UsagesModel, profile: object) -> None:
@@ -302,6 +396,58 @@ def test_real_find_on_a_real_profile(model: UsagesModel, profile: object) -> Non
     # No control picked: every use of the vJoy device.
     model.setFromOutput("vjoy", 2, -1, None)
     assert model.count >= 1 and _rows(model)[0]["group"] == "sends-output"
+
+
+def _bind(profile: object, action: object, button: int) -> None:
+    item = profile.get_input_item(  # type: ignore[attr-defined]
+        _STICK, InputType.JoystickButton, button, "Default", True
+    )
+    item.add_item_binding().root_action.insert_action(action, "children")
+
+
+def test_real_find_osc_target_mouse_and_load_profile(
+    model: UsagesModel, profile: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The real gremlin.usages: Send OSC is found under its OSC target, Map to
+    Mouse under Mouse, Load Profile under its action type with its file."""
+    from gremlin.types import MouseButton
+
+    _osc_targets(monkeypatch)
+    library = profile.library  # type: ignore[attr-defined]
+    osc = library.create("Send OSC", InputType.JoystickButton)
+    osc.target, osc.address = "t1", "/mix/fader1"
+    _bind(profile, osc, 1)
+    mouse = library.create("Map to Mouse", InputType.JoystickButton)
+    mouse.button = MouseButton.Right
+    _bind(profile, mouse, 2)
+    load = library.create("Load Profile", InputType.JoystickButton)
+    load.profile_filename = "C:/Profiles/Other.xml"
+    _bind(profile, load, 3)
+
+    model.setFromOutputKey("osc", "t1", None)
+    rows = _rows(model)
+    assert [(r["group"], r["inputId"]) for r in rows] == [("sends-output", 1)]
+    assert model.choices("outputInput") == [
+        {"label": "/mix/fader1", "value": {"inputType": -1, "inputId": "/mix/fader1"}}
+    ]
+    model.setFromOutputKey("osc", "t1", "/mix/fader1")
+    assert model.count == 1
+    model.setFromOutputKey("osc", "t2", None)
+    assert model.count == 0
+
+    model.setFromOutputKey("mouse", "", "Right")
+    assert [(r["group"], r["inputId"]) for r in _rows(model)] == [
+        ("sends-output", 2)
+    ]
+    model.setFromOutputKey("mouse", "", "Left")
+    assert model.count == 0
+    model.setFromOutputKey("mouse", "", None)
+    assert model.count == 1
+
+    model.setFromAction("load-profile")
+    rows = _rows(model)
+    assert [r["inputId"] for r in rows] == [3]
+    assert "Other.xml" in rows[0]["text"]
 
 
 def test_qml_makes_it_and_sets_the_query(qapp: object, profile: object) -> None:

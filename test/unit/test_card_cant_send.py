@@ -158,14 +158,18 @@ def test_the_card_reads_the_real_list_from_the_current_profile(
 ) -> None:
     """Through output.cant_send_bindings itself: the profile's binding on the
     Throttle, a stand-in for the vJoy driver's answer only."""
-    from gremlin import shared_state
+    from gremlin import references, shared_state
     from gremlin.types import InputType
 
     monkeypatch.setattr(output, "cant_send_bindings", _REAL_BINDINGS)
-    action = SimpleNamespace(get_actions=lambda: ([], []))
-    monkeypatch.setattr(
-        output, "vjoy_targets", lambda a: [(1, "button", 57)] if a is action else []
-    )
+
+    def declared() -> tuple[references.Reference, ...]:
+        # As Map to vJoy declares it: the rule's text as the reason.
+        why = output.cant_send_text(1, "button", 57) or ""
+        target = references.vjoy(1, InputType.JoystickButton, 57)
+        return (references.Reference("sends-output", target, why=why),)
+
+    action = SimpleNamespace(get_actions=lambda: ([], []), references=declared)
     monkeypatch.setattr(
         output,
         "cant_send_text",

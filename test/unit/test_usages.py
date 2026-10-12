@@ -4,9 +4,10 @@
 
 """Search (to-do 9): gremlin.usages finds every use of an input, an output, a
 mode or an action type in a profile, read back from its XML: Map to vJoy,
-Xbox, Keyboard and Logical Device, macro steps, conditions, Change Mode
-(Switch and Temporary), mode inheritance, and a binding whose output is not
-found."""
+Xbox, Keyboard, Logical Device and Mouse, Send OSC, Load Profile, macro
+steps, conditions, Change Mode (Switch and Temporary), mode inheritance, and a
+binding whose output is not found. Each piece declares what it uses with
+references() (gremlin.references)."""
 
 from __future__ import annotations
 
@@ -23,11 +24,12 @@ import pytest
 from gremlin import macro, shared_state
 from gremlin.logical_device import LogicalDevice
 from gremlin.modules import ids, output
-from gremlin.types import InputType
+from gremlin.types import InputType, MouseButton
 
 B = InputType.JoystickButton
 _STICK = uuid.UUID("{4DCB3090-97EC-11EB-8003-444553540000}")
 _KEY_A = (0x1E, False)
+_OSC_TARGET = "t-desk"
 
 _KEYBOARD_CONDITION = """<condition>
 <property type="string"><name>condition-type</name><value>keyboard</value></property>
@@ -66,12 +68,15 @@ def made(
     from action_plugins.condition import ConditionData
     from action_plugins.condition import condition as ca
     from action_plugins.description import DescriptionData
+    from action_plugins.load_profile import LoadProfileData
     from action_plugins.macro import MacroData
     from action_plugins.map_to_keyboard import MapToKeyboardData
     from action_plugins.map_to_logical_device import MapToLogicalDeviceData
+    from action_plugins.map_to_mouse import MapToMouseData, MapToMouseMode
     from action_plugins.map_to_vjoy import MapToVjoyData
     from action_plugins.map_to_xbox import MapToXboxData
     from action_plugins.root import RootData
+    from action_plugins.send_osc import SendOscData
     from gremlin import keyboard
     from gremlin.profile import InputItemBinding, Profile
     from vigem.xbox import XboxTarget
@@ -83,6 +88,7 @@ def made(
         lambda v, k, c: "vJoy 9 is not Found." if int(v) == 9 else None,
     )
     monkeypatch.setattr(output, "xbox_cant_send_text", lambda pad: None)
+    monkeypatch.setattr(output, "osc_cant_send_text", lambda *a, **k: None)
 
     control = LogicalDevice().create(B)
     profile = Profile()
@@ -136,6 +142,7 @@ def made(
         macro.KeyAction(keyboard.key_from_code(*_KEY_A), True),
         macro.JoystickAction(_STICK, B, 1, True),
         macro.LogicalDeviceAction(B, control.id, True),
+        macro.MouseButtonAction(MouseButton.WheelUp, True),
     ]
     bind(_STICK, 5, "Default", steps)
     checks = ConditionData(B)
@@ -165,13 +172,26 @@ def made(
     bind(ids.KEYBOARD, _KEY_A, "Default", vjoy(1, 1))
     bind(ids.LOGICAL_DEVICE, control.id, "Default", DescriptionData(B))
     bind(_STICK, 9, "Default", vjoy(9, 1))
+    osc = SendOscData(B)
+    osc.target = _OSC_TARGET
+    osc.address = "/gear"
+    bind(_STICK, 10, "Default", osc)
+    click = MapToMouseData(B)
+    click.button = MouseButton.Left
+    motion = MapToMouseData(B)
+    motion.mode = MapToMouseMode.Motion
+    bind(_STICK, 11, "Default", click, motion)
+    load = LoadProfileData(B)
+    (tmp_path / "other.xml").write_text("<profile/>", encoding="utf-8")
+    load.profile_filename = str(tmp_path / "other.xml")
+    bind(_STICK, 12, "Default", load)
 
     path = tmp_path / "usages.xml"
     profile.to_xml(path)
     loaded = Profile()
     monkeypatch.setattr(shared_state, "current_profile", loaded)
     loaded.from_xml(path)
-    yield {"profile": loaded, "control": control}
+    yield {"profile": loaded, "control": control, "other": tmp_path / "other.xml"}
 
 
 def _find(profile: object, **query: object) -> list:
@@ -324,11 +344,11 @@ def test_binding_output_not_found(made: dict) -> None:
         input_id=9,
     )
     assert [(u.role, u.not_found) for u in reads] == [("reads-input", True)]
-    assert not any(
-        u.not_found
+    assert [
+        (u.input_id, u.role, u.text)
         for u in _find(made["profile"], kind="mode", mode="Default")
-        if u.input_id != 9
-    )
+        if u.input_id != 9 and u.not_found
+    ] == []
 
 
 def test_unknown_kind_and_empty_profile() -> None:
@@ -338,3 +358,86 @@ def test_unknown_kind_and_empty_profile() -> None:
     assert usages.find(Profile(), usages.Query(kind="mode", mode="Default")) == []
     assert usages.find(None, usages.Query(kind="input")) == []
     assert usages.find(Profile(), usages.Query(kind="nonsense")) == []
+
+
+def test_osc_target_output(made: dict) -> None:
+    found = _find(
+        made["profile"], kind="output", output="osc", output_key=_OSC_TARGET
+    )
+    assert _where(found) == [("sends-output", 10, "Default")]
+    assert "Send OSC" in found[0].text
+    assert not found[0].not_found
+    exact = dict(kind="output", output="osc", output_key=_OSC_TARGET)
+    assert len(_find(made["profile"], input_id="/gear", **exact)) == 1
+    assert _find(made["profile"], input_id="/flaps", **exact) == []
+    assert _find(made["profile"], kind="output", output="osc", output_key="x") == []
+
+
+def test_mouse_output_action_and_macro_step(made: dict) -> None:
+    whole = _find(made["profile"], kind="output", output="mouse")
+    assert _where(whole) == [
+        ("sends-output", 5, "Default"),
+        ("sends-output", 11, "Default"),
+        ("sends-output", 11, "Default"),
+    ]
+    left = _find(made["profile"], kind="output", output="mouse", input_id="Left")
+    assert _where(left) == [("sends-output", 11, "Default")]
+    wheel = _find(
+        made["profile"], kind="output", output="mouse", input_id=MouseButton.WheelUp
+    )
+    assert _where(wheel) == [("sends-output", 5, "Default")]
+    assert wheel[0].text.startswith("In a macro")
+    assert wheel[0].path[-1] == "Step 5"
+    motion = _find(made["profile"], kind="output", output="mouse", input_id="Motion")
+    assert _where(motion) == [("sends-output", 11, "Default")]
+
+
+def test_load_profile(made: dict) -> None:
+    found = _find(made["profile"], kind="profile", output_key=str(made["other"]))
+    assert _where(found) == [("loads-profile", 12, "Default")]
+    assert "other.xml" in found[0].text
+    if sys.platform == "win32":  # Spelled another way, the same file.
+        upper = str(made["other"]).upper()
+        assert len(_find(made["profile"], kind="profile", output_key=upper)) == 1
+    by_type = _find(made["profile"], kind="action", action_tag="load-profile")
+    assert _where(by_type) == [("uses-action", 12, "Default")]
+    assert "other.xml" in by_type[0].text
+
+
+def test_references_shape_helpers() -> None:
+    from gremlin import references as refs
+
+    assert refs.vjoy(2, B, 30) == ("vjoy", 2, B.value, 30)
+    assert refs.keyboard(list(_KEY_A)) == ("input", ids.guid_key(ids.KEYBOARD),
+                                           InputType.Keyboard.value, _KEY_A)
+    assert refs.mouse(MouseButton.Left) == refs.mouse("Left") == ("mouse", "Left")
+    assert refs.osc_out("t", "/a") == ("osc-out", "t", "/a")
+    step = refs.Reference("sends-output", refs.mouse("Motion"), "Mouse motion")
+    wrapped = refs.in_step(3, step)
+    assert (wrapped.text, wrapped.where) == ("In a macro: Mouse motion", ("Step 3",))
+    checked = refs.in_condition(1, step)
+    assert (checked.text, checked.where) == ("Condition: Mouse motion",
+                                             ("Condition 1",))
+
+
+def test_load_profile_missing_file_is_not_found(made: dict) -> None:
+    made["other"].unlink()
+    found = _find(made["profile"], kind="profile", output_key=str(made["other"]))
+    assert [(u.role, u.not_found) for u in found] == [("loads-profile", True)]
+
+
+def test_why_and_declaring_action(made: dict) -> None:
+    """The can't-send text and the declaring action's tag ride on the use
+    (output.cant_send_bindings, Profile.vjoy_outputs_used)."""
+    gone = _find(made["profile"], kind="output", output="vjoy", output_id=9)
+    assert [(u.why, u.action_tag) for u in gone] == [
+        ("vJoy 9 is not Found.", "map-to-vjoy")
+    ]
+    sent = _find(made["profile"], kind="output", output="vjoy", output_id=2)
+    assert [(u.action_tag, u.why) for u in sent] == [
+        ("map-to-vjoy", ""),
+        ("macro", ""),
+        ("condition", ""),
+    ]
+    reads = _find(made["profile"], kind="mode", mode="Flight")
+    assert {u.action_tag for u in reads if u.role != "switches-mode"} == {""}

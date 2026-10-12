@@ -22,6 +22,7 @@ from gremlin import (
     error,
     event_handler,
     event_helpers,
+    references,
     signal,
     util,
 )
@@ -331,6 +332,22 @@ class MapToVjoyData(AbstractActionData):
         if start is None:
             return
         self.vjoy_device_id, self.vjoy_input_type, self.vjoy_input_id = start
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        missing = output.cant_send_text(
+            self.vjoy_device_id,
+            output.kind_of(self.vjoy_input_type),
+            self.vjoy_input_id,
+        )
+        target = references.vjoy(
+            self.vjoy_device_id, self.vjoy_input_type, self.vjoy_input_id
+        )
+        return (
+            references.Reference(
+                "sends-output", target, not_found=bool(missing), why=missing or ""
+            ),
+        )
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

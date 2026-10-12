@@ -201,12 +201,12 @@ def test_missing_with_no_name_still_says_missing_target(
     assert am.cantSendText == "OSC target gone is not Found."
 
 
-def test_cant_send_action_texts_use_the_saved_name(osc: dict) -> None:
-    """The rows, Home card and Find tick (output.cant_send_action_texts)."""
+def test_reference_why_uses_the_saved_name(osc: dict) -> None:
+    """The rows, Home card and Find tick (the sends-output Reference.why)."""
     from action_plugins.send_osc import SendOscData
 
     action = SendOscData(B)
     osc["write"]([])
-    assert output.cant_send_action_texts(action) == [
+    assert [ref.why for ref in action.references() if ref.why] == [
         "OSC target Mixer is not Found."
     ]

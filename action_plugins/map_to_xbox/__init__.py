@@ -5,12 +5,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, List, cast, override
 from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
-from gremlin import event_handler, signal, util
+from gremlin import event_handler, references, signal, util
 from gremlin.base_classes import (
     AbstractActionData,
     AbstractFunctor,
@@ -328,6 +329,18 @@ class MapToXboxData(AbstractActionData):
     @override
     def can_create(cls) -> bool:
         return True
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        from gremlin.modules import output
+
+        missing = output.xbox_cant_send_text(self.xbox_device_id)
+        target = references.xbox(self.xbox_device_id, self.xbox_target)
+        return (
+            references.Reference(
+                "sends-output", target, not_found=bool(missing), why=missing or ""
+            ),
+        )
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

@@ -221,29 +221,22 @@ def collect_bound_names(
 
 
 def _profile_wire_maps() -> list[tuple[str, str, int]]:
+    """(source guid key, "vjoy" | "xbox", vJoy id or pad) per Map to vJoy /
+    Map to Xbox in the open profile: one gremlin.usages walk."""
     try:
-        from gremlin import shared_state
-        from gremlin.ui.input_pairing import _maps_for_item
+        from gremlin import shared_state, usages
+        from gremlin.ui.input_pairing import map_refs
+
+        profile = getattr(shared_state, "current_profile", None)
+        if profile is None:
+            return []
+        refs = map_refs(list(usages.iter_usages(profile)))
     except Exception:
         return []
-    profile = getattr(shared_state, "current_profile", None)
-    if profile is None:
-        return []
-    out: list[tuple[str, str, int]] = []
-    for uid, items in (getattr(profile, "inputs", None) or {}).items():
-        guid = guid_key(uid)
-        for item in items or []:
-            try:
-                mapped = _maps_for_item(item)
-            except Exception:
-                continue
-            for vjoy_id, vtype, _hid in mapped:
-                kind = "xbox" if vtype is None else "vjoy"
-                try:
-                    out.append((guid, kind, int(vjoy_id)))
-                except (TypeError, ValueError):
-                    continue
-    return out
+    return [
+        (guid_key(ref.usage.device_guid), ref.target[0], int(ref.target[1]))
+        for ref in refs
+    ]
 
 
 def _raw(row: object) -> str:

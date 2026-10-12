@@ -13,9 +13,11 @@ checks).
 from __future__ import annotations
 
 import copy
+from typing import Iterable
 from xml.etree import ElementTree
 
 from gremlin.macro import AbstractAction
+from gremlin.references import Reference
 
 
 class RawMacroStep(AbstractAction):
@@ -66,3 +68,6 @@ class RawMacroStep(AbstractAction):
 
     def is_valid(self) -> bool:
         return True
+
+    def references(self) -> Iterable[Reference]:
+        return ()  # a step the program can't read names nothing it knows

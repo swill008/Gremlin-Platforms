@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -17,6 +18,7 @@ from gremlin import (
     event_handler,
     keyboard,
     macro,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -144,6 +146,13 @@ class MapToKeyboardData(AbstractActionData):
         super().__init__(behavior_type)
 
         self.keys = []
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        return tuple(
+            references.Reference("sends-output", references.keyboard(key))
+            for key in self.keys or []
+        )
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

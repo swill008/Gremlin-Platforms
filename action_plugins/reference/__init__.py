@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -14,6 +15,7 @@ from xml.etree import ElementTree
 
 from PySide6 import QtCore
 
+from gremlin import references
 from gremlin.base_classes import (
     AbstractActionData,
     AbstractFunctor,
@@ -170,6 +172,11 @@ class ReferenceData(AbstractActionData):
 
     def __init__(self, behavior_type: InputType = InputType.JoystickButton) -> None:
         super().__init__(behavior_type)
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # The library action it shows is walked by the finder, not here.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

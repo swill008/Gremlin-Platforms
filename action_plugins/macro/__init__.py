@@ -7,6 +7,7 @@ from __future__ import annotations
 import enum
 import logging
 import uuid
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -24,6 +25,7 @@ from gremlin import (
     event_helpers,
     keyboard,
     macro,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -1165,6 +1167,15 @@ class MacroData(AbstractActionData):
         self.is_preemptive = False
         self.repeat_mode = MacroRepeatModes.Single
         self.repeat_data = MacroRepeatData()
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # Its steps say what they use; the macro numbers them.
+        return tuple(
+            references.in_step(number, ref)
+            for number, step in enumerate(self.actions, start=1)
+            for ref in step.references()
+        )
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

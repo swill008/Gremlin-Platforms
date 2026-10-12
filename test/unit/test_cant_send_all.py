@@ -5,10 +5,12 @@
 """"Can't be sent" covers every output action (D-05-CANT-SEND-ALL, 05
 S137-S139, 03 S78a): Map to Xbox ("<pad> is not Found."), Map to Logical
 Device ("Logical Device <Control> is not Found.") and Send OSC ("OSC target
-<id> is not Found." / "OSC output is Off."), nested ones too. The texts go
-through output.cant_send_action_texts to the profile list (Home card), the
-page rows and Find tick (control_layout.input_scan), and each editor
-shows the red ⚠ with the text as its tooltip."""
+<id> is not Found." / "OSC output is Off."), nested ones too. Each action
+declares the text as the `why` of its sends-output reference
+(action.references(), D-01-REFERENCES); gremlin.usages carries it to the
+profile list (Home card), the page rows and Find tick
+(control_layout.input_scan), and each editor shows the red ⚠ with the text
+as its tooltip."""
 
 from __future__ import annotations
 
@@ -18,6 +20,7 @@ import sys
 import uuid
 from collections.abc import Iterator
 from types import SimpleNamespace
+from typing import Any
 
 sys.path.append(".")
 
@@ -81,13 +84,18 @@ def _logical() -> tuple[object, LogicalDevice.Input]:
     return action, control
 
 
+def _why(action: Any) -> list[str]:  # noqa: ANN401
+    """The can't-be-sent texts an action declares (Reference.why)."""
+    return [ref.why for ref in action.references() if ref.why]
+
+
 # --- the texts --------------------------------------------------------------
 
 
 def test_xbox_driver_missing_names_the_pad(world: dict) -> None:
-    assert output.cant_send_action_texts(_xbox(1)) == []
+    assert _why(_xbox(1)) == []
     world["xbox"] = False
-    assert output.cant_send_action_texts(_xbox(1)) == [
+    assert _why(_xbox(1)) == [
         "Xbox 360 Controller is not Found."
     ]
     # The pad's output module name, as the editor lists it.
@@ -103,9 +111,9 @@ def test_xbox_pad_outside_the_driver_is_not_found(world: dict) -> None:
 
 def test_logical_device_control_deleted(world: dict) -> None:
     action, control = _logical()
-    assert output.cant_send_action_texts(action) == []
+    assert _why(action) == []
     LogicalDevice().delete(control.identifier)
-    assert output.cant_send_action_texts(action) == [
+    assert _why(action) == [
         f"Logical Device Button {control.id} is not Found."
     ]
 
@@ -116,23 +124,23 @@ def test_macro_logical_step_on_a_deleted_control(world: dict) -> None:
     control = LogicalDevice().create(B)
     data = MacroData()
     data.actions = [macro.LogicalDeviceAction(B, control.id, True)]
-    assert output.cant_send_action_texts(data) == []
+    assert _why(data) == []
     LogicalDevice().delete(control.identifier)
-    assert output.cant_send_action_texts(data) == [
+    assert _why(data) == [
         f"Logical Device Button {control.id} is not Found."
     ]
 
 
 def test_osc_target_missing_and_output_off(world: dict) -> None:
-    assert output.cant_send_action_texts(_osc()) == []
-    assert output.cant_send_action_texts(_osc("gone")) == [
+    assert _why(_osc()) == []
+    assert _why(_osc("gone")) == [
         "OSC target gone is not Found."
     ]
     world["server"]["output_enabled"] = False
-    assert output.cant_send_action_texts(_osc()) == ["OSC output is Off."]
+    assert _why(_osc()) == ["OSC output is Off."]
     # Reply to sender is never a missing target.
     world["server"]["output_enabled"] = True
-    assert output.cant_send_action_texts(_osc("reply")) == []
+    assert _why(_osc("reply")) == []
 
 
 # --- the profile list (Home card) and the rows (Find tick) ------------------

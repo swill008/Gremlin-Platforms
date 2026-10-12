@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import enum
 import logging
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -17,6 +18,7 @@ from PySide6 import QtCore
 
 from gremlin import (
     event_handler,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -145,6 +147,11 @@ class PauseResumeData(AbstractActionData):
 
         # Model variables
         self.operation = PauseResumeType.Pause
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # Pauses or resumes the whole program: it points at nothing.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

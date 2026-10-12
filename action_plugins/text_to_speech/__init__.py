@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from string import Template
 from typing import (
     TYPE_CHECKING,
@@ -16,6 +17,7 @@ from PySide6 import QtCore
 from gremlin import (
     event_handler,
     mode_manager,
+    references,
     tts,
     util,
 )
@@ -192,6 +194,11 @@ class TextToSpeechData(AbstractActionData):
         self.playback_rate: float = 0.0
         self.playback_volume: float = 1.0
         self.playback_pitch: float = 0.0
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # Speaks text: it points at no input, output or mode.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

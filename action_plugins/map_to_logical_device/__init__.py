@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -20,6 +20,7 @@ from gremlin import (
     event_handler,
     event_helpers,
     mode_manager,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -33,7 +34,7 @@ from gremlin.logical_device import (
     LogicalDevice,
     resolve_logical_reference,
 )
-from gremlin.modules import output
+from gremlin.modules import ids, output
 from gremlin.profile import Library
 from gremlin.signal import signal
 from gremlin.types import (
@@ -502,6 +503,18 @@ class MapToLogicalDeviceData(AbstractActionData):
             self._logical_input_uid, self._logical_input_type, self._logical_input_id
         )
         return identifier is None
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        target = references.input_ref(
+            ids.LOGICAL_DEVICE, self.logical_input_type, self.logical_input_id
+        )
+        missing = output.logical_cant_send_text(self)
+        return (
+            references.Reference(
+                "sends-output", target, not_found=bool(missing), why=missing or ""
+            ),
+        )
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

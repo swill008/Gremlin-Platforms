@@ -12,6 +12,7 @@ from abc import (
 )
 from typing import (
     Any,
+    Iterable,
     List,
     Optional,
     cast,
@@ -38,6 +39,7 @@ from gremlin import (
     trace,
     util,
 )
+from gremlin import references as refs
 from gremlin.base_classes import Value
 from gremlin.edits import EditNoted, note_edit
 from gremlin.input_cache import (
@@ -140,6 +142,13 @@ class AbstractCondition(EditNoted, QtCore.QObject):
         """
         raise error.MissingImplementationError(
             "AbstractCondition.to_xml not implemented in subclass."
+        )
+
+    def references(self) -> Iterable[refs.Reference]:
+        """What this condition checks (gremlin.references); () when only
+        the binding's own input. Every condition type declares its own."""
+        raise error.MissingImplementationError(
+            "AbstractCondition.references not implemented in subclass."
         )
 
     def is_valid(self) -> bool:
@@ -352,6 +361,16 @@ class VJoyCondition(AbstractCondition):
         self._create_comparator(input_type)
         self._states = [self.State(int(vjoy_id), input_type, int(input_id))]
 
+    def references(self) -> Iterable[refs.Reference]:
+        found = []
+        for state in cast(list[VJoyCondition.State], self._states):
+            target = refs.vjoy(state.vjoy_id, state.input_type, state.input_id)
+            words = f"vJoy {state.vjoy_id} " + refs.input_label(
+                state.input_type, state.input_id
+            )
+            found.append(refs.Reference("checks-output", target, words))
+        return found
+
     def from_xml(self, node: ElementTree.Element) -> None:
         self._comparator_from_xml(node)
         self._states = [
@@ -468,6 +487,12 @@ class KeyboardCondition(AbstractCondition):
         super().__init__(parent)
 
         self._condition_type = ConditionType.Keyboard
+
+    def references(self) -> Iterable[refs.Reference]:
+        return [
+            refs.Reference("checks-input", refs.keyboard(state.key), state.key.name)
+            for state in cast(list[KeyboardCondition.State], self._states)
+        ]
 
     def from_xml(self, node: ElementTree.Element) -> None:
         """Populates the object with data from an XML node.
@@ -672,6 +697,18 @@ class JoystickCondition(AbstractCondition):
 
         self._condition_type = ConditionType.Joystick
 
+    def references(self) -> Iterable[refs.Reference]:
+        found = []
+        for state in cast(list[JoystickCondition.State], self._states):
+            target = refs.input_ref(
+                state.device_uuid, state.input_type, state.input_id
+            )
+            words = f"{refs.device_name(state.device_uuid)} " + refs.input_label(
+                state.input_type, state.input_id
+            )
+            found.append(refs.Reference("checks-input", target, words))
+        return found
+
     def from_xml(self, node: ElementTree.Element) -> None:
         """Populates the object with data from an XML node.
 
@@ -804,6 +841,9 @@ class CurrentInputCondition(AbstractCondition):
         self._condition_type = ConditionType.CurrentInput
         self._states = [self.State()]
 
+    def references(self) -> Iterable[refs.Reference]:
+        return ()  # checks the binding's own input, which Search finds anyway
+
     def from_xml(self, node: ElementTree.Element) -> None:
         self._comparator_from_xml(node)
 
@@ -887,6 +927,24 @@ class LogicalDeviceCondition(AbstractCondition):
         if any(cast(LogicalDeviceCondition.State, s).missing for s in self._states):
             return False
         return super().__call__(value)
+
+    def references(self) -> Iterable[refs.Reference]:
+        found = []
+        for state in cast(list[LogicalDeviceCondition.State], self._states):
+            target = refs.input_ref(
+                ids.LOGICAL_DEVICE, state.input_type, state.input_id
+            )
+            words = "Logical Device " + refs.input_label(
+                state.input_type, state.input_id
+            )
+            why = ""
+            if state.missing:
+                label = output.logical_control_label(state.input_type, state.input_id)
+                why = f"Logical Device {label} is not Found."
+            found.append(
+                refs.Reference("checks-input", target, words, state.missing, why=why)
+            )
+        return found
 
     def from_xml(self, node: ElementTree.Element) -> None:
         self._comparator_from_xml(node)

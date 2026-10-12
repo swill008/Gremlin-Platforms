@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import dataclasses
 import uuid
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, cast
 
-from gremlin import util
+from gremlin import references, util
 from gremlin.edits import EditNoted
 from gremlin.types import InputType
 from gremlin.ui.device import InputIdentifier
@@ -60,6 +61,25 @@ def is_set(ref: Any) -> bool:  # noqa: ANN401
         and getattr(ref, "input_type", None) is not None
         and getattr(ref, "input_id", None) is not None
     )
+
+
+def axis_references(
+    name: str, axes: Iterable[AxisRef]
+) -> tuple[references.Reference, ...]:
+    """The axes an action reads, as "<name>: <device> <axis>"; an axis not
+    chosen yet points at nothing."""
+    found = []
+    for ref in axes:
+        if not is_set(ref):
+            continue
+        axis = InputType.JoystickAxis
+        words = (
+            f"{name}: {references.device_name(ref.device_guid)} "
+            f"{references.input_label(axis, ref.input_id)}"
+        )
+        target = references.input_ref(ref.device_guid, axis, ref.input_id)
+        found.append(references.Reference("reads-input", target, words))
+    return tuple(found)
 
 
 class AxisView:

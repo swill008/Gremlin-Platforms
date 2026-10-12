@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -21,6 +21,7 @@ import dill
 from gremlin import (
     event_handler,
     fsm,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -267,6 +268,11 @@ class HatButtonsData(AbstractActionData):
         return sum(
             len(actions) for name, actions in self.direction.items() if name not in keep
         )
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # A container: its actions are walked by the finder, not here.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

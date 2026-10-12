@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -17,6 +18,7 @@ from PySide6 import QtCore
 
 from gremlin import (
     event_handler,
+    references,
     run_scope,
     util,
 )
@@ -145,6 +147,14 @@ class LoadProfileData(AbstractActionData):
 
         # Model variables
         self.profile_filename = ""
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        if not self.profile_filename:
+            return ()  # no file chosen yet
+        missing = not file_exists_and_is_accessible(self.profile_filename)
+        target = references.profile(self.profile_filename)
+        return (references.Reference("loads-profile", target, not_found=missing),)
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

@@ -7,6 +7,7 @@ from __future__ import annotations
 import enum
 import functools
 import math
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -21,6 +22,7 @@ from gremlin import (
     event_handler,
     event_helpers,
     mode_manager,
+    references,
     sendinput,
     util,
 )
@@ -353,6 +355,11 @@ class MapToMouseData(AbstractActionData):
         self.min_speed = 50
         self.max_speed = 250
         self.time_to_max_speed = 1.0
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        control = self.button if self.mode == MapToMouseMode.Button else "Motion"
+        return (references.Reference("sends-output", references.mouse(control)),)
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

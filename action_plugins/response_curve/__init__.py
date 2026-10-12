@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import enum
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -20,6 +21,7 @@ from PySide6 import (
 
 from gremlin import (
     event_handler,
+    references,
     spline,
     util,
 )
@@ -557,6 +559,11 @@ class ResponseCurveData(AbstractActionData):
         # Model variables
         self.deadzone = [-1.0, 0.0, 0.0, 1.0]
         self.curve = spline.PiecewiseLinear()
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # Shapes the axis value: it points at nothing.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

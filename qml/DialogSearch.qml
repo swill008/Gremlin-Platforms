@@ -51,7 +51,9 @@ ApplicationWindow {
     }
 
     // Fills the window from a query ({kind, deviceGuid, inputType, inputId,
-    // output, outputId, mode, actionTag}) and searches.
+    // output, outputId, outputKey, mode, actionTag}) and searches. OSC
+    // targets and the mouse are named by outputKey (an OSC target's id)
+    // and inputId (an address; "Left" … "Motion"), not by number.
     function fill(query) {
         var q = query || {}
         var kind = String(q.kind || "")
@@ -60,6 +62,8 @@ ApplicationWindow {
         _model.kind = kind
         if (kind === "input")
             _model.setFromInput(String(q.deviceGuid || ""), _type(q.inputType), q.inputId)
+        else if (kind === "output" && _keyed(q.output))
+            _model.setFromOutputKey(String(q.output), String(q.outputKey || ""), q.inputId)
         else if (kind === "output")
             _model.setFromOutput(String(q.output || ""), Number(q.outputId || 0),
                                  _type(q.inputType), q.inputId)
@@ -68,6 +72,11 @@ ApplicationWindow {
         else
             _model.setFromAction(String(q.actionTag || ""))
         choicesRevision++
+    }
+
+    // An output named by a key (OSC target, Mouse), not a number.
+    function _keyed(output) {
+        return output === "osc" || output === "mouse"
     }
 
     function _type(value) {
@@ -225,7 +234,8 @@ ApplicationWindow {
                 onClicked: _listen.open()
             }
 
-            // Output: vJoy device or Xbox pad, then its control.
+            // Output: vJoy device, Xbox pad, OSC target or Mouse, then its
+            // control (an OSC target's address).
             ComboBox {
                 id: _output
                 objectName: "searchOutput"
@@ -234,11 +244,19 @@ ApplicationWindow {
                 textRole: "label"
                 model: visible ? _root.choices("output") : []
                 currentIndex: _root.indexOfValue(model, function(v) {
-                    return v.output === _model.output && v.outputId === _model.outputId })
+                    return v.output === _model.output && v.outputId === _model.outputId
+                        && v.outputKey === _model.outputKey })
                 displayText: currentIndex < 0 ? "Choose an output" : currentText
                 onActivated: (i) => {
-                    _model.output = String(model[i].value.output)
-                    _model.outputId = Number(model[i].value.outputId)
+                    var v = model[i].value
+                    if (_root._keyed(v.output)) {
+                        // Every use of it until a control is picked.
+                        _model.setFromOutputKey(String(v.output), String(v.outputKey), null)
+                    } else {
+                        _model.output = String(v.output)
+                        _model.outputId = Number(v.outputId)
+                        _model.outputKey = ""
+                    }
                     _root.choicesRevision++
                 }
             }
@@ -251,10 +269,18 @@ ApplicationWindow {
                 model: visible && _model.output.length ? _root.choices("outputInput") : []
                 currentIndex: _root.indexOfValue(model, function(v) {
                     return v.inputType === _model.inputType && _root.sameId(v.inputId, _model.inputId) })
-                displayText: currentIndex < 0 ? "Choose a control" : currentText
-                onActivated: (i) => _model.setFromOutput(_model.output, _model.outputId,
-                                                         model[i].value.inputType,
-                                                         model[i].value.inputId)
+                displayText: currentIndex >= 0 ? currentText
+                           : _model.output === "osc" ? "Any address"
+                           : _model.output === "mouse" ? "Any control" : "Choose a control"
+                onActivated: (i) => {
+                    if (_root._keyed(_model.output))
+                        _model.setFromOutputKey(_model.output, _model.outputKey,
+                                                model[i].value.inputId)
+                    else
+                        _model.setFromOutput(_model.output, _model.outputId,
+                                             model[i].value.inputType,
+                                             model[i].value.inputId)
+                }
             }
 
             // Mode.

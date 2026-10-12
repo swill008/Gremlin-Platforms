@@ -17,7 +17,7 @@ from threading import (
     Event,
     Lock,
 )
-from typing import override
+from typing import Iterable, override
 from xml.etree import ElementTree
 
 import dill
@@ -30,6 +30,7 @@ from gremlin import (
     threads,
     util,
 )
+from gremlin import references as refs
 from gremlin.common import SingletonMetaclass
 from gremlin.config import Configuration
 from gremlin.edits import EditNoted
@@ -41,7 +42,7 @@ from gremlin.keyboard import (
     send_key_up,
 )
 from gremlin.logical_device import LogicalDevice, resolve_logical_reference
-from gremlin.modules import output
+from gremlin.modules import ids, output
 from gremlin.osc import OscDevice, OscRow, OscRuntime
 from gremlin.types import (
     AxisMode,
@@ -549,6 +550,10 @@ class AbstractAction(EditNoted, ABC):
     def is_valid() -> bool:
         pass
 
+    @abstractmethod
+    def references(self) -> Iterable[refs.Reference]:
+        """What this step uses (gremlin.references); () when nothing."""
+
     def _create_node(self, type_name: str) -> ElementTree.Element:
         """Creates an action node of the given type.
 
@@ -684,6 +689,14 @@ class JoystickAction(AbstractAction):
         return self.device_guid != dill.UUID_Invalid
 
     @override
+    def references(self) -> Iterable[refs.Reference]:
+        words = f"{refs.device_name(self.device_guid)} " + refs.input_label(
+            self.input_type, self.input_id
+        )
+        target = refs.input_ref(self.device_guid, self.input_type, self.input_id)
+        return (refs.Reference("sends-output", target, words),)
+
+    @override
     def swap_uuid(self, old_uuid: uuid.UUID, new_uuid: uuid.UUID) -> bool:
         if self.device_guid == old_uuid:
             self.device_guid = new_uuid
@@ -753,6 +766,11 @@ class KeyAction(AbstractAction):
 
     def is_valid(self) -> bool:
         return self.key is not None
+
+    def references(self) -> Iterable[refs.Reference]:
+        if self.key is None:
+            return ()  # no key chosen yet
+        return (refs.Reference("sends-output", refs.keyboard(self.key), self.key.name),)
 
 
 class LogicalDeviceAction(AbstractAction):
@@ -962,6 +980,20 @@ class LogicalDeviceAction(AbstractAction):
     def is_valid(self) -> bool:
         return self.input_id is not None and not self.is_missing()
 
+    def references(self) -> Iterable[refs.Reference]:
+        if self.input_id is None:
+            return ()  # no control chosen yet
+        # A control the Logical Device lacks keeps its stored type and number.
+        ident = self.current_identifier()
+        input_type = ident.type if ident is not None else self.input_type
+        input_id = ident.id if ident is not None else self.input_id
+        target = refs.input_ref(ids.LOGICAL_DEVICE, input_type, input_id)
+        words = f"Logical Device {refs.input_label(input_type, input_id)}"
+        why = output.logical_step_cant_send_text(self) or ""
+        return (
+            refs.Reference("sends-output", target, words, ident is None, why=why),
+        )
+
 
 class OscAction(AbstractAction):
     """OSC input step: plays an OSC input, named by its permanent id, as if
@@ -1064,6 +1096,18 @@ class OscAction(AbstractAction):
         # whose control is missing (05 S117).
         return self.uid is not None
 
+    def references(self) -> Iterable[refs.Reference]:
+        from gremlin.osc_persist import osc_rows
+
+        if not self.uid:
+            return ()  # no OSC input chosen yet
+        ident = osc_rows().identifier_of_uid(self.uid)
+        if ident is None:
+            return ()  # the input is gone: nothing left to point at
+        target = refs.input_ref(ids.OSC, ident[0], ident[1])
+        words = f"OSC {refs.input_label(ident[0], ident[1])}"
+        return (refs.Reference("sends-output", target, words),)
+
 
 class MouseButtonAction(AbstractAction):
     """Mouse button action."""
@@ -1118,6 +1162,10 @@ class MouseButtonAction(AbstractAction):
     def is_valid(self) -> bool:
         return self.button is not None
 
+    def references(self) -> Iterable[refs.Reference]:
+        words = f"Mouse {MouseButton.to_string(self.button)}"
+        return (refs.Reference("sends-output", refs.mouse(self.button), words),)
+
 
 class MouseMotionAction(AbstractAction):
     """Mouse motion action."""
@@ -1159,6 +1207,10 @@ class MouseMotionAction(AbstractAction):
     def is_valid(self) -> bool:
         return True
 
+    def references(self) -> Iterable[refs.Reference]:
+        target = refs.mouse("Motion")
+        return (refs.Reference("sends-output", target, "Mouse motion"),)
+
 
 class PauseAction(AbstractAction):
     """Represents the pause in a macro between pressed."""
@@ -1193,6 +1245,9 @@ class PauseAction(AbstractAction):
 
     def is_valid(self) -> bool:
         return True
+
+    def references(self) -> Iterable[refs.Reference]:
+        return ()  # a pause only waits
 
 
 class VJoyAction(AbstractAction):
@@ -1299,6 +1354,19 @@ class VJoyAction(AbstractAction):
 
     def is_valid(self) -> bool:
         return True
+
+    def references(self) -> Iterable[refs.Reference]:
+        target = refs.vjoy(self.vjoy_id, self.input_type, self.input_id)
+        words = f"vJoy {self.vjoy_id} " + refs.input_label(
+            self.input_type, self.input_id
+        )
+        # Not found by the vJoy output module's can't-send rule.
+        why = output.cant_send_text(
+            self.vjoy_id, output.kind_of(self.input_type), self.input_id
+        )
+        return (
+            refs.Reference("sends-output", target, words, bool(why), why=why or ""),
+        )
 
 
 # Every macro step type by its tag: the editor's Add list and a profile's

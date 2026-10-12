@@ -4,7 +4,7 @@
 (gremlin/ui/control_layout.py), batch L: what ControlTree's group line and
 row details draw on all four list pages (Device Bindings, Keyboard, Logical
 Device, OSC). Counted in the shown mode; Binding output not found is the same rule
-as the red ⚠ (D-05-CANT-SEND, output.cant_send_action_texts).
+as the red ⚠ (D-05-CANT-SEND, output.cant_send_text via gremlin.usages).
 
 Spec: 05 Group details / Row details (batch L contract).
 """
@@ -150,12 +150,12 @@ def _bind(
 @pytest.fixture
 def profile(qapp: object, monkeypatch: pytest.MonkeyPatch) -> Iterator[Profile]:
     # The ⚠ rule's owner: vJoy 3 can't be sent; everything else can.
-    def texts(action: Any, memo: dict | None = None) -> list[str]:  # noqa: ANN401
-        if getattr(action, "vjoy_device_id", 0) == 3:
-            return ["vJoy 3 is not Found."]
-        return []
-
-    monkeypatch.setattr(output, "cant_send_action_texts", texts)
+    monkeypatch.setattr(
+        output,
+        "cant_send_text",
+        lambda v, k, c: "vJoy 3 is not Found." if int(v) == 3 else None,
+    )
+    monkeypatch.setattr(output, "xbox_cant_send_text", lambda pad: None)
     made = Profile()
     made.modes.add_mode("Combat")
     made.modes.add_mode("Landing")

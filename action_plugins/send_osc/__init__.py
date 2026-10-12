@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -22,6 +23,7 @@ from gremlin import (
     event_handler,
     osc_output,
     osc_pattern,
+    references,
     trace,
     util,
 )
@@ -379,6 +381,18 @@ class SendOscData(AbstractActionData):
             return False
         self.target_name = name
         return True
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        from gremlin.modules import output
+
+        missing = output.osc_cant_send_text(self.target, None, self.target_name)
+        target = references.osc_out(self.target, self.address)
+        return (
+            references.Reference(
+                "sends-output", target, not_found=bool(missing), why=missing or ""
+            ),
+        )
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

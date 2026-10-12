@@ -67,8 +67,8 @@ def _settings_kept() -> Iterator[None]:
     original = kept[cfg_cls]
     if original is not None and used is not None and used is not original:
         # A module first imported during the test registered its settings
-        # into the test's own Configuration (output.cant_send_action_texts
-        # imports the Macro plugin, 2026-10-11): the import won't run again,
+        # into the test's own Configuration (an action's references()
+        # imports a plugin, 2026-10-11): the import won't run again,
         # so hand them to the kept one or they are missing for the rest of
         # the run.
         with used._lock:  # noqa: SLF001

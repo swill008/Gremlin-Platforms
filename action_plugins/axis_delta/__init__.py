@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -15,6 +16,7 @@ from PySide6 import QtCore
 
 from gremlin import (
     event_handler,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -139,6 +141,11 @@ class AxisDeltaData(AbstractActionData):
         )
         self.actions_positive: List[AbstractActionData] = []
         self.actions_negative: List[AbstractActionData] = []
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # A container: its actions are walked by the finder, not here.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
@@ -19,6 +20,7 @@ from action_plugins import axis_pair
 from action_plugins.axis_pair import AxisRef, AxisView, is_set
 from gremlin import (
     event_handler,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -305,6 +307,11 @@ class MergeAxisData(AbstractActionData):
         self.operation = MergeOperation.Average
 
         self.children = []
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # The two axes it reads; its actions are walked by the finder.
+        return axis_pair.axis_references(self.name, (self.axis_in1, self.axis_in2))
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

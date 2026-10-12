@@ -9,6 +9,7 @@ import copy
 import logging
 import math
 import uuid
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     override,
@@ -21,6 +22,7 @@ from action_plugins import axis_pair
 from action_plugins.axis_pair import AxisRef, AxisView, is_set
 from gremlin import (
     event_handler,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -240,6 +242,11 @@ class DualAxisDeadzoneData(AbstractActionData):
 
         self.output1_actions = []
         self.output2_actions = []
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # The two axes it reads; its actions are walked by the finder.
+        return axis_pair.axis_references(self.name, (self.axis1, self.axis2))
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

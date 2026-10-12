@@ -128,6 +128,8 @@ Tracker refs in brackets.
 | A Search result that a mode gets from its parent mode (01 S159) [D-01-SEARCH, built 2026-10-12] | row text **Inherited from <mode>: …** (the parent mode's name, then the binding), under **Inherited by this mode**; going to it opens the parent mode, where it is bound | Parent binding, Inherited binding, From parent |
 | Search's Listen popup (01 S158) [D-01-SEARCH, built 2026-10-12] | **Press the input to find. Hold Esc to stop.** (the input pressed shows under it) | Waiting for input…, Press any key |
 | Search's pickers before a choice (01 S158) [D-01-SEARCH, built 2026-10-12] | **Choose a device**, **Choose an input**, **Choose an output**, **Choose a control**, **Choose a mode**, **Choose an action type** | Select…, (none), Pick one |
+| An OSC target as a Search output (01 S158) [D-01-REFERENCES, 2026-10-12; built 2026-10-12] | **OSC target <name>** (the target's host:port when it has no name) and **OSC Reply to sender** in the Output picker; control **Any address** or one address; finds every Send OSC to it | OSC destination, OSC output <n>, Send OSC target |
+| The mouse as a Search output (01 S158) [D-01-REFERENCES, 2026-10-12; built 2026-10-12] | **Mouse** in the Output picker; control **Any control** or one of **Left**, **Right**, **Middle**, **Forward**, **Back**, **Wheel Up**, **Wheel Down**, **Motion**; finds Map to Mouse and macro mouse steps | Mouse output, Pointer, Mouse device |
 
 ## Core terms
 

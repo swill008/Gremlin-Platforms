@@ -186,7 +186,6 @@ from gremlin.ui.binding_catalog import (
     binding_targets,
     editing_locked,
     item_leaves,
-    output_devices,
     sequences_for_item,
 )
 
@@ -247,16 +246,17 @@ _LINE = "\n"
 
 @dataclass
 class InputScan:
-    """One walk over an input's actions in the shown mode.
+    """What an input's actions in the shown mode use and lack.
 
     cant: {sequence index: why it can't be sent} for bindings whose outputs
     (Map to vJoy, Map to Xbox, Map to Logical Device, Send OSC, anywhere in
-    the tree; macro steps) can't be sent; the texts come from
-    output.cant_send_action_texts (D-05-CANT-SEND, D-05-CANT-SEND-ALL).
+    the tree; macro steps) can't be sent; the texts are the output
+    module's cant_send_* texts each piece's references() carries into
+    gremlin.usages as Usage.why (D-05-CANT-SEND, D-05-CANT-SEND-ALL).
     not_found: those outputs counted as the Home card and the load notice
     count them (output.cant_send_bindings: one per output). devices: the
-    output devices sent to (binding_catalog.output_devices), first seen
-    first. condition: a Condition action in any binding (batch L)."""
+    output devices sent to (from gremlin.usages, _output_device), first
+    seen first. condition: a Condition action in any binding (batch L)."""
 
     cant: dict[int, str] = field(default_factory=dict)
     not_found: int = 0
@@ -264,28 +264,49 @@ class InputScan:
     condition: bool = False
 
 
+def _output_device(ref: Any) -> str:  # noqa: ANN401
+    """The output device a use sends to, as Group details names it (batch
+    L): "vJoy 1", "Xbox 360 Controller" (pad 1; "Xbox 360 2" ...),
+    "Logical Device", "OSC"; "" for anything else (keys, modes, checks)."""
+    from gremlin.modules import ids, output
+
+    if ref.usage.role != "sends-output":
+        return ""
+    target = ref.target
+    if target[0] == "vjoy":
+        return f"vJoy {int(target[1])}"
+    if target[0] == "xbox":
+        return output.xbox_pad_name(int(target[1]))
+    if target[0] == "osc-out":
+        return "OSC"
+    if target[0] == "input" and target[1] == ids.guid_key(ids.LOGICAL_DEVICE):
+        return "Logical Device"
+    return ""
+
+
 def input_scan(real: InputItem | None) -> InputScan:
-    from gremlin.modules import output
-    from gremlin.profile import reachable
+    """One walk over an input's uses (gremlin.usages): its output devices,
+    whether it has a Condition, and per binding the can't-send texts (each
+    output's cant_send_* text, output module rules, carried as Usage.why)."""
+    from gremlin import usages
 
     scan = InputScan()
     if real is None:
         return scan
-    memo: dict = {}
-    for index, binding in enumerate(getattr(real, "action_sequences", None) or []):
-        texts: list[str] = []
-        for action in reachable([getattr(binding, "root_action", None)]):
-            if getattr(action, "tag", "") == "condition":
-                scan.condition = True
-            for device in output_devices(action):
-                if device not in scan.devices:
-                    scan.devices.append(device)
-            for text in output.cant_send_action_texts(action, memo):
-                scan.not_found += 1
-                if text not in texts:
-                    texts.append(text)
-        if texts:
-            scan.cant[index] = _LINE.join(texts)
+    texts: dict[int, list[str]] = {}
+    for ref in usages.item_usages(None, real):
+        if ref.target == ("action", "condition"):
+            scan.condition = True
+        device = _output_device(ref)
+        if device and device not in scan.devices:
+            scan.devices.append(device)
+        use = ref.usage
+        if use.role == "sends-output" and use.why:
+            scan.not_found += 1
+            lines = texts.setdefault(use.binding_index, [])
+            if use.why not in lines:
+                lines.append(use.why)
+    scan.cant = {index: _LINE.join(lines) for index, lines in texts.items()}
     return scan
 
 

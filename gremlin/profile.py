@@ -1810,23 +1810,23 @@ class Profile:
         of the profile (sticks not plugged in, the Logical Device), and Map
         to vJoy actions inside others (Condition, Chain, Tempo...) too
         (08 Q7, GL-189). A binding without a root action has none (GL-190).
-        The one "used" rule for Auto Mapping Tool and a new Map to vJoy (05 S115)."""
+        The one "used" rule for Auto Mapping Tool and a new Map to vJoy (05 S115).
+        Found by gremlin.usages; macro vJoy steps don't count."""
         from action_plugins.map_to_vjoy import MapToVjoyData
+        from gremlin import usages
 
         used: list[VjoyInput] = []
-        for items in self.inputs.values():
-            for item in items:
-                if item.mode != mode:
-                    continue
-                for action in reachable(Profile.roots_of([item])):
-                    if isinstance(action, MapToVjoyData):
-                        used.append(
-                            VjoyInput(
-                                action.vjoy_device_id,
-                                action.vjoy_input_type,
-                                action.vjoy_input_id,
-                            )
-                        )
+        for ref in usages.iter_usages(self):
+            use = ref.usage
+            if (
+                ref.target[0] != "vjoy"
+                or use.role != "sends-output"
+                or use.action_tag != MapToVjoyData.tag
+                or use.mode != str(mode or "")
+            ):
+                continue
+            _kind, vjoy_id, input_type, input_id = ref.target
+            used.append(VjoyInput(vjoy_id, InputType(input_type), input_id))
         return used
 
     @staticmethod

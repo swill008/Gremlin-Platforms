@@ -47,9 +47,10 @@ from gremlin.types import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
     from gremlin.event_handler import Event
+    from gremlin.references import Reference
 
 
 class UserFeedback:
@@ -358,6 +359,12 @@ class AbstractActionData(EditNoted, ABC):
             List of user feedback instances.
         """
         pass
+
+    @abstractmethod
+    def references(self) -> Iterable[Reference]:
+        """What this action itself points at (outputs, inputs, modes,
+        profiles), for gremlin.usages. Child actions are walked by the
+        finder, not declared here; return () when it points at nothing."""
 
     def get_actions(
         self, selector: str | None = None

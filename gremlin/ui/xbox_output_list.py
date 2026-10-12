@@ -21,7 +21,6 @@ from gremlin.ui.control_layout import ROW_DEFAULTS
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from gremlin.ui.input_pairing import device_label
 from gremlin.ui.xbox_device_model import incoming_list
-from gremlin.ui.xbox_maps import xbox_maps_for_item
 from vigem.xbox import XboxTarget
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
@@ -330,15 +329,18 @@ class XboxOutputListModel(QtCore.QAbstractListModel):
 def pad_bindings() -> dict[int, dict[str, set[str]]]:
     """Pad -> device guid -> the pad's controls that device sends to: every
     Map to Xbox in the open profile, any mode."""
+    from gremlin import usages
+    from gremlin.ui.input_pairing import map_refs
+
     profile = shared_state.current_profile
     if profile is None:
         return {}
     found: dict[int, dict[str, set[str]]] = {}
-    for device_id, items in (profile.inputs or {}).items():
-        for item in items or []:
-            for pad, target in xbox_maps_for_item(item):
-                devices = found.setdefault(int(pad), {})
-                devices.setdefault(str(device_id), set()).add(str(target))
+    for ref in map_refs(list(usages.iter_usages(profile))):
+        if ref.target[0] != "xbox":
+            continue
+        devices = found.setdefault(int(ref.target[1]), {})
+        devices.setdefault(ref.usage.device_guid, set()).add(str(ref.target[2]))
     return found
 
 

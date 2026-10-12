@@ -167,9 +167,31 @@ def xbox_pad_name(pad: int) -> str:
     return "Xbox 360 Controller" if int(pad) == 1 else f"Xbox 360 {int(pad)}"
 
 
+def _output(label: str, kind: str, output_id: int = 0, key: str = "") -> dict:
+    return _choice(label, {"output": kind, "outputId": output_id, "outputKey": key})
+
+
+def _osc_target_rows() -> list[dict]:
+    """The OSC targets in OSC Setup, then Reply to sender (Send OSC's
+    choices); value outputKey: the target id."""
+    from gremlin import osc_device_file, osc_output
+
+    try:
+        targets = osc_device_file.read_targets()
+    except Exception:  # noqa: BLE001 - no OSC file readable
+        targets = []
+    rows = []
+    for target in targets:
+        name = target.get("name") or f"{target.get('host')}:{target.get('port')}"
+        rows.append(_output(f"OSC target {name}", "osc", key=str(target["id"])))
+    rows.append(_output("OSC Reply to sender", "osc", key=osc_output.REPLY))
+    return rows
+
+
 def output_choices() -> list[dict]:
-    """vJoy devices that have an output module, then the Xbox pads that are on.
-    Value: {"output": "vjoy"|"xbox", "outputId": n}."""
+    """vJoy devices that have an output module, the Xbox pads that are on,
+    the OSC targets, then Mouse. Value: {"output": "vjoy"|"xbox"|"osc"|
+    "mouse", "outputId": n (vJoy, Xbox), "outputKey": OSC target id}."""
     from gremlin.modules import output
 
     rows: list[dict] = []
@@ -178,21 +200,60 @@ def output_choices() -> list[dict]:
     except Exception:  # noqa: BLE001 - modules not read yet
         vjoys = []
     for vjoy_id in vjoys:
-        rows.append(_choice(f"vJoy {vjoy_id}", {"output": "vjoy", "outputId": vjoy_id}))
+        rows.append(_output(f"vJoy {vjoy_id}", "vjoy", vjoy_id))
     try:
         pads = output.xbox_pads_on()
     except Exception:  # noqa: BLE001 - modules not read yet
         pads = [1]
     for pad in pads:
-        rows.append(_choice(xbox_pad_name(pad), {"output": "xbox", "outputId": pad}))
+        rows.append(_output(xbox_pad_name(pad), "xbox", pad))
+    rows.extend(_osc_target_rows())
+    rows.append(_output("Mouse", "mouse"))
     return rows
 
 
-def output_input_choices(kind: str, output_id: int) -> list[dict]:
+def mouse_choices() -> list[dict]:
+    """Map to Mouse's buttons and wheel, then Motion; inputId as the
+    ("mouse", control) target names them."""
+    from gremlin.types import MouseButton
+
+    names = [(MouseButton.to_string(button), button.name) for button in MouseButton]
+    names.append(("Motion", "Motion"))
+    return [_choice(label, {"inputType": -1, "inputId": name}) for label, name in names]
+
+
+def osc_address_choices(profile: Any, target_id: str) -> list[dict]:  # noqa: ANN401
+    """The addresses the profile sends to one OSC target, sorted."""
+    from gremlin import usages
+
+    if profile is None or not target_id:
+        return []
+    addresses = {
+        ref.target[2]
+        for ref in usages.iter_usages(profile)
+        if ref.target[:2] == ("osc-out", target_id) and ref.target[2]
+    }
+    return [
+        _choice(address, {"inputType": -1, "inputId": address})
+        for address in sorted(addresses, key=str.casefold)
+    ]
+
+
+def output_input_choices(
+    kind: str,
+    output_id: int,
+    output_key: str = "",
+    profile: Any = None,  # noqa: ANN401
+) -> list[dict]:
     """The controls of one output: a vJoy's from its output module (named as
-    Map to vJoy names them), an Xbox pad's in pad order."""
+    Map to vJoy names them), an Xbox pad's in pad order, the mouse's, an OSC
+    target's addresses in the profile."""
     from gremlin.modules import output
 
+    if kind == "mouse":
+        return mouse_choices()
+    if kind == "osc":
+        return osc_address_choices(profile, output_key)
     if kind == "xbox":
         from vigem.xbox import XboxTarget
 
@@ -286,6 +347,7 @@ class UsagesModel(QtCore.QAbstractListModel):
         self._input_id: object = None
         self._output = ""
         self._output_id = 0
+        self._output_key = ""
         self._mode = ""
         self._action_tag = ""
         self._rows: list[dict] = []
@@ -326,6 +388,7 @@ class UsagesModel(QtCore.QAbstractListModel):
     )
     output = _query_property(str, "_output", _text, queryChanged)
     outputId = _query_property(int, "_output_id", int, queryChanged)
+    outputKey = _query_property(str, "_output_key", _text, queryChanged)
     mode = _query_property(str, "_mode", _text, queryChanged)
     actionTag = _query_property(str, "_action_tag", _text, queryChanged)
 
@@ -350,6 +413,7 @@ class UsagesModel(QtCore.QAbstractListModel):
             input_id=self._input_id,
             output=self._output,
             output_id=self._output_id,
+            output_key=self._output_key,
             mode=self._mode,
             action_tag=self._action_tag,
         )
@@ -358,6 +422,10 @@ class UsagesModel(QtCore.QAbstractListModel):
         if self._kind == "input":
             return bool(self._device_guid)  # no control: any of its controls
         if self._kind == "output":
+            if self._output == "mouse":
+                return True  # no control: every mouse use
+            if self._output == "osc":
+                return bool(self._output_key)
             return bool(self._output) and self._output_id > 0
         if self._kind == "mode":
             return bool(self._mode)
@@ -420,7 +488,7 @@ class UsagesModel(QtCore.QAbstractListModel):
     @QtCore.Slot()
     def clear(self) -> None:
         self._kind = self._device_guid = self._output = ""
-        self._mode = self._action_tag = ""
+        self._output_key = self._mode = self._action_tag = ""
         self._input_type, self._input_id, self._output_id = -1, None, 0
         self.queryChanged.emit()
         self.beginResetModel()
@@ -430,7 +498,7 @@ class UsagesModel(QtCore.QAbstractListModel):
 
     def _fill(self, **fields: object) -> None:
         self._kind = self._device_guid = self._output = ""
-        self._mode = self._action_tag = ""
+        self._output_key = self._mode = self._action_tag = ""
         self._input_type, self._input_id, self._output_id = -1, None, 0
         for name, value in fields.items():
             setattr(self, f"_{name}", value)
@@ -471,6 +539,18 @@ class UsagesModel(QtCore.QAbstractListModel):
             input_id=_plain_id(input_id),
         )
 
+    @QtCore.Slot(str, str, "QVariant")
+    def setFromOutputKey(self, kind: str, key: str, input_id: object) -> None:
+        """An output named by a key, not a number: "osc" (key: the OSC target
+        id, input_id: an address) or "mouse" (input_id: "Left" … "Motion");
+        input_id None: every use of that output."""
+        self._fill(
+            kind="output",
+            output=str(kind or ""),
+            output_key=str(key or ""),
+            input_id=_plain_id(input_id),
+        )
+
     @QtCore.Slot(str)
     def setFromMode(self, name: str) -> None:
         self._fill(kind="mode", mode=str(name or ""))
@@ -491,7 +571,9 @@ class UsagesModel(QtCore.QAbstractListModel):
         if kind == "output":
             return output_choices()
         if kind == "outputInput":
-            return output_input_choices(self._output, self._output_id)
+            return output_input_choices(
+                self._output, self._output_id, self._output_key, profile
+            )
         if kind == "mode":
             return mode_choices(profile)
         if kind == "action":

@@ -8,7 +8,7 @@ import uuid
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import device_initialization, shared_state
+from gremlin import device_initialization, shared_state, usages
 from gremlin.modules import wiring
 from gremlin.notice import BurstNotice, NoticeTimer
 from gremlin.signal import signal
@@ -24,66 +24,64 @@ def _guid(value: object) -> uuid.UUID | None:
         return None
 
 
-def _walk_actions(action) -> list:
-    found = [action]
-    getter = getattr(action, "get_actions", None)
-    if not callable(getter):
-        return found
-    try:
-        buckets = getter()
-    except Exception:
-        return found
-    if isinstance(buckets, (list, tuple)):
-        for bucket in buckets:
-            if isinstance(bucket, (list, tuple)):
-                for child in bucket:
-                    found.extend(_walk_actions(child))
-    return found
+def item_refs(item: object) -> list:
+    """Every use in one input's bindings (gremlin.usages, the one walk)."""
+    return list(usages.item_usages(None, item))
 
 
-def _maps_for_item(item) -> list[tuple[int, object, int]]:
+_MAP_TAGS = ("map-to-vjoy", "map-to-xbox")
+
+
+def map_refs(refs: list) -> list:
+    """The sends of Map to vJoy and Map to Xbox actions themselves (not a
+    macro's vJoy steps), in binding order."""
+    return [
+        ref
+        for ref in refs
+        if ref.usage.role == "sends-output"
+        and ref.usage.own
+        and ref.usage.action_tag in _MAP_TAGS
+    ]
+
+
+def _maps_of(refs: list) -> list[tuple[int, object, int]]:
+    """(vJoy id, input type, control) per Map to vJoy; (pad, None, 0) per
+    Map to Xbox, so ViewerDeviceModel includes the device."""
     out: list[tuple[int, object, int]] = []
-    if item is None:
-        return out
-    for seq in getattr(item, "action_sequences", []) or []:
-        root = getattr(seq, "root_action", None)
-        if root is None:
-            continue
-        for action in _walk_actions(root):
-            tag = getattr(action, "tag", "")
-            if tag == "map-to-vjoy":
-                try:
-                    out.append(
-                        (
-                            int(action.vjoy_device_id),
-                            getattr(action, "vjoy_input_type", None),
-                            int(action.vjoy_input_id),
-                        )
-                    )
-                except Exception:
-                    continue
-            elif tag == "map-to-xbox":
-                # Count as mapped so ViewerDeviceModel includes the device.
-                try:
-                    out.append((int(getattr(action, "xbox_device_id", 1)), None, 0))
-                except Exception:
-                    out.append((1, None, 0))
+    for ref in map_refs(refs):
+        target = ref.target
+        if target[0] == "vjoy":
+            out.append((target[1], InputType(target[2]), target[3]))
+        else:
+            out.append((target[1], None, 0))
     return out
 
 
-def _dest_labels_for_item(item) -> list[str]:
+def _labels_of(refs: list) -> list[str]:
+    """Short destination labels of the Map to vJoy / Map to Xbox actions."""
     labels: list[str] = []
-    if item is None:
-        return labels
-    for seq in getattr(item, "action_sequences", []) or []:
-        root = getattr(seq, "root_action", None)
-        if root is None:
+    for ref in map_refs(refs):
+        target = ref.target
+        try:
+            if target[0] == "vjoy":
+                text = wiring.vjoy_dest(
+                    target[1], InputType(target[2]), target[3], short=True
+                )
+            else:
+                text = wiring.xbox_dest(target[1], target[2], short=True)
+        except (TypeError, ValueError):
             continue
-        for action in _walk_actions(root):
-            text = wiring.dest_label(action, short=True)
-            if text:
-                labels.append(text)
+        if text:
+            labels.append(text)
     return labels
+
+
+def _maps_for_item(item) -> list[tuple[int, object, int]]:
+    return _maps_of(item_refs(item))
+
+
+def _dest_labels_for_item(item) -> list[str]:
+    return _labels_of(item_refs(item))
 
 
 def _items_for_guid(guid: str):
@@ -125,9 +123,9 @@ def parse_guid(value: object) -> uuid.UUID | None:
     return _guid(value)
 
 
-def walk_actions(action: object) -> list:
-    """The action and every action inside it."""
-    return _walk_actions(action)
+# The one depth-first action walk (gremlin.usages); device_map_labels,
+# hardware_profile and trace_model call it by this name.
+walk_actions = usages.walk_actions
 
 
 def dest_labels_for_item(item: object) -> list[str]:
@@ -176,11 +174,9 @@ def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
             identifier = int(item.input_id)
         except Exception:
             continue
-        dests = _dest_labels_for_item(item)
-        vjoy_maps = [
-            m for m in _maps_for_item(item)
-            if m[1] is not None
-        ]
+        refs = item_refs(item)
+        dests = _labels_of(refs)
+        vjoy_maps = [m for m in _maps_of(refs) if m[1] is not None]
         if not dests and not vjoy_maps:
             continue
         if identifier in seen:

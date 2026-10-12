@@ -71,6 +71,17 @@ def story(j: Journey) -> None:
         "return { same: a !== null && a === b, kind: b ? b.usages.kind : '', "
         "tag: b ? b.usages.actionTag : '' } })()",
     )
+    # OSC targets and the mouse in the Output picker, filled by key.
+    out["keyed"] = _safe(
+        j,
+        '(function() { var w = _root.openSearch({kind: "output", output: "mouse", '
+        'inputId: "Left"}); var m = w.usages; var a = { output: m.output, '
+        "inputId: m.inputId, labels: w.choices('output').map(function(r) { "
+        "return r.label }) }; "
+        '_root.openSearch({kind: "output", output: "osc", outputKey: "t9"}); '
+        "a.osc = [m.output, m.outputKey, m.inputId === null "
+        "|| m.inputId === undefined]; return a })()",
+    )
     out["tabs"] = _safe(
         j,
         '(function() { var w = Helpers.windowOf("DialogSearch.qml"); '
@@ -158,6 +169,15 @@ def test_open_search_opens_one_window_and_fills_it(result: dict) -> None:
     assert result["open1"] == "Search"
     assert result["open2"] == {"same": True, "kind": "action", "tag": "remap"}
     assert result["tabs"] == ["Input", "Output", "Mode", "Action type"]
+
+
+def test_output_picker_has_osc_targets_and_mouse(result: dict) -> None:
+    keyed = result["keyed"]
+    assert isinstance(keyed, dict), keyed
+    assert (keyed["output"], keyed["inputId"]) == ("mouse", "Left")
+    assert "Mouse" in keyed["labels"]
+    assert "OSC target Default" in keyed["labels"]
+    assert keyed["osc"] == ["osc", "t9", True]
 
 
 def test_go_to_binding_opens_the_device_page_in_its_mode_on_the_row(

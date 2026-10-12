@@ -1218,25 +1218,6 @@ def cant_send_words(
     return f"vJoy {vjoy_id}'s {control} is not Found (vJoy {vjoy_id} {have})."
 
 
-def vjoy_targets(action: Any) -> list[tuple[int, InputType, int]]:  # noqa: ANN401
-    """The vJoy outputs one action sends to (Map to vJoy, macro vJoy steps)."""
-    from action_plugins.macro import MacroData
-    from action_plugins.map_to_vjoy import MapToVjoyData
-    from gremlin import macro
-
-    if isinstance(action, MapToVjoyData):
-        return [
-            (action.vjoy_device_id, action.vjoy_input_type, action.vjoy_input_id)
-        ]
-    if isinstance(action, MacroData):
-        return [
-            (step.vjoy_id, step.input_type, step.input_id)
-            for step in action.actions
-            if isinstance(step, macro.VJoyAction)
-        ]
-    return []
-
-
 # --- Map to Xbox, Map to Logical Device, Send OSC (D-05-CANT-SEND-ALL) -------
 
 
@@ -1284,7 +1265,7 @@ def logical_cant_send_text(action: Any) -> str | None:  # noqa: ANN401
     return f"Logical Device {label} is not Found."
 
 
-def _logical_step_text(step: Any) -> str | None:  # noqa: ANN401
+def logical_step_cant_send_text(step: Any) -> str | None:  # noqa: ANN401
     """A macro Logical Device step whose control is gone (none chosen yet
     is the editor's own prompt, not this)."""
     if step.input_id is None or step.current_identifier() is not None:
@@ -1327,96 +1308,45 @@ def osc_cant_send_text(
     return None
 
 
-def cant_send_action_texts(
-    action: Any, memo: dict | None = None  # noqa: ANN401
-) -> list[str]:
-    """Why one action's outputs can't be sent, one text per output (Map to
-    vJoy, Map to Xbox, Map to Logical Device, Send OSC, macro vJoy and
-    Logical Device steps); [] when all can. Nested actions are the caller's
-    (profile.reachable). `memo` shares look-ups across calls."""
-    watch_cant_send()
-    from action_plugins.macro import MacroData
-    from action_plugins.map_to_logical_device import MapToLogicalDeviceData
-    from action_plugins.map_to_xbox import MapToXboxData
-    from action_plugins.send_osc import SendOscData
-    from gremlin import macro
+def _usage_device_name(usage: Any) -> str:  # noqa: ANN401
+    """The device of a found use (gremlin.usages.Usage) as Gremlin names it."""
+    import uuid
 
-    memo = {} if memo is None else memo
-    texts: list[str | None] = []
-    for vjoy_id, input_type, input_id in vjoy_targets(action):
-        try:
-            key = ("vjoy", int(vjoy_id), kind_of(input_type), int(input_id))
-        except (TypeError, ValueError):
-            continue
-        if key not in memo:
-            memo[key] = cant_send_text(*key[1:])
-        texts.append(memo[key])
-    if isinstance(action, MapToXboxData):
-        key = ("xbox", int(action.xbox_device_id))
-        if key not in memo:
-            memo[key] = xbox_cant_send_text(key[1])
-        texts.append(memo[key])
-    elif isinstance(action, MapToLogicalDeviceData):
-        texts.append(logical_cant_send_text(action))
-    elif isinstance(action, SendOscData):
-        if "osc" not in memo:
-            memo["osc"] = osc_settings()
-        texts.append(
-            osc_cant_send_text(action.target, memo["osc"], action.target_name)
-        )
-    elif isinstance(action, MacroData):
-        texts.extend(
-            _logical_step_text(step)
-            for step in action.actions
-            if isinstance(step, macro.LogicalDeviceAction)
-        )
-    return [text for text in texts if text]
-
-
-def _input_label(input_type: Any, input_id: Any) -> str:  # noqa: ANN401
-    from gremlin import common
+    from gremlin import device_initialization
 
     try:
-        return common.input_to_ui_string(input_type, input_id)
-    except Exception:  # noqa: BLE001 - an input type with no ui string
-        return f"{input_type} {input_id}"
+        guid: object = uuid.UUID(usage.device_guid)
+    except ValueError:
+        guid = usage.device_guid
+    return device_initialization.device_name(guid)
 
 
 def cant_send_bindings(profile: Any = None) -> list[dict]:  # noqa: ANN401
     """Every output in the profile (default: the current one) that can't be
-    sent (vJoy, Xbox, Logical Device, OSC; cant_send_action_texts), nested
-    actions included: device_guid, device_name, input_type, input_id,
-    input_label, mode, text (the tooltip). Re-ask on signal.cantSendChanged
-    (D-05-CANT-SEND-LIVE)."""
+    sent (vJoy, Xbox, Logical Device, OSC; the cant_send_* rules, carried by
+    each piece's references() into gremlin.usages), nested actions included:
+    device_guid, device_name, input_type, input_id, input_label, mode, text
+    (the tooltip). Re-ask on signal.cantSendChanged (D-05-CANT-SEND-LIVE)."""
     watch_cant_send()
-    from gremlin import device_initialization, shared_state
-    from gremlin.profile import Profile, reachable
+    from gremlin import shared_state, usages
 
     profile = profile if profile is not None else shared_state.current_profile
-    if profile is None:
-        return []
-    memo: dict = {}
     found: list[dict] = []
-    for items in profile.inputs.values():
-        for item in items:
-            for action in reachable(Profile.roots_of([item])):
-                for text in cant_send_action_texts(action, memo):
-                    guid = getattr(item.device_id, "uuid", item.device_id)
-                    found.append(
-                        {
-                            "device_guid": str(guid),
-                            "device_name": device_initialization.device_name(guid),
-                            "input_type": InputType.to_string(item.input_type)
-                            if item.input_type is not None
-                            else "",
-                            "input_id": item.input_id,
-                            "input_label": _input_label(
-                                item.input_type, item.input_id
-                            ),
-                            "mode": str(item.mode or ""),
-                            "text": text,
-                        }
-                    )
+    for ref in usages.iter_usages(profile):
+        use = ref.usage
+        if use.role != "sends-output" or not use.why:
+            continue
+        found.append(
+            {
+                "device_guid": use.device_guid,
+                "device_name": _usage_device_name(use),
+                "input_type": InputType.to_string(InputType(use.input_type)),
+                "input_id": use.input_id,
+                "input_label": use.input_label,
+                "mode": use.mode,
+                "text": use.why,
+            }
+        )
     return found
 
 
@@ -1425,32 +1355,26 @@ def xbox_bindings_on_pads(pads: list[int]) -> list[str]:
     current profile that sends to one of these pads, as "<device> · <input>
     → Xbox 360 N · <control> (<mode>)" (Xbox Setup's question before pads
     are turned off, D-XBOX-PADS)."""
-    from action_plugins.map_to_xbox import MapToXboxData
-    from gremlin import device_initialization, shared_state
-    from gremlin.profile import Profile, reachable
+    from gremlin import shared_state, usages
 
-    profile = shared_state.current_profile
     wanted = {int(pad) for pad in pads}
-    if profile is None or not wanted:
+    if not wanted:
         return []
     found: list[str] = []
-    for items in profile.inputs.values():
-        for item in items:
-            for action in reachable(Profile.roots_of([item])):
-                if not isinstance(action, MapToXboxData):
-                    continue
-                pad = int(action.xbox_device_id)
-                if pad not in wanted:
-                    continue
-                guid = getattr(item.device_id, "uuid", item.device_id)
-                device = device_initialization.device_name(guid)
-                source = _input_label(item.input_type, item.input_id)
-                target = action.xbox_target
-                control = (
-                    target.label if isinstance(target, XboxTarget) else str(target)
-                )
-                found.append(
-                    f"{device} · {source} → {xbox_pad_label(pad)} · {control}"
-                    f" ({item.mode or ''})"
-                )
+    for ref in usages.iter_usages(shared_state.current_profile):
+        kind, *rest = ref.target
+        if kind != "xbox" or ref.usage.role != "sends-output":
+            continue
+        pad, value = int(rest[0]), str(rest[1])
+        if pad not in wanted:
+            continue
+        try:
+            control = XboxTarget(value).label
+        except ValueError:
+            control = value
+        use = ref.usage
+        found.append(
+            f"{_usage_device_name(use)} · {use.input_label} → {xbox_pad_label(pad)}"
+            f" · {control} ({use.mode})"
+        )
     return found

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -15,6 +16,7 @@ from PySide6 import QtCore
 
 from gremlin import (
     event_handler,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -99,6 +101,11 @@ class RootData(AbstractActionData):
         super().__init__(behavior_type)
 
         self.children = []
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # The top of an action tree: its actions are walked by the finder.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

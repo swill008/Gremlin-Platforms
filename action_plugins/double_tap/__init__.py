@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import copy
 import logging
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -20,6 +21,7 @@ from PySide6 import QtCore
 from gremlin import (
     event_handler,
     fsm,
+    references,
     run_scope,
     util,
 )
@@ -267,6 +269,11 @@ class DoubleTapData(AbstractActionData):
         self.double_actions = []
         self.threshold = Configuration().value("action", "double-tap", "duration")
         self.activate_on = "exclusive"
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # A container: its actions are walked by the finder, not here.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

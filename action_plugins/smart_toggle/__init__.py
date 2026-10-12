@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -17,6 +18,7 @@ from PySide6 import QtCore
 from gremlin import (
     event_handler,
     fsm,
+    references,
     run_scope,
     util,
 )
@@ -179,6 +181,11 @@ class SmartToggleData(AbstractActionData):
 
         self.delay = Configuration().value("action", "smart-toggle", "duration")
         self.children = []
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # A container: its actions are walked by the finder, not here.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

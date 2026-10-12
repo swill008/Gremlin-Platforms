@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -18,6 +19,7 @@ from PySide6 import QtCore
 from gremlin import (
     error,
     event_handler,
+    references,
     util,
 )
 from gremlin.base_classes import (
@@ -253,6 +255,16 @@ class ConditionData(AbstractActionData):
         self.true_actions = []
         self.false_actions = []
         self.conditions = []
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # Its conditions say what they check; its true and false actions
+        # are walked by the finder.
+        return tuple(
+            references.in_condition(number, ref)
+            for number, cond in enumerate(self.conditions, start=1)
+            for ref in cond.references()
+        )
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:

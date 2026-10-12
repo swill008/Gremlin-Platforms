@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     List,
@@ -16,6 +17,7 @@ from PySide6 import QtCore
 
 from gremlin import (
     event_handler,
+    references,
     util,
 )
 from gremlin.audio_player import AudioPlayer
@@ -151,6 +153,11 @@ class PlaySoundData(AbstractActionData):
         # Model variables
         self.sound_filename: str = ""
         self.sound_volume: int = 50
+
+    @override
+    def references(self) -> Iterable[references.Reference]:
+        # Plays a sound file: it points at no input, output or mode.
+        return ()
 
     @override
     def _from_xml(self, node: ElementTree.Element, library: Library) -> None:
