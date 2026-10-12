@@ -18,6 +18,7 @@ from pathlib import Path
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import profile_recovery
 from gremlin.profile import Profile
@@ -189,7 +190,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
             results[name] = json.loads(value)
         elif line.startswith("ERROR"):
             results["errors"].append(line)
-    assert "done" in proc.stdout, proc.stdout[-3000:] + proc.stderr[-3000:]
+    assert "done" in proc.stdout, smoke_report.explain(proc)
     return results
 
 

@@ -14,6 +14,7 @@ from pathlib import Path
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from PySide6 import QtCore
 
 from test.unit import help_book
@@ -371,7 +372,7 @@ def _run_harness() -> dict[str, str]:
         if line.startswith("RESULT "):
             _tag, name, value = line.split(" ", 2)
             out[name] = value
-    assert len(out) == 3, result.stderr[-3000:]
+    assert len(out) == 3, smoke_report.explain(result)
     return out
 
 

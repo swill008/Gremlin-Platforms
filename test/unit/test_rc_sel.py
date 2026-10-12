@@ -18,6 +18,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _SMOKE = pathlib.Path(__file__).parent / "rc_sel_smoke.py"
 
@@ -28,7 +29,7 @@ def facts(tmp_path_factory: pytest.TempPathFactory) -> dict:
     result = proc_tree.run(
         [sys.executable, str(_SMOKE), str(out)], text=True, timeout=240
     )
-    assert result.returncode == 0 and out.exists(), (result.stderr or "")[-3000:]
+    assert result.returncode == 0 and out.exists(), smoke_report.explain(result)
     return json.loads(out.read_text(encoding="utf-8"))
 
 

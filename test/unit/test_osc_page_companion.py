@@ -29,6 +29,7 @@ from typing import Any
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from PySide6 import QtCore, QtQml
 
 from gremlin import osc_device_file, shared_state
@@ -148,7 +149,7 @@ def test_osc_page_bar_menu_and_monitor_in_the_program(
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-3000:] + result.stderr[-3000:]
+    assert "done" in lines, smoke_report.explain(result)
     problems = [x for x in lines if x.startswith(("ERROR", "WARN"))]
     assert problems == [], problems
     got = {

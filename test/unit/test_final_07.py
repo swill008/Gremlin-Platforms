@@ -23,6 +23,8 @@ import uuid
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import shiboken6
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin.event_handler import Event, EventListener
 from gremlin.modules import store
@@ -59,7 +61,7 @@ def seen(tmp_path_factory: pytest.TempPathFactory) -> dict:
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     if not lines:
-        raise RuntimeError(done.stdout[-2000:] + done.stderr[-2000:])
+        raise RuntimeError(smoke_report.explain(done))
     out = json.loads(lines[-1][len("RESULT "):])
     if "error" in out:
         raise RuntimeError(out.get("traceback") or out["error"])
@@ -143,7 +145,9 @@ def test_presses_come_only_from_the_input_module_feed(
         assert live.buttonValue(2) == 1.0
         assert live.buttonValue(3) == 0.0
     finally:
-        live.deleteLater()
+        # deleteLater waits for an event loop that may never run here, and a
+        # card left alive answers every later bindings notice (CI 38277644763).
+        shiboken6.delete(live)
 
 
 # +-------------------------------------------------------------------------

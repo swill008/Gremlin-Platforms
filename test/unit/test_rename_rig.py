@@ -21,6 +21,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -42,7 +43,7 @@ def run() -> dict:
         if line.startswith("RESULT "):
             _tag, name, value = line.split(" ", 2)
             results[name] = json.loads(value)
-    assert "done" in done.stdout, done.stdout[-3000:] + done.stderr[-3000:]
+    assert "done" in done.stdout, smoke_report.explain(done)
     return results
 
 

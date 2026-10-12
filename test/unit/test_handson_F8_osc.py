@@ -15,6 +15,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "handson_F8_osc_close_smoke.py"
@@ -34,7 +35,7 @@ def _run(tmp_path: pathlib.Path) -> dict[str, str]:
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-2000:] + result.stderr[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     assert [line for line in lines if line.startswith("ERROR")] == []
     ours = ("OscSetupTabs.qml", "OscServerTab.qml")
     warned = [

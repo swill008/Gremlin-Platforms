@@ -12,7 +12,7 @@ vJoy 1 (64 buttons) behind the output module. The profile, in mode
 
 - button 1: Map to vJoy (button 3) and Map to Xbox;
 - button 2: Map to vJoy to vJoy button 100, which vJoy 1 doesn't have
-  (output not found), and a custom name;
+  (binding output not found), and a custom name;
 - button 3: nothing;
 - axis 1: a Condition holding Map to vJoy (axis 1);
 - hat 1: nothing;
@@ -21,15 +21,15 @@ vJoy 1 (64 buttons) behind the output module. The profile, in mode
 The Device Bindings page is opened from the stick's Home card and its
 Appearance panel is driven through its own checkboxes:
 
-1. The Home card reads "⚠ 1 output not found"; the group line by default
+1. The Home card reads "⚠ 1 binding output not found"; the group line by default
    reads "3 buttons [3 bindings] · 1 axis [1 binding] · 1 hat [0 bindings]".
-2. Every Group detail on: each detail's exact text, Output not found in the
+2. Every Group detail on: each detail's exact text, Binding output not found in the
    warning colour; Hide empty drops "[0 bindings]" (the hat stays); Wrap
    details on a narrow window gives more than one line, off gives one.
 3. Every Row detail on: each row's exact details (system name only on
-   button 2, no bindings only on button 3, output not found in the warning
+   button 2, no bindings only on button 3, binding output not found in the warning
    colour, has a condition on the axis, other modes on button 1).
-4. The Find ticks read "Output not found" and "No bindings in this mode";
+4. The Find ticks read "Binding output not found" and "No bindings in this mode";
    the Find hint reads "System name, custom name, or group".
 
 Spec: 05 (batch L contract: Group details, Row details, renames).
@@ -63,7 +63,7 @@ GROUP_SETTINGS = [
     "Controls by type",
     "Bindings by type",
     "No bindings",
-    "Output not found",
+    "Binding output not found",
     "Output devices",
     "Action types",
     "Custom names",
@@ -72,7 +72,7 @@ GROUP_SETTINGS = [
 ROW_SETTINGS = [
     "Bindings and targets",
     "Action types",
-    "Output not found",
+    "Binding output not found",
     "Other modes",
     "System name",
     "Has a condition",
@@ -321,7 +321,9 @@ def _profile(j: Journey) -> None:
 
 def _part_default(j: Journey) -> tuple[Any, Any, Any]:  # noqa: ANN401
     out = j.out
-    out["1:card"] = j.await_value(lambda: _home_card(j), ["⚠ 1 output not found"])
+    out["1:card"] = j.await_value(
+        lambda: _home_card(j), ["⚠ 1 binding output not found"]
+    )
     layout = j.open_device_bindings("pjoy_pro")
     page = j.ev("deviceBindingsPane()")
     layout.setUserName(B2, CUSTOM)
@@ -472,7 +474,7 @@ DEFAULT_LINE = "3 buttons [3 bindings] · 1 axis [1 binding] · 1 hat [0 binding
 
 
 def test_the_home_card_says_one_output_not_found(run: dict) -> None:
-    assert _step(run, "1:card") == ["⚠ 1 output not found"]
+    assert _step(run, "1:card") == ["⚠ 1 binding output not found"]
 
 
 def test_the_default_group_line(run: dict) -> None:
@@ -488,7 +490,7 @@ def test_every_group_detail(run: dict) -> None:
         "1 axis [1 binding]",
         "1 hat [0 bindings]",
         "[2 with no bindings]",
-        "[1 output not found]",
+        "[1 binding output not found]",
         "[outputs: vJoy 1, Xbox 360 Controller]",
         "[3 Map to vJoy, 1 Map to Xbox]",
         "[1 custom name]",
@@ -501,7 +503,7 @@ def test_group_output_not_found_is_in_the_warning_colour(run: dict) -> None:
     group = _step(run, "2:all")
     warn = _step(run, "1:warn")
     index = next(
-        i for i, t in enumerate(group["pieces"]) if "output not found" in t
+        i for i, t in enumerate(group["pieces"]) if "binding output not found" in t
     )
     assert group["colors"][index] in warn, (group, warn)
     assert group["colors"][0] not in warn, (group, warn)
@@ -533,7 +535,7 @@ def test_every_row_detail(run: dict) -> None:
     ], rows[B1]
     assert _row_line(rows, B2) == [
         "[Map to vJoy]",
-        "[output not found]",
+        "[binding output not found]",
         "[system name: Button 2]",
     ], rows[B2]
     assert _row_line(rows, B3) == ["[no bindings]"], rows[B3]
@@ -559,7 +561,7 @@ def test_row_details_are_off_by_default(run: dict) -> None:
 def test_find_ticks_and_hint(run: dict) -> None:
     assert _step(run, "4:hint") == "System name, custom name, or group"
     ticks = _step(run, "4:ticks")
-    assert "Output not found" in ticks, ticks
+    assert "Binding output not found" in ticks, ticks
     assert "No bindings in this mode" in ticks, ticks
     assert "Can't be sent" not in ticks, ticks
     assert "No actions in this mode" not in ticks, ticks

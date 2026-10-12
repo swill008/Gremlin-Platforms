@@ -286,7 +286,7 @@ Rectangle {
                     FlagBox { text: "Controls by type"; source: _panel.groupControlsByType; onUserSet: (v) => { _panel.groupControlsByType = v } }
                     FlagBox { text: "Bindings by type"; source: _panel.groupBindingsByType; onUserSet: (v) => { _panel.groupBindingsByType = v } }
                     FlagBox { text: "No bindings"; source: _panel.groupNoBindings; onUserSet: (v) => { _panel.groupNoBindings = v } }
-                    FlagBox { text: "Output not found"; source: _panel.groupOutputNotFound; onUserSet: (v) => { _panel.groupOutputNotFound = v } }
+                    FlagBox { text: "Binding output not found"; source: _panel.groupOutputNotFound; onUserSet: (v) => { _panel.groupOutputNotFound = v } }
                     FlagBox { text: "Output devices"; source: _panel.groupOutputDevices; onUserSet: (v) => { _panel.groupOutputDevices = v } }
                     FlagBox { text: "Action types"; source: _panel.groupActionTypes; onUserSet: (v) => { _panel.groupActionTypes = v } }
                     FlagBox { text: "Custom names"; source: _panel.groupCustomNames; onUserSet: (v) => { _panel.groupCustomNames = v } }
@@ -303,7 +303,7 @@ Rectangle {
                     onToggled: (v) => { _panel.openRowDetails = v }
                     FlagBox { text: "Bindings and targets"; source: _panel.showBindings; onUserSet: (v) => { _panel.showBindings = v } }
                     FlagBox { text: "Action types"; source: _panel.rowActionTypes; onUserSet: (v) => { _panel.rowActionTypes = v } }
-                    FlagBox { text: "Output not found"; source: _panel.rowOutputNotFound; onUserSet: (v) => { _panel.rowOutputNotFound = v } }
+                    FlagBox { text: "Binding output not found"; source: _panel.rowOutputNotFound; onUserSet: (v) => { _panel.rowOutputNotFound = v } }
                     FlagBox { text: "Other modes"; source: _panel.rowOtherModes; onUserSet: (v) => { _panel.rowOtherModes = v } }
                     FlagBox { text: "System name"; source: _panel.rowSystemName; onUserSet: (v) => { _panel.rowSystemName = v } }
                     FlagBox { text: "Has a condition"; source: _panel.rowHasCondition; onUserSet: (v) => { _panel.rowHasCondition = v } }

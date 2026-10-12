@@ -23,6 +23,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from PySide6 import QtGui
 
 _HERE = pathlib.Path(__file__).parent
@@ -184,7 +185,7 @@ def _run(scenario: str, out_dir: pathlib.Path) -> dict:
         timeout=240,
     )
     report = out_dir / f"{scenario}.json"
-    assert result.returncode == 0 and report.exists(), result.stderr[-2000:]
+    assert result.returncode == 0 and report.exists(), smoke_report.explain(result)
     return json.loads(report.read_text(encoding="utf-8"))
 
 

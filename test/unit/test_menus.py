@@ -13,6 +13,7 @@ import re
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 _ROOT = _HERE.parents[1]
@@ -106,7 +107,7 @@ def test_shared_menus_work(tmp_path: pathlib.Path) -> None:
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, (result.stderr or "")[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     problems = [line for line in lines if line.startswith(("ERROR", "WARN"))]
     assert problems == []
     results = {

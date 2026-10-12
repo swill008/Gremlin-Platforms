@@ -11,6 +11,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -32,7 +33,7 @@ def test_window_and_dialogs_open_cleanly(tmp_path: pathlib.Path) -> None:
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen", "PYTHONIOENCODING": "utf-8"},
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stderr[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     problems = [
         line
         for line in lines

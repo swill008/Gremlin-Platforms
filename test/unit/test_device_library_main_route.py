@@ -17,6 +17,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "device_library_main_smoke.py"
@@ -35,7 +36,7 @@ def test_home_and_tools_open_the_device_library(tmp_path: pathlib.Path) -> None:
         timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, f"No RESULT (exit {result.returncode}).\n{result.stderr[-3000:]}"
+    assert lines, smoke_report.explain(result)
     out = json.loads(lines[-1][len("RESULT "):])
     button = out["button"]
     assert not button["recursion"], "openDeviceLibrary called itself"

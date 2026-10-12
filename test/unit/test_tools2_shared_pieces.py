@@ -21,6 +21,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -205,7 +206,7 @@ def _run(tmp_path: pathlib.Path) -> dict:
         text=True, encoding="utf-8", timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, result.stdout[-2000:] + result.stderr[-2000:]
+    assert lines, smoke_report.explain(result)
     return json.loads(lines[0][len("RESULT "):])
 
 

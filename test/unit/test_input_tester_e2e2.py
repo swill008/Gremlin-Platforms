@@ -251,18 +251,46 @@ class _Tester:
         deadline = time.monotonic() + timeout
         last: dict = {}
         while time.monotonic() < deadline:
-            if self.proc.poll() is not None:
-                self.stop()
-                pytest.fail(f"The tester ended early:\n{self.output}")
             try:
                 last = json.loads((self.control / "state.json").read_text("utf-8"))
             except (OSError, ValueError):
                 last = {}
             if last and until(last):
                 return last
-            time.sleep(0.1)
+            self._pause()
         self.stop()
         pytest.fail(f"Not reached (last state {last}):\n{self.output}")
+
+    def wait_text(self, path: pathlib.Path, want: str, timeout: float = 30.0) -> str:
+        """path's text once it has want. The bound is state()'s: both wait
+        for the tester's start-up (Python + Qt imports), which took over 15 s
+        on a loaded CI runner (item 107)."""
+        deadline = time.monotonic() + timeout
+        text = ""
+        while time.monotonic() < deadline:
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:
+                text = ""
+            if want in text:
+                return text
+            self._pause()
+        self.stop()
+        pytest.fail(
+            f"{want!r} not in {path} (last 2000 characters):\n{text[-2000:]}\n"
+            f"Tester output:\n{self.output}"
+        )
+
+    def _pause(self) -> None:
+        """Waits 0.1 s on the tester itself: fails at once, with its output,
+        when it ends, and the stall watch sees a wait on another program
+        (subprocess.py), not a stalled test."""
+        try:
+            self.proc.wait(timeout=0.1)
+        except subprocess.TimeoutExpired:
+            return
+        self.stop()
+        pytest.fail(f"The tester ended early:\n{self.output}")
 
     def call(self, slot: str) -> None:
         _write_json(self.control / "call.json", slot)  # type: ignore[arg-type]
@@ -296,20 +324,6 @@ def home(tmp_path: pathlib.Path) -> pathlib.Path:
 
 def _tester_log(home: pathlib.Path) -> pathlib.Path:
     return home / "Gremlin Platforms" / "tester" / "tester.log"
-
-
-def _wait_text(path: pathlib.Path, want: str, timeout: float = 15.0) -> str:
-    deadline = time.monotonic() + timeout
-    text = ""
-    while time.monotonic() < deadline:
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
-            text = ""
-        if want in text:
-            return text
-        time.sleep(0.1)
-    pytest.fail(f"{want!r} not in {path}:\n{text}")
 
 
 # --- Gremlin's side ------------------------------------------------------------
@@ -485,8 +499,9 @@ def test_hidhide_changed_after_the_tester_started_banner_then_restart_clears_it(
         f"{changed_at.strftime('%H:%M:%S')}). HidHide only checks devices when "
         "they're opened, so what you see may be out of date."
     )
-    log = _wait_text(_tester_log(home), "HidHide changed after this tester started")
-    assert "HidHide changed after this tester started" in log
+    stale = "HidHide changed after this tester started"
+    log = tester.wait_text(_tester_log(home), stale)
+    assert stale in log
 
     # Restart tester: the same program with the same args, then it quits.
     tester.call("restartTester")
@@ -585,8 +600,8 @@ def test_tester_log_has_the_start_directinput_and_access_denied_lines(
     denied = {"path": _DENIED_PATH, "name": "", "vid": 0x231D, "pid": 0x0201}
     tester = _Tester(home, tmp_path / "ctl", [_PEDALS], denied=[denied])
     try:
-        text = _wait_text(_tester_log(home), "access denied (5)")
-        text = _wait_text(_tester_log(home), "values read ok")
+        text = tester.wait_text(_tester_log(home), "access denied (5)")
+        text = tester.wait_text(_tester_log(home), "values read ok")
         state = tester.state(lambda s: s.get("hidSkipped"))
     finally:
         tester.stop()
@@ -624,7 +639,10 @@ def test_tester_log_rotates_at_one_megabyte(
     assert log.stat().st_size >= 1024 * 1024 - 200
     tester = _Tester(home, tmp_path / "ctl", [_PEDALS])
     try:
-        _wait_text(log, "values read ok")
+        # Waits on the tester's own Logs tab, not by opening tester.log: a
+        # reader's open handle makes Windows refuse the rotation's rename
+        # (PermissionError 32), and the line then goes to the old file.
+        tester.state(lambda s: "values read ok" in json.dumps(s.get("logLines")))
     finally:
         tester.stop()
     older = log.with_name("tester.log.1")

@@ -142,9 +142,11 @@ class TTSManager(metaclass=SingletonMetaclass):
         except (RuntimeError, TypeError):
             pass
         engine.deleteLater()
-        # Delete it now: after the event loop ends nothing else will.
+        # Delete it now: after the event loop ends nothing else will. Only
+        # the engine: flushing every pending deleteLater on the thread
+        # deleted other objects mid-shutdown and aborted the process (111).
         QtCore.QCoreApplication.sendPostedEvents(
-            None, QtCore.QEvent.Type.DeferredDelete
+            engine, QtCore.QEvent.Type.DeferredDelete
         )
 
     def enqueue(self, request: TTSRequest, mode: TTSQueueMode) -> None:

@@ -131,6 +131,7 @@ def _smoke(capture: bool) -> None:
 
 def _run(tmp_path: pathlib.Path) -> dict:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve()), "--smoke"],
         cwd=str(_ROOT),
@@ -145,7 +146,7 @@ def _run(tmp_path: pathlib.Path) -> dict:
         },
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, (result.stdout + result.stderr)[-3000:]
+    assert lines, smoke_report.explain(result)
     return json.loads(lines[-1][len("RESULT ") :])
 
 

@@ -1004,3 +1004,20 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Details: model roles (L-MODEL) | feature | 3-8 min | 6 min | 14:52-14:58 |
 | 2026-10-12 | Details: e2e test written (L-E2E) + lead fixes (type order, pad name, key words) | test/fix | 3-8 min | ~10 min | 14:53-15:04 |
 | 2026-10-12 | Quick tests batch L (--changed 3,975) + rule tests (35) in parallel | test | ~7 min | 8 min | 15:03-15:11 |
+| 2026-10-12 | Type-checker noise: --pythonpath in pyright_baseline + baseline refresh (lead) | fix | 3-8 min | 2 min | 15:12-15:14 |
+| 2026-10-12 | Binding output not found: Help, glossary, spec (R-DOCS) | docs | 3-8 min | 1 min | 15:18-15:19 |
+| 2026-10-12 | Binding output not found: program text + 12 tests (R-CODE) | fix | 3-8 min | ~2 min | 15:18-15:20 |
+| 2026-10-12 | 132 device arrows dead end (ARROWS) | fix | 3-8 min | 2 min | 15:25-15:27 |
+| 2026-10-12 | 111 speech-engine shutdown crash; 50 traced (CRASH-A) | fix | 3-8 min | 2 min | 15:26-15:28 |
+| 2026-10-12 | 39 PySide6 6.12 study (PYSIDE, read-only) | review | 5-10 min | 4 min | 15:26-15:30 |
+| 2026-10-12 | CI leak: leftover vJoy Viewer card (CI-LEAK) | fix | 3-8 min | 4 min | 15:25-15:29 |
+| 2026-10-12 | 131 shared smoke failure helper, 197 files swept; 126 re-checked (SMOKE) | refactor | rough 15 min | 8 min | 15:25-15:33 |
+| 2026-10-12 | 107 tester-log test flaky on CI (FLAKY) | fix | 3-8 min | 8 min | 15:25-15:33 |
+| 2026-10-12 | 34 order leak fixed; 30 not reproduced (ORDER-A) | fix | 3-8 min each | 10 min | 15:26-15:36 |
+| 2026-10-12 | 42 teardown hang: native cause found with cdb (CRASH-B) | review/fix | rough 15 min | ~6 min diagnosis | 15:26-15:42 |
+| 2026-10-12 | 38 one-part replay in one process (CRASH-B) | test | — | >7 min, cut off | 15:26-15:42 |
+| 2026-10-12 | Child-program start-up allowance (STALL2) | fix | 3-8 min | 3 min | 15:39-15:42 |
+| 2026-10-12 | Program map for batch M (MAP-M) | docs | 3-8 min | 1 min | 15:46-15:47 |
+| 2026-10-12 | 31/47/99 settings order (one cause), 4 conftest additions (ORDER-B) | fix | 3-8 min each | 25 min (incl. an unapproved ~7 min full unit run) | 15:26-15:51 |
+| 2026-10-12 | 133 deferred Qt work hunt (Q133, read-only) | review | 5-10 min | 8 min | 15:46-15:54 |
+| 2026-10-12 | Full run batch M, random order seed 957752 (7,148 passed) + lint | test | ~7 min | 8 min | 15:50-15:58 |

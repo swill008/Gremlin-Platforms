@@ -28,6 +28,7 @@ from test.unit._device_folders import put_module
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent))
 import proc_tree  # noqa: E402  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _PNG = b"\x89PNG\r\n\x1a\n" + b"\x03" * 24
@@ -323,7 +324,7 @@ def window(tmp_path_factory: pytest.TempPathFactory) -> dict:
         timeout=120,
     )
     lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, proc.stdout[-2000:] + proc.stderr[-2000:]
+    assert lines, smoke_report.explain(proc)
     return json.loads(lines[0][len("RESULT "):])
 
 

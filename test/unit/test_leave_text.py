@@ -317,6 +317,7 @@ def _child() -> None:
 @pytest.fixture(scope="module")
 def found(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     tmp_path = tmp_path_factory.mktemp("leave_text")
     import child_env  # pyright: ignore[reportMissingImports]  (test/)
 
@@ -337,7 +338,7 @@ def found(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str]:
         },
     )
     lines = run.stdout.splitlines()
-    assert "done" in lines, run.stdout[-3000:] + run.stderr[-3000:]
+    assert "done" in lines, smoke_report.explain(run)
     return dict(
         tuple(line.split(" ", 2)[1:]) for line in lines if line.startswith("RESULT ")
     )

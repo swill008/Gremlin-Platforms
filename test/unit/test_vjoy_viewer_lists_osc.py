@@ -10,10 +10,12 @@ their own input events."""
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from unittest import mock
 
 import pytest
+import shiboken6
 
 from gremlin import run_scope, shared_state
 from gremlin.event_handler import Event, EventListener
@@ -35,6 +37,22 @@ _SOURCES = [
     pytest.param(ids.OSC, "OSC Button 1", id="osc"),
     pytest.param(ids.LOGICAL_DEVICE, "Button 1", id="logical-device"),
 ]
+
+
+@pytest.fixture
+def new_card() -> Iterator[Callable[[], pair_live.PairLiveThrottle]]:
+    """Live cards made by a test, deleted at its end: a card left alive keeps
+    answering bindings notices in later tests (CI 38277644763)."""
+    made: list[pair_live.PairLiveThrottle] = []
+
+    def make() -> pair_live.PairLiveThrottle:
+        made.append(pair_live.PairLiveThrottle())
+        return made[-1]
+
+    yield make
+    for card in made:
+        if shiboken6.isValid(card):
+            shiboken6.delete(card)
 
 
 class _Button:
@@ -122,6 +140,7 @@ def test_the_viewer_lists_the_wire(
     monkeypatch: pytest.MonkeyPatch,
     source: uuid.UUID,
     label: str,
+    new_card: Callable[[], pair_live.PairLiveThrottle],
 ) -> None:
     _cards(folder, monkeypatch, source)
     devices = _rows(module_pairing.ModulePairDeviceModel())
@@ -178,6 +197,7 @@ def test_the_lights_follow_the_input_and_the_output(
     monkeypatch: pytest.MonkeyPatch,
     source: uuid.UUID,
     label: str,
+    new_card: Callable[[], pair_live.PairLiveThrottle],
 ) -> None:
     _cards(folder, monkeypatch, source)
     dev = _FakeVJoy()
@@ -190,7 +210,7 @@ def test_the_lights_follow_the_input_and_the_output(
             mock.patch.object(output, "_opened_vjoy", return_value=dev),
             mock.patch.object(pair_live, "_gremlin_running", return_value=True),
         ):
-            live = pair_live.PairLiveThrottle()
+            live = new_card()
             live.guid = str(source)  # pyright: ignore[reportAttributeAccessIssue]
             # The real output module write (claimed vJoy 1 Button 30).
             assert output.write_vjoy(1, "button", 30, True)
@@ -249,6 +269,7 @@ def test_the_card_shows_without_a_module_file(
 def test_a_new_map_to_vjoy_is_polled(
     folder: Path,  # noqa: F811
     monkeypatch: pytest.MonkeyPatch,
+    new_card: Callable[[], pair_live.PairLiveThrottle],
 ) -> None:
     """The live card polls a vJoy device first wired after it opened: the ids
     follow the bindings notice (03 S122a; D-01-OWNER-NOTICES)."""
@@ -258,7 +279,7 @@ def test_a_new_map_to_vjoy_is_polled(
     output.refresh()
     profile = Profile()
     monkeypatch.setattr(shared_state, "current_profile", profile)
-    live = pair_live.PairLiveThrottle()
+    live = new_card()
     live.guid = str(ids.LOGICAL_DEVICE)  # pyright: ignore[reportAttributeAccessIssue]
     assert live._vjoy_ids == {}
     map_button(profile, ids.LOGICAL_DEVICE, 1, 30)

@@ -261,6 +261,8 @@ def test_restore_applies_logs_and_ui_scale_at_once(
     # The settings are one shared object: put its entries back afterwards
     # (a Diagnostic logs level left at Error is applied by the next Live stop).
     monkeypatch.setattr(cfg, "_data", {k: dict(v) for k, v in cfg._data.items()})
+    # History's view of them too: each save here moves it to the copy's values.
+    monkeypatch.setattr(cfg, "_history_view", cfg._settings_view(), raising=False)
     log_key = ("global", "general", "log-level")
     _register(cfg, log_key, PropertyType.String, "Warning", {})
     scale_key = ("ui", "general", "ui-scale")
@@ -289,6 +291,14 @@ def test_restore_applies_logs_and_ui_scale_at_once(
         log_option.apply_log_level("Warning")
         system.setLevel(old_level)
         system.disabled = old_disabled
+    # Guard (to-do 34): with the settings put back, History's view of them
+    # must be too, or the next test's first save records them as a change.
+    monkeypatch.undo()
+    view, now = cfg._history_view or {}, cfg._settings_view()
+    for name in ("global/general/log-level", "ui/general/ui-scale"):
+        assert name not in view or view[name] == now.get(name), (
+            f"Configuration._history_view left at this test's {name}"
+        )
 
 
 def test_an_input_restore_closes_the_action_panes_first() -> None:

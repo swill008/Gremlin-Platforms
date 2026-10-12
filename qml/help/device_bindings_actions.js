@@ -96,7 +96,7 @@ function topics() {
                 + "<li><b>Clear</b> resets every Find filter: it empties the search and sets the first box, the ticks under the bar and the <b>Type</b> and <b>Output</b> boxes back to show everything.</li>"
                 + "<li>The action box <b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode. To find inputs with none, use <b>No bindings in this mode</b>.</li>"
                 + "<li>The <b>Output</b> box shows inputs that send to one place. It lists only the places in use.</li>"
-                + "<li>Under the bar, <b>Ungrouped</b> and <b>No bindings in this mode</b> narrow the list further. <b>Output not found</b> shows only inputs with a binding whose output isn't there (missing or switched off); their action rows show a red <b>⚠</b> (hover it to see why).</li>"
+                + "<li>Under the bar, <b>Ungrouped</b> and <b>No bindings in this mode</b> narrow the list further. <b>Binding output not found</b> shows only inputs with a binding whose output isn't there (the device is missing or switched off, or that button or axis isn't on it); their action rows show a red <b>⚠</b> (hover it to see why).</li>"
                 + "</ul>"
                 + _good([
                     "When nothing matches, the page says \"Nothing matches the Find filters.\" Choose <b>Clear Filters</b>, or <b>Clear</b> on the bar, to reset everything."
@@ -288,7 +288,7 @@ function topics() {
                 + "<tr><td><b>Controls by type</b></td><td>29 buttons · 6 axes · 1 hat</td><td>Yes</td></tr>"
                 + "<tr><td><b>Bindings by type</b></td><td>[30 bindings] after each type</td><td>Yes</td></tr>"
                 + "<tr><td><b>No bindings</b></td><td>[1 with no bindings]</td><td>No</td></tr>"
-                + "<tr><td><b>Output not found</b></td><td>[1 output not found], in the warning color</td><td>No</td></tr>"
+                + "<tr><td><b>Binding output not found</b></td><td>[1 binding output not found] / [3 binding outputs not found], in the warning color</td><td>No</td></tr>"
                 + "<tr><td><b>Output devices</b></td><td>[outputs: vJoy 1, Xbox 360 1]</td><td>No</td></tr>"
                 + "<tr><td><b>Action types</b></td><td>[30 Map to vJoy, 2 Macro]</td><td>No</td></tr>"
                 + "<tr><td><b>Custom names</b></td><td>[5 custom names]</td><td>No</td></tr>"
@@ -296,13 +296,13 @@ function topics() {
                 + "<tr><td><b>Wrap details</b></td><td>On: a long line wraps onto more lines. Off: one line ending \"…\"; hover it to see all.</td><td>No</td></tr>"
                 + "<tr><td><b>Hide empty</b></td><td>Leaves out details that are 0 (the type itself still shows, for example \"1 hat\")</td><td>No</td></tr>"
                 + "</table>"
-                + "<p>With all of them on: 29 buttons [30 bindings] · 6 axes [6 bindings] · 1 hat [0 bindings] · [1 with no bindings] · [1 output not found] · [outputs: vJoy 1, Xbox 360 1] · [30 Map to vJoy, 2 Macro] · [5 custom names] · [also in mode Combat]</p>"
+                + "<p>With all of them on: 29 buttons [30 bindings] · 6 axes [6 bindings] · 1 hat [0 bindings] · [1 with no bindings] · [1 binding output not found] · [outputs: vJoy 1, Xbox 360 1] · [30 Map to vJoy, 2 Macro] · [5 custom names] · [also in mode Combat]</p>"
                 + "<h4>Row details</h4>"
                 + "<p>In <b>Row details</b> you choose what each input's row shows after its name.</p>"
                 + "<table cellpadding=\"3\"><tr><th align=\"left\">Setting</th><th align=\"left\">Shows</th><th align=\"left\">On by default</th></tr>"
                 + "<tr><td><b>Bindings and targets</b></td><td>Bindings [2] and a box for each target</td><td>Yes</td></tr>"
                 + "<tr><td><b>Action types</b></td><td>[Map to vJoy, Map to Xbox]</td><td>No</td></tr>"
-                + "<tr><td><b>Output not found</b></td><td>[output not found], in the warning color</td><td>No</td></tr>"
+                + "<tr><td><b>Binding output not found</b></td><td>[binding output not found], in the warning color</td><td>No</td></tr>"
                 + "<tr><td><b>Other modes</b></td><td>[also in mode Combat]</td><td>No</td></tr>"
                 + "<tr><td><b>System name</b></td><td>[system name: Button 5], only on rows with a custom name</td><td>No</td></tr>"
                 + "<tr><td><b>Has a condition</b></td><td>[has a condition]</td><td>No</td></tr>"
@@ -311,7 +311,7 @@ function topics() {
                 + "</table>"
                 + "<h4>Words used</h4>"
                 + "<table cellpadding=\"3\"><tr><th align=\"left\">Word</th><th align=\"left\">Means</th></tr>"
-                + "<tr><td><b>Output not found</b></td><td>The output a binding is set to isn't there: it is missing or switched off.</td></tr>"
+                + "<tr><td><b>Binding output not found</b></td><td>The output a binding is set to isn't there: the device is missing or switched off, or that button or axis isn't on it.</td></tr>"
                 + "<tr><td><b>No bindings</b></td><td>Nothing is bound in the mode shown.</td></tr>"
                 + "<tr><td><b>Custom name</b></td><td>A name you give a control.</td></tr>"
                 + "<tr><td><b>System name</b></td><td>The control's own name.</td></tr>"
@@ -762,7 +762,7 @@ function topics() {
             id: "device-bindings-actions-q-vjoy-not-claimed",
             section: questions,
             title: "Why is a Map to vJoy output red with ⚠?",
-            body: "<p>The program can't send to that output: the vJoy output module doesn't include it, the vJoy device doesn't have it, or that vJoy is turned off. Hover the output to see which. Pick another output from the list, which offers only what the module includes. The input's device card on Home says how many outputs are not found (\"⚠ n outputs not found\"), and the Find tick <b>Output not found</b> lists them. To keep the output, claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).</p>",
+            body: "<p>The program can't send to that output: the vJoy output module doesn't include it, the vJoy device doesn't have it, or that vJoy is turned off. Hover the output to see which. Pick another output from the list, which offers only what the module includes. The input's device card on Home says how many binding outputs are not found (\"⚠ n binding outputs not found\"), and the Find tick <b>Binding output not found</b> lists them. To keep the output, claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).</p>",
             related: ["device-bindings-actions-map-to-vjoy"]
         },
         {

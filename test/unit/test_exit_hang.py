@@ -137,35 +137,96 @@ def test_only_the_real_vjoy_run_gets_the_real_vjoy(
     assert run_tests._child_env(real)[run_tests.REAL_VJOY_ENV] == "1"
 
 
-def test_the_conftest_deadman_ends_a_process_stuck_after_its_session(
-    tmp_path: pathlib.Path,
-) -> None:
-    sample = _sample(tmp_path, 120)
+def _inner_pytest(
+    folder: pathlib.Path, sample: pathlib.Path, deadman: str
+) -> tuple[float, int | None, str]:
+    """Runs sample in a pytest of its own with test/conftest.py as a plugin
+    and the exit deadman cut to deadman seconds: (took, exit code, output)."""
     env = dict(
         os.environ,
         PYTHONPATH=child_env.python_path(_ROOT / "test", _ROOT),
-        GREMLIN_TEST_EXIT_DEADMAN="2",
+        GREMLIN_TEST_EXIT_DEADMAN=deadman,
         GREMLIN_TEST_HANG_LIMIT="",
-        USERPROFILE=str(tmp_path),
+        USERPROFILE=str(folder),
+        QT_QPA_PLATFORM="offscreen",
     )
-    out_file = tmp_path / "out.txt"
+    out_file = folder / "out.txt"
     start = time.monotonic()
     with out_file.open("w", encoding="utf-8") as out:
         tree = proc_tree.popen(
             [sys.executable, "-m", "pytest", "-p", "conftest", "-q",
-             "-p", "no:cacheprovider", *_own_folder(tmp_path), str(sample)],
+             "-p", "no:cacheprovider", *_own_folder(folder), str(sample)],
             cwd=_ROOT, env=env, stdout=out, stderr=subprocess.STDOUT,
         )
         process = tree.process
         try:
-            process.wait(timeout=60)
+            process.wait(timeout=90)
         except subprocess.TimeoutExpired:
             tree.kill()
             process.wait()
         finally:
             tree.close()
     took = time.monotonic() - start
-    out = out_file.read_text(encoding="utf-8", errors="replace")
+    return took, process.returncode, out_file.read_text(
+        encoding="utf-8", errors="replace"
+    )
+
+
+def test_the_conftest_deadman_ends_a_process_stuck_after_its_session(
+    tmp_path: pathlib.Path,
+) -> None:
+    sample = _sample(tmp_path, 120)
+    took, code, out = _inner_pytest(tmp_path, sample, "2")
     assert "1 passed" in out, out[-3000:]
     assert "Timeout (" in out and "_linger" in out, out[-3000:]  # the stacks
-    assert took < 45 and process.returncode != 0, (took, out[-3000:])
+    assert took < 45 and code != 0, (took, out[-3000:])
+
+
+# | To-do 42's native cause (cdb on the stuck process, 2026-10-12): the app's
+# | QML engine outlived the session. Py_FinalizeEx -> PySide's
+# | destroyQCoreApplication deleted it as the app's child, after the app
+# | itself was gone, and its picture loader (QQuickPixmapReader, started when
+# | the window first loads a picture) waited in QThread::wait for a reader
+# | thread that never left its event loop. The session's end must delete the
+# | app's engines while the app is alive, as the program's own release_qt
+# | does. These two tests in one process were the to-do's case (each alone
+# | ends at once: the second loads a stick's picture into the first's window).
+_ENGINE_CASE = (
+    "test/unit/test_data_safety.py::"
+    "test_a_profile_with_an_unknown_action_type_opens_and_keeps_it",
+    "test/unit/test_stage1_history_pack.py::"
+    "test_delete_device_keeps_an_autosave_that_can_be_imported_back",
+)
+
+
+def test_a_session_whose_window_loaded_a_picture_ends_at_once(
+    tmp_path: pathlib.Path,
+) -> None:
+    env = child_env.child_env(
+        _ROOT,
+        GREMLIN_TEST_EXIT_DEADMAN="10",
+        USERPROFILE=str(tmp_path),
+        QT_QPA_PLATFORM="offscreen",
+    )
+    out_file = tmp_path / "out.txt"
+    with out_file.open("w", encoding="utf-8") as out:
+        tree = proc_tree.popen(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:randomly",
+             "-p", "no:cacheprovider", *_ENGINE_CASE],
+            cwd=_ROOT, env=env, stdout=out, stderr=subprocess.STDOUT,
+        )
+        process = tree.process
+        try:
+            process.wait(timeout=90)
+        except subprocess.TimeoutExpired:
+            tree.kill()
+            process.wait()
+        finally:
+            tree.close()
+    text = out_file.read_text(encoding="utf-8", errors="replace")
+    assert "2 passed" in text, text[-3000:]
+    # The deadman's "Timeout (0:00:10)!": the process stood still at exit
+    # (the QQuickPixmapReader wait) and was ended.
+    assert "Timeout (" not in text and process.returncode == 0, (
+        process.returncode, text[-3000:]
+    )

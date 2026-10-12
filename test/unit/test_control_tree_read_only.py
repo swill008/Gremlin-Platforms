@@ -6,7 +6,7 @@
 ControlTree.readOnly hides the grips and opens no menu or pane on a click
 (a left click only selects, carets still fold); ControlTree.showGroups false
 draws no group row and doesn't indent rows for one; ControlFindBar.showUndo
-false hides Undo / Redo and showCantSend false hides the "Output not found"
+false hides Undo / Redo and showCantSend false hides the "Binding output not found"
 tick. The defaults keep the list pages as they are (grip shown, right-click
 menu sent, group row drawn).
 
@@ -28,6 +28,7 @@ _ROOT = _HERE.parents[1]
 
 def _run(tmp_path: pathlib.Path) -> dict[str, str]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), "tree", str(tmp_path)],
@@ -43,7 +44,7 @@ def _run(tmp_path: pathlib.Path) -> dict[str, str]:
         encoding="utf-8",
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-3000:] + result.stderr[-3000:]
+    assert "done" in lines, smoke_report.explain(result)
     errors = [line for line in lines if line.startswith("ERROR")]
     assert not errors, errors
     ours = [

@@ -15,6 +15,7 @@ from __future__ import annotations
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -108,6 +109,6 @@ def test_broken_main_window_raises_with_the_qml_errors(tmp_path: pathlib.Path) -
         text=True, timeout=120,
     )
     assert "STARTUP ERROR: The main window could not be loaded." in result.stdout, (
-        result.stdout + result.stderr[-1500:]
+        smoke_report.explain(result)
     )
     assert "Main.qml" in result.stdout  # the QML error is passed on

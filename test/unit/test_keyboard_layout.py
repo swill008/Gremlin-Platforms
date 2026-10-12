@@ -20,6 +20,7 @@ from typing import Any, cast
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 import dill
 from gremlin import shared_state
@@ -295,8 +296,8 @@ def test_qml_builds_the_model() -> None:
         text=True,
         timeout=60,
     )
-    assert done.returncode == 0, done.stderr[-2000:]
-    assert "BUILT" in done.stdout, done.stdout + done.stderr[-2000:]
+    assert done.returncode == 0, smoke_report.explain(done)
+    assert "BUILT" in done.stdout, smoke_report.explain(done)
 
 
 def test_key_names_do_not_depend_on_which_lookup_ran_first(

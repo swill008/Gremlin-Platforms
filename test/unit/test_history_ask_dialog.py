@@ -17,6 +17,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -39,7 +40,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, result.stdout[-2000:] + result.stderr[-2000:]
+    assert lines, smoke_report.explain(result)
     return json.loads(lines[0][len("RESULT ") :])
 
 

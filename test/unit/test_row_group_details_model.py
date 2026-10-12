@@ -3,7 +3,7 @@
 """Group details and Row details roles of the shared control layout model
 (gremlin/ui/control_layout.py), batch L: what ControlTree's group line and
 row details draw on all four list pages (Device Bindings, Keyboard, Logical
-Device, OSC). Counted in the shown mode; Output not found is the same rule
+Device, OSC). Counted in the shown mode; Binding output not found is the same rule
 as the red ⚠ (D-05-CANT-SEND, output.cant_send_action_texts).
 
 Spec: 05 Group details / Row details (batch L contract).

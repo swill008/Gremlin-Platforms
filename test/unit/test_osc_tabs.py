@@ -19,6 +19,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -258,7 +259,7 @@ def result(tmp_path_factory: pytest.TempPathFactory) -> dict:
         text=True, timeout=150,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, done.stdout[-2000:] + done.stderr[-3000:]
+    assert lines, smoke_report.explain(done)
     found = json.loads(lines[-1][len("RESULT "):])
     # Qt's own messages go to logs/qt.log (gremlin.qt_log), not this pipe.
     qt_log = home / "Gremlin Platforms" / "logs" / "qt.log"

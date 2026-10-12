@@ -16,6 +16,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -31,4 +32,4 @@ def test_program_loads_in_a_fresh_process(tmp_path: pathlib.Path) -> None:
         text=True,
         timeout=120,
     )
-    assert result.returncode == 0, result.stderr[-2000:]
+    assert result.returncode == 0, smoke_report.explain(result)

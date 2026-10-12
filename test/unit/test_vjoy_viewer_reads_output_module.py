@@ -50,3 +50,18 @@ def test_nothing_shown_while_gremlin_is_off() -> None:
         pair_live.PairLiveThrottle._poll_vjoy(card)
     read.assert_not_called()
     assert card._vj_button == {}
+
+
+def test_a_device_without_a_guid_is_skipped() -> None:
+    """Like one without a vJoy number: no card fails on a partial device
+    (CI 38277644763 had stand-ins with only a vJoy number)."""
+    guid = "{11111111-2222-3333-4444-555555555555}"
+    devices = [
+        SimpleNamespace(vjoy_id=1),
+        SimpleNamespace(vjoy_id=2, device_guid=guid),
+        SimpleNamespace(device_guid=guid),
+    ]
+    with mock.patch.object(
+        pair_live.device_initialization, "vjoy_devices", return_value=devices
+    ):
+        assert list(pair_live._vjoy_ids_by_guid().values()) == [2]

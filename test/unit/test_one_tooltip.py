@@ -181,6 +181,7 @@ def test_plain_tooltip_waits_and_wraps(tmp_path: pathlib.Path) -> None:
     """A tooltip with no delay set appears after Style.tooltipDelayMs while the
     pointer rests on the item and wraps long text at Style.tooltipMaxWidth."""
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve()), "--smoke"],
         text=True,
@@ -191,12 +192,14 @@ def test_plain_tooltip_waits_and_wraps(tmp_path: pathlib.Path) -> None:
              "QT_LOGGING_RULES": "qt.qml.binding.removal.info=true"},
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, (result.stderr or "")[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     problems = [line for line in lines if line.startswith(("ERROR", "WARN"))]
     assert problems == []
     # The shared delay is set without overwriting its own binding (the
     # program logged "Overwriting binding on ToolTip ... delay").
-    assert "Overwriting binding" not in (result.stderr or ""), result.stderr[-2000:]
+    assert "Overwriting binding" not in (result.stderr or ""), (
+        smoke_report.explain(result)
+    )
     results = {
         line.split(" ", 2)[1]: line.split(" ", 2)[2]
         for line in lines

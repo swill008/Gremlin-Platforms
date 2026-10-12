@@ -15,6 +15,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _SMOKE = pathlib.Path(__file__).resolve().parent / "no_binding_removal_smoke.py"
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -36,9 +37,9 @@ def test_no_binding_removal_opening_the_main_windows(tmp_path: pathlib.Path) -> 
     )
     out = done.stdout + done.stderr
     lines = done.stdout.splitlines()
-    assert "done" in lines, out[-3000:]
+    assert "done" in lines, smoke_report.explain(done)
     # The Help step reached a topic with an Open › / Show me › link.
     topic = [ln for ln in lines if ln.startswith("HELP_TOPIC ")]
-    assert topic and topic[0].strip() != "HELP_TOPIC", out[-3000:]
+    assert topic and topic[0].strip() != "HELP_TOPIC", smoke_report.explain(done)
     bad = [line for line in out.splitlines() if "Overwriting binding" in line]
     assert bad == [], bad

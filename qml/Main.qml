@@ -829,13 +829,17 @@ ApplicationWindow {
         return index
     }
 
+    // The Logical Device page is a step of the input cycle (to-do 132).
     function cycleModules(direction, step) {
-        if (configDirection !== direction || !_moduleModel)
+        var shown = configDirection === "logical" ? "source" : configDirection
+        if (shown !== direction || !_moduleModel)
             return
         var slugs = _moduleModel.pileLeaders(direction) || []
         if (slugs.length < 2)
             return
-        var index = moduleIndex(slugs, String(_moduleModel.focusedSlug || ""))
+        var focus = configDirection === "logical" ? "logical"
+                                                  : String(_moduleModel.focusedSlug || "")
+        var index = moduleIndex(slugs, focus)
         var card = _moduleModel.cardMap(slugs[(index + step + slugs.length) % slugs.length])
         if (card && card.slug)
             openDeviceBindingsForCard(card)
@@ -2298,7 +2302,7 @@ ApplicationWindow {
                         IconButton {
                             text: "\uF284"
                             font.pixelSize: Style.dp(18)
-                            visible: configDirection === "source" || configDirection === "dest"
+                            visible: configDirection !== ""
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
                             onClicked: configDirection === "dest" ? _root.cycleOutput(-1) : _root.cycleDeviceBindings(-1)
@@ -2310,7 +2314,7 @@ ApplicationWindow {
                         IconButton {
                             text: "\uF285"
                             font.pixelSize: Style.dp(18)
-                            visible: configDirection === "source" || configDirection === "dest"
+                            visible: configDirection !== ""
                             enabled: (configDirection === "dest" ? _root.destModuleCount : _root.sourceModuleCount) > 1
                             opacity: enabled ? 1 : 0.35
                             onClicked: configDirection === "dest" ? _root.cycleOutput(1) : _root.cycleDeviceBindings(1)

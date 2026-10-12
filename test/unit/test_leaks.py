@@ -17,6 +17,7 @@ sys.path.append(".")
 import json
 import os
 import pathlib
+import re
 import uuid
 from collections.abc import Iterator
 from typing import Any
@@ -271,3 +272,64 @@ def test_options_opened_and_closed_keeps_no_models(growth: dict) -> None:
 def test_input_viewer_opened_and_closed_keeps_no_objects(growth: dict) -> None:
     grown = growth["DialogInputViewer.qml"]
     assert {name: n for name, n in grown.items() if n > 0} == {}
+
+
+# +-------------------------------------------------------------------------
+# | Live cards made by tests
+
+_OSC_CARDS = "test/unit/test_vjoy_viewer_lists_osc.py::"
+_CARD_TESTS = [
+    "test/unit/test_final_07.py::test_presses_come_only_from_the_input_module_feed",
+    _OSC_CARDS + "test_the_lights_follow_the_input_and_the_output",
+    _OSC_CARDS + "test_a_new_map_to_vjoy_is_polled",
+]
+
+_CARD_PLUGIN = """
+import gc
+
+import pytest
+import shiboken6
+
+KEPT = []
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_teardown(item, nextitem):
+    yield
+    from gremlin.ui.pair_live import PairLiveThrottle
+
+    gc.collect()
+    alive = [
+        obj for obj in gc.get_objects()
+        if isinstance(obj, PairLiveThrottle) and shiboken6.isValid(obj)
+    ]
+    if alive:
+        KEPT.append(item.nodeid)
+
+
+def pytest_sessionfinish(session):
+    print("CARDS KEPT " + repr(KEPT), flush=True)
+"""
+
+
+def test_no_live_card_outlives_its_test(tmp_path: pathlib.Path) -> None:
+    """A test's PairLiveThrottle is deleted at its end: one left alive keeps
+    answering bindings notices in later tests, where stand-in vJoy devices
+    broke it (CI 38277644763, test_new_action_defaults)."""
+    (tmp_path / "card_check.py").write_text(_CARD_PLUGIN, encoding="utf-8")
+    env = dict(
+        os.environ, USERPROFILE=str(tmp_path), QT_QPA_PLATFORM="offscreen",
+        GREMLIN_OFFLINE="1",
+        PYTHONPATH=os.pathsep.join(
+            p for p in (str(tmp_path), os.environ.get("PYTHONPATH")) if p
+        ),
+    )
+    result = proc_tree.run(
+        [sys.executable, "-m", "pytest", "-q", "-p", "no:randomly",
+         "-p", "no:cacheprovider", "-p", "card_check", *_CARD_TESTS],
+        cwd=_ROOT, env=env, text=True, timeout=240,
+    )
+    kept = re.search(r"CARDS KEPT (\[.*\])", result.stdout)
+    assert kept, result.stdout[-3000:] + result.stderr[-3000:]
+    assert kept.group(1) == "[]", result.stdout[-3000:]
+    assert result.returncode == 0, result.stdout[-3000:]

@@ -510,6 +510,10 @@ def run(  # noqa: PLR0913
                                         "pytest's summary")
                 else:
                     part.took = ended - part.began
+                    # A part that died without a summary (to-do 50): name the
+                    # exit code (0xC0000005 access violation, 3 abort).
+                    code = part.process.returncode
+                    part.summary += f"; exit code {code} ({code & 0xFFFFFFFF:#x})"
                 hung = " + EXIT HANG" if part.exit_hang else ""
                 say(part, f"=== {part.summary}{hung} ({part.took:.0f} s)")
                 continue

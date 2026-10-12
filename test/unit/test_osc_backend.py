@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -176,7 +177,7 @@ def test_options_osc_button_opens_osc_module_setup(tmp_path: Path) -> None:
         timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, f"No RESULT (exit {result.returncode}).\n{result.stderr[-3000:]}"
+    assert lines, smoke_report.explain(result)
     out = json.loads(lines[-1][len("RESULT ") :])
     assert out["signal"], "signal.openOscModuleSetup is missing"
     assert out["opened"], "OSC's Module Setup didn't open"

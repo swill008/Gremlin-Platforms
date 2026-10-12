@@ -11,6 +11,7 @@ from __future__ import annotations
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -130,7 +131,7 @@ def test_print_draws_the_page(tmp_path: pathlib.Path) -> None:
         timeout=60,
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
     )
-    assert result.stdout.split() == ["True", "False"], result.stderr[-1000:]
+    assert result.stdout.split() == ["True", "False"], smoke_report.explain(result)
     assert target.read_bytes().startswith(b"%PDF")
 
 

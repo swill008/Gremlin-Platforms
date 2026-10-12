@@ -22,6 +22,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -328,7 +329,7 @@ def test_device_mapping_editor_labels_mode_follows_a_rename(tmp_path: Path) -> N
         cwd=str(_ROOT),
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, (result.stderr or "")[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     assert not [line for line in lines if line.startswith("ERROR")], lines
     assert "RENAMED Fight" in lines
     assert "DELETED ''" in lines

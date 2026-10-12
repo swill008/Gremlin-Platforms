@@ -17,6 +17,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from PySide6 import QtCore
 
 from test.unit import help_book
@@ -70,7 +71,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         cwd=_ROOT, env=env, text=True, timeout=120,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, done.stdout[-1500:] + done.stderr[-1500:]
+    assert lines, smoke_report.explain(done)
     result = json.loads(lines[0][len("RESULT "):])
     result["dest"] = str(out / "diag.zip")
     return result

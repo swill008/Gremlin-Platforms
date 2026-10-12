@@ -333,6 +333,7 @@ def _child() -> None:
 
 def _run(tmp_path: Path) -> dict[str, object]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
     profile = tmp_path / "profile"
     profile.mkdir()
@@ -349,14 +350,14 @@ def _run(tmp_path: Path) -> dict[str, object]:
         },
     )
     lines = proc.stdout.splitlines()
-    assert "done" in lines, (proc.stdout[-3000:], proc.stderr[-3000:])
+    assert "done" in lines, smoke_report.explain(proc)
     errors = [line for line in lines if line.startswith("ERROR")]
     found: dict[str, object] = {}
     for line in lines:
         if line.startswith("RESULT "):
             _, name, value = line.split(" ", 2)
             found[name] = json.loads(value)
-    assert errors == [], (errors, found, proc.stderr[-2000:])
+    assert errors == [], (errors, found, smoke_report.explain(proc))
     return found
 
 

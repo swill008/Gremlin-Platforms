@@ -33,7 +33,7 @@ _GROUP_LABELS = [
     "Controls by type",
     "Bindings by type",
     "No bindings",
-    "Output not found",
+    "Binding output not found",
     "Output devices",
     "Action types",
     "Custom names",
@@ -57,7 +57,7 @@ _GROUP_DEFAULTS = {
 _ROW_LABELS = [
     "Bindings and targets",
     "Action types",
-    "Output not found",
+    "Binding output not found",
     "Other modes",
     "System name",
     "Has a condition",
@@ -98,6 +98,7 @@ def _bindings_module():  # noqa: ANN202
 
 def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), part, str(tmp_path)],
         text=True,
@@ -112,7 +113,7 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-3000:] + result.stderr[-3000:]
+    assert "done" in lines, smoke_report.explain(result)
     errors = [line for line in lines if line.startswith("ERROR")]
     assert not errors, errors
     ours = [

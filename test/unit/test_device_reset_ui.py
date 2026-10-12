@@ -16,6 +16,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 RESTART_TEXT = "needs a Windows restart, or unplug it and plug it back in"
 
@@ -60,8 +61,8 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         if line.startswith("RESULT "):
             _tag, name, value = line.split(" ", 2)
             results[name] = json.loads(value)
-    assert "done" in proc.stdout, proc.stdout[-3000:] + proc.stderr[-3000:]
-    assert results.get("open") is True, proc.stdout[-3000:] + proc.stderr[-3000:]
+    assert "done" in proc.stdout, smoke_report.explain(proc)
+    assert results.get("open") is True, smoke_report.explain(proc)
     return results
 
 

@@ -22,6 +22,7 @@ from pathlib import Path
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from PySide6 import QtCore
 
 from gremlin import config, device_initialization
@@ -260,7 +261,7 @@ def test_card_menu_has_export_and_import_device(tmp_path: Path) -> None:
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, (result.stderr or "")[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     assert [line for line in lines if line.startswith("ERROR")] == []
     results = {
         line.split(" ", 2)[1]: line.split(" ", 2)[2]

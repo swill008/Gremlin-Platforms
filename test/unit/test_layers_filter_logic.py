@@ -22,6 +22,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -36,7 +37,7 @@ def results() -> dict:
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, done.stdout[-1500:] + done.stderr[-1500:]
+    assert lines, smoke_report.explain(done)
     out = json.loads(lines[0][len("RESULT "):])
     # In Foreground mode the list ends with the folded Background row (07
     # S120), whatever the filter; it is not one of the filtered rows, so the

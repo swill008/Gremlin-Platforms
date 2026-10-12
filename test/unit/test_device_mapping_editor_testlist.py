@@ -15,6 +15,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).resolve().parent
 
@@ -33,7 +34,7 @@ def _run(tmp_path: pathlib.Path) -> tuple[dict, list[str]]:
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen", "PYTHONIOENCODING": "utf-8"},
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stderr[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     assert not [line for line in lines if line.startswith("ERROR")], lines
     results = {
         line.split(" ", 2)[1]: line.split(" ", 2)[2]

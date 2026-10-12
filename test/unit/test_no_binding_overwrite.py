@@ -13,6 +13,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _SMOKE = pathlib.Path(__file__).resolve().parent / "no_binding_overwrite_smoke.py"
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -35,6 +36,6 @@ def test_no_binding_is_overwritten_opening_the_device_mapping_editor(
         text=True, encoding="utf-8", errors="replace", timeout=120,
     )
     out = done.stdout + done.stderr
-    assert "done" in done.stdout.splitlines(), out[-3000:]
+    assert "done" in done.stdout.splitlines(), smoke_report.explain(done)
     bad = [line for line in out.splitlines() if "Overwriting binding" in line]
     assert bad == [], bad

@@ -4,7 +4,7 @@
 
 """Bindings the program can't send, on the SOURCE device's Home card (03 Home
 card, D-05-CANT-SEND): a red outline (kept when the card is picked) and a
-red line "⚠ n outputs not found" whose tip lists the first 10 as
+red line "⚠ n binding outputs not found" whose tip lists the first 10 as
 "<input> (<mode>) → <text>" then "… and n more". The count and list come
 from output.cant_send_bindings, grouped by the binding's device id."""
 
@@ -20,6 +20,7 @@ from types import SimpleNamespace
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from PySide6 import QtCore
 
 from gremlin import config
@@ -196,8 +197,8 @@ def test_the_card_reads_the_real_list_from_the_current_profile(
 
 def test_the_line_counts_in_words() -> None:
     assert module_model.cant_send_line(0) == ""
-    assert module_model.cant_send_line(1) == "⚠ 1 output not found"
-    assert module_model.cant_send_line(2) == "⚠ 2 outputs not found"
+    assert module_model.cant_send_line(1) == "⚠ 1 binding output not found"
+    assert module_model.cant_send_line(2) == "⚠ 2 binding outputs not found"
 
 
 _RED = "function _red() { return Qt.colorEqual(_card.border.color, Style.danger) }; "
@@ -252,7 +253,7 @@ def test_status_card_shows_the_red_line_and_outline(tmp_path: pathlib.Path) -> N
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, (result.stderr or "")[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     assert [line for line in lines if line.startswith("ERROR")] == []
     got = {
         line.split(" ", 2)[1]: line.split(" ", 2)[2]
@@ -261,7 +262,7 @@ def test_status_card_shows_the_red_line_and_outline(tmp_path: pathlib.Path) -> N
     }
     two_px, three_px = got["plain-width"].split("|")
     assert got["clean"] == "false|false"
-    assert got["two"] == f"true|⚠ 2 outputs not found|true|{two_px}"
+    assert got["two"] == f"true|⚠ 2 binding outputs not found|true|{two_px}"
     # Picked or focused, it stays red; focus shows as a thicker outline.
     assert got["selected"] == f"true|{three_px}"
     assert got["focused"] == f"true|true|{three_px}"

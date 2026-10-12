@@ -33,6 +33,7 @@ def test_the_old_export_box_is_gone() -> None:
 
 def _run(tmp_path: Path) -> dict[str, object]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
     proc = proc_tree.run(
         [sys.executable, str(_HERE / "b2_card_smoke.py")],
@@ -49,7 +50,7 @@ def _run(tmp_path: Path) -> dict[str, object]:
     )
     lines = proc.stdout.splitlines()
     found = [line for line in lines if line.startswith("RESULT ")]
-    assert found, (proc.stdout[-2000:], proc.stderr[-3000:])
+    assert found, smoke_report.explain(proc)
     return json.loads(found[-1][len("RESULT ") :])
 
 

@@ -31,6 +31,7 @@ _EXTRA = [
 
 def test_python_search_equals_qml_search(tmp_path: pathlib.Path) -> None:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), str(tmp_path)],
         text=True,
@@ -45,9 +46,8 @@ def test_python_search_equals_qml_search(tmp_path: pathlib.Path) -> None:
             "PYTHONIOENCODING": "utf-8",
         },
     )
-    out = result.stdout + result.stderr
     lines = result.stdout.splitlines()
-    assert "done" in lines, out[-3000:]
+    assert "done" in lines, smoke_report.explain(result)
     errors = [line for line in lines if line.startswith("ERROR")]
     assert errors == [], errors[:20]
     checked = [line for line in lines if line.startswith("CHECKED ")]

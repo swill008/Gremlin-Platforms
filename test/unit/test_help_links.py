@@ -19,6 +19,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from PySide6 import QtCore, QtQml
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -113,7 +114,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         timeout=150,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, f"No RESULT (exit {result.returncode}).\n{result.stderr[-3000:]}"
+    assert lines, smoke_report.explain(result)
     return json.loads(lines[-1][len("RESULT "):])
 
 

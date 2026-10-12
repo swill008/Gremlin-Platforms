@@ -238,3 +238,85 @@ def test_a_stuck_start_up_ends_the_run_raising_nothing(runs: dict) -> None:
     assert "Start-up hasn't finished within 1 s" in out, out[-3000:]
     assert "Failing this test." not in out
     assert code == 3 and took < 60
+
+
+# A program the tests start (to-do 128, program side): its start-up, until
+# its event loop first runs, gets the same longer allowance as pytest's own
+# app start-up (GREMLIN_TEST_STARTUP_STALL_AFTER), then the usual limit. CI
+# run 38302618588: the Gremlin app's Main.qml load stood still 30 s and the
+# program watch ended it as stalled. Here stalls are caught after 0.5 s and
+# start-up gets 8 s (past the 4 s C-level deadman, which must wait too).
+_PROGRAM = """
+import sys, time
+from PySide6 import QtCore
+
+app = QtCore.QCoreApplication([])
+time.sleep(float(sys.argv[1]))  # start-up, before the event loop runs
+QtCore.QTimer.singleShot(500, app.quit)
+app.exec()
+time.sleep(float(sys.argv[2]))  # after start-up
+"""
+
+_PROGRAM_RUNS = {"slow": ("5", "0"), "stuck": ("60", "0"), "after": ("0", "60")}
+
+
+@pytest.fixture(scope="module")
+def program_runs(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> dict[str, tuple[int, str, float]]:
+    folder = tmp_path_factory.mktemp("program_start")
+    env = dict(
+        os.environ,
+        PYTHONPATH=child_env.python_path(_ROOT / "test", _ROOT),
+        GREMLIN_TEST_HANG_LIMIT="50",
+        GREMLIN_TEST_STALL_AFTER="0.5",
+        GREMLIN_TEST_STARTUP_STALL_AFTER="8",
+        USERPROFILE=str(folder),
+        QT_QPA_PLATFORM="offscreen",
+    )
+    started = {}
+    for name, args in _PROGRAM_RUNS.items():
+        log = folder / f"{name}.txt"
+        with log.open("w", encoding="utf-8") as out:
+            tree = proc_tree.popen(
+                [sys.executable, "-c", _PROGRAM, *args],
+                cwd=_ROOT, env=env, stdout=out, stderr=subprocess.STDOUT,
+            )
+        started[name] = (tree, log, time.monotonic())
+    results = {}
+    for name, (tree, log, start) in started.items():
+        process = tree.process
+        try:
+            process.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            tree.kill()
+            process.wait()
+        finally:
+            tree.close()
+        took = time.monotonic() - start
+        results[name] = (process.returncode, log.read_text("utf-8", "replace"), took)
+    return results
+
+
+def test_a_programs_slow_start_up_is_waited_out(program_runs: dict) -> None:
+    code, out, _ = program_runs["slow"]
+    assert "=== STALLED: " not in out and "Timeout (" not in out, out[-3000:]
+    assert code == 0, out[-3000:]
+
+
+def test_a_programs_stuck_start_up_ends_it_with_the_report(
+    program_runs: dict,
+) -> None:
+    code, out, took = program_runs["stuck"]
+    assert "=== STALLED: this program" in out, out[-3000:]
+    assert "Start-up hasn't finished within 8 s" in out, out[-3000:]
+    assert code == 3 and 8 <= took < 30, (code, took)
+
+
+def test_after_start_up_a_program_has_the_usual_limit(program_runs: dict) -> None:
+    code, out, _ = program_runs["after"]
+    assert "=== STALLED: this program" in out, out[-3000:]
+    assert "Start-up hasn't finished" not in out
+    # (Its run time includes waiting for the others: read the report's.)
+    still = re.search(r"hasn't moved for (\d+) s", out)
+    assert still and int(still[1]) < 8 and code == 3, (code, out[-3000:])

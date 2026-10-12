@@ -21,6 +21,7 @@ from typing import Any
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from PySide6 import QtCore
 
 from gremlin import history_modules, plugin_manager, shared_state
@@ -373,5 +374,5 @@ def test_qml_builds_the_model_and_sets_a_device() -> None:
         text=True,
         timeout=60,
     )
-    assert done.returncode == 0, done.stderr[-2000:]
-    assert "BUILT" in done.stdout, done.stdout + done.stderr[-2000:]
+    assert done.returncode == 0, smoke_report.explain(done)
+    assert "BUILT" in done.stdout, smoke_report.explain(done)

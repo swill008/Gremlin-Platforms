@@ -16,6 +16,7 @@ import textwrap
 from collections.abc import Callable, Sequence
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -699,7 +700,7 @@ def test_tester_never_imports_gremlin_config(tmp_path: pathlib.Path) -> None:
         text=True,
         timeout=60,
     )
-    assert "LOADED []" in out.stdout, out.stderr[-1500:]
+    assert "LOADED []" in out.stdout, smoke_report.explain(out)
     assert not (tmp_path / "Gremlin Platforms").exists()
 
 

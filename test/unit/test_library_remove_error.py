@@ -14,6 +14,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 from test.unit._device_folders import put_module
 
@@ -66,7 +67,7 @@ def _run(
         timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, f"No RESULT (exit {result.returncode}).\n{result.stderr[-3000:]}"
+    assert lines, smoke_report.explain(result)
     return json.loads(lines[-1][len("RESULT ") :])
 
 

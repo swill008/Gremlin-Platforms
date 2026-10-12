@@ -15,6 +15,7 @@ from types import SimpleNamespace
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import device_initialization, event_handler, macro
 from gremlin.modules import output
@@ -301,7 +302,7 @@ def test_vjoy_selector_shows_red_warning_and_tooltip(tmp_path: pathlib.Path) -> 
         for ln in done.stdout.splitlines()
         if ln.startswith("T")
     }
-    assert "T57" in lines, done.stdout[-1500:] + done.stderr[-1500:]
+    assert "T57" in lines, smoke_report.explain(done)
     text, color, cant, tip, tooltips = lines["T57"]
     assert text == "⚠ Button 57"
     assert color == "#dc2626"  # Style.danger

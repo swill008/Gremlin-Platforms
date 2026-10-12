@@ -18,6 +18,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 # Screenshots for a person to look at (not checked).
@@ -58,7 +59,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
             out["errors"].append(line)
         elif line.startswith("QTLOG "):
             out["qtlog"] = json.loads(line[6:])
-    assert "done" in proc.stdout, proc.stdout[-3000:] + proc.stderr[-3000:]
+    assert "done" in proc.stdout, smoke_report.explain(proc)
     return out
 
 

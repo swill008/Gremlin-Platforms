@@ -15,6 +15,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _SMOKE = pathlib.Path(__file__).parent / "grid_box_smoke.py"
 
@@ -26,7 +27,7 @@ def _run(tmp_path: pathlib.Path) -> dict:
         [sys.executable, str(_SMOKE), str(tmp_path)], text=True, timeout=180, env=env
     )
     report = tmp_path / "grid_box.json"
-    assert result.returncode == 0 and report.exists(), result.stderr[-2000:]
+    assert result.returncode == 0 and report.exists(), smoke_report.explain(result)
     return json.loads(report.read_text(encoding="utf-8"))
 
 

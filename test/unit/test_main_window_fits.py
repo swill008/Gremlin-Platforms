@@ -22,6 +22,7 @@ from __future__ import annotations
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -95,7 +96,7 @@ def _window(tmp_path: pathlib.Path, scale: int, widths: str) -> dict:
         text=True, timeout=120,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, result.stdout[-1500:] + result.stderr[-1500:]
+    assert lines, smoke_report.explain(result)
     return json.loads(lines[0][len("RESULT "):])
 
 

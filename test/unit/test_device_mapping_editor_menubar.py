@@ -36,6 +36,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 from test.unit.test_device_mapping_editor_menubar_keys import (
     SPEC_COMMAND_KEYS,
@@ -74,7 +75,7 @@ def seen(tmp_path_factory: pytest.TempPathFactory) -> dict:
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     if not lines:
-        raise RuntimeError(done.stdout[-2000:] + done.stderr[-2000:])
+        raise RuntimeError(smoke_report.explain(done))
     out = json.loads(lines[-1][len("RESULT ") :])
     if "error" in out:
         raise RuntimeError(out.get("traceback") or out["error"])

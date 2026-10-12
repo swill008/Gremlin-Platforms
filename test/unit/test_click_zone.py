@@ -19,6 +19,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -36,7 +37,7 @@ def results(tmp_path_factory: pytest.TempPathFactory) -> dict:
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen", "USERPROFILE": str(home)},
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, done.stdout[-2000:] + done.stderr[-2000:]
+    assert lines, smoke_report.explain(done)
     return json.loads(lines[0][len("RESULT ") :])
 
 

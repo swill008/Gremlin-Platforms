@@ -29,6 +29,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 @pytest.fixture(scope="module")
 def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     home = tmp_path_factory.mktemp("home")
     (home / "Gremlin Platforms").mkdir(parents=True)
     env = dict(
@@ -42,7 +43,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         encoding="utf-8", errors="replace", timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, result.stdout[-1500:] + result.stderr[-3000:]
+    assert lines, smoke_report.explain(result)
     out = json.loads(lines[-1][len("RESULT "):])
     assert "error" not in out, out
     return out

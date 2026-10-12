@@ -22,7 +22,7 @@ Public names (QML), unchanged from LogicalLayoutModel:
             sortBySystem(), sortByName(), sortGroupNames(),
             moveGroupUp(str), moveGroupDown(str),
             setFilter(search, type, ungrouped, no_writer, no_actions),
-            setCantSendOnly(bool) (the Find bar's "Output not found" tick),
+            setCantSendOnly(bool) (the Find bar's "Binding output not found" tick),
             setSelection(list), keyAt(int)->str,
             beginPane(str,int)->int, beginNewAction(str)->int,
             paneDirty()->bool, commitPane()->int, discardPane(), endPane()
@@ -360,7 +360,7 @@ ROW_DEFAULTS: dict[str, Any] = {
     # Group details (batch L), group rows, over what the header counts:
     # [{type, controls, bindings}] in the page's type order, types present
     # only (type "button" | "axis" | "hat", "key" on the Keyboard page);
-    # inputs with no bindings; outputs not found; output devices; [{name,
+    # inputs with no bindings; binding outputs not found; output devices; [{name,
     # count}] per action name; custom names; other modes with bindings.
     "groupCounts": [],
     "groupNoBindings": 0,
@@ -1307,7 +1307,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(bool)
     def setCantSendOnly(self, on: bool) -> None:
-        """The Find bar's "Output not found" tick: only inputs with an action
+        """The Find bar's "Binding output not found" tick: only inputs with an action
         that can't be sent (D-05-CANT-SEND)."""
         if bool(on) == self._cant_send_only:
             return

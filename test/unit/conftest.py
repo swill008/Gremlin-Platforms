@@ -303,26 +303,77 @@ def _no_settings_notice_left() -> Iterator[None]:
 
 @pytest.fixture(scope="package", autouse=True)
 def register_config_options() -> None:
+    """The program's settings, registered first as at start (items 31, 47):
+    the fixtures below read them (twin device names), and pytest doesn't
+    set up autouse fixtures in the order they are written."""
     joystick_gremlin.register_config_options()
 
 
 @pytest.fixture(scope="package", autouse=True)
-def joystick_init() -> None:
+def joystick_init(register_config_options: None) -> None:
+    # The program's settings come first, as at start: device names read the
+    # twin names, and an unregistered one only logs a GremlinError (item 31).
+    assert gremlin.config.Configuration().exists(
+        *gremlin.device_initialization.TWIN_SETTING
+    ), "device start-up before the program's settings were registered"
     # The fake driver (installed above) lists the two fake devices and vJoy 1.
     dill.DILL.init()
     gremlin.device_initialization.joystick_devices_initialization()
 
 
 @pytest.fixture(scope="package", autouse=True)
-def event_listener() -> Iterator[gremlin.event_handler.EventListener]:
+def event_listener(
+    register_config_options: None,
+) -> Iterator[gremlin.event_handler.EventListener]:
     """The shared event listener, started before the first test and stopped
     after the last: its threads belong to the package, not to whichever
     test happens to use it first (that depends on the order, which differs
     when the tests run in parts). Tests turn the Windows hooks off, so
     starting it touches nothing on the PC."""
     listener = gremlin.event_handler.EventListener()
+    _PACKAGE_LISTENER[:] = [listener]
     yield listener
+    _PACKAGE_LISTENER.clear()
     listener.terminate()
+
+
+# The package's EventListener (event_listener below), for the item 30 check.
+_PACKAGE_LISTENER: list[gremlin.event_handler.EventListener] = []
+
+
+def _runtime_listener_problem(
+    package_listener: gremlin.event_handler.EventListener,
+) -> str | None:
+    """Why the input-module runtime may no longer hear the devices, or None.
+
+    The runtime connects to the EventListener once, when it is made; a test
+    that puts another listener in place leaves it deaf (item 30)."""
+    from PySide6 import QtCore
+
+    from gremlin.modules import runtime
+
+    # A test may stand a fake in for either class; its undo has run by now.
+    if getattr(runtime.InputModuleRuntime, "instance", None) is None:
+        return None
+    current = getattr(gremlin.event_handler.EventListener, "instance", None)
+    if current is not package_listener:
+        return "the EventListener was replaced"
+    heard = current.receivers(QtCore.SIGNAL("joystick_event(PyObject)"))
+    if heard < 1:
+        return "nothing listens to the EventListener's joystick events"
+    return None
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_teardown(item: pytest.Item) -> Iterator[None]:
+    """Names the test that leaves the runtime cut off from the devices
+    (item 30). After the test's own fixtures are undone: a test may patch
+    the listener while it runs."""
+    result = yield
+    if _PACKAGE_LISTENER:
+        problem = _runtime_listener_problem(_PACKAGE_LISTENER[0])
+        assert problem is None, f"{item.nodeid} left it: {problem} (item 30)"
+    return result
 
 
 @pytest.fixture(scope="package")

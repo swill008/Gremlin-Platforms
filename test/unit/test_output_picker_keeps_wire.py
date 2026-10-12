@@ -11,6 +11,7 @@ from unittest import mock
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import event_handler
 from gremlin.ui import output_modules
@@ -212,5 +213,5 @@ def test_vjoy_selector_device_box_moves_the_binding(tmp_path: pathlib.Path) -> N
         cwd=root, env=env, text=True, timeout=120,
     )
     after = [ln for ln in done.stdout.splitlines() if ln.startswith("AFTER")]
-    assert after, done.stdout[-1500:] + done.stderr[-1500:]
+    assert after, smoke_report.explain(done)
     assert after[0] == "AFTER vJoy 4 4 JoystickButton 1 Button 1"

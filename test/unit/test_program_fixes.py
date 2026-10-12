@@ -22,6 +22,7 @@ from __future__ import annotations
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -455,7 +456,7 @@ def test_live_adds_rows_without_drawing_the_view_again() -> None:
         [sys.executable, "-c", _LIVE], cwd=_ROOT, env=env,
         text=True, timeout=60,
     )
-    assert done.returncode == 0, done.stderr[-2000:]
+    assert done.returncode == 0, smoke_report.explain(done)
     out = json.loads(done.stdout.strip().splitlines()[-1])
     assert out["redraws"] == 0  # every Live line was added, none redrawn
     # 500 lines, the view keeps the last 300: the top ones dropped off.

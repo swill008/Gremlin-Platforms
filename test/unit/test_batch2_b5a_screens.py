@@ -34,6 +34,7 @@ def _screens():  # noqa: ANN202
 
 def test_the_keyboard_page_edits_a_draft(tmp_path: pathlib.Path) -> None:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), str(tmp_path)],
         text=True,
@@ -47,7 +48,7 @@ def test_the_keyboard_page_edits_a_draft(tmp_path: pathlib.Path) -> None:
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-3000:] + result.stderr[-3000:]
+    assert "done" in lines, smoke_report.explain(result)
     r = {
         line.split(" ", 2)[1]: line.split(" ", 2)[2]
         for line in lines

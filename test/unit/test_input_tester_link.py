@@ -23,6 +23,7 @@ from types import SimpleNamespace
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import hidhide_watch, trace
 from gremlin import input_tester_link as link
@@ -388,7 +389,7 @@ def menu(tmp_path_factory: pytest.TempPathFactory) -> dict:
         text=True, timeout=150,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, done.stdout[-2000:] + done.stderr[-3000:]
+    assert lines, smoke_report.explain(done)
     found = json.loads(lines[-1][len("RESULT "):])
     found["exe"] = str(exe)
     return found

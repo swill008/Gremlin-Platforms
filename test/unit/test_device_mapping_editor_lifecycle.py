@@ -14,6 +14,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -27,7 +28,7 @@ def test_device_mapping_editor_leaves_nothing_behind() -> None:
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, (result.stderr or "")[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     assert not [line for line in lines if line.startswith("ERROR")]
     results = dict(
         line.split(" ", 2)[1:] for line in lines if line.startswith("RESULT ")

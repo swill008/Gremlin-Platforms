@@ -336,6 +336,7 @@ def _device() -> SimpleNamespace:
 
 def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), part, str(tmp_path)],
@@ -351,7 +352,7 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
         encoding="utf-8",
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-3000:] + result.stderr[-3000:]
+    assert "done" in lines, smoke_report.explain(result)
     errors = [line for line in lines if line.startswith("ERROR")]
     assert not errors, errors
     ours = [
@@ -379,7 +380,7 @@ def test_tree_shows_the_red_marker_with_its_tooltip(tmp_path: pathlib.Path) -> N
 
 def test_find_tick_filters_and_clear_resets_it(tmp_path: pathlib.Path) -> None:
     r = _run("tree", tmp_path)
-    assert r["tickLabel"] == "Output not found"
+    assert r["tickLabel"] == "Binding output not found"
     assert r["ticked"] == "true true", r["ticked"]
     assert r["cleared"] == "false false", r["cleared"]
 

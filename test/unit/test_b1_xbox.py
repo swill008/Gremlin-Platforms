@@ -16,6 +16,7 @@ import shutil
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).resolve().parent
 _SMOKE = _HERE / "b1_xbox_face_smoke.py"
@@ -40,7 +41,7 @@ def _run(tmp_path: pathlib.Path, face: pathlib.Path, mode: str) -> dict:
         text=True, encoding="utf-8", errors="replace", timeout=90,
     )
     lines = [line for line in done.stdout.splitlines() if line.startswith("{")]
-    assert lines, (done.stdout + done.stderr)[-3000:]
+    assert lines, smoke_report.explain(done)
     return json.loads(lines[-1])
 
 

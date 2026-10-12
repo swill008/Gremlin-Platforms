@@ -83,6 +83,7 @@ def _child() -> None:
 
 def test_keys_typed_into_a_text_box_are_not_ticked(tmp_path: pathlib.Path) -> None:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     qml = tmp_path / "box.qml"
     qml.write_text(
         "import QtQuick\nTextInput { width: 200; height: 30; focus: true }\n",
@@ -106,7 +107,7 @@ def test_keys_typed_into_a_text_box_are_not_ticked(tmp_path: pathlib.Path) -> No
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-2000:] + result.stderr[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     found = dict(
         line.split(" ", 2)[1:] for line in lines if line.startswith("RESULT ")
     )

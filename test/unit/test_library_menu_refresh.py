@@ -148,6 +148,7 @@ def _smoke() -> None:
 @pytest.fixture(scope="module")
 def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     out = tmp_path_factory.mktemp("dl_menu_refresh")
     home = tmp_path_factory.mktemp("home")
     proc = proc_tree.run(
@@ -177,7 +178,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
             results["errors"].append(line)
         elif line.startswith("WARN"):
             results["warnings"].append(line)
-    assert "done" in proc.stdout, proc.stdout[-3000:] + proc.stderr[-3000:]
+    assert "done" in proc.stdout, smoke_report.explain(proc)
     return results
 
 

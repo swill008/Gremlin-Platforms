@@ -27,6 +27,7 @@ from collections.abc import Iterator
 from typing import NoReturn
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -261,7 +262,7 @@ def test_the_app_built_off_screen_installs_no_hook_hidhide_or_tray(
         timeout=120,
     )
     out = result.stdout
-    assert "DONE" in out, out[-2000:] + result.stderr[-2000:]
+    assert "DONE" in out, smoke_report.explain(result)
     assert "HOOK" not in out
     assert "ENABLED False" in out
     assert "HIDHIDE" not in out

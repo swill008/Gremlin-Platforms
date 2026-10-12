@@ -10,7 +10,7 @@ details; each detail has its own switch, "Hide empty" leaves out the 0
 details (the type itself stays), "Wrap details" wraps the line or cuts it
 with "…" and lists every detail on hover. Bindable rows add their details
 after the bindings strip. Every detail uses the Bindings number style;
-Output not found uses the theme warning colour.
+Binding output not found uses the theme warning colour.
 
 The QML runs off-screen in its own process (this file run as a script) on
 a stub model carrying the roles.
@@ -32,7 +32,7 @@ _ROOT = _HERE.parents[1]
 
 ALL_ON = (
     "29 buttons [30 bindings] · 6 axes [6 bindings] · 1 hat [0 bindings]"
-    " · [1 with no bindings] · [1 output not found]"
+    " · [1 with no bindings] · [1 binding output not found]"
     " · [outputs: vJoy 1, Xbox 360 1] · [30 Map to vJoy, 2 Macro]"
     " · [5 custom names] · [also in mode Combat]"
 )
@@ -40,6 +40,7 @@ ALL_ON = (
 
 def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), part, str(tmp_path)],
@@ -55,7 +56,7 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
         encoding="utf-8",
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-3000:] + result.stderr[-3000:]
+    assert "done" in lines, smoke_report.explain(result)
     errors = [line for line in lines if line.startswith("ERROR")]
     assert not errors, errors
     ours = [line for line in lines if line.startswith("WARN") and "ControlTree" in line]
@@ -79,13 +80,13 @@ def test_group_and_row_details(tmp_path: pathlib.Path) -> None:
     assert r["groupStyle"] == "mono|number|warn", r["groupStyle"]
     # Singular and plural.
     assert r["groupOther"] == (
-        "1 button [1 binding] · [2 with no bindings] · [2 outputs not found]"
+        "1 button [1 binding] · [2 with no bindings] · [2 binding outputs not found]"
         " · [1 custom name] · [also in modes Combat, Landing]"
     ), r["groupOther"]
     # Hide empty: "[0 bindings]" goes, "1 hat" stays; 0 counts go.
     assert r["groupHide"] == (
         "29 buttons [30 bindings] · 6 axes [6 bindings] · 1 hat"
-        " · [1 with no bindings] · [1 output not found]"
+        " · [1 with no bindings] · [1 binding output not found]"
         " · [outputs: vJoy 1, Xbox 360 1] · [30 Map to vJoy, 2 Macro]"
         " · [5 custom names] · [also in mode Combat]"
     ), r["groupHide"]
@@ -104,7 +105,7 @@ def test_group_and_row_details(tmp_path: pathlib.Path) -> None:
     assert int(r["wrapOn"].split("|")[0]) > 1, r["wrapOn"]
     # Row details after the bindings strip, in order, custom name only.
     assert r["rowAll"] == (
-        "[Map to vJoy, Map to Xbox] · [output not found] · [also in mode Combat]"
+        "[Map to vJoy, Map to Xbox] · [binding output not found] · [also in mode Combat]"
         " · [system name: Button 5] · [has a condition]"
     ), r["rowAll"]
     assert r["rowAfterStrip"] == "after", r["rowAfterStrip"]

@@ -18,6 +18,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = "palette_runs_commands_smoke.py"
@@ -35,7 +36,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         cwd=_ROOT, env=env, text=True, timeout=120,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, done.stdout[-1500:] + done.stderr[-1500:]
+    assert lines, smoke_report.explain(done)
     return json.loads(lines[0][len("RESULT "):])
 
 

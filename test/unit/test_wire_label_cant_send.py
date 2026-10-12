@@ -78,6 +78,7 @@ def test_the_label_follows_the_live_lookup(why: dict) -> None:
 
 def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__)), part, str(tmp_path)],
@@ -93,7 +94,7 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
         encoding="utf-8",
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-3000:] + result.stderr[-3000:]
+    assert "done" in lines, smoke_report.explain(result)
     errors = [line for line in lines if line.startswith("ERROR")]
     assert not errors, errors
     ours = [line for line in lines if line.startswith("WARN") and "ControlTree" in line]

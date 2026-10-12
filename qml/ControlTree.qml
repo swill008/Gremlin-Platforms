@@ -110,7 +110,7 @@ Item {
     property int bindingTargetSpacing: 6
     // Group details: the line under a group's name, in this order, from the
     // group roles (groupCounts, groupNoBindings, ...); Row details: after a
-    // bindable row's bindings. Bindings number style; Output not found in
+    // bindable row's bindings. Bindings number style; Binding output not found in
     // the warning colour (05, batch L).
     property bool groupControlsByType: true
     property bool groupBindingsByType: true
@@ -273,7 +273,7 @@ Item {
             out.push(_piece(_br(none + " with no bindings")))
         var lost = m.groupOutputNotFound || 0
         if (groupOutputNotFound && !(hide && lost === 0))
-            out.push(_piece(_br(_count(lost, "output not found", "outputs not found")), lost > 0))
+            out.push(_piece(_br(_count(lost, "binding output not found", "binding outputs not found")), lost > 0))
         var outputs = m.groupOutputDevices || []
         if (groupOutputDevices && outputs.length > 0)
             out.push(_piece(_br("outputs: " + outputs.join(", "))))
@@ -296,7 +296,7 @@ Item {
         if (rowActionTypes && acts.length > 0)
             out.push(_piece(_br(acts.join(", "))))
         if (rowOutputNotFound && m.outputNotFound)
-            out.push(_piece(_br("output not found"), true))
+            out.push(_piece(_br("binding output not found"), true))
         var modes = m.otherModes || []
         if (rowOtherModes && modes.length > 0)
             out.push(_piece(_br(_modes(modes))))

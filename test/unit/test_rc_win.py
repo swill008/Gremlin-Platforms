@@ -26,6 +26,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "rc_win_smoke.py"
@@ -58,7 +59,7 @@ def seen(tmp_path_factory: pytest.TempPathFactory) -> dict:
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
     if not lines:
-        raise RuntimeError(done.stdout[-2000:] + done.stderr[-2000:])
+        raise RuntimeError(smoke_report.explain(done))
     out = json.loads(lines[-1][len("RESULT ") :])
     if "error" in out:
         raise RuntimeError(out.get("traceback") or out["error"])

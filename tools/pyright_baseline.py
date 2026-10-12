@@ -75,7 +75,10 @@ def _version(tool: str) -> str:
 
 
 def pyright_errors(root: pathlib.Path) -> Counter[Key]:
-    data = _json_out([sys.executable, "-m", "pyright", "--outputjson"], root)
+    # --pythonpath: read the imports from the Python running this tool (the
+    # project's), not the first "python" on PATH, which may lack them.
+    command = [sys.executable, "-m", "pyright", "--outputjson"]
+    data = _json_out([*command, "--pythonpath", sys.executable], root)
     assert isinstance(data, dict)
     found: Counter[Key] = Counter()
     for item in data.get("generalDiagnostics", []):

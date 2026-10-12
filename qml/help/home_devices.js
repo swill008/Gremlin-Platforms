@@ -41,7 +41,7 @@ function topics() {
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul><li>A card whose module file can't be read says \"Module file damaged – inputs blocked\" in red. See <a href=\"topic:home-devices-damaged-file\">Fix a damaged module file</a>.</li>"
-                + "<li>A stick, Keyboard or OSC card with actions that send to an output that isn't there (missing or switched off) has a red outline and says \"⚠ n outputs not found\". Hover it for the list (input, mode and why; the first 10, then \"… and n more\"). Open the device's page and pick another output in each of those actions; the Find tick <b>Output not found</b> shows them.</li></ul>",
+                + "<li>A stick, Keyboard or OSC card with actions that send to an output that isn't there (missing or switched off) has a red outline and says \"⚠ n binding outputs not found\". Hover it for the list (input, mode and why; the first 10, then \"… and n more\"). Open the device's page and pick another output in each of those actions; the Find tick <b>Binding output not found</b> shows them.</li></ul>",
             related: ["home-devices-home", "home-devices-input-modules", "home-devices-damaged-file", "device-bindings-actions-output-view"]
         },
         {

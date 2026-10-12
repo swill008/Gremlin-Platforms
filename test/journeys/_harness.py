@@ -88,6 +88,7 @@ def run_journey(script: str | pathlib.Path, home: pathlib.Path, *args: str) -> d
     # Here, not at the top: the journey's own child imports this file
     # without test/ on its path.
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
     started = time.monotonic()
     result = proc_tree.run(
@@ -100,12 +101,7 @@ def run_journey(script: str | pathlib.Path, home: pathlib.Path, *args: str) -> d
         timeout=JOURNEY_TIMEOUT,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, (
-        f"No RESULT (exit {result.returncode}).\n--- stdout\n"
-        + result.stdout[-4000:]
-        + "\n--- stderr\n"
-        + result.stderr[-4000:]
-    )
+    assert lines, smoke_report.explain(result)
     out = json.loads(lines[-1][len("RESULT ") :])
     out["_seconds"] = round(time.monotonic() - started, 1)
     out["_stderr"] = result.stderr[-4000:]

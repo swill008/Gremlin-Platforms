@@ -16,6 +16,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -30,7 +31,7 @@ def test_pan_cursor_in_the_window(tmp_path: pathlib.Path) -> None:
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen", "PYTHONIOENCODING": "utf-8"},
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-2000:] + result.stderr[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     assert [line for line in lines if line.startswith("ERROR")] == []
     mine = [
         line for line in lines if line.startswith("WARN") and "VkbRigFace.qml" in line

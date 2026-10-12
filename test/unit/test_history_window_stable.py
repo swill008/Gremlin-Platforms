@@ -19,28 +19,9 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
-
-
-def _explain(log: pathlib.Path, code: object, out: str, err: str) -> str:
-    """Why the smoke gave no RESULT line: its exit code, the first and last
-    parts of each stream (a crash or hang trace starts or ends there), and
-    the path of the file holding the full output."""
-    full = f"exit {code}\n--- stdout ---\n{out}\n--- stderr ---\n{err}"
-    log.write_text(full, encoding="utf-8")
-
-    def ends(text: str) -> str:
-        if len(text) <= 6000:
-            return text
-        cut = f"\n[... {len(text) - 6000} chars, see the file ...]\n"
-        return text[:2000] + cut + text[-4000:]
-
-    return (
-        f"history_stable_smoke.py gave no RESULT line; exit {code}; full "
-        f"output in {log}\n--- stdout ---\n{ends(out)}"
-        f"\n--- stderr ---\n{ends(err)}"
-    )
 
 
 @pytest.fixture(scope="module")
@@ -59,10 +40,9 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     try:
         result = proc_tree.run(args, cwd=_ROOT, env=env, text=True, timeout=180)
     except subprocess.TimeoutExpired as hung:
-        out, err = hung.output or "", hung.stderr or ""
-        pytest.fail(_explain(log, "none: killed after 180 s", str(out), str(err)))
+        pytest.fail(smoke_report.explain(hung, log))
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, _explain(log, result.returncode, result.stdout, result.stderr)
+    assert lines, smoke_report.explain(result, log)
     return json.loads(lines[0][len("RESULT ") :])
 
 

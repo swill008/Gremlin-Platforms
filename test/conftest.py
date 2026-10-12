@@ -26,6 +26,9 @@ os.environ["GREMLIN_OFFLINE"] = "1"
 # (gremlin/modules/folders_move.run_if_needed) refuses to touch the real
 # Gremlin Platforms folder. Programs tests start inherit it.
 os.environ["GREMLIN_TESTS"] = "1"
+# A program a test starts prints every thread's stack if it crashes in
+# native code (access violation), so the failure explains itself.
+os.environ.setdefault("PYTHONFAULTHANDLER", "1")
 # Qt's messages go to the error stream even with no console (as in the
 # program, gremlin/qt_log.py), where the CROSS-THREAD-TIMER check reads them.
 os.environ.setdefault("QT_FORCE_STDERR_LOGGING", "1")
@@ -260,11 +263,7 @@ class _Stalls:
 # | and the run ends with the report: an exception raised into the main
 # | thread inside Qt's start-up crashed the process (access violation).
 # | GREMLIN_TEST_STARTUP_STALL_AFTER sets it, for the stall tests themselves.
-STARTUP_STALL_AFTER = float(
-    os.environ.get(
-        "GREMLIN_TEST_STARTUP_STALL_AFTER", str(6 * stall_watch.BLOCKED_AFTER)
-    )
-)
+STARTUP_STALL_AFTER = stall_watch.STARTUP_BLOCKED_AFTER
 
 
 class _StartUp:
@@ -363,6 +362,22 @@ def pytest_runtest_protocol(item: pytest.Item, nextitem: pytest.Item | None):  #
 @pytest.hookimpl(trylast=True)
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     _Stalls.exit_status = int(exitstatus)
+    _delete_qml_engines()
+
+
+def _delete_qml_engines() -> None:
+    """The app's QML engines go while the app still exists: an engine that
+    loaded a picture keeps Qt's picture reader thread, which otherwise held
+    the process ~20 s at Python's shutdown, until the exit deadman (item 42).
+    Posted deletes are safe to run here: the run is over."""
+    from PySide6 import QtCore, QtQml
+
+    app = QtCore.QCoreApplication.instance()
+    if app is None:
+        return
+    for engine in app.findChildren(QtQml.QQmlEngine):
+        engine.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
 
 
 # GREMLIN_TEST_EXIT_DEADMAN (seconds) shortens it for test_exit_hang.py.

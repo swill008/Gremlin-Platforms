@@ -18,6 +18,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -51,7 +52,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
             results[name] = value
         elif line.startswith("ERROR"):
             results["errors"].append(line)
-    assert "done" in proc.stdout, proc.stdout[-3000:] + proc.stderr[-3000:]
+    assert "done" in proc.stdout, smoke_report.explain(proc)
     return results
 
 

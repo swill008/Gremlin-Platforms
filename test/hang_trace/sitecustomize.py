@@ -135,7 +135,14 @@ if _LIMIT:
     threading.Thread(
         target=_end_when_the_main_code_ends, name="hang-trace", daemon=True
     ).start()
-    _watch = stall_watch.StallWatch(_stalled, sys.stderr, limit=float(_LIMIT))
+    # Start-up, until the event loop first runs, gets the longer allowance
+    # (to-do 128: the Main.qml load stands still for seconds on a busy PC).
+    _watch = stall_watch.StallWatch(
+        _stalled,
+        sys.stderr,
+        limit=float(_LIMIT),
+        start_up=stall_watch.STARTUP_BLOCKED_AFTER,
+    )
     _watch.watch("this program")
     _watch.start()
     stall_watch.PROGRAM_WATCH = _watch

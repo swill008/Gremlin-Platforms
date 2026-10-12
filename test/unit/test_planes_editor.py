@@ -29,6 +29,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _QML = _ROOT / "qml"
@@ -50,7 +51,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         timeout=120,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("PLANES ")]
-    assert lines, done.stdout[-1500:] + done.stderr[-1500:]
+    assert lines, smoke_report.explain(done)
     return json.loads(lines[0][len("PLANES ") :])
 
 

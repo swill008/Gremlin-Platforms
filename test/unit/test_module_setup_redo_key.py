@@ -17,6 +17,7 @@ from __future__ import annotations
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -94,7 +95,7 @@ def result(tmp_path_factory: pytest.TempPathFactory) -> dict[str, object]:
         text=True, timeout=120,
     )
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, done.stdout[-1500:] + done.stderr[-1500:]
+    assert lines, smoke_report.explain(done)
     return json.loads(lines[0][len("RESULT "):])
 
 

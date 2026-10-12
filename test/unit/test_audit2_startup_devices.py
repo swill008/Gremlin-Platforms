@@ -29,6 +29,7 @@ from typing import Any
 from xml.etree import ElementTree
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -271,7 +272,7 @@ def test_the_tray_icon_follows_the_platform_qt_started_on(
         text=True,
         timeout=60,
     )
-    assert "PLATFORM offscreen" in result.stdout, result.stderr[-1500:]
+    assert "PLATFORM offscreen" in result.stdout, smoke_report.explain(result)
 
 
 # --- Swap Devices -----------------------------------------------------------

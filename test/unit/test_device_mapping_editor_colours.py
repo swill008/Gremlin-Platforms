@@ -9,6 +9,7 @@ from __future__ import annotations
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -81,4 +82,6 @@ def test_eyedropper_reads_the_window() -> None:
         timeout=60,
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
     )
-    assert result.stdout.split() == ["#FF0000", "#00AA44", "''"], result.stderr[-1000:]
+    assert result.stdout.split() == ["#FF0000", "#00AA44", "''"], (
+        smoke_report.explain(result)
+    )

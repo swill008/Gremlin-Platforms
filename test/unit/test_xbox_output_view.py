@@ -28,6 +28,7 @@ import pytest
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 import proc_tree  # noqa: E402  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).resolve().parent
 _ROOT = _HERE.parents[1]
@@ -48,7 +49,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     done = proc_tree.run(args, cwd=_ROOT, env=env, text=True, encoding="utf-8",
                          errors="replace", timeout=150)
     lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, (done.stdout + done.stderr)[-3000:]
+    assert lines, smoke_report.explain(done)
     return json.loads(lines[-1][len("RESULT "):])
 
 

@@ -17,6 +17,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -55,7 +56,7 @@ def results(tmp_path_factory: pytest.TempPathFactory) -> dict:
             },
         )
         lines = [ln for ln in done.stdout.splitlines() if ln.startswith("RESULT ")]
-        assert lines, part + "\n" + done.stdout[-2000:] + done.stderr[-2000:]
+        assert lines, part + "\n" + smoke_report.explain(done)
         res = json.loads(lines[0][len("RESULT ") :])
         out["warnings"] = sorted(set(out["warnings"]) | set(res.pop("warnings")))
         for name, rows in res.items():

@@ -27,7 +27,7 @@ def _vjoy_ids_by_guid() -> dict[str, int]:
     return {
         guid_key(dev.device_guid): int(dev.vjoy_id)
         for dev in devices
-        if getattr(dev, "vjoy_id", 0)
+        if getattr(dev, "vjoy_id", 0) and getattr(dev, "device_guid", None)
     }
 
 

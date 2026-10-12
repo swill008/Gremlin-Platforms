@@ -15,6 +15,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -33,7 +34,7 @@ def seen(tmp_path_factory: pytest.TempPathFactory) -> dict:
              "USERPROFILE": str(home)},
     )
     lines = run.stdout.splitlines()
-    assert "done" in lines, run.stdout[-2000:] + run.stderr[-2000:]
+    assert "done" in lines, smoke_report.explain(run)
     out: dict = {
         "warnings": [line for line in lines if line.startswith(("WARN", "ERROR"))],
     }

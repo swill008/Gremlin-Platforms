@@ -79,6 +79,7 @@ N_CLOSE = "resetDevicesClose"
 @pytest.fixture(scope="module")
 def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     home = tmp_path_factory.mktemp("reset_home")
     (home / "Gremlin Platforms").mkdir()
     work = tmp_path_factory.mktemp("reset_work")
@@ -95,13 +96,13 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
             "PYTHONUNBUFFERED": "1",
         },
     )
-    results: dict = {"log": proc.stdout[-4000:] + proc.stderr[-4000:]}
+    results: dict = {"why": lambda: smoke_report.explain(proc)}
     for line in proc.stdout.splitlines():
         if line.startswith("RESULT "):
             _tag, name, value = line.split(" ", 2)
             results[name] = json.loads(value)
-    assert "done" in proc.stdout, results["log"]
-    assert results.get("open") is True, results["log"]
+    assert "done" in proc.stdout, smoke_report.explain(proc)
+    assert results.get("open") is True, smoke_report.explain(proc)
     return results
 
 
@@ -116,7 +117,7 @@ def _row(rows: list[dict], usb: str) -> dict:
 
 
 def test_the_page_button_opens_the_reset_devices_window(run: dict) -> None:
-    assert run["window"] is True, run["log"]
+    assert run["window"] is True, run["why"]()
 
 
 def test_vjoy_and_xbox_pads_are_never_listed(run: dict) -> None:

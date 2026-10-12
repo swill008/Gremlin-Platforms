@@ -25,6 +25,7 @@ def test_raw_box_ignores_typing_and_shows_live_value(
     tmp_path: pathlib.Path,
 ) -> None:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
     home = tmp_path / "home"
     (home / "Gremlin Platforms").mkdir(parents=True)
@@ -37,7 +38,7 @@ def test_raw_box_ignores_typing_and_shows_live_value(
         timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, result.stdout[-1500:] + result.stderr[-1500:]
+    assert lines, smoke_report.explain(result)
     out = json.loads(lines[-1][len("RESULT ") :])
     assert "error" not in out, out
     assert out["read-only"] is True, out

@@ -277,6 +277,7 @@ def _smoke() -> None:
 
 def _run(tmp_path: pathlib.Path) -> tuple[dict[str, Any], list[str]]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     result = proc_tree.run(
         [sys.executable, __file__],
         text=True,
@@ -290,7 +291,7 @@ def _run(tmp_path: pathlib.Path) -> tuple[dict[str, Any], list[str]]:
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, result.stdout[-3000:] + result.stderr[-3000:]
+    assert "done" in lines, smoke_report.explain(result)
     got: dict[str, Any] = {}
     for line in lines:
         if line.startswith("RESULT "):

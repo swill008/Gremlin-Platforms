@@ -78,3 +78,22 @@ def test_close_twice_or_with_no_engine_is_harmless(manager: tts.TTSManager) -> N
     manager.close()
     assert manager._engine is None
     assert manager._running is False
+
+
+def test_close_deletes_only_the_engine(manager: tts.TTSManager) -> None:
+    """Item 111: close() flushed every object waiting for deleteLater on the
+    thread, not only the engine. In a full run that deleted what earlier
+    tests left (and at exit, the window's own), and one of them aborted the
+    process inside close(). Only the engine goes now."""
+    _, destroyed = _with_engine(manager)
+    other = QtCore.QObject()
+    other_gone: list[bool] = []
+    other.destroyed.connect(lambda *_: other_gone.append(True))
+    other.deleteLater()
+
+    manager.close()
+
+    assert destroyed == [True]
+    assert other_gone == []
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    assert other_gone == [True]  # still the event loop's to delete

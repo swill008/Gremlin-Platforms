@@ -79,24 +79,6 @@
   {
    "file": "action_plugins/condition/__init__.py",
    "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"_action_tree\" for class \"ConditionModel*\"",
-   "count": 2
-  },
-  {
-   "file": "action_plugins/condition/__init__.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"_false_action_ids\" for class \"ConditionModel*\"",
-   "count": 1
-  },
-  {
-   "file": "action_plugins/condition/__init__.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"_true_action_ids\" for class \"ConditionModel*\"",
-   "count": 1
-  },
-  {
-   "file": "action_plugins/condition/__init__.py",
-   "rule": "reportAttributeAccessIssue",
    "message": "Cannot access attribute \"conditions\" for class \"AbstractActionData\"",
    "count": 4
   },
@@ -511,12 +493,6 @@
   {
    "file": "action_plugins/macro/__init__.py",
    "rule": "reportReturnType",
-   "message": "Function with declared return type \"bool\" must return value on all code paths",
-   "count": 1
-  },
-  {
-   "file": "action_plugins/macro/__init__.py",
-   "rule": "reportReturnType",
    "message": "Type \"Property\" is not assignable to return type \"str\"",
    "count": 1
   },
@@ -722,7 +698,7 @@
    "file": "action_plugins/map_to_xbox/__init__.py",
    "rule": "reportAttributeAccessIssue",
    "message": "Cannot access attribute \"xbox_device_id\" for class \"AbstractActionData\"",
-   "count": 3
+   "count": 2
   },
   {
    "file": "action_plugins/map_to_xbox/__init__.py",
@@ -787,12 +763,6 @@
   {
    "file": "action_plugins/pause_resume/__init__.py",
    "rule": "reportReturnType",
-   "message": "Function with declared return type \"PauseResumeType\" must return value on all code paths",
-   "count": 1
-  },
-  {
-   "file": "action_plugins/pause_resume/__init__.py",
-   "rule": "reportReturnType",
    "message": "Type \"Property\" is not assignable to return type \"str\"",
    "count": 1
   },
@@ -825,18 +795,6 @@
    "rule": "reportArgumentType",
    "message": "Argument of type \"AbstractActionData\" cannot be assigned to parameter \"data\" of type \"ResponseCurveData\" in function \"__init__\"",
    "count": 1
-  },
-  {
-   "file": "action_plugins/response_curve/__init__.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"QPointF | None\" cannot be assigned to parameter \"parent\" of type \"QObject | None\" in function \"__init__\"",
-   "count": 1
-  },
-  {
-   "file": "action_plugins/response_curve/__init__.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"Self@ResponseCurveModel\" cannot be assigned to parameter \"parent\" of type \"QPointF | None\" in function \"__init__\"",
-   "count": 2
   },
   {
    "file": "action_plugins/response_curve/__init__.py",
@@ -908,7 +866,7 @@
    "file": "action_plugins/response_curve/__init__.py",
    "rule": "reportReturnType",
    "message": "Type \"QPointF | None\" is not assignable to return type \"QPointF\"",
-   "count": 3
+   "count": 1
   },
   {
    "file": "action_plugins/root/__init__.py",
@@ -1097,69 +1055,9 @@
    "count": 1
   },
   {
-   "file": "gremlin/action_label.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"_convert_index\" for class \"object\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"_device\" for class \"object\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"_index_to_input\" for class \"object\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"_osc\" for class \"object\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"createIndex\" for class \"object\"",
-   "count": 2
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"dataChanged\" for class \"object\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"inputIdentifier\" for class \"object\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"refreshInput\" for class \"object\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot assign to attribute \"data\" for class \"type[OscDeviceManagementModel]\"",
-   "count": 1
-  },
-  {
    "file": "gremlin/auto_mapping_tool.py",
    "rule": "reportArgumentType",
    "message": "Argument of type \"InputItem | None\" cannot be assigned to parameter \"physical_input\" of type \"InputItem\" in function \"_create_new_mapping\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/auto_mapping_tool.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"Profile | None\" cannot be assigned to parameter \"profile\" of type \"Profile\" in function \"__init__\"",
    "count": 1
   },
   {
@@ -1619,12 +1517,6 @@
    "count": 2
   },
   {
-   "file": "gremlin/spline.py",
-   "rule": "reportReturnType",
-   "message": "Function with declared return type \"float\" must return value on all code paths",
-   "count": 1
-  },
-  {
    "file": "gremlin/ui/action_model.py",
    "rule": "reportAttributeAccessIssue",
    "message": "Cannot access attribute \"enumeration_index\" for class \"QObject\"",
@@ -1634,7 +1526,7 @@
    "file": "gremlin/ui/action_model.py",
    "rule": "reportCallIssue",
    "message": "Expected N more positional argument",
-   "count": 14
+   "count": 13
   },
   {
    "file": "gremlin/ui/action_model.py",
@@ -1669,32 +1561,8 @@
   {
    "file": "gremlin/ui/backend.py",
    "rule": "reportArgumentType",
-   "message": "Argument of type \"InputType | None\" cannot be assigned to parameter \"input_type\" of type \"InputType\" in function \"get_input_item\"",
-   "count": 2
-  },
-  {
-   "file": "gremlin/ui/backend.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"Property\" cannot be assigned to parameter \"mode\" of type \"str\" in function \"get_input_item\"",
-   "count": 2
-  },
-  {
-   "file": "gremlin/ui/backend.py",
-   "rule": "reportArgumentType",
    "message": "Argument of type \"Property\" cannot be assigned to parameter \"start_mode\" of type \"str\" in function \"start\"",
    "count": 1
-  },
-  {
-   "file": "gremlin/ui/backend.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"UUID | None\" cannot be assigned to parameter \"device_guid\" of type \"UUID\" in function \"get_input_item\"",
-   "count": 2
-  },
-  {
-   "file": "gremlin/ui/backend.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"int | ScanCode | None\" cannot be assigned to parameter \"input_id\" of type \"int | ScanCode\" in function \"get_input_item\"",
-   "count": 2
   },
   {
    "file": "gremlin/ui/backend.py",
@@ -1713,36 +1581,6 @@
    "rule": "reportCallIssue",
    "message": "Expected N more positional argument",
    "count": 4
-  },
-  {
-   "file": "gremlin/ui/backend.py",
-   "rule": "reportOptionalMemberAccess",
-   "message": "\"action_sequences\" is not a known attribute of \"None\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device_map_labels.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"Any | None\" cannot be assigned to parameter \"key\" of type \"InputType\" in function \"get\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device_map_labels.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"inputs\" for class \"object\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device_map_labels.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"modes\" for class \"object\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/device_map_options.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"Literal['QVariantMap']\" cannot be assigned to parameter \"type\" of type \"type\" in function \"__init__\"",
-   "count": 1
   },
   {
    "file": "gremlin/ui/control_layout.py",
@@ -1802,6 +1640,30 @@
    "file": "gremlin/ui/device.py",
    "rule": "reportReturnType",
    "message": "Type \"InputItem | None\" is not assignable to return type \"InputItem\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_map_labels.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Any | None\" cannot be assigned to parameter \"key\" of type \"InputType\" in function \"get\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_map_labels.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"inputs\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_map_labels.py",
+   "rule": "reportAttributeAccessIssue",
+   "message": "Cannot access attribute \"modes\" for class \"object\"",
+   "count": 1
+  },
+  {
+   "file": "gremlin/ui/device_map_options.py",
+   "rule": "reportArgumentType",
+   "message": "Argument of type \"Literal['QVariantMap']\" cannot be assigned to parameter \"type\" of type \"type\" in function \"__init__\"",
    "count": 1
   },
   {
@@ -2065,12 +1927,6 @@
   {
    "file": "gremlin/ui/profile.py",
    "rule": "reportArgumentType",
-   "message": "Argument of type \"Profile | None\" cannot be assigned to parameter \"profile\" of type \"Profile\" in function \"get_profile_devices\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/profile.py",
-   "rule": "reportArgumentType",
    "message": "Argument of type \"Unknown | int | SequenceIndex\" cannot be assigned to parameter \"index\" of type \"SequenceIndex\" in function \"get_action_container_index\"",
    "count": 1
   },
@@ -2315,12 +2171,6 @@
    "count": 1
   },
   {
-   "file": "gremlin/ui/tools.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"Profile | None\" cannot be assigned to parameter \"profile\" of type \"Profile\" in function \"__init__\"",
-   "count": 1
-  },
-  {
    "file": "gremlin/ui/tray_memory.py",
    "rule": "reportAttributeAccessIssue",
    "message": "Cannot access attribute \"releaseResources\" for class \"QWindow\"",
@@ -2453,12 +2303,6 @@
    "count": 2
   },
   {
-   "file": "gremlin/ui/viewer_devices.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"uuid\" for class \"str\"",
-   "count": 1
-  },
-  {
    "file": "gremlin/ui/window_placement.py",
    "rule": "reportArgumentType",
    "message": "Argument of type \"QObject\" cannot be assigned to parameter \"window\" of type \"QWindow\" in function \"restore_tool\"",
@@ -2514,12 +2358,6 @@
   },
   {
    "file": "gremlin/ui/xbox_device_model.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
-   "count": 2
-  },
-  {
-   "file": "gremlin/ui/xbox_device_model.py",
    "rule": "reportAttributeAccessIssue",
    "message": "Cannot access attribute \"input_id\" for class \"object\"",
    "count": 1
@@ -2533,26 +2371,8 @@
   {
    "file": "gremlin/ui/xbox_viewer.py",
    "rule": "reportArgumentType",
-   "message": "Argument of type \"QByteArray | bytes\" cannot be assigned to parameter \"o\" of type \"Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | ReadableBuffer\" in function \"__new__\"",
-   "count": 4
-  },
-  {
-   "file": "gremlin/ui/xbox_viewer.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"Unknown | int | ScanCode | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
-   "count": 2
-  },
-  {
-   "file": "gremlin/ui/xbox_viewer.py",
-   "rule": "reportArgumentType",
    "message": "Argument of type \"float | HatDirection | None\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"",
    "count": 2
-  },
-  {
-   "file": "gremlin/ui/xbox_viewer.py",
-   "rule": "reportArgumentType",
-   "message": "Argument of type \"int | ScanCode\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"",
-   "count": 4
   },
   {
    "file": "gremlin/ui/xbox_viewer.py",
@@ -2653,12 +2473,6 @@
   {
    "file": "gremlin/util.py",
    "rule": "reportArgumentType",
-   "message": "Argument of type \"str | None\" cannot be assigned to parameter \"value\" of type \"str\" in function \"parse_bool\"",
-   "count": 1
-  },
-  {
-   "file": "gremlin/util.py",
-   "rule": "reportArgumentType",
    "message": "Argument of type \"str | None\" cannot be assigned to parameter \"value\" of type \"str\" in function \"to_enum\"",
    "count": 1
   },
@@ -2725,30 +2539,6 @@
   {
    "file": "joystick_gremlin.py",
    "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"accentChanged\" for class \"QObject\"",
-   "count": 1
-  },
-  {
-   "file": "joystick_gremlin.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"backgroundChanged\" for class \"QObject\"",
-   "count": 1
-  },
-  {
-   "file": "joystick_gremlin.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"foregroundChanged\" for class \"QObject\"",
-   "count": 1
-  },
-  {
-   "file": "joystick_gremlin.py",
-   "rule": "reportAttributeAccessIssue",
-   "message": "Cannot access attribute \"lockInfo\" for class \"QLockFile\"",
-   "count": 1
-  },
-  {
-   "file": "joystick_gremlin.py",
-   "rule": "reportAttributeAccessIssue",
    "message": "Cannot assign to attribute \"_instance_lock\" for class \"JoystickGremlinApp\"",
    "count": 1
   },
@@ -2762,7 +2552,7 @@
    "file": "vjoy/vjoy.py",
    "rule": "reportArgumentType",
    "message": "Argument of type \"Unknown | int | None\" cannot be assigned to parameter \"iid\" of type \"int\" in function \"_error_string\"",
-   "count": 2
+   "count": 1
   },
   {
    "file": "vjoy/vjoy.py",
@@ -2774,19 +2564,19 @@
    "file": "vjoy/vjoy.py",
    "rule": "reportArgumentType",
    "message": "Argument of type \"int | None\" cannot be assigned to parameter \"vid\" of type \"int\" in function \"_error_string\"",
-   "count": 15
+   "count": 13
   },
   {
    "file": "vjoy/vjoy.py",
    "rule": "reportArgumentType",
    "message": "Argument of type \"int\" cannot be assigned to parameter \"key\" of type \"AxisCode\" in function \"get\"",
-   "count": 2
+   "count": 1
   },
   {
    "file": "vjoy/vjoy.py",
    "rule": "reportAttributeAccessIssue",
    "message": "Cannot access attribute \"AcquireVJD\" for class \"type[VJoyInterface]\"",
-   "count": 3
+   "count": 2
   },
   {
    "file": "vjoy/vjoy.py",
@@ -2834,7 +2624,7 @@
    "file": "vjoy/vjoy.py",
    "rule": "reportAttributeAccessIssue",
    "message": "Cannot access attribute \"GetVJDStatus\" for class \"type[VJoyInterface]\"",
-   "count": 5
+   "count": 4
   },
   {
    "file": "vjoy/vjoy.py",
@@ -2846,7 +2636,7 @@
    "file": "vjoy/vjoy.py",
    "rule": "reportAttributeAccessIssue",
    "message": "Cannot access attribute \"RelinquishVJD\" for class \"type[VJoyInterface]\"",
-   "count": 2
+   "count": 1
   },
   {
    "file": "vjoy/vjoy.py",
@@ -2888,7 +2678,7 @@
    "file": "vjoy/vjoy.py",
    "rule": "reportCallIssue",
    "message": "No overloads for \"get\" match the provided arguments",
-   "count": 2
+   "count": 1
   },
   {
    "file": "vjoy/vjoy_interface.py",
@@ -2908,78 +2698,6 @@
    "file": "action_plugins/map_to_xbox/__init__.py",
    "rule": "ANN202",
    "message": "Missing return type annotation for private function `_read_xml_property`",
-   "count": 1
-  },
-  {
-   "file": "action_plugins/map_to_xbox/__init__.py",
-   "rule": "E501",
-   "message": "Line too long (N > N)",
-   "count": 2
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `index`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `item`",
-   "count": 2
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `original`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `resolve_item`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `role`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `self`",
-   "count": 2
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `_osc_item`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `_patch_description`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `_read_item`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `data`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/action_label.py",
-   "rule": "I001",
-   "message": "Import block is un-sorted or un-formatted",
    "count": 1
   },
   {
@@ -3015,18 +2733,6 @@
   {
    "file": "gremlin/osc.py",
    "rule": "ANN401",
-   "message": "Dynamically typed expressions (typing.Any) are disallowed in `cfg`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/osc.py",
-   "rule": "ANN401",
-   "message": "Dynamically typed expressions (typing.Any) are disallowed in `osc_option`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/osc.py",
-   "rule": "ANN401",
    "message": "Dynamically typed expressions (typing.Any) are disallowed in `value`",
    "count": 2
   },
@@ -3035,24 +2741,6 @@
    "rule": "ANN001",
    "message": "Missing type annotation for function argument `self`",
    "count": 2
-  },
-  {
-   "file": "gremlin/ui/auto_mapping_tool_modules.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `loader`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/auto_mapping_tool_modules.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `data`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/auto_mapping_tool_modules.py",
-   "rule": "E501",
-   "message": "Line too long (N > N)",
-   "count": 1
   },
   {
    "file": "gremlin/ui/backend.py",
@@ -3076,7 +2764,7 @@
    "file": "gremlin/ui/binding_catalog.py",
    "rule": "ANN001",
    "message": "Missing type annotation for function argument `item`",
-   "count": 3
+   "count": 2
   },
   {
    "file": "gremlin/ui/binding_catalog.py",
@@ -3103,12 +2791,6 @@
    "count": 1
   },
   {
-   "file": "gremlin/ui/device_names.py",
-   "rule": "I001",
-   "message": "Import block is un-sorted or un-formatted",
-   "count": 1
-  },
-  {
    "file": "gremlin/ui/device_pack.py",
    "rule": "ANN001",
    "message": "Missing type annotation for function argument `action`",
@@ -3124,13 +2806,13 @@
    "file": "gremlin/ui/device_pack.py",
    "rule": "ANN001",
    "message": "Missing type annotation for function argument `resolve`",
-   "count": 4
+   "count": 1
   },
   {
    "file": "gremlin/ui/device_pack.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 26
+   "count": 16
   },
   {
    "file": "gremlin/ui/device_pack.py",
@@ -3153,12 +2835,6 @@
   {
    "file": "gremlin/ui/hardware_profile.py",
    "rule": "ANN001",
-   "message": "Missing type annotation for function argument `raw`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/hardware_profile.py",
-   "rule": "ANN001",
    "message": "Missing type annotation for function argument `uid`",
    "count": 1
   },
@@ -3172,7 +2848,7 @@
    "file": "gremlin/ui/hardware_profile.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 11
+   "count": 5
   },
   {
    "file": "gremlin/ui/hidhide.py",
@@ -3202,7 +2878,7 @@
    "file": "gremlin/ui/hidhide.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 29
+   "count": 28
   },
   {
    "file": "gremlin/ui/highlight_option.py",
@@ -3406,7 +3082,7 @@
    "file": "gremlin/ui/module_model.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 28
+   "count": 27
   },
   {
    "file": "gremlin/ui/module_model.py",
@@ -3445,12 +3121,6 @@
    "count": 3
   },
   {
-   "file": "gremlin/ui/module_pairing.py",
-   "rule": "I001",
-   "message": "Import block is un-sorted or un-formatted",
-   "count": 2
-  },
-  {
    "file": "gremlin/ui/option.py",
    "rule": "E402",
    "message": "Module level import not at top of file",
@@ -3460,12 +3130,6 @@
    "file": "gremlin/ui/pair_live.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
-   "count": 2
-  },
-  {
-   "file": "gremlin/ui/pair_live.py",
-   "rule": "I001",
-   "message": "Import block is un-sorted or un-formatted",
    "count": 1
   },
   {
@@ -3517,18 +3181,6 @@
    "count": 1
   },
   {
-   "file": "gremlin/ui/vjoy_status.py",
-   "rule": "I001",
-   "message": "Import block is un-sorted or un-formatted",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/window_placement.py",
-   "rule": "E501",
-   "message": "Line too long (N > N)",
-   "count": 3
-  },
-  {
    "file": "gremlin/ui/windows_scale_option.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
@@ -3539,18 +3191,6 @@
    "rule": "I001",
    "message": "Import block is un-sorted or un-formatted",
    "count": 1
-  },
-  {
-   "file": "gremlin/ui/xbox_device_model.py",
-   "rule": "ANN201",
-   "message": "Missing return type annotation for public function `data`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/xbox_device_model.py",
-   "rule": "E501",
-   "message": "Line too long (N > N)",
-   "count": 2
   },
   {
    "file": "gremlin/ui/xbox_maps.py",
@@ -3565,46 +3205,10 @@
    "count": 1
   },
   {
-   "file": "gremlin/ui/xbox_viewer.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `item`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/xbox_viewer.py",
-   "rule": "ANN001",
-   "message": "Missing type annotation for function argument `items`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/xbox_viewer.py",
-   "rule": "ANN201",
-   "message": "Missing return type annotation for public function `data`",
-   "count": 2
-  },
-  {
-   "file": "gremlin/ui/xbox_viewer.py",
-   "rule": "ANN202",
-   "message": "Missing return type annotation for private function `data`",
-   "count": 1
-  },
-  {
-   "file": "gremlin/ui/xbox_viewer.py",
-   "rule": "E501",
-   "message": "Line too long (N > N)",
-   "count": 5
-  },
-  {
    "file": "gremlin/util.py",
    "rule": "E501",
    "message": "Line too long (N > N)",
    "count": 3
-  },
-  {
-   "file": "test/unit/print_export_window_smoke.py",
-   "rule": "E501",
-   "message": "Line too long (N > N)",
-   "count": 1
   },
   {
    "file": "test/unit/test_binding_catalog.py",
@@ -3739,12 +3343,6 @@
    "count": 1
   },
   {
-   "file": "test/unit/test_device_bindings_page_qml.py",
-   "rule": "E501",
-   "message": "Line too long (N > N)",
-   "count": 2
-  },
-  {
    "file": "test/unit/test_dest_live_guid.py",
    "rule": "ANN001",
    "message": "Missing type annotation for function argument `node`",
@@ -3761,6 +3359,12 @@
    "rule": "E501",
    "message": "Line too long (N > N)",
    "count": 1
+  },
+  {
+   "file": "test/unit/test_device_bindings_page_qml.py",
+   "rule": "E501",
+   "message": "Line too long (N > N)",
+   "count": 2
   },
   {
    "file": "test/unit/test_hidhide_group.py",

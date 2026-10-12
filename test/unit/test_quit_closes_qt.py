@@ -20,6 +20,7 @@ import sys
 import time
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -114,7 +115,7 @@ def test_quit_closes_windows_engine_and_app_before_the_process_ends(
     )
     took = time.monotonic() - start
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, f"No RESULT (exit {result.returncode}).\n{result.stderr[-3000:]}"
+    assert lines, smoke_report.explain(result)
     out = json.loads(lines[0][len("RESULT "):])
     assert out["quit_asked"], out
     assert out["code"] == 0, out
@@ -122,7 +123,7 @@ def test_quit_closes_windows_engine_and_app_before_the_process_ends(
     assert not out["engine_alive"], out
     assert out["windows"] == [], out
     assert not out["app_alive"], out
-    assert result.returncode == 0, (result.returncode, result.stderr[-3000:])
+    assert result.returncode == 0, smoke_report.explain(result)
     assert took < 90, took
 
 

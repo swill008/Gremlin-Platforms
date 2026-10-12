@@ -244,6 +244,7 @@ def _smoke() -> None:
 
 def _run(tmp_path: pathlib.Path) -> dict[str, str]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     result = proc_tree.run(
         [sys.executable, str(pathlib.Path(__file__).resolve()), "--smoke"],
         text=True,
@@ -258,7 +259,7 @@ def _run(tmp_path: pathlib.Path) -> dict[str, str]:
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, (result.stderr or "")[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     problems = [line for line in lines if line.startswith(("ERROR", "WARN"))]
     assert problems == [], problems
     return {

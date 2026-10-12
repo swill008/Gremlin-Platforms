@@ -23,6 +23,7 @@ sys.path.append(".")
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import device_initialization, macro, shared_state
 from gremlin.logical_device import LogicalDevice
@@ -200,7 +201,7 @@ def test_home_card_counts_them(
     module_model.apply_cant_send([row])
     assert row.cant_send_count == 3
     assert module_model.cant_send_line(row.cant_send_count) == (
-        "⚠ 3 outputs not found"
+        "⚠ 3 binding outputs not found"
     )
     assert all(text in row.cant_send_tip for text in texts)
 
@@ -319,20 +320,23 @@ def test_editors_show_red_warning_and_tooltip(tmp_path: pathlib.Path) -> None:
         for ln in done.stdout.splitlines()
         if ln.startswith("E|")
     }
-    why = done.stdout[-1500:] + done.stderr[-1500:]
-    assert set(lines) == {"map-to-xbox", "map-to-logical-device", "send-osc"}, why
+    assert set(lines) == {"map-to-xbox", "map-to-logical-device", "send-osc"}, (
+        smoke_report.explain(done)
+    )
     text, color, tip = lines["map-to-xbox"]
     assert (text, color, tip) == (
         "⚠ Xbox 360 Controller",
         "#dc2626",
         "Xbox 360 Controller is not Found.",
-    ), why
+    ), smoke_report.explain(done)
     text, color, tip = lines["map-to-logical-device"]
-    assert text.startswith("⚠ Button ") and color == "#dc2626", why
+    assert text.startswith("⚠ Button ") and color == "#dc2626", (
+        smoke_report.explain(done)
+    )
     assert tip.startswith("Logical Device Button ") and tip.endswith(" is not Found.")
     text, color, tip = lines["send-osc"]
     assert (text, color, tip) == (
         "⚠ Missing target",
         "#dc2626",
         "OSC target gone is not Found.",
-    ), why
+    ), smoke_report.explain(done)

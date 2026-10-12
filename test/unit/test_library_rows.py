@@ -20,6 +20,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from pytestqt.qtbot import QtBot
 
 from gremlin.ui import device_library_model as model_mod
@@ -145,7 +146,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
             results["errors"].append(line)
         elif line.startswith("WARN"):
             results["warnings"].append(line)
-    assert "done" in proc.stdout, proc.stdout[-3000:] + proc.stderr[-3000:]
+    assert "done" in proc.stdout, smoke_report.explain(proc)
     return results
 
 

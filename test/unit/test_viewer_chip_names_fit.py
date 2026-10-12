@@ -15,6 +15,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _CODE = r"""
 import importlib.util, json, os, sys
@@ -129,7 +130,7 @@ def test_long_chip_names_do_not_overlap(tmp_path: pathlib.Path) -> None:
         timeout=120,
     )
     lines = [ln for ln in (done.stdout or "").splitlines() if ln.startswith("RESULT ")]
-    assert lines, (done.stdout or "")[-3000:] + (done.stderr or "")[-3000:]
+    assert lines, (done.stdout or "")[-3000:] + smoke_report.explain(done)
     import json
 
     result = json.loads(lines[-1][len("RESULT ") :])

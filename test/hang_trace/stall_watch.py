@@ -47,6 +47,14 @@ from typing import IO, Any
 # Seconds (GREMLIN_TEST_STALL_AFTER sets it, for the stall tests themselves).
 BLOCKED_AFTER = float(os.environ.get("GREMLIN_TEST_STALL_AFTER", "10"))
 IDLE_AFTER = 3 * BLOCKED_AFTER
+# Start-up (to-do 128): the Gremlin app's Main.qml load stands still in Qt for
+# seconds, more than BLOCKED_AFTER on a busy PC. Start-up gets 6 times as
+# long (GREMLIN_TEST_STARTUP_STALL_AFTER sets it, for the stall tests): pytest's
+# qapp setup (test/conftest.py) and, in the programs the tests start, the
+# time until the event loop first runs (StallWatch's start_up).
+STARTUP_BLOCKED_AFTER = float(
+    os.environ.get("GREMLIN_TEST_STARTUP_STALL_AFTER", str(6 * BLOCKED_AFTER))
+)
 # After failing a test, how long it may take to stop before the run ends.
 STOP_GRACE = min(5.0, max(2.0, BLOCKED_AFTER / 2))
 # The C-level deadman: later than the watchdog would report anything.
@@ -185,15 +193,22 @@ class StallWatch:
 
     on_stall(report) is called from the watchdog thread. out is where the
     C-level deadman writes (a real file: it needs a file descriptor). limit
-    is the longest anything watched may run, in seconds.
+    is the longest anything watched may run, in seconds. start_up: until the
+    event loop first ticks, the main thread may stand still this long (the
+    programs the tests start; None: no allowance).
     """
 
     def __init__(
-        self, on_stall: Callable[[str], None], out: IO[str], limit: float
+        self,
+        on_stall: Callable[[str], None],
+        out: IO[str],
+        limit: float,
+        start_up: float | None = None,
     ) -> None:
         self._on_stall = on_stall
         self._deadman = _Deadman(out)
         self._limit = limit
+        self._start_up = start_up
         self._lock = threading.Lock()
         self._label: str | None = None
         self._started = 0.0
@@ -238,9 +253,20 @@ class StallWatch:
             return
         self._armed = now
         try:
-            self._deadman.arm(BACKSTOP_AFTER)
+            self._deadman.arm(self._backstop())
         except Exception:
             pass
+
+    def _starting(self) -> bool:
+        """Still starting: there is a start-up allowance and the event loop
+        hasn't ticked yet."""
+        return self._start_up is not None and self._beat == 0.0
+
+    def _backstop(self) -> float:
+        if self._starting():
+            assert self._start_up is not None
+            return max(BACKSTOP_AFTER, self._start_up + BACKSTOP_AFTER)
+        return BACKSTOP_AFTER
 
     def install_heartbeat(self) -> None:
         """The event-loop timer, once a Qt application exists. Best made on
@@ -324,7 +350,13 @@ class StallWatch:
                     return None
                 still = now - self._since
                 ticking = self._ticking()
-                if still < (IDLE_AFTER if ticking else BLOCKED_AFTER):
+                starting = self._starting()
+                if starting:
+                    assert self._start_up is not None
+                    allowed = self._start_up
+                else:
+                    allowed = IDLE_AFTER if ticking else BLOCKED_AFTER
+                if still < allowed:
                     return None
                 state = (
                     "its event loop idles, waiting for something that never comes"
@@ -332,6 +364,11 @@ class StallWatch:
                     else "it is blocked (its event loop isn't running)"
                 )
                 headline = f"The main thread hasn't moved for {still:.0f} s; {state}."
+                if starting:
+                    headline += (
+                        f"\nStart-up hasn't finished within {allowed:g} s "
+                        "(its event loop never ran)."
+                    )
             self._label = None  # report once
             # Time to finish the report before the deadman ends the process.
             self._deadman.arm(BACKSTOP_AFTER)

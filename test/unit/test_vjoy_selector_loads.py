@@ -14,6 +14,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).parents[2]
 
@@ -61,7 +62,7 @@ def test_the_vjoy_selector_loads_without_errors(tmp_path: pathlib.Path) -> None:
         [sys.executable, "-c", _CODE, str(_ROOT)],
         cwd=_ROOT, env=env, text=True, timeout=120,
     )
-    assert "DONE" in done.stdout, done.stdout[-1500:] + done.stderr[-1500:]
+    assert "DONE" in done.stdout, smoke_report.explain(done)
     problems = [ln for ln in done.stdout.splitlines()
                 if ln.startswith("WARN") and "VJoySelector" in ln]
     assert problems == []

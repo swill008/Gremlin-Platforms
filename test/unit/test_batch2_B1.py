@@ -29,6 +29,7 @@ from pathlib import Path
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 import gremlin.config
 from gremlin import deferred_write, threads, util
@@ -375,9 +376,9 @@ def test_a_failure_while_the_modules_load_is_shown_and_logged(tmp_path: Path) ->
         [sys.executable, str(script)], cwd=_ROOT, env=env,
         text=True, timeout=120,
     )
-    assert result.returncode == 1, result.stderr[-1500:]
+    assert result.returncode == 1, smoke_report.explain(result)
     log = tmp_path / "Gremlin Platforms" / "logs" / "system.log"
-    assert log.is_file(), result.stderr[-1500:]
+    assert log.is_file(), smoke_report.explain(result)
     text = log.read_text(encoding="utf-8")
     assert "Could not start: ModuleNotFoundError" in text
     # The could-not-start box (logged off-screen instead of shown).
@@ -525,7 +526,7 @@ def test_main_window_shell(tmp_path: Path) -> None:
         text=True, timeout=180,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, result.stdout[-1500:] + result.stderr[-3000:]
+    assert lines, smoke_report.explain(result)
     out = json.loads(lines[0][len("RESULT "):])
     assert out["panes"] is True
     assert out["mainWindow"] is True

@@ -14,6 +14,7 @@ import pathlib
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -32,7 +33,7 @@ def _run(tmp_path: pathlib.Path) -> dict[str, str]:
         },
     )
     lines = result.stdout.splitlines()
-    assert "done" in lines, (result.stderr or "")[-2000:]
+    assert "done" in lines, smoke_report.explain(result)
     problems = [line for line in lines if line.startswith(("ERROR", "WARN"))]
     assert problems == []
     return {

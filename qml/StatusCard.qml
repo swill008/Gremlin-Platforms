@@ -62,7 +62,7 @@ Rectangle {
     property string cantSendTip: ""
     readonly property bool cantSendShown: cantSendCount > 0
     readonly property string cantSendText: cantSendCount <= 0 ? ""
-        : "⚠ " + cantSendCount + (cantSendCount === 1 ? " output" : " outputs") + " not found"
+        : "⚠ " + cantSendCount + (cantSendCount === 1 ? " binding output" : " binding outputs") + " not found"
     // The OSC card's second line (D-09-OSC-CARD-LINE): where the server
     // listens, the last message, or why it isn't open. Made for the OSC card
     // only.

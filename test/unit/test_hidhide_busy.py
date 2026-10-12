@@ -85,6 +85,7 @@ def test_not_installed_is_not_busy(
 @pytest.fixture(scope="module")
 def page(tmp_path_factory: pytest.TempPathFactory) -> Iterator[dict]:
     import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+    import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
     home_dir = tmp_path_factory.mktemp("hh_busy_home")
     (home_dir / "Gremlin Platforms").mkdir()
     proc = proc_tree.run(
@@ -101,9 +102,8 @@ def page(tmp_path_factory: pytest.TempPathFactory) -> Iterator[dict]:
         if line.startswith("RESULT "):
             _tag, name, value = line.split(" ", 2)
             results[name] = json.loads(value)
-    tail = proc.stdout[-3000:] + proc.stderr[-3000:]
-    assert "done" in proc.stdout, tail
-    assert results.get("open") is True, tail
+    assert "done" in proc.stdout, smoke_report.explain(proc)
+    assert results.get("open") is True, smoke_report.explain(proc)
     yield results
 
 

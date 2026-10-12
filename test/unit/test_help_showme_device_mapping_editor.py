@@ -25,6 +25,7 @@ import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "help_showme_device_mapping_editor_smoke.py"
@@ -50,7 +51,7 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
         text=True, encoding="utf-8", errors="replace", timeout=150,
     )
     lines = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, f"No RESULT (exit {result.returncode}).\n{result.stderr[-3000:]}"
+    assert lines, smoke_report.explain(result)
     out = json.loads(lines[-1][len("RESULT "):])
     assert not out["errors"], out["errors"]
     return out

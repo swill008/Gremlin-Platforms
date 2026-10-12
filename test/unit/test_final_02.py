@@ -15,6 +15,7 @@ from __future__ import annotations
 import sys
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 sys.path.append(".")
 
@@ -262,7 +263,7 @@ def test_s4_a_failed_first_scan_shows_the_failure_window_not_the_main_one(
         timeout=120,
     )
     out = result.stdout
-    assert "DONE" in out, out[-2000:] + result.stderr[-2000:]
+    assert "DONE" in out, smoke_report.explain(result)
     assert "SCANS 1" in out
     assert "ROOTS 1" in out
     assert "FAILURE True" in out

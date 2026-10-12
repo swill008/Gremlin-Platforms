@@ -103,7 +103,9 @@ def test_load_names_bindings_that_cant_be_sent_once(
 ) -> None:
     vjoy["claims"][1] = {"buttons": [1]}
     shown = _load(monkeypatch, tmp_path)
-    assert shown == [("Open Profile", "VKBSim NXT: 2 outputs not found. OSC: 1.")]
+    assert shown == [
+        ("Open Profile", "VKBSim NXT: 2 binding outputs not found. OSC: 1.")
+    ]
 
 
 def test_clean_profile_has_no_notice(
@@ -118,11 +120,11 @@ def test_notice_follows_live_claims_at_each_load(
 ) -> None:
     vjoy["claims"][1] = {"buttons": [1]}
     assert _load(monkeypatch, tmp_path)[0][1] == (
-        "VKBSim NXT: 2 outputs not found. OSC: 1."
+        "VKBSim NXT: 2 binding outputs not found. OSC: 1."
     )
     vjoy["claims"][1]["buttons"] = [1, 2, 3]
     assert _load(monkeypatch, tmp_path) == [
-        ("Open Profile", "OSC: 1 output not found.")
+        ("Open Profile", "OSC: 1 binding output not found.")
     ]
 
 
