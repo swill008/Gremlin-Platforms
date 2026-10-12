@@ -1064,3 +1064,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | References batch: finder pieces, shims out, dedupe, tests (Q-FINISH) | refactor | 5-10 min | 4 min | 17:21-17:25 |
 | 2026-10-12 | References batch: dead walkers removed, map finished (Q-DEAD) | fix | 3-8 min | 3 min | 17:26-17:29 |
 | 2026-10-12 | Full run references batch, seed 415668 (7,328 passed; 2 batch fixes + 1 known flake) + fixes | test | ~7 min | 7 min + 4 | 17:30-17:41 |
+| 2026-10-12 | Release 1.0.34 build + publish (release-exe.yml) | release | ~5 min | 4m37s | 17:36-17:41 |
+| 2026-10-12 | Release workflow action v2 -> v3 + 4 workflow test files (lead) | fix | rough 3 min | 2 min | 17:47-17:49 |
+| 2026-10-12 | CI on 69e3a323 (passed) | ci | ~22 min | 23m45s | 17:43-18:07 |
