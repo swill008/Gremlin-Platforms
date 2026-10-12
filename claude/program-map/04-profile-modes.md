@@ -22,7 +22,7 @@ Python
 - `gremlin/ui/script.py` (547): `ScriptListModel` (add, remove, rename) and one QML model per variable type (from 2026-10-10 `OscInputVariableModel`, 09 S163).
 - `gremlin/config.py` (`get_profile`, `get_profile_with_regex` 516-551): auto-load program-to-profile matching.
 - `gremlin/process_monitor.py` (135): the thread that reports the focused program (feeds auto-load).
-- `joystick_gremlin.py` (1349 lines; `process_cmd_args` 1083-1115; settings registered 721-724, 887-904): `--profile` or last profile at start.
+- `joystick_gremlin.py` (1363 lines; `process_cmd_args` 1083-1115; settings registered 721-724, 887-904): `--profile` or last profile at start.
 - `action_plugins/load_profile/__init__.py` (Load Profile action, 50-80): loads another profile from a running profile.
 
 QML / JS
