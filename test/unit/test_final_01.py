@@ -301,7 +301,9 @@ def test_s44_a_switch_is_saved_and_announced_when_changed(
     from gremlin.ui.option import ConfigEntryModel
 
     key = ("ui", "general", "dark-mode")
-    cfg.register(*key, PropertyType.Bool, True, "Use the dark mode UI.", {}, True)
+    # The program's settings, as at start: the session's app (the qapp
+    # fixture) answers configChanged and reads them (Log When Not Responding).
+    jg.register_config_options()
     model = ConfigEntryModel("ui", "general", keys=[key])
     told: list[bool] = []
 

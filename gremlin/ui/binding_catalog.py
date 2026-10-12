@@ -199,11 +199,25 @@ def sequence_is_simple(item, index: int) -> bool:
     return not _action_children(kids[0])
 
 
-def assignment_summary(shown: list[tuple]) -> tuple[str, str]:
-    """("1 action — dest" / "N actions — dests", the dests)."""
-    summary = ", ".join(dest for _t, _l, dest in shown)
-    count = "1 action" if len(shown) == 1 else f"{len(shown)} actions"
-    return f"{count} — {summary}", summary
+def item_leaves(item: object) -> list[tuple[str, str, str]]:
+    """Every action of every binding of an input: (tag, label, target)."""
+    out: list[tuple[str, str, str]] = []
+    for seq in getattr(item, "action_sequences", None) or []:
+        root = getattr(seq, "root_action", None)
+        if root is not None:
+            out.extend(collect_leaves(root))
+    return out
+
+
+def action_summary(leaves: list[tuple]) -> str:
+    """An input row's action summary (05 S142): "1 action · target" /
+    "N actions · targets" from its leaves (tag, label, target); "" with
+    none. An action with no target still counts."""
+    if not leaves:
+        return ""
+    count = "1 action" if len(leaves) == 1 else f"{len(leaves)} actions"
+    targets = ", ".join(dest for _t, _l, dest in leaves if dest)
+    return f"{count} · {targets}" if targets else count
 
 
 # --- The edit lock (06 S13, S82, RB14; 05 S32, S101) ------------------------

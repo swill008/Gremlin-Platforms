@@ -965,3 +965,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | E3: Output View 'View only' line removed, Help reworded, 1 test | fix | 3-8 min | 2 min | 10:24-10:26 |
 | 2026-10-12 | E1: OSC Setup address list refresh (activation + 5 s), 5 tests | feature | 3-8 min | 2 min | 10:24-10:26 |
 | 2026-10-12 | Quick tests batch E (--changed: 2,698 tests) + lint: 1 order flake (to-do 47 setting, passes 2/2 alone), no new lint | test | ~6 min | 5 min | 10:27-10:32 |
+| 2026-10-12 | F-DOCS: D-05-ROW-ACTION-SUMMARY, 05 S142 + S125, glossary, Help | docs | 3-8 min | 2 min | 10:33-10:35 |
+| 2026-10-12 | F-LEAK: OSC trace tick leak + s44 settings leak fixed in tests | fix | 5-10 min | 3 min | 10:33-10:36 |
+| 2026-10-12 | F-SUMMARY: actionSummary role + ControlTree line + Appearance switch on 4 pages, 7 tests | feature | 8-12 min | 5 min | 10:33-10:38 |
+| 2026-10-12 | Quick tests batch F (--changed: 3,460 tests) + lint: all passed | test | ~6 min | 6 min | 10:39-10:45 |

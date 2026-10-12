@@ -69,7 +69,6 @@ EXTRA_DEFAULTS: dict[str, Any] = {
     "hwId": 0,
     "note": "",
     "simple": True,
-    "destLabel": "",
 }
 
 
@@ -587,7 +586,6 @@ class HardwareLayoutModel(ControlLayoutModel):
                     kind=kind_word(item.type),
                     hwId=item.id,
                     simple=sequence_is_simple(real, index),
-                    destLabel=dest or "",
                 )
             )
         return rows
@@ -598,10 +596,6 @@ class HardwareLayoutModel(ControlLayoutModel):
     def _parent_fields(self, item: LayoutItem, extra: list[dict]) -> dict:
         real = self._real(item)
         shown = self._shown(real)
-        dests = []
-        for _index, _label, dest in shown:
-            if dest and dest not in dests:
-                dests.append(dest)
         index = getattr(item, "device_index", -1)
         return {
             "liveIndex": index,
@@ -609,7 +603,6 @@ class HardwareLayoutModel(ControlLayoutModel):
             "kind": kind_word(item.type),
             "hwId": item.id,
             "note": item_note(real, [index for index, _l, _d in shown]),
-            "destLabel": ", ".join(dests),
         }
 
     def _filtering(self) -> bool:

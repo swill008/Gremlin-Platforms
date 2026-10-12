@@ -88,6 +88,10 @@ Item {
     property color colorChild: Style.bgCard
     property bool showChildren: true
     property bool showSummary: true
+    // The grey "N actions · targets" after a parent row's name (05 S142):
+    // off unless the page turns it on (Appearance › Shown); the Xbox
+    // Output View's read-only list leaves it off.
+    property bool showActionSummary: false
     property int summaryFont: 11
     property int parentFont: 13
     property int groupFont: 15
@@ -601,19 +605,43 @@ Item {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
                     spacing: Style.dp(2)
-                    Label {
-                        text: title
-                        color: _tree.colorText
-                        font.bold: (rowKind === "child" || rowKind === "feedback") ? false : _tree.parentBold
-                        font.pixelSize: Style.dp(rowKind === "group" ? _tree.groupFont : (rowKind === "parent" ? _tree.parentFont : _tree.childFont))
-                        elide: Text.ElideRight
+                    RowLayout {
                         Layout.fillWidth: true
-                        HoverHandler { id: _nameHover }
-                        ToolTip {
-                            visible: _nameHover.hovered && rowKind === "parent" && userName.length > 0
-                            text: systemName
-                            x: _nameHover.point.position.x - width / 2
-                            y: _nameHover.point.position.y - height - Style.dp(8)
+                        spacing: Style.dp(8)
+                        Label {
+                            objectName: "rowName"
+                            text: title
+                            color: _tree.colorText
+                            font.bold: (rowKind === "child" || rowKind === "feedback") ? false : _tree.parentBold
+                            font.pixelSize: Style.dp(rowKind === "group" ? _tree.groupFont : (rowKind === "parent" ? _tree.parentFont : _tree.childFont))
+                            elide: Text.ElideRight
+                            Layout.fillWidth: !_actionSummary.visible
+                            Layout.maximumWidth: _actionSummary.visible ? implicitWidth : -1
+                            HoverHandler { id: _nameHover }
+                            ToolTip {
+                                visible: _nameHover.hovered && rowKind === "parent" && userName.length > 0
+                                text: systemName
+                                x: _nameHover.point.position.x - width / 2
+                                y: _nameHover.point.position.y - height - Style.dp(8)
+                            }
+                        }
+                        // What is bound here in the shown mode (05 S142):
+                        // the rest of the row, cut with "…", all on hover.
+                        Label {
+                            id: _actionSummary
+                            objectName: "actionSummary"
+                            text: _row.model.actionSummary || ""
+                            visible: _tree.showActionSummary && rowKind === "parent" && text.length > 0
+                            color: _tree.colorMuted
+                            font.pixelSize: Style.dp(_tree.summaryFont)
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
+                            PointerTip {
+                                objectName: "actionSummaryTip"
+                                text: _actionSummary.text
+                                show: _actionSummary.visible
+                            }
                         }
                     }
                     // The wire label: an action that can't be sent is red,

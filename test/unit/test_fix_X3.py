@@ -127,8 +127,10 @@ def test_the_device_bindings_input_row_carries_the_note(
     plain = catalog.index(by_kind[("parent", "Button 2")], 0)
     assert catalog.data(plain, note) == ""
     assert catalog.data(plain, subtitle) == ""
-    # Named with or without the red ⚠ (no vJoy module here, D-05-CANT-SEND).
-    dest = str(catalog.data(plain, _role(catalog, b"destLabel")))
+    # Named in its action summary (05 S142), with or without the red ⚠
+    # (no vJoy module here, D-05-CANT-SEND).
+    dest = str(catalog.data(plain, _role(catalog, b"actionSummary")))
+    assert dest.startswith("1 action · ")
     assert "vJoy 1" in dest and "Button 2" in dest
     leaf = catalog.index(by_kind[("child", "Button 1")], 0)
     assert catalog.data(leaf, note) == ""

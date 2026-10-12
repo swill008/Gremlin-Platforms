@@ -78,6 +78,8 @@ Rectangle {
     readonly property color colorChild: colorChildSet.length ? colorChildSet : Style.bgCard
     property bool showChildren: true
     property bool showSummary: true
+    // "N actions · targets" after each input's name (05 S142).
+    property bool showActionSummary: true
     property int summaryFont: 11
     property int parentFont: 13
     property int groupFont: 15
@@ -169,6 +171,8 @@ Rectangle {
                     onToggled: (v) => { _panel.openShown = v }
                     FlagBox { text: "Show action rows"; source: _panel.showChildren; onUserSet: (v) => { _panel.showChildren = v } }
                     FlagBox { text: "Show written by"; source: _panel.showSummary; onUserSet: (v) => { _panel.showSummary = v } }
+                    // Not on the Xbox Output View: its rows list their sources.
+                    FlagBox { visible: _panel.pageKey !== "xbox-output"; text: "Show action summary"; source: _panel.showActionSummary; onUserSet: (v) => { _panel.showActionSummary = v } }
                     RowLayout {
                         Label { text: "Written-by size"; color: Style.fg; Layout.fillWidth: true }
                         TrackSpin { from: 9; to: 20; source: _panel.summaryFont; onUserSet: (v) => { _panel.summaryFont = v } }
@@ -645,6 +649,7 @@ Rectangle {
             "colorChild": colorChildSet,
             "showChildren": showChildren,
             "showSummary": showSummary,
+            "showActionSummary": showActionSummary,
             "summaryFont": summaryFont,
             "parentFont": parentFont,
             "groupFont": groupFont,
@@ -715,6 +720,7 @@ Rectangle {
         colorChildSet = Helpers.userColour(v.colorChild, "#18181B")
         showChildren = v.showChildren !== false
         showSummary = v.showSummary !== false
+        showActionSummary = v.showActionSummary !== false
         summaryFont = numVal(v.summaryFont, 11)
         parentFont = numVal(v.parentFont, 13)
         groupFont = numVal(v.groupFont, 15)
@@ -787,6 +793,7 @@ Rectangle {
         colorChildSet = ""
         showChildren = true
         showSummary = true
+        showActionSummary = true
         summaryFont = 11
         parentFont = 13
         groupFont = 15

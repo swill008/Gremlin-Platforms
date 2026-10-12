@@ -25,6 +25,7 @@ from gremlin import clock, config, trace, util
 def _fresh(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(util, "logs_dir", lambda: tmp_path / "logs")
     trace._reset_for_tests()
+    trace.set_osc_all(False)  # saved ticks from an earlier test don't count
     yield
     trace.set_osc_all(False)
     trace._reset_for_tests()

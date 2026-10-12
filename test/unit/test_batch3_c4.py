@@ -87,12 +87,13 @@ def test_an_empty_wrapper_shows_its_name_and_no_actions() -> None:
 
 
 def test_the_action_count_reads_actions() -> None:
-    from gremlin.ui.binding_catalog import assignment_summary
+    # The row action summary (05 S142).
+    from gremlin.ui.binding_catalog import action_summary
 
-    one = assignment_summary([(0, "Map to vJoy", "vJoy 1 · Button 1")])
-    assert one == ("1 action — vJoy 1 · Button 1", "vJoy 1 · Button 1")
-    two = assignment_summary([(0, "", "A"), (1, "", "B")])
-    assert two[0] == "2 actions — A, B"
+    one = action_summary([("map-to-vjoy", "Map to vJoy", "vJoy 1 · Button 1")])
+    assert one == "1 action · vJoy 1 · Button 1"
+    two = action_summary([("", "", "A"), ("", "", "B")])
+    assert two == "2 actions · A, B"
 
 
 def test_type_names_are_the_plugins_names() -> None:

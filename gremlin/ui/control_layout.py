@@ -33,6 +33,9 @@ Public names (QML), unchanged from LogicalLayoutModel:
             a parent row, can't be sent; "" when it can. Filled by the
             base for every child row with a sequenceIndex; asked again on
             profileChanged and signal.cantSendChanged, D-05-CANT-SEND-LIVE)
+            actionSummary (05 S142: a parent row's "N actions · targets"
+            from _real_item's actions in the shown mode; "" with none and
+            on every other row)
   keys      "group:<name>", "parent:<button|axis|hat>:<id>",
             "child:<word>:<id>:<seq>"; subclass rows pick their own prefix
             (Logical: "writer:<action id>"; OSC feedback e.g. "feedback:<uid>").
@@ -164,7 +167,12 @@ from gremlin.error import GremlinError
 from gremlin.profile import Draft, DraftOutdated, InputItem, bindings_fingerprint
 from gremlin.signal import signal
 from gremlin.types import InputType
-from gremlin.ui.binding_catalog import editing_locked, sequences_for_item
+from gremlin.ui.binding_catalog import (
+    action_summary,
+    editing_locked,
+    item_leaves,
+    sequences_for_item,
+)
 
 if TYPE_CHECKING:
     from gremlin.profile import Profile
@@ -299,6 +307,8 @@ ROW_DEFAULTS: dict[str, Any] = {
     # Why this action (or one of this input's actions) can't be sent, the
     # red ⚠'s tooltip; "" when it can (D-05-CANT-SEND).
     "cantSend": "",
+    # A parent row's "N actions · targets" (05 S142); "" with none.
+    "actionSummary": "",
 }
 
 
@@ -714,13 +724,17 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
             for item in members:
                 extra = self._extra_rows(item)
                 children = self._child_rows(item)
-                cant = cant_send_texts(self._real_item(item))
+                real = self._real_item(item)
+                cant = cant_send_texts(real)
                 for row in children:
                     row["cantSend"] = cant.get(row["sequenceIndex"], "")
                 if filtering and self._cant_send_only and not cant:
                     continue
                 if not filtering or self._visible_parent(item, extra, len(children)):
-                    shown.append((item, extra, children, parent_cant_text(cant)))
+                    summary = action_summary(item_leaves(real))
+                    shown.append(
+                        (item, extra, children, parent_cant_text(cant), summary)
+                    )
             if filtering and not shown:
                 continue
             # The header counts the parents in the group, or what a filter
@@ -742,7 +756,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                 if entry[0].type in buckets:
                     buckets[entry[0].type].append(entry)
             for kind in order:
-                for item, extra, children, cant_text in buckets[kind]:
+                for item, extra, children, cant_text, summary in buckets[kind]:
                     key = parent_key(item.type, item.id)
                     rows.append(
                         self._row(
@@ -757,6 +771,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                             userName=item.second_name,
                             childCount=len(children),
                             cantSend=cant_text,
+                            actionSummary=summary,
                             **self._parent_fields(item, extra),
                         )
                     )

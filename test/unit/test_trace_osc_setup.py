@@ -60,6 +60,7 @@ def traced(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     trace.set_enabled(True)
     yield
     trace.set_enabled(False)
+    trace.set_osc_all(False)  # the ticks live in the config: don't leak them
     trace._reset_for_tests()
 
 

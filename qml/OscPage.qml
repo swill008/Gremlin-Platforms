@@ -580,6 +580,7 @@ Item {
                     colorChild: _appear.colorChild
                     showChildren: _appear.showChildren
                     showSummary: _appear.showSummary
+                    showActionSummary: _appear.showActionSummary
                     summaryFont: _appear.summaryFont
                     parentFont: _appear.parentFont
                     groupFont: _appear.groupFont
