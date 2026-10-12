@@ -501,7 +501,7 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
    - Spec wording to ask the user about (map check, 2026-10-11): 04 S2 and 09 S44 name `store.path_of(...)` (gone); 06 S95 and LD3 say `logical_device.json`; 09 S168 and the OSC trace lines say `osc.json` (gap OSC-TRACE-NAME); 03 S62 "another stick uses the file" can't happen with device folders; 07 S106 also keeps pictures the recovery copy names; 08 S85 "binds the devices again"; 08 S87 names a deleted test file.
 
 107. FLAKY on CI (2026-10-11, run 38162521838 on 3130f65c): test_input_tester_e2e2.py::test_tester_log_rotates_at_one_megabyte waited its 15 s for "values read ok" in tester.log and failed; passes locally in 0.7 s; not touched by today's commits. If it fails again, trace why the tester writes that line late under CI load (re-run passed/failed: see timings).
-108. (D-TESTLIST-1 item 16, 2026-10-11) The old `history\button-map.jsonl` (History of the Device Mapping Editor from before its rename) is still the user's to decide: keep reading it, move it once, or leave it. Waiting for the user. Recorded only.
+108. ~~(D-TESTLIST-1 item 16, 2026-10-11) The old `history\button-map.jsonl` left by the Device Mapping Editor rename.~~ Done 2026-10-11: at the user's request the lead moved it to `backup\2026-10-11 old Button Map history\` in the user's data folder (kept, not deleted); no code change.
 ## Notes kept for reference
 
 - `test/integration/conftest.py` `_neutral_vjoy` resets the real vJoy device
@@ -554,3 +554,4 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 Status line, the one tracker (https://claude.ai/artifact/HpP8ef9co1whHSorPcVse8),
 live agent logs (`tools/agent_log.py`, `.agent-logs/all.log`) and several
 agents where work splits: see `.claude/CLAUDE.md` "Working standard".
+109. (user, 2026-10-11) Remove all one-time code (tracker OT-1 device folders move, OT-2 old photo to background picture, OT-3 Button Map settings move, OT-4 Library part id move) in a new release soon after 1.0.33; 1.0.33 keeps them so the user's own data finishes moving (OT-4's covers fix runs at the next start).

@@ -850,3 +850,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | Test-session list: OT4 1 min, PACKWIN 1, LOOKUP 1, PACKPY 3, HMODEL 5, DOC 5, LIB 6, HUI 9, WIN 9 (9 agents) | fix/feature | 5-10 min (table); History rough guess 15 | 9 min wall | 19:58–20:07 |
 | 2026-10-11 | HTFIX: older History tests to the new design (90 pass) | agent tests | ~10 min | 6 min | 20:07–20:13 |
 | 2026-10-11 | ONE full run + lint (test-session list, seed 956683): 2 tests pinned old behaviour (folded rows, Help wording) + 5 lint items; fixed, targeted green | test | 5–6 min (table) | 7 min + 4 min fixes | 20:13–20:24 |
+| 2026-10-11 | Release 1.0.33 prep: NOTES (release-notes/1.0.33.md) + MAPCHECK (full map check: counts, 43 line counts, stale tags) | docs | ~8-10 min | NOTES ~8, MAPCHECK 6 | 20:24–20:31 |
