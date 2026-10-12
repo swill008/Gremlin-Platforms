@@ -17,7 +17,7 @@ import pytest
 
 from gremlin import run_scope, shared_state
 from gremlin.event_handler import Event, EventListener
-from gremlin.modules import ids, output
+from gremlin.modules import ids, output, store
 from gremlin.modules import runtime as module_runtime
 from gremlin.profile import Profile
 from gremlin.types import InputType
@@ -209,3 +209,59 @@ def test_the_lights_follow_the_input_and_the_output(
 
 def guid_passes(source: uuid.UUID) -> bool:
     return module_runtime.guid_key(source) in module_runtime.always_forwarded()
+
+
+@pytest.mark.parametrize(("source", "label"), _SOURCES)
+def test_the_card_shows_without_a_module_file(
+    folder: Path,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+    source: uuid.UUID,
+    label: str,
+) -> None:
+    """Gap 33 (reopened): OSC and the Logical Device need no module file
+    (03 S90b), so a Map to vJoy from either shows its card without one."""
+    write_module(folder, "vjoy_1", vjoy_doc(claim={"buttons": [30]}))
+    if source == ids.OSC:
+        from gremlin.osc import OscDevice
+
+        osc = OscDevice()
+        if osc.rows.by_number(InputType.JoystickButton, 1) is None:
+            osc.rows.create(InputType.JoystickButton, "/osc/button/1", input_id=1)
+    output.refresh()
+    profile = Profile()
+    monkeypatch.setattr(shared_state, "current_profile", profile)
+    map_button(profile, source, 1, 30)
+    name = "OSC" if source == ids.OSC else "Logical Device"
+    assert not store.exists(name, str(source))
+    devices = _rows(module_pairing.ModulePairDeviceModel())
+    card = next(
+        (row for row in devices if uuid.UUID(str(row["guid"]).strip("{}")) == source),
+        None,
+    )
+    assert card is not None, devices
+    assert card["name"] in ("OSC", "Logical Device"), card
+    buttons = module_pairing.ModulePairButtonModel()
+    buttons.guid = card["guid"]
+    buttons.deviceName = card["deviceName"]
+    assert [row["label"] for row in _rows(buttons)] == [label]
+
+
+def test_a_new_map_to_vjoy_is_polled(
+    folder: Path,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The live card polls a vJoy device first wired after it opened: the ids
+    follow the bindings notice (03 S122a; D-01-OWNER-NOTICES)."""
+    from gremlin.signal import signal
+
+    write_module(folder, "vjoy_1", vjoy_doc(claim={"buttons": [30]}))
+    output.refresh()
+    profile = Profile()
+    monkeypatch.setattr(shared_state, "current_profile", profile)
+    live = pair_live.PairLiveThrottle()
+    live.guid = str(ids.LOGICAL_DEVICE)  # pyright: ignore[reportAttributeAccessIssue]
+    assert live._vjoy_ids == {}
+    map_button(profile, ids.LOGICAL_DEVICE, 1, 30)
+    signal.bindingsChanged.emit()
+    assert 1 in live._vjoy_ids.values()
+    assert live._vjoy_poll.isActive()

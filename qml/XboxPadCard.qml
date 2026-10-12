@@ -112,8 +112,14 @@ Rectangle {
             ? _live.xboxValue(_root.padId, chip.xboxTarget || "") : 0
         readonly property bool hwOn: isAxis ? Math.abs(hwValue) > 0.5 : hwValue > 0.5
         readonly property bool xbOn: isAxis ? Math.abs(xbValue) > 0.5 : xbValue > 0.5
+        // Each half fits its text (a short "1 | A" chip keeps its size); a
+        // long name is cut with "…".
+        readonly property real hwHalf: Math.max(Style.dp(32),
+            Math.min(Style.dp(120), _hwText.implicitWidth + Style.dp(6)))
+        readonly property real xbHalf: Math.max(Style.dp(31),
+            Math.min(Style.dp(120), _xbText.implicitWidth + Style.dp(6)))
 
-        width: Style.dp(64)
+        width: hwHalf + Style.dp(1) + xbHalf
         height: Style.dp(20)
         radius: Style.dp(3)
         color: Style.background
@@ -124,11 +130,15 @@ Rectangle {
         Row {
             anchors.fill: parent
             Rectangle {
-                width: parent.width / 2
+                width: _chip.hwHalf
                 height: parent.height
                 color: _chip.hwOn ? Style.ok : "transparent"
                 Label {
+                    id: _hwText
+                    objectName: "chipLeftText"
                     anchors.centerIn: parent
+                    width: Math.min(implicitWidth, parent.width - Style.dp(4))
+                    elide: Text.ElideRight
                     text: _chip.hwLabel
                     color: _chip.hwOn ? Style.okFillDeep : Style.foreground
                     font.pixelSize: Style.dp(11)
@@ -137,11 +147,15 @@ Rectangle {
             }
             Rectangle { width: Style.dp(1); height: parent.height; color: Style.medColor }
             Rectangle {
-                width: parent.width / 2 - Style.dp(1)
+                width: _chip.xbHalf
                 height: parent.height
                 color: _chip.xbOn ? Style.ok : "transparent"
                 Label {
+                    id: _xbText
+                    objectName: "chipRightText"
                     anchors.centerIn: parent
+                    width: Math.min(implicitWidth, parent.width - Style.dp(4))
+                    elide: Text.ElideRight
                     text: _chip.xbLabel
                     color: _chip.xbOn ? Style.okFillDeep : Style.foreground
                     font.pixelSize: Style.dp(11)

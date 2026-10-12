@@ -95,6 +95,24 @@ function topics() {
                 ]),
             related: ["osc-about", "osc-server-tab", "osc-add-input", "osc-checklist"]
         },
+        {
+            id: "osc-card-line",
+            section: main,
+            title: "The OSC card on Home",
+            body: "<p>OSC means Open Sound Control. The OSC card on Home keeps the short name; hover its title to see the full name, which also shows in grey under the title of OSC's Device Bindings page.</p>"
+                + "<p>The card's second line shows what the OSC server is doing:</p>"
+                + _list([
+                    "\"Listening on 192.168.1.5:8001\": the port is open on that address. With <b>Host</b> blank it reads \"Listening on all addresses, port 8001\".",
+                    "\"From 192.168.1.20: /fire 1\": a message arrived, from that sender, with its address and first value (long text is cut with \"…\"). The line changes at most 4 times a second while many messages arrive, and goes back to \"Listening on …\" 3 seconds after the last one.",
+                    "\"Server not started: port 8001 is in use\" (in the warning colour): the port couldn't be opened. The reason can also be \"<i>address</i> is not an address of this PC\" or \"Windows refused port <i>n</i>\". It stays until the server starts, for example after you change the <b>Port</b> or <b>Host</b> on the Server tab.",
+                    "\"Not listening (Listen for OSC messages is off)\": OSC input is turned off on the Server tab.",
+                    "\"Not listening yet\": shown for a moment while the program starts, before the port opens."
+                ])
+                + _good([
+                    "For a failure, see " + _link("osc-troubleshooting", "When OSC doesn't work") + "."
+                ]),
+            related: ["osc-about", "osc-server-tab", "osc-troubleshooting", "osc-monitor"]
+        },
 
         // ---- OSC Setup ----
         {
@@ -611,6 +629,7 @@ function topics() {
             body: "<h4>Nothing arrives</h4>"
                 + _list([
                     "Unfold the <b>OSC Monitor</b> on the OSC page. The port is open while <b>Listen for OSC messages</b> is on, so if nothing shows there, the messages don't reach this PC. Messages that show as blocked come from a sender not on <b>Allowed senders</b> (Server tab).",
+                    "Look at the OSC card on Home first: its second line says whether the server is listening, and why not (" + _link("osc-card-line", "The OSC card on Home") + ").",
                     "Check the app's host and port against the <b>Server</b> tab, and that <b>Listen for OSC messages</b> is on.",
                     "Check the firewall (see " + _link("osc-checklist", "Connection checklist") + ").",
                     "\"Could not bind OSC on host:port.\": another program uses that port; the error's detail names it when Windows can tell. Close it or choose another <b>Port</b> (and set the same in the app).",

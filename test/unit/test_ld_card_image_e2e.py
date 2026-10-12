@@ -88,6 +88,7 @@ def _child() -> None:
 
     import gremlin.ui.device  # noqa: F401  (Gremlin.Device)
     import gremlin.ui.folder_memory  # noqa: F401  (FilePicker)
+    import gremlin.ui.osc_card_status  # noqa: F401  (OscCardStatus)
     from gremlin import logical_device_file as ldf
     from gremlin.ui import module_model
 

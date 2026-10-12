@@ -397,6 +397,8 @@ _AF_INET6 = 23
 _UDP_TABLE_OWNER_PID = 1
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 _ADDR_IN_USE = {errno.EADDRINUSE, 10048}
+_ADDR_NOT_AVAIL = {errno.EADDRNOTAVAIL, 10049}
+_ACCESS = {errno.EACCES, 10013}
 
 
 def _udp_owner_pids(port: int) -> list[int]:
@@ -470,6 +472,20 @@ def bind_error_detail(host: str, port: int, exc: OSError) -> str:
         else:
             detail += f" Port {port} is in use by {holder[0]} (PID {holder[1]})."
     return detail
+
+
+def bind_error_reason(host: str, port: int, exc: OSError) -> str:
+    """Why the port didn't open, in a few words (the Home OSC card,
+    D-09-OSC-CARD-LINE): in use, not this PC's address, refused by Windows,
+    else the OS error text."""
+    codes = {exc.errno, getattr(exc, "winerror", None)}
+    if codes & _ADDR_IN_USE:
+        return f"port {port} is in use"
+    if codes & _ADDR_NOT_AVAIL:
+        return f"{host} is not an address of this PC"
+    if codes & _ACCESS:
+        return f"Windows refused port {port}"
+    return (exc.strerror or str(exc)).strip().rstrip(".")
 
 
 SERVER_DEFAULTS: dict[str, Any] = {
@@ -657,6 +673,11 @@ class OscRuntime(QtCore.QObject):
         # Who started the Listen (a page model); only it handles the capture.
         self._learn_owner: weakref.ref | None = None
         self._settings: dict[str, Any] = dict(SERVER_DEFAULTS)
+        # The last bind that failed: (host, port, reason); None once the port
+        # opens, OSC is turned Off or nothing needs the port.
+        self._bind_failure: tuple[str, int, str] | None = None
+        # What listenInfo() said last (listenChanged when it changes).
+        self._info_sent: dict[str, Any] | None = None
         self._timers: dict[StateKey, QtCore.QTimer] = {}
         self._last: dict[StateKey, Any] = {}
         # Buttons pressed and not yet released: state key -> the mode pressed
@@ -852,7 +873,45 @@ class OscRuntime(QtCore.QObject):
 
     def _close_if_idle(self) -> None:
         if not self._needs_port():
+            self._bind_failure = None
             self._unbind()
+            self._port_changed()
+
+    @QtCore.Slot(result="QVariantMap")
+    def listenInfo(self) -> dict[str, Any]:  # noqa: N802 - QML name
+        """The port's state for the Home OSC card (D-09-OSC-CARD-LINE):
+        {state, host, port, reason}. "listening": open on host:port (host
+        "0.0.0.0" is every address). "failed": the last bind on host:port
+        failed for reason. "closed": not open, reason "off" when "Listen for
+        OSC messages" is off, else "" (nothing needs it: before start-up's
+        open_always, after quit). listenChanged follows every change."""
+        listener = self._listener
+        if listener is not None:
+            # A stand-in listener (tests) may not know its bound port.
+            bound = getattr(listener, "bound_port", None)
+            return {
+                "state": "listening",
+                "host": str(getattr(listener, "host", "")),
+                "port": int(bound() if bound else getattr(listener, "port", 0)),
+                "reason": "",
+            }
+        if self._bind_failure is not None:
+            host, port, reason = self._bind_failure
+            return {"state": "failed", "host": host, "port": port, "reason": reason}
+        # The saved settings, not the defaults (nothing may have bound yet).
+        settings = server_settings()
+        return {
+            "state": "closed",
+            "host": bind_address(settings.get("host")),
+            "port": parse_port(settings.get("port")),
+            "reason": "" if settings.get("enabled", True) else "off",
+        }
+
+    def _port_changed(self) -> None:
+        info = self.listenInfo()
+        if info != self._info_sent:
+            self._info_sent = info
+            self.listenChanged.emit()
 
     def _read_options(self) -> tuple[bool, str, int]:
         self._settings = server_settings()
@@ -870,7 +929,9 @@ class OscRuntime(QtCore.QObject):
 
         enabled, host, port = self._read_options()
         if not enabled:
+            self._bind_failure = None
             self._unbind()
+            self._port_changed()
             log.info("OSC listener off in OSC's settings")
             if trace.osc_on(RECEIVE):
                 trace.osc(
@@ -886,11 +947,13 @@ class OscRuntime(QtCore.QObject):
             and self._listener.port == port
         ):
             return None
-        self._unbind()
+        self._unbind(notify=False)  # a rebind isn't a "closed" in between
         try:
             listener = OscListener(host, port, self._from_thread)
             listener.start()
             self._listener = listener
+            self._bind_failure = None
+            self._port_changed()
             if trace.osc_on(RECEIVE):
                 trace.osc(
                     RECEIVE,
@@ -903,11 +966,13 @@ class OscRuntime(QtCore.QObject):
                 "OSC requires python-osc.",
                 "In the repo folder run: poetry add python-osc",
             )
+            self._bind_failure = (host, port, "OSC requires python-osc")
         except OSError as exc:
             failure = (
                 f"Could not bind OSC on {host}:{port}.",
                 bind_error_detail(host, port, exc),
             )
+            self._bind_failure = (host, port, bind_error_reason(host, port, exc))
             # Logged as well as shown (OX3): the user log and the program log.
             user_log.error("OSC: %s %s", *failure)
             log.error("OSC: %s %s", *failure)
@@ -918,17 +983,20 @@ class OscRuntime(QtCore.QObject):
                 warning=True,
                 key=f"bind {host}:{port}",
             )
+        self._port_changed()
         if report:
             ui_signal.showError.emit(*failure)
         return failure
 
-    def _unbind(self) -> None:
+    def _unbind(self, notify: bool = True) -> None:
         if self._listener is None:
             return
         self._listener.stop()
         self._listener = None
         if trace.osc_on(RECEIVE):
             trace.osc(RECEIVE, "port closed")
+        if notify:
+            self._port_changed()
 
     def _who(self) -> str:
         """Who needs the port now: Run, Listen, Monitor, recording."""
@@ -1022,6 +1090,7 @@ class OscRuntime(QtCore.QObject):
         Listen is open (turning OSC on binds; a failed bind tries again)."""
         if not self._needs_port():
             self._settings = server_settings()
+            self._port_changed()  # closed: "off" or not
             return
         self._bind()
         if self._listener is None and self._learn:

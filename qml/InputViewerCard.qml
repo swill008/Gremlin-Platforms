@@ -150,7 +150,7 @@ ColumnLayout {
 
             JGText {
                 visible: _axes.count === 0
-                text: destEmpty ? "This output claims no axes." : "No claimed axes send to this output."
+                text: destEmpty ? "This output claims no axes." : "No axes send to this output."
                 opacity: 0.45
                 font.pixelSize: Style.dp(13)
             }
@@ -221,7 +221,7 @@ ColumnLayout {
 
             JGText {
                 visible: _buttons.count === 0
-                text: destEmpty ? "This output claims no buttons." : "No claimed buttons send to this output."
+                text: destEmpty ? "This output claims no buttons." : "No buttons send to this output."
                 opacity: 0.45
                 font.pixelSize: Style.dp(13)
             }
@@ -255,8 +255,15 @@ ColumnLayout {
 
                             property bool hwOn: hwButton(identifier) > 0.5
                             property bool vjOn: destClaimed && vjButton(vjoyGuid, vjoyInput) > 0.5
+                            // Each half fits its text (a short "1 | 30" chip
+                            // keeps its size); a long name is cut with "…".
+                            readonly property real hwHalf: Math.max(Style.dp(20),
+                                Math.min(Style.dp(120), _hwText.implicitWidth + Style.dp(6)))
+                            readonly property real vjHalf: Math.max(Style.dp(19),
+                                Math.min(Style.dp(120), _vjText.implicitWidth + Style.dp(6)))
 
-                            width: Style.dp(40)
+                            objectName: "vjoyViewerChip"
+                            width: hwHalf + Style.dp(1) + vjHalf
                             height: Style.dp(18)
                             radius: Style.dp(3)
                             color: Style.background
@@ -268,12 +275,16 @@ ColumnLayout {
                                 anchors.fill: parent
 
                                 Rectangle {
-                                    width: parent.width / 2
+                                    width: hwHalf
                                     height: parent.height
                                     color: hwOn ? Style.ok : "transparent"
 
                                     Label {
+                                        id: _hwText
+                                        objectName: "chipLeftText"
                                         anchors.centerIn: parent
+                                        width: Math.min(implicitWidth, parent.width - Style.dp(4))
+                                        elide: Text.ElideRight
                                         text: label
                                         color: hwOn ? Style.okFillDeep : Style.foreground
                                         font.pixelSize: Style.dp(11)
@@ -293,12 +304,16 @@ ColumnLayout {
                                 }
 
                                 Rectangle {
-                                    width: parent.width / 2 - Style.dp(1)
+                                    width: vjHalf
                                     height: parent.height
                                     color: vjOn ? Style.live : "transparent"
 
                                     Label {
+                                        id: _vjText
+                                        objectName: "chipRightText"
                                         anchors.centerIn: parent
+                                        width: Math.min(implicitWidth, parent.width - Style.dp(4))
+                                        elide: Text.ElideRight
                                         text: destClaimed ? String(vjoyInput) : "—"
                                         color: vjOn ? Style.onLive : (destClaimed ? Style.foreground : Style.fgDisabled)
                                         font.pixelSize: Style.dp(11)

@@ -5,13 +5,14 @@ from __future__ import annotations
 
 from PySide6 import QtCore
 
+import gremlin.ui.type_aliases as ta
 from gremlin import device_initialization, event_handler
 from gremlin.modules import output
-from gremlin.modules.runtime import InputModuleRuntime
-from gremlin.types import InputType
-import gremlin.ui.type_aliases as ta
-from gremlin.ui import input_pairing as pairing
 from gremlin.modules.ids import guid_key
+from gremlin.modules.runtime import InputModuleRuntime
+from gremlin.signal import signal
+from gremlin.types import InputType
+from gremlin.ui import input_pairing as pairing
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -71,6 +72,8 @@ class PairLiveThrottle(QtCore.QObject):
         self._vjoy_poll.timeout.connect(self._poll_vjoy)
         # Claimed inputs only: the input module feed, not raw hardware.
         InputModuleRuntime().event.connect(self._on_event)
+        # A Map to vJoy added or removed while open (D-01-OWNER-NOTICES).
+        signal.bindingsChanged.connect(self._refresh_vjoy_ids)
 
     def _bump(self) -> None:
         self._stamp += 1
@@ -101,8 +104,19 @@ class PairLiveThrottle(QtCore.QObject):
         self._vj_axis.clear()
         self._vj_button.clear()
         self._watch = {guid_key(self._guid)} if self._guid else set()
+        self._refresh_vjoy_ids()
+        self._bump()
+
+    @QtCore.Slot()
+    def _refresh_vjoy_ids(self) -> None:
+        """The vJoy devices this source's wires send to, polled while any."""
         watched: set[str] = set()
-        for kind in (InputType.JoystickAxis, InputType.JoystickButton, InputType.JoystickHat):
+        kinds = (
+            InputType.JoystickAxis,
+            InputType.JoystickButton,
+            InputType.JoystickHat,
+        )
+        for kind in kinds if self._guid else ():
             for row in pairing._mapped_rows(self._guid, kind):
                 vg = guid_key(row.get("vjoyGuid", ""))
                 if vg:
@@ -110,11 +124,10 @@ class PairLiveThrottle(QtCore.QObject):
         self._vjoy_ids = {
             key: vid for key, vid in _vjoy_ids_by_guid().items() if key in watched
         }
-        if self._vjoy_ids:
-            self._vjoy_poll.start()
-        else:
+        if not self._vjoy_ids:
             self._vjoy_poll.stop()
-        self._bump()
+        elif not self._vjoy_poll.isActive():
+            self._vjoy_poll.start()
 
     def _poll_vjoy(self) -> None:
         axes: dict[tuple[str, int], float] = {}

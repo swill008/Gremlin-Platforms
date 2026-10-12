@@ -34,7 +34,7 @@ function topics() {
             body: "<p>Each card sums up its device, top to bottom.</p>"
                 + "<ul>"
                 + "<li>The device photo: its device image when you gave it one, else a picture of the device's background, and the device name. In <b>Compact view</b> the photo is a small thumbnail at the left of the card, beside its text; a device with no picture shows its icon there, as in the Device Library.</li>"
-                + "<li>Its status and bus, for example <b>Connected</b>, <b>Virtual</b> or <b>No module</b>. A vJoy device another program holds shows \"In use by another program\".</li>"
+                + "<li>Its status and bus, for example <b>Connected</b>, <b>Virtual</b> or <b>No module</b>. A vJoy device another program holds shows \"In use by another program\". On the OSC card this line shows the OSC server instead, for example \"Listening on all addresses, port 8001\": see <a href=\"topic:osc-card-line\">The OSC card on Home</a>.</li>"
                 + "<li>The claimed buttons, axes and hats, in words (\"1 hat\", \"2 hats\").</li>"
                 + "<li>On output cards only, <b>Driven by: [device]</b>: the input devices whose actions send to it, or <b>Driven by: [nothing]</b>. It follows your action edits within a moment. The <b>Output View</b> header shows the same line.</li>"
                 + "<li>The <b>last:</b> line: the latest input the input module passed, or on an output card the latest output sent while the profile runs. It uses the friendly name; hover for the hardware name.</li>"

@@ -5,15 +5,9 @@ from __future__ import annotations
 
 from PySide6 import QtCore
 
-from gremlin import device_initialization, event_handler, shared_state
-from gremlin.modules import device_class, registry, store
-from gremlin.modules import wiring
-from gremlin.modules.runtime import always_forwarded
-from gremlin.modules.ids import guid_key
-from gremlin.signal import signal
-from gremlin.types import InputType
 import gremlin.ui.type_aliases as ta
-from gremlin.ui import input_pairing as pairing
+from gremlin import device_initialization, event_handler, shared_state
+from gremlin.modules import device_class, registry, store, wiring
 from gremlin.modules.claim import (
     claim_allows,
     claim_friendly,
@@ -22,6 +16,11 @@ from gremlin.modules.claim import (
     kind_of,
     read_claim,
 )
+from gremlin.modules.ids import guid_key
+from gremlin.modules.runtime import always_forwarded
+from gremlin.signal import signal
+from gremlin.types import InputType
+from gremlin.ui import input_pairing as pairing
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -232,8 +231,10 @@ class ModulePairDeviceModel(QtCore.QAbstractListModel):
                     name = pairing._device_name(guid)
                 seen.add(key)
                 roster.append((guid, name))
+        forwarded = always_forwarded()
         for guid, raw_name in roster:
-            if not store.exists(raw_name, guid):
+            # OSC and the Logical Device need no module file (03 S90b; gap 33).
+            if guid_key(guid) not in forwarded and not store.exists(raw_name, guid):
                 continue
             items = pairing._items_for_guid(guid)
             dest_ids = sorted(

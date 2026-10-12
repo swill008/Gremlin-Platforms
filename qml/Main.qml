@@ -2328,6 +2328,16 @@ ApplicationWindow {
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
+                    // OSC's full name under its title (D-09-OSC-CARD-LINE).
+                    Label {
+                        objectName: "oscFullName"
+                        visible: configDirection === "source" && !!uiState
+                                 && uiState.currentTab === "osc"
+                        text: "Open Sound Control (OSC)"
+                        color: Style.fgMuted
+                        font.pixelSize: Style.dp(12)
+                        Layout.fillWidth: true
+                    }
                     Label {
                         visible: configDirection === "dest"
                         text: "View only — shows what the input modules' actions send."

@@ -952,3 +952,12 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | C-ALIAS: DeviceNames.setAlias removed, 3 tests moved | removal | 3-8 min | 1 min | 09:51-09:52 |
 | 2026-10-12 | C-DOCS: CLAUDE.md 3 rules, map lines for all batch C agents | docs | 3-8 min | 21 min (waiting on agents) | 09:31-09:52 |
 | 2026-10-12 | Quick tests batch C (--changed: 3,755 tests, 6 parts) + lint: all passed, no new errors | test | 2-3 min | 6 min | 09:53-09:59 |
+| 2026-10-12 | OSC-NAME: Main.qml oscFullName line + 4-test smoke | feature | 3-8 min | 2 min | 10:04-10:06 |
+| 2026-10-12 | OSC-E2E: card line end-to-end (8 tests, real program, loopback) | test | 3-8 min | 3 min | 10:04-10:07 |
+| 2026-10-12 | OSC-CARD: OscCardStatus + StatusCard OSC line/tooltip, 9+1 tests | feature | 3-8 min | 3 min | 10:04-10:07 |
+| 2026-10-12 | DOCS-D: D-09-OSC-CARD-LINE, 09 S175-S177, 03 S73, glossary, Help topic osc-card-line, map | docs | 3-8 min | 3 min | 10:04-10:07 |
+| 2026-10-12 | OSC-CORE: listenInfo + bind reasons + saved-settings closed state, 10 tests | feature | 3-8 min | 6 min | 10:04-10:10 |
+| 2026-10-12 | OSC-CARD follow-up: StatusCard declares OscCardStatus (Instantiator), 2 harnesses register it | fix | ~5 min | 2 min | 10:08-10:10 |
+| 2026-10-12 | DOCS-V: D-03-VJOY-VIEWER-QUICK, 03 S122, gap 33 reopened, glossary, Help | docs | 3-8 min | 1 min | 10:10-10:11 |
+| 2026-10-12 | VJV-FIX: viewer cards without module file, pair_live refresh, empty text, chips fit | fix | 3-8 min | 5 min | 10:10-10:15 |
+| 2026-10-12 | Quick tests OSC+viewer batch (--changed: 4,427 tests) + lint: all passed | test | ~6 min | 7 min | 10:16-10:23 |

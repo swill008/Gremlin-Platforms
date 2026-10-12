@@ -9,7 +9,7 @@ QML warning, then "done". test_home_card_drag.py, test_home_card_size.py and
 test_home_image_menu.py, test_home_compact_thumb.py and test_home_band.py run
 it in its own process:
 
-    python test/unit/home_cards_smoke.py <out_dir> <drag|size|image|compact|band>
+    python test/unit/home_cards_smoke.py <out_dir> <drag|size|image|compact|band|osc>
 
 HOME_QML_DIR points it at another qml folder (a copy with the old files,
 to show a test fails on the old code).
@@ -191,6 +191,7 @@ def main() -> None:
 
     import gremlin.ui.device  # noqa: F401  (Gremlin.Device)
     import gremlin.ui.folder_memory  # noqa: F401  (FilePicker)
+    import gremlin.ui.osc_card_status  # noqa: F401  (OscCardStatus)
 
     def result(name: str, value: object) -> None:
         print(f"RESULT {name} {json.dumps(value)}", flush=True)
@@ -410,6 +411,8 @@ def main() -> None:
         result("full-again", {s: ev(f"looks('{s}')") for s in "ab"})
     elif mode == "band":
         _band(ev, quick, result, move, out)
+    elif mode == "osc":
+        _osc(ev, result, out, quick)
     for w in warnings:
         print(f"WARN {w}", flush=True)
     print("done", flush=True)
@@ -548,6 +551,44 @@ def _band(ev, quick, result, move, out: Path) -> None:  # noqa: ANN001
     ev("_page.emptyMenuModel().header[0].run()")
     QtTest.QTest.qWait(100)
     result("empty-undo", ev("_fake.calls[_fake.calls.length - 1]"))
+
+
+def _osc(ev, result, out: Path, quick) -> None:  # noqa: ANN001
+    """The OSC card's second line and title tip (D-09-OSC-CARD-LINE) beside
+    an ordinary card a, over the real OscRuntime (never bound here)."""
+    from PySide6 import QtTest
+
+    from gremlin.osc import OscRuntime
+
+    ev("_fake.order = ['a', 'osc']; _page.pileRev++")
+    QtTest.QTest.qWait(400)
+
+    def line(slug: str) -> object:
+        return ev(
+            f"var l = inCard('{slug}', 'cardStatusLine');"
+            " l ? [l.text, Qt.colorEqual(l.color, Style.warn),"
+            " Qt.colorEqual(l.color, Style.fgMuted)] : null"
+        )
+
+    def tip(slug: str) -> object:
+        return ev(
+            f"var t = inCard('{slug}', 'cardTitleTip'); t ? [t.show, t.text] : null"
+        )
+
+    runtime = OscRuntime()
+    result("closed", {s: line(s) for s in ("a", "osc")})
+    result("tips", {s: tip(s) for s in ("a", "osc")})
+    runtime._bind_failure = ("0.0.0.0", 9000, "port 9000 is in use")
+    runtime._port_changed()
+    QtTest.QTest.qWait(50)
+    result("failed", {s: line(s) for s in ("a", "osc")})
+    quick.grabWindow().save(str(out / "osc_failed.png"))
+    runtime._bind_failure = None
+    runtime._port_changed()
+    runtime.incoming.emit("/fader/1", (0.75,), ("192.168.1.20", 53000))
+    QtTest.QTest.qWait(50)
+    result("message", {s: line(s) for s in ("a", "osc")})
+    quick.grabWindow().save(str(out / "osc_message.png"))
 
 
 def run(tmp_path: Path, mode: str, qml_dir: Path | None = None) -> dict[str, object]:

@@ -111,6 +111,8 @@ def main() -> None:
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
     app = QtGui.QGuiApplication(sys.argv[:1])
+    # Gremlin.Device: StatusCard declares the OSC card's OscCardStatus.
+    import gremlin.ui.osc_card_status  # noqa: F401
     font = QtGui.QFont("Segoe UI")
     font.setPixelSize(15)
     app.setFont(font)

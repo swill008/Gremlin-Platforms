@@ -7,6 +7,7 @@ import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 import QtQuick.Window
 
+import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
 
@@ -62,6 +63,16 @@ Rectangle {
     readonly property bool cantSendShown: cantSendCount > 0
     readonly property string cantSendText: cantSendCount <= 0 ? ""
         : "⚠ " + cantSendCount + (cantSendCount === 1 ? " binding" : " bindings") + " can't be sent"
+    // The OSC card's second line (D-09-OSC-CARD-LINE): where the server
+    // listens, the last message, or why it isn't open. Made for the OSC card
+    // only.
+    readonly property bool _isOsc: slug === "osc"
+    readonly property QtObject _oscStatus: _oscMaker.object
+    Instantiator {
+        id: _oscMaker
+        model: _card._isOsc ? 1 : 0
+        delegate: OscCardStatus {}
+    }
     z: stackIndex + (lifting || resizing ? 100 : 0)
 
     signal cardFocused()
@@ -222,18 +233,32 @@ Rectangle {
                 spacing: Style.dp(6)
 
                 Label {
+                    objectName: "cardTitle"
                     text: cardName
                     color: Style.fg
                     font.pixelSize: Style.dp(14)
                     font.bold: true
                     elide: Text.ElideRight
                     Layout.fillWidth: true
+                    PointerTip {
+                        objectName: "cardTitleTip"
+                        show: _card._isOsc
+                        text: _card._isOsc ? "Open Sound Control (OSC)" : ""
+                    }
                 }
 
                 Label {
-                    text: (status === "Stub" ? "No module" : status) + " · " + bus
-                    color: _card.damaged !== "" ? Style.danger : Style.fgMuted
+                    objectName: "cardStatusLine"
+                    readonly property bool oscLine: _card._oscStatus !== null
+                    text: oscLine ? _card._oscStatus.text
+                        : (status === "Stub" ? "No module" : status) + " · " + bus
+                    color: _card.damaged !== "" ? Style.danger
+                        : oscLine && _card._oscStatus.warn ? Style.warn
+                        : Style.fgMuted
                     font.pixelSize: Style.dp(11)
+                    // A long message is cut with "…" (other cards as before).
+                    elide: oscLine ? Text.ElideRight : Text.ElideNone
+                    Layout.fillWidth: oscLine
                 }
 
                 Label {

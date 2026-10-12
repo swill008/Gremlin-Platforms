@@ -7,6 +7,7 @@ from PySide6 import QtCore
 
 import gremlin.ui.highlight_option  # noqa: F401
 import gremlin.ui.live_input  # noqa: F401
+import gremlin.ui.osc_card_status  # noqa: F401  # the Home OSC card line
 import gremlin.ui.osc_settings_info  # noqa: F401
 import gremlin.ui.type_aliases as ta
 import gremlin.ui.window_placement  # noqa: F401
