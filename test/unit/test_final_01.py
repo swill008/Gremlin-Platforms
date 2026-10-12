@@ -609,10 +609,11 @@ run('_root.profileDirty = false')
 
 # S58, S59, S61: the toolbar.
 pump(lambda: run('_optionsButton.x > _logicalButton.x'))
-TOOLBAR = ('[_homeButton, _toggleButton, _vjoyViewerButton, '
+TOOLBAR = ('[_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, '
            '_deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, '
            '_optionsButton]')
 out['captions'] = run(TOOLBAR + '.map(function(b) { return b.caption })')
+out['inputTesterGlyph'] = run('_inputTesterButton.text.charCodeAt(0)')
 out['order'] = run('(function() { var xs = ' + TOOLBAR + '.map(function(b) { '
                    'return b.x }); '
                    'for (var i = 1; i < xs.length; i++) '
@@ -743,10 +744,12 @@ def test_s57_the_title_names_the_profile_and_marks_unsaved_changes(
 
 def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:
     assert main_window["captions"] == [
-        "Home", "Run", "vJoy Viewer", "Mapping Editor",
+        "Home", "Run", "vJoy Viewer", "Input Tester", "Mapping Editor",
         "Device Library", "Logical Device", "Options",
     ]
     assert main_window["order"] is True
+    # D-01-INPUT-TESTER-BUTTON: the crosshair icon (Bootstrap Icons U+F769).
+    assert main_window["inputTesterGlyph"] == 0xF769
     assert main_window["modeOnToolbar"] is False  # S58a: on the bar under it
     assert main_window["modeLabel"] == "Mode"
     assert main_window["manageModes"] == "Manage Modes"

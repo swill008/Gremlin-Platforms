@@ -90,7 +90,7 @@ ApplicationWindow {
     readonly property int _modeListWidth: Style.dp(200)
     readonly property int _modeListMinWidth: Style.dp(120)
     function _toolbarWidth(withCaptions) {
-        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton,
+        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton,
                        _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         var w = _homeButton.rightPadding + _toolbarRow.spacing * buttons.length
         for (var i = 0; i < buttons.length; i++)
@@ -192,7 +192,7 @@ ApplicationWindow {
     // are one button).
     function _helpToolbarButton(name) {
         var want = _helpNorm(name)
-        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton,
+        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton,
                        _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         for (var i = 0; i < buttons.length; ++i) {
             var b = buttons[i]
@@ -1764,6 +1764,18 @@ ApplicationWindow {
                         onClicked: () => {
                             Helpers.toggleComponent("DialogInputViewer.qml")
                         }
+                    }
+
+                    // 01 S58 (D-01-INPUT-TESTER-BUTTON): starts the separate
+                    // Input Tester, as Tools › Viewers › Input Tester… does.
+                    JGToolButton {
+                        id: _inputTesterButton
+                        compact: _root.toolbarCompact
+                        text: ""
+                        tooltip: qsTr("Input Tester: see what other programs see through HidHide")
+                        caption: "Input Tester"
+
+                        onClicked: () => { openInputTester() }
                     }
 
                     JGToolButton {

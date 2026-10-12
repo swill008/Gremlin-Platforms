@@ -83,6 +83,11 @@ Every piece of work, not only big batches:
    - Reports, studies, plans and mockups go to the user in the chat (text,
      tables, pictures sent with SendUserFile) and, when worth keeping, as an
      issue in the tracker with the facts in its detail. Never as a page.
+   - Mock-ups are never made by running code (user, 2026-10-12: "make it a
+     rule, to never use code to build a mock menu, you can offer it, but dont
+     do it by default"): no drawing scripts, rendered or edited screenshots or
+     off-screen app grabs. Draw them inline in the chat; a script-made picture
+     may be offered with its effort, and made only if the user says yes.
 3. **Live output.** Every agent pipes every shell command through
    `tools/agent_log.py <AGENT>`, with `PYTHONUNBUFFERED=1` in front and
    pytest `-v`:

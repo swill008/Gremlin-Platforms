@@ -249,6 +249,40 @@ class _Stalls:
     finished = 0
     exit_status = 0
     exit_deadman: object = None
+    # When the app's start-up (the qapp fixture's setup) began, while it runs.
+    starting: float | None = None
+
+
+# | Start-up (to-do 128): the first test's qapp setup builds the Gremlin app,
+# | whose Main.qml load stands still in Qt for seconds, more than the 10 s
+# | stall limit on a busy PC. It is given 6 times the limit (60 s by default,
+# | half the 120 s a test may run): slow, not stuck. Past that it is stuck,
+# | and the run ends with the report: an exception raised into the main
+# | thread inside Qt's start-up crashed the process (access violation).
+# | GREMLIN_TEST_STARTUP_STALL_AFTER sets it, for the stall tests themselves.
+STARTUP_STALL_AFTER = float(
+    os.environ.get(
+        "GREMLIN_TEST_STARTUP_STALL_AFTER", str(6 * stall_watch.BLOCKED_AFTER)
+    )
+)
+
+
+class _StartUp:
+    """Marks the qapp fixture's setup. A plugin of its own (registered in
+    pytest_configure): a conftest's fixture hooks only see fixtures of its
+    own folder, and the session-scoped qapp belongs to the session."""
+
+    @staticmethod
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_fixture_setup(fixturedef: pytest.FixtureDef):  # noqa: ANN205
+        if fixturedef.argname != "qapp" or _Stalls.starting is not None:
+            yield  # not the app, or the inner of the two qapp fixtures
+            return
+        _Stalls.starting = time.monotonic()
+        try:
+            yield
+        finally:
+            _Stalls.starting = None
 
 
 @pytest.hookimpl(trylast=True)  # after pytest's faulthandler kept the real stderr
@@ -260,6 +294,8 @@ def pytest_configure(config: pytest.Config) -> None:
     )
     if not config.pluginmanager.is_registered(vjoy_guard):
         config.pluginmanager.register(vjoy_guard, "vjoy_guard")
+    if not config.pluginmanager.has_plugin("stall_start_up"):
+        config.pluginmanager.register(_StartUp(), "stall_start_up")
     try:
         from _pytest.faulthandler import fault_handler_stderr_fd_key
 
@@ -280,6 +316,18 @@ def _test_stalled(report: str) -> None:
     it can't be stopped (stuck inside C code)."""
     watch = _Stalls.watch
     nodeid = report.split("\n", 2)[1].removeprefix("=== STALLED: ")
+    starting = _Stalls.starting
+    if starting is not None:
+        if time.monotonic() - starting < STARTUP_STALL_AFTER and watch is not None:
+            watch.watch(nodeid)  # slow, not stuck yet: watch on (from now)
+            return
+        stall_watch.write(
+            _Stalls.out,
+            report + f"Start-up hasn't finished within {STARTUP_STALL_AFTER:g} s: "
+            "ending the run (nothing raised into Qt's start-up).\n",
+        )
+        stall_watch.end_process(3)
+        return
     _Stalls.reports[nodeid] = report
     finished = _Stalls.finished
     stall_watch.write(_Stalls.out, report + "Failing this test.\n")

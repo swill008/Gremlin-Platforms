@@ -979,3 +979,7 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | G-SWAP: Swap autosave long path (short autosave file name + extended-length temp file), 2 tests | fix | 5-10 min | 8 min | 10:55-11:03 |
 | 2026-10-12 | G-DOCS: batch G spec (10 S6), decisions, glossary, Help, map lines for 7 agents | docs | 3-8 min | 8 min | 10:55-11:03 |
 | 2026-10-12 | CI on 46820406 (batch F): passed | ci | ~20 min | 23 min | 10:46-11:09 |
+| 2026-10-12 | Input Tester toolbar button (lead: Main.qml, tests, spec, Help) | feature | 3-8 min | ~6 min | 11:11-11:17, 47+23 tests passed |
+| 2026-10-12 | vJoy Viewer OSC trace (V-PATH, read-only) | review | 5-10 min | 1 min | 11:14-11:15 |
+| 2026-10-12 | vJoy Viewer OSC chip name (V-NAME, read-only) | review | 5-10 min | 1 min | 11:14-11:15 |
+| 2026-10-12 | 128 harness fix: start-up stall handling (H-STALL) | fix | 3-8 min | 5 min | 11:12-11:17 |

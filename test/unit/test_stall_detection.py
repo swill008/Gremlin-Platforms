@@ -7,7 +7,7 @@
 (test/hang_trace/stall_watch.py, used by test/conftest.py and, for the
 programs tests start, test/hang_trace/sitecustomize.py.) Each case runs a
 small test file through pytest with the real conftest, with stalls caught
-after 2 s instead of 10.
+after 1 s instead of 10 (0.1 s for the start-up cases).
 """
 
 from __future__ import annotations
@@ -85,11 +85,72 @@ _SAMPLES = {
 }
 
 
+# Start-up (to-do 128): the first test's app start (pytest-qt's qapp: the
+# Gremlin app loading Main.qml) may stand still for seconds on a busy PC. An
+# exception raised into the main thread there crashed the run (access
+# violation inside Qt). A slow start-up is waited out; a stuck one ends the
+# run with the report, raising nothing.
+_SLOW_START = """
+import fake_hardware
+import joystick_gremlin
+import pytest
+
+fake_hardware.install(vjoy_ids=(1,))
+
+
+@pytest.fixture(scope="session")
+def qapp_cls():
+    return joystick_gremlin.JoystickGremlinApp
+
+
+def test_app_starts(qapp):
+    assert isinstance(qapp, joystick_gremlin.JoystickGremlinApp)
+"""
+
+_STUCK_START = """
+import threading
+
+import pytest
+from PySide6 import QtWidgets
+
+
+class _NeverStarts(QtWidgets.QApplication):
+    def __init__(self, args):
+        super().__init__(args)
+        threading.Event().wait(60)
+
+
+@pytest.fixture(scope="session")
+def qapp_cls():
+    return _NeverStarts
+
+
+def test_app_starts(qapp):
+    pass
+"""
+
+# name: (code, extra environment). Stalls are caught after 1 s (0.1 s for the
+# start-up ones: the real Main.qml load always stands still that long).
+_SAMPLE_ENV = {"GREMLIN_TEST_STALL_AFTER": "1"}
+_START_ENV = {"GREMLIN_TEST_STALL_AFTER": "0.1"}
+_SAMPLES = {
+    **{name: (code, _SAMPLE_ENV) for name, code in _SAMPLES.items()},
+    "slow_start": (
+        _SLOW_START,
+        {**_START_ENV, "GREMLIN_TEST_STARTUP_STALL_AFTER": "60"},
+    ),
+    "stuck_start": (
+        _STUCK_START,
+        {**_START_ENV, "GREMLIN_TEST_STARTUP_STALL_AFTER": "1"},
+    ),
+}
+
+
 @pytest.fixture(scope="module")
 def runs(tmp_path_factory: pytest.TempPathFactory) -> dict[str, tuple[int, str, float]]:
     """Every sample through pytest at once (each waits out real stalls)."""
     started = {}
-    for name, code in _SAMPLES.items():
+    for name, (code, extra) in _SAMPLES.items():
         folder = tmp_path_factory.mktemp(name)
         sample = folder / "test_sample.py"
         sample.write_text(code, encoding="utf-8")
@@ -101,9 +162,9 @@ def runs(tmp_path_factory: pytest.TempPathFactory) -> dict[str, tuple[int, str, 
         env = dict(
             os.environ,
             PYTHONPATH=child_env.python_path(_ROOT / "test", _ROOT),
-            GREMLIN_TEST_STALL_AFTER="1",
             GREMLIN_TEST_HANG_LIMIT="",  # this pytest watches its own tests
             USERPROFILE=str(folder),
+            **extra,
         )
         # To a file, not a pipe: a pipe nobody reads yet fills up and blocks
         # the run writing its stall report.
@@ -161,3 +222,19 @@ def test_the_deadman_ends_a_process_that_keeps_the_gil(runs: dict) -> None:
     assert "Timeout (" in out, out[-3000:]  # faulthandler's stacks
     assert "test_app_made_late_then_idle" in out
     assert code != 0 and took < 60
+
+
+def test_a_slow_start_up_is_waited_out(runs: dict) -> None:
+    code, out, _ = runs["slow_start"]
+    assert "access violation" not in out, out[-3000:]
+    assert "=== STALLED: " not in out, out[-3000:]
+    assert "1 passed" in out and code == 0, out[-3000:]
+
+
+def test_a_stuck_start_up_ends_the_run_raising_nothing(runs: dict) -> None:
+    code, out, took = runs["stuck_start"]
+    assert "access violation" not in out, out[-3000:]
+    assert "=== STALLED: " in out and "test_app_starts" in out, out[-3000:]
+    assert "Start-up hasn't finished within 1 s" in out, out[-3000:]
+    assert "Failing this test." not in out
+    assert code == 3 and took < 60
