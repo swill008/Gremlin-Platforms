@@ -120,13 +120,16 @@ def _osc_rows_kept() -> Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def _no_real_clipboard(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
-    """The Input Tester's Copy buttons never reach the real clipboard in a
-    test: it is the user's, and under a full run it crashed the part
-    (access violation in setText, twice on 2026-10-10)."""
+    """The Input Tester's and Search's Copy never reach the real clipboard in
+    a test: it is the user's, and under a full run it crashed the part
+    (access violation in setText, twice on 2026-10-10; Search's copy test on
+    2026-10-12)."""
     from gremlin.input_tester import model
+    from gremlin.ui import search_model
 
     copied: list[str] = []
     monkeypatch.setattr(model, "_set_clipboard", copied.append)
+    monkeypatch.setattr(search_model, "_set_clipboard", copied.append)
     yield copied
 
 

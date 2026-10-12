@@ -87,17 +87,17 @@ Rectangle {
         active: _root.running && _root.open
     }
 
-    // A control's right-click menu: Find uses… (D-01-SEARCH), Search on what
-    // sends to this pad's control. Keys are "parent:<kind>:<target>".
+    // A control's right-click menu: Find uses… (D-01-SEARCH-INDEX), Search
+    // on what sends to this pad's control: 'xbox:"<pad> <kind> <target>"'.
+    // Keys are "parent:<kind>:<target>"; "" for other keys.
     property string _menuKey: ""
     property string _menuTitle: ""
 
     function findQuery(key) {
         var parts = String(key).split(":")
         if (parts.length < 3 || parts[0] !== "parent")
-            return null
-        return { kind: "output", output: "xbox", outputId: _root.padId,
-                 inputType: ControlMenu.inputTypeOf(parts[1]), inputId: parts.slice(2).join(":") }
+            return ""
+        return "xbox:" + ControlMenu.quoted(_root.padId + " " + parts[1] + " " + parts.slice(2).join(":"))
     }
 
     function openRowMenu(key, title, item, x, y) {

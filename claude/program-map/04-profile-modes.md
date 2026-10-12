@@ -117,6 +117,7 @@ Who else changes profile data (not single-owner)
 
 | Other subsystem | Calls out (this → it) | Called by (it → this) |
 |---|---|---|
+| Search's index (page 01, `gremlin/search_index.py`, D-01-SEARCH-INDEX; built 2026-10-12) | `Profile.to_xml` calls `search_index.note_saved(path)` after a save (profile.py:1691), so the saved file is read into the index again | `SearchIndex` reads every profile in the profiles folder without making it current; a Search result in another profile loads it as File › Load Profile does (01 S166) |
 | Run lifecycle (`code_runner`, `event_handler`) | `activate_gremlin`, `ModeManager.rename_mode/drop_mode` → `EventHandler.rename_mode/drop_mode`; `_profile_running` reads `EventListener.gremlin_active`; `_known_modes` reads `EventHandler.known_modes` | `CodeRunner.start` reads modes, settings, scripts, calls `resolve_start_mode`, `switch_to`, `flush_last_modes`; `EventListener` / `EventHandler` / `macro` / `osc` / `map_to_logical_device` / `text_to_speech` read `ModeManager().current.name` |
 | Actions (`action_plugins/*`) | `PluginManager.tag_map` to build actions on load; `rename_mode` renames Change Mode `_target_modes` in place | Change Mode calls `ModeManager`; Load Profile calls `Backend.loadProfile` / `activate_gremlin`; every action is an `AbstractActionData` |
 | Device Bindings page / binding catalog, Logical Device page, Keyboard, OSC | `signal.modeRenamed` / `modeDeleted` / `modesChanged` / `profileChanged` | edit `inputs` / `library`, `input_snapshot` / `put_input`, `drop_inputs`, `clone_action`, `pick_list` |

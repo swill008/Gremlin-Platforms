@@ -52,7 +52,7 @@ ApplicationWindow {
         id: _modeMenu
         build: function() {
             return ControlMenu.findUsesMenu("mode", _root._menuMode,
-                                            { kind: "mode", mode: _root._menuMode })
+                                            "mode:" + ControlMenu.quoted(_root._menuMode))
         }
     }
 

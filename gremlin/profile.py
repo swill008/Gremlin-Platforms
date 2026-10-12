@@ -1685,6 +1685,10 @@ class Profile:
         # files below (AUD-MOD-03): its History entry, then those files.
         before = self._saved_snapshot
         self._set_saved(text)
+        # Search (D-01-SEARCH-INDEX): re-read this file's rows.
+        from gremlin import search_index
+
+        search_index.note_saved(fpath)
         if before != text:
             # Tools > History: what this save changed (worked out off this thread).
             from gremlin import history_profile

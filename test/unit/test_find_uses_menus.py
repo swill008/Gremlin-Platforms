@@ -1,18 +1,18 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Find uses… (Search, D-01-SEARCH) in the right-click menus: each one
-calls the main window's openSearch(query) with the thing clicked.
+"""Find uses… (Search, D-01-SEARCH-INDEX) in the right-click menus: each
+one calls the main window's openSearch(text) with Search text for the thing
+clicked.
 
 1. A list page's row (Device Bindings here; the four pages share
-   control_menu.js and ControlLayoutModel.findQuery): the input's device,
-   InputType and id. Several rows picked: no Find uses….
+   control_menu.js and ControlLayoutModel.findQuery): device:"<name>" and
+   the input's name. Several rows picked: no Find uses….
 2. An Xbox Output View row (a real right-click on the view-only list):
-   {kind: "output", output: "xbox", outputId: pad, inputType, inputId}.
+   xbox:"<pad> <kind> <control>".
 3. A vJoy Viewer chip (a real right-click; the stick's button sends to
-   vJoy 1 button 2): {kind: "output", output: "vjoy", outputId, inputType
-   button, inputId}.
-4. A mode in Manage Modes (a real right-click on its name): {kind: "mode"}.
+   vJoy 1 button 2): vjoy:"1 button 2".
+4. A mode in Manage Modes (a real right-click on its name): mode:"<name>".
 
 A journey (test/journeys/_harness.py): the app runs in its own process
 off-screen with fake hardware; the main window's openSearch is stood in for
@@ -61,7 +61,7 @@ class _Part:
         return True
 
 
-def _asked(j: Journey, fake: Any) -> list[dict]:  # noqa: ANN401
+def _asked(j: Journey, fake: Any) -> list[str]:  # noqa: ANN401
     """What openSearch was asked since the last look, and forget it."""
     out = [json.loads(q) for q in json.loads(str(j.ev("JSON.stringify(asked)", fake)))]
     j.ev("asked = []; true", fake)
@@ -150,8 +150,10 @@ def _part_row(j: Journey, fake: Any) -> None:  # noqa: ANN401
                 found = _find_item(
                     j,
                     w.contentItem(),
-                    lambda i: i.isVisible()
-                    and i.metaObject().className().startswith("DeviceBindingsPage"),
+                    lambda i: (
+                        i.isVisible()
+                        and i.metaObject().className().startswith("DeviceBindingsPage")
+                    ),
                 )
                 if found is not None:
                     return found
@@ -163,7 +165,11 @@ def _part_row(j: Journey, fake: Any) -> None:  # noqa: ANN401
     layout = j.wait_until(lambda: p.findChild(HardwareLayoutModel), "the page's model")
     j.wait_until(lambda: (layout.property("parentCount") or 0) > 0, "the page's rows")
     key = "parent:button:2"
-    j.ev(f"_menuOnRow = true; _menuOnGroup = false; _menuKey = {key!r}; true", p)
+    j.ev(
+        f"_menuOnRow = true; _menuOnGroup = false; _menuKey = {key!r};"
+        " _menuTitle = 'Button 2'; true",
+        p,
+    )
     j.ev(f"_picked = [{key!r}]; true", p)
     j.out["row:menu"] = json.loads(
         str(
@@ -177,7 +183,6 @@ def _part_row(j: Journey, fake: Any) -> None:  # noqa: ANN401
         )
     )
     j.out["row:asked"] = _asked(j, fake)
-    j.out["row:guid"] = str(uid)
     j.ev(f"_picked = [{key!r}, 'parent:button:1']; true", p)
     j.out["row:many"] = json.loads(
         str(
@@ -211,9 +216,9 @@ def _part_xbox(j: Journey, fake: Any) -> None:  # noqa: ANN401
     j.settle()
     j.ev("Commands.trigger('view.xboxOutput')")
     view = j.wait_until(
-        lambda: (
-            lambda it: it if isinstance(it, QtQuick.QQuickItem) else None
-        )(j.ev("_xboxLoader.item")),
+        lambda: (lambda it: it if isinstance(it, QtQuick.QQuickItem) else None)(
+            j.ev("_xboxLoader.item")
+        ),
         "the Xbox Output View",
     )
     section = j.wait_until(
@@ -230,9 +235,11 @@ def _part_xbox(j: Journey, fake: Any) -> None:  # noqa: ANN401
         lambda: _find_item(
             j,
             tree,
-            lambda i: i.property("key") == key
-            and i.property("rowKind") == "parent"
-            and i.isVisible(),
+            lambda i: (
+                i.property("key") == key
+                and i.property("rowKind") == "parent"
+                and i.isVisible()
+            ),
         ),
         "row A",
     )
@@ -256,9 +263,7 @@ def _part_vjoy(j: Journey, fake: Any) -> None:  # noqa: ANN401
     _right_click(j, win, area)
     # Through the chip (its file's context names the menu): the card's live
     # rows are rebuilt too often to hold on to the menu object itself.
-    j.out["vjoy:menu"] = json.loads(
-        str(j.ev(_run_code("_chipMenu"), area))
-    )
+    j.out["vjoy:menu"] = json.loads(str(j.ev(_run_code("_chipMenu"), area)))
     j.ev("_chipMenu.visible = false; true", area)
     j.settle()
     j.out["vjoy:asked"] = _asked(j, fake)
@@ -287,7 +292,8 @@ def story(j: Journey) -> None:
         "(function() {"
         " var f = Qt.createQmlObject('import QtQuick; QtObject {"
         " property var asked: [];"
-        " function openSearch(q) { asked = asked.concat([JSON.stringify(q)]) } }',"
+        " function openSearch(q) { asked = asked.concat([JSON.stringify(q)]) }"
+        ' function searchDeviceName(g) { return g ? "pJoy Pro" : "" } }\','
         " _root, 'fakeMain');"
         " Helpers.setMainWindow(f); return f })()"
     )
@@ -343,14 +349,7 @@ def test_a_list_row_finds_uses_of_its_input(run: dict) -> None:
     _no_error(run, "row")
     menu = step(run, "row:menu")
     assert menu.index("Find uses…") == menu.index("History") + 1, menu
-    assert step(run, "row:asked") == [
-        {
-            "kind": "input",
-            "deviceGuid": step(run, "row:guid"),
-            "inputType": 3,
-            "inputId": 2,
-        }
-    ]
+    assert step(run, "row:asked") == [f'device:"{STICK}" Button 2']
     # Several rows picked: one input to search for is not known.
     assert "Find uses…" not in step(run, "row:many")
 
@@ -360,10 +359,7 @@ def test_an_xbox_output_row_finds_uses_of_the_pad_control(run: dict) -> None:
     menu = step(run, "xbox:menu")
     assert menu["opened"] is True, menu  # the real right-click opened it
     assert menu["rows"] == ["Find uses…"] and menu["ran"], menu
-    assert step(run, "xbox:asked") == [
-        {"kind": "output", "output": "xbox", "outputId": 1, "inputType": 3,
-         "inputId": "a"}
-    ]
+    assert step(run, "xbox:asked") == ['xbox:"1 button a"']
 
 
 def test_a_vjoy_viewer_chip_finds_uses_of_its_output(run: dict) -> None:
@@ -371,10 +367,7 @@ def test_a_vjoy_viewer_chip_finds_uses_of_its_output(run: dict) -> None:
     menu = step(run, "vjoy:menu")
     assert menu["opened"] is True, menu  # the real right-click opened it
     assert menu["rows"] == ["Find uses…"] and menu["ran"], menu
-    assert step(run, "vjoy:asked") == [
-        {"kind": "output", "output": "vjoy", "outputId": 1, "inputType": 3,
-         "inputId": 2}
-    ]
+    assert step(run, "vjoy:asked") == ['vjoy:"1 button 2"']
 
 
 def test_a_mode_finds_its_uses(run: dict) -> None:
@@ -382,6 +375,4 @@ def test_a_mode_finds_its_uses(run: dict) -> None:
     menu = step(run, "modes:menu")
     assert menu["opened"] is True, menu
     assert menu["rows"] == ["Find uses…"] and menu["ran"], menu
-    asked = step(run, "modes:asked")
-    assert len(asked) == 1 and asked[0]["kind"] == "mode", asked
-    assert asked[0]["mode"] == menu["title"]
+    assert step(run, "modes:asked") == [f'mode:"{menu["title"]}"']

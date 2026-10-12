@@ -326,6 +326,10 @@ def save_profile(profile: Profile, path: Path) -> None:
     text = background("save profile", write)
     before = profile._saved_snapshot
     profile._set_saved(text)
+    # Search (D-01-SEARCH-INDEX): re-read this file's rows.
+    from gremlin import search_index
+
+    search_index.note_saved(path)
     if before != text:
         from gremlin import history_profile
 

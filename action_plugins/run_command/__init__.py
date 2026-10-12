@@ -157,6 +157,11 @@ class RunCommandData(AbstractActionData):
         self.arguments: str = ""
 
     @override
+    def search_texts(self) -> list[str]:
+        # The command line the user typed.
+        return [t for t in (self.executable, self.arguments,) if t]
+
+    @override
     def references(self) -> Iterable[references.Reference]:
         # Runs a program: it points at no input, output or mode.
         return ()

@@ -275,19 +275,35 @@ function topics() {
         {
             id: "tools-search",
             section: "Search",
-            title: "Search the profile",
-            body: "<p><b>Search</b> finds every place in the profile that uses one thing: an input, an output, a mode or an action type, on every device and in every mode. It only looks; it changes nothing.</p>"
+            title: "Search your profiles",
+            body: "<p><b>Search</b> finds keys, actions, names and outputs by typing. It looks through every profile in your profiles folder, the profile you have open (with its unsaved changes, marked <b>(open)</b>) and the Device Library's saved setups, and tells you in which profile, on which device, in which mode and on which input each one is. It only looks; it changes nothing.</p>"
                 + "<ol>"
-                + "<li>Choose <b>Search</b> on the toolbar <a href=\"show:toolbar/Search\">Show me ›</a>, <b>Tools › Mapping › Search…</b> <a href=\"show:menu/Tools/Mapping/Search…\">Show me ›</a> or press <b>Ctrl+Shift+F</b>. Or right-click a row, a vJoy Viewer chip, an Xbox Output View row or a mode in Manage Modes and choose <b>Find uses…</b>: Search opens already filled in.</li>"
-                + "<li>Choose what to look for: <b>Input</b> (pick the device and control, or choose <b>Listen</b> and press it), <b>Output</b> (a vJoy device or Xbox pad and its control; an <b>OSC target</b> or <b>OSC Reply to sender</b> and one address or <b>Any address</b>, for every Send OSC to it; or <b>Mouse</b> and a button, the wheel, <b>Motion</b> or <b>Any control</b>, for Map to Mouse and macro mouse steps), <b>Mode</b> or <b>Action type</b> (a <b>Load Profile</b> shows its file in the row).</li>"
-                + "<li>The uses are listed by kind of use, then device, then mode, with a count such as \"3 uses\": <b>Reads this input</b>, <b>Sends to this output</b>, <b>Checks this input</b> or <b>Checks this output</b> (a condition), <b>Switches to this mode</b> and <b>Runs in this mode</b>. A use inside a macro or a condition says so in its action text.</li>"
-                + "<li>Click a use to go to it: the mode changes, the device's page opens and the row flashes. Search stays open; <b>‹ Previous</b> and <b>Next ›</b> step through the uses.</li>"
+                + "<li>Choose <b>Search</b> on the toolbar <a href=\"show:toolbar/Search\">Show me ›</a>, <b>Tools › Mapping › Search…</b> <a href=\"show:menu/Tools/Mapping/Search…\">Show me ›</a> or press <b>Ctrl+Shift+F</b>. Search opens in a window of its own. Or right-click a row, a vJoy Viewer chip, an Xbox Output View row or a mode in Manage Modes and choose <b>Find uses…</b>, or right-click a Home card and choose <b>Search this device</b>: Search opens with the text filled in.</li>"
+                + "<li>Type. Results show as you type. You don't need the whole word: the letters you type, in order, are enough (<b>gr tog</b> finds \"Gear toggle\"); exact matches and matches at the start of a word come first, and the matching letters are highlighted.</li>"
+                + "<li>Or choose <b>Listen</b> and press a stick control or a key, or send an OSC message: Search shows <b>Heard: …</b> and searches for it. <b>Esc</b> stops listening. OSC is heard only while <b>Listen for OSC messages</b> is on.</li>"
+                + "<li>Click a result, or select it and press <b>Enter</b>, to open it: the mode changes, the device's page opens and the row flashes. A result in another profile asks you to save the open profile first if it has unsaved changes, then opens that profile. A Device Library result opens the Device Library on that setup. Search stays open.</li>"
                 + "</ol>"
+                + "<h4>Narrowing a search</h4>"
+                + "<ul>"
+                + "<li>Start a word with a <b>prefix</b> to look in one place only: <b>key:</b>, <b>vjoy:</b>, <b>xbox:</b>, <b>osc:</b>, <b>mouse:</b>, <b>mode:</b>, <b>profile:</b>, <b>device:</b> or <b>action:</b>. Put a name with spaces in quotes, for example <b>device:\"T.16000M\"</b>. The <b>?</b> button lists them with an example each.</li>"
+                + "<li>The three buttons beside the box are off until you turn them on: <b>Aa</b> (Match case), <b>ab</b> (Whole word) and <b>.*</b> (Regular expression; letters-in-order matching is off while it is on).</li>"
+                + "<li>On the left: <b>Look in</b> (<b>All profiles</b>, <b>This profile only</b> or <b>Device Library</b>), <b>Show</b> (<b>Keys</b>, <b>Actions</b>, <b>Names</b>, <b>vJoy</b>, <b>Xbox</b>, <b>OSC</b>, each with how many results it has), <b>Health</b> and <b>Recent</b> (your last 10 searches; click one to search it again).</li>"
+                + "</ul>"
+                + "<h4>Reading the results</h4>"
+                + "<ul>"
+                + "<li>Results are grouped by profile, then device, with a count such as \"3 uses\". Click a group heading to fold it; <b>Fold all</b> and <b>Unfold all</b> do every group. Click the <b>Input</b>, <b>Mode</b> or <b>Action</b> column heading to sort by it.</li>"
+                + "<li><b>Used twice</b>: two or more inputs send to the same output in the same mode of the same profile. <b>[binding output not found]</b>: the output isn't there (the device is missing or switched off, that button or axis isn't on it, or a Send OSC's target is gone or OSC output is Off). <b>Not plugged in</b>: that device isn't connected now. The <b>Health</b> filters show only these, and <b>No bindings</b>.</li>"
+                + "<li>The pane on the right shows the selected result in full: its actions, the modes it comes through and, for <b>Used twice</b>, the other inputs. Close it with its ×; Search remembers whether it is open.</li>"
+                + "<li>Right-click a result for <b>Open</b>, <b>Open in Device Mapping Editor</b>, <b>Copy as text</b> and <b>Search for this target</b>.</li>"
+                + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>A binding whose output isn't there (the device is missing or switched off, that button or axis isn't on it, or a Send OSC's target is gone or OSC output is Off) shows <b>[binding output not found]</b>.</li>"
-                + "<li>With nothing found, the list says \"No uses found.\" While Search is open, the list follows your changes to bindings and modes.</li>"
-                + "<li>The <b>Find</b> bar on a page only filters that page. Search looks through the whole profile.</li>"
+                + "<li>Keys: the box has the focus when Search opens; <b>Up</b> and <b>Down</b> move through the results, <b>Enter</b> opens one, <b>Esc</b> clears the box, and <b>Esc</b> again closes Search.</li>"
+                + "<li>With nothing found, Search says what it looked for and where, offers “Did you mean …?” for a likely typing mistake, and one-click fixes such as <b>Search all profiles</b> or <b>Clear filters</b>. Typing mistakes are only offered there; they are not matched in the results.</li>"
+                + "<li>Search reads your profiles in the background. While it does, the line under the box says <b>Indexing N of M profiles…</b> and the results found so far are shown. A profile it can't read is listed there with the reason; the others are still searched. Changes you make, saved or not, show up in the results.</li>"
+                + "<li>A list of suggestions under the box while you type is off by default; turn on <b>Suggestion list while typing</b> in the Search window to use it.</li>"
+                + "<li>Search remembers its size and place, your last search, <b>Look in</b>, the filters and the three buttons.</li>"
+                + "<li>The <b>Find</b> bar on a page only filters that page. Search looks through all your profiles.</li>"
                 + "</ul>",
             related: ["tools-history", "tools-viewers"]
         },

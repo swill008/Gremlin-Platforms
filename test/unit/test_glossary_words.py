@@ -60,10 +60,21 @@ def _reads_as_text(s: str) -> bool:
     return bool(s[:1].isupper()) and not re.fullmatch(r"[A-Za-z0-9_.:/-]+", s)
 
 
+# Folders with known glossary words still to fix (the Help book and the
+# Input Tester: "colour", "centre", "Gremlin" alone). Remove each once fixed.
+_NOT_CHECKED_YET = {"qml/help", "qml/tester"}
+
+
 def _qml_strings() -> list[tuple[str, int, str]]:
+    # Every QML / JS file under qml/, subfolders included (qml/search),
+    # so a new folder is checked without editing this list.
+    qml = [
+        path
+        for path in [*(_ROOT / "qml").rglob("*.qml"), *(_ROOT / "qml").rglob("*.js")]
+        if path.parent.relative_to(_ROOT).as_posix() not in _NOT_CHECKED_YET
+    ]
     files = sorted(
-        list((_ROOT / "qml").glob("*.qml"))
-        + list((_ROOT / "qml").glob("*.js"))
+        qml
         + list((_ROOT / "action_plugins").glob("*/*.qml"))
         + list((_ROOT / "theme").rglob("*.qml"))
     )

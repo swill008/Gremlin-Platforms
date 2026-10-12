@@ -122,6 +122,11 @@ class DescriptionData(AbstractActionData):
         self.description = ""
 
     @override
+    def search_texts(self) -> list[str]:
+        # The note the user typed.
+        return [t for t in (self.description,) if t]
+
+    @override
     def references(self) -> Iterable[references.Reference]:
         # A note only: it points at nothing.
         return ()

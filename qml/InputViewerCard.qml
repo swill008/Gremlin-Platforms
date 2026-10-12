@@ -43,14 +43,13 @@ ColumnLayout {
         guid: deviceGuid
     }
 
-    // A chip's right-click menu: Find uses… (D-01-SEARCH), Search on what
-    // sends to its vJoy button.
-    property var _menuQuery: null
+    // A chip's right-click menu: Find uses… (D-01-SEARCH-INDEX), Search on
+    // what sends to its vJoy button: 'vjoy:"<device> button <n>"'.
+    property string _menuQuery: ""
     property string _menuTitle: ""
 
     function chipQuery(vjoyId, vjoyInput) {
-        return { kind: "output", output: "vjoy", outputId: vjoyId,
-                 inputType: ControlMenu.inputTypeOf("button"), inputId: vjoyInput }
+        return "vjoy:" + ControlMenu.quoted(vjoyId + " button " + vjoyInput)
     }
 
     function openChipMenu(chip, vjoyId, vjoyInput, vjoyLabel, x, y) {

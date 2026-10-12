@@ -92,7 +92,7 @@ function standardMenu(page, opts) {
         if (!many)
             quick.push(M.action("History", function() { page._openHistory() }))
         if (!many && typeof L.findQuery === "function")
-            quick.push(findUsesItem(L.findQuery(page._menuKey)))
+            quick.push(findUsesItem(_withTitle(L.findQuery(page._menuKey), page._menuTitle)))
     }
     if (onGroup)
         quick.push(M.action("Rename Group", function() {
@@ -153,6 +153,17 @@ function standardMenu(page, opts) {
     return M.menu(kind, title, quick, sections, header)
 }
 
+// The row's query with its title (the input's system name) for the text.
+function _withTitle(query, title) {
+    if (!query || !query.kind)
+        return null
+    var q = {}
+    for (var k in query)
+        q[k] = query[k]
+    q.title = String(title || "")
+    return q
+}
+
 // An action row's menu: Open and Delete. opts: kind ("logical" gives
 // "logical-action"), title, open(), remove().
 function actionMenu(opts) {
@@ -163,29 +174,82 @@ function actionMenu(opts) {
     ])
 }
 
-// Find uses… (Search, D-01-SEARCH): opens the main window's Search filled in
-// with query, e.g. {kind: "input", deviceGuid, inputType, inputId},
-// {kind: "output", output: "vjoy"|"xbox", outputId, inputType, inputId} or
-// {kind: "mode", mode}. False when there is no main window to ask.
-function openSearch(query) {
+// Find uses… (Search, D-01-SEARCH-INDEX): opens the main window's Search
+// with text in the box, e.g. 'vjoy:"1 button 2"' or 'mode:"Default"'. An
+// old-style query dict is turned into that text (searchTextOf). False when
+// there is no main window to ask.
+function openSearch(textOrQuery) {
     var main = Helpers.mainWindow()
     if (!main || typeof main.openSearch !== "function")
         return false
-    main.openSearch(query)
+    main.openSearch(searchTextOf(textOrQuery))
     return true
 }
 
 // gremlin.types.InputType by its word, as the list keys spell it.
 var _INPUT_TYPE = { axis: 2, button: 3, hat: 4 }
+var _TYPE_WORD = { 1: "key", 2: "axis", 3: "button", 4: "hat" }
 
 function inputTypeOf(word) {
     return _INPUT_TYPE[String(word)] || 0
 }
 
-// The Find uses… row; off without a query (not a listed input).
-function findUsesItem(query) {
-    var ok = !!query && !!query.kind
-    return _M().action("Find uses…", function() { openSearch(query) }, ok)
+// A prefix's value in quotes (a quote inside is dropped).
+function quoted(text) {
+    return '"' + String(text).replace(/"/g, "") + '"'
+}
+
+function _words(parts) {
+    return parts.filter(function(p) {
+        return p !== null && p !== undefined && typeof p !== "object" && String(p).length > 0
+    }).join(" ")
+}
+
+// The Search box text for textOrQuery: text as it is; an old-style query
+// dict as prefix text: {kind: "mode", mode} -> mode:"<mode>", {kind:
+// "action", actionTag} -> action:"<tag>", {kind: "output", output, outputId,
+// inputType, inputId, outputKey} -> <output>:"<id> <type> <input>", {kind:
+// "input", deviceGuid, inputType, inputId, title} -> device:"<name>" <input>
+// (a key: key:"<title>"). The device's name comes from the main window's
+// searchDeviceName(guid). "" for nothing.
+function searchTextOf(textOrQuery) {
+    var q = textOrQuery
+    if (q === null || q === undefined)
+        return ""
+    if (typeof q === "string")
+        return q
+    var kind = String(q.kind || "")
+    if (kind === "mode")
+        return q.mode ? "mode:" + quoted(q.mode) : ""
+    if (kind === "action")
+        return q.actionTag ? "action:" + quoted(q.actionTag) : ""
+    if (kind === "output") {
+        var out = String(q.output || "")
+        if (!out.length)
+            return ""
+        var value = (out === "osc" || out === "mouse")
+            ? _words([q.outputKey, q.inputId])
+            : _words([q.outputId, _TYPE_WORD[Number(q.inputType)], q.inputId])
+        return value.length ? out + ":" + quoted(value) : out + ":"
+    }
+    if (kind === "input") {
+        var type = Number(q.inputType)
+        var title = String(q.title || "")
+        if (type === 1 && title.length)
+            return "key:" + quoted(title)
+        var main = Helpers.mainWindow()
+        var name = (main && typeof main.searchDeviceName === "function")
+            ? String(main.searchDeviceName(String(q.deviceGuid || "")) || "") : ""
+        var what = title.length ? title : _words([_TYPE_WORD[type], q.inputId])
+        return _words([name.length ? "device:" + quoted(name) : "", what])
+    }
+    return ""
+}
+
+// The Find uses… row; off without something to search for.
+function findUsesItem(textOrQuery) {
+    var text = searchTextOf(textOrQuery)
+    return _M().action("Find uses…", function() { openSearch(text) }, text.length > 0)
 }
 
 // A menu of only Find uses…, for the views without a row menu of their own

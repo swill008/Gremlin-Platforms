@@ -196,6 +196,11 @@ class TextToSpeechData(AbstractActionData):
         self.playback_pitch: float = 0.0
 
     @override
+    def search_texts(self) -> list[str]:
+        # The text it speaks.
+        return [t for t in (self.text,) if t]
+
+    @override
     def references(self) -> Iterable[references.Reference]:
         # Speaks text: it points at no input, output or mode.
         return ()

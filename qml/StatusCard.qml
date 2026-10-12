@@ -11,6 +11,8 @@ import Gremlin.Device
 import Gremlin.Menus
 import Gremlin.Style
 
+import "control_menu.js" as ControlMenu
+
 Rectangle {
     id: _card
 
@@ -596,7 +598,10 @@ Rectangle {
                 // The Xbox pad view is part of the Xbox Output View now.
                 xbox ? null : MenuModel.action("vJoy Viewer", function() { _card.openPairing() }),
                 (notStick || xbox || logical) ? null
-                    : MenuModel.action("Device Information", function() { _card.openDeviceInformation() })
+                    : MenuModel.action("Device Information", function() { _card.openDeviceInformation() }),
+                // Search (D-01-SEARCH-INDEX) on every binding of this device,
+                // in every profile: device:"<name>".
+                MenuModel.action("Search this device", function() { _card.searchDevice() })
             ]),
             MenuModel.section("cards", "Cards", [
                 MenuModel.action("Stack Selected Cards", function() { _card.stackSelectedCards() }, _card.canStackSelected),
@@ -651,6 +656,13 @@ Rectangle {
             { label: "Undo", enabled: _card.canUndo, run: function() { _card.undoStep() } },
             { label: "Redo", enabled: _card.canRedo, run: function() { _card.redoStep() } }
         ])
+    }
+
+    // The Search window on this device's bindings (D-01-SEARCH-INDEX).
+    function searchDevice() {
+        var name = String(rawName || cardName || "")
+        if (name.length)
+            ControlMenu.openSearch("device:" + ControlMenu.quoted(name))
     }
 
     ContextMenu {

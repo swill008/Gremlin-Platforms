@@ -366,6 +366,11 @@ class AbstractActionData(EditNoted, ABC):
         profiles), for gremlin.usages. Child actions are walked by the
         finder, not declared here; return () when it points at nothing."""
 
+    def search_texts(self) -> list[str]:
+        """User-entered text Search should find (a note, spoken text, a
+        command line); targets declared by references() are not repeated."""
+        return []
+
     def get_actions(
         self, selector: str | None = None
     ) -> tuple[list[AbstractActionData], list[str]]:

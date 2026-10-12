@@ -155,6 +155,11 @@ class PlaySoundData(AbstractActionData):
         self.sound_volume: int = 50
 
     @override
+    def search_texts(self) -> list[str]:
+        # The sound file the user picked.
+        return [t for t in (self.sound_filename,) if t]
+
+    @override
     def references(self) -> Iterable[references.Reference]:
         # Plays a sound file: it points at no input, output or mode.
         return ()

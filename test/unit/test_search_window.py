@@ -2,8 +2,9 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Search (to-do 9, D-01-SEARCH): the toolbar button, Tools › Mapping ›
-Search…, the one Search window and Main.goToBinding.
+"""Search (D-01-SEARCH, D-01-SEARCH-INDEX): the toolbar button, Tools ›
+Mapping › Search…, the one Search window (qml/DialogSearch.qml: the box,
+first open, results, Esc, nothing found) and Main.goToBinding.
 
 A journey (test/journeys/_harness.py): the real main window off-screen in
 its own process (fake "pJoy Pro" with an input module claiming buttons 1-8,
@@ -57,36 +58,54 @@ def story(j: Journey) -> None:
         "return { text: l[i].text, group: l[i].group, "
         'shortcut: l[i].shortcut || "" }; return null })()',
     )
-    # Main.openSearch: one window, raised and filled when asked again.
+    # Main.openSearch: one window, raised and its box filled when asked again.
     out["open1"] = _safe(
         j,
-        '(function() { var w = _root.openSearch({kind: "mode", mode: "Default"}); '
-        "return w ? w.title : null })()",
+        "(function() { var w = _root.openSearch(); "
+        "return w ? { title: w.title, typed: w.typed, "
+        "box: w.search.text } : null })()",
     )
     j.settle()
     out["open2"] = _safe(
         j,
         '(function() { var a = Helpers.windowOf("DialogSearch.qml"); '
-        'var b = _root.openSearch({kind: "action", actionTag: "remap"}); '
-        "return { same: a !== null && a === b, kind: b ? b.usages.kind : '', "
-        "tag: b ? b.usages.actionTag : '' } })()",
+        'var b = _root.openSearch("mode:Default"); '
+        "return { same: a !== null && a === b, text: b ? b.search.text : '' } })()",
     )
-    # OSC targets and the mouse in the Output picker, filled by key.
-    out["keyed"] = _safe(
+    # A binding in the open profile is found as you type, grouped profile ›
+    # device, and a result's row carries the SearchRow field names.
+    from gremlin import search_index
+
+    uid = j.stick().device_guid.uuid
+    j.map_button(uid, 6, j.profile.modes.first_mode, 4)
+    search_index.default_index().rebuild_open(j.profile)
+    win = 'Helpers.windowOf("DialogSearch.qml")'
+    _safe(j, win + '.searchFor("Button 6")')
+    j.await_value(
+        lambda: (_safe(j, win + ".search.resultCount") or 0) > 0, True, timeout=8.0
+    )
+    out["found"] = _safe(
         j,
-        '(function() { var w = _root.openSearch({kind: "output", output: "mouse", '
-        'inputId: "Left"}); var m = w.usages; var a = { output: m.output, '
-        "inputId: m.inputId, labels: w.choices('output').map(function(r) { "
-        "return r.label }) }; "
-        '_root.openSearch({kind: "output", output: "osc", outputKey: "t9"}); '
-        "a.osc = [m.output, m.outputKey, m.inputId === null "
-        "|| m.inputId === undefined]; return a })()",
+        "(function() { var w = " + win + "; w.move(1); var r = w.rowOf(w.current); "
+        "return { count: w.search.resultCount > 0, picked: w.current >= 0, "
+        "fields: r ? ['source', 'device_guid', 'input_label', 'binding_index']"
+        ".every(function(k) { return k in r }) : false, "
+        "label: r ? r.input_label : '' } })()",
     )
-    out["tabs"] = _safe(
+    # Nothing found, then Esc clears the box and Esc again closes the window.
+    _safe(j, win + '.searchFor("zzqqxxw")')
+    j.await_value(lambda: _safe(j, win + ".nothingFound"), True, timeout=8.0)
+    out["nothing"] = _safe(j, win + ".search.nothingFoundText")
+    out["esc"] = _safe(
         j,
-        '(function() { var w = Helpers.windowOf("DialogSearch.qml"); '
-        "return w ? w.kindLabels : null })()",
+        "(function() { var w = " + win + "; w.escapePressed(); "
+        "var cleared = w.search.text === ''; w.escapePressed(); "
+        "return { cleared: cleared } })()",
     )
+    j.settle()
+    out["closed"] = _safe(j, win + " === null")
+    _safe(j, "_root.openSearch()")
+    j.settle()
 
     # Main.goToBinding: the mode, the device's page and the row.
     j.profile.modes.add_mode("Air")
@@ -151,7 +170,7 @@ def test_the_toolbar_has_search_after_input_tester(result: dict) -> None:
     assert button["caption"] == "Search"
     assert button["glyph"] == 0xF52A  # Bootstrap Icons "search"
     assert button["tooltip"] == (
-        "Search the profile: every use of an input, output, mode or action type"
+        "Search every profile: keys, actions, names and outputs"
     )
     assert button["afterTester"] and button["beforeEditor"]
     assert button["helpFinds"] is True
@@ -166,18 +185,21 @@ def test_tools_mapping_has_search(result: dict) -> None:
 
 
 def test_open_search_opens_one_window_and_fills_it(result: dict) -> None:
-    assert result["open1"] == "Search"
-    assert result["open2"] == {"same": True, "kind": "action", "tag": "remap"}
-    assert result["tabs"] == ["Input", "Output", "Mode", "Action type"]
+    assert result["open1"] == {"title": "Search", "typed": False, "box": ""}
+    assert result["open2"] == {"same": True, "text": "mode:Default"}
 
 
-def test_output_picker_has_osc_targets_and_mouse(result: dict) -> None:
-    keyed = result["keyed"]
-    assert isinstance(keyed, dict), keyed
-    assert (keyed["output"], keyed["inputId"]) == ("mouse", "Left")
-    assert "Mouse" in keyed["labels"]
-    assert "OSC target Default" in keyed["labels"]
-    assert keyed["osc"] == ["osc", "t9", True]
+def test_typing_finds_the_open_profile_binding(result: dict) -> None:
+    found = result["found"]
+    assert isinstance(found, dict), found
+    assert found["count"] and found["picked"] and found["fields"], found
+    assert found["label"] == "Button 6"
+
+
+def test_nothing_found_then_esc_clears_and_esc_again_closes(result: dict) -> None:
+    assert str(result["nothing"]).startswith("Nothing found for 'zzqqxxw' in ")
+    assert result["esc"] == {"cleared": True}
+    assert result["closed"] is True
 
 
 def test_go_to_binding_opens_the_device_page_in_its_mode_on_the_row(

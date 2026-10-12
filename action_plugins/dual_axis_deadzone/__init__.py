@@ -244,6 +244,11 @@ class DualAxisDeadzoneData(AbstractActionData):
         self.output2_actions = []
 
     @override
+    def search_texts(self) -> list[str]:
+        # The label the user typed.
+        return [t for t in (self.label,) if t]
+
+    @override
     def references(self) -> Iterable[references.Reference]:
         # The two axes it reads; its actions are walked by the finder.
         return axis_pair.axis_references(self.name, (self.axis1, self.axis2))

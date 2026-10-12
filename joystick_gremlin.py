@@ -173,7 +173,7 @@ if _startup_failure is None:
         import gremlin.input_tester_link  # noqa: F401  # Tools › Input Tester…
         import gremlin.ui.history_model  # noqa: F401
         import gremlin.ui.binding_catalog  # noqa: F401  # Device-Configuration-Macro Change
-        import gremlin.ui.usages_model  # noqa: F401  # Search (D-01-SEARCH)
+        import gremlin.ui.search_model  # noqa: F401  # Search (D-01-SEARCH-INDEX)
         import gremlin.ui.keyboard_layout  # noqa: F401
         import gremlin.ui.hardware_layout  # noqa: F401
         import gremlin.ui.logical_layout  # noqa: F401

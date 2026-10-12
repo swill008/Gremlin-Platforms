@@ -67,6 +67,8 @@ class Usage:
     action_tag: str = ""
     # The action's own use, not one of its macro steps or conditions.
     own: bool = True
+    # User-entered text of the action (search_texts()), on its uses-action.
+    texts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -114,6 +116,15 @@ def _binding_text(root: object) -> str:
         if tag != "root"
     ]
     return "; ".join(leaves) or "No actions"
+
+
+def _search_texts(action: Any) -> tuple[str, ...]:  # noqa: ANN401
+    """The action's user-entered text for Search; a failing one gives none."""
+    try:
+        return tuple(str(t) for t in action.search_texts() if t)
+    except Exception:  # noqa: BLE001 - one broken piece hides nothing else
+        syslog.debug("usages: search_texts() failed", exc_info=True)
+        return ()
 
 
 # Classes whose references() failed, logged once each.
@@ -311,6 +322,7 @@ def _item_usages(
                 found.append(Ref(ref.target, use))
             if tag != "root":
                 use = usage(index, "uses-action", text, here, False, "", tag)
+                use = replace(use, texts=_search_texts(action))
                 found.append(Ref(("action", tag), use))
         broken = any(ref.usage.not_found for ref in found)
         summary = _binding_text(root)

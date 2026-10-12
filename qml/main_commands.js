@@ -111,7 +111,7 @@ function commandList() {
           run: function() { openTool("DialogManageModes.qml") } },
         // Search (D-01-SEARCH): every use of an input, output, mode or action type.
         { id: "tools.search", text: "Search…", group: "Tools › Mapping", shortcut: "Ctrl+Shift+F",
-          keywords: "find uses where used usages references binding input output mode action",
+          keywords: "search find index type key keys action name profile profiles uses where used vjoy xbox osc mouse mode device listen",
           run: function() { openSearch(null) } },
         // The OSC Monitor (D-09-OSC-MONITOR, 09 S138): the OSC page with
         // its Monitor shown.

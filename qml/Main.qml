@@ -22,6 +22,7 @@ import "window_registry.js" as Registry
 import "main_commands.js" as MainCommands
 import "device_library_open.js" as DeviceLibraryOpen
 import "help_links.js" as HelpLinks
+import "control_menu.js" as ControlMenu
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -1388,14 +1389,98 @@ ApplicationWindow {
     // devicePhotoMaker asks (gremlin/ui/device_photo.py).
     DevicePhotoHost {}
 
-    // Search (D-01-SEARCH): the one Search window, raised when open and
-    // filled with query ({kind, deviceGuid, inputType, inputId, output,
-    // outputId, mode, actionTag}) when one is given.
-    function openSearch(query) {
+    // Search (D-01-SEARCH-INDEX): the one Search window, raised when open,
+    // with textOrQuery in its box: text as it is ('vjoy:"2 button 30"'), or
+    // an old-style query dict as prefix text (control_menu.js searchTextOf).
+    // Nothing (null): the window as it was left.
+    function openSearch(textOrQuery) {
         var win = Helpers.createComponent("DialogSearch.qml")
-        if (win && query)
-            win.fill(query)
+        var text = ControlMenu.searchTextOf(textOrQuery)
+        if (win && text.length) {
+            if (typeof win.searchFor === "function")
+                win.searchFor(text)
+            else if (typeof win.fill === "function")
+                win.fill(text)
+        }
         return win
+    }
+
+    // The device's name as Search knows it (device:"<name>"), by guid.
+    function searchDeviceName(guid) {
+        if (uiState && _plainGuid(guid) === _plainGuid(uiState.logicalDeviceGuid))
+            return "Logical Device"
+        return cardDeviceName(_cardForGuid(guid))
+    }
+
+    // Going to a Search result, by device kind (the card's page tab): one
+    // entry per kind; a new kind of device adds its own (PLUG-IN POINT,
+    // D-01-SEARCH-INDEX). Each takes (card, deviceGuid) and opens the
+    // device's page; the card is null for the Logical Device.
+    readonly property var goToHandlers: ({
+        "logical": function(card, guid) { openLogicalDeviceNow() },
+        "physical": function(card, guid) { openDeviceBindingsNow(card) },
+        "keyboard": function(card, guid) { openDeviceBindingsNow(card) },
+        "osc": function(card, guid) { openDeviceBindingsNow(card) },
+        "xbox": function(card, guid) { openDeviceBindingsNow(card) }
+    })
+
+    // The device kind of a guid: "logical" or its card's tab; "" when no
+    // card shows it.
+    function deviceKindOf(guid) {
+        if (uiState && _plainGuid(guid) === _plainGuid(uiState.logicalDeviceGuid))
+            return "logical"
+        var card = _cardForGuid(guid)
+        return card ? String(card.tab || "physical") : ""
+    }
+
+    // A Search result (a SearchRow's fields, gremlin/search_index.py) shown
+    // where it lives: "open" in the open profile (goToBinding); "profile",
+    // another profile file: unsaved changes asked about first (Save /
+    // Discard / Cancel), then that file opened and the row shown; "library":
+    // the Device Library on that device's setup. False when nothing is done.
+    function goToSearchRow(row) {
+        if (!row)
+            return false
+        var source = String(row.source || "")
+        var title = String(row.custom_name || row.input_label || "")
+        var go = function() {
+            goToBinding(row.device_guid, row.mode, row.input_type, row.input_id,
+                        row.binding_index, title)
+        }
+        if (source === "library") {
+            openDeviceLibrary(String(row.device_name || ""), String(row.device_guid || ""), "")
+            return true
+        }
+        if (source === "open") {
+            go()
+            return true
+        }
+        if (source !== "profile" || !backend)
+            return false
+        var path = String(row.source_path || "")
+        if (!path.length)
+            return false
+        if (_samePath(path, backend.profilePath())) {
+            go()
+            return true
+        }
+        leaveDisplayThen(function() {
+            guardUnsavedChanges(function() {
+                backend.loadProfile(path)
+                // Only once that file is the open profile (a file that
+                // didn't load leaves the old one, and its error).
+                if (_samePath(path, backend.profilePath()))
+                    Qt.callLater(go)
+            })
+        })
+        return true
+    }
+
+    function _samePath(a, b) {
+        var norm = function(p) {
+            return String(p || "").replace(/^file:\/\/\/?/, "").replace(/\\/g, "/").toLowerCase()
+        }
+        return norm(a).length > 0 && norm(a) === norm(b)
     }
 
     // A Search result (D-01-SEARCH): that mode, the device's own page
@@ -1407,10 +1492,11 @@ ApplicationWindow {
         if (!uiState)
             return
         var guid = String(deviceGuid || "")
-        var logical = _plainGuid(guid) === _plainGuid(uiState.logicalDeviceGuid)
-        var card = logical ? null : _cardForGuid(guid)
-        if (!logical && !card)
+        var kind = deviceKindOf(guid)
+        var open = goToHandlers[kind]
+        if (!open)
             return
+        var card = kind === "logical" ? null : _cardForGuid(guid)
         leaveDisplayThen(function() {
             var name = String(mode || "")
             if (name.length) {
@@ -1419,10 +1505,7 @@ ApplicationWindow {
                 else
                     uiState.setCurrentMode(name)
             }
-            if (logical)
-                openLogicalDeviceNow()
-            else
-                openDeviceBindingsNow(card)
+            open(card, guid)
             _goTo = { key: _rowKeyOf(inputType, inputId), mode: name,
                       title: String(title || ""), tries: 0, shown: 0 }
             _goToTimer.restart()
@@ -1887,7 +1970,7 @@ ApplicationWindow {
                         id: _searchButton
                         compact: _root.toolbarCompact
                         text: ""
-                        tooltip: qsTr("Search the profile: every use of an input, output, mode or action type")
+                        tooltip: qsTr("Search every profile: keys, actions, names and outputs")
                         caption: "Search"
 
                         onClicked: () => { openSearch(null) }

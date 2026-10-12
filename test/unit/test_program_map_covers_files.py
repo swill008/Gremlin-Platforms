@@ -73,14 +73,13 @@ def _program_units() -> list[tuple[str, list[str]]]:
     def file_unit(path: Path, *folders: str) -> None:
         units.append((_rel(path), [_rel(path), *folders]))
 
+    # Every QML / JS file under qml/, subfolders included (qml/help, the
+    # Input Tester's qml/tester, Search's qml/search): each file, or the
+    # folder it sits in (and any folder above it inside qml/).
     qml = _ROOT / "qml"
-    for path in sorted([*qml.glob("*.qml"), *qml.glob("*.js")]):
-        file_unit(path)
-    for path in sorted((qml / "help").glob("*.js")):
-        file_unit(path, "qml/help/")
-    # The Input Tester's window (D-02-INPUT-TESTER).
-    for path in sorted((qml / "tester").glob("*.qml")):
-        file_unit(path, "qml/tester/")
+    for path in sorted([*qml.rglob("*.qml"), *qml.rglob("*.js")]):
+        folders = [_rel(p) + "/" for p in path.parents if qml in p.parents]
+        file_unit(path, *folders)
 
     for path in sorted((_ROOT / "gremlin").rglob("*.py")):
         if "__pycache__" in path.parts:
