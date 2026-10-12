@@ -2,17 +2,18 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Xbox output page (its Output View, which also holds the live pads
-since the Xbox Viewer window went, D-NEXTLIST-1 item 1) checks the ViGEmBus
-driver once, at its top, like HidHide (XboxDriverCheck). It sits above the
-pad's name. The page has no Appearance panel, so the header shows no
-Appearance button there (vJoy outputs keep theirs).
+"""The Xbox output page (its Output View) shows the ViGEmBus driver only
+as one red line when the driver is missing, "ViGEmBus driver not found: the
+Xbox pads can't be sent.", with a link "Open Xbox Setup" (D-XBOX-PADS): the
+full check (XboxDriverCheck: version, Get ViGEmBus, Test ViGEmBus) moved to
+Xbox Setup. The line shows even when nothing is mapped to Xbox yet; then the
+page has no pad sections, no Find bar and no list Appearance button. The
+Output View's own Appearance button stays hidden on the Xbox tab (vJoy
+outputs keep theirs).
 
-The row shows whether ViGEmBus is installed and running, its version, and
-what to do when it isn't, with Get ViGEmBus and Test ViGEmBus. It shows
-even when nothing is mapped to Xbox yet. The page is opened off-screen
-in its own process with a fresh profile (no Map to Xbox actions), and the
-driver is faked so the result doesn't depend on this PC.
+XboxDriverStatus (the check's wording) is tested here too. The page is
+opened off-screen in its own process with a fresh profile (no Map to Xbox
+actions), and the driver is faked so the result doesn't depend on this PC.
 """
 
 from __future__ import annotations
@@ -83,17 +84,18 @@ page.setHeight(600)
 host.show()
 QtTest.QTest.qWait(400)
 items = list(walk(page))
-row = next((i for i in items if i.objectName() == 'xboxDriverRow'), None)
-status = next((i for i in items if i.objectName() == 'xboxDriverStatus'), None)
-out['page-row'] = row is not None and row.isVisible() and row.height() > 0
+line = next((i for i in items if i.objectName() == 'xboxDriverMissing'), None)
+link = next((i for i in items if i.objectName() == 'xboxOpenSetupLink'), None)
+out['line'] = line is not None and line.isVisible() and line.height() > 0
+out['line-text'] = line.property('text') if line else ''
+out['link'] = link.property('text') if link and link.isVisible() else ''
+out['line-top'] = top(line)
+# The full check is Xbox Setup's now.
 out['page-rows'] = len([i for i in items if i.objectName() == 'xboxDriverRow'])
 out['texts'] = shown_texts(items)
-out['page-row-top'] = top(row)
-out['page-status'] = status.property('text') if status else ''
-# Above the Live pads heading (the pad's name is in the page header).
-name = next((i for i in items if i.objectName() == 'xboxPadsHeading'), None)
-out['above-name'] = bool(row and name and top(row) < top(name))
-# The page's own list Appearance for the page bar (03 S139, 05 S125).
+find = next((i for i in items if i.objectName() == 'xboxOutputFindBar'), None)
+out['find-shown'] = bool(find and find.isVisible())
+# Nothing bound: no list Appearance on the page bar.
 out['list-appearance'] = page.property('pageBar') is not None
 appear = next((i for i in items if i.objectName() == 'xboxOutputAppearance'), None)
 out['list-appearance-key'] = appear.property('pageKey') if appear else ''
@@ -138,34 +140,35 @@ def run(tmp_path_factory: pytest.TempPathFactory) -> dict:
     return json.loads(lines[0][len("RESULT "):])
 
 
-def test_the_driver_check_shows_with_nothing_mapped(run: dict) -> None:
-    assert run["page-row"] is True
-    assert "No Map to Xbox actions on connected devices." in run["texts"]
-    # One check: the page's own (the viewer window's is gone).
-    assert run["page-rows"] == 1
+def test_one_red_line_with_nothing_mapped(run: dict) -> None:
+    assert run["line"] is True
+    assert run["line-text"] == (
+        "ViGEmBus driver not found: the Xbox pads can't be sent."
+    )
+    assert run["link"] == "Open Xbox Setup"
+    # The full check (Get ViGEmBus, Test ViGEmBus) is in Xbox Setup.
+    assert run["page-rows"] == 0
+    assert "Get ViGEmBus" not in run["texts"]
+    assert "Test ViGEmBus" not in run["texts"]
 
 
-def test_not_installed_says_what_to_do(run: dict) -> None:
-    assert run["page-status"] == "ViGEmBus is not installed"
-    assert any("Install ViGEmBus 1.22" in t for t in run["texts"])
-    assert "Get ViGEmBus" in run["texts"] and "Test ViGEmBus" in run["texts"]
+def test_the_red_line_is_at_the_top(run: dict) -> None:
+    assert 0 <= run["line-top"] < 30
 
 
-def test_the_output_page_shows_the_same_check_at_its_top(run: dict) -> None:
-    assert run["page-row"] is True
-    assert run["page-status"] == "ViGEmBus is not installed"
-    # At the top: above the Live pads heading, the pads and the rows.
-    assert 0 <= run["page-row-top"] < 30
-    assert run["above-name"] is True
+def test_nothing_bound_says_so_without_find_or_appearance(run: dict) -> None:
+    assert (
+        "No Xbox controller has a binding yet. Add a Map to Xbox action on "
+        "Device Bindings to see it here."
+    ) in run["texts"]
+    assert run["find-shown"] is False
+    assert run["list-appearance"] is False
+    assert run["list-appearance-key"] == "xbox-output"
 
 
-def test_the_xbox_page_has_its_list_appearance_not_the_output_views(run: dict) -> None:
-    # The Output View's Appearance button stays hidden on the Xbox tab ...
+def test_the_xbox_page_hides_the_output_views_appearance(run: dict) -> None:
     assert run["appearance-xbox"] is False
     assert run["appearance-vjoy"] is True
-    # ... and the page's own list Appearance goes on the page bar.
-    assert run["list-appearance"] is True
-    assert run["list-appearance-key"] == "xbox-output"
 
 
 def _status(

@@ -1,12 +1,14 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Xbox Viewer moved into the Xbox output's Output View (D-NEXTLIST-1
-item 1; user 1a, 2b, 2026-10-12): one ViGEmBus check at the top, then the
-live pad of each device that drives it in a section that folds (open by
-default, remembered), then the control rows, all in one scroll. The toolbar
-button, Tools › Viewers › Xbox Viewer and the viewer window are gone; the
-card's viewer entry and Help's Open link open the Output View.
+"""The Xbox Output View with one section per pad (D-XBOX-PADS, 03 S139): a
+red line only when the ViGEmBus driver is missing (its link asks Main for
+Xbox Setup), the Find bar once for every pad, then one foldable section per
+pad that is on and bound (face, chip rows per device, the pad's own list),
+each remembered, all open the first time; nothing bound shows one line and
+hides the Find bar and Appearance. The Xbox Viewer window, its toolbar
+button and Tools item stay gone; Help's Open link and the card's viewer
+entry open this page.
 
 Runs the real main window off-screen in its own process (fake hardware, a
 temp USERPROFILE, no update check, the Xbox driver reported missing).
@@ -24,6 +26,8 @@ import pytest
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 import proc_tree  # noqa: E402  # pyright: ignore[reportMissingImports]  (test/)
+
+from vigem.xbox import XboxTarget  # noqa: E402
 
 _HERE = pathlib.Path(__file__).resolve().parent
 _ROOT = _HERE.parents[1]
@@ -71,27 +75,66 @@ def test_help_open_link_goes_to_the_output_view(run: dict) -> None:
     assert run["openWindows"] == []
 
 
-def test_one_driver_check_then_pads_then_rows_in_one_scroll(run: dict) -> None:
+MISSING = "ViGEmBus driver not found: the Xbox pads can't be sent."
+EMPTY = (
+    "No Xbox controller has a binding yet. Add a Map to Xbox action on "
+    "Device Bindings to see it here."
+)
+
+
+def test_red_line_when_the_driver_is_missing_then_find_then_pads(run: dict) -> None:
     page = run["open"]
     assert page["loaded"] is True
-    assert page["driverRows"] == 1
-    assert page["padsOpen"] is True  # open by default
-    assert page["cardShown"] is True
-    order = ["driverTop", "headingTop", "cardTop", "findTop", "controlTop"]
-    tops = [page[key] for key in order]
-    assert tops[0] >= 0 and tops == sorted(set(tops)), dict(zip(order, tops))
-    assert page["cardInScroll"] is True and page["controlInScroll"] is True
-    assert page["findInScroll"] is True and page["treeInScroll"] is True
+    assert page["missingShown"] is True and page["missingText"] == MISSING
+    assert page["linkShown"] is True and page["linkText"] == "Open Xbox Setup"
+    assert page["findShown"] is True and page["findInScroll"] is True
+    assert page["emptyShown"] is False
+    pads = page["pads"]
+    # Pads 1 and 2 are on and bound; pad 3 is bound but off: no section.
+    assert sorted(pads) == ["1", "2"] and page["sections"] == 2
+    tops = [page["missingTop"], page["findTop"], pads["1"]["top"], pads["2"]["top"]]
+    assert tops[0] >= 0 and tops == sorted(set(tops)), tops
 
 
-def test_the_rows_are_the_shared_list_view_only_and_scroll_with_the_pads(
+def test_no_red_line_when_the_driver_is_found(run: dict) -> None:
+    found = run["found"]
+    assert found["missingShown"] is False and found["linkShown"] is False
+
+
+def test_the_link_asks_for_xbox_setup(run: dict) -> None:
+    assert run["setupAsked"] == 1
+
+
+def test_each_pad_section_has_header_face_chips_and_its_list(run: dict) -> None:
+    pads = run["open"]["pads"]
+    one, two = pads["1"], pads["2"]
+    assert one["open"] is True and two["open"] is True  # all open at first
+    assert "Xbox 360 1" in one["texts"] and "Xbox 360 2" in two["texts"]
+    assert "Driven by: Test Stick" in one["texts"]
+    assert "2 controls bound" in one["texts"] and "1 control bound" in two["texts"]
+    assert one["faceShown"] and one["facePad"] == 1 and one["faceAbove"]
+    assert two["faceShown"] and two["facePad"] == 2
+    assert "Mapped axes" in one["texts"] and "Mapped buttons" in one["texts"]
+    assert "Mapped axes" not in two["texts"]  # pad 2 has no axis
+    assert one["chips"] == [["X", "LX"], ["1", "A"]]
+    assert one["lines"] == ["Test Stick"]
+
+
+def test_each_list_is_the_shared_list_view_only_in_the_page_scroll(
     run: dict,
 ) -> None:
-    page = run["open"]
-    assert page["treeReadOnly"] is True
-    assert page["treeGroups"] is False
-    assert page["treeOwnScroll"] is False
-    assert page["treeFull"] is True
+    for pad in run["open"]["pads"].values():
+        assert pad["treeShown"] is True and pad["treeInScroll"] is True
+        assert pad["treeReadOnly"] is True
+        assert pad["treeGroups"] is False
+        assert pad["treeOwnScroll"] is False
+        assert pad["treeFull"] is True
+        assert pad["rows"] == len(XboxTarget)  # every control of the pad
+
+
+def test_one_find_bar_filters_every_pad(run: dict) -> None:
+    assert run["find"] == {"1": 2, "2": 2}  # Left Stick X and Y
+    assert run["findCleared"] == {"1": len(XboxTarget), "2": len(XboxTarget)}
 
 
 def test_the_list_has_its_own_appearance_button(run: dict) -> None:
@@ -100,15 +143,31 @@ def test_the_list_has_its_own_appearance_button(run: dict) -> None:
     assert run["pageKey"] == "xbox-output"
 
 
-def test_folding_hides_the_pads_and_is_remembered(run: dict) -> None:
-    folded = run["folded"]
-    assert folded["padsOpen"] is False
-    assert folded["cardShown"] is False
-    assert folded["controlTop"] > 0  # the rows stay
+def test_folding_one_pad_is_remembered_per_pad(run: dict) -> None:
+    folded = run["folded"]["pads"]
+    assert folded["2"]["open"] is False
+    assert folded["2"]["headingShown"] is True
+    assert not folded["2"]["faceShown"] and not folded["2"]["treeShown"]
+    assert folded["2"]["chips"] == []
+    assert folded["1"]["open"] is True and folded["1"]["treeShown"] is True
     assert run["closedLoaded"] is False
-    again = run["reopenedFolded"]
-    assert again["padsOpen"] is False and again["cardShown"] is False
-    assert run["reopened"]["cardShown"] is True
+    again = run["reopenedFolded"]["pads"]
+    assert again["2"]["open"] is False and again["1"]["open"] is True
+    assert run["reopened"]["pads"]["2"]["faceShown"] is True
+
+
+def test_a_pad_turned_off_loses_its_section(run: dict) -> None:
+    assert sorted(run["padsOne"]["pads"]) == ["1"]
+
+
+def test_nothing_bound_shows_one_line_and_hides_find_and_appearance(
+    run: dict,
+) -> None:
+    empty = run["empty"]
+    assert empty["sections"] == 0 and empty["pads"] == {}
+    assert empty["emptyShown"] is True and empty["emptyText"] == EMPTY
+    assert empty["findShown"] is False
+    assert run["emptyAppearanceButton"] is False
 
 
 def test_the_cards_viewer_entry_opens_the_output_view(run: dict) -> None:

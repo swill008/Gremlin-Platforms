@@ -523,6 +523,11 @@ Rectangle {
                 // no axes to calibrate.
                 (xbox || logical) ? null : MenuModel.action("Module Setup…",
                                  function() { _card.configureModule() }),
+                // Xbox Setup (D-XBOX-PADS): the ViGEmBus check and how many
+                // pads are on; Main opens it for the Xbox card's
+                // configureModule.
+                !xbox ? null : MenuModel.action("Xbox Setup…",
+                                 function() { _card.configureModule() }),
                 (notStick || xbox || logical) ? null
                     : MenuModel.action("Auto Mapping Tool", function() { _card.openAutoMappingTool() }),
                 (dest || notStick || logical) ? null

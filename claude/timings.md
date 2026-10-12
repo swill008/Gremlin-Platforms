@@ -920,3 +920,13 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | CI on c52f7205 (waves 1+2) | ci | ~21 min | 23 min | 07:52-08:15 |
 | 2026-10-12 | Full run Xbox list batch + lint: 1 load flake (double-tap, passes 3/3 alone), 15 new lint/type errors | full run | ~7 min | 7 min | 08:09-08:16 |
 | 2026-10-12 | LINT-FIX: 15 new lint/type items in the Xbox list files | fix | 3-8 min | 2 min | 08:16-08:18 |
+| 2026-10-12 | XS-PADS: pad modules, count, send gate, cant-send text, bindings list, 6 tests | feature | 3-8 min | 4 min | 08:31-08:35 |
+| 2026-10-12 | XS-MAP: Map to Xbox pad list = pads on + own, refresh on xboxPadsChanged, 3 tests | feature | 3-8 min | 5 min | 08:31-08:36 |
+| 2026-10-12 | XS-PADS follow-up: wiring pad label, Library/Pack check | fix | ~5 min | 1 min | 08:35-08:36 |
+| 2026-10-12 | XS-SETUP: Xbox Setup window + model, card menu, palette, Output View link, 6 tests | feature | 3-8 min | 6 min | 08:31-08:37 |
+| 2026-10-12 | XS-DOCS: D-XBOX-PADS spec (03 S39 S88 S115 S139 S140 S141-145, 05 S137 S141, 06 S58 S64 S98 S99), glossary, Help, map | docs | 3-8 min | 5 min | 08:32-08:37 |
+| 2026-10-12 | CI on 03e02cd7 (Xbox list) | ci | ~23 min | 18 min | 08:19-08:37 |
+| 2026-10-12 | XS-VIEW: per-pad sections, XboxPadCard, pad chips/live models, old viewer removed, 15-test smoke | feature | 3-8 min | 11 min | 08:31-08:42 |
+| 2026-10-12 | XS-E2E: Xbox pads end-to-end (13 tests, two runs, real Setup window) | test | 3-8 min | 10 min | 08:32-08:42 |
+| 2026-10-12 | Lead: rerun 5 Main.qml-dependent files (90 passed) | test | ~2 min | 1 min | 08:43-08:43 |
+| 2026-10-12 | Full run Xbox pads batch + lint: 1 load failure (module setup photo, passes 2/2 alone, to-do 122), no new lint | full run | ~7 min | 7 min | 08:44-08:51 |

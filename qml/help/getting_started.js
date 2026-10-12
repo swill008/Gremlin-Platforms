@@ -276,9 +276,9 @@ function topics() {
             title: "Xbox does nothing",
             body: "<p>Check these in order.</p>"
                 + "<ol>"
-                + "<li>Open the Xbox 360 Controller's <b>Output View</b> <a href=\"open:view.xboxOutput\">Open ›</a>: the check at the top must say <b>ViGEmBus driver found</b>. If not, it says what to do.</li>"
+                + "<li>Open <b>Xbox Setup</b> (right-click the Xbox card and choose <b>Xbox Setup…</b>): the check must say <b>ViGEmBus driver found</b>. If not, it says what to do.</li>"
                 + "<li>The pad exists only while the profile runs and after a Map to Xbox action has sent.</li>"
-                + "<li>Check that the action is <b>Map to Xbox</b> with <b>Xbox 360 Controller</b> and the right <b>Target</b>.</li>"
+                + "<li>Check that the action is <b>Map to Xbox</b> with the right pad and <b>Target</b>, and that the pad is on in <b>Xbox Setup</b> (a pad that is off shows a red ⚠).</li>"
                 + "</ol>",
             related: ["home-devices-xbox-output", "device-bindings-actions-map-to-xbox", "tools-viewers", "getting-started-run"]
         },

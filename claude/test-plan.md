@@ -690,7 +690,7 @@ Data loss or broken feature first. IDs point to the batch rows above.
 13. Minor/cosmetic: F-01b, HD-01b, PS-06, MENU-CLIP, IC-01b, IC-17b, C-06, LP-24b, S-05b, OPT-X1b, OPT-U01b, OPT-F08b, CAL-05b, MM-01b, AE-XML-CHAIN, AE-NARROW, HH-08 note.
 14. ~~Back burner: XB-IMG / XV-IMG (#9)~~ fixed: Xbox face loads xbox360_two_panel.jpg as program art from `gfx/` beside the QML folder, never from user data or a device folder, and shows "Xbox face image missing" when it is not found (06 S98, D-FIXLIST-B1 9, 2026-10-11; `test_b1_xbox.py`); picture labels corrected (only LB / RB on the bumpers kept).
 15. To do: [Stock Images] Code still looks for the stock pictures in `qml/images`, which "moved user data" (a4f743fc) emptied; the pictures are now in `User_Data/images` and `User_Data/modules/library`. Points at the old path: `imagesFolderUrl()` (hardware_profile.py, creates an empty `qml/images` next to the exe), `_stock_photo()` / `_stock_photo_l()`, the relative-path fallback in hardware_profile.py, Device Mapping Editor `stockImage`, VkbRigFace / VkbRigEditor (`images/vkb_gladiator_rig.jpg`), Xbox360Face (done: now uses the modules library lookup). Decide where stock pictures live for other users (bundled read-only vs copied into the data folder), then point all of these at one place.
-16. To do: [Xbox Pads] Only one Xbox pad for now ("Xbox 360 Controller" = pad 1). Later: a way to add Xbox output modules for pads 2-4 ("Xbox 360 N", nothing claimed), listed in Map to Xbox and the viewers. The output layer already maps "Xbox 360 N" to pad N (output.xbox_pad_of).
+16. ~~To do: [Xbox Pads]~~ Done 2026-10-12 by D-XBOX-PADS (Xbox Setup: pads 1-4, one "Xbox 360 N" output module per pad; 03 S141-S145, 06 S58). Was: Only one Xbox pad for now ("Xbox 360 Controller" = pad 1). Later: a way to add Xbox output modules for pads 2-4 ("Xbox 360 N", nothing claimed), listed in Map to Xbox and the viewers. The output layer already maps "Xbox 360 N" to pad N (output.xbox_pad_of).
 
 ### Noted while fixing #10 (2026-09-30)
 
@@ -754,7 +754,7 @@ Decisions: input highlighting and "Listen for input" stay as they are (no status
 
 ## Phase 4 (wiring speaks in output modules, 2026-10-01)
 
-Decisions: Auto Mapping Tool claim switch, off by default (1A); one Xbox pad for now (to-do 16); output names shown in brackets in long labels (3A).
+Decisions: Auto Mapping Tool claim switch, off by default (1A); one Xbox pad for now (to-do 16; superseded 2026-10-12 by D-XBOX-PADS); output names shown in brackets in long labels (3A).
 
 | ID | Result | Notes |
 |---|---|---|

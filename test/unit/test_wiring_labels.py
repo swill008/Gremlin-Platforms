@@ -91,7 +91,7 @@ def test_xbox_labels_name_the_pad_and_carry_no_claim_mark(modules: None) -> None
     assert wiring.xbox_dest(1, XboxTarget.A) == "Xbox 360 Controller · A"
     assert wiring.xbox_dest(1, "left_trigger") == "Xbox 360 Controller · Left Trigger"
     assert wiring.xbox_dest(1, XboxTarget.A, short=True) == "Xbox 1 A"
-    assert wiring.xbox_dest(2, XboxTarget.A) == "Xbox pad 2 · A"
+    assert wiring.xbox_dest(2, XboxTarget.A) == "Xbox 360 2 · A"
 
 
 def test_dest_label_reads_actions(modules: None) -> None:

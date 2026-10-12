@@ -112,13 +112,10 @@ def _shown(item: Any) -> bool:  # noqa: ANN401
 
 
 def _model(j: Journey) -> Any:  # noqa: ANN401
-    from gremlin.ui.xbox_output_list import XboxOutputListModel
-
+    """Pad 1's list (its section on the page, D-XBOX-PADS)."""
     page = _page(j)
     assert page is not None, "the Xbox Output View is not open"
-    return j.wait_until(
-        lambda: page.findChild(XboxOutputListModel), "the page's XboxOutputListModel"
-    )
+    return j.wait_until(lambda: j.ev("padList(1)", page), "pad 1's list")
 
 
 def _rows(model: Any) -> list[dict]:  # noqa: ANN401
@@ -225,7 +222,7 @@ def _part_rows(j: Journey) -> None:
     out["rows:groupNames"] = sorted(
         {str(r.get("groupName") or "") for r in rows} - {""}
     )
-    tree = _named(_page(j), "xboxOutputTree")
+    tree = _named(_page(j), "xboxOutputTree1")
     out["rows:treeShowGroups"] = tree.property("showGroups") if tree else None
     out["rows:shownGroupRows"] = sum(
         1
@@ -313,15 +310,14 @@ def _part_view_only(j: Journey) -> None:
 
     out = j.out
     page = _page(j)
-    tree = _named(page, "xboxOutputTree")
-    assert tree is not None, "no xboxOutputTree"
+    tree = _named(page, "xboxOutputTree1")
+    assert tree is not None, "no xboxOutputTree1"
     out["view:readOnly"] = tree.property("readOnly")
     out["view:grips"] = sum(
         1 for i in Journey.walk(tree) if i.objectName() == "rowGrip" and _shown(i)
     )
-    # The rows come up the page when the pads are folded, and a tall window
-    # shows the whole list (the page scrolls, not the list).
-    j.ev("setPadsOpen(false); true", page)
+    # A tall window shows pad 1's face and its whole list (the page
+    # scrolls, not the list).
     j.win.setHeight(2400)
     j.settle()
     key = "parent:button:a"
@@ -358,8 +354,6 @@ def _part_view_only(j: Journey) -> None:
         "pane" in i.objectName().lower() and _shown(i) for i in Journey.walk(page)
     )
     out["view:room"] = [j.ev("uiState.currentRoom"), j.ev("uiState.currentTab")]
-    j.ev("setPadsOpen(true); true", page)
-    j.settle()
 
 
 def _bar_button(j: Journey) -> Any:  # noqa: ANN401
@@ -396,7 +390,7 @@ def _part_appearance(j: Journey) -> None:
     panel.setProperty("parentBold", False)
     panel.setProperty("parentHeight", 61)
     j.settle()
-    tree = _named(page, "xboxOutputTree")
+    tree = _named(page, "xboxOutputTree1")
     out["look:treeFollows"] = [
         tree.property("parentBold"),
         tree.property("parentHeight"),
@@ -419,7 +413,7 @@ def _part_appearance(j: Journey) -> None:
     page = _page(j)
     out["look:samePage"] = False
     panel = _named(page, "xboxOutputAppearance")
-    tree = _named(page, "xboxOutputTree")
+    tree = _named(page, "xboxOutputTree1")
     out["look:reloaded"] = [
         panel.property("parentBold"),
         panel.property("parentHeight"),

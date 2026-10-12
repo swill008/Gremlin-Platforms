@@ -6,12 +6,13 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin.config import Configuration
-from gremlin.types import PropertyType
-from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
-from gremlin.modules import output
 import gremlin.ui.xbox_device_model  # noqa: F401
 import gremlin.ui.xbox_output_list  # noqa: F401  # the Xbox Output View's list
+import gremlin.ui.xbox_setup  # noqa: F401  # the Xbox Setup window
+from gremlin.config import Configuration
+from gremlin.modules import output
+from gremlin.types import PropertyType
+from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1

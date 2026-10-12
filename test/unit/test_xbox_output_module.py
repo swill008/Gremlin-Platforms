@@ -82,9 +82,10 @@ def test_every_control_reaches_the_pad(folder: Path) -> None:
     ]
 
 
-def test_old_pads_still_send(folder: Path) -> None:
-    # A saved pad 2 has no module file; it still sends, as in 1.0.1.
-    assert output.write_xbox(2, XboxTarget.A, True)
+def test_a_pad_outside_the_count_is_not_sent(folder: Path) -> None:
+    # Pad 2 has no module, so it is off in Xbox Setup (D-XBOX-PADS).
+    assert not output.write_xbox(2, XboxTarget.A, True)
+    assert _FakeProxy.pad.applied == []
 
 
 def test_viewer_sees_every_control(folder: Path) -> None:
@@ -129,10 +130,11 @@ def test_map_to_xbox_pads(folder: Path) -> None:
 
     pads = MapToXboxModel._get_pad_choices(_map_to_xbox(1, XboxTarget.A))
     assert pads == [{"value": 1, "label": "Xbox 360 Controller"}]
+    # A saved pad outside the count stays listed (with its ⚠).
     pads = MapToXboxModel._get_pad_choices(_map_to_xbox(2, XboxTarget.A))
     assert pads == [
         {"value": 1, "label": "Xbox 360 Controller"},
-        {"value": 2, "label": "Xbox pad 2"},
+        {"value": 2, "label": output.xbox_pad_label(2)},
     ]
 
 

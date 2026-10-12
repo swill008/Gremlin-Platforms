@@ -259,7 +259,7 @@ function topics() {
             id: "device-bindings-actions-output-view",
             section: page,
             title: "Output View",
-            body: "<p>A vJoy output device opens its <b>Output View</b> in place of a Device Bindings page: a live view of what its output module sends. The Xbox controller's <b>Output View</b> shows the driver check, a live pad for each device that drives it, and, for each Xbox control, what sends to it.</p>"
+            body: "<p>A vJoy output device opens its <b>Output View</b> in place of a Device Bindings page: a live view of what its output module sends. The Xbox card's <b>Output View</b> shows a section for each Xbox pad that is on and bound: its live picture, the devices that drive it, and, for each Xbox control, what sends to it.</p>"
                 + "<p>It is labelled \"View only — shows what the input modules' actions send.\"</p>"
                 + _good([
                     "A wire to an output the output module doesn't claim is shown as <b>(not claimed)</b> and sends nothing."
@@ -332,7 +332,7 @@ function topics() {
             title: "Map to Xbox",
             body: "<p>Sends the input to the virtual Xbox 360 controller. There is nothing to claim.</p>"
                 + "<ul>"
-                + "<li><b>Xbox</b>: the Xbox output module (Xbox 360 Controller).</li>"
+                + "<li><b>Xbox</b>: the pad: the pads that are on in <b>Xbox Setup</b> (Xbox 360 Controller is pad 1), plus the pad the action already uses.</li>"
                 + "<li><b>Target</b>: the controls that fit the input. An axis drives sticks and triggers; a button or key drives buttons and triggers; a hat drives the D-pad, buttons and sticks.</li>"
                 + "<li>Axis on a trigger: <b>Full axis</b> (−1 → 0%, +1 → 100%) or <b>Upper half</b> (center → 0%).</li>"
                 + "<li>Button: <b>Invert activation</b>.</li>"
@@ -340,6 +340,7 @@ function topics() {
                 + _good([
                     "A button, key or hat on a trigger pulls it fully while pressed and lets go on release. A hat on a stick moves it in the hat's direction.",
                     "A target saved earlier that no longer fits stays in the list and still works.",
+                    "A pad that is off in <b>Xbox Setup</b> shows a red ⚠ and isn't sent to; turn it on there or pick a pad that is on.",
                     "Map to Xbox needs the <b>ViGEmBus</b> driver; see <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>. Without it the action shows a warning (\"ViGEmBus / ViGEmClient.dll not available.\") and stays in the profile.",
                     "To send a Logical Device control to Xbox, see " + "<a href=\"topic:logical-device-send-to-xbox-vjoy\">Send a control to Xbox or vJoy</a>" + "."
                 ]),

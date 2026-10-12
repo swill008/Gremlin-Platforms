@@ -14,11 +14,14 @@ from typing import Any
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
+from gremlin import shared_state
 from gremlin.modules import output
 from gremlin.signal import signal
 from gremlin.ui.control_layout import ROW_DEFAULTS
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
+from gremlin.ui.input_pairing import device_label
 from gremlin.ui.xbox_device_model import incoming_list
+from gremlin.ui.xbox_maps import xbox_maps_for_item
 from vigem.xbox import XboxTarget
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
@@ -43,7 +46,7 @@ _DPAD = {
     XboxTarget.DPAD,
 }
 
-# The live poll's step (the Live pads' rate, xbox_viewer.XboxLiveThrottle).
+# The live poll's step (the pad sections' rate, xbox_viewer.XboxPadLive).
 POLL_MS = 50
 
 
@@ -322,3 +325,111 @@ class XboxOutputListModel(QtCore.QAbstractListModel):
             return value * 2.0 - 1.0
         return value
 
+
+
+def pad_bindings() -> dict[int, dict[str, set[str]]]:
+    """Pad -> device guid -> the pad's controls that device sends to: every
+    Map to Xbox in the open profile, any mode."""
+    profile = shared_state.current_profile
+    if profile is None:
+        return {}
+    found: dict[int, dict[str, set[str]]] = {}
+    for device_id, items in (profile.inputs or {}).items():
+        for item in items or []:
+            for pad, target in xbox_maps_for_item(item):
+                devices = found.setdefault(int(pad), {})
+                devices.setdefault(str(device_id), set()).add(str(target))
+    return found
+
+
+@ta.QmlElement
+class XboxPadSectionsModel(QtCore.QAbstractListModel):
+    """The Output View's pad sections (D-XBOX-PADS): one row per pad that is
+    on (Xbox Setup) and has a Map to Xbox binding in any mode, pad order."""
+
+    roles = {
+        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"padId"),
+        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"title"),
+        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"drivenBy"),
+        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(b"boundCount"),
+    }
+    countChanged = QtCore.Signal()
+
+    def __init__(self, parent: ta.OQO = None) -> None:
+        super().__init__(parent)
+        self._rows: list[dict] = []
+        # One read for a burst: a Logical Device edit sends two notices.
+        self._soon = QtCore.QTimer(self)
+        self._soon.setSingleShot(True)
+        self._soon.setInterval(0)
+        self._soon.timeout.connect(self.reload)
+        signal.bindingsChanged.connect(self._reload_soon)
+        signal.deviceNamesChanged.connect(self._reload_soon)
+        signal.logicalDeviceModified.connect(self._reload_soon)
+        signal.xboxPadsChanged.connect(self._reload_soon)
+        self.reload()
+
+    @QtCore.Slot()
+    def _reload_soon(self) -> None:
+        self._soon.start()
+
+    @QtCore.Slot()
+    def reload(self) -> None:
+        bound = pad_bindings()
+        rows: list[dict] = []
+        for pad in output.xbox_pads_on():
+            devices = bound.get(int(pad))
+            if not devices:
+                continue
+            names = sorted({device_label(guid) for guid in devices}, key=str.lower)
+            controls = set().union(*devices.values())
+            rows.append(
+                {
+                    "padId": int(pad),
+                    "title": f"Xbox 360 {int(pad)}",
+                    "drivenBy": ", ".join(names),
+                    "boundCount": len(controls),
+                }
+            )
+        if [r["padId"] for r in rows] == [r["padId"] for r in self._rows]:
+            # The same pads: their sections stay (fold, scroll, live), only
+            # the header facts change.
+            if rows != self._rows:
+                self._rows = rows
+                self.dataChanged.emit(
+                    self.index(0, 0), self.index(len(rows) - 1, 0)
+                )
+            return
+        self.beginResetModel()
+        self._rows = rows
+        self.endResetModel()
+        self.countChanged.emit()
+
+    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
+        return 0 if parent.isValid() else len(self._rows)
+
+    def data(
+        self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
+    ) -> Any:  # noqa: ANN401
+        if not index.isValid() or not (0 <= index.row() < len(self._rows)):
+            return None
+        name = self.roles.get(role)
+        if name is None:
+            return None
+        return self._rows[index.row()].get(name.toStdString())
+
+    def roleNames(self) -> dict[int, QtCore.QByteArray]:
+        return self.roles
+
+    @QtCore.Property(int, notify=countChanged)
+    def count(self) -> int:
+        return len(self._rows)
+
+    @QtCore.Property(list, constant=True)
+    def typeChoices(self) -> list:
+        """The page's one Find bar: the same choices as every pad's list."""
+        return [dict(choice) for choice in TYPE_CHOICES]
+
+    @QtCore.Property(list, constant=True)
+    def filters(self) -> list:
+        return [dict(tick) for tick in FILTERS]

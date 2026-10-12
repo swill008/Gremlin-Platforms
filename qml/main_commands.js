@@ -79,6 +79,11 @@ function commandList() {
           run: function() { openTool("DialogCalibration.qml") } },
         { id: "tools.hidhide", text: "HidHide", group: "Tools › Device Setup", keywords: "hide devices",
           run: function() { openTool("DialogHardwareHide.qml") } },
+        // Xbox Setup (D-XBOX-PADS): the ViGEmBus check and how many Xbox
+        // pads are on. Its menu place is the Xbox card's menu.
+        { id: "tools.xboxSetup", text: "Xbox Setup…", group: "Tools › Device Setup",
+          keywords: "xbox pads vigem vigembus driver controllers count",
+          menu: false, run: function() { openXboxSetup() } },
         { id: "tools.configureInput", text: "Input Module Setup", group: "Tools › Device Setup",
           run: function() { openConfigureModule("source") } },
         { id: "tools.configureOutput", text: "Output Module Setup", group: "Tools › Device Setup",

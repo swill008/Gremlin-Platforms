@@ -75,7 +75,7 @@ function topics() {
                 + "<ul>"
                 + "<li><b>Undo</b> and <b>Redo</b> sit beside the menu's title, for Home's card changes.</li>"
                 + "<li>At the top: <b>Open Device Bindings</b> (<b>Output View</b> on an output card), <b>Device Mapping Editor</b> and <b>Hide Card</b>.</li>"
-                + "<li><b>Module</b>: <b>Module Setup…</b>, <b>Auto Mapping Tool</b>, <b>Calibration</b>.</li>"
+                + "<li><b>Module</b>: <b>Module Setup…</b>, <b>Auto Mapping Tool</b>, <b>Calibration</b>; on the Xbox card, <b>Xbox Setup…</b>.</li>"
                 + "<li><b>View</b>: the <b>vJoy Viewer</b> (not on the Xbox card: its <b>Output View</b> shows the live pads), <b>Device Information</b>.</li>"
                 + "<li><b>Cards</b>: <b>Stack Selected Cards</b>, <b>Unstack</b>, <b>Unstack All</b>, <b>Reset Size</b>, <b>Reset All Card Sizes</b>.</li>"
                 + "<li><b>Device</b>: <b>Start Fresh…</b> (for a damaged module file), <b>Copy Setup to Another Stick…</b>, <b>Swap with Another Stick…</b> and <b>Change vJoy Output…</b> (they open the <b>Device Library</b> on that stick), <b>Export Device…</b> (with a module file) and <b>Import Device…</b> (they open <b>Export / Import Device</b> on that device, see <a href=\"topic:home-devices-device-pack\">Share a device</a>), <b>Reset Card Layout</b> (clears its size and stacking) and <b>Delete Device</b>.</li>"
@@ -83,7 +83,7 @@ function topics() {
                 + "<p>Items that don't apply to a card are left out:</p>"
                 + "<ul>"
                 + "<li>vJoy cards have no Calibration, Copy Setup to Another Stick…, Swap with Another Stick…, Change vJoy Output… or Delete Device.</li>"
-                + "<li>The Xbox card has no Module Setup, Auto Mapping Tool, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick…, Change vJoy Output… or Delete Device.</li>"
+                + "<li>The Xbox card has <b>Xbox Setup…</b> in place of Module Setup, and no Auto Mapping Tool, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick…, Change vJoy Output… or Delete Device.</li>"
                 + "<li>The Keyboard and OSC cards have no Auto Mapping Tool, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
                 + "<li>The Logical Device card has no Module Setup, Auto Mapping Tool, Calibration, Device Information, Copy Setup to Another Stick…, Swap with Another Stick… or Change vJoy Output….</li>"
                 + "</ul>"
@@ -279,19 +279,20 @@ function topics() {
             id: "home-devices-xbox-output",
             section: "Modules",
             title: "Xbox output module",
-            body: "<p>The Xbox controller (<b>Xbox 360 Controller</b>, pad 1) is a virtual Xbox 360 pad provided by the <b>ViGEmBus</b> driver. Its output module passes every control straight to the driver; there is nothing to claim.</p>"
+            body: "<p>The program's Xbox pads are virtual Xbox 360 pads provided by the <b>ViGEmBus</b> driver: pad 1 is <b>Xbox 360 Controller</b>, pads 2-4 are Xbox 360 2, Xbox 360 3 and Xbox 360 4. Each pad's output module passes every control straight to the driver; there is nothing to claim. One Xbox card on Home stands for all of them.</p>"
+                + "<p><b>Xbox Setup</b> (right-click the Xbox card and choose <b>Xbox Setup…</b>) checks the driver and sets the <b>Number of Xbox pads</b>, 1 to 4. <b>OK</b> applies it; <b>Cancel</b> leaves it. If you lower the number while a pad that goes still has Map to Xbox actions, it lists them and asks first: <b>Yes</b> keeps those actions, marked with a red ⚠ until you move them to a pad that is on or raise the number again.</p>"
                 + "<p>To send to it:</p>"
                 + "<ol>"
                 + "<li>Choose <b>Add Action</b> on the input's row on the Device Bindings page (or right-click a Logical Device control and choose <b>Add Action</b>).</li>"
                 + "<li>Choose <b>Map to Xbox</b>.</li>"
                 + "</ol>"
-                + "<p>Its <b>Output View</b> <a href=\"open:view.xboxOutput\">Open ›</a> (double-click the card) shows, under the driver check, a live pad for each device that drives it, then the list of the pad's controls. The pads are under <b>Live pads</b>: fold it with its heading; it opens unfolded, and the program remembers whether you folded it.</p>"
-                + "<p>The list is view only and in pad order: each control (Left Stick X … DPad) has a line under it for each input that sends to it, such as <i>VKBsim Gladiator EVO R · Button 1</i>; use its arrow to show or hide the lines. Use <b>Find</b>, the type filter (Sticks, Triggers, Buttons, D-Pad) and <b>Only controls with something sending</b> to narrow it. While the profile runs, sticks and triggers show a live bar and buttons and the D-pad a lit dot, from what is sent to the pad. <b>Appearance…</b> on the bar under the toolbar changes how the list looks (its <b>Live</b> section turns the bars and dots on or off); it is kept in the program settings.</p>"
+                + "<p>Its <b>Output View</b> <a href=\"open:view.xboxOutput\">Open ›</a> (double-click the card) shows one section for each pad that is on and has a Map to Xbox action, in pad order. A section's heading names the pad, the devices that drive it and how many controls are bound; inside are the pad's picture, lit from what is sent to it, the <b>Mapped axes</b> and <b>Mapped buttons</b> rows (one line for each device that drives the pad), then the list of the pad's controls. Fold a section with its heading; each opens the first time, and the program remembers each one. With no pad bound yet the page says so. When the ViGEmBus driver is missing, a red line at the top says so, with <b>Open Xbox Setup</b>.</p>"
+                + "<p>Each list is view only and in pad order: each control (Left Stick X … DPad) has a line under it for each input that sends to it, such as <i>VKBsim Gladiator EVO R · Button 1</i>; use its arrow to show or hide the lines. <b>Find</b>, the type filter (Sticks, Triggers, Buttons, D-Pad) and <b>Only controls with something sending</b> sit once at the top and narrow every pad's list. While the profile runs, sticks and triggers show a live bar and buttons and the D-pad a lit dot, from what is sent to the pad. <b>Appearance…</b> on the bar under the toolbar changes how the list looks (its <b>Live</b> section turns the bars and dots on or off); it is kept in the program settings.</p>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>The pad appears when a Map to Xbox action first sends while the profile runs, and is removed when the profile stops.</li>"
-                + "<li>The pad number comes from the module's name: Xbox 360 Controller is pad 1.</li>"
-                + "<li>The Output View checks the driver at its top: <b>ViGEmBus driver found</b> with its version, or what is wrong and what to do. <b>Get ViGEmBus</b> opens the Nefarius releases page; <b>Test ViGEmBus</b> opens Windows Game Controllers.</li>"
+                + "<li>A pad appears when a Map to Xbox action first sends to it while the profile runs, and is removed when the profile stops. A pad that is off in Xbox Setup is never sent to.</li>"
+                + "<li>The pad number comes from the module's name: Xbox 360 Controller is pad 1, Xbox 360 N is pad N.</li>"
+                + "<li><b>Xbox Setup</b> checks the driver: <b>ViGEmBus driver found</b> with its version, or what is wrong and what to do. <b>Get ViGEmBus</b> opens the Nefarius releases page; <b>Test ViGEmBus</b> opens Windows Game Controllers.</li>"
                 + "</ul>",
             related: ["device-bindings-actions-map-to-xbox", "home-devices-vjoy-output", "tools-viewers", "getting-started-xbox-does-nothing"]
         },

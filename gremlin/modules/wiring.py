@@ -111,12 +111,7 @@ def xbox_dest(pad_id: int, target: Any, short: bool = False) -> str:  # noqa: AN
     # No claim mark: the Xbox output module passes every control.
     if short:
         return f"Xbox {int(pad_id)} {XBOX_SHORT.get(value, value[:3] or 'xb')}"
-    module = output.xbox_module(int(pad_id))
-    if module is not None:
-        name = module.name
-    else:
-        name = "Xbox 360 Controller" if int(pad_id) == 1 else f"Xbox pad {int(pad_id)}"
-    return f"{name} · {label}"
+    return f"{output.xbox_pad_label(int(pad_id))} · {label}"
 
 
 def dest_label(action: object, short: bool = False) -> str:

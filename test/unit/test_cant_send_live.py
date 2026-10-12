@@ -212,7 +212,8 @@ def test_xbox_output_module_added_and_removed_updates_the_open_editor(
     action = MapToXboxData(B)
     action.xbox_device_id = 2
     _keep, am = _model(action)
-    assert am.cantSendText == "Xbox pad 2 is not Found."
+    # Pad 2 is above the pad count (pad 2's module makes it on, D-XBOX-PADS).
+    assert am.cantSendText == "Xbox 360 2 is off in Xbox Setup (pad 1 on)."
     seen = _notified(am, "cantSendText")
     ensure_dir(world["folder"], "Xbox 360 2")
     pad = module_path(world["folder"], "Xbox 360 2")
@@ -233,7 +234,7 @@ def test_xbox_output_module_added_and_removed_updates_the_open_editor(
     store.delete_path(pad, "test")
     _settle(qapp)
     assert seen, "the open Map to Xbox editor wasn't told the module went"
-    assert am.cantSendText == "Xbox pad 2 is not Found."
+    assert am.cantSendText == "Xbox 360 2 is off in Xbox Setup (pad 1 on)."
 
 
 def test_osc_output_turned_off_updates_the_open_editor(

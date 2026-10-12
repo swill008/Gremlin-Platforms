@@ -62,6 +62,9 @@ class Signal(QtCore.QObject):
     # gremlin.modules.store, once per burst, on the main thread
     # (D-01-OWNER-NOTICES).
     moduleFilesChanged = QtCore.Signal()
+    # Xbox Setup's number of pads changed (D-XBOX-PADS). Sent only by
+    # gremlin.modules.output.set_xbox_pad_count.
+    xboxPadsChanged = QtCore.Signal()
     # Options' "OSC settings are in OSC › Module Setup" button: the main
     # window opens OSC's Module Setup, as its card does.
     openOscModuleSetup = QtCore.Signal()

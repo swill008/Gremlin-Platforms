@@ -3,70 +3,105 @@
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Device
 import Gremlin.Style
 import Gremlin.UI
 
-// The Xbox output's Output View (03 S139): the ViGEmBus check, the live pad
-// of each device that drives it (one card per device, in a section that
-// folds and remembers it), then the controls in pad order with what sends
-// to each: the shared Find bar and list, view only, with live bars and
-// lights while the profile runs, and the list's own Appearance. One scroll
-// for all of it.
+// The Xbox output's Output View (03 S139, D-XBOX-PADS): one red line when
+// the ViGEmBus driver is missing (the full check is in Xbox Setup), the
+// Find bar once for every pad, then one section per pad that is on and has
+// a Map to Xbox binding (any mode): its face, its chip rows and its control
+// list. Each section folds and remembers it; all open the first time. One
+// scroll for all of it; the list's own Appearance on the page bar.
 Item {
     id: _root
 
-    // The pad cards' section, open unless the user folded it.
-    property bool padsOpen: true
+    // The red line's "Open Xbox Setup" link; Main opens the window.
+    signal xboxSetupRequested()
+
+    // Pad number -> open; a pad not in it is open.
+    property var padOpenMap: ({})
+    readonly property int padSectionCount: _sections.count
+    // The Find bar's "Only controls with something sending" tick.
+    property bool findSending: false
 
     // The page's Appearance part (PageAppearance.qml): Main shows its
     // Appearance… / Hide Appearance button on the page bar.
     property alias displayOpen: _appear.displayOpen
-    readonly property Component pageBar: _appear.pageBar
+    readonly property Component pageBar: _sections.count > 0 ? _appear.pageBar : null
     function toggleAppearance() { _appear.toggleAppearance() }
     function requestCloseDisplay() { _appear.requestCloseDisplay() }
     readonly property alias appearance: _appear
-    readonly property alias layout: _list
 
-    XboxOutputListModel {
-        id: _list
-        // Polls what the Xbox output sends only while the profile runs and
-        // the panel's Live section shows bars or lights.
-        liveActive: !!(typeof backend !== "undefined" && backend && backend.gremlinActive)
-                    && (_appear.showLiveBars || _appear.showLeds)
-    }
+    readonly property bool running:
+        !!(typeof backend !== "undefined" && backend && backend.gremlinActive)
 
-    XboxViewerDeviceModel {
-        id: _devices
-    }
+    XboxPadSectionsModel { id: _pads }
+
+    XboxDriverStatus { id: _driver }
 
     WindowPlacement { id: _place }
 
-    function _loadPadsOpen() {
+    function isPadOpen(pad) {
+        return padOpenMap[String(pad)] !== false
+    }
+
+    function setPadOpen(pad, open) {
+        var next = {}
+        for (var key in padOpenMap)
+            next[key] = padOpenMap[key]
+        next[String(pad)] = !!open
+        padOpenMap = next
+        _place.saveToolRowState("xboxOutput", JSON.stringify({ open: next }))
+    }
+
+    // That pad's control list, or null when it has no section.
+    function padList(pad) {
+        for (var i = 0; i < _sections.count; ++i) {
+            var section = _sections.itemAt(i)
+            if (section && section.padId === pad)
+                return section.list
+        }
+        return null
+    }
+
+    function _loadPadOpen() {
         var state = {}
         try {
             state = JSON.parse(_place.toolRowState("xboxOutput")) || {}
         } catch (e) {
             state = {}
         }
-        padsOpen = state.padsOpen !== false
+        padOpenMap = (state.open && typeof state.open === "object") ? state.open : {}
     }
 
-    function setPadsOpen(open) {
-        padsOpen = open
-        _place.saveToolRowState("xboxOutput", JSON.stringify({ padsOpen: open }))
-    }
+    Component.onCompleted: _loadPadOpen()
+    onVisibleChanged: if (visible) _driver.reload()
 
-    function pairTitle(guid, name) {
-        return name && name.length ? name : guid
-    }
-
-    Component.onCompleted: {
-        _loadPadsOpen()
-        _devices.reload()
+    // What the shared Find bar reads from its list: the count across pads,
+    // nothing to undo, no "Can't be sent" tick.
+    QtObject {
+        id: _findLayout
+        readonly property int parentCount: {
+            var n = 0
+            for (var i = 0; i < _sections.count; ++i) {
+                var section = _sections.itemAt(i)
+                if (section)
+                    n += section.list.parentCount
+            }
+            return n
+        }
+        readonly property bool canUndo: false
+        readonly property bool canRedo: false
+        readonly property string undoTip: ""
+        readonly property string redoTip: ""
+        readonly property string lastChange: ""
+        readonly property string undone: ""
+        function setCantSendOnly(on) {}
+        function undo() {}
+        function redo() {}
     }
 
     RowLayout {
@@ -93,163 +128,79 @@ Item {
                 width: _scroll.availableWidth - Style.dp(16)
                 spacing: Style.dp(8)
 
-                XboxDriverCheck {
+                // Only when the driver is missing: the pads can't be sent.
+                RowLayout {
+                    objectName: "xboxDriverMissingRow"
+                    visible: !_driver.ready
                     Layout.fillWidth: true
-                }
+                    spacing: Style.dp(10)
 
-                // The pad cards' section heading: click to fold or open it.
-                AbstractButton {
-                    id: _padsHeading
-                    objectName: "xboxPadsHeading"
-                    Layout.fillWidth: true
-                    implicitHeight: _headRow.implicitHeight + Style.dp(8)
-                    hoverEnabled: true
-                    Accessible.name: (_root.padsOpen ? "Fold " : "Open ") + "Live pads"
-                    onClicked: _root.setPadsOpen(!_root.padsOpen)
-
-                    background: Rectangle {
-                        radius: Style.dp(3)
-                        color: _padsHeading.hovered ? Style.bgWell : "transparent"
+                    JGText {
+                        objectName: "xboxDriverMissing"
+                        text: "ViGEmBus driver not found: the Xbox pads can't be sent."
+                        color: Style.danger
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
                     }
-
-                    contentItem: RowLayout {
-                        id: _headRow
-                        spacing: Style.dp(6)
-
-                        Label {
-                            text: _root.padsOpen ? "▾" : "▸"
-                            font.pixelSize: Style.dp(13)
+                    AbstractButton {
+                        id: _setupLink
+                        objectName: "xboxOpenSetupLink"
+                        text: "Open Xbox Setup"
+                        hoverEnabled: true
+                        implicitWidth: _linkText.implicitWidth
+                        implicitHeight: _linkText.implicitHeight
+                        Accessible.name: text
+                        onClicked: _root.xboxSetupRequested()
+                        contentItem: Label {
+                            id: _linkText
+                            text: _setupLink.text
+                            color: Style.accent
+                            font.underline: _setupLink.hovered
                         }
-                        Label {
-                            text: "Live pads"
-                            font.bold: true
-                            font.pixelSize: Style.dp(13)
-                        }
-                        Label {
-                            text: _devices ? "(" + _devices.count + ")" : ""
-                            opacity: 0.55
-                            font.pixelSize: Style.dp(11)
-                        }
-                        Item { Layout.fillWidth: true }
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
                     }
                 }
 
                 JGText {
-                    visible: _root.padsOpen && (!_devices || _devices.count === 0)
-                    text: "No Map to Xbox actions on connected devices."
+                    objectName: "xboxOutputEmpty"
+                    visible: _sections.count === 0
+                    text: "No Xbox controller has a binding yet. Add a Map to Xbox action on Device Bindings to see it here."
                     opacity: 0.65
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
                 }
 
-                Repeater {
-                    model: _root.padsOpen ? _devices : null
-                    delegate: XboxViewerCard {
-                        required property string guid
-                        required property string name
-                        // The card's own property, filled from the row.
-                        required pairLabel
-
-                        Layout.fillWidth: true
-                        deviceGuid: guid
-                        title: _root.pairTitle(guid, name)
-                    }
-                }
-
-                // The controls in pad order, each with what sends to it
-                // (S139): the shared list, view only, no groups.
+                // Once for every pad section (S139).
                 ControlFindBar {
                     id: _find
+                    objectName: "xboxOutputFindBar"
+                    visible: _sections.count > 0
                     Layout.fillWidth: true
-                    layout: _list
+                    layout: _findLayout
                     namePrefix: "xboxOutput"
                     placeholder: "Control or source"
                     showUndo: false
                     showCantSend: false
-                    typeChoices: _list.typeChoices
-                    filters: _list.filters
-                    onChanged: _root._applyFind()
+                    typeChoices: _pads.typeChoices
+                    filters: _pads.filters
+                    onChanged: _root.findSending = _find.isChecked("sending")
                 }
 
-                ControlTree {
-                    id: _tree
-                    objectName: "xboxOutputTree"
-                    Layout.fillWidth: true
-                    // Full height in the page's scroll: the pads and the rows
-                    // scroll together (S139).
-                    Layout.preferredHeight: Math.max(listHeight, Style.dp(80))
-                    ownScroll: false
-                    readOnly: true
-                    showGroups: false
-                    layout: _list
-                    namePrefix: "xboxOutput"
-                    emptyText: "No Xbox controls."
-                    filtering: _find.filtering
-                    liveDecoration: true
-                    liveState: _list
-                    liveBars: _appear.showLiveBars
-                    liveLeds: _appear.showLeds
-                    colorLive: _appear.colorLive
-                    parentHeight: _appear.parentHeight
-                    childHeight: _appear.childHeight
-                    rowSpacing: _appear.rowSpacing
-                    groupInside: _appear.groupInside
-                    parentAlign: _appear.parentAlign
-                    parentWidthPct: _appear.parentWidthPct
-                    childAlign: _appear.childAlign
-                    childWidthPct: _appear.childWidthPct
-                    groupSpacing: _appear.groupSpacing
-                    listPadShape: _appear.listPadShape
-                    listPad: _appear.listPad
-                    listPadTop: _appear.listPadTop
-                    listPadRight: _appear.listPadRight
-                    listPadBottom: _appear.listPadBottom
-                    listPadLeft: _appear.listPadLeft
-                    groupPadShape: _appear.groupPadShape
-                    groupPad: _appear.groupPad
-                    groupPadTop: _appear.groupPadTop
-                    groupPadRight: _appear.groupPadRight
-                    groupPadBottom: _appear.groupPadBottom
-                    groupPadLeft: _appear.groupPadLeft
-                    groupRadius: _appear.groupRadius
-                    colorGroup: _appear.colorGroup
-                    parentPadShape: _appear.parentPadShape
-                    parentPad: _appear.parentPad
-                    parentPadTop: _appear.parentPadTop
-                    parentPadRight: _appear.parentPadRight
-                    parentPadBottom: _appear.parentPadBottom
-                    parentPadLeft: _appear.parentPadLeft
-                    parentRadius: _appear.parentRadius
-                    colorParent: _appear.colorParent
-                    parentIndent: _appear.parentIndent
-                    childIndent: _appear.childIndent
-                    childPadShape: _appear.childPadShape
-                    childPad: _appear.childPad
-                    childPadTop: _appear.childPadTop
-                    childPadRight: _appear.childPadRight
-                    childPadBottom: _appear.childPadBottom
-                    childPadLeft: _appear.childPadLeft
-                    childRadius: _appear.childRadius
-                    colorChild: _appear.colorChild
-                    showChildren: _appear.showChildren
-                    showSummary: _appear.showSummary
-                    summaryFont: _appear.summaryFont
-                    parentFont: _appear.parentFont
-                    groupFont: _appear.groupFont
-                    childFont: _appear.childFont
-                    targetFont: _appear.targetFont
-                    colorActionTarget: _appear.colorActionTarget
-                    parentBold: _appear.parentBold
-                    colorText: _appear.colorText
-                    colorMuted: _appear.colorMuted
-                    colorSelected: _appear.colorSelected
-                    colorSelectBorder: _appear.colorSelectBorder
-                    colorBorder: _appear.colorBorder
-                    caretSize: _appear.caretSize
-                    colorCaret: _appear.colorCaret
-                    gripWidth: _appear.gripWidth
-                    gripHeight: _appear.gripHeight
-                    gripRadius: _appear.gripRadius
-                    colorGrip: _appear.colorGrip
-                    onClearFilters: _find.clear()
+                Repeater {
+                    id: _sections
+                    model: _pads
+                    delegate: XboxPadCard {
+                        Layout.fillWidth: true
+                        open: _root.isPadOpen(padId)
+                        running: _root.running
+                        appear: _appear
+                        findText: _find.text
+                        findType: _find.typeValue
+                        findSending: _root.findSending
+                        filtering: _find.filtering
+                        onToggleRequested: _root.setPadOpen(padId, !open)
+                        onClearFilters: _find.clear()
+                    }
                 }
             }
         }
@@ -259,17 +210,11 @@ Item {
         PageAppearance {
             id: _appear
             objectName: "xboxOutputAppearance"
+            visible: _sections.count > 0 && displayOpen
             pageKey: "xbox-output"
             buttonName: "xboxOutputAppearanceButton"
             title: "Xbox Output View — Appearance"
             liveOptions: true
         }
-    }
-
-    // +---------------------------------------------------------------------
-    // | Find
-
-    function _applyFind() {
-        _list.setFilter(_find.text, _find.typeValue, _find.isChecked("sending"))
     }
 }

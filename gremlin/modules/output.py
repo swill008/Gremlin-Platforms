@@ -888,6 +888,61 @@ def xbox_module(pad_id: int) -> registry.Module | None:
     return _xbox_modules.get(int(pad_id))
 
 
+def xbox_pad_name(pad: int) -> str:
+    """The name of pad N's Xbox output module: "Xbox 360 Controller" for
+    pad 1, "Xbox 360 N" otherwise (xbox_pad_of reads it back)."""
+    return "Xbox 360 Controller" if int(pad) == 1 else f"Xbox 360 {int(pad)}"
+
+
+def xbox_pad_count() -> int:
+    """How many Xbox pads are on (Xbox Setup, 1-4): the highest pad with
+    its own Xbox output module; pad 1 is always on (D-XBOX-PADS)."""
+    return max([1, *xbox_modules()])
+
+
+def xbox_pads_on() -> list[int]:
+    """The pads that are sent to: 1 to xbox_pad_count()."""
+    return list(range(1, xbox_pad_count() + 1))
+
+
+def set_xbox_pad_count(n: int, who: str = "Xbox Setup") -> None:
+    """Turn pads 1-n on: makes the missing "Xbox 360 N" output modules and
+    deletes the Xbox modules above n (Map to Xbox bindings to them are
+    kept; they show "can't be sent"). One History step."""
+    from gremlin import history
+    from gremlin.modules import store
+    from gremlin.signal import signal
+    from vigem.xbox import MAX_PADS
+
+    count = max(1, min(int(n), MAX_PADS))
+    _refresh_claims(force=True)
+    have = dict(_xbox_modules)
+    token = history.begin_group(f"Xbox pads: {count}")
+    try:
+        for pad in range(2, count + 1):
+            if pad in have:
+                continue
+            name = xbox_pad_name(pad)
+
+            def made(doc: dict, name: str = name) -> None:
+                doc.setdefault("kind", "control.hardware")
+                doc["device"] = name
+                doc["direction"] = "dest"
+
+            store.update(name, "", made, who)
+        for module in registry.outputs():
+            if is_xbox_module(module.name) and xbox_pad_of(module.name) > count:
+                error = store.delete(
+                    module.name, module.bound_guid, pictures=True, who=who
+                )
+                if error:
+                    syslog.warning(f"{module.name} not removed: {error}")
+    finally:
+        history.end_group(token)
+    refresh()
+    signal.xboxPadsChanged.emit()
+
+
 def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
     """Send a value to an Xbox control. False when the driver refused it.
 
@@ -896,6 +951,13 @@ def write_xbox(pad_id: int, target: Any, value: Any) -> bool:  # noqa: ANN401
     is sent while stopped, so no pad is plugged in outside a Run (06 Q19).
     """
     if not _sending():
+        return False
+    if int(pad_id) not in xbox_pads_on():
+        # Only the pads Xbox Setup turned on are sent to (D-XBOX-PADS).
+        _log_once(
+            ("xbox-off", int(pad_id)),
+            f"Not sent: {xbox_pad_label(pad_id)} is off in Xbox Setup",
+        )
         return False
     try:
         from vigem.xbox import XboxProxy
@@ -1180,21 +1242,28 @@ def vjoy_targets(action: Any) -> list[tuple[int, InputType, int]]:  # noqa: ANN4
 
 def xbox_pad_label(pad: int) -> str:
     """A pad as the Map to Xbox editor names it: its Xbox output module's
-    name, else "Xbox 360 Controller" for pad 1, "Xbox pad N" otherwise."""
+    name, else its name to be (xbox_pad_name)."""
     module = xbox_modules().get(int(pad))
     if module is not None:
         return module.name
-    return "Xbox 360 Controller" if int(pad) == 1 else f"Xbox pad {int(pad)}"
+    return xbox_pad_name(pad)
 
 
 def xbox_cant_send_text(pad: int) -> str | None:
-    """None when Map to Xbox can send to this pad; else "<pad> is not
-    Found." (the Xbox driver, ViGEm, can't be used, or no such pad)."""
+    """None when Map to Xbox can send to this pad; else "<pad> is off in
+    Xbox Setup ..." (above the number of pads, D-XBOX-PADS) or "<pad> is
+    not Found." (the Xbox driver, ViGEm, can't be used, or no such pad)."""
     watch_cant_send()
     from vigem.xbox import MAX_PADS
 
     pad = int(pad)
-    if 1 <= pad <= MAX_PADS and xbox_available():
+    if not 1 <= pad <= MAX_PADS:
+        return f"{xbox_pad_label(pad)} is not Found."
+    count = xbox_pad_count()
+    if pad > count:
+        on = "pad 1" if count == 1 else f"pads 1-{count}"
+        return f"{xbox_pad_label(pad)} is off in Xbox Setup ({on} on)."
+    if xbox_available():
         return None
     return f"{xbox_pad_label(pad)} is not Found."
 
@@ -1348,4 +1417,40 @@ def cant_send_bindings(profile: Any = None) -> list[dict]:  # noqa: ANN401
                             "text": text,
                         }
                     )
+    return found
+
+
+def xbox_bindings_on_pads(pads: list[int]) -> list[str]:
+    """Every Map to Xbox binding (any mode, nested actions included) in the
+    current profile that sends to one of these pads, as "<device> · <input>
+    → Xbox 360 N · <control> (<mode>)" (Xbox Setup's question before pads
+    are turned off, D-XBOX-PADS)."""
+    from action_plugins.map_to_xbox import MapToXboxData
+    from gremlin import device_initialization, shared_state
+    from gremlin.profile import Profile, reachable
+
+    profile = shared_state.current_profile
+    wanted = {int(pad) for pad in pads}
+    if profile is None or not wanted:
+        return []
+    found: list[str] = []
+    for items in profile.inputs.values():
+        for item in items:
+            for action in reachable(Profile.roots_of([item])):
+                if not isinstance(action, MapToXboxData):
+                    continue
+                pad = int(action.xbox_device_id)
+                if pad not in wanted:
+                    continue
+                guid = getattr(item.device_id, "uuid", item.device_id)
+                device = device_initialization.device_name(guid)
+                source = _input_label(item.input_type, item.input_id)
+                target = action.xbox_target
+                control = (
+                    target.label if isinstance(target, XboxTarget) else str(target)
+                )
+                found.append(
+                    f"{device} · {source} → {xbox_pad_label(pad)} · {control}"
+                    f" ({item.mode or ''})"
+                )
     return found

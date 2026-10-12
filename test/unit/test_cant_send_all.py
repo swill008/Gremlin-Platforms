@@ -95,7 +95,8 @@ def test_xbox_driver_missing_names_the_pad(world: dict) -> None:
 
 
 def test_xbox_pad_outside_the_driver_is_not_found(world: dict) -> None:
-    assert output.xbox_cant_send_text(5) == "Xbox pad 5 is not Found."
+    assert output.xbox_cant_send_text(5) == "Xbox 360 5 is not Found."
+    world["pads"] = {2: SimpleNamespace(name="Xbox 360 2")}
     assert output.xbox_cant_send_text(2) is None
 
 

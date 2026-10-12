@@ -1,58 +1,40 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
+"""The Xbox Output View's pad sections (03 S139, D-XBOX-PADS): the chip rows
+of one pad, one line per device that drives it, and the live source that
+lights that pad's face and chips from what the Xbox output module sends."""
+
 from __future__ import annotations
 
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import device_initialization, event_handler, shared_state
-from gremlin.modules import device_class, output, wiring
+from gremlin import event_handler, shared_state
+from gremlin.modules import output, wiring
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
 from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui import input_pairing as pairing
-from gremlin.ui import xbox_maps
+from gremlin.ui.xbox_maps import xbox_maps_for_item
 
 QML_IMPORT_NAME = "Gremlin.Device"
 QML_IMPORT_MAJOR_VERSION = 1
 
+# The live poll's step.
+POLL_MS = 50
 
-
-
-def _connected_keys() -> set[str]:
-    keys: set[str] = set()
-    for getter in (
-        device_initialization.joystick_devices,
-        device_initialization.physical_devices,
-        device_initialization.input_devices,
-    ):
-        try:
-            devices = getter()
-        except Exception:
-            continue
-        for device in devices or []:
-            key = guid_key(getattr(device, "device_guid", ""))
-            if key:
-                keys.add(key)
-    for guid in device_class.INTERNAL_INPUTS:
-        keys.add(guid_key(guid))
-    return keys
-
-
-def _xbox_maps_for_item(item) -> list[tuple[int, str]]:
-    return xbox_maps.xbox_maps_for_item(item)
+_KINDS: dict[object, str] = {
+    InputType.JoystickAxis: "axis",
+    InputType.JoystickButton: "button",
+    InputType.JoystickHat: "hat",
+}
 
 
 def _chip(target: str) -> str:
     key = str(target or "").strip().lower().replace("-", "_")
     return wiring.XBOX_SHORT.get(key, key[:3] or "xb")
-
-
-def _pair_label(items) -> str:
-    pads = sorted({pad for item in items or [] for pad, _ in _xbox_maps_for_item(item)})
-    return ", ".join(f"Xbox 360 {pad}" for pad in pads)
 
 
 def _source_label(input_type: InputType, identifier: int) -> str:
@@ -63,347 +45,263 @@ def _source_label(input_type: InputType, identifier: int) -> str:
     return str(identifier)
 
 
-def _mapped_xbox_rows(guid: str, input_type: InputType) -> list[dict]:
+def pad_chips(pad: int) -> list[dict]:
+    """One row per device that drives the pad (a Map to Xbox in any mode):
+    its axes' and its buttons' (and hats') chips, in input order."""
+    profile = shared_state.current_profile
+    if profile is None:
+        return []
     rows: list[dict] = []
-    seen: set[tuple] = set()
-    for item in pairing._items_for_guid(guid):
-        if getattr(item, "input_type", None) != input_type:
-            continue
-        try:
-            identifier = int(item.input_id)
-        except Exception:
-            continue
-        src = _source_label(input_type, identifier)
-        for pad, target in _xbox_maps_for_item(item):
-            key = (identifier, pad, target)
-            if key in seen:
+    for device_id, items in (profile.inputs or {}).items():
+        axes: list[dict] = []
+        buttons: list[dict] = []
+        seen: set[tuple] = set()
+        for item in items or []:
+            input_type = getattr(item, "input_type", None)
+            kind = _KINDS.get(input_type)
+            if kind is None or not isinstance(input_type, InputType):
                 continue
-            seen.add(key)
-            rows.append(
-                {
+            identifier = getattr(item, "input_id", None)
+            if not isinstance(identifier, int):
+                continue
+            for pid, target in xbox_maps_for_item(item):
+                key = (kind, identifier, target)
+                if pid != pad or key in seen:
+                    continue
+                seen.add(key)
+                chip = {
                     "identifier": identifier,
-                    "label": src,
-                    "xboxPad": int(pad),
+                    "label": _source_label(input_type, identifier),
+                    "kind": kind,
                     "xboxTarget": str(target),
                     "xboxLabel": wiring.xbox_dest(pad, target),
                     "xboxChip": _chip(target),
                 }
+                (axes if kind == "axis" else buttons).append(chip)
+        if not axes and not buttons:
+            continue
+        order = {"axis": 0, "button": 1, "hat": 2}
+        for chips in (axes, buttons):
+            chips.sort(
+                key=lambda c: (order[c["kind"]], c["identifier"], c["xboxTarget"])
             )
-    rows.sort(key=lambda row: (row["identifier"], row["xboxPad"], row["xboxTarget"]))
+        guid = str(device_id)
+        rows.append(
+            {
+                "guid": guid,
+                "name": pairing.device_label(guid),
+                "axes": axes,
+                "buttons": buttons,
+            }
+        )
+    rows.sort(key=lambda row: str(row["name"]).lower())
     return rows
 
 
-def _pads_for_guid(guid: str) -> list[int]:
-    pads = {
-        pad
-        for item in pairing._items_for_guid(guid)
-        for pad, _ in _xbox_maps_for_item(item)
-    }
-    return sorted(pads)
-
-
-class _XboxMappedModel(QtCore.QAbstractListModel):
-    roles = {
-        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"identifier"),
-        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"label"),
-        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"xboxPad"),
-        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(b"xboxTarget"),
-        QtCore.Qt.ItemDataRole.UserRole + 5: QtCore.QByteArray(b"xboxLabel"),
-        QtCore.Qt.ItemDataRole.UserRole + 6: QtCore.QByteArray(b"xboxChip"),
-    }
-    guidChanged = QtCore.Signal()
-
-    def __init__(self, input_type: InputType, parent: ta.OQO = None) -> None:
-        super().__init__(parent)
-        self._input_type = input_type
-        self._guid = ""
-        self._rows: list[dict] = []
-        # What drives what (D-01-OWNER-NOTICES).
-        signal.bindingsChanged.connect(self._reload)
-
-    @QtCore.Slot()
-    def _reload(self) -> None:
-        self.beginResetModel()
-        self._rows = _mapped_xbox_rows(self._guid, self._input_type) if self._guid else []
-        self.endResetModel()
-
-    def _get_guid(self) -> str:
-        return self._guid
-
-    def _set_guid(self, guid: str) -> None:
-        text = str(guid or "")
-        if text == self._guid:
-            return
-        self._guid = text
-        self._reload()
-        self.guidChanged.emit()
-
-    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._rows)
-
-    def data(self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole):
-        if not index.isValid() or not (0 <= index.row() < len(self._rows)):
-            return None
-        row = self._rows[index.row()]
-        key = bytes(self.roles.get(role, b"")).decode()
-        return row.get(key)
-
-    def roleNames(self) -> dict[int, QtCore.QByteArray]:
-        return self.roles
-
-    guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
-
-
 @ta.QmlElement
-class XboxMappedAxisModel(_XboxMappedModel):
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(InputType.JoystickAxis, parent)
+class XboxPadChipsModel(QtCore.QAbstractListModel):
+    """The chip rows of one pad section: one row per driving device."""
 
-
-@ta.QmlElement
-class XboxMappedButtonModel(_XboxMappedModel):
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(InputType.JoystickButton, parent)
-
-
-@ta.QmlElement
-class XboxMappedHatModel(_XboxMappedModel):
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(InputType.JoystickHat, parent)
-
-
-@ta.QmlElement
-class XboxPadListModel(QtCore.QAbstractListModel):
-    roles = {
-        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"padId"),
-    }
-    guidChanged = QtCore.Signal()
-    countChanged = QtCore.Signal()
-
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(parent)
-        self._guid = ""
-        self._rows: list[dict] = []
-        # Which pads this device drives (D-01-OWNER-NOTICES).
-        signal.bindingsChanged.connect(self._reload)
-
-    @QtCore.Slot()
-    def _reload(self) -> None:
-        self.beginResetModel()
-        self._rows = [{"padId": pad} for pad in _pads_for_guid(self._guid)]
-        self.endResetModel()
-        self.countChanged.emit()
-
-    def _get_guid(self) -> str:
-        return self._guid
-
-    def _set_guid(self, guid: str) -> None:
-        text = str(guid or "")
-        if text == self._guid:
-            return
-        self._guid = text
-        self._reload()
-        self.guidChanged.emit()
-
-    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._rows)
-
-    def data(self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole):
-        if not index.isValid() or not (0 <= index.row() < len(self._rows)):
-            return None
-        return self._rows[index.row()].get("padId")
-
-    def roleNames(self) -> dict[int, QtCore.QByteArray]:
-        return self.roles
-
-    def _get_count(self) -> int:
-        return len(self._rows)
-
-    guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid, notify=guidChanged)
-    count = QtCore.Property(int, fget=_get_count, notify=countChanged)
-
-
-@ta.QmlElement
-class XboxViewerDeviceModel(QtCore.QAbstractListModel):
-    countChanged = QtCore.Signal()
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"guid"),
         QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"name"),
-        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"pairLabel"),
+        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"axes"),
+        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(b"buttons"),
     }
+    padIdChanged = QtCore.Signal()
+    countChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
+        self._pad_id = 1
         self._rows: list[dict] = []
-        self.reload()
-        # What drives what and the devices' shown names: their owners' one
-        # notice each (D-01-OWNER-NOTICES).
+        # What drives what and the devices' shown names (D-01-OWNER-NOTICES).
         signal.bindingsChanged.connect(self.reload)
         signal.deviceNamesChanged.connect(self.reload)
-        # The device list itself.
-        event_handler.EventListener().device_change_event.connect(self.reload)
+        self.reload()
 
     @QtCore.Slot()
     def reload(self) -> None:
         self.beginResetModel()
-        self._rows = []
-        connected = _connected_keys()
-        profile = shared_state.current_profile
-        if profile is not None:
-            for device_id, items in (profile.inputs or {}).items():
-                if not any(_xbox_maps_for_item(item) for item in items or []):
-                    continue
-                guid = str(device_id)
-                if guid_key(guid) not in connected:
-                    continue
-                self._rows.append(
-                    {
-                        "guid": guid,
-                        "name": pairing.device_label(guid),
-                        "pairLabel": _pair_label(items),
-                    }
-                )
-        self._rows.sort(key=lambda row: str(row["name"]).lower())
+        self._rows = pad_chips(self._pad_id)
         self.endResetModel()
         self.countChanged.emit()
 
     def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._rows)
+        return 0 if parent.isValid() else len(self._rows)
 
-    def data(self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole):
+    def data(
+        self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
+    ) -> object:
         if not index.isValid() or not (0 <= index.row() < len(self._rows)):
             return None
-        row = self._rows[index.row()]
-        key = bytes(self.roles.get(role, b"")).decode()
-        return row.get(key)
+        name = self.roles.get(role)
+        if name is None:
+            return None
+        return self._rows[index.row()].get(name.toStdString())
 
     def roleNames(self) -> dict[int, QtCore.QByteArray]:
         return self.roles
 
+    def _get_pad_id(self) -> int:
+        return self._pad_id
+
+    def _set_pad_id(self, pad_id: int) -> None:
+        if int(pad_id) == self._pad_id:
+            return
+        self._pad_id = int(pad_id)
+        self.reload()
+        self.padIdChanged.emit()
+
     def _get_count(self) -> int:
         return len(self._rows)
 
+    def _get_axis_lines(self) -> int:
+        return sum(1 for row in self._rows if row["axes"])
+
+    def _get_button_lines(self) -> int:
+        return sum(1 for row in self._rows if row["buttons"])
+
+    padId = QtCore.Property(
+        int, fget=_get_pad_id, fset=_set_pad_id, notify=padIdChanged
+    )
     count = QtCore.Property(int, fget=_get_count, notify=countChanged)
+    axisLines = QtCore.Property(int, fget=_get_axis_lines, notify=countChanged)
+    buttonLines = QtCore.Property(int, fget=_get_button_lines, notify=countChanged)
 
 
 @ta.QmlElement
-class XboxLiveThrottle(QtCore.QObject):
-    stampChanged = QtCore.Signal()
+class XboxPadLive(QtCore.QObject):
+    """Live values for one pad section: what the Xbox output module sends to
+    the pad (output.xbox_state) and the claimed inputs of the devices that
+    drive it (the input module feed, not raw hardware). Polls only while
+    active (the profile runs)."""
+
+    padIdChanged = QtCore.Signal()
+    activeChanged = QtCore.Signal()
     axisStampChanged = QtCore.Signal()
     buttonStampChanged = QtCore.Signal()
     xboxStampChanged = QtCore.Signal()
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
-        self._guid = ""
-        self._uid = None
-        self._hw_axis: dict[int, float] = {}
-        self._hw_button: dict[int, float] = {}
-        self._xbox: dict[int, dict[str, float]] = {}
-        self._xbox_pads: set[int] = set()
-        self._stamp = 0
+        self._pad_id = 1
+        self._active = False
+        self._hw_axis: dict[tuple[str, int], float] = {}
+        self._hw_button: dict[tuple[str, int], float] = {}
+        self._xbox: dict[str, float] = {}
         self._axis_stamp = 0
         self._button_stamp = 0
         self._xbox_stamp = 0
         self._axis_dirty = False
-        self._timer = QtCore.QTimer(self)
-        self._timer.setInterval(50)
-        self._timer.setSingleShot(True)
-        self._timer.timeout.connect(self._flush)
-        self._xbox_timer = QtCore.QTimer(self)
-        self._xbox_timer.setInterval(50)
-        self._xbox_timer.timeout.connect(self._poll_xbox)
-        # Claimed inputs only: the input module feed, not raw hardware.
+        self._axis_timer = QtCore.QTimer(self)
+        self._axis_timer.setInterval(POLL_MS)
+        self._axis_timer.setSingleShot(True)
+        self._axis_timer.timeout.connect(self._flush_axes)
+        self._poll = QtCore.QTimer(self)
+        self._poll.setInterval(POLL_MS)
+        self._poll.timeout.connect(self._poll_once)
         InputModuleRuntime().event.connect(self._on_event)
 
-    def _bump(self) -> None:
-        self._stamp += 1
-        self.stampChanged.emit()
+    # Hardware side.
 
-    def _bump_axis(self) -> None:
+    def _on_event(self, event: event_handler.Event) -> None:
+        if not self._active:
+            return
+        identifier = event.identifier
+        if not isinstance(identifier, int):
+            return
+        key = (guid_key(event.device_guid), identifier)
+        if event.event_type == InputType.JoystickAxis:
+            try:
+                self._hw_axis[key] = float(event.value)
+            except (TypeError, ValueError):
+                return
+            self._axis_dirty = True
+            if not self._axis_timer.isActive():
+                self._axis_timer.start()
+        elif event.event_type == InputType.JoystickButton:
+            self._hw_button[key] = 1.0 if event.is_pressed else 0.0
+            self._bump_buttons()
+
+    @QtCore.Slot()
+    def _flush_axes(self) -> None:
+        if self._axis_dirty:
+            self._axis_dirty = False
+            self._bump_axes()
+
+    def _bump_axes(self) -> None:
         self._axis_stamp += 1
         self.axisStampChanged.emit()
 
-    def _bump_button(self) -> None:
+    def _bump_buttons(self) -> None:
         self._button_stamp += 1
         self.buttonStampChanged.emit()
 
-    def _flush(self) -> None:
-        if self._axis_dirty:
-            self._axis_dirty = False
-            self._bump_axis()
+    @QtCore.Slot(str, int, result=float)
+    def hwAxis(self, guid: str, identifier: int) -> float:
+        return float(self._hw_axis.get((guid_key(guid), int(identifier)), 0.0))
 
-    def _get_guid(self) -> str:
-        return self._guid
+    @QtCore.Slot(str, int, result=float)
+    def hwButton(self, guid: str, identifier: int) -> float:
+        return float(self._hw_button.get((guid_key(guid), int(identifier)), 0.0))
 
-    def _set_guid(self, guid: str) -> None:
-        self._guid = str(guid or "")
-        self._uid = pairing._guid(self._guid)
-        self._hw_axis.clear()
-        self._hw_button.clear()
-        self._xbox.clear()
-        self._xbox_pads = set(_pads_for_guid(self._guid))
-        if self._xbox_pads:
-            if not self._xbox_timer.isActive():
-                self._xbox_timer.start()
-        else:
-            self._xbox_timer.stop()
-        self._bump()
-        self._poll_xbox()
+    # Xbox side.
 
-    def _on_event(self, event: event_handler.Event) -> None:
-        if self._uid is None:
-            return
-        ev = guid_key(event.device_guid)
-        if ev != guid_key(self._uid):
-            return
-        if event.event_type == InputType.JoystickAxis:
-            try:
-                self._hw_axis[int(event.identifier)] = float(event.value)
-            except Exception:
-                return
-            self._axis_dirty = True
-            if not self._timer.isActive():
-                self._timer.start()
-            return
-        if event.event_type == InputType.JoystickButton:
-            try:
-                self._hw_button[int(event.identifier)] = (
-                    1.0 if event.is_pressed else 0.0
-                )
-            except Exception:
-                return
-            self._bump_button()
-
-    def _poll_xbox(self) -> None:
-        changed = False
-        for pad_id in self._xbox_pads:
-            # Through the Xbox output module: claimed controls only.
-            snap = output.xbox_state(pad_id)
-            if self._xbox.get(pad_id) != snap:
-                self._xbox[pad_id] = snap
-                changed = True
-        if changed:
+    @QtCore.Slot()
+    def _poll_once(self) -> None:
+        snap = dict(output.xbox_state(self._pad_id))
+        if snap != self._xbox:
+            self._xbox = snap
             self._xbox_stamp += 1
             self.xboxStampChanged.emit()
-            self._bump_axis()
-            self._bump_button()
-
-    @QtCore.Slot(int, result=float)
-    def axisValue(self, identifier: int) -> float:
-        return float(self._hw_axis.get(int(identifier), 0.0))
-
-    @QtCore.Slot(int, result=float)
-    def buttonValue(self, identifier: int) -> float:
-        return float(self._hw_button.get(int(identifier), 0.0))
 
     @QtCore.Slot(int, str, result=float)
     def xboxValue(self, pad_id: int, target: str) -> float:
+        if int(pad_id) != self._pad_id:
+            return 0.0
         key = str(target or "").strip().lower().replace("-", "_")
-        return float(self._xbox.get(int(pad_id), {}).get(key, 0.0))
+        return float(self._xbox.get(key, 0.0))
 
-    def _get_stamp(self) -> int:
-        return self._stamp
+    def _clear(self) -> None:
+        self._hw_axis.clear()
+        self._hw_button.clear()
+        self._xbox = {}
+        self._bump_axes()
+        self._bump_buttons()
+        self._xbox_stamp += 1
+        self.xboxStampChanged.emit()
+
+    # Properties.
+
+    def _get_pad_id(self) -> int:
+        return self._pad_id
+
+    def _set_pad_id(self, pad_id: int) -> None:
+        if int(pad_id) == self._pad_id:
+            return
+        self._pad_id = int(pad_id)
+        self._clear()
+        if self._active:
+            self._poll_once()
+        self.padIdChanged.emit()
+
+    def _get_active(self) -> bool:
+        return self._active
+
+    def _set_active(self, on: bool) -> None:
+        on = bool(on)
+        if on == self._active:
+            return
+        self._active = on
+        if on:
+            self._poll.start()
+            self._poll_once()
+        else:
+            self._poll.stop()
+            self._axis_timer.stop()
+            self._clear()
+        self.activeChanged.emit()
 
     def _get_axis_stamp(self) -> int:
         return self._axis_stamp
@@ -414,8 +312,14 @@ class XboxLiveThrottle(QtCore.QObject):
     def _get_xbox_stamp(self) -> int:
         return self._xbox_stamp
 
-    guid = QtCore.Property(str, fget=_get_guid, fset=_set_guid)
-    stamp = QtCore.Property(int, fget=_get_stamp, notify=stampChanged)
+    padId = QtCore.Property(
+        int, fget=_get_pad_id, fset=_set_pad_id, notify=padIdChanged
+    )
+    active = QtCore.Property(
+        bool, fget=_get_active, fset=_set_active, notify=activeChanged
+    )
     axisStamp = QtCore.Property(int, fget=_get_axis_stamp, notify=axisStampChanged)
-    buttonStamp = QtCore.Property(int, fget=_get_button_stamp, notify=buttonStampChanged)
+    buttonStamp = QtCore.Property(
+        int, fget=_get_button_stamp, notify=buttonStampChanged
+    )
     xboxStamp = QtCore.Property(int, fget=_get_xbox_stamp, notify=xboxStampChanged)

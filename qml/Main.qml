@@ -978,6 +978,13 @@ ApplicationWindow {
             Helpers.createComponent("DialogInputViewer.qml")
     }
 
+    // Xbox Setup (D-XBOX-PADS): the ViGEmBus check and how many Xbox pads
+    // are on. From the Xbox card's menu, the palette and the Xbox Output
+    // View's "Open Xbox Setup".
+    function openXboxSetup() {
+        return Helpers.createComponent("DialogXboxSetup.qml")
+    }
+
     // The Xbox output's Output View (its card is always there).
     function openXboxOutputView() {
         var card = _moduleModel ? _moduleModel.cardMap("xbox") : null
@@ -2213,7 +2220,11 @@ ApplicationWindow {
                     openOutputViewForCard(card)
                 }
                 onConfigureModule: function(card) {
-                    openConfigureModule(card.direction === "dest" ? "dest" : "source", card)
+                    // The Xbox card's item is Xbox Setup… (D-XBOX-PADS).
+                    if (card && (card.bus === "XInput" || card.tab === "xbox" || card.slug === "xbox"))
+                        openXboxSetup()
+                    else
+                        openConfigureModule(card.direction === "dest" ? "dest" : "source", card)
                 }
                 onOpenAutoMappingTool: function(card) {
                     Helpers.createComponent("DialogAutoMappingTool.qml", {
@@ -2598,6 +2609,11 @@ ApplicationWindow {
                     && _root._configLive
             visible: active
             sourceComponent: XboxDevice {}
+        }
+        // The Xbox Output View's "Open Xbox Setup" (D-XBOX-PADS).
+        Connections {
+            target: _xboxLoader.item
+            function onXboxSetupRequested() { _root.openXboxSetup() }
         }
 
         // Loaded only while shown.

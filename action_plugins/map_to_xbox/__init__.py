@@ -97,7 +97,9 @@ def targets_for(behavior: InputType) -> list[XboxTarget]:
     return [t for t in XboxTarget if kinds is None or t.kind in kinds]
 
 
-def _read_xml_property(node: ElementTree.Element, name: str, ptype: PropertyType, default):
+def _read_xml_property(
+    node: ElementTree.Element, name: str, ptype: PropertyType, default
+):
     # A missing property (older profiles) quietly takes the default.
     try:
         return util.read_property(node, name, ptype, default)
@@ -163,6 +165,8 @@ class MapToXboxModel(ActionModel):
         # Xbox output modules added or removed, the driver: the pad names
         # and the ⚠ follow the output layer's notice (D-05-CANT-SEND-LIVE).
         signal.signal.cantSendChanged.connect(self.cantSendTextChanged)
+        # The pad count changed in Xbox Setup: the pad list and the ⚠ too.
+        signal.signal.xboxPadsChanged.connect(self.cantSendTextChanged)
 
     def _qml_path_impl(self) -> str:
         return (
@@ -241,10 +245,11 @@ class MapToXboxModel(ActionModel):
         return [{"value": item.value, "label": item.label} for item in items]
 
     def _get_pad_choices(self) -> list:
-        """The Xbox output module(s) by name. Pad 1 is always there; a saved
-        pad 2-4 stays listed and still sends (one pad for now, to-do 16)."""
+        """The pads that are on (Xbox Setup's count) by name, plus the pad
+        this action already uses, so a pad outside the count stays listed
+        with its ⚠ until it is moved (D-XBOX-PADS)."""
         current = int(cast("MapToXboxData", self._data).xbox_device_id)
-        pads = {*output.xbox_modules(), 1, current}
+        pads = {*output.xbox_pads_on(), current}
         return [
             {"value": pad, "label": output.xbox_pad_label(pad)} for pad in sorted(pads)
         ]
@@ -334,7 +339,10 @@ class MapToXboxData(AbstractActionData):
             ident = 1
         self.xbox_device_id = max(1, min(4, ident))
         raw_target = _read_xml_property(
-            node, "xbox-target", PropertyType.String, _default_target(self.behavior_type).value
+            node,
+            "xbox-target",
+            PropertyType.String,
+            _default_target(self.behavior_type).value,
         )
         try:
             self.xbox_target = XboxTarget.from_string(str(raw_target))

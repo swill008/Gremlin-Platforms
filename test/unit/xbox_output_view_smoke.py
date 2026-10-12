@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Runs the real main window off-screen and prints what the Xbox Output View
-shows as one JSON line, for test_xbox_output_view.py. One device drives the
-Xbox pad (the live pads' list is faked; the hardware is fake_hardware) and
-the Xbox driver is reported missing, so the result doesn't depend on this
-PC. Arg: optional screenshot path."""
+shows as one JSON line, for test_xbox_output_view.py. Pads 1 and 2 are on
+(Xbox Setup); one device drives pads 1, 2 and 3 (the bindings and chips are
+faked; the hardware is fake_hardware), so pad 3 (off) has no section. The
+Xbox driver is reported missing, then found. Arg: optional screenshot path."""
 
 from __future__ import annotations
 
@@ -37,26 +37,40 @@ output.xbox_available = lambda: False
 output.xbox_error = lambda: ""
 
 import gremlin.ui.update_model as um  # noqa: E402
-from gremlin.ui import xbox_viewer  # noqa: E402
+from gremlin.ui import xbox_output_list, xbox_viewer  # noqa: E402
 
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 DEVICE = "Test Stick"
+GUID = "{11111111-2222-3333-4444-555555555555}"
+BOUND: dict = {
+    1: {GUID: {"a", "left_stick_x"}},
+    2: {GUID: {"b"}},
+    3: {GUID: {"x"}},
+}
+output.xbox_pads_on = lambda: [1, 2]
+xbox_output_list.pad_bindings = lambda: {k: dict(v) for k, v in BOUND.items()}
+xbox_output_list.device_label = lambda guid: DEVICE
 
 
-def _one_device(self: xbox_viewer.XboxViewerDeviceModel) -> None:
-    self.beginResetModel()
-    self._rows = [{"guid": "{11111111-2222-3333-4444-555555555555}",
-                   "name": DEVICE, "pairLabel": "Xbox 360 1"}]
-    self.endResetModel()
-    self.countChanged.emit()
+def _chips(pad: int) -> list[dict]:
+    if pad not in BOUND:
+        return []
+    button = {"identifier": 1, "label": "1", "kind": "button", "xboxTarget": "a",
+              "xboxLabel": "Xbox 360 1 · A", "xboxChip": "A"}
+    axis = {"identifier": 1, "label": "X", "kind": "axis",
+            "xboxTarget": "left_stick_x", "xboxLabel": "Xbox 360 1 · LSX",
+            "xboxChip": "LX"}
+    return [{"guid": GUID, "name": DEVICE, "axes": [axis] if pad == 1 else [],
+             "buttons": [button]}]
 
 
-xbox_viewer.XboxViewerDeviceModel.reload = _one_device
+xbox_viewer.pad_chips = _chips
 
-from PySide6 import QtGui, QtQml, QtQuick  # noqa: E402
+from PySide6 import QtCore, QtGui, QtQml, QtQuick  # noqa: E402
 
 import joystick_gremlin  # noqa: E402
+from gremlin.signal import signal  # noqa: E402
 
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
 win = app.main_window
@@ -65,8 +79,9 @@ win = app.main_window
 ERRORS: list[str] = []
 
 
-def run(code: str) -> object:
-    expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, code)
+def run(code: str, scope: QtCore.QObject | None = None) -> object:
+    target = scope if scope is not None else win
+    expr = QtQml.QQmlExpression(QtQml.qmlContext(target), target, code)
     value, _ = expr.evaluate()
     if expr.hasError():
         # Recorded, not raised: on old code each check then fails by itself.
@@ -94,6 +109,8 @@ def walk(item: QtQuick.QQuickItem) -> Iterator[QtQuick.QQuickItem]:
 
 
 def shown(item: QtQuick.QQuickItem | None) -> bool:
+    if item is None:
+        return False
     while item is not None:
         if not item.isVisible():
             return False
@@ -115,34 +132,38 @@ def page() -> QtQuick.QQuickItem | None:
     return item if isinstance(item, QtQuick.QQuickItem) else None
 
 
-def page_state() -> dict:
-    item = page()
-    if item is None:
-        return {"loaded": False}
-    items = list(walk(item))
-    rows = [i for i in items if i.objectName() == "xboxDriverRow" and shown(i)]
-    heading = next((i for i in items if i.objectName() == "xboxPadsHeading"), None)
-    scroll = next((i for i in items if i.objectName() == "xboxOutputScroll"), None)
-    card = next((i for i in items if i.property("text") == DEVICE and shown(i)), None)
-    control = next(
-        (i for i in items if i.property("text") == "Left Stick X" and shown(i)), None
-    )
-    find = next((i for i in items if i.objectName() == "xboxOutputFind"), None)
-    tree = next((i for i in items if i.objectName() == "xboxOutputTree"), None)
-    content = list(walk(scroll)) if scroll is not None else []
+def named(items: list, name: str) -> QtQuick.QQuickItem | None:
+    return next((i for i in items if i.objectName() == name), None)
+
+
+def pad_state(item: QtQuick.QQuickItem, items: list, content: list, pad: int) -> dict:
+    section = named(items, f"xboxPadSection{pad}")
+    assert section is not None
+    sec_items = list(walk(section))
+    heading = named(sec_items, f"xboxPadHeading{pad}")
+    face = named(sec_items, f"xboxPadFace{pad}")
+    tree = named(sec_items, f"xboxOutputTree{pad}")
+    chips = [i for i in sec_items if i.objectName() == "xboxChip" and shown(i)]
+    lines = [
+        i for i in sec_items
+        if i.objectName() in (f"xboxAxisLine{pad}", f"xboxButtonLine{pad}")
+        and shown(i)
+    ]
+    texts = [
+        i.property("text") for i in sec_items
+        if shown(i) and isinstance(i.property("text"), str)
+    ]
     return {
-        "loaded": True,
-        "driverRows": len(rows),
-        "driverTop": top(rows[0]) if rows else -1,
-        "headingTop": top(heading) if heading else -1,
-        "cardShown": card is not None,
-        "cardTop": top(card) if card else -1,
-        "controlTop": top(control) if control else -1,
-        "cardInScroll": card is not None and card in content,
-        "controlInScroll": control is not None and control in content,
-        "padsOpen": bool(item.property("padsOpen")),
-        "findTop": top(find) if find else -1,
-        "findInScroll": find is not None and find in content,
+        "top": top(section),
+        "open": run(f"isPadOpen({pad})", item),
+        "headingShown": shown(heading),
+        "texts": texts,
+        "faceShown": shown(face),
+        "facePad": face.property("padId") if face else None,
+        "faceAbove": bool(face and tree and top(face) < top(tree)),
+        "chips": [[c.property("hwLabel"), c.property("xbLabel")] for c in chips],
+        "lines": sorted({str(i.property("deviceName")) for i in lines}),
+        "treeShown": shown(tree),
         "treeInScroll": tree is not None and tree in content,
         "treeReadOnly": bool(tree and tree.property("readOnly")),
         "treeGroups": bool(tree and tree.property("showGroups")),
@@ -151,6 +172,39 @@ def page_state() -> dict:
         "treeOwnScroll": bool(tree and tree.property("ownScroll")),
         "treeFull": bool(tree)
         and tree.height() + 1 >= float(tree.property("listHeight") or 0),
+        "rows": run(f"padList({pad}).parentCount", item),
+    }
+
+
+def page_state() -> dict:
+    item = page()
+    if item is None:
+        return {"loaded": False}
+    items = list(walk(item))
+    scroll = named(items, "xboxOutputScroll")
+    content = list(walk(scroll)) if scroll is not None else []
+    missing = named(items, "xboxDriverMissing")
+    link = named(items, "xboxOpenSetupLink")
+    find = named(items, "xboxOutputFindBar")
+    empty = named(items, "xboxOutputEmpty")
+    return {
+        "loaded": True,
+        "sections": int(item.property("padSectionCount") or 0),
+        "missingShown": shown(missing),
+        "missingText": missing.property("text") if missing else None,
+        "linkShown": shown(link),
+        "linkText": link.property("text") if link else None,
+        "missingTop": top(missing) if missing else -1,
+        "findShown": shown(find),
+        "findTop": top(find) if find else -1,
+        "findInScroll": find is not None and find in content,
+        "emptyShown": shown(empty),
+        "emptyText": empty.property("text") if empty else None,
+        "pads": {
+            str(pad): pad_state(item, items, content, pad)
+            for pad in (1, 2, 3)
+            if named(items, f"xboxPadSection{pad}") is not None
+        },
     }
 
 
@@ -183,8 +237,21 @@ out["pageKey"] = run("_xboxLoader.item.appearance.pageKey")
 if len(sys.argv) > 1:
     win.grabWindow().save(sys.argv[1])
 
-# Fold the live pads: hidden, and still folded the next time the page opens.
-run("_xboxLoader.item.setPadsOpen(false)")
+# The Find bar once, for every pad's list.
+first = page()
+box = named(list(walk(first)), "xboxOutputFind") if first is not None else None
+if box is not None and first is not None:
+    box.setProperty("text", "Left Stick")
+    pump(0.3)
+    out["find"] = {str(p): run(f"padList({p}).parentCount", first) for p in (1, 2)}
+    box.setProperty("text", "")
+    pump(0.3)
+    out["findCleared"] = {
+        str(p): run(f"padList({p}).parentCount", first) for p in (1, 2)
+    }
+
+# Fold pad 2 only: its face, chips and list hide; pad 1 stays; remembered.
+run("_xboxLoader.item.setPadOpen(2, false)")
 pump(0.3)
 out["folded"] = page_state()
 run("closeWorkRoomNow()")
@@ -193,9 +260,47 @@ out["closedLoaded"] = page() is not None
 run("openXboxOutputView()")
 pump(1.0)
 out["reopenedFolded"] = page_state()
-run("_xboxLoader.item.setPadsOpen(true)")
+run("_xboxLoader.item.setPadOpen(2, true)")
 pump(0.3)
 out["reopened"] = page_state()
+
+# Pad 2 off in Xbox Setup: its section goes.
+output.xbox_pads_on = lambda: [1]
+signal.xboxPadsChanged.emit()
+pump(0.3)
+out["padsOne"] = page_state()
+
+# No pad bound: no sections, one line, no Find bar, no Appearance button.
+BOUND.clear()
+signal.bindingsChanged.emit()
+pump(0.5)
+out["empty"] = page_state()
+out["emptyAppearanceButton"] = bar_button("xboxOutputAppearanceButton")
+
+# The red line's link asks Main for Xbox Setup.
+asked = [0]
+page_item = page()
+if page_item is not None:
+    QtCore.QObject.connect(
+        page_item, "2xboxSetupRequested()",
+        lambda: asked.__setitem__(0, asked[0] + 1),
+    )
+    link = named(list(walk(page_item)), "xboxOpenSetupLink")
+    if link is not None:
+        run("clicked()", link)
+        pump(0.3)
+out["setupAsked"] = asked[0]
+
+# Driver found: no red line.
+for w in app.topLevelWindows():
+    if w is not win and w.isVisible():
+        w.close()
+output.xbox_available = lambda: True
+run("closeWorkRoomNow()")
+pump(0.5)
+run("openXboxOutputView()")
+pump(1.0)
+out["found"] = page_state()
 
 # The card's old viewer entry (pairingForCard) opens the same page, no window.
 run("closeWorkRoomNow()")

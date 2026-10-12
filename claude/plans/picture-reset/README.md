@@ -1,0 +1,7 @@
+# PICRESET: Reset Picture (user "approved", 2026-10-12; 1a 2a 3a 4a). Decision id D-07-RESET-PICTURE. Build AFTER the Xbox pads batch commits.
+- New "Reset Picture": first item of the Picture section in the editor's right-click menu (qml/rig_menu.js Picture section, near Crop/Reset Crop) and a button in the picture's Properties. One Undo step; works on every selected picture; greyed out when nothing to reset or the picture is locked.
+- 1a Size: the size a fresh add of this picture would get today (reuse the editor's add/placing rule, don't save new data), centred where the picture is now.
+- 2a Clears: size/stretch, crop, rotation, flip, skew/shape points, opacity back to 100%. Keeps: snap points, the file, layer, stacking place, name, hidden, locked.
+- 3a Keep Reset Crop and Reset Shape; FIX Reset Shape so on pictures it also undoes rotation and flip (qml/rig_transform.js:382-394 resetShape only deletes adj/skew while rig_menu.js:545-549 _pictureShaped enables it for rot/flip/crop/skew; decide with the spec 07 S42 whether crop belongs to Reset Shape too — S42 wording wins).
+- Tests first: a picture resized, cropped, rotated, flipped, skewed, opacity 50%, with snap points -> Reset Picture -> fresh-add size centred, no crop/rot/flip/skew, opacity 100%, snap points kept, one Undo brings all back; Reset Shape on a rotated-only picture undoes the rotation (fails on today's code).
+- Spec page 07 (new statement + S42 change), glossary row "Reset Picture", Help (Device Mapping Editor pictures topic), map section 11.
