@@ -147,7 +147,7 @@ function transformHandleAt(n, px, py, w, h) {
     var k = _skewOf(n)
     for (var i = 0; i < hs.length; i++) {
         var p = Shapes.skewPt(hs[i].x, hs[i].y, w, h, k.kx, k.ky)
-        if (Math.hypot(px - p[0], py - p[1]) < 8)
+        if (Math.hypot(px - p[0], py - p[1]) < uiDp(8))
             return hs[i].name
     }
     return ""
@@ -194,7 +194,8 @@ function dragTransform(n, name, mx, my) {
     if (name === "tipA" || name === "tipB") {
         var a = _toEditor(n, n.flipH ? w : 0, h / 2, w, h)
         var b = _toEditor(n, n.flipH ? 0 : w, h / 2, w, h)
-        var p = snapEnt(mx, my, altHeld)
+        // Ctrl skips snapping (07 S142).
+        var p = snapEnt(mx, my, snapOffHeld)
         if (name === "tipA")
             a = [p.x, p.y]
         else
@@ -267,6 +268,71 @@ function dragTransform(n, name, mx, my) {
             bend = 0
         _setBend(n, bend, m.T)
     }
+}
+
+// --- Ctrl+Shift on a side handle: skew along that side (07 S147) -------------------------
+
+var _sideSkew = null
+
+// Starts a side skew: top/bottom ("n"/"s") lean the box sideways (skewX),
+// left/right ("w"/"e") up and down (skewY); the opposite side stays put.
+// Only for drawings with the Skew handles. True when it started.
+function beginSideSkew(n, handle, mx, my) {
+    _sideSkew = null
+    if (!n || isLocked(n) || ["n", "s", "w", "e"].indexOf(handle) < 0
+            || transformModesFor(n).indexOf("skew") < 0)
+        return false
+    var g = drawGeom(n)
+    var k = _skewOf(n)
+    _sideSkew = { id: n.id, handle: handle, mx: mx, my: my, kx: k.kx, ky: k.ky,
+                  cx: g.x + g.w / 2, cy: g.y + g.h / 2, w: g.w, h: g.h,
+                  fixed: !(n.around && n.around.length) }
+    return true
+}
+
+function applySideSkew(mx, my) {
+    var st = _sideSkew
+    var n = st ? nodeAt(st.id) : null
+    if (!n || isLocked(n))
+        return
+    // The pointer's move along the box's own axes.
+    var d = Shapes.rotatePt(mx - st.mx, my - st.my, -(n.rot || 0))
+    var kx = st.kx
+    var ky = st.ky
+    if (st.handle === "n")
+        kx = st.kx - d.x / Math.max(1, st.h)
+    else if (st.handle === "s")
+        kx = st.kx + d.x / Math.max(1, st.h)
+    else if (st.handle === "w")
+        ky = st.ky - d.y / Math.max(1, st.w)
+    else
+        ky = st.ky + d.y / Math.max(1, st.w)
+    // The diamonds' limits.
+    kx = Math.max(-1.5, Math.min(1.5, kx))
+    ky = Math.max(-1.5, Math.min(1.5, ky))
+    if (Math.abs(kx) < 0.03) kx = 0
+    if (Math.abs(ky) < 0.03) ky = 0
+    if (kx || ky)
+        n.skew = [kx, ky]
+    else
+        delete n.skew
+    // The skew is about the middle: the box moves half the lean so the
+    // opposite side stays where it was (not for a box drawn round chips).
+    if (!st.fixed)
+        return
+    var sx = 0
+    var sy = 0
+    if (st.handle === "n")
+        sx = (st.kx - kx) * st.h / 2
+    else if (st.handle === "s")
+        sx = (kx - st.kx) * st.h / 2
+    else if (st.handle === "w")
+        sy = (st.ky - ky) * st.w / 2
+    else
+        sy = (ky - st.ky) * st.w / 2
+    var off = Shapes.rotatePt(sx, sy, n.rot || 0)
+    n.fx = xToFx(st.cx + off.x - st.w / 2)
+    n.fy = yToFy(st.cy + off.y - st.h / 2)
 }
 
 // Sets a block arrow's bend, growing or shrinking its box about its middle

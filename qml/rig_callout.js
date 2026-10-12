@@ -83,7 +83,7 @@ function onCalloutTip(n, mx, my) {
     if (!isCallout(n) || !interactive || !isSelected(n.id) || isLocked(n))
         return false
     var tip = calloutTip(n)
-    return !!tip && Math.hypot(mx - tip.x, my - tip.y) < 9
+    return !!tip && Math.hypot(mx - tip.x, my - tip.y) < uiDp(9)
 }
 
 function dragCalloutTip(n, mx, my) {

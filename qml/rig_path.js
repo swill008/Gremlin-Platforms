@@ -73,16 +73,17 @@ function _newPath(pts, smooth, closed) {
 // --- the Path tool: click points, double-click or Enter to finish ------------------
 
 function pathClick(mx, my) {
-    var p = snapEnt(mx, my, altHeld)
+    var p = snapEnt(mx, my, snapOffHeld)
     var draft = pathDraft.slice()
     // Back on the first point: a closed shape.
     if (draft.length >= 3 && Math.hypot(p.x - draft[0][0], p.y - draft[0][1]) < 10) {
         finishPath(true)
         return
     }
+    // Shift: the segment goes in 45 degree steps (07 S146), not rotateSnap.
     if (shiftHeld && draft.length) {
         var last = draft[draft.length - 1]
-        var s = Shapes.snapAngle(last[0], last[1], p.x, p.y, rotateSnap)
+        var s = Shapes.snapAngle(last[0], last[1], p.x, p.y, 45)
         p = { x: s.x, y: s.y }
     }
     draft.push([p.x, p.y])
@@ -254,7 +255,7 @@ function hitPath(n, px, py, w, h) {
     var pts = pathLocal(n, w, h)
     if (interactive && isSelected(n.id) && !isLocked(n) && !canTurnTogether()) {
         for (var i = 0; i < pts.length; i++) {
-            if (Math.hypot(px - pts[i][0], py - pts[i][1]) < 7)
+            if (Math.hypot(px - pts[i][0], py - pts[i][1]) < uiDp(7))
                 return "pt" + i
         }
     }
@@ -276,7 +277,14 @@ function dragPathPoint(i, mx, my) {
     var pts = pathPointsAt(n)
     if (i < 0 || i >= pts.length)
         return
-    var p = snapEnt(mx, my, altHeld)
+    var p = snapEnt(mx, my, snapOffHeld)
+    // Shift: the segment from the point before (the next one for the first
+    // point) goes in 45 degree steps (07 S146).
+    var nb = i > 0 ? pts[i - 1] : (pts.length > 1 ? pts[1] : null)
+    if (shiftHeld && nb) {
+        var s = Shapes.snapAngle(nb[0], nb[1], p.x, p.y, 45)
+        p = { x: s.x, y: s.y }
+    }
     pts[i] = [p.x, p.y]
     setPathPoints(n, pts)
 }

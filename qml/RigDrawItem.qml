@@ -159,11 +159,11 @@ Item {
                         border.color: ed.handleInk
                         x: {
                             var xs = [0, parent.width, 0, parent.width, parent.width * 0.5, parent.width * 0.5, 0, parent.width]
-                            return xs[index] - 4
+                            return xs[index] - width / 2
                         }
                         y: {
                             var ys = [0, 0, parent.height, parent.height, 0, parent.height, parent.height * 0.5, parent.height * 0.5]
-                            return ys[index] - 4
+                            return ys[index] - height / 2
                         }
                     }
                 }
@@ -254,11 +254,11 @@ Item {
                         border.color: ed.handleInk
                         x: {
                             var xs = [0, parent.width, 0, parent.width, parent.width * 0.5, parent.width * 0.5, 0, parent.width]
-                            return xs[index] - 4
+                            return xs[index] - width / 2
                         }
                         y: {
                             var ys = [0, 0, parent.height, parent.height, 0, parent.height, parent.height * 0.5, parent.height * 0.5]
-                            return ys[index] - 4
+                            return ys[index] - height / 2
                         }
                     }
                 }
@@ -302,14 +302,14 @@ Item {
         Rectangle {
             z: 5
             visible: { _drawRoot.rev; return !!(_calloutFace.on && ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node)) }
-            x: _calloutFace.tip.x - 5
-            y: _calloutFace.tip.y - 5
-            width: 10
-            height: 10
-            radius: 5
+            x: _calloutFace.tip.x - width / 2
+            y: _calloutFace.tip.y - height / 2
+            width: Style.dp(10)
+            height: Style.dp(10)
+            radius: width / 2
             color: { _drawRoot.rev; return (node && node.tail && node.tail.to) ? ed.handleFill : ed.handleInk }
             border.color: ed.handleFill
-            border.width: 2
+            border.width: Style.dp(2)
         }
         Rectangle {
             visible: { _drawRoot.rev; return !ed.isCallout(node) }
@@ -401,8 +401,10 @@ Item {
         target: ed
         function onTickChanged() { if (_dc.visible) _dc.requestPaint() }
     }
-    // A picture. Cropped, the whole picture is drawn at its uncropped size,
-    // shifted by the crop, inside a box that clips the cut-off sides.
+    // A picture. It fills its box exactly (07 S140: the box is the picture,
+    // so its handles sit on the picture's edges). Cropped, the whole picture
+    // is drawn at its uncropped size, shifted by the crop, inside a box that
+    // clips the cut-off sides, so the part left showing fills the box.
     Item {
         id: _picClip
         readonly property var crop: { _drawRoot.rev; return (_drawRoot.node && _drawRoot.node.crop) || null }
@@ -418,13 +420,17 @@ Item {
 
         Image {
             id: _overlayImage
+            objectName: "pictureImage"
             readonly property real keepW: _picClip.crop ? Math.max(0.02, 1 - (_picClip.crop.l || 0) - (_picClip.crop.r || 0)) : 1
             readonly property real keepH: _picClip.crop ? Math.max(0.02, 1 - (_picClip.crop.t || 0) - (_picClip.crop.b || 0)) : 1
             width: _picClip.width / keepW
             height: _picClip.height / keepH
             x: _picClip.crop ? -(_picClip.crop.l || 0) * width : 0
             y: _picClip.crop ? -(_picClip.crop.t || 0) * height : 0
-            fillMode: Image.PreserveAspectFit
+            // Stretch, not fit: a box of another shape stretches the picture
+            // rather than leaving bands inside it (07 S140). The Look copy and
+            // the screen-sized copy are stretched the same way.
+            fillMode: Image.Stretch
             asynchronous: true
             // With a Look (07 S43), the adjusted copy the window made
             // (HardwareProfile.adjustedPhotoUrl, kept in the node's lookUrl,
@@ -521,13 +527,13 @@ Item {
                 var n = node
                 if (!n || !n.sockets || index >= n.sockets.length)
                     return 0
-                return n.sockets[index].ux * _drawRoot.width - 4
+                return n.sockets[index].ux * _drawRoot.width - width / 2
             }
             y: {
                 var n = node
                 if (!n || !n.sockets || index >= n.sockets.length)
                     return 0
-                return n.sockets[index].uy * _drawRoot.height - 4
+                return n.sockets[index].uy * _drawRoot.height - height / 2
             }
         }
     }
@@ -539,20 +545,22 @@ Item {
         y: -ed.rotateHandleOffset
         z: 4
         Rectangle {
-            x: -0.5
+            x: -width / 2
             width: 1
             height: ed.rotateHandleOffset - 4
             color: ed.handleFill
         }
+        // Centred on the grip point at every UI scale (07 S155).
         Rectangle {
-            x: -5
-            y: -5
-            width: 10
-            height: 10
-            radius: 5
+            objectName: "rotateKnob"
+            x: -width / 2
+            y: -height / 2
+            width: Style.dp(10)
+            height: Style.dp(10)
+            radius: width / 2
             color: ed.handleInk
             border.color: ed.handleFill
-            border.width: 2
+            border.width: Style.dp(2)
         }
     }
     // A path's points, to drag one by one.
@@ -566,14 +574,14 @@ Item {
         Rectangle {
             required property var modelData
             z: 5
-            x: modelData[0] - 4
-            y: modelData[1] - 4
-            width: 8
-            height: 8
-            radius: 4
+            x: modelData[0] - width / 2
+            y: modelData[1] - height / 2
+            width: Style.dp(8)
+            height: Style.dp(8)
+            radius: width / 2
             color: ed.handleInk
             border.color: ed.handleFill
-            border.width: 1.5
+            border.width: 1.5 * Style.uiScale / 100
         }
     }
     // Transform handles (shape, tips, skew, bend): accent diamonds.
@@ -588,22 +596,24 @@ Item {
         Rectangle {
             required property var modelData
             z: 6
-            x: modelData.x - 5
-            y: modelData.y - 5
-            width: 10
-            height: 10
+            x: modelData.x - width / 2
+            y: modelData.y - height / 2
+            width: Style.dp(10)
+            height: Style.dp(10)
             rotation: 45
             color: Style.accent
             border.color: ed.handleInk
             border.width: 1
         }
     }
-    // Resize handles: eight on a box, one on each end of a line.
+    // Resize handles: eight on a box, one on each end of a line, centred on
+    // the edges and corners at every UI scale (07 S140, S155).
     Repeater {
         model: (ed.showChrome && node && ed.isSelected(node.id) && !ed.isLocked(node) && !ed.tableCellHandlesOn(node)
                 && (ed.transformMode === "resize" || ed.isLine(node)))
             ? (ed.isLine(node) ? 2 : 8) : 0
         Rectangle {
+            objectName: "resizeHandle"
             required property int index
             readonly property var lineEnds: {
                 _drawRoot.rev
@@ -617,15 +627,15 @@ Item {
             border.color: ed.handleInk
             x: {
                 if (lineEnds)
-                    return lineEnds[index * 2] * _drawRoot.width - 4
+                    return lineEnds[index * 2] * _drawRoot.width - width / 2
                 var xs = [0, _drawRoot.width, 0, _drawRoot.width, _drawRoot.width * 0.5, _drawRoot.width * 0.5, 0, _drawRoot.width]
-                return xs[index] - 4
+                return xs[index] - width / 2
             }
             y: {
                 if (lineEnds)
-                    return lineEnds[index * 2 + 1] * _drawRoot.height - 4
+                    return lineEnds[index * 2 + 1] * _drawRoot.height - height / 2
                 var ys = [0, 0, _drawRoot.height, _drawRoot.height, 0, _drawRoot.height, _drawRoot.height * 0.5, _drawRoot.height * 0.5]
-                return ys[index] - 4
+                return ys[index] - height / 2
             }
             z: 4
         }

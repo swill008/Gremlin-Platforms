@@ -53,11 +53,14 @@ def test_hovering_a_picture_makes_no_step(results: dict) -> None:
     assert results["hover-steps"] == 0
 
 
-def test_esc_mid_drag_ends_it_as_one_step(results: dict) -> None:
+def test_esc_mid_drag_cancels_it(results: dict) -> None:
+    # 07 S150: everything back as at the press, no undo step, the
+    # selection stays.
     r = results["esc"]
     assert r["active"] is False and r["drag"] == ""
-    assert r["steps"] == 1
-    assert r["undo-restores"] is True
+    assert r["steps"] == 0
+    assert r["restored"] is True
+    assert r["selected"] is True
 
 
 def test_undo_mid_drag_takes_the_drag_back(results: dict) -> None:

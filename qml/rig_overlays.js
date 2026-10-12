@@ -113,14 +113,30 @@ function addOverlay(rel, fileUrl, opts) {
     return st.id
 }
 
-// Choose Picture… on a missing picture (07 S108): the item keeps its place
-// and size, only its file changes. One Undo step.
-function repointPicture(id, rel, fileUrl) {
+// Choose Picture… on a missing picture (07 S108): the item keeps its place,
+// and with the new picture's aspect (width / height) its box takes that
+// shape, keeping its width and centre, so the picture fills it (07 S140).
+// With a crop, the part left showing sets the shape. One Undo step.
+function repointPicture(id, rel, fileUrl, aspect) {
     var n = nodeAt(id)
     if (!n || n.shape !== "image" || !rel)
         return
     n.src = rel
     n.srcUrl = fileUrl || ""
+    var a = Number(aspect || 0)
+    if (a > 0 && n.fw > 0 && n.fh > 0) {
+        var c = n.crop
+        if (c) {
+            var keepW = Math.max(0.02, 1 - (c.l || 0) - (c.r || 0))
+            var keepH = Math.max(0.02, 1 - (c.t || 0) - (c.b || 0))
+            a = a * keepW / keepH
+        }
+        var s = spaceRect()
+        var ratio = Math.max(1, s.w) / Math.max(1, s.h)
+        var cy = n.fy + n.fh / 2
+        n.fh = n.fw * ratio / a
+        n.fy = cy - n.fh / 2
+    }
     bump()
 }
 

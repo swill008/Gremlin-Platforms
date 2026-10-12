@@ -646,7 +646,7 @@ def scenario_session_r(s: Session) -> None:
     s.drag(s.center(first), s.center(first, dx=40, dy=30))
     s.record("drag-chip")
 
-    # Keyboard nudge, small and grid-sized.
+    # Keyboard nudge: 1 px, and 10 px with Shift (07 S145).
     for _ in range(3):
         s.key(Key.Key_Right)
     s.key(Key.Key_Down, Mod.ShiftModifier)
@@ -769,6 +769,8 @@ def scenario_api_sweep(s: Session) -> None:
         {"plane": "background", "fitFrame": True, "aspect": 1},
     )
     s.call("setSelection", [bg])
+    # Width alone: the Width/Height link (on by default, 07 S155) is off.
+    s.set_prop("linkSize", False)
     s.call("setProp", "x", 30)
     s.call("setProp", "w", 50)
     s.call("setRotation", 10)
@@ -1215,6 +1217,8 @@ def scenario_props(s: Session) -> None:
     s.record("rect")
     s.set_prop_field("X", "5")
     s.set_prop_field("Y", "10")
+    # Width and Height typed apart: the link (on by default) is off.
+    s.set_prop("linkSize", False)
     s.set_prop_field("Width", "15")
     s.set_prop_field("Height", "12.5")
     s.set_prop_field("Angle", "30")
@@ -1318,7 +1322,8 @@ def scenario_picture(s: Session) -> None:
     s.drag(bottom, QtCore.QPoint(bottom.x(), bottom.y() - round(box["h"] * 0.25)))
     s.record("cropped-by-handles", image=True)
 
-    # Esc leaves crop mode (and runs the editor's whole cancel).
+    # Esc leaves crop mode and puts the crop back as it was when crop mode
+    # started (07 S148); the picture stays selected.
     s.key(Key.Key_Escape)
     s.record("esc")
 
@@ -1390,10 +1395,15 @@ def scenario_labels(s: Session) -> None:
     nothing, or a dash; group members too."""
     _load(s, "evo_r")
     s.call("setSelection", [])
-    s.set_prop("actionLabels", {
-        "btn:3": "Gear up", "btn:1": "Ctrl+G", "btn:6": "→ Combat",
-        "axis:1": "vJoy 1 X",
-    })
+    s.set_prop(
+        "actionLabels",
+        {
+            "btn:3": "Gear up",
+            "btn:1": "Ctrl+G",
+            "btn:6": "→ Combat",
+            "axis:1": "vJoy 1 X",
+        },
+    )
 
     def label_step(name: str, image: bool = False) -> None:
         s.record(name, image=image)
@@ -1437,7 +1447,8 @@ def scenario_two_rows(s: Session) -> None:
     s.steps[-1]["state"]["name"] = s.node(chip).get("friendly")
     s.steps[-1]["state"]["taller"] = after["h"] > before["h"]
     s.steps[-1]["state"]["layerName"] = json.loads(
-        s.js("callOnNode", "layerName", chip, "[]"))
+        s.js("callOnNode", "layerName", chip, "[]")
+    )
     # The chip's menu: Text Align and the tick box in Chip Style.
     s.right_click(s.center(chip))
     s.open_menu_section("Chip Style")
@@ -1469,8 +1480,12 @@ def scenario_two_rows(s: Session) -> None:
     def heights() -> dict:
         n = s.node(table)
         rows = [
-            round(json.loads(s.js("callOnNode", "tableCellRect", table,
-                                  json.dumps([r, 0])))["h"], 1)
+            round(
+                json.loads(
+                    s.js("callOnNode", "tableCellRect", table, json.dumps([r, 0]))
+                )["h"],
+                1,
+            )
             for r in range(len(n["rows"]))
         ]
         return {"rows": rows, "table": round(s._box(table)["h"], 1)}
@@ -1690,9 +1705,12 @@ def scenario_paths(s: Session) -> None:
     for i in range(1, 25):
         p = QtCore.QPoint(start.x() + i * 10, start.y() + round(30 * math.sin(i / 3)))
         event = QtGui.QMouseEvent(
-            QtCore.QEvent.Type.MouseMove, QtCore.QPointF(p),
-            QtCore.QPointF(s.win.mapToGlobal(p)), QtCore.Qt.MouseButton.NoButton,
-            QtCore.Qt.MouseButton.LeftButton, QtCore.Qt.KeyboardModifier.NoModifier,
+            QtCore.QEvent.Type.MouseMove,
+            QtCore.QPointF(p),
+            QtCore.QPointF(s.win.mapToGlobal(p)),
+            QtCore.Qt.MouseButton.NoButton,
+            QtCore.Qt.MouseButton.LeftButton,
+            QtCore.Qt.KeyboardModifier.NoModifier,
         )
         QtCore.QCoreApplication.sendEvent(s.win, event)
         s.wait(10)
@@ -1729,12 +1747,23 @@ def scenario_styles(s: Session) -> None:
     s.drag(s.point(0.05, 0.26), s.point(0.18, 0.36))
     s.call("setDrawTool", "")
     shapes = [n["id"] for n in s.state()["nodes"] if n.get("shape") == "rect"]
-    s.set_prop("savedStyles", [
-        {"name": "Warning", "kind": "shape",
-         "fields": {"fill": "filled", "color": "#7C2D12", "border": "#FBBF24",
-                    "stroke": 4, "dash": "dash"}},
-        {"name": "Weapons", "kind": "chip", "fields": {"color": "#7F1D1D"}},
-    ])
+    s.set_prop(
+        "savedStyles",
+        [
+            {
+                "name": "Warning",
+                "kind": "shape",
+                "fields": {
+                    "fill": "filled",
+                    "color": "#7C2D12",
+                    "border": "#FBBF24",
+                    "stroke": 4,
+                    "dash": "dash",
+                },
+            },
+            {"name": "Weapons", "kind": "chip", "fields": {"color": "#7F1D1D"}},
+        ],
+    )
     s.call("setSelection", shapes)
     box = s._box(shapes[0])
     s.right_click(s.ed_point(box["x"] + 4, box["y"] + 4))
@@ -1826,8 +1855,12 @@ def scenario_zoom(s: Session) -> None:
     s.js("zoomToPage")
     view_step("page")
     s.call("setSelection", [])
-    s.steps.append({"step": "nothing-selected", "state": {
-        **s.state(), "zoomed": s.call("zoomToSelection")}})
+    s.steps.append(
+        {
+            "step": "nothing-selected",
+            "state": {**s.state(), "zoomed": s.call("zoomToSelection")},
+        }
+    )
 
 
 def scenario_rulers(s: Session) -> None:
@@ -1849,7 +1882,9 @@ def scenario_rulers(s: Session) -> None:
     s.drag(ruler, s.point(0.5, 0.2))
     s.record("guide-added", image=True)
     s.steps[-1]["state"]["guides"] = [
-        s.call_prop("rulerGuidesX"), s.call_prop("rulerGuidesY")]
+        s.call_prop("rulerGuidesX"),
+        s.call_prop("rulerGuidesY"),
+    ]
 
     # The shape dragged up near the guide lands on it.
     box = s._box(rect)
@@ -1859,8 +1894,9 @@ def scenario_rulers(s: Session) -> None:
     s.drag(grab, target)
     s.record("shape-on-guide", image=True)
     snapped = s._box(rect)
-    s.steps[-1]["state"]["topOnGuide"] = abs(
-        s.ed_point(snapped["x"], snapped["y"]).y() - guide_y) <= 1
+    s.steps[-1]["state"]["topOnGuide"] = (
+        abs(s.ed_point(snapped["x"], snapped["y"]).y() - guide_y) <= 1
+    )
 
     # Drag the guide back onto its ruler: gone.
     s.call("setSelection", [])
@@ -1868,7 +1904,9 @@ def scenario_rulers(s: Session) -> None:
     s.drag(on_guide, QtCore.QPoint(on_guide.x(), 6))
     s.record("guide-removed")
     s.steps[-1]["state"]["guides"] = [
-        s.call_prop("rulerGuidesX"), s.call_prop("rulerGuidesY")]
+        s.call_prop("rulerGuidesX"),
+        s.call_prop("rulerGuidesY"),
+    ]
 
     # Zoomed in, the rulers stay on the view's edges (they were scaled off
     # them), their marks closer in steps (0.5 at 800%).
@@ -1915,9 +1953,12 @@ def scenario_to_pool(s: Session) -> None:
         for i in range(1, 7):
             p = QtCore.QPoint(start.x() + (target.x() - start.x()) * i // 6, start.y())
             event = QtGui.QMouseEvent(
-                QtCore.QEvent.Type.MouseMove, QtCore.QPointF(p),
-                QtCore.QPointF(s.win.mapToGlobal(p)), QtCore.Qt.MouseButton.NoButton,
-                QtCore.Qt.MouseButton.LeftButton, QtCore.Qt.KeyboardModifier.NoModifier,
+                QtCore.QEvent.Type.MouseMove,
+                QtCore.QPointF(p),
+                QtCore.QPointF(s.win.mapToGlobal(p)),
+                QtCore.Qt.MouseButton.NoButton,
+                QtCore.Qt.MouseButton.LeftButton,
+                QtCore.Qt.KeyboardModifier.NoModifier,
             )
             QtCore.QCoreApplication.sendEvent(s.win, event)
             s.wait(15)
@@ -1959,8 +2000,9 @@ def scenario_to_pool(s: Session) -> None:
     s.call("setSelection", [stack])
     s.call("beginGroupEdit", stack)
     members = s.node(stack)["members"]
-    s.set_prop("selectedMember", next(
-        i for i, m in enumerate(members) if m.get("hwId") == 6))
+    s.set_prop(
+        "selectedMember", next(i for i, m in enumerate(members) if m.get("hwId") == 6)
+    )
     s.call("returnToPool")
     pool_step("member-gone")
     s.steps[-1]["state"]["stackSize"] = len(s.node(stack)["members"])
@@ -1994,11 +2036,10 @@ def scenario_deletes(s: Session) -> None:
     s.set_prop("selectedSpine", 0)
     s.key(Key.Key_Delete)
     s.record("spine-deleted")
-    s.steps[-1]["state"]["chipKept"] = any(
-        n["id"] == chip for n in s.state()["nodes"]
-    )
+    s.steps[-1]["state"]["chipKept"] = any(n["id"] == chip for n in s.state()["nodes"])
     s.steps[-1]["state"]["spinesBeforeAfter"] = [
-        before, len(s.node(chip).get("spines") or [])
+        before,
+        len(s.node(chip).get("spines") or []),
     ]
 
     # An extra table cell: the table stays, the cell goes.
@@ -2015,7 +2056,8 @@ def scenario_deletes(s: Session) -> None:
         n["id"] == table for n in s.state()["nodes"]
     )
     s.steps[-1]["state"]["extrasBeforeAfter"] = [
-        extras, len(s.node(table).get("extras") or [])
+        extras,
+        len(s.node(table).get("extras") or []),
     ]
 
 
@@ -2037,7 +2079,8 @@ def scenario_shape_tools(s: Session) -> None:
         s.record(name, image=image)
         n = s.node(arrow)
         s.steps[-1]["state"]["shaping"] = {
-            k: n.get(k) for k in ("adj", "bend", "skew", "rot", "shape")}
+            k: n.get(k) for k in ("adj", "bend", "skew", "rot", "shape")
+        }
 
     s.call("setTransformMode", "shape")
     h = handle("head")
@@ -2074,7 +2117,10 @@ def scenario_shape_tools(s: Session) -> None:
     s.record("triangle-points", image=True)
     n = s.node(tri)
     s.steps[-1]["state"]["path"] = [
-        n.get("shape"), len(n.get("pts", [])), n.get("closed")]
+        n.get("shape"),
+        len(n.get("pts", [])),
+        n.get("closed"),
+    ]
 
 
 def scenario_hotspots(s: Session) -> None:

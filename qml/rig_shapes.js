@@ -177,6 +177,82 @@ function rotatedResize(box, rot, handle, px, py, minW, minH, keepAspect) {
     return { x: ncx - w / 2, y: ncy - h / 2, w: w, h: h }
 }
 
+// A skewed point (kx sideways per pixel down, ky down per pixel across) and back.
+function _shear(x, y, kx, ky) {
+    return { x: x + kx * y, y: y + ky * x }
+}
+
+function _unshear(x, y, kx, ky) {
+    var det = 1 - kx * ky
+    if (Math.abs(det) < 0.01)
+        det = 0.01
+    return { x: (x - kx * y) / det, y: (y - ky * x) / det }
+}
+
+// A handle drag on a box drawn skewed (o.kx, o.ky, about its middle) and then
+// turned by rot degrees about its centre, the Photoshop way (07 S141, S149):
+// the opposite side or corner stays put, or with o.centre the centre does;
+// o.keep keeps the box's ratio from a corner; past the opposite edge (or the
+// centre) the box mirrors, reported as flipX / flipY. The maths runs in the
+// box's own unskewed axes, so the drawn handle stays under the pointer (07
+// S140). box is the unturned, unskewed box at the press; o.minW / o.minH the
+// smallest size. Returns {x, y, w, h, flipX, flipY}, the new unturned box.
+function boxResize(box, rot, handle, px, py, o) {
+    o = o || {}
+    var kx = Number(o.kx) || 0
+    var ky = Number(o.ky) || 0
+    var minW = o.minW > 0 ? o.minW : 8
+    var minH = o.minH > 0 ? o.minH : 8
+    var sx = handle.indexOf("e") >= 0 ? 1 : (handle.indexOf("w") >= 0 ? -1 : 0)
+    var sy = handle.indexOf("s") >= 0 ? 1 : (handle.indexOf("n") >= 0 ? -1 : 0)
+    var cx = box.x + box.w / 2
+    var cy = box.y + box.h / 2
+    // The fixed point, in the box's own axes from its middle: the centre, the
+    // opposite corner or the middle of the opposite edge.
+    var fl = o.centre ? { x: 0, y: 0 } : { x: -sx * box.w / 2, y: -sy * box.h / 2 }
+    var fs = _shear(fl.x, fl.y, kx, ky)
+    var f = rotatePt(fs.x, fs.y, rot || 0)
+    var fx = cx + f.x
+    var fy = cy + f.y
+    // The pointer in the box's own axes, measured from the fixed point.
+    var dr = rotatePt(px - fx, py - fy, -(rot || 0))
+    var d = _unshear(dr.x, dr.y, kx, ky)
+    var span = o.centre ? 2 : 1
+    var ex = sx ? d.x * sx * span : box.w
+    var ey = sy ? d.y * sy * span : box.h
+    var flipX = !!(sx && ex < 0)
+    var flipY = !!(sy && ey < 0)
+    var w = Math.max(minW, Math.abs(ex))
+    var h = Math.max(minH, Math.abs(ey))
+    if (o.keep && sx && sy && box.w > 0 && box.h > 0) {
+        var ratio = box.w / box.h
+        if (w / ratio > h)
+            h = w / ratio
+        else
+            w = h * ratio
+        if (w < minW) {
+            w = minW
+            h = w / ratio
+        }
+        if (h < minH) {
+            h = minH
+            w = h * ratio
+        }
+    }
+    // The new middle: the centre, or from the fixed point half the new size
+    // towards the handle (the other way once mirrored).
+    var ml = { x: 0, y: 0 }
+    if (!o.centre) {
+        ml.x = fl.x + (sx ? sx * (flipX ? -1 : 1) * w / 2 : 0)
+        ml.y = fl.y + (sy ? sy * (flipY ? -1 : 1) * h / 2 : 0)
+    }
+    var ms = _shear(ml.x, ml.y, kx, ky)
+    var m = rotatePt(ms.x, ms.y, rot || 0)
+    var ncx = cx + m.x
+    var ncy = cy + m.y
+    return { x: ncx - w / 2, y: ncy - h / 2, w: w, h: h, flipX: flipX, flipY: flipY }
+}
+
 // --- cropping a picture -----------------------------------------------------------
 
 // A crop: the fractions of the picture cut off each side.
@@ -215,10 +291,12 @@ function cropBox(box, rot, c0, c1) {
 }
 
 // The crop a handle drag asks for: the handle's edges move to where
-// rotatedResize puts them, the picture staying still under them.
-function cropFromDrag(box, rot, c0, handle, px, py) {
+// rotatedResize puts them, the picture staying still under them. keepAspect
+// (Shift on a corner, 07 S148) keeps the crop's proportions at the press.
+// c0 and the result are as seen (cropSeen) when the picture is flipped.
+function cropFromDrag(box, rot, c0, handle, px, py, keepAspect) {
     var a = cropOf(c0)
-    var want = rotatedResize(box, rot, handle, px, py, 1, 1, false)
+    var want = rotatedResize(box, rot, handle, px, py, 1, 1, !!keepAspect)
     var pxX = box.w / Math.max(0.0001, 1 - a.l - a.r)
     var pxY = box.h / Math.max(0.0001, 1 - a.t - a.b)
     var c = cropOf(a)
@@ -227,6 +305,18 @@ function cropFromDrag(box, rot, c0, handle, px, py) {
     if (handle.indexOf("s") >= 0) c.b = a.b + (box.h - want.h) / pxY
     if (handle.indexOf("n") >= 0) c.t = a.t + (box.h - want.h) / pxY
     return clampCrop(c)
+}
+
+// A picture's crop as it shows on screen: a picture flipped left to right
+// shows its right-hand cut on the left (RigDrawItem flips the clipped picture
+// as a whole), so l and r change places; flipped top to bottom, t and b.
+// The same call turns a seen crop back into the stored one.
+function cropSeen(c, flipH, flipV) {
+    var o = cropOf(c)
+    return {
+        l: flipH ? o.r : o.l, r: flipH ? o.l : o.r,
+        t: flipV ? o.b : o.t, b: flipV ? o.t : o.b
+    }
 }
 
 // --- callouts ------------------------------------------------------------------

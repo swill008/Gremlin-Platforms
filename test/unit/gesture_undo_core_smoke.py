@@ -103,7 +103,8 @@ def main() -> None:
         s.wait(15)
     out["hover-steps"] = s.call_prop("histAt") - at0
 
-    # Esc mid-drag: what the drag did so far is one step, and the drag ends.
+    # Esc mid-drag cancels it (07 S150): the picture is back as it was at
+    # the press, no step, the drag ends and the picture stays selected.
     box1 = s._box(pic)
     at0 = s.call_prop("histAt")
     corner = s.corner(pic)
@@ -112,9 +113,9 @@ def main() -> None:
     esc_active = s.call_prop("gestureActive")
     _release(s, QtCore.QPoint(corner.x() + 40, corner.y() + 40))
     out["esc"] = {"steps": s.call_prop("histAt") - at0, "active": esc_active,
-                  "drag": s.call_prop("dragKind")}
-    s.call("undo")
-    out["esc"]["undo-restores"] = s._box(pic) == box1
+                  "drag": s.call_prop("dragKind"),
+                  "restored": s._box(pic) == box1,
+                  "selected": pic in s.state()["selected"]}
 
     # Undo mid-drag: the drag ends as its step and Undo takes it back.
     box2 = s._box(pic)

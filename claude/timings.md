@@ -851,3 +851,18 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-11 | HTFIX: older History tests to the new design (90 pass) | agent tests | ~10 min | 6 min | 20:07–20:13 |
 | 2026-10-11 | ONE full run + lint (test-session list, seed 956683): 2 tests pinned old behaviour (folded rows, Help wording) + 5 lint items; fixed, targeted green | test | 5–6 min (table) | 7 min + 4 min fixes | 20:13–20:24 |
 | 2026-10-11 | Release 1.0.33 prep: NOTES (release-notes/1.0.33.md) + MAPCHECK (full map check: counts, 43 line counts, stale tags) | docs | ~8-10 min | NOTES ~8, MAPCHECK 6 | 20:24–20:31 |
+| 2026-10-11 | Picture handle drift study: other picture tools (PICTOOLS, read-only probes) | research | 5-10 min | 5 min | 20:38-20:43 |
+| 2026-10-11 | Web research: editor handle and modifier-key conventions (3 parallel agents RS-RESIZE, RS-XFORM, RS-SHAPE) | research | ~8 min | 2 min each | 20:47-20:49 |
+| 2026-10-11 | Photoshop research + code scout (RS-PS, SCOUT, parallel) | research | 5-10 min | 1 min each | 20:53-20:54 |
+| 2026-10-11 | Lead: contract, briefs, split for PS-MATCH (21 items) | lead | — | 10 min | 20:56-21:06 |
+| 2026-10-11 | PS-MATCH code batch, 9 parallel agents (RESIZE, DRAWITEM, POINTER, GROUP, XFORM, PROPS, DOCS, TESTNEW, SWEEP), no test runs | feature | 3-8 min each, limit 20 | 2-9 min each (all done 21:10) | 21:01-21:10 |
+| 2026-10-11 | Targeted tests PS-MATCH (9 files), two runs | test | ~4 min | 1-2 min each | 21:10-21:14 |
+| 2026-10-11 | HANG: new test 'freeze' traced (50 s per-program limit), smoke split | fix | 3-8 min | 9 min | 21:14-21:23 |
+| 2026-10-11 | CHIPDROP read-only trace | research | 5-10 min | 1 min | 21:18-21:19 |
+| 2026-10-11 | CHIPFIX: dropped chip centred (S156), failing test first | fix | 3-8 min | 4 min | 21:21-21:25 |
+| 2026-10-11 | Full run 1 (PS-MATCH) | test | 5-6 min | 7 min | 21:25-21:32 (27 failed) |
+| 2026-10-11 | CARDPIC read-only trace | research | 5-10 min | 1 min | 21:30-21:31 |
+| 2026-10-11 | Lead: fix window hook, wording, colours; reruns | fix | — | 12 min | 21:32-21:44 |
+| 2026-10-11 | GOLDEN (10 re-recorded) and PRINT (smoke box) in parallel | fix | 3-8 min each | 5 min / 1 min | 21:44-21:49 |
+| 2026-10-11 | BGPIC-PLAN contract + split + spec draft | research | 5-10 min | 6 min | 21:43-21:49 |
+| 2026-10-11 | Full run 2 (PS-MATCH final) | test | 5-6 min | 9 min (user's app open; part 6 509 s) | 21:49-21:58 (2 failed, pass alone) |

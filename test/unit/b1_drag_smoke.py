@@ -59,10 +59,11 @@ def _gesture(
 ) -> dict:
     """Press at start, move right by each of steps (screen px from the
     press), release at the last. probe: a node whose box centre is read
-    after each move (window px)."""
+    after each move (window px). mods are held on the moves and the release
+    only: Ctrl at the press would add to or remove from the selection."""
     before = _snap(s)
     c0 = s.center(probe) if probe else None
-    s._mouse("mousePress", start, mods=mods)
+    s._mouse("mousePress", start)
     s.wait(40)
     seen = []
     for dx in steps:
@@ -107,13 +108,14 @@ def main() -> None:
     a = s.ed_point(0, 0)
     b = s.ed_point(100, 0)
     out["screen_px_per_editor_px"] = (b.x() - a.x()) / 100
-    alt = Q.KeyboardModifier.AltModifier
+    # Ctrl held while dragging skips snapping (07 S142; Alt-drag copies now).
+    nosnap = Q.KeyboardModifier.ControlModifier
 
-    # Chips: a plain click, a 3 px wobble, then a real drag (Alt: no snap).
+    # Chips: a plain click, a 3 px wobble, then a real drag (Ctrl: no snap).
     s.click(s.ed_point(5, 5))
     out["chip_click"] = _gesture(s, s.center("b3"), [])
     out["chip_3px"] = _gesture(s, s.center("b3"), [1, 2, 3])
-    out["chip_drag"] = _gesture(s, s.center("b4"), [3, 5, 30], probe="b4", mods=alt)
+    out["chip_drag"] = _gesture(s, s.center("b4"), [3, 5, 30], probe="b4", mods=nosnap)
 
     # A drawing (rectangle).
     s.call("setDrawTool", "rect")
@@ -125,7 +127,7 @@ def main() -> None:
     s.call("setSelection", [])
     out["draw_click"] = _gesture(s, s.center(rect), [])
     out["draw_3px"] = _gesture(s, s.center(rect), [2, 3])
-    out["draw_drag"] = _gesture(s, s.center(rect), [3, 5, 30], probe=rect, mods=alt)
+    out["draw_drag"] = _gesture(s, s.center(rect), [3, 5, 30], probe=rect, mods=nosnap)
 
     # A group member (group being edited).
     s.set_prop("groupEditId", "p610")
@@ -136,7 +138,7 @@ def main() -> None:
     out["points"] = [[q.x(), q.y()] for q in pts]
     if mp is not None:
         out["member_3px"] = _gesture(s, mp, [1, 3])
-        out["member_drag"] = _gesture(s, mp, [3, 30], mods=alt)
+        out["member_drag"] = _gesture(s, mp, [3, 30], mods=nosnap)
     s.set_prop("groupEditId", "")
 
     out["warnings"] = sorted(

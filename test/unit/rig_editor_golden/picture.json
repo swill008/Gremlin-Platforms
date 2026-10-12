@@ -1452,41 +1452,15 @@
   {
    "state": {
     "bgCount": 0,
-    "changed": {},
-    "cropId": "",
-    "drawTool": "",
-    "editPlane": "foreground",
-    "histAt": 3,
-    "histLen": 4,
-    "layers": [],
-    "menu": [],
-    "nodeCount": 20,
-    "pasteRequests": 0,
-    "props": [
-     "Nothing selected"
-    ],
-    "selected": []
-   },
-   "step": "esc"
-  },
-  {
-   "state": {
-    "bgCount": 0,
     "changed": {
      "0": {
       "around": [],
       "border": "#22C55E",
       "color": "#14532D",
-      "crop": {
-       "b": 0.25,
-       "l": 0.2,
-       "r": 0.39955,
-       "t": 0
-      },
-      "fh": 0.21,
+      "fh": 0.28,
       "fill": "filled",
-      "fw": 0.11212,
-      "fx": 0.416,
+      "fw": 0.28,
+      "fx": 0.36,
       "fy": 0.28,
       "id": "ID0",
       "kind": "draw",
@@ -1513,15 +1487,80 @@
     "pasteRequests": 0,
     "props": [
      "Picture: icon",
+     "X: 36%",
+     "Y: 28%",
+     "Width: 28%",
+     "Height: 28%",
+     "Angle: 0\u00b0",
+     "Crop left: 0%",
+     "Crop top: 0%",
+     "Crop right: 0%",
+     "Crop bottom: 0%",
+     "Look",
+     "Brightness: 0%",
+     "Contrast: 0%",
+     "Greyscale: 0%",
+     "Opacity: 100%"
+    ],
+    "selected": [
+     "ID0"
+    ]
+   },
+   "step": "esc"
+  },
+  {
+   "state": {
+    "bgCount": 0,
+    "changed": {
+     "0": {
+      "around": [],
+      "border": "#22C55E",
+      "color": "#14532D",
+      "crop": {
+       "b": 0,
+       "l": 0.2,
+       "r": 0,
+       "t": 0
+      },
+      "fh": 0.28,
+      "fill": "filled",
+      "fw": 0.224,
+      "fx": 0.416,
+      "fy": 0.28,
+      "id": "ID0",
+      "kind": "draw",
+      "locked": false,
+      "opacity": 1,
+      "pad": 8,
+      "pinned": false,
+      "rot": 0,
+      "shape": "image",
+      "sockets": [],
+      "src": "test/icon",
+      "srcUrl": "<repo>/gfx/icon_large.png",
+      "stroke": 2
+     }
+    },
+    "cropId": "",
+    "drawTool": "",
+    "editPlane": "foreground",
+    "histAt": 5,
+    "histLen": 6,
+    "layers": [],
+    "menu": [],
+    "nodeCount": 20,
+    "pasteRequests": 0,
+    "props": [
+     "Picture: icon",
      "X: 41.6%",
      "Y: 28%",
-     "Width: 11.21%",
-     "Height: 21%",
+     "Width: 22.4%",
+     "Height: 28%",
      "Angle: 0\u00b0",
      "Crop left: 20%",
      "Crop top: 0%",
-     "Crop right: 39.96%",
-     "Crop bottom: 25%",
+     "Crop right: 0%",
+     "Crop bottom: 0%",
      "Look",
      "Brightness: 0%",
      "Contrast: 0%",
@@ -1564,8 +1603,8 @@
     "cropId": "",
     "drawTool": "",
     "editPlane": "foreground",
-    "histAt": 5,
-    "histLen": 6,
+    "histAt": 6,
+    "histLen": 7,
     "layers": [],
     "menu": [
      "Picture",
@@ -1620,8 +1659,8 @@
     "cropId": "",
     "drawTool": "",
     "editPlane": "foreground",
-    "histAt": 5,
-    "histLen": 6,
+    "histAt": 6,
+    "histLen": 7,
     "layers": [],
     "menu": [
      "Canvas",
@@ -1669,8 +1708,8 @@
     "cropId": "",
     "drawTool": "",
     "editPlane": "foreground",
-    "histAt": 5,
-    "histLen": 6,
+    "histAt": 6,
+    "histLen": 7,
     "layers": [],
     "menu": [
      "Canvas",

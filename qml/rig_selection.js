@@ -302,9 +302,9 @@ function shiftClone(n, dx, dy) {
     }
 }
 
-function pasteNodes(src, dx, dy) {
-    if (!src || !src.length)
-        return
+// Copies of the nodes with new ids, moved by (dx, dy) page fractions; the
+// copies' boxes drawn round, and leaders to, each other follow the new ids.
+function _cloneNodes(src, dx, dy) {
     var map = {}
     var copies = []
     var i
@@ -335,6 +335,17 @@ function pasteNodes(src, dx, dy) {
             if (ls[li].to && ls[li].to.id && map[ls[li].to.id])
                 ls[li].to.id = map[ls[li].to.id]
         }
+    }
+    return copies
+}
+
+function pasteNodes(src, dx, dy) {
+    if (!src || !src.length)
+        return
+    var copies = _cloneNodes(src, dx, dy)
+    var i
+    for (i = 0; i < copies.length; i++) {
+        var n = copies[i]
         // Into the plane being edited (S116, S121), not the copy's own: on
         // top of the background, or on top of everything in the foreground.
         if (editPlane === "background" && canHoldBackground(n)) {
@@ -361,6 +372,42 @@ function duplicateSelection() {
             src.push(n)
     }
     pasteNodes(src, 16 / Math.max(1, spaceRect().w), 16 / Math.max(1, spaceRect().h))
+}
+
+// Alt-drag copy (07 S143): the selection copied where it is, each copy just
+// above its original in the same plane, and the copies selected. Makes no
+// undo step of its own (the drag that follows is the one step). Returns the
+// new ids.
+function duplicateInPlace() {
+    var ids = (selectedIds && selectedIds.length) ? selectedIds.slice() : (selectedId ? [selectedId] : [])
+    var list = nodes || []
+    var src = []
+    var i
+    // In stacking order, so copies of stacked items stack the same way.
+    for (i = 0; i < list.length; i++) {
+        if (list[i] && ids.indexOf(list[i].id) >= 0)
+            src.push(list[i])
+    }
+    if (!src.length)
+        return []
+    var copies = _cloneNodes(src, 0, 0)
+    for (i = 0; i < copies.length; i++) {
+        // A box drawn round chips that were not copied keeps the size and
+        // place it has now.
+        if (src[i].around && src[i].around.length && !(copies[i].around && copies[i].around.length)) {
+            var g = drawGeom(src[i])
+            copies[i].fx = xToFx(g.x)
+            copies[i].fy = yToFy(g.y)
+            copies[i].fw = g.w / Math.max(1, spaceRect().w)
+            copies[i].fh = g.h / Math.max(1, spaceRect().h)
+        }
+        list.splice(list.indexOf(src[i]) + 1, 0, copies[i])
+    }
+    var out = copies.map(function(c) { return c.id })
+    setSelection(out)
+    normalizePlanes()
+    repaint()
+    return out
 }
 
 function copySelection() {

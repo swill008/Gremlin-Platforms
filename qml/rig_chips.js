@@ -260,6 +260,8 @@ function hotFyOf(n) {
 
 // chipOnly (Device Map Options → Chip only): the chip on its own, with no
 // leader and its hotspot hidden; both can be added from its menu later.
+// The chip lands centred on the drop point (or the view's centre), the
+// hotspot on the point itself (07 S156).
 function addChiplet(kind, hwId, wx, wy, chipOnly) {
     kind = leafKind(kind)
     hwId = parseInt(hwId, 10)
@@ -318,9 +320,25 @@ function addChiplet(kind, hwId, wx, wy, chipOnly) {
         n.hotHidden = true
     }
     var list = nodes || []
+    _centreChipOn(n, fxToX(fx), fyToY(fy), chipWGuess(n, null), chipH(n))
     list.push(n)
+    // Draw it once so its real size is known, then centre on that: the
+    // guess is off by a few pixels for long names (07 S156).
+    tick++
+    var it = _chips ? _chips.itemAt(list.length - 1) : null
+    if (it && it.width > 1 && it.height > 1)
+        _centreChipOn(n, fxToX(fx), fyToY(fy), it.width, it.height)
     setSelection([n.id])
     bump()
+}
+
+// Puts chip n's centre on (px, py), kept on the page.
+function _centreChipOn(n, px, py, w, h) {
+    var s = spaceRect()
+    var fw = w / Math.max(1, s.w)
+    var fh = h / Math.max(1, s.h)
+    n.chipFx = Math.max(0, Math.min(Math.max(0, 1 - fw), xToFx(px - w / 2)))
+    n.chipFy = Math.max(0, Math.min(Math.max(0, 1 - fh), yToFy(py - h / 2)))
 }
 
 function ensureFriendly(n) {

@@ -57,7 +57,8 @@ function guideSkipTarget(moving, other) {
 
 function updateMoveGuides(n) {
     clearMoveGuides()
-    if (!n || altHeld)
+    // Ctrl held skips snapping, the guides with it (07 S142).
+    if (!n || snapOffHeld)
         return
     var s = spaceRect()
     var b = nodeBox(n)

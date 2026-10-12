@@ -85,6 +85,8 @@ Rectangle {
                 Layout.minimumHeight: _panel.rowH
                 spacing: Style.dp(4)
                 enabled: !_panel.model.locked
+                // The link button hangs down to the Height row: keep it on top.
+                z: _row.field.key === "w" ? 1 : 0
 
                 // A heading (a picture's Look) is its title only.
                 Label {
@@ -128,6 +130,38 @@ Rectangle {
                     text: _row.field.suffix || ""
                     font.pixelSize: _panel.textPx
                     color: Style.fgSoft
+                }
+
+                // Width and Height linked (07 S155): on by default; with it
+                // on, changing one scales the other at the item's ratio. The
+                // icon sits between the Width and Height rows.
+                Item {
+                    visible: _row.field.key === "w"
+                    Layout.preferredWidth: Style.dp(22)
+                    Layout.preferredHeight: _panel.rowH
+                    Label {
+                        id: _link
+                        objectName: "propLinkSize"
+                        readonly property bool on: !!(_panel.ed && _panel.ed.linkSize)
+                        width: parent.width
+                        height: _panel.rowH
+                        y: _panel.rowH / 2 + Style.dp(1)
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: ""
+                        font.family: Style.iconFont
+                        font.pixelSize: Style.dp(13)
+                        color: !_row.enabled ? Style.fgDisabled
+                             : (on ? Style.accent : (_linkArea.containsMouse ? Style.fg : Style.fgMuted))
+                        MouseArea {
+                            id: _linkArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: if (_panel.ed) _panel.ed.linkSize = !_panel.ed.linkSize
+                        }
+                        ToolTip.visible: _linkArea.containsMouse
+                        ToolTip.text: "Keep proportions"
+                    }
                 }
 
                 // A slider (a picture's Look): applied as it moves; a run

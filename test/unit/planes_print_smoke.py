@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Starts the program off-screen (stand-in hardware) with a device map whose
-background holds one plain red picture (800 x 400 pixels) and whose
+background holds one plain red picture (800 x 400 pixels, in a box of its
+own proportions, 07 S140) and whose
 foreground holds a chip, opens Print & Export and exports PNGs into the
 folder given: at 100% and 50%, with the screen's plane view settings
 turned down, without Include background, and on a Light page. Prints what
@@ -59,13 +60,23 @@ if BIG:
         _paint.fillRect(_x, 0, 4, NATURAL[1], QtGui.QColor(0, 0, 0))
     _paint.end()
 _red.save(str(_map.parent / "pictures" / "bg.png"))
+# The picture's box has the picture's own proportions, as the program places
+# a new picture (rig_overlays.js frameFit: the photo frame, 0.75 of the 16:9
+# page, narrowed to the picture). The picture fills its box exactly (07 S140),
+# so a box of other proportions would stretch it.
+_aspect = NATURAL[0] / NATURAL[1]
+_fw, _fh = 0.75, 0.75
+if _aspect > 16 / 9:
+    _fh = _fw * (16 / 9) / _aspect
+else:
+    _fw = _fh * _aspect / (16 / 9)
 _map.write_text(json.dumps({
     "kind": "control.hardware", "device": "pJoy Pro",
     "nodes": [
         # The bottom background picture, in the photo frame.
         {"kind": "draw", "id": "bg1", "shape": "image", "plane": "background",
-         "src": "pictures/bg.png", "fx": 0.125, "fy": 0.125, "fw": 0.75,
-         "fh": 0.75, "rot": 0, "opacity": 1, "locked": False, "pinned": False,
+         "src": "pictures/bg.png", "fx": 0.125 + (0.75 - _fw) / 2,
+         "fy": 0.125 + (0.75 - _fh) / 2, "fw": _fw, "fh": _fh, "rot": 0, "opacity": 1, "locked": False, "pinned": False,
          "sockets": [], "fill": "filled"},
         {"kind": "btn", "id": "b1", "label": "Button 1",
          "chipFx": 0.05, "chipFy": 0.05},

@@ -121,12 +121,11 @@ def test_a_run_of_arrow_nudges_is_one_step(run: dict) -> None:
     assert run["nudges"] == {"steps": 1, "changed": True, "undo_exact": True}
 
 
-def test_esc_during_a_drag_keeps_what_was_done_as_one_step(run: dict) -> None:
-    # Esc cancels the drag (later moves do nothing); what it had moved stays
-    # and is one step, which one Undo takes back (S55a: one step per
-    # gesture; Esc ends the gesture).
+def test_esc_during_a_drag_cancels_it(run: dict) -> None:
+    # Esc cancels the drag (07 S150): later moves do nothing, the picture
+    # goes back to where it was at the press and no undo step is added.
     g = run["gestures"]["esc_move_picture"]
     assert run["esc_drag_kind_after"] == ""
-    assert g["changed"] is True
-    assert g["steps"] == 1, g
+    assert g["changed"] is False, g
+    assert g["steps"] == 0, g
     assert g["undo_exact"] is True, g

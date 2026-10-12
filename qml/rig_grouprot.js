@@ -233,3 +233,166 @@ function turnSelectionBy(deg) {
     _turnTo(deg)
     endTurn()
 }
+
+// Resizing several selected items together by the selection box's eight
+// handles (07 S153). A corner keeps the box's proportions (Shift frees
+// them), a side stretches one way, Alt resizes from the middle. Drawings
+// and pictures scale with the box; chips, hotspots, text boxes, callouts,
+// tables and groups keep their own size and only move; lines take both
+// ends with them. The whole drag is one undo step (the pointer's gesture).
+
+function canGroupResize() {
+    tick
+    return interactive && (selectedIds || []).length >= 2 && _turnItems().length >= 1
+}
+
+// The box's handles in editor pixels, by name.
+function groupResizeHandles(b) {
+    var x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.h
+    var xm = b.x + b.w / 2, ym = b.y + b.h / 2
+    return [
+        { h: "tl", x: x0, y: y0 }, { h: "t", x: xm, y: y0 }, { h: "tr", x: x1, y: y0 },
+        { h: "r", x: x1, y: ym }, { h: "br", x: x1, y: y1 }, { h: "b", x: xm, y: y1 },
+        { h: "bl", x: x0, y: y1 }, { h: "l", x: x0, y: ym }
+    ]
+}
+
+// The handle under (mx, my), or "".
+function onGroupResizeHandle(mx, my) {
+    if (!canGroupResize())
+        return ""
+    var hs = groupResizeHandles(selectionBounds())
+    var r = Math.max(8, groupHandleSize)
+    for (var i = 0; i < hs.length; i++) {
+        if (Math.hypot(mx - hs[i].x, my - hs[i].y) < r)
+            return hs[i].h
+    }
+    return ""
+}
+
+// Items that scale with the box; the rest only move.
+function _groupScales(n) {
+    return isDraw(n) && !isLine(n) && !isText(n) && !isTable(n) && !isCallout(n)
+}
+
+function beginGroupResize(handle, mx, my) {
+    var b = selectionBounds()
+    var list = _turnItems()
+    var items = []
+    for (var i = 0; i < list.length; i++) {
+        var n = list[i]
+        var it = { id: n.id }
+        if (isLine(n)) {
+            it.ends = lineEndsAt(n)
+        } else if (_groupScales(n)) {
+            it.box = drawGeom(n)
+        } else {
+            it.c = _centre(n)
+            if (n.tail && n.tail.fx !== undefined)
+                it.tip = calloutTip(n)
+        }
+        items.push(it)
+    }
+    groupRz = { h: handle, px: mx, py: my, box: b, items: items }
+}
+
+// The box for the pointer at (mx, my): { x0, y0, x1, y1 }.
+function _groupBoxFor(st, mx, my) {
+    var b = st.box
+    var h = st.h
+    var dx = mx - st.px
+    var dy = my - st.py
+    var x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.h
+    var corner = h.length === 2
+    var fromMid = altHeld
+    if (h.indexOf("l") >= 0) { x0 += dx; if (fromMid) x1 -= dx }
+    if (h.indexOf("r") >= 0) { x1 += dx; if (fromMid) x0 -= dx }
+    if (h.indexOf("t") >= 0) { y0 += dy; if (fromMid) y1 -= dy }
+    if (h.indexOf("b") >= 0) { y1 += dy; if (fromMid) y0 -= dy }
+    // No mirroring for a group: the box keeps a minimum size, on its own side.
+    var minPx = 4
+    var w0 = Math.max(1, b.w)
+    var h0 = Math.max(1, b.h)
+    var nw = Math.max(minPx, x1 - x0)
+    var nh = Math.max(minPx, y1 - y0)
+    if (corner && !shiftHeld) {
+        // Keep the box's proportions at the press: the larger change wins.
+        var sx = nw / w0
+        var sy = nh / h0
+        var s = Math.abs(sx - 1) >= Math.abs(sy - 1) ? sx : sy
+        s = Math.max(minPx / Math.min(w0, h0), s)
+        nw = w0 * s
+        nh = h0 * s
+    }
+    // Anchor: the middle with Alt, else the side or corner opposite the handle.
+    var cx = b.x + b.w / 2
+    var cy = b.y + b.h / 2
+    var ox, oy
+    if (fromMid) {
+        ox = cx - nw / 2
+        oy = cy - nh / 2
+    } else {
+        ox = h.indexOf("l") >= 0 ? b.x + b.w - nw : b.x
+        oy = h.indexOf("t") >= 0 ? b.y + b.h - nh : b.y
+    }
+    // A side handle leaves the other direction alone.
+    if (h === "t" || h === "b") {
+        nw = b.w
+        ox = b.x
+    }
+    if (h === "l" || h === "r") {
+        nh = b.h
+        oy = b.y
+    }
+    return { x0: ox, y0: oy, x1: ox + nw, y1: oy + nh }
+}
+
+function dragGroupResize(mx, my) {
+    var st = groupRz
+    if (!st)
+        return
+    var nb = _groupBoxFor(st, mx, my)
+    var b = st.box
+    var sx = (nb.x1 - nb.x0) / Math.max(1, b.w)
+    var sy = (nb.y1 - nb.y0) / Math.max(1, b.h)
+    function mapX(x) { return nb.x0 + (x - b.x) * sx }
+    function mapY(y) { return nb.y0 + (y - b.y) * sy }
+    var s = spaceRect()
+    for (var i = 0; i < st.items.length; i++) {
+        var it = st.items[i]
+        var n = nodeAt(it.id)
+        if (!n)
+            continue
+        if (it.ends) {
+            setLineEnds(n, mapX(it.ends.ax), mapY(it.ends.ay), mapX(it.ends.bx), mapY(it.ends.by))
+            continue
+        }
+        if (it.box) {
+            // Size first (the box's corner stays), then move it into place so
+            // parts that follow the item move with it.
+            n.fw = Math.max(1, it.box.w * sx) / Math.max(1, s.w)
+            n.fh = Math.max(1, it.box.h * sy) / Math.max(1, s.h)
+            var g = drawGeom(n)
+            var tx = mapX(it.box.x)
+            var ty = mapY(it.box.y)
+            if (tx !== g.x || ty !== g.y)
+                _shift(n, (tx - g.x) / Math.max(1, s.w), (ty - g.y) / Math.max(1, s.h))
+            continue
+        }
+        var now = _centre(n)
+        var dx = mapX(it.c.x) - now.x
+        var dy = mapY(it.c.y) - now.y
+        if (dx || dy)
+            _shift(n, dx / Math.max(1, s.w), dy / Math.max(1, s.h))
+        if (it.tip)
+            n.tail = { fx: xToFx(mapX(it.tip.x)), fy: yToFy(mapY(it.tip.y)) }
+    }
+    tick++
+}
+
+function endGroupResize() {
+    if (!groupRz)
+        return
+    groupRz = null
+    bump()
+}

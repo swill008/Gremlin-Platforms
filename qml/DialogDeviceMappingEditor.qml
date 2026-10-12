@@ -2528,13 +2528,23 @@ ApplicationWindow {
         // The keys no menu shows (S134).
         keyRows: [
             { group: "Keys", text: "Nudge", keys: "Arrows" },
-            { group: "Keys", text: "Nudge by the grid step", keys: "Shift+Arrows" },
+            { group: "Keys", text: "Nudge 10 px", keys: "Shift+Arrows" },
             { group: "Keys", text: "Finish a path", keys: "Enter" },
             { group: "Keys", text: "Undo a path point", keys: "Backspace" },
-            { group: "Keys", text: "Cancel / leave", keys: "Esc" }
+            { group: "Keys", text: "Finish a crop", keys: "Enter" },
+            { group: "Keys", text: "Cancel / leave (during a drag: put it back)", keys: "Esc" }
         ]
         mouseRows: [
-            { group: "Mouse", text: "Set print area", keys: "Alt+drag" },
+            { group: "Mouse", text: "Set print area", keys: "Alt+drag on empty space" },
+            { group: "Mouse", text: "Copy", keys: "Alt+drag an item" },
+            { group: "Mouse", text: "Keep a move on a line", keys: "Shift while dragging" },
+            { group: "Mouse", text: "Skip snapping", keys: "Ctrl while dragging" },
+            { group: "Mouse", text: "Free proportions", keys: "Shift+drag a corner" },
+            { group: "Mouse", text: "Resize from the center", keys: "Alt+drag a handle" },
+            { group: "Mouse", text: "Skew", keys: "Ctrl+Shift+drag a side handle" },
+            { group: "Mouse", text: "Turn in steps", keys: "Shift+drag the round handle" },
+            { group: "Mouse", text: "Lines at 45° steps", keys: "Shift while drawing" },
+            { group: "Mouse", text: "Draw from the center", keys: "Alt while drawing" },
             { group: "Mouse", text: "Pan", keys: "Space+drag" },
             { group: "Mouse", text: "Pan", keys: "Middle-drag" },
             { group: "Mouse", text: "Zoom", keys: "Wheel" },
@@ -2621,8 +2631,9 @@ ApplicationWindow {
             _hw.notePictureFolder(selectedFile)
             var rel = _hw.copyOverlay(selectedFile, targetName)
             var e = _ed()
+            // The picture's own proportions, so its box is the picture (07 S140).
             if (rel.length && e)
-                e.addOverlay(rel, _hw.imageUrl(rel))
+                e.addOverlay(rel, _hw.imageUrl(rel), { aspect: _hw.imageAspect(rel) })
         }
     }
 
@@ -2648,7 +2659,7 @@ ApplicationWindow {
                 return
             var rel = _hw.choosePictureFor(String(n.src || ""), selectedFile)
             if (rel.length)
-                e.repointPicture(nodeId, rel, _hw.imageUrl(rel))
+                e.repointPicture(nodeId, rel, _hw.imageUrl(rel), _hw.imageAspect(rel))
         }
     }
 
@@ -4202,6 +4213,12 @@ ApplicationWindow {
                         editorNodes: _editorWin.editing ? _editorWin.workNodes : _editorWin.liveNodes
                         photoOverride: _editorWin.photoOverride
                         onChipRowsChanged: _editorWin.deferReservoir()
+                        // Reset Shape gives a picture back its own proportions (07 S154).
+                        function giveAspectFn() {
+                            if (editorItem)
+                                editorItem.imageAspectFn = function(rel) { return _hw.imageAspect(rel) }
+                        }
+                        onEditorItemChanged: giveAspectFn()
                         Connections {
                             target: _card.editorItem
                             function onSelectedChanged() { _editorWin.deferSelected() }
@@ -4246,7 +4263,10 @@ ApplicationWindow {
                             function onFavouriteToggled(id) { _editorWin.toggleFavourite(id) }
                             function onFavouriteRemoved(id) { _editorWin.removeFavourite(id) }
                         }
-                        Component.onCompleted: _cardLoader.item = _card
+                        Component.onCompleted: {
+                            _cardLoader.item = _card
+                            giveAspectFn()
+                        }
                         // A newer card may already be in use: only this one's own.
                         Component.onDestruction: {
                             if (_cardLoader.item === _card) {

@@ -291,7 +291,9 @@ function _dropOtherPlaneSelection() {
 }
 
 // Reset Shape on a picture (07 S42): no crop, skew, flip or turn, one undo
-// step. Other drawings use rig_transform.js's resetShape.
+// step. Other drawings use rig_transform.js's resetShape. The box gets the
+// picture's own proportions back, keeping its width and centre (07 S154);
+// with the picture's ratio unknown the size stays.
 function resetPictureShape(n) {
     if (!n || isLocked(n))
         return
@@ -300,6 +302,14 @@ function resetPictureShape(n) {
     delete n.flipH
     delete n.flipV
     n.rot = 0
+    var aspect = pictureAspect(n)
+    if (aspect > 0) {
+        var g = drawGeom(n)
+        var newH = g.w / aspect
+        n.fh = newH / Math.max(1, spaceRect().h)
+        n.fy = yToFy(g.y + g.h / 2 - newH / 2)
+        syncOverlayChips(n)
+    }
     if (cropId === n.id)
         cropId = ""
     bump()

@@ -126,7 +126,8 @@ def main() -> None:
     ) -> dict:
         """Press at start, move through every waypoint in small steps, let
         go at the last one; then one Undo. esc_at: press Esc after that
-        waypoint (the drag goes on to the end and is let go)."""
+        waypoint (it cancels the drag; the later moves and the release
+        still happen)."""
         mods = mods or QtCore.Qt.KeyboardModifier.NoModifier
         s._park_mouse()
         s.call("seedHist")

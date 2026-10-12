@@ -293,6 +293,12 @@ def test_keyboard_shortcuts_lists_keys_by_menu(seen: dict) -> None:
         "Help: Keyboard Shortcuts… (Ctrl+K)",
         "Keys: Finish a path (Enter)",
         "Mouse: Zoom (Wheel)",
+        # The Photoshop-match keys (07 S142, S143, S141, S145, S147).
+        "Keys: Nudge 10 px (Shift+Arrows)",
+        "Mouse: Copy (Alt+drag an item)",
+        "Mouse: Skip snapping (Ctrl while dragging)",
+        "Mouse: Resize from the center (Alt+drag a handle)",
+        "Mouse: Skew (Ctrl+Shift+drag a side handle)",
     ):
         assert wanted in rows
     # No row without a key, and the destructive ones have none.

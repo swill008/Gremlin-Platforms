@@ -87,6 +87,10 @@ Item {
     // and the angle so far.
     property var turnStart: null
     property real turnAngle: 0
+    // Resizing several items by the selection box (rig_grouprot.js, 07
+    // S153): the handle, the press, the box and each item at the press.
+    property var groupRz: null
+    readonly property real groupHandleSize: Style.dp(8)
     // The Path and Freehand tools' points so far (editor pixels), and the
     // pointer for the Path tool's next segment.
     property var pathDraft: []
@@ -143,6 +147,14 @@ Item {
     property int gridSize: 200
     property bool altHeld: false
     property bool shiftHeld: false
+    // Ctrl held during a drag: snapping off (07 S142; Alt is centre / copy).
+    property bool snapOffHeld: false
+    // Properties' Width/Height link (07 S155): on, one scales the other.
+    property bool linkSize: true
+    // The window's hook: fn(rel) -> a picture's width / height, or 0.
+    property var imageAspectFn: null
+    // The picture's crop when crop mode started (Esc puts it back, S148).
+    property var cropEnterSnap: null
     property string groupEditId: ""
     property int selectedMember: -1
     property int dragMember: -1
@@ -580,7 +592,7 @@ Item {
     function overlayContains(n, mx, my) { return RigOverlays.overlayContains(n, mx, my) }
     function setOverlayHover(mx, my) { return RigOverlays.setOverlayHover(mx, my) }
     function addOverlay(rel, fileUrl, opts) { return RigOverlays.addOverlay(rel, fileUrl, opts) }
-    function repointPicture(id, rel, fileUrl) { RigOverlays.repointPicture(id, rel, fileUrl) }
+    function repointPicture(id, rel, fileUrl, aspect) { RigOverlays.repointPicture(id, rel, fileUrl, aspect) }
     function pinTarget(id) { return RigOverlays.pinTarget(id) }
     function toggleLock(id) { return RigOverlays.toggleLock(id) }
     function beginPlantSnap() { return RigOverlays.beginPlantSnap() }
@@ -837,6 +849,29 @@ Item {
     function toggleCrop() { return RigDraw.toggleCrop() }
     function setCropEdge(edge, pct) { return RigDraw.setCropEdge(edge, pct) }
     function resetCrop() { return RigDraw.resetCrop() }
+    function drawNewBox() { return RigDraw.drawNewBox() }
+    function finishCrop() { return RigDraw.finishCrop() }
+    function cancelCrop() { return RigDraw.cancelCrop() }
+    function beginSideSkew(n, h, x, y) { return RigTransform.beginSideSkew(n, h, x, y) }
+    function applySideSkew(x, y) { return RigTransform.applySideSkew(x, y) }
+    function onGroupResizeHandle(x, y) { return RigGroupRot.onGroupResizeHandle(x, y) }
+    function beginGroupResize(h, x, y) { return RigGroupRot.beginGroupResize(h, x, y) }
+    function dragGroupResize(x, y) { return RigGroupRot.dragGroupResize(x, y) }
+    function endGroupResize() { return RigGroupRot.endGroupResize() }
+    function canGroupResize() { return RigGroupRot.canGroupResize() }
+    function duplicateInPlace() { return RigSelection.duplicateInPlace() }
+    function groupResizeHandles(b) { return RigGroupRot.groupResizeHandles(b) }
+    // A picture's own width / height (07 S154), or 0 when unknown.
+    // Style.dp for the code-behind files, which can't see the Style
+    // singleton themselves (handle hit radii, 07 S155).
+    function uiDp(v) { return Style.dp(v) }
+
+    function pictureAspect(n) {
+        if (!n || !imageAspectFn)
+            return 0
+        var a = Number(imageAspectFn(n.src || ""))
+        return isFinite(a) && a > 0 ? a : 0
+    }
 
     // Selection, nudging, delete, copy/paste/duplicate and stacking order (rig_selection.js)
     function deleteSelection() { return RigSelection.deleteSelection() }
@@ -1160,6 +1195,8 @@ Item {
             return
         if (dragKind === "turn")
             endTurn()
+        if (dragKind === "groupresize")
+            endGroupResize()
         dragKind = ""
         banding = false
         lineArm = false
@@ -1167,6 +1204,102 @@ Item {
         guideDrag = null
         clearMoveGuides()
         endGesture()
+    }
+
+    // The readout's text for the drag running now (07 S151), or "".
+    function _pctTxt(v) { return (Math.round(v * 1000) / 10).toFixed(1) + " %" }
+    function _signedPct(v) {
+        var t = _pctTxt(Math.abs(v))
+        return (v < -0.0005 ? "−" : "+") + t
+    }
+    function _degTxt(d) { return (Math.round(d * 10) / 10).toFixed(1) + "°" }
+    // Where an item was at the press, from the gesture's snapshot; parsed
+    // once a gesture (kept on a plain object, so no binding follows it).
+    property var _readoutCache: ({ key: "", nodes: null })
+    function _gestureStartNode(id) {
+        var c = _readoutCache
+        if (c.key !== _gestureSnap) {
+            c.key = _gestureSnap
+            c.nodes = {}
+            try {
+                var doc = JSON.parse(_gestureSnap)
+                var list = Array.isArray(doc) ? doc : (doc.nodes || [])
+                for (var i = 0; i < list.length; i++)
+                    c.nodes[list[i].id] = list[i]
+            } catch (e) {
+                c.nodes = {}
+            }
+        }
+        return c.nodes[id] || null
+    }
+    function readoutText() {
+        var dk = dragKind
+        if (!dk)
+            return ""
+        var s = spaceRect()
+        if (dk === "turn")
+            return _degTxt(turnAngle)
+        if (dk === "groupresize") {
+            var gb = selectionBounds()
+            return "W " + _pctTxt(gb.w / Math.max(1, s.w)) + "  H " + _pctTxt(gb.h / Math.max(1, s.h))
+        }
+        var n = nodeAt(selectedId)
+        if (!n)
+            return ""
+        if (dk === "draw-rotate")
+            return _degTxt(n.rot || 0)
+        var sizeHandles = ["nw", "ne", "sw", "se", "n", "s", "w", "e"]
+        if (dk.indexOf("draw-") === 0 && sizeHandles.indexOf(dk.slice(5)) >= 0 && isDraw(n) && !isLine(n)) {
+            var g = drawGeom(n)
+            return "W " + _pctTxt(g.w / Math.max(1, s.w)) + "  H " + _pctTxt(g.h / Math.max(1, s.h))
+        }
+        if (dk === "draw" || dk === "chip") {
+            var was = _gestureStartNode(n.id)
+            if (!was)
+                return ""
+            var dx = isDraw(n) ? (n.fx || 0) - (was.fx || 0) : (n.chipFx || 0) - (was.chipFx || 0)
+            var dy = isDraw(n) ? (n.fy || 0) - (was.fy || 0) : (n.chipFy || 0) - (was.chipFy || 0)
+            return "X " + _signedPct(dx) + "  Y " + _signedPct(dy)
+        }
+        return ""
+    }
+
+    // Esc during a drag (07 S150): everything goes back to how it was at the
+    // press, with no undo step; the selection stays (less items the drag
+    // made, such as Alt-drag copies). The map comes back the way Undo
+    // brings a step back (applySnap). Returns whether a drag was cancelled.
+    function cancelGesture() {
+        if (!gestureActive)
+            return false
+        var snap = _gestureSnap
+        var keep = (selectedIds || []).slice()
+        gestureActive = false
+        _gestureSnap = ""
+        turnStart = null
+        turnAngle = 0
+        groupRz = null
+        cropStart = null
+        dragKind = ""
+        banding = false
+        lineArm = false
+        poolHover = false
+        guideDrag = null
+        clearMoveGuides()
+        if (snap && snapJson() !== snap) {
+            _restoring = true
+            applySnap(snap)
+            var still = []
+            for (var i = 0; i < keep.length; i++) {
+                if (nodeAt(keep[i]))
+                    still.push(keep[i])
+            }
+            setSelection(still)
+            bump()
+            _restoring = false
+        } else {
+            repaint()
+        }
+        return true
     }
 
     function clearLayout() {
@@ -1633,8 +1766,9 @@ Item {
         border.width: Style.dp(1)
     }
 
-    // Several items selected: a dashed box round them and one rotate handle
-    // above it, to turn them together.
+    // Several items selected: a dashed box round them, one rotate handle
+    // above it to turn them together, and eight handles to resize them
+    // together (07 S153).
     Item {
         id: _turnFrame
         z: 8
@@ -1668,13 +1802,44 @@ Item {
             border.color: _ed.handleInk
             border.width: 2
         }
+        Repeater {
+            model: { _ed.anyTick; return _ed.canGroupResize() ? _ed.groupResizeHandles(_turnFrame.box) : [] }
+            Rectangle {
+                required property var modelData
+                // Centred on the box's edge or corner (07 S155).
+                x: modelData.x - _turnFrame.box.x - width / 2
+                y: modelData.y - _turnFrame.box.y - height / 2
+                width: _ed.groupHandleSize
+                height: _ed.groupHandleSize
+                radius: Style.dp(1)
+                color: _ed.handleFill
+                border.color: _ed.handleInk
+            }
+        }
+    }
+
+    // The readout beside the pointer during a resize, rotate, move or group
+    // drag (07 S151): sizes and moves in Properties' units (% of the page),
+    // angles in degrees. Chrome only: never in a print or export (S87).
+    Rectangle {
+        id: _readout
+        readonly property string label: { _ed.anyTick; _ed.turnAngle; return _ed.gestureActive ? _ed.readoutText() : "" }
+        visible: _ed.showChrome && label.length > 0
+        z: 12
+        x: Math.max(0, Math.min(_ed.width - width, _pointer.mouseX + Style.dp(16)))
+        y: Math.max(0, Math.min(_ed.height - height, _pointer.mouseY + Style.dp(16)))
+        width: _readoutText.implicitWidth + Style.dp(12)
+        height: _readoutText.implicitHeight + Style.dp(6)
+        radius: Style.dp(3)
+        color: Style.bgRaised
+        border.color: Style.lineStrong
+        border.width: 1
         Text {
-            visible: _ed.dragKind === "turn"
-            x: parent.width / 2 + 10
-            y: -_ed.rotateHandleOffset - 10
-            color: _ed.handleFill
+            id: _readoutText
+            anchors.centerIn: parent
+            color: Style.fgStrong
             font.pixelSize: Style.dp(11)
-            text: Math.round(_ed.turnAngle) + "°"
+            text: _readout.label
         }
     }
 
@@ -1719,10 +1884,15 @@ Item {
 
     Canvas {
         visible: _ed.interactive && _ed.dragKind === "drawnew" && !_ed.isLineTool(_ed.drawTool)
-        x: Math.min(_ed.drawX0, _ed.drawX1)
-        y: Math.min(_ed.drawY0, _ed.drawY1)
-        width: Math.max(1, Math.abs(_ed.drawX1 - _ed.drawX0))
-        height: Math.max(1, Math.abs(_ed.drawY1 - _ed.drawY0))
+        // Alt draws from the centre (07 S146): the box comes from rig_draw.js.
+        readonly property var box: {
+            _ed.drawX0; _ed.drawY0; _ed.drawX1; _ed.drawY1; _ed.altHeld; _ed.drawTool
+            return _ed.drawNewBox()
+        }
+        x: box.x
+        y: box.y
+        width: Math.max(1, box.w)
+        height: Math.max(1, box.h)
         z: 7
         antialiasing: true
         onPaint: {

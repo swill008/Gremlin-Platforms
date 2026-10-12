@@ -20,13 +20,37 @@ MouseArea {
     hoverEnabled: true
     preventStealing: true
     acceptedButtons: Qt.LeftButton | Qt.RightButton
-    cursorShape: ed.drawTool.length ? Qt.CrossCursor : Qt.ArrowCursor
+    // A drawing tool draws; a move shows SizeAll once past its dead zone;
+    // otherwise the cursor over a handle (07 S152).
+    cursorShape: ed.drawTool.length ? Qt.CrossCursor
+                 : (isMoveDrag(ed.dragKind) && !moveArmed) ? Qt.SizeAllCursor
+                 : hoverCursor
+    property int hoverCursor: Qt.ArrowCursor
     focus: true
     Keys.onDeletePressed: ed.deleteSelected()
     Keys.onPressed: (e) => {
+        // Esc during a drag puts everything back as it was at the press, with
+        // no undo step; the selection stays (07 S150).
+        if (e.key === Qt.Key_Escape && ed.dragKind !== "") {
+            cancelDrag()
+            e.accepted = true
+            return
+        }
         // Set Print Area waiting for its drag: Esc cancels it.
         if (e.key === Qt.Key_Escape && ed.printAreaArm) {
             ed.printAreaArm = false
+            e.accepted = true
+            return
+        }
+        // Crop mode: Enter keeps the crop, Esc puts it back as it was when
+        // crop mode started (07 S148).
+        if (ed.cropId && (e.key === Qt.Key_Return || e.key === Qt.Key_Enter)) {
+            ed.finishCrop()
+            e.accepted = true
+            return
+        }
+        if (ed.cropId && e.key === Qt.Key_Escape) {
+            ed.cancelCrop()
             e.accepted = true
             return
         }
@@ -68,7 +92,8 @@ MouseArea {
             ed.pasteClipboard()
             e.accepted = true
         } else if (e.key === Qt.Key_Left || e.key === Qt.Key_Right || e.key === Qt.Key_Up || e.key === Qt.Key_Down) {
-            var step = (e.modifiers & Qt.ShiftModifier) ? Math.max(2, ed.gridSize) : 1
+            // Shift+arrow moves 10 px, ten plain arrow steps (07 S145).
+            var step = (e.modifiers & Qt.ShiftModifier) ? 10 : 1
             var dx = 0
             var dy = 0
             if (e.key === Qt.Key_Left) dx = -step
@@ -87,6 +112,12 @@ MouseArea {
     property bool moveArmed: false
     property real pressSceneX: 0
     property real pressSceneY: 0
+    // The press in map coordinates, for Shift's move line lock (07 S144).
+    property real pressX: 0
+    property real pressY: 0
+    // Alt-press on a selected item's body: the selection is copied when the
+    // drag leaves the dead zone, and the copies move (07 S143).
+    property bool altCopyArmed: false
     function isMoveDrag(kind) {
         return kind === "chip" || kind === "member" || kind === "draw" || kind === "tablecell"
     }
@@ -106,6 +137,9 @@ MouseArea {
         pressSceneX = ps.x
         pressSceneY = ps.y
         moveArmed = true
+        pressX = m.x
+        pressY = m.y
+        altCopyArmed = false
         ed.mapPressed()
         if (ed.renameId) {
             var nr = ed.nodeAt(ed.renameId)
@@ -117,11 +151,24 @@ MouseArea {
         forceActiveFocus()
         ed.altHeld = !!(m.modifiers & Qt.AltModifier)
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
+        // Ctrl held skips snapping (07 S142).
+        ed.snapOffHeld = !!(m.modifiers & Qt.ControlModifier)
+        // The selection box's resize handles (07 S153), before the print
+        // area: with Alt (from the centre) they may sit on an empty part.
+        if (ed.interactive && m.button === Qt.LeftButton && !ed.printAreaArm && !ed.drawTool.length) {
+            var grh = ed.onGroupResizeHandle(m.x, m.y)
+            if (grh) {
+                ed.beginGesture()
+                ed.beginGroupResize(grh, m.x, m.y)
+                ed.dragKind = "groupresize"
+                return
+            }
+        }
         // The print area: Alt+drag from an empty part of the map (on an
-        // item Alt still moves it without snapping), or any drag after Set
-        // Print Area.
+        // item Alt copies it, 07 S143; with a drawing tool Alt draws from
+        // the centre, 07 S146), or any drag after Set Print Area.
         if (ed.interactive && m.button === Qt.LeftButton
-                && (ed.printAreaArm || (ed.altHeld && !ed.hitTest(m.x, m.y).id))) {
+                && (ed.printAreaArm || (ed.altHeld && !ed.drawTool.length && !ed.hitTest(m.x, m.y).id))) {
             ed.beginGesture()
             ed.beginPrintArea(m.x, m.y)
             ed.dragKind = "printarea"
@@ -242,8 +289,8 @@ MouseArea {
         if (hit.kind === "draw") {
             var dnPre = ed.nodeAt(hit.id)
             var shiftCell = shift && ed.isTable(dnPre) && hit.handle === "body"
-            // Shift on a handle changes what the drag does (proportions, 15
-            // degree steps), not the selection.
+            // Shift on a handle changes what the drag does (proportions, 45
+            // degree steps, side skew with Ctrl), not the selection.
             var onHandle = !!(hit.handle && hit.handle !== "body")
             if (shift && !shiftCell && !onHandle)
                 ed.toggleSelected(hit.id)
@@ -273,6 +320,11 @@ MouseArea {
                 ed.rzY0 = crc.y
                 ed.rzX1 = crc.x + crc.w
                 ed.rzY1 = crc.y + crc.h
+            } else if (isSideHandle(hit.handle) && (m.modifiers & Qt.ControlModifier) && (m.modifiers & Qt.ShiftModifier)
+                       && ed.cropId !== dn.id && ed.beginSideSkew(dn, hit.handle, m.x, m.y)) {
+                // Ctrl+Shift on a side handle skews along that side (07 S147);
+                // beginSideSkew says no when the item can't skew.
+                ed.dragKind = "sideskew"
             } else if (hit.handle && hit.handle !== "body") {
                 ed.dragKind = "draw-" + hit.handle
                 ed.cropStart = dn && dn.crop ? JSON.parse(JSON.stringify(dn.crop)) : null
@@ -299,17 +351,19 @@ MouseArea {
                     ed.dragKind = "draw"
                     ed.dragOffX = m.x - g.x
                     ed.dragOffY = m.y - g.y
+                    altCopyArmed = ed.altHeld && ed.isSelected(hit.id)
                 }
             } else {
                 ed.dragKind = "draw"
                 ed.dragOffX = m.x - g.x
                 ed.dragOffY = m.y - g.y
+                altCopyArmed = ed.altHeld && ed.isSelected(hit.id)
             }
             ed.bump()
             return
         }
         if (ed.drawTool.length && (!hit.kind || hit.kind === "")) {
-            var p0 = ed.snapEnt(m.x, m.y, ed.altHeld)
+            var p0 = ed.snapEnt(m.x, m.y, ed.snapOffHeld)
             ed.beginGesture()
             ed.dragKind = "drawnew"
             ed.drawX0 = p0.x
@@ -385,6 +439,7 @@ MouseArea {
             ed.beginGesture()
             ed.dragKind = "chip"
             ed.dragSpine = -1
+            altCopyArmed = ed.altHeld && ed.isSelected(hit.id)
             var n2 = ed.nodeAt(hit.id)
             if (n2) {
                 ed.dragOffX = m.x - ed.fxToX(n2.chipFx)
@@ -437,14 +492,20 @@ MouseArea {
             ed.penEnd()
         else if (ed.dragKind === "rulerguide" && ed.guideDrag)
             ed.rulerGuidesEdited()
+        else if (ed.dragKind === "groupresize")
+            ed.endGroupResize()
+        altCopyArmed = false
         ed.stopGesture()
         ed.dragKind = ""
     }
     onPositionChanged: (m) => {
         ed.altHeld = !!(m.modifiers & Qt.AltModifier)
         ed.shiftHeld = !!(m.modifiers & Qt.ShiftModifier)
+        ed.snapOffHeld = !!(m.modifiers & Qt.ControlModifier)
         ed.setOverlayHover(m.x, m.y)
         ed.setChipTip(m.x, m.y)
+        if (!ed.dragKind)
+            hoverCursor = cursorAt(m.x, m.y)
         if (ed.drawTool === "path" && ed.pathDraft.length)
             ed.pathHoverAt(m.x, m.y)
         if (ed.dragKind === "pen") {
@@ -455,8 +516,20 @@ MouseArea {
             ed.movePrintArea(m.x, m.y)
             return
         }
+        if (ed.dragKind === "groupresize") {
+            ed.dragGroupResize(m.x, m.y)
+            return
+        }
+        if (ed.dragKind === "sideskew") {
+            ed.applySideSkew(m.x, m.y)
+            return
+        }
         if (inDeadZone(m))
             return
+        if (altCopyArmed) {
+            altCopyArmed = false
+            copyForAltDrag()
+        }
         if (ed.dragKind === "chip" || ed.dragKind === "member")
             ed.poolHover = ed.overPool(m.x, m.y)
         if (ed.dragKind === "rulerguide" && ed.guideDrag) {
@@ -467,7 +540,7 @@ MouseArea {
             return
         }
         if (ed.dragKind === "drawnew") {
-            var p1 = ed.snapEnt(m.x, m.y, ed.altHeld)
+            var p1 = ed.snapEnt(m.x, m.y, ed.snapOffHeld)
             p1 = ed.drawToolPoint(ed.drawX0, ed.drawY0, p1.x, p1.y)
             ed.drawX1 = p1.x
             ed.drawY1 = p1.y
@@ -492,10 +565,17 @@ MouseArea {
             ed.dragKind = "spine"
             ed.dragSpine = sid
             ed.selectedSpine = sid
-            ed.applyPointer(m.x, m.y, ed.altHeld)
+            ed.applyPointer(m.x, m.y, ed.snapOffHeld)
             return
         }
-        ed.applyPointer(m.x, m.y, ed.altHeld)
+        // Shift during a move keeps it on a horizontal, vertical or 45
+        // degree line from the press (07 S144).
+        if (ed.shiftHeld && isMoveDrag(ed.dragKind)) {
+            var lp = shiftLock(m.x, m.y)
+            ed.applyPointer(lp.x, lp.y, ed.snapOffHeld)
+            return
+        }
+        ed.applyPointer(m.x, m.y, ed.snapOffHeld)
     }
     onReleased: (m) => {
         if (ed.spineHoldArm) {
@@ -523,7 +603,114 @@ MouseArea {
         return s
     }
 
+    // (x, y) moved onto the nearest horizontal, vertical or 45 degree line
+    // through the press (07 S144).
+    function shiftLock(x, y) {
+        var dx = x - pressX
+        var dy = y - pressY
+        var step = Math.PI / 4
+        var a = Math.round(Math.atan2(dy, dx) / step) * step
+        var len = dx * Math.cos(a) + dy * Math.sin(a)
+        return Qt.point(pressX + Math.cos(a) * len, pressY + Math.sin(a) * len)
+    }
+
+    // Alt-drag: the selection is copied in place (just above the originals,
+    // the copies selected) and the drag goes on with the copies. The gesture
+    // began at the press, so copy and move are one undo step (07 S143).
+    function copyForAltDrag() {
+        var before = (ed.selectedIds && ed.selectedIds.length) ? ed.selectedIds.slice()
+                                                                 : (ed.selectedId ? [ed.selectedId] : [])
+        // duplicateInPlace returns the copies in stacking order.
+        var stacked = (ed.nodes || []).filter(function(q) { return q && before.indexOf(q.id) >= 0 })
+        var at = -1
+        for (var i = 0; i < stacked.length; i++) {
+            if (stacked[i].id === ed.selectedId)
+                at = i
+        }
+        ed.beginGesture()
+        var copies = ed.duplicateInPlace() || []
+        // The copy of the dragged item is the one dragged on.
+        if (at >= 0 && copies.length === stacked.length)
+            ed.selectedId = copies[at]
+    }
+
+    // Esc during a drag (07 S150): the editor restores the map from the
+    // press without an undo step; the pointer state is cleared here.
+    function cancelDrag() {
+        var kind = ed.dragKind
+        ed.cancelGesture()
+        if (kind === "pen")
+            ed.pathDraft = []
+        ed.dragKind = ""
+        ed.banding = false
+        ed.lineArm = false
+        ed.poolHover = false
+        ed.guideDrag = null
+        ed.clearMoveGuides()
+        moveArmed = false
+        altCopyArmed = false
+        ed.bump()
+    }
+
+    function isSideHandle(h) {
+        return h === "n" || h === "s" || h === "e" || h === "w"
+    }
+
+    // A handle's outward direction in the item's own box, in degrees (y down),
+    // or -1 for anything that is not a resize handle. Item handles are
+    // nw..e (cell handles cell-nw..), the selection box's tl..l.
+    function handleAngle(h) {
+        var name = (h || "").indexOf("cell-") === 0 ? h.slice(5) : (h || "")
+        var a = { e: 0, se: 45, s: 90, sw: 135, w: 180, nw: 225, n: 270, ne: 315,
+                  r: 0, br: 45, b: 90, bl: 135, l: 180, tl: 225, t: 270, tr: 315 }[name]
+        return a === undefined ? -1 : a
+    }
+
+    // The two-headed arrow for a direction on screen.
+    function sizeCursorFor(deg) {
+        var a = ((deg % 180) + 180) % 180
+        var k = Math.round(a / 45) % 4
+        return [Qt.SizeHorCursor, Qt.SizeFDiagCursor, Qt.SizeVerCursor, Qt.SizeBDiagCursor][k]
+    }
+
+    // The cursor over (x, y) with no drag running (07 S152): a resize handle
+    // shows the arrow along its on-screen direction (after flips and the
+    // item's rotation); a rotate grip the open hand (Qt has no rotate cursor).
+    function cursorAt(x, y) {
+        if (!ed.interactive || ed.drawTool.length)
+            return Qt.ArrowCursor
+        var gh = ed.onGroupResizeHandle(x, y)
+        if (gh)
+            return sizeCursorFor(handleAngle(gh))
+        if (ed.onTurnHandle(x, y))
+            return Qt.OpenHandCursor
+        var hit = ed.hitTest(x, y)
+        if (hit.kind !== "draw" || !hit.handle)
+            return Qt.ArrowCursor
+        if (hit.handle === "rotate")
+            return Qt.OpenHandCursor
+        var n = ed.nodeAt(hit.id)
+        var base = handleAngle(hit.handle)
+        if (!n || base < 0)
+            return Qt.ArrowCursor
+        if (n.flipH)
+            base = 180 - base
+        if (n.flipV)
+            base = -base
+        return sizeCursorFor(base + (n.rot || 0))
+    }
+
     function releaseDrag(m) {
+        if (ed.dragKind === "groupresize") {
+            ed.dragKind = ""
+            ed.endGroupResize()
+            return
+        }
+        if (ed.dragKind === "sideskew") {
+            ed.dragKind = ""
+            ed.bump()
+            return
+        }
         if (ed.dragKind === "turn") {
             ed.dragKind = ""
             ed.endTurn()
@@ -576,7 +763,7 @@ MouseArea {
         if (ed.dragKind === "from" || ed.dragKind === "to") {
             var n3 = ed.nodeAt(ed.selectedId)
             if (n3) {
-                var hooked = ed.attachNear(m.x, m.y, { altOff: ed.altHeld, owner: n3 })
+                var hooked = ed.attachNear(m.x, m.y, { altOff: ed.snapOffHeld, owner: n3 })
                 var Lr = ed.currentLeader(n3)
                 if (Lr) {
                     if (ed.dragKind === "to") Lr.to = hooked

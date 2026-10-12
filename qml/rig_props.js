@@ -15,6 +15,7 @@
 //   { key, label, kind: "slider", value, min, max, suffix, step }
 //                                                      applied as it moves
 // setProp(key, value) applies one. Positions and sizes are percent of the page.
+// With the editor's linkSize on, Width and Height keep the box's proportions.
 
 
 function _pct(v) {
@@ -173,6 +174,20 @@ function _placeDraw(n, x, y, w, h) {
     syncOverlayChips(n)
 }
 
+// Width or Height set to f (a fraction of the page), with the other side
+// scaled to keep the box's current proportions on screen (07 S155).
+function _linkedSize(n, key, f) {
+    var g = drawGeom(n)
+    var sr = spaceRect()
+    var sw = Math.max(1, sr.w)
+    var sh = Math.max(1, sr.h)
+    if (!(g.w > 0) || !(g.h > 0))
+        return { w: key === "w" ? f : null, h: key === "h" ? f : null }
+    if (key === "w")
+        return { w: f, h: f * sw * (g.h / g.w) / sh }
+    return { w: f * sh * (g.w / g.h) / sw, h: f }
+}
+
 function setProp(key, value) {
     var ids = _propsIds()
     if (!ids.length)
@@ -233,8 +248,16 @@ function setProp(key, value) {
         var by = key === "by" ? fyToY(f) : e.by
         setLineEnds(n, ax, ay, bx, by)
     } else if (isDraw(n)) {
-        _placeDraw(n, key === "x" ? f : null, key === "y" ? f : null,
-                   key === "w" ? f : null, key === "h" ? f : null)
+        var nw = key === "w" ? f : null
+        var nh = key === "h" ? f : null
+        // Width and Height linked (the link button, on by default; 07 S155):
+        // the other side follows at the item's current ratio, in one Undo step.
+        if (linkSize && (key === "w" || key === "h")) {
+            var lk = _linkedSize(n, key, f)
+            nw = lk.w
+            nh = lk.h
+        }
+        _placeDraw(n, key === "x" ? f : null, key === "y" ? f : null, nw, nh)
     } else if (key === "x" || key === "y") {
         if (key === "x") n.chipFx = clamp01(f)
         else n.chipFy = clamp01(f)

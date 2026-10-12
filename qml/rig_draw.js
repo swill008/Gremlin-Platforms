@@ -49,20 +49,44 @@ function drawGeom(n) {
     }
 }
 
+// A line's end, a new line and an Arrow line's end turn in 45 degree steps
+// with Shift (07 S146); the rotate grip keeps rotateSnap.
+var LINE_SNAP = 45
+
+// The drawing's flip at the press of the current resize, so dragging back
+// over the opposite edge mirrors it back (07 S149). Keyed on the gesture's
+// snapshot and the box at the press: the same key is the same press state.
+var _rzPress = null
+
+function _pressFlip(n) {
+    var key = n.id + "|" + rzX0 + "|" + rzY0 + "|" + rzX1 + "|" + rzY1
+    if (!_rzPress || _rzPress.key !== key || _rzPress.snap !== _gestureSnap)
+        _rzPress = { key: key, snap: _gestureSnap, flipH: !!n.flipH, flipV: !!n.flipV }
+    return _rzPress
+}
+
+// A drawing's skew as [kx, ky] numbers.
+function _skewPair(n) {
+    var k = n && n.skew
+    return { kx: k ? Number(k[0]) || 0 : 0, ky: k ? Number(k[1]) || 0 : 0 }
+}
+
+// altOff is kept for the forwarder's signature; snapping off is Ctrl now
+// (snapOffHeld, 07 S142) and Alt resizes from the centre (07 S141).
 function applyDrawResize(n, mx, my, handle, altOff) {
     if (!n)
         return
     n.around = []
-    var p = snapEnt(mx, my, altOff)
+    var p = snapEnt(mx, my, snapOffHeld)
     if (handle === "end0" || handle === "end1") {
-        // A line end: Shift keeps the line on 15 degree steps around the other end.
+        // A line end: Shift keeps the line on 45 degree steps around the other end.
         var e = lineEndsAt(n)
         var px = p.x
         var py = p.y
         var ox = handle === "end0" ? e.bx : e.ax
         var oy = handle === "end0" ? e.by : e.ay
         if (shiftHeld) {
-            var s = Shapes.snapAngle(ox, oy, px, py, rotateSnap)
+            var s = Shapes.snapAngle(ox, oy, px, py, LINE_SNAP)
             px = s.x
             py = s.y
         }
@@ -74,10 +98,14 @@ function applyDrawResize(n, mx, my, handle, altOff) {
     }
     if (cropId === n.id && isOverlay(n)) {
         // Crop mode: the handles cut the picture; what stays does not move.
+        // Shift on a corner keeps the crop's proportions (07 S148). The drag
+        // works on the crop as seen, so a flipped picture's side you see is
+        // the side that moves.
         var start = { x: rzX0, y: rzY0, w: rzX1 - rzX0, h: rzY1 - rzY0 }
         var c0 = Shapes.cropOf(cropStart)
-        var c1 = Shapes.cropFromDrag(start, n.rot || 0, c0, handle, mx, my)
-        _applyCrop(n, start, c0, c1)
+        var seen = Shapes.cropFromDrag(start, n.rot || 0, Shapes.cropSeen(c0, n.flipH, n.flipV), handle, mx, my,
+                                       shiftHeld && handle.length === 2)
+        _applyCrop(n, start, c0, Shapes.cropSeen(seen, n.flipH, n.flipV))
         return
     }
     if (handle === "rotate") {
@@ -88,62 +116,43 @@ function applyDrawResize(n, mx, my, handle, altOff) {
         n.rot = shiftHeld ? Shapes.snapDeg(a, rotateSnap) : Math.round(a * 10) / 10
         return
     }
-    // Pictures keep their proportions from a corner unless Shift is held;
-    // shapes the other way round.
-    var keep = isOverlay(n) !== shiftHeld
-    if (Shapes.normDeg(n.rot || 0) !== 0) {
-        // A turned box resizes along its own axes, the opposite side fixed.
-        var oldRotH = fhToH(n.fh || 0)
-        var b = Shapes.rotatedResize({ x: rzX0, y: rzY0, w: rzX1 - rzX0, h: rzY1 - rzY0 }, n.rot, handle,
-                                     mx, my, 8, 8, keep && handle.length === 2)
-        n.fx = xToFx(b.x)
-        n.fy = yToFy(b.y)
-        n.fw = b.w / Math.max(1, spaceRect().w)
-        n.fh = b.h / Math.max(1, spaceRect().h)
-        _scaleTextFont(n, oldRotH, b.h)
-        return
-    }
-    var x0 = rzX0
-    var y0 = rzY0
-    var x1 = rzX1
-    var y1 = rzY1
-    if (handle.indexOf("n") >= 0)
-        y0 = p.y
-    if (handle.indexOf("s") >= 0)
-        y1 = p.y
-    if (handle.indexOf("w") >= 0)
-        x0 = p.x
-    if (handle.indexOf("e") >= 0)
-        x1 = p.x
-    if (keep && handle.length === 2) {
-        var fx0 = (handle.indexOf("w") >= 0) ? x1 : x0
-        var fy0 = (handle.indexOf("n") >= 0) ? y1 : y0
-        var mx1 = (handle.indexOf("w") >= 0) ? x0 : x1
-        var my1 = (handle.indexOf("n") >= 0) ? y0 : y1
-        var lp = lockAspect(fx0, fy0, mx1, my1)
-        if (handle.indexOf("w") >= 0)
-            x0 = lp.x
-        else
-            x1 = lp.x
-        if (handle.indexOf("n") >= 0)
-            y0 = lp.y
-        else
-            y1 = lp.y
-    }
-    var nx = Math.min(x0, x1)
-    var ny = Math.min(y0, y1)
-    var nw = Math.max(8, Math.abs(x1 - x0))
-    var nh = Math.max(8, Math.abs(y1 - y0))
-    if (isTable(n)) {
-        nw = Math.max(tableMinW(n), nw)
-        nh = Math.max(tableMinH(n), nh)
-    }
+    // A corner keeps the box's proportions at the press on pictures and
+    // shapes, Shift frees it; text boxes, callouts and tables the other way
+    // round. Sides stretch one way, Shift or not (07 S141).
+    var corner = handle.length === 2
+    var keepFirst = !isText(n) && !isTable(n)
+    var press = _pressFlip(n)
+    var k = _skewPair(n)
+    var rot = Shapes.normDeg(n.rot || 0)
+    // Snapping only lines up with the grid when the box is level and square.
+    var level = rot === 0 && !k.kx && !k.ky
+    var minW = isTable(n) ? Math.max(8, tableMinW(n)) : 8
+    var minH = isTable(n) ? Math.max(8, tableMinH(n)) : 8
+    var b = Shapes.boxResize({ x: rzX0, y: rzY0, w: rzX1 - rzX0, h: rzY1 - rzY0 }, rot, handle,
+                             level ? p.x : mx, level ? p.y : my, {
+                                 keep: corner && (keepFirst !== shiftHeld),
+                                 centre: altHeld,
+                                 kx: k.kx, ky: k.ky,
+                                 minW: minW, minH: minH
+                             })
     var oldH = fhToH(n.fh || 0)
-    n.fx = xToFx(nx)
-    n.fy = yToFy(ny)
-    n.fw = nw / Math.max(1, spaceRect().w)
-    n.fh = nh / Math.max(1, spaceRect().h)
-    _scaleTextFont(n, oldH, nh)
+    n.fx = xToFx(b.x)
+    n.fy = yToFy(b.y)
+    n.fw = b.w / Math.max(1, spaceRect().w)
+    n.fh = b.h / Math.max(1, spaceRect().h)
+    // Past the opposite edge the drawing mirrors (07 S149).
+    if (isFlippable(n)) {
+        _setFlag(n, "flipH", press.flipH !== b.flipX)
+        _setFlag(n, "flipV", press.flipV !== b.flipY)
+    }
+    _scaleTextFont(n, oldH, b.h)
+}
+
+function _setFlag(n, key, on) {
+    if (on)
+        n[key] = true
+    else
+        delete n[key]
 }
 
 // A text box set to scale its font follows its new height.
@@ -155,8 +164,11 @@ function _scaleTextFont(n, oldH, newH) {
 }
 
 // Sets a picture's crop, moving its box so what stays visible stays put.
+// c0 and c1 are stored crops; the box moves by the crop as seen, so a
+// flipped picture's cut sides move on the side they show (07 S148).
 function _applyCrop(n, box, c0, c1) {
-    var b = Shapes.cropBox(box, n.rot || 0, c0, c1)
+    var b = Shapes.cropBox(box, n.rot || 0, Shapes.cropSeen(c0, n.flipH, n.flipV),
+                           Shapes.cropSeen(c1, n.flipH, n.flipV))
     n.fx = xToFx(b.x)
     n.fy = yToFy(b.y)
     n.fw = b.w / Math.max(1, spaceRect().w)
@@ -169,9 +181,48 @@ function _applyCrop(n, box, c0, c1) {
 }
 
 // Crop mode for the selected picture: its handles cut instead of scale.
+// Entering it records the picture's crop and box for Esc (cancelCrop).
 function toggleCrop() {
     var n = nodeAt(selectedId)
     cropId = (isOverlay(n) && cropId !== n.id && !isLocked(n)) ? n.id : ""
+    cropEnterSnap = cropId ? {
+        id: n.id,
+        crop: n.crop ? { l: n.crop.l, t: n.crop.t, r: n.crop.r, b: n.crop.b } : null,
+        fx: n.fx, fy: n.fy, fw: n.fw, fh: n.fh
+    } : null
+    bump()
+}
+
+// Enter in crop mode: keeps the crop and leaves crop mode (07 S148).
+function finishCrop() {
+    if (!cropId)
+        return
+    cropId = ""
+    cropEnterSnap = null
+    bump()
+}
+
+// Esc in crop mode: the crop and box as they were when crop mode started,
+// then out of crop mode. Nothing changed, no undo step (bump's step is the
+// same as the last one).
+function cancelCrop() {
+    if (!cropId)
+        return
+    var snap = cropEnterSnap
+    var n = snap ? nodeAt(snap.id) : null
+    if (n && isOverlay(n)) {
+        if (snap.crop)
+            n.crop = { l: snap.crop.l, t: snap.crop.t, r: snap.crop.r, b: snap.crop.b }
+        else
+            delete n.crop
+        n.fx = snap.fx
+        n.fy = snap.fy
+        n.fw = snap.fw
+        n.fh = snap.fh
+        syncOverlayChips(n)
+    }
+    cropId = ""
+    cropEnterSnap = null
     bump()
 }
 
@@ -299,10 +350,13 @@ function addDrawFree(shape, x0, y0, x1, y1) {
         x1 = lp.x
         y1 = lp.y
     }
-    var x = Math.min(x0, x1)
-    var y = Math.min(y0, y1)
-    var w = Math.abs(x1 - x0)
-    var h = Math.abs(y1 - y0)
+    // Alt while drawing: the press is the centre. Only for a drag with a
+    // drawing tool, not a box made by a command (a callout beside a chip).
+    var nb = _newShapeBox(x0, y0, x1, y1, altHeld && dragKind === "drawnew")
+    var x = nb.x
+    var y = nb.y
+    var w = nb.w
+    var h = nb.h
     if (w < 6 || h < 6)
         return
     var st = _drawStyle()
@@ -367,7 +421,7 @@ function isLineTool(tool) {
 
 function addLineFree(tool, x0, y0, x1, y1) {
     if (shiftHeld) {
-        var s = Shapes.snapAngle(x0, y0, x1, y1, rotateSnap)
+        var s = Shapes.snapAngle(x0, y0, x1, y1, LINE_SNAP)
         x1 = s.x
         y1 = s.y
     }
@@ -385,15 +439,30 @@ function addLineFree(tool, x0, y0, x1, y1) {
 }
 
 // Pointer position while drawing with a tool: Shift snaps a line's angle to
-// 15 degree steps and keeps a shape's proportions.
+// 45 degree steps and keeps a shape's proportions (07 S146).
 function drawToolPoint(x0, y0, x1, y1) {
     if (!shiftHeld)
         return Qt.point(x1, y1)
     if (isLineTool(drawTool)) {
-        var s = Shapes.snapAngle(x0, y0, x1, y1, rotateSnap)
+        var s = Shapes.snapAngle(x0, y0, x1, y1, LINE_SNAP)
         return Qt.point(s.x, s.y)
     }
     return lockAspect(x0, y0, x1, y1)
+}
+
+// The box of a shape being drawn from the press (x0, y0) to (x1, y1): with
+// Alt the press is its centre (07 S146), else a corner.
+function _newShapeBox(x0, y0, x1, y1, centre) {
+    var w = Math.abs(x1 - x0)
+    var h = Math.abs(y1 - y0)
+    if (centre)
+        return { x: x0 - w, y: y0 - h, w: w * 2, h: h * 2 }
+    return { x: Math.min(x0, x1), y: Math.min(y0, y1), w: w, h: h }
+}
+
+// The preview box of the shape being drawn (Alt draws it from the centre).
+function drawNewBox() {
+    return _newShapeBox(drawX0, drawY0, drawX1, drawY1, altHeld && !isLineTool(drawTool))
 }
 
 function setDrawTool(shape) {

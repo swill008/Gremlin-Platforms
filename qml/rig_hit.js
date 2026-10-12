@@ -134,6 +134,20 @@ function hitTest(mx, my) {
     return { kind: "", id: "", spine: -1 }
 }
 
+// A handle's hit radius: r at 100% UI scale, scaled like the handle's
+// drawn size (Style.dp, RigDrawItem) so the hit stays on the handle (07 S155).
+function handleHit(r) {
+    return Math.max(1, uiDp(r))
+}
+
+// A point in the drawing's wrapper with its skew undone (the box's handles
+// are not flipped): drawLocalPoint (rig_transform.js) unskews then flips, so
+// the flip is put back.
+function _unskewedPoint(n, x, y, w, h) {
+    var q = drawLocalPoint(n, x, y, w, h)
+    return [n.flipH ? w - q[0] : q[0], n.flipV ? h - q[1] : q[1]]
+}
+
 function hitDraw(n, mx, my) {
     // A selected callout's pointer tip, outside its box.
     if (onCalloutTip(n, mx, my))
@@ -157,9 +171,9 @@ function hitDraw(n, mx, my) {
         // Ends and line in the item's own coordinates, so rotation is honoured.
         var le = Shapes.lineEnds(n.ends, w, h)
         if (interactive && isSelected(n.id) && !isLocked(n)) {
-            if (Math.hypot(p.x - le.ax, p.y - le.ay) < 8)
+            if (Math.hypot(p.x - le.ax, p.y - le.ay) < handleHit(8))
                 return "end0"
-            if (Math.hypot(p.x - le.bx, p.y - le.by) < 8)
+            if (Math.hypot(p.x - le.bx, p.y - le.by) < handleHit(8))
                 return "end1"
         }
         if (isLocked(n))
@@ -177,7 +191,7 @@ function hitDraw(n, mx, my) {
         ]
         var ct
         for (ct = 0; ct < chs.length; ct++) {
-            if (Math.hypot(mx - chs[ct][0], my - chs[ct][1]) < 8)
+            if (Math.hypot(mx - chs[ct][0], my - chs[ct][1]) < handleHit(8))
                 return chs[ct][2]
         }
     }
@@ -187,9 +201,13 @@ function hitDraw(n, mx, my) {
         if (onPt.indexOf("pt") === 0)
             return onPt
     }
+    // The rotate grip and the box's handles are drawn inside the item's skew
+    // (RigDrawItem), so the pointer is unskewed first: a press on a drawn
+    // handle of a skewed item hits it (07 S140).
+    var q = _unskewedPoint(n, p.x, p.y, w, h)
     // The rotate handle sits above the top edge (rotateHandleOffset).
     if (interactive && isSelected(n.id) && !isLocked(n) && isRotatable(n) && cropId !== n.id
-            && !canTurnTogether() && !xfOn && Math.hypot(p.x - w * 0.5, p.y + rotateHandleOffset) < 9)
+            && !canTurnTogether() && !xfOn && Math.hypot(q[0] - w * 0.5, q[1] + rotateHandleOffset) < handleHit(9))
         return "rotate"
     if (interactive && isSelected(n.id) && !isLocked(n) && !tableCellHandlesOn(n) && !xfOn) {
         var hs = [
@@ -198,7 +216,7 @@ function hitDraw(n, mx, my) {
         ]
         var t
         for (t = 0; t < hs.length; t++) {
-            if (Math.hypot(p.x - hs[t][0], p.y - hs[t][1]) < 8)
+            if (Math.hypot(q[0] - hs[t][0], q[1] - hs[t][1]) < handleHit(8))
                 return hs[t][2]
         }
     }
