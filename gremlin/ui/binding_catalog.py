@@ -209,15 +209,11 @@ def item_leaves(item: object) -> list[tuple[str, str, str]]:
     return out
 
 
-def action_summary(leaves: list[tuple]) -> str:
-    """An input row's action summary (05 S142): "1 action · target" /
-    "N actions · targets" from its leaves (tag, label, target); "" with
-    none. An action with no target still counts."""
-    if not leaves:
-        return ""
-    count = "1 action" if len(leaves) == 1 else f"{len(leaves)} actions"
-    targets = ", ".join(dest for _t, _l, dest in leaves if dest)
-    return f"{count} · {targets}" if targets else count
+def binding_targets(leaves: list[tuple]) -> list[str]:
+    """An input row's binding boxes (05 S142): one target text per action
+    from its leaves (tag, label, target), in order. An action with no
+    target has no box; it still counts in the row's number."""
+    return [dest for _t, _l, dest in leaves if dest]
 
 
 # --- The edit lock (06 S13, S82, RB14; 05 S32, S101) ------------------------

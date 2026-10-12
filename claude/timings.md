@@ -983,3 +983,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | vJoy Viewer OSC trace (V-PATH, read-only) | review | 5-10 min | 1 min | 11:14-11:15 |
 | 2026-10-12 | vJoy Viewer OSC chip name (V-NAME, read-only) | review | 5-10 min | 1 min | 11:14-11:15 |
 | 2026-10-12 | 128 harness fix: start-up stall handling (H-STALL) | fix | 3-8 min | 5 min | 11:12-11:17 |
+| 2026-10-12 | Bindings boxes: spec, glossary, Help (B-DOCS) | docs | 3-8 min | 2 min | 12:58-13:00 |
+| 2026-10-12 | Bindings boxes: Appearance section + pages (B-APPEAR) | feature | 3-8 min | 5 min | 12:58-13:03 |
+| 2026-10-12 | Bindings boxes: row display + roles (B-ROW) | feature | 3-8 min | 8 min | 12:58-13:06 |
+| 2026-10-12 | Bindings boxes: end-to-end test (B-E2E) | test | 3-8 min | 9 min (incl. waiting) | 12:58-13:07 |
+| 2026-10-12 | Quick tests batch I (--changed, 3,673 tests) + baseline | test | ~7 min | 7 min | 13:07-13:14 |

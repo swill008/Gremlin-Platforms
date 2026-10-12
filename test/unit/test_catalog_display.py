@@ -48,20 +48,20 @@ def test_main_has_catalog_display_button() -> None:
     assert 'displayOpen = _openPlace.displayPanelOpen(pageKey, "page")' in part
 
 
-def test_action_summary_counts_destinations() -> None:
-    # The row action summary (05 S142).
+def test_binding_targets_list_destinations() -> None:
+    # The row bindings (05 S142): one box per destination.
     src = (_ROOT / "gremlin/ui/binding_catalog.py").read_text(encoding="utf-8")
-    start = src.index("def action_summary")
+    start = src.index("def binding_targets")
     end = src.index("# --- The edit lock")
     ns: dict = {}
     exec(src[start:end], ns)
-    text = ns["action_summary"](
+    boxes = ns["binding_targets"](
         [
             ("map-to-vjoy", "Map to vJoy", "vJoy 3 · Button 9"),
             ("map-to-vjoy", "Map to vJoy", "vJoy 3 · Button 10"),
         ]
     )
-    assert text == "2 actions · vJoy 3 · Button 9, vJoy 3 · Button 10"
+    assert boxes == ["vJoy 3 · Button 9", "vJoy 3 · Button 10"]
     qml = _PAGE.read_text(encoding="utf-8")
     py = src + (_ROOT / "gremlin/ui/hardware_layout.py").read_text(encoding="utf-8")
     # The quick editor and its row refresh are gone (05 Q18).
@@ -81,7 +81,8 @@ def test_action_summary_counts_destinations() -> None:
     assert "_hold_reload" not in py
     assert "setHoldReload" not in qml
     assert "signal.inputItemChanged.connect(self.reload)" not in py
-    assert "def action_summary" in py
+    assert "def binding_targets" in py
+    assert "def action_summary" not in py
     # The shared Appearance panel (S125).
     assert 'title: "Device Bindings — Appearance"' in qml
     text = _PANEL.read_text(encoding="utf-8")

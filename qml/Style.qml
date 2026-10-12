@@ -42,7 +42,8 @@ Item {
         onLive: "#0B1220",
         diffRemovedBg: "#3A1C20", diffAddedBg: "#17321F",
         diffRemovedWord: "#7F1D1D", diffAddedWord: "#166534",
-        diffRemovedBar: "#F87171", diffAddedBar: "#4ADE80"
+        diffRemovedBar: "#F87171", diffAddedBar: "#4ADE80",
+        bindingText: "#F28B82", bindingBg: "#2B2B2E", bindingBorder: "#3F3F46"
     })
     // Light mode is a grey mode: no white surfaces, cards a little lighter
     // than the window, status colours a step darker to read on grey.
@@ -66,6 +67,7 @@ Item {
         diffRemovedBg: "#C4A9AB", diffAddedBg: "#A7C2AE",
         diffRemovedWord: "#D78C8F", diffAddedWord: "#7DBC8E",
         diffRemovedBar: "#B91C1C", diffAddedBar: "#15803D",
+        bindingText: "#8B1E1E", bindingBg: "#9E9EA2", bindingBorder: "#6A6A72",
         // Built-in controls, which are white in stock light mode.
         field: "#B8B8BA", popup: "#B2B2B5", item: "#99B6B6B9", scroll: "#9D9DA1",
         bar: "#A0A0A4"
@@ -89,6 +91,11 @@ Item {
     readonly property color fgSoft: _scheme.fgSoft
     readonly property color fgMuted: _scheme.fgMuted
     readonly property color fgDisabled: _scheme.fgDisabled
+    // A row's binding boxes (05 S142): code-style target text on a dark
+    // chip with a thin border.
+    readonly property color bindingText: _scheme.bindingText
+    readonly property color bindingBg: _scheme.bindingBg
+    readonly property color bindingBorder: _scheme.bindingBorder
     // Text on a saturated fill, and on a light swatch, in both modes.
     readonly property color onColor: "#FFFFFF"
     // A button drawn over a device photo: the same in both themes (the

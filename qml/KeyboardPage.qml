@@ -209,7 +209,22 @@ Item {
                 colorChild: _appear.colorChild
                 showChildren: _appear.showChildren
                 showSummary: _appear.showSummary
-                showActionSummary: _appear.showActionSummary
+                showBindings: _appear.showBindings
+                bindingsWordSize: _appear.bindingsWordSize
+                bindingsWordColor: _appear.bindingsWordColor
+                bindingsNumberSize: _appear.bindingsNumberSize
+                bindingsNumberMono: _appear.bindingsNumberMono
+                bindingsNumberColor: _appear.bindingsNumberColor
+                bindingsBrackets: _appear.bindingsBrackets
+                bindingTargetSize: _appear.bindingTargetSize
+                bindingTargetMono: _appear.bindingTargetMono
+                bindingTargetTextColor: _appear.bindingTargetTextColor
+                bindingTargetBgColor: _appear.bindingTargetBgColor
+                bindingTargetBorderColor: _appear.bindingTargetBorderColor
+                bindingTargetBorderWidth: _appear.bindingTargetBorderWidth
+                bindingTargetRounded: _appear.bindingTargetRounded
+                bindingTargetRadius: _appear.bindingTargetRadius
+                bindingTargetSpacing: _appear.bindingTargetSpacing
                 summaryFont: _appear.summaryFont
                 parentFont: _appear.parentFont
                 groupFont: _appear.groupFont

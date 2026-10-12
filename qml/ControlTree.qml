@@ -88,10 +88,26 @@ Item {
     property color colorChild: Style.bgCard
     property bool showChildren: true
     property bool showSummary: true
-    // The grey "N actions · targets" after a parent row's name (05 S142):
-    // off unless the page turns it on (Appearance › Shown); the Xbox
-    // Output View's read-only list leaves it off.
-    property bool showActionSummary: false
+    // A parent row's bindings after its name (05 S142, D-05-BINDINGS-BOXES):
+    // "Bindings", "[n]", one box per target, from the bindingCount and
+    // bindingTargets roles (a list without them, the Xbox Output View's,
+    // shows nothing). The pages set these from Appearance › Bindings.
+    property bool showBindings: true
+    property int bindingsWordSize: 12
+    property color bindingsWordColor: Style.fgMuted
+    property int bindingsNumberSize: 12
+    property bool bindingsNumberMono: true
+    property color bindingsNumberColor: Style.bindingText
+    property bool bindingsBrackets: true
+    property int bindingTargetSize: 12
+    property bool bindingTargetMono: true
+    property color bindingTargetTextColor: Style.bindingText
+    property color bindingTargetBgColor: Style.bindingBg
+    property color bindingTargetBorderColor: Style.bindingBorder
+    property int bindingTargetBorderWidth: 1
+    property bool bindingTargetRounded: true
+    property int bindingTargetRadius: 5
+    property int bindingTargetSpacing: 6
     property int summaryFont: 11
     property int parentFont: 13
     property int groupFont: 15
@@ -172,6 +188,29 @@ Item {
         }
         picked = next
         layout.setSelection(next)
+    }
+
+    // The bindings column (05 S142): a parent row's name is as wide as the
+    // widest parent name listed, less the caret and ⚠ it shows, so every
+    // row's "Bindings" starts at the same x. The probes measure in the
+    // rows' own fonts.
+    Label { id: _nameProbe; visible: false; font.bold: _tree.parentBold; font.pixelSize: Style.dp(_tree.parentFont) }
+    FontMetrics { id: _nameMetrics; font: _nameProbe.font }
+    Label { id: _caretOpen; visible: false; text: "▾"; font.pixelSize: Style.dp(_tree.caretSize) }
+    Label { id: _caretShut; visible: false; text: "▸"; font.pixelSize: Style.dp(_tree.caretSize) }
+    Label { id: _cantProbe; visible: false; text: "⚠"; font.bold: true; font.pixelSize: Style.dp(_tree.parentFont) }
+    readonly property real _caretW: Math.ceil(Math.max(_caretOpen.implicitWidth, _caretShut.implicitWidth))
+    readonly property real _cantW: Math.ceil(_cantProbe.implicitWidth)
+    readonly property real _nameColumn: {
+        var titles = (layout && layout.parentTitles) ? layout.parentTitles : []
+        var widest = 0
+        for (var i = 0; i < titles.length; i++)
+            widest = Math.max(widest, Math.ceil(_nameMetrics.advanceWidth(titles[i])))
+        // + the caret and ⚠ spaces (the row line's spacing after each).
+        return widest + Style.dp(2) + _caretW + _cantW + 2 * Style.dp(6)
+    }
+    function _bindingFont(mono) {
+        return mono ? Style.monoFont : _nameProbe.font.family
     }
 
     function _hasList(kind, childCount, extraWriters) {
@@ -457,7 +496,8 @@ Item {
                     color: _tree.colorCaret
                     font.pixelSize: Style.dp(_tree.caretSize)
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: visible ? implicitWidth : 0
+                    // Parent rows: one width for both carets (the bindings column).
+                    Layout.preferredWidth: visible ? (rowKind === "parent" ? _tree._caretW : implicitWidth) : 0
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
@@ -594,6 +634,7 @@ Item {
                     font.bold: true
                     font.pixelSize: Style.dp(rowKind === "parent" ? _tree.parentFont : _tree.childFont)
                     Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: rowKind === "parent" ? _tree._cantW : implicitWidth
                     HoverHandler { id: _cantHover }
                     ToolTip {
                         objectName: "cantSendTip"
@@ -615,8 +656,14 @@ Item {
                             font.bold: (rowKind === "child" || rowKind === "feedback") ? false : _tree.parentBold
                             font.pixelSize: Style.dp(rowKind === "group" ? _tree.groupFont : (rowKind === "parent" ? _tree.parentFont : _tree.childFont))
                             elide: Text.ElideRight
-                            Layout.fillWidth: !_actionSummary.visible
-                            Layout.maximumWidth: _actionSummary.visible ? implicitWidth : -1
+                            // With bindings: the name column, less the caret
+                            // and the ⚠ this row shows (05 S142).
+                            Layout.fillWidth: !_bindings.visible
+                            Layout.preferredWidth: _bindings.visible
+                                ? Math.max(0, _tree._nameColumn
+                                    - (_caret.visible ? _caret.width + _line.spacing : 0)
+                                    - (_cantSend.visible ? _cantSend.width + _line.spacing : 0))
+                                : -1
                             HoverHandler { id: _nameHover }
                             ToolTip {
                                 visible: _nameHover.hovered && rowKind === "parent" && userName.length > 0
@@ -625,22 +672,88 @@ Item {
                                 y: _nameHover.point.position.y - height - Style.dp(8)
                             }
                         }
-                        // What is bound here in the shown mode (05 S142):
-                        // the rest of the row, cut with "…", all on hover.
-                        Label {
-                            id: _actionSummary
-                            objectName: "actionSummary"
-                            text: _row.model.actionSummary || ""
-                            visible: _tree.showActionSummary && rowKind === "parent" && text.length > 0
-                            color: _tree.colorMuted
-                            font.pixelSize: Style.dp(_tree.summaryFont)
-                            elide: Text.ElideRight
+                        // What is bound here in the shown mode (05 S142,
+                        // D-05-BINDINGS-BOXES): "Bindings", "[n]", a box per
+                        // target, cut with "…", every target on hover.
+                        RowLayout {
+                            id: _bindings
+                            readonly property int count: _row.model.bindingCount || 0
+                            readonly property var targets: _row.model.bindingTargets || []
+                            visible: _tree.showBindings && rowKind === "parent" && count > 0
                             Layout.fillWidth: true
                             Layout.alignment: Qt.AlignVCenter
-                            PointerTip {
-                                objectName: "actionSummaryTip"
-                                text: _actionSummary.text
-                                show: _actionSummary.visible
+                            spacing: Style.dp(6)
+                            Label {
+                                objectName: "bindingsWord"
+                                text: "Bindings"
+                                color: _tree.bindingsWordColor
+                                font.pixelSize: Style.dp(_tree.bindingsWordSize)
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+                            Label {
+                                objectName: "bindingsCount"
+                                text: _tree.bindingsBrackets ? "[" + _bindings.count + "]" : String(_bindings.count)
+                                color: _tree.bindingsNumberColor
+                                font.family: _tree._bindingFont(_tree.bindingsNumberMono)
+                                font.pixelSize: Style.dp(_tree.bindingsNumberSize)
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+                            Item {
+                                id: _strip
+                                objectName: "bindingsStrip"
+                                readonly property real contentWidth: _boxes.implicitWidth
+                                readonly property bool overflow: contentWidth > width
+                                clip: true
+                                implicitHeight: _boxes.implicitHeight
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
+                                Item {
+                                    clip: true
+                                    width: _strip.overflow ? Math.max(0, _strip.width - _more.implicitWidth - Style.dp(4)) : _strip.width
+                                    height: _strip.height
+                                    Row {
+                                        id: _boxes
+                                        spacing: Style.dp(_tree.bindingTargetSpacing)
+                                        Repeater {
+                                            model: _bindings.visible ? _bindings.targets : []
+                                            delegate: Rectangle {
+                                                objectName: "bindingBox"
+                                                required property string modelData
+                                                implicitWidth: _boxText.implicitWidth + Style.dp(12)
+                                                implicitHeight: _boxText.implicitHeight + Style.dp(4)
+                                                width: implicitWidth
+                                                height: implicitHeight
+                                                color: _tree.bindingTargetBgColor
+                                                border.color: _tree.bindingTargetBorderColor
+                                                border.width: Style.dp(_tree.bindingTargetBorderWidth)
+                                                radius: _tree.bindingTargetRounded ? Style.dp(_tree.bindingTargetRadius) : 0
+                                                Label {
+                                                    id: _boxText
+                                                    anchors.centerIn: parent
+                                                    text: parent.modelData
+                                                    color: _tree.bindingTargetTextColor
+                                                    font.family: _tree._bindingFont(_tree.bindingTargetMono)
+                                                    font.pixelSize: Style.dp(_tree.bindingTargetSize)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Label {
+                                    id: _more
+                                    objectName: "bindingsMore"
+                                    visible: _strip.overflow
+                                    text: "…"
+                                    color: _tree.bindingsWordColor
+                                    font.pixelSize: Style.dp(_tree.bindingTargetSize)
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                PointerTip {
+                                    objectName: "bindingsTip"
+                                    text: _bindings.targets.join("\n")
+                                    show: _bindings.visible
+                                }
                             }
                         }
                     }

@@ -33,9 +33,12 @@ Public names (QML), unchanged from LogicalLayoutModel:
             a parent row, can't be sent; "" when it can. Filled by the
             base for every child row with a sequenceIndex; asked again on
             profileChanged and signal.cantSendChanged, D-05-CANT-SEND-LIVE)
-            actionSummary (05 S142: a parent row's "N actions · targets"
-            from _real_item's actions in the shown mode; "" with none and
+            bindingCount, bindingTargets (05 S142, D-05-BINDINGS-BOXES: a
+            parent row's action count and one target text per action, from
+            _real_item's actions in the shown mode; 0 and [] with none and
             on every other row)
+  property  parentTitles (the parent rows' names: ControlTree's name
+            column is as wide as the widest)
   keys      "group:<name>", "parent:<button|axis|hat>:<id>",
             "child:<word>:<id>:<seq>"; subclass rows pick their own prefix
             (Logical: "writer:<action id>"; OSC feedback e.g. "feedback:<uid>").
@@ -168,7 +171,7 @@ from gremlin.profile import Draft, DraftOutdated, InputItem, bindings_fingerprin
 from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui.binding_catalog import (
-    action_summary,
+    binding_targets,
     editing_locked,
     item_leaves,
     sequences_for_item,
@@ -307,8 +310,10 @@ ROW_DEFAULTS: dict[str, Any] = {
     # Why this action (or one of this input's actions) can't be sent, the
     # red ⚠'s tooltip; "" when it can (D-05-CANT-SEND).
     "cantSend": "",
-    # A parent row's "N actions · targets" (05 S142); "" with none.
-    "actionSummary": "",
+    # A parent row's actions in the shown mode and one target text per
+    # action (05 S142); 0 and [] with none.
+    "bindingCount": 0,
+    "bindingTargets": [],
 }
 
 
@@ -731,9 +736,10 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                 if filtering and self._cant_send_only and not cant:
                     continue
                 if not filtering or self._visible_parent(item, extra, len(children)):
-                    summary = action_summary(item_leaves(real))
+                    leaves = item_leaves(real)
+                    bound = (len(leaves), binding_targets(leaves))
                     shown.append(
-                        (item, extra, children, parent_cant_text(cant), summary)
+                        (item, extra, children, parent_cant_text(cant), bound)
                     )
             if filtering and not shown:
                 continue
@@ -756,7 +762,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                 if entry[0].type in buckets:
                     buckets[entry[0].type].append(entry)
             for kind in order:
-                for item, extra, children, cant_text, summary in buckets[kind]:
+                for item, extra, children, cant_text, bound in buckets[kind]:
                     key = parent_key(item.type, item.id)
                     rows.append(
                         self._row(
@@ -771,7 +777,8 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                             userName=item.second_name,
                             childCount=len(children),
                             cantSend=cant_text,
-                            actionSummary=summary,
+                            bindingCount=bound[0],
+                            bindingTargets=bound[1],
                             **self._parent_fields(item, extra),
                         )
                     )
@@ -1379,6 +1386,11 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
     @QtCore.Property(int, notify=revisionChanged)
     def parentCount(self) -> int:
         return sum(1 for row in self._rows if row["rowKind"] == "parent")
+
+    # The rows' names: ControlTree's name column is the widest (05 S142).
+    @QtCore.Property(list, notify=revisionChanged)
+    def parentTitles(self) -> list[str]:
+        return [row["title"] for row in self._rows if row["rowKind"] == "parent"]
 
     # 01 S143: the Undo bar's text and tips, from each step's label.
     def _top_label(self, steps: list[dict]) -> str:

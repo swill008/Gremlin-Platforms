@@ -86,14 +86,14 @@ def test_an_empty_wrapper_shows_its_name_and_no_actions() -> None:
     assert sequences_for_item(item) == [(0, "Tempo", "No actions")]
 
 
-def test_the_action_count_reads_actions() -> None:
-    # The row action summary (05 S142).
-    from gremlin.ui.binding_catalog import action_summary
+def test_the_binding_boxes_read_actions() -> None:
+    # The row bindings (05 S142): one target text per action.
+    from gremlin.ui.binding_catalog import binding_targets
 
-    one = action_summary([("map-to-vjoy", "Map to vJoy", "vJoy 1 · Button 1")])
-    assert one == "1 action · vJoy 1 · Button 1"
-    two = action_summary([("", "", "A"), ("", "", "B")])
-    assert two == "2 actions · A, B"
+    one = binding_targets([("map-to-vjoy", "Map to vJoy", "vJoy 1 · Button 1")])
+    assert one == ["vJoy 1 · Button 1"]
+    two = binding_targets([("", "", "A"), ("", "", "B")])
+    assert two == ["A", "B"]
 
 
 def test_type_names_are_the_plugins_names() -> None:

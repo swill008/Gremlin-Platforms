@@ -78,8 +78,7 @@ Rectangle {
     readonly property color colorChild: colorChildSet.length ? colorChildSet : Style.bgCard
     property bool showChildren: true
     property bool showSummary: true
-    // "N actions · targets" after each input's name (05 S142).
-    property bool showActionSummary: true
+    // The written-by line's text size.
     property int summaryFont: 11
     property int parentFont: 13
     property int groupFont: 15
@@ -124,6 +123,30 @@ Rectangle {
     property bool showLeds: true
     property string colorLiveSet: ""
     readonly property color colorLive: colorLiveSet.length ? colorLiveSet : Style.ok
+    // "Bindings [n]" and a box per target after each input's name (05 S142,
+    // S125; D-05-BINDINGS-BOXES). Not on the Xbox Output View.
+    property bool openBindings: false
+    property bool showBindings: true
+    property int bindingsWordSize: 12
+    property string bindingsWordColorSet: ""
+    readonly property color bindingsWordColor: bindingsWordColorSet.length ? bindingsWordColorSet : Style.fgMuted
+    property int bindingsNumberSize: 12
+    property bool bindingsNumberMono: true
+    property string bindingsNumberColorSet: ""
+    readonly property color bindingsNumberColor: bindingsNumberColorSet.length ? bindingsNumberColorSet : Style.bindingText
+    property bool bindingsBrackets: true
+    property int bindingTargetSize: 12
+    property bool bindingTargetMono: true
+    property string bindingTargetTextColorSet: ""
+    readonly property color bindingTargetTextColor: bindingTargetTextColorSet.length ? bindingTargetTextColorSet : Style.bindingText
+    property string bindingTargetBgColorSet: ""
+    readonly property color bindingTargetBgColor: bindingTargetBgColorSet.length ? bindingTargetBgColorSet : Style.bindingBg
+    property string bindingTargetBorderColorSet: ""
+    readonly property color bindingTargetBorderColor: bindingTargetBorderColorSet.length ? bindingTargetBorderColorSet : Style.bindingBorder
+    property int bindingTargetBorderWidth: 1
+    property bool bindingTargetRounded: true
+    property int bindingTargetRadius: 5
+    property int bindingTargetSpacing: 6
 
     WindowPlacement { id: _place }
 
@@ -171,12 +194,54 @@ Rectangle {
                     onToggled: (v) => { _panel.openShown = v }
                     FlagBox { text: "Show action rows"; source: _panel.showChildren; onUserSet: (v) => { _panel.showChildren = v } }
                     FlagBox { text: "Show written by"; source: _panel.showSummary; onUserSet: (v) => { _panel.showSummary = v } }
-                    // Not on the Xbox Output View: its rows list their sources.
-                    FlagBox { visible: _panel.pageKey !== "xbox-output"; text: "Show action summary"; source: _panel.showActionSummary; onUserSet: (v) => { _panel.showActionSummary = v } }
                     RowLayout {
                         Label { text: "Written-by size"; color: Style.fg; Layout.fillWidth: true }
                         TrackSpin { from: 9; to: 20; source: _panel.summaryFont; onUserSet: (v) => { _panel.summaryFont = v } }
                     }
+                }
+                // Not on the Xbox Output View: its rows list their sources.
+                FoldSection {
+                    objectName: "appearanceBindingsSection"
+                    title: "Bindings"
+                    visible: _panel.pageKey !== "xbox-output"
+                    open: _panel.openBindings
+                    onToggled: (v) => { _panel.openBindings = v }
+                    FlagBox { text: "Show bindings"; source: _panel.showBindings; onUserSet: (v) => { _panel.showBindings = v } }
+                    RowLayout {
+                        Label { text: "\"Bindings\" size"; color: Style.fg; Layout.fillWidth: true }
+                        TrackSpin { from: 8; to: 24; source: _panel.bindingsWordSize; onUserSet: (v) => { _panel.bindingsWordSize = v } }
+                    }
+                    ColorPick { label: "\"Bindings\" color"; swatch: _panel.bindingsWordColor; target: "bindingsWord" }
+                    RowLayout {
+                        Label { text: "Number size"; color: Style.fg; Layout.fillWidth: true }
+                        TrackSpin { from: 8; to: 24; source: _panel.bindingsNumberSize; onUserSet: (v) => { _panel.bindingsNumberSize = v } }
+                    }
+                    ChoicePick { label: "Number font"; choices: ["Monospace", "List font"]; source: _panel.bindingsNumberMono ? 0 : 1; onUserSet: (i) => { _panel.bindingsNumberMono = i === 0 } }
+                    ColorPick { label: "Number color"; swatch: _panel.bindingsNumberColor; target: "bindingsNumber" }
+                    FlagBox { text: "Brackets"; source: _panel.bindingsBrackets; onUserSet: (v) => { _panel.bindingsBrackets = v } }
+                    RowLayout {
+                        Label { text: "Target size"; color: Style.fg; Layout.fillWidth: true }
+                        TrackSpin { from: 8; to: 24; source: _panel.bindingTargetSize; onUserSet: (v) => { _panel.bindingTargetSize = v } }
+                    }
+                    ChoicePick { label: "Target font"; choices: ["Monospace", "List font"]; source: _panel.bindingTargetMono ? 0 : 1; onUserSet: (i) => { _panel.bindingTargetMono = i === 0 } }
+                    ColorPick { label: "Target text color"; swatch: _panel.bindingTargetTextColor; target: "bindingTargetText" }
+                    ColorPick { label: "Target background"; swatch: _panel.bindingTargetBgColor; target: "bindingTargetBg" }
+                    ColorPick { label: "Target border color"; swatch: _panel.bindingTargetBorderColor; target: "bindingTargetBorder" }
+                    RowLayout {
+                        Label { text: "Border width"; color: Style.fg; Layout.fillWidth: true }
+                        TrackSpin { from: 0; to: 6; source: _panel.bindingTargetBorderWidth; onUserSet: (v) => { _panel.bindingTargetBorderWidth = v } }
+                    }
+                    ChoicePick { label: "Corners"; choices: ["Square", "Rounded"]; source: _panel.bindingTargetRounded ? 1 : 0; onUserSet: (i) => { _panel.bindingTargetRounded = i === 1 } }
+                    RowLayout {
+                        enabled: _panel.bindingTargetRounded
+                        Label { text: "Roundness"; color: Style.fg; Layout.fillWidth: true }
+                        TrackSpin { from: 0; to: 16; source: _panel.bindingTargetRadius; onUserSet: (v) => { _panel.bindingTargetRadius = v } }
+                    }
+                    RowLayout {
+                        Label { text: "Space between boxes"; color: Style.fg; Layout.fillWidth: true }
+                        TrackSpin { from: 0; to: 24; source: _panel.bindingTargetSpacing; onUserSet: (v) => { _panel.bindingTargetSpacing = v } }
+                    }
+                    Button { text: "Reset to defaults"; onClicked: _panel.resetBindings() }
                 }
                 FoldSection {
                     title: "Live"
@@ -510,6 +575,25 @@ Rectangle {
         onSourceChanged: _alignBox.currentIndex = Math.max(0, _alignRow.values.indexOf(_alignRow.source))
     }
 
+    // A labelled drop-down; source and userSet are the chosen index.
+    component ChoicePick: RowLayout {
+        id: _choiceRow
+        property string label: ""
+        property var choices: []
+        property int source: 0
+        signal userSet(int index)
+        Layout.fillWidth: true
+        Label { text: _choiceRow.label; color: Style.fg; Layout.preferredWidth: Style.dp(150) }
+        ComboBox {
+            id: _choiceBox
+            Layout.fillWidth: true
+            model: _choiceRow.choices
+            Component.onCompleted: currentIndex = _choiceRow.source
+            onActivated: _choiceRow.userSet(currentIndex)
+        }
+        onSourceChanged: _choiceBox.currentIndex = source
+    }
+
     component PadFields: ColumnLayout {
         property string shape: "box"
         property int size: 8
@@ -649,7 +733,6 @@ Rectangle {
             "colorChild": colorChildSet,
             "showChildren": showChildren,
             "showSummary": showSummary,
-            "showActionSummary": showActionSummary,
             "summaryFont": summaryFont,
             "parentFont": parentFont,
             "groupFont": groupFont,
@@ -670,7 +753,23 @@ Rectangle {
             "colorGrip": colorGripSet,
             "showLiveBars": showLiveBars,
             "showLeds": showLeds,
-            "colorLive": colorLiveSet
+            "colorLive": colorLiveSet,
+            "showBindings": showBindings,
+            "bindingsWordSize": bindingsWordSize,
+            "bindingsWordColor": bindingsWordColorSet,
+            "bindingsNumberSize": bindingsNumberSize,
+            "bindingsNumberMono": bindingsNumberMono,
+            "bindingsNumberColor": bindingsNumberColorSet,
+            "bindingsBrackets": bindingsBrackets,
+            "bindingTargetSize": bindingTargetSize,
+            "bindingTargetMono": bindingTargetMono,
+            "bindingTargetTextColor": bindingTargetTextColorSet,
+            "bindingTargetBgColor": bindingTargetBgColorSet,
+            "bindingTargetBorderColor": bindingTargetBorderColorSet,
+            "bindingTargetBorderWidth": bindingTargetBorderWidth,
+            "bindingTargetRounded": bindingTargetRounded,
+            "bindingTargetRadius": bindingTargetRadius,
+            "bindingTargetSpacing": bindingTargetSpacing
         }
     }
 
@@ -720,7 +819,6 @@ Rectangle {
         colorChildSet = Helpers.userColour(v.colorChild, "#18181B")
         showChildren = v.showChildren !== false
         showSummary = v.showSummary !== false
-        showActionSummary = v.showActionSummary !== false
         summaryFont = numVal(v.summaryFont, 11)
         parentFont = numVal(v.parentFont, 13)
         groupFont = numVal(v.groupFont, 15)
@@ -742,10 +840,31 @@ Rectangle {
         showLiveBars = v.showLiveBars !== false
         showLeds = v.showLeds !== false
         colorLiveSet = Helpers.userColour(v.colorLive, "#22C55E")
+        showBindings = v.showBindings !== false
+        bindingsWordSize = numVal(v.bindingsWordSize, 12)
+        bindingsWordColorSet = colourVal(v.bindingsWordColor)
+        bindingsNumberSize = numVal(v.bindingsNumberSize, 12)
+        bindingsNumberMono = v.bindingsNumberMono !== false
+        bindingsNumberColorSet = colourVal(v.bindingsNumberColor)
+        bindingsBrackets = v.bindingsBrackets !== false
+        bindingTargetSize = numVal(v.bindingTargetSize, 12)
+        bindingTargetMono = v.bindingTargetMono !== false
+        bindingTargetTextColorSet = colourVal(v.bindingTargetTextColor)
+        bindingTargetBgColorSet = colourVal(v.bindingTargetBgColor)
+        bindingTargetBorderColorSet = colourVal(v.bindingTargetBorderColor)
+        bindingTargetBorderWidth = numVal(v.bindingTargetBorderWidth, 1)
+        bindingTargetRounded = v.bindingTargetRounded !== false
+        bindingTargetRadius = numVal(v.bindingTargetRadius, 5)
+        bindingTargetSpacing = numVal(v.bindingTargetSpacing, 6)
+    }
+
+    // A saved colour; "" (the theme's) when none was chosen.
+    function colourVal(v) {
+        return typeof v === "string" ? v : ""
     }
 
     function userColourOf(target) {
-        var names = { group: "colorGroupSet", parent: "colorParentSet", child: "colorChildSet", actionTarget: "colorActionTargetSet", text: "colorTextSet", muted: "colorMutedSet", selected: "colorSelectedSet", selectBorder: "colorSelectBorderSet", border: "colorBorderSet", caret: "colorCaretSet", grip: "colorGripSet", live: "colorLiveSet" }
+        var names = { group: "colorGroupSet", parent: "colorParentSet", child: "colorChildSet", actionTarget: "colorActionTargetSet", text: "colorTextSet", muted: "colorMutedSet", selected: "colorSelectedSet", selectBorder: "colorSelectBorderSet", border: "colorBorderSet", caret: "colorCaretSet", grip: "colorGripSet", live: "colorLiveSet", bindingsWord: "bindingsWordColorSet", bindingsNumber: "bindingsNumberColorSet", bindingTargetText: "bindingTargetTextColorSet", bindingTargetBg: "bindingTargetBgColorSet", bindingTargetBorder: "bindingTargetBorderColorSet" }
         return names[target] || ""
     }
 
@@ -793,7 +912,6 @@ Rectangle {
         colorChildSet = ""
         showChildren = true
         showSummary = true
-        showActionSummary = true
         summaryFont = 11
         parentFont = 13
         groupFont = 15
@@ -815,7 +933,28 @@ Rectangle {
         showLiveBars = true
         showLeds = true
         colorLiveSet = ""
+        resetBindings()
         setAllSections(false)
+    }
+
+    // The Bindings section's Reset to defaults: this section only.
+    function resetBindings() {
+        showBindings = true
+        bindingsWordSize = 12
+        bindingsWordColorSet = ""
+        bindingsNumberSize = 12
+        bindingsNumberMono = true
+        bindingsNumberColorSet = ""
+        bindingsBrackets = true
+        bindingTargetSize = 12
+        bindingTargetMono = true
+        bindingTargetTextColorSet = ""
+        bindingTargetBgColorSet = ""
+        bindingTargetBorderColorSet = ""
+        bindingTargetBorderWidth = 1
+        bindingTargetRounded = true
+        bindingTargetRadius = 5
+        bindingTargetSpacing = 6
     }
 
     function setAllSections(v) {
@@ -829,6 +968,7 @@ Rectangle {
         openText = v
         openSelection = v
         openLive = v
+        openBindings = v
     }
 
     function rememberDisplay() {
@@ -879,19 +1019,7 @@ Rectangle {
         id: _colorDlg
         title: "Choose Color"
         onAccepted: {
-            var c = selectedColor.toString()
-            if (_colorTarget === "child") colorChildSet = c
-            else if (_colorTarget === "selected") colorSelectedSet = c
-            else if (_colorTarget === "text") colorTextSet = c
-            else if (_colorTarget === "muted") colorMutedSet = c
-            else if (_colorTarget === "actionTarget") colorActionTargetSet = c
-            else if (_colorTarget === "selectBorder") colorSelectBorderSet = c
-            else if (_colorTarget === "border") colorBorderSet = c
-            else if (_colorTarget === "group") colorGroupSet = c
-            else if (_colorTarget === "grip") colorGripSet = c
-            else if (_colorTarget === "caret") colorCaretSet = c
-            else if (_colorTarget === "live") colorLiveSet = c
-            else colorParentSet = c
+            _panel[userColourOf(_colorTarget) || "colorParentSet"] = selectedColor.toString()
         }
     }
 

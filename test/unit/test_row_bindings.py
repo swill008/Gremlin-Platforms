@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # ruff: noqa: E501 - the QML list rows below read best on one line each
 
-"""The row action summary (05 S142, D-05-ROW-ACTION-SUMMARY): every row
-that can have bindings on the Device Bindings, Keyboard, Logical Device and
-OSC pages carries "1 action · <target>" / "N actions · <targets>" in its
-actionSummary role (the shown mode's actions, every binding's), "" with
-none; ControlTree shows it in grey after the name, cut with "…", the full
-text on hover, while Appearance › Shown › "Show action summary" is on.
+"""The row bindings (05 S142, D-05-BINDINGS-BOXES): every row that can
+have bindings on the Device Bindings, Keyboard, Logical Device and OSC pages
+carries bindingCount (the shown mode's actions, every binding's) and
+bindingTargets (one text per target, "vJoy 1 · Button 1"); ControlTree shows
+"Bindings", "[n]" and one box per target after the name, all rows' boxes in
+one column, cut with "…", every target on hover; nothing with none.
 
 Model parts run in-process; the QML part runs off-screen in its own process
 (this file run as a script).
@@ -40,7 +40,7 @@ _ROOT = _HERE.parents[1]
 STICK = uuid.UUID("11111111-2222-3333-4444-555555555555")
 GUID = "{11111111-2222-3333-4444-555555555555}"
 NAME = "Test Stick"
-LONG = "3 actions · vJoy 1 Button 3, vJoy 1 Button 4, Xbox 360 2 A, " + "x" * 200
+MANY = [f"vJoy 1 · Button {n}" for n in range(1, 31)]
 
 
 def _vjoy(button: int) -> Any:  # noqa: ANN401
@@ -68,26 +68,28 @@ def _dest(action: Any) -> str:  # noqa: ANN401
     return summarize_action(action)[1]
 
 
-def _summaries(model: Any) -> dict[str, str]:  # noqa: ANN401
+def _summaries(model: Any) -> dict[str, tuple[int, list[str]]]:  # noqa: ANN401
     return {
-        row["key"]: row["actionSummary"]
+        row["key"]: (row["bindingCount"], list(row["bindingTargets"]))
         for row in model._rows
         if row["rowKind"] == "parent"
     }
 
 
-def test_the_wording() -> None:
-    from gremlin.ui.binding_catalog import action_summary
+def test_the_targets() -> None:
+    from gremlin.ui import binding_catalog
+    from gremlin.ui.binding_catalog import binding_targets
 
-    assert action_summary([]) == ""
-    assert action_summary([("map-to-vjoy", "Map to vJoy", "vJoy 1 X")]) == (
-        "1 action · vJoy 1 X"
-    )
+    assert binding_targets([]) == []
+    assert binding_targets([("map-to-vjoy", "Map to vJoy", "vJoy 1 X")]) == [
+        "vJoy 1 X"
+    ]
     three = [("", "", "A"), ("", "", "B"), ("", "", "C")]
-    assert action_summary(three) == "3 actions · A, B, C"
-    # An action with no target still counts.
-    assert action_summary([("", "", ""), ("", "", "B")]) == "2 actions · B"
-    assert action_summary([("", "", "")]) == "1 action"
+    assert binding_targets(three) == ["A", "B", "C"]
+    # An action with no target has no box (it still counts).
+    assert binding_targets([("", "", ""), ("", "", "B")]) == ["B"]
+    # The old one-line summary is gone.
+    assert not hasattr(binding_catalog, "action_summary")
 
 
 # -- Device Bindings page ---------------------------------------------------
@@ -110,30 +112,32 @@ def test_device_bindings_rows(module: Any) -> None:  # noqa: ANN401
     try:
         model.setDevice(GUID, NAME)
         rows = _summaries(model)
-        wanted = "3 actions · " + ", ".join(_dest(a) for a in made)
-        assert rows["parent:button:1"] == wanted
-        assert rows["parent:button:2"] == "1 action · " + _dest(single[0])
+        assert rows["parent:button:1"] == (3, [_dest(a) for a in made])
+        assert rows["parent:button:2"] == (1, [_dest(single[0])])
         # A claimed input with no actions shows nothing.
-        assert rows["parent:button:3"] == ""
+        assert rows["parent:button:3"] == (0, [])
         # Action rows carry none.
         assert all(
-            row["actionSummary"] == ""
+            row["bindingCount"] == 0 and row["bindingTargets"] == []
             for row in model._rows
             if row["rowKind"] != "parent"
         )
-        assert b"actionSummary" in [
-            bytes(v.data()) for v in model.roleNames().values()
+        names = [bytes(v.data()) for v in model.roleNames().values()]
+        assert b"bindingCount" in names and b"bindingTargets" in names
+        assert b"actionSummary" not in names
+        # The tree's name column measures the parent rows' names.
+        assert model.parentTitles == [
+            row["title"] for row in model._rows if row["rowKind"] == "parent"
         ]
         # It follows the profile (an edit elsewhere, Undo, a load).
         real.action_sequences.pop()
         signal.profileChanged.emit()
         rows = _summaries(model)
-        wanted = "2 actions · " + ", ".join(_dest(a) for a in made[:2])
-        assert rows["parent:button:1"] == wanted
+        assert rows["parent:button:1"] == (2, [_dest(a) for a in made[:2]])
         # Another mode shows that mode's actions: none here.
         model._mode = "Nowhere"
         model._rebuild()
-        assert _summaries(model)["parent:button:1"] == ""
+        assert _summaries(model)["parent:button:1"] == (0, [])
     finally:
         model.endPane()
         shared_state.current_profile = saved
@@ -159,7 +163,7 @@ def test_keyboard_row(modules: Any) -> None:  # noqa: ANN401
     model = KeyboardLayoutModel()
     try:
         rows = list(_summaries(model).values())
-        assert rows == ["1 action · " + _dest(made[0])], rows
+        assert rows == [(1, [_dest(made[0])])], rows
     finally:
         model.endPane()
         model.deleteLater()
@@ -188,9 +192,8 @@ def test_logical_row(qapp: object) -> None:
     model = LogicalLayoutModel()
     try:
         rows = _summaries(model)
-        wanted = "2 actions · " + ", ".join(_dest(a) for a in made)
-        assert rows["parent:button:1"] == wanted
-        assert rows["parent:button:2"] == ""
+        assert rows["parent:button:1"] == (2, [_dest(a) for a in made])
+        assert rows["parent:button:2"] == (0, [])
     finally:
         model.endPane()
         model.deleteLater()
@@ -223,9 +226,7 @@ def test_osc_row(qapp: object, modules: Any) -> None:  # noqa: ANN401
         signal.profileChanged.emit()
         word = "axis" if row.input_type == InputType.JoystickAxis else "button"
         rows = _summaries(model)
-        assert rows[f"parent:{word}:{row.input_id}"] == "1 action · " + _dest(
-            made[0]
-        )
+        assert rows[f"parent:{word}:{row.input_id}"] == (1, [_dest(made[0])])
     finally:
         model.endPane()
         OscDevice().rows.reset()
@@ -233,28 +234,23 @@ def test_osc_row(qapp: object, modules: Any) -> None:  # noqa: ANN401
         shared_state.current_profile = saved
 
 
-# -- The pages pass the switch; the Xbox list keeps it off ------------------
+# -- ControlTree's defaults; the Xbox list has no bindings -------------------
 
 
-def test_pages_bind_the_switch() -> None:
-    for page in (
-        "DeviceBindingsPage.qml",
-        "KeyboardPage.qml",
-        "LogicalPage.qml",
-        "OscPage.qml",
-    ):
-        text = (_ROOT / "qml" / page).read_text(encoding="utf-8")
-        assert "showActionSummary: _appear.showActionSummary" in text, page
+def test_tree_defaults_and_xbox() -> None:
     tree = (_ROOT / "qml" / "ControlTree.qml").read_text(encoding="utf-8")
-    # Off unless a page turns it on: the Xbox Output View's list doesn't.
-    assert "property bool showActionSummary: false" in tree
-    xbox = (_ROOT / "qml" / "XboxPadCard.qml").read_text(encoding="utf-8")
-    assert "showActionSummary" not in xbox
-    panel = (_ROOT / "qml" / "ListAppearancePanel.qml").read_text(encoding="utf-8")
-    assert 'text: "Show action summary"' in panel
-    assert '"showActionSummary": showActionSummary' in panel
-    assert "showActionSummary = v.showActionSummary !== false" in panel
-    assert 'pageKey !== "xbox-output"' in panel
+    assert "property bool showBindings: true" in tree
+    assert "showActionSummary" not in tree
+    assert "_actionSummary" not in tree
+    # Colours come from Style tokens.
+    assert "property color bindingTargetTextColor: Style.bindingText" in tree
+    assert "property color bindingTargetBgColor: Style.bindingBg" in tree
+    assert "property color bindingTargetBorderColor: Style.bindingBorder" in tree
+    # The Xbox Output View's list (S139) has no binding roles: nothing shows.
+    xbox = (_ROOT / "gremlin" / "ui" / "xbox_output_list.py").read_text(
+        encoding="utf-8"
+    )
+    assert "bindingCount" not in xbox
 
 
 # -- The list (off-screen QML) ----------------------------------------------
@@ -293,43 +289,36 @@ def _run(part: str, tmp_path: pathlib.Path) -> dict[str, str]:
     }
 
 
-def test_the_tree_shows_it_after_the_name(tmp_path: pathlib.Path) -> None:
+def test_the_tree_shows_bindings_after_the_name(tmp_path: pathlib.Path) -> None:
     r = _run("tree", tmp_path)
-    # Grey, on the name's line, cut with "…", the full text on hover.
-    assert r["bound"] == "true|1 action · vJoy 1 X|muted|same-line", r["bound"]
-    assert r["long"].startswith("true|" + LONG + "|muted|same-line|elided"), r["long"]
-    assert r["tip"] == LONG, r["tip"]
-    # No actions: nothing after the name.
-    assert r["empty"] == "false", r["empty"]
-    # The switch off hides it.
+    # "Bindings", "[2]" in the number style, one box per target.
+    assert r["two"] == (
+        "Bindings|[2]|mono|vJoy 1 · Button 1,Xbox 360 Controller · A|same-line"
+    ), r["two"]
+    assert r["twoBoxes"] == "salmon|bg|border|1|5", r["twoBoxes"]
+    # Nothing bound: nothing after the name.
+    assert r["none"] == "false", r["none"]
+    # One column: the strip starts at the same x on short and long names,
+    # with and without a caret or a ⚠, past the widest name.
+    assert r["column"] == "same", r["column"]
+    # Too many: clipped with "…", every target on hover.
+    assert r["many"] == "clipped|…", r["many"]
+    assert r["tip"] == "\\n".join(MANY), r["tip"]
+    # Brackets off: the bare number; the switch off hides it all.
+    assert r["bare"] == "2", r["bare"]
     assert r["off"] == "false", r["off"]
 
 
-def _tree(s, out: pathlib.Path) -> None:  # noqa: ANN001
-    from PySide6 import QtCore
-
-    app, engine, warnings = s._engine(out)  # noqa: F841
-    qml = (
-        """
+_QML = """
 import QtQuick
 import QtQuick.Window
 import Gremlin.Style
 Window {
-    width: 500; height: 600; visible: true
-    ListModel {
-        id: _rows
-        function keyAt(i) { return get(i).key }
-        function setSelection(keys) {}
-        ListElement { rowKind: "group"; key: "group:"; title: "Ungrouped"; subtitle: ""; parentKey: ""; groupKey: "g"; groupName: ""; systemName: ""; userName: ""; sequenceIndex: -1; childCount: 3; cantSend: ""; actionSummary: "" }
-        ListElement { rowKind: "parent"; key: "parent:button:1"; title: "Button 1"; subtitle: ""; parentKey: "parent:button:1"; groupKey: "g"; groupName: ""; systemName: "Button 1"; userName: ""; sequenceIndex: -1; childCount: 0; cantSend: ""; actionSummary: "1 action · vJoy 1 X" }
-        ListElement { rowKind: "parent"; key: "parent:button:2"; title: "Button 2"; subtitle: ""; parentKey: "parent:button:2"; groupKey: "g"; groupName: ""; systemName: "Button 2"; userName: ""; sequenceIndex: -1; childCount: 0; cantSend: ""; actionSummary: "LONG" }
-        ListElement { rowKind: "parent"; key: "parent:button:3"; title: "Button 3"; subtitle: ""; parentKey: "parent:button:3"; groupKey: "g"; groupName: ""; systemName: "Button 3"; userName: ""; sequenceIndex: -1; childCount: 0; cantSend: ""; actionSummary: "" }
-    }
+    width: 700; height: 600; visible: true
     ControlTree {
         id: _tree
-        width: 500; height: 500
-        layout: _rows
-        showActionSummary: true
+        width: 700; height: 560
+        layout: rowsModel
     }
     function find(item, test) {
         if (test(item))
@@ -341,36 +330,148 @@ Window {
         return null
     }
     function row(key) { return find(_tree, function(i) { return i.rowKind !== undefined && i.key === key && i.shown !== undefined }) }
-    function label(key) {
+    function part(key, name) {
         var r = row(key)
-        return r ? find(r, function(i) { return i.objectName === "actionSummary" }) : null
+        return r ? find(r, function(i) { return i.objectName === name }) : null
     }
-    function nameOf(key) {
-        var r = row(key)
-        return r ? find(r, function(i) { return i.objectName === "rowName" }) : null
+    function boxes(key) {
+        var s = part(key, "bindingsStrip")
+        var out = []
+        if (!s) return out
+        var walk = function(it) {
+            if (it.objectName === "bindingBox") out.push(it)
+            for (var i = 0; i < it.children.length; i++) walk(it.children[i])
+        }
+        walk(s)
+        return out
     }
-    function summary(key) {
-        var m = label(key)
-        if (!m || !m.visible || m.width <= 0) return "false"
-        var n = nameOf(key)
-        var a = m.mapToItem(null, 0, 0)
-        var b = n.mapToItem(null, 0, 0)
-        var line = Math.abs((a.y + m.height / 2) - (b.y + n.height / 2)) < 4 && a.x > b.x
-        return "true|" + m.text + "|"
-            + (Qt.colorEqual(m.color, _tree.colorMuted) ? "muted" : String(m.color))
-            + "|" + (line ? "same-line" : "other-line")
-            + (m.truncated ? "|elided" : "")
+    function shown(key) {
+        var w = part(key, "bindingsWord")
+        if (!w || !w.visible || w.width <= 0) return "false"
+        var n = part(key, "bindingsCount")
+        var name = part(key, "rowName")
+        var a = w.mapToItem(null, 0, 0)
+        var b = name.mapToItem(null, 0, 0)
+        var line = Math.abs((a.y + w.height / 2) - (b.y + name.height / 2)) < 4 && a.x > b.x
+        var texts = boxes(key).map(function(b) { return b.children[0].text })
+        return w.text + "|" + n.text + "|"
+            + (n.font.family === Style.monoFont ? "mono" : n.font.family) + "|"
+            + texts.join(",") + "|" + (line ? "same-line" : "other-line")
     }
-    function tip(key) {
-        var m = label(key)
-        var t = m ? find(m, function(i) { return i.objectName === "actionSummaryTip" }) : null
+    function boxLook(key) {
+        var b = boxes(key)[0]
+        return (Qt.colorEqual(b.children[0].color, Style.bindingText) ? "salmon" : String(b.children[0].color))
+            + "|" + (Qt.colorEqual(b.color, Style.bindingBg) ? "bg" : String(b.color))
+            + "|" + (Qt.colorEqual(b.border.color, Style.bindingBorder) ? "border" : String(b.border.color))
+            + "|" + (b.border.width === Style.dp(1) ? _tree.bindingTargetBorderWidth : b.border.width)
+            + "|" + (b.radius === Style.dp(5) ? _tree.bindingTargetRadius : b.radius)
+    }
+    function stripX(key) { var s = part(key, "bindingsWord"); return s ? Math.round(s.mapToItem(null, 0, 0).x) : -1 }
+    function column() {
+        var xs = ["parent:button:1", "parent:button:4", "parent:button:5", "parent:button:2"].map(stripX)
+        var name = part("parent:button:4", "rowName")
+        var past = xs[0] >= name.mapToItem(null, 0, 0).x + name.implicitWidth
+        for (var i = 1; i < xs.length; i++)
+            if (Math.abs(xs[i] - xs[0]) > 1) return xs.join(",")
+        return past ? "same" : "inside-name"
+    }
+    function many() {
+        var s = part("parent:button:2", "bindingsStrip")
+        var dots = part("parent:button:2", "bindingsMore")
+        return (s.clip && s.width < s.contentWidth ? "clipped" : "fits")
+            + "|" + (dots && dots.visible ? dots.text : "none")
+    }
+    function tip() {
+        var t = part("parent:button:2", "bindingsTip")
         return t ? t.text : "missing"
     }
 }
 """
-    ).replace("LONG", LONG)
+
+
+def _rows_model(rows: list[dict]) -> Any:  # noqa: ANN401
+    """A minimal row model for ControlTree: the real roles, fixed rows."""
+    from PySide6 import QtCore
+
+    from gremlin.ui.control_layout import ROW_DEFAULTS
+
+    names = list(ROW_DEFAULTS)
+    full = [{**ROW_DEFAULTS, **row} for row in rows]
+
+    class Model(QtCore.QAbstractListModel):
+        changed = QtCore.Signal()
+
+        def rowCount(self, parent: Any = None) -> int:  # noqa: ANN401
+            return len(full)
+
+        def roleNames(self) -> dict:
+            base = QtCore.Qt.ItemDataRole.UserRole + 1
+            return {
+                base + i: QtCore.QByteArray(n.encode()) for i, n in enumerate(names)
+            }
+
+        def data(self, index: Any, role: int = 0) -> Any:  # noqa: ANN401
+            i = role - QtCore.Qt.ItemDataRole.UserRole - 1
+            if not (0 <= i < len(names)):
+                return None
+            return full[index.row()][names[i]]
+
+        @QtCore.Slot(int, result=str)
+        def keyAt(self, i: int) -> str:
+            return full[i]["key"]
+
+        @QtCore.Slot(list)
+        def setSelection(self, keys: list) -> None:
+            pass
+
+        def _titles(self) -> list:
+            return [r["title"] for r in full if r["rowKind"] == "parent"]
+
+        parentTitles = QtCore.Property(list, _titles, notify=changed)
+
+    return Model()
+
+
+def _row_of(n: int, title: str, targets: list[str], **more: Any) -> dict:  # noqa: ANN401
+    key = f"parent:button:{n}"
+    return {
+        "rowKind": "parent",
+        "key": key,
+        "title": title,
+        "parentKey": key,
+        "groupKey": "g",
+        "systemName": title,
+        "childCount": len(targets),
+        "bindingCount": len(targets),
+        "bindingTargets": targets,
+        **more,
+    }
+
+
+def _tree(s, out: pathlib.Path) -> None:  # noqa: ANN001
+    from PySide6 import QtCore
+
+    app, engine, warnings = s._engine(out)  # noqa: F841
+    two = ["vJoy 1 · Button 1", "Xbox 360 Controller · A"]
+    rows = [
+        {
+            "rowKind": "group",
+            "key": "group:",
+            "title": "Ungrouped",
+            "groupKey": "g",
+            "childCount": 5,
+        },
+        _row_of(1, "B1", two),
+        _row_of(2, "Button 2", MANY),
+        _row_of(3, "Button 3", []),
+        _row_of(4, "A much longer button name here", two),
+        # Bound, but no caret (no action rows) and a ⚠.
+        _row_of(5, "Mid name", two, childCount=0, cantSend="vJoy 1 is off"),
+    ]
+    model = _rows_model(rows)
+    engine.rootContext().setContextProperty("rowsModel", model)
     engine.loadData(
-        qml.encode("utf-8"),
+        _QML.encode("utf-8"),
         QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "Root.qml")),
     )
     if not engine.rootObjects():
@@ -380,15 +481,19 @@ Window {
     win = engine.rootObjects()[0]
     s._wait(300)
     js = lambda code: s._js(win, code)  # noqa: E731
-    s._Out.result("bound", js("summary('parent:button:1')"))
-    s._Out.result("long", js("summary('parent:button:2')"))
-    s._Out.result("tip", js("tip('parent:button:2')"))
-    s._Out.result("empty", js("summary('parent:button:3')"))
-    js("_tree.showActionSummary = false; 1")
+    s._Out.result("two", js("shown('parent:button:1')"))
+    s._Out.result("twoBoxes", js("boxLook('parent:button:1')"))
+    s._Out.result("none", js("shown('parent:button:3')"))
+    s._Out.result("column", js("column()"))
+    s._Out.result("many", js("many()"))
+    s._Out.result("tip", str(js("tip()")).replace("\n", "\\n"))
+    js("_tree.bindingsBrackets = false; 1")
     s._wait(50)
-    s._Out.result("off", js("summary('parent:button:1')"))
+    s._Out.result("bare", js("part('parent:button:1', 'bindingsCount').text"))
+    js("_tree.showBindings = false; 1")
+    s._wait(50)
+    s._Out.result("off", js("shown('parent:button:1')"))
     s._report(warnings)
-
 
 # -- Fixtures (as test_rows_cant_send's) ------------------------------------
 

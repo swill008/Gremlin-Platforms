@@ -310,7 +310,15 @@ def test_live_roles(page: tuple[Any, Profile]) -> None:
     assert model.keyForDeviceIndex(3) == "parent:button:2"
     assert model.keyForDeviceIndex(5) == ""
     names = {bytes(v.data()).decode() for v in model.roleNames().values()}
-    wanted = {"liveIndex", "deviceIndex", "kind", "hwId", "note", "actionSummary"}
+    wanted = {
+        "liveIndex",
+        "deviceIndex",
+        "kind",
+        "hwId",
+        "note",
+        "bindingCount",
+        "bindingTargets",
+    }
     assert wanted <= names
 
 
