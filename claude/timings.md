@@ -1021,3 +1021,15 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | 31/47/99 settings order (one cause), 4 conftest additions (ORDER-B) | fix | 3-8 min each | 25 min (incl. an unapproved ~7 min full unit run) | 15:26-15:51 |
 | 2026-10-12 | 133 deferred Qt work hunt (Q133, read-only) | review | 5-10 min | 8 min | 15:46-15:54 |
 | 2026-10-12 | Full run batch M, random order seed 957752 (7,148 passed) + lint | test | ~7 min | 8 min | 15:50-15:58 |
+| 2026-10-12 | 133: test_final_06 leftovers deleted at once (SRC-A) | fix | 3-8 min | 1 min | 16:00-16:01 |
+| 2026-10-12 | 47 rest: 9 Oct CI stall traced (STAGE47, read-only result) | review | 3-8 min | 1 min | 16:01-16:02 |
+| 2026-10-12 | 16 rest: compiled-QML cache on CI studied, not added (CICACHE) | review | 5-10 min | 4 min | 16:02-16:06 |
+| 2026-10-12 | 42 finish: exit hang fails the run (EXITHANG) | fix | 3-8 min | 2 min | 16:01-16:03 |
+| 2026-10-12 | 133: test_sendosc_target_name leak fixed; 2 one-time hooks confirmed (SRC-B) | fix | 3-8 min | 3 min | 16:01-16:04 |
+| 2026-10-12 | 133: per-test deferred-delete flush + receiver-growth note (FLUSH) | fix | 3-8 min | 4 min | 16:00-16:04 |
+| 2026-10-12 | One Input Tester open: raise instead of second start (TESTER1) | fix | 3-8 min | 2 min | 16:05-16:06 |
+| 2026-10-12 | 24 qWait sweep part 1: helper + 21 waits in 11 files (QWAIT) | refactor | rough 20 min | 6 min | 16:02-16:08 |
+| 2026-10-12 | OSC Monitor remembers open/folded/closed (MONITOR) | fix | 3-8 min | 4 min | 16:11-16:15 |
+| 2026-10-12 | 133 verify: leak watcher rerun before/after (VERIFY) | review | 5-10 min + wait | 15 min (incl. waiting) | 16:01-16:16 |
+| 2026-10-12 | CI on 571208b9 (passed, 0 EXIT HANG) | ci | ~20 min | 20m40s | 16:00-16:21 |
+| 2026-10-12 | Full run batch N, seed 418098 (7,160 passed) + lint | test | ~7 min | 8 min | 16:17-16:25 |

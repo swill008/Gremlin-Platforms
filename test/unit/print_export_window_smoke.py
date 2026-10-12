@@ -24,6 +24,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -36,6 +37,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -141,10 +143,13 @@ def main() -> None:
     ev("(function() { var m = _fileMenu; for (var i = 0; i < m.count; i++) {"
        " var it = m.itemAt(i); if (it && it.text === 'Print & Export…')"
        " { it.triggered(); return true } } return false })()")
-    QtTest.QTest.qWait(1200)
-    pw = next(
-        w for w in QtGui.QGuiApplication.topLevelWindows()
-        if isinstance(w, QtQuick.QQuickWindow) and w.title() == "Print & Export"
+    pw = wait_until(
+        lambda: next((
+            w for w in QtGui.QGuiApplication.topLevelWindows()
+            if isinstance(w, QtQuick.QQuickWindow)
+            and w.title() == "Print & Export"
+        ), None),
+        "the Print & Export window",
     )
 
     def child(name: str) -> QtCore.QObject:
@@ -191,10 +196,11 @@ def main() -> None:
                    -crop.property("y") / crop.property("height")],
     }
     cropped = region(content)
-    for _ in range(100):
-        QtTest.QTest.qWait(50)
-        if sharp.property("visible") and (sharp.property("paintedWidth") or 0) > 0:
-            break
+    wait_until(
+        lambda: sharp.property("visible")
+        and (sharp.property("paintedWidth") or 0) > 0,
+        "the sharp area picture", 5000, fail=False,
+    )
     QtTest.QTest.qWait(150)
     out["moved-later"] = [crop.property("visible"), sharp.property("visible")]
     drawn = region(content)
@@ -210,8 +216,11 @@ def main() -> None:
         start = time.perf_counter()
         ev(f"_editorWin.renderPreview('{kind}', 1560, 1560, function(r) {{}})")
         QtTest.QTest.qWait(1)
-        while ev("_renderer.busy") is True or ev("_renderer._queue.length") > 0:
-            QtTest.QTest.qWait(5)
+        wait_until(
+            lambda: ev("_renderer.busy") is not True
+            and not ev("_renderer._queue.length"),
+            f"the {kind} preview render", step_ms=5,
+        )
         return round((time.perf_counter() - start) * 1000)
 
     out["ms"] = {"page": timed("page"), "area": timed("area")}
@@ -313,10 +322,10 @@ def main() -> None:
 
     def wait_done(count: int) -> None:
         """Until the export has announced its result (bounded)."""
-        for _ in range(400):
-            QtTest.QTest.qWait(25)
-            if len(saved) >= count and ev("_editorWin.exportBusy") is False:
-                return
+        wait_until(
+            lambda: len(saved) >= count and ev("_editorWin.exportBusy") is False,
+            "the export result", 10000, fail=False,
+        )
 
     def export(name: str, fmt: str) -> list:
         """Exports through Print & Export's pipeline and waits for its

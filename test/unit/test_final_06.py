@@ -35,6 +35,7 @@ from unittest import mock
 sys.path.append(".")
 
 import pytest
+import shiboken6
 from PySide6 import QtCore
 
 from gremlin import code_runner, event_handler, keyboard, shared_state
@@ -453,8 +454,9 @@ def test_map_to_keyboard_puts_modifiers_first_and_releases_in_reverse(
         model.updateInputs([_key_event(m), _key_event(shift), _key_event(ctrl)])
     finally:
         model.dispose()
-        model.deleteLater()
-        binding.deleteLater()
+        # deleteLater needs an event loop, which no test here runs.
+        shiboken6.delete(model)
+        shiboken6.delete(binding)
     assert data.keys == [shift, ctrl, m]  # recorded: modifiers first
 
     queued: list[Any] = []
@@ -615,7 +617,7 @@ def assign(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
         keyboard_guid=KEYBOARD_GUID,
         osc_guid=OSC_GUID,
     )
-    model.deleteLater()
+    shiboken6.delete(model)  # no event loop here to run a deleteLater
     LogicalDevice().reset()
     OscDevice().rows.load_dict({"inputs": []})
     OscDevice().rows.mark_saved()

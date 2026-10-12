@@ -36,6 +36,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -48,6 +49,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -205,10 +207,12 @@ def main() -> None:
     call(win, "enterEdit")
     QtTest.QTest.qWait(800)
     ev("_editorWin.openPrintExport()")
-    QtTest.QTest.qWait(1200)
-    pw = next(
+    pw = wait_until(
+        lambda: next((
         w for w in QtGui.QGuiApplication.topLevelWindows()
         if isinstance(w, QtQuick.QQuickWindow) and w.title() == "Print & Export"
+        ), None),
+        "the Print & Export window",
     )
 
     def child(name: str) -> QtCore.QObject:

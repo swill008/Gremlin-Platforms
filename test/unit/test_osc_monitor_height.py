@@ -13,4 +13,4 @@ def test_the_monitor_height_is_read_and_saved_through_window_placement() -> None
     assert 'saveToolRowState("oscPage"' in text
     grip = text[text.index("id: _dockGrip") :]
     grip = grip[: grip.index("OscMonitorPanel {")]
-    assert "onReleased" in grip and "_saveMonitorHeight()" in grip
+    assert "onReleased" in grip and "_saveMonitor()" in grip

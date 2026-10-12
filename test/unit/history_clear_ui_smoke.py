@@ -23,6 +23,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -35,6 +36,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import joystick_gremlin  # noqa: E402
 from gremlin import history  # noqa: E402
@@ -64,13 +66,15 @@ def main() -> None:
         return value
 
     ev('Helpers.createComponent("DialogHistory.qml", {})')
-    QtTest.QTest.qWait(500)
-    hist = next(
+    hist = wait_until(
+        lambda: next((
         w
         for w in app.topLevelWindows()
         if isinstance(w, QtQuick.QQuickWindow)
         and w.title() == "History"
         and w.isVisible()
+        ), None),
+        "the History window",
     )
     hist.resize(1100, 700)
     QtTest.QTest.qWait(200)

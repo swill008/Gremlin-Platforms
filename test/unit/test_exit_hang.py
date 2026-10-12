@@ -88,7 +88,7 @@ def test_a_part_that_outlives_its_summary_is_an_exit_hang(
     assert part.took < 30  # the time after the summary is no test's
 
 
-def test_the_summary_names_the_hang_and_it_is_a_warning_until_to_do_42(
+def test_the_summary_names_the_hang_and_it_fails_the_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     run_tests = _run_tests()
@@ -98,12 +98,10 @@ def test_the_summary_names_the_hang_and_it_is_a_warning_until_to_do_42(
     part.exit_hang_at = 1.0
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     lines = run_tests.exit_hang_report([part])
+    assert lines[0].startswith("EXIT HANG (1), FAILURE:"), lines
     assert "  EXIT HANG unit-3: test/unit/test_a.py test/unit/test_b.py" in lines
-    assert any(t.startswith("::warning title=EXIT HANG unit-3::") for t in lines)
-    assert run_tests.passed([part], [])  # a warning, not a failure (to-do 42)
-    monkeypatch.setattr(run_tests, "EXIT_HANG_FAILS", True)
-    assert not run_tests.passed([part], [])
-    assert any(t.startswith("::error ") for t in run_tests.exit_hang_report([part]))
+    assert any(t.startswith("::error title=EXIT HANG unit-3::") for t in lines)
+    assert not run_tests.passed([part], [])  # a failure since to-do 42's fix
     part.exit_hang_at = 0.0
     assert run_tests.exit_hang_report([part]) == []
     assert run_tests.passed([part], [])

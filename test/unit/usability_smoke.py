@@ -21,6 +21,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -34,6 +35,7 @@ um.UpdateModel.startup = lambda self, *a, **k: None
 
 import shiboken6  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import joystick_gremlin  # noqa: E402
 
@@ -46,8 +48,15 @@ def _keyboard_cards(main_win: QtQuick.QQuickWindow, cards: list, out: dict) -> N
     QtTest.QTest.qWait(100)
     first = cards[0].property("slug")
     QtTest.QTest.keyClick(main_win, Key.Key_Right)
-    QtTest.QTest.qWait(100)
-    now = next((c for c in cards if c.hasActiveFocus()), None)
+
+    def focused() -> QtQuick.QQuickItem | None:
+        return next((c for c in cards if c.hasActiveFocus()), None)
+
+    now = wait_until(
+        lambda: (f := focused()) is not None and f.property("slug") != first
+        and f,
+        "the arrow key to move the focus", 3000, fail=False,
+    ) or focused()
     out["arrow-moves"] = bool(now is not None and now.property("slug") != first)
     if now is None:
         out["enter-opens"] = False
@@ -55,7 +64,7 @@ def _keyboard_cards(main_win: QtQuick.QQuickWindow, cards: list, out: dict) -> N
     opened: list[str] = []
     now.openDeviceBindings.connect(lambda: opened.append("device-bindings"))
     QtTest.QTest.keyClick(main_win, Key.Key_Return)
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: opened, "Enter to open Device Bindings", 3000, fail=False)
     out["enter-opens"] = opened == ["device-bindings"]
 
 
@@ -127,8 +136,10 @@ def main() -> None:
                         ("DialogUpdate", "Check for Updates")):
         before = set(windows())
         run(win, f'Helpers.createComponent("{name}.qml"); 1')
-        QtTest.QTest.qWait(500)
-        new = [w for w in windows() if w not in before]
+        new = wait_until(
+            lambda: [w for w in windows() if w not in before],
+            f"{name} to open", 5000, fail=False,
+        )
         if not new:
             closed[name] = "did not open"
             continue
@@ -141,8 +152,10 @@ def main() -> None:
             if combo is not None:
                 combo.forceActiveFocus()
                 QtTest.QTest.keyClick(w, Key.Key_Space)  # opens its list
-                QtTest.QTest.qWait(300)
-                listed = bool(combo.property("down"))
+                listed = bool(wait_until(
+                    lambda: combo.property("down"), "the list to open", 3000,
+                    fail=False,
+                ))
                 QtTest.QTest.keyClick(w, Key.Key_Escape)
                 QtTest.QTest.qWait(300)
                 out["esc-closes-list-first"] = [
@@ -151,8 +164,10 @@ def main() -> None:
                     shiboken6.isValid(w) and w.isVisible(),
                 ]
         QtTest.QTest.keyClick(w, Key.Key_Escape)
-        QtTest.QTest.qWait(300)
-        gone = not shiboken6.isValid(w) or not w.isVisible()
+        gone = wait_until(
+            lambda: not shiboken6.isValid(w) or not w.isVisible(),
+            f"Escape to close {name}", 5000, fail=False,
+        )
         closed[name] = "closed" if gone else "still open"
     out["escape"] = closed
 
@@ -162,14 +177,25 @@ def main() -> None:
         joystick_gremlin.gremlin.signal.signal, "showError",
         QtCore.Q_ARG(str, "Something failed"), QtCore.Q_ARG(str, details),
     )
-    QtTest.QTest.qWait(300)
+
+    def wrapped() -> QtQuick.QQuickItem | None:
+        area = next((i for i in items(main_win.contentItem()) if i.isVisible()
+                     and str(i.property("text") or "") == details), None)
+        return area if area is not None and area.property("lineCount") > 2 else None
+
+    wait_until(
+        lambda: find(main_win.contentItem(), "Copy Details") and wrapped(),
+        "the error dialog", 5000, fail=False,
+    )
     copy = find(main_win.contentItem(), "Copy Details")
     out["copy-details-shown"] = copy is not None
     if copy is not None:
         QtGui.QGuiApplication.clipboard().setText("")
         QtCore.QMetaObject.invokeMethod(copy, "clicked")
-        QtTest.QTest.qWait(100)
-        out["copied"] = QtGui.QGuiApplication.clipboard().text() == details
+        out["copied"] = bool(wait_until(
+            lambda: QtGui.QGuiApplication.clipboard().text() == details,
+            "the details on the clipboard", 3000, fail=False,
+        ))
     area = next((i for i in items(main_win.contentItem()) if i.isVisible()
                  and str(i.property("text") or "") == details), None)
     # Two lines of text; the 600-character one wraps onto several more.

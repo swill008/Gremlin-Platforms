@@ -70,15 +70,25 @@ Item {
     // +---------------------------------------------------------------------
     // | The docked OSC Monitor (09 S137-S139)
 
-    // Shown (the × hides it; Monitor shows it again). Folded by default.
+    // Shown (the × hides it; Monitor shows it again).
     property bool monitorShown: true
     // Height of the unfolded panel, dragged with the grip.
     property int monitorUnits: 300
 
-    // The Monitor's height is kept between sessions (S137).
+    // The Monitor's state and height are kept between pages and sessions
+    // (S137, D-09-MONITOR-REMEMBERED): "open", "folded" or "closed"; folded
+    // until set once. Popping out is never kept: a popped-out Monitor is
+    // saved as "open", so it comes back docked and unfolded.
     WindowPlacement { id: _monitorPlace }
+    property bool _monitorLoaded: false
 
-    function _loadMonitorHeight() {
+    function _monitorState() {
+        if (_popWin || (monitorShown && !_monitor.folded))
+            return "open"
+        return monitorShown ? "folded" : "closed"
+    }
+
+    function _loadMonitor() {
         var state = {}
         try {
             state = JSON.parse(_monitorPlace.toolRowState("oscPage"))
@@ -87,11 +97,27 @@ Item {
         }
         if (state && state.monitorUnits > 0)
             monitorUnits = state.monitorUnits
+        var kept = state ? state.monitor : ""
+        monitorShown = kept !== "closed"
+        _monitor.folded = kept !== "open"
+        // A pop-out still open from before the page was left takes over again.
+        var win = Helpers.windowOf("WindowOscMonitor.qml")
+        if (win)
+            _adoptPopOut(win)
+        _monitorLoaded = true
     }
 
-    function _saveMonitorHeight() {
-        _monitorPlace.saveToolRowState("oscPage", JSON.stringify({ monitorUnits: monitorUnits }))
+    function _saveMonitor() {
+        if (!_monitorLoaded)
+            return
+        _monitorPlace.saveToolRowState("oscPage", JSON.stringify({
+            monitorUnits: monitorUnits,
+            monitor: _monitorState()
+        }))
     }
+
+    onMonitorShownChanged: _saveMonitor()
+
     property var _popWin: null
 
     // Tools > OSC Monitor: the page with the Monitor shown, unfolded.
@@ -118,16 +144,28 @@ Item {
     }
 
     // Pop out: the same panel in its own window; the dock steps aside
-    // while it is open (only one of them holds the port).
+    // while it is open (only one of them holds the port). Closing the
+    // window brings the Monitor back docked and open.
     function popOutMonitor() {
         var win = Helpers.createComponent("WindowOscMonitor.qml")
-        if (!win)
-            return
+        if (win)
+            _adoptPopOut(win)
+    }
+
+    function _adoptPopOut(win) {
         _popWin = win
         monitorShown = false
         win.closing.connect(function() {
-            if (_root._popWin === win)
+            try {
+                if (_root._popWin !== win)
+                    return
                 _root._popWin = null
+                _root.monitorShown = true
+                _monitor.folded = false
+                _root._saveMonitor()
+            } catch (e) {
+                // The page was left and destroyed: nothing to bring back.
+            }
         })
     }
 
@@ -462,7 +500,7 @@ Item {
     Component.onCompleted: {
         _layout.setMode(mode)
         _devices.setMode(mode)
-        _loadMonitorHeight()
+        _loadMonitor()
     }
 
     onModeChanged: _layout.setMode(mode)
@@ -729,7 +767,7 @@ Item {
                     var px = Math.max(Style.dp(140), Math.min(_root.height - Style.dp(200), originH - (y - originY)))
                     _root.monitorUnits = Math.round(px * 100 / Style.uiScale)
                 }
-                onReleased: _root._saveMonitorHeight()
+                onReleased: _root._saveMonitor()
             }
         }
 
@@ -744,6 +782,7 @@ Item {
             pageOpen: _root.visible
             onPopOutRequested: _root.popOutMonitor()
             onCloseRequested: _root.monitorShown = false
+            onFoldedChanged: _root._saveMonitor()
             onAddAsInputRequested: (settings) => _root.openAddWith(settings)
         }
     }

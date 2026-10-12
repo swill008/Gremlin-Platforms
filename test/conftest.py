@@ -506,6 +506,107 @@ def _gc_on_main_thread() -> Iterator[None]:
         gc_guard.collect()
 
 
+# | Deferred Qt work (to-do 133): a test's deleteLater objects are deleted at
+# | its own end, not inside a later test's event loop (a qtbot.wait), where a
+# | crash named the wrong test (crash 797969: test_final_06's models deleted
+# | in test_owner_notices_senders). Named so it sorts first among the autouse
+# | fixtures here: set up first, torn down after the test's other fixtures.
+# | And a warning in the rule-check report when a test leaves more
+# | connections on gremlin.signal than it found (a model or closure kept).
+# | Not when the test started one of the program's once-per-process hooks
+# | (a module's _hooked flag, a BurstNotice's listener): the first test to
+# | trip one connects for the rest of the run, which isn't a leak.
+
+RECEIVERS_GREW = "TEST-SIGNAL-RECEIVERS-GREW"
+
+
+class _Receivers:
+    names: list[str] | None = None
+
+
+def _signal_receivers() -> dict[str, int]:
+    """Connections per gremlin.signal signal ({} before it is imported)."""
+    module = sys.modules.get("gremlin.signal")
+    hub = getattr(module, "signal", None) if module else None
+    if hub is None:
+        return {}
+    from PySide6 import QtCore
+
+    if _Receivers.names is None:
+        meta = hub.metaObject()
+        _Receivers.names = [
+            bytes(method.methodSignature()).decode()
+            for method in (
+                meta.method(i) for i in range(meta.methodOffset(), meta.methodCount())
+            )
+            if method.methodType() == QtCore.QMetaMethod.MethodType.Signal
+        ]
+    return {name: hub.receivers("2" + name) for name in _Receivers.names}
+
+
+def _receivers_grew(before: dict[str, int], after: dict[str, int]) -> str | None:
+    grew = {
+        n: after[n] - before.get(n, 0) for n in after if after[n] > before.get(n, 0)
+    }
+    if not grew:
+        return None
+    named = ", ".join(f"{n.split('(')[0]} +{d}" for n, d in sorted(grew.items()))
+    return f"{RECEIVERS_GREW}: the test left more gremlin.signal connections: {named}"
+
+
+def _once_hooks() -> frozenset[str]:
+    """The program's once-per-process signal hooks started so far: module
+    flags named *_hooked (gremlin/osc_feedback.py, osc_output.py, ...) and
+    started BurstNotices (gremlin/notice.py; device_aliases' names, ...)."""
+    notice = sys.modules.get("gremlin.notice")
+    burst = getattr(notice, "BurstNotice", None) if notice else None
+    started = set()
+    for name, module in list(sys.modules.items()):
+        if module is None or not name.startswith("gremlin"):
+            continue
+        for attr, value in list(vars(module).items()):
+            if attr.endswith("_hooked") and value is True:
+                started.add(f"{name}.{attr}")
+            elif burst is not None and isinstance(value, burst):
+                if getattr(value, "_timer", None) is not None:
+                    started.add(f"{name}.{attr}")
+    return frozenset(started)
+
+
+@pytest.fixture(autouse=True)
+def _deferred_deletes_at_test_end(request: pytest.FixtureRequest) -> Iterator[None]:
+    from PySide6 import QtCore
+
+    try:
+        before = _signal_receivers()
+        hooks = _once_hooks()
+    except Exception:
+        before, hooks = None, frozenset()
+    yield
+    if QtCore.QCoreApplication.instance() is not None:
+        QtCore.QCoreApplication.sendPostedEvents(
+            None, QtCore.QEvent.Type.DeferredDelete
+        )
+    if not before:  # gremlin.signal not loaded yet: nothing to compare
+        return
+    try:
+        problem = _receivers_grew(before, _signal_receivers())
+        if problem:  # objects already unreachable still hold connections
+            import gc
+
+            gc.collect()
+            QtCore.QCoreApplication.sendPostedEvents(
+                None, QtCore.QEvent.Type.DeferredDelete
+            )
+            problem = _receivers_grew(before, _signal_receivers())
+        if problem and _once_hooks() != hooks:
+            return  # a once-per-process hook started: its connections stay
+    except Exception:
+        return
+    if problem:
+        _note(request.node.nodeid, [problem])
+
+
 def _stop_history_writer(deadline: float) -> None:
     """The History writer idles a second after its last item before ending,
     and its stop callback doesn't wake a get() in progress. Let it write what

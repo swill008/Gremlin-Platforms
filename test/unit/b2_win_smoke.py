@@ -20,6 +20,7 @@ from collections.abc import Iterator
 from smoke_exit import smoke_exit
 
 sys.path.insert(0, ".")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 spec = importlib.util.spec_from_file_location("fake_hardware", "test/fake_hardware.py")
 fake_hardware = importlib.util.module_from_spec(spec)
@@ -31,6 +32,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 from PySide6 import QtCore, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import joystick_gremlin  # noqa: E402
 
@@ -75,7 +77,14 @@ module_file.write_json(
 )
 
 ev('Helpers.createComponent("DialogDevicePack.qml")')
-QtTest.QTest.qWait(600)
+wait_until(
+    lambda: any(
+        isinstance(w, QtQuick.QQuickWindow) and w.isVisible()
+        and w.title() in ("Export / Import Device", "Device Pack")
+        for w in app.topLevelWindows()
+    ),
+    "the Device Pack window", fail=False,
+)
 titles = [
     w.title()
     for w in app.topLevelWindows()

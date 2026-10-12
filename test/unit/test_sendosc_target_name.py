@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from xml.etree import ElementTree
 
 sys.path.append(".")
@@ -137,29 +137,46 @@ def test_load_and_save_refresh_a_renamed_target(osc: dict) -> None:
     assert loaded.target_name == "Desk"
 
 
-def _model(action: object) -> object:
+@pytest.fixture
+def make_model() -> Iterator[Callable[[object], tuple]]:
+    """(binding model, the action's model) for an action, deleted after the
+    test: unparented (the program parents it), it would stay alive and
+    connected to the program's signals (to-do 133)."""
+    import shiboken6
+
     from gremlin.ui.profile import InputItemBindingModel
 
-    profile = Profile()
-    item = InputItem(profile.library)
-    binding = InputItemBinding(item)
-    binding.root_action = RootData(B)
-    binding.behavior = B
-    profile.library.add_action(binding.root_action)
-    profile.library.add_action(action)
-    binding.root_action.insert_action(action, "children")
-    model = InputItemBindingModel(binding)
-    am = next(
-        m for m in model._action_models.values() if m.action_data is action
-    )
-    return model, am
+    made: list[InputItemBindingModel] = []
+
+    def make(action: object) -> tuple:
+        profile = Profile()
+        item = InputItem(profile.library)
+        binding = InputItemBinding(item)
+        binding.root_action = RootData(B)
+        binding.behavior = B
+        profile.library.add_action(binding.root_action)
+        profile.library.add_action(action)
+        binding.root_action.insert_action(action, "children")
+        model = InputItemBindingModel(binding)
+        made.append(model)
+        am = next(
+            m for m in model._action_models.values() if m.action_data is action
+        )
+        return model, am
+
+    yield make
+    for model in made:
+        if shiboken6.isValid(model):
+            shiboken6.delete(model)
 
 
-def test_open_editor_follows_a_rename_and_shows_the_name(osc: dict) -> None:
+def test_open_editor_follows_a_rename_and_shows_the_name(
+    osc: dict, make_model: Callable[[object], tuple]
+) -> None:
     from action_plugins.send_osc import SendOscData
 
     action = SendOscData(B)
-    _keep, am = _model(action)
+    _keep, am = make_model(action)
     seen: list[bool] = []
     am.targetChanged.connect(lambda: seen.append(True))
     osc_device_file.write_targets(
@@ -172,12 +189,14 @@ def test_open_editor_follows_a_rename_and_shows_the_name(osc: dict) -> None:
     assert am.targetChoices[-1] == {"id": "t1", "name": "Desk"}
 
 
-def test_missing_with_no_name_still_says_missing_target(osc: dict) -> None:
+def test_missing_with_no_name_still_says_missing_target(
+    osc: dict, make_model: Callable[[object], tuple]
+) -> None:
     from action_plugins.send_osc import SendOscData
 
     action = SendOscData(B)
     action.target = "gone"
-    _keep, am = _model(action)
+    _keep, am = make_model(action)
     assert am.targetChoices[-1] == {"id": "gone", "name": "Missing target"}
     assert am.cantSendText == "OSC target gone is not Found."
 

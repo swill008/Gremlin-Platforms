@@ -29,7 +29,8 @@ goes to a log file (its path is shown at the start and end).
 
 A part must end within EXIT_HANG_S of pytest's summary line. One that
 doesn't is an EXIT HANG: it is named with its files, its stacks are waited
-for (test/conftest.py's deadman prints them) and it is ended.
+for (test/conftest.py's deadman prints them), it is ended and the run
+fails.
 """
 
 from __future__ import annotations
@@ -68,10 +69,6 @@ QUIET_S = 15  # say which test a part is in after this long without output
 # about then; STACKS_S is how long to wait for them before ending it.
 EXIT_HANG_S = 20.0
 STACKS_S = 5.0
-# An exit hang is a warning until to-do 42 (the teardown hang of
-# test_data_safety + test_stage1_history_pack) is fixed; then set True so it
-# fails the run.
-EXIT_HANG_FAILS = False
 # Set only by --real-vjoy: test/integration then drives the real vJoy device.
 REAL_VJOY_ENV = "GREMLIN_REAL_VJOY"
 REAL_VJOY_NOTE = "Real vJoy run: drives your real vJoy device; don't stop it mid-run."
@@ -673,16 +670,13 @@ def exit_hang_report(parts: list[Part]) -> list[str]:
     hung = [p for p in parts if p.exit_hang]
     if not hung:
         return []
-    kind = ("FAILURE" if EXIT_HANG_FAILS
-            else "WARNING (a failure once to-do 42 is fixed)")
-    out = [f"EXIT HANG ({len(hung)}), {kind}: the part didn't end within "
+    out = [f"EXIT HANG ({len(hung)}), FAILURE: the part didn't end within "
            f"{EXIT_HANG_S:.0f} s of pytest's summary (stacks in the log above):"]
     for p in hung:
         out.append(f"  EXIT HANG {p.name}: {' '.join(p.files())}")
         if os.environ.get("GITHUB_ACTIONS"):
-            level = "error" if EXIT_HANG_FAILS else "warning"
             out.append(
-                f"::{level} title=EXIT HANG {p.name}::{p.name} didn't end within "
+                f"::error title=EXIT HANG {p.name}::{p.name} didn't end within "
                 f"{EXIT_HANG_S:.0f} s of pytest's summary. Files: "
                 f"{' '.join(p.files())}"
             )
@@ -696,7 +690,7 @@ def passed(parts: list[Part], failed: list[str]) -> bool:
         " failed" not in p.summary and "STOPPED" not in p.summary
         and " error" not in p.summary
         and re.search(r"\d+ (passed|skipped|xfailed|deselected)", p.summary)
-        and not (EXIT_HANG_FAILS and p.exit_hang)
+        and not p.exit_hang  # to-do 42: an exit hang fails the run
         for p in parts
     )
 

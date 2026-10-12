@@ -28,6 +28,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _CODE = r"""
 import json, os, sys
 sys.path.insert(0, '.')
+sys.path.insert(0, 'test')
 import importlib.util
 spec = importlib.util.spec_from_file_location('fake_hardware', 'test/fake_hardware.py')
 fake_hardware = importlib.util.module_from_spec(spec)
@@ -38,6 +39,7 @@ um.UpdateModel.startup = lambda self, *a, **k: None
 import joystick_gremlin
 from PySide6 import QtCore, QtQml, QtQuick, QtTest
 from gremlin import shared_state
+from qt_wait import wait_until
 
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
 main = app.main_window
@@ -53,9 +55,12 @@ def ev(win, code):
 
 def open_window(qml, title):
     ev(main, 'Helpers.createComponent("%s")' % qml)
-    QtTest.QTest.qWait(600)
-    win = [w for w in app.topLevelWindows() if w is not main and w.isVisible()
-           and isinstance(w, QtQuick.QQuickWindow) and w.title().startswith(title)][0]
+    win = wait_until(
+        lambda: next((w for w in app.topLevelWindows() if w is not main
+                      and w.isVisible() and isinstance(w, QtQuick.QQuickWindow)
+                      and w.title().startswith(title)), None),
+        'the %s window' % title,
+    )
     win.requestActivate()
     QtTest.QTest.qWait(150)
     return win
@@ -165,10 +170,8 @@ folder = os.path.join(os.environ['USERPROFILE'], 'reports')
 os.makedirs(folder, exist_ok=True)
 url = QtCore.QUrl.fromLocalFile(os.path.join(folder, 'diag.zip')).toString()
 ev(win, '_saveDialog._accept(%s)' % json.dumps(url))
-for _ in range(100):
-    QtTest.QTest.qWait(100)
-    if not ev(win, '_diag.busy'):
-        break
+wait_until(lambda: not ev(win, '_diag.busy'), 'the diagnostics save', 10000,
+           fail=False)
 win.close()
 QtTest.QTest.qWait(300)
 win = open_window('DialogSaveDiagnostics.qml', 'Save Diagnostics')

@@ -45,6 +45,7 @@ from collections.abc import Iterator
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin.modules import store
 from gremlin.types import InputType
@@ -101,11 +102,16 @@ def _result(smoke: _Smoke) -> dict:
     # (raises=AssertionError) never takes it for the known gap.
     lines = [ln for ln in stdout.splitlines() if ln.startswith("RESULT ")]
     if not lines:
+        done = subprocess.CompletedProcess(
+            tree.process.args, tree.process.returncode, stdout, stderr
+        )
+        message = smoke_report.explain(done)
         # A stall report starts with its headline (blocked or idle) and
-        # lists every thread: keep it whole, not only its tail.
+        # lists every thread: keep it whole even when mid-output.
         at = stderr.find("=== STALLED")
-        err = stderr[at:at + 12000] if at >= 0 else stderr[-2000:]
-        raise RuntimeError(stdout[-2000:] + err)
+        if at >= 0:
+            message += "\n--- stall report ---\n" + stderr[at:at + 12000]
+        raise RuntimeError(message)
     out = json.loads(lines[-1][len("RESULT "):])
     if "error" in out:
         raise RuntimeError(out.get("traceback") or out["error"])

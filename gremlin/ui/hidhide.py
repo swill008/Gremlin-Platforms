@@ -1207,8 +1207,8 @@ class HidHideModel(QtCore.QObject):
     @QtCore.Slot(result=str)
     def restartInputTester(self) -> str:  # noqa: N802 - QML name
         """Starts a fresh Input Tester; the old one is never closed from
-        here (its own banner and the warning say to close it)."""
-        return self.openInputTester()
+        here (its own banner and the warning say to close it). (S118)"""
+        return self._launch_tester(fresh=True)
 
     @QtCore.Property(str, notify=changed)
     def testerPath(self) -> str:
@@ -1225,6 +1225,10 @@ class HidHideModel(QtCore.QObject):
 
     @QtCore.Slot(result=str)
     def openInputTester(self) -> str:
+        """Starts the tester, or brings the open one to the front (S110)."""
+        return self._launch_tester(fresh=False)
+
+    def _launch_tester(self, fresh: bool) -> str:
         link = _link()
         if link is None:
             message = (
@@ -1233,7 +1237,8 @@ class HidHideModel(QtCore.QObject):
             )
         else:
             try:
-                message = link.launch() or ""
+                started = link.launch(fresh=True) if fresh else link.launch()
+                message = started or ""
             except Exception as exc:
                 logging.getLogger("system").exception("Input Tester launch failed")
                 message = f"The Input Tester didn't start: {exc}"

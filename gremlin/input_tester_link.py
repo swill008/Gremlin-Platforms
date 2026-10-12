@@ -374,8 +374,43 @@ def _default_starter(exe: str, args: list[str]) -> Any:  # noqa: ANN401
     )
 
 
-# Injectable for tests: starter(exe, args) -> process with poll() (or None).
+def _default_raiser(pid: int) -> None:
+    """Brings the tester's top-level window to the front (window activation,
+    no input sent). Off-screen (tests) nothing is touched."""
+    offscreen = os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen"
+    if os.name != "nt" or offscreen:
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    user32 = ctypes.windll.user32
+    found: list[int] = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def _each(hwnd: int, _lparam: int) -> bool:
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        # GW_OWNER (4): an unowned visible window is the top-level one.
+        top = user32.IsWindowVisible(hwnd) and not user32.GetWindow(hwnd, 4)
+        if owner.value == pid and top:
+            found.append(hwnd)
+            return False
+        return True
+
+    user32.EnumWindows(_each, 0)
+    if not found:
+        syslog.info("Input Tester: no window found for process %s", pid)
+        return
+    hwnd = found[0]
+    if user32.IsIconic(hwnd):
+        user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+    user32.SetForegroundWindow(hwnd)
+
+
+# Injectable for tests: starter(exe, args) -> process with poll() (or None);
+# raiser(pid) brings a running tester's window to the front.
 _starter: Callable[[str, list[str]], Any] = _default_starter
+_raiser: Callable[[int], None] = _default_raiser
 _lock = threading.Lock()
 _process: Any = None
 _run = 0
@@ -392,6 +427,13 @@ def set_starter(starter: Callable[[str, list[str]], Any] | None) -> None:
     """Tests: replaces how the tester is started (None restores the real one)."""
     global _starter
     _starter = starter or _default_starter
+
+
+def set_raiser(raiser: Callable[[int], None] | None) -> None:
+    """Tests: replaces how a running tester's window is raised (None restores
+    the real one)."""
+    global _raiser
+    _raiser = raiser or _default_raiser
 
 
 class _Watcher(QtCore.QObject):
@@ -425,14 +467,22 @@ def running() -> bool:
         return False
 
 
-def launch() -> str:
-    """Writes expected.json and starts the tester; "" when started, else
-    the message to show."""
+def launch(fresh: bool = False) -> str:
+    """Writes expected.json and starts the tester; "" when started (or
+    raised), else the message to show. While a tester this program started is
+    open it is brought to the front instead (02 S110, D-02-TESTER-ONE-OPEN);
+    fresh (Restart Input Tester, S118) always starts a new one."""
     global _process
     exe = tester_path()
     if exe is None:
         return NOT_BUILT
     write_expected()
+    if not fresh and running():
+        try:
+            _raiser(int(_process.pid))
+        except Exception:
+            syslog.debug("Input Tester: window not raised", exc_info=True)
+        return ""
     args = ["--gremlin-dir", str(gremlin_dir())]
     try:
         proc = _starter(str(exe), args)
@@ -579,6 +629,7 @@ def _reset_for_tests() -> None:
     _result_stamp = None
     _setup_stamp = None
     set_starter(None)
+    set_raiser(None)
 
 
 # --- QML -------------------------------------------------------------------------
@@ -606,6 +657,7 @@ class InputTesterLink(QtCore.QObject):
 __all__ = [
     "InputTesterLink", "NOT_BUILT", "build_expected", "expect_hidden",
     "hidhide_changed", "last_hidhide_change", "last_result", "launch",
-    "record_hidhide_change", "running", "set_starter", "tester_dir",
+    "record_hidhide_change", "running", "set_raiser", "set_starter",
+    "tester_dir",
     "tester_path", "watcher", "write_expected",
 ]
