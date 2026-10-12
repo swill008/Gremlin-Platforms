@@ -32,7 +32,9 @@ def _incoming(device_id: uuid.UUID, item: SimpleNamespace) -> str:
         mock.patch.object(xbox_device_model.shared_state, "current_profile", profile),
         mock.patch.object(xbox_device_model, "xbox_maps_for_item", return_value=maps),
     ):
-        return xbox_device_model._incoming_for(1, target)
+        sources = xbox_device_model.incoming_list(1, target)
+    assert len(sources) == 1
+    return sources[0]
 
 
 def test_logical_device_input_shows_its_names() -> None:

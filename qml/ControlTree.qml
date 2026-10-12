@@ -27,6 +27,18 @@ Item {
     // has rowModel (the row's model data) and locked; the item says whether
     // it takes room with "property bool wanted".
     property Component rowExtras: null
+    // View only: no grips, no drag or drop, no right-click menus and no
+    // signals that open a pane; a click only selects, carets still fold.
+    property bool readOnly: false
+    // False: group rows are not drawn and rows are not indented under them.
+    property bool showGroups: true
+    // False: the list doesn't scroll itself (no flick, no scrollbar); an
+    // outer ScrollView sizes it from listHeight and scrolls it.
+    property bool ownScroll: true
+    // The rows' full height with the list padding, for that outer view.
+    readonly property real listHeight: _list.contentHeight
+        + padPx(listPadShape, listPad, listPadTop)
+        + padPx(listPadShape, listPad, listPadBottom)
 
     // Appearance; the defaults are the Logical Device page's.
     property int parentHeight: 44
@@ -166,7 +178,9 @@ Item {
     }
 
     function _rowVisible(kind, groupKey, parentKey) {
-        if (kind !== "group" && collapsed[groupKey])
+        if (kind === "group" && !showGroups)
+            return false
+        if (kind !== "group" && showGroups && collapsed[groupKey])
             return false
         if (kind === "writer" && !showSummary)
             return false
@@ -245,9 +259,10 @@ Item {
     function rowIndent(kind) {
         if (kind === "group")
             return 0
+        var under = showGroups ? parentIndent : 0
         if (kind === "parent")
-            return Style.dp(parentIndent)
-        return Style.dp(parentIndent + childIndent)
+            return Style.dp(under)
+        return Style.dp(under + childIndent)
     }
 
     // The row box's left edge and width in a row "total" wide.
@@ -315,12 +330,18 @@ Item {
         spacing: 0
         model: _tree.layout
         boundsBehavior: Flickable.StopAtBounds
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+        interactive: _tree.ownScroll
+        ScrollBar.vertical: ScrollBar {
+            objectName: _tree.namePrefix + "ScrollBar"
+            visible: _tree.ownScroll
+            policy: _tree.ownScroll ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+        }
 
         MouseArea {
             z: -1
             anchors.fill: parent
             acceptedButtons: Qt.RightButton
+            enabled: !_tree.readOnly
             onClicked: (mouse) => _tree.pageMenu(_list, mouse.x, mouse.y)
         }
 
@@ -441,7 +462,8 @@ Item {
                     }
                 }
                 Rectangle {
-                    visible: (rowKind === "parent" || rowKind === "group") && !_row.fixedGroup
+                    objectName: "rowGrip"
+                    visible: (rowKind === "parent" || rowKind === "group") && !_row.fixedGroup && !_tree.readOnly
                     implicitWidth: visible ? Style.dp(_tree.gripWidth) : 0
                     implicitHeight: visible ? Style.dp(_tree.gripHeight) : 0
                     Layout.preferredWidth: visible ? Style.dp(_tree.gripWidth) : 0
@@ -453,7 +475,7 @@ Item {
                         id: _grip
                         anchors.fill: parent
                         anchors.margins: -Style.dp(6)
-                        enabled: !_tree.locked
+                        enabled: !_tree.locked && !_tree.readOnly
                         cursorShape: rowKind === "parent" ? Qt.OpenHandCursor : Qt.SizeAllCursor
                         preventStealing: true
                         onPressed: (mouse) => {
@@ -629,7 +651,7 @@ Item {
                 anchors.topMargin: _row.groupTop
                 anchors.bottomMargin: _row.rowGap
                 z: 4
-                enabled: !_tree.locked && (rowKind === "parent" || rowKind === "group") && !_row.fixedGroup
+                enabled: !_tree.locked && !_tree.readOnly && (rowKind === "parent" || rowKind === "group") && !_row.fixedGroup
                 keys: [_tree.dragMime]
                 property bool placeBefore: true
                 onPositionChanged: (drag) => {
@@ -707,6 +729,19 @@ Item {
                         mouse.accepted = false
                 }
                 onClicked: (mouse) => {
+                    if (_tree.readOnly) {
+                        // View only: a click selects the input (an action
+                        // line selects its input); no menus, no pane.
+                        if (mouse.button !== Qt.LeftButton)
+                            return
+                        if (rowKind === "parent")
+                            _tree.select(key, mouse.modifiers & Qt.ShiftModifier)
+                        else if ((rowKind === "child" || rowKind === "writer") && parentKey.length > 0)
+                            _tree.select(parentKey, mouse.modifiers & Qt.ShiftModifier)
+                        else if (rowKind === "group")
+                            _tree.toggleGroup(groupKey)
+                        return
+                    }
                     if (mouse.button === Qt.RightButton) {
                         if (rowKind === "parent") {
                             if (_tree.picked.indexOf(key) < 0)

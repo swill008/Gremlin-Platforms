@@ -90,9 +90,13 @@ out['page-rows'] = len([i for i in items if i.objectName() == 'xboxDriverRow'])
 out['texts'] = shown_texts(items)
 out['page-row-top'] = top(row)
 out['page-status'] = status.property('text') if status else ''
-# The pad's name: Xbox pad 1 here (a fresh profile has no Xbox module file).
-name = next((i for i in items if i.property('text') == 'Xbox pad 1'), None)
+# Above the Live pads heading (the pad's name is in the page header).
+name = next((i for i in items if i.objectName() == 'xboxPadsHeading'), None)
 out['above-name'] = bool(row and name and top(row) < top(name))
+# The page's own list Appearance for the page bar (03 S139, 05 S125).
+out['list-appearance'] = page.property('pageBar') is not None
+appear = next((i for i in items if i.objectName() == 'xboxOutputAppearance'), None)
+out['list-appearance-key'] = appear.property('pageKey') if appear else ''
 
 # The header's Appearance button: none on the Xbox page, there on vJoy's.
 def appearance_shown(tab):
@@ -150,14 +154,18 @@ def test_not_installed_says_what_to_do(run: dict) -> None:
 def test_the_output_page_shows_the_same_check_at_its_top(run: dict) -> None:
     assert run["page-row"] is True
     assert run["page-status"] == "ViGEmBus is not installed"
-    # At the top: above the pad's name, the description and the rows.
+    # At the top: above the Live pads heading, the pads and the rows.
     assert 0 <= run["page-row-top"] < 30
     assert run["above-name"] is True
 
 
-def test_the_xbox_page_has_no_appearance_button(run: dict) -> None:
+def test_the_xbox_page_has_its_list_appearance_not_the_output_views(run: dict) -> None:
+    # The Output View's Appearance button stays hidden on the Xbox tab ...
     assert run["appearance-xbox"] is False
     assert run["appearance-vjoy"] is True
+    # ... and the page's own list Appearance goes on the page bar.
+    assert run["list-appearance"] is True
+    assert run["list-appearance-key"] == "xbox-output"
 
 
 def _status(

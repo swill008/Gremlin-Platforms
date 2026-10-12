@@ -1581,8 +1581,11 @@ Item {
         text: _ed.hoverHwLabel
         delay: Style.tooltipDelayMs
         timeout: 4000
-        x: _ed.hoverTipX - width / 2
-        y: _ed.hoverTipY - height - Style.dp(8)
+        // A child of the zoomed editor: x/y are scaled by the zoom, the size
+        // isn't, so the screen-pixel offsets are divided by it.
+        readonly property real _k: (_ed.face && _ed.face.zoom > 0) ? _ed.face.zoom : 1
+        x: _ed.hoverTipX - (width / 2) / _k
+        y: _ed.hoverTipY - (height + Style.dp(8)) / _k
     }
 
     TextEdit {

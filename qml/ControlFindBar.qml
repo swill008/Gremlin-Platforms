@@ -28,6 +28,10 @@ ColumnLayout {
     property var filters: []
     property bool locked: false
     property bool paneOpen: false
+    // False: no Undo / Redo bar (a view-only list).
+    property bool showUndo: true
+    // False: no "Can't be sent" tick (a list without actions to send).
+    property bool showCantSend: true
     // Page-only header buttons, after Clear: buttons: [ Button { ... } ].
     property alias buttons: _extras.data
 
@@ -156,6 +160,7 @@ ColumnLayout {
         CheckBox {
             id: _cantSend
             objectName: "cantSendTick"
+            visible: _bar.showCantSend
             text: "Can't be sent"
             onClicked: {
                 if (_bar.layout)
@@ -170,11 +175,12 @@ ColumnLayout {
     // the same rules as the menu items and Ctrl+Z / Ctrl+Y.
     UndoBar {
         objectName: _bar.namePrefix + "UndoBar"
+        visible: _bar.showUndo
         Layout.fillWidth: true
         Layout.leftMargin: Style.dp(8)
         Layout.rightMargin: Style.dp(8)
-        canUndo: !!_bar.layout && _bar.layout.canUndo && !_bar.locked && !_bar.paneOpen
-        canRedo: !!_bar.layout && _bar.layout.canRedo && !_bar.locked && !_bar.paneOpen
+        canUndo: _bar.showUndo && !!_bar.layout && _bar.layout.canUndo && !_bar.locked && !_bar.paneOpen
+        canRedo: _bar.showUndo && !!_bar.layout && _bar.layout.canRedo && !_bar.locked && !_bar.paneOpen
         undoTip: _bar.layout ? _bar.layout.undoTip : ""
         redoTip: _bar.layout ? _bar.layout.redoTip : ""
         lastChange: _bar.layout ? _bar.layout.lastChange : ""

@@ -908,3 +908,15 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | DUP-PATH: 8 same-file/inside checks -> util.path_key/same_path/is_inside, 14 tests | merge | rough 10 min | 3 min | 07:37-07:40 |
 | 2026-10-12 | W2-MAP follow-ups: ~70 removal + merge map lines | docs | no data | 5 min | 07:37-07:42 |
 | 2026-10-12 | Wave 2 full run (1 fail: test pinned removed scope) + lint (9 new test-line errors fixed) | full run | ~7 min | 7 + 3 min | 07:41-07:52 |
+| 2026-10-12 | XO-TREE: ControlTree readOnly/showGroups/ownScroll/listHeight, ControlFindBar showUndo/showCantSend, 1 test file | feature | 3-8 min | 3 min | 08:04-08:07 |
+| 2026-10-12 | XO-DOCS: D-XBOX-LIST spec (03 S140 new, S117, S139; 05 S121, S125; 08 S75), glossary, Help, map | docs | 3-8 min | 3 min | 08:04-08:07 |
+| 2026-10-12 | XO-MODEL: XboxOutputListModel (rows, filters, live), incoming_list shared, 10 tests | feature | 3-8 min | 4 min | 08:04-08:08 |
+| 2026-10-12 | OPACITY-FIX: Binding-on-value -> plain value, drag test (failed old, passes new) | fix | 3-8 min | 2 min | 08:06-08:08 |
+| 2026-10-12 | XO-PAGE: XboxDevice.qml on ControlFindBar + ControlTree + PageAppearance, 3 test files | feature | 3-8 min | 4 min | 08:04-08:08 |
+| 2026-10-12 | XO-E2E: Xbox list end-to-end (6 checks, 8 tests, real program off-screen) | test | 3-8 min | 4 min | 08:04-08:08 |
+| 2026-10-12 | XO-CLEAN: XboxDeviceModel removed, 3 tests moved to the new model | removal | 3-8 min | 1 min | 08:08-08:09 |
+| 2026-10-12 | TIP-TRACE: chip tooltip offset at zoom measured (cause: screen offsets scaled by zoom) | research | 5-10 min | 2 min | 08:08-08:10 |
+| 2026-10-12 | TIP-FIX: tooltip offsets / zoom, 4-test smoke (failed old at 4x/8x, passes new) | fix | 3-8 min | 1 min | 08:10-08:11 |
+| 2026-10-12 | CI on c52f7205 (waves 1+2) | ci | ~21 min | 23 min | 07:52-08:15 |
+| 2026-10-12 | Full run Xbox list batch + lint: 1 load flake (double-tap, passes 3/3 alone), 15 new lint/type errors | full run | ~7 min | 7 min | 08:09-08:16 |
+| 2026-10-12 | LINT-FIX: 15 new lint/type items in the Xbox list files | fix | 3-8 min | 2 min | 08:16-08:18 |

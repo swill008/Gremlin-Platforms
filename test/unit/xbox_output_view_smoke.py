@@ -127,6 +127,8 @@ def page_state() -> dict:
     control = next(
         (i for i in items if i.property("text") == "Left Stick X" and shown(i)), None
     )
+    find = next((i for i in items if i.objectName() == "xboxOutputFind"), None)
+    tree = next((i for i in items if i.objectName() == "xboxOutputTree"), None)
     content = list(walk(scroll)) if scroll is not None else []
     return {
         "loaded": True,
@@ -139,7 +141,23 @@ def page_state() -> dict:
         "cardInScroll": card is not None and card in content,
         "controlInScroll": control is not None and control in content,
         "padsOpen": bool(item.property("padsOpen")),
+        "findTop": top(find) if find else -1,
+        "findInScroll": find is not None and find in content,
+        "treeInScroll": tree is not None and tree in content,
+        "treeReadOnly": bool(tree and tree.property("readOnly")),
+        "treeGroups": bool(tree and tree.property("showGroups")),
+        # The list doesn't scroll by itself: it is as tall as its rows and
+        # the page's scroll moves it with the pads (S139).
+        "treeOwnScroll": bool(tree and tree.property("ownScroll")),
+        "treeFull": bool(tree)
+        and tree.height() + 1 >= float(tree.property("listHeight") or 0),
     }
+
+
+def bar_button(name: str) -> bool:
+    """Whether the window's button with this objectName is shown."""
+    item = next((i for i in walk(win.contentItem()) if i.objectName() == name), None)
+    return item is not None and shown(item)
 
 
 out: dict = {}
@@ -158,6 +176,10 @@ pump(1.0)
 out["openRoom"] = runj("[uiState.currentRoom, uiState.currentTab]")
 out["open"] = page_state()
 out["openWindows"] = other_windows()
+# The list's own Appearance on the page bar; the Output View's stays hidden.
+out["listAppearanceButton"] = bar_button("xboxOutputAppearanceButton")
+out["outputAppearanceButton"] = bar_button("outputAppearanceButton")
+out["pageKey"] = run("_xboxLoader.item.appearance.pageKey")
 if len(sys.argv) > 1:
     win.grabWindow().save(sys.argv[1])
 

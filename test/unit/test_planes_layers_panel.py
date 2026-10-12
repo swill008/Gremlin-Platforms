@@ -119,6 +119,16 @@ def test_opacity_slider_is_the_editor_setting(run: dict) -> None:
     assert run["slider-follows"] == pytest.approx(0.75)
 
 
+def test_dragging_the_opacity_slider_keeps_it_following_the_editor(run: dict) -> None:
+    # Each drag step sets the editor's opacity, with no Qt "binding removal"
+    # line (the slider used a Binding element it moved away from), and the
+    # slider still follows the editor afterwards (slider-follows above).
+    assert run["slider-dragged"] > run["slider-low"] + 0.2
+    assert run["slider-drag-calls"] == []
+    assert run["slider-drag-qt-lines"] == []
+    assert run["slider-follows"] == pytest.approx(0.75)
+
+
 def test_clicking_the_background_row_selects_nothing(run: dict) -> None:
     assert run["bg-click"] == []
 

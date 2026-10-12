@@ -278,7 +278,7 @@ function topics() {
                 + "<li>Choose <b>Save Appearance</b> to keep the changes.</li>"
                 + "</ol>"
                 + "<h4>List pages</h4>"
-                + "<p>The Device Bindings, Logical Device, Keyboard and OSC pages each keep their own Appearance, saved for that page in the program settings (\"Saved for this page.\"), so every device's Device Bindings page looks the same. Sections: <b>Shown</b>, <b>Live</b> (Device Bindings page), <b>Handles</b>, <b>List</b>, <b>Rows</b> (alignment and width of input and action rows, space between groups), <b>Group</b>, <b>Parent Row</b> and <b>Action Row</b> (row size, padding, colors), <b>Text</b> and <b>Selection</b>.</p>"
+                + "<p>The Device Bindings, Logical Device, Keyboard and OSC pages and the Xbox 360 Controller's Output View each keep their own Appearance, saved for that page in the program settings (\"Saved for this page.\"), so every device's Device Bindings page looks the same. Sections: <b>Shown</b>, <b>Live</b> (Device Bindings page), <b>Handles</b>, <b>List</b>, <b>Rows</b> (alignment and width of input and action rows, space between groups), <b>Group</b>, <b>Parent Row</b> and <b>Action Row</b> (row size, padding, colors), <b>Text</b> and <b>Selection</b>.</p>"
                 + "<h4>Output View</h4>"
                 + "<p>An Output View's look is saved in that device's <a href=\"topic:home-devices-module-files\">module file</a>. Sections: <b>Screen</b>, <b>Layout</b>, <b>Pads</b>, <b>Meters</b>, <b>Buttons</b> and <b>Colors</b>.</p>"
                 + _good([

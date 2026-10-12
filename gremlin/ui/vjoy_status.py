@@ -11,6 +11,7 @@ from gremlin.types import PropertyType
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from gremlin.modules import output
 import gremlin.ui.xbox_device_model  # noqa: F401
+import gremlin.ui.xbox_output_list  # noqa: F401  # the Xbox Output View's list
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
 assert QML_IMPORT_MAJOR_VERSION == 1

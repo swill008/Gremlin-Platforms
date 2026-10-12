@@ -110,9 +110,9 @@ def _xbox_pads() -> QtCore.QAbstractItemModel:
 
 
 def _xbox_page() -> QtCore.QAbstractItemModel:
-    from gremlin.ui.xbox_device_model import XboxDeviceModel
+    from gremlin.ui.xbox_output_list import XboxOutputListModel
 
-    return XboxDeviceModel()
+    return XboxOutputListModel()
 
 
 def _auto_mapping_tool_inputs() -> QtCore.QAbstractItemModel:
@@ -150,7 +150,7 @@ def test_what_drives_what_follows_the_bindings_notice(
 
 @pytest.mark.parametrize("make", [_module_pair_buttons, _module_pair_axes, _xbox_page])
 def test_logical_device_names_follow_its_notice(qtbot: object, make: _Make) -> None:
-    # The Input Viewer's paired-input labels and the Xbox page's "incoming"
+    # The Input Viewer's paired-input labels and the Xbox list's source lines
     # show the Logical Device's input names ("Button 1 — Gear").
     assert _resets_after(qtbot, make(), signal.logicalDeviceModified) == 1
 

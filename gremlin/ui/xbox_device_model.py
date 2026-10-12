@@ -11,12 +11,10 @@ from PySide6 import QtCore, QtGui
 import gremlin.ui.type_aliases as ta
 from gremlin import shared_state
 from gremlin.modules import output
-from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
 from gremlin.ui.input_pairing import device_label
 from gremlin.ui.xbox_maps import xbox_maps_for_item
-from vigem.ids import XBOX_TAB_GUID
 from vigem.xbox import XboxTarget
 
 assert QML_IMPORT_NAME == "Gremlin.Device"
@@ -45,10 +43,11 @@ def _input_text(device_id: str, item: object) -> str:
     return f"{kind} {number}"
 
 
-def _incoming_for(pad_id: int, target: XboxTarget) -> str:
+def incoming_list(pad_id: int, target: XboxTarget) -> list[str]:
+    """Every source bound to the pad's control, one "Device · Input" each."""
     profile = shared_state.current_profile
     if profile is None:
-        return ""
+        return []
     hits: list[str] = []
     for device_id, items in (profile.inputs or {}).items():
         for item in items or []:
@@ -59,7 +58,7 @@ def _incoming_for(pad_id: int, target: XboxTarget) -> str:
                 continue
             guid = str(device_id)
             hits.append(f"{device_label(guid)} · {_input_text(guid, item)}")
-    return "  ·  ".join(hits)
+    return hits
 
 
 _VIGEM_DOWNLOAD = "https://github.com/nefarius/ViGEmBus/releases"
@@ -127,86 +126,4 @@ class XboxDriverStatus(QtCore.QObject):
     driverVersion = QtCore.Property(str, fget=_get_version, notify=changed)
     statusText = QtCore.Property(str, fget=_get_status, notify=changed)
     hint = QtCore.Property(str, fget=_get_hint, notify=changed)
-
-
-@ta.QmlElement
-class XboxDeviceModel(QtCore.QAbstractListModel):
-    roles = {
-        QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"label"),
-        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"target"),
-        QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"kind"),
-        QtCore.Qt.ItemDataRole.UserRole + 4: QtCore.QByteArray(b"incoming"),
-    }
-
-    padIdChanged = QtCore.Signal()
-    statusChanged = QtCore.Signal()
-
-    def __init__(self, parent: ta.OQO = None) -> None:
-        super().__init__(parent)
-        self._pad_id = 1
-        self._rows = list(XboxTarget)
-        # One read for a burst: a Logical Device edit sends two notices.
-        self._soon = QtCore.QTimer(self)
-        self._soon.setSingleShot(True)
-        self._soon.setInterval(0)
-        self._soon.timeout.connect(self.reload)
-        # "Incoming": what drives each control, the devices' shown names and
-        # the Logical Device's input names (D-01-OWNER-NOTICES).
-        signal.bindingsChanged.connect(self._reload_soon)
-        signal.deviceNamesChanged.connect(self._reload_soon)
-        signal.logicalDeviceModified.connect(self._reload_soon)
-
-    @QtCore.Slot()
-    def _reload_soon(self) -> None:
-        self._soon.start()
-
-    @QtCore.Slot()
-    @QtCore.Slot(int)
-    def reload(self, _index: int = 0) -> None:
-        self.beginResetModel()
-        self.endResetModel()
-        self.statusChanged.emit()
-
-    def rowCount(self, parent: ta.ModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self._rows)
-
-    def data(self, index: ta.ModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole):
-        if not index.isValid() or not (0 <= index.row() < len(self._rows)):
-            return None
-        target = self._rows[index.row()]
-        key = bytes(self.roles.get(role, b"")).decode()
-        if key == "label":
-            return target.label
-        if key == "target":
-            return target.value
-        if key == "kind":
-            return target.kind
-        if key == "incoming":
-            return _incoming_for(self._pad_id, target)
-        return None
-
-    def roleNames(self) -> dict[int, QtCore.QByteArray]:
-        return self.roles
-
-    def _get_pad_id(self) -> int:
-        return self._pad_id
-
-    def _set_pad_id(self, pad_id: int) -> None:
-        ident = max(1, min(4, int(pad_id)))
-        if ident == self._pad_id:
-            return
-        self._pad_id = ident
-        self.reload()
-        self.padIdChanged.emit()
-
-    def _get_guid(self) -> str:
-        return XBOX_TAB_GUID
-
-    def _get_module_name(self) -> str:
-        module = output.xbox_module(self._pad_id)
-        return module.name if module is not None else f"Xbox pad {self._pad_id}"
-
-    guid = QtCore.Property(str, fget=_get_guid, constant=True)
-    padId = QtCore.Property(int, fget=_get_pad_id, fset=_set_pad_id, notify=padIdChanged)
-    moduleName = QtCore.Property(str, fget=_get_module_name, notify=statusChanged)
 

@@ -77,10 +77,27 @@ def test_one_driver_check_then_pads_then_rows_in_one_scroll(run: dict) -> None:
     assert page["driverRows"] == 1
     assert page["padsOpen"] is True  # open by default
     assert page["cardShown"] is True
-    order = ["driverTop", "headingTop", "cardTop", "controlTop"]
+    order = ["driverTop", "headingTop", "cardTop", "findTop", "controlTop"]
     tops = [page[key] for key in order]
     assert tops[0] >= 0 and tops == sorted(set(tops)), dict(zip(order, tops))
     assert page["cardInScroll"] is True and page["controlInScroll"] is True
+    assert page["findInScroll"] is True and page["treeInScroll"] is True
+
+
+def test_the_rows_are_the_shared_list_view_only_and_scroll_with_the_pads(
+    run: dict,
+) -> None:
+    page = run["open"]
+    assert page["treeReadOnly"] is True
+    assert page["treeGroups"] is False
+    assert page["treeOwnScroll"] is False
+    assert page["treeFull"] is True
+
+
+def test_the_list_has_its_own_appearance_button(run: dict) -> None:
+    assert run["listAppearanceButton"] is True
+    assert run["outputAppearanceButton"] is False
+    assert run["pageKey"] == "xbox-output"
 
 
 def test_folding_hides_the_pads_and_is_remembered(run: dict) -> None:

@@ -18,7 +18,7 @@ function topics() {
             body: "<p>The viewers show live values; they change nothing. Open the vJoy Viewer from the toolbar, <b>Tools › Viewers</b>, or a card's menu.</p>"
                 + "<ul>"
                 + "<li><b>vJoy Viewer</b> <a href=\"open:tools.vjoyViewer\">Open ›</a>: each physical device beside the vJoy device it drives. The physical side shows claimed inputs; the vJoy side shows what the vJoy output module sent (claimed outputs, while the profile runs).</li>"
-                + "<li>The Xbox 360 Controller's <b>Output View</b> <a href=\"open:view.xboxOutput\">Open ›</a>: the ViGEmBus check, <b>Live pads</b> (a live pad for each device that drives it) and which inputs drive each control. See <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>.</li>"
+                + "<li>The Xbox 360 Controller's <b>Output View</b> <a href=\"open:view.xboxOutput\">Open ›</a>: the ViGEmBus check, <b>Live pads</b> (a live pad for each device that drives it) and the list of its controls with the inputs that send to each. See <a href=\"topic:home-devices-xbox-output\">Xbox output module</a>.</li>"
                 + "<li><b>Input Tester…</b> <a href=\"show:menu/Tools/Viewers/Input Tester…\">Show me ›</a>: a separate program that shows which controllers other programs (your games) can see through HidHide. See <a href=\"topic:tools-input-tester\">Check what a game sees (Input Tester)</a>.</li>"
                 + "</ul>",
             related: ["home-devices-xbox-output", "home-devices-vjoy-output", "tools-input-monitor"]

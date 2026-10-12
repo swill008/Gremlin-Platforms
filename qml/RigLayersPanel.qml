@@ -721,11 +721,12 @@ Rectangle {
                                 from: 0
                                 to: 1
                                 stepSize: 0.01
+                                // A plain binding: the Slider's own drag
+                                // keeps it (a Binding element warned at
+                                // every step), and the editor moves it.
+                                value: (_panel.ed && _panel.ed.bgViewOpacity !== undefined)
+                                    ? _panel.ed.bgViewOpacity : 1
                                 onMoved: if (_panel.ed) _panel.ed.bgViewOpacity = value
-                                Binding on value {
-                                    value: (_panel.ed && _panel.ed.bgViewOpacity !== undefined)
-                                        ? _panel.ed.bgViewOpacity : 1
-                                }
                             }
                             Label {
                                 Layout.preferredWidth: Style.dp(34)

@@ -331,7 +331,7 @@ def _part_ld_rename(j: Journey) -> None:
     from gremlin.logical_device import LogicalDevice
     from gremlin.ui.logical_layout import LogicalLayoutModel
     from gremlin.ui.module_pairing import ModulePairButtonModel
-    from gremlin.ui.xbox_device_model import XboxDeviceModel
+    from gremlin.ui.xbox_output_list import XboxOutputListModel
 
     out = j.out
     logical = LogicalDevice()
@@ -348,12 +348,14 @@ def _part_ld_rename(j: Journey) -> None:
     pairs = ModulePairButtonModel()
     pairs.setProperty("guid", str(ld_uid))
     pairs.setProperty("deviceName", "Logical Device")
-    xbox = XboxDeviceModel()
+    xbox = XboxOutputListModel()
     j.settle()
     out["ld:pairs-before"] = [r["label"] for r in _rows(pairs)]
-    out["ld:incoming-before"] = [r["incoming"] for r in _rows(xbox) if r["incoming"]]
-    # The Xbox page reads "incoming" when it draws a row: it is redrawn
-    # only when the model says its rows changed.
+    # The Xbox Output View lists each source as a line under its control.
+    out["ld:incoming-before"] = [
+        r["title"] for r in _rows(xbox) if r["rowKind"] == "child"
+    ]
+    # The Xbox list is redrawn only when the model says its rows changed.
     redrawn = [0]
 
     def count(*_: object) -> None:
@@ -366,7 +368,9 @@ def _part_ld_rename(j: Journey) -> None:
     out["ld:pairs-after"] = j.await_value(
         lambda: any(LD_NAME in str(r["label"]) for r in _rows(pairs)), True
     )
-    out["ld:incoming-after"] = any(LD_NAME in str(r["incoming"]) for r in _rows(xbox))
+    out["ld:incoming-after"] = any(
+        r["rowKind"] == "child" and LD_NAME in str(r["title"]) for r in _rows(xbox)
+    )
     out["ld:xbox-redrawn"] = j.await_value(lambda: redrawn[0] > 0, True)
     out["ld:pairs-final"] = [r["label"] for r in _rows(pairs)]
 

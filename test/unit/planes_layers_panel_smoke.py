@@ -46,6 +46,17 @@ import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
 
 NO_MOD = QtCore.Qt.KeyboardModifier.NoModifier
+
+# Qt log lines, e.g. "qt.qml.binding.removal" from a Binding the slider
+# moves away from while dragged.
+qt_messages: list[str] = []
+
+
+def _capture(mode, context, text: str) -> None:  # noqa: ANN001
+    qt_messages.append(f"{context.category}: {text}")
+
+
+QtCore.qInstallMessageHandler(_capture)
 GUID = str(dill.GUID(fake.devices[0].device_guid).uuid)
 
 # Layers is the right side panel (07 S128): the SidePanel holding _layersPanel.
@@ -318,6 +329,23 @@ def main() -> None:
     settle()
     out["slider-low"] = js("_layersPanel.ed.bgViewOpacity")
     out["slider-calls"] = js("_layersPanel.ed.calls")
+    # Drag the handle across the slider in steps: each step sets the
+    # editor's opacity; no Qt "binding removal" line.
+    del qt_messages[:]
+    r = rect("_layersPanel.bgRowPart('dmeBgRowOpacity')")
+    start = js("_layersPanel.bgRowPart('dmeBgRowOpacity').visualPosition")
+    QtTest.QTest.mousePress(win, QtCore.Qt.MouseButton.LeftButton, NO_MOD,
+                            at(r, start))
+    for fx in (0.4, 0.5, 0.6, 0.7, 0.8):
+        QtTest.QTest.mouseMove(win, at(r, fx), 10)
+        QtCore.QCoreApplication.processEvents()
+    QtTest.QTest.mouseRelease(win, QtCore.Qt.MouseButton.LeftButton, NO_MOD,
+                              at(r, 0.8))
+    settle()
+    out["slider-dragged"] = js("_layersPanel.ed.bgViewOpacity")
+    out["slider-drag-calls"] = js("_layersPanel.ed.calls")
+    out["slider-drag-qt-lines"] = [m for m in qt_messages
+                                   if "binding" in m.lower()]
     ev("_layersPanel.ed.bgViewOpacity = 0.75")
     settle()
     out["slider-follows"] = js("_layersPanel.bgRowPart('dmeBgRowOpacity').value")
