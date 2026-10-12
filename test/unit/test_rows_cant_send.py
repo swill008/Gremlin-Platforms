@@ -379,7 +379,7 @@ def test_tree_shows_the_red_marker_with_its_tooltip(tmp_path: pathlib.Path) -> N
 
 def test_find_tick_filters_and_clear_resets_it(tmp_path: pathlib.Path) -> None:
     r = _run("tree", tmp_path)
-    assert r["tickLabel"] == "Can't be sent"
+    assert r["tickLabel"] == "Output not found"
     assert r["ticked"] == "true true", r["ticked"]
     assert r["cleared"] == "false false", r["cleared"]
 

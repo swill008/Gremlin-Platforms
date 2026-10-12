@@ -233,8 +233,8 @@ def _load_notes(logical: list[str], osc: list[str]) -> list[tuple[str, str]]:
 
 def _cant_send_notice(loaded: object) -> str:
     """The load notice for bindings that can't be sent, per source device
-    with its count (D-04-CANT-SEND-NOTICE), e.g. "VKBSim NXT: 94 bindings
-    can't be sent. OSC: 1."; "" when there are none."""
+    with its count (D-04-CANT-SEND-NOTICE), e.g. "VKBSim NXT: 94 outputs
+    not found. OSC: 1."; "" when there are none."""
     from gremlin.modules import output
 
     try:
@@ -251,8 +251,8 @@ def _cant_send_notice(loaded: object) -> str:
         if parts:
             parts.append(f"{name}: {count}.")
         else:
-            noun = "binding" if count == 1 else "bindings"
-            parts.append(f"{name}: {count} {noun} can't be sent.")
+            noun = "output" if count == 1 else "outputs"
+            parts.append(f"{name}: {count} {noun} not found.")
     return " ".join(parts)
 
 

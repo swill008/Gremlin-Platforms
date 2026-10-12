@@ -216,7 +216,7 @@ function topics() {
             id: "osc-page",
             section: inputs,
             title: "The OSC page",
-            body: "<p>The OSC page lists every OSC input, one row per input, titled by its address (and your name for it, when you give one). It works like the Logical Device page.</p>"
+            body: "<p>The OSC page lists every OSC input, one row per input, titled by its address (and its custom name, when you give one). It works like the Logical Device page.</p>"
                 + _list([
                     "Under each address a line sums up its settings in the Add window's words, for example its mode, source value and delay. A pattern input says how many addresses it has seen, for example \"Pattern · 3 addresses seen\".",
                     "Each row shows the input's live value (a button pressed or not, an axis's value) and when a message last reached it (\"last seen 3 s ago\", or \"never\"), also with no Run while the port is open. On an axis input, <b>Invert</b> turns it the other way.",
@@ -224,7 +224,7 @@ function topics() {
                     "The input's actions for the current mode are its child rows, then its Feedback rows. Click a row to open it in the action pane; a new input shows <b>No actions</b> and <b>Add Action</b>.",
                     "Right-click for the menu: the input's own rows (" + _link("osc-edit-inputs", "Change, order or delete OSC inputs") + "), <b>Add Feedback</b> and <b>Companion feedback</b>, the <b>Row</b>, <b>Group</b> and <b>Groups</b> sections, <b>Add Inputs</b> (<b>Add…</b>, <b>Import…</b>, <b>From TouchOSC Layout…</b>, <b>Listen</b>, <b>Clear…</b>) and <b>Order</b>.",
                     "The page bar: <b>OSC Setup…</b> opens OSC's Module Setup, <b>Monitor</b> shows the " + _link("osc-monitor", "OSC Monitor") + " at the bottom of the page, and <b>Appearance…</b> sets how this page looks (its own look, apart from the Logical Device page's).",
-                    "Find searches the address, your name or the group. Its type box shows <b>All types</b>, <b>Buttons</b> or <b>Axes</b>, and its filters show only <b>Ungrouped</b> inputs, inputs with <b>No actions in this mode</b>, or <b>Patterns</b>.",
+                    "Find searches the address, custom name or the group. Its type box shows <b>All types</b>, <b>Buttons</b> or <b>Axes</b>, and its filters show only <b>Ungrouped</b> inputs, inputs with <b>No bindings in this mode</b>, or <b>Patterns</b>.",
                     "Groups may hold buttons and axes together. Drag rows to set your own order.",
                     "The page has its own Undo and Redo for every change made on it (adding, importing, addresses, settings, names, groups, order, deleting, clearing, actions and Feedback rows)."
                 ])
@@ -302,7 +302,7 @@ function topics() {
             title: "Change, order or delete OSC inputs",
             body: "<p>Right-click an input on the OSC page for its menu. Select several inputs to act on all of them.</p>"
                 + _list([
-                    "<b>Change Address…</b>: edits the address. It must start with \"/\" and can't be blank or a duplicate; the window says why on its own line before it closes. The input keeps its actions, your name for it and every link to it.",
+                    "<b>Change Address…</b>: edits the address. It must start with \"/\" and can't be blank or a duplicate; the window says why on its own line before it closes. The input keeps its actions, its custom name and every link to it.",
                     "<b>Edit Settings…</b>: opens the same choices as Add, in the <b>OSC Input Settings</b> window. The input keeps its actions. With several inputs selected it reads \"Edit Settings of 3 Inputs…\" (with their number): a setting they don't share shows blank, and only what you change is applied to each. An input that can't change mode (below) is named and left as it is. One Undo step.",
                     "<b>Copy for Companion</b>: copies, as text, the settings for Companion's Generic OSC connection (Target Hostname or IP, Target Port, Protocol UDP, Listen for Feedback on, Source Port 9001) and the key actions for this input, to follow while you set up Companion. See " + _link("osc-companion", "Use with Companion") + ".",
                     "<b>Send Test Press</b> (a button input) or <b>Send Test Value</b> (an axis input: type a value from −1 to 1, then <b>Send</b>): gives the input a message as if it came from the network, so you can try its actions without the app. It fires actions only while the profile runs, shows in the live value, and is not listed in the OSC Monitor. On a pattern input it uses the last address that input received.",

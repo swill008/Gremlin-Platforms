@@ -997,3 +997,10 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Copy from device: panel + page (C-PANEL) | feature | 3-8 min | 5 min | 14:31-14:36 |
 | 2026-10-12 | Copy from device: end-to-end test (C-E2E) | test | 3-8 min | 13 min (incl. waiting) | 14:31-14:44 |
 | 2026-10-12 | Quick tests batch K + themed-menu fix (lead) | test/fix | ~7 min | 5 + 4 min | 14:45-14:59 |
+| 2026-10-12 | Details: phrase renames (L-RENAME) | fix | 3-8 min | 2 min | 14:53-14:55 |
+| 2026-10-12 | Details: drawing (L-TREE) | feature | 3-8 min | 5 min | 14:53-14:58 |
+| 2026-10-12 | Details: Appearance sections + pages (L-APPEAR) | feature | 3-8 min | 5 min | 14:53-14:58 |
+| 2026-10-12 | Details: spec, glossary, Help charts (L-DOCS) | docs | 3-8 min | 5 min | 14:53-14:58 |
+| 2026-10-12 | Details: model roles (L-MODEL) | feature | 3-8 min | 6 min | 14:52-14:58 |
+| 2026-10-12 | Details: e2e test written (L-E2E) + lead fixes (type order, pad name, key words) | test/fix | 3-8 min | ~10 min | 14:53-15:04 |
+| 2026-10-12 | Quick tests batch L (--changed 3,975) + rule tests (35) in parallel | test | ~7 min | 8 min | 15:03-15:11 |

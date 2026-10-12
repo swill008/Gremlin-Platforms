@@ -3,10 +3,12 @@
 
 """05 S125 (D-05-BINDINGS-BOXES): the Appearance panel's "Bindings" section.
 
-- After "Shown", a "Bindings" section lists, in order: Show bindings,
-  "Bindings" size and color, Number size, font and color, Brackets, Target
+- After "Shown", a "Bindings" section lists, in order: "Bindings" size and
+  color, Number size, font and color, Brackets, Target
   size, font, text color, background and border color, Border width,
-  Corners, Roundness, Space between boxes and Reset to defaults.
+  Corners, Roundness, Space between boxes and Reset to defaults. Its old
+  "Show bindings" is Row details' "Bindings and targets" now (batch L,
+  test_appearance_details.py).
 - Each value is saved in the page's Appearance under its property name and
   reaches the page's ControlTree property of the same name.
 - Reset to defaults puts this section back only; Reset Appearance puts it
@@ -31,7 +33,6 @@ _HERE = pathlib.Path(__file__).parent
 _ROOT = _HERE.parents[1]
 
 _LABELS = [
-    "Show bindings",
     '"Bindings" size',
     '"Bindings" color',
     "Number size",
@@ -52,7 +53,6 @@ _LABELS = [
 
 # Property (= saved key) and its default; colours are "" until chosen.
 _DEFAULTS = {
-    "showBindings": True,
     "bindingsWordSize": 12,
     "bindingsWordColor": "",
     "bindingsNumberSize": 12,
@@ -72,7 +72,6 @@ _DEFAULTS = {
 
 # A changed value for each.
 _CHANGED = {
-    "showBindings": False,
     "bindingsWordSize": 15,
     "bindingsWordColor": "#112233",
     "bindingsNumberSize": 14,

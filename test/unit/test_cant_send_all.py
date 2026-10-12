@@ -7,7 +7,7 @@ S137-S139, 03 S78a): Map to Xbox ("<pad> is not Found."), Map to Logical
 Device ("Logical Device <Control> is not Found.") and Send OSC ("OSC target
 <id> is not Found." / "OSC output is Off."), nested ones too. The texts go
 through output.cant_send_action_texts to the profile list (Home card), the
-page rows and Find tick (control_layout.cant_send_texts), and each editor
+page rows and Find tick (control_layout.input_scan), and each editor
 shows the red ⚠ with the text as its tooltip."""
 
 from __future__ import annotations
@@ -200,7 +200,7 @@ def test_home_card_counts_them(
     module_model.apply_cant_send([row])
     assert row.cant_send_count == 3
     assert module_model.cant_send_line(row.cant_send_count) == (
-        "⚠ 3 bindings can't be sent"
+        "⚠ 3 outputs not found"
     )
     assert all(text in row.cant_send_tip for text in texts)
 
@@ -210,7 +210,7 @@ def test_rows_and_find_tick_show_them(world: dict) -> None:
 
     profile, texts = _profile(world)
     items = profile.inputs[_STICK]
-    assert [control_layout.cant_send_texts(item) for item in items] == [
+    assert [control_layout.input_scan(item).cant for item in items] == [
         {0: texts[0]},
         {0: texts[1]},
         {0: texts[2]},

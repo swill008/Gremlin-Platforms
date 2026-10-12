@@ -85,8 +85,8 @@ function topics() {
                 + "<li>Type the name, then press <b>Enter</b>.</li>"
                 + "</ol>"
                 + _good([
-                    "<b>Hide system name</b> shows only your name.",
-                    "To remove your name, right-click the control and choose <b>Row</b> › <b>Clear Name</b>. It asks first (\"Clear the name of Button 2?\"); the red <b>Clear Name</b> removes your name, and the system name stays."
+                    "<b>Hide system name</b> shows only the custom name.",
+                    "To remove a custom name, right-click the control and choose <b>Row</b> › <b>Clear Name</b>. It asks first (\"Clear the name of Button 2?\"); the red <b>Clear Name</b> removes the custom name, and the system name stays."
                 ]),
             related: ["logical-device-group-controls", "logical-device-menus"]
         },
@@ -125,8 +125,8 @@ function topics() {
             title: "Find a control",
             body: "<p><b>Find</b> filters the list.</p>"
                 + "<ul>"
-                + "<li>Type a system name, your name or a group (<b>Ctrl+F</b> goes to the box). A line under it says \"N found\" or \"Nothing matches\"; <b>×</b> or <b>Esc</b> clears the typing.</li>"
-                + "<li>Filter by type, Ungrouped, <b>No hardware writer</b> or <b>No actions in this mode</b>.</li>"
+                + "<li>Type a system name, custom name or a group (<b>Ctrl+F</b> goes to the box). A line under it says \"N found\" or \"Nothing matches\"; <b>×</b> or <b>Esc</b> clears the typing.</li>"
+                + "<li>Filter by type, Ungrouped, <b>No hardware writer</b> or <b>No bindings in this mode</b>.</li>"
                 + "<li><b>Clear</b> resets the filter. When nothing is listed, <b>Clear Filters</b> does the same.</li>"
                 + "</ul>"
                 + _good(["The hardware list in <b>Assign Hardware</b> has its own <b>Search</b> box, with the same \"N found\" line and <b>×</b>."]),

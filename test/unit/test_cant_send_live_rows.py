@@ -1,7 +1,7 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Page rows, the Find bar's "Can't be sent" tick and the Home card follow
+"""Page rows, the Find bar's "Output not found" tick and the Home card follow
 the output layer's one notice, signal.cantSendChanged (D-05-CANT-SEND-LIVE):
 when what output.cant_send_text / output.cant_send_bindings answer changes
 and the notice goes out, the red ⚠ is re-read with no other signal. A

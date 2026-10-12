@@ -108,6 +108,27 @@ Item {
     property bool bindingTargetRounded: true
     property int bindingTargetRadius: 5
     property int bindingTargetSpacing: 6
+    // Group details: the line under a group's name, in this order, from the
+    // group roles (groupCounts, groupNoBindings, ...); Row details: after a
+    // bindable row's bindings. Bindings number style; Output not found in
+    // the warning colour (05, batch L).
+    property bool groupControlsByType: true
+    property bool groupBindingsByType: true
+    property bool groupNoBindings: false
+    property bool groupOutputNotFound: false
+    property bool groupOutputDevices: false
+    property bool groupActionTypes: false
+    property bool groupCustomNames: false
+    property bool groupOtherModes: false
+    property bool groupWrapDetails: false
+    property bool groupHideEmpty: false
+    property bool rowActionTypes: false
+    property bool rowOutputNotFound: false
+    property bool rowOtherModes: false
+    property bool rowSystemName: false
+    property bool rowHasCondition: false
+    property bool rowNoBindings: false
+    property bool rowWrapDetails: false
     property int summaryFont: 11
     property int parentFont: 13
     property int groupFont: 15
@@ -211,6 +232,150 @@ Item {
     }
     function _bindingFont(mono) {
         return mono ? Style.monoFont : _nameProbe.font.family
+    }
+
+    function _br(text) {
+        return bindingsBrackets ? "[" + text + "]" : text
+    }
+    function _count(n, one, many) {
+        return n + " " + (n === 1 ? one : many)
+    }
+    function _piece(text, warn) {
+        return { text: text, warn: !!warn }
+    }
+    function _modes(modes) {
+        return (modes.length === 1 ? "also in mode " : "also in modes ") + modes.join(", ")
+    }
+    readonly property var _typeWords: ({
+        button: ["button", "buttons"], axis: ["axis", "axes"], hat: ["hat", "hats"],
+        key: ["key", "keys"]
+    })
+
+    // The group line's details (contract order). Lists with nothing in them
+    // show nothing; Hide empty leaves out the 0 counts, never the type.
+    function groupPieces(m) {
+        var out = []
+        var hide = groupHideEmpty
+        var counts = m.groupCounts || []
+        for (var i = 0; i < counts.length; i++) {
+            var c = counts[i]
+            var words = _typeWords[c.type] || [c.type, c.type]
+            var bits = []
+            if (groupControlsByType)
+                bits.push(_count(c.controls, words[0], words[1]))
+            if (groupBindingsByType && !(hide && c.bindings === 0))
+                bits.push(_br(_count(c.bindings, "binding", "bindings")))
+            if (bits.length > 0)
+                out.push(_piece(bits.join(" ")))
+        }
+        var none = m.groupNoBindings || 0
+        if (groupNoBindings && !(hide && none === 0))
+            out.push(_piece(_br(none + " with no bindings")))
+        var lost = m.groupOutputNotFound || 0
+        if (groupOutputNotFound && !(hide && lost === 0))
+            out.push(_piece(_br(_count(lost, "output not found", "outputs not found")), lost > 0))
+        var outputs = m.groupOutputDevices || []
+        if (groupOutputDevices && outputs.length > 0)
+            out.push(_piece(_br("outputs: " + outputs.join(", "))))
+        var acts = m.groupActionTypes || []
+        if (groupActionTypes && acts.length > 0)
+            out.push(_piece(_br(acts.map(function(a) { return a.count + " " + a.name }).join(", "))))
+        var named = m.groupCustomNames || 0
+        if (groupCustomNames && !(hide && named === 0))
+            out.push(_piece(_br(_count(named, "custom name", "custom names"))))
+        var modes = m.groupOtherModes || []
+        if (groupOtherModes && modes.length > 0)
+            out.push(_piece(_br(_modes(modes))))
+        return out
+    }
+
+    // A bindable row's details (contract order).
+    function rowPieces(m, userName, systemName) {
+        var out = []
+        var acts = m.actionTypes || []
+        if (rowActionTypes && acts.length > 0)
+            out.push(_piece(_br(acts.join(", "))))
+        if (rowOutputNotFound && m.outputNotFound)
+            out.push(_piece(_br("output not found"), true))
+        var modes = m.otherModes || []
+        if (rowOtherModes && modes.length > 0)
+            out.push(_piece(_br(_modes(modes))))
+        if (rowSystemName && (!!m.customName || userName.length > 0) && systemName.length > 0)
+            out.push(_piece(_br("system name: " + systemName)))
+        if (rowHasCondition && m.hasCondition)
+            out.push(_piece(_br("has a condition")))
+        if (rowNoBindings && (m.bindingCount || 0) === 0)
+            out.push(_piece(_br("no bindings")))
+        return out
+    }
+
+    // A details line: pieces with " · " between, wrapped onto more lines or
+    // kept to one cut with "…" and every piece on hover.
+    component DetailLine: Item {
+        id: _dl
+        property var pieces: []
+        property bool wrap: false
+        property string pieceName: ""
+        property string fontFamily: ""
+        property int fontSize: 12
+        property color textColor: Style.fg
+        readonly property bool overflow: !wrap && _flow.implicitWidth > width + 1
+        clip: true
+        implicitWidth: Math.ceil(_metrics.advanceWidth) + Style.dp(2) * pieces.length
+        implicitHeight: _flow.implicitHeight
+        TextMetrics {
+            id: _metrics
+            font.family: _dl.fontFamily
+            font.pixelSize: _dl.fontSize
+            text: _dl.pieces.map(function(p) { return p.text }).join(" · ")
+        }
+        Item {
+            clip: true
+            width: _dl.overflow ? Math.max(0, _dl.width - _dots.implicitWidth - Style.dp(4)) : _dl.width
+            height: _dl.height
+            Flow {
+                id: _flow
+                width: _dl.wrap ? _dl.width : 100000
+                Repeater {
+                    model: _dl.pieces
+                    delegate: Row {
+                        id: _bit
+                        required property var modelData
+                        required property int index
+                        Text {
+                            visible: _bit.index > 0
+                            text: " · "
+                            color: _dl.textColor
+                            font.family: _dl.fontFamily
+                            font.pixelSize: _dl.fontSize
+                        }
+                        Text {
+                            objectName: _dl.pieceName
+                            text: _bit.modelData.text
+                            color: _bit.modelData.warn ? Style.warn : _dl.textColor
+                            font.family: _dl.fontFamily
+                            font.pixelSize: _dl.fontSize
+                        }
+                    }
+                }
+            }
+        }
+        Text {
+            id: _dots
+            objectName: _dl.objectName + "More"
+            visible: _dl.overflow
+            text: "…"
+            color: _dl.textColor
+            font.family: _dl.fontFamily
+            font.pixelSize: _dl.fontSize
+            anchors.right: parent.right
+            anchors.top: parent.top
+        }
+        PointerTip {
+            objectName: _dl.objectName + "Tip"
+            text: _dl.pieces.map(function(p) { return p.text }).join("\n")
+            show: _dl.overflow
+        }
     }
 
     function _hasList(kind, childCount, extraWriters) {
@@ -420,6 +585,11 @@ Item {
             readonly property int extraWriters: model.extraWriters || 0
             // A group the page keeps in place: no drag, nothing dropped into it.
             readonly property bool fixedGroup: !!model.fixedGroup
+            // Group details come from the group roles; a model without them
+            // (other pages) keeps its plain subtitle line.
+            readonly property bool groupDetailed: rowKind === "group" && (model.groupCounts || []).length > 0
+            readonly property var groupPieces: groupDetailed ? _tree.groupPieces(model) : []
+            readonly property var rowPieces: rowKind === "parent" ? _tree.rowPieces(model, userName, systemName) : []
             // Live value of a parent row (only with liveDecoration).
             readonly property bool liveOn: _tree.liveDecoration && _tree.liveState !== null
                                            && rowKind === "parent" && (model.liveIndex === undefined ? -1 : model.liveIndex) >= 0
@@ -658,8 +828,8 @@ Item {
                             elide: Text.ElideRight
                             // With bindings: the name column, less the caret
                             // and the ⚠ this row shows (05 S142).
-                            Layout.fillWidth: !_bindings.visible
-                            Layout.preferredWidth: _bindings.visible
+                            Layout.fillWidth: !_bindings.visible && !_rowDetails.visible
+                            Layout.preferredWidth: (_bindings.visible || _rowDetails.visible)
                                 ? Math.max(0, _tree._nameColumn
                                     - (_caret.visible ? _caret.width + _line.spacing : 0)
                                     - (_cantSend.visible ? _cantSend.width + _line.spacing : 0))
@@ -704,6 +874,9 @@ Item {
                                 readonly property real contentWidth: _boxes.implicitWidth
                                 readonly property bool overflow: contentWidth > width
                                 clip: true
+                                // Its boxes' width, so Row details after it
+                                // leave the boxes room.
+                                implicitWidth: _boxes.implicitWidth
                                 implicitHeight: _boxes.implicitHeight
                                 Layout.fillWidth: true
                                 Layout.alignment: Qt.AlignVCenter
@@ -756,13 +929,44 @@ Item {
                                 }
                             }
                         }
+                        // Row details, after the bindings (05, batch L).
+                        DetailLine {
+                            id: _rowDetails
+                            objectName: "rowDetails"
+                            pieceName: "rowDetail"
+                            pieces: _row.rowPieces
+                            wrap: _tree.rowWrapDetails
+                            fontFamily: _tree._bindingFont(_tree.bindingsNumberMono)
+                            fontSize: Style.dp(_tree.bindingsNumberSize)
+                            textColor: _tree.bindingsNumberColor
+                            visible: pieces.length > 0
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredWidth: implicitWidth
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+                    }
+                    // Group details: the group line (05, batch L).
+                    DetailLine {
+                        id: _groupDetails
+                        objectName: "groupDetails"
+                        pieceName: "groupDetail"
+                        pieces: _row.groupPieces
+                        wrap: _tree.groupWrapDetails
+                        fontFamily: _tree._bindingFont(_tree.bindingsNumberMono)
+                        fontSize: Style.dp(_tree.bindingsNumberSize)
+                        textColor: _tree.bindingsNumberColor
+                        visible: pieces.length > 0
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.bottomMargin: visible ? Style.dp(4) : 0
                     }
                     // The wire label: an action that can't be sent is red,
                     // with the reason as its tooltip (D-05-CANT-SEND).
                     Label {
                         id: _wire
                         readonly property bool cantSend: rowKind === "child" && _cantSend.why.length > 0
-                        visible: _tree.showSummary && subtitle.length > 0 && rowKind !== "writer"
+                        visible: _tree.showSummary && subtitle.length > 0 && rowKind !== "writer" && !_row.groupDetailed
                         text: subtitle
                         color: cantSend ? Style.danger : (rowKind === "child" ? _tree.colorActionTarget : _tree.colorMuted)
                         font.pixelSize: Style.dp(rowKind === "child" ? _tree.targetFont : _tree.summaryFont)

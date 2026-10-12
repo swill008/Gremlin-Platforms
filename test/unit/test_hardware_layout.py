@@ -172,7 +172,7 @@ def test_filters(page: tuple[Any, Profile]) -> None:
     model.setActionFilters("keyboard", "all")
     assert _parents(model) == []
     model.setActionFilters("all", "all")
-    # No actions in this mode (S123).
+    # No bindings in this mode (S123).
     model.setFilter("", "all", False, False, True)
     assert "parent:button:2" not in _parents(model)
     assert "parent:button:1" in _parents(model)

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 MAX_ENTRIES = 5000
 AXIS_INTERVAL = 0.1
 
-# Entry kinds: an input that ran actions, or one with no actions.
+# Entry kinds: an input that ran actions, or one with no bindings.
 RAN = "ran"
 NONE = "none"
 
@@ -108,7 +108,7 @@ def _entry(event: Event, callbacks: list[object], paused: bool) -> tuple[str, st
         return RAN, head + "  →  " + "; ".join(ran)
     if callbacks:
         return RAN, head + "  →  script"
-    return NONE, head + ("  →  paused" if paused else "  →  no actions")
+    return NONE, head + ("  →  paused" if paused else "  →  no bindings")
 
 
 def device_name(guid: uuid.UUID) -> str:

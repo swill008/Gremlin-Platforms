@@ -216,6 +216,42 @@ def binding_targets(leaves: list[tuple]) -> list[str]:
     return [dest for _t, _l, dest in leaves if dest]
 
 
+def action_types(leaves: list[tuple]) -> list[str]:
+    """Row details' Action types: each action name of the leaves once, in
+    order (batch L)."""
+    names: list[str] = []
+    for _tag, label, _dest in leaves:
+        if label not in names:
+            names.append(label)
+    return names
+
+
+def output_devices(action: object) -> list[str]:
+    """The output devices one action sends to, as Group details names them
+    (batch L): "vJoy 1", "Xbox 360 Controller" (pad 1; "Xbox 360 2" ...),
+    "Logical Device", "OSC". Macro vJoy
+    and Logical Device steps count; nested actions are the caller's."""
+    from action_plugins.macro import MacroData
+    from action_plugins.map_to_logical_device import MapToLogicalDeviceData
+    from action_plugins.map_to_xbox import MapToXboxData
+    from action_plugins.send_osc import SendOscData
+    from gremlin import macro
+    from gremlin.modules import output
+
+    found = [f"vJoy {int(target[0])}" for target in output.vjoy_targets(action)]
+    if isinstance(action, MapToXboxData):
+        found.append(output.xbox_pad_name(int(action.xbox_device_id)))
+    elif isinstance(action, MapToLogicalDeviceData):
+        found.append("Logical Device")
+    elif isinstance(action, SendOscData):
+        found.append("OSC")
+    elif isinstance(action, MacroData) and any(
+        isinstance(step, macro.LogicalDeviceAction) for step in action.actions
+    ):
+        found.append("Logical Device")
+    return found
+
+
 # --- The edit lock (06 S13, S82, RB14; 05 S32, S101) ------------------------
 
 

@@ -486,7 +486,7 @@ Item {
                     id: _find
                     layout: _layout
                     namePrefix: "osc"
-                    placeholder: "Address, your name, or group"
+                    placeholder: "Address, custom name, or group"
                     typeChoices: [
                         { label: "All types", value: "all" },
                         { label: "Buttons", value: "button" },
@@ -494,7 +494,7 @@ Item {
                     ]
                     filters: [
                         { label: "Ungrouped", name: "ungrouped" },
-                        { label: "No actions in this mode", name: "noAction" },
+                        { label: "No bindings in this mode", name: "noAction" },
                         { label: "Patterns", name: "patterns" }
                     ]
                     locked: _root.editorLocked
@@ -596,6 +596,23 @@ Item {
                     bindingTargetRounded: _appear.bindingTargetRounded
                     bindingTargetRadius: _appear.bindingTargetRadius
                     bindingTargetSpacing: _appear.bindingTargetSpacing
+                    groupControlsByType: _appear.groupControlsByType
+                    groupBindingsByType: _appear.groupBindingsByType
+                    groupNoBindings: _appear.groupNoBindings
+                    groupOutputNotFound: _appear.groupOutputNotFound
+                    groupOutputDevices: _appear.groupOutputDevices
+                    groupActionTypes: _appear.groupActionTypes
+                    groupCustomNames: _appear.groupCustomNames
+                    groupOtherModes: _appear.groupOtherModes
+                    groupWrapDetails: _appear.groupWrapDetails
+                    groupHideEmpty: _appear.groupHideEmpty
+                    rowActionTypes: _appear.rowActionTypes
+                    rowOutputNotFound: _appear.rowOutputNotFound
+                    rowOtherModes: _appear.rowOtherModes
+                    rowSystemName: _appear.rowSystemName
+                    rowHasCondition: _appear.rowHasCondition
+                    rowNoBindings: _appear.rowNoBindings
+                    rowWrapDetails: _appear.rowWrapDetails
                     summaryFont: _appear.summaryFont
                     parentFont: _appear.parentFont
                     groupFont: _appear.groupFont

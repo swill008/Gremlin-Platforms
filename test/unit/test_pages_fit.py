@@ -80,9 +80,9 @@ out = {}
 run(win, '_root.openLogicalDevice()')
 QtTest.QTest.qWait(800)
 root = main.contentItem()
-out['filter'] = box(find(root, 'No actions in this mode'))
+out['filter'] = box(find(root, 'No bindings in this mode'))
 out['logical_panel'] = box(find(root, 'Logical Device — Appearance'))
-out['find'] = box(find(root, 'System name, your name, or group') or find(root, ''))
+out['find'] = box(find(root, 'System name, custom name, or group') or find(root, ''))
 
 model = run(win, '_moduleModel')
 dest = next(r.slug for r in model._rows if getattr(r, 'direction', '') == 'dest')

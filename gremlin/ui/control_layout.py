@@ -22,7 +22,7 @@ Public names (QML), unchanged from LogicalLayoutModel:
             sortBySystem(), sortByName(), sortGroupNames(),
             moveGroupUp(str), moveGroupDown(str),
             setFilter(search, type, ungrouped, no_writer, no_actions),
-            setCantSendOnly(bool) (the Find bar's "Can't be sent" tick),
+            setCantSendOnly(bool) (the Find bar's "Output not found" tick),
             setSelection(list), keyAt(int)->str,
             beginPane(str,int)->int, beginNewAction(str)->int,
             paneDirty()->bool, commitPane()->int, discardPane(), endPane()
@@ -37,6 +37,16 @@ Public names (QML), unchanged from LogicalLayoutModel:
             parent row's action count and one target text per action, from
             _real_item's actions in the shown mode; 0 and [] with none and
             on every other row)
+            Row details (batch L; parent rows, shown mode): actionTypes
+            [str], outputNotFound bool (the cantSend rule), otherModes [str]
+            (other modes where the input has its own bindings; _real_item
+            asked per mode), hasCondition bool, customName bool
+            Group details (batch L; group rows, over what the header
+            counts): groupCounts [{type, controls, bindings}] ("key" on the
+            Keyboard page), groupNoBindings, groupOutputNotFound (one per
+            output, as the Home card counts), groupOutputDevices [str],
+            groupActionTypes [{name, count}], groupCustomNames,
+            groupOtherModes [str]
   property  parentTitles (the parent rows' names: ControlTree's name
             column is as wide as the widest)
   keys      "group:<name>", "parent:<button|axis|hat>:<id>",
@@ -160,6 +170,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable, Hashable
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
 from PySide6 import QtCore
@@ -171,9 +182,11 @@ from gremlin.profile import Draft, DraftOutdated, InputItem, bindings_fingerprin
 from gremlin.signal import signal
 from gremlin.types import InputType
 from gremlin.ui.binding_catalog import (
+    action_types,
     binding_targets,
     editing_locked,
     item_leaves,
+    output_devices,
     sequences_for_item,
 )
 
@@ -232,27 +245,48 @@ def count_text(buttons: int, axes: int, hats: int) -> str:
 _LINE = "\n"
 
 
-def cant_send_texts(real: InputItem | None) -> dict[int, str]:
-    """{sequence index: why it can't be sent} for an input's actions whose
-    outputs (Map to vJoy, Map to Xbox, Map to Logical Device, Send OSC,
-    anywhere in the tree; macro steps) can't be sent; the texts come from
-    output.cant_send_action_texts (D-05-CANT-SEND, D-05-CANT-SEND-ALL)."""
+@dataclass
+class InputScan:
+    """One walk over an input's actions in the shown mode.
+
+    cant: {sequence index: why it can't be sent} for bindings whose outputs
+    (Map to vJoy, Map to Xbox, Map to Logical Device, Send OSC, anywhere in
+    the tree; macro steps) can't be sent; the texts come from
+    output.cant_send_action_texts (D-05-CANT-SEND, D-05-CANT-SEND-ALL).
+    not_found: those outputs counted as the Home card and the load notice
+    count them (output.cant_send_bindings: one per output). devices: the
+    output devices sent to (binding_catalog.output_devices), first seen
+    first. condition: a Condition action in any binding (batch L)."""
+
+    cant: dict[int, str] = field(default_factory=dict)
+    not_found: int = 0
+    devices: list[str] = field(default_factory=list)
+    condition: bool = False
+
+
+def input_scan(real: InputItem | None) -> InputScan:
     from gremlin.modules import output
     from gremlin.profile import reachable
 
-    found: dict[int, str] = {}
+    scan = InputScan()
     if real is None:
-        return found
+        return scan
     memo: dict = {}
     for index, binding in enumerate(getattr(real, "action_sequences", None) or []):
         texts: list[str] = []
         for action in reachable([getattr(binding, "root_action", None)]):
+            if getattr(action, "tag", "") == "condition":
+                scan.condition = True
+            for device in output_devices(action):
+                if device not in scan.devices:
+                    scan.devices.append(device)
             for text in output.cant_send_action_texts(action, memo):
+                scan.not_found += 1
                 if text not in texts:
                     texts.append(text)
         if texts:
-            found[index] = _LINE.join(texts)
-    return found
+            scan.cant[index] = _LINE.join(texts)
+    return scan
 
 
 def parent_cant_text(cant: dict[int, str]) -> str:
@@ -314,6 +348,27 @@ ROW_DEFAULTS: dict[str, Any] = {
     # action (05 S142); 0 and [] with none.
     "bindingCount": 0,
     "bindingTargets": [],
+    # Row details (batch L), parent rows, shown mode: each action name
+    # once; any output not found (the cantSend rule); the other modes
+    # where this input has its own bindings; a Condition in any binding;
+    # the row has a custom name (its system name is systemName).
+    "actionTypes": [],
+    "outputNotFound": False,
+    "otherModes": [],
+    "hasCondition": False,
+    "customName": False,
+    # Group details (batch L), group rows, over what the header counts:
+    # [{type, controls, bindings}] in the page's type order, types present
+    # only (type "button" | "axis" | "hat", "key" on the Keyboard page);
+    # inputs with no bindings; outputs not found; output devices; [{name,
+    # count}] per action name; custom names; other modes with bindings.
+    "groupCounts": [],
+    "groupNoBindings": 0,
+    "groupOutputNotFound": 0,
+    "groupOutputDevices": [],
+    "groupActionTypes": [],
+    "groupCustomNames": 0,
+    "groupOtherModes": [],
 }
 
 
@@ -713,11 +768,108 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
         hats = sum(1 for item in items if item.type == InputType.JoystickHat)
         return buttons, axes, hats
 
+    def _other_modes(self) -> list[str]:
+        """The modes other than the shown one where this device has any
+        bindings: only these are asked per input (Other modes, batch L)."""
+        profile = self._profile()
+        if profile is None:
+            return []
+        bound = {
+            str(item.mode)
+            for item in profile.inputs.get(self._device_guid(), [])
+            if item.action_sequences
+        }
+        return [
+            mode
+            for mode in profile.modes.mode_names()
+            if mode != self._mode and mode in bound
+        ]
+
+    def _modes_bound(self, item: LayoutItem, modes: list[str]) -> list[str]:
+        """Of these modes, those where the input has its own bindings. Asks
+        _real_item with each mode in turn, so every page finds its inputs
+        its own way (Keyboard by key code)."""
+        if not modes:
+            return []
+        shown = self._mode
+        found: list[str] = []
+        try:
+            for mode in modes:
+                self._mode = mode
+                real = self._real_item(item)
+                if real is not None and getattr(real, "action_sequences", None):
+                    found.append(mode)
+        finally:
+            self._mode = shown
+        return found
+
+    def _parent_details(self, item: LayoutItem, others: list[str]) -> dict:
+        """One parent row's roles from the profile, shown mode (05 S142,
+        D-05-CANT-SEND, batch L Row details); "scan" and "leaves" feed the
+        group's details."""
+        real = self._real_item(item)
+        scan = input_scan(real)
+        leaves = item_leaves(real)
+        return {
+            "scan": scan,
+            "leaves": leaves,
+            "cantSend": parent_cant_text(scan.cant),
+            "bindingCount": len(leaves),
+            "bindingTargets": binding_targets(leaves),
+            "actionTypes": action_types(leaves),
+            "outputNotFound": bool(scan.cant),
+            "otherModes": self._modes_bound(item, others),
+            "hasCondition": scan.condition,
+            "customName": bool(item.second_name),
+        }
+
+    def _group_details(self, entries: list[tuple]) -> dict:
+        """A group row's Group details (batch L) over its counted rows."""
+        details = [entry[3] for entry in entries]
+        counts = []
+        # Buttons, axes, hats (as the old count line read), whatever order
+        # the page lists its rows in; other types (keys) after.
+        rank = {kind: i for i, kind in enumerate(TYPE_ORDER)}
+        kinds = sorted(self._type_order(), key=lambda k: rank.get(k, len(rank)))
+        for kind in kinds:
+            of_kind = [e[3] for e in entries if e[0].type == kind]
+            if of_kind:
+                word = "key" if kind == InputType.Keyboard else kind_word(kind)
+                counts.append(
+                    {
+                        "type": word,
+                        "controls": len(of_kind),
+                        "bindings": sum(d["bindingCount"] for d in of_kind),
+                    }
+                )
+        devices: list[str] = []
+        names: dict[str, int] = {}
+        modes: set[str] = set()
+        for found in details:
+            for device in found["scan"].devices:
+                if device not in devices:
+                    devices.append(device)
+            for _tag, label, _dest in found["leaves"]:
+                names[label] = names.get(label, 0) + 1
+            modes.update(found["otherModes"])
+        return {
+            "groupCounts": counts,
+            "groupNoBindings": sum(1 for d in details if not d["bindingCount"]),
+            "groupOutputNotFound": sum(d["scan"].not_found for d in details),
+            "groupOutputDevices": devices,
+            "groupActionTypes": [
+                {"name": name, "count": count} for name, count in names.items()
+            ],
+            "groupCustomNames": sum(1 for d in details if d["customName"]),
+            "groupOtherModes": sorted(modes, key=str.casefold),
+        }
+
     def _rebuild(self) -> None:
         rows: list[dict] = []
         folders = [""] + self._layout.group_names()
         filtering = self._filtering()
         order = self._type_order()
+        others = self._other_modes()
         # Nothing at all: no rows, so the page's empty-list text shows (01 S143).
         if len(folders) == 1 and not self._layout.ordered():
             folders = []
@@ -729,32 +881,28 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
             for item in members:
                 extra = self._extra_rows(item)
                 children = self._child_rows(item)
-                real = self._real_item(item)
-                cant = cant_send_texts(real)
+                found = self._parent_details(item, others)
+                cant = found["scan"].cant
                 for row in children:
                     row["cantSend"] = cant.get(row["sequenceIndex"], "")
                 if filtering and self._cant_send_only and not cant:
                     continue
                 if not filtering or self._visible_parent(item, extra, len(children)):
-                    leaves = item_leaves(real)
-                    bound = (len(leaves), binding_targets(leaves))
-                    shown.append(
-                        (item, extra, children, parent_cant_text(cant), bound)
-                    )
+                    shown.append((item, extra, children, found))
             if filtering and not shown:
                 continue
             # The header counts the parents in the group, or what a filter
-            # still shows.
-            counted = [entry[0] for entry in shown] if filtering else members
+            # still shows: unfiltered, every member is shown.
             rows.append(
                 self._row(
                     rowKind="group",
                     key=group_key(folder),
                     title=folder or "Ungrouped",
-                    subtitle=count_text(*self._counts(counted)),
+                    subtitle=count_text(*self._counts([e[0] for e in shown])),
                     groupKey=group_key(folder),
                     groupName=folder,
                     childCount=len(shown),
+                    **self._group_details(shown),
                 )
             )
             buckets: dict[InputType, list] = {kind: [] for kind in order}
@@ -762,8 +910,13 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                 if entry[0].type in buckets:
                     buckets[entry[0].type].append(entry)
             for kind in order:
-                for item, extra, children, cant_text, bound in buckets[kind]:
+                for item, extra, children, found in buckets[kind]:
                     key = parent_key(item.type, item.id)
+                    roles = {
+                        name: value
+                        for name, value in found.items()
+                        if name in ROW_DEFAULTS
+                    }
                     rows.append(
                         self._row(
                             rowKind="parent",
@@ -776,9 +929,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
                             systemName=item.system_name,
                             userName=item.second_name,
                             childCount=len(children),
-                            cantSend=cant_text,
-                            bindingCount=bound[0],
-                            bindingTargets=bound[1],
+                            **roles,
                             **self._parent_fields(item, extra),
                         )
                     )
@@ -1156,7 +1307,7 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
 
     @QtCore.Slot(bool)
     def setCantSendOnly(self, on: bool) -> None:
-        """The Find bar's "Can't be sent" tick: only inputs with an action
+        """The Find bar's "Output not found" tick: only inputs with an action
         that can't be sent (D-05-CANT-SEND)."""
         if bool(on) == self._cant_send_only:
             return

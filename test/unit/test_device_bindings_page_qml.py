@@ -14,7 +14,7 @@ backend), so the page's QML is what is tested either way. It checks, as a
 user would:
 
 1. The Find bar holds Find, the input-type box, the action Type and Output
-   boxes (S124) and the ticks Ungrouped / No actions in this mode (S123);
+   boxes (S124) and the ticks Ungrouped / No bindings in this mode (S123);
    "Move inputs with no actions to the end" is gone (S123).
 2. A click on a parent row opens the shared pane on that input (S126);
    it shows the input's actions; Close pane after OK is there.
@@ -207,7 +207,7 @@ def story(j: Journey) -> None:
         j.out["output"] = _by_name(j, page, "deviceBindingsOutputFilter") is not None
         texts = _texts(j, page)
         j.out["ticks"] = [
-            t for t in ("Ungrouped", "No actions in this mode") if t in texts
+            t for t in ("Ungrouped", "No bindings in this mode") if t in texts
         ]
         everywhere = _texts(j, win.contentItem()) + _texts(j, j.win.contentItem())
         j.out["parkGone"] = "Move inputs with no actions to the end" not in everywhere
@@ -363,7 +363,7 @@ def _clean(result: dict, part: str) -> None:
 def test_the_find_bar_holds_the_type_and_output_boxes_and_ticks(result: dict) -> None:
     _clean(result, "find")
     assert result["find"] and result["actionType"] and result["output"]
-    assert result["ticks"] == ["Ungrouped", "No actions in this mode"]
+    assert result["ticks"] == ["Ungrouped", "No bindings in this mode"]
     assert result["parkGone"]
 
 

@@ -29,7 +29,7 @@ Python
 - `gremlin/ui/ui_scale_option.py`, `gremlin/ui/windows_scale_option.py` (part, both owned by page 09): UI scale and "Ignore Windows display scaling".
 - `gremlin/ui/shell_option.py` (89): Home card options and the Auto Mapping Tool's remembered checkbox (registered when the module loads).
 - `gremlin/ui/live_debug.py` (948): activity log `logs.txt` (`trace`), the Live Log Reader models `LiveLog` (Config tab), `DebugLog` (Debug tab) and `InputMonitor`.
-- `gremlin/input_monitor.py` (163): the Input Monitor tap: while on, every input the running profile handles is recorded with the actions it ran (read only; the tap sits in `EventHandler.process_event`, page 02).
+- `gremlin/input_monitor.py` (163): the Input Monitor tap: while on, every input the running profile handles is recorded with the actions it ran (read only; the tap sits in `EventHandler.process_event`, page 02). An input with nothing bound shows "no bindings" and the tick is **Inputs with no bindings** (D-05-DETAILS, 2026-10-12; was "no actions").
 - `gremlin/diagnostics.py` (351): Help → Save Diagnostics… (S132): collects logs (with trace.log and, from 2026-10-10, the Input Tester's files in `tester\`, 02 S119), settings, device list (from 2026-10-11 each `devices.json` module row names its device folder: `folder` and `file` = `<folder>/module.json`, 03 S128) and versions (and the profile when asked), puts `<user>` for the user's name, writes the zip. `gremlin/ui/diagnostics.py` (106): the QML side, `saveAsync` (collect on the main thread, zip on a worker, `saved(ok, message)`).
 - `gremlin/log_feed.py` (165), `gremlin/log_once.py` (36): the Live feed handler and "log once per run".
 - `gremlin/ui/debug_mode.py` (155): red debug mode frame on every window.

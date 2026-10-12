@@ -300,7 +300,8 @@ def _part_find(j: Journey) -> None:
     j.settle()
     out["find:sending"] = _parents(model)
     out["find:noCantSend"] = not any(
-        i.property("text") == "Can't be sent" and _shown(i) for i in Journey.walk(bar)
+        i.property("text") == "Output not found" and _shown(i)
+        for i in Journey.walk(bar)
     )
     out["find:noUndo"] = not _shown(_named(bar, "xboxOutputUndoBar"))
     j.ev("clear(); true", bar)

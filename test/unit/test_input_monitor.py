@@ -94,7 +94,7 @@ def test_records_input_and_the_actions_it_ran() -> None:
     assert "pressed" in ran and "[Default]" in ran
     # The destination label also says when no output module is set up.
     assert "→  Map to vJoy (vJoy 1 B5" in ran
-    assert unbound.endswith("→  no actions")
+    assert unbound.endswith("→  no bindings")
 
 
 def test_axis_bursts_are_coalesced() -> None:

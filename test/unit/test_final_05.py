@@ -209,7 +209,7 @@ def test_s123_the_no_actions_filter_shows_the_inputs_with_none(
     catalog: tuple[Any, Profile],
 ) -> None:
     # S15 ("Move inputs with no actions to the end") was removed by
-    # D-05-CFG-PAGE CF-Q2: the "No actions in this mode" filter replaces it.
+    # D-05-CFG-PAGE CF-Q2: the "No bindings in this mode" filter replaces it.
     model, profile = catalog
     _map(profile, 2, 4)
     rows = _rows(model)

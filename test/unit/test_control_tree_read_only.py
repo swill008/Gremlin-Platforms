@@ -6,7 +6,7 @@
 ControlTree.readOnly hides the grips and opens no menu or pane on a click
 (a left click only selects, carets still fold); ControlTree.showGroups false
 draws no group row and doesn't indent rows for one; ControlFindBar.showUndo
-false hides Undo / Redo and showCantSend false hides the "Can't be sent"
+false hides Undo / Redo and showCantSend false hides the "Output not found"
 tick. The defaults keep the list pages as they are (grip shown, right-click
 menu sent, group row drawn).
 

@@ -31,13 +31,13 @@ function topics() {
                 + "<li>The arrows beside the title step to the previous or next device.</li>"
                 + "<li>Actions belong to the mode in the <b>Mode</b> box <a href=\"show:modebar\">Show me ›</a>, on the mode bar under the toolbar; see <a href=\"topic:modes-mode-box\">Choose the mode you edit and run</a>.</li>"
                 + "<li>Each input's row shows its <b>Note</b>. The rows under it name each action and where it goes: the vJoy output, the keys, the mode or the file.</li>"
-                + "<li>After the input's name, <b>Bindings</b> shows how many are bound in this mode and a box for each target, for example <b>Bindings [2]</b> [vJoy 1 · Button 1] [Xbox 360 Controller · A]. They line up in one column on every row. When there are more boxes than fit, the row ends with \"…\"; hover it to see every target. A row with nothing bound shows nothing. Change the look, or turn it off with <b>Show bindings</b>, in the <b>Bindings</b> section of <b>Appearance…</b>.</li>"
+                + "<li>After the input's name, <b>Bindings</b> shows how many are bound in this mode and a box for each target, for example <b>Bindings [2]</b> [vJoy 1 · Button 1] [Xbox 360 Controller · A]. They line up in one column on every row. When there are more boxes than fit, the row ends with \"…\"; hover it to see every target. A row with nothing bound shows nothing. Change the look, in the <b>Bindings</b> section of <b>Appearance…</b>, or turn it off with <b>Bindings and targets</b> in <b>Row details</b>. <b>Group details</b> and <b>Row details</b> add more to the group line and the rows; see " + _link("appearance", "Change how a page looks") + ".</li>"
                 + "<li>Click an input's row to open all its actions in the editor beside the list, or an action's row to open only that action.</li>"
                 + "<li>Inputs come from the claims in <b>Module Setup</b>, so they can't be added or removed here. With no claimed inputs, the page says \"No inputs are claimed for this device.\": right-click it and choose <b>Module Setup…</b>.</li>"
                 + "</ul>"
                 + _good([
                     "<b>OK</b> keeps an action in the profile; <b>File › Save Profile</b> <a href=\"show:menu/File/Save Profile\">Show me ›</a> writes it to disk.",
-                    "Groups, order and your names are kept in the device's <a href=\"topic:home-devices-module-files\">module file</a>, shared by every profile; see " + _link("layout", "Group, order and name inputs") + ".",
+                    "Groups, order and custom names are kept in the device's <a href=\"topic:home-devices-module-files\">module file</a>, shared by every profile; see " + _link("layout", "Group, order and name inputs") + ".",
                     "With <b>Show LED dots</b> and <b>Show live bars</b> on in <b>Appearance…</b>, a pressed input lights its row and the list jumps to it.",
                     "The <b>Keyboard</b> card opens its own page; see " + _link("keyboard-page", "Set up keyboard keys") + ".",
                     "An output device opens its <b>Output View</b> instead; see " + _link("output-view", "Output View") + "."
@@ -52,7 +52,7 @@ function topics() {
             body: "<p>Groups, order and names keep a long list of inputs easy to find. They work as on the <a href=\"topic:logical-device-group-controls\">Logical Device</a> page.</p>"
                 + "<ul>"
                 + "<li>Rename: right-click the input and choose <b>Rename</b>. This is the input's name in Module Setup too.</li>"
-                + "<li>Remove your name: right-click and choose <b>Row</b> › <b>Clear Name</b>. It asks first (\"Clear the name of <i>input</i>?\"); the system name stays.</li>"
+                + "<li>Remove a custom name: right-click and choose <b>Row</b> › <b>Clear Name</b>. It asks first (\"Clear the name of <i>input</i>?\"); the system name stays.</li>"
                 + "<li>Put inputs in a group: select them, right-click, open <b>Group</b>, then type a name in <b>Group as</b> or choose <b>Move to</b> a group. New groups, moving and deleting groups are under <b>Groups</b>; deleting a group keeps its inputs, in Ungrouped.</li>"
                 + "<li>Drag an input by its handle, or a group by its header, to move it.</li>"
                 + "<li>Sort: right-click, open <b>Order</b>, then choose <b>By System Name</b>, <b>By Your Name</b> or <b>Group Names A to Z</b>.</li>"
@@ -91,12 +91,12 @@ function topics() {
             title: "Filter the inputs",
             body: "<p>The <b>Find</b> bar above the list shows only the inputs you want to see.</p>"
                 + "<ul>"
-                + "<li>Type a system name, your name or a group (<b>Ctrl+F</b> goes to the box). A line under it says how many are found; <b>×</b> or <b>Esc</b> clears the typing.</li>"
+                + "<li>Type a system name, custom name or a group (<b>Ctrl+F</b> goes to the box). A line under it says how many are found; <b>×</b> or <b>Esc</b> clears the typing.</li>"
                 + "<li>The first box shows all inputs, or only buttons, axes or hats.</li>"
                 + "<li><b>Clear</b> resets every Find filter: it empties the search and sets the first box, the ticks under the bar and the <b>Type</b> and <b>Output</b> boxes back to show everything.</li>"
-                + "<li>The action box <b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode. To find inputs with none, use <b>No actions in this mode</b>.</li>"
+                + "<li>The action box <b>Type</b> shows inputs with one kind of action, such as Map to vJoy, Macro or Change Mode. To find inputs with none, use <b>No bindings in this mode</b>.</li>"
                 + "<li>The <b>Output</b> box shows inputs that send to one place. It lists only the places in use.</li>"
-                + "<li>Under the bar, <b>Ungrouped</b> and <b>No actions in this mode</b> narrow the list further. <b>Can't be sent</b> shows only inputs with a Map to vJoy the program can't send; their action rows show a red <b>⚠</b> (hover it to see why).</li>"
+                + "<li>Under the bar, <b>Ungrouped</b> and <b>No bindings in this mode</b> narrow the list further. <b>Output not found</b> shows only inputs with a binding whose output isn't there (missing or switched off); their action rows show a red <b>⚠</b> (hover it to see why).</li>"
                 + "</ul>"
                 + _good([
                     "When nothing matches, the page says \"Nothing matches the Find filters.\" Choose <b>Clear Filters</b>, or <b>Clear</b> on the bar, to reset everything."
@@ -281,7 +281,41 @@ function topics() {
                 + "<h4>List pages</h4>"
                 + "<p>The Device Bindings, Logical Device, Keyboard and OSC pages and the Xbox 360 Controller's Output View each keep their own Appearance, saved for that page in the program settings (\"Saved for this page.\").</p>"
                 + "<p>On the Device Bindings page the Appearance is kept for each device: <b>Save Appearance</b> saves the look of the device shown only. A device with no look of its own uses the shared Device Bindings look. <b>Apply to all devices</b> (next to Save Appearance, on this page only) makes the shown look the shared one and clears every device's own look, so all devices show it. <b>Copy from device…</b> (next to it) loads the shared look or another device's look into the panel without saving; press <b>Save Appearance</b> to keep it for the shown device.</p>"
-                + "<p>Sections: <b>Shown</b>, <b>Bindings</b> (<b>Show bindings</b> and the look of the \"Bindings [n]\" count and target boxes after each row's name: sizes, fonts, colors, border, square or rounded corners, spacing, with its own reset; not on the Xbox list), <b>Live</b> (Device Bindings page), <b>Handles</b>, <b>List</b>, <b>Rows</b> (alignment and width of input and action rows, space between groups), <b>Group</b>, <b>Parent Row</b> and <b>Action Row</b> (row size, padding, colors), <b>Text</b> and <b>Selection</b>.</p>"
+                + "<p>Sections: <b>Shown</b>, <b>Group details</b> and <b>Row details</b> (what the group line and each row show; see the tables below; not on the Xbox list), <b>Bindings</b> (the look of the \"Bindings [n]\" count and target boxes after each row's name: sizes, fonts, colors, border, square or rounded corners, spacing, with its own reset; not on the Xbox list; turn them on or off with <b>Bindings and targets</b> in Row details), <b>Live</b> (Device Bindings page), <b>Handles</b>, <b>List</b>, <b>Rows</b> (alignment and width of input and action rows, space between groups), <b>Group</b>, <b>Parent Row</b> and <b>Action Row</b> (row size, padding, colors), <b>Text</b> and <b>Selection</b>.</p>"
+                + "<h4>Group details</h4>"
+                + "<p>In <b>Group details</b> you choose what the line under each group's name shows. Details use the look of the Bindings number, in brackets when <b>Brackets</b> is on. Counts are for the mode shown.</p>"
+                + "<table cellpadding=\"3\"><tr><th align=\"left\">Setting</th><th align=\"left\">Shows</th><th align=\"left\">On by default</th></tr>"
+                + "<tr><td><b>Controls by type</b></td><td>29 buttons · 6 axes · 1 hat</td><td>Yes</td></tr>"
+                + "<tr><td><b>Bindings by type</b></td><td>[30 bindings] after each type</td><td>Yes</td></tr>"
+                + "<tr><td><b>No bindings</b></td><td>[1 with no bindings]</td><td>No</td></tr>"
+                + "<tr><td><b>Output not found</b></td><td>[1 output not found], in the warning color</td><td>No</td></tr>"
+                + "<tr><td><b>Output devices</b></td><td>[outputs: vJoy 1, Xbox 360 1]</td><td>No</td></tr>"
+                + "<tr><td><b>Action types</b></td><td>[30 Map to vJoy, 2 Macro]</td><td>No</td></tr>"
+                + "<tr><td><b>Custom names</b></td><td>[5 custom names]</td><td>No</td></tr>"
+                + "<tr><td><b>Other modes</b></td><td>[also in mode Combat]</td><td>No</td></tr>"
+                + "<tr><td><b>Wrap details</b></td><td>On: a long line wraps onto more lines. Off: one line ending \"…\"; hover it to see all.</td><td>No</td></tr>"
+                + "<tr><td><b>Hide empty</b></td><td>Leaves out details that are 0 (the type itself still shows, for example \"1 hat\")</td><td>No</td></tr>"
+                + "</table>"
+                + "<p>With all of them on: 29 buttons [30 bindings] · 6 axes [6 bindings] · 1 hat [0 bindings] · [1 with no bindings] · [1 output not found] · [outputs: vJoy 1, Xbox 360 1] · [30 Map to vJoy, 2 Macro] · [5 custom names] · [also in mode Combat]</p>"
+                + "<h4>Row details</h4>"
+                + "<p>In <b>Row details</b> you choose what each input's row shows after its name.</p>"
+                + "<table cellpadding=\"3\"><tr><th align=\"left\">Setting</th><th align=\"left\">Shows</th><th align=\"left\">On by default</th></tr>"
+                + "<tr><td><b>Bindings and targets</b></td><td>Bindings [2] and a box for each target</td><td>Yes</td></tr>"
+                + "<tr><td><b>Action types</b></td><td>[Map to vJoy, Map to Xbox]</td><td>No</td></tr>"
+                + "<tr><td><b>Output not found</b></td><td>[output not found], in the warning color</td><td>No</td></tr>"
+                + "<tr><td><b>Other modes</b></td><td>[also in mode Combat]</td><td>No</td></tr>"
+                + "<tr><td><b>System name</b></td><td>[system name: Button 5], only on rows with a custom name</td><td>No</td></tr>"
+                + "<tr><td><b>Has a condition</b></td><td>[has a condition]</td><td>No</td></tr>"
+                + "<tr><td><b>No bindings</b></td><td>[no bindings], only on rows with none</td><td>No</td></tr>"
+                + "<tr><td><b>Wrap details</b></td><td>On: a long row wraps. Off: one line ending \"…\"</td><td>No</td></tr>"
+                + "</table>"
+                + "<h4>Words used</h4>"
+                + "<table cellpadding=\"3\"><tr><th align=\"left\">Word</th><th align=\"left\">Means</th></tr>"
+                + "<tr><td><b>Output not found</b></td><td>The output a binding is set to isn't there: it is missing or switched off.</td></tr>"
+                + "<tr><td><b>No bindings</b></td><td>Nothing is bound in the mode shown.</td></tr>"
+                + "<tr><td><b>Custom name</b></td><td>A name you give a control.</td></tr>"
+                + "<tr><td><b>System name</b></td><td>The control's own name.</td></tr>"
+                + "</table>"
                 + "<h4>Output View</h4>"
                 + "<p>An Output View's look is saved in that device's <a href=\"topic:home-devices-module-files\">module file</a>. Sections: <b>Screen</b>, <b>Layout</b>, <b>Pads</b>, <b>Meters</b>, <b>Buttons</b> and <b>Colors</b>.</p>"
                 + _good([
@@ -728,7 +762,7 @@ function topics() {
             id: "device-bindings-actions-q-vjoy-not-claimed",
             section: questions,
             title: "Why is a Map to vJoy output red with ⚠?",
-            body: "<p>The program can't send to that output: the vJoy output module doesn't include it, the vJoy device doesn't have it, or that vJoy is turned off. Hover the output to see which. Pick another output from the list, which offers only what the module includes. The input's device card on Home says how many bindings can't be sent, and the Find tick <b>Can't be sent</b> lists them. To keep the output, claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).</p>",
+            body: "<p>The program can't send to that output: the vJoy output module doesn't include it, the vJoy device doesn't have it, or that vJoy is turned off. Hover the output to see which. Pick another output from the list, which offers only what the module includes. The input's device card on Home says how many outputs are not found (\"⚠ n outputs not found\"), and the Find tick <b>Output not found</b> lists them. To keep the output, claim it in <a href=\"topic:home-devices-vjoy-output\">Output Module Setup</a> (<b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>).</p>",
             related: ["device-bindings-actions-map-to-vjoy"]
         },
         {

@@ -693,11 +693,11 @@ ApplicationWindow {
                     Layout.fillWidth: true
 
                     CheckBox {
-                        text: "Inputs with no actions"
+                        text: "Inputs with no bindings"
                         checked: _monitor.showUnbound
                         onToggled: _monitor.showUnbound = checked
                         ToolTip.visible: hovered
-                        ToolTip.text: "Also show inputs that have no actions (dimmed)"
+                        ToolTip.text: "Also show inputs that have no bindings (dimmed)"
                     }
 
                     Item { Layout.fillWidth: true }

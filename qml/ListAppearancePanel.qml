@@ -161,6 +161,27 @@ Rectangle {
     property bool bindingTargetRounded: true
     property int bindingTargetRadius: 5
     property int bindingTargetSpacing: 6
+    // Batch L: details on the group line and on each bindable row (05
+    // Group details / Row details). Not on the Xbox Output View.
+    property bool openGroupDetails: false
+    property bool groupControlsByType: true
+    property bool groupBindingsByType: true
+    property bool groupNoBindings: false
+    property bool groupOutputNotFound: false
+    property bool groupOutputDevices: false
+    property bool groupActionTypes: false
+    property bool groupCustomNames: false
+    property bool groupOtherModes: false
+    property bool groupWrapDetails: false
+    property bool groupHideEmpty: false
+    property bool openRowDetails: false
+    property bool rowActionTypes: false
+    property bool rowOutputNotFound: false
+    property bool rowOtherModes: false
+    property bool rowSystemName: false
+    property bool rowHasCondition: false
+    property bool rowNoBindings: false
+    property bool rowWrapDetails: false
 
     WindowPlacement { id: _place }
 
@@ -220,7 +241,6 @@ Rectangle {
                     visible: _panel.pageKey !== "xbox-output"
                     open: _panel.openBindings
                     onToggled: (v) => { _panel.openBindings = v }
-                    FlagBox { text: "Show bindings"; source: _panel.showBindings; onUserSet: (v) => { _panel.showBindings = v } }
                     RowLayout {
                         Label { text: "\"Bindings\" size"; color: Style.fg; Layout.fillWidth: true }
                         TrackSpin { from: 8; to: 24; source: _panel.bindingsWordSize; onUserSet: (v) => { _panel.bindingsWordSize = v } }
@@ -256,6 +276,40 @@ Rectangle {
                         TrackSpin { from: 0; to: 24; source: _panel.bindingTargetSpacing; onUserSet: (v) => { _panel.bindingTargetSpacing = v } }
                     }
                     Button { text: "Reset to defaults"; onClicked: _panel.resetBindings() }
+                }
+                FoldSection {
+                    objectName: "appearanceGroupDetailsSection"
+                    title: "Group details"
+                    visible: _panel.pageKey !== "xbox-output"
+                    open: _panel.openGroupDetails
+                    onToggled: (v) => { _panel.openGroupDetails = v }
+                    FlagBox { text: "Controls by type"; source: _panel.groupControlsByType; onUserSet: (v) => { _panel.groupControlsByType = v } }
+                    FlagBox { text: "Bindings by type"; source: _panel.groupBindingsByType; onUserSet: (v) => { _panel.groupBindingsByType = v } }
+                    FlagBox { text: "No bindings"; source: _panel.groupNoBindings; onUserSet: (v) => { _panel.groupNoBindings = v } }
+                    FlagBox { text: "Output not found"; source: _panel.groupOutputNotFound; onUserSet: (v) => { _panel.groupOutputNotFound = v } }
+                    FlagBox { text: "Output devices"; source: _panel.groupOutputDevices; onUserSet: (v) => { _panel.groupOutputDevices = v } }
+                    FlagBox { text: "Action types"; source: _panel.groupActionTypes; onUserSet: (v) => { _panel.groupActionTypes = v } }
+                    FlagBox { text: "Custom names"; source: _panel.groupCustomNames; onUserSet: (v) => { _panel.groupCustomNames = v } }
+                    FlagBox { text: "Other modes"; source: _panel.groupOtherModes; onUserSet: (v) => { _panel.groupOtherModes = v } }
+                    FlagBox { text: "Wrap details"; source: _panel.groupWrapDetails; onUserSet: (v) => { _panel.groupWrapDetails = v } }
+                    FlagBox { text: "Hide empty"; source: _panel.groupHideEmpty; onUserSet: (v) => { _panel.groupHideEmpty = v } }
+                    Button { text: "Reset to defaults"; onClicked: _panel.resetGroupDetails() }
+                }
+                FoldSection {
+                    objectName: "appearanceRowDetailsSection"
+                    title: "Row details"
+                    visible: _panel.pageKey !== "xbox-output"
+                    open: _panel.openRowDetails
+                    onToggled: (v) => { _panel.openRowDetails = v }
+                    FlagBox { text: "Bindings and targets"; source: _panel.showBindings; onUserSet: (v) => { _panel.showBindings = v } }
+                    FlagBox { text: "Action types"; source: _panel.rowActionTypes; onUserSet: (v) => { _panel.rowActionTypes = v } }
+                    FlagBox { text: "Output not found"; source: _panel.rowOutputNotFound; onUserSet: (v) => { _panel.rowOutputNotFound = v } }
+                    FlagBox { text: "Other modes"; source: _panel.rowOtherModes; onUserSet: (v) => { _panel.rowOtherModes = v } }
+                    FlagBox { text: "System name"; source: _panel.rowSystemName; onUserSet: (v) => { _panel.rowSystemName = v } }
+                    FlagBox { text: "Has a condition"; source: _panel.rowHasCondition; onUserSet: (v) => { _panel.rowHasCondition = v } }
+                    FlagBox { text: "No bindings"; source: _panel.rowNoBindings; onUserSet: (v) => { _panel.rowNoBindings = v } }
+                    FlagBox { text: "Wrap details"; source: _panel.rowWrapDetails; onUserSet: (v) => { _panel.rowWrapDetails = v } }
+                    Button { text: "Reset to defaults"; onClicked: _panel.resetRowDetails() }
                 }
                 FoldSection {
                     title: "Live"
@@ -517,7 +571,6 @@ Rectangle {
                 highlighted: true
                 onClicked: _panel.applyToAll()
                 ToolTip.visible: hovered
-                ToolTip.delay: 500
                 ToolTip.text: "Use this look for every device on Device Bindings"
                 contentItem: Text {
                     text: parent.text
@@ -540,7 +593,6 @@ device…"
                 highlighted: true
                 onClicked: _copyMenu.popup(_copyButton, 0, _copyButton.height)
                 ToolTip.visible: hovered
-                ToolTip.delay: 500
                 ToolTip.text: "Load another device's look here (not saved until Save Appearance)"
                 contentItem: Text {
                     text: parent.text
@@ -843,7 +895,24 @@ device…"
             "bindingTargetBorderWidth": bindingTargetBorderWidth,
             "bindingTargetRounded": bindingTargetRounded,
             "bindingTargetRadius": bindingTargetRadius,
-            "bindingTargetSpacing": bindingTargetSpacing
+            "bindingTargetSpacing": bindingTargetSpacing,
+            "groupControlsByType": groupControlsByType,
+            "groupBindingsByType": groupBindingsByType,
+            "groupNoBindings": groupNoBindings,
+            "groupOutputNotFound": groupOutputNotFound,
+            "groupOutputDevices": groupOutputDevices,
+            "groupActionTypes": groupActionTypes,
+            "groupCustomNames": groupCustomNames,
+            "groupOtherModes": groupOtherModes,
+            "groupWrapDetails": groupWrapDetails,
+            "groupHideEmpty": groupHideEmpty,
+            "rowActionTypes": rowActionTypes,
+            "rowOutputNotFound": rowOutputNotFound,
+            "rowOtherModes": rowOtherModes,
+            "rowSystemName": rowSystemName,
+            "rowHasCondition": rowHasCondition,
+            "rowNoBindings": rowNoBindings,
+            "rowWrapDetails": rowWrapDetails
         }
     }
 
@@ -930,6 +999,23 @@ device…"
         bindingTargetRounded = v.bindingTargetRounded !== false
         bindingTargetRadius = numVal(v.bindingTargetRadius, 5)
         bindingTargetSpacing = numVal(v.bindingTargetSpacing, 6)
+        groupControlsByType = v.groupControlsByType !== false
+        groupBindingsByType = v.groupBindingsByType !== false
+        groupNoBindings = v.groupNoBindings === true
+        groupOutputNotFound = v.groupOutputNotFound === true
+        groupOutputDevices = v.groupOutputDevices === true
+        groupActionTypes = v.groupActionTypes === true
+        groupCustomNames = v.groupCustomNames === true
+        groupOtherModes = v.groupOtherModes === true
+        groupWrapDetails = v.groupWrapDetails === true
+        groupHideEmpty = v.groupHideEmpty === true
+        rowActionTypes = v.rowActionTypes === true
+        rowOutputNotFound = v.rowOutputNotFound === true
+        rowOtherModes = v.rowOtherModes === true
+        rowSystemName = v.rowSystemName === true
+        rowHasCondition = v.rowHasCondition === true
+        rowNoBindings = v.rowNoBindings === true
+        rowWrapDetails = v.rowWrapDetails === true
     }
 
     // A saved colour; "" (the theme's) when none was chosen.
@@ -1008,12 +1094,13 @@ device…"
         showLeds = true
         colorLiveSet = ""
         resetBindings()
+        resetGroupDetails()
+        resetRowDetails()
         setAllSections(false)
     }
 
     // The Bindings section's Reset to defaults: this section only.
     function resetBindings() {
-        showBindings = true
         bindingsWordSize = 12
         bindingsWordColorSet = ""
         bindingsNumberSize = 12
@@ -1031,6 +1118,32 @@ device…"
         bindingTargetSpacing = 6
     }
 
+    // The Group details section's Reset to defaults: this section only.
+    function resetGroupDetails() {
+        groupControlsByType = true
+        groupBindingsByType = true
+        groupNoBindings = false
+        groupOutputNotFound = false
+        groupOutputDevices = false
+        groupActionTypes = false
+        groupCustomNames = false
+        groupOtherModes = false
+        groupWrapDetails = false
+        groupHideEmpty = false
+    }
+
+    // The Row details section's Reset to defaults: this section only.
+    function resetRowDetails() {
+        showBindings = true
+        rowActionTypes = false
+        rowOutputNotFound = false
+        rowOtherModes = false
+        rowSystemName = false
+        rowHasCondition = false
+        rowNoBindings = false
+        rowWrapDetails = false
+    }
+
     function setAllSections(v) {
         openShown = v
         openHandles = v
@@ -1043,6 +1156,8 @@ device…"
         openSelection = v
         openLive = v
         openBindings = v
+        openGroupDetails = v
+        openRowDetails = v
     }
 
     function rememberDisplay() {

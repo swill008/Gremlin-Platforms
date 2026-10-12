@@ -326,7 +326,7 @@ function topics() {
                 + "</ol>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
-                + "<li>Map to vJoy and Map to Xbox say where they send the input. An input with none shows <i>no actions</i>; untick <b>Inputs with no actions</b> to hide those.</li>"
+                + "<li>Map to vJoy and Map to Xbox say where they send the input. An input with none shows <i>no bindings</i>; untick <b>Inputs with no bindings</b> to hide those.</li>"
                 + "<li>An axis shows about 10 values a second. Nothing is written to a file.</li>"
                 + "<li>The Input Monitor stops when the Live Log Reader closes.</li>"
                 + "</ul>",

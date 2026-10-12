@@ -127,11 +127,11 @@ Item {
                 id: _find
                 layout: _layout
                 namePrefix: "keyboard"
-                placeholder: "Key name, your name, or group"
+                placeholder: "Key name, custom name, or group"
                 typeChoices: [{ label: "All keys", value: "all" }]
                 filters: [
                     { label: "Ungrouped", name: "ungrouped" },
-                    { label: "No actions in this mode", name: "noAction" }
+                    { label: "No bindings in this mode", name: "noAction" }
                 ]
                 locked: _root.editorLocked
                 paneOpen: _root.actionOpen
@@ -225,6 +225,23 @@ Item {
                 bindingTargetRounded: _appear.bindingTargetRounded
                 bindingTargetRadius: _appear.bindingTargetRadius
                 bindingTargetSpacing: _appear.bindingTargetSpacing
+                groupControlsByType: _appear.groupControlsByType
+                groupBindingsByType: _appear.groupBindingsByType
+                groupNoBindings: _appear.groupNoBindings
+                groupOutputNotFound: _appear.groupOutputNotFound
+                groupOutputDevices: _appear.groupOutputDevices
+                groupActionTypes: _appear.groupActionTypes
+                groupCustomNames: _appear.groupCustomNames
+                groupOtherModes: _appear.groupOtherModes
+                groupWrapDetails: _appear.groupWrapDetails
+                groupHideEmpty: _appear.groupHideEmpty
+                rowActionTypes: _appear.rowActionTypes
+                rowOutputNotFound: _appear.rowOutputNotFound
+                rowOtherModes: _appear.rowOtherModes
+                rowSystemName: _appear.rowSystemName
+                rowHasCondition: _appear.rowHasCondition
+                rowNoBindings: _appear.rowNoBindings
+                rowWrapDetails: _appear.rowWrapDetails
                 summaryFont: _appear.summaryFont
                 parentFont: _appear.parentFont
                 groupFont: _appear.groupFont

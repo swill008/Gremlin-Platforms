@@ -804,7 +804,7 @@ def cant_send_line(count: int) -> str:
     """The card's red line (glossary): "" when every binding can be sent."""
     if count <= 0:
         return ""
-    return f"⚠ {count} binding{'' if count == 1 else 's'} can't be sent"
+    return f"⚠ {count} output{'' if count == 1 else 's'} not found"
 
 
 def cant_send_tip(items: list[dict]) -> str:

@@ -9,7 +9,7 @@ import Gremlin.Style
 
 // The Find line, its filter ticks and the page's Undo bar, shared by the
 // control pages (Device Bindings, Keyboard, Logical Device, OSC). The page
-// turns changed() into a filter call on its model; the "Can't be sent"
+// turns changed() into a filter call on its model; the "Output not found"
 // tick (D-05-CANT-SEND) is the bar's own and tells the model directly
 // (layout.setCantSendOnly).
 ColumnLayout {
@@ -31,7 +31,7 @@ ColumnLayout {
     property bool paneOpen: false
     // False: no Undo / Redo bar (a view-only list).
     property bool showUndo: true
-    // False: no "Can't be sent" tick (a list without actions to send).
+    // False: no "Output not found" tick (a list without actions to send).
     property bool showCantSend: true
     // Page-only header buttons, after Clear: buttons: [ Button { ... } ].
     property alias buttons: _extras.data
@@ -163,7 +163,7 @@ ColumnLayout {
             id: _cantSend
             objectName: "cantSendTick"
             visible: _bar.showCantSend
-            text: "Can't be sent"
+            text: "Output not found"
             onClicked: {
                 if (_bar.layout)
                     _bar.layout.setCantSendOnly(checked)
