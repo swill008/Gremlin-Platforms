@@ -1067,3 +1067,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Release 1.0.34 build + publish (release-exe.yml) | release | ~5 min | 4m37s | 17:36-17:41 |
 | 2026-10-12 | Release workflow action v2 -> v3 + 4 workflow test files (lead) | fix | rough 3 min | 2 min | 17:47-17:49 |
 | 2026-10-12 | CI on 69e3a323 (passed) | ci | ~22 min | 23m45s | 17:43-18:07 |
+| 2026-10-12 | Batch R Search rebuild: 8 parallel agents (index, query, model, window, nav, plug-in guards, docs, e2e) | feature | ~10 min | 18:09-18:23 (14 min incl. cross-agent fixes routed by lead) | agents 4-11 min each; S-WIN longest (11) |
+| 2026-10-12 | Batch R follow-ups (S-GUARD, S-TEXT, S-DOCS maps, S-MODEL prefixes) | fix | 3-8 min | 18:20-18:28 | parallel |
+| 2026-10-12 | Full run batch R (user using the PC) | test | ~7 min | 9 min (18:28-18:37) | first attempt wasted: bash `python` has no pytest, use the poetry venv python |
+| 2026-10-12 | Batch R fixes after full run (clipboard crash, library guard, Help) + targeted reruns | fix | 3-8 min | 18:38-18:41 | 2 agents + lead |
+| 2026-10-12 | Batch R commit, push, tracker | lead | ~2 min | 18:41-18:44 | |
