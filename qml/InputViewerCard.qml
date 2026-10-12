@@ -7,7 +7,10 @@ import QtQuick.Controls.Universal as U
 import QtQuick.Layouts
 
 import Gremlin.Device
+import Gremlin.Menus
 import Gremlin.Style
+
+import "control_menu.js" as ControlMenu
 
 ColumnLayout {
     id: _root
@@ -38,6 +41,29 @@ ColumnLayout {
     PairLiveThrottle {
         id: _live
         guid: deviceGuid
+    }
+
+    // A chip's right-click menu: Find uses… (D-01-SEARCH), Search on what
+    // sends to its vJoy button.
+    property var _menuQuery: null
+    property string _menuTitle: ""
+
+    function chipQuery(vjoyId, vjoyInput) {
+        return { kind: "output", output: "vjoy", outputId: vjoyId,
+                 inputType: ControlMenu.inputTypeOf("button"), inputId: vjoyInput }
+    }
+
+    function openChipMenu(chip, vjoyId, vjoyInput, vjoyLabel, x, y) {
+        _menuQuery = chipQuery(vjoyId, vjoyInput)
+        _menuTitle = vjoyLabel
+        _chipMenu.openAt(chip, x, y)
+    }
+
+    ContextMenu {
+        id: _chipMenu
+        build: function() {
+            return ControlMenu.findUsesMenu("vjoy-viewer-chip", _root._menuTitle, _root._menuQuery)
+        }
     }
 
     function hwAxis(id) {
@@ -250,6 +276,7 @@ ColumnLayout {
                             required property string label
                             required property string vjoyLabel
                             required property string vjoyGuid
+                            required property int vjoyId
                             required property int vjoyInput
                             required property bool destClaimed
 
@@ -270,6 +297,16 @@ ColumnLayout {
                             border.color: (hwOn || vjOn) ? Style.ok : Style.medColor
                             border.width: Style.dp(1)
                             clip: true
+
+                            MouseArea {
+                                id: _chipArea
+                                objectName: "vjoyViewerChipMenu"
+                                z: 2
+                                anchors.fill: parent
+                                acceptedButtons: Qt.RightButton
+                                onClicked: (mouse) => _root.openChipMenu(_chipArea, vjoyId, vjoyInput,
+                                                                         vjoyLabel, mouse.x, mouse.y)
+                            }
 
                             Row {
                                 anchors.fill: parent

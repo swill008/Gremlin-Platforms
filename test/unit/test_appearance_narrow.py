@@ -79,7 +79,7 @@ def _story(j) -> None:  # noqa: ANN001
     # The user reopens it from the page bar while still too narrow.
     if not shown():
         j.ev("toggleAppearance(); true", j.ev("deviceBindingsPane()"))
-        j.QTest.qWait(300)
+        j.wait_until(shown, "the reopened Appearance panel")
         j.out["reopened"] = shown()
         size(1590)
         j.out["after_resize"] = shown()

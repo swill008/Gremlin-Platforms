@@ -4,10 +4,10 @@
 
 """The bar under the toolbar (01 S58, S58a; 04 S51; D-01-MODE-BAR).
 
-The toolbar holds only Home, Run, vJoy Viewer, Input Tester, Device Mapping Editor,
-Device Library, Logical Device and Options. Mode, its list and Manage Modes
-sit on the left of a bar under it on every page; after a divider the bar
-shows the open page's own controls (Home: Compact view, Layout; its Device
+The toolbar holds only Home, Run, vJoy Viewer, Input Tester, Search, Device
+Mapping Editor, Device Library, Logical Device and Options. Mode, its list and
+Manage Modes sit on the left of a bar under it on every page; after a divider
+the bar shows the open page's own controls (Home: Compact view, Layout; its Device
 Library… button moved to the toolbar 2026-10-09).
 
 Runs the real main window off-screen in its own process (fake hardware, no
@@ -119,7 +119,7 @@ out['toolbarHasMode'] = run('(function() { var inside = ' + INSIDE + '; '
                             '|| inside(_manageModesButton, _toolbarFlick) })()')
 # The toolbar buttons sit on the left, one row-spacing apart (not spread out).
 GAPS = ('(function() { var b = [_homeButton, _toggleButton, _vjoyViewerButton, '
-        '_inputTesterButton, '
+        '_inputTesterButton, _searchButton, '
         '_deviceMappingEditorButton, _deviceLibraryButton, '
         '_logicalButton, '
         '_optionsButton]; '

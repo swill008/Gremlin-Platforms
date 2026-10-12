@@ -6,8 +6,11 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 import Gremlin.Device
+import Gremlin.Menus
 import Gremlin.Style
 import Gremlin.UI
+
+import "control_menu.js" as ControlMenu
 
 // One pad's section on the Xbox Output View (03 S139, D-XBOX-PADS): a
 // header that folds it ("Xbox 360 N", what drives it, how many controls are
@@ -82,6 +85,33 @@ Rectangle {
         id: _live
         padId: _root.padId
         active: _root.running && _root.open
+    }
+
+    // A control's right-click menu: Find uses… (D-01-SEARCH), Search on what
+    // sends to this pad's control. Keys are "parent:<kind>:<target>".
+    property string _menuKey: ""
+    property string _menuTitle: ""
+
+    function findQuery(key) {
+        var parts = String(key).split(":")
+        if (parts.length < 3 || parts[0] !== "parent")
+            return null
+        return { kind: "output", output: "xbox", outputId: _root.padId,
+                 inputType: ControlMenu.inputTypeOf(parts[1]), inputId: parts.slice(2).join(":") }
+    }
+
+    function openRowMenu(key, title, item, x, y) {
+        _menuKey = key
+        _menuTitle = title
+        _rowMenu.openAt(item, x, y)
+    }
+
+    ContextMenu {
+        id: _rowMenu
+        build: function() {
+            return ControlMenu.findUsesMenu("xbox-output-row", _root._menuTitle,
+                                            _root.findQuery(_root._menuKey))
+        }
     }
 
     function _applyFind() {
@@ -336,6 +366,9 @@ Rectangle {
                 Layout.preferredHeight: _root.open ? Math.max(listHeight, Style.dp(80)) : 0
                 ownScroll: false
                 readOnly: true
+                onParentMenu: (key, title, userName, groupName, item, x, y) => {
+                    _root.openRowMenu(key, title, item, x, y)
+                }
                 showGroups: false
                 layout: _list
                 namePrefix: "xboxOutput" + _root.padId

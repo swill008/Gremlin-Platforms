@@ -72,6 +72,7 @@ def _child() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
     sys.stdout.reconfigure(encoding="utf-8")  # pyright: ignore[reportAttributeAccessIssue]
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
@@ -85,6 +86,7 @@ def _child() -> None:
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     import gremlin.ui.device  # noqa: F401  (Gremlin.Device)
     import gremlin.ui.folder_memory  # noqa: F401  (FilePicker)
@@ -221,7 +223,7 @@ def _child() -> None:
             result("opened", bool(menu.property("opened")))
             result("bare", open_device(menu))
             result("add-ran", activate(menu, "Add Image…"))
-            QtTest.QTest.qWait(200)
+            wait_until(picker, "the Choose Image picker", fail=False)
             pk = picker()
             if pk is None:
                 print("ERROR no Choose Image FilePicker on the page", flush=True)
@@ -232,7 +234,12 @@ def _child() -> None:
                 QtTest.QTest.qWait(100)
                 # What the file dialog's Accept hands the picker.
                 on(pk, f"_accept({json.dumps(pick.as_uri())})")
-                QtTest.QTest.qWait(300)
+                wait_until(
+                    lambda: (c := card()) is not None
+                    and "photo" in str(c.property("photo")),
+                    "the card's photo",
+                    fail=False,
+                )
                 c = card()
                 result("photo-after-add", str(c.property("photo")) if c else "")
                 result("image-after-add", store.device_photo_ref(doc()))
@@ -247,7 +254,12 @@ def _child() -> None:
                     right_click(c)
                     result("with-photo", open_device(menu))
                     result("remove-ran", activate(menu, "Remove Image"))
-                    QtTest.QTest.qWait(300)
+                    wait_until(
+                        lambda: (c := card()) is not None
+                        and str(c.property("photo")) == "",
+                        "the card's photo removed",
+                        fail=False,
+                    )
                     c = card()
                     result("photo-after-remove", str(c.property("photo")) if c else "?")
                     result("image-after-remove", store.device_photo_ref(doc()))

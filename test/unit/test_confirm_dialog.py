@@ -103,9 +103,11 @@ def _smoke() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     class FakeBackend(QtCore.QObject):
         uiScaleChanged = QtCore.Signal()
@@ -195,7 +197,7 @@ def _smoke() -> None:
 
     # Undoable: the History line; Cancel has the focus; Enter cancels.
     ev("_win.ask(true, '')")
-    QtTest.QTest.qWait(200)
+    wait_until(is_open, "the question to open", fail=False)
     report("open1", is_open())
     report("title", text_of("confirmTitle"))
     report("text", text_of("confirmText"))
@@ -213,7 +215,7 @@ def _smoke() -> None:
 
     # Not undoable: the can't-be-undone line; Esc cancels.
     ev("_win.ask(false, '')")
-    QtTest.QTest.qWait(200)
+    wait_until(is_open, "the question to open", fail=False)
     report("last-not-undoable", text_of("confirmLastLine"))
     key(QtCore.Qt.Key.Key_Escape)
     report("esc-counts", counts())
@@ -222,7 +224,7 @@ def _smoke() -> None:
     # A note replaces the last line; the keypad Enter on the red button
     # (Tab to it) still cancels.
     ev("_win.ask(true, 'Your files stay as they are.')")
-    QtTest.QTest.qWait(200)
+    wait_until(is_open, "the question to open", fail=False)
     report("last-note", text_of("confirmLastLine"))
     key(QtCore.Qt.Key.Key_Backtab)
     report("tab-to-action", bool(find("confirmAction").hasActiveFocus()))
@@ -231,21 +233,21 @@ def _smoke() -> None:
 
     # A click on Cancel cancels.
     ev("_win.ask(true, '')")
-    QtTest.QTest.qWait(200)
+    wait_until(is_open, "the question to open", fail=False)
     click("confirmCancel")
     report("cancel-click-counts", counts())
 
     # A click on the red button goes ahead, once.
     ev("_win.ask(true, '')")
-    QtTest.QTest.qWait(200)
+    wait_until(is_open, "the question to open", fail=False)
     click("confirmAction")
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: not is_open(), "the question to close", fail=False)
     report("action-click-counts", counts())
     report("action-click-closed", not is_open())
 
     # Space on the red button goes ahead.
     ev("_win.ask(true, '')")
-    QtTest.QTest.qWait(200)
+    wait_until(is_open, "the question to open", fail=False)
     key(QtCore.Qt.Key.Key_Backtab)
     key(QtCore.Qt.Key.Key_Space)
     report("space-counts", counts())
@@ -279,7 +281,11 @@ def _smoke() -> None:
         QtCore.Qt.KeyboardModifier.NoModifier,
         centre("danger"),
     )
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: colour(fill, "color") == style("dangerPressed"),
+        "the pressed colour",
+        fail=False,
+    )
     report("fill-pressed", colour(fill, "color") == style("dangerPressed"))
     QtTest.QTest.mouseRelease(
         quick,
@@ -298,7 +304,11 @@ def _smoke() -> None:
     )
 
     ev("_win.askInner()")
-    QtTest.QTest.qWait(200)
+    wait_until(
+        lambda: ev("_win.innerDlg !== null && _win.innerDlg.opened"),
+        "the inner question to open",
+        fail=False,
+    )
     report("inner-open", ev("_win.innerDlg !== null && _win.innerDlg.opened"
                             " && _win.innerDlg.parent === _inner.contentItem"))
 

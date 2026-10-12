@@ -184,6 +184,7 @@ def main() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
     sys.stdout.reconfigure(encoding="utf-8")  # pyright: ignore[reportAttributeAccessIssue]
     out = Path(sys.argv[1])
     mode = sys.argv[2]
@@ -192,6 +193,7 @@ def main() -> None:
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     import gremlin.ui.device  # noqa: F401  (Gremlin.Device)
     import gremlin.ui.folder_memory  # noqa: F401  (FilePicker)
@@ -378,8 +380,7 @@ def main() -> None:
         result("b-has-image", ev("cardOf('b').hasImage"))
         result("a-rows", device_rows("a"))
         result("a-add-ran", ev("menuOf('a').activate('Add Image…')"))
-        QtTest.QTest.qWait(200)
-        pk = picker()
+        pk = wait_until(picker, "the Choose Image picker", fail=False)
         if pk is None:
             print("ERROR no Choose Image FilePicker on the page", flush=True)
         else:

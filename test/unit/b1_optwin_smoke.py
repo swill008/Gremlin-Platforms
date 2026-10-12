@@ -24,6 +24,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -36,6 +37,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -80,12 +82,12 @@ def main() -> None:
             int(sys.argv[1]),
         )
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
-    root = app.engine.rootObjects()[0]
+    root = wait_until(lambda: app.engine.rootObjects(), "the main window")[0]
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
     call(root, "openDeviceMappingEditorForCard", card)
-    QtTest.QTest.qWait(1000)
-    win = call(root, "deviceMappingEditorWindow")
+    win = wait_until(
+        lambda: call(root, "deviceMappingEditorWindow"), "the Device Mapping Editor"
+    )
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(300)
@@ -151,7 +153,7 @@ def main() -> None:
             QtCore.Qt.KeyboardModifier.NoModifier,
             centre.toPoint(),
         )
-        QtTest.QTest.qWait(150)
+        wait_until(lambda: ev("_optionsWin.pinned"), "the pin", fail=False)
     out["pin-clicked"] = ev("_optionsWin.pinned")
     out["pin-kept"] = device_map_options.side_panel_state("options").get("pinned")
     # Pinned: going back to the Device Mapping Editor leaves it open.

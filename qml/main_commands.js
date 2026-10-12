@@ -109,6 +109,10 @@ function commandList() {
           run: function() { openTool("DialogAutoMappingTool.qml") } },
         { id: "tools.manageModes", text: "Manage Modes", group: "Tools › Mapping",
           run: function() { openTool("DialogManageModes.qml") } },
+        // Search (D-01-SEARCH): every use of an input, output, mode or action type.
+        { id: "tools.search", text: "Search…", group: "Tools › Mapping", shortcut: "Ctrl+Shift+F",
+          keywords: "find uses where used usages references binding input output mode action",
+          run: function() { openSearch(null) } },
         // The OSC Monitor (D-09-OSC-MONITOR, 09 S138): the OSC page with
         // its Monitor shown.
         { id: "tools.oscMonitor", text: "OSC Monitor", group: "Tools",

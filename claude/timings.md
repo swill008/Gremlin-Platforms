@@ -1033,3 +1033,23 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | 133 verify: leak watcher rerun before/after (VERIFY) | review | 5-10 min + wait | 15 min (incl. waiting) | 16:01-16:16 |
 | 2026-10-12 | CI on 571208b9 (passed, 0 EXIT HANG) | ci | ~20 min | 20m40s | 16:00-16:21 |
 | 2026-10-12 | Full run batch N, seed 418098 (7,160 passed) + lint | test | ~7 min | 8 min | 16:17-16:25 |
+| 2026-10-12 | 133 follow-up: editor tests (L133-A) | fix | 3-8 min | 4 min | 16:32-16:36 |
+| 2026-10-12 | 24 wait sweep part 4: 49 waits in 15 files (WAIT-4) | refactor | rough 15 min | 6 min | 16:32-16:38 |
+| 2026-10-12 | 133 follow-up: OSC and stage1 tests (L133-B) | fix | 3-8 min | 6 min | 16:32-16:38 |
+| 2026-10-12 | 24 wait sweep part 3: 48 waits in 16 files (WAIT-3) | refactor | rough 15 min | 8 min | 16:32-16:40 |
+| 2026-10-12 | 24 wait sweep part 1: 88 waits in 21 files (WAIT-1) | refactor | rough 15 min | 10 min | 16:32-16:42 |
+| 2026-10-12 | Find in profile: code facts (F9-CODE, read-only) | review | 5-10 min | 1 min | 16:40-16:41 |
+| 2026-10-12 | Find in profile: screen and web facts (F9-UX, read-only) | review | 5-10 min | 1 min | 16:40-16:41 |
+| 2026-10-12 | 133: leak warning fixed (after fixture drop; one-time objects) (GUARD) | fix | 3-8 min | 3 min | 16:39-16:42 |
+| 2026-10-12 | 24 wait sweep part 2: 51 waits in 19 files (WAIT-2) | refactor | rough 15 min | 15 min | 16:32-16:47 |
+| 2026-10-12 | CI on 133edd91 (passed; 0 exit hangs, no 30/38 guard hits) | ci | ~20 min | ~22 min | 16:26-16:48 |
+| 2026-10-12 | Search: spec, glossary, Help (P-DOCS) | docs | 5-10 min | 3 min | 16:48-16:51 |
+| 2026-10-12 | Release notes 1.0.34 (REL-NOTES) | docs | 3-8 min | 1 min | 16:52-16:53 |
+| 2026-10-12 | Search: usages core (P-CORE) | feature | 8-15 min | 6 min | 16:47-16:53 |
+| 2026-10-12 | Search: list model (P-MODEL) | feature | 8-15 min | 6 min | 16:47-16:53 |
+| 2026-10-12 | Search: end-to-end test (P-E2E) | test | 8-15 min | 8 min | 16:48-16:56 |
+| 2026-10-12 | Search: window, toolbar, navigation (P-WIN) | feature | 10-15 min | 10 min | 16:47-16:57 |
+| 2026-10-12 | Pre-release map check 1.0.34 (MAPCHECK) | review | 5-10 min | 5 min | 16:52-16:57 |
+| 2026-10-12 | Search: Find uses… menus (P-MENUS) | feature | 5-10 min | 13 min | 16:48-17:01 |
+| 2026-10-12 | Search docs finished: built tags, map, README recount, glossary (P-DOCS2) | docs | 5-10 min | 4 min | 17:02-17:06 |
+| 2026-10-12 | Full run batch O+P, seed 570729 (7,262 passed, 1 load flake) | test | ~7 min | 7 min | 17:02-17:09 |

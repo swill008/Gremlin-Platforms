@@ -26,6 +26,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 
 # Never the user's own folder: the pytest side gives a temporary one.
 _HOME = Path(os.environ.get("USERPROFILE", "")).resolve()
@@ -94,6 +95,8 @@ store.module_file_in(DEVICE).write_text(
     ),
     encoding="utf-8",
 )
+
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import joystick_gremlin  # noqa: E402
 from gremlin.ui import device_map_options  # noqa: E402
@@ -406,7 +409,7 @@ def main() -> None:
         before = w.nodes()
         at = w.hist()
         w.trigger("Edit", "Cut")
-        QtTest.QTest.qWait(50)
+        wait_until(lambda: "b3" not in ids_of(w.nodes()), "Cut", 5000, fail=False)
         res = {
             "gone": "b3" not in ids_of(w.nodes()),
             "copied": [n.get("id") for n in (w.js("_ed().copiedNodes") or [])],
@@ -565,7 +568,12 @@ def main() -> None:
         res["still-renaming"] = w.ev("_ed().renameId")
         for ch in "Qz":
             QtTest.QTest.keyClick(win, ch)
-        QtTest.QTest.qWait(100)
+        wait_until(
+            lambda: str(w.ev("_editorWin.activeFocusItem"
+                             " ? String(_editorWin.activeFocusItem.text) : ''"))
+            .endswith("Qz"),
+            "the typed name", 5000, fail=False,
+        )
         res["typed"] = w.ev(
             "_editorWin.activeFocusItem ? String(_editorWin.activeFocusItem.text) : ''"
         )

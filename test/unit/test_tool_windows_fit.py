@@ -41,6 +41,8 @@ _WINDOWS = [
 _CODE = """
 import json, os, sys
 sys.path.insert(0, '.')
+sys.path.insert(0, 'test')
+from qt_wait import wait_until
 import importlib.util
 spec = importlib.util.spec_from_file_location('fake_hardware', 'test/fake_hardware.py')
 fake_hardware = importlib.util.module_from_spec(spec)
@@ -66,7 +68,9 @@ for name in sys.argv[1].split(','):
         run('_root.openConfigureModule("source", null)')
     else:
         run(f'Helpers.createComponent("{name}.qml")')
-    QtTest.QTest.qWait(400)
+    wait_until(lambda: any(
+        w is not win and w.isVisible() and isinstance(w, QtQuick.QQuickWindow)
+        for w in app.topLevelWindows()), 'the %s window' % name, fail=False)
     for w in app.topLevelWindows():
         if w is win or not w.isVisible() or not isinstance(w, QtQuick.QQuickWindow):
             continue

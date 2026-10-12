@@ -221,6 +221,11 @@ def menu_of(c: QtCore.QObject) -> QtCore.QObject | None:
     )
 
 
+def menu_open(c: QtCore.QObject) -> bool:
+    menu = menu_of(c)
+    return bool(menu is not None and menu.property("opened"))
+
+
 def menu_rows(c: QtCore.QObject) -> list[str]:
     """Right-clicks the card and reads its menu (opening Device when it is
     a submenu)."""
@@ -231,7 +236,7 @@ def menu_rows(c: QtCore.QObject) -> list[str]:
         quick, QtCore.Qt.MouseButton.RightButton, QtCore.Qt.KeyboardModifier.NoModifier,
         point,
     )  # fmt: skip
-    QtTest.QTest.qWait(250)
+    wait_until(lambda: menu_open(c), 3000)
     menu = menu_of(c)
     assert menu is not None, "the card has no menu"
     rows = str(ev(menu, "describe().join('|')") or "").split("|")
@@ -308,7 +313,7 @@ def home() -> None:
     assert c is not None
     out["home-rows-before"] = menu_rows(c)
     ev(menu_of(c), "close()")  # type: ignore[arg-type]
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: not menu_open(c), 3000)
 
     out["home-add-ran"] = run_menu(c, "Add Image…")
     out["home-add-picked"] = pick(page, url("red.png"))  # type: ignore[arg-type]
@@ -319,7 +324,7 @@ def home() -> None:
     }  # fmt: skip
     out["home-rows-with-image"] = menu_rows(card())  # type: ignore[arg-type]
     ev(menu_of(card()), "close()")  # type: ignore[arg-type]
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: not menu_open(card()), 3000)  # type: ignore[arg-type]
 
     out["home-change-ran"] = run_menu(card(), "Change Image…")  # type: ignore[arg-type]
     out["home-change-picked"] = pick(page, url("blue.png"))  # type: ignore[arg-type]

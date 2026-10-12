@@ -31,6 +31,7 @@ os.environ.setdefault(
 )
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 
 import gremlin.util  # noqa: E402
 
@@ -39,6 +40,7 @@ gremlin.util.userprofile_path = unittest.mock.Mock(return_value=tempfile.mkdtemp
 
 import shiboken6  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 DEVICE = "Planes Stick"
 GUID = "12345678-1234-1234-1234-1234567890ab"
@@ -228,7 +230,7 @@ def main() -> None:
     result("bottom-photo", js("_editorWin.photoOverride.indexOf('bg.png') >= 0"))
 
     js("_editorWin.enterEdit(); 1")
-    wait(800)
+    wait_until(lambda: js("_bgMenu.enabled") == "True", "Edit on", fail=False)
     result("bg-menu-editing", js("_bgMenu.enabled"))
     result("plane-start", js("_ed().editPlane + ' ' + _editorWin.bgMode"))
     result("status-fg", child("dmePlaneStatus").property("text"))
@@ -286,19 +288,21 @@ def main() -> None:
     wait()
     quick.requestActivate()
     wait()
+    plane = js("_ed().editPlane")
     QtTest.QTest.keyClick(quick, QtCore.Qt.Key.Key_Escape)
-    wait()
+    wait_until(lambda: js("_ed().editPlane") != plane, "Esc left the plane", fail=False)
     result("esc", js("_ed().editPlane"))
+    plane = js("_ed().editPlane")
     # Ctrl+B toggles it.
     QtTest.QTest.keyClick(
         quick, QtCore.Qt.Key.Key_B, QtCore.Qt.KeyboardModifier.ControlModifier
     )
-    wait()
+    wait_until(lambda: js("_ed().editPlane") != plane, "Ctrl+B", fail=False)
     result("ctrl-b", js("_ed().editPlane"))
     QtTest.QTest.keyClick(
         quick, QtCore.Qt.Key.Key_B, QtCore.Qt.KeyboardModifier.ControlModifier
     )
-    wait()
+    wait_until(lambda: js("_ed().editPlane") == plane, "Ctrl+B back", fail=False)
     result("ctrl-b-back", js("_ed().editPlane"))
 
     # Ctrl+Shift+B moves the selection to the other plane, and back (07 S121).

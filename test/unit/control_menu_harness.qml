@@ -41,6 +41,7 @@ Item {
         function sortByName() { _root.log("sortName") }
         function sortGroupNames() { _root.log("sortGroups") }
         function setUserName(k, v) { _root.log("setUserName " + k + "=" + v) }
+        function findQuery(k) { return { kind: "input", deviceGuid: "dev", inputType: 3, inputId: k } }
     }
     QtObject { id: _tree; property var picked: [] }
     QtObject { id: _devices; function rowCount() { return 2 } }

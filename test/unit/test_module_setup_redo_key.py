@@ -32,6 +32,7 @@ _ROOT = pathlib.Path(__file__).parents[2]
 _CODE = """
 import json, os, sys
 sys.path.insert(0, '.')
+sys.path.insert(0, os.path.abspath('test'))
 import importlib.util
 spec = importlib.util.spec_from_file_location('fake_hardware', 'test/fake_hardware.py')
 fake_hardware = importlib.util.module_from_spec(spec)
@@ -41,6 +42,7 @@ import gremlin.ui.update_model as um
 um.UpdateModel.startup = lambda self, *a, **k: None
 import joystick_gremlin
 from PySide6 import QtCore, QtQml, QtTest
+from qt_wait import wait_until
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
 win = app.main_window
 
@@ -51,10 +53,11 @@ def ev(obj, code):
     return value[0] if isinstance(value, tuple) else value
 
 ev(win, '_root.openConfigureModule("source", null)')
-QtTest.QTest.qWait(400)
 from PySide6 import QtQuick
-setup = next(w for w in app.topLevelWindows()
-             if w is not win and w.isVisible() and isinstance(w, QtQuick.QQuickWindow))
+setup = wait_until(lambda: next(
+    (w for w in app.topLevelWindows()
+     if w is not win and w.isVisible() and isinstance(w, QtQuick.QQuickWindow)),
+    None), 'the Module Setup window')
 setup.requestActivate()
 QtTest.QTest.qWaitForWindowActive(setup, 3000)
 QtTest.QTest.qWait(100)

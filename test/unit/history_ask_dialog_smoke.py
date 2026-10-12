@@ -110,6 +110,18 @@ def gate_button(text: str) -> QtQuick.QQuickItem | None:
     return None
 
 
+frames = [0]
+hist.frameSwapped.connect(lambda: frames.__setitem__(0, frames[0] + 1))
+
+
+def wait_shown(text: str, what: str) -> None:
+    """Waits for the question with this button, laid out and drawn."""
+    start = frames[0]
+    wait_until(
+        lambda: gate_button(text) and frames[0] > start + 1, what, fail=False
+    )
+
+
 def click(text: str) -> bool:
     button = gate_button(text)
     if button is None:
@@ -118,7 +130,6 @@ def click(text: str) -> bool:
         QtCore.QPointF(button.width() / 2, button.height() / 2)
     ).toPoint()
     QtTest.QTest.mouseClick(hist, QtCore.Qt.MouseButton.LeftButton, pos=centre)
-    QtTest.QTest.qWait(400)
     return True
 
 
@@ -151,22 +162,26 @@ QtTest.QTest.qWait(200)
 
 # Decline: Restore, then Cancel on the outside-folder question.
 hv('restore("before")')
-QtTest.QTest.qWait(200)
+wait_shown("Restore", "the Restore? question")
 out["first-confirm"] = hv("_gate.confirmText")
 out["first-clicked"] = click("Restore")
+wait_shown("Write Here", "the outside-folder question")
 out["ask"] = gate()
 out["written-while-asking"] = written()
 out["cancel-clicked"] = click("Cancel")
+wait_until(lambda: not hv("_gate.visible"), "the question closed", fail=False)
 out["gate-after-cancel"] = bool(hv("_gate.visible"))
 out["written-after-cancel"] = written()
 out["message-after-cancel"] = hv("message")
 
 # Accept: the same again, Write Here.
 hv('restore("before")')
-QtTest.QTest.qWait(200)
+wait_shown("Restore", "the Restore? question")
 click("Restore")
+wait_shown("Write Here", "the outside-folder question")
 out["ask-again"] = gate()
 out["write-clicked"] = click("Write Here")
+wait_until(lambda: hv("message"), "the restored message", fail=False)
 out["gate-after-write"] = bool(hv("_gate.visible"))
 out["written-after-write"] = written()
 out["message-after-write"] = hv("message")

@@ -461,6 +461,7 @@ def test_the_close_a_quit_makes_is_not_turned_into_a_hide(
 _MAIN = """
 import json, os, sys
 sys.path.insert(0, '.')
+sys.path.insert(0, os.path.abspath('test'))
 import importlib.util
 spec = importlib.util.spec_from_file_location('fake_hardware', 'test/fake_hardware.py')
 fake_hardware = importlib.util.module_from_spec(spec)
@@ -470,6 +471,7 @@ import gremlin.ui.update_model as um
 um.UpdateModel.startup = lambda self, *a, **k: None
 import joystick_gremlin
 from PySide6 import QtQml, QtTest
+from qt_wait import wait_until
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
 win = app.main_window
 quits = []
@@ -506,7 +508,7 @@ run('_notificationDialog.close(); _root.configureWin = null')
 run('openTool("DialogAbout.qml")')
 QtTest.QTest.qWait(100)
 win.close()
-QtTest.QTest.qWait(100)
+wait_until(lambda: quits, 'the quit', fail=False)
 out['quit'] = len(quits) > 0
 print('RESULT ' + json.dumps(out), flush=True)
 os._exit(0)  # threads started by the app would keep it alive

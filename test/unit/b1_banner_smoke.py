@@ -25,6 +25,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 
 # Never the user's own folder: the pytest side gives a temporary one.
 _HOME = Path(os.environ.get("USERPROFILE", "")).resolve()
@@ -51,6 +52,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 from PySide6 import QtCore, QtGui, QtQml, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import dill  # noqa: E402
 from gremlin import clock  # noqa: E402
@@ -257,7 +259,9 @@ def main() -> None:
         # No device: the link is greyed and a click (or the call) is
         # refused, as File › Edit Mapping is.
         ev('_editorWin.targetName = ""')
-        QtTest.QTest.qWait(100)
+        wait_until(
+            lambda: not ev("_viewOnlyEdit.enabled"), "the link greyed", fail=False
+        )
         click_link()
         ev("_editorWin.enterEdit()")
         QtTest.QTest.qWait(100)

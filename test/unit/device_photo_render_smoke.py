@@ -36,6 +36,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -62,6 +63,7 @@ if _QML:
     gremlin.util.resource_path = _resource
 
 from PySide6 import QtCore, QtGui, QtQml, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -226,10 +228,9 @@ def main() -> None:
     )
 
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
     out: dict = {}
     engine = app.engine
-    root = engine.rootObjects()[0]
+    root = wait_until(lambda: engine.rootObjects(), "the main window")[0]
 
     # --- 1. the device's background picture ------------------------------
     maker = Maker()
@@ -300,10 +301,8 @@ def main() -> None:
             maker.renderWanted.emit(
                 token, json.dumps(node_list), pics_url, side, str(target)
             )
-            for _ in range(600):
-                QtTest.QTest.qWait(25)
-                if len(maker.done) >= count:
-                    break
+            wait_until(lambda: len(maker.done) >= count, "the photo render", 15000,
+                       fail=False)
             white = folder / (token + ".white.png")
             done = maker.done[-1] if len(maker.done) >= count else None
             if not (target.is_file() and white.is_file()):
@@ -365,8 +364,9 @@ def main() -> None:
 
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
     call(root, "openDeviceMappingEditorForCard", card)
-    QtTest.QTest.qWait(1000)
-    win = call(root, "deviceMappingEditorWindow")
+    win = wait_until(
+        lambda: call(root, "deviceMappingEditorWindow"), "the Device Mapping Editor"
+    )
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(600)
@@ -385,11 +385,13 @@ def main() -> None:
         " dense: 1600 / e.drawGeom(b).w,"
         " ids: [a.id, b.id], natural: e.photoNatural()})"
     )
-    for _ in range(80):
-        QtTest.QTest.qWait(50)
+
+    def sized() -> bool:
         g = wev(geo)
-        if isinstance(g, str) and not g.startswith("error") and '"w":800' in g:
-            break
+        return isinstance(g, str) and not g.startswith("error") and '"w":800' in g
+
+    wait_until(sized, "the drawings' size", 4000, fail=False)
+    g = wev(geo)
     good = isinstance(g, str) and not g.startswith("error")
     out["geom"] = json.loads(g) if good else g
     # The dialog's own sizeOf (HardwareProfile.pictureSize), when wired.

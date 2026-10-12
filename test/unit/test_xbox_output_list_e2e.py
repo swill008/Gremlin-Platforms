@@ -21,8 +21,8 @@ is opened the way Help's Open link does (view.xboxOutput), then:
    others none;
 3. the Find bar's text, type choice and "Show only bound controls" narrow
    the rows;
-4. view only: no grip, a right-click opens no menu, a click selects and
-   opens no action pane;
+4. view only: no grip, a right-click opens only the Find uses… menu, a
+   click selects and opens no action pane;
 5. Appearance: the page-bar button shows it, a setting changed and saved is
    stored under list appearance key "xbox-output", and the page opened
    again loads it;
@@ -569,16 +569,19 @@ def test_find_text_type_and_sending_narrow_the_rows(run: dict) -> None:
     assert step(run, "find:final") == 22
 
 
-def test_view_only_no_grip_no_menu_no_pane(run: dict) -> None:
+def test_view_only_no_grip_no_pane_menu_finds_uses(run: dict) -> None:
     _no_error(run, "view")
     assert step(run, "view:readOnly") is True
     assert step(run, "view:grips") == 0
     at = step(run, "view:rightAt")
     assert 0 <= at["y"] < at["h"], at  # the click landed in the window
-    assert step(run, "view:popupsAfterRight") == step(run, "view:popupsBefore")
+    # A right-click asks for the control's menu (parentMenu: Find uses…,
+    # D-01-SEARCH; test_find_uses_menus.py opens and runs it); no other
+    # popup, and none left after the left click.
     assert step(run, "view:popupsAfterLeft") == step(run, "view:popupsBefore")
     signals = step(run, "view:signals")
     assert step(run, "view:signalsWatched"), "the tree's signals were not found"
+    assert signals.pop("parentMenu") == 1, signals
     assert all(n == 0 for n in signals.values()), signals
     assert step(run, "view:picked") == ["parent:button:a"]  # a click selects
     assert step(run, "view:newWindows") == 0

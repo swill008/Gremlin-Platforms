@@ -610,6 +610,7 @@ run('_root.profileDirty = false')
 # S58, S59, S61: the toolbar.
 pump(lambda: run('_optionsButton.x > _logicalButton.x'))
 TOOLBAR = ('[_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, '
+           '_searchButton, '
            '_deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, '
            '_optionsButton]')
 out['captions'] = run(TOOLBAR + '.map(function(b) { return b.caption })')
@@ -744,7 +745,7 @@ def test_s57_the_title_names_the_profile_and_marks_unsaved_changes(
 
 def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:
     assert main_window["captions"] == [
-        "Home", "Run", "vJoy Viewer", "Input Tester", "Mapping Editor",
+        "Home", "Run", "vJoy Viewer", "Input Tester", "Search", "Mapping Editor",
         "Device Library", "Logical Device", "Options",
     ]
     assert main_window["order"] is True
@@ -786,7 +787,7 @@ def test_s65_s66_s67_menus_come_from_the_command_list(main_window: dict) -> None
     assert dict(main_window["shortcuts"]) == {
         "file.new": "Ctrl+N", "file.load": "Ctrl+O", "file.save": "Ctrl+S",
         "file.saveAs": "Ctrl+Shift+S", "view.palette": "Ctrl+K",
-        "help.guide": "F1",
+        "help.guide": "F1", "tools.search": "Ctrl+Shift+F",
     }
 
 

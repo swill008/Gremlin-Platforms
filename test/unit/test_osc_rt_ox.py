@@ -21,6 +21,7 @@ from typing import Any
 
 import pytest
 from PySide6 import QtTest
+from qt_wait import wait_until  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import clock, log_once, osc, osc_output, run_scope, shared_state
 from gremlin import osc_device_file as odf
@@ -148,7 +149,7 @@ def test_live_changed_is_throttled_per_input(rt: SimpleNamespace) -> None:
         # One at once per input; the rest wait for the throttle.
         assert seen == [axis.uid, other.uid]
         rt.clock.t += 0.2
-        QtTest.QTest.qWait(250)
+        wait_until(lambda: len(seen) >= 3, "the throttled axis value")
         assert seen == [axis.uid, other.uid, axis.uid]
         assert rt.runtime.live(axis.uid)["value"] == 0.4
     finally:

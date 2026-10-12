@@ -203,7 +203,9 @@ if new is not None:
         pack_win, QtCore.Qt.MouseButton.LeftButton,
         QtCore.Qt.KeyboardModifier.NoModifier, pos,
     )
-    QtTest.QTest.qWait(100)
+    wait_until(
+        lambda: pj("importTarget") == "new", "As a new device chosen", fail=False
+    )
 out["clicked-target"] = pj("importTarget")
 out["ticks-new"] = child(pack_win, "packList").isVisible()
 print("RESULT " + json.dumps(out), flush=True)

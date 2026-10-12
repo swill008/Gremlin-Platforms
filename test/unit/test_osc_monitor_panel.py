@@ -70,9 +70,11 @@ def _smoke() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     from gremlin import osc_traffic
     from gremlin.ui import osc_monitor_model as mm
@@ -194,7 +196,10 @@ def _smoke() -> None:
         call(win, "setPageOpen", False)
         report("leave-calls", list(runtime.calls))
         call(win, "setPageOpen", True)
-        QtTest.QTest.qWait(200)
+        wait_until(
+            lambda: find(quick, "oscMonitorAddRow1"), "the Add as Input row",
+            fail=False,
+        )
 
         # Add as Input… on the "no input" row goes to the page.
         report("add-click", click(quick, "oscMonitorAddRow1"))
@@ -202,10 +207,16 @@ def _smoke() -> None:
 
         # A running profile hides Add as Input… (OP13).
         backend.set_active(True)
-        QtTest.QTest.qWait(150)
+        wait_until(
+            lambda: find(quick, "oscMonitorAddRow1") is None,
+            "Add as Input hidden while running", fail=False,
+        )
         report("add-while-running", find(quick, "oscMonitorAddRow1") is not None)
         backend.set_active(False)
-        QtTest.QTest.qWait(150)
+        wait_until(
+            lambda: find(quick, "oscMonitorAddRow1"),
+            "Add as Input back after stop", fail=False,
+        )
         report("add-after-stop", find(quick, "oscMonitorAddRow1") is not None)
 
         # Pop out and × ask the page.

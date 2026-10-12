@@ -214,6 +214,8 @@ import joystick_gremlin
 from gremlin import history
 from gremlin.modules import store
 from PySide6 import QtCore, QtQml, QtQuick, QtTest
+sys.path.insert(0, os.path.join(ROOT, 'test'))
+from qt_wait import wait_until
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
 win = app.main_window
 
@@ -225,9 +227,10 @@ def run(target, code):
 
 before = set(app.topLevelWindows())
 run(win, '_root.openConfigureModule("source", null)')
-QtTest.QTest.qWait(400)
-w = next(x for x in app.topLevelWindows()
-         if x not in before and isinstance(x, QtQuick.QQuickWindow) and x.isVisible())
+w = wait_until(lambda: next(
+    (x for x in app.topLevelWindows()
+     if x not in before and isinstance(x, QtQuick.QQuickWindow) and x.isVisible()),
+    None), 'the Module Setup window')
 name, guid = w.property('deviceName'), w.property('deviceGuid')
 
 OLD = b'\xff\xd8\xff\xe0' + b'\x01' * 32 + b'\xff\xd9'

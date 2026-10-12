@@ -14,6 +14,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+import shiboken6
 
 from gremlin import history_modules, shared_state
 from gremlin import osc_device_file as odf
@@ -55,6 +56,9 @@ def page(
     model = OscLayoutModel()
     yield model
     model.endPane()
+    # Deleted here, not when pytest lets go of the test's arguments: its
+    # gremlin.signal connections go with it, before the conftest check.
+    shiboken6.delete(model)
     _clear()
     shared_state.current_profile = saved
 

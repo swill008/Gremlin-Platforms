@@ -7,7 +7,9 @@
 test/conftest.py deletes a test's deleteLater objects at that test's own
 end (a later test's event loop deleted them, and a crash there named the
 wrong test), and notes a test that left more gremlin.signal connections
-than it found (not one that started a once-per-process hook). Each case
+than it found, counted after pytest dropped the test's fixture values
+(not one that started a once-per-process hook, a singleton or a
+module-level QObject). Each case
 runs a tiny pytest of its own, in a fixed order, with test/conftest.py as
 a plugin.
 """
@@ -25,14 +27,49 @@ import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 _ROOT = pathlib.Path(__file__).parents[2]
 
 _SAMPLE = '''
+import sys
+import types
+
+import pytest
 import shiboken6
 from PySide6 import QtCore
 
+import gremlin.common
 import gremlin.signal
 
 APP = QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
 LEFT = []
 KEPT = []
+
+
+class Listener(QtCore.QObject):
+    def __init__(self):
+        super().__init__()
+        gremlin.signal.signal.profileChanged.connect(self.heard)
+
+    def heard(self):
+        pass
+
+
+@pytest.fixture
+def listener():
+    return Listener()  # not deleted: pytest drops it after teardown
+
+
+def test_a_fixture_holds_a_connected_object(listener):
+    assert gremlin.signal.signal.receivers("2profileChanged()") > 0
+
+
+def test_makes_a_singleton_and_a_module_object_the_first_time():
+    shared = types.ModuleType("gremlin_guard_sample")
+    shared.Shared = gremlin.common.SingletonDecorator(Listener)
+    sys.modules[shared.__name__] = shared
+    shared.Shared()
+    shared.RUNTIME = Listener()
+
+
+def test_keeps_a_connected_object():
+    KEPT.append(Listener())
 
 
 def test_leaves_a_deferred_delete():
@@ -111,12 +148,19 @@ def test_deferred_deletes_and_kept_connections_stay_with_their_test(
     tmp_path: pathlib.Path,
 ) -> None:
     code, out, report = _inner_pytest(tmp_path)
-    assert code == 0 and "5 passed" in out, out[-3000:]
-    # The connection left behind is a warning naming its test, not a failure.
+    assert code == 0 and "8 passed" in out, out[-3000:]
+    # A connection left behind is a warning naming its test, not a failure.
     named = [line for line in report.splitlines() if "RECEIVERS-GREW" in line]
-    assert len(named) == 1 and "profileChanged +1" in named[0], report
-    block = report.split("test_leaves_a_connection", 1)
-    assert len(block) == 2 and "RECEIVERS-GREW" in block[1].splitlines()[1], report
+    assert len(named) == 2, report
+    assert all("profileChanged +1" in line for line in named), report
+    for test in ("test_leaves_a_connection", "test_keeps_a_connected_object"):
+        block = report.split(test, 1)
+        assert len(block) == 2, report
+        assert "RECEIVERS-GREW" in block[1].splitlines()[1], report
+    # A fixture's object is counted after pytest dropped the fixture values.
+    assert "test_a_fixture_holds_a_connected_object" not in report, report
+    # First-time singletons and module-level QObjects are shared, not leaks.
+    assert "test_makes_a_singleton" not in report, report
     assert "test_cleans_up_after_itself" not in report, report
     # The first test to start a once-per-process hook isn't named.
     assert "test_starts_a_once_per_process_hook" not in report, report

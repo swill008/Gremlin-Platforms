@@ -120,16 +120,16 @@ def press_undo():
 
 out = {}
 ev(dlg, 'showImportResult("Import failed. The file is not a module file.")')
-QtTest.QTest.qWait(200)
+until(lambda: notice()['text'].startswith("Import failed"))
 out['import-failed'] = notice()
 ev(dlg, 'showImportResult("Imported pjoy_pro.json.")')
-QtTest.QTest.qWait(200)
+QtTest.QTest.qWait(200)  # the Undo button settles before the click
 out['imported'] = notice()
 undo_answers.append('Undo failed. The previous module file could not be put back.')
 press_undo()
 out['undo-failed'] = notice()
 ev(dlg, 'showImportResult("Imported pjoy_pro.json.")')
-QtTest.QTest.qWait(200)
+QtTest.QTest.qWait(200)  # the Undo button settles before the click
 undo_answers.append('Undone. The previous module file is back.')
 press_undo()
 out['undone'] = notice()
@@ -142,14 +142,14 @@ out['delete-red'] = item("moduleDeleteFile") is not None and str(
     item("moduleDeleteFile").property("background").property("color").name()
 ) == str(ev(dlg, 'Style.danger').name())
 click(item("moduleDeleteFile"))
-QtTest.QTest.qWait(300)
+until(lambda: item("confirmTitle") is not None and shown(item("confirmTitle")))
 title = item("confirmTitle")
 out['delete-asks'] = bool(title is not None and shown(title))
 out['delete-title'] = title.property("text") if title else ""
 action = item("confirmAction")
 out['delete-action'] = action.property("text") if action else ""
 QtTest.QTest.keyClick(dlg, QtCore.Qt.Key.Key_Return)
-QtTest.QTest.qWait(300)
+until(lambda: item("confirmTitle") is None or not shown(item("confirmTitle")))
 title = item("confirmTitle")
 out['delete-after-enter'] = bool(title is not None and shown(title))
 out['undone-still'] = notice()['text']
@@ -162,7 +162,8 @@ if rows:
     label = ev(dlg, 'rowLabel(0)')
     claimed = ev(dlg, '_driver.data(_driver.index(0, 0), Qt.UserRole + 4)')
     ev(dlg, '_driver.setClaimed(0, %s)' % ('false' if claimed else 'true'))
-    QtTest.QTest.qWait(100)
+    until(lambda: item("undoBarText") is not None
+          and "Last change" in str(item("undoBarText").property("text")))
     bar = item("undoBarText")
     out['last-change'] = bar.property("text") if bar else ""
     word = " let go" if claimed else " claimed"

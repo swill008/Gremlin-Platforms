@@ -194,7 +194,12 @@ def main() -> None:
             # D-TESTLIST-1 item 13, so fewer rows are made at the top:
             # bring this one into view (both sides move together).
             hv(f"_beforeList.positionViewAtIndex({index}, ListView.Contain)")
-            QtTest.QTest.qWait(100)
+            wait_until(
+                lambda: row_item("before", index)  # noqa: B023
+                and row_item("after", index),  # noqa: B023
+                f"diff row {index} made on both sides",
+                fail=False,
+            )
         for side in ("before", "after"):
             delegate = row_item(side, index)
             if delegate is None:

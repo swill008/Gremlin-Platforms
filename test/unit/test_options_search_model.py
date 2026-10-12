@@ -103,7 +103,10 @@ def _words(model: object) -> list[str]:
 
 
 def _main(out: pathlib.Path) -> None:
-    from PySide6 import QtCore, QtGui, QtQml, QtTest
+    from PySide6 import QtCore, QtGui, QtQml
+
+    sys.path.insert(0, str(_ROOT / "test"))
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     app = QtGui.QGuiApplication(sys.argv[:1])  # noqa: F841
     QtQml.qmlRegisterSingletonType(
@@ -172,8 +175,12 @@ Window {
             QtCore.QUrl.fromLocalFile(str(_ROOT / "qml" / "Root.qml")),
         )
         win = engine.rootObjects()[-1]
-        QtTest.QTest.qWait(200)
         count = QtQml.QQmlExpression(QtQml.qmlContext(win), win, "sections.count")
+        wait_until(
+            lambda: count.evaluate()[0] == model.rowCount(),
+            "the sections",
+            fail=False,
+        )
         if count.evaluate()[0] != model.rowCount():
             print(f"ERROR {scope!r}: sections not built", flush=True)
         words = _words(model)

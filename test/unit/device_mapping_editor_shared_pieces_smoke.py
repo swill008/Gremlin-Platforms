@@ -30,6 +30,7 @@ os.environ.setdefault(
 )
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 
 import gremlin.util  # noqa: E402
 
@@ -38,6 +39,7 @@ gremlin.util.userprofile_path = unittest.mock.Mock(return_value=tempfile.mkdtemp
 
 import shiboken6  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 Qt = QtCore.Qt
 
@@ -121,7 +123,8 @@ def main() -> None:
     quick = shiboken6.wrapInstance(
         shiboken6.getCppPointer(win)[0], QtQuick.QQuickWindow)
     quick.requestActivate()
-    QtTest.QTest.qWait(600)
+    wait_until(lambda: quick.isActive(),
+               "the window active", 5000, fail=False)
 
     def js(code: str) -> object:
         expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, _FIND + "; " + code)
@@ -182,9 +185,14 @@ def main() -> None:
     # A device, in Edit, with a drawing.
     js("_editorWin.targetGuid = '12345678-1234-1234-1234-123456789abc';"
        " _editorWin.targetName = 'Smoke Stick'; 1")
-    QtTest.QTest.qWait(800)
+    wait_until(lambda: js("_editorWin.canEnterEdit"), "the device shown", 5000,
+               fail=False)
     js("_editorWin.enterEdit(); 1")
-    QtTest.QTest.qWait(600)
+    wait_until(
+        lambda: js("_editorWin.editing && _ed() !== null && _ed().seeded"
+                   " && !_editorWin._baseWanted"),
+        "the edit", 5000, fail=False,
+    )
     js("var e = _ed(); e.nodes.push({id: 'b1', kind: 'draw', shape: 'rect',"
        " fx: 0.1, fy: 0.1, fw: 0.1, fh: 0.1}); e.bump(); 1")
     QtTest.QTest.qWait(400)
@@ -213,7 +221,7 @@ def main() -> None:
     before = b2()
     menu_on = js(edit_item("Undo") + ".enabled")
     js(edit_item("Undo") + ".triggered(); 1")
-    QtTest.QTest.qWait(250)
+    wait_until(lambda: b2() != before, "the Undo", 5000, fail=False)
     after_menu = b2()
     redo_on = js(edit_item("Redo") + ".enabled")
     key(Qt.Key.Key_Y, Qt.KeyboardModifier.ControlModifier)
@@ -233,12 +241,12 @@ def main() -> None:
     js("for (var i = 0; i < _editMenu.count; i++) {"
        " var it = _editMenu.itemAt(i);"
        " if (it && it.text === 'Reset Layout') { it.triggered(); break } } 1")
-    QtTest.QTest.qWait(400)
+    wait_until(question, "the Reset Layout question", 5000, fail=False)
     asked = question_words()
     key(Qt.Key.Key_Return)
     after_enter = [question() is None, js("_ed().nodes.length") == count]
     js("_editorWin.askResetLayout(); 1")
-    QtTest.QTest.qWait(400)
+    wait_until(question, "the Reset Layout question", 5000, fail=False)
     click_question("confirmAction")
     result("reset", {"asked": asked, "enter": after_enter,
                      "red": js("_ed().nodes.length")})
@@ -260,11 +268,13 @@ def main() -> None:
 
     # The Layers search is the shared box: Ctrl+F goes to it, Esc clears it.
     key(Qt.Key.Key_F, Qt.KeyboardModifier.ControlModifier)
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: js("_layersPanel.searchHasFocus()"), "the search focus",
+               5000, fail=False)
     focused = js("_layersPanel.searchHasFocus()")
     for k in (Qt.Key.Key_R, Qt.Key.Key_E, Qt.Key.Key_C, Qt.Key.Key_T):
         QtTest.QTest.keyClick(quick, k)
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: js("_layersPanel.searchText") == "rect", "the typed search",
+               5000, fail=False)
     typed = js("_layersPanel.searchText")
     key(Qt.Key.Key_Escape)
     result("layers-search", [focused, typed, js("_layersPanel.searchText"),
@@ -272,13 +282,15 @@ def main() -> None:
                              js("_find(_layersPanel, 'layersSearch')"
                                 ".field.objectName")])
     js("_editorWin.discardEdit(); 1")
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: not js("_editorWin.editing"), "the edit discarded", 5000,
+               fail=False)
 
     # Templates: Delete is the red button; Esc cancels, the red one deletes.
     js("_hw.saveTemplate('Smoke T', JSON.stringify([{id: 'x', kind: 'draw',"
        " shape: 'rect', fx: 0.1, fy: 0.1, fw: 0.1, fh: 0.1}]), 'Smoke Stick');"
        " _templatesDlg.open(); 1")
-    QtTest.QTest.qWait(500)
+    wait_until(lambda: js("_templatesDlg.opened"), "the Templates box", 5000,
+               fail=False)
     names = "_hw.templates().map(function(t) { return t.name }).join(',')"
     button = "_find(_templatesDlg.contentItem, 'templateDelete')"
     red = js(f"String({button}).indexOf('DangerButton') === 0")
@@ -291,7 +303,8 @@ def main() -> None:
     result("template-delete", {"red": red, "asked": asked, "esc": kept,
                                "deleted": js(names)})
     js("_templatesDlg.close(); 1")
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: not js("_templatesDlg.visible"), "the Templates box closed",
+               5000, fail=False)
 
     # Options › Library: the same question and red button.
     js("_hw.saveTemplate('Lib T', JSON.stringify([{id: 'y', kind: 'draw',"
@@ -299,7 +312,11 @@ def main() -> None:
     js("var c = Qt.createComponent('OptionDeviceMapLibrary.qml');"
        " var lib = c.createObject(_editorWin.contentItem, {x: 20, y: 120, width: 600});"
        " lib.objectName = 'smokeLibrary'; lib.refreshTemplates(); 1")
-    QtTest.QTest.qWait(500)
+    wait_until(
+        lambda: js("_find(_find(_editorWin.contentItem, 'smokeLibrary'),"
+                   " 'templateDelete') !== null"),
+        "the Library's Delete button", 5000, fail=False,
+    )
     lib = "_find(_editorWin.contentItem, 'smokeLibrary')"
     button = f"_find({lib}, 'templateDelete')"
     red = js(f"String({button}).indexOf('DangerButton') === 0")

@@ -65,7 +65,6 @@ def story(j: Journey) -> None:
         window, QtCore.Qt.MouseButton.LeftButton, QtCore.Qt.KeyboardModifier.NoModifier,
         centre.toPoint(),
     )
-    j.QTest.qWait(100)
     j.wait_until(lambda: field.hasActiveFocus(), "the address field's focus")
     for ch in "/fire":
         j.QTest.keyClick(
@@ -73,13 +72,14 @@ def story(j: Journey) -> None:
             QtCore.Qt.Key(ord(ch.upper())),
             QtCore.Qt.KeyboardModifier.NoModifier,
         )
-    j.QTest.qWait(100)
+    j.wait_until(lambda: action.address == "/fire", "the typed address")
     out["typed-address"] = action.address
 
     add = named("sendOscAddValue")
     assert isinstance(add, QtQuick.QQuickItem)
+    values_before = len(action.values)
     j.click(add)
-    j.QTest.qWait(100)
+    j.wait_until(lambda: len(action.values) > values_before, "the added value")
     out["values-after-add"] = len(action.values)
 
 

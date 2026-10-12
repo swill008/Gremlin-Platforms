@@ -230,6 +230,8 @@ def test_moved_children_follow_a_rename(
 _WINDOW = """
 import json, os, sys, uuid
 sys.path.insert(0, '.')
+sys.path.insert(0, 'test')
+from qt_wait import wait_until
 import importlib.util
 spec = importlib.util.spec_from_file_location('fake_hardware', 'test/fake_hardware.py')
 fake_hardware = importlib.util.module_from_spec(spec)
@@ -251,9 +253,10 @@ expr = QtQml.QQmlExpression(
     QtQml.qmlContext(win), win, 'Helpers.createComponent("DialogManageModes.qml")')
 expr.evaluate()
 assert not expr.hasError(), expr.error().toString()
-QtTest.QTest.qWait(400)
-dialog = [w for w in app.topLevelWindows() if w is not win and w.isVisible()
-          and isinstance(w, QtQuick.QQuickWindow) and w.title() == 'Manage Modes'][0]
+dialog = wait_until(lambda: next((
+    w for w in app.topLevelWindows() if w is not win and w.isVisible()
+    and isinstance(w, QtQuick.QQuickWindow) and w.title() == 'Manage Modes'),
+    None), 'the Manage Modes window')
 def items(item):
     yield item
     for child in item.childItems():
@@ -266,13 +269,14 @@ delete = QtQml.QQmlExpression(QtQml.qmlContext(dialog), dialog,
                               'modeHierarchy.deleteMode("Flight")')
 delete.evaluate()
 assert not delete.hasError(), delete.error().toString()
-QtTest.QTest.qWait(100)
+wait_until(lambda: button.property('enabled'), 'Undo on after the delete',
+           fail=False)
 out['after_delete'] = button.property('enabled')
 out['deleted'] = not modes.mode_exists('Flight')
 point = button.mapToScene(QtCore.QPointF(button.width() / 2, button.height() / 2))
 QtTest.QTest.mouseClick(dialog, QtCore.Qt.MouseButton.LeftButton,
                         QtCore.Qt.KeyboardModifier.NoModifier, point.toPoint())
-QtTest.QTest.qWait(200)
+wait_until(lambda: modes.mode_exists('Flight'), 'the mode back', fail=False)
 out['back'] = modes.mode_exists('Flight')
 out['kid_parent'] = modes._parent_name(modes.find_mode('Kid'))
 out['after_undo'] = button.property('enabled')

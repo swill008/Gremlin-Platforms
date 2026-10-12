@@ -21,6 +21,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -33,6 +34,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 from PySide6 import QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import joystick_gremlin  # noqa: E402
 from gremlin.util import logs_dir  # noqa: E402
@@ -56,11 +58,13 @@ def main() -> None:
         QtQml.qmlContext(main_win), main_win,
         'Helpers.createComponent("DialogLiveLog.qml")'
     ).evaluate()
-    QtTest.QTest.qWait(800)
-    win = next(
-        w for w in QtGui.QGuiApplication.topLevelWindows()
-        if isinstance(w, QtQuick.QQuickWindow)
-        and w.title().startswith("Live Log Reader")
+    win = wait_until(
+        lambda: next((
+            w for w in QtGui.QGuiApplication.topLevelWindows()
+            if isinstance(w, QtQuick.QQuickWindow)
+            and w.title().startswith("Live Log Reader")
+        ), None),
+        "the Live Log Reader window",
     )
     win.setWidth(1200)
     win.setHeight(800)
@@ -131,11 +135,13 @@ def main() -> None:
         QtQml.qmlContext(main_win), main_win,
         'Helpers.createComponent("DialogLiveLog.qml")',
     ).evaluate()
-    QtTest.QTest.qWait(800)
-    win = next(
-        w for w in QtGui.QGuiApplication.topLevelWindows()
-        if isinstance(w, QtQuick.QQuickWindow) and w.isVisible()
-        and w.title().startswith("Live Log Reader")
+    win = wait_until(
+        lambda: next((
+            w for w in QtGui.QGuiApplication.topLevelWindows()
+            if isinstance(w, QtQuick.QQuickWindow) and w.isVisible()
+            and w.title().startswith("Live Log Reader")
+        ), None),
+        "the Live Log Reader window again",
     )
     out["reopened"] = {
         "tab": ev("_tabs.currentIndex"),

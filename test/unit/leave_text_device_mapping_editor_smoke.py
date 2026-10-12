@@ -103,12 +103,14 @@ def centre(item: QtQuick.QQuickItem) -> QtCore.QPoint:
 
 def main() -> None:
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
-    root = app.engine.rootObjects()[0]
+    root = wait_until(lambda: app.engine.rootObjects(), 10)[0]
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
     call(root, "openDeviceMappingEditorForCard", card)
-    QtTest.QTest.qWait(1000)
-    win = call(root, "deviceMappingEditorWindow")
+    win = wait_until(
+        lambda: (w := call(root, "deviceMappingEditorWindow")) is not None
+        and w.property("visible") and w,
+        10,
+    )
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(300)
@@ -174,7 +176,7 @@ def main() -> None:
         box = wait_until(open_box, 3)
         if box is None:
             return {"row": True, "shown": False, "focused": False}
-        QtTest.QTest.qWait(100)
+        wait_until(box.hasActiveFocus, 2)
         focused = bool(box.hasActiveFocus())
         selected = box.property("selectedText") == name
         type_text(new)
@@ -282,14 +284,12 @@ def main() -> None:
     win.requestActivate()
     wait_until(lambda: QtGui.QGuiApplication.focusWindow() is win, 3)
     ev("_templatesDlg.open()")
-    QtTest.QTest.qWait(500)
-    dialog_items = [c for c in items(win.contentItem())]
-    note = next(
-        (c for c in dialog_items
+    note = wait_until(lambda: next(
+        (c for c in items(win.contentItem())
          if c.inherits("QQuickText") and c.isVisible()
          and str(c.property("text") or "").startswith("Each template is kept")),
         None,
-    )
+    ), 5)
     if note is None:
         result("dialog", False)
         print("done", flush=True)

@@ -150,7 +150,7 @@ def main() -> None:
 
     # Asked first; Enter answers the default, Cancel.
     click(clear)
-    QtTest.QTest.qWait(300)
+    wait_until(asking, "the Clear History question", fail=False)
     out["asked"] = asking()
     out["question"] = (
         item("confirmText").property("text")
@@ -162,7 +162,7 @@ def main() -> None:
     go = item("confirmAction")
     out["go"] = {"text": go.property("text"), "colour": fill_colour(go)}
     QtTest.QTest.keyClick(hist, QtCore.Qt.Key.Key_Return)
-    QtTest.QTest.qWait(400)
+    wait_until(lambda: not asking(), "the question closed", fail=False)
     out["after-enter"] = {
         "open": asking(),
         "rows": hv("_list.count"),
@@ -171,10 +171,10 @@ def main() -> None:
 
     # Clear History clicked.
     click(clear)
-    QtTest.QTest.qWait(300)
+    wait_until(asking, "the Clear History question", fail=False)
     click(item("confirmAction"))
     settle()
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: hv("message"), "the History cleared message", fail=False)
     out["after-clear"] = {
         "open": asking(),
         "rows": hv("_list.count"),
@@ -223,11 +223,15 @@ def main() -> None:
         QtTest.QTest.keyClick(
             hist, QtCore.Qt.Key.Key_F, QtCore.Qt.KeyboardModifier.ControlModifier
         )
-        QtTest.QTest.qWait(100)
+        wait_until(
+            lambda: field.property("activeFocus"), "the search box focus", fail=False
+        )
         out["search"]["ctrl-f"] = bool(field.property("activeFocus"))
         for key in (QtCore.Qt.Key.Key_Z, QtCore.Qt.Key.Key_Z, QtCore.Qt.Key.Key_Q):
             QtTest.QTest.keyClick(hist, key)
-        QtTest.QTest.qWait(200)
+        wait_until(
+            lambda: field.property("text") == "zzq", "the typed search", fail=False
+        )
         count = next(
             (i for i in items() if i.objectName() == "searchCount"
              and box.isAncestorOf(i)),
@@ -237,7 +241,9 @@ def main() -> None:
         out["search"]["line"] = count.property("text") if count else ""
         out["search"]["line-shown"] = shown(count)
         QtTest.QTest.keyClick(hist, QtCore.Qt.Key.Key_Escape)
-        QtTest.QTest.qWait(200)
+        wait_until(
+            lambda: not field.property("text"), "the search cleared", fail=False
+        )
         out["search"]["after-esc"] = {
             "text": field.property("text"),
             "rows": hv("_list.count"),

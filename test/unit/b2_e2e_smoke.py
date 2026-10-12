@@ -124,7 +124,7 @@ def pack_windows() -> list[QtQuick.QQuickWindow]:
 def close_packs() -> None:
     for w in pack_windows():
         w.close()
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: not pack_windows(), 4000)
 
 
 def new_pack_window() -> QtQuick.QQuickWindow:
@@ -133,6 +133,11 @@ def new_pack_window() -> QtQuick.QQuickWindow:
     w.resize(900, 800)
     QtTest.QTest.qWait(200)
     return w
+
+
+def status_changed(w: QtQuick.QQuickWindow, before: str) -> None:
+    """Until the window's message line says something new (bounded)."""
+    wait_until(lambda: str(ev(w, "status")) != before)
 
 
 def add_map(profile: Profile, uid: uuid.UUID, button: int, mode: str) -> None:
@@ -301,7 +306,7 @@ def import_new() -> None:
     w = new_pack_window()
     ev(w, f'openFor("import", {json.dumps(name)}, {json.dumps(guid)})')
     ev(w, f"_pick._accept({json.dumps(url_of(gmap_path))})")
-    QtTest.QTest.qWait(400)
+    wait_until(lambda: str(ev(w, "fileUrl")) == url_of(gmap_path))
     new_r, old_r = named(w, "packTargetNew"), named(w, "packTargetExisting")
     out["new-radios"] = [new_r is not None, old_r is not None]
     # pJoy Pro has a folder: "Onto an existing device" is the default.
@@ -309,19 +314,21 @@ def import_new() -> None:
     click(w, new_r)
     out["new-picked"] = bool(new_r.property("checked"))
     before = folders()
+    before_status = str(ev(w, "status"))
     click(w, named(w, "packImport"))
     replace = named(w, "packReplace")
     if replace is not None and replace.isVisible():
         click(w, replace)
-    QtTest.QTest.qWait(400)
+    status_changed(w, before_status)
     after = folders()
     out["new-folders"] = [f for f in after if f not in before]
     out["new-status"] = str(ev(w, "status"))
     out["new-stick-unchanged"] = stick_file.read_bytes() == stick_before
     undo = named(w, "packUndo")
     out["new-undo-shown"] = bool(undo and undo.isVisible())
+    before_status = str(ev(w, "status"))
     ev(w, "undoImport()")
-    QtTest.QTest.qWait(400)
+    status_changed(w, before_status)
     out["new-after-undo"] = [f for f in folders() if f not in before]
     close_packs()
 
@@ -346,7 +353,7 @@ def import_default_new() -> None:
     ev(win, 'Helpers.createComponent("DialogDevicePack.qml")')
     w = new_pack_window()
     ev(w, f"_pick._accept({json.dumps(url_of(twin))})")
-    QtTest.QTest.qWait(400)
+    wait_until(lambda: str(ev(w, "fileUrl")) == url_of(twin))
     new_r = named(w, "packTargetNew")
     out["twin-default-new"] = bool(new_r and new_r.property("checked"))
     click(w, new_r)
@@ -364,11 +371,12 @@ def import_default_new() -> None:
     vjoy_file = store.module_file_in(store.device_dir("vJoy 1", ""))
     vjoy_before = vjoy_file.read_bytes() if vjoy_file.is_file() else b""
     before = folders()
+    before_status = str(ev(w, "status"))
     click(w, named(w, "packImport"))
     replace = named(w, "packReplace")
     if replace is not None and replace.isVisible():
         click(w, replace)
-    QtTest.QTest.qWait(400)
+    status_changed(w, before_status)
     out["twin-folders"] = [f for f in folders() if f not in before]
     out["twin-status"] = str(ev(w, "status"))
     out["twin-stick-unchanged"] = stick_file.read_bytes() == stick_before
@@ -377,8 +385,9 @@ def import_default_new() -> None:
     ) == vjoy_before
     undo = named(w, "packUndo")
     out["twin-undo-shown"] = bool(undo and undo.isVisible())
+    before_status = str(ev(w, "status"))
     ev(w, "undoImport()")
-    QtTest.QTest.qWait(400)
+    status_changed(w, before_status)
     out["twin-after-undo"] = [f for f in folders() if f not in before]
     close_packs()
 
@@ -394,7 +403,7 @@ def import_existing() -> None:
     w = new_pack_window()
     ev(w, f'openFor("import", {json.dumps(name)}, {json.dumps(guid)})')
     ev(w, f"_pick._accept({json.dumps(url_of(gmap_path))})")
-    QtTest.QTest.qWait(400)
+    wait_until(lambda: str(ev(w, "fileUrl")) == url_of(gmap_path))
     click(w, named(w, "packTargetExisting"))
     out["existing-target"] = str(ev(w, "_saveAs.text"))
     ev(
@@ -402,6 +411,7 @@ def import_existing() -> None:
         'for (var k in checks) checks[k] = false; checks["wire:Default"] = true; '
         "tickRev = tickRev + 1",
     )
+    before_status = str(ev(w, "status"))
     click(w, named(w, "packImport"))
     warn = w.findChild(QtCore.QObject, "packWarning")
     out["existing-warning"] = bool(warn and warn.property("opened"))
@@ -414,7 +424,7 @@ def import_existing() -> None:
     ]
     if replace is not None and replace.isVisible():
         click(w, replace)
-    QtTest.QTest.qWait(400)
+    status_changed(w, before_status)
     out["existing-status"] = str(ev(w, "status"))
     out["existing-after"] = wired(uid, "Default")
     out["existing-folders-same"] = (
@@ -422,8 +432,9 @@ def import_existing() -> None:
     ).is_file()
     undo = named(w, "packUndo")
     out["existing-undo-shown"] = bool(undo and undo.isVisible())
+    before_status = str(ev(w, "status"))
     ev(w, "undoImport()")
-    QtTest.QTest.qWait(400)
+    status_changed(w, before_status)
     out["existing-undone"] = wired(uid, "Default")
     close_packs()
 

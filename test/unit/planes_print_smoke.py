@@ -173,8 +173,7 @@ def main() -> None:
     folder = Path(sys.argv[1])
     folder.mkdir(parents=True, exist_ok=True)
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
-    root = app.engine.rootObjects()[0]
+    root = wait_until(lambda: app.engine.rootObjects(), "the main window")[0]
     out: dict = {}
     # Binding loops in Print & Export (its export size once read a picture
     # it changed while working that size out). engine.warnings, not a Qt
@@ -190,8 +189,11 @@ def main() -> None:
     app.engine.warnings.connect(warned)
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
     call(root, "openDeviceMappingEditorForCard", card)
-    QtTest.QTest.qWait(1000)
-    win = call(root, "deviceMappingEditorWindow")
+    win = wait_until(
+        lambda: (w := call(root, "deviceMappingEditorWindow")) is not None
+        and w.property("visible") and w,
+        "the Device Mapping Editor",
+    )
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(300)
@@ -205,7 +207,7 @@ def main() -> None:
         return value.toVariant() if hasattr(value, "toVariant") else value
 
     call(win, "enterEdit")
-    QtTest.QTest.qWait(800)
+    wait_until(lambda: ev("editing") is True, "Edit on", fail=False)
     ev("_editorWin.openPrintExport()")
     pw = wait_until(
         lambda: next((
@@ -237,10 +239,12 @@ def main() -> None:
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
         count = len(saved) + 1
         ev(f"_editorWin.exportTo({json.dumps(url)}, 'png')")
-        for _ in range(400):
-            QtTest.QTest.qWait(25)
-            if len(saved) >= count and ev("_editorWin.exportBusy") is False:
-                break
+        wait_until(
+            lambda: len(saved) >= count and ev("_editorWin.exportBusy") is False,
+            f"{name} exported",
+            timeout_ms=10000,
+            fail=False,
+        )
         return red_box(target)
 
     ev("_editorWin.setPrint('paper', 'fit')")
@@ -287,11 +291,13 @@ def main() -> None:
 
     # Include background off, through the tick: no background.
     QtCore.QMetaObject.invokeMethod(tick, "click")
-    QtTest.QTest.qWait(300)
+    wait_until(
+        lambda: not tick.property("checked"), "Include background off", fail=False
+    )
     out["tick-off"] = [tick.property("checked"), ev("_editorWin.printSetup.includeBg")]
     out["no-bg"] = export("no-bg.png")
     QtCore.QMetaObject.invokeMethod(tick, "click")
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: tick.property("checked"), "Include background on", fail=False)
     out["tick-on"] = [tick.property("checked"), ev("_editorWin.printSetup.includeBg")]
 
     # Light page: pictures unchanged (07 S89).

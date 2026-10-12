@@ -16,6 +16,7 @@ from typing import Any
 
 import pytest
 from PySide6 import QtCore, QtTest
+from qt_wait import wait_until  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import osc, shared_state
 from gremlin import osc_device_file as odf
@@ -131,7 +132,7 @@ def test_button_no_value_uses_input_delay_and_trigger(run: tuple) -> None:
     runtime._on_main("/held", ())
     runtime._on_main("/b", ())
     assert events == [("button", 2, True), ("button", 1, True)]
-    _wait(150)
+    wait_until(lambda: events[-1] == ("button", 1, False), "the auto-release")
     assert events[-1] == ("button", 1, False)
     assert ("button", 2, False) not in events
 
@@ -142,7 +143,7 @@ def test_trigger_true_pulses_even_with_a_value(run: tuple) -> None:
     runtime.start()
     runtime._on_main("/t", (0.0,))
     assert events == [("button", 1, True)]
-    _wait(120)
+    wait_until(lambda: len(events) >= 2, "the trigger release")
     assert events == [("button", 1, True), ("button", 1, False)]
 
 
@@ -266,11 +267,11 @@ def test_change_mode_pulses_only_when_value_changes(run: tuple) -> None:
     rows.create(BUTTON, "/c", mode="change", delay_ms=20)
     runtime.start()
     runtime._on_main("/c", (3,))
-    _wait(80)
+    wait_until(lambda: len(events) >= 2, "the first pulse's release")
     runtime._on_main("/c", (3.0,))
-    _wait(80)
+    _wait(80)  # kept: the same value must NOT pulse
     runtime._on_main("/c", (4,))
-    _wait(80)
+    wait_until(lambda: len(events) >= 4, "the second pulse's release")
     assert events == [("button", 1, True), ("button", 1, False)] * 2
 
 
@@ -281,7 +282,7 @@ def test_data_mode_matches_values_and_pulses(run: tuple) -> None:
     runtime.start()
     runtime._on_main("/SCENE", (2,))
     runtime._on_main("/scene", (9,))
-    _wait(80)
+    wait_until(lambda: len(events) >= 2, "the scene 2 pulse's release")
     assert events == [("button", 2, True), ("button", 2, False)]
 
 

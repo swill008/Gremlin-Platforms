@@ -102,10 +102,12 @@ def _host_page(j: Journey, guid: str) -> Any:  # noqa: ANN401
     made = j.ev(
         "(function() {"
         " var win = Qt.createQmlObject('import QtQuick; import QtQuick.Window;"
-        " Window { width: 1600; height: 900; visible: true; color: \"black\" }', _root, 'host');"
+        " Window { width: 1600; height: 900; visible: true;"
+        " color: \"black\" }', _root, 'host');"
         " var c = Qt.createComponent('DeviceBindingsPage.qml');"
         " if (c.status !== Component.Ready) return 'error: ' + c.errorString();"
-        f" var page = c.createObject(win.contentItem, {{ guid: {guid!r}, deviceName: {STICK!r} }});"
+        " var page = c.createObject(win.contentItem,"
+        f" {{ guid: {guid!r}, deviceName: {STICK!r} }});"
         " if (!page) return 'error: not made';"
         " page.anchors.fill = win.contentItem;"
         " return 'ok' })()"
@@ -226,7 +228,7 @@ def story(j: Journey) -> None:
         # The pane is open on Button 2: its menu has no Delete actions… (S31).
         row = _row_item(j, page, B2)
         _click(j, row, right=True)
-        j.QTest.qWait(500)
+        j.wait_until(lambda: j.ev("_menuKey", page) == B2, "the menu on Button 2")
         j.out["menuKey"] = j.ev("_menuKey", page)
         j.QTest.keyClick(win, QtCore.Qt.Key.Key_Escape)
         j.out["deleteWhileOpen"] = '"Delete actions…"' in str(
@@ -306,7 +308,9 @@ def story(j: Journey) -> None:
         j.out["panelLive"] = bool(panel is not None and panel.property("liveOptions"))
         _shot(j, win, "config_page_appearance.png")
         j.ev("toggleAppearance(); true", page)
-        j.QTest.qWait(300)
+        j.wait_until(
+            lambda: not page.property("displayOpen"), "the Appearance panel closed"
+        )
         j.out["panelClosed"] = not page.property("displayOpen")
 
     with _Part(j, "jump"):

@@ -15,6 +15,7 @@ from collections.abc import Iterator
 from smoke_exit import smoke_exit
 
 sys.path.insert(0, ".")
+sys.path.insert(0, "test")
 import importlib.util
 
 spec = importlib.util.spec_from_file_location("fake_hardware", "test/fake_hardware.py")
@@ -26,12 +27,14 @@ import gremlin.ui.update_model as um  # noqa: E402
 
 um.UpdateModel.startup = lambda self, *a, **k: None
 
-from PySide6 import QtCore, QtQml, QtQuick, QtTest  # noqa: E402
+from PySide6 import QtCore, QtQml, QtQuick  # noqa: E402
 
 import joystick_gremlin  # noqa: E402
 
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
 win = app.main_window
+
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 from gremlin import device_initialization  # noqa: E402
 from gremlin.modules import module_file, store  # noqa: E402
@@ -93,14 +96,13 @@ module_file.write_json(
 try:
     out["tools-text"] = ev('Commands.textOf("tools.devicePack")')
     ev('Commands.trigger("tools.devicePack")')
-    QtTest.QTest.qWait(800)
-    pw = pack_window()
+    pw = wait_until(pack_window, "the Export / Import Device window", fail=False)
     out["tools-open"] = pw is not None
     out["tools-mode"] = str(ev("mode", pw)) if pw else ""
     out["has-openFor"] = bool(pw) and bool(ev('typeof openFor === "function"', pw))
     if pw:
         pw.close()
-        QtTest.QTest.qWait(300)
+        wait_until(lambda: pack_window() is None, "the window closed", fail=False)
 
     page = next(
         (i for i in walk(win.contentItem()) if i.objectName() == "homePage"), None
@@ -113,8 +115,7 @@ try:
     for tab in ("export", "import"):
         if page is not None:
             ev(f"{tab}Device({card})", page)
-        QtTest.QTest.qWait(800)
-        pw = pack_window()
+        pw = wait_until(pack_window, f"the {tab} window", 5000, fail=False)
         out[f"{tab}-open"] = pw is not None
         out[f"{tab}-mode"] = str(ev("mode", pw)) if pw else ""
         out[f"{tab}-old-box"] = old_box()
@@ -122,7 +123,7 @@ try:
             out["export-guid"] = str(ev("exportDeviceGuid()", pw))
         if pw:
             pw.close()
-            QtTest.QTest.qWait(300)
+            wait_until(lambda: pack_window() is None, "the window closed", fail=False)
 except Exception as e:  # noqa: BLE001
     out["error"] = f"{type(e).__name__}: {e}"
 

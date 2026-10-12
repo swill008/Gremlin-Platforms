@@ -303,7 +303,7 @@ def main() -> None:
     def esc_background() -> dict:
         w.select([])
         w.ev("_editorWin.setEditPlane('background')")
-        QtTest.QTest.qWait(50)
+        wait_for(lambda: w.ev("_editorWin.bgMode"), 5.0)
         w.ev("_ed().drawTool = 'rect'")
         _off_map()
         QtTest.QTest.qWait(30)

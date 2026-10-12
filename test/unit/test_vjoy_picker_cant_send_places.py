@@ -101,12 +101,22 @@ def _measure(j, selector, shot: pathlib.Path, frame) -> dict:  # noqa: ANN001
     # Hover the box (a Qt event to the off-screen window): the ⚠ tooltip.
     centre = box.mapToScene(QtCore.QPointF(box.width() / 2, box.height() / 2))
     j.QTest.mouseMove(j.win, QtCore.QPoint(int(centre.x()), int(centre.y())))
-    j.QTest.qWait(600)
-    tips = [
-        t
-        for t in selector.findChildren(QtCore.QObject)
-        if t.metaObject().className().startswith("WrappingTooltip")
-    ]
+
+    def tooltips() -> list[QtCore.QObject]:
+        return [
+            t
+            for t in selector.findChildren(QtCore.QObject)
+            if t.metaObject().className().startswith("WrappingTooltip")
+        ]
+
+    try:
+        j.wait_until(
+            lambda: any(t.property("visible") for t in tooltips()),
+            "the hover tooltip", timeout=10,
+        )
+    except TimeoutError:
+        pass
+    tips = tooltips()
     found["tooltip"] = [
         {"text": t.property("text"), "visible": t.property("visible")} for t in tips
     ]

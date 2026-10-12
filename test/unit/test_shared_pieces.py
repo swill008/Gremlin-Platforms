@@ -72,9 +72,11 @@ def _smoke() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     class FakeBackend(QtCore.QObject):
         uiScaleChanged = QtCore.Signal()
@@ -159,12 +161,13 @@ def _smoke() -> None:
         walk(quick.contentItem())
         return found
 
-    def tip_after_hover(name: str) -> bool:
+    def tip_after_hover(name: str, want: str) -> bool:
         QtTest.QTest.mouseMove(quick, QtCore.QPoint(690, 490))
         QtTest.QTest.qWait(100)
         QtTest.QTest.mouseMove(quick, centre(name))
-        QtTest.QTest.qWait(1500)
-        return shown_texts()
+        return bool(wait_until(
+            lambda: want in shown_texts(), f"the {want!r} tooltip", fail=False
+        ))
 
     # SectionHeading: bold title, thin rule in Style.line under it.
     report("heading-text", find("sectionHeadingText").property("text"))
@@ -190,7 +193,9 @@ def _smoke() -> None:
     click("emptyStateAction")
     report("empty-actions", ev("_win.actions"))
     ev('_empty.actionText = ""')
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: not visible("emptyStateAction"), "the action hidden", fail=False
+    )
     report("empty-action-hidden", not visible("emptyStateAction"))
 
     # UndoBar: nothing to undo or redo, both off; clicks do nothing.
@@ -202,26 +207,34 @@ def _smoke() -> None:
     report("clicks-while-off", f"{ev('_win.undos')},{ev('_win.redos')}")
 
     ev("_bar.canUndo = true")
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: find("undoBarUndo").property("enabled"), "Undo on", fail=False
+    )
     report("undo-on", find("undoBarUndo").property("enabled"))
     report("redo-still-off", find("undoBarRedo").property("enabled"))
     click("undoBarUndo")
     report("undos", ev("_win.undos"))
-    report("undo-tip", "Rename Stick" in tip_after_hover("undoBarUndo"))
+    report("undo-tip", tip_after_hover("undoBarUndo", "Rename Stick"))
 
     # The newest step was an Undo: the text says what Redo puts back.
     ev('_bar.canRedo = true; _bar.undone = "Undone: Swap Sticks"')
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: find("undoBarText").property("text") == "Undone: Swap Sticks",
+        "the Undone text", fail=False,
+    )
     report("bar-undone", find("undoBarText").property("text"))
     click("undoBarRedo")
     click("undoBarRedo")
     report("redos", ev("_win.redos"))
-    report("redo-tip", "Swap Sticks" in tip_after_hover("undoBarRedo"))
+    report("redo-tip", tip_after_hover("undoBarRedo", "Swap Sticks"))
     ev('_bar.undone = ""')
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: find("undoBarText").property("text") != "Undone: Swap Sticks",
+        "the Last change text back", fail=False,
+    )
     report("bar-back", find("undoBarText").property("text"))
     ev('_bar.lastChange = ""')
-    QtTest.QTest.qWait(50)
+    wait_until(lambda: not visible("undoBarText"), "the text hidden", fail=False)
     report("bar-blank-hidden", not visible("undoBarText"))
 
     for w in warnings:

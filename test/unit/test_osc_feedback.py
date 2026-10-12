@@ -19,6 +19,7 @@ from unittest import mock
 
 import pytest
 from PySide6 import QtTest
+from qt_wait import wait_until  # pyright: ignore[reportMissingImports]  (test/)
 
 import gremlin
 from gremlin import code_runner, osc, osc_feedback, run_scope, shared_state
@@ -221,10 +222,7 @@ def test_osc_input_echo_follows_the_runtime(
         _poll()
         # The release waits out the rate gap, then the timer sends it; under
         # a loaded full run that can take longer than a few ms.
-        for _ in range(200):  # up to 2 s
-            if len(fb.out.sent) >= 2:
-                break
-            QtTest.QTest.qWait(10)
+        wait_until(lambda: len(fb.out.sent) >= 2, "the echo release", fail=False)
         assert fb.out.sent == [
             ("t1", "/echo", [1.0], None),
             ("t1", "/echo", [0.0], None),
@@ -261,7 +259,7 @@ def test_rate_limit_coalesces_to_the_latest_value(fb: SimpleNamespace) -> None:
         fb.vjoy[(1, "axis", 1)] = value
         _poll()
     assert [s[2] for s in fb.out.sent] == [[pytest.approx(0.1)]]
-    QtTest.QTest.qWait(150)  # the poll timer sends the waiting value
+    wait_until(lambda: len(fb.out.sent) >= 2, "the poll timer's waiting value")
     assert [s[2] for s in fb.out.sent] == [[pytest.approx(0.1)], [pytest.approx(0.3)]]
 
 
@@ -286,7 +284,7 @@ def test_mode_signal_from_mode_manager_reaches_feedback(fb: SimpleNamespace) -> 
     fb.rows.append(_row("b", "vjoy_button", "/b1", 1, 3))
     osc_feedback.start()
     ModeManager().mode_changed.emit("Default")
-    QtTest.QTest.qWait(10)
+    wait_until(lambda: fb.out.sent, "the resend on a mode change", fail=False)
     assert fb.out.sent == [("t1", "/b1", [0.0], None)]
 
 
@@ -315,7 +313,7 @@ def test_sync_address_is_consumed_and_resends_to_the_sender(
     osc_feedback.start()
     assert osc_feedback.handle_incoming("/other", (), ("10.0.0.5", 9000)) is False
     assert osc_feedback.handle_incoming("/gremlin/sync", (), ("10.0.0.5", 9000)) is True
-    QtTest.QTest.qWait(10)
+    wait_until(lambda: fb.out.sent, "the sync reply", fail=False)
     assert fb.out.senders == [("10.0.0.5", 9000)]
     assert fb.out.sent == [("reply", "/b1", [0.0], None)]
     fb.server["sync_enabled"] = False
@@ -344,7 +342,7 @@ def test_sync_from_another_thread_sends_on_the_main_thread(fb: SimpleNamespace) 
     )
     worker.start()
     worker.join(2)
-    QtTest.QTest.qWait(30)
+    wait_until(lambda: threads, "the sync send on the main thread", fail=False)
     assert threads == [True]
 
 

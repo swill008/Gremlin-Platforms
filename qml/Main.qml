@@ -90,7 +90,7 @@ ApplicationWindow {
     readonly property int _modeListWidth: Style.dp(200)
     readonly property int _modeListMinWidth: Style.dp(120)
     function _toolbarWidth(withCaptions) {
-        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton,
+        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, _searchButton,
                        _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         var w = _homeButton.rightPadding + _toolbarRow.spacing * buttons.length
         for (var i = 0; i < buttons.length; i++)
@@ -192,7 +192,7 @@ ApplicationWindow {
     // are one button).
     function _helpToolbarButton(name) {
         var want = _helpNorm(name)
-        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton,
+        var buttons = [_homeButton, _toggleButton, _vjoyViewerButton, _inputTesterButton, _searchButton,
                        _deviceMappingEditorButton, _deviceLibraryButton, _logicalButton, _optionsButton]
         for (var i = 0; i < buttons.length; ++i) {
             var b = buttons[i]
@@ -1388,6 +1388,104 @@ ApplicationWindow {
     // devicePhotoMaker asks (gremlin/ui/device_photo.py).
     DevicePhotoHost {}
 
+    // Search (D-01-SEARCH): the one Search window, raised when open and
+    // filled with query ({kind, deviceGuid, inputType, inputId, output,
+    // outputId, mode, actionTag}) when one is given.
+    function openSearch(query) {
+        var win = Helpers.createComponent("DialogSearch.qml")
+        if (win && query)
+            win.fill(query)
+        return win
+    }
+
+    // A Search result (D-01-SEARCH): that mode, the device's own page
+    // (Device Bindings, Keyboard, Logical Device or OSC) and its row shown,
+    // flashed and opened in the pane. The Search window stays open.
+    property var _goTo: null
+
+    function goToBinding(deviceGuid, mode, inputType, inputId, bindingIndex, title) {
+        if (!uiState)
+            return
+        var guid = String(deviceGuid || "")
+        var logical = _plainGuid(guid) === _plainGuid(uiState.logicalDeviceGuid)
+        var card = logical ? null : _cardForGuid(guid)
+        if (!logical && !card)
+            return
+        leaveDisplayThen(function() {
+            var name = String(mode || "")
+            if (name.length) {
+                if (backend)
+                    backend.selectMode(name)
+                else
+                    uiState.setCurrentMode(name)
+            }
+            if (logical)
+                openLogicalDeviceNow()
+            else
+                openDeviceBindingsNow(card)
+            _goTo = { key: _rowKeyOf(inputType, inputId), mode: name,
+                      title: String(title || ""), tries: 0, shown: 0 }
+            _goToTimer.restart()
+        })
+    }
+
+    // The row key the pages use ("parent:button:5"); a key's [scan code,
+    // extended] becomes its key id (gremlin.modules.claim.key_id).
+    function _rowKeyOf(inputType, inputId) {
+        var type = Number(inputType)
+        var word = type === 2 ? "axis" : (type === 4 ? "hat" : "button")
+        var id = inputId
+        if (type === 1 && id !== null && typeof id === "object" && id.length >= 2)
+            id = (Number(id[0]) & 0xFFFF) | ((id[1] ? 1 : 0) << 16)
+        return "parent:" + word + ":" + Math.floor(Number(id))
+    }
+
+    // The page's row list (its ControlTree).
+    function _treeIn(item) {
+        var stack = item ? [item] : []
+        while (stack.length) {
+            var it = stack.pop()
+            if (it && typeof it.showKey === "function" && it.highlightKey !== undefined)
+                return it
+            var kids = (it && it.children) || []
+            for (var i = 0; i < kids.length; i++)
+                stack.push(kids[i])
+        }
+        return null
+    }
+
+    // Waits for the page to load in the new mode, then shows the row; once
+    // more a moment later, as a page shows its current input after loading.
+    Timer {
+        id: _goToTimer
+        interval: 100
+        repeat: true
+        onTriggered: {
+            var go = _root._goTo
+            if (!go || ++go.tries > 50) {
+                stop()
+                _root._goTo = null
+                return
+            }
+            var page = _root.currentPageItem
+            if (!page || (go.mode.length && page.mode !== go.mode))
+                return
+            if (go.shown > 0 && go.tries < go.shown + 3)
+                return
+            var tree = _root._treeIn(page)
+            if (!tree || !tree.showKey(go.key))
+                return
+            if (go.shown > 0) {
+                stop()
+                _root._goTo = null
+                return
+            }
+            go.shown = go.tries
+            if (page.actionPane)
+                page.actionPane.openAt(go.key, -1, go.title)
+        }
+    }
+
     function openInputTester() {
         var message = _inputTesterLink.launch()
         if (message.length) {
@@ -1661,6 +1759,7 @@ ApplicationWindow {
                 ThemedMenuItem { command: "tools.deviceMappingEditor" }
                 ThemedMenuItem { command: "tools.autoMappingTool" }
                 ThemedMenuItem { command: "tools.manageModes" }
+                ThemedMenuItem { command: "tools.search" }
             }
             ThemedMenuSeparator {}
             ThemedMenuItem { command: "tools.oscMonitor" }
@@ -1780,6 +1879,18 @@ ApplicationWindow {
                         caption: "Input Tester"
 
                         onClicked: () => { openInputTester() }
+                    }
+
+                    // 01 S58 (D-01-SEARCH): every use of an input, output,
+                    // mode or action type, as Tools › Mapping › Search… does.
+                    JGToolButton {
+                        id: _searchButton
+                        compact: _root.toolbarCompact
+                        text: ""
+                        tooltip: qsTr("Search the profile: every use of an input, output, mode or action type")
+                        caption: "Search"
+
+                        onClicked: () => { openSearch(null) }
                     }
 
                     JGToolButton {

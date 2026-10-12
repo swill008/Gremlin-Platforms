@@ -1,0 +1,8 @@
+# Find in profile (to-do 9): screen and web facts, 2026-10-12, scout F9-UX (read-only)
+
+In the program: page Find bars (ControlFindBar) filter one page only; Command Palette (Ctrl+K) and the Tools menu come from qml/main_commands.js; "Driven by" on output cards is a device-level "who uses"; the Xbox Output View lists each control's sources; DeviceBindingsPage/KeyboardPage.openInput(key) and ControlTree.showKey open and pulse a row; Help's Show me pulses without acting.
+Window patterns: History (separate window, list + detail) fits a profile-wide results list best; a docked panel (OSC Monitor) is page-bound; a page would push out what you're editing.
+Glossary: "Find" is the word (not "Search"); custom name / system name; Binding output not found; Driven by. "Find in profile", "Find uses…", "Uses" are new words needing a glossary row.
+Web: JetBrains Find Usages (tool window, group by usage type, preview); VS Code Find All References (right-click/palette, persistent tree, F4 next); MSFS "Search by input" (press the control); Blender user counts; no "where used" found in GremlinEx or reWASD.
+Options: a) tool window like History (recommended); b) docked Uses panel on the list pages; c) right-click "Uses" sub-menu + count only.
+Sources: https://jetbrains.com/help/idea/find-tool-window.html, https://vscode-docs1.readthedocs.io/en/latest/editor/editingevolved/, https://github.com/atscott/vscode-references-view, https://flyawaysimulation.com/ask/answers/change-msfs-keyboard-controls-key-bindings/, https://projects.blender.org/blender/blender/issues/118655, https://github.com/muchimi/JoystickGremlinEx, https://www.help.rewasd.com/basic-functions/shift-mode.html

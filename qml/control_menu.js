@@ -3,6 +3,7 @@
 
 .pragma library
 .import Gremlin.Menus 1.0 as Menus
+.import "helpers.js" as Helpers
 
 // The right-click menus the four list pages share (Device Bindings, Logical
 // Device, Keyboard, OSC). Each page passes itself and the bits only it has;
@@ -32,6 +33,8 @@
 //   sortSystemLabel   "By System Name" / "By Key Name" / "By Address"
 //   extraSections(st) [{ at, section }], at: "start", "afterRow",
 //                     "afterGroup", "afterGroups", "end"
+// A row (one picked) also gets Find uses… after History when the layout has
+// findQuery(key) (ControlLayoutModel): Search filled in on that input.
 // st (passed to the hooks): { locked, onRow, onGroup, onEmpty, many, count,
 // keys } where onRow/onGroup are false while locked, onEmpty is the click
 // on neither, and keys are the picked keys (or the clicked one).
@@ -88,6 +91,8 @@ function standardMenu(page, opts) {
         quick = quick.concat(_call(o.quickBeforeHistory, st))
         if (!many)
             quick.push(M.action("History", function() { page._openHistory() }))
+        if (!many && typeof L.findQuery === "function")
+            quick.push(findUsesItem(L.findQuery(page._menuKey)))
     }
     if (onGroup)
         quick.push(M.action("Rename Group", function() {
@@ -156,4 +161,35 @@ function actionMenu(opts) {
         M.action("Open", function() { opts.open() }),
         M.action("Delete", function() { opts.remove() }, true, { danger: true })
     ])
+}
+
+// Find uses… (Search, D-01-SEARCH): opens the main window's Search filled in
+// with query, e.g. {kind: "input", deviceGuid, inputType, inputId},
+// {kind: "output", output: "vjoy"|"xbox", outputId, inputType, inputId} or
+// {kind: "mode", mode}. False when there is no main window to ask.
+function openSearch(query) {
+    var main = Helpers.mainWindow()
+    if (!main || typeof main.openSearch !== "function")
+        return false
+    main.openSearch(query)
+    return true
+}
+
+// gremlin.types.InputType by its word, as the list keys spell it.
+var _INPUT_TYPE = { axis: 2, button: 3, hat: 4 }
+
+function inputTypeOf(word) {
+    return _INPUT_TYPE[String(word)] || 0
+}
+
+// The Find uses… row; off without a query (not a listed input).
+function findUsesItem(query) {
+    var ok = !!query && !!query.kind
+    return _M().action("Find uses…", function() { openSearch(query) }, ok)
+}
+
+// A menu of only Find uses…, for the views without a row menu of their own
+// (vJoy Viewer chips, Xbox Output View rows, Manage Modes).
+function findUsesMenu(kind, title, query) {
+    return _M().menu(kind, title, [findUsesItem(query)])
 }

@@ -336,6 +336,15 @@ def _wait(ms: int) -> None:
     QtTest.QTest.qWait(ms)
 
 
+def _wait_for(check: object, what: str) -> None:
+    """Pumps events until check() is truthy (test/qt_wait.py); the result
+    is checked by the caller, so a timeout doesn't raise."""
+    sys.path.insert(0, str(_ROOT / "test"))
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
+
+    wait_until(check, what, fail=False)  # type: ignore[arg-type]
+
+
 def _fakes() -> tuple:
     from PySide6 import QtCore
 
@@ -434,7 +443,9 @@ def _device_mapping_editor(out: pathlib.Path) -> None:
         " + ' stashA:' + _hw.editActiveFor('Stick A', '')"
     )
     _js(win, "_editorWin.openForDevice('Stick A', ''); 1")
-    _wait(500)
+    _wait_for(
+        lambda: _js(win, "String(_recoverGate.opened)") == "true", "the offer"
+    )
     _Out.result("offer-a", _js(win, "String(_recoverGate.opened)"))
     # Home: Stick B's Device Mapping Editor, with the offer still open.
     _js(win, "_editorWin.openForDevice('Stick B', ''); 1")
@@ -467,7 +478,9 @@ def _device_mapping_editor(out: pathlib.Path) -> None:
         return {"#993366": "new", "#336699": "old"}.get(name, name)
 
     _js(win, "_editorWin.openForDevice('Stick A', ''); 1")
-    _wait(500)
+    _wait_for(
+        lambda: _js(win, "String(_recoverGate.opened)") == "true", "the offer"
+    )
     _Out.result("offer-a-again", _js(win, "String(_recoverGate.opened)"))
     # Not now.
     _js(win, "_recoverGate.close(); 1")
@@ -722,10 +735,10 @@ Window {
     shown = "page.layoutModel.selectionLabel + ' ' + page.paneTitle"
     # Add Key, as its listener hands over a pressed S, then A.
     add_key.listeningTerminated.emit(press(31))  # S
-    _wait(300)
+    _wait_for(lambda: _js(win, shown) == "S S", "S picked")
     _Out.result("picked", _js(win, shown))
     add_key.listeningTerminated.emit(press(30))  # A
-    _wait(300)
+    _wait_for(lambda: _js(win, shown) == "A A", "A added")
     _Out.result("added", _js(win, shown))
     # Two keys added from elsewhere.
     model.addKey(press(16), "Default")  # Q

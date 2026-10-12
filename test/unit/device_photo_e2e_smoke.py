@@ -33,6 +33,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -45,6 +46,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 from PySide6 import QtGui, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -128,7 +130,7 @@ def key_text(path: Path) -> str:
 
 def main() -> None:
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
+    wait_until(lambda: app.engine.rootObjects(), "the main window")
     out: dict = {"errors": []}
     maker = app.engine.rootContext().contextProperty("devicePhotoMaker")
     out["maker"] = maker is not None and type(maker).__name__
@@ -152,8 +154,9 @@ def main() -> None:
     out["made"] = made
     out["renders-1"] = len(wanted)
     if made:
-        # A moment for the write to finish and the notice to settle.
-        QtTest.QTest.qWait(500)
+        # Until the written file reads as a picture.
+        wait_until(lambda: not QtGui.QImage(str(PHOTO)).isNull(), "the photo file",
+                   5000, fail=False)
         img = QtGui.QImage(str(PHOTO)).convertToFormat(
             QtGui.QImage.Format.Format_ARGB32)
         out["size"] = [img.width(), img.height()]

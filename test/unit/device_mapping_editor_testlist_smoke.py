@@ -28,6 +28,7 @@ os.environ.setdefault(
 )
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 
 import gremlin.util  # noqa: E402
 
@@ -35,6 +36,7 @@ gremlin.util.userprofile_path = unittest.mock.Mock(return_value=tempfile.mkdtemp
 
 from device_mapping_editor_window_smoke import FakeBackend, FakeUiState  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQml, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 # The banner's parts as shown: texts and which links are visible.
 BANNER = (
@@ -115,21 +117,24 @@ def main() -> None:
         "var r = _editorWin.openDeviceMenu();"
         " JSON.stringify({ok: r, file: _fileMenu.opened, device: _deviceMenu.opened})"
     )
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: js("_fileMenu.opened && _deviceMenu.opened"), "the menus",
+               5000, fail=False)
     after = js(
         "JSON.stringify({file: _fileMenu.opened || _fileMenu.visible,"
         " device: _deviceMenu.opened || _deviceMenu.visible})"
     )
     print(f"RESULT device-link {opened} {after}", flush=True)
     js("_deviceMenu.close(); _fileMenu.close(); 1")
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: js("!_fileMenu.visible && !_deviceMenu.visible"),
+               "the menus closed", 5000, fail=False)
 
     # A device chosen: today's text with its Edit Mapping link.
     js(
         "_editorWin.targetGuid = '12345678-1234-1234-1234-123456789abc';"
         " _editorWin.targetName = 'Smoke Stick'; 1"
     )
-    QtTest.QTest.qWait(800)
+    wait_until(lambda: js("_editorWin.canEnterEdit"), "the device shown", 5000,
+               fail=False)
     print(f"RESULT banner-device {js(BANNER)}", flush=True)
 
     # Item 3: a picture dropped and the edit discarded at once, while the
@@ -146,7 +151,11 @@ def main() -> None:
     big_url = QtCore.QUrl.fromLocalFile(str(big_path)).toString()
     wide_url = QtCore.QUrl.fromLocalFile(str(wide_path)).toString()
     js("_editorWin.enterEdit(); 1")
-    QtTest.QTest.qWait(600)
+    wait_until(
+        lambda: js("_editorWin.editing && _ed() !== null && _ed().seeded"
+                   " && !_editorWin._baseWanted"),
+        "the edit", 5000, fail=False,
+    )
     held = js(
         DRAWN + ";"
         " Qt.createQmlObject('import QtQuick; Image { asynchronous: true; source: \""

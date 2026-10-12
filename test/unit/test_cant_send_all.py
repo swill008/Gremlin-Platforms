@@ -238,6 +238,8 @@ output.xbox_available = lambda: False
 output.osc_settings = lambda: ({"output_enabled": True}, [])
 import joystick_gremlin
 from PySide6 import QtCore, QtGui, QtQml, QtTest
+sys.path.insert(0, os.path.join(ROOT, "test"))
+from qt_wait import wait_until
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
 QtTest.QTest.qWait(300)
 from action_plugins.root import RootData
@@ -280,10 +282,15 @@ for tag, qml in CASES:
         print(f"E|{tag}|NOT CREATED {component.errorString()}", flush=True)
         continue
     keep.append(obj)
-    QtTest.QTest.qWait(150)
-    combos = [c for c in obj.findChildren(QtCore.QObject)
-              if c.metaObject().indexOfSignal("activated(int)") >= 0
-              and c.property("displayText") is not None]
+
+    def boxes(obj=obj):
+        return [c for c in obj.findChildren(QtCore.QObject)
+                if c.metaObject().indexOfSignal("activated(int)") >= 0
+                and c.property("displayText") is not None]
+
+    wait_until(lambda: boxes() and str(boxes()[0].property("displayText"))
+               .startswith("⚠"), f"{tag}'s warning", fail=False)
+    combos = boxes()
     box = combos[0]
     color = QtGui.QColor(box.property("contentItem").property("color")).name()
     tips = [t.property("text") for t in obj.findChildren(QtCore.QObject)

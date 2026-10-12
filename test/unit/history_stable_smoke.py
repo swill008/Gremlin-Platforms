@@ -142,7 +142,7 @@ out["restore-enabled"] = prop("historyRestoreBefore", "enabled")
 out["after-link"] = prop("historyRestoreAfter", "text")
 out["full-shown-at-first"] = hv("_sides.visible")
 hv("showFull = true")
-QtTest.QTest.qWait(100)
+wait_until(lambda: hv("_sides.visible"), "the full before/after view", fail=False)
 out["full-shown-after-link"] = hv("_sides.visible")
 hv("showFull = false")
 hv("_list.positionViewAtIndex(12, ListView.Beginning)")
@@ -167,7 +167,7 @@ out["message"] = prop("historyMessage", "text")
 save("Late Stick", [1])
 QtTest.QTest.qWait(500)
 hv("_model.refresh()")  # as the window does when it comes back to the front
-QtTest.QTest.qWait(100)
+wait_until(lambda: hv("_model.newCount"), "the new-changes count", fail=False)
 out["place-after-new"] = place()
 out["new-count"] = hv("_model.newCount")
 out["bar-visible"] = prop("historyNewBar", "visible")
@@ -175,13 +175,19 @@ out["bar-text"] = prop("historyNewText", "text")
 
 # Show adds it; the selection stays on its entry.
 hv("showNew()")
-QtTest.QTest.qWait(200)
+wait_until(
+    lambda: not prop("historyNewBar", "visible"), "the new-changes bar gone",
+    fail=False,
+)
 out["place-after-show"] = place()
 out["bar-after-show"] = prop("historyNewBar", "visible")
 
 # The folded run opens under its head.
+count_closed = hv("_list.count")
 hv(f'_model.toggleGroup("{head}")')
-QtTest.QTest.qWait(200)
+wait_until(
+    lambda: hv("_list.count") != count_closed, "the run opened", fail=False
+)
 out["count-open"] = hv("_list.count")
 print("RESULT " + json.dumps(out), flush=True)
 smoke_exit(0)  # threads started by the app would keep it alive

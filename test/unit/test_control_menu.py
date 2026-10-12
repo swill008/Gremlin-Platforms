@@ -13,7 +13,8 @@ page's options. The expected menus (control_menu_expected.json, ten cases per
 page) were captured from the pages' own _layoutMenuModel at commit f4ee3994
 run on the same stand-in page
 (`python test/unit/test_control_menu.py --smoke --capture` prints both);
-they matched in every case but PB2's Clear Name.
+they matched in every case but PB2's Clear Name. Since then a single row
+also gets Find uses… after History (Search, D-01-SEARCH).
 
 QML needs a QGuiApplication, so the checks run in a child process (this file
 run as a script) printing "RESULT <json>".

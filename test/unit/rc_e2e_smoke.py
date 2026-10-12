@@ -644,7 +644,7 @@ def main() -> None:
         # Menu bar: Arrange › Bring to Front.
         w.select(["b1"])
         w.ev(f"{_ROW}('Arrange', 'Bring to Front').triggered()")
-        QtTest.QTest.qWait(80)
+        wait_for(lambda: w.ev("_ed().lastCommandId"), 3)
         res["menu"] = [w.ev("_ed().lastCommandId"), w.ev("_ed().cmdRepeatLabel()")]
         w.right_click(w.centre("b1"))
         res["menu-first-row"] = (w.menu_lines() or [])[:3]
@@ -746,7 +746,12 @@ def main() -> None:
         w.select(["b2"])
         w.right_click(w.centre("b2"))
         res: dict = {"clicked": w.click_row("Show in Layers")}
-        QtTest.QTest.qWait(300)
+        wait_for(
+            lambda: w.ev("_layersSide.open")
+            and w.ev("_layersPanel.revealedId") == "b2"
+            and (w.js("_layersPanel.revealedRow()") or {}).get("inView"),
+            3,
+        )
         res["open"] = w.ev("_layersSide.open")
         res["revealed"] = w.ev("_layersPanel.revealedId")
         res["row"] = w.js("_layersPanel.revealedRow()")
@@ -762,7 +767,7 @@ def main() -> None:
         w.select(["b2"])
         w.right_click(w.centre("b2"))
         res: dict = {"clicked": w.click_row("Properties…")}
-        QtTest.QTest.qWait(300)
+        wait_for(lambda: w.ev("_editorWin.propsShown"), 3)
         res["props-on"] = w.ev("_editorWin.propsOn")
         res["layers-open"] = w.ev("_layersSide.open")
         res["shown"] = w.ev("_editorWin.propsShown")

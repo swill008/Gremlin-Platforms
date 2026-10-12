@@ -18,6 +18,7 @@ from typing import Any
 
 import pytest
 from PySide6 import QtCore, QtQml, QtTest
+from qt_wait import wait_until  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import code_runner, history_modules, osc, osc_bulk, shared_state
 from gremlin import osc_device_file as odf
@@ -297,7 +298,7 @@ def test_run_bound_profile_with_per_input_settings(
         seen.clear()
         runtime._on_main("/trig", ())  # own delay 40, not the server's 400
         assert seen == [(uid["/trig"], True)]
-        QtTest.QTest.qWait(150)
+        wait_until(lambda: len(seen) >= 2, "the /trig release")
         assert seen == [(uid["/trig"], True), (uid["/trig"], False)]
 
         seen.clear()
@@ -309,15 +310,15 @@ def test_run_bound_profile_with_per_input_settings(
 
         seen.clear()
         runtime._on_main("/chg", (3,))
-        QtTest.QTest.qWait(100)
+        wait_until(lambda: len(seen) >= 2, "the /chg release")
         runtime._on_main("/chg", (3,))
-        QtTest.QTest.qWait(100)
+        QtTest.QTest.qWait(100)  # kept: the same value must NOT pulse
         assert seen == [(uid["/chg"], True), (uid["/chg"], False)]
 
         seen.clear()
         runtime._on_main("/scene", (2,))
         runtime._on_main("/SCENE", (1,))
-        QtTest.QTest.qWait(100)
+        wait_until(lambda: len(seen) >= 2, "the /scene release")
         assert seen == [(uid["/scene"], True), (uid["/scene"], False)]
 
         seen.clear()

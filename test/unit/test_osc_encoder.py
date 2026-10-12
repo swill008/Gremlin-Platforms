@@ -17,6 +17,7 @@ from typing import Any
 
 import pytest
 from PySide6 import QtTest
+from qt_wait import wait_until  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import osc, osc_rows, shared_state
 from gremlin import osc_device_file as odf
@@ -189,14 +190,14 @@ def test_encoder_pulses_one_press_release_per_tick_its_way(run: tuple) -> None:
     runtime.start()
     runtime._on_main("/enc", (2, 0))  # signed: 2 ticks cw; ccw input sees 0
     assert events == [("button", cw.input_id, True)]
-    _wait(200)
+    wait_until(lambda: len(events) >= 4, "the two cw pulses")
     assert events == [
         ("button", cw.input_id, True), ("button", cw.input_id, False),
         ("button", cw.input_id, True), ("button", cw.input_id, False),
     ]
     events.clear()
     runtime._on_main("/enc", (0, -1))  # cw input: 0 in signed = nothing
-    _wait(100)
+    wait_until(lambda: len(events) >= 2, "the ccw pulse")
     assert events == [("button", ccw.input_id, True), ("button", ccw.input_id, False)]
 
 

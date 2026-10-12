@@ -32,6 +32,7 @@ os.environ.setdefault(
 )
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 _spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -64,6 +65,7 @@ devices.last_hid_skips = lambda: [DENIED]  # type: ignore[assignment]
 steam.steam_running = lambda: False  # type: ignore[assignment]
 
 from PySide6 import QtCore, QtGui, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 CASE, GREMLIN_DIR, SHOT = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3])
 
@@ -238,11 +240,17 @@ def checks(app: QtGui.QGuiApplication) -> None:
         "closed": [s["visible"] for s in skipped()],
     }
     click(window, toggle)
-    QtTest.QTest.qWait(150)
+    wait_until(
+        lambda: all(s["visible"] for s in skipped()), "the details open", fail=False
+    )
     details["open"] = [s["visible"] for s in skipped()]
     result("hid_skipped", skipped())
     click(window, toggle)
-    QtTest.QTest.qWait(150)
+    wait_until(
+        lambda: not any(s["visible"] for s in skipped()),
+        "the details closed",
+        fail=False,
+    )
     details["closed_again"] = [s["visible"] for s in skipped()]
     result("details", details)
     stick_row = rows.get("Left stick")
@@ -264,7 +272,11 @@ def checks(app: QtGui.QGuiApplication) -> None:
     if CASE == "pass":
         hidden_row = rows.get("Right stick")
         click(window, hidden_row)
-        QtTest.QTest.qWait(200)
+        wait_until(
+            lambda: item(window, "notSeenDetail").isVisible(),
+            "the not-seen detail line",
+            fail=False,
+        )
         result(
             "not_seen",
             {
@@ -277,7 +289,16 @@ def checks(app: QtGui.QGuiApplication) -> None:
     # A click on the vJoy row shows its axes.
     axes[(VJOY_RAW, 1)] = -16384
     click(window, vjoy_row)
-    QtTest.QTest.qWait(300)
+    wait_until(
+        lambda: vjoy_row.property("selected")
+        and any(
+            b.objectName() == "axisBar" and b.isVisible()
+            and b.property("name") == "X" and float(b.property("value"))
+            for b in items(window)
+        ),
+        "the vJoy row picked, its X axis read",
+        fail=False,
+    )
     bars = [b for b in items(window) if b.objectName() == "axisBar" and b.isVisible()]
     result(
         "select",
@@ -300,7 +321,11 @@ def checks(app: QtGui.QGuiApplication) -> None:
     cell = item(window, "buttonCell_3")
     before = bool(cell.property("pressed")) if cell else None
     pressed.add((VJOY_RAW, 3))
-    QtTest.QTest.qWait(300)
+    wait_until(
+        lambda: (c := item(window, "buttonCell_3")) and c.property("pressed"),
+        "button 3 lit",
+        fail=False,
+    )
     cell = item(window, "buttonCell_3")
     result(
         "button",
@@ -336,7 +361,9 @@ def follow_checks(window, rows, stick_row, vjoy_row) -> None:  # noqa: ANN001
     QtTest.QTest.qWait(300)
     jitter = item(window, "detailName").property("text")
     axes[(STICK_RAW, 2)] = 20000
-    QtTest.QTest.qWait(300)
+    wait_until(
+        lambda: stick_row.property("selected"), "the moved stick picked", fail=False
+    )
     moved = {
         "detail": item(window, "detailName").property("text"),
         "row_selected": bool(stick_row.property("selected")),
@@ -345,7 +372,9 @@ def follow_checks(window, rows, stick_row, vjoy_row) -> None:  # noqa: ANN001
     # All devices: moving the vJoy axis changes nothing.
     QtTest.QTest.qWait(1200)
     click(window, item(window, "allDevicesRow"))
-    QtTest.QTest.qWait(200)
+    wait_until(
+        lambda: item(window, "compactView").isVisible(), "All devices", fail=False
+    )
     axes[(VJOY_RAW, 2)] = -20000
     QtTest.QTest.qWait(400)
     all_view = {
@@ -372,7 +401,10 @@ def logs_checks(window: QtQuick.QQuickWindow) -> None:
     """Logs tab by a real click: pick Tester log, Find filters, Follow on."""
     out: dict = {}
     click(window, item(window, "tab_logs"))
-    QtTest.QTest.qWait(300)
+    wait_until(
+        lambda: (v := item(window, "logsView")) and v.isVisible(), "the Logs tab",
+        fail=False,
+    )
     view = item(window, "logsView")
     out["logs_visible"] = bool(view and view.isVisible())
     out["devices_hidden"] = not item(window, "deviceList").isVisible()
@@ -400,10 +432,15 @@ def logs_checks(window: QtQuick.QQuickWindow) -> None:
     # Follow off by a click, then on again.
     follow = item(window, "logFollow")
     click(window, follow)
-    QtTest.QTest.qWait(150)
+    wait_until(lambda: not follow.property("checked"), "Follow off", fail=False)
     out["follow_after_off"] = bool(follow.property("checked"))
     click(window, follow)
-    QtTest.QTest.qWait(150)
+    wait_until(
+        lambda: follow.property("checked")
+        and item(window, "logLines").property("atYEnd"),
+        "Follow on, at the end",
+        fail=False,
+    )
     out["follow_after_on"] = bool(follow.property("checked"))
     out["at_end"] = bool(item(window, "logLines").property("atYEnd"))
 
@@ -458,12 +495,12 @@ def stale_checks(window: QtQuick.QQuickWindow) -> None:
     )
     data["hidhide_change"] = "program list"
     path.write_text(json.dumps(data), "utf-8")
-    QtTest.QTest.qWait(2500)
+    wait_until(banner.isVisible, "the HidHide-changed banner", fail=False)
     after = bool(banner.isVisible())
     text = item(window, "staleText").property("text")
     window.grabWindow().save(str(SHOT.parent / "banner.png"))
     click(window, item(window, "restartTesterButton"))
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: started, "the tester restarted", fail=False)
     result(
         "stale",
         {

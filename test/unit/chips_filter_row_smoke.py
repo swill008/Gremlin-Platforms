@@ -30,6 +30,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -60,6 +61,8 @@ store.module_file_in(store.ensure_device_dir("pJoy Pro", GUID)).write_text(
     json.dumps({"kind": "control.hardware", "device": "pJoy Pro", "nodes": NODES}),
     encoding="utf-8",
 )
+
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import joystick_gremlin  # noqa: E402
 
@@ -167,7 +170,10 @@ def main() -> None:
     click(win, centre(win, "_poolFloat", "poolFilter"))
     for ch in "zzzq":
         QtTest.QTest.keyClick(win, getattr(QtCore.Qt.Key, "Key_" + ch.upper()))
-    QtTest.QTest.qWait(100)
+    wait_until(
+        lambda: ev(win, "poolFilter === 'zzzq' && resItems.length === 0"),
+        "the typed filter", fail=False,
+    )
     out["typed"] = ev(win, "poolFilter")
     out["filtered"] = ev(win, "resItems.length")
     click(win, centre(win, "_poolFloat", "poolReset"))

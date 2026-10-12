@@ -1079,7 +1079,15 @@ Item {
                 onClicked: (mouse) => {
                     if (_tree.readOnly) {
                         // View only: a click selects the input (an action
-                        // line selects its input); no menus, no pane.
+                        // line selects its input); no pane. A right-click
+                        // on an input asks for its menu (Find uses…).
+                        if (mouse.button === Qt.RightButton) {
+                            if (rowKind === "parent") {
+                                _tree.select(key, false)
+                                _tree.parentMenu(key, title, userName, groupName, _row, mouse.x, mouse.y)
+                            }
+                            return
+                        }
                         if (mouse.button !== Qt.LeftButton)
                             return
                         if (rowKind === "parent")

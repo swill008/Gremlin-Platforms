@@ -351,6 +351,7 @@ def pytest_runtest_protocol(item: pytest.Item, nextitem: pytest.Item | None):  #
         _Stalls.watch.watch(item.nodeid)
     try:
         yield
+        _receivers_at_end(item, _Receivers.start.pop(item.nodeid, None))
     finally:
         if _Stalls.watch is not None:
             _Stalls.watch.watch(None)
@@ -513,15 +514,21 @@ def _gc_on_main_thread() -> Iterator[None]:
 # | fixtures here: set up first, torn down after the test's other fixtures.
 # | And a warning in the rule-check report when a test leaves more
 # | connections on gremlin.signal than it found (a model or closure kept).
+# | Counted when this fixture starts, compared in pytest_runtest_protocol
+# | after pytest dropped the test's fixture values (item.funcargs): a
+# | fixture's connected object isn't the test's leak.
 # | Not when the test started one of the program's once-per-process hooks
-# | (a module's _hooked flag, a BurstNotice's listener): the first test to
-# | trip one connects for the rest of the run, which isn't a leak.
+# | or shared objects (a module's _hooked flag, a BurstNotice's listener, a
+# | singleton, a module-level QObject): the first test to make one connects
+# | for the rest of the run, which isn't a leak.
 
 RECEIVERS_GREW = "TEST-SIGNAL-RECEIVERS-GREW"
 
 
 class _Receivers:
     names: list[str] | None = None
+    # nodeid: (connections, once-hooks) when the test's fixture started.
+    start: dict[str, tuple[dict[str, int], frozenset[str]] | None] = {}
 
 
 def _signal_receivers() -> dict[str, int]:
@@ -555,14 +562,21 @@ def _receivers_grew(before: dict[str, int], after: dict[str, int]) -> str | None
 
 
 def _once_hooks() -> frozenset[str]:
-    """The program's once-per-process signal hooks started so far: module
-    flags named *_hooked (gremlin/osc_feedback.py, osc_output.py, ...) and
-    started BurstNotices (gremlin/notice.py; device_aliases' names, ...)."""
+    """The program's once-per-process hooks and shared objects so far, in
+    gremlin* and action_plugins* modules: flags named *_hooked
+    (gremlin/osc_feedback.py, ...), started BurstNotices (gremlin/notice.py),
+    made SingletonDecorator instances (gremlin/common.py) and module-level
+    QObjects (InputModuleRuntime, deferred_write._SCHEDULER, ...); objects by
+    id, so a replaced one counts as new."""
+    from PySide6 import QtCore
+
     notice = sys.modules.get("gremlin.notice")
     burst = getattr(notice, "BurstNotice", None) if notice else None
+    common = sys.modules.get("gremlin.common")
+    single = getattr(common, "SingletonDecorator", None) if common else None
     started = set()
     for name, module in list(sys.modules.items()):
-        if module is None or not name.startswith("gremlin"):
+        if module is None or not name.startswith(("gremlin", "action_plugins")):
             continue
         for attr, value in list(vars(module).items()):
             if attr.endswith("_hooked") and value is True:
@@ -570,41 +584,64 @@ def _once_hooks() -> frozenset[str]:
             elif burst is not None and isinstance(value, burst):
                 if getattr(value, "_timer", None) is not None:
                     started.add(f"{name}.{attr}")
+            elif single is not None and isinstance(value, single):
+                if value.instance is not None:
+                    started.add(f"id:{id(value.instance)}")
+            elif isinstance(value, QtCore.QObject):
+                started.add(f"id:{id(value)}")
     return frozenset(started)
 
 
-@pytest.fixture(autouse=True)
-def _deferred_deletes_at_test_end(request: pytest.FixtureRequest) -> Iterator[None]:
+def _flush_deferred_deletes() -> None:
     from PySide6 import QtCore
 
-    try:
-        before = _signal_receivers()
-        hooks = _once_hooks()
-    except Exception:
-        before, hooks = None, frozenset()
-    yield
     if QtCore.QCoreApplication.instance() is not None:
         QtCore.QCoreApplication.sendPostedEvents(
             None, QtCore.QEvent.Type.DeferredDelete
         )
-    if not before:  # gremlin.signal not loaded yet: nothing to compare
-        return
+
+
+def _receivers_at_start() -> tuple[dict[str, int], frozenset[str]] | None:
     try:
+        before = _signal_receivers()
+        return (before, _once_hooks()) if before else None
+    except Exception:
+        return None
+
+
+def _receivers_at_end(
+    item: pytest.Item, start: tuple[dict[str, int], frozenset[str]] | None
+) -> None:
+    """After teardown and pytest's reset of item.funcargs: what is still
+    connected is held by the test's own leftovers (or a once-per-process
+    hook it started)."""
+    if start is None:  # gremlin.signal not loaded yet: nothing to compare
+        return
+    before, hooks = start
+    try:
+        _flush_deferred_deletes()
         problem = _receivers_grew(before, _signal_receivers())
         if problem:  # objects already unreachable still hold connections
             import gc
 
             gc.collect()
-            QtCore.QCoreApplication.sendPostedEvents(
-                None, QtCore.QEvent.Type.DeferredDelete
-            )
+            _flush_deferred_deletes()
             problem = _receivers_grew(before, _signal_receivers())
         if problem and _once_hooks() != hooks:
             return  # a once-per-process hook started: its connections stay
     except Exception:
         return
     if problem:
-        _note(request.node.nodeid, [problem])
+        _note(item.nodeid, [problem])
+
+
+@pytest.fixture(autouse=True)
+def _deferred_deletes_at_test_end(request: pytest.FixtureRequest) -> Iterator[None]:
+    # Taken here, after the module and session fixtures are made: theirs
+    # aren't this test's connections.
+    _Receivers.start[request.node.nodeid] = _receivers_at_start()
+    yield
+    _flush_deferred_deletes()
 
 
 def _stop_history_writer(deadline: float) -> None:

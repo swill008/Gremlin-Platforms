@@ -283,7 +283,11 @@ def story(j: Journey) -> None:  # noqa: PLR0915
     j.QTest.qWait(int(period * 3000))
     out["hh-not-hidden"] = hh_lines("NOT hidden")
     hh["err"] = 5  # the HidHide window holds the driver
-    j.QTest.qWait(int(period * 6000))
+    try:
+        j.wait_until(lambda: hh_lines("in use"), "an in-use warning", timeout=8)
+    except TimeoutError:
+        pass
+    j.QTest.qWait(int(period * 3000))  # one line per episode
     out["hh-in-use"] = hh_lines("in use")
     hh["err"] = 0
     trace.set_hidhide(False)

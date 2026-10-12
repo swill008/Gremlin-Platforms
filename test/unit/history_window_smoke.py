@@ -119,11 +119,16 @@ out["first-title"] = hv("_model.data(_model.index(0, 0), Qt.UserRole + 4)")
 # one row, group size 2; opening the run shows both.
 out["group-size"] = hv("_model.data(_model.index(0, 0), Qt.UserRole + 9)")
 group_key = hv("_model.data(_model.index(0, 0), Qt.UserRole + 8)")
+count_closed = hv("_list.count")
 hv(f'_model.toggleGroup("{group_key}")')
-QtTest.QTest.qWait(100)
+wait_until(
+    lambda: hv("_list.count") != count_closed, "the run opened", fail=False
+)
 out["count-group-open"] = hv("_list.count")
 hv(f'_model.toggleGroup("{group_key}")')
-QtTest.QTest.qWait(100)
+wait_until(
+    lambda: hv("_list.count") == count_closed, "the run closed", fail=False
+)
 hv(f'pick("{first}")')
 QtTest.QTest.qWait(200)
 out["before"] = item("history:before").property("text")
@@ -134,7 +139,7 @@ if shot:
 # Restore Before, then its confirm step.
 hv('restore("before")')
 hv("_gate.confirmed()")
-QtTest.QTest.qWait(300)
+wait_until(lambda: hv("message"), "the restored message", fail=False)
 settle()
 out["message"] = item("historyMessage").property("text")
 out["file-after-restore"] = json.loads(path.read_text(encoding="utf-8"))["claim"]
@@ -145,8 +150,13 @@ out["count-after-restore"] = hv("_list.count")
 out["tag-after-restore"] = hv(
     f'_model.data(_model.index({row_of(first)}, 0), Qt.UserRole + 12)'
 )
+about_before = item("historyAbout").property("text")
 hv("showAll()")
-QtTest.QTest.qWait(200)
+wait_until(
+    lambda: item("historyAbout").property("text") != about_before,
+    "the about line for all changes",
+    fail=False,
+)
 out["about-after-show-all"] = item("historyAbout").property("text")
 # The same change picked again is read again: its entry, changed since it
 # was first shown, shows as it is now (the title here).

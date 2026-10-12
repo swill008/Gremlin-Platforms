@@ -102,9 +102,11 @@ def _smoke() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     calls: list[list[object]] = []
 
@@ -372,7 +374,10 @@ def _smoke() -> None:
     report("source-hidden", not visible("oscSourceRow"))
     set_text("oscRangeMin", "5")
     set_text("oscRangeMax", "2")
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: (ok := find("oscOk")) and not ok.property("enabled"),
+        "OK turned off for a bad range", fail=False,
+    )
     ok = find("oscOk")
     report("ok-text", ok.property("text") if ok else None)
     report("ok-disabled-bad-range", bool(ok and not ok.property("enabled")))
@@ -390,13 +395,19 @@ def _smoke() -> None:
     report("listening", model.listening)
     report("stop-shown", by_text("Stop") is not None)
     click_text("Stop")
-    QtTest.QTest.qWait(150)
+    wait_until(
+        lambda: not model.listening and last("cancelListen") is not None,
+        "Listen stopped", fail=False,
+    )
     report("stopped", [model.listening, last("cancelListen") is not None])
 
     # A capture with Message + data: the captured values are the data.
     click("oscListen")
     model.commandCaptured.emit("/btn/7", "1, 0.5")
-    QtTest.QTest.qWait(200)
+    wait_until(
+        lambda: last("createConfiguredInput"), "the captured input added",
+        fail=False,
+    )
     report("capture-add", last("createConfiguredInput"))
 
     # 3. Bulk capture: the window's settings, P1..Pn from the values.
@@ -407,7 +418,7 @@ def _smoke() -> None:
     click("oscListen")
     report("bulk-settings", last("bulkStart"))
     model.commandCaptured.emit("/deck/1", "3, 4, 5")
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: visible("oscSource2"), "the P1..P3 sources", fail=False)
     report("sources", [visible(f"oscSource{i}") for i in range(3)])
     click_text("Stop")
     QtTest.QTest.qWait(150)

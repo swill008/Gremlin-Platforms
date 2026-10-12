@@ -250,6 +250,8 @@ MODULES = [
 output_modules._dest_modules = lambda: MODULES
 import joystick_gremlin
 from PySide6 import QtCore, QtGui, QtQml, QtTest
+sys.path.insert(0, os.path.join(ROOT, "test"))
+from qt_wait import wait_until
 app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
 QtTest.QTest.qWait(300)
 url = QtCore.QUrl.fromLocalFile(os.path.join(ROOT, "qml", "VJoySelector.qml"))
@@ -263,7 +265,8 @@ for target in (57, 5):
     QtCore.QMetaObject.invokeMethod(
         obj, "initialize", QtCore.Q_ARG("QVariant", 3),
         QtCore.Q_ARG("QVariant", "button"), QtCore.Q_ARG("QVariant", target))
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: bool(obj.property("cantSend")) == (target == 57),
+               f"Button {target}'s can't-send state", fail=False)
     combos = [c for c in obj.findChildren(QtCore.QObject)
               if c.metaObject().indexOfSignal("activated(int)") >= 0
               and c.property("currentText") is not None]

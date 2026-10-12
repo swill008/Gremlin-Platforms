@@ -28,6 +28,7 @@ os.environ.setdefault(
 )
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 
 import gremlin.util  # noqa: E402
 
@@ -36,6 +37,7 @@ gremlin.util.userprofile_path = unittest.mock.Mock(return_value=tempfile.mkdtemp
 
 import shiboken6  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 # Each step: (name, JavaScript run in the window's scope).
 STEPS = [
@@ -130,6 +132,15 @@ def main() -> None:
         quick = shiboken6.wrapInstance(
             shiboken6.getCppPointer(win)[0], QtQuick.QQuickWindow
         )
+
+        def holds(code: str, what: str, limit_ms: int = 5000) -> None:
+            """Until the window's code is true (bounded; the steps check)."""
+            wait_until(
+                lambda: QtQml.QQmlExpression(QtQml.qmlContext(win), win, code)
+                .evaluate()[0],
+                what, limit_ms, fail=False,
+            )
+
         for name, code in STEPS:
             expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, code)
             value = expr.evaluate()
@@ -147,7 +158,7 @@ def main() -> None:
             " _editorWin.targetName = 'Smoke Stick'",
         )
         device.evaluate()
-        QtTest.QTest.qWait(800)
+        holds("_editorWin.canEnterEdit", "the device shown")
         target = out / "light-export.png"
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
         # Written in the background (07 S101): wait for its result
@@ -164,10 +175,7 @@ def main() -> None:
         expr.evaluate()
         if expr.hasError():
             print(f"ERROR light-export: {expr.error().toString()}", flush=True)
-        for _ in range(600):
-            QtTest.QTest.qWait(50)
-            if saved:
-                break
+        wait_until(lambda: saved, "the light export", 30000, fail=False)
         if not saved:
             print("ERROR light-export: no result within 30 s", flush=True)
         elif not saved[0][0]:
@@ -208,7 +216,7 @@ def main() -> None:
             QtQml.qmlContext(win), win, "_editorWin.discardEdit(); 'ok'"
         )
         cancel.evaluate()
-        QtTest.QTest.qWait(300)
+        holds("!_editorWin.editing", "the edit discarded")
         after = QtQml.QQmlExpression(
             QtQml.qmlContext(win), win, "String(_ed().canUndo)"
         ).evaluate()[0]
@@ -283,7 +291,7 @@ def main() -> None:
         QtQml.QQmlExpression(
             QtQml.qmlContext(win), win, "_editorWin.discardEdit(); 1"
         ).evaluate()
-        QtTest.QTest.qWait(300)
+        holds("!_editorWin.editing", "the edit discarded")
 
         def js(code: str) -> str:
             expr = QtQml.QQmlExpression(QtQml.qmlContext(win), win, code)
@@ -295,14 +303,18 @@ def main() -> None:
         # Entering Edit changes nothing: no undo step, no unsaved changes
         # (BM11; the map has a drawing without a name).
         js("_editorWin.loadLive(); _editorWin.enterEdit(); 1")
-        QtTest.QTest.qWait(600)
+        holds(
+            "_editorWin.editing && _ed() !== null && _ed().seeded"
+            " && !_editorWin._baseWanted",
+            "the edit",
+        )
         print(
             "RESULT edit-is-clean "
             + js("String(_editorWin.isDirty()) + ' ' + String(_ed().canUndo)"),
             flush=True,
         )
         js("_editorWin.discardEdit(); 1")
-        QtTest.QTest.qWait(300)
+        holds("!_editorWin.editing", "the edit discarded")
         # Copy Device Map from Device outside Edit: Undo brings the map that
         # was there back (BM9).
         # Another device's own folder (03 S128); its slug is the folder name.
@@ -323,7 +335,7 @@ def main() -> None:
         undone = js(f"{ids}.join(',') }}; _ed().undo(); ids()")
         print(f"RESULT copy-undo {copied} {undone}", flush=True)
         js("_editorWin.discardEdit(); 1")
-        QtTest.QTest.qWait(300)
+        holds("!_editorWin.editing", "the edit discarded")
         # Ctrl+S while a text box's text is being typed saves the typed text
         # (BM15).
         js("_editorWin.enterEdit(); var e = _ed();"
@@ -346,7 +358,7 @@ def main() -> None:
         js("_editorWin.cancelEdit(); 1")
         QtTest.QTest.qWait(200)
         js("_editorWin.confirmLeaveSave(); 1")
-        QtTest.QTest.qWait(300)
+        holds("!_editorWin.editing", "the save and leave")
         saved = json.loads(Path(where).read_text(encoding="utf-8"))
         has = any(n.get("id") == "t2" for n in saved.get("nodes", []))
         editing = js("String(_editorWin.editing)")
@@ -364,7 +376,7 @@ def main() -> None:
         QtTest.QTest.qWait(300)
         group = js("String(_ed().canGroup())")
         js("_editorWin.discardEdit(); 1")
-        QtTest.QTest.qWait(300)
+        holds("!_editorWin.editing", "the edit discarded")
         print(f"RESULT group-drawings {group}", flush=True)
         # After a crash with unsaved edits: opening the map keeps the edit's
         # pictures for Restore; Discard (the offer's own button) puts the

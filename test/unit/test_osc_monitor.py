@@ -209,9 +209,11 @@ def _smoke() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     from gremlin import osc_traffic
     from gremlin.ui import osc_monitor_model as mm
@@ -368,11 +370,16 @@ def _smoke() -> None:
     mon = roots[-1]
     mq = as_quick(mon)
     mq.show()
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: runtime.calls, "the port hold on open", fail=False)
     report("hold-on-open", [c[0] for c in runtime.calls])
     osc_traffic.note("in", "/fader/3", [0.25], ("10.0.0.9", 8000), [])
     osc_traffic.note("out", "/light/1", [1.0], ("10.0.0.9", 9000), None)
-    QtTest.QTest.qWait(300)
+
+    def count_is(n: int) -> bool:
+        found = find(mq, "oscMonitorList")
+        return bool(found and found.property("count") == n)
+
+    wait_until(lambda: count_is(3), "three rows in the list", fail=False)
     lst = find(mq, "oscMonitorList")
     report("list-count", lst.property("count") if lst else None)
 
@@ -380,20 +387,23 @@ def _smoke() -> None:
     box = find(mq, "oscMonitorFilter")
     if box is not None:
         box.setProperty("text", "fader")
-        QtTest.QTest.qWait(100)
+        wait_until(lambda: count_is(1), "the filtered list", fail=False)
         report("filtered-count", lst.property("count") if lst else None)
         box.setProperty("text", "")
-        QtTest.QTest.qWait(100)
+        wait_until(lambda: count_is(3), "the unfiltered list", fail=False)
 
     # 2. Add as input… on the "no input" row: the Add window, filled in.
     click(mq, "oscMonitorAddRow1")
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: find(mq, "oscCmd"), "the Add window", fail=False)
     cmd = find(mq, "oscCmd")
     report("monitor-add-address", cmd.property("text") if cmd else None)
     axis = find(mq, "oscModeAxis")
     report("monitor-add-axis", bool(axis and axis.property("checked")))
     click(mq, "oscOk")
-    QtTest.QTest.qWait(150)
+    wait_until(
+        lambda: any(c[0] == "createConfiguredInput" for c in calls),
+        "the add call", fail=False,
+    )
     last = [c for c in calls if c[0] == "createConfiguredInput"]
     report("monitor-add-call", last[-1][1] if last else None)
 
@@ -407,7 +417,10 @@ def _smoke() -> None:
     ])
     long_address = "/custom-variable/gremlin_mode_with_a_long_name/value"
     osc_traffic.note("out", long_address, ["Flight"], ("127.0.0.1", 12321), None)
-    QtTest.QTest.qWait(300)
+    wait_until(
+        lambda: count_is(4) and find(mq, "oscMonitorAddress3"),
+        "the long-address row", fail=False,
+    )
     count = lst.property("count") if lst else 0
     cell = find(mq, f"oscMonitorAddress{count - 1}")
     tip_texts: list[str] = []
@@ -416,18 +429,24 @@ def _smoke() -> None:
         QtTest.QTest.mouseMove(mq, point.toPoint())
         QtTest.QTest.qWait(50)
         QtTest.QTest.mouseMove(mq, point.toPoint() + QtCore.QPoint(2, 0))
-        QtTest.QTest.qWait(1500)
-        for item in items(mq):
-            text = item.property("text")
-            if (item.isVisible() and isinstance(text, str) and long_address in text
-                    and "\n" in text):
-                tip_texts.append(text)
+
+        def tips() -> list[str]:
+            return [
+                text for item in items(mq)
+                if item.isVisible()
+                and isinstance(text := item.property("text"), str)
+                and long_address in text and "\n" in text
+            ]
+
+        tip_texts = wait_until(tips, "the hover text", fail=False)
     report("hover-text", tip_texts)
     report("long-address", long_address)
 
     # 3. Close releases the port.
     mq.close()
-    QtTest.QTest.qWait(200)
+    wait_until(
+        lambda: len(runtime.calls) >= 2, "the port release on close", fail=False
+    )
     report("release-on-close", [c[0] for c in runtime.calls])
 
     finish()

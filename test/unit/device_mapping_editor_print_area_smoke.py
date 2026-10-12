@@ -24,6 +24,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -37,6 +38,7 @@ um.UpdateModel.startup = lambda self, *a, **k: None
 
 import shiboken6  # noqa: E402
 from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -64,13 +66,13 @@ _ROW = (
 
 def main() -> None:
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
-    root = app.engine.rootObjects()[0]
+    root = wait_until(lambda: app.engine.rootObjects(), "the main window")[0]
     out: dict = {}
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
     call(root, "openDeviceMappingEditorForCard", card)
-    QtTest.QTest.qWait(1000)
-    win = call(root, "deviceMappingEditorWindow")
+    win = wait_until(
+        lambda: call(root, "deviceMappingEditorWindow"), "the Device Mapping Editor"
+    )
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(300)
@@ -119,15 +121,18 @@ def main() -> None:
         url = QtCore.QUrl.fromLocalFile(str(target)).toString()
         count = len(saved) + 1
         call(win, "exportTo", url, "png")
-        for _ in range(400):
-            QtTest.QTest.qWait(25)
-            if len(saved) >= count and ev("_editorWin.exportBusy") is False:
-                break
+        wait_until(
+            lambda: len(saved) >= count and ev("_editorWin.exportBusy") is False,
+            "the export", 10000, fail=False,
+        )
         image = QtGui.QImage(str(target))
         return [image.width(), image.height()]
 
     call(win, "enterEdit")
-    QtTest.QTest.qWait(800)
+    wait_until(
+        lambda: ev("editing && _ed() !== null && _ed().seeded && !_baseWanted"),
+        "the edit", fail=False,
+    )
     # Alt+drag on an empty part of the page.
     def page_at(fx: float, fy: float) -> QtCore.QPoint:
         return at("(function(){ var s = e.spaceRect();"
@@ -145,11 +150,13 @@ def main() -> None:
     out["after-map-click"] = ev("_ed().printAreaShown")
     ev("(function(it) { it.toggle(); it.triggered(); return true })("
        + _ROW + "('Show Print Area'))")
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: not ev("_ed().printAreaShown"), "the area hidden", 5000,
+               fail=False)
     out["menu-hides"] = [ev("_ed().printAreaShown"), ev("_editorWin.printAreaOn")]
     ev("(function(it) { it.toggle(); it.triggered(); return true })("
        + _ROW + "('Show Print Area'))")
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: ev("_ed().printAreaShown"), "the area shown", 5000,
+               fail=False)
     out["menu-shows"] = [ev("_ed().printAreaShown"), ev("_editorWin.printAreaOn")]
     # Part of the edit: written by Save (07 Q1, GL-173).
     out["file-before-save"] = store.module_file("pJoy Pro", GUID).is_file()
@@ -201,14 +208,21 @@ def main() -> None:
     # Only while editing: shown (View > Show Print Area), the frame shows in
     # Edit, not on the live map, and again in the next Edit.
     ev("_editorWin.setPrintAreaShown(true)")
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: ev("_ed().printAreaShown"), "the frame shown", 5000,
+               fail=False)
     out["frame-editing"] = ev("_ed().printAreaShown")
     ev("_editorWin.discardEdit()")
-    QtTest.QTest.qWait(800)
+    wait_until(
+        lambda: ev("!_editorWin.editing && !(_ed() && _ed().printAreaShown)"),
+        "the edit discarded", fail=False,
+    )
     out["frame-live"] = [ev("_editorWin.editing"), ev("_ed().printAreaShown"),
                          ev(_ROW + "('Show Print Area').enabled")]
     call(win, "enterEdit")
-    QtTest.QTest.qWait(800)
+    wait_until(
+        lambda: ev("editing && _ed() !== null && _ed().seeded && !_baseWanted"),
+        "the edit", fail=False,
+    )
     out["frame-edit-again"] = ev("_ed().printAreaShown")
     print("RESULT " + json.dumps(out), flush=True)
     smoke_exit(0)

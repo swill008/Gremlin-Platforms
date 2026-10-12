@@ -12,6 +12,7 @@ import Gremlin.Menus as Menus
 import Gremlin.Style
 
 import "confirm.js" as Confirm
+import "control_menu.js" as ControlMenu
 
 ApplicationWindow {
     font.pixelSize: Style.fontSize
@@ -37,6 +38,23 @@ ApplicationWindow {
 
     property ModeHierarchyModel modeHierarchy : ModeHierarchyModel {}
     property ModeListModel modeList : ModeListModel {}
+
+    // A mode's right-click menu: Find uses… (D-01-SEARCH), Search on the
+    // bindings that switch to it or run in it.
+    property string _menuMode: ""
+
+    function openModeMenu(mode, item, x, y) {
+        _menuMode = mode
+        _modeMenu.openAt(item, x, y)
+    }
+
+    Menus.ContextMenu {
+        id: _modeMenu
+        build: function() {
+            return ControlMenu.findUsesMenu("mode", _root._menuMode,
+                                            { kind: "mode", mode: _root._menuMode })
+        }
+    }
 
     // The open delete question (01 S140), for tests.
     property var _question: null
@@ -212,6 +230,14 @@ ApplicationWindow {
                 padding: Style.dp(4)
 
                 text: name
+
+                MouseArea {
+                    id: _nameArea
+                    objectName: "modeNameMenu"
+                    anchors.fill: parent
+                    acceptedButtons: Qt.RightButton
+                    onClicked: (mouse) => _root.openModeMenu(name, _nameArea, mouse.x, mouse.y)
+                }
             }
 
             IconButton {

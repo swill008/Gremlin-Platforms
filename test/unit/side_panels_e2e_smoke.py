@@ -104,8 +104,7 @@ def centre(item: QtQuick.QQuickItem) -> QtCore.QPoint:
 
 def main() -> None:
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
-    root = app.engine.rootObjects()[0]
+    root = wait_until(lambda: app.engine.rootObjects(), 10000)[0]
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
     out: dict = {}
 

@@ -92,6 +92,11 @@ def popup_item(window: QtQuick.QQuickWindow, name: str) -> QtQuick.QQuickItem | 
     return window.findChild(QtQuick.QQuickItem, name)
 
 
+def popup_shown(window: QtQuick.QQuickWindow, name: str) -> bool:
+    item = popup_item(window, name)
+    return bool(item is not None and item.isVisible())
+
+
 def add_map(
     profile: Profile, uid: uuid.UUID, button: int, mode: str, vjoy: int, target: int
 ) -> None:
@@ -220,7 +225,9 @@ def import_on_second(url: str, sticks: list, second: int) -> None:
        "tickRev = tickRev + 1")
     out["twin-selection"] = json.loads(pv("selectionJson()"))
     pv("askImport()")
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: popup_shown(pack_win, "packReplace"), "the warning", 5000,
+               fail=False)
+    before_status = str(pv("status"))
     replace = popup_item(pack_win, "packReplace")
     if replace is not None and replace.isVisible():
         QtTest.QTest.mouseClick(
@@ -231,7 +238,8 @@ def import_on_second(url: str, sticks: list, second: int) -> None:
                 QtCore.QPointF(replace.width() / 2, replace.height() / 2)
             ).toPoint(),
         )
-        QtTest.QTest.qWait(400)
+        wait_until(lambda: str(pv("status")) != before_status, "the import",
+                   fail=False)
     out["twin-import-status"] = str(pv("status"))
     out["twin-first-unchanged"] = files[0].read_text(encoding="utf-8") == first_before
     second_doc = json.loads(files[1].read_text(encoding="utf-8"))
@@ -408,7 +416,9 @@ pv(
     'checks["in.groups"] = true; checks["in.checks"] = true; tickRev = tickRev + 1'
 )
 pv("askImport()")
-QtTest.QTest.qWait(300)
+wait_until(lambda: popup_shown(pack_win, "packWarningText"), "the warning", 5000,
+           fail=False)
+before_status = str(pv("status"))
 warn_text = popup_item(pack_win, "packWarningText")
 out["warning"] = warn_text.property("text") if warn_text else ""
 create = popup_item(pack_win, "packCreateLogical")
@@ -424,7 +434,7 @@ QtTest.QTest.mouseClick(
         QtCore.QPointF(replace.width() / 2, replace.height() / 2)
     ).toPoint(),
 )
-QtTest.QTest.qWait(400)
+wait_until(lambda: str(pv("status")) != before_status, "the import", fail=False)
 out["status-after"] = pv("status")
 out["undo-shown"] = child(pack_win, "packUndo").isVisible()
 
@@ -461,8 +471,10 @@ def _cannot_write(*_args: object, **_kwargs: object) -> str:
 
 _write_module = device_pack._write_module
 device_pack._write_module = _cannot_write
+before_status = str(pv("status"))
 pv("runImport()")
-QtTest.QTest.qWait(300)
+wait_until(lambda: str(pv("status")) != before_status, "the failed import",
+           fail=False)
 device_pack._write_module = _write_module
 out["status-failed"] = pv("status")
 out["message-failed"] = message()
@@ -470,8 +482,10 @@ undo_button = child(pack_win, "packUndo")
 out["undo-after-failed"] = bool(undo_button and undo_button.isVisible())
 out["backend-undo-after-failed"] = device_pack.can_undo_import()
 
+before_status = str(pv("status"))
 pv("undoImport()")
-QtTest.QTest.qWait(300)
+wait_until(lambda: str(pv("status")) != before_status, "the Restore Import",
+           fail=False)
 buttons = sorted(
     item.input_id
     for item in shared_state.current_profile.inputs.get(uid, [])

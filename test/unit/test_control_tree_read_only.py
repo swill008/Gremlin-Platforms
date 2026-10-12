@@ -3,8 +3,9 @@
 # ruff: noqa: E501 - the QML list rows below read best on one line each
 
 """The shared list's view-only switches (the Xbox Output View list, 05 S131):
-ControlTree.readOnly hides the grips and opens no menu or pane on a click
-(a left click only selects, carets still fold); ControlTree.showGroups false
+ControlTree.readOnly hides the grips and opens no pane on a click (a left
+click only selects, carets still fold; a right-click on an input sends its
+menu, for Find uses…, D-01-SEARCH); ControlTree.showGroups false
 draws no group row and doesn't indent rows for one; ControlFindBar.showUndo
 false hides Undo / Redo and showCantSend false hides the "Binding output not found"
 tick. The defaults keep the list pages as they are (grip shown, right-click
@@ -70,10 +71,11 @@ def test_read_only_tree_and_bar(tmp_path: pathlib.Path) -> None:
     assert r["defGroup"] == "true", r["defGroup"]
     assert r["defIndent"] == "true", r["defIndent"]
     assert r["defUndo"] == "true true", r["defUndo"]
-    # readOnly: no grip, no menu on any row, no pane signal; a left click
-    # on an input or its line selects the input.
+    # readOnly: no grip, no pane signal; a right-click sends the menu only
+    # for an input (Find uses…), not for its lines; a left click on an input
+    # or its line selects the input.
     assert r["roGrip"] == "false", r["roGrip"]
-    assert r["roRight"] == "", r["roRight"]
+    assert r["roRight"] == "parentMenu,parentMenu", r["roRight"]
     assert r["roLeft"] == "parent:button:1", r["roLeft"]
     assert r["roChildLeft"] == "parent:button:2", r["roChildLeft"]
     assert r["roSignals"] == "", r["roSignals"]

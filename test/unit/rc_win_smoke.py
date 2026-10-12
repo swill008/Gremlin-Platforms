@@ -331,7 +331,7 @@ def main() -> None:
         w.ev("_ed().lastCommandId = ''")
         w.select(["b2"])
         w.trigger("Edit", "Duplicate")
-        QtTest.QTest.qWait(50)
+        wait_for(lambda: w.ev("_ed().lastCommandId"), 3)
         res["menu-duplicate"] = w.ev("_ed().lastCommandId")
         w.ev("_ed().undo()")
         w.ev("_ed().lastCommandId = ''")
@@ -349,7 +349,7 @@ def main() -> None:
         at = w.hist()
         count = len(w.nodes())
         w.trigger("Edit", "Cut")
-        QtTest.QTest.qWait(50)
+        wait_for(lambda: w.ev("_ed().lastCommandId"), 3)
         res["menu-cut"] = w.ev("_ed().lastCommandId")
         res["cut-steps"] = w.hist() - at
         res["cut-removed"] = count - len(w.nodes())
@@ -371,7 +371,7 @@ def main() -> None:
     def show_in_layers() -> dict:
         res: dict = {}
         w.ev("_layersSide.fold()")
-        QtTest.QTest.qWait(100)
+        wait_for(lambda: not w.ev("_layersSide.open"), 3)
         res["folded"] = not w.ev("_layersSide.open")
         # b1 is first in the file: the bottom of the stack, the last row.
         w.ev("_ed().showInLayersRequested('b1')")
@@ -398,7 +398,7 @@ def main() -> None:
         w.ev("_layersSide.fold()")
         w.select(["b3"])
         w.ev("_ed().propertiesRequested()")
-        QtTest.QTest.qWait(100)
+        wait_for(lambda: w.ev("_editorWin.propsShown"), 3)
         res["open"] = bool(w.ev("_layersSide.open"))
         res["propsOn"] = bool(w.ev("_editorWin.propsOn"))
         res["propsShown"] = bool(w.ev("_editorWin.propsShown"))

@@ -109,13 +109,15 @@ def main() -> None:
     folder.mkdir(parents=True, exist_ok=True)
     shots = len(sys.argv) > 2
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
-    root = app.engine.rootObjects()[0]
+    root = wait_until(lambda: app.engine.rootObjects(), "the main window")[0]
     out: dict = {}
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
     call(root, "openDeviceMappingEditorForCard", card)
-    QtTest.QTest.qWait(1000)
-    win = call(root, "deviceMappingEditorWindow")
+    win = wait_until(
+        lambda: (w := call(root, "deviceMappingEditorWindow")) is not None
+        and w.property("visible") and w,
+        "the Device Mapping Editor",
+    )
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(300)
@@ -138,7 +140,7 @@ def main() -> None:
     # Made with the Device Mapping Editor, hidden until asked for.
     out["shown-with-the-map"] = print_export_shown()
     call(win, "enterEdit")
-    QtTest.QTest.qWait(800)
+    wait_until(lambda: ev("editing") is True, "Edit on", fail=False)
     # File > Print & Export… (07 S135).
     ev("(function() { var m = _fileMenu; for (var i = 0; i < m.count; i++) {"
        " var it = m.itemAt(i); if (it && it.text === 'Print & Export…')"
@@ -294,10 +296,10 @@ def main() -> None:
                 ev("_editorWin.printSetup.paper"), paper.property("currentText")]
 
     QtCore.QMetaObject.invokeMethod(freeform, "click")
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: freeform.property("checked"), "Freeform on", fail=False)
     out["freeform-on"] = freeform_state()
     QtCore.QMetaObject.invokeMethod(freeform, "click")
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: not freeform.property("checked"), "Freeform off", fail=False)
     out["freeform-off"] = freeform_state()
     if shots:
         pw.grabWindow().save(str(folder / "print-export.png"))

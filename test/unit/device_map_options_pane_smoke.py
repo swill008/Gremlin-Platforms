@@ -23,6 +23,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -35,6 +36,7 @@ import gremlin.ui.update_model as um  # noqa: E402
 um.UpdateModel.startup = lambda self, *a, **k: None
 
 from PySide6 import QtCore, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import dill  # noqa: E402
 import joystick_gremlin  # noqa: E402
@@ -53,12 +55,12 @@ def call(obj: QtCore.QObject, name: str, *args: object) -> object:
 def main() -> None:
     shots = Path(sys.argv[1]) if len(sys.argv) > 1 else None
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
-    root = app.engine.rootObjects()[0]
+    root = wait_until(lambda: app.engine.rootObjects(), "the main window")[0]
     card = {"rawName": "pJoy Pro", "name": "pJoy Pro", "guid": GUID}
     call(root, "openDeviceMappingEditorForCard", card)
-    QtTest.QTest.qWait(1000)
-    win = call(root, "deviceMappingEditorWindow")
+    win = wait_until(
+        lambda: call(root, "deviceMappingEditorWindow"), "the Device Mapping Editor"
+    )
     win.setProperty("width", 1200)
     win.setProperty("height", 800)
     QtTest.QTest.qWait(300)
@@ -82,7 +84,10 @@ def main() -> None:
     menu = ev("(function(){ var m = _editMenu; for (var i = 0; i < m.count; i++) {"
               " var it = m.itemAt(i); if (it && it.text === 'Device Map Options…')"
               " { it.triggered(); return it.hint } } return false })()")
-    QtTest.QTest.qWait(400)
+    wait_until(
+        lambda: (lambda w: w is not None and w.isVisible())(ev("_optionsWin")),
+        "the Device Map Options window", fail=False,
+    )
     out["menu"] = menu
     options = ev("_optionsWin")
     out["open"] = [bool(options is not None and options.isVisible()),
@@ -130,7 +135,8 @@ def main() -> None:
     centre = switch.mapToScene(QtCore.QPointF(switch.width() / 2, switch.height() / 2))
     QtTest.QTest.mouseClick(options, QtCore.Qt.MouseButton.LeftButton,
                             QtCore.Qt.KeyboardModifier.NoModifier, centre.toPoint())
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: ev("_opts.values['description-first']") != before,
+               "the switch changed", 5000, fail=False)
     out["switch"] = [before, ev("_opts.values['description-first']"),
                      device_map_options.value("description-first")]
     # Another group: its settings; kept for next time.
@@ -138,29 +144,37 @@ def main() -> None:
     centre = group.mapToScene(QtCore.QPointF(group.width() / 2, group.height() / 2))
     QtTest.QTest.mouseClick(options, QtCore.Qt.MouseButton.LeftButton,
                             QtCore.Qt.KeyboardModifier.NoModifier, centre.toPoint())
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: ev("_opts.paneGroup") == "editing", "the Editing group",
+               5000, fail=False)
     out["editing-rows"] = rows()
     out["kept-group"] = device_map_options.DeviceMapOptions().paneGroup
     if shots is not None:
         shots.mkdir(parents=True, exist_ok=True)
         options.grabWindow().save(str(shots / "options-window.png"))
     ev("_opts.paneGroup = 'library'")
-    QtTest.QTest.qWait(300)
-    library = [c for c in items(pane)
-               if c.metaObject().className().startswith("OptionDeviceMapLibrary")]
+
+    def library_items() -> list:
+        return [c for c in items(pane) if c.metaObject().className().startswith(
+            "OptionDeviceMapLibrary")]
+
+    wait_until(lambda: any(c.isVisible() for c in library_items()),
+               "the Library group", 5000, fail=False)
+    library = library_items()
     out["library"] = bool(library) and library[0].isVisible()
     # Esc closes it.
     options.requestActivate()
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: options.isActive(),
+               "the Options window active", 5000, fail=False)
     QtTest.QTest.keyClick(options, QtCore.Qt.Key.Key_Escape)
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: not options.isVisible(), "Esc closed it", 5000, fail=False)
     out["esc-closed"] = not options.isVisible()
     # Ctrl+, opens it again (07 S133): the window's key, as the menu shows.
     ev("_editorWin.requestActivate()")
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: win.isActive(),
+               "the editor active", 5000, fail=False)
     QtTest.QTest.keyClick(win, QtCore.Qt.Key.Key_Comma,
                           QtCore.Qt.KeyboardModifier.ControlModifier)
-    QtTest.QTest.qWait(300)
+    wait_until(lambda: options.isVisible(), "Ctrl+, opened it", 5000, fail=False)
     out["key-opens"] = options.isVisible()
     print("RESULT " + json.dumps(out), flush=True)
     smoke_exit(0)

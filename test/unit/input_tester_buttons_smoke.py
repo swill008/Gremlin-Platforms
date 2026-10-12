@@ -30,6 +30,7 @@ os.environ.setdefault(
 )
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 _spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -51,6 +52,7 @@ devices.last_hid_skips = lambda: []  # type: ignore[assignment]
 steam.steam_running = lambda: False  # type: ignore[assignment]
 
 from PySide6 import QtCore, QtGui, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 GREMLIN_DIR, SHOT = Path(sys.argv[1]), Path(sys.argv[2])
 STICK_RAW = bytes(fake_hardware.raw_guid(is_virtual=False))
@@ -160,7 +162,11 @@ def checks(app: QtGui.QGuiApplication) -> None:
     # Follow input off: the view stays where the user put it.
     item(window, "buttonsView").setProperty("contentY", 0)
     click(window, item(window, "followInputSwitch"))
-    QtTest.QTest.qWait(200)
+    wait_until(
+        lambda: not item(window, "followInputSwitch").property("checked"),
+        "Follow input off",
+        fail=False,
+    )
     short["switch_off"] = not bool(
         item(window, "followInputSwitch").property("checked")
     )

@@ -71,9 +71,11 @@ def _smoke() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     import gremlin.ui.leave_text
 
@@ -165,14 +167,26 @@ def _smoke() -> None:
     # Not scoped: no tick box, nothing shown under the box.
     report("all-box-unscoped", visible("helpSearchAll"))
     ev("_bar.focusField()")
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: find("searchField").hasActiveFocus(),
+        "the field focused",
+        fail=False,
+    )
     report("field-focused", find("searchField").hasActiveFocus())
     type_text("DEVICE  re")
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: summary() == "2 topics match",
+        "two matches",
+        fail=False,
+    )
     report("summary-two", summary())
     report("results-two", results())
     type_text("x")
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: summary().startswith("No topic"),
+        "no match",
+        fail=False,
+    )
     report("summary-none", summary())
     report("results-none", results())
     report("nav-hidden-zero", visible("helpSearchPosition"))
@@ -180,13 +194,21 @@ def _smoke() -> None:
     # Scoped to one chapter: only its topics, then Search all of Help.
     ev('_bar.scopedChapter = "modes"')
     ev("_bar.clear()")
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: results() == "[]",
+        "the cleared results",
+        fail=False,
+    )
     report("results-blank", results())
     report("summary-blank-hidden", not visible("helpSearchSummary"))
     report("all-box-scoped", visible("helpSearchAll"))
     ev("_bar.focusField()")
     type_text("device")
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: summary() == "1 topic matches",
+        "the scoped match",
+        fail=False,
+    )
     report("scoped-results", results())
     report("summary-scoped", summary())
     click("helpSearchAll")
@@ -196,21 +218,34 @@ def _smoke() -> None:
 
     # k of n, previous / next, Enter.
     ev("_bar.total = 5; _bar.current = 1")
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: visible("helpSearchPosition")
+        and find("helpSearchPosition").property("text") == "2 of 5",
+        "the position line",
+        fail=False,
+    )
     report("position", find("helpSearchPosition").property("text"))
     click("helpSearchNext")
     click("helpSearchPrevious")
     click("helpSearchPrevious")
     ev("_bar.focusField()")
     QtTest.QTest.keyClick(quick, QtCore.Qt.Key.Key_Return)
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: str(ev("_win.nexts")) == "2",
+        "Enter as Next",
+        fail=False,
+    )
     report("nexts", ev("_win.nexts"))
     report("previouses", ev("_win.previouses"))
     report("field-kept-focus-on-nav", find("searchField").hasActiveFocus())
 
     # Esc clears and leaves the box.
     QtTest.QTest.keyClick(quick, QtCore.Qt.Key.Key_Escape)
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: ev("_bar.text") == "",
+        "Esc to clear",
+        fail=False,
+    )
     report("esc-text", repr(ev("_bar.text")))
     report("esc-focus", find("searchField").hasActiveFocus())
     report("esc-results", results())
@@ -223,13 +258,21 @@ def _smoke() -> None:
     QtTest.QTest.keyClick(
         quick, QtCore.Qt.Key.Key_F, QtCore.Qt.KeyboardModifier.ControlModifier
     )
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: find("searchField").hasActiveFocus(),
+        "Ctrl+F focus",
+        fail=False,
+    )
     report("ctrl-f-focus", find("searchField").hasActiveFocus())
 
     # × clears too.
     ev("_bar.focusField()")
     type_text("mode")
-    QtTest.QTest.qWait(50)
+    wait_until(
+        lambda: visible("searchClear"),
+        "the clear button",
+        fail=False,
+    )
     report("clear-visible", visible("searchClear"))
     click("searchClear")
     report("clear-text", repr(ev("_bar.text")))

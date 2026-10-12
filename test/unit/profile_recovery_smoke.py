@@ -219,7 +219,8 @@ def steps(app, root, backend, path: Path, copy: Path) -> None:  # noqa: ANN001
     wait_for(lambda: ev(root, "_profileRecoveryGate.opened"), 5)
     result("again-offer", offer(root)["open"])
     result("discard-clicked", press(app, root, "Discard"))
-    QtTest.QTest.qWait(300)
+    # The copy goes and the opened file is read again, without the edit.
+    wait_for(lambda: not copy.is_file() and not has_mode(backend, "Again"), 5)
     result("after-discard", {
         "copy": copy.is_file(),
         "mode": has_mode(backend, "Again"),

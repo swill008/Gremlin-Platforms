@@ -47,9 +47,11 @@ def _smoke() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     class FakeBackend(QtCore.QObject):
         uiScaleChanged = QtCore.Signal()
@@ -125,7 +127,7 @@ def _smoke() -> None:
 
     # Done: plain.
     ev("_line.show('Renamed.')")
-    QtTest.QTest.qWait(50)
+    wait_until(lambda: shown(line), "the message", fail=False)
     report("plain-shown", shown(line))
     report("plain-text", ev("_line.text"))
     report("plain-failed", ev("_line.failed"))
@@ -134,7 +136,7 @@ def _smoke() -> None:
 
     # Failed: the failed colour.
     ev("_line.show('That didn\\'t work.', true)")
-    QtTest.QTest.qWait(50)
+    wait_until(lambda: ev("_line.failed"), "the failed message", fail=False)
     report("failed-failed", ev("_line.failed"))
     report("failed-colour", colour("messageText") == colour_of("Style.dangerText"))
     report("failed-no-undo", not shown("messageUndo"))
@@ -144,7 +146,7 @@ def _smoke() -> None:
     QtTest.QTest.qWait(50)
     report("no-undo-text-hidden", not shown("messageUndo"))
     ev("_line.show('Deleted.', false, 'Undo', function() { _win.undos++ })")
-    QtTest.QTest.qWait(50)
+    wait_until(lambda: shown("messageUndo"), "the Undo button", fail=False)
     report("undo-shown", shown("messageUndo"))
     report("undo-label", ev("_line.undoText"))
     click("messageUndo")
@@ -157,20 +159,20 @@ def _smoke() -> None:
 
     # The next show replaces it.
     ev("_line.show('Copied.')")
-    QtTest.QTest.qWait(50)
+    wait_until(lambda: ev("_line.text") == "Copied.", "the next message", fail=False)
     report("next-text", ev("_line.text"))
     report("next-no-undo", not shown("messageUndo"))
 
     # clear() empties.
     ev("_line.clear()")
-    QtTest.QTest.qWait(50)
+    wait_until(lambda: not shown(line), "the cleared line", fail=False)
     report("clear-text", repr(ev("_line.text")))
     report("clear-failed", ev("_line.failed"))
     report("clear-hidden", not shown(line))
 
     # The × clears too.
     ev("_line.show('Saved.', true)")
-    QtTest.QTest.qWait(50)
+    wait_until(lambda: shown("messageClose"), "the close button", fail=False)
     click("messageClose")
     report("close-text", repr(ev("_line.text")))
 

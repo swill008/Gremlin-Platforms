@@ -301,23 +301,27 @@ def main() -> None:
     # 02 S144: the open window follows the program's device-change signal.
     from gremlin import event_handler
 
+    def rows() -> int:
+        return len(named(win, "resetDevicesName"))
+
+    shown = rows()
     pedals = [r for r in ROWS if r["usb_id"] == P_USB]
     ROWS[:] = [r for r in ROWS if r["usb_id"] != P_USB]
     event_handler.EventListener().device_change_event.emit()
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: rows() < shown, 5)
     result("unplugged", state(win))
     ROWS.extend(pedals)
     event_handler.EventListener().device_change_event.emit()
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: rows() == shown, 5)
     result("replugged", state(win))
     # A real Xbox pad plugged in (02 S145): listed unticked, with its note.
     ROWS.append(XPAD)
     event_handler.EventListener().device_change_event.emit()
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: rows() > shown, 5)
     result("xbox", state(win))
     ROWS.remove(XPAD)
     event_handler.EventListener().device_change_event.emit()
-    QtTest.QTest.qWait(200)
+    wait_until(lambda: rows() == shown, 5)
 
     # Reset, Windows permission declined: no device touched.
     ANSWER[0] = device_reset.Cancelled()

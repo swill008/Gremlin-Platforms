@@ -29,6 +29,7 @@ from typing import Any
 
 import proc_tree  # pyright: ignore[reportMissingImports]  (test/)
 import pytest
+import shiboken6
 import smoke_report  # pyright: ignore[reportMissingImports]  (test/)
 from PySide6 import QtCore, QtQml
 
@@ -58,6 +59,9 @@ def model(
     shared_state.current_profile = None
     m = OscDeviceManagementModel()
     yield m
+    # Deleted here, not when pytest lets go of the test's arguments: its
+    # gremlin.signal connections go with it, before the conftest check.
+    shiboken6.delete(m)
     OscDevice().rows.reset()
     shared_state.current_profile = saved
 

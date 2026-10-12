@@ -58,9 +58,11 @@ def _smoke() -> None:
         "QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     )
     sys.path.insert(0, str(_ROOT))
+    sys.path.insert(0, str(_ROOT / "test"))
 
     import shiboken6
     from PySide6 import QtCore, QtGui, QtQml, QtQuick, QtTest
+    from qt_wait import wait_until  # pyright: ignore[reportMissingImports]
 
     import gremlin.ui.leave_text
 
@@ -168,17 +170,19 @@ def _smoke() -> None:
     # The count line.
     report("line-minus-one", visible("searchCount"))
     ev("_box.count = 3")
-    QtTest.QTest.qWait(20)
+    wait_until(lambda: line() == "3 found", "the count line", fail=False)
     report("line-three-visible", visible("searchCount"))
     report("line-three", line())
     ev("_box.count = 0")
-    QtTest.QTest.qWait(20)
+    wait_until(lambda: line() == "Nothing matches", "the zero line", fail=False)
     report("line-zero", line())
     ev('_box.countText = "2 of 5 layers"')
-    QtTest.QTest.qWait(20)
+    wait_until(lambda: line() == "2 of 5 layers", "the override line", fail=False)
     report("line-override", line())
     ev('_box.countText = ""')
-    QtTest.QTest.qWait(20)
+    wait_until(
+        lambda: line() != "2 of 5 layers", "the override cleared", fail=False
+    )
 
     # Enter.
     key(QtCore.Qt.Key.Key_Return)

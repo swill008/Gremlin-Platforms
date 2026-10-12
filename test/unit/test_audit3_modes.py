@@ -242,9 +242,11 @@ _LABEL_MODE = textwrap.dedent(
     )
     ROOT = Path(sys.argv[1])
     sys.path.insert(0, str(ROOT))
+    sys.path.insert(0, str(ROOT / "test"))
     import gremlin.util
     gremlin.util.userprofile_path = unittest.mock.Mock(return_value=tempfile.mkdtemp())
     from PySide6 import QtCore, QtGui, QtQml, QtTest
+    from qt_wait import wait_until
     from gremlin import shared_state
     from gremlin.profile import Profile
     from gremlin.signal import signal
@@ -306,10 +308,12 @@ _LABEL_MODE = textwrap.dedent(
     run("_editorWin.labelMode = 'Combat'")
     model = ModeHierarchyModel()
     model.renameMode("Combat", "Fight")
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: run("_editorWin.labelMode") == "Fight", "the rename",
+               fail=False)
     print("RENAMED", run("_editorWin.labelMode"), flush=True)
     model.deleteMode("Fight")
-    QtTest.QTest.qWait(100)
+    wait_until(lambda: run("_editorWin.labelMode") == "", "the delete",
+               fail=False)
     print("DELETED", repr(run("_editorWin.labelMode")), flush=True)
     print("done", flush=True)
     os._exit(0)

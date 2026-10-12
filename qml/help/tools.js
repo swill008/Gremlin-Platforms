@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // Help chapter: Tools (viewers, calibration, device information, History,
-// Auto Mapping Tool, HidHide, Input Tester, Live Log Reader). Device Mapping Editor and Device Library
+// Auto Mapping Tool, HidHide, Input Tester, Search, Live Log Reader). Device Mapping Editor and Device Library
 // have chapters of their own.
 
 .pragma library
@@ -271,6 +271,25 @@ function topics() {
                 + "<li>History keeps a red \"History cleared\" entry with the date and what was deleted. Selected, it says \"Everything in History before this point was deleted. Nothing before it can be restored or undone.\" It has no Restore and no <b>Previous Change</b> or <b>Next Change</b>. History's own clean-up never removes it, and each later clearing adds another.</li>"
                 + "</ul>",
             related: ["tools-history", "device-library-undo"]
+        },
+        {
+            id: "tools-search",
+            section: "Search",
+            title: "Search the profile",
+            body: "<p><b>Search</b> finds every place in the profile that uses one thing: an input, an output, a mode or an action type, on every device and in every mode. It only looks; it changes nothing.</p>"
+                + "<ol>"
+                + "<li>Choose <b>Search</b> on the toolbar <a href=\"show:toolbar/Search\">Show me ›</a>, <b>Tools › Mapping › Search…</b> <a href=\"show:menu/Tools/Mapping/Search…\">Show me ›</a> or press <b>Ctrl+Shift+F</b>. Or right-click a row, a vJoy Viewer chip, an Xbox Output View row or a mode in Manage Modes and choose <b>Find uses…</b>: Search opens already filled in.</li>"
+                + "<li>Choose what to look for: <b>Input</b> (pick the device and control, or choose <b>Listen</b> and press it), <b>Output</b> (a vJoy device or Xbox pad and its control), <b>Mode</b> or <b>Action type</b>.</li>"
+                + "<li>The uses are listed by kind of use, then device, then mode, with a count such as \"3 uses\": <b>Reads this input</b>, <b>Sends to this output</b>, <b>Checks this input</b> or <b>Checks this output</b> (a condition), <b>Switches to this mode</b> and <b>Runs in this mode</b>. A use inside a macro says so in its action text.</li>"
+                + "<li>Click a use to go to it: the mode changes, the device's page opens and the row flashes. Search stays open; <b>‹ Previous</b> and <b>Next ›</b> step through the uses.</li>"
+                + "</ol>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li>A binding whose output isn't there (the device is missing or switched off, or that button or axis isn't on it) shows <b>[binding output not found]</b>.</li>"
+                + "<li>With nothing found, the list says \"No uses found.\" While Search is open, the list follows your changes to bindings and modes.</li>"
+                + "<li>The <b>Find</b> bar on a page only filters that page. Search looks through the whole profile.</li>"
+                + "</ul>",
+            related: ["tools-history", "tools-viewers"]
         },
 
         {

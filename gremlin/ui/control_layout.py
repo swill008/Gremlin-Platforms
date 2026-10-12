@@ -1009,6 +1009,19 @@ class ControlLayoutModel(QtCore.QAbstractListModel):
 
     # Slots.
 
+    @QtCore.Slot(str, result="QVariantMap")
+    def findQuery(self, key: str) -> dict:
+        """Search's query for a parent row (Find uses…); {} for other rows."""
+        item = self._item_for(key)
+        if item is None:
+            return {}
+        return {
+            "kind": "input",
+            "deviceGuid": str(self._device_guid()),
+            "inputType": item.type.value,
+            "inputId": item.id,
+        }
+
     @QtCore.Slot(str)
     def setMode(self, mode: str) -> None:
         self._mode = mode or "Default"

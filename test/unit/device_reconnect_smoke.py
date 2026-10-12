@@ -21,6 +21,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -44,6 +45,8 @@ GUID = str(dill.GUID(stick.device_guid).uuid)
 UUID = dill.GUID(stick.device_guid).uuid
 
 # The stick's input module (its axes claimed), as Module Setup saves one.
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
+
 from gremlin.modules import store  # noqa: E402
 
 # Its own device folder (03 S128): <modules>/pJoy Pro/module.json.
@@ -89,7 +92,7 @@ def _items(item: QtQuick.QQuickItem) -> list:
 
 def main() -> None:
     app = joystick_gremlin.JoystickGremlinApp([sys.argv[0]])
-    QtTest.QTest.qWait(800)
+    wait_until(lambda: app.engine.rootObjects(), "the main window")
     out: dict = {}
 
     from gremlin.ui.device import AxisCalibration, Device, DeviceAxisSeries
@@ -186,7 +189,11 @@ def main() -> None:
     else:
         # Rows are made only for a window on screen (off-screen here).
         mapper.setProperty("visible", True)
-        QtTest.QTest.qWait(500)
+        wait_until(
+            lambda: any("CheckBox" in o.metaObject().className()
+                        for o in _items(mapper.contentItem())),
+            "the tool's rows", 5000, fail=False,
+        )
         boxes = [
             o for o in _items(mapper.contentItem())
             if "CheckBox" in o.metaObject().className()

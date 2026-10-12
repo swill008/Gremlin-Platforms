@@ -16,7 +16,7 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
-from PySide6 import QtTest
+from qt_wait import wait_until  # pyright: ignore[reportMissingImports]  (test/)
 
 from gremlin import clock, input_cache, osc, osc_rows, shared_state
 from gremlin import osc_device_file as odf
@@ -350,7 +350,7 @@ def test_recorder_sees_auto_release_pulses_without_a_run(
     got: list[tuple] = []
     run.runtime.add_recorder(lambda u, k, v: got.append((u, k, v)))
     run.runtime._on_main("/t", ())
-    QtTest.QTest.qWait(80)
+    wait_until(lambda: len(got) >= 2, "the trigger release")
     assert got == [(button.uid, "button", True), (button.uid, "button", False)]
 
 

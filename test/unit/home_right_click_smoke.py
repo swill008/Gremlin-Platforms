@@ -21,6 +21,7 @@ from smoke_exit import smoke_exit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "test"))
 spec = importlib.util.spec_from_file_location(
     "fake_hardware", ROOT / "test" / "fake_hardware.py"
 )
@@ -34,6 +35,7 @@ um.UpdateModel.startup = lambda self, *a, **k: None
 
 import shiboken6  # noqa: E402
 from PySide6 import QtCore, QtQml, QtQuick, QtTest  # noqa: E402
+from qt_wait import wait_until  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 import joystick_gremlin  # noqa: E402
 
@@ -46,7 +48,6 @@ def main() -> None:
     root = shiboken6.wrapInstance(shiboken6.getCppPointer(win)[0], QtQuick.QQuickWindow)
     root.setWidth(1400)
     root.setHeight(900)
-    QtTest.QTest.qWait(1500)
     out: dict = {}
 
     def ev(code: str) -> object:
@@ -63,11 +64,16 @@ def main() -> None:
             found += items(child)
         return found
 
-    cards = [
-        c for c in items(root.contentItem())
-        if c.metaObject().indexOfSignal("cardFocused()") >= 0
-        and c.isVisible() and c.width() > 0
-    ]
+    def shown_cards() -> list:
+        return [
+            c for c in items(root.contentItem())
+            if c.metaObject().indexOfSignal("cardFocused()") >= 0
+            and c.isVisible() and c.width() > 0
+        ]
+
+    cards = wait_until(
+        lambda: len(shown_cards()) >= 3 and shown_cards(), "Home's cards", fail=False
+    ) or shown_cards()
     out["cards"] = len(cards)
     out["rows"] = ev("_moduleModel.rowCount()")
     out["room"] = ev("uiState.currentRoom")
