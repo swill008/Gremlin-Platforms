@@ -32,7 +32,21 @@ the real SearchIndex and search_query:
    Discard), loads Bravo and shows the row's input.
 9. A typo finds nothing and says "Did you mean …?".
 
-Spec: 01 S157-S164, D-01-SEARCH-INDEX; batch R contract item 8.
+Charlie (saved, batch R2: SEARCH-NOTES-DETAIL, SEARCH-INHERIT) has the
+mode Ground under Default. Default: the stick's Button 1 sends vJoy 2
+Button 3, Button 8 sends vJoy 2 Button 7, Button 9 sends vJoy 2 Button 8,
+Button 10 has the Description "Flaps lowered gently here". Ground: Button 2
+sends vJoy 2 Button 3 and Button 9 (its own binding) sends vJoy 2 Button 10.
+
+10. "flaps gently" finds the Description row and its detail shows the note.
+11. vJoy 2 Button 7 is found in Default and in Ground, the Ground row tagged
+    Inherited from Default; vJoy 2 Button 8 is not found in Ground (Ground
+    has its own Button 9).
+12. In Ground, the inherited Button 1 and Ground's Button 2 both send vJoy 2
+    Button 3: both Used twice there; Default's Button 1 alone is not.
+
+Spec: 01 S157-S164, D-01-SEARCH-INDEX; batch R contract item 8;
+batch R2 (SEARCH-NOTES-DETAIL, SEARCH-INHERIT).
 """
 
 from __future__ import annotations
@@ -98,6 +112,8 @@ def _brief(row: dict) -> dict:
         "targets": [str(t) for t in (_get(row, "targets") or [])],
         "usedTwice": bool(_get(row, "usedTwice", "used_twice")),
         "notFound": bool(_get(row, "notFound", "not_found")),
+        "inheritedFrom": str(_get(row, "inheritedFrom", "inherited_from") or ""),
+        "tags": [str(t) for t in (_get(row, "tags") or [])],
     }
 
 
@@ -127,8 +143,7 @@ def _index(model: Any) -> Any:  # noqa: ANN401
 def _ready(j: Journey, model: Any) -> None:  # noqa: ANN401
     """The index has read every place (it is built in the background)."""
     j.wait_until(
-        lambda: _index(model).status().get("state") == "ready"
-        and _index(model).rows(),
+        lambda: _index(model).status().get("state") == "ready" and _index(model).rows(),
         "the search index to be built",
         timeout=30.0,
     )
@@ -277,6 +292,28 @@ def _part_did_you_mean(j: Journey, model: Any) -> None:  # noqa: ANN401
     j.out["9:dym"] = str(model.property("didYouMean") or "")
 
 
+def _part_notes(j: Journey, model: Any) -> None:  # noqa: ANN401
+    rows = _search(j, model, "flaps gently")
+    j.out["10:rows"] = rows
+    hit = [r for r in rows if r["profile"] == "Charlie" and r["mode"] == "Default"]
+    assert hit, f"no Charlie row among {rows}"
+    detail = dict(model.detail(hit[0]["_row"]))
+    j.out["10:notes"] = [str(n) for n in (detail.get("notes") or [])]
+
+
+def _part_inherited(j: Journey, model: Any) -> None:  # noqa: ANN401
+    j.out["11:inherited"] = _search(j, model, 'vjoy:"vJoy 2 Button 7"')
+    rows = [r for r in j.out["11:inherited"] if r["mode"] == "Ground"]
+    if rows:  # the detail of the row on show now, before the next search
+        j.out["11:detail"] = dict(model.detail(rows[0]["_row"])).get("inheritedFrom")
+    j.out["11:overridden"] = _search(j, model, 'vjoy:"vJoy 2 Button 8"')
+    j.out["11:own"] = _search(j, model, 'vjoy:"vJoy 2 Button 10"')
+
+
+def _part_used_twice_inherited(j: Journey, model: Any) -> None:  # noqa: ANN401
+    j.out["12:rows"] = _search(j, model, 'vjoy:"vJoy 2 Button 3"')
+
+
 # --- the profiles ---------------------------------------------------------------
 
 
@@ -315,8 +352,26 @@ def _f5_key() -> Any:  # noqa: ANN401
     return action
 
 
-def _bind(j: Journey, device: Any, kind: Any, control: Any, action: Any) -> None:  # noqa: ANN401
-    item = j.profile.get_input_item(device, kind, control, "Default", True)
+def _description(text: str) -> Any:  # noqa: ANN401
+    from gremlin import plugin_manager
+    from gremlin.types import InputType
+
+    action = plugin_manager.PluginManager().create_instance(
+        "Description", InputType.JoystickButton
+    )
+    action.description = text
+    return action
+
+
+def _bind(
+    j: Journey,
+    device: Any,  # noqa: ANN401
+    kind: Any,  # noqa: ANN401
+    control: Any,  # noqa: ANN401
+    action: Any,  # noqa: ANN401
+    mode: str = "Default",
+) -> None:
+    item = j.profile.get_input_item(device, kind, control, mode, True)
     item.add_item_binding().root_action.insert_action(action, "children")
 
 
@@ -352,6 +407,18 @@ def _profiles(j: Journey) -> dict:
     j.out["0:library"] = bool(saved.get("ok", True))
 
     j.backend.newProfile()
+    j.profile.modes.add_mode("Ground")
+    j.profile.modes.set_parent("Ground", "Default")
+    _bind(j, uid, B, 1, _vjoy(2, 3))
+    _bind(j, uid, B, 8, _vjoy(2, 7))
+    _bind(j, uid, B, 9, _vjoy(2, 8))
+    _bind(j, uid, B, 10, _description("Flaps lowered gently here"))
+    _bind(j, uid, B, 2, _vjoy(2, 3), "Ground")
+    _bind(j, uid, B, 9, _vjoy(2, 10), "Ground")
+    signal.profileChanged.emit()
+    _save_as(j, "Charlie")
+
+    j.backend.newProfile()
     _bind(j, dill.UUID_Keyboard, K, F5, _vjoy(1, 9))
     _bind(j, uid, B, 2, _vjoy(1, 5))
     signal.profileChanged.emit()
@@ -380,6 +447,9 @@ def story(j: Journey) -> None:
         ("5", lambda: _part_used_twice(j, model)),
         ("6", lambda: _part_not_found(j, model)),
         ("9", lambda: _part_did_you_mean(j, model)),
+        ("10", lambda: _part_notes(j, model)),
+        ("11", lambda: _part_inherited(j, model)),
+        ("12", lambda: _part_used_twice_inherited(j, model)),
         ("7", lambda: _part_listen(j, window, model)),
         ("8", lambda: _part_open_other(j, window, model, files["bravo"])),
     ):
@@ -514,6 +584,57 @@ def test_opening_a_result_in_another_profile_asks_then_goes_there(run: dict) -> 
 def test_nothing_found_says_did_you_mean(run: dict) -> None:
     assert _step(run, "9:rows") == []
     assert "Button" in _step(run, "9:dym"), run["9:dym"]
+
+
+def test_a_description_is_found_by_its_words_and_shown_in_the_detail(
+    run: dict,
+) -> None:
+    rows = [r for r in _step(run, "10:rows") if r["profile"] == "Charlie"]
+    # Ground inherits it, so it shows there too.
+    assert _at(rows) == {
+        ("Default", "Button 10", ""),
+        ("Ground", "Button 10", "Default"),
+    }, rows
+    assert "Flaps lowered gently here" in _step(run, "10:notes"), run["10:notes"]
+
+
+def _at(rows: list[dict]) -> set[tuple[str, str, str]]:
+    """(mode, input, inherited from) of Charlie's rows."""
+    return {
+        (r["mode"], r["input"], r["inheritedFrom"])
+        for r in rows
+        if r["profile"] == "Charlie"
+    }
+
+
+def test_a_child_mode_shows_the_binding_it_inherits(run: dict) -> None:
+    rows = _step(run, "11:inherited")
+    assert _at(rows) == {
+        ("Default", "Button 8", ""),
+        ("Ground", "Button 8", "Default"),
+    }, rows
+    ground = [r for r in rows if r["profile"] == "Charlie" and r["mode"] == "Ground"]
+    assert all("inherited" in r["tags"] for r in ground), ground
+    own = [r for r in rows if r["profile"] == "Charlie" and r["mode"] == "Default"]
+    assert not any("inherited" in r["tags"] for r in own), own
+    assert _step(run, "11:detail") == "Default"
+
+
+def test_a_child_mode_that_binds_the_input_itself_inherits_nothing(
+    run: dict,
+) -> None:
+    assert _at(_step(run, "11:overridden")) == {("Default", "Button 9", "")}
+    assert _at(_step(run, "11:own")) == {("Ground", "Button 9", "")}
+
+
+def test_used_twice_counts_an_inherited_binding(run: dict) -> None:
+    rows = [r for r in _step(run, "12:rows") if r["profile"] == "Charlie"]
+    seen = {(r["mode"], r["input"], r["inheritedFrom"]): r["usedTwice"] for r in rows}
+    assert seen == {
+        ("Default", "Button 1", ""): False,
+        ("Ground", "Button 1", "Default"): True,
+        ("Ground", "Button 2", ""): True,
+    }, rows
 
 
 def test_no_program_errors(run: dict) -> None:

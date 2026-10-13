@@ -46,6 +46,8 @@ Rectangle {
         return parts.filter(function(p) { return String(p).length }).join(" · ")
     }
     readonly property string targets: listText(f("targets", []))
+    readonly property string notes: listText(g("notes", f("notes", [])))
+    readonly property string inheritedFrom: String(g("inheritedFrom", f("inheritedFrom", "")))
 
     color: Style.bgWell
     border.color: Style.line
@@ -114,6 +116,13 @@ Rectangle {
                 }
                 Heading { text: "Where" }
                 Body { objectName: "searchDetailWhere"; text: _detail.where }
+                Body {
+                    objectName: "searchDetailInherited"
+                    visible: text.length > 0
+                    text: _detail.inheritedFrom.length > 0
+                          ? "Inherited from " + _detail.inheritedFrom : ""
+                    color: Style.fgSoft
+                }
                 Heading { text: "Action"; visible: _detail.f("actionName", "") !== "" }
                 Body {
                     visible: text.length > 0
@@ -127,6 +136,17 @@ Rectangle {
                 }
                 Heading { text: "Sends to"; visible: _detail.targets.length > 0 }
                 Body { visible: text.length > 0; text: _detail.targets }
+                // The text typed into the action, which Search also looks in.
+                Heading {
+                    objectName: "searchDetailNotesHeading"
+                    text: "Notes"
+                    visible: _detail.notes.length > 0
+                }
+                Body {
+                    objectName: "searchDetailNotes"
+                    visible: text.length > 0
+                    text: _detail.notes
+                }
                 Heading {
                     text: "Mode chain"
                     visible: _modes.text.length > 0

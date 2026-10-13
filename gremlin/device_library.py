@@ -2089,6 +2089,19 @@ def pack_path(setup_key: str) -> Path:
     return folder() / found[1].get("file", "")
 
 
+def setup_wires(setup_key: str) -> dict | str:
+    """A saved setup's bindings/wires.json ({} when it holds none), or why
+    it can't be read (gone, damaged, wrong wires)."""
+    found = _find_setup(_read(), setup_key)
+    if not found:
+        return "The saved setup is gone."
+    pack = _read_pack(folder() / found[1].get("file", ""))
+    if isinstance(pack, str):
+        return pack
+    wires = pack.get("wires")
+    return wires if isinstance(wires, dict) else {}
+
+
 # --- delete (S15) and tidy (S38) ------------------------------------------------------
 
 

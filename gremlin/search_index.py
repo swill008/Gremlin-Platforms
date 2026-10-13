@@ -56,6 +56,9 @@ class SearchRow:
     kinds: frozenset[str]
     # User-entered text of the action (AbstractActionData.search_texts()).
     notes: tuple[str, ...] = ()
+    # The mode the binding is defined in, when this row is that binding seen
+    # from a child mode that inherits it ("" for the binding's own mode).
+    inherited_from: str = ""
 
 
 Lister = Callable[[], Iterable[SearchRow]]
@@ -75,6 +78,7 @@ DEVICE_KINDS: dict[str, str] = {"keyboard": "key", "osc": "osc"}
 
 # Roles that belong to the binding, not to one action (gremlin.usages).
 _BINDING_ROLES = ("reads-input", "runs-in-mode", "inherited")
+_INHERITED = "inherited"
 _NOTIFY_EVERY_S = 0.25
 _OPEN = "open"
 
@@ -150,13 +154,18 @@ def profile_rows(
 ) -> list[SearchRow]:
     """Every action of every binding in a profile as rows, "Used twice"
     marked. gremlin.usages yields, per binding, each action's declared
-    uses followed by its uses-action, then the binding's reads-input."""
+    uses followed by its uses-action, then the binding's reads-input and
+    one inherited use per child mode that runs it (usages._inheriting, as
+    event_handler.build_event_lookup resolves it): those rows again, seen
+    in the child mode."""
     custom = _custom_names(profile)
     rows: list[SearchRow] = []
     pending: list[usages.Ref] = []
     binding: list[tuple[usages.Usage, list[usages.Ref]]] = []
     known: dict[str, bool | None] = {}
     sends: list[tuple[int, tuple]] = []
+    # Where the last binding's rows start (its inherited copies follow).
+    last = [0, 0]
 
     def plugged_of(guid: str, name: str) -> bool | None:
         if plugged is None:
@@ -169,6 +178,7 @@ def profile_rows(
         return known[guid]
 
     def emit(text: str) -> None:
+        last[0] = len(rows)
         for action, declared in binding:
             name = device_name or action.device_name
             ckey = (
@@ -214,6 +224,26 @@ def profile_rows(
                 if ref.usage.role == "sends-output"
             )
         binding.clear()
+        last[1] = len(rows)
+
+    def inherit(child: str) -> None:
+        sent = [(i, t) for i, t in sends if last[0] <= i < last[1]]
+        for index in range(last[0], last[1]):
+            row = rows[index]
+            cname = custom.get(
+                (*_input_key(row.device_guid, row.input_type, row.input_id), child),
+                row.custom_name,
+            )
+            rows.append(
+                replace(
+                    row,
+                    mode=child,
+                    inherited_from=row.mode,
+                    custom_name=cname,
+                    kinds=_kinds(row.device_guid, cname, row.target_keys),
+                )
+            )
+            sends.extend((len(rows) - 1, t) for i, t in sent if i == index)
 
     for ref in usages.iter_usages(profile):
         role = ref.usage.role
@@ -227,6 +257,8 @@ def profile_rows(
                 )
                 pending = []
             emit(ref.usage.text)
+        elif role == _INHERITED:
+            inherit(str(ref.target[1]))
         elif role not in _BINDING_ROLES:
             pending.append(ref)
     return _mark_used_twice(rows, sends)
@@ -321,12 +353,12 @@ def library_rows() -> Iterator[SearchRow]:
         for setup in device.get("setups") or []:
             if "bindings" not in (setup.get("holds") or []):
                 continue
-            pack = device_library._read_pack(Path(setup.get("pack", "")))
-            if isinstance(pack, str):
-                syslog.info(f"Search: saved setup {setup.get('name')}: {pack}")
+            wires = device_library.setup_wires(str(setup.get("key", "")))
+            if isinstance(wires, str):
+                syslog.info(f"Search: saved setup {setup.get('name')}: {wires}")
                 continue
             uid = _setup_uid(device.get("guid", ""), device.get("name", ""))
-            made = _setup_profile(pack.get("wires") or {}, uid)
+            made = _setup_profile(wires, uid)
             name = str(setup.get("name") or device.get("name") or "")
             yield from profile_rows(
                 made,

@@ -1445,7 +1445,7 @@ ApplicationWindow {
         var title = String(row.custom_name || row.input_label || "")
         var go = function() {
             goToBinding(row.device_guid, row.mode, row.input_type, row.input_id,
-                        row.binding_index, title)
+                        row.binding_index, title, row.device_name)
         }
         if (source === "library") {
             openDeviceLibrary(String(row.device_name || ""), String(row.device_guid || ""), "")
@@ -1488,15 +1488,26 @@ ApplicationWindow {
     // flashed and opened in the pane. The Search window stays open.
     property var _goTo: null
 
-    function goToBinding(deviceGuid, mode, inputType, inputId, bindingIndex, title) {
+    // deviceName (optional): the result's device name, for a device with no
+    // card on Home (stub cards hidden, so it has no input module).
+    function goToBinding(deviceGuid, mode, inputType, inputId, bindingIndex, title, deviceName) {
         if (!uiState)
             return
         var guid = String(deviceGuid || "")
         var kind = deviceKindOf(guid)
+        if (!kind.length) {
+            var named = String(deviceName || "").trim()
+            if (named.length)
+                _tellNoInputModule({ "rawName": named, "guid": guid })
+            return
+        }
         var open = goToHandlers[kind]
         if (!open)
             return
         var card = kind === "logical" ? null : _cardForGuid(guid)
+        // No input module (a stub card): its page has no rows to show, so
+        // say so (gap SEARCH-NO-MODULE, S166).
+        var bare = !!(card && card.isStub)
         leaveDisplayThen(function() {
             var name = String(mode || "")
             if (name.length) {
@@ -1506,10 +1517,27 @@ ApplicationWindow {
                     uiState.setCurrentMode(name)
             }
             open(card, guid)
+            if (bare) {
+                _tellNoInputModule(card)
+                return
+            }
             _goTo = { key: _rowKeyOf(inputType, inputId), mode: name,
                       title: String(title || ""), tries: 0, shown: 0 }
             _goToTimer.restart()
         })
+    }
+
+    // A Search result's device has no input module (a stub card, or no
+    // card at all): says so, with Open Device Mapping Editor on that device.
+    function _tellNoInputModule(card) {
+        var name = cardDeviceName(card) || "This device"
+        _noModuleGate.confirmThen("No Input Module",
+            name + " has no input module, so its bindings can't be shown here.",
+            "Open Device Mapping Editor",
+            function() {
+                openDeviceMappingEditorForCard({ "name": name, "guid": String(card.guid || "") })
+            })
+        _noModuleGate.cancelText = "Close"
     }
 
     // The row key the pages use ("parent:button:5"); a key's [scan code,
@@ -1678,6 +1706,11 @@ ApplicationWindow {
     // (to fix the file, or plug in the drive it is on).
     DismissibleDialog {
         id: _lastProfileGate
+    }
+
+    // A Search result for a device with no input module (_tellNoInputModule).
+    DismissibleDialog {
+        id: _noModuleGate
     }
 
     DismissibleDialog {

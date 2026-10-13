@@ -40,6 +40,19 @@ Rectangle {
                                     Style.findMatch, Style.ink)
     }
 
+    // The typed notes that matched, lit, so the row says why it was found.
+    readonly property string matchedNotes: {
+        var notes = f("notes", [])
+        var out = []
+        for (var i = 0; i < (notes ? notes.length : 0); i++) {
+            var spans = SearchText.spans(_row.model, "notes:" + i)
+            if (spans.length)
+                out.push(SearchText.highlight(notes[i], spans, Style.findMatch, Style.ink))
+        }
+        return out.join(" · ")
+    }
+    readonly property string inheritedFrom: String(f("inheritedFrom", ""))
+
     objectName: "searchRow:" + index
     width: ListView.view ? ListView.view.width : implicitWidth
     implicitHeight: (heading ? _headingRow.implicitHeight : _resultRow.implicitHeight)
@@ -137,39 +150,55 @@ Rectangle {
             color: Style.fg
             elide: Text.ElideRight
         }
-        // The action, in the Bindings number style.
-        Rectangle {
+        // The action, in the Bindings number style, and the notes that matched.
+        ColumnLayout {
             Layout.fillWidth: true
-            Layout.maximumWidth: _actionText.implicitWidth + Style.dp(10)
-            implicitHeight: _actionText.implicitHeight + Style.dp(4)
-            radius: Style.dp(5)
-            color: Style.bindingBg
-            border.color: Style.bindingBorder
-            border.width: Style.dp(1)
+            spacing: Style.dp(2)
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.maximumWidth: _actionText.implicitWidth + Style.dp(10)
+                implicitHeight: _actionText.implicitHeight + Style.dp(4)
+                radius: Style.dp(5)
+                color: Style.bindingBg
+                border.color: Style.bindingBorder
+                border.width: Style.dp(1)
+                Label {
+                    id: _actionText
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: Style.dp(5)
+                    anchors.rightMargin: Style.dp(5)
+                    anchors.verticalCenter: parent.verticalCenter
+                    textFormat: Text.StyledText
+                    text: _row.lit("text", _row.f("text", ""))
+                    font.family: Style.monoFont
+                    color: Style.bindingText
+                    elide: Text.ElideRight
+                }
+            }
             Label {
-                id: _actionText
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: Style.dp(5)
-                anchors.rightMargin: Style.dp(5)
-                anchors.verticalCenter: parent.verticalCenter
+                objectName: "searchRowNotes:" + _row.index
+                Layout.fillWidth: true
+                visible: _row.matchedNotes.length > 0
                 textFormat: Text.StyledText
-                text: _row.lit("text", _row.f("text", ""))
-                font.family: Style.monoFont
-                color: Style.bindingText
+                text: _row.matchedNotes
+                color: Style.fgMuted
+                font.pixelSize: Style.menuTextPx
                 elide: Text.ElideRight
             }
         }
-        Item { Layout.fillWidth: true }
         Repeater {
             model: [
                 { on: _row.f("usedTwice", false), text: "Used twice", tone: Style.warn },
                 { on: _row.f("notFound", false), text: "Binding output not found", tone: Style.danger },
-                { on: _row.f("notPlugged", false), text: "Not plugged in", tone: Style.fgMuted }
+                { on: _row.f("notPlugged", false), text: "Not plugged in", tone: Style.fgMuted },
+                { on: _row.inheritedFrom.length > 0, text: "Inherited from " + _row.inheritedFrom,
+                  tone: Style.fgSoft, name: "searchRowInherited:" + _row.index }
             ]
             delegate: Rectangle {
                 required property var modelData
                 visible: !!modelData.on
+                objectName: modelData.name ? modelData.name + ":tag" : ""
                 implicitWidth: _tag.implicitWidth + Style.dp(10)
                 implicitHeight: _tag.implicitHeight + Style.dp(2)
                 radius: height / 2
@@ -178,6 +207,7 @@ Rectangle {
                 border.width: Style.dp(1)
                 Label {
                     id: _tag
+                    objectName: modelData.name || ""
                     anchors.centerIn: parent
                     text: modelData.text
                     color: modelData.tone

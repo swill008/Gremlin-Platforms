@@ -248,13 +248,18 @@ def test_device_library_setups(
     made = Profile()
     made.from_xml(folder / "a.xml")
     wires = device_pack._collect_wires(str(_STICK), None, made)
-    setups = [{"name": "Setup 1", "holds": ["bindings"], "pack": "x.gmap"}]
+    setups = [
+        {"key": "set1", "name": "Setup 1", "holds": ["bindings"], "pack": "x.gmap"}
+    ]
     monkeypatch.setattr(
         device_library,
         "devices",
         lambda: [{"name": "Stick", "guid": str(_STICK), "setups": setups}],
     )
-    monkeypatch.setattr(device_library, "_read_pack", lambda path: {"wires": wires})
+    asked: list[str] = []
+    monkeypatch.setattr(
+        device_library, "setup_wires", lambda key: asked.append(key) or wires
+    )
     rows = list(search_index.library_rows())
     assert {r.source for r in rows} == {"library"}
     assert {r.source_name for r in rows} == {"Setup 1"}
@@ -263,6 +268,7 @@ def test_device_library_setups(
     assert {r.input_id for r in rows} == {1, 2}
     assert all(r.used_twice for r in rows)
     assert {r.custom_name for r in rows} == {"Gear", ""}
+    assert asked == ["set1"]
 
 
 def test_device_library_is_a_built_in_source(
@@ -355,3 +361,32 @@ def test_key_prefix_finds_map_to_keyboard_sending_it(folder: pathlib.Path) -> No
     query = search_query.parse("key:F5")
     found = [r for r in rows if search_query.match(r, query) is not None]
     assert [(r.source_name, r.input_id) for r in found] == [("a", 11)]
+
+
+def test_child_mode_inherits_parent_bindings(folder: pathlib.Path) -> None:
+    """A child mode with no own binding for an input runs its parent's
+    (event_handler build_event_lookup): Search lists it in the child, tagged
+    with the parent, and Used twice counts it. A child that binds the input
+    itself inherits nothing for it."""
+    from gremlin.profile import Profile
+
+    p = Profile()
+    p.modes.add_mode("Child")
+    p.modes.set_parent("Child", "Default")
+    p.modes.add_mode("Own")
+    p.modes.set_parent("Own", "Default")
+    _bind(p, _STICK, 1, _vjoy(1, 5))
+    _bind(p, _STICK, 2, _vjoy(1, 5), mode="Child")
+    _bind(p, _STICK, 1, _vjoy(3, 3), mode="Own")
+    rows = search_index.profile_rows(p, "open", "p", "")
+    child = [r for r in rows if r.mode == "Child"]
+    inherited = [r for r in child if r.inherited_from]
+    assert [(r.input_id, r.inherited_from) for r in inherited] == [(1, "Default")]
+    assert {r.input_id for r in child} == {1, 2}
+    assert all(r.used_twice for r in child)
+    assert inherited[0].target_keys == (("vjoy", 1, B.value, 5),)
+    own = [r for r in rows if r.mode == "Own"]
+    assert [(r.input_id, r.inherited_from) for r in own] == [(1, "")]
+    parent = [r for r in rows if r.mode == "Default"]
+    assert [r.inherited_from for r in parent] == [""]
+    assert not parent[0].used_twice

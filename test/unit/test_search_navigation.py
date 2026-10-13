@@ -12,6 +12,10 @@
    first (Cancel: nothing opens; Discard: that file opens, then the row);
    "library" opens the Device Library on that device.
 4. The go-to handlers (keyed by device kind) cover every card's kind.
+5. A result for a device with no input module (gap SEARCH-NO-MODULE, S166)
+   says so: "<device> has no input module, so its bindings can't be shown
+   here.", with Open Device Mapping Editor, which opens that editor on it;
+   also with stub cards hidden (no card at all), from the row's name.
 
 A journey (test/journeys/_harness.py): the real main window off-screen in
 its own process (fake "pJoy Pro", temp USERPROFILE). The Search window is a
@@ -36,6 +40,7 @@ from _harness import (  # noqa: E402  # pyright: ignore[reportMissingImports]
 )
 
 STICK = "pJoy Pro"
+BARE = "Bare Stick"  # plugged in, no input module (a stub card)
 
 # +-------------------------------------------------------------------------
 # | Script side (the child process)
@@ -213,6 +218,79 @@ def _part_go(j: Journey, guid: str) -> None:
     )
 
 
+_EDITOR_STUB = (
+    "(function() {"
+    " var w = Qt.createQmlObject('import QtQuick; QtObject {"
+    " property var opened: [];"
+    " function openForDevice(n, g) { opened = opened.concat([[n, g]]) }"
+    " function show() {} function raise() {} function requestActivate() {} }',"
+    " _root, 'fakeEditor');"
+    ' Helpers._openWindows["DialogDeviceMappingEditor.qml"] = w; return w })()'
+)
+
+
+def _part_no_module(j: Journey) -> None:
+    guid = str(
+        _safe(
+            j,
+            "(function() { for (var i = 0; i < _cardGuids.count; i++) { "
+            "var r = _cardGuids.objectAt(i); var c = _moduleModel.cardMap(r.slug); "
+            "if (c && c.rawName === " + json.dumps(BARE) + ") return String(r.guid) } "
+            'return "" })()',
+        )
+    )
+    j.out["bare:guid"] = guid
+    row = {
+        "source": "open",
+        "device_guid": guid,
+        "device_name": BARE,
+        "mode": "Default",
+        "input_type": 3,
+        "input_id": 1,
+        "binding_index": 0,
+        "input_label": "Button 1",
+        "custom_name": "",
+    }
+    j.out["bare:go"] = _safe(j, f"_root.goToSearchRow({json.dumps(row)})")
+    shown = (
+        "(function(d) { return d.visible ? JSON.stringify("
+        "{ text: d.messageText, button: d.confirmText }) : '' })(_noModuleGate)"
+    )
+    told = j.await_value(
+        lambda: str(_safe(j, shown)).startswith("{"), True, timeout=8.0
+    )
+    j.out["bare:told"] = told
+    j.out["bare:notice"] = _safe(j, shown)
+    editor = j.ev(_EDITOR_STUB)
+    j.ev("_noModuleGate.confirmed(); _noModuleGate.close(); true")
+    j.settle()
+    j.out["bare:editor"] = json.loads(str(j.ev("JSON.stringify(opened)", editor)))
+
+    # Stub cards hidden: the device has no card at all; the row's name says it.
+    from gremlin import config
+    from gremlin.ui import module_model
+
+    module_model._ensure_display_options()
+    config.Configuration().set(
+        module_model._CFG_SECTION,
+        module_model._CFG_GROUP,
+        module_model._CFG_SHOW_STUBS,
+        False,
+    )
+    j.ev("_moduleModel.reload(); true")
+    j.settle()
+    j.out["hidden:kind"] = _safe(j, f"deviceKindOf({json.dumps(guid)})")
+    j.ev("opened = []; true", editor)
+    j.out["hidden:go"] = _safe(j, f"_root.goToSearchRow({json.dumps(row)})")
+    j.out["hidden:told"] = j.await_value(
+        lambda: str(_safe(j, shown)).startswith("{"), True, timeout=8.0
+    )
+    j.out["hidden:notice"] = _safe(j, shown)
+    j.ev("_noModuleGate.confirmed(); _noModuleGate.close(); true")
+    j.settle()
+    j.out["hidden:editor"] = json.loads(str(j.ev("JSON.stringify(opened)", editor)))
+
+
 def story(j: Journey) -> None:
     j.settle()
     stub = j.ev(_STUB)
@@ -231,6 +309,7 @@ def story(j: Journey) -> None:
         ("open", lambda: _part_open(j, stub, guid)),
         ("card", lambda: _part_card(j, stub)),
         ("go", lambda: _part_go(j, guid)),
+        ("bare", lambda: _part_no_module(j)),
     ):
         try:
             part()
@@ -243,7 +322,7 @@ def main() -> None:
         j.input_module(STICK, buttons=[1, 2, 3, 4, 5, 6, 7, 8])
         j.vjoy_module()
 
-    Journey(before).run(story)
+    Journey(before, sticks=((BARE, 9),)).run(story)
 
 
 # +-------------------------------------------------------------------------
@@ -311,6 +390,32 @@ def test_a_device_library_result_opens_the_device_library(result: dict) -> None:
     _no_error(result, "go")
     assert result["go:library"] is True
     assert result["go:libraryOpen"] is True
+
+
+def test_a_result_for_a_device_with_no_input_module_says_so(result: dict) -> None:
+    _no_error(result, "bare")
+    assert result["bare:guid"], result
+    assert result["bare:go"] is True
+    assert result["bare:told"] is True, result.get("bare:notice")
+    assert json.loads(result["bare:notice"]) == {
+        "text": f"{BARE} has no input module, so its bindings can't be shown here.",
+        "button": "Open Device Mapping Editor",
+    }
+    assert [n for n, _g in result["bare:editor"]] == [BARE]
+
+
+def test_with_stub_cards_hidden_the_result_still_says_no_input_module(
+    result: dict,
+) -> None:
+    _no_error(result, "bare")
+    assert result["hidden:kind"] == "", result["hidden:kind"]  # no card
+    assert result["hidden:go"] is True
+    assert result["hidden:told"] is True, result.get("hidden:notice")
+    assert json.loads(result["hidden:notice"]) == {
+        "text": f"{BARE} has no input module, so its bindings can't be shown here.",
+        "button": "Open Device Mapping Editor",
+    }
+    assert result["hidden:editor"] == [[BARE, result["bare:guid"]]]
 
 
 if __name__ == "__main__":

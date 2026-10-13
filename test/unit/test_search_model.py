@@ -505,7 +505,10 @@ def test_set_clipboard_only_on_the_main_thread(
     worker.start()
     worker.join(5.0)
     assert not worker.is_alive()
-    assert got == ["main"]
+    # Earlier tests in the same process may have made a QCoreApplication
+    # (no clipboard): then the helper must leave the clipboard alone.
+    gui = isinstance(QtGui.QGuiApplication.instance(), QtGui.QGuiApplication)
+    assert got == (["main"] if gui else [])
 
 
 def test_nothing_found_hint_texts(model: SearchModel) -> None:
@@ -554,3 +557,60 @@ def test_target_text_without_a_target_prefix() -> None:
     row = _row(targets=("T.16000M Button 9",), target_keys=(("input", _STICK, 1, 9),))
     assert search_model.target_text(row) == '"T.16000M Button 9"'
     assert search_model.target_text(_row(targets=(), target_keys=())) == ""
+
+
+def _inherited(row: SearchRow, parent: str) -> object:
+    """row seen from a child mode that inherits it from parent (a stand-in
+    until SearchRow has inherited_from)."""
+    import dataclasses
+
+    if any(f.name == "inherited_from" for f in dataclasses.fields(SearchRow)):
+        return dataclasses.replace(row, inherited_from=parent)  # type: ignore[call-arg]
+    fields = {f.name: getattr(row, f.name) for f in dataclasses.fields(row)}
+    return types.SimpleNamespace(**fields, inherited_from=parent)
+
+
+def test_notes_are_shown_and_lit_when_they_matched(qapp: object, saved: dict) -> None:
+    """A typed note matched: the row carries its notes with the matched
+    letters lit, the detail pane lists them (D-01-SEARCH-INDEX)."""
+    rows = [_row(notes=("Lower the landing gear",), input_label="Button 9")]
+    made = SearchModel(index=_Index(rows))
+    try:
+        made.searchFor("landing")
+        assert "notes" in {bytes(v).decode() for v in made.roleNames().values()}
+        found = _results(made)
+        assert found[0]["notes"] == ["Lower the landing gear"]
+        assert found[0]["highlights"]["notes:0"] == [[10, 17]]
+        row = next(i for i, r in enumerate(_rows(made)) if r["rowKind"] == "result")
+        assert made.detail(row)["notes"] == ["Lower the landing gear"]
+        assert "Lower the landing gear" in made.copyText(row)
+    finally:
+        made.close()
+        made.deleteLater()
+
+
+def test_inherited_rows_say_where_they_come_from(
+    qapp: object, saved: dict, copied: list[str]
+) -> None:
+    """A binding seen from a child mode that inherits it: role inheritedFrom,
+    tag "inherited", detail and Copy as text say "Inherited from <mode>"."""
+    rows = [_inherited(_row(mode="Combat", input_label="Button 8"), "Default")]
+    made = SearchModel(index=_Index(rows))  # type: ignore[arg-type]
+    try:
+        made.searchFor("button 8")
+        found = _results(made)
+        assert found[0]["inheritedFrom"] == "Default"
+        assert "inherited" in found[0]["tags"]
+        row = next(i for i, r in enumerate(_rows(made)) if r["rowKind"] == "result")
+        assert made.detail(row)["inheritedFrom"] == "Default"
+        assert "Inherited from Default" in made.copyText(row)
+    finally:
+        made.close()
+        made.deleteLater()
+
+
+def test_own_rows_are_not_inherited(model: SearchModel) -> None:
+    model.searchFor("gear")
+    found = _results(model)
+    assert found[0]["inheritedFrom"] == ""
+    assert "inherited" not in found[0]["tags"]

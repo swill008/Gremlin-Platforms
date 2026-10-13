@@ -38,6 +38,57 @@ def _safe(j: Journey, code: str) -> Any:  # noqa: ANN401
         return "ERROR " + str(err)
 
 
+_SHOWN_ROW = (
+    "{ rowKind: 'result', inputLabel: 'Button 6', mode: 'Air', "
+    "notes: ['Lower the landing gear', 'unused'], inheritedFrom: 'Default', "
+    "highlights: { 'notes:0': [[10, 17]] }, tags: ['inherited'] }"
+)
+
+
+def _shown(j: Journey, win: str) -> Any:  # noqa: ANN401
+    """The notes and inherited texts the result row and detail pane show."""
+    from PySide6 import QtCore
+
+    window = j.ev(win)
+    if window is None or isinstance(window, str):
+        return "no window"
+    detail = window.findChild(QtCore.QObject, "searchDetail")
+    try:
+        row = j.ev(
+            "(function() { var it = _list.itemAtIndex(_root.current); "
+            "if (!it) return null; it.model = " + _SHOWN_ROW + "; "
+            "function named(item, name) { if (item.objectName === name) "
+            "return item; for (var i = 0; i < item.children.length; i++) { "
+            "var f = named(item.children[i], name); if (f) return f } "
+            "return null } "
+            "function text(name) { var f = named(it, name + _root.current); "
+            "return f ? String(f.text) : '' } "
+            "return { notes: text('searchRowNotes:'), "
+            "inherited: text('searchRowInherited:') } })()",
+            window,
+        )
+        j.ev(
+            "row = " + _SHOWN_ROW + "; info = { notes: row.notes, "
+            "inheritedFrom: 'Default' }",
+            detail,
+        )
+    except RuntimeError as err:
+        return "ERROR " + str(err)
+
+    def text(name: str) -> str:
+        found = window.findChild(QtCore.QObject, name)
+        return str(found.property("text")) if found is not None else ""
+
+    row = row or {}
+    return {
+        "rowNotes": row.get("notes", ""),
+        "rowInherited": row.get("inherited", ""),
+        "detailNotes": text("searchDetailNotes"),
+        "detailNotesHeading": text("searchDetailNotesHeading"),
+        "detailInherited": text("searchDetailInherited"),
+    }
+
+
 def story(j: Journey) -> None:
     out = j.out
     j.settle()
@@ -92,6 +143,9 @@ def story(j: Journey) -> None:
         ".every(function(k) { return k in r }) : false, "
         "label: r ? r.input_label : '' } })()",
     )
+    # A row's typed notes (lit where they matched) and "Inherited from
+    # <mode>" on the row and in the detail pane (stand-in row values).
+    out["shown"] = _shown(j, win)
     # Nothing found, then Esc clears the box and Esc again closes the window.
     _safe(j, win + '.searchFor("zzqqxxw")')
     j.await_value(lambda: _safe(j, win + ".nothingFound"), True, timeout=8.0)
@@ -225,3 +279,17 @@ def test_go_to_binding_on_the_logical_device_opens_its_page(result: dict) -> Non
 
 if __name__ == "__main__":
     main()
+
+
+def test_notes_and_inherited_are_shown(result: dict) -> None:
+    """D-01-SEARCH-INDEX (SEARCH-NOTES-DETAIL, SEARCH-INHERIT): the row shows
+    the note that matched, lit, and "Inherited from <mode>"; the detail pane
+    lists every note under Notes and says where the binding comes from."""
+    shown = result["shown"]
+    assert isinstance(shown, dict), shown
+    assert "landing" in shown["rowNotes"] and "<span" in shown["rowNotes"]
+    assert "unused" not in shown["rowNotes"]  # only the notes that matched
+    assert shown["rowInherited"] == "Inherited from Default"
+    assert shown["detailNotesHeading"] == "Notes"
+    assert shown["detailNotes"] == "Lower the landing gear\nunused"
+    assert shown["detailInherited"] == "Inherited from Default"

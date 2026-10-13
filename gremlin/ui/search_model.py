@@ -102,7 +102,11 @@ ROW_FIELDS = (
     ("binding_index", "bindingIndex"),
     ("path", "path"),
     ("kinds", "kinds"),
+    ("notes", "notes"),
+    ("inherited_from", "inheritedFrom"),
 )
+# Values for fields a row may not carry.
+_FIELD_DEFAULTS: dict[str, object] = {"notes": (), "inherited_from": ""}
 ROLE_NAMES = (
     "rowKind",
     "title",
@@ -147,6 +151,8 @@ def _tags(row: Any) -> list[str]:  # noqa: ANN401
         tags.append("notFound")
     if HEALTH_FILTERS["notPlugged"][1](row):
         tags.append("notPlugged")
+    if getattr(row, "inherited_from", ""):
+        tags.append("inherited")
     return tags
 
 
@@ -846,7 +852,7 @@ class SearchModel(QtCore.QAbstractListModel):
             "_row": row,
         }
         for field, name in ROW_FIELDS:
-            item[name] = _qml(getattr(row, field, None))
+            item[name] = _qml(getattr(row, field, _FIELD_DEFAULTS.get(field)))
         return item
 
     @QtCore.Slot(str, "QVariant")
@@ -936,6 +942,8 @@ class SearchModel(QtCore.QAbstractListModel):
         )
         info["modeChain"] = self._mode_chain(found)
         info["clashPartners"] = sorted(set(partners), key=str.casefold)
+        info["notes"] = [str(n) for n in getattr(found, "notes", ()) or ()]
+        info["inheritedFrom"] = str(getattr(found, "inherited_from", "") or "")
         return info
 
     @QtCore.Slot(int, result=str)
@@ -947,15 +955,22 @@ class SearchModel(QtCore.QAbstractListModel):
         name = found.input_label
         if found.custom_name:
             name = f"{found.custom_name} ({found.input_label})"
+        mode = str(found.mode or "")
+        parent = getattr(found, "inherited_from", "")
+        if parent:
+            mode = f"{mode} (Inherited from {parent})"
         line = " › ".join(
             str(part)
-            for part in (found.source_name, found.device_name, found.mode, name)
+            for part in (found.source_name, found.device_name, mode, name)
             if part
         )
         if found.text:
             line += f": {found.text}"
         if found.targets:
             line += " → " + ", ".join(found.targets)
+        notes = [str(n) for n in getattr(found, "notes", ()) or () if n]
+        if notes:
+            line += " · Notes: " + "; ".join(notes)
         _set_clipboard(line)
         return line
 
