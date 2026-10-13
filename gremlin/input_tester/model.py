@@ -21,6 +21,8 @@ from gremlin.input_tester import compare as cmp
 from gremlin.input_tester import devices, logfiles, result, steam
 from gremlin.input_tester.log import TesterLog, log_path
 
+# The tester's own version (02 S149): raised by hand when the tester changes.
+TESTER_VERSION = "1.0"
 POLL_MS = 16
 FILE_POLL_S = 1.0
 ACTIVE_S = 0.3
@@ -889,6 +891,10 @@ class InputTesterModel(QtCore.QObject):
     @QtCore.Property(str, notify=verdictChanged)
     def steamWarning(self) -> str:
         return self._verdict.steam_warning
+
+    @QtCore.Property(str, constant=True)
+    def version(self) -> str:
+        return TESTER_VERSION
 
     @QtCore.Property(str, constant=True)
     def exePath(self) -> str:

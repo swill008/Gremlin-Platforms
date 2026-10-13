@@ -178,6 +178,7 @@ def checks(app: QtGui.QGuiApplication) -> None:
         if isinstance(w, QtQuick.QQuickWindow) and w.objectName() == "inputTester"
     )
     QtTest.QTest.qWait(600)
+    result("title", window.title())
     verdict = item(window, "verdictText")
     result(
         "verdict",

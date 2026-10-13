@@ -1081,3 +1081,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Lead fix (conftest device-names guard) + proof | fix | 3-8 min | 3 min | |
 | 2026-10-12 | CI on 8cb1d158 (fix) | ci | ~10-18 min | 18m23s, passed | |
 | 2026-10-12 | Release 1.0.35 prep: REL-MAP + REL-NOTES in parallel | docs | 3-8 min | 3 min (19:56-19:59) | |
+| 2026-10-13 | Input Tester version in its title (S149): spec, constant, title, test | small fix | rough 5-10 min | about 12 min (14:21-14:33) | 62 tests pass; lint + pyright clean |

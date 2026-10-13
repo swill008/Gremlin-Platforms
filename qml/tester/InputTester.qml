@@ -20,7 +20,7 @@ Window {
     minimumWidth: Style.dp(900)
     minimumHeight: Style.dp(520)
     visible: true
-    title: "Gremlin Input Tester"
+    title: "Gremlin Input Tester v" + tester.version
     color: Style.bgPage
 
     // "All devices" compact view instead of one device.

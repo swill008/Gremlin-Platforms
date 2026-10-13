@@ -389,6 +389,7 @@ What a game sees through HidHide, seen by a program HidHide treats like a game.
 - **S112** **Game path check**: for each game on HidHide's program list, if a running program has the same exe name but a different full path, the HidHide page should warn "StarCitizen.exe is running from D:\…\PTU\…, which isn't on the list" (checked when the page opens and every 5 s while it is open). While tracing with the HidHide row ticked, the 5 s watch (S97) writes the same as a HIDHIDE warning, once per path. Running programs are read only. [user decision 2026-10-10: D-02-INPUT-TESTER]
 - **S113** **Tester path check**: when the program list has an entry named `Gremlin Input Tester.exe` whose path isn't the current tester's, the HidHide page should say "The Input Tester on the list is an old copy (<old path>); the current one is <path>" with an **Update path** button that replaces the entry (needs Gremlin-Platforms controls HidHide on). [user decision 2026-10-10: D-02-INPUT-TESTER]
 - **S114** While tracing with the HidHide row ticked, a change of `result.json` should write a HIDHIDE line "Input Tester: Pass · <summary>" or "Input Tester: Fail · <summary>" (a warning on Fail, which raises the Trace tab's notice, 01 S150). [user decision 2026-10-10: D-02-INPUT-TESTER]
+- **S149** The Input Tester's title bar should read "Gremlin Input Tester v1.0": its own version, set by hand in one place (`TESTER_VERSION` in `gremlin/input_tester/model.py`) and raised only when the tester itself changes, not with each program release. [added 2026-10-13, user: D-02-TESTER-VERSION] [test: test_input_tester_ui.py::test_s149_title_shows_the_testers_version]
 
 **Addendum 2026-10-10 (D-02-INPUT-TESTER addendum: Logs tab, tester.log, restart after a HidHide change, fixes, follow input).** HidHide checks a program only when it opens a device (HidHide v1.4.181 `Logic.c` 160-207): a device the program already has open keeps working after the list changes, so a program started before a HidHide change goes on seeing what it saw.
 
@@ -605,6 +606,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | S105, S106 | 2026-10-10 (D-02-TESTER-XBOX-SLOT; user: "Go with your recommendations", 2026-10-10, audit T1, to-do 84): Xbox pads matched by their real XInput slot (`xinput` in expected.json); built 2026-10-10 (T1) |
 | S108 | 2026-10-10 (D-02-STEAM-ALLOW, ST1; user: "Go with your recommendations"): the Steam line also shows in Allow mode when Steam is on the list (the program already did this) |
 | S67 | 2026-10-10 (D-02-HIDHIDE-BUSY; user: "Go with your recommendations", 2026-10-10, Help questions D7, HH-INUSE-1): a busy HidHide (err 5, its window open) is "in use by another program", not "not installed"; built 2026-10-10 (D7) |
+| S149 | 2026-10-13 (D-02-TESTER-VERSION; user: "I want a version number on the input tester ... call it v1.0", then "a": a fixed version of its own): the title bar reads "Gremlin Input Tester v1.0" |
 
 The section 8 statements (with the changes above) are now the definition
 of correct for this subsystem.

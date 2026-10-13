@@ -112,6 +112,11 @@ def test_pass_rows_have_no_hint_and_plain_headings(pass_run: dict) -> None:
     assert "ALL GAME DEVICES IN WINDOWS (list only)" in headings
 
 
+def test_s149_title_shows_the_testers_version(pass_run: dict) -> None:
+    """02 S149: the title bar carries the tester's own version."""
+    assert pass_run["title"] == "Gremlin Input Tester v1.0"
+
+
 @pytest.mark.parametrize("which", ["fail_run", "pass_run"])
 def test_status_line_plain(which: str, request: pytest.FixtureRequest) -> None:
     """TW13, singular forms: one stick + vJoy, no Xbox, no listed game device."""
