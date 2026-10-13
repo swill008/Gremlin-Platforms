@@ -7,3 +7,4 @@
 | `bg-composite/` | The generated device picture (built in b4f3ff13): contract, split, spec draft, map lines |
 | `ps-match-contract.md` | Photoshop-match handles and keys (built in 3515b8cd) |
 | `click-zone-contract.md` | Whole-view click zone and the 1.2x grid (built in b4f3ff13) |
+| `profile-sharing/` | Profile upload/download (planning, 2026-10-13): research.md (how other apps share, Discord facts, services), what-a-profile-holds.md (scouts), workflow.md (agreed draft workflow + open questions) |

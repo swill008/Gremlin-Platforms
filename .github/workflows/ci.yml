@@ -25,7 +25,9 @@ on:
   # One branch only: every push also goes to develop, and running CI there
   # too doubled each run and each failure email (user, 2026-10-07).
   push:
-    branches: ["Gremlin-Platforms"]
+    # feature/profile-sharing: the experiment branch runs CI from its own copy
+    # of this file; the main branch stays frozen (user, 2026-10-13).
+    branches: ["Gremlin-Platforms", "feature/profile-sharing"]
   pull_request:
     branches: ["Gremlin-Platforms"]
 
