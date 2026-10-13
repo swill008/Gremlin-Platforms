@@ -1072,3 +1072,10 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Full run batch R (user using the PC) | test | ~7 min | 9 min (18:28-18:37) | first attempt wasted: bash `python` has no pytest, use the poetry venv python |
 | 2026-10-12 | Batch R fixes after full run (clipboard crash, library guard, Help) + targeted reruns | fix | 3-8 min | 18:38-18:41 | 2 agents + lead |
 | 2026-10-12 | Batch R commit, push, tracker | lead | ~2 min | 18:41-18:44 | |
+| 2026-10-12 | Batch R2 finish Search: 5 parallel agents (inherit, lib reader, UI notes/inherited, e2e, docs) | fix | 3-10 min | 18:46-18:51 (5 min) | all within estimate |
+| 2026-10-12 | Tests for changed files (`--changed`, 4741 tests) | test | — | 7 min (18:51-18:58) | `--changed` hit most of the suite; 2 load flakes + 1 order bug |
+| 2026-10-12 | R2 no-input-module fix (F-NOMOD + F-DOCS2, then no-card follow-up) | fix | 3-8 min | 19:01-19:10 | follow-up added 2 min |
+| 2026-10-12 | R2 targeted tests + commit + push | lead | ~3 min | 19:11-19:14 | |
+| 2026-10-12 | CI order-leak hunt, single agent (CI-REPRO) | research | ~15 min | 16 min (19:33-19:49), no culprit | full CI-seed rerun hit the 10-min part cap; reproduced with last 40 files (134 s) |
+| 2026-10-12 | CI order-leak bisect, 4 parallel chunk agents (BIS-1..4) | research | 5-8 min | 2 min (19:50-19:52), culprit found | split from the start next time |
+| 2026-10-12 | Lead fix (conftest device-names guard) + proof | fix | 3-8 min | 3 min | |

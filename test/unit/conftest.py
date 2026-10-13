@@ -134,6 +134,34 @@ def _no_real_clipboard(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
 
 
 @pytest.fixture(autouse=True)
+def _device_names_state_kept() -> Iterator[None]:
+    """The device-names module remembers the names it last announced
+    (device_aliases._ANNOUNCED_RAW) and the last scan; a test that writes the
+    names straight to the setting (device_aliases._save) must not leave them
+    behind, or a later configChanged reads the difference as a History
+    put-back and renames that test's device folder (CI 38326274798:
+    test_device_folders_devices left "Renamed Outside", the next import
+    renamed "Old Name" to "pJoy Pro")."""
+    from gremlin import device_aliases
+
+    kept = (
+        device_aliases._CACHE,  # noqa: SLF001
+        device_aliases._CACHE_RAW,  # noqa: SLF001
+        device_aliases._ANNOUNCED_RAW,  # noqa: SLF001
+        dict(device_aliases._SCAN_NAMES),  # noqa: SLF001
+    )
+    yield
+    (
+        device_aliases._CACHE,  # noqa: SLF001
+        device_aliases._CACHE_RAW,  # noqa: SLF001
+        device_aliases._ANNOUNCED_RAW,  # noqa: SLF001
+        scan,
+    ) = kept
+    device_aliases._SCAN_NAMES.clear()  # noqa: SLF001
+    device_aliases._SCAN_NAMES.update(scan)  # noqa: SLF001
+
+
+@pytest.fixture(autouse=True)
 def _trace_off_after() -> Iterator[None]:
     """Tracing is program-wide (D-01-TRACE): a test that turns it on must not
     leave it on, its ticks or its notice for the next test. The change hooks
