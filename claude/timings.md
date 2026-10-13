@@ -1079,3 +1079,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | CI order-leak hunt, single agent (CI-REPRO) | research | ~15 min | 16 min (19:33-19:49), no culprit | full CI-seed rerun hit the 10-min part cap; reproduced with last 40 files (134 s) |
 | 2026-10-12 | CI order-leak bisect, 4 parallel chunk agents (BIS-1..4) | research | 5-8 min | 2 min (19:50-19:52), culprit found | split from the start next time |
 | 2026-10-12 | Lead fix (conftest device-names guard) + proof | fix | 3-8 min | 3 min | |
+| 2026-10-12 | CI on 8cb1d158 (fix) | ci | ~10-18 min | 18m23s, passed | |
+| 2026-10-12 | Release 1.0.35 prep: REL-MAP + REL-NOTES in parallel | docs | 3-8 min | 3 min (19:56-19:59) | |
