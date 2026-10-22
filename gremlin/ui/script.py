@@ -165,6 +165,9 @@ class KeyboardVariableModel(AbstractVariableModel):
         Args:
             data: list of joystick events
         """
+        # Esc held: the listener sends no inputs; keep the current key.
+        if not data:
+            return
         self._variable.value = keyboard.key_from_code(*data[0].identifier)
         self.changed.emit()
         self.evaluate_validity()
@@ -387,6 +390,9 @@ class PhysicalInputVariableModel(AbstractVariableModel):
         Args:
             data: list of joystick events
         """
+        # Esc held: the listener sends no inputs; keep the current input.
+        if not data:
+            return
         self._variable.value = (
             data[0].device_guid,
             data[0].event_type,

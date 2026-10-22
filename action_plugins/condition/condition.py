@@ -530,6 +530,9 @@ class KeyboardCondition(AbstractCondition):
 
     @QtCore.Slot(list)
     def updateFromUserInput(self, data: List[event_handler.Event]) -> None:
+        # Esc held: the listener sends no inputs; keep the current condition.
+        if not data:
+            return
         # Verify the comparator type is still adequate and modify / warn as
         # needed. First determine the correct type and then check if changes
         # are needed.
@@ -540,12 +543,8 @@ class KeyboardCondition(AbstractCondition):
                     "KeyboardCondition."
                 )
 
-        # If we have no data the user pressed Esc to cancel input recording.
-        if len(data) == 0:
-            self._comparator = None
-            self._comparator_ui = None
-        # If we have data but no comparator, create a default one.
-        elif self._comparator is None:
+        # If we have no comparator, create a default one.
+        if self._comparator is None:
             self._create_comparator(InputType.Keyboard)
 
         self._update_states(
@@ -748,6 +747,9 @@ class JoystickCondition(AbstractCondition):
 
     @QtCore.Slot(list)
     def updateFromUserInput(self, data: List[event_handler.Event]) -> None:
+        # Esc held: the listener sends no inputs; keep the current condition.
+        if not data:
+            return
         # Verify the comparator type is still adequate and modify / warn as
         # needed. First determine the correct type and then check if changes
         # are needed.
@@ -759,14 +761,8 @@ class JoystickCondition(AbstractCondition):
                 "single condition."
             )
 
-        # If we have no data the user pressed Esc to cancel input recording.
-        if len(input_types) == 0:
-            self._comparator = None
-            self._comparator_ui = None
-        # With data present, create a new comparator based on the input type
-        # if needed.
-        else:
-            self._create_comparator(input_types[0])
+        # Create a new comparator based on the input type if needed.
+        self._create_comparator(input_types[0])
 
         # Create state objects and update.
         self._update_states(

@@ -111,6 +111,9 @@ class MapToKeyboardModel(ActionModel):
         Args:
             data: list of mouse button presses to store
         """
+        # Esc held: the listener sends no inputs; keep the current keys.
+        if not data:
+            return
         # Sort keys such that modifiers are first
         all_keys = [keyboard.key_from_code(*evt.identifier) for evt in data]
         modifier_keys = []

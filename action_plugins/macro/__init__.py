@@ -113,22 +113,19 @@ class JoystickActionModel(AbstractActionModel):
         Args:
             data: list of joystick events
         """
+        # Esc held: the listener sends no inputs; keep the current input.
         if not data:
-            self._action.device_guid = dill.UUID_Invalid
-            self._action.input_type = InputType.JoystickButton
-            self._action.input_id = 1
+            return
+        # Extract information about first input
+        self._action.device_guid = data[0].device_guid
+        self._action.input_type = data[0].event_type
+        self._action.input_id = data[0].identifier
+        if data[0].event_type == InputType.JoystickAxis:
+            self._action.value = 0.0
+        elif data[0].event_type == InputType.JoystickButton:
             self._action.value = False
-        else:
-            # Extract information about first input
-            self._action.device_guid = data[0].device_guid
-            self._action.input_type = data[0].event_type
-            self._action.input_id = data[0].identifier
-            if data[0].event_type == InputType.JoystickAxis:
-                self._action.value = 0.0
-            elif data[0].event_type == InputType.JoystickButton:
-                self._action.value = False
-            elif data[0].event_type == InputType.JoystickHat:
-                self._action.value = HatDirection.Center
+        elif data[0].event_type == InputType.JoystickHat:
+            self._action.value = HatDirection.Center
         self.changed.emit()
 
     def _get_is_pressed(self) -> bool:
@@ -205,10 +202,11 @@ class KeyActionModel(AbstractActionModel):
         Args:
             data: list of mouse button presses to store
         """
+        # Esc held: the listener sends no inputs; keep the current key.
+        if not data:
+            return
         # A key step holds one key: the first one recorded.
-        self._action.key = (
-            None if not data else keyboard.key_from_code(*data[0].identifier)
-        )
+        self._action.key = keyboard.key_from_code(*data[0].identifier)
         self.changed.emit()
 
     isPressed = QtCore.Property(
@@ -498,7 +496,10 @@ class MouseButtonActionModel(AbstractActionModel):
         Args:
             data: list of mouse button presses to store
         """
-        self._action.button = None if not data else data[0].identifier
+        # Esc held: the listener sends no inputs; keep the current button.
+        if not data:
+            return
+        self._action.button = data[0].identifier
         self.changed.emit()
 
     isPressed = QtCore.Property(

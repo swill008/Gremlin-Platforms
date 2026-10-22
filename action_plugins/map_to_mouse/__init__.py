@@ -302,6 +302,9 @@ class MapToMouseModel(ActionModel):
         Args:
             data: list of mouse button presses to store
         """
+        # Esc held: the listener sends no inputs; keep the current button.
+        if not data:
+            return
         self._data.button = data[0].identifier
         self.changed.emit()
 
