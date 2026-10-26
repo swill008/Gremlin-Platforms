@@ -1083,3 +1083,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-12 | Release 1.0.35 prep: REL-MAP + REL-NOTES in parallel | docs | 3-8 min | 3 min (19:56-19:59) | |
 | 2026-10-13 | Input Tester version in its title (S149): spec, constant, title, test | small fix | rough 5-10 min | about 12 min (14:21-14:33) | 62 tests pass; lint + pyright clean |
 | 2026-10-13 | Release 1.0.36 prep: version, notes, map guard (lead) | docs | 3-8 min | about 5 min (14:39-14:44) | |
+
+| 2026-10-26 | Release 1.0.37 prep: version, notes, map guard, CI check (lead) | docs | 3-8 min | about 20 min (16:14-16:34), most of it reading a failed CI run | 4 CI smoke stalls pass locally |
