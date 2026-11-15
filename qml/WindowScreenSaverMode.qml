@@ -10,8 +10,9 @@ import QtQuick.Window
 import Gremlin.Device
 import Gremlin.Style
 
-// Screen Saver Mode (12 S1-S15): Gremlin's own idle time from the keyboard
-// and mouse only; when it runs out, the screen saver or the displays off.
+// Screen Saver Mode (12 S1-S20): Gremlin's own idle time from the keyboard
+// and mouse only; two timers on it, the screen saver and the displays off,
+// each with its own switch and wait.
 // The status is read once a second while the window is open; three
 // sections (Devices, Programs, System; S12, S13, S17) list what keeps the
 // PC awake, each with its own Refresh button.
@@ -44,11 +45,86 @@ ApplicationWindow {
     Component.onCompleted: _ssm.setOpen(visible)
     onClosing: _ssm.setOpen(false)
 
-    // The typed wait (minutes) is saved when the box is left or Enter is
-    // pressed; text that isn't a time goes back to what is saved.
-    function commitWait() {
-        if (!_ssm.setWaitText(_wait.text))
-            _wait.text = _ssm.waitText
+    // One timer (S4, S5): its switch, its wait box (minutes; empty shows
+    // Windows' time greyed and uses it), ✕ to clear, Windows' time named
+    // next to it, and the row's problem under it. The typed wait is saved
+    // when the box is left or Enter is pressed; text that isn't a time goes
+    // back to what is saved.
+    component TimerRow: ColumnLayout {
+        id: _row
+        property string title
+        property bool on
+        property string waitText
+        property string placeholder
+        property string windowsLabel
+        property string problem
+        property string switchName
+        property string boxName
+        property string clearName
+        property string windowsName
+        property string problemName
+        property var setOn: function(on) {}
+        property var setWait: function(text) { return true }
+        property var clearWait: function() {}
+        Layout.fillWidth: true
+        spacing: Style.dp(4)
+        RowLayout {
+            spacing: Style.dp(8)
+            Switch {
+                objectName: _row.switchName
+                Layout.preferredWidth: Style.dp(200)
+                text: _row.title
+                property bool shown: _row.on
+                onShownChanged: if (!pressed) checked = shown
+                Component.onCompleted: checked = shown
+                onToggled: _row.setOn(checked)
+            }
+            TextField {
+                id: _box
+                objectName: _row.boxName
+                Layout.preferredWidth: Style.dp(110)
+                placeholderText: _row.placeholder
+                validator: RegularExpressionValidator {
+                    regularExpression: /^\s*\d{0,3}([.,]\d{0,2})?\s*(min)?\s*$/
+                }
+                property string saved: _row.waitText
+                onSavedChanged: if (!activeFocus) text = saved
+                Component.onCompleted: text = saved
+                onEditingFinished: {
+                    if (!_row.setWait(text))
+                        text = _row.waitText
+                }
+            }
+            Label {
+                text: "min"
+                color: Style.fgMuted
+                visible: _box.text.length > 0
+            }
+            ToolButton {
+                objectName: _row.clearName
+                text: "✕"
+                visible: _box.text.length > 0
+                ToolTip.visible: hovered
+                ToolTip.text: "Use Windows' time"
+                onClicked: {
+                    _box.text = ""
+                    _row.clearWait()
+                }
+            }
+            Label {
+                objectName: _row.windowsName
+                text: _row.windowsLabel
+                color: _box.text.length > 0 ? Style.fgMuted : Style.fg
+            }
+        }
+        Label {
+            objectName: _row.problemName
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            visible: text.length > 0
+            text: _row.problem
+            color: Style.dangerText
+        }
     }
 
     // A framed section of "What keeps the PC awake": title, its Refresh
@@ -248,74 +324,54 @@ ApplicationWindow {
                 Layout.rightMargin: Style.dp(16)
                 spacing: Style.dp(8)
 
-                // S4: one action.
-                SectionHeading { Layout.fillWidth: true; text: "Action" }
-                RowLayout {
-                    spacing: Style.dp(16)
-                    RadioButton {
-                        objectName: "ssmActionScreenSaver"
-                        text: "Screen saver"
-                        checked: _ssm.action === "screen_saver"
-                        onToggled: if (checked) _ssm.setAction("screen_saver")
-                    }
-                    RadioButton {
-                        objectName: "ssmActionPowerOff"
-                        text: "Power off displays"
-                        checked: _ssm.action === "power_off"
-                        onToggled: if (checked) _ssm.setAction("power_off")
-                    }
+                // S4, S5: two timers, each with its own switch and wait.
+                SectionHeading { Layout.fillWidth: true; text: "Timers" }
+                TimerRow {
+                    title: "Screen saver"
+                    on: _ssm.saverOn
+                    waitText: _ssm.saverWaitText
+                    placeholder: _ssm.saverWindowsWaitText
+                    windowsLabel: _ssm.saverWindowsWaitLabel
+                    problem: _ssm.saverProblemText
+                    switchName: "ssmSaverOn"
+                    boxName: "ssmSaverWaitBox"
+                    clearName: "ssmSaverWaitClear"
+                    windowsName: "ssmSaverWindowsWait"
+                    problemName: "ssmSaverProblem"
+                    setOn: function(on) { _ssm.setSaverOn(on) }
+                    setWait: function(text) { return _ssm.setSaverWaitText(text) }
+                    clearWait: function() { _ssm.clearSaverWait() }
                 }
-
-                // S5: empty shows (greyed) and uses Windows' time.
-                SectionHeading { Layout.fillWidth: true; text: "Wait time" }
-                RowLayout {
-                    spacing: Style.dp(8)
-                    TextField {
-                        id: _wait
-                        objectName: "ssmWaitBox"
-                        Layout.preferredWidth: Style.dp(110)
-                        placeholderText: _ssm.windowsWaitText
-                        text: _ssm.waitText
-                        validator: RegularExpressionValidator {
-                            regularExpression: /^\s*\d{0,3}([.,]\d{0,2})?\s*(min)?\s*$/
-                        }
-                        onEditingFinished: _win.commitWait()
-                        Connections {
-                            target: _ssm
-                            function onSettingsChanged() {
-                                if (!_wait.activeFocus)
-                                    _wait.text = _ssm.waitText
-                            }
-                        }
-                    }
-                    Label {
-                        text: "min"
-                        color: Style.fgMuted
-                        visible: _wait.text.length > 0
-                    }
-                    ToolButton {
-                        objectName: "ssmWaitClear"
-                        text: "✕"
-                        visible: _wait.text.length > 0
-                        ToolTip.visible: hovered
-                        ToolTip.text: "Use Windows' time"
-                        onClicked: {
-                            _wait.text = ""
-                            _ssm.clearWait()
-                        }
-                    }
-                    Label {
-                        objectName: "ssmWindowsWait"
-                        text: _ssm.windowsWaitLabel
-                        color: _wait.text.length > 0 ? Style.fgMuted : Style.fg
-                    }
+                TimerRow {
+                    title: "Power off displays"
+                    on: _ssm.offOn
+                    waitText: _ssm.offWaitText
+                    placeholder: _ssm.offWindowsWaitText
+                    windowsLabel: _ssm.offWindowsWaitLabel
+                    problem: _ssm.offProblemText
+                    switchName: "ssmOffOn"
+                    boxName: "ssmOffWaitBox"
+                    clearName: "ssmOffWaitClear"
+                    windowsName: "ssmOffWindowsWait"
+                    problemName: "ssmOffProblem"
+                    setOn: function(on) { _ssm.setOffOn(on) }
+                    setWait: function(text) { return _ssm.setOffWaitText(text) }
+                    clearWait: function() { _ssm.clearOffWait() }
                 }
                 Label {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     color: Style.fgMuted
                     font.pixelSize: Style.dp(12)
-                    text: "Type a time to use your own; clear it to go back to Windows' time."
+                    text: "Both count from your last keyboard or mouse input."
+                }
+                Label {
+                    objectName: "ssmOrderWarning"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    visible: text.length > 0
+                    text: _ssm.orderWarning
+                    color: Style.warn
                 }
 
                 // S7
@@ -370,6 +426,32 @@ ApplicationWindow {
                     visible: text.length > 0
                     text: _ssm.holdText
                     color: _ssm.onHold ? Style.warn : Style.fg
+                }
+                // S6: a countdown line per timer, then "done".
+                Label {
+                    objectName: "ssmSaverCountdown"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    visible: text.length > 0
+                    text: _ssm.saverCountdownText
+                    color: Style.fg
+                }
+                Label {
+                    objectName: "ssmOffCountdown"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    visible: text.length > 0
+                    text: _ssm.offCountdownText
+                    color: Style.fg
+                }
+                // S20: how often Windows turned the displays back on.
+                Label {
+                    objectName: "ssmWakeCount"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    visible: text.length > 0
+                    text: _ssm.wakeText
+                    color: Style.fgMuted
                 }
                 Label {
                     objectName: "ssmProblemText"

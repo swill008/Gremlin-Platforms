@@ -3,15 +3,18 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Screen Saver Mode (program map 12): Gremlin's own idle clock from the
-keyboard and mouse only, and the action (screen saver or displays off) when
-it runs out.
+keyboard and mouse only, and two timers (screen saver, displays off) that
+run from it.
 
 Some devices send reports all the time, so Windows' idle clock never runs.
 This clock listens to keyboard and mouse Raw Input only (InputClock, on its
 own thread with a hidden window), and a one-second main-thread timer
-(ScreenSaverMode.tick) does the action once per idle period, unless a hold
+(ScreenSaverMode.tick) fires each timer once per idle period, unless a hold
 (locked, full screen, a program keeping the display on) or a problem stops
-it. WindowsApi is the only part that calls Windows; tests pass a fake.
+it. After the power-off fires, the same hidden window hears Windows' display
+state and answers each display-ON report with one power-off, at most once a
+second, until real input (keeping the displays off, S6). WindowsApi is the
+only part that calls Windows; tests pass a fake.
 """
 
 from __future__ import annotations
@@ -23,14 +26,12 @@ import re
 import subprocess
 import threading
 from collections import deque
+from collections.abc import Callable
 from ctypes import wintypes
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from gremlin import clock, threads, trace, windows_event_hook
-
-ACTION_SCREEN_SAVER = "screen_saver"
-ACTION_POWER_OFF = "power_off"
 
 HOLD_LOCKED = "locked"
 HOLD_FULLSCREEN = "fullscreen"
@@ -45,6 +46,9 @@ PROBLEM_WINDOWS_NEVER = "windows_never"
 PROBLEM_NOT_LISTENING = "not_listening"
 
 TICK_S = 1.0
+# A power-off (the timer's or a keep-off re-send) is never sent sooner than
+# this after the last one.
+POWER_OFF_GAP_S = 1.0
 
 
 def _log() -> logging.Logger:
@@ -69,17 +73,13 @@ def _error(text: str) -> None:
     _trace(text)
 
 
-_ACTION_TEXT = {
-    ACTION_SCREEN_SAVER: "screen saver",
-    ACTION_POWER_OFF: "power off displays",
-}
-
-
 @dataclass
 class Settings:
     enabled: bool = False
-    action: str = ACTION_POWER_OFF
-    wait_override_s: int = 0  # 0 = use Windows' time
+    screen_saver_on: bool = True
+    screen_saver_wait_s: int = 0  # 0 = use Windows' screen saver wait
+    power_off_on: bool = True
+    power_off_wait_s: int = 0  # 0 = use the power plan's display-off time
     hold_fullscreen: bool = True
 
 
@@ -89,14 +89,25 @@ class Status:
     listening: bool = False  # raw input registered and alive
     idle_s: float = 0.0  # Gremlin's idle time
     windows_idle_s: float = 0.0  # GetLastInputInfo
-    wait_s: int = 0  # the wait in use (0 = none)
-    windows_wait_s: int = 0  # Windows' value for the chosen action (0 = never/none)
-    wait_from_windows: bool = True
+    # Screen saver timer.
+    saver_wait_s: int = 0  # the wait in use (0 = none)
+    saver_windows_wait_s: int = 0  # Windows' screen saver wait (0 = none/never)
+    saver_from_windows: bool = True  # no time typed
+    saver_fired: bool = False  # started in this idle period
+    saver_remaining_s: float = 0.0  # until it fires, 0 when it won't
+    saver_problem: str = ""  # "" | "no_screen_saver" | "windows_never"
+    # Power off timer.
+    off_wait_s: int = 0
+    off_windows_wait_s: int = 0  # the power plan's display-off time (0 = never)
+    off_from_windows: bool = True
+    off_fired: bool = False
+    off_remaining_s: float = 0.0
+    off_problem: str = ""  # "" | "windows_never"
+    keeping_off: bool = False  # answering Windows' display-ON reports (S6)
+    wakes: int = 0  # re-sends in the current or last idle period (S20)
     hold: str = ""  # "" | "locked" | "fullscreen" | "display_request"
     hold_program: str = ""  # the full-screen program's file name, "" when unknown
-    fired: bool = False  # action done in this idle period
-    problem: str = ""  # "" | "no_screen_saver" | "windows_never" | "not_listening"
-    remaining_s: float = 0.0  # until the action, 0 when none
+    problem: str = ""  # "" | "not_listening" (both timers)
     last_reset_by: str = ""  # the device's name, "" for program input or none
     last_reset_kind: str = ""  # "keyboard" | "mouse" | "program" | ""
     last_reset_age_s: float = 0.0  # since the last counted input
@@ -593,6 +604,11 @@ _USAGE_PAGE_GENERIC = 0x01
 _USAGE_MOUSE = 0x02
 _USAGE_KEYBOARD = 0x06
 _ERROR_CLASS_ALREADY_EXISTS = 1410
+_WM_POWERBROADCAST = 0x0218
+_PBT_POWERSETTINGCHANGE = 0x8013
+_DEVICE_NOTIFY_WINDOW_HANDLE = 0
+# GUID_CONSOLE_DISPLAY_STATE: Data 0 off, 1 on, 2 dimmed.
+_GUID_CONSOLE_DISPLAY_STATE = "6fe69556-704a-47a0-8f24-c28d936fda47"
 _CLASS_NAME = "GremlinPlatformsScreenSaverModeInput"
 
 
@@ -641,6 +657,14 @@ class _RAWINPUT_DATA(ctypes.Union):
 
 class RAWINPUT(ctypes.Structure):
     _fields_ = (("header", RAWINPUTHEADER), ("data", _RAWINPUT_DATA))
+
+
+class POWERBROADCAST_SETTING(ctypes.Structure):
+    _fields_ = (
+        ("PowerSetting", _GUID),
+        ("DataLength", wintypes.DWORD),
+        ("Data", ctypes.c_ubyte * 4),
+    )
 
 
 class _RAWINPUTDEVICE(ctypes.Structure):
@@ -742,7 +766,25 @@ def _user32() -> ctypes.WinDLL:
         wintypes.WPARAM,
         wintypes.LPARAM,
     )
+    u.RegisterPowerSettingNotification.restype = wintypes.HANDLE
+    u.RegisterPowerSettingNotification.argtypes = (
+        wintypes.HANDLE,
+        ctypes.POINTER(_GUID),
+        wintypes.DWORD,
+    )
+    u.UnregisterPowerSettingNotification.argtypes = (wintypes.HANDLE,)
     return u
+
+
+def display_state_on(l_param: int) -> bool | None:
+    """The display state in a PBT_POWERSETTINGCHANGE message: True on (or
+    dimmed), False off, None when it is another setting."""
+    if not l_param:
+        return None
+    setting = POWERBROADCAST_SETTING.from_address(l_param)
+    if bytes(setting.PowerSetting) != bytes(_GUID.parse(_GUID_CONSOLE_DISPLAY_STATE)):
+        return None
+    return setting.Data[0] != 0
 
 
 class InputClock:
@@ -752,8 +794,10 @@ class InputClock:
     front) on a hidden top-level window, on its own program thread with its
     own message loop; WM_QUIT posted to the thread ends it. The window
     procedure only notes the time, the device handle and the kind; names
-    are looked up later (ScreenSaverMode, once per handle). Tests call
-    note_input() only.
+    are looked up later (ScreenSaverMode, once per handle). The same window
+    gets Windows' display state (GUID_CONSOLE_DISPLAY_STATE) and hands each
+    report to `display_state_handler` (ScreenSaverMode.on_display_state),
+    on this thread. Tests call note_input() only.
     """
 
     _NAME = "screen saver mode input"
@@ -770,6 +814,10 @@ class InputClock:
         self._wndproc: Any = None
         self._user32: Any = None
         self.error = ""  # why the last start() failed, "" when it didn't
+        # Why the display-state notification could not be registered ("" ok).
+        self.notify_error = ""
+        # Called on the listener thread with each display state (True on).
+        self.display_state_handler: Callable[[bool], None] | None = None
         # The last counted input's source: (device handle or None, kind).
         self._source: tuple[int | None, str] = (None, "")
         # Program input per second: [second, count], the last minute only.
@@ -895,6 +943,14 @@ class InputClock:
                         )
             except Exception:
                 _log().exception("Screen Saver Mode raw input failed")
+        elif msg == _WM_POWERBROADCAST and w_param == _PBT_POWERSETTINGCHANGE:
+            try:
+                on = display_state_on(l_param)
+                handler = self.display_state_handler
+                if on is not None and handler is not None:
+                    handler(on)
+            except Exception:
+                _log().exception("Screen Saver Mode display state failed")
         return self._user32.DefWindowProcW(hwnd, msg, w_param, l_param)
 
     def _listen(self) -> None:
@@ -910,6 +966,7 @@ class InputClock:
         wc.hInstance = instance
         wc.lpszClassName = _CLASS_NAME
         hwnd = None
+        notify = None
         class_made = False
         try:
             if u.RegisterClassExW(ctypes.byref(wc)):
@@ -943,6 +1000,19 @@ class InputClock:
                     f"(Windows error {ctypes.get_last_error()})"
                 )
                 return
+            # Windows' display state, for keeping the displays off (S6).
+            # Without it the timers still work; the reason is reported.
+            self.notify_error = ""
+            notify = u.RegisterPowerSettingNotification(
+                hwnd,
+                ctypes.byref(_GUID.parse(_GUID_CONSOLE_DISPLAY_STATE)),
+                _DEVICE_NOTIFY_WINDOW_HANDLE,
+            )
+            if not notify:
+                self.notify_error = (
+                    "display state notification not registered "
+                    f"(Windows error {ctypes.get_last_error()})"
+                )
             _power_window = hwnd
             self._registered = True
             self._ready.set()
@@ -959,6 +1029,8 @@ class InputClock:
             self._registered = False
             self._ready.set()
             try:
+                if notify:
+                    u.UnregisterPowerSettingNotification(notify)
                 if hwnd:
                     remove = (_RAWINPUTDEVICE * 2)(
                         _RAWINPUTDEVICE(
@@ -980,47 +1052,83 @@ class InputClock:
 
 
 @dataclass
+class _Timer:
+    """One timer's wait and whether it fired in this idle period."""
+
+    wait_s: int = 0
+    windows_wait_s: int = 0
+    fired: bool = False
+
+
+@dataclass
 class _Period:
     """One idle period: from the last counted input (or the end of a hold)."""
 
     input_at: float = 0.0
     start: float = 0.0
-    fired: bool = False
     held: bool = False
-    wait_s: int = 0
-    windows_wait_s: int = 0
     screen_saver: str = ""
+    saver: _Timer = field(default_factory=_Timer)
+    off: _Timer = field(default_factory=_Timer)
+
+
+def _typed(seconds: int | None) -> int:
+    return max(0, int(seconds or 0))
+
+
+def _row_problems(path: str, saver_wait_s: int, off_wait_s: int) -> tuple[str, str]:
+    """(screen saver row, power off row) problems for the waits in use."""
+    if not path:
+        saver = PROBLEM_NO_SCREEN_SAVER
+    elif saver_wait_s <= 0:
+        saver = PROBLEM_WINDOWS_NEVER
+    else:
+        saver = ""
+    off = PROBLEM_WINDOWS_NEVER if off_wait_s <= 0 else ""
+    return saver, off
 
 
 class ScreenSaverMode:
-    """The countdown and the action (S2-S11, S15, S16 tracing)."""
+    """The two timers and keeping the displays off (S2-S11, S15, S16, S20)."""
 
     # status() while off reads Windows at most this often.
     _OFF_READ_S = 1.0
-    # A second power-off is never sent sooner than this after the last one.
-    POWER_OFF_GAP_S = 10.0
+    POWER_OFF_GAP_S = POWER_OFF_GAP_S
 
     def __init__(
         self, api: WindowsApi | None = None, clock_: InputClock | None = None
     ) -> None:
         self._api = api if api is not None else WindowsApi()
         self._clock = clock_ if clock_ is not None else InputClock()
+        self._clock.display_state_handler = self.on_display_state
         self._settings = Settings()
         self._running = False
         self._listening = False
         self._timer: Any = None
         self._period = _Period()
-        self._last_power_off = -1e9
         self._status = Status()
         self._status_live = False  # _status was filled while running
-        # (read at, action, Windows' wait) for status() while off.
-        self._off_read: tuple[float, str, int] | None = None
+        # (read at, screen saver path, its wait, display-off wait) while off.
+        self._off_read: tuple[float, str, int, int] | None = None
         self._last_hold = ""
-        self._last_problem = ""
+        self._last_problems = ("", "", "")
         self._hold_program = ""
         # Device names by raw input handle, looked up once each.
         self._names: dict[int, str] = {}
         self._last_reset_traced: tuple[str, str] | None = None
+        # Keeping the displays off (S6): shared with the listener thread,
+        # whose window procedure only notes and posts under this lock.
+        self._keep_lock = threading.Lock()
+        self._keeping_off = False
+        self._keep_input_at = 0.0  # the counted input keep-off started after
+        self._last_power_off = -1e9
+        self._retry_at = 0.0  # a re-send waiting for the gap (0 = none)
+        self._display_on = True  # Windows' last report
+        self._wakes = 0  # re-sends in this (or the last) idle period
+        self._wakes_total = 0  # since the mode was switched on
+        # (kind, number, text) for the tick to trace: never traced on the
+        # listener thread.
+        self._events: deque[tuple[str, int, str]] = deque(maxlen=1000)
 
     # ----- settings
 
@@ -1031,24 +1139,27 @@ class ScreenSaverMode:
         """Takes the settings; on/off starts or stops the clock and timer."""
         self._settings = replace(settings)
         self._off_read = None
-        wait = (
-            _wait_text(settings.wait_override_s)
-            if settings.wait_override_s
-            else "from Windows"
-        )
+        saver = _timer_text(settings.screen_saver_on, settings.screen_saver_wait_s)
+        off = _timer_text(settings.power_off_on, settings.power_off_wait_s)
         _trace(
             f"settings applied: {'on' if settings.enabled else 'off'}, "
-            f"{_ACTION_TEXT.get(settings.action, settings.action)}, wait {wait}"
-            f", hold full screen "
-            f"{'on' if settings.hold_fullscreen else 'off'}"
+            f"screen saver {saver}, power off displays {off}, "
+            f"hold full screen {'on' if settings.hold_fullscreen else 'off'}"
         )
         if settings.enabled and not self._running:
             self._running = True
             self._last_hold = ""
-            self._last_problem = ""
+            self._last_problems = ("", "", "")
+            with self._keep_lock:
+                self._wakes = 0
+                self._wakes_total = 0
+                self._events.clear()
             self._listening = self._clock.start()
             if self._listening:
                 _trace("listener started")
+                notify_error = getattr(self._clock, "notify_error", "")
+                if notify_error:
+                    _error(f"{notify_error}: the displays can't be kept off")
             else:
                 reason = getattr(self._clock, "error", "") or "unknown reason"
                 if windows_event_hook.enabled:
@@ -1060,12 +1171,14 @@ class ScreenSaverMode:
         elif not settings.enabled and self._running:
             self._stop()
         elif self._running:
-            # A changed action or wait: the countdown reads its wait again.
-            self._read_wait()
+            if not settings.power_off_on:
+                self._end_keep_off("power off displays switched off")
+            # A changed switch or wait: the countdowns read their waits again.
+            self._read_waits()
             self._trace_countdown()
         self._update_status()
         if self._running:
-            self._note_problem(self._status.problem)
+            self._note_problems(*self._problems())
 
     def shutdown(self) -> None:
         if self._running:
@@ -1073,6 +1186,7 @@ class ScreenSaverMode:
         self._update_status()
 
     def _stop(self) -> None:
+        self._end_keep_off("Screen Saver Mode switched off")
         self._running = False
         if self._timer is not None:
             try:
@@ -1083,7 +1197,7 @@ class ScreenSaverMode:
         self._clock.stop()
         self._listening = False
         self._last_hold = ""
-        self._last_problem = ""
+        self._last_problems = ("", "", "")
         self._hold_program = ""
         self._last_reset_traced = None
         _trace("listener stopped")
@@ -1107,61 +1221,79 @@ class ScreenSaverMode:
 
     # ----- countdown
 
-    def _windows_wait(self, action: str) -> tuple[str, int]:
-        """(screen saver path, Windows' wait) for the action; 0 = never."""
+    def _windows_waits(self) -> tuple[str, int, int]:
+        """(screen saver path, its wait, display-off wait) from Windows;
+        a wait of 0 = none/never."""
+        path, saver = "", 0
         try:
-            if action == ACTION_SCREEN_SAVER:
-                path = self._api.screen_saver_path()
-                wait = self._api.screen_saver_wait_s() if path else 0
-            else:
-                path = ""
-                wait = self._api.display_off_wait_s()
-            return path, max(0, int(wait))
+            path = str(self._api.screen_saver_path() or "")
+            saver = max(0, int(self._api.screen_saver_wait_s())) if path else 0
         except Exception:
-            _log().exception("Screen Saver Mode: reading Windows' wait failed")
-            _trace("reading Windows' wait failed (see the log)")
-            return "", 0
+            _log().exception("Screen Saver Mode: reading the screen saver wait failed")
+            _trace("reading Windows' screen saver wait failed (see the log)")
+        try:
+            off = max(0, int(self._api.display_off_wait_s()))
+        except Exception:
+            _log().exception("Screen Saver Mode: reading the display-off time failed")
+            _trace("reading Windows' display-off time failed (see the log)")
+            off = 0
+        return path, saver, off
 
-    def _read_wait(self) -> None:
-        """The wait for the chosen action, read from Windows each time the
-        countdown starts (S5)."""
+    def _read_waits(self) -> None:
+        """Each timer's wait, Windows' read each time the countdown starts
+        (S5); a typed time replaces it."""
         p = self._period
         s = self._settings
-        p.screen_saver, p.windows_wait_s = self._windows_wait(s.action)
-        override = max(0, int(s.wait_override_s or 0))
-        p.wait_s = override if override > 0 else p.windows_wait_s
+        p.screen_saver, p.saver.windows_wait_s, p.off.windows_wait_s = (
+            self._windows_waits()
+        )
+        p.saver.wait_s = _typed(s.screen_saver_wait_s) or p.saver.windows_wait_s
+        p.off.wait_s = _typed(s.power_off_wait_s) or p.off.windows_wait_s
 
     def _trace_countdown(self) -> None:
         p = self._period
-        typed = (self._settings.wait_override_s or 0) > 0
-        source = "typed" if typed else "from Windows"
+        s = self._settings
+
+        def row(on: bool, typed: int, t: _Timer) -> str:
+            if not on:
+                return "off"
+            source = "typed" if _typed(typed) else "from Windows"
+            return (
+                f"{_wait_text(t.wait_s)} ({source}; "
+                f"Windows {_wait_text(t.windows_wait_s)})"
+            )
+
         _trace(
-            f"countdown started: wait {_wait_text(p.wait_s)} ({source}; "
-            f"Windows {_wait_text(p.windows_wait_s)})"
+            "countdown started: screen saver "
+            f"{row(s.screen_saver_on, s.screen_saver_wait_s, p.saver)}, "
+            "power off displays "
+            f"{row(s.power_off_on, s.power_off_wait_s, p.off)}"
         )
 
     def _new_period(self, input_at: float, start: float, quiet: bool = False) -> None:
         self._period = _Period(input_at=input_at, start=start)
-        self._read_wait()
+        self._read_waits()
         if not quiet:
             self._trace_countdown()
 
-    def _problem(self) -> str:
-        if not self._listening or not self._clock.listening():
-            return PROBLEM_NOT_LISTENING
-        if (
-            self._settings.action == ACTION_SCREEN_SAVER
-            and not self._period.screen_saver
-        ):
-            return PROBLEM_NO_SCREEN_SAVER
-        if self._period.wait_s <= 0:
-            return PROBLEM_WINDOWS_NEVER
-        return ""
+    def _problems(self) -> tuple[str, str, str]:
+        """(both timers, screen saver row, power off row)."""
+        both = (
+            PROBLEM_NOT_LISTENING
+            if not self._listening or not self._clock.listening()
+            else ""
+        )
+        p = self._period
+        saver, off = _row_problems(p.screen_saver, p.saver.wait_s, p.off.wait_s)
+        return both, saver, off
 
-    def _note_problem(self, problem: str) -> None:
-        if problem != self._last_problem:
-            self._last_problem = problem
-            _trace(f"problem: {problem}" if problem else "problem cleared")
+    def _note_problems(self, both: str, saver: str, off: str) -> None:
+        old = self._last_problems
+        names = ("", "screen saver ", "power off displays ")
+        for name, before, now in zip(names, old, (both, saver, off), strict=True):
+            if before != now:
+                _trace(f"{name}problem: {now}" if now else f"{name}problem cleared")
+        self._last_problems = (both, saver, off)
 
     def _hold(self) -> str:
         if self._api.locked():
@@ -1173,18 +1305,21 @@ class ScreenSaverMode:
         return ""
 
     def tick(self) -> None:
-        """Once a second on the main thread: does the action once per idle
-        period when idle >= wait, with no hold and no problem."""
+        """Once a second on the main thread: fires each timer once per idle
+        period when idle >= its wait, with no hold and no problem; ends
+        keeping the displays off on counted input; retries a held-back
+        re-send; traces what the listener thread noted."""
         if not self._running:
             return
         now = clock.monotonic()
         last = self._clock.last_input()
         if last != self._period.input_at:
-            # Input: a new idle period (S6), the countdown starts again.
-            # Traced only for the first input after the action, not per input.
-            after_action = self._period.fired
+            # Input: a new idle period (S6), the countdowns start again.
+            # Traced only for the first input after an action, not per input.
+            after_action = self._period.saver.fired or self._period.off.fired
             if after_action:
                 _trace("input after action: countdown restarts")
+            self._end_keep_off("keyboard or mouse input")
             self._new_period(last, last, quiet=not after_action)
         p = self._period
         hold = ""
@@ -1206,21 +1341,40 @@ class ScreenSaverMode:
         self._hold_program = program
         self._trace_reset()
         if hold:
-            # Held: the countdown starts again when the hold ends (S7,
+            # Held: both countdowns start again when the hold ends (S7,
             # S11, S15).
             p.held = True
             p.start = now
         elif p.held:
-            # Counted from the last held moment: the wait is read again.
+            # Counted from the last held moment: the waits are read again.
             p.held = False
-            self._read_wait()
+            self._read_waits()
             self._trace_countdown()
-        problem = self._problem()
-        self._note_problem(problem)
-        if not hold and not problem and not p.fired and now - p.start >= p.wait_s:
-            # A power-off held back by the gap is tried again next tick.
-            p.fired = self._fire()
-        self._update_status(now=now, hold=hold, problem=problem)
+        problems = self._problems()
+        both, saver_problem, off_problem = problems
+        self._note_problems(*problems)
+        s = self._settings
+        if not hold and not both:
+            elapsed = now - p.start
+            if (
+                s.screen_saver_on
+                and not saver_problem
+                and not p.saver.fired
+                and elapsed >= p.saver.wait_s
+            ):
+                self._fire_screen_saver()
+                p.saver.fired = True
+            if (
+                s.power_off_on
+                and not off_problem
+                and not p.off.fired
+                and elapsed >= p.off.wait_s
+            ):
+                # A power-off held back by the gap is tried again next tick.
+                p.off.fired = self._fire_power_off()
+        self._retry_keep_off(now)
+        self._drain_events()
+        self._update_status(now=now, hold=hold, problems=problems)
 
     def _foreground(self) -> str:
         try:
@@ -1261,96 +1415,234 @@ class ScreenSaverMode:
         else:
             _trace(f"last reset by: {name or 'a device'} ({kind})")
 
-    def _fire(self) -> bool:
-        """Does the action; False only when a power-off is held back by
-        POWER_OFF_GAP_S (tried again later)."""
-        action = self._settings.action
+    def _fire_screen_saver(self) -> None:
+        path = self._period.screen_saver
         try:
-            if action == ACTION_SCREEN_SAVER:
-                path = self._period.screen_saver
-                if self._api.start_screen_saver(path):
-                    _log().info(f"Screen Saver Mode: screen saver started ({path})")
-                    _trace(f"action fired: screen saver {path}: started")
-                else:
-                    _error(f"action fired: screen saver {path}: could not start")
+            if self._api.start_screen_saver(path):
+                _log().info(f"Screen Saver Mode: screen saver started ({path})")
+                _trace(f"action fired: screen saver {path}: started")
             else:
-                now = clock.monotonic()
-                if now - self._last_power_off < self.POWER_OFF_GAP_S:
-                    _trace("action waits: power off displays was sent less than "
-                           f"{self.POWER_OFF_GAP_S:.0f} s ago")
-                    return False
-                self._last_power_off = now
-                self._api.power_off_displays()
-                _log().info("Screen Saver Mode: displays powered off")
-                _trace("action fired: power off displays: sent")
+                _error(f"action fired: screen saver {path}: could not start")
         except Exception as e:
             _log().exception("Screen Saver Mode action failed")
-            _trace(f"action fired: {_ACTION_TEXT.get(action, action)}: failed ({e})")
+            _trace(f"action fired: screen saver: failed ({e})")
+
+    def _fire_power_off(self) -> bool:
+        """Powers the displays off and starts keeping them off; False only
+        when held back by POWER_OFF_GAP_S (tried again next tick)."""
+        now = clock.monotonic()
+        with self._keep_lock:
+            if now - self._last_power_off < self.POWER_OFF_GAP_S:
+                held = True
+            else:
+                held = False
+                self._last_power_off = now
+                self._keeping_off = True
+                self._keep_input_at = self._period.input_at
+                self._retry_at = 0.0
+                self._wakes = 0
+        if held:
+            _trace(
+                "action waits: power off displays was sent less than "
+                f"{self.POWER_OFF_GAP_S:g} s ago"
+            )
+            return False
+        try:
+            self._api.power_off_displays()
+            _log().info("Screen Saver Mode: displays powered off")
+            _trace("action fired: power off displays: sent")
+            _trace("keep off started")
+        except Exception as e:
+            with self._keep_lock:
+                self._keeping_off = False
+            _log().exception("Screen Saver Mode action failed")
+            _trace(f"action fired: power off displays: failed ({e})")
         return True
+
+    # ----- keeping the displays off (S6, S20)
+
+    def on_display_state(self, on: bool) -> None:
+        """Windows reported the display state (the listener thread's window
+        procedure; tests call it). Cheap: notes, and while keeping the
+        displays off answers an ON report with one power-off, at most once
+        per POWER_OFF_GAP_S (inside the gap one re-send waits for its end)."""
+        now = clock.monotonic()
+        with self._keep_lock:
+            self._display_on = on
+            if not on:
+                self._retry_at = 0.0
+                return
+            # Counted input since keep-off started: the tick ends it; never
+            # power off the displays a person just woke.
+            if not self._keeping_off or self._clock.last_input() != self._keep_input_at:
+                return
+            if now - self._last_power_off < self.POWER_OFF_GAP_S:
+                if not self._retry_at:
+                    self._retry_at = self._last_power_off + self.POWER_OFF_GAP_S
+                    self._events.append(("wait", self._wakes, ""))
+                return
+            self._note_resend(now)
+        self._post_resend()
+
+    def _note_resend(self, now: float) -> None:
+        """Under the lock: one re-send counted."""
+        self._retry_at = 0.0
+        self._last_power_off = now
+        self._wakes += 1
+        self._wakes_total += 1
+        self._events.append(("resend", self._wakes, ""))
+
+    def _post_resend(self) -> None:
+        try:
+            self._api.power_off_displays()
+        except Exception as e:
+            self._events.append(("failed", self._wakes, str(e)))
+
+    def _retry_keep_off(self, now: float) -> None:
+        """A re-send held back by the gap, sent once the gap has ended and
+        the displays are still on."""
+        with self._keep_lock:
+            if not self._retry_at:
+                return
+            if (
+                not self._keeping_off
+                or not self._display_on
+                or self._clock.last_input() != self._keep_input_at
+            ):
+                self._retry_at = 0.0
+                return
+            if now < self._retry_at:
+                return
+            self._note_resend(now)
+        self._post_resend()
+
+    def _end_keep_off(self, reason: str) -> None:
+        with self._keep_lock:
+            if not self._keeping_off:
+                return
+            self._keeping_off = False
+            self._retry_at = 0.0
+            wakes, total = self._wakes, self._wakes_total
+        self._drain_events()
+        _log().info(
+            f"Screen Saver Mode: stopped keeping the displays off ({reason}): "
+            f"Windows turned them back on {wakes} times in this idle period "
+            f"({total} since switched on)"
+        )
+        _trace(f"keep off ended: {reason}; {wakes} wakes")
+
+    def _drain_events(self) -> None:
+        """Traces what the listener thread noted (main thread)."""
+        while True:
+            try:
+                kind, n, text = self._events.popleft()
+            except IndexError:
+                return
+            if kind == "resend":
+                _trace(
+                    "keep off: Windows turned the displays back on, "
+                    f"power off sent again (#{n})"
+                )
+            elif kind == "wait":
+                _trace(
+                    "keep off: Windows turned the displays back on within "
+                    f"{self.POWER_OFF_GAP_S:g} s of the last power off: "
+                    "sent again when the gap ends"
+                )
+            elif kind == "failed":
+                _log().warning(
+                    f"Screen Saver Mode: keep off power off #{n} failed ({text})"
+                )
+                _trace(f"keep off: power off #{n} failed ({text})")
 
     # ----- status
 
-    def _off_windows_wait(self) -> int:
-        """Windows' wait for the chosen action while off, read at most once
-        a second (S5: the window shows it while off too)."""
+    def _off_windows_waits(self) -> tuple[str, int, int]:
+        """Windows' waits while off, read at most once a second (S5: the
+        window shows them while off too)."""
         now = clock.monotonic()
-        action = self._settings.action
         cached = self._off_read
-        if (
-            cached is not None
-            and cached[1] == action
-            and now - cached[0] < self._OFF_READ_S
-        ):
-            return cached[2]
-        _path, wait = self._windows_wait(action)
-        self._off_read = (now, action, wait)
-        return wait
+        if cached is not None and now - cached[0] < self._OFF_READ_S:
+            return cached[1], cached[2], cached[3]
+        path, saver, off = self._windows_waits()
+        self._off_read = (now, path, saver, off)
+        return path, saver, off
 
     def _off_status(self) -> Status:
-        windows_wait = self._off_windows_wait()
-        override = max(0, int(self._settings.wait_override_s or 0))
+        path, saver_windows, off_windows = self._off_windows_waits()
+        s = self._settings
+        saver_wait = _typed(s.screen_saver_wait_s) or saver_windows
+        off_wait = _typed(s.power_off_wait_s) or off_windows
+        saver_problem, off_problem = _row_problems(path, saver_wait, off_wait)
+        with self._keep_lock:
+            wakes = self._wakes
         return Status(
-            enabled=self._settings.enabled,
-            wait_s=override if override > 0 else windows_wait,
-            windows_wait_s=windows_wait,
-            wait_from_windows=override == 0,
+            enabled=s.enabled,
+            saver_wait_s=saver_wait,
+            saver_windows_wait_s=saver_windows,
+            saver_from_windows=_typed(s.screen_saver_wait_s) == 0,
+            saver_problem=saver_problem,
+            off_wait_s=off_wait,
+            off_windows_wait_s=off_windows,
+            off_from_windows=_typed(s.power_off_wait_s) == 0,
+            off_problem=off_problem,
+            wakes=wakes,
         )
 
     def _update_status(
-        self, now: float | None = None, hold: str = "", problem: str | None = None
+        self,
+        now: float | None = None,
+        hold: str = "",
+        problems: tuple[str, str, str] | None = None,
     ) -> None:
         if not self._running:
             self._status_live = False
             return
         now = clock.monotonic() if now is None else now
         p = self._period
-        if problem is None:
-            problem = self._problem()
+        s = self._settings
+        both, saver_problem, off_problem = (
+            self._problems() if problems is None else problems
+        )
         try:
             windows_idle = float(self._api.windows_idle_s())
         except Exception:
             windows_idle = 0.0
-        remaining = 0.0
-        if not hold and not problem and not p.fired:
-            remaining = max(0.0, p.wait_s - (now - p.start))
+
+        def remaining(t: _Timer, on: bool, row_problem: str) -> float:
+            if hold or both or row_problem or not on or t.fired:
+                return 0.0
+            return max(0.0, t.wait_s - (now - p.start))
+
         reset_by, reset_kind = self._reset_source()
         try:
             per_min = int(self._clock.program_input_per_min(now))
         except Exception:
             per_min = 0
+        with self._keep_lock:
+            keeping_off, wakes = self._keeping_off, self._wakes
         self._status = Status(
             enabled=True,
             listening=self._clock.listening(),
             idle_s=max(0.0, now - p.input_at),
             windows_idle_s=windows_idle,
-            wait_s=p.wait_s,
-            windows_wait_s=p.windows_wait_s,
-            wait_from_windows=not (self._settings.wait_override_s or 0) > 0,
+            saver_wait_s=p.saver.wait_s,
+            saver_windows_wait_s=p.saver.windows_wait_s,
+            saver_from_windows=_typed(s.screen_saver_wait_s) == 0,
+            saver_fired=p.saver.fired,
+            saver_remaining_s=remaining(p.saver, s.screen_saver_on, saver_problem),
+            saver_problem=saver_problem,
+            off_wait_s=p.off.wait_s,
+            off_windows_wait_s=p.off.windows_wait_s,
+            off_from_windows=_typed(s.power_off_wait_s) == 0,
+            off_fired=p.off.fired,
+            off_remaining_s=remaining(p.off, s.power_off_on, off_problem),
+            off_problem=off_problem,
+            keeping_off=keeping_off,
+            wakes=wakes,
             hold=hold,
             hold_program=self._hold_program if hold == HOLD_FULLSCREEN else "",
-            fired=p.fired,
-            problem=problem,
-            remaining_s=remaining,
+            problem=both,
             last_reset_by=reset_by,
             last_reset_kind=reset_kind,
             last_reset_age_s=max(0.0, now - self._clock.last_input())
@@ -1362,15 +1654,26 @@ class ScreenSaverMode:
 
     def status(self) -> Status:
         """The status as of the last tick (cheap; the UI polls it). While
-        off it carries Windows' wait for the chosen action."""
+        off it carries Windows' waits for both timers."""
         if not self._running or not self._status_live:
             return self._off_status()
-        return replace(self._status)
+        st = replace(self._status)
+        # Keep-off can end or count between ticks (listener thread).
+        with self._keep_lock:
+            st.keeping_off, st.wakes = self._keeping_off, self._wakes
+        return st
 
 
 def _wait_text(seconds: int | float) -> str:
     seconds = int(seconds or 0)
     return f"{seconds} s" if seconds > 0 else "none"
+
+
+def _timer_text(on: bool, typed: int) -> str:
+    if not on:
+        return "off"
+    wait = _wait_text(typed) if _typed(typed) else "from Windows"
+    return f"on (wait {wait})"
 
 
 _manager: ScreenSaverMode | None = None

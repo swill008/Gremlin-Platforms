@@ -111,7 +111,14 @@ def texts() -> dict:
         "ssmWindowsIdleText",
         "ssmHoldText",
         "ssmProblemText",
-        "ssmWindowsWait",
+        "ssmSaverWindowsWait",
+        "ssmOffWindowsWait",
+        "ssmSaverProblem",
+        "ssmOffProblem",
+        "ssmOrderWarning",
+        "ssmSaverCountdown",
+        "ssmOffCountdown",
+        "ssmWakeCount",
         "ssmLastReset",
     ):
         out[name] = str(prop(name, "text"))
@@ -152,19 +159,49 @@ out: dict[str, object] = {
     "visible": bool(win.property("visible")),
 }
 
-# Start: off, power off displays, Windows' time.
+
+def row(prefix: str) -> dict:
+    """A timer row (S4, S5): its switch, box, ✕ and saved setting."""
+    key = "screen-saver" if prefix == "Saver" else "power-off"
+    return {
+        "on": bool(prop(f"ssm{prefix}On", "checked")),
+        "waitText": str(prop(f"ssm{prefix}WaitBox", "text")),
+        "placeholder": str(prop(f"ssm{prefix}WaitBox", "placeholderText")),
+        "clearVisible": bool(prop(f"ssm{prefix}WaitClear", "visible")),
+        "cfgOn": cfg(f"{key}-on"),
+        "cfgWait": cfg(f"{key}-wait-s"),
+    }
+
+
+def old_names() -> list[str]:
+    return [
+        n
+        for n in (
+            "ssmActionScreenSaver",
+            "ssmActionPowerOff",
+            "ssmWaitBox",
+            "ssmWaitClear",
+            "ssmWindowsWait",
+        )
+        if win.findChild(QtCore.QObject, n) is not None
+    ]
+
+
+def type_in(name: str, text: str) -> None:
+    child(name).setProperty("text", text)
+    emit(name, "editingFinished")
+    settle()
+
+
+# Start: off, both timers on, Windows' times.
 out["start"] = {
     "enabled": bool(prop("ssmEnabled", "checked")),
-    "screenSaver": bool(prop("ssmActionScreenSaver", "checked")),
-    "powerOff": bool(prop("ssmActionPowerOff", "checked")),
     "hold": bool(prop("ssmHoldFullscreen", "checked")),
-    "waitText": str(prop("ssmWaitBox", "text")),
-    "placeholder": str(prop("ssmWaitBox", "placeholderText")),
-    "clearVisible": bool(prop("ssmWaitClear", "visible")),
+    "saver": row("Saver"),
+    "off": row("Off"),
     "cfgEnabled": cfg("enabled"),
-    "cfgAction": cfg("action"),
-    "cfgWait": cfg("wait-override-s"),
     "cfgHold": cfg("hold-fullscreen"),
+    "oldNames": old_names(),
     **texts(),
 }
 
@@ -177,16 +214,24 @@ out["on"] = {
     **texts(),
 }
 
-# Screen saver (S4): saved, applied, Windows' screen saver time shown.
-toggle("ssmActionScreenSaver", True)
+# Each timer's switch (S4): saved and applied on its own.
+toggle("ssmSaverOn", False)
 settle()
-out["screenSaver"] = {
-    "cfgAction": cfg("action"),
-    "applied": manager.settings().action,
-    "powerOff": bool(prop("ssmActionPowerOff", "checked")),
-    "placeholder": str(prop("ssmWaitBox", "placeholderText")),
+out["saverOff"] = {
+    **row("Saver"),
+    "applied": [manager.settings().screen_saver_on, manager.settings().power_off_on],
     **texts(),
 }
+toggle("ssmSaverOn", True)
+toggle("ssmOffOn", False)
+settle()
+out["offOff"] = {
+    **row("Off"),
+    "applied": [manager.settings().screen_saver_on, manager.settings().power_off_on],
+    **texts(),
+}
+toggle("ssmOffOn", True)
+settle()
 
 # Hold off during full-screen programs off (S7).
 toggle("ssmHoldFullscreen", False)
@@ -196,34 +241,39 @@ out["holdOff"] = {
     "applied": manager.settings().hold_fullscreen,
 }
 
-# A typed time (S5) replaces Windows' time; text that isn't a time goes back.
-box = child("ssmWaitBox")
-box.setProperty("text", "10")
-emit("ssmWaitBox", "editingFinished")
-settle()
-out["typed"] = {
-    "cfgWait": cfg("wait-override-s"),
-    "applied": manager.settings().wait_override_s,
-    "clearVisible": bool(prop("ssmWaitClear", "visible")),
-    "waitText": str(prop("ssmWaitBox", "text")),
+# A typed time per row (S5) replaces Windows' time for that row only; text
+# that isn't a time goes back; the order warning follows.
+type_in("ssmOffWaitBox", "15")
+out["offTyped"] = {
+    **row("Off"),
+    "saverWait": cfg("screen-saver-wait-s"),
+    "applied": manager.settings().power_off_wait_s,
+    **texts(),
 }
-box.setProperty("text", "0")
-emit("ssmWaitBox", "editingFinished")
-settle()
-out["badTyped"] = {
-    "cfgWait": cfg("wait-override-s"),
-    "waitText": str(prop("ssmWaitBox", "text")),
+type_in("ssmSaverWaitBox", "20")
+out["saverTyped"] = {
+    **row("Saver"),
+    "applied": manager.settings().screen_saver_wait_s,
+    **texts(),
 }
+type_in("ssmSaverWaitBox", "0")
+out["badTyped"] = row("Saver")
 
-# ✕ clears: Windows' time again.
-emit("ssmWaitClear", "clicked")
+# ✕ clears its own row: Windows' time again.
+emit("ssmSaverWaitClear", "clicked")
 settle()
-out["cleared"] = {
-    "cfgWait": cfg("wait-override-s"),
-    "applied": manager.settings().wait_override_s,
-    "waitText": str(prop("ssmWaitBox", "text")),
-    "clearVisible": bool(prop("ssmWaitClear", "visible")),
-    "placeholder": str(prop("ssmWaitBox", "placeholderText")),
+out["saverCleared"] = {
+    **row("Saver"),
+    "applied": manager.settings().screen_saver_wait_s,
+    "offWait": cfg("power-off-wait-s"),
+    **texts(),
+}
+emit("ssmOffWaitClear", "clicked")
+settle()
+out["offCleared"] = {
+    **row("Off"),
+    "applied": manager.settings().power_off_wait_s,
+    **texts(),
 }
 
 # Status texts follow the manager, polled once a second (S9, S15, S8).
@@ -252,15 +302,26 @@ manager.extra = {
 }
 until(lambda: "G915" in str(prop("ssmLastReset", "text")), 3.0)
 out["keyboardReset"] = texts()
-manager.extra = {"problem": "no_screen_saver"}
-until(lambda: bool(prop("ssmProblemText", "text")), 3.0)
+manager.extra = {"saver_problem": "no_screen_saver", "off_remaining_s": 200.0}
+until(lambda: bool(prop("ssmSaverProblem", "text")), 3.0)
 out["noScreenSaver"] = texts()
+manager.extra = {"off_problem": "windows_never", "saver_remaining_s": 80.0}
+until(lambda: bool(prop("ssmOffProblem", "text")), 3.0)
+out["offNever"] = texts()
 manager.extra = {"problem": "not_listening", "listening": False}
 until(lambda: "can't be listened" in str(prop("ssmProblemText", "text")), 3.0)
 out["notListening"] = texts()
-manager.extra = {"remaining_s": 139.0, "idle_s": 461.0}
-until(lambda: "in 2 min" in str(prop("ssmHoldText", "text")), 3.0)
+manager.extra = {"saver_remaining_s": 80.0, "off_remaining_s": 200.0}
+until(lambda: "in 3 min" in str(prop("ssmOffCountdown", "text")), 3.0)
 out["countdown"] = texts()
+manager.extra = {
+    "saver_fired": True,
+    "off_fired": True,
+    "keeping_off": True,
+    "wakes": 136,
+}
+until(lambda: bool(prop("ssmWakeCount", "text")), 3.0)
+out["keepingOff"] = texts()
 manager.extra = {}
 
 # Refresh Devices (S12): busy text while it reads, then the list.

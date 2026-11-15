@@ -1,9 +1,11 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Screen Saver Mode's window (12 S1-S19): the Tools item in the bottom
-group opens it; the switches, the action and the wait box save the settings
-and hand them to the manager; the status line follows the manager's status
+"""Screen Saver Mode's window (12 S1-S20): the Tools item in the bottom
+group opens it; the switches and the two timers (Screen saver, Power off
+displays: each a switch and a wait box, contract-4) save the settings and
+hand them to the manager; the order warning; a countdown per timer and the
+wake count (S20); the status line follows the manager's status
 (with what last reset the idle time, S18, and the full-screen program, S19);
 three sections, Devices, Programs and System, each with its own Refresh
 button, fill their own lists (Programs and System each with their own
@@ -83,11 +85,12 @@ def fakes(qapp: object, monkeypatch: pytest.MonkeyPatch):  # noqa: ANN201
     manager, calls = ssm_ui_fakes.install(monkeypatch)
     m.register_options()
     cfg = Configuration()
-    names = (m.ENABLED, m.ACTION, m.WAIT, m.HOLD_FULLSCREEN)
-    before = {n: cfg.value(m.SECTION, m.GROUP, n) for n in names}
+    before = {n: cfg.value(m.SECTION, m.GROUP, n) for n in m.NAMES}
     cfg.set(m.SECTION, m.GROUP, m.ENABLED, False)
-    cfg.set(m.SECTION, m.GROUP, m.ACTION, m.ACTION_POWER_OFF)
-    cfg.set(m.SECTION, m.GROUP, m.WAIT, 0)
+    cfg.set(m.SECTION, m.GROUP, m.SAVER_ON, True)
+    cfg.set(m.SECTION, m.GROUP, m.SAVER_WAIT, 0)
+    cfg.set(m.SECTION, m.GROUP, m.OFF_ON, True)
+    cfg.set(m.SECTION, m.GROUP, m.OFF_WAIT, 0)
     cfg.set(m.SECTION, m.GROUP, m.HOLD_FULLSCREEN, True)
     made: list = []
 
@@ -131,12 +134,15 @@ def test_settings_are_registered_with_the_contract_defaults(fakes) -> None:  # n
     _manager, _calls, _model, m = fakes
     cfg = Configuration()
     want = {
-        "enabled": PropertyType.Bool,
-        "action": PropertyType.String,
-        "wait-override-s": PropertyType.Int,
-        "hold-fullscreen": PropertyType.Bool,
+        "enabled": (PropertyType.Bool, False),
+        "screen-saver-on": (PropertyType.Bool, True),
+        "screen-saver-wait-s": (PropertyType.Int, 0),
+        "power-off-on": (PropertyType.Bool, True),
+        "power-off-wait-s": (PropertyType.Int, 0),
+        "hold-fullscreen": (PropertyType.Bool, True),
     }
-    for name, kind in want.items():
+    assert set(m.NAMES) == set(want)
+    for name, (kind, _default) in want.items():
         assert cfg.exists("global", "screen-saver-mode", name)
         assert cfg.data_type("global", "screen-saver-mode", name) == kind
         assert cfg.description("global", "screen-saver-mode", name)
@@ -152,11 +158,19 @@ def test_history_names_them_as_the_window_does_and_options_leaves_them_out(
 
     keys = [
         f"global/screen-saver-mode/{n}"
-        for n in ("enabled", "action", "wait-override-s", "hold-fullscreen")
+        for n in (
+            "enabled",
+            "screen-saver-on",
+            "screen-saver-wait-s",
+            "power-off-on",
+            "power-off-wait-s",
+            "hold-fullscreen",
+        )
     ]
     title = settings_history_title(keys)
     assert title == (
-        "Changed Screen Saver Mode, Action, Wait time, "
+        "Changed Screen Saver Mode, Screen saver, Screen saver wait, "
+        "Power off displays, Power off wait, "
         "Hold off during full-screen programs"
     ), title
     shown = {k for _s, groups in option.main_layout() for _g, ks in groups for k in ks}
@@ -170,14 +184,19 @@ def test_switching_and_choosing_write_the_settings_and_apply_them(fakes) -> None
     cfg = Configuration()
     ssm = model()
     assert ssm.property("enabled") is False
+    assert ssm.property("saverOn") is True and ssm.property("offOn") is True
     ssm.setEnabled(True)
     assert cfg.value(m.SECTION, m.GROUP, m.ENABLED) is True
     assert manager.settings().enabled is True
-    ssm.setAction("screen_saver")
-    assert cfg.value(m.SECTION, m.GROUP, m.ACTION) == "screen_saver"
-    assert manager.settings().action == "screen_saver"
-    ssm.setAction("sleep")  # not an action: nothing changes
-    assert cfg.value(m.SECTION, m.GROUP, m.ACTION) == "screen_saver"
+    ssm.setSaverOn(False)
+    assert cfg.value(m.SECTION, m.GROUP, m.SAVER_ON) is False
+    assert manager.settings().screen_saver_on is False
+    assert manager.settings().power_off_on is True
+    ssm.setOffOn(False)
+    assert cfg.value(m.SECTION, m.GROUP, m.OFF_ON) is False
+    assert manager.settings().power_off_on is False
+    ssm.setSaverOn(True)
+    assert manager.settings().screen_saver_on is True
     ssm.setHoldFullscreen(False)
     assert cfg.value(m.SECTION, m.GROUP, m.HOLD_FULLSCREEN) is False
     assert manager.settings().hold_fullscreen is False
@@ -186,33 +205,84 @@ def test_switching_and_choosing_write_the_settings_and_apply_them(fakes) -> None
     assert cfg.value(m.SECTION, m.GROUP, m.ENABLED) is False
 
 
-def test_wait_box_shows_windows_time_and_a_typed_time_overrides(fakes) -> None:  # noqa: ANN001
+@pytest.mark.parametrize(
+    ("row", "setting", "field", "windows"),
+    [
+        ("saver", "SAVER_WAIT", "screen_saver_wait_s", "SAVER_WINDOWS_S"),
+        ("off", "OFF_WAIT", "power_off_wait_s", "OFF_WINDOWS_S"),
+    ],
+)
+def test_each_wait_box_shows_windows_time_and_a_typed_time_overrides(
+    fakes: tuple, row: str, setting: str, field: str, windows: str
+) -> None:
+    """S5 per timer: each row's box shows Windows' time greyed, a typed time
+    overrides only that row until cleared."""
     from gremlin.config import Configuration
 
     manager, _calls, model, m = fakes
+    key = getattr(m, setting)
+    other = m.OFF_WAIT if row == "saver" else m.SAVER_WAIT
+    cap = "Saver" if row == "saver" else "Off"
     cfg = Configuration()
     ssm = model()
     ssm.refreshStatus()
-    assert ssm.property("waitText") == ""
-    assert ssm.property("windowsWaitText") == "5 min"
-    assert ssm.property("windowsWaitLabel") == "Windows' display-off time (5 min)"
-    assert ssm.setWaitText("12") is True
-    assert cfg.value(m.SECTION, m.GROUP, m.WAIT) == 720
-    assert manager.settings().wait_override_s == 720
-    assert ssm.property("waitText") == "12"
-    assert ssm.setWaitText("2.5 min") is True
-    assert cfg.value(m.SECTION, m.GROUP, m.WAIT) == 150
+    assert ssm.property(f"{row}WaitText") == ""
+    assert ssm.property("saverWindowsWaitText") == "10 min"
+    assert (
+        ssm.property("saverWindowsWaitLabel") == "Windows' screen saver wait (10 min)"
+    )
+    assert ssm.property("offWindowsWaitText") == "5 min"
+    assert ssm.property("offWindowsWaitLabel") == "Windows' display-off time (5 min)"
+    assert getattr(ssm, f"set{cap}WaitText")("12") is True
+    assert cfg.value(m.SECTION, m.GROUP, key) == 720
+    assert getattr(manager.settings(), field) == 720
+    assert cfg.value(m.SECTION, m.GROUP, other) == 0
+    assert ssm.property(f"{row}WaitText") == "12"
+    assert getattr(ssm, f"set{cap}WaitText")("2.5 min") is True
+    assert cfg.value(m.SECTION, m.GROUP, key) == 150
     for bad in ("abc", "0", "-3", "5000"):
-        assert ssm.setWaitText(bad) is False, bad
-        assert cfg.value(m.SECTION, m.GROUP, m.WAIT) == 150
-    ssm.clearWait()
-    assert cfg.value(m.SECTION, m.GROUP, m.WAIT) == 0
-    assert manager.settings().wait_override_s == 0
-    assert ssm.property("waitText") == ""
+        assert getattr(ssm, f"set{cap}WaitText")(bad) is False, bad
+        assert cfg.value(m.SECTION, m.GROUP, key) == 150
+    getattr(ssm, f"clear{cap}Wait")()
+    assert cfg.value(m.SECTION, m.GROUP, key) == 0
+    assert getattr(manager.settings(), field) == 0
+    assert ssm.property(f"{row}WaitText") == ""
     # Windows says never: the box says so.
-    manager.WAITS = {"screen_saver": 0, "power_off": 0}
+    setattr(manager, windows, 0)
     ssm.refreshStatus()
-    assert ssm.property("windowsWaitText") == "Never"
+    assert ssm.property(f"{row}WindowsWaitText") == "Never"
+
+
+def test_order_warning_when_power_off_comes_first(fakes: tuple) -> None:
+    """Contract-4: both on and the power off wait not longer than the
+    screen saver's: the window warns (both still work)."""
+    manager, _calls, model, _m = fakes
+    warning = (
+        "Power off comes at or before the screen saver: the screen saver won't show."
+    )
+    ssm = model()
+    ssm.refreshStatus()
+    # Windows' times: screen saver 10 min, display off 5 min.
+    assert ssm.property("orderWarning") == warning
+    ssm.setOffWaitText("15")
+    assert ssm.property("orderWarning") == ""
+    ssm.setSaverWaitText("15")  # equal: still first
+    assert ssm.property("orderWarning") == warning
+    ssm.setSaverWaitText("2")
+    assert ssm.property("orderWarning") == ""
+    ssm.clearSaverWait()
+    ssm.clearOffWait()
+    assert ssm.property("orderWarning") == warning
+    ssm.setSaverOn(False)
+    assert ssm.property("orderWarning") == ""
+    ssm.setSaverOn(True)
+    ssm.setOffOn(False)
+    assert ssm.property("orderWarning") == ""
+    ssm.setOffOn(True)
+    # Windows never starts the screen saver: nothing to come before.
+    manager.SAVER_WINDOWS_S = 0
+    ssm.refreshStatus()
+    assert ssm.property("orderWarning") == ""
 
 
 def test_history_restore_is_followed_by_the_manager(fakes) -> None:  # noqa: ANN001
@@ -296,27 +366,92 @@ def test_history_restore_is_followed_by_the_manager(fakes) -> None:  # noqa: ANN
             "lastResetText",
             "last reset by: a mouse, 5 s ago",
         ),
+        # Per row (S5, S8): the screen saver row's and the power off row's.
         (
-            {"problem": "no_screen_saver"},
-            "problemText",
+            {"saver_problem": "no_screen_saver"},
+            "saverProblemText",
             "No screen saver is chosen in Windows.",
         ),
+        ({"saver_problem": "no_screen_saver"}, "offProblemText", ""),
         (
-            {"problem": "windows_never"},
+            {"saver_problem": "windows_never"},
+            "saverProblemText",
+            "Windows never starts the screen saver: type a time to use this timer.",
+        ),
+        (
+            {"off_problem": "windows_never"},
+            "offProblemText",
+            "Windows never turns the display off: type a time to use this timer.",
+        ),
+        ({"off_problem": "windows_never"}, "saverProblemText", ""),
+        # A row's problem stops only its own countdown.
+        (
+            {"off_problem": "windows_never", "saver_remaining_s": 80.0},
+            "saverCountdownText",
+            "Screen saver in 1 min 20 s",
+        ),
+        (
+            {"off_problem": "windows_never", "off_remaining_s": 80.0},
+            "offCountdownText",
+            "",
+        ),
+        (
+            {"problem": "not_listening"},
             "problemText",
-            "Windows never turns the display off: "
-            "type a time to use Screen Saver Mode.",
+            "The keyboard and mouse can't be listened to, so Screen Saver Mode "
+            "does nothing.",
         ),
         (
             {"problem": "not_listening", "listening": False},
             "listeningText",
             "Not listening to the keyboard and mouse",
         ),
+        # S6: a countdown per timer, then done.
         (
-            {"fired": True},
-            "holdText",
+            {"saver_remaining_s": 80.0, "off_remaining_s": 200.0},
+            "saverCountdownText",
+            "Screen saver in 1 min 20 s",
+        ),
+        (
+            {"saver_remaining_s": 80.0, "off_remaining_s": 200.0},
+            "offCountdownText",
+            "Power off displays in 3 min 20 s",
+        ),
+        (
+            {"saver_fired": True, "off_remaining_s": 120.0},
+            "saverCountdownText",
+            "Screen saver done. Nothing more until the keyboard or mouse is used.",
+        ),
+        (
+            {"off_fired": True},
+            "offCountdownText",
             "Power off displays done. "
             "Nothing more until the keyboard or mouse is used.",
+        ),
+        # A hold holds both.
+        (
+            {"hold": "fullscreen", "saver_remaining_s": 80.0},
+            "saverCountdownText",
+            "",
+        ),
+        (
+            {"hold": "fullscreen", "off_remaining_s": 80.0},
+            "offCountdownText",
+            "",
+        ),
+        # S20: the wake count, while keeping the displays off and after.
+        ({"keeping_off": True, "wakes": 0}, "wakeText", ""),
+        (
+            {"keeping_off": True, "off_fired": True, "wakes": 136},
+            "wakeText",
+            "Windows turned the displays back on 136 times: devices that never "
+            "go quiet (see Refresh Devices).",
+        ),
+        (
+            {"keeping_off": False, "wakes": 1},
+            "wakeText",
+            "Windows turned the displays back on once: devices that never "
+            "go quiet (see Refresh Devices).",
         ),
         (
             {"idle_s": 161.0, "windows_idle_s": 0.0},
@@ -526,15 +661,27 @@ def test_windows_time_shows_while_screen_saver_mode_is_off(fakes: tuple) -> None
     core's 'never' fix), and the window shows it greyed: 5 min, not never."""
     manager, _calls, model, _m = fakes
     ssm = model()
-    manager.extra = {"enabled": False, "listening": False, "windows_wait_s": 300}
+    manager.extra = {
+        "enabled": False,
+        "listening": False,
+        "off_windows_wait_s": 300,
+        "saver_windows_wait_s": 420,
+    }
     ssm.refreshStatus()
     assert ssm.property("enabled") is False
-    assert ssm.property("waitText") == ""
-    assert ssm.property("windowsWaitText") == "5 min"
-    assert ssm.property("windowsWaitLabel") == "Windows' display-off time (5 min)"
-    manager.extra = {"enabled": False, "windows_wait_s": 0}
+    assert ssm.property("offWaitText") == "" and ssm.property("saverWaitText") == ""
+    assert ssm.property("offWindowsWaitText") == "5 min"
+    assert ssm.property("offWindowsWaitLabel") == "Windows' display-off time (5 min)"
+    assert ssm.property("saverWindowsWaitText") == "7 min"
+    assert ssm.property("saverWindowsWaitLabel") == "Windows' screen saver wait (7 min)"
+    # Off: no countdown, no wake count.
+    manager.extra["off_remaining_s"] = 60.0
+    manager.extra["wakes"] = 3
     ssm.refreshStatus()
-    assert ssm.property("windowsWaitText") == "Never"
+    assert ssm.property("offCountdownText") == "" and ssm.property("wakeText") == ""
+    manager.extra = {"enabled": False, "off_windows_wait_s": 0}
+    ssm.refreshStatus()
+    assert ssm.property("offWindowsWaitText") == "Never"
 
 
 def test_presses_and_messages_are_traced_and_failures_logged(
@@ -580,10 +727,14 @@ def test_presses_and_messages_are_traced_and_failures_logged(
     )
     # A problem shown in the window is traced once, when it appears.
     ssm.setEnabled(True)
-    _manager.extra = {"problem": "no_screen_saver"}
+    _manager.extra = {"saver_problem": "no_screen_saver", "wakes": 4}
     ssm.refreshStatus()
     ssm.refreshStatus()
     assert lines.count("Message shown: No screen saver is chosen in Windows.") == 1
+    assert (
+        sum(ln.startswith("Message shown: Windows turned the displays") for ln in lines)
+        == 1
+    )
 
 
 # The window, off-screen ------------------------------------------------------
@@ -616,51 +767,83 @@ def window(tmp_path_factory: pytest.TempPathFactory) -> dict:
     return result
 
 
+_WARNING = "Power off comes at or before the screen saver: the screen saver won't show."
+
+
 def test_window_opens_off_with_windows_time(window: dict) -> None:
     assert window["title"] == "Screen Saver Mode"
     assert window["objectName"] == "screenSaverModeWindow" and window["visible"]
     s = window["start"]
-    assert (s["enabled"], s["powerOff"], s["screenSaver"], s["hold"]) == (
+    assert (s["enabled"], s["hold"], s["cfgEnabled"], s["cfgHold"]) == (
         False,
         True,
         False,
         True,
     )
-    assert (s["cfgEnabled"], s["cfgAction"], s["cfgWait"], s["cfgHold"]) == (
-        False,
-        "power_off",
-        0,
-        True,
-    )
-    assert s["waitText"] == "" and s["placeholder"] == "5 min" and not s["clearVisible"]
-    assert s["ssmWindowsWait"] == "Windows' display-off time (5 min)"
+    # Two timers, both on, each showing Windows' time greyed (contract-4).
+    assert s["saver"] == {
+        "on": True,
+        "waitText": "",
+        "placeholder": "10 min",
+        "clearVisible": False,
+        "cfgOn": True,
+        "cfgWait": 0,
+    }
+    assert s["off"] == {
+        "on": True,
+        "waitText": "",
+        "placeholder": "5 min",
+        "clearVisible": False,
+        "cfgOn": True,
+        "cfgWait": 0,
+    }
+    assert s["ssmSaverWindowsWait"] == "Windows' screen saver wait (10 min)"
+    assert s["ssmOffWindowsWait"] == "Windows' display-off time (5 min)"
+    # The one Action choice and its single wait box are gone.
+    assert s["oldNames"] == []
+    # Windows' display-off time comes before its screen saver wait.
+    assert s["ssmOrderWarning"] == _WARNING and s["ssmOrderWarningVisible"]
     assert s["ssmListening"] == "Screen Saver Mode is off."
     assert not s["ssmHoldTextVisible"] and not s["ssmProblemTextVisible"]
+    assert not s["ssmSaverCountdownVisible"] and not s["ssmOffCountdownVisible"]
+    assert not s["ssmWakeCountVisible"]
+    assert not s["ssmSaverProblemVisible"] and not s["ssmOffProblemVisible"]
 
 
 def test_window_controls_write_the_settings(window: dict) -> None:
     assert window["on"]["cfgEnabled"] is True and window["on"]["applied"] is True
     assert window["on"]["ssmListening"] == "Listening to the keyboard and mouse"
-    ss = window["screenSaver"]
-    assert ss["cfgAction"] == "screen_saver" and ss["applied"] == "screen_saver"
-    assert ss["powerOff"] is False and ss["placeholder"] == "10 min"
-    assert ss["ssmWindowsWait"] == "Windows' screen saver time (10 min)"
+    so = window["saverOff"]
+    assert so["cfgOn"] is False and so["on"] is False
+    assert so["applied"] == [False, True]
+    assert not so["ssmOrderWarningVisible"]
+    oo = window["offOff"]
+    assert oo["cfgOn"] is False and oo["on"] is False
+    assert oo["applied"] == [True, False]
+    assert not oo["ssmOrderWarningVisible"]
     assert window["holdOff"] == {"cfgHold": False, "applied": False}
 
 
-def test_window_wait_box_types_and_clears(window: dict) -> None:
-    assert window["typed"] == {
-        "cfgWait": 600,
-        "applied": 600,
-        "clearVisible": True,
-        "waitText": "10",
-    }
-    assert window["badTyped"] == {"cfgWait": 600, "waitText": "10"}
-    c = window["cleared"]
-    assert c["cfgWait"] == 0 and c["applied"] == 0
-    assert (
-        c["waitText"] == "" and not c["clearVisible"] and c["placeholder"] == "10 min"
-    )
+def test_window_wait_boxes_type_and_clear_per_row(window: dict) -> None:
+    ot = window["offTyped"]
+    assert (ot["cfgWait"], ot["applied"], ot["saverWait"]) == (900, 900, 0)
+    assert ot["waitText"] == "15" and ot["clearVisible"]
+    # 15 min power off after Windows' 10 min screen saver: no warning.
+    assert not ot["ssmOrderWarningVisible"]
+    st = window["saverTyped"]
+    assert (st["cfgWait"], st["applied"], st["waitText"]) == (1200, 1200, "20")
+    assert st["ssmOrderWarning"] == _WARNING
+    assert window["badTyped"]["cfgWait"] == 1200
+    assert window["badTyped"]["waitText"] == "20"
+    sc = window["saverCleared"]
+    assert (sc["cfgWait"], sc["applied"], sc["offWait"]) == (0, 0, 900)
+    assert sc["waitText"] == "" and not sc["clearVisible"]
+    assert sc["placeholder"] == "10 min"
+    assert not sc["ssmOrderWarningVisible"]
+    oc = window["offCleared"]
+    assert (oc["cfgWait"], oc["applied"], oc["waitText"]) == (0, 0, "")
+    assert not oc["clearVisible"] and oc["placeholder"] == "5 min"
+    assert oc["ssmOrderWarning"] == _WARNING
 
 
 def test_window_status_texts(window: dict) -> None:
@@ -686,15 +869,33 @@ def test_window_status_texts(window: dict) -> None:
     # Nothing before the first input.
     assert window["start"]["ssmLastReset"] == ""
     assert not window["start"]["ssmLastResetVisible"]
-    assert (
-        window["noScreenSaver"]["ssmProblemText"]
-        == "No screen saver is chosen in Windows."
+    ns = window["noScreenSaver"]
+    assert ns["ssmSaverProblem"] == "No screen saver is chosen in Windows."
+    assert ns["ssmSaverProblemVisible"] and not ns["ssmOffProblemVisible"]
+    assert not ns["ssmSaverCountdownVisible"]
+    assert ns["ssmOffCountdown"] == "Power off displays in 3 min 20 s"
+    on = window["offNever"]
+    assert on["ssmOffProblem"] == (
+        "Windows never turns the display off: type a time to use this timer."
     )
-    assert window["noScreenSaver"]["ssmProblemTextVisible"]
+    assert not on["ssmSaverProblemVisible"] and not on["ssmOffCountdownVisible"]
+    assert on["ssmSaverCountdown"] == "Screen saver in 1 min 20 s"
     nl = window["notListening"]
     assert nl["ssmListening"] == "Not listening to the keyboard and mouse"
     assert "can't be listened to" in nl["ssmProblemText"]
-    assert window["countdown"]["ssmHoldText"] == "Screen saver in 2 min 19 s"
+    cd = window["countdown"]
+    assert cd["ssmSaverCountdown"] == "Screen saver in 1 min 20 s"
+    assert cd["ssmOffCountdown"] == "Power off displays in 3 min 20 s"
+    assert not cd["ssmHoldTextVisible"] and not cd["ssmWakeCountVisible"]
+    ko = window["keepingOff"]
+    done = "done. Nothing more until the keyboard or mouse is used."
+    assert ko["ssmSaverCountdown"] == f"Screen saver {done}"
+    assert ko["ssmOffCountdown"] == f"Power off displays {done}"
+    assert ko["ssmWakeCount"] == (
+        "Windows turned the displays back on 136 times: devices that never "
+        "go quiet (see Refresh Devices)."
+    )
+    assert ko["ssmWakeCountVisible"]
 
 
 def test_window_refresh_devices(window: dict) -> None:

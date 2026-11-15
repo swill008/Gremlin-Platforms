@@ -2,9 +2,11 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Screen Saver Mode core (program map 12, S2-S11, S15): the countdown on a
-stepped clock with a fake WindowsApi and a fake input clock. Nothing here
-calls Windows, registers raw input or blanks a screen."""
+"""Screen Saver Mode core (program map 12, S2-S11, S15, S20): the two
+timers and keeping the displays off, on a stepped clock with a fake
+WindowsApi and a fake input clock; Windows' display-state reports are fed
+straight to ScreenSaverMode.on_display_state. Nothing here calls Windows,
+registers raw input or power notifications, or blanks a screen."""
 
 from __future__ import annotations
 
@@ -125,11 +127,24 @@ def env(monkeypatch: pytest.MonkeyPatch) -> Env:
 
 
 def _on(
-    action: str = ssm.ACTION_POWER_OFF,
-    wait_override_s: int = 0,
+    saver: bool = True,
+    saver_wait: int = 0,
+    off: bool = True,
+    off_wait: int = 0,
     hold_fullscreen: bool = True,
 ) -> ssm.Settings:
-    return ssm.Settings(True, action, wait_override_s, hold_fullscreen)
+    return ssm.Settings(
+        enabled=True,
+        screen_saver_on=saver,
+        screen_saver_wait_s=saver_wait,
+        power_off_on=off,
+        power_off_wait_s=off_wait,
+        hold_fullscreen=hold_fullscreen,
+    )
+
+
+def _off_only(off_wait: int = 0) -> ssm.Settings:
+    return _on(saver=False, off_wait=off_wait)
 
 
 def test_off_starts_nothing(env: Env) -> None:
@@ -144,16 +159,17 @@ def test_off_starts_nothing(env: Env) -> None:
 
 def test_fires_once_per_idle_period(env: Env) -> None:
     mode, api, clk, _now, run, timers = env
-    mode.apply(_on())
+    mode.apply(_off_only())
     assert clk.started == 1 and timers
     run(119)
     assert api.powered_off == 0
-    assert mode.status().remaining_s == pytest.approx(1.0)
+    assert mode.status().off_remaining_s == pytest.approx(1.0)
     run(1)
     assert api.powered_off == 1
     run(1000)
     assert api.powered_off == 1
-    assert mode.status().fired is True
+    assert mode.status().off_fired is True
+    assert api.started == []
 
 
 def test_input_resets_the_countdown_and_fired(env: Env) -> None:
@@ -192,14 +208,20 @@ def test_own_input_does_not_reset(env: Env) -> None:
 def test_hold_blocks_and_restarts_countdown(env: Env, attr: str, hold: str) -> None:
     mode, api, clk, _now, run, _t = env
     mode.apply(_on())
-    run(110)
+    run(50)
+    # Both timers held: the screen saver (60 s) would have fired by now.
     setattr(api, attr, True)
     run(300)
-    assert api.powered_off == 0
-    assert mode.status().hold == hold
-    assert mode.status().remaining_s == 0
+    assert api.actions == 0
+    st = mode.status()
+    assert st.hold == hold
+    assert st.off_remaining_s == 0 and st.saver_remaining_s == 0
     setattr(api, attr, False)
-    run(119)
+    run(59)
+    assert api.actions == 0
+    run(1)
+    assert len(api.started) == 1 and api.powered_off == 0
+    run(59)
     assert api.powered_off == 0
     run(1)
     assert api.powered_off == 1
@@ -215,27 +237,30 @@ def test_fullscreen_hold_can_be_switched_off(env: Env) -> None:
 
 def test_screen_saver_uses_windows_wait_and_path(env: Env) -> None:
     mode, api, clk, _now, run, _t = env
-    mode.apply(_on(action=ssm.ACTION_SCREEN_SAVER))
+    mode.apply(_on(off=False))
     st = mode.status()
-    assert st.wait_s == 60 and st.windows_wait_s == 60 and st.wait_from_windows
+    assert st.saver_wait_s == 60 and st.saver_windows_wait_s == 60
+    assert st.saver_from_windows
     run(60)
     assert api.started == [api.path]
+    assert api.powered_off == 0
+    run(500)
     assert api.powered_off == 0
 
 
 def test_override_replaces_windows_wait(env: Env) -> None:
     mode, api, clk, _now, run, _t = env
-    mode.apply(_on(wait_override_s=30))
+    mode.apply(_off_only(off_wait=30))
     st = mode.status()
-    assert st.wait_s == 30 and st.windows_wait_s == 120
-    assert st.wait_from_windows is False
+    assert st.off_wait_s == 30 and st.off_windows_wait_s == 120
+    assert st.off_from_windows is False
     run(30)
     assert api.powered_off == 1
 
 
 def test_windows_wait_read_again_when_countdown_starts(env: Env) -> None:
     mode, api, clk, _now, run, _t = env
-    mode.apply(_on())
+    mode.apply(_off_only())
     run(10)
     api.display_wait = 40
     clk.note_input()
@@ -243,22 +268,30 @@ def test_windows_wait_read_again_when_countdown_starts(env: Env) -> None:
     assert api.powered_off == 1
 
 
-def test_windows_never_does_nothing(env: Env) -> None:
+def test_windows_never_stops_only_that_row(env: Env) -> None:
     mode, api, clk, _now, run, _t = env
     api.display_wait = 0
     mode.apply(_on())
     run(5000)
-    assert api.actions == 0
-    assert mode.status().problem == ssm.PROBLEM_WINDOWS_NEVER
+    assert api.powered_off == 0
+    assert api.started == [api.path]  # the screen saver row still works
+    st = mode.status()
+    assert st.off_problem == ssm.PROBLEM_WINDOWS_NEVER
+    assert st.saver_problem == "" and st.problem == ""
 
 
-def test_no_screen_saver_does_nothing_even_with_override(env: Env) -> None:
+def test_no_screen_saver_stops_only_that_row_even_with_a_typed_time(
+    env: Env,
+) -> None:
     mode, api, clk, _now, run, _t = env
     api.path = ""
-    mode.apply(_on(action=ssm.ACTION_SCREEN_SAVER, wait_override_s=10))
+    mode.apply(_on(saver_wait=10))
     run(500)
-    assert api.actions == 0
-    assert mode.status().problem == ssm.PROBLEM_NO_SCREEN_SAVER
+    assert api.started == []
+    assert api.powered_off == 1  # power off works as usual (S8)
+    st = mode.status()
+    assert st.saver_problem == ssm.PROBLEM_NO_SCREEN_SAVER
+    assert st.off_problem == "" and st.problem == ""
 
 
 def test_not_listening_does_nothing(env: Env) -> None:
@@ -368,20 +401,32 @@ def test_status_off_shows_windows_wait(env: Env) -> None:
     # Before any apply and before the first tick: Windows' 120 s, not "never".
     st = mode.status()
     assert st.enabled is False
-    assert st.windows_wait_s == 120 and st.wait_s == 120
-    assert st.wait_from_windows is True
-    mode.apply(ssm.Settings(enabled=False, wait_override_s=45))
+    assert st.off_windows_wait_s == 120 and st.off_wait_s == 120
+    assert st.off_from_windows is True
+    mode.apply(ssm.Settings(enabled=False, power_off_wait_s=45))
     st = mode.status()
-    assert st.windows_wait_s == 120 and st.wait_s == 45
-    assert st.wait_from_windows is False
+    assert st.off_windows_wait_s == 120 and st.off_wait_s == 45
+    assert st.off_from_windows is False
+    assert st.saver_windows_wait_s == 60 and st.saver_wait_s == 60
+    assert st.saver_from_windows is True
 
 
-def test_status_off_follows_the_chosen_action(env: Env) -> None:
+def test_status_off_shows_both_windows_times_and_row_problems(env: Env) -> None:
     mode, api, _clk, _now, _run, _t = env
-    mode.apply(ssm.Settings(enabled=False, action=ssm.ACTION_POWER_OFF))
-    assert mode.status().windows_wait_s == 120
-    mode.apply(ssm.Settings(enabled=False, action=ssm.ACTION_SCREEN_SAVER))
-    assert mode.status().windows_wait_s == 60
+    st = mode.status()
+    assert (st.saver_windows_wait_s, st.off_windows_wait_s) == (60, 120)
+    mode.apply(ssm.Settings(enabled=False, screen_saver_wait_s=30))
+    st = mode.status()
+    assert (st.saver_wait_s, st.saver_windows_wait_s) == (30, 60)
+    assert st.saver_from_windows is False and st.off_from_windows is True
+    assert st.saver_problem == "" and st.off_problem == ""
+    api.path = ""
+    api.display_wait = 0
+    mode.apply(ssm.Settings(enabled=False))
+    st = mode.status()
+    assert st.saver_problem == ssm.PROBLEM_NO_SCREEN_SAVER
+    assert st.off_problem == ssm.PROBLEM_WINDOWS_NEVER
+    assert st.saver_windows_wait_s == 0 and st.off_windows_wait_s == 0
 
 
 def test_status_off_after_switching_off(env: Env) -> None:
@@ -390,7 +435,8 @@ def test_status_off_after_switching_off(env: Env) -> None:
     run(5)
     mode.apply(ssm.Settings(enabled=False))
     st = mode.status()
-    assert st.enabled is False and st.windows_wait_s == 120
+    assert st.enabled is False and st.off_windows_wait_s == 120
+    assert st.saver_windows_wait_s == 60
 
 
 def test_status_off_reads_windows_at_most_once_a_second(env: Env) -> None:
@@ -407,9 +453,9 @@ def test_status_off_reads_windows_at_most_once_a_second(env: Env) -> None:
         mode.status()
     assert reads[0] == 1
     api.display_wait = 300
-    assert mode.status().windows_wait_s == 120  # cached within the second
+    assert mode.status().off_windows_wait_s == 120  # cached within the second
     now[0] += 1.0
-    assert mode.status().windows_wait_s == 300
+    assert mode.status().off_windows_wait_s == 300
     assert reads[0] == 2
 
 
@@ -427,12 +473,25 @@ def _has(lines: list[str], text: str) -> bool:
 def test_trace_settings_listener_and_countdown(env: Env, traced: list[str]) -> None:
     mode, api, clk, _now, run, _t = env
     mode.apply(_on())
-    assert _has(traced, "settings applied: on, power off displays")
+    assert _has(
+        traced,
+        "settings applied: on, screen saver on (wait from Windows), "
+        "power off displays on (wait from Windows)",
+    )
     assert _has(traced, "listener started")
-    assert _has(traced, "countdown started: wait 120 s (from Windows")
+    assert _has(
+        traced,
+        "countdown started: screen saver 60 s (from Windows; Windows 60 s), "
+        "power off displays 120 s (from Windows; Windows 120 s)",
+    )
     traced.clear()
-    mode.apply(_on(wait_override_s=30))
-    assert _has(traced, "countdown started: wait 30 s (typed")
+    mode.apply(_on(saver=False, off_wait=30))
+    assert _has(traced, "screen saver off, power off displays on (wait 30 s)")
+    assert _has(
+        traced,
+        "countdown started: screen saver off, "
+        "power off displays 30 s (typed; Windows 120 s)",
+    )
     mode.apply(ssm.Settings(enabled=False))
     assert _has(traced, "listener stopped")
 
@@ -485,10 +544,11 @@ def test_trace_problem_changed(env: Env, traced: list[str]) -> None:
     api.display_wait = 0
     mode.apply(_on())
     run(3)
-    assert sum(t == "problem: windows_never" for t in traced) == 1
+    assert sum(t == "power off displays problem: windows_never" for t in traced) == 1
+    assert not _has(traced, "screen saver problem")
     api.display_wait = 50
-    mode.apply(_on(wait_override_s=0, hold_fullscreen=False))
-    assert _has(traced, "problem cleared")
+    mode.apply(_on(hold_fullscreen=False))
+    assert _has(traced, "power off displays problem cleared")
 
 
 def test_failed_screen_saver_start_is_logged(
@@ -497,7 +557,7 @@ def test_failed_screen_saver_start_is_logged(
     mode, api, clk, _now, run, _t = env
     api.start_screen_saver = lambda path: False  # type: ignore[method-assign]
     with caplog.at_level("WARNING", logger="system"):
-        mode.apply(_on(action=ssm.ACTION_SCREEN_SAVER))
+        mode.apply(_on(off=False))
         run(60)
     assert _has(traced, "could not start")
     assert "could not start" in caplog.text
@@ -513,9 +573,10 @@ def test_action_exception_is_logged(
 
     api.power_off_displays = boom  # type: ignore[method-assign]
     with caplog.at_level("ERROR", logger="system"):
-        mode.apply(_on())
+        mode.apply(_off_only())
         run(120)
     assert _has(traced, "action fired: power off displays: failed (no displays)")
+    assert mode.status().keeping_off is False
     assert "action failed" in caplog.text
 
 
@@ -795,20 +856,383 @@ def test_power_off_with_no_listener_window_sends_nothing(
     assert fake.posted == []
 
 
-def test_power_off_is_logged_and_never_sent_twice_within_the_gap(
-    env: Env, caplog: pytest.LogCaptureFixture
-) -> None:
+# ---- batch 4: two timers (S4, S5, S8), keeping the displays off (S6, S20)
+
+
+def test_settings_and_status_shapes() -> None:
+    assert not hasattr(ssm, "ACTION_SCREEN_SAVER")
+    assert not hasattr(ssm, "ACTION_POWER_OFF")
+    s = ssm.Settings()
+    assert (s.enabled, s.screen_saver_on, s.screen_saver_wait_s) == (False, True, 0)
+    assert (s.power_off_on, s.power_off_wait_s, s.hold_fullscreen) == (True, 0, True)
+    fields = set(ssm.Status.__dataclass_fields__)
+    for name in (
+        "saver_wait_s",
+        "saver_windows_wait_s",
+        "saver_from_windows",
+        "saver_fired",
+        "saver_remaining_s",
+        "saver_problem",
+        "off_wait_s",
+        "off_windows_wait_s",
+        "off_from_windows",
+        "off_fired",
+        "off_remaining_s",
+        "off_problem",
+        "keeping_off",
+        "wakes",
+    ):
+        assert name in fields
+    for gone in (
+        "wait_s",
+        "windows_wait_s",
+        "wait_from_windows",
+        "fired",
+        "remaining_s",
+    ):
+        assert gone not in fields
+    assert ssm.POWER_OFF_GAP_S == 1.0
+    assert ssm.ScreenSaverMode.POWER_OFF_GAP_S == 1.0
+
+
+def test_both_timers_fire_in_order_once_per_idle_period(env: Env) -> None:
     mode, api, clk, _now, run, _t = env
     mode.apply(_on())
-    caplog.set_level("INFO", logger="system")
+    st = mode.status()
+    assert st.saver_remaining_s == pytest.approx(60)
+    assert st.off_remaining_s == pytest.approx(120)
+    run(59)
+    assert api.actions == 0
+    run(1)
+    assert api.started == [api.path] and api.powered_off == 0
+    st = mode.status()
+    assert st.saver_fired and not st.off_fired
+    assert st.saver_remaining_s == 0 and st.off_remaining_s == pytest.approx(60)
+    run(59)
+    assert api.powered_off == 0
+    run(1)
+    assert api.powered_off == 1
+    run(1000)
+    assert len(api.started) == 1 and api.powered_off == 1
+    st = mode.status()
+    assert st.saver_fired and st.off_fired
+    clk.note_input()
+    run(60)
+    assert len(api.started) == 2 and api.powered_off == 1
+    run(60)
+    assert api.powered_off == 2
+
+
+def test_each_timer_has_its_own_typed_or_windows_wait(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on(saver_wait=10))
+    st = mode.status()
+    assert (st.saver_wait_s, st.saver_windows_wait_s, st.saver_from_windows) == (
+        10,
+        60,
+        False,
+    )
+    assert (st.off_wait_s, st.off_windows_wait_s, st.off_from_windows) == (
+        120,
+        120,
+        True,
+    )
+    run(10)
+    assert len(api.started) == 1
+    # Windows' screen saver wait changes: only the typed row ignores it.
+    api.saver_wait = 600
+    api.display_wait = 30
+    clk.note_input()
+    run(1)
+    st = mode.status()
+    assert (st.saver_wait_s, st.saver_windows_wait_s) == (10, 600)
+    assert (st.off_wait_s, st.off_windows_wait_s) == (30, 30)
+    # Cleared: Windows' time again.
+    mode.apply(_on(off_wait=5))
+    st = mode.status()
+    assert st.saver_wait_s == 600 and st.saver_from_windows
+    assert st.off_wait_s == 5 and not st.off_from_windows
+
+
+def test_windows_never_on_the_screen_saver_row(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    api.saver_wait = 0
+    mode.apply(_on())
+    run(200)
+    assert api.started == [] and api.powered_off == 1
+    assert mode.status().saver_problem == ssm.PROBLEM_WINDOWS_NEVER
+    mode.apply(_on(saver_wait=15))  # a typed time fixes it
+    assert mode.status().saver_problem == ""
+
+
+def test_a_switched_off_timer_never_fires(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on(saver=False))
+    run(500)
+    assert api.started == [] and api.powered_off == 1
+    assert mode.status().saver_remaining_s == 0
+    mode.apply(_on(off=False))
+    clk.note_input()
+    run(500)
+    assert len(api.started) == 1 and api.powered_off == 1
+    assert mode.status().off_remaining_s == 0
+
+
+def _keep_off(env: Env) -> None:
+    """Power off fired, keep-off started (t = 1120)."""
+    mode, api, _clk, _now, run, _t = env
+    mode.apply(_off_only())
     run(120)
     assert api.powered_off == 1
-    assert any("displays powered off" in r.getMessage() for r in caplog.records)
-    # Input wakes the screens; another idle period ends 2 s later only in a
-    # test with a 1 s wait: the guard still holds the second power-off.
-    mode.apply(_on(wait_override_s=1))
-    clk.note_input()
-    run(3)
-    assert api.powered_off == 1
-    run(10)
+    assert mode.status().keeping_off is True
+
+
+def test_keep_off_answers_display_on_with_one_power_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    mode.on_display_state(False)  # Windows: off
+    now[0] += 1.5
+    mode.on_display_state(True)  # woken without input
     assert api.powered_off == 2
+    assert mode.status().wakes == 1
+    mode.on_display_state(False)
+    now[0] += 2.0
+    mode.on_display_state(True)
+    assert api.powered_off == 3
+    st = mode.status()
+    assert st.wakes == 2 and st.keeping_off
+
+
+def test_keep_off_respects_the_gap_and_retries_after_it(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    # Woken 0.2 s after the power-off: inside the 1 s gap, nothing now.
+    now[0] += 0.2
+    mode.on_display_state(True)
+    now[0] += 0.1
+    mode.on_display_state(True)
+    assert api.powered_off == 1
+    assert mode.status().wakes == 0
+    # The tick after the gap sends exactly one.
+    now[0] += 0.8
+    mode.tick()
+    assert api.powered_off == 2
+    assert mode.status().wakes == 1
+    now[0] += 1.0
+    mode.tick()
+    assert api.powered_off == 2  # no ON report since: nothing more
+
+
+def test_keep_off_retry_dropped_when_windows_reports_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    now[0] += 0.2
+    mode.on_display_state(True)
+    now[0] += 0.1
+    mode.on_display_state(False)  # went off by itself
+    run(3)
+    assert api.powered_off == 1 and mode.status().wakes == 0
+
+
+def test_keep_off_stops_on_input(env: Env, caplog: pytest.LogCaptureFixture) -> None:
+    mode, api, clk, now, run, _t = env
+    caplog.set_level("INFO", logger="system")
+    _keep_off(env)
+    now[0] += 2.0
+    mode.on_display_state(True)
+    assert api.powered_off == 2
+    clk.note_input(source=0x1001, kind="keyboard")
+    # Before the tick sees the input: the display a person woke stays on.
+    now[0] += 2.0
+    mode.on_display_state(True)
+    assert api.powered_off == 2
+    run(1)
+    st = mode.status()
+    assert st.keeping_off is False
+    assert st.wakes == 1  # the last idle period's count stays shown (S20)
+    msgs = [r.getMessage() for r in caplog.records]
+    assert sum("stopped keeping the displays off" in m for m in msgs) == 1
+    assert any("back on 1 times" in m for m in msgs)
+    now[0] += 5.0
+    mode.on_display_state(True)
+    run(5)
+    assert api.powered_off == 2
+
+
+def test_keep_off_ignores_gremlins_own_input(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    for _ in range(10):
+        clk.note_input(own=True)
+    run(2)
+    assert mode.status().keeping_off is True
+    mode.on_display_state(True)
+    assert api.powered_off == 2
+
+
+def test_keep_off_stops_when_switched_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    mode.apply(ssm.Settings(enabled=False))
+    now[0] += 5.0
+    mode.on_display_state(True)
+    assert api.powered_off == 1
+    assert mode.status().keeping_off is False
+
+
+def test_keep_off_stops_when_power_off_row_switched_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    mode.apply(_on(off=False))
+    now[0] += 5.0
+    mode.on_display_state(True)
+    assert api.powered_off == 1
+    assert mode.status().keeping_off is False
+
+
+def test_display_on_without_keep_off_does_nothing(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_off_only())
+    run(10)
+    mode.on_display_state(True)
+    mode.on_display_state(False)
+    mode.on_display_state(True)
+    run(1)
+    assert api.powered_off == 0
+    st = mode.status()
+    assert st.keeping_off is False and st.wakes == 0
+
+
+def test_screen_saver_alone_does_not_keep_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_on(off=False))
+    run(60)
+    assert len(api.started) == 1
+    now[0] += 2.0
+    mode.on_display_state(True)
+    assert api.powered_off == 0 and mode.status().keeping_off is False
+
+
+def test_wakes_restart_with_the_next_keep_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    for _ in range(3):
+        now[0] += 1.5
+        mode.on_display_state(True)
+    assert mode.status().wakes == 3
+    clk.note_input()
+    run(119)
+    assert mode.status().wakes == 3  # last idle period's, until the next
+    run(1)
+    st = mode.status()
+    assert st.keeping_off is True and st.wakes == 0
+
+
+def test_timer_power_off_also_respects_the_gap(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_off_only(off_wait=5))
+    run(4)
+    mode._last_power_off = now[0] + 0.5  # a re-send moments before the wait ends
+    run(1)
+    assert api.powered_off == 0 and mode.status().off_fired is False
+    run(1)
+    assert api.powered_off == 1 and mode.status().off_fired is True
+
+
+def test_power_off_is_logged(env: Env, caplog: pytest.LogCaptureFixture) -> None:
+    mode, api, clk, _now, run, _t = env
+    caplog.set_level("INFO", logger="system")
+    _keep_off(env)
+    assert any("displays powered off" in r.getMessage() for r in caplog.records)
+
+
+def test_trace_each_resend_and_the_end(env: Env, traced: list[str]) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    assert _has(traced, "keep off started")
+    traced.clear()
+    now[0] += 0.3
+    mode.on_display_state(True)  # inside the gap
+    assert traced == []  # nothing traced on the listener thread
+    run(1)
+    assert _has(traced, "sent again when the gap ends")
+    assert _has(traced, "power off sent again (#1)")
+    now[0] += 1.5
+    mode.on_display_state(True)
+    run(1)
+    assert _has(traced, "power off sent again (#2)")
+    clk.note_input()
+    run(1)
+    assert _has(traced, "keep off ended: keyboard or mouse input; 2 wakes")
+
+
+def test_failed_resend_is_logged(
+    env: Env, traced: list[str], caplog: pytest.LogCaptureFixture
+) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+
+    def boom() -> None:
+        raise OSError("no window")
+
+    api.power_off_displays = boom  # type: ignore[method-assign]
+    now[0] += 2.0
+    with caplog.at_level("WARNING", logger="system"):
+        mode.on_display_state(True)
+        run(1)
+    assert "keep off power off #1 failed (no window)" in caplog.text
+    assert _has(traced, "keep off: power off #1 failed")
+
+
+def test_notify_failure_is_reported(
+    env: Env, traced: list[str], caplog: pytest.LogCaptureFixture
+) -> None:
+    mode, api, clk, _now, run, _t = env
+    clk.notify_error = "display state notification not registered (Windows error 5)"
+    with caplog.at_level("WARNING", logger="system"):
+        mode.apply(_on())
+    assert "the displays can't be kept off" in caplog.text
+    assert _has(traced, "Windows error 5")
+
+
+def test_clock_hands_display_state_to_the_mode(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    assert clk.display_state_handler == mode.on_display_state
+
+
+def _setting(guid: str, value: int) -> ssm.POWERBROADCAST_SETTING:
+    s = ssm.POWERBROADCAST_SETTING()
+    s.PowerSetting = ssm._GUID.parse(guid)
+    s.DataLength = 4
+    s.Data[0] = value
+    return s
+
+
+def test_window_proc_hands_the_display_state_on() -> None:
+    c = ssm.InputClock()
+    got: list[bool] = []
+    c.display_state_handler = got.append
+
+    class FakeUser32:
+        def DefWindowProcW(self, *args: object) -> int:
+            return 1
+
+    c._user32 = FakeUser32()
+    display = "6FE69556-704A-47A0-8F24-C28D936FDA47"
+    for value in (1, 0, 2):
+        s = _setting(display, value)
+        c._window_proc(0, 0x0218, 0x8013, ctypes.addressof(s))
+    other = _setting("7516b95f-f776-4464-8c53-06167f40cc99", 1)
+    c._window_proc(0, 0x0218, 0x8013, ctypes.addressof(other))
+    c._window_proc(0, 0x0218, 0x000A, ctypes.addressof(_setting(display, 1)))
+    assert got == [True, False, True]  # dimmed counts as on
+
+
+def test_input_clock_never_registers_power_notifications_in_tests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called: list[str] = []
+    monkeypatch.setattr(ssm, "_user32", lambda: called.append("user32"))
+    c = ssm.InputClock()
+    assert c.start() is False
+    assert called == []

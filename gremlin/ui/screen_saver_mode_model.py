@@ -1,8 +1,9 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""The Screen Saver Mode window's model (12 S1-S19): its four settings
-(stored in the program's settings, so History records them, S10), the
+"""The Screen Saver Mode window's model (12 S1-S20): its settings, the
+two timers each with its switch and wait (S4, S5; stored in the program's
+settings, so History records them, S10), the
 status line read from screen_saver_mode.manager() once a second while the
 window is open (with what last reset the idle time, S18, and the full-screen
 program, S19), and the three checks (Refresh Devices, Refresh Programs,
@@ -10,7 +11,9 @@ Refresh System; S12, S13, S17) and the Ignore switches (programs, drivers
 and services, S14), run on program threads. Programs and System each run
 their own elevated check and keep their own half (power_requests.split).
 Button presses and every message shown go to the Screen Saver Mode trace
-(S16); failures also go to the normal log."""
+(S16); failures also go to the normal log. The countdown per timer and
+the count of times Windows turned the displays back on (S6, S20) come from
+the status."""
 
 from __future__ import annotations
 
@@ -33,13 +36,13 @@ assert QML_IMPORT_MAJOR_VERSION == 1
 SECTION = "global"
 GROUP = "screen-saver-mode"
 ENABLED = "enabled"
-ACTION = "action"
-WAIT = "wait-override-s"
+SAVER_ON = "screen-saver-on"
+SAVER_WAIT = "screen-saver-wait-s"
+OFF_ON = "power-off-on"
+OFF_WAIT = "power-off-wait-s"
 HOLD_FULLSCREEN = "hold-fullscreen"
-
-ACTION_SCREEN_SAVER = "screen_saver"
-ACTION_POWER_OFF = "power_off"
-_ACTIONS = (ACTION_SCREEN_SAVER, ACTION_POWER_OFF)
+NAMES = (ENABLED, SAVER_ON, SAVER_WAIT, OFF_ON, OFF_WAIT, HOLD_FULLSCREEN)
+_WAITS = (SAVER_WAIT, OFF_WAIT)
 
 # The longest wait that can be typed (minutes) and stored (seconds).
 MAX_WAIT_MIN = 999
@@ -69,58 +72,64 @@ def _trace(text: str) -> None:
 
 
 def register_options() -> None:
-    """The four settings (01 S6: registered before the purge). Exposed for
+    """The six settings (01 S6: registered before the purge). Exposed for
     History; Options leaves them out (the window has the controls)."""
     cfg = config.Configuration()
-    cfg.register(
-        SECTION,
-        GROUP,
-        ENABLED,
-        PropertyType.Bool,
-        False,
-        "Screen Saver Mode: keep the program's own idle time from the keyboard and "
-        "mouse only, and start the screen saver or power off the displays when "
-        "it runs out.",
-        {},
-        True,
+    rows: tuple[tuple[str, PropertyType, object, str, dict], ...] = (
+        (
+            ENABLED,
+            PropertyType.Bool,
+            False,
+            "Screen Saver Mode: keep the program's own idle time from the "
+            "keyboard and mouse only, and start the screen saver and power off "
+            "the displays when their waits run out.",
+            {},
+        ),
+        (
+            SAVER_ON,
+            PropertyType.Bool,
+            True,
+            "Screen Saver Mode: start the screen saver chosen in Windows.",
+            {},
+        ),
+        (
+            SAVER_WAIT,
+            PropertyType.Int,
+            0,
+            "Screen Saver Mode's screen saver wait in seconds; 0 uses Windows' "
+            "screen saver wait.",
+            {"min": 0, "max": _MAX_WAIT_S},
+        ),
+        (
+            OFF_ON,
+            PropertyType.Bool,
+            True,
+            "Screen Saver Mode: power off the displays.",
+            {},
+        ),
+        (
+            OFF_WAIT,
+            PropertyType.Int,
+            0,
+            "Screen Saver Mode's power off wait in seconds; 0 uses Windows' "
+            "display-off time.",
+            {"min": 0, "max": _MAX_WAIT_S},
+        ),
+        (
+            HOLD_FULLSCREEN,
+            PropertyType.Bool,
+            True,
+            "Screen Saver Mode: hold off during full-screen programs.",
+            {},
+        ),
     )
-    cfg.register(
-        SECTION,
-        GROUP,
-        ACTION,
-        PropertyType.String,
-        ACTION_POWER_OFF,
-        "Screen Saver Mode's action: Screen saver or Power off displays.",
-        {},
-        True,
-    )
-    cfg.register(
-        SECTION,
-        GROUP,
-        WAIT,
-        PropertyType.Int,
-        0,
-        "Screen Saver Mode's wait time in seconds; 0 uses Windows' time.",
-        {"min": 0, "max": _MAX_WAIT_S},
-        True,
-    )
-    cfg.register(
-        SECTION,
-        GROUP,
-        HOLD_FULLSCREEN,
-        PropertyType.Bool,
-        True,
-        "Screen Saver Mode: hold off during full-screen programs.",
-        {},
-        True,
-    )
+    for name, kind, default, description, extra in rows:
+        cfg.register(SECTION, GROUP, name, kind, default, description, extra, True)
 
 
 def _ensure_options() -> None:
     cfg = config.Configuration()
-    if not all(
-        cfg.exists(SECTION, GROUP, n) for n in (ENABLED, ACTION, WAIT, HOLD_FULLSCREEN)
-    ):
+    if not all(cfg.exists(SECTION, GROUP, n) for n in NAMES):
         register_options()
 
 
@@ -134,14 +143,10 @@ def _set(name: str, value: object) -> None:
     config.Configuration().set(SECTION, GROUP, name, value)
 
 
-def saved_action() -> str:
-    action = str(_value(ACTION) or "")
-    return action if action in _ACTIONS else ACTION_POWER_OFF
-
-
-def saved_wait_s() -> int:
+def saved_wait_s(name: str) -> int:
+    """A timer's typed wait in seconds (SAVER_WAIT or OFF_WAIT); 0 = none."""
     try:
-        return min(_MAX_WAIT_S, max(0, int(_value(WAIT) or 0)))
+        return min(_MAX_WAIT_S, max(0, int(_value(name) or 0)))
     except (TypeError, ValueError):
         return 0
 
@@ -156,8 +161,10 @@ def saved_settings() -> object:
     """The saved settings as screen_saver_mode.Settings."""
     return _core().Settings(
         enabled=bool(_value(ENABLED)),
-        action=saved_action(),
-        wait_override_s=saved_wait_s(),
+        screen_saver_on=bool(_value(SAVER_ON)),
+        screen_saver_wait_s=saved_wait_s(SAVER_WAIT),
+        power_off_on=bool(_value(OFF_ON)),
+        power_off_wait_s=saved_wait_s(OFF_WAIT),
         hold_fullscreen=bool(_value(HOLD_FULLSCREEN)),
     )
 
@@ -307,24 +314,54 @@ _LISTS = {
 }
 
 
-def _problem_text(problem: str, action: str) -> str:
-    if problem == "no_screen_saver":
-        return "No screen saver is chosen in Windows."
-    if problem == "windows_never":
-        if action == ACTION_SCREEN_SAVER:
-            return (
-                "Windows never starts the screen saver: type a time to use "
-                "Screen Saver Mode."
-            )
-        return (
-            "Windows never turns the display off: type a time to use Screen Saver Mode."
-        )
+def _problem_text(problem: str) -> str:
+    """The problem that stops both timers (S9)."""
     if problem == "not_listening":
         return (
             "The keyboard and mouse can't be listened to, so Screen Saver Mode "
             "does nothing."
         )
     return ""
+
+
+def _saver_problem_text(problem: str) -> str:
+    """The Screen saver row's problem (S5, S8)."""
+    if problem == "no_screen_saver":
+        return "No screen saver is chosen in Windows."
+    if problem == "windows_never":
+        return "Windows never starts the screen saver: type a time to use this timer."
+    return ""
+
+
+def _off_problem_text(problem: str) -> str:
+    """The Power off displays row's problem (S5)."""
+    if problem == "windows_never":
+        return "Windows never turns the display off: type a time to use this timer."
+    return ""
+
+
+def _minutes_text(seconds: int) -> str:
+    """A typed wait as its box shows it, in minutes; "" when none."""
+    if not seconds:
+        return ""
+    return str(seconds // 60) if seconds % 60 == 0 else f"{seconds / 60:g}"
+
+
+def _parse_minutes(text: str) -> int | None:
+    """Seconds for a typed time in minutes ("10", "10 min", "2.5"); 0 for
+    "" (cleared); None for text that isn't a time."""
+    raw = str(text or "").strip().lower()
+    if raw.endswith("min"):
+        raw = raw[:-3].strip()
+    if not raw:
+        return 0
+    try:
+        minutes = float(raw.replace(",", "."))
+    except ValueError:
+        return None
+    if not (0 < minutes <= MAX_WAIT_MIN):
+        return None
+    return max(1, round(minutes * 60))
 
 
 @ta.QmlElement
@@ -354,7 +391,7 @@ class ScreenSaverModeModel(QtCore.QObject):
         self._scanning: dict[str, bool] = {PROGRAMS: False, SYSTEM: False}
         self._scanning_devices = False
         self._pending_ignore = ""
-        self._shown_problem = ""
+        self._shown_problem: tuple[str, ...] = ()
         self._stop = False
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(1000)
@@ -387,16 +424,26 @@ class ScreenSaverModeModel(QtCore.QObject):
             _set(ENABLED, bool(on))
             self._changed()
 
-    @QtCore.Property(str, notify=settingsChanged)
-    def action(self) -> str:
-        return saved_action()
-
-    @QtCore.Slot(str)
-    def setAction(self, action: str) -> None:
-        action = str(action)
-        if action in _ACTIONS and action != self.action:
-            _set(ACTION, action)
+    def _set_bool(self, name: str, on: bool) -> None:
+        if bool(on) != bool(_value(name)):
+            _set(name, bool(on))
             self._changed()
+
+    @QtCore.Property(bool, notify=settingsChanged)
+    def saverOn(self) -> bool:
+        return bool(_value(SAVER_ON))
+
+    @QtCore.Slot(bool)
+    def setSaverOn(self, on: bool) -> None:
+        self._set_bool(SAVER_ON, on)
+
+    @QtCore.Property(bool, notify=settingsChanged)
+    def offOn(self) -> bool:
+        return bool(_value(OFF_ON))
+
+    @QtCore.Slot(bool)
+    def setOffOn(self, on: bool) -> None:
+        self._set_bool(OFF_ON, on)
 
     @QtCore.Property(bool, notify=settingsChanged)
     def holdFullscreen(self) -> bool:
@@ -408,60 +455,86 @@ class ScreenSaverModeModel(QtCore.QObject):
             _set(HOLD_FULLSCREEN, bool(on))
             self._changed()
 
-    @QtCore.Property(int, notify=settingsChanged)
-    def waitOverrideS(self) -> int:
-        return saved_wait_s()
-
-    @QtCore.Property(str, notify=settingsChanged)
-    def waitText(self) -> str:
-        """The typed time in minutes as the box shows it, "" when none
-        (Windows' time is used and shown greyed)."""
-        s = saved_wait_s()
-        if not s:
-            return ""
-        return str(s // 60) if s % 60 == 0 else f"{s / 60:g}"
-
-    @QtCore.Slot(str, result=bool)
-    def setWaitText(self, text: str) -> bool:
-        """A typed time in minutes ("10", "10 min", "2.5"); "" clears it.
-        False for text that isn't a time (nothing is changed)."""
-        raw = str(text or "").strip().lower()
-        if raw.endswith("min"):
-            raw = raw[:-3].strip()
-        if not raw:
-            seconds = 0
-        else:
-            try:
-                minutes = float(raw.replace(",", "."))
-            except ValueError:
-                return False
-            if not (0 < minutes <= MAX_WAIT_MIN):
-                return False
-            seconds = max(1, round(minutes * 60))
-        if seconds != saved_wait_s():
-            _set(WAIT, int(seconds))
+    def _set_wait(self, name: str, text: str) -> bool:
+        seconds = _parse_minutes(text)
+        if seconds is None:
+            return False
+        if seconds != saved_wait_s(name):
+            _set(name, int(seconds))
             self._changed()
         return True
 
+    @QtCore.Property(str, notify=settingsChanged)
+    def saverWaitText(self) -> str:
+        """The typed screen saver wait in minutes, "" when none (Windows'
+        wait is used and shown greyed)."""
+        return _minutes_text(saved_wait_s(SAVER_WAIT))
+
+    @QtCore.Slot(str, result=bool)
+    def setSaverWaitText(self, text: str) -> bool:
+        """A typed time in minutes; "" clears it. False for text that isn't
+        a time (nothing is changed)."""
+        return self._set_wait(SAVER_WAIT, text)
+
     @QtCore.Slot()
-    def clearWait(self) -> None:
-        self.setWaitText("")
+    def clearSaverWait(self) -> None:
+        self._set_wait(SAVER_WAIT, "")
+
+    @QtCore.Property(str, notify=settingsChanged)
+    def offWaitText(self) -> str:
+        """The typed power off wait in minutes, "" when none."""
+        return _minutes_text(saved_wait_s(OFF_WAIT))
+
+    @QtCore.Slot(str, result=bool)
+    def setOffWaitText(self, text: str) -> bool:
+        return self._set_wait(OFF_WAIT, text)
+
+    @QtCore.Slot()
+    def clearOffWait(self) -> None:
+        self._set_wait(OFF_WAIT, "")
+
+    def _windows_s(self, field: str) -> int:
+        return int(self._st(field, 0) or 0)
 
     @QtCore.Property(str, notify=statusChanged)
-    def windowsWaitText(self) -> str:
-        """Windows' time for the chosen action, for the greyed box: "5 min",
-        or "Never"."""
-        s = int(getattr(self._status, "windows_wait_s", 0) or 0)
+    def saverWindowsWaitText(self) -> str:
+        """Windows' screen saver wait, for the greyed box: "10 min" or
+        "Never"."""
+        s = self._windows_s("saver_windows_wait_s")
         return duration_text(s) if s > 0 else "Never"
 
     @QtCore.Property(str, notify=statusChanged)
-    def windowsWaitLabel(self) -> str:
-        """The line next to the box, naming Windows' time it shows."""
-        s = int(getattr(self._status, "windows_wait_s", 0) or 0)
-        shown = duration_text(s) if s > 0 else "never"
-        if self.action == ACTION_SCREEN_SAVER:
-            return f"Windows' screen saver time ({shown})"
-        return f"Windows' display-off time ({shown})"
+    def saverWindowsWaitLabel(self) -> str:
+        s = self._windows_s("saver_windows_wait_s")
+        return f"Windows' screen saver wait ({duration_text(s) if s > 0 else 'never'})"
+
+    @QtCore.Property(str, notify=statusChanged)
+    def offWindowsWaitText(self) -> str:
+        s = self._windows_s("off_windows_wait_s")
+        return duration_text(s) if s > 0 else "Never"
+
+    @QtCore.Property(str, notify=statusChanged)
+    def offWindowsWaitLabel(self) -> str:
+        s = self._windows_s("off_windows_wait_s")
+        return f"Windows' display-off time ({duration_text(s) if s > 0 else 'never'})"
+
+    def _wait_in_use(self, name: str, windows_field: str) -> int:
+        return saved_wait_s(name) or self._windows_s(windows_field)
+
+    @QtCore.Property(str, notify=statusChanged)
+    def orderWarning(self) -> str:
+        """Both timers on and power off not later than the screen saver
+        (contract-4): both still work, the screen saver just never shows."""
+        if not (self.saverOn and self.offOn):
+            return ""
+        saver = self._wait_in_use(SAVER_WAIT, "saver_windows_wait_s")
+        off = self._wait_in_use(OFF_WAIT, "off_windows_wait_s")
+        if saver > 0 and 0 < off <= saver:
+            return (
+                "Power off comes at or before the screen saver: the screen "
+                "saver won't show."
+            )
+        return ""
 
     # Status -----------------------------------------------------------------
 
@@ -483,11 +556,21 @@ class ScreenSaverModeModel(QtCore.QObject):
         except Exception:
             _log.exception("Screen Saver Mode: status could not be read")
             self._status = None
-        problem = self.problemText
-        if problem != self._shown_problem:
-            self._shown_problem = problem
-            if problem:
-                _trace(f"Message shown: {problem}")
+        problems = tuple(
+            str(t)
+            for t in (
+                self.problemText,
+                self.saverProblemText,
+                self.offProblemText,
+                self.orderWarning,
+                self.wakeText,
+            )
+            if t
+        )
+        for text in problems:
+            if text not in self._shown_problem:
+                _trace(f"Message shown: {text}")
+        self._shown_problem = problems
         self.statusChanged.emit()
 
     def _st(self, name: str, default: object) -> Any:  # noqa: ANN401
@@ -531,35 +614,84 @@ class ScreenSaverModeModel(QtCore.QObject):
 
     @QtCore.Property(str, notify=statusChanged)
     def holdText(self) -> str:
-        """On hold (S7, S11, S15), or the countdown, or done (S6)."""
+        """On hold (S7, S11, S15): holds both timers."""
         if not self.enabled or self._status is None:
             return ""
-        held = _hold_text(self._status)
-        if held:
-            return held
-        if self.problemText:
-            return ""
-        what = (
-            "Screen saver"
-            if self.action == ACTION_SCREEN_SAVER
-            else "Power off displays"
-        )
-        if bool(self._st("fired", False)):
-            return f"{what} done. Nothing more until the keyboard or mouse is used."
-        remaining = float(self._st("remaining_s", 0.0) or 0.0)
-        if remaining > 0:
-            return f"{what} in {duration_text(remaining)}"
-        return ""
+        return _hold_text(self._status)
 
     @QtCore.Property(bool, notify=statusChanged)
     def onHold(self) -> bool:
         return bool(self.enabled and self._st("hold", ""))
 
+    def _countdown(
+        self, what: str, on: bool, problem: str, fired: str, remaining: str
+    ) -> str:
+        """A timer's line (S6): "<what> in 1 min 20 s" or "<what> done.";
+        nothing while off, held or with a problem."""
+        if not (self.enabled and on) or self._status is None:
+            return ""
+        if self.holdText or self.problemText or problem:
+            return ""
+        if bool(self._st(fired, False)):
+            return f"{what} done. Nothing more until the keyboard or mouse is used."
+        left = float(self._st(remaining, 0.0) or 0.0)
+        if left > 0:
+            return f"{what} in {duration_text(left)}"
+        return ""
+
     @QtCore.Property(str, notify=statusChanged)
-    def problemText(self) -> str:
+    def saverCountdownText(self) -> str:
+        return self._countdown(
+            "Screen saver",
+            bool(self.saverOn),
+            str(self.saverProblemText),
+            "saver_fired",
+            "saver_remaining_s",
+        )
+
+    @QtCore.Property(str, notify=statusChanged)
+    def offCountdownText(self) -> str:
+        return self._countdown(
+            "Power off displays",
+            bool(self.offOn),
+            str(self.offProblemText),
+            "off_fired",
+            "off_remaining_s",
+        )
+
+    @QtCore.Property(str, notify=statusChanged)
+    def wakeText(self) -> str:
+        """S20: while keeping the displays off, or after, how often Windows
+        turned them back on in this (or the last) idle period."""
         if not self.enabled:
             return ""
-        return _problem_text(str(self._st("problem", "") or ""), saved_action())
+        wakes = int(self._st("wakes", 0) or 0)
+        if wakes <= 0:
+            return ""
+        times = "once" if wakes == 1 else f"{wakes} times"
+        return (
+            f"Windows turned the displays back on {times}: devices that never "
+            "go quiet (see Refresh Devices)."
+        )
+
+    @QtCore.Property(str, notify=statusChanged)
+    def problemText(self) -> str:
+        """The problem that stops both timers (not listening, S9)."""
+        if not self.enabled:
+            return ""
+        return _problem_text(str(self._st("problem", "") or ""))
+
+    @QtCore.Property(str, notify=statusChanged)
+    def saverProblemText(self) -> str:
+        if not (self.enabled and self.saverOn):
+            return ""
+        return _saver_problem_text(str(self._st("saver_problem", "") or ""))
+
+    @QtCore.Property(str, notify=statusChanged)
+    def offProblemText(self) -> str:
+        if not (self.enabled and self.offOn):
+            return ""
+        return _off_problem_text(str(self._st("off_problem", "") or ""))
 
     # Refresh Devices (S12) ---------------------------------------------------
 

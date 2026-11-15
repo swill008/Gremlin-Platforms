@@ -1093,3 +1093,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-15 | Screen Saver Mode batch 3 (three sections, last reset by, hold program): 4 agents | agent fix | ~10 min | 11 min (10:40-10:51) | |
 | 2026-11-15 | Batch 3: targeted + --changed quick tests + installer rebuild (parallel) | test | 5-6 min | 6 min (10:52-10:58) | 3,088 passed |
 | 2026-11-15 | Fix: power-off broadcast froze the main thread (lead, one file) | lead fix | rough ~10 min | 12 min (11:05-11:17) | 3 tests fail on old code |
+| 2026-11-15 | Screen Saver Mode batch 4 (two timers, keep displays off, wake count): 3 agents | agent fix | ~10-15 min | 12 min (12:03-12:15) | |
+| 2026-11-15 | Batch 4: targeted + --changed quick tests + installer rebuild (parallel) | test | 5-6 min | 6 min (12:16-12:22) | 3,354 passed |

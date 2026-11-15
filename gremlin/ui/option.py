@@ -180,8 +180,10 @@ _HIDDEN = {
     ("global", "files", "device-library-folder"),
     # Set in the Screen Saver Mode window only (12 S2-S7).
     ("global", "screen-saver-mode", "enabled"),
-    ("global", "screen-saver-mode", "action"),
-    ("global", "screen-saver-mode", "wait-override-s"),
+    ("global", "screen-saver-mode", "screen-saver-on"),
+    ("global", "screen-saver-mode", "screen-saver-wait-s"),
+    ("global", "screen-saver-mode", "power-off-on"),
+    ("global", "screen-saver-mode", "power-off-wait-s"),
     ("global", "screen-saver-mode", "hold-fullscreen"),
 }
 
@@ -241,8 +243,10 @@ _GROUP_TITLES = {
 # every group.
 _KEY_TITLES = {
     "global/screen-saver-mode/enabled": "Screen Saver Mode",
-    "global/screen-saver-mode/action": "Action",
-    "global/screen-saver-mode/wait-override-s": "Wait time",
+    "global/screen-saver-mode/screen-saver-on": "Screen saver",
+    "global/screen-saver-mode/screen-saver-wait-s": "Screen saver wait",
+    "global/screen-saver-mode/power-off-on": "Power off displays",
+    "global/screen-saver-mode/power-off-wait-s": "Power off wait",
     "global/screen-saver-mode/hold-fullscreen": "Hold off during full-screen programs",
 }
 

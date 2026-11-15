@@ -2,7 +2,11 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Screen Saver Mode end to end (12 S1-S19), through the real program.
+"""Screen Saver Mode end to end (12 S1-S20), through the real program:
+the two timers (Screen saver, Power off displays; contract-4) fire in
+order, each with its own typed wait, ✕ and problem; the order warning;
+keeping the displays off answers Windows' display-ON reports and the window
+shows the count (S20).
 
 A journey (test/journeys/_harness.py): the program built off-screen in its
 own process with a temporary USERPROFILE. Only the Windows edge is faked:
@@ -13,6 +17,8 @@ own process with a temporary USERPROFILE. Only the Windows edge is faked:
 - InputClock.start/stop/listening are replaced (no raw input is
   registered); input is given with the real InputClock.note_input;
 - the module's clock is a stepped one (the test moves the time);
+- Windows' display-ON reports are given with the real
+  ScreenSaverMode.on_display_state (no power notification is registered);
 - hid_report_scan.scan, power_requests.list_requests and
   power_requests.set_ignored are fakes (no HID read, no powercfg, no
   elevation); power_requests.split is the real one (Programs and System
@@ -39,6 +45,19 @@ from _harness import (  # noqa: E402  # pyright: ignore[reportMissingImports]
 )
 
 _GROUP = ("global", "screen-saver-mode")
+_NAMES = (
+    "enabled",
+    "screen-saver-on",
+    "screen-saver-wait-s",
+    "power-off-on",
+    "power-off-wait-s",
+    "hold-fullscreen",
+)
+_WARNING = "Power off comes at or before the screen saver: the screen saver won't show."
+_WAKES = (
+    "Windows turned the displays back on 3 times: devices that never go quiet "
+    "(see Refresh Devices)."
+)
 
 # A driver's request as powercfg names it (the user's PC, 2026-11-15).
 _DRIVER = "USB Audio 2.0 (USB\\VID_0DB0&PID_CD0E&MI_00\\9&9c4d365&0&0000)"
@@ -239,9 +258,14 @@ def _cfg(name: str) -> Any:  # noqa: ANN401
     return Configuration().value(*_GROUP, name)
 
 
-def _type_wait(j: Journey, window: Any, text: str) -> None:  # noqa: ANN401
-    """Types a wait time (minutes) in the window's box and leaves it."""
-    box = j.item(window, "ssmWaitBox")
+def _type_wait(
+    j: Journey,
+    window: Any,  # noqa: ANN401
+    text: str,
+    name: str = "ssmOffWaitBox",
+) -> None:
+    """Types a wait time (minutes) in a timer's box and leaves it."""
+    box = j.item(window, name)
     assert box is not None, "no wait box"
     box.setProperty("text", text)
     j.ev("editingFinished(); true", box)
@@ -358,9 +382,7 @@ def story_first(j: Journey) -> None:
     out = j.out
     _install_scan_fakes()  # the model may have been imported since
     _start_as_main_does()
-    out["startCfg"] = {
-        n: _cfg(n) for n in ("enabled", "action", "wait-override-s", "hold-fullscreen")
-    }
+    out["startCfg"] = {n: _cfg(n) for n in _NAMES}
     out["startClockStarts"] = W["clock_starts"]
 
     win: dict = {}
@@ -372,11 +394,20 @@ def story_first(j: Journey) -> None:
         out["s1Open"] = True
         names = [
             "ssmEnabled",
-            "ssmActionScreenSaver",
-            "ssmActionPowerOff",
-            "ssmWaitBox",
-            "ssmWaitClear",
-            "ssmWindowsWait",
+            "ssmSaverOn",
+            "ssmSaverWaitBox",
+            "ssmSaverWaitClear",
+            "ssmSaverWindowsWait",
+            "ssmSaverProblem",
+            "ssmOffOn",
+            "ssmOffWaitBox",
+            "ssmOffWaitClear",
+            "ssmOffWindowsWait",
+            "ssmOffProblem",
+            "ssmOrderWarning",
+            "ssmSaverCountdown",
+            "ssmOffCountdown",
+            "ssmWakeCount",
             "ssmHoldFullscreen",
             "ssmListening",
             "ssmIdleText",
@@ -397,6 +428,18 @@ def story_first(j: Journey) -> None:
             "ssmLastReset",
         ]
         out["s1Missing"] = [n for n in names if j.item(win["w"], n) is None]
+        # The one Action choice and its single wait box are gone.
+        out["s1Old"] = [
+            n
+            for n in (
+                "ssmActionScreenSaver",
+                "ssmActionPowerOff",
+                "ssmWaitBox",
+                "ssmWaitClear",
+                "ssmWindowsWait",
+            )
+            if j.item(win["w"], n) is not None
+        ]
 
     _section(j, "s1", s1)
     w = win.get("w")
@@ -425,34 +468,47 @@ def story_first(j: Journey) -> None:
     _section(j, "s2on", s2_on)
 
     def s5() -> None:
-        # Power off displays is the default action: Windows' display-off time.
-        out["s4DefaultAction"] = _mgr().settings().action
+        # Both timers are on at first; power off follows Windows' display-off
+        # time, the screen saver Windows' screen saver wait.
+        s = _mgr().settings()
+        out["s4Default"] = [s.screen_saver_on, s.power_off_on]
         W["display_off_wait_s"] = 600
         _at(6000.0)
         _input(j)
         _mgr().tick()
         st = _status()
-        out["s5Wait"] = [st["wait_s"], st["windows_wait_s"], st["wait_from_windows"]]
+        out["s5Wait"] = [
+            st["off_wait_s"],
+            st["off_windows_wait_s"],
+            st["off_from_windows"],
+        ]
         out["s5WindowsWaitText"] = j.await_value(
-            lambda: "10 min" in _text(j, w, "ssmWindowsWait"), True
+            lambda: _text(j, w, "ssmOffWindowsWait"),
+            "Windows' display-off time (10 min)",
+        )
+        # No screen saver chosen yet: Windows has no screen saver wait.
+        out["s5SaverWindowsWaitText"] = j.await_value(
+            lambda: _text(j, w, "ssmSaverWindowsWait"),
+            "Windows' screen saver wait (never)",
         )
         # Windows' time changes: followed at the next countdown, no restart.
         W["display_off_wait_s"] = 900
         _at(6100.0)
         _input(j)
         _mgr().tick()
-        out["s5Followed"] = _status()["wait_s"]
-        # A typed time replaces it: 7 min typed in the window.
+        out["s5Followed"] = _status()["off_wait_s"]
+        # A typed time replaces it: 7 min typed in the power off row only.
         _type_wait(j, w, "7")
-        out["s5OverrideCfg"] = _cfg("wait-override-s")
+        out["s5OverrideCfg"] = _cfg("power-off-wait-s")
+        out["s5OtherRow"] = _cfg("screen-saver-wait-s")
         out["s5OverrideMgr"] = j.await_value(
-            lambda: _mgr().settings().wait_override_s, 420
+            lambda: _mgr().settings().power_off_wait_s, 420
         )
         _at(6200.0)
         _input(j)
         _mgr().tick()
         st = _status()
-        out["s5Override"] = [st["wait_s"], st["wait_from_windows"]]
+        out["s5Override"] = [st["off_wait_s"], st["off_from_windows"]]
         _at(6200.0 + 419)
         _mgr().tick()
         out["s5OverrideBefore"] = W["power_off"]
@@ -460,14 +516,14 @@ def story_first(j: Journey) -> None:
         _mgr().tick()
         out["s5OverrideFired"] = W["power_off"]
         # Cleared in the window: Windows' time again.
-        j.click(j.item(w, "ssmWaitClear"))
+        j.click(j.item(w, "ssmOffWaitClear"))
         j.settle()
-        out["s5ClearedCfg"] = j.await_value(lambda: _cfg("wait-override-s"), 0)
+        out["s5ClearedCfg"] = j.await_value(lambda: _cfg("power-off-wait-s"), 0)
         _at(7000.0)
         _input(j)
         _mgr().tick()
         st = _status()
-        out["s5Cleared"] = [st["wait_s"], st["wait_from_windows"]]
+        out["s5Cleared"] = [st["off_wait_s"], st["off_from_windows"]]
 
     _section(j, "s5", s5)
 
@@ -482,7 +538,7 @@ def story_first(j: Journey) -> None:
         _at(10300.0)
         _mgr().tick()
         out["s6At"] = W["power_off"]
-        out["s6Fired"] = _status()["fired"]
+        out["s6Fired"] = _status()["off_fired"]
         for t in (10301.0, 10600.0, 11000.0):
             _at(t)
             _mgr().tick()
@@ -491,7 +547,7 @@ def story_first(j: Journey) -> None:
         _at(11001.0)
         _input(j)
         _mgr().tick()
-        out["s6Reset"] = [_status()["fired"], W["power_off"]]
+        out["s6Reset"] = [_status()["off_fired"], W["power_off"]]
         _at(11301.0)
         _mgr().tick()
         out["s6Again"] = W["power_off"]
@@ -574,43 +630,168 @@ def story_first(j: Journey) -> None:
     _section(j, "s7off", s7_off)
 
     def s8() -> None:
-        _flip(j, j.item(w, "ssmActionScreenSaver"), True)
-        out["s8Cfg"] = j.await_value(lambda: _cfg("action"), "screen_saver")
-        _flush()  # its own save, so History has the change (S10)
-        W["power_off"] = 0
-        out["s8Mgr"] = j.await_value(lambda: _mgr().settings().action, "screen_saver")
+        # No screen saver chosen: only that row says so and does nothing;
+        # power off still works (S8, contract-4).
         W["screen_saver_path"] = ""
         W["screen_saver_wait_s"] = 120
+        W["display_off_wait_s"] = 300
+        W["power_off"] = 0
+        W["screen_saver"].clear()
         _at(60000.0)
         _input(j)
         _at(60500.0)
         _mgr().tick()
-        out["s8Problem"] = _status()["problem"]
-        out["s8Started"] = list(W["screen_saver"])
+        st = _status()
+        out["s8Problem"] = [st["saver_problem"], st["off_problem"]]
+        out["s8Started"] = [list(W["screen_saver"]), W["power_off"]]
         out["s8Text"] = j.await_value(
-            lambda: _text(j, w, "ssmProblemText"),
+            lambda: _text(j, w, "ssmSaverProblem"),
             "No screen saver is chosen in Windows.",
         )
-        # A screen saver chosen: started once after Windows' screen saver wait.
+        out["s8OffRowText"] = _text(j, w, "ssmOffProblem")
+        # A screen saver chosen: the two timers fire in order, each once.
         W["screen_saver_path"] = "C:\\Windows\\System32\\Mystify.scr"
+        W["power_off"] = 0
         _at(61000.0)
         _input(j)
         _mgr().tick()
-        out["s8Wait"] = _status()["wait_s"]
+        st = _status()
+        out["s8Waits"] = [st["saver_wait_s"], st["off_wait_s"]]
+        out["s8SaverWindowsWait"] = j.await_value(
+            lambda: _text(j, w, "ssmSaverWindowsWait"),
+            "Windows' screen saver wait (2 min)",
+        )
+        out["s8Countdowns"] = j.await_value(
+            lambda: [_text(j, w, "ssmSaverCountdown"), _text(j, w, "ssmOffCountdown")],
+            ["Screen saver in 2 min", "Power off displays in 5 min"],
+        )
         _at(61119.0)
         _mgr().tick()
-        out["s8Before"] = list(W["screen_saver"])
+        out["s8Before"] = [list(W["screen_saver"]), W["power_off"]]
         _at(61120.0)
         _mgr().tick()
-        _at(61200.0)
+        out["s8SaverFired"] = [list(W["screen_saver"]), W["power_off"]]
+        out["s8SaverDone"] = j.await_value(
+            lambda: _text(j, w, "ssmSaverCountdown").startswith("Screen saver done."),
+            True,
+        )
+        _at(61299.0)
         _mgr().tick()
-        out["s8Fired"] = list(W["screen_saver"])
-        out["s8NoPowerOff"] = W["power_off"]
-        # Back to Power off displays.
-        _flip(j, j.item(w, "ssmActionPowerOff"), True)
-        out["s8BackCfg"] = j.await_value(lambda: _cfg("action"), "power_off")
+        out["s8OffBefore"] = W["power_off"]
+        _at(61300.0)
+        _mgr().tick()
+        out["s8OffFired"] = [list(W["screen_saver"]), W["power_off"]]
+        _at(61600.0)
+        _mgr().tick()
+        out["s8Once"] = [len(W["screen_saver"]), W["power_off"]]
+
+        # Typed waits per row; power off typed shorter: the order warning.
+        _type_wait(j, w, "3", "ssmSaverWaitBox")
+        out["s8SaverTypedCfg"] = j.await_value(lambda: _cfg("screen-saver-wait-s"), 180)
+        out["s8NoWarning"] = j.await_value(lambda: _text(j, w, "ssmOrderWarning"), "")
+        _type_wait(j, w, "2", "ssmOffWaitBox")
+        out["s8OffTypedCfg"] = j.await_value(lambda: _cfg("power-off-wait-s"), 120)
+        out["s8Warning"] = j.await_value(
+            lambda: _text(j, w, "ssmOrderWarning"), _WARNING
+        )
+        _flush()  # its own save, so History has the typed waits (S10)
+        # Both still work: power off first, then the screen saver.
+        W["power_off"] = 0
+        W["screen_saver"].clear()
+        _at(62000.0)
+        _input(j)
+        _mgr().tick()
+        st = _status()
+        out["s8TypedWaits"] = [
+            st["saver_wait_s"],
+            st["off_wait_s"],
+            st["saver_from_windows"],
+            st["off_from_windows"],
+        ]
+        _at(62120.0)
+        _mgr().tick()
+        out["s8OffFirst"] = [len(W["screen_saver"]), W["power_off"]]
+        _at(62180.0)
+        _mgr().tick()
+        out["s8SaverAfter"] = [len(W["screen_saver"]), W["power_off"]]
+        # ✕ on each row: Windows' times again.
+        j.click(j.item(w, "ssmSaverWaitClear"))
+        j.settle()
+        j.click(j.item(w, "ssmOffWaitClear"))
+        j.settle()
+        out["s8ClearedCfg"] = j.await_value(
+            lambda: [_cfg("screen-saver-wait-s"), _cfg("power-off-wait-s")], [0, 0]
+        )
+        _at(63000.0)
+        _input(j)
+        _mgr().tick()
+        st = _status()
+        out["s8Cleared"] = [
+            st["saver_wait_s"],
+            st["off_wait_s"],
+            st["saver_from_windows"],
+            st["off_from_windows"],
+        ]
+        out["s8ClearedWarning"] = j.await_value(
+            lambda: _text(j, w, "ssmOrderWarning"), ""
+        )
+        # A timer switched off: only the other one fires.
+        _flip(j, j.item(w, "ssmSaverOn"), False)
+        out["s8SaverOffCfg"] = j.await_value(lambda: _cfg("screen-saver-on"), False)
+        out["s8SaverOffMgr"] = j.await_value(
+            lambda: _mgr().settings().screen_saver_on, False
+        )
+        _flush()  # its own save, so History has the change (S10)
+        W["power_off"] = 0
+        W["screen_saver"].clear()
+        _at(64000.0)
+        _input(j)
+        _at(64400.0)
+        _mgr().tick()
+        out["s8SaverOffFired"] = [len(W["screen_saver"]), W["power_off"]]
+        out["s8SaverOffCountdown"] = j.await_value(
+            lambda: _text(j, w, "ssmSaverCountdown"), ""
+        )
+        _flip(j, j.item(w, "ssmSaverOn"), True)
+        out["s8SaverBackCfg"] = j.await_value(lambda: _cfg("screen-saver-on"), True)
 
     _section(j, "s8", s8)
+
+    def s20() -> None:
+        # Keeping the displays off: each display-ON report Windows sends
+        # without keyboard or mouse input is answered with one power-off;
+        # the window counts them (S6, S20).
+        W["display_off_wait_s"] = 300
+        W["screen_saver_path"] = ""
+        W["power_off"] = 0
+        _at(65000.0)
+        _input(j)
+        _at(65300.0)
+        _mgr().tick()
+        st = _status()
+        out["s20Keeping"] = [st["keeping_off"], st["wakes"], W["power_off"]]
+        for at in (65302.0, 65304.0, 65306.0):
+            _at(at)
+            _mgr().on_display_state(True)
+            _mgr().on_display_state(False)
+        _mgr().tick()
+        st = _status()
+        out["s20Wakes"] = [st["keeping_off"], st["wakes"], W["power_off"]]
+        out["s20Text"] = j.await_value(lambda: _text(j, w, "ssmWakeCount"), _WAKES)
+        # Input ends it; the count of the last idle period stays shown and
+        # an ON report is no longer answered.
+        _at(65400.0)
+        _input(j)
+        _mgr().tick()
+        _at(65401.0)
+        _mgr().on_display_state(True)
+        st = _status()
+        out["s20AfterInput"] = [st["keeping_off"], st["wakes"], W["power_off"]]
+        j.QTest.qWait(1200)
+        out["s20TextAfter"] = _text(j, w, "ssmWakeCount")
+        W["screen_saver_path"] = "C:\\Windows\\System32\\Mystify.scr"
+
+    _section(j, "s20", s20)
 
     def never() -> None:
         # Windows never turns the display off and no time is typed: nothing.
@@ -620,7 +801,11 @@ def story_first(j: Journey) -> None:
         _input(j)
         _at(90000.0)
         _mgr().tick()
-        out["neverProblem"] = [_status()["problem"], W["power_off"]]
+        out["neverProblem"] = [_status()["off_problem"], W["power_off"]]
+        out["neverText"] = j.await_value(
+            lambda: _text(j, w, "ssmOffProblem"),
+            "Windows never turns the display off: type a time to use this timer.",
+        )
         W["display_off_wait_s"] = 300
 
     _section(j, "never", never)
@@ -832,12 +1017,12 @@ def story_first(j: Journey) -> None:
     _section(j, "s10", s10)
 
     def leave_for_restart() -> None:
-        # Left for run 2: on, Power off displays, a typed 7 min, hold off.
+        # Left for run 2: on, the screen saver timer off, power off with a
+        # typed 7 min, hold off.
         _type_wait(j, w, "7")
-        out["leftCfg"] = {
-            n: _cfg(n)
-            for n in ("enabled", "action", "wait-override-s", "hold-fullscreen")
-        }
+        _flip(j, j.item(w, "ssmSaverOn"), False)
+        j.await_value(lambda: _cfg("screen-saver-on"), False)
+        out["leftCfg"] = {n: _cfg(n) for n in _NAMES}
         _flush()
 
     _section(j, "leave", leave_for_restart)
@@ -893,14 +1078,19 @@ def story_restart(j: Journey) -> None:
     out = j.out
     _install_scan_fakes()
     _start_as_main_does()
-    out["cfg"] = {
-        n: _cfg(n) for n in ("enabled", "action", "wait-override-s", "hold-fullscreen")
-    }
+    out["cfg"] = {n: _cfg(n) for n in _NAMES}
     out["clockStartedAtStart"] = W["clock_starts"]
 
     def mgr() -> None:
         s = _mgr().settings()
-        out["mgr"] = [s.enabled, s.action, s.wait_override_s, s.hold_fullscreen]
+        out["mgr"] = [
+            s.enabled,
+            s.screen_saver_on,
+            s.screen_saver_wait_s,
+            s.power_off_on,
+            s.power_off_wait_s,
+            s.hold_fullscreen,
+        ]
         out["ticking"] = _timer_ticks(j) > 0
 
     _section(j, "mgr", mgr)
@@ -910,9 +1100,12 @@ def story_restart(j: Journey) -> None:
         w = _window(j)
         out["switchOn"] = bool(j.item(w, "ssmEnabled").property("checked"))
         out["holdSwitch"] = bool(j.item(w, "ssmHoldFullscreen").property("checked"))
-        out["powerOffChecked"] = bool(
-            j.item(w, "ssmActionPowerOff").property("checked")
-        )
+        out["rows"] = [
+            bool(j.item(w, "ssmSaverOn").property("checked")),
+            bool(j.item(w, "ssmOffOn").property("checked")),
+            str(j.item(w, "ssmSaverWaitBox").property("text")),
+            str(j.item(w, "ssmOffWaitBox").property("text")),
+        ]
         # Off: the clock stops, the timer stops, nothing fires (S2).
         _flip(j, j.item(w, "ssmEnabled"), False)
         out["offCfg"] = j.await_value(lambda: _cfg("enabled"), False)
@@ -973,6 +1166,7 @@ def test_s1_tools_screen_saver_mode_opens_the_window(runs: list[dict]) -> None:
     first = runs[0]
     assert _v(first, "s1", "s1Open") is True
     assert _v(first, "s1", "s1Missing") == []
+    assert _v(first, "s1", "s1Old") == []
 
 
 def test_s2_off_at_first_no_listening_and_no_timer(runs: list[dict]) -> None:
@@ -1012,16 +1206,22 @@ def test_s3_gremlins_own_input_does_not_count_other_input_does(
     assert _v(first, "s6", "s3OtherHeld") == 0
 
 
-def test_s4_power_off_displays_is_the_default_action(runs: list[dict]) -> None:
+def test_s4_both_timers_are_on_at_first(runs: list[dict]) -> None:
     first = runs[0]
-    assert first["startCfg"]["action"] == "power_off"
-    assert _v(first, "s5", "s4DefaultAction") == "power_off"
+    assert first["startCfg"]["screen-saver-on"] is True
+    assert first["startCfg"]["power-off-on"] is True
+    assert first["startCfg"]["screen-saver-wait-s"] == 0
+    assert first["startCfg"]["power-off-wait-s"] == 0
+    assert _v(first, "s5", "s4Default") == [True, True]
 
 
 def test_s5_windows_time_is_used_and_followed(runs: list[dict]) -> None:
     first = runs[0]
     assert _v(first, "s5", "s5Wait") == [600, 600, True]
-    assert _v(first, "s5", "s5WindowsWaitText") is True, "Windows' time not shown"
+    assert _v(first, "s5", "s5WindowsWaitText") == "Windows' display-off time (10 min)"
+    assert _v(first, "s5", "s5SaverWindowsWaitText") == (
+        "Windows' screen saver wait (never)"
+    )
     assert _v(first, "s5", "s5Followed") == 900
 
 
@@ -1029,6 +1229,7 @@ def test_s5_a_typed_time_replaces_it_until_cleared(runs: list[dict]) -> None:
     first = runs[0]
     assert _v(first, "s5", "s5OverrideCfg") == 420
     assert _v(first, "s5", "s5OverrideMgr") == 420
+    assert _v(first, "s5", "s5OtherRow") == 0, "typing in one row changed the other"
     assert _v(first, "s5", "s5Override") == [420, False]
     assert _v(first, "s5", "s5OverrideBefore") == 0
     assert _v(first, "s5", "s5OverrideFired") == 1
@@ -1088,26 +1289,79 @@ def test_s7_hold_off_switched_off_full_screen_does_not_hold(runs: list[dict]) ->
 
 def test_s8_no_screen_saver_chosen_does_nothing_and_says_so(runs: list[dict]) -> None:
     first = runs[0]
-    assert _v(first, "s8", "s8Cfg") == "screen_saver"
-    assert _v(first, "s8", "s8Mgr") == "screen_saver"
-    assert _v(first, "s8", "s8Problem") == "no_screen_saver"
-    assert _v(first, "s8", "s8Started") == []
-    assert "No screen saver is chosen in Windows." in _v(first, "s8", "s8Text")
+    assert _v(first, "s8", "s8Problem") == ["no_screen_saver", ""]
+    # Only the screen saver row stops; power off still fires.
+    assert _v(first, "s8", "s8Started") == [[], 1]
+    assert _v(first, "s8", "s8Text") == "No screen saver is chosen in Windows."
+    assert _v(first, "s8", "s8OffRowText") == ""
 
 
-def test_s4_s5_s6_screen_saver_starts_once_after_its_wait(runs: list[dict]) -> None:
+def test_s4_s6_the_two_timers_fire_in_order_each_once(runs: list[dict]) -> None:
     first = runs[0]
     path = "C:\\Windows\\System32\\Mystify.scr"
-    assert _v(first, "s8", "s8Wait") == 120
-    assert _v(first, "s8", "s8Before") == []
-    assert _v(first, "s8", "s8Fired") == [path]
-    assert _v(first, "s8", "s8NoPowerOff") == 0
-    assert _v(first, "s8", "s8BackCfg") == "power_off"
+    assert _v(first, "s8", "s8Waits") == [120, 300]
+    assert _v(first, "s8", "s8SaverWindowsWait") == "Windows' screen saver wait (2 min)"
+    assert _v(first, "s8", "s8Countdowns") == [
+        "Screen saver in 2 min",
+        "Power off displays in 5 min",
+    ]
+    assert _v(first, "s8", "s8Before") == [[], 0]
+    assert _v(first, "s8", "s8SaverFired") == [[path], 0]
+    assert _v(first, "s8", "s8SaverDone") is True
+    assert _v(first, "s8", "s8OffBefore") == 0
+    assert _v(first, "s8", "s8OffFired") == [[path], 1]
+    assert _v(first, "s8", "s8Once") == [1, 1]
+
+
+def test_s5_typed_waits_per_row_and_the_order_warning(runs: list[dict]) -> None:
+    first = runs[0]
+    assert _v(first, "s8", "s8SaverTypedCfg") == 180
+    assert _v(first, "s8", "s8NoWarning") == ""
+    assert _v(first, "s8", "s8OffTypedCfg") == 120
+    assert _v(first, "s8", "s8Warning") == _WARNING
+    assert _v(first, "s8", "s8TypedWaits") == [180, 120, False, False]
+    # Both still work: power off first, the screen saver after.
+    assert _v(first, "s8", "s8OffFirst") == [0, 1]
+    assert _v(first, "s8", "s8SaverAfter") == [1, 1]
+
+
+def test_s5_clearing_each_row_goes_back_to_windows_time(runs: list[dict]) -> None:
+    first = runs[0]
+    assert _v(first, "s8", "s8ClearedCfg") == [0, 0]
+    assert _v(first, "s8", "s8Cleared") == [120, 300, True, True]
+    assert _v(first, "s8", "s8ClearedWarning") == ""
+
+
+def test_s4_a_timer_switched_off_does_nothing_the_other_still_fires(
+    runs: list[dict],
+) -> None:
+    first = runs[0]
+    assert _v(first, "s8", "s8SaverOffCfg") is False
+    assert _v(first, "s8", "s8SaverOffMgr") is False
+    assert _v(first, "s8", "s8SaverOffFired") == [0, 1]
+    assert _v(first, "s8", "s8SaverOffCountdown") == ""
+    assert _v(first, "s8", "s8SaverBackCfg") is True
+
+
+def test_s6_s20_keeping_the_displays_off_and_the_wake_count(
+    runs: list[dict],
+) -> None:
+    first = runs[0]
+    assert _v(first, "s20", "s20Keeping") == [True, 0, 1]
+    # Three display-ON reports: three re-sends, counted.
+    assert _v(first, "s20", "s20Wakes") == [True, 3, 4]
+    assert _v(first, "s20", "s20Text") == _WAKES
+    # Input ended it: no more re-sends; the last period's count stays shown.
+    assert _v(first, "s20", "s20AfterInput") == [False, 3, 4]
+    assert _v(first, "s20", "s20TextAfter") == _WAKES
 
 
 def test_s5_windows_never_and_no_typed_time_does_nothing(runs: list[dict]) -> None:
     first = runs[0]
     assert _v(first, "never", "neverProblem") == ["windows_never", 0]
+    assert _v(first, "never", "neverText") == (
+        "Windows never turns the display off: type a time to use this timer."
+    )
 
 
 def test_s9_status_line(runs: list[dict]) -> None:
@@ -1131,12 +1385,16 @@ def test_s10_setting_changes_go_into_history_by_their_shown_names(
     first = runs[0]
     keys = _v(first, "s10", "s10Keys")
     assert "global/screen-saver-mode/enabled" in keys
-    assert "global/screen-saver-mode/action" in keys
+    for name in ("screen-saver-on", "screen-saver-wait-s", "power-off-wait-s"):
+        assert f"global/screen-saver-mode/{name}" in keys, keys
+    assert not any(k.endswith(("/action", "/wait-override-s")) for k in keys), keys
     titles = " | ".join(_v(first, "s10", "s10Entries"))
-    # Named as the window shows them: the switch is "Screen Saver Mode",
-    # the hold switch "Hold off during full-screen programs".
+    # Named as the window shows them (contract-4).
     assert "Changed Screen Saver Mode" in titles, titles
     assert "Hold off during full-screen programs" in titles, titles
+    assert "Screen saver wait" in titles, titles
+    assert "Power off wait" in titles, titles
+    assert "Changed Screen saver" in titles or ", Screen saver," in titles, titles
 
 
 def test_s12_refresh_devices_lists_the_devices_that_never_go_quiet(
@@ -1229,12 +1487,14 @@ def test_restart_the_settings_carry_over(runs: list[dict]) -> None:
     left = _v(first, "leave", "leftCfg")
     assert left == {
         "enabled": True,
-        "action": "power_off",
-        "wait-override-s": 420,
+        "screen-saver-on": False,
+        "screen-saver-wait-s": 0,
+        "power-off-on": True,
+        "power-off-wait-s": 420,
         "hold-fullscreen": False,
     }
     assert second["cfg"] == left
-    assert _v(second, "mgr", "mgr") == [True, "power_off", 420, False]
+    assert _v(second, "mgr", "mgr") == [True, False, 0, True, 420, False]
 
 
 def test_restart_s2_on_listens_from_program_start(runs: list[dict]) -> None:
@@ -1243,7 +1503,7 @@ def test_restart_s2_on_listens_from_program_start(runs: list[dict]) -> None:
     assert _v(second, "mgr", "ticking") is True
     assert _v(second, "window", "switchOn") is True
     assert _v(second, "window", "holdSwitch") is False
-    assert _v(second, "window", "powerOffChecked") is True
+    assert _v(second, "window", "rows") == [False, True, "", "7"]
 
 
 def test_s2_program_start_follows_the_saved_settings() -> None:

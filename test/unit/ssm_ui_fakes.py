@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Stand-ins for gremlin.screen_saver_mode, gremlin.hid_report_scan and
-gremlin.power_requests (12 S1-S19), for test_ssm_ui.py and ssm_ui_smoke.py:
-the window's tests never listen to the keyboard or mouse, read HID devices,
-run powercfg or ask for administrator rights."""
+gremlin.power_requests (12 S1-S20, contract-4's API), for test_ssm_ui.py
+and ssm_ui_smoke.py: the window's tests never listen to the keyboard or
+mouse, read HID devices, run powercfg or ask for administrator rights."""
 
 from __future__ import annotations
 
@@ -22,8 +22,10 @@ DRIVER_DETAIL = "An audio stream is currently in use."
 @dataclass
 class Settings:
     enabled: bool = False
-    action: str = "power_off"
-    wait_override_s: int = 0
+    screen_saver_on: bool = True
+    screen_saver_wait_s: int = 0
+    power_off_on: bool = True
+    power_off_wait_s: int = 0
     hold_fullscreen: bool = True
 
 
@@ -33,14 +35,23 @@ class Status:
     listening: bool = False
     idle_s: float = 0.0
     windows_idle_s: float = 0.0
-    wait_s: int = 0
-    windows_wait_s: int = 0
-    wait_from_windows: bool = True
+    saver_wait_s: int = 0
+    saver_windows_wait_s: int = 0
+    saver_from_windows: bool = True
+    saver_fired: bool = False
+    saver_remaining_s: float = 0.0
+    off_wait_s: int = 0
+    off_windows_wait_s: int = 0
+    off_from_windows: bool = True
+    off_fired: bool = False
+    off_remaining_s: float = 0.0
+    keeping_off: bool = False
+    wakes: int = 0
     hold: str = ""
     hold_program: str = ""
-    fired: bool = False
-    problem: str = ""
-    remaining_s: float = 0.0
+    problem: str = ""  # "" | "not_listening"
+    saver_problem: str = ""  # "" | "no_screen_saver" | "windows_never"
+    off_problem: str = ""  # "" | "windows_never"
     last_reset_by: str = ""
     last_reset_kind: str = ""  # "keyboard" | "mouse" | "program" | ""
     last_reset_age_s: float = 0.0
@@ -102,7 +113,8 @@ class RequestsResult:
 class FakeManager:
     """Windows' times: screen saver 10 min, display off 5 min."""
 
-    WAITS = {"screen_saver": 600, "power_off": 300}
+    SAVER_WINDOWS_S = 600
+    OFF_WINDOWS_S = 300
 
     def __init__(self) -> None:
         self._settings = Settings()
@@ -119,14 +131,15 @@ class FakeManager:
 
     def status(self) -> Status:
         s = self._settings
-        windows = self.WAITS.get(s.action, 0)
-        wait = s.wait_override_s or windows
         st = Status(
             enabled=s.enabled,
             listening=s.enabled,
-            windows_wait_s=windows,
-            wait_s=wait,
-            wait_from_windows=not s.wait_override_s,
+            saver_windows_wait_s=self.SAVER_WINDOWS_S,
+            saver_wait_s=s.screen_saver_wait_s or self.SAVER_WINDOWS_S,
+            saver_from_windows=not s.screen_saver_wait_s,
+            off_windows_wait_s=self.OFF_WINDOWS_S,
+            off_wait_s=s.power_off_wait_s or self.OFF_WINDOWS_S,
+            off_from_windows=not s.power_off_wait_s,
         )
         for key, value in self.extra.items():
             setattr(st, key, value)
@@ -215,8 +228,6 @@ def install(target: Any = None) -> tuple[FakeManager, Calls]:  # noqa: ANN401
     calls = Calls()
 
     core = types.ModuleType("gremlin.screen_saver_mode")
-    core.ACTION_SCREEN_SAVER = "screen_saver"  # type: ignore[attr-defined]
-    core.ACTION_POWER_OFF = "power_off"  # type: ignore[attr-defined]
     core.Settings = Settings  # type: ignore[attr-defined]
     core.Status = Status  # type: ignore[attr-defined]
     core.manager = lambda: manager  # type: ignore[attr-defined]
