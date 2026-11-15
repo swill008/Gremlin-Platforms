@@ -1085,3 +1085,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-10-13 | Release 1.0.36 prep: version, notes, map guard (lead) | docs | 3-8 min | about 5 min (14:39-14:44) | |
 
 | 2026-10-26 | Release 1.0.37 prep: version, notes, map guard, CI check (lead) | docs | 3-8 min | about 20 min (16:14-16:34), most of it reading a failed CI run | 4 CI smoke stalls pass locally |
+| 2026-11-15 | Screen Saver Mode: 5 parallel agents (CORE, SCAN, UI, TEST, DOCS) | agent feature | ~10 min batch | 12 min (09:40-09:52) | CORE 5, SCAN 6, DOCS 3, TEST 9, UI 11 min |
+| 2026-11-15 | Screen Saver Mode: lead fixes (History names, Options), raw-input probe, map | lead | rough 5-10 min | 10 min (09:52-10:02) | |
+| 2026-11-15 | Quick tests --changed (menu + start-up changed, so most of the suite) | test | 5-6 min | 6 min (09:57-10:03) | 4,078 passed |

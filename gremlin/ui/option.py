@@ -178,6 +178,11 @@ _HIDDEN = {
     ("global", "general", "hidhide-on-start"),
     # Chosen in Device Library Settings only (10 S37, 01 S124).
     ("global", "files", "device-library-folder"),
+    # Set in the Screen Saver Mode window only (12 S2-S7).
+    ("global", "screen-saver-mode", "enabled"),
+    ("global", "screen-saver-mode", "action"),
+    ("global", "screen-saver-mode", "wait-override-s"),
+    ("global", "screen-saver-mode", "hold-fullscreen"),
 }
 
 # Sections with a window of their own (the Device Mapping Editor's options).
@@ -230,11 +235,24 @@ _GROUP_TITLES = {
     "right-click": "right-click menu",
 }
 
+# Names that are only right for one group, by their full key
+# ("section/group/name"): Screen Saver Mode's settings are named as its
+# window shows them (12 S10), without claiming "enabled" or "action" for
+# every group.
+_KEY_TITLES = {
+    "global/screen-saver-mode/enabled": "Screen Saver Mode",
+    "global/screen-saver-mode/action": "Action",
+    "global/screen-saver-mode/wait-override-s": "Wait time",
+    "global/screen-saver-mode/hold-fullscreen": "Hold off during full-screen programs",
+}
+
 
 def entry_title(name: str, key: str = "") -> str:
     """An option's name as Options shows it ("01-chip-text" -> "Chip text").
     key ("section/group/name", for History): a name Options shows in more
     than one group gets its group's title first ("Tempo duration")."""
+    if key in _KEY_TITLES:
+        return _KEY_TITLES[key]
     shown = re.sub(r"^[0-9]+-", "", name)
     if shown in _ENTRY_TITLES:
         title = _ENTRY_TITLES[shown]

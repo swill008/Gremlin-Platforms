@@ -1879,6 +1879,7 @@ ApplicationWindow {
             }
             ThemedMenuSeparator {}
             ThemedMenuItem { command: "tools.oscMonitor" }
+            ThemedMenuItem { command: "tools.screenSaverMode" }
             ThemedMenuItem { command: "tools.history" }
             ThemedMenuItem { command: "tools.options" }
         }

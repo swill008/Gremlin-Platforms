@@ -473,8 +473,13 @@ def mouse_wheel(motion: int) -> None:
 
 
 def _mouse_input(flags: int, dx: int = 0, dy: int = 0, data: int = 0) -> _INPUT:
+    # Marked as the program's own (as keyboard.py marks its keys), so Screen
+    # Saver Mode's idle clock can tell it from the user's mouse.
+    from gremlin.windows_event_hook import OWN_KEY_MARK
+
+    mark = ctypes.cast(OWN_KEY_MARK, ctypes.POINTER(ctypes.wintypes.ULONG))
     return _INPUT(
-        INPUT_MOUSE, _INPUTunion(mi=_MOUSEINPUT(dx, dy, data, flags, 0, None))
+        INPUT_MOUSE, _INPUTunion(mi=_MOUSEINPUT(dx, dy, data, flags, 0, mark))
     )
 
 

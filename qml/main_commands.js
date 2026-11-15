@@ -118,6 +118,11 @@ function commandList() {
         { id: "tools.oscMonitor", text: "OSC Monitor", group: "Tools",
           keywords: "osc messages traffic network incoming outgoing",
           run: function() { openOscMonitor() } },
+        // Screen Saver Mode (12 S1): Gremlin's own keyboard-and-mouse idle
+        // clock that starts the screen saver or powers off the displays.
+        { id: "tools.screenSaverMode", text: "Screen Saver Mode…", group: "Tools",
+          keywords: "screen saver idle display off power oled burn-in awake monitor sleep",
+          run: function() { openTool("WindowScreenSaverMode.qml") } },
         { id: "tools.history", text: "History", group: "Tools",
           keywords: "undo restore versions changes saved",
           run: function() { openToolWith("DialogHistory.qml", { filter: "" }) } },

@@ -158,6 +158,7 @@ if _startup_failure is None:
         import gremlin.ui.device_names  # noqa: F401
         import gremlin.ui.highlight_option  # loaded by device_names
         import gremlin.ui.hidhide  # noqa: F401
+        import gremlin.ui.screen_saver_mode_model  # Screen Saver Mode (12)
         import gremlin.ui.live_debug  # noqa: F401
         import gremlin.ui.window_placement
         import gremlin.ui.module_model  # noqa: F401
@@ -423,6 +424,14 @@ def shutdown_cleanup() -> None:
                 manager.close()
     except Exception:
         log.exception("Shutdown: text to speech")
+    try:
+        # Screen Saver Mode (12 S2): its input listener and timer end; only
+        # one that was loaded.
+        ssm = sys.modules.get("gremlin.ui.screen_saver_mode_model")
+        if ssm is not None:
+            ssm.shutdown()
+    except Exception:
+        log.exception("Shutdown: Screen Saver Mode")
     try:
         from gremlin.modules import output
 
@@ -904,6 +913,7 @@ def register_config_options() -> None:
 
     folders_move.register_setting()
     gremlin.ui.hidhide._ensure_options()
+    gremlin.ui.screen_saver_mode_model.register_options()  # 12 S2-S7, S10
     from gremlin import trace
 
     trace._ensure_options()  # noqa: SLF001 - the Trace ticks (D-01-TRACE)
@@ -1263,6 +1273,12 @@ def main() -> int:
     # is on (D-09-OSC-ALWAYS-LISTEN); the window is loaded, so a bind error
     # shows there once.
     _osc_open_always()
+    try:
+        # Screen Saver Mode follows its saved settings (off: nothing runs,
+        # 12 S2) and their changes.
+        gremlin.ui.screen_saver_mode_model.start()
+    except Exception:
+        logging.getLogger("system").exception("Could not start Screen Saver Mode")
     app.exec()
     logging.getLogger("system").info("Terminating Gremlin")
     try:

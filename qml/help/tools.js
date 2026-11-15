@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // Help chapter: Tools (viewers, calibration, device information, History,
-// Auto Mapping Tool, HidHide, Input Tester, Search, Live Log Reader). Device Mapping Editor and Device Library
+// Auto Mapping Tool, HidHide, Input Tester, Search, Screen Saver Mode, Live Log Reader). Device Mapping Editor and Device Library
 // have chapters of their own.
 
 .pragma library
@@ -307,6 +307,41 @@ function topics() {
                 + "</ul>",
             related: ["tools-history", "tools-viewers"]
         },
+        {
+            id: "tools-screen-saver-mode",
+            section: "Screen Saver Mode",
+            title: "Let the screen rest with Screen Saver Mode",
+            body: "<p>Some devices, such as some throttles, flight panels and microphones, send reports to Windows many times a second even when nobody touches them. Windows counts each one as someone using the PC, so its screen saver never starts and the displays never turn off. On an OLED monitor that risks burn-in. <b>Screen Saver Mode</b> keeps the program's own idle time from the keyboard and mouse only, and when that runs out it starts the screen saver or turns the displays off.</p>"
+                + "<ol>"
+                + "<li>Choose <b>Tools › Screen Saver Mode…</b> <a href=\"open:tools.screenSaverMode\">Open ›</a>.</li>"
+                + "<li>Turn on <b>Screen Saver Mode</b>. It is off until you turn it on, and the program remembers your choice.</li>"
+                + "<li>Choose the action: <b>Screen saver</b> (starts the screen saver chosen in Windows) or <b>Power off displays</b> (turns every display off).</li>"
+                + "<li>Leave <b>Wait time</b> empty to use Windows' own time: the screen saver wait for <b>Screen saver</b>, or the power plan's time to turn off the display for <b>Power off displays</b>. Windows' time is read again each time the countdown starts, so a change in Windows is followed. Type a time to use your own instead; clear it to go back to Windows' time.</li>"
+                + "</ol>"
+                + "<p>The action happens once when the idle time reaches the wait time. Any key or mouse movement ends the screen saver or wakes the displays as usual, and starts the idle time again. Joysticks, gamepads, microphones and other devices never count. Keys and mouse movements other programs send (for example a remote-control program) count; the keys and mouse movements this program's own bindings send do not.</p>"
+                + "<h4>When it waits</h4>"
+                + "<ul>"
+                + "<li>With <b>Hold off during full-screen programs</b> on (it is on at first), nothing happens while a game in full screen or a presentation is in front.</li>"
+                + "<li>Nothing happens while a program asks Windows to keep the display on, as a video playing does. The status line then says \"On hold: a program is keeping the display on\".</li>"
+                + "<li>Nothing happens while the PC is locked; Windows looks after a locked PC itself.</li>"
+                + "<li>When a hold ends, the countdown starts again from that moment.</li>"
+                + "</ul>"
+                + "<h4>Finding what keeps Windows awake</h4>"
+                + "<ul>"
+                + "<li><b>Refresh Devices</b> reads every device for about 4 seconds, without changing anything, and lists the ones that never go quiet, with how many reports a second each sends.</li>"
+                + "<li><b>Refresh Programs</b> lists the programs asking Windows to keep the display or the PC awake. Windows gives this list only to administrators, so each press asks for administrator rights; if you refuse, the window says so and nothing else happens.</li>"
+                + "<li>Each listed program has an <b>Ignore this program</b> switch. On, Windows ignores that program's requests to keep the display and the PC awake; off, it listens to them again. Each change asks for administrator rights. This is a Windows setting, so it stays while the program is closed.</li>"
+                + "</ul>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li>Screen Saver Mode works only while Gremlin-Platforms is open, whether a profile is running or not and whether the window is in the tray or not.</li>"
+                + "<li>The status line shows the program's idle time beside Windows' idle time. When a device keeps Windows awake, Windows' idle time stays near 0.</li>"
+                + "<li>If the keyboard and mouse can't be listened to, the window says so and nothing is done.</li>"
+                + "<li>With <b>Screen saver</b> chosen and no screen saver chosen in Windows, the window says \"No screen saver is chosen in Windows.\" and nothing is done. If Windows' time is never and no time is typed, nothing is done either.</li>"
+                + "<li>Changes to these settings are kept in History.</li>"
+                + "</ul>",
+            related: ["tools-history", "tools-q-screen-stays-on"]
+        },
 
         {
             id: "tools-live-log",
@@ -523,6 +558,13 @@ function topics() {
             title: "Why doesn't my axis reach its ends?",
             body: "<p>Calibrate it. See <a href=\"topic:tools-calibration\">Calibrate axes</a>.</p>",
             related: ["tools-calibration"]
+        },
+        {
+            id: "tools-q-screen-stays-on",
+            section: "Common questions",
+            title: "Why does my screen never turn off or start the screen saver?",
+            body: "<p>A device that never goes quiet, such as a throttle or a microphone, or a program asking Windows to keep the display on, keeps Windows thinking someone is using the PC. Turn on <b>Screen Saver Mode</b> in <b>Tools › Screen Saver Mode…</b> <a href=\"open:tools.screenSaverMode\">Open ›</a>; <b>Refresh Devices</b> and <b>Refresh Programs</b> show what keeps Windows awake. See <a href=\"topic:tools-screen-saver-mode\">Let the screen rest with Screen Saver Mode</a>.</p>",
+            related: ["tools-screen-saver-mode"]
         }
     ]
 }

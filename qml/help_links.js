@@ -16,7 +16,7 @@ var _allowedOpen = [
     "tools.configureOutput", "tools.deviceInfo", "tools.deviceLibrary",
     "tools.devicePack",
     "tools.logical", "tools.deviceMappingEditor", "tools.autoMappingTool", "tools.manageModes",
-    "tools.history", "tools.options",
+    "tools.history", "tools.screenSaverMode", "tools.options",
     "debug.liveLog",
     "help.about"
 ]
