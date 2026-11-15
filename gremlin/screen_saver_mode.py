@@ -25,7 +25,7 @@ from ctypes import wintypes
 from dataclasses import dataclass, replace
 from typing import Any
 
-from gremlin import clock, threads, windows_event_hook
+from gremlin import clock, threads, trace, windows_event_hook
 
 ACTION_SCREEN_SAVER = "screen_saver"
 ACTION_POWER_OFF = "power_off"
@@ -43,6 +43,30 @@ TICK_S = 1.0
 
 def _log() -> logging.Logger:
     return logging.getLogger("system")
+
+
+def _trace(text: str) -> None:
+    """One Screen Saver Mode trace line (S16); a no-op unless tracing and
+    its tick are on. Never per input event."""
+    write = getattr(trace, "screen_saver", None)
+    if write is None:
+        return
+    try:
+        write(text)
+    except Exception:
+        _log().exception("Screen Saver Mode: trace failed")
+
+
+def _error(text: str) -> None:
+    """A failure: the normal log always, the trace too."""
+    _log().warning(f"Screen Saver Mode: {text}")
+    _trace(text)
+
+
+_ACTION_TEXT = {
+    ACTION_SCREEN_SAVER: "screen saver",
+    ACTION_POWER_OFF: "power off displays",
+}
 
 
 @dataclass
@@ -456,14 +480,18 @@ class InputClock:
         self._ready = threading.Event()
         self._wndproc: Any = None
         self._user32: Any = None
+        self.error = ""  # why the last start() failed, "" when it didn't
 
     def start(self) -> bool:
-        """Registers raw input on its thread; False when it could not."""
+        """Registers raw input on its thread; False when it could not
+        (the reason in `error`)."""
         self._last = clock.monotonic()
         if self._running:
             return self.listening()
+        self.error = ""
         # Tests turn the hooks off: no raw input is registered on their PC.
         if not windows_event_hook.enabled:
+            self.error = "input hooks are off"
             return False
         self._running = True
         self._registered = False
@@ -471,6 +499,8 @@ class InputClock:
         self._thread = threads.start(self._NAME, self._listen, stop=self._ask_to_stop)
         self._ready.wait(self._START_WAIT_S)
         if not self._registered:
+            if not self.error:
+                self.error = f"no answer within {self._START_WAIT_S:g} s"
             self.stop()
             return False
         return True
@@ -554,8 +584,8 @@ class InputClock:
         try:
             if u.RegisterClassExW(ctypes.byref(wc)):
                 class_made = True
-            elif ctypes.get_last_error() != _ERROR_CLASS_ALREADY_EXISTS:
-                _log().warning("Screen Saver Mode: window class not registered")
+            elif (code := ctypes.get_last_error()) != _ERROR_CLASS_ALREADY_EXISTS:
+                self.error = f"window class not registered (Windows error {code})"
                 return
             # A hidden top-level window (RIDEV_INPUTSINK needs one, not a
             # message-only window).
@@ -563,7 +593,9 @@ class InputClock:
                 0, _CLASS_NAME, "", 0, 0, 0, 0, 0, None, None, instance, None
             )
             if not hwnd:
-                _log().warning("Screen Saver Mode: input window not made")
+                self.error = (
+                    f"input window not made (Windows error {ctypes.get_last_error()})"
+                )
                 return
             devices = (_RAWINPUTDEVICE * 2)(
                 _RAWINPUTDEVICE(
@@ -576,9 +608,9 @@ class InputClock:
             if not u.RegisterRawInputDevices(
                 devices, 2, ctypes.sizeof(_RAWINPUTDEVICE)
             ):
-                _log().warning(
-                    f"Screen Saver Mode: raw input not registered "
-                    f"({ctypes.get_last_error()})"
+                self.error = (
+                    f"raw input not registered "
+                    f"(Windows error {ctypes.get_last_error()})"
                 )
                 return
             self._registered = True
@@ -628,7 +660,10 @@ class _Period:
 
 
 class ScreenSaverMode:
-    """The countdown and the action (S2-S11, S15)."""
+    """The countdown and the action (S2-S11, S15, S16 tracing)."""
+
+    # status() while off reads Windows at most this often.
+    _OFF_READ_S = 1.0
 
     def __init__(
         self, api: WindowsApi | None = None, clock_: InputClock | None = None
@@ -641,6 +676,11 @@ class ScreenSaverMode:
         self._timer: Any = None
         self._period = _Period()
         self._status = Status()
+        self._status_live = False  # _status was filled while running
+        # (read at, action, Windows' wait) for status() while off.
+        self._off_read: tuple[float, str, int] | None = None
+        self._last_hold = ""
+        self._last_problem = ""
 
     # ----- settings
 
@@ -650,9 +690,31 @@ class ScreenSaverMode:
     def apply(self, settings: Settings) -> None:
         """Takes the settings; on/off starts or stops the clock and timer."""
         self._settings = replace(settings)
+        self._off_read = None
+        wait = (
+            _wait_text(settings.wait_override_s)
+            if settings.wait_override_s
+            else "from Windows"
+        )
+        _trace(
+            f"settings applied: {'on' if settings.enabled else 'off'}, "
+            f"{_ACTION_TEXT.get(settings.action, settings.action)}, wait {wait}"
+            f", hold full screen "
+            f"{'on' if settings.hold_fullscreen else 'off'}"
+        )
         if settings.enabled and not self._running:
             self._running = True
+            self._last_hold = ""
+            self._last_problem = ""
             self._listening = self._clock.start()
+            if self._listening:
+                _trace("listener started")
+            else:
+                reason = getattr(self._clock, "error", "") or "unknown reason"
+                if windows_event_hook.enabled:
+                    _error(f"listener failed: {reason}")
+                else:
+                    _trace(f"listener not started: {reason}")
             self._new_period(self._clock.last_input(), clock.monotonic())
             self._arm()
         elif not settings.enabled and self._running:
@@ -660,7 +722,10 @@ class ScreenSaverMode:
         elif self._running:
             # A changed action or wait: the countdown reads its wait again.
             self._read_wait()
+            self._trace_countdown()
         self._update_status()
+        if self._running:
+            self._note_problem(self._status.problem)
 
     def shutdown(self) -> None:
         if self._running:
@@ -677,6 +742,9 @@ class ScreenSaverMode:
             self._timer = None
         self._clock.stop()
         self._listening = False
+        self._last_hold = ""
+        self._last_problem = ""
+        _trace("listener stopped")
 
     # ----- timer
 
@@ -691,35 +759,50 @@ class ScreenSaverMode:
             self.tick()
         except Exception:
             _log().exception("Screen Saver Mode tick failed")
+            _trace("tick failed (see the log)")
         if self._running:
             self._arm()
 
     # ----- countdown
+
+    def _windows_wait(self, action: str) -> tuple[str, int]:
+        """(screen saver path, Windows' wait) for the action; 0 = never."""
+        try:
+            if action == ACTION_SCREEN_SAVER:
+                path = self._api.screen_saver_path()
+                wait = self._api.screen_saver_wait_s() if path else 0
+            else:
+                path = ""
+                wait = self._api.display_off_wait_s()
+            return path, max(0, int(wait))
+        except Exception:
+            _log().exception("Screen Saver Mode: reading Windows' wait failed")
+            _trace("reading Windows' wait failed (see the log)")
+            return "", 0
 
     def _read_wait(self) -> None:
         """The wait for the chosen action, read from Windows each time the
         countdown starts (S5)."""
         p = self._period
         s = self._settings
-        try:
-            if s.action == ACTION_SCREEN_SAVER:
-                p.screen_saver = self._api.screen_saver_path()
-                p.windows_wait_s = (
-                    self._api.screen_saver_wait_s() if p.screen_saver else 0
-                )
-            else:
-                p.screen_saver = ""
-                p.windows_wait_s = self._api.display_off_wait_s()
-        except Exception:
-            _log().exception("Screen Saver Mode: reading Windows' wait failed")
-            p.windows_wait_s = 0
-        p.windows_wait_s = max(0, int(p.windows_wait_s))
+        p.screen_saver, p.windows_wait_s = self._windows_wait(s.action)
         override = max(0, int(s.wait_override_s or 0))
         p.wait_s = override if override > 0 else p.windows_wait_s
 
-    def _new_period(self, input_at: float, start: float) -> None:
+    def _trace_countdown(self) -> None:
+        p = self._period
+        typed = (self._settings.wait_override_s or 0) > 0
+        source = "typed" if typed else "from Windows"
+        _trace(
+            f"countdown started: wait {_wait_text(p.wait_s)} ({source}; "
+            f"Windows {_wait_text(p.windows_wait_s)})"
+        )
+
+    def _new_period(self, input_at: float, start: float, quiet: bool = False) -> None:
         self._period = _Period(input_at=input_at, start=start)
         self._read_wait()
+        if not quiet:
+            self._trace_countdown()
 
     def _problem(self) -> str:
         if not self._listening or not self._clock.listening():
@@ -732,6 +815,11 @@ class ScreenSaverMode:
         if self._period.wait_s <= 0:
             return PROBLEM_WINDOWS_NEVER
         return ""
+
+    def _note_problem(self, problem: str) -> None:
+        if problem != self._last_problem:
+            self._last_problem = problem
+            _trace(f"problem: {problem}" if problem else "problem cleared")
 
     def _hold(self) -> str:
         if self._api.locked():
@@ -751,13 +839,24 @@ class ScreenSaverMode:
         last = self._clock.last_input()
         if last != self._period.input_at:
             # Input: a new idle period (S6), the countdown starts again.
-            self._new_period(last, last)
+            # Traced only for the first input after the action, not per input.
+            after_action = self._period.fired
+            if after_action:
+                _trace("input after action: countdown restarts")
+            self._new_period(last, last, quiet=not after_action)
         p = self._period
         hold = ""
         try:
             hold = self._hold()
         except Exception:
             _log().exception("Screen Saver Mode: hold check failed")
+            _trace("hold check failed (see the log)")
+        if hold != self._last_hold:
+            if self._last_hold:
+                _trace(f"hold ended: {self._last_hold}")
+            if hold:
+                _trace(f"hold began: {hold}")
+            self._last_hold = hold
         if hold:
             # Held: the countdown starts again when the hold ends (S7,
             # S11, S15).
@@ -767,31 +866,63 @@ class ScreenSaverMode:
             # Counted from the last held moment: the wait is read again.
             p.held = False
             self._read_wait()
+            self._trace_countdown()
         problem = self._problem()
+        self._note_problem(problem)
         if not hold and not problem and not p.fired and now - p.start >= p.wait_s:
             p.fired = True
             self._fire()
         self._update_status(now=now, hold=hold, problem=problem)
 
     def _fire(self) -> None:
+        action = self._settings.action
         try:
-            if self._settings.action == ACTION_SCREEN_SAVER:
-                self._api.start_screen_saver(self._period.screen_saver)
+            if action == ACTION_SCREEN_SAVER:
+                path = self._period.screen_saver
+                if self._api.start_screen_saver(path):
+                    _trace(f"action fired: screen saver {path}: started")
+                else:
+                    _error(f"action fired: screen saver {path}: could not start")
             else:
                 self._api.power_off_displays()
-        except Exception:
+                _trace("action fired: power off displays: sent")
+        except Exception as e:
             _log().exception("Screen Saver Mode action failed")
+            _trace(f"action fired: {_ACTION_TEXT.get(action, action)}: failed ({e})")
 
     # ----- status
+
+    def _off_windows_wait(self) -> int:
+        """Windows' wait for the chosen action while off, read at most once
+        a second (S5: the window shows it while off too)."""
+        now = clock.monotonic()
+        action = self._settings.action
+        cached = self._off_read
+        if (
+            cached is not None
+            and cached[1] == action
+            and now - cached[0] < self._OFF_READ_S
+        ):
+            return cached[2]
+        _path, wait = self._windows_wait(action)
+        self._off_read = (now, action, wait)
+        return wait
+
+    def _off_status(self) -> Status:
+        windows_wait = self._off_windows_wait()
+        override = max(0, int(self._settings.wait_override_s or 0))
+        return Status(
+            enabled=self._settings.enabled,
+            wait_s=override if override > 0 else windows_wait,
+            windows_wait_s=windows_wait,
+            wait_from_windows=override == 0,
+        )
 
     def _update_status(
         self, now: float | None = None, hold: str = "", problem: str | None = None
     ) -> None:
         if not self._running:
-            self._status = Status(
-                enabled=self._settings.enabled,
-                wait_from_windows=not self._settings.wait_override_s,
-            )
+            self._status_live = False
             return
         now = clock.monotonic() if now is None else now
         p = self._period
@@ -818,10 +949,19 @@ class ScreenSaverMode:
             problem=problem,
             remaining_s=remaining,
         )
+        self._status_live = True
 
     def status(self) -> Status:
-        """The status as of the last tick (cheap; the UI polls it)."""
+        """The status as of the last tick (cheap; the UI polls it). While
+        off it carries Windows' wait for the chosen action."""
+        if not self._running or not self._status_live:
+            return self._off_status()
         return replace(self._status)
+
+
+def _wait_text(seconds: int | float) -> str:
+    seconds = int(seconds or 0)
+    return f"{seconds} s" if seconds > 0 else "none"
 
 
 _manager: ScreenSaverMode | None = None

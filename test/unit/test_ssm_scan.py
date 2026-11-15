@@ -6,36 +6,43 @@ device, elevates or runs powercfg."""
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 
-from gremlin import clock, hid_report_scan, power_requests
+from gremlin import clock, hid_report_scan, power_requests, trace
 from gremlin.hid_report_scan import DONE, ERROR, PENDING
 from gremlin.power_requests import ProgramRequest
 
-REQUESTS_SAMPLE = """\
+# The real formats, from the user's PC (contract-2, 2026-11-15).
+USB_AUDIO = r"USB Audio 2.0 (USB\VID_0DB0&PID_CD0E&MI_00\9&9c4d365&0&0000)"
+
+# Raw: the backslashes are Windows' own.
+REQUESTS_SAMPLE = r"""
 DISPLAY:
-[PROCESS] \\Device\\HarddiskVolume3\\Program Files\\RustDesk\\RustDesk.exe
+[PROCESS] \Device\HarddiskVolume3\Program Files\RustDesk\RustDesk.exe
 Video Wake Lock
 
 SYSTEM:
-[DRIVER] Realtek High Definition Audio(SST) (HDAUDIO\\FUNC_01&VEN_10EC\\5&2f2&0)
+[DRIVER] USB Audio 2.0 (USB\VID_0DB0&PID_CD0E&MI_00\9&9c4d365&0&0000)
 An audio stream is currently in use.
-[PROCESS] \\Device\\HarddiskVolume3\\Program Files\\RustDesk\\RustDesk.exe
+[PROCESS] \Device\HarddiskVolume3\Program Files\RustDesk\RustDesk.exe
 Video Wake Lock
 
 AWAYMODE:
 None.
 
 EXECUTION:
-[PROCESS] \\Device\\HarddiskVolume5\\Games\\Steam\\steam.exe
-Steam is downloading
+[PROCESS] \Device\HarddiskVolume3\Users\me\AppData\Local\AnthropicClaude\claude.exe
+Electron
 
 PERFBOOST:
-[PROCESS] \\Device\\HarddiskVolume3\\Windows\\perfonly.exe
+[PROCESS] \Device\HarddiskVolume3\Windows\perfonly.exe
 Boost
 
 ACTIVELOCKSCREEN:
 None.
+
 """
 
 NONE_SAMPLE = """\
@@ -63,30 +70,35 @@ OVERRIDES_SAMPLE = """\
 
 [PROCESS]
 RustDesk.exe DISPLAY SYSTEM AWAYMODE
-My Player.exe DISPLAY
 
 [DRIVER]
-Realtek High Definition Audio(SST) SYSTEM
+FxSound Audio Enhancer SYSTEM
+
 """
+
+EMPTY_OVERRIDES = "[SERVICE]\n\n[PROCESS]\n\n[DRIVER]\n"
 
 
 # Parsing ------------------------------------------------------------------
 
 
-def test_parse_requests_lists_programs_with_kinds() -> None:
-    programs = {p.name: p for p in power_requests.parse_requests(REQUESTS_SAMPLE)}
-    rust = programs["RustDesk.exe"]
-    assert (
-        rust.path == "\\Device\\HarddiskVolume3\\Program Files\\RustDesk\\RustDesk.exe"
-    )
+def test_parse_requests_real_format_kinds_and_details() -> None:
+    rows = power_requests.parse_requests(REQUESTS_SAMPLE)
+    by_name = {p.name: p for p in rows}
+    rust = by_name["RustDesk.exe"]
+    assert rust.kind == "PROCESS"
+    assert rust.path == r"\Device\HarddiskVolume3\Program Files\RustDesk\RustDesk.exe"
     assert rust.kinds == ["Display", "System"]
-    assert programs["steam.exe"].kinds == ["Execution"]
-    driver = [p for p in programs.values() if p.name.startswith("Realtek")]
-    assert len(driver) == 1 and driver[0].path == "" and driver[0].kinds == ["System"]
-    # PERFBOOST doesn't keep the display or PC awake; reason lines are no entries.
-    assert "perfonly.exe" not in programs
-    assert not any("Wake Lock" in name for name in programs)
-    assert len(programs) == 3
+    assert rust.detail == "Video Wake Lock"
+    usb = by_name[USB_AUDIO]
+    assert usb.kind == "DRIVER" and usb.path == "" and usb.kinds == ["System"]
+    assert usb.detail == "An audio stream is currently in use."
+    claude = by_name["claude.exe"]
+    assert claude.kind == "PROCESS" and claude.kinds == ["Execution"]
+    assert claude.detail == "Electron"
+    # PERFBOOST doesn't keep the display or PC awake; detail lines are no entries.
+    assert "perfonly.exe" not in by_name
+    assert len(rows) == 3
 
 
 def test_parse_requests_none_is_empty() -> None:
@@ -94,23 +106,40 @@ def test_parse_requests_none_is_empty() -> None:
     assert power_requests.parse_requests("") == []
 
 
-def test_parse_overrides_reads_process_section_only() -> None:
+def test_parse_overrides_reads_every_kind() -> None:
     assert power_requests.parse_overrides(OVERRIDES_SAMPLE) == [
-        "RustDesk.exe",
-        "My Player.exe",
+        ("PROCESS", "RustDesk.exe"),
+        ("DRIVER", "FxSound Audio Enhancer"),
     ]
-    assert power_requests.parse_overrides("[SERVICE]\n\n[PROCESS]\n\n[DRIVER]\n") == []
+    assert power_requests.parse_overrides(EMPTY_OVERRIDES) == []
+    # A driver name with spaces, brackets, backslashes and &.
+    text = f"[DRIVER]\n{USB_AUDIO} SYSTEM\n\n[SERVICE]\nSome Service DISPLAY SYSTEM\n"
+    assert power_requests.parse_overrides(text) == [
+        ("DRIVER", USB_AUDIO),
+        ("SERVICE", "Some Service"),
+    ]
 
 
-def test_merge_marks_ignored_and_adds_ignored_not_asking() -> None:
+def test_merge_matches_by_kind_and_name() -> None:
     merged = power_requests.merge(
         power_requests.parse_requests(REQUESTS_SAMPLE),
         power_requests.parse_overrides(OVERRIDES_SAMPLE),
     )
     by_name = {p.name: p for p in merged}
     assert by_name["RustDesk.exe"].ignored is True
-    assert by_name["steam.exe"].ignored is False
-    assert by_name["My Player.exe"] == ProgramRequest("My Player.exe", "", [], True)
+    assert by_name["claude.exe"].ignored is False
+    assert by_name[USB_AUDIO].ignored is False
+    assert by_name["FxSound Audio Enhancer"] == ProgramRequest(
+        "FxSound Audio Enhancer", "", [], True, "DRIVER"
+    )
+    # Same name, other kind: not the same caller.
+    other = power_requests.merge(
+        [ProgramRequest("x.exe", "", ["Display"])], [("DRIVER", "x.exe")]
+    )
+    assert [(p.kind, p.ignored) for p in other] == [
+        ("PROCESS", False),
+        ("DRIVER", True),
+    ]
 
 
 # list_requests / set_ignored with a fake runner -----------------------------
@@ -137,7 +166,7 @@ def test_list_requests_ok_one_run_with_both_commands() -> None:
     assert result.ok and result.error == ""
     assert runner.calls == [["powercfg /requests", "powercfg /requestsoverride"]]
     names = [p.name for p in result.programs]
-    assert "RustDesk.exe" in names and "My Player.exe" in names
+    assert "RustDesk.exe" in names and "FxSound Audio Enhancer" in names
 
 
 def test_list_requests_refused() -> None:
@@ -154,7 +183,10 @@ def test_list_requests_timeout() -> None:
 
 def test_set_ignored_on_builds_override_with_types() -> None:
     runner = FakeRunner(["", OVERRIDES_SAMPLE])
-    assert power_requests.set_ignored("RustDesk.exe", True, runner) == (True, "")
+    assert power_requests.set_ignored("RustDesk.exe", True, runner=runner) == (
+        True,
+        "",
+    )
     assert runner.calls == [
         [
             'powercfg /requestsoverride PROCESS "RustDesk.exe" DISPLAY SYSTEM AWAYMODE',
@@ -164,24 +196,27 @@ def test_set_ignored_on_builds_override_with_types() -> None:
 
 
 def test_set_ignored_off_removes_and_checks_windows() -> None:
-    runner = FakeRunner(["", "[SERVICE]\n\n[PROCESS]\n\n[DRIVER]\n"])
-    assert power_requests.set_ignored("RustDesk.exe", False, runner) == (True, "")
+    runner = FakeRunner(["", EMPTY_OVERRIDES])
+    assert power_requests.set_ignored("RustDesk.exe", False, runner=runner) == (
+        True,
+        "",
+    )
     assert runner.calls[0][0] == 'powercfg /requestsoverride PROCESS "RustDesk.exe"'
 
 
 def test_set_ignored_reports_when_windows_did_not_change() -> None:
     # Asked to ignore, but Windows' list doesn't have it afterwards.
     runner = FakeRunner(["error text", "[PROCESS]\n"])
-    ok, error = power_requests.set_ignored("Other.exe", True, runner)
+    ok, error = power_requests.set_ignored("Other.exe", True, runner=runner)
     assert ok is False and error == power_requests.NOT_CHANGED_TEXT
 
 
 def test_set_ignored_refused_and_timeout() -> None:
     assert power_requests.set_ignored(
-        "RustDesk.exe", True, FakeRunner(error=power_requests.Refused())
+        "RustDesk.exe", True, runner=FakeRunner(error=power_requests.Refused())
     ) == (False, "Administrator rights were refused.")
     assert power_requests.set_ignored(
-        "RustDesk.exe", True, FakeRunner(error=TimeoutError())
+        "RustDesk.exe", True, runner=FakeRunner(error=TimeoutError())
     ) == (False, power_requests.TIMEOUT_TEXT)
 
 
@@ -202,9 +237,167 @@ def test_set_ignored_refused_and_timeout() -> None:
 )
 def test_bad_names_never_reach_the_runner(name: str) -> None:
     runner = FakeRunner(["", ""])
-    ok, error = power_requests.set_ignored(name, True, runner)
+    ok, error = power_requests.set_ignored(name, True, runner=runner)
     assert ok is False and error
     assert runner.calls == []
+
+
+def test_set_ignored_driver_quotes_the_full_name() -> None:
+    runner = FakeRunner(["", f"[PROCESS]\n\n[DRIVER]\n{USB_AUDIO} SYSTEM\n"])
+    assert power_requests.set_ignored(USB_AUDIO, True, "DRIVER", runner) == (True, "")
+    assert runner.calls == [
+        [
+            f'powercfg /requestsoverride DRIVER "{USB_AUDIO}" DISPLAY SYSTEM AWAYMODE',
+            "powercfg /requestsoverride",
+        ]
+    ]
+    assert runner.calls[0][0] == (
+        "powercfg /requestsoverride DRIVER "
+        '"USB Audio 2.0 (USB\\VID_0DB0&PID_CD0E&MI_00\\9&9c4d365&0&0000)"'
+        " DISPLAY SYSTEM AWAYMODE"
+    )
+
+
+def test_set_ignored_driver_off_removes_with_no_types() -> None:
+    runner = FakeRunner(["", OVERRIDES_SAMPLE])  # FxSound still listed
+    ok, error = power_requests.set_ignored(
+        "FxSound Audio Enhancer", False, "DRIVER", runner
+    )
+    assert (ok, error) == (False, power_requests.NOT_CHANGED_TEXT)
+    assert runner.calls[0][0] == (
+        'powercfg /requestsoverride DRIVER "FxSound Audio Enhancer"'
+    )
+    runner = FakeRunner(["", EMPTY_OVERRIDES])
+    assert power_requests.set_ignored(
+        "FxSound Audio Enhancer", False, "DRIVER", runner
+    ) == (True, "")
+
+
+def test_set_ignored_check_compares_kind_and_name() -> None:
+    # Windows lists the name under [PROCESS], not [DRIVER]: not ignored.
+    runner = FakeRunner(["", "[PROCESS]\nFxSound Audio Enhancer SYSTEM\n"])
+    ok, _error = power_requests.set_ignored(
+        "FxSound Audio Enhancer", True, "DRIVER", runner
+    )
+    assert ok is False
+
+
+def test_set_ignored_service_form() -> None:
+    # Not verified on a real PC (no service request there); built like DRIVER.
+    runner = FakeRunner(["", "[SERVICE]\nMy Service SYSTEM DISPLAY AWAYMODE\n"])
+    assert power_requests.set_ignored("My Service", True, "SERVICE", runner) == (
+        True,
+        "",
+    )
+    assert runner.calls[0][0] == (
+        'powercfg /requestsoverride SERVICE "My Service" DISPLAY SYSTEM AWAYMODE'
+    )
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["", 'USB "Audio"', "Line\nbreak", "Tab\there", "x" * 261, " lead", "50%PATH%"],
+)
+def test_bad_driver_names_never_reach_the_runner(name: str) -> None:
+    runner = FakeRunner(["", ""])
+    ok, error = power_requests.set_ignored(name, True, "DRIVER", runner)
+    assert ok is False and error
+    assert runner.calls == []
+
+
+def test_good_driver_names_are_valid() -> None:
+    assert power_requests.valid_caller_name(USB_AUDIO)
+    assert power_requests.valid_caller_name("FxSound Audio Enhancer")
+    assert power_requests.valid_caller_name("x" * 260)
+
+
+def test_set_ignored_unknown_kind_refused() -> None:
+    runner = FakeRunner(["", ""])
+    ok, _error = power_requests.set_ignored("x.exe", True, "USER", runner)
+    assert ok is False and runner.calls == []
+
+
+# Tracing and the normal log ----------------------------------------------------
+
+
+@pytest.fixture
+def traced(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    lines: list[str] = []
+    monkeypatch.setattr(trace, "screen_saver", lines.append, raising=False)
+    return lines
+
+
+def test_list_requests_traces_command_exit_code_output_and_rows(
+    traced: list[str],
+) -> None:
+    def runner(commands: list[str]) -> list[str]:
+        return power_requests.Outputs(
+            [REQUESTS_SAMPLE, OVERRIDES_SAMPLE], '/d /c "..."', 0
+        )
+
+    assert power_requests.list_requests(runner).ok
+    text = "\n".join(traced)
+    assert "command: powercfg /requests" in text
+    assert "command: powercfg /requestsoverride" in text
+    assert "exit code 0" in text
+    assert "An audio stream is currently in use." in text  # raw output
+    assert "FxSound Audio Enhancer SYSTEM" in text
+    assert f"[DRIVER] {USB_AUDIO}: System" in text  # parsed row
+    assert "[DRIVER] FxSound Audio Enhancer: not asking, ignored" in text
+    assert "Refresh Programs: 4 rows" in text
+
+
+def test_trace_trims_raw_output(traced: list[str]) -> None:
+    big = "x" * 10000
+    power_requests.list_requests(FakeRunner([big, ""]))
+    out = [line for line in traced if "output of powercfg /requests:" in line]
+    assert len(out) == 1
+    assert len(out[0]) < power_requests.TRACE_OUTPUT_LIMIT + 200
+    assert "5904 more characters" in out[0]
+
+
+def test_set_ignored_traces_command_and_check(traced: list[str]) -> None:
+    runner = FakeRunner(["", f"[DRIVER]\n{USB_AUDIO} SYSTEM\n"])
+    power_requests.set_ignored(USB_AUDIO, True, "DRIVER", runner)
+    text = "\n".join(traced)
+    assert f'command: powercfg /requestsoverride DRIVER "{USB_AUDIO}"' in text
+    assert "exit code unknown" in text
+    assert "check ok" in text
+
+
+def test_errors_go_to_the_normal_log(
+    traced: list[str], caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.WARNING, logger="system")
+    power_requests.list_requests(FakeRunner(error=power_requests.Refused()))
+    power_requests.set_ignored("x.exe", True, runner=FakeRunner(error=TimeoutError()))
+    power_requests.set_ignored("Other.exe", True, runner=FakeRunner(["", ""]))
+    power_requests.set_ignored('bad"name', True, "DRIVER", FakeRunner(["", ""]))
+    messages = [r.getMessage() for r in caplog.records if r.name == "system"]
+    assert any(power_requests.REFUSED_TEXT in m for m in messages)
+    assert any(power_requests.TIMEOUT_TEXT in m for m in messages)
+    assert any(power_requests.NOT_CHANGED_TEXT in m for m in messages)
+    assert any("is not a name Windows can ignore" in m for m in messages)
+    assert any("refused" in line for line in traced)
+    assert any("timeout" in line for line in traced)
+    assert any("check failed" in line for line in traced)
+
+
+def test_errors_logged_with_tracing_off(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(trace, "screen_saver", lambda text: None, raising=False)
+    caplog.set_level(logging.WARNING, logger="system")
+    power_requests.list_requests(FakeRunner(error=OSError("nope")))
+    assert any("nope" in r.getMessage() for r in caplog.records)
+
+
+def test_nonzero_exit_code_logged(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.WARNING, logger="system")
+    power_requests.list_requests(
+        lambda commands: power_requests.Outputs(["", ""], "", 1)
+    )
+    assert any("exit code 1" in r.getMessage() for r in caplog.records)
 
 
 @pytest.mark.parametrize(
@@ -409,3 +602,37 @@ def test_scan_stops_when_asked(fake_time: FakeTime) -> None:
     assert rates == []
     assert fake_time.t < 101.2
     assert api.closed == ["pad"]
+
+
+def test_scan_traces_interfaces_rates_and_unopened(
+    fake_time: FakeTime, traced: list[str]
+) -> None:
+    api = FakeHid(
+        [
+            FakeDev("keyboard", 50, openable=False),
+            FakeDev("mouse", 50, openable=False),
+            FakeDev("quiet", 0, product="Quiet Pad"),
+            FakeDev("throttle", 12.5, product="VKBsim NXT"),
+        ],
+        fake_time,
+    )
+    hid_report_scan.scan(4.0, api=api)
+    text = "\n".join(traced)
+    assert "4 HID interfaces" in text
+    assert "2 could not be opened" in text
+    assert r"VKBsim NXT (HID\throttle" in text and "listed" in text
+    assert r"Quiet Pad (HID\quiet" in text and "0.0 reports/s, quiet" in text
+    assert "1 devices never go quiet" in text
+    # The names of devices that couldn't be opened are not traced.
+    assert "keyboard" not in text
+
+
+def test_scan_error_traced_and_logged(
+    fake_time: FakeTime, traced: list[str], caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.WARNING, logger="system")
+    api = FakeHid([FakeDev("a", 10)], fake_time, raise_in="read")
+    with pytest.raises(OSError):
+        hid_report_scan.scan(4.0, api=api)
+    assert any("Refresh Devices: failed" in line for line in traced)
+    assert any("Refresh Devices failed" in r.getMessage() for r in caplog.records)

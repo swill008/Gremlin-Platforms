@@ -330,7 +330,8 @@ function topics() {
                 + "<ul>"
                 + "<li><b>Refresh Devices</b> reads every device for about 4 seconds, without changing anything, and lists the ones that never go quiet, with how many reports a second each sends.</li>"
                 + "<li><b>Refresh Programs</b> lists the programs asking Windows to keep the display or the PC awake. Windows gives this list only to administrators, so each press asks for administrator rights; if you refuse, the window says so and nothing else happens.</li>"
-                + "<li>Each listed program has an <b>Ignore this program</b> switch. On, Windows ignores that program's requests to keep the display and the PC awake; off, it listens to them again. Each change asks for administrator rights. This is a Windows setting, so it stays while the program is closed.</li>"
+                + "<li>Each row has an <b>Ignore this program</b> switch, for programs, drivers and services alike. On, Windows ignores that row's requests to keep the display and the PC awake; off, it listens to them again. Each change asks for administrator rights. This is a Windows setting, so it stays while the program is closed.</li>"
+                + "<li>A program is listed by its file name, such as RustDesk.exe. A driver or a service is listed by the full name Windows gives it, such as \"USB Audio 2.0 (USB\\VID_0DB0&amp;PID_CD0E…)\" for a sound device, often with a line under it saying why, such as \"An audio stream is currently in use.\"</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
@@ -339,8 +340,9 @@ function topics() {
                 + "<li>If the keyboard and mouse can't be listened to, the window says so and nothing is done.</li>"
                 + "<li>With <b>Screen saver</b> chosen and no screen saver chosen in Windows, the window says \"No screen saver is chosen in Windows.\" and nothing is done. If Windows' time is never and no time is typed, nothing is done either.</li>"
                 + "<li>Changes to these settings are kept in History.</li>"
+                + "<li>Reporting a problem? Tick <b>Screen Saver Mode</b> on the Trace tab of <b>Debug › Live Log Reader</b> <a href=\"open:debug.liveLog\">Open ›</a> and turn <b>Tracing</b> on, then let it happen again. The trace shows the listening, the countdown, each hold and its reason, each action, and each Refresh with Windows' exact answer. Send trace.log (or use <b>Save Diagnostics…</b>). Errors are always written to the normal log too.</li>"
                 + "</ul>",
-            related: ["tools-history", "tools-q-screen-stays-on"]
+            related: ["tools-history", "tools-q-screen-stays-on", "tools-trace"]
         },
 
         {
@@ -411,7 +413,7 @@ function topics() {
                 + "<ol>"
                 + "<li>Open <b>Debug › Live Log Reader</b> <a href=\"open:debug.liveLog\">Open ›</a> and choose the <b>Trace</b> tab.</li>"
                 + "<li>Tick the sticks you want to follow. Ticking a stick ticks all its axes, buttons and hats; expand it to tick only some. Keys on the keyboard aren't traced. Each control shows where it goes in the open profile, such as \"→ vJoy 3 X\".</li>"
-                + "<li>Tick <b>Out-of-step check</b> on a stick to have the program check it every second (see below). Tick <b>HidHide</b> to follow HidHide too, and <b>OSC</b> to follow OSC (see below).</li>"
+                + "<li>Tick <b>Out-of-step check</b> on a stick to have the program check it every second (see below). Tick <b>HidHide</b> to follow HidHide too, <b>OSC</b> to follow OSC, and <b>Screen Saver Mode</b> to follow Screen Saver Mode (see below).</li>"
                 + "<li>Turn <b>Tracing</b> on (the switch in the tab, or <b>Debug › Tracing</b> <a href=\"show:menu/Debug/Tracing\">Show me ›</a>) before you start the game. You can close the Live Log Reader: tracing keeps running, and the red frame shows it is on.</li>"
                 + "<li>Play as usual. If a control misbehaves, open the Trace tab (or the trace file) and look at the lines around that moment.</li>"
                 + "<li>When everything works, turn <b>Tracing</b> off.</li>"
@@ -441,6 +443,8 @@ function topics() {
                 + "<li>Each ticked stick is checked to be on HidHide's hidden list. If it is not, the game can see the stick as well as vJoy, and the trace says so.</li>"
                 + "<li>While HidHide's own window is open, HidHide is <i>in use by another program</i> and the program can't read or change it; the trace says so once.</li>"
                 + "</ul>"
+                + "<h4>The Screen Saver Mode row</h4>"
+                + "<p>With <b>Screen Saver Mode</b> ticked (the row next to HidHide), each line's control reads \"Screen Saver Mode\": the keyboard and mouse listener starting, stopping or failing; the countdown starting, with its wait and whether it is Windows' time or yours; each hold and its reason; each action and its result; each Refresh Devices and Refresh Programs, with the exact powercfg command, its exit code and Windows' answer; and the window's button presses. Errors are written to the normal log too, even with tracing off.</p>"
                 + "<h4>The OSC row</h4>"
                 + "<p>The <b>OSC</b> row (after HidHide) has five ticks, one per area; ticking <b>OSC</b> ticks all five. Each line's control reads \"OSC\" and the area, such as \"OSC Receive\".</p>"
                 + "<ul>"

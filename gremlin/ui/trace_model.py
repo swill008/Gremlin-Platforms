@@ -30,6 +30,7 @@ POINTS = {
     "Output": (trace.OUTPUT, trace.BLOCKED),
     "Event": (trace.EVENT,),
     "HidHide": (trace.HIDHIDE,),
+    "Screen Saver Mode": (trace.SCREEN_SAVER,),
     "OSC": (trace.OSC,),
     "Out of step": (trace.OUT_OF_STEP,),
     # ONE-TIME (tracker OT-5): the click trace's lines; remove after the fix.
@@ -282,6 +283,11 @@ class TraceTree(QtCore.QAbstractListModel):
         rows.append(row(
             kind="hidhide", text="HidHide (calls, changes, sticks not hidden)",
             check=2 if trace.hidhide_ticked() else 0,
+        ))
+        rows.append(row(
+            kind="screen-saver",
+            text="Screen Saver Mode (listening, countdown, holds, scans)",
+            check=2 if trace.screen_saver_ticked() else 0,
         ))
         # ONE-TIME (tracker OT-5): the click trace's Mouse row; remove after the fix.
         rows.append(row(
@@ -656,6 +662,11 @@ class TraceView(QtCore.QObject):
     @QtCore.Slot(bool)
     def setHidhide(self, on: bool) -> None:  # noqa: N802 - QML name
         trace.set_hidhide(on)
+        self.reloadTree()
+
+    @QtCore.Slot(bool)
+    def setScreenSaver(self, on: bool) -> None:  # noqa: N802 - QML name
+        trace.set_screen_saver(on)
         self.reloadTree()
 
     # ONE-TIME (tracker OT-5): the click trace's Mouse tick; remove after the fix.

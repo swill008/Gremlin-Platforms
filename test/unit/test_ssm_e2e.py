@@ -39,6 +39,10 @@ from _harness import (  # noqa: E402  # pyright: ignore[reportMissingImports]
 
 _GROUP = ("global", "screen-saver-mode")
 
+# A driver's request as powercfg names it (the user's PC, 2026-11-15).
+_DRIVER = "USB Audio 2.0 (USB\\VID_0DB0&PID_CD0E&MI_00\\9&9c4d365&0&0000)"
+_DRIVER_DETAIL = "An audio stream is currently in use."
+
 # +-------------------------------------------------------------------------
 # | Script side (the child process)
 
@@ -180,11 +184,25 @@ def _install_scan_fakes() -> None:
                     ["Display"],
                     False,
                 ),
+                # A driver's request (S14 widened): named as powercfg names it.
+                req_mod.ProgramRequest(
+                    name=_DRIVER,
+                    path="",
+                    kinds=["System"],
+                    ignored=False,
+                    kind="DRIVER",
+                    detail=_DRIVER_DETAIL,
+                ),
             ],
         )
 
-    def set_ignored(name: str, ignored: bool, runner: Any = None) -> tuple[bool, str]:  # noqa: ANN401
-        W["ignored"].append([name, ignored])
+    def set_ignored(
+        name: str,
+        ignored: bool,
+        kind: str = "PROCESS",
+        runner: Any = None,  # noqa: ANN401
+    ) -> tuple[bool, str]:
+        W["ignored"].append([name, ignored, kind])
         if not W["ignore_ok"]:
             return False, "Administrator rights were refused."
         return True, ""
@@ -638,11 +656,17 @@ def story_first(j: Journey) -> None:
         W["requests_ok"] = True
         j.click(j.item(w, "ssmRefreshPrograms"))
         out["s13Count"] = j.await_value(
-            lambda: int(programs.property("count") or 0), 2, timeout=10
+            lambda: int(programs.property("count") or 0), 3, timeout=10
         )
         j.settle()
-        shown = " ".join(_texts_in(j, programs))
+        texts = _texts_in(j, programs)
+        shown = " ".join(texts)
         out["s13Rows"] = ["RustDesk.exe" in shown, "chrome.exe" in shown]
+        out["s14DriverRow"] = [
+            _DRIVER in texts,
+            "(driver)" in texts,
+            _DRIVER_DETAIL in texts,
+        ]
         out["s13Description"] = any(
             "Needs administrator rights each time" in t for t in _texts(j, w)
         )
@@ -677,6 +701,13 @@ def story_first(j: Journey) -> None:
             True,
         )
         W["ignore_ok"] = True
+        # The driver's row has the switch too and passes its kind on.
+        _flip(j, switch(2), True)
+        j.await_value(lambda: len(W["ignored"]), 3, timeout=10)
+        out["s14Driver"] = W["ignored"][-1]
+        out["s14DriverOn"] = j.await_value(
+            lambda: bool(switch(2) and switch(2).property("checked")), True
+        )
 
     _section(j, "s13", s13_s14)
 
@@ -1003,21 +1034,33 @@ def test_s13_refresh_programs_refused_is_said(runs: list[dict]) -> None:
 
 def test_s13_refresh_programs_lists_the_programs(runs: list[dict]) -> None:
     first = runs[0]
-    assert _v(first, "s13", "s13Count") == 2
+    assert _v(first, "s13", "s13Count") == 3
     assert _v(first, "s13", "s13Rows") == [True, True]
     assert _v(first, "s13", "s13Description") is True
 
 
 def test_s14_ignore_this_program_calls_set_ignored(runs: list[dict]) -> None:
     first = runs[0]
-    assert _v(first, "s13", "s14Switches") == 2
-    assert _v(first, "s13", "s14Asked") == [["RustDesk.exe", True]]
+    assert _v(first, "s13", "s14Switches") == 3
+    assert _v(first, "s13", "s14Asked") == [["RustDesk.exe", True, "PROCESS"]]
     assert _v(first, "s13", "s14On") is True
+
+
+def test_s14_a_drivers_row_has_the_switch_and_passes_its_kind(
+    runs: list[dict],
+) -> None:
+    """S14 widened (user, 28 a): the USB Audio driver's row shows its name,
+    "(driver)" and the detail line, and its switch calls set_ignored with
+    kind "DRIVER"."""
+    first = runs[0]
+    assert _v(first, "s13", "s14DriverRow") == [True, True, True]
+    assert _v(first, "s13", "s14Driver") == [_DRIVER, True, "DRIVER"]
+    assert _v(first, "s13", "s14DriverOn") is True
 
 
 def test_s14_refused_switch_goes_back_and_is_said(runs: list[dict]) -> None:
     first = runs[0]
-    assert _v(first, "s13", "s14Asked2")[-1] == ["chrome.exe", True]
+    assert _v(first, "s13", "s14Asked2")[-1] == ["chrome.exe", True, "PROCESS"]
     assert _v(first, "s13", "s14RefusedBack") is False
     assert _v(first, "s13", "s14RefusedText") is True
 

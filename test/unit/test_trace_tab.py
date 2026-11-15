@@ -139,6 +139,16 @@ if out["opened"]:
     click(w, named(w, "traceTick_osc_OSC"))
     wait_for(lambda: trace.osc_ticked() == [], 1000)
     out["osc-none"] = trace.osc_ticked()
+    # The Screen Saver Mode row (12 S16), next to HidHide's.
+    ssm = named(w, "traceTick_screen-saver_", prefix=True)
+    out["ssm-row"] = ssm is not None
+    if ssm is not None:
+        click(w, ssm)
+        wait_for(trace.screen_saver_ticked, 1000)
+        out["ssm-click"] = trace.screen_saver_ticked()
+        click(w, named(w, "traceTick_screen-saver_", prefix=True))
+        wait_for(lambda: not trace.screen_saver_ticked(), 1000)
+        out["ssm-off"] = not trace.screen_saver_ticked()
     from gremlin.ui import trace_model
     out["osc-point"] = list(trace_model.POINTS.get("OSC", ()))
     QtCore.QMetaObject.invokeMethod(named(w, "traceTree"), "positionViewAtBeginning")
@@ -265,6 +275,12 @@ def test_osc_row_and_areas_tick_by_click(result: dict) -> None:
     assert result["osc-count-all"] == "5 of 5", result
     assert result["osc-none"] == [], result
     assert result["osc-point"] == ["OSC"], result
+
+
+def test_screen_saver_mode_row_ticks_by_click(result: dict) -> None:
+    assert result["ssm-row"] is True, result
+    assert result["ssm-click"] is True, result
+    assert result["ssm-off"] is True, result
 
 
 def test_switch_turns_on_tracing_red_debug_mode_and_menu_check(result: dict) -> None:

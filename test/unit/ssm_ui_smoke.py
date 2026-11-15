@@ -272,14 +272,30 @@ calls.gate = None
 
 # Refresh Programs (S13), then Ignore this program (S14).
 emit("ssmRefreshPrograms", "clicked")
-until(lambda: int(prop("ssmProgramList", "count")) == 2)
+until(lambda: int(prop("ssmProgramList", "count")) == 3)
 settle()
 rows = switches()
+
+
+def shown(name: str) -> list[dict]:
+    """The rows' labels named `name`, top to bottom: text and visible."""
+    view = win.findChild(QtQuick.QQuickItem, "ssmProgramList")
+    found = _items_named(view.property("contentItem"), name)
+    found.sort(key=lambda o: float(o.mapToItem(view, QtCore.QPointF(0, 0)).y()))
+    return [
+        {"text": str(o.property("text")), "visible": bool(o.property("visible"))}
+        for o in found
+    ]
+
+
 out["programs"] = {
     "lists": calls.lists,
     "count": int(prop("ssmProgramList", "count")),
     "checked": [r["checked"] for r in rows],
     "message": str(prop("ssmProgramsMessage", "text")),
+    "names": [r["text"] for r in shown("ssmProgramName")],
+    "kinds": shown("ssmProgramKind"),
+    "details": shown("ssmProgramDetail"),
 }
 
 # Refused: the switch goes back, the window says so.
@@ -306,6 +322,17 @@ out["accepted"] = {
     "ignores": list(calls.ignores),
     "checked": [r["checked"] for r in switches()],
     "message": str(prop("ssmProgramsMessage", "text")),
+}
+
+# A driver's row (S14 widened): its switch passes the kind on.
+third = switches()[2]["obj"]
+third.setProperty("checked", True)
+QtCore.QMetaObject.invokeMethod(third, "toggled")
+until(lambda: len(calls.ignores) == 3 and not ev("_ssm.pendingIgnore"))
+settle()
+out["driver"] = {
+    "ignores": list(calls.ignores),
+    "checked": [r["checked"] for r in switches()],
 }
 
 # A refused list (S13): the window says so, the list stays as it was.

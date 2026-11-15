@@ -4,9 +4,10 @@
 
 """Control tracing (Live Log Reader › Trace, D-01-TRACE): while it is on,
 each ticked control is followed from the driver (RAW) through the wiring
-(WIRING) to the vJoy write (OUTPUT/BLOCKED), with EVENT, HIDHIDE and OUT OF
-STEP lines (and, while Mouse is ticked, the temporary click trace's MOUSE
-lines; ONE-TIME tracker OT-5, remove after the fix). Lines go to an
+(WIRING) to the vJoy write (OUTPUT/BLOCKED), with EVENT, HIDHIDE, SCREEN
+SAVER (page 12 S16) and OUT OF STEP lines (and, while Mouse is ticked, the
+temporary click trace's MOUSE lines; ONE-TIME tracker OT-5, remove after the
+fix). Lines go to an
 in-memory ring for the tab and to trace.log.
 OSC is traced by area (D-09-OSC-TRACE): osc() writes OSC/BLOCKED lines for
 the ticked areas; per-message lines are rate limited like axis lines and
@@ -43,6 +44,8 @@ OUTPUT = "OUTPUT"
 BLOCKED = "BLOCKED"
 EVENT = "EVENT"
 HIDHIDE = "HIDHIDE"
+# Screen Saver Mode lines (page 12 S16), while its row is ticked.
+SCREEN_SAVER = "SCREEN SAVER"
 OSC = "OSC"
 OUT_OF_STEP = "OUT OF STEP"
 # ONE-TIME (tracker OT-5): mouse lines of the temporary click trace;
@@ -86,6 +89,7 @@ _CFG_GROUP = "trace"
 _CFG_TICKS = "ticks"
 _CFG_OOS = "out-of-step"
 _CFG_HIDHIDE = "hidhide"
+_CFG_SCREEN_SAVER = "screen-saver-mode"
 _CFG_OSC = "osc"
 # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
 _CFG_MOUSE = "mouse"
@@ -106,6 +110,7 @@ _hooks: list[Callable[[], None]] = []
 _ticks: dict[uuid.UUID, dict[str, Any]] | None = None
 _oos: set[uuid.UUID] = set()
 _hidhide_on = False
+_screen_saver_on = False
 _osc_areas: frozenset[str] = frozenset()
 _mouse_on = False  # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
 
@@ -207,6 +212,8 @@ def _ensure_options() -> None:
          "Trace: devices with the out-of-step check.", {}),
         (_CFG_HIDHIDE, PropertyType.String, "",
          "Trace: HidHide row ticked (on or empty).", {}),
+        (_CFG_SCREEN_SAVER, PropertyType.String, "",
+         "Trace: Screen Saver Mode row ticked (on or empty).", {}),
         (_CFG_OSC, PropertyType.String, "[]",
          "Trace: ticked OSC areas.", {}),
         # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
@@ -228,12 +235,13 @@ def _ensure_options() -> None:
 
 def _load() -> dict[uuid.UUID, dict[str, Any]]:
     """The tick cache, read from the config once."""
-    global _ticks, _hidhide_on, _osc_areas, _mouse_on
+    global _ticks, _hidhide_on, _screen_saver_on, _osc_areas, _mouse_on
     if _ticks is not None:
         return _ticks
     ticks: dict[uuid.UUID, dict[str, Any]] = {}
     oos: set[uuid.UUID] = set()
     hh = False
+    ssm = False
     mouse_on = False  # ONE-TIME (tracker OT-5): remove after the fix.
     areas: frozenset[str] = frozenset()
     try:
@@ -260,6 +268,9 @@ def _load() -> dict[uuid.UUID, dict[str, Any]]:
         if isinstance(rows, list):
             oos = {u for r in rows if (u := _key(r)) is not None}
         hh = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_HIDHIDE) or "") == "on"
+        ssm = (
+            str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_SCREEN_SAVER) or "") == "on"
+        )
         # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
         mouse_on = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_MOUSE) or "") == "on"
         osc_rows = json.loads(
@@ -273,6 +284,7 @@ def _load() -> dict[uuid.UUID, dict[str, Any]]:
     _oos.clear()
     _oos.update(oos)
     _hidhide_on = hh
+    _screen_saver_on = ssm
     _mouse_on = mouse_on  # ONE-TIME (tracker OT-5): remove after the fix.
     _osc_areas = areas
     return ticks
@@ -297,6 +309,10 @@ def _save() -> None:
             _CFG_SECTION, _CFG_GROUP, _CFG_OOS, json.dumps(sorted(str(u) for u in _oos))
         )
         cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_HIDHIDE, "on" if _hidhide_on else "")
+        cfg.set(
+            _CFG_SECTION, _CFG_GROUP, _CFG_SCREEN_SAVER,
+            "on" if _screen_saver_on else "",
+        )
         # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
         cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_MOUSE, "on" if _mouse_on else "")
         cfg.set(
@@ -382,6 +398,44 @@ def set_hidhide(on: bool) -> None:
         _load()
         _hidhide_on = bool(on)
         _save()
+
+
+def screen_saver_ticked() -> bool:
+    """The Screen Saver Mode row is ticked (saved; off by default)."""
+    _load()
+    return _screen_saver_on
+
+
+def screen_saver_on() -> bool:
+    """Tracing is on and the Screen Saver Mode row is ticked (cheap; any
+    thread): callers may skip building a line's text when False."""
+    if not _enabled:
+        return False
+    try:
+        _load()
+        return _screen_saver_on
+    except Exception:
+        return False
+
+
+def set_screen_saver(on: bool) -> None:
+    """Ticks or unticks the Screen Saver Mode row (saved)."""
+    global _screen_saver_on
+    with _LOCK:
+        _load()
+        _screen_saver_on = bool(on)
+        _save()
+
+
+def screen_saver(text: str) -> None:
+    """One SCREEN SAVER line (control "Screen Saver Mode"), only while
+    tracing is on and the row is ticked; never raises."""
+    if not screen_saver_on():
+        return
+    try:
+        _add(SCREEN_SAVER, "Screen Saver Mode", str(text))
+    except Exception:
+        pass
 
 
 # ONE-TIME (tracker OT-5): the Mouse tick and MOUSE lines of the temporary
@@ -482,13 +536,14 @@ def _reset_for_tests() -> None:
     """Turns tracing off (hooks run) and forgets the tick cache, lines and
     file (tests only). on_change hooks are kept."""
     global _ticks, _enabled, _since, _notice, _version, _logger, _handler, _max_mb
-    global _axis_rate, _axis_interval, _osc_areas, _mouse_on
+    global _axis_rate, _axis_interval, _osc_areas, _mouse_on, _screen_saver_on
     set_enabled(False)
     with _LOCK:
         _cancel_flush()
         _ticks = None
         _osc_areas = frozenset()
         _mouse_on = False  # ONE-TIME (tracker OT-5): remove after the fix.
+        _screen_saver_on = False
         osc_reset()
         _max_mb = None
         _axis_rate = None

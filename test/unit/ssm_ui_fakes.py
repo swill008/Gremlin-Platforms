@@ -14,6 +14,10 @@ import types
 from dataclasses import dataclass, field, replace
 from typing import Any, Callable
 
+# A driver's request as powercfg names it (the user's PC, 2026-11-15).
+DRIVER_NAME = "USB Audio 2.0 (USB\\VID_0DB0&PID_CD0E&MI_00\\9&9c4d365&0&0000)"
+DRIVER_DETAIL = "An audio stream is currently in use."
+
 
 @dataclass
 class Settings:
@@ -54,6 +58,8 @@ class ProgramRequest:
     path: str
     kinds: list[str]
     ignored: bool
+    kind: str = "PROCESS"  # "PROCESS" | "DRIVER" | "SERVICE"
+    detail: str = ""
 
 
 @dataclass
@@ -109,7 +115,7 @@ class Calls:
     def __init__(self) -> None:
         self.scans: list[float] = []
         self.lists = 0
-        self.ignores: list[tuple[str, bool]] = []
+        self.ignores: list[tuple[str, bool, str]] = []
         self.devices = [
             DeviceRate(
                 "PD200X Microphone (buttons)", "HID\\VID_1&PID_2\\1", 12, 1, 18.4
@@ -125,6 +131,14 @@ class Calls:
                 ),
                 ProgramRequest(
                     "chrome.exe", "C:\\Chrome\\chrome.exe", ["Display", "System"], True
+                ),
+                ProgramRequest(
+                    DRIVER_NAME,
+                    "",
+                    ["System"],
+                    False,
+                    kind="DRIVER",
+                    detail=DRIVER_DETAIL,
                 ),
             ],
         )
@@ -173,9 +187,12 @@ def install(target: Any = None) -> tuple[FakeManager, Calls]:  # noqa: ANN401
         return calls.requests
 
     def set_ignored(
-        name: str, ignored: bool, runner: Callable | None = None
+        name: str,
+        ignored: bool,
+        kind: str = "PROCESS",
+        runner: Callable | None = None,
     ) -> tuple[bool, str]:
-        calls.ignores.append((name, ignored))
+        calls.ignores.append((name, ignored, kind))
         return calls.ignore_answer
 
     power.ProgramRequest = ProgramRequest  # type: ignore[attr-defined]

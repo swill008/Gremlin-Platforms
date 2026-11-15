@@ -14,12 +14,15 @@ methods."""
 from __future__ import annotations
 
 import ctypes
+import logging
 import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol, cast
 
-from gremlin import clock
+from gremlin import clock, trace
+
+_log = logging.getLogger("system")
 
 MIN_RATE = 2.0  # reports per second worth listing
 _WAIT_MS = 50  # longest single wait between checks
@@ -65,6 +68,16 @@ class _Device:
     count: int = 0
 
 
+def _trace(text: str) -> None:
+    """One Screen Saver Mode trace line; a no-op until trace has the tick."""
+    try:
+        write = getattr(trace, "screen_saver", None)
+        if write is not None:
+            write(text)
+    except Exception:
+        pass
+
+
 def scan(
     seconds: float = 4.0,
     should_stop: Callable[[], bool] | None = None,
@@ -72,15 +85,35 @@ def scan(
 ) -> list[DeviceRate]:
     """Devices sending at least MIN_RATE input reports a second, highest
     first. Empty when should_stop() turned true."""
+    try:
+        return _scan(seconds, should_stop, api)
+    except Exception as error:
+        _trace(f"Refresh Devices: failed ({error!r})")
+        _log.warning("Screen Saver Mode: Refresh Devices failed: %r", error)
+        raise
+
+
+def _scan(
+    seconds: float,
+    should_stop: Callable[[], bool] | None,
+    api: HidApi | None,
+) -> list[DeviceRate]:
     hid: HidApi = api if api is not None else cast("HidApi", _Win32Hid())
     stop = should_stop or (lambda: False)
     devices: list[_Device] = []
+    not_opened = 0
     try:
-        for path, instance_id, description in hid.interfaces():
+        interfaces = hid.interfaces()
+        _trace(
+            f"Refresh Devices: {len(interfaces)} HID interfaces, reading {seconds:g} s"
+        )
+        for path, instance_id, description in interfaces:
             if stop():
+                _trace("Refresh Devices: stopped")
                 return []
             handle = hid.open(path)
             if handle is None:
+                not_opened += 1
                 continue
             dev = _Device(handle, instance_id=instance_id)
             devices.append(dev)
@@ -110,6 +143,7 @@ def scan(
                 if dev.state == PENDING:
                     _take(hid, dev, hid.check(dev.op))
         else:
+            _trace("Refresh Devices: stopped")
             return []
         elapsed = max(clock.monotonic() - start, 1e-6)
     finally:
@@ -124,8 +158,19 @@ def scan(
         for d in devices
         if d.op is not None
     ]
+    _trace(
+        f"Refresh Devices: {len(rates)} read, {len(devices) - len(rates)} without"
+        f" input reports, {not_opened} could not be opened"
+    )
+    for r in sorted(rates, key=lambda r: r.reports_per_s, reverse=True):
+        listed = "listed" if r.reports_per_s >= MIN_RATE else "quiet"
+        _trace(
+            f"  {r.name} ({r.instance_id}, usage {r.usage_page:#04x}/{r.usage:#04x}):"
+            f" {r.reports_per_s:.1f} reports/s, {listed}"
+        )
     rates = [r for r in rates if r.reports_per_s >= MIN_RATE]
     rates.sort(key=lambda r: r.reports_per_s, reverse=True)
+    _trace(f"Refresh Devices: {len(rates)} devices never go quiet")
     return rates
 
 

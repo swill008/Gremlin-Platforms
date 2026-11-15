@@ -1088,3 +1088,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-15 | Screen Saver Mode: 5 parallel agents (CORE, SCAN, UI, TEST, DOCS) | agent feature | ~10 min batch | 12 min (09:40-09:52) | CORE 5, SCAN 6, DOCS 3, TEST 9, UI 11 min |
 | 2026-11-15 | Screen Saver Mode: lead fixes (History names, Options), raw-input probe, map | lead | rough 5-10 min | 10 min (09:52-10:02) | |
 | 2026-11-15 | Quick tests --changed (menu + start-up changed, so most of the suite) | test | 5-6 min | 6 min (09:57-10:03) | 4,078 passed |
+| 2026-11-15 | Screen Saver Mode batch 2 (tracing, drivers, never fix): 5 agents | agent fix | ~10 min | 7 min (10:10-10:17) | |
+| 2026-11-15 | Batch 2: targeted tests + --changed quick tests + installer rebuild (parallel) | test | 5-6 min | 6 min (10:18-10:24) | 3,881 passed; 1 load-only failure (golden editor) passes alone |

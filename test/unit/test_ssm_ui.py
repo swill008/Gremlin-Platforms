@@ -324,13 +324,17 @@ def test_refresh_programs_and_ignore_goes_back_on_failure(fakes, qapp: object) -
     assert calls.lists == 1
     assert [
         (r["name"], r["kinds"], r["ignored"]) for r in ssm.property("programs")
-    ] == [("RustDesk.exe", "Display", False), ("chrome.exe", "Display, System", True)]
+    ] == [
+        ("RustDesk.exe", "Display", False),
+        ("chrome.exe", "Display, System", True),
+        (ssm_ui_fakes.DRIVER_NAME, "System", False),
+    ]
     seen: list[bool] = []
     ssm.programsChanged.connect(lambda: seen.append(True))
     calls.ignore_answer = (False, "Administrator rights were refused.")
     ssm.setIgnored("RustDesk.exe", True)
     assert _wait(qapp, lambda: not ssm.property("pendingIgnore"))
-    assert calls.ignores == [("RustDesk.exe", True)]
+    assert calls.ignores == [("RustDesk.exe", True, "PROCESS")]
     assert ssm.isIgnored("RustDesk.exe") is False and seen
     assert ssm.property("programsMessage") == "Administrator rights were refused."
     calls.ignore_answer = (True, "")
@@ -343,8 +347,103 @@ def test_refresh_programs_and_ignore_goes_back_on_failure(fakes, qapp: object) -
     )
     ssm.refreshPrograms()
     assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
-    assert len(ssm.property("programs")) == 2
+    assert len(ssm.property("programs")) == 3
     assert ssm.property("programsMessage") == "Administrator rights were refused."
+
+
+def test_driver_rows_show_their_kind_and_detail_and_can_be_ignored(
+    fakes: tuple, qapp: object
+) -> None:  # noqa: ANN001
+    """S14 widened (user, 28 a): a driver's row has the switch and passes
+    its kind on; there is no 'not a program file name' refusal."""
+    _manager, calls, model, _m = fakes
+    ssm = model()
+    ssm.refreshPrograms()
+    assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
+    rows = ssm.property("programs")
+    assert [(r["kind"], r["kindWord"], r["detail"]) for r in rows] == [
+        ("PROCESS", "", ""),
+        ("PROCESS", "", ""),
+        ("DRIVER", "driver", ssm_ui_fakes.DRIVER_DETAIL),
+    ]
+    ssm.setIgnored(ssm_ui_fakes.DRIVER_NAME, True, "DRIVER")
+    assert _wait(qapp, lambda: not ssm.property("pendingIgnore"))
+    assert calls.ignores == [(ssm_ui_fakes.DRIVER_NAME, True, "DRIVER")]
+    assert ssm.isIgnored(ssm_ui_fakes.DRIVER_NAME, "DRIVER") is True
+    assert ssm.property("programsMessage") == (
+        f"{ssm_ui_fakes.DRIVER_NAME} is ignored: it no longer keeps the display on."
+    )
+    # A service row is the same (the form is not verified on a real PC).
+    calls.requests = ssm_ui_fakes.RequestsResult(
+        True,
+        "",
+        [ssm_ui_fakes.ProgramRequest("Spooler", "", ["System"], False, kind="SERVICE")],
+    )
+    ssm.refreshPrograms()
+    assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
+    assert ssm.property("programs")[0]["kindWord"] == "service"
+    ssm.setIgnored("Spooler", True, "SERVICE")
+    assert _wait(qapp, lambda: not ssm.property("pendingIgnore"))
+    assert calls.ignores[-1] == ("Spooler", True, "SERVICE")
+
+
+def test_windows_time_shows_while_screen_saver_mode_is_off(fakes: tuple) -> None:
+    """S5: with Screen Saver Mode off, status() carries Windows' wait (the
+    core's 'never' fix), and the window shows it greyed: 5 min, not never."""
+    manager, _calls, model, _m = fakes
+    ssm = model()
+    manager.extra = {"enabled": False, "listening": False, "windows_wait_s": 300}
+    ssm.refreshStatus()
+    assert ssm.property("enabled") is False
+    assert ssm.property("waitText") == ""
+    assert ssm.property("windowsWaitText") == "5 min"
+    assert ssm.property("windowsWaitLabel") == "Windows' display-off time (5 min)"
+    manager.extra = {"enabled": False, "windows_wait_s": 0}
+    ssm.refreshStatus()
+    assert ssm.property("windowsWaitText") == "Never"
+
+
+def test_presses_and_messages_are_traced_and_failures_logged(
+    fakes: tuple,
+    qapp: object,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:  # noqa: ANN001
+    """S16: button presses (with name and kind for Ignore) and every message
+    shown go to the Screen Saver Mode trace; failures also to the normal log
+    even with tracing off."""
+    import logging
+
+    from gremlin import trace
+
+    _manager, calls, model, _m = fakes
+    lines: list[str] = []
+    monkeypatch.setattr(trace, "screen_saver", lines.append, raising=False)
+    ssm = model()
+    ssm.refreshDevices()
+    assert _wait(qapp, lambda: not ssm.property("scanningDevices"))
+    ssm.refreshPrograms()
+    assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
+    calls.ignore_answer = (False, "Administrator rights were refused.")
+    with caplog.at_level(logging.WARNING, logger="system"):
+        ssm.setIgnored(ssm_ui_fakes.DRIVER_NAME, True, "DRIVER")
+        assert _wait(qapp, lambda: not ssm.property("pendingIgnore"))
+    assert lines[0] == "Refresh Devices pressed"
+    assert lines[1].startswith("Message shown: Checked ")
+    assert "Refresh Programs pressed" in lines
+    assert f"Ignore on pressed: {ssm_ui_fakes.DRIVER_NAME} (DRIVER)" in lines
+    assert lines[-1] == "Message shown: Administrator rights were refused."
+    assert any(
+        "failed: Administrator rights were refused." in r.getMessage()
+        and ssm_ui_fakes.DRIVER_NAME in r.getMessage()
+        for r in caplog.records
+    )
+    # A problem shown in the window is traced once, when it appears.
+    ssm.setEnabled(True)
+    _manager.extra = {"problem": "no_screen_saver"}
+    ssm.refreshStatus()
+    ssm.refreshStatus()
+    assert lines.count("Message shown: No screen saver is chosen in Windows.") == 1
 
 
 # The window, off-screen ------------------------------------------------------
@@ -457,15 +556,26 @@ def test_window_refresh_devices(window: dict) -> None:
 
 def test_window_refresh_programs_and_ignore_switch(window: dict) -> None:
     p = window["programs"]
-    assert p["lists"] == 1 and p["count"] == 2 and p["checked"] == [False, True]
+    assert p["lists"] == 1 and p["count"] == 3
+    # Every row has the switch, the driver's too (S14 widened).
+    assert p["checked"] == [False, True, False]
+    assert p["names"] == ["RustDesk.exe", "chrome.exe", ssm_ui_fakes.DRIVER_NAME]
+    assert [k["visible"] for k in p["kinds"]] == [False, False, True]
+    assert p["kinds"][2]["text"] == "(driver)"
+    assert [d["visible"] for d in p["details"]] == [False, False, True]
+    assert p["details"][2]["text"] == ssm_ui_fakes.DRIVER_DETAIL
     r = window["refused"]
-    assert r["ignores"] == [["RustDesk.exe", True]]
+    assert r["ignores"] == [["RustDesk.exe", True, "PROCESS"]]
     # The switch went back.
-    assert r["checked"] == [False, True]
+    assert r["checked"] == [False, True, False]
     assert r["message"] == "Administrator rights were refused."
     a = window["accepted"]
-    assert a["ignores"][-1] == ["RustDesk.exe", True] and a["checked"] == [True, True]
+    assert a["ignores"][-1] == ["RustDesk.exe", True, "PROCESS"]
+    assert a["checked"] == [True, True, False]
     assert a["message"] == "RustDesk.exe is ignored: it no longer keeps the display on."
+    d = window["driver"]
+    assert d["ignores"][-1] == [ssm_ui_fakes.DRIVER_NAME, True, "DRIVER"]
+    assert d["checked"] == [True, True, True]
     lr = window["listRefused"]
-    assert lr["count"] == 2 and lr["message"] == "Administrator rights were refused."
+    assert lr["count"] == 3 and lr["message"] == "Administrator rights were refused."
     assert window["closed"] is True

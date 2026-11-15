@@ -348,3 +348,173 @@ def test_timer_rearms_while_on_and_stops_when_off(env: Env) -> None:
     mode.apply(ssm.Settings(enabled=False))
     mode._on_timer()
     assert len(timers) == 2
+
+
+# ---- batch 2: Windows' wait while off (S5), tracing (S16)
+
+
+def test_status_off_shows_windows_wait(env: Env) -> None:
+    mode, api, _clk, _now, _run, _t = env
+    # Before any apply and before the first tick: Windows' 120 s, not "never".
+    st = mode.status()
+    assert st.enabled is False
+    assert st.windows_wait_s == 120 and st.wait_s == 120
+    assert st.wait_from_windows is True
+    mode.apply(ssm.Settings(enabled=False, wait_override_s=45))
+    st = mode.status()
+    assert st.windows_wait_s == 120 and st.wait_s == 45
+    assert st.wait_from_windows is False
+
+
+def test_status_off_follows_the_chosen_action(env: Env) -> None:
+    mode, api, _clk, _now, _run, _t = env
+    mode.apply(ssm.Settings(enabled=False, action=ssm.ACTION_POWER_OFF))
+    assert mode.status().windows_wait_s == 120
+    mode.apply(ssm.Settings(enabled=False, action=ssm.ACTION_SCREEN_SAVER))
+    assert mode.status().windows_wait_s == 60
+
+
+def test_status_off_after_switching_off(env: Env) -> None:
+    mode, api, _clk, _now, run, _t = env
+    mode.apply(_on())
+    run(5)
+    mode.apply(ssm.Settings(enabled=False))
+    st = mode.status()
+    assert st.enabled is False and st.windows_wait_s == 120
+
+
+def test_status_off_reads_windows_at_most_once_a_second(env: Env) -> None:
+    mode, api, _clk, now, _run, _t = env
+    reads = [0]
+    real = api.display_off_wait_s
+
+    def counted() -> int:
+        reads[0] += 1
+        return real()
+
+    api.display_off_wait_s = counted  # type: ignore[method-assign]
+    for _ in range(20):
+        mode.status()
+    assert reads[0] == 1
+    api.display_wait = 300
+    assert mode.status().windows_wait_s == 120  # cached within the second
+    now[0] += 1.0
+    assert mode.status().windows_wait_s == 300
+    assert reads[0] == 2
+
+
+@pytest.fixture
+def traced(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    lines: list[str] = []
+    monkeypatch.setattr(ssm, "_trace", lines.append)
+    return lines
+
+
+def _has(lines: list[str], text: str) -> bool:
+    return any(text in line for line in lines)
+
+
+def test_trace_settings_listener_and_countdown(env: Env, traced: list[str]) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on())
+    assert _has(traced, "settings applied: on, power off displays")
+    assert _has(traced, "listener started")
+    assert _has(traced, "countdown started: wait 120 s (from Windows")
+    traced.clear()
+    mode.apply(_on(wait_override_s=30))
+    assert _has(traced, "countdown started: wait 30 s (typed")
+    mode.apply(ssm.Settings(enabled=False))
+    assert _has(traced, "listener stopped")
+
+
+def test_trace_listener_failed(
+    env: Env,
+    traced: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    mode, api, clk, _now, _run, _t = env
+    clk.ok = False
+    clk.error = "raw input not registered (Windows error 87)"
+    monkeypatch.setattr(windows_event_hook, "enabled", True)
+    with caplog.at_level("WARNING", logger="system"):
+        mode.apply(_on())
+    assert _has(traced, "listener failed: raw input not registered (Windows error 87)")
+    assert "Windows error 87" in caplog.text
+    assert _has(traced, "problem: not_listening")
+
+
+def test_trace_hold_action_and_input(env: Env, traced: list[str]) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on())
+    run(10)
+    api.busy = True
+    run(3)
+    api.busy = False
+    run(1)
+    assert _has(traced, "hold began: fullscreen")
+    assert _has(traced, "hold ended: fullscreen")
+    assert sum("hold began" in t for t in traced) == 1
+    run(120)
+    assert _has(traced, "action fired: power off displays: sent")
+    traced.clear()
+    clk.note_input()
+    run(1)
+    assert traced[0] == "input after action: countdown restarts"
+    assert _has(traced, "countdown started")
+    traced.clear()
+    # Ordinary input in a running countdown is never traced.
+    for _ in range(5):
+        clk.note_input()
+        run(1)
+    assert traced == []
+
+
+def test_trace_problem_changed(env: Env, traced: list[str]) -> None:
+    mode, api, clk, _now, run, _t = env
+    api.display_wait = 0
+    mode.apply(_on())
+    run(3)
+    assert sum(t == "problem: windows_never" for t in traced) == 1
+    api.display_wait = 50
+    mode.apply(_on(wait_override_s=0, hold_fullscreen=False))
+    assert _has(traced, "problem cleared")
+
+
+def test_failed_screen_saver_start_is_logged(
+    env: Env, traced: list[str], caplog: pytest.LogCaptureFixture
+) -> None:
+    mode, api, clk, _now, run, _t = env
+    api.start_screen_saver = lambda path: False  # type: ignore[method-assign]
+    with caplog.at_level("WARNING", logger="system"):
+        mode.apply(_on(action=ssm.ACTION_SCREEN_SAVER))
+        run(60)
+    assert _has(traced, "could not start")
+    assert "could not start" in caplog.text
+
+
+def test_action_exception_is_logged(
+    env: Env, traced: list[str], caplog: pytest.LogCaptureFixture
+) -> None:
+    mode, api, clk, _now, run, _t = env
+
+    def boom() -> None:
+        raise OSError("no displays")
+
+    api.power_off_displays = boom  # type: ignore[method-assign]
+    with caplog.at_level("ERROR", logger="system"):
+        mode.apply(_on())
+        run(120)
+    assert _has(traced, "action fired: power off displays: failed (no displays)")
+    assert "action failed" in caplog.text
+
+
+def test_trace_helper_uses_trace_screen_saver(monkeypatch: pytest.MonkeyPatch) -> None:
+    from gremlin import trace
+
+    got: list[str] = []
+    monkeypatch.setattr(trace, "screen_saver", got.append, raising=False)
+    ssm._trace("hello")
+    assert got == ["hello"]
+    monkeypatch.delattr(trace, "screen_saver")
+    ssm._trace("no trace function yet")  # no error

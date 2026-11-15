@@ -5,7 +5,9 @@
 (stored in the program's settings, so History records them, S10), the
 status line read from screen_saver_mode.manager() once a second while the
 window is open, and the two checks (Refresh Devices, Refresh Programs) and
-the Ignore this program switches, run on program threads."""
+the Ignore switches (programs, drivers and services, S14), run on program
+threads. Button presses and every message shown go to the Screen Saver Mode
+trace (S16); failures also go to the normal log."""
 
 from __future__ import annotations
 
@@ -43,6 +45,24 @@ _MAX_WAIT_S = 86400
 SCAN_SECONDS = 4.0
 
 _log = logging.getLogger("system")
+
+# powercfg's kinds of request (ProgramRequest.kind) and the word shown after
+# a driver's or service's name.
+KIND_PROCESS = "PROCESS"
+_KIND_WORDS = {"DRIVER": "driver", "SERVICE": "service"}
+
+
+def _trace(text: str) -> None:
+    """One Screen Saver Mode trace line (S16); a no-op while tracing is off
+    or before gremlin.trace has the Screen Saver Mode tick."""
+    try:
+        from gremlin import trace
+
+        write = getattr(trace, "screen_saver", None)
+        if write is not None:
+            write(text)
+    except Exception:
+        _log.exception("Screen Saver Mode: the trace line could not be written")
 
 
 def register_options() -> None:
@@ -220,6 +240,21 @@ def _hold_text(status: object) -> str:
     return ""
 
 
+def _program_row(p: object) -> dict:
+    """A Refresh Programs row for the window: the name, its kind (a
+    driver's or service's word shown after the name) and the detail line."""
+    kind = str(getattr(p, "kind", "") or KIND_PROCESS).upper()
+    return {
+        "name": str(getattr(p, "name", "")),
+        "path": str(getattr(p, "path", "") or ""),
+        "kinds": ", ".join(str(k) for k in (getattr(p, "kinds", None) or [])),
+        "ignored": bool(getattr(p, "ignored", False)),
+        "kind": kind,
+        "kindWord": _KIND_WORDS.get(kind, ""),
+        "detail": str(getattr(p, "detail", "") or "").strip(),
+    }
+
+
 def _problem_text(problem: str, action: str) -> str:
     if problem == "no_screen_saver":
         return "No screen saver is chosen in Windows."
@@ -253,7 +288,7 @@ class ScreenSaverModeModel(QtCore.QObject):
     # Worker results, queued to the main thread.
     _devicesDone = QtCore.Signal(object)
     _programsDone = QtCore.Signal(object)
-    _ignoreDone = QtCore.Signal(str, bool, bool, str)
+    _ignoreDone = QtCore.Signal(str, str, bool, bool, str)
 
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
@@ -266,6 +301,7 @@ class ScreenSaverModeModel(QtCore.QObject):
         self._scanning_devices = False
         self._scanning_programs = False
         self._pending_ignore = ""
+        self._shown_problem = ""
         self._stop = False
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(1000)
@@ -394,6 +430,11 @@ class ScreenSaverModeModel(QtCore.QObject):
         except Exception:
             _log.exception("Screen Saver Mode: status could not be read")
             self._status = None
+        problem = self.problemText
+        if problem != self._shown_problem:
+            self._shown_problem = problem
+            if problem:
+                _trace(f"Message shown: {problem}")
         self.statusChanged.emit()
 
     def _st(self, name: str, default: object) -> Any:  # noqa: ANN401
@@ -504,7 +545,9 @@ class ScreenSaverModeModel(QtCore.QObject):
     @QtCore.Slot()
     def refreshDevices(self) -> None:
         if self._scanning_devices:
+            _trace("Refresh Devices pressed: a check is already running")
             return
+        _trace("Refresh Devices pressed")
         self._stop = False
         self._scanning_devices = True
         self.busyChanged.emit()
@@ -536,6 +579,7 @@ class ScreenSaverModeModel(QtCore.QObject):
         if isinstance(result, str):
             self._devices = []
             self._devices_message = result
+            _log.warning(f"Screen Saver Mode: {result}")
         else:
             rows = result if isinstance(result, list) else []
             self._devices = sorted(rows, key=lambda d: -d["rate"])
@@ -545,6 +589,7 @@ class ScreenSaverModeModel(QtCore.QObject):
                 else f"Checked {_clock_text()} · No device is sending reports "
                 "all the time."
             )
+        _trace(f"Message shown: {self._devices_message}")
         self.busyChanged.emit()
         self.devicesChanged.emit()
 
@@ -558,15 +603,23 @@ class ScreenSaverModeModel(QtCore.QObject):
     def programsMessage(self) -> str:
         return self._programs_message
 
+    def _row(self, row: dict, name: str, kind: str) -> bool:
+        return row["name"] == name and (not kind or row["kind"] == kind)
+
     @QtCore.Slot(str, result=bool)
-    def isIgnored(self, name: str) -> bool:
-        """Whether Windows has the program ignored, as last read or changed."""
-        return any(r["name"] == str(name) and r["ignored"] for r in self._programs)
+    @QtCore.Slot(str, str, result=bool)
+    def isIgnored(self, name: str, kind: str = "") -> bool:
+        """Whether Windows has the row ignored, as last read or changed
+        (kind "" matches any kind)."""
+        name, kind = str(name), str(kind or "")
+        return any(self._row(r, name, kind) and r["ignored"] for r in self._programs)
 
     @QtCore.Slot()
     def refreshPrograms(self) -> None:
         if self._scanning_programs:
+            _trace("Refresh Programs pressed: a check is already running")
             return
+        _trace("Refresh Programs pressed")
         self._scanning_programs = True
         self.busyChanged.emit()
 
@@ -588,21 +641,17 @@ class ScreenSaverModeModel(QtCore.QObject):
         self._scanning_programs = False
         if isinstance(result, str):
             self._programs_message = result
+            _log.warning(f"Screen Saver Mode: {result}")
         elif not getattr(result, "ok", False):
             # Refused: the window says so and nothing else happens (S13).
             self._programs_message = str(
                 getattr(result, "error", "") or "The programs couldn't be listed."
             )
+            _log.warning(
+                f"Screen Saver Mode: Refresh Programs: {self._programs_message}"
+            )
         else:
-            self._programs = [
-                {
-                    "name": str(p.name),
-                    "path": str(p.path),
-                    "kinds": ", ".join(str(k) for k in p.kinds),
-                    "ignored": bool(p.ignored),
-                }
-                for p in getattr(result, "programs", [])
-            ]
+            self._programs = [_program_row(p) for p in getattr(result, "programs", [])]
             self._programs_message = (
                 f"Checked {_clock_text()} · ignored programs no longer keep "
                 "the display on."
@@ -610,14 +659,20 @@ class ScreenSaverModeModel(QtCore.QObject):
                 else f"Checked {_clock_text()} · No program is asking Windows "
                 "to keep the display on."
             )
+        _trace(f"Message shown: {self._programs_message}")
         self.busyChanged.emit()
         self.programsChanged.emit()
 
     @QtCore.Slot(str, bool)
-    def setIgnored(self, name: str, ignored: bool) -> None:
-        name = str(name)
+    @QtCore.Slot(str, bool, str)
+    def setIgnored(self, name: str, ignored: bool, kind: str = KIND_PROCESS) -> None:
+        """Ignore on/off for a row of any kind: a program (PROCESS), a
+        driver or a service (S14); Windows checks the name."""
+        name, kind = str(name), str(kind or KIND_PROCESS)
+        _trace(f"Ignore {'on' if ignored else 'off'} pressed: {name} ({kind})")
         if self._pending_ignore:
             # One change at a time: the switch goes back.
+            _trace(f"Ignore for {name} ({kind}) not sent: another change is running")
             self.programsChanged.emit()
             return
         self._pending_ignore = name
@@ -627,23 +682,27 @@ class ScreenSaverModeModel(QtCore.QObject):
             try:
                 from gremlin import power_requests
 
-                ok, error = power_requests.set_ignored(name, bool(ignored))
+                ok, error = power_requests.set_ignored(name, bool(ignored), kind=kind)
             except Exception as exc:
-                _log.exception("Screen Saver Mode: Ignore this program failed")
+                _log.exception("Screen Saver Mode: Ignore failed")
                 ok, error = False, str(exc)
             self._emit(
-                self._ignoreDone, name, bool(ignored), bool(ok), str(error or "")
+                self._ignoreDone, name, kind, bool(ignored), bool(ok), str(error or "")
             )
 
         if not self._start("Screen Saver Mode ignore", work):
-            self._take_ignore(name, bool(ignored), False, "The change couldn't start.")
+            self._take_ignore(
+                name, kind, bool(ignored), False, "The change couldn't start."
+            )
 
-    @QtCore.Slot(str, bool, bool, str)
-    def _take_ignore(self, name: str, ignored: bool, ok: bool, error: str) -> None:
+    @QtCore.Slot(str, str, bool, bool, str)
+    def _take_ignore(
+        self, name: str, kind: str, ignored: bool, ok: bool, error: str
+    ) -> None:
         self._pending_ignore = ""
         if ok:
             for row in self._programs:
-                if row["name"] == name:
+                if self._row(row, name, kind):
                     row["ignored"] = ignored
             self._programs_message = (
                 f"{name} is ignored: it no longer keeps the display on."
@@ -654,5 +713,10 @@ class ScreenSaverModeModel(QtCore.QObject):
             # The switch goes back to what Windows has (programsChanged) and
             # the window says why (S14).
             self._programs_message = error or "The change wasn't made."
+            _log.warning(
+                f"Screen Saver Mode: Ignore {'on' if ignored else 'off'} for "
+                f"{name} ({kind}) failed: {self._programs_message}"
+            )
+        _trace(f"Message shown: {self._programs_message}")
         self.busyChanged.emit()
         self.programsChanged.emit()

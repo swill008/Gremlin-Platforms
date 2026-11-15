@@ -310,11 +310,42 @@ ApplicationWindow {
                     delegate: RowLayout {
                         required property var modelData
                         width: ListView.view.width
-                        Label {
+                        // The name; a driver's or service's kind in grey
+                        // after it, and powercfg's detail line under it.
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            elide: Text.ElideMiddle
-                            text: modelData.name
-                            color: Style.fg
+                            spacing: 0
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Style.dp(4)
+                                Label {
+                                    objectName: "ssmProgramName"
+                                    Layout.fillWidth: !_kindWord.visible
+                                    Layout.maximumWidth: parent.width
+                                                         - (_kindWord.visible ? _kindWord.implicitWidth + Style.dp(4) : 0)
+                                    elide: Text.ElideMiddle
+                                    text: modelData.name
+                                    color: Style.fg
+                                }
+                                Label {
+                                    id: _kindWord
+                                    objectName: "ssmProgramKind"
+                                    visible: (modelData.kindWord || "").length > 0
+                                    text: "(" + (modelData.kindWord || "") + ")"
+                                    color: Style.fgMuted
+                                    font.pixelSize: Style.dp(12)
+                                }
+                                Item { Layout.fillWidth: _kindWord.visible }
+                            }
+                            Label {
+                                objectName: "ssmProgramDetail"
+                                Layout.fillWidth: true
+                                visible: (modelData.detail || "").length > 0
+                                wrapMode: Text.Wrap
+                                text: modelData.detail || ""
+                                color: Style.fgMuted
+                                font.pixelSize: Style.dp(12)
+                            }
                         }
                         Label {
                             Layout.preferredWidth: Style.dp(140)
@@ -328,12 +359,14 @@ ApplicationWindow {
                             enabled: _ssm.pendingIgnore.length === 0
                             // What Windows has, read again after every
                             // change, so a refused one goes back (S14).
-                            Component.onCompleted: checked = _ssm.isIgnored(modelData.name)
-                            onToggled: _ssm.setIgnored(modelData.name, checked)
+                            // Every row has it: programs, drivers and
+                            // services alike.
+                            Component.onCompleted: checked = _ssm.isIgnored(modelData.name, modelData.kind)
+                            onToggled: _ssm.setIgnored(modelData.name, checked, modelData.kind)
                             Connections {
                                 target: _ssm
                                 function onProgramsChanged() {
-                                    _ignore.checked = _ssm.isIgnored(modelData.name)
+                                    _ignore.checked = _ssm.isIgnored(modelData.name, modelData.kind)
                                 }
                             }
                         }
