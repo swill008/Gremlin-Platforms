@@ -13,7 +13,14 @@ their own elevated check and keep their own half (power_requests.split).
 Button presses and every message shown go to the Screen Saver Mode trace
 (S16); failures also go to the normal log. The countdown per timer and
 the count of times Windows turned the displays back on (S6, S20) come from
-the status."""
+the status.
+
+S21-S27: the last Refresh Devices result is saved (S27) and loaded into the
+Devices list; the helper is started when the mode and Power off displays
+are on and that list isn't empty (S25), not again after a refusal until
+Try again (S26); the core's device hooks disable the saved devices before
+the power-off and re-enable them at the first input (S21, S23), and a
+device plugged in again retries (device_disable.DeviceDisabler)."""
 
 from __future__ import annotations
 
@@ -41,7 +48,12 @@ SAVER_WAIT = "screen-saver-wait-s"
 OFF_ON = "power-off-on"
 OFF_WAIT = "power-off-wait-s"
 HOLD_FULLSCREEN = "hold-fullscreen"
-NAMES = (ENABLED, SAVER_ON, SAVER_WAIT, OFF_ON, OFF_WAIT, HOLD_FULLSCREEN)
+# S27: the last Refresh Devices result, kept across restarts.
+DEVICES = "devices"
+NAMES = (ENABLED, SAVER_ON, SAVER_WAIT, OFF_ON, OFF_WAIT, HOLD_FULLSCREEN, DEVICES)
+
+# S26: shown when the helper should run and doesn't.
+HELPER_MESSAGE = "Devices can't be disabled: the helper isn't running"
 _WAITS = (SAVER_WAIT, OFF_WAIT)
 
 # The longest wait that can be typed (minutes) and stored (seconds).
@@ -72,8 +84,9 @@ def _trace(text: str) -> None:
 
 
 def register_options() -> None:
-    """The six settings (01 S6: registered before the purge). Exposed for
-    History; Options leaves them out (the window has the controls)."""
+    """The seven settings (01 S6: registered before the purge): the six
+    the window sets and the saved Devices list (S27). Exposed for History;
+    Options leaves them out (the window has the controls)."""
     cfg = config.Configuration()
     rows: tuple[tuple[str, PropertyType, object, str, dict], ...] = (
         (
@@ -120,6 +133,14 @@ def register_options() -> None:
             PropertyType.Bool,
             True,
             "Screen Saver Mode: hold off during full-screen programs.",
+            {},
+        ),
+        (
+            DEVICES,
+            PropertyType.List,
+            [],
+            "Screen Saver Mode: the devices the last Refresh Devices found; "
+            "they are disabled while the displays are off.",
             {},
         ),
     )
@@ -169,45 +190,248 @@ def saved_settings() -> object:
     )
 
 
+# Whether the mode and Power off displays were both on when last applied
+# (None before the first apply).
+_off_timer_on: bool | None = None
+
+
 def apply_saved() -> None:
     """Hands the saved settings to the one Screen Saver Mode (at start,
     after a change in the window, after History puts settings back)."""
+    global _off_timer_on
     try:
         core = _core()
         wanted = saved_settings()
         manager = core.manager()
         if manager.settings() != wanted:
             manager.apply(wanted)
+        on = bool(wanted.enabled) and bool(wanted.power_off_on)  # type: ignore[attr-defined]
+        was, _off_timer_on = _off_timer_on, on
+        if was and not on:
+            # The core calls after_input only while on: switching the mode
+            # or Power off displays off re-enables what is pending (S23).
+            _trace("mode or power off switched off: re-enabling devices")
+            _disabler().enable_pending()
     except Exception:
         _log.exception("Screen Saver Mode: could not apply the settings")
 
 
+# The saved Devices list (S27) ---------------------------------------------
+
+
+def _device_row(row: object) -> dict | None:
+    """A saved row as the Devices list shows it, None when it isn't one."""
+    if not isinstance(row, dict):
+        return None
+    name = str(row.get("name", "") or "")
+    instance_id = str(row.get("instance_id", row.get("instanceId", "")) or "")
+    if not instance_id:
+        return None
+    try:
+        rate = float(row.get("rate", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        rate = 0.0
+    return {"name": name, "instanceId": instance_id, "rate": rate}
+
+
+def saved_devices() -> list[dict]:
+    """The last Refresh Devices result, as the Devices list shows it
+    ({"name", "instanceId", "rate"}); [] before the first press."""
+    raw = _value(DEVICES)
+    rows = [_device_row(r) for r in (raw if isinstance(raw, list) else [])]
+    return [r for r in rows if r is not None]
+
+
+def save_devices(rows: list[dict]) -> None:
+    """Saves a Refresh Devices result (S27): {"name", "instance_id"} per
+    device, with its rate so the list shows as it was."""
+    stored = [
+        {
+            "name": str(r.get("name", "")),
+            "instance_id": str(r.get("instanceId", "")),
+            "rate": float(r.get("rate", 0.0) or 0.0),
+        }
+        for r in rows
+        if r.get("instanceId")
+    ]
+    if stored != _value(DEVICES):
+        _set(DEVICES, stored)
+
+
+def _saved_pairs() -> list[tuple[str, str]]:
+    """The saved list as DeviceDisabler.disable takes it: (name, id)."""
+    return [(r["name"], r["instanceId"]) for r in saved_devices()]
+
+
+# The helper (S25, S26) and the device hooks (S21, S23) ---------------------
+
+
+def _disabler() -> Any:  # noqa: ANN401 - device_disable.DeviceDisabler
+    from gremlin import device_disable
+
+    return device_disable.manager()
+
+
+# S25: not started again after a refusal until Try again.
+_helper_refused = False
+_helper_starting = False
+
+
+def helper_wanted() -> bool:
+    """S25: Screen Saver Mode on, Power off displays on, saved list not
+    empty."""
+    try:
+        return bool(_value(ENABLED)) and bool(_value(OFF_ON)) and bool(saved_devices())
+    except Exception:
+        _log.exception("Screen Saver Mode: the helper's settings could not be read")
+        return False
+
+
+def _helper_done(ok: bool, error: str) -> None:
+    """start_helper's answer (a program thread): a refusal stops further
+    starts until Try again (S25, S26)."""
+    global _helper_refused, _helper_starting
+    _helper_starting = False
+    if ok:
+        _log.info("Screen Saver Mode: the device helper is running")
+        _trace("device helper started")
+    else:
+        _helper_refused = True
+        why = str(error or "it could not start")
+        _log.warning(f"Screen Saver Mode: the device helper isn't running: {why}")
+        _trace(f"device helper not started: {why}")
+
+
+def ensure_helper() -> None:
+    """Starts the helper when it is wanted, isn't running, isn't being
+    started and wasn't refused (S25): at start, on a settings change,
+    after a Refresh Devices that fills the list."""
+    global _helper_starting
+    if _helper_refused or _helper_starting or not helper_wanted():
+        return
+    try:
+        disabler = _disabler()
+        if disabler.helper_running():
+            return
+        _helper_starting = True
+        _trace("device helper: starting")
+        disabler.start_helper(_helper_done)
+    except Exception:
+        _helper_starting = False
+        _log.exception("Screen Saver Mode: the device helper could not start")
+
+
+def try_again() -> None:
+    """S26's Try again: one more start, even after a refusal."""
+    global _helper_refused
+    _trace("Try again pressed")
+    _helper_refused = False
+    ensure_helper()
+
+
+def helper_message() -> str:
+    """S26: the window's text when the helper should run and doesn't; ""
+    otherwise (also while it is being started)."""
+    if _helper_starting or not helper_wanted():
+        return ""
+    try:
+        disabler = _disabler()
+        text = str(disabler.status_text() or "")
+        if not text and not disabler.helper_running():
+            text = HELPER_MESSAGE
+        return text
+    except Exception:
+        _log.exception("Screen Saver Mode: the helper's state could not be read")
+        return HELPER_MESSAGE
+
+
+def _before_power_off() -> None:
+    """S21: the saved devices are disabled just before the power-off, when
+    the helper runs (async; returns at once)."""
+    devices = _saved_pairs()
+    if not devices:
+        return
+    disabler = _disabler()
+    if disabler.helper_running():
+        disabler.disable(devices)
+    else:
+        _trace("devices not disabled: the helper isn't running")
+
+
+def _after_input() -> None:
+    """S23: the first counted input re-enables what the journal lists."""
+    _disabler().enable_pending()
+
+
+def _device_arrival() -> None:
+    """S23: a device plugged in again: retry what is still to be enabled."""
+    try:
+        _disabler().on_device_arrival()
+    except Exception:
+        _log.exception("Screen Saver Mode: device arrival retry failed")
+
+
+def _settings_changed() -> None:
+    """A setting changed (the window, History's Restore): the manager gets
+    it and the helper starts when it is now wanted (S25)."""
+    apply_saved()
+    ensure_helper()
+
+
 _following = False
+_arrival_signal: Any = None
 
 
 def start() -> None:
-    """At program start: apply the saved settings and follow changes made
-    outside the window (History's Restore sends configChanged)."""
-    global _following
+    """At program start: apply the saved settings, follow changes made
+    outside the window (History's Restore sends configChanged), wire the
+    device hooks (S21, S23) and start the helper when wanted (S25)."""
+    global _following, _arrival_signal
     apply_saved()
     if not _following:
-        signal.configChanged.connect(apply_saved)
+        signal.configChanged.connect(_settings_changed)
         _following = True
+    try:
+        _core().manager().set_device_hooks(
+            before_power_off=_before_power_off, after_input=_after_input
+        )
+    except Exception:
+        _log.exception("Screen Saver Mode: the device hooks could not be set")
+    if _arrival_signal is None:
+        try:
+            from gremlin import event_handler
+
+            _arrival_signal = event_handler.EventListener().device_change_event
+            _arrival_signal.connect(_device_arrival)
+        except Exception:
+            _arrival_signal = None
+            _log.exception("Screen Saver Mode: no device change listener")
+    ensure_helper()
 
 
 def shutdown() -> None:
     """At quit: only a Screen Saver Mode that was loaded."""
     import sys
 
-    global _following
+    global _following, _arrival_signal
     if _following:
         try:
-            signal.configChanged.disconnect(apply_saved)
+            signal.configChanged.disconnect(_settings_changed)
         except (RuntimeError, TypeError):
             pass
         _following = False
+    if _arrival_signal is not None:
+        try:
+            _arrival_signal.disconnect(_device_arrival)
+        except (RuntimeError, TypeError):
+            pass
+        _arrival_signal = None
     core = sys.modules.get("gremlin.screen_saver_mode")
     if core is not None:
+        try:
+            core.manager().set_device_hooks(None, None)
+        except Exception:
+            _log.exception("Screen Saver Mode: the device hooks could not be cleared")
         core.manager().shutdown()
 
 
@@ -384,8 +608,11 @@ class ScreenSaverModeModel(QtCore.QObject):
         super().__init__(parent)
         _ensure_options()
         self._status: Any = None
-        self._devices: list[dict] = []
+        # S27: the saved list until the next Refresh Devices.
+        self._devices: list[dict] = saved_devices()
+        self._saved = list(self._devices)
         self._devices_message = ""
+        self._helper_message = ""
         self._rows: dict[str, list[dict]] = {PROGRAMS: [], SYSTEM: []}
         self._messages: dict[str, str] = {PROGRAMS: "", SYSTEM: ""}
         self._scanning: dict[str, bool] = {PROGRAMS: False, SYSTEM: False}
@@ -406,11 +633,17 @@ class ScreenSaverModeModel(QtCore.QObject):
 
     @QtCore.Slot()
     def _on_config(self) -> None:
+        # The saved list put back by History (S27) shows at once.
+        saved = saved_devices()
+        if saved != self._saved and not self._scanning_devices:
+            self._saved = list(saved)
+            self._devices = list(saved)
+            self.devicesChanged.emit()
         self.settingsChanged.emit()
         self.refreshStatus()
 
     def _changed(self) -> None:
-        apply_saved()
+        _settings_changed()
         self.settingsChanged.emit()
         self.refreshStatus()
 
@@ -556,6 +789,7 @@ class ScreenSaverModeModel(QtCore.QObject):
         except Exception:
             _log.exception("Screen Saver Mode: status could not be read")
             self._status = None
+        self._helper_message = helper_message()
         problems = tuple(
             str(t)
             for t in (
@@ -564,6 +798,7 @@ class ScreenSaverModeModel(QtCore.QObject):
                 self.offProblemText,
                 self.orderWarning,
                 self.wakeText,
+                self._helper_message,
             )
             if t
         )
@@ -693,6 +928,20 @@ class ScreenSaverModeModel(QtCore.QObject):
             return ""
         return _off_problem_text(str(self._st("off_problem", "") or ""))
 
+    # The helper (S25, S26) ----------------------------------------------------
+
+    @QtCore.Property(str, notify=statusChanged)
+    def helperMessage(self) -> str:
+        """S26: "Devices can't be disabled: the helper isn't running" while
+        the helper should run and doesn't; "" otherwise."""
+        return self._helper_message
+
+    @QtCore.Slot()
+    def tryAgain(self) -> None:
+        """S26's Try again: starts the helper once more."""
+        try_again()
+        self.refreshStatus()
+
     # Refresh Devices (S12) ---------------------------------------------------
 
     @QtCore.Property(bool, notify=busyChanged)
@@ -779,6 +1028,13 @@ class ScreenSaverModeModel(QtCore.QObject):
         else:
             rows = result if isinstance(result, list) else []
             self._devices = sorted(rows, key=lambda d: -d["rate"])
+            # S27: kept across restarts; a filled list may start the helper.
+            try:
+                save_devices(self._devices)
+                self._saved = saved_devices()
+            except Exception:
+                _log.exception("Screen Saver Mode: the Devices list could not be saved")
+            ensure_helper()
             self._devices_message = (
                 f"Checked {_clock_text()} · Screen Saver Mode ignores these."
                 if self._devices

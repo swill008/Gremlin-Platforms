@@ -67,12 +67,13 @@ jobs:
       - name: Build executable
         run: poetry run pyinstaller -y --clean joystick_gremlin.spec
 
-      # The Input Tester is a second exe in the same folder (D-02-INPUT-TESTER);
-      # the installer and zip take the whole folder, so check it is there.
-      - name: Check both programs were built
+      # The Input Tester (D-02-INPUT-TESTER) and the Device Helper (S25) are
+      # extra exes in the same folder; the installer and zip take the whole
+      # folder, so check they are there.
+      - name: Check all three programs were built
         shell: pwsh
         run: |
-          foreach ($exe in "gremlin_platforms.exe", "Gremlin Input Tester.exe") {
+          foreach ($exe in "gremlin_platforms.exe", "Gremlin Input Tester.exe", "Gremlin Device Helper.exe") {
             if (-not (Test-Path (Join-Path "dist\gremlin_platforms" $exe))) {
               throw "dist\gremlin_platforms\$exe is missing"
             }

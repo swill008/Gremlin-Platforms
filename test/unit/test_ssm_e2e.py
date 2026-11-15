@@ -19,6 +19,12 @@ own process with a temporary USERPROFILE. Only the Windows edge is faked:
 - the module's clock is a stepped one (the test moves the time);
 - Windows' display-ON reports are given with the real
   ScreenSaverMode.on_display_state (no power notification is registered);
+- device_disable.manager() is the real DeviceDisabler (journal in the
+  temporary home) with its Windows edge faked: the launcher (no
+  ShellExecuteExW, no elevation), the pipe listener and the helper's
+  answers (no helper process, no pnputil) and the device status reader;
+  the model, the core's hooks and the program's start are the real ones
+  (S21-S27);
 - hid_report_scan.scan, power_requests.list_requests and
   power_requests.set_ignored are fakes (no HID read, no powercfg, no
   elevation); power_requests.split is the real one (Programs and System
@@ -89,7 +95,18 @@ W: dict[str, Any] = {
     "foreground_program": "",
     "device_names": {},
     "name_lookups": [],
+    # The device disabler's Windows edge (S21-S27).
+    "helper_answer": [True, ""],
+    "helper_starts": 0,
+    "helper_ops": [],
+    "disabled": [],
+    "enable_requests": [],
+    "status": {},
+    "calls": {},
 }
+_VKB = r"HID\VID_231D&PID_0200"
+_PD = r"HID\VID_352F&PID_0100"
+_HELPER_TEXT = "Devices can't be disabled: the helper isn't running"
 NOW = [5000.0]
 
 
@@ -770,6 +787,9 @@ def story_first(j: Journey) -> None:
         _mgr().tick()
         st = _status()
         out["s20Keeping"] = [st["keeping_off"], st["wakes"], W["power_off"]]
+        # S27: Refresh Devices not pressed yet: nothing to disable.
+        out["s20Disabled"] = list(W["disabled"])
+        out["s20Starts"] = W["helper_starts"]
         for at in (65302.0, 65304.0, 65306.0):
             _at(at)
             _mgr().on_display_state(True)
@@ -1001,6 +1021,88 @@ def story_first(j: Journey) -> None:
 
     _section(j, "s18", s18)
 
+    def s21_s26() -> None:
+        dd = _dis()
+        # S27: the Refresh result is saved; S25: a filled list (mode and
+        # Power off displays on) starts the helper.
+        out["s27Saved"] = _cfg("devices")
+        out["s25Running"] = j.await_value(dd.helper_running, True, timeout=10)
+        out["s25StartsAfterRefresh"] = W["helper_starts"]
+        out["s26HiddenWhileRunning"] = j.await_value(
+            lambda: _text(j, w, "ssmHelperMessage"), ""
+        )
+        # S21: the power-off timer fires: the saved list is disabled first.
+        W["display_off_wait_s"] = 300
+        W["screen_saver_path"] = ""
+        W["power_off"] = 0
+        W["disabled"] = []
+        W["enable_requests"] = []
+        _at(200000.0)
+        _input(j)
+        _mgr().tick()
+        _at(200300.0)
+        _mgr().tick()
+        _idle()
+        journal = dd.journal().entries
+        out["s21Disabled"] = [list(W["disabled"]), W["power_off"]]
+        out["s21Ops"] = list(W["helper_ops"])
+        out["s22Journal"] = {i: e.get("state") for i, e in journal.items()}
+        # S23: the first counted input re-enables what the journal lists.
+        _at(200310.0)
+        _input(j)
+        _mgr().tick()
+        _idle()
+        out["s23Enabled"] = list(W["enable_requests"])
+        out["s23Journal"] = {i: e.get("state") for i, e in dd.journal().entries.items()}
+        # S26: refused: said, not asked again until Try again.
+        dd.stop_helper()
+        W["helper_answer"] = [False, ""]
+        starts = W["helper_starts"]
+        _flip(j, j.item(w, "ssmOffOn"), False)
+        j.await_value(lambda: _cfg("power-off-on"), False)
+        _flip(j, j.item(w, "ssmOffOn"), True)
+        j.await_value(lambda: _cfg("power-off-on"), True)
+        out["s26Text"] = j.await_value(
+            lambda: _text(j, w, "ssmHelperMessage").startswith(_HELPER_TEXT),
+            True,
+            timeout=10,
+        )
+        out["s26TryAgainShown"] = bool(
+            j.item(w, "ssmHelperTryAgain").property("visible")
+        )
+        _flip(j, j.item(w, "ssmOffOn"), False)
+        _flip(j, j.item(w, "ssmOffOn"), True)
+        j.await_value(lambda: _cfg("power-off-on"), True)
+        j.QTest.qWait(300)
+        out["s26StartsAfterRefusal"] = W["helper_starts"] - starts
+        # Power off on, the helper not running: nothing disabled (S26).
+        W["disabled"] = []
+        _at(201000.0)
+        _input(j)
+        _mgr().tick()
+        _at(201300.0)
+        _mgr().tick()
+        _idle()
+        out["s26DisabledWithout"] = list(W["disabled"])
+        _at(201310.0)
+        _input(j)
+        _mgr().tick()
+        # Try again: asked once more; accepted, the message goes.
+        W["helper_answer"] = [True, ""]
+        j.click(j.item(w, "ssmHelperTryAgain"))
+        out["s26TryAgainRunning"] = j.await_value(dd.helper_running, True, timeout=10)
+        out["s26TryAgainStarts"] = W["helper_starts"] - starts
+        out["s26TextAfter"] = j.await_value(lambda: _text(j, w, "ssmHelperMessage"), "")
+        # S23: a device plugged in again retries what is still to be enabled.
+        arrivals = W["calls"].get("on_device_arrival", 0)
+        from gremlin import event_handler
+
+        event_handler.EventListener().device_change_event.emit()
+        out["s23Arrivals"] = W["calls"].get("on_device_arrival", 0) - arrivals
+        W["screen_saver_path"] = "C:\\Windows\\System32\\Mystify.scr"
+
+    _section(j, "s21", s21_s26)
+
     def s10() -> None:
         _flush()
         from gremlin import history
@@ -1023,6 +1125,11 @@ def story_first(j: Journey) -> None:
         _flip(j, j.item(w, "ssmSaverOn"), False)
         j.await_value(lambda: _cfg("screen-saver-on"), False)
         out["leftCfg"] = {n: _cfg(n) for n in _NAMES}
+        # S24: as after a crash, the journal still has the VKB disabled.
+        _idle()
+        journal = _dis().journal()
+        journal.set(_VKB, "VKBSim NXT SEM THQ FSM.GA", "disabled")
+        journal.save()
         _flush()
 
     _section(j, "leave", leave_for_restart)
@@ -1080,6 +1187,18 @@ def story_restart(j: Journey) -> None:
     _start_as_main_does()
     out["cfg"] = {n: _cfg(n) for n in _NAMES}
     out["clockStartedAtStart"] = W["clock_starts"]
+    # S24: recovery at start; S25: the helper is started at start (mode and
+    # Power off displays on, saved list not empty).
+    out["recoveries"] = W["calls"].get("recover_at_start", 0)
+    # The helper started (recovery and S25 share one start) and the VKB was
+    # enabled again before anything else.
+    out["helperRunningAtStart"] = j.await_value(_dis().helper_running, True, timeout=10)
+    out["recoveredEnable"] = j.await_value(
+        lambda: list(W["enable_requests"]), [[_VKB]], timeout=10
+    )
+    _idle()
+    out["recoveredJournal"] = _dis().journal().state(_VKB)
+    out["helperStartsAtStart"] = W["helper_starts"]
 
     def mgr() -> None:
         s = _mgr().settings()
@@ -1106,10 +1225,21 @@ def story_restart(j: Journey) -> None:
             str(j.item(w, "ssmSaverWaitBox").property("text")),
             str(j.item(w, "ssmOffWaitBox").property("text")),
         ]
-        # Off: the clock stops, the timer stops, nothing fires (S2).
+        # S27: the saved list fills the Devices list.
+        view = j.item(w, "ssmDeviceList")
+        out["savedShown"] = int(view.property("count") or 0)
+        j.await_value(
+            lambda: "PD200X Microphone (buttons)" in " ".join(_texts_in(j, view)),
+            True,
+        )
+        out["savedRows"] = " ".join(_texts_in(j, view))
+        # Off: the clock stops, the timer stops, nothing fires (S2); what
+        # is pending is re-enabled (S23, lead 2026-11-15).
+        enables = W["calls"].get("enable_pending", 0)
         _flip(j, j.item(w, "ssmEnabled"), False)
         out["offCfg"] = j.await_value(lambda: _cfg("enabled"), False)
         out["offStops"] = W["clock_stops"]
+        out["offEnables"] = W["calls"].get("enable_pending", 0) - enables
         out["offListening"] = _status()["listening"]
         out["offTicks"] = _timer_ticks(j)
         W["power_off"] = 0
@@ -1123,7 +1253,116 @@ def story_restart(j: Journey) -> None:
     _section(j, "window", window)
 
 
+class _Process:
+    """The helper's process (never started)."""
+
+    def running(self) -> bool:
+        return True
+
+    def close(self) -> None:
+        return None
+
+
+class _Conn:
+    """The helper's end of the pipe: answers as the helper does and moves
+    the fake Windows status; nothing reaches pnputil."""
+
+    def __init__(self) -> None:
+        self._answer: dict = {}
+
+    def send(self, req: dict) -> None:
+        op, ids = req["op"], list(req.get("ids", []))
+        W["helper_ops"].append([op, ids])
+        if op == "disable":
+            W["disabled"].append(ids)
+        if op == "enable":
+            W["enable_requests"].append(ids)
+        for i in ids:
+            W["status"][i] = "disabled" if op == "disable" else "enabled"
+        self._answer = {"ok": True, "results": {i: "done" for i in ids}}
+
+    def poll(self, timeout: float = 0.0) -> bool:
+        return True
+
+    def recv(self) -> dict:
+        return self._answer
+
+    def close(self) -> None:
+        return None
+
+
+class _Listener:
+    """The pipe's listening end: accept() returns once the launcher ran
+    (bounded), close() wakes it."""
+
+    def __init__(self, address: str, authkey: bytes) -> None:
+        import threading
+
+        self.launched = threading.Event()
+        self.closed = False
+        W["listener"] = self
+
+    def accept(self) -> _Conn:
+        self.launched.wait(30.0)
+        if self.closed or not self.launched.is_set():
+            raise OSError("closed")
+        return _Conn()
+
+    def close(self) -> None:
+        self.closed = True
+        self.launched.set()
+
+
+def _launcher(file: str, parameters: str) -> _Process:
+    """ShellExecuteExW "runas" stand-in: no process, no elevation."""
+    import gremlin.device_disable as dd
+
+    W["helper_starts"] += 1
+    ok, _error = W["helper_answer"]
+    if not ok:
+        raise dd.Refused()
+    W["listener"].launched.set()
+    return _Process()
+
+
+def _install_disabler_fake() -> None:
+    """The real device_disable.DeviceDisabler with its Windows edge faked
+    (launcher, pipe listener, device status): manager() returns it before
+    the program is built, so the start's recovery uses it too."""
+    import gremlin.device_disable as dd
+
+    disabler = dd.DeviceDisabler(
+        launcher=_launcher,
+        listener_factory=_Listener,
+        status_reader=lambda i: W["status"].get(i, "enabled"),
+        connect_timeout_s=20.0,
+    )
+    for name in ("enable_pending", "recover_at_start", "on_device_arrival"):
+        real = getattr(disabler, name)
+
+        def counted(real: Any = real, name: str = name) -> None:  # noqa: ANN401
+            W["calls"][name] = W["calls"].get(name, 0) + 1
+            real()
+
+        setattr(disabler, name, counted)
+    dd._manager = disabler  # noqa: SLF001
+    dd.manager = lambda: disabler
+    W["disabler"] = disabler
+    if len(sys.argv) > 1 and sys.argv[1] == "2":
+        # Run 1 left the VKB "disabled" (as after a crash): Windows has it so.
+        W["status"][_VKB] = "disabled"
+
+
+def _dis() -> Any:  # noqa: ANN401
+    return W["disabler"]
+
+
+def _idle() -> None:
+    assert _dis().wait_idle(10.0), "the disabler stayed busy"
+
+
 def _before_start(j: Journey) -> None:
+    _install_disabler_fake()
     _install_fakes()
 
 
@@ -1139,6 +1378,7 @@ _PROGRAM_FILES = [
     ROOT / "gremlin" / "screen_saver_mode.py",
     ROOT / "gremlin" / "hid_report_scan.py",
     ROOT / "gremlin" / "power_requests.py",
+    ROOT / "gremlin" / "device_disable.py",
     ROOT / "qml" / "WindowScreenSaverMode.qml",
 ]
 
@@ -1406,6 +1646,74 @@ def test_s12_refresh_devices_lists_the_devices_that_never_go_quiet(
     assert _v(first, "s12", "s12Rows") == [True, True, True]
     assert _v(first, "s12", "s12Scans") == 1
     assert _v(first, "s12", "s12Description") is True
+
+
+_SAVED = [
+    ["VKBSim NXT SEM THQ FSM.GA", _VKB],
+    ["PD200X Microphone (buttons)", _PD],
+]
+
+
+def test_s27_refresh_devices_result_is_saved(runs: list[dict]) -> None:
+    first = runs[0]
+    saved = _v(first, "s21", "s27Saved")
+    assert [[d["name"], d["instance_id"]] for d in saved] == _SAVED
+    # Before the first Refresh Devices nothing is disabled.
+    assert _v(first, "s20", "s20Disabled") == []
+
+
+def test_s25_a_refresh_that_fills_the_list_starts_the_helper(
+    runs: list[dict],
+) -> None:
+    first = runs[0]
+    # Not before the list was filled (S27 empty), then once.
+    assert _v(first, "s20", "s20Starts") == 0
+    assert _v(first, "s21", "s25Running") is True
+    assert _v(first, "s21", "s25StartsAfterRefresh") == 1
+    assert _v(first, "s21", "s26HiddenWhileRunning") == ""
+
+
+def test_s21_s23_power_off_disables_the_saved_list_and_input_enables(
+    runs: list[dict],
+) -> None:
+    first = runs[0]
+    disabled, power_off = _v(first, "s21", "s21Disabled")
+    assert disabled == [[_VKB, _PD]]
+    assert power_off == 1
+    assert _v(first, "s21", "s22Journal") == {_VKB: "disabled", _PD: "disabled"}
+    assert _v(first, "s21", "s23Enabled") == [[_VKB, _PD]]
+    assert _v(first, "s21", "s23Journal") == {_VKB: "enabled", _PD: "enabled"}
+    assert _v(first, "s21", "s23Arrivals") == 1
+
+
+def test_s26_refused_is_said_not_asked_again_until_try_again(
+    runs: list[dict],
+) -> None:
+    first = runs[0]
+    assert _v(first, "s21", "s26Text") is True
+    assert _v(first, "s21", "s26TryAgainShown") is True
+    assert _v(first, "s21", "s26StartsAfterRefusal") == 1
+    assert _v(first, "s21", "s26DisabledWithout") == []
+    assert _v(first, "s21", "s26TryAgainRunning") is True
+    assert _v(first, "s21", "s26TryAgainStarts") == 2
+    assert _v(first, "s21", "s26TextAfter") == ""
+
+
+def test_restart_s24_s25_s27_recovery_helper_and_saved_list(
+    runs: list[dict],
+) -> None:
+    second = runs[1]
+    assert second["recoveries"] == 1
+    assert second["helperRunningAtStart"] is True
+    assert second["recoveredEnable"] == [[_VKB]]
+    assert second["recoveredJournal"] == "enabled"
+    assert second["helperStartsAtStart"] == 1
+    assert _v(second, "window", "savedShown") == 2
+    rows = _v(second, "window", "savedRows")
+    assert "VKBSim NXT SEM THQ FSM.GA" in rows
+    assert "PD200X Microphone (buttons)" in rows
+    # Switching the mode off re-enables what is pending (lead 2026-11-15).
+    assert _v(second, "window", "offEnables") == 1
 
 
 def test_s13_refresh_programs_refused_is_said(runs: list[dict]) -> None:

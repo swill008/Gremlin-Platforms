@@ -1,10 +1,12 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Stand-ins for gremlin.screen_saver_mode, gremlin.hid_report_scan and
-gremlin.power_requests (12 S1-S20, contract-4's API), for test_ssm_ui.py
-and ssm_ui_smoke.py: the window's tests never listen to the keyboard or
-mouse, read HID devices, run powercfg or ask for administrator rights."""
+"""Stand-ins for gremlin.screen_saver_mode, gremlin.hid_report_scan,
+gremlin.power_requests and gremlin.device_disable (12 S1-S27, contract-4
+and contract-5's APIs), for test_ssm_ui.py and ssm_ui_smoke.py: the
+window's tests never listen to the keyboard or mouse, read HID devices,
+run powercfg, start the device helper, disable or enable a device or ask
+for administrator rights."""
 
 from __future__ import annotations
 
@@ -121,6 +123,16 @@ class FakeManager:
         self.applied: list[Settings] = []
         self.extra: dict[str, Any] = {}
         self.shut = False
+        self.before_power_off: Callable[[], None] | None = None
+        self.after_input: Callable[[], None] | None = None
+
+    def set_device_hooks(
+        self,
+        before_power_off: Callable[[], None] | None,
+        after_input: Callable[[], None] | None,
+    ) -> None:
+        self.before_power_off = before_power_off
+        self.after_input = after_input
 
     def apply(self, settings: Settings) -> None:
         self._settings = replace(settings)
@@ -150,6 +162,65 @@ class FakeManager:
 
     def shutdown(self) -> None:
         self.shut = True
+
+
+HELPER_TEXT = "Devices can't be disabled: the helper isn't running"
+
+
+class FakeDisabler:
+    """device_disable.DeviceDisabler's API (contract-5); records the calls.
+    start_helper answers with `answer` at once, or holds the callback
+    when `hold` is set (the user still at the confirmation)."""
+
+    def __init__(self) -> None:
+        self.running = False
+        self.answer: tuple[bool, str] = (True, "")
+        self.hold = False
+        self.waiting: Callable[[bool, str], None] | None = None
+        self.starts = 0
+        self.stops = 0
+        self.disabled: list[list[tuple[str, str]]] = []
+        self.enables = 0
+        self.arrivals = 0
+        self.recoveries = 0
+
+    def helper_running(self) -> bool:
+        return self.running
+
+    def start_helper(self, on_done: Callable[[bool, str], None]) -> None:
+        self.starts += 1
+        if self.hold:
+            self.waiting = on_done
+            return
+        self.finish(*self.answer, on_done=on_done)
+
+    def finish(
+        self, ok: bool, error: str = "", on_done: Callable | None = None
+    ) -> None:
+        done = on_done or self.waiting
+        self.waiting = None
+        self.running = bool(ok)
+        if done is not None:
+            done(bool(ok), str(error))
+
+    def stop_helper(self) -> None:
+        self.stops += 1
+        self.running = False
+
+    def disable(self, devices: list[tuple[str, str]]) -> None:
+        self.disabled.append(list(devices))
+
+    def enable_pending(self) -> None:
+        self.enables += 1
+
+    def recover_at_start(self) -> None:
+        self.recoveries += 1
+
+    def on_device_arrival(self) -> None:
+        self.arrivals += 1
+
+    def status_text(self) -> str:
+        return "" if self.running else HELPER_TEXT
 
 
 class Calls:
@@ -212,6 +283,7 @@ class Calls:
         self.ignore_answer: tuple[bool, str] = (True, "")
         # Set by a test to hold a check open (the busy text); bounded wait.
         self.gate: threading.Event | None = None
+        self.disabler = FakeDisabler()
 
     def _wait_gate(self) -> None:
         if self.gate is not None:
@@ -266,10 +338,15 @@ def install(target: Any = None) -> tuple[FakeManager, Calls]:  # noqa: ANN401
     power.split = split  # type: ignore[attr-defined]
     power.set_ignored = set_ignored  # type: ignore[attr-defined]
 
+    disable_mod = types.ModuleType("gremlin.device_disable")
+    disable_mod.DeviceDisabler = FakeDisabler  # type: ignore[attr-defined]
+    disable_mod.manager = lambda: calls.disabler  # type: ignore[attr-defined]
+
     for name, mod in (
         ("screen_saver_mode", core),
         ("hid_report_scan", scan_mod),
         ("power_requests", power),
+        ("device_disable", disable_mod),
     ):
         if target is None:
             sys.modules[f"gremlin.{name}"] = mod

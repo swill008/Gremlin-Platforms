@@ -512,6 +512,23 @@ ApplicationWindow {
                         font.pixelSize: Style.dp(12)
                         text: _ssm.devicesMessage
                     }
+                    // S26: the helper should run and doesn't.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: _ssm.helperMessage.length > 0
+                        Label {
+                            objectName: "ssmHelperMessage"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: _ssm.helperMessage
+                            color: Style.dangerText
+                        }
+                        Button {
+                            objectName: "ssmHelperTryAgain"
+                            text: "Try again"
+                            onClicked: _ssm.tryAgain()
+                        }
+                    }
                 }
 
                 AwakeSection {

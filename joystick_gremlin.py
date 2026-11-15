@@ -433,12 +433,33 @@ def shutdown_cleanup() -> None:
     except Exception:
         log.exception("Shutdown: Screen Saver Mode")
     try:
+        # The device helper ends with the program (12 S25); only one that
+        # was loaded.
+        disable = sys.modules.get("gremlin.device_disable")
+        if disable is not None:
+            disable.manager().stop_helper()
+    except Exception:
+        log.exception("Shutdown: device helper")
+    try:
         from gremlin.modules import output
 
         # The last word: no vJoy device held, no Xbox pad plugged in (S17).
         output.reset_drivers()
     except Exception:
         log.exception("Shutdown: vJoy / Xbox")
+
+
+def _recover_devices() -> None:
+    """12 S24: the journal's devices not yet enabled are enabled again
+    (the helper starts for it; the work runs on a program thread)."""
+    try:
+        from gremlin import device_disable
+
+        device_disable.manager().recover_at_start()
+    except Exception:
+        logging.getLogger("system").exception(
+            "Screen Saver Mode: device recovery at start"
+        )
 
 
 def _this_process_tree() -> set[int]:
@@ -999,6 +1020,9 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         gremlin.device_map_settings_once.run_if_needed()  # ONE-TIME (tracker OT-3)
         register_config_options()
         gremlin.library_part_id_once.run_if_needed()  # ONE-TIME (tracker OT-4)
+        # Screen Saver Mode (12 S24): devices it disabled and didn't get
+        # back are re-enabled before the window shows (async).
+        _recover_devices()
         gremlin.ui.log_option.apply_log_level()
         _move_to_device_folders()
         # HidHide settings are for the whole PC, not for an off-screen run.

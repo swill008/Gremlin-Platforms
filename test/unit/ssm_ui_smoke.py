@@ -500,6 +500,34 @@ out["listRefused"] = {
     "message": str(prop("ssmProgramsMessage", "text")),
 }
 
+# S26: the helper should run and doesn't (refused): the message and Try
+# again, in the Devices section; Try again asks once more.
+disabler = calls.disabler
+disabler.running = False
+disabler.answer = (False, "The confirmation was declined.")
+ev("_ssm.setEnabled(true); _ssm.setOffOn(true); true")
+starts = disabler.starts
+ev("_ssm.tryAgain(); true")
+settle()
+helper_label = win.findChild(QtQuick.QQuickItem, "ssmHelperMessage")
+helper_button = win.findChild(QtQuick.QQuickItem, "ssmHelperTryAgain")
+out["helper"] = {
+    "saved": [d.get("instance_id") for d in (cfg("devices") or [])],
+    "text": str(prop("ssmHelperMessage", "text")),
+    "visible": bool(helper_label.isVisible()),
+    "buttonText": str(prop("ssmHelperTryAgain", "text")),
+    "buttonVisible": bool(helper_button.isVisible()),
+    "section": [section_of(helper_label), section_of(helper_button)],
+    "starts": disabler.starts - starts,
+}
+disabler.answer = (True, "")
+emit("ssmHelperTryAgain", "clicked")
+settle()
+out["helperAfter"] = {
+    "visible": bool(helper_label.isVisible()),
+    "starts": disabler.starts - starts,
+}
+
 win.close()
 settle()
 out["closed"] = not bool(win.property("visible"))

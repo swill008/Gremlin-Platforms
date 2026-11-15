@@ -185,6 +185,8 @@ _HIDDEN = {
     ("global", "screen-saver-mode", "power-off-on"),
     ("global", "screen-saver-mode", "power-off-wait-s"),
     ("global", "screen-saver-mode", "hold-fullscreen"),
+    # The last Refresh Devices result (12 S27).
+    ("global", "screen-saver-mode", "devices"),
 }
 
 # Sections with a window of their own (the Device Mapping Editor's options).
@@ -248,6 +250,7 @@ _KEY_TITLES = {
     "global/screen-saver-mode/power-off-on": "Power off displays",
     "global/screen-saver-mode/power-off-wait-s": "Power off wait",
     "global/screen-saver-mode/hold-fullscreen": "Hold off during full-screen programs",
+    "global/screen-saver-mode/devices": "Saved Devices list",
 }
 
 

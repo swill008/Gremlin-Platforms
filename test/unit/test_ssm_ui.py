@@ -92,6 +92,11 @@ def fakes(qapp: object, monkeypatch: pytest.MonkeyPatch):  # noqa: ANN201
     cfg.set(m.SECTION, m.GROUP, m.OFF_ON, True)
     cfg.set(m.SECTION, m.GROUP, m.OFF_WAIT, 0)
     cfg.set(m.SECTION, m.GROUP, m.HOLD_FULLSCREEN, True)
+    cfg.set(m.SECTION, m.GROUP, m.DEVICES, [])
+    # The helper's state (S25, S26) starts fresh for each test.
+    monkeypatch.setattr(m, "_helper_refused", False)
+    monkeypatch.setattr(m, "_helper_starting", False)
+    monkeypatch.setattr(m, "_off_timer_on", None)
     made: list = []
 
     def model():  # noqa: ANN202
@@ -140,6 +145,8 @@ def test_settings_are_registered_with_the_contract_defaults(fakes) -> None:  # n
         "power-off-on": (PropertyType.Bool, True),
         "power-off-wait-s": (PropertyType.Int, 0),
         "hold-fullscreen": (PropertyType.Bool, True),
+        # S27: the saved Devices list.
+        "devices": (PropertyType.List, []),
     }
     assert set(m.NAMES) == set(want)
     for name, (kind, _default) in want.items():
@@ -175,6 +182,259 @@ def test_history_names_them_as_the_window_does_and_options_leaves_them_out(
     ), title
     shown = {k for _s, groups in option.main_layout() for _g, ks in groups for k in ks}
     assert not any(k[1] == "screen-saver-mode" for k in shown)
+
+
+# The saved Devices list, the helper and the device hooks (S21-S27) ---------
+
+_SAVED_PAIRS = [
+    ("PD200X Microphone (buttons)", "HID\\VID_1&PID_2\\1"),
+    ("VKBSim NXT SEM THQ FSM.GA", "HID\\VID_3&PID_4\\1"),
+]
+
+
+def _refresh(model, qapp: object) -> None:  # noqa: ANN001
+    model.refreshDevices()
+    assert _wait(qapp, lambda: not model.property("scanningDevices"))
+
+
+def _fill_saved(m) -> None:  # noqa: ANN001
+    from gremlin.config import Configuration
+
+    Configuration().set(
+        m.SECTION,
+        m.GROUP,
+        m.DEVICES,
+        [{"name": n, "instance_id": i, "rate": 1.0} for n, i in _SAVED_PAIRS],
+    )
+
+
+def test_s27_the_saved_list_is_hidden_in_options_and_named_in_history(
+    qapp: object,
+) -> None:
+    from gremlin.config import settings_history_title
+    from gremlin.ui import option
+
+    assert ("global", "screen-saver-mode", "devices") in option._HIDDEN  # noqa: SLF001
+    title = settings_history_title(["global/screen-saver-mode/devices"])
+    assert title == "Changed Saved Devices list", title
+
+
+def test_s27_refresh_devices_is_saved_and_fills_the_list_after_a_restart(
+    fakes: tuple,
+    qapp: object,  # noqa: ANN001
+) -> None:
+    from gremlin.config import Configuration
+
+    _manager, _calls, model, m = fakes
+    first = model()
+    assert first.property("devices") == []
+    _refresh(first, qapp)
+    stored = Configuration().value(m.SECTION, m.GROUP, m.DEVICES)
+    assert [(d["name"], d["instance_id"]) for d in stored] == _SAVED_PAIRS
+    # A new window model (the program's next start; the real restart is
+    # in test_ssm_e2e) shows it.
+    again = model()
+    assert [(d["name"], d["instanceId"]) for d in again.property("devices")] == (
+        _SAVED_PAIRS
+    )
+    assert again.property("devicesMessage") == ""
+
+
+def test_s27_a_failed_refresh_keeps_the_saved_list(fakes, qapp: object) -> None:  # noqa: ANN001
+    _manager, calls, model, m = fakes
+    _fill_saved(m)
+
+    def broken(*_a: object, **_k: object) -> list:
+        raise OSError("no HID")
+
+    import gremlin
+
+    gremlin.hid_report_scan.scan = broken  # type: ignore[attr-defined]
+    ssm = model()
+    _refresh(ssm, qapp)
+    assert m._saved_pairs() == _SAVED_PAIRS  # noqa: SLF001
+
+
+@pytest.mark.parametrize(
+    ("enabled", "off_on", "filled", "starts"),
+    [
+        (True, True, True, 1),
+        (False, True, True, 0),
+        (True, False, True, 0),
+        (True, True, False, 0),
+    ],
+)
+def test_s25_the_helper_starts_only_when_mode_power_off_and_list(
+    fakes: tuple,
+    enabled: bool,
+    off_on: bool,
+    filled: bool,
+    starts: int,  # noqa: ANN001
+) -> None:
+    from gremlin.config import Configuration
+
+    _manager, calls, _model, m = fakes
+    cfg = Configuration()
+    cfg.set(m.SECTION, m.GROUP, m.ENABLED, enabled)
+    cfg.set(m.SECTION, m.GROUP, m.OFF_ON, off_on)
+    if filled:
+        _fill_saved(m)
+    m.start()
+    try:
+        assert calls.disabler.starts == starts
+        # Running: not started again.
+        m.ensure_helper()
+        assert calls.disabler.starts == starts
+    finally:
+        m.shutdown()
+
+
+def test_s25_switching_on_and_a_filling_refresh_start_the_helper(
+    fakes: tuple,
+    qapp: object,  # noqa: ANN001
+) -> None:
+    _manager, calls, model, m = fakes
+    ssm = model()
+    _refresh(ssm, qapp)
+    assert calls.disabler.starts == 0  # the mode is off
+    ssm.setEnabled(True)
+    assert calls.disabler.starts == 1
+    calls.disabler.running = False
+    ssm.setOffOn(False)
+    assert calls.disabler.starts == 1
+    ssm.setOffOn(True)
+    assert calls.disabler.starts == 2
+    # A Refresh that fills the list (mode and Power off on) starts it too.
+    from gremlin.config import Configuration
+
+    calls.disabler.running = False
+    Configuration().set(m.SECTION, m.GROUP, m.DEVICES, [])
+    _refresh(ssm, qapp)
+    assert calls.disabler.starts == 3
+
+
+def test_s25_s26_after_a_refusal_not_again_until_try_again(fakes) -> None:  # noqa: ANN001
+    _manager, calls, model, m = fakes
+    calls.disabler.answer = (False, "The confirmation was declined.")
+    _fill_saved(m)
+    ssm = model()
+    ssm.setEnabled(True)
+    assert calls.disabler.starts == 1
+    ssm.refreshStatus()
+    assert ssm.property("helperMessage") == (
+        "Devices can't be disabled: the helper isn't running"
+    )
+    # Settings changes don't ask again.
+    ssm.setOffOn(False)
+    ssm.setOffOn(True)
+    m.ensure_helper()
+    assert calls.disabler.starts == 1
+    # Try again asks once more; accepted, the message goes.
+    calls.disabler.answer = (True, "")
+    ssm.tryAgain()
+    assert calls.disabler.starts == 2
+    assert ssm.property("helperMessage") == ""
+
+
+def test_s26_message_only_when_the_helper_should_run_and_doesnt(fakes) -> None:  # noqa: ANN001
+    _manager, calls, model, m = fakes
+    calls.disabler.hold = True  # the user still at the confirmation
+    ssm = model()
+    ssm.refreshStatus()
+    assert ssm.property("helperMessage") == ""  # not wanted: mode off
+    _fill_saved(m)
+    ssm.setEnabled(True)
+    ssm.refreshStatus()
+    assert ssm.property("helperMessage") == ""  # being started
+    calls.disabler.finish(False, "declined")
+    ssm.refreshStatus()
+    assert ssm.property("helperMessage") == (
+        "Devices can't be disabled: the helper isn't running"
+    )
+    ssm.setEnabled(False)
+    ssm.refreshStatus()
+    assert ssm.property("helperMessage") == ""
+
+
+def test_s21_s23_hooks_disable_the_saved_list_and_enable_on_input(fakes) -> None:  # noqa: ANN001
+    from gremlin.config import Configuration
+
+    manager, calls, _model, m = fakes
+    Configuration().set(m.SECTION, m.GROUP, m.ENABLED, True)
+    m.start()
+    try:
+        assert manager.before_power_off is not None
+        assert manager.after_input is not None
+        # Empty list: nothing to disable (S27).
+        calls.disabler.running = True
+        manager.before_power_off()
+        assert calls.disabler.disabled == []
+        _fill_saved(m)
+        # Helper not running: nothing disabled (S26).
+        calls.disabler.running = False
+        manager.before_power_off()
+        assert calls.disabler.disabled == []
+        calls.disabler.running = True
+        manager.before_power_off()
+        assert calls.disabler.disabled == [_SAVED_PAIRS]
+        manager.after_input()
+        assert calls.disabler.enables == 1
+    finally:
+        m.shutdown()
+    assert manager.before_power_off is None and manager.after_input is None
+
+
+def test_s23_a_device_plugged_in_retries(
+    fakes: tuple,
+    monkeypatch: pytest.MonkeyPatch,  # noqa: ANN001
+) -> None:
+    from PySide6 import QtCore
+
+    _manager, calls, _model, m = fakes
+
+    class Listener(QtCore.QObject):
+        device_change_event = QtCore.Signal()
+
+    listener = Listener()
+    from gremlin import event_handler
+
+    monkeypatch.setattr(event_handler, "EventListener", lambda: listener)
+    monkeypatch.setattr(m, "_arrival_signal", None)
+    m.start()
+    try:
+        listener.device_change_event.emit()
+        assert calls.disabler.arrivals == 1
+    finally:
+        m.shutdown()
+    listener.device_change_event.emit()
+    assert calls.disabler.arrivals == 1
+
+
+def test_s23_switching_the_mode_or_power_off_off_enables_pending(fakes) -> None:  # noqa: ANN001
+    _manager, calls, model, m = fakes
+    ssm = model()
+    ssm.setEnabled(True)
+    assert calls.disabler.enables == 0
+    ssm.setEnabled(False)
+    assert calls.disabler.enables == 1
+    ssm.setEnabled(True)
+    ssm.setOffOn(False)
+    assert calls.disabler.enables == 2
+    # Already off: no more.
+    ssm.setSaverOn(False)
+    assert calls.disabler.enables == 2
+
+
+def test_s24_s25_program_recovers_at_start_and_stops_the_helper_at_quit() -> None:
+    src = _text("joystick_gremlin.py")
+    init = src[src.index("register_config_options()\n        gremlin.library") :]
+    assert init.index("_recover_devices()") < init.index("self.engine.load(")
+    rec = src[src.index("def _recover_devices") :]
+    rec = rec[: rec.index("\ndef ")]
+    assert "device_disable.manager().recover_at_start()" in rec
+    cleanup = src[src.index("def shutdown_cleanup") :]
+    cleanup = cleanup[: cleanup.index("\ndef ")]
+    assert "stop_helper()" in cleanup
 
 
 def test_switching_and_choosing_write_the_settings_and_apply_them(fakes) -> None:  # noqa: ANN001
@@ -1003,3 +1263,15 @@ def test_window_refresh_system_and_its_ignore_switch(window: dict) -> None:
     assert d["programsMessage"] == (
         "RustDesk.exe is ignored: it no longer keeps the display on."
     )
+
+
+def test_window_s26_helper_message_and_try_again_in_devices(window: dict) -> None:
+    h = window["helper"]
+    assert h["saved"] == [r"HID\VID_1&PID_2\1", r"HID\VID_3&PID_4\1"]
+    assert h["text"] == "Devices can't be disabled: the helper isn't running"
+    assert h["visible"] and h["buttonVisible"]
+    assert h["buttonText"] == "Try again"
+    assert h["section"] == ["ssmSectionDevices", "ssmSectionDevices"]
+    assert h["starts"] == 1
+    after = window["helperAfter"]
+    assert after == {"visible": False, "starts": 2}

@@ -1129,6 +1129,32 @@ class ScreenSaverMode:
         # (kind, number, text) for the tick to trace: never traced on the
         # listener thread.
         self._events: deque[tuple[str, int, str]] = deque(maxlen=1000)
+        # Device hooks (S21, S23), main thread only.
+        self._before_power_off: Callable[[], None] | None = None
+        self._after_input: Callable[[], None] | None = None
+        self._hooked = False  # before_power_off ran, after_input not yet
+
+    def set_device_hooks(
+        self,
+        before_power_off: Callable[[], None] | None,
+        after_input: Callable[[], None] | None,
+    ) -> None:
+        """before_power_off: just before the Power off displays timer's
+        first power-off of an idle period (S21; must return fast).
+        after_input: once at the first counted input after it (S23).
+        Both on the main thread; never while the mode is off."""
+        self._before_power_off = before_power_off
+        self._after_input = after_input
+
+    def _call_hook(self, name: str, hook: Callable[[], None] | None) -> None:
+        if hook is None:
+            return
+        _trace(f"device hook: {name}")
+        try:
+            hook()
+        except Exception:
+            _log().exception(f"Screen Saver Mode: device hook {name} failed")
+            _trace(f"device hook {name} failed (see the log)")
 
     # ----- settings
 
@@ -1187,6 +1213,7 @@ class ScreenSaverMode:
 
     def _stop(self) -> None:
         self._end_keep_off("Screen Saver Mode switched off")
+        self._hooked = False
         self._running = False
         if self._timer is not None:
             try:
@@ -1328,6 +1355,9 @@ class ScreenSaverMode:
             if after_action:
                 _trace("input after action: countdown restarts")
             self._end_keep_off("keyboard or mouse input")
+            if self._hooked:
+                self._hooked = False
+                self._call_hook("after input", self._after_input)
             self._new_period(last, last, quiet=not after_action)
         p = self._period
         hold = ""
@@ -1455,6 +1485,8 @@ class ScreenSaverMode:
                 f"{self.POWER_OFF_GAP_S:g} s ago"
             )
             return False
+        self._hooked = True
+        self._call_hook("before power off", self._before_power_off)
         try:
             self._api.power_off_displays()
             _log().info("Screen Saver Mode: displays powered off")

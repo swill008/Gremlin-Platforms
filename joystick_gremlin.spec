@@ -252,6 +252,17 @@ tester_exe = EXE(
     icon="gfx\\icon.ico",
 )
 
+# Gremlin Device Helper: a third exe in the same folder, the only part with
+# administrator rights (S25). It disables and enables the devices the
+# Screen Saver Mode journal lists. Standard library only, no Qt; it shares
+# _internal with the main program and has its own small PYZ. The tester-only
+# build (GREMLIN_TESTER_ONLY=1) leaves it out.
+helper_name = "Gremlin Device Helper"
+helper_hidden_imports = [
+    "gremlin.device_helper_protocol",
+]
+helper_excludes = list(exclude_imports) + ["PySide6", "tkinter"]
+
 if tester_only:
     COLLECT(
         tester_exe,
@@ -297,7 +308,43 @@ else:
         entitlements_file=None,
         icon="gfx\\icon.ico",
     )
-    # One folder, both exes: COLLECT keeps one copy of each shared file.
+    h = Analysis(
+        ["gremlin_device_helper.py"],
+        pathex=[],
+        binaries=[],
+        datas=[],
+        hiddenimports=helper_hidden_imports,
+        excludes=helper_excludes,
+        hookspath=[],
+        hooksconfig={},
+        runtime_hooks=[],
+        noarchive=False,
+        optimize=0,
+    )
+    trim(h)
+    helper_exe = EXE(
+        PYZ(h.pure),
+        h.scripts,
+        [],
+        name=helper_name,
+        debug=False,
+        bootloader_ignore_signals=False,
+        exclude_binaries=True,
+        strip=False,
+        upx=False,
+        runtime_tmpdir=None,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon="gfx\\icon.ico",
+        # Windows asks for administrator rights each time it starts.
+        uac_admin=True,
+    )
+
+    # One folder, all three exes: COLLECT keeps one copy of each shared file.
     COLLECT(
         exe,
         a.binaries,
@@ -305,6 +352,9 @@ else:
         tester_exe,
         t.binaries,
         t.datas,
+        helper_exe,
+        h.binaries,
+        h.datas,
         strip=False,
         upx=False,
         upx_exclude=["dill.dll", "vJoyInterface.dll"],

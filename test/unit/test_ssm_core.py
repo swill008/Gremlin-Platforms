@@ -1261,3 +1261,164 @@ def test_a_real_full_screen_program_still_holds_the_power_off(env: Env) -> None:
     run(200)
     assert api.powered_off == 0 and not api.started
     assert mode.status().hold == ssm.HOLD_FULLSCREEN
+
+
+# ----- device hooks (S21, S23; contract-5 "Core hooks")
+
+
+def _hooks(mode: ssm.ScreenSaverMode, api: FakeApi) -> list[str]:
+    """Records each hook call and the power-offs sent before it."""
+    calls: list[str] = []
+    mode.set_device_hooks(
+        lambda: calls.append(f"before:{api.powered_off}"),
+        lambda: calls.append(f"after:{api.powered_off}"),
+    )
+    return calls
+
+
+def test_before_power_off_runs_just_before_the_first_power_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    calls = _hooks(mode, api)
+    mode.apply(_off_only())
+    run(119)
+    assert calls == []
+    run(1)
+    # Called with no power-off sent yet; the power-off follows at once.
+    assert calls == ["before:0"] and api.powered_off == 1
+
+
+def test_before_power_off_once_per_idle_period_not_for_resends(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    calls = _hooks(mode, api)
+    mode.apply(_off_only())
+    run(120)
+    for _ in range(3):
+        now[0] += 1.5
+        mode.on_display_state(True)
+    now[0] += 0.2
+    mode.on_display_state(True)  # inside the gap: retried by the tick
+    run(5)
+    assert api.powered_off == 5
+    assert calls == ["before:0"]
+    clk.note_input(source=0x1001, kind="mouse")
+    run(120)
+    assert calls == ["before:0", "after:5", "before:5"]
+
+
+def test_after_input_once_at_the_input_that_ends_keep_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    calls = _hooks(mode, api)
+    mode.apply(_off_only())
+    run(120)
+    clk.note_input(source=0x1001, kind="keyboard")
+    run(1)
+    assert calls == ["before:0", "after:1"]
+    assert mode.status().keeping_off is False
+    for _ in range(5):
+        clk.note_input(source=0x1001, kind="keyboard")
+        run(1)
+    assert calls == ["before:0", "after:1"]
+
+
+def test_after_input_not_for_gremlins_own_input(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    calls = _hooks(mode, api)
+    mode.apply(_off_only())
+    run(120)
+    for _ in range(10):
+        clk.note_input(own=True)
+        run(1)
+    assert calls == ["before:0"]
+    assert mode.status().keeping_off is True
+
+
+def test_hooks_not_called_without_the_power_off_timer(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    calls = _hooks(mode, api)
+    # Input before the wait, the screen saver alone, then the mode off.
+    mode.apply(_off_only())
+    run(60)
+    clk.note_input(source=0x1001, kind="mouse")
+    run(60)
+    mode.apply(_on(off=False))
+    run(200)
+    clk.note_input(source=0x1001, kind="mouse")
+    run(1)
+    assert len(api.started) == 1
+    mode.apply(ssm.Settings(enabled=False))
+    run(500)
+    mode.tick()
+    assert calls == [] and api.powered_off == 0
+
+
+def test_hooks_not_called_while_the_mode_is_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    calls = _hooks(mode, api)
+    mode.apply(_off_only())
+    run(120)
+    mode.apply(ssm.Settings(enabled=False))
+    clk.note_input(source=0x1001, kind="mouse")
+    run(300)
+    assert calls == ["before:0"]
+
+
+def test_hook_held_back_by_the_gap_runs_with_the_power_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    calls = _hooks(mode, api)
+    mode.apply(_off_only(off_wait=5))
+    run(4)
+    mode._last_power_off = now[0] + 0.5
+    run(1)
+    assert calls == [] and api.powered_off == 0
+    run(1)
+    assert calls == ["before:0"] and api.powered_off == 1
+
+
+def test_hook_exceptions_are_logged_and_the_power_off_still_sent(
+    env: Env, caplog: pytest.LogCaptureFixture
+) -> None:
+    mode, api, clk, now, run, _t = env
+    caplog.set_level("INFO", logger="system")
+
+    def boom() -> None:
+        raise RuntimeError("helper gone")
+
+    mode.set_device_hooks(boom, boom)
+    mode.apply(_off_only())
+    run(120)
+    assert api.powered_off == 1 and mode.status().keeping_off is True
+    clk.note_input(source=0x1001, kind="keyboard")
+    run(1)
+    assert mode.status().keeping_off is False
+    failed = [
+        r
+        for r in caplog.records
+        if r.name == "system" and "device hook" in r.getMessage()
+    ]
+    assert len(failed) == 2 and all(r.exc_info for r in failed)
+
+
+def test_none_hooks_are_fine(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.set_device_hooks(None, None)
+    mode.apply(_off_only())
+    run(120)
+    clk.note_input(source=0x1001, kind="keyboard")
+    run(120)
+    assert api.powered_off == 2
+
+
+def test_hooks_are_traced(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    mode, api, clk, now, run, _t = env
+    lines: list[str] = []
+    monkeypatch.setattr(ssm.trace, "screen_saver", lines.append, raising=False)
+    _hooks(mode, api)
+    mode.apply(_off_only())
+    run(120)
+    clk.note_input(source=0x1001, kind="keyboard")
+    run(1)
+    hook_lines = [x for x in lines if "device hook" in x]
+    assert hook_lines == ["device hook: before power off", "device hook: after input"]
+    assert lines.index("device hook: before power off") < lines.index(
+        "action fired: power off displays: sent"
+    )
