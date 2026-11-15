@@ -1298,7 +1298,15 @@ class ScreenSaverMode:
     def _hold(self) -> str:
         if self._api.locked():
             return HOLD_LOCKED
-        if self._settings.hold_fullscreen and self._api.fullscreen_busy():
+        if (
+            self._settings.hold_fullscreen
+            and self._api.fullscreen_busy()
+            and not self._foreground().lower().endswith(".scr")
+        ):
+            # A screen saver in front is not a full-screen program: Windows
+            # reports it as busy, which would hold the power-off timer behind
+            # the screen saver this mode started (found on the user's PC
+            # 2026-11-15).
             return HOLD_FULLSCREEN
         if self._api.display_required():
             return HOLD_DISPLAY_REQUEST

@@ -1236,3 +1236,28 @@ def test_input_clock_never_registers_power_notifications_in_tests(
     c = ssm.InputClock()
     assert c.start() is False
     assert called == []
+
+
+def test_screen_saver_in_front_does_not_hold_the_power_off_timer(env: Env) -> None:
+    """Found on the user's PC (2026-11-15): with the screen saver running,
+    Windows reports "busy" (a full-screen program) and the screen saver is in
+    front; the power-off timer must still fire behind it (S6, S7)."""
+    mode, api, _clk, _now, run, _t = env
+    mode.apply(ssm.Settings(True))  # both timers: screen saver 60 s, power off 120 s
+    run(60)
+    assert api.started  # the screen saver started
+    api.busy = True
+    api.foreground = "scrnsave.scr"
+    run(61)
+    assert api.powered_off == 1
+    assert mode.status().hold == ""
+
+
+def test_a_real_full_screen_program_still_holds_the_power_off(env: Env) -> None:
+    mode, api, _clk, _now, run, _t = env
+    mode.apply(ssm.Settings(True))
+    api.busy = True
+    api.foreground = "StarCitizen.exe"
+    run(200)
+    assert api.powered_off == 0 and not api.started
+    assert mode.status().hold == ssm.HOLD_FULLSCREEN
