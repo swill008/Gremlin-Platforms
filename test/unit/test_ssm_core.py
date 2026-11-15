@@ -750,3 +750,65 @@ def test_device_path_helpers() -> None:
     )
     assert ssm.vid_pid_text(path) == "VID_046D PID_C08B"
     assert ssm.vid_pid_text("ROOT#RDP_KBD#0000") == ""
+
+
+# --- power off: one request, to the listener's own window (found 2026-11-15)
+
+
+class _FakeUser32:
+    def __init__(self) -> None:
+        self.posted: list[tuple[int, int, int, int]] = []
+
+        class _Fn:
+            argtypes: object = None
+            restype: object = None
+
+            def __call__(_self, hwnd: int, msg: int, w: int, lp: int) -> int:  # noqa: N805
+                self.posted.append((hwnd, msg, w, lp))
+                return 1
+
+        self.PostMessageW = _Fn()
+
+
+def test_power_off_goes_to_the_listener_window_not_every_window(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A broadcast reaches every window, Gremlin's own Qt windows too, and
+    each asks Windows to power off again: on the user's PC the main thread
+    froze 35 s and the screens kept going off. One post, to one window."""
+    fake = _FakeUser32()
+    monkeypatch.setattr(ssm.ctypes, "WinDLL", lambda *a, **k: fake)
+    monkeypatch.setattr(ssm, "_power_window", 4242)
+    ssm.WindowsApi().power_off_displays()
+    assert fake.posted == [(4242, 0x0112, 0xF170, 2)]
+    assert all(p[0] != 0xFFFF for p in fake.posted)
+
+
+def test_power_off_with_no_listener_window_sends_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = _FakeUser32()
+    monkeypatch.setattr(ssm.ctypes, "WinDLL", lambda *a, **k: fake)
+    monkeypatch.setattr(ssm, "_power_window", 0)
+    with pytest.raises(RuntimeError):
+        ssm.WindowsApi().power_off_displays()
+    assert fake.posted == []
+
+
+def test_power_off_is_logged_and_never_sent_twice_within_the_gap(
+    env: Env, caplog: pytest.LogCaptureFixture
+) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on())
+    caplog.set_level("INFO", logger="system")
+    run(120)
+    assert api.powered_off == 1
+    assert any("displays powered off" in r.getMessage() for r in caplog.records)
+    # Input wakes the screens; another idle period ends 2 s later only in a
+    # test with a 1 s wait: the guard still holds the second power-off.
+    mode.apply(_on(wait_override_s=1))
+    clk.note_input()
+    run(3)
+    assert api.powered_off == 1
+    run(10)
+    assert api.powered_off == 2

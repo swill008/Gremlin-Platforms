@@ -116,7 +116,9 @@ _ES_DISPLAY_REQUIRED = 0x00000002
 # presentation mode.
 _QUNS_FULLSCREEN = (2, 3, 4)
 
-_HWND_BROADCAST = 0xFFFF
+# The input listener's hidden window while it runs: the one window the
+# power-off request is posted to (WindowsApi.power_off_displays).
+_power_window: int = 0
 _WM_SYSCOMMAND = 0x0112
 _SC_MONITORPOWER = 0xF170
 _MONITOR_OFF = 2
@@ -292,16 +294,28 @@ class WindowsApi:
         return True
 
     def power_off_displays(self) -> None:
-        user32 = ctypes.WinDLL("user32")
+        """Powers the displays off with ONE request, posted to the input
+        listener's own hidden window, whose thread hands it to Windows.
+        Not broadcast: a broadcast reaches every window of every program,
+        this program's own Qt windows included, and each asks Windows to
+        power off again, some of them later, after the user has woken the
+        screens (found on the user's PC 2026-11-15: the main thread was
+        stuck 35 s and the screens kept going off)."""
+        hwnd = _power_window
+        if not hwnd:
+            raise RuntimeError("no listener window to send the power-off to")
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
         user32.PostMessageW.argtypes = (
             wintypes.HWND,
             wintypes.UINT,
             wintypes.WPARAM,
             wintypes.LPARAM,
         )
-        user32.PostMessageW(
-            _HWND_BROADCAST, _WM_SYSCOMMAND, _SC_MONITORPOWER, _MONITOR_OFF
-        )
+        user32.PostMessageW.restype = wintypes.BOOL
+        if not user32.PostMessageW(
+            hwnd, _WM_SYSCOMMAND, _SC_MONITORPOWER, _MONITOR_OFF
+        ):
+            raise ctypes.WinError(ctypes.get_last_error())
 
     def foreground_program(self) -> str:
         """The file name of the program in front ("" on any failure)."""
@@ -884,6 +898,7 @@ class InputClock:
         return self._user32.DefWindowProcW(hwnd, msg, w_param, l_param)
 
     def _listen(self) -> None:
+        global _power_window
         u = self._user32 = _user32()
         kernel32 = ctypes.WinDLL("kernel32")
         kernel32.GetModuleHandleW.restype = wintypes.HMODULE
@@ -928,6 +943,7 @@ class InputClock:
                     f"(Windows error {ctypes.get_last_error()})"
                 )
                 return
+            _power_window = hwnd
             self._registered = True
             self._ready.set()
             msg = wintypes.MSG()
@@ -938,6 +954,8 @@ class InputClock:
                 u.TranslateMessage(ctypes.byref(msg))
                 u.DispatchMessageW(ctypes.byref(msg))
         finally:
+            if _power_window == hwnd:
+                _power_window = 0
             self._registered = False
             self._ready.set()
             try:
@@ -979,6 +997,8 @@ class ScreenSaverMode:
 
     # status() while off reads Windows at most this often.
     _OFF_READ_S = 1.0
+    # A second power-off is never sent sooner than this after the last one.
+    POWER_OFF_GAP_S = 10.0
 
     def __init__(
         self, api: WindowsApi | None = None, clock_: InputClock | None = None
@@ -990,6 +1010,7 @@ class ScreenSaverMode:
         self._listening = False
         self._timer: Any = None
         self._period = _Period()
+        self._last_power_off = -1e9
         self._status = Status()
         self._status_live = False  # _status was filled while running
         # (read at, action, Windows' wait) for status() while off.
@@ -1197,8 +1218,8 @@ class ScreenSaverMode:
         problem = self._problem()
         self._note_problem(problem)
         if not hold and not problem and not p.fired and now - p.start >= p.wait_s:
-            p.fired = True
-            self._fire()
+            # A power-off held back by the gap is tried again next tick.
+            p.fired = self._fire()
         self._update_status(now=now, hold=hold, problem=problem)
 
     def _foreground(self) -> str:
@@ -1240,21 +1261,32 @@ class ScreenSaverMode:
         else:
             _trace(f"last reset by: {name or 'a device'} ({kind})")
 
-    def _fire(self) -> None:
+    def _fire(self) -> bool:
+        """Does the action; False only when a power-off is held back by
+        POWER_OFF_GAP_S (tried again later)."""
         action = self._settings.action
         try:
             if action == ACTION_SCREEN_SAVER:
                 path = self._period.screen_saver
                 if self._api.start_screen_saver(path):
+                    _log().info(f"Screen Saver Mode: screen saver started ({path})")
                     _trace(f"action fired: screen saver {path}: started")
                 else:
                     _error(f"action fired: screen saver {path}: could not start")
             else:
+                now = clock.monotonic()
+                if now - self._last_power_off < self.POWER_OFF_GAP_S:
+                    _trace("action waits: power off displays was sent less than "
+                           f"{self.POWER_OFF_GAP_S:.0f} s ago")
+                    return False
+                self._last_power_off = now
                 self._api.power_off_displays()
+                _log().info("Screen Saver Mode: displays powered off")
                 _trace("action fired: power off displays: sent")
         except Exception as e:
             _log().exception("Screen Saver Mode action failed")
             _trace(f"action fired: {_ACTION_TEXT.get(action, action)}: failed ({e})")
+        return True
 
     # ----- status
 
