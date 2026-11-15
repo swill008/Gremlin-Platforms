@@ -321,22 +321,26 @@ function topics() {
                 + "<p>The action happens once when the idle time reaches the wait time. Any key or mouse movement ends the screen saver or wakes the displays as usual, and starts the idle time again. Joysticks, gamepads, microphones and other devices never count. Keys and mouse movements other programs send (for example a remote-control program) count; the keys and mouse movements this program's own bindings send do not.</p>"
                 + "<h4>When it waits</h4>"
                 + "<ul>"
-                + "<li>With <b>Hold off during full-screen programs</b> on (it is on at first), nothing happens while a game in full screen or a presentation is in front.</li>"
+                + "<li>With <b>Hold off during full-screen programs</b> on (it is on at first), nothing happens while a game in full screen or a presentation is in front. The status line names the program when Windows gives it, such as \"On hold: a full-screen program is in front (StarCitizen.exe)\".</li>"
                 + "<li>Nothing happens while a program asks Windows to keep the display on, as a video playing does. The status line then says \"On hold: a program is keeping the display on\".</li>"
                 + "<li>Nothing happens while the PC is locked; Windows looks after a locked PC itself.</li>"
                 + "<li>When a hold ends, the countdown starts again from that moment.</li>"
                 + "</ul>"
-                + "<h4>Finding what keeps Windows awake</h4>"
+                + "<h4>Finding what keeps the PC awake</h4>"
+                + "<p>Under <b>What keeps the PC awake</b> there are three sections, each with its own button.</p>"
                 + "<ul>"
-                + "<li><b>Refresh Devices</b> reads every device for about 4 seconds, without changing anything, and lists the ones that never go quiet, with how many reports a second each sends.</li>"
-                + "<li><b>Refresh Programs</b> lists the programs asking Windows to keep the display or the PC awake. Windows gives this list only to administrators, so each press asks for administrator rights; if you refuse, the window says so and nothing else happens.</li>"
-                + "<li>Each row has an <b>Ignore this program</b> switch, for programs, drivers and services alike. On, Windows ignores that row's requests to keep the display and the PC awake; off, it listens to them again. Each change asks for administrator rights. This is a Windows setting, so it stays while the program is closed.</li>"
-                + "<li>A program is listed by its file name, such as RustDesk.exe. A driver or a service is listed by the full name Windows gives it, such as \"USB Audio 2.0 (USB\\VID_0DB0&amp;PID_CD0E…)\" for a sound device, often with a line under it saying why, such as \"An audio stream is currently in use.\"</li>"
+                + "<li><b>Devices</b>: <b>Refresh Devices</b> reads every device for about 4 seconds, without changing anything, and lists the ones that never go quiet, with how many reports a second each sends. These keep Windows' idle time at 0; Screen Saver Mode ignores them, so they need no switch.</li>"
+                + "<li><b>Programs</b>: <b>Refresh Programs</b> lists the programs, drivers and services asking Windows to keep the display on. These hold Screen Saver Mode off until they stop. One that also keeps the PC from sleeping says <b>also keeps the PC awake</b> under its name.</li>"
+                + "<li><b>System</b>: <b>Refresh System</b> lists the programs, drivers and services keeping the PC awake without the display. They stop the PC from sleeping, not the screens.</li>"
+                + "<li>Windows gives the Programs and System lists only to administrators, so each press of <b>Refresh Programs</b> or <b>Refresh System</b> asks for administrator rights and fills only its own list; if you refuse, the section says so and nothing else happens.</li>"
+                + "<li>Each row in Programs and System has an <b>Ignore</b> switch, for programs, drivers and services alike. On, Windows ignores that row's requests to keep the display and the PC awake; off, it listens to them again. Each change asks for administrator rights. This is a Windows setting, so it stays while the program is closed, and an ignored row stays in its section.</li>"
+                + "<li>A program is listed by its file name, such as RustDesk.exe. A driver or a service is listed by the full name Windows gives it, marked (driver) or (service), such as \"USB Audio 2.0 (USB\VID_0DB0&amp;PID_CD0E…)\" for a sound device, often with a line under it saying why, such as \"An audio stream is currently in use.\"</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Screen Saver Mode works only while Gremlin-Platforms is open, whether a profile is running or not and whether the window is in the tray or not.</li>"
                 + "<li>The status line shows the program's idle time beside Windows' idle time. When a device keeps Windows awake, Windows' idle time stays near 0.</li>"
+                + "<li>Beside your idle time, <b>last reset by</b> says what last started it again: a device's name with (keyboard) or (mouse) and how long ago, or \"input sent by a program, N times a minute\". If your screen never rests, this shows a jittery mouse or a program sending keys or mouse movements. The keys and mouse movements this program sends itself are never counted.</li>"
                 + "<li>If the keyboard and mouse can't be listened to, the window says so and nothing is done.</li>"
                 + "<li>With <b>Screen saver</b> chosen and no screen saver chosen in Windows, the window says \"No screen saver is chosen in Windows.\" and nothing is done. If Windows' time is never and no time is typed, nothing is done either.</li>"
                 + "<li>Changes to these settings are kept in History.</li>"
@@ -567,7 +571,7 @@ function topics() {
             id: "tools-q-screen-stays-on",
             section: "Common questions",
             title: "Why does my screen never turn off or start the screen saver?",
-            body: "<p>A device that never goes quiet, such as a throttle or a microphone, or a program asking Windows to keep the display on, keeps Windows thinking someone is using the PC. Turn on <b>Screen Saver Mode</b> in <b>Tools › Screen Saver Mode…</b> <a href=\"open:tools.screenSaverMode\">Open ›</a>; <b>Refresh Devices</b> and <b>Refresh Programs</b> show what keeps Windows awake. See <a href=\"topic:tools-screen-saver-mode\">Let the screen rest with Screen Saver Mode</a>.</p>",
+            body: "<p>A device that never goes quiet, such as a throttle or a microphone, or a program asking Windows to keep the display on, keeps Windows thinking someone is using the PC. Turn on <b>Screen Saver Mode</b> in <b>Tools › Screen Saver Mode…</b> <a href=\"open:tools.screenSaverMode\">Open ›</a>; <b>Refresh Devices</b>, <b>Refresh Programs</b> and <b>Refresh System</b> show what keeps the PC awake, and <b>last reset by</b> shows what last counted as you using it. See <a href=\"topic:tools-screen-saver-mode\">Let the screen rest with Screen Saver Mode</a>.</p>",
             related: ["tools-screen-saver-mode"]
         }
     ]

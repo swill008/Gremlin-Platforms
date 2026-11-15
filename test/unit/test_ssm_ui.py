@@ -1,11 +1,14 @@
 # -*- coding: utf-8; -*-
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Screen Saver Mode's window (12 S1-S15): the Tools item in the bottom
+"""Screen Saver Mode's window (12 S1-S19): the Tools item in the bottom
 group opens it; the switches, the action and the wait box save the settings
-and hand them to the manager; the status line follows the manager's status;
-Refresh Devices / Refresh Programs fill the lists; Ignore this program goes
-back when Windows refuses. The core and the checks are stand-ins
+and hand them to the manager; the status line follows the manager's status
+(with what last reset the idle time, S18, and the full-screen program, S19);
+three sections, Devices, Programs and System, each with its own Refresh
+button, fill their own lists (Programs and System each with their own
+elevated check, split by power_requests.split); Ignore goes back when
+Windows refuses. The core and the checks are stand-ins
 (ssm_ui_fakes.py): nothing listens to the keyboard or mouse, reads HID
 devices, runs powercfg or asks for administrator rights."""
 
@@ -242,6 +245,57 @@ def test_history_restore_is_followed_by_the_manager(fakes) -> None:  # noqa: ANN
             "On hold: a full-screen program is in front. "
             "The countdown starts again when it ends.",
         ),
+        # S19: the full-screen hold names the program when Windows gives it.
+        (
+            {"hold": "fullscreen", "hold_program": "StarCitizen.exe"},
+            "holdText",
+            "On hold: a full-screen program is in front (StarCitizen.exe). "
+            "The countdown starts again when it ends.",
+        ),
+        # S18: what last reset the idle time; nothing before the first input.
+        ({}, "lastResetText", ""),
+        (
+            {"last_reset_kind": "program", "program_input_per_min": 8},
+            "lastResetText",
+            "last reset by: input sent by a program, 8 times a minute",
+        ),
+        (
+            {"last_reset_kind": "program", "program_input_per_min": 1},
+            "lastResetText",
+            "last reset by: input sent by a program, once a minute",
+        ),
+        (
+            {
+                "last_reset_kind": "program",
+                "program_input_per_min": 0,
+                "last_reset_age_s": 75.0,
+            },
+            "lastResetText",
+            "last reset by: input sent by a program, 1 min 15 s ago",
+        ),
+        (
+            {
+                "last_reset_kind": "keyboard",
+                "last_reset_by": "Logitech G915",
+                "last_reset_age_s": 0.4,
+            },
+            "lastResetText",
+            "last reset by: Logitech G915 (keyboard), just now",
+        ),
+        (
+            {
+                "last_reset_kind": "mouse",
+                "last_reset_by": "Razer Basilisk",
+                "last_reset_age_s": 42.0,
+            },
+            "lastResetText",
+            "last reset by: Razer Basilisk (mouse), 42 s ago",
+        ),
+        (
+            {"last_reset_kind": "mouse", "last_reset_age_s": 5.0},
+            "lastResetText",
+            "last reset by: a mouse, 5 s ago",
+        ),
         (
             {"problem": "no_screen_saver"},
             "problemText",
@@ -322,13 +376,18 @@ def test_refresh_programs_and_ignore_goes_back_on_failure(fakes, qapp: object) -
     ssm.refreshPrograms()
     assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
     assert calls.lists == 1
+    # Only the Display half (S13): the System list is left alone.
     assert [
-        (r["name"], r["kinds"], r["ignored"]) for r in ssm.property("programs")
+        (r["name"], r["kinds"], r["ignored"], r["alsoAwake"])
+        for r in ssm.property("programs")
     ] == [
-        ("RustDesk.exe", "Display", False),
-        ("chrome.exe", "Display, System", True),
-        (ssm_ui_fakes.DRIVER_NAME, "System", False),
+        ("RustDesk.exe", "Display, System", False, True),
+        ("chrome.exe", "Display", True, False),
     ]
+    assert ssm.property("system") == [] and ssm.property("systemMessage") == ""
+    assert "ignored programs no longer keep the display on." in ssm.property(
+        "programsMessage"
+    )
     seen: list[bool] = []
     ssm.programsChanged.connect(lambda: seen.append(True))
     calls.ignore_answer = (False, "Administrator rights were refused.")
@@ -338,40 +397,115 @@ def test_refresh_programs_and_ignore_goes_back_on_failure(fakes, qapp: object) -
     assert ssm.isIgnored("RustDesk.exe") is False and seen
     assert ssm.property("programsMessage") == "Administrator rights were refused."
     calls.ignore_answer = (True, "")
+    ssm.setIgnored("RustDesk.exe", True)
+    assert _wait(qapp, lambda: not ssm.property("pendingIgnore"))
+    assert ssm.property("programsMessage") == (
+        "RustDesk.exe is ignored: it no longer keeps the display on."
+    )
     ssm.setIgnored("chrome.exe", False)
     assert _wait(qapp, lambda: not ssm.property("pendingIgnore"))
     assert ssm.isIgnored("chrome.exe") is False
+    assert ssm.property("programsMessage") == "chrome.exe is no longer ignored."
     # Refused list: says so, the old list stays.
     calls.requests = ssm_ui_fakes.RequestsResult(
         False, "Administrator rights were refused.", []
     )
     ssm.refreshPrograms()
     assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
-    assert len(ssm.property("programs")) == 3
+    assert len(ssm.property("programs")) == 2
     assert ssm.property("programsMessage") == "Administrator rights were refused."
+
+
+def test_refresh_system_runs_its_own_check_and_fills_only_its_list(
+    fakes: tuple, qapp: object
+) -> None:  # noqa: ANN001
+    """S17 (contract-3, user 3 a): Refresh System runs its own
+    list_requests() (its own administrator prompt) and keeps the System
+    half: callers without Display, and ignored callers not asking now whose
+    override types have no DISPLAY. The Programs list is left alone."""
+    _manager, calls, model, _m = fakes
+    ssm = model()
+    ssm.refreshSystem()
+    assert ssm.property("scanningSystem") is True
+    assert ssm.property("scanningPrograms") is False
+    assert _wait(qapp, lambda: not ssm.property("scanningSystem"))
+    assert calls.lists == 1
+    assert [(r["name"], r["kind"], r["ignored"]) for r in ssm.property("system")] == [
+        ("claude.exe", "PROCESS", False),
+        (ssm_ui_fakes.DRIVER_NAME, "DRIVER", False),
+        ("FxSound Audio Enhancer", "DRIVER", True),
+    ]
+    assert ssm.property("programs") == [] and ssm.property("programsMessage") == ""
+    assert "ignored ones no longer keep the PC awake." in ssm.property("systemMessage")
+    # Then Refresh Programs: a second, separate check; System stays.
+    ssm.refreshPrograms()
+    assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
+    assert calls.lists == 2
+    assert len(ssm.property("system")) == 3
+    assert [r["name"] for r in ssm.property("programs")] == [
+        "RustDesk.exe",
+        "chrome.exe",
+    ]
+    # An ignored caller not asking now with DISPLAY goes in Programs.
+    calls.requests = ssm_ui_fakes.RequestsResult(
+        True,
+        "",
+        [
+            ssm_ui_fakes.ProgramRequest(
+                "vlc.exe", "", [], True, override_types=["DISPLAY", "SYSTEM"]
+            )
+        ],
+    )
+    ssm.refreshSystem()
+    assert _wait(qapp, lambda: not ssm.property("scanningSystem"))
+    assert ssm.property("system") == []
+    assert "Nothing is asking Windows to keep the PC awake." in ssm.property(
+        "systemMessage"
+    )
+    ssm.refreshPrograms()
+    assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
+    assert [r["name"] for r in ssm.property("programs")] == ["vlc.exe"]
+    # Refused: said in the System section only.
+    calls.requests = ssm_ui_fakes.RequestsResult(
+        False, "Administrator rights were refused.", []
+    )
+    ssm.refreshSystem()
+    assert _wait(qapp, lambda: not ssm.property("scanningSystem"))
+    assert ssm.property("systemMessage") == "Administrator rights were refused."
+    assert ssm.property("programsMessage") != "Administrator rights were refused."
 
 
 def test_driver_rows_show_their_kind_and_detail_and_can_be_ignored(
     fakes: tuple, qapp: object
 ) -> None:  # noqa: ANN001
-    """S14 widened (user, 28 a): a driver's row has the switch and passes
-    its kind on; there is no 'not a program file name' refusal."""
+    """S14 widened (user, 28 a): a driver's row (in System now, S17) has
+    the switch and passes its kind on; its message says the PC."""
     _manager, calls, model, _m = fakes
     ssm = model()
-    ssm.refreshPrograms()
-    assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
-    rows = ssm.property("programs")
+    ssm.refreshSystem()
+    assert _wait(qapp, lambda: not ssm.property("scanningSystem"))
+    rows = ssm.property("system")
     assert [(r["kind"], r["kindWord"], r["detail"]) for r in rows] == [
-        ("PROCESS", "", ""),
-        ("PROCESS", "", ""),
+        ("PROCESS", "", "Electron"),
         ("DRIVER", "driver", ssm_ui_fakes.DRIVER_DETAIL),
+        ("DRIVER", "driver", ""),
     ]
+    seen: list[str] = []
+    ssm.systemChanged.connect(lambda: seen.append("system"))
+    ssm.programsChanged.connect(lambda: seen.append("programs"))
     ssm.setIgnored(ssm_ui_fakes.DRIVER_NAME, True, "DRIVER")
     assert _wait(qapp, lambda: not ssm.property("pendingIgnore"))
     assert calls.ignores == [(ssm_ui_fakes.DRIVER_NAME, True, "DRIVER")]
     assert ssm.isIgnored(ssm_ui_fakes.DRIVER_NAME, "DRIVER") is True
-    assert ssm.property("programsMessage") == (
-        f"{ssm_ui_fakes.DRIVER_NAME} is ignored: it no longer keeps the display on."
+    assert ssm.property("systemMessage") == (
+        f"{ssm_ui_fakes.DRIVER_NAME} is ignored: it no longer keeps the PC awake."
+    )
+    assert ssm.property("programsMessage") == ""
+    assert seen == ["system"]
+    ssm.setIgnored("FxSound Audio Enhancer", False, "DRIVER")
+    assert _wait(qapp, lambda: not ssm.property("pendingIgnore"))
+    assert ssm.property("systemMessage") == (
+        "FxSound Audio Enhancer is no longer ignored."
     )
     # A service row is the same (the form is not verified on a real PC).
     calls.requests = ssm_ui_fakes.RequestsResult(
@@ -379,9 +513,9 @@ def test_driver_rows_show_their_kind_and_detail_and_can_be_ignored(
         "",
         [ssm_ui_fakes.ProgramRequest("Spooler", "", ["System"], False, kind="SERVICE")],
     )
-    ssm.refreshPrograms()
-    assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
-    assert ssm.property("programs")[0]["kindWord"] == "service"
+    ssm.refreshSystem()
+    assert _wait(qapp, lambda: not ssm.property("scanningSystem"))
+    assert ssm.property("system")[0]["kindWord"] == "service"
     ssm.setIgnored("Spooler", True, "SERVICE")
     assert _wait(qapp, lambda: not ssm.property("pendingIgnore"))
     assert calls.ignores[-1] == ("Spooler", True, "SERVICE")
@@ -424,6 +558,8 @@ def test_presses_and_messages_are_traced_and_failures_logged(
     assert _wait(qapp, lambda: not ssm.property("scanningDevices"))
     ssm.refreshPrograms()
     assert _wait(qapp, lambda: not ssm.property("scanningPrograms"))
+    ssm.refreshSystem()
+    assert _wait(qapp, lambda: not ssm.property("scanningSystem"))
     calls.ignore_answer = (False, "Administrator rights were refused.")
     with caplog.at_level(logging.WARNING, logger="system"):
         ssm.setIgnored(ssm_ui_fakes.DRIVER_NAME, True, "DRIVER")
@@ -431,6 +567,10 @@ def test_presses_and_messages_are_traced_and_failures_logged(
     assert lines[0] == "Refresh Devices pressed"
     assert lines[1].startswith("Message shown: Checked ")
     assert "Refresh Programs pressed" in lines
+    assert "Refresh System pressed" in lines
+    assert lines.index("Refresh System pressed") > lines.index(
+        "Refresh Programs pressed"
+    )
     assert f"Ignore on pressed: {ssm_ui_fakes.DRIVER_NAME} (DRIVER)" in lines
     assert lines[-1] == "Message shown: Administrator rights were refused."
     assert any(
@@ -531,7 +671,21 @@ def test_window_status_texts(window: dict) -> None:
     )
     assert held["ssmIdleText"] == "Your idle time: 2 min 41 s"
     assert held["ssmWindowsIdleText"].startswith("Windows' idle time: 0 s")
-    assert "full-screen program" in window["fullscreen"]["ssmHoldText"]
+    fs = window["fullscreen"]
+    assert fs["ssmHoldText"] == (
+        "On hold: a full-screen program is in front (StarCitizen.exe). "
+        "The countdown starts again when it ends."
+    )
+    assert fs["ssmLastReset"] == (
+        "last reset by: input sent by a program, 8 times a minute"
+    )
+    assert fs["ssmLastResetVisible"]
+    assert window["keyboardReset"]["ssmLastReset"] == (
+        "last reset by: Logitech G915 (keyboard), just now"
+    )
+    # Nothing before the first input.
+    assert window["start"]["ssmLastReset"] == ""
+    assert not window["start"]["ssmLastResetVisible"]
     assert (
         window["noScreenSaver"]["ssmProblemText"]
         == "No screen saver is chosen in Windows."
@@ -554,28 +708,97 @@ def test_window_refresh_devices(window: dict) -> None:
     ]
 
 
+def test_window_three_sections_stacked_each_with_its_button(window: dict) -> None:
+    """Contract-3: Devices, Programs, System, stacked; each section holds its
+    own Refresh button, list and message; the texts as the mock-up."""
+    sec = window["sections"]
+    assert sec["order"] == [
+        "ssmSectionDevices",
+        "ssmSectionPrograms",
+        "ssmSectionSystem",
+    ]
+    assert sec["homes"] == {
+        "ssmRefreshDevices": "ssmSectionDevices",
+        "ssmDeviceList": "ssmSectionDevices",
+        "ssmRefreshPrograms": "ssmSectionPrograms",
+        "ssmProgramList": "ssmSectionPrograms",
+        "ssmProgramsMessage": "ssmSectionPrograms",
+        "ssmRefreshSystem": "ssmSectionSystem",
+        "ssmSystemList": "ssmSectionSystem",
+        "ssmSystemMessage": "ssmSectionSystem",
+    }
+    t = sec["texts"]
+    assert t["ssmSectionDevices"][:3] == [
+        "Devices",
+        "Refresh Devices",
+        "Devices that never go quiet and keep Windows' idle time at 0. "
+        "Screen Saver Mode ignores them.",
+    ]
+    assert t["ssmSectionPrograms"][:3] == [
+        "Programs",
+        "🛡 Refresh Programs",
+        "Programs keeping the display on. These hold Screen Saver Mode off "
+        "until they stop. Needs administrator rights.",
+    ]
+    assert t["ssmSectionSystem"][:3] == [
+        "System",
+        "🛡 Refresh System",
+        "Programs, drivers and services keeping the PC awake. They stop "
+        "sleep, not the screens. Needs administrator rights.",
+    ]
+    assert sec["systemText"] == "🛡 Refresh System"
+
+
 def test_window_refresh_programs_and_ignore_switch(window: dict) -> None:
     p = window["programs"]
-    assert p["lists"] == 1 and p["count"] == 3
-    # Every row has the switch, the driver's too (S14 widened).
-    assert p["checked"] == [False, True, False]
-    assert p["names"] == ["RustDesk.exe", "chrome.exe", ssm_ui_fakes.DRIVER_NAME]
-    assert [k["visible"] for k in p["kinds"]] == [False, False, True]
-    assert p["kinds"][2]["text"] == "(driver)"
-    assert [d["visible"] for d in p["details"]] == [False, False, True]
-    assert p["details"][2]["text"] == ssm_ui_fakes.DRIVER_DETAIL
+    # Its own check; only the Display half; System is still empty.
+    assert p["lists"] == 1 and p["count"] == 2 and p["systemCount"] == 0
+    assert p["checked"] == [False, True]
+    assert p["names"] == ["RustDesk.exe", "chrome.exe"]
+    assert [a["visible"] for a in p["alsoAwake"]] == [True, False]
+    assert p["alsoAwake"][0]["text"] == "also keeps the PC awake"
+    assert [k["visible"] for k in p["kinds"]] == [False, False]
+    assert [d["visible"] for d in p["details"]] == [False, True]
+    assert p["details"][1]["text"] == "a video is playing"
     r = window["refused"]
     assert r["ignores"] == [["RustDesk.exe", True, "PROCESS"]]
     # The switch went back.
-    assert r["checked"] == [False, True, False]
+    assert r["checked"] == [False, True]
     assert r["message"] == "Administrator rights were refused."
     a = window["accepted"]
     assert a["ignores"][-1] == ["RustDesk.exe", True, "PROCESS"]
-    assert a["checked"] == [True, True, False]
+    assert a["checked"] == [True, True]
     assert a["message"] == "RustDesk.exe is ignored: it no longer keeps the display on."
+    lr = window["listRefused"]
+    assert lr["count"] == 2 and lr["message"] == "Administrator rights were refused."
+    assert window["closed"] is True
+
+
+def test_window_refresh_system_and_its_ignore_switch(window: dict) -> None:
+    s = window["system"]
+    # A second, separate check, filling only the System list.
+    assert s["lists"] == 2 and s["count"] == 3 and s["programCount"] == 2
+    assert s["names"] == [
+        "claude.exe",
+        ssm_ui_fakes.DRIVER_NAME,
+        "FxSound Audio Enhancer",
+    ]
+    assert [k["visible"] for k in s["kinds"]] == [False, True, True]
+    assert s["kinds"][1]["text"] == "(driver)"
+    assert [d["text"] for d in s["details"] if d["visible"]] == [
+        "Electron",
+        ssm_ui_fakes.DRIVER_DETAIL,
+    ]
+    assert not any(a["visible"] for a in s["alsoAwake"])
+    assert s["checked"] == [False, False, True]
+    assert "ignored ones no longer keep the PC awake." in s["message"]
     d = window["driver"]
     assert d["ignores"][-1] == [ssm_ui_fakes.DRIVER_NAME, True, "DRIVER"]
-    assert d["checked"] == [True, True, True]
-    lr = window["listRefused"]
-    assert lr["count"] == 3 and lr["message"] == "Administrator rights were refused."
-    assert window["closed"] is True
+    assert d["checked"] == [False, True, True]
+    assert d["programsChecked"] == [True, True]
+    assert d["message"] == (
+        f"{ssm_ui_fakes.DRIVER_NAME} is ignored: it no longer keeps the PC awake."
+    )
+    assert d["programsMessage"] == (
+        "RustDesk.exe is ignored: it no longer keeps the display on."
+    )

@@ -19,8 +19,10 @@ from __future__ import annotations
 import ctypes
 import logging
 import os
+import re
 import subprocess
 import threading
+from collections import deque
 from ctypes import wintypes
 from dataclasses import dataclass, replace
 from typing import Any
@@ -33,6 +35,10 @@ ACTION_POWER_OFF = "power_off"
 HOLD_LOCKED = "locked"
 HOLD_FULLSCREEN = "fullscreen"
 HOLD_DISPLAY_REQUEST = "display_request"
+
+RESET_KEYBOARD = "keyboard"
+RESET_MOUSE = "mouse"
+RESET_PROGRAM = "program"
 
 PROBLEM_NO_SCREEN_SAVER = "no_screen_saver"
 PROBLEM_WINDOWS_NEVER = "windows_never"
@@ -87,10 +93,14 @@ class Status:
     windows_wait_s: int = 0  # Windows' value for the chosen action (0 = never/none)
     wait_from_windows: bool = True
     hold: str = ""  # "" | "locked" | "fullscreen" | "display_request"
-    hold_program: str = ""  # the combined flag doesn't name programs
+    hold_program: str = ""  # the full-screen program's file name, "" when unknown
     fired: bool = False  # action done in this idle period
     problem: str = ""  # "" | "no_screen_saver" | "windows_never" | "not_listening"
     remaining_s: float = 0.0  # until the action, 0 when none
+    last_reset_by: str = ""  # the device's name, "" for program input or none
+    last_reset_kind: str = ""  # "keyboard" | "mouse" | "program" | ""
+    last_reset_age_s: float = 0.0  # since the last counted input
+    program_input_per_min: int = 0  # inputs sent by programs in the last 60 s
 
 
 # ---------------------------------------------------------------- Windows
@@ -293,6 +303,268 @@ class WindowsApi:
             _HWND_BROADCAST, _WM_SYSCOMMAND, _SC_MONITORPOWER, _MONITOR_OFF
         )
 
+    def foreground_program(self) -> str:
+        """The file name of the program in front ("" on any failure)."""
+        try:
+            return _foreground_program()
+        except Exception:
+            return ""
+
+    def device_name(self, handle: int) -> str:
+        """A raw input device's name for people ("" when none is found).
+        Slow-ish: called once per device handle, never per event."""
+        try:
+            return _device_name(handle)
+        except Exception:
+            _log().exception("Screen Saver Mode: device name lookup failed")
+            return ""
+
+
+_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
+
+def _foreground_program() -> str:
+    user32 = ctypes.WinDLL("user32")
+    kernel32 = ctypes.WinDLL("kernel32")
+    user32.GetForegroundWindow.restype = wintypes.HWND
+    user32.GetWindowThreadProcessId.argtypes = (
+        wintypes.HWND,
+        ctypes.POINTER(wintypes.DWORD),
+    )
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel32.QueryFullProcessImageNameW.argtypes = (
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPWSTR,
+        ctypes.POINTER(wintypes.DWORD),
+    )
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    hwnd = user32.GetForegroundWindow()
+    if not hwnd:
+        return ""
+    pid = wintypes.DWORD(0)
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    if not pid.value:
+        return ""
+    process = kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value)
+    if not process:
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(1024)
+        size = wintypes.DWORD(len(buf))
+        if not kernel32.QueryFullProcessImageNameW(process, 0, buf, ctypes.byref(size)):
+            return ""
+        return os.path.basename(buf.value)
+    finally:
+        kernel32.CloseHandle(process)
+
+
+_RIDI_DEVICENAME = 0x20000007
+_CM_DRP_DEVICEDESC = 0x01
+_CM_DRP_FRIENDLYNAME = 0x0D
+_DEVPROP_TYPE_STRING = 0x12
+_OPEN_EXISTING = 3
+_FILE_SHARE_READ_WRITE = 0x3
+_INVALID_HANDLE = ctypes.c_void_p(-1).value
+
+
+class _DEVPROPKEY(ctypes.Structure):
+    _fields_ = (("fmtid", _GUID), ("pid", wintypes.ULONG))
+
+
+# DEVPKEY_Device_BusReportedDeviceDesc
+_BUS_REPORTED_DESC = ("540b947e-8b40-45bc-a8a2-6a0b894cbda2", 4)
+
+
+def raw_device_path(handle: int) -> str:
+    """GetRawInputDeviceInfoW(RIDI_DEVICENAME): the device's path."""
+    u = ctypes.WinDLL("user32")
+    u.GetRawInputDeviceInfoW.restype = wintypes.UINT
+    u.GetRawInputDeviceInfoW.argtypes = (
+        wintypes.HANDLE,
+        wintypes.UINT,
+        wintypes.LPVOID,
+        ctypes.POINTER(wintypes.UINT),
+    )
+    size = wintypes.UINT(0)
+    u.GetRawInputDeviceInfoW(handle, _RIDI_DEVICENAME, None, ctypes.byref(size))
+    if not size.value or size.value > 4096:
+        return ""
+    buf = ctypes.create_unicode_buffer(size.value + 1)
+    got = u.GetRawInputDeviceInfoW(handle, _RIDI_DEVICENAME, buf, ctypes.byref(size))
+    if got == 0xFFFFFFFF or got == 0:
+        return ""
+    return buf.value
+
+
+def instance_id_from_path(path: str) -> str:
+    r"""\\?\HID#VID_1&PID_2#7&abc#{guid} -> HID\VID_1&PID_2\7&abc."""
+    text = path
+    for prefix in ("\\\\?\\", "\\??\\", "\\\\.\\"):
+        if text.startswith(prefix):
+            text = text[len(prefix) :]
+            break
+    if "#{" in text:
+        text = text[: text.rindex("#{")]
+    return text.replace("#", "\\")
+
+
+def vid_pid_text(path: str) -> str:
+    """ "VID_046D PID_C52B" from a device path, "" when it has none."""
+    m = re.search(r"VID_([0-9A-Fa-f]{4}).*?PID_([0-9A-Fa-f]{4})", path)
+    if not m:
+        m = re.search(r"VID&([0-9A-Fa-f]{4,8})_PID&([0-9A-Fa-f]{4})", path)
+    if not m:
+        return ""
+    return f"VID_{m.group(1).upper()} PID_{m.group(2).upper()}"
+
+
+# Windows' generic descriptions: worth less than the VID/PID on their own.
+_GENERIC_DESC = (
+    "hid keyboard device",
+    "hid-compliant mouse",
+    "hid-compliant device",
+    "usb input device",
+    "hid-compliant consumer control device",
+    "hid-compliant system controller",
+    "hid-compliant vendor-defined device",
+)
+
+
+def _device_name(handle: int) -> str:
+    path = raw_device_path(handle)
+    if not path:
+        return ""
+    if "HID#" in path.upper():
+        name = _hid_product(path)
+        if name:
+            return name
+    name, generic = _devnode_name(instance_id_from_path(path))
+    vid_pid = vid_pid_text(path)
+    if name and not generic:
+        return name
+    if name and vid_pid:
+        return f"{name} ({vid_pid})"
+    return name or vid_pid or instance_id_from_path(path)
+
+
+def _hid_product(path: str) -> str:
+    kernel32 = ctypes.WinDLL("kernel32")
+    hid = ctypes.WinDLL("hid")
+    kernel32.CreateFileW.restype = wintypes.HANDLE
+    kernel32.CreateFileW.argtypes = (
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    )
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    hid.HidD_GetProductString.argtypes = (
+        wintypes.HANDLE,
+        wintypes.LPVOID,
+        wintypes.ULONG,
+    )
+    # No access rights asked: enough for the product string, and keyboards
+    # and mice open this way.
+    handle = kernel32.CreateFileW(
+        path, 0, _FILE_SHARE_READ_WRITE, None, _OPEN_EXISTING, 0, None
+    )
+    if not handle or handle == _INVALID_HANDLE:
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(127)
+        if not hid.HidD_GetProductString(handle, buf, ctypes.sizeof(buf)):
+            return ""
+        return buf.value.strip()
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _devnode_name(instance_id: str) -> tuple[str, bool]:
+    """(name, generic): the bus-reported name of the device or its parent,
+    else its friendly name or description."""
+    cfg = ctypes.WinDLL("cfgmgr32")
+    cfg.CM_Locate_DevNodeW.argtypes = (
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.LPCWSTR,
+        wintypes.ULONG,
+    )
+    cfg.CM_Get_Parent.argtypes = (
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.DWORD,
+        wintypes.ULONG,
+    )
+    cfg.CM_Get_DevNode_PropertyW.argtypes = (
+        wintypes.DWORD,
+        ctypes.POINTER(_DEVPROPKEY),
+        ctypes.POINTER(wintypes.ULONG),
+        wintypes.LPVOID,
+        ctypes.POINTER(wintypes.ULONG),
+        wintypes.ULONG,
+    )
+    cfg.CM_Get_DevNode_Registry_PropertyW.argtypes = (
+        wintypes.DWORD,
+        wintypes.ULONG,
+        ctypes.POINTER(wintypes.ULONG),
+        wintypes.LPVOID,
+        ctypes.POINTER(wintypes.ULONG),
+        wintypes.ULONG,
+    )
+    node = wintypes.DWORD(0)
+    if cfg.CM_Locate_DevNodeW(ctypes.byref(node), instance_id, 0) != 0:
+        return "", False
+
+    def bus_desc(devinst: int) -> str:
+        key = _DEVPROPKEY(_GUID.parse(_BUS_REPORTED_DESC[0]), _BUS_REPORTED_DESC[1])
+        kind = wintypes.ULONG(0)
+        buf = ctypes.create_unicode_buffer(256)
+        size = wintypes.ULONG(ctypes.sizeof(buf))
+        if (
+            cfg.CM_Get_DevNode_PropertyW(
+                devinst,
+                ctypes.byref(key),
+                ctypes.byref(kind),
+                buf,
+                ctypes.byref(size),
+                0,
+            )
+            != 0
+            or kind.value != _DEVPROP_TYPE_STRING
+        ):
+            return ""
+        return buf.value.strip()
+
+    def registry(devinst: int, prop: int) -> str:
+        buf = ctypes.create_unicode_buffer(256)
+        size = wintypes.ULONG(ctypes.sizeof(buf))
+        if (
+            cfg.CM_Get_DevNode_Registry_PropertyW(
+                devinst, prop, None, buf, ctypes.byref(size), 0
+            )
+            != 0
+        ):
+            return ""
+        return buf.value.strip()
+
+    # The HID collection's parent is usually the USB/Bluetooth device, which
+    # carries the name the device reports itself.
+    parent = wintypes.DWORD(0)
+    nodes = [node.value]
+    if cfg.CM_Get_Parent(ctypes.byref(parent), node.value, 0) == 0:
+        nodes.append(parent.value)
+    for devinst in nodes:
+        name = bus_desc(devinst)
+        if name and name.lower() not in _GENERIC_DESC:
+            return name, False
+    name = registry(node.value, _CM_DRP_FRIENDLYNAME) or registry(
+        node.value, _CM_DRP_DEVICEDESC
+    )
+    return name, name.lower() in _GENERIC_DESC or not name
+
 
 # -------------------------------------------------------------- Raw Input
 
@@ -465,12 +737,15 @@ class InputClock:
     Raw Input (RIDEV_INPUTSINK, so input reaches it whatever window is in
     front) on a hidden top-level window, on its own program thread with its
     own message loop; WM_QUIT posted to the thread ends it. The window
-    procedure only notes the time. Tests call note_input() only.
+    procedure only notes the time, the device handle and the kind; names
+    are looked up later (ScreenSaverMode, once per handle). Tests call
+    note_input() only.
     """
 
     _NAME = "screen saver mode input"
     _START_WAIT_S = 2.0
     _STOP_WAIT_S = 2.0
+    _PROGRAM_SECONDS = 60
 
     def __init__(self) -> None:
         self._last = clock.monotonic()
@@ -481,6 +756,11 @@ class InputClock:
         self._wndproc: Any = None
         self._user32: Any = None
         self.error = ""  # why the last start() failed, "" when it didn't
+        # The last counted input's source: (device handle or None, kind).
+        self._source: tuple[int | None, str] = (None, "")
+        # Program input per second: [second, count], the last minute only.
+        self._program: deque[list[int]] = deque(maxlen=self._PROGRAM_SECONDS + 1)
+        self._program_lock = threading.Lock()
 
     def start(self) -> bool:
         """Registers raw input on its thread; False when it could not
@@ -535,9 +815,38 @@ class InputClock:
     def last_input(self) -> float:
         return self._last
 
-    def note_input(self, own: bool = False) -> None:
-        if not own:
-            self._last = clock.monotonic()
+    def note_input(
+        self, own: bool = False, source: int | None = None, kind: str = ""
+    ) -> None:
+        """One input. `source` is the device's raw input handle, None (or
+        0) for input sent by a program; `kind` "keyboard" or "mouse".
+        Gremlin's own input (own) doesn't count."""
+        if own:
+            return
+        now = clock.monotonic()
+        if not source:
+            self._source = (None, RESET_PROGRAM)
+            second = int(now)
+            with self._program_lock:
+                if self._program and self._program[-1][0] == second:
+                    self._program[-1][1] += 1
+                else:
+                    self._program.append([second, 1])
+        else:
+            self._source = (source, kind)
+        self._last = now
+
+    def last_source(self) -> tuple[int | None, str]:
+        """(device handle or None, "keyboard" | "mouse" | "program" | "")
+        of the last counted input."""
+        return self._source
+
+    def program_input_per_min(self, now: float | None = None) -> int:
+        """Inputs sent by programs (not Gremlin) in the last 60 s."""
+        now = clock.monotonic() if now is None else now
+        since = int(now) - self._PROGRAM_SECONDS
+        with self._program_lock:
+            return sum(n for second, n in self._program if second > since)
 
     def _ask_to_stop(self) -> None:
         self._running = False
@@ -563,7 +872,13 @@ class InputClock:
                 if got != 0xFFFFFFFF and got > 0:
                     kind = raw_input_kind(raw)
                     if kind:
-                        self.note_input(own=kind == "own")
+                        self.note_input(
+                            own=kind == "own",
+                            source=raw.header.hDevice or None,
+                            kind=RESET_MOUSE
+                            if raw.header.dwType == _RIM_TYPEMOUSE
+                            else RESET_KEYBOARD,
+                        )
             except Exception:
                 _log().exception("Screen Saver Mode raw input failed")
         return self._user32.DefWindowProcW(hwnd, msg, w_param, l_param)
@@ -681,6 +996,10 @@ class ScreenSaverMode:
         self._off_read: tuple[float, str, int] | None = None
         self._last_hold = ""
         self._last_problem = ""
+        self._hold_program = ""
+        # Device names by raw input handle, looked up once each.
+        self._names: dict[int, str] = {}
+        self._last_reset_traced: tuple[str, str] | None = None
 
     # ----- settings
 
@@ -744,6 +1063,8 @@ class ScreenSaverMode:
         self._listening = False
         self._last_hold = ""
         self._last_problem = ""
+        self._hold_program = ""
+        self._last_reset_traced = None
         _trace("listener stopped")
 
     # ----- timer
@@ -851,12 +1172,18 @@ class ScreenSaverMode:
         except Exception:
             _log().exception("Screen Saver Mode: hold check failed")
             _trace("hold check failed (see the log)")
+        program = self._foreground() if hold == HOLD_FULLSCREEN else ""
         if hold != self._last_hold:
             if self._last_hold:
                 _trace(f"hold ended: {self._last_hold}")
             if hold:
-                _trace(f"hold began: {hold}")
+                who = f" ({program})" if program else ""
+                _trace(f"hold began: {hold}{who}")
             self._last_hold = hold
+        elif hold == HOLD_FULLSCREEN and program and program != self._hold_program:
+            _trace(f"hold program: {program}")
+        self._hold_program = program
+        self._trace_reset()
         if hold:
             # Held: the countdown starts again when the hold ends (S7,
             # S11, S15).
@@ -873,6 +1200,45 @@ class ScreenSaverMode:
             p.fired = True
             self._fire()
         self._update_status(now=now, hold=hold, problem=problem)
+
+    def _foreground(self) -> str:
+        try:
+            return str(self._api.foreground_program() or "")
+        except Exception:
+            return ""
+
+    def _device_name(self, handle: int) -> str:
+        """The device's name, looked up once per handle and kept."""
+        if handle in self._names:
+            return self._names[handle]
+        try:
+            name = str(self._api.device_name(handle) or "")
+        except Exception:
+            _log().exception("Screen Saver Mode: device name lookup failed")
+            name = ""
+        self._names[handle] = name
+        return name
+
+    def _reset_source(self) -> tuple[str, str]:
+        """(device name, kind) of the last counted input."""
+        try:
+            handle, kind = self._clock.last_source()
+        except Exception:
+            return "", ""
+        if kind == RESET_PROGRAM or not handle:
+            return "", kind
+        return self._device_name(handle), kind
+
+    def _trace_reset(self) -> None:
+        """Traces the input source when it changes (never per input)."""
+        name, kind = self._reset_source()
+        if not kind or (name, kind) == self._last_reset_traced:
+            return
+        self._last_reset_traced = (name, kind)
+        if kind == RESET_PROGRAM:
+            _trace("last reset by: input sent by a program")
+        else:
+            _trace(f"last reset by: {name or 'a device'} ({kind})")
 
     def _fire(self) -> None:
         action = self._settings.action
@@ -935,6 +1301,11 @@ class ScreenSaverMode:
         remaining = 0.0
         if not hold and not problem and not p.fired:
             remaining = max(0.0, p.wait_s - (now - p.start))
+        reset_by, reset_kind = self._reset_source()
+        try:
+            per_min = int(self._clock.program_input_per_min(now))
+        except Exception:
+            per_min = 0
         self._status = Status(
             enabled=True,
             listening=self._clock.listening(),
@@ -944,10 +1315,16 @@ class ScreenSaverMode:
             windows_wait_s=p.windows_wait_s,
             wait_from_windows=not (self._settings.wait_override_s or 0) > 0,
             hold=hold,
-            hold_program="",
+            hold_program=self._hold_program if hold == HOLD_FULLSCREEN else "",
             fired=p.fired,
             problem=problem,
             remaining_s=remaining,
+            last_reset_by=reset_by,
+            last_reset_kind=reset_kind,
+            last_reset_age_s=max(0.0, now - self._clock.last_input())
+            if reset_kind
+            else 0.0,
+            program_input_per_min=per_min,
         )
         self._status_live = True
 

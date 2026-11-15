@@ -142,6 +142,80 @@ def test_merge_matches_by_kind_and_name() -> None:
     ]
 
 
+# Programs / System split (contract-3) ----------------------------------------
+
+
+def _real_merged() -> list[ProgramRequest]:
+    return power_requests.merge(
+        power_requests.parse_requests(REQUESTS_SAMPLE),
+        power_requests.parse_overrides(OVERRIDES_SAMPLE),
+        power_requests.parse_override_types(OVERRIDES_SAMPLE),
+    )
+
+
+def test_parse_override_types_keeps_each_callers_types() -> None:
+    assert power_requests.parse_override_types(OVERRIDES_SAMPLE) == {
+        ("PROCESS", "rustdesk.exe"): ["DISPLAY", "SYSTEM", "AWAYMODE"],
+        ("DRIVER", "fxsound audio enhancer"): ["SYSTEM"],
+    }
+
+
+def test_also_awake_is_display_plus_another_kind() -> None:
+    by_name = {p.name: p for p in _real_merged()}
+    assert by_name["RustDesk.exe"].also_awake is True
+    assert by_name["RustDesk.exe"].override_types == ["DISPLAY", "SYSTEM", "AWAYMODE"]
+    assert by_name[USB_AUDIO].also_awake is False
+    assert by_name["claude.exe"].also_awake is False
+    only_display = power_requests.parse_requests(
+        "DISPLAY:\n[PROCESS] \\Device\\x\\a.exe\n\n"
+    )
+    assert only_display[0].also_awake is False
+
+
+def test_split_real_samples() -> None:
+    display, system = power_requests.split(_real_merged())
+    assert [(p.kind, p.name) for p in display] == [("PROCESS", "RustDesk.exe")]
+    assert display[0].also_awake and display[0].ignored
+    # Not-ignored first (by name), then the ignored FxSound with no request.
+    assert [(p.kind, p.name) for p in system] == [
+        ("PROCESS", "claude.exe"),
+        ("DRIVER", USB_AUDIO),
+        ("DRIVER", "FxSound Audio Enhancer"),
+    ]
+
+
+def test_split_ignored_with_no_request_goes_by_override_types() -> None:
+    rows = power_requests.merge(
+        [ProgramRequest("boost.exe", "", [])],
+        [("PROCESS", "shown.exe"), ("SERVICE", "Sleepy"), ("PROCESS", "bare.exe")],
+        {("PROCESS", "shown.exe"): ["DISPLAY"], ("SERVICE", "sleepy"): ["EXECUTION"]},
+    )
+    display, system = power_requests.split(rows)
+    assert [p.name for p in display] == ["shown.exe"]
+    # No types known: System. boost.exe (no kind it keeps awake) is left out.
+    assert [p.name for p in system] == ["bare.exe", "Sleepy"]
+
+
+def test_split_orders_not_ignored_first_then_by_name() -> None:
+    rows = [
+        ProgramRequest("b.exe", "", ["Display"], True),
+        ProgramRequest("C.exe", "", ["Display"]),
+        ProgramRequest("a.exe", "", ["Display"], True),
+        ProgramRequest("B.exe", "", ["Display", "System"]),
+    ]
+    display, system = power_requests.split(rows)
+    assert [p.name for p in display] == ["B.exe", "C.exe", "a.exe", "b.exe"]
+    assert system == []
+
+
+def test_split_traces_counts(monkeypatch: pytest.MonkeyPatch) -> None:
+    lines: list[str] = []
+    monkeypatch.setattr(trace, "screen_saver", lines.append, raising=False)
+    rows = [*_real_merged(), ProgramRequest("perf.exe", "", ["Other"])]
+    power_requests.split(rows)
+    assert "Split: 1 Programs rows, 3 System rows, 1 left out" in lines
+
+
 # list_requests / set_ignored with a fake runner -----------------------------
 
 

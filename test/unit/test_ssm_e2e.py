@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Screen Saver Mode end to end (12 S1-S15), through the real program.
+"""Screen Saver Mode end to end (12 S1-S19), through the real program.
 
 A journey (test/journeys/_harness.py): the program built off-screen in its
 own process with a temporary USERPROFILE. Only the Windows edge is faked:
@@ -15,7 +15,8 @@ own process with a temporary USERPROFILE. Only the Windows edge is faked:
 - the module's clock is a stepped one (the test moves the time);
 - hid_report_scan.scan, power_requests.list_requests and
   power_requests.set_ignored are fakes (no HID read, no powercfg, no
-  elevation).
+  elevation); power_requests.split is the real one (Programs and System
+  each keep their half of their own check).
 
 Run twice with the same home: run 2 is a restart (the settings carry over).
 """
@@ -66,6 +67,9 @@ W: dict[str, Any] = {
     "ignore_ok": True,
     "ignored": [],
     "ticks": 0,
+    "foreground_program": "",
+    "device_names": {},
+    "name_lookups": [],
 }
 NOW = [5000.0]
 
@@ -82,6 +86,13 @@ def _install_fakes() -> None:
     api.display_required = lambda self: W["display_required"]
     api.fullscreen_busy = lambda self: W["fullscreen_busy"]
     api.locked = lambda self: W["locked"]
+    api.foreground_program = lambda self: W["foreground_program"]
+
+    def device_name(self: Any, handle: Any) -> str:  # noqa: ANN401
+        W["name_lookups"].append(handle)
+        return W["device_names"].get(handle, "")
+
+    api.device_name = device_name
 
     def start_screen_saver(self: Any, path: str) -> bool:  # noqa: ANN401
         W["screen_saver"].append(path)
@@ -172,11 +183,14 @@ def _install_scan_fakes() -> None:
             True,
             "",
             [
+                # Display and System: in Programs only, "also keeps the PC
+                # awake" (contract-3, user 4 a).
                 req_mod.ProgramRequest(
                     "RustDesk.exe",
                     "C:\\Program Files\\RustDesk\\RustDesk.exe",
-                    ["Display"],
+                    ["Display", "System"],
                     False,
+                    also_awake=True,
                 ),
                 req_mod.ProgramRequest(
                     "chrome.exe",
@@ -374,6 +388,13 @@ def story_first(j: Journey) -> None:
             "ssmDeviceList",
             "ssmProgramList",
             "ssmProgramsMessage",
+            "ssmSectionDevices",
+            "ssmSectionPrograms",
+            "ssmSectionSystem",
+            "ssmRefreshSystem",
+            "ssmSystemList",
+            "ssmSystemMessage",
+            "ssmLastReset",
         ]
         out["s1Missing"] = [n for n in names if j.item(win["w"], n) is None]
 
@@ -506,6 +527,8 @@ def story_first(j: Journey) -> None:
         _at(base)
         _input(j)
         W[flag] = True
+        if value_key == "fullscreen":
+            W["foreground_program"] = "StarCitizen.exe"
         _at(base + 400)
         _mgr().tick()
         st = _status()
@@ -517,6 +540,7 @@ def story_first(j: Journey) -> None:
             lambda: _text(j, w, "ssmHoldText"), "__never__", timeout=2.5
         )
         W[flag] = False
+        W["foreground_program"] = ""
         _at(base + 501)
         _mgr().tick()
         out[f"{value_key}AfterEnd"] = W["power_off"]
@@ -634,13 +658,15 @@ def story_first(j: Journey) -> None:
         ]
         out["s12Scans"] = W["scans"]
         out["s12Description"] = any(
-            "Lists the devices that never go quiet" in t for t in _texts(j, w)
+            "Devices that never go quiet and keep Windows' idle time at 0" in t
+            for t in _texts(j, w)
         )
 
     _section(j, "s12", s12)
 
     def s13_s14() -> None:
         programs = j.item(w, "ssmProgramList")
+        system = j.item(w, "ssmSystemList")
         # Refused: said, nothing else.
         W["requests_ok"] = False
         j.click(j.item(w, "ssmRefreshPrograms"))
@@ -654,44 +680,68 @@ def story_first(j: Journey) -> None:
         )
         out["s13RefusedCount"] = int(programs.property("count") or 0)
         W["requests_ok"] = True
+        lists_before = W["request_lists"]
         j.click(j.item(w, "ssmRefreshPrograms"))
         out["s13Count"] = j.await_value(
-            lambda: int(programs.property("count") or 0), 3, timeout=10
+            lambda: int(programs.property("count") or 0), 2, timeout=10
         )
         j.settle()
+        # One check (one administrator prompt) for one press; System empty.
+        out["s13Lists"] = W["request_lists"] - lists_before
+        out["s13SystemCount"] = int(system.property("count") or 0)
         texts = _texts_in(j, programs)
         shown = " ".join(texts)
-        out["s13Rows"] = ["RustDesk.exe" in shown, "chrome.exe" in shown]
-        out["s14DriverRow"] = [
-            _DRIVER in texts,
-            "(driver)" in texts,
-            _DRIVER_DETAIL in texts,
+        out["s13Rows"] = [
+            "RustDesk.exe" in shown,
+            "chrome.exe" in shown,
+            _DRIVER not in shown,
+        ]
+        out["s13AlsoAwake"] = [
+            str(i.property("text"))
+            for i in _walk_list(j, programs)
+            if i.objectName() == "ssmAlsoAwake" and i.isVisible()
         ]
         out["s13Description"] = any(
-            "Needs administrator rights each time" in t for t in _texts(j, w)
+            "Programs keeping the display on. These hold Screen Saver Mode off" in t
+            for t in _texts(j, w)
         )
 
-        def switch(n: int) -> Any:  # noqa: ANN401
+        def switch(view: Any, n: int) -> Any:  # noqa: ANN401
             # The rows are built again when the list changes: found each time.
-            found = [i for i in j.walk(programs) if i.objectName() == "ssmIgnoreSwitch"]
+            found = [
+                i for i in _walk_list(j, view) if i.objectName() == "ssmIgnoreSwitch"
+            ]
+            from PySide6 import QtCore
+
+            found.sort(key=lambda i: i.mapToItem(view, QtCore.QPointF(0, 0)).y())
             return found[n] if len(found) > n else None
 
         out["s14Switches"] = len(
-            [i for i in j.walk(programs) if i.objectName() == "ssmIgnoreSwitch"]
+            [i for i in _walk_list(j, programs) if i.objectName() == "ssmIgnoreSwitch"]
         )
-        _flip(j, switch(0), True)
+        _flip(j, switch(programs, 0), True)
         j.await_value(lambda: len(W["ignored"]), 1, timeout=10)
         out["s14Asked"] = list(W["ignored"])
         out["s14On"] = j.await_value(
-            lambda: bool(switch(0) and switch(0).property("checked")), True
+            lambda: bool(
+                switch(programs, 0) and switch(programs, 0).property("checked")
+            ),
+            True,
+        )
+        out["s14ProgramsMessage"] = j.await_value(
+            lambda: _text(j, w, "ssmProgramsMessage"),
+            "chrome.exe is ignored: it no longer keeps the display on.",
         )
         # Refused: the switch goes back and the window says so.
         W["ignore_ok"] = False
-        _flip(j, switch(1), True)
+        _flip(j, switch(programs, 1), True)
         j.await_value(lambda: len(W["ignored"]), 2, timeout=10)
         out["s14Asked2"] = list(W["ignored"])
         out["s14RefusedBack"] = j.await_value(
-            lambda: bool(switch(1) and switch(1).property("checked")), False
+            lambda: bool(
+                switch(programs, 1) and switch(programs, 1).property("checked")
+            ),
+            False,
         )
         out["s14RefusedText"] = j.await_value(
             lambda: (
@@ -701,15 +751,70 @@ def story_first(j: Journey) -> None:
             True,
         )
         W["ignore_ok"] = True
+
+        # S17: Refresh System, its own check, fills only the System list.
+        lists_before = W["request_lists"]
+        j.click(j.item(w, "ssmRefreshSystem"))
+        out["s17Count"] = j.await_value(
+            lambda: int(system.property("count") or 0), 1, timeout=10
+        )
+        j.settle()
+        out["s17Lists"] = W["request_lists"] - lists_before
+        out["s17ProgramsCount"] = int(programs.property("count") or 0)
+        texts = _texts_in(j, system)
+        out["s14DriverRow"] = [
+            _DRIVER in texts,
+            "(driver)" in texts,
+            _DRIVER_DETAIL in texts,
+        ]
+        out["s17Description"] = any(
+            "Programs, drivers and services keeping the PC awake." in t
+            for t in _texts(j, w)
+        )
         # The driver's row has the switch too and passes its kind on.
-        _flip(j, switch(2), True)
+        _flip(j, switch(system, 0), True)
         j.await_value(lambda: len(W["ignored"]), 3, timeout=10)
         out["s14Driver"] = W["ignored"][-1]
         out["s14DriverOn"] = j.await_value(
-            lambda: bool(switch(2) and switch(2).property("checked")), True
+            lambda: bool(switch(system, 0) and switch(system, 0).property("checked")),
+            True,
         )
+        out["s17Message"] = j.await_value(
+            lambda: _text(j, w, "ssmSystemMessage"),
+            f"{_DRIVER} is ignored: it no longer keeps the PC awake.",
+        )
+        # The Programs message is still its own.
+        out["s17ProgramsMessage"] = _text(j, w, "ssmProgramsMessage")
 
     _section(j, "s13", s13_s14)
+
+    def s18() -> None:
+        # Program input (no device handle): named as sent by a program.
+        _at(90000.0)
+        for _ in range(3):
+            _input_clock().note_input()
+        _mgr().tick()
+        out["s18Program"] = j.await_value(
+            lambda: _text(j, w, "ssmLastReset"),
+            "last reset by: input sent by a program, 3 times a minute",
+            timeout=3,
+        )
+        # A keyboard: its name, looked up once per device handle.
+        W["device_names"] = {0x5150: "Logitech G915"}
+        W["name_lookups"].clear()
+        _at(90010.0)
+        for _ in range(5):
+            _input_clock().note_input(source=0x5150, kind="keyboard")
+            _mgr().tick()
+        out["s18Keyboard"] = j.await_value(
+            lambda: _text(j, w, "ssmLastReset"),
+            "last reset by: Logitech G915 (keyboard), just now",
+            timeout=3,
+        )
+        j.QTest.qWait(1200)  # the window's polls look it up too
+        out["s18Lookups"] = list(W["name_lookups"])
+
+    _section(j, "s18", s18)
 
     def s10() -> None:
         _flush()
@@ -761,6 +866,20 @@ def _texts_in(j: Journey, item: Any) -> list[str]:  # noqa: ANN401
             if isinstance(text, str) and text:
                 found.append(text)
     return found
+
+
+def _walk_list(j: Journey, view: Any) -> list:  # noqa: ANN401
+    """A ListView's items, its rows (under contentItem) too, each once."""
+    found = list(j.walk(view))
+    content = view.property("contentItem")
+    if content is not None and content is not view:
+        found += list(j.walk(content))
+    import shiboken6
+
+    once: dict[int, Any] = {}
+    for item in found:
+        once.setdefault(shiboken6.getCppPointer(item)[0], item)
+    return list(once.values())
 
 
 def _timer_ticks(j: Journey) -> int:
@@ -948,6 +1067,11 @@ def test_s7_s11_s15_a_hold_waits_and_the_countdown_starts_again(
     assert _v(first, part, f"{key}Held") == [0, hold]
     if words:
         assert words.lower() in _v(first, part, f"{key}HoldText").lower()
+    if key == "fullscreen":
+        # S19: the program in front is named.
+        assert "full-screen program is in front (StarCitizen.exe)" in _v(
+            first, part, f"{key}HoldText"
+        )
     # Ended: idle counted from the end of the hold.
     assert _v(first, part, f"{key}AfterEnd") == 0
     assert _v(first, part, f"{key}BeforeWait") == 0
@@ -1032,26 +1156,49 @@ def test_s13_refresh_programs_refused_is_said(runs: list[dict]) -> None:
     assert _v(first, "s13", "s13RefusedCount") == 0
 
 
-def test_s13_refresh_programs_lists_the_programs(runs: list[dict]) -> None:
+def test_s13_refresh_programs_lists_the_display_half(runs: list[dict]) -> None:
     first = runs[0]
-    assert _v(first, "s13", "s13Count") == 3
-    assert _v(first, "s13", "s13Rows") == [True, True]
+    assert _v(first, "s13", "s13Count") == 2
+    assert _v(first, "s13", "s13Lists") == 1, "one press, one elevated check"
+    assert _v(first, "s13", "s13SystemCount") == 0, "Programs filled System too"
+    assert _v(first, "s13", "s13Rows") == [True, True, True]
+    assert _v(first, "s13", "s13AlsoAwake") == ["also keeps the PC awake"]
     assert _v(first, "s13", "s13Description") is True
 
 
 def test_s14_ignore_this_program_calls_set_ignored(runs: list[dict]) -> None:
     first = runs[0]
-    assert _v(first, "s13", "s14Switches") == 3
-    assert _v(first, "s13", "s14Asked") == [["RustDesk.exe", True, "PROCESS"]]
+    assert _v(first, "s13", "s14Switches") == 2
+    # The Programs rows by name (power_requests.split): chrome.exe first.
+    assert _v(first, "s13", "s14Asked") == [["chrome.exe", True, "PROCESS"]]
     assert _v(first, "s13", "s14On") is True
+    assert _v(first, "s13", "s14ProgramsMessage") == (
+        "chrome.exe is ignored: it no longer keeps the display on."
+    )
+
+
+def test_s17_refresh_system_runs_its_own_check_and_fills_its_list(
+    runs: list[dict],
+) -> None:
+    first = runs[0]
+    assert _v(first, "s13", "s17Count") == 1
+    assert _v(first, "s13", "s17Lists") == 1, "one press, one elevated check"
+    assert _v(first, "s13", "s17ProgramsCount") == 2, "System changed Programs"
+    assert _v(first, "s13", "s17Description") is True
+    assert _v(first, "s13", "s17Message") == (
+        f"{_DRIVER} is ignored: it no longer keeps the PC awake."
+    )
+    assert "Administrator rights were refused." in _v(
+        first, "s13", "s17ProgramsMessage"
+    )
 
 
 def test_s14_a_drivers_row_has_the_switch_and_passes_its_kind(
     runs: list[dict],
 ) -> None:
-    """S14 widened (user, 28 a): the USB Audio driver's row shows its name,
-    "(driver)" and the detail line, and its switch calls set_ignored with
-    kind "DRIVER"."""
+    """S14 widened (user, 28 a): the USB Audio driver's row (in System, S17)
+    shows its name, "(driver)" and the detail line, and its switch calls
+    set_ignored with kind "DRIVER"."""
     first = runs[0]
     assert _v(first, "s13", "s14DriverRow") == [True, True, True]
     assert _v(first, "s13", "s14Driver") == [_DRIVER, True, "DRIVER"]
@@ -1060,9 +1207,21 @@ def test_s14_a_drivers_row_has_the_switch_and_passes_its_kind(
 
 def test_s14_refused_switch_goes_back_and_is_said(runs: list[dict]) -> None:
     first = runs[0]
-    assert _v(first, "s13", "s14Asked2")[-1] == ["chrome.exe", True, "PROCESS"]
+    assert _v(first, "s13", "s14Asked2")[-1] == ["RustDesk.exe", True, "PROCESS"]
     assert _v(first, "s13", "s14RefusedBack") is False
     assert _v(first, "s13", "s14RefusedText") is True
+
+
+def test_s18_last_reset_by_names_the_source(runs: list[dict]) -> None:
+    first = runs[0]
+    assert _v(first, "s18", "s18Program") == (
+        "last reset by: input sent by a program, 3 times a minute"
+    )
+    assert _v(first, "s18", "s18Keyboard") == (
+        "last reset by: Logitech G915 (keyboard), just now"
+    )
+    # Looked up once per device handle, never per input.
+    assert _v(first, "s18", "s18Lookups") == [0x5150]
 
 
 def test_restart_the_settings_carry_over(runs: list[dict]) -> None:

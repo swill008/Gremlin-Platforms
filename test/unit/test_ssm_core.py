@@ -32,6 +32,9 @@ class FakeApi(ssm.WindowsApi):
         self.is_locked = False
         self.started: list[str] = []
         self.powered_off = 0
+        self.foreground = ""
+        self.names: dict[int, str] = {}
+        self.name_calls: list[int] = []
 
     def screen_saver_path(self) -> str:
         return self.path
@@ -60,6 +63,13 @@ class FakeApi(ssm.WindowsApi):
 
     def power_off_displays(self) -> None:
         self.powered_off += 1
+
+    def foreground_program(self) -> str:
+        return self.foreground
+
+    def device_name(self, handle: int) -> str:
+        self.name_calls.append(handle)
+        return self.names.get(handle, "")
 
     @property
     def actions(self) -> int:
@@ -518,3 +528,225 @@ def test_trace_helper_uses_trace_screen_saver(monkeypatch: pytest.MonkeyPatch) -
     assert got == ["hello"]
     monkeypatch.delattr(trace, "screen_saver")
     ssm._trace("no trace function yet")  # no error
+
+
+# ---- batch 3: last reset by (S18), hold program (S19), tracing (S16)
+
+KB = 0x1001
+MOUSE = 0x2002
+
+
+def test_last_reset_by_device_kind_and_age(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    api.names = {KB: "Razer BlackWidow V3", MOUSE: "G502 HERO Gaming Mouse"}
+    mode.apply(_on())
+    st = mode.status()
+    assert st.last_reset_kind == "" and st.last_reset_by == ""
+    clk.note_input(source=KB, kind="keyboard")
+    run(1)
+    st = mode.status()
+    assert st.last_reset_by == "Razer BlackWidow V3"
+    assert st.last_reset_kind == "keyboard"
+    assert st.last_reset_age_s == pytest.approx(1.0)
+    run(4)
+    assert mode.status().last_reset_age_s == pytest.approx(5.0)
+    clk.note_input(source=MOUSE, kind="mouse")
+    run(2)
+    st = mode.status()
+    assert (st.last_reset_by, st.last_reset_kind) == ("G502 HERO Gaming Mouse", "mouse")
+    assert st.last_reset_age_s == pytest.approx(2.0)
+
+
+def test_last_reset_by_program_input(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on())
+    clk.note_input(source=None, kind="mouse")
+    run(1)
+    st = mode.status()
+    assert st.last_reset_kind == "program" and st.last_reset_by == ""
+    assert st.program_input_per_min == 1
+    assert api.name_calls == []
+
+
+def test_program_input_rate_over_60_s(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_on())
+    for _ in range(30):  # 30 s, 10 program inputs a second
+        for _ in range(10):
+            clk.note_input()
+        run(1)
+    assert mode.status().program_input_per_min == 300
+    run(15)  # 45 s after the first: all still in the minute
+    assert mode.status().program_input_per_min == 300
+    run(15)  # 60 s after the first: the first second has left
+    assert mode.status().program_input_per_min == 290
+    run(30)  # all out of the minute
+    assert mode.status().program_input_per_min == 0
+    # Device input never counts as program input.
+    clk.note_input(source=KB, kind="keyboard")
+    run(1)
+    assert mode.status().program_input_per_min == 0
+
+
+def test_program_input_memory_is_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    now = [0.0]
+    monkeypatch.setattr(clock, "monotonic", lambda: now[0])
+    c = ssm.InputClock()
+    for _second in range(500):
+        for _ in range(50):
+            c.note_input()
+        now[0] += 1.0
+    assert len(c._program) <= 61
+    assert c.program_input_per_min() == 59 * 50
+
+
+def test_own_input_is_not_shown_or_counted(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    api.names = {KB: "Razer BlackWidow V3"}
+    mode.apply(_on())
+    clk.note_input(source=KB, kind="keyboard")
+    run(3)
+    for _ in range(20):
+        clk.note_input(own=True)
+    run(1)
+    st = mode.status()
+    assert st.last_reset_kind == "keyboard"
+    assert st.last_reset_by == "Razer BlackWidow V3"
+    assert st.last_reset_age_s == pytest.approx(4.0)
+    assert st.program_input_per_min == 0
+
+
+def test_device_name_looked_up_once_per_handle(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    api.names = {KB: "Razer BlackWidow V3", MOUSE: "G502"}
+    mode.apply(_on())
+    for i in range(50):
+        clk.note_input(source=MOUSE, kind="mouse")
+        clk.note_input(source=KB if i % 2 else MOUSE, kind="keyboard")
+        run(1)
+        mode.status()
+    assert sorted(api.name_calls) == [KB, MOUSE]
+
+
+def test_unnamed_device_is_looked_up_once_too(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on())
+    for _ in range(10):
+        clk.note_input(source=KB, kind="keyboard")
+        run(1)
+    assert api.name_calls == [KB]
+    assert mode.status().last_reset_by == ""
+    assert mode.status().last_reset_kind == "keyboard"
+
+
+def test_hold_program_named_for_fullscreen(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on())
+    api.busy = True
+    api.foreground = "StarCitizen.exe"
+    run(2)
+    st = mode.status()
+    assert st.hold == "fullscreen" and st.hold_program == "StarCitizen.exe"
+    api.busy = False
+    run(1)
+    assert mode.status().hold_program == ""
+    # Other holds don't name a program.
+    api.display_flag = True
+    run(1)
+    assert mode.status().hold == "display_request"
+    assert mode.status().hold_program == ""
+
+
+def test_hold_program_unknown_is_empty(env: Env) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on())
+    api.busy = True
+
+    def fails() -> str:
+        raise OSError("access denied")
+
+    api.foreground_program = fails  # type: ignore[method-assign]
+    run(2)
+    st = mode.status()
+    assert st.hold == "fullscreen" and st.hold_program == ""
+
+
+def test_trace_reset_source_on_change_only(env: Env, traced: list[str]) -> None:
+    mode, api, clk, _now, run, _t = env
+    api.names = {KB: "Razer BlackWidow V3", MOUSE: "G502"}
+    mode.apply(_on())
+    traced.clear()
+    for _ in range(10):
+        clk.note_input(source=KB, kind="keyboard")
+        run(1)
+    assert traced == ["last reset by: Razer BlackWidow V3 (keyboard)"]
+    for _ in range(5):
+        clk.note_input()
+        run(1)
+    clk.note_input(source=MOUSE, kind="mouse")
+    run(3)
+    assert traced == [
+        "last reset by: Razer BlackWidow V3 (keyboard)",
+        "last reset by: input sent by a program",
+        "last reset by: G502 (mouse)",
+    ]
+
+
+def test_trace_hold_program_when_hold_begins(env: Env, traced: list[str]) -> None:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on())
+    api.busy = True
+    api.foreground = "StarCitizen.exe"
+    run(5)
+    assert sum("hold began: fullscreen (StarCitizen.exe)" == t for t in traced) == 1
+    assert not _has(traced, "hold program:")
+    api.foreground = "vlc.exe"
+    run(3)
+    assert sum(t == "hold program: vlc.exe" for t in traced) == 1
+
+
+def test_window_proc_passes_device_and_kind(monkeypatch: pytest.MonkeyPatch) -> None:
+    c = ssm.InputClock()
+    got: list[tuple[bool, Any, str]] = []
+    monkeypatch.setattr(
+        c,
+        "note_input",
+        lambda own=False, source=None, kind="": got.append((own, source, kind)),
+    )
+    frames = [_raw(1, 0), _raw(0, 0), _raw(0, windows_event_hook.OWN_KEY_MARK)]
+    frames[0].header.hDevice = KB
+    frames[1].header.hDevice = None  # sent by a program
+
+    class FakeUser32:
+        def __init__(self) -> None:
+            self.raw = frames[0]
+
+        def GetRawInputData(
+            self, l_param: int, cmd: int, buf: object, size: object, hs: int
+        ) -> int:
+            ctypes.memmove(buf, ctypes.byref(self.raw), ctypes.sizeof(self.raw))
+            return ctypes.sizeof(self.raw)
+
+        def DefWindowProcW(self, *args: object) -> int:
+            return 0
+
+    fake = FakeUser32()
+    c._user32 = fake
+    for raw in frames:
+        fake.raw = raw
+        c._window_proc(0, 0x00FF, 0, 1)
+    assert got == [
+        (False, KB, "keyboard"),
+        (False, None, "mouse"),
+        (True, None, "mouse"),
+    ]
+
+
+def test_device_path_helpers() -> None:
+    b = "\\"
+    path = b * 2 + "?" + b + "HID#VID_046d&PID_C08B&MI_00#d&24e7354&0&0000#{378de44c}"
+    assert ssm.instance_id_from_path(path) == (
+        "HID" + b + "VID_046d&PID_C08B&MI_00" + b + "d&24e7354&0&0000"
+    )
+    assert ssm.vid_pid_text(path) == "VID_046D PID_C08B"
+    assert ssm.vid_pid_text("ROOT#RDP_KBD#0000") == ""

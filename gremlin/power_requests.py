@@ -85,6 +85,10 @@ class ProgramRequest:
     ignored: bool = False
     kind: str = PROCESS  # who asks: PROCESS, DRIVER or SERVICE
     detail: str = ""  # Windows' line under the request, e.g. "Electron"
+    # Display plus System, Awaymode or Execution: also keeps the PC awake.
+    also_awake: bool = False
+    # The ignored caller's override types, e.g. ["DISPLAY", "SYSTEM"].
+    override_types: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -106,11 +110,52 @@ def list_requests(runner: Runner | None = None) -> RequestsResult:
     if outputs is None:
         return RequestsResult(False, error)
     requests_text, overrides_text = (list(outputs) + ["", ""])[:2]
-    programs = merge(parse_requests(requests_text), parse_overrides(overrides_text))
+    programs = merge(
+        parse_requests(requests_text),
+        parse_overrides(overrides_text),
+        parse_override_types(overrides_text),
+    )
     _trace(f"Refresh Programs: {len(programs)} rows")
     for row in programs:
         _trace("  " + _row_text(row))
     return RequestsResult(True, "", programs)
+
+
+_AWAKE_KINDS = ("System", "Awaymode", "Execution")
+
+
+def split(
+    programs: list[ProgramRequest],
+) -> tuple[list[ProgramRequest], list[ProgramRequest]]:
+    """(Programs rows, System rows): callers asking Display go in Programs;
+    callers asking System, Awaymode or Execution without Display go in
+    System; ignored callers not asking now go by their override types
+    (DISPLAY -> Programs, else System). Anything else is left out. Each list
+    has the not-ignored first, then by name."""
+    display: list[ProgramRequest] = []
+    system: list[ProgramRequest] = []
+    for row in programs:
+        if "Display" in row.kinds:
+            display.append(row)
+        elif any(k in row.kinds for k in _AWAKE_KINDS):
+            system.append(row)
+        elif row.ignored and not row.kinds:
+            if "DISPLAY" in row.override_types:
+                display.append(row)
+            else:
+                system.append(row)
+
+    def order(row: ProgramRequest) -> tuple[bool, str, str]:
+        return (row.ignored, row.name.lower(), row.kind)
+
+    display.sort(key=order)
+    system.sort(key=order)
+    left_out = len(programs) - len(display) - len(system)
+    _trace(
+        f"Split: {len(display)} Programs rows, {len(system)} System rows, "
+        f"{left_out} left out"
+    )
+    return display, system
 
 
 def set_ignored(
@@ -280,13 +325,32 @@ def parse_requests(text: str) -> list[ProgramRequest]:
         if kind not in entry.kinds:
             entry.kinds.append(kind)
         current = entry
-    return list(programs.values())
+    rows = list(programs.values())
+    for row in rows:
+        row.also_awake = _also_awake(row.kinds)
+    return rows
+
+
+def _also_awake(kinds: list[str]) -> bool:
+    return "Display" in kinds and any(k in kinds for k in _AWAKE_KINDS)
 
 
 def parse_overrides(text: str) -> list[tuple[str, str]]:
     """`powercfg /requestsoverride` output -> (kind, name) per ignored
     caller; the types are the trailing upper-case words."""
-    found: list[tuple[str, str]] = []
+    return [(kind, name) for kind, name, _types in _parse_override_lines(text)]
+
+
+def parse_override_types(text: str) -> dict[tuple[str, str], list[str]]:
+    """`powercfg /requestsoverride` output -> {(kind, lower-case name):
+    override types} per ignored caller, e.g. ["DISPLAY", "SYSTEM"]."""
+    return {
+        (kind, name.lower()): types for kind, name, types in _parse_override_lines(text)
+    }
+
+
+def _parse_override_lines(text: str) -> list[tuple[str, str, list[str]]]:
+    found: list[tuple[str, str, list[str]]] = []
     seen: set[tuple[str, str]] = set()
     section = ""
     for raw in text.splitlines():
@@ -303,28 +367,38 @@ def parse_overrides(text: str) -> list[tuple[str, str]]:
         if section not in CALLER_KINDS:
             continue
         words = line.split()
+        types: list[str] = []
         while words and words[-1] in _OVERRIDE_TYPES:
-            words.pop()
+            types.insert(0, words.pop())
         name = " ".join(words).strip('"')
         if name and (section, name.lower()) not in seen:
             seen.add((section, name.lower()))
-            found.append((section, name))
+            found.append((section, name, types))
     return found
 
 
 def merge(
-    programs: list[ProgramRequest], ignored: list[tuple[str, str]]
+    programs: list[ProgramRequest],
+    ignored: list[tuple[str, str]],
+    types: dict[tuple[str, str], list[str]] | None = None,
 ) -> list[ProgramRequest]:
-    """Marks ignored callers (matched by kind and name) and adds the ignored
-    ones not asking now."""
+    """Marks ignored callers (matched by kind and name), with their override
+    types from `types` (parse_override_types), and adds the ignored ones not
+    asking now."""
     out = list(programs)
     by_key = {(p.kind, p.name.lower()): p for p in out}
     for kind, name in ignored:
+        override_types = list((types or {}).get((kind, name.lower()), []))
         found = by_key.get((kind, name.lower()))
         if found is not None:
             found.ignored = True
+            found.override_types = override_types
         else:
-            out.append(ProgramRequest(name, "", [], True, kind))
+            out.append(
+                ProgramRequest(name, "", [], True, kind, override_types=override_types)
+            )
+    for row in out:
+        row.also_awake = _also_awake(row.kinds)
     return out
 
 

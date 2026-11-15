@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 
 """Stand-ins for gremlin.screen_saver_mode, gremlin.hid_report_scan and
-gremlin.power_requests (12 S1-S15), for test_ssm_ui.py and ssm_ui_smoke.py:
+gremlin.power_requests (12 S1-S19), for test_ssm_ui.py and ssm_ui_smoke.py:
 the window's tests never listen to the keyboard or mouse, read HID devices,
 run powercfg or ask for administrator rights."""
 
@@ -41,6 +41,10 @@ class Status:
     fired: bool = False
     problem: str = ""
     remaining_s: float = 0.0
+    last_reset_by: str = ""
+    last_reset_kind: str = ""  # "keyboard" | "mouse" | "program" | ""
+    last_reset_age_s: float = 0.0
+    program_input_per_min: int = 0
 
 
 @dataclass
@@ -60,6 +64,32 @@ class ProgramRequest:
     ignored: bool
     kind: str = "PROCESS"  # "PROCESS" | "DRIVER" | "SERVICE"
     detail: str = ""
+    also_awake: bool = False  # Display plus System, Awaymode or Execution
+    override_types: list[str] = field(default_factory=list)
+
+
+_AWAKE_KINDS = ("System", "Awaymode", "Execution")
+
+
+def split(programs: list) -> tuple[list, list]:
+    """power_requests.split's rules (contract-3): Display callers go in
+    Programs; System, Awaymode or Execution without Display in System;
+    ignored callers not asking now by their override types. Not-ignored
+    first, then by name."""
+    display: list = []
+    system: list = []
+    for row in programs:
+        if "Display" in row.kinds:
+            display.append(row)
+        elif any(k in row.kinds for k in _AWAKE_KINDS):
+            system.append(row)
+        elif row.ignored and not row.kinds:
+            (display if "DISPLAY" in row.override_types else system).append(row)
+
+    def order(row: ProgramRequest) -> tuple[bool, str, str]:
+        return (row.ignored, row.name.lower(), row.kind)
+
+    return sorted(display, key=order), sorted(system, key=order)
 
 
 @dataclass
@@ -127,10 +157,18 @@ class Calls:
             "",
             [
                 ProgramRequest(
-                    "RustDesk.exe", "C:\\RustDesk\\RustDesk.exe", ["Display"], False
+                    "RustDesk.exe",
+                    "C:\\RustDesk\\RustDesk.exe",
+                    ["Display", "System"],
+                    False,
+                    also_awake=True,
                 ),
                 ProgramRequest(
-                    "chrome.exe", "C:\\Chrome\\chrome.exe", ["Display", "System"], True
+                    "chrome.exe",
+                    "C:\\Chrome\\chrome.exe",
+                    ["Display"],
+                    True,
+                    detail="a video is playing",
                 ),
                 ProgramRequest(
                     DRIVER_NAME,
@@ -139,6 +177,22 @@ class Calls:
                     False,
                     kind="DRIVER",
                     detail=DRIVER_DETAIL,
+                ),
+                ProgramRequest(
+                    "claude.exe",
+                    "C:\\Claude\\claude.exe",
+                    ["Execution"],
+                    False,
+                    detail="Electron",
+                ),
+                # Ignored, not asking now: placed by its override types.
+                ProgramRequest(
+                    "FxSound Audio Enhancer",
+                    "",
+                    [],
+                    True,
+                    kind="DRIVER",
+                    override_types=["SYSTEM"],
                 ),
             ],
         )
@@ -198,6 +252,7 @@ def install(target: Any = None) -> tuple[FakeManager, Calls]:  # noqa: ANN401
     power.ProgramRequest = ProgramRequest  # type: ignore[attr-defined]
     power.RequestsResult = RequestsResult  # type: ignore[attr-defined]
     power.list_requests = list_requests  # type: ignore[attr-defined]
+    power.split = split  # type: ignore[attr-defined]
     power.set_ignored = set_ignored  # type: ignore[attr-defined]
 
     for name, mod in (

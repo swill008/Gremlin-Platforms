@@ -112,6 +112,7 @@ def texts() -> dict:
         "ssmHoldText",
         "ssmProblemText",
         "ssmWindowsWait",
+        "ssmLastReset",
     ):
         out[name] = str(prop(name, "text"))
         out[name + "Visible"] = bool(prop(name, "visible"))
@@ -125,10 +126,10 @@ def _items_named(item: QtQuick.QQuickItem, name: str) -> list[QtQuick.QQuickItem
     return found
 
 
-def switches() -> list[dict]:
-    """The Ignore this program switches, top to bottom (ListView delegates
-    have no QObject parent, so they are found through the items)."""
-    view = win.findChild(QtQuick.QQuickItem, "ssmProgramList")
+def switches(list_name: str = "ssmProgramList") -> list[dict]:
+    """A list's Ignore switches, top to bottom (ListView delegates have no
+    QObject parent, so they are found through the items)."""
+    view = win.findChild(QtQuick.QQuickItem, list_name)
     assert view is not None
     rows = _items_named(view.property("contentItem"), "ssmIgnoreSwitch")
     return sorted(
@@ -234,9 +235,23 @@ manager.extra = {
 }
 until(lambda: "On hold" in str(prop("ssmHoldText", "text")), 3.0)
 out["held"] = texts()
-manager.extra = {"idle_s": 30.0, "windows_idle_s": 30.0, "hold": "fullscreen"}
+manager.extra = {
+    "idle_s": 30.0,
+    "windows_idle_s": 30.0,
+    "hold": "fullscreen",
+    "hold_program": "StarCitizen.exe",
+    "last_reset_kind": "program",
+    "program_input_per_min": 8,
+}
 until(lambda: "full-screen" in str(prop("ssmHoldText", "text")), 3.0)
 out["fullscreen"] = texts()
+manager.extra = {
+    "last_reset_kind": "keyboard",
+    "last_reset_by": "Logitech G915",
+    "last_reset_age_s": 0.5,
+}
+until(lambda: "G915" in str(prop("ssmLastReset", "text")), 3.0)
+out["keyboardReset"] = texts()
 manager.extra = {"problem": "no_screen_saver"}
 until(lambda: bool(prop("ssmProblemText", "text")), 3.0)
 out["noScreenSaver"] = texts()
@@ -270,16 +285,71 @@ out["devices"] = {
 }
 calls.gate = None
 
-# Refresh Programs (S13), then Ignore this program (S14).
+
+# The three sections (S12, S13, S17), stacked, each with its own button.
+def section_of(obj: QtQuick.QQuickItem) -> str:
+    item = obj
+    while item is not None:
+        if item.objectName().startswith("ssmSection"):
+            return item.objectName()
+        item = item.parentItem()
+    return ""
+
+
+def y_of(name: str) -> float:
+    obj = win.findChild(QtQuick.QQuickItem, name)
+    return float(obj.mapToScene(QtCore.QPointF(0, 0)).y())
+
+
+def section_texts(name: str) -> list[str]:
+    found = []
+
+    def walk(item: QtQuick.QQuickItem) -> None:
+        text = item.property("text")
+        # A Button and its label both carry the text: once.
+        if isinstance(text, str) and text and item.isVisible() and text not in found:
+            found.append(text)
+        for sub in item.childItems():
+            walk(sub)
+
+    walk(win.findChild(QtQuick.QQuickItem, name))
+    return found
+
+
+out["sections"] = {
+    "order": sorted(
+        ("ssmSectionDevices", "ssmSectionPrograms", "ssmSectionSystem"), key=y_of
+    ),
+    "homes": {
+        n: section_of(win.findChild(QtQuick.QQuickItem, n))
+        for n in (
+            "ssmRefreshDevices",
+            "ssmRefreshPrograms",
+            "ssmRefreshSystem",
+            "ssmDeviceList",
+            "ssmProgramList",
+            "ssmSystemList",
+            "ssmProgramsMessage",
+            "ssmSystemMessage",
+        )
+    },
+    "texts": {
+        n: section_texts(n)
+        for n in ("ssmSectionDevices", "ssmSectionPrograms", "ssmSectionSystem")
+    },
+    "systemText": str(prop("ssmRefreshSystem", "text")),
+}
+
+# Refresh Programs (S13), then Ignore (S14).
 emit("ssmRefreshPrograms", "clicked")
-until(lambda: int(prop("ssmProgramList", "count")) == 3)
+until(lambda: int(prop("ssmProgramList", "count")) == 2)
 settle()
 rows = switches()
 
 
-def shown(name: str) -> list[dict]:
+def shown(name: str, list_name: str = "ssmProgramList") -> list[dict]:
     """The rows' labels named `name`, top to bottom: text and visible."""
-    view = win.findChild(QtQuick.QQuickItem, "ssmProgramList")
+    view = win.findChild(QtQuick.QQuickItem, list_name)
     found = _items_named(view.property("contentItem"), name)
     found.sort(key=lambda o: float(o.mapToItem(view, QtCore.QPointF(0, 0)).y()))
     return [
@@ -291,6 +361,8 @@ def shown(name: str) -> list[dict]:
 out["programs"] = {
     "lists": calls.lists,
     "count": int(prop("ssmProgramList", "count")),
+    "systemCount": int(prop("ssmSystemList", "count")),
+    "alsoAwake": shown("ssmAlsoAwake"),
     "checked": [r["checked"] for r in rows],
     "message": str(prop("ssmProgramsMessage", "text")),
     "names": [r["text"] for r in shown("ssmProgramName")],
@@ -324,15 +396,35 @@ out["accepted"] = {
     "message": str(prop("ssmProgramsMessage", "text")),
 }
 
-# A driver's row (S14 widened): its switch passes the kind on.
-third = switches()[2]["obj"]
-third.setProperty("checked", True)
-QtCore.QMetaObject.invokeMethod(third, "toggled")
+# Refresh System (S17): its own check, its own list; Programs stays.
+emit("ssmRefreshSystem", "clicked")
+until(lambda: int(prop("ssmSystemList", "count")) == 3)
+settle()
+out["system"] = {
+    "lists": calls.lists,
+    "count": int(prop("ssmSystemList", "count")),
+    "programCount": int(prop("ssmProgramList", "count")),
+    "names": [r["text"] for r in shown("ssmProgramName", "ssmSystemList")],
+    "kinds": shown("ssmProgramKind", "ssmSystemList"),
+    "details": shown("ssmProgramDetail", "ssmSystemList"),
+    "alsoAwake": shown("ssmAlsoAwake", "ssmSystemList"),
+    "checked": [r["checked"] for r in switches("ssmSystemList")],
+    "message": str(prop("ssmSystemMessage", "text")),
+}
+
+# A driver's row (S14 widened): its switch passes the kind on; the message
+# is the System one.
+second = switches("ssmSystemList")[1]["obj"]
+second.setProperty("checked", True)
+QtCore.QMetaObject.invokeMethod(second, "toggled")
 until(lambda: len(calls.ignores) == 3 and not ev("_ssm.pendingIgnore"))
 settle()
 out["driver"] = {
     "ignores": list(calls.ignores),
-    "checked": [r["checked"] for r in switches()],
+    "checked": [r["checked"] for r in switches("ssmSystemList")],
+    "programsChecked": [r["checked"] for r in switches()],
+    "message": str(prop("ssmSystemMessage", "text")),
+    "programsMessage": str(prop("ssmProgramsMessage", "text")),
 }
 
 # A refused list (S13): the window says so, the list stays as it was.
@@ -340,7 +432,7 @@ calls.requests = ssm_ui_fakes.RequestsResult(
     False, "Administrator rights were refused.", []
 )
 emit("ssmRefreshPrograms", "clicked")
-until(lambda: calls.lists == 2 and not ev("_ssm.scanningPrograms"))
+until(lambda: calls.lists == 3 and not ev("_ssm.scanningPrograms"))
 settle()
 out["listRefused"] = {
     "count": int(prop("ssmProgramList", "count")),

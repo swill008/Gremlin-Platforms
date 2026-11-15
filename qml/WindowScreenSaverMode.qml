@@ -12,8 +12,9 @@ import Gremlin.Style
 
 // Screen Saver Mode (12 S1-S15): Gremlin's own idle time from the keyboard
 // and mouse only; when it runs out, the screen saver or the displays off.
-// The status is read once a second while the window is open; the two
-// checks list what keeps the PC awake.
+// The status is read once a second while the window is open; three
+// sections (Devices, Programs, System; S12, S13, S17) list what keeps the
+// PC awake, each with its own Refresh button.
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
@@ -48,6 +49,161 @@ ApplicationWindow {
     function commitWait() {
         if (!_ssm.setWaitText(_wait.text))
             _wait.text = _ssm.waitText
+    }
+
+    // A framed section of "What keeps the PC awake": title, its Refresh
+    // button on the right, a one-line description, then its list.
+    component AwakeSection: Rectangle {
+        id: _section
+        property string title
+        property string description
+        property string buttonName
+        property string buttonText
+        property bool buttonEnabled: true
+        signal refresh()
+        default property alias content: _content.data
+        Layout.fillWidth: true
+        implicitHeight: _col.implicitHeight + Style.dp(24)
+        radius: Style.dp(4)
+        color: Style.backgroundShade
+        border.color: Style.line
+        ColumnLayout {
+            id: _col
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Style.dp(12)
+            spacing: Style.dp(6)
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    Layout.fillWidth: true
+                    text: _section.title
+                    font.bold: true
+                    color: Style.fg
+                }
+                Button {
+                    objectName: _section.buttonName
+                    text: _section.buttonText
+                    enabled: _section.buttonEnabled
+                    onClicked: _section.refresh()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                color: Style.fgMuted
+                font.pixelSize: Style.dp(12)
+                text: _section.description
+            }
+            ColumnLayout {
+                id: _content
+                Layout.fillWidth: true
+                spacing: Style.dp(4)
+            }
+        }
+    }
+
+    // The Programs or System list (S13, S14, S17): name, "(driver)" or
+    // "(service)", "also keeps the PC awake", the detail line, Ignore.
+    component RequestList: ColumnLayout {
+        id: _list
+        property var ssm
+        property var rows: []
+        property string listName
+        property string heading
+        property string message
+        property string messageName
+        Layout.fillWidth: true
+        spacing: Style.dp(4)
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: Style.dp(4)
+            visible: _list.rows.length > 0
+            Label { text: _list.heading; color: Style.fgMuted; Layout.fillWidth: true }
+            Label { text: "Ignore"; color: Style.fgMuted }
+        }
+        ListView {
+            objectName: _list.listName
+            Layout.fillWidth: true
+            Layout.preferredHeight: contentHeight
+            interactive: false
+            model: _list.rows
+            delegate: RowLayout {
+                id: _rowItem
+                required property var modelData
+                width: ListView.view.width
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Style.dp(4)
+                        Label {
+                            objectName: "ssmProgramName"
+                            Layout.fillWidth: !_kindWord.visible
+                            Layout.maximumWidth: parent.width
+                                                 - (_kindWord.visible ? _kindWord.implicitWidth + Style.dp(4) : 0)
+                            elide: Text.ElideMiddle
+                            text: _rowItem.modelData.name
+                            color: Style.fg
+                        }
+                        Label {
+                            id: _kindWord
+                            objectName: "ssmProgramKind"
+                            visible: (_rowItem.modelData.kindWord || "").length > 0
+                            text: "(" + (_rowItem.modelData.kindWord || "") + ")"
+                            color: Style.fgMuted
+                            font.pixelSize: Style.dp(12)
+                        }
+                        Item { Layout.fillWidth: _kindWord.visible }
+                    }
+                    Label {
+                        objectName: "ssmAlsoAwake"
+                        visible: !!_rowItem.modelData.alsoAwake
+                        text: "also keeps the PC awake"
+                        color: Style.fgMuted
+                        font.pixelSize: Style.dp(12)
+                    }
+                    Label {
+                        objectName: "ssmProgramDetail"
+                        Layout.fillWidth: true
+                        visible: (_rowItem.modelData.detail || "").length > 0
+                        wrapMode: Text.Wrap
+                        text: _rowItem.modelData.detail || ""
+                        color: Style.fgMuted
+                        font.pixelSize: Style.dp(12)
+                    }
+                }
+                Switch {
+                    id: _ignore
+                    objectName: "ssmIgnoreSwitch"
+                    enabled: _list.ssm.pendingIgnore.length === 0
+                    // What Windows has, read again after every change, so a
+                    // refused one goes back (S14). Every row has it:
+                    // programs, drivers and services alike.
+                    function reread() {
+                        checked = _list.ssm.isIgnored(_rowItem.modelData.name, _rowItem.modelData.kind)
+                    }
+                    Component.onCompleted: reread()
+                    onToggled: _list.ssm.setIgnored(_rowItem.modelData.name, checked, _rowItem.modelData.kind)
+                    Connections {
+                        target: _list.ssm
+                        function onProgramsChanged() { _ignore.reread() }
+                        function onSystemChanged() { _ignore.reread() }
+                    }
+                }
+            }
+        }
+        Label {
+            objectName: _list.messageName
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            visible: text.length > 0
+            color: Style.fgMuted
+            font.pixelSize: Style.dp(12)
+            text: _list.message
+        }
     }
 
     ScrollView {
@@ -182,21 +338,30 @@ ApplicationWindow {
                     color: !_ssm.enabled ? Style.fgMuted
                          : _ssm.listening ? Style.okText : Style.dangerText
                 }
+                // S18: what last reset the idle time, next to it.
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: Style.dp(24)
+                    spacing: Style.dp(16)
                     Label {
                         objectName: "ssmIdleText"
                         text: _ssm.idleText
                         color: Style.fg
                     }
                     Label {
-                        objectName: "ssmWindowsIdleText"
+                        objectName: "ssmLastReset"
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: _ssm.windowsIdleText
+                        visible: text.length > 0
+                        text: _ssm.lastResetText
                         color: Style.fgMuted
                     }
+                }
+                Label {
+                    objectName: "ssmWindowsIdleText"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: _ssm.windowsIdleText
+                    color: Style.fgMuted
                 }
                 Label {
                     objectName: "ssmHoldText"
@@ -215,171 +380,96 @@ ApplicationWindow {
                     color: Style.dangerText
                 }
 
-                // S12-S14: what keeps the PC awake.
+                // S12-S14, S17: what keeps the PC awake, in three sections.
                 SectionHeading { Layout.fillWidth: true; text: "What keeps the PC awake" }
-                GridLayout {
-                    Layout.fillWidth: true
-                    columns: 2
-                    columnSpacing: Style.dp(16)
-                    rowSpacing: Style.dp(4)
 
-                    Button {
-                        objectName: "ssmRefreshDevices"
-                        text: _ssm.scanningDevices ? "Checking… (4 s)" : "Refresh Devices"
-                        enabled: !_ssm.scanningDevices
-                        onClicked: _ssm.refreshDevices()
-                    }
-                    Button {
-                        objectName: "ssmRefreshPrograms"
-                        text: _ssm.scanningPrograms ? "Checking…" : "🛡 Refresh Programs"
-                        enabled: !_ssm.scanningPrograms
-                        onClicked: _ssm.refreshPrograms()
-                    }
-                    Label {
+                AwakeSection {
+                    objectName: "ssmSectionDevices"
+                    title: "Devices"
+                    description: "Devices that never go quiet and keep Windows' idle time at 0. "
+                                 + "Screen Saver Mode ignores them."
+                    buttonName: "ssmRefreshDevices"
+                    buttonText: _ssm.scanningDevices ? "Checking… (4 s)" : "Refresh Devices"
+                    buttonEnabled: !_ssm.scanningDevices
+                    onRefresh: _ssm.refreshDevices()
+
+                    // The devices list (S12): empty until the first press.
+                    RowLayout {
                         Layout.fillWidth: true
-                        Layout.preferredWidth: 1
-                        wrapMode: Text.Wrap
-                        color: Style.fgMuted
-                        font.pixelSize: Style.dp(12)
-                        text: "Lists the devices that never go quiet and keep Windows thinking "
-                              + "someone is using the PC."
+                        Layout.topMargin: Style.dp(4)
+                        visible: _ssm.devices.length > 0
+                        Label { text: "Device"; color: Style.fgMuted; Layout.fillWidth: true }
+                        Label { text: "Reports / s"; color: Style.fgMuted }
                     }
-                    Label {
+                    ListView {
+                        objectName: "ssmDeviceList"
                         Layout.fillWidth: true
-                        Layout.preferredWidth: 1
-                        wrapMode: Text.Wrap
-                        color: Style.fgMuted
-                        font.pixelSize: Style.dp(12)
-                        text: "Lists the programs asking Windows to keep the display on. "
-                              + "Needs administrator rights each time."
-                    }
-                }
-
-                // The devices list (S12): empty until the first press.
-                RowLayout {
-                    Layout.fillWidth: true
-                    visible: _ssm.devices.length > 0
-                    Label { text: "Device"; color: Style.fgMuted; Layout.fillWidth: true }
-                    Label { text: "Reports / s"; color: Style.fgMuted }
-                }
-                ListView {
-                    objectName: "ssmDeviceList"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: contentHeight
-                    interactive: false
-                    model: _ssm.devices
-                    delegate: RowLayout {
-                        required property var modelData
-                        width: ListView.view.width
-                        Label {
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                            text: modelData.name
-                            color: Style.fg
-                        }
-                        Label {
-                            text: Math.round(modelData.rate)
-                            color: Style.fg
-                        }
-                    }
-                }
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: text.length > 0
-                    color: Style.fgMuted
-                    font.pixelSize: Style.dp(12)
-                    text: _ssm.devicesMessage
-                }
-
-                // The programs list (S13) with Ignore this program (S14).
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.topMargin: Style.dp(6)
-                    visible: _ssm.programs.length > 0
-                    Label { text: "Program"; color: Style.fgMuted; Layout.fillWidth: true }
-                    Label { text: "Asks for"; color: Style.fgMuted; Layout.preferredWidth: Style.dp(140) }
-                    Label { text: "Ignore this program"; color: Style.fgMuted }
-                }
-                ListView {
-                    objectName: "ssmProgramList"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: contentHeight
-                    interactive: false
-                    model: _ssm.programs
-                    delegate: RowLayout {
-                        required property var modelData
-                        width: ListView.view.width
-                        // The name; a driver's or service's kind in grey
-                        // after it, and powercfg's detail line under it.
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
-                            RowLayout {
+                        Layout.preferredHeight: contentHeight
+                        interactive: false
+                        model: _ssm.devices
+                        delegate: RowLayout {
+                            required property var modelData
+                            width: ListView.view.width
+                            Label {
                                 Layout.fillWidth: true
-                                spacing: Style.dp(4)
-                                Label {
-                                    objectName: "ssmProgramName"
-                                    Layout.fillWidth: !_kindWord.visible
-                                    Layout.maximumWidth: parent.width
-                                                         - (_kindWord.visible ? _kindWord.implicitWidth + Style.dp(4) : 0)
-                                    elide: Text.ElideMiddle
-                                    text: modelData.name
-                                    color: Style.fg
-                                }
-                                Label {
-                                    id: _kindWord
-                                    objectName: "ssmProgramKind"
-                                    visible: (modelData.kindWord || "").length > 0
-                                    text: "(" + (modelData.kindWord || "") + ")"
-                                    color: Style.fgMuted
-                                    font.pixelSize: Style.dp(12)
-                                }
-                                Item { Layout.fillWidth: _kindWord.visible }
+                                elide: Text.ElideRight
+                                text: modelData.name
+                                color: Style.fg
                             }
                             Label {
-                                objectName: "ssmProgramDetail"
-                                Layout.fillWidth: true
-                                visible: (modelData.detail || "").length > 0
-                                wrapMode: Text.Wrap
-                                text: modelData.detail || ""
-                                color: Style.fgMuted
-                                font.pixelSize: Style.dp(12)
-                            }
-                        }
-                        Label {
-                            Layout.preferredWidth: Style.dp(140)
-                            elide: Text.ElideRight
-                            text: modelData.kinds
-                            color: Style.fgMuted
-                        }
-                        Switch {
-                            id: _ignore
-                            objectName: "ssmIgnoreSwitch"
-                            enabled: _ssm.pendingIgnore.length === 0
-                            // What Windows has, read again after every
-                            // change, so a refused one goes back (S14).
-                            // Every row has it: programs, drivers and
-                            // services alike.
-                            Component.onCompleted: checked = _ssm.isIgnored(modelData.name, modelData.kind)
-                            onToggled: _ssm.setIgnored(modelData.name, checked, modelData.kind)
-                            Connections {
-                                target: _ssm
-                                function onProgramsChanged() {
-                                    _ignore.checked = _ssm.isIgnored(modelData.name, modelData.kind)
-                                }
+                                text: Math.round(modelData.rate)
+                                color: Style.fg
                             }
                         }
                     }
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        visible: text.length > 0
+                        color: Style.fgMuted
+                        font.pixelSize: Style.dp(12)
+                        text: _ssm.devicesMessage
+                    }
                 }
-                Label {
-                    objectName: "ssmProgramsMessage"
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: text.length > 0
-                    color: Style.fgMuted
-                    font.pixelSize: Style.dp(12)
-                    text: _ssm.programsMessage
+
+                AwakeSection {
+                    objectName: "ssmSectionPrograms"
+                    title: "Programs"
+                    description: "Programs keeping the display on. These hold Screen Saver Mode "
+                                 + "off until they stop. Needs administrator rights."
+                    buttonName: "ssmRefreshPrograms"
+                    buttonText: _ssm.scanningPrograms ? "Checking…" : "🛡 Refresh Programs"
+                    buttonEnabled: !_ssm.scanningPrograms
+                    onRefresh: _ssm.refreshPrograms()
+
+                    RequestList {
+                        ssm: _ssm
+                        rows: _ssm.programs
+                        listName: "ssmProgramList"
+                        heading: "Program"
+                        message: _ssm.programsMessage
+                        messageName: "ssmProgramsMessage"
+                    }
+                }
+
+                AwakeSection {
+                    objectName: "ssmSectionSystem"
+                    title: "System"
+                    description: "Programs, drivers and services keeping the PC awake. They stop "
+                                 + "sleep, not the screens. Needs administrator rights."
+                    buttonName: "ssmRefreshSystem"
+                    buttonText: _ssm.scanningSystem ? "Checking…" : "🛡 Refresh System"
+                    buttonEnabled: !_ssm.scanningSystem
+                    onRefresh: _ssm.refreshSystem()
+
+                    RequestList {
+                        ssm: _ssm
+                        rows: _ssm.system
+                        listName: "ssmSystemList"
+                        heading: "Program, driver or service"
+                        message: _ssm.systemMessage
+                        messageName: "ssmSystemMessage"
+                    }
                 }
 
                 Item { Layout.preferredHeight: Style.dp(10) }
