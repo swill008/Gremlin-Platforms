@@ -1111,3 +1111,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-16 | SSM batch 6 Wake PC: 7 e2e tests (SSM-E2E6) | test | 3-8 min | 3 min (03:19-03:22) | 47 e2e pass |
 | 2026-11-16 | SSM batch 6 Wake PC: tab, setting, model, QML + 10 tests (SSM-UI6) | feature | 5-10 min | 7 min (03:18-03:25) | 79 ui pass |
 | 2026-11-16 | SSM batch 6 lead: spec, contract, checks, quick run (3,426), map counts | fix | ~10 min (table: batch) | 16 min (03:15-03:31) | quick run 5 min |
+| 2026-11-16 | Local build + installer (Wake PC) | build | 2 min | 2 min | |
+| 2026-11-16 | SSM TV fix part 2: started screen saver process counts (lead: live check, code, 2 tests, map) | fix | 3-8 min | 5 min (03:44-03:49) | 235 targeted, 1 flake |

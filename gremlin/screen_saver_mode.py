@@ -183,6 +183,17 @@ class _LASTINPUTINFO(ctypes.Structure):
     _fields_ = (("cbSize", wintypes.UINT), ("dwTime", wintypes.DWORD))
 
 
+def _spi_screen_saver_running() -> bool:
+    """Windows' own flag: a screen saver Windows started is running."""
+    user32 = ctypes.WinDLL("user32")
+    running = wintypes.BOOL(0)
+    if not user32.SystemParametersInfoW(
+        _SPI_GETSCREENSAVERRUNNING, 0, ctypes.byref(running), 0
+    ):
+        return False
+    return bool(running.value)
+
+
 class WindowsApi:
     """Every Windows call Screen Saver Mode makes. Tests pass a fake."""
 
@@ -275,18 +286,25 @@ class WindowsApi:
         )
         return status == 0 and bool(state.value & _ES_DISPLAY_REQUIRED)
 
+    # The screen saver this program started (start_screen_saver), kept to
+    # tell whether it still runs.
+    _saver_process: subprocess.Popen | None = None
+
     def screen_saver_running(self) -> bool:
-        """Windows says a screen saver is running (SPI_GETSCREENSAVERRUNNING).
+        """A screen saver runs: the one this program started is still
+        running, or Windows says one runs (SPI_GETSCREENSAVERRUNNING).
         Asked directly, because the screen saver need not be the window in
         front: with a second display the program in front stays in front
-        (found on the user's PC 2026-11-16, a TV as the second display)."""
-        user32 = ctypes.WinDLL("user32")
-        running = wintypes.BOOL(0)
-        if not user32.SystemParametersInfoW(
-            _SPI_GETSCREENSAVERRUNNING, 0, ctypes.byref(running), 0
-        ):
-            return False
-        return bool(running.value)
+        (found on the user's PC 2026-11-16, a TV as the second display).
+        Windows' flag alone is not enough: it is only set for a screen saver
+        Windows started itself, and stayed 0 while the one this program
+        started ran (same PC, same night)."""
+        process = self._saver_process
+        if process is not None:
+            if process.poll() is None:
+                return True
+            self._saver_process = None
+        return _spi_screen_saver_running()
 
     def fullscreen_busy(self) -> bool:
         shell32 = ctypes.WinDLL("shell32")
@@ -328,7 +346,9 @@ class WindowsApi:
 
     def start_screen_saver(self, path: str) -> bool:
         try:
-            subprocess.Popen([path, "/s"], shell=False, close_fds=True)
+            self._saver_process = subprocess.Popen(
+                [path, "/s"], shell=False, close_fds=True
+            )
         except OSError:
             _log().exception(f"Screen Saver Mode: could not start {path}")
             return False

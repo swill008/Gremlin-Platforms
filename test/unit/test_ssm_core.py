@@ -1790,3 +1790,37 @@ def test_is_part_hid_collections_and_usb_interfaces() -> None:
     assert ssm._is_part("USB\\VID_28DE&PID_1142&MI_01\\7&2")
     assert not ssm._is_part("USB\\VID_28DE&PID_1142\\5&3")
     assert ssm.physical_device("") == ""
+
+
+# ----- the screen saver this program started (found on the user's PC 2026-11-16)
+
+
+class _Process:
+    def __init__(self) -> None:
+        self.running = True
+
+    def poll(self) -> int | None:
+        return None if self.running else 0
+
+
+def test_started_screen_saver_counts_as_running_while_windows_says_no(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Windows' flag stayed 0 while the screen saver this program started ran
+    (busy, firefox.exe in front): the started process is what says it runs."""
+    process = _Process()
+    monkeypatch.setattr(ssm, "_spi_screen_saver_running", lambda: False)
+    monkeypatch.setattr(ssm.subprocess, "Popen", lambda *a, **k: process)
+    api = ssm.WindowsApi()
+    assert not api.screen_saver_running()
+    assert api.start_screen_saver(r"C:\Windows\system32\scrnsave.scr")
+    assert api.screen_saver_running()
+    process.running = False
+    assert not api.screen_saver_running()
+
+
+def test_windows_flag_still_counts_without_a_started_screen_saver(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ssm, "_spi_screen_saver_running", lambda: True)
+    assert ssm.WindowsApi().screen_saver_running()
