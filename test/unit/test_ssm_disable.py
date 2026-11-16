@@ -13,7 +13,7 @@ import os
 import threading
 from collections.abc import Iterator
 from pathlib import Path
-from typing import IO
+from typing import IO, Any
 
 import pytest
 
@@ -567,3 +567,74 @@ def test_helper_command_frozen_uses_the_exe(monkeypatch: pytest.MonkeyPatch) -> 
     file, params = dd.helper_command("ab", "J", "K")
     assert os.path.basename(file) == dd.HELPER_EXE
     assert dd.HELPER_SCRIPT not in params
+
+
+# ----- the real pipe listener's close (found on the user's PC 2026-11-16)
+
+
+class _MpListener:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def _pipe_listener(accepting: bool) -> tuple[Any, _MpListener]:
+    """A _PipeListener without a real pipe (its constructor refuses tests)."""
+    listener = object.__new__(dd._PipeListener)
+    inner = _MpListener()
+    listener._address = protocol.PIPE_PREFIX + "test"
+    listener._authkey = b"k" * 32
+    listener._listener = inner
+    listener._closed = False
+    listener._accepting = accepting
+    return listener, inner
+
+
+def test_close_after_the_helper_connected_does_not_wait(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Quitting with the helper connected hung: close() connected to its own
+    pipe and waited for a key handshake nobody answers."""
+    import multiprocessing.connection as mpc
+
+    calls: list[object] = []
+    never = threading.Event()
+
+    def client(*args: object, **kwargs: object) -> None:
+        calls.append(kwargs.get("authkey"))
+        never.wait(5)  # the handshake that never comes
+        raise OSError("no answer")
+
+    monkeypatch.setattr(mpc, "Client", client)
+    listener, inner = _pipe_listener(accepting=False)
+    done = threading.Event()
+    worker = threading.Thread(target=lambda: (listener.close(), done.set()))
+    worker.start()
+    finished = done.wait(2)
+    never.set()
+    worker.join(6)
+    assert finished, "close() waited on its own pipe"
+    assert calls == [] and inner.closed
+
+
+def test_close_while_waiting_wakes_accept_without_a_handshake(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import multiprocessing.connection as mpc
+
+    calls: list[object] = []
+
+    class _Conn:
+        def close(self) -> None:
+            pass
+
+    def client(*args: object, **kwargs: object) -> _Conn:
+        calls.append(kwargs.get("authkey"))
+        return _Conn()
+
+    monkeypatch.setattr(mpc, "Client", client)
+    listener, inner = _pipe_listener(accepting=True)
+    listener.close()
+    assert calls == [None] and inner.closed

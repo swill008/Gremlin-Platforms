@@ -291,7 +291,10 @@ def _real_launcher(file: str, parameters: str) -> Process:
 
 class _PipeListener:
     """multiprocessing.connection.Listener on a named pipe. close() wakes a
-    waiting accept() (it waits without a limit) by connecting to it."""
+    waiting accept() (it waits without a limit) by connecting to it, without
+    the key handshake, and only while accept() waits: once the helper is
+    connected nothing would answer a handshake, and quitting hung on it
+    (found on the user's PC 2026-11-16)."""
 
     def __init__(self, address: str, authkey: bytes) -> None:
         if _under_test():
@@ -302,9 +305,14 @@ class _PipeListener:
         self._authkey = authkey
         self._listener = MpListener(address, family="AF_PIPE", authkey=authkey)
         self._closed = False
+        self._accepting = False
 
     def accept(self) -> Connection:
-        conn = self._listener.accept()
+        self._accepting = True
+        try:
+            conn = self._listener.accept()
+        finally:
+            self._accepting = False
         if self._closed:
             conn.close()
             raise OSError("listener closed")
@@ -314,12 +322,15 @@ class _PipeListener:
         if self._closed:
             return
         self._closed = True
-        try:
-            from multiprocessing.connection import Client
+        if self._accepting:
+            try:
+                from multiprocessing.connection import Client
 
-            Client(self._address, family="AF_PIPE", authkey=self._authkey).close()
-        except Exception:
-            pass
+                # No authkey: no handshake to wait for; the waiting accept()
+                # fails its own handshake and returns.
+                Client(self._address, family="AF_PIPE").close()
+            except Exception:
+                pass
         try:
             self._listener.close()
         except Exception:
