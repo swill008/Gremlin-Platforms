@@ -637,52 +637,72 @@ ApplicationWindow {
                         Layout.preferredHeight: contentHeight
                         interactive: false
                         model: _ssm.wakeRows
-                        delegate: RowLayout {
+                        delegate: Item {
                             id: _wakeRow
                             objectName: "ssmWakeRow"
                             required property var modelData
                             width: ListView.view.width
-                            spacing: Style.dp(8)
-                            CheckBox {
-                                id: _wakeTick
-                                objectName: "ssmWakeTick"
-                                // What is saved, read again after every change.
-                                property bool shown: !!_wakeRow.modelData.ticked
-                                onShownChanged: if (!pressed) checked = shown
-                                Component.onCompleted: checked = shown
-                                onToggled: _ssm.setWakeTicked(_wakeRow.modelData.id, checked)
+                            implicitHeight: _wakeLine.implicitHeight
+                            // S33: lit while the device sends input (about 2 s
+                            // after its last), never a change to the tick.
+                            Rectangle {
+                                objectName: "ssmWakeRowHighlight"
+                                anchors.fill: parent
+                                visible: !!_wakeRow.modelData.inUse
+                                color: Style.bgSelected
+                                radius: Style.dp(3)
                             }
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 0
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: Style.dp(6)
-                                    Label {
-                                        objectName: "ssmWakeName"
-                                        Layout.maximumWidth: parent.width - _wakeKinds.implicitWidth - Style.dp(6)
-                                        elide: Text.ElideMiddle
-                                        text: _wakeRow.modelData.name
-                                        color: _wakeRow.modelData.connected ? Style.fg : Style.fgMuted
-                                    }
-                                    Label {
-                                        id: _wakeKinds
-                                        objectName: "ssmWakeKinds"
-                                        text: [_wakeRow.modelData.kinds,
-                                               _wakeRow.modelData.connected ? "" : "not connected"]
-                                              .filter(function(t) { return t.length > 0 }).join(" · ")
-                                        color: Style.fgMuted
-                                    }
-                                    Item { Layout.fillWidth: true }
+                            RowLayout {
+                                id: _wakeLine
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                spacing: Style.dp(8)
+                                CheckBox {
+                                    id: _wakeTick
+                                    objectName: "ssmWakeTick"
+                                    // What is saved, read again after every change.
+                                    property bool shown: !!_wakeRow.modelData.ticked
+                                    onShownChanged: if (!pressed) checked = shown
+                                    Component.onCompleted: checked = shown
+                                    onToggled: _ssm.setWakeTicked(_wakeRow.modelData.id, checked)
                                 }
-                                Label {
-                                    objectName: "ssmWakeNote"
+                                ColumnLayout {
                                     Layout.fillWidth: true
-                                    visible: text.length > 0
-                                    wrapMode: Text.Wrap
-                                    text: _wakeRow.modelData.note
-                                    color: Style.fgMuted
-                                    font.pixelSize: Style.dp(12)
+                                    spacing: 0
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: Style.dp(6)
+                                        Label {
+                                            objectName: "ssmWakeName"
+                                            Layout.maximumWidth: parent.width - _wakeKinds.implicitWidth - Style.dp(6)
+                                            elide: Text.ElideMiddle
+                                            text: _wakeRow.modelData.name
+                                            color: _wakeRow.modelData.connected ? Style.fg : Style.fgMuted
+                                        }
+                                        Label {
+                                            id: _wakeKinds
+                                            objectName: "ssmWakeKinds"
+                                            text: [_wakeRow.modelData.kinds,
+                                                   _wakeRow.modelData.connected ? "" : "not connected"]
+                                                  .filter(function(t) { return t.length > 0 }).join(" · ")
+                                            color: Style.fgMuted
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                    }
+                                    Label {
+                                        objectName: "ssmWakeNote"
+                                        Layout.fillWidth: true
+                                        visible: text.length > 0
+                                        wrapMode: Text.Wrap
+                                        // S33: "in use now" after the note while
+                                        // the device sends input.
+                                        text: _wakeRow.modelData.inUse
+                                              ? [_wakeRow.modelData.note, "in use now"]
+                                                .filter(function(t) { return t.length > 0 }).join(" · ")
+                                              : _wakeRow.modelData.note
+                                        color: Style.fgMuted
+                                        font.pixelSize: Style.dp(12)
+                                    }
                                 }
                             }
                         }

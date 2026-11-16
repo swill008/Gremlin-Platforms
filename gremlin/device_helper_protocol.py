@@ -27,16 +27,22 @@ STATES = (
 )
 OPS = ("ping", "disable", "enable", "quit")
 MAX_ID_LENGTH = 260
+# The enumerators the helper handles: a listed HID part, or its physical USB
+# device (S21, decision D-12-SSM-PARENT-AND-IN-USE).
+ID_PREFIXES = ("HID\\", "USB\\")
+NOT_HANDLED_TEXT = "refused: not a device id the helper handles"
 
 # The journal state an id must be in for each action.
 _NEEDED_STATE = {"disable": "to be disabled", "enable": "to be enabled"}
 
 
 def valid_device_id(text: str) -> bool:
-    """A Windows HID device instance id that is safe to hand to pnputil."""
+    """A Windows HID or USB device instance id that is safe to hand to
+    pnputil."""
     if not isinstance(text, str):
         return False
-    if not text.startswith("HID\\") or len(text) <= len("HID\\"):
+    prefix = next((p for p in ID_PREFIXES if text.startswith(p)), "")
+    if not prefix or len(text) <= len(prefix):
         return False
     if len(text) > MAX_ID_LENGTH or '"' in text:
         return False
@@ -78,7 +84,7 @@ def check_request(req: dict, journal: dict) -> tuple[list[str], dict[str, str]]:
                 refused[key] = "refused: unknown operation"
             continue
         if not valid_device_id(device_id):
-            refused[key] = "refused: not a game-input (HID) device id"
+            refused[key] = NOT_HANDLED_TEXT
             continue
         entry = journal.get(device_id)
         if not isinstance(entry, dict):

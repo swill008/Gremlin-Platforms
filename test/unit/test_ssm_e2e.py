@@ -469,6 +469,27 @@ def _wake_texts(j: Journey, w: Any) -> str:  # noqa: ANN401
     return " ".join(_texts_in(j, view)) if view is not None else "<no ssmWakeList>"
 
 
+def _wake_lit(j: Journey, w: Any) -> list[list[str]]:  # noqa: ANN401
+    """S33: [name, note] of each Wake PC row shown lit (its highlight)."""
+    view = j.item(w, "ssmWakeList")
+    if view is None:
+        return [["<no ssmWakeList>", ""]]
+    lit = []
+    for row in _walk_list(j, view):
+        if row.objectName() != "ssmWakeRow":
+            continue
+        parts = {i.objectName(): i for i in j.walk(row)}
+        light = parts.get("ssmWakeRowHighlight")
+        if light is not None and light.isVisible():
+            lit.append(
+                [
+                    str(parts["ssmWakeName"].property("text")),
+                    str(parts["ssmWakeNote"].property("text")),
+                ]
+            )
+    return sorted(lit)
+
+
 def _wake_count(j: Journey, w: Any) -> int:  # noqa: ANN401
     view = j.item(w, "ssmWakeList")
     return int(view.property("count") or 0) if view is not None else -1
@@ -639,6 +660,33 @@ def story_first(j: Journey) -> None:
             ],
             [True, True],
         )
+        # S21: the ticked devices reach the disabler as protected.
+        out["s21Protected"] = j.await_value(
+            lambda: sorted(getattr(_dis(), "_protected", ()) or ()),
+            sorted([_G915, _VIPER]),
+        )
+        # S33: the presses above lit their rows; they go about 2 s after
+        # the last input (real time).
+        out["s33FadedAfterPresses"] = j.await_value(
+            lambda: _wake_lit(j, w), [], timeout=8
+        )
+        # S33: mouse movement lights its row (in use now) without ticking it.
+        _at(5420.0)
+        _device_input(_STEAM_MOUSE, "mouse")
+        _mgr().tick()
+        out["s33MoveLit"] = j.await_value(
+            lambda: _wake_lit(j, w), [["Steam Controller", "in use now"]]
+        )
+        out["s33MoveTicked"] = _ticked()
+        out["s33Faded"] = j.await_value(lambda: _wake_lit(j, w), [], timeout=8)
+        # A press lights a row too; a ticked row keeps its note before it.
+        _at(5421.0)
+        _device_input(_KEY_G915_2, "keyboard", press=True)
+        _mgr().tick()
+        out["s33PressLit"] = j.await_value(
+            lambda: _wake_lit(j, w),
+            [["Logitech G915", "ticked when you pressed a key · in use now"]],
+        )
         _mgr().tick()
         out["s31HoldAfterTick"] = _status()["hold"]
         _wake_tab(j, w, False)
@@ -650,6 +698,13 @@ def story_first(j: Journey) -> None:
         _mgr().tick()
         out["s30ClosedTicked"] = _ticked()
         out["s30ClosedListening"] = _status()["listening"]
+        # S33: nothing lights while the tab is closed.
+        _at(5430.0)
+        _device_input(_STEAM_MOUSE, "mouse")
+        _mgr().tick()
+        j.QTest.qWait(300)
+        _mgr().tick()
+        out["s33ClosedLit"] = "in use now" in _wake_texts(j, w)
 
     _section(j, "s28", s28_s30)
 
@@ -1576,6 +1631,9 @@ def _install_disabler_fake() -> None:
         launcher=_launcher,
         listener_factory=_Listener,
         status_reader=lambda i: W["status"].get(i, "enabled"),
+        # S21: the parent lookup (cfgmgr32) faked: unknown parents fall back
+        # to the listed id, so the saved HID ids are the ones disabled.
+        parent_lookup=lambda i: W.get("parents", {}).get(i, ""),
         connect_timeout_s=20.0,
     )
     for name in ("enable_pending", "recover_at_start", "on_device_arrival"):
@@ -2089,6 +2147,24 @@ def test_s30_a_press_ticks_and_saves_movement_does_not(runs: list[dict]) -> None
     assert _v(first, "s28", "s30Notes") == [True, True]
     assert _v(first, "s28", "s31HoldAfterTick") != "no_wake_device"
     assert _v(first, "s28", "s31TextAfterTick") is False
+
+
+def test_s33_rows_light_up_in_use_now_without_ticking(runs: list[dict]) -> None:
+    first = runs[0]
+    assert _v(first, "s28", "s33FadedAfterPresses") == []
+    assert _v(first, "s28", "s33MoveLit") == [["Steam Controller", "in use now"]]
+    assert _v(first, "s28", "s33MoveTicked") == sorted([_G915, _VIPER])
+    assert _v(first, "s28", "s33Faded") == [], "the highlight stayed"
+    assert _v(first, "s28", "s33PressLit") == [
+        ["Logitech G915", "ticked when you pressed a key · in use now"]
+    ]
+    assert _v(first, "s28", "s33ClosedLit") is False, "lit with the tab closed"
+
+
+def test_s21_ticked_wake_devices_are_protected_from_disabling(
+    runs: list[dict],
+) -> None:
+    assert _v(runs[0], "s28", "s21Protected") == sorted([_G915, _VIPER])
 
 
 def test_s30_detection_only_while_the_tab_is_open(runs: list[dict]) -> None:

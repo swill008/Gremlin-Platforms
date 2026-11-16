@@ -1118,6 +1118,7 @@ def test_s28_s29_rows_merge_saved_with_found_read_off_the_main_thread(
             "ticked": False,
             "note": "",
             "connected": True,
+            "inUse": False,
         },
         {
             "id": _STEAM,
@@ -1126,6 +1127,7 @@ def test_s28_s29_rows_merge_saved_with_found_read_off_the_main_thread(
             "ticked": False,
             "note": "",
             "connected": True,
+            "inUse": False,
         },
         # S28: unplugged, its tick kept.
         {
@@ -1135,6 +1137,7 @@ def test_s28_s29_rows_merge_saved_with_found_read_off_the_main_thread(
             "ticked": True,
             "note": "ticked when you clicked",
             "connected": False,
+            "inUse": False,
         },
     ]
     # S29: new devices are not saved as ticked; the saved list is unchanged.
@@ -1217,6 +1220,160 @@ def test_s30_ticks_by_hand_and_an_untick_stays_through_presses(
     assert {r["id"]: r["ticked"] for r in _rows(ssm)}[_STEAM] is False
     saved = {r["id"]: (r["ticked"], r["how"]) for r in _saved_wake(m)}
     assert saved == {_G815: (True, "you"), _STEAM: (False, "untick")}
+
+
+class _Clock:
+    """clock.monotonic stepped by the test (S33's 2 s)."""
+
+    def __init__(self) -> None:
+        self.t = 1000.0
+
+    def __call__(self) -> float:
+        return self.t
+
+
+@pytest.fixture
+def stepped(monkeypatch: pytest.MonkeyPatch) -> _Clock:
+    from gremlin import clock
+
+    c = _Clock()
+    monkeypatch.setattr(clock, "monotonic", c)
+    return c
+
+
+def _in_use(model) -> dict:  # noqa: ANN001
+    return {r["id"]: r["inUse"] for r in _rows(model)}
+
+
+def test_s33_movement_lights_a_row_without_ticking_it(
+    fakes: tuple,
+    qapp: object,
+    stepped: _Clock,
+) -> None:
+    manager, calls, model, m = fakes
+    ssm = model()
+    _open_wake(ssm, calls, qapp)
+    assert manager.activity_listener is not None
+    assert _in_use(ssm) == {_G815: False, _STEAM: False}
+    seen: list[int] = []
+    ssm.wakeRowsChanged.connect(lambda: seen.append(1))
+    manager.activity(_STEAM)  # mouse movement: not a press
+    assert _in_use(ssm) == {_G815: False, _STEAM: True}
+    assert not any(r["ticked"] for r in _rows(ssm))
+    assert _saved_wake(m) == []
+    # Input every 0.5 s keeps it lit without rebuilding the rows each time.
+    manager.activity(_STEAM)
+    assert seen == [1]
+    # An unknown id lights nothing and adds no row.
+    manager.activity(r"USB\VID_DEAD&PID_BEEF\1")
+    assert set(_in_use(ssm)) == {_G815, _STEAM}
+
+
+def test_s33_a_press_lights_and_ticks_as_before(
+    fakes: tuple,
+    qapp: object,
+    stepped: _Clock,
+) -> None:
+    manager, calls, model, _m = fakes
+    ssm = model()
+    _open_wake(ssm, calls, qapp)
+    manager.press(_G815, "keyboard")
+    row = next(r for r in _rows(ssm) if r["id"] == _G815)
+    assert (row["ticked"], row["note"], row["inUse"]) == (
+        True,
+        "ticked when you pressed a key",
+        True,
+    )
+
+
+def test_s33_the_highlight_goes_2_s_after_the_last_input(
+    fakes: tuple,
+    qapp: object,
+    stepped: _Clock,
+) -> None:
+    manager, calls, model, _m = fakes
+    ssm = model()
+    _open_wake(ssm, calls, qapp)
+    timer = ssm._in_use_timer  # noqa: SLF001
+    manager.activity(_G815)
+    assert timer.isActive() and 1900 <= timer.interval() <= 2100
+    stepped.t += 1.0
+    manager.activity(_STEAM)
+    stepped.t += 0.5
+    manager.activity(_G815)  # last G815 input at +1.5 s
+    # One timer for all rows, still set for the first row to end.
+    stepped.t = 1002.0
+    ssm._expire_in_use()  # noqa: SLF001
+    assert _in_use(ssm) == {_G815: True, _STEAM: True}
+    stepped.t = 1003.0
+    ssm._expire_in_use()  # noqa: SLF001
+    # The mouse's 2 s are up; the keyboard's last input was later.
+    assert _in_use(ssm) == {_G815: True, _STEAM: False}
+    assert timer.isActive() and timer.interval() <= 600
+    stepped.t = 1003.6
+    ssm._expire_in_use()  # noqa: SLF001
+    assert _in_use(ssm) == {_G815: False, _STEAM: False}
+    assert not timer.isActive()
+
+
+def test_s33_the_real_timer_ends_the_highlight(
+    fakes: tuple,
+    qapp: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, calls, model, m = fakes
+    monkeypatch.setattr(m, "IN_USE_S", 0.2)
+    ssm = model()
+    _open_wake(ssm, calls, qapp)
+    manager.activity(_G815)
+    assert _in_use(ssm)[_G815] is True
+    assert _wait(qapp, lambda: _in_use(ssm)[_G815] is False, limit=3.0)
+
+
+def test_s33_nothing_lights_while_the_tab_is_closed(
+    fakes: tuple,
+    qapp: object,
+    stepped: _Clock,
+) -> None:
+    manager, calls, model, _m = fakes
+    ssm = model()
+    ssm.setOpen(True)
+    assert manager.activity_listener is None
+    _open_wake(ssm, calls, qapp)
+    listener = manager.activity_listener
+    manager.activity(_G815)
+    assert _in_use(ssm)[_G815] is True
+    ssm.wakeTabOpen(False)
+    # Leaving the tab clears the listener and the highlight at once.
+    assert manager.activity_listener is None
+    assert _in_use(ssm) == {_G815: False, _STEAM: False}
+    assert not ssm._in_use_timer.isActive()  # noqa: SLF001
+    assert listener is not None
+    listener(_STEAM)  # a late one, after the tab closed
+    assert _in_use(ssm) == {_G815: False, _STEAM: False}
+    # Closing the window with the tab open clears it too.
+    _open_wake(ssm, calls, qapp)
+    manager.activity(_G815)
+    ssm.setOpen(False)
+    assert manager.activity_listener is None
+    assert _in_use(ssm)[_G815] is False
+
+
+def test_s21_ticked_ids_are_protected_from_disabling(fakes, qapp: object) -> None:  # noqa: ANN001
+    manager, calls, model, m = fakes
+    ssm = model()
+    _open_wake(ssm, calls, qapp)
+    calls.disabler.protected.clear()
+    ssm.setWakeTicked(_G815, True)
+    assert calls.disabler.protected[-1] == [_G815]
+    manager.press(_STEAM, "mouse")
+    assert set(calls.disabler.protected[-1]) == {_G815, _STEAM}
+    ssm.setWakeTicked(_G815, False)
+    assert calls.disabler.protected[-1] == [_STEAM]
+    # At start too (apply_saved), before any window opens.
+    calls.disabler.protected.clear()
+    m.apply_saved()
+    assert calls.disabler.protected == [[_STEAM]]
 
 
 def test_s28_ticks_kept_after_a_restart_and_history_restore(
@@ -1549,27 +1706,47 @@ def test_window_s28_two_tabs_and_the_wake_pc_list(window: dict) -> None:
     )
     assert w["openDetection"] == ["start"] and w["wakeVisible"]
     assert w["rows"] == [
-        {"name": "Logitech G815", "kinds": "keyboard", "ticked": False, "note": ""},
+        {
+            "name": "Logitech G815",
+            "kinds": "keyboard",
+            "ticked": False,
+            "note": "",
+            "lit": False,
+        },
         {
             "name": "Steam Controller",
             "kinds": "keyboard, mouse",
             "ticked": False,
             "note": "",
+            "lit": False,
         },
     ]
+    # S30, S33: a press ticks and lights the row ("in use now" after its note).
     assert w["pressed"] == [
         {
             "name": "Logitech G815",
             "kinds": "keyboard",
             "ticked": True,
-            "note": "ticked when you pressed a key",
+            "note": "ticked when you pressed a key · in use now",
+            "lit": True,
         },
         {
             "name": "Steam Controller",
             "kinds": "keyboard, mouse",
             "ticked": False,
             "note": "",
+            "lit": False,
         },
+    ]
+    # S33: movement lights a row without ticking it; no note, just the words.
+    assert [(r["ticked"], r["note"], r["lit"]) for r in w["moved"]] == [
+        (True, "ticked when you pressed a key · in use now", True),
+        (False, "in use now", True),
+    ]
+    # S33: the highlight goes after its time; the ticks stay as they were.
+    assert [(r["ticked"], r["note"], r["lit"]) for r in w["faded"]] == [
+        (True, "ticked when you pressed a key", False),
+        (False, "", False),
     ]
     assert w["clicked"]["ticked"] == [True, True]
     assert w["clicked"]["cfg"] == [[True, "key"], [True, "you"]]

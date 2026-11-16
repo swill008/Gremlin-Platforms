@@ -25,12 +25,13 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 PAD = "HID\\VID_231D&PID_0200&MI_00\\7&1A2B3C4D&0&0000"
 MIC = "HID\\VID_352F&PID_0100&MI_03&COL01\\8&2B&0&0000"
 OTHER = "HID\\VID_046D&PID_C52B\\9&3C&0&0000"
+USB = "USB\\VID_28DE&PID_1205\\ABC123"
 
 
 # Protocol -------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("text", [PAD, MIC, "HID\\X"])
+@pytest.mark.parametrize("text", [PAD, MIC, "HID\\X", USB, "USB\\X"])
 def test_valid_ids(text: str) -> None:
     assert protocol.valid_device_id(text)
 
@@ -40,7 +41,11 @@ def test_valid_ids(text: str) -> None:
     [
         "",
         "HID\\",
-        "USB\\VID_231D&PID_0200\\1",
+        "USB\\",
+        "BTHENUM\\VID_231D&PID_0200\\1",
+        "ROOT\\SYSTEM\\0000",
+        'USB\\VID_1" /enable-device "HID\\X',
+        "USB\\" + "A" * 300,
         "hid\\VID_231D",
         'HID\\VID_1" /enable-device "USB\\X',
         "HID\\VID\n1",
@@ -81,13 +86,14 @@ def _journal(**states: str) -> dict:
 def test_check_disable_only_to_be_disabled() -> None:
     journal = _journal(pad="to be disabled", mic="to be enabled")
     allowed, refused = protocol.check_request(
-        protocol.make_request("disable", [PAD, MIC, OTHER, "USB\\X"]), journal
+        protocol.make_request("disable", [PAD, MIC, OTHER, "ROOT\\X", USB]), journal
     )
     assert allowed == [PAD]
-    assert set(refused) == {MIC, OTHER, "USB\\X"}
+    assert set(refused) == {MIC, OTHER, "ROOT\\X", USB}
     assert refused[MIC].startswith("refused: ") and "to be enabled" in refused[MIC]
     assert refused[OTHER] == "refused: not in the journal"
-    assert "HID" in refused["USB\\X"]
+    assert refused[USB] == "refused: not in the journal"
+    assert refused["ROOT\\X"] == "refused: not a device id the helper handles"
 
 
 def test_check_enable_only_to_be_enabled() -> None:
@@ -589,3 +595,33 @@ def test_release_checks_the_helper_was_built() -> None:
         "Gremlin Device Helper.exe",
     ):
         assert f'"{exe}"' in line
+
+
+def test_check_usb_parent_follows_the_journal() -> None:
+    journal = {USB: {"name": "Steam Controller", "state": "to be disabled"}}
+    allowed, refused = protocol.check_request(
+        protocol.make_request("disable", [USB]), journal
+    )
+    assert allowed == [USB] and refused == {}
+    allowed, refused = protocol.check_request(
+        protocol.make_request("enable", [USB]), journal
+    )
+    assert allowed == [] and "to be disabled" in refused[USB]
+
+
+def test_serve_disables_and_enables_a_usb_parent(
+    tmp_path: pathlib.Path, no_real_pnputil: list
+) -> None:
+    entries = {USB: {"name": "Steam Controller", "state": "to be disabled"}}
+    journal = _write_journal(tmp_path, entries)
+    runner = FakeRunner()
+    conn = FakeConn([protocol.make_request("disable", [USB])])
+    helper.serve(conn, journal, runner, lambda: True, poll_s=0)
+    assert runner.calls == [("disable", USB)]
+    assert conn.sent[0] == {"ok": True, "results": {USB: "done"}}
+    entries[USB]["state"] = "to be enabled"
+    journal = _write_journal(tmp_path, entries)
+    conn = FakeConn([protocol.make_request("enable", [USB])])
+    helper.serve(conn, journal, runner, lambda: True, poll_s=0)
+    assert runner.calls[-1] == ("enable", USB)
+    assert no_real_pnputil == []

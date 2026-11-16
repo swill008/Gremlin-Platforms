@@ -105,6 +105,8 @@ class FakeProcess:
 class FakeWindows:
     def __init__(self) -> None:
         self.status: dict[str, str] = {}
+        self.parents: dict[str, str] = {}
+        self.parent_calls: list[str] = []
         self.launches: list[tuple[str, str]] = []
         self.refuse = False
         self.connect = True
@@ -114,6 +116,13 @@ class FakeWindows:
 
     def read(self, device_id: str) -> str:
         return self.status.get(device_id, dd.NOT_PRESENT)
+
+    def parent(self, device_id: str) -> str:
+        self.parent_calls.append(device_id)
+        found = self.parents.get(device_id, "")
+        if isinstance(found, Exception):
+            raise found
+        return found
 
     def launch(self, file: str, parameters: str) -> FakeProcess:
         self.launches.append((file, parameters))
@@ -143,6 +152,7 @@ def env(tmp_path: Path) -> Iterator[Env]:
         launcher=windows.launch,
         listener_factory=windows.listen,
         status_reader=windows.read,
+        parent_lookup=windows.parent,
         connect_timeout_s=1.0,
     )
     yield disabler, windows, journal_file
@@ -542,6 +552,8 @@ def test_real_seams_refuse_under_pytest() -> None:
     with pytest.raises(dd.RealCallBlocked):
         dd.device_status(KB)
     with pytest.raises(dd.RealCallBlocked):
+        dd.physical_parent(KB)
+    with pytest.raises(dd.RealCallBlocked):
         dd._real_launcher("x.exe", "")
     with pytest.raises(dd.RealCallBlocked):
         dd._PipeListener(protocol.PIPE_PREFIX + "test", b"k" * 32)
@@ -552,6 +564,7 @@ def test_manager_is_one_instance_with_real_seams() -> None:
     assert one is dd.manager()
     assert one._launcher is dd._real_launcher
     assert one._status is dd.device_status
+    assert one._parent is dd.physical_parent
     assert one._listener_factory is dd._PipeListener
 
 
@@ -638,3 +651,98 @@ def test_close_while_waiting_wakes_accept_without_a_handshake(
     listener, inner = _pipe_listener(accepting=True)
     listener.close()
     assert calls == [None] and inner.closed
+
+
+# The physical device (S21, D-12-SSM-PARENT-AND-IN-USE) ----------------------
+
+STEAM_USB = "USB\\VID_28DE&PID_1205\\ABC123"
+STEAM_MOUSE = "HID\\VID_28DE&PID_1205&MI_00&COL01\\7&AA&0&0000"
+STEAM_KB = "HID\\VID_28DE&PID_1205&MI_00&COL02\\7&AA&0&0001"
+BT_PAD = "BTHENUM\\{00001124-0000-1000-8000-00805F9B34FB}_VID&0002045E\\9&BB"
+
+
+def test_disable_uses_the_physical_usb_device(env: Env) -> None:
+    disabler, windows, journal_file = env
+    windows.parents[KB] = "usb\\vid_046d&pid_c52b\\5&1"
+    usb = "USB\\VID_046D&PID_C52B\\5&1"
+    windows.status[usb] = dd.ENABLED
+    _start(disabler)
+    disabler.disable([("Keyboard", KB)])
+    _settle(disabler)
+    assert windows.conn.requests[-1]["ids"] == [usb]
+    entries = _journal(journal_file)
+    assert set(entries) == {usb}
+    assert entries[usb]["name"] == "Keyboard"
+    assert entries[usb]["state"] == dd.DISABLED
+
+
+def test_parts_of_one_device_become_one_entry(env: Env) -> None:
+    disabler, windows, journal_file = env
+    windows.parents[STEAM_MOUSE] = STEAM_USB
+    windows.parents[STEAM_KB] = STEAM_USB
+    windows.status[STEAM_USB] = dd.ENABLED
+    _start(disabler)
+    disabler.disable([("Steam mouse", STEAM_MOUSE), ("Steam keyboard", STEAM_KB)])
+    _settle(disabler)
+    assert windows.conn.requests[-1]["ids"] == [STEAM_USB]
+    entries = _journal(journal_file)
+    assert list(entries) == [STEAM_USB]
+    assert entries[STEAM_USB]["name"] == "Steam mouse"
+
+
+@pytest.mark.parametrize(
+    "parent", ["", BT_PAD, 'USB\\X" /enable-device', OSError("cfgmgr32 failed")]
+)
+def test_unknown_or_non_usb_parent_disables_the_part(env: Env, parent: object) -> None:
+    disabler, windows, journal_file = env
+    windows.parents[PAD] = parent  # type: ignore[assignment]
+    windows.status[PAD] = dd.ENABLED
+    windows.status[BT_PAD] = dd.ENABLED
+    _start(disabler)
+    disabler.disable([("Pad", PAD)])
+    _settle(disabler)
+    assert windows.parent_calls == [PAD]
+    assert windows.conn.requests[-1]["ids"] == [PAD]
+    assert set(_journal(journal_file)) == {PAD}
+
+
+def test_protected_parent_disables_only_the_part(env: Env) -> None:
+    disabler, windows, journal_file = env
+    windows.parents[STEAM_MOUSE] = STEAM_USB
+    windows.parents[STEAM_KB] = STEAM_USB
+    windows.status[STEAM_MOUSE] = dd.ENABLED
+    windows.status[STEAM_KB] = dd.ENABLED
+    windows.status[STEAM_USB] = dd.ENABLED
+    disabler.set_protected([STEAM_USB.lower()])
+    _start(disabler)
+    disabler.disable([("Steam mouse", STEAM_MOUSE), ("Steam keyboard", STEAM_KB)])
+    _settle(disabler)
+    assert windows.conn.requests[-1]["ids"] == [STEAM_MOUSE, STEAM_KB]
+    assert STEAM_USB not in _journal(journal_file)
+    # Unticked again: the physical device is disabled next time.
+    disabler.set_protected([])
+    windows.status[STEAM_MOUSE] = dd.ENABLED
+    windows.status[STEAM_KB] = dd.ENABLED
+    disabler.enable_pending()
+    _settle(disabler)
+    disabler.disable([("Steam mouse", STEAM_MOUSE)])
+    _settle(disabler)
+    assert windows.conn.requests[-1]["ids"] == [STEAM_USB]
+
+
+def test_parent_journal_round_trip_and_old_hid_entries(env: Env) -> None:
+    disabler, windows, journal_file = env
+    _write(journal_file, {KB: _entry("Old keyboard", dd.DISABLED)})
+    windows.status[KB] = dd.DISABLED
+    windows.parents[STEAM_MOUSE] = STEAM_USB
+    windows.status[STEAM_USB] = dd.ENABLED
+    _start(disabler)
+    disabler.disable([("Steam mouse", STEAM_MOUSE)])
+    _settle(disabler)
+    assert _journal(journal_file)[STEAM_USB]["state"] == dd.DISABLED
+    disabler.enable_pending()
+    _settle(disabler)
+    assert set(windows.conn.requests[-1]["ids"]) == {KB, STEAM_USB}
+    entries = _journal(journal_file)
+    assert entries[STEAM_USB]["state"] == dd.ENABLED
+    assert entries[KB]["state"] == dd.ENABLED

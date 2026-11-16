@@ -1112,4 +1112,11 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-16 | SSM batch 6 Wake PC: tab, setting, model, QML + 10 tests (SSM-UI6) | feature | 5-10 min | 7 min (03:18-03:25) | 79 ui pass |
 | 2026-11-16 | SSM batch 6 lead: spec, contract, checks, quick run (3,426), map counts | fix | ~10 min (table: batch) | 16 min (03:15-03:31) | quick run 5 min |
 | 2026-11-16 | Local build + installer (Wake PC) | build | 2 min | 2 min | |
-| 2026-11-16 | SSM TV fix part 2: started screen saver process counts (lead: live check, code, 2 tests, map) | fix | 3-8 min | 5 min (03:44-03:49) | 235 targeted, 1 flake |
+| 2026-11-16 | SSM TV fix part 2: started screen saver process counts (lead: live check, code, 2 tests, map) | fix | 3-8 min | 3 min (03:44-03:47) | 235 targeted, 1 flake |
+| 2026-11-16 | Local build + installer (screen saver process fix) | build | 2 min | 2 min | |
+| 2026-11-16 | SSM batch 7: activity listener + 7 tests (SSM-INPUT7) | feature | 3-8 min | 2 min (04:01-04:03) | 116 core pass |
+| 2026-11-16 | Batch 7 docs: pages 12/01, README, help (DOCS7) | docs | 3-8 min | 2 min (04:02-04:04) | 44 pass |
+| 2026-11-16 | Installer closes running program + 8 tests (INSTALLER7) | fix | 3-8 min | 2 min (04:02-04:04) | 75 installer tests pass, ISCC compile ok |
+| 2026-11-16 | SSM batch 7: disable parent device, protected, USB ids (SSM-PARENT7) | feature | 3-8 min | 5 min (04:01-04:06) | 89 pass |
+| 2026-11-16 | SSM batch 7: in-use highlight + protection wiring (SSM-UI7) | feature | 3-8 min | 8 min (04:02-04:10) | 134 pass |
+| 2026-11-16 | Batch 7 lead: spec, contract, checks, quick run (3,302), map counts | fix | ~10 min (table: batch) | 16 min (04:00-04:16) | quick run 5 min |

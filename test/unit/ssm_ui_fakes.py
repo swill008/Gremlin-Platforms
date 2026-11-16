@@ -149,12 +149,23 @@ class FakeManager:
         self.press_listener: Callable[[str, str], None] | None = None
         self.detection: list[str] = []
         self.detecting = False
+        # In use now (contract-7, S33): the activity listener.
+        self.activity_listener: Callable[[str], None] | None = None
 
     def set_wake_devices(self, physical_ids: Any) -> None:  # noqa: ANN401
         self.wake_sets.append(list(physical_ids))
 
     def set_press_listener(self, listener: Callable[[str, str], None] | None) -> None:
         self.press_listener = listener
+
+    def set_activity_listener(self, listener: Callable[[str], None] | None) -> None:
+        self.activity_listener = listener
+
+    def activity(self, physical_id: str) -> None:
+        """Any keyboard or mouse input from a device (movement too), as the
+        core reports it (main thread), only while a listener is set."""
+        if self.activity_listener is not None:
+            self.activity_listener(physical_id)
 
     def start_detection(self) -> bool:
         self.detection.append("start")
@@ -228,6 +239,11 @@ class FakeDisabler:
         self.enables = 0
         self.arrivals = 0
         self.recoveries = 0
+        # contract-7 (S21): every set_protected call.
+        self.protected: list[list[str]] = []
+
+    def set_protected(self, physical_ids: Any) -> None:  # noqa: ANN401
+        self.protected.append(list(physical_ids))
 
     def helper_running(self) -> bool:
         return self.running

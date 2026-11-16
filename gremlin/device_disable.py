@@ -14,8 +14,9 @@ touched.
 
 All the Windows work runs on one program thread, one job at a time, so a
 re-enable always comes after the disable it undoes. Three seams keep tests
-away from Windows: the elevation launcher, the pipe listener and the status
-reader; the real ones refuse to run under pytest.
+away from Windows: the elevation launcher, the pipe listener, the status
+reader and the physical-device lookup; the real ones refuse to run under
+pytest.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ import queue
 import secrets
 import sys
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any, Protocol
 
 from gremlin import clock, threads, trace, util
@@ -207,6 +208,21 @@ def device_status(device_id: str) -> str:
     return ENABLED
 
 
+# The physical device (no admin) --------------------------------------------
+
+ParentLookup = Callable[[str], str]
+
+
+def physical_parent(device_id: str) -> str:
+    """The physical device a listed part belongs to, as an upper-case
+    instance id ("" when Windows doesn't know it); reads cfgmgr32."""
+    if _under_test():
+        raise RealCallBlocked("device_disable.physical_parent called from a test")
+    from gremlin import screen_saver_mode
+
+    return screen_saver_mode.physical_device(device_id)
+
+
 # The seams -----------------------------------------------------------------
 
 
@@ -350,6 +366,7 @@ class DeviceDisabler:
         launcher: Launcher | None = None,
         listener_factory: ListenerFactory | None = None,
         status_reader: StatusReader | None = None,
+        parent_lookup: ParentLookup | None = None,
         connect_timeout_s: float = CONNECT_TIMEOUT_S,
     ) -> None:
         self._journal_file = journal_file
@@ -357,6 +374,8 @@ class DeviceDisabler:
         self._launcher = launcher or _real_launcher
         self._listener_factory = listener_factory or _PipeListener
         self._status = status_reader or device_status
+        self._parent = parent_lookup or physical_parent
+        self._protected: frozenset[str] = frozenset()
         self._connect_timeout_s = connect_timeout_s
         self._lock = threading.RLock()
         self._conn: Connection | None = None
@@ -594,10 +613,49 @@ class DeviceDisabler:
 
     # Disable (S21) ----------------------------------------------------------
 
+    def set_protected(self, physical_ids: Iterable[str]) -> None:
+        """The physical ids of the keyboards and mice ticked on Wake PC: their
+        physical device is never disabled, so they can always wake the PC."""
+        ids = frozenset(str(i).upper() for i in physical_ids if i)
+        with self._lock:
+            self._protected = ids
+
     def disable(self, devices: list[tuple[str, str]]) -> None:
-        """Disables (name, id) devices, async; only while the helper runs."""
+        """Disables, async and only while the helper runs, the physical USB
+        device of each listed (name, id) part; parts with one physical
+        device are disabled once."""
         devices = list(devices)
         self._enqueue("disable", lambda: self._disable(devices))
+
+    def target(self, name: str, device_id: str) -> str:
+        """The id to disable for a listed part: its physical USB device, or
+        the part itself when that device is unknown, not USB or protected."""
+        try:
+            parent = self._parent(device_id) or ""
+        except RealCallBlocked:
+            raise
+        except Exception as exc:
+            _log.warning(
+                "Screen Saver Mode: physical device of %s unreadable: %s",
+                device_id,
+                exc,
+            )
+            parent = ""
+        parent = parent.upper()
+        with self._lock:
+            protected = self._protected
+        if not parent:
+            why = "physical device unknown"
+        elif not parent.startswith("USB\\") or not protocol.valid_device_id(parent):
+            why = f"physical device {parent} is not USB"
+        elif parent in protected:
+            why = f"physical device {parent} is ticked on Wake PC"
+        else:
+            if parent != device_id.upper():
+                _trace(f"Disable {name} ({device_id}): its physical device {parent}")
+            return parent
+        _trace(f"Disable {name} ({device_id}): the part itself, {why}")
+        return device_id
 
     def _disable(self, devices: list[tuple[str, str]]) -> None:
         if not self.helper_running():
@@ -605,16 +663,21 @@ class DeviceDisabler:
             return
         journal = self.journal()
         names: dict[str, str] = {}
-        for name, device_id in devices:
-            if not protocol.valid_device_id(device_id):
+        seen: set[str] = set()
+        for name, listed_id in devices:
+            if not protocol.valid_device_id(listed_id):
                 _log.warning(
-                    "Screen Saver Mode: not disabling %s: %r is not a HID device id",
+                    "Screen Saver Mode: not disabling %s: %r is not a device id "
+                    "the helper handles",
                     name,
-                    device_id,
+                    listed_id,
                 )
                 continue
-            if device_id in names:
+            device_id = self.target(name, listed_id)
+            if device_id in seen:
+                _trace(f"Disable {name} ({listed_id}): {device_id} already listed")
                 continue
+            seen.add(device_id)
             status = self._read(device_id)
             ours = journal.state(device_id) not in ("", ENABLED)
             if status == NOT_PRESENT:

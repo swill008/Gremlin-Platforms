@@ -1663,6 +1663,99 @@ def test_no_press_listener_reports_nothing(env: Env) -> None:
     assert api.physical_calls == []
 
 
+def test_activity_reaches_the_listener_on_the_main_thread(env: Env) -> None:
+    mode, _api, clk, _now, _run, timers = _wake_env(env)
+    got: list[str] = []
+    mode.set_activity_listener(got.append)
+    assert mode.start_detection() is True
+    assert "screen saver mode presses" in timers  # drained while off
+    clk.note_input(source=MOUSE, kind="mouse")  # movement, no press
+    clk.note_input(source=KB, kind="keyboard")  # key up
+    assert got == []  # never called on the listener thread
+    mode._on_drain_timer()
+    assert got == [MOUSE_ID, KB_ID]
+
+
+def test_activity_from_ticked_and_unticked_devices(env: Env) -> None:
+    mode, _api, clk, _now, run, _t = _wake_env(env)
+    got: list[str] = []
+    mode.set_wake_devices([KB_ID])
+    mode.set_activity_listener(got.append)
+    mode.apply(_on())
+    run(20)
+    clk.note_input(source=MOUSE, kind="mouse")
+    clk.note_input(source=KB, kind="keyboard", press=True)
+    run(1)  # the tick drains while the mode is on
+    assert got == [MOUSE_ID, KB_ID]
+
+
+def test_activity_once_per_device_every_half_second(env: Env) -> None:
+    mode, _api, clk, now, _run, _t = _wake_env(env)
+    got: list[str] = []
+    mode.set_activity_listener(got.append)
+    mode.start_detection()
+    for _ in range(5):
+        clk.note_input(source=KB, kind="keyboard")
+    clk.note_input(source=KB, kind="mouse")  # same device, other kind
+    clk.note_input(source=MOUSE, kind="mouse")
+    now[0] += 0.4
+    clk.note_input(source=KB, kind="keyboard")
+    now[0] += 0.1
+    clk.note_input(source=KB, kind="keyboard")
+    mode._on_drain_timer()
+    assert got == [KB_ID, MOUSE_ID, KB_ID]
+
+
+def test_activity_skips_program_and_own_input(env: Env) -> None:
+    mode, _api, clk, _now, _run, _t = _wake_env(env)
+    got: list[str] = []
+    mode.set_activity_listener(got.append)
+    mode.start_detection()
+    clk.note_input(source=None, kind="keyboard", press=True)
+    clk.note_input(own=True, source=KB, kind="keyboard")
+    mode._on_drain_timer()
+    assert got == []
+
+
+def test_activity_and_press_listeners_side_by_side(env: Env) -> None:
+    mode, api, clk, _now, _run, _t = _wake_env(env)
+    acts: list[str] = []
+    presses: list[tuple[str, str]] = []
+    mode.set_activity_listener(acts.append)
+    mode.set_press_listener(lambda i, k: presses.append((i, k)))
+    mode.start_detection()
+    for _ in range(3):
+        clk.note_input(source=KB, kind="keyboard", press=True)
+        clk.note_input(source=MOUSE, kind="mouse")
+    mode._on_drain_timer()
+    assert acts == [KB_ID, MOUSE_ID]
+    assert presses == [(KB_ID, "keyboard")]
+    assert api.physical_calls == [KB, MOUSE]  # cached per handle
+
+
+def test_no_activity_listener_reports_nothing(env: Env) -> None:
+    mode, api, clk, _now, _run, timers = _wake_env(env)
+    got: list[str] = []
+    mode.set_activity_listener(got.append)
+    mode.set_activity_listener(None)
+    mode.start_detection()
+    clk.note_input(source=KB, kind="keyboard")
+    mode._on_drain_timer()
+    assert got == []
+    assert api.physical_calls == []
+
+
+def test_activity_is_not_traced(env: Env, traced: list[str]) -> None:
+    mode, _api, clk, _now, _run, _t = _wake_env(env)
+    mode.set_activity_listener(lambda i: None)
+    mode.start_detection()
+    before = list(traced)
+    clk.note_input(source=KB, kind="keyboard")
+    clk.note_input(source=MOUSE, kind="mouse")
+    mode._on_drain_timer()
+    assert traced == before
+
+
 def test_detection_starts_and_stops_the_listener_while_off(env: Env) -> None:
     mode, _api, clk, _now, _run, _t = env
     assert mode.start_detection() is True

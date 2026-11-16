@@ -44,7 +44,10 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-CloseApplications=yes
+; The Restart Manager is not used: PrepareToInstall runs before its in-use
+; check and moves the program aside, so it never saw Gremlin running. The
+; script asks the program to quit itself instead (01 S173).
+CloseApplications=no
 RestartApplications=no
 
 [Languages]
@@ -70,9 +73,11 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Visual C++ runtime..."; Flags: waituntilterminated skipifdoesntexist
-Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent; Check: OfferLaunch
 ; The in-app updater runs setup silently with /LAUNCH=1 to start the new version.
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: LaunchAfterSilentUpdate
+; Setup closed the running program (01 S173): start it again.
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: RestartAfterClose
 
 [UninstallDelete]
 Type: files; Name: "{app}\dill_debug.log"
@@ -89,10 +94,42 @@ var
   { The program to start again if an in-app update doesn't finish; set
     once setup reaches the install step. }
   AppExe: String;
+  { Setup asked the running program to quit and it did (01 S173). }
+  ClosedByInstaller: Boolean;
+
+const
+  WM_CLOSE = $0010;
+  GW_OWNER = 4;
+  GW_HWNDNEXT = 2;
+  { How long the program gets to quit before setup gives up. }
+  CloseWaitTries = 30;
+  CloseWaitStep = 500;
+
+function GetTopWindow(Wnd: HWND): HWND;
+  external 'GetTopWindow@user32.dll stdcall';
+function GetWindow(Wnd: HWND; Cmd: Cardinal): HWND;
+  external 'GetWindow@user32.dll stdcall';
+function GetWindowThreadProcessId(Wnd: HWND; var ProcessId: Cardinal): Cardinal;
+  external 'GetWindowThreadProcessId@user32.dll stdcall';
+function IsWindowVisible(Wnd: HWND): Integer;
+  external 'IsWindowVisible@user32.dll stdcall';
 
 function LaunchAfterSilentUpdate: Boolean;
 begin
   Result := WizardSilent and (ExpandConstant('{param:LAUNCH|0}') = '1');
+end;
+
+{ [Run]: start the program again once, after setup closed it; the in-app
+  update's /LAUNCH=1 entry starts it otherwise. }
+function RestartAfterClose: Boolean;
+begin
+  Result := ClosedByInstaller and not LaunchAfterSilentUpdate;
+end;
+
+{ [Run]: the "Launch" box, unless setup starts the program anyway. }
+function OfferLaunch: Boolean;
+begin
+  Result := not ClosedByInstaller;
 end;
 
 function AppFile(const Name: String): String;
@@ -157,10 +194,105 @@ begin
     ExistsAt(AppFile('{#MyAppExeName}.old')) or FileExists(MarkerFile);
 end;
 
+{ Process ids of the program running from the chosen folder (this user's
+  copies; WMI hides other users' paths without admin rights). }
+function RunningIds(const Exe: String): TArrayOfString;
+var
+  Locator, Service, Found, Item: Variant;
+  I, N: Integer;
+begin
+  SetArrayLength(Result, 0);
+  try
+    Locator := CreateOleObject('WbemScripting.SWbemLocator');
+    Service := Locator.ConnectServer('.', 'root\CIMV2');
+    Found := Service.ExecQuery('SELECT ProcessId, ExecutablePath FROM ' +
+      'Win32_Process WHERE Name = ''{#MyAppExeName}''');
+    N := 0;
+    for I := 0 to Found.Count - 1 do
+    begin
+      Item := Found.ItemIndex(I);
+      if not VarIsNull(Item.ExecutablePath) and
+        (CompareText(Item.ExecutablePath, Exe) = 0) then
+      begin
+        SetArrayLength(Result, N + 1);
+        Result[N] := IntToStr(Item.ProcessId);
+        N := N + 1;
+      end;
+    end;
+  except
+    Log('Could not list running programs: ' + GetExceptionMessage);
+  end;
+end;
+
+function IsOneOf(const Id: Cardinal; const Ids: TArrayOfString): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to GetArrayLength(Ids) - 1 do
+    if Ids[I] = IntToStr(Id) then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+{ Asks the program to quit the way File > Exit does: WM_CLOSE to its
+  visible top-level windows, so Main.qml's onClosing quits it or asks about
+  unsaved changes. Never TerminateProcess: unsaved work must not be lost. }
+procedure AskToClose(const Ids: TArrayOfString);
+var
+  Wnd: HWND;
+  Id: Cardinal;
+begin
+  Wnd := GetTopWindow(0);
+  while Wnd <> 0 do
+  begin
+    Id := 0;
+    GetWindowThreadProcessId(Wnd, Id);
+    if IsOneOf(Id, Ids) and (IsWindowVisible(Wnd) <> 0) and
+      (GetWindow(Wnd, GW_OWNER) = 0) then
+      PostMessage(Wnd, WM_CLOSE, 0, 0);
+    Wnd := GetWindow(Wnd, GW_HWNDNEXT);
+  end;
+end;
+
+{ 01 S173: closes a running Gremlin-Platforms before its files are touched.
+  False when it is still running after the wait (it is asking about unsaved
+  changes, or would not quit). }
+function CloseRunningProgram: Boolean;
+var
+  Tries: Integer;
+begin
+  Result := True;
+  if GetArrayLength(RunningIds(AppExe)) = 0 then
+    Exit;
+  Log('Gremlin-Platforms is running; asking it to quit.');
+  AskToClose(RunningIds(AppExe));
+  for Tries := 1 to CloseWaitTries do
+  begin
+    Sleep(CloseWaitStep);
+    if GetArrayLength(RunningIds(AppExe)) = 0 then
+    begin
+      Log('Gremlin-Platforms quit.');
+      ClosedByInstaller := True;
+      Exit;
+    end;
+  end;
+  Log('Gremlin-Platforms is still running; not updating.');
+  Result := False;
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
   AppExe := AppFile('{#MyAppExeName}');
+  if not CloseRunningProgram then
+  begin
+    Result := 'Gremlin-Platforms has unsaved changes. Save or close them, ' +
+      'then run the update again. Nothing was changed.';
+    Exit;
+  end;
   if not OursIsHere then
   begin
     { A new install. Another program's _internal folder must not be moved
@@ -229,10 +361,11 @@ begin
     PutBack('{#MyAppExeName}');
     DeleteFile(MarkerFile);
   end;
-  { An in-app update that didn't finish: start the version that is there
-    again (it says the update didn't finish and offers Try Again). }
-  if (AppExe <> '') and not Finished and LaunchAfterSilentUpdate
-    and FileExists(AppExe) then
+  { An in-app update that didn't finish, or one setup closed the program
+    for: start the version that is there again (after an in-app update it
+    says the update didn't finish and offers Try Again). }
+  if (AppExe <> '') and not Finished and
+    (LaunchAfterSilentUpdate or ClosedByInstaller) and FileExists(AppExe) then
   begin
     Log('Update did not finish; starting the previous version again.');
     ExecAsOriginalUser(AppExe, '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);

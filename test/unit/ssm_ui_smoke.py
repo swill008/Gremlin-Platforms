@@ -556,6 +556,8 @@ def wake_rows() -> list[dict]:
             "kinds": str(one(r, "ssmWakeKinds").property("text")),
             "ticked": bool(one(r, "ssmWakeTick").property("checked")),
             "note": str(one(r, "ssmWakeNote").property("text")),
+            # S33: the row's background lit while its device is in use.
+            "lit": bool(one(r, "ssmWakeRowHighlight").isVisible()),
         }
         for r in rows
     ]
@@ -589,9 +591,17 @@ wake["reads"] = len(calls.input_reads) - reads
 wake["heading"] = str(prop("ssmWakeHeading", "text"))
 wake["programsNote"] = str(prop("ssmWakeProgramsNote", "text"))
 wake["rows"] = wake_rows()
+# S33: a short highlight time so the real timer ends it here.
+ssm_model.IN_USE_S = 0.6
 manager.press(ssm_ui_fakes.INPUT_DEVICES[0].physical_id, "keyboard")
 settle()
 wake["pressed"] = wake_rows()
+# S33: movement lights the other row without ticking it.
+manager.activity(ssm_ui_fakes.INPUT_DEVICES[1].physical_id)
+settle()
+wake["moved"] = wake_rows()
+until(lambda: not any(r["lit"] for r in wake_rows()))
+wake["faded"] = wake_rows()
 tick = wake_ticks()[1]
 tick.setProperty("checked", True)
 QtCore.QMetaObject.invokeMethod(tick, "toggled")

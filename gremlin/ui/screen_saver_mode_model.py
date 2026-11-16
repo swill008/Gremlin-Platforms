@@ -39,7 +39,7 @@ from typing import Any, Callable
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import config
+from gremlin import clock, config
 from gremlin.signal import signal
 from gremlin.types import PropertyType
 from gremlin.ui.device import QML_IMPORT_MAJOR_VERSION, QML_IMPORT_NAME
@@ -249,7 +249,11 @@ def apply_saved() -> None:
         wanted = saved_settings()
         manager = core.manager()
         # S3, S28, S31: only the ticked devices' input counts.
-        manager.set_wake_devices(ticked_wake_ids())
+        ticked = ticked_wake_ids()
+        manager.set_wake_devices(ticked)
+        # S21: a ticked keyboard or mouse's parent is never disabled, so it
+        # can always wake the PC.
+        _disabler().set_protected(ticked)
         if manager.settings() != wanted:
             manager.apply(wanted)
         on = bool(wanted.enabled) and bool(wanted.power_off_on)  # type: ignore[attr-defined]
@@ -405,7 +409,11 @@ def merge_wake_rows(saved: list[dict], found: list[object] | None) -> list[dict]
     )
 
 
-def _wake_view(row: dict) -> dict:
+# S33: a row stays "in use now" this long after its device's last input.
+IN_USE_S = 2.0
+
+
+def _wake_view(row: dict, in_use: bool = False) -> dict:
     """A Wake PC row as the tab shows it."""
     return {
         "id": row["id"],
@@ -414,6 +422,7 @@ def _wake_view(row: dict) -> dict:
         "ticked": bool(row["ticked"]),
         "note": _HOW_NOTES.get(row["how"], ""),
         "connected": bool(row.get("connected", True)),
+        "inUse": bool(in_use),
     }
 
 
@@ -785,6 +794,12 @@ class ScreenSaverModeModel(QtCore.QObject):
         self._read_again = False
         self._device_signal: Any = None
         self._wake_rows = merge_wake_rows(saved_wake_rows(), None)
+        # S33: physical id -> when its "in use now" ends (clock.monotonic);
+        # one main-thread timer ends them all.
+        self._in_use: dict[str, float] = {}
+        self._in_use_timer = QtCore.QTimer(self)
+        self._in_use_timer.setSingleShot(True)
+        self._in_use_timer.timeout.connect(self._expire_in_use)
         self._stop = False
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(1000)
@@ -1221,8 +1236,8 @@ class ScreenSaverModeModel(QtCore.QObject):
     @QtCore.Property(list, notify=wakeRowsChanged)
     def wakeRows(self) -> list:
         """The Wake PC rows: {"id", "name", "kinds" (text), "ticked",
-        "note" (how it was ticked), "connected"}."""
-        return [_wake_view(r) for r in self._wake_rows]
+        "note" (how it was ticked), "connected", "inUse" (S33)}."""
+        return [_wake_view(r, r["id"] in self._in_use) for r in self._wake_rows]
 
     def _remerge(self) -> None:
         rows = merge_wake_rows(saved_wake_rows(), self._input_devices)
@@ -1260,6 +1275,46 @@ class ScreenSaverModeModel(QtCore.QObject):
         row["how"] = HOW_YOU if ticked else HOW_UNTICK
         self._save_wake()
 
+    def _on_activity(self, physical_id: str) -> None:
+        """S33: any input from a device while the tab is open (the core
+        reports it on the main thread, at most twice a second per device)
+        lights its row for IN_USE_S after the last one. Never ticks."""
+        if not self._wake_open:
+            return
+        physical_id = str(physical_id or "").strip()
+        if not physical_id or self._find_wake(physical_id) is None:
+            return
+        was = physical_id in self._in_use
+        self._in_use[physical_id] = clock.monotonic() + IN_USE_S
+        if not was:
+            self.wakeRowsChanged.emit()
+        if not self._in_use_timer.isActive():
+            self._arm_in_use()
+
+    def _arm_in_use(self) -> None:
+        """Starts the one timer for the first row whose highlight ends."""
+        if not self._in_use:
+            self._in_use_timer.stop()
+            return
+        left = min(self._in_use.values()) - clock.monotonic()
+        self._in_use_timer.start(max(50, int(left * 1000) + 1))
+
+    @QtCore.Slot()
+    def _expire_in_use(self) -> None:
+        now = clock.monotonic()
+        ended = [pid for pid, until in self._in_use.items() if until <= now]
+        for pid in ended:
+            del self._in_use[pid]
+        if ended:
+            self.wakeRowsChanged.emit()
+        self._arm_in_use()
+
+    def _clear_in_use(self) -> None:
+        self._in_use_timer.stop()
+        if self._in_use:
+            self._in_use.clear()
+            self.wakeRowsChanged.emit()
+
     def _on_press(self, physical_id: str, kind: str) -> None:
         """S30: a key or button pressed on a device while the tab is open
         (the core reports it on the main thread) ticks it. A device
@@ -1271,6 +1326,9 @@ class ScreenSaverModeModel(QtCore.QObject):
         if not physical_id:
             return
         row = self._find_wake(physical_id)
+        if row is not None:
+            # S33: a press is input too.
+            self._on_activity(physical_id)
         if row is None:
             # Not read yet: listed now, its name comes with the next read.
             row = {
@@ -1309,6 +1367,7 @@ class ScreenSaverModeModel(QtCore.QObject):
             if manager is not None:
                 try:
                     manager.set_press_listener(self._on_press)
+                    manager.set_activity_listener(self._on_activity)
                     if not manager.start_detection():
                         _log.warning(
                             "Screen Saver Mode: key and button presses can't "
@@ -1323,10 +1382,12 @@ class ScreenSaverModeModel(QtCore.QObject):
             if manager is not None:
                 try:
                     manager.set_press_listener(None)
+                    manager.set_activity_listener(None)
                     manager.stop_detection()
                 except Exception:
                     _log.exception("Screen Saver Mode: Wake PC detection stop failed")
             self._follow_devices(False)
+            self._clear_in_use()
 
     def _follow_devices(self, on: bool) -> None:
         """Re-reads the list when a device is plugged in or out, while the

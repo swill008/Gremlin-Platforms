@@ -199,7 +199,7 @@ def test_setup_starts_the_previous_version_again_when_an_update_fails() -> None:
     iss = (_ROOT / "installer" / "gremlin_platforms.iss").read_text(encoding="utf-8")
     deinit = iss[iss.index("procedure DeinitializeSetup;"):]
     deinit = deinit[: deinit.index("\nend;") + 5]
-    assert "not Finished and LaunchAfterSilentUpdate" in deinit
+    assert "not Finished and" in deinit and "LaunchAfterSilentUpdate" in deinit
     assert "ExecAsOriginalUser(AppExe" in deinit
     assert "AppExe := AppFile('{#MyAppExeName}');" in iss
 

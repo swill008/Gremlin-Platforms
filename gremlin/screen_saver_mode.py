@@ -52,6 +52,8 @@ TICK_S = 1.0
 PRESS_DRAIN_S = 0.25
 # A device's key or button presses are reported at most once a second each.
 PRESS_GAP_S = 1.0
+# Any input from a device is reported at most this often per device (S33).
+ACTIVITY_GAP_S = 0.5
 # A power-off (the timer's or a keep-off re-send) is never sent sooner than
 # this after the last one.
 POWER_OFF_GAP_S = 1.0
@@ -995,7 +997,8 @@ class InputClock:
     own message loop; WM_QUIT posted to the thread ends it. The window
     procedure only notes the time, the device handle and the kind; names
     are looked up later (ScreenSaverMode, once per handle). With a Wake PC
-    list (S28) or a press listener (S30) it also looks up each handle's
+    list (S28), a press listener (S30) or an activity listener (S33) it
+    also looks up each handle's
     physical device, once per handle on this thread (`physical_id_of`);
     input from a device not on the list doesn't count, and presses and
     uncounted devices go to `event_sink` for the main thread. The same window
@@ -1037,6 +1040,9 @@ class InputClock:
         # Presses (S30) are reported while this is True.
         self.report_presses = False
         self._pressed_at: dict[tuple[str, str], float] = {}
+        # Any device input (S33) is reported while this is True.
+        self.report_activity = False
+        self._active_at: dict[str, float] = {}
         # (event, handle, physical id, kind) to the main thread; never Qt.
         self.event_sink: Callable[[str, int, str, str], None] | None = None
 
@@ -1136,8 +1142,13 @@ class InputClock:
             return
         now = clock.monotonic()
         wake = self._wake
-        if source and (wake is not None or self.report_presses):
+        if source and (wake is not None or self.report_presses or self.report_activity):
             physical = self.physical_id(source)
+            if self.report_activity:
+                last = self._active_at.get(physical)
+                if last is None or now - last >= ACTIVITY_GAP_S:
+                    self._active_at[physical] = now
+                    self._send("activity", source, physical, kind)
             if press and self.report_presses:
                 last = self._pressed_at.get((physical, kind))
                 if last is None or now - last >= PRESS_GAP_S:
@@ -1401,6 +1412,7 @@ class ScreenSaverMode:
         # Wake PC (S28-S31): None until set_wake_devices() is called.
         self._wake: frozenset[str] | None = None
         self._press_listener: Callable[[str, str], None] | None = None
+        self._activity_listener: Callable[[str], None] | None = None
         self._detecting = False  # start_detection() without the mode on
         self._drain_timer: Any = None
 
@@ -1435,6 +1447,14 @@ class ScreenSaverMode:
         self._clock.report_presses = listener is not None
         self._arm_drain()
 
+    def set_activity_listener(self, listener: Callable[[str], None] | None) -> None:
+        """While set, any keyboard or mouse input from a device, ticked or
+        not, reaches listener(physical_id) on the main thread, at most once
+        per device every ACTIVITY_GAP_S (S33). Not traced."""
+        self._activity_listener = listener
+        self._clock.report_activity = listener is not None
+        self._arm_drain()
+
     def start_detection(self) -> bool:
         """Listens for presses while the mode is off too (no timers run);
         False when the listener could not start."""
@@ -1466,7 +1486,9 @@ class ScreenSaverMode:
         timer (the tick drains them while it is on)."""
         if (
             self._drain_timer is None
-            and self._press_listener is not None
+            and (
+                self._press_listener is not None or self._activity_listener is not None
+            )
             and not self._running
         ):
             self._drain_timer = threads.main_timer(
@@ -1484,7 +1506,7 @@ class ScreenSaverMode:
     def _note_device_event(
         self, event: str, handle: int, physical: str, kind: str
     ) -> None:
-        """Listener thread: queues a press or an uncounted device."""
+        """Listener thread: queues a press, activity or an uncounted device."""
         self._events.append((event, handle, f"{kind}	{physical}"))
 
     def _call_hook(self, name: str, hook: Callable[[], None] | None) -> None:
@@ -1950,6 +1972,13 @@ class ScreenSaverMode:
                     f"Screen Saver Mode: keep off power off #{n} failed ({text})"
                 )
                 _trace(f"keep off: power off #{n} failed ({text})")
+            elif kind == "activity":
+                listener = self._activity_listener
+                if listener is not None:
+                    try:
+                        listener(text.partition("	")[2])
+                    except Exception:
+                        _log().exception("Screen Saver Mode: activity listener failed")
             elif kind in ("press", "not_counted"):
                 device_kind, _, physical = text.partition("	")
                 name = self._device_name(n) or "a device"
