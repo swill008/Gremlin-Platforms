@@ -1129,3 +1129,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-16 | Local build + installer (batch 8, approved) | build | 2 min | 2 min | |
 | 2026-11-16 | Installer quit-request test on the user's PC with /LOG (lead) | test | ~5 min | 1 min (05:02-05:03) | took the request, quit, restarted |
 | 2026-11-16 | Release 1.0.39 prep: version, notes, pre-release checks (lead) | docs | 3-8 min | 2 min (05:08-05:10) | |
+| 2026-11-16 | CI on b8cc87b0 (release 1.0.39) | ci | ~10-22 min | 18 min (05:10-05:28), passed | |
+| 2026-11-16 | Release build 1.0.39 (publish) + tracker | release | 3-5 min | 4 min (05:28-05:32) | |
