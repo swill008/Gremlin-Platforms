@@ -1126,3 +1126,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-16 | Batch 8: Gremlin quit request + installer (QUIT8) | fix | 3-8 min | 3 min (04:44-04:47) | 64 pass, ISCC ok |
 | 2026-11-16 | Batch 8: back to parts, S34 pending restart (REVERT8) | fix | 3-8 min | 5 min (04:44-04:49) | 94 pass |
 | 2026-11-16 | Batch 8 lead: spec, contract, quick run (3,186), e2e flake fix, map | fix | ~10 min (table: batch) | 13 min (04:42-04:55) | |
+| 2026-11-16 | Local build + installer (batch 8, approved) | build | 2 min | 2 min | |
+| 2026-11-16 | Installer quit-request test on the user's PC with /LOG (lead) | test | ~5 min | 1 min (05:02-05:03) | took the request, quit, restarted |
