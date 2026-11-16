@@ -10,7 +10,9 @@ wake count (S20); the status line follows the manager's status
 three sections, Devices, Programs and System, each with its own Refresh
 button, fill their own lists (Programs and System each with their own
 elevated check, split by power_requests.split); Ignore goes back when
-Windows refuses. The core and the checks are stand-ins
+Windows refuses. The Wake PC tab (S28-S31): only ticked keyboards and mice
+count, every device starts unticked, a press ticks it while the tab is open,
+nothing ticked shows the Waiting line. The core and the checks are stand-ins
 (ssm_ui_fakes.py): nothing listens to the keyboard or mouse, reads HID
 devices, runs powercfg or asks for administrator rights."""
 
@@ -93,6 +95,7 @@ def fakes(qapp: object, monkeypatch: pytest.MonkeyPatch):  # noqa: ANN201
     cfg.set(m.SECTION, m.GROUP, m.OFF_WAIT, 0)
     cfg.set(m.SECTION, m.GROUP, m.HOLD_FULLSCREEN, True)
     cfg.set(m.SECTION, m.GROUP, m.DEVICES, [])
+    cfg.set(m.SECTION, m.GROUP, m.WAKE_PC, [])
     # The helper's state (S25, S26) starts fresh for each test.
     monkeypatch.setattr(m, "_helper_refused", False)
     monkeypatch.setattr(m, "_helper_starting", False)
@@ -109,6 +112,7 @@ def fakes(qapp: object, monkeypatch: pytest.MonkeyPatch):  # noqa: ANN201
 
     for obj in made:
         obj.setOpen(False)
+        obj.wakeTabOpen(False)
         try:
             signal.configChanged.disconnect(obj._on_config)
         except (RuntimeError, TypeError):
@@ -147,6 +151,8 @@ def test_settings_are_registered_with_the_contract_defaults(fakes) -> None:  # n
         "hold-fullscreen": (PropertyType.Bool, True),
         # S27: the saved Devices list.
         "devices": (PropertyType.List, []),
+        # S28: the Wake PC list.
+        "wake-pc": (PropertyType.List, []),
     }
     assert set(m.NAMES) == set(want)
     for name, (kind, _default) in want.items():
@@ -997,6 +1003,260 @@ def test_presses_and_messages_are_traced_and_failures_logged(
     )
 
 
+# Wake PC (S28-S31) -----------------------------------------------------------
+
+_G815 = ssm_ui_fakes.INPUT_DEVICES[0].physical_id
+_STEAM = ssm_ui_fakes.INPUT_DEVICES[1].physical_id
+_GONE = r"USB\VID_1234&PID_0001\9"
+
+
+def _saved_wake(m) -> list:  # noqa: ANN001
+    from gremlin.config import Configuration
+
+    return list(Configuration().value(m.SECTION, m.GROUP, m.WAKE_PC) or [])
+
+
+def _set_wake(m, rows: list) -> None:  # noqa: ANN001
+    from gremlin.config import Configuration
+
+    Configuration().set(m.SECTION, m.GROUP, m.WAKE_PC, rows)
+
+
+def _open_wake(model, calls, qapp: object) -> None:  # noqa: ANN001
+    reads = len(calls.input_reads)
+    model.wakeTabOpen(True)
+    assert _wait(
+        qapp,
+        lambda: len(calls.input_reads) > reads and not model._reading_inputs,  # noqa: SLF001
+    )
+
+
+def _rows(model) -> list[dict]:  # noqa: ANN001
+    return [dict(r) for r in model.property("wakeRows")]
+
+
+def test_s28_wake_pc_list_is_hidden_in_options_and_named_in_history(
+    qapp: object,
+) -> None:
+    from gremlin.config import settings_history_title
+    from gremlin.ui import option
+
+    assert ("global", "screen-saver-mode", "wake-pc") in option._HIDDEN  # noqa: SLF001
+    title = settings_history_title(["global/screen-saver-mode/wake-pc"])
+    assert title == "Changed Wake PC list", title
+
+
+def test_s28_apply_saved_hands_only_the_ticked_ids_to_the_core(fakes) -> None:  # noqa: ANN001
+    manager, _calls, _model, m = fakes
+    _set_wake(
+        m,
+        [
+            {
+                "id": _G815,
+                "name": "G815",
+                "kinds": ["keyboard"],
+                "ticked": True,
+                "how": "you",
+            },
+            {
+                "id": _STEAM,
+                "name": "Steam",
+                "kinds": ["mouse"],
+                "ticked": False,
+                "how": "untick",
+            },
+            {
+                "id": _GONE,
+                "name": "Old",
+                "kinds": ["mouse"],
+                "ticked": True,
+                "how": "click",
+            },
+        ],
+    )
+    manager.wake_sets.clear()
+    m.apply_saved()
+    assert manager.wake_sets == [[_G815, _GONE]]
+    # Nothing ticked: an empty set (the core holds, S31).
+    _set_wake(m, [])
+    m.apply_saved()
+    assert manager.wake_sets[-1] == []
+
+
+def test_s28_s29_rows_merge_saved_with_found_read_off_the_main_thread(
+    fakes: tuple,
+    qapp: object,
+) -> None:
+    import threading
+
+    _manager, calls, model, m = fakes
+    _set_wake(
+        m,
+        [
+            {
+                "id": _GONE,
+                "name": "Old Mouse",
+                "kinds": ["mouse"],
+                "ticked": True,
+                "how": "click",
+            }
+        ],
+    )
+    ssm = model()
+    # Before the tab opens nothing is read; the saved row shows.
+    assert calls.input_reads == []
+    assert [r["id"] for r in _rows(ssm)] == [_GONE]
+    _open_wake(ssm, calls, qapp)
+    main = threading.current_thread().name
+    assert calls.input_reads and main not in calls.input_reads
+    rows = _rows(ssm)
+    assert rows == [
+        {
+            "id": _G815,
+            "name": "Logitech G815",
+            "kinds": "keyboard",
+            "ticked": False,
+            "note": "",
+            "connected": True,
+        },
+        {
+            "id": _STEAM,
+            "name": "Steam Controller",
+            "kinds": "keyboard, mouse",
+            "ticked": False,
+            "note": "",
+            "connected": True,
+        },
+        # S28: unplugged, its tick kept.
+        {
+            "id": _GONE,
+            "name": "Old Mouse",
+            "kinds": "mouse",
+            "ticked": True,
+            "note": "ticked when you clicked",
+            "connected": False,
+        },
+    ]
+    # S29: new devices are not saved as ticked; the saved list is unchanged.
+    assert [r["id"] for r in _saved_wake(m)] == [_GONE]
+
+
+def test_s30_detection_runs_only_while_the_tab_is_open(fakes, qapp: object) -> None:  # noqa: ANN001
+    manager, calls, model, _m = fakes
+    ssm = model()
+    ssm.setOpen(True)
+    assert manager.detection == [] and manager.press_listener is None
+    _open_wake(ssm, calls, qapp)
+    assert manager.detection == ["start"] and manager.press_listener is not None
+    ssm.wakeTabOpen(True)
+    assert manager.detection == ["start"]
+    ssm.wakeTabOpen(False)
+    assert manager.detection == ["start", "stop"] and manager.press_listener is None
+    # Closing the window with the tab open stops it too.
+    _open_wake(ssm, calls, qapp)
+    ssm.setOpen(False)
+    assert manager.detection[-1] == "stop" and manager.press_listener is None
+
+
+def test_s30_a_press_ticks_says_how_saves_and_reaches_the_core(
+    fakes: tuple,
+    qapp: object,
+) -> None:
+    manager, calls, model, m = fakes
+    ssm = model()
+    _open_wake(ssm, calls, qapp)
+    manager.wake_sets.clear()
+    manager.press(_G815, "keyboard")
+    manager.press(_STEAM, "mouse")
+    notes = {r["id"]: (r["ticked"], r["note"]) for r in _rows(ssm)}
+    assert notes == {
+        _G815: (True, "ticked when you pressed a key"),
+        _STEAM: (True, "ticked when you clicked"),
+    }
+    saved = {r["id"]: (r["ticked"], r["how"], r["name"]) for r in _saved_wake(m)}
+    assert saved == {
+        _G815: (True, "key", "Logitech G815"),
+        _STEAM: (True, "click", "Steam Controller"),
+    }
+    assert set(manager.wake_sets[-1]) == {_G815, _STEAM}
+    # A device not read yet is listed and ticked at once.
+    manager.press(_GONE, "keyboard")
+    assert _saved_wake(m)[-1]["id"] == _GONE and _saved_wake(m)[-1]["how"] == "key"
+
+
+def test_s30_presses_do_nothing_while_the_tab_is_closed(fakes, qapp: object) -> None:  # noqa: ANN001
+    manager, calls, model, m = fakes
+    ssm = model()
+    _open_wake(ssm, calls, qapp)
+    listener = manager.press_listener
+    ssm.wakeTabOpen(False)
+    assert listener is not None
+    listener(_G815, "keyboard")  # a late one, after the tab closed
+    assert not any(r["ticked"] for r in _rows(ssm))
+    assert _saved_wake(m) == []
+
+
+def test_s30_ticks_by_hand_and_an_untick_stays_through_presses(
+    fakes: tuple,
+    qapp: object,
+) -> None:
+    manager, calls, model, m = fakes
+    ssm = model()
+    _open_wake(ssm, calls, qapp)
+    ssm.setWakeTicked(_G815, True)
+    ssm.setWakeTicked(_STEAM, True)
+    ssm.setWakeTicked(_STEAM, False)
+    notes = {r["id"]: (r["ticked"], r["note"]) for r in _rows(ssm)}
+    assert notes == {
+        _G815: (True, "ticked by you"),
+        _STEAM: (False, "you unticked it"),
+    }
+    assert manager.wake_sets[-1] == [_G815]
+    # The click that unticked the mouse doesn't tick it again.
+    manager.press(_STEAM, "mouse")
+    assert {r["id"]: r["ticked"] for r in _rows(ssm)}[_STEAM] is False
+    saved = {r["id"]: (r["ticked"], r["how"]) for r in _saved_wake(m)}
+    assert saved == {_G815: (True, "you"), _STEAM: (False, "untick")}
+
+
+def test_s28_ticks_kept_after_a_restart_and_history_restore(
+    fakes: tuple,
+    qapp: object,
+) -> None:
+    _manager, calls, model, m = fakes
+    first = model()
+    _open_wake(first, calls, qapp)
+    first.setWakeTicked(_G815, True)
+    first.wakeTabOpen(False)
+    again = model()
+    assert [(r["id"], r["ticked"], r["connected"]) for r in _rows(again)] == [
+        (_G815, True, True)
+    ]
+    # History puts an empty list back: the rows follow.
+    _set_wake(m, [])
+    from gremlin.signal import signal
+
+    signal.configChanged.emit()
+    assert _rows(again) == []
+
+
+def test_s31_nothing_ticked_shows_the_waiting_line(fakes) -> None:  # noqa: ANN001
+    manager, _calls, model, m = fakes
+    ssm = model()
+    ssm.setEnabled(True)
+    manager.extra = {
+        "hold": ssm_ui_fakes.HOLD_NO_WAKE_DEVICE,
+        "saver_remaining_s": 80.0,
+    }
+    ssm.refreshStatus()
+    assert ssm.property("holdText") == (
+        "Waiting: tick at least one keyboard or mouse on Wake PC."
+    )
+    assert ssm.property("onHold") is True
+    assert ssm.property("saverCountdownText") == ""
+    assert m.HOLD_NO_WAKE_DEVICE == ssm_ui_fakes.HOLD_NO_WAKE_DEVICE
+
+
 # The window, off-screen ------------------------------------------------------
 
 
@@ -1275,3 +1535,43 @@ def test_window_s26_helper_message_and_try_again_in_devices(window: dict) -> Non
     assert h["starts"] == 1
     after = window["helperAfter"]
     assert after == {"visible": False, "starts": 2}
+
+
+def test_window_s28_two_tabs_and_the_wake_pc_list(window: dict) -> None:
+    w = window["wake"]
+    assert w["tabs"] == ["Settings", "Wake PC"]
+    assert w["startIndex"] == 0 and w["settingsShown"] and not w["wakeShown"]
+    # Settings shows everything it did before.
+    assert w["settingsHome"] == ["ssmEnabled", "ssmSectionDevices", "ssmHoldText"]
+    assert w["heading"] == "Allow this device to wake the PC"
+    assert w["programsNote"] == (
+        "Input sent by programs (RustDesk, remote desktop) always counts."
+    )
+    assert w["openDetection"] == ["start"] and w["wakeVisible"]
+    assert w["rows"] == [
+        {"name": "Logitech G815", "kinds": "keyboard", "ticked": False, "note": ""},
+        {
+            "name": "Steam Controller",
+            "kinds": "keyboard, mouse",
+            "ticked": False,
+            "note": "",
+        },
+    ]
+    assert w["pressed"] == [
+        {
+            "name": "Logitech G815",
+            "kinds": "keyboard",
+            "ticked": True,
+            "note": "ticked when you pressed a key",
+        },
+        {
+            "name": "Steam Controller",
+            "kinds": "keyboard, mouse",
+            "ticked": False,
+            "note": "",
+        },
+    ]
+    assert w["clicked"]["ticked"] == [True, True]
+    assert w["clicked"]["cfg"] == [[True, "key"], [True, "you"]]
+    assert w["back"]["detection"] == ["start", "stop"]
+    assert w["back"]["settingsShown"]

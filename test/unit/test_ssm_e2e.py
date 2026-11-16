@@ -96,6 +96,11 @@ W: dict[str, Any] = {
     "foreground_program": "",
     "device_names": {},
     "name_lookups": [],
+    # Wake PC (S28-S31): the keyboards and mice Windows lists, as
+    # (physical id, name, kinds), and each raw input handle's physical id.
+    "input_devices": [],
+    "physical_ids": {},
+    "input_device_reads": 0,
     # The device disabler's Windows edge (S21-S27).
     "helper_answer": [True, ""],
     "helper_starts": 0,
@@ -109,6 +114,30 @@ _VKB = r"HID\VID_231D&PID_0200"
 _PD = r"HID\VID_352F&PID_0100"
 _HELPER_TEXT = "Devices can't be disabled: the helper isn't running"
 NOW = [5000.0]
+
+# Wake PC (S28-S31): three physical devices; the Steam Controller has a
+# keyboard part and a mouse part (two raw input handles, one row).
+_G915 = r"USB\VID_046D&PID_C33E\0001"
+_STEAM = r"USB\VID_28DE&PID_1142\0002"
+_VIPER = r"USB\VID_1532&PID_0078\0003"
+# The G915 has two keyboard handles: 0x5151 is used before S18, so S18's
+# name lookup of 0x5150 is still its first.
+_KEY_G915, _KEY_G915_2 = 0x5150, 0x5151
+_STEAM_KEYS, _STEAM_MOUSE, _MOUSE_VIPER = 0x6000, 0x6001, 0x7000
+W["input_devices"] = [
+    (_G915, "Logitech G915", ("keyboard",)),
+    (_STEAM, "Steam Controller", ("keyboard", "mouse")),
+    (_VIPER, "Razer Viper", ("mouse",)),
+]
+W["physical_ids"] = {
+    _KEY_G915: _G915,
+    _KEY_G915_2: _G915,
+    _STEAM_KEYS: _STEAM,
+    _STEAM_MOUSE: _STEAM,
+    _MOUSE_VIPER: _VIPER,
+}
+_WAITING = "Waiting: tick at least one keyboard or mouse on Wake PC."
+_WAKE_KEY = "wake-pc"
 
 
 def _install_fakes() -> None:
@@ -131,6 +160,16 @@ def _install_fakes() -> None:
         return W["device_names"].get(handle, "")
 
     api.device_name = device_name
+
+    def input_devices(self: Any) -> list:  # noqa: ANN401
+        W["input_device_reads"] += 1
+        return [
+            ssm.InputDevice(physical_id=i, name=n, kinds=tuple(k))
+            for i, n, k in W["input_devices"]
+        ]
+
+    api.input_devices = input_devices
+    api.device_physical_id = lambda self, handle: W["physical_ids"].get(handle, "")
 
     def start_screen_saver(self: Any, path: str) -> bool:  # noqa: ANN401
         W["screen_saver"].append(path)
@@ -390,6 +429,51 @@ def _section(j: Journey, name: str, work: Any) -> None:  # noqa: ANN401
         j.out[f"err:{name}"] = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
 
 
+def _device_input(handle: int, kind: str, press: bool = False) -> None:
+    """Keyboard or mouse input from a device (its raw input handle): a key
+    down or button down when press, else a key up or a mouse move."""
+    _input_clock().note_input(source=handle, kind=kind, press=press)
+
+
+def _no_wake_hold() -> str:
+    from gremlin import screen_saver_mode
+
+    return getattr(screen_saver_mode, "HOLD_NO_WAKE_DEVICE", "no_wake_device")
+
+
+def _wake_saved() -> list[dict]:
+    return list(_cfg(_WAKE_KEY) or [])
+
+
+def _ticked() -> list[str]:
+    return sorted(str(r["id"]) for r in _wake_saved() if r.get("ticked"))
+
+
+def _how(physical_id: str) -> Any:  # noqa: ANN401
+    for row in _wake_saved():
+        if row.get("id") == physical_id:
+            return [bool(row.get("ticked")), row.get("how", "")]
+    return None
+
+
+def _wake_tab(j: Journey, w: Any, open_: bool) -> None:  # noqa: ANN401
+    """The user picks the Wake PC tab (open_) or the Settings tab."""
+    tabs = j.item(w, "ssmTabs")
+    assert tabs is not None, "no ssmTabs"
+    tabs.setProperty("currentIndex", 1 if open_ else 0)
+    j.settle()
+
+
+def _wake_texts(j: Journey, w: Any) -> str:  # noqa: ANN401
+    view = j.item(w, "ssmWakeList")
+    return " ".join(_texts_in(j, view)) if view is not None else "<no ssmWakeList>"
+
+
+def _wake_count(j: Journey, w: Any) -> int:  # noqa: ANN401
+    view = j.item(w, "ssmWakeList")
+    return int(view.property("count") or 0) if view is not None else -1
+
+
 def _flush() -> None:
     from gremlin import deferred_write, history
 
@@ -485,6 +569,122 @@ def story_first(j: Journey) -> None:
         )
 
     _section(j, "s2on", s2_on)
+
+    def s31() -> None:
+        # On, nothing ticked on Wake PC (S29: all start unticked): neither
+        # timer runs and the status line says why.
+        W["display_off_wait_s"] = 300
+        W["screen_saver_path"] = "C:\\Windows\\System32\\Mystify.scr"
+        W["power_off"] = 0
+        W["screen_saver"].clear()
+        out["s31SavedAtFirst"] = _wake_saved()
+        _at(5010.0)
+        _input(j)
+        _at(5320.0)  # past both waits (screen saver 2 min, power off 5 min)
+        _mgr().tick()
+        out["s31Hold"] = _status()["hold"]
+        out["s31Fired"] = [len(W["screen_saver"]), W["power_off"]]
+        out["s31Text"] = j.await_value(lambda: _WAITING in _texts(j, w), True)
+        W["screen_saver_path"] = ""
+
+    _section(j, "s31", s31)
+
+    def s28_s30() -> None:
+        tabs = [
+            n
+            for n in ("ssmTabs", "ssmTabSettings", "ssmTabWake")
+            if j.item(w, n) is None
+        ]
+        out["s28MissingTabs"] = tabs
+        reads = W["input_device_reads"]
+        _wake_tab(j, w, True)
+        out["s28Rows"] = j.await_value(lambda: _wake_count(j, w), 3, timeout=10)
+        out["s28Reads"] = W["input_device_reads"] - reads
+        shown = _wake_texts(j, w)
+        out["s28Shown"] = [
+            "Allow this device to wake the PC" in " ".join(_texts(j, w)),
+            "Logitech G915" in shown,
+            "Steam Controller" in shown,
+            "Razer Viper" in shown,
+            "Input sent by programs (RustDesk, remote desktop) always counts."
+            in " ".join(_texts(j, w)),
+        ]
+        ticks = [
+            i
+            for i in _walk_list(j, j.item(w, "ssmWakeList"))
+            if i.objectName() == "ssmWakeTick"
+        ]
+        out["s29Ticks"] = [len(ticks), sum(bool(t.property("checked")) for t in ticks)]
+        # S30: mouse movement and key ups never tick.
+        _at(5410.0)
+        _device_input(_STEAM_MOUSE, "mouse")
+        _device_input(_STEAM_KEYS, "keyboard")
+        _mgr().tick()
+        j.QTest.qWait(300)
+        _mgr().tick()
+        out["s30MoveTicked"] = _ticked()
+        # A key press on the keyboard, a button click on the mouse: ticked,
+        # saved, each with how it was ticked.
+        _device_input(_KEY_G915_2, "keyboard", press=True)
+        _mgr().tick()
+        out["s30Key"] = j.await_value(lambda: _how(_G915), [True, "key"])
+        _device_input(_MOUSE_VIPER, "mouse", press=True)
+        _mgr().tick()
+        out["s30Click"] = j.await_value(lambda: _how(_VIPER), [True, "click"])
+        out["s30Ticked"] = _ticked()
+        out["s30Notes"] = j.await_value(
+            lambda: [
+                "ticked when you pressed a key" in _wake_texts(j, w),
+                "ticked when you clicked" in _wake_texts(j, w),
+            ],
+            [True, True],
+        )
+        _mgr().tick()
+        out["s31HoldAfterTick"] = _status()["hold"]
+        _wake_tab(j, w, False)
+        out["s31TextAfterTick"] = j.await_value(lambda: _WAITING in _texts(j, w), False)
+        # Tab closed: detection stops (S30), the mode keeps listening.
+        _device_input(_STEAM_KEYS, "keyboard", press=True)
+        _mgr().tick()
+        j.QTest.qWait(300)
+        _mgr().tick()
+        out["s30ClosedTicked"] = _ticked()
+        out["s30ClosedListening"] = _status()["listening"]
+
+    _section(j, "s28", s28_s30)
+
+    def s3_wake() -> None:
+        # S3/S28: an unticked device's input doesn't restart the idle clock;
+        # program input and a ticked device's input do.
+        W["display_off_wait_s"] = 300
+        W["power_off"] = 0
+        _at(5500.0)
+        _input(j)
+        _at(5600.0)
+        _device_input(_STEAM_MOUSE, "mouse")
+        _device_input(_STEAM_KEYS, "keyboard", press=True)
+        _mgr().tick()
+        out["s3UntickedIdle"] = round(_status()["idle_s"])
+        _at(5800.0)
+        _mgr().tick()
+        out["s3UntickedFired"] = W["power_off"]
+        _at(5850.0)
+        _device_input(_KEY_G915_2, "keyboard")
+        _mgr().tick()
+        st = _status()
+        out["s3TickedIdle"] = [round(st["idle_s"]), st["keeping_off"]]
+        _at(5900.0)
+        _device_input(_MOUSE_VIPER, "mouse")
+        _mgr().tick()
+        out["s3TickedMoveIdle"] = round(_status()["idle_s"])
+        _at(5950.0)
+        _input(j)
+        _mgr().tick()
+        out["s3ProgramIdle"] = round(_status()["idle_s"])
+        W["power_off"] = 0
+        W["display_off_wait_s"] = 600
+
+    _section(j, "s3wake", s3_wake)
 
     def s5() -> None:
         # Both timers are on at first; power off follows Windows' display-off
@@ -1216,6 +1416,45 @@ def story_restart(j: Journey) -> None:
 
     _section(j, "mgr", mgr)
 
+    def wake() -> None:
+        # S28: the ticks carry over and reach the core at program start.
+        out["wakeTicked"] = _ticked()
+        _mgr().tick()
+        out["wakeHold"] = _status()["hold"]
+        _at(8000.0)
+        _input(j)
+        _at(8100.0)
+        _device_input(_STEAM_MOUSE, "mouse")
+        _mgr().tick()
+        out["wakeUntickedIdle"] = round(_status()["idle_s"])
+        _at(8150.0)
+        _device_input(_KEY_G915, "keyboard")
+        _mgr().tick()
+        out["wakeTickedIdle"] = round(_status()["idle_s"])
+        # The G915 unplugged: its row stays, ticked, shown not connected.
+        W["input_devices"] = [d for d in W["input_devices"] if d[0] != _G915]
+        j.ev('Commands.trigger("tools.screenSaverMode"); true')
+        w = _window(j)
+        _wake_tab(j, w, True)
+        out["wakeRows"] = j.await_value(lambda: _wake_count(j, w), 3, timeout=10)
+        out["wakeNotConnected"] = j.await_value(
+            lambda: [
+                "Logitech G915" in _wake_texts(j, w),
+                "not connected" in _wake_texts(j, w),
+            ],
+            [True, True],
+        )
+        ticks = [
+            i
+            for i in _walk_list(j, j.item(w, "ssmWakeList"))
+            if i.objectName() == "ssmWakeTick"
+        ]
+        out["wakeShownTicked"] = sum(bool(t.property("checked")) for t in ticks)
+        _wake_tab(j, w, False)
+        out["wakeTickedAfterOpen"] = _ticked()
+
+    _section(j, "wake", wake)
+
     def window() -> None:
         j.ev('Commands.trigger("tools.screenSaverMode"); true')
         w = _window(j)
@@ -1822,6 +2061,69 @@ def test_s2_program_start_follows_the_saved_settings() -> None:
     body = text[text.index("def main(") :]
     start = body.find("gremlin.ui.screen_saver_mode_model.start()")
     assert 0 < start < body.index("app.exec()")
+
+
+def test_s29_s31_nothing_ticked_waits_and_says_so(runs: list[dict]) -> None:
+    first = runs[0]
+    assert _v(first, "s31", "s31SavedAtFirst") == []
+    assert _v(first, "s31", "s31Hold") == "no_wake_device"
+    assert _v(first, "s31", "s31Fired") == [0, 0], "a timer ran with nothing ticked"
+    assert _v(first, "s31", "s31Text") is True, "no Waiting line"
+
+
+def test_s28_the_wake_pc_tab_lists_every_device_unticked(runs: list[dict]) -> None:
+    first = runs[0]
+    assert _v(first, "s28", "s28MissingTabs") == []
+    assert _v(first, "s28", "s28Rows") == 3, "one row per physical device"
+    assert _v(first, "s28", "s28Reads") >= 1
+    assert _v(first, "s28", "s28Shown") == [True, True, True, True, True]
+    assert _v(first, "s28", "s29Ticks") == [3, 0], "a device started ticked"
+
+
+def test_s30_a_press_ticks_and_saves_movement_does_not(runs: list[dict]) -> None:
+    first = runs[0]
+    assert _v(first, "s28", "s30MoveTicked") == [], "a move or key up ticked"
+    assert _v(first, "s28", "s30Key") == [True, "key"]
+    assert _v(first, "s28", "s30Click") == [True, "click"]
+    assert _v(first, "s28", "s30Ticked") == sorted([_G915, _VIPER])
+    assert _v(first, "s28", "s30Notes") == [True, True]
+    assert _v(first, "s28", "s31HoldAfterTick") != "no_wake_device"
+    assert _v(first, "s28", "s31TextAfterTick") is False
+
+
+def test_s30_detection_only_while_the_tab_is_open(runs: list[dict]) -> None:
+    first = runs[0]
+    assert _v(first, "s28", "s30ClosedTicked") == sorted([_G915, _VIPER])
+    assert _v(first, "s28", "s30ClosedListening") is True
+
+
+def test_s3_s28_only_ticked_devices_and_programs_reset_the_idle_clock(
+    runs: list[dict],
+) -> None:
+    first = runs[0]
+    assert _v(first, "s3wake", "s3UntickedIdle") == 100, "an unticked device counted"
+    assert _v(first, "s3wake", "s3UntickedFired") == 1
+    assert _v(first, "s3wake", "s3TickedIdle") == [0, False]
+    assert _v(first, "s3wake", "s3TickedMoveIdle") == 0
+    assert _v(first, "s3wake", "s3ProgramIdle") == 0
+
+
+def test_restart_s28_the_ticks_carry_over_and_count(runs: list[dict]) -> None:
+    second = runs[1]
+    assert _v(second, "wake", "wakeTicked") == sorted([_G915, _VIPER])
+    assert _v(second, "wake", "wakeHold") != "no_wake_device"
+    assert _v(second, "wake", "wakeUntickedIdle") == 100
+    assert _v(second, "wake", "wakeTickedIdle") == 0
+
+
+def test_restart_s28_an_unplugged_ticked_device_keeps_its_tick(
+    runs: list[dict],
+) -> None:
+    second = runs[1]
+    assert _v(second, "wake", "wakeRows") == 3
+    assert _v(second, "wake", "wakeNotConnected") == [True, True]
+    assert _v(second, "wake", "wakeShownTicked") == 2
+    assert _v(second, "wake", "wakeTickedAfterOpen") == sorted([_G915, _VIPER])
 
 
 def test_the_journeys_had_no_errors(runs: list[dict]) -> None:

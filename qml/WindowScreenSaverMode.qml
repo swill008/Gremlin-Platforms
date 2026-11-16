@@ -16,6 +16,9 @@ import Gremlin.Style
 // The status is read once a second while the window is open; three
 // sections (Devices, Programs, System; S12, S13, S17) list what keeps the
 // PC awake, each with its own Refresh button.
+// Two tabs (S28): Settings (all of the above) and Wake PC, the keyboards
+// and mice allowed to reset the idle time; a key or button pressed while
+// Wake PC is open ticks its device (S30).
 ApplicationWindow {
     font.pixelSize: Style.fontSize
     id: _win
@@ -44,6 +47,10 @@ ApplicationWindow {
     onVisibleChanged: _ssm.setOpen(visible)
     Component.onCompleted: _ssm.setOpen(visible)
     onClosing: _ssm.setOpen(false)
+
+    // S30: presses are detected only while the Wake PC tab is shown.
+    readonly property bool wakeShown: visible && _tabs.currentIndex === 1
+    onWakeShownChanged: _ssm.wakeTabOpen(wakeShown)
 
     // One timer (S4, S5): its switch, its wait box (minutes; empty shows
     // Windows' time greyed and uses it), ✕ to clear, Windows' time named
@@ -282,296 +289,407 @@ ApplicationWindow {
         }
     }
 
-    ScrollView {
-        id: _scroll
+    ColumnLayout {
         anchors.fill: parent
-        contentWidth: availableWidth
-        clip: true
+        spacing: 0
 
-        ColumnLayout {
-            id: _body
-            width: _scroll.availableWidth
-            spacing: Style.dp(10)
+        TabBar {
+            id: _tabs
+            objectName: "ssmTabs"
+            Layout.fillWidth: true
+            TabButton { objectName: "ssmTabSettings"; text: "Settings"; width: implicitWidth }
+            TabButton { objectName: "ssmTabWake"; text: "Wake PC"; width: implicitWidth }
+        }
 
-            Item { Layout.preferredHeight: Style.dp(6) }
+        StackLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            currentIndex: _tabs.currentIndex
 
-            // S2: the on/off switch.
-            Switch {
-                id: _enabled
-                objectName: "ssmEnabled"
-                Layout.leftMargin: Style.dp(16)
-                text: "Screen Saver Mode"
-                font.bold: true
-                property bool shown: _ssm.enabled
-                onShownChanged: if (!pressed) checked = shown
-                Component.onCompleted: checked = shown
-                onToggled: _ssm.setEnabled(checked)
-            }
-            Label {
-                Layout.fillWidth: true
-                Layout.leftMargin: Style.dp(16)
-                Layout.rightMargin: Style.dp(16)
-                wrapMode: Text.Wrap
-                color: Style.fgMuted
-                text: "Keeps its own idle time from your keyboard and mouse only, so sticks "
-                      + "and other devices that never go quiet can't keep your screens on. "
-                      + "Works only while Gremlin-Platforms is open."
-            }
+            ScrollView {
+                id: _scroll
+                contentWidth: availableWidth
+                clip: true
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: Style.dp(16)
-                Layout.rightMargin: Style.dp(16)
-                spacing: Style.dp(8)
+                ColumnLayout {
+                    id: _body
+                    width: _scroll.availableWidth
+                    spacing: Style.dp(10)
 
-                // S4, S5: two timers, each with its own switch and wait.
-                SectionHeading { Layout.fillWidth: true; text: "Timers" }
-                TimerRow {
-                    title: "Screen saver"
-                    on: _ssm.saverOn
-                    waitText: _ssm.saverWaitText
-                    placeholder: _ssm.saverWindowsWaitText
-                    windowsLabel: _ssm.saverWindowsWaitLabel
-                    problem: _ssm.saverProblemText
-                    switchName: "ssmSaverOn"
-                    boxName: "ssmSaverWaitBox"
-                    clearName: "ssmSaverWaitClear"
-                    windowsName: "ssmSaverWindowsWait"
-                    problemName: "ssmSaverProblem"
-                    setOn: function(on) { _ssm.setSaverOn(on) }
-                    setWait: function(text) { return _ssm.setSaverWaitText(text) }
-                    clearWait: function() { _ssm.clearSaverWait() }
-                }
-                TimerRow {
-                    title: "Power off displays"
-                    on: _ssm.offOn
-                    waitText: _ssm.offWaitText
-                    placeholder: _ssm.offWindowsWaitText
-                    windowsLabel: _ssm.offWindowsWaitLabel
-                    problem: _ssm.offProblemText
-                    switchName: "ssmOffOn"
-                    boxName: "ssmOffWaitBox"
-                    clearName: "ssmOffWaitClear"
-                    windowsName: "ssmOffWindowsWait"
-                    problemName: "ssmOffProblem"
-                    setOn: function(on) { _ssm.setOffOn(on) }
-                    setWait: function(text) { return _ssm.setOffWaitText(text) }
-                    clearWait: function() { _ssm.clearOffWait() }
-                }
-                Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    color: Style.fgMuted
-                    font.pixelSize: Style.dp(12)
-                    text: "Both count from your last keyboard or mouse input."
-                }
-                Label {
-                    objectName: "ssmOrderWarning"
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: text.length > 0
-                    text: _ssm.orderWarning
-                    color: Style.warn
-                }
+                    Item { Layout.preferredHeight: Style.dp(6) }
 
-                // S7
-                Switch {
-                    objectName: "ssmHoldFullscreen"
-                    text: "Hold off during full-screen programs"
-                    property bool shown: _ssm.holdFullscreen
-                    onShownChanged: if (!pressed) checked = shown
-                    Component.onCompleted: checked = shown
-                    onToggled: _ssm.setHoldFullscreen(checked)
-                }
-
-                // S9, S15: the status line.
-                SectionHeading { Layout.fillWidth: true; text: "Status" }
-                Label {
-                    objectName: "ssmListening"
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: _ssm.listeningText
-                    color: !_ssm.enabled ? Style.fgMuted
-                         : _ssm.listening ? Style.okText : Style.dangerText
-                }
-                // S18: what last reset the idle time, next to it.
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Style.dp(16)
-                    Label {
-                        objectName: "ssmIdleText"
-                        text: _ssm.idleText
-                        color: Style.fg
+                    // S2: the on/off switch.
+                    Switch {
+                        id: _enabled
+                        objectName: "ssmEnabled"
+                        Layout.leftMargin: Style.dp(16)
+                        text: "Screen Saver Mode"
+                        font.bold: true
+                        property bool shown: _ssm.enabled
+                        onShownChanged: if (!pressed) checked = shown
+                        Component.onCompleted: checked = shown
+                        onToggled: _ssm.setEnabled(checked)
                     }
                     Label {
-                        objectName: "ssmLastReset"
                         Layout.fillWidth: true
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
                         wrapMode: Text.Wrap
-                        visible: text.length > 0
-                        text: _ssm.lastResetText
                         color: Style.fgMuted
+                        text: "Keeps its own idle time from your keyboard and mouse only, so sticks "
+                              + "and other devices that never go quiet can't keep your screens on. "
+                              + "Works only while Gremlin-Platforms is open."
                     }
-                }
-                Label {
-                    objectName: "ssmWindowsIdleText"
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: _ssm.windowsIdleText
-                    color: Style.fgMuted
-                }
-                Label {
-                    objectName: "ssmHoldText"
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: text.length > 0
-                    text: _ssm.holdText
-                    color: _ssm.onHold ? Style.warn : Style.fg
-                }
-                // S6: a countdown line per timer, then "done".
-                Label {
-                    objectName: "ssmSaverCountdown"
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: text.length > 0
-                    text: _ssm.saverCountdownText
-                    color: Style.fg
-                }
-                Label {
-                    objectName: "ssmOffCountdown"
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: text.length > 0
-                    text: _ssm.offCountdownText
-                    color: Style.fg
-                }
-                // S20: how often Windows turned the displays back on.
-                Label {
-                    objectName: "ssmWakeCount"
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: text.length > 0
-                    text: _ssm.wakeText
-                    color: Style.fgMuted
-                }
-                Label {
-                    objectName: "ssmProblemText"
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    visible: text.length > 0
-                    text: _ssm.problemText
-                    color: Style.dangerText
-                }
 
-                // S12-S14, S17: what keeps the PC awake, in three sections.
-                SectionHeading { Layout.fillWidth: true; text: "What keeps the PC awake" }
-
-                AwakeSection {
-                    objectName: "ssmSectionDevices"
-                    title: "Devices"
-                    description: "Devices that never go quiet and keep Windows' idle time at 0. "
-                                 + "Screen Saver Mode ignores them."
-                    buttonName: "ssmRefreshDevices"
-                    buttonText: _ssm.scanningDevices ? "Checking… (4 s)" : "Refresh Devices"
-                    buttonEnabled: !_ssm.scanningDevices
-                    onRefresh: _ssm.refreshDevices()
-
-                    // The devices list (S12): empty until the first press.
-                    RowLayout {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.topMargin: Style.dp(4)
-                        visible: _ssm.devices.length > 0
-                        Label { text: "Device"; color: Style.fgMuted; Layout.fillWidth: true }
-                        Label { text: "Reports / s"; color: Style.fgMuted }
-                    }
-                    ListView {
-                        objectName: "ssmDeviceList"
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: contentHeight
-                        interactive: false
-                        model: _ssm.devices
-                        delegate: RowLayout {
-                            required property var modelData
-                            width: ListView.view.width
-                            Label {
-                                Layout.fillWidth: true
-                                elide: Text.ElideRight
-                                text: modelData.name
-                                color: Style.fg
-                            }
-                            Label {
-                                text: Math.round(modelData.rate)
-                                color: Style.fg
-                            }
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        spacing: Style.dp(8)
+
+                        // S4, S5: two timers, each with its own switch and wait.
+                        SectionHeading { Layout.fillWidth: true; text: "Timers" }
+                        TimerRow {
+                            title: "Screen saver"
+                            on: _ssm.saverOn
+                            waitText: _ssm.saverWaitText
+                            placeholder: _ssm.saverWindowsWaitText
+                            windowsLabel: _ssm.saverWindowsWaitLabel
+                            problem: _ssm.saverProblemText
+                            switchName: "ssmSaverOn"
+                            boxName: "ssmSaverWaitBox"
+                            clearName: "ssmSaverWaitClear"
+                            windowsName: "ssmSaverWindowsWait"
+                            problemName: "ssmSaverProblem"
+                            setOn: function(on) { _ssm.setSaverOn(on) }
+                            setWait: function(text) { return _ssm.setSaverWaitText(text) }
+                            clearWait: function() { _ssm.clearSaverWait() }
                         }
-                    }
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        visible: text.length > 0
-                        color: Style.fgMuted
-                        font.pixelSize: Style.dp(12)
-                        text: _ssm.devicesMessage
-                    }
-                    // S26: the helper should run and doesn't.
-                    RowLayout {
-                        Layout.fillWidth: true
-                        visible: _ssm.helperMessage.length > 0
+                        TimerRow {
+                            title: "Power off displays"
+                            on: _ssm.offOn
+                            waitText: _ssm.offWaitText
+                            placeholder: _ssm.offWindowsWaitText
+                            windowsLabel: _ssm.offWindowsWaitLabel
+                            problem: _ssm.offProblemText
+                            switchName: "ssmOffOn"
+                            boxName: "ssmOffWaitBox"
+                            clearName: "ssmOffWaitClear"
+                            windowsName: "ssmOffWindowsWait"
+                            problemName: "ssmOffProblem"
+                            setOn: function(on) { _ssm.setOffOn(on) }
+                            setWait: function(text) { return _ssm.setOffWaitText(text) }
+                            clearWait: function() { _ssm.clearOffWait() }
+                        }
                         Label {
-                            objectName: "ssmHelperMessage"
                             Layout.fillWidth: true
                             wrapMode: Text.Wrap
-                            text: _ssm.helperMessage
+                            color: Style.fgMuted
+                            font.pixelSize: Style.dp(12)
+                            text: "Both count from your last keyboard or mouse input."
+                        }
+                        Label {
+                            objectName: "ssmOrderWarning"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            visible: text.length > 0
+                            text: _ssm.orderWarning
+                            color: Style.warn
+                        }
+
+                        // S7
+                        Switch {
+                            objectName: "ssmHoldFullscreen"
+                            text: "Hold off during full-screen programs"
+                            property bool shown: _ssm.holdFullscreen
+                            onShownChanged: if (!pressed) checked = shown
+                            Component.onCompleted: checked = shown
+                            onToggled: _ssm.setHoldFullscreen(checked)
+                        }
+
+                        // S9, S15: the status line.
+                        SectionHeading { Layout.fillWidth: true; text: "Status" }
+                        Label {
+                            objectName: "ssmListening"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: _ssm.listeningText
+                            color: !_ssm.enabled ? Style.fgMuted
+                                 : _ssm.listening ? Style.okText : Style.dangerText
+                        }
+                        // S18: what last reset the idle time, next to it.
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Style.dp(16)
+                            Label {
+                                objectName: "ssmIdleText"
+                                text: _ssm.idleText
+                                color: Style.fg
+                            }
+                            Label {
+                                objectName: "ssmLastReset"
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                visible: text.length > 0
+                                text: _ssm.lastResetText
+                                color: Style.fgMuted
+                            }
+                        }
+                        Label {
+                            objectName: "ssmWindowsIdleText"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: _ssm.windowsIdleText
+                            color: Style.fgMuted
+                        }
+                        Label {
+                            objectName: "ssmHoldText"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            visible: text.length > 0
+                            text: _ssm.holdText
+                            color: _ssm.onHold ? Style.warn : Style.fg
+                        }
+                        // S6: a countdown line per timer, then "done".
+                        Label {
+                            objectName: "ssmSaverCountdown"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            visible: text.length > 0
+                            text: _ssm.saverCountdownText
+                            color: Style.fg
+                        }
+                        Label {
+                            objectName: "ssmOffCountdown"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            visible: text.length > 0
+                            text: _ssm.offCountdownText
+                            color: Style.fg
+                        }
+                        // S20: how often Windows turned the displays back on.
+                        Label {
+                            objectName: "ssmWakeCount"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            visible: text.length > 0
+                            text: _ssm.wakeText
+                            color: Style.fgMuted
+                        }
+                        Label {
+                            objectName: "ssmProblemText"
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            visible: text.length > 0
+                            text: _ssm.problemText
                             color: Style.dangerText
                         }
-                        Button {
-                            objectName: "ssmHelperTryAgain"
-                            text: "Try again"
-                            onClicked: _ssm.tryAgain()
+
+                        // S12-S14, S17: what keeps the PC awake, in three sections.
+                        SectionHeading { Layout.fillWidth: true; text: "What keeps the PC awake" }
+
+                        AwakeSection {
+                            objectName: "ssmSectionDevices"
+                            title: "Devices"
+                            description: "Devices that never go quiet and keep Windows' idle time at 0. "
+                                         + "Screen Saver Mode ignores them."
+                            buttonName: "ssmRefreshDevices"
+                            buttonText: _ssm.scanningDevices ? "Checking… (4 s)" : "Refresh Devices"
+                            buttonEnabled: !_ssm.scanningDevices
+                            onRefresh: _ssm.refreshDevices()
+
+                            // The devices list (S12): empty until the first press.
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.topMargin: Style.dp(4)
+                                visible: _ssm.devices.length > 0
+                                Label { text: "Device"; color: Style.fgMuted; Layout.fillWidth: true }
+                                Label { text: "Reports / s"; color: Style.fgMuted }
+                            }
+                            ListView {
+                                objectName: "ssmDeviceList"
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: contentHeight
+                                interactive: false
+                                model: _ssm.devices
+                                delegate: RowLayout {
+                                    required property var modelData
+                                    width: ListView.view.width
+                                    Label {
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                        text: modelData.name
+                                        color: Style.fg
+                                    }
+                                    Label {
+                                        text: Math.round(modelData.rate)
+                                        color: Style.fg
+                                    }
+                                }
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                visible: text.length > 0
+                                color: Style.fgMuted
+                                font.pixelSize: Style.dp(12)
+                                text: _ssm.devicesMessage
+                            }
+                            // S26: the helper should run and doesn't.
+                            RowLayout {
+                                Layout.fillWidth: true
+                                visible: _ssm.helperMessage.length > 0
+                                Label {
+                                    objectName: "ssmHelperMessage"
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.Wrap
+                                    text: _ssm.helperMessage
+                                    color: Style.dangerText
+                                }
+                                Button {
+                                    objectName: "ssmHelperTryAgain"
+                                    text: "Try again"
+                                    onClicked: _ssm.tryAgain()
+                                }
+                            }
+                        }
+
+                        AwakeSection {
+                            objectName: "ssmSectionPrograms"
+                            title: "Programs"
+                            description: "Programs keeping the display on. These hold Screen Saver Mode "
+                                         + "off until they stop. Needs administrator rights."
+                            buttonName: "ssmRefreshPrograms"
+                            buttonText: _ssm.scanningPrograms ? "Checking…" : "🛡 Refresh Programs"
+                            buttonEnabled: !_ssm.scanningPrograms
+                            onRefresh: _ssm.refreshPrograms()
+
+                            RequestList {
+                                ssm: _ssm
+                                rows: _ssm.programs
+                                listName: "ssmProgramList"
+                                heading: "Program"
+                                message: _ssm.programsMessage
+                                messageName: "ssmProgramsMessage"
+                            }
+                        }
+
+                        AwakeSection {
+                            objectName: "ssmSectionSystem"
+                            title: "System"
+                            description: "Programs, drivers and services keeping the PC awake. They stop "
+                                         + "sleep, not the screens. Needs administrator rights."
+                            buttonName: "ssmRefreshSystem"
+                            buttonText: _ssm.scanningSystem ? "Checking…" : "🛡 Refresh System"
+                            buttonEnabled: !_ssm.scanningSystem
+                            onRefresh: _ssm.refreshSystem()
+
+                            RequestList {
+                                ssm: _ssm
+                                rows: _ssm.system
+                                listName: "ssmSystemList"
+                                heading: "Program, driver or service"
+                                message: _ssm.systemMessage
+                                messageName: "ssmSystemMessage"
+                            }
+                        }
+
+                        Item { Layout.preferredHeight: Style.dp(10) }
+                    }
+                }
+            }
+
+            // Wake PC (S28-S30): one row per physical keyboard or mouse, with a
+            // tick; the note says how it was ticked; an unplugged ticked one stays.
+            ScrollView {
+                id: _wakeScroll
+                contentWidth: availableWidth
+                clip: true
+
+                ColumnLayout {
+                    width: _wakeScroll.availableWidth
+                    spacing: Style.dp(8)
+
+                    Item { Layout.preferredHeight: Style.dp(6) }
+
+                    SectionHeading {
+                        objectName: "ssmWakeHeading"
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        text: "Allow this device to wake the PC"
+                    }
+                    Label {
+                        objectName: "ssmWakeProgramsNote"
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        wrapMode: Text.Wrap
+                        color: Style.fgMuted
+                        font.pixelSize: Style.dp(12)
+                        text: "Input sent by programs (RustDesk, remote desktop) always counts."
+                    }
+                    ListView {
+                        objectName: "ssmWakeList"
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Style.dp(16)
+                        Layout.rightMargin: Style.dp(16)
+                        Layout.preferredHeight: contentHeight
+                        interactive: false
+                        model: _ssm.wakeRows
+                        delegate: RowLayout {
+                            id: _wakeRow
+                            objectName: "ssmWakeRow"
+                            required property var modelData
+                            width: ListView.view.width
+                            spacing: Style.dp(8)
+                            CheckBox {
+                                id: _wakeTick
+                                objectName: "ssmWakeTick"
+                                // What is saved, read again after every change.
+                                property bool shown: !!_wakeRow.modelData.ticked
+                                onShownChanged: if (!pressed) checked = shown
+                                Component.onCompleted: checked = shown
+                                onToggled: _ssm.setWakeTicked(_wakeRow.modelData.id, checked)
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Style.dp(6)
+                                    Label {
+                                        objectName: "ssmWakeName"
+                                        Layout.maximumWidth: parent.width - _wakeKinds.implicitWidth - Style.dp(6)
+                                        elide: Text.ElideMiddle
+                                        text: _wakeRow.modelData.name
+                                        color: _wakeRow.modelData.connected ? Style.fg : Style.fgMuted
+                                    }
+                                    Label {
+                                        id: _wakeKinds
+                                        objectName: "ssmWakeKinds"
+                                        text: [_wakeRow.modelData.kinds,
+                                               _wakeRow.modelData.connected ? "" : "not connected"]
+                                              .filter(function(t) { return t.length > 0 }).join(" · ")
+                                        color: Style.fgMuted
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                }
+                                Label {
+                                    objectName: "ssmWakeNote"
+                                    Layout.fillWidth: true
+                                    visible: text.length > 0
+                                    wrapMode: Text.Wrap
+                                    text: _wakeRow.modelData.note
+                                    color: Style.fgMuted
+                                    font.pixelSize: Style.dp(12)
+                                }
+                            }
                         }
                     }
+
+                    Item { Layout.preferredHeight: Style.dp(10) }
                 }
-
-                AwakeSection {
-                    objectName: "ssmSectionPrograms"
-                    title: "Programs"
-                    description: "Programs keeping the display on. These hold Screen Saver Mode "
-                                 + "off until they stop. Needs administrator rights."
-                    buttonName: "ssmRefreshPrograms"
-                    buttonText: _ssm.scanningPrograms ? "Checking…" : "🛡 Refresh Programs"
-                    buttonEnabled: !_ssm.scanningPrograms
-                    onRefresh: _ssm.refreshPrograms()
-
-                    RequestList {
-                        ssm: _ssm
-                        rows: _ssm.programs
-                        listName: "ssmProgramList"
-                        heading: "Program"
-                        message: _ssm.programsMessage
-                        messageName: "ssmProgramsMessage"
-                    }
-                }
-
-                AwakeSection {
-                    objectName: "ssmSectionSystem"
-                    title: "System"
-                    description: "Programs, drivers and services keeping the PC awake. They stop "
-                                 + "sleep, not the screens. Needs administrator rights."
-                    buttonName: "ssmRefreshSystem"
-                    buttonText: _ssm.scanningSystem ? "Checking…" : "🛡 Refresh System"
-                    buttonEnabled: !_ssm.scanningSystem
-                    onRefresh: _ssm.refreshSystem()
-
-                    RequestList {
-                        ssm: _ssm
-                        rows: _ssm.system
-                        listName: "ssmSystemList"
-                        heading: "Program, driver or service"
-                        message: _ssm.systemMessage
-                        messageName: "ssmSystemMessage"
-                    }
-                }
-
-                Item { Layout.preferredHeight: Style.dp(10) }
             }
         }
     }

@@ -38,6 +38,8 @@ class FakeApi(ssm.WindowsApi):
         self.saver_running = False
         self.names: dict[int, str] = {}
         self.name_calls: list[int] = []
+        self.physical: dict[int, str] = {}
+        self.physical_calls: list[int] = []
 
     def screen_saver_path(self) -> str:
         return self.path
@@ -76,6 +78,13 @@ class FakeApi(ssm.WindowsApi):
     def device_name(self, handle: int) -> str:
         self.name_calls.append(handle)
         return self.names.get(handle, "")
+
+    def device_physical_id(self, handle: int) -> str:
+        self.physical_calls.append(handle)
+        return self.physical.get(handle, "")
+
+    def input_devices(self) -> list[ssm.InputDevice]:
+        return []
 
     @property
     def actions(self) -> int:
@@ -772,11 +781,13 @@ def test_trace_hold_program_when_hold_begins(env: Env, traced: list[str]) -> Non
 
 def test_window_proc_passes_device_and_kind(monkeypatch: pytest.MonkeyPatch) -> None:
     c = ssm.InputClock()
-    got: list[tuple[bool, Any, str]] = []
+    got: list[tuple[bool, Any, str, bool]] = []
     monkeypatch.setattr(
         c,
         "note_input",
-        lambda own=False, source=None, kind="": got.append((own, source, kind)),
+        lambda own=False, source=None, kind="", press=False: got.append(
+            (own, source, kind, press)
+        ),
     )
     frames = [_raw(1, 0), _raw(0, 0), _raw(0, windows_event_hook.OWN_KEY_MARK)]
     frames[0].header.hDevice = KB
@@ -800,10 +811,11 @@ def test_window_proc_passes_device_and_kind(monkeypatch: pytest.MonkeyPatch) -> 
     for raw in frames:
         fake.raw = raw
         c._window_proc(0, 0x00FF, 0, 1)
+    # The keyboard frame is a key down; the mouse frames only move.
     assert got == [
-        (False, KB, "keyboard"),
-        (False, None, "mouse"),
-        (True, None, "mouse"),
+        (False, KB, "keyboard", True),
+        (False, None, "mouse", False),
+        (True, None, "mouse", False),
     ]
 
 
@@ -1461,3 +1473,320 @@ def test_hooks_are_traced(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     assert lines.index("device hook: before power off") < lines.index(
         "action fired: power off displays: sent"
     )
+
+
+# --- Wake PC (S3, S28-S31): only ticked keyboards and mice count
+
+
+KB_ID = "USB\\VID_1532&PID_024E\\5&1"
+MOUSE_ID = "USB\\VID_046D&PID_C08B\\6&2"
+
+
+def _wake_env(env: Env) -> Env:
+    _mode, api, _clk, _now, _run, _t = env
+    api.physical = {KB: KB_ID, MOUSE: MOUSE_ID}
+    api.names = {KB: "Razer BlackWidow V3", MOUSE: "G502 HERO Gaming Mouse"}
+    return env
+
+
+def test_unticked_device_input_does_not_count(env: Env) -> None:
+    mode, api, clk, _now, run, _t = _wake_env(env)
+    mode.set_wake_devices([KB_ID.lower()])  # ids compare upper-case
+    mode.apply(_on(saver_wait=30, off=False))
+    run(20)
+    clk.note_input(source=MOUSE, kind="mouse")
+    run(1)
+    st = mode.status()
+    assert st.idle_s == pytest.approx(21)
+    assert st.last_reset_kind == ""
+    run(9)
+    assert api.started  # the mouse never restarted the countdown
+    clk.note_input(source=KB, kind="keyboard")
+    run(1)
+    st = mode.status()
+    assert st.idle_s == pytest.approx(1)
+    assert (st.last_reset_by, st.last_reset_kind) == ("Razer BlackWidow V3", "keyboard")
+
+
+def test_program_input_always_counts_with_a_wake_list(env: Env) -> None:
+    mode, _api, clk, _now, run, _t = _wake_env(env)
+    mode.set_wake_devices([KB_ID])
+    mode.apply(_on())
+    run(20)
+    clk.note_input(source=None, kind="mouse")
+    run(1)
+    st = mode.status()
+    assert st.idle_s == pytest.approx(1)
+    assert st.last_reset_kind == "program"
+
+
+def test_unticked_input_does_not_end_keep_off_or_call_after_input(env: Env) -> None:
+    mode, api, clk, _now, run, _t = _wake_env(env)
+    calls: list[str] = []
+    mode.set_device_hooks(lambda: calls.append("before"), lambda: calls.append("after"))
+    mode.set_wake_devices([KB_ID])
+    mode.apply(_off_only())
+    run(120)
+    assert api.powered_off == 1 and mode.status().keeping_off
+    clk.note_input(source=MOUSE, kind="mouse")
+    run(2)
+    assert calls == ["before"]
+    assert mode.status().keeping_off
+    clk.note_input(source=KB, kind="keyboard")
+    run(1)
+    assert calls == ["before", "after"]
+    assert not mode.status().keeping_off
+
+
+def test_nothing_ticked_holds_both_timers(env: Env) -> None:
+    mode, api, clk, _now, run, _t = _wake_env(env)
+    mode.set_wake_devices([])
+    mode.apply(_on())
+    run(300)
+    assert api.actions == 0
+    st = mode.status()
+    assert st.hold == ssm.HOLD_NO_WAKE_DEVICE
+    assert st.saver_remaining_s == 0 and st.off_remaining_s == 0
+    # Locked is checked first.
+    api.is_locked = True
+    run(1)
+    assert mode.status().hold == ssm.HOLD_LOCKED
+    api.is_locked = False
+    mode.set_wake_devices([KB_ID])
+    run(1)
+    assert mode.status().hold == ""
+    run(60)
+    assert api.started
+
+
+def test_no_wake_list_yet_counts_every_device(env: Env) -> None:
+    mode, api, clk, _now, run, _t = _wake_env(env)
+    mode.apply(_on())
+    run(20)
+    clk.note_input(source=MOUSE, kind="mouse")
+    run(1)
+    assert mode.status().idle_s == pytest.approx(1)
+    assert mode.status().hold == ""
+    assert api.physical_calls == []  # no list, no listener: no lookup
+
+
+def test_physical_id_looked_up_once_per_handle(env: Env) -> None:
+    mode, api, clk, _now, run, _t = _wake_env(env)
+    mode.set_wake_devices([KB_ID])
+    mode.apply(_on())
+    for _ in range(50):
+        clk.note_input(source=KB, kind="keyboard")
+        clk.note_input(source=MOUSE, kind="mouse")
+    clk.note_input(source=None, kind="mouse")
+    assert api.physical_calls == [KB, MOUSE]
+
+
+def test_physical_id_lookup_failure_is_not_counted(env: Env) -> None:
+    mode, api, clk, _now, run, _t = _wake_env(env)
+
+    def broken(handle: int) -> str:
+        raise OSError("gone")
+
+    clk.physical_id_of = broken
+    mode.set_wake_devices([KB_ID])
+    mode.apply(_on())
+    run(20)
+    clk.note_input(source=KB, kind="keyboard")
+    run(1)
+    assert mode.status().idle_s == pytest.approx(21)
+
+
+def test_presses_reach_the_listener_on_the_main_thread(env: Env) -> None:
+    mode, _api, clk, _now, _run, timers = _wake_env(env)
+    got: list[tuple[str, str]] = []
+    mode.set_press_listener(lambda i, k: got.append((i, k)))
+    assert mode.start_detection() is True
+    assert clk.started == 1
+    assert "screen saver mode presses" in timers
+    clk.note_input(source=KB, kind="keyboard", press=True)
+    clk.note_input(source=MOUSE, kind="mouse", press=True)
+    assert got == []  # never called on the listener thread
+    mode._on_drain_timer()
+    assert got == [(KB_ID, "keyboard"), (MOUSE_ID, "mouse")]
+
+
+def test_moves_wheel_and_key_up_are_not_presses(env: Env) -> None:
+    mode, _api, clk, _now, _run, _t = _wake_env(env)
+    got: list[tuple[str, str]] = []
+    mode.set_press_listener(lambda i, k: got.append((i, k)))
+    mode.start_detection()
+    clk.note_input(source=MOUSE, kind="mouse")
+    clk.note_input(source=KB, kind="keyboard")
+    clk.note_input(source=None, kind="keyboard", press=True)  # a program
+    mode._on_drain_timer()
+    assert got == []
+
+
+def test_presses_reported_once_a_second_per_device_and_kind(env: Env) -> None:
+    mode, _api, clk, now, _run, _t = _wake_env(env)
+    got: list[tuple[str, str]] = []
+    mode.set_press_listener(lambda i, k: got.append((i, k)))
+    mode.start_detection()
+    for _ in range(5):
+        clk.note_input(source=KB, kind="keyboard", press=True)
+    clk.note_input(source=KB, kind="mouse", press=True)
+    now[0] += 0.5
+    clk.note_input(source=KB, kind="keyboard", press=True)
+    now[0] += 0.5
+    clk.note_input(source=KB, kind="keyboard", press=True)
+    mode._on_drain_timer()
+    assert got == [(KB_ID, "keyboard"), (KB_ID, "mouse"), (KB_ID, "keyboard")]
+
+
+def test_press_from_an_unticked_device_is_reported_but_not_counted(env: Env) -> None:
+    mode, _api, clk, _now, run, _t = _wake_env(env)
+    got: list[tuple[str, str]] = []
+    mode.set_wake_devices([])
+    mode.set_press_listener(lambda i, k: got.append((i, k)))
+    mode.apply(_on())
+    run(20)
+    clk.note_input(source=MOUSE, kind="mouse", press=True)
+    run(1)  # the tick drains while the mode is on
+    assert got == [(MOUSE_ID, "mouse")]
+    assert mode.status().idle_s == pytest.approx(21)
+
+
+def test_no_press_listener_reports_nothing(env: Env) -> None:
+    mode, api, clk, _now, _run, timers = _wake_env(env)
+    got: list[tuple[str, str]] = []
+    mode.set_press_listener(lambda i, k: got.append((i, k)))
+    mode.set_press_listener(None)
+    mode.start_detection()
+    clk.note_input(source=KB, kind="keyboard", press=True)
+    mode._on_drain_timer()
+    assert got == []
+    assert api.physical_calls == []
+
+
+def test_detection_starts_and_stops_the_listener_while_off(env: Env) -> None:
+    mode, _api, clk, _now, _run, _t = env
+    assert mode.start_detection() is True
+    assert mode.start_detection() is True
+    assert clk.started == 1
+    mode.stop_detection()
+    mode.stop_detection()
+    assert clk.stopped == 1
+
+
+def test_detection_leaves_the_listener_to_the_mode(env: Env) -> None:
+    mode, _api, clk, _now, _run, _t = env
+    mode.apply(_on())
+    mode.start_detection()
+    mode.stop_detection()
+    assert clk.stopped == 0  # the mode is on: it keeps listening
+    mode.start_detection()
+    mode.apply(ssm.Settings(enabled=False))
+    assert clk.stopped == 0  # Wake PC is still detecting
+    mode.stop_detection()
+    assert clk.stopped == 1
+
+
+def test_raw_input_press_flags() -> None:
+    key = _raw(1, 0)
+    assert ssm.raw_input_press(key) is True
+    key.data.keyboard.Flags = 0x01  # RI_KEY_BREAK: key up
+    assert ssm.raw_input_press(key) is False
+    key.data.keyboard.Flags = 0x02  # RI_KEY_E0, down
+    assert ssm.raw_input_press(key) is True
+    mouse = _raw(0, 0)
+    assert ssm.raw_input_press(mouse) is False  # movement
+    for down in (0x0001, 0x0004, 0x0010, 0x0040, 0x0100):
+        mouse.data.mouse.u.buttons.usButtonFlags = down
+        assert ssm.raw_input_press(mouse) is True
+    for other in (0x0002, 0x0008, 0x0020, 0x0080, 0x0200, 0x0400, 0x0800):
+        mouse.data.mouse.u.buttons.usButtonFlags = other  # ups, wheels
+        assert ssm.raw_input_press(mouse) is False
+    assert ssm.raw_input_press(_raw(2, 0)) is False
+
+
+def test_trace_wake_devices_not_counted_and_press(env: Env, traced: list[str]) -> None:
+    mode, _api, clk, _now, run, _t = _wake_env(env)
+    mode.set_wake_devices([KB_ID])
+    assert "wake devices: 1 ticked" in traced
+    mode.set_press_listener(lambda i, k: None)
+    mode.apply(_on())
+    for _ in range(5):
+        clk.note_input(source=MOUSE, kind="mouse")
+    run(1)
+    line = "not counted: G502 HERO Gaming Mouse (mouse) is not ticked"
+    assert traced.count(line) == 1
+    clk.note_input(source=KB, kind="keyboard", press=True)
+    run(1)
+    assert "press: Razer BlackWidow V3 (keyboard)" in traced
+    mode.set_wake_devices([KB_ID])  # the list changed: reported again
+    clk.note_input(source=MOUSE, kind="mouse")
+    run(1)
+    assert traced.count(line) == 2
+
+
+def test_group_input_devices_one_row_per_physical_device() -> None:
+    rows = ssm.group_input_devices(
+        [
+            ("USB\\SC", "", "mouse"),
+            ("USB\\SC", "Steam Controller", "keyboard"),
+            ("USB\\SC", "Other name", "mouse"),
+            ("USB\\KB", "Keyboard", "keyboard"),
+            ("", "Unknown", "mouse"),
+        ]
+    )
+    assert rows == [
+        ssm.InputDevice("USB\\SC", "Steam Controller", ("keyboard", "mouse")),
+        ssm.InputDevice("USB\\KB", "Keyboard", ("keyboard",)),
+    ]
+
+
+def test_input_devices_groups_parts_and_skips_pathless(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        ssm,
+        "_raw_input_device_list",
+        lambda: [(1, "mouse"), (2, "keyboard"), (3, "mouse"), (4, "keyboard")],
+    )
+    paths = {1: "\\\\?\\HID#SC&Col01#1#{g}", 2: "\\\\?\\HID#SC&Col02#1#{g}", 4: ""}
+    monkeypatch.setattr(ssm, "raw_device_path", lambda h: paths.get(h, "x#y"))
+    monkeypatch.setattr(
+        ssm, "physical_device", lambda i: "USB\\SC" if "SC" in i else "USB\\OTHER"
+    )
+    monkeypatch.setattr(
+        ssm, "_device_name", lambda h: {2: "Steam Controller"}.get(h, "")
+    )
+    assert ssm.WindowsApi().input_devices() == [
+        ssm.InputDevice("USB\\SC", "Steam Controller", ("keyboard", "mouse")),
+        ssm.InputDevice("USB\\OTHER", "", ("mouse",)),
+    ]
+
+
+def test_input_devices_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken() -> list[tuple[int, str]]:
+        raise OSError("no list")
+
+    monkeypatch.setattr(ssm, "_raw_input_device_list", broken)
+    assert ssm.WindowsApi().input_devices() == []
+
+
+def test_device_physical_id_from_the_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ssm, "raw_device_path", lambda h: "\\\\?\\HID#A&Col01#1#{g}")
+    seen: list[str] = []
+
+    def physical(instance_id: str) -> str:
+        seen.append(instance_id)
+        return "USB\\A"
+
+    monkeypatch.setattr(ssm, "physical_device", physical)
+    assert ssm.WindowsApi().device_physical_id(7) == "USB\\A"
+    assert seen == ["HID\\A&Col01\\1"]
+    monkeypatch.setattr(ssm, "raw_device_path", lambda h: 1 / 0)
+    assert ssm.WindowsApi().device_physical_id(7) == ""
+
+
+def test_is_part_hid_collections_and_usb_interfaces() -> None:
+    assert ssm._is_part("HID\\VID_28DE&PID_1142&MI_01&COL01\\8&1")
+    assert ssm._is_part("USB\\VID_28DE&PID_1142&MI_01\\7&2")
+    assert not ssm._is_part("USB\\VID_28DE&PID_1142\\5&3")
+    assert ssm.physical_device("") == ""

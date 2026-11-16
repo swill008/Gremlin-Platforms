@@ -528,6 +528,86 @@ out["helperAfter"] = {
     "starts": disabler.starts - starts,
 }
 
+# Wake PC (S28-S31): two tabs; the list renders on its own tab, read when
+# it opens; a key press ticks a device; a tick by hand; leaving the tab
+# stops the detection.
+tabs = child("ssmTabs")
+
+
+def tab_texts() -> list[str]:
+    return [str(prop(n, "text")) for n in ("ssmTabSettings", "ssmTabWake")]
+
+
+def item_shown(name: str) -> bool:
+    return bool(win.findChild(QtQuick.QQuickItem, name).isVisible())
+
+
+def wake_rows() -> list[dict]:
+    view = win.findChild(QtQuick.QQuickItem, "ssmWakeList")
+    rows = _items_named(view.property("contentItem"), "ssmWakeRow")
+    rows.sort(key=lambda o: float(o.mapToItem(view, QtCore.QPointF(0, 0)).y()))
+
+    def one(r: QtQuick.QQuickItem, name: str) -> QtQuick.QQuickItem:
+        return _items_named(r, name)[0]
+
+    return [
+        {
+            "name": str(one(r, "ssmWakeName").property("text")),
+            "kinds": str(one(r, "ssmWakeKinds").property("text")),
+            "ticked": bool(one(r, "ssmWakeTick").property("checked")),
+            "note": str(one(r, "ssmWakeNote").property("text")),
+        }
+        for r in rows
+    ]
+
+
+def wake_ticks() -> list[QtQuick.QQuickItem]:
+    view = win.findChild(QtQuick.QQuickItem, "ssmWakeList")
+    found = _items_named(view.property("contentItem"), "ssmWakeTick")
+    found.sort(key=lambda o: float(o.mapToItem(view, QtCore.QPointF(0, 0)).y()))
+    return found
+
+
+wake: dict[str, object] = {
+    "tabs": tab_texts(),
+    "startIndex": int(tabs.property("currentIndex")),
+    "settingsShown": item_shown("ssmEnabled"),
+    "wakeShown": item_shown("ssmWakeList"),
+    "settingsHome": [
+        n
+        for n in ("ssmEnabled", "ssmSectionDevices", "ssmHoldText")
+        if win.findChild(QtQuick.QQuickItem, n) is not None
+    ],
+}
+reads = len(calls.input_reads)
+tabs.setProperty("currentIndex", 1)
+until(lambda: int(prop("ssmWakeList", "count")) == 2)
+settle()
+wake["openDetection"] = list(manager.detection)
+wake["wakeVisible"] = item_shown("ssmWakeList") and not item_shown("ssmEnabled")
+wake["reads"] = len(calls.input_reads) - reads
+wake["heading"] = str(prop("ssmWakeHeading", "text"))
+wake["programsNote"] = str(prop("ssmWakeProgramsNote", "text"))
+wake["rows"] = wake_rows()
+manager.press(ssm_ui_fakes.INPUT_DEVICES[0].physical_id, "keyboard")
+settle()
+wake["pressed"] = wake_rows()
+tick = wake_ticks()[1]
+tick.setProperty("checked", True)
+QtCore.QMetaObject.invokeMethod(tick, "toggled")
+settle()
+wake["clicked"] = {
+    "ticked": [r["ticked"] for r in wake_rows()],
+    "cfg": [[r["ticked"], r["how"]] for r in (cfg("wake-pc") or [])],
+}
+tabs.setProperty("currentIndex", 0)
+settle()
+wake["back"] = {
+    "detection": list(manager.detection),
+    "settingsShown": item_shown("ssmEnabled"),
+}
+out["wake"] = wake
+
 win.close()
 settle()
 out["closed"] = not bool(win.property("visible"))

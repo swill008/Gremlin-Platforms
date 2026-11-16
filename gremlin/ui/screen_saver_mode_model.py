@@ -20,7 +20,14 @@ Devices list; the helper is started when the mode and Power off displays
 are on and that list isn't empty (S25), not again after a refusal until
 Try again (S26); the core's device hooks disable the saved devices before
 the power-off and re-enable them at the first input (S21, S23), and a
-device plugged in again retries (device_disable.DeviceDisabler)."""
+device plugged in again retries (device_disable.DeviceDisabler).
+
+S28-S32 (Wake PC): the saved Wake PC list (WAKE_PC) holds the touched
+keyboards and mice; only the ticked ones' input counts (handed to the core
+by apply_saved). The window's Wake PC tab merges it with the keyboards and
+mice Windows reports (read on a program thread), ticks a device when one
+of its keys or buttons is pressed while the tab is open (S30) and says
+when nothing is ticked (S31)."""
 
 from __future__ import annotations
 
@@ -50,7 +57,36 @@ OFF_WAIT = "power-off-wait-s"
 HOLD_FULLSCREEN = "hold-fullscreen"
 # S27: the last Refresh Devices result, kept across restarts.
 DEVICES = "devices"
-NAMES = (ENABLED, SAVER_ON, SAVER_WAIT, OFF_ON, OFF_WAIT, HOLD_FULLSCREEN, DEVICES)
+# S28: the Wake PC list: {"id", "name", "kinds", "ticked", "how"} per device.
+WAKE_PC = "wake-pc"
+NAMES = (
+    ENABLED,
+    SAVER_ON,
+    SAVER_WAIT,
+    OFF_ON,
+    OFF_WAIT,
+    HOLD_FULLSCREEN,
+    DEVICES,
+    WAKE_PC,
+)
+
+# S31: the core's hold while nothing is ticked (screen_saver_mode
+# HOLD_NO_WAKE_DEVICE) and the status line's words (glossary "Wake PC").
+HOLD_NO_WAKE_DEVICE = "no_wake_device"
+WAITING_TEXT = "Waiting: tick at least one keyboard or mouse on Wake PC."
+# S30: how a row was ticked, as its note says it.
+HOW_KEY = "key"
+HOW_CLICK = "click"
+HOW_YOU = "you"
+HOW_UNTICK = "untick"
+_HOW_NOTES = {
+    HOW_KEY: "ticked when you pressed a key",
+    HOW_CLICK: "ticked when you clicked",
+    HOW_YOU: "ticked by you",
+    HOW_UNTICK: "you unticked it",
+}
+NOT_CONNECTED = "not connected"
+_KINDS = ("keyboard", "mouse")
 
 # S26: shown when the helper should run and doesn't.
 HELPER_MESSAGE = "Devices can't be disabled: the helper isn't running"
@@ -84,9 +120,10 @@ def _trace(text: str) -> None:
 
 
 def register_options() -> None:
-    """The seven settings (01 S6: registered before the purge): the six
-    the window sets and the saved Devices list (S27). Exposed for History;
-    Options leaves them out (the window has the controls)."""
+    """The eight settings (01 S6: registered before the purge): the six
+    the window sets, the saved Devices list (S27) and the Wake PC list
+    (S28). Exposed for History; Options leaves them out (the window has the
+    controls)."""
     cfg = config.Configuration()
     rows: tuple[tuple[str, PropertyType, object, str, dict], ...] = (
         (
@@ -141,6 +178,14 @@ def register_options() -> None:
             [],
             "Screen Saver Mode: the devices the last Refresh Devices found; "
             "they are disabled while the displays are off.",
+            {},
+        ),
+        (
+            WAKE_PC,
+            PropertyType.List,
+            [],
+            "Screen Saver Mode: the keyboards and mice on the Wake PC tab; "
+            "only the ticked ones' input counts.",
             {},
         ),
     )
@@ -203,6 +248,8 @@ def apply_saved() -> None:
         core = _core()
         wanted = saved_settings()
         manager = core.manager()
+        # S3, S28, S31: only the ticked devices' input counts.
+        manager.set_wake_devices(ticked_wake_ids())
         if manager.settings() != wanted:
             manager.apply(wanted)
         on = bool(wanted.enabled) and bool(wanted.power_off_on)  # type: ignore[attr-defined]
@@ -261,6 +308,113 @@ def save_devices(rows: list[dict]) -> None:
 def _saved_pairs() -> list[tuple[str, str]]:
     """The saved list as DeviceDisabler.disable takes it: (name, id)."""
     return [(r["name"], r["instanceId"]) for r in saved_devices()]
+
+
+# The saved Wake PC list (S28-S30) -------------------------------------------
+
+
+def _kinds_of(raw: object) -> list[str]:
+    kinds = raw if isinstance(raw, (list, tuple)) else []
+    return [k for k in _KINDS if k in kinds]
+
+
+def _wake_row(row: object) -> dict | None:
+    """A saved Wake PC row, cleaned; None when it isn't one."""
+    if not isinstance(row, dict):
+        return None
+    physical_id = str(row.get("id", "") or "").strip()
+    if not physical_id:
+        return None
+    how = str(row.get("how", "") or "")
+    return {
+        "id": physical_id,
+        "name": str(row.get("name", "") or ""),
+        "kinds": _kinds_of(row.get("kinds")),
+        "ticked": bool(row.get("ticked", False)),
+        "how": how if how in _HOW_NOTES else "",
+    }
+
+
+def saved_wake_rows() -> list[dict]:
+    """The saved Wake PC list (S28); [] before the first tick."""
+    raw = _value(WAKE_PC)
+    rows = [_wake_row(r) for r in (raw if isinstance(raw, list) else [])]
+    seen: set[str] = set()
+    out = []
+    for r in rows:
+        if r is not None and r["id"] not in seen:
+            seen.add(r["id"])
+            out.append(r)
+    return out
+
+
+def ticked_wake_ids() -> list[str]:
+    """The ticked devices' physical ids (S28)."""
+    return [r["id"] for r in saved_wake_rows() if r["ticked"]]
+
+
+def save_wake_rows(rows: list[dict]) -> bool:
+    """Saves the touched rows (ticked, or with how they were set); devices
+    never touched are left out, so an unplugged one doesn't stay listed.
+    True when the setting changed."""
+    stored = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "kinds": list(r["kinds"]),
+            "ticked": bool(r["ticked"]),
+            "how": r["how"],
+        }
+        for r in (_wake_row(r) for r in rows)
+        if r is not None and (r["ticked"] or r["how"])
+    ]
+    if stored == _value(WAKE_PC):
+        return False
+    _set(WAKE_PC, stored)
+    return True
+
+
+def merge_wake_rows(saved: list[dict], found: list[object] | None) -> list[dict]:
+    """S28, S29: the saved rows with the devices Windows reports (found,
+    screen_saver_mode.InputDevice; None before the first read). A device
+    not seen before is unticked; a saved one not reported stays, not
+    connected. Connected rows first, then by name."""
+    rows = {r["id"]: dict(r) for r in saved}
+    connected: set[str] = set()
+    for dev in found or []:
+        physical_id = str(getattr(dev, "physical_id", "") or "").strip()
+        if not physical_id:
+            continue
+        connected.add(physical_id)
+        name = str(getattr(dev, "name", "") or "")
+        kinds = _kinds_of(getattr(dev, "kinds", ()))
+        row = rows.setdefault(
+            physical_id,
+            {"id": physical_id, "name": "", "kinds": [], "ticked": False, "how": ""},
+        )
+        if name:
+            row["name"] = name
+        if kinds:
+            row["kinds"] = kinds
+    out = []
+    for r in rows.values():
+        r["connected"] = found is None or r["id"] in connected
+        out.append(r)
+    return sorted(
+        out, key=lambda r: (not r["connected"], (r["name"] or r["id"]).casefold())
+    )
+
+
+def _wake_view(row: dict) -> dict:
+    """A Wake PC row as the tab shows it."""
+    return {
+        "id": row["id"],
+        "name": row["name"] or row["id"],
+        "kinds": ", ".join(row["kinds"]),
+        "ticked": bool(row["ticked"]),
+        "note": _HOW_NOTES.get(row["how"], ""),
+        "connected": bool(row.get("connected", True)),
+    }
 
 
 # The helper (S25, S26) and the device hooks (S21, S23) ---------------------
@@ -473,6 +627,8 @@ def _hold_text(status: object) -> str:
             "On hold: the PC is locked. Windows looks after the screens "
             "while it is locked."
         )
+    if hold == HOLD_NO_WAKE_DEVICE:
+        return WAITING_TEXT
     return ""
 
 
@@ -598,9 +754,11 @@ class ScreenSaverModeModel(QtCore.QObject):
     programsChanged = QtCore.Signal()
     systemChanged = QtCore.Signal()
     busyChanged = QtCore.Signal()
+    wakeRowsChanged = QtCore.Signal()
 
     # Worker results, queued to the main thread.
     _devicesDone = QtCore.Signal(object)
+    _inputDevicesDone = QtCore.Signal(object)
     _requestsDone = QtCore.Signal(str, object)
     _ignoreDone = QtCore.Signal(str, str, bool, bool, str)
 
@@ -619,6 +777,14 @@ class ScreenSaverModeModel(QtCore.QObject):
         self._scanning_devices = False
         self._pending_ignore = ""
         self._shown_problem: tuple[str, ...] = ()
+        # S28: the keyboards and mice Windows reports (None until read),
+        # whether the Wake PC tab is open, a read running / wanted again.
+        self._input_devices: list[object] | None = None
+        self._wake_open = False
+        self._reading_inputs = False
+        self._read_again = False
+        self._device_signal: Any = None
+        self._wake_rows = merge_wake_rows(saved_wake_rows(), None)
         self._stop = False
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(1000)
@@ -627,6 +793,7 @@ class ScreenSaverModeModel(QtCore.QObject):
         self._devicesDone.connect(self._take_devices, Queued)
         self._requestsDone.connect(self._take_requests, Queued)
         self._ignoreDone.connect(self._take_ignore, Queued)
+        self._inputDevicesDone.connect(self._take_input_devices, Queued)
         signal.configChanged.connect(self._on_config)
 
     # Settings ---------------------------------------------------------------
@@ -639,6 +806,8 @@ class ScreenSaverModeModel(QtCore.QObject):
             self._saved = list(saved)
             self._devices = list(saved)
             self.devicesChanged.emit()
+        # The Wake PC list put back by History shows at once (S28).
+        self._remerge()
         self.settingsChanged.emit()
         self.refreshStatus()
 
@@ -781,6 +950,8 @@ class ScreenSaverModeModel(QtCore.QObject):
             self._timer.stop()
             # A devices check still reading stops early.
             self._stop = True
+            # S30: detection runs only while the Wake PC tab is open.
+            self.wakeTabOpen(False)
 
     @QtCore.Slot()
     def refreshStatus(self) -> None:
@@ -1044,6 +1215,168 @@ class ScreenSaverModeModel(QtCore.QObject):
         _trace(f"Message shown: {self._devices_message}")
         self.busyChanged.emit()
         self.devicesChanged.emit()
+
+    # Wake PC (S28-S31) ------------------------------------------------------
+
+    @QtCore.Property(list, notify=wakeRowsChanged)
+    def wakeRows(self) -> list:
+        """The Wake PC rows: {"id", "name", "kinds" (text), "ticked",
+        "note" (how it was ticked), "connected"}."""
+        return [_wake_view(r) for r in self._wake_rows]
+
+    def _remerge(self) -> None:
+        rows = merge_wake_rows(saved_wake_rows(), self._input_devices)
+        if rows != self._wake_rows:
+            self._wake_rows = rows
+            self.wakeRowsChanged.emit()
+
+    def _save_wake(self) -> None:
+        """Saves the list; the core gets the ticked set (S28)."""
+        try:
+            changed = save_wake_rows(self._wake_rows)
+        except Exception:
+            _log.exception("Screen Saver Mode: the Wake PC list could not be saved")
+            return
+        self.wakeRowsChanged.emit()
+        if changed:
+            self._changed()
+
+    def _find_wake(self, physical_id: str) -> dict | None:
+        return next((r for r in self._wake_rows if r["id"] == physical_id), None)
+
+    @QtCore.Slot(str, bool)
+    def setWakeTicked(self, physical_id: str, ticked: bool) -> None:
+        """A tick set or cleared by hand (S30: "ticked by you", "you
+        unticked it")."""
+        row = self._find_wake(str(physical_id))
+        if row is None:
+            return
+        ticked = bool(ticked)
+        _trace(
+            f"Wake PC: {row['name'] or row['id']} "
+            f"{'ticked' if ticked else 'unticked'} by hand"
+        )
+        row["ticked"] = ticked
+        row["how"] = HOW_YOU if ticked else HOW_UNTICK
+        self._save_wake()
+
+    def _on_press(self, physical_id: str, kind: str) -> None:
+        """S30: a key or button pressed on a device while the tab is open
+        (the core reports it on the main thread) ticks it. A device
+        unticked by hand stays unticked: the click that unticks a mouse
+        would tick it again."""
+        if not self._wake_open:
+            return
+        physical_id = str(physical_id or "").strip()
+        if not physical_id:
+            return
+        row = self._find_wake(physical_id)
+        if row is None:
+            # Not read yet: listed now, its name comes with the next read.
+            row = {
+                "id": physical_id,
+                "name": "",
+                "kinds": _kinds_of([kind]),
+                "ticked": False,
+                "how": "",
+                "connected": True,
+            }
+            self._wake_rows.append(row)
+            self._read_input_devices()
+        if row["ticked"] or row["how"] == HOW_UNTICK:
+            return
+        row["ticked"] = True
+        row["how"] = HOW_KEY if kind == "keyboard" else HOW_CLICK
+        _trace(f"Wake PC: {row['name'] or row['id']} ticked by a {kind} press")
+        self._save_wake()
+
+    @QtCore.Slot(bool)
+    def wakeTabOpen(self, is_open: bool) -> None:
+        """The Wake PC tab shown or left (S30): presses are detected only
+        while it is open; the device list is read when it opens and when
+        a device is plugged in or out."""
+        is_open = bool(is_open)
+        if is_open == self._wake_open:
+            return
+        self._wake_open = is_open
+        manager = None
+        try:
+            manager = _core().manager()
+        except Exception:
+            _log.exception("Screen Saver Mode: no manager for Wake PC")
+        if is_open:
+            _trace("Wake PC tab opened")
+            if manager is not None:
+                try:
+                    manager.set_press_listener(self._on_press)
+                    if not manager.start_detection():
+                        _log.warning(
+                            "Screen Saver Mode: key and button presses can't "
+                            "be detected for Wake PC"
+                        )
+                except Exception:
+                    _log.exception("Screen Saver Mode: Wake PC detection failed")
+            self._follow_devices(True)
+            self._read_input_devices()
+        else:
+            _trace("Wake PC tab closed")
+            if manager is not None:
+                try:
+                    manager.set_press_listener(None)
+                    manager.stop_detection()
+                except Exception:
+                    _log.exception("Screen Saver Mode: Wake PC detection stop failed")
+            self._follow_devices(False)
+
+    def _follow_devices(self, on: bool) -> None:
+        """Re-reads the list when a device is plugged in or out, while the
+        tab is open."""
+        if on and self._device_signal is None:
+            try:
+                from gremlin import event_handler
+
+                sig = event_handler.EventListener().device_change_event
+                sig.connect(self._read_input_devices)
+                self._device_signal = sig
+            except Exception:
+                _log.exception("Screen Saver Mode: no device change listener")
+        elif not on and self._device_signal is not None:
+            try:
+                self._device_signal.disconnect(self._read_input_devices)
+            except (RuntimeError, TypeError):
+                pass
+            self._device_signal = None
+
+    @QtCore.Slot()
+    def _read_input_devices(self) -> None:
+        """Reads Windows' keyboards and mice on a program thread (never the
+        main thread); one read at a time, one more if asked meanwhile."""
+        if self._reading_inputs:
+            self._read_again = True
+            return
+        self._reading_inputs = True
+        self._read_again = False
+
+        def work() -> None:
+            try:
+                result: Any = list(_core().WindowsApi().input_devices())
+            except Exception:
+                _log.exception("Screen Saver Mode: keyboards and mice not read")
+                result = None
+            self._emit(self._inputDevicesDone, result)
+
+        if not self._start("Screen Saver Mode input devices", work):
+            self._take_input_devices(None)
+
+    @QtCore.Slot(object)
+    def _take_input_devices(self, result: object) -> None:
+        self._reading_inputs = False
+        if isinstance(result, list):
+            self._input_devices = result
+            _trace(f"Wake PC: {len(result)} keyboards and mice found")
+            self._remerge()
+        if self._read_again and self._wake_open:
+            self._read_input_devices()
 
     # Refresh Programs (S13), Refresh System (S17), Ignore (S14) ------------
 

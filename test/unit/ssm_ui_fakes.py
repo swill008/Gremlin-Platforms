@@ -6,7 +6,8 @@ gremlin.power_requests and gremlin.device_disable (12 S1-S27, contract-4
 and contract-5's APIs), for test_ssm_ui.py and ssm_ui_smoke.py: the
 window's tests never listen to the keyboard or mouse, read HID devices,
 run powercfg, start the device helper, disable or enable a device or ask
-for administrator rights."""
+for administrator rights. Wake PC (contract-6): the keyboards and mice are
+a list here, presses are sent by the test (press())."""
 
 from __future__ import annotations
 
@@ -105,6 +106,23 @@ def split(programs: list) -> tuple[list, list]:
     return sorted(display, key=order), sorted(system, key=order)
 
 
+HOLD_NO_WAKE_DEVICE = "no_wake_device"
+
+
+@dataclass(frozen=True)
+class InputDevice:
+    physical_id: str
+    name: str
+    kinds: tuple[str, ...]
+
+
+# Two keyboards and mice Windows reports (the user's PC, 2026-11-16).
+INPUT_DEVICES = [
+    InputDevice(r"USB\VID_046D&PID_C33F\1", "Logitech G815", ("keyboard",)),
+    InputDevice(r"USB\VID_28DE&PID_1102\2", "Steam Controller", ("keyboard", "mouse")),
+]
+
+
 @dataclass
 class RequestsResult:
     ok: bool
@@ -125,6 +143,33 @@ class FakeManager:
         self.shut = False
         self.before_power_off: Callable[[], None] | None = None
         self.after_input: Callable[[], None] | None = None
+        # Wake PC (contract-6): every set_wake_devices call, the press
+        # listener, and the detection calls.
+        self.wake_sets: list[list[str]] = []
+        self.press_listener: Callable[[str, str], None] | None = None
+        self.detection: list[str] = []
+        self.detecting = False
+
+    def set_wake_devices(self, physical_ids: Any) -> None:  # noqa: ANN401
+        self.wake_sets.append(list(physical_ids))
+
+    def set_press_listener(self, listener: Callable[[str, str], None] | None) -> None:
+        self.press_listener = listener
+
+    def start_detection(self) -> bool:
+        self.detection.append("start")
+        self.detecting = True
+        return True
+
+    def stop_detection(self) -> None:
+        self.detection.append("stop")
+        self.detecting = False
+
+    def press(self, physical_id: str, kind: str) -> None:
+        """A key or button down from a device, as the core reports it
+        (main thread), only while a listener is set."""
+        if self.press_listener is not None:
+            self.press_listener(physical_id, kind)
 
     def set_device_hooks(
         self,
@@ -284,6 +329,10 @@ class Calls:
         # Set by a test to hold a check open (the busy text); bounded wait.
         self.gate: threading.Event | None = None
         self.disabler = FakeDisabler()
+        # Wake PC: what WindowsApi.input_devices answers, and the threads
+        # it was read on.
+        self.input_devices: list[InputDevice] = list(INPUT_DEVICES)
+        self.input_reads: list[str] = []
 
     def _wait_gate(self) -> None:
         if self.gate is not None:
@@ -303,6 +352,16 @@ def install(target: Any = None) -> tuple[FakeManager, Calls]:  # noqa: ANN401
     core.Settings = Settings  # type: ignore[attr-defined]
     core.Status = Status  # type: ignore[attr-defined]
     core.manager = lambda: manager  # type: ignore[attr-defined]
+    core.HOLD_NO_WAKE_DEVICE = HOLD_NO_WAKE_DEVICE  # type: ignore[attr-defined]
+    core.InputDevice = InputDevice  # type: ignore[attr-defined]
+
+    class WindowsApi:
+        def input_devices(self) -> list[InputDevice]:
+            calls.input_reads.append(threading.current_thread().name)
+            calls._wait_gate()
+            return list(calls.input_devices)
+
+    core.WindowsApi = WindowsApi  # type: ignore[attr-defined]
 
     scan_mod = types.ModuleType("gremlin.hid_report_scan")
 

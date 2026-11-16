@@ -1104,4 +1104,10 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-15 | Release build 1.0.38 (release-exe workflow, publish) | release | 4-5 min (table) | 3 min | 17:14-17:17 |
 | 2026-11-16 | SSM TV fix: screen saver behind another window (lead: probe, code, tests, map) | fix | 3-8 min (agent fix) | 2 min (02:55-02:57) | 233 targeted pass |
 | 2026-11-16 | Local build + installer (SSM TV fix) | build | 3-5 min | 2 min (02:57-02:59) | |
-| 2026-11-16 | SSM quit hang fix (lead: dump read, code, 2 tests, map) | fix | 3-8 min (agent fix) | 4 min (03:01-03:05) | 73 pass |
+| 2026-11-16 | SSM quit hang fix (lead: dump read, code, 2 tests, map) | fix | 3-8 min (agent fix) | 2 min (02:59-03:01) | 73 pass |
+| 2026-11-16 | Local build + installer (quit-hang fix) | build | 3-5 min | 2 min | |
+| 2026-11-16 | SSM batch 6 Wake PC: map, README, help (SSM-DOCS6) | docs | 3-8 min | 2 min (03:19-03:20) | 54 pass |
+| 2026-11-16 | SSM batch 6 Wake PC: core + 22 tests (SSM-CORE6) | feature | 3-8 min | 4 min (03:18-03:22) | 107 core tests pass |
+| 2026-11-16 | SSM batch 6 Wake PC: 7 e2e tests (SSM-E2E6) | test | 3-8 min | 3 min (03:19-03:22) | 47 e2e pass |
+| 2026-11-16 | SSM batch 6 Wake PC: tab, setting, model, QML + 10 tests (SSM-UI6) | feature | 5-10 min | 7 min (03:18-03:25) | 79 ui pass |
+| 2026-11-16 | SSM batch 6 lead: spec, contract, checks, quick run (3,426), map counts | fix | ~10 min (table: batch) | 16 min (03:15-03:31) | quick run 5 min |

@@ -187,6 +187,8 @@ _HIDDEN = {
     ("global", "screen-saver-mode", "hold-fullscreen"),
     # The last Refresh Devices result (12 S27).
     ("global", "screen-saver-mode", "devices"),
+    # The Wake PC tab's list (12 S28).
+    ("global", "screen-saver-mode", "wake-pc"),
 }
 
 # Sections with a window of their own (the Device Mapping Editor's options).
@@ -251,6 +253,7 @@ _KEY_TITLES = {
     "global/screen-saver-mode/power-off-wait-s": "Power off wait",
     "global/screen-saver-mode/hold-fullscreen": "Hold off during full-screen programs",
     "global/screen-saver-mode/devices": "Saved Devices list",
+    "global/screen-saver-mode/wake-pc": "Wake PC list",
 }
 
 

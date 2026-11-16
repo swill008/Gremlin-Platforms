@@ -26,7 +26,7 @@ import re
 import subprocess
 import threading
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from ctypes import wintypes
 from dataclasses import dataclass, field, replace
 from typing import Any
@@ -36,6 +36,8 @@ from gremlin import clock, threads, trace, windows_event_hook
 HOLD_LOCKED = "locked"
 HOLD_FULLSCREEN = "fullscreen"
 HOLD_DISPLAY_REQUEST = "display_request"
+# S31: Wake PC has nothing ticked; both timers wait.
+HOLD_NO_WAKE_DEVICE = "no_wake_device"
 
 RESET_KEYBOARD = "keyboard"
 RESET_MOUSE = "mouse"
@@ -46,6 +48,10 @@ PROBLEM_WINDOWS_NEVER = "windows_never"
 PROBLEM_NOT_LISTENING = "not_listening"
 
 TICK_S = 1.0
+# How often presses noted while the mode is off reach the main thread (S30).
+PRESS_DRAIN_S = 0.25
+# A device's key or button presses are reported at most once a second each.
+PRESS_GAP_S = 1.0
 # A power-off (the timer's or a keep-off re-send) is never sent sooner than
 # this after the last one.
 POWER_OFF_GAP_S = 1.0
@@ -105,7 +111,8 @@ class Status:
     off_problem: str = ""  # "" | "windows_never"
     keeping_off: bool = False  # answering Windows' display-ON reports (S6)
     wakes: int = 0  # re-sends in the current or last idle period (S20)
-    hold: str = ""  # "" | "locked" | "fullscreen" | "display_request"
+    # "" | "locked" | "no_wake_device" | "fullscreen" | "display_request"
+    hold: str = ""
     hold_program: str = ""  # the full-screen program's file name, "" when unknown
     problem: str = ""  # "" | "not_listening" (both timers)
     last_reset_by: str = ""  # the device's name, "" for program input or none
@@ -161,6 +168,15 @@ class _SYSTEM_POWER_STATUS(ctypes.Structure):
         ("BatteryLifeTime", wintypes.DWORD),
         ("BatteryFullLifeTime", wintypes.DWORD),
     )
+
+
+@dataclass(frozen=True)
+class InputDevice:
+    """One physical keyboard or mouse for Wake PC (S28)."""
+
+    physical_id: str  # physical_device() of its raw input parts
+    name: str  # the name of one of its parts ("" when none)
+    kinds: tuple[str, ...]  # sorted subset of ("keyboard", "mouse")
 
 
 class _LASTINPUTINFO(ctypes.Structure):
@@ -358,6 +374,37 @@ class WindowsApi:
             _log().exception("Screen Saver Mode: device name lookup failed")
             return ""
 
+    def device_physical_id(self, handle: int) -> str:
+        """The physical device a raw input handle belongs to ("" when
+        unknown). Slow-ish: once per handle, on the listener thread."""
+        try:
+            return physical_device(instance_id_from_path(raw_device_path(handle)))
+        except Exception:
+            _log().exception("Screen Saver Mode: physical device lookup failed")
+            return ""
+
+    def input_devices(self) -> list[InputDevice]:
+        """Every keyboard and mouse Windows reports, one per physical device
+        (S28); [] on any failure. Slow: never on the main thread."""
+        try:
+            parts = []
+            for handle, kind in _raw_input_device_list():
+                path = raw_device_path(handle)
+                if not path:
+                    continue
+                physical = physical_device(instance_id_from_path(path))
+                if not physical:
+                    continue
+                try:
+                    name = _device_name(handle)
+                except Exception:
+                    name = ""
+                parts.append((physical, name, kind))
+            return group_input_devices(parts)
+        except Exception:
+            _log().exception("Screen Saver Mode: listing keyboards and mice failed")
+            return []
+
 
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 
@@ -435,6 +482,62 @@ def raw_device_path(handle: int) -> str:
     if got == 0xFFFFFFFF or got == 0:
         return ""
     return buf.value
+
+
+class _RAWINPUTDEVICELIST(ctypes.Structure):
+    _fields_ = (("hDevice", wintypes.HANDLE), ("dwType", wintypes.DWORD))
+
+
+_ERROR_INSUFFICIENT_BUFFER = 122
+
+
+def _raw_input_device_list() -> list[tuple[int, str]]:
+    """GetRawInputDeviceList: (handle, "keyboard" | "mouse") of each
+    keyboard and mouse part."""
+    u = ctypes.WinDLL("user32", use_last_error=True)
+    u.GetRawInputDeviceList.restype = wintypes.UINT
+    u.GetRawInputDeviceList.argtypes = (
+        ctypes.POINTER(_RAWINPUTDEVICELIST),
+        ctypes.POINTER(wintypes.UINT),
+        wintypes.UINT,
+    )
+    size = ctypes.sizeof(_RAWINPUTDEVICELIST)
+    count = wintypes.UINT(0)
+    if u.GetRawInputDeviceList(None, ctypes.byref(count), size) == 0xFFFFFFFF:
+        raise ctypes.WinError(ctypes.get_last_error())
+    # A device plugged in between the two calls: ask again (three tries).
+    for _ in range(3):
+        items = (_RAWINPUTDEVICELIST * max(1, count.value))()
+        count = wintypes.UINT(len(items))
+        got = u.GetRawInputDeviceList(items, ctypes.byref(count), size)
+        if got != 0xFFFFFFFF:
+            kinds = {_RIM_TYPEKEYBOARD: RESET_KEYBOARD, _RIM_TYPEMOUSE: RESET_MOUSE}
+            return [
+                (int(items[i].hDevice or 0), kinds[items[i].dwType])
+                for i in range(got)
+                if items[i].dwType in kinds and items[i].hDevice
+            ]
+        code = ctypes.get_last_error()
+        if code != _ERROR_INSUFFICIENT_BUFFER:
+            raise ctypes.WinError(code)
+    raise ctypes.WinError(_ERROR_INSUFFICIENT_BUFFER)
+
+
+def group_input_devices(parts: Iterable[tuple[str, str, str]]) -> list[InputDevice]:
+    """(physical id, name, kind) per raw input part -> one InputDevice per
+    physical id, in the order first seen; the first non-empty name wins."""
+    names: dict[str, str] = {}
+    kinds: dict[str, set[str]] = {}
+    for physical, name, kind in parts:
+        if not physical:
+            continue
+        if not names.get(physical):
+            names[physical] = name
+        kinds.setdefault(physical, set()).add(kind)
+    return [
+        InputDevice(physical, names[physical], tuple(sorted(kinds[physical])))
+        for physical in names
+    ]
 
 
 def instance_id_from_path(path: str) -> str:
@@ -605,6 +708,56 @@ def _devnode_name(instance_id: str) -> tuple[str, bool]:
     return name, name.lower() in _GENERIC_DESC or not name
 
 
+def physical_device(instance_id: str) -> str:
+    """The physical device a device belongs to (S3): the first device above
+    it that is neither a HID collection nor a USB interface (MI_), as an
+    upper-case instance id; "" when Windows doesn't know it. The Steam
+    Controller's mouse (Col01), keyboard (Col02) and streaming part (Col03)
+    all give its USB device (found on the user's PC 2026-11-16)."""
+    if not instance_id:
+        return ""
+    cfg = ctypes.WinDLL("cfgmgr32")
+    cfg.CM_Locate_DevNodeW.argtypes = (
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.LPCWSTR,
+        wintypes.ULONG,
+    )
+    cfg.CM_Get_Parent.argtypes = (
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.DWORD,
+        wintypes.ULONG,
+    )
+    cfg.CM_Get_Device_IDW.argtypes = (
+        wintypes.DWORD,
+        wintypes.LPWSTR,
+        wintypes.ULONG,
+        wintypes.ULONG,
+    )
+    node = wintypes.DWORD(0)
+    if cfg.CM_Locate_DevNodeW(ctypes.byref(node), instance_id, 0) != 0:
+        return ""
+    current = instance_id.upper()
+    for _ in range(8):
+        if not _is_part(current):
+            return current
+        parent = wintypes.DWORD(0)
+        if cfg.CM_Get_Parent(ctypes.byref(parent), node.value, 0) != 0:
+            return current
+        buf = ctypes.create_unicode_buffer(512)
+        if cfg.CM_Get_Device_IDW(parent.value, buf, len(buf), 0) != 0:
+            return current
+        node = parent
+        current = buf.value.upper()
+    return current
+
+
+def _is_part(instance_id: str) -> bool:
+    """A HID collection or a USB interface: part of a physical device."""
+    enumerator, _, rest = instance_id.upper().partition("\\")
+    hardware_id = rest.split("\\", 1)[0]
+    return enumerator == "HID" or "&MI_" in hardware_id
+
+
 # -------------------------------------------------------------- Raw Input
 
 _WM_INPUT = 0x00FF
@@ -615,6 +768,9 @@ _RIDEV_INPUTSINK = 0x00000100
 _RIM_TYPEMOUSE = 0
 _RIM_TYPEKEYBOARD = 1
 _USAGE_PAGE_GENERIC = 0x01
+_RI_KEY_BREAK = 0x01
+# RI_MOUSE_LEFT/RIGHT/MIDDLE/BUTTON_4/BUTTON_5 _DOWN; not move, not wheel.
+_RI_MOUSE_BUTTONS_DOWN = 0x0001 | 0x0004 | 0x0010 | 0x0040 | 0x0100
 _USAGE_MOUSE = 0x02
 _USAGE_KEYBOARD = 0x06
 _ERROR_CLASS_ALREADY_EXISTS = 1410
@@ -724,6 +880,16 @@ def raw_input_kind(raw: RAWINPUT) -> str:
     return ""
 
 
+def raw_input_press(raw: RAWINPUT) -> bool:
+    """A key down or a mouse button down (S30); key up, movement and the
+    wheel are not presses."""
+    if raw.header.dwType == _RIM_TYPEKEYBOARD:
+        return not raw.data.keyboard.Flags & _RI_KEY_BREAK
+    if raw.header.dwType == _RIM_TYPEMOUSE:
+        return bool(raw.data.mouse.u.buttons.usButtonFlags & _RI_MOUSE_BUTTONS_DOWN)
+    return False
+
+
 def _user32() -> ctypes.WinDLL:
     """A user32 of this module's own, so its argtypes don't touch others'."""
     u = ctypes.WinDLL("user32", use_last_error=True)
@@ -808,7 +974,11 @@ class InputClock:
     front) on a hidden top-level window, on its own program thread with its
     own message loop; WM_QUIT posted to the thread ends it. The window
     procedure only notes the time, the device handle and the kind; names
-    are looked up later (ScreenSaverMode, once per handle). The same window
+    are looked up later (ScreenSaverMode, once per handle). With a Wake PC
+    list (S28) or a press listener (S30) it also looks up each handle's
+    physical device, once per handle on this thread (`physical_id_of`);
+    input from a device not on the list doesn't count, and presses and
+    uncounted devices go to `event_sink` for the main thread. The same window
     gets Windows' display state (GUID_CONSOLE_DISPLAY_STATE) and hands each
     report to `display_state_handler` (ScreenSaverMode.on_display_state),
     on this thread. Tests call note_input() only.
@@ -837,6 +1007,46 @@ class InputClock:
         # Program input per second: [second, count], the last minute only.
         self._program: deque[list[int]] = deque(maxlen=self._PROGRAM_SECONDS + 1)
         self._program_lock = threading.Lock()
+        # Wake PC (S28): the ticked physical ids; None = every device counts.
+        self._wake: frozenset[str] | None = None
+        # Physical ids already reported as not counted, until the list changes.
+        self._not_counted: set[str] = set()
+        # Handle -> physical id, filled on the listener thread.
+        self.physical_id_of: Callable[[int], str] | None = None
+        self._physical: dict[int, str] = {}
+        # Presses (S30) are reported while this is True.
+        self.report_presses = False
+        self._pressed_at: dict[tuple[str, str], float] = {}
+        # (event, handle, physical id, kind) to the main thread; never Qt.
+        self.event_sink: Callable[[str, int, str, str], None] | None = None
+
+    def set_wake_ids(self, ids: frozenset[str] | None) -> None:
+        """The ticked physical ids (None: every device counts)."""
+        self._wake = ids
+        self._not_counted = set()
+
+    def physical_id(self, handle: int) -> str:
+        """The handle's physical id, looked up once per handle."""
+        known = self._physical.get(handle)
+        if known is not None:
+            return known
+        lookup = self.physical_id_of
+        physical = ""
+        if lookup is not None:
+            try:
+                physical = str(lookup(handle) or "").upper()
+            except Exception:
+                _log().exception("Screen Saver Mode: physical device lookup failed")
+        self._physical[handle] = physical
+        return physical
+
+    def _send(self, event: str, handle: int, physical: str, kind: str) -> None:
+        sink = self.event_sink
+        if sink is not None:
+            try:
+                sink(event, handle, physical, kind)
+            except Exception:
+                _log().exception("Screen Saver Mode: input event failed")
 
     def start(self) -> bool:
         """Registers raw input on its thread; False when it could not
@@ -892,14 +1102,32 @@ class InputClock:
         return self._last
 
     def note_input(
-        self, own: bool = False, source: int | None = None, kind: str = ""
+        self,
+        own: bool = False,
+        source: int | None = None,
+        kind: str = "",
+        press: bool = False,
     ) -> None:
         """One input. `source` is the device's raw input handle, None (or
-        0) for input sent by a program; `kind` "keyboard" or "mouse".
-        Gremlin's own input (own) doesn't count."""
+        0) for input sent by a program; `kind` "keyboard" or "mouse";
+        `press` a key or button down. Gremlin's own input (own) doesn't
+        count; with a Wake PC list, neither does a device not on it."""
         if own:
             return
         now = clock.monotonic()
+        wake = self._wake
+        if source and (wake is not None or self.report_presses):
+            physical = self.physical_id(source)
+            if press and self.report_presses:
+                last = self._pressed_at.get((physical, kind))
+                if last is None or now - last >= PRESS_GAP_S:
+                    self._pressed_at[(physical, kind)] = now
+                    self._send("press", source, physical, kind)
+            if wake is not None and physical not in wake:
+                if physical not in self._not_counted:
+                    self._not_counted.add(physical)
+                    self._send("not_counted", source, physical, kind)
+                return
         if not source:
             self._source = (None, RESET_PROGRAM)
             second = int(now)
@@ -954,6 +1182,7 @@ class InputClock:
                             kind=RESET_MOUSE
                             if raw.header.dwType == _RIM_TYPEMOUSE
                             else RESET_KEYBOARD,
+                            press=raw_input_press(raw),
                         )
             except Exception:
                 _log().exception("Screen Saver Mode raw input failed")
@@ -1115,6 +1344,8 @@ class ScreenSaverMode:
         self._api = api if api is not None else WindowsApi()
         self._clock = clock_ if clock_ is not None else InputClock()
         self._clock.display_state_handler = self.on_display_state
+        self._clock.physical_id_of = self._api.device_physical_id
+        self._clock.event_sink = self._note_device_event
         self._settings = Settings()
         self._running = False
         self._listening = False
@@ -1147,6 +1378,11 @@ class ScreenSaverMode:
         self._before_power_off: Callable[[], None] | None = None
         self._after_input: Callable[[], None] | None = None
         self._hooked = False  # before_power_off ran, after_input not yet
+        # Wake PC (S28-S31): None until set_wake_devices() is called.
+        self._wake: frozenset[str] | None = None
+        self._press_listener: Callable[[str, str], None] | None = None
+        self._detecting = False  # start_detection() without the mode on
+        self._drain_timer: Any = None
 
     def set_device_hooks(
         self,
@@ -1159,6 +1395,77 @@ class ScreenSaverMode:
         Both on the main thread; never while the mode is off."""
         self._before_power_off = before_power_off
         self._after_input = after_input
+
+    # ----- Wake PC (S28-S31)
+
+    def set_wake_devices(self, physical_ids: Iterable[str]) -> None:
+        """The ticked devices (S28): keyboard and mouse input from any other
+        device doesn't count; program input always does. None ticked holds
+        both timers (S31). Main thread; may come before apply()."""
+        ids = frozenset(str(i).upper() for i in physical_ids if i)
+        self._wake = ids
+        self._clock.set_wake_ids(ids)
+        _trace(f"wake devices: {len(ids)} ticked")
+
+    def set_press_listener(self, listener: Callable[[str, str], None] | None) -> None:
+        """While set, each key or button press from any device reaches
+        listener(physical_id, "keyboard" | "mouse") on the main thread, at
+        most once a second per device and kind (S30)."""
+        self._press_listener = listener
+        self._clock.report_presses = listener is not None
+        self._arm_drain()
+
+    def start_detection(self) -> bool:
+        """Listens for presses while the mode is off too (no timers run);
+        False when the listener could not start."""
+        if self._detecting or self._running:
+            self._detecting = True
+            return self._clock.listening()
+        self._detecting = True
+        ok = self._clock.start()
+        if ok:
+            _trace("listener started for Wake PC")
+        else:
+            reason = getattr(self._clock, "error", "") or "unknown reason"
+            _trace(f"listener for Wake PC not started: {reason}")
+        self._arm_drain()
+        return ok
+
+    def stop_detection(self) -> None:
+        """Ends start_detection(); the listener keeps running while the mode
+        is on."""
+        if not self._detecting:
+            return
+        self._detecting = False
+        if not self._running:
+            self._clock.stop()
+            _trace("listener for Wake PC stopped")
+
+    def _arm_drain(self) -> None:
+        """While the mode is off, presses reach the main thread on a short
+        timer (the tick drains them while it is on)."""
+        if (
+            self._drain_timer is None
+            and self._press_listener is not None
+            and not self._running
+        ):
+            self._drain_timer = threads.main_timer(
+                "screen saver mode presses", PRESS_DRAIN_S, self._on_drain_timer
+            )
+
+    def _on_drain_timer(self) -> None:
+        self._drain_timer = None
+        try:
+            self._drain_events()
+        except Exception:
+            _log().exception("Screen Saver Mode: press drain failed")
+        self._arm_drain()
+
+    def _note_device_event(
+        self, event: str, handle: int, physical: str, kind: str
+    ) -> None:
+        """Listener thread: queues a press or an uncounted device."""
+        self._events.append((event, handle, f"{kind}	{physical}"))
 
     def _call_hook(self, name: str, hook: Callable[[], None] | None) -> None:
         if hook is None:
@@ -1235,13 +1542,17 @@ class ScreenSaverMode:
             except Exception:
                 pass
             self._timer = None
-        self._clock.stop()
+        if self._detecting:
+            _trace("listener kept for Wake PC")
+        else:
+            self._clock.stop()
         self._listening = False
         self._last_hold = ""
         self._last_problems = ("", "", "")
         self._hold_program = ""
         self._last_reset_traced = None
         _trace("listener stopped")
+        self._arm_drain()
 
     # ----- timer
 
@@ -1339,6 +1650,8 @@ class ScreenSaverMode:
     def _hold(self) -> str:
         if self._api.locked():
             return HOLD_LOCKED
+        if self._wake is not None and not self._wake:
+            return HOLD_NO_WAKE_DEVICE
         if (
             self._settings.hold_fullscreen
             and self._api.fullscreen_busy()
@@ -1617,6 +1930,19 @@ class ScreenSaverMode:
                     f"Screen Saver Mode: keep off power off #{n} failed ({text})"
                 )
                 _trace(f"keep off: power off #{n} failed ({text})")
+            elif kind in ("press", "not_counted"):
+                device_kind, _, physical = text.partition("	")
+                name = self._device_name(n) or "a device"
+                if kind == "not_counted":
+                    _trace(f"not counted: {name} ({device_kind}) is not ticked")
+                    continue
+                _trace(f"press: {name} ({device_kind})")
+                listener = self._press_listener
+                if listener is not None:
+                    try:
+                        listener(physical, device_kind)
+                    except Exception:
+                        _log().exception("Screen Saver Mode: press listener failed")
 
     # ----- status
 
