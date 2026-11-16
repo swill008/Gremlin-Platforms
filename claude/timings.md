@@ -1120,3 +1120,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-16 | SSM batch 7: disable parent device, protected, USB ids (SSM-PARENT7) | feature | 3-8 min | 5 min (04:01-04:06) | 89 pass |
 | 2026-11-16 | SSM batch 7: in-use highlight + protection wiring (SSM-UI7) | feature | 3-8 min | 8 min (04:02-04:10) | 134 pass |
 | 2026-11-16 | Batch 7 lead: spec, contract, checks, quick run (3,302), map counts | fix | ~10 min (table: batch) | 16 min (04:00-04:16) | quick run 5 min |
+| 2026-11-16 | Local build + installer (batch 7, approved) | build | 2 min | 1 min (04:18-04:19) | |
+| 2026-11-16 | Batch 8: remove protection wiring (UI8) | fix | 3-8 min | 2 min (04:44-04:46) | 132 pass |
+| 2026-11-16 | Batch 8 docs: pages 12/01, README, help (DOCS8) | docs | 3-8 min | 2 min (04:44-04:46) | 44 pass |
+| 2026-11-16 | Batch 8: Gremlin quit request + installer (QUIT8) | fix | 3-8 min | 3 min (04:44-04:47) | 64 pass, ISCC ok |
+| 2026-11-16 | Batch 8: back to parts, S34 pending restart (REVERT8) | fix | 3-8 min | 5 min (04:44-04:49) | 94 pass |
+| 2026-11-16 | Batch 8 lead: spec, contract, quick run (3,186), e2e flake fix, map | fix | ~10 min (table: batch) | 13 min (04:42-04:55) | |

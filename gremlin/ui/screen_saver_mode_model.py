@@ -251,9 +251,6 @@ def apply_saved() -> None:
         # S3, S28, S31: only the ticked devices' input counts.
         ticked = ticked_wake_ids()
         manager.set_wake_devices(ticked)
-        # S21: a ticked keyboard or mouse's parent is never disabled, so it
-        # can always wake the PC.
-        _disabler().set_protected(ticked)
         if manager.settings() != wanted:
             manager.apply(wanted)
         on = bool(wanted.enabled) and bool(wanted.power_off_on)  # type: ignore[attr-defined]

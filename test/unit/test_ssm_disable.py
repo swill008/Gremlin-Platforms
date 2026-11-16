@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import os
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import IO, Any
 
@@ -37,6 +37,8 @@ class FakeConn:
         self.journal_at_request: list[dict] = []
         self.answer: dict | None = None
         self.fail_ids: set[str] = set()
+        # (op, id) -> the helper's answer; Windows' status is left alone.
+        self.said: dict[tuple[str, str], str] = {}
         self.closed = False
         self.silent = False
 
@@ -55,6 +57,9 @@ class FakeConn:
             return
         allowed, results = protocol.check_request(req, journal)
         for device_id in allowed:
+            if (req["op"], device_id) in self.said:
+                results[device_id] = self.said[(req["op"], device_id)]
+                continue
             if device_id in self.fail_ids:
                 results[device_id] = "error: pnputil exit code 1"
                 continue
@@ -105,8 +110,6 @@ class FakeProcess:
 class FakeWindows:
     def __init__(self) -> None:
         self.status: dict[str, str] = {}
-        self.parents: dict[str, str] = {}
-        self.parent_calls: list[str] = []
         self.launches: list[tuple[str, str]] = []
         self.refuse = False
         self.connect = True
@@ -116,13 +119,6 @@ class FakeWindows:
 
     def read(self, device_id: str) -> str:
         return self.status.get(device_id, dd.NOT_PRESENT)
-
-    def parent(self, device_id: str) -> str:
-        self.parent_calls.append(device_id)
-        found = self.parents.get(device_id, "")
-        if isinstance(found, Exception):
-            raise found
-        return found
 
     def launch(self, file: str, parameters: str) -> FakeProcess:
         self.launches.append((file, parameters))
@@ -152,7 +148,6 @@ def env(tmp_path: Path) -> Iterator[Env]:
         launcher=windows.launch,
         listener_factory=windows.listen,
         status_reader=windows.read,
-        parent_lookup=windows.parent,
         connect_timeout_s=1.0,
     )
     yield disabler, windows, journal_file
@@ -552,8 +547,6 @@ def test_real_seams_refuse_under_pytest() -> None:
     with pytest.raises(dd.RealCallBlocked):
         dd.device_status(KB)
     with pytest.raises(dd.RealCallBlocked):
-        dd.physical_parent(KB)
-    with pytest.raises(dd.RealCallBlocked):
         dd._real_launcher("x.exe", "")
     with pytest.raises(dd.RealCallBlocked):
         dd._PipeListener(protocol.PIPE_PREFIX + "test", b"k" * 32)
@@ -564,7 +557,6 @@ def test_manager_is_one_instance_with_real_seams() -> None:
     assert one is dd.manager()
     assert one._launcher is dd._real_launcher
     assert one._status is dd.device_status
-    assert one._parent is dd.physical_parent
     assert one._listener_factory is dd._PipeListener
 
 
@@ -653,96 +645,180 @@ def test_close_while_waiting_wakes_accept_without_a_handshake(
     assert calls == [None] and inner.closed
 
 
-# The physical device (S21, D-12-SSM-PARENT-AND-IN-USE) ----------------------
+# Restart-pending disables and enables (S34, D-12-SSM-PENDING-RESTART) -------
 
-STEAM_USB = "USB\\VID_28DE&PID_1205\\ABC123"
-STEAM_MOUSE = "HID\\VID_28DE&PID_1205&MI_00&COL01\\7&AA&0&0000"
-STEAM_KB = "HID\\VID_28DE&PID_1205&MI_00&COL02\\7&AA&0&0001"
-BT_PAD = "BTHENUM\\{00001124-0000-1000-8000-00805F9B34FB}_VID&0002045E\\9&BB"
+MIC = "HID\\VID_352F&PID_0100&MI_03&COL01\\8&2B&0&0000"
+OLD_USB = "USB\\VID_28DE&PID_1205\\ABC123"
+EXIT_3010 = "error: pnputil exit 3010: System reboot is needed to complete changes."
 
 
-def test_disable_uses_the_physical_usb_device(env: Env) -> None:
+def test_disable_targets_the_listed_part_only(env: Env) -> None:
     disabler, windows, journal_file = env
-    windows.parents[KB] = "usb\\vid_046d&pid_c52b\\5&1"
-    usb = "USB\\VID_046D&PID_C52B\\5&1"
-    windows.status[usb] = dd.ENABLED
+    windows.status[KB] = dd.ENABLED
     _start(disabler)
     disabler.disable([("Keyboard", KB)])
     _settle(disabler)
-    assert windows.conn.requests[-1]["ids"] == [usb]
-    entries = _journal(journal_file)
-    assert set(entries) == {usb}
-    assert entries[usb]["name"] == "Keyboard"
-    assert entries[usb]["state"] == dd.DISABLED
+    assert windows.conn.requests[-1] == protocol.make_request("disable", [KB])
+    assert set(_journal(journal_file)) == {KB}
+    assert not hasattr(disabler, "set_protected")
+    assert not hasattr(dd, "physical_parent")
 
 
-def test_parts_of_one_device_become_one_entry(env: Env) -> None:
+def test_disable_answered_3010_is_undone_at_once(env: Env) -> None:
     disabler, windows, journal_file = env
-    windows.parents[STEAM_MOUSE] = STEAM_USB
-    windows.parents[STEAM_KB] = STEAM_USB
-    windows.status[STEAM_USB] = dd.ENABLED
+    windows.status[MIC] = dd.ENABLED
+    windows.status[PAD] = dd.ENABLED
     _start(disabler)
-    disabler.disable([("Steam mouse", STEAM_MOUSE), ("Steam keyboard", STEAM_KB)])
+    windows.conn.said[("disable", MIC)] = EXIT_3010
+    disabler.disable([("Mic", MIC), ("Pad", PAD)])
     _settle(disabler)
-    assert windows.conn.requests[-1]["ids"] == [STEAM_USB]
+    ops = [(r["op"], r["ids"]) for r in windows.conn.requests[1:]]
+    assert ops == [("disable", [MIC, PAD]), ("enable", [MIC])]
     entries = _journal(journal_file)
-    assert list(entries) == [STEAM_USB]
-    assert entries[STEAM_USB]["name"] == "Steam mouse"
+    assert entries[MIC]["state"] == dd.DISABLE_FAILED
+    assert entries[MIC]["result"] == "Windows wanted a restart, undone"
+    assert entries[PAD]["state"] == dd.DISABLED
+
+
+def test_disable_3010_undo_failure_is_recorded(env: Env) -> None:
+    disabler, windows, journal_file = env
+    windows.status[MIC] = dd.ENABLED
+    _start(disabler)
+    windows.conn.said[("disable", MIC)] = EXIT_3010
+    windows.conn.said[("enable", MIC)] = "error: pnputil exit 1: no"
+    disabler.disable([("Mic", MIC)])
+    _settle(disabler)
+    entry = _journal(journal_file)[MIC]
+    assert entry["state"] == dd.DISABLE_FAILED
+    assert entry["result"] == (
+        "Windows wanted a restart, undo failed: error: pnputil exit 1: no"
+    )
+
+
+def test_enable_sends_for_a_flagged_device_still_running(env: Env) -> None:
+    """The mic: journal "disabled", Windows runs it but its disabled flag is
+    set (device_status says disabled): it must be enabled, not skipped."""
+    disabler, windows, journal_file = env
+    _write(journal_file, {MIC: _entry("Mic", dd.DISABLED)})
+    windows.status[MIC] = dd.DISABLED
+    _start(disabler)
+    disabler.enable_pending()
+    _settle(disabler)
+    assert windows.conn.requests[-1] == protocol.make_request("enable", [MIC])
+    assert _journal(journal_file)[MIC]["state"] == dd.ENABLED
+
+
+def test_enable_never_skips_a_disable_failed_entry(env: Env) -> None:
+    disabler, windows, journal_file = env
+    _write(journal_file, {MIC: _entry("Mic", dd.DISABLE_FAILED)})
+    windows.status[MIC] = dd.ENABLED
+    _start(disabler)
+    disabler.enable_pending()
+    _settle(disabler)
+    assert windows.conn.requests[-1] == protocol.make_request("enable", [MIC])
+    entry = _journal(journal_file)[MIC]
+    assert entry["state"] == dd.ENABLED and entry["result"] == "done"
+
+
+def test_enable_refused_pending_reboot_stays_to_be_enabled(env: Env) -> None:
+    disabler, windows, journal_file = env
+    _write(journal_file, {MIC: _entry("Mic", dd.DISABLED)})
+    windows.status[MIC] = dd.DISABLED
+    _start(disabler)
+    said = "error: pnputil exit 1: Failed to enable device: pending system reboot."
+    windows.conn.said[("enable", MIC)] = said
+    disabler.enable_pending()
+    _settle(disabler)
+    entry = _journal(journal_file)[MIC]
+    assert entry["state"] == dd.TO_BE_ENABLED
+    assert entry["result"] == said
+
+
+def test_old_usb_journal_entries_are_still_enabled(env: Env) -> None:
+    disabler, windows, journal_file = env
+    _write(
+        journal_file,
+        {
+            OLD_USB: _entry("Steam Controller", dd.DISABLED),
+            KB: _entry("Keyboard", dd.DISABLE_FAILED),
+        },
+    )
+    windows.status[OLD_USB] = dd.DISABLED
+    windows.status[KB] = dd.DISABLED
+    disabler.recover_at_start()
+    for _ in range(100):
+        if disabler.helper_running() and windows.conn.requests[-1]["op"] == "enable":
+            break
+        threading.Event().wait(0.05)
+    _settle(disabler)
+    assert windows.conn.requests[-1]["op"] == "enable"
+    assert set(windows.conn.requests[-1]["ids"]) == {OLD_USB, KB}
+    entries = _journal(journal_file)
+    assert entries[OLD_USB]["state"] == dd.ENABLED
+    assert entries[KB]["state"] == dd.ENABLED
+
+
+def _put(ref: object, value: int) -> None:
+    """Writes through a ctypes.byref() argument."""
+    getattr(ref, "_obj").value = value  # noqa: B009 - private ctypes attribute
+
+
+class _FakeFn:
+    def __init__(self, body: Callable[..., int]) -> None:
+        self.body = body
+        self.argtypes: object = None
+        self.restype: object = None
+
+    def __call__(self, *args: object) -> int:
+        return self.body(*args)
+
+
+class _FakeCfg:
+    """cfgmgr32 for device_status: a present device, running with no
+    problem, whose ConfigFlags hold the given value."""
+
+    def __init__(self, flags: int | None) -> None:
+        self.flags = flags
+        self.CM_Locate_DevNodeW = _FakeFn(self._locate)
+        self.CM_Get_DevNode_Status = _FakeFn(self._status)
+        self.CM_Get_DevNode_Registry_PropertyW = _FakeFn(self._property)
+
+    def _locate(self, devinst: object, _id: str, _flags: int) -> int:
+        _put(devinst, 7)
+        return 0
+
+    def _status(self, status: object, problem: object, _dev: object, _f: int) -> int:
+        _put(status, 0x0000000A)  # DN_DRIVER_LOADED | DN_STARTED
+        _put(problem, 0)
+        return 0
+
+    def _property(
+        self,
+        _dev: object,
+        prop: int,
+        _type: object,
+        buf: object,
+        _size: object,
+        _f: int,
+    ) -> int:
+        assert prop == 0x0A  # CM_DRP_CONFIGFLAGS
+        if self.flags is None:
+            return 0x25  # CR_NO_SUCH_VALUE
+        _put(buf, self.flags)
+        return 0
 
 
 @pytest.mark.parametrize(
-    "parent", ["", BT_PAD, 'USB\\X" /enable-device', OSError("cfgmgr32 failed")]
+    ("flags", "expected"),
+    [(0x1, dd.DISABLED), (0x401, dd.DISABLED), (0x400, dd.ENABLED), (None, dd.ENABLED)],
 )
-def test_unknown_or_non_usb_parent_disables_the_part(env: Env, parent: object) -> None:
-    disabler, windows, journal_file = env
-    windows.parents[PAD] = parent  # type: ignore[assignment]
-    windows.status[PAD] = dd.ENABLED
-    windows.status[BT_PAD] = dd.ENABLED
-    _start(disabler)
-    disabler.disable([("Pad", PAD)])
-    _settle(disabler)
-    assert windows.parent_calls == [PAD]
-    assert windows.conn.requests[-1]["ids"] == [PAD]
-    assert set(_journal(journal_file)) == {PAD}
+def test_device_status_reads_the_disabled_flag(
+    monkeypatch: pytest.MonkeyPatch, flags: int | None, expected: str
+) -> None:
+    """Only cfgmgr32 is faked (no Windows call is made)."""
+    import ctypes
 
-
-def test_protected_parent_disables_only_the_part(env: Env) -> None:
-    disabler, windows, journal_file = env
-    windows.parents[STEAM_MOUSE] = STEAM_USB
-    windows.parents[STEAM_KB] = STEAM_USB
-    windows.status[STEAM_MOUSE] = dd.ENABLED
-    windows.status[STEAM_KB] = dd.ENABLED
-    windows.status[STEAM_USB] = dd.ENABLED
-    disabler.set_protected([STEAM_USB.lower()])
-    _start(disabler)
-    disabler.disable([("Steam mouse", STEAM_MOUSE), ("Steam keyboard", STEAM_KB)])
-    _settle(disabler)
-    assert windows.conn.requests[-1]["ids"] == [STEAM_MOUSE, STEAM_KB]
-    assert STEAM_USB not in _journal(journal_file)
-    # Unticked again: the physical device is disabled next time.
-    disabler.set_protected([])
-    windows.status[STEAM_MOUSE] = dd.ENABLED
-    windows.status[STEAM_KB] = dd.ENABLED
-    disabler.enable_pending()
-    _settle(disabler)
-    disabler.disable([("Steam mouse", STEAM_MOUSE)])
-    _settle(disabler)
-    assert windows.conn.requests[-1]["ids"] == [STEAM_USB]
-
-
-def test_parent_journal_round_trip_and_old_hid_entries(env: Env) -> None:
-    disabler, windows, journal_file = env
-    _write(journal_file, {KB: _entry("Old keyboard", dd.DISABLED)})
-    windows.status[KB] = dd.DISABLED
-    windows.parents[STEAM_MOUSE] = STEAM_USB
-    windows.status[STEAM_USB] = dd.ENABLED
-    _start(disabler)
-    disabler.disable([("Steam mouse", STEAM_MOUSE)])
-    _settle(disabler)
-    assert _journal(journal_file)[STEAM_USB]["state"] == dd.DISABLED
-    disabler.enable_pending()
-    _settle(disabler)
-    assert set(windows.conn.requests[-1]["ids"]) == {KB, STEAM_USB}
-    entries = _journal(journal_file)
-    assert entries[STEAM_USB]["state"] == dd.ENABLED
-    assert entries[KB]["state"] == dd.ENABLED
+    cfg = _FakeCfg(flags)
+    monkeypatch.setattr(dd, "_under_test", lambda: False)
+    monkeypatch.setattr(ctypes, "WinDLL", lambda name: cfg, raising=False)
+    assert dd.device_status(MIC) == expected

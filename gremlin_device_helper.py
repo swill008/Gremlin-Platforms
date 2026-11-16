@@ -9,8 +9,9 @@
 The only part of Gremlin with administrator rights. Gremlin starts it with
 Windows' confirmation; it connects back to Gremlin's private pipe with the
 authkey from the key file (read, then deleted) and disables or enables the
-devices the journal lists (a listed HID part or its physical USB device,
-S21), one `pnputil` run each. It ends on
+game-input devices the journal lists, one `pnputil` run each (it also
+enables a physical USB device an older journal still lists, never disables
+one). It ends on
 "quit", when the connection closes or when Gremlin's process is gone.
 
 Imports nothing from the program but gremlin.device_helper_protocol.

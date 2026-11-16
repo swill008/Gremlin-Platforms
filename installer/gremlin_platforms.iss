@@ -101,9 +101,15 @@ const
   WM_CLOSE = $0010;
   GW_OWNER = 4;
   GW_HWNDNEXT = 2;
-  { How long the program gets to quit before setup gives up. }
-  CloseWaitTries = 30;
+  SMTO_ABORTIFHUNG = $0002;
+  { How long the program gets to quit before setup gives up (10 s). }
+  CloseWaitTries = 20;
   CloseWaitStep = 500;
+  { The program's own quit request, handled by its tray window
+    (gremlin/ui/system_tray.py), which answers QuitRequestHandled. }
+  QuitRequestName = 'GremlinPlatformsQuitRequest';
+  QuitRequestHandled = 1;
+  TrayWindowClass = 'JoystickGremlinSystemTray';
 
 function GetTopWindow(Wnd: HWND): HWND;
   external 'GetTopWindow@user32.dll stdcall';
@@ -111,8 +117,13 @@ function GetWindow(Wnd: HWND; Cmd: Cardinal): HWND;
   external 'GetWindow@user32.dll stdcall';
 function GetWindowThreadProcessId(Wnd: HWND; var ProcessId: Cardinal): Cardinal;
   external 'GetWindowThreadProcessId@user32.dll stdcall';
-function IsWindowVisible(Wnd: HWND): Integer;
-  external 'IsWindowVisible@user32.dll stdcall';
+function GetClassName(Wnd: HWND; ClassName: String; MaxCount: Integer): Integer;
+  external 'GetClassNameW@user32.dll stdcall';
+function RegisterWindowMessage(const Name: String): Cardinal;
+  external 'RegisterWindowMessageW@user32.dll stdcall';
+function SendMessageTimeout(Wnd: HWND; Msg: Cardinal; WParam, LParam: Longint;
+  Flags, Timeout: Cardinal; var MsgResult: Cardinal): Cardinal;
+  external 'SendMessageTimeoutW@user32.dll stdcall';
 
 function LaunchAfterSilentUpdate: Boolean;
 begin
@@ -237,21 +248,63 @@ begin
     end;
 end;
 
-{ Asks the program to quit the way File > Exit does: WM_CLOSE to its
-  visible top-level windows, so Main.qml's onClosing quits it or asks about
-  unsaved changes. Never TerminateProcess: unsaved work must not be lost. }
+function ClassOf(Wnd: HWND): String;
+var
+  Len: Integer;
+begin
+  Result := StringOfChar(' ', 256);
+  Len := GetClassName(Wnd, Result, 256);
+  Result := Copy(Result, 1, Len);
+end;
+
+{ Qt's main window class, e.g. Qt6112QWindowIcon. }
+function IsQtMainClass(const Name: String): Boolean;
+begin
+  Result := (Copy(Name, 1, 2) = 'Qt') and (Length(Name) > 13) and
+    (Copy(Name, Length(Name) - 10, 11) = 'QWindowIcon');
+end;
+
+{ Asks the program to quit the way File > Exit does, hidden in the tray or
+  not: its tray window gets the quit request, and the program shows its
+  window and runs File > Exit (which asks about unsaved changes). A program
+  too old to answer the request gets WM_CLOSE on its main window, hidden
+  too, so Main.qml's onClosing quits it or asks. Never TerminateProcess:
+  unsaved work must not be lost. }
 procedure AskToClose(const Ids: TArrayOfString);
 var
   Wnd: HWND;
-  Id: Cardinal;
+  Id, QuitRequest, Answer: Cardinal;
+  Handled: Boolean;
 begin
+  QuitRequest := RegisterWindowMessage(QuitRequestName);
+  Handled := False;
   Wnd := GetTopWindow(0);
   while Wnd <> 0 do
   begin
     Id := 0;
     GetWindowThreadProcessId(Wnd, Id);
-    if IsOneOf(Id, Ids) and (IsWindowVisible(Wnd) <> 0) and
-      (GetWindow(Wnd, GW_OWNER) = 0) then
+    if IsOneOf(Id, Ids) and (ClassOf(Wnd) = TrayWindowClass) then
+    begin
+      Answer := 0;
+      if (SendMessageTimeout(Wnd, QuitRequest, 0, 0, SMTO_ABORTIFHUNG,
+        2000, Answer) <> 0) and (Answer = QuitRequestHandled) then
+        Handled := True;
+    end;
+    Wnd := GetWindow(Wnd, GW_HWNDNEXT);
+  end;
+  if Handled then
+  begin
+    Log('Gremlin-Platforms took the quit request.');
+    Exit;
+  end;
+  Log('No quit request answer; closing the main window instead.');
+  Wnd := GetTopWindow(0);
+  while Wnd <> 0 do
+  begin
+    Id := 0;
+    GetWindowThreadProcessId(Wnd, Id);
+    if IsOneOf(Id, Ids) and (GetWindow(Wnd, GW_OWNER) = 0) and
+      IsQtMainClass(ClassOf(Wnd)) then
       PostMessage(Wnd, WM_CLOSE, 0, 0);
     Wnd := GetWindow(Wnd, GW_HWNDNEXT);
   end;

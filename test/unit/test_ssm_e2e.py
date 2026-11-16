@@ -621,6 +621,12 @@ def story_first(j: Journey) -> None:
         _wake_tab(j, w, True)
         out["s28Rows"] = j.await_value(lambda: _wake_count(j, w), 3, timeout=10)
         out["s28Reads"] = W["input_device_reads"] - reads
+        # The rows' texts can land a frame after the row count under load
+        # (SSM-E2E-SHOWN-FLAKE): wait for all three names, then read.
+        names = ("Logitech G915", "Steam Controller", "Razer Viper")
+        j.await_value(
+            lambda: all(n in _wake_texts(j, w) for n in names), True, timeout=10
+        )
         shown = _wake_texts(j, w)
         out["s28Shown"] = [
             "Allow this device to wake the PC" in " ".join(_texts(j, w)),
@@ -659,11 +665,6 @@ def story_first(j: Journey) -> None:
                 "ticked when you clicked" in _wake_texts(j, w),
             ],
             [True, True],
-        )
-        # S21: the ticked devices reach the disabler as protected.
-        out["s21Protected"] = j.await_value(
-            lambda: sorted(getattr(_dis(), "_protected", ()) or ()),
-            sorted([_G915, _VIPER]),
         )
         # S33: the presses above lit their rows; they go about 2 s after
         # the last input (real time).
@@ -1631,9 +1632,6 @@ def _install_disabler_fake() -> None:
         launcher=_launcher,
         listener_factory=_Listener,
         status_reader=lambda i: W["status"].get(i, "enabled"),
-        # S21: the parent lookup (cfgmgr32) faked: unknown parents fall back
-        # to the listed id, so the saved HID ids are the ones disabled.
-        parent_lookup=lambda i: W.get("parents", {}).get(i, ""),
         connect_timeout_s=20.0,
     )
     for name in ("enable_pending", "recover_at_start", "on_device_arrival"):
@@ -2159,12 +2157,6 @@ def test_s33_rows_light_up_in_use_now_without_ticking(runs: list[dict]) -> None:
         ["Logitech G915", "ticked when you pressed a key · in use now"]
     ]
     assert _v(first, "s28", "s33ClosedLit") is False, "lit with the tab closed"
-
-
-def test_s21_ticked_wake_devices_are_protected_from_disabling(
-    runs: list[dict],
-) -> None:
-    assert _v(runs[0], "s28", "s21Protected") == sorted([_G915, _VIPER])
 
 
 def test_s30_detection_only_while_the_tab_is_open(runs: list[dict]) -> None:

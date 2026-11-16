@@ -1359,23 +1359,6 @@ def test_s33_nothing_lights_while_the_tab_is_closed(
     assert _in_use(ssm)[_G815] is False
 
 
-def test_s21_ticked_ids_are_protected_from_disabling(fakes, qapp: object) -> None:  # noqa: ANN001
-    manager, calls, model, m = fakes
-    ssm = model()
-    _open_wake(ssm, calls, qapp)
-    calls.disabler.protected.clear()
-    ssm.setWakeTicked(_G815, True)
-    assert calls.disabler.protected[-1] == [_G815]
-    manager.press(_STEAM, "mouse")
-    assert set(calls.disabler.protected[-1]) == {_G815, _STEAM}
-    ssm.setWakeTicked(_G815, False)
-    assert calls.disabler.protected[-1] == [_STEAM]
-    # At start too (apply_saved), before any window opens.
-    calls.disabler.protected.clear()
-    m.apply_saved()
-    assert calls.disabler.protected == [[_STEAM]]
-
-
 def test_s28_ticks_kept_after_a_restart_and_history_restore(
     fakes: tuple,
     qapp: object,

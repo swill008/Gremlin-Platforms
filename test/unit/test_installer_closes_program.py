@@ -47,11 +47,40 @@ def test_it_asks_the_program_to_quit_and_never_kills_it() -> None:
     assert "CloseApplications=force" not in iss
 
 
-def test_it_waits_about_fifteen_seconds() -> None:
+def test_it_sends_the_programs_own_quit_request_to_its_tray_window() -> None:
+    # Hidden in the tray every window is hidden; the tray window is always
+    # there (to-do 139). Same name and answer as gremlin/ui/system_tray.py.
+    from gremlin.ui import system_tray
+
+    iss = _iss()
+    assert f"QuitRequestName = '{system_tray.QUIT_REQUEST_NAME}';" in iss
+    assert f"QuitRequestHandled = {system_tray.QUIT_REQUEST_HANDLED};" in iss
+    assert "TrayWindowClass = 'JoystickGremlinSystemTray';" in iss
+    ask = _routine(iss, "procedure AskToClose(")
+    assert "RegisterWindowMessage(QuitRequestName)" in ask
+    assert "(ClassOf(Wnd) = TrayWindowClass)" in ask
+    assert "SendMessageTimeout(Wnd, QuitRequest," in ask
+    assert "RegisterWindowMessageW@user32.dll" in iss
+
+
+def test_an_older_program_gets_wm_close_on_its_hidden_main_window() -> None:
+    iss = _iss()
+    ask = _routine(iss, "procedure AskToClose(")
+    assert "IsWindowVisible" not in iss
+    close = ask[ask.index("if Handled then"):]
+    assert "IsQtMainClass(ClassOf(Wnd))" in close
+    assert "(GetWindow(Wnd, GW_OWNER) = 0)" in close
+    assert close.index("Exit;") < close.index("PostMessage(Wnd, WM_CLOSE")
+    main = _routine(iss, "function IsQtMainClass(")
+    assert "Copy(Name, 1, 2) = 'Qt'" in main
+    assert "'QWindowIcon'" in main
+
+
+def test_it_waits_ten_seconds() -> None:
     iss = _iss()
     tries = int(re.search(r"CloseWaitTries = (\d+);", iss).group(1))
     step = int(re.search(r"CloseWaitStep = (\d+);", iss).group(1))
-    assert tries * step == 15000
+    assert (tries, step) == (20, 500)
     close = _routine(iss, "function CloseRunningProgram:")
     assert "for Tries := 1 to CloseWaitTries do" in close
     assert "Sleep(CloseWaitStep)" in close

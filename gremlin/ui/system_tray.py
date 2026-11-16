@@ -28,6 +28,11 @@ _WM_TRAY = win32con.WM_USER + 20
 _NOTIFYICON_VERSION_4 = 4
 _NIF_SHOWTIP = 0x00000080
 
+# The installer's request to quit (01 S173, installer/gremlin_platforms.iss
+# AskToClose); the answer tells it the request was taken.
+QUIT_REQUEST_NAME = "GremlinPlatformsQuitRequest"
+QUIT_REQUEST_HANDLED = 1
+
 # Tray menu command identifiers.
 _ID_SHOW = 1023
 _ID_TOGGLE = 1024
@@ -55,6 +60,7 @@ class SystemTrayIcon(QtCore.QObject):
         self._icon_present = False
         self._last_window_mode = QtGui.QWindow.Visibility.Windowed
         self._taskbar_created = 0
+        self._quit_request = 0
         self._instance = 0
         self._class_atom = None
         self._hwnd = 0
@@ -124,6 +130,7 @@ class SystemTrayIcon(QtCore.QObject):
         self._active_icon = self._create_icon("gfx/icon_active.ico")
 
         self._taskbar_created = win32gui.RegisterWindowMessage("TaskbarCreated")
+        self._quit_request = win32gui.RegisterWindowMessage(QUIT_REQUEST_NAME)
         self._instance = win32api.GetModuleHandle(None)
         wc = win32gui.WNDCLASS()
         wc.hInstance = self._instance
@@ -133,6 +140,7 @@ class SystemTrayIcon(QtCore.QObject):
             win32con.WM_COMMAND: self._handle_context_menu_cb,
             win32con.WM_DESTROY: self._destroy_system_tray_cb,
             self._taskbar_created: self._taskbar_created_cb,
+            self._quit_request: self._quit_request_cb,
         }
         self._class_atom = win32gui.RegisterClass(wc)
         self._hwnd = win32gui.CreateWindowEx(
@@ -296,6 +304,14 @@ class SystemTrayIcon(QtCore.QObject):
             self._delete_icon()
         self._add_icon()
         return 0
+
+    def _quit_request_cb(
+        self, hwnd: int, msg: int, wparam: int, lparam: int
+    ) -> int:
+        # The installer is waiting on this answer: quit from the event loop,
+        # not inside its message.
+        QtCore.QTimer.singleShot(0, self, self._quit_gremlin)
+        return QUIT_REQUEST_HANDLED
 
     def _destroy_system_tray_cb(
         self, hwnd: int, msg: int, wparam: int, lparam: int

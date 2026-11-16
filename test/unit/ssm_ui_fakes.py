@@ -239,11 +239,6 @@ class FakeDisabler:
         self.enables = 0
         self.arrivals = 0
         self.recoveries = 0
-        # contract-7 (S21): every set_protected call.
-        self.protected: list[list[str]] = []
-
-    def set_protected(self, physical_ids: Any) -> None:  # noqa: ANN401
-        self.protected.append(list(physical_ids))
 
     def helper_running(self) -> bool:
         return self.running
