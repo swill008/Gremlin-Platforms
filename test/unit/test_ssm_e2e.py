@@ -80,6 +80,7 @@ W: dict[str, Any] = {
     "windows_idle_s": 0.5,
     "display_required": False,
     "fullscreen_busy": False,
+    "screen_saver_running": False,
     "locked": False,
     "can_listen": True,
     "power_off": 0,
@@ -121,6 +122,7 @@ def _install_fakes() -> None:
     api.windows_idle_s = lambda self: W["windows_idle_s"]
     api.display_required = lambda self: W["display_required"]
     api.fullscreen_busy = lambda self: W["fullscreen_busy"]
+    api.screen_saver_running = lambda self: W["screen_saver_running"]
     api.locked = lambda self: W["locked"]
     api.foreground_program = lambda self: W["foreground_program"]
 

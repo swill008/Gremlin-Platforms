@@ -1098,3 +1098,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-15 | Fix: screen saver held the power-off timer (lead, live watch) | lead fix | ~10 min | 8 min (12:27-12:35) | test fails on old code |
 | 2026-11-15 | Screen Saver Mode batch 5 (device disabling, helper exe, journal): 5 agents | agent feature | ~15 min | 14 min (13:18-13:32) | |
 | 2026-11-15 | Batch 5: targeted + --changed quick tests + rebuild of three exes (parallel) | test | 6 min | 7 min (13:33-13:40) | 4,071 passed |
+| 2026-11-15 | CI on 9ea54556 (Screen Saver Mode 1.0.38, first push) | ci | ~10-18 min | 21 min (16:29-16:51), failed: test_run_scope_only flagged SSM's main_timer | guard not in the quick tests; exemption added |
+| 2026-11-15 | SSM run_scope guard fix + push (lead) | fix | 3-8 min | 1 min (16:51-16:52) | |
+| 2026-11-15 | CI on 818c2ec5 (guard fix) | ci | ~10-18 min | 22 min (16:52-17:14), passed | |
+| 2026-11-15 | Release build 1.0.38 (release-exe workflow, publish) | release | 4-5 min (table) | 3 min | 17:14-17:17 |
+| 2026-11-16 | SSM TV fix: screen saver behind another window (lead: probe, code, tests, map) | fix | 3-8 min (agent fix) | 9 min (02:55-03:04) | 233 targeted pass |

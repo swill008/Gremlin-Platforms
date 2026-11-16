@@ -126,6 +126,7 @@ _ES_DISPLAY_REQUIRED = 0x00000002
 # SHQueryUserNotificationState: busy (full screen), D3D full screen,
 # presentation mode.
 _QUNS_FULLSCREEN = (2, 3, 4)
+_SPI_GETSCREENSAVERRUNNING = 0x0072
 
 # The input listener's hidden window while it runs: the one window the
 # power-off request is posted to (WindowsApi.power_off_displays).
@@ -257,6 +258,19 @@ class WindowsApi:
             ctypes.sizeof(state),
         )
         return status == 0 and bool(state.value & _ES_DISPLAY_REQUIRED)
+
+    def screen_saver_running(self) -> bool:
+        """Windows says a screen saver is running (SPI_GETSCREENSAVERRUNNING).
+        Asked directly, because the screen saver need not be the window in
+        front: with a second display the program in front stays in front
+        (found on the user's PC 2026-11-16, a TV as the second display)."""
+        user32 = ctypes.WinDLL("user32")
+        running = wintypes.BOOL(0)
+        if not user32.SystemParametersInfoW(
+            _SPI_GETSCREENSAVERRUNNING, 0, ctypes.byref(running), 0
+        ):
+            return False
+        return bool(running.value)
 
     def fullscreen_busy(self) -> bool:
         shell32 = ctypes.WinDLL("shell32")
@@ -1328,7 +1342,7 @@ class ScreenSaverMode:
         if (
             self._settings.hold_fullscreen
             and self._api.fullscreen_busy()
-            and not self._foreground().lower().endswith(".scr")
+            and not self._screen_saver_running()
         ):
             # A screen saver in front is not a full-screen program: Windows
             # reports it as busy, which would hold the power-off timer behind
@@ -1413,6 +1427,15 @@ class ScreenSaverMode:
         self._retry_keep_off(now)
         self._drain_events()
         self._update_status(now=now, hold=hold, problems=problems)
+
+    def _screen_saver_running(self) -> bool:
+        """A screen saver runs: Windows says so, or one is the window in front."""
+        try:
+            if self._api.screen_saver_running():
+                return True
+        except Exception:
+            pass
+        return self._foreground().lower().endswith(".scr")
 
     def _foreground(self) -> str:
         try:

@@ -35,6 +35,7 @@ class FakeApi(ssm.WindowsApi):
         self.started: list[str] = []
         self.powered_off = 0
         self.foreground = ""
+        self.saver_running = False
         self.names: dict[int, str] = {}
         self.name_calls: list[int] = []
 
@@ -68,6 +69,9 @@ class FakeApi(ssm.WindowsApi):
 
     def foreground_program(self) -> str:
         return self.foreground
+
+    def screen_saver_running(self) -> bool:
+        return self.saver_running
 
     def device_name(self, handle: int) -> str:
         self.name_calls.append(handle)
@@ -1251,6 +1255,41 @@ def test_screen_saver_in_front_does_not_hold_the_power_off_timer(env: Env) -> No
     run(61)
     assert api.powered_off == 1
     assert mode.status().hold == ""
+
+
+def test_screen_saver_behind_another_window_does_not_hold_the_power_off(
+    env: Env,
+) -> None:
+    """Found on the user's PC (2026-11-16, a TV as a second display): the
+    screen saver runs, Windows reports "busy", but the program in front stays
+    claude.exe; the power-off timer must still fire (S6, S7)."""
+    mode, api, _clk, _now, run, _t = env
+    mode.apply(ssm.Settings(True))  # both timers: screen saver 60 s, power off 120 s
+    run(60)
+    assert api.started
+    api.busy = True
+    api.saver_running = True
+    api.foreground = "claude.exe"
+    run(61)
+    assert api.powered_off == 1
+    assert mode.status().hold == ""
+
+
+def test_a_failing_screen_saver_check_falls_back_to_the_window_in_front(
+    env: Env,
+) -> None:
+    mode, api, _clk, _now, run, _t = env
+
+    def fails() -> bool:
+        raise OSError("no answer")
+
+    api.screen_saver_running = fails  # type: ignore[method-assign]
+    mode.apply(ssm.Settings(True))
+    api.busy = True
+    api.foreground = "StarCitizen.exe"
+    run(200)
+    assert api.powered_off == 0
+    assert mode.status().hold == ssm.HOLD_FULLSCREEN
 
 
 def test_a_real_full_screen_program_still_holds_the_power_off(env: Env) -> None:
