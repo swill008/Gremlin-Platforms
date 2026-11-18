@@ -1131,3 +1131,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-16 | Release 1.0.39 prep: version, notes, pre-release checks (lead) | docs | 3-8 min | 2 min (05:08-05:10) | |
 | 2026-11-16 | CI on b8cc87b0 (release 1.0.39) | ci | ~10-22 min | 18 min (05:10-05:28), passed | |
 | 2026-11-16 | Release build 1.0.39 (publish) + tracker | release | 3-5 min | 4 min (05:28-05:32) | |
+| 2026-11-18 | Rust middle-path study: 4 read-only agents + report (RS-INPUT/OUTPUT/BUILD/EVIDENCE, lead) | review | 5-10 min | about 8 min (05:00-05:08) | agents' shell clock unreliable |
