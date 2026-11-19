@@ -127,6 +127,25 @@ def _screen_at(point: QtCore.QPoint) -> QtGui.QScreen | None:
     return app.screenAt(point) or app.primaryScreen()
 
 
+def _main_window_screen() -> QtGui.QScreen | None:
+    """The screen the main window is on (01 S145: a tool window with no saved
+    place, or whose place is gone, opens there); the mouse's screen when there
+    is no main window yet."""
+    screen: QtGui.QScreen | None = None
+    try:
+        screen_of = getattr(_main_window(), "screen", None)
+        if callable(screen_of):
+            screen = screen_of()  # type: ignore[assignment]
+    except RuntimeError:  # the window's C++ object is gone
+        screen = None
+    return screen or _screen_at(QtGui.QCursor.pos())
+
+
+def _main_window() -> object | None:
+    """The program's main window, once the app has made it."""
+    return getattr(QtGui.QGuiApplication.instance(), "main_window", None)
+
+
 def _intersects_enough(rect: QtCore.QRect, screen: QtGui.QScreen) -> bool:
     visible = rect.intersected(screen.availableGeometry())
     if visible.width() < 200 or visible.height() < 80:
@@ -364,7 +383,8 @@ def restore_tool(
     window: QtGui.QWindow, name: str, default_w: int, default_h: int
 ) -> None:
     """Reopen a tool window where it was left, its whole frame inside the work
-    area of the screen showing most of it; centre it when that spot is gone."""
+    area of the screen showing most of it; with no saved place (first open) or
+    when that spot is gone, centre it on the main window's screen."""
     entry = _tool_map(_ensure()).get(str(name)) or {}
     if not isinstance(entry, dict):
         entry = {}
@@ -391,7 +411,7 @@ def restore_tool(
         if entry.get("max"):
             _set_maximized(window, True)
         return
-    screen = _screen_at(QtGui.QCursor.pos())
+    screen = _main_window_screen()
     if screen is None:
         window.setWidth(width)
         window.setHeight(height)

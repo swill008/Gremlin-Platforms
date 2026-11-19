@@ -159,3 +159,41 @@ def test_frame_is_measured_in_the_target_screens_units() -> None:
     window = _ToolWindow(dpr=1.5)
     margins = wp._margins_on(window, _DprScreen(0, 0, 1920, 1080, dpr=1.0))
     assert margins == QtCore.QMargins(12, 46, 12, 12)
+
+
+def test_a_tool_window_first_opens_on_the_main_window_screen() -> None:
+    """01 S145 (2026-11-19): with no saved place the tool window opens on the
+    main window's screen, not the mouse's."""
+    from PySide6 import QtCore
+
+    from gremlin.ui import window_placement as wp
+
+    main_screen = _Screen(-1536, 0, 1536, 864)
+    mouse_screen = _Screen(0, 0, 3413, 1440)
+
+    class _Main:
+        def screen(self) -> _Screen:
+            return main_screen
+
+    placed: list[QtCore.QRect] = []
+
+    class _Tool:
+        def minimumSize(self) -> QtCore.QSize:  # noqa: N802
+            return QtCore.QSize(200, 160)
+
+        def setGeometry(self, rect: QtCore.QRect) -> None:  # noqa: N802
+            placed.append(rect)
+
+    with (
+        patch.object(wp, "_main_window", return_value=_Main()),
+        patch.object(wp, "_tool_map", return_value={}),
+        patch.object(wp, "_ensure"),
+        patch.object(wp, "_screen_at", return_value=mouse_screen),
+        patch.object(wp, "_margins_on", return_value=_margins()),
+        patch.object(wp, "_limit_minimum"),
+        patch.object(wp, "_set_maximized"),
+    ):
+        wp.restore_tool(_Tool(), "Live Log Reader", 800, 600)  # type: ignore[arg-type]
+    assert placed, "the tool window was not placed"
+    assert main_screen.availableGeometry().contains(placed[0].center())
+    assert not QtCore.QRect(0, 0, 3413, 1440).contains(placed[0].center())
