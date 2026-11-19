@@ -138,6 +138,13 @@ function commandList() {
           keywords: "trace controls stick vjoy hidhide out of step",
           checked: function() { return _tracing.on },
           run: function() { _tracing.toggle() } },
+        // The main window's state to system.log (01 S178): changes nothing.
+        { id: "debug.saveWindowState", text: "Save Window State", group: "Debug",
+          keywords: "window tray pages blank state trace",
+          run: function() {
+              if (typeof windowTrace !== "undefined" && windowTrace)
+                  windowTrace.saveWindowState()
+          } },
 
         // Help
         { id: "help.guide", text: "Help", group: "Help", shortcut: "F1",

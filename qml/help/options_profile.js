@@ -67,7 +67,8 @@ function topics() {
                 + "<ul>"
                 + "<li>The first time the window's X hides it, a tray notice says \"Gremlin-Platforms is still running\". It shows only once.</li>"
                 + "<li>To quit, choose <b>File › Exit</b> <a href=\"show:menu/File/Exit\">Show me ›</a> or <b>Exit Gremlin-Platforms</b> in the tray menu. Exit from the tray brings the window back first, so you can answer any question about unsaved changes.</li>"
-                + "<li>While the window is in the tray, the program closes its pages to give memory back to Windows, and opens them again when you show the window. The profile keeps running the whole time. The Device Bindings page stays open while it has unsaved display edits.</li>"
+                + "<li>While the window is in the tray, the program closes its pages to give memory back to Windows. It opens them again whenever the window is shown, whether you show it or Windows does (for example when a monitor is reconnected or a remote-desktop program shows it). The profile keeps running the whole time. The Device Bindings page stays open while it has unsaved display edits.</li>"
+                + "<li>If Windows shows the window while the program had it in the tray, the program leaves the tray and keeps the window on screen. Minimizing hides the window to the tray once the minimize has finished, also when you start with --start-minimized.</li>"
                 + "<li>The tray icon comes back by itself if Windows Explorer restarts.</li>"
                 + "<li>To start the program straight into the tray, use the --start-minimized option with Minimize to tray on. See <a href=\"topic:getting-started-command-line\">Start the program from a command line</a>.</li>"
                 + "</ul>",

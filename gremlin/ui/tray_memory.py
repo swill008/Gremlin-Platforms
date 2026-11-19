@@ -14,6 +14,7 @@ throughout: none of this touches the input or output side.
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import ctypes.wintypes
 import gc
@@ -25,23 +26,35 @@ from PySide6 import QtCore, QtGui, QtQml
 _SETTLE_MS = 400
 
 
-def enter_tray(window: QtGui.QWindow, engine: QtQml.QQmlEngine | None) -> None:
-    """The window was hidden to the tray: unload its pages, then clean up."""
-    if window.isVisible():
-        return
-    QtCore.QMetaObject.invokeMethod(window, "enterTray")
+def _note(text: str) -> None:
+    """A Window trace step; tracing can never break the tray."""
+    with contextlib.suppress(Exception):
+        from gremlin.ui import window_trace
+
+        window_trace.note("Main window", text)
+
+
+def enter_tray(window: QtGui.QWindow, engine: QtQml.QQmlEngine | None) -> bool:
+    """The window was hidden to the tray: unload its pages, then clean up.
+    False when the window could not be told (its pages stay loaded).
+    Whether to enter is the caller's choice (SystemTrayIcon._sync_tray)."""
+    if not QtCore.QMetaObject.invokeMethod(window, "enterTray"):
+        return False
     QtCore.QTimer.singleShot(_SETTLE_MS, lambda: release(window, engine))
+    return True
 
 
-def leave_tray(window: QtGui.QWindow) -> None:
-    """The window is shown again: load its pages."""
-    QtCore.QMetaObject.invokeMethod(window, "leaveTray")
+def leave_tray(window: QtGui.QWindow) -> bool:
+    """The window is shown again: load its pages. False when the window
+    could not be told."""
+    return bool(QtCore.QMetaObject.invokeMethod(window, "leaveTray"))
 
 
 def release(window: QtGui.QWindow, engine: QtQml.QQmlEngine | None) -> None:
     """Drops what a hidden window does not need. Does nothing once the
     window is visible again or the program is closing."""
     if window.isVisible() or QtCore.QCoreApplication.closingDown():
+        _note("tray: release skipped")
         return
     if engine is not None:
         engine.collectGarbage()
@@ -51,6 +64,7 @@ def release(window: QtGui.QWindow, engine: QtQml.QQmlEngine | None) -> None:
     if engine is not None:
         engine.trimComponentCache()
     trim_working_set()
+    _note("tray: release done")
 
 
 def trim_working_set() -> None:

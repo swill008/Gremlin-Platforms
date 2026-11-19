@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from PySide6 import QtCore
 
-from gremlin import trace
+from gremlin import trace, trace_timing
 from gremlin.common import SingletonDecorator
 from gremlin.event_handler import Event, EventListener, trace_kind
 from gremlin.modules import device_class, registry
@@ -195,6 +195,8 @@ class InputModuleRuntime(QtCore.QObject):
     def _on_hid(self, event: Event) -> None:
         if event is None:
             return
+        if trace_timing.on:
+            trace_timing.dispatch(event)
         if getattr(event, "event_type", None) not in (
             InputType.JoystickAxis,
             InputType.JoystickButton,

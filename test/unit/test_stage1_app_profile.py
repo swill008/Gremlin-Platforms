@@ -388,20 +388,23 @@ class _Window(QtCore.QObject):
     def __init__(self) -> None:
         super().__init__()
         self.shown = True
+        self.mode = QtGui.QWindow.Visibility.Windowed
         self.calls: list[object] = []
 
     def visibility(self) -> QtGui.QWindow.Visibility:
-        return QtGui.QWindow.Visibility.Windowed
+        return self.mode
 
     def isVisible(self) -> bool:
         return self.shown
 
     def hide(self) -> None:
         self.shown = False
+        self.mode = QtGui.QWindow.Visibility.Hidden
         self.calls.append("hide")
 
     def setVisibility(self, mode: object) -> None:
         self.shown = True
+        self.mode = mode  # type: ignore[assignment]
         self.calls.append("show")
 
     def raise_(self) -> None:
@@ -483,8 +486,13 @@ def tray(monkeypatch: pytest.MonkeyPatch) -> Iterator[types.SimpleNamespace]:
     trayed: list[str] = []
     memory = system_tray.tray_memory
     monkeypatch.setattr(memory, "let_hidden_window_release_graphics", lambda w: None)
-    monkeypatch.setattr(memory, "enter_tray", lambda w, e: trayed.append("enter"))
-    monkeypatch.setattr(memory, "leave_tray", lambda w: trayed.append("leave"))
+    # enter_tray / leave_tray report whether they did the step (01 S174).
+    monkeypatch.setattr(
+        memory, "enter_tray", lambda w, e: trayed.append("enter") or True
+    )
+    monkeypatch.setattr(
+        memory, "leave_tray", lambda w: trayed.append("leave") or True
+    )
     backend = _TrayBackend()
     monkeypatch.setattr(system_tray, "Backend", lambda: backend)
     settings = _Settings()
@@ -556,13 +564,30 @@ def test_minimize_to_tray_hides_on_minimize_and_close(
     minimized = QtGui.QWindow.Visibility.Minimized
     close = _XClose()
 
+    def minimize() -> None:
+        # Windows minimizes, then Qt reports it; the hide comes after the
+        # report has finished (01 S85), so let the event loop run.
+        from PySide6 import QtTest
+
+        tray.window.mode = minimized
+        tray.window.visibilityChanged.emit(minimized)
+        QtTest.QTest.qWait(50)
+
     # Off (the default): minimize stays minimized, X closes.
-    tray.window.visibilityChanged.emit(minimized)
+    minimize()
     assert tray.window.shown
     assert tray.icon.eventFilter(tray.window, close) is False
 
     tray.settings.values[("global", "general", "minimize-to-tray")] = True
+    tray.window.mode = QtGui.QWindow.Visibility.Windowed
+    tray.window.shown = True
+    # Not hidden inside the visibility report itself, only after it.
+    tray.window.mode = minimized
     tray.window.visibilityChanged.emit(minimized)
+    assert tray.window.shown
+    from PySide6 import QtTest
+
+    QtTest.QTest.qWait(50)
     assert not tray.window.shown
     tray.window.shown = True
     close = _XClose()
@@ -570,8 +595,14 @@ def test_minimize_to_tray_hides_on_minimize_and_close(
     assert not close.isAccepted() and not tray.window.shown
     assert saved == [tray.window]  # GL-112: its place is kept
     # Hidden: pages unloaded; shown again: loaded again.
+    # The tray follows the window once the show or hide has finished.
+    tray.window.mode = QtGui.QWindow.Visibility.Hidden
     tray.window.visibilityChanged.emit(QtGui.QWindow.Visibility.Hidden)
+    QtTest.QTest.qWait(50)
+    tray.window.shown = True
+    tray.window.mode = QtGui.QWindow.Visibility.Windowed
     tray.window.visibilityChanged.emit(QtGui.QWindow.Visibility.Windowed)
+    QtTest.QTest.qWait(50)
     assert tray.trayed == ["enter", "leave"]
 
 

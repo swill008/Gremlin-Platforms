@@ -1889,6 +1889,7 @@ ApplicationWindow {
 
             ThemedMenuItem { command: "debug.liveLog" }
             ThemedMenuItem { command: "debug.tracing" }
+            ThemedMenuItem { command: "debug.saveWindowState" }
         }
 
         ThemedMenu {
@@ -2424,8 +2425,9 @@ ApplicationWindow {
         }
 
         // Home stays loaded while the window shows; unloaded in the tray.
-        Loader {
+        PageLoader {
             id: _statusLoader
+            traceName: "Home"
             Layout.fillWidth: true
             Layout.fillHeight: true
             active: !_root.trayed
@@ -2629,8 +2631,9 @@ ApplicationWindow {
             }
         }
 
-        Loader {
+        PageLoader {
             id: _outputLoader
+            traceName: "Output View"
 
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -2652,8 +2655,9 @@ ApplicationWindow {
             }
         }
 
-        Loader {
+        PageLoader {
             id: _logicalLoader
+            traceName: "Logical Device"
 
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -2675,8 +2679,9 @@ ApplicationWindow {
         }
 
         // The OSC page (09 S129): built like the Logical Device page.
-        Loader {
+        PageLoader {
             id: _oscPageLoader
+            traceName: "OSC"
 
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -2704,8 +2709,9 @@ ApplicationWindow {
 
         // The joystick Device Bindings page (05 S121-S131): built like the
         // Logical Device page.
-        Loader {
+        PageLoader {
             id: _deviceBindingsPageLoader
+            traceName: "Device Bindings"
 
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -2725,8 +2731,9 @@ ApplicationWindow {
         }
 
         // The Keyboard page (CF-Q7): the same layout.
-        Loader {
+        PageLoader {
             id: _keyboardPageLoader
+            traceName: "Keyboard"
 
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -2744,8 +2751,9 @@ ApplicationWindow {
             }
         }
 
-        Loader {
+        PageLoader {
             id: _xboxLoader
+            traceName: "Xbox Output View"
 
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -2761,8 +2769,9 @@ ApplicationWindow {
         }
 
         // Loaded only while shown.
-        Loader {
+        PageLoader {
             id: _scriptLoader
+            traceName: "Scripts"
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.verticalStretchFactor: 10
@@ -2774,8 +2783,9 @@ ApplicationWindow {
         }
 
         // Loaded only while shown.
-        Loader {
+        PageLoader {
             id: _settingsLoader
+            traceName: "Profile Settings"
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.verticalStretchFactor: 10

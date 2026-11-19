@@ -1096,6 +1096,9 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         gremlin.device_initialization.announce_vjoy_problems()
 
         self.main_window = self.engine.rootObjects()[0]
+        from gremlin.ui import window_trace
+
+        window_trace.install(self.main_window, self.engine)
         # Red debug mode: a frame on every window while debugging.
         gremlin.ui.debug_mode.install(self)
         self.tray_icon = None
@@ -1189,6 +1192,10 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         self.engine.rootContext().setContextProperty("backend", self.backend)
         self.engine.rootContext().setContextProperty("uiState", self.backend.ui_state)
         self.engine.rootContext().setContextProperty("signal", gremlin.signal.signal)
+        # Window tracing (01 S176, S178): windowTrace before Main.qml loads.
+        from gremlin.ui import window_trace
+
+        window_trace.expose(self.engine)
         self.updater = gremlin.ui.update_model.UpdateModel(self)
         self.engine.rootContext().setContextProperty("updater", self.updater)
         # The Device Library window's model (10); it follows device changes.

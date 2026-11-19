@@ -303,7 +303,15 @@ class _TrayBackend(QtCore.QObject):
 
 
 @pytest.fixture
-def tray(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
+def _tray_app() -> Iterator[QtCore.QCoreApplication]:
+    """The deferred hide of a minimize needs an event loop (01 S85)."""
+    yield QtCore.QCoreApplication.instance() or QtCore.QCoreApplication([])
+
+
+@pytest.fixture
+def tray(
+    _tray_app: QtCore.QCoreApplication, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[SimpleNamespace]:
     from gremlin.ui import system_tray
 
     gui = system_tray.win32gui
@@ -322,8 +330,9 @@ def tray(monkeypatch: pytest.MonkeyPatch) -> Iterator[SimpleNamespace]:
     monkeypatch.setattr(system_tray.win32api, "GetSystemMetrics", lambda _n: 16)
     memory = system_tray.tray_memory
     monkeypatch.setattr(memory, "let_hidden_window_release_graphics", lambda w: None)
-    monkeypatch.setattr(memory, "enter_tray", lambda w, e: None)
-    monkeypatch.setattr(memory, "leave_tray", lambda w: None)
+    # They report whether they did the step (01 S174).
+    monkeypatch.setattr(memory, "enter_tray", lambda w, e: True)
+    monkeypatch.setattr(memory, "leave_tray", lambda w: True)
     backend = _TrayBackend()
     monkeypatch.setattr(system_tray, "Backend", lambda: backend)
     values: dict[tuple[str, ...], object] = {
@@ -385,6 +394,11 @@ def test_s73_start_minimized_minimizes_and_goes_to_the_tray_when_on(
     tray.values[("global", "general", "minimize-to-tray")] = True
     tray.window.calls.clear()
     jg.JoystickGremlinApp.process_cmd_args(app, args)  # type: ignore[arg-type]
+    # The hide waits until the minimize has finished (01 S85).
+    assert tray.window.calls == [QtGui.QWindow.Visibility.Minimized]
+    from PySide6 import QtTest
+
+    QtTest.QTest.qWait(50)
     assert tray.window.calls == [
         QtGui.QWindow.Visibility.Minimized, QtGui.QWindow.Visibility.Hidden
     ]

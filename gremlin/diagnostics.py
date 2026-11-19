@@ -188,6 +188,10 @@ class Plan:
     tester: Path | None = None
     names: list[str] = field(default_factory=user_names)
     made: str = ""
+    # window-state.txt (read on the main thread) and recent-window-events.txt
+    # (01 S132, S177).
+    window_state: str = ""
+    recent_events: str = ""
 
 
 def _profile() -> tuple[str, str | None]:
@@ -206,6 +210,27 @@ def _profile() -> tuple[str, str | None]:
         if profile.fpath and Path(profile.fpath).is_file():
             return name, Path(profile.fpath).read_text(encoding="utf-8-sig")
         return name, None
+
+
+def _window_state() -> str:
+    """window_trace.state_text() (main thread); what is known when it can't
+    be read."""
+    try:
+        from gremlin.ui import window_trace
+
+        return str(window_trace.state_text())
+    except Exception as exc:
+        return f"Window state not available: {type(exc).__name__}: {exc}"
+
+
+def _recent_events() -> str:
+    try:
+        from gremlin import trace
+
+        lines = trace.recent_lines()
+    except Exception:
+        lines = []
+    return chr(10).join(lines) if lines else "No recent window events."
 
 
 def collect(include_profile: bool) -> Plan:
@@ -236,6 +261,8 @@ def collect(include_profile: bool) -> Plan:
         profile_text=text,
         made=datetime.fromtimestamp(clock.now()).isoformat(timespec="seconds"),
         tester=tester,
+        window_state=_window_state(),
+        recent_events=_recent_events(),
     )
 
 
@@ -305,6 +332,11 @@ def write_zip(plan: Plan, dest: Path) -> None:
                     f"tester/{file_name}.not-read.txt",
                     f"{path}: {exc.strerror or exc}",
                 )
+    add("window-state.txt", plan.window_state or "Window state not available.")
+    add(
+        "recent-window-events.txt",
+        plan.recent_events or "No recent window events.",
+    )
     if plan.profile_text is not None:
         add(f"profile/{plan.profile_name or 'profile.xml'}", plan.profile_text)
     entries.insert(0, ("README.txt", _readme(plan, [n for n, _t in entries])))

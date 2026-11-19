@@ -31,7 +31,9 @@ POINTS = {
     "Event": (trace.EVENT,),
     "HidHide": (trace.HIDHIDE,),
     "Screen Saver Mode": (trace.SCREEN_SAVER,),
+    "Window": (trace.WINDOW,),
     "OSC": (trace.OSC,),
+    "Timing": (trace.TIMING,),
     "Out of step": (trace.OUT_OF_STEP,),
     # ONE-TIME (tracker OT-5): the click trace's lines; remove after the fix.
     "Mouse": (trace.MOUSE,),
@@ -161,9 +163,9 @@ def _check(n: int, total: int) -> int:
 
 class TraceTree(QtCore.QAbstractListModel):
     """The left list: device rows, their Out-of-step check, and when opened
-    their axes, buttons and hats; the HidHide row, then the OSC row and its
-    five areas (D-09-OSC-TRACE) at the end. Changes are
-    told row by row so the list keeps its place."""
+    their axes, buttons and hats; the HidHide, Screen Saver Mode and Window
+    rows, then the OSC row and its five areas (D-09-OSC-TRACE), then the Timing
+    row. Changes are told row by row so the list keeps its place."""
 
     Kind = QtCore.Qt.ItemDataRole.UserRole + 1
     Text = Kind + 1
@@ -289,6 +291,11 @@ class TraceTree(QtCore.QAbstractListModel):
             text="Screen Saver Mode (listening, countdown, holds, scans)",
             check=2 if trace.screen_saver_ticked() else 0,
         ))
+        rows.append(row(
+            kind="window",
+            text="Window (shown, hidden, tray, pages, display and sleep)",
+            check=2 if trace.window_ticked() else 0,
+        ))
         # ONE-TIME (tracker OT-5): the click trace's Mouse row; remove after the fix.
         rows.append(row(
             kind="mouse", text="Mouse (clicks in the Device Mapping Editor)",
@@ -307,6 +314,11 @@ class TraceTree(QtCore.QAbstractListModel):
             )
             for area in trace.OSC_AREAS
         )
+        rows.append(row(
+            kind="timing",
+            text="Timing (queue wait, actions, end to end, stalls)",
+            check=2 if trace.timing_ticked() else 0,
+        ))
         self.devices, self.controls = devices, controls
         return rows
 
@@ -667,6 +679,16 @@ class TraceView(QtCore.QObject):
     @QtCore.Slot(bool)
     def setScreenSaver(self, on: bool) -> None:  # noqa: N802 - QML name
         trace.set_screen_saver(on)
+        self.reloadTree()
+
+    @QtCore.Slot(bool)
+    def setWindow(self, on: bool) -> None:  # noqa: N802 - QML name
+        trace.set_window(on)
+        self.reloadTree()
+
+    @QtCore.Slot(bool)
+    def setTiming(self, on: bool) -> None:  # noqa: N802 - QML name
+        trace.set_timing(on)
         self.reloadTree()
 
     # ONE-TIME (tracker OT-5): the click trace's Mouse tick; remove after the fix.

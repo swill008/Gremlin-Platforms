@@ -19,7 +19,7 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin import clock, run_scope, trace
+from gremlin import clock, run_scope, trace, trace_timing
 from gremlin.modules import registry
 from gremlin.modules.claim import claim_allows, claim_friendly, claim_ids, kind_of
 from gremlin.types import InputType
@@ -562,6 +562,8 @@ def write_vjoy(vjoy_id: int, kind: str, input_id: int, value: Any) -> bool:  # n
     """
     input_id = int(input_id)
     result = _write_vjoy(vjoy_id, kind, input_id, value)
+    if trace_timing.on:
+        trace_timing.output()
     if trace.enabled():
         # OUTPUT tap (D-01-TRACE): trace keeps it only for a ticked input.
         trace.output(vjoy_id, kind, input_id, value, result)

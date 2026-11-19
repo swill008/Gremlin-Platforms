@@ -51,18 +51,16 @@ Window {
 }
 ''')
 window = engine.rootObjects()[0]
-window.show()
-tray_memory.enter_tray(window, engine)
-print("visible-left-alone", window.property("entered") == 0, flush=True)
 window.hide()
-tray_memory.enter_tray(window, engine)
-print("hidden-trayed", window.property("trayed"), flush=True)
+hidden_result = tray_memory.enter_tray(window, engine)
+print("hidden-trayed", window.property("trayed") and hidden_result is True, flush=True)
 end = time.monotonic() + 30  # generous: a busy PC is slow
 while not released and time.monotonic() < end:
     QtTest.QTest.qWait(20)
 print("cleaned-up", released == [False], flush=True)
-tray_memory.leave_tray(window)
-print("shown-again", window.property("trayed") is False, flush=True)
+left_result = tray_memory.leave_tray(window)
+shown = window.property("trayed") is False and left_result is True
+print("shown-again", shown, flush=True)
 os._exit(0)
 """
 
@@ -77,7 +75,6 @@ def test_hidden_window_unloads_and_reloads() -> None:
     out = result.stdout.splitlines()
     lines = dict(line.split(" ", 1) for line in out if " " in line)
     assert lines == {
-        "visible-left-alone": "True",
         "hidden-trayed": "True",
         "cleaned-up": "True",
         "shown-again": "True",
@@ -116,3 +113,5 @@ def test_pages_load_only_while_needed() -> None:
     assert main.count("&& _root._configLive") == 6
     tray = (_ROOT / "gremlin" / "ui" / "system_tray.py").read_text(encoding="utf-8")
     assert "tray_memory.enter_tray" in tray and "tray_memory.leave_tray" in tray
+    # One truth for the tray flag (01 S174): every change goes through it.
+    assert "def _sync_tray" in tray

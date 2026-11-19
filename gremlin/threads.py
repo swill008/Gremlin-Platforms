@@ -21,16 +21,31 @@ import logging
 import threading
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    from PySide6 import QtCore
 
 PREFIX = "Gremlin-Platforms: "
 
+
+class _Thread(Protocol):
+    """What shutdown() needs of a listed thread (a threading.Thread or a
+    _QtThread)."""
+
+    name: str
+
+    def is_alive(self) -> bool: ...
+
+    def join(self, timeout: float | None = None) -> None: ...
+
+
 _LOCK = threading.Lock()
 # Live threads and the request that stops each (None: it ends by itself).
-_live: dict[threading.Thread, Callable[[], None] | None] = {}
+_live: dict[_Thread, Callable[[], None] | None] = {}
 
 
-def _forget(thread: threading.Thread) -> None:
+def _forget(thread: _Thread) -> None:
     with _LOCK:
         _live.pop(thread, None)
 
@@ -144,6 +159,93 @@ def main_timer(
     if threading.current_thread() is not threading.main_thread():
         return timer(name, seconds, function, *args)
     return MainTimer(name, seconds, function, args)
+
+
+class _QtThread:
+    """A QThread as shutdown() sees it: listed by name, stopped by quitting
+    its event loop, waited for within the limit."""
+
+    def __init__(self, name: str, qthread: QtCore.QThread) -> None:
+        self.name = name
+        self.qthread = qthread
+
+    def is_alive(self) -> bool:
+        return self.qthread.isRunning()
+
+    def join(self, timeout: float | None = None) -> None:
+        from PySide6 import QtCore
+
+        # Waiting for itself would never end.
+        if QtCore.QThread.currentThread() is self.qthread:
+            return
+        if timeout is None:
+            self.qthread.wait()
+        else:
+            self.qthread.wait(max(0, round(timeout * 1000)))
+
+
+def start_qt(name: str, qthread: QtCore.QThread) -> None:
+    """Starts qthread (a Qt thread with its own event loop) called name.
+
+    Listed by running() like a thread; shutdown() asks it to stop with
+    quit() and waits for it within its limit.
+    """
+    from PySide6 import QtCore
+
+    qthread.setObjectName(PREFIX + name)
+    entry = _QtThread(PREFIX + name, qthread)
+    # finished is emitted on qthread itself; the list has its own lock.
+    qthread.finished.connect(
+        lambda: _forget(entry), QtCore.Qt.ConnectionType.DirectConnection
+    )
+    with _LOCK:
+        _live[entry] = qthread.quit
+    try:
+        qthread.start()
+    except BaseException:
+        _forget(entry)
+        raise
+
+
+# | Wrong-thread guards (debug helpers). Qt objects belong to one thread:
+# | the window's to the main thread, the input path's to the input thread
+# | (gremlin/input_thread.py). A function that must run on one of them
+# | calls assert_main(what) / assert_input(what) first. With
+# | guards_raise on (tests) a wrong thread raises WrongThread; otherwise
+# | it is logged once per what to the system log.
+
+guards_raise = False
+_guard_logged: set[str] = set()
+
+
+class WrongThread(AssertionError):
+    """A function that belongs to one thread was called on another."""
+
+
+def _wrong_thread(what: str, wanted: str) -> None:
+    text = f"{what} must run on the {wanted}, not on {threading.current_thread().name}"
+    if guards_raise:
+        raise WrongThread(text)
+    with _LOCK:
+        if what in _guard_logged:
+            return
+        _guard_logged.add(what)
+    logging.getLogger("system").warning(text)
+
+
+def assert_main(what: str) -> None:
+    """Checks that the caller is on the main (window) thread."""
+    if threading.current_thread() is not threading.main_thread():
+        _wrong_thread(what, "main thread")
+
+
+def assert_input(what: str) -> None:
+    """Checks that the caller is on the input thread (or that the input
+    thread runs inline on the caller, see input_thread.set_inline)."""
+    from gremlin import input_thread
+
+    if not (input_thread.is_inline() or input_thread.is_input_thread()):
+        _wrong_thread(what, "input thread")
 
 
 def running() -> list[str]:

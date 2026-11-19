@@ -63,14 +63,15 @@ def _log() -> logging.Logger:
     return logging.getLogger("system")
 
 
-def _trace(text: str) -> None:
+def _trace(text: str, ring: bool = True) -> None:
     """One Screen Saver Mode trace line (S16); a no-op unless tracing and
-    its tick are on. Never per input event."""
+    its tick are on. Never per input event. With ring the line also goes
+    to the recent-events ring (01 S177); per-press lines pass ring=False."""
     write = getattr(trace, "screen_saver", None)
     if write is None:
         return
     try:
-        write(text)
+        write(text, ring=ring)
     except Exception:
         _log().exception("Screen Saver Mode: trace failed")
 
@@ -1983,9 +1984,12 @@ class ScreenSaverMode:
                 device_kind, _, physical = text.partition("	")
                 name = self._device_name(n) or "a device"
                 if kind == "not_counted":
-                    _trace(f"not counted: {name} ({device_kind}) is not ticked")
+                    _trace(
+                        f"not counted: {name} ({device_kind}) is not ticked",
+                        ring=False,
+                    )
                     continue
-                _trace(f"press: {name} ({device_kind})")
+                _trace(f"press: {name} ({device_kind})", ring=False)
                 listener = self._press_listener
                 if listener is not None:
                     try:

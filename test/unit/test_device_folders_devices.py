@@ -315,6 +315,8 @@ def test_the_diagnostics_zip_names_each_modules_folder(
         tester=None,
         names=[],
         made="now",
+        window_state="",
+        recent_events="",
     )
     dest = tmp_path / "diag.zip"
     diagnostics.write_zip(plan, dest)  # type: ignore[arg-type]

@@ -781,7 +781,7 @@ def test_s65_s66_s67_menus_come_from_the_command_list(main_window: dict) -> None
         "Viewers >", "Device Setup >", "Mapping >", "OSC Monitor",
         "Screen Saver Mode…", "History", "Options",  # 12 S1
     ]
-    assert menus["Debug"] == ["Live Log Reader", "Tracing"]
+    assert menus["Debug"] == ["Live Log Reader", "Tracing", "Save Window State"]  # S178
     assert menus["Help"] == [
         "Help (F1)", "Check for Updates", "Save Diagnostics…", "About"
     ]

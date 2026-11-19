@@ -149,6 +149,8 @@ def test_the_zip_holds_logs_settings_devices_and_versions(
         "logs/system.log",
         "logs/logs.txt",
         "logs/(user) notes.log",
+        "window-state.txt",  # S132, S178
+        "recent-window-events.txt",  # S132, S177
     }
     versions = json.loads(files["versions.json"])
     assert versions["version"] and versions["windows"]

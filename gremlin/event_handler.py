@@ -30,6 +30,7 @@ from gremlin import (
     run_scope,
     threads,
     trace,
+    trace_timing,
     tree,
     util,
     windows_event_hook,
@@ -149,6 +150,9 @@ class Event:
         self.synthetic = synthetic
         self.osc_address = osc_address
         self.ld_chain = ld_chain
+        # Timing probes (S179): (t0, t1) set by the listener only while
+        # Timing is on.
+        self.t_rx: tuple[int, int] | None = None
 
     def display_name(self) -> str:
         """Returns the display representation of this event.
@@ -374,9 +378,10 @@ class EventListener(QtCore.QObject):
         Args:
             data: the joystick event information
         """
+        t0 = trace_timing.counter() if trace_timing.on else 0
         event = dill.InputEvent(data)
         try:
-            self._joystick_event(event)
+            self._joystick_event(event, t0)
         except Exception as e:
             # Raised here it would be lost inside the driver's thread.
             from gremlin.log_once import log_once
@@ -390,7 +395,7 @@ class EventListener(QtCore.QObject):
                 f"{event.device_guid.uuid} was dropped: {e}",
             )
 
-    def _joystick_event(self, event: dill.InputEvent) -> None:
+    def _joystick_event(self, event: dill.InputEvent, t0: int = 0) -> None:
         # Trace tab (D-01-TRACE): the value as the driver sent it, before
         # the claim gate. Off costs one check.
         if trace.enabled():
@@ -401,45 +406,48 @@ class EventListener(QtCore.QObject):
                 calibrated_value
             )
 
-            self.joystick_event.emit(
-                Event(
-                    event_type=InputType.JoystickAxis,
-                    device_guid=event.device_guid.uuid,
-                    identifier=event.input_index,
-                    mode=NO_MODE,
-                    value=calibrated_value,
-                    raw_value=event.value,
-                )
+            out = Event(
+                event_type=InputType.JoystickAxis,
+                device_guid=event.device_guid.uuid,
+                identifier=event.input_index,
+                mode=NO_MODE,
+                value=calibrated_value,
+                raw_value=event.value,
             )
+            if trace_timing.on:
+                trace_timing.stamp_rx(out, t0, trace_timing.counter())
+            self.joystick_event.emit(out)
         elif event.input_type == dill.InputType.Button:
             self._joystick[event.device_guid.uuid].button(event.input_index).update(
                 event.value == 1
             )
 
-            self.joystick_event.emit(
-                Event(
-                    event_type=InputType.JoystickButton,
-                    device_guid=event.device_guid.uuid,
-                    identifier=event.input_index,
-                    mode=NO_MODE,
-                    is_pressed=event.value == 1,
-                )
+            out = Event(
+                event_type=InputType.JoystickButton,
+                device_guid=event.device_guid.uuid,
+                identifier=event.input_index,
+                mode=NO_MODE,
+                is_pressed=event.value == 1,
             )
+            if trace_timing.on:
+                trace_timing.stamp_rx(out, t0, trace_timing.counter())
+            self.joystick_event.emit(out)
         elif event.input_type == dill.InputType.Hat:
             direction = util.dill_hat_lookup(event.value)
             self._joystick[event.device_guid.uuid].hat(event.input_index).update(
                 direction
             )
 
-            self.joystick_event.emit(
-                Event(
-                    event_type=InputType.JoystickHat,
-                    device_guid=event.device_guid.uuid,
-                    identifier=event.input_index,
-                    mode=NO_MODE,
-                    value=direction,
-                )
+            out = Event(
+                event_type=InputType.JoystickHat,
+                device_guid=event.device_guid.uuid,
+                identifier=event.input_index,
+                mode=NO_MODE,
+                value=direction,
             )
+            if trace_timing.on:
+                trace_timing.stamp_rx(out, t0, trace_timing.counter())
+            self.joystick_event.emit(out)
 
     def _trace_raw(self, event: dill.InputEvent) -> None:
         guid = event.device_guid.uuid
@@ -551,25 +559,23 @@ class EventListener(QtCore.QObject):
         buttons, hats = wrapper.let_go()
         mode = NO_MODE
         for index in buttons:
-            self.joystick_event.emit(
-                Event(
-                    event_type=InputType.JoystickButton,
-                    device_guid=device_guid,
-                    identifier=index,
-                    mode=mode,
-                    is_pressed=False,
-                )
+            out = Event(
+                event_type=InputType.JoystickButton,
+                device_guid=device_guid,
+                identifier=index,
+                mode=mode,
+                is_pressed=False,
             )
+            self.joystick_event.emit(out)
         for index in hats:
-            self.joystick_event.emit(
-                Event(
-                    event_type=InputType.JoystickHat,
-                    device_guid=device_guid,
-                    identifier=index,
-                    mode=mode,
-                    value=HatDirection.Center,
-                )
+            out = Event(
+                event_type=InputType.JoystickHat,
+                device_guid=device_guid,
+                identifier=index,
+                mode=mode,
+                value=HatDirection.Center,
             )
+            self.joystick_event.emit(out)
         if buttons or hats:
             logging.getLogger("system").info(
                 f"Unplugged {device_guid}: let go of buttons {buttons}, hats {hats}"
@@ -864,6 +870,8 @@ class EventHandler(QtCore.QObject):
         # one current when the event is handled, read on the main thread.
         if not event.mode:
             event.mode = mode_manager.ModeManager().current.name
+        if trace_timing.on:
+            trace_timing.begin(event)
         # Process callbacks defined via actions or scripts.
         callbacks = self._matching_callbacks(event)
         # Input Monitor (Live Log Reader): read-only, one check when off.
@@ -879,6 +887,8 @@ class EventHandler(QtCore.QObject):
         finally:
             if traced is not None:
                 trace.end_input()
+            if trace_timing.on:
+                trace_timing.end()
 
     def _trace_wiring(
         self,

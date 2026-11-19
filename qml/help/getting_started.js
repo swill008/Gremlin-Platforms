@@ -345,7 +345,7 @@ function topics() {
             id: "getting-started-save-diagnostics",
             section: "Troubleshooting",
             title: "Save diagnostics for a problem report",
-            body: "<p>Save Diagnostics puts everything needed for a problem report in one zip: the program's logs (with trace.log when you have used Tracing), its settings, the device list (names, ids, kinds, connected) and the program and Windows versions. When you have used the <b>Input Tester</b>, its files are added too: tester.log and its older copy, and its expected.json and result.json.</p>"
+            body: "<p>Save Diagnostics puts everything needed for a problem report in one zip: the program's logs (with trace.log when you have used Tracing), the main window's state and the last 200 window events (window-state.txt and recent-window-events.txt), its settings, the device list (names, ids, kinds, connected) and the program and Windows versions. When you have used the <b>Input Tester</b>, its files are added too: tester.log and its older copy, and its expected.json and result.json.</p>"
                 + "<ol>"
                 + "<li>Choose <b>Help › Save Diagnostics…</b> <a href=\"show:menu/Help/Save Diagnostics\">Show me ›</a> (or <b>Save Diagnostics…</b> on the <b>Debug</b> tab of the <b>Live Log Reader</b> <a href=\"open:debug.liveLog\">Open ›</a>).</li>"
                 + "<li>To add the open profile, tick <b>Include the open profile</b>.</li>"

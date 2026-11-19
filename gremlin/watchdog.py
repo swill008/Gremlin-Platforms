@@ -44,6 +44,50 @@ def thread_stacks() -> str:
         return f"Threads: {names}\n{out.read()}"
 
 
+def _recent_block() -> str:
+    """The recent events and the last known window state, as plain text
+    (no Qt calls: this runs on the watchdog thread)."""
+    parts: list[str] = []
+    try:
+        from gremlin import trace
+
+        lines = trace.recent_lines()
+        parts.append("Recent events:\n" + ("\n".join(lines) if lines else "(none)"))
+    except Exception:
+        pass
+    try:
+        from gremlin.ui import window_trace
+
+        known = window_trace.last_known()
+        parts.append(
+            "Last known window state:\n"
+            + "\n".join(f"  {k}: {v}" for k, v in dict(known).items())
+        )
+    except Exception:
+        pass
+    return "\n".join(parts)
+
+
+def _note(text: str) -> None:
+    """The stall to the window events, and to trace.log while Timing is on."""
+    try:
+        from gremlin.ui import window_trace
+
+        window_trace.note("Main window", text)
+    except Exception:
+        pass
+
+
+def _event(text: str) -> None:
+    try:
+        from gremlin import trace
+
+        if trace.timing_on():
+            trace.event(text)
+    except Exception:
+        pass
+
+
 class Watchdog(QtCore.QObject):
     """See the module notes. Made and started on the main thread."""
 
@@ -88,14 +132,20 @@ class Watchdog(QtCore.QObject):
             silent = clock.monotonic() - last
             if frozen_since is None and silent >= self._threshold:
                 frozen_since = last
+                text = f"Not responding for {silent:.0f} s."
+                _note(f"stall began: no main-loop tick for {silent:.0f} s")
+                _event(text)
                 _log.warning(
-                    f"Not responding for {silent:.0f} s. Where every thread is:\n"
+                    f"{text} Where every thread is:\n"
                     + thread_stacks()
+                    + "\n"
+                    + _recent_block()
                 )
             elif frozen_since is not None and silent < self._threshold:
-                _log.warning(
-                    f"Responding again after {last - frozen_since:.0f} s"
-                )
+                text = f"Responding again after {last - frozen_since:.0f} s"
+                _note(f"stall ended after {last - frozen_since:.0f} s")
+                _event(text)
+                _log.warning(text)
                 frozen_since = None
 
 

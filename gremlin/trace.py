@@ -47,12 +47,17 @@ HIDHIDE = "HIDHIDE"
 # Screen Saver Mode lines (page 12 S16), while its row is ticked.
 SCREEN_SAVER = "SCREEN SAVER"
 OSC = "OSC"
+# Window lines (01 S176) and timing lines (01 S177), while their rows are ticked.
+WINDOW = "WINDOW"
+TIMING = "TIMING"
 OUT_OF_STEP = "OUT OF STEP"
 # ONE-TIME (tracker OT-5): mouse lines of the temporary click trace;
 # remove after the fix.
 MOUSE = "MOUSE"
 
 MAX_LINES = 5000
+# The recent-lines ring kept even with Tracing off (01 S179).
+RECENT_MAX = 200
 AXIS_INTERVAL = 0.1
 # The Axis lines choices, lines per second per axis (the first is the default).
 AXIS_RATE_CHOICES = (10, 8, 6, 4, 3, 2, 1)
@@ -91,6 +96,8 @@ _CFG_OOS = "out-of-step"
 _CFG_HIDHIDE = "hidhide"
 _CFG_SCREEN_SAVER = "screen-saver-mode"
 _CFG_OSC = "osc"
+_CFG_WINDOW = "window"
+_CFG_TIMING = "timing"
 # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
 _CFG_MOUSE = "mouse"
 _CFG_MAX_MB = "max-mb"
@@ -105,12 +112,16 @@ _lines: collections.deque[tuple[str, str, str, str, bool]] = collections.deque(
 _version = 0
 _notice = ""
 _hooks: list[Callable[[], None]] = []
+_closing_hooks: list[Callable[[], None]] = []
 
 # Ticks: device uuid -> {"axis": set, "button": set, "hat": set, "all": bool}.
 _ticks: dict[uuid.UUID, dict[str, Any]] | None = None
 _oos: set[uuid.UUID] = set()
 _hidhide_on = False
 _screen_saver_on = False
+_window_on = False
+_timing_on = False
+_recent: collections.deque[str] = collections.deque(maxlen=RECENT_MAX)
 _osc_areas: frozenset[str] = frozenset()
 _mouse_on = False  # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
 
@@ -148,6 +159,13 @@ def set_enabled(on: bool) -> None:
     the on_change hooks."""
     global _enabled, _since
     on = bool(on)
+    if not on and _enabled:
+        # Closing hooks run while Tracing is still on, so a last line can be written.
+        for hook in list(_closing_hooks):
+            try:
+                hook()
+            except Exception:
+                logging.getLogger("system").exception("Trace closing hook failed")
     with _LOCK:
         if on == _enabled:
             return
@@ -169,6 +187,13 @@ def set_enabled(on: bool) -> None:
             hook()
         except Exception:
             logging.getLogger("system").exception("Trace on_change hook failed")
+
+
+def on_closing(callback: Callable[[], None]) -> None:
+    """Registers a hook run just before Tracing goes off, while it is still
+    on (so it can write a last line, e.g. the closing TIMING summary)."""
+    if callback not in _closing_hooks:
+        _closing_hooks.append(callback)
 
 
 def since() -> float | None:
@@ -206,42 +231,89 @@ def _ensure_options() -> None:
 
     cfg = config.Configuration()
     for name, kind, initial, text, props in (
-        (_CFG_TICKS, PropertyType.String, "{}",
-         "Trace: ticked controls per device.", {}),
-        (_CFG_OOS, PropertyType.String, "[]",
-         "Trace: devices with the out-of-step check.", {}),
-        (_CFG_HIDHIDE, PropertyType.String, "",
-         "Trace: HidHide row ticked (on or empty).", {}),
-        (_CFG_SCREEN_SAVER, PropertyType.String, "",
-         "Trace: Screen Saver Mode row ticked (on or empty).", {}),
-        (_CFG_OSC, PropertyType.String, "[]",
-         "Trace: ticked OSC areas.", {}),
+        (
+            _CFG_TICKS,
+            PropertyType.String,
+            "{}",
+            "Trace: ticked controls per device.",
+            {},
+        ),
+        (
+            _CFG_OOS,
+            PropertyType.String,
+            "[]",
+            "Trace: devices with the out-of-step check.",
+            {},
+        ),
+        (
+            _CFG_HIDHIDE,
+            PropertyType.String,
+            "",
+            "Trace: HidHide row ticked (on or empty).",
+            {},
+        ),
+        (
+            _CFG_SCREEN_SAVER,
+            PropertyType.String,
+            "",
+            "Trace: Screen Saver Mode row ticked (on or empty).",
+            {},
+        ),
+        (_CFG_OSC, PropertyType.String, "[]", "Trace: ticked OSC areas.", {}),
+        (
+            _CFG_WINDOW,
+            PropertyType.String,
+            "",
+            "Trace: Window row ticked (on or empty).",
+            {},
+        ),
+        (
+            _CFG_TIMING,
+            PropertyType.String,
+            "",
+            "Trace: Timing row ticked (on or empty).",
+            {},
+        ),
         # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
-        (_CFG_MOUSE, PropertyType.String, "",
-         "Trace: Mouse row ticked (on or empty).", {}),
-        (_CFG_MAX_MB, PropertyType.Int, MAX_MB_CHOICES[0],
-         "Trace: trace.log max size in MB.",
-         {"min": MAX_MB_RANGE[0], "max": MAX_MB_RANGE[1]}),
-        (_CFG_AXIS_RATE, PropertyType.Float, float(AXIS_RATE_CHOICES[0]),
-         "Trace: axis lines per second.",
-         {"min": AXIS_RATE_RANGE[0], "max": AXIS_RATE_RANGE[1]}),
+        (
+            _CFG_MOUSE,
+            PropertyType.String,
+            "",
+            "Trace: Mouse row ticked (on or empty).",
+            {},
+        ),
+        (
+            _CFG_MAX_MB,
+            PropertyType.Int,
+            MAX_MB_CHOICES[0],
+            "Trace: trace.log max size in MB.",
+            {"min": MAX_MB_RANGE[0], "max": MAX_MB_RANGE[1]},
+        ),
+        (
+            _CFG_AXIS_RATE,
+            PropertyType.Float,
+            float(AXIS_RATE_CHOICES[0]),
+            "Trace: axis lines per second.",
+            {"min": AXIS_RATE_RANGE[0], "max": AXIS_RATE_RANGE[1]},
+        ),
     ):
         # Always registered, a saved value too: purge_unused at start drops
         # what isn't registered (the ticks would not survive a restart).
-        cfg.register(
-            _CFG_SECTION, _CFG_GROUP, name, kind, initial, text, props, False
-        )
+        cfg.register(_CFG_SECTION, _CFG_GROUP, name, kind, initial, text, props, False)
 
 
 def _load() -> dict[uuid.UUID, dict[str, Any]]:
     """The tick cache, read from the config once."""
     global _ticks, _hidhide_on, _screen_saver_on, _osc_areas, _mouse_on
+    global _window_on, _timing_on
     if _ticks is not None:
         return _ticks
     ticks: dict[uuid.UUID, dict[str, Any]] = {}
     oos: set[uuid.UUID] = set()
     hh = False
     ssm = False
+    win = False
+    tim = False
     mouse_on = False  # ONE-TIME (tracker OT-5): remove after the fix.
     areas: frozenset[str] = frozenset()
     try:
@@ -268,9 +340,9 @@ def _load() -> dict[uuid.UUID, dict[str, Any]]:
         if isinstance(rows, list):
             oos = {u for r in rows if (u := _key(r)) is not None}
         hh = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_HIDHIDE) or "") == "on"
-        ssm = (
-            str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_SCREEN_SAVER) or "") == "on"
-        )
+        ssm = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_SCREEN_SAVER) or "") == "on"
+        win = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW) or "") == "on"
+        tim = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_TIMING) or "") == "on"
         # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
         mouse_on = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_MOUSE) or "") == "on"
         osc_rows = json.loads(
@@ -285,6 +357,8 @@ def _load() -> dict[uuid.UUID, dict[str, Any]]:
     _oos.update(oos)
     _hidhide_on = hh
     _screen_saver_on = ssm
+    _window_on = win
+    _timing_on = tim
     _mouse_on = mouse_on  # ONE-TIME (tracker OT-5): remove after the fix.
     _osc_areas = areas
     return ticks
@@ -310,13 +384,19 @@ def _save() -> None:
         )
         cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_HIDHIDE, "on" if _hidhide_on else "")
         cfg.set(
-            _CFG_SECTION, _CFG_GROUP, _CFG_SCREEN_SAVER,
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_SCREEN_SAVER,
             "on" if _screen_saver_on else "",
         )
+        cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW, "on" if _window_on else "")
+        cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_TIMING, "on" if _timing_on else "")
         # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
         cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_MOUSE, "on" if _mouse_on else "")
         cfg.set(
-            _CFG_SECTION, _CFG_GROUP, _CFG_OSC,
+            _CFG_SECTION,
+            _CFG_GROUP,
+            _CFG_OSC,
             json.dumps([a for a in OSC_AREAS if a in _osc_areas]),
         )
     except Exception:
@@ -427,13 +507,109 @@ def set_screen_saver(on: bool) -> None:
         _save()
 
 
-def screen_saver(text: str) -> None:
+def screen_saver(text: str, ring: bool = True) -> None:
     """One SCREEN SAVER line (control "Screen Saver Mode"), only while
-    tracing is on and the row is ticked; never raises."""
+    tracing is on and the row is ticked; never raises. With ring the line
+    also goes to the recent-lines ring, whatever the tick."""
+    if ring:
+        recent("Screen Saver Mode", text)
     if not screen_saver_on():
         return
     try:
         _add(SCREEN_SAVER, "Screen Saver Mode", str(text))
+    except Exception:
+        pass
+
+
+def window_ticked() -> bool:
+    """The Window row is ticked (saved; off by default)."""
+    _load()
+    return _window_on
+
+
+def set_window(on: bool) -> None:
+    """Ticks or unticks the Window row (saved); on_change hooks run."""
+    global _window_on
+    with _LOCK:
+        _load()
+        _window_on = bool(on)
+        _save()
+    _run_hooks()
+
+
+def window_on() -> bool:
+    """Tracing is on and the Window row is ticked (cheap; any thread)."""
+    if not _enabled:
+        return False
+    try:
+        _load()
+        return _window_on
+    except Exception:
+        return False
+
+
+def window(control: str, text: str) -> None:
+    """One WINDOW line, only while tracing is on and Window is ticked;
+    any thread; never raises."""
+    if not window_on():
+        return
+    try:
+        _add(WINDOW, str(control), str(text))
+    except Exception:
+        pass
+
+
+def recent(control: str, text: str) -> None:
+    """Keeps one line in the recent ring (last RECENT_MAX), always, whatever
+    Tracing says; writes no file. Any thread; never raises."""
+    try:
+        _recent.append(f"{_stamp()}  {control or '-'}  {text}")
+    except Exception:
+        pass
+
+
+def recent_lines() -> list[str]:
+    """The recent ring, oldest first, as 'HH:MM:SS.mmm  control  text'."""
+    try:
+        return list(_recent)
+    except Exception:
+        return []
+
+
+def timing_ticked() -> bool:
+    """The Timing row is ticked (saved; off by default)."""
+    _load()
+    return _timing_on
+
+
+def set_timing(on: bool) -> None:
+    """Ticks or unticks the Timing row (saved); on_change hooks run."""
+    global _timing_on
+    with _LOCK:
+        _load()
+        _timing_on = bool(on)
+        _save()
+    _run_hooks()
+
+
+def timing_on() -> bool:
+    """Tracing is on and the Timing row is ticked (cheap; any thread)."""
+    if not _enabled:
+        return False
+    try:
+        _load()
+        return _timing_on
+    except Exception:
+        return False
+
+
+def timing(text: str, warning: bool = False) -> None:
+    """One TIMING line, only while tracing is on and Timing is ticked;
+    never raises."""
+    if not timing_on():
+        return
+    try:
+        _add(TIMING, "Timing", str(text), warning)
     except Exception:
         pass
 
@@ -537,6 +713,7 @@ def _reset_for_tests() -> None:
     file (tests only). on_change hooks are kept."""
     global _ticks, _enabled, _since, _notice, _version, _logger, _handler, _max_mb
     global _axis_rate, _axis_interval, _osc_areas, _mouse_on, _screen_saver_on
+    global _window_on, _timing_on
     set_enabled(False)
     with _LOCK:
         _cancel_flush()
@@ -544,6 +721,9 @@ def _reset_for_tests() -> None:
         _osc_areas = frozenset()
         _mouse_on = False  # ONE-TIME (tracker OT-5): remove after the fix.
         _screen_saver_on = False
+        _window_on = False
+        _timing_on = False
+        _recent.clear()
         osc_reset()
         _max_mb = None
         _axis_rate = None
@@ -693,9 +873,7 @@ def _flush_pending(still: bool) -> None:
         del _axis_pending[key]
         _axis_last[key] = now
         _add(RAW, control, text)
-    for okey, (control, point, detail, _arrived, count) in list(
-        _osc_pending.items()
-    ):
+    for okey, (control, point, detail, _arrived, count) in list(_osc_pending.items()):
         if not (still or now - _osc_last.get(okey, 0.0) >= _axis_interval):
             continue
         if count > 1:
@@ -898,7 +1076,9 @@ def osc(
                     area,
                     f"blocked:{key}:{detail}"
                     if blocked
-                    else "" if key is None else str(key),
+                    else ""
+                    if key is None
+                    else str(key),
                 )
                 limited = _rate_limited(okey, point, control, detail)
                 if limited is None:

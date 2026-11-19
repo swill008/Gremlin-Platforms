@@ -475,7 +475,7 @@ def test_status_off_reads_windows_at_most_once_a_second(env: Env) -> None:
 @pytest.fixture
 def traced(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     lines: list[str] = []
-    monkeypatch.setattr(ssm, "_trace", lines.append)
+    monkeypatch.setattr(ssm, "_trace", lambda text, ring=True: lines.append(text))
     return lines
 
 
@@ -597,7 +597,9 @@ def test_trace_helper_uses_trace_screen_saver(monkeypatch: pytest.MonkeyPatch) -
     from gremlin import trace
 
     got: list[str] = []
-    monkeypatch.setattr(trace, "screen_saver", got.append, raising=False)
+    monkeypatch.setattr(
+        trace, "screen_saver", lambda text, ring=True: got.append(text), raising=False
+    )
     ssm._trace("hello")
     assert got == ["hello"]
     monkeypatch.delattr(trace, "screen_saver")
@@ -1462,7 +1464,12 @@ def test_none_hooks_are_fine(env: Env) -> None:
 def test_hooks_are_traced(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     mode, api, clk, now, run, _t = env
     lines: list[str] = []
-    monkeypatch.setattr(ssm.trace, "screen_saver", lines.append, raising=False)
+    monkeypatch.setattr(
+        ssm.trace,
+        "screen_saver",
+        lambda text, ring=True: lines.append(text),
+        raising=False,
+    )
     _hooks(mode, api)
     mode.apply(_off_only())
     run(120)
