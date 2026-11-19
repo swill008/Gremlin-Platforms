@@ -838,16 +838,19 @@ class EventHandler(QtCore.QObject):
         new = device_cb.get(new_mode, {}).get(event)
         return old is not None and old is new
 
+    @QtCore.Slot()
     def resume(self) -> None:
         """Resumes the processing of callbacks."""
         self.process_callbacks = True
         self.is_active.emit(self.process_callbacks)
 
+    @QtCore.Slot()
     def pause(self) -> None:
         """Stops the processing of callbacks."""
         self.process_callbacks = False
         self.is_active.emit(self.process_callbacks)
 
+    @QtCore.Slot()
     def toggle_active(self) -> None:
         """Toggles the processing of callbacks on or off."""
         self.process_callbacks = not self.process_callbacks
@@ -867,7 +870,8 @@ class EventHandler(QtCore.QObject):
             event: the event to process
         """
         # The listener leaves the mode to the layer above it: the mode is the
-        # one current when the event is handled, read on the main thread.
+        # one current when the event is handled, read on the input thread.
+        threads.assert_input("EventHandler.process_event")
         if not event.mode:
             event.mode = mode_manager.ModeManager().current.name
         if trace_timing.on:

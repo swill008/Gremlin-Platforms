@@ -213,6 +213,7 @@ def test_guards_log_once_when_not_raising(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setattr(threads, "_guard_logged", set())
+    monkeypatch.setattr(threads, "guards_raise", False)
     result: list[BaseException] = []
 
     def off_main() -> None:

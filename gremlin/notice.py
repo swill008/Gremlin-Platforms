@@ -14,6 +14,8 @@ from collections.abc import Callable
 
 from PySide6 import QtCore
 
+from gremlin import threads
+
 syslog = logging.getLogger("system")
 
 
@@ -94,4 +96,4 @@ class BurstNotice:
             self._send()
         else:
             # Another thread before the notice started: started on the main one.
-            QtCore.QTimer.singleShot(0, app, self.notify)
+            threads.main_call(self.notify)

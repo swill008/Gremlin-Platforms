@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6 import (
@@ -25,11 +26,13 @@ from gremlin import (
     device_helpers,
     device_initialization,
     event_handler,
+    input_thread,
     mode_manager,
     process_monitor,
     profile,
     profile_recovery,
     shared_state,
+    threads,
     user_script,
     util,
 )
@@ -193,6 +196,16 @@ def _open_folder(folder: str) -> None:
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(folder))
 
 
+def _to_input(fn: Callable[..., object], *args: object) -> None:
+    """Run, Stop and the toolbar mode go to the input thread as
+    commands (input_thread.call, no wait); before it runs (start-up, a
+    test without it), they run here."""
+    if input_thread.is_running() or input_thread.is_inline():
+        input_thread.call(fn, *args)
+    else:
+        fn(*args)
+
+
 def _sync_run_highlight_hold(runner: code_runner.CodeRunner) -> None:
     """Run holds input highlighting off while it runs; Stop lets go of only
     its own hold, so Calibration, OSC Add, Listen or Record still hold
@@ -290,6 +303,13 @@ def _internal_unsaved() -> bool:
     return _logical_unsaved() or _osc_unsaved()
 
 
+def _switch_mode(name: str) -> None:
+    """The toolbar's mode pick, on the input thread."""
+    mm = mode_manager.ModeManager()
+    if mm.current.name != name:
+        mm.switch_to(mode_manager.Mode(name, mm.current.name))
+
+
 @common.SingletonDecorator
 class Backend(QtCore.QObject):
     windowTitleChanged = QtCore.Signal()
@@ -341,7 +361,16 @@ class Backend(QtCore.QObject):
         self._action_state = {}
         # Auto-load target held back by unsaved edits (said once).
         self._autoload_held: str | None = None
-        self.runner = code_runner.CodeRunner()
+        # The Run itself lives on the input thread (RunControl); its runner
+        # is read here for the status only.
+        self._run_control = code_runner.run_control()
+        self.runner = self._run_control.runner
+        # Run asked for, runStarted not back yet: the status reads Starting.
+        self._starting = False
+        # What the last Run/Stop asked for, set when the command is sent:
+        # decisions made right after one (auto-load, Reload on a device
+        # change) read this; gremlinActive follows the input thread's answer.
+        self._wanted_active = False
         self.ui_state = UIState(self)
         self.process_monitor = process_monitor.ProcessMonitor()
         # Connected before the monitor starts: the program in front at start
@@ -352,12 +381,16 @@ class Backend(QtCore.QObject):
         signal.configChanged.connect(self._sync_process_monitor)
         self.joystick_change_monitor = device_helpers.JoystickInputSignificant()
         mm = mode_manager.ModeManager()
-        mm.mode_changed.connect(self._on_mode_changed)
+        # Emitted on the input thread: queued to this (main-thread) object.
+        queued = QtCore.Qt.ConnectionType.QueuedConnection
+        mm.mode_changed.connect(self._on_mode_changed, queued)
+        self._run_control.runStarted.connect(self._on_run_started, queued)
+        self._run_control.runStopped.connect(self._on_run_stopped, queued)
         # One handler, in order: the open profile first, then its modes.
         self.profileChanged.connect(self._profile_change_handler)
         # Signal to signal: let go of when this Backend is deleted (a lambda
         # would stay connected and fail on a deleted Backend).
-        event_handler.EventHandler().is_active.connect(self.activityChanged)
+        event_handler.EventHandler().is_active.connect(self.activityChanged, queued)
         event_handler.EventListener().device_change_event.connect(self._device_change)
         event_handler.EventListener().joystick_event.connect(self._highlight_input)
         signal.uiScaleChanged.connect(self.uiScaleChanged)
@@ -381,6 +414,7 @@ class Backend(QtCore.QObject):
         self.profileChanged.emit()
 
     def _highlight_input(self, event: event_handler.Event) -> None:
+        threads.assert_main("Backend._highlight_input")
         if (
             not self.config.value("ui", "general", "input-highlighting")
             or shared_state.suspend_input_highlighting()
@@ -421,8 +455,9 @@ class Backend(QtCore.QObject):
         # D-09-OSC-FILE).
         user_script.forget_other_scripts(self.profile.scripts.scripts)
         mm = mode_manager.ModeManager()
-        mm.reset()
-        self.ui_state.setCurrentMode(mm.current.name)
+        # reset() sets the stack on the input thread; current may still be the
+        # old mode here, so use the start mode it returns.
+        self.ui_state.setCurrentMode(mm.reset())
         self.windowTitleChanged.emit()
         signal.profileChanged.emit()
 
@@ -434,23 +469,25 @@ class Backend(QtCore.QObject):
             case "Ignore":
                 pass
             case "Reload":
-                if self.gremlinActive:
+                if self._wanted_active:
                     self.activate_gremlin(False)
                     self.activate_gremlin(True)
 
+    @QtCore.Slot(str)
     def _on_mode_changed(self, name: str) -> None:
+        threads.assert_main("Backend._on_mode_changed")
         self.ui_state.setCurrentMode(str(name or ""))
         self.propertyChanged.emit()
 
     @QtCore.Slot(str)
     def selectMode(self, mode_name: str) -> None:
+        threads.assert_main("Backend.selectMode")
         name = str(mode_name or "")
         if name not in self.profile.modes.mode_names():
             return
         self.ui_state.setCurrentMode(name)
-        mm = mode_manager.ModeManager()
-        if mm.current.name != name:
-            mm.switch_to(mode_manager.Mode(name, mm.current.name))
+        # The stack changes on the input thread; mode_changed comes back.
+        _to_input(_switch_mode, name)
 
     @QtCore.Slot()
     def openProgramFolder(self) -> None:
@@ -503,7 +540,7 @@ class Backend(QtCore.QObject):
                     "Auto-load",
                     f"{Path(profile_path).name} was not loaded: the file is missing.",
                 )
-            if self.gremlinActive and not self.config.value(
+            if self._wanted_active and not self.config.value(
                 "profile", "automation", "remain-active-on-focus-loss"
             ):
                 self.activate_gremlin(False)
@@ -513,7 +550,7 @@ class Backend(QtCore.QObject):
                 if self.profile.has_unsaved_changes():
                     # The open profile isn't this program's: it stops, as
                     # when the file is missing (GL-150, 04 Q3).
-                    if self.gremlinActive and not self.config.value(
+                    if self._wanted_active and not self.config.value(
                         "profile", "automation", "remain-active-on-focus-loss"
                     ):
                         self.activate_gremlin(False)
@@ -530,7 +567,7 @@ class Backend(QtCore.QObject):
                 self._autoload_held = None
                 self.activate_gremlin(False)
                 self.loadProfile(profile_path)
-            if not self.gremlinActive:
+            if not self._wanted_active:
                 self.activate_gremlin(True)
         else:
             if not self.config.value(
@@ -554,32 +591,74 @@ class Backend(QtCore.QObject):
     def gremlinActive(self) -> bool:
         return self.runner.is_running()
 
+    @QtCore.Property(bool, notify=activityChanged)
+    def gremlinStarting(self) -> bool:
+        """Run was pressed and the input thread hasn't said it started."""
+        return self._starting
+
     @QtCore.Slot()
     def toggleActiveState(self) -> None:
-        self.activate_gremlin(not self.runner.is_running())
+        self.activate_gremlin(not self._wanted_active)
 
     def activate_gremlin(self, activate: bool) -> None:
-        """Run (True) or Stop (False). A Run that fails stops itself and
-        shows its one error (CodeRunner.start); the status then reads
-        Stopped (06 Q5)."""
+        """Run (True) or Stop (False), sent to the input thread without
+        waiting (01 S95). A Run uses a copy of the open profile taken now.
+        The status reads Starting until runStarted comes back; a Run that
+        fails stops itself and shows its one error (CodeRunner.start), and
+        the status then reads Stopped (06 Q5)."""
+        threads.assert_main("Backend.activate_gremlin")
         try:
             if activate:
                 shared_state.hold_input_highlighting("run")
+                # A copy taken now: edits apply at the next Run (answer 6a).
+                running = code_runner.profile_snapshot(self.profile)
+                self._starting = True
+                self._wanted_active = True
                 try:
-                    self.runner.start(self.profile, self.ui_state.currentMode)
+                    _to_input(
+                        self._run_control.start, running, self.ui_state.currentMode
+                    )
                 except Exception:
-                    # Logged and shown by the runner, which has stopped.
+                    # Inline: logged and shown by the runner, which has stopped.
                     pass
             else:
-                self.runner.stop()
+                self._starting = False
+                self._wanted_active = False
+                _to_input(self._run_control.stop)
         finally:
-            _sync_run_highlight_hold(self.runner)
+            if not input_thread.is_running() or input_thread.is_inline():
+                # Done already, on this thread: show it now.
+                self._starting = False
+                self._wanted_active = self.runner.is_running()
+                _sync_run_highlight_hold(self.runner)
             self.activityChanged.emit()
+
+    @QtCore.Slot(bool, str)
+    def _on_run_started(self, ok: bool, error: str) -> None:
+        """The input thread has started the Run, or it failed and stopped
+        (the runner has shown its error, so error is not shown again)."""
+        threads.assert_main("Backend._on_run_started")
+        if not ok and self._starting:
+            self._wanted_active = False
+        self._starting = False
+        _sync_run_highlight_hold(self.runner)
+        self.activityChanged.emit()
+
+    @QtCore.Slot()
+    def _on_run_stopped(self) -> None:
+        threads.assert_main("Backend._on_run_stopped")
+        if self._starting:
+            # Stop then Run pressed quickly: the Stop's answer came first;
+            # the Run's runStarted still follows.
+            return
+        _sync_run_highlight_hold(self.runner)
+        self.activityChanged.emit()
 
     def run_profile(self, fpath: str) -> bool:
         """Stop, open the profile at fpath and Run it (a Load Profile
-        action, handed over after its event). Runs again only when the
-        profile opened; False when it didn't."""
+        action, handed over to the main thread after its event). Runs again
+        only when the profile opened; False when it didn't."""
+        threads.assert_main("Backend.run_profile")
         local_path = to_local_path(fpath)
         loaded = self._load_profile(str(local_path))
         if loaded:

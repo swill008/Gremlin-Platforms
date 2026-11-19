@@ -147,7 +147,7 @@ def story(j: Journey) -> None:  # noqa: PLR0915
 
     out["file-at-start"] = trace.file_path().exists()
     j.backend.toggleActiveState()
-    out["running"] = j.backend.runner.is_running()
+    out["running"] = j.await_run(True)
 
     # Ticked, tracing still off: nothing is traced, no file.
     trace.set_tick(uid, "axis", 1, True)

@@ -391,7 +391,7 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li><b>Show</b> only filters what is already in the file: a level the program is not writing has no lines to show.</li>"
-                + "<li>With <b>Log When Not Responding</b> <a href=\"show:option/Log When Not Responding\">Show me ›</a> on, system.log also says when the program stops responding for 5 seconds, where it was stuck, and when it responds again.</li>"
+                + "<li>With <b>Log When Not Responding</b> <a href=\"show:option/Log When Not Responding\">Show me ›</a> on, system.log also says when the program stops responding for 5 seconds, where it was stuck, and when it responds again. It watches the input thread, which handles your controls, in the same way (\"Input thread not responding\"), because your controls keep working while the window itself is frozen.</li>"
                 + "<li>Qt's messages also show in the console when the program is started from one. qt.log moves to qt.log.1 at start-up once over 1 MB, and grows at most 5 MB a session.</li>"
                 + "</ul>",
             related: ["tools-live", "tools-input-monitor", "tools-trace", "tools-red-debug-mode", "getting-started-save-diagnostics"]

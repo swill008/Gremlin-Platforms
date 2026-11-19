@@ -258,6 +258,10 @@ def _item_usages(
     device = getattr(item, "device_id", None)
     uid = getattr(device, "uuid", device) or guid
     guid_text = str(uid)
+    if item.input_type is None:
+        # Not read or created yet (no input type until from_xml/create): it
+        # binds nothing. Queued checks (can't send) can reach one mid-build.
+        return
     if guid_text not in names:
         names[guid_text] = refs.device_name(uid)
     mode = str(item.mode or "")

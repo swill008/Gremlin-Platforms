@@ -96,7 +96,7 @@ def story(j: Journey) -> None:
     ]
 
     j.backend.toggleActiveState()
-    out["running"] = j.backend.runner.is_running()
+    out["running"] = j.await_run(True)
     j.key(_F, True)
     out["held"] = j.await_value(j.vjoy.held_buttons, [4])
     j.key(_F, False)
@@ -104,6 +104,7 @@ def story(j: Journey) -> None:
     j.key(_F, True)
     j.wait_until(lambda: j.vjoy.held_buttons() == [4], "vJoy button 4 down again")
     j.backend.toggleActiveState()
+    j.await_run(False)
     out["devices-after-stop"] = sorted(j.vjoy.vjoy_devices)
     writes = len(j.vjoy.all_writes())
     j.key(_F, False)

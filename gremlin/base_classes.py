@@ -22,12 +22,11 @@ from typing import (
 )
 from xml.etree import ElementTree
 
-from PySide6 import QtCore
-
 from gremlin import (
     clock,
     event_handler,
     run_scope,
+    threads,
     util,
 )
 from gremlin.edits import EditNoted, note_edit
@@ -714,12 +713,12 @@ class AbstractFunctor(Generic[T], ABC):
         def release() -> None:
             self._process_event(functors, event_release, value_release, properties)
 
-        # On the main thread (events are handled there) the release comes
-        # 50 ms later from a timer the Run owns, so the window doesn't stop
-        # for it. Stop fires any still waiting before the drivers go (a
-        # release after Stop reopened vJoy).
-        app = QtCore.QCoreApplication.instance()
-        if app is not None and QtCore.QThread.currentThread() is app.thread():
+        # On a thread with an event loop (the input thread, where events are
+        # handled, or the main thread) the release comes 50 ms later from a
+        # timer the Run owns, so that thread doesn't stop for it. Stop fires
+        # any still waiting before the drivers go (a release after Stop
+        # reopened vJoy). A macro or loop thread has no loop: it waits.
+        if threads.has_event_loop():
             _pending_pulses[:] = [t for t in _pending_pulses if t.is_alive()]
             _pending_pulses.append(
                 run_scope.timer("pulse release", 0.05, release, at_stop="fire")

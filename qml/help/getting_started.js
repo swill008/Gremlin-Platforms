@@ -97,6 +97,8 @@ function topics() {
                 + "<li>When an action editor has changes that are not saved, Run asks first: <b>Save</b>, <b>Discard</b> or <b>Cancel</b>. The profile runs as saved.</li>"
                 + "<li>If Run fails partway, the program stops by itself, shows one error, and the status reads Stopped.</li>"
                 + "<li>While the profile runs, the action editors are locked (\"Profile running: stop it to edit\").</li>"
+                + "<li>The running profile is a copy taken when you press Run. A change you make to the profile while it runs applies at the next Run.</li>"
+                + "<li>The status reads <b>Starting</b> while a Run is starting. Your controls are handled by the program's input thread, so they keep working while the window is busy or frozen; only what the window shows waits.</li>"
                 + "<li>The program knows where an axis is only after that axis has moved. Until then it treats the axis as centered, so a control resting away from the middle is sent as center at first.</li>"
                 + "<li>Running does not hide controllers from games; use <b>HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a> for that.</li>"
                 + "<li>A controller plugged in or removed while running is handled by <b>Device change behavior</b> <a href=\"show:option/Device change behavior\">Show me ›</a> in <b>Options</b>: Stop, Ignore, or Reload.</li>"

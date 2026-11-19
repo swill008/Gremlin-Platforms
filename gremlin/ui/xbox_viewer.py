@@ -10,7 +10,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import event_handler, shared_state
+from gremlin import event_handler, input_thread, shared_state, threads
 from gremlin.modules import output, wiring
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
@@ -201,11 +201,22 @@ class XboxPadLive(QtCore.QObject):
         self._poll = QtCore.QTimer(self)
         self._poll.setInterval(POLL_MS)
         self._poll.timeout.connect(self._poll_once)
-        InputModuleRuntime().event.connect(self._on_event)
+        # The feed is emitted on the input thread: queued, so this slot runs
+        # on the main thread (tests: Auto; thread-ui.md 1.1).
+        InputModuleRuntime().event.connect(
+            self._on_event,
+            QtCore.Qt.ConnectionType.AutoConnection
+            if input_thread.is_inline()
+            else QtCore.Qt.ConnectionType.QueuedConnection,
+        )
 
     # Hardware side.
 
+    @QtCore.Slot(object)
     def _on_event(self, event: event_handler.Event) -> None:
+        threads.assert_main("XboxViewer._on_event")
+        # Axes keep the latest value per input and repaint once per poll
+        # interval (_flush_axes), so a burst is one repaint (R7).
         if not self._active:
             return
         identifier = event.identifier

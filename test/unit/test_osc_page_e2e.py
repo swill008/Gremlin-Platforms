@@ -306,7 +306,7 @@ def _part_run(j: Journey) -> None:
     out = j.out
     osc_device_file.write_server({"enabled": True, "host": "127.0.0.1", "port": 9000})
     j.backend.toggleActiveState()
-    out["3:running"] = j.backend.runner.is_running()
+    out["3:running"] = j.await_run(True)
     runtime = osc.OscRuntime()
     listener = j.wait_until(lambda: runtime._listener, "the OSC listener", 10)
     host, port = _bound(listener)
@@ -317,7 +317,7 @@ def _part_run(j: Journey) -> None:
     client.send_message(ADDRESS, 0)
     out["3:held-after-0"] = j.await_value(j.vjoy.held_buttons, [])
     j.backend.toggleActiveState()
-    out["3:running-after-stop"] = j.backend.runner.is_running()
+    out["3:running-after-stop"] = j.await_run(False)
     out["3:port-open-after-stop"] = runtime.is_open()
 
 

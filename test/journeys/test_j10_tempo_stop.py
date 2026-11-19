@@ -61,7 +61,7 @@ def story(j: Journey) -> None:
     ]
 
     j.backend.toggleActiveState()
-    out["running"] = j.backend.runner.is_running()
+    out["running"] = j.await_run(True)
     # A long press works while running.
     j.press(stick, 1, True)
     out["long-press"] = j.await_value(j.vjoy.held_buttons, [6], _THRESHOLD + 5)
@@ -71,7 +71,7 @@ def story(j: Journey) -> None:
     # Press again, Stop before the Tempo time is up.
     j.press(stick, 1, True)
     j.backend.toggleActiveState()
-    out["running-after-stop"] = j.backend.runner.is_running()
+    out["running-after-stop"] = j.await_run(False)
     writes_at_stop = len(j.vjoy.all_writes())
     opened_at_stop = sum(len(d) for d in j.vjoy.opened.values())
     # Past the Tempo time: anything still armed would have fired by now.

@@ -593,8 +593,34 @@ class Session:
 
     # --- recording --------------------------------------------------------
 
+    def _images_loading(self) -> bool:
+        """True while any Image in the window is still loading: pictures load
+        asynchronously, and a busy machine can take longer than the step's
+        pause, leaving the picture out of the screenshot."""
+        items = [self.win.contentItem()]
+        while items:
+            item = items.pop()
+            if item.metaObject().className().startswith("QQuickImage"):
+                # Python has no converter for the status enum; QML reads it.
+                # 2 is Image.Loading.
+                loading = QtQml.QQmlExpression(
+                    QtQml.QQmlEngine.contextForObject(item), item, "status === 2"
+                ).evaluate()
+                if loading[0] if isinstance(loading, tuple) else loading:
+                    return True
+            items.extend(item.childItems())
+        return False
+
     def record(self, step: str, image: bool = False) -> None:
         self.wait(150)
+        if image:
+            deadline = QtCore.QDeadlineTimer(5000)
+            if self._images_loading():
+                while self._images_loading():
+                    assert not deadline.hasExpired(), "a picture never finished loading"
+                    self.wait(10)
+                # The loaded picture is drawn on the next frame.
+                self.wait(50)
         self.steps.append({"step": step, "state": self.state()})
         if image:
             self.win.grabWindow().save(str(self.out_dir / f"{self.name}-{step}.png"))

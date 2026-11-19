@@ -10,6 +10,11 @@ responding" and the stack of every thread to system.log, once per freeze,
 and "Responding again" when the ticks come back. The option is off by
 default and takes effect at once.
 
+While the input thread runs, the same thread also reads its heartbeat
+(input_thread.silent_for): past the same limit it writes "Input thread not
+responding" with the stacks and recent events, and "Input thread responding
+again", once per stall.
+
 It can only write while the stuck main thread lets other threads run: a
 call that holds Python's lock (GIL) while it waits is logged once it
 returns.
@@ -24,7 +29,7 @@ import threading
 
 from PySide6 import QtCore
 
-from gremlin import clock, threads
+from gremlin import clock, input_thread, threads
 
 OPTION = ("global", "general", "log-when-not-responding")
 THRESHOLD_S = 5.0
@@ -68,12 +73,12 @@ def _recent_block() -> str:
     return "\n".join(parts)
 
 
-def _note(text: str) -> None:
+def _note(text: str, area: str = "Main window") -> None:
     """The stall to the window events, and to trace.log while Timing is on."""
     try:
         from gremlin.ui import window_trace
 
-        window_trace.note("Main window", text)
+        window_trace.note(area, text)
     except Exception:
         pass
 
@@ -125,9 +130,41 @@ class Watchdog(QtCore.QObject):
     def _beat(self) -> None:
         self._last_beat = clock.monotonic()
 
+    def _check_input_thread(self, stalled_since: float | None) -> float | None:
+        """One check of the input thread's heartbeat; returns the new
+        stalled-since beat time (None when it is responding). Never raises."""
+        try:
+            if not input_thread.is_running():
+                return None  # not running (or stopped meanwhile): nothing to watch
+            silent = input_thread.silent_for()
+            if stalled_since is None and silent >= self._threshold:
+                text = f"Input thread not responding for {silent:.0f} s."
+                _note(f"stall began: no heartbeat for {silent:.0f} s", "Input thread")
+                _event(text)
+                _log.warning(
+                    f"{text} Where every thread is:\n"
+                    + thread_stacks()
+                    + "\n"
+                    + _recent_block()
+                )
+                return clock.monotonic() - silent
+            if stalled_since is not None and silent < self._threshold:
+                beat = input_thread.last_beat()
+                took = (beat if beat is not None else clock.monotonic()) - stalled_since
+                text = f"Input thread responding again after {took:.0f} s"
+                _note(f"stall ended after {took:.0f} s", "Input thread")
+                _event(text)
+                _log.warning(text)
+                return None
+        except Exception:
+            _log.debug("Input thread check failed", exc_info=True)
+        return stalled_since
+
     def _watch(self) -> None:
         frozen_since: float | None = None
+        input_stalled_since: float | None = None
         while not self._stop.wait(min(1.0, self._threshold / 2)):
+            input_stalled_since = self._check_input_thread(input_stalled_since)
             last = self._last_beat
             silent = clock.monotonic() - last
             if frozen_since is None and silent >= self._threshold:

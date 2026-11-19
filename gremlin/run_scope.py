@@ -10,9 +10,11 @@ Only CodeRunner calls begin() and stop(); everything else registers here:
 
 - number() / alive(run): the one Run number (macros, script timers and the
   relative axis loops read it; there is no other Run counter).
-- timer(): a main-thread timer (Tempo, Double Tap, Smart Toggle, pulse
-  releases). At Stop it is cancelled, or fired at once (at_stop="fire").
-  It never runs after its Run has stopped.
+- timer(): a timer on the thread that starts it (Tempo, Double Tap, Smart
+  Toggle, pulse releases, vJoy keep-alive: the input thread while a Run is
+  on; threads.thread_timer). At Stop it is cancelled (stopped on its own
+  thread), or fired at once (at_stop="fire"). It never runs after its Run
+  has stopped.
 - loop(): a thread that gets its Run's number and ends once alive(run) is
   False (the relative axis loops).
 - hold() / let_go(): a key or mouse button that is down / up again. Only
@@ -258,7 +260,7 @@ class Timer:
         self._inner: Any = None
         with _LOCK:
             _timers.append(self)
-        self._inner = threads.main_timer(name, seconds, self._timeout)
+        self._inner = threads.thread_timer(name, seconds, self._timeout)
 
     def _claim(self) -> bool:
         with self._lock:
@@ -284,7 +286,7 @@ class Timer:
             self._inner.cancel()
 
     def cancel(self) -> None:
-        """It won't run."""
+        """It won't run (from any thread: the timer is stopped on its own)."""
         if self._claim():
             self._stop_inner()
 
@@ -306,7 +308,9 @@ def timer(
     *args: object,
     at_stop: Literal["cancel", "fire"] = "cancel",
 ) -> Timer:
-    """Calls fn(*args) on the main thread after seconds (see Timer).
+    """Calls fn(*args) after seconds on the thread that calls this, when it
+    has an event loop (the input thread, the main thread), else on a named
+    timer thread (threads.thread_timer; see Timer).
 
     at_stop="cancel": Stop cancels it (Tempo, Double Tap, Smart Toggle).
     at_stop="fire": Stop runs it at once, before keys are released and the

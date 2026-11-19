@@ -22,7 +22,7 @@ import threading
 import time
 from typing import Any
 
-from gremlin import threads, trace
+from gremlin import input_thread, threads, trace
 
 INTERVAL = 10.0  # seconds between summary lines
 STALL_MS = 50.0  # queue wait above this is a stall
@@ -211,14 +211,22 @@ def _cpu() -> str:
     global _mark
     now = (counter(), time.thread_time(), time.process_time())
     mark, _mark = _mark, now
-    if mark is None or threading.current_thread() is not _main_thread:
+    # thread_time is the calling thread's: the thread whose timer this is
+    # (the input thread, where dispatch runs, or the main thread).
+    if threading.current_thread() is _main_thread:
+        which = "main"
+    elif input_thread.is_input_thread():
+        which = "input"
+    else:
+        return ""
+    if mark is None:
         return ""
     wall = (now[0] - mark[0]) / 1e9
     if wall <= 0:
         return ""
-    main = 100 * (now[1] - mark[1]) / wall
+    cpu = 100 * (now[1] - mark[1]) / wall
     proc = 100 * (now[2] - mark[2]) / wall
-    return f" · CPU main {main:.0f} % · process {proc:.0f} %"
+    return f" · CPU {which} {cpu:.0f} % · process {proc:.0f} %"
 
 
 def summary() -> str | None:
@@ -279,13 +287,15 @@ def _tick() -> None:
 
 
 def _arm() -> None:
-    """Starts the interval timer on the main thread (never a new thread)."""
+    """Starts the interval timer on the calling thread when it has an event
+    loop (the input thread, where dispatch runs, or the main thread); never
+    a new thread. Not a Run timer: Tracing owns it (it flushes at Stop)."""
     global _timer, _mark
-    if _timer is not None or threading.current_thread() is not _main_thread:
+    if _timer is not None or not threads.has_event_loop():
         return
     try:
         _mark = (counter(), time.thread_time(), time.process_time())
-        _timer = threads.main_timer("trace-timing", INTERVAL, _tick)
+        _timer = threads.thread_timer("trace-timing", INTERVAL, _tick)
     except Exception:
         _timer = None
 

@@ -62,9 +62,11 @@ def story(j: Journey) -> None:
     runtime.release_open("j12")
     out["startup-binds"] = list(out["binds"])
     j.backend.activate_gremlin(True)
+    j.await_run(True)
     j.app.processEvents()
     out["running"] = j.backend.runner.is_running()
     j.backend.activate_gremlin(False)
+    j.await_run(False)
     out["all-binds"] = list(out["binds"])
     out["messages"] = [str(m) for m in j.messages]
 

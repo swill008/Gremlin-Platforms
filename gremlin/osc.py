@@ -22,7 +22,7 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin import axis_shaping, clock, osc_pattern, threads, trace
+from gremlin import axis_shaping, clock, input_thread, osc_pattern, threads, trace
 from gremlin.common import SingletonDecorator, SingletonMetaclass
 from gremlin.modules import ids
 from gremlin.osc_rows import OscRow, OscRows
@@ -638,7 +638,21 @@ _UNSET = object()
 
 @SingletonDecorator
 class OscRuntime(QtCore.QObject):
+    """Lives on the main thread: the port, Listen, live values, the
+    Monitor and recorders are handled there (incoming -> _on_main).
+
+    The Run's input state (held buttons, auto-release timers, encoders) is
+    the Run's thread's: start(), release_held() and stop() are called there
+    (the input thread; main in inline mode), and while a Run is on the input
+    thread each packet goes from the OSC thread straight to it (_on_input,
+    06 S100), so a frozen window never delays an OSC binding. The state is
+    under _state_lock; auto-release timers belong to the thread that made
+    them."""
+
     incoming = QtCore.Signal(str, object, object)
+    # The runtime's own copy of every packet, with the route _from_thread
+    # chose once (True: the Run's thread applies it, so main must not).
+    _routed = QtCore.Signal(str, object, object, bool)
     learned = QtCore.Signal(str, object)
     listenChanged = QtCore.Signal()
     # An input's live value changed (OX1): its uid; at most every
@@ -678,6 +692,10 @@ class OscRuntime(QtCore.QObject):
         self._bind_failure: tuple[str, int, str] | None = None
         # What listenInfo() said last (listenChanged when it changes).
         self._info_sent: dict[str, Any] | None = None
+        # The Run's input state below (_timers to _enc_ticks) is under this.
+        self._state_lock = threading.RLock()
+        # The Run runs on the input thread: packets go straight there.
+        self._input_here = False
         self._timers: dict[StateKey, QtCore.QTimer] = {}
         self._last: dict[StateKey, Any] = {}
         # Buttons pressed and not yet released: state key -> the mode pressed
@@ -697,13 +715,18 @@ class OscRuntime(QtCore.QObject):
         # Macro Record and others (S159): called with (uid, kind, value) for
         # every input event, with or without a Run, while registered.
         self._recorders: list[Callable[[str, str, Any], None]] = []
-        self.incoming.connect(self._on_main)
+        self._routed.connect(self._on_main)
         self._playRequested.connect(self._play_main)
         from gremlin.signal import signal as ui_signal
 
         changed = getattr(ui_signal, "oscServerSettingsChanged", None)
         if changed is not None:
             changed.connect(self.sync_bind)
+        # First made on another thread (the input thread at Run start): the
+        # main thread owns it, its timers and its slots.
+        app = QtCore.QCoreApplication.instance()
+        if app is not None and self.thread() is not app.thread():
+            self.moveToThread(app.thread())
 
     def is_listening(self) -> bool:
         return self._learn
@@ -816,13 +839,20 @@ class OscRuntime(QtCore.QObject):
             return
         if not self._running:
             # What recording alone started (pulses, held buttons) ends quietly.
-            self._reset_state()
+            with self._state_lock:
+                self._reset_state()
         self.release_open(RECORDER_TOKEN)
 
     def recording(self) -> bool:
         return bool(self._recorders)
 
     def _record(self, uid: str, kind: str, value: Any) -> None:  # noqa: ANN401
+        if not self._recorders:
+            return
+        if threading.current_thread() is not threading.main_thread():
+            # Recorders are the window's (Macro Record): called on main.
+            threads.main_call(self._record, uid, kind, value)
+            return
         if self._recorders and trace.osc_on(INPUTS):
             trace.osc(
                 INPUTS,
@@ -1012,11 +1042,17 @@ class OscRuntime(QtCore.QObject):
 
     def start(self) -> None:
         """A profile starts running: listen until stop() when it uses OSC
-        inputs (09 Q5)."""
-        if not self._running:
-            # State a recording made without a Run doesn't carry into it.
-            self._reset_state()
-        self._running = True
+        inputs (09 Q5). Called on the Run's thread; the port work is queued
+        to the main thread."""
+        with self._state_lock:
+            if not self._running:
+                # State a recording made without a Run doesn't carry into it.
+                self._reset_state()
+            self._input_here = input_thread.is_input_thread()
+            self._running = True
+        threads.main_call(self._start_here)
+
+    def _start_here(self) -> None:
         self._uses_osc = profile_uses_osc()
         if trace.osc_on(SETUP):
             trace.osc(
@@ -1052,34 +1088,60 @@ class OscRuntime(QtCore.QObject):
     def release_held(self) -> None:
         """Stop, while the profile's callbacks still run: every held button
         (a press not yet released, or waiting on its auto-release) gets one
-        release; pending auto-releases are cancelled."""
+        release; pending auto-releases are cancelled.
+
+        Called on the Run's thread: the releases reach the profile before
+        this returns."""
+        with self._state_lock:
+            releases = self._take_held()
+        for row, mode, address in releases:
+            self._send_button(row, False, mode, address, synthetic=False)
+
+    def _take_held(self) -> list[tuple[OscRow, str, str | None]]:
+        """Under _state_lock: auto-releases cancelled, held buttons dropped;
+        the releases still to send while running: (row, mode, address)."""
         self._enc_pending.clear()
         for key in list(self._timers):
             self._cancel_release(key)
         held, self._held = self._held, {}
+        releases: list[tuple[OscRow, str, str | None]] = []
         released: set[str] = set()
         for (uid, _address), mode in held.items():
             if uid in released:
                 continue  # one release per input, however many addresses
             released.add(uid)
             row = OscDevice().rows.by_uid(uid)
-            if row is not None:
-                self._emit_button(row, False, mode, self._last_address.get(uid))
+            if row is None:
+                continue
+            self._record(row.uid, "button", False)
+            if not self._running:
+                _not_running(row)
+                continue
+            releases.append((row, mode, self._last_address.get(uid)))
+        return releases
 
     def stop(self) -> None:
-        """The profile stopped: held buttons released, port closed."""
+        """The profile stopped: held buttons released, port closed. Called
+        on the Run's thread; the port and Listen work is queued to the main
+        thread (after start()'s)."""
         if trace.osc_on(SETUP):
             held = len({k[0] for k in self._held})
             trace.osc(SETUP, f"Stop: {held} held inputs released")
         # Released while still running: _emit_* only reach the profile then.
+        # Normally release_held() emptied them already at Stop's first stage.
         self.release_held()
-        self._running = False
-        self._uses_osc = False
-        self._last.clear()
-        self._enc_format.clear()
-        self._enc_value.clear()
-        self._enc_ticks.clear()
+        with self._state_lock:
+            self._running = False
+            self._input_here = False
+            self._last.clear()
+            self._enc_format.clear()
+            self._enc_value.clear()
+            self._enc_ticks.clear()
         _osc_state("clear")
+        threads.main_call(self._stop_here)
+
+    def _stop_here(self) -> None:
+        self._uses_osc = False
         self._hold_learn = False
         self._learn = False
         self.listenChanged.emit()
@@ -1104,7 +1166,97 @@ class OscRuntime(QtCore.QObject):
         args: tuple[Any, ...],
         peer: tuple[str, int] | None = None,
     ) -> None:
+        # One read of the route per packet (N1): start() and stop() flip the
+        # flag under the same lock, and main gets this decision, not a new
+        # read, so the packet is applied once, on one thread.
+        to_input = self._route()
+        if to_input:
+            # The inputs straight to the Run's thread (06 S100); the window's
+            # part (Monitor, Listen, live values) still goes to main.
+            try:
+                input_thread.call(self._on_input, address, args, peer)
+            except RuntimeError:
+                pass  # the input thread has ended (quit)
         self.incoming.emit(address, args, peer)
+        self._routed.emit(address, args, peer, to_input)
+
+    def _route(self) -> bool:
+        """True when a packet's inputs go to the Run's thread; one read of
+        both flags under _state_lock."""
+        with self._state_lock:
+            return self._input_here and self._running
+
+    def _on_input(
+        self,
+        address: str,
+        args: object,
+        peer: tuple[str, int] | None = None,
+    ) -> None:
+        """Input thread: one packet on the Run's inputs. The same checks as
+        _on_main in the same order (allow-list, sync, bad pattern). Its
+        Receive and match trace lines are written here, before the event,
+        so Trace reads receive, match, event, output (09 OSC trace); main
+        writes the Monitor line and Listen, not these again."""
+        from gremlin.mode_manager import ModeManager
+
+        # No flag check: _from_thread decided this route once, and _apply
+        # itself refuses a button when the Run has stopped meanwhile.
+        payload = tuple(args) if isinstance(args, (tuple, list)) else ()
+        on = trace.osc_on(RECEIVE)
+        if on:
+            trace.osc(
+                RECEIVE,
+                f"in {peer_text(peer)} {address} {args_text(payload)}",
+                rate=True,
+                key=address,
+            )
+        if peer is not None and not sender_allowed(
+            peer[0], self._settings.get("allow_senders") or ()
+        ):
+            if on:
+                trace.osc(
+                    RECEIVE,
+                    f"sender {peer[0]} not on Allowed senders",
+                    blocked=True,
+                    key=f"sender {peer[0]}",
+                )
+            return
+        if _call_hook("osc_feedback", "is_sync_address", address):
+            if on:
+                trace.osc(
+                    RECEIVE,
+                    f"sync {address} → resend",
+                    rate=True,
+                    key=f"sync {address}",
+                )
+            return
+        if osc_pattern.is_pattern(address):
+            why = osc_pattern.check(address)
+            if why:
+                _bad_pattern(address, why, peer)
+                return
+        rows = OscDevice().rows.matches(address, payload)
+        if not rows and osc_pattern.is_pattern(address):
+            if on:
+                # A good incoming pattern reaches exact inputs only (S148).
+                _wildcard_refused(address, peer)
+        elif trace.osc_on(INPUTS):
+            _trace_match(address, rows)
+        if not rows:
+            return
+        if not payload and self._settings.get("pad_args"):
+            payload = (1.0,)
+            if trace.osc_on(INPUTS):
+                trace.osc(
+                    INPUTS,
+                    f"{address}: no values; Pad arguments adds 1.0",
+                    rate=True,
+                    key=f"{address} pad",
+                )
+        mode = ModeManager().current.name
+        with self._state_lock:
+            for row in rows:
+                self._apply(row, payload, mode, address)
 
     # -- inputs (D-09-OSC-INPUT) ----------------------------------------------
 
@@ -1218,16 +1370,25 @@ class OscRuntime(QtCore.QObject):
 
     def _cancel_release(self, key: StateKey) -> None:
         timer = self._timers.pop(key, None)
-        if timer is not None:
+        if timer is None:
+            return
+        if timer.thread() is QtCore.QThread.currentThread():
             timer.stop()
-            timer.deleteLater()
+        else:
+            # Made on another thread (a recording on main, then a Run):
+            # stopped there.
+            QtCore.QMetaObject.invokeMethod(
+                timer, "stop", QtCore.Qt.ConnectionType.QueuedConnection
+            )
+        timer.deleteLater()
 
     def _pulse(self, row: OscRow, key: StateKey, address: str, mode: str) -> None:
         """Press, then release after the input's delay; a new press restarts
         the wait."""
         self._button(row, key, address, True, mode)
         self._cancel_release(key)
-        timer = QtCore.QTimer(self)
+        # No parent: it belongs to this thread (the Run's), not the runtime's.
+        timer = QtCore.QTimer()
         timer.setSingleShot(True)
         timer.setInterval(self._delay_of(row))
         uid = row.uid
@@ -1236,6 +1397,10 @@ class OscRuntime(QtCore.QObject):
         timer.start()
 
     def _release(self, uid: str, key: StateKey, address: str, mode: str) -> None:
+        with self._state_lock:
+            self._release_locked(uid, key, address, mode)
+
+    def _release_locked(self, uid: str, key: StateKey, address: str, mode: str) -> None:
         self._cancel_release(key)
         row = OscDevice().rows.by_uid(uid)
         if row is not None:
@@ -1403,9 +1568,13 @@ class OscRuntime(QtCore.QObject):
         address: str,
         args: object,
         peer: tuple[str, int] | None = None,
+        to_input: bool | None = None,
     ) -> None:
         payload = tuple(args) if isinstance(args, (tuple, list)) else ()
-        on = trace.osc_on(RECEIVE)
+        # Routed to the input thread: _on_input writes the Receive and match
+        # lines there, in order with the event (09 OSC trace).
+        routed = self._route() if to_input is None else to_input
+        on = trace.osc_on(RECEIVE) and not routed
         if on:
             trace.osc(
                 RECEIVE,
@@ -1444,7 +1613,7 @@ class OscRuntime(QtCore.QObject):
         if peer is not None:
             _call_hook("osc_output", "note_sender", peer[0], peer[1])
         _call_hook("osc_output", "note_received_type", address, payload)
-        matched = self._handle(address, payload, peer)
+        matched = self._handle(address, payload, peer, routed)
         _call_hook(
             "osc_traffic",
             "note",
@@ -1460,6 +1629,7 @@ class OscRuntime(QtCore.QObject):
         address: str,
         payload: tuple[Any, ...],
         peer: tuple[str, int] | None = None,
+        to_input: bool | None = None,
     ) -> list[OscRow]:
         """Listen, then the inputs while a profile runs; returns the inputs
         matched (also with no Run, for the Monitor)."""
@@ -1486,29 +1656,26 @@ class OscRuntime(QtCore.QObject):
             # A single Listen ends on its message; with no profile running
             # the port closes.
             self._close_if_idle()
+        routed = self._route() if to_input is None else to_input
         if osc_pattern.is_pattern(address):
             why = osc_pattern.check(address)
             if why:
-                _bad_pattern(address, why, peer)
+                if not routed:  # written on the input thread when routed
+                    _bad_pattern(address, why, peer)
                 return []
         rows = OscDevice().rows.matches(address, payload)
         for row in rows:
             self._last_address[row.uid] = address
             self._note_live(row, payload, synthetic=False)
         # The Receive refusal says why; no Inputs line repeats it.
+        if routed:
+            # Traced and applied on the input thread (_on_input, 06 S100).
+            return rows
         refused = False
         if not rows and osc_pattern.is_pattern(address) and trace.osc_on(RECEIVE):
             # A good incoming pattern reaches exact inputs only (S148).
             refused = True
-            host = peer[0] if peer is not None else "?"
-            trace.osc(
-                RECEIVE,
-                f"wildcard address {address} from {host} "
-                "(inputs need exact addresses)",
-                blocked=True,
-                warning=True,
-                key=f"wildcard {host}",
-            )
+            _wildcard_refused(address, peer)
         if not refused and trace.osc_on(INPUTS):
             _trace_match(address, rows)
         if not self._running and not self._recorders:
@@ -1527,8 +1694,9 @@ class OscRuntime(QtCore.QObject):
                     key=f"{address} pad",
                 )
         mode = ModeManager().current.name
-        for row in rows:
-            self._apply(row, payload, mode, address)
+        with self._state_lock:
+            for row in rows:
+                self._apply(row, payload, mode, address)
         return rows
 
     # -- live value and last seen (OX1) ---------------------------------------
@@ -1744,8 +1912,10 @@ def _refused(text: str, uid: object) -> None:
 def _not_running(row: OscRow) -> None:
     if trace.osc_on(INPUTS):
         trace.osc(
-            INPUTS, f"{input_name(row)}: not running (no event)",
-            blocked=True, key=row.uid,
+            INPUTS,
+            f"{input_name(row)}: not running (no event)",
+            blocked=True,
+            key=row.uid,
         )
 
 
@@ -1769,6 +1939,18 @@ def _ticks_dropped(row: OscRow, dropped: int) -> None:
         )
 
 
+def _wildcard_refused(address: str, peer: tuple[str, int] | None) -> None:
+    """Receive line: a good incoming pattern matched no exact input."""
+    host = peer[0] if peer is not None else "?"
+    trace.osc(
+        RECEIVE,
+        f"wildcard address {address} from {host} (inputs need exact addresses)",
+        blocked=True,
+        warning=True,
+        key=f"wildcard {host}",
+    )
+
+
 def _bad_pattern(address: str, why: str, peer: tuple[str, int] | None) -> None:
     """An incoming address that is a bad pattern reaches nothing, quietly
     (E3): no error, at most 10 log lines per sender per Run, one Receive
@@ -1778,8 +1960,7 @@ def _bad_pattern(address: str, why: str, peer: tuple[str, int] | None) -> None:
         "system",
         f"osc-wildcard {host}",
         logging.WARNING,
-        f"OSC: a message from {host} with the address {address} was ignored "
-        f"({why})",
+        f"OSC: a message from {host} with the address {address} was ignored ({why})",
     )
     if trace.osc_on(RECEIVE):
         trace.osc(

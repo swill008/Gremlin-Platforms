@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from PySide6 import QtCore
 
 from gremlin import trace, trace_timing
@@ -43,11 +45,12 @@ def _vjoy_as_input_ids() -> set[int]:
     try:
         from gremlin import shared_state
 
-        profile = shared_state.current_profile
+        profile = shared_state.profile_for_runtime()
         if profile is None:
             return set()
         raw = getattr(getattr(profile, "settings", None), "vjoy_as_input", {}) or {}
-        return {int(vid) for vid, flag in raw.items() if flag}
+        # A copy first: the window may change the open profile's dict meanwhile.
+        return {int(vid) for vid, flag in list(dict(raw).items()) if flag}
     except Exception:
         return set()
 
@@ -89,6 +92,11 @@ class InputModuleRuntime(QtCore.QObject):
     event carries joystick events, key_event keyboard events. Only what the
     device's input module claims gets through (OSC, the Logical Device and a
     vJoy read back as input pass unfiltered).
+
+    Lives on the input thread (code_runner.adopt_runtime_objects): events
+    from the driver and hook threads are queued to it; one emitted on the
+    input thread itself (Map to Logical Device) is handled at once. Its
+    slots are QObject slots so Qt, not PySide, picks their thread.
     """
 
     event = QtCore.Signal(Event)
@@ -96,9 +104,11 @@ class InputModuleRuntime(QtCore.QObject):
 
     def __init__(self) -> None:
         super().__init__()
-        self._claims: dict[str, dict] = {}
-        self._dest_guids: set[str] = set()
-        self._passthrough: set[str] = always_forwarded()
+        # (claims, dest_guids, passthrough), published as one tuple so the
+        # gate never reads a mix of an old and a new reload.
+        self._gate: tuple[dict[str, dict], set[str], set[str]] = (
+            {}, set(), always_forwarded()
+        )
         EventListener().joystick_event.connect(self._on_hid)
         EventListener().keyboard_event.connect(self._on_key)
         try:
@@ -111,14 +121,52 @@ class InputModuleRuntime(QtCore.QObject):
             pass
         self.reload()
 
+    @property
+    def _claims(self) -> dict[str, dict]:
+        return self._gate[0]
+
+    @_claims.setter
+    def _claims(self, value: dict[str, dict]) -> None:
+        self._gate = (value, self._gate[1], self._gate[2])
+
+    @property
+    def _dest_guids(self) -> set[str]:
+        return self._gate[1]
+
+    @_dest_guids.setter
+    def _dest_guids(self, value: set[str]) -> None:
+        self._gate = (self._gate[0], value, self._gate[2])
+
+    @property
+    def _passthrough(self) -> set[str]:
+        return self._gate[2]
+
+    @_passthrough.setter
+    def _passthrough(self, value: set[str]) -> None:
+        self._gate = (self._gate[0], self._gate[1], value)
+
+    @QtCore.Slot()
     def reload(self) -> None:
+        """Reads the claims again (on the input thread while it runs). A
+        failed read keeps the claims it had, logged, rather than none."""
+        try:
+            gate = self._read_gate()
+        except Exception:
+            logging.getLogger("system").exception(
+                "Input modules: claims not re-read; the previous ones are kept"
+            )
+            return
+        self._gate = gate
+
+    def _read_gate(self) -> tuple[dict[str, dict], set[str], set[str]]:
         claims: dict[str, dict] = {}
         dest: set[str] = set()
         passthrough = always_forwarded()
         as_input = _vjoy_as_input_ids()
         connected = _connected_stick_ids()
         passthrough |= _read_back_vjoy_ids(as_input)
-        for module in registry.modules():
+        # A copy: the window may add or remove modules meanwhile.
+        for module in list(registry.modules()):
             guid = guid_key(module.bound_guid)
             # A connected stick's module is the one registry.for_device finds
             # (below), and only that one: an old second file bound to it
@@ -133,19 +181,20 @@ class InputModuleRuntime(QtCore.QObject):
             else:
                 dest.add(guid)
         self._bind_live_physical(claims, dest, passthrough)
-        self._claims = claims
-        self._dest_guids = dest
-        self._passthrough = passthrough
+        return claims, dest, passthrough
 
     def _bind_live_physical(
         self, claims: dict[str, dict], dest: set[str], passthrough: set[str]
     ) -> None:
         from gremlin import device_initialization
 
+        # The window changes the device dict at a device change; one retry
+        # covers "changed size during iteration". A second failure raises so
+        # reload keeps the previous claims rather than binding fewer.
         try:
             devices = list(device_initialization.physical_devices() or [])
-        except Exception:
-            return
+        except RuntimeError:
+            devices = list(device_initialization.physical_devices() or [])
         for dev in devices:
             guid = guid_key(getattr(dev, "device_guid", ""))
             # A connected stick uses the module Module Setup finds for it
@@ -170,28 +219,32 @@ class InputModuleRuntime(QtCore.QObject):
 
     def allows(self, guid: object, event_type: object, identifier: object) -> bool:
         """True when this input's input module passes it (same rule as events)."""
+        claims, dest, passthrough = self._gate
         return should_forward(
             guid,
             event_type,
             identifier,
-            claims=self._claims,
-            dest_guids=self._dest_guids,
-            passthrough=self._passthrough,
+            claims=claims,
+            dest_guids=dest,
+            passthrough=passthrough,
         )
 
+    @QtCore.Slot(Event)
     def _on_key(self, event: Event) -> None:
         if event is None or getattr(event, "event_type", None) != InputType.Keyboard:
             return
+        claims, dest, passthrough = self._gate
         if should_forward(
             event.device_guid,
             event.event_type,
             getattr(event, "identifier", None),
-            claims=self._claims,
-            dest_guids=self._dest_guids,
-            passthrough=self._passthrough,
+            claims=claims,
+            dest_guids=dest,
+            passthrough=passthrough,
         ):
             self.key_event.emit(event)
 
+    @QtCore.Slot(Event)
     def _on_hid(self, event: Event) -> None:
         if event is None:
             return
@@ -203,13 +256,14 @@ class InputModuleRuntime(QtCore.QObject):
             InputType.JoystickHat,
         ):
             return
+        claims, dest, passthrough = self._gate
         if should_forward(
             event.device_guid,
             event.event_type,
             getattr(event, "identifier", None),
-            claims=self._claims,
-            dest_guids=self._dest_guids,
-            passthrough=self._passthrough,
+            claims=claims,
+            dest_guids=dest,
+            passthrough=passthrough,
         ):
             self.event.emit(event)
         elif trace.enabled():

@@ -142,7 +142,9 @@ def test_presses_come_only_from_the_input_module_feed(
         for number in (2, 3):
             listener.joystick_event.emit(Event(
                 InputType.JoystickButton, number, guid, "Default", is_pressed=True))
-        assert live.buttonValue(2) == 1.0
+        # The feed reaches the card queued from the input thread when the
+        # runtime lives there (thread-ui.md 1.1): wait for it, bounded.
+        qtbot.waitUntil(lambda: live.buttonValue(2) == 1.0, timeout=2000)  # type: ignore[attr-defined]
         assert live.buttonValue(3) == 0.0
     finally:
         # deleteLater waits for an event loop that may never run here, and a

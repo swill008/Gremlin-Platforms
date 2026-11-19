@@ -123,11 +123,12 @@ def story(j: Journey) -> None:
     j.map_button(second.device_guid.uuid, 2, "Default", 2)
     j.save_and_reopen("journey4")
     j.backend.toggleActiveState()
-    out["running"] = j.backend.runner.is_running()
+    out["running"] = j.await_run(True)
     for stick, button in ((first, 1), (first, 2), (second, 1), (second, 2)):
         j.press(stick, button, True)
     out["held"] = j.await_value(j.vjoy.held_buttons, [1, 2])
     j.backend.toggleActiveState()
+    j.await_run(False)
 
 
 def main() -> None:

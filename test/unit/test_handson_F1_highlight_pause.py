@@ -17,6 +17,7 @@ import pytest
 from PySide6 import QtCore
 
 from gremlin import shared_state
+from gremlin.profile import Profile
 from gremlin.ui import backend
 
 
@@ -46,7 +47,12 @@ class _Backend(backend.Backend.klass):  # type: ignore[name-defined, misc]
     def __init__(self) -> None:
         QtCore.QObject.__init__(self)
         self.runner = _Runner()
-        self.profile = object()
+        self._run_control = SimpleNamespace(
+            start=self.runner.start, stop=self.runner.stop
+        )
+        self._starting = False
+        self._wanted_active = False
+        self.profile = Profile()
         self.ui_state = SimpleNamespace(currentMode="Default")
         self.config = SimpleNamespace(value=lambda *_a: True)
         self._highlight_holders = set()

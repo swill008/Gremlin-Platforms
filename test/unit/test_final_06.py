@@ -244,6 +244,7 @@ def _backend_stub(order: list[str], running: bool = True) -> Any:  # noqa: ANN40
     def activate(on: bool) -> None:
         order.append("run" if on else "stop")
         stub.gremlinActive = on
+        stub._wanted_active = on
 
     def read(fpath: str) -> None:
         order.append("read")
@@ -251,6 +252,7 @@ def _backend_stub(order: list[str], running: bool = True) -> Any:  # noqa: ANN40
 
     stub: Any = SimpleNamespace(
         gremlinActive=running,
+        _wanted_active=running,
         activate_gremlin=activate,
         profile=SimpleNamespace(fpath=None),
         _load_problem="",

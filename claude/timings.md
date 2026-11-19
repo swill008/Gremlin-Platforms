@@ -1134,3 +1134,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-18 | Rust middle-path study: 4 read-only agents + report (RS-INPUT/OUTPUT/BUILD/EVIDENCE, lead) | review | 5-10 min | about 8 min (05:00-05:08) | agents' shell clock unreliable |
 | 2026-11-19 | Blank main window: read-only look at the running program and logs (lead) | investigation | no timing data | about 6 min (12:55-13:01) | no reset; cause not proven |
 | 2026-11-19 | Plan: window fix, tracing, thread move - 10 read-only helpers (5 Opus, 2 Sonnet, 3 Haiku) + merge (lead) | review | 5-10 min | about 9 min helpers (13:02-13:09) + 4 min merge (13:09-13:13) | Haiku 1-2 min, Opus 3-5 min |
+| 2026-11-19 | Full run --random-order (thread batches 2-5, seed 149484): 8268 tests, 4 failed + 4 errors (rig golden real; rest order-dependent) | full run | ~7 min | 8.5 min (17:04-17:12) | more tests than 10-10 baseline |
+| 2026-11-19 | Final full run seed 149484 (thread batches 2-5): all green | full run | ~8.5 min | 8 min (17:23-17:32) | |
+| 2026-11-19 | Thread batches 2-5: 10+6 helpers (code, tests, audit x2, sweep, fixes), interrupted 13:40-16:34 by a session shutdown | refactor (threading) | no timing data; rough 30-45 min | ~60 min of work (13:36-13:40, 16:34-17:32) | first threading batch; new kind |

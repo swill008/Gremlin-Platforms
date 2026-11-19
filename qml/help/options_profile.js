@@ -130,7 +130,7 @@ function topics() {
             body: "<p>The program writes what it does to log files, which help when you report a problem. <b>Diagnostic logs</b> sets how much it writes.</p>"
                 + "<ul>"
                 + "<li><b>Diagnostic logs</b> <a href=\"show:option/Diagnostic logs\">Show me ›</a>: <b>Off</b>, <b>ALL</b>, <b>Info</b>, <b>Warning</b> or <b>Error</b>. It starts at <b>Warning</b>. <b>Off</b> writes nothing except errors, which still go to system.log.</li>"
-                + "<li><b>Log When Not Responding</b> <a href=\"show:option/Log When Not Responding\">Show me ›</a>: when the program stops responding for 5 seconds, it writes \"Not responding for N s\" and where each part of the program is stuck to system.log, once per freeze, then \"Responding again after N s\". It is off at first.</li>"
+                + "<li><b>Log When Not Responding</b> <a href=\"show:option/Log When Not Responding\">Show me ›</a>: when the program stops responding for 5 seconds, it writes \"Not responding for N s\" and where each part of the program is stuck to system.log, once per freeze, then \"Responding again after N s\". The input thread, which handles your controls, is watched too: if it stops for 5 seconds the log says \"Input thread not responding for N s\" and where it was stuck, then \"Input thread responding again after N s\". While the window is not responding your controls keep working; only what the window shows waits. It is off at first.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
@@ -215,6 +215,7 @@ function topics() {
                 + "<li>A script runs only when the variables it requires are set. It is loaded fresh each time you choose <b>Run</b>.</li>"
                 + "<li>A script inside the scripts folder is saved by its place in that folder; others keep their full path.</li>"
                 + "<li>A script's vjoy object can only use outputs the vJoy output modules claim.</li>"
+                + "<li>A script's callbacks run on the program's input thread, the same thread that handles your controls. Don't touch the program's windows or their items from a callback: use the stick, vjoy, keyboard and OSC objects the script is given.</li>"
                 + "<li>A Keyboard variable fires for exactly the key you chose. Numpad keys are their own keys: Numpad 1 is not End, and Numpad Enter is not Enter.</li>"
                 + "<li>A script can use OSC inputs, as it uses stick inputs; a new OSC input variable starts with no input chosen. Its <code>osc.send</code> sends only to an OSC target by its name, never to a typed host and port. It sends nothing and returns False with OSC output off, while the profile isn't running, with no target of that name (capitals ignored) or with an address that isn't a plain OSC address; the last two also write one warning to <b>user.log</b>.</li>"
                 + "</ul>",

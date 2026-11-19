@@ -11,9 +11,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import logging
-import threading
 from collections import deque
-from collections.abc import Callable
 
 from PySide6 import QtCore
 from PySide6.QtTextToSpeech import (
@@ -21,6 +19,7 @@ from PySide6.QtTextToSpeech import (
     QVoice,
 )
 
+from gremlin import threads
 from gremlin.common import SingletonMetaclass
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
@@ -44,22 +43,6 @@ class TTSRequest:
 _ENGINE = "winrt"
 
 
-class _MainThreadDoor(QtCore.QObject):
-    """Passes speech asked for on another thread (a timer-run action) to the
-    main thread, where the engine lives (09 R10)."""
-
-    request = QtCore.Signal(object, object)
-
-    def __init__(self, deliver: Callable[[TTSRequest, TTSQueueMode], None]) -> None:
-        super().__init__()
-        self._deliver_to = deliver
-        self.request.connect(self._deliver)
-
-    @QtCore.Slot(object, object)
-    def _deliver(self, request: TTSRequest, mode: TTSQueueMode) -> None:
-        self._deliver_to(request, mode)
-
-
 class TTSManager(metaclass=SingletonMetaclass):
     """Singleton TTS manager with a self-managed playback queue."""
 
@@ -71,16 +54,15 @@ class TTSManager(metaclass=SingletonMetaclass):
         # Run on (a late timer after Stop) is ignored (06 Q8). The engine
         # itself stays for the program's life (Options lists its voices).
         self._running = False
-        self._door: _MainThreadDoor | None = None
-        self._door_lock = threading.Lock()
         # None until checked; then True when Windows speech can't be used.
         self._unavailable: bool | None = None
 
     def start(self) -> None:
         """A Run starts: speech is taken from now until stop(). Safe to
-        call repeatedly."""
+        call repeatedly; from any thread (Run starts on the input thread):
+        the engine is made on the main thread, where it lives."""
         self._running = True
-        self.prepare_engine()
+        threads.main_call(self.prepare_engine)
 
     def prepare_engine(self) -> None:
         """Initialise the engine and wire signals (no Run needed: Options
@@ -123,8 +105,13 @@ class TTSManager(metaclass=SingletonMetaclass):
         )
 
     def stop(self) -> None:
-        """Clear the queue and stop any ongoing speech."""
+        """Clear the queue and stop any ongoing speech. From any thread
+        (Stop runs on the input thread): the engine is stopped on the main
+        thread; speech asked for after this is ignored at once."""
         self._running = False
+        threads.main_call(self._stop_now)
+
+    def _stop_now(self) -> None:
         self._queue.clear()
         if self._engine is not None:
             self._engine.stop()
@@ -153,28 +140,13 @@ class TTSManager(metaclass=SingletonMetaclass):
         """Add *request* to the queue according to *mode* and start speaking
         if the engine is currently idle.
 
-        Asked for on another thread, the request is passed to the main
-        thread first: the engine is a Qt object of the main thread.
+        Asked for on another thread (the input thread, a macro), the
+        request is passed to the main thread first: the engine is a Qt
+        object of the main thread (09 R10).
         """
         if not self._running:
             return
-        if threading.current_thread() is not threading.main_thread():
-            door = self._main_thread_door()
-            if door is not None:
-                door.request.emit(request, mode)
-                return
-        self._enqueue_now(request, mode)
-
-    def _main_thread_door(self) -> _MainThreadDoor | None:
-        app = QtCore.QCoreApplication.instance()
-        if app is None:
-            return None  # no event loop to pass it to
-        with self._door_lock:
-            if self._door is None:
-                door = _MainThreadDoor(self._enqueue_now)
-                door.moveToThread(app.thread())
-                self._door = door
-            return self._door
+        threads.main_call(self._enqueue_now, request, mode)
 
     def _enqueue_now(self, request: TTSRequest, mode: TTSQueueMode) -> None:
         if not self._running:

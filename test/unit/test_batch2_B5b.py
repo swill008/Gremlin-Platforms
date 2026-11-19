@@ -438,9 +438,7 @@ def test_a_macro_joystick_step_passes_only_claimed_controls(
     claim["buttons"] = [3]
     reached: list[Event] = []
     gate = SimpleNamespace(
-        _claims={guid_key(_GUID): claim},
-        _dest_guids=set(),
-        _passthrough=set(),
+        _gate=({guid_key(_GUID): claim}, set(), set()),
         event=SimpleNamespace(emit=reached.append),
     )
     listener = SimpleNamespace(

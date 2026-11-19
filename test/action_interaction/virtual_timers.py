@@ -84,5 +84,9 @@ def virtual_timers() -> Iterator[VirtualTimers]:
     from gremlin import threads
 
     clock = VirtualTimers()
-    with mock.patch.object(threads, "main_timer", clock.main_timer):
+    # run_scope's timers are made with thread_timer (on the input thread).
+    with (
+        mock.patch.object(threads, "main_timer", clock.main_timer),
+        mock.patch.object(threads, "thread_timer", clock.main_timer),
+    ):
         yield clock

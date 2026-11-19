@@ -183,7 +183,7 @@ def story(j: Journey) -> None:  # noqa: PLR0915 (one story, several parts)
             {"enabled": True, "host": "127.0.0.1", "port": 9000}
         )
         j.backend.toggleActiveState()
-        out["running:running"] = j.backend.runner.is_running()
+        out["running:running"] = j.await_run(True)
         j.wait_until(lambda: runtime._listener, "the OSC listener", 10)
         # Bring the first row into view, then forget that move.
         j.ev(f'showKey("{key_of[FIRST]}")', target=tree)
@@ -196,6 +196,7 @@ def story(j: Journey) -> None:  # noqa: PLR0915 (one story, several parts)
         send(FIRST, 0)
         out["running:led-released"] = _led(j, key_of[FIRST])
         j.backend.toggleActiveState()
+        j.await_run(False)
 
     out["keys"] = key_of
     runtime.release_open(TOKEN)

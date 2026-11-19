@@ -197,6 +197,7 @@ def test_is_active_after_a_backend_is_deleted_raises_nothing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import shiboken6
+    from PySide6.QtCore import QCoreApplication
 
     from gremlin import shared_state
     from gremlin.ui import backend
@@ -207,6 +208,7 @@ def test_is_active_after_a_backend_is_deleted_raises_nothing(
     received: list[bool] = []
     instance.activityChanged.connect(lambda: received.append(True))
     source.is_active.emit(True)
+    QCoreApplication.processEvents()  # is_active is queued to the UI
     assert received == [True]
     shiboken6.delete(instance)
     assert not shiboken6.isValid(instance)
@@ -215,4 +217,5 @@ def test_is_active_after_a_backend_is_deleted_raises_nothing(
     errors: list[BaseException] = []
     monkeypatch.setattr(sys, "excepthook", lambda _t, e, _tb: errors.append(e))
     source.is_active.emit(False)  # old code: "Signal source has been deleted"
+    QCoreApplication.processEvents()
     assert errors == []

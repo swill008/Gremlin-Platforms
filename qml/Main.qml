@@ -2216,9 +2216,12 @@ ApplicationWindow {
 
                 color: backend && backend.gremlinActive ? Style.foreground : Style.fgMuted
                 text: "<B>Status: </B>" +
-                    Helpers.selectText(
-                        backend && backend.gremlinActive, "Running", "Stopped"
-                    ) +
+                    // Starting: Run was asked of the input thread and it
+                    // hasn't confirmed yet (06 S102).
+                    (backend && backend.gremlinStarting ? "Starting"
+                        : Helpers.selectText(
+                            backend && backend.gremlinActive, "Running", "Stopped"
+                        )) +
                     Helpers.selectText(
                         backend && backend.gremlinActive && backend.gremlinPaused, " (Paused)", ""
                     ) +

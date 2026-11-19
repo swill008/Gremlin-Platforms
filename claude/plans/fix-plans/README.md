@@ -38,3 +38,6 @@ with D-06-INPUT-THREAD; gap SSM-MAIN-THREAD-PAUSE text updated.
   system.log gets a Warning only when a mismatch is caught and fixed. (Question 2.)
 - PLAN-TRACE and PLAN-PROBE both numbered S174: renumbered above.
 - ui/backend.py shared by PLAN-THR-IN and PLAN-THR-UI: one owner, staggered.
+
+## Change to the order (user, 2026-11-19 16:4x)
+Step 3 ("before" measurement runs) skipped: user answered "b) No: skip before". The thread move is judged by its tests (output reaches vJoy while the main thread is blocked 2 s; fails on the old code); the user's "after" runs only confirm it feels right.

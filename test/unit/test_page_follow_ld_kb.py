@@ -169,7 +169,7 @@ def _logical(j: Journey) -> None:  # noqa: PLR0915 (one page, several parts)
 
     with _Part(j, "ld-running"):
         j.backend.toggleActiveState()
-        out["ld-running:running"] = j.backend.runner.is_running()
+        out["ld-running:running"] = j.await_run(True)
         pump(300)
         tree.setProperty("highlightKey", "")
         button(first, True)
@@ -178,6 +178,7 @@ def _logical(j: Journey) -> None:  # noqa: PLR0915 (one page, several parts)
         button(first, False)
         out["ld-running:led-released"] = _led(j, tree, key["first"])
         j.backend.toggleActiveState()
+        j.await_run(False)
         pump(300)
 
 
@@ -249,7 +250,7 @@ def _keyboard(j: Journey) -> None:
 
     with _Part(j, "kb-running"):
         j.backend.toggleActiveState()
-        out["kb-running:running"] = j.backend.runner.is_running()
+        out["kb-running:running"] = j.await_run(True)
         pump(300)
         tree.setProperty("highlightKey", "")
         key(KEYS[0], True)
@@ -258,6 +259,7 @@ def _keyboard(j: Journey) -> None:
         key(KEYS[0], False)
         out["kb-running:led-released"] = _led(j, tree, first)
         j.backend.toggleActiveState()
+        j.await_run(False)
         pump(300)
 
 

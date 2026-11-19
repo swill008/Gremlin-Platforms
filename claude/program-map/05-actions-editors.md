@@ -78,10 +78,10 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - `action_plugins/tempo/` (516): short press and long press run different lists; from 2026-10-10 `feedback_state` (last press long = on) for OSC Feedback (09 S157).
 - `action_plugins/smart_toggle/` (309): quick press latches, hold acts while held; from 2026-10-10 `feedback_state` (on while latched) for OSC Feedback (09 S157).
 - `action_plugins/macro/` (2256; from 2026-10-10 `__init__.py` 1334, `MacroAction.qml` 922 (09 S159: the **OSC** step, `OscActionModel`): "Unreadable step" rows, `MacroData.unreadable_steps()`, `MacroModel.removeStep`, S113, S117): play a recorded or built sequence of keys, buttons, axes, mouse and pauses.
-- `action_plugins/change_mode/` (577): switch, cycle, go back or hold a mode.
+- `action_plugins/change_mode/` (577): switch, cycle, go back or hold a mode. From 2026-11-19 (D-06-INPUT-THREAD, thread batch 4): its functor runs on the input thread and makes no window call; the mode change reaches the window queued (06 S101); built, `__init__.py` 371 lines. [test: `test_mode_on_input_thread.py` (5)]
 - `action_plugins/reference/` (278; `__init__.py` 220 from 2026-10-10): placeholder that picks an existing action to share or duplicate; never runs or saves; never offers an input's Root (S60a); on a key it offers button actions (S60, AE-reference-1).
-- `action_plugins/load_profile/` (271): open another profile and run it.
-- `action_plugins/pause_resume/` (252): pause, resume or toggle the running profile.
+- `action_plugins/load_profile/` (222): open another profile and run it. From 2026-11-19 (D-06-INPUT-THREAD, thread batch 4): the whole hand-off goes to the main thread through `threads.main_call(_load_on_main, run number, path)`; a stale-Run check (the Run number) drops a hand-off from an earlier Run; the unsaved-changes check, the notice and `Backend().run_profile` (through `run_scope.timer`) run there (06 S105, Q13). Built. [test: `test_input_thread_ui_blocked.py` (Load Profile runs Backend on main)]
+- `action_plugins/pause_resume/` (252): pause, resume or toggle the running profile. From 2026-11-19 (D-06-INPUT-THREAD, thread batch 4): the functor runs on the input thread and makes no window call (`__init__.py` 192 lines; built). [test: `test_timers_on_input_thread.py`]
 - `action_plugins/play_sound/` (331): play a sound file.
 - `action_plugins/text_to_speech/` (400): speak a text.
 - `action_plugins/send_osc/` (709; `__init__.py` 461, `SendOscAction.qml` 248 from 2026-10-10; from 2026-10-10 (XMARK, D-05-CANT-SEND-ALL) the target box shows a red ⚠ with `cantSendText` (`output.osc_cant_send_text`) and (OSCNAME, D-09-SENDOSC-TARGET-NAME) the action keeps its target's name, page 09; new 2026-10-09, D-09-OSC-OUTPUT): Send OSC (the editor stays clear of the pane's scrollbar, O2), send one OSC message to a target (09 S98-S101); the functor calls `gremlin/osc_output.send`. Spec here: S109-S111.
@@ -272,8 +272,8 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 |---|---|---|---|---|
 | Relative axis loop (Map to vJoy) | `threads.start("vJoy relative axis")` | functor on first relative event | loop ends itself (axis back to rest 1 s, driver lost, value changed by someone else) or `_ask_to_stop` | `_start_loop` joins the previous loop for up to 1 s on the event thread (bounded) |
 | Relative axis loop (Map to Logical Device) | `threads.start` | same | same | the one shared `RelativeAxisLoop` in `action_plugins/common.py` (RB15 fixed) |
-| Tempo, Double Tap, Smart Toggle timeouts | `run_scope.timer(at_stop="cancel")` (main thread) | functor | fire once, or cancelled at Stop (G7 / AU-116 fixed, GL-047) | `tempo:186`, `double_tap:191`, `smart_toggle:88` |
-| Pulse release (Tempo, Double Tap, Axis Delta) | `QTimer.singleShot(50)` on the main thread; `time.sleep(0.05)` off it | `_pulse_event` | fire, or `flush_pulses` at Stop | `base_classes.py:656` uses `time.sleep` |
+| Tempo, Double Tap, Smart Toggle timeouts | `run_scope.timer(at_stop="cancel")` (input thread from 2026-11-19, D-06-INPUT-THREAD, thread batch 3; was the main thread) | functor | fire once, or cancelled at Stop (G7 / AU-116 fixed, GL-047) | `tempo:186`, `double_tap:191`, `smart_toggle:88` |
+| Pulse release (Tempo, Double Tap, Axis Delta) | `QTimer.singleShot(50)` on the input thread (any thread with an event loop; was the main thread); `time.sleep(0.05)` on a macro or loop thread | `_pulse_event` | fire, or `flush_pulses` at Stop | `base_classes.py:656` uses `time.sleep` |
 | Macro playback | `MacroManager` thread (macro.py) | Macro, Map to Keyboard | Stop (AUDIT2-D) | key held after a stuck driver: AU-117 |
 | Mouse motion | `MouseMotionManager` "mouse motion" thread (sendinput) | Map to Mouse motion | Stop (AU-111) | |
 | Sound, speech | `AudioPlayer`, `TTSManager` threads | Play Sound, TTS | program exit | |
@@ -427,7 +427,7 @@ Actions are what an input does: send to vJoy or Xbox, press keys, run a macro, c
 - **S87** Merge Axis and Dual Axis Deadzone should read their axes through the input modules; an unclaimed axis reads centred. [test-plan: P3c]
 - **S88** Split Axis should send the side it leaves its rest value (-1) and work at any split value, 1.0 included. [tracker: ACT4, ACT5]
 - **S89** Chain should check its timeout on a press only and release the step that was pressed; with no sequences it does nothing. [tracker: ACT6, ACT7]
-- **S90** Tempo, Double Tap and Smart Toggle should run their timed-out actions on the main thread. [tracker: ACT20]
+- **S90** Tempo, Double Tap and Smart Toggle should run their timed-out actions on the input thread, the thread that handles input. [tracker: ACT20] [changed 2026-11-19, D-06-INPUT-THREAD; user, 2026-11-19: "approved as recommended", "approved for all batches"] (built 2026-11-19, thread batches 2-5) [test: `test_timers_on_input_thread.py` (9)] [test: `test_mode_on_input_thread.py` (5)] (was: on the main thread)
 - **S91** Tempo, Double Tap and Smart Toggle timers should be cancelled at Stop. [tracker: AU-116, fixed in code (GL-047, `run_scope.timer(at_stop="cancel")`)]
 - **S92** A macro should stop with Stop (every step checks; Pause and repeat delay end at once); an empty macro does nothing. [test-plan: AUDIT2-D-MACROS] [tracker: ACT8]
 - **S93** Change Mode to a mode the running profile doesn't have should be ignored and logged once; Cycle's first press moves; empty Switch/Cycle/Temporary do nothing. [tracker: ACT2, ACT3, ACT9]
@@ -625,6 +625,7 @@ Fixes taken over from upstream Joystick Gremlin R16 (R1-R11) and findings of thi
 
 **Tests that cover it**
 
+- Input thread (2026-11-19, D-06-INPUT-THREAD): `test_timers_on_input_thread.py` (9: Tempo, Double Tap, Smart Toggle and pulse timers fire on the input thread), `test_mode_on_input_thread.py` (5: Change Mode), `test_input_thread_real_profile.py` (7: Map to vJoy, Tempo, Change Mode, two macros, Logical Device re-entry on a real profile), `test_input_thread_ui_blocked.py` (6: Load Profile hands off to main).
 - Plugin loading: `test_audit2_startup_devices.py`, `test_audit3_startup.py` (user plugins, clashes, QML names), `test_core_plugin_import_fail.py` (2: a built-in that can't import stops start-up, S1; a user plugin is skipped and logged, S2).
 - Small crash fixes (2026-10-10, F2): `test_small_crash_fixes.py` (8 in all; here: Pause/Resume unknown operation, AUD-LINT-03; `ConditionModel` has no `addAction`, AUD-LINT-07; Response Curve NaN input, AUD-LINT-04).
 - Type box (AD9, S18): `test_type_box_no_actions_ad9.py` (2).
@@ -698,6 +699,7 @@ are replaced by Q5 and Q10 below. Every question answered as recommended:
 | Q18 | Remove the unused code listed in Q18 in one clean-up commit |
 | Q19 | Chain moves to gremlin.clock; the UI rate limit stays |
 | Q20 | Catalog Delete asks (as the code does); test-plan IC-06 marked superseded |
+| S90 | 2026-11-19 (D-06-INPUT-THREAD; user, 2026-11-19: "approved as recommended", "approved for all batches"): Tempo, Double Tap and Smart Toggle timed-out actions run on the input thread (was: the main thread); pulse release and the vJoy keep-alive follow (06 S100). Built 2026-11-19 (thread batch 3) |
 | S43 | 2026-10-07 (D-05-S43-BOTHROWS): the Note shows on the Device Bindings list's input row and the Keyboard page's key row |
 | S60a, S112-S119, S85 and S97 changed | 2026-10-10 (D-05-R16; user approved R1-R11 and G-a, G-b): R16 fixes and findings (section 8 L) |
 | S120 | 2026-10-10 (D-05-AX1; user approved, action editor matrix AX1): a new Merge Axis or Dual Axis Deadzone from Add Action starts on its own named instance; a loaded one keeps its saved instance (section 8 L) |

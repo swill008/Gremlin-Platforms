@@ -10,7 +10,11 @@ from abc import (
     ABCMeta,
     abstractmethod,
 )
+from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
+
+from PySide6 import QtCore
 
 import dill
 from gremlin import (
@@ -23,6 +27,7 @@ from gremlin import (
     event_handler,
     event_helpers,
     fsm,
+    input_thread,
     logical_device,
     logical_loop,
     macro,
@@ -33,6 +38,7 @@ from gremlin import (
     sendinput,
     shared_state,
     signal,
+    threads,
     trace,
     tts,
     user_script,
@@ -319,15 +325,43 @@ def _where(item: Any) -> str:  # noqa: ANN401
     return f"{device} {control} ({item.mode})"
 
 
+class _RunnerSlots(QtCore.QObject):
+    """CodeRunner's listeners as QObject slots: they run on the thread the
+    runner's owner (RunControl, the input thread) lives on, whoever emits
+    (thread-input.md R8: a plain callable's thread is not pinned)."""
+
+    def __init__(self, runner: CodeRunner, parent: QtCore.QObject | None) -> None:
+        super().__init__(parent)
+        self._runner = runner
+
+    @QtCore.Slot(str)
+    def mode_changed(self, mode: str) -> None:
+        self._runner._refresh_on_mode_change(mode)
+
+    @QtCore.Slot(bool)
+    def active_changed(self, active: bool) -> None:
+        self._runner._on_active_changed(active)
+
+    @QtCore.Slot()
+    def config_changed(self) -> None:
+        self._runner._refresh_outputs()
+
+
 class CodeRunner:
     """Runs the actual profile code.
 
     What a Run starts is registered with run_scope, and Stop is
     run_scope.stop(): the same fixed stages from the Stop button, a failed
     start and quitting (map 3).
+
+    parent: the QObject whose thread the runner's listeners run on
+    (RunControl); without one, the thread that made the runner.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, parent: QtCore.QObject | None = None) -> None:
+        self._slots = _RunnerSlots(self, parent)
+        # The latest start's error text ("" when it started).
+        self.last_error = ""
         self.event_handler = event_handler.EventHandler()
         self.event_handler.add_plugin(user_script.JoystickPlugin())
         self.event_handler.add_plugin(user_script.VJoyPlugin())
@@ -359,6 +393,7 @@ class CodeRunner:
         # its signals would otherwise be connected twice.
         restarting = self._running
         self._restarting = restarting
+        self.last_error = ""
         try:
             self.stop()
         finally:
@@ -370,12 +405,15 @@ class CodeRunner:
         # undone by the same Stop.
         self._register_stop()
         self._profile = profile
+        # What the input thread reads during this Run (cleared at Stop).
+        shared_state.running_profile = profile
         try:
             self._start(profile, start_mode)
         except ImportError as e:
             logging.getLogger("system").exception("Gremlin start failed")
             trace.event(f"Profile start failed: {e}")
             self.stop()
+            self.last_error = str(e) or type(e).__name__
             signal.display_error(
                 "Could not run the profile: a user plugin is missing.", str(e)
             )
@@ -383,6 +421,7 @@ class CodeRunner:
             logging.getLogger("system").exception("Gremlin start failed")
             trace.event(f"Profile start failed: {e or type(e).__name__}")
             self.stop()
+            self.last_error = str(e) or type(e).__name__
             signal.display_error(
                 "Could not run the profile.", str(e) or type(e).__name__
             )
@@ -486,6 +525,7 @@ class CodeRunner:
             trace.event("Profile stopped")
         run_scope.stop()
         self._running = False
+        shared_state.running_profile = None
 
     def _register_stop(self) -> None:
         """What Stop does for this Run, stage by stage (map 3).
@@ -583,19 +623,19 @@ class CodeRunner:
             return
         mm = mode_manager.ModeManager()
         if on:
-            mm.mode_changed.connect(self._refresh_on_mode_change)
+            mm.mode_changed.connect(self._slots.mode_changed)
         else:
-            mm.mode_changed.disconnect(self._refresh_on_mode_change)
+            mm.mode_changed.disconnect(self._slots.mode_changed)
         self._mode_listening = on
 
     def _listen_to_pause(self, on: bool) -> None:
         if on == self._pause_listening:
             return
         if on:
-            self.event_handler.is_active.connect(self._on_active_changed)
+            self.event_handler.is_active.connect(self._slots.active_changed)
         else:
             try:
-                self.event_handler.is_active.disconnect(self._on_active_changed)
+                self.event_handler.is_active.disconnect(self._slots.active_changed)
             except (TypeError, RuntimeError):
                 pass
         self._pause_listening = on
@@ -611,10 +651,10 @@ class CodeRunner:
             return
         changed = signal.signal.configChanged
         if on:
-            changed.connect(self._refresh_outputs)
+            changed.connect(self._slots.config_changed)
         else:
             try:
-                changed.disconnect(self._refresh_outputs)
+                changed.disconnect(self._slots.config_changed)
             except (TypeError, RuntimeError):
                 pass
         self._config_listening = on
@@ -706,3 +746,143 @@ class CodeRunner:
                 sample.mode,
             )
         return len(action_sequences)
+
+
+def profile_snapshot(open_profile: profile.Profile) -> profile.Profile:
+    """The profile a Run uses: a copy taken at Run, so edits made while it
+    runs apply at the next Run (answer 6a, thread-input.md). Made on the
+    main thread, which owns the open profile.
+
+    Built from the profile's own text, as a file would be read. User
+    scripts are not copied: reading them again would start their top-level
+    code a second time; the Run reloads them from the open profile's list.
+    """
+    root = ElementTree.fromstring(open_profile._xml_text())
+    for node in root.findall("./scripts"):
+        root.remove(node)
+    copy = profile.Profile(bind=False)
+    copy._read_root(root, open_profile.fpath or Path())
+    # The same file, or none for a profile never saved.
+    copy.fpath = open_profile.fpath
+    copy.scripts = open_profile.scripts
+    return copy
+
+
+class RunControl(QtCore.QObject):
+    """Run and Stop, on the input thread (contract-THR.md).
+
+    The window asks through input_thread.call(run_control().start, ...) and
+    learns the outcome from runStarted(ok, error text) / runStopped, queued
+    to it; it never waits for the Run.
+    """
+
+    runStarted = QtCore.Signal(bool, str)
+    runStopped = QtCore.Signal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        # A child: it moves to the input thread with this object.
+        self.runner = CodeRunner(parent=self)
+
+    def is_running(self) -> bool:
+        return self.runner.is_running()
+
+    @QtCore.Slot(object, str)
+    def start(self, profile_snapshot: profile.Profile, mode: str) -> None:
+        """Runs profile_snapshot (from profile_snapshot()) in mode. A start
+        that fails stops itself and shows its error (CodeRunner.start)."""
+        threads.assert_input("RunControl.start")
+        try:
+            self.runner.start(profile_snapshot, mode)
+        except Exception:
+            pass  # logged and shown by the runner, which has stopped
+        ok = self.runner.is_running()
+        error_text = "" if ok else self.runner.last_error
+        self.runStarted.emit(ok, error_text)
+
+    @QtCore.Slot()
+    def stop(self) -> None:
+        """Ends the Run (safe when none runs)."""
+        threads.assert_input("RunControl.stop")
+        try:
+            self.runner.stop()
+        finally:
+            self.runStopped.emit()
+
+
+_run_control: RunControl | None = None
+# The input thread the runtime objects were moved to (adopt_runtime_objects).
+_adopted_to: QtCore.QThread | None = None
+
+
+def run_control() -> RunControl:
+    """The one RunControl (made on first use; on the input thread once
+    adopt_runtime_objects() ran)."""
+    global _run_control
+    if _run_control is None:
+        control = RunControl()
+        if _adopted_to is not None:
+            control.moveToThread(_adopted_to)
+        _run_control = control
+    return _run_control
+
+
+def existing_run_control() -> RunControl | None:
+    """The RunControl when one was made (quitting stops only what exists)."""
+    return _run_control
+
+
+def adopt_runtime_objects() -> None:
+    """Moves the runtime's QObjects to the input thread: EventHandler,
+    InputModuleRuntime, ModeManager and RunControl. Called once on the main
+    thread, after input_thread.start() and before the first Run.
+
+    From then on their slots run on the input thread (Qt delivers to a
+    receiver's thread); signals between them stay direct, so Map to Logical
+    Device's re-emit is still handled at once, inside its action. Inline
+    mode (tests) leaves them where they are.
+    """
+    global _adopted_to
+    threads.assert_main("adopt_runtime_objects")
+    if input_thread.is_inline() or not input_thread.is_running():
+        return
+    target = input_thread.call_wait(
+        QtCore.QThread.currentThread, timeout=input_thread.START_LIMIT_S
+    )
+    objects: list[QtCore.QObject] = [
+        event_handler.EventHandler(),
+        InputModuleRuntime(),
+        mode_manager.ModeManager(),
+        run_control(),
+    ]
+    for obj in objects:
+        if obj.thread() != target:
+            obj.moveToThread(target)
+    _adopted_to = target
+
+
+def release_runtime_objects(timeout: float = 2.0) -> None:
+    """Moves the adopted objects back to the main thread (a test that
+    started the input thread ends; objects left on a stopped thread would
+    get no queued calls). Called on the main thread while the input thread
+    still runs; Qt lets only an object's own thread push it away."""
+    global _adopted_to
+    threads.assert_main("release_runtime_objects")
+    if _adopted_to is None:
+        return
+    app = QtCore.QCoreApplication.instance()
+    main = app.thread() if app is not None else None
+
+    def push_back() -> None:
+        for obj in (
+            event_handler.EventHandler(),
+            InputModuleRuntime(),
+            mode_manager.ModeManager(),
+            run_control(),
+        ):
+            if main is not None and obj.thread() != main:
+                obj.moveToThread(main)
+
+    if input_thread.is_running():
+        input_thread.call_wait(push_back, timeout=timeout)
+    _adopted_to = None

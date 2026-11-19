@@ -89,7 +89,7 @@ def story(j: Journey) -> None:
 
     # Run, press and release the stick button.
     j.backend.toggleActiveState()
-    out["running"] = j.backend.runner.is_running()
+    out["running"] = j.await_run(True)
     j.press(stick, 1, True)
     j.wait_until(lambda: j.vjoy.held_buttons() == [5], "vJoy button 5 down")
     out["held-while-pressed"] = j.vjoy.held_buttons()
@@ -101,7 +101,7 @@ def story(j: Journey) -> None:
     j.press(stick, 1, True)
     j.wait_until(lambda: j.vjoy.held_buttons() == [5], "vJoy button 5 down again")
     j.backend.toggleActiveState()
-    out["running-after-stop"] = j.backend.runner.is_running()
+    out["running-after-stop"] = j.await_run(False)
     out["devices-held-after-stop"] = sorted(j.vjoy.vjoy_devices)
     writes_at_stop = len(j.vjoy.all_writes())
     j.press(stick, 1, False)

@@ -57,6 +57,15 @@ def _own_process() -> None:
             pytrace=False,
         )
 
+
+@pytest.fixture(scope="package", autouse=True)
+def _runtime_on_the_test_thread(qapp: object) -> None:
+    """The Gremlin app starts the input thread and moves the runtime to it;
+    these tests drive the wiring inline on their own thread (user answer,
+    2026-11-19), so it goes back to the main thread."""
+    code_runner.release_runtime_objects()
+
+
 LDIdentifier = LogicalDevice.Input.Identifier
 
 

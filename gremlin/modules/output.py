@@ -19,7 +19,7 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin import clock, run_scope, trace, trace_timing
+from gremlin import clock, input_thread, run_scope, threads, trace, trace_timing
 from gremlin.modules import registry
 from gremlin.modules.claim import claim_allows, claim_friendly, claim_ids, kind_of
 from gremlin.types import InputType
@@ -203,7 +203,7 @@ def notify_cant_send() -> None:
         _send_cant_send()
     else:
         # Another thread before the notice started: started on the main one.
-        QtCore.QTimer.singleShot(0, app, notify_cant_send)
+        threads.main_call(notify_cant_send)
 
 
 def vjoy_claim(vjoy_id: int) -> dict:
@@ -356,17 +356,16 @@ def _arm_keep_alive(
     none armed yet) or by its own check (after=that check's token, still the
     current one).
 
-    It is a Run timer (run_scope.timer, main thread): Stop cancels it with
-    the rest of the Run, so it never outlives the Run that holds the device
-    and is never a thread of its own. A device opened on another thread (a
-    macro, the event thread) has its keep-alive armed on the main thread.
+    It is a Run timer (run_scope.timer): Stop cancels it with the rest of
+    the Run, so it never outlives the Run that holds the device and is never
+    a thread of its own. It belongs to the input thread while that runs (the
+    thread that handles input and writes vJoy), else to the main thread; a
+    device opened on another thread (a macro, the window) has its keep-alive
+    armed on that one.
     """
     vid = int(vjoy_id)
-    if after is None and threading.current_thread() is not threading.main_thread():
-        door = _keep_alive_door()
-        if door is not None:
-            door.arm.emit(vid)
-            return
+    if after is None and _pass_keep_alive_on(vid):
+        return
     # Released while the request was on its way: nothing to keep alive.
     if after is None and _opened_vjoy(vid) is None:
         return
@@ -388,36 +387,26 @@ def _arm_keep_alive(
         _keep_alive[vid] = (token, timer)
 
 
-class _KeepAliveDoor(QtCore.QObject):
-    """Passes a keep-alive asked for on another thread to the main thread."""
-
-    arm = QtCore.Signal(int)
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.arm.connect(self._arm)
-
-    @QtCore.Slot(int)
-    def _arm(self, vjoy_id: int) -> None:
-        _arm_keep_alive(vjoy_id)
-
-
-_door: _KeepAliveDoor | None = None
-_door_lock = threading.Lock()
-
-
-def _keep_alive_door() -> _KeepAliveDoor | None:
-    """None without a Qt application (no main-thread loop to pass it to)."""
-    global _door
-    app = QtCore.QCoreApplication.instance()
-    if app is None:
-        return None
-    with _door_lock:
-        if _door is None:
-            door = _KeepAliveDoor()
-            door.moveToThread(app.thread())
-            _door = door
-        return _door
+def _pass_keep_alive_on(vjoy_id: int) -> bool:
+    """True when the keep-alive was passed to the thread that owns it (the
+    input thread while it runs, else the main thread); False to arm it
+    here (inline mode, see input_thread.set_inline: the main thread, as
+    without the input thread)."""
+    if input_thread.is_running() and not input_thread.is_inline():
+        if input_thread.is_input_thread():
+            return False
+        try:
+            input_thread.call(_arm_keep_alive, vjoy_id)
+        except RuntimeError:  # stopped just now: armed on the main thread
+            pass
+        else:
+            return True
+    if threading.current_thread() is threading.main_thread():
+        return False
+    if QtCore.QCoreApplication.instance() is None:
+        return False  # no main-thread loop to pass it to
+    threads.main_call(_arm_keep_alive, vjoy_id)
+    return True
 
 
 def _keep_alive_check(vjoy_id: int, token: object) -> None:
@@ -489,7 +478,9 @@ def vjoy_layout(vjoy_id: int) -> tuple[int, int, int]:
     from vjoy import vjoy
 
     return (
-        vjoy.axis_count(vjoy_id), vjoy.button_count(vjoy_id), vjoy.hat_count(vjoy_id)
+        vjoy.axis_count(vjoy_id),
+        vjoy.button_count(vjoy_id),
+        vjoy.hat_count(vjoy_id),
     )
 
 
@@ -1014,7 +1005,6 @@ def plugged_xbox_pads() -> list[int]:
         return []
 
 
-
 def xbox_slot(pad: int) -> int | None:
     """The XInput slot (1-4) that Gremlin's Xbox pad `pad` got, or None when
     the pad isn't plugged in or ViGEm has no slot for it yet. Never plugs a
@@ -1037,6 +1027,7 @@ def xbox_slot(pad: int) -> int | None:
     if index is None or not 0 <= index <= 3:
         return None
     return index + 1
+
 
 def xbox_available() -> bool:
     """True when ViGEmBus and ViGEmClient.dll can be used."""
@@ -1086,8 +1077,7 @@ def xbox_driver_problem() -> tuple[str, str]:
     if xbox_driver_installed():
         return (
             "ViGEmBus is installed but not running",
-            "Restart Windows, or reinstall ViGEmBus 1.22, then restart "
-            "the program.",
+            "Restart Windows, or reinstall ViGEmBus 1.22, then restart the program.",
         )
     return "ViGEmBus is not installed", _VIGEM_INSTALL
 

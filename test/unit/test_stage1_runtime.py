@@ -223,6 +223,12 @@ def test_a_failed_run_shows_one_error_and_reads_stopped(
     _fail_once(cast(Any, code_runner.tts).TTSManager.return_value.start)
     stub: Any = SimpleNamespace(
         runner=wired.run,
+        # The input thread's Run and Stop, run inline here.
+        _run_control=SimpleNamespace(
+            start=wired.run.start, stop=wired.run.stop, runStarted=None
+        ),
+        _starting=False,
+        _wanted_active=False,
         profile=Profile(),
         ui_state=SimpleNamespace(currentMode="Default"),
         config=SimpleNamespace(value=lambda *_a: True),
@@ -1125,9 +1131,11 @@ def _backend_stub(running: bool, options: dict[tuple, Any]) -> Any:  # noqa: ANN
     def activate(on: bool) -> None:
         calls.append(on)
         stub.gremlinActive = on
+        stub._wanted_active = on
 
     stub: Any = SimpleNamespace(
         gremlinActive=running,
+        _wanted_active=running,
         activate_gremlin=activate,
         calls=calls,
         config=SimpleNamespace(value=lambda *key: options.get(key)),

@@ -474,6 +474,22 @@ class Journey:
         # (AUD-THREADS-01).
         _smoke_exit(0)
 
+    def await_run(self, running: bool, timeout: float = 15.0) -> bool:
+        """Run and Stop are sent to the input thread without waiting (01 S95):
+        processes events until the Run is (running=True) or is not running,
+        and the Starting status has passed; returns the state it ended in
+        (bounded, so a Run that never starts fails the story's own check)."""
+        from gremlin import clock
+
+        deadline = clock.monotonic() + timeout
+        while clock.monotonic() < deadline:
+            pump(10)
+            if self.backend.runner.is_running() == running and not (
+                self.backend.gremlinStarting
+            ):
+                break
+        return bool(self.backend.runner.is_running())
+
     def wait_until(
         self, check: Callable[[], object], what: str, timeout: float = 15.0
     ) -> Any:  # noqa: ANN401

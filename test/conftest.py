@@ -193,6 +193,40 @@ def pytest_report_header(config: pytest.Config) -> str | None:
 
 
 @pytest.fixture(autouse=True)
+def _input_thread_inline() -> Iterator[None]:
+    """Existing tests run the wiring inline on their own thread (user answer,
+    2026-11-19); wrong-thread guards raise. End-to-end tests that need the real
+    input thread use input_thread_running."""
+    from gremlin import input_thread, threads
+
+    input_thread.set_inline(True)
+    raising = threads.guards_raise
+    threads.guards_raise = True
+    yield
+    input_thread.set_inline(True)
+    threads.guards_raise = raising
+
+
+@pytest.fixture
+def input_thread_running(qapp: object) -> Iterator[None]:
+    """The real input thread for an end-to-end test; stopped within its limit."""
+    from gremlin import input_thread
+
+    input_thread.set_inline(False)
+    input_thread.start()
+    try:
+        yield
+    finally:
+        # The runtime singletons go back to the main thread first, so later
+        # tests in this process don't post to a stopped thread.
+        from gremlin import code_runner
+
+        code_runner.release_runtime_objects()
+        assert input_thread.stop(2.0), "input thread did not stop within 2 s"
+        input_thread.set_inline(True)
+
+
+@pytest.fixture(autouse=True)
 def _no_message_boxes(monkeypatch: pytest.MonkeyPatch) -> list[tuple]:
     """No test shows a real Windows message box (they appear on screen even
     off-screen, and wait for a click): they are recorded instead."""
@@ -228,6 +262,15 @@ def qapp(qapp: joystick_gremlin.JoystickGremlinApp) -> Iterator[object]:
     except (RuntimeError, TypeError):
         pass
     changed.connect(follow_option)
+    # Building the app starts the real input thread and moves the runtime
+    # onto it; existing tests run the wiring inline on their own thread, so
+    # bring the runtime back and stop that thread (input_thread_running
+    # starts it again for the tests that need it).
+    from gremlin import code_runner, input_thread
+
+    code_runner.release_runtime_objects()
+    input_thread.stop(2.0)
+    input_thread.set_inline(True)
     yield qapp
     try:
         changed.disconnect(follow_option)

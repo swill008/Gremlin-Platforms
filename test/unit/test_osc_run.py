@@ -53,7 +53,13 @@ def _input_item() -> InputItem:
     """A real input item with no bindings: the session app's Home card list
     reads the current profile's inputs whenever cantSendChanged fires, and
     oscServerSettingsChanged sends that notice."""
-    return InputItem(Library())
+    # With a type, id and mode, as every real item has: the Home card list
+    # reads them (cantSendChanged is delivered queued, so later than the emit).
+    item = InputItem(Library())
+    item.input_type = InputType.JoystickButton
+    item.input_id = 1
+    item.mode = "Default"
+    return item
 
 
 @pytest.fixture

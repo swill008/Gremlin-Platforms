@@ -32,8 +32,20 @@ _highlight_lock = threading.Lock()
 # True while a profile is running (Gremlin toggled on)
 _runtime_active = False
 
-# Holds the currently active profile
+# Holds the currently active profile (the one the window shows and edits)
 current_profile: None | profile.Profile = None
+
+# The running Run's own copy of the profile (code_runner.profile_snapshot),
+# set by CodeRunner at Run and cleared at Stop. The input thread reads this,
+# never the window's profile (thread-audit.md item 5).
+running_profile: None | profile.Profile = None
+
+
+def profile_for_runtime() -> None | profile.Profile:
+    """The profile the runtime reads: the Run's copy while one runs, else
+    the open profile."""
+    running = running_profile
+    return running if running is not None else current_profile
 
 
 def suspend_input_highlighting() -> bool:

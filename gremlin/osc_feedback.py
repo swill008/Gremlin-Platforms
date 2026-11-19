@@ -7,12 +7,12 @@ rows send the state of the current mode, vJoy buttons and axes, Logical
 Device controls, OSC inputs, actions (action_state) and Running / Paused
 to their target.
 
-Sources are read on the main thread on a short timer and a row sends when
-its value changes, at most feedback_rate messages a second per address (the
-latest value wins). A full resend goes out at Run start, on a mode change,
-on a profile switch (each behind its own switch) and when a message arrives
-on the sync address. Every send happens on the main thread, through
-osc_output.send.
+Sources are read on the Run's thread (the input thread) on a short timer
+and a row sends when its value changes, at most feedback_rate messages a
+second per address (the latest value wins). A full resend goes out at Run
+start, on a mode change, on a profile switch (each behind its own switch)
+and when a message arrives on the sync address. Every send happens on the
+Run's thread, through osc_output.send.
 
 The server settings are held in memory and read again only when OSC's file
 changes (E2: no file read per incoming message). Every step, skip and
@@ -321,7 +321,8 @@ def _values_text(values: list) -> str:
 
 
 class OscFeedback(QtCore.QObject):
-    """The running feedback; lives on the main thread."""
+    """The running feedback; lives on the thread that starts the Run (the
+    input thread), with its timer and slots."""
 
     # (peer host, peer port | -1): a sync message asked for a resend.
     _sync = QtCore.Signal(str, int)
@@ -381,6 +382,7 @@ class OscFeedback(QtCore.QObject):
             if values is not None:
                 self._last[row["id"]] = (values, _send_types(row, values))
 
+    @QtCore.Slot()
     def stop(self) -> None:
         was = self._running
         self._running = False
@@ -394,6 +396,23 @@ class OscFeedback(QtCore.QObject):
     def is_running(self) -> bool:
         return self._running
 
+    def stop_elsewhere(self) -> None:
+        """From another thread: stopped on its own thread, then deleted there.
+        Held in _retiring until then: dropping the last Python reference on
+        this thread would delete the object (and its timer) from a thread
+        that doesn't own it while its own thread may be using it."""
+        self._running = False
+        _retiring.add(self)
+        QtCore.QMetaObject.invokeMethod(
+            self, "_stop_and_delete", QtCore.Qt.ConnectionType.QueuedConnection
+        )
+
+    @QtCore.Slot()
+    def _stop_and_delete(self) -> None:
+        self.stop()
+        self.deleteLater()
+        _retiring.discard(self)
+
     def _connect(self, on: bool) -> None:
         if on == self._connected:
             return
@@ -401,9 +420,18 @@ class OscFeedback(QtCore.QObject):
         from gremlin.mode_manager import ModeManager
         from gremlin.signal import signal as ui_signal
 
+        auto = QtCore.Qt.ConnectionType.AutoConnection
         pairs = [
-            (ModeManager().mode_changed, self._on_mode_changed),
-            (EventListener().joystick_event, self._on_input_event),
+            # Direct: mode_changed is emitted on the input thread, and this
+            # object lives there too (made by start() on the Run's thread;
+            # instance() replaces one made elsewhere); inline, both are main.
+            (
+                ModeManager().mode_changed,
+                self._on_mode_changed,
+                QtCore.Qt.ConnectionType.DirectConnection,
+            ),
+            # Auto: queued when a driver or the OSC thread emits.
+            (EventListener().joystick_event, self._on_input_event, auto),
         ]
         for name, slot in (
             ("oscFeedbackChanged", self.reload),
@@ -412,10 +440,11 @@ class OscFeedback(QtCore.QObject):
         ):
             sig = getattr(ui_signal, name, None)
             if sig is not None:
-                pairs.append((sig, slot))
-        for sig, slot in pairs:
+                # Auto: the window's signals, queued to this object's thread.
+                pairs.append((sig, slot, auto))
+        for sig, slot, kind in pairs:
             if on:
-                sig.connect(slot)
+                sig.connect(slot, kind)
             else:
                 try:
                     sig.disconnect(slot)
@@ -659,7 +688,8 @@ class OscFeedback(QtCore.QObject):
         self.resend_all(f"sync from {who}")
 
     def request_sync(self, peer: tuple | None) -> None:
-        """Any thread: a resend on the main thread (to peer for reply rows)."""
+        """Any thread: a resend on the feedback's thread (to peer for reply
+        rows)."""
         host, port = "", -1
         if peer:
             try:
@@ -670,14 +700,23 @@ class OscFeedback(QtCore.QObject):
 
 
 _feedback: OscFeedback | None = None
+# Replaced runtimes waiting to be stopped and deleted on their own thread.
+_retiring: set[OscFeedback] = set()
 
 
 def instance() -> OscFeedback:
-    """The feedback runtime; made on the main thread (by start())."""
+    """The feedback runtime; made by start() on the Run's thread (the input
+    thread). One made on another thread (a test's inline Run) is replaced,
+    so its timer is never started or stopped from a thread that doesn't own
+    it."""
     global _feedback
-    if _feedback is None:
-        _feedback = OscFeedback()
-    return _feedback
+    current = _feedback
+    if current is not None and current.thread() is not QtCore.QThread.currentThread():
+        current.stop_elsewhere()
+        _feedback = current = None
+    if current is None:
+        _feedback = current = OscFeedback()
+    return current
 
 
 def start(profile_path: str | None = None) -> None:
@@ -686,15 +725,22 @@ def start(profile_path: str | None = None) -> None:
 
 
 def stop() -> None:
-    if _feedback is not None:
-        _feedback.stop()
+    feedback = _feedback
+    if feedback is None:
+        return
+    if feedback.thread() is QtCore.QThread.currentThread():
+        feedback.stop()
+    else:
+        # Its timer is stopped on its own thread.
+        feedback._running = False  # noqa: SLF001
+        QtCore.QMetaObject.invokeMethod(
+            feedback, "stop", QtCore.Qt.ConnectionType.QueuedConnection
+        )
 
 
-def handle_incoming(address: str, args: Any, peer: tuple | None) -> bool:  # noqa: ANN401
-    """Any thread (OscRuntime, first for every message). True when address
-    is the sync address: the message is consumed (never reaches inputs) and
-    every row is sent again while a profile runs."""
-    running = _feedback is not None and _feedback.is_running()
+def is_sync_address(address: str) -> bool:
+    """Any thread, no side effects: address is the sync address (so it
+    reaches no input)."""
     # Held in memory, read again when OSC's file changes (E2).
     s = settings()
     if not s.get("sync_enabled", True):
@@ -702,7 +748,15 @@ def handle_incoming(address: str, args: Any, peer: tuple | None) -> bool:  # noq
     sync = str(s.get("sync_address") or "").strip()
     # OSC addresses match without regard to case (incoming ones come
     # casefolded), so a mixed-case sync address matches too.
-    if not sync or str(address).strip().casefold() != sync.casefold():
+    return bool(sync) and str(address).strip().casefold() == sync.casefold()
+
+
+def handle_incoming(address: str, args: Any, peer: tuple | None) -> bool:  # noqa: ANN401
+    """Any thread (OscRuntime, first for every message). True when address
+    is the sync address: the message is consumed (never reaches inputs) and
+    every row is sent again while a profile runs."""
+    running = _feedback is not None and _feedback.is_running()
+    if not is_sync_address(address):
         return False
     if running and _feedback is not None:
         _tr(f"sync {address}: resend asked", key="sync")

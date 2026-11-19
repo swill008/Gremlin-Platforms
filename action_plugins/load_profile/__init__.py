@@ -20,6 +20,7 @@ from gremlin import (
     event_handler,
     references,
     run_scope,
+    threads,
     util,
 )
 from gremlin.base_classes import (
@@ -60,34 +61,44 @@ class LoadProfileFunctor(AbstractFunctor):
         if not self._should_execute(value):
             return
 
-        name = Path(self.data.profile_filename).name
-        be = backend.Backend()
-        # As auto-load does: never over unsaved edits.
-        if be.profile.has_unsaved_changes():
-            signal.showNotification.emit(
-                "Load Profile Waited",
-                f"{name} was not loaded because the open profile has unsaved "
-                "changes. Save or discard them first.",
-            )
-            return
-        if not file_exists_and_is_accessible(self.data.profile_filename):
-            signal.showNotification.emit(
-                "Load Profile", f"{name} was not loaded: the file is missing."
-            )
-            return
-        logging.getLogger("system").debug(
-            f"Loading profile ... {self.data.profile_filename}"
-        )
-        # Not from inside this event: the Run is stopped, the profile opened
-        # and run again once the event is done, and only when it opened. A
-        # Stop before then drops the request (it belongs to this Run).
-        run_scope.timer(
-            "load profile", 0, _run_profile, str(self.data.profile_filename)
+        # The whole hand-off runs on the main thread (Backend, the unsaved
+        # check and the notifications are UI state); this may be the input
+        # thread. The Run number goes along: a Stop before then drops it.
+        threads.main_call(
+            _load_on_main, run_scope.number(), str(self.data.profile_filename)
         )
 
 
-def _run_profile(path: str) -> None:
-    backend.Backend().run_profile(path)
+def _load_on_main(run: int, path: str) -> None:
+    """Main thread: checks, notifies, then Runs the profile after the event."""
+    threads.assert_main("Load Profile hand-off")
+    if not run_scope.alive(run):
+        return
+    name = Path(path).name
+    be = backend.Backend()
+    # As auto-load does: never over unsaved edits.
+    if be.profile.has_unsaved_changes():
+        signal.showNotification.emit(
+            "Load Profile Waited",
+            f"{name} was not loaded because the open profile has unsaved "
+            "changes. Save or discard them first.",
+        )
+        return
+    if not file_exists_and_is_accessible(path):
+        signal.showNotification.emit(
+            "Load Profile", f"{name} was not loaded: the file is missing."
+        )
+        return
+    logging.getLogger("system").debug(f"Loading profile ... {path}")
+    # Not from inside the event (inline mode runs this at once): the Run is
+    # stopped, the profile opened and run again when Qt gets to it, and only
+    # when it opened. A Stop before then drops the request.
+    run_scope.timer("load profile", 0, _run_profile, run, path)
+
+
+def _run_profile(run: int, path: str) -> None:
+    if run_scope.alive(run):
+        backend.Backend().run_profile(path)
 
 
 class LoadProfileModel(ActionModel):

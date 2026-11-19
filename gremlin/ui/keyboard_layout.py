@@ -23,7 +23,7 @@ from PySide6 import QtCore
 
 import dill
 import gremlin.ui.type_aliases as ta
-from gremlin import keyboard
+from gremlin import input_thread, keyboard, threads
 from gremlin.error import GremlinError
 from gremlin.modules import ids, store
 from gremlin.modules.claim import key_id, key_id_of
@@ -421,7 +421,15 @@ class KeyboardLayoutModel(ControlLayoutModel):
         # The keys the Keyboard input module passes (its claim).
         from gremlin.modules.runtime import InputModuleRuntime
 
-        InputModuleRuntime().key_event.connect(self._on_key)
+        # Emitted on the input thread: queued, so the slot runs on the main
+        # thread (tests: Auto; thread-ui.md 1.1). Key events are few and
+        # each one counts (press and release), so none are merged.
+        InputModuleRuntime().key_event.connect(
+            self._on_key,
+            QtCore.Qt.ConnectionType.AutoConnection
+            if input_thread.is_inline()
+            else QtCore.Qt.ConnectionType.QueuedConnection,
+        )
         self.groupsChanged.connect(self.keyGroupsChanged)
         store.add_pending_listener(self._pending_changed)
         self.destroyed.connect(
@@ -472,7 +480,9 @@ class KeyboardLayoutModel(ControlLayoutModel):
 
     # Live tint and follow (05 S131, D-05-FOLLOW-ALL-PAGES).
 
+    @QtCore.Slot(object)
     def _on_key(self, event: Any) -> None:  # noqa: ANN401
+        threads.assert_main("KeyboardLayoutModel._on_key")
         ident = key_id_of(getattr(event, "identifier", None))
         if ident is None or not self._live.known(ident):
             return

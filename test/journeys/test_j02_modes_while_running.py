@@ -79,7 +79,7 @@ def story(j: Journey) -> None:
 
     j.backend.uiState.setCurrentMode("Default")
     j.backend.toggleActiveState()
-    out["running"] = j.backend.runner.is_running()
+    out["running"] = j.await_run(True)
     out["start"] = current()
     out["after-press-1"] = tap("Ground")
 
@@ -121,6 +121,7 @@ def story(j: Journey) -> None:
 
     # Stop, save, open again: the Cycle names the new mode name.
     j.backend.toggleActiveState()
+    j.await_run(False)
     out["saved"] = j.backend.saveProfile(url)
     j.backend.newProfile()
     j.backend.loadProfile(url)

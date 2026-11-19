@@ -11,7 +11,14 @@ from xml.etree import ElementTree
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import device_initialization, error, keyboard, shared_state
+from gremlin import (
+    device_initialization,
+    error,
+    input_thread,
+    keyboard,
+    shared_state,
+    threads,
+)
 from gremlin.base_classes import AbstractActionData
 from gremlin.error import GremlinError
 from gremlin.logical_device import LogicalDevice
@@ -200,8 +207,13 @@ class LogicalLayoutModel(ControlLayoutModel):
         from gremlin.modules.runtime import InputModuleRuntime
 
         # Its Signal "event" shadows QObject.event for pyright.
+        # Emitted on the input thread: queued, so the slot runs on the main
+        # thread (tests: Auto; thread-ui.md 1.1).
         InputModuleRuntime().event.connect(  # pyright: ignore[reportAttributeAccessIssue]
-            self._on_input
+            self._on_input,
+            QtCore.Qt.ConnectionType.AutoConnection
+            if input_thread.is_inline()
+            else QtCore.Qt.ConnectionType.QueuedConnection,
         )
         self._rebuild()
 
@@ -250,7 +262,10 @@ class LogicalLayoutModel(ControlLayoutModel):
 
     # Live tint and follow (05 S131, D-05-FOLLOW-ALL-PAGES).
 
+    @QtCore.Slot(object)
     def _on_input(self, event: Any) -> None:  # noqa: ANN401
+        threads.assert_main("LogicalLayoutModel._on_input")
+        # Axes: latest value per input, one repaint per 33 ms (_axis_timer) (R7).
         if guid_key(str(event.device_guid)) != guid_key(str(self._device_guid())):
             return
         kind = _KIND_OF.get(event.event_type)

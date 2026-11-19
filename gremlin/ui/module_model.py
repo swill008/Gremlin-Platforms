@@ -16,6 +16,8 @@ from gremlin import (
     config,
     device_initialization,
     event_handler,
+    input_thread,
+    threads,
 )
 from gremlin import shared_state
 from gremlin.shared_state import runtime_active
@@ -1013,7 +1015,21 @@ class ModuleListModel(QtCore.QAbstractListModel):
         event_handler.EventListener().device_change_event.connect(self._schedule_reload)
         from gremlin.modules.runtime import InputModuleRuntime
 
-        InputModuleRuntime().event.connect(self._on_joy)
+        # Pending input events, the latest per device, applied once per
+        # event-loop turn (R7): after a freeze the 1 kHz feed is one update.
+        self._joy_pending: dict[str, event_handler.Event] = {}
+        self._joy_timer = QtCore.QTimer(self)
+        self._joy_timer.setSingleShot(True)
+        self._joy_timer.setInterval(0)
+        self._joy_timer.timeout.connect(self._drain_joy)
+        # Emitted on the input thread: queued, so the slot runs on the main
+        # thread (tests: Auto; thread-ui.md 1.1).
+        InputModuleRuntime().event.connect(
+            self._on_joy,
+            QtCore.Qt.ConnectionType.AutoConnection
+            if input_thread.is_inline()
+            else QtCore.Qt.ConnectionType.QueuedConnection,
+        )
         self._dest_timer = QtCore.QTimer(self)
         self._dest_timer.setInterval(50)
         self._dest_timer.timeout.connect(self._poll_dest_last)
@@ -2239,9 +2255,26 @@ class ModuleListModel(QtCore.QAbstractListModel):
             self._refresh_inplace()
         return message
 
+    @QtCore.Slot(object)
     def _on_joy(self, event: event_handler.Event) -> None:
+        threads.assert_main("ModuleListModel._on_joy")
         if event is None:
             return
+        if input_thread.is_inline():
+            ModuleListModel._apply_joy(self, event)
+            return
+        # The card shows the last input per device: keep the newest and
+        # apply it once per event-loop turn.
+        self._joy_pending[guid_key(event.device_guid)] = event
+        if not self._joy_timer.isActive():
+            self._joy_timer.start()
+
+    def _drain_joy(self) -> None:
+        pending, self._joy_pending = self._joy_pending, {}
+        for event in pending.values():
+            self._apply_joy(event)
+
+    def _apply_joy(self, event: event_handler.Event) -> None:
         from gremlin.modules.gate import status_last_from_hid
 
         guid = guid_key(event.device_guid)

@@ -68,6 +68,7 @@ def _fake(unsaved: bool) -> types.SimpleNamespace:
             fpath="open.xml", has_unsaved_changes=lambda: unsaved
         ),
         gremlinActive=False,
+        _wanted_active=False,
         _autoload_held=None,
         activate_gremlin=lambda on: calls.append(("active", on)),
         loadProfile=lambda path: calls.append(("load", path)),
@@ -116,6 +117,7 @@ def test_same_program_in_front_again_keeps_the_open_profile_running(
     fake = _fake(unsaved=False)
     fake.profile.fpath = game  # a Path, as Profile keeps it
     fake.gremlinActive = True
+    fake._wanted_active = True
     for _ in range(2):
         _AUTOLOAD(fake, "C:/x/game.exe")
     assert fake.calls == []
@@ -126,6 +128,7 @@ def test_same_program_in_front_again_keeps_the_open_profile_running(
     def activate(on: bool) -> None:
         stopped.calls.append(("active", on))
         stopped.gremlinActive = on
+        stopped._wanted_active = on
 
     stopped.activate_gremlin = activate
     for _ in range(2):

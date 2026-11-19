@@ -168,6 +168,7 @@ def _fake(open_path: object) -> types.SimpleNamespace:
             fpath=open_path, has_unsaved_changes=lambda: False
         ),
         gremlinActive=True,
+        _wanted_active=True,
         _autoload_held=None,
         activate_gremlin=lambda on: calls.append(("active", on)),
         loadProfile=lambda path: calls.append(("load", path)),
@@ -194,6 +195,7 @@ def test_auto_load_with_a_missing_profile_runs_nothing_else(
     monkeypatch.setattr(config, "get_profile_with_regex", lambda path: str(gone))
     fake = _fake(tmp_path / "open.xml")
     fake.gremlinActive = False
+    fake._wanted_active = False
     notes: list = []
 
     def note(*args: str) -> None:

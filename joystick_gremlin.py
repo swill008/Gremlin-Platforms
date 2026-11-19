@@ -387,12 +387,13 @@ def shutdown_cleanup() -> None:
     except Exception:
         log.exception("Shutdown: event listener")
     try:
+        _stop_run_for_quit()
+    except Exception:
+        log.exception("Shutdown: Stop")
+    try:
         backend = gremlin.ui.backend.Backend.instance
         if backend is not None:
-            backend.activate_gremlin(False)
             backend.process_monitor.stop()
-        else:
-            gremlin.run_scope.stop()  # a Run with no window (tests, scripts)
     except Exception:
         log.exception("Shutdown: backend")
     try:
@@ -447,6 +448,62 @@ def shutdown_cleanup() -> None:
         output.reset_drivers()
     except Exception:
         log.exception("Shutdown: vJoy / Xbox")
+
+
+# Longest quitting waits for the Run's Stop on the input thread (01 S95).
+_QUIT_STOP_LIMIT_S = 5.0
+
+
+def _start_input_thread() -> None:
+    """Starts the input thread. If it can't start, the input path runs on
+    the main thread as before (inline) and that is logged."""
+    # Loaded here, not with the modules above (their order is kept).
+    from gremlin import input_thread
+
+    try:
+        input_thread.start()
+    except Exception:
+        logging.getLogger("system").exception(
+            "The input thread could not start; input runs on the main thread"
+        )
+        input_thread.set_inline(True)
+
+
+def _adopt_runtime_objects() -> None:
+    from gremlin import code_runner, input_thread
+
+    try:
+        code_runner.adopt_runtime_objects()
+    except Exception:
+        logging.getLogger("system").exception(
+            "Could not move the runtime to the input thread; it runs on the "
+            "main thread"
+        )
+        input_thread.set_inline(True)
+
+
+def _stop_run_for_quit() -> None:
+    """Quit: the Run stops on the input thread, waited for at most
+    _QUIT_STOP_LIMIT_S; a stuck Stop is logged and quitting goes on
+    (threads.shutdown then stops the thread). Only a RunControl that was
+    made; without one, run_scope's Stop (a Run with no window)."""
+    code_runner = sys.modules.get("gremlin.code_runner")
+    control = code_runner.existing_run_control() if code_runner else None
+    if control is None:
+        gremlin.run_scope.stop()
+        return
+    from gremlin import input_thread
+
+    try:
+        input_thread.call_wait(control.stop, timeout=_QUIT_STOP_LIMIT_S)
+    except TimeoutError:
+        logging.getLogger("system").warning(
+            f"Quit: Stop on the {input_thread.NAME} took over "
+            f"{_QUIT_STOP_LIMIT_S:.0f} s; quitting anyway"
+        )
+    except RuntimeError:
+        # The input thread is gone: Stop runs here.
+        control.runner.stop()
 
 
 def _recover_devices() -> None:
@@ -1013,6 +1070,9 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         gremlin.gc_guard.install(self)
         # Before the first EventListener (Backend, below) starts the hook.
         _no_hooks_offscreen()
+        # The input thread: input -> wiring -> output runs there, so a busy
+        # window never delays a binding (contract-THR.md).
+        _start_input_thread()
 
         configure_loggers()
         gremlin.ui.live_debug.start()
@@ -1059,6 +1119,9 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         device_aliases.watch_names()
 
         self.initialize_qt()
+        # Before any Run (--enable runs below): the runtime's objects live on
+        # the input thread from here on.
+        _adopt_runtime_objects()
 
         if device_initialization_error is not None:
             self.engine.load(

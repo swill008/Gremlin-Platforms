@@ -1093,6 +1093,7 @@ def _autoload_backend(
             fpath=open_path, has_unsaved_changes=lambda: False
         ),
         gremlinActive=running,
+        _wanted_active=running,
         _autoload_held=None,
         activate_gremlin=lambda on: calls.append(("active", on)),
         loadProfile=lambda path: calls.append(("load", path)),
@@ -1155,10 +1156,11 @@ def test_s93_the_listener_stops_its_timer_hooks_and_driver_callbacks(
 def test_s93_exit_stops_the_listener_the_run_and_the_process_monitor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """02 S93 (exit part): shutdown_cleanup stops the listener, the Run and
-    the process monitor, which waits at most 2 s for its thread."""
+    """02 S93 (exit part): shutdown_cleanup stops the listener, the Run (via
+    RunControl) and the process monitor, which waits at most 2 s for its
+    thread."""
     import joystick_gremlin
-    from gremlin import process_monitor
+    from gremlin import code_runner, process_monitor
     from gremlin.modules import output
     from gremlin.ui import backend
 
@@ -1176,13 +1178,18 @@ def test_s93_exit_stops_the_listener_the_run_and_the_process_monitor(
     monkeypatch.setattr(
         backend.Backend, "instance",
         types.SimpleNamespace(
-            activate_gremlin=lambda on: steps.append(("run", on)),
             process_monitor=monitor,
         ),
+    )
+    # The Run stops through RunControl on the input thread (5 s at most).
+    monkeypatch.setattr(
+        code_runner,
+        "existing_run_control",
+        lambda: types.SimpleNamespace(stop=lambda: steps.append("stop")),
     )
     monkeypatch.setattr(output, "reset_drivers", lambda: steps.append("drivers"))
     try:
         joystick_gremlin.shutdown_cleanup()
     finally:
         shiboken6.delete(monitor)
-    assert steps == ["terminate", ("run", False), ("join", 2.0), "drivers"]
+    assert steps == ["terminate", "stop", ("join", 2.0), "drivers"]

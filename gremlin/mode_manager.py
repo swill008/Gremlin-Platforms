@@ -5,12 +5,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6 import QtCore
 
-from gremlin import shared_state, util
+from gremlin import input_thread, shared_state, util
 from gremlin.common import SingletonDecorator
 from gremlin.config import Configuration
 from gremlin.types import PropertyType
@@ -175,14 +176,90 @@ def _known_modes() -> set[str]:
     from gremlin.event_handler import EventHandler
 
     known = set(getattr(EventHandler(), "known_modes", set()))
-    if not known and shared_state.current_profile is not None:
-        known = set(shared_state.current_profile.modes.mode_names())
+    profile = _run_profile()
+    if not known and profile is not None:
+        known = set(profile.modes.mode_names())
     return known
+
+
+def _run_profile() -> Profile | None:
+    """The profile the mode system works on from the input thread: the
+    Run's own copy while one runs (answer 6a), else the open profile."""
+    return shared_state.profile_for_runtime()
+
+
+def _run_fpath() -> Path | None:
+    """The file path of _run_profile(), read on the calling thread."""
+    profile = _run_profile()
+    return None if profile is None else profile.fpath
+
+
+def _on_input_thread(fn: Callable[..., None], *args: object) -> None:
+    """Runs fn on the input thread, where the mode stack is changed; where
+    it doesn't run (stopped program, tests), on the caller."""
+    if input_thread.is_running() or input_thread.is_inline():
+        input_thread.call(fn, *args)
+    else:
+        fn(*args)
+
+
+def _run_copy() -> Profile | None:
+    """The Run's own copy of the profile, when a Run is on and it is not the
+    open profile itself. Read on the input thread, which sets and clears it."""
+    copy = shared_state.running_profile
+    if copy is None or copy is shared_state.current_profile:
+        return None
+    return copy
+
+
+def _rename_in_run_copy(old_name: str, new_name: str) -> None:
+    """A rename reaches the Run's copy too: its Change Mode targets (a
+    running Cycle holds the list), inputs and Startup Mode, by the rename
+    the open profile used (ModeHierarchy.rename_mode, 04 S44)."""
+    from gremlin import error
+
+    copy = _run_copy()
+    if copy is None or not copy.modes.mode_exists(old_name):
+        return
+    try:
+        copy.modes.rename_mode(old_name, new_name)
+    except error.GremlinError as err:
+        # The copy differs from the open profile (a mode added or deleted
+        # since Run): the open profile has the rename; the next Run gets it.
+        logging.getLogger("system").warning(
+            f"Mode rename '{old_name}' to '{new_name}' not applied to the "
+            f"running profile: {err}"
+        )
+
+
+def _first_mode_without(profile: Profile, name: str) -> str:
+    """The profile's first top-level mode once name is deleted (its child
+    modes move up a level, 04 S46); the Run's copy still has name."""
+    modes = profile.modes
+    if not modes.mode_exists(name):
+        return modes.first_mode
+    dropped = modes.find_mode(name)
+    roots = []
+    for other in modes.mode_names():
+        if other == name:
+            continue
+        parent = modes.find_mode(other).parent
+        if parent is dropped:
+            parent = dropped.parent
+        if parent is not None and parent.parent is None:
+            roots.append(other)
+    return min(roots, key=str.casefold) if roots else modes.first_mode
 
 
 @SingletonDecorator
 class ModeManager(QtCore.QObject):
-    """Manages the mode change history."""
+    """Manages the mode change history.
+
+    The stack is changed on the input thread only (Change Mode actions, Run
+    start and end, the toolbar pick through input_thread.call). Other threads
+    read `current`, a whole Mode published after each change; mode_changed is
+    emitted there and reaches Qt receivers on other threads queued.
+    """
 
     mode_changed = QtCore.Signal(str)
 
@@ -216,11 +293,21 @@ class ModeManager(QtCore.QObject):
         """The current mode; safe to read from any thread."""
         return self._current
 
-    def reset(self) -> None:
-        """The open profile's start mode on a fresh stack (profile load)."""
-        self._mode_stack = [
-            Mode(resolve_start_mode(shared_state.current_profile), None)
-        ]
+    def reset(self) -> str:
+        """The open profile's start mode on a fresh stack (profile load).
+
+        Called on main: the start mode is worked out here from the open
+        profile and the stack is replaced on the input thread (so it can't
+        race a Stop's end_run). Returns the start mode's name, as `current`
+        shows it only once the input thread has run it."""
+        profile = shared_state.current_profile
+        assert profile is not None
+        name = resolve_start_mode(profile)
+        _on_input_thread(self._set_stack, [Mode(name, None)])
+        return name
+
+    def _set_stack(self, stack: list[Mode]) -> None:
+        self._mode_stack = stack
 
     def start_run(self, name: str) -> None:
         """A Run starts in mode name (the toolbar mode) on a fresh stack: no
@@ -246,7 +333,7 @@ class ModeManager(QtCore.QObject):
         while stopped doesn't count (GL-149, 04 Q2)."""
         if not _profile_running():
             return
-        profile = shared_state.current_profile
+        profile = _run_profile()
         if profile is None or profile.fpath is None:
             return
         last_mode = next(
@@ -260,18 +347,24 @@ class ModeManager(QtCore.QObject):
             from gremlin import deferred_write
 
             # Saved on stop or quit; an hour is only a safety net.
-            deferred_write.schedule("last-mode", flush_last_modes, 3_600_000)
+            # hold: the input thread has no scheduler, and must not write the
+            # settings file itself; the Run's end or quit flushes it.
+            deferred_write.schedule("last-mode", flush_last_modes, 3_600_000, hold=True)
 
-    def _rewrite_stored_name(self, old_name: str, new_name: str | None) -> None:
-        profile = shared_state.current_profile
-        if profile is None or profile.fpath is None:
+    def _rewrite_stored_name(
+        self, fpath: Path | None, old_name: str, new_name: str | None
+    ) -> None:
+        """Rewrites the stored last mode of the profile at fpath. fpath is
+        taken by the caller when the change is made, so a profile swap while
+        the change waits for the input thread can't redirect it (N2)."""
+        if fpath is None:
             return
         config = Configuration()
         stored = _stored_last_modes()
-        if _last_mode_of(stored, profile.fpath) != old_name:
+        if _last_mode_of(stored, fpath) != old_name:
             return
         _pending_last.clear()
-        _put_last_mode(stored, profile.fpath, new_name)
+        _put_last_mode(stored, fpath, new_name)
         config.set(*_LAST_KEY, stored)
 
     def _update_mode(self) -> None:
@@ -280,16 +373,22 @@ class ModeManager(QtCore.QObject):
         self.mode_changed.emit(self.current.name)
 
     def rename_mode(self, old_name: str, new_name: str) -> None:
-        """Keep the running stack and the saved last mode on a renamed mode."""
+        """Keep the running stack and the saved last mode on a renamed mode.
+
+        Callable from any thread: the change runs on the input thread."""
         if old_name == new_name:
             return
+        _on_input_thread(self._rename_mode, _run_fpath(), old_name, new_name)
+
+    def _rename_mode(self, fpath: Path | None, old_name: str, new_name: str) -> None:
         current_changed = self.current.name == old_name
         for mode in self._mode_stack:
             if mode.name == old_name:
                 mode._name = new_name
             if mode.previous == old_name:
                 mode.previous = new_name
-        self._rewrite_stored_name(old_name, new_name)
+        _rename_in_run_copy(old_name, new_name)
+        self._rewrite_stored_name(fpath, old_name, new_name)
         if current_changed:
             self._update_mode()
         from gremlin.event_handler import EventHandler
@@ -297,13 +396,20 @@ class ModeManager(QtCore.QObject):
         EventHandler().rename_mode(old_name, new_name)
 
     def drop_mode(self, name: str) -> None:
-        """Remove a deleted mode from the running stack."""
+        """Remove a deleted mode from the running stack.
+
+        Callable from any thread: the change runs on the input thread."""
+        _on_input_thread(self._drop_mode, _run_fpath(), name)
+
+    def _drop_mode(self, fpath: Path | None, name: str) -> None:
         current_changed = self.current.name == name
         self._mode_stack = [mode for mode in self._mode_stack if mode.name != name]
         if len(self._mode_stack) == 0:
-            fallback = shared_state.current_profile.modes.first_mode
+            profile = _run_profile()
+            assert profile is not None
+            fallback = _first_mode_without(profile, name)
             self._mode_stack = [Mode(fallback, None)]
-        self._rewrite_stored_name(name, None)
+        self._rewrite_stored_name(fpath, name, None)
         if current_changed:
             self._update_mode()
         from gremlin.event_handler import EventHandler
@@ -324,12 +430,11 @@ class ModeManager(QtCore.QObject):
         if len(self._mode_stack) < 2:
             return
 
-        # Swap the two top-most elements of the mode stack
-        self._mode_stack[-1], self._mode_stack[-2] = (
-            self._mode_stack[-2],
-            self._mode_stack[-1],
-        )
-        self._publish()
+        # Swap the two top-most elements of the mode stack, built aside and
+        # swapped in whole.
+        stack = list(self._mode_stack)
+        stack[-1], stack[-2] = stack[-2], stack[-1]
+        self._mode_stack = stack
         self._update_mode()
 
     def unwind(self) -> None:
@@ -337,8 +442,7 @@ class ModeManager(QtCore.QObject):
             return
 
         # Remove top mode in stack
-        self._mode_stack.pop()
-        self._publish()
+        self._mode_stack = self._mode_stack[:-1]
         self._update_mode()
 
     def switch_to(self, mode: Mode) -> None:

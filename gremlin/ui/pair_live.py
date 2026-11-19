@@ -6,7 +6,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
-from gremlin import device_initialization, event_handler
+from gremlin import device_initialization, event_handler, input_thread, threads
 from gremlin.modules import output
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
@@ -71,7 +71,14 @@ class PairLiveThrottle(QtCore.QObject):
         self._vjoy_poll.setInterval(50)
         self._vjoy_poll.timeout.connect(self._poll_vjoy)
         # Claimed inputs only: the input module feed, not raw hardware.
-        InputModuleRuntime().event.connect(self._on_event)
+        # The feed is emitted on the input thread: queued, so this slot runs
+        # on the main thread (tests: Auto; thread-ui.md 1.1).
+        InputModuleRuntime().event.connect(
+            self._on_event,
+            QtCore.Qt.ConnectionType.AutoConnection
+            if input_thread.is_inline()
+            else QtCore.Qt.ConnectionType.QueuedConnection,
+        )
         # A Map to vJoy added or removed while open (D-01-OWNER-NOTICES).
         signal.bindingsChanged.connect(self._refresh_vjoy_ids)
 
@@ -144,7 +151,11 @@ class PairLiveThrottle(QtCore.QObject):
             self._vj_button = buttons
             self._bump_button()
 
+    @QtCore.Slot(object)
     def _on_event(self, event: event_handler.Event) -> None:
+        threads.assert_main("PairLiveThrottle._on_event")
+        # Axes keep the latest value per input and repaint once per 50 ms
+        # (_flush), so a burst is one repaint (R7).
         ev = guid_key(event.device_guid)
         if ev not in self._watch:
             return

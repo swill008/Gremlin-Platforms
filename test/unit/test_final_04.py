@@ -511,6 +511,7 @@ def test_s51_the_toolbar_follows_the_running_mode(
     mm = mode_manager.ModeManager()
     assert real_backend.ui_state.currentMode == mm.current.name == "Alpha"
     mm.switch_to(mode_manager.Mode("Bravo", mm.current.name))
+    QtCore.QCoreApplication.processEvents()  # mode_changed is queued to the UI
     assert real_backend.ui_state.currentMode == "Bravo"
     assert real_backend.currentMode == "Bravo"
 
@@ -527,7 +528,12 @@ def test_s53_run_starts_in_the_toolbar_mode_not_the_startup_mode(
     real_backend.loadProfile(str(_profile_file(tmp_path / "flight.xml", "Alpha")))
     real_backend.selectMode("Bravo")
     real_backend.activate_gremlin(True)
-    assert started == [(real_backend.profile, "Bravo")]
+    # The Run gets a copy of the open profile taken at Run (answer 6a).
+    assert [mode for _prof, mode in started] == ["Bravo"]
+    copy = started[0][0]
+    assert copy is not real_backend.profile
+    assert copy.fpath == real_backend.profile.fpath
+    assert copy._xml_text() == real_backend.profile._xml_text()
 
 
 # --- Profile Settings ----------------------------------------------------------

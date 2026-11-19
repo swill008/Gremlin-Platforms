@@ -9,7 +9,7 @@ from PySide6 import QtCore
 
 import dill
 import gremlin.ui.type_aliases as ta
-from gremlin import event_handler, shared_state
+from gremlin import event_handler, input_thread, shared_state, threads
 from gremlin.modules import hardware, output
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
@@ -90,7 +90,14 @@ class DeviceLiveState(QtCore.QObject):
         self._poll.setInterval(33)
         self._poll.timeout.connect(self._poll_output)
         # Claimed inputs only: the input module feed, not raw hardware.
-        InputModuleRuntime().event.connect(self._on_event)
+        # The feed is emitted on the input thread: queued, so this slot runs
+        # on the main thread (tests: Auto; thread-ui.md 1.1).
+        InputModuleRuntime().event.connect(
+            self._on_event,
+            QtCore.Qt.ConnectionType.AutoConnection
+            if input_thread.is_inline()
+            else QtCore.Qt.ConnectionType.QueuedConnection,
+        )
         event_handler.EventListener().device_change_event.connect(
             self._device_list_changed
         )
@@ -357,7 +364,11 @@ class DeviceLiveState(QtCore.QObject):
                 return True
         return guid_key(event.device_guid) == guid_key(self._guid)
 
+    @QtCore.Slot(object)
     def _on_event(self, event: event_handler.Event) -> None:
+        threads.assert_main("LiveInput._on_event")
+        # Axes are kept as the latest value per row and shown once per 33 ms
+        # (_flush_axes), so a burst is one repaint (R7).
         if self._live_while_active:
             return
         if self._get_locked():

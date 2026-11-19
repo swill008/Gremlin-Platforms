@@ -74,13 +74,13 @@ def story(j: Journey) -> None:
     out["saved-steps"] = [type(step).__name__ for step in saved.actions]
 
     j.backend.toggleActiveState()
-    out["running"] = j.backend.runner.is_running()
+    out["running"] = j.await_run(True)
     j.press(stick, 1, True)
     j.press(stick, 1, False)
     j.wait_until(lambda: a_keys() == [True], "A to go down")
     started = time.monotonic()
     j.backend.toggleActiveState()
-    out["running-after-stop"] = j.backend.runner.is_running()
+    out["running-after-stop"] = j.await_run(False)
     out["after-stop"] = j.await_value(a_keys, [True, False])
     out["released-before-the-pause-ended"] = time.monotonic() - started < _PAUSE
     # The release the macro had queued never comes: wait past the pause.

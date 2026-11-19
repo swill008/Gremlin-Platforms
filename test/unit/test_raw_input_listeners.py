@@ -37,4 +37,6 @@ def test_viewers_and_live_values_use_the_claimed_feed() -> None:
     for rel in ("gremlin/ui/live_input.py", "gremlin/ui/pair_live.py",
                 "gremlin/ui/xbox_viewer.py"):
         text = (_ROOT / rel).read_text(encoding="utf-8")
-        assert "InputModuleRuntime().event.connect(self._on_event)" in text, rel
+        assert re.search(
+            r"InputModuleRuntime\(\)\.event\.connect\(\s*self\._on_event", text
+        ), rel

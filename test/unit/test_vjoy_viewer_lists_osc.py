@@ -9,6 +9,7 @@ their own input events."""
 
 from __future__ import annotations
 
+import time
 import uuid
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -16,6 +17,7 @@ from unittest import mock
 
 import pytest
 import shiboken6
+from PySide6 import QtCore
 
 from gremlin import run_scope, shared_state
 from gremlin.event_handler import Event, EventListener
@@ -221,6 +223,10 @@ def test_the_lights_follow_the_input_and_the_output(
             EventListener().joystick_event.emit(
                 Event(InputType.JoystickButton, 1, source, "Default", is_pressed=True)
             )
+            # Queued from the input thread when the runtime lives there.
+            deadline = time.monotonic() + 2.0
+            while live.buttonValue(1) != 1.0 and time.monotonic() < deadline:
+                QtCore.QCoreApplication.processEvents()
             assert live.buttonValue(1) == 1.0
     finally:
         run_scope.stop()
