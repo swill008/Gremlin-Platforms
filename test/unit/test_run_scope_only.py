@@ -68,8 +68,13 @@ def _calls(path: Path) -> Iterator[ast.Call]:
 # Main-thread timers that belong to a window, not to a Run: Listen's
 # hold-Esc-to-cancel (02 RB11, GL-037) runs with no profile running too;
 # Screen Saver Mode's idle clock (12 S1-S6) runs whether a profile runs or not,
-# so a Stop must not cancel it.
-_NOT_A_RUN = {"gremlin/ui/util.py", "gremlin/screen_saver_mode.py"}
+# so a Stop must not cancel it. The Timing trace's 10 s summary (01 S179)
+# belongs to Tracing, not to a Run: it flushes itself at Stop.
+_NOT_A_RUN = {
+    "gremlin/ui/util.py",
+    "gremlin/screen_saver_mode.py",
+    "gremlin/trace_timing.py",
+}
 
 
 def test_no_main_thread_timer_outside_run_scope() -> None:

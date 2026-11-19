@@ -74,5 +74,5 @@ def test_the_quit_is_the_tray_exit_path() -> None:
     tray._backend = mock.Mock()
     with mock.patch.object(tray, "restore_window") as restore:
         tray._quit_gremlin()
-    restore.assert_called_once_with()
+    restore.assert_called_once_with("quit")  # the cause for the Window trace
     tray._backend.quitRequested.emit.assert_called_once_with()

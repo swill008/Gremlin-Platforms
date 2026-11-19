@@ -53,6 +53,9 @@ def test_a_freeze_dump_includes_the_recent_events(
     fake.last_known = lambda: {"visible": True, "state": "Minimized"}  # type: ignore[attr-defined]
     fake.note = lambda c, t, ring=True: notes.append((c, t))  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "gremlin.ui.window_trace", fake)
+    ui = sys.modules.get("gremlin.ui")
+    if ui is not None:  # an earlier test may have imported the real module
+        monkeypatch.setattr(ui, "window_trace", fake, raising=False)
     _freeze(monkeypatch, caplog)
     text = caplog.text
     assert "Recent events:" in text
