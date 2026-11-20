@@ -193,7 +193,7 @@ def test_failed_start_reports_its_error(
         window.on_started, QtCore.Qt.ConnectionType.QueuedConnection
     )
 
-    def broken(_running: Profile, _mode: str) -> None:
+    def broken(_running: Profile, _mode: str, *_marks: object) -> None:
         raise RuntimeError("broken start")
 
     monkeypatch.setattr(adopted.runner, "_start", broken)

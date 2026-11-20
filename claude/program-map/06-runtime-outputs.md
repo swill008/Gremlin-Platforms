@@ -107,6 +107,8 @@ Run turns the open profile into live behaviour: claimed inputs fire their action
 
 ## 4. Entry points
 
+- `CodeRunner._start` / `stop` time their steps with `_Marks` (`gremlin.clock.monotonic`, one call per step): a Run start or stop of `SLOW_RUN_MS` (300 ms) or more writes one INFO line to system.log, "Run start took N ms: <step> X ms, ..." (steps of 5 ms or more, largest first), and a TIMING trace line while Timing tracing is on (01 S184). Never raises.
+
 | Trigger | Handler | Function(s) |
 |---|---|---|
 | Toolbar Run / Stop button | `Main.qml` `_toggleButton` → `toggleRun` | `backend.toggleActiveState` -> `activate_gremlin(not running)` -> `CodeRunner.start(profile, ui_state.currentMode)` or `stop()` |
@@ -474,6 +476,8 @@ Things nothing owns:
 Size (lines, roughly, rechecked 2026-10-10): run_scope 438, code_runner 721, event_helpers 294, macro 1451, sendinput 492, output 945, Xbox page and viewer about 1,180 (Python 654, QML 549), audio_player 222, tts 242, logical_device 976, logical_device_file 187 (rechecked 2026-10-11), logical_layout 720, LogicalPage.qml 651, system_tray 344; vjoy 1100, vigem 720; parts of backend (~120), event_handler (~200), user_script (~200), base_classes (~120), joystick_gremlin (~45), Main.qml (~40). About 9,300 lines in all (vjoy_status 171 removed 2026-10-12) (the Logical page shrank when it moved onto the shared base, 2026-10-10).
 
 Added 2026-11-20 (S106): `test_vjoy_open_at_run_start.py` (6: claimed devices held right after Run start, an unclaimed one not opened, an off one told once and not asked, a busy one doesn't stop the start, Stop releases, nothing opened while stopped).
+
+Added 2026-11-20 (01 S184): `test_run_start_marks.py` (5: a start of 300 ms or more writes one system.log line naming its slow steps largest first, a fast or 290 ms start writes nothing, the line is also a TIMING line while Timing tracing is on, a failing clock never raises; fake clock).
 Added 2026-10-10: `test_mouse_motion.py` (20: Map to Mouse adding up, ramps, mode change, Stop, Pause and Trace lines, S72, S86, S88-S90); `test_device_relaid_update.py` (a relaid device during a Run, 02 S143); `test_device_layout_change.py` (4, page 02; a start with one unreadable control, S91).
 Changed 2026-10-10 (Logical Device fixtures, D-04-LD-FILE / D-04-LD-NOLEGACY): `test/action_interaction/conftest.py` `set_up_logical_device` sets up the Logical Device through its API (axes, buttons, hats 1-4 "Input" and 11-14 "Output", in its own module file), and the 19 fixture profiles in `test/action_interaction/profiles/` are version 16; `test_ld_nolegacy.py` gained the `as_v14` helper (writes an old version 14 copy of a profile for the refusal tests).
 Added 2026-10-11 (D-03-DEVICE-FOLDERS): `test_device_folders_devices.py::test_the_logical_device_file_lands_in_its_folder` (the Logical Device's file is written to `<modules>/Logical Device/module.json`; the file has 13 tests, the others on pages 01, 02, 03, 08 and 09).

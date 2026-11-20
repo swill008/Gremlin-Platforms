@@ -1156,3 +1156,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | SPEC2: S121, S183, decision row (Haiku) | docs | 3-8 min | <1 min | 05:07 |
 | 2026-11-20 | BAR2 + WNPY2 + SPEC3: InfoBar-style What's New bar (Sonnet, Sonnet, Haiku) | feature | 3-8 min | 1-2 min each | 05:13-05:14 |
 | 2026-11-20 | GOLD + SPEC4: gold What's New bar, gold theme tokens (Sonnet, Haiku) | fix | 3-8 min | 1-2 min | 05:18-05:19 |
+| 2026-11-20 | FREEZE: displays-off freeze study, 5 dumps (Opus) | research | 5-10 min | 6 min | 05:42-05:48 |
+| 2026-11-20 | WEBFREEZE: web research on the freeze (Sonnet) | research | 5-10 min | 1-2 min | 05:47-05:48 |
+| 2026-11-20 | WAITCHAIN + STARTMARKS + SPEC5: freeze measuring (Sonnet, Sonnet, Haiku) | fix | 3-8 min | 1-2 min each | 05:51-05:53 |

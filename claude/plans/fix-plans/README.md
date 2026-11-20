@@ -41,3 +41,5 @@ with D-06-INPUT-THREAD; gap SSM-MAIN-THREAD-PAUSE text updated.
 
 ## Change to the order (user, 2026-11-19 16:4x)
 Step 3 ("before" measurement runs) skipped: user answered "b) No: skip before". The thread move is judged by its tests (output reaches vJoy while the main thread is blocked 2 s; fails on the old code); the user's "after" runs only confirm it feels right.
+
+- ssm-freeze-displays-off.md (FREEZE, 2026-11-20): main thread freezes 6-10 s at the power-off while the helper disables devices and a profile runs; native wait, cause chain, slow Reload after it, fix options.

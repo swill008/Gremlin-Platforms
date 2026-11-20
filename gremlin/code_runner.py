@@ -21,6 +21,7 @@ from gremlin import (
     action_state,
     audio_player,
     base_classes,
+    clock,
     common,
     device_initialization,
     error,
@@ -56,6 +57,51 @@ from gremlin.types import (
     HatDirection,
     InputType,
 )
+
+SLOW_RUN_MS = 300.0  # a Run start or stop this slow is written to system.log
+_STEP_MS = 5.0  # only steps at least this long are named
+
+
+class _Marks:
+    """Times the steps of a Run start (01 S184). mark(name) closes the step
+    that began at the previous mark. Never raises."""
+
+    def __init__(self) -> None:
+        self._t0 = self._last = self._now()
+        self._steps: list[tuple[str, float]] = []
+
+    @staticmethod
+    def _now() -> float:
+        try:
+            return clock.monotonic()
+        except Exception:
+            return 0.0
+
+    def mark(self, name: str) -> None:
+        now = self._now()
+        self._steps.append((name, (now - self._last) * 1000.0))
+        self._last = now
+
+    def report(self, what: str) -> None:
+        """One system.log line (and a TIMING line while Timing tracing is on)
+        when the whole took SLOW_RUN_MS or more."""
+        try:
+            total = (self._now() - self._t0) * 1000.0
+            if total < SLOW_RUN_MS:
+                return
+            slow = sorted(
+                (s for s in self._steps if s[1] >= _STEP_MS),
+                key=lambda s: s[1],
+                reverse=True,
+            )
+            text = f"Run {what} took {total:.0f} ms" + (
+                ": " + ", ".join(f"{n} {ms:.0f} ms" for n, ms in slow) if slow else ""
+            )
+            logging.getLogger("system").info(text)
+            if trace_timing.on:
+                trace.timing(text, False)
+        except Exception:
+            pass
 
 
 class VirtualButton(metaclass=ABCMeta):
@@ -409,7 +455,9 @@ class CodeRunner:
         # What the input thread reads during this Run (cleared at Stop).
         shared_state.running_profile = profile
         try:
-            self._start(profile, start_mode)
+            marks = _Marks()
+            self._start(profile, start_mode, marks)
+            marks.report("start")
         except ImportError as e:
             logging.getLogger("system").exception("Gremlin start failed")
             trace.event(f"Profile start failed: {e}")
@@ -434,8 +482,13 @@ class CodeRunner:
                     f" (mode {mode_manager.ModeManager().current.name})"
                 )
 
-    def _start(self, running: profile.Profile, start_mode: str) -> None:
+    def _start(
+        self, running: profile.Profile, start_mode: str, marks: _Marks | None = None
+    ) -> None:
+        marks = marks or _Marks()
+        mark = marks.mark
         self._reset_state()
+        mark("reset state")
 
         settings = running.settings
         names = running.modes.mode_names()
@@ -448,19 +501,24 @@ class CodeRunner:
         # Each run reads the output modules fresh and logs blocked outputs anew.
         output.refresh()
         output.clear_blocked_log()
+        mark("output refresh")
         # Output modules saved while running apply at once (06 Q12).
         self._listen_to_config(True)
         # Repeating problems may be logged once again in this run.
         from gremlin import log_once
 
         log_once.reset()
+        mark("log reset")
         trace.osc_reset()  # OSC trace and log limits count anew (D-09-OSC-TRACE)
         # A Logical Device loop is followed and told anew (06 S94).
         logical_loop.reset()
+        mark("trace and loop reset")
         # Claimed vJoy devices open now, not on the first write (06 S106).
         output.open_claimed_vjoy()
+        mark("open vJoy")
 
         self._setup_user_scripts()
+        mark("user scripts")
 
         for mode_name in running.modes.mode_names():
             self.event_handler.add_callback(0, mode_name, None, lambda x: x)
@@ -473,7 +531,9 @@ class CodeRunner:
                         self.event_handler.add_callback(dev_id, mode, event, callback)
                         callback_count += 1
 
+        mark("callbacks")
         sequence_count = self._setup_profile()
+        mark("profile setup")
         # Status, not a problem: Info, so it is not in a Warning log.
         syslog.info(
             "Gremlin start: %s UI sequences, %s script callbacks, mode=%s",
@@ -483,6 +543,7 @@ class CodeRunner:
         )
 
         self.event_handler.build_event_lookup(running.modes.mode_list())
+        mark("event lookup")
 
         evt_listener = event_handler.EventListener()
         module_bus = InputModuleRuntime()
@@ -495,11 +556,13 @@ class CodeRunner:
         module_bus.key_event.connect(self.event_handler.process_event)
         evt_listener.virtual_event.connect(self.event_handler.process_event)
         evt_listener.gremlin_active = True
+        mark("input modules")
 
         user_script.periodic_registry.start()
         macro.MacroManager().start()
         audio_player.AudioPlayer().start()
         tts.TTSManager().start()
+        mark("scripts, macro, sound, speech")
 
         # The toolbar mode, on a fresh mode stack (06 Q3, decision R3).
         mode_manager.ModeManager().start_run(start_mode)
@@ -510,6 +573,7 @@ class CodeRunner:
         # listeners, connected when they were made). The start itself is not
         # one: the axes are sent once, after the Initial Values (06 S8).
         self._listen_to_mode_changes(True)
+        mark("mode start")
         self.event_handler.resume()
         # Pause stops mouse motion (06 S90); connected after the resume above.
         self._listen_to_pause(True)
@@ -517,16 +581,23 @@ class CodeRunner:
         shared_state.set_runtime_active(True)
 
         sendinput.MouseMotionManager().start()
+        mark("mouse motion")
         OscRuntime().start()
+        mark("OSC start")
         self._refresh_axes()
+        mark("initial values")
         # After the Initial Values: the first resend shows them (D-09-OSC-FEEDBACK).
         osc_feedback.start(_profile_path(running))
+        mark("OSC feedback")
 
     def stop(self) -> None:
         """Ends the Run: run_scope runs the Stop stages. Safe to call twice."""
+        marks = _Marks()
         if self._running and not self._restarting:
             trace.event("Profile stopped")
         run_scope.stop()
+        marks.mark("stop stages")
+        marks.report("stop")
         self._running = False
         shared_state.running_profile = None
 

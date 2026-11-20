@@ -22,8 +22,11 @@ returns.
 
 from __future__ import annotations
 
+import ctypes
 import faulthandler
 import logging
+import os
+import sys
 import tempfile
 import threading
 
@@ -47,6 +50,133 @@ def thread_stacks() -> str:
         faulthandler.dump_traceback(file=out, all_threads=True)
         out.seek(0)
         return f"Threads: {names}\n{out.read()}"
+
+
+# Wait Chain Traversal (advapi32): what Windows says a thread is waiting on.
+WCT_MAX_NODE_COUNT = 16
+WCTP_GETINFO_ALL_FLAGS = 0xF
+_OBJECT_TYPES = (
+    "CriticalSection", "SendMessage", "Mutex", "Alpc", "Com", "ThreadWait",
+    "ProcessWait", "Thread", "ComActivation", "Unknown", "SocketIo", "SmbIo",
+)
+_OBJECT_STATUSES = (
+    "NoAccess", "Running", "Blocked", "PidOnly", "PidOnlyRpcss", "Owned",
+    "NotOwned", "Abandoned", "Unknown", "Error",
+)
+
+_main_thread_id: int | None = None
+
+
+class _LockObject(ctypes.Structure):
+    _fields_ = [
+        ("ObjectName", ctypes.c_wchar * 128),
+        ("Timeout", ctypes.c_longlong),
+        ("Alertable", ctypes.c_int),
+    ]
+
+
+class _ThreadObject(ctypes.Structure):
+    _fields_ = [
+        ("ProcessId", ctypes.c_uint32),
+        ("ThreadId", ctypes.c_uint32),
+        ("WaitTime", ctypes.c_uint32),
+        ("ContextSwitches", ctypes.c_uint32),
+    ]
+
+
+class _NodeUnion(ctypes.Union):
+    _fields_ = [("LockObject", _LockObject), ("ThreadObject", _ThreadObject)]
+
+
+class WaitChainNodeInfo(ctypes.Structure):
+    """WAITCHAIN_NODE_INFO."""
+
+    _fields_ = [
+        ("ObjectType", ctypes.c_uint32),
+        ("ObjectStatus", ctypes.c_uint32),
+        ("u", _NodeUnion),
+    ]
+
+
+def _enum_name(names: tuple[str, ...], value: int) -> str:
+    return names[value - 1] if 1 <= value <= len(names) else f"#{value}"
+
+
+def format_wait_chain(
+    nodes: list[WaitChainNodeInfo],
+    is_cycle: bool,
+    thread_names: dict[int, str] | None = None,
+) -> str:
+    """The "Main thread wait chain (Windows):" block, one line per node."""
+    names = thread_names or {}
+    lines = ["Main thread wait chain (Windows):"]
+    for n in nodes:
+        kind = _enum_name(_OBJECT_TYPES, n.ObjectType)
+        status = _enum_name(_OBJECT_STATUSES, n.ObjectStatus)
+        text = f"  {kind}, {status}"
+        if kind == "Thread":
+            pid, tid = n.u.ThreadObject.ProcessId, n.u.ThreadObject.ThreadId
+            if pid == os.getpid():
+                name = names.get(tid)
+                text += f", this process, thread {tid}" + (f" ({name})" if name else "")
+            else:
+                text += f", process {pid}, thread {tid}"
+        else:
+            obj = n.u.LockObject.ObjectName
+            if obj:
+                text += f", {obj}"
+        lines.append(text)
+    if is_cycle:
+        lines.append("  deadlock cycle")
+    return "\n".join(lines)
+
+
+def _query_wait_chain(thread_id: int) -> tuple[list[WaitChainNodeInfo], bool]:
+    """Asks Windows for the wait chain of a thread (raises on failure)."""
+    from ctypes import wintypes
+
+    advapi = ctypes.WinDLL("advapi32", use_last_error=True)
+    advapi.OpenThreadWaitChainSession.restype = wintypes.HANDLE
+    advapi.OpenThreadWaitChainSession.argtypes = [wintypes.DWORD, ctypes.c_void_p]
+    advapi.GetThreadWaitChain.restype = wintypes.BOOL
+    advapi.GetThreadWaitChain.argtypes = [
+        wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p,
+        ctypes.POINTER(wintypes.BOOL),
+    ]
+    advapi.CloseThreadWaitChainSession.argtypes = [wintypes.HANDLE]
+    session = advapi.OpenThreadWaitChainSession(0, None)
+    if not session:
+        raise OSError(f"OpenThreadWaitChainSession failed ({ctypes.get_last_error()})")
+    try:
+        nodes = (WaitChainNodeInfo * WCT_MAX_NODE_COUNT)()
+        count = wintypes.DWORD(WCT_MAX_NODE_COUNT)
+        cycle = wintypes.BOOL(0)
+        ok = advapi.GetThreadWaitChain(
+            session, None, WCTP_GETINFO_ALL_FLAGS, thread_id,
+            ctypes.byref(count), nodes, ctypes.byref(cycle),
+        )
+        if not ok:
+            raise OSError(f"GetThreadWaitChain failed ({ctypes.get_last_error()})")
+        return list(nodes[: min(count.value, WCT_MAX_NODE_COUNT)]), bool(cycle.value)
+    finally:
+        advapi.CloseThreadWaitChainSession(session)
+
+
+def wait_chain_block() -> str:
+    """What Windows reports the main thread is waiting on, as plain text.
+    Windows only (empty elsewhere); never raises. Runs on the watchdog thread."""
+    if sys.platform != "win32":
+        return ""
+    try:
+        tid = _main_thread_id or threading.main_thread().native_id
+        if not tid:
+            raise RuntimeError("main thread id unknown")
+        nodes, cycle = _query_wait_chain(tid)
+        names = {t.native_id: t.name for t in threading.enumerate() if t.native_id}
+        return format_wait_chain(nodes, cycle, names)
+    except Exception as e:
+        return f"Main thread wait chain: not available ({e})"
 
 
 def _recent_block() -> str:
@@ -113,6 +243,8 @@ class Watchdog(QtCore.QObject):
     def start(self) -> None:
         if self.running:
             return
+        global _main_thread_id
+        _main_thread_id = threading.main_thread().native_id
         self._last_beat = clock.monotonic()
         self._timer.start()
         self._stop.clear()
@@ -175,6 +307,7 @@ class Watchdog(QtCore.QObject):
                 _log.warning(
                     f"{text} Where every thread is:\n"
                     + thread_stacks()
+                    + ("\n" + wait_chain_block()).rstrip("\n")
                     + "\n"
                     + _recent_block()
                 )
