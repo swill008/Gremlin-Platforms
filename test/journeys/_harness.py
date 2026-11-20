@@ -479,13 +479,17 @@ class Journey:
         processes events until the Run is (running=True) or is not running,
         and the Starting status has passed; returns the state it ended in
         (bounded, so a Run that never starts fails the story's own check)."""
-        from gremlin import clock
+        from gremlin import clock, run_scope
 
         deadline = clock.monotonic() + timeout
         while clock.monotonic() < deadline:
             pump(10)
-            if self.backend.runner.is_running() == running and not (
-                self.backend.gremlinStarting
+            # is_running() turns False at Stop's first stage; the drivers are
+            # reset in a later one, so a Stop also waits for every stage.
+            if (
+                self.backend.runner.is_running() == running
+                and not self.backend.gremlinStarting
+                and (running or not run_scope.stopping())
             ):
                 break
         return bool(self.backend.runner.is_running())

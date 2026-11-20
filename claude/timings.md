@@ -1174,3 +1174,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | OT removal (OT-1,3,4,5) + R2 rename + release bridge + OT-2b converter: OTCHECK, OT12, OT345, OTDOCS, RENAME, BRIDGE, OT2AUTO (Opus), DOCS2 | release | 3-8 min each | 2-6 min each | 08:23-08:38 |
 | 2026-11-20 | Full run + lead integration fixes (start-up calls, layer rule, tests) | test | ~7 min | 9 min run + 10 min fixes | 08:38-08:57 |
 | 2026-11-20 | Release notes 1.1.0 rewritten with the user (public, concise) | docs | - | ~15 min | 08:40-08:55 |
+| 2026-11-20 | CI fix: bold in 1.1.0 notes + What's New tests (lead) | fix | ~4 min | ~3 min (plus a stopped test-helper attempt) | 10:11-10:14 |
+| 2026-11-20 | CI fix 2: journey Stop wait (race seen on CI) | fix | ~4 min | ~4 min | 10:37-10:41 |
