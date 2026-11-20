@@ -532,6 +532,158 @@ def native_stack_block(thread_id: int | None = None, samples: int = 2) -> str:
     except Exception as e:
         return f"Main thread native stack: not available ({e})"
 
+# Thread facts (Windows): the thread's CPU time over a short window and what
+# lives on it. Another thread's message queue can't be read, so the windows
+# it owns and where the low-level hooks are installed stand in for it.
+CPU_WINDOW_S = 0.5
+_THREAD_QUERY_LIMITED_INFORMATION = 0x0800
+
+
+def _thread_cpu_ms(handle: int) -> tuple[float, float]:
+    from ctypes import wintypes
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    ft = [wintypes.FILETIME() for _ in range(4)]
+    k32.GetThreadTimes.argtypes = [wintypes.HANDLE] + [ctypes.c_void_p] * 4
+    if not k32.GetThreadTimes(handle, *[ctypes.byref(f) for f in ft]):
+        raise OSError(f"GetThreadTimes failed ({ctypes.get_last_error()})")
+
+    def ms(f: wintypes.FILETIME) -> float:
+        return ((f.dwHighDateTime << 32) | f.dwLowDateTime) / 10000.0
+
+    return ms(ft[2]), ms(ft[3])
+
+
+def cpu_block(thread_id: int | None = None) -> str:
+    """The thread's kernel and user CPU time over CPU_WINDOW_S: kernel time
+    means busy in Windows, user time busy in Qt or Python. Windows only
+    (empty elsewhere); never raises; runs on the watchdog thread."""
+    if sys.platform != "win32":
+        return ""
+    handle = 0
+    try:
+        tid = thread_id or _main_thread_id or threading.main_thread().native_id
+        if not tid:
+            raise RuntimeError("main thread id unknown")
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.OpenThread.restype = ctypes.c_void_p
+        k32.OpenThread.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+        k32.CloseHandle.argtypes = [ctypes.c_void_p]
+        handle = k32.OpenThread(_THREAD_QUERY_LIMITED_INFORMATION, 0, tid) or 0
+        if not handle:
+            raise OSError(f"OpenThread failed ({ctypes.get_last_error()})")
+        k0, u0 = _thread_cpu_ms(handle)
+        t0 = clock.monotonic()
+        threading.Event().wait(CPU_WINDOW_S)
+        k1, u1 = _thread_cpu_ms(handle)
+        took = max(clock.monotonic() - t0, 0.001)
+        kernel, user = k1 - k0, u1 - u0
+        pct = (kernel + user) / (took * 1000.0) * 100.0
+        return (
+            f"Main thread CPU over {CPU_WINDOW_S:g} s: kernel {kernel:.0f} ms, "
+            f"user {user:.0f} ms ({pct:.0f} % of one core)"
+        )
+    except Exception as e:
+        return f"Main thread CPU: not available ({e})"
+    finally:
+        if handle:
+            try:
+                ctypes.WinDLL("kernel32").CloseHandle(ctypes.c_void_p(handle))
+            except Exception:
+                pass
+
+
+def windows_block(thread_id: int | None = None) -> str:
+    """The top-level windows the thread owns (class names) and its GUI state
+    flags and window handles. Windows only (empty elsewhere); never raises;
+    runs on the watchdog thread."""
+    if sys.platform != "win32":
+        return ""
+    try:
+        from ctypes import wintypes
+
+        tid = thread_id or _main_thread_id or threading.main_thread().native_id
+        if not tid:
+            raise RuntimeError("main thread id unknown")
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        user32.EnumThreadWindows.argtypes = [wintypes.DWORD, proc, wintypes.LPARAM]
+        user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+        classes: dict[str, int] = {}
+        total = [0]
+
+        def each(hwnd: int, _lparam: int) -> bool:
+            buf = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(hwnd, buf, 256)
+            classes[buf.value] = classes.get(buf.value, 0) + 1
+            total[0] += 1
+            return True
+
+        user32.EnumThreadWindows(tid, proc(each), 0)
+        # no windows for a thread that doesn't exist, or one without any
+        if not total[0] and not any(t.native_id == tid for t in threading.enumerate()):
+            raise RuntimeError("thread not found or owns no windows")
+        listed = ", ".join(f"{k}: {v}" for k, v in sorted(classes.items()))
+        lines = [f"Main thread windows: {total[0]} ({listed})"]
+
+        class GUIThreadInfo(ctypes.Structure):
+            _fields_ = [
+                ("cbSize", wintypes.DWORD), ("flags", wintypes.DWORD),
+                ("hwndActive", wintypes.HWND), ("hwndFocus", wintypes.HWND),
+                ("hwndCapture", wintypes.HWND), ("hwndMenuOwner", wintypes.HWND),
+                ("hwndMoveSize", wintypes.HWND), ("hwndCaret", wintypes.HWND),
+                ("rcCaret", wintypes.RECT),
+            ]
+
+        info = GUIThreadInfo()
+        info.cbSize = ctypes.sizeof(info)
+        user32.GetGUIThreadInfo.argtypes = [wintypes.DWORD, ctypes.c_void_p]
+        if user32.GetGUIThreadInfo(tid, ctypes.byref(info)):
+            lines.append(
+                f"Main thread GUI state: flags 0x{info.flags:X}, "
+                f"active {info.hwndActive or 0:#x}, focus {info.hwndFocus or 0:#x}, "
+                f"capture {info.hwndCapture or 0:#x}, "
+                f"menu {info.hwndMenuOwner or 0:#x}, "
+                f"move/size {info.hwndMoveSize or 0:#x}"
+            )
+        else:
+            lines.append(
+                "Main thread GUI state: not available "
+                f"(GetGUIThreadInfo failed ({ctypes.get_last_error()}))"
+            )
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Main thread windows: not available ({e})"
+
+
+def hooks_block(thread_id: int | None = None) -> str:
+    """Whether a low-level keyboard or mouse hook is installed on the main
+    thread, from the program's own state (each hook runs on its own thread).
+    Never raises; runs on the watchdog thread."""
+    try:
+        tid = thread_id or _main_thread_id or threading.main_thread().native_id
+        from gremlin import windows_event_hook as weh
+        from gremlin.common import SingletonMetaclass
+
+        parts: list[str] = []
+        on_main = False
+        for name, cls in (("keyboard", weh.KeyboardHook), ("mouse", weh.MouseHook)):
+            hook = SingletonMetaclass._instances.get(cls)
+            thread = getattr(hook, "_listen_thread", None)
+            if hook is None or thread is None or not getattr(hook, "_running", False):
+                parts.append(f"{name} not installed")
+            elif thread.native_id == tid:
+                on_main = True
+                parts.append(f"{name} on the main thread")
+            else:
+                parts.append(f"{name} on its own thread '{thread.name}'")
+        return (
+            f"Low-level hooks on the main thread: {'yes' if on_main else 'no'} "
+            f"({'; '.join(parts)})"
+        )
+    except Exception as e:
+        return f"Low-level hooks on the main thread: not available ({e})"
+
 
 def _recent_block() -> str:
     """The recent events and the last known window state, as plain text
@@ -663,6 +815,9 @@ class Watchdog(QtCore.QObject):
                     + thread_stacks()
                     + ("\n" + wait_chain_block()).rstrip("\n")
                     + ("\n" + native_stack_block()).rstrip("\n")
+                    + ("\n" + cpu_block()).rstrip("\n")
+                    + ("\n" + windows_block()).rstrip("\n")
+                    + ("\n" + hooks_block()).rstrip("\n")
                     + "\n"
                     + _recent_block()
                 )
