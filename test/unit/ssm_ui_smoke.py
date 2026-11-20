@@ -618,6 +618,66 @@ wake["back"] = {
 }
 out["wake"] = wake
 
+# Switch off per device (S12, S34): a switch per row, on at first; a virtual
+# row's is off and disabled with its note; toggling asks the model.
+calls.devices.append(
+    ssm_ui_fakes.DeviceRate("vJoy Device", "ROOT/HIDCLASS/0001", 1, 4, 20.0)
+)
+emit("ssmRefreshDevices", "clicked")
+until(lambda: int(prop("ssmDeviceList", "count")) == 3)
+settle()
+
+
+def device_view() -> dict:
+    view = win.findChild(QtQuick.QQuickItem, "ssmDeviceList")
+    content = view.property("contentItem")
+
+    def ordered(name: str) -> list:
+        return sorted(
+            _items_named(content, name),
+            key=lambda o: float(o.mapToItem(view, QtCore.QPointF(0, 0)).y()),
+        )
+
+    return {
+        "switches": [
+            {
+                "checked": bool(o.property("checked")),
+                "enabled": bool(o.property("enabled")),
+                "name": str(o.property("Accessible.name") or ""),
+            }
+            for o in ordered("ssmSwitchOffSwitch")
+        ],
+        "notes": [
+            (str(o.property("text")), bool(o.property("visible")))
+            for o in ordered("ssmDeviceVirtual")
+        ],
+        "objs": ordered("ssmSwitchOffSwitch"),
+    }
+
+
+first = device_view()
+header = child("ssmDevicesSwitchOffHeader")
+out["switchOff"] = {
+    "header": str(header.property("text")),
+    "headerVisible": bool(header.property("visible")),
+    "before": {k: v for k, v in first.items() if k != "objs"},
+    "rows": [
+        (str(d["name"]), bool(d["switchOff"]), bool(d["virtual"]))
+        for d in ev("_ssm.devices")
+    ],
+}
+pick = [bool(d["virtual"]) for d in ev("_ssm.devices")].index(False)
+out["switchOff"]["picked"] = pick
+sw0 = first["objs"][pick]
+sw0.setProperty("checked", False)
+QtCore.QMetaObject.invokeMethod(sw0, "toggled")
+settle()
+after = device_view()
+out["switchOff"]["after"] = {k: v for k, v in after.items() if k != "objs"}
+out["switchOff"]["afterRows"] = [
+    (str(d["name"]), bool(d["switchOff"])) for d in ev("_ssm.devices")
+]
+
 win.close()
 settle()
 out["closed"] = not bool(win.property("visible"))

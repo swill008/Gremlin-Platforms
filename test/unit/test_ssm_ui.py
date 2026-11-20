@@ -1569,6 +1569,35 @@ def test_window_refresh_devices(window: dict) -> None:
     ]
 
 
+def test_window_device_rows_have_a_switch_off_switch(window: dict) -> None:
+    """S12, S35: a Switch off column; on at first; a virtual row's switch is
+    off and disabled with its note; toggling goes to the model."""
+    so = window["switchOff"]
+    assert so["header"] == "Switch off" and so["headerVisible"]
+    rows = so["rows"]  # (name, switchOff, virtual), in the list's order
+    assert sorted(r[0] for r in rows) == [
+        "PD200X Microphone (buttons)",
+        "VKBSim NXT SEM THQ FSM.GA",
+        "vJoy Device",
+    ]
+    assert [(r[1], r[2]) for r in rows] == [
+        (not r[0].startswith("vJoy"), r[0].startswith("vJoy")) for r in rows
+    ]
+    sw = so["before"]["switches"]
+    # On and enabled for a real device; off and disabled for the virtual one.
+    assert [(s["checked"], s["enabled"]) for s in sw] == [
+        (r[1], not r[2]) for r in rows
+    ]
+    notes = so["before"]["notes"]
+    assert [n[1] for n in notes] == [r[2] for r in rows]
+    assert {n[0] for n in notes} == {"(virtual: never switched off)"}
+    # The first real device's switch was turned off: the model row follows, the switch
+    # stays off, the others are untouched.
+    want = [r[1] and i != so["picked"] for i, r in enumerate(rows)]
+    assert [r[1] for r in so["afterRows"]] == want
+    assert [s["checked"] for s in so["after"]["switches"]] == want
+
+
 def test_window_three_sections_stacked_each_with_its_button(window: dict) -> None:
     """Contract-3: Devices, Programs, System, stacked; each section holds its
     own Refresh button, list and message; the texts as the mock-up."""
@@ -1593,7 +1622,8 @@ def test_window_three_sections_stacked_each_with_its_button(window: dict) -> Non
         "Devices",
         "Refresh Devices",
         "Devices that never go quiet and keep Windows' idle time at 0. "
-        "Screen Saver Mode ignores them.",
+        "Screen Saver Mode ignores them, and switches off the ones marked "
+        "Switch off while the displays are off.",
     ]
     assert t["ssmSectionPrograms"][:3] == [
         "Programs",

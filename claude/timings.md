@@ -1159,3 +1159,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | FREEZE: displays-off freeze study, 5 dumps (Opus) | research | 5-10 min | 6 min | 05:42-05:48 |
 | 2026-11-20 | WEBFREEZE: web research on the freeze (Sonnet) | research | 5-10 min | 1-2 min | 05:47-05:48 |
 | 2026-11-20 | WAITCHAIN + STARTMARKS + SPEC5: freeze measuring (Sonnet, Sonnet, Haiku) | fix | 3-8 min | 1-2 min each | 05:51-05:53 |
+| 2026-11-20 | SWPY + SWQML + SWSPEC: Switch off per device, virtual never switched off (Sonnet, Sonnet, Haiku) | feature | 3-8 min | 1-5 min | 05:59-06:04 |
+| 2026-11-20 | Quick tests: SSM window, e2e, switch, docs (188) | test | ~2 min | 1 min | 06:04-06:05 |

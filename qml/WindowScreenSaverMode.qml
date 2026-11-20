@@ -492,7 +492,8 @@ ApplicationWindow {
                             objectName: "ssmSectionDevices"
                             title: "Devices"
                             description: "Devices that never go quiet and keep Windows' idle time at 0. "
-                                         + "Screen Saver Mode ignores them."
+                                         + "Screen Saver Mode ignores them, and switches off the ones "
+                                         + "marked Switch off while the displays are off."
                             buttonName: "ssmRefreshDevices"
                             buttonText: _ssm.scanningDevices ? "Checking… (4 s)" : "Refresh Devices"
                             buttonEnabled: !_ssm.scanningDevices
@@ -505,6 +506,7 @@ ApplicationWindow {
                                 visible: _ssm.devices.length > 0
                                 Label { text: "Device"; color: Style.fgMuted; Layout.fillWidth: true }
                                 Label { text: "Reports / s"; color: Style.fgMuted }
+                                Label { objectName: "ssmDevicesSwitchOffHeader"; text: "Switch off"; color: Style.fgMuted }
                             }
                             ListView {
                                 objectName: "ssmDeviceList"
@@ -513,17 +515,54 @@ ApplicationWindow {
                                 interactive: false
                                 model: _ssm.devices
                                 delegate: RowLayout {
+                                    id: _devRow
                                     required property var modelData
                                     width: ListView.view.width
-                                    Label {
+                                    ColumnLayout {
                                         Layout.fillWidth: true
-                                        elide: Text.ElideRight
-                                        text: modelData.name
-                                        color: Style.fg
+                                        spacing: 0
+                                        Label {
+                                            objectName: "ssmDeviceName"
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                            text: _devRow.modelData.name
+                                            color: Style.fg
+                                        }
+                                        Label {
+                                            objectName: "ssmDeviceVirtual"
+                                            Layout.fillWidth: true
+                                            visible: !!_devRow.modelData.virtual
+                                            wrapMode: Text.Wrap
+                                            text: "(virtual: never switched off)"
+                                            color: Style.fgMuted
+                                            font.pixelSize: Style.dp(12)
+                                        }
                                     }
                                     Label {
-                                        text: Math.round(modelData.rate)
+                                        text: Math.round(_devRow.modelData.rate)
                                         color: Style.fg
+                                    }
+                                    Switch {
+                                        id: _switchOff
+                                        objectName: "ssmSwitchOffSwitch"
+                                        enabled: !_devRow.modelData.virtual
+                                        // The saved choice, read again from the
+                                        // model so a toggle keeps the binding.
+                                        function reread() {
+                                            checked = !_devRow.modelData.virtual
+                                                      && _devRow.modelData.switchOff !== false
+                                        }
+                                        Component.onCompleted: reread()
+                                        onToggled: _ssm.setSwitchOff(_devRow.modelData.instanceId, checked)
+                                        Connections {
+                                            target: _devRow
+                                            function onModelDataChanged() { _switchOff.reread() }
+                                        }
+                                        Connections {
+                                            target: _ssm
+                                            function onDevicesChanged() { _switchOff.reread() }
+                                        }
+                                        Accessible.name: "Switch off " + _devRow.modelData.name
                                     }
                                 }
                             }

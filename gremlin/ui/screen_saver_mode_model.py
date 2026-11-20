@@ -267,6 +267,24 @@ def apply_saved() -> None:
 # The saved Devices list (S27) ---------------------------------------------
 
 
+_VIRTUAL_NAMES = ("VJOY", "VIRTUAL JOYSTICK", "VIGEM", "VIRTUAL GAMEPAD")
+_VIRTUAL_IDS = (
+    "VID_1234&PID_BEAD",  # vJoy (gremlin.device_reset._VJOY)
+    "VIGEM",
+    "ROOT\\",
+    "HID_DEVICE_SYSTEM_VHF",
+)
+
+
+def is_virtual_device(name: str, instance_id: str) -> bool:
+    """True for a software device (vJoy, ViGEm, a virtual HID): Screen Saver
+    Mode never switches these off (S12)."""
+    upper_name, upper_id = str(name).upper(), str(instance_id).upper()
+    return any(m in upper_name for m in _VIRTUAL_NAMES) or any(
+        m in upper_id for m in _VIRTUAL_IDS
+    )
+
+
 def _device_row(row: object) -> dict | None:
     """A saved row as the Devices list shows it, None when it isn't one."""
     if not isinstance(row, dict):
@@ -279,36 +297,66 @@ def _device_row(row: object) -> dict | None:
         rate = float(row.get("rate", 0.0) or 0.0)
     except (TypeError, ValueError):
         rate = 0.0
-    return {"name": name, "instanceId": instance_id, "rate": rate}
+    virtual = bool(row.get("virtual", False)) or is_virtual_device(name, instance_id)
+    switch_off = bool(row.get("switch_off", row.get("switchOff", True)))
+    return {
+        "name": name,
+        "instanceId": instance_id,
+        "rate": rate,
+        "switchOff": switch_off and not virtual,
+        "virtual": virtual,
+    }
 
 
 def saved_devices() -> list[dict]:
     """The last Refresh Devices result, as the Devices list shows it
-    ({"name", "instanceId", "rate"}); [] before the first press."""
+    ({"name", "instanceId", "rate", "switchOff", "virtual"}); [] before the
+    first press."""
     raw = _value(DEVICES)
     rows = [_device_row(r) for r in (raw if isinstance(raw, list) else [])]
     return [r for r in rows if r is not None]
 
 
+def with_switch(rows: list[dict]) -> list[dict]:
+    """Rows from a scan with switchOff/virtual filled in: the saved choice by
+    instance id, on for a new device, always off for a virtual one."""
+    saved = {r["instanceId"]: r["switchOff"] for r in saved_devices()}
+    out = []
+    for r in rows:
+        iid = str(r.get("instanceId", ""))
+        virtual = is_virtual_device(str(r.get("name", "")), iid)
+        on = bool(r.get("switchOff", saved.get(iid, True))) and not virtual
+        out.append({**r, "switchOff": on, "virtual": virtual})
+    return out
+
+
 def save_devices(rows: list[dict]) -> None:
     """Saves a Refresh Devices result (S27): {"name", "instance_id"} per
-    device, with its rate so the list shows as it was."""
+    device, with its rate so the list shows as it was, and its Switch off
+    choice (S12; kept by instance id across a Refresh)."""
     stored = [
         {
-            "name": str(r.get("name", "")),
-            "instance_id": str(r.get("instanceId", "")),
+            "name": str(r["name"]),
+            "instance_id": str(r["instanceId"]),
             "rate": float(r.get("rate", 0.0) or 0.0),
+            "switch_off": bool(r["switchOff"]),
+            "virtual": bool(r["virtual"]),
         }
-        for r in rows
-        if r.get("instanceId")
+        for r in with_switch([r for r in rows if r.get("instanceId")])
     ]
     if stored != _value(DEVICES):
         _set(DEVICES, stored)
 
 
 def _saved_pairs() -> list[tuple[str, str]]:
-    """The saved list as DeviceDisabler.disable takes it: (name, id)."""
-    return [(r["name"], r["instanceId"]) for r in saved_devices()]
+    """The saved devices to switch off, as DeviceDisabler.disable takes
+    them: (name, id); the ones switched off in the list and virtual ones
+    are left out (S12, S21)."""
+    return [
+        (r["name"], r["instanceId"])
+        for r in saved_devices()
+        if r["switchOff"] and not r["virtual"]
+    ]
 
 
 # The saved Wake PC list (S28-S30) -------------------------------------------
@@ -441,7 +489,7 @@ def helper_wanted() -> bool:
     """S25: Screen Saver Mode on, Power off displays on, saved list not
     empty."""
     try:
-        return bool(_value(ENABLED)) and bool(_value(OFF_ON)) and bool(saved_devices())
+        return bool(_value(ENABLED)) and bool(_value(OFF_ON)) and bool(_saved_pairs())
     except Exception:
         _log.exception("Screen Saver Mode: the helper's settings could not be read")
         return False
@@ -1147,6 +1195,26 @@ class ScreenSaverModeModel(QtCore.QObject):
     def devices(self) -> list:
         return list(self._devices)
 
+    @QtCore.Slot(str, bool)
+    def setSwitchOff(self, instance_id: str, on: bool) -> None:
+        """S12: Switch off on/off for a device row; a virtual device stays
+        off. Saved at once (History records the setting)."""
+        instance_id = str(instance_id)
+        _trace(f"Switch off {'on' if on else 'off'} pressed: {instance_id}")
+        rows = [dict(r) for r in self._devices]
+        hit = [r for r in rows if r["instanceId"] == instance_id]
+        if not hit or hit[0].get("virtual"):
+            return
+        hit[0]["switchOff"] = bool(on)
+        self._devices = rows
+        try:
+            save_devices(rows)
+            self._saved = saved_devices()
+        except Exception:
+            _log.exception("Screen Saver Mode: the Devices list could not be saved")
+        ensure_helper()
+        self.devicesChanged.emit()
+
     @QtCore.Property(str, notify=devicesChanged)
     def devicesMessage(self) -> str:
         return self._devices_message
@@ -1210,11 +1278,12 @@ class ScreenSaverModeModel(QtCore.QObject):
             _log.warning(f"Screen Saver Mode: {result}")
         else:
             rows = result if isinstance(result, list) else []
-            self._devices = sorted(rows, key=lambda d: -d["rate"])
+            self._devices = with_switch(sorted(rows, key=lambda d: -d["rate"]))
             # S27: kept across restarts; a filled list may start the helper.
             try:
                 save_devices(self._devices)
                 self._saved = saved_devices()
+                self._devices = list(self._saved)
             except Exception:
                 _log.exception("Screen Saver Mode: the Devices list could not be saved")
             ensure_helper()
