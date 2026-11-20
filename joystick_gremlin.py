@@ -1087,6 +1087,11 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         gremlin.device_map_settings_once.run_if_needed()  # ONE-TIME (tracker OT-3)
         register_config_options()
         gremlin.library_part_id_once.run_if_needed()  # ONE-TIME (tracker OT-4)
+        # Keep tracing on after a restart (01 S186): tracing and its rows
+        # come back on, with the state snapshot (S185).
+        from gremlin.ui import trace_model as _trace_model
+
+        _trace_model.start()
         # Screen Saver Mode (12 S24): devices it disabled and didn't get
         # back are re-enabled before the window shows (async).
         _recover_devices()

@@ -185,6 +185,8 @@ _HIDDEN = {
     ("global", "screen-saver-mode", "power-off-on"),
     ("global", "screen-saver-mode", "power-off-wait-s"),
     ("global", "screen-saver-mode", "hold-fullscreen"),
+    # Wait for devices to switch off (12 S36): set in its own window.
+    ("global", "screen-saver-mode", "devices-wait-s"),
     # The last Refresh Devices result (12 S27).
     ("global", "screen-saver-mode", "devices"),
     # The Wake PC tab's list (12 S28).

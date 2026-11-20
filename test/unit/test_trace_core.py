@@ -32,7 +32,7 @@ def _dev() -> uuid.UUID:
 
 
 def _points() -> list[str]:
-    return [line[2] for line in trace.lines()]
+    return [line[2] for line in trace.lines() if line[1] != trace.STATE]
 
 
 def test_off_by_default_writes_nothing_and_opens_no_file(
@@ -68,7 +68,8 @@ def test_on_writes_lines_and_file(tmp_path: pathlib.Path) -> None:
     assert hooked == [True, False]
     trace._hooks.remove(hook)
     assert _points() == [trace.EVENT, trace.RAW, trace.EVENT]
-    assert trace.lines()[1][1:4] == ("Stick Button 2", trace.RAW, "pressed")
+    shown = [x for x in trace.lines() if x[1] != trace.STATE]
+    assert shown[1][1:4] == ("Stick Button 2", trace.RAW, "pressed")
     text = (tmp_path / "logs" / "trace.log").read_text(encoding="utf-8")
     assert "Tracing on" in text and "Stick Button 2  RAW  pressed" in text
     assert "Button 3" not in text

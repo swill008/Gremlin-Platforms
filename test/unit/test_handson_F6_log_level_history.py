@@ -78,20 +78,18 @@ def cfg(
                 handler.setLevel(handler_level)
 
 
-def test_diagnostic_logs_from_options_is_recorded_and_restored(
+def test_diagnostic_logs_from_options_is_saved_but_not_in_history(
     store: Path, cfg: config.Configuration
 ) -> None:
+    """User 2026-11-20: troubleshooting settings are never in History. An
+    older entry that has the key can still be put back."""
     log_option.LogLevelModel().setLevel("Error")
     cfg.save_now()
-    # Newest first: this change is the newest settings entry.
-    entries = [e for e in _settle() if e["area"] == "settings"]
-    assert entries, "no History entry for the Diagnostic logs level"
-    entry = entries[0]
-    assert entry["before"] == {_KEY: "Warning"}
-    assert entry["after"] == {_KEY: "Error"}
+    assert not [e for e in _settle() if e["area"] == "settings"]
+    assert cfg.value("global", "general", "log-level") == "Error"
     assert logging.getLogger("system").level == logging.ERROR
 
-    ok, _message = history_model._restore_settings(entry["before"])
+    ok, _message = history_model._restore_settings({_KEY: "Warning"})
     assert ok
     assert cfg.value("global", "general", "log-level") == "Warning"
     assert logging.getLogger("system").level == logging.WARNING

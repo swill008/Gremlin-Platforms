@@ -189,6 +189,15 @@ ColumnLayout {
                 : "Follow the ticked controls from the device to vJoy; "
                     + "keeps running when this window closes"
         }
+        CheckBox {
+            objectName: "traceKeepOn"
+            text: "Keep tracing on after a restart"
+            checked: _root.view.keepOn
+            onToggled: _root.view.keepOn = checked
+            ToolTip.visible: hovered
+            ToolTip.text: "Tracing and the ticked rows start again when the "
+                + "program starts"
+        }
         Label {
             objectName: "traceSince"
             text: _root.view.sinceText
@@ -493,8 +502,8 @@ ColumnLayout {
                     wrapMode: Text.WordWrap
                     color: Style.fgMuted
                     font.pixelSize: Style.dp(11)
-                    text: "Ticks are kept. Tracing always starts off when the program "
-                        + "starts. Every trace also writes device plug/unplug, "
+                    text: "Ticks are kept. Tracing starts off when the program "
+                        + "starts unless Keep tracing on is ticked. Every trace also writes device plug/unplug, "
                         + "Start/Stop and HidHide changes."
                 }
             }

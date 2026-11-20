@@ -318,17 +318,34 @@ ApplicationWindow {
 
                     Item { Layout.preferredHeight: Style.dp(6) }
 
-                    // S2: the on/off switch.
-                    Switch {
-                        id: _enabled
-                        objectName: "ssmEnabled"
+                    // S2: the on/off switch; Test now on the right.
+                    RowLayout {
+                        Layout.fillWidth: true
                         Layout.leftMargin: Style.dp(16)
-                        text: "Screen Saver Mode"
-                        font.bold: true
-                        property bool shown: _ssm.enabled
-                        onShownChanged: if (!pressed) checked = shown
-                        Component.onCompleted: checked = shown
-                        onToggled: _ssm.setEnabled(checked)
+                        Layout.rightMargin: Style.dp(16)
+                        Switch {
+                            id: _enabled
+                            objectName: "ssmEnabled"
+                            text: "Screen Saver Mode"
+                            font.bold: true
+                            property bool shown: _ssm.enabled
+                            onShownChanged: if (!pressed) checked = shown
+                            Component.onCompleted: checked = shown
+                            onToggled: _ssm.setEnabled(checked)
+                        }
+                        Item { Layout.fillWidth: true }
+                        Button {
+                            objectName: "ssmTestNow"
+                            highlighted: true
+                            // Greyed unless Screen Saver Mode is on (canTest);
+                            // a running countdown can always be cancelled.
+                            enabled: countdown > 0 || _ssm.canTest !== false
+                            ToolTip.visible: hovered && !enabled
+                            ToolTip.text: "Turn Screen Saver Mode on first"
+                            readonly property int countdown: _ssm.testCountdown || 0
+                            text: countdown > 0 ? "Cancel test (" + countdown + ")" : "Test now"
+                            onClicked: countdown > 0 ? _ssm.cancelTest() : _ssm.testNow()
+                        }
                     }
                     Label {
                         Layout.fillWidth: true
@@ -338,7 +355,8 @@ ApplicationWindow {
                         color: Style.fgMuted
                         text: "Keeps its own idle time from your keyboard and mouse only, so sticks "
                               + "and other devices that never go quiet can't keep your screens on. "
-                              + "Works only while Gremlin-Platforms is open."
+                              + "Works only while Gremlin-Platforms is open. "
+                              + "Test now runs the whole sequence after 5 s."
                     }
 
                     ColumnLayout {
@@ -381,6 +399,43 @@ ApplicationWindow {
                             setWait: function(text) { return _ssm.setOffWaitText(text) }
                             clearWait: function() { _ssm.clearOffWait() }
                         }
+                        // Wait for devices to switch off: no switch, seconds.
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Style.dp(8)
+                            Label {
+                                Layout.preferredWidth: Style.dp(200)
+                                text: "Wait for devices to switch off"
+                                color: Style.fg
+                                elide: Text.ElideRight
+                            }
+                            TextField {
+                                id: _waitBox
+                                objectName: "ssmDevicesWait"
+                                Layout.preferredWidth: Style.dp(110)
+                                validator: RegularExpressionValidator {
+                                    regularExpression: /^\s*\d{0,2}\s*(s)?\s*$/
+                                }
+                                readonly property int saved: _ssm.devicesWaitS || 10
+                                function show() { text = saved + " s" }
+                                onSavedChanged: if (!activeFocus) show()
+                                Component.onCompleted: show()
+                                onEditingFinished: {
+                                    var n = parseInt(text)
+                                    if (isNaN(n)) { show(); return }
+                                    n = Math.max(1, Math.min(60, n))
+                                    _ssm.setDevicesWaitS(n)
+                                    text = n + " s"
+                                }
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                color: Style.fgMuted
+                                font.pixelSize: Style.dp(12)
+                                text: "at most; the displays go off as soon as they're done"
+                            }
+                        }
                         Label {
                             Layout.fillWidth: true
                             wrapMode: Text.Wrap
@@ -398,83 +453,81 @@ ApplicationWindow {
                         }
 
                         // S7
-                        Switch {
-                            objectName: "ssmHoldFullscreen"
-                            text: "Hold off during full-screen programs"
-                            property bool shown: _ssm.holdFullscreen
-                            onShownChanged: if (!pressed) checked = shown
-                            Component.onCompleted: checked = shown
-                            onToggled: _ssm.setHoldFullscreen(checked)
-                        }
-
-                        // S9, S15: the status line.
-                        SectionHeading { Layout.fillWidth: true; text: "Status" }
-                        Label {
-                            objectName: "ssmListening"
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            text: _ssm.listeningText
-                            color: !_ssm.enabled ? Style.fgMuted
-                                 : _ssm.listening ? Style.okText : Style.dangerText
-                        }
-                        // S18: what last reset the idle time, next to it.
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: Style.dp(16)
-                            Label {
-                                objectName: "ssmIdleText"
-                                text: _ssm.idleText
-                                color: Style.fg
+                            spacing: Style.dp(8)
+                            Switch {
+                                objectName: "ssmHoldFullscreen"
+                                text: "Hold off during full-screen programs"
+                                property bool shown: _ssm.holdFullscreen
+                                onShownChanged: if (!pressed) checked = shown
+                                Component.onCompleted: checked = shown
+                                onToggled: _ssm.setHoldFullscreen(checked)
                             }
                             Label {
-                                objectName: "ssmLastReset"
                                 Layout.fillWidth: true
                                 wrapMode: Text.Wrap
-                                visible: text.length > 0
-                                text: _ssm.lastResetText
                                 color: Style.fgMuted
+                                font.pixelSize: Style.dp(12)
+                                text: "Gremlin-Platforms' own window never counts"
                             }
                         }
-                        Label {
-                            objectName: "ssmWindowsIdleText"
+
+                        // S9, S15: the status table (label | value Â· detail).
+                        SectionHeading { Layout.fillWidth: true; text: "Status" }
+                        GridLayout {
+                            objectName: "ssmStatusGrid"
                             Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            text: _ssm.windowsIdleText
-                            color: Style.fgMuted
-                        }
-                        Label {
-                            objectName: "ssmHoldText"
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            visible: text.length > 0
-                            text: _ssm.holdText
-                            color: _ssm.onHold ? Style.warn : Style.fg
-                        }
-                        // S6: a countdown line per timer, then "done".
-                        Label {
-                            objectName: "ssmSaverCountdown"
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            visible: text.length > 0
-                            text: _ssm.saverCountdownText
-                            color: Style.fg
-                        }
-                        Label {
-                            objectName: "ssmOffCountdown"
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            visible: text.length > 0
-                            text: _ssm.offCountdownText
-                            color: Style.fg
-                        }
-                        // S20: how often Windows turned the displays back on.
-                        Label {
-                            objectName: "ssmWakeCount"
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            visible: text.length > 0
-                            text: _ssm.wakeText
-                            color: Style.fgMuted
+                            columns: 2
+                            columnSpacing: Style.dp(12)
+                            rowSpacing: Style.dp(4)
+                            Repeater {
+                                model: _ssm.statusRows || []
+                                delegate: Item {
+                                    id: _stRow
+                                    required property var modelData
+                                    required property int index
+                                    Layout.columnSpan: 2
+                                    Layout.fillWidth: true
+                                    implicitHeight: _stLine.implicitHeight
+                                    RowLayout {
+                                        id: _stLine
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        spacing: Style.dp(12)
+                                        Label {
+                                            objectName: "ssmStatusLabel_" + _stRow.index
+                                            Layout.preferredWidth: Style.dp(150)
+                                            Layout.alignment: Qt.AlignTop
+                                            text: _stRow.modelData.label || ""
+                                            color: Style.fgMuted
+                                        }
+                                        Flow {
+                                            Layout.fillWidth: true
+                                            Label {
+                                                objectName: "ssmStatusValue_" + _stRow.index
+                                                text: _stRow.modelData.value || ""
+                                                color: _stRow.modelData.tone === "ok" ? Style.okText
+                                                     : _stRow.modelData.tone === "warn" ? Style.warn : Style.fg
+                                            }
+                                            Label {
+                                                objectName: "ssmStatusDetail_" + _stRow.index
+                                                visible: text.length > 0
+                                                text: (_stRow.modelData.detail || "").length > 0
+                                                      ? " · " + _stRow.modelData.detail : ""
+                                                color: Style.fgMuted
+                                                font.pixelSize: Style.dp(12)
+                                            }
+                                        }
+                                        Button {
+                                            objectName: "ssmDevicesRetry"
+                                            visible: _stRow.index === 8 && !!(_ssm && _ssm.devicesBackRetry)
+                                            text: "Try again"
+                                            onClicked: _ssm.retryDevices()
+                                        }
+                                    }
+                                }
+                            }
                         }
                         Label {
                             objectName: "ssmProblemText"

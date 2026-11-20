@@ -1101,6 +1101,7 @@ def test_the_tray_offers_run_or_stop_and_changes_its_icon(
     tray._current_icon = lambda: cls._current_icon(tray)
     tray._gremlin_status_change_cb = lambda: cls._gremlin_status_change_cb(tray)
     tray._toggle_run = lambda: cls._toggle_run(tray)
+    tray._ssm_functions = cls._ssm_functions
     # No main window here: toggleRun can't be reached, so the tray falls back
     # to the backend (with a window, Main.qml toggleRun asks first, 06 Q6).
     monkeypatch.setattr(
@@ -1179,3 +1180,58 @@ def test_auto_load_stops_on_focus_loss_unless_kept_running(
     monkeypatch.setattr(backend_mod.config, "get_profile_with_regex", lambda _p: None)
     backend_mod.Backend.klass._active_process_changed_cb(stub, "C:/other.exe")
     assert stub.calls == expected
+
+
+def test_tray_menu_has_screen_saver_items_and_they_call_the_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gremlin.ui import screen_saver_mode_model as model
+    from gremlin.ui import system_tray
+
+    win = _Win32()
+    flags: dict[str, int] = {}
+    original = win.AppendMenu
+    win.AppendMenu = lambda m, f, i, text: (  # type: ignore[method-assign]
+        flags.__setitem__(text, f),
+        original(m, f, i, text),
+    )[1]
+    monkeypatch.setattr(system_tray, "win32gui", win)
+    state = {"on": False}
+    calls: list[str] = []
+    monkeypatch.setattr(model, "ssm_enabled", lambda: state["on"], raising=False)
+    monkeypatch.setattr(
+        model,
+        "set_ssm_enabled",
+        lambda on: (calls.append(f"set {on}"), state.__setitem__("on", on)),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        model, "turn_displays_off_now", lambda: calls.append("off"), raising=False
+    )
+    cls = system_tray.SystemTrayIcon
+    tray: Any = SimpleNamespace(
+        _backend=SimpleNamespace(gremlinActive=False),
+        _window=SimpleNamespace(isVisible=lambda: False),
+        _hwnd=5,
+    )
+    for name in ("_ssm_functions", "_ssm_trace"):
+        setattr(tray, name, getattr(cls, name))
+    tray._toggle_screen_saver_mode = lambda: cls._toggle_screen_saver_mode(tray)
+    tray._turn_displays_off_now = lambda: cls._turn_displays_off_now(tray)
+
+    cls._show_menu(tray, 0, 0)
+    assert win.items[:3] == [
+        "Show Gremlin-Platforms",
+        "Screen Saver Mode",
+        "Turn displays off now",
+    ]
+    assert win.items[-1] == "Exit Gremlin-Platforms"
+    assert not flags["Screen Saver Mode"] & system_tray.win32con.MF_CHECKED
+
+    ssm_id = system_tray.win32api.MAKELONG(system_tray._ID_SSM, 0)
+    off_id = system_tray.win32api.MAKELONG(system_tray._ID_DISPLAYS_OFF, 0)
+    cls._handle_context_menu_cb(tray, 5, 0, ssm_id, 0)
+    cls._show_menu(tray, 0, 0)
+    assert flags["Screen Saver Mode"] & system_tray.win32con.MF_CHECKED
+    cls._handle_context_menu_cb(tray, 5, 0, off_id, 0)
+    assert calls == ["set True", "off"]

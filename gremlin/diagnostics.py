@@ -192,6 +192,8 @@ class Plan:
     # (01 S132, S177).
     window_state: str = ""
     recent_events: str = ""
+    # state.txt: the trace's state snapshot (01 S146-S150).
+    state: str = ""
 
 
 def _profile() -> tuple[str, str | None]:
@@ -233,6 +235,15 @@ def _recent_events() -> str:
     return chr(10).join(lines) if lines else "No recent window events."
 
 
+def _state_text() -> str:
+    try:
+        from gremlin import trace
+
+        return trace.snapshot_text()
+    except Exception as exc:
+        return f"State not available: {type(exc).__name__}: {exc}"
+
+
 def collect(include_profile: bool) -> Plan:
     """What to save, read on the main thread."""
     from gremlin import util
@@ -263,6 +274,7 @@ def collect(include_profile: bool) -> Plan:
         tester=tester,
         window_state=_window_state(),
         recent_events=_recent_events(),
+        state=_state_text(),
     )
 
 
@@ -337,6 +349,9 @@ def write_zip(plan: Plan, dest: Path) -> None:
         "recent-window-events.txt",
         plan.recent_events or "No recent window events.",
     )
+    # The profile's file name is in it: scrubbed as a file name.
+    state = getattr(plan, "state", "") or "State not available."
+    add("state.txt", chr(10).join(scrub_name(x, names) for x in state.split(chr(10))))
     if plan.profile_text is not None:
         add(f"profile/{plan.profile_name or 'profile.xml'}", plan.profile_text)
     entries.insert(0, ("README.txt", _readme(plan, [n for n, _t in entries])))

@@ -60,10 +60,7 @@ _NAMES = (
     "hold-fullscreen",
 )
 _WARNING = "Power off comes at or before the screen saver: the screen saver won't show."
-_WAKES = (
-    "Windows turned the displays back on 3 times: devices that never go quiet "
-    "(see Refresh Devices)."
-)
+_WAKES = "Windows turned the displays back on 3 times"
 
 # A driver's request as powercfg names it (the user's PC, 2026-11-15).
 _DRIVER = "USB Audio 2.0 (USB\\VID_0DB0&PID_CD0E&MI_00\\9&9c4d365&0&0000)"
@@ -373,6 +370,39 @@ def _text(j: Journey, window: Any, name: str) -> str:  # noqa: ANN401
     return " ".join(texts)
 
 
+def _row(j: Journey, window: Any, label: str) -> str:  # noqa: ANN401
+    """A Status table row as shown: "value · detail" ("" if not shown)."""
+    n = 0
+    while True:
+        lab = j.item(window, f"ssmStatusLabel_{n}")
+        if lab is None:
+            return f"<no status row {label}>"
+        if str(lab.property("text")) == label:
+            value = j.item(window, f"ssmStatusValue_{n}")
+            detail = j.item(window, f"ssmStatusDetail_{n}")
+            text = str(value.property("text")) if value is not None else ""
+            more = str(detail.property("text")) if detail is not None else ""
+            return text + more  # the detail already starts with " · "
+        n += 1
+
+
+def _has(
+    j: Journey,
+    window: Any,  # noqa: ANN401
+    label: str,
+    needle: str,
+    timeout: float = 5.0,
+) -> bool:
+    """True once the row shows the text (case-insensitive substring)."""
+    return bool(
+        j.await_value(
+            lambda: needle.lower() in _row(j, window, label).lower(),
+            True,
+            timeout=timeout,
+        )
+    )
+
+
 def _flip(j: Journey, item: Any, on: bool) -> None:  # noqa: ANN401
     """A user's click on a switch, check box or radio button: the checked
     state changes, then toggled() and clicked() as Qt sends them."""
@@ -529,15 +559,11 @@ def story_first(j: Journey) -> None:
             "ssmOffWindowsWait",
             "ssmOffProblem",
             "ssmOrderWarning",
-            "ssmSaverCountdown",
-            "ssmOffCountdown",
-            "ssmWakeCount",
             "ssmHoldFullscreen",
-            "ssmListening",
-            "ssmIdleText",
-            "ssmWindowsIdleText",
-            "ssmHoldText",
             "ssmProblemText",
+            "ssmStatusGrid",
+            "ssmTestNow",
+            "ssmDevicesWait",
             "ssmRefreshDevices",
             "ssmRefreshPrograms",
             "ssmDeviceList",
@@ -549,7 +575,6 @@ def story_first(j: Journey) -> None:
             "ssmRefreshSystem",
             "ssmSystemList",
             "ssmSystemMessage",
-            "ssmLastReset",
         ]
         out["s1Missing"] = [n for n in names if j.item(win["w"], n) is None]
         # The one Action choice and its single wait box are gone.
@@ -582,8 +607,8 @@ def story_first(j: Journey) -> None:
         out["s2ClockStarted"] = W["clock_starts"]
         out["s2Listening"] = _status()["listening"]
         out["s2TicksWhileOn"] = _timer_ticks(j)
-        out["s9ListeningText"] = j.await_value(
-            lambda: _text(j, w, "ssmListening"), "Listening to the keyboard and mouse"
+        out["s9ListeningText"] = _has(
+            j, w, "Listener", "listening to the keyboard and mouse"
         )
         out["s9OnlyWhileOpen"] = any(
             "only while gremlin" in t.lower() for t in _texts(j, w)
@@ -846,8 +871,8 @@ def story_first(j: Journey) -> None:
         _at(13300.0)
         _mgr().tick()
         out["s3OtherHeld"] = W["power_off"]
-        out["s9IdleText"] = _text(j, w, "ssmIdleText")
-        out["s9WindowsIdleText"] = _text(j, w, "ssmWindowsIdleText")
+        out["s9IdleText"] = _row(j, w, "Your idle time")
+        out["s9WindowsIdleText"] = _row(j, w, "Windows' idle time")
 
     _section(j, "s6", s6_s3)
 
@@ -868,7 +893,7 @@ def story_first(j: Journey) -> None:
         _mgr().tick()
         out[f"{value_key}Held"] = [W["power_off"], st["hold"]]
         out[f"{value_key}HoldText"] = j.await_value(
-            lambda: _text(j, w, "ssmHoldText"), "__never__", timeout=2.5
+            lambda: _row(j, w, "Hold"), "__never__", timeout=2.5
         )
         W[flag] = False
         W["foreground_program"] = ""
@@ -937,8 +962,8 @@ def story_first(j: Journey) -> None:
             "Windows' screen saver wait (2 min)",
         )
         out["s8Countdowns"] = j.await_value(
-            lambda: [_text(j, w, "ssmSaverCountdown"), _text(j, w, "ssmOffCountdown")],
-            ["Screen saver in 2 min", "Power off displays in 5 min"],
+            lambda: [_row(j, w, "Screen saver"), _row(j, w, "Power off displays")],
+            ["in 2 min", "in 5 min"],
         )
         _at(61119.0)
         _mgr().tick()
@@ -947,7 +972,7 @@ def story_first(j: Journey) -> None:
         _mgr().tick()
         out["s8SaverFired"] = [list(W["screen_saver"]), W["power_off"]]
         out["s8SaverDone"] = j.await_value(
-            lambda: _text(j, w, "ssmSaverCountdown").startswith("Screen saver done."),
+            lambda: _row(j, w, "Screen saver").startswith("done."),
             True,
         )
         _at(61299.0)
@@ -1025,7 +1050,7 @@ def story_first(j: Journey) -> None:
         _mgr().tick()
         out["s8SaverOffFired"] = [len(W["screen_saver"]), W["power_off"]]
         out["s8SaverOffCountdown"] = j.await_value(
-            lambda: _text(j, w, "ssmSaverCountdown"), ""
+            lambda: _row(j, w, "Screen saver"), "off"
         )
         _flip(j, j.item(w, "ssmSaverOn"), True)
         out["s8SaverBackCfg"] = j.await_value(lambda: _cfg("screen-saver-on"), True)
@@ -1055,7 +1080,7 @@ def story_first(j: Journey) -> None:
         _mgr().tick()
         st = _status()
         out["s20Wakes"] = [st["keeping_off"], st["wakes"], W["power_off"]]
-        out["s20Text"] = j.await_value(lambda: _text(j, w, "ssmWakeCount"), _WAKES)
+        out["s20Text"] = _has(j, w, "Wake-ups", _WAKES)
         # Input ends it; the count of the last idle period stays shown and
         # an ON report is no longer answered.
         _at(65400.0)
@@ -1066,7 +1091,7 @@ def story_first(j: Journey) -> None:
         st = _status()
         out["s20AfterInput"] = [st["keeping_off"], st["wakes"], W["power_off"]]
         j.QTest.qWait(1200)
-        out["s20TextAfter"] = _text(j, w, "ssmWakeCount")
+        out["s20TextAfter"] = _row(j, w, "Wake-ups")
         W["screen_saver_path"] = "C:\\Windows\\System32\\Mystify.scr"
 
     _section(j, "s20", s20)
@@ -1099,7 +1124,7 @@ def story_first(j: Journey) -> None:
         st = _status()
         out["s9NotListening"] = [st["listening"], st["problem"], W["power_off"]]
         out["s9NotListeningText"] = j.await_value(
-            lambda: _text(j, w, "ssmListening"), "__never__", timeout=2.5
+            lambda: _row(j, w, "Listener"), "__never__", timeout=2.5
         )
         W["can_listen"] = True
 
@@ -1257,10 +1282,9 @@ def story_first(j: Journey) -> None:
         for _ in range(3):
             _input_clock().note_input()
         _mgr().tick()
-        out["s18Program"] = j.await_value(
-            lambda: _text(j, w, "ssmLastReset"),
-            "last reset by: input sent by a program, 3 times a minute",
-            timeout=3,
+        out["s18Program"] = _has(
+            j, w, "Your idle time",
+            "last reset by: input sent by a program, 3 times a minute", 3,
         )
         # A keyboard: its name, looked up once per device handle.
         W["device_names"] = {0x5150: "Logitech G915"}
@@ -1269,10 +1293,9 @@ def story_first(j: Journey) -> None:
         for _ in range(5):
             _input_clock().note_input(source=0x5150, kind="keyboard")
             _mgr().tick()
-        out["s18Keyboard"] = j.await_value(
-            lambda: _text(j, w, "ssmLastReset"),
-            "last reset by: Logitech G915 (keyboard), just now",
-            timeout=3,
+        out["s18Keyboard"] = _has(
+            j, w, "Your idle time",
+            "last reset by: Logitech G915 (keyboard), just now", 3,
         )
         j.QTest.qWait(1200)  # the window's polls look it up too
         out["s18Lookups"] = list(W["name_lookups"])
@@ -1842,10 +1865,7 @@ def test_s4_s6_the_two_timers_fire_in_order_each_once(runs: list[dict]) -> None:
     path = "C:\\Windows\\System32\\Mystify.scr"
     assert _v(first, "s8", "s8Waits") == [120, 300]
     assert _v(first, "s8", "s8SaverWindowsWait") == "Windows' screen saver wait (2 min)"
-    assert _v(first, "s8", "s8Countdowns") == [
-        "Screen saver in 2 min",
-        "Power off displays in 5 min",
-    ]
+    assert _v(first, "s8", "s8Countdowns") == ["in 2 min", "in 5 min"]
     assert _v(first, "s8", "s8Before") == [[], 0]
     assert _v(first, "s8", "s8SaverFired") == [[path], 0]
     assert _v(first, "s8", "s8SaverDone") is True
@@ -1880,7 +1900,7 @@ def test_s4_a_timer_switched_off_does_nothing_the_other_still_fires(
     assert _v(first, "s8", "s8SaverOffCfg") is False
     assert _v(first, "s8", "s8SaverOffMgr") is False
     assert _v(first, "s8", "s8SaverOffFired") == [0, 1]
-    assert _v(first, "s8", "s8SaverOffCountdown") == ""
+    assert _v(first, "s8", "s8SaverOffCountdown") == "off"
     assert _v(first, "s8", "s8SaverBackCfg") is True
 
 
@@ -1891,10 +1911,10 @@ def test_s6_s20_keeping_the_displays_off_and_the_wake_count(
     assert _v(first, "s20", "s20Keeping") == [True, 0, 1]
     # Three display-ON reports: three re-sends, counted.
     assert _v(first, "s20", "s20Wakes") == [True, 3, 4]
-    assert _v(first, "s20", "s20Text") == _WAKES
+    assert _v(first, "s20", "s20Text") is True
     # Input ended it: no more re-sends; the last period's count stays shown.
     assert _v(first, "s20", "s20AfterInput") == [False, 3, 4]
-    assert _v(first, "s20", "s20TextAfter") == _WAKES
+    assert _WAKES in _v(first, "s20", "s20TextAfter")
 
 
 def test_s5_windows_never_and_no_typed_time_does_nothing(runs: list[dict]) -> None:
@@ -1907,7 +1927,7 @@ def test_s5_windows_never_and_no_typed_time_does_nothing(runs: list[dict]) -> No
 
 def test_s9_status_line(runs: list[dict]) -> None:
     first = runs[0]
-    assert "Listening to the keyboard and mouse" in _v(first, "s2on", "s9ListeningText")
+    assert _v(first, "s2on", "s9ListeningText") is True
     assert _v(first, "s2on", "s9OnlyWhileOpen") is True
     assert _v(first, "s6", "s9IdleText").strip()
     assert _v(first, "s6", "s9WindowsIdleText").strip()
@@ -1917,25 +1937,17 @@ def test_s9_not_listening_is_said_and_nothing_is_done(runs: list[dict]) -> None:
     first = runs[0]
     assert _v(first, "s9", "s9NotListening") == [False, "not_listening", 0]
     text = _v(first, "s9", "s9NotListeningText")
-    assert text and "Listening to the keyboard and mouse" != text
+    assert text.startswith("not listening")
 
 
-def test_s10_setting_changes_go_into_history_by_their_shown_names(
+def test_s10_setting_changes_are_saved_but_not_in_history(
     runs: list[dict],
 ) -> None:
+    """User 2026-11-20: no Screen Saver Mode setting is ever recorded in
+    History (it is for configuration, not troubleshooting)."""
     first = runs[0]
-    keys = _v(first, "s10", "s10Keys")
-    assert "global/screen-saver-mode/enabled" in keys
-    for name in ("screen-saver-on", "screen-saver-wait-s", "power-off-wait-s"):
-        assert f"global/screen-saver-mode/{name}" in keys, keys
-    assert not any(k.endswith(("/action", "/wait-override-s")) for k in keys), keys
-    titles = " | ".join(_v(first, "s10", "s10Entries"))
-    # Named as the window shows them (contract-4).
-    assert "Changed Screen Saver Mode" in titles, titles
-    assert "Hold off during full-screen programs" in titles, titles
-    assert "Screen saver wait" in titles, titles
-    assert "Power off wait" in titles, titles
-    assert "Changed Screen saver" in titles or ", Screen saver," in titles, titles
+    assert _v(first, "s10", "s10Keys") == []
+    assert _v(first, "s10", "s10Entries") == []
 
 
 def test_s12_refresh_devices_lists_the_devices_that_never_go_quiet(
@@ -2081,12 +2093,8 @@ def test_s14_refused_switch_goes_back_and_is_said(runs: list[dict]) -> None:
 
 def test_s18_last_reset_by_names_the_source(runs: list[dict]) -> None:
     first = runs[0]
-    assert _v(first, "s18", "s18Program") == (
-        "last reset by: input sent by a program, 3 times a minute"
-    )
-    assert _v(first, "s18", "s18Keyboard") == (
-        "last reset by: Logitech G915 (keyboard), just now"
-    )
+    assert _v(first, "s18", "s18Program") is True
+    assert _v(first, "s18", "s18Keyboard") is True
     # Looked up once per device handle, never per input.
     assert _v(first, "s18", "s18Lookups") == [0x5150]
 

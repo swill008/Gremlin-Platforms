@@ -10,6 +10,7 @@ menu's Tracing item uses."""
 
 from __future__ import annotations
 
+import pathlib
 import time
 import uuid
 from datetime import datetime
@@ -55,6 +56,71 @@ def signals() -> _Signals:
         _SIGNALS = _Signals()
         trace.on_change(_SIGNALS.changed.emit)
     return _SIGNALS
+
+
+def _program_snapshot() -> list[str]:
+    """The Program section of the state snapshot (01 S146-S150)."""
+    import json
+
+    from gremlin import config, shared_state, util
+
+    lines: list[str] = []
+    version = util.get_code_version()
+    try:
+        with open(util.resource_path("version.json"), encoding="utf-8") as handle:
+            build = json.load(handle).get("commit") or ""
+    except Exception:
+        build = ""
+    lines.append(
+        f"Program: version {version}" + (f", build {build}" if build else "")
+    )
+    profile = shared_state.running_profile or shared_state.current_profile
+    name = ""
+    if profile is not None:
+        fpath = getattr(profile, "fpath", "")
+        name = pathlib.Path(fpath).name if fpath else "Untitled.xml"
+    running = trace.run_hint[0]
+    if running is None:
+        running = shared_state.running_profile is not None
+    lines.append(
+        f"Profile: {name or 'none open'}, {'running' if running else 'not running'}"
+    )
+    cfg = config.Configuration()
+
+    def setting(group: str, key: str) -> object:
+        try:
+            return cfg.value("global", group, key)
+        except Exception:
+            return "not available"
+
+    lines.append(
+        "Log When Not Responding: "
+        + ("on" if setting("general", "log-when-not-responding") is True else "off")
+    )
+    lines.append(f"Diagnostic logs: {setting('general', 'log-level')}")
+    rows = [f"{len(trace.ticked_devices())} device(s)"]
+    for name_, on in (
+        ("HidHide", trace.hidhide_ticked()),
+        ("Screen Saver Mode", trace.screen_saver_ticked()),
+        ("Window", trace.window_ticked()),
+        ("Timing", trace.timing_ticked()),
+        ("Mouse", trace.mouse_ticked()),
+    ):
+        if on:
+            rows.append(name_)
+    rows.extend(f"OSC {area}" for area in trace.osc_ticked())
+    lines.append("Trace rows ticked: " + ", ".join(rows))
+    lines.append(f"Keep tracing on: {'on' if trace.keep_on() else 'off'}")
+    return lines
+
+
+trace.register_snapshot("Program", _program_snapshot)
+
+
+def start() -> None:
+    """At start (after the options are registered): Keep tracing on turns
+    tracing back on."""
+    trace.restore_at_start()
 
 
 def _size_text(size: int) -> str:
@@ -472,6 +538,14 @@ class TraceView(QtCore.QObject):
 
     tracing = QtCore.Property(
         bool, lambda self: trace.enabled(), _set_on, notify=changed
+    )
+
+    def _set_keep_on(self, on: bool) -> None:
+        trace.set_keep_on(bool(on))
+        self.changed.emit()
+
+    keepOn = QtCore.Property(
+        bool, lambda self: trace.keep_on(), _set_keep_on, notify=changed
     )
 
     @QtCore.Property(QtCore.QObject, constant=True)

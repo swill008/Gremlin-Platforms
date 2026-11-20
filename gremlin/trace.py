@@ -182,11 +182,133 @@ def set_enabled(on: bool) -> None:
             _enabled = False
             _since = None
             _cancel_flush()
+    if on:
+        write_snapshot("tracing on")
     for hook in list(_hooks):
         try:
             hook()
         except Exception:
             logging.getLogger("system").exception("Trace on_change hook failed")
+
+
+# --- state snapshot (01 S146-S150): what the program's settings and state are,
+# written into the trace so a trace can be read on its own ------------------
+
+STATE = "State"  # the control column of the snapshot lines
+_CFG_KEEP_ON = "keep-on"
+_providers: dict[str, Callable[[], list[str]]] = {}
+# True/False while a Profile started/stopped line is being followed by the
+# snapshot (the Stop line is written before the Run has let go).
+run_hint: list[bool | None] = [None]
+
+
+def register_snapshot(section: str, provider: Callable[[], list[str]]) -> None:
+    """A section of the state snapshot: provider() returns its lines. A
+    section registered again replaces the earlier provider."""
+    with _LOCK:
+        _providers[str(section)] = provider
+
+
+def _section_lines(section: str) -> list[str]:
+    """One section's lines; a provider that fails (or gives nothing usable)
+    reads "<section>: not available"."""
+    provider = _providers.get(section)
+    try:
+        if provider is None:
+            raise LookupError(section)
+        return [str(line) for line in provider()]
+    except Exception:
+        return [f"{section}: not available"]
+
+
+def _write_section_lines(reason: str, sections: list[str]) -> None:
+    if not _enabled:
+        return
+    try:
+        _add(EVENT, STATE, f"State ({reason})")
+        for section in sections:
+            for line in _section_lines(section):
+                _add(EVENT, STATE, line)
+    except Exception:
+        pass
+
+
+def write_snapshot(reason: str) -> None:
+    """Writes "State (<reason>)" and every section's lines into the trace
+    (only while tracing is on). Called when tracing turns on and at start."""
+    _write_section_lines(reason, list(_providers))
+
+
+def snapshot_changed(section: str) -> None:
+    """A section's state changed: its lines are written again."""
+    if section in _providers:
+        _write_section_lines(f"{section} changed", [section])
+
+
+def snapshot_text() -> str:
+    """Every section's lines, one per line (Save Diagnostics' state.txt)."""
+    out: list[str] = []
+    for section in list(_providers):
+        out.extend(_section_lines(section))
+    return "\n".join(out) + ("\n" if out else "")
+
+
+def keep_on() -> bool:
+    """Keep tracing on after a restart (global/trace/keep-on, off at first)."""
+    return _saved_keep_on() is True
+
+
+def _register_keep_on() -> None:
+    from gremlin import config
+    from gremlin.types import PropertyType
+
+    config.Configuration().register(
+        "global",
+        "trace",
+        _CFG_KEEP_ON,
+        PropertyType.Bool,
+        False,
+        "Keep tracing on after a restart.",
+        {},
+        False,
+    )
+
+
+def _saved_keep_on() -> bool | None:
+    try:
+        from gremlin import config
+
+        _register_keep_on()
+        return bool(config.Configuration().value("global", "trace", _CFG_KEEP_ON))
+    except Exception:
+        return None
+
+
+def set_keep_on(on: bool) -> None:
+    try:
+        from gremlin import config
+
+        _register_keep_on()
+        config.Configuration().set("global", "trace", _CFG_KEEP_ON, bool(on))
+    except Exception:
+        logging.getLogger("system").exception("Could not save Keep tracing on")
+    snapshot_changed("Program")
+
+
+def register_options() -> None:
+    """Registers every trace setting (at start, before purge_unused)."""
+    _ensure_options()
+    _register_keep_on()
+
+
+def restore_at_start() -> None:
+    """At start: with Keep tracing on, tracing and the ticked rows come back
+    (the rows are saved); tracing turning on writes the snapshot. With
+    tracing already on, the snapshot is written (reason "start")."""
+    if _enabled:
+        write_snapshot("start")
+    elif keep_on():
+        set_enabled(True)
 
 
 def on_closing(callback: Callable[[], None]) -> None:
@@ -1005,7 +1127,17 @@ def event(text: str) -> None:
     try:
         _add(EVENT, "", str(text))
     except Exception:
-        pass
+        return
+    # Run state is part of the Program section (profile running or not).
+    text = str(text)
+    if text in ("Profile stopped",) or text.startswith(
+        ("Profile started", "Profile restarted")
+    ):
+        run_hint[0] = text != "Profile stopped"
+        try:
+            snapshot_changed("Program")
+        finally:
+            run_hint[0] = None
 
 
 def hidhide(text: str, warning: bool = False) -> None:

@@ -32,6 +32,7 @@ when nothing is ticked (S31)."""
 from __future__ import annotations
 
 import logging
+import re
 import time
 import types
 from typing import Any, Callable
@@ -55,6 +56,11 @@ SAVER_WAIT = "screen-saver-wait-s"
 OFF_ON = "power-off-on"
 OFF_WAIT = "power-off-wait-s"
 HOLD_FULLSCREEN = "hold-fullscreen"
+# S21: at most how long the displays wait for the devices to switch off.
+DEVICES_WAIT = "devices-wait-s"
+DEVICES_WAIT_DEFAULT = 10
+DEVICES_WAIT_MIN = 1
+DEVICES_WAIT_MAX = 60
 # S27: the last Refresh Devices result, kept across restarts.
 DEVICES = "devices"
 # S28: the Wake PC list: {"id", "name", "kinds", "ticked", "how"} per device.
@@ -66,6 +72,7 @@ NAMES = (
     OFF_ON,
     OFF_WAIT,
     HOLD_FULLSCREEN,
+    DEVICES_WAIT,
     DEVICES,
     WAKE_PC,
 )
@@ -120,7 +127,7 @@ def _trace(text: str) -> None:
 
 
 def register_options() -> None:
-    """The eight settings (01 S6: registered before the purge): the six
+    """The nine settings (01 S6: registered before the purge): the seven
     the window sets, the saved Devices list (S27) and the Wake PC list
     (S28). Exposed for History; Options leaves them out (the window has the
     controls)."""
@@ -173,6 +180,14 @@ def register_options() -> None:
             {},
         ),
         (
+            DEVICES_WAIT,
+            PropertyType.Int,
+            DEVICES_WAIT_DEFAULT,
+            "Screen Saver Mode: at most how many seconds the displays wait "
+            "for the devices to switch off before they power off.",
+            {"min": DEVICES_WAIT_MIN, "max": DEVICES_WAIT_MAX},
+        ),
+        (
             DEVICES,
             PropertyType.List,
             [],
@@ -223,9 +238,19 @@ def _core() -> types.ModuleType:
     return screen_saver_mode
 
 
+def saved_devices_wait_s() -> int:
+    """S21: the devices wait in seconds, 1-60 (default 10)."""
+    try:
+        value = int(_value(DEVICES_WAIT) or DEVICES_WAIT_DEFAULT)
+    except (TypeError, ValueError):
+        return DEVICES_WAIT_DEFAULT
+    return min(DEVICES_WAIT_MAX, max(DEVICES_WAIT_MIN, value))
+
+
 def saved_settings() -> object:
     """The saved settings as screen_saver_mode.Settings."""
-    return _core().Settings(
+    core = _core()
+    fields: dict[str, object] = dict(
         enabled=bool(_value(ENABLED)),
         screen_saver_on=bool(_value(SAVER_ON)),
         screen_saver_wait_s=saved_wait_s(SAVER_WAIT),
@@ -233,6 +258,10 @@ def saved_settings() -> object:
         power_off_wait_s=saved_wait_s(OFF_WAIT),
         hold_fullscreen=bool(_value(HOLD_FULLSCREEN)),
     )
+    # A core (or a stand-in) without the devices wait ignores it.
+    if "devices_wait_s" in getattr(core.Settings, "__dataclass_fields__", {}):
+        fields["devices_wait_s"] = saved_devices_wait_s()
+    return core.Settings(**fields)
 
 
 # Whether the mode and Power off displays were both on when last applied
@@ -262,6 +291,112 @@ def apply_saved() -> None:
             _disabler().enable_pending()
     except Exception:
         _log.exception("Screen Saver Mode: could not apply the settings")
+
+
+# The tray's calls (12 S1; the tray menu's two items) ----------------------
+
+
+def ssm_enabled() -> bool:
+    """Whether Screen Saver Mode is on (the tray's checkable item)."""
+    try:
+        return bool(_value(ENABLED))
+    except Exception:
+        _log.exception("Screen Saver Mode: the setting could not be read")
+        return False
+
+
+def set_ssm_enabled(on: bool) -> None:
+    """Switches Screen Saver Mode on or off as the window's switch does:
+    saved, handed to the manager, an open window follows."""
+    on = bool(on)
+    if on == ssm_enabled():
+        return
+    _trace(f"Screen Saver Mode {'on' if on else 'off'} (tray)")
+    _set(ENABLED, on)
+    _settings_changed()
+    signal.configChanged.emit()
+    snapshot_changed()
+
+
+def turn_displays_off_now() -> None:
+    """The tray's "Turn displays off now": the sequence at once (devices
+    first, then the displays, then keep-off until a counted input)."""
+    _trace("Turn displays off now (tray)")
+    try:
+        _core().manager().turn_off_now()
+    except Exception:
+        _log.exception("Screen Saver Mode: turn off now failed")
+
+
+# The state snapshot (trace.register_snapshot, 01 trace) -----------------------
+
+SNAPSHOT_SECTION = "Screen Saver Mode"
+# Names Windows has on Ignore, per list, as last read or changed.
+_ignored: dict[str, list[str]] = {"programs": [], "system": []}
+
+
+def _on_off(on: bool) -> str:
+    return "on" if on else "off"
+
+
+def snapshot_lines() -> list[str]:
+    """Every setting, the Switch off list by name, the ticked Wake PC
+    devices and the Ignore lists, one line each, for the trace's state
+    snapshot and Save Diagnostics."""
+    lines: list[str] = []
+    try:
+        lines.append(f"Screen Saver Mode: {_on_off(bool(_value(ENABLED)))}")
+        saver, off = saved_wait_s(SAVER_WAIT), saved_wait_s(OFF_WAIT)
+        lines.append(
+            f"Screen saver: {_on_off(bool(_value(SAVER_ON)))}, wait "
+            + (duration_text(saver) if saver else "Windows' wait")
+        )
+        lines.append(
+            f"Power off displays: {_on_off(bool(_value(OFF_ON)))}, wait "
+            + (duration_text(off) if off else "Windows' wait")
+        )
+        hold = _on_off(bool(_value(HOLD_FULLSCREEN)))
+        lines.append(f"Hold during full-screen programs: {hold}")
+        lines.append(f"Wait for devices to switch off: {saved_devices_wait_s()} s")
+        for row in saved_devices():
+            virtual = " (virtual)" if row["virtual"] else ""
+            lines.append(
+                f"Switch off: {row['name']}{virtual}, {_on_off(bool(row['switchOff']))}"
+            )
+        ticked = [r["name"] or r["id"] for r in saved_wake_rows() if r["ticked"]]
+        lines.append("Wake PC ticked: " + (", ".join(ticked) if ticked else "none"))
+        for key, label in (("programs", "Programs"), ("system", "System")):
+            names = _ignored[key]
+            lines.append(f"Ignore {label}: " + (", ".join(names) if names else "none"))
+    except Exception:
+        _log.exception("Screen Saver Mode: the state snapshot could not be built")
+    return lines
+
+
+def register_snapshot() -> None:
+    """Hands snapshot_lines to the trace (once); a trace without the
+    snapshot is left alone."""
+    try:
+        from gremlin import trace
+
+        register = getattr(trace, "register_snapshot", None)
+        if register is not None:
+            register(SNAPSHOT_SECTION, snapshot_lines)
+    except Exception:
+        _log.exception("Screen Saver Mode: the state snapshot could not be registered")
+
+
+def snapshot_changed() -> None:
+    """Asks the trace to rewrite this section's lines (after a setting,
+    a Switch off, a Wake PC tick or an Ignore changed)."""
+    try:
+        from gremlin import trace
+
+        changed = getattr(trace, "snapshot_changed", None)
+        if changed is not None:
+            changed(SNAPSHOT_SECTION)
+    except Exception:
+        _log.exception("Screen Saver Mode: the state snapshot could not be updated")
 
 
 # The saved Devices list (S27) ---------------------------------------------
@@ -599,6 +734,7 @@ def start() -> None:
     device hooks (S21, S23) and start the helper when wanted (S25)."""
     global _following, _arrival_signal
     apply_saved()
+    register_snapshot()
     if not _following:
         signal.configChanged.connect(_settings_changed)
         _following = True
@@ -801,6 +937,89 @@ def _parse_minutes(text: str) -> int | None:
     return max(1, round(minutes * 60))
 
 
+# The wake count from which the Wake-ups row points at Switch off (S20).
+WAKES_HINT_AT = 3
+
+_STALL_ENDED = re.compile(r"stall ended after (\d+) s")
+_RING_TIME = re.compile(r"^(\d\d):(\d\d):(\d\d)\.\d+\s")
+
+
+def _second_of_day(t: float) -> int:
+    lt = time.localtime(t)
+    return lt.tm_hour * 3600 + lt.tm_min * 60 + lt.tm_sec
+
+
+def _freeze_text(start: float, end: float) -> str:
+    """ "no freeze" or "window not responding N s": the watchdog's stall
+    lines in trace.recent() between the away's start and end (read only)."""
+    try:
+        from gremlin import trace
+
+        lines = trace.recent_lines()
+    except Exception:
+        return ""
+    lo, hi = _second_of_day(start) - 1, _second_of_day(end) + 2
+    longest, began = -1, False
+    for line in lines:
+        m = _RING_TIME.match(line)
+        if m is None:
+            continue
+        at = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + int(m.group(3))
+        inside = lo <= at <= hi if lo <= hi else (at >= lo or at <= hi)
+        if not inside:
+            continue
+        ended = _STALL_ENDED.search(line)
+        if ended is not None:
+            longest = max(longest, int(ended.group(1)))
+        elif "stall began" in line:
+            began = True
+    if longest >= 0:
+        return f"window not responding {longest} s"
+    return "window not responding" if began else "no freeze"
+
+
+def _last_away_text(away: dict, pending: int = 0) -> tuple[str, str]:
+    """(value, detail) for Last time away from the core's last_away; the
+    core leaves devices_back 0, so it is the devices switched off less the
+    ones the journal still lists as to be enabled."""
+    try:
+        value = "Displays off " + duration_text(float(away.get("off_s", 0.0) or 0.0))
+        parts: list[str] = []
+        wakes = int(away.get("wakes", 0) or 0)
+        parts.append(f"{wakes} wake-up" + ("" if wakes == 1 else "s"))
+        off = int(away.get("devices_off", 0) or 0)
+        back = max(int(away.get("devices_back", 0) or 0), off - max(0, pending))
+        if off:
+            word = "device" if off == 1 else "devices"
+            parts.append(
+                f"{off} {word} switched off and back on"
+                if back >= off
+                else f"{off} {word} switched off, {max(0, back)} back on"
+            )
+        freeze = _freeze_text(
+            float(away.get("start", 0.0) or 0.0), float(away.get("end", 0.0) or 0.0)
+        )
+        if freeze:
+            parts.append(freeze)
+        return value, " · ".join(parts)
+    except Exception:
+        _log.exception("Screen Saver Mode: Last time away could not be built")
+        return "unknown", ""
+
+
+def _pending_device_names() -> list[str]:
+    """The devices the journal lists as still to be enabled, by name; []
+    when there is none or the journal can't be read."""
+    try:
+        journal = _disabler().journal()
+        return [
+            str(journal.entries.get(i, {}).get("name") or i)
+            for i in journal.not_enabled()
+        ]
+    except Exception:
+        return []
+
+
 @ta.QmlElement
 class ScreenSaverModeModel(QtCore.QObject):
     """The Screen Saver Mode window: settings, status and the two checks."""
@@ -822,7 +1041,10 @@ class ScreenSaverModeModel(QtCore.QObject):
     def __init__(self, parent: ta.OQO = None) -> None:
         super().__init__(parent)
         _ensure_options()
+        register_snapshot()
         self._status: Any = None
+        self._test_remaining = 0
+        self._pending_devices: list[str] = []
         # S27: the saved list until the next Refresh Devices.
         self._devices: list[dict] = saved_devices()
         self._saved = list(self._devices)
@@ -876,6 +1098,7 @@ class ScreenSaverModeModel(QtCore.QObject):
 
     def _changed(self) -> None:
         _settings_changed()
+        snapshot_changed()
         self.settingsChanged.emit()
         self.refreshStatus()
 
@@ -919,6 +1142,57 @@ class ScreenSaverModeModel(QtCore.QObject):
         if bool(on) != self.holdFullscreen:
             _set(HOLD_FULLSCREEN, bool(on))
             self._changed()
+
+    @QtCore.Property(int, notify=settingsChanged)
+    def devicesWaitS(self) -> int:
+        """S21: at most how many seconds the displays wait for the devices
+        to switch off (1-60)."""
+        return saved_devices_wait_s()
+
+    @QtCore.Slot(int)
+    def setDevicesWaitS(self, seconds: int) -> None:
+        try:
+            value = int(seconds)
+        except (TypeError, ValueError):
+            return
+        value = min(DEVICES_WAIT_MAX, max(DEVICES_WAIT_MIN, value))
+        if value != saved_devices_wait_s():
+            _trace(f"Wait for devices to switch off: {value} s")
+            _set(DEVICES_WAIT, value)
+            self._changed()
+        else:
+            # A typed value outside 1-60 shows the clamped one again.
+            self.settingsChanged.emit()
+
+    @QtCore.Slot()
+    def testNow(self) -> None:
+        """Test now: after a 5 s countdown the real sequence runs."""
+        _trace("Test now pressed")
+        try:
+            _core().manager().start_test(5.0)
+        except Exception:
+            _log.exception("Screen Saver Mode: Test now could not start")
+        self.refreshStatus()
+
+    @QtCore.Slot()
+    def cancelTest(self) -> None:
+        _trace("Test now cancelled")
+        try:
+            _core().manager().cancel_test()
+        except Exception:
+            _log.exception("Screen Saver Mode: the test could not be cancelled")
+        self.refreshStatus()
+
+    @QtCore.Property(bool, notify=settingsChanged)
+    def canTest(self) -> bool:
+        """Test now and Turn displays off now work only while the mode is
+        on (the core has no listener window otherwise)."""
+        return bool(self.enabled)
+
+    @QtCore.Property(int, notify=statusChanged)
+    def testCountdown(self) -> int:
+        """Whole seconds left before the test runs; 0 = no test pending."""
+        return self._test_remaining
 
     def _set_wait(self, name: str, text: str) -> bool:
         seconds = _parse_minutes(text)
@@ -1024,6 +1298,8 @@ class ScreenSaverModeModel(QtCore.QObject):
             _log.exception("Screen Saver Mode: status could not be read")
             self._status = None
         self._helper_message = helper_message()
+        self._test_remaining = self._read_test_remaining()
+        self._pending_devices = _pending_device_names()
         problems = tuple(
             str(t)
             for t in (
@@ -1041,6 +1317,13 @@ class ScreenSaverModeModel(QtCore.QObject):
                 _trace(f"Message shown: {text}")
         self._shown_problem = problems
         self.statusChanged.emit()
+
+    def _read_test_remaining(self) -> int:
+        try:
+            read = getattr(_core().manager(), "test_remaining", None)
+            return max(0, int(read())) if read is not None else 0
+        except Exception:
+            return 0
 
     def _st(self, name: str, default: object) -> Any:  # noqa: ANN401
         return (
@@ -1162,6 +1445,136 @@ class ScreenSaverModeModel(QtCore.QObject):
             return ""
         return _off_problem_text(str(self._st("off_problem", "") or ""))
 
+    # The status table (items 1-3, 10, 13) -----------------------------------
+
+    @QtCore.Property(list, notify=statusChanged)
+    def statusRows(self) -> list:
+        """The window's status table: {"label", "value", "detail", "tone"}
+        per row ("" | "ok" | "warn"), in the order Listener, Your idle time,
+        Windows' idle time, Screen saver, Power off displays, Wake-ups, Hold,
+        Last time away, Devices back on."""
+
+        def row(label: str, value: str, detail: str = "", tone: str = "") -> dict:
+            return {"label": label, "value": value, "detail": detail, "tone": tone}
+
+        enabled = self.enabled
+        rows = [
+            self._listener_row(row),
+            self._idle_row(row),
+            self._windows_idle_row(row),
+            self._timer_row(
+                row, "Screen saver", bool(self.saverOn), "saverCountdownText"
+            ),
+            self._off_row(row),
+            self._wakes_row(row),
+            self._hold_row(row),
+            self._away_row(row),
+            self._devices_back_row(row),
+        ]
+        if not enabled:
+            # A device still switched off matters whether or not the mode is on.
+            for r in rows[:-1]:
+                r["tone"] = ""
+        return rows
+
+    def _listener_row(self, row: Callable[..., dict]) -> dict:
+        if not self.enabled:
+            return row("Listener", "off")
+        if self.listening:
+            return row("Listener", "listening to the keyboard and mouse", "", "ok")
+        return row(
+            "Listener",
+            "not listening to the keyboard and mouse",
+            self.problemText,
+            "warn",
+        )
+
+    def _idle_row(self, row: Callable[..., dict]) -> dict:
+        idle = duration_text(float(self._st("idle_s", 0.0) or 0.0))
+        detail = str(self.lastResetText)
+        return row(
+            "Your idle time", idle, detail[0].upper() + detail[1:] if detail else ""
+        )
+
+    def _windows_idle_row(self, row: Callable[..., dict]) -> dict:
+        win = float(self._st("windows_idle_s", 0.0) or 0.0)
+        own = float(self._st("idle_s", 0.0) or 0.0)
+        detail = ""
+        if self.enabled and own >= 10 and win < 2:
+            detail = "devices are keeping Windows awake"
+        return row("Windows' idle time", duration_text(win), detail)
+
+    def _timer_row(
+        self, row: Callable[..., dict], what: str, on: bool, countdown: str
+    ) -> dict:
+        if not (self.enabled and on):
+            return row(what, "off")
+        problem = (
+            self.saverProblemText if what == "Screen saver" else self.offProblemText
+        )
+        if self.problemText or problem:
+            return row(what, str(self.problemText or problem), "", "warn")
+        if self.holdText:
+            return row(what, "on hold")
+        text = str(self.property(countdown) or "")
+        if text.startswith(what + " "):
+            text = text[len(what) + 1 :]
+        return row(what, text or "waiting for the idle time")
+
+    def _off_row(self, row: Callable[..., dict]) -> dict:
+        if self.enabled and self.offOn and bool(self._st("waiting_for_devices", False)):
+            return row("Power off displays", "switching devices off…")
+        return self._timer_row(
+            row, "Power off displays", bool(self.offOn), "offCountdownText"
+        )
+
+    def _wakes_row(self, row: Callable[..., dict]) -> dict:
+        wakes = int(self._st("wakes", 0) or 0)
+        if not self.enabled or wakes <= 0:
+            return row("Wake-ups", "none this time")
+        times = "once" if wakes == 1 else f"{wakes} times"
+        if wakes >= WAKES_HINT_AT:
+            return row(
+                "Wake-ups",
+                f"Windows turned the displays back on {times}",
+                "a device may need Switch off (see Devices)",
+                "warn",
+            )
+        return row("Wake-ups", f"Windows turned the displays back on {times}")
+
+    def _hold_row(self, row: Callable[..., dict]) -> dict:
+        text = self.holdText
+        return row("Hold", text, "", "warn") if text else row("Hold", "none")
+
+    def _away_row(self, row: Callable[..., dict]) -> dict:
+        away = self._st("last_away", None)
+        if not isinstance(away, dict):
+            return row("Last time away", "none yet")
+        return row("Last time away", *_last_away_text(away, len(self._pending_devices)))
+
+    def _devices_back_row(self, row: Callable[..., dict]) -> dict:
+        names = self._pending_devices
+        if not names:
+            return row("Devices back on", "all back on", "", "ok")
+        who = names[0] if len(names) == 1 else f"{len(names)} devices"
+        return row("Devices back on", f"{who} is still switched off", "", "warn")
+
+    @QtCore.Property(bool, notify=statusChanged)
+    def devicesBackRetry(self) -> bool:
+        """Show Try again on the Devices back on row."""
+        return bool(self._pending_devices)
+
+    @QtCore.Slot()
+    def retryDevices(self) -> None:
+        """S23: Try again on the Devices back on row: the enable path runs
+        once more."""
+        _trace("Devices back on: Try again pressed")
+        try:
+            _disabler().enable_pending()
+        except Exception:
+            _log.exception("Screen Saver Mode: enabling the devices again failed")
+        self.refreshStatus()
+
     # The helper (S25, S26) ----------------------------------------------------
 
     @QtCore.Property(str, notify=statusChanged)
@@ -1203,9 +1616,10 @@ class ScreenSaverModeModel(QtCore.QObject):
         """S12: Switch off on/off for a device row; a virtual device stays
         off. Saved at once (History records the setting)."""
         instance_id = str(instance_id)
-        _trace(f"Switch off {'on' if on else 'off'} pressed: {instance_id}")
         rows = [dict(r) for r in self._devices]
         hit = [r for r in rows if r["instanceId"] == instance_id]
+        name = str(hit[0].get("name") or instance_id) if hit else instance_id
+        _trace(f"Switch off: {name}, {'on' if on else 'off'}")
         if not hit or hit[0].get("virtual"):
             return
         hit[0]["switchOff"] = bool(on)
@@ -1216,6 +1630,7 @@ class ScreenSaverModeModel(QtCore.QObject):
         except Exception:
             _log.exception("Screen Saver Mode: the Devices list could not be saved")
         ensure_helper()
+        snapshot_changed()
         self.devicesChanged.emit()
 
     @QtCore.Property(str, notify=devicesChanged)
@@ -1527,6 +1942,10 @@ class ScreenSaverModeModel(QtCore.QObject):
         return self._messages[SYSTEM]
 
     def _changed_list(self, which: str) -> None:
+        _ignored[which] = [
+            str(r["name"]) for r in self._rows[which] if r.get("ignored")
+        ]
+        snapshot_changed()
         (self.programsChanged if which == PROGRAMS else self.systemChanged).emit()
 
     def _row(self, row: dict, name: str, kind: str) -> bool:

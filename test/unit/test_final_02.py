@@ -1030,10 +1030,13 @@ def test_s83_hidhide_choices_are_in_history_window_size_and_links_are_not(
 ) -> None:
     """02 S83: what History compares for the settings."""
     view = Configuration()._settings_view()
-    for name in ("games", "list-mode", "hidden-devices", "cloak", "managed",
+    for name in ("games", "list-mode", "hidden-devices", "cloak",
                  "gaming-only", "photos"):
         assert f"display/hidhide/{name}" in view, name
-    for name in ("window-width", "window-height", "split-ratio", "module-links"):
+    # "managed" is the program's own flag: saved, never in History (01 S34,
+    # user 2026-11-20).
+    for name in ("window-width", "window-height", "split-ratio", "module-links",
+                 "managed"):
         assert f"display/hidhide/{name}" not in view, name
 
 

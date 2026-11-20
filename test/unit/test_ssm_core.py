@@ -40,6 +40,10 @@ class FakeApi(ssm.WindowsApi):
         self.name_calls: list[int] = []
         self.physical: dict[int, str] = {}
         self.physical_calls: list[int] = []
+        self.own_in_front = False
+
+    def foreground_is_own(self) -> bool:
+        return self.own_in_front
 
     def screen_saver_path(self) -> str:
         return self.path
@@ -99,9 +103,14 @@ class FakeClock(ssm.InputClock):
         self.ok = True
         self.armed: list[float] = []  # re-send timer delays asked for
         self.arm_ok = True
+        self.polls: list[float] = []  # device-wait poll timer delays asked for
 
     def arm_timer(self, delay_s: float) -> bool:
         self.armed.append(delay_s)
+        return self.arm_ok
+
+    def arm_poll_timer(self, delay_s: float) -> bool:
+        self.polls.append(delay_s)
         return self.arm_ok
 
     def start(self) -> bool:
@@ -1607,7 +1616,7 @@ def _traced(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     monkeypatch.setattr(
         ssm.trace,
         "screen_saver",
-        lambda text, ring=True: lines.append(text),
+        lambda text, ring=True, t=None: lines.append(text),
         raising=False,
     )
     return lines
@@ -2130,3 +2139,202 @@ def test_windows_flag_still_counts_without_a_started_screen_saver(
 ) -> None:
     monkeypatch.setattr(ssm, "_spi_screen_saver_running", lambda: True)
     assert ssm.WindowsApi().screen_saver_running()
+
+
+# --- SSM2 batch (contract-SSM2: items 5, 6, 7, 9, 10)
+
+
+def test_ssm2_devices_wait_setting_is_the_limit(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mode, api, clk, now, run, _t = env
+    lines = _traced(monkeypatch)
+    dev = _Devices(1)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(ssm.Settings(**{**_off_only().__dict__, "devices_wait_s": 3}))
+    run(120)
+    assert mode.status().waiting_for_devices
+    run(2)
+    assert api.powered_off == 0
+    run(1)
+    assert api.powered_off == 1 and not mode.status().waiting_for_devices
+    assert "devices still being switched off after 3 s: power off sent" in lines
+
+
+def test_ssm2_devices_wait_is_clamped_and_defaults_to_10() -> None:
+    assert ssm.Settings().devices_wait_s == 10
+    mode = ssm.ScreenSaverMode(api=FakeApi(), clock_=FakeClock())
+    mode.apply(ssm.Settings(devices_wait_s=0))
+    assert mode.settings().devices_wait_s == 1
+    mode.apply(ssm.Settings(devices_wait_s=500))
+    assert mode.settings().devices_wait_s == 60
+    assert not hasattr(ssm, "POWER_OFF_WAIT_S")
+
+
+def test_ssm2_listener_poll_sends_the_power_off_without_a_tick(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    dev = _Devices(2)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    run(120)
+    assert clk.polls and api.powered_off == 0
+    # Still busy: the poll asks for more time.
+    now[0] += 0.1
+    assert mode.on_power_wait_timer() is not None
+    dev.busy = False
+    now[0] += 0.1
+    assert mode.on_power_wait_timer() is None  # no tick in between
+    assert api.powered_off == 1 and mode.status().keeping_off
+    run(3)
+    assert api.powered_off == 1
+
+
+def test_ssm2_listener_poll_sends_at_the_limit(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.set_device_hooks(_Devices(1).hook, None)
+    mode.apply(_off_only())
+    run(120)
+    now[0] += 10.0
+    assert mode.on_power_wait_timer() is None
+    assert api.powered_off == 1
+
+
+def test_ssm2_listener_poll_never_sends_after_input(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    dev = _Devices(1)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    run(120)
+    clk.note_input(source=0x1001, kind="keyboard")
+    dev.busy = False
+    now[0] += 0.1
+    assert mode.on_power_wait_timer() is None
+    assert api.powered_off == 0
+
+
+def test_ssm2_window_proc_poll_timer_kills_it_and_polls(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    dev = _Devices(1)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    run(120)
+    dev.busy = False
+    killed: list[int] = []
+
+    class _U:
+        def KillTimer(self, hwnd: int, ident: int) -> bool:
+            killed.append(ident)
+            return True
+
+    clk._user32 = _U()
+    assert clk._window_proc(1, ssm._WM_TIMER, ssm._POLL_TIMER_ID, 0) == 0
+    assert killed == [ssm._POLL_TIMER_ID] and api.powered_off == 1
+
+
+def test_ssm2_own_window_never_holds(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_off_only())
+    api.busy = True
+    api.own_in_front = True
+    run(120)
+    assert api.powered_off == 1 and mode.status().hold == ""
+
+
+def test_ssm2_foreground_is_own_compares_the_process_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import os
+
+    monkeypatch.setattr(ssm, "_foreground_pid", lambda: os.getpid())
+    assert ssm.WindowsApi().foreground_is_own()
+    monkeypatch.setattr(ssm, "_foreground_pid", lambda: os.getpid() + 1)
+    assert not ssm.WindowsApi().foreground_is_own()
+    monkeypatch.setattr(ssm, "_foreground_pid", lambda: 0)
+    assert not ssm.WindowsApi().foreground_is_own()
+
+
+def test_ssm2_test_now_counts_down_then_runs_the_sequence(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mode, api, clk, now, run, _t = env
+    lines = _traced(monkeypatch)
+    dev = _Devices(1)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_on(saver_wait=3600, off_wait=7200))  # long timers
+    run(2)
+    mode.start_test()
+    assert "Test now: starting in 5 s" in lines
+    assert mode.test_remaining() == 5
+    run(4)
+    assert mode.test_remaining() == 1 and dev.starts == 0
+    run(1)
+    assert mode.test_remaining() == 0
+    assert "Test now: sequence started" in lines
+    assert dev.starts == 1 and api.powered_off == 0  # devices first
+    dev.busy = False
+    run(1)
+    assert api.powered_off == 1 and mode.status().keeping_off
+    assert api.started == []  # no screen saver in the test
+    run(30)
+    assert api.powered_off == 1
+    clk.note_input(source=0x1001, kind="mouse")
+    run(1)
+    assert not mode.status().keeping_off
+
+
+def test_ssm2_input_during_the_countdown_cancels(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mode, api, clk, now, run, _t = env
+    lines = _traced(monkeypatch)
+    mode.apply(_on(saver_wait=3600, off_wait=7200))
+    mode.start_test(delay_s=5.0)
+    run(2)
+    clk.note_input(source=0x1001, kind="keyboard")
+    run(1)
+    assert "Test now: cancelled" in lines and mode.test_remaining() == 0
+    run(10)
+    assert api.powered_off == 0
+
+
+def test_ssm2_cancel_test(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    mode, api, clk, now, run, _t = env
+    lines = _traced(monkeypatch)
+    mode.apply(_on(saver_wait=3600, off_wait=7200))
+    mode.start_test()
+    mode.cancel_test()
+    assert "Test now: cancelled" in lines and mode.test_remaining() == 0
+    run(10)
+    assert api.powered_off == 0
+
+
+def test_ssm2_turn_off_now_is_immediate(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.apply(_on(saver_wait=3600, off_wait=7200))
+    run(2)
+    mode.turn_off_now()
+    assert api.powered_off == 1 and mode.status().keeping_off
+    run(5)
+    assert api.powered_off == 1
+
+
+def test_ssm2_last_away_filled_when_input_ends_keep_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    dev = _Devices(2)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    assert mode.status().last_away is None
+    run(120)
+    dev.busy = False
+    run(1)
+    now[0] += 1.5
+    mode.on_display_state(True)  # one wake
+    run(60)
+    clk.note_input(source=0x1001, kind="mouse")
+    run(1)
+    away = mode.status().last_away
+    assert away is not None
+    assert away["wakes"] == 1 and away["devices_off"] == 2
+    assert 61.0 <= away["off_s"] <= 63.0
+    assert away["end"] >= away["start"]
+    assert mode.status().wake_count == mode.status().wakes

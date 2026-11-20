@@ -1168,3 +1168,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | INSTCHECK: what started Gremlin mid-install (Sonnet) | research | 5-10 min | 4 min | 06:39-06:43 |
 | 2026-11-20 | DISFIRST + SPEC8: switch devices off first, then power off (to-do 142) (Sonnet, Haiku) | fix | 3-8 min | 1-2 min | 06:50-06:52 |
 | 2026-11-20 | SETUPMUTEX: one installer at a time (Haiku) | fix | 3-8 min | 1 min | 06:55-06:56 |
+| 2026-11-20 | SSM2 batch: 7 agents (CORE Opus; MODEL, QML, TRACE, TRAY, CONFIG Sonnet; DOCS Haiku) | feature | 3-8 min each | 5-10 min each (shared files, waits on each other's half-written files) | 07:51-08:01 |
+| 2026-11-20 | Lead: integration fixes (start call, Options hidden list, 3 tests pinning old menus/History, lint) + --changed run | fix/test | ~10 min | 20 min | 08:01-08:21; --changed ran all parts (7 min) |

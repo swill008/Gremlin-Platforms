@@ -106,24 +106,49 @@ def cfg(name: str) -> object:
 def texts() -> dict:
     out = {}
     for name in (
-        "ssmListening",
-        "ssmIdleText",
-        "ssmWindowsIdleText",
-        "ssmHoldText",
         "ssmProblemText",
         "ssmSaverWindowsWait",
         "ssmOffWindowsWait",
         "ssmSaverProblem",
         "ssmOffProblem",
         "ssmOrderWarning",
-        "ssmSaverCountdown",
-        "ssmOffCountdown",
-        "ssmWakeCount",
-        "ssmLastReset",
     ):
         out[name] = str(prop(name, "text"))
         out[name + "Visible"] = bool(prop(name, "visible"))
+    out["statusRows"] = status_rows()
     return out
+
+
+def status_rows() -> list[dict]:
+    """The Status grid as shown: label, value, detail (and value colour)."""
+    rows = []
+    n = 0
+    root = win.contentItem()
+
+    def one(name: str) -> QtQuick.QQuickItem | None:
+        found = _items_named(root, name)
+        return found[0] if found else None
+
+    while one(f"ssmStatusLabel_{n}") is not None:
+        label, value, detail = (
+            one(f"ssmStatusLabel_{n}"),
+            one(f"ssmStatusValue_{n}"),
+            one(f"ssmStatusDetail_{n}"),
+        )
+        rows.append(
+            {
+                "label": str(label.property("text")),
+                "value": str(value.property("text")) if value else "",
+                "detail": str(detail.property("text")) if detail else "",
+                "color": value.property("color").name() if value else "",
+            }
+        )
+        n += 1
+    return rows
+
+
+def status_blob() -> str:
+    return " | ".join(f"{r['label']} {r['value']}{r['detail']}" for r in status_rows())
 
 
 def _items_named(item: QtQuick.QQuickItem, name: str) -> list[QtQuick.QQuickItem]:
@@ -283,7 +308,7 @@ manager.extra = {
     "hold": "display_request",
     "hold_program": "chrome.exe",
 }
-until(lambda: "On hold" in str(prop("ssmHoldText", "text")), 3.0)
+until(lambda: "chrome.exe" in status_blob(), 3.0)
 out["held"] = texts()
 manager.extra = {
     "idle_s": 30.0,
@@ -293,14 +318,14 @@ manager.extra = {
     "last_reset_kind": "program",
     "program_input_per_min": 8,
 }
-until(lambda: "full-screen" in str(prop("ssmHoldText", "text")), 3.0)
+until(lambda: "StarCitizen.exe" in status_blob(), 3.0)
 out["fullscreen"] = texts()
 manager.extra = {
     "last_reset_kind": "keyboard",
     "last_reset_by": "Logitech G915",
     "last_reset_age_s": 0.5,
 }
-until(lambda: "G915" in str(prop("ssmLastReset", "text")), 3.0)
+until(lambda: "G915" in status_blob(), 3.0)
 out["keyboardReset"] = texts()
 manager.extra = {"saver_problem": "no_screen_saver", "off_remaining_s": 200.0}
 until(lambda: bool(prop("ssmSaverProblem", "text")), 3.0)
@@ -312,7 +337,7 @@ manager.extra = {"problem": "not_listening", "listening": False}
 until(lambda: "can't be listened" in str(prop("ssmProblemText", "text")), 3.0)
 out["notListening"] = texts()
 manager.extra = {"saver_remaining_s": 80.0, "off_remaining_s": 200.0}
-until(lambda: "in 3 min" in str(prop("ssmOffCountdown", "text")), 3.0)
+until(lambda: "3 min" in status_blob(), 3.0)
 out["countdown"] = texts()
 manager.extra = {
     "saver_fired": True,
@@ -320,9 +345,44 @@ manager.extra = {
     "keeping_off": True,
     "wakes": 136,
 }
-until(lambda: bool(prop("ssmWakeCount", "text")), 3.0)
+until(lambda: "136" in status_blob(), 3.0)
 out["keepingOff"] = texts()
 manager.extra = {}
+
+# Test now button, Wait for devices box, status grid (SSM2 items 5, 9, 13).
+out["ssm2"] = {
+    "testText": str(prop("ssmTestNow", "text")),
+    "waitText": str(prop("ssmDevicesWait", "text")),
+    "gridRows": status_rows(),
+}
+# The fake manager has no test timer: give it a minimal one.
+_test_left = [0]
+manager.start_test = lambda delay_s=5.0: _test_left.__setitem__(0, 5)
+manager.cancel_test = lambda: _test_left.__setitem__(0, 0)
+manager.test_remaining = lambda: _test_left[0]
+if ev("ssm.testCountdown !== undefined"):
+    emit("ssmTestNow", "clicked")
+    settle(200)
+    out["ssm2"]["afterTestClick"] = {
+        "text": str(prop("ssmTestNow", "text")),
+        "countdown": int(ev("ssm.testCountdown")),
+    }
+    emit("ssmTestNow", "clicked")  # Cancel test (N)
+    settle(200)
+    out["ssm2"]["afterCancel"] = {
+        "text": str(prop("ssmTestNow", "text")),
+        "countdown": int(ev("ssm.testCountdown")),
+    }
+    waitbox = child("ssmDevicesWait")
+    waitbox.forceActiveFocus()
+    waitbox.setProperty("text", "25")
+    QtCore.QMetaObject.invokeMethod(waitbox, "editingFinished")
+    settle(200)
+    out["ssm2"]["waitTyped"] = {
+        "text": str(prop("ssmDevicesWait", "text")),
+        "model": int(ev("ssm.devicesWaitS")),
+        "cfg": cfg("devices-wait-s"),
+    }
 
 # Refresh Devices (S12): busy text while it reads, then the list.
 out["devicesBefore"] = int(prop("ssmDeviceList", "count"))
@@ -577,7 +637,7 @@ wake: dict[str, object] = {
     "wakeShown": item_shown("ssmWakeList"),
     "settingsHome": [
         n
-        for n in ("ssmEnabled", "ssmSectionDevices", "ssmHoldText")
+        for n in ("ssmEnabled", "ssmSectionDevices", "ssmStatusGrid")
         if win.findChild(QtQuick.QQuickItem, n) is not None
     ],
 }

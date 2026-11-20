@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import ctypes
 import logging
+import math
 import os
 import re
 import subprocess
@@ -57,8 +58,13 @@ ACTIVITY_GAP_S = 0.5
 # A power-off (the timer's or a keep-off re-send) is never sent sooner than
 # this after the last one.
 POWER_OFF_GAP_S = 1.0
-# S21: the longest the power-off waits for the devices to be switched off.
-POWER_OFF_WAIT_S = 10.0
+# S21: the wait for the devices to be switched off before the power-off is
+# Settings.devices_wait_s (at most; default 10, 1-60); the listener thread
+# polls the disabler's probe this often.
+DEVICES_WAIT_DEFAULT_S = 10
+DEVICES_WAIT_MIN_S = 1
+DEVICES_WAIT_MAX_S = 60
+DEVICES_POLL_S = 0.1
 # What before_power_off returns: (devices being switched off, "still busy?").
 PowerOffWait = tuple[int, Callable[[], bool]]
 
@@ -98,6 +104,8 @@ class Settings:
     power_off_on: bool = True
     power_off_wait_s: int = 0  # 0 = use the power plan's display-off time
     hold_fullscreen: bool = True
+    # S21: the most the power-off waits for the devices to switch off.
+    devices_wait_s: int = DEVICES_WAIT_DEFAULT_S
 
 
 @dataclass
@@ -122,6 +130,12 @@ class Status:
     off_problem: str = ""  # "" | "windows_never"
     keeping_off: bool = False  # answering Windows' display-ON reports (S6)
     wakes: int = 0  # re-sends in the current or last idle period (S20)
+    wake_count: int = 0  # the same as wakes (contract-SSM2 name)
+    # S21: devices being switched off before the power-off is sent.
+    waiting_for_devices: bool = False
+    # The last keep-off ended by input: {"off_s", "wakes", "devices_off",
+    # "devices_back", "start", "end"} (wall times); None until one ends.
+    last_away: dict | None = None
     # "" | "locked" | "no_wake_device" | "fullscreen" | "display_request"
     hold: str = ""
     hold_program: str = ""  # the full-screen program's file name, "" when unknown
@@ -317,6 +331,15 @@ class WindowsApi:
             self._saver_process = None
         return _spi_screen_saver_running()
 
+    def foreground_is_own(self) -> bool:
+        """The window in front belongs to Gremlin's own process: never a
+        full-screen program to hold for (contract-SSM2 item 7)."""
+        try:
+            pid = _foreground_pid()
+        except Exception:
+            return False
+        return bool(pid) and pid == os.getpid()
+
     def fullscreen_busy(self) -> bool:
         shell32 = ctypes.WinDLL("shell32")
         state = ctypes.c_int(0)
@@ -438,6 +461,22 @@ class WindowsApi:
 
 
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
+
+def _foreground_pid() -> int:
+    """The process id of the window in front, 0 when there is none."""
+    user32 = ctypes.WinDLL("user32")
+    user32.GetForegroundWindow.restype = wintypes.HWND
+    user32.GetWindowThreadProcessId.argtypes = (
+        wintypes.HWND,
+        ctypes.POINTER(wintypes.DWORD),
+    )
+    hwnd = user32.GetForegroundWindow()
+    if not hwnd:
+        return 0
+    pid = wintypes.DWORD(0)
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return int(pid.value)
 
 
 def _foreground_program() -> str:
@@ -795,6 +834,10 @@ _WM_INPUT = 0x00FF
 _WM_QUIT = 0x0012
 _WM_TIMER = 0x0113
 _RETRY_TIMER_ID = 1  # the keep-off re-send held back by the gap (S6)
+_POLL_TIMER_ID = 2  # the device wait before the power-off (S21)
+# Posted to the listener window to arm the poll timer from another thread
+# (SetTimer needs the window's own thread). WM_APP + 1.
+_WM_ARM_POLL = 0x8001
 _RID_INPUT = 0x10000003
 _RIDEV_REMOVE = 0x00000001
 _RIDEV_INPUTSINK = 0x00000100
@@ -994,6 +1037,13 @@ def _user32() -> ctypes.WinDLL:
         ctypes.c_void_p,
     )
     u.KillTimer.argtypes = (wintypes.HWND, ctypes.c_size_t)
+    u.PostMessageW.restype = wintypes.BOOL
+    u.PostMessageW.argtypes = (
+        wintypes.HWND,
+        wintypes.UINT,
+        wintypes.WPARAM,
+        wintypes.LPARAM,
+    )
     return u
 
 
@@ -1047,6 +1097,10 @@ class InputClock:
         # Called on the listener thread when the re-send timer fires; returns
         # the seconds still to wait, or None when it is done (S6).
         self.timer_handler: Callable[[], float | None] | None = None
+        # Called on the listener thread when the device-wait poll timer
+        # fires; returns the seconds until the next poll, None when done
+        # (S21).
+        self.poll_handler: Callable[[], float | None] | None = None
         self._hwnd: Any = None
         # The last counted input's source: (device handle or None, kind).
         self._source: tuple[int | None, str] = (None, "")
@@ -1252,6 +1306,22 @@ class InputClock:
             except Exception:
                 _log().exception("Screen Saver Mode keep-off timer failed")
             return 0
+        elif msg == _WM_TIMER and w_param == _POLL_TIMER_ID:
+            try:
+                self._user32.KillTimer(hwnd, _POLL_TIMER_ID)
+                handler = self.poll_handler
+                again = handler() if handler is not None else None
+                if again is not None:
+                    self.arm_poll_timer(again)
+            except Exception:
+                _log().exception("Screen Saver Mode device wait timer failed")
+            return 0
+        elif msg == _WM_ARM_POLL:
+            try:
+                self._user32.SetTimer(hwnd, _POLL_TIMER_ID, max(10, int(w_param)), None)
+            except Exception:
+                _log().exception("Screen Saver Mode device wait timer failed")
+            return 0
         elif msg == _WM_POWERBROADCAST and w_param == _PBT_POWERSETTINGCHANGE:
             try:
                 on = display_state_on(l_param)
@@ -1272,6 +1342,21 @@ class InputClock:
         ms = max(10, int(delay_s * 1000) + 1)
         try:
             return bool(u.SetTimer(hwnd, _RETRY_TIMER_ID, ms, None))
+        except Exception:
+            return False
+
+    def arm_poll_timer(self, delay_s: float) -> bool:
+        """Arms the one-shot device-wait poll timer on the listener's own
+        window (S21). Any thread: from another thread it posts _WM_ARM_POLL
+        and the listener thread arms it. False when it can't."""
+        hwnd, u, thread = self._hwnd, self._user32, self._thread
+        if not hwnd or u is None:
+            return False
+        ms = max(10, int(delay_s * 1000) + 1)
+        try:
+            if thread is not None and thread.ident == threading.get_ident():
+                return bool(u.SetTimer(hwnd, _POLL_TIMER_ID, ms, None))
+            return bool(u.PostMessageW(hwnd, _WM_ARM_POLL, ms, 0))
         except Exception:
             return False
 
@@ -1418,7 +1503,6 @@ class ScreenSaverMode:
     # status() while off reads Windows at most this often.
     _OFF_READ_S = 1.0
     POWER_OFF_GAP_S = POWER_OFF_GAP_S
-    POWER_OFF_WAIT_S = POWER_OFF_WAIT_S
 
     def __init__(
         self, api: WindowsApi | None = None, clock_: InputClock | None = None
@@ -1427,6 +1511,7 @@ class ScreenSaverMode:
         self._clock = clock_ if clock_ is not None else InputClock()
         self._clock.display_state_handler = self.on_display_state
         self._clock.timer_handler = self.on_retry_timer
+        self._clock.poll_handler = self.on_power_wait_timer
         self._clock.physical_id_of = self._api.device_physical_id
         self._clock.event_sink = self._note_device_event
         self._settings = Settings()
@@ -1459,9 +1544,18 @@ class ScreenSaverMode:
         self._events: deque[tuple[str, int, str, float]] = deque(maxlen=1000)
         # Device hooks (S21, S23), main thread only.
         self._before_power_off: Callable[[], PowerOffWait | None] | None = None
-        # S21: (still-busy probe, started at) while the devices are being
-        # switched off before the power-off; main thread only.
-        self._power_wait: tuple[Callable[[], bool], float] | None = None
+        # S21: (still-busy probe, started at, the counted input it waits
+        # after) while the devices are being switched off before the
+        # power-off; under _keep_lock (the listener thread polls it).
+        self._power_wait: tuple[Callable[[], bool], float, float] | None = None
+        self._devices_off = 0  # devices the last before_power_off switched off
+        # The power-off that started the current keep-off: (monotonic, wall).
+        self._off_sent: tuple[float, float] = (0.0, 0.0)
+        self._last_away: dict | None = None
+        # Test now: when the sequence starts (monotonic, 0 = none) and the
+        # counted input it was started after.
+        self._test_at = 0.0
+        self._test_input_at = 0.0
         self._after_input: Callable[[], None] | None = None
         self._hooked = False  # before_power_off ran, after_input not yet
         # Wake PC (S28-S31): None until set_wake_devices() is called.
@@ -1481,7 +1575,7 @@ class ScreenSaverMode:
         starts switching the devices off and returns None (nothing to wait
         for) or (number of devices, probe); the probe says whether they are
         still being switched off (cheap, never blocks). The power-off is
-        sent when the probe says done, or after POWER_OFF_WAIT_S.
+        sent when the probe says done, or after Settings.devices_wait_s.
         after_input: once at the first counted input after it (S23).
         Both on the main thread; never while the mode is off."""
         self._before_power_off = before_power_off
@@ -1587,6 +1681,13 @@ class ScreenSaverMode:
 
     def apply(self, settings: Settings) -> None:
         """Takes the settings; on/off starts or stops the clock and timer."""
+        settings = replace(
+            settings,
+            devices_wait_s=max(
+                DEVICES_WAIT_MIN_S,
+                min(DEVICES_WAIT_MAX_S, int(settings.devices_wait_s)),
+            ),
+        )
         self._settings = replace(settings)
         self._off_read = None
         saver = _timer_text(settings.screen_saver_on, settings.screen_saver_wait_s)
@@ -1622,7 +1723,8 @@ class ScreenSaverMode:
             self._stop()
         elif self._running:
             if not settings.power_off_on:
-                self._power_wait = None
+                with self._keep_lock:
+                    self._power_wait = None
                 self._end_keep_off("power off displays switched off")
             # A changed switch or wait: the countdowns read their waits again.
             self._read_waits()
@@ -1639,7 +1741,11 @@ class ScreenSaverMode:
     def _stop(self) -> None:
         self._end_keep_off("Screen Saver Mode switched off")
         self._hooked = False
-        self._power_wait = None
+        with self._keep_lock:
+            self._power_wait = None
+        if self._test_at:
+            self._test_at = 0.0
+            _trace("Test now: cancelled")
         self._running = False
         if self._timer is not None:
             try:
@@ -1761,6 +1867,7 @@ class ScreenSaverMode:
             self._settings.hold_fullscreen
             and self._api.fullscreen_busy()
             and not self._screen_saver_running()
+            and not self._own_in_front()
         ):
             # A screen saver in front is not a full-screen program: Windows
             # reports it as busy, which would hold the power-off timer behind
@@ -1780,15 +1887,20 @@ class ScreenSaverMode:
             return
         now = clock.monotonic()
         last = self._clock.last_input()
+        if self._test_at and last != self._test_input_at:
+            self._test_at = 0.0
+            _trace("Test now: cancelled")
         if last != self._period.input_at:
             # Input: a new idle period (S6), the countdowns start again.
             # Traced only for the first input after an action, not per input.
             after_action = self._period.saver.fired or self._period.off.fired
             if after_action:
                 _trace("input after action: countdown restarts")
-            self._end_keep_off("keyboard or mouse input")
-            if self._power_wait is not None:
+            self._end_keep_off("keyboard or mouse input", input_at=last)
+            with self._keep_lock:
+                waiting = self._power_wait is not None
                 self._power_wait = None
+            if waiting:
                 _trace("input while switching devices off: power off cancelled")
             if self._hooked:
                 self._hooked = False
@@ -1846,9 +1958,21 @@ class ScreenSaverMode:
             ):
                 # A power-off held back by the gap is tried again next tick.
                 p.off.fired = self._fire_power_off()
+        if self._test_at and now >= self._test_at:
+            self._test_at = 0.0
+            _trace("Test now: sequence started")
+            if not self._run_sequence():
+                self._test_at = now  # held back by the gap: next tick
         self._retry_keep_off(now)
         self._drain_events()
         self._update_status(now=now, hold=hold, problems=problems)
+
+    def _own_in_front(self) -> bool:
+        """Gremlin's own window in front never holds (contract-SSM2 item 7)."""
+        try:
+            return bool(self._api.foreground_is_own())
+        except Exception:
+            return False
 
     def _screen_saver_running(self) -> bool:
         """A screen saver runs: Windows says so, or one is the window in front."""
@@ -1925,64 +2049,146 @@ class ScreenSaverMode:
             )
             return False
         self._hooked = True
+        self._devices_off = 0
         wait = self._call_hook("before power off", self._before_power_off)
         if isinstance(wait, tuple) and len(wait) == 2:
             count, pending = wait
+            self._devices_off = int(count) if isinstance(count, int) else 0
             try:
                 busy = bool(pending())
             except Exception:
                 _log().exception("Screen Saver Mode: device wait probe failed")
                 busy = False
             if busy:
-                self._power_wait = (pending, now)
+                with self._keep_lock:
+                    self._power_wait = (pending, now, self._period.input_at)
                 _trace(f"switching devices off first ({count})")
+                # Polled on the listener thread (no main thread needed);
+                # the tick is the fallback.
+                arm = getattr(self._clock, "arm_poll_timer", None)
+                if arm is not None:
+                    arm(DEVICES_POLL_S)
                 return True
-        self._send_power_off()
+        self._send_power_off(self._period.input_at)
         return True
 
-    def _poll_power_wait(self, now: float) -> None:
-        """Each tick (main thread, never blocks): sends the power-off when
-        the devices are all done, or after POWER_OFF_WAIT_S."""
-        if self._power_wait is None:
-            return
-        pending, started = self._power_wait
+    def _run_sequence(self) -> bool:
+        """Test now / Turn displays off now: the power-off timer's sequence
+        at once (devices first, power off, keep off) whatever the timers;
+        this idle period's timers count as fired. False when held back by
+        the gap."""
+        p = self._period
+        if not self._fire_power_off():
+            return False
+        p.off.fired = True
+        p.saver.fired = True
+        return True
+
+    def on_power_wait_timer(self) -> float | None:
+        """The device-wait poll timer fired (the listener thread's window
+        procedure; tests call it). Returns the seconds until the next poll,
+        None when done."""
+        return self._poll_power_wait(clock.monotonic(), listener=True)
+
+    def _poll_power_wait(self, now: float, listener: bool = False) -> float | None:
+        """Sends the power-off when the devices are all done, or after
+        Settings.devices_wait_s (any thread, never blocks: the listener
+        thread's poll timer normally, the tick as a fallback). Returns the
+        seconds until the next poll, None when nothing is pending."""
+        with self._keep_lock:
+            wait = self._power_wait
+        if wait is None:
+            return None
+        pending, started, input_at = wait
+        if self._clock.last_input() != input_at:
+            return None  # counted input: the tick cancels it
         try:
             busy = bool(pending())
         except Exception:
             _log().exception("Screen Saver Mode: device wait probe failed")
             busy = False
         took = now - started
-        if busy and took < self.POWER_OFF_WAIT_S:
-            return
-        self._power_wait = None
+        limit = self._settings.devices_wait_s
+        if busy and took < limit:
+            return DEVICES_POLL_S
+        with self._keep_lock:
+            if self._power_wait is not wait:
+                return None  # sent or cancelled meanwhile
+            self._power_wait = None
         if busy:
-            _trace(
-                f"devices still being switched off after {self.POWER_OFF_WAIT_S:g} s: "
-                "power off sent"
-            )
+            text = f"devices still being switched off after {limit:g} s: power off sent"
         else:
-            _trace(f"devices switched off in {took:.1f} s: power off sent")
-        self._send_power_off()
+            text = f"devices switched off in {took:.1f} s: power off sent"
+        self._note(text, listener)
+        self._send_power_off(input_at, listener)
+        return None
 
-    def _send_power_off(self) -> None:
+    def _note(self, text: str, listener: bool) -> None:
+        """A trace line: straight away on the main thread, queued for the
+        tick on the listener thread (never traced there)."""
+        if listener:
+            with self._keep_lock:
+                self._events.append(("trace", 0, text, clock.now()))
+        else:
+            _trace(text)
+
+    def _send_power_off(self, input_at: float, listener: bool = False) -> None:
         """Sends the one power-off and starts keeping the displays off."""
         now = clock.monotonic()
         with self._keep_lock:
             self._last_power_off = now
             self._keeping_off = True
-            self._keep_input_at = self._period.input_at
+            self._keep_input_at = input_at
             self._retry_at = 0.0
             self._wakes = 0
+            self._off_sent = (now, clock.now())
         try:
             self._api.power_off_displays()
             _log().info("Screen Saver Mode: displays powered off")
-            _trace("action fired: power off displays: sent")
-            _trace("keep off started")
+            self._note("action fired: power off displays: sent", listener)
+            self._note("keep off started", listener)
         except Exception as e:
             with self._keep_lock:
                 self._keeping_off = False
             _log().exception("Screen Saver Mode action failed")
-            _trace(f"action fired: power off displays: failed ({e})")
+            self._note(f"action fired: power off displays: failed ({e})", listener)
+
+    # ----- Test now (contract-SSM2 item 9)
+
+    def start_test(self, delay_s: float = 5.0) -> None:
+        """After delay_s runs the real sequence (devices first, power off,
+        keep off until a counted input) whatever the timers; input during
+        the countdown cancels it. Main thread. Needs the mode on."""
+        if not self._running:
+            _trace("Test now: Screen Saver Mode is off")
+            return
+        self._test_input_at = self._clock.last_input()
+        self._test_at = clock.monotonic() + max(0.0, float(delay_s))
+        _trace(f"Test now: starting in {delay_s:g} s")
+
+    def cancel_test(self) -> None:
+        if self._test_at:
+            self._test_at = 0.0
+            _trace("Test now: cancelled")
+
+    def test_remaining(self) -> int:
+        """Whole seconds until the test sequence starts, 0 = none pending."""
+        if not self._test_at:
+            return 0
+        left = self._test_at - clock.monotonic()
+        return max(0, math.ceil(left - 1e-9))
+
+    def turn_off_now(self) -> None:
+        """The sequence at once (tray: Turn displays off now). Main thread.
+        Needs the mode on."""
+        if not self._running:
+            _trace("Turn displays off now: Screen Saver Mode is off")
+            return
+        self._test_at = 0.0
+        _trace("Turn displays off now: sequence started")
+        self._run_sequence()
+        self._drain_events()
+        self._update_status()
 
     # ----- keeping the displays off (S6, S20)
 
@@ -2061,13 +2267,26 @@ class ScreenSaverMode:
         self._post_resend()
         return None
 
-    def _end_keep_off(self, reason: str) -> None:
+    def _end_keep_off(self, reason: str, input_at: float | None = None) -> None:
+        """input_at: the counted input that ended it (fills last_away)."""
         with self._keep_lock:
             if not self._keeping_off:
                 return
             self._keeping_off = False
             self._retry_at = 0.0
             wakes, total = self._wakes, self._wakes_total
+            sent_mono, sent_wall = self._off_sent
+        if input_at is not None:
+            off_s = max(0.0, input_at - sent_mono)
+            # devices_back: filled by the model from the disabler (contract).
+            self._last_away = {
+                "off_s": off_s,
+                "wakes": wakes,
+                "devices_off": self._devices_off,
+                "devices_back": 0,
+                "start": sent_wall,
+                "end": sent_wall + off_s,
+            }
         self._drain_events()
         _log().info(
             f"Screen Saver Mode: stopped keeping the displays off ({reason}): "
@@ -2083,7 +2302,9 @@ class ScreenSaverMode:
                 kind, n, text, at = self._events.popleft()
             except IndexError:
                 return
-            if kind == "resend":
+            if kind == "trace":
+                _trace(text, t=at)
+            elif kind == "resend":
                 _trace(
                     "keep off: Windows turned the displays back on, "
                     f"power off sent again (#{n})",
@@ -2147,6 +2368,8 @@ class ScreenSaverMode:
         with self._keep_lock:
             wakes = self._wakes
         return Status(
+            wake_count=wakes,
+            last_away=dict(self._last_away) if self._last_away else None,
             enabled=s.enabled,
             saver_wait_s=saver_wait,
             saver_windows_wait_s=saver_windows,
@@ -2210,6 +2433,7 @@ class ScreenSaverMode:
             off_problem=off_problem,
             keeping_off=keeping_off,
             wakes=wakes,
+            wake_count=wakes,
             hold=hold,
             hold_program=self._hold_program if hold == HOLD_FULLSCREEN else "",
             problem=both,
@@ -2228,9 +2452,13 @@ class ScreenSaverMode:
         if not self._running or not self._status_live:
             return self._off_status()
         st = replace(self._status)
-        # Keep-off can end or count between ticks (listener thread).
+        # Keep-off and the device wait can end or count between ticks
+        # (listener thread).
         with self._keep_lock:
             st.keeping_off, st.wakes = self._keeping_off, self._wakes
+            st.waiting_for_devices = self._power_wait is not None
+        st.wake_count = st.wakes
+        st.last_away = dict(self._last_away) if self._last_away else None
         return st
 
 

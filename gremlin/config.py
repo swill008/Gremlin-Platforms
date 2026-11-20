@@ -250,10 +250,17 @@ class Configuration(metaclass=common.SingletonMetaclass):
     # (module-links: which module's picture each hidden device shows, worked
     # out by the HidHide window itself.)
     _HIDHIDE_PLACES = {"window-width", "window-height", "split-ratio", "module-links"}
-    # Options choices stored unexposed because Options shows them through a
-    # row of their own (Diagnostic logs: log_option's "debug" row), not as a
-    # plain row; History still records them (08 S15).
-    _RECORDED_UNEXPOSED = {("global", "general", "log-level")}
+    # Saved and kept across restarts, but never recorded in History: History
+    # is for configuration, not for troubleshooting or debugging (user
+    # 2026-11-20). Diagnostic logs, the not-responding log, the whole Screen
+    # Saver Mode group, HidHide's managed flag and the keep-on trace.
+    _NOT_IN_HISTORY = {
+        ("global", "general", "log-level"),
+        ("global", "general", "log-when-not-responding"),
+        ("display", "hidhide", "managed"),
+        ("global", "trace", "keep-on"),
+    }
+    _NOT_IN_HISTORY_GROUPS = {("global", "screen-saver-mode")}
 
     def _view_entry(self, key: tuple[str, str, str], entry: dict) -> str | None:
         """A setting's value as History compares it, or None for one History
@@ -261,12 +268,13 @@ class Configuration(metaclass=common.SingletonMetaclass):
         section, group, name = key
         if group == "internal":
             return None
-        hidhide = (section, group) == ("display", "hidhide")
         if (
-            not entry.get("expose")
-            and not hidhide
-            and key not in self._RECORDED_UNEXPOSED
+            key in self._NOT_IN_HISTORY
+            or (section, group) in self._NOT_IN_HISTORY_GROUPS
         ):
+            return None
+        hidhide = (section, group) == ("display", "hidhide")
+        if not entry.get("expose") and not hidhide:
             return None
         if hidhide and name in self._HIDHIDE_PLACES:
             return None

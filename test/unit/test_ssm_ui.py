@@ -149,6 +149,8 @@ def test_settings_are_registered_with_the_contract_defaults(fakes) -> None:  # n
         "power-off-on": (PropertyType.Bool, True),
         "power-off-wait-s": (PropertyType.Int, 0),
         "hold-fullscreen": (PropertyType.Bool, True),
+        # S21: at most how long the displays wait for the devices.
+        "devices-wait-s": (PropertyType.Int, 10),
         # S27: the saved Devices list.
         "devices": (PropertyType.List, []),
         # S28: the Wake PC list.
@@ -188,6 +190,8 @@ def test_history_names_them_as_the_window_does_and_options_leaves_them_out(
     ), title
     shown = {k for _s, groups in option.main_layout() for _g, ks in groups for k in ks}
     assert not any(k[1] == "screen-saver-mode" for k in shown)
+    # Titles still read well for older entries; new changes are not recorded
+    # at all (test_history_not_recorded.py).
 
 
 # The saved Devices list, the helper and the device hooks (S21-S27) ---------
@@ -1469,16 +1473,13 @@ def test_window_opens_off_with_windows_time(window: dict) -> None:
     assert s["oldNames"] == []
     # Windows' display-off time comes before its screen saver wait.
     assert s["ssmOrderWarning"] == _WARNING and s["ssmOrderWarningVisible"]
-    assert s["ssmListening"] == "Screen Saver Mode is off."
-    assert not s["ssmHoldTextVisible"] and not s["ssmProblemTextVisible"]
-    assert not s["ssmSaverCountdownVisible"] and not s["ssmOffCountdownVisible"]
-    assert not s["ssmWakeCountVisible"]
+    assert not s["ssmProblemTextVisible"]
     assert not s["ssmSaverProblemVisible"] and not s["ssmOffProblemVisible"]
 
 
 def test_window_controls_write_the_settings(window: dict) -> None:
     assert window["on"]["cfgEnabled"] is True and window["on"]["applied"] is True
-    assert window["on"]["ssmListening"] == "Listening to the keyboard and mouse"
+    assert "listening to the keyboard" in _row_text(window["on"], "Listener")
     so = window["saverOff"]
     assert so["cfgOn"] is False and so["on"] is False
     assert so["applied"] == [False, True]
@@ -1512,56 +1513,79 @@ def test_window_wait_boxes_type_and_clear_per_row(window: dict) -> None:
     assert oc["ssmOrderWarning"] == _WARNING
 
 
+def _row(snap: dict, label: str) -> dict:
+    return next(r for r in snap["statusRows"] if r["label"] == label)
+
+
+def _row_text(snap: dict, label: str) -> str:
+    r = _row(snap, label)
+    return r["value"] + r["detail"]
+
+
+_STATUS_LABELS = [
+    "Listener",
+    "Your idle time",
+    "Windows' idle time",
+    "Screen saver",
+    "Power off displays",
+    "Wake-ups",
+    "Hold",
+    "Last time away",
+    "Devices back on",
+]
+
+
 def test_window_status_texts(window: dict) -> None:
+    # The rows' exact wording belongs to the model; these check what the
+    # window shows for each scenario.
     held = window["held"]
-    assert held["ssmHoldText"] == (
-        "On hold: a program is keeping the display on (chrome.exe). "
-        "The countdown starts again when it stops."
-    )
-    assert held["ssmIdleText"] == "Your idle time: 2 min 41 s"
-    assert held["ssmWindowsIdleText"].startswith("Windows' idle time: 0 s")
+    assert "chrome.exe" in _row_text(held, "Hold")
+    assert "2 min 41 s" in _row_text(held, "Your idle time")
     fs = window["fullscreen"]
-    assert fs["ssmHoldText"] == (
-        "On hold: a full-screen program is in front (StarCitizen.exe). "
-        "The countdown starts again when it ends."
-    )
-    assert fs["ssmLastReset"] == (
-        "last reset by: input sent by a program, 8 times a minute"
-    )
-    assert fs["ssmLastResetVisible"]
-    assert window["keyboardReset"]["ssmLastReset"] == (
-        "last reset by: Logitech G915 (keyboard), just now"
-    )
-    # Nothing before the first input.
-    assert window["start"]["ssmLastReset"] == ""
-    assert not window["start"]["ssmLastResetVisible"]
+    assert "StarCitizen.exe" in _row_text(fs, "Hold")
+    rows = window["keyboardReset"]["statusRows"]
+    assert "G915" in "".join(r["value"] + r["detail"] for r in rows)
     ns = window["noScreenSaver"]
     assert ns["ssmSaverProblem"] == "No screen saver is chosen in Windows."
     assert ns["ssmSaverProblemVisible"] and not ns["ssmOffProblemVisible"]
-    assert not ns["ssmSaverCountdownVisible"]
-    assert ns["ssmOffCountdown"] == "Power off displays in 3 min 20 s"
+    assert "3 min 20 s" in _row_text(ns, "Power off displays")
     on = window["offNever"]
     assert on["ssmOffProblem"] == (
         "Windows never turns the display off: type a time to use this timer."
     )
-    assert not on["ssmSaverProblemVisible"] and not on["ssmOffCountdownVisible"]
-    assert on["ssmSaverCountdown"] == "Screen saver in 1 min 20 s"
+    assert not on["ssmSaverProblemVisible"]
+    assert "1 min 20 s" in _row_text(on, "Screen saver")
     nl = window["notListening"]
-    assert nl["ssmListening"] == "Not listening to the keyboard and mouse"
     assert "can't be listened to" in nl["ssmProblemText"]
+    assert "not listening" in _row_text(nl, "Listener")
     cd = window["countdown"]
-    assert cd["ssmSaverCountdown"] == "Screen saver in 1 min 20 s"
-    assert cd["ssmOffCountdown"] == "Power off displays in 3 min 20 s"
-    assert not cd["ssmHoldTextVisible"] and not cd["ssmWakeCountVisible"]
+    assert "1 min 20 s" in _row_text(cd, "Screen saver")
+    assert "3 min 20 s" in _row_text(cd, "Power off displays")
     ko = window["keepingOff"]
-    done = "done. Nothing more until the keyboard or mouse is used."
-    assert ko["ssmSaverCountdown"] == f"Screen saver {done}"
-    assert ko["ssmOffCountdown"] == f"Power off displays {done}"
-    assert ko["ssmWakeCount"] == (
-        "Windows turned the displays back on 136 times: devices that never "
-        "go quiet (see Refresh Devices)."
-    )
-    assert ko["ssmWakeCountVisible"]
+    assert "136" in _row_text(ko, "Wake-ups")
+
+
+def test_window_status_grid_has_the_nine_rows_in_order(window: dict) -> None:
+    rows = window["ssm2"]["gridRows"]
+    assert [r["label"] for r in rows] == _STATUS_LABELS
+
+
+def test_window_test_now_button_and_countdown(window: dict) -> None:
+    t = window["ssm2"]
+    assert t["testText"] == "Test now"
+    after = t["afterTestClick"]
+    assert after["countdown"] > 0
+    assert after["text"] == f"Cancel test ({after['countdown']})"
+    cancelled = t["afterCancel"]
+    assert cancelled["countdown"] == 0 and cancelled["text"] == "Test now"
+
+
+def test_window_wait_for_devices_box(window: dict) -> None:
+    t = window["ssm2"]
+    assert t["waitText"] == "10 s"
+    typed = t["waitTyped"]
+    assert typed["model"] == 25 and typed["cfg"] == 25
+    assert typed["text"] == "25 s"
 
 
 def test_window_refresh_devices(window: dict) -> None:
@@ -1718,7 +1742,7 @@ def test_window_s28_two_tabs_and_the_wake_pc_list(window: dict) -> None:
     assert w["tabs"] == ["Settings", "Wake PC"]
     assert w["startIndex"] == 0 and w["settingsShown"] and not w["wakeShown"]
     # Settings shows everything it did before.
-    assert w["settingsHome"] == ["ssmEnabled", "ssmSectionDevices", "ssmHoldText"]
+    assert w["settingsHome"] == ["ssmEnabled", "ssmSectionDevices", "ssmStatusGrid"]
     assert w["heading"] == "Allow this device to wake the PC"
     assert w["programsNote"] == (
         "Input sent by programs (RustDesk, remote desktop) always counts."

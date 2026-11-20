@@ -39,6 +39,8 @@ QUIT_REQUEST_HANDLED = 1
 _ID_SHOW = 1023
 _ID_TOGGLE = 1024
 _ID_QUIT = 1025
+_ID_SSM = 1026
+_ID_DISPLAYS_OFF = 1027
 
 # Messages that say Windows showed the main window (01 S174).
 _WM_SHOWWINDOW = 0x0018
@@ -559,9 +561,61 @@ class SystemTrayIcon(QtCore.QObject):
             self._toggle_visibility()
         elif command == _ID_TOGGLE:
             self._toggle_run()
+        elif command == _ID_SSM:
+            self._toggle_screen_saver_mode()
+        elif command == _ID_DISPLAYS_OFF:
+            self._turn_displays_off_now()
         elif command == _ID_QUIT:
             self._quit_gremlin()
         return 0
+
+    @staticmethod
+    def _ssm_functions() -> tuple | None:
+        """(ssm_enabled, set_ssm_enabled, turn_displays_off_now) from the
+        Screen Saver Mode model, None when it is not there."""
+        try:
+            from gremlin.ui import screen_saver_mode_model as model
+
+            return (
+                model.ssm_enabled,
+                model.set_ssm_enabled,
+                model.turn_displays_off_now,
+            )
+        except (ImportError, AttributeError):
+            return None
+
+    @staticmethod
+    def _ssm_trace(text: str) -> None:
+        with contextlib.suppress(Exception):
+            from gremlin import trace
+
+            trace.screen_saver(text)
+
+    def _toggle_screen_saver_mode(self) -> None:
+        functions = self._ssm_functions()
+        if functions is None:
+            return
+        enabled, set_enabled, _off = functions
+        try:
+            on = not enabled()
+            self._ssm_trace(f"Tray: Screen Saver Mode {'on' if on else 'off'}")
+            set_enabled(on)
+        except Exception:
+            logging.getLogger("system").warning(
+                "Tray: Screen Saver Mode toggle failed", exc_info=True
+            )
+
+    def _turn_displays_off_now(self) -> None:
+        functions = self._ssm_functions()
+        if functions is None:
+            return
+        try:
+            self._ssm_trace("Tray: turn displays off now")
+            functions[2]()
+        except Exception:
+            logging.getLogger("system").warning(
+                "Tray: turn displays off now failed", exc_info=True
+            )
 
     def _toggle_run(self) -> None:
         """Run/Stop the same way as the toolbar (Main.qml toggleRun asks
@@ -610,6 +664,22 @@ class SystemTrayIcon(QtCore.QObject):
                 else "Show Gremlin-Platforms"
             )
             win32gui.AppendMenu(menu, win32con.MF_STRING, _ID_SHOW, show_hide)
+            functions = self._ssm_functions()
+            ssm_on = False
+            if functions is not None:
+                with contextlib.suppress(Exception):
+                    ssm_on = bool(functions[0]())
+            ssm_flags = win32con.MF_STRING | (
+                win32con.MF_CHECKED if ssm_on else win32con.MF_UNCHECKED
+            )
+            off_flags = win32con.MF_STRING
+            if functions is None:
+                ssm_flags |= win32con.MF_GRAYED
+                off_flags |= win32con.MF_GRAYED
+            win32gui.AppendMenu(menu, ssm_flags, _ID_SSM, "Screen Saver Mode")  # pyright: ignore[reportCallIssue]  (pywin32 stub)
+            win32gui.AppendMenu(
+                menu, off_flags, _ID_DISPLAYS_OFF, "Turn displays off now"  # pyright: ignore[reportCallIssue]
+            )
             win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
             label = "Stop Profile" if self._backend.gremlinActive else "Run Profile"
             win32gui.AppendMenu(menu, win32con.MF_STRING, _ID_TOGGLE, label)
