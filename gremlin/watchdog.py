@@ -179,6 +179,360 @@ def wait_chain_block() -> str:
         return f"Main thread wait chain: not available ({e})"
 
 
+# Native stack (Windows x64): the thread is suspended only to copy its
+# registers and stack; walking and naming happen after it is resumed, on a
+# copy, so nothing that may take a lock runs while it is stopped.
+NATIVE_FRAMES = 48
+NATIVE_SAMPLE_GAP_S = 0.3
+_STACK_COPY_MAX = 512 * 1024
+_CONTEXT_SIZE = 0x4D0
+_CONTEXT_FULL = 0x10000B
+_OFF_FLAGS, _OFF_RSP, _OFF_RBP, _OFF_RIP = 0x30, 0x98, 0xA0, 0xF8
+# THREAD_SUSPEND_RESUME, THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION
+_THREAD_ACCESS = 0x0002 | 0x0008 | 0x0040
+
+
+def _native_supported() -> bool:
+    import platform
+
+    return (
+        sys.platform == "win32"
+        and ctypes.sizeof(ctypes.c_void_p) == 8
+        and platform.machine().upper() in ("AMD64", "X86_64")
+    )
+
+
+class _Address64(ctypes.Structure):
+    _fields_ = [
+        ("Offset", ctypes.c_uint64),
+        ("Segment", ctypes.c_uint16),
+        ("Mode", ctypes.c_int),
+    ]
+
+
+class _StackFrame64(ctypes.Structure):
+    _fields_ = [
+        ("AddrPC", _Address64),
+        ("AddrReturn", _Address64),
+        ("AddrFrame", _Address64),
+        ("AddrStack", _Address64),
+        ("AddrBStore", _Address64),
+        ("FuncTableEntry", ctypes.c_void_p),
+        ("Params", ctypes.c_uint64 * 4),
+        ("Far", ctypes.c_int),
+        ("Virtual", ctypes.c_int),
+        ("Reserved", ctypes.c_uint64 * 3),
+        ("KdHelp", ctypes.c_uint64 * 32),
+    ]
+
+
+class _Native:
+    """The Windows functions used, loaded once."""
+
+    def __init__(self) -> None:
+        from ctypes import wintypes
+
+        vp, u64, dw = ctypes.c_void_p, ctypes.c_uint64, wintypes.DWORD
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        # Called while the thread is suspended: PyDLL keeps the GIL held, so
+        # the suspended thread can't be holding it when we need it back.
+        held = ctypes.PyDLL("kernel32")
+        ntdll = ctypes.WinDLL("ntdll")
+        self.suspend, self.resume = held.SuspendThread, held.ResumeThread
+        for f in (self.suspend, self.resume):
+            f.restype, f.argtypes = dw, [vp]
+        self.get_context = held.GetThreadContext
+        self.get_context.restype, self.get_context.argtypes = wintypes.BOOL, [vp, vp]
+        self.move = held.RtlMoveMemory
+        self.move.restype, self.move.argtypes = None, [vp, vp, ctypes.c_size_t]
+        self.open_thread = k32.OpenThread
+        self.open_thread.restype, self.open_thread.argtypes = (
+            vp,
+            [dw, wintypes.BOOL, dw],
+        )
+        self.close = k32.CloseHandle
+        self.close.argtypes = [vp]
+        self.process = k32.GetCurrentProcess
+        self.process.restype = vp
+        self.read = k32.ReadProcessMemory
+        self.read.restype = wintypes.BOOL
+        self.read.argtypes = [
+            vp,
+            u64,
+            vp,
+            ctypes.c_size_t,
+            ctypes.POINTER(ctypes.c_size_t),
+        ]
+        self.module_from = k32.GetModuleHandleExW
+        self.module_from.restype = wintypes.BOOL
+        self.module_from.argtypes = [dw, vp, ctypes.POINTER(vp)]
+        self.module_name = k32.GetModuleFileNameW
+        self.module_name.restype, self.module_name.argtypes = (
+            dw,
+            [vp, wintypes.LPWSTR, dw],
+        )
+        self.query_thread = ntdll.NtQueryInformationThread
+        self.query_thread.restype = ctypes.c_long
+        self.query_thread.argtypes = [vp, ctypes.c_int, vp, ctypes.c_ulong, vp]
+        self.lookup = ntdll.RtlLookupFunctionEntry
+        self.lookup.restype, self.lookup.argtypes = vp, [u64, ctypes.POINTER(u64), vp]
+        dbghelp = ctypes.WinDLL("dbghelp")
+        self.read_cb = ctypes.WINFUNCTYPE(
+            wintypes.BOOL, vp, u64, vp, dw, ctypes.POINTER(dw)
+        )
+        self.table_cb = ctypes.WINFUNCTYPE(vp, vp, u64)
+        self.base_cb = ctypes.WINFUNCTYPE(u64, vp, u64)
+        self.walk = dbghelp.StackWalk64
+        self.walk.restype = wintypes.BOOL
+        self.walk.argtypes = [
+            dw,
+            vp,
+            vp,
+            ctypes.POINTER(_StackFrame64),
+            vp,
+            self.read_cb,
+            self.table_cb,
+            self.base_cb,
+            vp,
+        ]
+        self.walk_lock = threading.Lock()  # dbghelp is single-threaded
+
+
+_native: _Native | None = None
+_exports: dict[int, tuple[str, list[int], list[str]]] = {}
+
+
+def _api() -> _Native:
+    global _native
+    if _native is None:
+        _native = _Native()
+    return _native
+
+
+def _module_of(address: int) -> int:
+    api = _api()
+    handle = ctypes.c_void_p()
+    # FROM_ADDRESS | UNCHANGED_REFCOUNT
+    if not api.module_from(0x4 | 0x2, ctypes.c_void_p(address), ctypes.byref(handle)):
+        return 0
+    return handle.value or 0
+
+
+def _module_exports(base: int) -> tuple[str, list[int], list[str]]:
+    """(file name, sorted export addresses, their names), parsed once per module
+    from its export table in memory."""
+    cached = _exports.get(base)
+    if cached is not None:
+        return cached
+    api = _api()
+    buf = ctypes.create_unicode_buffer(520)
+    n = api.module_name(ctypes.c_void_p(base), buf, 520)
+    name = os.path.basename(buf.value[:n]) if n else f"0x{base:x}"
+    addrs: list[int] = []
+    names: list[str] = []
+    try:
+        u16 = lambda off: ctypes.c_uint16.from_address(base + off).value  # noqa: E731
+        u32 = lambda off: ctypes.c_uint32.from_address(base + off).value  # noqa: E731
+        nt = u32(0x3C)
+        if u16(0) == 0x5A4D and u32(nt) == 0x4550 and u16(nt + 24) == 0x20B:
+            exp_rva, exp_size = u32(nt + 24 + 112), u32(nt + 24 + 116)
+            if exp_rva:
+                ordinal_base, n_funcs, n_names = (
+                    u32(exp_rva + 16),
+                    u32(exp_rva + 20),
+                    u32(exp_rva + 24),
+                )
+                funcs, name_rvas, ords = (
+                    u32(exp_rva + 28),
+                    u32(exp_rva + 32),
+                    u32(exp_rva + 36),
+                )
+                by_index = {
+                    u16(ords + 2 * i): ctypes.string_at(
+                        base + u32(name_rvas + 4 * i)
+                    ).decode("ascii", "replace")
+                    for i in range(n_names)
+                }
+                pairs = []
+                for i in range(n_funcs):
+                    rva = u32(funcs + 4 * i)
+                    # forwarders point into the export table: skip them
+                    if rva and not exp_rva <= rva < exp_rva + exp_size:
+                        pairs.append(
+                            (base + rva, by_index.get(i, f"#{ordinal_base + i}"))
+                        )
+                pairs.sort()
+                addrs = [a for a, _ in pairs]
+                names = [s for _, s in pairs]
+    except Exception:
+        addrs, names = [], []
+    _exports[base] = (name, addrs, names)
+    return _exports[base]
+
+
+def name_address(address: int) -> str:
+    """`module!nearest_export+0xoff` for a code address in this process."""
+    import bisect
+
+    base = _module_of(address)
+    if not base:
+        return f"0x{address:x}"
+    name, addrs, names = _module_exports(base)
+    i = bisect.bisect_right(addrs, address) - 1
+    if i >= 0:
+        return f"{name}!{names[i]}+0x{address - addrs[i]:x}"
+    return f"{name}+0x{address - base:x}"
+
+
+def _capture(tid: int) -> tuple[ctypes.Array, int, ctypes.Array, int, int]:
+    """Suspends the thread, copies its registers and stack, resumes it.
+    Returns (context buffer, aligned context address, stack copy, copied
+    stack start, copied length)."""
+    api = _api()
+    if tid == threading.get_native_id():
+        raise RuntimeError("can't sample the watchdog thread itself")
+    handle = api.open_thread(_THREAD_ACCESS, False, tid)
+    if not handle:
+        raise OSError(f"OpenThread failed ({ctypes.get_last_error()})")
+    try:
+        # The stack's top (StackBase in the thread's TEB), read before suspending.
+        info = (ctypes.c_uint64 * 6)()
+        status = api.query_thread(handle, 0, info, ctypes.sizeof(info), None)
+        if status != 0:
+            raise OSError(
+                f"NtQueryInformationThread failed (0x{status & 0xFFFFFFFF:x})"
+            )
+        top = ctypes.c_uint64()
+        got = ctypes.c_size_t()
+        if not api.read(
+            api.process(), info[1] + 8, ctypes.byref(top), 8, ctypes.byref(got)
+        ):
+            raise OSError("stack base not readable")
+        raw = (ctypes.c_ubyte * (_CONTEXT_SIZE + 16))()
+        ctx = (ctypes.addressof(raw) + 15) & ~15
+        ctypes.c_uint32.from_address(ctx + _OFF_FLAGS).value = _CONTEXT_FULL
+        stack = (ctypes.c_ubyte * _STACK_COPY_MAX)()
+        stack_at = ctypes.addressof(stack)
+        rsp_at = ctx + _OFF_RSP
+        top_value = top.value
+        # The suspended window: only these calls, no allocation of note.
+        if api.suspend(handle) == 0xFFFFFFFF:
+            raise OSError(f"SuspendThread failed ({ctypes.get_last_error()})")
+        try:
+            ok = api.get_context(handle, ctx)
+            rsp = ctypes.c_uint64.from_address(rsp_at).value
+            length = top_value - rsp if ok and rsp < top_value else 0
+            if length > _STACK_COPY_MAX:
+                length = _STACK_COPY_MAX
+            if length:
+                api.move(stack_at, rsp, length)
+        finally:
+            api.resume(handle)
+        if not ok:
+            raise OSError("GetThreadContext failed")
+        if not length:
+            raise RuntimeError("stack pointer outside the stack")
+        return raw, ctx, stack, rsp, length
+    finally:
+        api.close(handle)
+
+
+def _walk(ctx: int, stack: ctypes.Array, start: int, length: int) -> list[int]:
+    """Return addresses, walked by dbghelp over the copied stack (reads
+    outside it go to ReadProcessMemory, which fails safely)."""
+    api = _api()
+    copy_at = ctypes.addressof(stack)
+    proc = api.process()
+
+    def read(_h: object, addr: int, buf: int, size: int, done: object) -> int:
+        try:
+            if start <= addr and addr + size <= start + length:
+                ctypes.memmove(buf, copy_at + (addr - start), size)
+                n = size
+            else:
+                got = ctypes.c_size_t()
+                if not api.read(proc, addr, buf, size, ctypes.byref(got)):
+                    return 0
+                n = got.value
+            if done:
+                done[0] = n  # type: ignore[index]
+            return 1
+        except Exception:
+            return 0
+
+    def table(_h: object, addr: int) -> int:
+        try:
+            base = ctypes.c_uint64()
+            return api.lookup(addr, ctypes.byref(base), None) or 0
+        except Exception:
+            return 0
+
+    def module_base(_h: object, addr: int) -> int:
+        try:
+            return _module_of(addr)
+        except Exception:
+            return 0
+
+    callbacks = (api.read_cb(read), api.table_cb(table), api.base_cb(module_base))
+    frame = _StackFrame64()
+    frame.AddrPC.Offset = ctypes.c_uint64.from_address(ctx + _OFF_RIP).value
+    frame.AddrFrame.Offset = ctypes.c_uint64.from_address(ctx + _OFF_RSP).value
+    frame.AddrStack.Offset = frame.AddrFrame.Offset
+    frame.AddrPC.Mode = frame.AddrFrame.Mode = frame.AddrStack.Mode = 3  # flat
+    pcs: list[int] = []
+    with api.walk_lock:
+        for _ in range(NATIVE_FRAMES):
+            if not api.walk(
+                0x8664, proc, None, ctypes.byref(frame), ctx, *callbacks, None
+            ):
+                break
+            pc = frame.AddrPC.Offset
+            if not pc or (pcs and pc == pcs[-1] and frame.AddrStack.Offset == 0):
+                break
+            pcs.append(pc)
+    return pcs
+
+
+def sample_native_stack(thread_id: int) -> list[str]:
+    """One sample of a thread's native stack, innermost first, each frame
+    named by `name_address`. Raises on failure."""
+    raw, ctx, stack, start, length = _capture(thread_id)
+    pcs = _walk(ctx, stack, start, length)
+    del raw
+    if not pcs:
+        raise RuntimeError("no frames")
+    return [name_address(pc) for pc in pcs]
+
+
+def native_stack_block(thread_id: int | None = None, samples: int = 2) -> str:
+    """The main thread's native stack, sampled `samples` times about
+    NATIVE_SAMPLE_GAP_S apart (a loop changes between samples, one long call
+    doesn't). Windows x64 only (empty elsewhere); never raises. Runs on the
+    watchdog thread, never the thread it samples."""
+    if not _native_supported():
+        return ""
+    try:
+        tid = thread_id or _main_thread_id or threading.main_thread().native_id
+        if not tid:
+            raise RuntimeError("main thread id unknown")
+        lines = [f"Main thread native stack (Windows, {samples} samples):"]
+        errors: list[str] = []
+        for i in range(samples):
+            if i:
+                threading.Event().wait(NATIVE_SAMPLE_GAP_S)
+            lines.append(f"  Sample {i + 1}:")
+            try:
+                lines += [f"    {f}" for f in sample_native_stack(tid)]
+            except Exception as e:
+                errors.append(str(e))
+                lines.append(f"    not available ({e})")
+        if len(errors) == samples:
+            raise RuntimeError(errors[0])
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Main thread native stack: not available ({e})"
+
+
 def _recent_block() -> str:
     """The recent events and the last known window state, as plain text
     (no Qt calls: this runs on the watchdog thread)."""
@@ -308,6 +662,7 @@ class Watchdog(QtCore.QObject):
                     f"{text} Where every thread is:\n"
                     + thread_stacks()
                     + ("\n" + wait_chain_block()).rstrip("\n")
+                    + ("\n" + native_stack_block()).rstrip("\n")
                     + "\n"
                     + _recent_block()
                 )

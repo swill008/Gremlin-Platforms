@@ -1161,3 +1161,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | WAITCHAIN + STARTMARKS + SPEC5: freeze measuring (Sonnet, Sonnet, Haiku) | fix | 3-8 min | 1-2 min each | 05:51-05:53 |
 | 2026-11-20 | SWPY + SWQML + SWSPEC: Switch off per device, virtual never switched off (Sonnet, Sonnet, Haiku) | feature | 3-8 min | 1-5 min | 05:59-06:04 |
 | 2026-11-20 | Quick tests: SSM window, e2e, switch, docs (188) | test | ~2 min | 1 min | 06:04-06:05 |
+| 2026-11-20 | NATSTACK + SPEC6: native main-thread stack in freeze reports (Opus, Haiku) | fix | 3-8 min | 5 min | 06:13-06:18 |
