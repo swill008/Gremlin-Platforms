@@ -163,6 +163,25 @@ def test_installer_never_deletes_the_old_program_up_front() -> None:
     assert "ssPostInstall" in iss and "RemovePath(AppFile('_internal.old'))" in iss
 
 
+def test_the_start_menu_shortcut_is_not_in_the_folder_ot7_deletes() -> None:
+    """The AppId is R1's, so Inno Setup would reuse the previous Start-menu
+    folder ("Gremlin-Platforms R1") and make the shortcut there; OT-7 then
+    deleted that folder, shortcut and all (1.1.0 on the user's PC,
+    2026-11-20). The shortcut always goes in a folder of the program's name."""
+    import re
+
+    root = pathlib.Path(__file__).parents[2]
+    iss = (root / "installer" / "gremlin_platforms.iss").read_text(encoding="utf-8")
+    assert "UsePreviousGroup=no" in iss
+    assert "DefaultGroupName={#MyAppName}" in iss
+    name = re.search(r'#define MyAppName "([^"]+)"', iss)
+    assert name
+    deleted = re.findall(r"DelTree\(ExpandConstant\('\{userprograms\}\\([^']+)'\)", iss)
+    assert deleted, "OT-7's Start-menu clean-up not found"
+    assert name.group(1) not in deleted
+    assert r'Name: "{group}\{#MyAppName}"' in iss
+
+
 def test_installer_and_workflow_agree_on_names() -> None:
     root = pathlib.Path(__file__).parents[2]
     iss = (root / "installer" / "gremlin_platforms.iss").read_text(encoding="utf-8")

@@ -1179,3 +1179,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | CI repro run seed 263651 --parts 3 (not reproduced; local split differs, parts hit the 10-min cap) | test | ~12-20 min | 10 min | 11:04-11:14 |
 | 2026-11-20 | CI fix 3: highlight-hold guard + full run + real-thread teardown fix | fix | ~4 min + 5-9 min run | 8 min run + ~8 min fix | 11:24-11:42 |
 | 2026-11-20 | CI fix 4: test Backends let go of global signals; print export wait; full run | fix | ~4 min + 5-9 min run | ~10 min fix + 8 min run | 11:58-12:10 |
+| 2026-11-20 | Study: silent stop of the installed app after 14:08 (read-only, lead) | research | 10-15 min | ~5 min | 16:47-16:52 |
+| 2026-11-20 | Installer Start-menu fix (UsePreviousGroup=no) + test + spec note (lead) | fix | 3-8 min | ~6 min | 16:59-17:05 |

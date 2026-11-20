@@ -36,6 +36,9 @@ UsePreviousAppDir=yes
 ; are in the same Windows session, so Global would only block other users for no reason.
 SetupMutex=GremlinPlatformsSetup
 DefaultGroupName={#MyAppName}
+; Always this name: the AppId is R1's, so the previous group would be
+; "Gremlin-Platforms R1", which OT-7 deletes after the shortcut is made there.
+UsePreviousGroup=no
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
 OutputDir=..\dist
