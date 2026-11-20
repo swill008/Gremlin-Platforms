@@ -457,6 +457,8 @@ class CodeRunner:
         trace.osc_reset()  # OSC trace and log limits count anew (D-09-OSC-TRACE)
         # A Logical Device loop is followed and told anew (06 S94).
         logical_loop.reset()
+        # Claimed vJoy devices open now, not on the first write (06 S106).
+        output.open_claimed_vjoy()
 
         self._setup_user_scripts()
 

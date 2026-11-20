@@ -67,11 +67,11 @@ def test_percentiles_exact() -> None:
 def test_summary_line(monkeypatch: pytest.MonkeyPatch, lines: list) -> None:
     monkeypatch.setattr(tt, "on", True)
     for i in range(1, 1001):
-        tt._record("queue wait", float(i))
+        tt._record("hand-over", float(i))
     tt._events = 1000
     text = tt.summary()
     assert text.startswith("20") and "10 s: 1,000 events (0 devices)" in text
-    assert "queue wait median 500 ms p95 950 p99 990 max 1,000" in text
+    assert "hand-over median 500 ms p95 950 p99 990 max 1,000" in text
     assert tt.summary() is None  # cleared
 
 
@@ -105,10 +105,46 @@ def test_hops_and_end_to_end(monkeypatch: pytest.MonkeyPatch, lines: list) -> No
     tt.end()
     tt.output()
     tt.output()  # once per event
-    assert tt._samples["queue wait"] == [2.0]
+    assert tt._samples["waited behind earlier events"] == [0.0]
+    assert tt._samples["hand-over"] == [2.0]
+    assert "queue wait" not in tt._samples
     assert tt._samples["gate to wiring"] == [1.0]
     assert tt._samples["actions"] == [2.0]
     assert tt._samples["end to end"] == [9.0]
+
+
+def test_burst_wait_is_behind_earlier_events(
+    monkeypatch: pytest.MonkeyPatch, lines: list
+) -> None:
+    """Event 2 emitted while event 1 runs: its wait is 'behind earlier events',
+    the hand-over is only the time after event 1 ended."""
+    monkeypatch.setattr(tt, "on", True)
+    ms = 1_000_000
+    # e1: t2=1, t3=2, t4=20 ms. e2 (emitted at 3 ms): t2=21 ms.
+    _clock(monkeypatch, [1 * ms, 2 * ms, 20 * ms, 21 * ms])
+    e1, e2 = _ev(0, 0), _ev(2 * ms, 3 * ms)
+    tt.dispatch(e1)
+    tt.begin(e1)
+    tt.end()
+    tt.dispatch(e2)
+    assert tt._samples["waited behind earlier events"] == [0.0, 17.0]
+    assert tt._samples["hand-over"] == [1.0, 1.0]
+
+
+def test_hand_over_when_input_thread_was_idle(
+    monkeypatch: pytest.MonkeyPatch, lines: list
+) -> None:
+    monkeypatch.setattr(tt, "on", True)
+    ms = 1_000_000
+    # e1 ends at 4 ms; e2 emitted at 10 ms, dispatched at 15 ms: all hand-over.
+    _clock(monkeypatch, [1 * ms, 2 * ms, 4 * ms, 15 * ms])
+    e1, e2 = _ev(0, 0), _ev(9 * ms, 10 * ms)
+    tt.dispatch(e1)
+    tt.begin(e1)
+    tt.end()
+    tt.dispatch(e2)
+    assert tt._samples["waited behind earlier events"][1] == 0.0
+    assert tt._samples["hand-over"][1] == 5.0
 
 
 def test_never_raises(monkeypatch: pytest.MonkeyPatch, lines: list) -> None:

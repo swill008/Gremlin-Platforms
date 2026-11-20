@@ -88,7 +88,8 @@ def test_one_event_is_counted_with_the_hop_values(
     text = lines[0]
     assert "1 events (1 devices)" in text
     assert "driver to emit median 0.10 ms" in text
-    assert "queue wait median 1.00 ms" in text
+    assert "waited behind earlier events median 0.00 ms" in text
+    assert "hand-over median 1.00 ms" in text
     assert "gate to wiring median 0.30 ms" in text
     assert "actions median 1.00 ms" in text
     assert "end to end median 2.00 ms" in text

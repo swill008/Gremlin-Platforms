@@ -454,12 +454,19 @@ def shutdown_cleanup() -> None:
 _QUIT_STOP_LIMIT_S = 5.0
 
 
+SWITCH_INTERVAL_S = 0.0005
+
+
 def _start_input_thread() -> None:
     """Starts the input thread. If it can't start, the input path runs on
     the main thread as before (inline) and that is logged."""
     # Loaded here, not with the modules above (their order is kept).
     from gremlin import input_thread
 
+    # Python lets one thread run at a time; hand over every 0.5 ms (default
+    # 5 ms) so the input thread isn't kept waiting while the window is busy
+    # in Python (01 S182; claude/plans/fix-plans/switch-interval.md).
+    sys.setswitchinterval(SWITCH_INTERVAL_S)
     try:
         input_thread.start()
     except Exception:

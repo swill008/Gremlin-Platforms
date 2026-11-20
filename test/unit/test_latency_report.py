@@ -156,3 +156,18 @@ def test_main_cli_reads_rotated_file_and_system(
     assert "Session 1" in out and "Session 2" in out
     assert "<- watchdog" in out
     assert lr.main([str(tmp_path / "missing.log")]) == 2
+
+
+def test_new_split_hops_are_parsed_and_old_queue_wait_still_read() -> None:
+    line = (
+        "10:00:10.000  Timing  TIMING  2026-11-20 10 s: 6 events (1 devices) "
+        "· waited behind earlier events median 19.0 ms p95 30.0 p99 40.0 max 49.0 "
+        "· hand-over median 0.20 ms p95 0.50 p99 1.0 max 2.0"
+    )
+    ses = lr.parse_trace([line])
+    agg = lr.aggregate(ses)
+    assert agg["waited behind earlier events"][1] == 19.0
+    assert agg["hand-over"][4] == 2.0
+    assert "queue wait" not in agg
+    text = lr.report(ses, [])
+    assert "waited behind earlier events" in text and "hand-over" in text

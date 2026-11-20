@@ -184,16 +184,27 @@ def _run(j: Journey) -> Any:  # noqa: ANN401
 
     from gremlin import osc
 
-    if not j.backend.runner.is_running():
-        j.backend.toggleActiveState()
+    # Run and Stop are queued to the input thread (01 S95): wait for the Run
+    # itself, not only a listener (a Stop's port close may still be queued).
+    j.backend.activate_gremlin(True)
+    if not j.await_run(True):
+        raise TimeoutError("the Run didn't start")
     runtime = osc.OscRuntime()
     listener = j.wait_until(lambda: runtime._listener, "the OSC listener", 10)
     return SimpleUDPClient("127.0.0.1", _bound_port(listener))
 
 
 def _stop(j: Journey) -> None:
-    if j.backend.runner.is_running():
-        j.backend.toggleActiveState()
+    """Stop, and wait until it is done: the Run stopped on the input thread
+    and its port closed on the main thread. Otherwise the next _run() may
+    still see the old Run and the old port (which then closes)."""
+    from gremlin import osc
+
+    j.backend.activate_gremlin(False)
+    if j.await_run(False):
+        raise TimeoutError("the Run didn't stop")
+    j.wait_until(lambda: osc.OscRuntime()._listener is None,
+                 "the OSC port closed after Stop", 10)
     j.settle()
 
 

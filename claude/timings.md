@@ -1139,3 +1139,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-19 | Thread batches 2-5: 10+6 helpers (code, tests, audit x2, sweep, fixes), interrupted 13:40-16:34 by a session shutdown | refactor (threading) | no timing data; rough 30-45 min | ~60 min of work (13:36-13:40, 16:34-17:32) | first threading batch; new kind |
 | 2026-11-19 | Local build 1.0.40 (pyinstaller + Inno installer) | local build | no row; guessed 5-10 min | 2 min (17:34-17:36) | first local build row |
 | 2026-11-19 | SWITCH-SLOW: why the window test is 40x slower at 0.5 ms (found: exit hang in os._exit, not slowness) | investigation | rough 20-30 min | 21 min (18:18-18:39) | |
+| 2026-11-20 | VJOPEN: vJoy opens at Run start (06 S106), 6 tests (Sonnet) | fix | 3-8 min | 3 min | 04:19-04:22 |
+| 2026-11-20 | TSPLIT: Timing queue wait split (01 S179), tests + Help (Sonnet) | fix | 3-8 min | 3 min | 04:19-04:22 |
+| 2026-11-20 | SPEC: S106, S179, S182 kept, README counts (Haiku) | docs | 3-8 min | 3 min | 04:20-04:23 |
+| 2026-11-20 | OSCSW: OSC trace test failure at 0.5 ms found test-side, test fixed (Opus) | research | 5-10 min | 8 min | 04:20-04:28 |
+| 2026-11-20 | Quick tests: --changed (joystick_gremlin.py changed, so all parts ran) | test | ~2 min | 7 min | 04:28-04:35; 1 fail: kept test times below 80% cover, refreshed test_times.json |

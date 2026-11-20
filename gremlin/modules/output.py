@@ -1096,6 +1096,31 @@ def vjoy_driver_problem() -> tuple[str, str]:
 # --- lifecycle --------------------------------------------------------------
 
 
+def open_claimed_vjoy() -> list[int]:
+    """Opens every vJoy device an output module claims, at Run start (06 S106),
+    so the first input doesn't wait for the open. Returns the ids opened.
+
+    A device vJoy has turned off, or another program holds, is handled by
+    _open_vjoy as on a write: told once, retried every few seconds (S47).
+    Never raises."""
+    opened: list[int] = []
+    try:
+        if not _sending():
+            return opened
+        for vid, module in vjoy_modules():
+            claim = module.claim
+            if not any(claim_ids(claim, k) for k in ("axis", "button", "hat")):
+                continue
+            try:
+                if _open_vjoy(vid) is not None:
+                    opened.append(int(vid))
+            except Exception:
+                syslog.exception("vJoy %s could not be opened at start", vid)
+    except Exception:
+        syslog.exception("Opening the claimed vJoy devices failed")
+    return opened
+
+
 def reset_vjoy() -> None:
     """Release every vJoy device Gremlin holds."""
     _stop_keep_alive()

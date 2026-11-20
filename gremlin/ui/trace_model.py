@@ -316,7 +316,7 @@ class TraceTree(QtCore.QAbstractListModel):
         )
         rows.append(row(
             kind="timing",
-            text="Timing (queue wait, actions, end to end, stalls)",
+            text="Timing (waits, actions, end to end, stalls)",
             check=2 if trace.timing_ticked() else 0,
         ))
         self.devices, self.controls = devices, controls

@@ -44,7 +44,16 @@ _STALL = re.compile(
 _SYS = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\s+\w+\s+(.*)$")
 _NOT_RESP = re.compile(r"Not responding for (\d+) s")
 _RESP_AGAIN = re.compile(r"Responding again after (\d+) s")
-HOPS = ("driver to emit", "queue wait", "gate to wiring", "actions", "end to end")
+# "queue wait" is the one hop older logs have; newer ones split it in two.
+HOPS = (
+    "driver to emit",
+    "queue wait",
+    "waited behind earlier events",
+    "hand-over",
+    "gate to wiring",
+    "actions",
+    "end to end",
+)
 _DAY = 86400.0
 
 
@@ -280,11 +289,11 @@ def _fmt(v: float) -> str:
 
 def _table(rows: dict[str, tuple[int, float, float, float, float]]) -> list[str]:
     out = [
-        f"  {'hop':<16}{'events':>10}{'median':>9}{'p95':>9}{'p99':>9}{'max':>9}  (ms)"
+        f"  {'hop':<30}{'events':>10}{'median':>9}{'p95':>9}{'p99':>9}{'max':>9}  (ms)"
     ]
     for hop, (n, a, b, c, d) in rows.items():
         out.append(
-            f"  {hop:<16}{n:>10,}{_fmt(a):>9}{_fmt(b):>9}{_fmt(c):>9}{_fmt(d):>9}"
+            f"  {hop:<30}{n:>10,}{_fmt(a):>9}{_fmt(b):>9}{_fmt(c):>9}{_fmt(d):>9}"
         )
     return out
 
@@ -342,7 +351,7 @@ def _wtext(w: Watch) -> str:
 
 def compare(before: list[Session], after: list[Session]) -> str:
     a, b = aggregate(before), aggregate(after)
-    out = [f"{'hop':<16}{'':<8}{'before':>10}{'after':>10}{'change':>10}  (ms)"]
+    out = [f"{'hop':<30}{'':<8}{'before':>10}{'after':>10}{'change':>10}  (ms)"]
     for hop in HOPS:
         if hop not in a and hop not in b:
             continue
@@ -352,7 +361,7 @@ def compare(before: list[Session], after: list[Session]) -> str:
             ch = "" if x is None or y is None else f"{y - x:+.2f}"
             xs = "-" if x is None else _fmt(x)
             ys = "-" if y is None else _fmt(y)
-            out.append(f"{hop if k == 1 else '':<16}{name:<8}{xs:>10}{ys:>10}{ch:>10}")
+            out.append(f"{hop if k == 1 else '':<30}{name:<8}{xs:>10}{ys:>10}{ch:>10}")
     sa = sum(len(s.stalls) for s in before)
     sb = sum(len(s.stalls) for s in after)
     out.append(f"TIMING stalls: before {sa}, after {sb}")

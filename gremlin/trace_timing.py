@@ -28,7 +28,17 @@ INTERVAL = 10.0  # seconds between summary lines
 STALL_MS = 50.0  # queue wait above this is a stall
 MAX_SAMPLES = 20000  # per hop and interval; beyond it samples are replaced
 
-HOPS = ("driver to emit", "queue wait", "gate to wiring", "actions", "end to end")
+# "queue wait" (t1 to t2) is split: "waited behind earlier events" is the part
+# while the input thread was still handling earlier events, "hand-over" the
+# rest. The stall line still reports the total.
+HOPS = (
+    "driver to emit",
+    "waited behind earlier events",
+    "hand-over",
+    "gate to wiring",
+    "actions",
+    "end to end",
+)
 
 on: bool = False
 counter = time.perf_counter_ns
@@ -41,6 +51,7 @@ _max: dict[str, float] = {}
 _events = 0
 _devices: set[Any] = set()
 _stall: dict[str, Any] | None = None
+_prev_end: int | None = None  # when the previous event's handling ended (t4)
 _timer: Any = None
 _mark: tuple[int, float, float] | None = None  # perf ns, thread_time, process_time
 _main_thread = threading.main_thread()
@@ -70,7 +81,7 @@ def _sync() -> None:
 
 
 def _reset() -> None:
-    global _events, _stall, _mark
+    global _events, _stall, _mark, _prev_end
     with _LOCK:
         _samples.clear()
         _counts.clear()
@@ -79,6 +90,7 @@ def _reset() -> None:
         _events = 0
         _stall = None
         _mark = None
+        _prev_end = None
         _phases.clear()
 
 
@@ -133,7 +145,7 @@ def stamp_rx(event: object, t0: int, t1: int) -> None:
 
 
 def dispatch(event: object) -> None:
-    """Dispatch start (t2): driver to emit, queue wait, stall episodes."""
+    """Dispatch start (t2): driver to emit, the two queue-wait hops, stall episodes."""
     if not on:
         return
     try:
@@ -146,7 +158,11 @@ def dispatch(event: object) -> None:
         wait = (t2 - t1) / 1e6
         with _LOCK:
             _record("driver to emit", (t1 - t0) / 1e6)
-            _record("queue wait", wait)
+            behind = 0.0
+            if _prev_end is not None:
+                behind = max(0, min(t2, _prev_end) - t1) / 1e6
+            _record("waited behind earlier events", behind)
+            _record("hand-over", max(0.0, wait - behind))
             global _events
             _events += 1
             dev = getattr(event, "device_guid", None)
@@ -216,6 +232,8 @@ def end() -> None:
         t4 = counter()
         with _LOCK:
             _record("actions", (t4 - cur[2]) / 1e6)
+            global _prev_end
+            _prev_end = t4
         cur[2] = None
     except Exception:
         _log().debug("trace_timing.end failed", exc_info=True)

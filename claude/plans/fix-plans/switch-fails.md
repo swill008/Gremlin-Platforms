@@ -49,3 +49,30 @@ Machine quiet apart from SWITCH-SLOW's queued runs.
 - 0.001 s did not hang in the same repro (3 of 3) but halves the latency tail only partly per switch-interval.md
   (p99 9 ms vs 0.27 ms at 0.5 ms). It is an option if 0.0005 can't be made safe; I did not run the OSC tests at 0.001.
 - test_switch_interval.py only pins the value; it does not catch these.
+
+## 4. Cause found (2026-11-20, agent OSCSW, 04:20-04:28) - item 2 is TEST-SIDE, fixed in the test
+- Cause: the test's `_stop()` / `_run()` helpers read `runner.is_running()` right after queueing a command.
+  Run and Stop are commands queued to the input thread (01 S95, Backend.activate_gremlin), and the
+  OSC port close/open is then queued to the main thread (OscRuntime.stop -> `_stop_here`, start -> `_start_here`).
+  `_stop()` only pumped events 3 times (settle), so the Stop was often still pending when `_run()` ran.
+- Evidence (instrumented scratch copy, setting ON, 4 runs):
+  - Failing run: `is_running()` before `_run()` = True (the Stop not yet done), so `_run()` did NOT press Run;
+    it took the OLD listener's port (64885), then the queued Stop closed it ("Stop: 0 held inputs released",
+    "clients closed (1)", "port closed" all after `rerun_start`). The /refuse that did reach a port was
+    traced as Inputs BLOCKED "OSC Button 3: not running (no event)": no Run, so no Send OSC, so no
+    "no target named" line. Port after the wait (61731) differed from the client's port.
+  - Two more failing runs: no listener at all after the wait (no Run was started).
+  - Passing run: `is_running()` before = False (Stop finished), Run pressed, same port before/after.
+  - This also explains why a 1.5 s wait before the send didn't help: the Run was never started.
+- Why 0.5 ms changes it: with a shorter switch interval the main thread gets back sooner after queueing the
+  Stop, so it checks `is_running()` before the input thread has done the Stop.
+- Not a program bug: the program's own Run/Stop path uses `_wanted_active` (not `is_running()`), keeps
+  commands in order on the input thread, and the main-thread port close is queued before the next Run's open.
+- Fix (test/unit/test_trace_osc_e2e.py only): `_run()` calls `activate_gremlin(True)` and waits with
+  `j.await_run(True)` before taking the listener; `_stop()` calls `activate_gremlin(False)`, waits with
+  `j.await_run(False)` and until `OscRuntime()._listener is None` (port closed). Both raise on timeout.
+  It still catches the behaviour tested: a second Run whose refusal is not traced, or traced as "repeated",
+  still fails `test_a_new_run_starts_the_counts_again`.
+- Runs: fixed file, 0.5 ms (program as is): 6 of 6 passed (13 passed each, 7.5 s). Fixed file, 5 ms (SW_OFF=1
+  plugin): 3 of 3 passed. Old file (HEAD copy), 0.5 ms: 2 of 3 failed. ruff and pyright clean.
+- Item 1 (os._exit hang at 0.0005) is NOT affected by this and is still open.
