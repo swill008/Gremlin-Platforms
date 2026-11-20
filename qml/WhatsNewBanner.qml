@@ -8,7 +8,7 @@ import QtQuick.Layouts
 import Gremlin.Style
 
 // The What's New notice under the toolbar after Gremlin starts on a newer
-// version than last ran (01 S183), styled like a Windows 11 InfoBar: a
+// version than last ran (01 S183), styled like a Windows 11 InfoBar in the gold of SuperCargo: a
 // floating card inset from the window edges with a solid stripe on its
 // left, a sparkle, a bold title and a softer message, a filled What's New
 // button and a quiet close. The model is the context property whatsNew
@@ -62,7 +62,7 @@ Item {
             objectName: "whatsNewBannerStripe"
             anchors.fill: parent
             radius: _banner._radius
-            color: Style.info
+            color: Style.gold
         }
 
         Rectangle {
@@ -70,7 +70,7 @@ Item {
             anchors.fill: parent
             anchors.leftMargin: _banner._stripe
             radius: _banner._radius
-            color: Style.infoFill
+            color: Style.goldFill
 
             // Squares off the fill's left corners so the stripe shows whole.
             Rectangle {
@@ -87,7 +87,7 @@ Item {
             radius: _banner._radius
             color: Style.clear
             border.width: 1
-            border.color: Qt.alpha(Style.info, 0.4)
+            border.color: Style.goldLine
         }
 
         RowLayout {
@@ -101,7 +101,7 @@ Item {
 
             Label {
                 text: "✦"
-                color: Style.infoText
+                color: Style.gold
                 font.pixelSize: Style.fontSize + Style.dp(2)
                 Accessible.ignored: true
             }
@@ -137,7 +137,9 @@ Item {
                 implicitWidth: _linkText.implicitWidth + Style.dp(20)
                 implicitHeight: _linkText.implicitHeight + Style.dp(8)
                 radius: Style.dp(4)
-                color: _linkHover.hovered ? Qt.lighter(Style.info, 1.15) : Style.info
+                border.width: 1
+                border.color: Style.gold
+                color: _linkHover.hovered ? Style.gold : Style.goldFillStrong
                 Accessible.role: Accessible.Link
                 Accessible.name: text
                 function activate() {
@@ -149,7 +151,7 @@ Item {
                     id: _linkText
                     anchors.centerIn: parent
                     text: qsTr("What's New")
-                    color: Style.onColor
+                    color: _linkHover.hovered ? Style.onGold : Style.fgStrong
                     font.pixelSize: Style.fontSize
                 }
                 TapHandler { onTapped: _link.activate() }

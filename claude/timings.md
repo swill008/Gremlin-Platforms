@@ -1155,3 +1155,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | NOTICEOFF: remove old Updated notice (Sonnet) | fix | 3-8 min | 2 min | 05:07-05:08 |
 | 2026-11-20 | SPEC2: S121, S183, decision row (Haiku) | docs | 3-8 min | <1 min | 05:07 |
 | 2026-11-20 | BAR2 + WNPY2 + SPEC3: InfoBar-style What's New bar (Sonnet, Sonnet, Haiku) | feature | 3-8 min | 1-2 min each | 05:13-05:14 |
+| 2026-11-20 | GOLD + SPEC4: gold What's New bar, gold theme tokens (Sonnet, Haiku) | fix | 3-8 min | 1-2 min | 05:18-05:19 |

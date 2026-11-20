@@ -104,8 +104,8 @@ holder.write_text(
     "import QtQuick\nimport QtQuick.Controls\nimport QtQuick.Layouts\n"
     "import Gremlin.Style\n"
     "ApplicationWindow { width: 600; height: 100; visible: true\n"
-    "  readonly property color infoColor: Style.info\n"
-    "  readonly property color infoFillColor: Style.infoFill\n"
+    "  readonly property color infoColor: Style.gold\n"
+    "  readonly property color infoFillColor: Style.goldFill\n"
     "  readonly property color pageColor: Style.bgPage\n"
     "  property int opened: 0\n"
     "  ColumnLayout { anchors.fill: parent\n"
@@ -144,6 +144,8 @@ try:
     out["fill"] = card.property("color").name().upper()
     out["stripe"] = stripe.property("color").name().upper()
     out["button_fill"] = link.property("color").name().upper()
+    out["button_border"] = QtQml.QQmlExpression(
+        QtQml.qmlContext(link), link, "border.color").evaluate()[0].name().upper()
     out["style_fill"] = win.property("infoFillColor").name()
     out["style_info"] = win.property("infoColor").name()
     out["page"] = win.property("pageColor").name()
@@ -194,13 +196,13 @@ def test_banner_and_window_follow_the_model(tmp_path: pathlib.Path) -> None:
     assert out["banner_warnings"] == []
 
 
-def test_banner_is_an_infobar_card_with_a_stripe_and_blue_button(
+def test_banner_is_an_infobar_card_with_a_stripe_and_gold_button(
         tmp_path: pathlib.Path) -> None:
     out = _run(tmp_path)
     # Card fill, stripe and button fill come from Style; the title is bold.
     assert out["fill"] == out["style_fill"].upper()
     assert out["stripe"] == out["style_info"].upper()
-    assert out["button_fill"] == out["style_info"].upper()
+    assert out["button_border"] == out["style_info"].upper()
     assert out["fill"] != out["page"].upper()
     assert out["bold"] is True
     # The window shows the model's notes as rich text under its title.

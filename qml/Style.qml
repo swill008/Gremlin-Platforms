@@ -39,6 +39,8 @@ Item {
         info: "#3B82F6", infoText: "#60A5FA", live: "#38BDF8",
         infoFill: "#1E3A5F", infoFillDeep: "#0F2744",
         alert: "#F97316", noteFill: "#8A7A2A", noteLine: "#C4B44A",
+        gold: "#FFD21E", goldDeep: "#C79A14", goldFill: "#1FFFD21E",
+        goldFillStrong: "#38FFD21E", goldLine: "#8CFFD21E", onGold: "#000000",
         onLive: "#0B1220",
         diffRemovedBg: "#3A1C20", diffAddedBg: "#17321F",
         diffRemovedWord: "#7F1D1D", diffAddedWord: "#166534",
@@ -63,6 +65,8 @@ Item {
         info: "#1E40AF", infoText: "#1E40AF", live: "#075985",
         infoFill: "#9CAABE", infoFillDeep: "#A6AFBD",
         alert: "#9A3412", noteFill: "#B8B085", noteLine: "#8A6D05",
+        gold: "#A16207", goldDeep: "#854D0E", goldFill: "#26CA8A04",
+        goldFillStrong: "#40CA8A04", goldLine: "#8CA16207", onGold: "#FFFFFF",
         onLive: "#FFFFFF",
         diffRemovedBg: "#C4A9AB", diffAddedBg: "#A7C2AE",
         diffRemovedWord: "#D78C8F", diffAddedWord: "#7DBC8E",
@@ -135,6 +139,13 @@ Item {
     readonly property color live: _scheme.live
     readonly property color infoFill: _scheme.infoFill
     readonly property color infoFillDeep: _scheme.infoFillDeep
+    // Gold accent (SuperCargo look): What's New bar. Not a warning colour.
+    readonly property color gold: _scheme.gold
+    readonly property color goldDeep: _scheme.goldDeep
+    readonly property color goldFill: _scheme.goldFill
+    readonly property color goldFillStrong: _scheme.goldFillStrong
+    readonly property color goldLine: _scheme.goldLine
+    readonly property color onGold: _scheme.onGold
     // Something needs attention (e.g. a missing driver).
     readonly property color alert: _scheme.alert
     // Help notes: a yellow box with dark text in both modes.
