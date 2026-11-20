@@ -1138,3 +1138,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-19 | Final full run seed 149484 (thread batches 2-5): all green | full run | ~8.5 min | 8 min (17:23-17:32) | |
 | 2026-11-19 | Thread batches 2-5: 10+6 helpers (code, tests, audit x2, sweep, fixes), interrupted 13:40-16:34 by a session shutdown | refactor (threading) | no timing data; rough 30-45 min | ~60 min of work (13:36-13:40, 16:34-17:32) | first threading batch; new kind |
 | 2026-11-19 | Local build 1.0.40 (pyinstaller + Inno installer) | local build | no row; guessed 5-10 min | 2 min (17:34-17:36) | first local build row |
+| 2026-11-19 | SWITCH-SLOW: why the window test is 40x slower at 0.5 ms (found: exit hang in os._exit, not slowness) | investigation | rough 20-30 min | 21 min (18:18-18:39) | |

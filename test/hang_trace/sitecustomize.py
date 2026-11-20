@@ -56,7 +56,8 @@ def _end_when_the_main_code_ends() -> None:
     # A program that ended with sys.exit(n) ends with 0 here: that code
     # isn't visible to Python at this point. Tests' programs end through
     # os._exit or with an error.
-    os._exit(1 if error is not None else 0)
+    stall_watch_end = os._exit  # _end_without_unload once installed below
+    stall_watch_end(1 if error is not None else 0)
 
 
 def _stalled(report: str) -> None:
@@ -127,10 +128,30 @@ def _guard_dill() -> None:
         sys.meta_path.insert(0, _DillGuard())
 
 
+def _end_without_unload(code: int = 0) -> None:
+    """os._exit for the programs the tests start: flush and end the process
+    at once (stall_watch.end_process). os._exit unloads Qt's DLLs while Qt
+    and other threads may still be alive; during that unload Qt can run our
+    Python event filters, which can wait forever for a thread Windows has
+    already killed (claude/plans/fix-plans/switch-slowdown.md)."""
+    sys.stdout.flush()
+    sys.stderr.flush()
+    if sys.platform == "win32":
+        import ctypes
+
+        ctypes.windll.kernel32.TerminateProcess(ctypes.c_void_p(-1), code)
+    _real_exit(code)
+
+
+_real_exit = os._exit
+
+
 if _LIMIT:
     _guard_vjoy()
     _guard_dill()
     import stall_watch
+
+    os._exit = _end_without_unload  # type: ignore[assignment]
 
     threading.Thread(
         target=_end_when_the_main_code_ends, name="hang-trace", daemon=True

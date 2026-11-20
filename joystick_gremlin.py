@@ -1326,6 +1326,29 @@ def _osc_open_always() -> None:
         logging.getLogger("system").exception("Could not start OSC listening")
 
 
+def _end_at_once(code: int) -> None:
+    """End the process without Qt's DLL unload (01 S154, emergency exits only).
+    os._exit runs ExitProcess, which unloads Qt while Qt and threads may be
+    alive; Qt then runs our Python event filters, which can wait forever for
+    the GIL from a thread Windows already killed. TerminateProcess ends at once."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if stream is not None:
+                stream.flush()
+        except Exception:
+            pass
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            kernel32 = ctypes.windll.kernel32
+            kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+            kernel32.TerminateProcess(kernel32.GetCurrentProcess(), code)
+        except Exception:
+            pass
+    os._exit(code)
+
+
 def main() -> int:
     if _startup_failure is not None:
         # The modules didn't load or the user folder couldn't be made.
@@ -1333,7 +1356,7 @@ def main() -> int:
         _log_startup_failure(summary, details)
         tell_could_not_start(summary, details)
         logging.shutdown()
-        os._exit(1)
+        _end_at_once(1)
     _no_hooks_offscreen()
     lock, start = _check_second_copy()
     if not start:
@@ -1353,7 +1376,8 @@ def main() -> int:
         gremlin.deferred_write.flush_all()
         gremlin.threads.shutdown(timeout=1.0)
         # Threads started before the failure must not keep the process alive.
-        os._exit(1)
+        logging.shutdown()
+        _end_at_once(1)
     app._instance_lock = lock
     try:
         # OSC discovery follows the saved switches (both off: nothing runs).
@@ -1454,7 +1478,7 @@ def _release_timed_out() -> None:
         f"Releasing Qt took over {_RELEASE_LIMIT_S:.0f} s; ending anyway"
     )
     logging.shutdown()
-    os._exit(0)
+    _end_at_once(0)
 
 
 if __name__ == "__main__":
