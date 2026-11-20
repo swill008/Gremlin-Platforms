@@ -65,20 +65,30 @@ Item {
             color: Style.gold
         }
 
-        Rectangle {
-            objectName: "whatsNewBannerCard"
+        // Right of the stripe: square left edge, rounded right corners. The
+        // rounded rectangles reach past the clip's left edge to square it.
+        // The gold fill is see-through, so it lies on an opaque page-coloured
+        // base; without the base the full-size stripe behind showed through
+        // and the whole card turned solid gold.
+        Item {
             anchors.fill: parent
             anchors.leftMargin: _banner._stripe
-            radius: _banner._radius
-            color: Style.goldFill
+            clip: true
 
-            // Squares off the fill's left corners so the stripe shows whole.
             Rectangle {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: _banner._radius * 2
-                color: parent.color
+                objectName: "whatsNewBannerBase"
+                anchors.fill: parent
+                anchors.leftMargin: -_banner._radius
+                radius: _banner._radius
+                color: Style.bgPage
+            }
+
+            Rectangle {
+                objectName: "whatsNewBannerCard"
+                anchors.fill: parent
+                anchors.leftMargin: -_banner._radius
+                radius: _banner._radius
+                color: Style.goldFill
             }
         }
 

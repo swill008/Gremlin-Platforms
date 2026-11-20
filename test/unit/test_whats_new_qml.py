@@ -150,6 +150,11 @@ try:
     out["style_info"] = win.property("infoColor").name()
     out["page"] = win.property("pageColor").name()
     out["text_color"] = text.property("color").name().upper()
+    # The see-through gold needs an opaque base under it (name() above
+    # drops the alpha, so the alphas are read here).
+    base = win.findChild(QtCore.QObject, "whatsNewBannerBase")
+    out["base_alpha"] = base.property("color").alphaF() if base else None
+    out["fill_alpha"] = card.property("color").alphaF()
     out["banner_warnings"] = [w for w in warnings if "WhatsNewBanner" in w]
 finally:
     shutil.rmtree(work, ignore_errors=True)
@@ -204,6 +209,10 @@ def test_banner_is_an_infobar_card_with_a_stripe_and_gold_button(
     assert out["stripe"] == out["style_info"].upper()
     assert out["button_border"] == out["style_info"].upper()
     assert out["fill"] != out["page"].upper()
+    # The card is a faint gold tint over an opaque base, not solid gold:
+    # the full-size stripe behind it once showed through the see-through
+    # fill.
+    assert out["base_alpha"] == 1.0 and out["fill_alpha"] < 0.5, out
     assert out["bold"] is True
     # The window shows the model's notes as rich text under its title.
     assert out["window_title"] == "What's New"
