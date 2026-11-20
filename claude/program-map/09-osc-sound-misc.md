@@ -544,7 +544,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 ### Tray
 - **S62** The tray icon should show while the program runs, idle or active to match Running/Stopped, with the tooltip "Gremlin-Platforms". [glossary: program name in the tray] [test-plan: TB-02]
 - **S63** Left-click on the icon should show the window as it was (windowed, maximized or full screen). [test-plan: W-06..09]
-- **S64** The tray menu should read Show/Hide Gremlin-Platforms, Screen Saver Mode (checkable), Turn displays off now, a separator, Run Profile / Stop Profile, a separator, Exit Gremlin-Platforms. [glossary: D1, D12] [test-plan: GLOSSARY-1] [changed 2026-11-20, user: "go build it" (SSM2)] (building 2026-11-20) (the two Screen Saver Mode items: 12 S40; see S73a)
+- **S64** The tray menu should read Show/Hide Gremlin-Platforms, Screen Saver Mode (checkable), Turn displays off now, a separator, Run Profile / Stop Profile, a separator, Exit Gremlin-Platforms. [glossary: D1, D12] [test-plan: GLOSSARY-1] [changed 2026-11-20, user: "go build it" (SSM2)] (built 2026-11-20) (the two Screen Saver Mode items: 12 S40; see S73a)
 - **S65** With Minimize to tray on, minimizing or closing (X) should hide the window and keep the profile running; File → Exit or the tray's Exit quits; a minimize hides the window once it has finished (also with `--start-minimized`). [help: Options] [test-plan: TRAY-ONE] [changed 2026-11-19, 01 S85, D-01-TRAY-TRUTH (not built yet)]
 - **S66** The first time the X hides the window, a balloon should say the program is still running; never again. [test-plan: TRAY-ONE]
 - **S67** Exit from the tray should bring the window back first, so a save question can be answered. [user confirmed 2026-10-06; was code only]
@@ -554,7 +554,7 @@ Mapped read-only against the code at 4f6bdfa4 (6 Oct); sections 2, 4, 6, 10 and 
 - **S71** The icon should come back after Explorer restarts. [user confirmed 2026-10-06; was code only]
 - **S72** Off-screen runs (tests, checks) should make no tray icon. [tracker: AU-73, AU-98] [test: test_audit3_startup.py::test_the_app_built_off_screen_installs_no_hook_hidhide_or_tray, test_audit2_startup_devices.py::test_the_tray_icon_follows_the_platform_qt_started_on]
 - **S73** `--start-minimized` should start minimized (to the tray when Minimize to tray is on). [user confirmed 2026-10-06; was code only]
-- **S73a** The tray menu also has **Screen Saver Mode** (checkable, the same switch as the window's, 12 S2) and **Turn displays off now** (12 S40); S64 above lists the other items. [new 2026-11-20, user: "go build it" (SSM2)] (building 2026-11-20)
+- **S73a** The tray menu also has **Screen Saver Mode** (checkable, the same switch as the window's, 12 S2) and **Turn displays off now** (12 S40); S64 above lists the other items. [new 2026-11-20, user: "go build it" (SSM2)] (built 2026-11-20)
 
 ### Look: dark/light, colours
 - **S74** Dark mode on/off should apply at once to every window. [test-plan: OPT-U01 PASS]
