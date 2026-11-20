@@ -1176,3 +1176,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | Release notes 1.1.0 rewritten with the user (public, concise) | docs | - | ~15 min | 08:40-08:55 |
 | 2026-11-20 | CI fix: bold in 1.1.0 notes + What's New tests (lead) | fix | ~4 min | ~3 min (plus a stopped test-helper attempt) | 10:11-10:14 |
 | 2026-11-20 | CI fix 2: journey Stop wait (race seen on CI) | fix | ~4 min | ~4 min | 10:37-10:41 |
+| 2026-11-20 | CI repro run seed 263651 --parts 3 (not reproduced; local split differs, parts hit the 10-min cap) | test | ~12-20 min | 10 min | 11:04-11:14 |
+| 2026-11-20 | CI fix 3: highlight-hold guard + full run + real-thread teardown fix | fix | ~4 min + 5-9 min run | 8 min run + ~8 min fix | 11:24-11:42 |

@@ -206,6 +206,25 @@ def _input_thread_inline() -> Iterator[None]:
     threads.guards_raise = raising
 
 
+@pytest.fixture(autouse=True)
+def _no_highlight_hold_left(request: pytest.FixtureRequest) -> Iterator[None]:
+    """A test that ends with input highlighting still held off fails and
+    names the holder; the hold is cleared so the next test starts free."""
+    from gremlin import shared_state
+
+    before = set(shared_state._highlight_holders)
+    yield
+    left = set(shared_state._highlight_holders) - before
+    pending = sorted(h for h in left if h in shared_state._release_timers)
+    shared_state.set_suspend_input_highlighting(bool(before))
+    if left:
+        pytest.fail(
+            f"{request.node.nodeid} left input highlighting held by "
+            f"{sorted(left)}" + (f" (release pending: {pending})" if pending else ""),
+            pytrace=False,
+        )
+
+
 @pytest.fixture
 def input_thread_running(qapp: object) -> Iterator[None]:
     """The real input thread for an end-to-end test; stopped within its limit."""
@@ -216,6 +235,14 @@ def input_thread_running(qapp: object) -> Iterator[None]:
     try:
         yield
     finally:
+        # Queued answers from the input thread (runStopped) reach the main
+        # thread now, as in the program: a Backend made by any test in this
+        # process stays connected to RunControl and lets go of its "run"
+        # highlighting hold only when runStopped arrives.
+        from PySide6 import QtCore
+
+        for _ in range(5):
+            QtCore.QCoreApplication.processEvents()
         # The runtime singletons go back to the main thread first, so later
         # tests in this process don't post to a stopped thread.
         from gremlin import code_runner
