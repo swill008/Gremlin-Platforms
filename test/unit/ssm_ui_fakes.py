@@ -141,7 +141,7 @@ class FakeManager:
         self.applied: list[Settings] = []
         self.extra: dict[str, Any] = {}
         self.shut = False
-        self.before_power_off: Callable[[], None] | None = None
+        self.before_power_off: Callable[[], Any] | None = None
         self.after_input: Callable[[], None] | None = None
         # Wake PC (contract-6): every set_wake_devices call, the press
         # listener, and the detection calls.
@@ -184,7 +184,7 @@ class FakeManager:
 
     def set_device_hooks(
         self,
-        before_power_off: Callable[[], None] | None,
+        before_power_off: Callable[[], Any] | None,
         after_input: Callable[[], None] | None,
     ) -> None:
         self.before_power_off = before_power_off
@@ -239,6 +239,10 @@ class FakeDisabler:
         self.enables = 0
         self.arrivals = 0
         self.recoveries = 0
+        self.idle = True  # no disable job queued or running
+
+    def wait_idle(self, timeout: float) -> bool:
+        return self.idle
 
     def helper_running(self) -> bool:
         return self.running

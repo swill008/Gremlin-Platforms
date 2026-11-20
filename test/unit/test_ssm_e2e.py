@@ -1301,6 +1301,10 @@ def story_first(j: Journey) -> None:
         _at(200300.0)
         _mgr().tick()
         _idle()
+        # The power-off waits for the devices (S21, to-do 142): the next
+        # tick after they are done sends it.
+        _at(200301.0)
+        _mgr().tick()
         journal = dd.journal().entries
         out["s21Disabled"] = [list(W["disabled"]), W["power_off"]]
         out["s21Ops"] = list(W["helper_ops"])

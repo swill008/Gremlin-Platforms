@@ -553,17 +553,20 @@ def helper_message() -> str:
         return HELPER_MESSAGE
 
 
-def _before_power_off() -> None:
+def _before_power_off() -> tuple[int, Callable[[], bool]] | None:
     """S21: the saved devices are disabled just before the power-off, when
-    the helper runs (async; returns at once)."""
+    the helper runs (async). Returns (number of devices, probe) so the core
+    waits for them (at most 10 s) before the power-off, or None when there
+    is nothing to wait for."""
     devices = _saved_pairs()
     if not devices:
-        return
+        return None
     disabler = _disabler()
-    if disabler.helper_running():
-        disabler.disable(devices)
-    else:
+    if not disabler.helper_running():
         _trace("devices not disabled: the helper isn't running")
+        return None
+    disabler.disable(devices)
+    return len(devices), lambda: not disabler.wait_idle(0)
 
 
 def _after_input() -> None:

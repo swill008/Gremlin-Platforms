@@ -57,6 +57,10 @@ ACTIVITY_GAP_S = 0.5
 # A power-off (the timer's or a keep-off re-send) is never sent sooner than
 # this after the last one.
 POWER_OFF_GAP_S = 1.0
+# S21: the longest the power-off waits for the devices to be switched off.
+POWER_OFF_WAIT_S = 10.0
+# What before_power_off returns: (devices being switched off, "still busy?").
+PowerOffWait = tuple[int, Callable[[], bool]]
 
 
 def _log() -> logging.Logger:
@@ -1414,6 +1418,7 @@ class ScreenSaverMode:
     # status() while off reads Windows at most this often.
     _OFF_READ_S = 1.0
     POWER_OFF_GAP_S = POWER_OFF_GAP_S
+    POWER_OFF_WAIT_S = POWER_OFF_WAIT_S
 
     def __init__(
         self, api: WindowsApi | None = None, clock_: InputClock | None = None
@@ -1453,7 +1458,10 @@ class ScreenSaverMode:
         # trace: never traced on the listener thread.
         self._events: deque[tuple[str, int, str, float]] = deque(maxlen=1000)
         # Device hooks (S21, S23), main thread only.
-        self._before_power_off: Callable[[], None] | None = None
+        self._before_power_off: Callable[[], PowerOffWait | None] | None = None
+        # S21: (still-busy probe, started at) while the devices are being
+        # switched off before the power-off; main thread only.
+        self._power_wait: tuple[Callable[[], bool], float] | None = None
         self._after_input: Callable[[], None] | None = None
         self._hooked = False  # before_power_off ran, after_input not yet
         # Wake PC (S28-S31): None until set_wake_devices() is called.
@@ -1465,11 +1473,15 @@ class ScreenSaverMode:
 
     def set_device_hooks(
         self,
-        before_power_off: Callable[[], None] | None,
+        before_power_off: Callable[[], PowerOffWait | None] | None,
         after_input: Callable[[], None] | None,
     ) -> None:
         """before_power_off: just before the Power off displays timer's
-        first power-off of an idle period (S21; must return fast).
+        first power-off of an idle period (S21; must return fast). It
+        starts switching the devices off and returns None (nothing to wait
+        for) or (number of devices, probe); the probe says whether they are
+        still being switched off (cheap, never blocks). The power-off is
+        sent when the probe says done, or after POWER_OFF_WAIT_S.
         after_input: once at the first counted input after it (S23).
         Both on the main thread; never while the mode is off."""
         self._before_power_off = before_power_off
@@ -1556,15 +1568,17 @@ class ScreenSaverMode:
         """Listener thread: queues a press, activity or an uncounted device."""
         self._events.append((event, handle, f"{kind}	{physical}", 0.0))
 
-    def _call_hook(self, name: str, hook: Callable[[], None] | None) -> None:
+    def _call_hook(self, name: str, hook: Callable[[], Any] | None) -> Any:  # noqa: ANN401
+        """Runs a device hook; its answer, or None when absent or failed."""
         if hook is None:
-            return
+            return None
         _trace(f"device hook: {name}")
         try:
-            hook()
+            return hook()
         except Exception:
             _log().exception(f"Screen Saver Mode: device hook {name} failed")
             _trace(f"device hook {name} failed (see the log)")
+            return None
 
     # ----- settings
 
@@ -1608,6 +1622,7 @@ class ScreenSaverMode:
             self._stop()
         elif self._running:
             if not settings.power_off_on:
+                self._power_wait = None
                 self._end_keep_off("power off displays switched off")
             # A changed switch or wait: the countdowns read their waits again.
             self._read_waits()
@@ -1624,6 +1639,7 @@ class ScreenSaverMode:
     def _stop(self) -> None:
         self._end_keep_off("Screen Saver Mode switched off")
         self._hooked = False
+        self._power_wait = None
         self._running = False
         if self._timer is not None:
             try:
@@ -1771,10 +1787,14 @@ class ScreenSaverMode:
             if after_action:
                 _trace("input after action: countdown restarts")
             self._end_keep_off("keyboard or mouse input")
+            if self._power_wait is not None:
+                self._power_wait = None
+                _trace("input while switching devices off: power off cancelled")
             if self._hooked:
                 self._hooked = False
                 self._call_hook("after input", self._after_input)
             self._new_period(last, last, quiet=not after_action)
+        self._poll_power_wait(now)
         p = self._period
         hold = ""
         try:
@@ -1891,19 +1911,13 @@ class ScreenSaverMode:
             _trace(f"action fired: screen saver: failed ({e})")
 
     def _fire_power_off(self) -> bool:
-        """Powers the displays off and starts keeping them off; False only
-        when held back by POWER_OFF_GAP_S (tried again next tick)."""
+        """S21: starts switching the devices off, then powers the displays
+        off once they are done (at once when there is nothing to wait for).
+        False only when held back by POWER_OFF_GAP_S (tried again next
+        tick)."""
         now = clock.monotonic()
         with self._keep_lock:
-            if now - self._last_power_off < self.POWER_OFF_GAP_S:
-                held = True
-            else:
-                held = False
-                self._last_power_off = now
-                self._keeping_off = True
-                self._keep_input_at = self._period.input_at
-                self._retry_at = 0.0
-                self._wakes = 0
+            held = now - self._last_power_off < self.POWER_OFF_GAP_S
         if held:
             _trace(
                 "action waits: power off displays was sent less than "
@@ -1911,7 +1925,54 @@ class ScreenSaverMode:
             )
             return False
         self._hooked = True
-        self._call_hook("before power off", self._before_power_off)
+        wait = self._call_hook("before power off", self._before_power_off)
+        if isinstance(wait, tuple) and len(wait) == 2:
+            count, pending = wait
+            try:
+                busy = bool(pending())
+            except Exception:
+                _log().exception("Screen Saver Mode: device wait probe failed")
+                busy = False
+            if busy:
+                self._power_wait = (pending, now)
+                _trace(f"switching devices off first ({count})")
+                return True
+        self._send_power_off()
+        return True
+
+    def _poll_power_wait(self, now: float) -> None:
+        """Each tick (main thread, never blocks): sends the power-off when
+        the devices are all done, or after POWER_OFF_WAIT_S."""
+        if self._power_wait is None:
+            return
+        pending, started = self._power_wait
+        try:
+            busy = bool(pending())
+        except Exception:
+            _log().exception("Screen Saver Mode: device wait probe failed")
+            busy = False
+        took = now - started
+        if busy and took < self.POWER_OFF_WAIT_S:
+            return
+        self._power_wait = None
+        if busy:
+            _trace(
+                f"devices still being switched off after {self.POWER_OFF_WAIT_S:g} s: "
+                "power off sent"
+            )
+        else:
+            _trace(f"devices switched off in {took:.1f} s: power off sent")
+        self._send_power_off()
+
+    def _send_power_off(self) -> None:
+        """Sends the one power-off and starts keeping the displays off."""
+        now = clock.monotonic()
+        with self._keep_lock:
+            self._last_power_off = now
+            self._keeping_off = True
+            self._keep_input_at = self._period.input_at
+            self._retry_at = 0.0
+            self._wakes = 0
         try:
             self._api.power_off_displays()
             _log().info("Screen Saver Mode: displays powered off")
@@ -1922,7 +1983,6 @@ class ScreenSaverMode:
                 self._keeping_off = False
             _log().exception("Screen Saver Mode action failed")
             _trace(f"action fired: power off displays: failed ({e})")
-        return True
 
     # ----- keeping the displays off (S6, S20)
 

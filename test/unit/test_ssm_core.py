@@ -1586,6 +1586,108 @@ def test_hooks_are_traced(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+# ----- S21: the devices are switched off first, the power-off waits for them
+
+
+class _Devices:
+    """A fake disabler: busy until done() (the hook's probe reads it)."""
+
+    def __init__(self, count: int = 2) -> None:
+        self.count = count
+        self.busy = True
+        self.starts = 0
+
+    def hook(self) -> tuple[int, Callable[[], bool]]:
+        self.starts += 1
+        return self.count, lambda: self.busy
+
+
+def _traced(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    lines: list[str] = []
+    monkeypatch.setattr(
+        ssm.trace,
+        "screen_saver",
+        lambda text, ring=True: lines.append(text),
+        raising=False,
+    )
+    return lines
+
+
+def test_s21_power_off_waits_until_the_devices_are_done(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mode, api, clk, now, run, _t = env
+    lines = _traced(monkeypatch)
+    dev = _Devices(2)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    run(120)
+    assert dev.starts == 1 and api.powered_off == 0
+    assert "switching devices off first (2)" in lines
+    assert not mode.status().keeping_off
+    run(5)
+    assert api.powered_off == 0
+    dev.busy = False
+    run(1)
+    assert api.powered_off == 1 and mode.status().keeping_off
+    assert any(x.startswith("devices switched off in ") for x in lines)
+    assert lines.index("switching devices off first (2)") < lines.index(
+        "action fired: power off displays: sent"
+    )
+    run(30)
+    assert api.powered_off == 1 and dev.starts == 1
+
+
+def test_s21_power_off_sent_after_ten_seconds_when_never_done(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mode, api, clk, now, run, _t = env
+    lines = _traced(monkeypatch)
+    dev = _Devices(1)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_off_only())
+    run(120)
+    run(9)
+    assert api.powered_off == 0
+    run(1)
+    assert api.powered_off == 1
+    assert (
+        "devices still being switched off after 10 s: power off sent" in lines
+    )
+
+
+def test_s21_input_during_the_wait_cancels_the_power_off(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mode, api, clk, now, run, _t = env
+    _traced(monkeypatch)
+    dev = _Devices(1)
+    calls: list[str] = []
+    mode.set_device_hooks(dev.hook, lambda: calls.append("after"))
+    mode.apply(_off_only())
+    run(120)
+    clk.note_input(source=0x1001, kind="keyboard")
+    run(1)
+    assert calls == ["after"]  # S23: the devices are enabled again
+    dev.busy = False
+    run(15)
+    assert api.powered_off == 0 and not mode.status().keeping_off
+
+
+def test_s21_nothing_to_wait_for_powers_off_at_once(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    mode.set_device_hooks(lambda: None, None)  # no devices / no helper
+    mode.apply(_off_only())
+    run(120)
+    assert api.powered_off == 1
+    mode2_done = _Devices(1)
+    mode2_done.busy = False  # already done when asked
+    mode.set_device_hooks(mode2_done.hook, None)
+    clk.note_input(source=0x1001, kind="keyboard")
+    run(120)
+    assert api.powered_off == 2
+
+
 # --- Wake PC (S3, S28-S31): only ticked keyboards and mice count
 
 

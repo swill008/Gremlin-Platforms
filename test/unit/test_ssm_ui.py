@@ -373,16 +373,22 @@ def test_s21_s23_hooks_disable_the_saved_list_and_enable_on_input(fakes) -> None
         assert manager.after_input is not None
         # Empty list: nothing to disable (S27).
         calls.disabler.running = True
-        manager.before_power_off()
+        assert manager.before_power_off() is None
         assert calls.disabler.disabled == []
         _fill_saved(m)
         # Helper not running: nothing disabled (S26).
         calls.disabler.running = False
-        manager.before_power_off()
+        assert manager.before_power_off() is None
         assert calls.disabler.disabled == []
         calls.disabler.running = True
-        manager.before_power_off()
+        calls.disabler.idle = False
+        wait = manager.before_power_off()
         assert calls.disabler.disabled == [_SAVED_PAIRS]
+        # S21: the core waits on the probe until the disabler is idle.
+        count, pending = wait
+        assert count == len(_SAVED_PAIRS) and pending() is True
+        calls.disabler.idle = True
+        assert pending() is False
         manager.after_input()
         assert calls.disabler.enables == 1
     finally:

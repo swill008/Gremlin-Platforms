@@ -1166,3 +1166,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | PEEKSTUDY: PeekMessage freeze, Qt 6.11 source + web (Opus) | research | 5-10 min | 5 min | 06:28-06:33 |
 | 2026-11-20 | KEEPOFF: held-back keep-off re-send on the listener thread (Sonnet) | fix | 3-8 min | 3 min | 06:37-06:40 |
 | 2026-11-20 | INSTCHECK: what started Gremlin mid-install (Sonnet) | research | 5-10 min | 4 min | 06:39-06:43 |
+| 2026-11-20 | DISFIRST + SPEC8: switch devices off first, then power off (to-do 142) (Sonnet, Haiku) | fix | 3-8 min | 1-2 min | 06:50-06:52 |
