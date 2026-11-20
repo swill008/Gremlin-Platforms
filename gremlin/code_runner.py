@@ -40,6 +40,7 @@ from gremlin import (
     signal,
     threads,
     trace,
+    trace_timing,
     tts,
     user_script,
 )
@@ -309,7 +310,7 @@ def _profile_path(running: Any) -> str | None:  # noqa: ANN401
 
 
 def _where(item: Any) -> str:  # noqa: ANN401
-    """"<device> <control> (<mode>)" for an input, for the log."""
+    """ "<device> <control> (<mode>)" for an input, for the log."""
     device = str(item.device_id)
     try:
         for dev in device_initialization.joystick_devices():
@@ -541,18 +542,27 @@ class CodeRunner:
         on(stage.CUT_INPUT, "OSC releases", lambda: OscRuntime().release_held())
         on(stage.CUT_INPUT, "input off", self._cut_input)
         # Mouse motion goes with the input (06 S89); its thread ends later.
-        on(stage.CUT_INPUT, "mouse motion",
-           lambda: sendinput.MouseMotionManager().reset())
+        on(
+            stage.CUT_INPUT,
+            "mouse motion",
+            lambda: sendinput.MouseMotionManager().reset(),
+        )
         on(stage.CANCEL, "release actions", self._drop_release_actions)
-        on(stage.CANCEL, "mode change actions",
-           lambda: event_helpers.ModeChangeActions().reset())
+        on(
+            stage.CANCEL,
+            "mode change actions",
+            lambda: event_helpers.ModeChangeActions().reset(),
+        )
         on(stage.CANCEL, "script state", self._end_scripts)
         on(stage.CANCEL, "OSC", lambda: OscRuntime().stop())
         on(stage.CANCEL, "Logical Device loops", lambda: logical_loop.reset())
         on(stage.FIRE_PENDING, "pulse releases", self._flush_pulses)
         on(stage.END_WORK, "macros", lambda: macro.MacroManager().stop())
-        on(stage.END_WORK, "mouse motion",
-           lambda: sendinput.MouseMotionManager().stop())
+        on(
+            stage.END_WORK,
+            "mouse motion",
+            lambda: sendinput.MouseMotionManager().stop(),
+        )
         on(stage.NEUTRAL, "Logical Device", self._logical_device_neutral)
         on(stage.NEUTRAL, "modes", lambda: mode_manager.ModeManager().end_run())
         on(stage.NEUTRAL, "sound", lambda: audio_player.AudioPlayer().stop())
@@ -792,10 +802,13 @@ class RunControl(QtCore.QObject):
         """Runs profile_snapshot (from profile_snapshot()) in mode. A start
         that fails stops itself and shows its error (CodeRunner.start)."""
         threads.assert_input("RunControl.start")
+        trace_timing.phase_begin("Run start")
         try:
             self.runner.start(profile_snapshot, mode)
         except Exception:
             pass  # logged and shown by the runner, which has stopped
+        finally:
+            trace_timing.phase_end()
         ok = self.runner.is_running()
         error_text = "" if ok else self.runner.last_error
         self.runStarted.emit(ok, error_text)
@@ -804,9 +817,11 @@ class RunControl(QtCore.QObject):
     def stop(self) -> None:
         """Ends the Run (safe when none runs)."""
         threads.assert_input("RunControl.stop")
+        trace_timing.phase_begin("Run stop")
         try:
             self.runner.stop()
         finally:
+            trace_timing.phase_end()
             self.runStopped.emit()
 
 

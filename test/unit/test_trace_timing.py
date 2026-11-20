@@ -155,3 +155,62 @@ def test_final_partial_line_written_at_tracing_off(
     for hook in list(trace._closing_hooks):
         hook()
     assert any("10 s: 1 events" in t for t, _ in lines)
+
+
+def test_undispatched_event_records_no_stale_gate_to_wiring(
+    monkeypatch: pytest.MonkeyPatch, lines: list
+) -> None:
+    monkeypatch.setattr(tt, "on", True)
+    ms = 1_000_000
+    _clock(monkeypatch, [3 * ms, 4 * ms, 6 * ms, 30_000 * ms, 30_001 * ms])
+    e = _ev(0, 1 * ms)
+    tt.dispatch(e)
+    tt.begin(e)
+    tt.end()
+    other = types.SimpleNamespace()  # virtual/timer event: never dispatched
+    tt.begin(other)
+    tt.end()
+    assert tt._samples["gate to wiring"] == [1.0]  # only the dispatched one
+    assert tt._samples["actions"] == [2.0, 1.0]
+
+
+def test_summary_with_no_counted_events_reports_no_hops(
+    monkeypatch: pytest.MonkeyPatch, lines: list
+) -> None:
+    monkeypatch.setattr(tt, "on", True)
+    _clock(monkeypatch, [10, 20])
+    other = types.SimpleNamespace()
+    tt.begin(other)
+    tt.end()
+    assert tt.summary() is None
+    assert not tt._samples
+
+
+def test_stall_during_run_start_says_so(
+    monkeypatch: pytest.MonkeyPatch, lines: list
+) -> None:
+    monkeypatch.setattr(tt, "on", True)
+    ms = 1_000_000
+    # Run start from 10 ms to 400 ms; the event queued at 20 ms, dispatched at 420
+    _clock(monkeypatch, [10 * ms, 400 * ms, 420 * ms])
+    tt.phase_begin("Run start")
+    tt.phase_end()
+    e = _ev(0, 20 * ms)
+    tt.dispatch(e)
+    tt.flush()
+    stalls = [t for t, w in lines if w]
+    assert stalls[0].endswith("; waited for Run start)")
+
+
+def test_stall_without_a_run_phase_has_no_label(
+    monkeypatch: pytest.MonkeyPatch, lines: list
+) -> None:
+    monkeypatch.setattr(tt, "on", True)
+    ms = 1_000_000
+    _clock(monkeypatch, [10 * ms, 20 * ms, 420 * ms])
+    tt.phase_begin("Run stop")
+    tt.phase_end()  # over before the event was queued
+    tt.dispatch(_ev(0, 100 * ms))
+    tt.flush()
+    stalls = [t for t, w in lines if w]
+    assert "waited for" not in stalls[0]

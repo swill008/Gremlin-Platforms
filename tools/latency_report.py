@@ -39,7 +39,7 @@ _HOP = re.compile(
 )
 _STALL = re.compile(
     r"queue wait ([\d,.]+) ms \(events held: ([\d,]+); first held at "
-    r"(\d\d):(\d\d):(\d\d)\.(\d{3})\)"
+    r"(\d\d):(\d\d):(\d\d)\.(\d{3})(?:; waited for [^)]*)?\)"
 )
 _SYS = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\s+\w+\s+(.*)$")
 _NOT_RESP = re.compile(r"Not responding for (\d+) s")

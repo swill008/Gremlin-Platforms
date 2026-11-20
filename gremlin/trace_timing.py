@@ -44,6 +44,9 @@ _stall: dict[str, Any] | None = None
 _timer: Any = None
 _mark: tuple[int, float, float] | None = None  # perf ns, thread_time, process_time
 _main_thread = threading.main_thread()
+# Run start/stop work on the input thread: [name, t_start, t_end or None].
+# An event queued meanwhile waits for it, which the stall line says.
+_phases: list[list[Any]] = []
 
 
 def _log() -> logging.Logger:
@@ -76,6 +79,7 @@ def _reset() -> None:
         _events = 0
         _stall = None
         _mark = None
+        _phases.clear()
 
 
 def _record(hop: str, ms: float) -> None:
@@ -88,6 +92,37 @@ def _record(hop: str, ms: float) -> None:
     _counts[hop] = n + 1
     if ms > _max.get(hop, -1.0):
         _max[hop] = ms
+
+
+def phase_begin(name: str) -> None:
+    """A Run start ("Run start") or stop ("Run stop") begins on the input thread."""
+    if not on:
+        return
+    try:
+        _phases.append([name, counter(), None])
+        del _phases[:-8]
+    except Exception:
+        pass
+
+
+def phase_end() -> None:
+    if not on:
+        return
+    try:
+        for ph in reversed(_phases):
+            if ph[2] is None:
+                ph[2] = counter()
+                break
+    except Exception:
+        pass
+
+
+def _phase_for(t1: int, t2: int) -> str | None:
+    """The Run phase an event queued at t1 and dispatched at t2 waited for."""
+    for name, start, end in reversed(_phases):
+        if t1 < (t2 if end is None else end) and t2 > start:
+            return name
+    return None
 
 
 def stamp_rx(event: object, t0: int, t1: int) -> None:
@@ -104,7 +139,7 @@ def dispatch(event: object) -> None:
     try:
         t2 = counter()
         rx = getattr(event, "t_rx", None)
-        _local.cur = [rx, t2, None, False]
+        _local.cur = [rx, t2, None, False, event]
         if not rx:
             return
         t0, t1 = rx
@@ -117,18 +152,20 @@ def dispatch(event: object) -> None:
             dev = getattr(event, "device_guid", None)
             if dev is not None:
                 _devices.add(dev)
-            _stall_step(wait)
+            _stall_step(wait, _phase_for(t1, t2))
         _arm()
     except Exception:
         _log().debug("trace_timing.dispatch failed", exc_info=True)
 
 
-def _stall_step(wait: float) -> None:
+def _stall_step(wait: float, why: str | None = None) -> None:
     global _stall
     if wait > STALL_MS:
         if _stall is None:
             first = datetime.datetime.now() - datetime.timedelta(milliseconds=wait)
-            _stall = {"max": wait, "held": 0, "first": first}
+            _stall = {"max": wait, "held": 0, "first": first, "why": None}
+        if why and not _stall.get("why"):
+            _stall["why"] = why
         _stall["held"] += 1
         _stall["max"] = max(_stall["max"], wait)
     elif _stall is not None:
@@ -141,9 +178,10 @@ def _end_stall() -> None:
     if s is None:
         return
     first = s["first"].strftime("%H:%M:%S.") + f"{s['first'].microsecond // 1000:03d}"
+    why = f"; waited for {s['why']}" if s.get("why") else ""
     _write(
         f"queue wait {s['max']:,.0f} ms (events held: {s['held']:,}; "
-        f"first held at {first})",
+        f"first held at {first}{why})",
         True,
     )
 
@@ -155,8 +193,10 @@ def begin(event: object) -> None:
     try:
         cur = getattr(_local, "cur", None)
         t3 = counter()
-        if cur is None:
-            cur = _local.cur = [getattr(event, "t_rx", None), None, None, False]
+        if cur is None or (len(cur) > 4 and cur[4] is not event):
+            # Not the event dispatch() stamped (virtual, timer, Logical
+            # Device, OSC): no t2 of its own, so no gate-to-wiring figure.
+            cur = _local.cur = [getattr(event, "t_rx", None), None, None, False, event]
         cur[2] = t3
         if cur[1] is not None:
             with _LOCK:
@@ -235,7 +275,12 @@ def summary() -> str | None:
     with _LOCK:
         if _stall is not None:
             _end_stall()
-        if not _events and not _samples:
+        if not _events:
+            # Hops without a counted event are not reported (no stale figures).
+            _samples.clear()
+            _counts.clear()
+            _max.clear()
+            _devices.clear()
             return None
         parts = []
         for hop in HOPS:
