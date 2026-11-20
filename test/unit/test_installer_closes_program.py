@@ -126,3 +126,11 @@ def test_still_a_per_user_install() -> None:
     iss = _iss()
     assert "PrivilegesRequired=lowest" in iss
     assert "CloseApplications=no" in iss
+
+
+def test_only_one_setup_runs_at_a_time() -> None:
+    # 01 S173, D-01-SETUP-MUTEX: a second setup must not run beside the first
+    # (2026-11-20: a second install closed the first one's program mid-copy).
+    setup = _iss().split("[Setup]", 1)[1].split("\n[", 1)[0]
+    assert re.search(r"^SetupMutex=GremlinPlatformsSetup$", setup, re.M)
+    assert not re.search(r"^SetupMutex=.*Global", setup, re.M)

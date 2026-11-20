@@ -31,6 +31,10 @@ PrivilegesRequired=lowest
 DefaultDirName={autopf}\Gremlin-Platforms
 DisableDirPage=no
 UsePreviousAppDir=yes
+; One setup at a time: a second run (a double-click, or the program's own update) stops while the
+; first one is still running. Per-user mutex (no ,Global): the install is per user and both runs
+; are in the same Windows session, so Global would only block other users for no reason.
+SetupMutex=GremlinPlatformsSetup
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
