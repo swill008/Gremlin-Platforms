@@ -1144,3 +1144,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | SPEC: S106, S179, S182 kept, README counts (Haiku) | docs | 3-8 min | 3 min | 04:20-04:23 |
 | 2026-11-20 | OSCSW: OSC trace test failure at 0.5 ms found test-side, test fixed (Opus) | research | 5-10 min | 8 min | 04:20-04:28 |
 | 2026-11-20 | Quick tests: --changed (joystick_gremlin.py changed, so all parts ran) | test | ~2 min | 7 min | 04:28-04:35; 1 fail: kept test times below 80% cover, refreshed test_times.json |
+| 2026-11-20 | Release notes 1.0.40 + CI test-order fix (diagnostics test) | fix | 3-8 min | 6 min | 04:39-04:45 |

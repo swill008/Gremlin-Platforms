@@ -7,8 +7,6 @@
 
 from __future__ import annotations
 
-import sys
-import types
 import zipfile
 from pathlib import Path
 
@@ -20,9 +18,13 @@ from gremlin import diagnostics, trace
 def test_the_zip_has_the_window_state_and_the_recent_events(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake = types.ModuleType("gremlin.ui.window_trace")
-    fake.state_text = lambda: "Main window: visible, Normal"  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "gremlin.ui.window_trace", fake)
+    # Patched on the real module: diagnostics imports it from the gremlin.ui
+    # package, which keeps the real one once any earlier test imported it.
+    from gremlin.ui import window_trace
+
+    monkeypatch.setattr(
+        window_trace, "state_text", lambda: "Main window: visible, Normal"
+    )
     trace.recent("Main window", "tray: left (tray click)")
     plan = diagnostics.collect(False)
     dest = tmp_path / "d.zip"
