@@ -155,6 +155,13 @@ function commandList() {
               if (updater && updater.state !== "downloading" && updater.state !== "ready")
                   updater.check(true)
           } },
+        { id: "help.whatsNew", text: "What's New…", group: "Help",
+          keywords: "release notes changes version",
+          run: function() {
+              if (whatsNew)
+                  whatsNew.showCurrentNotes()
+              openTool("WindowWhatsNew.qml")
+          } },
         { id: "help.diagnostics", text: "Save Diagnostics…", group: "Help",
           keywords: "zip logs report problem support",
           run: function() { openTool("DialogSaveDiagnostics.qml") } },

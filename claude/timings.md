@@ -1145,3 +1145,9 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | OSCSW: OSC trace test failure at 0.5 ms found test-side, test fixed (Opus) | research | 5-10 min | 8 min | 04:20-04:28 |
 | 2026-11-20 | Quick tests: --changed (joystick_gremlin.py changed, so all parts ran) | test | ~2 min | 7 min | 04:28-04:35; 1 fail: kept test times below 80% cover, refreshed test_times.json |
 | 2026-11-20 | Release notes 1.0.40 + CI test-order fix (diagnostics test) | fix | 3-8 min | 6 min | 04:39-04:45 |
+| 2026-11-20 | WNPY: What's New model + packaging (Sonnet) | feature | 3-8 min | 1-2 min | 04:54-04:55 |
+| 2026-11-20 | WNQML: What's New bar, window, Help item (Sonnet) | feature | 3-8 min | 4 min | 04:54-04:58 |
+| 2026-11-20 | WNSPEC: S183, glossary, Help, README (Haiku) | docs | 3-8 min | 1 min | 04:55-04:56 |
+| 2026-11-20 | CILOG: list CI failures of two runs (Haiku) | research | 5-10 min | <1 min | 04:58 |
+| 2026-11-20 | WNE2E: What's New end-to-end test, 5 tests + review (Sonnet) | test | 3-8 min | 1-2 min | 04:58-04:59 |
+| 2026-11-20 | Quick tests: 56 targeted + pyright | test | ~2 min | 1 min | 04:59-05:00 |

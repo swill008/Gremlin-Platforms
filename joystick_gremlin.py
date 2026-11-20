@@ -1266,6 +1266,12 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         from gremlin.ui import window_trace
 
         window_trace.expose(self.engine)
+        # What's New (01 S183): made before UpdateModel, which records the
+        # version that ran, so it can still see the previous one.
+        from gremlin.ui.whats_new_model import WhatsNewModel
+
+        self.whats_new = WhatsNewModel(self)
+        self.engine.rootContext().setContextProperty("whatsNew", self.whats_new)
         self.updater = gremlin.ui.update_model.UpdateModel(self)
         self.engine.rootContext().setContextProperty("updater", self.updater)
         # The Device Library window's model (10); it follows device changes.

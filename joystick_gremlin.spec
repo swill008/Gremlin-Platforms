@@ -17,6 +17,8 @@ datas = [
     ("version.json", "."),
     # Third-party licence notices (dill, spdlog, Qt, ...).
     ("licenses", "licenses"),
+    # Release notes for the Updated banner and What's New (01 S183).
+    ("release-notes", "release-notes"),
 ]
 datas.extend(action_plugins_files)
 binaries = [

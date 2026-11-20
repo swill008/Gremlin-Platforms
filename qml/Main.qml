@@ -1897,6 +1897,7 @@ ApplicationWindow {
 
             ThemedMenuItem { command: "help.guide" }
             ThemedMenuItem { command: "help.updates" }
+            ThemedMenuItem { command: "help.whatsNew" }
             ThemedMenuItem { command: "help.diagnostics" }
             ThemedMenuItem { command: "help.about" }
         }
@@ -2057,6 +2058,13 @@ ApplicationWindow {
                     }
                 }
             }
+        }
+
+        // After an update: "Updated — now 1.0.40" with What's New and a
+        // close button (01 S183).
+        WhatsNewBanner {
+            id: _whatsNewBanner
+            onOpenNotes: _root.openTool("WindowWhatsNew.qml")
         }
 
         // Under the toolbar on every page (01 S58a): Mode, its list and
