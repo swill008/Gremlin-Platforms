@@ -35,7 +35,8 @@ class WhatsNewModel(QtCore.QObject):
         except Exception:
             logging.getLogger("system").exception("What's New: start check failed")
         self._banner = bool(self._versions)
-        self._text = f"Updated — now {self._current}"
+        self._title = f"Updated to {self._current}"
+        self._message = "See what changed in this version."
         self._notes = ""
 
     @Property(bool, notify=bannerChanged)
@@ -43,8 +44,12 @@ class WhatsNewModel(QtCore.QObject):
         return self._banner
 
     @Property(str, notify=bannerChanged)
-    def bannerText(self) -> str:
-        return self._text
+    def bannerTitle(self) -> str:
+        return self._title
+
+    @Property(str, notify=bannerChanged)
+    def bannerMessage(self) -> str:
+        return self._message
 
     @Property(str, notify=notesChanged)
     def notesHtml(self) -> str:

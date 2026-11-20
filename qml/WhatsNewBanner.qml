@@ -7,103 +7,173 @@ import QtQuick.Layouts
 
 import Gremlin.Style
 
-// The thin bar under the toolbar after Gremlin starts on a newer version
-// than last ran (01 S183): a dot, "Updated — now 1.0.40", a What's New
-// link and a close button. The model is the context property whatsNew
+// The What's New notice under the toolbar after Gremlin starts on a newer
+// version than last ran (01 S183), styled like a Windows 11 InfoBar: a
+// floating card inset from the window edges with a solid stripe on its
+// left, a sparkle, a bold title and a softer message, a filled What's New
+// button and a quiet close. The model is the context property whatsNew
 // (null in some tests); the window is opened by whoever listens to
 // openNotes.
-Rectangle {
+Item {
     id: _banner
     objectName: "whatsNewBanner"
 
     signal openNotes()
 
     readonly property bool shown: whatsNew ? whatsNew.bannerVisible : false
+    property bool _animated: false
+    readonly property real _radius: Style.dp(6)
+    readonly property real _stripe: Style.dp(4)
 
     visible: shown
     Layout.fillWidth: true
-    implicitHeight: shown ? _row.implicitHeight + Style.dp(8) : 0
-    // Solid info blue with white text (Style.onColor) so it can't be missed.
-    color: Style.info
+    implicitHeight: shown ? _row.implicitHeight + Style.dp(16) + Style.dp(16) : 0
 
-    Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        height: 1
-        color: Style.infoFillDeep
+    // Fade and slide in once, when the card first appears.
+    function _playIn() {
+        if (_animated || !shown)
+            return
+        _animated = true
+        _intro.restart()
+    }
+    onShownChanged: _playIn()
+    Component.onCompleted: _playIn()
+
+    ParallelAnimation {
+        id: _intro
+        NumberAnimation {
+            target: _card; property: "opacity"
+            from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: _slide; property: "y"
+            from: -Style.dp(6); to: 0; duration: 200; easing.type: Easing.OutCubic
+        }
     }
 
-    RowLayout {
-        id: _row
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: Style.dp(12)
-        anchors.rightMargin: Style.dp(8)
-        spacing: Style.dp(8)
+    // The whole card; its stripe is the info-coloured shape behind the fill.
+    Item {
+        id: _card
+        anchors.fill: parent
+        anchors.margins: Style.dp(8)
+        transform: Translate { id: _slide }
 
         Rectangle {
-            Layout.preferredWidth: Style.dp(8)
-            Layout.preferredHeight: Style.dp(8)
-            radius: width / 2
-            color: Style.onColor
-        }
-
-        Label {
-            objectName: "whatsNewBannerText"
-            Layout.fillWidth: true
-            elide: Text.ElideRight
-            color: Style.onColor
-            font.pixelSize: Style.fontSize
-            text: whatsNew ? whatsNew.bannerText : ""
+            objectName: "whatsNewBannerStripe"
+            anchors.fill: parent
+            radius: _banner._radius
+            color: Style.info
         }
 
         Rectangle {
-            id: _link
-            objectName: "whatsNewBannerLink"
-            readonly property string text: _linkText.text
-            implicitWidth: _linkText.implicitWidth + Style.dp(16)
-            implicitHeight: _linkText.implicitHeight + Style.dp(6)
-            radius: Style.dp(4)
-            color: _linkHover.hovered ? Qt.rgba(1, 1, 1, 0.22) : Style.clear
+            objectName: "whatsNewBannerCard"
+            anchors.fill: parent
+            anchors.leftMargin: _banner._stripe
+            radius: _banner._radius
+            color: Style.infoFill
+
+            // Squares off the fill's left corners so the stripe shows whole.
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: _banner._radius * 2
+                color: parent.color
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: _banner._radius
+            color: Style.clear
             border.width: 1
-            border.color: Style.onColor
-            Accessible.role: Accessible.Link
-            Accessible.name: text
-            function activate() {
-                if (whatsNew)
-                    whatsNew.showBannerNotes()
-                _banner.openNotes()
-            }
-            Label {
-                id: _linkText
-                anchors.centerIn: parent
-                text: qsTr("What's New")
-                color: Style.onColor
-                font.pixelSize: Style.fontSize
-            }
-            TapHandler { onTapped: _link.activate() }
-            HoverHandler { id: _linkHover; cursorShape: Qt.PointingHandCursor }
+            border.color: Qt.alpha(Style.info, 0.4)
         }
 
-        ToolButton {
-            objectName: "whatsNewBannerClose"
-            text: "✕"
-            font.pixelSize: Style.fontSize
-            Accessible.name: qsTr("Close")
-            contentItem: Label {
-                text: parent.text
-                font: parent.font
-                color: Style.onColor
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+        RowLayout {
+            id: _row
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: _banner._stripe + Style.dp(12)
+            anchors.rightMargin: Style.dp(8)
+            spacing: Style.dp(10)
+
+            Label {
+                text: "✦"
+                color: Style.infoText
+                font.pixelSize: Style.fontSize + Style.dp(2)
+                Accessible.ignored: true
             }
-            background: Rectangle {
+
+            Label {
+                objectName: "whatsNewBannerTitle"
+                font.bold: true
+                color: Style.fgStrong
+                font.pixelSize: Style.fontSize
+                text: whatsNew ? whatsNew.bannerTitle : ""
+            }
+
+            // Hidden first when the window is narrow.
+            Label {
+                objectName: "whatsNewBannerMessage"
+                Layout.fillWidth: true
+                visible: _card.width > Style.dp(480)
+                elide: Text.ElideRight
+                color: Style.fgSoft
+                font.pixelSize: Style.fontSize
+                text: whatsNew ? whatsNew.bannerMessage : ""
+            }
+
+            Item {
+                Layout.fillWidth: true
+                visible: !_banner.shown || _card.width <= Style.dp(480)
+            }
+
+            Rectangle {
+                id: _link
+                objectName: "whatsNewBannerLink"
+                readonly property string text: _linkText.text
+                implicitWidth: _linkText.implicitWidth + Style.dp(20)
+                implicitHeight: _linkText.implicitHeight + Style.dp(8)
                 radius: Style.dp(4)
-                color: parent.hovered ? Qt.rgba(1, 1, 1, 0.22) : Style.clear
+                color: _linkHover.hovered ? Qt.lighter(Style.info, 1.15) : Style.info
+                Accessible.role: Accessible.Link
+                Accessible.name: text
+                function activate() {
+                    if (whatsNew)
+                        whatsNew.showBannerNotes()
+                    _banner.openNotes()
+                }
+                Label {
+                    id: _linkText
+                    anchors.centerIn: parent
+                    text: qsTr("What's New")
+                    color: Style.onColor
+                    font.pixelSize: Style.fontSize
+                }
+                TapHandler { onTapped: _link.activate() }
+                HoverHandler { id: _linkHover; cursorShape: Qt.PointingHandCursor }
             }
-            onClicked: if (whatsNew) whatsNew.dismissBanner()
+
+            ToolButton {
+                objectName: "whatsNewBannerClose"
+                text: "✕"
+                font.pixelSize: Style.fontSize
+                Accessible.name: qsTr("Close")
+                contentItem: Label {
+                    text: parent.text
+                    font: parent.font
+                    color: parent.hovered ? Style.fgStrong : Style.fgSoft
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                background: Rectangle {
+                    radius: Style.dp(4)
+                    color: parent.hovered ? Qt.rgba(1, 1, 1, 0.12) : Style.clear
+                }
+                onClicked: if (whatsNew) whatsNew.dismissBanner()
+            }
         }
     }
 }

@@ -50,8 +50,11 @@ class Model(QtCore.QObject):
 
     bannerVisible = QtCore.Property(
         bool, fget=lambda self: self._visible, notify=changed)
-    bannerText = QtCore.Property(
-        str, fget=lambda self: "Updated \u2014 now 1.0.40", notify=changed)
+    bannerTitle = QtCore.Property(
+        str, fget=lambda self: "Updated to 1.0.40", notify=changed)
+    bannerMessage = QtCore.Property(
+        str, fget=lambda self: "See what changed in this version.",
+        notify=changed)
     notesHtml = QtCore.Property(
         str,
         fget=lambda self: (
@@ -102,6 +105,7 @@ holder.write_text(
     "import Gremlin.Style\n"
     "ApplicationWindow { width: 600; height: 100; visible: true\n"
     "  readonly property color infoColor: Style.info\n"
+    "  readonly property color infoFillColor: Style.infoFill\n"
     "  readonly property color pageColor: Style.bgPage\n"
     "  property int opened: 0\n"
     "  ColumnLayout { anchors.fill: parent\n"
@@ -117,11 +121,16 @@ try:
     engine.load(QtCore.QUrl.fromLocalFile(str(holder)))
     win = engine.rootObjects()[0]
     pump()
-    text = win.findChild(QtCore.QObject, "whatsNewBannerText")
+    text = win.findChild(QtCore.QObject, "whatsNewBannerTitle")
+    message = win.findChild(QtCore.QObject, "whatsNewBannerMessage")
+    card = win.findChild(QtCore.QObject, "whatsNewBannerCard")
+    stripe = win.findChild(QtCore.QObject, "whatsNewBannerStripe")
     link = win.findChild(QtCore.QObject, "whatsNewBannerLink")
     close = win.findChild(QtCore.QObject, "whatsNewBannerClose")
     banner = win.findChild(QtCore.QObject, "whatsNewBanner")
     out["text"] = text.property("text")
+    out["message"] = message.property("text")
+    out["bold"] = bool(text.property("font").bold)
     out["link_text"] = link.property("text")
     out["visible"] = bool(banner.property("visible"))
     QtQml.QQmlExpression(QtQml.qmlContext(link), link, "activate()").evaluate()
@@ -132,7 +141,10 @@ try:
     pump(100)
     out["calls_after_close"] = list(model.calls)
     out["visible_after_close"] = bool(banner.property("visible"))
-    out["fill"] = banner.property("color").name().upper()
+    out["fill"] = card.property("color").name().upper()
+    out["stripe"] = stripe.property("color").name().upper()
+    out["button_fill"] = link.property("color").name().upper()
+    out["style_fill"] = win.property("infoFillColor").name()
     out["style_info"] = win.property("infoColor").name()
     out["page"] = win.property("pageColor").name()
     out["text_color"] = text.property("color").name().upper()
@@ -171,7 +183,8 @@ def _run(tmp_path: pathlib.Path) -> dict:
 
 def test_banner_and_window_follow_the_model(tmp_path: pathlib.Path) -> None:
     out = _run(tmp_path)
-    assert out["visible"] and out["text"] == "Updated \u2014 now 1.0.40"
+    assert out["visible"] and out["text"] == "Updated to 1.0.40"
+    assert out["message"] == "See what changed in this version."
     assert out["link_text"] == "What's New"
     # What's New: the model is asked, the window is opened, the bar stays.
     assert out["calls_after_link"] == ["banner"] and out["opened"] == 1
@@ -181,13 +194,15 @@ def test_banner_and_window_follow_the_model(tmp_path: pathlib.Path) -> None:
     assert out["banner_warnings"] == []
 
 
-def test_banner_is_a_solid_info_blue_bar_with_white_text(
+def test_banner_is_an_infobar_card_with_a_stripe_and_blue_button(
         tmp_path: pathlib.Path) -> None:
     out = _run(tmp_path)
-    # The fill is Style.info, not the page/well grey, and the text is white.
-    assert out["fill"] == out["style_info"].upper()
+    # Card fill, stripe and button fill come from Style; the title is bold.
+    assert out["fill"] == out["style_fill"].upper()
+    assert out["stripe"] == out["style_info"].upper()
+    assert out["button_fill"] == out["style_info"].upper()
     assert out["fill"] != out["page"].upper()
-    assert out["text_color"] == "#FFFFFF"
+    assert out["bold"] is True
     # The window shows the model's notes as rich text under its title.
     assert out["window_title"] == "What's New"
     assert "Point one" in out["window_notes"] and out["window_rich"]

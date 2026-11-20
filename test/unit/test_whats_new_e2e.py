@@ -61,7 +61,8 @@ def whats_new_window():
 banner = child('whatsNewBanner')
 out = {
     'bannerVisible': bool(banner.property('visible')),
-    'bannerText': child('whatsNewBannerText').property('text'),
+    'bannerTitle': child('whatsNewBannerTitle').property('text'),
+    'bannerMessage': child('whatsNewBannerMessage').property('text'),
     'modelBanner': bool(app.whats_new.property('bannerVisible')),
     'windowBefore': whats_new_window() is not None,
 }
@@ -133,7 +134,8 @@ def test_first_start_after_an_update_shows_the_bar_and_records_the_version(
     _seed(tmp_path, "1.0.39")
     out = _start(tmp_path)
     assert out["bannerVisible"] and out["modelBanner"]
-    assert out["bannerText"] == f"Updated — now {_VERSION}"
+    assert out["bannerTitle"] == f"Updated to {_VERSION}"
+    assert out["bannerMessage"] == "See what changed in this version."
     assert out["setting"] == _VERSION
     assert not out["windowBefore"]
 

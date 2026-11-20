@@ -76,7 +76,8 @@ def test_model(notes: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
     cfg.set("global", "internal", "last-run-version", "1.0.10")
     model = WhatsNewModel()
     assert model.bannerVisible
-    assert "1.0.12" in model.bannerText
+    assert model.bannerTitle == "Updated to 1.0.12"
+    assert model.bannerMessage == "See what changed in this version."
     model.showBannerNotes()
     assert "thing 1.0.11" in model.notesHtml and "thing 1.0.12" in model.notesHtml
     assert "thing 1.0.10" not in model.notesHtml
