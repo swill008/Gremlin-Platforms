@@ -53,21 +53,21 @@ def test_step_line_reaches_the_ring_with_tracing_off() -> None:
 
 def test_resend_step_from_the_listener_reaches_the_ring() -> None:
     mode = _mode()
-    mode._events.append(("resend", 2, ""))  # noqa: SLF001
+    mode._events.append(("resend", 2, "", 0.0))  # noqa: SLF001
     mode._drain_events()  # noqa: SLF001
     assert _in_ring("keep off: Windows turned the displays back on")
 
 
 def test_press_line_stays_out_of_the_ring_and_is_traced_when_on() -> None:
     mode = _mode()
-    mode._events.append(("press", 7, "keyboard\tPHYS-1"))  # noqa: SLF001
+    mode._events.append(("press", 7, "keyboard\tPHYS-1", 0.0))  # noqa: SLF001
     mode._drain_events()  # noqa: SLF001
     assert not _in_ring("press:")  # tracing off: not in the ring either
 
     trace.set_enabled(True)
     trace.set_screen_saver(True)
-    mode._events.append(("press", 7, "keyboard\tPHYS-1"))  # noqa: SLF001
-    mode._events.append(("not_counted", 7, "keyboard\tPHYS-1"))  # noqa: SLF001
+    mode._events.append(("press", 7, "keyboard\tPHYS-1", 0.0))  # noqa: SLF001
+    mode._events.append(("not_counted", 7, "keyboard\tPHYS-1", 0.0))  # noqa: SLF001
     mode._drain_events()  # noqa: SLF001
     details = [ln[3] for ln in trace.lines() if ln[2] == trace.SCREEN_SAVER]
     assert "press: Keyboard (keyboard)" in details

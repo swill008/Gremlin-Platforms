@@ -507,16 +507,16 @@ def set_screen_saver(on: bool) -> None:
         _save()
 
 
-def screen_saver(text: str, ring: bool = True) -> None:
+def screen_saver(text: str, ring: bool = True, t: float | None = None) -> None:
     """One SCREEN SAVER line (control "Screen Saver Mode"), only while
     tracing is on and the row is ticked; never raises. With ring the line
     also goes to the recent-lines ring, whatever the tick."""
     if ring:
-        recent("Screen Saver Mode", text)
+        recent("Screen Saver Mode", text, t)
     if not screen_saver_on():
         return
     try:
-        _add(SCREEN_SAVER, "Screen Saver Mode", str(text))
+        _add(SCREEN_SAVER, "Screen Saver Mode", str(text), t=t)
     except Exception:
         pass
 
@@ -559,11 +559,12 @@ def window(control: str, text: str) -> None:
         pass
 
 
-def recent(control: str, text: str) -> None:
+def recent(control: str, text: str, t: float | None = None) -> None:
     """Keeps one line in the recent ring (last RECENT_MAX), always, whatever
-    Tracing says; writes no file. Any thread; never raises."""
+    Tracing says; writes no file. Any thread; never raises. t is the wall
+    time the line happened, when it is written later."""
     try:
-        _recent.append(f"{_stamp()}  {control or '-'}  {text}")
+        _recent.append(f"{_stamp(t)}  {control or '-'}  {text}")
     except Exception:
         pass
 

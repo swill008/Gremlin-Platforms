@@ -63,15 +63,19 @@ def _log() -> logging.Logger:
     return logging.getLogger("system")
 
 
-def _trace(text: str, ring: bool = True) -> None:
+def _trace(text: str, ring: bool = True, t: float | None = None) -> None:
     """One Screen Saver Mode trace line (S16); a no-op unless tracing and
     its tick are on. Never per input event. With ring the line also goes
-    to the recent-events ring (01 S177); per-press lines pass ring=False."""
+    to the recent-events ring (01 S177); per-press lines pass ring=False.
+    t is the wall time the thing happened (a line written later)."""
     write = getattr(trace, "screen_saver", None)
     if write is None:
         return
     try:
-        write(text, ring=ring)
+        if t is None:
+            write(text, ring=ring)
+        else:
+            write(text, ring=ring, t=t)
     except Exception:
         _log().exception("Screen Saver Mode: trace failed")
 
@@ -785,6 +789,8 @@ def _is_part(instance_id: str) -> bool:
 
 _WM_INPUT = 0x00FF
 _WM_QUIT = 0x0012
+_WM_TIMER = 0x0113
+_RETRY_TIMER_ID = 1  # the keep-off re-send held back by the gap (S6)
 _RID_INPUT = 0x10000003
 _RIDEV_REMOVE = 0x00000001
 _RIDEV_INPUTSINK = 0x00000100
@@ -976,6 +982,14 @@ def _user32() -> ctypes.WinDLL:
         wintypes.DWORD,
     )
     u.UnregisterPowerSettingNotification.argtypes = (wintypes.HANDLE,)
+    u.SetTimer.restype = ctypes.c_size_t
+    u.SetTimer.argtypes = (
+        wintypes.HWND,
+        ctypes.c_size_t,
+        wintypes.UINT,
+        ctypes.c_void_p,
+    )
+    u.KillTimer.argtypes = (wintypes.HWND, ctypes.c_size_t)
     return u
 
 
@@ -1026,6 +1040,10 @@ class InputClock:
         self.notify_error = ""
         # Called on the listener thread with each display state (True on).
         self.display_state_handler: Callable[[bool], None] | None = None
+        # Called on the listener thread when the re-send timer fires; returns
+        # the seconds still to wait, or None when it is done (S6).
+        self.timer_handler: Callable[[], float | None] | None = None
+        self._hwnd: Any = None
         # The last counted input's source: (device handle or None, kind).
         self._source: tuple[int | None, str] = (None, "")
         # Program input per second: [second, count], the last minute only.
@@ -1218,6 +1236,18 @@ class InputClock:
                         )
             except Exception:
                 _log().exception("Screen Saver Mode raw input failed")
+        elif msg == _WM_TIMER and w_param == _RETRY_TIMER_ID:
+            # The timer is one-shot: killed here (this thread owns the
+            # window), armed again only when the handler wants more time.
+            try:
+                self._user32.KillTimer(hwnd, _RETRY_TIMER_ID)
+                handler = self.timer_handler
+                again = handler() if handler is not None else None
+                if again is not None:
+                    self.arm_timer(again)
+            except Exception:
+                _log().exception("Screen Saver Mode keep-off timer failed")
+            return 0
         elif msg == _WM_POWERBROADCAST and w_param == _PBT_POWERSETTINGCHANGE:
             try:
                 on = display_state_on(l_param)
@@ -1227,6 +1257,19 @@ class InputClock:
             except Exception:
                 _log().exception("Screen Saver Mode display state failed")
         return self._user32.DefWindowProcW(hwnd, msg, w_param, l_param)
+
+    def arm_timer(self, delay_s: float) -> bool:
+        """Arms the one-shot re-send timer on the listener's own window, so
+        the re-send needs no main thread. Only the listener thread may call
+        it (SetTimer needs the window's thread); False when it can't."""
+        hwnd, u = self._hwnd, self._user32
+        if not hwnd or u is None:
+            return False
+        ms = max(10, int(delay_s * 1000) + 1)
+        try:
+            return bool(u.SetTimer(hwnd, _RETRY_TIMER_ID, ms, None))
+        except Exception:
+            return False
 
     def _listen(self) -> None:
         global _power_window
@@ -1289,6 +1332,7 @@ class InputClock:
                     f"(Windows error {ctypes.get_last_error()})"
                 )
             _power_window = hwnd
+            self._hwnd = hwnd
             self._registered = True
             self._ready.set()
             msg = wintypes.MSG()
@@ -1301,6 +1345,7 @@ class InputClock:
         finally:
             if _power_window == hwnd:
                 _power_window = 0
+            self._hwnd = None
             self._registered = False
             self._ready.set()
             try:
@@ -1376,6 +1421,7 @@ class ScreenSaverMode:
         self._api = api if api is not None else WindowsApi()
         self._clock = clock_ if clock_ is not None else InputClock()
         self._clock.display_state_handler = self.on_display_state
+        self._clock.timer_handler = self.on_retry_timer
         self._clock.physical_id_of = self._api.device_physical_id
         self._clock.event_sink = self._note_device_event
         self._settings = Settings()
@@ -1403,9 +1449,9 @@ class ScreenSaverMode:
         self._display_on = True  # Windows' last report
         self._wakes = 0  # re-sends in this (or the last) idle period
         self._wakes_total = 0  # since the mode was switched on
-        # (kind, number, text) for the tick to trace: never traced on the
-        # listener thread.
-        self._events: deque[tuple[str, int, str]] = deque(maxlen=1000)
+        # (kind, number, text, wall time it happened) for the main thread to
+        # trace: never traced on the listener thread.
+        self._events: deque[tuple[str, int, str, float]] = deque(maxlen=1000)
         # Device hooks (S21, S23), main thread only.
         self._before_power_off: Callable[[], None] | None = None
         self._after_input: Callable[[], None] | None = None
@@ -1508,7 +1554,7 @@ class ScreenSaverMode:
         self, event: str, handle: int, physical: str, kind: str
     ) -> None:
         """Listener thread: queues a press, activity or an uncounted device."""
-        self._events.append((event, handle, f"{kind}	{physical}"))
+        self._events.append((event, handle, f"{kind}	{physical}", 0.0))
 
     def _call_hook(self, name: str, hook: Callable[[], None] | None) -> None:
         if hook is None:
@@ -1896,12 +1942,29 @@ class ScreenSaverMode:
             if not self._keeping_off or self._clock.last_input() != self._keep_input_at:
                 return
             if now - self._last_power_off < self.POWER_OFF_GAP_S:
-                if not self._retry_at:
-                    self._retry_at = self._last_power_off + self.POWER_OFF_GAP_S
-                    self._events.append(("wait", self._wakes, ""))
-                return
-            self._note_resend(now)
-        self._post_resend()
+                if self._retry_at:
+                    return
+                self._retry_at = self._last_power_off + self.POWER_OFF_GAP_S
+                self._events.append(("wait", self._wakes, "", clock.now()))
+                delay = self._retry_at - now
+            else:
+                self._note_resend(now)
+                delay = None
+        if delay is None:
+            self._post_resend()
+            return
+        # The held-back re-send goes out from a timer on this (listener)
+        # thread, so it never waits for the main thread. If the timer can't
+        # be armed, the tick still sends it (_retry_keep_off).
+        arm = getattr(self._clock, "arm_timer", None)
+        if arm is not None:
+            arm(delay)
+
+    def on_retry_timer(self) -> float | None:
+        """The re-send timer fired (the listener thread's window procedure;
+        tests call it): sends the held-back re-send if it is still due.
+        Returns the seconds still to wait, None when nothing is pending."""
+        return self._retry_keep_off(clock.monotonic())
 
     def _note_resend(self, now: float) -> None:
         """Under the lock: one re-send counted."""
@@ -1909,31 +1972,34 @@ class ScreenSaverMode:
         self._last_power_off = now
         self._wakes += 1
         self._wakes_total += 1
-        self._events.append(("resend", self._wakes, ""))
+        self._events.append(("resend", self._wakes, "", clock.now()))
 
     def _post_resend(self) -> None:
         try:
             self._api.power_off_displays()
         except Exception as e:
-            self._events.append(("failed", self._wakes, str(e)))
+            self._events.append(("failed", self._wakes, str(e), clock.now()))
 
-    def _retry_keep_off(self, now: float) -> None:
+    def _retry_keep_off(self, now: float) -> float | None:
         """A re-send held back by the gap, sent once the gap has ended and
-        the displays are still on."""
+        the displays are still on (any thread, under the lock: the timer on
+        the listener thread normally, the tick as a fallback). Returns the
+        seconds still to wait, None when nothing is pending."""
         with self._keep_lock:
             if not self._retry_at:
-                return
+                return None
             if (
                 not self._keeping_off
                 or not self._display_on
                 or self._clock.last_input() != self._keep_input_at
             ):
                 self._retry_at = 0.0
-                return
+                return None
             if now < self._retry_at:
-                return
+                return self._retry_at - now
             self._note_resend(now)
         self._post_resend()
+        return None
 
     def _end_keep_off(self, reason: str) -> None:
         with self._keep_lock:
@@ -1954,25 +2020,27 @@ class ScreenSaverMode:
         """Traces what the listener thread noted (main thread)."""
         while True:
             try:
-                kind, n, text = self._events.popleft()
+                kind, n, text, at = self._events.popleft()
             except IndexError:
                 return
             if kind == "resend":
                 _trace(
                     "keep off: Windows turned the displays back on, "
-                    f"power off sent again (#{n})"
+                    f"power off sent again (#{n})",
+                    t=at,
                 )
             elif kind == "wait":
                 _trace(
                     "keep off: Windows turned the displays back on within "
                     f"{self.POWER_OFF_GAP_S:g} s of the last power off: "
-                    "sent again when the gap ends"
+                    "sent again when the gap ends",
+                    t=at,
                 )
             elif kind == "failed":
                 _log().warning(
                     f"Screen Saver Mode: keep off power off #{n} failed ({text})"
                 )
-                _trace(f"keep off: power off #{n} failed ({text})")
+                _trace(f"keep off: power off #{n} failed ({text})", t=at)
             elif kind == "activity":
                 listener = self._activity_listener
                 if listener is not None:

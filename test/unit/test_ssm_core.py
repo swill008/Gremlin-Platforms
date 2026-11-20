@@ -97,6 +97,12 @@ class FakeClock(ssm.InputClock):
         self.started = 0
         self.stopped = 0
         self.ok = True
+        self.armed: list[float] = []  # re-send timer delays asked for
+        self.arm_ok = True
+
+    def arm_timer(self, delay_s: float) -> bool:
+        self.armed.append(delay_s)
+        return self.arm_ok
 
     def start(self) -> bool:
         self.started += 1
@@ -475,7 +481,9 @@ def test_status_off_reads_windows_at_most_once_a_second(env: Env) -> None:
 @pytest.fixture
 def traced(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     lines: list[str] = []
-    monkeypatch.setattr(ssm, "_trace", lambda text, ring=True: lines.append(text))
+    monkeypatch.setattr(
+        ssm, "_trace", lambda text, ring=True, t=None: lines.append(text)
+    )
     return lines
 
 
@@ -1039,6 +1047,102 @@ def test_keep_off_respects_the_gap_and_retries_after_it(env: Env) -> None:
     now[0] += 1.0
     mode.tick()
     assert api.powered_off == 2  # no ON report since: nothing more
+
+
+def test_held_back_resend_goes_out_from_the_timer_without_a_tick(
+    env: Env,
+) -> None:
+    """The main thread is stuck (tick never runs): the re-send held back by
+    the gap still goes out, from the listener thread's timer (S6, S20)."""
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    now[0] += 0.2
+    mode.on_display_state(True)  # inside the gap: a timer is asked for
+    assert len(clk.armed) == 1 and clk.armed[0] == pytest.approx(0.8)
+    now[0] += 0.1
+    mode.on_display_state(True)  # a second report: no second timer
+    assert len(clk.armed) == 1
+    # The timer fires early: nothing sent, asks for the rest of the wait.
+    assert mode.on_retry_timer() == pytest.approx(0.7)
+    assert api.powered_off == 1
+    now[0] += 0.7
+    assert mode.on_retry_timer() is None  # gap ended: sent, no tick
+    assert api.powered_off == 2
+    assert mode.status().wakes == 1
+    assert mode.on_retry_timer() is None  # nothing pending: nothing more
+    assert api.powered_off == 2
+
+
+def test_timer_resend_is_at_most_once_a_second(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    now[0] += 0.2
+    mode.on_display_state(True)
+    now[0] += 0.8
+    mode.on_retry_timer()
+    assert api.powered_off == 2
+    now[0] += 0.3  # another report 0.3 s after the re-send: held back again
+    mode.on_display_state(True)
+    assert api.powered_off == 2 and len(clk.armed) == 2
+    now[0] += 0.7
+    mode.on_retry_timer()
+    assert api.powered_off == 3 and mode.status().wakes == 2
+
+
+def test_timer_resend_dropped_on_input_or_display_off(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    now[0] += 0.2
+    mode.on_display_state(True)
+    clk.note_input()  # a person woke it
+    now[0] += 0.9
+    assert mode.on_retry_timer() is None
+    assert api.powered_off == 1 and mode.status().wakes == 0
+
+
+def test_timer_resend_trace_carries_the_send_time(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mode, api, clk, now, run, _t = env
+    seen: list[tuple[str, float | None]] = []
+    monkeypatch.setattr(
+        ssm, "_trace", lambda text, ring=True, t=None: seen.append((text, t))
+    )
+    wall = [5000.0]
+    monkeypatch.setattr(clock, "now", lambda: wall[0])
+    _keep_off(env)
+    now[0] += 0.2
+    wall[0] = 5000.2
+    mode.on_display_state(True)
+    now[0] += 0.8
+    wall[0] = 5001.0
+    mode.on_retry_timer()  # the send happens here, on the "listener"
+    wall[0] = 5030.0  # the main thread drains much later
+    seen.clear()
+    mode.tick()
+    sent = [t for text, t in seen if "power off sent again (#1)" in text]
+    waited = [t for text, t in seen if "sent again when the gap ends" in text]
+    assert sent == [5001.0]
+    assert waited == [5000.2]
+
+
+def test_window_proc_timer_kills_it_and_sends(env: Env) -> None:
+    mode, api, clk, now, run, _t = env
+    _keep_off(env)
+    now[0] += 0.2
+    mode.on_display_state(True)
+    killed: list[int] = []
+
+    class _U:
+        def KillTimer(self, hwnd: int, ident: int) -> bool:
+            killed.append(ident)
+            return True
+
+    clk._user32 = _U()
+    now[0] += 0.8
+    assert clk._window_proc(1, ssm._WM_TIMER, ssm._RETRY_TIMER_ID, 0) == 0
+    assert killed == [ssm._RETRY_TIMER_ID]
+    assert api.powered_off == 2
 
 
 def test_keep_off_retry_dropped_when_windows_reports_off(env: Env) -> None:
