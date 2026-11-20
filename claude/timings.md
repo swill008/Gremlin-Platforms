@@ -1178,3 +1178,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | CI fix 2: journey Stop wait (race seen on CI) | fix | ~4 min | ~4 min | 10:37-10:41 |
 | 2026-11-20 | CI repro run seed 263651 --parts 3 (not reproduced; local split differs, parts hit the 10-min cap) | test | ~12-20 min | 10 min | 11:04-11:14 |
 | 2026-11-20 | CI fix 3: highlight-hold guard + full run + real-thread teardown fix | fix | ~4 min + 5-9 min run | 8 min run + ~8 min fix | 11:24-11:42 |
+| 2026-11-20 | CI fix 4: test Backends let go of global signals; print export wait; full run | fix | ~4 min + 5-9 min run | ~10 min fix + 8 min run | 11:58-12:10 |

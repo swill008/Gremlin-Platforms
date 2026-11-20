@@ -242,7 +242,9 @@ def main() -> None:
         wait_until(
             lambda: len(saved) >= count and ev("_editorWin.exportBusy") is False,
             f"{name} exported",
-            timeout_ms=10000,
+            # Ends when the export is in; a slow CI runner with both smokes
+            # at once took over 10 s (run 44784713580: file missing).
+            timeout_ms=60000,
             fail=False,
         )
         return red_box(target)

@@ -4,12 +4,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import sys
 
 sys.path.append(".")
 
 import pathlib
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 
@@ -266,6 +268,37 @@ def _backends_stop_ticking() -> Iterator[None]:
                     timer.stop()
             except RuntimeError:  # deleted by the test
                 pass
+            _backend_lets_go(be)
+
+
+def _backend_lets_go(be: object) -> None:
+    """A Backend a test made stops answering the global Run and device-change
+    signals: left connected, a later test's device change made it Reload,
+    starting a Run and holding input highlighting off inside that test
+    (CI 44784713580, test_device_reset_live, test_input_tester_link)."""
+    import warnings
+
+    import shiboken6
+
+    from gremlin import event_handler
+
+    if not shiboken6.isValid(be):  # deleted by the test: nothing connected
+        return
+    obj: Any = be
+    listener = event_handler.EventListener()
+    control = obj._run_control
+    with warnings.catch_warnings():
+        # PySide warns, as well as raising, when a slot was not connected.
+        warnings.simplefilter("ignore", RuntimeWarning)
+        for sig, slot in (
+            (listener.device_change_event, "_device_change"),
+            (listener.joystick_event, "_highlight_input"),
+            (control.runStarted, "_on_run_started"),
+            (control.runStopped, "_on_run_stopped"),
+        ):
+            with contextlib.suppress(RuntimeError, TypeError):
+                sig.disconnect(getattr(obj, slot))
+    obj._wanted_active = False
 
 
 @pytest.fixture(autouse=True)
