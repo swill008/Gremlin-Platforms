@@ -28,7 +28,7 @@ ApplicationWindow {
     font.pixelSize: Style.fontSize
 
     // "* name" (the * means unsaved changes); the title bar shows
-    // "Gremlin-Platforms R1 1.0.30 - * name" (gremlin/ui/window_titles.py, 01 S57).
+    // "Gremlin-Platforms R2 1.0.30 - * name" (gremlin/ui/window_titles.py, 01 S57).
     title: (profileDirty ? "* " : "") + (backend ? backend.windowTitle : "Untitled")
 
     // Unsaved changes, checked while the window is in front (edits only

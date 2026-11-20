@@ -5,7 +5,7 @@
 """Drives the Device Mapping Editor off-screen at the lowest zoom (50 %) and
 clicks in the bands of the view outside the map's box: right-click menus,
 picking a picture that hangs past the page, box select, middle-drag pan,
-Space pan, wheel zoom, a ruler guide drag and the click trace's position.
+Space pan, wheel zoom, and a ruler guide drag.
 Prints the results as JSON; test_click_zone.py runs it in its own process.
 
     python test/unit/click_zone_smoke.py <folder>
@@ -27,35 +27,9 @@ from PySide6 import QtCore, QtGui, QtQml, QtTest  # noqa: E402
 Q = QtCore.Qt
 
 
-class _Trace(QtCore.QObject):
-    """Stands in for gremlin.ui.click_trace's clickTrace context object."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.lines: list[str] = []
-
-    @QtCore.Property(bool, constant=True)
-    def on(self) -> bool:
-        return True
-
-    @QtCore.Slot(str)
-    def line(self, text: str) -> None:
-        self.lines.append(text)
-
-    @QtCore.Slot(str)
-    def closingFor(self, reason: str) -> None:  # noqa: N802
-        pass
-
-    @QtCore.Slot(str, str)
-    def menu(self, what: str, title: str) -> None:
-        pass
-
-
 def main() -> None:
     folder = Path(sys.argv[1])
     s = h.Session(folder, "click_zone")
-    trace = _Trace()
-    s.engine.rootContext().setContextProperty("clickTrace", trace)
     s.hold_runs()
     h._load(s, "evo_r")
     out: dict = {}
@@ -98,16 +72,6 @@ def main() -> None:
         menus[name] = menu_open()
     s.close_menus()
     out["menus"] = menus
-
-    # The click trace logs the press in editor coordinates.
-    trace.lines.clear()
-    s.right_click(below)
-    s.close_menus()
-    want = ev(f"[_face.editorX({below.x()}), _face.editorY({below.y()})]")
-    out["trace"] = {
-        "lines": list(trace.lines),
-        "want": [round(want[0]), round(want[1])],
-    }
 
     # A picture that hangs past the page's left edge: a left click on the
     # part outside the map's box selects it.

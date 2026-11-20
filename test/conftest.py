@@ -22,9 +22,8 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 # Nor reach the network (the programs tests start inherit it): the update
 # check is off. HTTPS_PROXY doesn't stop Qt's network calls.
 os.environ["GREMLIN_OFFLINE"] = "1"
-# Tests are running (D-03-DEVICE-FOLDERS): the one-time device folders move
-# (gremlin/modules/folders_move.run_if_needed) refuses to touch the real
-# Gremlin Platforms folder. Programs tests start inherit it.
+# Tests are running (D-03-DEVICE-FOLDERS): the program's start shows no
+# message box that would wait for a click. Programs tests start inherit it.
 os.environ["GREMLIN_TESTS"] = "1"
 # A program a test starts prints every thread's stack if it crashes in
 # native code (access violation), so the failure explains itself.

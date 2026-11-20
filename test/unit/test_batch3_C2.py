@@ -283,10 +283,10 @@ def test_window_titles_and_ids_come_from_one_scan(
 
     def scan() -> list[tuple[int, str, bool]]:
         scans.append(None)
-        return [(700, "Gremlin-Platforms R1", True), (701, "Gremlin-Platforms", False)]
+        return [(700, "Gremlin-Platforms R2", True), (701, "Gremlin-Platforms", False)]
 
     monkeypatch.setattr(jg, "_gremlin_windows", scan, raising=False)
-    assert jg._gremlin_window_titles() == ["Gremlin-Platforms R1"]
+    assert jg._gremlin_window_titles() == ["Gremlin-Platforms R2"]
     assert jg._window_process_ids() == {700, 701}
     assert len(scans) == 2
 

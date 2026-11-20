@@ -5,9 +5,7 @@
 """Control tracing (Live Log Reader › Trace, D-01-TRACE): while it is on,
 each ticked control is followed from the driver (RAW) through the wiring
 (WIRING) to the vJoy write (OUTPUT/BLOCKED), with EVENT, HIDHIDE, SCREEN
-SAVER (page 12 S16) and OUT OF STEP lines (and, while Mouse is ticked, the
-temporary click trace's MOUSE lines; ONE-TIME tracker OT-5, remove after the
-fix). Lines go to an
+SAVER (page 12 S16) and OUT OF STEP lines. Lines go to an
 in-memory ring for the tab and to trace.log.
 OSC is traced by area (D-09-OSC-TRACE): osc() writes OSC/BLOCKED lines for
 the ticked areas; per-message lines are rate limited like axis lines and
@@ -51,9 +49,6 @@ OSC = "OSC"
 WINDOW = "WINDOW"
 TIMING = "TIMING"
 OUT_OF_STEP = "OUT OF STEP"
-# ONE-TIME (tracker OT-5): mouse lines of the temporary click trace;
-# remove after the fix.
-MOUSE = "MOUSE"
 
 MAX_LINES = 5000
 # The recent-lines ring kept even with Tracing off (01 S179).
@@ -98,8 +93,6 @@ _CFG_SCREEN_SAVER = "screen-saver-mode"
 _CFG_OSC = "osc"
 _CFG_WINDOW = "window"
 _CFG_TIMING = "timing"
-# ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
-_CFG_MOUSE = "mouse"
 _CFG_MAX_MB = "max-mb"
 _CFG_AXIS_RATE = "axis-rate"
 
@@ -123,7 +116,6 @@ _window_on = False
 _timing_on = False
 _recent: collections.deque[str] = collections.deque(maxlen=RECENT_MAX)
 _osc_areas: frozenset[str] = frozenset()
-_mouse_on = False  # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
 
 # OSC rate limit: (area, key) -> time last written; pending
 # (control, point, detail, arrival, count). Repeat counts per
@@ -323,8 +315,7 @@ def since() -> float | None:
 
 
 def on_change(callback: Callable[[], None]) -> None:
-    """callback() runs after tracing turns on or off (and, ONE-TIME tracker
-    OT-5, after the Mouse tick changes)."""
+    """callback() runs after tracing turns on or off."""
     with _LOCK:
         if callback not in _hooks:
             _hooks.append(callback)
@@ -396,14 +387,6 @@ def _ensure_options() -> None:
             "Trace: Timing row ticked (on or empty).",
             {},
         ),
-        # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
-        (
-            _CFG_MOUSE,
-            PropertyType.String,
-            "",
-            "Trace: Mouse row ticked (on or empty).",
-            {},
-        ),
         (
             _CFG_MAX_MB,
             PropertyType.Int,
@@ -426,7 +409,7 @@ def _ensure_options() -> None:
 
 def _load() -> dict[uuid.UUID, dict[str, Any]]:
     """The tick cache, read from the config once."""
-    global _ticks, _hidhide_on, _screen_saver_on, _osc_areas, _mouse_on
+    global _ticks, _hidhide_on, _screen_saver_on, _osc_areas
     global _window_on, _timing_on
     if _ticks is not None:
         return _ticks
@@ -436,7 +419,6 @@ def _load() -> dict[uuid.UUID, dict[str, Any]]:
     ssm = False
     win = False
     tim = False
-    mouse_on = False  # ONE-TIME (tracker OT-5): remove after the fix.
     areas: frozenset[str] = frozenset()
     try:
         from gremlin import config
@@ -465,8 +447,6 @@ def _load() -> dict[uuid.UUID, dict[str, Any]]:
         ssm = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_SCREEN_SAVER) or "") == "on"
         win = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW) or "") == "on"
         tim = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_TIMING) or "") == "on"
-        # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
-        mouse_on = str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_MOUSE) or "") == "on"
         osc_rows = json.loads(
             str(cfg.value(_CFG_SECTION, _CFG_GROUP, _CFG_OSC) or "[]")
         )
@@ -481,7 +461,6 @@ def _load() -> dict[uuid.UUID, dict[str, Any]]:
     _screen_saver_on = ssm
     _window_on = win
     _timing_on = tim
-    _mouse_on = mouse_on  # ONE-TIME (tracker OT-5): remove after the fix.
     _osc_areas = areas
     return ticks
 
@@ -513,8 +492,6 @@ def _save() -> None:
         )
         cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_WINDOW, "on" if _window_on else "")
         cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_TIMING, "on" if _timing_on else "")
-        # ONE-TIME (tracker OT-5): the Mouse tick; remove after the fix.
-        cfg.set(_CFG_SECTION, _CFG_GROUP, _CFG_MOUSE, "on" if _mouse_on else "")
         cfg.set(
             _CFG_SECTION,
             _CFG_GROUP,
@@ -737,8 +714,6 @@ def timing(text: str, warning: bool = False) -> None:
         pass
 
 
-# ONE-TIME (tracker OT-5): the Mouse tick and MOUSE lines of the temporary
-# click trace (gremlin/ui/click_trace.py); remove after the fix.
 def _run_hooks() -> None:
     """The on_change hooks, as set_enabled runs them."""
     for hook in list(_hooks):
@@ -746,44 +721,6 @@ def _run_hooks() -> None:
             hook()
         except Exception:
             logging.getLogger("system").exception("Trace on_change hook failed")
-
-
-def mouse_ticked() -> bool:
-    """The Mouse row is ticked (saved; off by default)."""
-    _load()
-    return _mouse_on
-
-
-def set_mouse(on: bool) -> None:
-    """Ticks or unticks the Mouse row; on_change hooks run (the click trace
-    puts its window filters on or off)."""
-    global _mouse_on
-    with _LOCK:
-        _load()
-        _mouse_on = bool(on)
-        _save()
-    _run_hooks()
-
-
-def mouse_on() -> bool:
-    """Tracing is on and the Mouse row is ticked (cheap; any thread)."""
-    if not _enabled:
-        return False
-    try:
-        _load()
-        return _mouse_on
-    except Exception:
-        return False
-
-
-def click(text: str) -> None:
-    """One MOUSE line, only while tracing is on and Mouse is ticked."""
-    if not mouse_on():
-        return
-    try:
-        _add(MOUSE, "", str(text))
-    except Exception:
-        pass
 
 
 def osc_ticked() -> list[str]:
@@ -835,14 +772,13 @@ def _reset_for_tests() -> None:
     """Turns tracing off (hooks run) and forgets the tick cache, lines and
     file (tests only). on_change hooks are kept."""
     global _ticks, _enabled, _since, _notice, _version, _logger, _handler, _max_mb
-    global _axis_rate, _axis_interval, _osc_areas, _mouse_on, _screen_saver_on
+    global _axis_rate, _axis_interval, _osc_areas, _screen_saver_on
     global _window_on, _timing_on
     set_enabled(False)
     with _LOCK:
         _cancel_flush()
         _ticks = None
         _osc_areas = frozenset()
-        _mouse_on = False  # ONE-TIME (tracker OT-5): remove after the fix.
         _screen_saver_on = False
         _window_on = False
         _timing_on = False

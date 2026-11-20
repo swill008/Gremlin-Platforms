@@ -36,8 +36,6 @@ POINTS = {
     "OSC": (trace.OSC,),
     "Timing": (trace.TIMING,),
     "Out of step": (trace.OUT_OF_STEP,),
-    # ONE-TIME (tracker OT-5): the click trace's lines; remove after the fix.
-    "Mouse": (trace.MOUSE,),
 }
 
 
@@ -104,7 +102,6 @@ def _program_snapshot() -> list[str]:
         ("Screen Saver Mode", trace.screen_saver_ticked()),
         ("Window", trace.window_ticked()),
         ("Timing", trace.timing_ticked()),
-        ("Mouse", trace.mouse_ticked()),
     ):
         if on:
             rows.append(name_)
@@ -361,11 +358,6 @@ class TraceTree(QtCore.QAbstractListModel):
             kind="window",
             text="Window (shown, hidden, tray, pages, display and sleep)",
             check=2 if trace.window_ticked() else 0,
-        ))
-        # ONE-TIME (tracker OT-5): the click trace's Mouse row; remove after the fix.
-        rows.append(row(
-            kind="mouse", text="Mouse (clicks in the Device Mapping Editor)",
-            check=2 if trace.mouse_ticked() else 0,
         ))
         areas = trace.osc_ticked()
         total = len(trace.OSC_AREAS)
@@ -763,12 +755,6 @@ class TraceView(QtCore.QObject):
     @QtCore.Slot(bool)
     def setTiming(self, on: bool) -> None:  # noqa: N802 - QML name
         trace.set_timing(on)
-        self.reloadTree()
-
-    # ONE-TIME (tracker OT-5): the click trace's Mouse tick; remove after the fix.
-    @QtCore.Slot(bool)
-    def setMouse(self, on: bool) -> None:  # noqa: N802 - QML name
-        trace.set_mouse(on)
         self.reloadTree()
 
     @QtCore.Slot(str, bool)

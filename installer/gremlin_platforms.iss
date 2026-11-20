@@ -1,4 +1,4 @@
-; Gremlin-Platforms R1 installer (Inno Setup 6).
+; Gremlin-Platforms R2 installer (Inno Setup 6).
 ;
 ; Per-user install, no admin rights, so the in-app updater can run it silently.
 ; Build with installer\build_installer.ps1, or pass the version yourself:
@@ -11,7 +11,7 @@
   #define DistDir "..\dist\gremlin_platforms"
 #endif
 
-#define MyAppName "Gremlin-Platforms R1"
+#define MyAppName "Gremlin-Platforms R2"
 #define MyAppPublisher "swill008"
 #define MyAppURL "https://github.com/swill008/Gremlin-Platforms"
 #define MyAppExeName "gremlin_platforms.exe"
@@ -39,7 +39,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
 OutputDir=..\dist
-OutputBaseFilename=Gremlin-Platforms-R1-{#MyAppVersion}-Setup
+OutputBaseFilename=Gremlin-Platforms-R2-{#MyAppVersion}-Setup
 SetupIconFile=..\gfx\icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
@@ -402,6 +402,9 @@ begin
     DeleteFile(MarkerFile);
     RemovePath(AppFile('_internal.old'));
     RemovePath(AppFile('{#MyAppExeName}.old'));
+    { ONE-TIME (tracker OT-7): remove the R1 Start menu entry left by older installs }
+    DelTree(ExpandConstant('{userprograms}\Gremlin-Platforms R1'), True, True, True);
+    DeleteFile(ExpandConstant('{userdesktop}\Gremlin-Platforms R1.lnk'));
   end;
 end;
 

@@ -28,9 +28,6 @@ _OWNERS = {
     "gremlin/modules/store.py",
     "gremlin/modules/registry.py",
     "gremlin/history_modules.py",
-    # ONE-TIME (tracker OT-1): the move from the old layout builds the new
-    # folders itself.
-    "gremlin/modules/folders_move.py",
 }
 
 _RULES = {
@@ -66,9 +63,6 @@ _ALLOWED = {
     # The Device Library's own list and saved-setup packs (10), not module
     # files: module files it puts back go through the store (store.replace).
     ("gremlin/device_library.py", "writes with module_file directly"),
-    # ONE-TIME (tracker OT-4): the Library part id move rewrites the
-    # Library's own list (library.json), not a module file.
-    ("gremlin/library_part_id_once.py", "writes with module_file directly"),
     # Profile recovery copies (04 S94) live in the data folder's recovery
     # folder, not the modules folder; they are not module files.
     ("gremlin/profile_recovery.py", "builds a path in the modules folder from a name"),

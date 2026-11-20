@@ -53,7 +53,7 @@ def test_cancelled_quit_clears_the_install(
     monkeypatch.setattr(
         QtCore.QProcess, "startDetached", lambda *args: started.append(args) or True
     )
-    setup = updates / "Gremlin-Platforms-R1-9.9.9-Setup.exe"
+    setup = updates / "Gremlin-Platforms-R2-9.9.9-Setup.exe"
     setup.write_bytes(b"x")
     model = update_model.UpdateModel()
     model._ready_path = setup

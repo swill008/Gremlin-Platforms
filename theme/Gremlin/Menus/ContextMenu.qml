@@ -131,10 +131,9 @@ Popup {
     y: splitAt >= 0 ? Math.min(_mainY, _col2Y) : _mainY
     height: Math.max(_mainY + _col1Box, splitAt >= 0 ? _col2Y + _col2Box : 0) - y
     onRowsChanged: _relayout()
-    onOpened: {  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+    onOpened: {
         _relayout()
-        if (typeof clickTrace !== "undefined" && clickTrace && clickTrace.on) clickTrace.menu("opened", (parent && parent.Window.window) ? parent.Window.window.title : "")  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-    }  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+    }
     onAnchorYChanged: _relayout()
     Connections {
         target: _menu.parent
@@ -211,10 +210,9 @@ Popup {
     modal: false
     focus: true
     closePolicy: pinned ? Popup.CloseOnEscape : (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
-    onClosed: {  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+    onClosed: {
         pinned = false
-        if (typeof clickTrace !== "undefined" && clickTrace && clickTrace.on) clickTrace.menu("closed", (parent && parent.Window.window) ? parent.Window.window.title : "")  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-    }  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+    }
 
     // Clicks, the wheel and the pointer on the menu stay on the menu: nothing
     // under it (the Device Mapping Editor) reacts to them.
@@ -250,8 +248,6 @@ Popup {
 
     // Opens at a point in item's coordinates (the window's without an item).
     function openAt(item, ix, iy) {
-        if (typeof clickTrace !== "undefined" && clickTrace && clickTrace.on)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-            clickTrace.menu("openAt asked: opened=" + opened + " visible=" + visible + " pinned=" + pinned + " at " + Math.round(ix) + "," + Math.round(iy), (parent && parent.Window.window) ? parent.Window.window.title : "")  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
         _removedFavs = []
         refresh()
         // A pinned menu stays where it is and shows what was clicked now.
@@ -290,7 +286,6 @@ Popup {
         if (!item || !item.enabled)
             return
         var kindBefore = model.kind
-        if (typeof clickTrace !== "undefined" && clickTrace && clickTrace.on) clickTrace.closingFor("item chosen: " + item.text)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
         if (item.kind === "action") {
             if (!item.keepOpen && !stayOpen && !pinned)
                 close()

@@ -740,7 +740,7 @@ def test_s57_the_title_names_the_profile_and_marks_unsaved_changes(
     version = json.loads(version_json)["version"]
     assert main_window["title"] == "Untitled"
     assert main_window["titleDirty"] == "* Untitled"
-    assert main_window["displayName"] == f"Gremlin-Platforms R1 {version}"
+    assert main_window["displayName"] == f"Gremlin-Platforms R2 {version}"
 
 
 def test_s58_s59_s61_the_toolbar(main_window: dict) -> None:
@@ -891,7 +891,7 @@ def test_s12_a_driver_that_cannot_start_shows_the_failure_page(
 ) -> None:
     out = _run_app(tmp_path, _FAILURE)
     assert out["roots"] == 1 and out["main"] is False
-    assert out["title"] == "Gremlin-Platforms R1"
+    assert out["title"] == "Gremlin-Platforms R2"
     assert out["reason"] == ["The joystick driver could not start."]
     assert out["quit"] is True
 

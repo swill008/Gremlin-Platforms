@@ -4,7 +4,7 @@
 """Every window's title bar starts with the program name and version (01 S57).
 
 A window keeps its own title ("Device Library", "* Flight.xml"); the title
-bar Windows draws shows "Gremlin-Platforms R1 1.0.30 - Device Library". Qt
+bar Windows draws shows "Gremlin-Platforms R2 1.0.30 - Device Library". Qt
 would add the program name at the end instead (it appends the display name
 to a title that doesn't end with it), so the bar's text is set here, once
 for every window, whenever its title changes. Off Windows (off-screen tests)
@@ -20,11 +20,11 @@ from PySide6 import QtCore, QtGui
 
 from gremlin import util
 
-PROGRAM = "Gremlin-Platforms R1"
+PROGRAM = "Gremlin-Platforms R2"
 
 
 def program_title() -> str:
-    """The program name and version: "Gremlin-Platforms R1 1.0.30"."""
+    """The program name and version: "Gremlin-Platforms R2 1.0.30"."""
     return f"{PROGRAM} {util.get_code_version()}"
 
 
@@ -33,7 +33,7 @@ def format_title(title: str, program: str | None = None) -> str:
     then the window's own title ("" or the program itself: the program)."""
     program = program or program_title()
     own = (title or "").strip()
-    # A title written the old way ("x - Gremlin-Platforms R1 ...") keeps
+    # A title written the old way ("x - Gremlin-Platforms R2 ...") keeps
     # only its own part.
     cut = own.rfind(" - " + PROGRAM)
     if cut >= 0:

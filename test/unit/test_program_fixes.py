@@ -140,7 +140,7 @@ def test_the_update_being_installed_is_noted(
     from gremlin.ui import update_model
 
     monkeypatch.setattr(QtCore.QProcess, "startDetached", lambda *args: True)
-    setup = updates / "Gremlin-Platforms-R1-99.0.0-Setup.exe"
+    setup = updates / "Gremlin-Platforms-R2-99.0.0-Setup.exe"
     setup.write_bytes(b"x")
     model = update_model.UpdateModel()
     model._release = SimpleNamespace(version="99.0.0")
@@ -155,7 +155,7 @@ def test_a_failed_update_is_told_with_try_again(updates: pathlib.Path) -> None:
     from gremlin.ui import update_model
 
     model = update_model.UpdateModel()
-    setup = updates / "Gremlin-Platforms-R1-99.0.0-Setup.exe"
+    setup = updates / "Gremlin-Platforms-R2-99.0.0-Setup.exe"
     model._config.set(*update_model._PENDING, "99.0.0")
     model._config.set(*update_model._PENDING_SETUP, str(setup))
     offered = []
@@ -239,7 +239,7 @@ def test_the_process_scan_runs_once_per_check(monkeypatch: pytest.MonkeyPatch) -
     def titles() -> list[str]:
         # Two python windows, each asks whether it runs Gremlin.
         assert jg._is_gremlin_process(700) and not jg._is_gremlin_process(800)
-        return ["Gremlin-Platforms R1"]
+        return ["Gremlin-Platforms R2"]
 
     monkeypatch.setattr(jg, "_gremlin_window_titles", titles)
     monkeypatch.setattr(jg, "_window_process_ids", lambda: {700})

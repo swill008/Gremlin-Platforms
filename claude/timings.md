@@ -1171,3 +1171,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | SSM2 batch: 7 agents (CORE Opus; MODEL, QML, TRACE, TRAY, CONFIG Sonnet; DOCS Haiku) | feature | 3-8 min each | 5-10 min each (shared files, waits on each other's half-written files) | 07:51-08:01 |
 | 2026-11-20 | Lead: integration fixes (start call, Options hidden list, 3 tests pinning old menus/History, lint) + --changed run | fix/test | ~10 min | 20 min | 08:01-08:21; --changed ran all parts (7 min) |
 | 2026-11-20 | Release prep 1.0.40: notes, map check (building->built), guards | release | ~10 min | 8 min | 08:16-08:24 |
+| 2026-11-20 | OT removal (OT-1,3,4,5) + R2 rename + release bridge + OT-2b converter: OTCHECK, OT12, OT345, OTDOCS, RENAME, BRIDGE, OT2AUTO (Opus), DOCS2 | release | 3-8 min each | 2-6 min each | 08:23-08:38 |
+| 2026-11-20 | Full run + lead integration fixes (start-up calls, layer rule, tests) | test | ~7 min | 9 min run + 10 min fixes | 08:38-08:57 |
+| 2026-11-20 | Release notes 1.1.0 rewritten with the user (public, concise) | docs | - | ~15 min | 08:40-08:55 |

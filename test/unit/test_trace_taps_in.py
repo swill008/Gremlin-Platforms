@@ -37,10 +37,12 @@ def _input(kind: int, index: int, value: int) -> dill._JoystickInputData:
 
 
 def _points() -> list[tuple[str, str]]:
-    """(point, detail) of every line but the Tracing on/off ones."""
+    """(point, detail) of every line but the Tracing on/off ones and the
+    State block written when tracing turns on (01 S185)."""
     return [
         (line[2], line[3]) for line in trace.lines()
         if line[3] not in ("Tracing on", "Tracing off")
+        and line[1] != trace.STATE
     ]
 
 

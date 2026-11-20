@@ -273,7 +273,7 @@ def test_quit_to_install_saves_the_pending_update_first(
     settings = tmp_path / "configuration.json"
     monkeypatch.setattr(config, "_config_file_path", str(settings))
     monkeypatch.setattr(updater, "updates_dir", lambda: tmp_path)
-    setup = tmp_path / "Gremlin-Platforms-R1-9.9.9-Setup.exe"
+    setup = tmp_path / "Gremlin-Platforms-R2-9.9.9-Setup.exe"
     setup.write_bytes(b"x")
     model = update_model.UpdateModel()
     # The scheduled save is a timer in the program: it never runs at quit.

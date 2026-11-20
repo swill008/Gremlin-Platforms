@@ -150,14 +150,6 @@ MouseArea {
         return false
     }
 
-    function _ctRight(branch, m, hit) {  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-        if (typeof clickTrace === "undefined" || !clickTrace || !clickTrace.on) return  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-        clickTrace.line("RigPointerArea right press x=" + Math.round(m.x) + " y=" + Math.round(m.y)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-            + " drawTool=" + ed.drawTool + " dragKind=" + ed.dragKind + " gestureActive=" + ed.gestureActive  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-            + " menuOpened=" + (menu ? menu.opened : "?") + " menuPinned=" + (menu ? menu.pinned : "?")  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-            + " hitKind=" + (hit ? hit.kind : "-") + " hitId=" + (hit ? hit.id : "-") + " branch=" + branch)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-    }  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-
     onPressed: (r) => {
         var m = _e(r)
         var ps = ed.mapToItem(null, m.x, m.y)
@@ -202,10 +194,8 @@ MouseArea {
             return
         }
         if (ed.interactive && ed.drawTool === "path") {
-            if (m.button === Qt.RightButton) {  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
-                _ctRight("path-finish", m, null)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
+            if (m.button === Qt.RightButton)
                 ed.finishPath(false)
-            }  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
             else
                 ed.pathClick(m.x, m.y)
             return
@@ -259,7 +249,6 @@ MouseArea {
                 ed.spineHoldX = m.x
                 ed.spineHoldY = m.y
                 spineHoldTimer.restart()
-                _ctRight("spine-hold", m, hit)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
                 return
             }
             if (hit.id) {
@@ -286,7 +275,6 @@ MouseArea {
                 }
                 var tn = ed.nodeAt(hit.id)
                 if (ed.isText(tn)) {
-                    _ctRight("text-menu", m, hit)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
                     ed.chipMenuRequested(m.x, m.y)
                     menu.openAt(ed, m.x, m.y)
                     return
@@ -296,7 +284,6 @@ MouseArea {
                     ed.tableRow = cell.row
                     ed.tableCol = cell.col
                     ed.tableExtra = (cell.extra !== undefined) ? cell.extra : -1
-                    _ctRight("table-menu", m, hit)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
                     ed.chipMenuRequested(m.x, m.y)
                     menu.openAt(ed, m.x, m.y)
                     return
@@ -307,7 +294,6 @@ MouseArea {
                 menuTarget.seg = -1
                 menuTarget.leader = 0
             }
-            _ctRight(hit.id ? "item-menu" : "empty-menu", m, hit)  // ONE-TIME (tracker OT-5): temporary click trace for the dead right-click report; remove after the fix
             ed.chipMenuRequested(m.x, m.y)
             menu.openAt(ed, m.x, m.y)
             return

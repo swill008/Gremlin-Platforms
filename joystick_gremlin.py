@@ -125,12 +125,10 @@ if _startup_failure is None:
         import gremlin.audio_player
         import gremlin.config
         import gremlin.device_initialization
-        import gremlin.device_map_settings_once
         import gremlin.error
         import gremlin.error_report
         import gremlin.event_handler
         import gremlin.gc_guard
-        import gremlin.library_part_id_once
         import gremlin.mode_manager
         import gremlin.modules.store
         import gremlin.plugin_manager
@@ -211,7 +209,7 @@ def configure_logger(config: dict[str, Any]) -> None:
     if config["mode"] != "session":
         logger.debug("-" * 80)
         logger.debug(time.strftime("%Y-%m-%d %H:%M"))
-        logger.debug("Starting Gremlin-Platforms R1")
+        logger.debug("Starting Gremlin-Platforms R2")
         logger.debug("-" * 80)
 
 
@@ -275,35 +273,6 @@ def _message_box(text: str, title: str, flags: int) -> int:
     return ctypes.windll.user32.MessageBoxW(None, text, title, flags)
 
 
-def _move_to_device_folders() -> None:
-    """ONE-TIME (tracker OT-1): the move to device folders (03 S134), before
-    the device scan and the settings purge. A failure is logged and shown
-    once; the marker is not written, so the next start tries again."""
-    from gremlin.modules import folders_move, store
-
-    try:
-        error = folders_move.run_if_needed(
-            store.folder(), Path(gremlin.util.data_folder())
-        )
-    except Exception as exc:  # noqa: BLE001 - the start goes on
-        logging.getLogger("system").exception("Device folders move")
-        error = str(exc) or type(exc).__name__
-    if error and (
-        error == folders_move.REFUSED or os.environ.get("GREMLIN_TESTS") == "1"
-    ):
-        # Under tests nothing may wait for a click (the off-screen program
-        # would hang); the reason goes to the log.
-        logging.getLogger("system").warning("Device folders move: %s", error)
-        return
-    if error:
-        _message_box(
-            "Moving your device files into device folders did not finish. "
-            "Nothing was lost; the next start tries again.\n\n" + error,
-            "Gremlin-Platforms",
-            0x30,
-        )
-
-
 class StartupError(Exception):
     """The program could not start; details says why (shown to the user)."""
 
@@ -361,7 +330,7 @@ def tell_could_not_start(summary: str, details: str) -> None:
         "Press Ctrl+C to copy this message."
     )
     # MB_OK | MB_ICONERROR
-    _message_box(text, "Gremlin-Platforms R1", 0x10)
+    _message_box(text, "Gremlin-Platforms R2", 0x10)
 
 
 # Set once shutdown_cleanup ran: the call after the event loop ends skips it
@@ -776,7 +745,7 @@ def _confirm_second_instance(
         "No = Start this copy anyway. vJoy mapping may not respond.\n"
         "Cancel = Do not start this copy."
     )
-    result = _message_box(text, "Gremlin-Platforms R1", 0x33)
+    result = _message_box(text, "Gremlin-Platforms R2", 0x33)
     if result == 6:
         return "close_others"
     if result == 7:
@@ -992,11 +961,6 @@ def register_config_options() -> None:
     # Status layout and the chosen module file must be registered before
     # purge_unused() or the next launch deletes them.
     gremlin.ui.module_model._ensure_display_options()
-    # ONE-TIME (tracker OT-1): the old file-bindings setting, kept for the
-    # move to device folders, which reads it once.
-    from gremlin.modules import folders_move
-
-    folders_move.register_setting()
     gremlin.ui.hidhide._ensure_options()
     gremlin.ui.screen_saver_mode_model.register_options()  # 12 S2-S7, S10
     from gremlin import trace
@@ -1084,9 +1048,23 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         configure_loggers()
         gremlin.ui.live_debug.start()
         self.syslog = logging.getLogger("system")
-        gremlin.device_map_settings_once.run_if_needed()  # ONE-TIME (tracker OT-3)
         register_config_options()
-        gremlin.library_part_id_once.run_if_needed()  # ONE-TIME (tracker OT-4)
+        # ONE-TIME (tracker OT-2b): Device Maps and Device Library setups
+        # still in the old photo layout are written in today's layout, once,
+        # with a backup first (07 S162). Kept until the user says to remove it.
+        try:
+            from gremlin import device_library
+            from gremlin.modules import planes_convert_files, store
+            from gremlin.ui import device_pack
+
+            planes_convert_files.run_if_needed(
+                store.folder(),
+                Path(gremlin.util.data_folder()),
+                device_library.folder(),
+                device_pack._old_photo_in_zip,
+            )
+        except Exception:
+            self.syslog.exception("Map photo convert")
         # Keep tracing on after a restart (01 S186): tracing and its rows
         # come back on, with the state snapshot (S185).
         from gremlin.ui import trace_model as _trace_model
@@ -1096,7 +1074,6 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         # back are re-enabled before the window shows (async).
         _recover_devices()
         gremlin.ui.log_option.apply_log_level()
-        _move_to_device_folders()
         # HidHide settings are for the whole PC, not for an off-screen run.
         if running_offscreen():
             self.syslog.info("HidHide start skipped (off-screen)")
@@ -1227,11 +1204,11 @@ class JoystickGremlinApp(QtWidgets.QApplication):
         # with it: the main title ends with the version (01 S57), so the
         # display name carries it too, or the name showed twice.
         self.setApplicationDisplayName(
-            f"Gremlin-Platforms R1 {gremlin.util.get_code_version()}"
+            f"Gremlin-Platforms R2 {gremlin.util.get_code_version()}"
         )
         self.setOrganizationName("H2IK")
         self.setOrganizationDomain("https://whitemagic.github.io/JoystickGremlin/")
-        self.setApplicationName("Gremlin-Platforms R1")
+        self.setApplicationName("Gremlin-Platforms R2")
         font = QtGui.QFont("Segoe UI")
         font.setPixelSize(gremlin.ui.ui_scale_option.dp(15))
         self.setFont(font)
@@ -1295,11 +1272,6 @@ class JoystickGremlinApp(QtWidgets.QApplication):
             "devicePhotoMaker", self.device_photo_maker
         )
         self.aboutToQuit.connect(self.device_photo_maker.close)
-        # ONE-TIME (tracker OT-5): temporary click trace for the dead
-        # right-click report; remove after the fix (the 3 lines below).
-        from gremlin.ui import click_trace
-
-        self.click_trace = click_trace.install(self, self.engine)
 
 
 def _check_second_copy() -> tuple[QtCore.QLockFile | None, bool]:

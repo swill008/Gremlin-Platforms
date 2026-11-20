@@ -1094,7 +1094,7 @@ def version_from_tag(tag: str) -> str | None:
     """Returns the X.Y.Z version at the end of a release tag.
 
     Args:
-        tag: release tag such as "Gremlin-Platforms-R1-1.0.0"
+        tag: release tag such as "Gremlin-Platforms-R2-1.0.0"
 
     Returns:
         Version string, or None when the tag does not end in X.Y.Z

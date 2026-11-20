@@ -101,7 +101,7 @@ def versions() -> dict:
     from gremlin import util
 
     out: dict = {
-        "program": "Gremlin-Platforms R1",
+        "program": "Gremlin-Platforms R2",
         "version": util.get_code_version(),
         "windows": platform.platform(),
         "python": sys.version.split()[0],

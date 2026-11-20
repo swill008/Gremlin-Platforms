@@ -16,7 +16,7 @@ ApplicationWindow {
     width: Style.fitWidth(Style.dp(600), Screen)
     height: Style.fitHeight(Style.dp(300), Screen)
     visible: true
-    title: qsTr("Gremlin-Platforms R1")
+    title: qsTr("Gremlin-Platforms R2")
 
     ColumnLayout {
         anchors.fill: parent

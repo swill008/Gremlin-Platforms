@@ -104,7 +104,7 @@ class Backend(QtCore.QObject):
 
 
 def doc(version, body, setup=False):
-    d = {"tag_name": f"Gremlin-Platforms-R1-{version}",
+    d = {"tag_name": f"Gremlin-Platforms-R2-{version}",
          "html_url": f"https://github.com/x/y/releases/tag/{version}",
          "assets": [], "body": body}
     if setup:

@@ -761,10 +761,10 @@ def test_a_data_folder_that_cannot_be_made_does_not_stop_folder_lookups(
 
 def _release_doc(version: str) -> dict:
     return {
-        "tag_name": f"Gremlin-Platforms-R1-{version}",
+        "tag_name": f"Gremlin-Platforms-R2-{version}",
         "html_url": f"https://github.com/x/y/releases/tag/{version}",
         "assets": [{
-            "name": f"Gremlin-Platforms-R1-{version}-Setup.exe",
+            "name": f"Gremlin-Platforms-R2-{version}-Setup.exe",
             "browser_download_url": "https://github.com/x/y/releases/download/t/s.exe",
             "size": 1000,
             "digest": "sha256:" + "a" * 64,

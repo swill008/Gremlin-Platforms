@@ -52,17 +52,6 @@ def test_right_click_outside_the_box_opens_the_menu(results: dict, where: str) -
     assert results["menus"][where] is True
 
 
-def test_click_trace_logs_editor_position(results: dict) -> None:
-    lines = results["trace"]["lines"]
-    assert len(lines) == 1, lines
-    x, y = results["trace"]["want"]
-    text = lines[0]
-    got_x = int(text.split(" x=")[1].split()[0])
-    got_y = int(text.split(" y=")[1].split()[0])
-    assert abs(got_x - x) <= 1 and abs(got_y - y) <= 1, (text, x, y)
-    assert "branch=empty-menu" in text
-
-
 def test_left_click_on_picture_past_the_page_selects_it(results: dict) -> None:
     pic = results["picture"]
     left, right = pic["box"]

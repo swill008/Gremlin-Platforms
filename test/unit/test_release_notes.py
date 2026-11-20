@@ -40,7 +40,7 @@ def _run(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 def _expected_install(version: str) -> str:
-    name = f"Gremlin-Platforms-R1-{version}"
+    name = f"Gremlin-Platforms-R2-{version}"
     return (
         "## How to install\n"
         "\n"
@@ -133,7 +133,7 @@ def test_workflow_checks_notes_before_building_and_uses_body_path() -> None:
         "body_path is not the file the helper writes"
     )
     # Unchanged parts of the release step.
-    tag = "Gremlin-Platforms-R1-${{ steps.version.outputs.version }}"
+    tag = "Gremlin-Platforms-R2-${{ steps.version.outputs.version }}"
     assert with_["tag_name"] == tag
     assert with_["overwrite_files"] is True
     assert "-Setup.exe" in with_["files"] and ".zip" in with_["files"]

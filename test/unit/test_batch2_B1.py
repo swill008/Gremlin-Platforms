@@ -248,7 +248,6 @@ def test_settings_registered_later_are_registered_before_the_purge(
     cfg: gremlin.config.Configuration,
 ) -> None:
     import joystick_gremlin
-    from gremlin.modules import folders_move
     from gremlin.ui import (
         device_map_options,
         device_names,
@@ -270,7 +269,6 @@ def test_settings_registered_later_are_registered_before_the_purge(
     update_model._register(cfg)
     highlight_option.ensure_registered()
     device_names._ensure()
-    folders_move.register_setting()  # ONE-TIME (tracker OT-1)
     window_placement._ensure()
     hidhide._ensure_options()
     device_map_options.register()
@@ -337,7 +335,7 @@ def test_a_second_copy_that_could_not_be_closed_is_said_and_asked_again(
         return "close_others" if not not_closed else "quit"
 
     monkeypatch.setattr(jg, "acquire_instance_lock", lambda: None)  # never freed
-    monkeypatch.setattr(jg, "_gremlin_window_titles", lambda: ["Gremlin-Platforms R1"])
+    monkeypatch.setattr(jg, "_gremlin_window_titles", lambda: ["Gremlin-Platforms R2"])
     monkeypatch.setattr(jg, "_other_gremlin_pids", lambda: [700])
     monkeypatch.setattr(jg, "_confirm_second_instance", prompt)
     monkeypatch.setattr(jg, "_terminate_other_gremlin", lambda pids: None)

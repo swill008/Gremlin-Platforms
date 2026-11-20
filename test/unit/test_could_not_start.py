@@ -43,7 +43,7 @@ def test_message_names_the_reason_the_error_and_the_logs(
     assert "The main window could not be loaded." in text
     assert "line 29" in text and "line 17" not in text  # the last lines only
     assert str(joystick_gremlin.gremlin.util.logs_dir()) in text
-    assert title == "Gremlin-Platforms R1"
+    assert title == "Gremlin-Platforms R2"
     assert flags == 0x10
 
 

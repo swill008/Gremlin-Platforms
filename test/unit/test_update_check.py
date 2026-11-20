@@ -18,7 +18,7 @@ from gremlin import (
 @pytest.mark.parametrize(
     "tag, expected",
     [
-        ("Gremlin-Platforms-R1-1.0.0", "1.0.0"),
+        ("Gremlin-Platforms-R2-1.0.0", "1.0.0"),
         ("Gremlin-Platforms-R2-2.10.3", "2.10.3"),
         ("1.2.3", "1.2.3"),
         ("r15-osc-2026_09_07_1200", None),
@@ -35,17 +35,17 @@ _DIGEST = "a" * 64
 
 def _release(version: str = "1.0.3", **asset: object) -> dict:
     entry = {
-        "name": f"Gremlin-Platforms-R1-{version}-Setup.exe",
+        "name": f"Gremlin-Platforms-R2-{version}-Setup.exe",
         "browser_download_url": "https://github.com/x/y/releases/download/t/s.exe",
         "size": 1000,
         "digest": f"sha256:{_DIGEST}",
     }
     entry.update(asset)
     return {
-        "tag_name": f"Gremlin-Platforms-R1-{version}",
+        "tag_name": f"Gremlin-Platforms-R2-{version}",
         "html_url": "https://github.com/x/y/releases/tag/t",
         "assets": [
-            {"name": f"Gremlin-Platforms-R1-{version}.zip", "size": 5},
+            {"name": f"Gremlin-Platforms-R2-{version}.zip", "size": 5},
             entry,
         ],
     }
@@ -55,7 +55,7 @@ def test_release_picks_the_setup_asset() -> None:
     release = updater.parse_release(_release())
     assert release.version == "1.0.3"
     assert release.page_url == "https://github.com/x/y/releases/tag/t"
-    assert release.setup.name == "Gremlin-Platforms-R1-1.0.3-Setup.exe"
+    assert release.setup.name == "Gremlin-Platforms-R2-1.0.3-Setup.exe"
     assert release.setup.size == 1000
     assert release.setup.sha256 == _DIGEST
 
@@ -68,7 +68,7 @@ def test_release_picks_the_setup_asset() -> None:
         {"digest": "sha256:short"},
         {"browser_download_url": "http://example.com/s.exe"},  # not https
         {"size": 0},
-        {"name": "Gremlin-Platforms-R1-1.0.2-Setup.exe"},  # another version
+        {"name": "Gremlin-Platforms-R2-1.0.2-Setup.exe"},  # another version
     ],
 )
 def test_release_without_a_verifiable_setup(change: dict) -> None:
@@ -169,10 +169,10 @@ def test_installer_and_workflow_agree_on_names() -> None:
     workflow = (root / ".github" / "workflows" / "release-exe.yml").read_text(
         encoding="utf-8"
     )
-    assert "OutputBaseFilename=Gremlin-Platforms-R1-{#MyAppVersion}-Setup" in iss
+    assert "OutputBaseFilename=Gremlin-Platforms-R2-{#MyAppVersion}-Setup" in iss
     assert "PrivilegesRequired=lowest" in iss
     assert "{param:LAUNCH|0}" in iss
-    assert "Gremlin-Platforms-R1-${{ steps.version.outputs.version }}-Setup.exe" in (
+    assert "Gremlin-Platforms-R2-${{ steps.version.outputs.version }}-Setup.exe" in (
         workflow
     )
-    assert updater.setup_name("1.2.3") == "Gremlin-Platforms-R1-1.2.3-Setup.exe"
+    assert updater.setup_name("1.2.3") == "Gremlin-Platforms-R2-1.2.3-Setup.exe"

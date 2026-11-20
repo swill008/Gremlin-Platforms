@@ -4,9 +4,7 @@
 
 """Tests never reach the real Gremlin Platforms folder (D-03-DEVICE-FOLDERS,
 contract section 7): the conftest side of the guard. test/conftest.py sets
-GREMLIN_TESTS=1, which the one-time device folders move (03 S134, OT-1;
-folders_move.run_if_needed) checks, and points the data and modules folders
-at a temporary one. The move's own refusal is tested in test_folders_move.py.
+GREMLIN_TESTS=1 and points the data and modules folders at a temporary one.
 """
 
 from __future__ import annotations

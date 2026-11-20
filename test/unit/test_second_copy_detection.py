@@ -109,7 +109,7 @@ def test_main_close_others_closes_then_takes_the_lock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     locks = [None, "lock"]
-    calls = _stub_main(monkeypatch, "close_others", locks, ["Gremlin-Platforms R1"])
+    calls = _stub_main(monkeypatch, "close_others", locks, ["Gremlin-Platforms R2"])
     with pytest.raises(_AppStarted):
         jg.main()
     assert calls["terminate"] == [[700]]

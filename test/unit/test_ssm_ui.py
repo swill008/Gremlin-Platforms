@@ -443,7 +443,7 @@ def test_s23_switching_the_mode_or_power_off_off_enables_pending(fakes) -> None:
 
 def test_s24_s25_program_recovers_at_start_and_stops_the_helper_at_quit() -> None:
     src = _text("joystick_gremlin.py")
-    init = src[src.index("register_config_options()\n        gremlin.library") :]
+    init = src[src.index("        register_config_options()\n") :]
     assert init.index("_recover_devices()") < init.index("self.engine.load(")
     rec = src[src.index("def _recover_devices") :]
     rec = rec[: rec.index("\ndef ")]

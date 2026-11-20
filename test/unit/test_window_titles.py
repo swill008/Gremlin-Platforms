@@ -15,7 +15,7 @@ from gremlin.ui import window_titles
 
 _ROOT = pathlib.Path(__file__).resolve().parents[2]
 _VERSION = json.loads((_ROOT / "version.json").read_text(encoding="utf-8"))["version"]
-_PROGRAM = f"Gremlin-Platforms R1 {_VERSION}"
+_PROGRAM = f"Gremlin-Platforms R2 {_VERSION}"
 
 
 def test_the_program_comes_first_then_the_window() -> None:
@@ -33,9 +33,9 @@ def test_the_program_comes_first_then_the_window() -> None:
 def test_the_name_shows_once() -> None:
     assert window_titles.format_title("") == _PROGRAM
     assert window_titles.format_title(_PROGRAM) == _PROGRAM
-    assert window_titles.format_title("Gremlin-Platforms R1") == _PROGRAM
+    assert window_titles.format_title("Gremlin-Platforms R2") == _PROGRAM
     # A title written the old way keeps only its own part.
-    old = f"Flight.xml - Gremlin-Platforms R1 {_VERSION}"
+    old = f"Flight.xml - Gremlin-Platforms R2 {_VERSION}"
     assert window_titles.format_title(old) == f"{_PROGRAM} - Flight.xml"
 
 

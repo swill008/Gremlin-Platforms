@@ -82,30 +82,39 @@ jobs:
       - name: Pack portable zip
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\gremlin_platforms\* -DestinationPath dist\Gremlin-Platforms-R1-${{ steps.version.outputs.version }}.zip
+          Compress-Archive -Path dist\gremlin_platforms\* -DestinationPath dist\Gremlin-Platforms-R2-${{ steps.version.outputs.version }}.zip
 
       - name: Build installer
         shell: pwsh
         run: installer\build_installer.ps1
 
+      # ONE-TIME (tracker OT-6): R1-named copy so R1 1.0.39 updates itself; remove when the user says.
+      # Installed R1 1.0.39 copies download only an asset named exactly
+      # Gremlin-Platforms-R1-<version>-Setup.exe, so the same installer goes up twice.
+      - name: Copy installer to the R1 name
+        shell: pwsh
+        run: Copy-Item dist\Gremlin-Platforms-R2-${{ steps.version.outputs.version }}-Setup.exe dist\Gremlin-Platforms-R1-${{ steps.version.outputs.version }}-Setup.exe
+
       - name: Keep build files
         if: ${{ !inputs.publish }}
         uses: actions/upload-artifact@v4
         with:
-          name: Gremlin-Platforms-R1-${{ steps.version.outputs.version }}
+          name: Gremlin-Platforms-R2-${{ steps.version.outputs.version }}
           path: |
+            dist/Gremlin-Platforms-R2-${{ steps.version.outputs.version }}-Setup.exe
             dist/Gremlin-Platforms-R1-${{ steps.version.outputs.version }}-Setup.exe
-            dist/Gremlin-Platforms-R1-${{ steps.version.outputs.version }}.zip
+            dist/Gremlin-Platforms-R2-${{ steps.version.outputs.version }}.zip
 
       - name: Create GitHub Release
         if: ${{ inputs.publish }}
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: Gremlin-Platforms-R1-${{ steps.version.outputs.version }}
-          name: Gremlin-Platforms-R1 ${{ steps.version.outputs.version }}
+          tag_name: Gremlin-Platforms-R2-${{ steps.version.outputs.version }}
+          name: Gremlin-Platforms-R2 ${{ steps.version.outputs.version }}
           body_path: release-body.md
           files: |
+            dist/Gremlin-Platforms-R2-${{ steps.version.outputs.version }}-Setup.exe
             dist/Gremlin-Platforms-R1-${{ steps.version.outputs.version }}-Setup.exe
-            dist/Gremlin-Platforms-R1-${{ steps.version.outputs.version }}.zip
+            dist/Gremlin-Platforms-R2-${{ steps.version.outputs.version }}.zip
           overwrite_files: true
           token: ${{ secrets.GITHUB_TOKEN }}

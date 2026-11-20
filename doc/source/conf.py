@@ -45,7 +45,7 @@ sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # -- Project information -----------------------------------------------------
 
-project = "Gremlin-Platforms R1"
+project = "Gremlin-Platforms R2"
 copyright = "2019, WhiteMagic"
 author = "WhiteMagic"
 
@@ -155,7 +155,7 @@ latex_documents = [
     (
         master_doc,
         "JoystickGremlin.tex",
-        "Gremlin-Platforms R1 Documentation",
+        "Gremlin-Platforms R2 Documentation",
         "WhiteMagic",
         "manual",
     ),
@@ -167,7 +167,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, "joystickgremlin", "Gremlin-Platforms R1 Documentation", [author], 1)
+    (master_doc, "joystickgremlin", "Gremlin-Platforms R2 Documentation", [author], 1)
 ]
 
 
@@ -180,7 +180,7 @@ texinfo_documents = [
     (
         master_doc,
         "JoystickGremlin",
-        "Gremlin-Platforms R1 Documentation",
+        "Gremlin-Platforms R2 Documentation",
         author,
         "JoystickGremlin",
         "One line description of project.",

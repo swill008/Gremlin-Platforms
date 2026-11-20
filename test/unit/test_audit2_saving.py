@@ -228,7 +228,7 @@ def test_quit_to_install_carries_on_when_settings_cannot_be_saved(
     monkeypatch.setattr(
         QtCore.QProcess, "startDetached", lambda *args: started.append(args) or True
     )
-    setup = tmp_path / "Gremlin-Platforms-R1-9.9.9-Setup.exe"
+    setup = tmp_path / "Gremlin-Platforms-R2-9.9.9-Setup.exe"
     setup.write_bytes(b"x")
     model = update_model.UpdateModel()
     model._ready_path = setup

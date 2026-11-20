@@ -25,7 +25,7 @@ class ReleaseNotesError(Exception):
 
 
 def install_text(version: str) -> str:
-    name = f"Gremlin-Platforms-R1-{version}"
+    name = f"Gremlin-Platforms-R2-{version}"
     return (
         "## How to install\n"
         "\n"

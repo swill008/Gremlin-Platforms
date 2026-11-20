@@ -87,7 +87,7 @@ class _Network:
 
 def _doc(version: str, body: str | None = "", **extra: object) -> dict:
     doc = {
-        "tag_name": f"Gremlin-Platforms-R1-{version}",
+        "tag_name": f"Gremlin-Platforms-R2-{version}",
         "html_url": f"https://github.com/x/y/releases/tag/{version}",
         "assets": [],
         "body": body,
@@ -121,7 +121,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
 # then the version's release-notes file (D-REL-NOTES-FILES).
 _INSTALL = (
     "## How to install\n\n"
-    "Installer: run `Gremlin-Platforms-R1-{v}-Setup.exe`.\n\n"
+    "Installer: run `Gremlin-Platforms-R2-{v}-Setup.exe`.\n\n"
     "Portable: unzip anywhere.\n\n"
 )
 

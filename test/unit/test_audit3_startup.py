@@ -155,7 +155,7 @@ def test_off_screen_a_second_copy_quits_and_closes_nothing(
 ) -> None:
     closed: list[list[int]] = []
     monkeypatch.setattr(jg, "acquire_instance_lock", lambda: None)
-    monkeypatch.setattr(jg, "_gremlin_window_titles", lambda: ["Gremlin-Platforms R1"])
+    monkeypatch.setattr(jg, "_gremlin_window_titles", lambda: ["Gremlin-Platforms R2"])
     monkeypatch.setattr(jg, "_other_gremlin_pids", lambda: [999_999])
     monkeypatch.setattr(jg, "_terminate_other_gremlin", closed.append)
     assert jg._check_second_copy() == (None, False)

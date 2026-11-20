@@ -4,9 +4,11 @@
 
 """Finding, checking and installing a newer release.
 
-A release on GitHub carries "Gremlin-Platforms-R1-X.Y.Z-Setup.exe". An installed
+A release on GitHub carries "Gremlin-Platforms-R2-X.Y.Z-Setup.exe". An installed
 copy downloads it, checks its size and SHA-256 against what GitHub reports, and
-runs it silently after Gremlin has closed. A portable copy or one running from
+runs it silently after Gremlin has closed. (The 1.1.0 release also carries an
+R1-named copy of its setup, only so 1.0.39, which looks for that name, can
+update itself.) A portable copy or one running from
 source is only told about the release.
 """
 
@@ -56,7 +58,7 @@ class Release:
 
 
 def setup_name(version: str) -> str:
-    return f"Gremlin-Platforms-R1-{version}-Setup.exe"
+    return f"Gremlin-Platforms-R2-{version}-Setup.exe"
 
 
 def _asset(doc: dict) -> Asset | None:
