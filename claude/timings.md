@@ -1163,3 +1163,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | Quick tests: SSM window, e2e, switch, docs (188) | test | ~2 min | 1 min | 06:04-06:05 |
 | 2026-11-20 | NATSTACK + SPEC6: native main-thread stack in freeze reports (Opus, Haiku) | fix | 3-8 min | 5 min | 06:13-06:18 |
 | 2026-11-20 | MSGMEASURE + SPEC7: CPU time, windows, hooks in freeze reports (Sonnet, Haiku) | fix | 3-8 min | 1-2 min | 06:29-06:31 |
+| 2026-11-20 | PEEKSTUDY: PeekMessage freeze, Qt 6.11 source + web (Opus) | research | 5-10 min | 5 min | 06:28-06:33 |
