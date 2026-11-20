@@ -27,7 +27,6 @@ from gremlin import (
     util,
 )
 from gremlin.config import Configuration
-from gremlin.signal import signal
 
 _CHECK_TIMEOUT_MS = 10000
 _DOWNLOAD_STALL_MS = 30000
@@ -568,7 +567,7 @@ class UpdateModel(QtCore.QObject):
         return True
 
     def _note_finished_update(self) -> None:
-        """After an update: say so once and delete the downloaded installer."""
+        """After an update: delete the old installers once (no notice; S183)."""
         current = self.currentVersion
         previous = self._config.value("global", "internal", "last-run-version")
         if previous == current:
@@ -580,9 +579,6 @@ class UpdateModel(QtCore.QObject):
             for leftover in updater.updates_dir().glob("*"):
                 if leftover.is_file() and leftover.suffix.lower() != ".log":
                     leftover.unlink(missing_ok=True)
-            signal.showNotification.emit(
-                "Updated", f"Gremlin-Platforms is now version {current}."
-            )
 
     def _set_state(self, state: str) -> None:
         if state != "error":

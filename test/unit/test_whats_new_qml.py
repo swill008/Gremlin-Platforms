@@ -99,7 +99,10 @@ work = Path(tempfile.mkdtemp())
 holder = work / "holder.qml"
 holder.write_text(
     "import QtQuick\nimport QtQuick.Controls\nimport QtQuick.Layouts\n"
+    "import Gremlin.Style\n"
     "ApplicationWindow { width: 600; height: 100; visible: true\n"
+    "  readonly property color infoColor: Style.info\n"
+    "  readonly property color pageColor: Style.bgPage\n"
     "  property int opened: 0\n"
     "  ColumnLayout { anchors.fill: parent\n"
     "    WhatsNewBanner { onOpenNotes: opened++ } } }\n",
@@ -129,6 +132,10 @@ try:
     pump(100)
     out["calls_after_close"] = list(model.calls)
     out["visible_after_close"] = bool(banner.property("visible"))
+    out["fill"] = banner.property("color").name().upper()
+    out["style_info"] = win.property("infoColor").name()
+    out["page"] = win.property("pageColor").name()
+    out["text_color"] = text.property("color").name().upper()
     out["banner_warnings"] = [w for w in warnings if "WhatsNewBanner" in w]
 finally:
     shutil.rmtree(work, ignore_errors=True)
@@ -172,6 +179,15 @@ def test_banner_and_window_follow_the_model(tmp_path: pathlib.Path) -> None:
     assert out["calls_after_close"] == ["banner", "dismiss"]
     assert out["visible_after_close"] is False
     assert out["banner_warnings"] == []
+
+
+def test_banner_is_a_solid_info_blue_bar_with_white_text(
+        tmp_path: pathlib.Path) -> None:
+    out = _run(tmp_path)
+    # The fill is Style.info, not the page/well grey, and the text is white.
+    assert out["fill"] == out["style_info"].upper()
+    assert out["fill"] != out["page"].upper()
+    assert out["text_color"] == "#FFFFFF"
     # The window shows the model's notes as rich text under its title.
     assert out["window_title"] == "What's New"
     assert "Point one" in out["window_notes"] and out["window_rich"]

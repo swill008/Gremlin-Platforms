@@ -68,19 +68,20 @@ def test_cancelled_quit_clears_the_install(
     assert f"/LOG={setup.with_suffix('.log')}" in started[0][1]
 
 
-def test_says_so_once_after_an_update(
+def test_an_update_cleans_up_once_without_a_notice(
     updates: pathlib.Path, notices: list[tuple[str, str]]
 ) -> None:
     (updates / "old-Setup.exe").write_bytes(b"x")
+    (updates / "old-Setup.log").write_text("log")
     cfg = Configuration()
     cfg.set("global", "internal", "last-run-version", "0.0.1")
     shown = notices
     model = update_model.UpdateModel()
     model._note_finished_update()
     model._note_finished_update()
-    assert len(shown) == 1
-    assert model.currentVersion in shown[0][1]
+    assert shown == []
     assert not (updates / "old-Setup.exe").exists()
+    assert (updates / "old-Setup.log").exists()
     assert cfg.value("global", "internal", "last-run-version") == model.currentVersion
 
 

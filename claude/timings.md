@@ -1151,3 +1151,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | CILOG: list CI failures of two runs (Haiku) | research | 5-10 min | <1 min | 04:58 |
 | 2026-11-20 | WNE2E: What's New end-to-end test, 5 tests + review (Sonnet) | test | 3-8 min | 1-2 min | 04:58-04:59 |
 | 2026-11-20 | Quick tests: 56 targeted + pyright | test | ~2 min | 1 min | 04:59-05:00 |
+| 2026-11-20 | BLUEBAR: solid blue What's New bar (Sonnet) | fix | 3-8 min | 3 min | 05:06-05:08 |
+| 2026-11-20 | NOTICEOFF: remove old Updated notice (Sonnet) | fix | 3-8 min | 2 min | 05:07-05:08 |
+| 2026-11-20 | SPEC2: S121, S183, decision row (Haiku) | docs | 3-8 min | <1 min | 05:07 |

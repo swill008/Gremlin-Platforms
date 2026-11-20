@@ -23,14 +23,15 @@ Rectangle {
     visible: shown
     Layout.fillWidth: true
     implicitHeight: shown ? _row.implicitHeight + Style.dp(8) : 0
-    color: Style.bgWell
+    // Solid info blue with white text (Style.onColor) so it can't be missed.
+    color: Style.info
 
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         height: 1
-        color: Style.line
+        color: Style.infoFillDeep
     }
 
     RowLayout {
@@ -46,25 +47,28 @@ Rectangle {
             Layout.preferredWidth: Style.dp(8)
             Layout.preferredHeight: Style.dp(8)
             radius: width / 2
-            color: Style.ok
+            color: Style.onColor
         }
 
         Label {
             objectName: "whatsNewBannerText"
             Layout.fillWidth: true
             elide: Text.ElideRight
-            color: Style.fgSoft
+            color: Style.onColor
             font.pixelSize: Style.fontSize
             text: whatsNew ? whatsNew.bannerText : ""
         }
 
-        Label {
+        Rectangle {
             id: _link
             objectName: "whatsNewBannerLink"
-            text: qsTr("What's New")
-            color: Style.fgStrong
-            font.pixelSize: Style.fontSize
-            font.underline: true
+            readonly property string text: _linkText.text
+            implicitWidth: _linkText.implicitWidth + Style.dp(16)
+            implicitHeight: _linkText.implicitHeight + Style.dp(6)
+            radius: Style.dp(4)
+            color: _linkHover.hovered ? Qt.rgba(1, 1, 1, 0.22) : Style.clear
+            border.width: 1
+            border.color: Style.onColor
             Accessible.role: Accessible.Link
             Accessible.name: text
             function activate() {
@@ -72,8 +76,15 @@ Rectangle {
                     whatsNew.showBannerNotes()
                 _banner.openNotes()
             }
+            Label {
+                id: _linkText
+                anchors.centerIn: parent
+                text: qsTr("What's New")
+                color: Style.onColor
+                font.pixelSize: Style.fontSize
+            }
             TapHandler { onTapped: _link.activate() }
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
+            HoverHandler { id: _linkHover; cursorShape: Qt.PointingHandCursor }
         }
 
         ToolButton {
@@ -81,6 +92,17 @@ Rectangle {
             text: "✕"
             font.pixelSize: Style.fontSize
             Accessible.name: qsTr("Close")
+            contentItem: Label {
+                text: parent.text
+                font: parent.font
+                color: Style.onColor
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            background: Rectangle {
+                radius: Style.dp(4)
+                color: parent.hovered ? Qt.rgba(1, 1, 1, 0.22) : Style.clear
+            }
             onClicked: if (whatsNew) whatsNew.dismissBanner()
         }
     }
