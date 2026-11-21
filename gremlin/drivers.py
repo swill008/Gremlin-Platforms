@@ -126,7 +126,11 @@ RUNTIME_KEYS = (
 UNINSTALL = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
 VJOY_UNINSTALL = UNINSTALL + r"\{8E31F76F-74C3-47F1-9550-E041EEDC5FBB}_is1"
 HIDHIDE_KEY = r"SOFTWARE\Nefarius Software Solutions e.U.\HidHide"
-VIGEMBUS_DISPLAY_NAME = "ViGEm Bus Driver"
+# Windows' Uninstall entry names: the installer's own, then the one in Nefarius's docs.
+VIGEMBUS_DISPLAY_NAMES = (
+    "ViGEm Bus Driver",
+    "Nefarius Virtual Gamepad Emulation Bus Driver",
+)
 
 
 def vigembus_sys_path() -> str:
@@ -274,11 +278,13 @@ def installed_version(key: str, reg: Registry | None = None) -> str:
     if key == "vjoy":
         return reg.value(VJOY_UNINSTALL, "DisplayVersion") or ""
     if key == "vigembus":
-        version = reg.file_version(vigembus_sys_path())
-        if version:
-            return version
-        entry = uninstall_entry(VIGEMBUS_DISPLAY_NAME, reg)
-        return entry[1]["DisplayVersion"] if entry else ""
+        # The entry first: the .sys file's version can lag the installer's
+        # (1.22.0 installs a file that says 1.21.442.0).
+        for display_name in VIGEMBUS_DISPLAY_NAMES:
+            entry = uninstall_entry(display_name, reg)
+            if entry and entry[1]["DisplayVersion"]:
+                return entry[1]["DisplayVersion"]
+        return reg.file_version(vigembus_sys_path())
     if key == "hidhide":
         return reg.value(HIDHIDE_KEY, "Version") or ""
     raise KeyError(key)

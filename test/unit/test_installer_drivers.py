@@ -205,7 +205,9 @@ def test_detection_reads_the_same_keys_as_drivers_py() -> None:
     assert f"UninstallRoot = '{drivers.UNINSTALL}';" in code
     assert f"VJoyUninstallKey = '{drivers.VJOY_UNINSTALL}';" in code
     assert f"HidHideKey = '{drivers.HIDHIDE_KEY}';" in code
-    assert f"ViGEmBusDisplayName = '{drivers.VIGEMBUS_DISPLAY_NAME}';" in code
+    names = drivers.VIGEMBUS_DISPLAY_NAMES
+    assert f"ViGEmBusDisplayName = '{names[0]}';" in code
+    assert f"ViGEmBusDisplayName2 = '{names[1]}';" in code
     found = _routine(code, "function InstalledDriverVersion(")
     assert "MachineValue(VJoyUninstallKey, 'DisplayVersion')" in found
     assert "MachineValue(HidHideKey, 'Version')" in found
@@ -214,6 +216,11 @@ def test_detection_reads_the_same_keys_as_drivers_py() -> None:
         "System32", "drivers", "ViGEmBus.sys"
     )
     assert "UninstallVersion(ViGEmBusDisplayName)" in found
+    assert "UninstallVersion(ViGEmBusDisplayName2)" in found
+    # The Uninstall entry is read before the .sys file (whose version differs).
+    assert found.index("UninstallVersion(ViGEmBusDisplayName)") < found.index(
+        "ViGEmBus.sys"
+    )
     # Both registry views, like drivers.WindowsRegistry.
     machine = _routine(code, "function MachineValue(")
     assert "HKLM64" in machine and "HKLM32" in machine

@@ -1201,3 +1201,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-21 | Test machine: create Gen 2 VM + unattended Windows 11 Pro install + clean checkpoint (lead; 1st try failed at the answer-disc step, fixed) | prep | rough guess 20-30 min | 7 min | 06:12-06:19 |
 | 2026-11-21 | Runtime fix S193: CORE3 (1 min), BUILD3 (1 min), DOCS3 (~1 min), ISS3 (8 min, 06:40-06:48) + lead pass, tests, commit | fix batch | 3-8 min per agent + ~5 | ~11 min | 06:38-06:49 |
 | 2026-11-21 | Test machine resized to 8 CPUs / 16 GB, checkpoints reset to one fresh clean (lead) | prep | no timing data | ~2 min | 06:44-06:46 |
+| 2026-11-21 | Test machine driver tests 1-4 (silent install + runtime, helper installs 3 drivers + vJoy setup, vJoy delete, two-half HidHide update with proper restarts) incl. 2 test-script fixes (lead) | test | no timing data; rough guess a few min each | ~19 min | 06:52-07:11 |
+| 2026-11-21 | FIX1 ViGEmBus version from the installed-programs entry (Sonnet agent) | fix | 3-8 min (agent fix) | 1 min | 07:03-07:04 |

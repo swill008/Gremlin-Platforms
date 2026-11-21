@@ -515,6 +515,7 @@ const
   VJoyUninstallKey = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{8E31F76F-74C3-47F1-9550-E041EEDC5FBB}_is1';
   HidHideKey = 'SOFTWARE\Nefarius Software Solutions e.U.\HidHide';
   ViGEmBusDisplayName = 'ViGEm Bus Driver';
+  ViGEmBusDisplayName2 = 'Nefarius Virtual Gamepad Emulation Bus Driver';
   { The helper's job and result files (12 S25), in setup's temp folder. }
   JobFileName = 'driver_jobs.json';
   ResultsFileName = 'driver_results.json';
@@ -676,11 +677,15 @@ begin
     Result := MachineValue(VJoyUninstallKey, 'DisplayVersion')
   else if Key = 'vigembus' then
   begin
-    if not GetVersionNumbersString(
-      ExpandConstant('{sys}\drivers\ViGEmBus.sys'), Result) then
-      Result := '';
+    { The Uninstall entry first: the .sys file's version can lag the
+      installer's (1.22.0 leaves a file that says 1.21.442.0). }
+    Result := UninstallVersion(ViGEmBusDisplayName);
     if Result = '' then
-      Result := UninstallVersion(ViGEmBusDisplayName);
+      Result := UninstallVersion(ViGEmBusDisplayName2);
+    if Result = '' then
+      if not GetVersionNumbersString(
+        ExpandConstant('{sys}\drivers\ViGEmBus.sys'), Result) then
+        Result := '';
   end
   else if Key = 'hidhide' then
     Result := MachineValue(HidHideKey, 'Version');

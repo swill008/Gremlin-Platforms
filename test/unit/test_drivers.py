@@ -101,13 +101,31 @@ def test_status_states() -> None:
     assert drivers.status("vjoy", _reg()).installed == ""
 
 
-def test_vigembus_falls_back_to_uninstall_entry() -> None:
-    assert drivers.installed_version("vigembus", _reg(vigem_entry="1.21.442")) == (
-        "1.21.442"
+def test_vigembus_version_comes_from_the_uninstall_entry() -> None:
+    # Found in the test machine: the 1.22.0 installer leaves a .sys file that
+    # reports 1.21.442.0, while the Uninstall entry says 1.22.0.
+    reg = _reg(sys_version="1.21.442.0", vigem_entry="1.22.0")
+    assert drivers.installed_version("vigembus", reg) == "1.22.0"
+    assert drivers.status("vigembus", reg).state == "same"
+
+
+def test_vigembus_accepts_the_nefarius_docs_name() -> None:
+    reg = MemoryRegistry(
+        {
+            UNINSTALL + r"\{X}": {
+                "DisplayName": "Nefarius Virtual Gamepad Emulation Bus Driver",
+                "DisplayVersion": "1.22.0",
+            }
+        },
+        {drivers.vigembus_sys_path(): "1.21.442.0"},
     )
-    # The .sys file version wins over the entry.
-    reg = _reg(sys_version="1.21.442.0", vigem_entry="1.0")
+    assert drivers.installed_version("vigembus", reg) == "1.22.0"
+
+
+def test_vigembus_uses_the_sys_version_when_there_is_no_entry() -> None:
+    reg = _reg(sys_version="1.21.442.0")
     assert drivers.installed_version("vigembus", reg) == "1.21.442.0"
+    assert drivers.installed_version("vigembus", _reg()) == ""
 
 
 def _release_json(tag: str, names: list[str]) -> bytes:
