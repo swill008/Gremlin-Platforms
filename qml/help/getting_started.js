@@ -70,6 +70,7 @@ function topics() {
                 + "<ul>"
                 + "<li>The page also has the vJoy device choice that <b>Tools › Drivers</b> has: <b>1 device, full</b> (the first choice), <b>2 devices, full</b> or <b>Custom</b>. The devices vJoy has now are shown as they are and changed only when you edit them, with the warning that running games lose the vJoy devices until they restart. Fewer devices than vJoy has now deletes the extra ones.</li>"
                 + "<li>The installer carries a copy of each driver and checks it against a stored SHA-256 checksum before running it. For vJoy and HidHide, setup also looks for a newer version on the project's own GitHub page and downloads it; it is used only when its Windows signature is valid and the signer is the project's own. With no internet connection, or if the check fails, the carried copy is used.</li>"
+                + "<li>When the PC lacks Microsoft's Visual C++ Runtime, setup installs it first. It is required (Gremlin-Platforms needs it to run), so it has no box; the <b>Drivers</b> page says it will be installed. It has its own Windows administrator permission, asked before the drivers' one, and a silent install installs it too.</li>"
                 + "<li>Windows asks for administrator permission once for all the ticked drivers. The program itself still installs for your Windows user only.</li>"
                 + "<li>Gremlin-Platforms always installs: a driver step that fails never stops it. The last page lists each driver's result and offers a restart of Windows when a driver asked for one.</li>"
                 + "<li>Updating HidHide takes two restarts: setup removes the old one and always asks for a restart, and the program installs the new one when it next starts and asks for one more. Devices are not hidden in between. See <a href=\"topic:tools-drivers\">Install and update the drivers (Drivers)</a>.</li>"
@@ -321,6 +322,7 @@ function topics() {
             body: "<ul>"
                 + "<li>If the joystick driver can't start, a page says \"An error occurred during startup:\" with the reason. <b>OK</b> closes the program.</li>"
                 + "<li>Any other failure at start shows a box, \"Gremlin-Platforms could not start.\", with the reason, the last lines of the error and the logs folder. Press <b>Ctrl+C</b> to copy the message for a problem report.</li>"
+                + "<li>If the program doesn't start at all on a new PC, run setup again, or install Microsoft's Visual C++ 2015-2022 Redistributable (x64).</li>"
                 + "<li>If it asks about another copy, see <a href=\"topic:getting-started-another-copy\">Another copy is already running</a>.</li>"
                 + "</ul>",
             related: ["getting-started-another-copy", "getting-started-error-messages", "getting-started-save-diagnostics"]

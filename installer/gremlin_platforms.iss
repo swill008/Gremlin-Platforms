@@ -25,6 +25,11 @@
 #define ViGEmBusFile "ViGEmBus_1.22.0_x64_x86_arm64.exe"
 #define HidHideBundled "1.5.230"
 #define HidHideFile "HidHide_1.5.230_x64.exe"
+; 01 S193: Microsoft's Visual C++ Runtime, as in gremlin/drivers.py's RUNTIME.
+#define RuntimeBundled "14.44.35211"
+#define RuntimeFile "VC_redist.x64.exe"
+#define RuntimeSha256 "cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b"
+#define RuntimeSigner "Microsoft Corporation"
 
 [Setup]
 ; Never change the AppId: updates and uninstall find the install by it.
@@ -88,14 +93,18 @@ Source: "..\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "drivers\{#VJoyFile}"; DestDir: "{app}\drivers"; Flags: ignoreversion
 Source: "drivers\{#ViGEmBusFile}"; DestDir: "{app}\drivers"; Flags: ignoreversion
 Source: "drivers\{#HidHideFile}"; DestDir: "{app}\drivers"; Flags: ignoreversion
-Source: "..\dist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
+; 01 S193: the Visual C++ Runtime is never copied to {app}: setup extracts it
+; to {tmp} (ExtractTemporaryFile) only when it is missing, and {tmp} goes when
+; setup ends. A missing file fails the build.
+Source: "drivers\{#RuntimeFile}"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing Visual C++ runtime..."; Flags: waituntilterminated skipifdoesntexist
+; 01 S193: the Visual C++ Runtime is installed at ssInstall (InstallRuntime),
+; before the files are copied and before any entry here can start the program.
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent; Check: OfferLaunch
 ; The in-app updater runs setup silently with /LAUNCH=1 to start the new version.
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: LaunchAfterSilentUpdate
@@ -165,6 +174,12 @@ var
   HidHideRemoved: Boolean;
   { The results for setup's last page; '' when no driver job ran. }
   DriverSummary: String;
+  { 01 S193: the Visual C++ Runtime was missing when setup started; its
+    line for the last page ('' when setup didn't install it) and whether
+    it asked for a restart. }
+  RuntimeMissing, RuntimeNeedRestart: Boolean;
+  RuntimeResult: String;
+  RuntimeProgressPage: TOutputProgressWizardPage;
   { The vJoy device choice (06 S185, on this page by 01 S187): what vJoy
     has now (vJoyConfig -t; empty when not installed or unread) and the
     layout to set. VJoyUserEdited: the preset or the Custom lines were
@@ -509,6 +524,20 @@ const
   HelperStartTicks = 120;
   HelperJobTicks = 1200;
   UacRefusedCode = 1223;
+  { 01 S193: the Visual C++ Runtime, as gremlin/drivers.py's RUNTIME_KEYS
+    (read in the 64-bit view, then the 32-bit one) and RUNTIME_DONE_CODES. }
+  RuntimeKey = 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64';
+  RuntimeName = 'Microsoft Visual C++ Runtime';
+  RuntimeLine = 'Microsoft Visual C++ Runtime: will be installed (Gremlin-Platforms needs it to run)';
+  RuntimeArgs = '/install /quiet /norestart';
+  RuntimeDoneCode = 0;
+  RuntimeNewerCode = 1638;
+  RuntimeRestartCode = 3010;
+  { The installer's exit code, written by the elevated cmd that runs it. }
+  RuntimeExitFile = 'runtime_exit_code.txt';
+  { Half-second ticks: ten minutes before setup stops waiting. }
+  RuntimeWaitStep = 500;
+  RuntimeWaitTicks = 1200;
   { 06 S185: the vJoy choice's words and limits, as in
     gremlin/ui/drivers_model.py and gremlin/drivers.py. }
   VJoyPresetOne = '1 device, full';
@@ -684,8 +713,26 @@ begin
   end;
 end;
 
+{ 01 S193: Installed is 1 under the runtime's key, 64-bit view first, like
+  drivers.runtime_installed. }
+function RuntimeInstalled: Boolean;
+var
+  Value: Cardinal;
+begin
+  Result := False;
+  if RegQueryDWordValue(HKLM64, RuntimeKey, 'Installed', Value) then
+    Result := Value = 1;
+  if not Result and RegQueryDWordValue(HKLM32, RuntimeKey, 'Installed', Value) then
+    Result := Value = 1;
+end;
+
 procedure InitDrivers;
 begin
+  RuntimeMissing := not RuntimeInstalled;
+  if RuntimeMissing then
+    Log(RuntimeName + ': missing; setup installs it first.')
+  else
+    Log(RuntimeName + ': installed.');
   SetArrayLength(Drivers, 3);
   SetDriver(0, 'vjoy', 'vJoy', '{#VJoyBundled}', '{#VJoyFile}',
     'BrunnerInnovation/vJoy', 'vJoySetup_v', '_Win10_Win11.exe');
@@ -1506,6 +1553,9 @@ var
   I: Integer;
 begin
   DriverList.Items.Clear;
+  { 01 S193: required, so a line with no box. }
+  if RuntimeMissing then
+    DriverList.AddGroup(RuntimeLine, '', 0, nil);
   for I := 0 to GetArrayLength(Drivers) - 1 do
   begin
     if (Drivers[I].State = 'missing') or (Drivers[I].State = 'older') then
@@ -1533,6 +1583,8 @@ begin
   DriverList.Top := 0;
   DriverList.Width := DriversPage.SurfaceWidth;
   DriverList.Height := ScaleY(62);
+  if RuntimeMissing then
+    DriverList.Height := ScaleY(82);
   DriverList.Flat := True;
   DriverList.OnClickCheck := @DriverListClickCheck;
   FillDriverList;
@@ -1546,6 +1598,9 @@ begin
   Note.Caption := 'Ticked drivers are installed after Gremlin-Platforms''s ' +
     'files are copied; Windows asks for administrator permission once. ' +
     'Gremlin-Platforms installs even when a driver doesn''t.';
+  if RuntimeMissing then
+    Note.Caption := Note.Caption + ' The ' + RuntimeName + ' is installed ' +
+      'first, before the files are copied, with its own administrator prompt.';
   Note.AdjustHeight;
   { 06 S185: the vJoy device choice. }
   VJoyLabel := TNewStaticText.Create(DriversPage);
@@ -1605,6 +1660,8 @@ begin
   DriverDownloadPage.ShowBaseNameInsteadOfUrl := True;
   DriverProgressPage := CreateOutputProgressPage('Drivers',
     'Installing the drivers you ticked.');
+  RuntimeProgressPage := CreateOutputProgressPage(RuntimeName,
+    'Gremlin-Platforms needs it to run.');
 end;
 
 { 06 S186: the HidHide update's first half. True = Continue. }
@@ -2013,8 +2070,144 @@ begin
     ExecAsOriginalUser(AppExe, '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 end;
 
+{ -- the Visual C++ Runtime (01 S193) }
+
+{ The extracted copy is the one Microsoft signed: drivers.RUNTIME's SHA-256
+  and a valid Authenticode signature by Microsoft Corporation. }
+function RuntimeFileTrusted(const Path: String): Boolean;
+var
+  Literal, Params: String;
+  Code: Integer;
+begin
+  Result := False;
+  if Lowercase(GetSHA256OfFile(Path)) <> '{#RuntimeSha256}' then
+  begin
+    Log(RuntimeName + ': the bundled copy''s SHA-256 does not match.');
+    Exit;
+  end;
+  Literal := Path;
+  StringChangeEx(Literal, '''', '''''', True);
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' +
+    '$s = Get-AuthenticodeSignature -LiteralPath ''' + Literal + '''; ' +
+    'if (($s.Status -eq ''Valid'') -and ($s.SignerCertificate.Subject -like ' +
+    '''CN={#RuntimeSigner}*'')) { exit 0 } else { exit 1 }"';
+  if Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params,
+    '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0) then
+    Result := True
+  else
+    Log(RuntimeName + ': the bundled copy''s signature is not Microsoft''s.');
+end;
+
+{ The last page's line for an exit code (drivers.RUNTIME_DONE_CODES). }
+function RuntimeCodeResult(Code: Integer): String;
+begin
+  if Code = RuntimeDoneCode then
+    Result := 'installed'
+  else if Code = RuntimeNewerCode then
+    Result := 'a newer version is already installed'
+  else if Code = RuntimeRestartCode then
+  begin
+    Result := 'installed; a restart finishes it';
+    { A silent install never restarts the PC on its own. }
+    if not WizardSilent then
+      RuntimeNeedRestart := True;
+  end
+  else
+    Result := 'not installed (error ' + IntToStr(Code) + '). Gremlin-Platforms ' +
+      'can''t start until it is installed';
+end;
+
+procedure SetRuntimeText(const Text: String);
+begin
+  WizardForm.StatusLabel.Caption := Text;
+  if not WizardSilent then
+    RuntimeProgressPage.SetText(Text, '');
+end;
+
+{ 01 S193: setup installs the runtime itself, first (at ssInstall, before
+  the files are copied, the driver jobs and any [Run] entry), with its own
+  administrator prompt: the helper can't start without it. Silent installs
+  too. A failure is listed on the last page and never stops the install. }
+procedure InstallRuntime;
+var
+  Path, ExitFile, Params: String;
+  ErrorCode, Tick, Code: Integer;
+  Lines: TArrayOfString;
+  Ended: Boolean;
+begin
+  if RuntimeInstalled then
+    Exit;
+  RuntimeMissing := True;
+  try
+    ExtractTemporaryFile('{#RuntimeFile}');
+    Path := ExpandConstant('{tmp}\{#RuntimeFile}');
+    if not RuntimeFileTrusted(Path) then
+    begin
+      RuntimeResult := 'not installed: the bundled copy failed its check';
+      Exit;
+    end;
+    ExitFile := ExpandConstant('{tmp}\' + RuntimeExitFile);
+    DeleteFile(ExitFile);
+    { cmd waits for the installer and writes its exit code, so setup can stop
+      waiting after ten minutes (ShellExec gives no process to wait on). }
+    Params := '/v:on /c ""' + Path + '" ' + RuntimeArgs +
+      ' & echo !errorlevel!> "' + ExitFile + '""';
+    if not WizardSilent then
+    begin
+      RuntimeProgressPage.SetProgress(0, RuntimeWaitTicks);
+      RuntimeProgressPage.Show;
+    end;
+    try
+      SetRuntimeText('Windows asks for administrator permission' + #$2026);
+      Log('Installing ' + RuntimeName + ' {#RuntimeBundled}: ' + Path + ' ' +
+        RuntimeArgs);
+      if ShellExec('runas', ExpandConstant('{cmd}'), Params, ExpandConstant('{tmp}'),
+        SW_HIDE, ewNoWait, ErrorCode) then
+      begin
+        SetRuntimeText('Installing the ' + RuntimeName + #$2026);
+        Ended := False;
+        Code := -1;
+        for Tick := 1 to RuntimeWaitTicks do
+        begin
+          if LoadStringsFromFile(ExitFile, Lines) and (GetArrayLength(Lines) > 0) then
+            if Trim(Lines[0]) <> '' then
+            begin
+              Code := StrToIntDef(Trim(Lines[0]), -1);
+              Ended := True;
+              Break;
+            end;
+          if not WizardSilent then
+            RuntimeProgressPage.SetProgress(Tick, RuntimeWaitTicks);
+          Sleep(RuntimeWaitStep);
+        end;
+        if Ended then
+        begin
+          Log(RuntimeName + ' installer exit code ' + IntToStr(Code));
+          RuntimeResult := RuntimeCodeResult(Code);
+        end
+        else
+          RuntimeResult := 'not installed: it did not finish within 10 minutes';
+      end
+      else if ErrorCode = UacRefusedCode then
+        RuntimeResult := 'not installed: administrator permission was not given'
+      else
+        RuntimeResult := 'not installed: ' + SysErrorMessage(ErrorCode);
+    finally
+      if not WizardSilent then
+        RuntimeProgressPage.Hide;
+    end;
+  except
+    Log(RuntimeName + ' step failed: ' + GetExceptionMessage);
+    RuntimeResult := 'not installed: setup could not run its installer';
+  end;
+  Log(RuntimeName + ': ' + RuntimeResult);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
+  { 01 S193: the runtime first, before anything else. }
+  if CurStep = ssInstall then
+    InstallRuntime;
   if CurStep = ssPostInstall then
   begin
     { The new version is in: the old one can go. }
@@ -2129,6 +2322,12 @@ begin
     Result := Result + MemoGroupInfo + NewLine + NewLine;
   if MemoTasksInfo <> '' then
     Result := Result + MemoTasksInfo + NewLine + NewLine;
+  { 01 S193: the runtime first, with its own administrator prompt. }
+  if RuntimeMissing then
+    Result := Result + 'First, before the files are copied (Windows asks for ' +
+      'administrator permission):' + NewLine + Space + 'Install the ' +
+      RuntimeName + ' {#RuntimeBundled} (Gremlin-Platforms needs it to run)' +
+      NewLine + NewLine;
   Steps := '';
   for I := 0 to GetArrayLength(Drivers) - 1 do
   begin
@@ -2168,22 +2367,27 @@ begin
       'administrator permission once):' + NewLine + Steps;
 end;
 
-{ 01 S191: the last page lists each driver's result. }
+{ 01 S191, S193: the last page lists the runtime's and each driver's result. }
 procedure CurPageChanged(CurPageID: Integer);
 var
   Text: String;
 begin
-  if (CurPageID <> wpFinished) or (DriverSummary = '') then
+  if (CurPageID <> wpFinished) or ((DriverSummary = '') and (RuntimeResult = '')) then
     Exit;
-  Text := 'Setup has finished installing {#MyAppName}.' + #13#10#13#10 +
-    'Drivers:' + #13#10 + DriverSummary;
+  Text := 'Setup has finished installing {#MyAppName}.';
+  if RuntimeResult <> '' then
+    Text := Text + #13#10#13#10 + RuntimeName + ': ' + RuntimeResult;
+  if DriverSummary <> '' then
+    Text := Text + #13#10#13#10 + 'Drivers:' + #13#10 + DriverSummary;
   if HidHideRemoved then
     Text := Text + #13#10#13#10 + 'Restart needed to continue the HidHide update'
   else if DriversNeedRestart then
-    Text := Text + #13#10#13#10 + 'A driver needs a restart to finish.';
+    Text := Text + #13#10#13#10 + 'A driver needs a restart to finish.'
+  else if RuntimeNeedRestart then
+    Text := Text + #13#10#13#10 + 'The ' + RuntimeName + ' needs a restart to finish.';
   WizardForm.FinishedLabel.Caption := Text;
   WizardForm.FinishedLabel.AdjustHeight;
-  if DriversNeedRestart then
+  if DriversNeedRestart or RuntimeNeedRestart then
   begin
     WizardForm.YesRadio.Caption := 'Restart now';
     WizardForm.NoRadio.Caption := 'Restart later';
@@ -2194,8 +2398,8 @@ begin
   end;
 end;
 
-{ 01 S191: offers a restart when a driver asked for one. }
+{ 01 S191, S193: offers a restart when a driver or the runtime asked for one. }
 function NeedRestart: Boolean;
 begin
-  Result := DriversNeedRestart;
+  Result := DriversNeedRestart or RuntimeNeedRestart;
 end;

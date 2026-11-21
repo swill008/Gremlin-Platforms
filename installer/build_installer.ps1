@@ -21,7 +21,8 @@ $drivers = Join-Path $PSScriptRoot "drivers"
 foreach ($name in @(
     "vJoySetup_v2.2.2.0_Win10_Win11.exe",
     "ViGEmBus_1.22.0_x64_x86_arm64.exe",
-    "HidHide_1.5.230_x64.exe"
+    "HidHide_1.5.230_x64.exe",
+    "VC_redist.x64.exe"  # the Visual C++ runtime (01 S193), copied to {tmp} only
 )) {
     if (-not (Test-Path (Join-Path $drivers $name))) {
         throw "installer\drivers\$name is missing: run 'python tools/fetch_drivers.py' (or add --from <folder> with the files)."

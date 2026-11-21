@@ -9,6 +9,6 @@ answers 11a and 21a). Outputs go to `E:\VM\GremlinTest\`, never into the repo.
 2. The user runs `set-test-password.ps1` once (asks for the test account's password; writes
    `autounattend.xml` and the encrypted `vm-test-cred.xml`). Claude never sees the password.
 3. After the restart that finishes turning on Hyper-V: `create-vm.ps1` (as administrator) creates
-   the machine (Gen 2, Secure Boot, virtual TPM, 4 CPUs, 8 GB, 80 GB), installs Windows unattended,
+   the machine (Gen 2, Secure Boot, virtual TPM, 8 CPUs, 16 GB, 80 GB), installs Windows unattended,
    then takes the checkpoint "clean".
 4. Every driver test starts with `Restore-VMCheckpoint -VMName GremlinTest -Name clean`.

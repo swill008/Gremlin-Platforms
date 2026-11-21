@@ -397,9 +397,9 @@ def test_windows_registry_reads_only(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_signer_output_reads_non_ascii_subjects() -> None:
     """vJoy's signer subject has "S=Zürich"; a text-mode read of PowerShell's
     output failed on it (found on the user's PC, 2026-11-21)."""
-    raw = (
-        "Valid\r\nCN=Brunner Elektronik AG, L=Hittnau, S=Zürich, C=CH\r\n"
-    ).encode("utf-8")
+    raw = ("Valid\r\nCN=Brunner Elektronik AG, L=Hittnau, S=Zürich, C=CH\r\n").encode(
+        "utf-8"
+    )
     valid, subject = drivers.signer_output(raw)
     assert valid
     assert drivers.subject_cn(subject) == "Brunner Elektronik AG"
@@ -408,3 +408,62 @@ def test_signer_output_reads_non_ascii_subjects() -> None:
     valid, subject = drivers.signer_output(b"Valid\r\nCN=Brunner, S=Z\x81rich\r\n")
     assert valid and subject.startswith("CN=Brunner")
     assert drivers.signer_output(b"") == (False, "")
+
+
+# -- Visual C++ Runtime (spec 01 S193) ----------------------------------------
+
+_RT_64 = drivers.RUNTIME_KEYS[0]
+_RT_32 = drivers.RUNTIME_KEYS[1]
+
+
+def test_runtime_is_not_a_driver_and_has_the_contract_values() -> None:
+    rt = drivers.RUNTIME
+    assert rt not in DRIVERS.values() and rt.key not in DRIVERS
+    assert rt.key == "vcredist"
+    assert rt.name == "Microsoft Visual C++ Runtime"
+    assert rt.bundled_version == "14.44.35211"
+    assert rt.bundled_file == "VC_redist.x64.exe"
+    assert rt.sha256 == (
+        "cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b"
+    )
+    assert rt.signer_prefix == "Microsoft Corporation"
+    assert rt.repo is None and rt.asset_regex is None
+    assert rt.install_args == ("/install", "/quiet", "/norestart")
+    assert rt.restart_codes == (3010,)
+    assert drivers.RUNTIME_DONE_CODES == (0, 1638, 3010)
+    assert drivers.RUNTIME_RESTART_CODE == 3010
+
+
+def test_runtime_detection() -> None:
+    missing = MemoryRegistry({})
+    assert drivers.runtime_installed(missing) is False
+    assert drivers.runtime_version(missing) == ""
+
+    both = MemoryRegistry({_RT_64: {"Installed": "1", "Version": "v14.51.36247.00"}})
+    assert drivers.runtime_installed(both) is True
+    assert drivers.runtime_version(both) == "14.51.36247.00"
+
+    wow_only = MemoryRegistry(
+        {_RT_32: {"Installed": "1", "Version": "v14.44.35211.00"}}
+    )
+    assert drivers.runtime_installed(wow_only) is True
+    assert drivers.runtime_version(wow_only) == "14.44.35211.00"
+
+    zero = MemoryRegistry({_RT_64: {"Installed": "0", "Version": "v14.51.36247.00"}})
+    assert drivers.runtime_installed(zero) is False
+    assert drivers.runtime_version(zero) == ""
+
+
+def test_runtime_files_are_checked_like_drivers(tmp_path: Path) -> None:
+    exe = tmp_path / "VC_redist.x64.exe"
+    exe.write_bytes(b"not the real file")
+    assert "does not match" in drivers.check_bundled(exe, drivers.RUNTIME)
+    assert "not found" in drivers.check_bundled(tmp_path / "x.exe", drivers.RUNTIME)
+    ms = "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, C=US"
+    assert (
+        drivers.check_download(exe, drivers.RUNTIME, signer=lambda p: (True, ms)) == ""
+    )
+    nef = "CN=Nefarius Software Solutions e.U., O=Nefarius, C=AT"
+    assert "Nefarius" in drivers.check_download(
+        exe, drivers.RUNTIME, signer=lambda p: (True, nef)
+    )

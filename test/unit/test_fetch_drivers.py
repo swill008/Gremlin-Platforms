@@ -113,9 +113,12 @@ def test_from_folder_missing_file_is_reported(tmp_path: pathlib.Path) -> None:
 
 
 def test_real_pins_all_have_a_hash_and_size() -> None:
-    assert [p.key for p in fd.PINS] == ["vjoy", "vigembus", "hidhide"]
+    assert [p.key for p in fd.PINS] == ["vjoy", "vigembus", "hidhide", "vcredist"]
     assert all(len(p.sha256) == 64 and p.size > 0 for p in fd.PINS)
-    assert all(p.url.startswith("https://github.com/") for p in fd.PINS)
+    assert all(p.url.startswith("https://") for p in fd.PINS)
+    assert all(
+        p.url.startswith("https://github.com/") for p in fd.PINS if p.key != "vcredist"
+    )
 
 
 def test_main_fails_when_a_driver_has_no_hash(
@@ -139,6 +142,26 @@ def test_main_succeeds_when_every_file_is_good(
 def test_pins_agree_with_gremlin_drivers() -> None:
     drivers = pytest.importorskip("gremlin.drivers")
     for pin in fd.PINS:
+        if pin.key == "vcredist":
+            continue
         info = drivers.DRIVERS[pin.key]
         assert info.bundled_file == pin.file
         assert info.sha256 == pin.sha256
+
+
+def test_vcredist_pin_agrees_with_gremlin_drivers_runtime() -> None:
+    drivers = pytest.importorskip("gremlin.drivers")
+    if not hasattr(drivers, "RUNTIME"):
+        pytest.skip("gremlin.drivers.RUNTIME is not added yet (agent CORE3)")
+    pin = next(p for p in fd.PINS if p.key == "vcredist")
+    assert drivers.RUNTIME.key == "vcredist"
+    assert drivers.RUNTIME.bundled_file == pin.file
+    assert drivers.RUNTIME.sha256 == pin.sha256
+    assert pin.size == 25_635_768
+    assert "vcredist" not in drivers.DRIVERS
+
+
+def test_build_script_requires_every_pinned_file() -> None:
+    text = (_ROOT / "installer" / "build_installer.ps1").read_text(encoding="utf-8")
+    for pin in fd.PINS:
+        assert f'"{pin.file}"' in text, f"build_installer.ps1 doesn't check {pin.file}"

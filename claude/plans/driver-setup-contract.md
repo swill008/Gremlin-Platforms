@@ -223,3 +223,28 @@ The "input after action: countdown restarts" line always ends with the
 source: " (by <device name> (keyboard|mouse))", " (by a device (mouse))"
 when the name is unknown, or " (by input sent by a program)". The change-only
 "last reset by" line stays as it is.
+
+## Visual C++ Runtime (2026-11-21, user 23a, 24a; spec 01 S193)
+
+Found in the test machine: the build leaves out vcruntime140.dll and friends
+(joystick_gremlin.spec to_exclude, upstream cea58d01), so a fresh Windows can't
+start the program, the Input Tester or the helper.
+
+- `gremlin/drivers.py` (CORE3): `RUNTIME = DriverInfo(key="vcredist", name="Microsoft Visual C++ Runtime",
+  bundled_version="14.44.35211", bundled_file="VC_redist.x64.exe",
+  sha256="cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b",
+  signer_prefix="Microsoft Corporation", repo=None, asset_regex=None,
+  install_args=("/install", "/quiet", "/norestart"), restart_codes=(3010,))`
+  — NOT in DRIVERS (the helper and Tools › Drivers never handle it);
+  `runtime_installed(reg=None) -> bool` (HKLM `SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64`
+  `Installed` == 1, 64-bit view, then WOW6432Node), `runtime_version(reg=None) -> str` (`Version`, "v14.51.36247.00" -> "14.51.36247.00").
+  Exit codes for setup: 0 done, 1638 done (newer present), 3010 done + restart, others failed.
+- `tools/fetch_drivers.py` (BUILD3): pin for `VC_redist.x64.exe`, 25,635,768 bytes, the SHA-256 above, URL
+  `https://download.visualstudio.microsoft.com/download/pr/e9604e21-4b79-4096-a4b3-1b63d4b55b4d/CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B/VC_redist.x64.exe`;
+  agreement test with drivers.RUNTIME; build_installer.ps1 checks it; licences/vcredist.txt (pointer to
+  Microsoft's Visual C++ redistributable licence terms; the redistributable files may be distributed with an app).
+- `installer/gremlin_platforms.iss` (ISS3): bundled to `{tmp}` only (not {app}); detection with the same key;
+  when missing, the Drivers page shows the S193 line (no box); at ssInstall or the first step of ssPostInstall,
+  BEFORE RunDriverJobs and before any [Run] entry starts the program: ShellExec 'runas' the redistributable with
+  `/install /quiet /norestart`, wait (bounded, 10 min), exit codes as above; a failure is listed on the last page
+  and never stops Gremlin's install; silent installs also install it when missing.

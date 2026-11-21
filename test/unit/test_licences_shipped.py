@@ -87,3 +87,14 @@ def test_installer_ships_the_licences_folder() -> None:
     assert entries, "the installer's [Files] has no licenses entry"
     assert 'Source: "..\\licenses\\*"' in entries[0]
     assert 'DestDir: "{app}\\licenses"' in entries[0]
+
+
+def test_vcredist_notice_points_at_microsofts_terms() -> None:
+    # The Visual C++ runtime is Microsoft's, installed unchanged (01 S193): a
+    # pointer to its terms, not a copied licence.
+    path = _ROOT / "licenses" / "vcredist.txt"
+    assert path.is_file(), "licenses/vcredist.txt is missing"
+    text = path.read_text(encoding="utf-8").splitlines()
+    assert text[0].startswith("Source: https://")
+    assert "Microsoft Visual C++ Redistributable (x64)" in text
+    assert len(text) < 20

@@ -102,6 +102,27 @@ DRIVERS: dict[str, DriverInfo] = {
     ),
 }
 
+# The Visual C++ Runtime (spec 01 S193): bundled for setup only, so it is not
+# in DRIVERS (the helper and Tools > Drivers never handle it).
+RUNTIME = DriverInfo(
+    key="vcredist",
+    name="Microsoft Visual C++ Runtime",
+    bundled_version="14.44.35211",
+    bundled_file="VC_redist.x64.exe",
+    sha256="cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b",
+    signer_prefix="Microsoft Corporation",
+    repo=None,
+    asset_regex=None,
+    install_args=("/install", "/quiet", "/norestart"),
+    restart_codes=(3010,),
+)
+RUNTIME_RESTART_CODE = 3010
+RUNTIME_DONE_CODES = (0, 1638, 3010)  # done, newer present, done + restart
+RUNTIME_KEYS = (
+    r"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64",
+    r"SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64",
+)
+
 UNINSTALL = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
 VJOY_UNINSTALL = UNINSTALL + r"\{8E31F76F-74C3-47F1-9550-E041EEDC5FBB}_is1"
 HIDHIDE_KEY = r"SOFTWARE\Nefarius Software Solutions e.U.\HidHide"
@@ -261,6 +282,27 @@ def installed_version(key: str, reg: Registry | None = None) -> str:
     if key == "hidhide":
         return reg.value(HIDHIDE_KEY, "Version") or ""
     raise KeyError(key)
+
+
+def _runtime_key(reg: Registry) -> str | None:
+    """The first Runtimes key (64-bit view, then WOW6432Node) with Installed=1."""
+    for path in RUNTIME_KEYS:
+        if (reg.value(path, "Installed") or "").strip() == "1":
+            return path
+    return None
+
+
+def runtime_installed(reg: Registry | None = None) -> bool:
+    return _runtime_key(_reg(reg)) is not None
+
+
+def runtime_version(reg: Registry | None = None) -> str:
+    """The installed runtime's version ("v14.51.36247.00" -> "14.51.36247.00")."""
+    reg = _reg(reg)
+    path = _runtime_key(reg)
+    if path is None:
+        return ""
+    return (reg.value(path, "Version") or "").strip().lstrip("vV")
 
 
 @dataclass(frozen=True)

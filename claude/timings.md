@@ -1198,3 +1198,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-21 | Full test run --random-order (8581 tests, 0 failed) | test run | ~7 min (rules of thumb) | ~8 min | 04:45-04:53 |
 | 2026-11-21 | Rebuild at 767c0ff9 (pyinstaller + installer with 3 drivers) (lead) | local build | ~3 min (local build row) | ~2 min | 04:54-04:56 |
 | 2026-11-21 | Test machine prep: Windows 11 ISO download (9.0 GB, hash checked) + unattended answer file + create-vm and password scripts (lead) | prep | no timing data | ~15 min | 05:00-05:15 |
+| 2026-11-21 | Test machine: create Gen 2 VM + unattended Windows 11 Pro install + clean checkpoint (lead; 1st try failed at the answer-disc step, fixed) | prep | rough guess 20-30 min | 7 min | 06:12-06:19 |
+| 2026-11-21 | Runtime fix S193: CORE3 (1 min), BUILD3 (1 min), DOCS3 (~1 min), ISS3 (8 min, 06:40-06:48) + lead pass, tests, commit | fix batch | 3-8 min per agent + ~5 | ~11 min | 06:38-06:49 |
+| 2026-11-21 | Test machine resized to 8 CPUs / 16 GB, checkpoints reset to one fresh clean (lead) | prep | no timing data | ~2 min | 06:44-06:46 |

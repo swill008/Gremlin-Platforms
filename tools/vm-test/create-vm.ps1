@@ -5,7 +5,7 @@
 #   powershell -ExecutionPolicy Bypass -File tools\vm-test\create-vm.ps1
 #
 # Generation 2, Secure Boot (Microsoft Windows template), a virtual TPM (Quick
-# Create does not reliably add one), 4 processors, 8 GB, 80 GB dynamic disk,
+# Create does not reliably add one), 8 processors, 16 GB, 80 GB dynamic disk,
 # Default Switch, Guest Service Interface on (Copy-VMFile). Then it waits for
 # the install to finish and takes the checkpoint "clean".
 
@@ -29,20 +29,33 @@ function New-AnswerIso([string]$XmlPath, [string]$IsoPath) {
     $fs.VolumeName = "ANSWER"
     $fs.Root.AddTree($stage, $false)
     $stream = $fs.CreateResultImage().ImageStream
-    $out = [System.IO.File]::Create($IsoPath)
-    try {
-        $buffer = New-Object byte[] 65536
-        $read = [ref]0
-        $istream = [System.Runtime.InteropServices.ComTypes.IStream]$stream
-        $ptr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(4)
+    # PowerShell can't cast the COM stream to IStream itself; C# can.
+    if (-not ("GremlinIsoWriter" -as [type])) {
+        Add-Type -TypeDefinition @"
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+public static class GremlinIsoWriter {
+    public static void Save(object stream, string path) {
+        IStream source = (IStream)stream;
+        byte[] buffer = new byte[65536];
+        IntPtr readPtr = Marshal.AllocHGlobal(4);
         try {
-            do {
-                $istream.Read($buffer, $buffer.Length, $ptr)
-                $n = [System.Runtime.InteropServices.Marshal]::ReadInt32($ptr)
-                if ($n -gt 0) { $out.Write($buffer, 0, $n) }
-            } while ($n -gt 0)
-        } finally { [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ptr) }
-    } finally { $out.Close() }
+            using (FileStream output = File.Create(path)) {
+                while (true) {
+                    source.Read(buffer, buffer.Length, readPtr);
+                    int read = Marshal.ReadInt32(readPtr);
+                    if (read <= 0) break;
+                    output.Write(buffer, 0, read);
+                }
+            }
+        } finally { Marshal.FreeHGlobal(readPtr); }
+    }
+}
+"@
+    }
+    [GremlinIsoWriter]::Save($stream, $IsoPath)
 }
 
 function Send-AnyKey([string]$VmName, [int]$Seconds = 20) {
@@ -67,9 +80,9 @@ $answerIso = Join-Path $Folder "answer.iso"
 New-AnswerIso (Join-Path $Folder "autounattend.xml") $answerIso
 
 $vhd = Join-Path $Folder "$Name.vhdx"
-New-VM -Name $Name -Generation 2 -MemoryStartupBytes 8GB -NewVHDPath $vhd -NewVHDSizeBytes 80GB `
+New-VM -Name $Name -Generation 2 -MemoryStartupBytes 16GB -NewVHDPath $vhd -NewVHDSizeBytes 80GB `
     -SwitchName "Default Switch" -Path $Folder | Out-Null
-Set-VM -Name $Name -ProcessorCount 4 -StaticMemory -CheckpointType Standard -AutomaticCheckpointsEnabled $false
+Set-VM -Name $Name -ProcessorCount 8 -StaticMemory -CheckpointType Standard -AutomaticCheckpointsEnabled $false
 Set-VMFirmware -VMName $Name -EnableSecureBoot On -SecureBootTemplate MicrosoftWindows
 Set-VMKeyProtector -VMName $Name -NewLocalKeyProtector
 Enable-VMTPM -VMName $Name

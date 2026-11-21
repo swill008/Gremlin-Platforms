@@ -9,7 +9,7 @@ Each file comes from its pinned release URL (or is copied from FOLDER with
 --from) and is kept only when its size and SHA-256 match; a download goes to
 a .part file that is renamed on success and deleted on failure. A driver whose
 SHA-256 isn't known yet (ViGEmBus until it is downloaded once and pinned) is
-refused. The pins are a second copy of gremlin.drivers.DRIVERS' hashes;
+refused. The pins are a second copy of gremlin.drivers.DRIVERS' (and RUNTIME's) hashes;
 test_fetch_drivers.py fails when the two differ. Exits 0 when every file is in
 place, 1 otherwise (01 S188).
 """
@@ -64,6 +64,18 @@ PINS: tuple[Pin, ...] = (
         "HidHide_1.5.230_x64.exe",
         8_078_016,
         "f4bbbcb82e6258641b887c74bc81c4c5f66e4aa811808dfc304347687b7605f6",
+    ),
+    # Not a driver: the Visual C++ runtime the program needs on a fresh Windows
+    # (01 S193). Fetched here with the drivers; setup copies it to {tmp} only.
+    Pin(
+        "vcredist",
+        "VC_redist.x64.exe",
+        "https://download.visualstudio.microsoft.com/download/pr/"
+        "e9604e21-4b79-4096-a4b3-1b63d4b55b4d/"
+        "CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B/"
+        "VC_redist.x64.exe",
+        25_635_768,
+        "cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b",
     ),
 )
 

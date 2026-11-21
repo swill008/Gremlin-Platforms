@@ -1,0 +1,8 @@
+Source: https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist
+Microsoft Visual C++ Redistributable (x64)
+
+The Microsoft Visual C++ 2015-2022 Redistributable (x64), VC_redist.x64.exe, is
+Microsoft's software. Setup carries it unchanged and runs it only when this
+computer doesn't have the runtime yet; it is installed under Microsoft's own
+licence terms, shown by its installer and listed at https://aka.ms/VCRedistLicense
+(see also https://visualstudio.microsoft.com/license-terms/).

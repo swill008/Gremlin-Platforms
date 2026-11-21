@@ -361,7 +361,9 @@ def test_one_elevated_helper_start_with_jobs_and_results() -> None:
     assert "Params := '--jobs ' + AddQuotes(JobFile) + ' --results ' +" in run
     assert "AddQuotes(ResultsFile);" in run
     assert "WaitForHelper(ResultsFile)" in run
-    assert _code().count("'runas'") == 1
+    # The drivers' one prompt, and the runtime's own when it is missing (S193).
+    assert _code().count("'runas'") == 2
+    assert _runtime_install().count("'runas'") == 1
 
 
 def test_progress_comes_from_the_results_file_until_finished() -> None:
@@ -414,7 +416,9 @@ def test_the_last_page_lists_results_and_offers_a_restart() -> None:
     assert "CurPageID <> wpFinished" in page
     assert "'Drivers:' + #13#10 + DriverSummary" in page
     assert "'Restart now'" in page and "'Restart later'" in page
-    assert "Result := DriversNeedRestart;" in _routine(code, "function NeedRestart:")
+    assert "Result := DriversNeedRestart or RuntimeNeedRestart;" in _routine(
+        code, "function NeedRestart:"
+    )
     summary = _routine(code, "procedure BuildDriverSummary;")
     assert "if Drivers[I].ResultRestart then" in summary
 
@@ -547,6 +551,8 @@ def test_the_code_section_is_well_formed() -> None:
         "DetectDrivers", "CheckLatest", "DownloadNewerDrivers", "DriversPageDone",
         "WriteJobFile", "ReadDriverResults", "WaitForHelper", "WriteHidHidePending",
         "BuildDriverSummary", "RunDriverJobs", "CharAt", "JsonValue",
+        "RuntimeInstalled", "RuntimeFileTrusted", "RuntimeCodeResult",
+        "SetRuntimeText", "InstallRuntime",
     ],
 )
 def test_every_routine_is_declared_before_it_is_used(name: str) -> None:
@@ -623,7 +629,6 @@ def test_the_current_layout_is_read_like_driver_jobs() -> None:
     assert "ExpandConstant('{tmp}\\') + VJoyCaptureFile" in run
     assert "LoadStringsFromFile(OutFile, Lines)" in run
     assert "'runas'" not in run
-    assert _code().count("'runas'") == 1
     path = _routine(code, "function VJoyConfigPath:")
     assert r"ExpandConstant('{commonpf64}\vJoy\x64\vJoyConfig.exe')" in path
     layout = _routine(code, "procedure ReadVJoyLayout;")
@@ -784,3 +789,163 @@ def test_vjoy_routines_are_declared_before_use(name: str) -> None:
     assert declared, name
     first_use = re.search(rf"\b{name}\b", code)
     assert first_use and first_use.start() >= declared.start(), name
+
+
+# -- 01 S193: the Microsoft Visual C++ Runtime ---------------------------------------
+
+
+def _runtime_install() -> str:
+    return _routine(_code(), "procedure InstallRuntime;")
+
+
+def test_the_runtime_matches_drivers_py() -> None:
+    info = drivers.RUNTIME
+    assert info.key not in drivers.DRIVERS
+    assert _define("RuntimeBundled") == info.bundled_version
+    assert _define("RuntimeFile") == info.bundled_file
+    assert _define("RuntimeSha256") == info.sha256
+    assert _define("RuntimeSigner") == info.signer_prefix
+    assert _const("RuntimeName") == info.name
+    assert _const("RuntimeArgs") == " ".join(info.install_args)
+
+
+def test_the_runtime_file_goes_to_tmp_only() -> None:
+    files = _section("Files")
+    lines = [x for x in files.splitlines() if "Runtime" in x and not x.startswith(";")]
+    # dontcopy: never copied to {app}; extracted to {tmp} when it is missing.
+    assert lines == ['Source: "drivers\\{#RuntimeFile}"; Flags: dontcopy']
+    assert "skipifsourcedoesntexist" not in lines[0]
+    assert "ExtractTemporaryFile('{#RuntimeFile}');" in _runtime_install()
+    assert r"ExpandConstant('{tmp}\{#RuntimeFile}')" in _runtime_install()
+    # The old [Files]/[Run] copy from dist\ is gone.
+    assert r"dist\vc_redist" not in _iss().lower()
+    assert r"{tmp}\vc_redist" not in _iss().lower()
+
+
+def test_runtime_detection_reads_drivers_py_key_in_both_views() -> None:
+    assert _const("RuntimeKey") == drivers.RUNTIME_KEYS[0]
+    # The 32-bit view of RuntimeKey is drivers.py's WOW6432Node key.
+    assert drivers.RUNTIME_KEYS[1] == drivers.RUNTIME_KEYS[0].replace(
+        "SOFTWARE\\", "SOFTWARE\\WOW6432Node\\", 1
+    )
+    found = _routine(_code(), "function RuntimeInstalled:")
+    assert found.index("HKLM64, RuntimeKey, 'Installed'") < found.index(
+        "HKLM32, RuntimeKey, 'Installed'"
+    )
+    assert found.count("Result := Value = 1;") == 2
+
+
+def test_the_drivers_page_shows_the_runtime_line_with_no_box() -> None:
+    assert _const("RuntimeLine") == (
+        "Microsoft Visual C++ Runtime: will be installed "
+        "(Gremlin-Platforms needs it to run)"
+    )
+    fill = _routine(_code(), "procedure FillDriverList;")
+    assert (
+        "if RuntimeMissing then\n    DriverList.AddGroup(RuntimeLine, '', 0, nil);"
+    ) in fill
+    assert "AddCheckBox(RuntimeLine" not in _code()
+    assert "RuntimeMissing := not RuntimeInstalled;" in _routine(
+        _code(), "procedure InitDrivers;"
+    )
+
+
+def test_the_runtime_installs_first() -> None:
+    code = _code()
+    step = _routine(code, "procedure CurStepChanged(")
+    # ssInstall comes before the files are copied, ssPostInstall's driver jobs
+    # and every [Run] entry, so nothing can start the program before it.
+    assert step.index("if CurStep = ssInstall then\n    InstallRuntime;") < step.index(
+        "RunDriverJobs;"
+    )
+    run = [x for x in _section("Run").splitlines() if x and not x.startswith(";")]
+    assert run
+    assert all(x.startswith(r'Filename: "{app}\{#MyAppExeName}"') for x in run)
+    assert code.index("procedure InstallRuntime;") < code.index(
+        "procedure CurStepChanged("
+    )
+
+
+def test_the_runtime_runs_elevated_with_the_switches_and_bounded_wait() -> None:
+    body = _runtime_install()
+    assert "ShellExec('runas', ExpandConstant('{cmd}'), Params" in body
+    assert "ewNoWait" in body and "ewWaitUntilTerminated" not in body
+    params = body[body.index("Params := "): body.index(";", body.index("Params := "))]
+    assert "RuntimeArgs" in params and "!errorlevel!" in params and "/v:on /c" in params
+    assert _const("RuntimeArgs") == "/install /quiet /norestart"
+    assert "for Tick := 1 to RuntimeWaitTicks do" in body
+    assert "Sleep(RuntimeWaitStep);" in body
+    ticks = int(_const_int("RuntimeWaitTicks"))
+    assert ticks * int(_const_int("RuntimeWaitStep")) == 600_000
+    assert "'not installed: it did not finish within 10 minutes'" in body
+    # The bundled copy is checked before it runs (SHA-256 and signer).
+    assert body.index("RuntimeFileTrusted(Path)") < body.index("ShellExec(")
+    trusted = _routine(_code(), "function RuntimeFileTrusted(")
+    assert "GetSHA256OfFile(Path)" in trusted and "'{#RuntimeSha256}'" in trusted
+    assert "Get-AuthenticodeSignature" in trusted and "{#RuntimeSigner}" in trusted
+
+
+def _const_int(name: str) -> str:
+    found = re.search(rf"^  {name} = (\d+);$", _code(), re.M)
+    assert found, name
+    return found.group(1)
+
+
+def test_runtime_exit_codes() -> None:
+    assert int(_const_int("RuntimeDoneCode")) == drivers.RUNTIME_DONE_CODES[0]
+    assert int(_const_int("RuntimeNewerCode")) == drivers.RUNTIME_DONE_CODES[1]
+    assert int(_const_int("RuntimeRestartCode")) == drivers.RUNTIME_RESTART_CODE
+    assert drivers.RUNTIME.restart_codes == (drivers.RUNTIME_RESTART_CODE,)
+    codes = _routine(_code(), "function RuntimeCodeResult(")
+    restart = codes[
+        codes.index("Code = RuntimeRestartCode"):
+        codes.index("  else\n    Result := 'not installed")
+    ]
+    assert "RuntimeNeedRestart := True;" in restart
+    assert codes.count("RuntimeNeedRestart := True;") == 1
+    assert "'not installed (error ' + IntToStr(Code)" in codes
+    assert "Result := DriversNeedRestart or RuntimeNeedRestart;" in _routine(
+        _code(), "function NeedRestart:"
+    )
+    page = _routine(_code(), "procedure CurPageChanged(")
+    assert "RuntimeName + ': ' + RuntimeResult" in page
+    assert "if DriversNeedRestart or RuntimeNeedRestart then" in page
+
+
+def test_a_runtime_failure_never_stops_the_install() -> None:
+    body = _runtime_install()
+    assert body.index("try") < body.index("ExtractTemporaryFile(")
+    assert "except" in body and "GetExceptionMessage" in body
+    assert "'not installed: administrator permission was not given'" in body
+    assert "Abort" not in body and "RaiseException" not in body
+    assert "Runtime" not in _routine(_code(), "function PrepareToInstall(")
+
+
+def test_a_silent_install_installs_the_runtime() -> None:
+    body = _runtime_install()
+    # Only "already installed" skips it; a silent install only skips the page.
+    assert body.split("begin", 1)[1].lstrip().startswith(
+        "if RuntimeInstalled then\n    Exit;"
+    )
+    assert "if WizardSilent then\n    Exit" not in body
+    assert "InstallRuntime;" in _routine(_code(), "procedure CurStepChanged(")
+    # Silent installs still run no driver jobs, and never restart on their own.
+    planned = _routine(_code(), "function DriverJobsPlanned:")
+    assert "if WizardSilent then\n    Exit;" in planned
+    codes = _routine(_code(), "function RuntimeCodeResult(")
+    assert "if not WizardSilent then\n      RuntimeNeedRestart := True;" in codes
+
+
+def test_the_runtime_shows_its_progress_text() -> None:
+    body = _runtime_install()
+    assert "SetRuntimeText('Installing the ' + RuntimeName + #$2026);" in body
+    assert _const("RuntimeName") + "…" == "Microsoft Visual C++ Runtime…"
+
+
+def test_uninstall_never_touches_the_runtime() -> None:
+    iss = _iss()
+    assert "[UninstallRun]" not in iss
+    assert "VisualStudio" not in _section("UninstallDelete")
+    assert "Runtime" not in _section("UninstallDelete")
+    for x in ("RegDeleteKey", "RegDeleteValue", "/uninstall"):
+        assert x not in iss
