@@ -81,7 +81,8 @@ expect.
 13. a) Spec statements approved: written 2026-11-21 into 01 S187-S192
    (D-01-DRIVERS), 06 S185-S188 (D-06-DRIVERS), glossary "Drivers", map README
    counts. Page 12 S25 (helper driver jobs, job/result file for setup,
-   vJoyConfig read-back) is approved but NOT yet written: page 12 holds the
+   vJoyConfig read-back) was held, then written 2026-11-21 (15a) as S25
+   changed, S25a, S25b (D-12-HELPER-DRIVERS). It was held because page 12 holds the
    uncommitted S41 Screen Saver Mode changes, which stay untouched until the
    user decides on them. Text to write then: S25 keeps "the only part with
    administrator rights" and gains install/update a driver from a file

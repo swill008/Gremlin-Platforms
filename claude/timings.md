@@ -1188,3 +1188,4 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-21 | Driver facts check: vJoy, ViGEmBus, HidHide (3 Sonnet research helpers) + Inno Setup check (lead) | research | 10-15 min | ~5 min | 02:57-03:02 |
 | 2026-11-21 | Write driver-setup spec into pages 01, 06, glossary, map README (lead) | docs | no timing data; rough guess 5 min | ~4 min | 03:12-03:16 |
 | 2026-11-21 | S4a one screen saver at a time: remove S41, failing test, fix, spec/map, quick tests (lead) | fix | 3-8 min + ~5 min | ~4 min | 03:23-03:27 |
+| 2026-11-21 | Page 12 S25/S25a/S25b driver jobs spec + map counts + commit (lead) | docs | no timing data; rough guess 3 min | ~2 min | 03:30-03:32 |
