@@ -2056,6 +2056,8 @@ begin
         AddQuotes(ResultsFile);
       DriverProgressPage.SetText(
         'Windows asks for administrator permission' + #$2026, '');
+      { The driver jobs show real per-job progress: the normal bar. }
+      DriverProgressPage.ProgressBar.Style := npbstNormal;
       DriverProgressPage.SetProgress(0, GetArrayLength(JobDrivers));
       DriverProgressPage.Show;
       try
@@ -2189,6 +2191,10 @@ begin
       'Set-Content -LiteralPath $f -Value $r -Encoding Ascii"';
     if not WizardSilent then
     begin
+      { Microsoft's installer gives no percentage: a moving bar for the whole
+        wait. SetProgress below pumps the window's messages each tick, which
+        keeps the marquee moving. }
+      RuntimeProgressPage.ProgressBar.Style := npbstMarquee;
       RuntimeProgressPage.SetProgress(0, RuntimeWaitTicks);
       RuntimeProgressPage.Show;
     end;
@@ -2242,7 +2248,10 @@ begin
         RuntimeResult := 'not installed: ' + SysErrorMessage(ErrorCode);
     finally
       if not WizardSilent then
+      begin
         RuntimeProgressPage.Hide;
+        RuntimeProgressPage.ProgressBar.Style := npbstNormal;
+      end;
     end;
   except
     Log(RuntimeName + ' step failed: ' + GetExceptionMessage);
@@ -2441,13 +2450,28 @@ begin
     taller text covers them. With a restart Setup shows no Launch box. }
   if not (DriversNeedRestart or RuntimeNeedRestart) then
   begin
+    { Setup sizes RunList to fill the page, so the clamp below would put it
+      back under the label: fit its height to its items first. }
+    if WizardForm.RunList.Items.Count > 0 then
+      WizardForm.RunList.Height := ScaleY(20) * WizardForm.RunList.Items.Count
+    else
+      WizardForm.RunList.Height := ScaleY(20);
     WizardForm.RunList.Top := WizardForm.FinishedLabel.Top +
       WizardForm.FinishedLabel.Height + ScaleY(12);
     if WizardForm.RunList.Top + WizardForm.RunList.Height >
       WizardForm.FinishedPage.ClientHeight then
       WizardForm.RunList.Top := WizardForm.FinishedPage.ClientHeight -
         WizardForm.RunList.Height;
+    WizardForm.RunList.Visible := True;
+    WizardForm.RunList.BringToFront;
   end;
+  Log('Finish page: RunList Top=' + IntToStr(WizardForm.RunList.Top) +
+    ' Height=' + IntToStr(WizardForm.RunList.Height) +
+    ' Visible=' + IntToStr(Ord(WizardForm.RunList.Visible)) +
+    ' Items=' + IntToStr(WizardForm.RunList.Items.Count) +
+    '; FinishedLabel Top=' + IntToStr(WizardForm.FinishedLabel.Top) +
+    ' Height=' + IntToStr(WizardForm.FinishedLabel.Height) +
+    '; FinishedPage.ClientHeight=' + IntToStr(WizardForm.FinishedPage.ClientHeight));
   if DriversNeedRestart or RuntimeNeedRestart then
   begin
     WizardForm.YesRadio.Caption := 'Restart now';

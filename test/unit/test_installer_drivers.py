@@ -965,6 +965,24 @@ def test_the_runtime_shows_its_progress_text() -> None:
     assert _const("RuntimeName") + "…" == "Microsoft Visual C++ Runtime…"
 
 
+def test_the_runtime_bar_moves_and_the_driver_bar_is_normal() -> None:
+    body = _runtime_install()
+    assert body.index("ProgressBar.Style := npbstMarquee;") < body.index(
+        "RuntimeProgressPage.Show;"
+    )
+    # Back to normal before the page is hidden for good.
+    assert body.index("RuntimeProgressPage.Hide;") < body.index(
+        "RuntimeProgressPage.ProgressBar.Style := npbstNormal;"
+    )
+    # SetProgress each tick pumps the messages the marquee needs.
+    assert "RuntimeProgressPage.SetProgress(Tick, RuntimeWaitTicks);" in body
+    jobs = _routine(_code(), "procedure RunDriverJobs;")
+    assert jobs.index("DriverProgressPage.ProgressBar.Style := npbstNormal;") < (
+        jobs.index("DriverProgressPage.Show;")
+    )
+    assert "npbstMarquee" not in jobs
+
+
 def test_uninstall_never_touches_the_runtime() -> None:
     iss = _iss()
     assert "[UninstallRun]" not in iss
@@ -1006,6 +1024,15 @@ def test_the_launch_box_is_not_hidden_by_the_driver_results() -> None:
         "WizardForm.RunList.Top := WizardForm.FinishedLabel.Top +\n"
         "      WizardForm.FinishedLabel.Height + ScaleY(12);"
     ) in page[move:]
+    # The box's height is fitted to its items before it is moved (Setup sizes
+    # it to fill the page, so the clamp would put it back under the label).
+    height = page.index("WizardForm.RunList.Height := ScaleY(20)", move)
+    top = page.index("WizardForm.RunList.Top :=", move)
+    assert height < top
+    assert "WizardForm.RunList.Visible := True;" in page[move:]
+    assert "WizardForm.RunList.BringToFront;" in page[move:]
+    assert "Log('Finish page: RunList Top='" in page
+    assert "FinishedPage.ClientHeight=" in page
     offer = _routine(_code(), "function OfferLaunch:")
     assert "DriverJobsPlanned" not in offer and "DriverSummary" not in offer
     run = _section("Run").splitlines()
