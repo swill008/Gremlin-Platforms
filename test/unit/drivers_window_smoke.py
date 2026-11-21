@@ -85,7 +85,7 @@ class FakeDrivers(QtCore.QObject):
 
     @QtCore.Property(list, notify=changed)
     def vjoyCurrent(self):
-        return [_dev(1, 6, 32, 1)]
+        return [_dev(1, 6, 32, 1), _dev(2, 1, 1, 0), _dev(3, 2, 2, 2)]
 
     @QtCore.Property(bool, notify=changed)
     def vjoyEdited(self):
@@ -260,6 +260,8 @@ out["names"] = {k: prop(win, f"driverName_{k}", "text") for k in keys}
 out["tickVisible"] = {k: prop(win, f"driverTick_{k}", "visible") for k in keys}
 out["tickChecked"] = {k: prop(win, f"driverTick_{k}", "checked") for k in keys}
 out["current"] = prop(win, "vjoyCurrent_1", "text")
+out["current2"] = prop(win, "vjoyCurrent_2", "text")
+out["current3"] = prop(win, "vjoyCurrent_3", "text")
 out["customVisible"] = prop(win, "vjoyCustom", "visible")
 out["warning"] = prop(win, "vjoyWarning", "text")
 out["warningVisible"] = prop(win, "vjoyWarning", "visible")

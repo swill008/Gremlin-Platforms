@@ -534,7 +534,8 @@ const
   RuntimeDoneCode = 0;
   RuntimeNewerCode = 1638;
   RuntimeRestartCode = 3010;
-  { The installer's exit code, written by the elevated cmd that runs it. }
+  { The installer's exit code, written by the hidden PowerShell that starts
+    it (InstallRuntime). }
   RuntimeExitFile = 'runtime_exit_code.txt';
   { Half-second ticks: ten minutes before setup stops waiting. }
   RuntimeWaitStep = 500;
@@ -1411,10 +1412,20 @@ begin
     PresetDevices(VJoyPresetOne, VJoyChosen);
 end;
 
+{ "1 hat", "2 hats": a count with its word, singular for 1. }
+function CountText(Count: Integer; const One, Many: String): String;
+begin
+  if Count = 1 then
+    Result := '1 ' + One
+  else
+    Result := IntToStr(Count) + ' ' + Many;
+end;
+
 function VJoyDeviceText(const D: TVJoyDevice): String;
 begin
-  Result := IntToStr(D.Id) + ': ' + IntToStr(D.Axes) + ' axes, ' +
-    IntToStr(D.Buttons) + ' buttons, ' + IntToStr(D.Hats) + ' hats';
+  Result := IntToStr(D.Id) + ': ' + CountText(D.Axes, 'axis', 'axes') + ', ' +
+    CountText(D.Buttons, 'button', 'buttons') + ', ' +
+    CountText(D.Hats, 'hat', 'hats');
 end;
 
 function VJoyLayoutText(const List: TVJoyDevices): String;
@@ -1600,7 +1611,7 @@ begin
   Note.Width := DriversPage.SurfaceWidth;
   Note.AutoSize := False;
   Note.WordWrap := True;
-  Note.Caption := 'Ticked drivers are installed after Gremlin-Platforms''s ' +
+  Note.Caption := 'Ticked drivers are installed after Gremlin-Platforms'' ' +
     'files are copied; Windows asks for administrator permission once. ' +
     'Gremlin-Platforms installs even when a driver doesn''t.';
   if RuntimeMissing then
@@ -2135,10 +2146,10 @@ end;
   too. A failure is listed on the last page and never stops the install. }
 procedure InstallRuntime;
 var
-  Path, ExitFile, Params: String;
+  Path, ExitFile, Literal, ExitLiteral, Params, Line: String;
   ErrorCode, Tick, Code: Integer;
   Lines: TArrayOfString;
-  Ended: Boolean;
+  Ended, Started: Boolean;
 begin
   if RuntimeInstalled then
     Exit;
@@ -2153,10 +2164,29 @@ begin
     end;
     ExitFile := ExpandConstant('{tmp}\' + RuntimeExitFile);
     DeleteFile(ExitFile);
-    { cmd waits for the installer and writes its exit code, so setup can stop
-      waiting after ten minutes (ShellExec gives no process to wait on). }
-    Params := '/v:on /c ""' + Path + '" ' + RuntimeArgs +
-      ' & echo !errorlevel!> "' + ExitFile + '""';
+    Literal := Path;
+    StringChangeEx(Literal, '''', '''''', True);
+    ExitLiteral := ExitFile;
+    StringChangeEx(ExitLiteral, '''', '''''', True);
+    { A hidden, non-elevated PowerShell asks Windows to start Microsoft's
+      installer elevated, so the administrator prompt names that installer
+      (not a command prompt). It writes 'started' once the prompt is
+      accepted, then the exit code, 'timeout', or 'error N' (1223: the
+      prompt was refused). Process.Start keeps that Windows error code;
+      Start-Process -Verb RunAs loses it in its own error message. }
+    Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' +
+      '$f = ''' + ExitLiteral + '''; $r = ''error''; try { ' +
+      '$i = New-Object System.Diagnostics.ProcessStartInfo; ' +
+      '$i.FileName = ''' + Literal + '''; $i.Arguments = ''' + RuntimeArgs + '''; ' +
+      '$i.Verb = ''runas''; $i.UseShellExecute = $true; ' +
+      '$p = [System.Diagnostics.Process]::Start($i); ' +
+      'Set-Content -LiteralPath $f -Value ''started'' -Encoding Ascii; ' +
+      'if ($p.WaitForExit(' + IntToStr(RuntimeWaitTicks * RuntimeWaitStep) + ')) ' +
+      '{ $r = $p.ExitCode } else { $r = ''timeout'' } } catch { ' +
+      '$e = $_.Exception; while ($e -and -not ($e -is ' +
+      '[System.ComponentModel.Win32Exception])) { $e = $e.InnerException }; ' +
+      'if ($e) { $r = ''error '' + $e.NativeErrorCode } }; ' +
+      'Set-Content -LiteralPath $f -Value $r -Encoding Ascii"';
     if not WizardSilent then
     begin
       RuntimeProgressPage.SetProgress(0, RuntimeWaitTicks);
@@ -2166,35 +2196,48 @@ begin
       SetRuntimeText('Windows asks for administrator permission' + #$2026);
       Log('Installing ' + RuntimeName + ' {#RuntimeBundled}: ' + Path + ' ' +
         RuntimeArgs);
-      if ShellExec('runas', ExpandConstant('{cmd}'), Params, ExpandConstant('{tmp}'),
-        SW_HIDE, ewNoWait, ErrorCode) then
+      if Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params,
+        ExpandConstant('{tmp}'), SW_HIDE, ewNoWait, ErrorCode) then
       begin
-        SetRuntimeText('Installing the ' + RuntimeName + #$2026);
         Ended := False;
-        Code := -1;
+        Started := False;
+        Line := '';
         for Tick := 1 to RuntimeWaitTicks do
         begin
           if LoadStringsFromFile(ExitFile, Lines) and (GetArrayLength(Lines) > 0) then
-            if Trim(Lines[0]) <> '' then
+          begin
+            Line := Trim(Lines[0]);
+            if (Line = 'started') and not Started then
             begin
-              Code := StrToIntDef(Trim(Lines[0]), -1);
+              Started := True;
+              SetRuntimeText('Installing the ' + RuntimeName + #$2026);
+            end
+            else if (Line <> '') and (Line <> 'started') then
+            begin
               Ended := True;
               Break;
             end;
+          end;
           if not WizardSilent then
             RuntimeProgressPage.SetProgress(Tick, RuntimeWaitTicks);
           Sleep(RuntimeWaitStep);
         end;
-        if Ended then
+        if not Ended or (Line = 'timeout') then
+          RuntimeResult := 'not installed: it did not finish within 10 minutes'
+        else if Line = 'error ' + IntToStr(UacRefusedCode) then
+          RuntimeResult := 'not installed: administrator permission was not given'
+        else if Copy(Line, 1, 6) = 'error ' then
+          RuntimeResult := 'not installed: ' +
+            SysErrorMessage(StrToIntDef(Copy(Line, 7, Length(Line)), 0))
+        else if Line = 'error' then
+          RuntimeResult := 'not installed: Windows could not start its installer'
+        else
         begin
+          Code := StrToIntDef(Line, -1);
           Log(RuntimeName + ' installer exit code ' + IntToStr(Code));
           RuntimeResult := RuntimeCodeResult(Code);
-        end
-        else
-          RuntimeResult := 'not installed: it did not finish within 10 minutes';
+        end;
       end
-      else if ErrorCode = UacRefusedCode then
-        RuntimeResult := 'not installed: administrator permission was not given'
       else
         RuntimeResult := 'not installed: ' + SysErrorMessage(ErrorCode);
     finally
@@ -2337,8 +2380,9 @@ begin
   for I := 0 to GetArrayLength(Drivers) - 1 do
   begin
     if (Drivers[I].Key = 'vjoy') and VJoySetupPlanned then
-      VJoyStep := Space + 'Set up ' + IntToStr(GetArrayLength(VJoyChosen)) +
-        ' vJoy device(s): ' + VJoyLayoutText(VJoyChosen) + NewLine
+      VJoyStep := Space + 'Set up ' + CountText(GetArrayLength(VJoyChosen),
+        'vJoy device', 'vJoy devices') + ': ' + VJoyLayoutText(VJoyChosen) +
+        NewLine
     else
       VJoyStep := '';
     if not Drivers[I].Chosen then
@@ -2392,6 +2436,18 @@ begin
     Text := Text + #13#10#13#10 + 'The ' + RuntimeName + ' needs a restart to finish.';
   WizardForm.FinishedLabel.Caption := Text;
   WizardForm.FinishedLabel.AdjustHeight;
+  { Setup placed the Launch box (RunList) and the restart choice under its
+    own, shorter text before this runs: move them under this one, or the
+    taller text covers them. With a restart Setup shows no Launch box. }
+  if not (DriversNeedRestart or RuntimeNeedRestart) then
+  begin
+    WizardForm.RunList.Top := WizardForm.FinishedLabel.Top +
+      WizardForm.FinishedLabel.Height + ScaleY(12);
+    if WizardForm.RunList.Top + WizardForm.RunList.Height >
+      WizardForm.FinishedPage.ClientHeight then
+      WizardForm.RunList.Top := WizardForm.FinishedPage.ClientHeight -
+        WizardForm.RunList.Height;
+  end;
   if DriversNeedRestart or RuntimeNeedRestart then
   begin
     WizardForm.YesRadio.Caption := 'Restart now';

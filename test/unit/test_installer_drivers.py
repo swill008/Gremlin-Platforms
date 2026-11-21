@@ -559,7 +559,7 @@ def test_the_code_section_is_well_formed() -> None:
         "WriteJobFile", "ReadDriverResults", "WaitForHelper", "WriteHidHidePending",
         "BuildDriverSummary", "RunDriverJobs", "CharAt", "JsonValue",
         "RuntimeInstalled", "RuntimeFileTrusted", "RuntimeCodeResult",
-        "SetRuntimeText", "InstallRuntime",
+        "SetRuntimeText", "InstallRuntime", "CountText",
     ],
 )
 def test_every_routine_is_declared_before_it_is_used(name: str) -> None:
@@ -873,12 +873,28 @@ def test_the_runtime_installs_first() -> None:
     )
 
 
+def _runtime_params(body: str) -> str:
+    """The PowerShell command InstallRuntime passes, its string pieces joined."""
+    start = body.index("Params := ")
+    return _pascal_string(body[start: body.index("\"';", start) + 3])
+
+
 def test_the_runtime_runs_elevated_with_the_switches_and_bounded_wait() -> None:
     body = _runtime_install()
-    assert "ShellExec('runas', ExpandConstant('{cmd}'), Params" in body
-    assert "ewNoWait" in body and "ewWaitUntilTerminated" not in body
-    params = body[body.index("Params := "): body.index(";", body.index("Params := "))]
-    assert "RuntimeArgs" in params and "!errorlevel!" in params and "/v:on /c" in params
+    # A hidden, non-elevated PowerShell starts the installer elevated, so the
+    # administrator prompt names Microsoft's installer (answer 30a), not cmd.
+    assert "{cmd}" not in body and "ShellExec(" not in body
+    assert (
+        r"Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params,"
+        "\n        ExpandConstant('{tmp}'), SW_HIDE, ewNoWait, ErrorCode)"
+    ) in body
+    assert "ewWaitUntilTerminated" not in body
+    params = _runtime_params(body)
+    assert "$i.Verb = 'runas'; $i.UseShellExecute = $true;" in params
+    assert "[System.Diagnostics.Process]::Start($i)" in params
+    assert "$p.WaitForExit(" in params and "$r = $p.ExitCode" in params
+    assert "+ Literal +" in body and "+ RuntimeArgs +" in body
+    assert "IntToStr(RuntimeWaitTicks * RuntimeWaitStep)" in body
     assert _const("RuntimeArgs") == "/install /quiet /norestart"
     assert "for Tick := 1 to RuntimeWaitTicks do" in body
     assert "Sleep(RuntimeWaitStep);" in body
@@ -886,7 +902,7 @@ def test_the_runtime_runs_elevated_with_the_switches_and_bounded_wait() -> None:
     assert ticks * int(_const_int("RuntimeWaitStep")) == 600_000
     assert "'not installed: it did not finish within 10 minutes'" in body
     # The bundled copy is checked before it runs (SHA-256 and signer).
-    assert body.index("RuntimeFileTrusted(Path)") < body.index("ShellExec(")
+    assert body.index("RuntimeFileTrusted(Path)") < body.index("Exec(")
     trusted = _routine(_code(), "function RuntimeFileTrusted(")
     assert "GetSHA256OfFile(Path)" in trusted and "'{#RuntimeSha256}'" in trusted
     assert "Get-AuthenticodeSignature" in trusted and "{#RuntimeSigner}" in trusted
@@ -956,3 +972,68 @@ def test_uninstall_never_touches_the_runtime() -> None:
     assert "Runtime" not in _section("UninstallDelete")
     for x in ("RegDeleteKey", "RegDeleteValue", "/uninstall"):
         assert x not in iss
+
+
+def test_a_refused_runtime_prompt_is_reported_as_refused() -> None:
+    body = _runtime_install()
+    params = _runtime_params(body)
+    # Process.Start keeps the Windows error (1223 when the prompt is refused);
+    # the catch writes it, so a refusal ends the wait at once, never a hang.
+    assert "catch { $e = $_.Exception;" in params
+    assert "[System.ComponentModel.Win32Exception]" in params
+    assert "$r = 'error ' + $e.NativeErrorCode" in params
+    assert params.endswith('Set-Content -LiteralPath $f -Value $r -Encoding Ascii"')
+    assert "UacRefusedCode = 1223;" in _code()
+    refused = body.index("if Line = 'error ' + IntToStr(UacRefusedCode) then")
+    assert body.index(
+        "RuntimeResult := 'not installed: administrator permission was not given'"
+    ) > refused
+    # 'started' (the prompt was accepted) keeps waiting; anything else ends it.
+    assert "if (Line = 'started') and not Started then" in body
+    assert "else if (Line <> '') and (Line <> 'started') then" in body
+    assert "if not Ended or (Line = 'timeout') then" in body
+
+
+def test_the_launch_box_is_not_hidden_by_the_driver_results() -> None:
+    # Answer 31a: after driver jobs the last page's taller text covered the
+    # Launch box, which Setup had placed under its own shorter text. With no
+    # restart it is moved under the new text; driver jobs never hide it.
+    page = _routine(_code(), "procedure CurPageChanged(")
+    adjust = page.index("WizardForm.FinishedLabel.AdjustHeight;")
+    move = page.index("if not (DriversNeedRestart or RuntimeNeedRestart) then")
+    assert adjust < move
+    assert (
+        "WizardForm.RunList.Top := WizardForm.FinishedLabel.Top +\n"
+        "      WizardForm.FinishedLabel.Height + ScaleY(12);"
+    ) in page[move:]
+    offer = _routine(_code(), "function OfferLaunch:")
+    assert "DriverJobsPlanned" not in offer and "DriverSummary" not in offer
+    run = _section("Run").splitlines()
+    launch = next(x for x in run if 'Description: "Launch' in x)
+    assert "unchecked" not in launch and "Check: OfferLaunch" in launch
+
+
+def test_the_drivers_note_says_gremlin_platforms_files() -> None:
+    page = _routine(_code(), "procedure CreateDriverPages;")
+    start = page.index("Note.Caption := 'Ticked")
+    note = _pascal_string(page[start: page.index(";\n", start)])
+    assert note.startswith(
+        "Ticked drivers are installed after Gremlin-Platforms' files are copied;"
+    )
+    assert "Platforms''s" not in _code()
+
+
+def test_vjoy_layout_text_uses_singular_for_one() -> None:
+    count = _routine(_code(), "function CountText(")
+    assert "if Count = 1 then\n    Result := '1 ' + One" in count
+    assert "else\n    Result := IntToStr(Count) + ' ' + Many;" in count
+    device = _routine(_code(), "function VJoyDeviceText(")
+    assert "CountText(D.Axes, 'axis', 'axes')" in device
+    assert "CountText(D.Buttons, 'button', 'buttons')" in device
+    assert "CountText(D.Hats, 'hat', 'hats')" in device
+    assert "' hats'" not in device and "' axes, '" not in device
+    memo = _routine(_code(), "function UpdateReadyMemo(")
+    assert "device(s)" not in memo
+    assert (
+        "CountText(GetArrayLength(VJoyChosen),\n        'vJoy device', 'vJoy devices')"
+    ) in memo

@@ -201,8 +201,19 @@ def vjoyconfig_path() -> str:
     return os.path.join(root, "vJoy", "x64", "vJoyConfig.exe")
 
 
-def _describe(device: VJoyDevice) -> str:
-    return f"{device.axes} axes, {device.buttons} buttons, {device.hats} hats"
+def _count(n: int, singular: str, plural: str) -> str:
+    return f"{n} {singular if n == 1 else plural}"
+
+
+def describe_device(device: VJoyDevice) -> str:
+    """"4 axes, 32 buttons, 1 hat": singular only for exactly one."""
+    return ", ".join(
+        (
+            _count(device.axes, "axis", "axes"),
+            _count(device.buttons, "button", "buttons"),
+            _count(device.hats, "hat", "hats"),
+        )
+    )
 
 
 def vjoy_setup(devices: Iterable[VJoyDevice], runner: Runner) -> tuple[bool, str, bool]:
@@ -264,8 +275,8 @@ def vjoy_setup(devices: Iterable[VJoyDevice], runner: Runner) -> tuple[bool, str
         ):
             return (
                 False,
-                f"vJoy device {device.id}: reads back as {_describe(found)}, "
-                f"asked for {_describe(device)}",
+                f"vJoy device {device.id}: reads back as {describe_device(found)}, "
+                f"asked for {describe_device(device)}",
                 False,
             )
     for device_id in stale:
@@ -273,7 +284,7 @@ def vjoy_setup(devices: Iterable[VJoyDevice], runner: Runner) -> tuple[bool, str
         if any(d.id == device_id for d in parse_report(output)):
             return False, f"vJoy device {device_id}: still listed after delete", False
     count = len(devices)
-    summary = "; ".join(f"device {d.id}: {_describe(d)}" for d in devices)
+    summary = "; ".join(f"device {d.id}: {describe_device(d)}" for d in devices)
     noun = "device" if count == 1 else "devices"
     message = f"vJoy set up, {count} {noun} ({summary})"
     if stale:

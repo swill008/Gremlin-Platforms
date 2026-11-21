@@ -391,6 +391,23 @@ def test_vjoy_setup_exit_code_zero_is_not_trusted() -> None:
     assert "reads back as 8 axes, 64 buttons" in message
 
 
+def test_device_text_uses_the_singular_for_one() -> None:
+    describe = driver_jobs.describe_device
+    assert describe(VJoyDevice(4, 4, 32, 1)) == "4 axes, 32 buttons, 1 hat"
+    assert describe(VJoyDevice(1, 1, 1, 0)) == "1 axis, 1 button, 0 hats"
+    assert describe(VJoyDevice(1, 0, 2, 1)) == "0 axes, 2 buttons, 1 hat"
+
+
+def test_vjoy_setup_summary_and_read_back_use_the_singular() -> None:
+    runner = _vjoy_runner(lambda i: _report(i, axes="X", buttons=1, cont=1))
+    ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1, 1, 1, 1)], runner)
+    assert ok and "device 1: 1 axis, 1 button, 1 hat" in message, message
+    ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1, 2, 2, 1)], runner)
+    assert not ok
+    assert "reads back as 1 axis, 1 button, 1 hat, " in message
+    assert "asked for 2 axes, 2 buttons, 1 hat" in message
+
+
 def test_vjoy_setup_device_missing_after_setup() -> None:
     runner = _vjoy_runner(lambda i: "")
     ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1)], runner)

@@ -1206,3 +1206,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-21 | Tests 5, 5c, 6 in the test machine (upgrades from older versions, ViGEmBus run-twice, vJoy devices across an update) incl. 2 test-script fixes (lead) | test | rough guess 15-20 min | ~10 min | 07:14-07:23 |
 | 2026-11-21 | STUDY print-test CI flake (Opus agent) | research | 10-15 min | 3 min | 07:13-07:16 |
 | 2026-11-21 | TESTFIX (Sonnet) 140 s limit + output head; VIGEMFIX (Sonnet) ViGEmBus second run | fix | 3-8 min each | ~2 min each | 07:21-07:23 |
+| 2026-11-21 | Screen tests 25a (setup Drivers page, Custom vJoy, runtime, both prompts) + 25b (Tools > Drivers, 2->1 device) over Remote Desktop, incl. window/monitor/access setup (lead) | test | rough guess 10-15 + 10 min | ~12 min (07:26 rebuild start - 07:38) |  |
+| 2026-11-21 | Fixes 30a/31a/32a: ISS4 (Opus, runtime prompt via Process.Start runas, launch box, wording; 07:41-07:46) + WORD (Sonnet, 1 axis/button/hat; ~2 min) + lead commit | fix batch | research 10-15 + agent fix 3-8 | ~7 min | 07:40-07:47 |

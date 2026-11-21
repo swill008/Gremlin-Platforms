@@ -62,7 +62,9 @@ def test_tick_boxes_only_where_tickable(run: dict) -> None:
 
 
 def test_vjoy_section(run: dict) -> None:
-    assert run["current"] == "Device 1: 6 axes, 32 buttons, 1 hats"
+    assert run["current"] == "Device 1: 6 axes, 32 buttons, 1 hat"
+    assert run["current2"] == "Device 2: 1 axis, 1 button, 0 hats"
+    assert run["current3"] == "Device 3: 2 axes, 2 buttons, 2 hats"
     assert run["customVisible"] is False
     assert run["customAfter"] is True
     assert (run["axesMax"], run["buttonsMax"], run["hatsMax"]) == (8, 128, 4)

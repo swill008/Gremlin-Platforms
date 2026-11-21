@@ -100,9 +100,14 @@ ApplicationWindow {
         _prompt.open()
     }
 
+    function _count(n, singular, plural) {
+        return n + " " + (n === 1 ? singular : plural)
+    }
+
     function _deviceText(d) {
-        return "Device " + d.id + ": " + d.axes + " axes, " + d.buttons
-               + " buttons, " + d.hats + " hats"
+        return "Device " + d.id + ": " + _count(d.axes, "axis", "axes") + ", "
+               + _count(d.buttons, "button", "buttons") + ", "
+               + _count(d.hats, "hat", "hats")
     }
 
     DialogDriverPrompt {
