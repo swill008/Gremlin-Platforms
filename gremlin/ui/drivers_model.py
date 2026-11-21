@@ -269,7 +269,10 @@ class DriversModel(QtCore.QObject):
         n = _clamp(n, 1, MAX_DEVICES)
         devices = self._devices[:n]
         while len(devices) < n:
-            devices.append(drivers.VJoyDevice(id=len(devices) + 1))
+            # The lowest free id: vJoy can have gaps (devices 1 and 3).
+            used = {d.id for d in devices}
+            free = next(i for i in range(1, MAX_DEVICES + 1) if i not in used)
+            devices.append(drivers.VJoyDevice(id=free))
         self._devices = devices
         self._preset = CUSTOM
         self._edited()
@@ -293,6 +296,14 @@ class DriversModel(QtCore.QObject):
         if self._current:
             return _layout(self._current) != _layout(self._devices)
         return True
+
+    def _deleted_ids(self) -> list[int]:
+        """vJoy devices that exist now and are not in the chosen layout; the
+        helper deletes them (12 S25b). A deletion counts as an edit."""
+        if not self._vjoy_edited():
+            return []
+        wanted = {d.id for d in self._devices}
+        return [d.id for d in self._current if d.id not in wanted]
 
     @QtCore.Slot(str, bool)
     def setTicked(self, key: str, on: bool) -> None:
@@ -396,12 +407,15 @@ class DriversModel(QtCore.QObject):
         lines.append(
             "Windows asks for administrator permission once, before the first step."
         )
+        if any(j.op == "vjoy_setup" for j in jobs):
+            for device_id in self._deleted_ids():
+                lines.append(f"vJoy device {device_id} will be deleted.")
         if any(j.op == "remove" for j in jobs):
             new = drivers.DRIVERS["hidhide"].bundled_version
             lines.append(
-                "HidHide update, step 1 of 2: after a restart, the program installs "
-                f"HidHide {new} and asks for one more restart. Devices aren't "
-                "hidden until then."
+                "HidHide update, step 1 of 2: a restart follows. After it, the "
+                f"program installs HidHide {new} and asks for one more restart. "
+                "Devices aren't hidden until then."
             )
         else:
             lines.append(

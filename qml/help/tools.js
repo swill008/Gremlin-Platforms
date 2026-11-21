@@ -134,7 +134,7 @@ function topics() {
             id: "tools-drivers",
             section: "Devices",
             title: "Install and update the drivers (Drivers)",
-            body: "<p>The program's outputs and HidHide need three drivers: <b>vJoy</b> (the virtual joysticks), <b>ViGEmBus</b> (the Xbox 360 pads) and <b>HidHide</b> (hides controllers from games). <b>Tools › Drivers</b> installs and updates them, and sets up the vJoy devices. Setup has the same page: see <a href=\"topic:getting-started-install\">Install and update the program</a>.</p>"
+            body: "<p>The program's outputs and HidHide need three drivers: <b>vJoy</b> (the virtual joysticks), <b>ViGEmBus</b> (the Xbox 360 pads) and <b>HidHide</b> (hides controllers from games). <b>Tools › Drivers</b> installs and updates them, and sets up the vJoy devices. Setup has the same page, vJoy device choice included: see <a href=\"topic:getting-started-install\">Install and update the program</a>.</p>"
                 + "<h4>What each row says</h4>"
                 + "<ul>"
                 + "<li>One row for each driver, with the version it has now: <b>not installed</b>, or its version number, or <b>update available</b>: <i>old</i> → <i>new</i>.</li>"
@@ -148,19 +148,20 @@ function topics() {
                 + "<li><b>Custom</b>: choose how many devices (1 to 16), and for each one its axes (0 to 8), buttons (0 to 128) and hats (0 to 4).</li>"
                 + "<li>The devices vJoy has now are shown as they are, and changed only when you edit them.</li>"
                 + "<li>Editing shows \"Running games will lose the vJoy devices until they restart.\" Close the games first.</li>"
+                + "<li>All the devices are set up in one go, so the vJoy driver restarts only once. When you choose fewer devices than vJoy has now, the extra ones (those above the new count) are deleted; the same warning covers it.</li>"
                 + "<li>After setting a device up, the program reads it back from vJoy. If it isn't what you asked for, the result says so and says it failed.</li>"
                 + "</ul>"
                 + "<h4>Apply the changes</h4>"
                 + "<ol>"
                 + "<li>Tick what to install or update, and choose the vJoy devices.</li>"
                 + "<li>Choose <b>Apply</b>. A prompt says what will happen and when. Choose to go ahead.</li>"
-                + "<li>Windows asks for administrator permission once for every step. The program itself needs no administrator rights; a small separate program, <b>Gremlin Device Helper</b>, does the work.</li>"
+                + "<li>Windows asks for administrator permission once for every step. The program itself needs no administrator rights; a small separate program, <b>Gremlin Device Helper</b>, does the work. Setup starts it the same way, so both pages behave alike.</li>"
                 + "<li>A progress line says what is running, such as \"Installing vJoy 2.2.2.0…\". Each driver then shows its result, and says when a restart of Windows is needed, with <b>Restart now</b> and <b>Restart later</b>.</li>"
                 + "</ol>"
                 + "<h4>Updating HidHide takes two restarts</h4>"
                 + "<p>HidHide can't be updated in one go: Windows has to restart between taking the old one away and putting the new one in.</p>"
                 + "<ol>"
-                + "<li><i>Step 1 of 2.</i> A prompt says it will remove HidHide <i>old</i>, that after a restart the program installs <i>new</i> and asks for one more restart, and that devices aren't hidden until then. Choose <b>Continue</b> (or <b>Skip HidHide update</b>). The old HidHide is removed and Windows asks for a restart.</li>"
+                + "<li><i>Step 1 of 2.</i> A prompt says it will remove HidHide <i>old</i>, that after a restart the program installs <i>new</i> and asks for one more restart, and that devices aren't hidden until then. Choose <b>Continue</b> (or <b>Skip HidHide update</b>). The old HidHide is removed and Windows always asks for a restart, whatever HidHide's own uninstaller reports.</li>"
                 + "<li><i>Step 2 of 2.</i> At its next start the program asks \"Finish the HidHide update\". Choose <b>Install now</b> (Windows asks for administrator permission), or <b>Later</b>. When HidHide is installed, Windows asks for one more restart.</li>"
                 + "</ol>"
                 + "<ul>"
@@ -171,6 +172,7 @@ function topics() {
                 + "<ul>"
                 + "<li>A driver step that fails never stops anything else; each result is listed with the reason.</li>"
                 + "<li>Uninstalling Gremlin-Platforms leaves the three drivers installed.</li>"
+                + "<li>The program's own update (<b>Update Now</b>) never installs or changes a driver. Drivers change only when you run setup yourself or use <b>Tools › Drivers</b>.</li>"
                 + "<li>When vJoy or ViGEmBus is missing, the message says so and has <b>Open Drivers</b>, which opens this window. Install the driver, then restart the program.</li>"
                 + "</ul>",
             related: ["getting-started-install", "tools-hidhide", "home-devices-vjoy-output", "home-devices-xbox-output"]

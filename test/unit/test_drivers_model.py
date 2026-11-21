@@ -152,6 +152,19 @@ def test_presets_and_custom_layout(qapp: object, app: Path, tmp_path: Path) -> N
     assert len(model.vjoyDevices) == 16
 
 
+def test_a_new_device_takes_the_lowest_free_id(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    """vJoy can have gaps (devices 1 and 3): raising the count must not give
+    two devices the same id (found by ISS2 reading the code)."""
+    current = [drivers.VJoyDevice(1), drivers.VJoyDevice(3)]
+    model = _model(app, tmp_path, [_status("vjoy", "2.2.2.0", "same")], current=current)
+    assert [d["id"] for d in model.vjoyDevices] == [1, 3]
+    model.setDeviceCount(3)
+    ids = [d["id"] for d in model.vjoyDevices]
+    assert sorted(ids) == [1, 2, 3]
+
+
 def test_existing_devices_shown_as_they_are_and_warned_when_edited(
     qapp: object, app: Path, tmp_path: Path
 ) -> None:
@@ -173,6 +186,35 @@ def test_existing_devices_shown_as_they_are_and_warned_when_edited(
     assert model.vjoyWarning in text
     model.setDevice(0, 4, 32, 1)  # back to what vJoy has
     assert not model.vjoyEdited and model.vjoyWarning == ""
+
+
+def test_a_smaller_layout_names_the_devices_that_will_be_deleted(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    current = [
+        drivers.VJoyDevice(1, 8, 128, 4),
+        drivers.VJoyDevice(2, 8, 128, 4),
+        drivers.VJoyDevice(3, 8, 128, 4),
+    ]
+    model = _model(app, tmp_path, [_status("vjoy", "2.2.2.0", "same")], current=current)
+    assert "deleted" not in model.describe() and model.vjoyWarning == ""
+    model.setDeviceCount(1)
+    text = model.describe()
+    assert "vJoy device 2 will be deleted." in text
+    assert "vJoy device 3 will be deleted." in text
+    assert "vJoy device 1 will be deleted." not in text
+    assert model.vjoyWarning in text and model.vjoyWarning
+    # Growing is an edit too, but deletes nothing.
+    model.setDeviceCount(4)
+    assert "deleted" not in model.describe() and model.vjoyWarning
+
+
+def test_a_hidhide_remove_says_a_restart_follows(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    model = _model(app, tmp_path, [_status("hidhide", "1.4.0", "older")])
+    model.setTicked("hidhide", True)
+    assert "a restart follows" in model.describe()
 
 
 def test_describe_says_what_in_what_order_and_the_one_prompt(

@@ -449,7 +449,9 @@ def test_hidhide_step_1_prompt_has_the_spec_words() -> None:
     assert "and asks for one more restart." in text
     assert text.endswith("Devices aren't hidden until then.")
     done = _routine(_code(), "procedure DriversPageDone;")
-    assert "(Drivers[I].Op = 'remove') and not AskHidHideStep1(I)" in done
+    # Nested, so the prompt shows only for a HidHide remove.
+    nested = "if Drivers[I].Op = 'remove' then\n      if not AskHidHideStep1(I) then"
+    assert nested in done
     assert "DriverList.Checked[Drivers[I].Row] := False;" in done
 
 
@@ -549,6 +551,234 @@ def test_the_code_section_is_well_formed() -> None:
 )
 def test_every_routine_is_declared_before_it_is_used(name: str) -> None:
     # Pascal Script has no forward use: the declaration must come first.
+    code = _strip(_code())
+    declared = re.search(rf"\b(?:function|procedure) {name}\b", code)
+    assert declared, name
+    first_use = re.search(rf"\b{name}\b", code)
+    assert first_use and first_use.start() >= declared.start(), name
+
+
+# -- 01 S187 (answer 1a): the vJoy device choice on the Drivers page (06 S185) ------
+
+
+def _const(name: str) -> str:
+    found = re.search(rf"^  {name} = '((?:[^']|'')*)';$", _code(), re.M)
+    assert found, f"const {name} missing"
+    return found.group(1).replace("''", "'")
+
+
+def test_the_vjoy_choice_has_the_presets_and_custom() -> None:
+    from gremlin.ui import drivers_model
+
+    assert [_const("VJoyPresetOne"), _const("VJoyPresetTwo")] == list(drivers.PRESETS)
+    assert _const("VJoyCustom") == drivers_model.CUSTOM
+    create = _routine(_code(), "procedure CreateDriverPages;")
+    assert "VJoyPresetBox := TNewComboBox.Create(DriversPage);" in create
+    assert "VJoyPresetBox.Style := csDropDownList;" in create
+    items = re.findall(r"VJoyPresetBox\.Items\.Add\((\w+)\);", create)
+    assert items == ["VJoyPresetOne", "VJoyPresetTwo", "VJoyCustom"]
+    # The Custom editor: one line per device, "axes, buttons, hats".
+    assert "VJoyCustomMemo := TNewMemo.Create(DriversPage);" in create
+    # Presets are full devices: 8 axes, 128 buttons, 4 hats (drivers.PRESETS).
+    preset = _routine(_code(), "procedure PresetDevices(")
+    assert "AddVJoyDevice(List, K, 8, 128, 4);" in preset
+    assert "if Name = VJoyPresetTwo then\n    Count := 2;" in preset
+    for name, devices in drivers.PRESETS.items():
+        assert [(d.axes, d.buttons, d.hats) for d in devices] == [(8, 128, 4)] * (
+            2 if name == _const("VJoyPresetTwo") else 1
+        )
+    # Custom: 1-16 devices, each number held to its range.
+    memo = _routine(_code(), "procedure ReadCustomMemo;")
+    assert "if GetArrayLength(VJoyChosen) >= VJoyMaxDevices then" in memo
+    assert "ClampInt(StrToIntDef(NextToken(Line), 8), 0, 8)" in memo
+    assert "ClampInt(StrToIntDef(NextToken(Line), 128), 0, 128)" in memo
+    assert "ClampInt(StrToIntDef(NextToken(Line), 4), 0, 4)" in memo
+    assert re.search(r"^  VJoyMaxDevices = 16;$", _code(), re.M)
+    assert drivers.VJOY_MAX_DEVICES == 16
+
+
+def test_vjoy_not_installed_gets_the_default_preset_and_no_current_layout() -> None:
+    init = _routine(_code(), "procedure InitVJoyChoice;")
+    read = init.index("ReadVJoyLayout;")
+    assert init.index("if not WizardSilent then") < read
+    assert init.index("State <> 'missing' then") < read
+    assert "CopyVJoyDevices(VJoyCurrent, VJoyChosen)" in init
+    assert "PresetDevices(VJoyPresetOne, VJoyChosen);" in init
+    line = _routine(_code(), "function VJoyCurrentLine:")
+    assert "State = 'missing' then\n    Result := ''" in line
+    create = _routine(_code(), "procedure CreateDriverPages;")
+    assert "Items.IndexOf(MatchingPreset(VJoyChosen))" in create
+    order = _routine(_code(), "procedure InitializeWizard;")
+    assert order.index("InitDrivers;") < order.index("InitVJoyChoice;") < order.index(
+        "CreateDriverPages;"
+    )
+
+
+def test_the_current_layout_is_read_like_driver_jobs() -> None:
+    code = _code()
+    run = _routine(code, "function RunVJoyConfig(")
+    # Never as administrator; output to a file in setup's temp folder.
+    assert "ExecAsOriginalUser(ExpandConstant('{cmd}')" in run
+    assert "ewWaitUntilTerminated" in run
+    assert "ExpandConstant('{tmp}\\') + VJoyCaptureFile" in run
+    assert "LoadStringsFromFile(OutFile, Lines)" in run
+    assert "'runas'" not in run
+    assert _code().count("'runas'") == 1
+    path = _routine(code, "function VJoyConfigPath:")
+    assert r"ExpandConstant('{commonpf64}\vJoy\x64\vJoyConfig.exe')" in path
+    layout = _routine(code, "procedure ReadVJoyLayout;")
+    assert "RunVJoyConfig('-t', Lines)" in layout
+    assert "RunVJoyConfig('-t ' + IntToStr(Ids[J]), Report)" in layout
+    # The same rules as parse_status_list and parse_report.
+    assert _const("VJoyAxisNames") == " ".join(drivers.VJOY_AXES)
+    status = _routine(code, "procedure ParseVJoyStatus(")
+    assert "(State = 'MISSING') or (State = 'UNKNOWN')" in status
+    report = _routine(code, "procedure ParseVJoyReport(")
+    for name in ("'device'", "'buttons'", "'continous povs'", "'continuous povs'",
+                 "'axes'"):
+        assert name in report
+
+
+def test_existing_devices_change_only_when_edited_with_the_warning() -> None:
+    from gremlin.ui import drivers_model
+
+    assert _const("VJoyWarning") == drivers_model.VJOY_WARNING
+    assert _const("VJoyWarning") == (
+        "Running games will lose the vJoy devices until they restart."
+    )
+    code = _code()
+    edited = _routine(code, "function VJoyEdited:")
+    assert "if not VJoyUserEdited then\n    Exit;" in edited
+    assert "Result := not SameLayout(VJoyCurrent, VJoyChosen);" in edited
+    update = _routine(code, "procedure UpdateVJoyControls;")
+    assert "if Active and VJoyEdited then" in update
+    assert "VJoyWarningText.Caption := VJoyWarning;" in update
+    memo = _routine(code, "function UpdateReadyMemo(")
+    assert "Steps := Steps + Space + VJoyWarning + NewLine;" in memo
+    assert "' will be deleted.'" in memo
+    # Only the user's own changes count as edits (filling the lines is not one).
+    change = _routine(code, "procedure VJoyMemoChange(")
+    assert "if VJoyFilling or VJoyCustomMemo.ReadOnly then" in change
+
+
+def test_vjoy_setup_comes_after_the_vjoy_install_job() -> None:
+    code = _code()
+    done = _routine(code, "procedure DriversPageDone;")
+    tail = done[done.index("I := DriverIndex('vjoy');"):]
+    assert "if Drivers[I].Op = 'install' then\n    VJoySetupPlanned := True" in tail
+    assert (
+        "else if Drivers[I].State <> 'missing' then\n"
+        "    VJoySetupPlanned := VJoyEdited;"
+    ) in tail
+    write = _routine(code, "function WriteJobFile(")
+    assert "for Pass := 0 to 1 do" in write
+    assert write.index("Json := JobJson(I);") < write.index("Json := VJoySetupJobJson;")
+    assert "Index := VJoySetupJob;" in write
+    planned = _routine(code, "function DriverJobsPlanned:")
+    assert "Result := VJoySetupPlanned;" in planned
+
+
+def _vjoy_setup_json(devices: list[drivers.VJoyDevice]) -> str:
+    routine = _routine(_code(), "function VJoySetupJobJson:")
+    devices_parts = _assignments(routine, "Devices")
+    assert len(devices_parts) == 3, devices_parts  # '', ', ', one device
+    text = ""
+    for k, device in enumerate(devices):
+        env = {
+            "Devices": text,
+            "IntToStr(VJoyChosen[K].Id)": str(device.id),
+            "IntToStr(VJoyChosen[K].Axes)": str(device.axes),
+            "IntToStr(VJoyChosen[K].Buttons)": str(device.buttons),
+            "IntToStr(VJoyChosen[K].Hats)": str(device.hats),
+        }
+        if k > 0:
+            text = _eval(devices_parts[1], env)
+            env["Devices"] = text
+        text = _eval(devices_parts[2], env)
+    (result,) = _assignments(routine, "Result")
+    return _eval(result, {"Devices": text})
+
+
+def test_the_vjoy_setup_job_is_one_the_helper_reads(tmp_path: pathlib.Path) -> None:
+    app = r"C:\Users\A B\AppData\Local\Programs\Gremlin-Platforms"
+    layout = [
+        drivers.VJoyDevice(1),
+        drivers.VJoyDevice(3, axes=0, buttons=0, hats=0),
+        drivers.VJoyDevice(16, axes=2, buttons=12, hats=1),
+    ]
+    text = _job_file([
+        _job_json("install", "vjoy", "",
+                  app + r"\drivers\vJoySetup_v2.2.2.0_Win10_Win11.exe"),
+        _vjoy_setup_json(layout),
+    ])
+    assert json.loads(text)["jobs"][1] == {
+        "op": "vjoy_setup", "driver": "vjoy", "files": [],
+        "devices": [
+            {"id": 1, "axes": 8, "buttons": 128, "hats": 4},
+            {"id": 3, "axes": 0, "buttons": 0, "hats": 0},
+            {"id": 16, "axes": 2, "buttons": 12, "hats": 1},
+        ],
+    }
+    path = tmp_path / "jobs.json"
+    path.write_text(text, encoding="utf-8")
+    jobs = drivers.read_jobs(path)
+    assert [(j.op, j.driver) for j in jobs] == [
+        ("install", "vjoy"), ("vjoy_setup", "vjoy")
+    ]
+    assert jobs[1].files == []
+    assert [(d.id, d.axes, d.buttons, d.hats) for d in jobs[1].devices] == [
+        (1, 8, 128, 4), (3, 0, 0, 0), (16, 2, 12, 1)
+    ]
+
+
+def test_the_vjoy_setup_job_has_its_progress_and_result_line() -> None:
+    code = _code()
+    progress = _routine(code, "function JobProgressText(")
+    assert "if I = VJoySetupJob then" in progress
+    assert "'Setting up the vJoy devices' + #$2026" in progress
+    summary = _routine(code, "procedure BuildDriverSummary;")
+    assert "DriverSummary := DriverSummary + VJoySetupResultLine;" in summary
+    assert "if VJoySetupRestart then" in summary
+    for name in ("ReadDriverResults", "FailOpenJobs"):
+        body = _routine(code, ("function " if name == "ReadDriverResults" else
+                               "procedure ") + name + "(")
+        assert "SetJobResult(J," in body
+
+
+def test_a_silent_install_never_reads_or_sets_up_vjoy() -> None:
+    code = _code()
+    planned = _routine(code, "function DriverJobsPlanned:")
+    assert planned.index("if WizardSilent then") < planned.index(
+        "Result := VJoySetupPlanned;"
+    )
+    init = _routine(code, "procedure InitVJoyChoice;")
+    assert "VJoySetupPlanned := False;" in init
+    assert init.index("if not WizardSilent then") < init.index("ReadVJoyLayout;")
+    # Only DriversPageDone plans the job, and a silent install never calls it.
+    assert re.findall(r"VJoySetupPlanned := True", code) == [
+        "VJoySetupPlanned := True"
+    ]
+    assert "VJoySetupPlanned := True" in _routine(code, "procedure DriversPageDone;")
+
+
+def test_no_code_line_starts_with_a_hash() -> None:
+    # ISPP reads a line starting with '#' as a directive (#13#10 continuations).
+    bad = [x for x in _code().splitlines() if x.lstrip().startswith("#")]
+    assert bad == []
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "AddVJoyDevice", "CopyVJoyDevices", "PresetDevices", "SameLayout",
+        "MatchingPreset", "VJoyEdited", "NextToken", "VJoyField", "AxesCount",
+        "ParseVJoyReport", "ParseVJoyStatus", "RunVJoyConfig", "ReadVJoyLayout",
+        "InitVJoyChoice", "VJoyLayoutText", "FillCustomMemo", "ReadCustomMemo",
+        "UpdateVJoyControls", "VJoySetupJobJson", "JobState", "SetJobResult",
+        "VJoySetupResultLine", "VJoyIdUsed", "ClampInt", "IsDigits",
+    ],
+)
+def test_vjoy_routines_are_declared_before_use(name: str) -> None:
     code = _strip(_code())
     declared = re.search(rf"\b(?:function|procedure) {name}\b", code)
     assert declared, name

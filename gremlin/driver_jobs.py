@@ -147,6 +147,8 @@ def _remove(job: Job, runner: Runner, reg: Registry | None) -> JobResult:
     state, message, restart = _from_exit_code(
         info, exit_code, output, f"Removing {info.name}"
     )
+    if state == "done":  # spec 12 S25b: a removed HidHide always needs a restart
+        message, restart = f"Removing {info.name}: done, restart needed", True
     return JobResult(state, message, restart, "")
 
 
@@ -188,10 +190,13 @@ def _describe(device: VJoyDevice) -> str:
 
 
 def vjoy_setup(devices: Iterable[VJoyDevice], runner: Runner) -> tuple[bool, str, bool]:
-    """Sets each device up, then reads it back; (ok, message, restart).
+    """Sets the devices up, deletes the others, reads back; (ok, message, restart).
 
     vJoyConfig's exit code is 0 even on bad arguments, so only the read-back
-    (`vJoyConfig -t <id>`) decides.
+    (`vJoyConfig -t <id>`) decides. The driver refreshes once: every set-up
+    passes `-l` (defer the refresh) and the deletion, which always refreshes
+    (`-d` ignores `-l`), runs last; with nothing to delete the last set-up
+    omits `-l` and carries the refresh.
     """
     exe = vjoyconfig_path()
     devices = list(devices)
@@ -201,16 +206,33 @@ def vjoy_setup(devices: Iterable[VJoyDevice], runner: Runner) -> tuple[bool, str
         problem = device.problem()
         if problem:
             return False, f"vJoy: {problem}", False
-    for device in devices:
+    wanted = {d.id for d in devices}
+    _, listing = runner([exe, "-t"], VJOYCONFIG_TIMEOUT_S)
+    stale = sorted(i for i in parse_status_list(listing) if i not in wanted)
+    last = len(devices) - 1
+    for index, device in enumerate(devices):
         command = [exe, str(device.id), "-f"]
         if device.axes:  # UNVERIFIED: how vJoyConfig takes zero axes
             command += ["-a", *VJOY_AXES[: device.axes]]
         command += ["-b", str(device.buttons), "-p", str(device.hats)]
+        if stale or index != last:
+            command.append("-l")
         code, output = runner(command, VJOYCONFIG_TIMEOUT_S)
         if code != 0:
             return (
                 False,
                 f"vJoy device {device.id}: vJoyConfig failed, exit code {code}"
+                + (f" ({output.strip()})" if output.strip() else ""),
+                False,
+            )
+    if stale:
+        code, output = runner(
+            [exe, "-d", *(str(i) for i in stale)], VJOYCONFIG_TIMEOUT_S
+        )
+        if code != 0:
+            return (
+                False,
+                f"vJoy: deleting {_ids(stale)}: vJoyConfig failed, exit code {code}"
                 + (f" ({output.strip()})" if output.strip() else ""),
                 False,
             )
@@ -230,10 +252,21 @@ def vjoy_setup(devices: Iterable[VJoyDevice], runner: Runner) -> tuple[bool, str
                 f"asked for {_describe(device)}",
                 False,
             )
+    for device_id in stale:
+        _, output = runner([exe, "-t", str(device_id)], VJOYCONFIG_TIMEOUT_S)
+        if any(d.id == device_id for d in parse_report(output)):
+            return False, f"vJoy device {device_id}: still listed after delete", False
     count = len(devices)
     summary = "; ".join(f"device {d.id}: {_describe(d)}" for d in devices)
     noun = "device" if count == 1 else "devices"
-    return True, f"vJoy set up, {count} {noun} ({summary})", False
+    message = f"vJoy set up, {count} {noun} ({summary})"
+    if stale:
+        message += f"; deleted {_ids(stale)}"
+    return True, message, False
+
+
+def _ids(ids: list[int]) -> str:
+    return ("device " if len(ids) == 1 else "devices ") + ", ".join(map(str, ids))
 
 
 # vJoyConfig -t report format, from BrunnerInnovation/vJoy

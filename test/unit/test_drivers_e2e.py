@@ -101,6 +101,15 @@ class World:
         raise AssertionError(f"unexpected command {command}")
 
     def _vjoyconfig(self, args: list[str]) -> tuple[int, str]:
+        if args[0] == "-d":
+            for device_id in args[1:]:
+                self.devices.pop(int(device_id), None)
+            return 0, ""
+        if args[0] == "-t" and len(args) == 1:
+            return 0, "".join(
+                f"Device {i}:\tStatus: {'FREE' if i in self.devices else 'MISSING'}\n"
+                for i in range(1, 17)
+            )
         if args[0] == "-t":
             device = self.devices.get(int(args[1]))
             if device is None:
@@ -437,7 +446,11 @@ def test_vjoy_custom_layout_that_reads_back_wrong_fails_with_a_message(
     assert "reads back as 5 axes" in row["message"]
     assert "asked for 6 axes" in row["message"]
     # vJoyConfig was asked for the layout, then read back.
-    assert ["-b", "32", "-p", "1"] == world.calls[0][world.calls[0].index("-b") :]
+    sets = [c for c in world.calls if "-b" in c]
+    first = sets[0]
+    assert ["-b", "32", "-p", "1"] == first[first.index("-b") : first.index("-b") + 4]
+    # Nothing is deleted: -l on every device but the last (12 S25b).
+    assert [c[-1] == "-l" for c in sets] == [True, False]
     assert any(c[1] == "-t" for c in world.calls)
     assert not model.restartNeeded
 
@@ -463,3 +476,29 @@ def test_vjoy_custom_layout_that_reads_back_right_is_done(
         (1, 6, 32, 1),
         (2, 8, 128, 4),
     ]
+
+
+def test_vjoy_two_devices_down_to_one_deletes_device_2(
+    qapp: object, app: Path, tmp_path: Path, world: World, helper_log: None
+) -> None:
+    world.install_vjoy("2.2.2.0")
+    world.install_vigembus("1.22.0")
+    world.install_hidhide("1.5.230")
+    world.devices[1] = drivers.VJoyDevice(1)
+    world.devices[2] = drivers.VJoyDevice(2)
+    model = _model(app, tmp_path, world, HelperLauncher(world))
+    assert [d["id"] for d in model.vjoyCurrent] == [1, 2]
+
+    model.setDeviceCount(1)
+    assert model.vjoyEdited and model.vjoyWarning
+    text = model.describe()
+    assert "vJoy device 2 will be deleted." in text
+    assert "vJoy device 1 will be deleted." not in text
+
+    _run(model)
+
+    assert _results(model)["vJoy devices"]["state"] == "done"
+    assert any(c[1:3] == ["-d", "2"] for c in world.calls)
+    assert [d["id"] for d in model.vjoyCurrent] == [1]
+    listing = driver_jobs.current_vjoy_devices(world.run)
+    assert [d.id for d in listing] == [1]

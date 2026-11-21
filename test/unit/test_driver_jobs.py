@@ -180,7 +180,7 @@ def _hidhide_reg(
 @pytest.mark.parametrize(
     "code, state, restart",
     [
-        (0, "done", False),
+        (0, "done", True),
         (3010, "done", True),
         (1641, "done", True),
         (1603, "failed", False),
@@ -257,8 +257,10 @@ def test_parse_status_list() -> None:
     assert driver_jobs.parse_status_list(text) == [1, 2, 5]
 
 
-def _vjoy_runner(read_back: Callable[[int], str]) -> FakeRunner:
+def _vjoy_runner(read_back: Callable[[int], str], listing: str = "") -> FakeRunner:
     def answer(command: list[str]) -> tuple[int, str]:
+        if command[1:] == ["-t"]:
+            return 0, listing
         if command[1] == "-t":
             return 0, read_back(int(command[2]))
         return 0, ""
@@ -274,6 +276,7 @@ def test_vjoy_setup_commands_and_read_back() -> None:
     assert ok and not restart, message
     exe = driver_jobs.vjoyconfig_path()
     assert runner.calls == [
+        [exe, "-t"],
         [
             exe,
             "1",
@@ -291,6 +294,7 @@ def test_vjoy_setup_commands_and_read_back() -> None:
             "128",
             "-p",
             "4",
+            "-l",
         ],
         [exe, "2", "-f", "-a", "x", "y", "z", "-b", "32", "-p", "1"],
         [exe, "-t", "1"],
@@ -312,10 +316,49 @@ def test_vjoy_setup_device_missing_after_setup() -> None:
 
 
 def test_vjoy_setup_nonzero_exit_fails() -> None:
-    runner = FakeRunner([(-1, "bitness")])
+    runner = FakeRunner([(0, ""), (-1, "bitness")])
     ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1)], runner)
     assert not ok and "exit code -1" in message
-    assert len(runner.calls) == 1
+    assert len(runner.calls) == 2  # the list read, then the failed set-up
+
+
+def test_vjoy_setup_deletes_devices_above_the_new_count() -> None:
+    listing = "\nDevice 1:\tStatus: FREE\nDevice 2:\tStatus: FREE\n"
+    gone: set[int] = set()
+    exe = driver_jobs.vjoyconfig_path()
+
+    def read_back(i: int) -> str:
+        return "" if i in gone else _report(i)
+
+    runner = _vjoy_runner(read_back, listing)
+    real = runner.__call__
+
+    def watching(command: list[str], timeout: float) -> tuple[int, str]:
+        if command[1] == "-d":
+            gone.update(int(i) for i in command[2:])
+        return real(command, timeout)
+
+    ok, message, restart = driver_jobs.vjoy_setup([VJoyDevice(1)], watching)
+    assert ok and not restart, message
+    assert "deleted device 2" in message
+    # Every set-up defers; the delete (always a refresh) is the single refresh.
+    assert runner.calls[1][-1] == "-l"
+    assert [exe, "-d", "2"] in runner.calls
+    assert runner.calls.index([exe, "-d", "2"]) > 1
+
+
+def test_vjoy_setup_delete_that_leaves_the_device_listed_fails() -> None:
+    listing = "\nDevice 1:\tStatus: FREE\nDevice 2:\tStatus: FREE\n"
+    runner = _vjoy_runner(lambda i: _report(i), listing)
+    ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1)], runner)
+    assert not ok and "device 2" in message and "still listed" in message
+
+
+def test_vjoy_setup_defers_all_but_the_last_device() -> None:
+    runner = _vjoy_runner(lambda i: _report(i))
+    driver_jobs.vjoy_setup([VJoyDevice(1), VJoyDevice(2), VJoyDevice(3)], runner)
+    sets = [c for c in runner.calls if c[1] not in ("-t", "-d")]
+    assert [c[-1] == "-l" for c in sets] == [True, True, False]
 
 
 def test_vjoy_setup_rejects_bad_layout() -> None:

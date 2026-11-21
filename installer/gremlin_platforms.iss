@@ -145,6 +145,12 @@ type
     ResultState, ResultMessage: String;
     ResultRestart: Boolean;
   end;
+  { One vJoy device (gremlin/drivers.py VJoyDevice): axes 0-8 (the first N
+    of X Y Z RX RY RZ SL0 SL1), buttons 0-128, hats 0-4. }
+  TVJoyDevice = record
+    Id, Axes, Buttons, Hats: Integer;
+  end;
+  TVJoyDevices = array of TVJoyDevice;
 
 var
   Drivers: array of TDriver;
@@ -159,6 +165,19 @@ var
   HidHideRemoved: Boolean;
   { The results for setup's last page; '' when no driver job ran. }
   DriverSummary: String;
+  { The vJoy device choice (06 S185, on this page by 01 S187): what vJoy
+    has now (vJoyConfig -t; empty when not installed or unread) and the
+    layout to set. VJoyUserEdited: the preset or the Custom lines were
+    changed on the page. }
+  VJoyCurrent, VJoyChosen: TVJoyDevices;
+  VJoyLayoutRead, VJoyUserEdited, VJoyFilling: Boolean;
+  { A vjoy_setup job runs after the vJoy install job (12 S25b). }
+  VJoySetupPlanned: Boolean;
+  VJoySetupState, VJoySetupMessage: String;
+  VJoySetupRestart: Boolean;
+  VJoyPresetBox: TNewComboBox;
+  VJoyCurrentText, VJoyWarningText: TNewStaticText;
+  VJoyCustomMemo: TNewMemo;
 
 const
   WM_CLOSE = $0010;
@@ -208,6 +227,7 @@ begin
       Result := True;
       Exit;
     end;
+  Result := VJoySetupPlanned;
 end;
 
 { [Run]: start the program again once, after setup closed it; the in-app
@@ -489,6 +509,17 @@ const
   HelperStartTicks = 120;
   HelperJobTicks = 1200;
   UacRefusedCode = 1223;
+  { 06 S185: the vJoy choice's words and limits, as in
+    gremlin/ui/drivers_model.py and gremlin/drivers.py. }
+  VJoyPresetOne = '1 device, full';
+  VJoyPresetTwo = '2 devices, full';
+  VJoyCustom = 'Custom';
+  VJoyWarning = 'Running games will lose the vJoy devices until they restart.';
+  VJoyMaxDevices = 16;
+  VJoyAxisNames = 'x y z rx ry rz sl0 sl1';
+  { JobDrivers' entry for the vjoy_setup job (it has no row of its own). }
+  VJoySetupJob = -1;
+  VJoyCaptureFile = 'vjoyconfig_output.txt';
 
 procedure SetDriver(I: Integer; const Key, Name, Bundled, BundledFile, Repo,
   AssetPrefix, AssetSuffix: String);
@@ -1031,6 +1062,443 @@ begin
   end;
 end;
 
+{ -- the vJoy device choice (06 S185, on the Drivers page by 01 S187) }
+
+procedure AddVJoyDevice(var List: TVJoyDevices; Id, Axes, Buttons, Hats: Integer);
+var
+  N: Integer;
+begin
+  N := GetArrayLength(List);
+  SetArrayLength(List, N + 1);
+  List[N].Id := Id;
+  List[N].Axes := Axes;
+  List[N].Buttons := Buttons;
+  List[N].Hats := Hats;
+end;
+
+procedure CopyVJoyDevices(const Source: TVJoyDevices; var Target: TVJoyDevices);
+var
+  K: Integer;
+begin
+  SetArrayLength(Target, 0);
+  for K := 0 to GetArrayLength(Source) - 1 do
+    AddVJoyDevice(Target, Source[K].Id, Source[K].Axes, Source[K].Buttons,
+      Source[K].Hats);
+end;
+
+{ A preset's devices (gremlin/drivers.py PRESETS): "full" is 8 axes, 128
+  buttons and 4 hats. }
+procedure PresetDevices(const Name: String; var List: TVJoyDevices);
+var
+  K, Count: Integer;
+begin
+  SetArrayLength(List, 0);
+  Count := 1;
+  if Name = VJoyPresetTwo then
+    Count := 2;
+  for K := 1 to Count do
+    AddVJoyDevice(List, K, 8, 128, 4);
+end;
+
+{ The same axes, buttons and hats, device by device (ids aside). }
+function SameLayout(const A, B: TVJoyDevices): Boolean;
+var
+  K: Integer;
+begin
+  Result := GetArrayLength(A) = GetArrayLength(B);
+  if not Result then
+    Exit;
+  for K := 0 to GetArrayLength(A) - 1 do
+    if (A[K].Axes <> B[K].Axes) or (A[K].Buttons <> B[K].Buttons) or
+      (A[K].Hats <> B[K].Hats) then
+    begin
+      Result := False;
+      Exit;
+    end;
+end;
+
+function MatchingPreset(const List: TVJoyDevices): String;
+var
+  Preset: TVJoyDevices;
+begin
+  Result := VJoyCustom;
+  PresetDevices(VJoyPresetOne, Preset);
+  if SameLayout(List, Preset) then
+    Result := VJoyPresetOne;
+  PresetDevices(VJoyPresetTwo, Preset);
+  if SameLayout(List, Preset) then
+    Result := VJoyPresetTwo;
+end;
+
+{ Existing devices change only when edited (06 S185): an edit that ends
+  where vJoy already is is no edit. }
+function VJoyEdited: Boolean;
+begin
+  Result := False;
+  if not VJoyUserEdited then
+    Exit;
+  if GetArrayLength(VJoyCurrent) = 0 then
+    Result := True
+  else
+    Result := not SameLayout(VJoyCurrent, VJoyChosen);
+end;
+
+function ClampInt(Value, Low, High: Integer): Integer;
+begin
+  Result := Value;
+  if Result < Low then
+    Result := Low;
+  if Result > High then
+    Result := High;
+end;
+
+function IsDigits(const S: String): Boolean;
+var
+  K: Integer;
+begin
+  Result := S <> '';
+  for K := 1 to Length(S) do
+    if (Copy(S, K, 1) < '0') or (Copy(S, K, 1) > '9') then
+    begin
+      Result := False;
+      Exit;
+    end;
+end;
+
+{ The first word of S (split on spaces and tabs); S keeps the rest. }
+function NextToken(var S: String): String;
+var
+  P: Integer;
+begin
+  S := Trim(S);
+  P := 1;
+  while (CharAt(S, P) <> '') and (CharAt(S, P) > ' ') do
+    P := P + 1;
+  Result := Copy(S, 1, P - 1);
+  S := Copy(S, P, Length(S));
+end;
+
+{ -- reading vJoyConfig -t: the same rules as gremlin/driver_jobs.py
+  parse_status_list and parse_report }
+
+{ "Name: value" with a name of letters and spaces only (driver_jobs _FIELD);
+  Name comes back in lower case. }
+function VJoyField(const Line: String; var Name, Value: String): Boolean;
+var
+  P, K: Integer;
+  C: String;
+begin
+  Result := False;
+  P := Pos(':', Line);
+  if P = 0 then
+    Exit;
+  Name := LowerCase(Trim(Copy(Line, 1, P - 1)));
+  Value := Trim(Copy(Line, P + 1, Length(Line)));
+  if Name = '' then
+    Exit;
+  for K := 1 to Length(Name) do
+  begin
+    C := Copy(Name, K, 1);
+    if ((C < 'a') or (C > 'z')) and (C <> ' ') then
+      Exit;
+  end;
+  Result := True;
+end;
+
+{ How many of X Y Z RX RY RZ SL0 SL1 the "Axes:" value has, in order. }
+function AxesCount(Value: String): Integer;
+var
+  Names, Axis, Token: String;
+begin
+  Result := 0;
+  Names := VJoyAxisNames;
+  while Result < 8 do
+  begin
+    Axis := NextToken(Names);
+    Token := LowerCase(NextToken(Value));
+    if (Token = '') or (Token <> Axis) then
+      Exit;
+    Result := Result + 1;
+  end;
+end;
+
+{ `vJoyConfig -t <id>`: adds device Wanted to List when the report has it. }
+procedure ParseVJoyReport(const Lines: TArrayOfString; Wanted: Integer;
+  var List: TVJoyDevices);
+var
+  K, Current: Integer;
+  Name, Value: String;
+begin
+  Current := -1;
+  for K := 0 to GetArrayLength(Lines) - 1 do
+  begin
+    if not VJoyField(Lines[K], Name, Value) then
+      Continue;
+    if Name = 'device' then
+    begin
+      Current := -1;
+      if IsDigits(Value) then
+        if StrToIntDef(Value, 0) = Wanted then
+        begin
+          AddVJoyDevice(List, Wanted, 0, 0, 0);
+          Current := GetArrayLength(List) - 1;
+        end;
+    end
+    else if Current < 0 then
+      Continue
+    else if (Name = 'buttons') and IsDigits(Value) then
+      List[Current].Buttons := StrToIntDef(Value, 0)
+    else if ((Name = 'continous povs') or (Name = 'continuous povs')) and
+      IsDigits(Value) then
+      List[Current].Hats := StrToIntDef(Value, 0)
+    else if Name = 'axes' then
+      List[Current].Axes := AxesCount(Value);
+  end;
+end;
+
+{ `vJoyConfig -t`: the numbers of the devices that exist ("Device N:
+  Status: S", S not MISSING or UNKNOWN). }
+procedure ParseVJoyStatus(const Lines: TArrayOfString; var Ids: TArrayOfInteger);
+var
+  K, P, N: Integer;
+  Left, Right, Number, State: String;
+begin
+  SetArrayLength(Ids, 0);
+  for K := 0 to GetArrayLength(Lines) - 1 do
+  begin
+    P := Pos(':', Lines[K]);
+    if P = 0 then
+      Continue;
+    Left := Trim(Copy(Lines[K], 1, P - 1));
+    Right := Trim(Copy(Lines[K], P + 1, Length(Lines[K])));
+    if LowerCase(Copy(Left, 1, 6)) <> 'device' then
+      Continue;
+    if (CharAt(Left, 7) = '') or (CharAt(Left, 7) > ' ') then
+      Continue;
+    Number := Trim(Copy(Left, 7, Length(Left)));
+    if not IsDigits(Number) then
+      Continue;
+    if LowerCase(Copy(Right, 1, 6)) <> 'status' then
+      Continue;
+    Right := Trim(Copy(Right, 7, Length(Right)));
+    if CharAt(Right, 1) <> ':' then
+      Continue;
+    Right := Copy(Right, 2, Length(Right));
+    State := UpperCase(NextToken(Right));
+    if (State = '') or (State = 'MISSING') or (State = 'UNKNOWN') then
+      Continue;
+    N := GetArrayLength(Ids);
+    SetArrayLength(Ids, N + 1);
+    Ids[N] := StrToIntDef(Number, 0);
+  end;
+end;
+
+function VJoyConfigPath: String;
+begin
+  Result := ExpandConstant('{commonpf64}\vJoy\x64\vJoyConfig.exe');
+end;
+
+{ Runs vJoyConfig read-only, as setup's own user (never as administrator),
+  with its output in a file in setup's temp folder. False when it could not
+  run or print. }
+function RunVJoyConfig(const Params: String; var Lines: TArrayOfString): Boolean;
+var
+  Exe, OutFile: String;
+  Code: Integer;
+begin
+  Result := False;
+  SetArrayLength(Lines, 0);
+  Exe := VJoyConfigPath;
+  if not FileExists(Exe) then
+    Exit;
+  OutFile := ExpandConstant('{tmp}\') + VJoyCaptureFile;
+  DeleteFile(OutFile);
+  if not ExecAsOriginalUser(ExpandConstant('{cmd}'), '/C ""' + Exe + '" ' +
+    Params + ' > "' + OutFile + '" 2>&1"', '', SW_HIDE, ewWaitUntilTerminated,
+    Code) then
+  begin
+    Log('vJoyConfig ' + Params + ' could not run: ' + SysErrorMessage(Code));
+    Exit;
+  end;
+  Result := LoadStringsFromFile(OutFile, Lines);
+  DeleteFile(OutFile);
+end;
+
+{ What vJoy has now, device by device (driver_jobs.current_vjoy_devices). }
+procedure ReadVJoyLayout;
+var
+  Lines, Report: TArrayOfString;
+  Ids: TArrayOfInteger;
+  J: Integer;
+begin
+  SetArrayLength(VJoyCurrent, 0);
+  VJoyLayoutRead := RunVJoyConfig('-t', Lines);
+  if not VJoyLayoutRead then
+    Exit;
+  ParseVJoyStatus(Lines, Ids);
+  for J := 0 to GetArrayLength(Ids) - 1 do
+    if RunVJoyConfig('-t ' + IntToStr(Ids[J]), Report) then
+      ParseVJoyReport(Report, Ids[J], VJoyCurrent);
+  Log('vJoy has ' + IntToStr(GetArrayLength(VJoyCurrent)) + ' device(s) now.');
+end;
+
+{ vJoy installed: its devices are read and shown as they are; not
+  installed: the default preset, no current layout (01 S187). }
+procedure InitVJoyChoice;
+begin
+  VJoyLayoutRead := False;
+  VJoyUserEdited := False;
+  VJoySetupPlanned := False;
+  SetArrayLength(VJoyCurrent, 0);
+  if not WizardSilent then
+    if Drivers[DriverIndex('vjoy')].State <> 'missing' then
+      ReadVJoyLayout;
+  if GetArrayLength(VJoyCurrent) > 0 then
+    CopyVJoyDevices(VJoyCurrent, VJoyChosen)
+  else
+    PresetDevices(VJoyPresetOne, VJoyChosen);
+end;
+
+function VJoyDeviceText(const D: TVJoyDevice): String;
+begin
+  Result := IntToStr(D.Id) + ': ' + IntToStr(D.Axes) + ' axes, ' +
+    IntToStr(D.Buttons) + ' buttons, ' + IntToStr(D.Hats) + ' hats';
+end;
+
+function VJoyLayoutText(const List: TVJoyDevices): String;
+var
+  K: Integer;
+begin
+  Result := '';
+  for K := 0 to GetArrayLength(List) - 1 do
+  begin
+    if K > 0 then
+      Result := Result + '; ';
+    Result := Result + VJoyDeviceText(List[K]);
+  end;
+end;
+
+function VJoyCurrentLine: String;
+begin
+  if Drivers[DriverIndex('vjoy')].State = 'missing' then
+    Result := ''
+  else if not VJoyLayoutRead then
+    Result := 'The vJoy devices could not be read.'
+  else if GetArrayLength(VJoyCurrent) = 0 then
+    Result := 'Now: no vJoy devices.'
+  else
+    Result := 'Now: ' + VJoyLayoutText(VJoyCurrent);
+end;
+
+{ The Custom lines: one per device, "axes, buttons, hats". }
+procedure FillCustomMemo;
+var
+  K: Integer;
+begin
+  VJoyFilling := True;
+  try
+    VJoyCustomMemo.Lines.Clear;
+    for K := 0 to GetArrayLength(VJoyChosen) - 1 do
+      VJoyCustomMemo.Lines.Add(IntToStr(VJoyChosen[K].Axes) + ', ' +
+        IntToStr(VJoyChosen[K].Buttons) + ', ' + IntToStr(VJoyChosen[K].Hats));
+  finally
+    VJoyFilling := False;
+  end;
+end;
+
+function VJoyIdUsed(const List: TVJoyDevices; Id: Integer): Boolean;
+var
+  K: Integer;
+begin
+  Result := False;
+  for K := 0 to GetArrayLength(List) - 1 do
+    if List[K].Id = Id then
+      Result := True;
+end;
+
+{ Reads the Custom lines into VJoyChosen: 1-16 devices, each number held to
+  its range (like DriversModel.setDevice); a row keeps the device number it
+  had, a new row takes the lowest free one. }
+procedure ReadCustomMemo;
+var
+  Old: TVJoyDevices;
+  K, Id, Axes, Buttons, Hats: Integer;
+  Line: String;
+begin
+  CopyVJoyDevices(VJoyChosen, Old);
+  SetArrayLength(VJoyChosen, 0);
+  for K := 0 to VJoyCustomMemo.Lines.Count - 1 do
+  begin
+    Line := Trim(VJoyCustomMemo.Lines[K]);
+    if Line = '' then
+      Continue;
+    if GetArrayLength(VJoyChosen) >= VJoyMaxDevices then
+      Break;
+    StringChangeEx(Line, ',', ' ', True);
+    Axes := ClampInt(StrToIntDef(NextToken(Line), 8), 0, 8);
+    Buttons := ClampInt(StrToIntDef(NextToken(Line), 128), 0, 128);
+    Hats := ClampInt(StrToIntDef(NextToken(Line), 4), 0, 4);
+    Id := 0;
+    if GetArrayLength(VJoyChosen) < GetArrayLength(Old) then
+      Id := Old[GetArrayLength(VJoyChosen)].Id;
+    if (Id = 0) or VJoyIdUsed(VJoyChosen, Id) then
+    begin
+      Id := 1;
+      while VJoyIdUsed(VJoyChosen, Id) do
+        Id := Id + 1;
+    end;
+    AddVJoyDevice(VJoyChosen, Id, Axes, Buttons, Hats);
+  end;
+  if GetArrayLength(VJoyChosen) = 0 then
+    AddVJoyDevice(VJoyChosen, 1, 8, 128, 4);
+end;
+
+{ The vJoy part is live when vJoy is installed or ticked to install; the
+  warning shows once an edit would change devices that exist (06 S185). }
+procedure UpdateVJoyControls;
+var
+  V: Integer;
+  Active: Boolean;
+begin
+  V := DriverIndex('vjoy');
+  Active := Drivers[V].State <> 'missing';
+  if not Active then
+    if Drivers[V].Row >= 0 then
+      Active := DriverList.Checked[Drivers[V].Row];
+  VJoyPresetBox.Enabled := Active;
+  VJoyCustomMemo.Enabled := Active;
+  VJoyCustomMemo.ReadOnly := VJoyPresetBox.Text <> VJoyCustom;
+  VJoyWarningText.Caption := '';
+  if Active and VJoyEdited then
+    if GetArrayLength(VJoyCurrent) > 0 then
+      VJoyWarningText.Caption := VJoyWarning;
+end;
+
+procedure VJoyPresetChange(Sender: TObject);
+begin
+  if VJoyPresetBox.Text <> VJoyCustom then
+  begin
+    PresetDevices(VJoyPresetBox.Text, VJoyChosen);
+    VJoyUserEdited := True;
+    FillCustomMemo;
+  end;
+  UpdateVJoyControls;
+end;
+
+procedure VJoyMemoChange(Sender: TObject);
+begin
+  if VJoyFilling or VJoyCustomMemo.ReadOnly then
+    Exit;
+  ReadCustomMemo;
+  VJoyUserEdited := True;
+  UpdateVJoyControls;
+end;
+
+procedure DriverListClickCheck(Sender: TObject);
+begin
+  UpdateVJoyControls;
+end;
+
 { -- the Drivers page (01 S187) }
 
 procedure FillDriverList;
@@ -1055,7 +1523,7 @@ end;
 
 procedure CreateDriverPages;
 var
-  Note: TNewStaticText;
+  Note, VJoyLabel, CustomHint: TNewStaticText;
 begin
   DriversPage := CreateCustomPage(wpSelectDir, 'Drivers',
     'vJoy, ViGEmBus and HidHide on this PC.');
@@ -1064,13 +1532,14 @@ begin
   DriverList.Left := 0;
   DriverList.Top := 0;
   DriverList.Width := DriversPage.SurfaceWidth;
-  DriverList.Height := ScaleY(90);
+  DriverList.Height := ScaleY(62);
   DriverList.Flat := True;
+  DriverList.OnClickCheck := @DriverListClickCheck;
   FillDriverList;
   Note := TNewStaticText.Create(DriversPage);
   Note.Parent := DriversPage.Surface;
   Note.Left := 0;
-  Note.Top := DriverList.Top + DriverList.Height + ScaleY(12);
+  Note.Top := DriverList.Top + DriverList.Height + ScaleY(6);
   Note.Width := DriversPage.SurfaceWidth;
   Note.AutoSize := False;
   Note.WordWrap := True;
@@ -1078,6 +1547,59 @@ begin
     'files are copied; Windows asks for administrator permission once. ' +
     'Gremlin-Platforms installs even when a driver doesn''t.';
   Note.AdjustHeight;
+  { 06 S185: the vJoy device choice. }
+  VJoyLabel := TNewStaticText.Create(DriversPage);
+  VJoyLabel.Parent := DriversPage.Surface;
+  VJoyLabel.Left := 0;
+  VJoyLabel.Top := Note.Top + Note.Height + ScaleY(10);
+  VJoyLabel.Caption := 'vJoy devices:';
+  VJoyPresetBox := TNewComboBox.Create(DriversPage);
+  VJoyPresetBox.Parent := DriversPage.Surface;
+  VJoyPresetBox.Style := csDropDownList;
+  VJoyPresetBox.Left := ScaleX(90);
+  VJoyPresetBox.Top := VJoyLabel.Top - ScaleY(3);
+  VJoyPresetBox.Width := ScaleX(160);
+  VJoyPresetBox.Items.Add(VJoyPresetOne);
+  VJoyPresetBox.Items.Add(VJoyPresetTwo);
+  VJoyPresetBox.Items.Add(VJoyCustom);
+  VJoyPresetBox.ItemIndex := VJoyPresetBox.Items.IndexOf(MatchingPreset(VJoyChosen));
+  VJoyPresetBox.OnChange := @VJoyPresetChange;
+  VJoyCurrentText := TNewStaticText.Create(DriversPage);
+  VJoyCurrentText.Parent := DriversPage.Surface;
+  VJoyCurrentText.Left := 0;
+  VJoyCurrentText.Top := VJoyPresetBox.Top + VJoyPresetBox.Height + ScaleY(4);
+  VJoyCurrentText.Width := DriversPage.SurfaceWidth;
+  VJoyCurrentText.AutoSize := False;
+  VJoyCurrentText.WordWrap := True;
+  VJoyCurrentText.Height := ScaleY(26);
+  VJoyCurrentText.Caption := VJoyCurrentLine;
+  CustomHint := TNewStaticText.Create(DriversPage);
+  CustomHint.Parent := DriversPage.Surface;
+  CustomHint.Left := 0;
+  CustomHint.Top := VJoyCurrentText.Top + VJoyCurrentText.Height + ScaleY(2);
+  CustomHint.Caption := 'Custom: one line per device (1-16): axes (0-8), buttons ' +
+    '(0-128), hats (0-4).';
+  VJoyWarningText := TNewStaticText.Create(DriversPage);
+  VJoyWarningText.Parent := DriversPage.Surface;
+  VJoyWarningText.Left := 0;
+  VJoyWarningText.Width := DriversPage.SurfaceWidth;
+  VJoyWarningText.AutoSize := False;
+  VJoyWarningText.Height := ScaleY(16);
+  VJoyWarningText.Top := DriversPage.SurfaceHeight - VJoyWarningText.Height;
+  VJoyWarningText.Font.Style := [fsBold];
+  VJoyCustomMemo := TNewMemo.Create(DriversPage);
+  VJoyCustomMemo.Parent := DriversPage.Surface;
+  VJoyCustomMemo.Left := 0;
+  VJoyCustomMemo.Top := CustomHint.Top + CustomHint.Height + ScaleY(4);
+  VJoyCustomMemo.Width := ScaleX(160);
+  VJoyCustomMemo.Height := VJoyWarningText.Top - ScaleY(4) - VJoyCustomMemo.Top;
+  if VJoyCustomMemo.Height < ScaleY(36) then
+    VJoyCustomMemo.Height := ScaleY(36);
+  VJoyCustomMemo.ScrollBars := ssVertical;
+  VJoyCustomMemo.WantReturns := True;
+  FillCustomMemo;
+  VJoyCustomMemo.OnChange := @VJoyMemoChange;
+  UpdateVJoyControls;
   DriverDownloadPage := CreateDownloadPage('Drivers',
     'Downloading the newer driver versions.', nil);
   DriverDownloadPage.ShowBaseNameInsteadOfUrl := True;
@@ -1116,14 +1638,27 @@ begin
       Drivers[I].Op := 'remove'
     else
       Drivers[I].Op := 'update';
-    if (Drivers[I].Op = 'remove') and not AskHidHideStep1(I) then
-    begin
-      Log('HidHide update skipped.');
-      Drivers[I].Chosen := False;
-      Drivers[I].Op := '';
-      DriverList.Checked[Drivers[I].Row] := False;
-    end;
+    { Nested, so the step 1 prompt shows only for a HidHide remove, whether
+      or not Pascal Script stops at the first false part of an "and". }
+    if Drivers[I].Op = 'remove' then
+      if not AskHidHideStep1(I) then
+      begin
+        Log('HidHide update skipped.');
+        Drivers[I].Chosen := False;
+        Drivers[I].Op := '';
+        DriverList.Checked[Drivers[I].Row] := False;
+      end;
   end;
+  { 06 S185: a newly installed vJoy gets the chosen layout; an installed one
+    changes only when edited. }
+  I := DriverIndex('vjoy');
+  VJoySetupPlanned := False;
+  if Drivers[I].Op = 'install' then
+    VJoySetupPlanned := True
+  else if Drivers[I].State <> 'missing' then
+    VJoySetupPlanned := VJoyEdited;
+  if VJoySetupPlanned then
+    Log('vJoy devices to set up: ' + VJoyLayoutText(VJoyChosen));
 end;
 
 { -- the job (12 S25) }
@@ -1152,12 +1687,34 @@ begin
     '", "files": [' + Files + '], "devices": []}';
 end;
 
+(* The vJoy device job (06 S185, 12 S25b): {"op": "vjoy_setup", "driver":
+   "vjoy", "files": [], "devices": [{"id", "axes", "buttons", "hats"}]}. *)
+function VJoySetupJobJson: String;
+var
+  K: Integer;
+  Devices: String;
+begin
+  Devices := '';
+  for K := 0 to GetArrayLength(VJoyChosen) - 1 do
+  begin
+    if K > 0 then
+      Devices := Devices + ', ';
+    Devices := Devices + '{"id": ' + IntToStr(VJoyChosen[K].Id) +
+      ', "axes": ' + IntToStr(VJoyChosen[K].Axes) +
+      ', "buttons": ' + IntToStr(VJoyChosen[K].Buttons) +
+      ', "hats": ' + IntToStr(VJoyChosen[K].Hats) + '}';
+  end;
+  Result := '{"op": "vjoy_setup", "driver": "vjoy", "files": [], "devices": [' +
+    Devices + ']}';
+end;
+
 { Writes the job file (UTF-8, no BOM: Python's json reads it) and lists the
-  jobs' drivers in JobDrivers. False when there is no job or no file. }
+  jobs' drivers in JobDrivers (VJoySetupJob for the vJoy device job, which
+  comes right after vJoy's own). False when there is no job or no file. }
 function WriteJobFile(const Path: String): Boolean;
 var
-  I, N: Integer;
-  Jobs: String;
+  I, N, Pass, Index: Integer;
+  Jobs, Json: String;
   Lines: TArrayOfString;
 begin
   Result := False;
@@ -1165,13 +1722,27 @@ begin
   Jobs := '';
   SetArrayLength(JobDrivers, 0);
   for I := 0 to GetArrayLength(Drivers) - 1 do
-    if Drivers[I].Chosen and (Drivers[I].Op <> '') then
+    for Pass := 0 to 1 do
     begin
+      Json := '';
+      Index := I;
+      if Pass = 0 then
+      begin
+        if Drivers[I].Chosen and (Drivers[I].Op <> '') then
+          Json := JobJson(I);
+      end
+      else if (Drivers[I].Key = 'vjoy') and VJoySetupPlanned then
+      begin
+        Json := VJoySetupJobJson;
+        Index := VJoySetupJob;
+      end;
+      if Json = '' then
+        Continue;
       if N > 0 then
         Jobs := Jobs + ', ';
-      Jobs := Jobs + JobJson(I);
+      Jobs := Jobs + Json;
       SetArrayLength(JobDrivers, N + 1);
-      JobDrivers[N] := I;
+      JobDrivers[N] := Index;
       N := N + 1;
     end;
   if N = 0 then
@@ -1183,14 +1754,50 @@ begin
     Log('Could not write the driver job file ' + Path);
 end;
 
-{ Reads the helper's results file into the drivers; False while it is
+{ A job's result, whether it belongs to a driver or is the vJoy device job. }
+function JobState(J: Integer): String;
+begin
+  if JobDrivers[J] = VJoySetupJob then
+    Result := VJoySetupState
+  else
+    Result := Drivers[JobDrivers[J]].ResultState;
+end;
+
+function JobRestart(J: Integer): Boolean;
+begin
+  if JobDrivers[J] = VJoySetupJob then
+    Result := VJoySetupRestart
+  else
+    Result := Drivers[JobDrivers[J]].ResultRestart;
+end;
+
+procedure SetJobResult(J: Integer; const State, Message: String; Restart: Boolean);
+var
+  I: Integer;
+begin
+  I := JobDrivers[J];
+  if I = VJoySetupJob then
+  begin
+    VJoySetupState := State;
+    VJoySetupMessage := Message;
+    VJoySetupRestart := Restart;
+  end
+  else
+  begin
+    Drivers[I].ResultState := State;
+    Drivers[I].ResultMessage := Message;
+    Drivers[I].ResultRestart := Restart;
+  end;
+end;
+
+{ Reads the helper's results file into the jobs; False while it is
   missing or half-written. AllDone is its "finished". }
 function ReadDriverResults(const Path: String; var AllDone: Boolean): Boolean;
 var
   Lines: TArrayOfString;
   Text: String;
   Starts, Ends: TArrayOfInteger;
-  N, J, I: Integer;
+  N, J: Integer;
 begin
   Result := False;
   AllDone := False;
@@ -1201,13 +1808,9 @@ begin
   if N <> GetArrayLength(JobDrivers) then
     Exit;
   for J := 0 to N - 1 do
-  begin
-    I := JobDrivers[J];
-    Drivers[I].ResultState := JsonValue(Text, 'state', Starts[J], Ends[J]);
-    Drivers[I].ResultMessage := JsonValue(Text, 'message', Starts[J], Ends[J]);
-    Drivers[I].ResultRestart :=
-      JsonValue(Text, 'restart', Starts[J], Ends[J]) = 'true';
-  end;
+    SetJobResult(J, JsonValue(Text, 'state', Starts[J], Ends[J]),
+      JsonValue(Text, 'message', Starts[J], Ends[J]),
+      JsonValue(Text, 'restart', Starts[J], Ends[J]) = 'true');
   AllDone := JsonValue(Text, 'finished', 1, Length(Text)) = 'true';
   Result := True;
 end;
@@ -1215,7 +1818,9 @@ end;
 { What the progress page says while a job runs. }
 function JobProgressText(I: Integer): String;
 begin
-  if Drivers[I].Op = 'remove' then
+  if I = VJoySetupJob then
+    Result := 'Setting up the vJoy devices' + #$2026
+  else if Drivers[I].Op = 'remove' then
     Result := 'Removing HidHide ' + Drivers[I].Installed + #$2026
   else
     Result := 'Installing ' + Drivers[I].Name + ' ' + TargetVersion(I) + #$2026;
@@ -1223,23 +1828,17 @@ end;
 
 procedure FailOpenJobs(const Why: String);
 var
-  J, I: Integer;
+  J: Integer;
 begin
   for J := 0 to GetArrayLength(JobDrivers) - 1 do
-  begin
-    I := JobDrivers[J];
-    if (Drivers[I].ResultState <> 'done') and (Drivers[I].ResultState <> 'failed') then
-    begin
-      Drivers[I].ResultState := 'failed';
-      Drivers[I].ResultMessage := Why;
-    end;
-  end;
+    if (JobState(J) <> 'done') and (JobState(J) <> 'failed') then
+      SetJobResult(J, 'failed', Why, JobRestart(J));
 end;
 
 { Shows the progress from the results file until "finished" (01 S190). }
 procedure WaitForHelper(const ResultsFile: String);
 var
-  Tick, Limit, J, I, DoneCount: Integer;
+  Tick, Limit, J, DoneCount: Integer;
   Seen, AllDone: Boolean;
   Text: String;
 begin
@@ -1254,11 +1853,10 @@ begin
     Text := 'Waiting for Gremlin Device Helper' + #$2026;
     for J := 0 to GetArrayLength(JobDrivers) - 1 do
     begin
-      I := JobDrivers[J];
-      if (Drivers[I].ResultState = 'done') or (Drivers[I].ResultState = 'failed') then
+      if (JobState(J) = 'done') or (JobState(J) = 'failed') then
         DoneCount := DoneCount + 1
-      else if Drivers[I].ResultState = 'running' then
-        Text := JobProgressText(I);
+      else if JobState(J) = 'running' then
+        Text := JobProgressText(JobDrivers[J]);
     end;
     DriverProgressPage.SetText(Text, '');
     DriverProgressPage.SetProgress(DoneCount, GetArrayLength(JobDrivers));
@@ -1323,6 +1921,18 @@ begin
     Result := Result + 'not installed';
 end;
 
+{ The vJoy device job's line for setup's last page. }
+function VJoySetupResultLine: String;
+begin
+  Result := 'vJoy devices: ';
+  if VJoySetupMessage <> '' then
+    Result := Result + VJoySetupMessage
+  else if VJoySetupState = 'done' then
+    Result := Result + 'set up'
+  else
+    Result := Result + 'not set up';
+end;
+
 procedure BuildDriverSummary;
 var
   J, I: Integer;
@@ -1331,6 +1941,15 @@ begin
   for J := 0 to GetArrayLength(JobDrivers) - 1 do
   begin
     I := JobDrivers[J];
+    if DriverSummary <> '' then
+      DriverSummary := DriverSummary + #13#10;
+    if I = VJoySetupJob then
+    begin
+      if VJoySetupRestart then
+        DriversNeedRestart := True;
+      DriverSummary := DriverSummary + VJoySetupResultLine;
+      Continue;
+    end;
     if Drivers[I].ResultRestart then
       DriversNeedRestart := True;
     if (Drivers[I].Op = 'remove') and (Drivers[I].ResultState = 'done') then
@@ -1338,8 +1957,6 @@ begin
       HidHideRemoved := True;
       DriversNeedRestart := True;
     end;
-    if DriverSummary <> '' then
-      DriverSummary := DriverSummary + #13#10;
     DriverSummary := DriverSummary + DriverResultLine(I);
   end;
 end;
@@ -1361,7 +1978,7 @@ begin
     if WriteJobFile(JobFile) then
     begin
       for J := 0 to GetArrayLength(JobDrivers) - 1 do
-        Drivers[JobDrivers[J]].ResultState := 'waiting';
+        SetJobResult(J, 'waiting', '', False);
       Params := '--jobs ' + AddQuotes(JobFile) + ' --results ' +
         AddQuotes(ResultsFile);
       DriverProgressPage.SetText(
@@ -1481,6 +2098,7 @@ end;
 procedure InitializeWizard;
 begin
   InitDrivers;
+  InitVJoyChoice;
   CreateDriverPages;
 end;
 
@@ -1495,7 +2113,8 @@ function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
   MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
 var
   I: Integer;
-  Steps: String;
+  K: Integer;
+  Steps, VJoyStep: String;
 begin
   Result := '';
   if MemoUserInfoInfo <> '' then
@@ -1513,8 +2132,16 @@ begin
   Steps := '';
   for I := 0 to GetArrayLength(Drivers) - 1 do
   begin
+    if (Drivers[I].Key = 'vjoy') and VJoySetupPlanned then
+      VJoyStep := Space + 'Set up ' + IntToStr(GetArrayLength(VJoyChosen)) +
+        ' vJoy device(s): ' + VJoyLayoutText(VJoyChosen) + NewLine
+    else
+      VJoyStep := '';
     if not Drivers[I].Chosen then
+    begin
+      Steps := Steps + VJoyStep;
       Continue;
+    end;
     if Drivers[I].Op = 'install' then
       Steps := Steps + Space + 'Install ' + Drivers[I].Name + ' ' +
         TargetVersion(I) + NewLine
@@ -1524,6 +2151,17 @@ begin
     else if Drivers[I].Op = 'remove' then
       Steps := Steps + Space + 'Remove HidHide ' + Drivers[I].Installed +
         ' (HidHide update, step 1 of 2; restart needed)' + NewLine;
+    Steps := Steps + VJoyStep;
+  end;
+  { 06 S185: devices left out of the layout are deleted; edits warn. }
+  if VJoySetupPlanned then
+  begin
+    for K := 0 to GetArrayLength(VJoyCurrent) - 1 do
+      if not VJoyIdUsed(VJoyChosen, VJoyCurrent[K].Id) then
+        Steps := Steps + Space + 'vJoy device ' + IntToStr(VJoyCurrent[K].Id) +
+          ' will be deleted.' + NewLine;
+    if GetArrayLength(VJoyCurrent) > 0 then
+      Steps := Steps + Space + VJoyWarning + NewLine;
   end;
   if Steps <> '' then
     Result := Result + 'Drivers, after the files are copied (Windows asks for ' +

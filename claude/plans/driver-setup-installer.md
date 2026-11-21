@@ -95,6 +95,16 @@ expect.
    an Open Drivers link to Tools > Drivers, replacing the Download link
    (06 S188).
 
+## Follow-up answers 2026-11-21 (after the build)
+
+- 1a: setup's Drivers page gets the vJoy device choice too (01 S187 changed).
+- 3a: vJoy setup uses -l so the driver restarts once (12 S25b).
+- 4a: devices above the new count are deleted with -d (12 S25b).
+- 5a: removing HidHide always asks for the restart (06 S186).
+- 2a: the program's own silent update runs no driver jobs (01 S187).
+- 6a: Tools › Drivers keeps the job file; the private channel stays SSM-only (12 S25a).
+- Go 2026-11-21 04:25: build 1a, 3a, 4a, 5a.
+
 ## Build batch (built 2026-11-21 up to testing; contract driver-setup-contract.md)
 
 1. Driver setup in the installer: 01 S187-S192 (DRV-1).
