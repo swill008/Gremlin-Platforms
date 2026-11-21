@@ -1196,3 +1196,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-21 | Program build (pyinstaller + installer with 3 drivers) (lead) | local build | 2 min (local build row) | ~3 min | 04:42-04:45 |
 | 2026-11-21 | No-VM checks: real registry/GitHub/signature/vJoyConfig -t reads, signer fix + test, built helper run (refusals), real-data model check (lead) | test | no timing data; rough guess 10 min | ~12 min | 04:45-04:57 |
 | 2026-11-21 | Full test run --random-order (8581 tests, 0 failed) | test run | ~7 min (rules of thumb) | ~8 min | 04:45-04:53 |
+| 2026-11-21 | Rebuild at 767c0ff9 (pyinstaller + installer with 3 drivers) (lead) | local build | ~3 min (local build row) | ~2 min | 04:54-04:56 |
+| 2026-11-21 | Test machine prep: Windows 11 ISO download (9.0 GB, hash checked) + unattended answer file + create-vm and password scripts (lead) | prep | no timing data | ~15 min | 05:00-05:15 |
