@@ -95,7 +95,7 @@ expect.
    an Open Drivers link to Tools > Drivers, replacing the Download link
    (06 S188).
 
-## Build batch (when the user says build)
+## Build batch (built 2026-11-21 up to testing; contract driver-setup-contract.md)
 
 1. Driver setup in the installer: 01 S187-S192 (DRV-1).
 2. Tools > Drivers, the HidHide two-half update, Open Drivers links:

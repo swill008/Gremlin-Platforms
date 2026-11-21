@@ -15,6 +15,16 @@
 #define MyAppPublisher "swill008"
 #define MyAppURL "https://github.com/swill008/Gremlin-Platforms"
 #define MyAppExeName "gremlin_platforms.exe"
+; 12 S25: the only part that runs with administrator rights (driver jobs).
+#define HelperExeName "Gremlin Device Helper.exe"
+; 01 S188: the bundled driver installers, as in gremlin/drivers.py's DRIVERS.
+; tools\fetch_drivers.py puts them in installer\drivers\ (not in git).
+#define VJoyBundled "2.2.2.0"
+#define VJoyFile "vJoySetup_v2.2.2.0_Win10_Win11.exe"
+#define ViGEmBusBundled "1.22.0"
+#define ViGEmBusFile "ViGEmBus_1.22.0_x64_x86_arm64.exe"
+#define HidHideBundled "1.5.230"
+#define HidHideFile "HidHide_1.5.230_x64.exe"
 
 [Setup]
 ; Never change the AppId: updates and uninstall find the install by it.
@@ -70,8 +80,14 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 
 [Files]
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Third-party licence notices (dill, spdlog, Qt, ...) next to the program.
+; Third-party licence notices (dill, spdlog, Qt, ...) next to the program,
+; with vjoy.txt, vigembus.txt and hidhide.txt for the bundled drivers (01 S188).
 Source: "..\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion
+; 01 S188: the bundled driver installers. The helper runs each only when its
+; SHA-256 matches gremlin/drivers.py's; a missing file fails the build.
+Source: "drivers\{#VJoyFile}"; DestDir: "{app}\drivers"; Flags: ignoreversion
+Source: "drivers\{#ViGEmBusFile}"; DestDir: "{app}\drivers"; Flags: ignoreversion
+Source: "drivers\{#HidHideFile}"; DestDir: "{app}\drivers"; Flags: ignoreversion
 Source: "..\dist\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
 
 [Icons]
@@ -91,6 +107,9 @@ Type: files; Name: "{app}\dill_debug.log"
 Type: filesandordirs; Name: "{app}\_internal.old"
 Type: files; Name: "{app}\{#MyAppExeName}.old"
 Type: files; Name: "{app}\.update-in-progress"
+; 01 S192: uninstall leaves vJoy, ViGEmBus and HidHide installed; only the
+; unfinished HidHide update's note goes with the program.
+Type: files; Name: "{app}\drivers\pending.json"
 
 [Code]
 var
@@ -103,6 +122,43 @@ var
   AppExe: String;
   { Setup asked the running program to quit and it did (01 S173). }
   ClosedByInstaller: Boolean;
+
+{ 01 S187-S192: the Drivers page and the driver jobs. }
+type
+  TDriver = record
+    Key, Name, Bundled, BundledFile: String;
+    { GitHub "owner/repo" and the asset name around the version; '' for
+      ViGEmBus, which is retired and has no check (01 S189). }
+    Repo, AssetPrefix, AssetSuffix: String;
+    { What is on the PC: version ('' = not installed) and
+      'missing' | 'older' | 'same' | 'newer' against the bundled copy. }
+    Installed, State: String;
+    { Its row on the Drivers page; -1 when it shows no box. }
+    Row: Integer;
+    Chosen, LatestChecked: Boolean;
+    { The newer GitHub release, when there is one. }
+    LatestVersion, LatestUrl, LatestName: String;
+    { The downloaded copy in setup's temp folder; '' when there is none. }
+    Download: String;
+    { 'install' | 'update' | 'remove'; '' = no job. }
+    Op: String;
+    ResultState, ResultMessage: String;
+    ResultRestart: Boolean;
+  end;
+
+var
+  Drivers: array of TDriver;
+  DriversPage: TWizardPage;
+  DriverList: TNewCheckListBox;
+  DriverDownloadPage: TDownloadWizardPage;
+  DriverProgressPage: TOutputProgressWizardPage;
+  { Driver index of each job in the job file, in order. }
+  JobDrivers: TArrayOfInteger;
+  { A driver asked for a restart, or the HidHide update's first half ran. }
+  DriversNeedRestart: Boolean;
+  HidHideRemoved: Boolean;
+  { The results for setup's last page; '' when no driver job ran. }
+  DriverSummary: String;
 
 const
   WM_CLOSE = $0010;
@@ -137,11 +193,31 @@ begin
   Result := WizardSilent and (ExpandConstant('{param:LAUNCH|0}') = '1');
 end;
 
+{ True when a driver job will run after the files are copied. A silent
+  install (/SILENT, /VERYSILENT, the in-app update) never runs driver jobs. }
+function DriverJobsPlanned: Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  if WizardSilent then
+    Exit;
+  for I := 0 to GetArrayLength(Drivers) - 1 do
+    if Drivers[I].Chosen then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
 { [Run]: start the program again once, after setup closed it; the in-app
-  update's /LAUNCH=1 entry starts it otherwise. }
+  update's /LAUNCH=1 entry starts it otherwise. With driver jobs it is
+  started after them instead (RunDriverJobs), so it never starts while a
+  driver is being installed. }
 function RestartAfterClose: Boolean;
 begin
-  Result := ClosedByInstaller and not LaunchAfterSilentUpdate;
+  Result := ClosedByInstaller and not LaunchAfterSilentUpdate and
+    not DriverJobsPlanned;
 end;
 
 { [Run]: the "Launch" box, unless setup starts the program anyway. }
@@ -396,6 +472,930 @@ begin
     SaveStringToFile(MarkerFile, 'update in progress', False);
 end;
 
+{ ---- Drivers (01 S187-S192) --------------------------------------------- }
+
+const
+  { Detection: the same keys as gremlin/drivers.py (read-only). }
+  UninstallRoot = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall';
+  VJoyUninstallKey = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{8E31F76F-74C3-47F1-9550-E041EEDC5FBB}_is1';
+  HidHideKey = 'SOFTWARE\Nefarius Software Solutions e.U.\HidHide';
+  ViGEmBusDisplayName = 'ViGEm Bus Driver';
+  { The helper's job and result files (12 S25), in setup's temp folder. }
+  JobFileName = 'driver_jobs.json';
+  ResultsFileName = 'driver_results.json';
+  { Half-second ticks: the helper writes its results file at once; each job
+    gets ten minutes before setup stops waiting. }
+  HelperWaitStep = 500;
+  HelperStartTicks = 120;
+  HelperJobTicks = 1200;
+  UacRefusedCode = 1223;
+
+procedure SetDriver(I: Integer; const Key, Name, Bundled, BundledFile, Repo,
+  AssetPrefix, AssetSuffix: String);
+begin
+  Drivers[I].Key := Key;
+  Drivers[I].Name := Name;
+  Drivers[I].Bundled := Bundled;
+  Drivers[I].BundledFile := BundledFile;
+  Drivers[I].Repo := Repo;
+  Drivers[I].AssetPrefix := AssetPrefix;
+  Drivers[I].AssetSuffix := AssetSuffix;
+  Drivers[I].Installed := '';
+  Drivers[I].State := 'missing';
+  Drivers[I].Row := -1;
+  Drivers[I].Chosen := False;
+  Drivers[I].LatestChecked := False;
+  Drivers[I].LatestVersion := '';
+  Drivers[I].LatestUrl := '';
+  Drivers[I].LatestName := '';
+  Drivers[I].Download := '';
+  Drivers[I].Op := '';
+  Drivers[I].ResultState := '';
+  Drivers[I].ResultMessage := '';
+  Drivers[I].ResultRestart := False;
+end;
+
+{ Pos from a start index (1-based); 0 when not found. }
+function FindFrom(const Sub, S: String; From: Integer): Integer;
+var
+  P: Integer;
+begin
+  if From < 1 then
+    From := 1;
+  P := Pos(Sub, Copy(S, From, Length(S)));
+  if P = 0 then
+    Result := 0
+  else
+    Result := P + From - 1;
+end;
+
+{ Takes the next dot-separated number off the front of S. }
+function NextVersionPart(var S: String): Integer;
+var
+  P: Integer;
+  Part: String;
+begin
+  P := Pos('.', S);
+  if P = 0 then
+  begin
+    Part := S;
+    S := '';
+  end
+  else
+  begin
+    Part := Copy(S, 1, P - 1);
+    S := Copy(S, P + 1, Length(S));
+  end;
+  Result := StrToIntDef(Trim(Part), 0);
+end;
+
+{ -1, 0 or 1; missing parts count as 0 (drivers.compare). }
+function CompareVersions(A, B: String): Integer;
+var
+  PA, PB: Integer;
+begin
+  Result := 0;
+  while (Result = 0) and ((A <> '') or (B <> '')) do
+  begin
+    PA := NextVersionPart(A);
+    PB := NextVersionPart(B);
+    if PA < PB then
+      Result := -1
+    else if PA > PB then
+      Result := 1;
+  end;
+end;
+
+{ A value under HKLM, 64-bit view first, like drivers.WindowsRegistry. }
+function MachineValue(const SubKey, Name: String): String;
+begin
+  Result := '';
+  if not RegQueryStringValue(HKLM64, SubKey, Name, Result) then
+    if not RegQueryStringValue(HKLM32, SubKey, Name, Result) then
+      Result := '';
+end;
+
+{ DisplayVersion of the first Uninstall entry whose DisplayName starts with
+  Prefix (drivers.uninstall_entry); '' when there is none. }
+function UninstallVersion(const Prefix: String): String;
+var
+  Names: TArrayOfString;
+  I, View, Root: Integer;
+  Display: String;
+begin
+  Result := '';
+  for View := 0 to 1 do
+  begin
+    if View = 0 then
+      Root := HKLM64
+    else
+      Root := HKLM32;
+    if not RegGetSubkeyNames(Root, UninstallRoot, Names) then
+      Continue;
+    for I := 0 to GetArrayLength(Names) - 1 do
+    begin
+      if not RegQueryStringValue(Root, UninstallRoot + '\' + Names[I],
+        'DisplayName', Display) then
+        Continue;
+      if Copy(Display, 1, Length(Prefix)) = Prefix then
+      begin
+        if not RegQueryStringValue(Root, UninstallRoot + '\' + Names[I],
+          'DisplayVersion', Result) then
+          Result := '';
+        Exit;
+      end;
+    end;
+  end;
+end;
+
+{ The installed version of a driver; '' = not installed. }
+function InstalledDriverVersion(const Key: String): String;
+begin
+  Result := '';
+  if Key = 'vjoy' then
+    Result := MachineValue(VJoyUninstallKey, 'DisplayVersion')
+  else if Key = 'vigembus' then
+  begin
+    if not GetVersionNumbersString(
+      ExpandConstant('{sys}\drivers\ViGEmBus.sys'), Result) then
+      Result := '';
+    if Result = '' then
+      Result := UninstallVersion(ViGEmBusDisplayName);
+  end
+  else if Key = 'hidhide' then
+    Result := MachineValue(HidHideKey, 'Version');
+end;
+
+procedure DetectDrivers;
+var
+  I: Integer;
+begin
+  for I := 0 to GetArrayLength(Drivers) - 1 do
+  begin
+    try
+      Drivers[I].Installed := Trim(InstalledDriverVersion(Drivers[I].Key));
+    except
+      Log('Could not read the ' + Drivers[I].Name + ' version: ' +
+        GetExceptionMessage);
+      Drivers[I].Installed := '';
+    end;
+    if Drivers[I].Installed = '' then
+      Drivers[I].State := 'missing'
+    else
+      case CompareVersions(Drivers[I].Installed, Drivers[I].Bundled) of
+        -1: Drivers[I].State := 'older';
+        0: Drivers[I].State := 'same';
+      else
+        Drivers[I].State := 'newer';
+      end;
+    Log(Drivers[I].Name + ': installed "' + Drivers[I].Installed + '", bundled ' +
+      Drivers[I].Bundled + ', ' + Drivers[I].State);
+  end;
+end;
+
+procedure InitDrivers;
+begin
+  SetArrayLength(Drivers, 3);
+  SetDriver(0, 'vjoy', 'vJoy', '{#VJoyBundled}', '{#VJoyFile}',
+    'BrunnerInnovation/vJoy', 'vJoySetup_v', '_Win10_Win11.exe');
+  SetDriver(1, 'vigembus', 'ViGEmBus', '{#ViGEmBusBundled}', '{#ViGEmBusFile}',
+    '', '', '');
+  SetDriver(2, 'hidhide', 'HidHide', '{#HidHideBundled}', '{#HidHideFile}',
+    'nefarius/HidHide', 'HidHide_', '_x64.exe');
+  DetectDrivers;
+end;
+
+function DriverIndex(const Key: String): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  for I := 0 to GetArrayLength(Drivers) - 1 do
+    if Drivers[I].Key = Key then
+    begin
+      Result := I;
+      Exit;
+    end;
+end;
+
+{ The row's words on the Drivers page (01 S187). }
+function DriverLabel(I: Integer): String;
+begin
+  if Drivers[I].State = 'missing' then
+    Result := 'not installed'
+  else if Drivers[I].State = 'older' then
+    Result := 'update available: ' + Drivers[I].Installed + ' ' + #$2192 + ' ' +
+      Drivers[I].Bundled
+  else
+    Result := Drivers[I].Installed;
+end;
+
+{ The version a job installs: the newer download when there is one. }
+function TargetVersion(I: Integer): String;
+begin
+  if Drivers[I].LatestVersion <> '' then
+    Result := Drivers[I].LatestVersion
+  else
+    Result := Drivers[I].Bundled;
+end;
+
+{ -- a small JSON reader: enough for GitHub's release and the helper's
+  results file (12 S25); never raises. }
+
+{ S[P] as a string; '' past either end. Used wherever an index may be out
+  of range: the script never relies on short-circuit evaluation. }
+function CharAt(const S: String; P: Integer): String;
+begin
+  if (P < 1) or (P > Length(S)) then
+    Result := ''
+  else
+    Result := Copy(S, P, 1);
+end;
+
+function SkipSpaces(const S: String; P: Integer): Integer;
+var
+  C: String;
+begin
+  while True do
+  begin
+    C := CharAt(S, P);
+    if (C <> ' ') and (C <> #9) and (C <> #10) and (C <> #13) then
+      Break;
+    P := P + 1;
+  end;
+  Result := P;
+end;
+
+{ A \u escape's character. Python's json writes ASCII only, so the program's
+  own non-ASCII characters arrive this way. }
+function CodeToChar(Code: Integer): String;
+begin
+  if (Code >= 32) and (Code < 256) then
+    Result := Chr(Code)
+  else if Code = $2026 then
+    Result := #$2026
+  else if Code = $2192 then
+    Result := #$2192
+  else if Code = $203A then
+    Result := #$203A
+  else if (Code = $2018) or (Code = $2019) then
+    Result := ''''
+  else if (Code = $201C) or (Code = $201D) then
+    Result := '"'
+  else
+    Result := '?';
+end;
+
+{ The JSON string starting at S[P] (its opening quote); P ends after the
+  closing quote. }
+function ReadJsonString(const S: String; var P: Integer): String;
+var
+  C: Char;
+begin
+  Result := '';
+  P := P + 1;
+  while P <= Length(S) do
+  begin
+    C := S[P];
+    if C = '"' then
+    begin
+      P := P + 1;
+      Exit;
+    end;
+    if (C = '\') and (P < Length(S)) then
+    begin
+      P := P + 1;
+      C := S[P];
+      case C of
+        'n': Result := Result + #13#10;
+        'r': Result := Result + '';
+        't': Result := Result + ' ';
+        'b', 'f': Result := Result + '';
+        'u':
+          begin
+            Result := Result + CodeToChar(StrToIntDef('$' + Copy(S, P + 1, 4), 63));
+            P := P + 4;
+          end;
+      else
+        Result := Result + C;
+      end;
+    end
+    else
+      Result := Result + C;
+    P := P + 1;
+  end;
+end;
+
+{ The value of "Key" found in S[From..UpTo]: a string decoded, a bare word
+  (true, false, a number) as it is; '' when not there. }
+function JsonValue(const S, Key: String; From, UpTo: Integer): String;
+var
+  P, Start: Integer;
+begin
+  Result := '';
+  P := FindFrom('"' + Key + '"', S, From);
+  if (P = 0) or (P > UpTo) then
+    Exit;
+  P := SkipSpaces(S, P + Length(Key) + 2);
+  if CharAt(S, P) <> ':' then
+    Exit;
+  P := SkipSpaces(S, P + 1);
+  if CharAt(S, P) = '' then
+    Exit;
+  if CharAt(S, P) = '"' then
+    Result := ReadJsonString(S, P)
+  else
+  begin
+    Start := P;
+    while (CharAt(S, P) <> '') and (Pos(CharAt(S, P), ',}] ' + #9#13#10) = 0) do
+      P := P + 1;
+    Result := Copy(S, Start, P - Start);
+  end;
+end;
+
+{ Where each object of the array "Key" starts and ends in S; the count. }
+function JsonArrayObjects(const S, Key: String; var Starts, Ends: TArrayOfInteger): Integer;
+var
+  P, Depth: Integer;
+  InString: Boolean;
+  C: Char;
+begin
+  Result := 0;
+  SetArrayLength(Starts, 0);
+  SetArrayLength(Ends, 0);
+  P := FindFrom('"' + Key + '"', S, 1);
+  if P = 0 then
+    Exit;
+  P := FindFrom('[', S, P);
+  if P = 0 then
+    Exit;
+  Depth := 0;
+  InString := False;
+  P := P + 1;
+  while P <= Length(S) do
+  begin
+    C := S[P];
+    if InString then
+    begin
+      if C = '\' then
+        P := P + 1
+      else if C = '"' then
+        InString := False;
+    end
+    else if C = '"' then
+      InString := True
+    else if C = '{' then
+    begin
+      if Depth = 0 then
+      begin
+        SetArrayLength(Starts, Result + 1);
+        Starts[Result] := P;
+      end;
+      Depth := Depth + 1;
+    end
+    else if C = '}' then
+    begin
+      Depth := Depth - 1;
+      if Depth = 0 then
+      begin
+        SetArrayLength(Ends, Result + 1);
+        Ends[Result] := P;
+        Result := Result + 1;
+      end;
+    end
+    else if (C = ']') and (Depth = 0) then
+      Exit;
+    P := P + 1;
+  end;
+end;
+
+function JsonEscape(const S: String): String;
+begin
+  Result := S;
+  StringChangeEx(Result, '\', '\\', True);
+  StringChangeEx(Result, '"', '\"', True);
+end;
+
+function JoinLines(const Lines: TArrayOfString): String;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 0 to GetArrayLength(Lines) - 1 do
+    Result := Result + Lines[I] + #10;
+end;
+
+{ -- newer versions (01 S189) }
+
+{ GET Url with a 5-second limit at each stage; False for no internet or
+  any error. }
+function FetchText(const Url: String; var Text: String): Boolean;
+var
+  Http: Variant;
+begin
+  Result := False;
+  Text := '';
+  try
+    Http := CreateOleObject('WinHttp.WinHttpRequest.5.1');
+    Http.SetTimeouts(5000, 5000, 5000, 5000);
+    Http.Open('GET', Url, False);
+    Http.SetRequestHeader('User-Agent', 'Gremlin-Platforms');
+    Http.SetRequestHeader('Accept', 'application/vnd.github+json');
+    Http.Send('');
+    if Http.Status = 200 then
+    begin
+      Text := Http.ResponseText;
+      Result := True;
+    end
+    else
+      Log('GitHub answered ' + IntToStr(Http.Status) + ' for ' + Url);
+  except
+    Log('No answer from ' + Url + ': ' + GetExceptionMessage);
+  end;
+end;
+
+function UrlFileName(const Url: String): String;
+var
+  I: Integer;
+begin
+  Result := Url;
+  for I := Length(Url) downto 1 do
+    if Url[I] = '/' then
+    begin
+      Result := Copy(Url, I + 1, Length(Url));
+      Exit;
+    end;
+end;
+
+{ Prefix + digits and dots + Suffix: drivers.py's asset_regex. }
+function AssetMatches(I: Integer; const Name: String): Boolean;
+var
+  Middle: String;
+  J: Integer;
+begin
+  Result := False;
+  if Length(Name) <= Length(Drivers[I].AssetPrefix) + Length(Drivers[I].AssetSuffix) then
+    Exit;
+  if Copy(Name, 1, Length(Drivers[I].AssetPrefix)) <> Drivers[I].AssetPrefix then
+    Exit;
+  if Copy(Name, Length(Name) - Length(Drivers[I].AssetSuffix) + 1,
+    Length(Drivers[I].AssetSuffix)) <> Drivers[I].AssetSuffix then
+    Exit;
+  Middle := Copy(Name, Length(Drivers[I].AssetPrefix) + 1,
+    Length(Name) - Length(Drivers[I].AssetPrefix) - Length(Drivers[I].AssetSuffix));
+  for J := 1 to Length(Middle) do
+    if Pos(Copy(Middle, J, 1), '0123456789.') = 0 then
+      Exit;
+  Result := True;
+end;
+
+{ Asks GitHub for the driver's latest release once; keeps it only when it is
+  newer than the bundled copy. No internet or a bad answer: bundled only. }
+procedure CheckLatest(I: Integer);
+var
+  Text, Tag, Url, Name: String;
+  P: Integer;
+begin
+  if Drivers[I].LatestChecked or (Drivers[I].Repo = '') then
+    Exit;
+  Drivers[I].LatestChecked := True;
+  if not FetchText('https://api.github.com/repos/' + Drivers[I].Repo +
+    '/releases/latest', Text) then
+    Exit;
+  Tag := JsonValue(Text, 'tag_name', 1, Length(Text));
+  while (CharAt(Tag, 1) = 'v') or (CharAt(Tag, 1) = 'V') do
+    Tag := Copy(Tag, 2, Length(Tag));
+  if (Tag = '') or (CompareVersions(Tag, Drivers[I].Bundled) <= 0) then
+  begin
+    Log(Drivers[I].Name + ': latest release "' + Tag + '" is not newer than ' +
+      Drivers[I].Bundled);
+    Exit;
+  end;
+  P := 1;
+  while True do
+  begin
+    P := FindFrom('"browser_download_url"', Text, P);
+    if P = 0 then
+      Break;
+    Url := JsonValue(Text, 'browser_download_url', P, Length(Text));
+    Name := UrlFileName(Url);
+    if (Copy(Url, 1, 19) = 'https://github.com/') and AssetMatches(I, Name) then
+    begin
+      Drivers[I].LatestVersion := Tag;
+      Drivers[I].LatestUrl := Url;
+      Drivers[I].LatestName := Name;
+      Log(Drivers[I].Name + ': newer release ' + Tag + ' at ' + Url);
+      Exit;
+    end;
+    P := P + 1;
+  end;
+  Log(Drivers[I].Name + ': release ' + Tag + ' has no matching file');
+end;
+
+{ Downloads each newer release with the download page (progress, Abort);
+  a failure or Abort leaves that driver on its bundled copy. The helper
+  checks the signature before it runs one (12 S25). }
+procedure DownloadNewerDrivers;
+var
+  I: Integer;
+begin
+  for I := 0 to GetArrayLength(Drivers) - 1 do
+  begin
+    Drivers[I].Download := '';
+    if not Drivers[I].Chosen or (Drivers[I].LatestUrl = '') then
+      Continue;
+    DriverDownloadPage.Clear;
+    DriverDownloadPage.Add(Drivers[I].LatestUrl, Drivers[I].LatestName, '');
+    DriverDownloadPage.SetText('Downloading ' + Drivers[I].Name + ' ' +
+      Drivers[I].LatestVersion + #$2026, '');
+    DriverDownloadPage.Show;
+    try
+      try
+        DriverDownloadPage.Download;
+        Drivers[I].Download := ExpandConstant('{tmp}\') + Drivers[I].LatestName;
+        Log(Drivers[I].Name + ': downloaded ' + Drivers[I].Download);
+      except
+        if DriverDownloadPage.AbortedByUser then
+          Log(Drivers[I].Name + ': download stopped; using the bundled copy.')
+        else
+          Log(Drivers[I].Name + ': download failed (' + GetExceptionMessage +
+            '); using the bundled copy.');
+        Drivers[I].Download := '';
+        Drivers[I].LatestVersion := '';
+        Drivers[I].LatestUrl := '';
+        Drivers[I].LatestName := '';
+      end;
+    finally
+      DriverDownloadPage.Hide;
+    end;
+  end;
+end;
+
+{ -- the Drivers page (01 S187) }
+
+procedure FillDriverList;
+var
+  I: Integer;
+begin
+  DriverList.Items.Clear;
+  for I := 0 to GetArrayLength(Drivers) - 1 do
+  begin
+    if (Drivers[I].State = 'missing') or (Drivers[I].State = 'older') then
+      { A missing driver is ticked, an older one is not. }
+      Drivers[I].Row := DriverList.AddCheckBox(Drivers[I].Name, DriverLabel(I),
+        0, Drivers[I].State = 'missing', True, False, False, nil)
+    else
+    begin
+      { The same or a newer version: no box, never touched. }
+      Drivers[I].Row := -1;
+      DriverList.AddGroup(Drivers[I].Name, DriverLabel(I), 0, nil);
+    end;
+  end;
+end;
+
+procedure CreateDriverPages;
+var
+  Note: TNewStaticText;
+begin
+  DriversPage := CreateCustomPage(wpSelectDir, 'Drivers',
+    'vJoy, ViGEmBus and HidHide on this PC.');
+  DriverList := TNewCheckListBox.Create(DriversPage);
+  DriverList.Parent := DriversPage.Surface;
+  DriverList.Left := 0;
+  DriverList.Top := 0;
+  DriverList.Width := DriversPage.SurfaceWidth;
+  DriverList.Height := ScaleY(90);
+  DriverList.Flat := True;
+  FillDriverList;
+  Note := TNewStaticText.Create(DriversPage);
+  Note.Parent := DriversPage.Surface;
+  Note.Left := 0;
+  Note.Top := DriverList.Top + DriverList.Height + ScaleY(12);
+  Note.Width := DriversPage.SurfaceWidth;
+  Note.AutoSize := False;
+  Note.WordWrap := True;
+  Note.Caption := 'Ticked drivers are installed after Gremlin-Platforms''s ' +
+    'files are copied; Windows asks for administrator permission once. ' +
+    'Gremlin-Platforms installs even when a driver doesn''t.';
+  Note.AdjustHeight;
+  DriverDownloadPage := CreateDownloadPage('Drivers',
+    'Downloading the newer driver versions.', nil);
+  DriverDownloadPage.ShowBaseNameInsteadOfUrl := True;
+  DriverProgressPage := CreateOutputProgressPage('Drivers',
+    'Installing the drivers you ticked.');
+end;
+
+{ 06 S186: the HidHide update's first half. True = Continue. }
+function AskHidHideStep1(I: Integer): Boolean;
+begin
+  Result := TaskDialogMsgBox('HidHide update, step 1 of 2',
+    'Setup will remove HidHide ' + Drivers[I].Installed + '. After a restart, ' +
+    'Gremlin installs HidHide ' + TargetVersion(I) + ' and asks for one more ' +
+    'restart. Devices aren''t hidden until then.',
+    mbConfirmation, MB_YESNO, ['Continue', 'Skip HidHide update'], 0) = IDYES;
+end;
+
+{ Leaving the Drivers page: keeps the ticks, asks GitHub about newer
+  versions and, for a HidHide update, asks step 1 (06 S186). }
+procedure DriversPageDone;
+var
+  I: Integer;
+begin
+  for I := 0 to GetArrayLength(Drivers) - 1 do
+  begin
+    Drivers[I].Chosen := False;
+    if Drivers[I].Row >= 0 then
+      Drivers[I].Chosen := DriverList.Checked[Drivers[I].Row];
+    Drivers[I].Op := '';
+    if not Drivers[I].Chosen then
+      Continue;
+    CheckLatest(I);
+    if Drivers[I].State = 'missing' then
+      Drivers[I].Op := 'install'
+    else if Drivers[I].Key = 'hidhide' then
+      Drivers[I].Op := 'remove'
+    else
+      Drivers[I].Op := 'update';
+    if (Drivers[I].Op = 'remove') and not AskHidHideStep1(I) then
+    begin
+      Log('HidHide update skipped.');
+      Drivers[I].Chosen := False;
+      Drivers[I].Op := '';
+      DriverList.Checked[Drivers[I].Row] := False;
+    end;
+  end;
+end;
+
+{ -- the job (12 S25) }
+
+function BundledPath(I: Integer): String;
+begin
+  Result := ExpandConstant('{app}\drivers\') + Drivers[I].BundledFile;
+end;
+
+(* One job: {"op", "driver", "files": [download first, bundled second],
+   "devices": []}. A remove lists no file. *)
+function JobJson(I: Integer): String;
+var
+  Files: String;
+begin
+  Files := '';
+  if Drivers[I].Op <> 'remove' then
+  begin
+    if Drivers[I].Download <> '' then
+      Files := '{"path": "' + JsonEscape(Drivers[I].Download) +
+        '", "kind": "download"}, ';
+    Files := Files + '{"path": "' + JsonEscape(BundledPath(I)) +
+      '", "kind": "bundled"}';
+  end;
+  Result := '{"op": "' + Drivers[I].Op + '", "driver": "' + Drivers[I].Key +
+    '", "files": [' + Files + '], "devices": []}';
+end;
+
+{ Writes the job file (UTF-8, no BOM: Python's json reads it) and lists the
+  jobs' drivers in JobDrivers. False when there is no job or no file. }
+function WriteJobFile(const Path: String): Boolean;
+var
+  I, N: Integer;
+  Jobs: String;
+  Lines: TArrayOfString;
+begin
+  Result := False;
+  N := 0;
+  Jobs := '';
+  SetArrayLength(JobDrivers, 0);
+  for I := 0 to GetArrayLength(Drivers) - 1 do
+    if Drivers[I].Chosen and (Drivers[I].Op <> '') then
+    begin
+      if N > 0 then
+        Jobs := Jobs + ', ';
+      Jobs := Jobs + JobJson(I);
+      SetArrayLength(JobDrivers, N + 1);
+      JobDrivers[N] := I;
+      N := N + 1;
+    end;
+  if N = 0 then
+    Exit;
+  SetArrayLength(Lines, 1);
+  Lines[0] := '{"version": 1, "jobs": [' + Jobs + ']}';
+  Result := SaveStringsToUTF8FileWithoutBOM(Path, Lines, False);
+  if not Result then
+    Log('Could not write the driver job file ' + Path);
+end;
+
+{ Reads the helper's results file into the drivers; False while it is
+  missing or half-written. AllDone is its "finished". }
+function ReadDriverResults(const Path: String; var AllDone: Boolean): Boolean;
+var
+  Lines: TArrayOfString;
+  Text: String;
+  Starts, Ends: TArrayOfInteger;
+  N, J, I: Integer;
+begin
+  Result := False;
+  AllDone := False;
+  if not FileExists(Path) or not LoadStringsFromFile(Path, Lines) then
+    Exit;
+  Text := JoinLines(Lines);
+  N := JsonArrayObjects(Text, 'jobs', Starts, Ends);
+  if N <> GetArrayLength(JobDrivers) then
+    Exit;
+  for J := 0 to N - 1 do
+  begin
+    I := JobDrivers[J];
+    Drivers[I].ResultState := JsonValue(Text, 'state', Starts[J], Ends[J]);
+    Drivers[I].ResultMessage := JsonValue(Text, 'message', Starts[J], Ends[J]);
+    Drivers[I].ResultRestart :=
+      JsonValue(Text, 'restart', Starts[J], Ends[J]) = 'true';
+  end;
+  AllDone := JsonValue(Text, 'finished', 1, Length(Text)) = 'true';
+  Result := True;
+end;
+
+{ What the progress page says while a job runs. }
+function JobProgressText(I: Integer): String;
+begin
+  if Drivers[I].Op = 'remove' then
+    Result := 'Removing HidHide ' + Drivers[I].Installed + #$2026
+  else
+    Result := 'Installing ' + Drivers[I].Name + ' ' + TargetVersion(I) + #$2026;
+end;
+
+procedure FailOpenJobs(const Why: String);
+var
+  J, I: Integer;
+begin
+  for J := 0 to GetArrayLength(JobDrivers) - 1 do
+  begin
+    I := JobDrivers[J];
+    if (Drivers[I].ResultState <> 'done') and (Drivers[I].ResultState <> 'failed') then
+    begin
+      Drivers[I].ResultState := 'failed';
+      Drivers[I].ResultMessage := Why;
+    end;
+  end;
+end;
+
+{ Shows the progress from the results file until "finished" (01 S190). }
+procedure WaitForHelper(const ResultsFile: String);
+var
+  Tick, Limit, J, I, DoneCount: Integer;
+  Seen, AllDone: Boolean;
+  Text: String;
+begin
+  Seen := False;
+  AllDone := False;
+  Limit := HelperStartTicks + HelperJobTicks * GetArrayLength(JobDrivers);
+  for Tick := 1 to Limit do
+  begin
+    if ReadDriverResults(ResultsFile, AllDone) then
+      Seen := True;
+    DoneCount := 0;
+    Text := 'Waiting for Gremlin Device Helper' + #$2026;
+    for J := 0 to GetArrayLength(JobDrivers) - 1 do
+    begin
+      I := JobDrivers[J];
+      if (Drivers[I].ResultState = 'done') or (Drivers[I].ResultState = 'failed') then
+        DoneCount := DoneCount + 1
+      else if Drivers[I].ResultState = 'running' then
+        Text := JobProgressText(I);
+    end;
+    DriverProgressPage.SetText(Text, '');
+    DriverProgressPage.SetProgress(DoneCount, GetArrayLength(JobDrivers));
+    if AllDone then
+      Exit;
+    if not Seen and (Tick >= HelperStartTicks) then
+    begin
+      FailOpenJobs('Gremlin Device Helper did not start.');
+      Exit;
+    end;
+    Sleep(HelperWaitStep);
+  end;
+  FailOpenJobs('Gremlin Device Helper did not finish in time.');
+end;
+
+(* 06 S186: after the old HidHide is removed, Gremlin installs the new one
+   at its next start from {app}\drivers\pending.json. A download is kept
+   next to the bundled copy (setup's temp folder goes when setup ends). *)
+procedure WriteHidHidePending(I: Integer);
+var
+  Path, Kind, Version: String;
+  Lines: TArrayOfString;
+begin
+  Path := BundledPath(I);
+  Kind := 'bundled';
+  Version := Drivers[I].Bundled;
+  if Drivers[I].Download <> '' then
+  begin
+    if CopyFile(Drivers[I].Download, ExpandConstant('{app}\drivers\') +
+      Drivers[I].LatestName, False) then
+    begin
+      Path := ExpandConstant('{app}\drivers\') + Drivers[I].LatestName;
+      Kind := 'download';
+      Version := Drivers[I].LatestVersion;
+    end
+    else
+      Log('Could not keep the HidHide download; step 2 uses the bundled copy.');
+  end;
+  SetArrayLength(Lines, 1);
+  Lines[0] := '{"hidhide": {"version": "' + JsonEscape(Version) +
+    '", "file": "' + JsonEscape(Path) + '", "kind": "' + Kind + '"}}';
+  ForceDirectories(ExpandConstant('{app}\drivers'));
+  if not SaveStringsToUTF8FileWithoutBOM(
+    ExpandConstant('{app}\drivers\pending.json'), Lines, False) then
+    Log('Could not write drivers\pending.json.');
+end;
+
+{ One line per driver for setup's last page (01 S191). }
+function DriverResultLine(I: Integer): String;
+begin
+  Result := Drivers[I].Name + ': ';
+  if Drivers[I].ResultMessage <> '' then
+    Result := Result + Drivers[I].ResultMessage
+  else if Drivers[I].ResultState = 'done' then
+  begin
+    if Drivers[I].Op = 'remove' then
+      Result := Result + 'HidHide ' + Drivers[I].Installed + ' removed'
+    else
+      Result := Result + 'installed'
+  end
+  else
+    Result := Result + 'not installed';
+end;
+
+procedure BuildDriverSummary;
+var
+  J, I: Integer;
+begin
+  DriverSummary := '';
+  for J := 0 to GetArrayLength(JobDrivers) - 1 do
+  begin
+    I := JobDrivers[J];
+    if Drivers[I].ResultRestart then
+      DriversNeedRestart := True;
+    if (Drivers[I].Op = 'remove') and (Drivers[I].ResultState = 'done') then
+    begin
+      HidHideRemoved := True;
+      DriversNeedRestart := True;
+    end;
+    if DriverSummary <> '' then
+      DriverSummary := DriverSummary + #13#10;
+    DriverSummary := DriverSummary + DriverResultLine(I);
+  end;
+end;
+
+{ 01 S190, S191: after the files are copied, one elevated start of Gremlin
+  Device Helper for every ticked driver; a failure never stops Gremlin's own
+  install. }
+procedure RunDriverJobs;
+var
+  JobFile, ResultsFile, Params: String;
+  ErrorCode, J, ResultCode: Integer;
+begin
+  if not DriverJobsPlanned then
+    Exit;
+  try
+    JobFile := ExpandConstant('{tmp}\' + JobFileName);
+    ResultsFile := ExpandConstant('{tmp}\' + ResultsFileName);
+    DeleteFile(ResultsFile);
+    if WriteJobFile(JobFile) then
+    begin
+      for J := 0 to GetArrayLength(JobDrivers) - 1 do
+        Drivers[JobDrivers[J]].ResultState := 'waiting';
+      Params := '--jobs ' + AddQuotes(JobFile) + ' --results ' +
+        AddQuotes(ResultsFile);
+      DriverProgressPage.SetText(
+        'Windows asks for administrator permission' + #$2026, '');
+      DriverProgressPage.SetProgress(0, GetArrayLength(JobDrivers));
+      DriverProgressPage.Show;
+      try
+        Log('Starting Gremlin Device Helper ' + Params);
+        if ShellExec('runas', ExpandConstant('{app}\{#HelperExeName}'), Params,
+          ExpandConstant('{app}'), SW_HIDE, ewNoWait, ErrorCode) then
+          WaitForHelper(ResultsFile)
+        else if ErrorCode = UacRefusedCode then
+          FailOpenJobs('Administrator permission was not given.')
+        else
+          FailOpenJobs('Gremlin Device Helper could not start: ' +
+            SysErrorMessage(ErrorCode));
+      finally
+        DriverProgressPage.Hide;
+      end;
+      BuildDriverSummary;
+      if HidHideRemoved then
+        WriteHidHidePending(DriverIndex('hidhide'));
+    end;
+  except
+    Log('Driver step failed: ' + GetExceptionMessage);
+    FailOpenJobs('Setup could not run the driver step.');
+    BuildDriverSummary;
+  end;
+  { Setup closed the program (01 S173): start it again now the drivers are
+    done ([Run]'s RestartAfterClose leaves it to here). }
+  if ClosedByInstaller and not LaunchAfterSilentUpdate and FileExists(AppExe) then
+    ExecAsOriginalUser(AppExe, '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
@@ -408,6 +1408,8 @@ begin
     { ONE-TIME (tracker OT-7): remove the R1 Start menu entry left by older installs }
     DelTree(ExpandConstant('{userprograms}\Gremlin-Platforms R1'), True, True, True);
     DeleteFile(ExpandConstant('{userdesktop}\Gremlin-Platforms R1.lnk'));
+    { 01 S190: the driver jobs, once Gremlin's own files are in. }
+    RunDriverJobs;
   end;
 end;
 
@@ -465,4 +1467,97 @@ begin
       mbError, MB_OK);
     Result := False;
   end;
+  { A silent install never runs driver jobs (Setup "clicks" Next there too). }
+  if WizardSilent then
+    Exit;
+  if CurPageID = DriversPage.ID then
+    DriversPageDone
+  else if CurPageID = wpReady then
+    { 01 S189: newer versions download before the install; a failure only
+      means the bundled copy is used. }
+    DownloadNewerDrivers;
+end;
+
+procedure InitializeWizard;
+begin
+  InitDrivers;
+  CreateDriverPages;
+end;
+
+{ 01 S187: no Drivers page on a silent install (the in-app update). }
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := (PageID = DriversPage.ID) and WizardSilent;
+end;
+
+{ 06 S187: the Ready page says what each driver step will do and when. }
+function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
+  MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+var
+  I: Integer;
+  Steps: String;
+begin
+  Result := '';
+  if MemoUserInfoInfo <> '' then
+    Result := Result + MemoUserInfoInfo + NewLine + NewLine;
+  if MemoDirInfo <> '' then
+    Result := Result + MemoDirInfo + NewLine + NewLine;
+  if MemoTypeInfo <> '' then
+    Result := Result + MemoTypeInfo + NewLine + NewLine;
+  if MemoComponentsInfo <> '' then
+    Result := Result + MemoComponentsInfo + NewLine + NewLine;
+  if MemoGroupInfo <> '' then
+    Result := Result + MemoGroupInfo + NewLine + NewLine;
+  if MemoTasksInfo <> '' then
+    Result := Result + MemoTasksInfo + NewLine + NewLine;
+  Steps := '';
+  for I := 0 to GetArrayLength(Drivers) - 1 do
+  begin
+    if not Drivers[I].Chosen then
+      Continue;
+    if Drivers[I].Op = 'install' then
+      Steps := Steps + Space + 'Install ' + Drivers[I].Name + ' ' +
+        TargetVersion(I) + NewLine
+    else if Drivers[I].Op = 'update' then
+      Steps := Steps + Space + 'Update ' + Drivers[I].Name + ' ' +
+        Drivers[I].Installed + ' ' + #$2192 + ' ' + TargetVersion(I) + NewLine
+    else if Drivers[I].Op = 'remove' then
+      Steps := Steps + Space + 'Remove HidHide ' + Drivers[I].Installed +
+        ' (HidHide update, step 1 of 2; restart needed)' + NewLine;
+  end;
+  if Steps <> '' then
+    Result := Result + 'Drivers, after the files are copied (Windows asks for ' +
+      'administrator permission once):' + NewLine + Steps;
+end;
+
+{ 01 S191: the last page lists each driver's result. }
+procedure CurPageChanged(CurPageID: Integer);
+var
+  Text: String;
+begin
+  if (CurPageID <> wpFinished) or (DriverSummary = '') then
+    Exit;
+  Text := 'Setup has finished installing {#MyAppName}.' + #13#10#13#10 +
+    'Drivers:' + #13#10 + DriverSummary;
+  if HidHideRemoved then
+    Text := Text + #13#10#13#10 + 'Restart needed to continue the HidHide update'
+  else if DriversNeedRestart then
+    Text := Text + #13#10#13#10 + 'A driver needs a restart to finish.';
+  WizardForm.FinishedLabel.Caption := Text;
+  WizardForm.FinishedLabel.AdjustHeight;
+  if DriversNeedRestart then
+  begin
+    WizardForm.YesRadio.Caption := 'Restart now';
+    WizardForm.NoRadio.Caption := 'Restart later';
+    WizardForm.YesRadio.Top := WizardForm.FinishedLabel.Top +
+      WizardForm.FinishedLabel.Height + ScaleY(12);
+    WizardForm.NoRadio.Top := WizardForm.YesRadio.Top +
+      WizardForm.YesRadio.Height + ScaleY(4);
+  end;
+end;
+
+{ 01 S191: offers a restart when a driver asked for one. }
+function NeedRestart: Boolean;
+begin
+  Result := DriversNeedRestart;
 end;

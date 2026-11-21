@@ -57,6 +57,11 @@ Item {
         onActivated: if (!_page._typing()) _page.redo()
     }
 
+    // Read only here, for the HidHide update line; reloaded when Home shows.
+    DriversModel {
+        id: _homeDrivers
+        Component.onCompleted: reload()
+    }
     property var model: null
     // Cards on show, kept current as the model reloads.
     property int shownCount: 0
@@ -780,6 +785,7 @@ Item {
     onVisibleChanged: {
         if (!visible)
             return
+        _homeDrivers.reload()
         clearDrag()
         if (_inputPane)
             _inputPane.dragLocks = 0
@@ -839,6 +845,39 @@ Item {
         anchors.fill: parent
         anchors.margins: Style.dp(12)
         spacing: Style.dp(8)
+
+        // The HidHide update's second half is still to do (06 S186).
+        Rectangle {
+            objectName: "homeHidHideNotice"
+            Layout.fillWidth: true
+            visible: _homeDrivers.pendingHidHide
+            implicitHeight: _noticeRow.implicitHeight + Style.dp(16)
+            radius: Style.dp(3)
+            color: Qt.rgba(Style.warn.r, Style.warn.g, Style.warn.b, 0.2)
+            border.color: Style.warn
+
+            RowLayout {
+                id: _noticeRow
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.margins: Style.dp(8)
+                spacing: Style.dp(10)
+                Label {
+                    objectName: "homeHidHideNoticeText"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    color: Style.fg
+                    text: "HidHide update not finished: devices aren't hidden"
+                }
+                Button {
+                    objectName: "homeFinishUpdate"
+                    text: "Finish update"
+                    onClicked: Helpers.createComponent("WindowDrivers.qml",
+                                                      {"finishHidHideOnOpen": true})
+                }
+            }
+        }
 
         SplitView {
             id: _splitView

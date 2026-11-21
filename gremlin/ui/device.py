@@ -1278,3 +1278,8 @@ Configuration().register(
     {"valid_options": ["Numerical", "Numerical and Label", "Label"]},
     True,
 )
+
+# DriversModel (Tools › Drivers, the Home HidHide line; 06 S185, S186) is in
+# Gremlin.Device: registered with the module, so every page that imports
+# Gremlin.Device finds it. At the end: it imports this module's names.
+import gremlin.ui.drivers_model  # noqa: E402, F401

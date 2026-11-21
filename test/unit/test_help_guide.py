@@ -185,6 +185,9 @@ def _known_words() -> str:
             if "help" in path.parts:
                 continue
             parts.append(path.read_text(encoding="utf-8", errors="replace"))
+    # Setup's own pages and buttons (01 S187, 06 S186) are on screen too.
+    setup = _ROOT / "installer" / "gremlin_platforms.iss"
+    parts.append(setup.read_text(encoding="utf-8"))
     parts.append((_ROOT / "claude" / "glossary.md").read_text(encoding="utf-8"))
     # Options and Device Map Options show a setting's key as its label
     # (gremlin/ui/option.py), without its order prefix ("02-rotate-snap").

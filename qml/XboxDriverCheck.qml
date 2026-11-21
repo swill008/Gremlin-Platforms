@@ -9,10 +9,14 @@ import Gremlin.Device
 import Gremlin.Style
 
 // The ViGEmBus check, like HidHide's: whether the Xbox driver is installed
-// and running, its version, what to do when it isn't, Get and Test. On the
-// Xbox output page (its Output View).
+// and running, its version, what to do when it isn't, Open Drivers (06 S188)
+// and Test. On the Xbox output page (its Output View).
 Rectangle {
+    id: _check
     objectName: "xboxDriverRow"
+
+    // Open Drivers: Main opens Tools › Drivers.
+    signal driversRequested()
 
     // Asks again (installed, running, version).
     function reload() { _status.reload() }
@@ -66,10 +70,12 @@ Rectangle {
         RowLayout {
             spacing: Style.dp(4)
             Button {
-                text: "Get ViGEmBus"
-                onClicked: _status.openDownload()
+                objectName: "xboxOpenDrivers"
+                text: "Open Drivers"
+                onClicked: _check.driversRequested()
             }
             Button {
+                objectName: "xboxTestDriver"
                 text: "Test ViGEmBus"
                 onClicked: _status.openGameControllers()
             }

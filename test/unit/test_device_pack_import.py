@@ -443,7 +443,7 @@ def test_opening_a_pack_says_the_vjoy_driver_is_missing(
     drivers = device_pack.describe_zip(pack["zip"])["drivers"]
     assert drivers == [
         "vJoy is not installed or not running: wires to vJoy won't do anything. "
-        "Install vJoy, then restart the program."
+        "Open Tools › Drivers to install vJoy, then restart the program."
     ]
 
 

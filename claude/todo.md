@@ -11,8 +11,8 @@ older text is in git history.
 
 ## Next up
 
-0. **Driver setup build batch** (approved 2026-11-21; waits for the user's
-   "build" and the Hyper-V test machine): 01 S187-S192 (DRV-1), 06 S185-S188
+0. **Driver setup build batch** (approved 2026-11-21; BUILT 2026-11-21 up to
+   testing; the real-driver tests wait for the Hyper-V test machine): 01 S187-S192 (DRV-1), 06 S185-S188
    (DRV-2), 12 S25/S25a/S25b (DRV-3), and the Screen Saver Mode trace line
    naming its restart source, 12 S16a (SSM-RESTART-SOURCE). Plan:
    claude/plans/driver-setup-installer.md "Build batch".

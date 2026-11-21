@@ -294,7 +294,7 @@ function topics() {
                 + "<ul>"
                 + "<li>A pad appears when a Map to Xbox action first sends to it while the profile runs, and is removed when the profile stops. A pad that is off in Xbox Setup is never sent to.</li>"
                 + "<li>The pad number comes from the module's name: Xbox 360 Controller is pad 1, Xbox 360 N is pad N.</li>"
-                + "<li><b>Xbox Setup</b> checks the driver: <b>ViGEmBus driver found</b> with its version, or what is wrong and what to do. <b>Get ViGEmBus</b> opens the Nefarius releases page; <b>Test ViGEmBus</b> opens Windows Game Controllers.</li>"
+                + "<li><b>Xbox Setup</b> checks the driver: <b>ViGEmBus driver found</b> with its version, or what is wrong and what to do. <b>Open Drivers</b> opens <b>Tools › Drivers</b>, which installs it (see <a href=\"topic:tools-drivers\">Install and update the drivers (Drivers)</a>); <b>Test ViGEmBus</b> opens Windows Game Controllers.</li>"
                 + "</ul>",
             related: ["device-bindings-actions-map-to-xbox", "home-devices-vjoy-output", "tools-viewers", "getting-started-xbox-does-nothing"]
         },

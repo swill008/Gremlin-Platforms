@@ -16,6 +16,17 @@ $dist = Join-Path $root "dist\gremlin_platforms"
 if (-not (Test-Path (Join-Path $dist "gremlin_platforms.exe"))) {
     throw "dist\gremlin_platforms is missing: run pyinstaller joystick_gremlin.spec first."
 }
+# The driver installers the setup carries (01 S188) must be in installer\drivers.
+$drivers = Join-Path $PSScriptRoot "drivers"
+foreach ($name in @(
+    "vJoySetup_v2.2.2.0_Win10_Win11.exe",
+    "ViGEmBus_1.22.0_x64_x86_arm64.exe",
+    "HidHide_1.5.230_x64.exe"
+)) {
+    if (-not (Test-Path (Join-Path $drivers $name))) {
+        throw "installer\drivers\$name is missing: run 'python tools/fetch_drivers.py' (or add --from <folder> with the files)."
+    }
+}
 # A resolved path, not installer\..\dist: Qt's deepest files are close to the
 # 260 character path limit.
 & $Iscc "/DMyAppVersion=$version" "/DDistDir=$dist" (Join-Path $PSScriptRoot "gremlin_platforms.iss")

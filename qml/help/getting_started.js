@@ -29,7 +29,7 @@ function topics() {
             title: "Set up your first profile",
             body: "<p>Use these steps to go from a plugged-in stick to a running profile.</p>"
                 + "<ol>"
-                + "<li>Install <b>vJoy</b> and configure its devices. For an Xbox controller, install <b>ViGEmBus</b>. Neither driver ships with this program.</li>"
+                + "<li>Install <b>vJoy</b> and set up its devices; for an Xbox controller, install <b>ViGEmBus</b>. The program's setup offers both on its <b>Drivers</b> page, and <b>Tools › Drivers</b> <a href=\"open:tools.drivers\">Open ›</a> does it later (see <a href=\"topic:tools-drivers\">Install and update the drivers (Drivers)</a>).</li>"
                 + "<li>On <b>Home</b>, right-click each physical device and choose <b>Module</b> › <b>Module Setup…</b> (or choose <b>Tools › Device Setup › Input Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Input Module Setup\">Show me ›</a>). Press the controls you will use, or tick them, then choose <b>Save Module</b>.</li>"
                 + "<li>Right-click each vJoy device and choose <b>Module</b> › <b>Module Setup…</b> (or <b>Tools › Device Setup › Output Module Setup</b> <a href=\"show:menu/Tools/Device Setup/Output Module Setup\">Show me ›</a>). Tick the outputs you will use, then choose <b>Save Module</b>. The Xbox controller needs no setup.</li>"
                 + "<li>Double-click a physical device to open <b>Device Bindings</b>. Choose <b>Add Action</b> on an input, for example <b>Map to vJoy</b>, then <b>OK</b>.</li>"
@@ -65,6 +65,15 @@ function topics() {
                 + "<li>Gremlin-Platforms-R2-X.Y.Z.zip, the portable copy. Unzip it anywhere outside Program Files and run gremlin_platforms.exe.</li>"
                 + "</ul>"
                 + "<p>The program folder holds two programs: gremlin_platforms.exe, the program itself, and Gremlin Input Tester.exe, the <b>Input Tester</b>, which shows what other programs see through HidHide (open it with <b>Input Tester</b> on the toolbar or <b>Tools › Viewers › Input Tester…</b>; it has no Start menu entry). The installer also puts the license notices of the third-party parts the program includes in a licenses folder inside the program folder. An update replaces both programs and the notices.</p>"
+                + "<h4>The Drivers page</h4>"
+                + "<p>After the folder page, setup shows a <b>Drivers</b> page with one row each for vJoy, ViGEmBus and HidHide: the version installed, or <b>not installed</b>, or <b>update available</b>: <i>old</i> → <i>new</i>. A missing driver is ticked; an older one is unticked, so tick it to update; one that is the same version or newer has no box and is left alone.</p>"
+                + "<ul>"
+                + "<li>The installer carries a copy of each driver and checks it against a stored SHA-256 checksum before running it. For vJoy and HidHide, setup also looks for a newer version on the project's own GitHub page and downloads it; it is used only when its Windows signature is valid and the signer is the project's own. With no internet connection, or if the check fails, the carried copy is used.</li>"
+                + "<li>Windows asks for administrator permission once for all the ticked drivers. The program itself still installs for your Windows user only.</li>"
+                + "<li>Gremlin-Platforms always installs: a driver step that fails never stops it. The last page lists each driver's result and offers a restart of Windows when a driver asked for one.</li>"
+                + "<li>Updating HidHide takes two restarts: setup removes the old one and asks for a restart, and the program installs the new one when it next starts and asks for one more. Devices are not hidden in between. See <a href=\"topic:tools-drivers\">Install and update the drivers (Drivers)</a>.</li>"
+                + "<li>Uninstalling Gremlin-Platforms leaves vJoy, ViGEmBus and HidHide installed.</li>"
+                + "</ul>"
                 + "<p>To check for a newer version:</p>"
                 + "<ol>"
                 + "<li>Choose <b>Help › Check for Updates</b> <a href=\"show:menu/Help/Check for Updates\">Show me ›</a>. It asks GitHub for the latest release and shows what's new in it.</li>"
@@ -80,7 +89,7 @@ function topics() {
                 + "<li>A portable copy, or one run from source, only points you to the release page.</li>"
                 + "<li>Updates and uninstalling never touch your profiles, modules or settings; they are kept in your Gremlin Platforms folder.</li>"
                 + "</ul>",
-            related: ["getting-started-saved-where", "options-profile-options"]
+            related: ["getting-started-saved-where", "options-profile-options", "tools-drivers"]
         },
         {
             id: "getting-started-run",
@@ -262,7 +271,7 @@ function topics() {
             title: "Nothing reaches vJoy",
             body: "<p>Check these in order.</p>"
                 + "<ol>"
-                + "<li>Is vJoy installed? The message \"vJoy is not installed or not running\" means install vJoy, then restart the program.</li>"
+                + "<li>Is vJoy installed? The message \"vJoy is not installed or not running\" means install vJoy with <b>Open Drivers</b> (<b>Tools › Drivers</b>), then restart the program.</li>"
                 + "<li>Is the profile running? The toolbar button should read <b>Stop</b> <a href=\"show:toolbar/Run\">Show me ›</a> and the bottom bar Running.</li>"
                 + "<li>Is the input claimed in its input module? Inputs that are not claimed are ignored.</li>"
                 + "<li>Does the wire show <b>(not claimed)</b>? Claim that output in <b>Output Module Setup</b> <a href=\"open:tools.configureOutput\">Open ›</a>.</li>"

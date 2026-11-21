@@ -11,6 +11,7 @@ import Gremlin.Device
 import Gremlin.Style
 
 import "confirm.js" as Confirm
+import "helpers.js" as Helpers
 
 // Xbox Setup (D-XBOX-PADS): the ViGEmBus check and how many Xbox pads the
 // program sends to (1-4). OK applies, Cancel leaves it. Lowering the count
@@ -79,6 +80,8 @@ ApplicationWindow {
 
         XboxDriverCheck {
             Layout.fillWidth: true
+            // Open Drivers (06 S188).
+            onDriversRequested: Helpers.createComponent("WindowDrivers.qml")
         }
 
         RowLayout {

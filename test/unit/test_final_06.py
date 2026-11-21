@@ -308,7 +308,7 @@ def test_the_vjoy_driver_check_has_one_wording(
     # 06 S55 as changed by D-02-Q17: "the program", not the name.
     assert output.vjoy_driver_problem() == (
         "vJoy is not installed or not running",
-        "Install vJoy, then restart the program.",
+        "Open Tools › Drivers to install vJoy, then restart the program.",
     )
     monkeypatch.setattr(output, "vjoy_driver_found", lambda: True)
     assert output.vjoy_driver_problem() == ("", "")

@@ -559,7 +559,9 @@ def test_trace_hold_action_and_input(env: Env, traced: list[str]) -> None:
     traced.clear()
     clk.note_input()
     run(1)
-    assert traced[0] == "input after action: countdown restarts"
+    assert traced[0] == (
+        "input after action: countdown restarts (by input sent by a program)"
+    )
     assert _has(traced, "countdown started")
     traced.clear()
     # Ordinary input in a running countdown is never traced.
@@ -783,6 +785,49 @@ def test_trace_reset_source_on_change_only(env: Env, traced: list[str]) -> None:
         "last reset by: input sent by a program",
         "last reset by: G502 (mouse)",
     ]
+
+
+def _restart_line(
+    env: Env, traced: list[str], source: int | None = None, kind: str = ""
+) -> str:
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on())
+    run(120)
+    assert _has(traced, "action fired: power off displays: sent")
+    traced.clear()
+    clk.note_input(source=source, kind=kind)
+    run(1)
+    return next(t for t in traced if t.startswith("input after action"))
+
+
+def test_restart_line_names_same_mouse_as_last_traced(
+    env: Env, traced: list[str]
+) -> None:
+    mode, api, clk, _now, run, _t = env
+    api.names = {MOUSE: "G502"}
+    mode.apply(_on())
+    clk.note_input(source=MOUSE, kind="mouse")
+    run(1)
+    assert "last reset by: G502 (mouse)" in traced
+    run(120)
+    traced.clear()
+    clk.note_input(source=MOUSE, kind="mouse")
+    run(1)
+    assert (
+        "input after action: countdown restarts (by G502 (mouse))" in traced
+    )
+    assert "last reset by: G502 (mouse)" not in traced
+
+
+def test_restart_line_names_program(env: Env, traced: list[str]) -> None:
+    line = _restart_line(env, traced)
+    assert line == "input after action: countdown restarts (by input sent by a program)"
+
+
+def test_restart_line_unknown_device_name(env: Env, traced: list[str]) -> None:
+    env[1].names = {}
+    line = _restart_line(env, traced, source=MOUSE, kind="mouse")
+    assert line == "input after action: countdown restarts (by a device (mouse))"
 
 
 def test_trace_hold_program_when_hold_begins(env: Env, traced: list[str]) -> None:

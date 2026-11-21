@@ -133,6 +133,8 @@ hands-on check) before any fix. Status from the pages' section 10 (2026-10-10).
 9. "vJoy as input" tick restarts or stops a running profile (02 Q1). Fixed (02 G1, GL-119).
 10. Nobody owns the list of settings: some are purged at start before they register (01). Fixed (01 K10, GL-117).
 
+Driver setup built (2026-11-21, DOCS; D-01-DRIVERS, D-06-DRIVERS, D-12-HELPER-DRIVERS, D-12-RESTART-SOURCE; contract `claude/plans/driver-setup-contract.md`): sections 2-5, 10 and 11 of 01, 06 and 12 now list the new files (`gremlin/drivers.py`, `gremlin/driver_jobs.py`, `gremlin/ui/drivers_model.py`, `qml/WindowDrivers.qml`, `qml/DialogDriverPrompt.qml`, `tools/fetch_drivers.py`, the two licences) and the changed ones; gaps DRV-1, DRV-2, DRV-3 and SSM-RESTART-SOURCE read "built (not yet tested on real drivers)"; test counts are TBD until the lead fills them; no statement or decision changed, so the S, Q and gap counts in the table are unchanged. Help: new topic `tools-drivers`, setup's Drivers page in `getting-started-install`.
+
 ## Review order (suggested)
 
 06 Run/Stop and 05 Actions (feed the first redesign), then 03 Modules and

@@ -84,6 +84,11 @@ function commandList() {
         { id: "tools.xboxSetup", text: "Xbox Setup…", group: "Tools › Device Setup",
           keywords: "xbox pads vigem vigembus driver controllers count",
           menu: false, run: function() { openXboxSetup() } },
+        // Drivers (06 S185, D-06-DRIVERS): install, update and set up vJoy,
+        // ViGEmBus and HidHide through Gremlin Device Helper.
+        { id: "tools.drivers", text: "Drivers…", group: "Tools",
+          keywords: "vjoy vigembus hidhide driver install update",
+          run: function() { openDrivers() } },
         { id: "tools.configureInput", text: "Input Module Setup", group: "Tools › Device Setup",
           run: function() { openConfigureModule("source") } },
         { id: "tools.configureOutput", text: "Output Module Setup", group: "Tools › Device Setup",

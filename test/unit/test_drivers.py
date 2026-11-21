@@ -1,0 +1,394 @@
+# -*- coding: utf-8; -*-
+
+# SPDX-License-Identifier: GPL-3.0-only
+
+"""gremlin.drivers: facts, detection, release check, file checks, job files."""
+
+from __future__ import annotations
+
+import ast
+import hashlib
+import json
+from pathlib import Path
+
+import pytest
+
+from gremlin import drivers
+from gremlin.drivers import (
+    DRIVERS,
+    HIDHIDE_KEY,
+    UNINSTALL,
+    VJOY_UNINSTALL,
+    Job,
+    JobResult,
+    MemoryRegistry,
+    RealRunnerBlocked,
+    VJoyDevice,
+)
+
+REPO = Path(__file__).resolve().parents[2]
+
+
+def test_module_has_no_qt_and_no_program_imports() -> None:
+    for name in ("drivers.py", "driver_jobs.py"):
+        tree = ast.parse((REPO / "gremlin" / name).read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                mods = [a.name for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                mods = [node.module or ""]
+            else:
+                continue
+            for mod in mods:
+                assert "PySide" not in mod and "Qt" not in mod, (name, mod)
+                if mod.startswith("gremlin"):
+                    assert mod in ("gremlin", "gremlin.drivers"), (name, mod)
+
+
+def test_driver_facts() -> None:
+    assert list(DRIVERS) == ["vjoy", "vigembus", "hidhide"]
+    assert DRIVERS["vjoy"].bundled_file == "vJoySetup_v2.2.2.0_Win10_Win11.exe"
+    assert DRIVERS["vjoy"].restart_codes == (8,)
+    assert DRIVERS["vigembus"].repo is None
+    assert DRIVERS["hidhide"].restart_codes == (3010, 1641)
+    for info in DRIVERS.values():
+        assert len(info.sha256) == 64
+
+
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [
+        ("2.1.9.1", "2.2.2.0", -1),
+        ("2.2.2", "2.2.2.0", 0),
+        ("v1.22.0", "1.21.442.0", 1),
+        ("1.5.230.0", "1.5.230", 0),
+        ("", "1.0", -1),
+    ],
+)
+def test_compare(a: str, b: str, expected: int) -> None:
+    assert drivers.compare(a, b) == expected
+
+
+def test_version_tuple() -> None:
+    assert drivers.version_tuple("v2.2.2.0") == (2, 2, 2, 0)
+
+
+def _reg(
+    vjoy: str | None = None,
+    sys_version: str | None = None,
+    vigem_entry: str | None = None,
+    hidhide: str | None = None,
+) -> MemoryRegistry:
+    values: dict[str, dict[str, str]] = {}
+    if vjoy:
+        values[VJOY_UNINSTALL] = {"DisplayVersion": vjoy}
+    if vigem_entry:
+        values[UNINSTALL + r"\{966606F3-2745-49E9-BF15-5C3EAA4E9077}"] = {
+            "DisplayName": "ViGEm Bus Driver",
+            "DisplayVersion": vigem_entry,
+        }
+    if hidhide:
+        values[HIDHIDE_KEY] = {"Version": hidhide}
+    files = {drivers.vigembus_sys_path(): sys_version} if sys_version else {}
+    return MemoryRegistry(values, files)
+
+
+def test_status_states() -> None:
+    reg = _reg(vjoy="2.1.9.1", sys_version="1.22.0.0", hidhide="1.6.0")
+    states = {s.key: s.state for s in drivers.all_status(reg)}
+    assert states == {"vjoy": "older", "vigembus": "same", "hidhide": "newer"}
+    assert drivers.status("vjoy", _reg()).state == "missing"
+    assert drivers.status("vjoy", _reg()).installed == ""
+
+
+def test_vigembus_falls_back_to_uninstall_entry() -> None:
+    assert drivers.installed_version("vigembus", _reg(vigem_entry="1.21.442")) == (
+        "1.21.442"
+    )
+    # The .sys file version wins over the entry.
+    reg = _reg(sys_version="1.21.442.0", vigem_entry="1.0")
+    assert drivers.installed_version("vigembus", reg) == "1.21.442.0"
+
+
+def _release_json(tag: str, names: list[str]) -> bytes:
+    return json.dumps(
+        {
+            "tag_name": tag,
+            "assets": [
+                {"name": n, "browser_download_url": f"https://github.com/x/{n}"}
+                for n in names
+            ],
+        }
+    ).encode()
+
+
+def test_latest_release_picks_matching_asset() -> None:
+    asked = []
+
+    def fetch(url: str, timeout: float) -> bytes:
+        asked.append((url, timeout))
+        return _release_json(
+            "v2.2.3.0",
+            ["vJoySetup_v2.2.3.0_Win7.exe", "vJoySetup_v2.2.3.0_Win10_Win11.exe"],
+        )
+
+    release = drivers.latest_release("vjoy", fetch=fetch, timeout=3.0)
+    assert release == drivers.Release(
+        "2.2.3.0",
+        "https://github.com/x/vJoySetup_v2.2.3.0_Win10_Win11.exe",
+        "vJoySetup_v2.2.3.0_Win10_Win11.exe",
+    )
+    assert asked == [
+        ("https://api.github.com/repos/BrunnerInnovation/vJoy/releases/latest", 3.0)
+    ]
+
+
+def test_latest_release_none_cases() -> None:
+    def offline(url: str, timeout: float) -> bytes:
+        raise OSError("no network")
+
+    assert drivers.latest_release("hidhide", fetch=offline) is None
+    assert drivers.latest_release("hidhide", fetch=lambda u, t: b"not json") is None
+    assert (
+        drivers.latest_release(
+            "hidhide", fetch=lambda u, t: _release_json("v1.6", ["other.zip"])
+        )
+        is None
+    )
+    called = []
+    assert (
+        drivers.latest_release("vigembus", fetch=lambda u, t: called.append(u)) is None
+    )
+    assert called == []
+
+
+def test_real_fetch_signer_blocked_under_test(tmp_path: Path) -> None:
+    with pytest.raises(RealRunnerBlocked):
+        drivers.latest_release("vjoy")
+    exe = tmp_path / "a.exe"
+    exe.write_bytes(b"x")
+    with pytest.raises(RealRunnerBlocked):
+        drivers.check_download(exe, DRIVERS["vjoy"])
+
+
+def test_check_bundled(tmp_path: Path) -> None:
+    good = tmp_path / "good.exe"
+    good.write_bytes(b"driver")
+    info = drivers.DriverInfo(
+        **{**DRIVERS["vjoy"].__dict__, "sha256": hashlib.sha256(b"driver").hexdigest()}
+    )
+    assert drivers.check_bundled(good, info) == ""
+    assert drivers.sha256_of(good) == info.sha256
+    bad = tmp_path / "bad.exe"
+    bad.write_bytes(b"tampered")
+    assert "does not match" in drivers.check_bundled(bad, info)
+    assert "not found" in drivers.check_bundled(tmp_path / "none.exe", info)
+    unknown = drivers.DriverInfo(**{**info.__dict__, "sha256": ""})
+    assert "no SHA-256" in drivers.check_bundled(good, unknown)
+
+
+def test_check_download_signer(tmp_path: Path) -> None:
+    exe = tmp_path / "HidHide_1.6.0_x64.exe"
+    exe.write_bytes(b"x")
+    info = DRIVERS["hidhide"]
+    good = "CN=Nefarius Software Solutions e.U., O=Nefarius, C=AT"
+    assert drivers.check_download(exe, info, signer=lambda p: (True, good)) == ""
+    quoted = 'CN="Nefarius Software Solutions, e.U.", C=AT'
+    assert drivers.check_download(exe, info, signer=lambda p: (True, quoted)) == ""
+    assert "no valid" in drivers.check_download(
+        exe, info, signer=lambda p: (False, good)
+    )
+    other = "CN=Someone Else, O=Nefarius Software Solutions"
+    assert "Someone Else" in drivers.check_download(
+        exe, info, signer=lambda p: (True, other)
+    )
+
+    def broken(path: str) -> tuple[int, str]:
+        raise OSError("boom")
+
+    assert "could not be checked" in drivers.check_download(exe, info, signer=broken)
+    assert "not found" in drivers.check_download(
+        tmp_path / "none.exe", info, signer=lambda p: (True, good)
+    )
+
+
+def test_uninstall_entry() -> None:
+    reg = MemoryRegistry(
+        {
+            UNINSTALL + r"\{ABC}": {"DisplayName": "Other"},
+            UNINSTALL + r"\{0E2E3D4D-1111-2222-3333-444455556666}": {
+                "DisplayName": "HidHide",
+                "DisplayVersion": "1.5.230",
+                "UninstallString": (
+                    "MsiExec.exe /X{0E2E3D4D-1111-2222-3333-444455556666}"
+                ),
+            },
+        }
+    )
+    key, fields = drivers.uninstall_entry("HidHide", reg)
+    assert key == "{0E2E3D4D-1111-2222-3333-444455556666}"
+    assert fields["DisplayVersion"] == "1.5.230"
+    assert drivers.uninstall_entry("Nothing", reg) is None
+
+
+def test_presets() -> None:
+    assert [d.__dict__ for d in drivers.PRESETS["1 device, full"]] == [
+        {"id": 1, "axes": 8, "buttons": 128, "hats": 4}
+    ]
+    assert [d.id for d in drivers.PRESETS["2 devices, full"]] == [1, 2]
+
+
+def test_jobs_round_trip(tmp_path: Path) -> None:
+    path = tmp_path / "jobs.json"
+    jobs = [
+        Job(
+            "install",
+            "vjoy",
+            [
+                {"path": "C:/d.exe", "kind": "download"},
+                {"path": "C:/b.exe", "kind": "bundled"},
+            ],
+        ),
+        Job("remove", "hidhide", []),
+        Job("vjoy_setup", "vjoy", [], [VJoyDevice(1), VJoyDevice(2, 3, 32, 0)]),
+    ]
+    drivers.write_jobs(path, jobs)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["version"] == 1
+    assert data["jobs"][2]["devices"][1] == {
+        "id": 2,
+        "axes": 3,
+        "buttons": 32,
+        "hats": 0,
+    }
+    assert drivers.read_jobs(path) == jobs
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "not json",
+        json.dumps({"jobs": []}),
+        json.dumps({"version": 1, "jobs": [{"op": "format", "driver": "vjoy"}]}),
+        json.dumps(
+            {
+                "version": 1,
+                "jobs": [
+                    {
+                        "op": "install",
+                        "driver": "x",
+                        "files": [{"path": "a", "kind": "bundled"}],
+                    }
+                ],
+            }
+        ),
+        json.dumps(
+            {"version": 1, "jobs": [{"op": "install", "driver": "vjoy", "files": []}]}
+        ),
+        json.dumps(
+            {
+                "version": 1,
+                "jobs": [
+                    {
+                        "op": "install",
+                        "driver": "vjoy",
+                        "files": [{"path": "a", "kind": "web"}],
+                    }
+                ],
+            }
+        ),
+        json.dumps(
+            {
+                "version": 1,
+                "jobs": [
+                    {
+                        "op": "vjoy_setup",
+                        "driver": "vjoy",
+                        "devices": [{"id": 1, "buttons": 129}],
+                    }
+                ],
+            }
+        ),
+        json.dumps(
+            {
+                "version": 1,
+                "jobs": [
+                    {"op": "vjoy_setup", "driver": "vjoy", "devices": [{"id": 17}]}
+                ],
+            }
+        ),
+        json.dumps({"version": 1, "jobs": [{"op": "remove", "driver": "vjoy"}]}),
+    ],
+)
+def test_read_jobs_rejects_bad_files(tmp_path: Path, content: str) -> None:
+    path = tmp_path / "jobs.json"
+    path.write_text(content, encoding="utf-8")
+    with pytest.raises(ValueError):
+        drivers.read_jobs(path)
+
+
+def test_read_jobs_missing_file(tmp_path: Path) -> None:
+    with pytest.raises(ValueError):
+        drivers.read_jobs(tmp_path / "none.json")
+
+
+def test_results_round_trip_and_atomic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "results.json"
+    results = [JobResult("done", "ok", True, "bundled"), JobResult("waiting")]
+    replaced = []
+    real_replace = drivers.os.replace
+
+    def spy(src: str, dst: str) -> None:
+        replaced.append((Path(src).name, Path(dst).name))
+        real_replace(src, dst)
+
+    monkeypatch.setattr(drivers.os, "replace", spy)
+    drivers.write_results(path, results, finished=False)
+    assert replaced == [("results.json.tmp", "results.json")]
+    assert not (tmp_path / "results.json.tmp").exists()
+    assert drivers.read_results(path) == (results, False)
+    drivers.write_results(path, results, finished=True)
+    assert drivers.read_results(path)[1] is True
+
+
+def test_read_results_missing_or_partial(tmp_path: Path) -> None:
+    path = tmp_path / "results.json"
+    assert drivers.read_results(path) == ([], False)
+    path.write_text('{"version": 1, "finished": true, "jobs": [{"sta', encoding="utf-8")
+    assert drivers.read_results(path) == ([], False)
+    path.write_text(
+        json.dumps({"version": 1, "finished": True, "jobs": [{"state": "odd"}]}),
+        encoding="utf-8",
+    )
+    assert drivers.read_results(path) == ([], False)
+
+
+def test_pending(tmp_path: Path) -> None:
+    assert drivers.pending_path(tmp_path) == tmp_path / "drivers" / "pending.json"
+    assert drivers.read_pending(tmp_path) is None
+    data = {"hidhide": {"version": "1.5.230", "file": "C:/h.exe", "kind": "bundled"}}
+    drivers.write_pending(tmp_path, data)
+    assert drivers.read_pending(tmp_path) == data
+    drivers.clear_pending(tmp_path)
+    assert drivers.read_pending(tmp_path) is None
+    drivers.clear_pending(tmp_path)  # already gone: no error
+
+
+def test_app_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.delattr(drivers.sys, "frozen", raising=False)
+    assert drivers.app_dir() is None
+    monkeypatch.setattr(drivers.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(drivers.sys, "executable", str(tmp_path / "Gremlin.exe"))
+    assert drivers.app_dir() == tmp_path.resolve()
+
+
+def test_windows_registry_reads_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The real reader answers for a key that cannot exist, without raising.
+    reg = drivers.WindowsRegistry()
+    if drivers.os.name != "nt":
+        pytest.skip("Windows only")
+    assert reg.value(r"SOFTWARE\Gremlin-Platforms-test-no-such-key", "X") is None
+    assert reg.subkeys(r"SOFTWARE\Gremlin-Platforms-test-no-such-key") == []
+    assert reg.file_version(r"C:\no\such\file.sys") == ""

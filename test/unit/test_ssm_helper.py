@@ -130,7 +130,9 @@ def test_protocol_imports_nothing_from_the_program() -> None:
         assert not isinstance(node, ast.Import)
 
 
-def test_helper_imports_only_the_protocol_from_the_program() -> None:
+def test_helper_imports_only_the_protocol_and_driver_modules() -> None:
+    """The helper ships with the protocol and, for its driver jobs (S25),
+    gremlin.drivers and gremlin.driver_jobs: nothing else of the program."""
     tree = ast.parse((_ROOT / "gremlin_device_helper.py").read_text("utf-8"))
     program = set()
     for node in ast.walk(tree):
@@ -144,7 +146,11 @@ def test_helper_imports_only_the_protocol_from_the_program() -> None:
             assert not any(
                 a.name.startswith(("gremlin", "PySide6")) for a in node.names
             )
-    assert program == {("gremlin", ("device_helper_protocol",))}
+    assert program <= {
+        ("gremlin", ("device_helper_protocol",)),
+        ("gremlin", ("driver_jobs", "drivers")),
+    }
+    assert ("gremlin", ("device_helper_protocol",)) in program
 
 
 # Serve loop ------------------------------------------------------------------

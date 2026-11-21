@@ -38,6 +38,18 @@ _ROOT = pathlib.Path(__file__).resolve().parents[2]
             "fmt.txt",
             ["Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors"],
         ),
+        (
+            # The bundled driver installers (01 S188).
+            "vigembus.txt",
+            [
+                "BSD 3-Clause License",
+                "Copyright (c) 2016-2020, Nefarius Software Solutions e.U.",
+            ],
+        ),
+        (
+            "hidhide.txt",
+            ["MIT License", "Copyright (c) 2021-2024 Benjamin Höglinger-Stelzer"],
+        ),
     ],
 )
 def test_licence_file_has_its_copyright(name: str, lines: list[str]) -> None:

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 // Help chapter: Tools (viewers, calibration, device information, History,
-// Auto Mapping Tool, HidHide, Input Tester, Search, Screen Saver Mode, Live Log Reader). Device Mapping Editor and Device Library
+// Auto Mapping Tool, HidHide, Drivers, Input Tester, Search, Screen Saver Mode, Live Log Reader). Device Mapping Editor and Device Library
 // have chapters of their own.
 
 .pragma library
@@ -85,7 +85,7 @@ function topics() {
             id: "tools-hidhide",
             section: "Devices",
             title: "Hide controllers from games with HidHide",
-            body: "<p>HidHide hides physical controllers from games so they only see vJoy or Xbox. Gremlin-Platforms always sees them. The HidHide driver is a separate install: without it the page says \"HidHide is not installed\", and <b>Get HidHide</b> opens HidHide's download page.</p>"
+            body: "<p>HidHide hides physical controllers from games so they only see vJoy or Xbox. Gremlin-Platforms always sees them. The HidHide driver is a separate install: without it the page says \"HidHide is not installed\", and <b>Get HidHide</b> opens HidHide's download page. <b>Tools › Drivers</b> <a href=\"open:tools.drivers\">Open ›</a> installs and updates it: see <a href=\"topic:tools-drivers\">Install and update the drivers (Drivers)</a>.</p>"
                 + "<ol>"
                 + "<li>Choose <b>Tools › Device Setup › HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a>.</li>"
                 + "<li>Turn on <b>Gremlin-Platforms controls HidHide</b> to let this program write HidHide's settings, and <b>HidHide Enabled</b> to turn hiding on.</li>"
@@ -129,6 +129,51 @@ function topics() {
                 + "</ul>"
                 + "<p>The exact rules are in <a href=\"topic:tools-tech-hidhide\">How HidHide decides</a>.</p>",
             related: ["tools-input-tester", "tools-tech-hidhide", "home-devices-hidden-cards", "getting-started-device-missing", "tools-q-game-sees-both"]
+        },
+        {
+            id: "tools-drivers",
+            section: "Devices",
+            title: "Install and update the drivers (Drivers)",
+            body: "<p>The program's outputs and HidHide need three drivers: <b>vJoy</b> (the virtual joysticks), <b>ViGEmBus</b> (the Xbox 360 pads) and <b>HidHide</b> (hides controllers from games). <b>Tools › Drivers</b> installs and updates them, and sets up the vJoy devices. Setup has the same page: see <a href=\"topic:getting-started-install\">Install and update the program</a>.</p>"
+                + "<h4>What each row says</h4>"
+                + "<ul>"
+                + "<li>One row for each driver, with the version it has now: <b>not installed</b>, or its version number, or <b>update available</b>: <i>old</i> → <i>new</i>.</li>"
+                + "<li>A missing driver has its box ticked. An older one has its update box unticked: tick it to update. A driver that is the same version or newer has no box and is never touched.</li>"
+                + "<li>The program carries a copy of each driver (vJoy 2.2.2.0, ViGEmBus 1.22.0, HidHide 1.5.230). For vJoy and HidHide it also asks the project's own GitHub releases page for a newer version. A newer one is downloaded and used only when its Windows signature is valid and the signer is the project's own (Brunner Elektronik AG for vJoy, Nefarius Software Solutions for HidHide); if it isn't, or there is no internet connection, the carried copy is used. ViGEmBus is not updated this way: its project has retired, and 1.22.0 is the last version.</li>"
+                + "<li>Each copy is checked against a stored SHA-256 checksum first, and one that doesn't match is never run.</li>"
+                + "</ul>"
+                + "<h4>Set up the vJoy devices</h4>"
+                + "<ul>"
+                + "<li><b>1 device, full</b> (the first choice): one vJoy device with 8 axes (X, Y, Z, RX, RY, RZ, SL0, SL1), 128 buttons and 4 hats. <b>2 devices, full</b> makes two of them.</li>"
+                + "<li><b>Custom</b>: choose how many devices (1 to 16), and for each one its axes (0 to 8), buttons (0 to 128) and hats (0 to 4).</li>"
+                + "<li>The devices vJoy has now are shown as they are, and changed only when you edit them.</li>"
+                + "<li>Editing shows \"Running games will lose the vJoy devices until they restart.\" Close the games first.</li>"
+                + "<li>After setting a device up, the program reads it back from vJoy. If it isn't what you asked for, the result says so and says it failed.</li>"
+                + "</ul>"
+                + "<h4>Apply the changes</h4>"
+                + "<ol>"
+                + "<li>Tick what to install or update, and choose the vJoy devices.</li>"
+                + "<li>Choose <b>Apply</b>. A prompt says what will happen and when. Choose to go ahead.</li>"
+                + "<li>Windows asks for administrator permission once for every step. The program itself needs no administrator rights; a small separate program, <b>Gremlin Device Helper</b>, does the work.</li>"
+                + "<li>A progress line says what is running, such as \"Installing vJoy 2.2.2.0…\". Each driver then shows its result, and says when a restart of Windows is needed, with <b>Restart now</b> and <b>Restart later</b>.</li>"
+                + "</ol>"
+                + "<h4>Updating HidHide takes two restarts</h4>"
+                + "<p>HidHide can't be updated in one go: Windows has to restart between taking the old one away and putting the new one in.</p>"
+                + "<ol>"
+                + "<li><i>Step 1 of 2.</i> A prompt says it will remove HidHide <i>old</i>, that after a restart the program installs <i>new</i> and asks for one more restart, and that devices aren't hidden until then. Choose <b>Continue</b> (or <b>Skip HidHide update</b>). The old HidHide is removed and Windows asks for a restart.</li>"
+                + "<li><i>Step 2 of 2.</i> At its next start the program asks \"Finish the HidHide update\". Choose <b>Install now</b> (Windows asks for administrator permission), or <b>Later</b>. When HidHide is installed, Windows asks for one more restart.</li>"
+                + "</ol>"
+                + "<ul>"
+                + "<li>Between the halves, and until the second restart, devices are not hidden. While the update is unfinished, <b>Home</b> says \"HidHide update not finished: devices aren't hidden\" with <b>Finish update</b>.</li>"
+                + "<li>Once both restarts are done, check <b>HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a> to see that your devices are hidden again.</li>"
+                + "</ul>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li>A driver step that fails never stops anything else; each result is listed with the reason.</li>"
+                + "<li>Uninstalling Gremlin-Platforms leaves the three drivers installed.</li>"
+                + "<li>When vJoy or ViGEmBus is missing, the message says so and has <b>Open Drivers</b>, which opens this window. Install the driver, then restart the program.</li>"
+                + "</ul>",
+            related: ["getting-started-install", "tools-hidhide", "home-devices-vjoy-output", "home-devices-xbox-output"]
         },
         {
             id: "tools-input-tester",

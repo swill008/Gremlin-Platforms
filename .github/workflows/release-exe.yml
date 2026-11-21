@@ -84,6 +84,11 @@ jobs:
         run: |
           Compress-Archive -Path dist\gremlin_platforms\* -DestinationPath dist\Gremlin-Platforms-R2-${{ steps.version.outputs.version }}.zip
 
+      # The driver installers the setup carries (01 S188): pinned releases,
+      # size and SHA-256 checked; refuses a driver with no SHA-256 yet.
+      - name: Fetch the bundled drivers
+        run: poetry run python tools/fetch_drivers.py
+
       - name: Build installer
         shell: pwsh
         run: installer\build_installer.ps1

@@ -5,16 +5,25 @@
 """Gremlin Device Helper: entry point (S25).
 
     "Gremlin Device Helper.exe" --pipe NAME --journal PATH --key PATH --parent PID
+    "Gremlin Device Helper.exe" --jobs PATH --results PATH [--parent PID]
 
 The only part of Gremlin with administrator rights. Gremlin starts it with
-Windows' confirmation; it connects back to Gremlin's private pipe with the
-authkey from the key file (read, then deleted) and disables or enables the
-game-input devices the journal lists, one `pnputil` run each (it also
-enables a physical USB device an older journal still lists, never disables
-one). It ends on
-"quit", when the connection closes or when Gremlin's process is gone.
+Windows' confirmation; exactly one mode runs.
 
-Imports nothing from the program but gremlin.device_helper_protocol.
+Pipe mode: it connects back to Gremlin's private pipe with the authkey from
+the key file (read, then deleted) and disables or enables the game-input
+devices the journal lists, one `pnputil` run each (it also enables a
+physical USB device an older journal still lists, never disables one). It
+ends on "quit", when the connection closes or when Gremlin's process is
+gone.
+
+Jobs mode (driver setup): it reads the job file, writes the results file
+with every job "waiting", runs the jobs in order and rewrites the results
+at each state change, with `finished` true at the end. Exit 0 when the
+results were written, 2 for a bad job file.
+
+Imports from the program only gremlin.device_helper_protocol, plus
+gremlin.drivers and gremlin.driver_jobs (loaded only in jobs mode).
 """
 
 from __future__ import annotations
@@ -25,6 +34,7 @@ import logging
 import os
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable
 from multiprocessing.connection import Client
 from pathlib import Path
@@ -60,12 +70,32 @@ def _under_test() -> bool:
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
+    """Exactly one mode: pipe (--pipe --journal --key --parent) or jobs
+    (--jobs --results, --parent optional). Anything else exits with 2."""
     parser = argparse.ArgumentParser(prog="Gremlin Device Helper")
-    parser.add_argument("--pipe", required=True)
-    parser.add_argument("--journal", required=True)
-    parser.add_argument("--key", required=True)
-    parser.add_argument("--parent", required=True, type=int)
-    return parser.parse_args(argv)
+    parser.add_argument("--pipe")
+    parser.add_argument("--journal")
+    parser.add_argument("--key")
+    parser.add_argument("--parent", type=int)
+    parser.add_argument("--jobs")
+    parser.add_argument("--results")
+    args = parser.parse_args(argv)
+    pipe_given = any(v is not None for v in (args.pipe, args.journal, args.key))
+    jobs_given = args.jobs is not None or args.results is not None
+    if pipe_given and jobs_given:
+        parser.error("pipe mode and jobs mode can't be mixed")
+    if jobs_given:
+        if args.jobs is None or args.results is None:
+            parser.error("jobs mode needs --jobs and --results")
+        args.mode = "jobs"
+    elif pipe_given:
+        for name in ("pipe", "journal", "key", "parent"):
+            if getattr(args, name) is None:
+                parser.error(f"pipe mode needs --{name}")
+        args.mode = "pipe"
+    else:
+        parser.error("give --pipe/--journal/--key/--parent or --jobs/--results")
+    return args
 
 
 def log_path(journal: str | Path) -> Path:
@@ -238,14 +268,84 @@ def _connect(pipe: str, authkey: bytes) -> Connection:
     return Client(address, family="AF_PIPE", authkey=authkey)
 
 
+def jobs_log_path() -> Path:
+    """The log in the data folder (Gremlin Platforms in the user profile)
+    when it exists, else in the temp folder."""
+    data = Path(os.path.expanduser("~")) / "Gremlin Platforms"
+    if data.is_dir():
+        return data / "logs" / "device_helper.log"
+    return Path(tempfile.gettempdir()) / "device_helper.log"
+
+
+def run_jobs(
+    jobs_path: str | Path,
+    results_path: str | Path,
+    run_job: Callable[..., Any] | None = None,
+    runner: Callable[..., Any] | None = None,
+) -> int:
+    """Jobs mode. Writes the results at every state change; a job that
+    raises becomes "failed" and the rest still run. Returns the exit code:
+    0 results written, 2 bad job file."""
+    # Imported here: the pipe mode needs only the protocol (S25).
+    from gremlin import driver_jobs, drivers
+    run = run_job or driver_jobs.run_job
+    command_runner = runner or driver_jobs.real_runner
+    try:
+        jobs = drivers.read_jobs(jobs_path)
+    except (OSError, ValueError) as error:
+        log.error("Bad job file %s: %s", jobs_path, error)
+        return 2
+    results = [drivers.JobResult(state="waiting") for _ in jobs]
+
+    def publish(finished: bool) -> None:
+        try:
+            drivers.write_results(results_path, list(results), finished)
+        except OSError as error:
+            log.error("Could not write the results: %s", error)
+
+    publish(False)
+    for index, job in enumerate(jobs):
+        results[index] = drivers.JobResult(state="running")
+        publish(False)
+        log.info("Job %d: %s %s", index, job.op, job.driver)
+        try:
+            if run is driver_jobs.run_job:
+                # vJoy's installer log goes beside the helper's own log.
+                results[index] = run(
+                    job, command_runner, log_dir=str(jobs_log_path().parent)
+                )
+            else:
+                results[index] = run(job, command_runner)
+        except Exception as error:  # noqa: BLE001 - reported, never a crash
+            log.exception("Job %d failed", index)
+            results[index] = drivers.JobResult(state="failed", message=str(error))
+        log.info("Job %d: %s %s", index, results[index].state, results[index].message)
+        publish(False)
+    publish(True)
+    return 0
+
+
 def main(
     argv: list[str] | None = None,
     *,
     connect: Callable[[str, bytes], Connection] | None = None,
     runner: Runner | None = None,
     parent_alive: Callable[[], bool] | None = None,
+    run_job: Callable[..., Any] | None = None,
+    job_runner: Callable[..., Any] | None = None,
 ) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    if args.mode == "jobs":
+        try:
+            setup_log(jobs_log_path())
+        except OSError:
+            pass
+        log.info("Jobs mode started (parent %s)", args.parent)
+        try:
+            return run_jobs(args.jobs, args.results, run_job, job_runner)
+        except Exception as error:  # noqa: BLE001 - never raises
+            log.exception("Jobs mode failed: %s", error)
+            return 2
     try:
         setup_log(log_path(args.journal))
     except OSError:

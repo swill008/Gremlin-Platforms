@@ -1895,7 +1895,12 @@ class ScreenSaverMode:
             # Traced only for the first input after an action, not per input.
             after_action = self._period.saver.fired or self._period.off.fired
             if after_action:
-                _trace("input after action: countdown restarts")
+                name, kind = self._reset_source()
+                if kind == RESET_PROGRAM:
+                    by = "input sent by a program"
+                else:
+                    by = f"{name or 'a device'} ({kind})"
+                _trace(f"input after action: countdown restarts (by {by})")
             self._end_keep_off("keyboard or mouse input", input_at=last)
             with self._keep_lock:
                 waiting = self._power_wait is not None

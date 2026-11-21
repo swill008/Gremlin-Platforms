@@ -12,7 +12,7 @@
 var _allowedOpen = [
     "view.home", "view.deviceBindings", "view.scripts", "view.settings",
     "view.xboxOutput", "tools.vjoyViewer",
-    "tools.calibration", "tools.hidhide", "tools.configureInput",
+    "tools.calibration", "tools.hidhide", "tools.drivers", "tools.configureInput",
     "tools.configureOutput", "tools.deviceInfo", "tools.deviceLibrary",
     "tools.devicePack",
     "tools.logical", "tools.deviceMappingEditor", "tools.autoMappingTool", "tools.manageModes",

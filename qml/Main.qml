@@ -171,6 +171,7 @@ ApplicationWindow {
         Helpers.setMainWindow(_root)
         Style.helpLinks = { check: _helpLinkCheck, reveal: _helpLinkReveal }
         Qt.callLater(offerProfileRecovery)
+        Qt.callLater(offerHidHideFinish)
     }
 
     Component.onDestruction: () => {
@@ -988,6 +989,30 @@ ApplicationWindow {
     // View's "Open Xbox Setup".
     function openXboxSetup() {
         return Helpers.createComponent("DialogXboxSetup.qml")
+    }
+
+    // Tools › Drivers (06 S185); finishHidHide opens it on the second half
+    // of a HidHide update (06 S186).
+    function openDrivers(finishHidHide) {
+        return Helpers.createComponent("WindowDrivers.qml",
+                                       { finishHidHideOnOpen: finishHidHide === true })
+    }
+
+    // At start: a HidHide update waiting for its second half (06 S186).
+    DriversModel { id: _driversAtStart }
+
+    function offerHidHideFinish() {
+        if (!_driversAtStart.pendingHidHide)
+            return
+        var prompt = Helpers.createComponent("DialogDriverPrompt.qml", {
+            title: "Finish the HidHide update, step 2 of 2",
+            body: "The program will now install HidHide " + _driversAtStart.pendingVersion
+                  + ". Windows will ask for administrator permission.",
+            okText: "Install now",
+            cancelText: "Later"
+        })
+        if (prompt)
+            prompt.accepted.connect(function() { openDrivers(true) })
     }
 
     // The Xbox output's Output View (its card is always there).
@@ -1880,6 +1905,7 @@ ApplicationWindow {
             ThemedMenuSeparator {}
             ThemedMenuItem { command: "tools.oscMonitor" }
             ThemedMenuItem { command: "tools.screenSaverMode" }
+            ThemedMenuItem { command: "tools.drivers" }
             ThemedMenuItem { command: "tools.history" }
             ThemedMenuItem { command: "tools.options" }
         }

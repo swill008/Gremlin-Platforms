@@ -1089,7 +1089,7 @@ def vjoy_driver_problem() -> tuple[str, str]:
         return "", ""
     return (
         "vJoy is not installed or not running",
-        "Install vJoy, then restart the program.",
+        "Open Tools › Drivers to install vJoy, then restart the program.",
     )
 
 
