@@ -1,0 +1,8 @@
+{
+  "evidence": "704b3c3a: conftest guard + input_thread_running delivers runStopped; old code did not reproduce CI's exact failure locally; Spec: none",
+  "group": "CI",
+  "ref": "CI-HIGHLIGHT-LEAK",
+  "severity": "low",
+  "status": "fixed",
+  "title": "Tests left input highlighting held (7 real-thread tests, 'run' hold); a later test failed in CI"
+}

@@ -1,0 +1,10 @@
+{
+  "evidence": "44ab601c, the test_final_05 fix commit, 2d14cc37; Spec: none (no behaviour change)",
+  "group": "Tests",
+  "order": 227,
+  "ref": "T-LEAK",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Three test-order leaks fixed (pJoy Pro folder, plugin manager under fake settings, kept-stubs setting)",
+  "updatedAt": "2026-10-11T11:50:00Z"
+}

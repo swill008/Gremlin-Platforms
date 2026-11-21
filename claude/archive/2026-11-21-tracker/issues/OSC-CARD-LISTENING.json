@@ -1,0 +1,11 @@
+{
+  "evidence": "bb89aebd; test_osc_card_line_e2e.py, test_osc_listen_info.py, test_osc_card_status.py, test_osc_full_name_line.py",
+  "group": "OSC",
+  "note": "Spec: 09 S175-S177, 03 S73",
+  "order": 225,
+  "ref": "user 2026-10-12",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "OSC: 'Open Sound Control (OSC)' on Bindings/tooltip/glossary; card line 'Listening on ip:port' / last message",
+  "updatedAt": "2026-10-12T15:00:00Z"
+}

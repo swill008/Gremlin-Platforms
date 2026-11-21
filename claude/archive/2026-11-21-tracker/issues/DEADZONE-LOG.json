@@ -1,0 +1,12 @@
+{
+  "detail": "Error object now built only when refused.",
+  "evidence": "6a55f094; test_a_valid_deadzone_logs_no_error",
+  "group": "OSC",
+  "note": "",
+  "order": 46,
+  "ref": "DEADZONE-LOG",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Every valid OSC deadzone logged 'ERROR Invalid OSC deadzone'",
+  "updatedAt": "2026-10-10T13:04:00Z"
+}

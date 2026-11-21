@@ -1,0 +1,11 @@
+{
+  "evidence": "e3db84ac; test_search_navigation no-input-module tests (2)",
+  "group": "Search",
+  "note": "Spec: 01 S166 D-01-SEARCH-FINISH",
+  "order": 305,
+  "ref": "gap 01 SEARCH-NO-MODULE",
+  "severity": "S3",
+  "status": "fixed (CI running)",
+  "title": "Search result for a device with no input module showed nothing; now says so with Open Device Mapping Editor",
+  "updatedAt": "2026-10-13T00:14:00Z"
+}

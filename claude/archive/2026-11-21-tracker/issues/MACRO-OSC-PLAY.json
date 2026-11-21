@@ -1,0 +1,12 @@
+{
+  "detail": "New OscRuntime.play.",
+  "evidence": "6a55f094; Spec 09 S159, 02 S44",
+  "group": "OSC",
+  "note": "",
+  "order": 47,
+  "ref": "MACRO-OSC-PLAY",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Macro OSC playback reused Send Test (not synthetic, shaped twice, re-recorded)",
+  "updatedAt": "2026-10-10T13:04:00Z"
+}

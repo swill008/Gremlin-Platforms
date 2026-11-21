@@ -1,0 +1,11 @@
+{
+  "evidence": "133edd91; test_osc_monitor_remembered.py (3/3 failed on old code)",
+  "group": "OSC",
+  "note": "Spec: 09 S137 (D-09-MONITOR-REMEMBERED)",
+  "order": 266,
+  "ref": "user 2026-10-12",
+  "severity": "feature",
+  "status": "fixed (CI running)",
+  "title": "OSC Monitor remembers open / folded / closed across pages and restarts (pop-out not saved)",
+  "updatedAt": "2026-10-12T16:26:00Z"
+}

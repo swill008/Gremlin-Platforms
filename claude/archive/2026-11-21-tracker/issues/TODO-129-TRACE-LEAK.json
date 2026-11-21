@@ -1,0 +1,10 @@
+{
+  "evidence": "46820406 (F-LEAK)",
+  "group": "Tests",
+  "order": 227,
+  "ref": "to-do 129",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "CI order leak: trace OSC ticks left set before test_trace_osc_core",
+  "updatedAt": "2026-10-12T15:24:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "detail": "User 2026-10-11 (fix list item 13, 3a). Built: gremlin/device_map_settings_once.py (every function '# ONE-TIME (tracker OT-3)'): at start, BEFORE register_config_options() (else the new section is registered with defaults first), moves the settings section button-map -> device-mapping-editor (groups/keys keep their names) and global/internal/button-map-<x> -> device-map-<x> (options-group, recent-colours, picture-folder); skips what already exists; no History entry; refuses the real folder under tests. Call: joystick_gremlin.py. Test test_device_map_settings_once.py (7). Line in claude/todo.md. Remove before release with OT-1, OT-2, OT-4.",
+  "evidence": "fix list item 13 (not built)",
+  "group": "One-time code",
+  "order": 244,
+  "ref": "OT-3",
+  "severity": "S3",
+  "status": "in program; kept in 1.0.33 (user 2026-10-11), remove in the next release",
+  "title": "One-time move: the old \"button-map\" settings section moves to the Device Mapping Editor's new section name",
+  "updatedAt": "2026-10-11T18:50:00Z"
+}

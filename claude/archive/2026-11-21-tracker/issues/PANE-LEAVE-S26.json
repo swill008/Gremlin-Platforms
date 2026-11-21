@@ -1,0 +1,12 @@
+{
+  "detail": "All four list pages: row click, action row, menu Open, Add Action. Now asks Save/Discard/Cancel; Cancel puts selection back.",
+  "evidence": "a7136318; test_pane_open_other_asks.py; Spec: 05 S26",
+  "group": "Code audit",
+  "note": "",
+  "order": 64,
+  "ref": "PANE-LEAVE-S26",
+  "severity": "S1 data loss",
+  "status": "fixed",
+  "title": "Opening another input silently dropped unsaved action editor changes",
+  "updatedAt": "2026-10-10T16:49:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "evidence": "e84790ac; test waits for the maker (07 S157)",
+  "group": "To-do",
+  "order": 218,
+  "ref": "to-do 122",
+  "severity": "S3",
+  "status": "closed (not a race)",
+  "title": "Possible race: generated device-photo.png written after a Device Image Save (load flake)",
+  "updatedAt": "2026-10-12T13:52:00Z"
+}

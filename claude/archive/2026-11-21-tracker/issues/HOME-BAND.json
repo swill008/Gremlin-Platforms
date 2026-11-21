@@ -1,0 +1,11 @@
+{
+  "evidence": "2bf2e2d6; test_home_band.py, test_b1_home.py",
+  "group": "Home",
+  "note": "Spec: 03 S136 S146-S148, 01 S58a",
+  "order": 219,
+  "ref": "D-03-HOME-BAND",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Home: Undo bar removed (Undo/Redo in both right-click menus), selection box, Hide Selected / Reset Size of Selected (precise undo)",
+  "updatedAt": "2026-10-12T14:27:00Z"
+}

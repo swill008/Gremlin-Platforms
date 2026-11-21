@@ -1,0 +1,12 @@
+{
+  "detail": "D-05-APPEARANCE-NARROW approved 15:52. Agent A1-NARROW running.",
+  "evidence": "claude/decisions.md",
+  "group": "Code audit",
+  "note": "a7136318, Spec: 05 S135",
+  "order": 59,
+  "ref": "A1",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Appearance panel hides itself when the window is too narrow (150/200 %)",
+  "updatedAt": "2026-10-10T16:49:00Z"
+}

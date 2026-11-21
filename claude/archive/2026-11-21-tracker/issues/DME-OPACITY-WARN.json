@@ -1,0 +1,11 @@
+{
+  "evidence": "03e02cd7; test_planes_layers_panel.py (failed old, passes new)",
+  "group": "Device Mapping Editor",
+  "note": "Spec: 07 S120",
+  "order": 210,
+  "ref": "user 2026-10-12",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Background Opacity slider logged qt.qml.binding.removal while dragged",
+  "updatedAt": "2026-10-12T13:19:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "f5fbc7d7; found by full run seed 149484 (test_osc_batch2_e2e access violation)",
+  "group": "Runtime",
+  "note": "Spec: 09 (OSC on the input thread)",
+  "order": 278,
+  "ref": "found 2026-11-19 (ORDER-FLAKES)",
+  "severity": "bug",
+  "status": "fixed (f5fbc7d7)",
+  "title": "OSC feedback runtime could be deleted from the wrong thread while the input thread used it (crash)",
+  "updatedAt": "2026-11-19T17:33:00Z"
+}

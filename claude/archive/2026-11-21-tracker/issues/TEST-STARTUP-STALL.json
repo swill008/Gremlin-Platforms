@@ -1,0 +1,10 @@
+{
+  "evidence": "77b1fdb8; test_stall_detection.py 2 new tests (failed old: access violation)",
+  "group": "Tests",
+  "order": 253,
+  "ref": "128",
+  "severity": "S3",
+  "status": "fixed (CI running)",
+  "title": "Test harness: a slow start-up under load is waited out; a stuck one ends the run with exit 3 instead of crashing Qt",
+  "updatedAt": "2026-10-12T11:28:00Z"
+}

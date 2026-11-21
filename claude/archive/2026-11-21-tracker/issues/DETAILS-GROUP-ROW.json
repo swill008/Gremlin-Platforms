@@ -1,0 +1,11 @@
+{
+  "evidence": "4573e254; test_row_group_details_model/view, test_appearance_details, test_details_e2e, test_output_not_found_words; Help charts",
+  "group": "Device Bindings",
+  "note": "Spec: 05 S123, S125, S137-S139, S142, S143 (D-05-DETAILS); wording 'Binding output not found' in 571208b9",
+  "order": 262,
+  "ref": "user 2026-10-12",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Group details and Row details chosen in Appearance; No bindings, Custom name, Binding output not found wording",
+  "updatedAt": "2026-10-12T16:00:00Z"
+}

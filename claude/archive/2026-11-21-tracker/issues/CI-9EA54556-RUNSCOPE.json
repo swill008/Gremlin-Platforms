@@ -1,0 +1,11 @@
+{
+  "evidence": "818c2ec5; CI 43771676879 passed",
+  "group": "Screen Saver Mode",
+  "note": "Spec: none (test only)",
+  "order": 265,
+  "ref": "CI 43769610569",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "CI: test_run_scope_only flagged Screen Saver Mode's main-thread timer; exempted (idle clock is not a Run timer)",
+  "updatedAt": "2026-11-15T23:17:00Z"
+}

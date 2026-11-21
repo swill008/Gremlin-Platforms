@@ -1,0 +1,11 @@
+{
+  "evidence": "cbdbf1db; switch-interval.md, switch-fails.md section 4",
+  "group": "Runtime",
+  "note": "Spec: 01 S182 (kept, user 2026-11-20 '3 a'). OSC test failure was test-side (Stop/Run helpers), fixed.",
+  "order": 282,
+  "ref": "user 2026-11-19 (discussion)",
+  "severity": "decision",
+  "status": "done",
+  "title": "Faster thread hand-over (0.5 ms): rare control waits 53 ms to 2 ms; an OSC trace test fails 3 of 6",
+  "updatedAt": "2026-11-20T04:38:00Z"
+}

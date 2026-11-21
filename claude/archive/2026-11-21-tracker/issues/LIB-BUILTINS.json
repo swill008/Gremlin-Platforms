@@ -1,0 +1,10 @@
+{
+  "evidence": "9db7bec2; test_library_builtin_always_listed.py; Spec: 10 S6 (D-10-LIB-BUILTINS)",
+  "group": "Device Library",
+  "order": 248,
+  "ref": "61",
+  "severity": "S3",
+  "status": "fixed (CI running)",
+  "title": "Device Library always lists Keyboard, OSC and Logical Device under INTERNAL INPUTS, with an empty line when nothing is saved",
+  "updatedAt": "2026-10-12T11:11:00Z"
+}

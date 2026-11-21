@@ -1,0 +1,12 @@
+{
+  "detail": "Every action (27), macro step and condition declares references(); guard test fails on undeclared new pieces; usages.py is the one who-uses-what owner; 7 walkers moved onto it; dead duplicates removed; Send OSC, Map to Mouse, Load Profile, Merge/Dual Axis reads now searchable.",
+  "evidence": "69e3a323; test_references_declared, test_plugin_references, test_step_condition_references, test_walkers_on_usages",
+  "group": "Design",
+  "note": "Spec: 01 S164, S157-S160 (D-01-REFERENCES)",
+  "order": 269,
+  "ref": "user 2026-10-12",
+  "severity": "S2",
+  "status": "fixed (CI running)",
+  "title": "Design for change: declared references and one who-uses-what owner",
+  "updatedAt": "2026-10-12T17:43:00Z"
+}

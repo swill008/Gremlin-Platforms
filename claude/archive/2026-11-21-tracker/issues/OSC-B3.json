@@ -1,0 +1,12 @@
+{
+  "detail": "Approved 11:02. Spec 09 S159-S164.",
+  "evidence": "6a55f094; Spec: 09 S159-S164 (S162 per TC1-TC4)",
+  "group": "OSC",
+  "note": "",
+  "order": 32,
+  "ref": "OSC-B3",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "OSC rewrite batch 3: conditions/macros, sender allow-list, shaping, TouchOSC import, scripts, encoder acceleration (OX9)",
+  "updatedAt": "2026-10-10T13:04:00Z"
+}

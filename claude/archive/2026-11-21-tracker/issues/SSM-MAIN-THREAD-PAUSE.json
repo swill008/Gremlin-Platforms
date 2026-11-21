@@ -1,0 +1,11 @@
+{
+  "evidence": "system.log 16:22:32 and 16:27:24 thread dumps",
+  "group": "Screen Saver Mode",
+  "note": "Spec: 12 S6",
+  "order": 264,
+  "ref": "map 12 section 10",
+  "severity": "gap",
+  "status": "open (recorded; user: does not matter much)",
+  "title": "Screen Saver Mode: Gremlin's window stops responding 8-9 s while the displays switch at power off (inside Qt's event loop); recovers on its own",
+  "updatedAt": "2026-11-15T23:17:00Z"
+}

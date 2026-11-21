@@ -1,0 +1,10 @@
+{
+  "evidence": "c93448ce; Spec: 12 S21; tested 07:04/07:06",
+  "group": "Screen Saver Mode",
+  "order": 291,
+  "ref": "to-do 142; user '2 a'",
+  "severity": "improvement",
+  "status": "done",
+  "title": "SSM: disable devices first, wait (limit), then power off displays",
+  "updatedAt": "2026-11-20T07:08:00Z"
+}

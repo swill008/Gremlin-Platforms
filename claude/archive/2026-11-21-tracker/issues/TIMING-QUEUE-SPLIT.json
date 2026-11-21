@@ -1,0 +1,10 @@
+{
+  "evidence": "cbdbf1db; Spec: 01 S179; test_trace_timing*.py, test_latency_report.py",
+  "group": "Tracing",
+  "order": 284,
+  "ref": "user 2026-11-20 '2 a'",
+  "severity": "improvement",
+  "status": "done",
+  "title": "Timing summary splits queue wait into 'waited behind earlier events' and 'hand-over'",
+  "updatedAt": "2026-11-20T04:38:00Z"
+}

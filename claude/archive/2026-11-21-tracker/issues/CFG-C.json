@@ -1,0 +1,12 @@
+{
+  "detail": "Configuration and Keyboard pages on the shared pieces; layout saved at File Save; per-page Appearance on all four list pages; old models/pages removed (RB16 closed).",
+  "evidence": "f5ff0c46; Spec 05 S121-S131, S122a, S125, S125a; CS1, AS1, AP2, AP3",
+  "group": "Configuration",
+  "note": "",
+  "order": 33,
+  "ref": "CFG-C",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Configuration page in the Logical Device style (batch C, CF-Q1..Q10)",
+  "updatedAt": "2026-10-10T13:44:00Z"
+}

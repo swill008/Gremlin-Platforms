@@ -1,0 +1,12 @@
+{
+  "detail": "D7 HidHide in use (program fix), D8 Button Map Recovery copies (program fix), D6 ids, spec text for D1-D5.",
+  "evidence": "a7136318",
+  "group": "Help",
+  "note": "",
+  "order": 65,
+  "ref": "D1-D8",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Help decisions: Server tab addresses, Companion rgb, exe name, diagnostics folder, LD card menu, color spelling, HidHide busy, recovery copies",
+  "updatedAt": "2026-10-10T16:49:00Z"
+}

@@ -1,0 +1,8 @@
+{
+  "evidence": "history_model._thing keyed by area|device; now module|device (08 S28). CI run 38197934439 failed on it.",
+  "group": "History",
+  "ref": "HIST-FOLD-1",
+  "severity": "medium",
+  "status": "fixed (b4f3ff13)",
+  "title": "History didn't fold two saves of the same device file when they were in different areas"
+}

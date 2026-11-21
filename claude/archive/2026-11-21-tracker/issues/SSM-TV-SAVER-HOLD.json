@@ -1,0 +1,11 @@
+{
+  "evidence": "4814f9ed, 1411b103; tried 03:54 on the user's PC",
+  "group": "Screen Saver Mode",
+  "note": "Spec: 12 S6 S7",
+  "order": 267,
+  "ref": "user 2026-11-16",
+  "severity": "bug",
+  "status": "fixed (released in 1.0.39)",
+  "title": "Screen Saver Mode: with a second display (TV) the screen saver held Power off displays",
+  "updatedAt": "2026-11-16T11:32:00Z"
+}

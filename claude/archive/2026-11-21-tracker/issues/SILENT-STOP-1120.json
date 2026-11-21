@@ -1,0 +1,8 @@
+{
+  "evidence": "claude/audits/2026-11-20-silent-stop.md; awaiting user's choice: process-exit auditing / screen saver (None) test / extra logging",
+  "group": "Screen Saver Mode",
+  "ref": "SILENT-STOP-1120",
+  "severity": "high",
+  "status": "open",
+  "title": "Installed app and device helper ended after 14:08 with no log, crash or WER record; devices left disabled"
+}

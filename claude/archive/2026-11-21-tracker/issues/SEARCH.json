@@ -1,0 +1,11 @@
+{
+  "evidence": "f6bd760d; test_usages, test_usages_model, test_search_window, test_find_uses_menus, test_search_e2e (failed on old code)",
+  "group": "Search",
+  "note": "Spec: 01 S58, S65, S67, S157-S163 (D-01-SEARCH, D-01-SEARCH-INHERITED)",
+  "order": 268,
+  "ref": "9",
+  "severity": "feature",
+  "status": "fixed (in 1.0.34)",
+  "title": "Search: every use of an input, output, mode or action type; Find uses…",
+  "updatedAt": "2026-10-12T17:43:00Z"
+}

@@ -1,0 +1,8 @@
+{
+  "evidence": "Spec 06 S185-S188 (D-06-DRIVERS) in 6c903bfb",
+  "group": "Outputs",
+  "ref": "DRV-2",
+  "severity": "feature",
+  "status": "approved, not built",
+  "title": "Tools > Drivers window, two-half HidHide update prompts, Open Drivers links"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "7efe327b; test_tray_window_sync.py::test_start_minimized_to_tray_leaves_no_native_window",
+  "group": "Window",
+  "note": "Spec: 01 S85 S174",
+  "order": 272,
+  "ref": "found 2026-11-19 (PLAN-WIN)",
+  "severity": "bug",
+  "status": "fixed (7efe327b)",
+  "title": "Start minimized with Minimize to tray: hide inside the visibility signal left a taskbar window with unloaded pages",
+  "updatedAt": "2026-11-19T13:37:00Z"
+}

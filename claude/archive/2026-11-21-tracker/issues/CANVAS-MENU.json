@@ -1,0 +1,11 @@
+{
+  "detail": "D-07-CANVAS-MENU 1a-6a (includes the G32 Save fix).",
+  "evidence": "2062380e; Spec: 07 S113 S126; 01 S143",
+  "group": "Button Map",
+  "order": 233,
+  "ref": "109",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Button Map: remove the Undo/Redo + Foreground/Background row; Edit Background / Exit Background Editing on the empty-space menu",
+  "updatedAt": "2026-10-11T13:52:00Z"
+}

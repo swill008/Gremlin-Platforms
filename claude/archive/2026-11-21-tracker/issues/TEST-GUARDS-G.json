@@ -1,0 +1,10 @@
+{
+  "evidence": "9db7bec2; test_keyboard_layout.py, test_app_config_switch_guard.py, test_history_window_stable.py",
+  "group": "Tests",
+  "order": 252,
+  "ref": "19, 126, 130",
+  "severity": "S4",
+  "status": "fixed (CI running)",
+  "title": "Test guards: keyboard layout (19), app-config switch watchdog (130), History smoke prints full output on failure (126, still watched)",
+  "updatedAt": "2026-10-12T11:11:00Z"
+}

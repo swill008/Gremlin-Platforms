@@ -1,0 +1,12 @@
+{
+  "detail": "D-09-OSC-NAMEKEYS approved 15:52. Agent O1-NAMEKEYS running.",
+  "evidence": "claude/decisions.md",
+  "group": "Code audit",
+  "note": "a7136318, Spec: 09 S44a",
+  "order": 60,
+  "ref": "O1",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Remove the old OSC name-key converter (convert_friendly_keys)",
+  "updatedAt": "2026-10-10T16:49:00Z"
+}

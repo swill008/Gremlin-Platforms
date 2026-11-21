@@ -1,0 +1,11 @@
+{
+  "evidence": "7efe327b; test_tray_window_sync.py",
+  "group": "Window",
+  "note": "Spec: 01 S174 S175 S85 S87, D-01-TRAY-TRUTH",
+  "order": 271,
+  "ref": "user 2026-11-19",
+  "severity": "bug",
+  "status": "fixed (7efe327b), not yet tried by the user",
+  "title": "Main window showed blank: Windows showed the window hidden to the tray behind Qt's back, pages stayed unloaded",
+  "updatedAt": "2026-11-19T13:37:00Z"
+}

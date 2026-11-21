@@ -1,0 +1,11 @@
+{
+  "evidence": "e4dc194c, a4697235; tried 05:02 with /LOG",
+  "group": "Installer",
+  "note": "Spec: 01 S173",
+  "order": 270,
+  "ref": "user 2026-11-16, to-do 139",
+  "severity": "feature",
+  "status": "fixed (released in 1.0.39)",
+  "title": "Installer asks a running Gremlin to quit (tray quit request), waits 10 s, installs and starts it again",
+  "updatedAt": "2026-11-16T11:32:00Z"
+}

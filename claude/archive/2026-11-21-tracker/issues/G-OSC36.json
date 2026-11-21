@@ -1,0 +1,12 @@
+{
+  "detail": "Saved in program settings when the grip is let go.",
+  "evidence": "52a8c2f0; Spec 09 S137; test_osc_monitor_height.py",
+  "group": "OSC",
+  "note": "",
+  "order": 36,
+  "ref": "G-OSC36",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "OSC Monitor height not remembered",
+  "updatedAt": "2026-10-10T12:03:00Z"
+}

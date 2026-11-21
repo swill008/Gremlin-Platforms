@@ -1,0 +1,12 @@
+{
+  "detail": "Method B: three shared parts (ActionPane page leave, PageAppearance, control_menu.js) used by all four list pages; ~456 page lines removed; 23/24 screenshots pixel-identical, 1 = Clear Name on Configuration (PB2). Method A not used.",
+  "evidence": "e2267c9b; D-05-PAGE-PARTS; Spec 05 S132 (PB2)",
+  "group": "Code audit",
+  "note": "",
+  "order": 50,
+  "ref": "PAGE-SHELL-DUP / TODO-91",
+  "severity": "refactor",
+  "status": "fixed",
+  "title": "The four list pages still repeat the same page glue (menus, leave/pane functions, page bar)",
+  "updatedAt": "2026-10-10T14:26:00Z"
+}

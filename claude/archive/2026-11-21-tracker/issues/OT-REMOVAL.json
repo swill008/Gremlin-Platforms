@@ -1,0 +1,10 @@
+{
+  "evidence": "74f9692e; ot-removal-data-check.md; todo 144, 145",
+  "group": "One-time code",
+  "order": 296,
+  "ref": "user 2026-11-20",
+  "severity": "cleanup",
+  "status": "done; OT-2/2b/6/7 open until the user says",
+  "title": "One-time code OT-1, OT-3, OT-4, OT-5 removed; OT-2 kept (+OT-2b on-disk conversion); new OT-6 (R1 installer copy), OT-7 (R1 Start menu clean-up)",
+  "updatedAt": "2026-11-20T08:57:00Z"
+}

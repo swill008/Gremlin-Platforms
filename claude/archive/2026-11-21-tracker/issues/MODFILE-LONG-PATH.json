@@ -1,0 +1,10 @@
+{
+  "evidence": "9db7bec2; test_library_long_path.py",
+  "group": "Modules",
+  "order": 249,
+  "ref": "104",
+  "severity": "S3",
+  "status": "fixed (CI running)",
+  "title": "Module file saves work in long folders (extended-length temp path); autosave named 'Autosave <time>.gmap'",
+  "updatedAt": "2026-10-12T11:11:00Z"
+}

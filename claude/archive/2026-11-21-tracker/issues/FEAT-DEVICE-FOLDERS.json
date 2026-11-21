@@ -1,0 +1,12 @@
+{
+  "detail": "D-03-DEVICE-FOLDERS. Built first. Closes to-do 28 (no shared picture library).",
+  "evidence": "44ab601c; Spec: 03 S1 S3 S4 S6 S52 S54 S58 S62 S92 S94 S128-S134; 07 S10 S12 S26 S32 S36 S40 S62 S76 S80 S106-S110; 08 S8 S14 S43 S49 S73 S111 S112; 10 S11 S14 S18 S20a S35 S39 S41 S44 S52 S57 S60 S61 S63",
+  "group": "Button Map",
+  "note": "Built 2026-10-11 with D-08-GMAP-IMPORT and D-10-GMAP-SETUPS; about 280 test files moved; full run green (seed 758199).",
+  "order": 218,
+  "ref": "106a",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "Device folders: one folder per device (settings, Button Map, pictures), Export/Import .gmap",
+  "updatedAt": "2026-10-11T10:52:00Z"
+}

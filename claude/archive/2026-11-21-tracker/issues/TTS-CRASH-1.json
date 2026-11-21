@@ -1,0 +1,8 @@
+{
+  "evidence": "test_tts_release.py: access violation in gremlin/tts.py:146 close() from shutdown_cleanup under load; passes alone 3/3.",
+  "group": "Tests",
+  "ref": "TTS-CRASH-1",
+  "severity": "medium",
+  "status": "open (todo 111)",
+  "title": "Native crash in the speech engine release during a full test run"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "c52f7205",
+  "group": "Next run 2026-10-12",
+  "note": "Spec: 03 S81",
+  "order": 202,
+  "ref": "D-NEXTLIST-1 #2 #3",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Home card drag looks like Device Bindings; cards up to 1080 x 780",
+  "updatedAt": "2026-10-12T12:52:00Z"
+}

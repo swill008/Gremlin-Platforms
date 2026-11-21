@@ -1,0 +1,10 @@
+{
+  "evidence": "claude/todo.md 115",
+  "group": "To-do",
+  "order": 208,
+  "ref": "to-do 115",
+  "severity": "S4",
+  "status": "open",
+  "title": "Test-only program code left: bind_devices, Library.remove_unused, create_instance, start_fresh, get_variable",
+  "updatedAt": "2026-10-12T12:52:00Z"
+}

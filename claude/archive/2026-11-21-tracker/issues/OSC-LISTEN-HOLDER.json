@@ -1,0 +1,12 @@
+{
+  "detail": "Now one 'Could not start OSC listener.' naming the holder.",
+  "evidence": "a7136318; test_osc_listen_port_holder.py",
+  "group": "Code audit",
+  "note": "",
+  "order": 66,
+  "ref": "G-OSC64",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Listen error didn't name the program holding the OSC port (S18)",
+  "updatedAt": "2026-10-10T16:49:00Z"
+}

@@ -1,0 +1,34 @@
+{
+  "agents": [
+    {
+      "name": "(none running)",
+      "state": "idle"
+    }
+  ],
+  "ci": "6c903bfb pushed 03:28; no CI run listed yet for 5200a6f9 or 6c903bfb",
+  "lastTest": "6c903bfb: --changed 512 passed (6 parts), pyright no new errors, ruff clean; new S4a test failed on the old code",
+  "log": [
+    {
+      "m": "Driver setup in the installer approved: spec 01 S187-S192, 06 S185-S188 (not built)",
+      "t": "03:16"
+    },
+    {
+      "m": "Unapproved S41 removed; S4a one screen saver at a time, 6c903bfb",
+      "t": "03:28"
+    },
+    {
+      "m": "Page 12 S25/S25a/S25b helper driver jobs written, b771c0a2",
+      "t": "03:29"
+    }
+  ],
+  "next": "Hyper-V test machine after the user's restart; driver setup build waits for 'build'.",
+  "now": "Driver spec complete on all three pages (b771c0a2).",
+  "program": {
+    "ci": "not listed yet on b771c0a2",
+    "head": "Gremlin-Platforms b771c0a2",
+    "release": "Gremlin-Platforms-R2 1.1.0",
+    "releaseUrl": "https://github.com/swill008/Gremlin-Platforms/releases/tag/Gremlin-Platforms-R2-1.1.0"
+  },
+  "statusLine": "[Driver spec · all pages written · b771c0a2]",
+  "updated": "2026-11-21 03:29"
+}

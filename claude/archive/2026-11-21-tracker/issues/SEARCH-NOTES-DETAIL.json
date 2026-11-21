@@ -1,0 +1,11 @@
+{
+  "evidence": "e3db84ac; test_search_model notes tests, e2e part 10",
+  "group": "Search",
+  "note": "Spec: 01 S167 D-01-SEARCH-FINISH",
+  "order": 301,
+  "ref": "gap 01 SEARCH-NOTES-DETAIL",
+  "severity": "S4",
+  "status": "fixed (CI running)",
+  "title": "Search detail pane does not show the action's typed text (it is searched, not shown)",
+  "updatedAt": "2026-10-13T00:14:00Z"
+}

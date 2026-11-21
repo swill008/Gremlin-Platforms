@@ -1,0 +1,446 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Gremlin-Platforms Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an instrument-panel punch list — summary gauges on top, a filter rail, then grouped rows that expand for evidence and notes. */
+:root {
+  --bg: #eef1f5;
+  --panel: #ffffff;
+  --panel-2: #f6f8fb;
+  --line: #d6dce5;
+  --fg: #16202c;
+  --muted: #5b6878;
+  --accent: #b86e00;
+  --accent-soft: #fbecd2;
+  --sev-crash: #8e1b4f;
+  --sev-loss: #c0352b;
+  --sev-ux: #0f7f86;
+  --sev-bug: #c46a00;
+  --sev-flow: #2f6fb3;
+  --sev-name: #6c4fb0;
+  --sev-clean: #5b6878;
+  --sev-feature: #23804a;
+  --st-open: #5b6878;
+  --st-planned: #2f6fb3;
+  --st-progress: #b86e00;
+  --st-fixed: #23804a;
+  --st-wont: #8a8f98;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e141c; --panel: #151d28; --panel-2: #1a2431; --line: #2a3646;
+    --fg: #e4eaf2; --muted: #93a1b3; --accent: #f0a338; --accent-soft: #3a2a12;
+    --sev-crash: #f06fa8; --sev-loss: #f0675c; --sev-ux: #4cc4cc; --sev-bug: #f0a338; --sev-flow: #6aa8ea; --sev-name: #ab93ec; --sev-clean: #93a1b3; --sev-feature: #4fc27f;
+    --st-open: #93a1b3; --st-planned: #6aa8ea; --st-progress: #f0a338; --st-fixed: #4fc27f; --st-wont: #6f7a88;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e141c; --panel: #151d28; --panel-2: #1a2431; --line: #2a3646;
+  --fg: #e4eaf2; --muted: #93a1b3; --accent: #f0a338; --accent-soft: #3a2a12;
+  --sev-crash: #f06fa8; --sev-loss: #f0675c; --sev-ux: #4cc4cc; --sev-bug: #f0a338; --sev-flow: #6aa8ea; --sev-name: #ab93ec; --sev-clean: #93a1b3; --sev-feature: #4fc27f;
+  --st-open: #93a1b3; --st-planned: #6aa8ea; --st-progress: #f0a338; --st-fixed: #4fc27f; --st-wont: #6f7a88;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 48px; display: grid; gap: 20px; }
+header { display: grid; gap: 4px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 4vw, 38px); line-height: 1.05; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 68ch; }
+
+.gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.gauge { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
+.gauge .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.gauge .val { font-family: var(--font-display); font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.bar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; display: flex; }
+.bar span { display: block; height: 100%; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.filters label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+select, input[type="search"], textarea { font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+input[type="search"] { flex: 1 1 200px; min-width: 0; }
+select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); border-radius: 999px; padding: 3px 10px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+
+.notice { font-size: 13px; color: var(--muted); }
+.notice.warn { color: var(--sev-bug); }
+
+section.group { display: grid; gap: 8px; }
+.group h2 { font-family: var(--font-display); font-size: 21px; font-weight: 700; margin: 8px 0 0; display: flex; gap: 10px; align-items: baseline; }
+.group h2 .count { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-weight: 400; }
+
+details.item { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--sev-clean); border-radius: 6px; }
+details.item[data-sev="crash"] { border-left-color: var(--sev-crash); }
+details.item[data-sev="data-loss"] { border-left-color: var(--sev-loss); }
+details.item[data-sev="ux"] { border-left-color: var(--sev-ux); }
+details.item[data-sev="bug"] { border-left-color: var(--sev-bug); }
+details.item[data-sev="workflow"] { border-left-color: var(--sev-flow); }
+details.item[data-sev="naming"] { border-left-color: var(--sev-name); }
+details.item[data-sev="feature"] { border-left-color: var(--sev-feature); }
+details.item[data-status="fixed"], details.item[data-status="wont-fix"] { opacity: .62; }
+summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; }
+summary::-webkit-details-marker { display: none; }
+.ref { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--muted); overflow-wrap: anywhere; }
+.title { min-width: 0; font-weight: 500; }
+.title .tags { display: inline-flex; gap: 6px; margin-left: 8px; vertical-align: 1px; }
+.tag { font-family: var(--font-mono); font-size: 11px; border-radius: 4px; padding: 1px 6px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.status-pill { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 10px; white-space: nowrap; border: 1px solid currentColor; }
+.body { padding: 0 12px 12px 74px; display: grid; gap: 10px; }
+.body p { margin: 0; max-width: 72ch; }
+.evidence { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.edit { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: start; }
+.edit label { font-size: 13px; color: var(--muted); padding-top: 6px; }
+textarea { width: 100%; min-height: 56px; resize: vertical; }
+.row-actions { display: flex; gap: 8px; align-items: center; }
+button.save { font: inherit; font-size: 13px; font-weight: 600; background: var(--accent); color: var(--panel); border: 0; border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+button.save[disabled] { opacity: .45; cursor: default; }
+.saved { font-size: 12px; color: var(--st-fixed); }
+.now { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.now-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.now h2 { font-family: var(--font-display); font-size: 22px; margin: 0; }
+.now-when { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.now-status { margin: 0; font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; }
+.now-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.now-box { min-width: 0; display: grid; gap: 4px; align-content: start; }
+.now-box .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.now-box p, .now-box li { margin: 0; overflow-wrap: anywhere; }
+.now-box ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+.now-box a { color: var(--accent); }
+.empty { background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; padding: 24px; color: var(--muted); text-align: center; }
+
+@media (max-width: 600px) {
+  summary { grid-template-columns: 44px minmax(0, 1fr); }
+  summary .status-pill { grid-column: 2; justify-self: start; }
+  .body { padding-left: 12px; }
+  .edit { grid-template-columns: 1fr; }
+  .edit label { padding-top: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  details.item { transition: opacity .2s; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow" id="eyebrow">Gremlin-Platforms R1 · issue tracker</div>
+    <h1>Issue tracker</h1>
+    <p class="sub">The one place to follow Gremlin-Platforms work, started fresh on 10 Oct 2026. "Now" shows what is happening, the agents, the last test run, CI and the latest release. Below it is every open issue, fix, feature and gap: Claude adds an item at every commit and sets the status of items it fixes, with the commit and spec line as evidence. The older tracker (2–10 Oct, 880 items) is archived in the repo at claude/archive/2026-10-10-tracker/.</p>
+  </header>
+
+  <section class="now" id="now" aria-live="polite">
+    <div class="now-head"><h2>Now</h2><span class="now-when" id="nowWhen"></span></div>
+    <p class="now-status" id="nowStatus">Loading…</p>
+    <div class="now-grid" id="nowGrid"></div>
+  </section>
+
+  <div class="gauges" id="gauges" aria-live="polite"></div>
+
+  <div class="filters" role="search">
+    <input type="search" id="q" placeholder="Search title, file or ID" aria-label="Search">
+    <label for="fGroup">Group
+      <select id="fGroup">
+        <option value="">All</option>
+      </select>
+    </label>
+    <label for="fStatus">Status
+      <select id="fStatus">
+        <option value="">All</option>
+        <option value="active">Not done</option>
+        <option value="open">Open</option>
+        <option value="planned">Planned</option>
+        <option value="in-progress">In progress</option>
+        <option value="fixed">Fixed</option>
+        <option value="wont-fix">Won't fix</option>
+      </select>
+    </label>
+    <div class="chips" id="sevChips" aria-label="Severity"></div>
+  </div>
+
+  <p class="notice" id="notice">Loading the list…</p>
+  <div id="list"></div>
+</div>
+
+<script>
+// Newest work first. A group not listed here still shows, under "Other".
+const GROUPS = {
+  Release: "Release 1.0.31",
+  Audit: "Code audit and shake-out (after 1.0.31)",
+  Carried: "Carried over (still open on 10 Oct)",
+  Tests: "Tests and CI",
+};
+const OTHER = "Other";
+// A severity not listed here still shows, as "Other".
+const SEV = [
+  ["crash", "Crash", "--sev-crash"],
+  ["data-loss", "Data loss", "--sev-loss"],
+  ["bug", "Bug", "--sev-bug"],
+  ["ux", "UX", "--sev-ux"],
+  ["workflow", "Workflow", "--sev-flow"],
+  ["naming", "Naming", "--sev-name"],
+  ["feature", "Feature", "--sev-feature"],
+  ["gap", "Gap", "--sev-clean"],
+  ["docs", "Docs", "--sev-clean"],
+  ["cleanup", "Clean-up", "--sev-clean"],
+  ["other", "Other", "--sev-clean"],
+];
+const STATUS = [
+  ["open", "Open", "--st-open"],
+  ["planned", "Planned", "--st-planned"],
+  ["in-progress", "In progress", "--st-progress"],
+  ["fixed", "Fixed", "--st-fixed"],
+  ["wont-fix", "Won't fix", "--st-wont"],
+];
+const VERDICT = { partly: "partly", "by-design": "by design", planned: "planned", confirmed: "confirmed", suspected: "suspected", "needs-hands-on": "hands-on" };
+
+let items = [];
+let db = null;
+let canWrite = true;
+const openRefs = new Set();
+const sevOn = new Set(SEV.map(s => s[0]));
+const drafts = {};
+
+const sevKey = i => (SEV.some(s => s[0] === i.severity) ? i.severity : "other");
+const groupKey = i => (GROUPS[i.group] ? i.group : OTHER);
+// "not a bug" counts as done, like "won't fix".
+const isDone = i => i.status === "fixed" || i.status === "wont-fix" || i.status === "not a bug";
+
+function el(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") n.className = v;
+    else if (k === "text") n.textContent = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const k of kids) if (k) n.append(k);
+  return n;
+}
+const color = token => `var(${token})`;
+
+function buildGroupFilter() {
+  const sel = document.getElementById("fGroup");
+  for (const [key, label] of Object.entries(GROUPS)) sel.append(el("option", { value: key, text: label }));
+  sel.append(el("option", { value: OTHER, text: OTHER }));
+}
+
+function buildChips() {
+  const box = document.getElementById("sevChips");
+  for (const [key, label, token] of SEV) {
+    const b = el("button", { class: "chip", type: "button", "aria-pressed": "true" },
+      el("span", { class: "dot", style: `background:${color(token)}` }), label);
+    b.addEventListener("click", () => {
+      if (sevOn.has(key)) sevOn.delete(key); else sevOn.add(key);
+      b.setAttribute("aria-pressed", sevOn.has(key) ? "true" : "false");
+      render();
+    });
+    box.append(b);
+  }
+}
+
+function eyebrow() {
+  const e = document.getElementById("eyebrow");
+  let newest = "";
+  for (const i of items) if (i.updatedAt && i.updatedAt > newest) newest = i.updatedAt;
+  if (!newest) { e.textContent = "Gremlin-Platforms R1 · issue tracker"; return; }
+  const d = new Date(newest);
+  const when = isNaN(d) ? newest.slice(0, 10)
+    : d.toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  e.textContent = `Gremlin-Platforms R1 · updated ${when} · ${items.length} items`;
+}
+
+function gauges() {
+  const g = document.getElementById("gauges");
+  g.replaceChildren();
+  const total = items.length;
+  const by = s => items.filter(i => i.status === s).length;
+  const done = items.filter(isDone).length;
+  const pct = total ? Math.round(done * 100 / total) : 0;
+  const prog = el("div", { class: "gauge" },
+    el("div", { class: "lbl", text: "Done" }),
+    el("div", { class: "val", text: `${done} / ${total}` }));
+  const bar = el("div", { class: "bar", role: "img", "aria-label": `${pct}% done` });
+  for (const [key, , token] of STATUS) {
+    const n = by(key);
+    if (n && key !== "open") bar.append(el("span", { style: `width:${n * 100 / total}%;background:${color(token)}` }));
+  }
+  prog.append(bar);
+  g.append(prog);
+  const loss = items.filter(i => (i.severity === "data-loss" || i.severity === "crash") && !isDone(i)).length;
+  g.append(el("div", { class: "gauge" },
+    el("div", { class: "lbl", text: "Crash or data loss, not done" }),
+    el("div", { class: "val", style: `color:${color("--sev-loss")}`, text: String(loss) })));
+  for (const [key, label, token] of STATUS.slice(0, 4)) {
+    g.append(el("div", { class: "gauge" },
+      el("div", { class: "lbl", text: label }),
+      el("div", { class: "val", style: `color:${color(token)}`, text: String(by(key)) })));
+  }
+}
+
+function matches(i) {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const grp = document.getElementById("fGroup").value;
+  const st = document.getElementById("fStatus").value;
+  if (grp && groupKey(i) !== grp) return false;
+  if (st === "active" && isDone(i)) return false;
+  if (st && st !== "active" && i.status !== st) return false;
+  if (!sevOn.has(sevKey(i))) return false;
+  if (q) {
+    const hay = `${i.ref} ${i.title} ${i.detail} ${i.evidence} ${i.note || ""}`.toLowerCase();
+    if (!q.split(/\s+/).every(w => hay.includes(w))) return false;
+  }
+  return true;
+}
+
+async function write(ref, fields, statusEl) {
+  if (!db || !canWrite) return;
+  try {
+    await db.collection("issues").doc(ref).update({ ...fields, updatedAt: new Date().toISOString() });
+    if (statusEl) { statusEl.textContent = "Saved"; setTimeout(() => { statusEl.textContent = ""; }, 1800); }
+  } catch (e) {
+    if (e && e.code === "invalid_argument") { canWrite = false; setNotice("You can view this list but not change it.", false); render(); }
+    else if (statusEl) statusEl.textContent = "Not saved. Try again.";
+  }
+}
+
+function itemRow(i) {
+  const st = STATUS.find(s => s[0] === i.status) || (i.status === "not a bug" ? ["not a bug", "Not a bug", "--st-wont"] : STATUS[0]);
+  const d = el("details", { class: "item", "data-sev": i.severity, "data-status": isDone(i) ? "fixed" : i.status });
+  if (openRefs.has(i.ref)) d.open = true;
+  d.addEventListener("toggle", () => { if (d.open) openRefs.add(i.ref); else openRefs.delete(i.ref); });
+  const tags = el("span", { class: "tags" });
+  const sevLabel = (SEV.find(s => s[0] === sevKey(i)) || SEV[SEV.length - 1])[1];
+  tags.append(el("span", { class: "tag", text: sevLabel }));
+  if (VERDICT[i.verdict]) tags.append(el("span", { class: "tag", text: VERDICT[i.verdict] }));
+  d.append(el("summary", {},
+    el("span", { class: "ref", text: i.ref }),
+    el("span", { class: "title" }, i.title, tags),
+    el("span", { class: "status-pill", style: `color:${color(st[2])}`, text: st[1] })));
+  const body = el("div", { class: "body" });
+  if (i.detail) body.append(el("p", { text: i.detail }));
+  body.append(el("div", { class: "evidence", text: i.evidence || "" }));
+  const edit = el("div", { class: "edit" });
+  const sel = el("select", { id: `st-${i.ref}`, "aria-label": `Status of ${i.ref}` });
+  for (const [key, label] of STATUS) {
+    const o = el("option", { value: key, text: label });
+    if (key === i.status) o.selected = true;
+    sel.append(o);
+  }
+  sel.disabled = !canWrite || !db;
+  const savedSt = el("span", { class: "saved", "aria-live": "polite" });
+  sel.addEventListener("change", () => write(i.ref, { status: sel.value }, savedSt));
+  edit.append(el("label", { for: `st-${i.ref}`, text: "Status" }), el("div", { class: "row-actions" }, sel, savedSt));
+  const ta = el("textarea", { id: `note-${i.ref}`, placeholder: "Notes: decision, plan, commit…" });
+  ta.value = drafts[i.ref] !== undefined ? drafts[i.ref] : (i.note || "");
+  ta.disabled = !canWrite || !db;
+  const save = el("button", { class: "save", type: "button", text: "Save note" });
+  const savedNote = el("span", { class: "saved", "aria-live": "polite" });
+  save.disabled = ta.value === (i.note || "");
+  ta.addEventListener("input", () => { drafts[i.ref] = ta.value; save.disabled = ta.value === (i.note || ""); });
+  save.addEventListener("click", async () => {
+    save.disabled = true;
+    await write(i.ref, { note: ta.value }, savedNote);
+    delete drafts[i.ref];
+  });
+  edit.append(el("label", { for: `note-${i.ref}`, text: "Note" }),
+    el("div", { style: "display:grid;gap:6px" }, ta, el("div", { class: "row-actions" }, save, savedNote)));
+  body.append(edit);
+  d.append(body);
+  return d;
+}
+
+function render() {
+  eyebrow();
+  gauges();
+  const list = document.getElementById("list");
+  list.replaceChildren();
+  if (!items.length) {
+    list.append(el("div", { class: "empty", text: db ? "No issues in the list yet. Claude adds them from the review." : "The shared list isn't available in this view." }));
+    return;
+  }
+  const shown = items.filter(matches);
+  if (!shown.length) { list.append(el("div", { class: "empty", text: "No issues match these filters." })); return; }
+  for (const key of [...Object.keys(GROUPS), OTHER]) {
+    const rows = shown.filter(i => groupKey(i) === key);
+    if (!rows.length) continue;
+    const sec = el("section", { class: "group" },
+      el("h2", {}, GROUPS[key] || OTHER, el("span", { class: "count", text: `${rows.length} shown` })));
+    for (const i of rows) sec.append(itemRow(i));
+    list.append(sec);
+  }
+}
+
+function box(label, ...kids) {
+  return el("div", { class: "now-box" }, el("div", { class: "lbl", text: label }), ...kids);
+}
+function list(lines) {
+  const u = el("ul");
+  for (const line of lines || []) u.append(el("li", { text: String(line) }));
+  return u;
+}
+function renderNow(n) {
+  const status = document.getElementById("nowStatus");
+  const grid = document.getElementById("nowGrid");
+  grid.replaceChildren();
+  if (!n) { status.textContent = "Nothing recorded yet."; return; }
+  status.textContent = n.statusLine || "";
+  document.getElementById("nowWhen").textContent = n.updated ? `updated ${n.updated}` : "";
+  if (n.now) grid.append(box("Doing now", el("p", { text: n.now })));
+  if (n.next) grid.append(box("Next", el("p", { text: n.next })));
+  if (n.agents && n.agents.length) grid.append(box("Agents", list(n.agents.map(a => `${a.name}: ${a.job} (${a.state})`))));
+  if (n.lastTest) grid.append(box("Last test run", el("p", { text: n.lastTest })));
+  const p = n.program || {};
+  const progBox = [];
+  if (p.head) progBox.push(el("p", { text: `Branch head: ${p.head}` }));
+  if (p.ci) progBox.push(el("p", { text: `CI: ${p.ci}` }));
+  if (p.release) {
+    const r = el("p", { text: "Latest release: " });
+    if (p.releaseUrl && /^https:\/\/github\.com\//.test(p.releaseUrl)) r.append(el("a", { href: p.releaseUrl, target: "_blank", rel: "noopener", text: p.release }));
+    else r.append(p.release);
+    progBox.push(r);
+  }
+  if (progBox.length) grid.append(box("The program", ...progBox));
+  if (n.open && n.open.length) grid.append(box("Open (your choice)", list(n.open)));
+  if (n.log && n.log.length) grid.append(box("Log", list(n.log.map(l => `${l.t}  ${l.m}`))));
+}
+
+function setNotice(text, warn) {
+  const n = document.getElementById("notice");
+  n.textContent = text;
+  n.className = warn ? "notice warn" : "notice";
+  n.hidden = !text;
+}
+
+for (const id of ["q", "fGroup", "fStatus"]) document.getElementById(id).addEventListener("input", render);
+buildGroupFilter();
+buildChips();
+render();
+
+(async () => {
+  if (!window.claude || !window.claude.use) { setNotice("Open this page on claude.ai to see the shared list.", true); return; }
+  db = await window.claude.use("db");
+  if (!db) { setNotice("The shared list isn't available in this view. Sign in to see it.", true); render(); return; }
+  const user = await window.claude.use("user");
+  if (user) {
+    const w = await user.can("data.write");
+    if (w === false) canWrite = false;
+  }
+  db.doc("tracker/now").onSnapshot(d => renderNow(d.exists ? d.data() : null),
+    () => { document.getElementById("nowStatus").textContent = "The Now panel stopped updating. Reload the page."; });
+  db.collection("issues").orderBy("order").limit(1000).onSnapshot(snap => {
+    items = snap.docs.filter(d => d.exists).map(d => ({ ...d.data() }));
+    setNotice(canWrite ? "" : "You can view this list but not change it.", false);
+    render();
+  }, () => setNotice("The list stopped updating. Reload the page to reconnect.", true));
+})();
+</script>
+
+</body></html>

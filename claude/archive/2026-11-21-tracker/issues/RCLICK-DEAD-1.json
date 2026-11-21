@@ -1,0 +1,8 @@
+{
+  "evidence": "User repeats it often by right-clicking around a background picture. Not reproduced off-screen (544 cases); not the Path tool; not menu-already-open alternation. Separate: clicks in strips outside the zoomed/panned map are ignored (RigPointerArea covers only the scaled map), fix awaiting user's answer.",
+  "group": "Device Mapping Editor",
+  "ref": "RCLICK-DEAD-1",
+  "severity": "high",
+  "status": "fixed (b4f3ff13): click zone is the whole view; the user's trace proved the clicks were outside the map's box",
+  "title": "Right-click menu in the Device Mapping Editor sometimes doesn't open (several clicks in a row); left clicks on the image sometimes do nothing"
+}

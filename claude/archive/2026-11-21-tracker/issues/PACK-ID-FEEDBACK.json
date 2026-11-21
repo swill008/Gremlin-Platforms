@@ -1,0 +1,12 @@
+{
+  "detail": "Pack's own action_state rows now follow the new ids in the same write.",
+  "evidence": "36bbcdb7; D-09-OSC-ACTSTATE",
+  "group": "OSC",
+  "note": "",
+  "order": 43,
+  "ref": "PACK-ID-FEEDBACK",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Device Pack: feedback rows lost their action after an id remap",
+  "updatedAt": "2026-10-10T12:41:00Z"
+}

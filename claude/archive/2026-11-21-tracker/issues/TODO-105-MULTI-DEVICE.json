@@ -1,0 +1,11 @@
+{
+  "detail": "RIG preset (pJoy Pro, Saitek X52, two Twin Sticks, vJoy 1+2), unplug/replug, test_j13_multi_device (7, ~9 s). It found the vJoy Viewer device list ignoring renames; fixed (PAIR-NAMES). Full run time after: journeys 58 s, unit parts ~5 min (one part 7 min under load).",
+  "evidence": "4ada874f",
+  "group": "Tests",
+  "order": 216,
+  "ref": "105",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "Tests use one stick and one vJoy by default: add a multi-device rig and journey",
+  "updatedAt": "2026-10-11T08:03:00Z"
+}

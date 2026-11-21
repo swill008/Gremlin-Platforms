@@ -1,0 +1,12 @@
+{
+  "detail": "",
+  "evidence": "to-do 85",
+  "group": "Carried",
+  "note": "",
+  "order": 11,
+  "ref": "TODO-85",
+  "severity": "gap",
+  "status": "open",
+  "title": "Not checked whether HidHide can hide an Xbox pad from XInput",
+  "updatedAt": "2026-10-10T10:16:00Z"
+}

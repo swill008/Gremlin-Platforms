@@ -1,0 +1,10 @@
+{
+  "evidence": "5d680c9b; Spec: 07 S134 (Insert, Arrange, Leader, Format)",
+  "group": "Button Map",
+  "order": 238,
+  "ref": "113",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Button Map: every command in the menu bar (new Insert, Arrange, Format menus)",
+  "updatedAt": "2026-10-11T15:57:00Z"
+}

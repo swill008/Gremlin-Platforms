@@ -1,0 +1,11 @@
+{
+  "evidence": "c52f7205",
+  "group": "Next run 2026-10-12",
+  "note": "Spec: 01 S58, 06 S64",
+  "order": 201,
+  "ref": "D-NEXTLIST-1 #1",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Xbox Viewer moved into the Xbox Output View (foldable Live pads)",
+  "updatedAt": "2026-10-12T12:52:00Z"
+}

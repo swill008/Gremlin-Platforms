@@ -1,0 +1,10 @@
+{
+  "evidence": "74f9692e; https://github.com/swill008/Gremlin-Platforms/releases/tag/Gremlin-Platforms-R2-1.1.0",
+  "group": "Release",
+  "order": 295,
+  "ref": "user 2026-11-20 'release it now'",
+  "severity": "release",
+  "status": "done",
+  "title": "Released Gremlin-Platforms R2 1.1.0 (R2 + R1-named installer, zip)",
+  "updatedAt": "2026-11-20T08:57:00Z"
+}

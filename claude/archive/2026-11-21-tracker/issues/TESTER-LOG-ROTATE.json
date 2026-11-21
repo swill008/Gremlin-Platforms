@@ -1,0 +1,11 @@
+{
+  "detail": "Found as a CI flake (twice). log.py dropped the file log on any OSError, incl. a PermissionError from os.replace while another process had the file open. Now the rename is retried on the next line and writing continues.",
+  "evidence": "909bbba6; Spec: 02 S116",
+  "group": "Input Tester",
+  "order": 235,
+  "ref": "107",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "Input Tester stopped writing tester.log after Windows refused the 1 MB rotation",
+  "updatedAt": "2026-10-11T14:22:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "evidence": "03e02cd7; test_chip_tooltip_zoom.py (failed old at 4x/8x)",
+  "group": "Device Mapping Editor",
+  "order": 211,
+  "ref": "user 2026-10-12",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Chip hover tooltip drifted up-left by (zoom-1) x its size when zoomed",
+  "updatedAt": "2026-10-12T13:19:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "c52f7205",
+  "group": "Next run 2026-10-12",
+  "note": "Spec: 03 S52 S81, 07 S127 S160, 08 S8",
+  "order": 200,
+  "ref": "D-NEXTLIST-1 DI",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Device Image for input modules: Add/Change/Remove Image on the Home card and in Module Setup",
+  "updatedAt": "2026-10-12T12:52:00Z"
+}

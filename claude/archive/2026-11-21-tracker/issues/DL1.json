@@ -1,0 +1,12 @@
+{
+  "detail": "Found by AUD-DEV-04, verified by the lead: dill/__init__.py loads the DLL at import; fake_hardware swaps DILL._dll only after. Fix approved: lazy load (a), test-wide guard incl. children (b), full run to find stragglers (c).",
+  "evidence": "dc58bdab; test_dill_safety.py; full run: 0 tests reach the real dill",
+  "group": "Tests / safety",
+  "note": "",
+  "order": 55,
+  "ref": "DL1",
+  "severity": "safety",
+  "status": "fixed",
+  "title": "Tests load the real dill.dll (at import in every test process; some child processes never install the fake)",
+  "updatedAt": "2026-10-10T15:07:00Z"
+}

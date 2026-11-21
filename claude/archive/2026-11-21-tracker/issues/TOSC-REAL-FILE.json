@@ -1,0 +1,12 @@
+{
+  "detail": "Only the tosclib editor-made sample is tested; index-from-1 not verified with Hexler.",
+  "evidence": "",
+  "group": "OSC",
+  "note": "",
+  "order": 49,
+  "ref": "TOSC-REAL-FILE",
+  "severity": "test",
+  "status": "open",
+  "title": "Check TouchOSC import with a layout saved by TouchOSC itself",
+  "updatedAt": "2026-10-10T13:04:00Z"
+}

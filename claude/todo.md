@@ -11,6 +11,12 @@ older text is in git history.
 
 ## Next up
 
+0. **Driver setup build batch** (approved 2026-11-21; waits for the user's
+   "build" and the Hyper-V test machine): 01 S187-S192 (DRV-1), 06 S185-S188
+   (DRV-2), 12 S25/S25a/S25b (DRV-3), and the Screen Saver Mode trace line
+   naming its restart source, 12 S16a (SSM-RESTART-SOURCE). Plan:
+   claude/plans/driver-setup-installer.md "Build batch".
+
 1. DONE (user 2026-10-12: "we fixed it by zooming out to 50% and if it runs over at higher zoom scale we will come back and fix it"; SCALE_MAX stays 200). **Limit the UI scale to 175 %** (user, 2026-10-07; replaces AU-56 /
    GL-201). 175 % is the highest scale the window tests confirm keeps every
    control in view; 200 % cuts contents off on small screens. When done
@@ -550,7 +556,8 @@ Suggested order: 12 → 6 → 7 → 13 / 16 → rest.
 
 ## Working standard (pointer)
 
-Status line, the one tracker (https://claude.ai/artifact/HpP8ef9co1whHSorPcVse8),
+Status line, no artifacts (the tracker was dropped 2026-11-21, archived in
+claude/archive/2026-11-21-tracker/),
 live agent logs (`tools/agent_log.py`, `.agent-logs/all.log`) and several
 agents where work splits: see `.claude/CLAUDE.md` "Working standard".
 109. (user, 2026-10-11) Remove all one-time code (tracker OT-1 device folders move, OT-2 old photo to background picture, OT-3 Button Map settings move, OT-4 Library part id move) in a new release soon after 1.0.33; 1.0.33 keeps them so the user's own data finishes moving (OT-4's covers fix runs at the next start).

@@ -1,0 +1,10 @@
+{
+  "evidence": "1a2c8547, 5088de92, 137aacf4, 211ef989, c2247322, 679d0823; Spec: 01 S183, S121; test_whats_new*.py",
+  "group": "App shell",
+  "order": 285,
+  "ref": "to-do 141; user 2026-11-20",
+  "severity": "feature",
+  "status": "done",
+  "title": "'Updated to x.y.z' gold InfoBar card with What's New window and Help > What's New; notes shipped with the program",
+  "updatedAt": "2026-11-20T05:35:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "detail": "store.commit_edit checks for damage before any picture leaves the edit folder; HardwareProfile.save checks first too.",
+  "evidence": "44ab601c; Spec: 07 S12 (GL-079)",
+  "group": "Device folders",
+  "order": 222,
+  "ref": "DF-2",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "A Save refused for a damaged module file still copied its picture",
+  "updatedAt": "2026-10-11T10:52:00Z"
+}

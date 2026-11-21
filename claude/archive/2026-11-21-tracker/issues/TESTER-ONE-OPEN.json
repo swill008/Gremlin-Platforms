@@ -1,0 +1,11 @@
+{
+  "evidence": "133edd91; test_input_tester_one_open.py (5/5 failed on old code); user tested on screen",
+  "group": "Input Tester",
+  "note": "Spec: 02 S110 (D-02-TESTER-ONE-OPEN)",
+  "order": 265,
+  "ref": "user 2026-10-12",
+  "severity": "S3",
+  "status": "fixed (CI running)",
+  "title": "Input Tester button started a second tester when one was open; now brings it to the front",
+  "updatedAt": "2026-10-12T16:26:00Z"
+}

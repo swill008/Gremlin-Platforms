@@ -1,0 +1,8 @@
+{
+  "evidence": "1. Remove the Xbox Viewer from the toolbar; bring it into the Xbox output's own Output View (special case): Xbox Viewer content (ViGEmBus row, pad face per input device, mapped chips) combined with today's Xbox 360 Controller Output View; both keep working as today. 2. Home screen card drag when reordering cards (not between sections): use the Device Bindings row drag as the reference - show the card being dragged and where it will be placed. 3. Home cards: raise the maximum card size by 50 % (720 x 520 -> 1080 x 780) so large pictures can be shown; raise the picture caps to match; check the minimized memory feature releases them. 4. Device Library rows: a small device picture like HidHide's rows, reusing the same approach (shared thumbnail component; HidHide untouched unless the user says). 5. Code audit results to decide on (scratchpad/audit). 6. Device Library rows: move \"N saved setups\" below the device name so the divider can move left. Also waiting: Device Image (DEVICE-IMAGE-1) and the audit findings.",
+  "group": "Planning",
+  "ref": "NEXTLIST-1",
+  "severity": "medium",
+  "status": "collecting (no code until the user says build)",
+  "title": "Change list for the next run (collected 2026-10-12, record only)"
+}

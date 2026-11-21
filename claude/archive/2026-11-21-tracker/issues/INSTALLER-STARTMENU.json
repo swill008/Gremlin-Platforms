@@ -1,0 +1,8 @@
+{
+  "evidence": "5200a6f9 UsePreviousGroup=no + test; Spec: 01 S152",
+  "group": "Installer",
+  "ref": "INSTALLER-STARTMENU",
+  "severity": "medium",
+  "status": "fixed",
+  "title": "1.1.0 installer: no Start-menu shortcut (made in reused R1 folder, then deleted by OT-7)"
+}

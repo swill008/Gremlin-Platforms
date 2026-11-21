@@ -1,0 +1,11 @@
+{
+  "evidence": "748623a6; test_window_placement.py::test_a_tool_window_first_opens_on_the_main_window_screen",
+  "group": "Window",
+  "note": "Spec: 01 S145",
+  "order": 279,
+  "ref": "to-do 140, user 2026-11-19",
+  "severity": "bug",
+  "status": "fixed (748623a6), not in the installed 1.0.40",
+  "title": "Tool windows first open on the main window's screen (Live Log Reader opened on a dark far-left screen)",
+  "updatedAt": "2026-11-19T19:50:00Z"
+}

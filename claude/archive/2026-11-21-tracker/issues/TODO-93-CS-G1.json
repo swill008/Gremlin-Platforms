@@ -1,0 +1,12 @@
+{
+  "detail": "output.notify_cant_send() sends signal.cantSendChanged once per burst on the main thread from every source; every ⚠ place follows it (D-05-CANT-SEND-LIVE).",
+  "evidence": "a0584ac3; Spec: 05 S137 (D-05-CANT-SEND-LIVE)",
+  "group": "Can't be sent",
+  "note": "found by MAP6",
+  "order": 200,
+  "ref": "93",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Open action editor doesn't re-check its red ⚠ when OSC settings or the Xbox driver change",
+  "updatedAt": "2026-10-11T06:29:00Z"
+}

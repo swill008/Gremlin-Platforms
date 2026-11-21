@@ -1,0 +1,10 @@
+{
+  "evidence": "claude/todo.md 143",
+  "group": "History",
+  "order": 294,
+  "ref": "to-do 143",
+  "severity": "decision",
+  "status": "open: user not ready",
+  "title": "Note: should History record only devices and their configuration?",
+  "updatedAt": "2026-11-20T08:15:00Z"
+}

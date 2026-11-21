@@ -1,0 +1,10 @@
+{
+  "evidence": "571208b9; tools/pyright_baseline.py --pythonpath; baseline 817/297",
+  "group": "Tests",
+  "order": 263,
+  "ref": "user 2026-10-12",
+  "severity": "S4",
+  "status": "fixed (CI passed 571208b9)",
+  "title": "Type checker read the wrong Python: false missing-import errors for miniaudio, zeroconf",
+  "updatedAt": "2026-10-12T16:00:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "b45dd2fb; test_list_appearance_per_device.py, test_device_bindings_appearance_per_device.py, test_appearance_per_device_e2e.py (failed old with the reported bug)",
+  "group": "Device Bindings",
+  "note": "Spec: 05 S125 (D-05-APPEARANCE-PER-DEVICE)",
+  "order": 258,
+  "ref": "user 2026-10-12",
+  "severity": "S2",
+  "status": "fixed (CI running)",
+  "title": "Device Bindings Appearance saved per device (shared look as fallback; Apply to all devices)",
+  "updatedAt": "2026-10-12T13:49:00Z"
+}

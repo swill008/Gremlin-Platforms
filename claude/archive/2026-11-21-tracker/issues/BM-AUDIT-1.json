@@ -1,0 +1,11 @@
+{
+  "detail": "11 verified bugs, no crashes: recovery copy after an undone edit; open drag across Cancel/Save; paste plane; Shift/Ctrl+right-click acted on the old selection (wrong item deleted); Backspace in a path deleted the selection; stale table cell target; Esc only with map focus; drawer click lost the kept pin; greyed Move to Background without reason; Help Add Callout menu; glossary/map wording. Plus agent_log.py crash. Unproven leads left in the audit notes.",
+  "evidence": "387e0776; Spec: 07 S32 S34 S55a S116 S119 S121 S131 S134 (G39-G48)",
+  "group": "Button Map",
+  "order": 241,
+  "ref": "116",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Button Map code audit after the menu-bar batch (6 read-only agents)",
+  "updatedAt": "2026-10-11T16:24:00Z"
+}

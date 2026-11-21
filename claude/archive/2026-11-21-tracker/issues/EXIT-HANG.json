@@ -1,0 +1,11 @@
+{
+  "evidence": "f8a9990b; claude/plans/fix-plans/switch-slowdown.md",
+  "group": "App shell",
+  "note": "Spec: 01 S154",
+  "order": 281,
+  "ref": "found 2026-11-19 (SWITCH-SLOW)",
+  "severity": "bug",
+  "status": "fixed (f8a9990b)",
+  "title": "Emergency exits could leave an invisible process that never ends (blocks the next start); now end at once",
+  "updatedAt": "2026-11-19T19:50:00Z"
+}

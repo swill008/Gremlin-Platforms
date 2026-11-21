@@ -1,0 +1,10 @@
+{
+  "evidence": "e84790ac; test_osc_run.py release-timer tests; load test 4x passed",
+  "group": "Tests",
+  "order": 221,
+  "ref": "to-do 125",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "OSC release-timer tests fail under load (wall-clock waits)",
+  "updatedAt": "2026-10-12T14:27:00Z"
+}

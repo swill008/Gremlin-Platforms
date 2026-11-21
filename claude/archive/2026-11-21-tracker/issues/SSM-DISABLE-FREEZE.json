@@ -1,0 +1,10 @@
+{
+  "evidence": "c93448ce (devices first), 754ac406 (keep-off off main thread); tests G/G2 2026-11-20",
+  "group": "Screen Saver Mode",
+  "order": 289,
+  "ref": "user tests 2026-11-20",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Window froze 6-121 s while Windows kept waking the displays after Screen Saver Mode's power-off",
+  "updatedAt": "2026-11-20T07:08:00Z"
+}

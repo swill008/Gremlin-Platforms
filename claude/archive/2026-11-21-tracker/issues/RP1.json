@@ -1,0 +1,12 @@
+{
+  "detail": "User approved 12:16.",
+  "evidence": "36bbcdb7; Spec 09 S157",
+  "group": "OSC",
+  "note": "",
+  "order": 40,
+  "ref": "RP1",
+  "severity": "decision",
+  "status": "fixed",
+  "title": "Running/Paused feedback: on = Running",
+  "updatedAt": "2026-10-10T12:41:00Z"
+}

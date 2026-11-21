@@ -1,0 +1,11 @@
+{
+  "evidence": "1bd6ac47",
+  "group": "Screen Saver Mode",
+  "note": "Spec: 12 S25",
+  "order": 268,
+  "ref": "found 2026-11-16",
+  "severity": "bug",
+  "status": "fixed (released in 1.0.39)",
+  "title": "Quitting with the device helper connected hung Gremlin",
+  "updatedAt": "2026-11-16T11:32:00Z"
+}

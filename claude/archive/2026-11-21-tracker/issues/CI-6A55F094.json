@@ -1,0 +1,12 @@
+{
+  "detail": "Seed 522503. The rewrite reset mtime to now; on a fast runner it matched the first write, so the watch saw no change. Time now set after the rewrite. Test-only.",
+  "evidence": "f4ee3994",
+  "group": "Tests",
+  "note": "",
+  "order": 52,
+  "ref": "CI-6A55F094",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "CI: test_input_tester_link set the file time before rewriting it (timing-dependent)",
+  "updatedAt": "2026-10-10T13:54:00Z"
+}

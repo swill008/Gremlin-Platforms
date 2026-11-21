@@ -1,0 +1,10 @@
+{
+  "evidence": "cbdbf1db; Spec: 06 S106; test_vjoy_open_at_run_start.py (6)",
+  "group": "Runtime",
+  "order": 283,
+  "ref": "user 2026-11-20 '1 a'",
+  "severity": "improvement",
+  "status": "done",
+  "title": "vJoy opens at Run start: the first input after a start/restart no longer waits 18-142 ms for the open",
+  "updatedAt": "2026-11-20T04:38:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "evidence": "5d680c9b; Spec: 07 S100 S133",
+  "group": "Button Map",
+  "order": 237,
+  "ref": "112",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Button Map: Command Palette replaced by a read-only Shortcuts list; a key for every action (Zoom In/Out, Select All new)",
+  "updatedAt": "2026-10-11T15:57:00Z"
+}

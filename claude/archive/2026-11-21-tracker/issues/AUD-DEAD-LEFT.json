@@ -1,0 +1,12 @@
+{
+  "detail": "F4-DEAD deferred list; listenBound: existing input not selected on 'already exists' path (possible gap).",
+  "evidence": "F4-DEAD report",
+  "group": "Code audit",
+  "note": "4e56e49a: action_label.py, unused signals/settings removed; existing OSC input now selected (09 S14). reloadCurrentInputItem kept.",
+  "order": 62,
+  "ref": "AUD-DEAD-LEFT",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Dead code still to check: reloadCurrentInputItem, ActionNames patch, logicalInputTypeChanged, downloadUrl, listenBound gap, old window placement settings",
+  "updatedAt": "2026-10-10T18:30:00Z"
+}

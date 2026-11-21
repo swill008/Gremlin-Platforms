@@ -1,0 +1,8 @@
+{
+  "evidence": "rig_chips.js addChiplet puts the chip's top-left at the pointer while the ghost is centred (DialogDeviceMappingEditor.qml:4841-4860). User approved 2026-10-11: centre on pointer, with or without Chip only; hotspot at the drop point. Spec 07 S156.",
+  "group": "Device Mapping Editor",
+  "ref": "CHIP-DROP-1",
+  "severity": "medium",
+  "status": "fixed (3515b8cd)",
+  "title": "Chip dragged from the Chips panel drops to the right of the pointer instead of centred"
+}

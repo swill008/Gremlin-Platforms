@@ -1,0 +1,12 @@
+{
+  "detail": "Runner split loop fixed, print export and button map smokes in parallel, History writer woken at teardown, matrix settle until quiet, fewer sleeps. Full run 7-9 min -> 5:18 (parts uneven 174-318 s; next run rebalances).",
+  "evidence": "36bbcdb7",
+  "group": "Tests",
+  "note": "",
+  "order": 38,
+  "ref": "TEST-SPEED",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Full test run slowed from ~1-2 min to ~7 min",
+  "updatedAt": "2026-10-10T12:41:00Z"
+}

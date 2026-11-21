@@ -1,0 +1,10 @@
+{
+  "evidence": "c52f7205; test_device_map_card_live_stamp.py",
+  "group": "Code audit 2026-10-12",
+  "order": 204,
+  "ref": "Audit 10a",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "Map card liveStamp was always 0 (Python list had no count); now changes",
+  "updatedAt": "2026-10-12T12:52:00Z"
+}

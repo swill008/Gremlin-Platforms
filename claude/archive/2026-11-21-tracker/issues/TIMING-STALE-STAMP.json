@@ -1,0 +1,11 @@
+{
+  "evidence": "0c7f9c52; seen on 1.0.40 trace.log (gate to wiring 26 s with 0 events)",
+  "group": "Tracing",
+  "note": "Spec: 01 S179",
+  "order": 280,
+  "ref": "found 2026-11-19 on the user's PC",
+  "severity": "bug",
+  "status": "fixed (0c7f9c52), not in the installed 1.0.40",
+  "title": "Timing row: stale gate-to-wiring steps, empty lines; waits during a Run start now labelled",
+  "updatedAt": "2026-11-19T19:50:00Z"
+}

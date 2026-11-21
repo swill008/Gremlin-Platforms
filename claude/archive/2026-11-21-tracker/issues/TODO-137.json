@@ -1,0 +1,11 @@
+{
+  "evidence": "0e194b78 (guard widened, skip list _NOT_CHECKED_YET)",
+  "group": "To-do",
+  "note": "claude/todo.md 137",
+  "order": 304,
+  "ref": "137",
+  "severity": "S4",
+  "status": "open",
+  "title": "Old wording slips in qml/help and qml/tester (colour/centre, 'Gremlin' alone) + 'Gremlin Input Tester' exception; then guard covers those folders",
+  "updatedAt": "2026-10-12T23:43:00Z"
+}

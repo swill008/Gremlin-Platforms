@@ -1,0 +1,11 @@
+{
+  "evidence": "7aae07e6; test_osc_pc_addresses.py, test_home_card_counts.py, test_osc_full_name_line.py",
+  "group": "UI",
+  "note": "Spec: 09 S97, 03 S73",
+  "order": 226,
+  "ref": "13a, 14b, 15a",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "OSC Setup address list refreshes; hide count line on OSC/Logical/Keyboard cards; remove Output View 'View only' line",
+  "updatedAt": "2026-10-12T15:24:00Z"
+}

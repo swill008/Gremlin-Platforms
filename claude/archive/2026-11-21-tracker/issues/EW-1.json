@@ -1,0 +1,12 @@
+{
+  "detail": "Found by F2-EDITORS; existed before (Chain Add Chain Sequence, Send OSC, ...). Test covers default width only.",
+  "evidence": "05 section 10 EW-1",
+  "group": "Code audit",
+  "note": "4e56e49a: all editors, title row and Root row fit the pane at its minimum (test_editor_widths 446).",
+  "order": 61,
+  "ref": "EW-1",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "About 15 action editors overflow when the pane is dragged to its 420-unit minimum",
+  "updatedAt": "2026-10-10T18:30:00Z"
+}

@@ -1,0 +1,12 @@
+{
+  "detail": "Like the OSC converters removed by AD7; unreleased program has no v14 profiles. Needs the user's answer.",
+  "evidence": "gremlin/logical_device_file.py",
+  "group": "Code audit",
+  "note": "User approved; a7136318, Spec: 04 S25",
+  "order": 63,
+  "ref": "LD-V14-LEGACY",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Version 14 Logical Device converters removed (LD14)",
+  "updatedAt": "2026-10-10T16:49:00Z"
+}

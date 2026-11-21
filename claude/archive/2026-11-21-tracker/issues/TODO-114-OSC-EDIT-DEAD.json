@@ -1,0 +1,10 @@
+{
+  "evidence": "e84790ac (C-OSCDEAD)",
+  "group": "To-do",
+  "order": 207,
+  "ref": "to-do 114",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Dead OSC edit path: updateInputSettings and the OscAddDialog edit branch",
+  "updatedAt": "2026-10-12T12:52:00Z"
+}

@@ -1,0 +1,12 @@
+{
+  "detail": "",
+  "evidence": "to-do 89",
+  "group": "Carried",
+  "note": "L1: loop guard follows each event's chain; 0.1 s window gone. e414d0b3, Spec: 06 S94 S94a",
+  "order": 13,
+  "ref": "TODO-89",
+  "severity": "gap",
+  "status": "fixed",
+  "title": "Logical Device loop guard misses a macro self-loop slower than 0.1 s per cycle",
+  "updatedAt": "2026-10-10T15:56:00Z"
+}

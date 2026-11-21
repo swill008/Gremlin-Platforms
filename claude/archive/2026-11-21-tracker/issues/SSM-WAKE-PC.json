@@ -1,0 +1,11 @@
+{
+  "evidence": "367bc067, e4dc194c, a4697235",
+  "group": "Screen Saver Mode",
+  "note": "Spec: 12 S3 S28-S33",
+  "order": 266,
+  "ref": "user 2026-11-16",
+  "severity": "feature",
+  "status": "fixed (released in 1.0.39)",
+  "title": "Screen Saver Mode: Wake PC tab - only ticked keyboards and mice wake the PC; tick by key press or click; rows light up with 'in use now'",
+  "updatedAt": "2026-11-16T11:32:00Z"
+}

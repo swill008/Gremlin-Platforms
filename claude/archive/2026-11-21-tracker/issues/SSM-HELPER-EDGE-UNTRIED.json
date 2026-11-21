@@ -1,0 +1,11 @@
+{
+  "evidence": "9ea54556",
+  "group": "Screen Saver Mode",
+  "note": "Spec: 12 S23 S24",
+  "order": 263,
+  "ref": "map 12 section 10",
+  "severity": "gap",
+  "status": "open",
+  "title": "Screen Saver Mode: recovery at start after a crash while devices are disabled, and a device unplugged while disabled, tried by tests only",
+  "updatedAt": "2026-11-15T23:17:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "detail": "Full runs (seeds 570729, 415668): test_osc_card_line_e2e flood test saw 7 line changes in 1.05 s, in pairs ~10 ms apart; passes alone. Check for two updates per throttle tick.",
+  "group": "Tests",
+  "order": 270,
+  "ref": "135",
+  "severity": "S4",
+  "status": "to-do",
+  "title": "OSC card line flood test fails under load (changes come in pairs)",
+  "updatedAt": "2026-10-12T17:43:00Z"
+}

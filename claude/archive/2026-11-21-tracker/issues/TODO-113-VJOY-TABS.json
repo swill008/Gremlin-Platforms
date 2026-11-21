@@ -1,0 +1,10 @@
+{
+  "evidence": "C-VJTABS probe; then the whole tab row removed in e84790ac (question 127)",
+  "group": "To-do",
+  "order": 206,
+  "ref": "to-do 113",
+  "severity": "S3",
+  "status": "closed (not a bug)",
+  "title": "Options vjoy-tabs change may not refresh the vJoy tab bar until refresh/restart (from code reading)",
+  "updatedAt": "2026-10-12T12:52:00Z"
+}

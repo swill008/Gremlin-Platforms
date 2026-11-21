@@ -1,0 +1,8 @@
+{
+  "evidence": "Spec 01 S187-S192 (D-01-DRIVERS) in 6c903bfb; plan claude/plans/driver-setup-installer.md; page 12 S25 helper jobs not yet written",
+  "group": "Installer",
+  "ref": "DRV-1",
+  "severity": "feature",
+  "status": "approved, not built",
+  "title": "Driver setup in the installer (vJoy, ViGEmBus, HidHide tick boxes, bundled + signed newer download, one admin prompt)"
+}

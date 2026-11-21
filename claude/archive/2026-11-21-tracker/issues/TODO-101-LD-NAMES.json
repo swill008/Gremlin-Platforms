@@ -1,0 +1,11 @@
+{
+  "detail": "Audit 97, AUD-LD. Probe-proven. Proposed: connect the views; optionally logical_device.py announces its own changes.",
+  "evidence": "claude/todo.md 101",
+  "group": "Design",
+  "order": 213,
+  "ref": "101",
+  "severity": "S3",
+  "status": "todo",
+  "title": "Logical Device names: Input Viewer labels, Xbox page 'incoming', OSC Feedback names miss changes; script variable adds a control silently",
+  "updatedAt": "2026-10-11T06:38:00Z"
+}

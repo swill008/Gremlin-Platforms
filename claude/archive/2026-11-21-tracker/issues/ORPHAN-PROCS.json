@@ -1,0 +1,12 @@
+{
+  "detail": "Found 17:00 and stopped: (1) final01_app.py child of test_final_01 S12 ('a driver that cannot...') running since 04:39 with its own child; the runner ended but the child process tree stayed. (2) F3-LEAKS scratch probe.py (Options dialog, off-screen) left running in the background from 15:28; the agent finished without stopping it. No writes to the real data folder since 15:20 (checked). To do: runner kills the whole child tree at the end of a part; agent rule: background probes must be stopped before the report.",
+  "evidence": "Win32_Process list 17:00; pytest-5508",
+  "group": "Test harness",
+  "note": "4e56e49a: runner ends part process trees (Job Object); 159 tests via proc_tree; guard test.",
+  "order": 69,
+  "ref": "ORPHAN-PROCS",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Leftover Python processes after test runs and agent probes",
+  "updatedAt": "2026-10-10T18:30:00Z"
+}

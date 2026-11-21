@@ -1,0 +1,11 @@
+{
+  "detail": "Found by EDT-T's test. attachNear treated pictures as chip pins and ignored planes. Now: the snap point wins on release (as during the drag), pictures are not chip pins, only the owner's plane hooks. Both planes.",
+  "evidence": "3130f65c; Spec: 07 S122",
+  "group": "Button Map",
+  "order": 229,
+  "ref": "G30",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "A leader end let go on a picture's snap point jumped to the picture's bottom edge",
+  "updatedAt": "2026-10-11T13:07:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "evidence": "passes 3/3 alone and in the CI-seed rerun; CI-only",
+  "group": "CI",
+  "order": 220,
+  "ref": "CI 38258772966",
+  "severity": "S3",
+  "status": "watch (to-do 126)",
+  "title": "CI unit-1: history_stable_smoke died without a result (all 5 test_history_window_stable setups errored)",
+  "updatedAt": "2026-10-12T14:27:00Z"
+}

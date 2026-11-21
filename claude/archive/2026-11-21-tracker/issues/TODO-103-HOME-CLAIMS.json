@@ -1,0 +1,11 @@
+{
+  "detail": "Audit 97, AUD-CLAIMS, probe-proven. vJoy sending itself is always fresh. Keep the 1 s poll. Open question on outside edits.",
+  "evidence": "claude/todo.md 103",
+  "group": "Design",
+  "order": 215,
+  "ref": "103",
+  "severity": "S3",
+  "status": "todo",
+  "title": "Home output cards keep an old copy of claims after a Device Library save",
+  "updatedAt": "2026-10-11T06:38:00Z"
+}

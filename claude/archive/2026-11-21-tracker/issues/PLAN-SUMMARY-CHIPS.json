@@ -1,0 +1,11 @@
+{
+  "detail": "Questions 1a/2a: Device Bindings action summary as target chips in a lined-up column; Appearance > Shown gets Summary size and Summary colour (Written-by size for the written-by line only). Mock-ups shown in chat; plan folder claude/plans/action-summary-chips/. Changes 05 S142, S125.",
+  "evidence": "5d032944; test_row_bindings.py, test_appearance_bindings.py, test_bindings_boxes_e2e.py (8/9 failed old); Spec: 05 S142, S125 (D-05-BINDINGS-BOXES)",
+  "group": "Device Bindings",
+  "order": 255,
+  "ref": "user 2026-10-12",
+  "severity": "feature",
+  "status": "fixed (CI passed 5d032944)",
+  "title": "Bindings [n] and code-style target boxes on every bindable row; Appearance Bindings section (all customizable)",
+  "updatedAt": "2026-10-12T13:15:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "detail": "Each ⚠ box (Map to Xbox, Map to vJoy, Map to Logical Device, Send OSC) is at least as wide as its '⚠ <name>' text while the warning shows. test_editor_widths forces the ⚠ in all four; the Xbox cases failed on the old QML and pass now. User chose to keep the ⚠ in the box (2026-10-11).",
+  "evidence": "bab82917; Spec: 05 S137",
+  "group": "CI",
+  "order": 206,
+  "ref": "CI-XW",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "CI: Map to Xbox editor cuts off '⚠ Xbox 360 Controller' in its drop-down",
+  "updatedAt": "2026-10-11T05:06:00Z"
+}

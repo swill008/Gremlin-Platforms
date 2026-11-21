@@ -1,0 +1,10 @@
+{
+  "evidence": "6658da08, 1a95e169, 0d7899cb, 8599bcf0; decisions D-FIXLIST-B1..B4",
+  "group": "Fix list 2026-10-11",
+  "order": 246,
+  "ref": "119",
+  "severity": "S3",
+  "status": "fixed (CI running)",
+  "title": "User's fix list (13 items) built in 4 batches: banner, dead zone, Options window, icons, Home Undo, Xbox face, Export / Import Device (.gmap), renames Device Bindings / Auto Mapping Tool / Device Mapping Editor",
+  "updatedAt": "2026-10-11T19:02:00Z"
+}

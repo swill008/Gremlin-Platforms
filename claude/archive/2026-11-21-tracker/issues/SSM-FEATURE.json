@@ -1,0 +1,11 @@
+{
+  "evidence": "071f1690..82d1fdbb, 9ea54556, 818c2ec5; tried on the user's PC 16:20-16:28 (devices disabled 3-8 s after power off, screens dark until input, re-enabled within 1 s)",
+  "group": "Screen Saver Mode",
+  "note": "Spec: 12-screen-saver-mode S1-S27",
+  "order": 262,
+  "ref": "user 2026-11-15",
+  "severity": "feature",
+  "status": "fixed (released in 1.0.38)",
+  "title": "Screen Saver Mode (Tools › Screen Saver Mode…): Gremlin's own keyboard/mouse idle clock, screen saver and power-off timers, keep-off, Devices/Programs/System sections, device disabling through an administrator helper",
+  "updatedAt": "2026-11-15T23:17:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "273c2bd9",
+  "group": "Xbox output",
+  "note": "Spec: 03 S39 S88 S115 S139-S145, 05 S137 S141, 06 S58 S64 S98 S99",
+  "order": 213,
+  "ref": "D-XBOX-PADS",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Xbox Setup (driver check + 1-4 pads), pad modules, only pads on are sent to, per-pad sections on the Xbox Output View",
+  "updatedAt": "2026-10-12T13:52:00Z"
+}

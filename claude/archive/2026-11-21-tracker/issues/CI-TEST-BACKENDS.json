@@ -1,0 +1,8 @@
+{
+  "evidence": "93a0ff78 test/unit/conftest.py _backend_lets_go; Spec: none",
+  "group": "CI",
+  "ref": "CI-TEST-BACKENDS",
+  "severity": "low",
+  "status": "fixed",
+  "title": "Backends made by tests stayed connected to global signals; a later device change started a Run in another test"
+}

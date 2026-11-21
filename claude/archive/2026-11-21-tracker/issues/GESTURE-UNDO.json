@@ -1,0 +1,12 @@
+{
+  "detail": "Found by the user. Cause (read from the code): the hover highlight saves an Undo step whenever the item under the cursor changes during a drag (RigPointerArea.qml:388 setOverlayHover -> rig_overlays.js bump()); resizing a picture/text/table hits it constantly. Fix: hover only redraws; a drag-in-progress guard (gestureActive, beginGesture/endGesture) makes each drag one step on release; leader-end unhook joins the release step. New spec 07 S55a; tests count steps from real drags for every gesture kind on both planes.",
+  "evidence": "3130f65c; Spec: 07 S55 S55a S57 (G31)",
+  "group": "Button Map",
+  "note": "Every drag is one Undo step on release: before 2–8 steps per gesture (21 kinds tested, both planes), after 1; one Undo restores exactly. Also Esc, lost grab, Undo mid-drag, and the ruler's new guide (found by UNDO-T, fixed by the lead).",
+  "order": 228,
+  "ref": "107",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "A mouse drag (resize, move, rotate, crop, skew, leader, hotspot, guide, print area) makes many Undo steps; should be one on release",
+  "updatedAt": "2026-10-11T13:07:00Z"
+}

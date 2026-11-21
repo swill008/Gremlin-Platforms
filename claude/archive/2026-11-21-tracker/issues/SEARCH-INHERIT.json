@@ -1,0 +1,11 @@
+{
+  "evidence": "e3db84ac; test_child_mode_inherits_parent_bindings, e2e parts 11-12",
+  "group": "Search",
+  "note": "Spec: 01 S158 S161 D-01-SEARCH-FINISH",
+  "order": 302,
+  "ref": "gap 01 SEARCH-INHERIT",
+  "severity": "S3",
+  "status": "fixed (CI running)",
+  "title": "Search does not index a mode's inherited bindings; Used twice misses clashes across inherited modes",
+  "updatedAt": "2026-10-13T00:14:00Z"
+}

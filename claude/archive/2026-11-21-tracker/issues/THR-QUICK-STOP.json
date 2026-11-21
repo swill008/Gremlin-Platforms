@@ -1,0 +1,11 @@
+{
+  "evidence": "f5fbc7d7 (map 06 gap)",
+  "group": "Runtime",
+  "note": "Spec: 06 gap THR-QUICK-STOP",
+  "order": 277,
+  "ref": "found 2026-11-19 (THR-AUDIT)",
+  "severity": "cosmetic",
+  "status": "open",
+  "title": "Quick Stop/Run/Stop can flicker the status briefly before it settles",
+  "updatedAt": "2026-11-19T17:33:00Z"
+}

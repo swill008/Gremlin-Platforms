@@ -1,0 +1,11 @@
+{
+  "evidence": "7efe327b",
+  "group": "Tracing",
+  "note": "Spec: 01 S176 S177 S178 S113 S132 S146 S149, 12 S16, D-01-WINDOW-TRACE",
+  "order": 273,
+  "ref": "user 2026-11-19",
+  "severity": "feature",
+  "status": "fixed (7efe327b)",
+  "title": "Window trace row, recent events (last 200 always), Debug > Save Window State, freeze dump and diagnostics carry them",
+  "updatedAt": "2026-11-19T13:37:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "detail": "store.commit_edit writes module.json, then removes cache/edit/<id key>/; if the removal fails (a picture still locked), it logs and returns success, leaving state.json in phase 'committing'. The next added picture goes into the old added/ (duplicates seen in test_j20 under load); recover_edit on reopen would put start/ back, rolling back the saved map (reasoned from the code). Fix: mark the edit finished before removing the folder; clean a leftover added/ at the next begin; test that holds a picture open during commit_edit.",
+  "evidence": "2062380e; test_store_edit_finish.py; Spec: 07 S107",
+  "group": "Button Map",
+  "order": 232,
+  "ref": "G32",
+  "severity": "S1 data loss (possible)",
+  "status": "fixed",
+  "title": "Button Map Save can leave its edit folder half-removed; a reopen could undo a Save that worked",
+  "updatedAt": "2026-10-11T13:52:00Z"
+}

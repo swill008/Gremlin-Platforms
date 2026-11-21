@@ -1,0 +1,11 @@
+{
+  "evidence": "77b1fdb8; test_final_01.py::test_s58_s59_s61_the_toolbar, test_mode_bar.py",
+  "group": "App shell",
+  "note": "Spec: 01 S58 (D-01-INPUT-TESTER-BUTTON)",
+  "order": 254,
+  "ref": "user 2026-10-12",
+  "severity": "feature",
+  "status": "fixed (CI running)",
+  "title": "Input Tester button on the toolbar after vJoy Viewer (crosshair icon, caption under it)",
+  "updatedAt": "2026-10-12T11:28:00Z"
+}

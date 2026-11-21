@@ -1,0 +1,11 @@
+{
+  "detail": "Found by S-E2E: the Device Bindings title arrows step into Keyboard, OSC, then the Logical Device page, where the arrows are hidden (Main.qml:2302, :2314) and cycleModules returns for configDirection 'logical' (Main.qml:833). The user can't step on or back.",
+  "evidence": "571208b9; test_device_arrows_logical_e2e.py (4/5 failed old); Spec 01 S58b (D-01-ARROWS-CYCLE)",
+  "group": "App shell",
+  "order": 259,
+  "ref": "132",
+  "severity": "S3",
+  "status": "fixed (CI passed 571208b9)",
+  "title": "Device arrows dead-end on the Logical Device page",
+  "updatedAt": "2026-10-12T13:49:00Z"
+}

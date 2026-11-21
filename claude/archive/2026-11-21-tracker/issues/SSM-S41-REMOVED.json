@@ -1,0 +1,8 @@
+{
+  "evidence": "User 18a, 2026-11-21; covered by system.log, S16 tracing and the outside watcher",
+  "group": "Screen Saver Mode",
+  "ref": "SSM-S41-REMOVED",
+  "severity": "low",
+  "status": "done",
+  "title": "Unapproved S41 (log Windows' own screen saver) removed, never committed"
+}

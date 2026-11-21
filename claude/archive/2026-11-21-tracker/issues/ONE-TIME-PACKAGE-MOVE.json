@@ -1,0 +1,11 @@
+{
+  "detail": "Built 2026-10-11 by A2. Remove when the user's data has moved: gremlin/modules/folders_move.py (all, marked '# ONE-TIME (tracker OT-1)'), joystick_gremlin.py _move_to_device_folders and its call, the register_setting() call in register_config_options (old file-bindings setting), test/unit/test_folders_move.py. Runs once (marker <modules>/folders.json), backup first (<data folder>\\backup\\<date> device folders move\\), refuses under tests.",
+  "evidence": "44ab601c",
+  "group": "One-time code",
+  "order": 217,
+  "ref": "OT-1",
+  "severity": "S3",
+  "status": "in program; kept in 1.0.33 (user 2026-10-11), remove in the next release",
+  "title": "One-time move: gather each device's existing files into its new device folder",
+  "updatedAt": "2026-10-11T10:52:00Z"
+}

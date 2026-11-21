@@ -1,0 +1,11 @@
+{
+  "detail": "store.device_dir first takes the folder whose device.json holds exactly the id and name (store._own_dir).",
+  "evidence": "44ab601c; Spec: 10 S41",
+  "group": "Device folders",
+  "order": 221,
+  "ref": "DF-1",
+  "severity": "S1 data loss",
+  "status": "fixed",
+  "title": "An unplugged twin wrote into the other twin's folder",
+  "updatedAt": "2026-10-11T10:52:00Z"
+}

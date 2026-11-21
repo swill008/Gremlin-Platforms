@@ -1,0 +1,12 @@
+{
+  "detail": "To do after the release (user). Pages 01-03: HA1-HA18 (install topic: licences folder and the second program; Save Diagnostics contents; Viewers list missing Input Tester; Reset Devices row details; tester details: twin paths, layout follow, tester.log place/size; Steam line only in Block mode). Pages 04-06: HB1-HB6 (spline passes through points; one unreadable control skipped at start; unreadable macro steps / Logical step kept on Save; no false out-of-step after Stop; 'built-in input' should be 'internal input'; 'Autosave' names two things - user decision). Pages 07-10: HC1-HC11 (WRONG: OSC listed as a setting not a module file; 'built-in input' wording; missing: OSC edits mark the profile and Save/Discard, Listen owned by its window, 'Could not start OSC listener', adding an existing OSC input selects it, OSC chips show the address, Auto Mapper 'used' details, Companion version claim unverified, Clear History empties Device Library Undo). Spec vs program to decide: 09 S97/S116 addresses shown on the Server tab not Output; 09 S121 rgb as three numbers only for Companion colour addresses; 01 S152 exe name; 01 S132 Save dialog folder; 03 S88; glossary 'Key colour' vs 'Key color'; HidHide busy shows 'not installed' vs glossary 'in use by another program'.",
+  "evidence": "HELP-A/B/C audit reports 10:24-10:26",
+  "group": "Audit",
+  "note": "Help pass: all 11 Help files checked against the code; D1-D8 decided. a7136318",
+  "order": 21,
+  "ref": "HELP-AUDIT",
+  "severity": "docs",
+  "status": "fixed",
+  "title": "Help gaps against the spec (audit 10 Oct): about 35 small items, 3 now-wrong lines",
+  "updatedAt": "2026-10-10T16:49:00Z"
+}

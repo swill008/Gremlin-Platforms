@@ -1,0 +1,12 @@
+{
+  "detail": "key_from_name stored a typed letter's case in the shared scan-code table; found by the full run and CI f4ee3994 (seed 521189). Name lookups now reuse the by-code key. Side effect: a typed '!' resolves to the key named '1' (same key, same keystroke).",
+  "evidence": "e2267c9b; test_key_names_do_not_depend_on_which_lookup_ran_first",
+  "group": "Keyboard",
+  "note": "",
+  "order": 54,
+  "ref": "KEY-NAME-ORDER",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Key names depended on lookup order ('a' vs 'A')",
+  "updatedAt": "2026-10-10T14:26:00Z"
+}

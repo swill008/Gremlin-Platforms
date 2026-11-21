@@ -1,0 +1,11 @@
+{
+  "detail": "Not a freeze: journey child programs had a 50 s run-time limit while the harness allows 110 s; j11 takes 24-50 s on CI. Journey children now get 100 s; the freeze check is unchanged.",
+  "evidence": "bab82917; Spec: none (test harness)",
+  "group": "CI",
+  "order": 207,
+  "ref": "CI-J11",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "CI: journey j11 (random list pages) stalled in backend.setCurrentTab",
+  "updatedAt": "2026-10-11T05:06:00Z"
+}

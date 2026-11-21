@@ -1,0 +1,10 @@
+{
+  "detail": "User checked live 2026-10-12: binding OSC Button 1 to a vJoy 2 button the EVO R also shows lights it on both cards (the chip's vJoy half reads vJoy's real state). Working as wanted; button 30 showed only on the OSC card because only OSC binds it. No code change.",
+  "group": "vJoy Viewer",
+  "order": 256,
+  "ref": "user 2026-10-12",
+  "severity": "S2",
+  "status": "closed (no change)",
+  "title": "vJoy Viewer: show each vJoy device as one card so any source lights it",
+  "updatedAt": "2026-10-12T13:15:00Z"
+}

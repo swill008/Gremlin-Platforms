@@ -1,0 +1,8 @@
+{
+  "evidence": "3ecba75d, release-notes/1.1.0.md bold added, wording unchanged; Spec: none (no behaviour change)",
+  "group": "CI",
+  "ref": "CI-NOTES-BOLD",
+  "severity": "low",
+  "status": "fixed",
+  "title": "CI failed on 74f9692e: What's New tests need bold text in the running version's notes"
+}

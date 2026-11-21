@@ -1,0 +1,11 @@
+{
+  "detail": "User 2026-10-11: left/right tool rows removed completely; Chips folds into the left edge, Layers into the right; no drag/detach; resize OK.",
+  "evidence": "909bbba6; Spec: 07 S99 S128-S131",
+  "group": "Button Map",
+  "order": 234,
+  "ref": "110",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Button Map: remove the left and right tool rows; fixed fold-out side panels (Chips left, Layers right)",
+  "updatedAt": "2026-10-11T14:22:00Z"
+}

@@ -1,0 +1,12 @@
+{
+  "detail": "Design rule (user 10 Oct): as close as possible to the Logical Device page; differ only where OSC genuinely needs it, and list each difference. Plan (OSCPANE study 10:43-10:47): shared action pane, tree with groups, Find, page Undo, right-click menus; OSC-only parts kept (address, settings, Listen/Bulk, Setup tabs, Copy for Companion, feedback). Monitor docked on the page, Tools link. In scope by the user 10 Oct ('all of these'): OX1 live value + last-seen, OX2 port check, OX3 OSC logging, OX4 Companion setup check, OX5 Send Test Press/Value, OX6 multi-input Edit Settings, OX7 address wildcards (to-do 65), OX8 feedback rows on the page, OX9 OSC in conditions/macros (62), sender allow-list (63), per-input shaping (64), TouchOSC import (66), OSC from scripts (67), action-state feedback (68), encoder acceleration (69). Open: OP1-OP13 answers; OX7-OX9 design questions (studies running). Help comes last.",
+  "evidence": "",
+  "group": "Audit",
+  "note": "OSC batches 1-3 (52a8c2f0, 36bbcdb7, 6a55f094) + Help (a7136318).",
+  "order": 23,
+  "ref": "OSC-REWRITE",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "OSC page rebuilt to match the Logical Device page; OSC Monitor on the page",
+  "updatedAt": "2026-10-10T17:05:00Z"
+}

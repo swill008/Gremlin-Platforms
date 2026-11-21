@@ -1,0 +1,11 @@
+{
+  "evidence": "2bf2e2d6; test_xbox_output_view.py",
+  "group": "Xbox output",
+  "note": "Spec: 03 S139 S140",
+  "order": 217,
+  "ref": "to-do 120, 121",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Xbox pad headers in the Appearance Group look, framed sections; tick renamed Show only bound controls (ticked, remembered)",
+  "updatedAt": "2026-10-12T13:52:00Z"
+}

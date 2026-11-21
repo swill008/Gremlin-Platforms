@@ -1,0 +1,11 @@
+{
+  "evidence": "7efe327b (batch 1), f5fbc7d7 (batches 2-5); full run green; test_input_thread_ui_blocked, test_input_thread_real_profile",
+  "group": "Runtime",
+  "note": "Spec: 06 S100-S105 D-06-INPUT-THREAD; 01 S64 S93 S95 S113 S180 S181; 02 S40; 04 S44 S46 S61; 05 S90",
+  "order": 275,
+  "ref": "user 2026-11-19",
+  "severity": "feature",
+  "status": "fixed (f5fbc7d7), not yet tried by the user",
+  "title": "Controls run on their own input thread so bindings, macros and timers keep working while the window is frozen",
+  "updatedAt": "2026-11-19T17:33:00Z"
+}

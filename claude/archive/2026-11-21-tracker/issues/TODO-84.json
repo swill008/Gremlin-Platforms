@@ -1,0 +1,12 @@
+{
+  "detail": "",
+  "evidence": "to-do 84",
+  "group": "Carried",
+  "note": "T1: tester matches Xbox pads by real XInput slot from ViGEm. e414d0b3, Spec: 02 S105 S106",
+  "order": 10,
+  "ref": "TODO-84",
+  "severity": "gap",
+  "status": "fixed",
+  "title": "Input Tester's Xbox rows compare Gremlin's Xbox output number with the Windows XInput slot",
+  "updatedAt": "2026-10-10T15:56:00Z"
+}

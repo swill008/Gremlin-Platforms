@@ -1,0 +1,10 @@
+{
+  "evidence": "15496def; Spec: 07 S136 S137; D-07-RIGHTCLICK-ANSWERS",
+  "group": "Button Map",
+  "order": 240,
+  "ref": "115",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Right-click: Cut, Paste Here, Select All, Show in Layers, Properties…, Repeat; Favourites section (☆/×, count in Button Map Options)",
+  "updatedAt": "2026-10-11T16:58:00Z"
+}

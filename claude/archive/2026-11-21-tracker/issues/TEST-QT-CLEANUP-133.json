@@ -1,0 +1,11 @@
+{
+  "detail": "Per-test DeferredDelete flush + receiver-growth note in test/conftest.py; test_final_06 and test_sendosc_target_name fixed; leak watcher 19 -> 14 (one-time objects); exit hang now fails the run (42); 47 closed; 16 QML cache not added; 24 part 1 (qt_wait helper, 21 waits). Follow-ups in to-do 133/24.",
+  "evidence": "133edd91; full run seed 418098 7,160 passed",
+  "group": "Tests",
+  "order": 267,
+  "ref": "133 42 47 24 16",
+  "severity": "S3",
+  "status": "fixed (133 and 24 done in f6bd760d)",
+  "title": "Tests clean up their own Qt work; exit hangs fail the run",
+  "updatedAt": "2026-10-12T16:26:00Z"
+}

@@ -1,0 +1,12 @@
+{
+  "detail": "15:00 full run, unit-6; passes alone. Entry 'before' had hidhide display keys too. Test isolation or settings-batching; not verified.",
+  "evidence": "gremlin-test-run.log 14:59 run",
+  "group": "Tests",
+  "note": "Test read the oldest entry and leaked logger levels; conftest resets the settings snapshot. e414d0b3",
+  "order": 57,
+  "ref": "FLAKY-LOGLEVEL-HISTORY",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "test_diagnostic_logs_from_options_is_recorded_and_restored: picks up other settings changed by earlier tests in the same History entry",
+  "updatedAt": "2026-10-10T15:56:00Z"
+}

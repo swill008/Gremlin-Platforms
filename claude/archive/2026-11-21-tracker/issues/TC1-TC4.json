@@ -1,0 +1,12 @@
+{
+  "detail": "Research found the first parser wrong on grid/radar/pager/empty path; real sample (tosclib controls.tosc, MIT) is a test fixture. Index from 1 not verified against Hexler.",
+  "evidence": "6a55f094; Spec 09 S162",
+  "group": "OSC",
+  "note": "",
+  "order": 45,
+  "ref": "TC1-TC4",
+  "severity": "decision",
+  "status": "fixed",
+  "title": "TouchOSC import follows Hexler's manual: grid container, radar 2 axes, pager Change, encoder axis",
+  "updatedAt": "2026-10-10T13:04:00Z"
+}

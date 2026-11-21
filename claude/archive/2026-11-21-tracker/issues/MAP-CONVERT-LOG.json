@@ -1,0 +1,10 @@
+{
+  "evidence": "install 08:49; .planes-converted marker",
+  "group": "Device Mapping Editor",
+  "order": 297,
+  "ref": "lead 2026-11-20",
+  "severity": "minor",
+  "status": "open",
+  "title": "Map photo convert's log line missing from system.log (conversion itself worked: 7 converted, backup, marker)",
+  "updatedAt": "2026-11-20T08:57:00Z"
+}

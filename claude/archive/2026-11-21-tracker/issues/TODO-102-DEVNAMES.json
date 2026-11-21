@@ -1,0 +1,11 @@
+{
+  "detail": "Audit 97, AUD-DEVNAMES (code reading). Proposed signal.deviceNamesChanged owned by device_aliases.py.",
+  "evidence": "claude/todo.md 102",
+  "group": "Design",
+  "order": 214,
+  "ref": "102",
+  "severity": "S3",
+  "status": "todo",
+  "title": "Device rename not followed by Device Library, Input/Xbox Viewer lists, editor input labels; spec question 10 S7",
+  "updatedAt": "2026-10-11T06:38:00Z"
+}

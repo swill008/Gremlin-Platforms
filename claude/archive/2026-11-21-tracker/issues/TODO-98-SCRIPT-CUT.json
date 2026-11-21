@@ -1,0 +1,11 @@
+{
+  "detail": "Found by COND-95: 1604 vs 1600 at 1600 x 950, 100 %. User chose (a): the setting's name gives way and wraps so the picker fits.",
+  "evidence": "a0584ac3",
+  "group": "Can't be sent",
+  "order": 210,
+  "ref": "98",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Script settings: the red ⚠ vJoy picker box runs 4 px past the window edge",
+  "updatedAt": "2026-10-11T06:29:00Z"
+}

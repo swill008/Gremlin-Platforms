@@ -1,0 +1,11 @@
+{
+  "detail": "Superseded by D-03-DEVICE-FOLDERS: the shared picture library goes; each save removes its own unused pictures.",
+  "evidence": "claude/todo.md 28",
+  "group": "Button Map",
+  "order": 221,
+  "ref": "28",
+  "severity": "S3",
+  "status": "closed (no longer needed)",
+  "title": "Picture library 'Remove unused' button",
+  "updatedAt": "2026-10-11T09:15:00Z"
+}

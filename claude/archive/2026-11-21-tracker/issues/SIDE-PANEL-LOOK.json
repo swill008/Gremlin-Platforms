@@ -1,0 +1,12 @@
+{
+  "detail": "User 2026-10-11: folded = narrow full-height panel in the open panel's style, bold horizontal name at the top, pin, a thin line down the centre; no lock; Chips filter box on the top row, Reset and Chip only below.",
+  "evidence": "5d680c9b; Spec: 07 S128-S131 (drawer, D-07-SIDE-DRAWER)",
+  "group": "Button Map",
+  "note": "D-07-SIDE-LOOK; user 'ok, do 1 to 4 code it'. Agents LOOK, CHIPSROW, LOOK-DOC.",
+  "order": 236,
+  "ref": "111",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Side panels: folded look is a drawer left ajar (7 dp edge, hover peek with name and pin); Chips filter on its own row",
+  "updatedAt": "2026-10-11T15:57:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "8cb1d158; CI 38329607209 passed",
+  "group": "Tests",
+  "note": "Spec: none (test-only); found by 4 parallel bisect agents",
+  "order": 306,
+  "ref": "CI 38326274798",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Order leak: test_device_folders_devices left device_aliases._ANNOUNCED_RAW; a later import test's folder was renamed to pJoy Pro",
+  "updatedAt": "2026-10-13T01:17:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "46820406; test_row_action_summary.py",
+  "group": "List pages",
+  "note": "Spec: 05 S142, S125",
+  "order": 228,
+  "ref": "user 2026-10-12",
+  "severity": "S2 (regression)",
+  "status": "fixed",
+  "title": "Action summary on every bindable row (N actions · targets after the name), lost in f5ff0c46 (10 Oct rebuild); Appearance switch",
+  "updatedAt": "2026-10-12T15:33:00Z"
+}

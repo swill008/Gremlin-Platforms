@@ -1,0 +1,11 @@
+{
+  "evidence": "2bf2e2d6; test_home_compact_thumb.py",
+  "group": "Home",
+  "note": "Spec: 03 S73",
+  "order": 216,
+  "ref": "to-do 119",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Home compact view: 40x40 thumbnails; hidden big picture not decoded",
+  "updatedAt": "2026-10-12T13:52:00Z"
+}

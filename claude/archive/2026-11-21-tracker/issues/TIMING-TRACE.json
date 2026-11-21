@@ -1,0 +1,11 @@
+{
+  "evidence": "7efe327b; tools/latency_report.py",
+  "group": "Tracing",
+  "note": "Spec: 01 S179",
+  "order": 274,
+  "ref": "user 2026-11-19",
+  "severity": "feature",
+  "status": "fixed (7efe327b)",
+  "title": "Timing trace row: queue wait, actions, end to end at sub-ms; 10 s summaries; latency_report tool",
+  "updatedAt": "2026-11-19T13:37:00Z"
+}

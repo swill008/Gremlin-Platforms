@@ -1,0 +1,11 @@
+{
+  "detail": "Item 16 closed 2026-10-11 20:23: at the user's request the lead moved the old history\\button-map.jsonl (52 KB, last written 2026-10-10) out of the History folder to backup\\2026-10-11 old Button Map history\\ (kept, not deleted). No code change, no OT-5.",
+  "evidence": "d43efe0d; decision D-TESTLIST-1; Spec: 07 S138; 08 S28-S39a S79a-S84a S110; 10 S51",
+  "group": "Fix list 2026-10-11",
+  "order": 247,
+  "ref": "120",
+  "severity": "S3",
+  "status": "fixed (CI running)",
+  "title": "Test-session list (13 items): History window redesign (stable list, groups, Restored/Reapplied), one-change Library restore, Restore Import, file wording, editor picture race, banner no-device text, picture folder kept, id lookups, OT-4 covers",
+  "updatedAt": "2026-10-11T20:23:00Z"
+}

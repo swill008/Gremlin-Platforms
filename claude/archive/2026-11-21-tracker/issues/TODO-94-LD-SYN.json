@@ -1,0 +1,12 @@
+{
+  "detail": "Keys from macros and Map to Keyboard are marked; Logical Device events aren't. Harmless today: they only happen while running, and the page doesn't follow while running. Recorded only.",
+  "evidence": "a0584ac3",
+  "group": "Can't be sent",
+  "note": "found by FOLLOW",
+  "order": 201,
+  "ref": "94",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Map to Logical Device events aren't marked as program-made (synthetic)",
+  "updatedAt": "2026-10-11T06:29:00Z"
+}

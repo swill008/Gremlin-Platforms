@@ -1,0 +1,11 @@
+{
+  "detail": "Option a) from the user-approved mock-up: picker above its options, Invert activation on its own line, axis row wraps with Speed beside its box (also overflowed at the default width), vJoy boxes never narrower than their text.",
+  "evidence": "e4379685; Spec: 05 (EW-2)",
+  "group": "Editors",
+  "order": 208,
+  "ref": "96",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "At the pane's minimum width, Map to vJoy cuts 'vJoy 1' and 'Invert activation' runs past the pane (Map to vJoy, Map to Logical Device)",
+  "updatedAt": "2026-10-11T05:36:00Z"
+}

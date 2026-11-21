@@ -1,0 +1,10 @@
+{
+  "evidence": "2b22ea98; Spec: 12 S35, S12, S21, S27",
+  "group": "Screen Saver Mode",
+  "order": 290,
+  "ref": "user 2026-11-20",
+  "severity": "feature",
+  "status": "done",
+  "title": "Screen Saver Mode: Switch off switch per device; virtual devices never switched off (VJOY-IN-SSM-LIST fixed)",
+  "updatedAt": "2026-11-20T06:08:00Z"
+}

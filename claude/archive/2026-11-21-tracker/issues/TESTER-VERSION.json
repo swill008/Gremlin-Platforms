@@ -1,0 +1,11 @@
+{
+  "evidence": "937dd5e7; test_input_tester_ui.py::test_s149_title_shows_the_testers_version",
+  "group": "Input Tester",
+  "note": "Spec: 02 S149 (D-02-TESTER-VERSION)",
+  "order": 261,
+  "ref": "user 2026-10-13",
+  "severity": "feature",
+  "status": "fixed (released in 1.0.36)",
+  "title": "Input Tester title shows its own version: \"Gremlin Input Tester v1.0\"",
+  "updatedAt": "2026-10-13T19:38:00Z"
+}

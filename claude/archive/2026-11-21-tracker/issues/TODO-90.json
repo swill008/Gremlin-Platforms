@@ -1,0 +1,12 @@
+{
+  "detail": "The loop guard still stops it at Run.",
+  "evidence": "to-do 90",
+  "group": "Carried",
+  "note": "AD10: loaded self-target shows selected and marked. e414d0b3, Spec: 06 S96",
+  "order": 14,
+  "ref": "TODO-90",
+  "severity": "gap",
+  "status": "fixed",
+  "title": "A Map to Logical Device loaded with a self-target shows an empty picker",
+  "updatedAt": "2026-10-10T15:56:00Z"
+}

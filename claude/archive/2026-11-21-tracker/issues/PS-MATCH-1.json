@@ -1,0 +1,8 @@
+{
+  "evidence": "Causes: lockAspect squares the box (rig_draw.js:118-132), Import Picture adds without aspect (DialogDeviceMappingEditor.qml:2625), skewed handles hit-tested unskewed (rig_hit.js:139-200). User approved 21 Photoshop-match items 2026-10-11. Spec 07 S140-S155.",
+  "group": "Device Mapping Editor",
+  "ref": "PS-MATCH-1",
+  "severity": "high",
+  "status": "fixed (3515b8cd)",
+  "title": "Picture handles drift away from the picture during resize (and other picture tools); match Photoshop keys"
+}

@@ -1,0 +1,12 @@
+{
+  "detail": "H1: user chose record only. One-walk fix done (half the time). Threaded load needs Loading state, late ticks, generation guard, spec statement.",
+  "evidence": "claude/todo.md 92; 02 section 10",
+  "group": "To-do",
+  "note": "User 2026-10-10: won't fix. The one-walk fix (F3-HIDRESET) halved the wait.",
+  "order": 58,
+  "ref": "TODO-92",
+  "severity": "S3",
+  "status": "won't fix",
+  "title": "Hardware Hide open blocks the window ~0.25-0.5 s (threaded load needs a Loading state)",
+  "updatedAt": "2026-10-10T17:57:00Z"
+}

@@ -1,0 +1,12 @@
+{
+  "detail": "An empty Ungrouped header row hid the message. Fixed in the shared base. Found by TEST-PIN.",
+  "evidence": "52a8c2f0; Spec 01 S143; test_an_empty_page_has_no_rows_so_its_message_shows",
+  "group": "UI",
+  "note": "",
+  "order": 35,
+  "ref": "EMPTY-LIST",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Empty Logical/OSC list never showed its 'nothing here yet' text",
+  "updatedAt": "2026-10-10T12:03:00Z"
+}

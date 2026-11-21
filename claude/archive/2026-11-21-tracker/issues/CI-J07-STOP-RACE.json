@@ -1,0 +1,8 @@
+{
+  "evidence": "45142de1, test/journeys/_harness.py await_run waits for run_scope.stopping(); Spec: none (no behaviour change)",
+  "group": "CI",
+  "ref": "CI-J07-STOP-RACE",
+  "severity": "low",
+  "status": "fixed",
+  "title": "Journey j07: Stop check read vJoy before Stop's driver stage finished (slow CI runner)"
+}

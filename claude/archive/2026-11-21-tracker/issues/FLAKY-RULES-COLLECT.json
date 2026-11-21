@@ -1,0 +1,12 @@
+{
+  "detail": "12:58 full run, unit-4, 7 tests; FileNotFoundError on %TEMP%\\gremlin-pack-*; passes alone. Cause not verified (inner pytest's collection scanning Temp).",
+  "evidence": "gremlin-test-run.log 12:58",
+  "group": "Tests",
+  "note": "Inner pytest collected from drive root through %TEMP%; now own rootdir/confcutdir. e414d0b3",
+  "order": 48,
+  "ref": "FLAKY-RULES-COLLECT",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "test_rules_fail_on_damage: inner pytest collection hit a temp folder deleted by another part",
+  "updatedAt": "2026-10-10T15:56:00Z"
+}

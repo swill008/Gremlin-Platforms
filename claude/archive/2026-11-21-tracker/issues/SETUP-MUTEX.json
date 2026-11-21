@@ -1,0 +1,10 @@
+{
+  "evidence": "eca1f960; installer-early-start.md; Spec: 01 S173",
+  "group": "Installer",
+  "order": 292,
+  "ref": "user 2026-11-20 '3 a'",
+  "severity": "fix",
+  "status": "done",
+  "title": "Installer: only one setup at a time (SetupMutex); mid-install start crash 06:37",
+  "updatedAt": "2026-11-20T07:08:00Z"
+}

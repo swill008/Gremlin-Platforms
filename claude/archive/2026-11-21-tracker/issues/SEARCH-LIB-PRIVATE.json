@@ -1,0 +1,11 @@
+{
+  "evidence": "e3db84ac; test_device_library_setup_wires.py",
+  "group": "Code health",
+  "note": "gremlin/search_index.py, gremlin/device_library.py",
+  "order": 303,
+  "ref": "gap 01 SEARCH-LIB-PRIVATE",
+  "severity": "S4",
+  "status": "fixed (CI running)",
+  "title": "search_index.library_rows reads setups through private device_library._read_pack (add a public setup_wires)",
+  "updatedAt": "2026-10-13T00:14:00Z"
+}

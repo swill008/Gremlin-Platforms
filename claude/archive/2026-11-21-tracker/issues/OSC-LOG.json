@@ -1,0 +1,12 @@
+{
+  "detail": "D-09-OSC-TRACE approved 18:07. Agents TR-DOCS, TR-CORE, TR-RX, TR-OUT, TR-SETUP, TR-E2E running. Fixes E1-E10 (settings read 4x per send, wildcard traceback flood, send failure flood, double logs, Bulk info flood, TouchOSC/condition tracebacks, Send OSC refusals untraced, Monitor errors swallowed). Repeat rule: 10 then quiet.",
+  "evidence": "gremlin/osc.py:499-500, 741, 753",
+  "group": "Audit",
+  "note": "4e56e49a: OSC Trace row (5 areas), every step and refusal traced, rate limit, 10-then-quiet, E1-E10 fixed. Spec 01 S146-S149, 09 S166-S172.",
+  "order": 22,
+  "ref": "OSC-LOG",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "OSC trace: whole OSC system traced (5 areas), bounded logging, 10 logging errors fixed",
+  "updatedAt": "2026-10-10T18:30:00Z"
+}

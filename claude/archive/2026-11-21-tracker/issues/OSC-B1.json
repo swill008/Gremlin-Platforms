@@ -1,0 +1,12 @@
+{
+  "detail": "Shared base (control_layout.py, ActionPane/ControlTree/ControlFindBar); OscPage.qml + osc_layout.py; docked Monitor; live value, port holder, OSC logging, Send Test; Companion setup check; layout saved at File Save.",
+  "evidence": "52a8c2f0; Spec: 09 S129-S146, S7; 01 S143, S144; D-09-OSC-FILE",
+  "group": "OSC",
+  "note": "",
+  "order": 30,
+  "ref": "OSC-B1",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "OSC rewrite batch 1: OSC page in the Logical Device style on a shared base (OP1-OP14, OX1-OX6)",
+  "updatedAt": "2026-10-10T12:03:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "f5fbc7d7 (map 09 gap)",
+  "group": "Runtime",
+  "note": "Spec: 09 gap OSC-MACRO-HOP",
+  "order": 276,
+  "ref": "found 2026-11-19 (THR-OSC)",
+  "severity": "gap",
+  "status": "open",
+  "title": "A macro's OSC step still passes through the main thread before reaching the input thread",
+  "updatedAt": "2026-11-19T17:33:00Z"
+}

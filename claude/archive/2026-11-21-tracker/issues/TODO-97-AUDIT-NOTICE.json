@@ -1,0 +1,11 @@
+{
+  "detail": "Reported in chat 2026-10-11; findings recorded as to-dos 100-103.",
+  "evidence": "claude/todo.md 97",
+  "group": "Design",
+  "order": 209,
+  "ref": "97",
+  "severity": "S3",
+  "status": "done",
+  "title": "Audit: areas where screens listen to raw signals instead of one owner notice",
+  "updatedAt": "2026-10-11T06:38:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "evidence": "WIN report; map 07 G50; S137",
+  "group": "Button Map",
+  "order": 243,
+  "ref": "118",
+  "severity": "S4",
+  "status": "open",
+  "title": "A greyed command row shows no ☆ (Qt gives a disabled row no hover), so a command can be made a favourite only while it applies",
+  "updatedAt": "2026-10-11T16:58:00Z"
+}

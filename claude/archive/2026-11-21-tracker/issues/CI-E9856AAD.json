@@ -1,0 +1,12 @@
+{
+  "detail": "Was a real bug: every open OSC window handled a Listen's capture (page and OSC Monitor both added the input). Now only the window that started the Listen does.",
+  "evidence": "58c2b8ea; Spec 09 S17 S19 S20 (FL-S20); test_listen_reaches_only_the_model_that_started_it",
+  "group": "Tests",
+  "note": "",
+  "order": 2,
+  "ref": "CI-E9856AAD",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "CI: OSC capture test fails depending on test order (seed 519453)",
+  "updatedAt": "2026-10-10T10:24:00Z"
+}

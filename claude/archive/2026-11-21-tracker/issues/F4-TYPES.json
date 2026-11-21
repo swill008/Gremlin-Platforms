@@ -1,0 +1,12 @@
+{
+  "detail": "Baseline 841 pyright, 360 ruff (no new ones). Mostly missing annotations; touches almost every file.",
+  "evidence": "tools/pyright_baseline.py",
+  "group": "Code audit",
+  "note": "",
+  "order": 70,
+  "ref": "F4-TYPES",
+  "severity": "S4",
+  "status": "open",
+  "title": "Type annotations: about 370 type-checker findings across the code",
+  "updatedAt": "2026-10-10T17:05:00Z"
+}

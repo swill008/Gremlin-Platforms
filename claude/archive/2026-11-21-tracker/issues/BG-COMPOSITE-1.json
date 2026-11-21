@@ -1,0 +1,8 @@
+{
+  "evidence": "store.device_photo_ref returns the bottom background picture only (store.py:1449-1470). User approved 1a (save a composite whenever the background changes), 100% = most detailed background picture, 3b (before release 1.0.33). Spec 07 S157, S83, S127 changed.",
+  "group": "Device Mapping Editor",
+  "ref": "BG-COMPOSITE-1",
+  "severity": "medium",
+  "status": "fixed (b4f3ff13, CI running); input modules only",
+  "title": "Device's photo should be the whole background (all layers), not the bottom picture; 100% export from the most detailed picture"
+}

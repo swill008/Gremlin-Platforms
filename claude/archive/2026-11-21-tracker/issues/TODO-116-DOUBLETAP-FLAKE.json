@@ -1,0 +1,10 @@
+{
+  "evidence": "claude/todo.md 116",
+  "group": "To-do",
+  "order": 212,
+  "ref": "to-do 116",
+  "severity": "S4",
+  "status": "open",
+  "title": "Load flake: keyboard double-tap matrix test under the 6-part run",
+  "updatedAt": "2026-10-12T13:19:00Z"
+}

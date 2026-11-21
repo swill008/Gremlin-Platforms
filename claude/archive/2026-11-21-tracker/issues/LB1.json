@@ -1,0 +1,12 @@
+{
+  "detail": "User approved 11:12; exception to no-network in tests for OSC socket paths only.",
+  "evidence": "52a8c2f0",
+  "group": "Tests",
+  "note": "",
+  "order": 39,
+  "ref": "LB1",
+  "severity": "decision",
+  "status": "fixed",
+  "title": "OSC socket tests may use 127.0.0.1 loopback with an OS-picked port",
+  "updatedAt": "2026-10-10T12:03:00Z"
+}

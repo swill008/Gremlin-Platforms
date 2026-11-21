@@ -1,0 +1,11 @@
+{
+  "evidence": "2bf2e2d6; test_no_binding_removal.py (failed old on DialogHelp)",
+  "group": "Quality",
+  "note": "22 + 6 properties fixed; Spec: none",
+  "order": 215,
+  "ref": "to-do 118",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "qt.qml.binding.removal sweep of ({})/([]) properties + guard test",
+  "updatedAt": "2026-10-12T13:52:00Z"
+}

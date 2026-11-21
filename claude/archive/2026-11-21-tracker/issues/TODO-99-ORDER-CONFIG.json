@@ -1,0 +1,11 @@
+{
+  "detail": "Found by ORDER-MACRO; same with or without the 2026-10-11 conftest change. Not investigated.",
+  "evidence": "claude/todo.md 99",
+  "group": "Tests",
+  "order": 211,
+  "ref": "99",
+  "severity": "S3",
+  "status": "todo",
+  "title": "Order-dependent: test_config before test_startup_settings_kept fails (Access is denied on a temp settings file)",
+  "updatedAt": "2026-10-11T06:30:00Z"
+}

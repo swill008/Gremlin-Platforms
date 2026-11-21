@@ -1,0 +1,12 @@
+{
+  "detail": "(a) 07 S126 Show me links into the Button Map window (gap BG-SHOWME); (b) should a Layers kind filter hide the folded Background row (it always shows now); (c) 03 S88 says the Logical Device card photo is the file's image (now the bottom background picture); (d) the window's openForDevice photo argument is unused; (e) editor-only tests not written: Align/Distribute and zoom in Background mode, leader ends snapping to a background picture; (f) gap G29 harness note.",
+  "evidence": "6c6be17e; Spec: 07 S120 S126; 01 S139; 03 S88",
+  "group": "Button Map",
+  "note": "All done. (a)-(c) 6c6be17e; (d) unused openForDevice photo argument removed and (e) editor tests for Align/Distribute and zoom in Background mode written, 93862cc9. The leader-end test found G30 (own issue GESTURE-LEADER-G30).",
+  "order": 226,
+  "ref": "106c",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Planes: open questions for the user (Show me links, Background row under a filter, 03 S88 wording, small tidy-ups)",
+  "updatedAt": "2026-10-11T12:43:00Z"
+}

@@ -1,0 +1,11 @@
+{
+  "evidence": "c52f7205; claude/plans/next-run-2026-10-12/wave2.md",
+  "group": "Code audit 2026-10-12",
+  "note": "Spec: 01 S37/09 S68 retired (D-AUDIT-TRAY-CARRY), 04 S65 retired, 03 G46, 09 R3",
+  "order": 205,
+  "ref": "Audit 11a-18a",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Audit clean-up: dead/test-only code, 145 unused files, WiX files, committed log, guard gap, dead Options row, OT-2 markers, macro 0.05 rule, risky duplicates merged, map fixed",
+  "updatedAt": "2026-10-12T12:52:00Z"
+}

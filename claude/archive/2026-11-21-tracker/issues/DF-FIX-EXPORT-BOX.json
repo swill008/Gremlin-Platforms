@@ -1,0 +1,11 @@
+{
+  "detail": "The Popup was made as a separate window; StatusPage now makes it on the window's overlay. New end-to-end test on the real Home page.",
+  "evidence": "44ab601c; Spec: 08 S111",
+  "group": "Device folders",
+  "order": 223,
+  "ref": "DF-3",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "Export/Import Device box never opened (\"transientParent\" error, found by the user)",
+  "updatedAt": "2026-10-11T10:52:00Z"
+}

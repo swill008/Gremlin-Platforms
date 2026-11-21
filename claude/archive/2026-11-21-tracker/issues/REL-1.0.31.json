@@ -1,0 +1,12 @@
+{
+  "detail": "Published 10:43 (GitHub 15:42 UTC): Gremlin-Platforms-R1-1.0.31-Setup.exe (53 MB) and .zip (82 MB), notes from release-notes/1.0.31.md.",
+  "evidence": "60ada9ba; https://github.com/swill008/Gremlin-Platforms/releases/tag/Gremlin-Platforms-R1-1.0.31",
+  "group": "Release",
+  "note": "",
+  "order": 1,
+  "ref": "REL-1.0.31",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Release 1.0.31",
+  "updatedAt": "2026-10-10T10:44:00Z"
+}

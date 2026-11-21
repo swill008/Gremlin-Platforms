@@ -1,0 +1,10 @@
+{
+  "evidence": "CI on b45dd2fb: test_one_tooltip::test_no_hand_set_tooltip_delays; fix in working tree, rides with batch L",
+  "group": "Tests",
+  "order": 261,
+  "ref": "CI 2026-10-12",
+  "severity": "S4",
+  "status": "fixed (4573e254)",
+  "title": "Apply to all / Copy from buttons set their own tooltip delay (house rule)",
+  "updatedAt": "2026-10-12T14:55:00Z"
+}

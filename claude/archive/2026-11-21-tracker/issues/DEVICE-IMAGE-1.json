@@ -1,0 +1,8 @@
+{
+  "evidence": "scratchpad devimg/contract.md, split.md, decisions.md. Input modules only; Logical Device, outputs and HidHide untouched.",
+  "group": "Device Mapping Editor / Home",
+  "ref": "DEVICE-IMAGE-1",
+  "severity": "medium",
+  "status": "planned, approved (all a); build after release 1.0.33",
+  "title": "Device Image: Add / Change / Remove Image on input module cards and in Module Setup; your image overrides the generated picture"
+}

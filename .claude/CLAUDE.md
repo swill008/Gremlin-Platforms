@@ -46,11 +46,12 @@ never added without the user asking for it. This applies to every system.
 
 One-time code (user, 2026-10-11): when the user approves code that runs once
 or reads an old layout (a first-start data move, a one-time reader of old
-files), track it so it can be removed later: a tracker issue in group
-"One-time code" (what it does, files/functions, when it can go, status), a
-`# ONE-TIME (tracker <ref>): ...` comment at the code, and a line in
-claude/todo.md, all in the same commit. Before each release, list the open
-"One-time code" issues to the user. Pass this on to agents that write such code.
+files), track it so it can be removed later: an entry under "One-time code"
+in claude/todo.md (ref such as OT-n, what it does, files/functions, when it
+can go, status) and a `# ONE-TIME (OT-n): ...` comment at the code, both in
+the same commit (the tracker that held these until 2026-11-21 is archived).
+Before each release, list the open "One-time code" entries to the user. Pass
+this on to agents that write such code.
 
 ## Working standard (required, user 2026-10-07)
 
@@ -58,31 +59,21 @@ Every piece of work, not only big batches:
 
 1. **Status line.** Start every message to the user with the one-line status,
    e.g. `[History deltas ▓▓░░░░░░░░ 20% · H1 + H2 building · next: screenshots]`.
-2. **One tracker, nothing else (user, 2026-10-10: "remove all the trackers
-   and only keep one consolidated tracker. You keep generating multiple and
-   then leaving them stale.").** The ONLY artifact is the Gremlin-Platforms
-   Tracker, https://claude.ai/artifact/HpP8ef9co1whHSorPcVse8. Never publish
-   another artifact (no progress pages, reports, studies, mockups or result
-   pages); every other page made before 2026-10-10 is archived to a pointer.
-   The tracker was restarted fresh on 2026-10-10 (user: "the data is too
-   stale"); the old tracker's 880 items are a record only, in
-   claude/archive/2026-10-10-tracker/.
-   - Its "Now" panel (ArtifactData document `tracker/now`): what is happening
-     now, what is next, every agent and its state, the last test result, CI,
-     the latest release and a short log. Update it once per commit, right
-     after the commit and push (user, 2026-10-12: "do it at the end of a
-     commit, not in the middle of runs"): not at every step, not during
-     agent or test runs. Releases and CI results are added at the next
-     update.
-   - Its issue list (ArtifactData collection `issues`) is a running copy: at
-     the same once-per-commit update (right after the commit and push), add
-     an item for each new fix, feature, gap or to-do (ref,
-     title, group, severity, status, evidence: commit and spec line) and set
-     the status of items it fixes. A to-do item in claude/todo.md is an issue
-     here too.
+2. **No artifacts (user, 2026-11-21: "we can drop the artifact tool and
+   those products", 20b).** Never publish, update or keep any artifact: no
+   tracker, progress pages, reports, studies, mockups or result pages. The
+   Gremlin-Platforms Tracker artifact was dropped 2026-11-21; its 222 issues,
+   Now panel and page are a record only, in claude/archive/2026-11-21-tracker/
+   (the 2026-10-10 tracker's 880 items are in claude/archive/2026-10-10-tracker/).
+   - Status lives in the repo and the chat: the status line in every
+     message; to-dos in claude/todo.md; gaps and decisions on the program
+     map pages (sections 10 and 12); times in claude/timings.md; plans,
+     audits and studies under claude/plans/ and claude/audits/ (each with
+     its README line). After each commit and push, say in the chat what was
+     committed, the tests run and the CI state.
    - Reports, studies, plans and mockups go to the user in the chat (text,
-     tables, pictures sent with SendUserFile) and, when worth keeping, as an
-     issue in the tracker with the facts in its detail. Never as a page.
+     tables, pictures sent with SendUserFile) and, when worth keeping, as a
+     file under claude/audits/ or claude/plans/. Never as a page.
    - Mock-ups are never made by running code (user, 2026-10-12: "make it a
      rule, to never use code to build a mock menu, you can offer it, but dont
      do it by default"): no drawing scripts, rendered or edited screenshots or

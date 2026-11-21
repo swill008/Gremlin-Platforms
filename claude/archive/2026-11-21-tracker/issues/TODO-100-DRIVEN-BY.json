@@ -1,0 +1,11 @@
+{
+  "detail": "Audit 97, AUD-DRIVEN. 4 proven by probe, 2 by code. Proposed owner notice signal.bindingsChanged.",
+  "evidence": "claude/todo.md 100",
+  "group": "Design",
+  "order": 212,
+  "ref": "100",
+  "severity": "S2",
+  "status": "todo",
+  "title": "'Driven by' and what-drives-what go stale (mode delete, OSC undo, profile reload header, Home on screen, Library Swap/Change vJoy send no signal)",
+  "updatedAt": "2026-10-11T06:38:00Z"
+}

@@ -1,0 +1,12 @@
+{
+  "detail": "Checked in the Condition editor, macro vJoy steps and Script settings (7 tests, screenshots). Script settings width issue split out as 98.",
+  "evidence": "a0584ac3",
+  "group": "Can't be sent",
+  "note": "found by MAP6",
+  "order": 202,
+  "ref": "95",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Check the Condition editor's vJoy target shows the red ⚠ and tooltip",
+  "updatedAt": "2026-10-11T06:29:00Z"
+}

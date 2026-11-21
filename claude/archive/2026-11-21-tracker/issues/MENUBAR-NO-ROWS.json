@@ -1,0 +1,10 @@
+{
+  "evidence": "5d680c9b; Spec: 07 S98 S99 S100 S134 S135",
+  "group": "Button Map",
+  "order": 239,
+  "ref": "114",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Button Map: no tool rows; menu bar File, Edit (Background ›), View, Insert, Arrange, Leader, Format, Help; Properties under Layers; Options and Keyboard Shortcuts windows; Cut",
+  "updatedAt": "2026-10-11T15:57:00Z"
+}

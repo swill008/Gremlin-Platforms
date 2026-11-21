@@ -1,0 +1,12 @@
+{
+  "detail": "D-07-BACKGROUND-PLANES. Built after device folders.",
+  "evidence": "2d14cc37; Spec: 07 S10 S11 S14 S26 S30 S34 S36 S39-S44 S57 S62 S76 S82 S83 S87 S89 S94 S102 S111-S127; 08 S9 S75 S113 S114; 10 S11 S62; 03 S52 S88 S135",
+  "group": "Button Map",
+  "note": "Built 2026-10-11 with D-07-PLANES-ANSWERS (P1a-P7a); full run green (seed 558790).",
+  "order": 219,
+  "ref": "106b",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "Button Map background and foreground planes (Background mode, layers, Move to Background/Foreground)",
+  "updatedAt": "2026-10-11T11:50:00Z"
+}

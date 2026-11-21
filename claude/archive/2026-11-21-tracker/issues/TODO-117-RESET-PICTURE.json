@@ -1,0 +1,11 @@
+{
+  "evidence": "2bf2e2d6; test_reset_picture.py",
+  "group": "Device Mapping Editor",
+  "note": "Spec: 07 S161",
+  "order": 214,
+  "ref": "to-do 117",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Reset Picture (menu, Arrange, Properties); Reset Shape already undid rotation/flip (no fix needed)",
+  "updatedAt": "2026-10-12T13:52:00Z"
+}

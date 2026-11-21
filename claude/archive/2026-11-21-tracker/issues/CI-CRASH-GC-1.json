@@ -1,0 +1,8 @@
+{
+  "evidence": "Introduced in 44ab601c (2026-10-11 10:52): _own_refs's nested self-calling walk() made a reference cycle holding self. CI run 38205139995 (part 2) crashed; locally 7/9 on b4f3ff13, 0/4 on 3515b8cd. Qt: 'Timers cannot be stopped from another thread' on the History thread; debugger: sendTimerEvent to a freed object. Fix: walk as a loop (hardware_profile.py). Test: test_hardware_profile_freed_in_place.py.",
+  "group": "Stability",
+  "ref": "CI-CRASH-GC-1",
+  "severity": "high",
+  "status": "fix proven 2/2 (uncommitted); 3 more proof runs + wider guard (main-thread GC, test check) in progress",
+  "title": "Native crash: a HardwareProfile (with a timer) freed by the garbage collector on a worker thread"
+}

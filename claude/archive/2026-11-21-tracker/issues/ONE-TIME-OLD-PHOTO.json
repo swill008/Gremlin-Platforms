@@ -1,0 +1,11 @@
+{
+  "detail": "Built 2026-10-11 (D-07-PLANES-ANSWERS P3a): on open, an old map's image + photo become the bottom background picture in memory; the next Save writes the new format. Code marked '# ONE-TIME (tracker OT-2)': gremlin/modules/planes_once.py, store.device_photo_ref fallback, hardware_profile._planes_text, device_pack._old_photo_in_zip / _merge_background (export-side _today_layout removed 2026-10-11 with the .zip writer, fix list batch 2; OT-2 now runs at import only), library_swap._swapped_docs. Remove once every map has been saved in the new format.",
+  "evidence": "2d14cc37",
+  "group": "One-time code",
+  "order": 220,
+  "ref": "OT-2",
+  "severity": "S3",
+  "status": "in program; kept in 1.0.33 (user 2026-10-11), remove in the next release",
+  "title": "One-time read: an old map's photo becomes its bottom background picture (on open, written at Save)",
+  "updatedAt": "2026-10-11T11:50:00Z"
+}

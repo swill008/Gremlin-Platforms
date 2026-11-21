@@ -1,0 +1,11 @@
+{
+  "detail": "D-05-CANT-SEND, D-05-CANT-SEND-ALL, D-04-CANT-SEND-NOTICE, D-05-FOLLOW-ALL-PAGES, D-05-QUICK-TAP, D-09-OSC-ROW-FOLLOW, D-09-SENDOSC-TARGET-NAME. Full run green (seed 273667).",
+  "evidence": "51f5d8be; Spec: 03 S30 S78a; 04 S32a; 05 S53 S131 S137-S139; 09 S32 S141",
+  "group": "Can't be sent",
+  "order": 203,
+  "ref": "CS",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "Can't be sent: red ⚠ in editors, rows, Home cards, wire labels, Find tick, load notice; LD/Keyboard/OSC pages tint and follow",
+  "updatedAt": "2026-10-10T21:08:00Z"
+}

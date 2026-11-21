@@ -1,0 +1,11 @@
+{
+  "evidence": "c7f07903; test_device_bindings_appearance_per_device.py (+6), test_appearance_copy_from_e2e.py (4/5 failed old)",
+  "group": "Device Bindings",
+  "note": "Spec: 05 S125 (D-05-APPEARANCE-COPY-FROM)",
+  "order": 260,
+  "ref": "user 2026-10-12",
+  "severity": "feature",
+  "status": "fixed (CI running)",
+  "title": "Copy from device… in the Device Bindings Appearance panel",
+  "updatedAt": "2026-10-12T14:51:00Z"
+}

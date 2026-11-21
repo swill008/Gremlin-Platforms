@@ -1,0 +1,10 @@
+{
+  "evidence": "cbdbf1db (times), e265d87b (diagnostics)",
+  "group": "Tests",
+  "order": 286,
+  "ref": "CI 0c7f9c52, f8a9990b",
+  "severity": "ci",
+  "status": "fixed",
+  "title": "CI failures: diagnostics test depended on test order; kept test times below 80% cover",
+  "updatedAt": "2026-11-20T05:11:00Z"
+}

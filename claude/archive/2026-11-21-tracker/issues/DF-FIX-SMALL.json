@@ -1,0 +1,10 @@
+{
+  "evidence": "44ab601c; Spec: 10 S14 S35 S39 S44; 07 S62",
+  "group": "Device folders",
+  "order": 224,
+  "ref": "DF-4",
+  "severity": "S3",
+  "status": "fixed",
+  "title": "Device folders follow-ups: Library window .gmap export/import, two pastes one name, Rename Template half-rename, modules package imported the UI, Device Pack backups bypassed the store",
+  "updatedAt": "2026-10-11T10:52:00Z"
+}

@@ -1,0 +1,8 @@
+{
+  "evidence": "Outside watcher 2026-11-20 19:42/19:48; fixed 6c903bfb; Spec: 12 S4a (D-12-ONE-SAVER). What restarted the idle period is still unknown (needs S16 tracing).",
+  "group": "Screen Saver Mode",
+  "ref": "SSM-DOUBLE-SAVER",
+  "severity": "medium",
+  "status": "fixed",
+  "title": "A second screen saver started while Gremlin's own still ran"
+}

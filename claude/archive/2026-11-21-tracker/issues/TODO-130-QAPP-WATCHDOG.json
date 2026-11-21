@@ -1,0 +1,10 @@
+{
+  "evidence": "claude/todo.md 130",
+  "group": "Tests",
+  "order": 229,
+  "ref": "to-do 130",
+  "severity": "S4",
+  "status": "open",
+  "title": "Tests in the real app object: watchdog configChanged listener can read unregistered settings in later tests; conftest guard",
+  "updatedAt": "2026-10-12T15:46:00Z"
+}

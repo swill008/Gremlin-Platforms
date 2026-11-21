@@ -1,0 +1,12 @@
+{
+  "detail": "Approved 11:02. Spec 09 S147-S158.",
+  "evidence": "36bbcdb7; Spec: 09 S147-S158; D-09-OSC-PATTERNS, D-09-OSC-FBROWS, D-09-OSC-ACTSTATE",
+  "group": "OSC",
+  "note": "",
+  "order": 31,
+  "ref": "OSC-B2",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "OSC rewrite batch 2: wildcards (OX7), feedback rows on the page (OX8), action-state feedback (OX9F)",
+  "updatedAt": "2026-10-10T12:41:00Z"
+}

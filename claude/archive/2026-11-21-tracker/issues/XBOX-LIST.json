@@ -1,0 +1,11 @@
+{
+  "evidence": "03e02cd7",
+  "group": "Xbox output",
+  "note": "Spec: 03 S117 S139 S140, 05 S121 S125, 08 S75",
+  "order": 209,
+  "ref": "D-XBOX-LIST",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Xbox Output View in the Device Bindings look: view-only list with source lines, Find/filters, live bars, own Appearance",
+  "updatedAt": "2026-10-12T13:19:00Z"
+}

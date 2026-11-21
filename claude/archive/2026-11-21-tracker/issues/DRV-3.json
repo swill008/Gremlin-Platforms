@@ -1,0 +1,8 @@
+{
+  "evidence": "Spec 12 S25 changed, S25a, S25b (D-12-HELPER-DRIVERS) in b771c0a2",
+  "group": "Installer",
+  "ref": "DRV-3",
+  "severity": "feature",
+  "status": "approved, not built",
+  "title": "Gremlin Device Helper driver jobs (install/update, remove HidHide, vJoy setup with read-back; job/result file for setup)"
+}

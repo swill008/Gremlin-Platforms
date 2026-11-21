@@ -1,0 +1,12 @@
+{
+  "detail": "AD1-AD10, S1 held layout narrowing, S2 pack limits, S3 Listening box, S4 Pause unknown, K1 keys shared, T1 tester Xbox slot, L1 loop chain; output guard outside Run, OSC one thread, bounded waits, quit releases Qt, release entries spent, leaks, registry retry, HidHide one walk, lock owner; editors at 150/200 %; page rows in place; tests keep guards (no real dill); dead code removed; map all 10 pages.",
+  "evidence": "e414d0b3; Spec lines in commit",
+  "group": "Code audit",
+  "note": "",
+  "order": 57,
+  "ref": "AUDIT-F1F4",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Audit fix batches F1-F4 (data safety, threads, leaks, decisions, test guards)",
+  "updatedAt": "2026-10-10T15:56:00Z"
+}

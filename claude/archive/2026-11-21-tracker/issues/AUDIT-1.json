@@ -1,0 +1,12 @@
+{
+  "detail": "Audit done 14:30-15:05 (~140 findings). Fix batches F1-F4 built and committed e414d0b3 (about 45 agent jobs): AD1-AD10, S1-S4, K1, T1, L1, threads, leaks, test guards, dead code, map refresh. Left: A1, O1 (running), Help pass, type annotations, deferred dead code, LD v14 converters question.",
+  "evidence": "dc58bdab, e414d0b3",
+  "group": "Audit",
+  "note": "All batches done: e414d0b3, a7136318, 3702e630. Left items are their own issues (F4-TYPES, AUD-DEAD-LEFT, EW-1, ORPHAN-PROCS).",
+  "order": 20,
+  "ref": "AUDIT-1",
+  "severity": "feature",
+  "status": "fixed",
+  "title": "Code audit and shake-out of the whole code base",
+  "updatedAt": "2026-10-10T17:05:00Z"
+}

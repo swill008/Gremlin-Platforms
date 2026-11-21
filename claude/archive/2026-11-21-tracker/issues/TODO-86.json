@@ -1,0 +1,12 @@
+{
+  "detail": "",
+  "evidence": "to-do 86",
+  "group": "Carried",
+  "note": "",
+  "order": 12,
+  "ref": "TODO-86",
+  "severity": "bug",
+  "status": "open",
+  "title": "Reset Devices Xbox note shows \"can t\" (apostrophe missing on screen)",
+  "updatedAt": "2026-10-10T10:16:00Z"
+}

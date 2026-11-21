@@ -1,0 +1,11 @@
+{
+  "detail": "111 tts close() deletes only the engine (crash); 131/126 test/smoke_report.py in 197 tests; 107 tester test fails fast; 42 QML engines deleted at session end (exit hang, verified with cdb); 31/47/99 settings registered before fake devices; 34 b7 history view; 30 not reproduced, guard added; 38 not reproduced; 50 exit code printed; 39 studied, stay pinned (audit); 133 studied, next batch (audit); child-program start-up allowance (CI 4573e254)",
+  "evidence": "571208b9; full run seed 957752 7,148 passed",
+  "group": "Tests",
+  "order": 264,
+  "ref": "111 131 126 107 42 31 47 99 34 30 38 50 39 133",
+  "severity": "S3",
+  "status": "fixed (CI passed 571208b9)",
+  "title": "Reliability batch M (12 agents)",
+  "updatedAt": "2026-10-12T16:00:00Z"
+}

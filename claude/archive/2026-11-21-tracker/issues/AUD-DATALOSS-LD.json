@@ -1,0 +1,12 @@
+{
+  "detail": "logical_device.json with a row missing id (or bad/duplicate id) loads only rows before it, log-only; the next profile Save rewrites the file without the later good rows. OSC skips the bad row and keeps the file. Needs a spec answer (skip+keep vs refuse save).",
+  "evidence": "scratchpad/audit/SHAKE-DAMAGE.md; logical_device.py:340-358, logical_device_file.py:88-92",
+  "group": "Code audit",
+  "note": "AD1 built: unreadable rows kept and written back; warning shown at start; any damage refuses save. e414d0b3, Spec: 06 (AD1)",
+  "order": 56,
+  "ref": "SHAKE-DAMAGE-01",
+  "severity": "S1 data loss",
+  "status": "fixed",
+  "title": "Logical Device file: one bad row silently drops the good rows after it at the next Save (data loss)",
+  "updatedAt": "2026-10-10T15:56:00Z"
+}

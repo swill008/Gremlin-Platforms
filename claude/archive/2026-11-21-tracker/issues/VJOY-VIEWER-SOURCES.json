@@ -1,0 +1,11 @@
+{
+  "evidence": "bb89aebd; test_vjoy_viewer_lists_osc.py, test_viewer_chip_names_fit.py",
+  "group": "Viewers",
+  "note": "Spec: 03 S122, gap 33; D-03-VJOY-VIEWER-QUICK",
+  "order": 224,
+  "ref": "gap 33 (reopened)",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "vJoy Viewer quick fixes: OSC/Logical Device cards without module file, output bars follow new bindings, wording, chips fit",
+  "updatedAt": "2026-10-12T15:00:00Z"
+}

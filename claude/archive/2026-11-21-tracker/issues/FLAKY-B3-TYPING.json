@@ -1,0 +1,12 @@
+{
+  "detail": "Passes alone in 2.6 s. Seen 11:53 run, unit-4. Cause not verified.",
+  "evidence": "gremlin-test-run.log 11:53 run",
+  "group": "Tests",
+  "note": "Child replaced PYTHONPATH, lost guards, loaded real dill; now keeps guards + fake hardware. e414d0b3",
+  "order": 37,
+  "ref": "FLAKY-B3-TYPING",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "test_keys_typed_into_a_text_box_are_not_ticked: child process timed out (120 s) under full-run load",
+  "updatedAt": "2026-10-10T15:56:00Z"
+}

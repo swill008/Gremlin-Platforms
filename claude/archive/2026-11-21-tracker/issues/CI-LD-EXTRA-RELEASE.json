@@ -1,0 +1,11 @@
+{
+  "detail": "RELMODE 2026-10-11: the auto-release reads the live mode (ModeManager().current) at release instead of a mode_changed-fed copy. On the old code a missed mode change gave [True, False, False] (the CI failure) and the reverse case left the Logical Device button held ([True]); both pass now. 06 S38 unchanged.",
+  "evidence": "e4379685; test_release_reads_live_mode.py (3); Spec: 06 S38",
+  "group": "CI",
+  "order": 205,
+  "ref": "CI-LD",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "CI: Map to Logical Device matrix tests saw an extra 'released' update",
+  "updatedAt": "2026-10-11T05:36:00Z"
+}

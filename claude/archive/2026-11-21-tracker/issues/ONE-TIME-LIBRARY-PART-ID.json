@@ -1,0 +1,11 @@
+{
+  "detail": "User 2026-10-11 (fix list item 13 follow-up). Built: gremlin/library_part_id_once.py (every function '# ONE-TIME (tracker OT-4)'): at start, after register_config_options(), renames the Library part id button_map -> device_map in library.json once (defaults, each setup's holds, the last change's parts), after a checked backup in <data folder>/backup/<date> library part id move/; no History entry; refuses the real folder under tests. Call: joystick_gremlin.py (import + one line after register_config_options()). Test test_library_part_id_once.py. Line in claude/todo.md. Remove before release with OT-1, OT-2, OT-3.",
+  "evidence": "fix list item 13 (batch 4)",
+  "group": "One-time code",
+  "order": 245,
+  "ref": "OT-4",
+  "severity": "S3",
+  "status": "in program; kept in 1.0.33 (user 2026-10-11; finishes the covers ids at the next start), remove in the next release",
+  "title": "One-time move: Device Library saved setups' part id \"button_map\" becomes \"device_map\"",
+  "updatedAt": "2026-10-11T18:50:00Z"
+}

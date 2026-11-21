@@ -95,6 +95,17 @@ expect.
    an Open Drivers link to Tools > Drivers, replacing the Download link
    (06 S188).
 
+## Build batch (when the user says build)
+
+1. Driver setup in the installer: 01 S187-S192 (DRV-1).
+2. Tools > Drivers, the HidHide two-half update, Open Drivers links:
+   06 S185-S188 (DRV-2).
+3. Gremlin Device Helper driver jobs: 12 S25 changed, S25a, S25b (DRV-3).
+4. Screen Saver Mode trace: the restart line names its source, 12 S16a
+   (SSM-RESTART-SOURCE; user 2026-11-21: 19 "add it to the changes batch we
+   are about to begin").
+Tests in the Hyper-V virtual machine (11a) for items 1-3.
+
 ## Facts checked 2026-11-21 (3 research helpers + lead)
 
 Inno Setup (lead, local): 6.7.3 at %LOCALAPPDATA%\Programs\Inno Setup 6 (found

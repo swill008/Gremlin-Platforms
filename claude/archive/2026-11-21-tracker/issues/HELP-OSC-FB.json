@@ -1,0 +1,12 @@
+{
+  "detail": "Only sentences naming removed buttons were fixed to keep tests green; the full Help pass (last) must rewrite the Feedback and Companion topics for the OSC page.",
+  "evidence": "36bbcdb7",
+  "group": "Help",
+  "note": "osc.js Feedback/Companion rewritten for feedback rows. a7136318",
+  "order": 44,
+  "ref": "HELP-OSC-FB",
+  "severity": "docs",
+  "status": "fixed",
+  "title": "OSC Help still describes old Feedback tab details (row source defaults etc.)",
+  "updatedAt": "2026-10-10T16:49:00Z"
+}

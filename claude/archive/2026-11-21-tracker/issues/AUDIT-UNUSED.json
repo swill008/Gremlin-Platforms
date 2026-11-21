@@ -1,0 +1,12 @@
+{
+  "detail": "Done since: ColorInformation removed (F4-COLORINFO), gap #28 fixed with tests (AD2), exit crash addressed (AD5). Left: 08 Q15 historyFilter by profile has no test; an occasional crash opening the Configuration page seen once by CFG-SHELL (not reproduced).",
+  "evidence": "f5ff0c46",
+  "group": "Code audit",
+  "note": "4e56e49a: History filter tests (Q15, Q16); likely crash cause (leaked test Backend timers) fixed in test set-up.",
+  "order": 51,
+  "ref": "AUDIT-UNUSED",
+  "severity": "audit",
+  "status": "fixed",
+  "title": "Left from the rewrite: 08 Q15 history filter test; one-off Configuration page crash",
+  "updatedAt": "2026-10-10T18:30:00Z"
+}

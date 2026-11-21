@@ -1,0 +1,12 @@
+{
+  "detail": "Relative path under pytest found nothing; now scans the real folder, asserts files found, exempts Send OSC.",
+  "evidence": "36bbcdb7",
+  "group": "Tests",
+  "note": "",
+  "order": 42,
+  "ref": "GUARD-OSC-IMPORT",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Guard test 'actions don't import OSC' scanned no files",
+  "updatedAt": "2026-10-10T12:41:00Z"
+}

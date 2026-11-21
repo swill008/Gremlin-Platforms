@@ -1,0 +1,10 @@
+{
+  "evidence": "9db7bec2; Spec: 03 gap 25",
+  "group": "Modules",
+  "order": 251,
+  "ref": "23",
+  "severity": "S3",
+  "status": "fixed (CI running)",
+  "title": "Renaming a module keeps its Home card layout",
+  "updatedAt": "2026-10-12T11:11:00Z"
+}

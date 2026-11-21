@@ -1,0 +1,8 @@
+{
+  "evidence": "93a0ff78 planes_print_smoke.py wait 60 s; Spec: none",
+  "group": "CI",
+  "ref": "CI-PRINT-WAIT",
+  "severity": "low",
+  "status": "fixed",
+  "title": "test_planes_print: 10 s export wait too short on slow CI runner"
+}

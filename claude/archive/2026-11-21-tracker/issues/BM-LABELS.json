@@ -1,0 +1,10 @@
+{
+  "evidence": "e37ec52c (pushed after CI on 387e0776); Spec: 07 S134; D-07-MENU-LABELS",
+  "group": "Button Map",
+  "order": 242,
+  "ref": "117",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Label questions: Insert 'Import Picture…' vs 'Picture…'; Arrange 'Group Selected' vs 'Group'",
+  "updatedAt": "2026-10-11T16:30:00Z"
+}

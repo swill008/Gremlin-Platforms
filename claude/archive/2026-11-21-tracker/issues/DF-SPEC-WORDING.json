@@ -1,0 +1,12 @@
+{
+  "detail": "04 S2 and 09 S44 name store.path_of; 06 S95 and LD3 say logical_device.json; 09 S168 and the OSC trace say osc.json; 03 S62 'another stick uses the file'; 07 S106 recovery-copy pictures; 08 S85 'binds the devices again'; 08 S87 deleted test file.",
+  "evidence": "93862cc9; Spec: 03 S62; 04 S2; 06 S95; 07 S106; 08 S85 S87; 09 S44 S168 (D-03-FOLDERS-WORDING)",
+  "group": "Device folders",
+  "note": "User 'lets do these'. The OSC trace lines, osc_output and Help now say OSC/module.json (gap OSC-TRACE-NAME closed).",
+  "order": 225,
+  "ref": "DF-5",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Spec wording left from before device folders",
+  "updatedAt": "2026-10-11T12:43:00Z"
+}

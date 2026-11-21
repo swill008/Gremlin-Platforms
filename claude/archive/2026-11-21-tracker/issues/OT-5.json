@@ -1,0 +1,8 @@
+{
+  "evidence": "What: logs every mouse press in the Device Mapping Editor window (button, position, item under the pointer, item that took it, menu state) and each menu open/close, only while Debug › Tracing is on. Files: gremlin/ui/click_trace.py, ONE-TIME (tracker OT-5) lines in RigPointerArea.qml and the context menu, the wiring in joystick_gremlin.py. When it can go: once the dead right-click cause is fixed. todo 110.",
+  "group": "One-time code",
+  "ref": "OT-5",
+  "severity": "low",
+  "status": "kept for now (user 2026-10-11: 'We will keep it for a bit until we are done'); gets a Mouse tick and filter on the Live Log Reader's Trace tab",
+  "title": "Temporary click trace (Mouse tick on the Trace tab) for the dead right-click report"
+}

@@ -1,0 +1,10 @@
+{
+  "evidence": "9e8b9e78; contract-SSM2.md; Spec: 12 S36-S40, 01 S185-S186",
+  "group": "Screen Saver Mode",
+  "order": 293,
+  "ref": "user 2026-11-20 'go build it'",
+  "severity": "feature",
+  "status": "done (user to try)",
+  "title": "Screen Saver Mode: status table, Test now, devices wait setting, tray items, away summary, devices back on, own-window hold, state snapshot, keep tracing on, History off for debug settings",
+  "updatedAt": "2026-11-20T08:15:00Z"
+}

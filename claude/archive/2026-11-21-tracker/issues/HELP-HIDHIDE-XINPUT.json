@@ -1,0 +1,10 @@
+{
+  "evidence": "e84790ac; qml/help/tools.js",
+  "group": "Help",
+  "order": 222,
+  "ref": "to-do 85",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Help: HidHide hides HID devices only, not XInput (Xbox) controllers",
+  "updatedAt": "2026-10-12T14:27:00Z"
+}

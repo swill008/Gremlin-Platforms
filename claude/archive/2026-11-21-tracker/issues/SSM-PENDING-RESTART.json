@@ -1,0 +1,11 @@
+{
+  "evidence": "a4697235",
+  "group": "Screen Saver Mode",
+  "note": "Spec: 12 S21 S34",
+  "order": 269,
+  "ref": "found 2026-11-16 on the user's PC",
+  "severity": "bug",
+  "status": "fixed (released in 1.0.39)",
+  "title": "Disabling a device's USB parent left the PD200X disabled after restart; parent disabling reversed, a disable needing a restart is undone",
+  "updatedAt": "2026-11-16T11:32:00Z"
+}

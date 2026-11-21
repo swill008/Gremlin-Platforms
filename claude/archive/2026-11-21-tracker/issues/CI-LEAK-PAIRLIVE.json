@@ -1,0 +1,11 @@
+{
+  "detail": "CI 38277644763 on 77b1fdb8: 6 errors in test_new_action_defaults.py ('SimpleNamespace' has no device_guid) from a PairLiveThrottle left by an earlier vJoy Viewer test, still connected to bindingsChanged (pair_live.py:76) and reading the test's stub vJoy list in _vjoy_ids_by_guid (pair_live.py:27). Test order leak only. Plan a): viewer tests remove their readers + test_leaks guard + _vjoy_ids_by_guid skips a device with no id.",
+  "evidence": "571208b9; culprit test_final_07 (deleteLater never ran); test_leaks::test_no_live_card_outlives_its_test; pair_live skips a device without an id",
+  "group": "Tests",
+  "order": 257,
+  "ref": "CI 2026-10-12",
+  "severity": "S3",
+  "status": "fixed (CI passed 571208b9)",
+  "title": "CI order leak: leftover vJoy Viewer reader crashes test_new_action_defaults",
+  "updatedAt": "2026-10-12T13:15:00Z"
+}

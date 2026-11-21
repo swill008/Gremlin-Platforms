@@ -1,0 +1,12 @@
+{
+  "detail": "Later runs passed. Looks like the known CI-only silent part death (to-do 50); not verified.",
+  "evidence": "GitHub run for b4cdacc7",
+  "group": "Tests",
+  "note": "",
+  "order": 3,
+  "ref": "CI-B4CDACC7",
+  "severity": "bug",
+  "status": "open",
+  "title": "CI: a test part ended with no summary after 203 s (b4cdacc7)",
+  "updatedAt": "2026-10-10T10:16:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "evidence": "9db7bec2; test_calibration_raw_read_only.py",
+  "group": "Calibration",
+  "order": 250,
+  "ref": "49",
+  "severity": "S4",
+  "status": "fixed (CI running)",
+  "title": "Calibration: the Raw field is read-only",
+  "updatedAt": "2026-10-12T11:11:00Z"
+}

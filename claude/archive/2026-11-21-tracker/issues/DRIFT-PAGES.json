@@ -1,0 +1,12 @@
+{
+  "detail": "PS1 (b). Guard test_list_pages_alike.py. Shared page base is to-do 91.",
+  "evidence": "e7648215; Spec 05 S125, 01 S58a",
+  "group": "UI",
+  "note": "",
+  "order": 53,
+  "ref": "DRIFT-PAGES",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "List pages drifted: OSC menu lacked Appearance…, Keyboard closed its panel differently",
+  "updatedAt": "2026-10-10T13:54:00Z"
+}

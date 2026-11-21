@@ -1,0 +1,12 @@
+{
+  "detail": "Program shows it; S108 leaves it out. Recommend add to S108.",
+  "evidence": "gremlin/input_tester/compare.py steam_state; 02 S108",
+  "group": "Questions",
+  "note": "User: recommendations. 02 S108 updated (D-02-STEAM-ALLOW). 3702e630",
+  "order": 67,
+  "ref": "ST1",
+  "severity": "question",
+  "status": "fixed",
+  "title": "Question: Input Tester Steam warning also in Allow mode with Steam on the list?",
+  "updatedAt": "2026-10-10T16:59:00Z"
+}

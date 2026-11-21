@@ -1,0 +1,11 @@
+{
+  "detail": "User request. _midPan (VkbRigFace.qml) set no cursor; closed hand while any pan drag is under way (middle in Edit, left or middle outside Edit); Space keeps its open hand. Spec 07 S14 updated.",
+  "evidence": "9d65eea3; Spec: 07 S14",
+  "group": "Button Map",
+  "order": 231,
+  "ref": "108",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Middle-drag pan shows a hand cursor like Space + left-drag",
+  "updatedAt": "2026-10-11T13:40:00Z"
+}

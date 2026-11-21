@@ -1,0 +1,10 @@
+{
+  "evidence": "3130f65c; 08 S85",
+  "group": "Spec",
+  "order": 230,
+  "ref": "08-S85",
+  "severity": "S4",
+  "status": "fixed",
+  "title": "Spec: Module Setup Import Undo removes the imported file when the device had none",
+  "updatedAt": "2026-10-11T13:07:00Z"
+}

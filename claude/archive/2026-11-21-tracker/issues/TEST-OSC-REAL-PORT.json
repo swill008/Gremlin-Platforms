@@ -1,0 +1,11 @@
+{
+  "detail": "Stubs were set on the OscRuntime SingletonDecorator, not the class, so they never applied; the journey harness guard read the old Configuration key. Now stubs patch OscRuntime.klass and journeys listen on 127.0.0.1 at an OS-picked port (new j12).",
+  "evidence": "51f5d8be; test-only",
+  "group": "Tests",
+  "order": 204,
+  "ref": "OSCFAIL",
+  "severity": "S2",
+  "status": "fixed",
+  "title": "OSC tests and journeys bound the real port 0.0.0.0:8001",
+  "updatedAt": "2026-10-10T21:08:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "evidence": "e84790ac; test_device_tab_row_removed.py",
+  "group": "App shell",
+  "order": 223,
+  "ref": "to-do 127, D-01-TABROW-REMOVED",
+  "severity": "cleanup",
+  "status": "fixed",
+  "title": "Old device tab row, vJoy tab pins, DeviceList/DeviceTabBar/JGTabButton/vjoy_status removed",
+  "updatedAt": "2026-10-12T15:00:00Z"
+}

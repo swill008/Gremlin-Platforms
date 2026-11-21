@@ -1,0 +1,12 @@
+{
+  "detail": "Found by the full run (test_osc_friendly_names_travel_by_uid). Save now writes only names the page changed since it read the file.",
+  "evidence": "52a8c2f0; test_a_save_keeps_names_written_to_the_file_another_way",
+  "group": "OSC",
+  "note": "",
+  "order": 34,
+  "ref": "OSC-NAMES-WIPE",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "OSC save overwrote names written by Device Pack / Module Setup",
+  "updatedAt": "2026-10-10T12:03:00Z"
+}

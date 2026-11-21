@@ -1,0 +1,12 @@
+{
+  "detail": "Now presses Take Theirs and asserts the conflict question appeared.",
+  "evidence": "36bbcdb7",
+  "group": "Tests",
+  "note": "",
+  "order": 41,
+  "ref": "BMAP-WAITS",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Button Map smoke: two waits always timed out (pressed a missing OK button)",
+  "updatedAt": "2026-10-10T12:41:00Z"
+}

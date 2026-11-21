@@ -1,0 +1,10 @@
+{
+  "evidence": "c2247322; test reads base/fill alpha",
+  "group": "App shell",
+  "order": 288,
+  "ref": "user screenshot 2026-11-20 05:24",
+  "severity": "bug",
+  "status": "fixed",
+  "title": "Gold What's New card showed solid yellow with unreadable text (stripe showed through the see-through fill)",
+  "updatedAt": "2026-11-20T05:35:00Z"
+}

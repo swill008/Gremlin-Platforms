@@ -1,0 +1,12 @@
+{
+  "detail": "Today only Clear Filters does. Recommend yes (one line).",
+  "evidence": "qml/ControlFindBar.qml clear(); ConfigurationPage _clearFind",
+  "group": "Questions",
+  "note": "User: recommendations. Clear resets Type and Output (D-05-FIND-CLEAR). 3702e630, test_find_clear_resets.py",
+  "order": 68,
+  "ref": "FC1",
+  "severity": "question",
+  "status": "fixed",
+  "title": "Question: should Find bar Clear also reset the Type and Output boxes?",
+  "updatedAt": "2026-10-10T16:59:00Z"
+}
