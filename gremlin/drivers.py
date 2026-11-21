@@ -379,6 +379,10 @@ def real_signer(path: PathLike) -> tuple[bool, str]:
         return False, ""
     literal = str(path).replace("'", "''")
     script = (
+        # UTF-8 out, read as bytes: signer subjects carry non-ASCII letters
+        # (vJoy's "S=Zürich"), which broke a text-mode read (found on the
+        # user's PC, 2026-11-21).
+        "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "
         f"$s = Get-AuthenticodeSignature -LiteralPath '{literal}'; "
         "Write-Output $s.Status; Write-Output $s.SignerCertificate.Subject"
     )
@@ -393,7 +397,6 @@ def real_signer(path: PathLike) -> tuple[bool, str]:
                 script,
             ],
             capture_output=True,
-            text=True,
             timeout=SIGNER_TIMEOUT_S,
             check=False,
             shell=False,
@@ -401,7 +404,14 @@ def real_signer(path: PathLike) -> tuple[bool, str]:
         )
     except (OSError, subprocess.TimeoutExpired):
         return False, ""
-    lines = [line.strip() for line in done.stdout.splitlines() if line.strip()]
+    return signer_output(done.stdout or b"")
+
+
+def signer_output(raw: bytes) -> tuple[bool, str]:
+    """(valid, subject) from real_signer's PowerShell output (UTF-8; any
+    byte that isn't is replaced, never an error)."""
+    text = raw.decode("utf-8", errors="replace")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
     if not lines:
         return False, ""
     return lines[0] == "Valid", (lines[1] if len(lines) > 1 else "")

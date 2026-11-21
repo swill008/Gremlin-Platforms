@@ -392,3 +392,19 @@ def test_windows_registry_reads_only(monkeypatch: pytest.MonkeyPatch) -> None:
     assert reg.value(r"SOFTWARE\Gremlin-Platforms-test-no-such-key", "X") is None
     assert reg.subkeys(r"SOFTWARE\Gremlin-Platforms-test-no-such-key") == []
     assert reg.file_version(r"C:\no\such\file.sys") == ""
+
+
+def test_signer_output_reads_non_ascii_subjects() -> None:
+    """vJoy's signer subject has "S=Zürich"; a text-mode read of PowerShell's
+    output failed on it (found on the user's PC, 2026-11-21)."""
+    raw = (
+        "Valid\r\nCN=Brunner Elektronik AG, L=Hittnau, S=Zürich, C=CH\r\n"
+    ).encode("utf-8")
+    valid, subject = drivers.signer_output(raw)
+    assert valid
+    assert drivers.subject_cn(subject) == "Brunner Elektronik AG"
+    assert "Zürich" in subject
+    # A byte that isn't UTF-8 (an OEM code page "ü") never raises.
+    valid, subject = drivers.signer_output(b"Valid\r\nCN=Brunner, S=Z\x81rich\r\n")
+    assert valid and subject.startswith("CN=Brunner")
+    assert drivers.signer_output(b"") == (False, "")
