@@ -52,6 +52,7 @@ def test_tools_item_sits_in_the_bottom_group_and_opens_the_window() -> None:
     assert commands == [
         "tools.oscMonitor",
         "tools.screenSaverMode",
+        "tools.drivers",  # 06 S185
         "tools.history",
         "tools.options",
     ]
