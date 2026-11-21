@@ -544,6 +544,14 @@ Duplicated logic
 5. **A new searchable field**: add it to `SearchRow` and to the match fields in `search_query.py` (and a prefix in step 1 if it should have one). Guard: the field list test in `test_search_plugins.py`.
 Then add the new file or function to this page (sections 2-5, 11).
 
+### Driver setup in the installer (approved 2026-11-21, D-01-DRIVERS, user: 1c 2c 3b 4b 5a 6a 7a 8a 9a 10a 11a 12a 13a 14a; plan `claude/plans/driver-setup-installer.md`; not built yet)
+- **S187** **Drivers page in setup.** Setup lists vJoy, ViGEmBus and HidHide, each with its installed version or "not installed". A missing driver is ticked. An older driver shows "update available: <old> → <new>", unticked. The same or a newer version shows no box and is never touched. [new 2026-11-21, user: 1c, 3b, 6a, 13a] (not built)
+- **S188** **Bundled copies.** The installer carries vJoy 2.2.2.0, ViGEmBus 1.22.0 and HidHide 1.5.230; each runs only when its SHA-256 matches the one stored in the installer. Their licence texts install to `{app}\licenses` (`vigembus.txt`, `hidhide.txt` new; `vjoy.txt` already there, S153). [new 2026-11-21, user: 1c, 13a] (not built)
+- **S189** **Newer versions.** For vJoy and HidHide, setup asks the project's own GitHub releases page for the latest version. When it is newer than the bundled copy, setup downloads it with a progress bar and uses it only when its Windows signature is valid and the signer's name starts with the expected one (Brunner Elektronik AG; Nefarius Software Solutions); otherwise, and with no internet, it uses the bundled copy. ViGEmBus is retired (last release 1.22.0) and has no check. [new 2026-11-21, user: 4b, 13a] (not built)
+- **S190** **One admin prompt.** Gremlin's own install stays per-user (`PrivilegesRequired=lowest`). After copying the files, setup starts Gremlin Device Helper (12 S25) once for every ticked driver job; setup passes a job file and reads the helper's result file. [new 2026-11-21, user: 12a, 13a] (not built)
+- **S191** **Gremlin always installs.** A failed driver step never stops Gremlin's own install. Setup's last page lists each driver's result and offers a restart when a driver asked for one. Every driver step says what it will do and when before it starts, shows progress while it runs and says the result and any restart after (06 S187). [new 2026-11-21, user: 10a, 13a] (not built)
+- **S192** **Uninstall leaves the drivers.** Uninstalling Gremlin-Platforms leaves vJoy, ViGEmBus and HidHide installed. [new 2026-11-21, user: 13a] (not built)
+
 ### Change control guards
 - S156 The two change control guard tests should cover every program folder and file: `test/unit/test_spec_line.py` (a commit that touches program code has a `Spec:` line) and `test/unit/test_program_map_covers_files.py` (every program file is named on the program map) both count `gremlin/`, `qml/`, `action_plugins/`, `dill/`, `vigem/`, `vjoy/`, `theme/`, `joystick_gremlin.py` and `input_tester.py`; the program folder list in `.claude/CLAUDE.md` (change control, rule 5) names `vjoy/` and `theme/` too (user approved `theme/`, 2026-10-12). [added 2026-10-12, user: D-NEXTLIST-1 item 5, 11a] (built 2026-10-12) (was: `vjoy/` and `theme/` were outside both guards) [test: test_spec_line.py] [test: test_program_map_covers_files.py]
 
@@ -628,6 +636,7 @@ Open to-do items (claude/todo.md) for this page
 Things nothing owns
 - What `signal.configChanged` means: it is used for "any setting changed" and as a general reload trigger (Q12).
 - (owned now) the list of settings keys (GL-117) and Module Setup's place in the window list (GL-238).
+- DRV-1 (2026-11-21, D-01-DRIVERS) Driver setup in the installer (S187-S192) is approved and not built: `installer/gremlin_platforms.iss` installs no drivers yet. Needs Gremlin Device Helper's driver jobs (12 S25, page 12 not yet updated) and tests in a Hyper-V virtual machine (plan section "Still to test").
 
 ## 11. Size and test coverage
 
@@ -729,3 +738,5 @@ of correct for this subsystem.
 [changed 2026-10-11, user: D-FIXLIST-B4] wording only: the Button Map is now the **Device Mapping Editor** (the window; toolbar caption **Mapping Editor**, the full name in its tooltip) and what it makes is a **device map** (**Copy Device Map from Device**; **Button Map Options** is now **Device Map Options**; Device Library part **Device Map**); files qml/DialogDeviceMappingEditor.qml, qml/DeviceMapOptionsWindow.qml, qml/DeviceMapCard.qml, qml/OptionDeviceMapLibrary.qml, gremlin/ui/device_map_options.py, gremlin/ui/device_map_labels.py, qml/help/device_mapping_editor.js; spec page 07-device-mapping-editor.md; Help chapter and topic ids button-map* became device-mapping-editor*, Show me show:buttonmap/bm* became show:devicemappingeditor/dme*; settings section button-map became device-mapping-editor (moved once at start, one-time code OT-3); S58's toolbar caption is now Mapping Editor (above); no other statement changed.
 
 [changed 2026-10-12, user: D-01-TABROW-REMOVED (to-do 127, "remove the old feature and code related to it. I dont see a pin")] the device tab row under the toolbar is removed with the pinned vJoy and extra tabs, the Scripts and Profile Settings tab buttons and the `devices/display/vjoy-tabs` / `extra-tabs` settings. The Scripts and Profile Settings rooms open from the View menu; each device opens from its Home card. No section 8 statement named the tab row, so no statement text changes.
+
+[user decision: D-01-DRIVERS, 2026-11-21] Driver setup in the installer: vJoy, ViGEmBus and HidHide as tick boxes, bundled with a newer-version download (signature-checked), one admin prompt through Gremlin Device Helper, Gremlin always installs, uninstall leaves the drivers (new S187-S192; answers 1c 3b 4b 6a 10a 12a 13a).

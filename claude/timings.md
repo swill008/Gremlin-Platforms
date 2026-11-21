@@ -1181,3 +1181,10 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-20 | CI fix 4: test Backends let go of global signals; print export wait; full run | fix | ~4 min + 5-9 min run | ~10 min fix + 8 min run | 11:58-12:10 |
 | 2026-11-20 | Study: silent stop of the installed app after 14:08 (read-only, lead) | research | 10-15 min | ~5 min | 16:47-16:52 |
 | 2026-11-20 | Installer Start-menu fix (UsePreviousGroup=no) + test + spec note (lead) | fix | 3-8 min | ~6 min | 16:59-17:05 |
+| 2026-11-20 | Unpack YAJB 0.1.5 installer + app.asar into a kept reference folder, README (lead) | research | no timing data; rough guess 5 min | ~6 min | 20:19-20:25 |
+| 2026-11-20 | Save YAJB drawing source + generate 188 SVGs + table page (lead) | research | no timing data; rough guess 15 min | ~14 min | 20:41-20:55 |
+| 2026-11-20 | Code review: was YAJB taken from Gremlin-Platforms (read-only, lead) | research | 10-15 min | ~12 min | 20:58-21:10 |
+| 2026-11-21 | Save YAJB follow-up study + check driver packaging facts (read-only, lead) | research | no timing data; rough guess 5 min | ~4 min | 02:39-02:43 |
+| 2026-11-21 | Driver facts check: vJoy, ViGEmBus, HidHide (3 Sonnet research helpers) + Inno Setup check (lead) | research | 10-15 min | ~5 min | 02:57-03:02 |
+| 2026-11-21 | Write driver-setup spec into pages 01, 06, glossary, map README (lead) | docs | no timing data; rough guess 5 min | ~4 min | 03:12-03:16 |
+| 2026-11-21 | S4a one screen saver at a time: remove S41, failing test, fix, spec/map, quick tests (lead) | fix | 3-8 min + ~5 min | ~4 min | 03:23-03:27 |

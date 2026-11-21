@@ -382,6 +382,12 @@ Keyboard and mouse output (`keyboard.py`, `sendinput.py`) go straight to Windows
 - **S104.** The running profile is a copy taken when Run starts: a change made to the profile while it runs applies at the next Run. [new 2026-11-19, D-06-INPUT-THREAD, answer 6a; user, 2026-11-19: "approved as recommended", "approved for all batches"] (built 2026-11-19, thread batch 2) [test: `test_run_control.py` (9)] [test: `test_input_thread_real_profile.py::test_editing_open_profile_during_run_changes_nothing_until_next_run`]
 - **S105.** Text to speech stays on the main thread (the input thread hands the words over; speech pauses while the window is frozen), and so do the Load Profile hand-off, the unsaved-changes check, dialogs and every notice to the window: the input thread passes them to the main thread (`threads.main_call`) and does not wait. [new 2026-11-19, D-06-INPUT-THREAD, answer 7a; user, 2026-11-19: "approved as recommended", "approved for all batches"] (built 2026-11-19, thread batches 2-4) [test: `test_input_thread_ui_blocked.py` (Load Profile runs Backend on main)]
 
+### Drivers (approved 2026-11-21, D-06-DRIVERS, user: 7a 8a 9a 10a 12a 13a 14a; plan `claude/plans/driver-setup-installer.md`; not built yet)
+- **S185** **Tools › Drivers.** A window with the same rows and update boxes as setup's Drivers page (01 S187), plus the vJoy device choice: presets "1 device, full" (8 axes X-SL1, 128 buttons, 4 hats; the default), "2 devices, full" and Custom (number of devices, each one's axes, buttons and hats). Devices that already exist are shown as they are and changed only when edited; editing shows "Running games will lose the vJoy devices until they restart." **Apply** sends the jobs to Gremlin Device Helper (12 S25). [new 2026-11-21, user: 2c, 5a, 7a, 13a] (not built)
+- **S186** **The HidHide update in two halves.** Setup removes the old HidHide and asks for a restart; Gremlin installs the new one at its next start and asks for the second restart. Prompts: setup "HidHide update, step 1 of 2" (it will remove HidHide <old>; after a restart Gremlin installs <new> and asks for one more restart; devices aren't hidden until then) [Continue] [Skip HidHide update]; "Removing HidHide <old>…" with progress; "Restart needed to continue the HidHide update" [Restart now] [Restart later]. Gremlin: "Finish the HidHide update, step 2 of 2" (Windows asks for administrator permission) [Install now] [Later]; "Installing HidHide <new>…" with progress; "HidHide is installed: one more restart" (devices aren't hidden until then) [Restart now] [Restart later]. While unfinished, Home shows "HidHide update not finished: devices aren't hidden" with **Finish update**. [new 2026-11-21, user: 8a, 9a, 13a] (not built)
+- **S187** **Every driver step says what, when and the result.** vJoy, ViGEmBus and HidHide installs and updates and the vJoy device setup, in setup and in Tools › Drivers: a prompt before (what it will do and when), progress while it runs, the result and any restart after. [new 2026-11-21, user: 10a, 13a] (not built)
+- **S188** **Driver-missing messages open Tools › Drivers.** The vJoy-missing message and the ViGEmBus line (S64, Xbox Setup's `XboxDriverCheck`) get an **Open Drivers** link to Tools › Drivers, which replaces the Download link. [new 2026-11-21, user: 14a] (not built)
+
 ## 9. Questions for the user
 
 - Q1. Logical Device values at Stop (decision R1): neutral or kept? **Recommend neutral** (axis 0, button up, hat centre), so S85 holds.
@@ -469,6 +475,7 @@ Things nothing owns:
 - ~~The "locked while running" rule has no owner in Python.~~ From 2026-10-10 the shared model refuses edits while running (`control_layout._refused`, RB14).
 - Logical Device values have no reset owner (Stop puts them to neutral, GL-050; the device is no longer reset at profile load, D-04-LD-FILE).
 - (Done in batch 3, GL-267) The keep-alive and the busy retry for vJoy are both in `output.py`.
+- DRV-2 (2026-11-21, D-06-DRIVERS) Tools › Drivers, the two-half HidHide update and the Open Drivers links (S185-S188) are approved and not built.
 
 ## 11. Size and test coverage
 
@@ -558,3 +565,5 @@ inside the range at Run gives no press, and leaving it then gives no
 release." [user decision: 06 S39 addition]
 
 [changed 2026-10-11, user: D-FIXLIST-B3] wording only: the Configuration page is now **Device Bindings** (qml/DeviceBindingsPage.qml) and the Auto Mapper is now the **Auto Mapping Tool** (gremlin/auto_mapping_tool.py, gremlin/modules/auto_mapping_tool.py, gremlin/ui/auto_mapping_tool_modules.py, qml/DialogAutoMappingTool.qml); Help topic ids configuration-actions-* / tools-auto-mapper* became device-bindings-actions-* / tools-auto-mapping-tool*; no statement changed.
+
+[user decision: D-06-DRIVERS, 2026-11-21] Tools › Drivers (vJoy presets 1 device / 2 devices / Custom), the HidHide update in two halves with the approved prompts, every driver step says what/when/result, driver-missing messages get Open Drivers (new S185-S188; answers 2c 5a 7a 8a 9a 10a 13a 14a).

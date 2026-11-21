@@ -2024,6 +2024,11 @@ class ScreenSaverMode:
 
     def _fire_screen_saver(self) -> None:
         path = self._period.screen_saver
+        if self._screen_saver_running():
+            # One screen saver at a time (S4a): the idle period can restart
+            # while Gremlin's own still runs (user's PC, 2026-11-20).
+            _trace("screen saver already running: not started again")
+            return
         try:
             if self._api.start_screen_saver(path):
                 _log().info(f"Screen Saver Mode: screen saver started ({path})")

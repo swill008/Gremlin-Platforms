@@ -1402,6 +1402,26 @@ def test_screen_saver_behind_another_window_does_not_hold_the_power_off(
     assert mode.status().hold == ""
 
 
+def test_no_second_screen_saver_while_one_runs(env: Env, traced: list[str]) -> None:
+    """Found on the user's PC (2026-11-20 19:42-19:48): the idle period
+    restarted while Gremlin's screen saver still ran, and the timer started a
+    second one 5 minutes later (S4a)."""
+    mode, api, clk, _now, run, _t = env
+    mode.apply(_on(off=False))  # screen saver 60 s
+    run(60)
+    assert api.started == [api.path]
+    api.saver_running = True  # Gremlin's own (or Windows') screen saver runs
+    clk.note_input()  # the idle period restarts behind it
+    run(60)
+    assert api.started == [api.path]
+    assert mode.status().saver_fired is True
+    assert _has(traced, "screen saver already running: not started again")
+    api.saver_running = False  # it ended: the next idle period starts one again
+    clk.note_input()
+    run(60)
+    assert api.started == [api.path, api.path]
+
+
 def test_a_failing_screen_saver_check_falls_back_to_the_window_in_front(
     env: Env,
 ) -> None:
