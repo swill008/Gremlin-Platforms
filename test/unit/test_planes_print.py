@@ -39,6 +39,11 @@ import pytest
 
 _ROOT = pathlib.Path(__file__).parents[2]
 _SMOKE = _ROOT / "test" / "unit" / "planes_print_smoke.py"
+_WAIT = 150
+# The hang trace's 50 s run limit ends all three copies on a slow CI runner
+# (claude/audits/2026-11-21-planes-print-ci-flake.md). Under the wait below,
+# as the journeys do it; the 10 s / 30 s stall checks stay.
+_HANG_LIMIT = _WAIT - 10
 
 
 def _start(home: pathlib.Path, folder: pathlib.Path, *extra: str) -> proc_tree.Tree:
@@ -47,6 +52,8 @@ def _start(home: pathlib.Path, folder: pathlib.Path, *extra: str) -> proc_tree.T
         os.environ, USERPROFILE=str(home), QT_QPA_PLATFORM="offscreen",
         HTTPS_PROXY="http://127.0.0.1:9",
     )
+    if env.get("GREMLIN_TEST_HANG_LIMIT"):  # empty: the hang watch is off
+        env["GREMLIN_TEST_HANG_LIMIT"] = str(_HANG_LIMIT)
     fonts = os.path.join(os.environ.get("WINDIR", "C:/Windows"), "Fonts")
     env.setdefault("QT_QPA_FONTDIR", fonts)
     with (home / "stdout.txt").open("w") as out, (home / "stderr.txt").open("w") as err:
@@ -58,7 +65,7 @@ def _start(home: pathlib.Path, folder: pathlib.Path, *extra: str) -> proc_tree.T
 
 def _result(tree: proc_tree.Tree, home: pathlib.Path) -> dict:
     try:
-        tree.process.wait(timeout=150)
+        tree.process.wait(timeout=_WAIT)
     except subprocess.TimeoutExpired:
         tree.kill()
         tree.process.wait()
@@ -66,7 +73,11 @@ def _result(tree: proc_tree.Tree, home: pathlib.Path) -> dict:
     stdout = (home / "stdout.txt").read_text(errors="replace")
     stderr = (home / "stderr.txt").read_text(errors="replace")
     lines = [ln for ln in stdout.splitlines() if ln.startswith("RESULT ")]
-    assert lines, stdout[-1500:] + stderr[-1500:]
+    # Head too: a stall report's headline (the cause) is at the start.
+    assert lines, (
+        stdout[:1500] + "\n[...]\n" + stdout[-1500:]
+        + "\n[stderr]\n" + stderr[:1500] + "\n[...]\n" + stderr[-1500:]
+    )
     return json.loads(lines[0][len("RESULT "):])
 
 
@@ -158,3 +169,19 @@ def test_big_picture_prints_from_the_original(runs: dict) -> None:
 
 def test_no_binding_loop_in_print_and_export(run: dict) -> None:
     assert run["binding-loops"] == []
+
+
+def test_copies_get_the_longer_hang_limit(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict = {}
+
+    def fake_popen(cmd: list, **kw: object) -> str:
+        seen.update(kw["env"])  # pyright: ignore[reportArgumentType]
+        return "tree"
+
+    monkeypatch.setenv("GREMLIN_TEST_HANG_LIMIT", "50")
+    monkeypatch.setattr(proc_tree, "popen", fake_popen)
+    _start(tmp_path / "h", tmp_path / "o")
+    assert seen["GREMLIN_TEST_HANG_LIMIT"] == str(_HANG_LIMIT)
+    assert _HANG_LIMIT < _WAIT

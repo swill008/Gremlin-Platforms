@@ -1203,3 +1203,6 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-21 | Test machine resized to 8 CPUs / 16 GB, checkpoints reset to one fresh clean (lead) | prep | no timing data | ~2 min | 06:44-06:46 |
 | 2026-11-21 | Test machine driver tests 1-4 (silent install + runtime, helper installs 3 drivers + vJoy setup, vJoy delete, two-half HidHide update with proper restarts) incl. 2 test-script fixes (lead) | test | no timing data; rough guess a few min each | ~19 min | 06:52-07:11 |
 | 2026-11-21 | FIX1 ViGEmBus version from the installed-programs entry (Sonnet agent) | fix | 3-8 min (agent fix) | 1 min | 07:03-07:04 |
+| 2026-11-21 | Tests 5, 5c, 6 in the test machine (upgrades from older versions, ViGEmBus run-twice, vJoy devices across an update) incl. 2 test-script fixes (lead) | test | rough guess 15-20 min | ~10 min | 07:14-07:23 |
+| 2026-11-21 | STUDY print-test CI flake (Opus agent) | research | 10-15 min | 3 min | 07:13-07:16 |
+| 2026-11-21 | TESTFIX (Sonnet) 140 s limit + output head; VIGEMFIX (Sonnet) ViGEmBus second run | fix | 3-8 min each | ~2 min each | 07:21-07:23 |

@@ -96,6 +96,7 @@ def _install(
     check_bundled: Callable,
     check_download: Callable,
     log_dir: str | None,
+    reg: Registry | None = None,
 ) -> JobResult:
     info = DRIVERS[job.driver]
     notes: list[str] = []
@@ -112,10 +113,25 @@ def _install(
         if job.driver == "vjoy" and log_dir:
             command.append(f"/LOG={os.path.join(log_dir, 'vjoy_install.log')}")
         verb = "Updating" if job.op == "update" else "Installing"
+        what = f"{verb} {info.name} ({kind} copy)"
         code, output = runner(command, INSTALL_TIMEOUT_S)
-        state, message, restart = _from_exit_code(
-            info, code, output, f"{verb} {info.name} ({kind} copy)"
-        )
+        state, message, restart = _from_exit_code(info, code, output, what)
+        if (
+            job.driver == "vigembus"
+            and state == "failed"
+            and (code == 1604 or not drivers.installed_version(job.driver, reg))
+        ):
+            # ViGEmBus's own release notes: updating needs the setup run twice.
+            # The first run can remove the old driver and stop (1604); the same
+            # (already checked) file is run once more, never a third time.
+            code2, output2 = runner(command, INSTALL_TIMEOUT_S)
+            state, message, restart = _from_exit_code(info, code2, output2, what)
+            if state == "done":
+                message += " (second run, as ViGEmBus needs when updating)"
+            else:
+                message += (
+                    f" (first run exit code {code}, second run exit code {code2})"
+                )
         return JobResult(state, "; ".join([*notes, message]), restart, kind)
     notes.append(f"{info.name} not installed: no copy passed its check")
     return JobResult("failed", "; ".join(notes), False, "")
@@ -164,7 +180,7 @@ def run_job(
     """Runs one job; never raises except RealRunnerBlocked."""
     try:
         if job.op in ("install", "update"):
-            return _install(job, runner, check_bundled, check_download, log_dir)
+            return _install(job, runner, check_bundled, check_download, log_dir, reg)
         if job.op == "remove":
             return _remove(job, runner, reg)
         if job.op == "vjoy_setup":

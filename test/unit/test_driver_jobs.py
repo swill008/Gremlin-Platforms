@@ -60,6 +60,19 @@ def test_real_runner_blocked_under_test() -> None:
     assert driver_jobs.RealRunnerBlocked is drivers.RealRunnerBlocked
 
 
+def _vigembus_reg(installed: bool = True) -> MemoryRegistry:
+    if not installed:
+        return MemoryRegistry()
+    return MemoryRegistry(
+        {
+            UNINSTALL + "\\ViGEmBus": {
+                "DisplayName": drivers.VIGEMBUS_DISPLAY_NAMES[0],
+                "DisplayVersion": "1.22.0",
+            }
+        }
+    )
+
+
 @pytest.mark.parametrize(
     "driver, code, state, restart",
     [
@@ -83,11 +96,80 @@ def test_install_exit_codes(
 ) -> None:
     runner = FakeRunner([(code, "installer said this")])
     job = Job("install", driver, _files(tmp_path, "bundled"))
-    result = driver_jobs.run_job(job, runner, check_bundled=_ok, check_download=_ok)
+    result = driver_jobs.run_job(
+        job, runner, check_bundled=_ok, check_download=_ok, reg=_vigembus_reg()
+    )
     assert (result.state, result.restart, result.used) == (state, restart, "bundled")
+    assert len(runner.calls) == 1
     assert runner.calls[0][1:] == list(DRIVERS[driver].install_args)
     if state == "failed":
         assert f"exit code {code}" in result.message
+
+
+def _vigembus_run(
+    tmp_path: Path, answers: list, installed: bool = True, driver: str = "vigembus"
+) -> tuple[driver_jobs.JobResult, FakeRunner]:
+    runner = FakeRunner(answers)
+    job = Job("update", driver, _files(tmp_path, "bundled"))
+    result = driver_jobs.run_job(
+        job,
+        runner,
+        check_bundled=_ok,
+        check_download=_ok,
+        reg=_vigembus_reg(installed),
+    )
+    return result, runner
+
+
+def test_vigembus_update_1604_runs_the_same_file_again(tmp_path: Path) -> None:
+    result, runner = _vigembus_run(tmp_path, [(1604, ""), (0, "")], installed=False)
+    assert result.state == "done"
+    assert len(runner.calls) == 2 and runner.calls[0] == runner.calls[1]
+    assert "second run" in result.message and "Updating ViGEmBus" in result.message
+
+
+def test_vigembus_other_failure_with_nothing_installed_runs_again(
+    tmp_path: Path,
+) -> None:
+    result, runner = _vigembus_run(tmp_path, [(5, ""), (0, "")], installed=False)
+    assert result.state == "done" and len(runner.calls) == 2
+
+
+def test_vigembus_second_run_failing_names_both_codes(tmp_path: Path) -> None:
+    result, runner = _vigembus_run(tmp_path, [(1604, ""), (1603, "")], installed=False)
+    assert result.state == "failed" and len(runner.calls) == 2
+    assert "1604" in result.message and "1603" in result.message
+
+
+def test_vigembus_never_more_than_two_runs(tmp_path: Path) -> None:
+    result, runner = _vigembus_run(
+        tmp_path, [(1604, ""), (1604, ""), (0, "")], installed=False
+    )
+    assert result.state == "failed" and len(runner.calls) == 2
+
+
+def test_vigembus_1604_runs_again_even_if_a_version_is_listed(tmp_path: Path) -> None:
+    result, runner = _vigembus_run(tmp_path, [(1604, ""), (0, "")], installed=True)
+    assert result.state == "done" and len(runner.calls) == 2
+
+
+def test_vigembus_failure_with_driver_still_installed_is_not_repeated(
+    tmp_path: Path,
+) -> None:
+    result, runner = _vigembus_run(tmp_path, [(5, "")], installed=True)
+    assert result.state == "failed" and len(runner.calls) == 1
+
+
+def test_vigembus_success_runs_once(tmp_path: Path) -> None:
+    result, runner = _vigembus_run(tmp_path, [(0, "")], installed=False)
+    assert result.state == "done" and len(runner.calls) == 1
+    assert "second run" not in result.message
+
+
+@pytest.mark.parametrize("driver", ["vjoy", "hidhide"])
+def test_other_drivers_never_get_a_second_run(tmp_path: Path, driver: str) -> None:
+    result, runner = _vigembus_run(tmp_path, [(1604, "")], False, driver)
+    assert result.state == "failed" and len(runner.calls) == 1
 
 
 def test_download_used_first_when_its_check_passes(tmp_path: Path) -> None:
