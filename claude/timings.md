@@ -1350,3 +1350,5 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-22 | Health window + model: HUI (Opus agent) | feature | up to 20 min | 9 min | 09:26-09:35 |
 | 2026-11-22 | Quick tests --changed (5,140 tests; 2 failed: one flaky OSC, one Help click below the fold) | test | ~10-14 min | 11 min | 09:36-09:47 |
 | 2026-11-22 | Health picture check: SHOT (Opus agent) + lead fixes (⚠ font, column widths, Help test scroll) | fix | 2-3 min | 4 min | 09:46-09:50 |
+| 2026-11-22 | CI 1 for ad34934d (failed: 4 tests) | ci | ~23 min | 21 min | 09:51-10:12 |
+| 2026-11-22 | CI fixes: LIBFIX + SSMTEST (Opus agents) + lead (symbol font in Style) | fix | 3-8 min | 4 min | 10:25-10:29 |

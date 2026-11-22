@@ -308,39 +308,21 @@ def _changed() -> None:
     signal.actionsChanged.emit()
 
 
-def _library_dict(library: Any) -> dict:  # noqa: ANN401
-    # The library's own store: its order is the saved file's order.
-    return library._actions  # noqa: SLF001
-
-
 def _release(library: Any, roots: list, record: Undo) -> None:  # noqa: ANN401
     """library.release (the one removal rule), noting what left and the
     order before, so undo puts each entry back in its place."""
-    actions = _library_dict(library)
-    record.order = list(actions)
-    before = dict(actions)
-    copied = dict(getattr(library, "_copied_from", {}) or {})
+    before = library.entries()
+    record.order = list(before)
+    copied = library.copy_marks()
     library.release(roots)
-    record.released = {k: v for k, v in before.items() if k not in actions}
+    after = library.entries()
+    record.released = {k: v for k, v in before.items() if k not in after}
     record.copied = {k: v for k, v in copied.items() if k in record.released}
 
 
 def _restore_library(library: Any, record: Undo) -> None:  # noqa: ANN401
-    actions = _library_dict(library)
-    now = dict(actions)
-    ordered: dict = {}
-    for key in record.order:
-        if key in now:
-            ordered[key] = now[key]
-        elif key in record.released:
-            ordered[key] = record.released[key]
-    for key, value in now.items():
-        ordered.setdefault(key, value)
-    actions.clear()
-    actions.update(ordered)
-    copied = getattr(library, "_copied_from", None)
-    if isinstance(copied, dict):
-        copied.update(record.copied)
+    library.put_back(record.released, record.order)
+    library.put_copy_marks(record.copied)
 
 
 def _only_child(root: Any, action: Any) -> bool:  # noqa: ANN401

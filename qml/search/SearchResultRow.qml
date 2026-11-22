@@ -176,8 +176,7 @@ Rectangle {
                 text: "⚠︎"
                 color: Style.danger
                 font.bold: true
-                // A font with a plain ⚠ (the default falls back to the colour emoji).
-                font.family: "Segoe UI Symbol"
+                font.family: Style.symbolFont
                 ToolTip.visible: _warnMouse.containsMouse && _row.why.length > 0
                 ToolTip.text: _row.why
                 MouseArea {

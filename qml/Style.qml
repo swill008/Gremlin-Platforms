@@ -213,6 +213,9 @@ Item {
     readonly property string uiFont: "Segoe UI"
     readonly property string monoFont: "Consolas"
     readonly property string iconFont: "bootstrap-icons"
+    // Plain (one-colour) symbols such as ⚠, so they take the text colour;
+    // the default font falls back to the colour emoji.
+    readonly property string symbolFont: "Segoe UI Symbol"
 
     // Menus, dropdown lists and the command palette (Gremlin.Menus): one look
     // everywhere, the Device Mapping Editor's. A raised surface with a strong line, rows

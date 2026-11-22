@@ -966,6 +966,39 @@ class Library:
         """release([action], recursive): kept for callers not moved yet."""
         self.release([action], recursive)
 
+    def copy_marks(self) -> dict[uuid.UUID, uuid.UUID]:
+        """A copy of the legacy copy -> original marks, so an undo of a
+        release can put back those of the actions it returns."""
+        return dict(self._copied_from)
+
+    def put_copy_marks(self, marks: dict[uuid.UUID, uuid.UUID]) -> None:
+        """Puts back copy -> original marks taken with copy_marks()."""
+        self._copied_from.update(marks)
+
+    def entries(self) -> dict[uuid.UUID, AbstractActionData]:
+        """A copy of the library's actions by id, in the saved file's order."""
+        return dict(self._actions)
+
+    def put_back(
+        self,
+        released: dict[uuid.UUID, AbstractActionData],
+        order: list[uuid.UUID],
+    ) -> None:
+        """Undo of a release: puts the released actions back, each in its
+        place in order (the ids as entries() listed them before); actions
+        added since keep their place after them."""
+        now = dict(self._actions)
+        ordered: dict[uuid.UUID, AbstractActionData] = {}
+        for key in order:
+            if key in now:
+                ordered[key] = now[key]
+            elif key in released:
+                ordered[key] = released[key]
+        for key, value in now.items():
+            ordered.setdefault(key, value)
+        self._actions.clear()
+        self._actions.update(ordered)
+
     def pick_list(
         self,
         predicate: Callable[[AbstractActionData], bool],

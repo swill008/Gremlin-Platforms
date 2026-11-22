@@ -55,6 +55,9 @@ def fakes(qapp: object, monkeypatch: pytest.MonkeyPatch):  # noqa: ANN201
     monkeypatch.setattr(m, "_helper_refused", False)
     monkeypatch.setattr(m, "_helper_starting", False)
     monkeypatch.setattr(m, "_off_timer_on", None)
+    # Module cache of the Ignore lists; Refresh Programs/System in other
+    # tests fills it (chrome.exe, FxSound), which the snapshot would show.
+    monkeypatch.setattr(m, "_ignored", {"programs": [], "system": []})
     made: list = []
 
     def model():  # noqa: ANN202
