@@ -12,6 +12,7 @@ import threading
 from typing import Any
 
 from gremlin import clock
+from gremlin.axis_names import AXES, long_name
 from gremlin.common import SingletonMetaclass
 from gremlin.error import (
     VJoyBusyError,
@@ -19,7 +20,6 @@ from gremlin.error import (
     VJoyError,
 )
 from gremlin.types import (
-    AxisNames,
     HatDirection,
     InputType,
 )
@@ -47,14 +47,15 @@ def _error_string(vid: int, iid: int, value: Any) -> str:  # noqa: ANN401
 class AxisCode(enum.Enum):
     """Enumeration of the valid axis names."""
 
-    X = 0x30
-    Y = 0x31
-    Z = 0x32
-    RX = 0x33
-    RY = 0x34
-    RZ = 0x35
-    SL0 = 0x36
-    SL1 = 0x37
+    # HID usages, from the one axis table (number order).
+    X = AXES[0].usage
+    Y = AXES[1].usage
+    Z = AXES[2].usage
+    RX = AXES[3].usage
+    RY = AXES[4].usage
+    RZ = AXES[5].usage
+    SL0 = AXES[6].usage
+    SL1 = AXES[7].usage
 
 
 class HatType(enum.Enum):
@@ -155,16 +156,7 @@ def hat_configuration_valid(vjoy_id: int) -> bool:
 class VJoyStateCache(metaclass=SingletonMetaclass):
     """Permanent storage cache of vJoy state across vJoy device acquisitions."""
 
-    axis_lookup = {
-        1: AxisCode.X.value,
-        2: AxisCode.Y.value,
-        3: AxisCode.Z.value,
-        4: AxisCode.RX.value,
-        5: AxisCode.RY.value,
-        6: AxisCode.RZ.value,
-        7: AxisCode.SL0.value,
-        8: AxisCode.SL1.value,
-    }
+    axis_lookup = {a.number: a.usage for a in AXES}
 
     def __init__(self) -> None:
         self._cache = {}
@@ -460,16 +452,7 @@ class VJoy:
     """Represents a vJoy device present in the system."""
 
     # Axis name mapping
-    axis_equivalence = {
-        AxisCode.X: 1,
-        AxisCode.Y: 2,
-        AxisCode.Z: 3,
-        AxisCode.RX: 4,
-        AxisCode.RY: 5,
-        AxisCode.RZ: 6,
-        AxisCode.SL0: 7,
-        AxisCode.SL1: 8,
-    }
+    axis_equivalence = {AxisCode(a.usage): a.number for a in AXES}
 
     def __init__(self, vjoy_id: int) -> None:
         """Creates a new object.
@@ -808,7 +791,7 @@ class VJoy:
         for i, axis in enumerate(AxisCode):
             if VJoyInterface.GetVJDAxisExist(self.vjoy_id, axis.value) > 0:
                 axes[i + 1] = Axis(self, axis.value)
-                self._axis_names[i + 1] = AxisNames.to_string(AxisNames(i + 1))
+                self._axis_names[i + 1] = long_name(i + 1)
                 self._axis_lookup[len(self._axis_names)] = i + 1
                 self._axis_lookup[axis] = i + 1
         return axes

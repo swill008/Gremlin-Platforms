@@ -362,15 +362,56 @@ def test_one_elevated_helper_start_with_jobs_and_results() -> None:
     spec = (_ROOT / "joystick_gremlin.spec").read_text(encoding="utf-8")
     assert 'helper_name = "Gremlin Device Helper"' in spec
     run = _routine(_code(), "procedure RunDriverJobs;")
-    assert run.count("ShellExec(") == 1
-    start = "ShellExec('runas', ExpandConstant('{app}\\{#HelperExeName}'), Params,"
+    assert "ShellExec(" not in _code()
+    assert run.count("StartElevated(") == 1
+    start = "StartElevated(ExpandConstant('{app}\\{#HelperExeName}'), Params,"
     assert start in run
     assert "Params := '--jobs ' + AddQuotes(JobFile) + ' --results ' +" in run
     assert "AddQuotes(ResultsFile);" in run
     assert "WaitForHelper(ResultsFile)" in run
-    # The drivers' one prompt, and the runtime's own when it is missing (S193).
-    assert _code().count("'runas'") == 2
-    assert _runtime_install().count("'runas'") == 1
+    assert "CloseHandle(Process);" in run
+    # The drivers' one prompt, and the runtime's own (S193): both through the
+    # one elevated start.
+    assert _code().count("'runas'") == 1
+    assert "Info.lpVerb := 'runas';" in _routine(_code(), "function StartElevated(")
+    assert _runtime_install().count("StartElevated(") == 1
+
+
+def test_the_prompt_opens_in_front_of_setup() -> None:
+    # Answer 4a: ShellExecuteExW with setup's own window as the prompt's owner,
+    # setup brought forward first; a silent install has no window to own it.
+    code = _code()
+    assert "external 'ShellExecuteExW@shell32.dll stdcall';" in code
+    assert "external 'SetForegroundWindow@user32.dll stdcall';" in code
+    record = code[code.index("TShellExecuteInfo = record"):]
+    record = record[: record.index("end;")]
+    fields = re.findall(r"^    (\w+): (\w+);$", record, re.M)
+    assert [f for f, _ in fields] == [
+        "cbSize", "fMask", "Wnd", "lpVerb", "lpFile", "lpParameters", "lpDirectory",
+        "nShow", "hInstApp", "lpIDList", "lpClass", "hkeyClass", "dwHotKey",
+        "hMonitor", "hProcess",
+    ]
+    start = _routine(code, "function StartElevated(")
+    assert "Info.cbSize := SizeOf(Info);" in start
+    assert "Info.Wnd := WizardForm.Handle;" in start
+    front = start.index("SetForegroundWindow(WizardForm.Handle);")
+    assert start.index("if not WizardSilent then") < front < start.index(
+        "Result := ShellExecuteEx(Info);"
+    )
+    assert "SeeMaskNoCloseProcess" in start and "SeeMaskFlagNoUi" in start
+    assert "Process := Info.hProcess" in start
+    assert "ErrorCode := DLLGetLastError;" in start
+    assert int(_const_int_hex("SeeMaskNoCloseProcess"), 16) == 0x40
+    # The refused prompt (1223) still has its own result in both places.
+    run = _routine(code, "procedure RunDriverJobs;")
+    assert "else if ErrorCode = UacRefusedCode then" in run
+    assert "else if ErrorCode = UacRefusedCode then" in _runtime_install()
+
+
+def _const_int_hex(name: str) -> str:
+    found = re.search(rf"^  {name} = \$([0-9A-Fa-f]+);$", _code(), re.M)
+    assert found, name
+    return found.group(1)
 
 
 def test_progress_comes_from_the_results_file_until_finished() -> None:
@@ -406,14 +447,16 @@ def test_the_results_file_fields_match_drivers_py(tmp_path: pathlib.Path) -> Non
 def test_a_driver_failure_never_stops_the_install() -> None:
     code = _code()
     run = _routine(code, "procedure RunDriverJobs;")
-    assert run.index("try") < run.index("ShellExec(")
+    assert run.index("try") < run.index("StartElevated(")
     assert "except" in run and "GetExceptionMessage" in run
     assert "FailOpenJobs('Administrator permission was not given.')" in run
     step = _routine(code, "procedure CurStepChanged(")
     assert step.index("Finished := True;") < step.index("RunDriverJobs;")
     click = _routine(code, "function NextButtonClick(")
-    # Only the folder check can keep setup on a page.
-    assert click.count("Result := False;") == 1
+    # Only the folder check, the in-use No (D-01-VJOY-IN-USE) and the alike
+    # devices' No (D-01-VJOY-COUNTDOWN) keep setup on a page; never a result.
+    assert click.count("Result := False;") == 3
+    assert click.index("VJoyAlikeQuestion") < click.rindex("Result := False;")
     assert "Drivers" not in _routine(code, "function PrepareToInstall(")
 
 
@@ -517,7 +560,8 @@ def test_uninstall_leaves_the_drivers() -> None:
     driver_lines = [x for x in deleted.splitlines() if "drivers" in x.lower()]
     assert driver_lines == ['Type: files; Name: "{app}\\drivers\\pending.json"']
     assert "UninstallNeedRestart" not in iss
-    assert "CurUninstallStepChanged" not in iss
+    # 01 S194: the one uninstall step removes only the Start with Windows value.
+    assert iss.count("CurUninstallStepChanged") == 1
 
 
 def test_a_silent_install_skips_the_drivers() -> None:
@@ -559,7 +603,9 @@ def test_the_code_section_is_well_formed() -> None:
         "WriteJobFile", "ReadDriverResults", "WaitForHelper", "WriteHidHidePending",
         "BuildDriverSummary", "RunDriverJobs", "CharAt", "JsonValue",
         "RuntimeInstalled", "RuntimeFileTrusted", "RuntimeCodeResult",
-        "SetRuntimeText", "InstallRuntime", "CountText",
+        "SetRuntimeText", "InstallRuntime", "CountText", "StartElevated",
+        "RuntimeSignedByMicrosoft", "RuntimeInstalledVersion", "UrlSha256",
+        "ResolveRuntimeUrl", "CheckNewestRuntime",
     ],
 )
 def test_every_routine_is_declared_before_it_is_used(name: str) -> None:
@@ -580,6 +626,93 @@ def _const(name: str) -> str:
     return found.group(1).replace("''", "'")
 
 
+def _pascal_default_buttons(vjoy_id: int) -> int:
+    """Runs the .iss DefaultButtons on one id (its three lines, read as written)."""
+    body = _routine(_code(), "function DefaultButtons(")
+    assert "Result := VJoyMaxButtons + 1 - Id;" in body
+    assert "if Result > VJoyMaxButtons then\n    Result := VJoyMaxButtons;" in body
+    assert "if Result < 0 then\n    Result := 0;" in body
+    top = int(_const_int("VJoyMaxButtons"))
+    return max(0, min(top, top + 1 - vjoy_id))
+
+
+def test_new_devices_count_down_like_drivers_py() -> None:
+    """D-01-VJOY-COUNTDOWN (1a, 3a): one rule, vJoy N gets 129 - N buttons."""
+    for vjoy_id in range(0, 20):
+        assert _pascal_default_buttons(vjoy_id) == drivers.default_buttons(vjoy_id)
+    for vjoy_id in range(1, drivers.VJOY_MAX_DEVICES + 1):
+        dev = drivers.new_device(vjoy_id)
+        assert (dev.axes, dev.buttons, dev.hats) == (
+            drivers.VJOY_AXES, _pascal_default_buttons(vjoy_id), 4
+        )
+    # Add device gives the new row that count, wherever it is slotted in.
+    add = _routine(_code(), "procedure VJoyAddClick(")
+    assert "AddVJoyDevice(VJoyChosen, Id, VJoyAllAxes, DefaultButtons(Id), " in add
+    assert "VJoyChosen[K].Buttons := DefaultButtons(Id);" in add
+    assert "VJoyMaxButtons, VJoyMaxHats" not in add
+
+
+def _alike_sentence(groups: list[list[int]]) -> str:
+    """What VJoyAlikeWarning builds for these groups, from its own pieces."""
+    found = re.search(r"^  VJoyAlikeText = (.*?);$", _code(), re.M | re.S)
+    assert found
+    tail = _pascal_string(found.group(1))
+    out = []
+    for ids in groups:
+        names = [f"vJoy {i}" for i in ids]
+        who = names[0]
+        for j, name in enumerate(names[1:], start=1):
+            who += (" and " if j == len(names) - 1 else ", ") + name
+        out.append(who + tail)
+    return " ".join(out)
+
+
+def test_the_alike_warning_matches_drivers_py() -> None:
+    """D-01-VJOY-COUNTDOWN (4a, 5a): same wording and the same sameness rule."""
+    for groups in ([[1, 3]], [[1, 2, 4]], [[1, 2], [3, 5, 6, 7]]):
+        assert _alike_sentence(groups) == drivers.alike_warning(groups)
+    assert _const("VJoyAlikeQuestion") == " Continue anyway?"
+    alike = _routine(_code(), "function VJoyAlikeWarning(")
+    # The key is drivers.layout_key: (axes count, buttons, hats).
+    assert "(AxesCountOf(List[J].Axes) = AxesCountOf(List[K].Axes)) and" in alike
+    same = "(List[J].Buttons = List[K].Buttons) and (List[J].Hats = List[K].Hats)"
+    assert same in alike
+    assert "if G < 2 then\n      Continue;" in alike
+    assert "Who := Who + ' and vJoy ' + IntToStr(Ids[J])" in alike
+    assert "Who := Who + ', vJoy ' + IntToStr(Ids[J]);" in alike
+    assert "Result := Result + Who + VJoyAlikeText;" in alike
+    # Next on the Drivers page asks Yes/No; No stays; after the silent exit.
+    nxt = _routine(_code(), "function NextButtonClick(")
+    assert nxt.index("if WizardSilent then\n    Exit;") < nxt.index("VJoyAlikeWarning")
+    assert "if MsgBox(VJoyAlikeWarning(VJoyChosen) + VJoyAlikeQuestion,\n" in nxt
+    assert "mbConfirmation, MB_YESNO) <> IDYES then" in nxt
+    asked = nxt.index("VJoyAlikeQuestion")
+    assert nxt.index("Result := False;\n          Exit;", asked) < nxt.index(
+        "DriversPageDone;", asked
+    )
+    assert "if VJoyActive then" in nxt
+
+
+def test_the_hint_sits_under_the_box_above_the_bottom_line() -> None:
+    create = _routine(_code(), "procedure CreateDriverPages;")
+    found = re.search(r"^  VJoyHintText = (.*?);$", _code(), re.M | re.S)
+    assert found
+    assert _pascal_string(found.group(1)) == (
+        "Each device needs its own number of axes, buttons or hats, so "
+        "Gremlin-Platforms can tell them apart."
+    )
+    assert "VJoyHint.Caption := VJoyHintText;" in create
+    assert "VJoyHint.WordWrap := True;" in create
+    assert "VJoyHint.Height := ScaleY(30);" in create  # two lines
+    # Layout b: the hint under the box, then the bottom line (warning,
+    # "Showing"); the hint's place follows from that line.
+    above = "VJoyHint.Top := VJoyWarningText.Top - ScaleY(1) - VJoyHint.Height;"
+    assert above in create
+    assert "Bottom := VJoyHint.Top - ScaleY(2);" in create
+    assert create.index("VJoyShowingText.Top :=") < create.index("VJoyHint.Top :=")
+    assert create.index("VJoyHint.Top :=") < create.index("VJoyViewport := TPanel")
+
+
 def test_the_vjoy_choice_has_the_presets_and_custom() -> None:
     from gremlin.ui import drivers_model
 
@@ -590,24 +723,120 @@ def test_the_vjoy_choice_has_the_presets_and_custom() -> None:
     assert "VJoyPresetBox.Style := csDropDownList;" in create
     items = re.findall(r"VJoyPresetBox\.Items\.Add\((\w+)\);", create)
     assert items == ["VJoyPresetOne", "VJoyPresetTwo", "VJoyCustom"]
-    # The Custom editor: one line per device, "axes, buttons, hats".
-    assert "VJoyCustomMemo := TNewMemo.Create(DriversPage);" in create
-    # Presets are full devices: 8 axes, 128 buttons, 4 hats (drivers.PRESETS).
+    # Answer 2a: rows, not the old Custom text box.
+    assert "TNewMemo" not in _code() and "CustomMemo" not in _code()
+    # Presets are full devices: all eight axes, the countdown buttons, 4 hats
+    # (D-01-VJOY-COUNTDOWN: "2 devices, full" is 128 and 127).
     preset = _routine(_code(), "procedure PresetDevices(")
-    assert "AddVJoyDevice(List, K, 8, 128, 4);" in preset
+    assert "AddVJoyDevice(List, K, VJoyAllAxes, DefaultButtons(K), VJoyMaxHats);" in (
+        preset
+    )
     assert "if Name = VJoyPresetTwo then\n    Count := 2;" in preset
+    assert int(_const_int("VJoyAllAxes")) == 2 ** len(drivers.VJOY_AXES) - 1
+    assert int(_const_int("VJoyMaxButtons")) == 128
+    assert int(_const_int("VJoyMaxHats")) == 4
     for name, devices in drivers.PRESETS.items():
-        assert [(d.axes, d.buttons, d.hats) for d in devices] == [(8, 128, 4)] * (
-            2 if name == _const("VJoyPresetTwo") else 1
-        )
-    # Custom: 1-16 devices, each number held to its range.
-    memo = _routine(_code(), "procedure ReadCustomMemo;")
-    assert "if GetArrayLength(VJoyChosen) >= VJoyMaxDevices then" in memo
-    assert "ClampInt(StrToIntDef(NextToken(Line), 8), 0, 8)" in memo
-    assert "ClampInt(StrToIntDef(NextToken(Line), 128), 0, 128)" in memo
-    assert "ClampInt(StrToIntDef(NextToken(Line), 4), 0, 4)" in memo
+        count = 2 if name == _const("VJoyPresetTwo") else 1
+        assert [(d.id, d.axes, d.buttons, d.hats) for d in devices] == [
+            (k, drivers.VJOY_AXES, _pascal_default_buttons(k), 4)
+            for k in range(1, count + 1)
+        ]
+    assert [d.buttons for d in drivers.PRESETS[_const("VJoyPresetTwo")]] == [128, 127]
     assert re.search(r"^  VJoyMaxDevices = 16;$", _code(), re.M)
     assert drivers.VJOY_MAX_DEVICES == 16
+
+
+def test_the_vjoy_rows_have_named_axis_boxes_lists_and_add_remove() -> None:
+    code = _code()
+    rows = _routine(code, "procedure CreateVJoyRows(")
+    # One set of controls per possible device (16), eight boxes each.
+    assert "for R := 0 to VJoyMaxDevices - 1 do" in rows
+    assert "SetArrayLength(VJoyRowAxes, VJoyMaxDevices * 8);" in rows
+    assert "Box := TNewCheckBox.Create(DriversPage);" in rows
+    assert "Box.Tag := R * 8 + K;" in rows and "Box.OnClick := @VJoyAxisClick;" in rows
+    # Buttons 0-128 and hats 0-4 as drop-downs (item N is the number N).
+    assert rows.count("List.Style := csDropDownList;") == 2
+    assert "for N := 0 to VJoyMaxButtons do" in rows
+    assert "for N := 0 to VJoyMaxHats do" in rows
+    assert "Button.OnClick := @VJoyRemoveClick;" in rows
+    # The headings name the axes X ... S2 (axis_names), then Buttons, Hats.
+    create = _routine(code, "procedure CreateDriverPages;")
+    assert "AddVJoyHeading(AxisHeading(K), X + K * BoxW, ScaleY(2));" in create
+    assert "AddVJoyHeading('Buttons', X, ScaleY(2));" in create
+    assert "AddVJoyHeading('Hats', X + ButtonsW + Gap, ScaleY(2));" in create
+    assert "Result := AxisHeading(K);" in _routine(code, "function AxisLabel(")
+    # "+ Add device" (the list's last row): the lowest free number, at most 16.
+    add = _routine(code, "procedure VJoyAddClick(")
+    assert "if (N >= VJoyMaxDevices) or not VJoyActive then\n    Exit;" in add
+    assert "Id := VJoyNextFreeId(VJoyChosen);" in add
+    free = _routine(code, "function VJoyNextFreeId(")
+    assert "while VJoyIdUsed(List, Result) do\n    Result := Result + 1;" in free
+    fill = _routine(code, "procedure FillVJoyRows;")
+    assert "VJoyAddRow.Visible := N < VJoyMaxDevices;" in fill
+    assert "VJoyRowRemove[R].Enabled := N > 1;" in fill
+    assert "'vJoy ' + IntToStr(VJoyChosen[R].Id)" in fill
+    # The list scrolls: whole rows in a clipping panel, moved by a scroll bar.
+    assert "TScrollBox" not in _strip(code)
+    assert "VJoyRowsPanel.Parent := VJoyRowsClip;" in create
+    assert "VJoyRowsClip.Parent := VJoyViewport;" in create
+    assert (
+        "VJoyViewport.Height := BandH + VJoyVisibleRows * VJoyRowHeight + EdgeW;"
+    ) in create
+    assert "VJoyScroll.Visible := Lines > VJoyVisibleRows;" in fill
+    top = _routine(code, "procedure ShowVJoyTopRow;")
+    assert "VJoyRowsPanel.Top := -Top * VJoyRowHeight;" in top
+    page = _routine(code, "procedure CurPageChanged(")
+    assert "WatchVJoyScroll(CurPageID = DriversPage.ID);" in page
+    assert "WatchVJoyScroll(False);" in _routine(code, "procedure DeinitializeSetup;")
+    # Any edit shows the matching preset, else Custom; a preset fills the rows.
+    edited = _routine(code, "procedure VJoyRowsEdited;")
+    assert "VJoyUserEdited := True;" in edited
+    assert "Items.IndexOf(MatchingPreset(VJoyChosen))" in edited
+    for name in ("VJoyAxisClick", "VJoyButtonsChange", "VJoyHatsChange",
+                 "VJoyRemoveClick", "VJoyAddClick"):
+        assert "VJoyRowsEdited;" in _routine(code, f"procedure {name}(")
+    assert "FillVJoyRows;" in _routine(code, "procedure VJoyPresetChange(")
+    axis = _routine(code, "procedure VJoyAxisClick(")
+    assert "VJoyChosen[R].Axes or (1 shl K)" in axis
+    assert "VJoyChosen[R].Axes and (VJoyAllAxes - (1 shl K))" in axis
+
+
+def test_the_mouse_wheel_scrolls_the_vjoy_rows() -> None:
+    """01 S187 (answer 6a+b): the bar stays and the wheel over the rows scrolls.
+
+    A thread mouse hook lives with the scroll timer (Drivers page only, gone in
+    DeinitializeSetup), reads MOUSEHOOKSTRUCTEX at its 32-bit offsets and moves
+    VJoyScroll a row per notch through the timer's own ShowVJoyTopRow.
+    """
+    code = _code()
+    watch = _routine(code, "procedure WatchVJoyScroll(")
+    assert "SetWindowsHookEx(WhMouse, CreateCallback(@VJoyWheelProc), 0,\n" in watch
+    assert "GetCurrentThreadId);" in watch
+    assert "UnhookWindowsHookEx(VJoyWheelHook);\n    VJoyWheelHook := 0;" in watch
+    assert "SetWindowsHookExW@user32.dll stdcall" in code
+    assert re.search(r"\bWhMouse = 7;", code)
+    assert re.search(r"\bWmMouseWheel = \$020A;", code)
+    # 32-bit Setup: pt at 0 and 4, mouseData (high word = delta) at 20.
+    assert re.search(r"\bHookPointX = 0;", code)
+    assert re.search(r"\bHookPointY = 4;", code)
+    assert re.search(r"\bHookMouseData = 20;", code)
+    hook = _routine(code, "function VJoyWheelProc(")
+    assert "(Code = HcAction) and (WParam = WmMouseWheel)" in hook
+    assert "ReadHookLong(Data, LParam + HookMouseData, 4);" in hook
+    assert "if OverVJoyRows(X, Y) then" in hook
+    assert "ScrollVJoyRows(-Rows);" in hook
+    assert "Result := 1;" in hook
+    assert "Result := CallNextHookEx(VJoyWheelHook, Code, WParam, LParam);" in hook
+    # Over the rows and the bar: one owner, so the bar scrolls the same way.
+    over = _routine(code, "function OverVJoyRows(")
+    assert "GetWindowRect(VJoyViewport.Handle, Rows)" in over
+    assert "GetWindowRect(VJoyScroll.Handle, Bar)" in over
+    assert "(X < Bar.Right)" in over
+    scroll = _routine(code, "procedure ScrollVJoyRows(")
+    assert "MaxTop := VJoyScroll.Items.Count - VJoyVisibleRows;" in scroll
+    assert "SendMessage(VJoyScroll.Handle, LbSetTopIndex, Top, 0);" in scroll
+    assert "ShowVJoyTopRow;" in scroll
+    assert re.search(r"\bLbSetTopIndex = \$0197;", code)
 
 
 def test_vjoy_not_installed_gets_the_default_preset_and_no_current_layout() -> None:
@@ -649,6 +878,18 @@ def test_the_current_layout_is_read_like_driver_jobs() -> None:
     for name in ("'device'", "'buttons'", "'continous povs'", "'continuous povs'",
                  "'axes'"):
         assert name in report
+    assert "List[Current].Axes := AxesFromReport(Value);" in report
+    # By position, '-' for a missing axis (verified with vJoy 2.2.2.0).
+    axes = _routine(code, "function AxesFromReport(")
+    assert "for K := 0 to 7 do" in axes
+    assert "if Token <> '-' then\n      Result := Result or (1 shl K);" in axes
+    assert _axes_from_report("X Y - - - - Sl0 - - - - - - - - -") == ("x", "y", "sl0")
+
+
+def _axes_from_report(value: str) -> tuple[str, ...]:
+    """AxesFromReport's rule, run on a line: bit K set when token K isn't '-'."""
+    tokens = value.split()[:8]
+    return tuple(drivers.VJOY_AXES[k] for k, t in enumerate(tokens) if t != "-")
 
 
 def test_existing_devices_change_only_when_edited_with_the_warning() -> None:
@@ -668,9 +909,10 @@ def test_existing_devices_change_only_when_edited_with_the_warning() -> None:
     memo = _routine(code, "function UpdateReadyMemo(")
     assert "Steps := Steps + Space + VJoyWarning + NewLine;" in memo
     assert "' will be deleted.'" in memo
-    # Only the user's own changes count as edits (filling the lines is not one).
-    change = _routine(code, "procedure VJoyMemoChange(")
-    assert "if VJoyFilling or VJoyCustomMemo.ReadOnly then" in change
+    # Only the user's own changes count as edits (filling the rows is not one).
+    for name in ("VJoyAxisClick", "VJoyButtonsChange", "VJoyHatsChange"):
+        change = _routine(code, f"procedure {name}(")
+        assert "if VJoyFilling then\n    Exit;" in change
 
 
 def test_vjoy_setup_comes_after_the_vjoy_install_job() -> None:
@@ -699,7 +941,7 @@ def _vjoy_setup_json(devices: list[drivers.VJoyDevice]) -> str:
         env = {
             "Devices": text,
             "IntToStr(VJoyChosen[K].Id)": str(device.id),
-            "IntToStr(VJoyChosen[K].Axes)": str(device.axes),
+            "AxesJson(VJoyChosen[K].Axes)": json.dumps(list(device.axes)),
             "IntToStr(VJoyChosen[K].Buttons)": str(device.buttons),
             "IntToStr(VJoyChosen[K].Hats)": str(device.hats),
         }
@@ -715,8 +957,8 @@ def test_the_vjoy_setup_job_is_one_the_helper_reads(tmp_path: pathlib.Path) -> N
     app = r"C:\Users\A B\AppData\Local\Programs\Gremlin-Platforms"
     layout = [
         drivers.VJoyDevice(1),
-        drivers.VJoyDevice(3, axes=0, buttons=0, hats=0),
-        drivers.VJoyDevice(16, axes=2, buttons=12, hats=1),
+        drivers.VJoyDevice(3, axes=(), buttons=0, hats=0),
+        drivers.VJoyDevice(16, axes=("x", "y", "sl0"), buttons=12, hats=1),
     ]
     text = _job_file([
         _job_json("install", "vjoy", "",
@@ -726,9 +968,9 @@ def test_the_vjoy_setup_job_is_one_the_helper_reads(tmp_path: pathlib.Path) -> N
     assert json.loads(text)["jobs"][1] == {
         "op": "vjoy_setup", "driver": "vjoy", "files": [],
         "devices": [
-            {"id": 1, "axes": 8, "buttons": 128, "hats": 4},
-            {"id": 3, "axes": 0, "buttons": 0, "hats": 0},
-            {"id": 16, "axes": 2, "buttons": 12, "hats": 1},
+            {"id": 1, "axes": list(drivers.VJOY_AXES), "buttons": 128, "hats": 4},
+            {"id": 3, "axes": [], "buttons": 0, "hats": 0},
+            {"id": 16, "axes": ["x", "y", "sl0"], "buttons": 12, "hats": 1},
         ],
     }
     path = tmp_path / "jobs.json"
@@ -739,8 +981,16 @@ def test_the_vjoy_setup_job_is_one_the_helper_reads(tmp_path: pathlib.Path) -> N
     ]
     assert jobs[1].files == []
     assert [(d.id, d.axes, d.buttons, d.hats) for d in jobs[1].devices] == [
-        (1, 8, 128, 4), (3, 0, 0, 0), (16, 2, 12, 1)
+        (1, drivers.VJOY_AXES, 128, 4), (3, (), 0, 0), (16, ("x", "y", "sl0"), 12, 1)
     ]
+
+
+def test_the_job_file_names_the_axes_like_drivers_py() -> None:
+    # AxesJson writes VJoyAxisNames' names for the set bits, in that order.
+    body = _routine(_code(), "function AxesJson(")
+    assert "Result := Result + '\"' + AxisName(K) + '\"';" in body
+    assert "Result := '[' + Result + ']';" in body
+    assert _const("VJoyAxisNames").split() == list(drivers.VJOY_AXES)
 
 
 def test_the_vjoy_setup_job_has_its_progress_and_result_line() -> None:
@@ -783,11 +1033,20 @@ def test_no_code_line_starts_with_a_hash() -> None:
     "name",
     [
         "AddVJoyDevice", "CopyVJoyDevices", "PresetDevices", "SameLayout",
-        "MatchingPreset", "VJoyEdited", "NextToken", "VJoyField", "AxesCount",
+        "MatchingPreset", "VJoyEdited", "NextToken", "VJoyField", "AxesFromReport",
         "ParseVJoyReport", "ParseVJoyStatus", "RunVJoyConfig", "ReadVJoyLayout",
-        "InitVJoyChoice", "VJoyLayoutText", "FillCustomMemo", "ReadCustomMemo",
+        "InitVJoyChoice", "VJoyLayoutText", "FillVJoyRows", "VJoyRowsEdited",
         "UpdateVJoyControls", "VJoySetupJobJson", "JobState", "SetJobResult",
-        "VJoySetupResultLine", "VJoyIdUsed", "ClampInt", "IsDigits",
+        "VJoySetupResultLine", "VJoyIdUsed", "IsDigits", "AxisName", "AxisLabel",
+        "AxisTicked", "AxesCountOf", "AxesJson", "AxesText", "ShowVJoyTopRow",
+        "WatchVJoyScroll", "ScrollVJoyRows", "OverVJoyRows", "VJoyWheelProc",
+        "SetWindowsHookEx", "UnhookWindowsHookEx", "CallNextHookEx",
+        "GetWindowRect", "IsWindowVisible", "ReadHookLong", "CreateVJoyRows",
+        "AddVJoyHeading", "VJoyAxisClick",
+        "VJoyButtonsChange", "VJoyHatsChange", "VJoyRemoveClick", "VJoyAddClick",
+        "DefaultButtons", "VJoyAlikeWarning", "VJoyActive", "AxisHeading",
+        "VJoyIdBusy", "VJoyIndexOf", "VJoyChangedBusy", "VJoyInUseWarning",
+        "VJoyNextFreeId", "VJoyAddPreviewText",
     ],
 )
 def test_vjoy_routines_are_declared_before_use(name: str) -> None:
@@ -842,16 +1101,28 @@ def test_runtime_detection_reads_drivers_py_key_in_both_views() -> None:
     assert found.count("Result := Value = 1;") == 2
 
 
-def test_the_drivers_page_shows_the_runtime_line_with_no_box() -> None:
-    assert _const("RuntimeLine") == (
-        "Microsoft Visual C++ Runtime: will be installed "
-        "(Gremlin-Platforms needs it to run)"
-    )
+def test_the_runtime_is_the_drivers_box_first_row_ticked_and_greyed() -> None:
+    """01 S193 (2026-11-21, 8a): the required parent row, status on the right."""
+    assert _const("RuntimeName") == "Microsoft Visual C++ Runtime"
+    assert not re.search(r"^  RuntimeLine = ", _code(), re.M)
     fill = _routine(_code(), "procedure FillDriverList;")
-    assert (
-        "if RuntimeMissing then\n    DriverList.AddGroup(RuntimeLine, '', 0, nil);"
-    ) in fill
-    assert "AddCheckBox(RuntimeLine" not in _code()
+    # Level 0, ticked, not enabled (greyed: can't be unticked).
+    parent = ("RuntimeRow := DriverList.AddCheckBox(RuntimeName, Status, 0, True, "
+              "False,\n    False, False, nil);")
+    assert parent in fill
+    assert fill.index("DriverList.Items.Clear;") < fill.index(parent)
+    assert fill.index(parent) < fill.index("for I := 0 to GetArrayLength(Drivers)")
+    # Status like the drivers': "not installed", else the installed version.
+    assert "if RuntimeMissing then\n    Status := 'not installed'" in fill
+    assert "Status := RuntimeInstalledVersion;" in fill
+    assert "AddGroup(RuntimeName" not in _code()
+    # Shown on every install, not only when the runtime is missing.
+    assert "if RuntimeMissing then\n    DriverList.AddGroup" not in fill
+    # RuntimeInstalledVersion comes before its first use (Pascal order).
+    code = _code()
+    assert code.index("function RuntimeInstalledVersion:") < code.index(
+        "procedure FillDriverList;"
+    )
     assert "RuntimeMissing := not RuntimeInstalled;" in _routine(
         _code(), "procedure InitDrivers;"
     )
@@ -873,39 +1144,33 @@ def test_the_runtime_installs_first() -> None:
     )
 
 
-def _runtime_params(body: str) -> str:
-    """The PowerShell command InstallRuntime passes, its string pieces joined."""
-    start = body.index("Params := ")
-    return _pascal_string(body[start: body.index("\"';", start) + 3])
-
-
 def test_the_runtime_runs_elevated_with_the_switches_and_bounded_wait() -> None:
     body = _runtime_install()
-    # A hidden, non-elevated PowerShell starts the installer elevated, so the
-    # administrator prompt names Microsoft's installer (answer 30a), not cmd.
+    # Started elevated straight from setup's window (answer 4a), so the prompt
+    # names Microsoft's installer (answer 30a) and opens in front of setup.
     assert "{cmd}" not in body and "ShellExec(" not in body
+    assert "powershell" not in body.lower()
     assert (
-        r"Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params,"
-        "\n        ExpandConstant('{tmp}'), SW_HIDE, ewNoWait, ErrorCode)"
+        "StartElevated(Path, RuntimeArgs, ExpandConstant('{tmp}'), SW_HIDE,\n"
+        "        Process, ErrorCode)"
     ) in body
-    assert "ewWaitUntilTerminated" not in body
-    params = _runtime_params(body)
-    assert "$i.Verb = 'runas'; $i.UseShellExecute = $true;" in params
-    assert "[System.Diagnostics.Process]::Start($i)" in params
-    assert "$p.WaitForExit(" in params and "$r = $p.ExitCode" in params
-    assert "+ Literal +" in body and "+ RuntimeArgs +" in body
-    assert "IntToStr(RuntimeWaitTicks * RuntimeWaitStep)" in body
     assert _const("RuntimeArgs") == "/install /quiet /norestart"
     assert "for Tick := 1 to RuntimeWaitTicks do" in body
+    assert "WaitForSingleObject(Process, 0) = WaitObject0" in body
     assert "Sleep(RuntimeWaitStep);" in body
+    assert "GetExitCodeProcess(Process, Code)" in body
+    assert "CloseHandle(Process);" in body
     ticks = int(_const_int("RuntimeWaitTicks"))
     assert ticks * int(_const_int("RuntimeWaitStep")) == 600_000
     assert "'not installed: it did not finish within 10 minutes'" in body
     # The bundled copy is checked before it runs (SHA-256 and signer).
-    assert body.index("RuntimeFileTrusted(Path)") < body.index("Exec(")
+    assert body.index("RuntimeFileTrusted(Path)") < body.index("StartElevated(")
     trusted = _routine(_code(), "function RuntimeFileTrusted(")
     assert "GetSHA256OfFile(Path)" in trusted and "'{#RuntimeSha256}'" in trusted
-    assert "Get-AuthenticodeSignature" in trusted and "{#RuntimeSigner}" in trusted
+    assert "RuntimeSignedByMicrosoft(Path)" in trusted
+    signed = _routine(_code(), "function RuntimeSignedByMicrosoft(")
+    assert "Get-AuthenticodeSignature" in signed and "{#RuntimeSigner}" in signed
+    assert "$s.Status -eq ''Valid''" in signed
 
 
 def _const_int(name: str) -> str:
@@ -946,9 +1211,10 @@ def test_a_runtime_failure_never_stops_the_install() -> None:
 
 def test_a_silent_install_installs_the_runtime() -> None:
     body = _runtime_install()
-    # Only "already installed" skips it; a silent install only skips the page.
+    # Only "already installed" (and no newer download) skips it; a silent
+    # install only skips the page.
     assert body.split("begin", 1)[1].lstrip().startswith(
-        "if RuntimeInstalled then\n    Exit;"
+        "if RuntimeInstalled and (RuntimeNewestPath = '') then"
     )
     assert "if WizardSilent then\n    Exit" not in body
     assert "InstallRuntime;" in _routine(_code(), "procedure CurStepChanged(")
@@ -988,28 +1254,218 @@ def test_uninstall_never_touches_the_runtime() -> None:
     assert "[UninstallRun]" not in iss
     assert "VisualStudio" not in _section("UninstallDelete")
     assert "Runtime" not in _section("UninstallDelete")
-    for x in ("RegDeleteKey", "RegDeleteValue", "/uninstall"):
+    for x in ("RegDeleteKey", "/uninstall"):
         assert x not in iss
+    assert iss.count("RegDeleteValue(") == 1  # 01 S194: the Run value only
 
 
 def test_a_refused_runtime_prompt_is_reported_as_refused() -> None:
     body = _runtime_install()
-    params = _runtime_params(body)
-    # Process.Start keeps the Windows error (1223 when the prompt is refused);
-    # the catch writes it, so a refusal ends the wait at once, never a hang.
-    assert "catch { $e = $_.Exception;" in params
-    assert "[System.ComponentModel.Win32Exception]" in params
-    assert "$r = 'error ' + $e.NativeErrorCode" in params
-    assert params.endswith('Set-Content -LiteralPath $f -Value $r -Encoding Ascii"')
+    # ShellExecuteEx fails with Windows' error 1223 when the prompt is refused:
+    # the wait never starts, so a refusal is never a hang.
     assert "UacRefusedCode = 1223;" in _code()
-    refused = body.index("if Line = 'error ' + IntToStr(UacRefusedCode) then")
+    refused = body.index("else if ErrorCode = UacRefusedCode then")
     assert body.index(
         "RuntimeResult := 'not installed: administrator permission was not given'"
     ) > refused
-    # 'started' (the prompt was accepted) keeps waiting; anything else ends it.
-    assert "if (Line = 'started') and not Started then" in body
-    assert "else if (Line <> '') and (Line <> 'started') then" in body
-    assert "if not Ended or (Line = 'timeout') then" in body
+    assert body.index("StartElevated(") < refused
+    assert "RuntimeResult := 'not installed: ' + SysErrorMessage(ErrorCode);" in body
+
+
+# -- 01 S193 (answer 6a): Microsoft's newest runtime -------------------------------
+
+
+def test_the_newest_runtime_is_an_unticked_child_row_on_every_install() -> None:
+    """01 S193 (2026-11-21, 9b): indented under the runtime row, in the box."""
+    assert _const("RuntimeNewestCaption") == (
+        "Check and download an updated Visual C++ Runtime"
+    )
+    fill = _routine(_code(), "procedure FillDriverList;")
+    # Level 1 (indented), unticked, enabled, not ticked by its parent.
+    child = ("RuntimeNewestRow := DriverList.AddCheckBox(RuntimeNewestCaption, '', 1,"
+             "\n    False, True, False, False, nil);")
+    assert child in fill
+    parent = fill.index("RuntimeRow := DriverList.AddCheckBox(")
+    assert parent < fill.index(child) < fill.index("for I := 0 to GetArrayLength")
+    at = fill.index(child)
+    assert "if RuntimeMissing then" not in fill[at - 120: at]
+    # The old separate tick box under the box is gone.
+    assert "RuntimeNewestBox" not in _code()
+    done = _routine(_code(), "procedure DriversPageDone;")
+    assert "RuntimeNewestWanted := DriverList.Checked[RuntimeNewestRow];" in done
+    click = _routine(_code(), "function NextButtonClick(")
+    # Silent installs (no page) never check: the Exit comes first.
+    assert click.index("if WizardSilent then\n    Exit;") < click.index(
+        "CheckNewestRuntime;"
+    )
+    memo = _routine(_code(), "function UpdateReadyMemo(")
+    assert "if RuntimeNewestWanted then" in memo
+    # The Ready page follows the row's wording.
+    assert "'Check and download an updated Visual C++ ' +" in memo
+    assert "Check for an updated" not in _code()
+
+
+def test_the_runtime_parent_row_stays_ticked() -> None:
+    """Clicking the child never unticks the required parent (01 S193)."""
+    keep = _routine(_code(), "procedure KeepRuntimeTicked;")
+    assert "if DriverList.State[RuntimeRow] = cbChecked then\n    Exit;" in keep
+    assert "Child := DriverList.Checked[RuntimeNewestRow];" in keep
+    assert "DriverList.Checked[RuntimeRow] := True;" in keep
+    # The child keeps its own tick if setting the parent changed it.
+    assert "DriverList.Checked[RuntimeNewestRow] := Child;" in keep
+    click = _routine(_code(), "procedure DriverListClickCheck(")
+    assert click.index("KeepRuntimeTicked;") < click.index("UpdateVJoyControls;")
+    fill = _routine(_code(), "procedure FillDriverList;")
+    assert fill.rstrip().endswith("KeepRuntimeTicked;\nend;")
+    # Five rows (runtime, its child, three drivers) fit in the box.
+    create = _routine(_code(), "procedure CreateDriverPages;")
+    assert "DriverList.Height := ScaleY(102);" in create
+    assert "if RuntimeMissing then" not in create
+
+
+def test_layout_b_line_then_bold_heading_with_preset_on_the_right() -> None:
+    """06 S185 layout b (2026-11-21)."""
+    create = _routine(_code(), "procedure CreateDriverPages;")
+    assert "Line := TBevel.Create(DriversPage);" in create
+    assert "Line.Shape := bsTopLine;" in create
+    assert "Line.Top := DriverList.Top + DriverList.Height + ScaleY(6);" in create
+    assert "VJoyLabel.Caption := 'vJoy devices';" in create
+    assert "VJoyLabel.Font.Style := [fsBold];" in create
+    assert "'vJoy devices:'" not in create
+    assert "PresetLabel.Caption := 'Preset';" in create
+    # Preset and its box right-aligned on the heading's line.
+    assert (
+        "VJoyPresetBox.Left := DriversPage.SurfaceWidth - VJoyPresetBox.Width;"
+    ) in create
+    assert (
+        "PresetLabel.Left := VJoyPresetBox.Left - ScaleX(6) - PresetLabel.Width;"
+    ) in create
+    assert "PresetLabel.Top := VJoyLabel.Top;" in create
+    assert "VJoyLabel.Top := VJoyPresetBox.Top + ScaleY(3);" in create
+    assert "VJoyPresetBox.Top := Line.Top + ScaleY(6);" in create
+    assert create.index("Line := TBevel") < create.index("VJoyViewport := TPanel")
+
+
+def test_layout_b_headings_sit_in_a_grey_band_inside_the_box() -> None:
+    code = _code()
+    create = _routine(code, "procedure CreateDriverPages;")
+    assert "VJoyHeadBand.Parent := VJoyViewport;" in create
+    assert "VJoyHeadBand.Color := clBtnFace;" in create
+    assert "VJoyHeadBand.Top := 0;" in create
+    assert "VJoyHeadBand.Height := BandH;" in create
+    assert "VJoyRowsClip.Top := BandH;" in create
+    heading = _routine(code, "procedure AddVJoyHeading(")
+    assert "Heading.Parent := VJoyHeadBand;" in heading
+    # The band exists before the headings go in it.
+    assert create.index("VJoyHeadBand := TPanel") < create.index(
+        "AddVJoyHeading(AxisHeading(K)"
+    )
+    # Rows below the band; the band's height comes off the rows' room.
+    assert (
+        "VJoyVisibleRows := (VJoyViewport.ClientHeight - BandH) div VJoyRowHeight;"
+    ) in create
+
+
+def test_layout_b_rows_are_padded_from_the_left_border() -> None:
+    create = _routine(_code(), "procedure CreateDriverPages;")
+    assert "RowLeft := ScaleX(6);" in create
+    rows = "CreateVJoyRows(RowLeft, NameW, BoxW, ButtonsW, HatsW, RemoveW, Gap);"
+    assert rows in create
+    assert "CreateVJoyRows(0," not in create
+    # The headings use the same offset as the rows' columns.
+    assert "X := RowLeft + NameW;" in create
+    assert "RowLeft - NameW - ButtonsW" in create  # tick box width allows for it
+
+
+def test_layout_b_bottom_line_warning_left_showing_right() -> None:
+    create = _routine(_code(), "procedure CreateDriverPages;")
+    # 01 S187 (3a): no Add device button on the bottom line any more.
+    assert "LineTop := DriversPage.SurfaceHeight - ScaleY(21);" in create
+    assert "VJoyWarningText.Left := 0;" in create
+    assert "VJoyShowingText.Alignment := taRightJustify;" in create
+    assert "VJoyShowingText.Left := DriversPage.SurfaceWidth - ShowingW;" in create
+    assert "VJoyShowingText.Top := LineTop + ScaleY(4);" in create
+    # The warning between them, never over the Showing line.
+    assert (
+        "VJoyWarningText.Width := VJoyShowingText.Left - ScaleX(8) - "
+        "VJoyWarningText.Left;"
+    ) in create
+    assert "VJoyWarningText.WordWrap := True;" in create
+    # Top to bottom: box, hint, bottom line.
+    assert create.index("Bottom := VJoyHint.Top - ScaleY(2);") > create.index(
+        "VJoyHint.Top :="
+    )
+
+
+def test_the_newest_runtime_link_and_head_request() -> None:
+    assert _const("RuntimeNewestUrl") == "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    resolve = _routine(_code(), "function ResolveRuntimeUrl(")
+    assert "CreateOleObject('WinHttp.WinHttpRequest.5.1')" in resolve
+    assert "Request.Open('HEAD', RuntimeNewestUrl, False);" in resolve
+    assert "Final := Request.Option(1);" in resolve
+    # Bounded: four timeouts of RuntimeHeadTimeout, at most 10 s in all.
+    assert resolve.count("RuntimeHeadTimeout") == 4
+    assert 4 * int(_const_int("RuntimeHeadTimeout")) <= 10_000
+    assert "except" in resolve
+
+
+def _url_sha256(url: str) -> str:
+    """UrlSha256's rule: the last path part of 64 hex digits, lower case."""
+    found = ""
+    for part in url.split("/"):
+        if len(part) == 64 and all(c in "0123456789abcdef" for c in part.lower()):
+            found = part.lower()
+    return found
+
+
+def test_the_sha_in_microsofts_path_decides_the_download() -> None:
+    sha = _define("RuntimeSha256")
+    url = (
+        "https://download.visualstudio.microsoft.com/download/pr/"
+        "1754ea58-11a6-44ab-a262-696e194ce543/" + sha.upper() + "/VC_redist.x64.exe"
+    )
+    assert _url_sha256(url) == sha
+    assert _url_sha256("https://example.invalid/a/VC_redist.x64.exe") == ""
+    body = _routine(_code(), "function UrlSha256(")
+    assert "if Length(Part) <> 64 then" in body
+    assert "Part := Lowercase(Part);" in body
+    assert "Pos(Copy(Part, K, 1), '0123456789abcdef') = 0" in body
+    check = _routine(_code(), "procedure CheckNewestRuntime;")
+    assert "if not RuntimeNewestWanted then\n    Exit;" in check
+    same = check.index("if Sha = Lowercase('{#RuntimeSha256}') then")
+    # The same copy: logged, nothing downloaded.
+    assert check.index("RuntimeNewestNote := RuntimeSameNote;", same) < check.index(
+        "DriverDownloadPage.Download;"
+    )
+    assert _const("RuntimeSameNote") == "Microsoft's newest is the copy setup carries"
+    # A download is checked like the bundled copy, then kept only when newer
+    # than both the bundled copy and the installed runtime.
+    assert check.index("DriverDownloadPage.Download;") < check.index(
+        "RuntimeSignedByMicrosoft(Path)"
+    )
+    assert "Lowercase(GetSHA256OfFile(Path)) <> Sha" in check
+    assert "GetVersionNumbersString(Path, Version)" in check
+    assert "CompareVersions(Version, '{#RuntimeBundled}') <= 0" in check
+    assert "CompareVersions(Version, Installed) <= 0" in check
+    assert check.index("CompareVersions(Version, Installed)") < check.index(
+        "RuntimeNewestPath := Path;"
+    )
+    assert "except" in check
+    installed = _routine(_code(), "function RuntimeInstalledVersion:")
+    assert "MachineValue(RuntimeKey, 'Version')" in installed
+
+
+def test_the_last_page_says_which_runtime_copy_was_used() -> None:
+    body = _runtime_install()
+    newest = body.index("if RuntimeNewestPath <> '' then")
+    assert body.index("Path := RuntimeNewestPath;", newest) < body.index(
+        "ExtractTemporaryFile("
+    )
+    assert "Used := 'Microsoft''s newest, ' + RuntimeNewestVersion;" in body
+    assert "Used := 'the copy setup carries, {#RuntimeBundled}';" in body
+    assert "RuntimeResult := RuntimeResult + ' (' + Used + ')';" in body
+    # Installed and nothing newer to run: the box's finding still shows.
+    assert "RuntimeResult := 'already installed; ' + RuntimeNewestNote;" in body
 
 
 def test_the_launch_box_is_not_hidden_by_the_driver_results() -> None:
@@ -1040,14 +1496,79 @@ def test_the_launch_box_is_not_hidden_by_the_driver_results() -> None:
     assert "unchecked" not in launch and "Check: OfferLaunch" in launch
 
 
-def test_the_drivers_note_says_gremlin_platforms_files() -> None:
+def test_the_drivers_page_has_no_paragraph_under_the_runtime_box() -> None:
+    """01 S193 (answer 1a, 2026-11-21): the paragraph under the box is gone."""
     page = _routine(_code(), "procedure CreateDriverPages;")
-    start = page.index("Note.Caption := 'Ticked")
-    note = _pascal_string(page[start: page.index(";\n", start)])
-    assert note.startswith(
-        "Ticked drivers are installed after Gremlin-Platforms' files are copied;"
-    )
+    assert "Note" not in page.replace("RuntimeNewestNote", "")
+    assert "Ticked drivers are installed after" not in _code()
+    assert "RuntimeNewestBox" not in page
     assert "Platforms''s" not in _code()
+
+
+def test_the_vjoy_rows_sit_in_one_bordered_white_box() -> None:
+    """01 S187 (answer 2b, 2026-11-21): as Git for Windows' Select Components."""
+    code = _code()
+    create = _routine(code, "procedure CreateDriverPages;")
+    assert "VJoyViewport.BorderStyle := bsSingle;" in create
+    assert "VJoyViewport.Color := clWindow;" in create
+    assert "VJoyViewport.ParentBackground := False;" in create
+    # The bar runs down the inside of the box's right edge, borderless and
+    # wider than SM_CXVSCROLL so Windows always has room to draw it.
+    assert "VJoyScroll.Parent := VJoyRowsClip;" in create
+    assert "VJoyScroll.BorderStyle := bsNone;" in create
+    assert "VJoyScroll.Left := VJoyRowsClip.ClientWidth - ScrollW;" in create
+    assert "ScrollW := BarW + ScaleX(4);" in create
+    assert "BarW := GetSystemMetrics(2);" in create
+    # Rows follow from the box's real inside height; headings stay above it.
+    assert (
+        "VJoyVisibleRows := (VJoyViewport.ClientHeight - BandH) div VJoyRowHeight;"
+    ) in create
+    assert (
+        "VJoyViewport.Height := BandH + VJoyVisibleRows * VJoyRowHeight + EdgeW;"
+    ) in create
+    # Layout b: the headings are inside the box (its grey band).
+    heads = create.index("AddVJoyHeading('Hats'")
+    assert heads > create.index("VJoyViewport := TPanel")
+    # The bar shows only when the rows don't fit; without it, full width.
+    fill = _routine(code, "procedure FillVJoyRows;")
+    assert "VJoyScroll.Visible := Lines > VJoyVisibleRows;" in fill
+    assert "VJoyRowsPanel.Width := VJoyScroll.Left\n    else" in fill
+    assert "VJoyRowsPanel.Width := VJoyRowsClip.ClientWidth;" in fill
+    # The item height comes back if the list box's window is made again.
+    top = _routine(code, "procedure ShowVJoyTopRow;")
+    assert "LbGetItemHeight, 0, 0) <> VJoyRowHeight then" in top
+    assert re.search(r"\bLbGetItemHeight = \$01A1;", code)
+    assert "VJoyScroll.ItemIndex := -1;" in _routine(code, "procedure VJoyScrollClick(")
+    # At least 4 rows at 100%: a taller wizard (user 2026-11-21); 137 keeps
+    # 5 with layout b (five driver-box rows, the line and heading, the grey
+    # band, the hint and the bottom line).
+    assert "WizardSizePercent=120,137" in _section("Setup")
+
+
+def test_the_showing_line_under_the_box() -> None:
+    code = _code()
+    line = _routine(code, "function VJoyShowingLine(")
+    assert "Result := 'No vJoy devices'" in line
+    assert "Result := 'Showing 1 device'" in line
+    assert "Result := 'Showing all ' + IntToStr(N) + ' devices'" in line
+    assert "Result := 'Showing ' + IntToStr(Top + 1) + '-' +" in line
+    assert "IntToStr(Last) + ' of ' + IntToStr(N) + ' devices';" in line
+    # The add row is a list line but not a device: Last stops at N.
+    assert "Last := Top + VJoyVisibleRows;\n  if Last > N then\n    Last := N;" in line
+    assert "else if (Top = 0) and (Last = N) then" in line
+    # Updated by the one scroll sync (wheel, timer, bar, add/remove refill);
+    # it counts devices, never the list's lines.
+    top = _routine(code, "procedure ShowVJoyTopRow;")
+    caption = (
+        "VJoyShowingText.Caption := VJoyShowingLine(Top, GetArrayLength(VJoyChosen));"
+    )
+    assert caption in top
+    fill = _routine(code, "procedure FillVJoyRows;")
+    assert "VJoyTopRow := -1;\n    ShowVJoyTopRow;" in fill
+    create = _routine(code, "procedure CreateDriverPages;")
+    showing = create.index("VJoyShowingText := TNewStaticText")
+    assert showing < create.index("FillVJoyRows;")
+    assert "Bottom := VJoyHint.Top - ScaleY(2);" in create
 
 
 def test_vjoy_layout_text_uses_singular_for_one() -> None:
@@ -1055,7 +1576,18 @@ def test_vjoy_layout_text_uses_singular_for_one() -> None:
     assert "if Count = 1 then\n    Result := '1 ' + One" in count
     assert "else\n    Result := IntToStr(Count) + ' ' + Many;" in count
     device = _routine(_code(), "function VJoyDeviceText(")
-    assert "CountText(D.Axes, 'axis', 'axes')" in device
+    assert "AxesText(D.Axes)" in device
+    axes = _routine(_code(), "function AxesText(")
+    # driver_jobs.describe_device: "3 axes (X, Y, S1)", "8 axes (X-S2)".
+    assert "CountText(AxesCountOf(Mask), 'axis', 'axes')" in axes
+    assert "' (' + AxisLabel(0) + '-' + AxisLabel(7) + ')'" in axes
+    assert "Names := Names + ', ';" in axes
+    from gremlin import driver_jobs
+    assert driver_jobs.describe_device(
+        drivers.VJoyDevice(1, axes=("x", "y", "sl0"), buttons=8, hats=0)
+    ) == "3 axes (X, Y, S1), 8 buttons, 0 hats"
+    full = driver_jobs.describe_device(drivers.VJoyDevice(1))
+    assert full.startswith("8 axes (X-S2)")
     assert "CountText(D.Buttons, 'button', 'buttons')" in device
     assert "CountText(D.Hats, 'hat', 'hats')" in device
     assert "' hats'" not in device and "' axes, '" not in device
@@ -1064,3 +1596,204 @@ def test_vjoy_layout_text_uses_singular_for_one() -> None:
     assert (
         "CountText(GetArrayLength(VJoyChosen),\n        'vJoy device', 'vJoy devices')"
     ) in memo
+
+
+# -- 01 S187 (2026-11-22): S1/S2 headings, one axis stays, devices in use ------------
+
+
+def test_the_headings_are_axis_names_short_names() -> None:
+    """D-AXIS-NAMES: one table; vJoyConfig still gets sl0/sl1."""
+    from gremlin import axis_names
+
+    assert _const("VJoyAxisLabels").split() == [a.short for a in axis_names.AXES]
+    assert _const("VJoyAxisLabels").split() == list(drivers.VJOY_AXIS_LABELS)
+    assert _const("VJoyAxisNames").split() == [a.vjoy_config for a in axis_names.AXES]
+    heading = _routine(_code(), "function AxisHeading(")
+    assert "Names := VJoyAxisLabels;" in heading
+    rows = _routine(_code(), "procedure CreateVJoyRows(")
+    assert "Box.Hint := AxisHeading(K);" in rows
+    # The bit mask and the job file's names are unchanged.
+    assert "VJoyAllAxes = 255;" in _code()
+    assert "AxisName(K)" in _routine(_code(), "function AxesJson(")
+
+
+def test_the_last_ticked_axis_cant_be_unticked() -> None:
+    """D-01-VJOY-ONE-AXIS (drivers.can_untick_axis)."""
+    axis = _routine(_code(), "procedure VJoyAxisClick(")
+    guard = (
+        "if (not TNewCheckBox(Sender).Checked) and\n"
+        "    ((VJoyChosen[R].Axes and (VJoyAllAxes - (1 shl K))) = 0) then"
+    )
+    assert guard in axis
+    # Re-ticked without counting as an edit, before the mask changes.
+    retick = axis.index("TNewCheckBox(Sender).Checked := True;")
+    assert axis.index("VJoyFilling := True;") < retick
+    assert axis.index("Exit;", retick) < axis.index("VJoyChosen[R].Axes or (1 shl K)")
+    # The same rule as drivers.can_untick_axis.
+    only = drivers.VJoyDevice(1, ("x",), 8, 0)
+    assert not drivers.can_untick_axis(only, "x")
+    assert drivers.can_untick_axis(drivers.VJoyDevice(1, ("x", "y"), 8, 0), "x")
+
+
+def _in_use_sentence(ids: list[int]) -> str:
+    """What VJoyInUseWarning builds for these ids, from its own pieces."""
+    one = re.search(r"^  VJoyInUseOne = (.*?);$", _code(), re.M | re.S)
+    many = re.search(r"^  VJoyInUseMany = (.*?);$", _code(), re.M | re.S)
+    assert one and many
+    names = [f"vJoy {i}" for i in ids]
+    who = names[0]
+    for j, name in enumerate(names[1:], start=1):
+        who += (" and " if j == len(names) - 1 else ", ") + name
+    return who + _pascal_string((one if len(ids) == 1 else many).group(1))
+
+
+def test_the_in_use_warning_matches_drivers_py() -> None:
+    """D-01-VJOY-IN-USE: same wording as Tools › Drivers, 1, 2 and 3 ids."""
+    for ids in ([4], [1, 4], [1, 2, 4]):
+        assert _in_use_sentence(ids) == drivers.in_use_warning(ids)
+    warn = _routine(_code(), "function VJoyInUseWarning(")
+    assert "Result := Result + ' and vJoy ' + IntToStr(Ids[J])" in warn
+    assert "Result := Result + ', vJoy ' + IntToStr(Ids[J]);" in warn
+    assert "if G = 1 then\n    Result := Result + VJoyInUseOne" in warn
+    assert _const("VJoyInUseText") == "in use by another program"
+
+
+def test_busy_or_owned_devices_are_read_from_the_status_lines() -> None:
+    code = _code()
+    status = _routine(code, "procedure ParseVJoyStatus(")
+    assert "var Ids, Busy: TArrayOfInteger" in status
+    assert "if (State = 'BUSY') or (State = 'OWNED') then" in status
+    layout = _routine(code, "procedure ReadVJoyLayout;")
+    assert "ParseVJoyStatus(Lines, Ids, VJoyBusy);" in layout
+    # D-01-VJOY-IN-USE (1a): the row's name turns red and bold and says so on
+    # hover; no extra column, the tick columns keep their widths.
+    fill = _routine(code, "procedure FillVJoyRows;")
+    busy = fill[fill.index("if VJoyIdBusy(VJoyChosen[R].Id) then"):]
+    for line in (
+        "VJoyRowNames[R].Font.Color := clRed;",
+        "VJoyRowNames[R].Font.Style := [fsBold];",
+        "VJoyRowNames[R].Hint := VJoyInUseText;",
+        "VJoyRowNames[R].ShowHint := True;",
+    ):
+        assert line in busy
+    # Rows are reused, so a free device's name goes back to normal.
+    for line in (
+        "VJoyRowNames[R].Font.Color := clWindowText;",
+        "VJoyRowNames[R].Font.Style := [];",
+        "VJoyRowNames[R].ShowHint := False;",
+    ):
+        assert line in busy
+    stripped = _strip(code)
+    for gone in ("VJoyRowBusy", "VJoyInUseW", "InUseRoom"):
+        assert not re.search(rf"\b{gone}\b", stripped), gone
+    create = _routine(code, "procedure CreateDriverPages;")
+    assert "HatsW - RemoveW - 4 * Gap) div 8;" in create
+
+
+def test_next_asks_before_changing_a_device_in_use() -> None:
+    code = _code()
+    changed = _routine(code, "procedure VJoyChangedBusy(")
+    assert "if not VJoyEdited then\n    Exit;" in changed
+    assert "if N < 0 then\n      Changed := True" in changed
+    assert "(VJoyChosen[N].Axes <> VJoyCurrent[C].Axes)" in changed
+    nxt = _routine(code, "function NextButtonClick(")
+    asked = nxt.index("MsgBox(VJoyInUseWarning(Busy), mbConfirmation, MB_YESNO)")
+    # After the silent exit, before the alike question; No stays on the page.
+    assert nxt.index("if WizardSilent then\n    Exit;") < asked
+    assert asked < nxt.index("VJoyAlikeWarning")
+    assert nxt.index("Result := False;", asked) < nxt.index("VJoyAlikeWarning")
+
+
+# -- 01 S187 (2026-11-22, 3a/4a): "+ Add device" row, short axis names in Now: ------
+
+
+def _pascal_axes_text(mask: int) -> str:
+    """The .iss AxesText on one mask, from its own lines and constants."""
+    body = _routine(_code(), "function AxesText(")
+    assert "' (' + AxisLabel(0) + '-' + AxisLabel(7) + ')'" in body
+    assert "Names := Names + AxisLabel(K);" in body
+    assert "Result := AxisHeading(K);" in _routine(_code(), "function AxisLabel(")
+    labels = _const("VJoyAxisLabels").split()
+    ticked = [labels[k] for k in range(8) if mask & (1 << k)]
+    n = len(ticked)
+    text = f"{n} {'axis' if n == 1 else 'axes'}"
+    if mask == int(_const_int("VJoyAllAxes")):
+        return f"{text} ({labels[0]}-{labels[7]})"
+    return f"{text} ({', '.join(ticked)})" if ticked else text
+
+
+def test_setup_now_line_names_axes_like_drivers_axis_label() -> None:
+    """4a: setup's "Now:" axes use drivers.axis_label's short names."""
+    from gremlin import driver_jobs
+
+    assert [drivers.axis_label(a) for a in drivers.VJOY_AXES] == (
+        _const("VJoyAxisLabels").split()
+    )
+    names = drivers.VJOY_AXES
+    for picked in (("x",), ("x", "y", "sl0"), ("rx", "ry", "rz", "sl1"), (), names):
+        mask = sum(1 << names.index(a) for a in picked)
+        dev = drivers.VJoyDevice(1, axes=tuple(picked), buttons=8, hats=0)
+        want = driver_jobs.describe_device(dev).split(", 8 buttons")[0]
+        assert _pascal_axes_text(mask) == want
+    assert "AxesText(D.Axes)" in _routine(_code(), "function VJoyDeviceText(")
+    assert "UpperCase(AxisName" not in _code()
+
+
+def test_the_add_row_is_the_lists_last_row() -> None:
+    """3a: "+ Add device" scrolls with the rows, the whole row clicks, gone at 16."""
+    code = _code()
+    assert _const("VJoyAddText") == "+ Add device"
+    create = _routine(code, "procedure CreateDriverPages;")
+    assert "VJoyAddRow := TPanel.Create(DriversPage);" in create
+    assert "VJoyAddRow.Parent := VJoyRowsPanel;" in create  # scrolls with the rows
+    assert "VJoyAddRow.Height := VJoyRowHeight;" in create
+    assert "VJoyAddLabel.Caption := VJoyAddText;" in create
+    assert "VJoyAddPreview.Font.Color := clGrayText;" in create
+    for part in ("VJoyAddRow", "VJoyAddLabel", "VJoyAddPreview"):
+        assert f"{part}.Cursor := crHandPoint;" in create
+        assert f"{part}.OnClick := @VJoyAddClick;" in create
+    for part in ("VJoyAddLabel", "VJoyAddPreview"):
+        assert f"{part}.Parent := VJoyAddRow;" in create
+    fill = _routine(code, "procedure FillVJoyRows;")
+    assert "VJoyAddRow.Visible := N < VJoyMaxDevices;" in fill
+    assert "Lines := N + 1;\n      VJoyAddRow.Top := N * VJoyRowHeight;" in fill
+    preview = (
+        "VJoyAddPreview.Caption := "
+        "VJoyAddPreviewText(VJoyNextFreeId(VJoyChosen));"
+    )
+    assert preview in fill
+    assert "VJoyRowsPanel.Height := Lines * VJoyRowHeight;" in fill
+    assert "for R := 1 to Lines do\n      VJoyScroll.Items.Add('');" in fill
+    assert "VJoyAddRow.Width := VJoyRowsPanel.Width;" in fill
+    update = _routine(code, "procedure UpdateVJoyControls;")
+    assert "VJoyAddRow.Enabled := Active;" in update
+    # The click adds the countdown device in number order.
+    add = _routine(code, "procedure VJoyAddClick(")
+    assert "AddVJoyDevice(VJoyChosen, Id, VJoyAllAxes, DefaultButtons(Id), " in add
+    assert "FillVJoyRows;\n  VJoyRowsEdited;" in add
+
+
+def test_no_add_device_button_is_left() -> None:
+    code = _strip(_code())
+    assert "VJoyAddButton" not in code
+    assert not re.search(r"Caption := 'Add device'", code)
+    buttons = re.findall(r"(\w+) := TNewButton\.Create", code)
+    assert buttons == ["Button"]  # only the rows' remove buttons
+
+
+def test_the_add_rows_preview_names_the_next_device() -> None:
+    """3a: "vJoy 3 · 126 buttons": the lowest free id, 129 - id buttons."""
+    body = _routine(_code(), "function VJoyAddPreviewText(")
+    assert "Result := 'vJoy ' + IntToStr(Id) + ' ' + #$00B7 + ' ' +" in body
+    assert "CountText(DefaultButtons(Id), 'button', 'buttons');" in body
+
+    def preview(ids: list[int]) -> str:
+        nxt = 1
+        while nxt in ids:
+            nxt += 1
+        return f"vJoy {nxt} \u00b7 {_pascal_default_buttons(nxt)} buttons"
+
+    assert preview([1, 2]) == "vJoy 3 \u00b7 126 buttons"
+    assert preview([1, 3]) == "vJoy 2 \u00b7 127 buttons"
+    assert preview([]) == "vJoy 1 \u00b7 128 buttons"
+    assert _pascal_default_buttons(3) == drivers.default_buttons(3) == 126

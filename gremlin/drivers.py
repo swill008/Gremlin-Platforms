@@ -30,6 +30,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from gremlin import axis_names
+
 PathLike = str | os.PathLike[str]
 
 
@@ -102,8 +104,9 @@ DRIVERS: dict[str, DriverInfo] = {
     ),
 }
 
-# The Visual C++ Runtime (spec 01 S193): bundled for setup only, so it is not
-# in DRIVERS (the helper and Tools > Drivers never handle it).
+# The Visual C++ Runtime (spec 01 S193, 06 S185): only setup installs and
+# updates it (its Pascal script reads this entry). It is not in DRIVERS, and
+# Tools > Drivers and Gremlin Device Helper never handle it.
 RUNTIME = DriverInfo(
     key="vcredist",
     name="Microsoft Visual C++ Runtime",
@@ -117,7 +120,7 @@ RUNTIME = DriverInfo(
     restart_codes=(3010,),
 )
 RUNTIME_RESTART_CODE = 3010
-RUNTIME_DONE_CODES = (0, 1638, 3010)  # done, newer present, done + restart
+RUNTIME_DONE_CODES = (0, 1638, 3010)  # done, newer present, done + restart (setup)
 RUNTIME_KEYS = (
     r"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64",
     r"SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64",
@@ -502,22 +505,35 @@ def check_download(
 
 # -- vJoy layouts -------------------------------------------------------------
 
-VJOY_AXES = ("x", "y", "z", "rx", "ry", "rz", "sl0", "sl1")
+VJOY_AXES = tuple(a.vjoy_config for a in axis_names.AXES)
+VJOY_AXIS_LABELS = tuple(a.short for a in axis_names.AXES)
 VJOY_MAX_DEVICES = 16
+_SHORT_BY_VJOY = {a.vjoy_config: a.short for a in axis_names.AXES}
+
+
+def axis_label(name: str) -> str:
+    """vJoyConfig name -> the axis table's short name: "sl0" -> "S1"."""
+    return _SHORT_BY_VJOY.get(name.lower(), name.upper())
 
 
 @dataclass
 class VJoyDevice:
     id: int
-    axes: int = 8  # the first N of VJOY_AXES
+    axes: tuple[str, ...] = VJOY_AXES  # ticked axis names, VJOY_AXES order
     buttons: int = 128
     hats: int = 4  # continuous
+
+    def __post_init__(self) -> None:
+        names = {str(a).lower() for a in self.axes}
+        known = tuple(a for a in VJOY_AXES if a in names)
+        self.axes = known + tuple(sorted(names - set(VJOY_AXES)))
 
     def problem(self) -> str:
         if not 1 <= self.id <= VJOY_MAX_DEVICES:
             return f"device number {self.id} is outside 1-16"
-        if not 0 <= self.axes <= 8:
-            return f"device {self.id}: axes {self.axes} outside 0-8"
+        unknown = [a for a in self.axes if a not in VJOY_AXES]
+        if unknown:
+            return f"device {self.id}: unknown axis {', '.join(unknown)}"
         if not 0 <= self.buttons <= 128:
             return f"device {self.id}: buttons {self.buttons} outside 0-128"
         if not 0 <= self.hats <= 4:
@@ -525,10 +541,74 @@ class VJoyDevice:
         return ""
 
 
+def default_buttons(vjoy_id: int) -> int:
+    """Button count for a new device: vJoy 1 = 128, 2 = 127, ... 0-128.
+
+    Every device gets its own count so the program can tell them apart.
+    """
+    return max(0, min(128, 129 - vjoy_id))
+
+
+def new_device(vjoy_id: int) -> VJoyDevice:
+    """A new device: all axes, the countdown button count, 4 hats."""
+    return VJoyDevice(vjoy_id, VJOY_AXES, default_buttons(vjoy_id), 4)
+
+
 PRESETS: dict[str, list[VJoyDevice]] = {
-    "1 device, full": [VJoyDevice(1)],
-    "2 devices, full": [VJoyDevice(1), VJoyDevice(2)],
+    "1 device, full": [new_device(1)],
+    "2 devices, full": [new_device(1), new_device(2)],
 }
+
+
+def layout_key(dev: VJoyDevice) -> tuple[int, int, int]:
+    """The program's own sameness rule: axes, buttons, hats."""
+    return (len(dev.axes), dev.buttons, dev.hats)
+
+
+def alike_devices(devices: list[VJoyDevice]) -> list[list[int]]:
+    """Groups of 2+ device ids with the same layout, sorted."""
+    by_key: dict[tuple[int, int, int], list[int]] = {}
+    for dev in devices:
+        by_key.setdefault(layout_key(dev), []).append(dev.id)
+    groups = [sorted(ids) for ids in by_key.values() if len(ids) > 1]
+    return sorted(groups)
+
+
+def can_untick_axis(dev: VJoyDevice, name: str) -> bool:
+    """False when `name` is the device's only ticked axis (vJoyConfig without
+    -a would give the device every axis)."""
+    return not (name in dev.axes and len(dev.axes) <= 1)
+
+
+def in_use_warning(ids: list[int]) -> str:
+    """The Yes/No question before changing devices another program holds."""
+    ids = sorted(ids)
+    if not ids:
+        return ""
+    names = [f"vJoy {i}" for i in ids]
+    if len(names) == 1:
+        who, verb, them = names[0], "is", "it"
+    else:
+        who = ", ".join(names[:-1]) + " and " + names[-1]
+        verb, them = "are", "them"
+    return (
+        f"{who} {verb} in use by another program. Changing {them} can stop "
+        "that program's controls working until it restarts. "
+        f"Change {them} anyway?"
+    )
+
+
+def alike_warning(groups: list[list[int]]) -> str:
+    """One sentence per group of alike devices; "" when there are none."""
+    sentences = []
+    for group in groups:
+        names = [f"vJoy {i}" for i in group]
+        who = ", ".join(names[:-1]) + " and " + names[-1]
+        sentences.append(
+            f"{who} have the same number of axes, buttons and hats, so "
+            "Gremlin-Platforms can't tell them apart and won't use them."
+        )
+    return " ".join(sentences)
 
 
 # -- job and result files -----------------------------------------------------
@@ -585,7 +665,12 @@ def write_jobs(path: PathLike, jobs: list[Job]) -> None:
                     {"path": str(f["path"]), "kind": f["kind"]} for f in job.files
                 ],
                 "devices": [
-                    {"id": d.id, "axes": d.axes, "buttons": d.buttons, "hats": d.hats}
+                    {
+                        "id": d.id,
+                        "axes": list(d.axes),
+                        "buttons": d.buttons,
+                        "hats": d.hats,
+                    }
                     for d in job.devices
                 ],
             }
@@ -593,6 +678,14 @@ def write_jobs(path: PathLike, jobs: list[Job]) -> None:
         ],
     }
     _atomic_write_json(path, data)
+
+
+def _axes(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list) or not all(
+        isinstance(a, str) and a in VJOY_AXES for a in value
+    ):
+        raise ValueError("axes is not a list of known axis names")
+    return tuple(value)
 
 
 def _int(value: object, what: str) -> int:
@@ -620,7 +713,7 @@ def read_jobs(path: PathLike) -> list[Job]:
         op, driver = raw.get("op"), raw.get("driver")
         if op not in JOB_OPS:
             raise ValueError(f"job {number}: unknown op {op!r}")
-        if driver not in DRIVERS:
+        if not isinstance(driver, str) or driver not in DRIVERS:
             raise ValueError(f"job {number}: unknown driver {driver!r}")
         files = raw.get("files", [])
         if not isinstance(files, list):
@@ -645,7 +738,7 @@ def read_jobs(path: PathLike) -> list[Job]:
                 raise ValueError(f"job {number}: bad device entry {item!r}")
             device = VJoyDevice(
                 _int(item.get("id"), "device id"),
-                _int(item.get("axes", 8), "axes"),
+                _axes(item.get("axes", list(VJOY_AXES))),
                 _int(item.get("buttons", 128), "buttons"),
                 _int(item.get("hats", 4), "hats"),
             )

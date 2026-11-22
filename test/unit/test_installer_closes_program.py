@@ -66,7 +66,9 @@ def test_it_sends_the_programs_own_quit_request_to_its_tray_window() -> None:
 def test_an_older_program_gets_wm_close_on_its_hidden_main_window() -> None:
     iss = _iss()
     ask = _routine(iss, "procedure AskToClose(")
-    assert "IsWindowVisible" not in iss
+    # AskToClose never skips a hidden window (the vJoy list's wheel hook
+    # uses IsWindowVisible for its own box only).
+    assert "IsWindowVisible" not in ask
     close = ask[ask.index("if Handled then"):]
     assert "IsQtMainClass(ClassOf(Wnd))" in close
     assert "(GetWindow(Wnd, GW_OWNER) = 0)" in close

@@ -10,3 +10,4 @@
 | `rust-middle-path-study.md` | Read-only study 2026-11-18: keep Python, move hot paths to Rust via PyO3 - evidence, candidates, build changes, staged plan |
 | `fix-plans/README.md` | 2026-11-19 merged plan: blank window (tray) fix, Window/Timing tracing, controls on their own thread; 10 helper reports |
 | `driver-setup-installer.md` | Planning 2026-11-21: vJoy, ViGEmBus, HidHide tick boxes in the installer (bundled + newer-version download, vJoy layout choice, update tick box); answers 1c 2c 3b 4b 5a 6a 7a 8a 9a 10a 11a 12a 13a 14a; spec written to 01 and 06 (page 12 held) |
+| `vjoy-axis-picker.md` | Plan 2026-11-21 (saved, not started): option c, tick each vJoy axis by name in setup and Tools › Drivers; spec change to 01 S187, 06 S185-S188, 12 S25a goes to the user first |

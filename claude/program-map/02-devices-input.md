@@ -449,6 +449,10 @@ An Xbox pad can change layout under the same Device ID: when its Xbox connection
 - **S143** When the reader reports a different layout for a device under the same Device ID, the program should write a system.log INFO line and a Trace EVENT line giving the counts and axis numbers before → after, e.g. "Controller (Xbox One For Windows) changed layout: 6 axes, 10 buttons, 1 hats → 5 axes, 16 buttons, 1 hats, axes 1, 2, 4, 5, 7, 8 → 1, 2, 3, 4, 5" (the reader doesn't say how it reads a device, so the line never names XInput or DirectInput), and treat it like an unplug followed by a plug-in: it re-reads the devices (S25-S29) and a running profile follows Options › Device change behavior. [user decision 2026-10-10: D-02-DEVLAYOUT (DX1, D2G3)]
 - **S146** The Input Tester should follow a device's current layout after the device is re-read or changes layout (S143), showing the axes, buttons and hats the reader now reports. [user decision 2026-10-10: D-02-DEVLAYOUT (DX4, TX1; built only if the check shows the tester doesn't already)]
 
+### Q. Axis names (D-AXIS-NAMES, 2026-11-22)
+
+- **S150** Every axis name the program shows should come from one table, `gremlin/axis_names.py` (axis 1-8: long name, short name, vJoyConfig name, HID usage): long **X Axis, Y Axis, Z Axis, X Rotation, Y Rotation, Z Rotation, Slider 1, Slider 2**; short **X, Y, Z, Rx, Ry, Rz, S1, S2**; vJoyConfig still gets sl0 and sl1 (`-a`, `-t`). A physical device's default axis names use it too. A name read from a module file or the Device Library, and a module's or the Library's own wording, stays as it is. An axis number outside 1-8 reads "Axis N" (long) and "AN" (short). No saved data changes (profiles store the axis number). [new 2026-11-22, user: 2a (Set B)] (built 2026-11-22, release 1.1.1)
+
 ## 9. Questions for the user
 
 - **Q1** Profile Settings' "vJoy as input" tick sends the "device changed" signal. With Device change behavior = Reload (the default) a tick while running restarts the Run; with Disable it stops it. Should ticking it restart the Run? *Recommend:* no. Give the vJoy-as-input change its own signal that refreshes device lists and input claims but never stops or restarts a Run.
@@ -597,6 +601,7 @@ Approved by the user as recommended (2026-10-06, blanket approval of the remaini
 | S99-S114 | 2026-10-10 (D-02-INPUT-TESTER): Gremlin Input Tester |
 | S115-S123, S99 and S106 changed | 2026-10-10 (D-02-INPUT-TESTER addendum; user: "go with your recommendations, approved, go ahead", and follow input 04:05): Logs tab, tester.log, restart after a HidHide change, fixes, follow input |
 | S124-S133 | 2026-10-10 (D-02-RESET-DEVICES; user: "go with your recommendations, approved, go ahead", design RD1-RD10 and build RB1): Reset Devices on the HidHide page |
+| S150 | 2026-11-22 (D-AXIS-NAMES; user: 2a, Set B): one axis-name table, `gremlin/axis_names.py`; long X Axis ... Slider 2, short X ... S2, vJoyConfig sl0/sl1; physical devices' default names too |
 | S134-S136, S102, S103, S107-S109 changed | 2026-10-10 (D-02-INPUT-TESTER wording addendum; user approved TW1-TW14 with "programs" not "games", and S1-S3): plain wording, fix hints, Steam fix, Show details |
 | S137, S129 changed | 2026-10-10 (D-02-RESET-DEVICES addendum; user approved S4-S5): "needs a Windows restart, or unplug it and plug it back in"; temp folder deleted (to-do 82) |
 | S138 | 2026-10-10 (D-02-DILL-FOLDER; user approved to-do 80): the DirectInput reader loads only from the program folder, once, by full path |

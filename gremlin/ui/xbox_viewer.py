@@ -11,6 +11,7 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import event_handler, input_thread, shared_state, threads
+from gremlin.axis_names import short_name
 from gremlin.modules import output, wiring
 from gremlin.modules.ids import guid_key
 from gremlin.modules.runtime import InputModuleRuntime
@@ -39,7 +40,7 @@ def _chip(target: str) -> str:
 
 def _source_label(input_type: InputType, identifier: int) -> str:
     if input_type == InputType.JoystickAxis:
-        return wiring.AXIS_SHORT.get(identifier, f"A{identifier}")
+        return short_name(identifier)
     if input_type == InputType.JoystickHat:
         return f"H{identifier}"
     return str(identifier)

@@ -50,6 +50,7 @@ WAITING_TEXT = "Waiting for Gremlin Device Helper…"
 MAX_DEVICES = 16
 
 
+
 class Process(Protocol):
     """The started helper (device_disable's elevated process handle)."""
 
@@ -88,6 +89,17 @@ def _real_vjoy_reader() -> list[drivers.VJoyDevice]:
     return driver_jobs.current_vjoy_devices(driver_jobs.real_runner)
 
 
+def _real_busy_reader() -> list[int]:
+    """Ids vJoyConfig reports as held by another program (06 S185)."""
+    from gremlin import driver_jobs
+
+    return driver_jobs.busy_vjoy_devices(driver_jobs.real_runner)
+
+
+def _info(key: str) -> drivers.DriverInfo:
+    return drivers.DRIVERS[key]
+
+
 def _real_background(
     name: str, work: Callable[[], Any], done: Callable[[Any], None]
 ) -> None:
@@ -107,13 +119,15 @@ def _real_background(
 def _device_map(device: drivers.VJoyDevice) -> dict:
     return {
         "id": device.id,
-        "axes": device.axes,
+        "axes": list(device.axes),
         "buttons": device.buttons,
         "hats": device.hats,
     }
 
 
-def _layout(devices: list[drivers.VJoyDevice]) -> list[tuple[int, int, int]]:
+def _layout(
+    devices: list[drivers.VJoyDevice],
+) -> list[tuple[tuple[str, ...], int, int]]:
     return [(d.axes, d.buttons, d.hats) for d in devices]
 
 
@@ -137,6 +151,8 @@ class DriversModel(QtCore.QObject):
 
     changed = QtCore.Signal()
     finished = QtCore.Signal()
+    # refreshInUse() has read the busy ids again.
+    inUseRead = QtCore.Signal()
 
     def __init__(
         self,
@@ -147,6 +163,7 @@ class DriversModel(QtCore.QObject):
         launcher: Callable[[str, str], Process] | None = None,
         results_reader: Callable[[Path], tuple[list, bool]] | None = None,
         vjoy_reader: Callable[[], list[drivers.VJoyDevice]] | None = None,
+        busy_reader: Callable[[], list[int]] | None = None,
         background: Callable[..., None] | None = None,
         restarter: Callable[[], None] | None = None,
         monotonic: Callable[[], float] | None = None,
@@ -159,6 +176,10 @@ class DriversModel(QtCore.QObject):
         self._launcher = launcher or _real_launcher
         self._results_reader = results_reader or drivers.read_results
         self._vjoy_reader = vjoy_reader or _real_vjoy_reader
+        # A test's own vjoy_reader means no real busy read: none busy.
+        self._busy_reader = busy_reader or (
+            _real_busy_reader if vjoy_reader is None else list
+        )
         self._background = background or _real_background
         self._restarter = restarter or _real_restart
         self._monotonic = monotonic or clock.monotonic
@@ -168,6 +189,11 @@ class DriversModel(QtCore.QObject):
         self._preset = DEFAULT_PRESET
         self._devices = self._preset_devices(DEFAULT_PRESET)
         self._current: list[drivers.VJoyDevice] = []
+        self._in_use: list[int] = []  # ids another program holds
+        # Gremlin-Platforms' own Run (the window binds backend.gremlinActive):
+        # while it runs, vJoyConfig's busy ids include our own devices, so
+        # none are shown or warned about; they are read again after Stop.
+        self._run_active = False
         self._user_edited = False
         self._busy = False
         self._progress = ""
@@ -208,13 +234,50 @@ class DriversModel(QtCore.QObject):
         self._read_pending()
         vjoy = self._status("vjoy")
         if vjoy is not None and vjoy.state != "missing":
-            self._background("vJoy layout read", self._vjoy_reader, self._got_current)
+            self._background("vJoy layout read", self._read_vjoy, self._got_current)
         else:
-            self._got_current([])
+            self._got_current(([], []))
         self.changed.emit()
 
-    def _got_current(self, devices: list[drivers.VJoyDevice] | None) -> None:
+    def _read_vjoy(self) -> tuple[list[drivers.VJoyDevice], list[int]]:
+        """Off the main thread: the layout vJoy has now and the busy ids."""
+        devices = list(self._vjoy_reader() or [])
+        return devices, self._read_vjoy_busy()
+
+    def _busy_now(self) -> list[int]:
+        """Busy ids that count: none while our own Run holds devices."""
+        return [] if self._run_active else list(self._in_use)
+
+    @QtCore.Slot()
+    def refreshInUse(self) -> None:
+        """Reads the busy ids again off the main thread (after Run stops);
+        inUseRead follows."""
+
+        def work() -> list[int]:
+            return self._read_vjoy_busy()
+
+        self._background("vJoy busy read", work, self._got_in_use)
+
+    def _read_vjoy_busy(self) -> list[int]:
+        try:
+            return [int(i) for i in self._busy_reader() or []]
+        except (RealCallBlocked, drivers.RealRunnerBlocked):
+            raise
+        except Exception as exc:
+            _log.warning(f"vJoy busy devices could not be read: {exc}")
+            return []
+
+    def _got_in_use(self, busy: list[int] | None) -> None:
+        self._in_use = sorted(set(busy or []))
+        self.changed.emit()
+        self.inUseRead.emit()
+
+    def _got_current(
+        self, result: tuple[list[drivers.VJoyDevice], list[int]] | None
+    ) -> None:
+        devices, busy = result or ([], [])
         self._current = list(devices or [])
+        self._in_use = sorted(set(busy or []))
         # What exists is shown as it is and changed only when edited (S185).
         if self._current and not self._user_edited:
             self._devices = [
@@ -267,28 +330,91 @@ class DriversModel(QtCore.QObject):
     @QtCore.Slot(int)
     def setDeviceCount(self, n: int) -> None:
         n = _clamp(n, 1, MAX_DEVICES)
-        devices = self._devices[:n]
+        # Lowering the count removes the highest-numbered devices (S185).
+        devices = sorted(self._devices, key=lambda d: d.id)[:n]
         while len(devices) < n:
             # The lowest free id: vJoy can have gaps (devices 1 and 3).
             used = {d.id for d in devices}
             free = next(i for i in range(1, MAX_DEVICES + 1) if i not in used)
-            devices.append(drivers.VJoyDevice(id=free))
-        self._devices = devices
+            # The countdown rule (D-01-VJOY-COUNTDOWN): each new device gets
+            # its own button count; existing devices keep theirs.
+            devices.append(drivers.new_device(free))
+        self._devices = sorted(devices, key=lambda d: d.id)
         self._preset = CUSTOM
         self._edited()
 
-    @QtCore.Slot(int, int, int, int)
-    def setDevice(self, index: int, axes: int, buttons: int, hats: int) -> None:
+    def _next_free_id(self) -> int:
+        """The lowest free vJoy id, 0 when all 16 are in the list."""
+        used = {d.id for d in self._devices}
+        return next((i for i in range(1, MAX_DEVICES + 1) if i not in used), 0)
+
+    @QtCore.Slot()
+    def addDevice(self) -> None:
+        """The list's "+ Add device" row (S185): the lowest free id."""
+        if len(self._devices) < MAX_DEVICES:
+            self.setDeviceCount(len(self._devices) + 1)
+
+    @QtCore.Slot(int)
+    def removeDevice(self, index: int) -> None:
+        """The row's ✕ (S185); the last device stays (Devices is 1-16)."""
+        if not 0 <= index < len(self._devices) or len(self._devices) <= 1:
+            return
+        del self._devices[index]
+        self._preset = CUSTOM
+        self._edited()
+
+    @QtCore.Slot(int, list, int, int)
+    def setDevice(self, index: int, axes: list, buttons: int, hats: int) -> None:
+        """axes is a list of axis names; unknown names are dropped. No known
+        axis keeps the device's axes (at least one stays ticked, S185)."""
         if not 0 <= index < len(self._devices):
             return
+        known = tuple(
+            a for a in (str(n).lower() for n in axes) if a in drivers.VJOY_AXES
+        )
         self._devices[index] = drivers.VJoyDevice(
             id=self._devices[index].id,
-            axes=_clamp(axes, 0, 8),
+            axes=known or self._devices[index].axes,
             buttons=_clamp(buttons, 0, 128),
             hats=_clamp(hats, 0, 4),
         )
         self._preset = CUSTOM
         self._edited()
+
+    @QtCore.Slot(int, str, bool)
+    def setAxis(self, index: int, name: str, on: bool) -> None:
+        """Ticks or unticks one axis of one device; unknown names are ignored."""
+        name = str(name).lower()
+        if not 0 <= index < len(self._devices) or name not in drivers.VJOY_AXES:
+            return
+        device = self._devices[index]
+        if not on and not drivers.can_untick_axis(device, name):
+            # The last ticked axis stays (S185); the view re-reads the tick.
+            self.changed.emit()
+            return
+        names = {a for a in device.axes if a != name}
+        if on:
+            names.add(name)
+        self._devices[index] = drivers.VJoyDevice(
+            id=device.id, axes=tuple(names), buttons=device.buttons, hats=device.hats
+        )
+        self._preset = CUSTOM
+        self._edited()
+
+    @QtCore.Slot(list, int, int, result=str)
+    def deviceSummary(self, axes: list, buttons: int, hats: int) -> str:
+        """ "3 axes (X, Y, SL0), 8 buttons, 0 hats" (the same words as the
+        helper's read-back message)."""
+        from gremlin import driver_jobs
+
+        return driver_jobs.describe_device(
+            drivers.VJoyDevice(
+                id=1,
+                axes=tuple(str(a) for a in axes),
+                buttons=int(buttons),
+                hats=int(hats),
+            )
+        )
 
     def _vjoy_edited(self) -> bool:
         if not self._user_edited:
@@ -390,7 +516,7 @@ class DriversModel(QtCore.QObject):
     def _result_name(self, job: drivers.Job) -> str:
         if job.op == "vjoy_setup":
             return "vJoy devices"
-        return drivers.DRIVERS[job.driver].name
+        return _info(job.driver).name
 
     @QtCore.Slot(result=str)
     def describe(self) -> str:
@@ -424,6 +550,54 @@ class DriversModel(QtCore.QObject):
         if self._vjoy_edited() and self._current:
             lines.append(VJOY_WARNING)
         return "\n".join(lines)
+
+    @QtCore.Slot(result=str)
+    def alikeWarning(self) -> str:
+        """The Yes/No question before Apply when the devices to be set
+        can't be told apart; "" when there is nothing to ask."""
+        app = self._app() or Path(".")
+        setups = [j for j in self._plan(app) if j.op == "vjoy_setup"]
+        if not setups:
+            return ""
+        text = drivers.alike_warning(drivers.alike_devices(setups[0].devices))
+        return f"{text} Continue anyway?" if text else ""
+
+    @QtCore.Slot(result=str)
+    def inUseWarning(self) -> str:
+        """The Yes/No question before Apply when the vJoy setup changes or
+        removes a device another program holds (S185); "" otherwise."""
+        busy_ids = self._busy_now()
+        if not busy_ids:
+            return ""
+        app = self._app() or Path(".")
+        setups = [j for j in self._plan(app) if j.op == "vjoy_setup"]
+        if not setups:
+            return ""
+        chosen = {d.id: _layout([d])[0] for d in setups[0].devices}
+        now = {d.id: _layout([d])[0] for d in self._current}
+        return drivers.in_use_warning(
+            [i for i in busy_ids if chosen.get(i) != now.get(i)]
+        )
+
+    @QtCore.Slot(result=bool)
+    def changesVjoy(self) -> bool:
+        """Apply would install, update or set up vJoy (our own Run must stop
+        first, S185)."""
+        app = self._app() or Path(".")
+        return any(j.driver == "vjoy" for j in self._plan(app))
+
+    @QtCore.Slot(int, int, result=str)
+    def showingText(self, first: int, count: int) -> str:
+        """The line under the device list: rows first..first+count-1 (0-based)
+        are in view."""
+        total = len(self._devices)
+        if total == 1:
+            return "Showing 1 device"
+        first = _clamp(first, 0, max(0, total - 1))
+        if count >= total or count <= 0:
+            return f"Showing all {total} devices"
+        last = min(total, first + count)
+        return f"Showing {first + 1}-{last} of {total} devices"
 
     @QtCore.Slot(result=bool)
     def apply(self) -> bool:
@@ -617,7 +791,9 @@ class DriversModel(QtCore.QObject):
     # -- properties ----------------------------------------------------------
 
     def _get_rows(self) -> list:
-        return [
+        """One row per driver."""
+        rows: list[dict] = []
+        rows.extend(
             {
                 "key": s.key,
                 "name": s.name,
@@ -629,7 +805,8 @@ class DriversModel(QtCore.QObject):
                 "tickable": s.key in self._ticked,
             }
             for s in self._statuses
-        ]
+        )
+        return rows
 
     def _get_presets(self) -> list:
         return [*drivers.PRESETS.keys(), CUSTOM]
@@ -638,7 +815,49 @@ class DriversModel(QtCore.QObject):
         return self._preset
 
     def _get_devices(self) -> list:
-        return [_device_map(d) for d in self._devices]
+        """Each device, with "inUse" (another program holds it) and "locked"
+        (axes that can't be unticked) for the list's rows."""
+        busy = set(self._busy_now())
+        return [
+            {
+                **_device_map(d),
+                "inUse": d.id in busy,
+                "locked": [a for a in d.axes if not drivers.can_untick_axis(d, a)],
+            }
+            for d in self._devices
+        ]
+
+    def _get_add_preview(self) -> str:
+        """Grey text of the "+ Add device" row, e.g. "vJoy 3 · 126 buttons";
+        empty at 16 devices (the row is gone)."""
+        free = self._next_free_id()
+        if not free:
+            return ""
+        return f"vJoy {free} · {drivers.default_buttons(free)} buttons"
+
+    def _get_axis_names(self) -> list:
+        return [
+            {"name": n, "label": label}
+            for n, label in zip(
+                drivers.VJOY_AXES, drivers.VJOY_AXIS_LABELS, strict=True
+            )
+        ]
+
+    def _get_in_use(self) -> list:
+        return self._busy_now()
+
+    def _get_run_active(self) -> bool:
+        return self._run_active
+
+    def _set_run_active(self, on: bool) -> None:
+        on = bool(on)
+        if on == self._run_active:
+            return
+        self._run_active = on
+        self.changed.emit()
+        if not on:
+            # Our own devices are let go: what is busy now is someone else.
+            self.refreshInUse()
 
     def _get_current(self) -> list:
         return [_device_map(d) for d in self._current]
@@ -671,7 +890,13 @@ class DriversModel(QtCore.QObject):
     presets = QtCore.Property(list, fget=_get_presets, notify=changed)
     vjoyPreset = QtCore.Property(str, fget=_get_preset, notify=changed)
     vjoyDevices = QtCore.Property(list, fget=_get_devices, notify=changed)
+    addPreview = QtCore.Property(str, fget=_get_add_preview, notify=changed)
+    vjoyAxes = QtCore.Property(list, fget=_get_axis_names, constant=True)
     vjoyCurrent = QtCore.Property(list, fget=_get_current, notify=changed)
+    vjoyInUse = QtCore.Property(list, fget=_get_in_use, notify=changed)
+    runActive = QtCore.Property(
+        bool, fget=_get_run_active, fset=_set_run_active, notify=changed
+    )
     vjoyEdited = QtCore.Property(bool, fget=_get_edited, notify=changed)
     vjoyWarning = QtCore.Property(str, fget=_get_warning, notify=changed)
     busy = QtCore.Property(bool, fget=_get_busy, notify=changed)

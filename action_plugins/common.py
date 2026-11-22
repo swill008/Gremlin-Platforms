@@ -8,11 +8,8 @@ import uuid
 from typing import Any
 
 import dill
-from gremlin import clock, run_scope, util
-from gremlin.types import (
-    AxisNames,
-    InputType,
-)
+from gremlin import axis_names, clock, run_scope, util
+from gremlin.types import InputType
 
 
 def joystick_label(device_guid: uuid.UUID, input_type: InputType, input_id: int) -> str:
@@ -21,7 +18,7 @@ def joystick_label(device_guid: uuid.UUID, input_type: InputType, input_id: int)
     )
     label = f"{device.name}"
     if input_type == InputType.JoystickAxis:
-        label += f" - {AxisNames.to_string(AxisNames(input_id))}"
+        label += f" - {axis_names.long_name(input_id)}"
     elif input_type == InputType.JoystickButton:
         label += f" - Button {input_id}"
     elif input_type == InputType.JoystickHat:

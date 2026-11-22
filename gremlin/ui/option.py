@@ -39,6 +39,7 @@ _ENTRY_TITLES = {
     "disable-windows-scaling": "Ignore Windows display scaling",
     "show-stubs": "Show devices without a module",
     "debug": "Diagnostic logs",
+    "start-with-windows": "Start Gremlin-Platforms when Windows starts",
     # The Diagnostic logs level (not a row of its own; recorded for History).
     "log-level": "Diagnostic logs",
     "log-when-not-responding": "Log When Not Responding",
@@ -76,6 +77,7 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
         ("Startup and Tray", [
             ("global", "general", "check-for-updates"),
             ("global", "general", "minimize-to-tray"),
+            ("global", "general", "start-with-windows"),
             # Only a pointer: the switch is in the HidHide window (02 Q16).
             ("global", "general", "hidhide-start"),
         ]),
@@ -152,6 +154,34 @@ _LAYOUT: list[tuple[str, list[tuple[str, list[tuple[str, str, str]]]]]] = [
 # "Disable" is Stop (glossary Run / Stop; 02 Q2).
 _SHOWN_CHOICES: dict[tuple[str, str, str], dict[str, str]] = {
     ("global", "general", "device-change-behavior"): {"Disable": "Stop"},
+}
+
+
+# Settings whose truth is outside the settings file: Options shows the
+# reader's value and a change goes through the writer (False: not done, the
+# switch goes back). The stored value only follows. Start with Windows is
+# Windows' own sign-in list (01 S194).
+def _start_with_windows_read() -> bool:
+    from gremlin import startup_entry
+
+    try:
+        return startup_entry.is_enabled()
+    except startup_entry.RealRegistryBlocked:
+        # A test showing Options without a fake store: the stored value.
+        cfg = gremlin.config.Configuration()
+        return bool(cfg.value("global", "general", "start-with-windows"))
+
+
+def _start_with_windows_write(value: Any) -> bool:  # noqa: ANN401
+    from gremlin import startup_entry
+
+    return startup_entry.set_enabled(bool(value))
+
+
+_LIVE_VALUES: dict[tuple[str, str, str], tuple[Any, Any]] = {
+    ("global", "general", "start-with-windows"): (
+        _start_with_windows_read, _start_with_windows_write,
+    ),
 }
 
 
@@ -588,7 +618,9 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
         elif self._config.exists(section, group, name):
             key = (section, group, name)
             value = self._config.get(section, group, name, role_name)
-            if role_name == "value":
+            if role_name == "value" and key in _LIVE_VALUES:
+                value = _LIVE_VALUES[key][0]()
+            elif role_name == "value":
                 if self._config.data_type(section, group, name) == PropertyType.Path:
                     value = str(value)
                 value = shown_choice(key, value)
@@ -604,7 +636,7 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
     def setData(
         self,
         index: ta.ModelIndex,
-        value: str,
+        value: Any,  # noqa: ANN401  (a switch's bool, a field's text)
         role: int = QtCore.Qt.ItemDataRole.EditRole,
     ) -> bool:
         if not index.isValid() or index.row() >= len(self._keys):
@@ -618,6 +650,14 @@ class ConfigEntryModel(QtCore.QAbstractListModel):
             if self._config.data_type(section, group, name) == PropertyType.Path:
                 value = Path(value)
             value = stored_choice((section, group, name), value)
+            live = _LIVE_VALUES.get((section, group, name))
+            if live is not None and not live[1](value):
+                logging.getLogger("system").warning(
+                    f"Options: {entry_title(name)} was not changed; the switch "
+                    "shows Windows' setting again"
+                )
+                self.dataChanged.emit(index, index, [role])
+                return False
             self._config.set(section, group, name, value)
             self.dataChanged.emit(index, index, [role])
             signal.configChanged.emit()

@@ -2,7 +2,8 @@
 
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Driver setup work: install, update, remove HidHide, set up vJoy devices.
+"""Driver setup work: install, update, remove HidHide, set up vJoy devices,
+update the Microsoft Visual C++ Runtime.
 
 Spec: 12 S25 (changed), S25a, S25b. Used only by Gremlin Device Helper (the
 only part of Gremlin with administrator rights). No Qt and no imports from
@@ -205,11 +206,20 @@ def _count(n: int, singular: str, plural: str) -> str:
     return f"{n} {singular if n == 1 else plural}"
 
 
+def _describe_axes(axes: tuple[str, ...]) -> str:
+    text = _count(len(axes), "axis", "axes")
+    if len(axes) == len(VJOY_AXES):
+        return f"{text} ({drivers.axis_label(axes[0])}-{drivers.axis_label(axes[-1])})"
+    if axes:
+        return f"{text} ({', '.join(drivers.axis_label(a) for a in axes)})"
+    return text
+
+
 def describe_device(device: VJoyDevice) -> str:
-    """"4 axes, 32 buttons, 1 hat": singular only for exactly one."""
+    """ "4 axes, 32 buttons, 1 hat": singular only for exactly one."""
     return ", ".join(
         (
-            _count(device.axes, "axis", "axes"),
+            _describe_axes(device.axes),
             _count(device.buttons, "button", "buttons"),
             _count(device.hats, "hat", "hats"),
         )
@@ -240,7 +250,7 @@ def vjoy_setup(devices: Iterable[VJoyDevice], runner: Runner) -> tuple[bool, str
     for index, device in enumerate(devices):
         command = [exe, str(device.id), "-f"]
         if device.axes:  # UNVERIFIED: how vJoyConfig takes zero axes
-            command += ["-a", *VJOY_AXES[: device.axes]]
+            command += ["-a", *device.axes]
         command += ["-b", str(device.buttons), "-p", str(device.hats)]
         if stale or index != last:
             command.append("-l")
@@ -321,7 +331,7 @@ def parse_report(text: str) -> list[VJoyDevice]:
             if not value.isdigit():
                 current = None
                 continue
-            current = VJoyDevice(int(value), axes=0, buttons=0, hats=0)
+            current = VJoyDevice(int(value), axes=(), buttons=0, hats=0)
             found.append(current)
         elif current is None:
             continue
@@ -330,27 +340,45 @@ def parse_report(text: str) -> list[VJoyDevice]:
         elif name in ("continous povs", "continuous povs") and value.isdigit():
             current.hats = int(value)
         elif name == "axes":
-            names = [token.lower() for token in value.split()]
-            count = 0
-            for axis, token in zip(VJOY_AXES, names):
-                if axis != token:
-                    break
-                count += 1
-            current.axes = count
+            tokens = value.split()
+            current.axes = tuple(
+                axis for axis, token in zip(VJOY_AXES, tokens) if token != "-"
+            )
     return found
 
 
 _STATUS = re.compile(r"^\s*Device\s+(\d+)\s*:\s*Status\s*:\s*(\w+)", re.IGNORECASE)
 
 
-def parse_status_list(text: str) -> list[int]:
-    """Device numbers `vJoyConfig -t` lists as existing (not MISSING/UNKNOWN)."""
-    ids: list[int] = []
+def parse_status(text: str) -> dict[int, str]:
+    """Every device `vJoyConfig -t` lists: id -> upper-case status word."""
+    found: dict[int, str] = {}
     for line in (text or "").splitlines():
         match = _STATUS.match(line)
-        if match and match.group(2).upper() not in ("MISSING", "UNKNOWN"):
-            ids.append(int(match.group(1)))
-    return ids
+        if match:
+            found[int(match.group(1))] = match.group(2).upper()
+    return found
+
+
+def parse_status_list(text: str) -> list[int]:
+    """Device numbers `vJoyConfig -t` lists as existing (not MISSING/UNKNOWN)."""
+    return [
+        i
+        for i, word in parse_status(text).items()
+        if word not in ("MISSING", "UNKNOWN")
+    ]
+
+
+def busy_vjoy_devices(runner: Runner) -> list[int]:
+    """Ids another process holds (BUSY or OWNED; vJoyConfig is its own
+    process, so both mean someone else). [] when vJoyConfig can't be read."""
+    try:
+        _, output = runner([vjoyconfig_path(), "-t"], VJOYCONFIG_TIMEOUT_S)
+    except RealRunnerBlocked:
+        raise
+    except Exception:  # noqa: BLE001 - unknown is shown as none busy
+        return []
+    return sorted(i for i, w in parse_status(output).items() if w in ("BUSY", "OWNED"))
 
 
 def current_vjoy_devices(runner: Runner) -> list[VJoyDevice]:

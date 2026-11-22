@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 from gremlin import common
-from gremlin.axis_names import AXIS_SHORT
+from gremlin.axis_names import short_name
 from gremlin.modules import output
 from gremlin.modules.claim import claim_friendly, kind_of
 from gremlin.types import InputType
@@ -59,7 +59,7 @@ XBOX_SHORT = {
 def _input_short(input_type: object, input_id: int) -> str:
     kind = kind_of(input_type)
     if kind == "axis":
-        return AXIS_SHORT.get(int(input_id), f"A{int(input_id)}")
+        return short_name(input_id)
     if kind == "hat":
         return f"H{int(input_id)}"
     return f"B{int(input_id)}"

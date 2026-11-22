@@ -15,12 +15,12 @@ from dataclasses import dataclass, field
 
 import dill
 from gremlin import device_paths
-from gremlin.axis_names import AXIS_SHORT
+from gremlin.axis_names import AXES
 
 VJOY_VID = 0x1234
 VJOY_PID = 0xBEAD
 
-AXIS_NAMES = AXIS_SHORT  # the program's one axis name table
+AXIS_NAMES = {a.number: a.short for a in AXES}  # from the one axis table
 
 
 @dataclass

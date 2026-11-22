@@ -13,6 +13,7 @@ from typing import (
 )
 
 import gremlin.error
+from gremlin import axis_names
 
 # Type alias for a keyboard scan code.
 type ScanCode = tuple[int, bool]
@@ -75,7 +76,7 @@ class VjoyInput(NamedTuple):
 
 
 class AxisNames(enum.Enum):
-    """Names associated with axis indices."""
+    """Code names for the axis numbers; the words come from gremlin.axis_names."""
 
     X = 1
     Y = 2
@@ -88,39 +89,7 @@ class AxisNames(enum.Enum):
 
     @staticmethod
     def to_string(value: AxisNames) -> str:
-        try:
-            return _AxisNames_to_string_lookup[value]
-        except KeyError:
-            raise gremlin.error.GremlinError(f"Invalid AxisName lookup, {value}")
-
-    @staticmethod
-    def to_enum(value: str) -> AxisNames:
-        try:
-            return _AxisNames_to_enum_lookup[value]
-        except KeyError:
-            raise gremlin.error.GremlinError(f"Invalid AxisName lookup, {value}")
-
-
-_AxisNames_to_string_lookup = {
-    AxisNames.X: "X Axis",
-    AxisNames.Y: "Y Axis",
-    AxisNames.Z: "Z Axis",
-    AxisNames.RX: "X Rotation",
-    AxisNames.RY: "Y Rotation",
-    AxisNames.RZ: "Z Rotation",
-    AxisNames.SLIDER: "Slider",
-    AxisNames.DIAL: "Dial",
-}
-_AxisNames_to_enum_lookup = {
-    "X Axis": AxisNames.X,
-    "Y Axis": AxisNames.Y,
-    "Z Axis": AxisNames.Z,
-    "X Rotation": AxisNames.RX,
-    "Y Rotation": AxisNames.RY,
-    "Z Rotation": AxisNames.RZ,
-    "Slider": AxisNames.SLIDER,
-    "Dial": AxisNames.DIAL,
-}
+        return axis_names.long_name(value.value)
 
 
 class AxisButtonDirection(enum.Enum):

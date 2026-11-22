@@ -24,7 +24,7 @@ def _sources() -> dict[str, str]:
 
 
 def test_one_axis_name_table() -> None:
-    tables = [rel for rel, text in _sources().items() if '1: "X",' in text]
+    tables = [rel for rel, text in _sources().items() if '"X Rotation"' in text]
     assert tables == ["gremlin/axis_names.py"]
 
 

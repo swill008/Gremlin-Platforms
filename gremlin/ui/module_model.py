@@ -19,7 +19,7 @@ from gremlin import (
     input_thread,
     threads,
 )
-from gremlin import shared_state
+from gremlin import axis_names, shared_state
 from gremlin.shared_state import runtime_active
 from gremlin.signal import signal
 from gremlin.types import InputType, PropertyType
@@ -1150,6 +1150,11 @@ class ModuleListModel(QtCore.QAbstractListModel):
         return self._focus
 
     viewChanged = QtCore.Signal()
+
+    @QtCore.Slot(int, result=str)
+    def axisShort(self, number: int) -> str:
+        """The axis's short name, from the one axis table."""
+        return axis_names.short_name(number)
 
     @QtCore.Slot(str, str, result=str)
     def viewConfigJson(self, device_name: str, guid: str) -> str:

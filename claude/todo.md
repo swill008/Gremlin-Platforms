@@ -11,6 +11,37 @@ older text is in git history.
 
 ## Next up
 
+0b. **Setup: runtime row shows unticked** (gap RUNTIME-ROW-1, program map 01; user 2026-11-21 chose to leave it for now): the required runtime row is a parent in Inno's check list, which derives its tick from the unticked child. Offered fix: two separate rows, runtime ticked and greyed, child text indented (3-8 min agent + build + test machine).
+
+0c. **No zero-axis vJoy devices** (user 2026-11-22: 14a; DONE 2026-11-22, release 1.1.1; built (batch 2, contract claude/plans/drivers-batch-2-contract.md)): at least one axis must stay ticked in setup and Tools › Drivers. Why: with no axes `gremlin/driver_jobs.py` leaves out `-a`, vJoyConfig then gives the device all axes and the read-back fails. Spec change (01 S187, 06 S185) first. Study: `claude/audits/2026-11-21-vjoy-22-compat/`.
+
+0d. **vJoy 2.2.2.0 points to keep in mind** (user 2026-11-22: 15a; record only, from the compatibility study):
+   1. Devices made outside the program with 2.2's new axis types (Wheel, Accelerator, Brake, Clutch, Steering, Aileron, Rudder, Throttle) are left out: our matching (`gremlin/device_initialization.py`) counts only the 8 original axes, Windows counts all.
+   2. vJoyConfig.exe is an optional part of vJoy's own installer; if missing, setup and Tools › Drivers can't create or read back devices and give no clear reason.
+   3. vJoy 2.2.2.0's own open issues: installer hangs on some Windows 11 PCs (#1, #9, #10), `DllX64Location` registry value not written (#7), all devices share one hardware ID (#4).
+
+0e. **vJoy 2.2's 8 new axes: PARKED after study** (user 2026-11-22: 1a). Sixteen axes on one vJoy device don't reach games (DirectInput has 8 places), no other remapper offers them, driver 2.1.9 can't make them. The whole study (13 scout notes and the summary) is in `claude/audits/2026-11-22-vjoy-new-axes/` (README.md first); the compatibility study in `claude/audits/2026-11-21-vjoy-22-compat/`.
+
+0h. **Protect vJoy devices another program is using** (user 2026-11-22: 1a; DONE 2026-11-22, release 1.1.1; built (batch 2, contract claude/plans/drivers-batch-2-contract.md)): on setup's Drivers page and in Tools › Drivers, read each device's status before applying; a device in use shows "in use by another program" on its row; changing or deleting it (a preset included) needs a Yes/No warning naming it. Spec addition first (01 S187, 06 S185). Why: vJoy devices are shared by the PC; e.g. CLS2Sim's device would be reshaped or deleted silently. Trace: `claude/audits/2026-11-22-vjoy-new-axes/in-use.md`.
+
+0i. **One set of axis names across the program, Set B** (user 2026-11-22: 2a; DONE 2026-11-22, release 1.1.1; built (batch 2, contract claude/plans/drivers-batch-2-contract.md)): one table replaces the five (`gremlin/types.py` AxisNames, `gremlin/modules/output.py` AXIS_WORDS, `gremlin/axis_names.py` AXIS_SHORT, `gremlin/drivers.py` VJOY_AXES, the setup's tick headings); long X Axis, Y Axis, Z Axis, X Rotation, Y Rotation, Z Rotation, Slider 1, Slider 2; short X, Y, Z, Rx, Ry, Rz, S1, S2; vJoyConfig keeps getting sl0/sl1 (hidden column). Applies to physical devices' default axis names too; names from module files / the Device Library stay. Glossary, spec (01 S187, 06 S185, 12 S25a, others), Help and 8 test files follow. No saved-data change.
+
+0j. **Tools › Drivers in setup's style** (user 2026-11-22: 1a, 1b, 2a, 3b; DONE 2026-11-22, release 1.1.1; built (batch 2, contract claude/plans/drivers-batch-2-contract.md)): a bold vJoy devices heading, Preset and Devices kept, device rows always shown in one bordered list with the column headings once, a remove button (✕) on every row; the list grows with each device until the window has no more room, then scrolls inside itself (Tools › Drivers only). Setup keeps its fixed list and Add device. Spec: 06 S185 (D-06-DRIVERS-LAYOUT).
+
+0k. **Start with Windows, and Test now ignores mouse movement** (user 2026-11-22: "lets add it", 1a, 2b, 3a, 4a; 5b "ignore mouse movement, not clicks"; built 2026-11-22 (release 1.1.1), contract claude/plans/start-with-windows-contract.md): a switch in Options › General › Startup and Tray and a tray menu tick item add or remove the program's entry in Windows' sign-in list (opens minimized, does not start Run, off by default, uninstall removes it); the Screen Saver Mode Test now countdown cancels on a key press, click or wheel, not on mouse movement or program input (spec 01 S194, 12 S37).
+
+0g. **Idea: "Racing wheel" vJoy device type** (user 2026-11-22: 1a; idea only): Steering, Accelerator and Brake so driving games (NFS, Burnout, The Crew 2) accept vJoy as a wheel. Needs vJoy 2.2.2.0 and the axes on the Simulation Controls page, which only the unmerged njz3/vJoy pull request #30 does (vJoyConf GUI only; vJoyConfig still swaps throttle/aileron). We would write the descriptor ourselves or ship the fork's unsigned vJoyConf.exe. First step when wanted: a test-machine check that Windows reports it as a wheel. Details: `claude/audits/2026-11-22-vjoy-new-axes/issue30.md`, `users.md`, `njz3.md`.
+
+0f. **Force feedback** (user 2026-11-22: 16c; to-do only): the program has no force feedback today; vJoy 2.2 supports several effects at once (100 slots). A new feature: games send effects to vJoy, the program passes them to a real device.
+
+0a. DONE (built 2026-11-21; to-do line corrected 2026-11-22). **vJoy axis picker, option c** (user 2026-11-21: "lets do c, but save
+   the plan for now"): tick each axis by name instead of an axis count, in
+   setup and Tools › Drivers. Plan `claude/plans/vjoy-axis-picker.md`; spec
+   change approved (1a), scrolling device rows (2a); with it, setup brings
+   the administrator prompt to the front (4a). Waiting for the user's go.
+   Test machine 2026-11-21 (user, 2026-11-22): the administrator prompt
+   opened where the user could see it.
+
 0. **Driver setup build batch** (approved 2026-11-21; BUILT 2026-11-21 up to
    testing; the real-driver tests wait for the Hyper-V test machine): 01 S187-S192 (DRV-1), 06 S185-S188
    (DRV-2), 12 S25/S25a/S25b (DRV-3), and the Screen Saver Mode trace line

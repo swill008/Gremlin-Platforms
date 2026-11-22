@@ -847,6 +847,8 @@ _USAGE_PAGE_GENERIC = 0x01
 _RI_KEY_BREAK = 0x01
 # RI_MOUSE_LEFT/RIGHT/MIDDLE/BUTTON_4/BUTTON_5 _DOWN; not move, not wheel.
 _RI_MOUSE_BUTTONS_DOWN = 0x0001 | 0x0004 | 0x0010 | 0x0040 | 0x0100
+# RI_MOUSE_WHEEL, RI_MOUSE_HWHEEL.
+_RI_MOUSE_WHEELS = 0x0400 | 0x0800
 _USAGE_MOUSE = 0x02
 _USAGE_KEYBOARD = 0x06
 _ERROR_CLASS_ALREADY_EXISTS = 1410
@@ -963,6 +965,13 @@ def raw_input_press(raw: RAWINPUT) -> bool:
         return not raw.data.keyboard.Flags & _RI_KEY_BREAK
     if raw.header.dwType == _RIM_TYPEMOUSE:
         return bool(raw.data.mouse.u.buttons.usButtonFlags & _RI_MOUSE_BUTTONS_DOWN)
+    return False
+
+
+def raw_input_wheel(raw: RAWINPUT) -> bool:
+    """A mouse wheel turn (vertical or horizontal)."""
+    if raw.header.dwType == _RIM_TYPEMOUSE:
+        return bool(raw.data.mouse.u.buttons.usButtonFlags & _RI_MOUSE_WHEELS)
     return False
 
 
@@ -1083,6 +1092,8 @@ class InputClock:
 
     def __init__(self) -> None:
         self._last = clock.monotonic()
+        # The last counted key down, button down or wheel (S37); 0 = none.
+        self._last_press = 0.0
         self._thread: threading.Thread | None = None
         self._running = False
         self._registered = False
@@ -1204,17 +1215,24 @@ class InputClock:
     def last_input(self) -> float:
         return self._last
 
+    def last_press(self) -> float:
+        """The time of the last counted key press, mouse button press or
+        wheel from a device (not a program); 0.0 = none yet."""
+        return self._last_press
+
     def note_input(
         self,
         own: bool = False,
         source: int | None = None,
         kind: str = "",
         press: bool = False,
+        wheel: bool = False,
     ) -> None:
         """One input. `source` is the device's raw input handle, None (or
         0) for input sent by a program; `kind` "keyboard" or "mouse";
-        `press` a key or button down. Gremlin's own input (own) doesn't
-        count; with a Wake PC list, neither does a device not on it."""
+        `press` a key or button down; `wheel` a mouse wheel turn. Gremlin's
+        own input (own) doesn't count; with a Wake PC list, neither does a
+        device not on it."""
         if own:
             return
         now = clock.monotonic()
@@ -1246,6 +1264,8 @@ class InputClock:
                     self._program.append([second, 1])
         else:
             self._source = (source, kind)
+            if press or wheel:
+                self._last_press = now
         self._last = now
 
     def last_source(self) -> tuple[int | None, str]:
@@ -1291,6 +1311,7 @@ class InputClock:
                             if raw.header.dwType == _RIM_TYPEMOUSE
                             else RESET_KEYBOARD,
                             press=raw_input_press(raw),
+                            wheel=raw_input_wheel(raw),
                         )
             except Exception:
                 _log().exception("Screen Saver Mode raw input failed")
@@ -1887,7 +1908,7 @@ class ScreenSaverMode:
             return
         now = clock.monotonic()
         last = self._clock.last_input()
-        if self._test_at and last != self._test_input_at:
+        if self._test_at and self._clock.last_press() != self._test_input_at:
             self._test_at = 0.0
             _trace("Test now: cancelled")
         if last != self._period.input_at:
@@ -2167,12 +2188,13 @@ class ScreenSaverMode:
 
     def start_test(self, delay_s: float = 5.0) -> None:
         """After delay_s runs the real sequence (devices first, power off,
-        keep off until a counted input) whatever the timers; input during
-        the countdown cancels it. Main thread. Needs the mode on."""
+        keep off until a counted input) whatever the timers; a press during
+        the countdown cancels it: a key press, mouse click or wheel, not
+        movement or program input (S37). Main thread. Needs the mode on."""
         if not self._running:
             _trace("Test now: Screen Saver Mode is off")
             return
-        self._test_input_at = self._clock.last_input()
+        self._test_input_at = self._clock.last_press()
         self._test_at = clock.monotonic() + max(0.0, float(delay_s))
         _trace(f"Test now: starting in {delay_s:g} s")
 

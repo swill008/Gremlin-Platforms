@@ -41,7 +41,7 @@ function topics() {
             title: "General options",
             body: "<p>The <b>General</b> section of Options covers startup, devices, diagnostics and History.</p>"
                 + "<ul>"
-                + "<li><b>Startup and Tray</b>: <b>Check for updates</b> <a href=\"show:option/Check for updates\">Show me ›</a>; <b>Minimize to tray</b> <a href=\"show:option/Minimize to tray\">Show me ›</a>, where minimizing or closing the window keeps the program running in the tray (see <a href=\"topic:options-profile-tray\">Keep the program running in the tray</a>); and <b>HidHide</b>, a pointer: to turn HidHide on each time the program starts, use <b>Automatically Start</b> in <b>Tools › Device Setup › HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a>.</li>"
+                + "<li><b>Startup and Tray</b>: <b>Start Gremlin-Platforms when Windows starts</b>, which opens the program minimized each time you sign in to Windows (off at first; see <a href=\"topic:options-profile-tray\">Keep the program running in the tray</a>); <b>Check for updates</b> <a href=\"show:option/Check for updates\">Show me ›</a>; <b>Minimize to tray</b> <a href=\"show:option/Minimize to tray\">Show me ›</a>, where minimizing or closing the window keeps the program running in the tray (see <a href=\"topic:options-profile-tray\">Keep the program running in the tray</a>); and <b>HidHide</b>, a pointer: to turn HidHide on each time the program starts, use <b>Automatically Start</b> in <b>Tools › Device Setup › HidHide</b> <a href=\"open:tools.hidhide\">Open ›</a>.</li>"
                 + "<li><b>Devices</b>: <b>Device change behavior</b> <a href=\"show:option/Device change behavior\">Show me ›</a> (Stop, Ignore, or Reload); <b>Refresh axes when Run starts</b> <a href=\"show:option/Refresh axes when Run starts\">Show me ›</a> and <b>Refresh axis on mode change</b> <a href=\"show:option/Refresh axis on mode change\">Show me ›</a>, which send each axis's current position again. An axis not moved since the program started is sent as center until it moves.</li>"
                 + "<li><b>Diagnostics</b>: <b>Diagnostic logs</b> and <b>Log When Not Responding</b>. See <a href=\"topic:options-profile-diagnostics\">Diagnostic logs</a>.</li>"
                 + "<li><b>History</b>: <b>Days to keep changes</b> <a href=\"show:option/Days to keep changes\">Show me ›</a> and <b>Largest history file (MB)</b> <a href=\"show:option/Largest history file (MB)\">Show me ›</a>.</li>"
@@ -61,7 +61,7 @@ function topics() {
                 + "<ul>"
                 + "<li>Shows one picture while the profile is stopped and another while it runs. Its tooltip is \"Gremlin-Platforms\".</li>"
                 + "<li>A left click brings the window back as it was: windowed, maximized or full screen.</li>"
-                + "<li>A right click opens its menu: <b>Show Gremlin-Platforms</b> or <b>Hide Gremlin-Platforms</b>, <b>Run Profile</b> or <b>Stop Profile</b>, and <b>Exit Gremlin-Platforms</b>.</li>"
+                + "<li>A right click opens its menu: <b>Show Gremlin-Platforms</b> or <b>Hide Gremlin-Platforms</b>, <b>Run Profile</b> or <b>Stop Profile</b>, the tick item <b>Start with Windows</b> (the same setting as <b>Start Gremlin-Platforms when Windows starts</b> in Options), and <b>Exit Gremlin-Platforms</b>.</li>"
                 + "</ul>"
                 + "<h4>Good to know</h4>"
                 + "<ul>"
@@ -70,6 +70,7 @@ function topics() {
                 + "<li>While the window is in the tray, the program closes its pages to give memory back to Windows. It opens them again whenever the window is shown, whether you show it or Windows does (for example when a monitor is reconnected or a remote-desktop program shows it). The profile keeps running the whole time. The Device Bindings page stays open while it has unsaved display edits.</li>"
                 + "<li>If Windows shows the window while the program had it in the tray, the program leaves the tray and keeps the window on screen. Minimizing hides the window to the tray once the minimize has finished, also when you start with --start-minimized.</li>"
                 + "<li>The tray icon comes back by itself if Windows Explorer restarts.</li>"
+                + "<li>With <b>Start Gremlin-Platforms when Windows starts</b> on, the program opens minimized when you sign in to Windows (in the tray when <b>Minimize to tray</b> is on) and does not start Run. It adds one entry to your own Windows sign-in list, with no administrator permission; turning it off, or uninstalling the program, removes it. Windows' own Startup Apps page shows the same entry.</li>"
                 + "<li>To start the program straight into the tray, use the --start-minimized option with Minimize to tray on. See <a href=\"topic:getting-started-command-line\">Start the program from a command line</a>.</li>"
                 + "</ul>",
             related: ["options-profile-general", "getting-started-command-line", "getting-started-run"]

@@ -251,9 +251,64 @@ def test_uninstall_entry() -> None:
 
 def test_presets() -> None:
     assert [d.__dict__ for d in drivers.PRESETS["1 device, full"]] == [
-        {"id": 1, "axes": 8, "buttons": 128, "hats": 4}
+        {"id": 1, "axes": drivers.VJOY_AXES, "buttons": 128, "hats": 4}
     ]
-    assert [d.id for d in drivers.PRESETS["2 devices, full"]] == [1, 2]
+    two = drivers.PRESETS["2 devices, full"]
+    assert [(d.id, d.buttons) for d in two] == [(1, 128), (2, 127)]
+    assert drivers.alike_devices(two) == []
+
+
+def test_default_buttons_countdown() -> None:
+    assert drivers.default_buttons(1) == 128
+    assert drivers.default_buttons(2) == 127
+    assert drivers.default_buttons(16) == 113
+    assert drivers.default_buttons(0) == 128  # clamped
+    assert drivers.default_buttons(200) == 0  # clamped
+    dev = drivers.new_device(2)
+    assert (dev.id, dev.axes, dev.buttons, dev.hats) == (2, drivers.VJOY_AXES, 127, 4)
+    assert dev.problem() == ""
+    assert drivers.VJoyDevice(5).buttons == 128  # field default unchanged
+
+
+def _dev(
+    i: int, axes: tuple[str, ...] = drivers.VJOY_AXES, b: int = 10, h: int = 4
+) -> drivers.VJoyDevice:
+    return drivers.VJoyDevice(i, axes, b, h)
+
+
+def test_alike_devices_groups() -> None:
+    assert drivers.layout_key(_dev(1, ("x", "y"), 7, 2)) == (2, 7, 2)
+    devs = [
+        _dev(4),
+        _dev(1),
+        _dev(2, b=11),
+        _dev(3, b=11),
+        _dev(5, b=12),
+        _dev(6, b=11),
+    ]
+    assert drivers.alike_devices(devs) == [[1, 4], [2, 3, 6]]
+    assert drivers.alike_devices([_dev(1), _dev(2, b=9)]) == []
+    assert drivers.alike_devices([]) == []
+
+
+def test_alike_means_same_axis_count_not_same_axes() -> None:
+    a = _dev(1, ("x", "y"))
+    b = _dev(2, ("z", "rx"))
+    assert drivers.alike_devices([a, b]) == [[1, 2]]
+    assert drivers.alike_devices([a, _dev(2, ("x", "y", "z"))]) == []
+
+
+def test_alike_warning_wording() -> None:
+    tail = (
+        " have the same number of axes, buttons and hats, so "
+        "Gremlin-Platforms can't tell them apart and won't use them."
+    )
+    assert drivers.alike_warning([]) == ""
+    assert drivers.alike_warning([[1, 3]]) == "vJoy 1 and vJoy 3" + tail
+    assert drivers.alike_warning([[1, 2, 4]]) == "vJoy 1, vJoy 2 and vJoy 4" + tail
+    assert drivers.alike_warning([[1, 3], [2, 5]]) == (
+        "vJoy 1 and vJoy 3" + tail + " vJoy 2 and vJoy 5" + tail
+    )
 
 
 def test_jobs_round_trip(tmp_path: Path) -> None:
@@ -268,14 +323,19 @@ def test_jobs_round_trip(tmp_path: Path) -> None:
             ],
         ),
         Job("remove", "hidhide", []),
-        Job("vjoy_setup", "vjoy", [], [VJoyDevice(1), VJoyDevice(2, 3, 32, 0)]),
+        Job(
+            "vjoy_setup",
+            "vjoy",
+            [],
+            [VJoyDevice(1), VJoyDevice(2, ("x", "y", "sl0"), 32, 0)],
+        ),
     ]
     drivers.write_jobs(path, jobs)
     data = json.loads(path.read_text(encoding="utf-8"))
     assert data["version"] == 1
     assert data["jobs"][2]["devices"][1] == {
         "id": 2,
-        "axes": 3,
+        "axes": ["x", "y", "sl0"],
         "buttons": 32,
         "hats": 0,
     }
@@ -336,6 +396,30 @@ def test_jobs_round_trip(tmp_path: Path) -> None:
             }
         ),
         json.dumps({"version": 1, "jobs": [{"op": "remove", "driver": "vjoy"}]}),
+        json.dumps(
+            {
+                "version": 1,
+                "jobs": [
+                    {
+                        "op": "vjoy_setup",
+                        "driver": "vjoy",
+                        "devices": [{"id": 1, "axes": 3}],
+                    }
+                ],
+            }
+        ),
+        json.dumps(
+            {
+                "version": 1,
+                "jobs": [
+                    {
+                        "op": "vjoy_setup",
+                        "driver": "vjoy",
+                        "devices": [{"id": 1, "axes": ["x", "wheel"]}],
+                    }
+                ],
+            }
+        ),
     ],
 )
 def test_read_jobs_rejects_bad_files(tmp_path: Path, content: str) -> None:
@@ -484,4 +568,93 @@ def test_runtime_files_are_checked_like_drivers(tmp_path: Path) -> None:
     nef = "CN=Nefarius Software Solutions e.U., O=Nefarius, C=AT"
     assert "Nefarius" in drivers.check_download(
         exe, drivers.RUNTIME, signer=lambda p: (True, nef)
+    )
+
+
+def test_vjoy_device_axes_are_normalised_and_checked() -> None:
+    device = VJoyDevice(1, ["SL0", "x", "x", "Y"])
+    assert device.axes == ("x", "y", "sl0")
+    assert VJoyDevice(1).axes == drivers.VJOY_AXES
+    assert VJoyDevice(1, ()).problem() == ""
+    bad = VJoyDevice(1, ("x", "wheel"))
+    assert "wheel" in bad.problem()
+    assert drivers.axis_label("sl0") == "S1"
+    assert drivers.axis_label("rx") == "Rx"
+    assert drivers.axis_label("wheel") == "WHEEL"
+
+
+def test_job_file_without_axes_means_all_eight(tmp_path: Path) -> None:
+    path = tmp_path / "jobs.json"
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "jobs": [
+                    {"op": "vjoy_setup", "driver": "vjoy", "devices": [{"id": 1}]}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    [job] = drivers.read_jobs(path)
+    assert job.devices[0].axes == drivers.VJOY_AXES
+
+
+# -- the runtime is setup's alone (spec 06 S185, 01 D-01-RUNTIME-ROW) ---------
+
+
+@pytest.mark.parametrize("op", ["install", "update", "remove", "vjoy_setup"])
+def test_read_jobs_refuses_a_vcredist_job(tmp_path: Path, op: str) -> None:
+    raw = {
+        "op": op,
+        "driver": "vcredist",
+        "files": [{"path": "a", "kind": "download"}],
+        "devices": [{"id": 1}],
+    }
+    path = tmp_path / "jobs.json"
+    path.write_text(json.dumps({"version": 1, "jobs": [raw]}), encoding="utf-8")
+    with pytest.raises(ValueError, match="unknown driver 'vcredist'"):
+        drivers.read_jobs(path)
+
+
+def test_the_runtime_update_path_is_gone() -> None:
+    for name in (
+        "fetch_runtime",
+        "real_download",
+        "runtime_update_job",
+        "RUNTIME_URL",
+        "RUNTIME_DOWNLOAD_TIMEOUT_S",
+    ):
+        assert not hasattr(drivers, name)
+
+
+def test_axis_tables_come_from_axis_names() -> None:
+    from gremlin import axis_names
+
+    assert drivers.VJOY_AXES == ("x", "y", "z", "rx", "ry", "rz", "sl0", "sl1")
+    assert drivers.VJOY_AXIS_LABELS == ("X", "Y", "Z", "Rx", "Ry", "Rz", "S1", "S2")
+    assert drivers.VJOY_AXES == tuple(a.vjoy_config for a in axis_names.AXES)
+
+
+def test_can_untick_axis() -> None:
+    one = VJoyDevice(1, ("rz",), 8, 0)
+    two = VJoyDevice(2, ("x", "y"), 8, 0)
+    assert not drivers.can_untick_axis(one, "rz")
+    assert drivers.can_untick_axis(one, "x")  # ticking-state irrelevant: not ticked
+    assert drivers.can_untick_axis(two, "x")
+    assert drivers.can_untick_axis(two, "y")
+
+
+def test_in_use_warning_wording() -> None:
+    assert drivers.in_use_warning([]) == ""
+    assert drivers.in_use_warning([4]) == (
+        "vJoy 4 is in use by another program. Changing it can stop that "
+        "program's controls working until it restarts. Change it anyway?"
+    )
+    assert drivers.in_use_warning([4, 1]) == (
+        "vJoy 1 and vJoy 4 are in use by another program. Changing them can "
+        "stop that program's controls working until it restarts. Change them anyway?"
+    )
+    assert drivers.in_use_warning([1, 2, 4]).startswith(
+        "vJoy 1, vJoy 2 and vJoy 4 are in use by another program."
     )

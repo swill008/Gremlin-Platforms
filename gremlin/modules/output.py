@@ -19,7 +19,15 @@ from typing import Any
 
 from PySide6 import QtCore
 
-from gremlin import clock, input_thread, run_scope, threads, trace, trace_timing
+from gremlin import (
+    axis_names,
+    clock,
+    input_thread,
+    run_scope,
+    threads,
+    trace,
+    trace_timing,
+)
 from gremlin.modules import registry
 from gremlin.modules.claim import claim_allows, claim_friendly, claim_ids, kind_of
 from gremlin.types import InputType
@@ -1148,17 +1156,6 @@ def reset_drivers() -> None:
 
 # --- bindings the program can't send (D-05-CANT-SEND) ------------------------
 
-# The drop-down's words for vJoy axes (1 = X ... 8 = Dial).
-AXIS_WORDS = {
-    1: "X Axis",
-    2: "Y Axis",
-    3: "Z Axis",
-    4: "X Rotation",
-    5: "Y Rotation",
-    6: "Z Rotation",
-    7: "Slider",
-    8: "Dial",
-}
 _KIND_WORDS = {"axis": "Axes", "button": "Buttons", "hat": "Hats"}
 
 
@@ -1174,7 +1171,7 @@ def control_label(claim: dict | None, kind: object, control_id: int) -> str:
     if custom:
         return custom
     if kind == "axis":
-        return AXIS_WORDS.get(int(control_id), f"Axis {int(control_id)}")
+        return axis_names.long_name(control_id)
     if kind == "hat":
         return f"Hat {int(control_id)}"
     return f"Button {int(control_id)}"

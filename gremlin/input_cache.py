@@ -344,7 +344,7 @@ class JoystickWrapper:
         onto the named axis value.
 
         Args:
-            axis_index: index of the axis in the AxisNames enum
+            axis_index: the axis number (gremlin.axis_names)
 
         Returns:
             True the specified axis exists, False otherwise

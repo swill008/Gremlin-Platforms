@@ -534,7 +534,7 @@ def test_tray_clicks_and_menu(tray: types.SimpleNamespace) -> None:
     tray.icon._system_tray_event_cb(55, wm_tray, 0, win32con.WM_RBUTTONUP)
     assert [t for t in tray.menu if t] == [
         "Hide Gremlin-Platforms", "Screen Saver Mode", "Turn displays off now",
-        "Run Profile", "Exit Gremlin-Platforms"
+        "Run Profile", "Start with Windows", "Exit Gremlin-Platforms"
     ]
     tray.menu.clear()
     tray.window.shown = False
@@ -542,7 +542,7 @@ def test_tray_clicks_and_menu(tray: types.SimpleNamespace) -> None:
     tray.icon._system_tray_event_cb(55, wm_tray, 0, win32con.WM_RBUTTONUP)
     assert [t for t in tray.menu if t] == [
         "Show Gremlin-Platforms", "Screen Saver Mode", "Turn displays off now",
-        "Stop Profile", "Exit Gremlin-Platforms"
+        "Stop Profile", "Start with Windows", "Exit Gremlin-Platforms"
     ]
     toggle = tray.module._ID_TOGGLE
     tray.icon._handle_context_menu_cb(55, win32con.WM_COMMAND, toggle, 0)

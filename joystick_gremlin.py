@@ -891,6 +891,14 @@ def register_config_options() -> None:
         "profile keeps running. Exit from File > Exit or the tray icon's menu.",
         {}, True,
     )
+    # Options shows and changes Windows' own sign-in list (01 S194,
+    # gremlin/startup_entry.py); the stored value only follows it.
+    cfg.register(
+        "global", "general", "start-with-windows", PropertyType.Bool, False,
+        "Gremlin-Platforms opens minimized when you sign in to Windows; "
+        "Run is not started.",
+        {}, True,
+    )
     cfg.register(
         "global", "internal", "tray-notice-shown", PropertyType.Bool, False,
         "The one-time notice that closing kept the program in the tray was shown.",

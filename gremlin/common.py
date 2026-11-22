@@ -12,10 +12,9 @@ from typing import (
     TypeVar,
 )
 
-from gremlin import error
+from gremlin import axis_names
 from gremlin.keyboard import key_from_code
 from gremlin.types import (
-    AxisNames,
     InputType,
     ScanCode,
 )
@@ -79,10 +78,7 @@ def input_to_ui_string(input_type: InputType, input_id: int | ScanCode) -> str:
         String for UI usage of the given data.
     """
     if input_type == InputType.JoystickAxis:
-        try:
-            return AxisNames.to_string(AxisNames(input_id))
-        except error.GremlinError:
-            return f"Axis {input_id:d}"
+        return axis_names.long_name(int(input_id))  # pyright: ignore[reportArgumentType]  (an axis id is an int)
     elif input_type == InputType.Keyboard:
         assert isinstance(input_id, tuple) and len(input_id) == 2
         return key_from_code(*input_id).name

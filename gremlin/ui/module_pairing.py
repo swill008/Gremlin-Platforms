@@ -7,6 +7,7 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import device_initialization, event_handler, shared_state
+from gremlin.axis_names import short_name
 from gremlin.modules import device_class, registry, store, wiring
 from gremlin.modules.claim import (
     claim_allows,
@@ -101,7 +102,7 @@ def _src_label(input_type: InputType, hid: int, claim: dict, kind: str = "") -> 
     if builtin:
         return builtin
     if input_type == InputType.JoystickAxis:
-        return wiring.AXIS_SHORT.get(int(hid), f"A{int(hid)}")
+        return short_name(hid)
     if input_type == InputType.JoystickHat:
         return f"H{int(hid)}"
     return str(int(hid))

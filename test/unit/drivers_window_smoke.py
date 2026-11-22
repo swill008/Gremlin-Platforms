@@ -39,13 +39,18 @@ calls: list[str] = []
 made: list[object] = []
 
 
-def _dev(i: int, axes: int = 8, buttons: int = 128, hats: int = 4) -> dict:
-    return {"id": i, "axes": axes, "buttons": buttons, "hats": hats}
+ALL_AXES = ["x", "y", "z", "rx", "ry", "rz", "sl0", "sl1"]
+
+
+def _dev(i: int, axes: list | None = None, buttons: int = 128, hats: int = 4) -> dict:
+    return {"id": i, "axes": list(ALL_AXES if axes is None else axes),
+            "buttons": buttons, "hats": hats}
 
 
 class FakeDrivers(QtCore.QObject):
     changed = QtCore.Signal()
     finished = QtCore.Signal()
+    inUseRead = QtCore.Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -62,10 +67,24 @@ class FakeDrivers(QtCore.QObject):
              "bundled": "1.5.230", "state": "same", "label": "1.5.230",
              "ticked": False, "tickable": False},
         ]
-        self._preset = "1 device, full"
-        self._devices = [_dev(1)]
+        # The vJoy layout is the real model's, so a tick box drives the real
+        # setAxis; everything else here is the fake.
+        from gremlin import drivers
+        from gremlin.ui.drivers_model import DriversModel
+
+        # vJoy installed, so an edited layout plans a vjoy_setup job and the
+        # real alikeWarning() has devices to check.
+        vjoy = drivers.DriverStatus("vjoy", "vJoy", "2.2.2.0", "2.2.2.0", "same")
+        # What vJoy has now and which ids vJoyConfig calls busy; the script
+        # changes these, then calls self._real.reload().
+        self.world: dict[str, list] = {"current": [], "busy": []}
+        self._real = DriversModel(status_source=lambda: [vjoy], app=lambda: None,
+                                  vjoy_reader=lambda: list(self.world["current"]),
+                                  busy_reader=lambda: list(self.world["busy"]),
+                                  background=lambda n, w, d: d(w()))
+        self._real.changed.connect(self.changed)
+        self._real.inUseRead.connect(self.inUseRead)
         self._busy = False
-        self._edited = False
 
     @QtCore.Property(list, notify=changed)
     def rows(self):
@@ -77,24 +96,43 @@ class FakeDrivers(QtCore.QObject):
 
     @QtCore.Property(str, notify=changed)
     def vjoyPreset(self):
-        return self._preset
+        return self._real.vjoyPreset
 
     @QtCore.Property(list, notify=changed)
     def vjoyDevices(self):
-        return self._devices
+        return self._real.vjoyDevices
+
+    @QtCore.Property(str, notify=changed)
+    def addPreview(self):
+        return self._real.addPreview
+
+    @QtCore.Property(list, constant=True)
+    def vjoyAxes(self):
+        return self._real.vjoyAxes
 
     @QtCore.Property(list, notify=changed)
     def vjoyCurrent(self):
-        return [_dev(1, 6, 32, 1), _dev(2, 1, 1, 0), _dev(3, 2, 2, 2)]
+        return [_dev(1, ["x", "y", "z", "rx", "ry", "rz"], 32, 1),
+                _dev(2, ["x"], 1, 0), _dev(3, ["sl0", "sl1"], 2, 2),
+                _dev(4, ["x", "y", "sl0"], 8, 0)]
 
     @QtCore.Property(bool, notify=changed)
     def vjoyEdited(self):
-        return self._edited
+        return self._real.vjoyEdited
+
+    @QtCore.Slot(list, int, int, result=str)
+    def deviceSummary(self, axes, buttons, hats):
+        return self._real.deviceSummary(axes, buttons, hats)
+
+    @QtCore.Slot(int, str, bool)
+    def setAxis(self, index, name, on):
+        calls.append(f"axis {index} {name} {on}")
+        self._real.setAxis(index, name, on)
 
     @QtCore.Property(str, notify=changed)
     def vjoyWarning(self):
         return ("Running games will lose the vJoy devices until they restart."
-                if self._edited else "")
+                if self._real.vjoyEdited else "")
 
     @QtCore.Property(bool, notify=changed)
     def busy(self):
@@ -131,25 +169,63 @@ class FakeDrivers(QtCore.QObject):
     @QtCore.Slot(str)
     def setPreset(self, name):
         calls.append(f"preset {name}")
-        self._preset = name
-        self._edited = True
-        if name == "2 devices, full":
-            self._devices = [_dev(1), _dev(2)]
-        self.changed.emit()
+        self._real.setPreset(name)
 
     @QtCore.Slot(int)
     def setDeviceCount(self, n):
         calls.append(f"count {n}")
-        self._devices = [_dev(i + 1) for i in range(n)]
-        self.changed.emit()
+        self._real.setDeviceCount(n)
 
-    @QtCore.Slot(int, int, int, int)
+    @QtCore.Slot()
+    def addDevice(self):
+        calls.append("add")
+        self._real.addDevice()
+
+    @QtCore.Slot(int, list, int, int)
     def setDevice(self, index, axes, buttons, hats):
         calls.append(f"device {index} {axes} {buttons} {hats}")
+        self._real.setDevice(index, axes, buttons, hats)
+
+    @QtCore.Slot(int)
+    def removeDevice(self, index):
+        calls.append(f"remove {index}")
+        self._real.removeDevice(index)
+
+    @QtCore.Slot(int, int, result=str)
+    def showingText(self, first, count):
+        return self._real.showingText(first, count)
+
+    @QtCore.Slot(result=str)
+    def inUseWarning(self):
+        calls.append("inUseWarning")
+        return self._real.inUseWarning()
+
+    @QtCore.Slot(result=bool)
+    def changesVjoy(self):
+        return self._real.changesVjoy()
+
+    @QtCore.Slot()
+    def refreshInUse(self):
+        calls.append("refreshInUse")
+        self._real.refreshInUse()
+
+    def _get_run(self):
+        return self._real.runActive
+
+    def _set_run(self, on):
+        calls.append(f"runActive {bool(on)}")
+        self._real.runActive = on
+
+    runActive = QtCore.Property(bool, fget=_get_run, fset=_set_run, notify=changed)
 
     @QtCore.Slot(result=str)
     def describe(self):
         return "Install vJoy 2.2.2.0 now."
+
+    @QtCore.Slot(result=str)
+    def alikeWarning(self):
+        calls.append("alikeWarning")
+        return self._real.alikeWarning()
 
     @QtCore.Slot(result=bool)
     def apply(self):
@@ -180,8 +256,20 @@ else:
 
 class FakeBackend(QtCore.QObject):
     changed = QtCore.Signal()
+    activityChanged = QtCore.Signal()
     uiScale = QtCore.Property(int, fget=lambda self: 100, notify=changed)
-    gremlinActive = QtCore.Property(bool, fget=lambda self: False, notify=changed)
+    active = False
+    gremlinActive = QtCore.Property(bool, fget=lambda self: self.active,
+                                    notify=activityChanged)
+
+    def set_active(self, on: bool) -> None:
+        self.active = on
+        self.activityChanged.emit()
+
+    @QtCore.Slot()
+    def toggleActiveState(self):
+        calls.append(f"toggle {not self.active}")
+        self.set_active(not self.active)
 
 
 app = QtGui.QGuiApplication([sys.argv[0]])
@@ -229,13 +317,14 @@ def _visual(item: QtCore.QObject, name: str) -> QtCore.QObject | None:
 
 
 def child(root: QtCore.QObject, name: str) -> QtCore.QObject | None:
-    """By object name: the QObject tree first, then the visual tree (a
-    Repeater's items hang only from the visual one)."""
-    found = root.findChild(QtCore.QObject, name)
+    """By object name: the visual tree first (a Repeater's items hang only
+    from it, and rows it has replaced but not yet deleted are off it), then
+    the QObject tree (the prompt, in the overlay)."""
+    top = root.contentItem() if isinstance(root, QtQuick.QQuickWindow) else root
+    found = _visual(top, name)
     if found is not None:
         return found
-    top = root.contentItem() if isinstance(root, QtQuick.QQuickWindow) else root
-    return _visual(top, name)
+    return root.findChild(QtCore.QObject, name)
 
 
 def prop(root: QtCore.QObject, name: str, what: str, default=None):
@@ -259,15 +348,24 @@ out["labels"] = {k: prop(win, f"driverLabel_{k}", "text") for k in keys}
 out["names"] = {k: prop(win, f"driverName_{k}", "text") for k in keys}
 out["tickVisible"] = {k: prop(win, f"driverTick_{k}", "visible") for k in keys}
 out["tickChecked"] = {k: prop(win, f"driverTick_{k}", "checked") for k in keys}
-out["current"] = prop(win, "vjoyCurrent_1", "text")
-out["current2"] = prop(win, "vjoyCurrent_2", "text")
-out["current3"] = prop(win, "vjoyCurrent_3", "text")
-out["customVisible"] = prop(win, "vjoyCustom", "visible")
+out["oldNowLines"] = child(win, "vjoyCurrentTitle") is not None
+out["heading"] = prop(win, "vjoyHeading", "text")
+# The rows show for a preset too (not only Custom).
+out["presetFirst"] = prop(win, "vjoyPreset", "currentText")
+out["rowBeforeCustom"] = prop(win, "vjoyRow_0", "visible")
+out["rowName0"] = prop(win, "vjoyName_0", "text")
+out["heads"] = [prop(win, f"vjoyHead_{i}", "text") for i in range(8)] + [
+    prop(win, "vjoyHeadButtons", "text"), prop(win, "vjoyHeadHats", "text")]
+out["hint"] = prop(win, "vjoyHint", "text")
+out["showingOne"] = prop(win, "vjoyShowing", "text")
 out["warning"] = prop(win, "vjoyWarning", "text")
 out["warningVisible"] = prop(win, "vjoyWarning", "visible")
 out["result0"] = prop(win, "driverResult_0", "text")
 out["restartVisible"] = prop(win, "driversRestart", "visible")
 out["applyText"] = prop(win, "driversApply", "text")
+
+out["rowOrder"] = [c.objectName() for c in child(win, "driverRow_vjoy").parentItem()
+                   .childItems() if c.objectName().startswith("driverRow_")]
 
 # Tick box.
 tick = child(win, "driverTick_vigembus")
@@ -278,10 +376,18 @@ settle()
 fake = made[0]
 fake.setPreset("Custom")
 settle(300)
-out["customAfter"] = prop(win, "vjoyCustom", "visible")
-out["axesMax"] = prop(win, "vjoyAxes_0", "to")
-out["buttonsMax"] = prop(win, "vjoyButtons_0", "to")
-out["hatsMax"] = prop(win, "vjoyHats_0", "to")
+out["customAfter"] = prop(win, "vjoyRow_0", "visible")
+out["oldAxesBox"] = child(win, "vjoyAxes_0") is not None
+names = ALL_AXES
+out["axisBoxes"] = [prop(win, f"vjoyAxis_0_{n}", "text") for n in names]
+out["axisChecked"] = [prop(win, f"vjoyAxis_0_{n}", "checked") for n in names]
+QtCore.QMetaObject.invokeMethod(child(win, "vjoyAxis_0_rx"), "click")
+settle(300)
+out["axisCheckedAfter"] = [prop(win, f"vjoyAxis_0_{n}", "checked") for n in names]
+out["deviceAxesAfter"] = list(fake.vjoyDevices[0]["axes"])
+out["presetAfterAxis"] = prop(win, "vjoyPreset", "currentText")
+out["buttonsMax"] = prop(win, "vjoyButtons_0", "count")
+out["hatsMax"] = prop(win, "vjoyHats_0", "count")
 out["countRange"] = [prop(win, "vjoyDeviceCount", "from"),
                      prop(win, "vjoyDeviceCount", "to")]
 # Apply: prompt first, OK runs apply().
@@ -299,6 +405,196 @@ click(win, "driversRestartLater")
 settle()
 out["restartHidden"] = not prop(win, "driversRestart", "visible", True)
 out["calls"] = list(calls)
+
+# Alike devices (D-01-VJOY-COUNTDOWN): after OK a Yes/No box; No keeps the
+# editor and runs nothing, Yes applies.
+fake.setDeviceCount(2)
+first = fake.vjoyDevices[0]
+fake.setDevice(1, list(first["axes"]), first["buttons"], first["hats"])
+settle(300)
+calls.clear()
+click(win, "driversApply")
+settle(300)
+click(win, "driverPromptOk")
+settle(300)
+out["alikeOpen"] = bool(prompt.property("opened")) if prompt else False
+out["alikeTitle"] = prop(win, "driverPromptTitle", "text")
+out["alikeBody"] = prop(win, "driverPromptBody", "text")
+out["alikeOk"] = prop(win, "driverPromptOk", "text")
+out["alikeCancel"] = prop(win, "driverPromptCancel", "text")
+out["alikeApplyBefore"] = "apply" in calls
+click(win, "driverPromptCancel")
+settle(300)
+out["alikeNoClosed"] = not (prompt.property("opened") if prompt else True)
+out["alikeNoApply"] = "apply" in calls
+out["alikeNoEditor"] = prop(win, "vjoyRow_1", "visible")
+out["alikeNoDevices"] = len(fake.vjoyDevices)
+click(win, "driversApply")
+settle(300)
+click(win, "driverPromptOk")
+settle(300)
+click(win, "driverPromptOk")
+settle(300)
+out["alikeYesApply"] = calls.count("apply")
+
+# Grow, then scroll inside the list: 16 devices don't fit at 720 px; the
+# window doesn't scroll and Apply stays in view.
+from gremlin import drivers  # noqa: E402
+
+win.setProperty("height", 720)
+fake.setDeviceCount(16)
+settle(400)
+rows = child(win, "vjoyRows")
+out["rowsScroll"] = rows.property("contentHeight") > rows.property("height") + 1
+out["showing16"] = prop(win, "vjoyShowing", "text")
+apply_btn = child(win, "driversApply")
+pos = apply_btn.mapToItem(win.contentItem(), QtCore.QPointF(0, 0))
+out["applyInView"] = 0 <= pos.y() and pos.y() + apply_btn.height() <= win.height()
+rows.setProperty("contentY", rows.property("contentHeight") - rows.property("height"))
+settle(300)
+out["showingEnd"] = prop(win, "vjoyShowing", "text")
+fake.setDeviceCount(4)
+settle(300)
+
+# The "+ Add device" row: the last row inside the list, scrolls with it,
+# gone at 16 devices.
+add_row = child(win, "vjoyAddRow")
+fake.setDeviceCount(4)
+settle(300)
+add_row = child(win, "vjoyAddRow")
+last_dev = child(win, "vjoyRow_3")
+out["addRowVisible4"] = bool(add_row.property("visible"))
+out["addRowBelowLast"] = (
+    add_row.property("y")
+    >= last_dev.property("y") + last_dev.property("height") - 1
+)
+out["addRowInColumn"] = (
+    rows.property("contentHeight")
+    >= add_row.property("y") + add_row.property("height") - 1
+)
+out["addPreview4"] = prop(win, "vjoyAddPreview", "text")
+_cur = child(win, "vjoyAddMouse").property("cursorShape")
+out["addRowCursor"] = (
+    getattr(_cur, "value", _cur) == QtCore.Qt.CursorShape.PointingHandCursor.value
+)
+fake.setDeviceCount(16)
+settle(400)
+rows.setProperty("contentY", 0)
+settle(200)
+out["addRowHidden16"] = not child(win, "vjoyAddRow").property("visible")
+out["addPreview16"] = prop(win, "vjoyAddPreview", "text")
+fake.setDeviceCount(15)
+settle(400)
+rows.setProperty("contentY", rows.property("contentHeight") - rows.property("height"))
+settle(300)
+add_row = child(win, "vjoyAddRow")
+p0 = add_row.mapToItem(
+    win.contentItem(),
+    QtCore.QPointF(add_row.width() / 2, add_row.height() / 2),
+)
+out["addRowScrolledIn"] = 0 <= p0.y() <= win.height()
+out["addPreview15"] = prop(win, "vjoyAddPreview", "text")
+calls.clear()
+from PySide6 import QtTest  # noqa: E402
+
+QtTest.QTest.mouseClick(win, QtCore.Qt.MouseButton.LeftButton,
+                        QtCore.Qt.KeyboardModifier.NoModifier,
+                        QtCore.QPoint(int(p0.x()), int(p0.y())))
+settle(300)
+out["addCalls"] = list(calls)
+out["addIdsAfter"] = [d["id"] for d in fake.vjoyDevices]
+out["addNewButtons"] = fake.vjoyDevices[-1]["buttons"]
+fake.setDeviceCount(4)
+settle(300)
+
+# The row's ✕ removes that device; lowering Devices removes the highest.
+calls.clear()
+click(win, "vjoyRemove_1")
+settle(300)
+out["removeCalls"] = list(calls)
+out["idsAfterRemove"] = [d["id"] for d in fake.vjoyDevices]
+fake.setDeviceCount(2)
+settle(300)
+out["idsAfterLower"] = [d["id"] for d in fake.vjoyDevices]
+out["showing2"] = prop(win, "vjoyShowing", "text")
+out["listFits2"] = not (rows.property("contentHeight") > rows.property("height") + 1)
+
+# The last ticked axis can't be unticked.
+fake.setDevice(0, ["x"], 120, 0)
+settle(300)
+out["lastAxisEnabled"] = prop(win, "vjoyAxis_0_x", "enabled")
+out["otherAxisEnabled"] = prop(win, "vjoyAxis_0_y", "enabled")
+fake.setAxis(0, "x", False)
+settle(300)
+out["lastAxisStill"] = prop(win, "vjoyAxis_0_x", "checked")
+
+# In use by another program: vJoy 2 busy.
+fake.world["current"] = [drivers.new_device(1), drivers.new_device(2)]
+fake.world["busy"] = [2]
+fake._real.reload()
+fake.setPreset("2 devices, full")
+settle(300)
+out["inUseRow"] = [prop(win, f"vjoyName_{i}", "inUse") for i in (0, 1)]
+out["inUseColor"] = [prop(win, f"vjoyName_{i}", "color").name() for i in (0, 1)]
+out["inUseBold"] = [prop(win, f"vjoyName_{i}", "font").bold() for i in (0, 1)]
+out["inUseText"] = prop(win, "vjoyName_1", "text")
+out["inUseTip"] = [prop(win, f"vjoyName_{i}", "tip") for i in (0, 1)]
+out["oldInUseLabel"] = child(win, "vjoyInUse_1") is not None
+_style = engine.singletonInstance("Gremlin.Style", "Style")
+out["styleDanger"] = _style.property("danger").name() if _style else None
+out["styleFg"] = _style.property("fg").name() if _style else None
+fake.setDevice(1, list(drivers.VJOY_AXES), 100, 2)  # vJoy 2 changed
+settle(300)
+calls.clear()
+click(win, "driversApply")
+settle(300)
+click(win, "driverPromptOk")
+settle(300)
+out["inUseTitle"] = prop(win, "driverPromptTitle", "text")
+out["inUseBody"] = prop(win, "driverPromptBody", "text")
+out["inUseButtons"] = [prop(win, "driverPromptOk", "text"),
+                       prop(win, "driverPromptCancel", "text")]
+click(win, "driverPromptCancel")
+settle(300)
+out["inUseNoCalls"] = list(calls)
+calls.clear()
+click(win, "driversApply")
+settle(300)
+click(win, "driverPromptOk")
+settle(300)
+click(win, "driverPromptOk")  # Yes on the in-use box
+settle(300)
+out["inUseYesCalls"] = list(calls)
+
+# Our own Run is on: vJoy 2 isn't marked; Apply asks to stop Run first,
+# Yes stops it, the busy ids are read again, then the in-use box.
+_backend.set_active(True)
+settle(300)
+out["runHidesInUse"] = prop(win, "vjoyName_1", "inUse")
+calls.clear()
+click(win, "driversApply")
+settle(300)
+click(win, "driverPromptOk")
+settle(300)
+out["runTitle"] = prop(win, "driverPromptTitle", "text")
+out["runBody"] = prop(win, "driverPromptBody", "text")
+out["runButtons"] = [prop(win, "driverPromptOk", "text"),
+                     prop(win, "driverPromptCancel", "text")]
+click(win, "driverPromptCancel")  # No: nothing happens
+settle(300)
+out["runNoCalls"] = list(calls)
+calls.clear()
+click(win, "driversApply")
+settle(300)
+click(win, "driverPromptOk")
+settle(300)
+click(win, "driverPromptOk")  # Yes: Run stops
+settle(500)
+out["runYesCalls"] = list(calls)
+out["runYesNext"] = prop(win, "driverPromptTitle", "text")
+out["runYesBackend"] = _backend.active
+click(win, "driverPromptCancel")
+settle(300)
 
 # Step 2 through the window property.
 calls.clear()

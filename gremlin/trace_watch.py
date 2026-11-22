@@ -20,7 +20,7 @@ import uuid
 from typing import Any
 
 from gremlin import clock, threads, trace
-from gremlin.modules.wiring import AXIS_SHORT
+from gremlin.axis_names import AXES, short_name
 
 syslog = logging.getLogger("system")
 
@@ -102,7 +102,7 @@ def install() -> None:
 
 
 def _axis_name(axis_id: int) -> str:
-    return AXIS_SHORT.get(int(axis_id), f"axis {axis_id}")
+    return short_name(axis_id)
 
 
 def _clock_text(when: float) -> str:
@@ -225,7 +225,7 @@ def _vjoy_read_back(vjoy_id: int, axis_id: int) -> float:
 def _check_vjoy(now: float) -> None:
     # Every vJoy axis the trace saw written (16 devices x 8 axes: cheap).
     for vjoy_id in range(1, 17):
-        for axis_id in AXIS_SHORT:
+        for axis_id in (a.number for a in AXES):
             last = trace.last_written(vjoy_id, "axis", axis_id)
             if last is None:
                 continue

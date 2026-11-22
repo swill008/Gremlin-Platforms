@@ -225,11 +225,11 @@ Item {
     ListModel { id: hatModel }
     property var axisPick
 
+    // Short names come from the one axis table (gremlin/axis_names.py).
     function axisShort(hw, name) {
-        var map = { 1: "X", 2: "Y", 3: "Z", 4: "Rx", 5: "Ry", 6: "Rz", 7: "S1", 8: "S2" }
-        if (map[hw])
-            return map[hw]
-        return name || ("A" + hw)
+        if (name)
+            return name
+        return moduleModel ? moduleModel.axisShort(hw) : ("A" + hw)
     }
 
     function axisLabel(hw, name) {

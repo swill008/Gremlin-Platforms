@@ -61,16 +61,47 @@ def test_tick_boxes_only_where_tickable(run: dict) -> None:
     assert "tick vigembus True" in run["calls"]
 
 
+def test_rows_are_vjoy_vigembus_hidhide(run: dict) -> None:
+    """06 S185 (1b): no Visual C++ Runtime rows."""
+    assert run["rowOrder"] == [
+        "driverRow_vjoy", "driverRow_vigembus", "driverRow_hidhide"]
+
+
 def test_vjoy_section(run: dict) -> None:
-    assert run["current"] == "Device 1: 6 axes, 32 buttons, 1 hat"
-    assert run["current2"] == "Device 2: 1 axis, 1 button, 0 hats"
-    assert run["current3"] == "Device 3: 2 axes, 2 buttons, 2 hats"
-    assert run["customVisible"] is False
+    """S185 layout (2026-11-22): heading, rows always shown, the heading
+    band from drivers.VJOY_AXIS_LABELS, the hint and the Showing line."""
+    from gremlin import drivers
+
+    assert run["oldNowLines"] is False
+    assert run["heading"] == "vJoy devices"
+    assert run["presetFirst"] == "1 device, full"
+    assert run["rowBeforeCustom"] is True
+    assert run["rowName0"] == "vJoy 1"
+    assert run["heads"] == [*drivers.VJOY_AXIS_LABELS, "Buttons", "Hats"]
+    assert run["hint"] == (
+        "Each device needs its own number of axes, buttons or hats, "
+        "so Gremlin-Platforms can tell them apart."
+    )
+    assert run["showingOne"] == "Showing 1 device"
     assert run["customAfter"] is True
-    assert (run["axesMax"], run["buttonsMax"], run["hatsMax"]) == (8, 128, 4)
+    # The Buttons and Hats lists: 0-128 and 0-4.
+    assert (run["buttonsMax"], run["hatsMax"]) == (129, 5)
     assert run["countRange"] == [1, 16]
     assert run["warningVisible"] is False
     assert run["warning"] == ""
+
+
+def test_each_device_has_eight_axis_tick_boxes(run: dict) -> None:
+    assert run["oldAxesBox"] is False  # the axes number box is gone
+    assert run["axisBoxes"] == ["X", "Y", "Z", "Rx", "Ry", "Rz", "S1", "S2"]
+    assert run["axisChecked"] == [True] * 8
+
+
+def test_unticking_an_axis_changes_the_device_through_the_model(run: dict) -> None:
+    assert "axis 0 rx False" in run["calls"]
+    assert run["axisCheckedAfter"] == [True, True, True, False, True, True, True, True]
+    assert run["deviceAxesAfter"] == ["x", "y", "z", "ry", "rz", "sl0", "sl1"]
+    assert run["presetAfterAxis"] == "Custom"
 
 
 def test_apply_asks_first_then_runs(run: dict) -> None:
@@ -79,6 +110,111 @@ def test_apply_asks_first_then_runs(run: dict) -> None:
     assert run["promptBody"] == "Install vJoy 2.2.2.0 now."
     assert run["applyBeforeOk"] is False
     assert run["applyAfterOk"] is True
+
+
+def test_alike_devices_ask_yes_or_no_after_ok(run: dict) -> None:
+    """D-01-VJOY-COUNTDOWN: the box text is the model's (the real rule)."""
+    from gremlin import drivers
+
+    assert run["alikeOpen"] is True
+    assert run["alikeTitle"] == "Devices that can't be told apart"
+    assert run["alikeBody"] == (
+        drivers.alike_warning([[1, 2]]) + " Continue anyway?"
+    )
+    assert (run["alikeOk"], run["alikeCancel"]) == ("Yes", "No")
+    assert run["alikeApplyBefore"] is False
+
+
+def test_alike_no_keeps_the_editor_and_runs_nothing(run: dict) -> None:
+    assert run["alikeNoClosed"] is True
+    assert run["alikeNoApply"] is False
+    assert run["alikeNoEditor"] is True
+    assert run["alikeNoDevices"] == 2
+
+
+def test_alike_yes_applies(run: dict) -> None:
+    assert run["alikeYesApply"] == 1
+
+
+def test_list_grows_then_scrolls_inside_itself(run: dict) -> None:
+    assert run["rowsScroll"] is True
+    assert run["applyInView"] is True
+    assert run["showing16"].startswith("Showing 1-")
+    assert run["showing16"].endswith(" of 16 devices")
+    assert run["showingEnd"].endswith("-16 of 16 devices")
+    assert run["showingEnd"] != run["showing16"]
+    assert run["showing2"] == "Showing all 2 devices"
+    assert run["listFits2"] is True
+
+
+def test_add_device_row_ends_the_list_and_scrolls_with_it(run: dict) -> None:
+    """S185: the last row inside the list; clicking adds the lowest free id
+    with its countdown buttons; gone at 16 devices."""
+    assert run["addRowVisible4"] is True
+    assert run["addRowBelowLast"] is True
+    assert run["addRowInColumn"] is True
+    assert run["addPreview4"] == "vJoy 5 · 124 buttons"
+    assert run["addRowCursor"] is True
+    assert run["addRowHidden16"] is True
+    assert run["addPreview16"] == ""
+    assert run["addPreview15"] == "vJoy 16 · 113 buttons"
+    assert run["addRowScrolledIn"] is True
+    assert run["addCalls"] == ["add"]
+    assert run["addIdsAfter"][-1] == 16
+    assert run["addNewButtons"] == 113
+
+
+def test_remove_button_and_lowering_devices(run: dict) -> None:
+    assert run["removeCalls"] == ["remove 1"]
+    assert run["idsAfterRemove"] == [1, 3, 4]
+    assert run["idsAfterLower"] == [1, 3]
+
+
+def test_last_ticked_axis_cannot_be_unticked(run: dict) -> None:
+    assert run["lastAxisEnabled"] is False
+    assert run["otherAxisEnabled"] is True
+    assert run["lastAxisStill"] is True
+
+
+def test_device_in_use_by_another_program(run: dict) -> None:
+    """D-01-VJOY-IN-USE: the row says so; Apply asks Yes/No before the alike
+    box; No runs nothing. The text is the model's."""
+    from gremlin import drivers
+
+    # User 2026-11-22 (1a, 2a): no words on the row; the name is red (the
+    # Style's danger colour) and bold, the words only in its hover tip.
+    assert run["inUseRow"] == [False, True]
+    assert run["oldInUseLabel"] is False
+    assert run["inUseText"] == "vJoy 2"
+    assert run["styleDanger"] and run["styleDanger"] != run["styleFg"]
+    assert run["inUseColor"] == [run["styleFg"], run["styleDanger"]]
+    assert run["inUseBold"] == [False, True]
+    assert run["inUseTip"] == ["", "in use by another program"]
+    assert run["inUseTitle"] == "Devices in use"
+    assert run["inUseBody"] == drivers.in_use_warning([2])
+    assert run["inUseButtons"] == ["Yes", "No"]
+    assert "apply" not in run["inUseNoCalls"]
+    yes = run["inUseYesCalls"]
+    assert yes.index("inUseWarning") < yes.index("alikeWarning") < yes.index("apply")
+
+
+def test_own_run_is_stopped_first_and_not_called_in_use(run: dict) -> None:
+    """User 2026-11-22 ("a"): our own Run's devices aren't "in use by
+    another program"; Apply asks to stop Run first, Yes stops it and the
+    busy ids are read again before the in-use box; No returns."""
+    assert run["runHidesInUse"] is False
+    assert run["runTitle"] == "Run is on"
+    assert run["runBody"] == "Run stops while the vJoy devices change. Continue?"
+    assert run["runButtons"] == ["Yes", "No"]
+    assert not any(c.startswith("toggle") for c in run["runNoCalls"])
+    assert "inUseWarning" not in run["runNoCalls"]
+    yes = run["runYesCalls"]
+    assert "toggle False" in yes
+    assert "apply" not in yes
+    assert run["runYesBackend"] is False
+    # After Stop the busy ids are read again: vJoy 2 is someone else's.
+    assert yes.index("toggle False") < yes.index("inUseWarning")
+    assert run["runYesNext"] == "Devices in use"
 
 
 def test_results_and_restart_buttons(run: dict) -> None:

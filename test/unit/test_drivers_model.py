@@ -9,6 +9,7 @@ pending files are the real ones from gremlin.drivers in tmp_path."""
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 
@@ -88,6 +89,13 @@ def _model(
     return model
 
 
+def _plain(devices: list) -> list:
+    """vjoyDevices without the rows' view keys (inUse, locked)."""
+    return [
+        {k: v for k, v in d.items() if k not in ("inUse", "locked")} for d in devices
+    ]
+
+
 def _pump(qapp: object, until: Callable[[], bool], limit: float = 3.0) -> None:
     end = clock.monotonic() + limit
     while not until() and clock.monotonic() < end:
@@ -135,21 +143,74 @@ def test_rows_show_each_driver_with_its_label_and_box(
     assert {r["key"]: r for r in model.rows}["vigembus"]["ticked"]
 
 
+ALL = list(drivers.VJOY_AXES)
+
+
 def test_presets_and_custom_layout(qapp: object, app: Path, tmp_path: Path) -> None:
     model = _model(app, tmp_path, ALL_MISSING)
     assert model.presets == ["1 device, full", "2 devices, full", "Custom"]
     assert model.vjoyPreset == "1 device, full"
-    assert model.vjoyDevices == [{"id": 1, "axes": 8, "buttons": 128, "hats": 4}]
+    assert _plain(model.vjoyDevices) == [
+        {"id": 1, "axes": ALL, "buttons": 128, "hats": 4}
+    ]
     assert model.vjoyCurrent == []
     model.setPreset("2 devices, full")
     assert len(model.vjoyDevices) == 2 and model.vjoyEdited
     assert model.vjoyWarning == ""  # vJoy has no devices yet
     model.setDeviceCount(3)
-    model.setDevice(2, 99, 500, -1)
+    model.setDevice(2, ["x", "bogus", "SL1"], 500, -1)
     assert model.vjoyPreset == "Custom"
-    assert model.vjoyDevices[2] == {"id": 3, "axes": 8, "buttons": 128, "hats": 0}
+    assert _plain(model.vjoyDevices)[2] == {
+        "id": 3, "axes": ["x", "sl1"], "buttons": 128, "hats": 0
+    }
     model.setDeviceCount(40)
     assert len(model.vjoyDevices) == 16
+
+
+def test_set_axis_unticks_one_axis_and_the_job_lists_the_rest(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    launcher = Launcher()
+    model = DriversModel(
+        status_source=lambda: [_status("vjoy", "2.2.2.0", "same")],
+        app=lambda: app,
+        launcher=launcher,
+        results_reader=lambda p: ([], False),
+        vjoy_reader=lambda: [],
+        background=lambda n, w, d: d(w()),
+        temp_dir=tmp_path,
+    )
+    # The short names from the one table; the job keeps vJoyConfig's names.
+    assert [a["label"] for a in model.vjoyAxes] == [
+        "X", "Y", "Z", "Rx", "Ry", "Rz", "S1", "S2"
+    ]
+    assert [a["label"] for a in model.vjoyAxes] == list(drivers.VJOY_AXIS_LABELS)
+    assert [a["name"] for a in model.vjoyAxes] == list(drivers.VJOY_AXES)
+    model.setAxis(0, "rz", False)
+    assert model.vjoyDevices[0]["axes"] == ["x", "y", "z", "rx", "ry", "sl0", "sl1"]
+    assert model.vjoyPreset == "Custom"
+    model.setAxis(0, "nope", False)  # unknown: ignored
+    model.setAxis(5, "x", False)  # no such device: ignored
+    model.setAxis(0, "x", False)
+    model.setAxis(0, "x", True)  # back on, order kept
+    assert model.vjoyDevices[0]["axes"] == ["x", "y", "z", "rx", "ry", "sl0", "sl1"]
+    assert model.apply()
+    jobs_path, _ = _job_path(launcher)
+    raw = json.loads(jobs_path.read_text(encoding="utf-8"))
+    device = raw["jobs"][0]["devices"][0] if "jobs" in raw else raw[0]["devices"][0]
+    assert device["axes"] == ["x", "y", "z", "rx", "ry", "sl0", "sl1"]
+    model._timer.stop()
+
+
+def test_device_summary_uses_the_helper_wording(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    model = _model(app, tmp_path, ALL_MISSING)
+    assert (
+        model.deviceSummary(["x", "y", "sl0"], 8, 0)
+        == "3 axes (X, Y, S1), 8 buttons, 0 hats"
+    )
+    assert model.deviceSummary(["x"], 1, 1) == "1 axis (X), 1 button, 1 hat"
 
 
 def test_a_new_device_takes_the_lowest_free_id(
@@ -165,13 +226,57 @@ def test_a_new_device_takes_the_lowest_free_id(
     assert sorted(ids) == [1, 2, 3]
 
 
+def test_added_devices_count_down_and_existing_ones_keep_their_numbers(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    """D-01-VJOY-COUNTDOWN: an added device gets new_device(id), 129 - id
+    buttons; devices already in the list are not renumbered."""
+    current = [drivers.VJoyDevice(1, ("x", "y"), 32, 1), drivers.VJoyDevice(3)]
+    model = _model(app, tmp_path, [_status("vjoy", "2.2.2.0", "same")], current=current)
+    model.setDeviceCount(4)
+    by_id = {d["id"]: d for d in _plain(model.vjoyDevices)}
+    assert by_id[1] == {"id": 1, "axes": ["x", "y"], "buttons": 32, "hats": 1}
+    assert by_id[3]["buttons"] == 128  # kept, not 126
+    assert by_id[2]["buttons"] == 127 and by_id[2]["hats"] == 4
+    assert by_id[4]["buttons"] == 125
+    assert by_id[2]["axes"] == list(drivers.VJOY_AXES)
+
+
+def test_alike_devices_ask_before_apply_and_unlike_ones_do_not(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    model = _model(app, tmp_path, [_status("vjoy", "2.2.2.0", "same")])
+    assert model.alikeWarning() == ""  # nothing to set up yet
+    model.setPreset("2 devices, full")  # 128 and 127: told apart
+    assert model.alikeWarning() == ""
+    model.setDeviceCount(3)
+    model.setDevice(2, list(drivers.VJOY_AXES), 128, 4)  # like vJoy 1
+    assert model.alikeWarning() == (
+        drivers.alike_warning([[1, 3]]) + " Continue anyway?"
+    )
+    assert model.alikeWarning().startswith("vJoy 1 and vJoy 3 have the same")
+    # Asking runs nothing; apply() is the caller's Yes.
+    assert model._launcher.calls == []  # type: ignore[attr-defined]
+
+
+def test_alike_warning_only_for_devices_apply_will_set(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    """Alike devices that exist and aren't edited are not asked about."""
+    current = [drivers.VJoyDevice(1), drivers.VJoyDevice(2)]
+    model = _model(app, tmp_path, [_status("vjoy", "2.2.2.0", "same")], current=current)
+    assert model.alikeWarning() == ""
+
+
 def test_existing_devices_shown_as_they_are_and_warned_when_edited(
     qapp: object, app: Path, tmp_path: Path
 ) -> None:
-    current = [drivers.VJoyDevice(1, 4, 32, 1)]
+    current = [drivers.VJoyDevice(1, ("x", "y", "z", "rx"), 32, 1)]
     model = _model(app, tmp_path, [_status("vjoy", "2.2.2.0", "same")], current=current)
-    assert model.vjoyCurrent == [{"id": 1, "axes": 4, "buttons": 32, "hats": 1}]
-    assert model.vjoyDevices == model.vjoyCurrent
+    assert model.vjoyCurrent == [
+        {"id": 1, "axes": ["x", "y", "z", "rx"], "buttons": 32, "hats": 1}
+    ]
+    assert _plain(model.vjoyDevices) == model.vjoyCurrent
     assert model.vjoyPreset == "Custom" and not model.vjoyEdited
     assert model.vjoyWarning == "" and model.describe() == ""
     assert not model.apply()
@@ -184,7 +289,7 @@ def test_existing_devices_shown_as_they_are_and_warned_when_edited(
     text = model.describe()
     assert "1. Set up 1 vJoy device." in text
     assert model.vjoyWarning in text
-    model.setDevice(0, 4, 32, 1)  # back to what vJoy has
+    model.setDevice(0, ["x", "y", "z", "rx"], 32, 1)  # back to what vJoy has
     assert not model.vjoyEdited and model.vjoyWarning == ""
 
 
@@ -192,9 +297,9 @@ def test_a_smaller_layout_names_the_devices_that_will_be_deleted(
     qapp: object, app: Path, tmp_path: Path
 ) -> None:
     current = [
-        drivers.VJoyDevice(1, 8, 128, 4),
-        drivers.VJoyDevice(2, 8, 128, 4),
-        drivers.VJoyDevice(3, 8, 128, 4),
+        drivers.VJoyDevice(1, drivers.VJOY_AXES, 128, 4),
+        drivers.VJoyDevice(2, drivers.VJOY_AXES, 128, 4),
+        drivers.VJoyDevice(3, drivers.VJOY_AXES, 128, 4),
     ]
     model = _model(app, tmp_path, [_status("vjoy", "2.2.2.0", "same")], current=current)
     assert "deleted" not in model.describe() and model.vjoyWarning == ""
@@ -279,7 +384,7 @@ def test_apply_writes_the_job_file_and_starts_the_helper(
             "kind": "bundled",
         }
     ]
-    assert jobs[1].devices == [drivers.VJoyDevice(1, 8, 128, 4)]
+    assert jobs[1].devices == [drivers.VJoyDevice(1, drivers.VJOY_AXES, 128, 4)]
     assert not model.apply()  # busy: one run at a time
     model._timer.stop()
 
@@ -509,7 +614,8 @@ def test_the_vjoy_layout_is_read_off_the_main_thread(
 
     def reader() -> list[drivers.VJoyDevice]:
         where.append(threading.current_thread() is threading.main_thread())
-        return [drivers.VJoyDevice(1), drivers.VJoyDevice(2)]
+        # The "2 devices, full" preset counts down: 128 and 127.
+        return [drivers.new_device(1), drivers.new_device(2)]
 
     model = DriversModel(
         status_source=lambda: [_status("vjoy", "2.2.2.0", "same")],
@@ -521,3 +627,201 @@ def test_the_vjoy_layout_is_read_off_the_main_thread(
     _pump(qapp, lambda: bool(model.vjoyCurrent))
     assert where == [False]
     assert model.vjoyPreset == "2 devices, full" and not model.vjoyEdited
+
+
+# -- the rows (06 S185: setup's rows except the Visual C++ Runtime, 1b) ------
+
+SAME = [
+    _status("vjoy", "2.2.2.0", "same"),
+    _status("vigembus", "1.22.0", "same"),
+    _status("hidhide", "1.5.230", "same"),
+]
+
+
+def test_rows_are_exactly_vjoy_vigembus_hidhide(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    model = _model(app, tmp_path, SAME)
+    assert [r["key"] for r in model.rows] == ["vjoy", "vigembus", "hidhide"]
+    assert model.describe() == ""  # nothing ticked: nothing to apply
+
+
+# -- Tools › Drivers layout, one axis, devices in use (06 S185, 2026-11-22) ---
+
+VJOY_SAME = [_status("vjoy", "2.2.2.0", "same")]
+
+
+def test_remove_device_and_lowering_the_count_drops_the_highest(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    """D-06-DRIVERS-LAYOUT: the row's ✕ removes that device; lowering
+    Devices removes the highest-numbered; the last device stays."""
+    model = _model(app, tmp_path, VJOY_SAME)
+    model.setDeviceCount(4)
+    model.removeDevice(1)
+    assert [d["id"] for d in model.vjoyDevices] == [1, 3, 4]
+    assert model.vjoyPreset == "Custom"
+    model.setDeviceCount(4)  # the gap is filled, the list stays in id order
+    assert [d["id"] for d in model.vjoyDevices] == [1, 2, 3, 4]
+    model.setDeviceCount(2)
+    assert [d["id"] for d in model.vjoyDevices] == [1, 2]
+    model.removeDevice(9)  # no such row: ignored
+    model.removeDevice(0)
+    model.removeDevice(0)  # the last device stays
+    assert [d["id"] for d in model.vjoyDevices] == [2]
+
+
+def test_the_last_ticked_axis_cannot_be_unticked(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    """D-01-VJOY-ONE-AXIS, through drivers.can_untick_axis."""
+    model = _model(app, tmp_path, VJOY_SAME)
+    model.setDevice(0, ["y"], 100, 0)
+    assert model.vjoyDevices[0]["locked"] == ["y"]
+    model.setAxis(0, "y", False)
+    assert model.vjoyDevices[0]["axes"] == ["y"]
+    model.setDevice(0, [], 100, 0)  # no axis: the device keeps its axes
+    assert model.vjoyDevices[0]["axes"] == ["y"]
+    model.setAxis(0, "x", True)
+    assert model.vjoyDevices[0]["locked"] == []
+    model.setAxis(0, "y", False)
+    assert model.vjoyDevices[0]["axes"] == ["x"]
+
+
+def _busy_model(
+    app: Path, tmp_path: Path, busy: list[int], **kw: object
+) -> DriversModel:
+    current = [drivers.new_device(1), drivers.new_device(2)]
+    return _model(
+        app, tmp_path, VJOY_SAME, current=current, busy_reader=lambda: list(busy),
+        **kw,
+    )
+
+
+def test_busy_devices_are_marked_and_warned_only_when_changed_or_removed(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    """D-01-VJOY-IN-USE: the warning is drivers.in_use_warning of the busy
+    devices the setup changes or removes, a preset included."""
+    model = _busy_model(app, tmp_path, [2])
+    assert model.vjoyInUse == [2]
+    assert [r["inUse"] for r in model.vjoyDevices] == [False, True]
+    assert model.inUseWarning() == ""  # nothing edited
+    model.setDevice(0, list(drivers.VJOY_AXES), 100, 4)  # vJoy 1 only
+    assert model.inUseWarning() == ""
+    model.setDevice(1, list(drivers.VJOY_AXES), 99, 4)  # vJoy 2 changed
+    assert model.inUseWarning() == drivers.in_use_warning([2])
+    model.setPreset("1 device, full")  # vJoy 2 removed by a preset
+    assert model.inUseWarning() == drivers.in_use_warning([2])
+    model.setPreset("2 devices, full")  # back to what vJoy has
+    assert model.inUseWarning() == ""
+
+
+def test_several_busy_devices_named_together(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    model = _busy_model(app, tmp_path, [1, 2])
+    model.setDeviceCount(1)
+    model.setDevice(0, ["x"], 128, 4)
+    assert model.inUseWarning() == drivers.in_use_warning([1, 2])
+
+
+def test_busy_ids_are_read_with_the_layout_off_the_main_thread(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    import threading
+
+    where: list[bool] = []
+
+    def busy() -> list[int]:
+        where.append(threading.current_thread() is threading.main_thread())
+        return [1]
+
+    model = DriversModel(
+        status_source=lambda: VJOY_SAME,
+        app=lambda: app,
+        launcher=Launcher(),
+        vjoy_reader=lambda: [drivers.new_device(1)],
+        busy_reader=busy,
+        temp_dir=tmp_path,
+    )
+    _pump(qapp, lambda: bool(model.vjoyInUse))
+    assert where == [False]
+    assert model.vjoyInUse == [1]
+
+
+def test_a_failing_busy_read_counts_as_none_busy(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    def broken() -> list[int]:
+        raise OSError("no vJoyConfig")
+
+    current = [drivers.new_device(1), drivers.new_device(2)]
+    model = _model(app, tmp_path, VJOY_SAME, current=current, busy_reader=broken)
+    assert model.vjoyInUse == []
+    assert len(model.vjoyCurrent) == 2  # the layout still read
+
+
+def test_own_run_hides_busy_ids_until_they_are_read_again_after_stop(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    """User 2026-11-22 ("a"): while our own Run is on, busy ids are ours too,
+    so none are shown or warned about; after Stop they are read again."""
+    busy = [2]
+    model = _busy_model(app, tmp_path, busy)
+    read: list[str] = []
+    model.inUseRead.connect(lambda: read.append("read"))
+    model.runActive = True
+    assert model.vjoyInUse == []
+    assert not any(r["inUse"] for r in model.vjoyDevices)
+    model.setDevice(1, list(drivers.VJOY_AXES), 99, 4)
+    assert model.inUseWarning() == ""
+    assert model.changesVjoy() is True
+    busy[:] = []  # our Run let vJoy 2 go
+    model.runActive = False
+    assert read == ["read"]
+    assert model.vjoyInUse == []
+    assert model.inUseWarning() == ""
+    busy[:] = [2]  # someone else holds it
+    model.refreshInUse()
+    assert model.inUseWarning() == drivers.in_use_warning([2])
+
+
+def test_changes_vjoy_only_when_the_plan_touches_vjoy(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    model = _model(app, tmp_path, [*VJOY_SAME, _status("vigembus", "1.21.0", "older")])
+    assert model.changesVjoy() is False
+    model.setTicked("vigembus", True)
+    assert model.changesVjoy() is False
+    model.setDeviceCount(2)
+    assert model.changesVjoy() is True
+
+
+def test_showing_line(qapp: object, app: Path, tmp_path: Path) -> None:
+    model = _model(app, tmp_path, VJOY_SAME)
+    assert model.showingText(0, 1) == "Showing 1 device"
+    model.setDeviceCount(6)
+    assert model.showingText(0, 6) == "Showing all 6 devices"
+    assert model.showingText(0, 4) == "Showing 1-4 of 6 devices"
+    assert model.showingText(2, 4) == "Showing 3-6 of 6 devices"
+
+
+def test_add_device_takes_lowest_free_id_and_preview(
+    qapp: object, app: Path, tmp_path: Path
+) -> None:
+    """S185: the "+ Add device" row's preview and click."""
+    model = _model(qapp, tmp_path, ALL_MISSING)
+    assert model.addPreview == "vJoy 2 · 127 buttons"
+    model.setDeviceCount(3)
+    model.removeDevice(1)  # ids 1 and 3: the gap is the lowest free id
+    assert model.addPreview == "vJoy 2 · 127 buttons"
+    model.addDevice()
+    devices = _plain(model.vjoyDevices)
+    assert [d["id"] for d in devices] == [1, 2, 3]
+    assert devices[1]["buttons"] == 127
+    assert model.addPreview == "vJoy 4 · 125 buttons"
+    model.setDeviceCount(16)
+    assert model.addPreview == ""
+    model.addDevice()
+    assert len(model.vjoyDevices) == 16

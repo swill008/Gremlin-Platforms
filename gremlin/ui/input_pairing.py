@@ -9,6 +9,7 @@ from PySide6 import QtCore
 
 import gremlin.ui.type_aliases as ta
 from gremlin import device_initialization, shared_state, usages
+from gremlin.axis_names import short_name
 from gremlin.modules import wiring
 from gremlin.notice import BurstNotice, NoticeTimer
 from gremlin.signal import signal
@@ -183,7 +184,7 @@ def _mapped_rows(guid: str, input_type: InputType) -> list[dict]:
             continue
         seen.add(identifier)
         if input_type == InputType.JoystickAxis:
-            src = wiring.AXIS_SHORT.get(identifier, f"A{identifier}")
+            src = short_name(identifier)
         elif input_type == InputType.JoystickHat:
             src = f"H{identifier}"
         else:

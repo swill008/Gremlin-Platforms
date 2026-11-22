@@ -94,7 +94,7 @@ def test_kind_with_none_says_has_no(vjoy: dict) -> None:
 def test_axis_uses_the_drop_down_word(vjoy: dict) -> None:
     vjoy["claims"][1] = {"axes": [1, 2]}
     assert output.cant_send_text(1, A, 7) == (
-        "vJoy 1's Slider is not Found (vJoy 1 has Axes 1–2)."
+        "vJoy 1's Slider 1 is not Found (vJoy 1 has Axes 1–2)."
     )
 
 

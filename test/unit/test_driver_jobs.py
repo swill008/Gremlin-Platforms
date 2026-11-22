@@ -320,12 +320,52 @@ def test_parse_report() -> None:
     [device] = driver_jobs.parse_report(
         _report(2, axes="X Y Z - - - - -", buttons=32, cont=1)
     )
-    assert (device.id, device.axes, device.buttons, device.hats) == (2, 3, 32, 1)
+    assert (device.id, device.axes, device.buttons, device.hats) == (
+        2,
+        ("x", "y", "z"),
+        32,
+        1,
+    )
     [full] = driver_jobs.parse_report(_report(1))
-    assert (full.axes, full.buttons, full.hats) == (8, 128, 4)
-    # A gap ends the "first N axes" count.
+    assert (full.axes, full.buttons, full.hats) == (drivers.VJOY_AXES, 128, 4)
+    # Axes are read by position: a gap does not end the list.
     [gap] = driver_jobs.parse_report(_report(1, axes="X - Z"))
-    assert gap.axes == 1
+    assert gap.axes == ("x", "z")
+
+
+def test_parse_report_of_the_real_mixed_line() -> None:
+    text = _report(1).replace(
+        "X Y Z Rx Ry Rz Sl0 Sl1 - - - - - - - - ", "X Y - - - - Sl0 - - - - - - - - - "
+    )
+    [device] = driver_jobs.parse_report(text)
+    assert device.axes == ("x", "y", "sl0")
+
+
+def test_vjoy_setup_passes_exactly_the_ticked_axes() -> None:
+    device = VJoyDevice(1, ("x", "y", "sl0"), 8, 0)
+    runner = _vjoy_runner(
+        lambda i: _report(i, axes="X Y - - - - Sl0", buttons=8, cont=0)
+    )
+    ok, message, _ = driver_jobs.vjoy_setup([device], runner)
+    assert ok, message
+    command = runner.calls[1]
+    assert command[command.index("-a") : command.index("-b")] == [
+        "-a",
+        "x",
+        "y",
+        "sl0",
+    ]
+    assert "3 axes (X, Y, S1), 8 buttons, 0 hats" in message
+
+
+def test_vjoy_setup_reports_a_different_axis_set_on_read_back() -> None:
+    runner = _vjoy_runner(lambda i: _report(i, axes="X Y Z", buttons=8, cont=0))
+    ok, message, _ = driver_jobs.vjoy_setup(
+        [VJoyDevice(1, ("x", "y", "sl0"), 8, 0)], runner
+    )
+    assert not ok
+    assert "reads back as 3 axes (X, Y, Z)" in message
+    assert "asked for 3 axes (X, Y, S1)" in message
     assert driver_jobs.parse_report("vJoy driver is not installed or disabled") == []
     assert [d.id for d in driver_jobs.parse_report(_report(1) + _report(3))] == [1, 3]
 
@@ -351,7 +391,7 @@ def _vjoy_runner(read_back: Callable[[int], str], listing: str = "") -> FakeRunn
 
 
 def test_vjoy_setup_commands_and_read_back() -> None:
-    devices = [VJoyDevice(1), VJoyDevice(2, 3, 32, 1)]
+    devices = [VJoyDevice(1), VJoyDevice(2, ("x", "y", "z"), 32, 1)]
     layouts = {1: _report(1), 2: _report(2, axes="X Y Z", buttons=32, cont=1)}
     runner = _vjoy_runner(lambda i: layouts[i])
     ok, message, restart = driver_jobs.vjoy_setup(devices, runner)
@@ -388,24 +428,30 @@ def test_vjoy_setup_exit_code_zero_is_not_trusted() -> None:
     runner = _vjoy_runner(lambda i: _report(i, buttons=64))
     ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1)], runner)
     assert not ok
-    assert "reads back as 8 axes, 64 buttons" in message
+    assert "reads back as 8 axes (X-S2), 64 buttons" in message
 
 
 def test_device_text_uses_the_singular_for_one() -> None:
     describe = driver_jobs.describe_device
-    assert describe(VJoyDevice(4, 4, 32, 1)) == "4 axes, 32 buttons, 1 hat"
-    assert describe(VJoyDevice(1, 1, 1, 0)) == "1 axis, 1 button, 0 hats"
-    assert describe(VJoyDevice(1, 0, 2, 1)) == "0 axes, 2 buttons, 1 hat"
+    assert (
+        describe(VJoyDevice(4, ("x", "y", "z", "rx"), 32, 1))
+        == "4 axes (X, Y, Z, Rx), 32 buttons, 1 hat"
+    )
+    assert describe(VJoyDevice(1, ("x",), 1, 0)) == "1 axis (X), 1 button, 0 hats"
+    assert describe(VJoyDevice(1, (), 2, 1)) == "0 axes, 2 buttons, 1 hat"
+    assert describe(VJoyDevice(1, buttons=2, hats=1)) == (
+        "8 axes (X-S2), 2 buttons, 1 hat"
+    )
 
 
 def test_vjoy_setup_summary_and_read_back_use_the_singular() -> None:
     runner = _vjoy_runner(lambda i: _report(i, axes="X", buttons=1, cont=1))
-    ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1, 1, 1, 1)], runner)
-    assert ok and "device 1: 1 axis, 1 button, 1 hat" in message, message
-    ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1, 2, 2, 1)], runner)
+    ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1, ("x",), 1, 1)], runner)
+    assert ok and "device 1: 1 axis (X), 1 button, 1 hat" in message, message
+    ok, message, _ = driver_jobs.vjoy_setup([VJoyDevice(1, ("x", "y"), 2, 1)], runner)
     assert not ok
-    assert "reads back as 1 axis, 1 button, 1 hat, " in message
-    assert "asked for 2 axes, 2 buttons, 1 hat" in message
+    assert "reads back as 1 axis (X), 1 button, 1 hat, " in message
+    assert "asked for 2 axes (X, Y), 2 buttons, 1 hat" in message
 
 
 def test_vjoy_setup_device_missing_after_setup() -> None:
@@ -496,3 +542,38 @@ def test_run_job_never_raises_on_runner_error(tmp_path: Path) -> None:
         Job("install", "vjoy", _files(tmp_path, "bundled")), broken, check_bundled=_ok
     )
     assert result.state == "failed" and "gone" in result.message
+
+
+_STATUS_TEXT = (
+    "\nDevice 1:\tStatus: FREE\nDevice 2:\tStatus: OWNED"
+    "\nDevice 3:\tStatus: MISSING\nDevice 4:\tStatus: busy\n"
+)
+
+
+def test_parse_status_all_devices_upper_case() -> None:
+    assert driver_jobs.parse_status(_STATUS_TEXT) == {
+        1: "FREE",
+        2: "OWNED",
+        3: "MISSING",
+        4: "BUSY",
+    }
+    assert driver_jobs.parse_status("") == {}
+    assert driver_jobs.parse_status_list(_STATUS_TEXT) == [1, 2, 4]
+
+
+def test_busy_vjoy_devices() -> None:
+    runner = FakeRunner([(0, _STATUS_TEXT)])
+    assert driver_jobs.busy_vjoy_devices(runner) == [2, 4]
+    assert runner.calls[0][1:] == ["-t"]
+    assert (
+        driver_jobs.busy_vjoy_devices(FakeRunner([(0, "Device 1:\tStatus: FREE")]))
+        == []
+    )
+
+    def boom(command: list[str], timeout: float) -> tuple[int, str]:
+        raise OSError("no vJoyConfig")
+
+    assert driver_jobs.busy_vjoy_devices(boom) == []
+    blocked = FakeRunner([lambda c: (_ for _ in ()).throw(RealRunnerBlocked("x"))])
+    with pytest.raises(RealRunnerBlocked):
+        driver_jobs.busy_vjoy_devices(blocked)

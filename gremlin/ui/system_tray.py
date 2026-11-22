@@ -7,7 +7,11 @@ import contextlib
 import ctypes
 import ctypes.wintypes
 import logging
+import typing
 import uuid
+
+if typing.TYPE_CHECKING:
+    from gremlin import startup_entry
 
 import win32api
 import win32con
@@ -41,6 +45,7 @@ _ID_TOGGLE = 1024
 _ID_QUIT = 1025
 _ID_SSM = 1026
 _ID_DISPLAYS_OFF = 1027
+_ID_START_WITH_WINDOWS = 1028
 
 # Messages that say Windows showed the main window (01 S174).
 _WM_SHOWWINDOW = 0x0018
@@ -565,9 +570,44 @@ class SystemTrayIcon(QtCore.QObject):
             self._toggle_screen_saver_mode()
         elif command == _ID_DISPLAYS_OFF:
             self._turn_displays_off_now()
+        elif command == _ID_START_WITH_WINDOWS:
+            self._toggle_start_with_windows()
         elif command == _ID_QUIT:
             self._quit_gremlin()
         return 0
+
+    @staticmethod
+    def _start_with_windows_on(store: startup_entry.Store | None = None) -> bool:
+        """Whether the Windows start-up entry is set; False when the
+        start-up module fails (the tray must not break)."""
+        try:
+            from gremlin import startup_entry
+
+            return bool(startup_entry.is_enabled(store=store))
+        except Exception:
+            logging.getLogger("system").warning(
+                "Tray: reading the start-with-Windows entry failed", exc_info=True
+            )
+            return False
+
+    def _toggle_start_with_windows(
+        self, store: startup_entry.Store | None = None
+    ) -> None:
+        try:
+            from gremlin import startup_entry
+
+            on = not self._start_with_windows_on(store)
+            logging.getLogger("system").info(
+                "Tray: Start with Windows %s", "on" if on else "off"
+            )
+            if not startup_entry.set_enabled(on, store=store):
+                logging.getLogger("system").warning(
+                    "Tray: Start with Windows change was not applied"
+                )
+        except Exception:
+            logging.getLogger("system").warning(
+                "Tray: Start with Windows toggle failed", exc_info=True
+            )
 
     @staticmethod
     def _ssm_functions() -> tuple | None:
@@ -683,6 +723,14 @@ class SystemTrayIcon(QtCore.QObject):
             win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
             label = "Stop Profile" if self._backend.gremlinActive else "Run Profile"
             win32gui.AppendMenu(menu, win32con.MF_STRING, _ID_TOGGLE, label)
+            start_flags = win32con.MF_STRING | (
+                win32con.MF_CHECKED
+                if SystemTrayIcon._start_with_windows_on()
+                else win32con.MF_UNCHECKED
+            )
+            win32gui.AppendMenu(
+                menu, start_flags, _ID_START_WITH_WINDOWS, "Start with Windows"  # pyright: ignore[reportCallIssue]
+            )
             win32gui.AppendMenu(menu, win32con.MF_SEPARATOR, 0, "")
             win32gui.AppendMenu(
                 menu, win32con.MF_STRING, _ID_QUIT, "Exit Gremlin-Platforms"

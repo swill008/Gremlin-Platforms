@@ -813,9 +813,7 @@ def test_restart_line_names_same_mouse_as_last_traced(
     traced.clear()
     clk.note_input(source=MOUSE, kind="mouse")
     run(1)
-    assert (
-        "input after action: countdown restarts (by G502 (mouse))" in traced
-    )
+    assert "input after action: countdown restarts (by G502 (mouse))" in traced
     assert "last reset by: G502 (mouse)" not in traced
 
 
@@ -849,7 +847,7 @@ def test_window_proc_passes_device_and_kind(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(
         c,
         "note_input",
-        lambda own=False, source=None, kind="", press=False: got.append(
+        lambda own=False, source=None, kind="", press=False, wheel=False: got.append(
             (own, source, kind, press)
         ),
     )
@@ -1725,9 +1723,7 @@ def test_s21_power_off_sent_after_ten_seconds_when_never_done(
     assert api.powered_off == 0
     run(1)
     assert api.powered_off == 1
-    assert (
-        "devices still being switched off after 10 s: power off sent" in lines
-    )
+    assert "devices still being switched off after 10 s: power off sent" in lines
 
 
 def test_s21_input_during_the_wait_cancels_the_power_off(
@@ -2347,19 +2343,95 @@ def test_ssm2_test_now_counts_down_then_runs_the_sequence(
     assert not mode.status().keeping_off
 
 
-def test_ssm2_input_during_the_countdown_cancels(
-    env: Env, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "inp",
+    [
+        {"kind": "keyboard", "press": True},
+        {"kind": "mouse", "press": True},
+        {"kind": "mouse", "wheel": True},
+    ],
+    ids=["key press", "mouse click", "mouse wheel"],
+)
+def test_ssm2_press_during_the_countdown_cancels(
+    env: Env, monkeypatch: pytest.MonkeyPatch, inp: dict
 ) -> None:
     mode, api, clk, now, run, _t = env
     lines = _traced(monkeypatch)
     mode.apply(_on(saver_wait=3600, off_wait=7200))
     mode.start_test(delay_s=5.0)
     run(2)
-    clk.note_input(source=0x1001, kind="keyboard")
+    clk.note_input(source=0x1001, **inp)
     run(1)
     assert "Test now: cancelled" in lines and mode.test_remaining() == 0
     run(10)
     assert api.powered_off == 0
+
+
+@pytest.mark.parametrize(
+    "inp",
+    [
+        {"source": 0x1001, "kind": "mouse"},  # movement
+        {"source": 0x1001, "kind": "keyboard"},  # key up
+        {"source": None, "kind": "keyboard", "press": True},  # a program
+        {"source": None, "kind": "mouse", "wheel": True},  # a program
+    ],
+    ids=["mouse movement", "key up", "program key", "program wheel"],
+)
+def test_ssm2_movement_or_program_input_does_not_cancel(
+    env: Env, monkeypatch: pytest.MonkeyPatch, inp: dict
+) -> None:
+    mode, api, clk, now, run, _t = env
+    lines = _traced(monkeypatch)
+    dev = _Devices(1)
+    mode.set_device_hooks(dev.hook, None)
+    mode.apply(_on(saver_wait=3600, off_wait=7200))
+    mode.start_test(delay_s=5.0)
+    run(2)
+    clk.note_input(**inp)
+    run(1)
+    assert "Test now: cancelled" not in lines and mode.test_remaining() == 2
+    run(2)
+    assert "Test now: sequence started" in lines and dev.starts == 1
+
+
+def test_ssm2_press_from_a_device_off_the_wake_list_is_not_a_press() -> None:
+    clk = ssm.InputClock()
+    clk.physical_id_of = lambda h: "OTHER"
+    clk.set_wake_ids(frozenset({"WAKE"}))
+    clk.note_input(source=0x1001, kind="keyboard", press=True)
+    assert clk.last_press() == 0.0
+
+
+def test_input_clock_last_press(monkeypatch: pytest.MonkeyPatch) -> None:
+    now = [5.0]
+    monkeypatch.setattr(clock, "monotonic", lambda: now[0])
+    c = ssm.InputClock()
+    assert c.last_press() == 0.0
+    now[0] = 6.0
+    c.note_input(source=0x1001, kind="mouse")  # movement
+    assert c.last_press() == 0.0 and c.last_input() == 6.0
+    now[0] = 7.0
+    c.note_input(source=0x1001, kind="mouse", wheel=True)
+    assert c.last_press() == 7.0
+    now[0] = 8.0
+    c.note_input(source=None, kind="keyboard", press=True)  # a program
+    c.note_input(own=True, source=0x1001, kind="keyboard", press=True)
+    assert c.last_press() == 7.0
+    now[0] = 9.0
+    c.note_input(source=0x1001, kind="keyboard", press=True)
+    assert c.last_press() == 9.0
+
+
+def test_raw_input_wheel_flags() -> None:
+    raw = ssm.RAWINPUT()
+    raw.header.dwType = 0  # mouse
+    for flags, want in ((0x0400, True), (0x0800, True), (0x0001, False), (0, False)):
+        raw.data.mouse.u.buttons.usButtonFlags = flags
+        assert ssm.raw_input_wheel(raw) is want
+        assert ssm.raw_input_press(raw) is (flags == 0x0001)
+    raw.header.dwType = 1  # keyboard
+    raw.data.keyboard.Flags = 0
+    assert ssm.raw_input_wheel(raw) is False
 
 
 def test_ssm2_cancel_test(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:

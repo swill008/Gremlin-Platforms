@@ -104,6 +104,7 @@ expect.
 - 2a: the program's own silent update runs no driver jobs (01 S187).
 - 6a: Tools › Drivers keeps the job file; the private channel stays SSM-only (12 S25a).
 - Go 2026-11-21 04:25: build 1a, 3a, 4a, 5a.
+- 27a (2026-11-21 07:25, after test 6 showed vJoy devices survive an update): vJoy older than 2.2.2.0 stays an optional, unticked "update available" (6a unchanged); Gremlin keeps accepting vJoy from 2.1.8. No spec change.
 
 ## Build batch (built 2026-11-21 up to testing; contract driver-setup-contract.md)
 

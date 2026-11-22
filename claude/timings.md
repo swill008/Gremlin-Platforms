@@ -1209,3 +1209,96 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-21 | Screen tests 25a (setup Drivers page, Custom vJoy, runtime, both prompts) + 25b (Tools > Drivers, 2->1 device) over Remote Desktop, incl. window/monitor/access setup (lead) | test | rough guess 10-15 + 10 min | ~12 min (07:26 rebuild start - 07:38) |  |
 | 2026-11-21 | Fixes 30a/31a/32a: ISS4 (Opus, runtime prompt via Process.Start runas, launch box, wording; 07:41-07:46) + WORD (Sonnet, 1 axis/button/hat; ~2 min) + lead commit | fix batch | research 10-15 + agent fix 3-8 | ~7 min | 07:40-07:47 |
 | 2026-11-21 | Recheck in test machine: runtime prompt (30a ok), Launch box (31a: ISS5 fix, then ok), marquee bar (ISS6; animation not confirmed: runtime took 3 s); a broken parallel build caught and redone (lead) | test+fix | rough guess 10 min | ~25 min | 07:48-08:05 |
+| 2026-11-21 | Verify vJoy axis mix + Microsoft runtime link in the test machine (lead) | research | ~3 min | 2 min | 11:07-11:09 |
+| 2026-11-21 | Contract + split + 5 agent briefs, axis picker batch (lead) | planning | no row; ~5 min | 5 min | 11:09-11:14 |
+| 2026-11-21 | E2E: named axes through the real path (Sonnet) | test | 3-8 min | ~2 min | agent clock 11:11-11:12 |
+| 2026-11-21 | DOCS: spec 01/06/12, map, glossary, Help (Sonnet) | docs | 3-8 min | ~4 min | 11:11-11:15 |
+| 2026-11-21 | DATA: axes by name in drivers.py/driver_jobs.py (Sonnet) | feature | 3-8 min | ~6 min | 11:11-11:17 |
+| 2026-11-21 | UI: Tools › Drivers axis tick boxes (Sonnet) | feature | 3-8 min | ~7 min | 11:11-11:18 |
+| 2026-11-21 | SETUP: device rows + scroll, newest-runtime box, prompt in front (Opus) | feature | 10-20 min | ~11 min | 11:11-11:22; no TScrollBox in Inno 6.7.3 |
+| 2026-11-21 | Batch quick tests (323 targeted) + pyright baseline (lead) | test | ~2 min | 1 min | 11:22-11:23 |
+| 2026-11-21 | Program build + installer, sequential (lead) | local build | 2 min | 2 min | 11:23-11:24, 3,124 files |
+| 2026-11-21 | Test machine reset to clean + setup started + restart for sign-in (lead) | test | ~2 min | 3 min | 11:25-11:28 |
+| 2026-11-21 | PC crash diagnosis: two minidumps read with cdb, agent transcript traced, memory rule (lead) | investigation | no timing data | ~15 min | 11:40-13:50 with breaks |
+| 2026-11-21 | SETUP-WHEEL: mouse wheel over the vJoy rows (thread mouse hook) + 1 test + ISCC compile (Opus agent) | agent fix | 3-8 min (agent fix) | 3 min | 13:55-13:58 |
+| 2026-11-21 | Lead: spec S187/decision 6a+b, plan answers; test machine restored to clean in parallel | lead | ~3 min | 3 min | 13:54-13:57 |
+| 2026-11-21 | Installer-only rebuild (build_installer.ps1, no pyinstaller) | local build | ~1 min | 1 min | 13:59-14:00 |
+| 2026-11-21 | Test machine: copy setup, register task, restart guest, Remote Desktop to the TV | test machine | ~1.5 min | 1.5 min | 14:00-14:01 |
+| 2026-11-21 | Scroll-look research: web search, example images (Git for Windows setup), this setup's License page (lead) | research | no timing data | ~9 min | 14:12-14:21 |
+| 2026-11-21 | SETUP-LOOK: paragraph out, caption, bordered box, Showing line, taller window + 3 tests (Opus agent) | agent fix | 3-8 min (agent fix) | 9 min | 14:15-14:24 |
+| 2026-11-21 | Lead: spec S187/S193, glossary, Help wording (parallel to SETUP-LOOK) | docs | ~2 min | 2 min | 14:13-14:15 |
+| 2026-11-21 | Installer-only rebuild | local build | ~1 min | 1 min | 14:24-14:25 |
+| 2026-11-21 | Test machine: restore + copy + restart in one script, address check, Remote Desktop on CF15T | test machine | ~2.5 min | 4 min | 14:25-14:29 |
+| 2026-11-21 | Countdown batch: DATA shared rule + 4 tests (Sonnet agent) | agent fix | 3-8 min (agent fix) | 1 min | 14:39-14:40 |
+| 2026-11-21 | Countdown batch: UI Tools › Drivers countdown + warning box + 3 tests (Opus agent) | agent fix | 3-8 min (agent fix) | 3 min | 14:39-14:41 |
+| 2026-11-21 | Countdown batch: SETUP countdown, warning at Next, hint, window height + 3 tests, compile (Opus agent) | agent fix | ~10 min | 5 min | 14:39-14:44 |
+| 2026-11-21 | Countdown batch: E2E 3 tests on the real path (Sonnet agent) | test | 3-8 min (agent fix) | 2 min | 14:40-14:41 |
+| 2026-11-21 | Countdown batch: DOCS help + glossary (Haiku agent) | docs | ~5 min | ~1 min | 14:40-14:40 |
+| 2026-11-21 | Countdown batch: lead contract, spec 01/06, gap, decision, glossary | lead | no timing data | 6 min | 14:33-14:39, 14:42 |
+| 2026-11-21 | Countdown batch: lead targeted tests (307) + ruff + pyright baseline | test run | ~2 min | 2 min | 14:44-14:46 |
+| 2026-11-21 | Countdown batch end to end (5 agents start to last report) | batch | ~10 min | 5 min | 14:39-14:44 |
+| 2026-11-21 | Drivers page tidy mock-ups: 2 inline drawings (not seen by user), then the user's screenshot edited into options a/b/c (lead, user asked for edited images) | mock-up | no timing data | ~12 min | 15:02-15:14 |
+| 2026-11-21 | Runtime row batch: DATA runtime update job + 21 tests (Opus agent) | feature | no timing data; rough guess 12 min | 2 min | 15:02-15:04 |
+| 2026-11-21 | Runtime row batch: UI runtime rows in Tools › Drivers + 9 tests (Opus agent) | feature | ~10 min | 3 min | 15:02-15:05 |
+| 2026-11-21 | Runtime row batch: SETUP parent/child rows, layout b + 6 tests, compile (Opus agent) | feature | ~12 min | 7 min | 15:02-15:09 |
+| 2026-11-21 | Runtime row batch: E2E 7 cases on the real path (Sonnet agent) | test | ~10 min | 4 min | 15:02-15:06 |
+| 2026-11-21 | Runtime row batch: DOCS help (Haiku agent) | docs | ~5 min | 1 min | 15:02-15:03 |
+| 2026-11-21 | Runtime row batch: lead contract, spec 01/06, decision, glossary | lead | no timing data | 5 min | 14:58-15:03 |
+| 2026-11-21 | Runtime row batch end to end (5 agents start to last report) | batch | 10-15 min | 7 min | 15:02-15:09 |
+| 2026-11-21 | Runtime row batch: lead targeted tests (350) + ruff + pyright | test run | ~2 min | 1 min | 15:09-15:10 |
+| 2026-11-21 | Program + installer build (runtime row batch) | local build | ~3 min | 1 min | 15:09-15:10 |
+| 2026-11-21 | Test machine: restore + copy + restart, Remote Desktop opened once on CF15T | test machine | ~4 min | 4 min | 15:11-15:15 |
+| 2026-11-21 | Test machine results read: setup log, installed drivers, vJoyConfig -t 1-5; vJoy 2.2 question checked (shipped DLL version, plans) (lead) | test | ~3 min | 6 min | 15:27-15:33 |
+| 2026-11-21 | vJoy 2.2 study: NOTES GitHub changes (Sonnet agent) | research | rough guess 15 min | 1-2 min | 15:33-15:34 |
+| 2026-11-21 | vJoy 2.2 study: CODE our calls vs 2.2.2.0 source (Opus agent) | research | rough guess 15 min | 4 min | 15:33-15:37 |
+| 2026-11-21 | vJoy 2.2 study: VMTEST library + program in the test machine (Opus agent) | test machine | rough guess 25 min | 6 min | 15:33-15:39 |
+| 2026-11-21 | vJoy 2.2 study end to end incl. lead summary | research | 20-30 min (rough guess) | 8 min | 15:33-15:41 |
+| 2026-11-22 | To-do entries 0c-0f (vJoy 2.2 follow-ups, new axes, force feedback) + admin prompt note (lead) | lead records | about 1 min (rough guess) | 1 min | 02:41-02:42 |
+| 2026-11-22 | New axes study: CODE our code (Sonnet agent) | review | 5-10 min | 2 min | 02:44-02:46 |
+| 2026-11-22 | New axes study: WINDOWS DirectInput/dill/games (Opus agent) | review | 5-10 min | 3 min | 02:45-02:48 |
+| 2026-11-22 | New axes study: VJOY 2.2.2.0 source (Opus agent) | review | 5-10 min | 5 min | 02:44-02:49 |
+| 2026-11-22 | New axes study end to end incl. lead summary | review | 5-10 min | 7 min | 02:44-02:51 |
+| 2026-11-22 | New axes web research: USERS (Sonnet agent) | review | 5-10 min | 1 min | 02:59-03:00 |
+| 2026-11-22 | New axes web research: GAMES (Opus agent) | review | 5-10 min | 2 min | 02:59-03:01 |
+| 2026-11-22 | New axes web research: TOOLS (Sonnet agent) | review | 5-10 min | 3 min | 02:59-03:02 |
+| 2026-11-22 | New axes web research end to end incl. lead summary | review | 5-10 min | 9 min | 02:55-03:04 |
+| 2026-11-22 | vJoy maker research: BRUNNER-GH (Sonnet agent) | review | about 10 min | 1 min | 03:05-03:06 |
+| 2026-11-22 | vJoy maker research: NJZ3 (Sonnet agent) | review | about 10 min | 1 min | 03:05-03:06 |
+| 2026-11-22 | vJoy maker research: FORUMS (Sonnet agent) | review | about 10 min | 1 min | 03:05-03:06 |
+| 2026-11-22 | vJoy maker research: BRUNNER-CO (Opus agent) | review | about 10 min | 3 min | 03:05-03:08 |
+| 2026-11-22 | vJoy maker research end to end incl. lead summary | review | 5-10 min | 6 min | 03:05-03:11 |
+| 2026-11-22 | Issue #30 status: FIX30 (Sonnet agent) | review | 5-10 min | 1 min | 03:16-03:17 |
+| 2026-11-22 | vJoy device held by another program: INUSE (Sonnet agent) | review | 5-10 min | 1 min | 03:16-03:17 |
+| 2026-11-22 | Axis-name tables reading + both checks incl. lead summary | review | 5-10 min | 7 min | 03:14-03:21 |
+| 2026-11-22 | Batch 2: DATA (Sonnet agent) | feature | 3-8 min | 2 min | 03:50-03:52 |
+| 2026-11-22 | Batch 2: NAMES one axis-name table (Opus agent) | refactor | 5-10 min | 4 min | 03:50-03:54 |
+| 2026-11-22 | Batch 2: DOCS map, glossary, Help (Sonnet agent, + own-Run follow-up) | docs | 3-8 min | 2 min + 1 min | 03:51-03:53 |
+| 2026-11-22 | Batch 2: E2E (Sonnet agent) | test | 3-8 min | 3 min | 03:51-03:54 |
+| 2026-11-22 | Batch 2: SETUP (Opus agent, + red-name follow-up 1 min) | feature | 3-8 min | 4 min + 1 min | 03:51-03:55, 04:00-04:01 |
+| 2026-11-22 | Batch 2: UI Tools › Drivers (Opus agent, incl. two follow-ups) | feature | 3-8 min (up to ~15) | 10 min | 03:51-04:01 |
+| 2026-11-22 | Off-screen picture of the real Tools › Drivers window (lead) | lead check | no timing data (rough guess 3 min) | 2 min | 04:01-04:03 |
+| 2026-11-22 | C++ out of Tools › Drivers: DATA2 (Sonnet agent) | refactor | 3-8 min | 1 min | 04:07-04:08 |
+| 2026-11-22 | C++ out of Tools › Drivers: UI2 (Sonnet agent) | refactor | 3-8 min | 2 min | 04:07-04:09 |
+| 2026-11-22 | C++ out of Tools › Drivers: E2E2 (Sonnet agent) | test | 3-8 min | 5 min | 04:07-04:12 |
+| 2026-11-22 | C++ out of Tools › Drivers: DOCS2 (Sonnet agent) | docs | 3-8 min | 1 min | 04:07-04:08 |
+| 2026-11-22 | Quick tests --changed (before the C++ removal) | test | ~5 min | 7 min | 04:03-04:10 |
+| 2026-11-22 | Why the program stopped: logs + Windows events (lead) | lead check | no timing data | 3 min | 04:10-04:13 |
+| 2026-11-22 | Start with Windows: STARTUP (Opus agent) | feature | 3-8 min | 3 min | 04:18-04:21 |
+| 2026-11-22 | Start with Windows: TRAY (Sonnet agent) | feature | 3-8 min | 1 min | 04:18-04:19 |
+| 2026-11-22 | Start with Windows: SETUP2 uninstall (Sonnet agent) | feature | 3-8 min | ~3 min | 04:19 |
+| 2026-11-22 | Test now ignores movement: SSM (Opus agent) | fix | 3-8 min | 2 min | 04:19-04:21 |
+| 2026-11-22 | Start with Windows + Test now docs: DOCS3 (Sonnet agent) | docs | 3-8 min | 1 min | 04:19-04:20 |
+| 2026-11-22 | Quick tests + pyright on batch (concurrent with agents) | test | ~7 min | 8 min | 04:13-04:21 |
+| 2026-11-22 | Lead checks: 2 tests pinning old wording, 3 type errors, tray log, map line | lead check | ~5 min | 2 min | 04:21-04:23 |
+| 2026-11-22 | Version 1.1.1 + release notes draft (lead) | lead | no timing data | 3 min | 04:25-04:28 |
+| 2026-11-22 | Build 1.1.1 (PyInstaller + installer) | build | ~3 min | 7 min | 04:24-04:31 |
+| 2026-11-22 | Quick tests --changed on the whole batch | test | ~7 min | 9 min | 04:31-04:40 |
+| 2026-11-22 | Test machine: restore + 1.1.1 setup + restart, Remote Desktop on CF15T | test machine | ~4 min | 3 min | 04:38-04:41 |
+| 2026-11-22 | Fix 3 tray tests (menu list + class call), pyright/ruff | fix | 3-8 min | 1 min | 04:41-04:42 |
+| 2026-11-22 | Add-device row: DATA3 (Sonnet agent) | fix | 3-8 min | 1 min | 04:50-04:51 |
+| 2026-11-22 | Add-device row: UI3 (Sonnet agent) | feature | 3-8 min | 4 min | 04:50-04:54 |
+| 2026-11-22 | Add-device row: SETUP3 (Opus agent) | feature | 3-8 min | 3 min | 04:51-04:54 |
+| 2026-11-22 | Add-device row: DOCS4 (Sonnet agent) | docs | 3-8 min | <1 min | 04:51 |
+| 2026-11-22 | Rebuild 1.1.1 with the add-device row | build | ~7 min | 2 min | 04:54-04:56 |
+| 2026-11-22 | Test machine: restore + new 1.1.1 setup + restart, Remote Desktop on CF15T | test machine | ~3 min | 3 min | 05:01-05:04 |
+| 2026-11-22 | Quick tests --changed after add-device row (with the test machine running) | test | ~9 min | 9 min | 04:56-05:05 |
