@@ -1333,3 +1333,8 @@ progress updates). Log those from now on so whole-batch quotes are measured.
 | 2026-11-22 | Help fixes from fresh readers: F1-F8 (8 Opus agents) | docs | ~10 min | 7 min | 07:35-07:42 |
 | 2026-11-22 | Old Help-wording tests: PIN (Opus agent) + lead (Options groups, links, "I") | test | 3-8 min | 5 min | 07:43-07:48 |
 | 2026-11-22 | Quick tests --changed + pyright before the release commit | test | ~9 min | 10 min | 07:48-07:58 |
+| 2026-11-22 | Build 1.1.1 from cb1010aa and start setup on the user's PC | build | ~2 min | 1 min | 08:05-08:06 |
+| 2026-11-22 | Search fix: EDIT, SEARCHUI, NOTICE, E2E, DOCS (5 Opus agents) + lead (one naming rule, references.py) | feature | 3-8 min each | 9 min | 08:13-08:22 |
+| 2026-11-22 | Refused-edit box: SEARCHUI follow-up (Opus agent) + Help line | fix | 3-8 min | 2 min | 08:33-08:35 |
+| 2026-11-22 | Quick tests --changed (4,212 tests; one extra run by mistake before it) | test | ~10 min | 14 min | 08:22-08:36 |
+| 2026-11-22 | Build 1.1.1 + setup on the user's PC | build | ~2 min | 1 min | 08:36-08:37 |

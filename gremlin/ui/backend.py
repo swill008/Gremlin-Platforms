@@ -244,6 +244,21 @@ def _load_notes(logical: list[str], osc: list[str]) -> list[tuple[str, str]]:
     return notes
 
 
+def _source_device_name(binding: dict, loaded: object) -> str:
+    """A source device's name, even unplugged (04 S32a): Gremlin's live name,
+    then its module's name, then the profile's stored name; the id only when
+    nothing names it."""
+    guid = str(binding.get("device_guid") or "")
+    live = str(binding.get("device_name") or "").strip()
+    if live and live.strip("{}").lower() != guid.strip("{}").lower():
+        return live
+    if guid:
+        from gremlin import binding_edit  # the one naming rule (01 S195)
+
+        return binding_edit.device_name(guid, loaded)
+    return live or "?"
+
+
 def _cant_send_notice(loaded: object) -> str:
     """The load notice for bindings that can't be sent, per source device
     with its count (D-04-CANT-SEND-NOTICE), e.g. "VKBSim NXT: 94 binding
@@ -257,7 +272,7 @@ def _cant_send_notice(loaded: object) -> str:
         return ""
     counts: dict[str, int] = {}
     for binding in found:
-        name = binding.get("device_name") or binding.get("device_guid") or "?"
+        name = _source_device_name(binding, loaded)
         counts[name] = counts.get(name, 0) + 1
     parts = []
     for name, count in counts.items():

@@ -6,7 +6,8 @@ and toggles, Look in, quick and Health filters with counts, results grouped
 profile → device as one flat list (header rows and result rows), sort,
 folds, the detail pane's facts, Listen, suggestions and the nothing-found
 hints. Rows come from gremlin.search_index; matching from
-gremlin.search_query. It only reads: it changes nothing."""
+gremlin.search_query. Its only edits are Remove binding…, Change target…
+and their Undo (01 S195), done by gremlin.binding_edit."""
 
 from __future__ import annotations
 
@@ -120,6 +121,10 @@ ROLE_NAMES = (
     "notPlugged",
     "score",
 )
+# The box's title when an edit can't be made (01 S195).
+REFUSED_TITLE = "Can't change the binding"
+# The action Change target… is for (Map to vJoy).
+VJOY_TAG = "map-to-vjoy"
 SORT_COLUMNS = {
     "input": lambda row: (str(row.input_label).casefold(), str(row.custom_name)),
     "mode": lambda row: str(row.mode).casefold(),
@@ -288,6 +293,9 @@ class SearchModel(QtCore.QAbstractListModel):
     suggestionsChanged = QtCore.Signal()
     listenChanged = QtCore.Signal()
     detailOpenChanged = QtCore.Signal()
+    undoChanged = QtCore.Signal()
+    # An edit or undo was refused: (title, why) for the window's box.
+    editRefused = QtCore.Signal(str, str)
     # The index changed (any thread): carried to the main thread.
     _indexChanged = QtCore.Signal()
 
@@ -326,6 +334,9 @@ class SearchModel(QtCore.QAbstractListModel):
         self._listener: Any = None
         self._osc_hooked = False
         self._closed = False
+        # Undo records of this window's edits, for the profile they are on.
+        self._undo: list[Any] = []
+        self._undo_profile: Any = None
         self._load_state()
 
         self._debounce = self._timer(DEBOUNCE_MS, self._run)
@@ -374,6 +385,8 @@ class SearchModel(QtCore.QAbstractListModel):
 
         search_query.clear_cache()
         self._run()
+        # A save or another profile ends Undo.
+        self.undoChanged.emit()
 
     @staticmethod
     def _notices() -> tuple:
@@ -992,6 +1005,179 @@ class SearchModel(QtCore.QAbstractListModel):
         text = target_text(self._rows[row]["_row"])
         if text:
             self.searchFor(text)
+
+    # Fixing a binding (01 S195): Remove binding…, Change target…, Undo and
+    # Open on an unplugged device. The edits are gremlin.binding_edit's.
+
+    def _found(self, row: int) -> Any:  # noqa: ANN401
+        if not 0 <= row < len(self._rows):
+            return None
+        return self._rows[row].get("_row")
+
+    def _editable(self, row: int) -> Any:  # noqa: ANN401
+        """The row's SearchRow when it is an action of the open profile."""
+        found = self._found(row)
+        if found is None or found.source != "open" or not found.action_tag:
+            return None
+        return found
+
+    @QtCore.Slot(int, result="QVariantMap")
+    def fixes(self, row: int) -> dict:
+        """What the row's menu and side panel offer: {remove, changeTarget}."""
+        found = self._editable(row)
+        return {
+            "remove": found is not None,
+            "changeTarget": found is not None and found.action_tag == VJOY_TAG,
+        }
+
+    @QtCore.Slot(int, result=str)
+    def removeQuestion(self, row: int) -> str:  # noqa: N802
+        """Remove binding…'s question ("" for a row that can't be removed)."""
+        found = self._editable(row)
+        if found is None:
+            return ""
+        from gremlin import binding_edit
+
+        return f"Remove {binding_edit.describe(found)}?"
+
+    @QtCore.Slot(int, result=bool)
+    def removeBinding(self, row: int) -> bool:  # noqa: N802
+        found = self._editable(row)
+        if found is None:
+            return False
+        from gremlin import binding_edit
+
+        return self._edited(lambda: binding_edit.remove_binding(found))
+
+    @QtCore.Slot(int, result="QVariantMap")
+    def changeTargetOf(self, row: int) -> dict:  # noqa: N802
+        """Change target…'s start: {vjoyId, inputType, inputId} of the
+        row's vJoy target ({} when it has none)."""
+        found = self._editable(row)
+        if found is None or found.action_tag != VJOY_TAG:
+            return {}
+        from gremlin.types import InputType
+
+        for key in found.target_keys:
+            if len(key) == 4 and key[0] == "vjoy":
+                try:
+                    kind = InputType.to_string(InputType(int(key[2])))
+                except Exception:  # noqa: BLE001 - an odd target
+                    continue
+                return {
+                    "vjoyId": int(key[1]),
+                    "inputType": kind,
+                    "inputId": int(key[3]),
+                }
+        return {}
+
+    @QtCore.Slot(int, int, str, int, result=bool)
+    def changeTarget(self, row: int, vjoy_id: int, kind: str, control: int) -> bool:  # noqa: N802
+        found = self._editable(row)
+        if found is None or found.action_tag != VJOY_TAG or int(vjoy_id) <= 0:
+            return False
+        from gremlin import binding_edit
+
+        return self._edited(
+            lambda: binding_edit.change_vjoy_target(
+                found, int(vjoy_id), str(kind), int(control)
+            )
+        )
+
+    def _edited(self, edit: Callable[[], Any]) -> bool:
+        """Do an edit, keep its undo record and show the results again."""
+        from gremlin import shared_state
+
+        try:
+            record = edit()
+        except Exception as err:  # noqa: BLE001 - the binding is gone or changed
+            self._refused(err)
+            return False
+        if self._undo_profile is not shared_state.current_profile:
+            self._undo = []
+        self._undo_profile = shared_state.current_profile
+        self._undo.append(record)
+        self._refresh_now()
+        return True
+
+    def _refused(self, err: Exception) -> None:
+        """An edit or undo that can't be made: the box says why (01 S195)."""
+        from gremlin import binding_edit
+
+        if isinstance(err, binding_edit.EditError) and str(err):
+            text = str(err)
+        else:
+            text = "The binding could not be changed. The log has the details."
+        log.warning("Search: %s", text, exc_info=err)
+        self.editRefused.emit(REFUSED_TITLE, text)
+
+    def _refresh_now(self) -> None:
+        """Index the open profile again and search (results, health counts)."""
+        self._rebuild_timer.stop()
+        self._rebuild_open()
+        from gremlin import search_query
+
+        search_query.clear_cache()
+        self._run()
+        self.undoChanged.emit()
+
+    def _undo_live(self) -> bool:
+        """Search's edits can be undone until the profile is saved or closed."""
+        from gremlin import shared_state
+
+        profile = shared_state.current_profile
+        if not self._undo or profile is None or profile is not self._undo_profile:
+            return False
+        try:
+            return bool(profile.has_unsaved_changes())
+        except Exception:  # noqa: BLE001 - no change tracking
+            return True
+
+    @QtCore.Property(bool, notify=undoChanged)
+    def canUndo(self) -> bool:  # noqa: N802
+        return self._undo_live()
+
+    @QtCore.Slot(result=bool)
+    def undo(self) -> bool:
+        """Put back the last Search edit (Ctrl+Z)."""
+        if not self._undo_live():
+            if self._undo:
+                self._undo = []
+                self.undoChanged.emit()
+            return False
+        from gremlin import binding_edit
+
+        record = self._undo.pop()
+        try:
+            binding_edit.undo(record)
+        except Exception as err:  # noqa: BLE001 - the profile moved on
+            # Refused (the profile is running): it can be undone later.
+            if not getattr(record, "done", False):
+                self._undo.append(record)
+            self._refused(err)
+            self.undoChanged.emit()
+            return False
+        self._refresh_now()
+        return True
+
+    @QtCore.Slot(int, result=str)
+    def openMessage(self, row: int) -> str:  # noqa: N802
+        """Why Open can't go to the row's page ("" when it can): its device
+        isn't plugged in."""
+        found = self._found(row)
+        if found is None or not HEALTH_FILTERS["notPlugged"][1](found):
+            return ""
+        name = str(found.device_name or "")
+        try:
+            from gremlin import binding_edit
+
+            name = binding_edit.device_name(str(found.device_guid)) or name
+        except Exception:  # noqa: BLE001 - the stored name stays
+            pass
+        return (
+            f"{name} isn't plugged in, so its page can't open. Use Remove "
+            "binding… or Change target… here, or plug it in."
+        )
 
     @QtCore.Slot(str)
     def searchFor(self, text: str) -> None:  # noqa: N802

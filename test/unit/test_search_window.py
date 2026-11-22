@@ -89,6 +89,76 @@ def _shown(j: Journey, win: str) -> Any:  # noqa: ANN401
     }
 
 
+def _fix(j: Journey, win: str) -> Any:  # noqa: ANN401
+    """01 S195 on the picked Map to vJoy row of the open profile: the menu
+    shows Remove binding… and Change target…, Remove asks first (Cancel
+    keeps it), Change target… opens the vJoy pickers."""
+    from PySide6 import QtCore
+
+    window = j.ev(win)
+    if window is None or isinstance(window, str):
+        return "no window"
+    menu = window.findChild(QtCore.QObject, "searchRowMenu")
+    try:
+        j.ev("fixes = _root.fixesOf(_root.current)", menu)
+    except RuntimeError as err:
+        return "ERROR " + str(err)
+
+    # What the items' visible bindings read (a closed menu shows none).
+    try:
+        found = j.ev(
+            "({ remove: !!fixes.remove, change: !!fixes.changeTarget, "
+            "undo: !!_model.canUndo })",
+            menu,
+        )
+    except RuntimeError as err:
+        return "ERROR " + str(err)
+    found["question"] = _safe(
+        j,
+        "(function() { var w = " + win + "; var d = w.askRemove(w.current); "
+        "if (!d) return null; var r = { title: d.titleText, action: d.actionText }; "
+        "d.cancel(); return r })()",
+    )
+    j.settle()
+    found["afterCancel"] = _safe(j, win + ".search.resultCount > 0")
+    found["box"] = _safe(
+        j,
+        "(function() { var w = " + win + "; if (w.current < 0) w.move(1); "
+        "w.askChangeTarget(w.current); "
+        "return { current: w.current, start: w.search.changeTargetOf(w.current) } })()",
+    )
+    j.settle()
+    box = window.findChild(QtCore.QObject, "searchTargetBox")
+    found["boxOpen"] = None if box is None else bool(box.property("visible"))
+    if box is not None:
+        j.ev("close()", box)
+    # A refused edit: the window's box says why.
+    try:
+        j.ev(
+            '_model.editRefused("Can\'t change the binding", '
+            '"The profile is running: stop it to change its bindings.")',
+            window,
+        )
+    except RuntimeError as err:
+        found["refused"] = "ERROR " + str(err)
+        return found
+    j.settle()
+
+    def prop(name: str, key: str) -> object:
+        item = window.findChild(QtCore.QObject, name)
+        return None if item is None else item.property(key)
+
+    found["refused"] = {
+        "open": prop("searchOpenMessage", "visible"),
+        "title": prop("searchOpenMessageTitle", "text"),
+        "text": prop("searchOpenMessageText", "text"),
+    }
+    message = window.findChild(QtCore.QObject, "searchOpenMessage")
+    if message is not None:
+        j.ev("close()", message)
+    return found
+
+
 def story(j: Journey) -> None:
     out = j.out
     j.settle()
@@ -146,6 +216,7 @@ def story(j: Journey) -> None:
     # A row's typed notes (lit where they matched) and "Inherited from
     # <mode>" on the row and in the detail pane (stand-in row values).
     out["shown"] = _shown(j, win)
+    out["fix"] = _fix(j, win)
     # Nothing found, then Esc clears the box and Esc again closes the window.
     _safe(j, win + '.searchFor("zzqqxxw")')
     j.await_value(lambda: _safe(j, win + ".nothingFound"), True, timeout=8.0)
@@ -293,3 +364,30 @@ def test_notes_and_inherited_are_shown(result: dict) -> None:
     assert shown["detailNotesHeading"] == "Notes"
     assert shown["detailNotes"] == "Lower the landing gear\nunused"
     assert shown["detailInherited"] == "Inherited from Default"
+
+
+def test_a_map_to_vjoy_row_offers_remove_and_change_target(result: dict) -> None:
+    """01 S195: the real window's menu, Remove's question (Cancel keeps the
+    binding) and Change target…'s box."""
+    fix = result["fix"]
+    assert isinstance(fix, dict), fix
+    assert fix["remove"] is True and fix["change"] is True
+    assert fix["undo"] is False
+    question = fix["question"]
+    assert isinstance(question, dict), question
+    assert question["action"] == "Remove"
+    assert question["title"].startswith("Remove the Map to vJoy binding from ")
+    assert question["title"].endswith(" mode)?")
+    assert fix["afterCancel"] is True
+    assert fix["boxOpen"] is True, fix["box"]
+
+
+def test_a_refused_edit_shows_why_in_a_box(result: dict) -> None:
+    """01 S195: an edit that can't be made says why in the window's box."""
+    fix = result["fix"]
+    assert isinstance(fix, dict), fix
+    assert fix["refused"] == {
+        "open": True,
+        "title": "Can't change the binding",
+        "text": "The profile is running: stop it to change its bindings.",
+    }

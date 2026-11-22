@@ -147,13 +147,19 @@ def device_name(guid: object) -> str:
     uid = getattr(guid, "uuid", guid)
     if uid in INTERNAL_INPUTS:
         return INTERNAL_INPUTS[uid][0]
+    name = ""
     try:
         from gremlin.ui.device_names import shown_name
 
-        return shown_name(uid)
+        name = str(shown_name(uid) or "").strip()
     except Exception:  # noqa: BLE001 - a device nothing can name
         syslog.debug("references: no name for %s", uid, exc_info=True)
-        return str(uid)
+    if name:
+        return name
+    # Not plugged in: the one naming rule (module, profile, ...; 04 S32a).
+    from gremlin import binding_edit
+
+    return binding_edit.device_name(uid)
 
 
 def in_step(number: int, ref: Reference) -> Reference:

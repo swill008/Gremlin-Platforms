@@ -10,7 +10,8 @@ import "search_text.js" as SearchText
 
 // The Search window's right side: the picked result in full (where it is,
 // its binding, the mode chain, what else sends to the same output) with
-// Open, Open in Device Mapping Editor and Search for this target.
+// Open, Open in Device Mapping Editor, Search for this target and, for an
+// action of the open profile, Remove binding…, Change target… and Undo.
 Rectangle {
     id: _detail
 
@@ -22,6 +23,12 @@ Rectangle {
     signal mappingEditorClicked()
     signal searchTargetClicked()
     signal closeClicked()
+    // Fixing the binding (01 S195): SearchModel.fixes(row) and canUndo.
+    property var fixes: ({})
+    property bool canUndo: false
+    signal removeClicked()
+    signal changeTargetClicked()
+    signal undoClicked()
 
     function f(name, fallback) {
         return SearchText.field(_detail.row, name, fallback)
@@ -206,6 +213,32 @@ Rectangle {
                 enabled: _detail.targets.length > 0
                 onClicked: _detail.searchTargetClicked()
             }
+            Button {
+                objectName: "searchDetailRemove"
+                Layout.fillWidth: true
+                visible: !!(_detail.fixes && _detail.fixes.remove)
+                text: "Remove binding…"
+                focusPolicy: Qt.NoFocus
+                onClicked: _detail.removeClicked()
+            }
+            Button {
+                objectName: "searchDetailChangeTarget"
+                Layout.fillWidth: true
+                visible: !!(_detail.fixes && _detail.fixes.changeTarget)
+                text: "Change target…"
+                focusPolicy: Qt.NoFocus
+                onClicked: _detail.changeTargetClicked()
+            }
+        }
+        Button {
+            objectName: "searchDetailUndo"
+            Layout.fillWidth: true
+            visible: _detail.canUndo
+            text: "Undo"
+            focusPolicy: Qt.NoFocus
+            ToolTip.visible: hovered
+            ToolTip.text: "Undo the last change made here (Ctrl+Z)"
+            onClicked: _detail.undoClicked()
         }
     }
 }

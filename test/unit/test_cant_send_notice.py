@@ -136,3 +136,64 @@ def test_notice_never_breaks_a_load(
 
     monkeypatch.setattr(output, "cant_send_bindings", broken)
     assert _load(monkeypatch, tmp_path) == []
+
+
+# Unplugged source devices are named, never shown by id (04 S32a, 2026-11-22).
+
+_REMAPPER = "c6ec6fc0-b460-11f1-8004-444553540000"
+
+
+def _unplugged(monkeypatch: pytest.MonkeyPatch, folder: Path | None) -> None:
+    """One binding from an unplugged device Gremlin has no live name for;
+    its module folder is `folder` (None: no module)."""
+    from gremlin.modules import store
+
+    found = [{"device_guid": _REMAPPER, "device_name": ""}]
+    monkeypatch.setattr(output, "cant_send_bindings", lambda loaded: found)
+    monkeypatch.setattr(store, "dir_of_id", lambda guid: folder)
+
+
+def _stored(name: str) -> SimpleNamespace:
+    """A loaded profile that stored the device under `name`."""
+    info = SimpleNamespace(name=name)
+    return SimpleNamespace(
+        device_database=SimpleNamespace(devices={uuid.UUID(_REMAPPER): info})
+    )
+
+
+def test_unplugged_device_is_named_by_its_module(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    folder = tmp_path / "modules" / "HID Remapper 2DGG"
+    folder.mkdir(parents=True)
+    _unplugged(monkeypatch, folder)
+    assert backend._cant_send_notice(_stored("Old name")) == (
+        "HID Remapper 2DGG: 1 binding output not found."
+    )
+    (folder / "device.json").write_text(
+        '{"format": 1, "id": "x", "name": "HID Remapper 2DGG"}', encoding="utf-8"
+    )
+    assert backend._cant_send_notice(object()) == (
+        "HID Remapper 2DGG: 1 binding output not found."
+    )
+
+
+def test_unplugged_device_with_no_module_is_named_by_the_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _unplugged(monkeypatch, None)
+    assert backend._cant_send_notice(_stored("HID Remapper 2DGG")) == (
+        "HID Remapper 2DGG: 1 binding output not found."
+    )
+
+
+def test_notice_never_shows_a_bare_id_when_a_name_exists(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _unplugged(monkeypatch, None)
+    notice = backend._cant_send_notice(_stored("HID Remapper 2DGG"))
+    assert _REMAPPER not in notice
+    # The id only when nothing names the device.
+    assert backend._cant_send_notice(object()) == (
+        f"{_REMAPPER}: 1 binding output not found."
+    )

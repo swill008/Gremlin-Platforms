@@ -682,7 +682,7 @@ function topics() {
                 + "<h4>Good to know</h4>"
                 + "<ul>"
                 + "<li>Search looks in the open profile too, with its unsaved changes, marked <b>(open)</b>. It also looks in the Device Library's saved setups.</li>"
-                + "<li>Search only looks; it changes nothing.</li>"
+                + "<li>Search changes a binding only when you choose <b>Remove binding…</b> or <b>Change target…</b>. See <a href=\"topic:tools-search-fix\">Fix a binding from Search</a>.</li>"
                 + "<li>It also opens from <b>Tools › Mapping › Search…</b> <a href=\"show:menu/Tools/Mapping/Search…\">Show me ›</a>.</li>"
                 + "<li>Right-click a row, a vJoy Viewer chip, an Xbox Output View row or a mode in Manage Modes, and choose <b>Find uses…</b>.</li>"
                 + "<li>Right-click a Home card and choose <b>Search this device</b>. Search opens with the text filled in.</li>"
@@ -692,7 +692,7 @@ function topics() {
                 + "<li>The <b>Find</b> bar on a page only filters that page. Search looks through all your profiles.</li>"
                 + "<li>Reading the results: see <a href=\"topic:tools-search-results\">Read Search results</a>.</li>"
                 + "</ul>",
-            related: ["tools-search-results", "tools-history", "tools-viewers"]
+            related: ["tools-search-results", "tools-search-fix", "tools-history", "tools-viewers"]
         },
         {
             id: "tools-search-results",
@@ -708,7 +708,9 @@ function topics() {
                 + "<li>For <b>Used twice</b>, the other inputs.</li>"
                 + "<li>Close the pane with its ×. Search remembers whether it is open.</li>"
                 + "</ul></li>"
-                + "<li>Right-click a result for <b>Open</b>, <b>Open in Device Mapping Editor</b>, <b>Copy as text</b> and <b>Search for this target</b>.</li>"
+                + "<li>Right-click a result for <b>Open</b>, <b>Open in Device Mapping Editor</b>, <b>Copy as text</b> and <b>Search for this target</b>.<ul>"
+                + "<li>The menu and the pane also have <b>Remove binding…</b> and <b>Change target…</b>. See <a href=\"topic:tools-search-fix\">Fix a binding from Search</a>.</li>"
+                + "</ul></li>"
                 + "</ul>"
                 + "<table><tr><th>Tag</th><th>What it means</th></tr>"
                 + "<tr><td><b>Used twice</b></td><td>Two or more inputs send to the same output in the same mode of the same profile.</td></tr>"
@@ -732,7 +734,36 @@ function topics() {
                 + "</ul></li>"
                 + "<li>Changes you make, saved or not, show up in the results.</li>"
                 + "</ul>",
-            related: ["tools-search"]
+            related: ["tools-search", "tools-search-fix"]
+        },
+        {
+            id: "tools-search-fix",
+            section: "Search",
+            title: "Fix a binding from Search",
+            body: "<p>Remove a binding, or send it to another vJoy output, right from a Search result. This works even when the device isn't plugged in.</p>"
+                + "<h4>How to</h4>"
+                + "<ol>"
+                + "<li>Right-click the result in Search, or select it and use the pane on the right.</li>"
+                + "<li>To delete it, choose <b>Remove binding…</b>. A box names the binding and asks: <b>Remove</b> or <b>Cancel</b>.</li>"
+                + "<li>To send it somewhere else, choose <b>Change target…</b>. Pick the vJoy device and input, then confirm.</li>"
+                + "<li>Save the profile to keep the change.</li>"
+                + "</ol>"
+                + "<h4>When the device isn't plugged in</h4>"
+                + "<ol>"
+                + "<li>Search the device's name or its output. Its results carry the <b>Not plugged in</b> tag.</li>"
+                + "<li>Choose <b>Remove binding…</b> or <b>Change target…</b> on the result.</li>"
+                + "<li>Save the profile.</li>"
+                + "</ol>"
+                + "<h4>Good to know</h4>"
+                + "<ul>"
+                + "<li><b>Change target…</b> is there for <b>Map to vJoy</b> actions only. Its lists show only outputs that can be sent.</li>"
+                + "<li><b>Undo</b> (<b>Ctrl+Z</b>) in the Search window takes back your Search changes, until you save or close the profile.</li>"
+                + "<li>A fix marks the profile as changed. Search and the problem counts update at once.</li>"
+                + "<li>While the profile runs, a box says the binding can't be changed. Choose <b>Stop</b> first.</li>"
+                + "<li><b>Open</b> on a device that isn't plugged in can't show its page. A message says so and points to these two choices.</li>"
+                + "<li>Plug the device in to edit its bindings on its own page.</li>"
+                + "</ul>",
+            related: ["tools-search", "tools-search-results"]
         },
         {
             id: "tools-screen-saver-mode",

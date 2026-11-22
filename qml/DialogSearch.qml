@@ -12,6 +12,7 @@ import Gremlin.Menus
 import Gremlin.Style
 import Gremlin.UI
 import Gremlin.Util
+import "confirm.js" as Confirm
 import "helpers.js" as Helpers
 import "search"
 import "search/search_text.js" as SearchText
@@ -66,6 +67,8 @@ ApplicationWindow {
     SearchModel {
         id: _model
         onModelReset: { _root.current = -1; _root.detailRevision++ }
+        // An edit or undo that can't be made says why (01 S195).
+        onEditRefused: (title, why) => _root.tell(title, why)
     }
 
     Connections {
@@ -155,7 +158,52 @@ ApplicationWindow {
         if (!row || !main)
             return
         pick(index)
+        // An unplugged device has no page (01 S195): say so instead.
+        var why = String(_model.openMessage(index) || "")
+        if (why.length) {
+            _root.tell("", why)
+            return
+        }
         main.goToSearchRow(row)
+    }
+
+    // The window's notice box (one OK): Open's message, a refused edit.
+    function tell(title, text) {
+        _openMessage.title = String(title || "")
+        _openMessage.text = String(text || "")
+        _openMessage.open()
+    }
+
+    // What the picked row's menu and side panel offer (01 S195).
+    function fixesOf(index) {
+        return index >= 0 ? (_model.fixes(index) || {}) : {}
+    }
+
+    // Remove binding…: asks, then removes.
+    function askRemove(index) {
+        var question = String(_model.removeQuestion(index) || "")
+        if (!question.length)
+            return null
+        return Confirm.ask(_root, {
+            title: question,
+            note: "Undo (Ctrl+Z) in this window puts it back until the profile is saved or closed.",
+            action: "Remove",
+            onAccept: function() { _model.removeBinding(index) }
+        })
+    }
+
+    // Change target…: the vJoy pickers the action editor uses.
+    function askChangeTarget(index) {
+        var start = _model.changeTargetOf(index) || {}
+        if (start.vjoyId === undefined)
+            return
+        _targetBox.row = index
+        _targetBox.start = start
+        _targetBox.open()
+    }
+
+    function undo() {
+        return _model.undo()
     }
 
     function firstResult() {
@@ -219,6 +267,8 @@ ApplicationWindow {
     // then the window closes.
     function escapePressed() {
         if (_rowMenu.visible) { _rowMenu.close(); return }
+        if (_targetBox.visible) { _targetBox.close(); return }
+        if (_openMessage.visible) { _openMessage.close(); return }
         if (_help.visible) { _help.close(); return }
         if (_unreadablePopup.visible) { _unreadablePopup.close(); return }
         if (_suggest.visible) { _suggest.close(); _suggestDismissed = true; return }
@@ -253,6 +303,12 @@ ApplicationWindow {
     Shortcut {
         sequences: ["Ctrl+F"]
         onActivated: _root.focusBox()
+    }
+    // Undo of this window's binding edits (01 S195).
+    Shortcut {
+        sequences: [StandardKey.Undo]
+        enabled: !!_model.canUndo && !_box.activeFocus
+        onActivated: _root.undo()
     }
 
     Component.onCompleted: {
@@ -297,6 +353,13 @@ ApplicationWindow {
                 }
                 Keys.onReturnPressed: _root.enter()
                 Keys.onEnterPressed: _root.enter()
+                // Ctrl+Z: the box's own typing first, then Search's edits.
+                Keys.onPressed: (event) => {
+                    if (event.matches(StandardKey.Undo) && !_box.canUndo && !!_model.canUndo) {
+                        _root.undo()
+                        event.accepted = true
+                    }
+                }
             }
 
             component Toggle: Button {
@@ -646,6 +709,11 @@ ApplicationWindow {
                 onOpenClicked: _root.open(_root.current)
                 onMappingEditorClicked: _root.openInMappingEditor(_root.current)
                 onSearchTargetClicked: _root.searchForTarget(_root.current)
+                fixes: { _root.detailRevision; return _root.fixesOf(_root.current) }
+                canUndo: !!_model.canUndo
+                onRemoveClicked: _root.askRemove(_root.current)
+                onChangeTargetClicked: _root.askChangeTarget(_root.current)
+                onUndoClicked: _root.undo()
                 onCloseClicked: _root.setDetailOpen(false)
             }
             Button {
@@ -795,6 +863,8 @@ ApplicationWindow {
     ThemedMenu {
         id: _rowMenu
         objectName: "searchRowMenu"
+        property var fixes: ({})
+        onAboutToShow: fixes = _root.fixesOf(_root.current)
         ThemedMenuItem {
             text: "Open"
             onTriggered: _root.open(_root.current)
@@ -810,6 +880,135 @@ ApplicationWindow {
         ThemedMenuItem {
             text: "Search for this target"
             onTriggered: _root.searchForTarget(_root.current)
+        }
+        ThemedMenuItem {
+            objectName: "searchRemoveBinding"
+            text: "Remove binding…"
+            visible: !!_rowMenu.fixes.remove
+            height: visible ? implicitHeight : 0
+            onTriggered: _root.askRemove(_root.current)
+        }
+        ThemedMenuItem {
+            objectName: "searchChangeTarget"
+            text: "Change target…"
+            visible: !!_rowMenu.fixes.changeTarget
+            height: visible ? implicitHeight : 0
+            onTriggered: _root.askChangeTarget(_root.current)
+        }
+        ThemedMenuItem {
+            objectName: "searchUndo"
+            text: "Undo"
+            hint: "Ctrl+Z"
+            visible: !!_model.canUndo
+            height: visible ? implicitHeight : 0
+            onTriggered: _root.undo()
+        }
+    }
+
+    // Open on an unplugged device, a refused edit (01 S195).
+    Popup {
+        id: _openMessage
+        objectName: "searchOpenMessage"
+        property alias text: _openMessageText.text
+        property alias title: _openMessageTitle.text
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(_root.width - Style.dp(40), Style.dp(460))
+        padding: Style.dp(16)
+        background: Rectangle { color: Style.background; border.color: Style.line; radius: Style.dp(4) }
+        contentItem: ColumnLayout {
+            spacing: Style.dp(12)
+            Label {
+                id: _openMessageTitle
+                objectName: "searchOpenMessageTitle"
+                Layout.fillWidth: true
+                visible: text.length > 0
+                wrapMode: Text.Wrap
+                font.bold: true
+                color: Style.fg
+            }
+            Label {
+                id: _openMessageText
+                objectName: "searchOpenMessageText"
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                color: Style.fg
+            }
+            Button {
+                Layout.alignment: Qt.AlignRight
+                text: "OK"
+                onClicked: _openMessage.close()
+            }
+        }
+    }
+
+    // Change target…: a Map to vJoy action's vJoy device and input, only
+    // what can be sent (01 S195).
+    Popup {
+        id: _targetBox
+        objectName: "searchTargetBox"
+        property int row: -1
+        property var start: ({})
+        property int vjoyId: 0
+        property string inputType: ""
+        property int inputId: 0
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(_root.width - Style.dp(40), Style.dp(460))
+        padding: Style.dp(16)
+        onOpened: {
+            vjoyId = Number(start.vjoyId || 0)
+            inputType = String(start.inputType || "")
+            inputId = Number(start.inputId || 0)
+            _targetPicker.active = false
+            _targetPicker.active = true
+        }
+        onClosed: _targetPicker.active = false
+        background: Rectangle { color: Style.background; border.color: Style.line; radius: Style.dp(4) }
+        contentItem: ColumnLayout {
+            spacing: Style.dp(12)
+            Label {
+                Layout.fillWidth: true
+                text: "Change target"
+                font.bold: true
+                color: Style.fg
+            }
+            Loader {
+                id: _targetPicker
+                active: false
+                Layout.fillWidth: true
+                Layout.minimumWidth: Style.dp(220)
+                sourceComponent: VJoySelector {
+                    validTypes: [String(_targetBox.start.inputType || "button")]
+                    onSelectionChanged: (vjoyId, inputType, inputId) => {
+                        _targetBox.vjoyId = vjoyId
+                        _targetBox.inputType = inputType
+                        _targetBox.inputId = inputId
+                    }
+                    Component.onCompleted: initialize(Number(_targetBox.start.vjoyId || 0),
+                                                      String(_targetBox.start.inputType || ""),
+                                                      Number(_targetBox.start.inputId || 0))
+                }
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: Style.dp(8)
+                Button {
+                    objectName: "searchTargetOk"
+                    text: "Change"
+                    enabled: _targetBox.vjoyId > 0
+                    onClicked: {
+                        _model.changeTarget(_targetBox.row, _targetBox.vjoyId,
+                                            _targetBox.inputType, _targetBox.inputId)
+                        _targetBox.close()
+                    }
+                }
+                Button {
+                    objectName: "searchTargetCancel"
+                    text: "Cancel"
+                    onClicked: _targetBox.close()
+                }
+            }
         }
     }
 }
